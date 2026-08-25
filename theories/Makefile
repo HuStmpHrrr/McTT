@@ -18,6 +18,7 @@ empty :=
 space := $(empty) $(empty)
 
 MENHIR := menhir
+ROCQ := $(COQBIN)rocq
 
 COQMAKEFILE := CoqMakefile.mk
 COQPROJECTFILE := _CoqProject
@@ -54,7 +55,7 @@ update_CoqProject: clean
 force: ;
 
 $(COQMAKEFILE): $(COQPROJECTFILE)
-	$(COQBIN)coq_makefile -f "$?" -o "$@"
+	$(ROCQ) makefile -f "$?" -o "$@"
 
 $(COQPROJECTFILE): ;
 

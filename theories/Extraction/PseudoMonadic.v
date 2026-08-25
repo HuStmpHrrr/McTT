@@ -1,5 +1,5 @@
 (** McTT Extraction Helpers in a (pseudo-)monadic style *)
-From Coq Require Extraction.
+From Stdlib Require Extraction.
 
 (** We cannot use class based generalization for
     the following definitions as Coq does not support

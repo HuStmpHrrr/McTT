@@ -1,4 +1,4 @@
-From Coq Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relations Relation_Definitions RelationClasses.
+From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relations Relation_Definitions RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -107,7 +107,7 @@ Lemma glu_univ_elem_per_univ_typ_escape : forall {i a a' P P' El El' Γ A A'},
     {{ Γ ⊢ A' ® P' }} ->
     {{ Γ ⊢ A ≈ A' : Type@i }}.
 Proof.
-  intros * [] **...
+  intros * [] **.
   mauto 4.
 Qed.
 

@@ -1,4 +1,4 @@
-From Coq Require Import Nat.
+From Stdlib Require Import Nat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

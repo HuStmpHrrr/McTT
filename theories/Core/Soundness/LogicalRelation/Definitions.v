@@ -1,4 +1,4 @@
-From Coq Require Import Relation_Definitions RelationClasses.
+From Stdlib Require Import Relation_Definitions RelationClasses.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.

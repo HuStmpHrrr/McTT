@@ -1,4 +1,4 @@
-From Coq Require Import Setoid.
+From Stdlib Require Import Setoid.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export CoreInversions Presup.

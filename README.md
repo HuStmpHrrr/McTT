@@ -10,7 +10,7 @@ elementary) and serves as a basis for future extensions.
 
 ## Online Documentation
 
-We have generated a [Coqdoc](https://beluga-lang.github.io/McTT/icfp25/dep.html) for browsing our Coq proof.
+We have generated a [Coqdoc](https://beluga-lang.github.io/McTT/dep.html) for browsing our Coq proof.
 
 ## Architecture
 
@@ -49,20 +49,49 @@ implementation.
 
 ## Dependencies
 
-* [OCaml](https://ocaml.org/) 4.14.2
-* [Menhir](http://cambium.inria.fr/~fpottier/menhir/)
-* [Coq-Menhirlib](https://gitlab.inria.fr/fpottier/menhir/-/tree/master/coq-menhirlib)
-* [Coq](https://coq.inria.fr/) 8.20.0
-* [Coq-Equations](https://github.com/mattam82/Coq-Equations) 1.3
+* [OCaml](https://ocaml.org/) >= 4.14.2
+* [Menhir](http://cambium.inria.fr/~fpottier/menhir/) 20260209
+* [Coq-Menhirlib](https://gitlab.inria.fr/fpottier/menhir/-/tree/master/coq-menhirlib) 20260209
+* [The Rocq Prover](https://rocq-prover.org/) 9.2.0
+* [Rocq-Equations](https://github.com/mattam82/Coq-Equations) 1.3.2
 
 We recommend to install dependencies in the following way:
 
 ```bash
 opam update
-opam switch create coq-8.20.0 4.14.2
-opam pin add coq 8.20.0
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam install -y menhir coq-equations coq-menhirlib ppx_inline_test ppx_expect
+opam switch create rocq-9.2.0 --packages=ocaml-base-compiler.5.4.1
+eval $(opam env --switch=rocq-9.2.0)
+opam repo add rocq-released https://rocq-prover.org/opam/released
+opam pin add rocq-runtime 9.2.0
+opam pin add rocq-core 9.2.0
+opam pin add rocq-stdlib 9.2.0
+opam install -y menhir.20260209 rocq-equations.1.3.2+9.2 ppx_inline_test ppx_expect
+```
+
+Pinning all three of `rocq-runtime`, `rocq-core` and `rocq-stdlib` matters: opam
+will otherwise happily pair a 9.2.0 `rocq-core` with a 9.1.0 `rocq-stdlib`.
+
+`coq-menhirlib` cannot be installed from opam yet: its opam package depends on
+the `coq` meta package, which is not published for Rocq 9.2. Until that is
+fixed upstream, build it from the matching menhir sources (the version *must*
+match the `menhir` binary, otherwise the generated parser is rejected by its
+own version check):
+
+```bash
+opam source coq-menhirlib.20260209 --dir=/tmp/menhir-20260209
+make -C /tmp/menhir-20260209/coq-menhirlib install
+```
+
+### Editor support (optional)
+
+`coq-lsp` has no Rocq 9.2 release yet, but its `v9.2` branch builds against it.
+Note that it cannot be installed on an OCaml 5.5 switch, because `ppx_import`
+fails to preprocess `serlib` there — this is why the switch above uses OCaml
+5.4.1:
+
+```bash
+git clone -b v9.2 https://github.com/ejgallego/coq-lsp
+opam pin add coq-lsp ./coq-lsp
 ```
 
 ## Development

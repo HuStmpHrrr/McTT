@@ -1,4 +1,4 @@
-From Coq Require Import Relations.
+From Stdlib Require Import Relations.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
 Import Domain_Notations.

@@ -1,5 +1,5 @@
-From Coq Require Extraction.
-From Coq Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlNativeString ExtrOcamlZInt.
+From Stdlib Require Extraction.
+From Stdlib Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlNativeString ExtrOcamlZInt.
 
 From Equations Require Import Equations.
 

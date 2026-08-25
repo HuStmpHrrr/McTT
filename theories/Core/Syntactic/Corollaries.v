@@ -1,4 +1,4 @@
-From Coq Require Import Setoid Nat.
+From Stdlib Require Import Setoid Nat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export SystemOpt.

@@ -60,7 +60,7 @@ jobs:
           install: |
           before_script: |
             startGroup "Fix the permission issue"
-              sudo chown -R coq:coq .
+              sudo chown -R "$(id -u):$(id -g)" .
             endGroup
           script: |
             startGroup "Build binary"

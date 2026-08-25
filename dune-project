@@ -26,9 +26,13 @@ program in MLTT. This is the first verified proof assistant (despite being
 elementary) and serves as a basis for future extensions.")
  (depends
   (ocaml (>= "4.14.2"))
-  (coq   (= "8.20.0"))
-  (menhir (= "20240715"))
-  (coq-menhirlib (= "20240715"))
-  (coq-equations (= "1.3.1+8.20"))
+  (rocq-core (= "9.2.0"))
+  (rocq-runtime (= "9.2.0"))
+  (rocq-stdlib (= "9.2.0"))
+  (menhir (= "20260209"))
+  ; coq-menhirlib 20260209 is also required, but its opam package still depends
+  ; on the `coq` meta package, which no longer exists for Rocq 9.2. Until that
+  ; is fixed upstream it has to be built from the menhir sources; see README.md.
+  (rocq-equations (= "1.3.2+9.2"))
   (ppx_expect (>= "0.16.0"))
   (sherlodoc :with-doc)))

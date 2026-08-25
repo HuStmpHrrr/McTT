@@ -1,4 +1,4 @@
-From Coq Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relations Relation_Definitions RelationClasses.
+From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relations Relation_Definitions RelationClasses.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

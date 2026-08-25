@@ -1,4 +1,4 @@
-From Coq Require Import Morphisms_Relations.
+From Stdlib Require Import Morphisms_Relations.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
