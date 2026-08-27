@@ -1,140 +1,127 @@
+(** * Context Refinement
+
+    [⊢ Δ ⊆ Γ] transports a judgment from [Γ] to [Δ].  It is inductive, because
+    the gluing model recurses on it — but unlike the presentation
+    with explicit substitutions, the transport lemmas are *not* proved by that
+    induction.  [ctx_sub_escape] turns a refinement into [{{ Δ ⊢s Id : Γ }}]
+    once and for all, and then [sub_preserves_wf] at [Id] does the transport:
+    that is
+    [ctxsub_exp] and friends in [System.Lemmas], all stated for [Id].
+
+    The length equation that comes with the inductive shape is the one thing
+    [{{ Δ ⊢s Id : Γ }}] does *not* give: [{{ ⋅ , ℕ ⊢s Id : ⋅ }}] holds, since
+    [⋅] has no binding to inhabit.  The Kripke weakenings of soundness read a de
+    Bruijn *level* off the length of their domain, so they need a refinement that
+    preserves it. *)
+
+From Stdlib Require Import RelationClasses.
+
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export System.
-Import Syntax_Notations.
+From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Syntactic Require Export SystemOpt.
+Import Syntax_Notations Wk_Notations.
 
-Lemma ctx_sub_refl : forall {Γ},
-    {{ ⊢ Γ }} ->
-    {{ ⊢ Γ ⊆ Γ }}.
-Proof with mautosolve.
-  induction 1...
+Reserved Notation "⊢ Δ ⊆ Γ" (in custom judg at level 80, Δ custom exp, Γ custom exp).
+
+Inductive ctx_sub : ctx -> ctx -> Prop :=
+| ctx_sub_empty : {{ ⊢ ⋅ ⊆ ⋅ }}
+| ctx_sub_extend : forall Δ Γ A A' i,
+    {{ ⊢ Δ ⊆ Γ }} ->
+    {{ Γ ⊢ A : Type@i }} ->
+    {{ Δ ⊢ A' : Type@i }} ->
+    {{ Δ ⊢ A' ⊆ A }} ->
+    {{ ⊢ Δ , A' ⊆ Γ , A }}
+where "⊢ Δ ⊆ Γ" := (ctx_sub Δ Γ) (in custom judg) : type_scope.
+
+#[export]
+Hint Constructors ctx_sub : mctt.
+
+Lemma ctx_sub_length : forall Δ Γ, {{ ⊢ Δ ⊆ Γ }} -> length Δ = length Γ.
+Proof. induction 1; simpl; congruence. Qed.
+
+Lemma ctx_sub_dom : forall Δ Γ, {{ ⊢ Δ ⊆ Γ }} -> {{ ⊢ Δ }}.
+Proof. induction 1; mauto 2. Qed.
+
+Lemma ctx_sub_cod : forall Δ Γ, {{ ⊢ Δ ⊆ Γ }} -> {{ ⊢ Γ }}.
+Proof. induction 1; mauto 2. Qed.
+
+#[export]
+Hint Resolve ctx_sub_dom ctx_sub_cod : mctt.
+
+(** The [Var] case of [ctx_sub_escape], by induction on the lookup rather than
+    on the refinement: the [here] case is where [A' ⊆ A] is used, and the
+    [there] case is plain weakening. *)
+Lemma ctx_sub_vlookup : forall Γ x A,
+    {{ #x : A ∈ Γ }} ->
+    forall Δ, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢ #x : A }}.
+Proof.
+  induction 1; intros * HΔ; dependent destruction HΔ.
+
+  - assert {{ ⊢ Δ , A' }} by mauto 3.
+    assert {{ Δ , A' ⊢w ↑ : Δ }} by mauto 3.
+    assert {{ Δ , A' ⊢ A'⟨↑⟩ ⊆ A⟨↑⟩ }} by mauto 3.
+    mauto 3.
+
+  - assert {{ Δ ⊢ #n : A }} by mauto 3.
+    assert {{ ⊢ Δ , A' }} by mauto 3.
+    assert {{ Δ , A' ⊢ #n⟨↑⟩ : A⟨↑⟩ }} by mauto 3.
+    assumption.
 Qed.
+
+Lemma ctx_sub_escape : forall Δ Γ, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢s Id : Γ }}.
+Proof.
+  intros * HΔ.
+  econstructor; [ mauto 2 | mauto 2 | ].
+  intros x A ?; reduce_index; rewrite exp_sub_id.
+  eauto using ctx_sub_vlookup.
+Qed.
+
+#[export]
+Hint Resolve ctx_sub_escape : mctt.
+
+Lemma ctx_sub_refl : forall Γ, {{ ⊢ Γ }} -> {{ ⊢ Γ ⊆ Γ }}.
+Proof. induction 1; mauto 3. Qed.
 
 #[export]
 Hint Resolve ctx_sub_refl : mctt.
 
-Module ctxsub_judg.
-  #[local]
-  Ltac gen_ctxsub_helper_IH ctxsub_exp_helper ctxsub_exp_eq_helper ctxsub_sub_helper ctxsub_sub_eq_helper ctxsub_subtyp_helper H :=
-  match type of H with
-  | {{ ^?Γ ⊢ ^?M : ^?A }} => pose proof ctxsub_exp_helper _ _ _ H
-  | {{ ^?Γ ⊢ ^?M ≈ ^?N : ^?A }} => pose proof ctxsub_exp_eq_helper _ _ _ _ H
-  | {{ ^?Γ ⊢s ^?σ : ^?Δ }} => pose proof ctxsub_sub_helper _ _ _ H
-  | {{ ^?Γ ⊢s ^?σ ≈ ^?τ : ^?Δ }} => pose proof ctxsub_sub_eq_helper _ _ _ _ H
-  | {{ ^?Γ ⊢ ^?M ⊆ ^?M' }} => pose proof ctxsub_subtyp_helper _ _ _ H
-  end.
-
-  #[local]
-  Lemma ctxsub_exp_helper : forall {Γ M A}, {{ Γ ⊢ M : A }} -> forall {Δ}, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢ M : A }}
-  with
-  ctxsub_exp_eq_helper : forall {Γ M M' A}, {{ Γ ⊢ M ≈ M' : A }} -> forall {Δ}, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢ M ≈ M' : A }}
-  with
-  ctxsub_sub_helper : forall {Γ Γ' σ}, {{ Γ ⊢s σ : Γ' }} -> forall {Δ}, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢s σ : Γ' }}
-  with
-  ctxsub_sub_eq_helper : forall {Γ Γ' σ σ'}, {{ Γ ⊢s σ ≈ σ' : Γ' }} -> forall {Δ}, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢s σ ≈ σ' : Γ' }}
-  with
-  ctxsub_subtyp_helper : forall {Γ M M'}, {{ Γ ⊢ M ⊆ M' }} -> forall {Δ}, {{ ⊢ Δ ⊆ Γ }} -> {{ Δ ⊢ M ⊆ M' }}.
-  Proof with mautosolve.
-    all: inversion_clear 1;
-      (on_all_hyp: gen_ctxsub_helper_IH ctxsub_exp_helper ctxsub_exp_eq_helper ctxsub_sub_helper ctxsub_sub_eq_helper ctxsub_subtyp_helper);
-      clear ctxsub_exp_helper ctxsub_exp_eq_helper ctxsub_sub_helper ctxsub_sub_eq_helper ctxsub_subtyp_helper;
-      intros * HΓΔ; destruct (presup_ctx_sub HΓΔ); mauto 4;
-      try (rename B into C); try (rename B' into C'); try (rename A0 into B); try (rename A' into B').
-    (** ctxsub_exp_helper & ctxsub_exp_eq_helper recursion cases *)
-    1,6-8: assert {{ ⊢ Δ, ℕ ⊆ Γ, ℕ }} by (econstructor; mautosolve);
-    assert {{ Δ, ℕ ⊢ B : Type@i }} by eauto; econstructor...
-    (** ctxsub_exp_helper & ctxsub_exp_eq_helper function cases *)
-    1-3,5-9: assert {{ Δ ⊢ B : Type@i }} by eauto; assert {{ ⊢ Δ, B ⊆ Γ, B }} by mauto;
-    try econstructor...
-    (** ctxsub_exp_helper & ctxsub_exp_eq_helper variable cases *)
-    1-2: assert (exists B, {{ #x : B ∈ Δ }} /\ {{ Δ ⊢ B ⊆ A }}); destruct_conjs; mautosolve 4.
-    (** ctxsub_sub_helper & ctxsub_sub_eq_helper weakening cases *)
-    2-3: inversion_clear HΓΔ; econstructor; mautosolve 4.
-
-    - (** ctxsub_exp_eq_helper variable case *)
-      inversion_clear HΓΔ as [|Δ0 ? ? C'].
-      assert (exists D, {{ #x : D ∈ Δ0 }} /\ {{ Δ0 ⊢ D ⊆ B }}) as [D [i0 ?]] by mauto.
-      destruct_conjs.
-      assert {{ ⊢ Δ0, C' }} by mauto.
-      assert {{ Δ0, C' ⊢ D[Wk] ⊆ B[Wk] }}...
-    - eapply wf_subtyp_pi with (i := i); firstorder mauto 4.
-  Qed.
-
-  Corollary ctxsub_exp : forall {Γ Δ M A}, {{ ⊢ Δ ⊆ Γ }} -> {{ Γ ⊢ M : A }} -> {{ Δ ⊢ M : A }}.
-  Proof.
-    eauto using ctxsub_exp_helper.
-  Qed.
-
-  Corollary ctxsub_exp_eq : forall {Γ Δ M M' A}, {{ ⊢ Δ ⊆ Γ }} -> {{ Γ ⊢ M ≈ M' : A }} -> {{ Δ ⊢ M ≈ M' : A }}.
-  Proof.
-    eauto using ctxsub_exp_eq_helper.
-  Qed.
-
-  Corollary ctxsub_sub : forall {Γ Δ σ Γ'}, {{ ⊢ Δ ⊆ Γ }} -> {{ Γ ⊢s σ : Γ' }} -> {{ Δ ⊢s σ : Γ' }}.
-  Proof.
-    eauto using ctxsub_sub_helper.
-  Qed.
-
-  Corollary ctxsub_sub_eq : forall {Γ Δ σ σ' Γ'}, {{ ⊢ Δ ⊆ Γ }} -> {{ Γ ⊢s σ ≈ σ' : Γ' }} -> {{ Δ ⊢s σ ≈ σ' : Γ' }}.
-  Proof.
-    eauto using ctxsub_sub_eq_helper.
-  Qed.
-
-  Corollary ctxsub_subtyp : forall {Γ Δ A B}, {{ ⊢ Δ ⊆ Γ }} -> {{ Γ ⊢ A ⊆ B }} -> {{ Δ ⊢ A ⊆ B }}.
-  Proof.
-    eauto using ctxsub_subtyp_helper.
-  Qed.
-
-  #[export]
-  Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_sub ctxsub_sub_eq ctxsub_subtyp : mctt.
-End ctxsub_judg.
-
-Export ctxsub_judg.
-
-Lemma wf_ctx_sub_trans : forall Γ0 Γ1,
+Lemma ctx_sub_trans : forall Γ0 Γ1,
     {{ ⊢ Γ0 ⊆ Γ1 }} ->
-    forall  Γ2,
-    {{ ⊢ Γ1 ⊆ Γ2 }} ->
-    {{ ⊢ Γ0 ⊆ Γ2 }}.
+    forall Γ2,
+      {{ ⊢ Γ1 ⊆ Γ2 }} ->
+      {{ ⊢ Γ0 ⊆ Γ2 }}.
 Proof.
-  induction 1; intros; progressive_inversion; [constructor |].
-  eapply wf_ctx_sub_extend with (i := max i i0);
+  induction 1; intros * HΓ2; dependent destruction HΓ2; [ constructor | ].
+  rename A into A1. rename A0 into A2. rename A' into A0.
+  (** The two steps ascribe unrelated levels to the middle type, so both have to
+      be raised before the refinements can be composed. *)
+  assert {{ Δ ⊢s Id : Γ }} by mauto 2.
+  assert {{ Δ ⊢ A1 ⊆ A2 }} by mauto 2.
+  eapply ctx_sub_extend with (i := max i i0);
     mauto 3 using lift_exp_max_left, lift_exp_max_right.
 Qed.
 
 #[export]
- Hint Resolve wf_ctx_sub_trans : mctt.
+Hint Resolve ctx_sub_trans : mctt.
 
 #[export]
-Instance wf_ctx_sub_trans_ins : Transitive wf_ctx_sub.
-Proof. eauto using wf_ctx_sub_trans. Qed.
+Instance ctx_sub_Transitive : Transitive ctx_sub.
+Proof. intros ? ? ?; eauto using ctx_sub_trans. Qed.
 
-Add Parametric Morphism : wf_exp
-  with signature wf_ctx_sub --> eq ==> eq ==> Basics.impl as ctxsub_exp_morphism.
-Proof.
-  cbv. intros. mauto 3.
-Qed.
+Corollary ctx_sub_extend_eq : forall Γ A A' i,
+    {{ Γ ⊢ A : Type@i }} ->
+    {{ Γ ⊢ A' : Type@i }} ->
+    {{ Γ ⊢ A ≈ A' : Type@i }} ->
+    {{ ⊢ Γ , A' ⊆ Γ , A }}.
+Proof. intros; eapply ctx_sub_extend; mauto 3. Qed.
 
-Add Parametric Morphism : wf_exp_eq
-  with signature wf_ctx_sub --> eq ==> eq ==> eq ==> Basics.impl as ctxsub_exp_eq_morphism.
-Proof.
-  cbv. intros. mauto 3.
-Qed.
+#[export]
+Hint Resolve ctx_sub_extend_eq : mctt.
 
-Add Parametric Morphism : wf_sub
-  with signature wf_ctx_sub --> eq ==> eq ==> Basics.impl as ctxsub_sub_morphism.
-Proof.
-  cbv. intros. mauto 3.
-Qed.
-
-Add Parametric Morphism : wf_sub_eq
-  with signature wf_ctx_sub --> eq ==> eq ==> eq ==> Basics.impl as ctxsub_sub_eq_morphism.
-Proof.
-  cbv. intros. mauto 3.
-Qed.
-
-Add Parametric Morphism : wf_subtyp
-  with signature wf_ctx_sub --> eq ==> eq ==> Basics.impl as ctxsub_subtyp_morphism.
-Proof.
-  cbv. intros. mauto 3.
-Qed.
+Ltac saturate_ctx_sub :=
+  match_by_head ctx_sub ltac:(fun H => pose proof (ctx_sub_escape _ _ H);
+                                       pose proof (ctx_sub_dom _ _ H);
+                                       pose proof (ctx_sub_cod _ _ H);
+                                       pose proof (ctx_sub_length _ _ H));
+  clear_dups.

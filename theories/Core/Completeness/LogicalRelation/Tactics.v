@@ -19,6 +19,11 @@ Ltac eexists_rel_sub :=
   eexists;
   eexists; [eassumption |].
 
+(** [rel_wk_under_ctx] has the same outer shape as [rel_sub_under_ctx] — two
+    environment PERs, each with its context witness read off the goal — so one
+    tactic opens both. *)
+Ltac eexists_rel_wk := eexists_rel_sub.
+
 Ltac eexists_subtyp :=
   eexists;
   eexists; [eassumption |];

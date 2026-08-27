@@ -22,7 +22,6 @@
 ./Core/Completeness/NatCases.v
 ./Core/Completeness/SubstitutionCases.v
 ./Core/Completeness/SubtypingCases.v
-./Core/Completeness/TermStructureCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v
@@ -33,6 +32,7 @@
 ./Core/Semantic/Evaluation/Tactics.v
 ./Core/Semantic/NbE.v
 ./Core/Semantic/PER.v
+./Core/Semantic/PER/Chain.v
 ./Core/Semantic/PER/CoreTactics.v
 ./Core/Semantic/PER/Definitions.v
 ./Core/Semantic/PER/Lemmas.v
@@ -45,14 +45,13 @@
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness/LogicalRelation.v
+./Core/Soundness/NatCases.v
 ./Core/Soundness/LogicalRelation/Core.v
 ./Core/Soundness/LogicalRelation/CoreLemmas.v
 ./Core/Soundness/LogicalRelation/CoreTactics.v
 ./Core/Soundness/LogicalRelation/Definitions.v
 ./Core/Soundness/LogicalRelation/Lemmas.v
-./Core/Soundness/NatCases.v
 ./Core/Soundness/Realizability.v
-./Core/Soundness/SubstitutionCases.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/TermStructureCases.v
 ./Core/Soundness/UniverseCases.v
@@ -60,9 +59,10 @@
 ./Core/Soundness/Weakening/Lemmas.v
 ./Core/Syntactic/CoreInversions.v
 ./Core/Syntactic/Corollaries.v
-./Core/Syntactic/CtxEq.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Presup.v
+./Core/Syntactic/SubEq.v
+./Core/Syntactic/Substitution.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
 ./Core/Syntactic/System/Definitions.v

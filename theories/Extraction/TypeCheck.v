@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Extraction Require Import NbE PseudoMonadic Subtyping.
 From Mctt.Frontend Require Import Elaborator.
-Import Domain_Notations.
+Import Domain_Notations Wk_Notations.
 
 Section lookup.
   #[local]
@@ -28,10 +28,10 @@ Section lookup.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations lookup G (HG : {{ ⊢ G }}) x : { A | {{ #x : A ∈ G }} } + { forall A, ~ {{ #x : A ∈ G }} } :=
   | {{{ G, A }}}, HG, x with x => {
-    | 0 => pureo (exist _ {{{ A[Wk] }}} _)
+    | 0 => pureo (exist _ {{{ A⟨↑⟩ }}} _)
     | S x' =>
         let*o (exist _ B _) := lookup G _ x' while _ in
-        pureo (exist _ {{{ B[Wk] }}} _)
+        pureo (exist _ {{{ B⟨↑⟩ }}} _)
     }
   | {{{ ⋅ }}}, HG, x => inright _.
 End lookup.
@@ -176,7 +176,7 @@ Section type_check.
         let*o (exist _ UA' _) := type_infer {{{ G, ℕ }}} _ A' _ while _ in
         let*o (exist _ i _) :=  get_level_of_type_nf UA' while _ in
         let*b->o _ := type_check G {{{ A'[Id,,zero] }}} _ MZ _ while _ in
-        let*b->o _ := type_check {{{ G, ℕ, A' }}} {{{ A'[Wk∘Wk,,succ #1] }}} _ MS _ while _ in
+        let*b->o _ := type_check {{{ G, ℕ, A' }}} {{{ A'[Wk ⨟ Wk,,succ #1] }}} _ MS _ while _ in
         let (A'', _) := nbe_ty_impl G {{{ A'[Id,,M'] }}} _ in
         pureo (exist _ A'' _)
     | {{{ Π B C }}} =>
@@ -201,7 +201,9 @@ Section type_check.
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl G A _ in
         pureo (exist _ A' _)
-    | _ => inright _
+    (** The catch-all of the explicit-substitution development covered [M[σ]],
+        the one expression that had no inference rule.  Every constructor of
+        [exp] is now inferrable, so the match is exhaustive. *)
     }
   .
 
@@ -212,36 +214,50 @@ Section type_check.
 
   Next Obligation. (* exists j, {{ G ⊢ A'[Id,,zero] : Type@j }} *)
     clear_defs.
-    functional_alg_type_infer_rewrite_clear.
-    eexists.
-    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} by mauto 4 using alg_type_infer_sound.
-    mauto 3.
+    exists i.
+    assert {{ G ⊢s Id ,, zero : G , ℕ }} as Hσ by mauto 3.
+    assert {{ G ⊢ ℕ : Type@0 }} by mauto 2.
+    assert {{ ⊢ G , ℕ }} by mauto 2.
+    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} as HA' by mauto 3 using alg_type_infer_sound.
+    (** [sub_preserves_exp] has to be applied by hand: unifying its conclusion
+        would ask [?A[?σ] ≟ Type@i], which [eapply] cannot solve. *)
+    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
   Qed.
 
-  Next Obligation. (* exists j, {{ G, ℕ, A' ⊢ A'[Wk∘Wk,,succ #1] : Type@i }} *)
+  Next Obligation. (* exists j, {{ G, ℕ, A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Type@i }} *)
     clear_defs.
-    functional_alg_type_infer_rewrite_clear.
-    eexists.
-    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} by mauto 4 using alg_type_infer_sound.
-    mauto 3.
+    exists i.
+    assert {{ G ⊢ ℕ : Type@0 }} by mauto 2.
+    assert {{ ⊢ G , ℕ }} by mauto 2.
+    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} as HA' by mauto 3 using alg_type_infer_sound.
+    assert {{ ⊢ G , ℕ , A' }} by mauto 2.
+    assert {{ G , ℕ , A' ⊢s Wk ⨟ Wk ,, succ #1 : G , ℕ }} as Hσ by mauto 3.
+    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
   Qed.
 
   Next Obligation. (* nbe_ty_order G {{{ A'[Id,,M'] }}} *)
     clear_defs.
-    enough (exists i, {{ G ⊢ A'[Id,,M'] : ^n{{{ Type@i }}} }}) as [? [? []]%exp_eq_refl%completeness_ty]
+    enough (exists i, {{ G ⊢ A'[Id,,M'] : ^n{{{ Type@i }}} }}) as [? [? []]%wf_exp_eq_refl%completeness_ty]
         by eauto 3 using nbe_ty_order_sound.
-    eexists.
-    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} by mauto 4 using alg_type_infer_sound.
-    assert {{ G ⊢ ℕ : Type@0 }} by mauto 3.
-    mauto 4 using alg_type_check_sound.
+    exists i.
+    assert {{ G ⊢ ℕ : Type@0 }} by mauto 2.
+    assert {{ ⊢ G , ℕ }} by mauto 2.
+    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} as HA' by mauto 3 using alg_type_infer_sound.
+    assert {{ G ⊢ M' : ℕ }} by mauto 3 using alg_type_check_sound.
+    assert {{ G ⊢s Id ,, M' : G , ℕ }} as Hσ by mauto 3.
+    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
   Qed.
 
   Next Obligation. (* {{ G ⊢a rec M' return A' | zero -> MZ | succ -> MS end ⟹ A'' }} /\ (exists j, {{ G ⊢a A'' ⟹ Type@j }}) *)
     clear_defs.
     split; [mauto 3 |].
-    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} by mauto 4 using alg_type_infer_sound.
-    assert {{ G ⊢ ℕ : Type@0 }} by mauto 3.
-    assert {{ G ⊢ A'[Id,,M'] ≈ A'' : Type@i }} by (eapply soundness_ty'; mauto 4 using alg_type_check_sound).
+    assert {{ G ⊢ ℕ : Type@0 }} by mauto 2.
+    assert {{ ⊢ G , ℕ }} by mauto 2.
+    assert {{ G, ℕ ⊢ A' : ^n{{{ Type@i }}} }} as HA' by mauto 3 using alg_type_infer_sound.
+    assert {{ G ⊢ M' : ℕ }} by mauto 3 using alg_type_check_sound.
+    assert {{ G ⊢s Id ,, M' : G , ℕ }} as Hσ by mauto 3.
+    assert {{ G ⊢ A'[Id,,M'] : ^n{{{ Type@i }}} }} by exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
+    assert {{ G ⊢ A'[Id,,M'] ≈ A'' : Type@i }} by (eapply soundness_ty'; mauto 3).
     assert (user_exp A'') by trivial using user_exp_nf.
     assert (exists j, {{ G ⊢a A'' ⟹ Type@j }} /\ j <= i) as [? []] by (gen_presups; mauto 3); firstorder.
   Qed.

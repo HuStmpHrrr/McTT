@@ -4,6 +4,7 @@ From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
 From Mctt.Core.Semantic Require Import Consequences.
+From Mctt.Core.Syntactic Require Import Corollaries.
 From Mctt.Frontend Require Import Elaborator.
 Import Domain_Notations.
 
@@ -25,7 +26,7 @@ Proof.
   - assert (n{{{ Π A B }}} = n{{{ Π A0 B0 }}}) as [= <- <-] by intuition.
     functional_nbe_rewrite_clear.
     reflexivity.
-  - assert (A = A0) as <- by mauto using functional_ctx_lookup.
+  - assert (A = A0) as <- by mauto using ctx_lookup_functional.
     functional_nbe_rewrite_clear.
     reflexivity.
 Qed.
@@ -58,7 +59,7 @@ Proof.
     assert {{ ⊢ Γ, ℕ, A }} by mauto 3.
     assert {{ Γ ⊢ M : ℕ }} by mauto 2.
     assert {{ Γ ⊢ A[Id,,zero] : Type@i }} by mauto 3.
-    assert {{ Γ, ℕ, A ⊢ A[Wk∘Wk,,succ #1] : Type@i }} by mauto 3.
+    assert {{ Γ, ℕ, A ⊢ A[Wk ⨟ Wk,,succ #1] : Type@i }} by mauto 3.
     assert {{ Γ ⊢ A[Id,,M] ≈ B : Type@i }} as <- by mauto 4 using soundness_ty'.
     mauto 4.
   - assert {{ Γ ⊢ A : Type@i }} by mauto 2.
@@ -119,7 +120,7 @@ Proof with (f_equiv; mautosolve 4).
     assert {{ Γ ⊢ A ≈ C : Type@i }} by mauto 3 using soundness_ty'.
     assert {{ Γ, A ⊢ M : B }} by mauto 3 using alg_type_infer_sound.
     assert (exists j, {{ Γ, A ⊢ B : Type@j }}) as [j] by (gen_presups; eauto 2).
-    assert {{ ⊢ Γ, A ≈ Γ, ^(C : exp) }} by mauto 3.
+    assert {{ ⊨ Γ, ^(C : exp) ≈ Γ, A }} by mauto 3.
     dir_inversion_clear_by_head nbe_ty.
     simplify_evals.
     dir_inversion_by_head read_typ; subst.
@@ -191,7 +192,7 @@ Proof.
   assert (nbe_ty {{{ Γ, A }}} B B') by mauto 3.
   assert (initial_env {{{ Γ, ^(A0 : exp) }}} d{{{ ρ ↦ ⇑! a0 (length Γ) }}}) by mauto 3.
   assert (nbe_ty {{{ Γ, ^(A0 : exp) }}} B0 B0) by mauto 3.
-  assert {{ ⊢ Γ, A ≈ Γ, ^(A0 : exp) }} by mauto 3.
+  assert {{ ⊨ Γ, ^(A0 : exp) ≈ Γ, A }} by mauto 3.
   assert (nbe_ty {{{ Γ, A }}} B0 B0) by mauto 4 using ctxeq_nbe_ty_eq'.
   mauto 3.
 Qed.

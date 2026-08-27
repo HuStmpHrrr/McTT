@@ -1,25 +1,27 @@
+(** * Saturating the Context with Presuppositions
+
+    The rules mention only the premises they need, but almost every
+    proof about them needs more: that the context is well-formed, that the type
+    of a term is a type, that a looked-up binding is a type.  All of these are
+    consequences of the premises, and the tactics here add them to the context
+    once, so that the rules can afterwards be applied by [mauto] without the
+    search having to rediscover them at every step.
+
+    Each tactic is idempotent: a presupposition that is already present — even
+    marked by [on_all_hyp:] — is not added a second time.  That is what makes
+    them safe to compose and to call repeatedly. *)
+
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic.System Require Export Definitions Lemmas.
-Import Syntax_Notations.
+Import Syntax_Notations Wk_Notations.
 
-#[global]
-Ltac pi_univ_level_tac :=
-  match goal with
-  | |- {{ ^_ ⊢s ^_ : ^_ }} => mauto 4
-  | H : {{ ^?Δ ⊢ ^?A : Type@?j }} |- {{ ^?Δ , ^?A ⊢ ^?B : Type@?i }} =>
-      eapply lift_exp_max_right; mauto 4
-  | |- {{ ^?Δ ⊢ ^?A : Type@?j }} =>
-      eapply lift_exp_max_left; mauto 4
-  end.
-
-#[export]
-Hint Rewrite -> wf_exp_eq_pi_sub using pi_univ_level_tac : mctt.
-
+(** [ctx_decomp] on a single context well-formedness hypothesis.  The type of
+    the top binding is only added if the context does not already have it. *)
 #[local]
 Ltac invert_wf_ctx1 H :=
   match type of H with
-  | {{ ⊢ ^?Γ, ^?A }} =>
+  | {{ ⊢ ^?Γ , ^?A }} =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];
@@ -37,16 +39,12 @@ Ltac invert_wf_ctx :=
   (on_all_hyp: fun H => invert_wf_ctx1 H);
   clear_dups.
 
+(** The presuppositions that need no induction over equality: [presup_exp_typ]
+    for typing, and the two projections of a weakening or a substitution.  The [wf_wk] and [wf_sub] cases are exactly [saturate_wk] and
+    [saturate_sub], so [gen_core_presups] calls those rather than repeating
+    them. *)
 Ltac gen_core_presup H :=
   match type of H with
-  | {{ ⊢ ^?Γ ≈ ^?Δ }} =>
-      let HΓ := fresh "HΓ" in
-      let HΔ := fresh "HΔ" in
-      pose proof presup_ctx_eq H as [HΓ HΔ]
-  | {{ ⊢ ^?Γ ⊆ ^?Δ }} =>
-      let HΓ := fresh "HΓ" in
-      let HΔ := fresh "HΔ" in
-      pose proof presup_ctx_sub H as [HΓ HΔ]
   | {{ ^?Γ ⊢ ^?M : ^?A }} =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
@@ -59,10 +57,6 @@ Ltac gen_core_presup H :=
           let HA := fresh "HA" in
           destruct HAi as [i HA]
       end
-  | {{ ^?Γ ⊢s ^?σ : ^?Δ }} =>
-      let HΓ := fresh "HΓ" in
-      let HΔ := fresh "HΔ" in
-      pose proof presup_sub H as [HΓ HΔ]
   end.
 
 Ltac gen_lookup_presup H :=
@@ -74,8 +68,14 @@ Ltac gen_lookup_presup H :=
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
-          pose proof presup_ctx_lookup_typ ltac:(eassumption) H as [i HA]
+          pose proof (ctx_lookup_wf _ _ _ ltac:(eassumption) H) as [i HA]
       end
   end.
 
-Ltac gen_core_presups := (on_all_hyp: fun H => gen_core_presup H); invert_wf_ctx; (on_all_hyp: fun H => gen_lookup_presup H); clear_dups.
+Ltac gen_core_presups :=
+  (on_all_hyp: fun H => gen_core_presup H);
+  invert_wf_ctx;
+  (on_all_hyp: fun H => gen_lookup_presup H);
+  saturate_wk;
+  saturate_sub;
+  clear_dups.

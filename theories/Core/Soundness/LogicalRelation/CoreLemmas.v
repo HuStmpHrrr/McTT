@@ -2,9 +2,10 @@ From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relati
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import Corollaries Substitution.
 From Mctt.Core.Soundness.LogicalRelation Require Import CoreTactics Definitions.
 From Mctt.Core.Soundness.Weakening Require Export Lemmas.
-Import Domain_Notations.
+Import Domain_Notations Wk_Notations.
 
 Lemma glu_nat_per_nat : forall Γ M a,
     glu_nat Γ M a ->
@@ -25,10 +26,11 @@ Proof.
     try match goal with
     | H : _ |- _ => solve [gen_presup H; mauto]
     end.
-  assert {{ Γ ⊢w Id : Γ }} by mauto.
+  assert {{ Γ ⊢k wk_id : Γ }} by mauto 2.
   match_by_head (per_bot m m) ltac:(fun H => specialize (H (length Γ)) as [M' []]).
   clear_dups.
-  assert {{ Γ ⊢ M[Id] ≈ M' : ℕ }} by mauto.
+  assert {{ Γ ⊢ M⟨wk_id⟩ ≈ M' : ℕ }} as HM by mauto.
+  rewrite exp_wk_id in HM.
   gen_presups.
   mauto.
 Qed.
@@ -36,22 +38,26 @@ Qed.
 #[export]
 Hint Resolve glu_nat_escape : mctt.
 
-Lemma glu_nat_resp_ctx_eq : forall Γ M a Δ,
+(** Where the explicit-substitution development transported [glu_nat] along a
+    context *equality*, it now travels along a refinement: [{{ ⊢ Δ ⊆ Γ }}] is
+    what the [ctxsub_*] lemmas need, and an equality gives refinements both
+    ways.  The same replacement happens to every [wf_ctx_eq] morphism instance
+    below. *)
+Lemma glu_nat_resp_ctxsub : forall Γ M a Δ,
     glu_nat Γ M a ->
-    {{ ⊢ Γ ≈ Δ }} ->
+    {{ ⊢ Δ ⊆ Γ }} ->
     glu_nat Δ M a.
 Proof.
-  induction 1; intros; mauto.
+  induction 1; intros.
+  - mauto 4.
+  - assert {{ Δ ⊢ M ≈ succ M' : ℕ }} by mauto 3.
+    econstructor; [ eassumption | mauto 2 ].
+  - econstructor; trivial.
+    intros; mauto 4.
 Qed.
 
-#[local]
-Hint Resolve glu_nat_resp_ctx_eq : mctt.
-
-Add Parametric Morphism : glu_nat
-    with signature wf_ctx_eq ==> eq ==> eq ==> iff as glu_ctx_env_sub_morphism_iff1.
-Proof.
-  split; mauto using glu_nat_resp_ctx_eq.
-Qed.
+#[export]
+Hint Resolve glu_nat_resp_ctxsub : mctt.
 
 Lemma glu_nat_resp_exp_eq : forall Γ M a,
     glu_nat Γ M a ->
@@ -62,7 +68,7 @@ Proof.
   induction 1; intros; mauto 4.
   econstructor; trivial.
   intros.
-  transitivity {{{ M[σ] }}}; mauto.
+  transitivity {{{ M⟨φ⟩ }}}; mauto.
 Qed.
 
 #[local]
@@ -76,16 +82,17 @@ Qed.
 
 Lemma glu_nat_readback : forall Γ M a,
     glu_nat Γ M a ->
-    forall Δ σ M',
-      {{ Δ ⊢w σ : Γ }} ->
+    forall Δ φ M',
+      {{ Δ ⊢k φ : Γ }} ->
       {{ Rnf ⇓ ℕ a in length Δ ↘ M' }} ->
-      {{ Δ ⊢ M[σ] ≈ M' : ℕ }}.
+      {{ Δ ⊢ M⟨φ⟩ ≈ M' : ℕ }}.
 Proof.
   induction 1; intros; progressive_inversion; gen_presups.
-  - transitivity {{{ zero[σ] }}}; mauto 4.
-  - assert {{ Δ ⊢ M'[σ] ≈ M0 : ℕ }} by mauto 4.
-    transitivity {{{ (succ M')[σ] }}}; mauto 3.
-    transitivity {{{ succ M'[σ] }}}; mauto 4.
+  - rewrite <- (exp_wk_zero φ); mauto 4.
+  - assert {{ Δ ⊢ M'⟨φ⟩ ≈ M0 : ℕ }} by mauto 4.
+    assert {{ Δ ⊢ M⟨φ⟩ ≈ (succ M')⟨φ⟩ : ℕ }} as H' by mauto 4.
+    rewrite exp_wk_succ in H'.
+    etransitivity; [ eassumption | mauto 3 ].
   - mauto 4.
 Qed.
 
@@ -121,7 +128,7 @@ Proof.
 
   split; [trivial |].
   intros.
-  transitivity {{{ A[σ] }}}; mauto 4.
+  transitivity {{{ A⟨φ⟩ }}}; mauto 4.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (P Γ)
@@ -140,7 +147,7 @@ Proof.
   simpl.
   induction 1 using glu_univ_elem_ind; intros;
     simpl_glu_rel; repeat split; intros; mauto 3;
-    [firstorder | | transitivity {{{ A[σ] }}}; mauto 4 | assert {{ Δ ⊢ A[σ] ≈ A'[σ] : Type@i }}; mauto 3].
+    [firstorder | | transitivity {{{ A⟨φ⟩ }}}; mauto 4 | assert {{ Δ ⊢ A⟨φ⟩ ≈ A'⟨φ⟩ : Type@i }}; mauto 3].
 
   econstructor; mauto 3.
 Qed.
@@ -153,80 +160,74 @@ Proof.
     mauto 2.
 Qed.
 
-Lemma glu_univ_elem_typ_resp_ctx_eq : forall i P El a,
+Lemma glu_univ_elem_typ_resp_ctxsub : forall i P El a,
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
     forall Γ A Δ,
       {{ Γ ⊢ A ® P }} ->
-      {{ ⊢ Γ ≈ Δ }} ->
+      {{ ⊢ Δ ⊆ Γ }} ->
       {{ Δ ⊢ A ® P }}.
 Proof.
   simpl.
   induction 1 using glu_univ_elem_ind; intros;
-    simpl_glu_rel; mauto 2;
-    econstructor; mauto 4.
+    simpl_glu_rel; mauto 3.
+
+  - assert {{ Δ ⊢ IT : Type@i }} by mauto 3.
+    assert {{ ⊢ Δ , IT ⊆ Γ , IT }} by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
+    econstructor; mauto 3; intros; mauto 4.
+
+  - split; [ mauto 3 | intros; mauto 4 ].
 Qed.
 
-Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) : P
-    with signature wf_ctx_eq ==> eq ==> iff as glu_univ_elem_typ_morphism_iff2.
-Proof.
-  intros. split; intros;
-    eapply glu_univ_elem_typ_resp_ctx_eq;
-    mauto 2.
-Qed.
-
-Lemma glu_univ_elem_trm_resp_ctx_eq : forall i P El a,
+Lemma glu_univ_elem_trm_resp_ctxsub : forall i P El a,
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
     forall Γ A M m Δ,
       {{ Γ ⊢ M : A ® m ∈ El }} ->
-      {{ ⊢ Γ ≈ Δ }} ->
+      {{ ⊢ Δ ⊆ Γ }} ->
       {{ Δ ⊢ M : A ® m ∈ El }}.
 Proof.
   simpl.
   induction 1 using glu_univ_elem_ind; intros;
-    simpl_glu_rel; mauto 2;
-    econstructor; mauto 4 using glu_nat_resp_ctx_eq.
+    simpl_glu_rel.
 
-  - split; mauto.
-    do 2 eexists.
-    split; mauto.
-    eapply glu_univ_elem_typ_resp_ctx_eq; mauto.
-  - split; mauto 4.
-Qed.
+  - repeat apply conj; [ mauto 3 | mauto 3 | ].
+    do 2 eexists; split; [ eassumption | eapply glu_univ_elem_typ_resp_ctxsub; eassumption ].
 
-Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) : El
-    with signature wf_ctx_eq ==> eq ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff2.
-Proof.
-  intros. split; intros;
-    eapply glu_univ_elem_trm_resp_ctx_eq;
-    mauto 2.
+  - split; mauto 3.
+
+  - assert {{ Δ ⊢ IT : Type@i }} by mauto 3.
+    assert {{ ⊢ Δ , IT ⊆ Γ , IT }} by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
+    econstructor; mauto 3; intros; mauto 4.
+
+  - econstructor; [ split | | | ]; mauto 3; intros; mauto 4.
 Qed.
 
 Lemma glu_nat_resp_wk' : forall Γ M a,
     glu_nat Γ M a ->
-    forall Δ σ,
+    forall Δ φ,
       {{ Γ ⊢ M : ℕ }} ->
-      {{ Δ ⊢w σ : Γ }} ->
-      glu_nat Δ {{{ M[σ] }}} a.
+      {{ Δ ⊢k φ : Γ }} ->
+      glu_nat Δ {{{ M⟨φ⟩ }}} a.
 Proof.
   induction 1; intros; gen_presups.
   - econstructor.
-    transitivity {{{ zero[σ] }}}; mauto.
+    rewrite <- (exp_wk_zero φ); mauto 4.
   - econstructor; [ |mauto].
-    transitivity {{{ (succ M')[σ] }}}; mauto 4.
+    rewrite <- (exp_wk_succ φ); mauto 4.
   - econstructor; trivial.
-    intros Δ' τ M' **.
-    gen_presups.
-    assert {{ Δ' ⊢w σ∘τ : Γ }} by mauto.
-    assert {{ Δ' ⊢ M[σ∘τ] ≈ M' : ℕ }} by mauto 4.
-    transitivity {{{ M[σ∘τ] }}}; mauto 4.
+    intros Δ' ψ M' **.
+    rewrite exp_wk_wk.
+    assert {{ Δ' ⊢k φ ⊙ ψ : Γ }} by mauto 3.
+    mauto 4.
 Qed.
 
 Lemma glu_nat_resp_wk : forall Γ M a,
     glu_nat Γ M a ->
-    forall Δ σ,
-      {{ Δ ⊢w σ : Γ }} ->
-      glu_nat Δ {{{ M[σ] }}} a.
+    forall Δ φ,
+      {{ Δ ⊢k φ : Γ }} ->
+      glu_nat Δ {{{ M⟨φ⟩ }}} a.
 Proof.
+  intros * ? * ?.
+  assert {{ ⊢ Γ }} by (eapply kripke_cod; eassumption).
   mauto using glu_nat_resp_wk'.
 Qed.
 
@@ -299,7 +300,7 @@ Proof.
   match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
   intros ? ? N n ? ? equiv_n.
   destruct_rel_mod_eval.
-  enough (exists mn : domain, {{ $| m & n |↘ mn }} /\  {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ OEl n equiv_n }}) as [? []]; eauto 3.
+  enough (exists mn : domain, {{ $| m & n |↘ mn }} /\  {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl n equiv_n }}) as [? []]; eauto 3.
 Qed.
 
 Lemma glu_univ_elem_trm_univ_lvl : forall i P El a,
@@ -330,19 +331,18 @@ Proof.
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
     intros.
     destruct_rel_mod_eval.
-    assert {{ Δ ⊢ N : IT[σ]}} by eauto using glu_univ_elem_trm_escape.
-    assert (exists mn : domain, {{ $| m & n |↘ mn }} /\  {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ OEl n equiv_n }}) as [? []] by intuition.
+    assert {{ Δ ⊢ N : IT⟨φ⟩ }} by eauto using glu_univ_elem_trm_escape.
+    assert (exists mn : domain, {{ $| m & n |↘ mn }} /\  {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl n equiv_n }}) as [? []] by intuition.
     eexists; split; eauto.
-    enough {{ Δ ⊢ M[σ] N ≈ M'[σ] N : OT[σ,,N] }} by eauto.
+    enough {{ Δ ⊢ M⟨φ⟩ N ≈ M'⟨φ⟩ N : OT[^(ι φ),,N] }} by eauto.
     assert {{ Γ ⊢ M ≈ M' : Π IT OT }} as Hty by mauto.
-    eassert {{ Δ ⊢ IT[σ] : Type@_ }} by mauto 3.
-    eapply wf_exp_eq_sub_cong with (Γ := Δ) in Hty; [| eapply sub_eq_refl; mauto 3].
-    autorewrite with mctt in Hty.
-    eapply wf_exp_eq_app_cong with (N := N) (N' := N) in Hty; try pi_univ_level_tac; [|mauto 2].
-    autorewrite with mctt in Hty.
+    assert {{ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : (Π IT OT)⟨φ⟩ }} as Hty' by mauto 2.
+    rewrite exp_wk_pi in Hty'.
+    eapply wf_exp_eq_app_cong' with (N := N) (N' := N) in Hty'; [| mauto 2].
+    rewrite exp_sub_wk_q_extend in Hty'.
     eassumption.
   - intros.
-    enough {{ Δ ⊢ M[σ] ≈ M'[σ] : A[σ] }}; mauto 4.
+    enough {{ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩ }}; mauto 4.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ T : (El Γ T)
@@ -501,8 +501,8 @@ Proof.
       [rename equiv_n into equiv0_n; assert (equiv_n : in_rel n n) by intuition
       | assert (equiv0_n : in_rel0 n n) by intuition];
       destruct_rel_mod_eval;
-      [assert (exists m0n, {{ $| m0 & n |↘ m0n }} /\ {{ Δ ⊢ M0[σ] N : OT[σ,,N] ® m0n ∈ OEl n equiv_n }}) by intuition
-      | assert (exists m0n, {{ $| m0 & n |↘ m0n }} /\ {{ Δ ⊢ M0[σ] N : OT[σ,,N] ® m0n ∈ OEl0 n equiv0_n }}) by intuition];
+      [assert (exists m0n, {{ $| m0 & n |↘ m0n }} /\ {{ Δ ⊢ M0⟨φ⟩ N : OT[^(ι φ),,N] ® m0n ∈ OEl n equiv_n }}) by intuition
+      | assert (exists m0n, {{ $| m0 & n |↘ m0n }} /\ {{ Δ ⊢ M0⟨φ⟩ N : OT[^(ι φ),,N] ® m0n ∈ OEl0 n equiv0_n }}) by intuition];
       destruct_conjs;
       assert ((OP n equiv_n <∙> OP0 n equiv0_n) /\ (OEl n equiv_n <∙> OEl0 n equiv0_n)) as [] by mauto 3;
       eexists; split; intuition.
@@ -582,7 +582,7 @@ Proof.
     destruct_rel_mod_eval.
     intuition.
   - assert {{ Dom n ≈ n ∈ in_rel0 }} as equiv0_n by intuition.
-    assert (exists mn : domain, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ OEl n equiv0_n }}) by mauto 3.
+    assert (exists mn : domain, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl n equiv0_n }}) by mauto 3.
     destruct_conjs.
     eexists.
     intuition.
@@ -594,7 +594,7 @@ Proof.
                  (forall (b : domain) (Pb : glu_typ_pred) (Elb : glu_exp_pred),
                      {{ ⟦ B ⟧ ρ ↦ n ↘ b }} ->
                      {{ DG b ∈ glu_univ_elem i ↘ Pb ↘ Elb }} ->
-                     {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ Elb }})) by intuition.
+                     {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ Elb }})) by intuition.
     destruct_conjs.
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
     handle_per_univ_elem_irrel.
@@ -764,112 +764,108 @@ Ltac saturate_glu_info :=
   clear_dups;
   repeat saturate_glu_info1.
 
-#[local]
-Hint Rewrite -> sub_decompose_q using solve [mauto 4] : mctt.
+(** Kripke weakenings compose, so a gluing predicate stated at [Γ] survives
+    being pushed along one: the two [⟨⟩]s that appear collapse to a single
+    [⟨φ ⊙ ψ⟩] by [exp_wk_wk], and the [q] of a [Π] codomain absorbs the second
+    weakening's extension by [exp_sub_wk_q_extend_wk].  Both were judgmental
+    rearrangements of the substitution calculus before; they are propositional
+    equalities now, which is why every case here is a [rewrite] away from the
+    hypothesis it came from. *)
 
 Lemma glu_univ_elem_typ_monotone : forall i a P El,
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-    forall Δ σ Γ A,
+    forall Δ φ Γ A,
       {{ Γ ⊢ A ® P }} ->
-      {{ Δ ⊢w σ : Γ }} ->
-      {{ Δ ⊢ A[σ] ® P }}.
+      {{ Δ ⊢k φ : Γ }} ->
+      {{ Δ ⊢ A⟨φ⟩ ® P }}.
 Proof.
   simpl. induction 1 using glu_univ_elem_ind; intros;
-    saturate_weakening_escape;
+    saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
-    try solve [bulky_rewrite].
-  - simpl_glu_rel. econstructor; eauto; try solve [bulky_rewrite]; mauto 3.
-    intros.
-    saturate_weakening_escape.
-    saturate_glu_info.
-    invert_per_univ_elem H3.
-    destruct_rel_mod_eval.
-    simplify_evals.
-    deepexec H1 ltac:(fun H => pose proof H).
-    autorewrite with mctt in *.
-    mauto 3.
+    try solve [mauto 2].
+  - simpl_glu_rel.
+    assert {{ Δ ⊢ A⟨φ⟩ ≈ (Π IT OT)⟨φ⟩ : Type@i }} as HAeq by mauto 2.
+    rewrite exp_wk_pi in HAeq.
+    econstructor; [ eassumption | mauto 2 | mauto 2 | | ]; intros.
+    + rewrite exp_wk_wk; mauto 4.
+    + rewrite exp_wk_wk in *.
+      rewrite exp_sub_wk_q_extend_wk.
+      mauto 4.
 
   - destruct_conjs.
-    split; [mauto 3 |].
+    split; [mauto 2 |].
     intros.
-    saturate_weakening_escape.
-    autorewrite with mctt.
-    mauto 3.
+    rewrite exp_wk_wk.
+    mauto 4.
 Qed.
 
 Lemma glu_univ_elem_exp_monotone : forall i a P El,
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-    forall Δ σ Γ M A m,
+    forall Δ φ Γ M A m,
       {{ Γ ⊢ M : A ® m ∈ El }} ->
-      {{ Δ ⊢w σ : Γ }} ->
-      {{ Δ ⊢ M[σ] : A[σ] ® m ∈ El }}.
+      {{ Δ ⊢k φ : Γ }} ->
+      {{ Δ ⊢ M⟨φ⟩ : A⟨φ⟩ ® m ∈ El }}.
 Proof.
   simpl. induction 1 using glu_univ_elem_ind; intros;
-    saturate_weakening_escape;
+    saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
     destruct_all.
-  - repeat eexists; mauto 2; bulky_rewrite.
+  - repeat eexists; mauto 2.
     eapply glu_univ_elem_typ_monotone; eauto.
-  - repeat eexists; mauto 2; bulky_rewrite.
+  - split; mauto 2.
 
   - simpl_glu_rel.
-    econstructor; mauto 4;
-      intros;
-      saturate_weakening_escape.
-    + eapply glu_univ_elem_typ_monotone; eauto.
-    + saturate_glu_info.
-      invert_per_univ_elem H3.
-      apply_equiv_left.
-      destruct_rel_mod_eval.
-      destruct_rel_mod_app.
-      simplify_evals.
-      deepexec H1 ltac:(fun H => pose proof H).
-      autorewrite with mctt in *.
-      repeat eexists; eauto.
-      assert {{ Δ0 ⊢s σ0,,N : Δ, IT[σ] }}.
-      {
-        econstructor; mauto 2.
-        bulky_rewrite.
-      }
-      assert {{Δ0 ⊢ M[σ][σ0] N ≈ M[σ∘σ0] N : OT [σ∘σ0,,N]}}.
-      {
-        rewrite <- @sub_eq_q_sigma_id_extend; mauto 4.
-        rewrite <- @exp_eq_sub_compose_typ; mauto 3;
-          [eapply wf_exp_eq_app_cong' |];
-          mauto 4.
-        symmetry.
-        bulky_rewrite_in H4.
-        assert {{ Δ0 ⊢ Π IT[σ∘σ0] (OT[q (σ∘σ0)]) ≈ (Π IT OT)[σ∘σ0] : Type@_ }} by mauto.
-        eapply wf_exp_eq_conv'; mauto 4.
-      }
-
-      bulky_rewrite.
-      edestruct H10 with (n := n) as [? []];
-        simplify_evals; [| | eassumption];
-        mauto.
+    assert {{ Δ ⊢ A⟨φ⟩ ≈ (Π IT OT)⟨φ⟩ : Type@i }} as HAeq by mauto 2.
+    rewrite exp_wk_pi in HAeq.
+    econstructor; [ mauto 2 | eassumption | eassumption | mauto 2 | mauto 2 | | ]; intros.
+    + rewrite exp_wk_wk; mauto 4.
+    + rewrite exp_wk_wk in *.
+      rewrite exp_sub_wk_q_extend_wk.
+      mauto 4.
 
   - simpl_glu_rel.
-    econstructor; repeat split; mauto 3;
-      intros;
-      saturate_weakening_escape.
-    + autorewrite with mctt.
-      mauto 3.
-    + autorewrite with mctt.
-      etransitivity.
-      * symmetry.
-        eapply wf_exp_eq_sub_compose;
-          mauto 3.
-      * mauto 3.
+    econstructor; [ split; [ mauto 2 | ] | mauto 2 | eassumption | ]; intros.
+    + rewrite exp_wk_wk; mauto 4.
+    + do 2 rewrite exp_wk_wk; mauto 4.
 Qed.
 
-Add Parametric Morphism i a : (glu_elem_bot i a)
-    with signature wf_ctx_eq ==> eq ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff1.
+(** The [wf_ctx_eq] instances of the explicit-substitution development become
+    refinement lemmas, as with [glu_nat_resp_ctxsub]: a Kripke weakening into
+    [Δ] extends to one into [Γ] by [kripke_ctxsub], which is all three of these
+    need. *)
+
+Lemma glu_elem_bot_resp_ctxsub : forall i a Γ A M m Δ,
+    {{ Γ ⊢ M : A ® m ∈ glu_elem_bot i a }} ->
+    {{ ⊢ Δ ⊆ Γ }} ->
+    {{ Δ ⊢ M : A ® m ∈ glu_elem_bot i a }}.
 Proof.
-  intros Γ Γ' HΓΓ' *.
-  split; intros []; econstructor; mauto 4; [rewrite <- HΓΓ' | rewrite -> HΓΓ']; eassumption.
+  intros * [] ?; econstructor;
+    [ mauto 3 | eassumption | eapply glu_univ_elem_typ_resp_ctxsub | eassumption | intros ];
+    mauto 4.
 Qed.
+
+Lemma glu_elem_top_resp_ctxsub : forall i a Γ A M m Δ,
+    {{ Γ ⊢ M : A ® m ∈ glu_elem_top i a }} ->
+    {{ ⊢ Δ ⊆ Γ }} ->
+    {{ Δ ⊢ M : A ® m ∈ glu_elem_top i a }}.
+Proof.
+  intros * [] ?; econstructor;
+    [ mauto 3 | eassumption | eapply glu_univ_elem_typ_resp_ctxsub | eassumption | intros ];
+    mauto 4.
+Qed.
+
+Lemma glu_typ_top_resp_ctxsub : forall i a Γ A Δ,
+    {{ Γ ⊢ A ® glu_typ_top i a }} ->
+    {{ ⊢ Δ ⊆ Γ }} ->
+    {{ Δ ⊢ A ® glu_typ_top i a }}.
+Proof.
+  intros * [] ?; econstructor; [ mauto 3 | eassumption | intros ]; mauto 4.
+Qed.
+
+#[export]
+Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Add Parametric Morphism i a Γ : (glu_elem_bot i a Γ)
     with signature wf_exp_eq Γ {{{ Type@i }}} ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
@@ -878,8 +874,8 @@ Proof.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert {{ Δ ⊢ A[σ] ≈ A'[σ] : Type@i }} as HAσA'σ by mauto 4;
-    [rewrite <- HAσA'σ | rewrite -> HAσA'σ];
+    assert {{ Δ ⊢ A⟨φ⟩ ≈ A'⟨φ⟩ : Type@i }} as HAφA'φ by mauto 4;
+    [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
 
@@ -889,16 +885,9 @@ Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
     intros;
-    assert {{ Δ ⊢ M[σ] ≈ M'[σ] : A[σ] }} as HMσM'σ by mauto 4;
-    [rewrite <- HMσM'σ | rewrite -> HMσM'σ];
+    assert {{ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩ }} as HMφM'φ by mauto 4;
+    [rewrite <- HMφM'φ | rewrite -> HMφM'φ];
     mauto.
-Qed.
-
-Add Parametric Morphism i a : (glu_elem_top i a)
-    with signature wf_ctx_eq ==> eq ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff1.
-Proof.
-  intros Γ Γ' HΓΓ' *.
-  split; intros []; econstructor; mauto 4; [rewrite <- HΓΓ' | rewrite -> HΓΓ']; eassumption.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_elem_top i a Γ)
@@ -908,8 +897,8 @@ Proof.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert {{ Δ ⊢ A[σ] ≈ A'[σ] : Type@i }} as HAσA'σ by mauto 4;
-    [rewrite <- HAσA'σ | rewrite -> HAσA'σ];
+    assert {{ Δ ⊢ A⟨φ⟩ ≈ A'⟨φ⟩ : Type@i }} as HAφA'φ by mauto 4;
+    [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
 
@@ -919,16 +908,9 @@ Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
     intros;
-    assert {{ Δ ⊢ M[σ] ≈ M'[σ] : A[σ] }} as HMσM'σ by mauto 4;
-    [rewrite <- HMσM'σ | rewrite -> HMσM'σ];
+    assert {{ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩ }} as HMφM'φ by mauto 4;
+    [rewrite <- HMφM'φ | rewrite -> HMφM'φ];
     mauto.
-Qed.
-
-Add Parametric Morphism i a : (glu_typ_top i a)
-    with signature wf_ctx_eq ==> eq ==> iff as glu_typ_top_morphism_iff1.
-Proof.
-  intros Γ Γ' HΓΓ' *.
-  split; intros []; econstructor; mauto 4.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_typ_top i a Γ)
@@ -938,8 +920,8 @@ Proof.
   split; intros []; econstructor; mauto 3;
     try (gen_presup HAA'; eassumption);
     intros;
-    assert {{ Δ ⊢ A[σ] ≈ A'[σ] : Type@i }} as HAσA'σ by mauto 4;
-    [rewrite <- HAσA'σ | rewrite -> HAσA'σ];
+    assert {{ Δ ⊢ A⟨φ⟩ ≈ A'⟨φ⟩ : Type@i }} as HAφA'φ by mauto 4;
+    [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
 

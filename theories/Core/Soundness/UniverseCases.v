@@ -38,6 +38,9 @@ Proof.
   apply_predicate_equivalence.
   cbn.
   mauto 4.
+  (** [Type@i[σ]] is [Type@i], so what was an instance of [Typ-Sub] is now
+      reflexivity — and that needs [⊢ Δ], which only a presupposition supplies. *)
+  gen_presups; mauto 3.
 Qed.
 
 #[export]
@@ -61,18 +64,3 @@ Ltac invert_glu_rel_exp H ::=
   + (unshelve eapply (glu_rel_exp_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
      destruct H as [])
   + (inversion H; subst).
-
-Lemma glu_rel_exp_sub_typ : forall {Γ σ Δ i A},
-    {{ Γ ⊩s σ : Δ }} ->
-    {{ Δ ⊩ A : Type@i }} ->
-    {{ Γ ⊩ A[σ] : Type@i }}.
-Proof.
-  intros.
-  assert {{ Γ ⊢s σ : Δ }} by mauto 3.
-  assert {{ Γ ⊢ Type@i[σ] ⊆ Type@i }} by mauto 3.
-  assert {{ Γ ⊩ A[σ] : Type@i[σ] }} by mauto 4.
-  mauto 4.
-Qed.
-
-#[export]
-Hint Resolve glu_rel_exp_sub_typ : mctt.

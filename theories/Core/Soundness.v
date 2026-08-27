@@ -1,8 +1,15 @@
+(** * Soundness of Normalization by Evaluation
+
+    Where the explicit-substitution development had to travel through [A[Id][Id]] to line the statement up with the gluing
+    predicate, [exp_sub_id] and [exp_wk_id] now discharge the same bookkeeping by
+    rewriting. *)
+
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
+From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Export FundamentalTheorem.
 Import Domain_Notations.
 
@@ -11,24 +18,22 @@ Theorem soundness : forall {Γ M A},
     exists W, nbe Γ M A W /\ {{ Γ ⊢ M ≈ W : A }}.
 Proof.
   intros * H.
-  assert {{ ⊢ Γ }} by mauto.
-  assert {{ ⊨ Γ }} as [env_relΓ] by (apply completeness_fundamental_ctx; eassumption).
+  assert {{ ⊢ Γ }} by mauto 3.
+  assert (exists env_relΓ, {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }}) as [env_relΓ]
+      by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
   destruct (soundness_fundamental_exp _ _ _ H) as [Sb [? [i]]].
-  pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [p].
+  pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
   destruct_conjs.
   functional_initial_env_rewrite_clear.
-  assert {{ Γ ⊢s Id ® p ∈ Sb }} by (eapply initial_env_glu_rel_exp; mauto).
+  assert {{ Γ ⊢s Id ® ρ ∈ Sb }} by (eapply initial_env_glu_rel_exp; mauto 3).
   destruct_glu_rel_exp_with_sub.
-  assert {{ Γ ⊢ M[Id] : A[Id] ® m ∈ glu_elem_top i a }} as [] by (eapply realize_glu_elem_top; mauto).
+  assert {{ Γ ⊢ M[Id] : A[Id] ® m ∈ glu_elem_top i a }} as [? ? ? ? ? ? Hrb]
+      by (eapply realize_glu_elem_top; mauto 3).
   match_by_head per_top ltac:(fun H => destruct (H (length Γ)) as [W []]).
-  eexists.
-  split; [econstructor |]; try eassumption.
-  assert {{ Γ ⊢ A : Type@i }} by mauto 4 using glu_univ_elem_univ_lvl.
-  assert {{ Γ ⊢ A[Id] ≈ A : Type@i }} by mauto.
-  assert {{ Γ ⊢ A[Id][Id] ≈ A : Type@i }} as <- by mauto 4.
-  assert {{ Γ ⊢ M ≈ M[Id] : A[Id][Id] }} by mauto.
-  assert {{ Γ ⊢ M ≈ M[Id][Id] : A[Id][Id] }} as -> by mauto.
-  mauto.
+  assert {{ Γ ⊢k wk_id : Γ }} by mauto 3.
+  assert {{ Γ ⊢ M[Id]⟨wk_id⟩ ≈ W : A[Id]⟨wk_id⟩ }} as Heq by (eapply Hrb; eassumption).
+  rewrite !exp_wk_id, !exp_sub_id in Heq.
+  exists W; split; [econstructor |]; eassumption.
 Qed.
 
 Theorem soundness' : forall {Γ M A W},

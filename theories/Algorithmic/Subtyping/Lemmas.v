@@ -26,11 +26,9 @@ Proof.
   - on_all_hyp: fun H => apply wf_pi_inversion in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
-    repeat match goal with
-           | H : {{ ^?Γ ⊢ ^?A ⊆ ^?B }}, H1: {{ ⊢ ^?Γ , ^_ }} |- _ =>
-               pose proof (wf_subtyp_univ_weaken _ _ _ _ H H1);
-               fail_if_dup
-           end.
+    (** The explicit-substitution development weakened [Type@i ⊆ Type@j] into the
+        extended context by [wf_subtyp_sub]; [Type@i⟨↑⟩] is now [Type@i], so
+        [wf_subtyp_ge] rederives it from [{{ ⊢ Γ , A }}] alone. *)
     apply_subtyping.
     assert {{ Γ, ^(nf_to_exp A') ⊢ B : Type@(max x x0) }} by mauto using lift_exp_max_right.
     assert {{ Γ, ^(nf_to_exp A') ⊢ B' : Type@(max x x0) }} by mauto using lift_exp_max_left.
@@ -90,7 +88,9 @@ Proof.
     econstructor; mauto 2.
     progressive_inversion.
     mauto.
-  - assert {{ ⊢ Γ , A ≈ Γ , A' }} by mauto.
+  - (** [ctxeq_nbe_eq] takes the semantic context equality now that the syntactic
+        one is gone; [per_ctx_of_exp_eq] is what builds it from the domains. *)
+    assert {{ ⊨ Γ , A ≈ Γ , A' }} by mauto.
     eapply ctxeq_nbe_eq in H5; [ |eassumption].
     match goal with
     | H : _ |- _ => apply completeness in H

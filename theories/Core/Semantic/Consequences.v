@@ -3,6 +3,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
 Import Domain_Notations.
+Import Wk_Notations.
 
 Lemma idempotent_nbe_ty : forall {Γ i A B C},
     {{ Γ ⊢ A : Type@i }} ->
@@ -56,9 +57,11 @@ Proof.
   functional_read_rewrite_clear.
   autoinjections.
   assert {{ Γ ⊢ A' ≈ A : Type@i }} by mauto 3.
-  assert {{ ⊢ Γ, A' ≈ Γ, A }} by mauto 3.
+  (** Context equality is gone: [Γ, A] refines [Γ, A'] because the two heads are
+      equal, and [ctxsub_exp_eq] moves the codomain's normal form across. *)
+  assert {{ Γ, A ⊢s Id : Γ, A' }} by mauto 3.
   split; [mauto 3 |].
-  etransitivity; [| symmetry]; mauto 2.
+  etransitivity; [| symmetry]; mauto 3.
 Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
@@ -151,12 +154,14 @@ Proof with (congruence + firstorder (mautosolve 4 + lia)).
           assert {{ Γ ⊢ Π A1 A2 ≈ Π B1 B2 : Type@_ }} by mauto 3;
           assert ({{ Γ ⊢ A1 ≈ B1 : Type@_ }} /\ {{ Γ, A1 ⊢ A2 ≈ B2 : Type@_ }}) as [] by mauto 3 using exp_eq_pi_inversion
       end.
-      assert {{ ⊢ Γ ≈ Γ }} by mauto 3.
       right; right.
       do 4 eexists; repeat split; mauto 3.
       * eexists; eapply exp_eq_trans_typ_max...
-      * etransitivity; [| eassumption].
-        etransitivity; eapply ctxeq_subtyp...
+      * (** The two codomain refinements live in contexts extended by the three
+            equal domains, so [ctxsub_subtyp] moves both into the one we chose. *)
+        etransitivity; [| eassumption].
+        etransitivity; eapply ctxsub_subtyp; [| eassumption | | mauto 3]; [| mauto 3].
+        eapply wf_sub_id_extend_eq', exp_eq_trans_typ_max; [symmetry |]; eassumption.
   - right; left.
     do 2 eexists...
   - right; right.
@@ -181,7 +186,7 @@ Proof with (congruence + mautosolve 3).
     eapply IHHW3; [| | | | mauto 4]...
   - destruct W; simpl in *; autoinjections.
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
-    assert {{ ⋅, Type@i ⊢ Type@i[Wk] ≈ Type@i : Type@(S i) }} by mauto 3.
+    assert {{ ⋅, Type@i ⊢ Type@i⟨↑⟩ ≈ Type@i : Type@(S i) }} by mauto 3.
     eapply subtyp_spec in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
     assert {{ ⋅, Type@i ⊢ Type@i ≈ Π ^_ ^_ : Type@_ }} by mauto 3.
@@ -211,6 +216,13 @@ Proof with (congruence + mautosolve 3).
     eapply consistency_ne_helper...
   - assert (_ /\ {{ ^_ ⊢ B ≈ ^_ : ^_ }}) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     assert (_ /\ {{ ^_ ⊢ ^_ ≈ #0 : ^_ }}) as [? ?] by mauto 3 using exp_eq_pi_inversion.
-    assert {{ ^_ ⊢ B ⊆ #0 }} by (etransitivity; [| eapply ctxeq_subtyp]; mauto 4).
+    (** The middle refinement and the right-hand equation live in the context
+        extended by the other domain, so both move across the refinement
+        [{{ ⋅, Type@i ⊢s Id : ⋅, ^_ }}] that the domain equation provides. *)
+    assert {{ ^_ ⊢ B ⊆ #0 }} by
+      (etransitivity; [mauto 3 |];
+       etransitivity;
+       [eapply ctxsub_subtyp; [| eassumption] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]];
+       mauto 3).
     eapply consistency_ne_helper...
 Qed.

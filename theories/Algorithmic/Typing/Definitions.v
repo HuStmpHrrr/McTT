@@ -26,7 +26,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 | ati_natrec :
   `( {{ Γ, ℕ ⊢a A ⟹ Type@i }} ->
      {{ Γ ⊢a MZ ⟸ A[Id,,zero] }} ->
-     {{ Γ, ℕ, A ⊢a MS ⟸ A[Wk∘Wk,,succ #1] }} ->
+     {{ Γ, ℕ, A ⊢a MS ⟸ A[Wk ⨟ Wk,,succ #1] }} ->
      {{ Γ ⊢a M ⟸ ℕ }} ->
      nbe_ty Γ {{{ A[Id,,M] }}} B ->
      {{ Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B }} )

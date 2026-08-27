@@ -156,7 +156,6 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
-    | Coq_a_sub _ -> failwith "Invalid internal language construct"
   in
   fun exp ->
     reset_var_suffix ();

@@ -4,6 +4,9 @@ From Equations Require Export Equations.
 Open Scope predicate_scope.
 
 Create HintDb mctt discriminated.
+(** Rewrite hint databases live in their own namespace, so [mctt] has to be
+    created a second time for the [Hint Rewrite ... : mctt] declarations. *)
+Create Rewrite HintDb mctt.
 
 (** Transparency setting for generalized rewriting *)
 #[export]

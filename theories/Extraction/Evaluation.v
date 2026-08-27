@@ -7,6 +7,11 @@ Import Domain_Notations.
 
 Generalizable All Variables.
 
+(** The termination orders mirror [eval_exp], [eval_natrec] and [eval_app].
+    There is no fourth one: [eval_sub] is a [Definition] over [eval_exp], not a
+    relation to recurse on, and [M[σ]] is no longer an expression, so a
+    substituted term reaches [eval_exp_impl] already computed. *)
+
 Inductive eval_exp_order : exp -> env -> Prop :=
 | eeo_typ :
   `( eval_exp_order {{{ Type@i }}} p )
@@ -33,10 +38,6 @@ Inductive eval_exp_order : exp -> env -> Prop :=
      eval_exp_order N p ->
      (forall m n, {{ ⟦ M ⟧ p ↘ m }} -> {{ ⟦ N ⟧ p ↘ n }} -> eval_app_order m n) ->
      eval_exp_order {{{ M N }}} p )
-| eeo_sub :
-  `( eval_sub_order σ p ->
-     (forall p', {{ ⟦ σ ⟧s p ↘ p' }} -> eval_exp_order M p') ->
-     eval_exp_order {{{ M[σ] }}} p )
 
 with eval_natrec_order : exp -> exp -> exp -> domain -> env -> Prop :=
 | eno_zero :
@@ -57,24 +58,10 @@ with eval_app_order : domain -> domain -> Prop :=
      eval_app_order d{{{ λ p M }}} n )
 | eao_neut :
   `( eval_exp_order B d{{{ p ↦ n }}} ->
-     eval_app_order d{{{ ⇑ (Π a p B) m }}} n )
-
-with eval_sub_order : sub -> env -> Prop :=
-| eso_id :
-  `( eval_sub_order {{{ Id }}} p )
-| eso_weaken :
-  `( eval_sub_order {{{ Wk }}} p )
-| eso_extend :
-  `( eval_sub_order σ p ->
-     eval_exp_order M p ->
-     eval_sub_order {{{ σ ,, M }}} p )
-| eso_compose :
-  `( eval_sub_order τ p ->
-     (forall p', {{ ⟦ τ ⟧s p ↘ p' }} -> eval_sub_order σ p') ->
-     eval_sub_order {{{ σ ∘ τ }}} p ).
+     eval_app_order d{{{ ⇑ (Π a p B) m }}} n ).
 
 #[local]
-Hint Constructors eval_exp_order eval_natrec_order eval_app_order eval_sub_order : mctt.
+Hint Constructors eval_exp_order eval_natrec_order eval_app_order : mctt.
 
 Lemma eval_exp_order_sound : forall m p a,
     {{ ⟦ m ⟧ p ↘ a }} ->
@@ -84,19 +71,26 @@ with eval_natrec_order_sound : forall A MZ MS m p r,
     eval_natrec_order A MZ MS m p
 with eval_app_order_sound: forall m n r,
   {{ $| m & n |↘ r }} ->
-  eval_app_order m n
-with eval_sub_order_sound: forall σ p p',
-  {{ ⟦ σ ⟧s p ↘ p' }} ->
-  eval_sub_order σ p.
+  eval_app_order m n.
 Proof with (econstructor; intros; functional_eval_rewrite_clear; eauto).
   - clear eval_exp_order_sound; induction 1...
   - clear eval_natrec_order_sound; induction 1...
   - clear eval_app_order_sound; induction 1...
-  - clear eval_sub_order_sound; induction 1...
 Qed.
 
 #[export]
-Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound eval_sub_order_sound : mctt.
+Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound : mctt.
+
+(** [eval_sub] is pointwise, so its order is the order of every component. *)
+Lemma eval_sub_order_sound : forall σ p p' x,
+    {{ ⟦ σ ⟧s p ↘ p' }} ->
+    eval_exp_order (σ x) p.
+Proof.
+  intros * H; eauto using eval_exp_order_sound, eval_sub_index.
+Qed.
+
+#[export]
+Hint Resolve eval_sub_order_sound : mctt.
 
 #[local]
 Ltac impl_obl_tac1 :=
@@ -104,7 +98,6 @@ Ltac impl_obl_tac1 :=
   | H : eval_exp_order _ _ |- _ => progressive_invert H
   | H : eval_natrec_order _ _ _ _ _ |- _ => progressive_invert H
   | H : eval_app_order _ _ |- _ => progressive_invert H
-  | H : eval_sub_order _ _ |- _ => progressive_invert H
   end.
 
 #[local]
@@ -133,10 +126,6 @@ Equations eval_exp_impl m p (H : eval_exp_order m p) : { d | eval_exp m p d } by
     let (n , Hn) := eval_exp_impl N p _ in
     let (a, Ha) := eval_app_impl m n _ in
     exist _ a _
-| {{{ M[σ] }}}  , p, H =>
-    let (p', Hp') := eval_sub_impl σ p _ in
-    let (m, Hm) := eval_exp_impl M p' _ in
-    exist _ m _
 
 with eval_natrec_impl A MZ MS m p (H : eval_natrec_order A MZ MS m p) : { d | eval_natrec A MZ MS m p d } by struct H :=
 | A, MZ, MS, d{{{ zero }}}  , p, H =>
@@ -157,24 +146,11 @@ with eval_app_impl m n (H : eval_app_order m n) : { d | eval_app m n d } by stru
     exist _ m _
 | d{{{ ⇑ (Π a p B) m }}}, n, H =>
     let (b, Hb) := eval_exp_impl B d{{{ p ↦ n }}} _ in
-    exist _ d{{{ ⇑ b (m (⇓ a n)) }}} _
-
-with eval_sub_impl s p (H : eval_sub_order s p) : { p' | eval_sub s p p' } by struct H :=
-| {{{ Id }}}, p, H => exist _ p _
-| {{{ Wk }}}, p, H => exist _ d{{{ p↯ }}} _
-| {{{ s ,, M }}}, p, H =>
-    let (p', Hp') := eval_sub_impl s p _ in
-    let (m, Hm) := eval_exp_impl M p _ in
-    exist _ d{{{ p' ↦ m }}} _
-| {{{ s ∘ τ }}}, p, H =>
-    let (p', Hp') := eval_sub_impl τ p _ in
-    let (p'', Hp'') := eval_sub_impl s p' _ in
-    exist _ p'' _.
+    exist _ d{{{ ⇑ b (m (⇓ a n)) }}} _.
 
 Extraction Inline eval_exp_impl_functional
   eval_natrec_impl_functional
-  eval_app_impl_functional
-  eval_sub_impl_functional.
+  eval_app_impl_functional.
 
 (** The definitions of [eval_*_impl] already come with soundness proofs,
     so we only need to prove completeness. However, the completeness
@@ -213,13 +189,6 @@ Qed.
 Lemma eval_app_impl_complete : forall m n r,
     {{ $| m & n |↘ r }} ->
     exists H H', eval_app_impl m n H = exist _ r H'.
-Proof.
-  intros; functional_eval_complete.
-Qed.
-
-Lemma eval_sub_impl_complete : forall σ p p',
-    {{ ⟦ σ ⟧s p ↘ p' }} ->
-    exists H H', eval_sub_impl σ p H = exist _ p' H'.
 Proof.
   intros; functional_eval_complete.
 Qed.

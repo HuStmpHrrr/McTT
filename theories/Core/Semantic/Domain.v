@@ -1,4 +1,5 @@
 From Equations Require Import Equations.
+From Stdlib Require Import Morphisms Relation_Definitions RelationClasses.
 
 From Mctt.Core.Syntactic Require Export Syntax.
 
@@ -42,6 +43,36 @@ Definition drop_env (ρ : env) : env := fun n => ρ (S n).
 Arguments drop_env _ _ /.
 Transparent drop_env.
 
+(** ** Equality of Environments
+
+    Environments are functions, and this development is axiom-free, so
+    "the same environment" means pointwise equality — exactly as [wk_eq] and
+    [sb_eq] do for weakenings and substitutions in [Syntax.v].  This matters as
+    soon as substitutions are evaluated: their evaluation is defined pointwise,
+    so determinism can only deliver [env_eq], never [eq].
+
+    Note that [env_eq] is *not* a congruence for [eval_exp]: a closure
+    [λ ρ M] carries its environment, so [env_eq ρ ρ'] makes [λ ρ M] and
+    [λ ρ' M] distinct values.  Relating those is the job of the PER model, not
+    of [eq].
+ *)
+Definition env_eq : relation env := pointwise_relation nat eq.
+
+#[export]
+Instance env_eq_Equivalence : Equivalence env_eq := _.
+
+#[export]
+Instance extend_env_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env.
+Proof.
+  intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ].
+Qed.
+
+#[export]
+Instance drop_env_Proper : Proper (env_eq ==> env_eq) drop_env.
+Proof.
+  intros ρ ρ' Hρ n. apply Hρ.
+Qed.
+
 #[global] Declare Custom Entry domain.
 #[global] Bind Scope mctt_scope with domain.
 
@@ -71,8 +102,20 @@ End Domain_Notations.
 
 Import Domain_Notations.
 
+(** The two projections of an extended environment.  Both hold by conversion,
+    but they are still worth stating: the tactics that drive the PER model
+    ([functional_eval_rewrite_clear], [handle_per_univ_elem_irrel]) match
+    hypotheses against goals *syntactically*, so a goal phrased over
+    [(ρ ↦ a) ↯] or [(ρ ↦ a) 0] has to be rewritten before it can meet a
+    hypothesis phrased over [ρ] or [a]. *)
 Proposition drop_env_extend_env_cancel : forall ρ a,
     d{{{ (ρ ↦ a) ↯ }}} = ρ.
+Proof.
+  reflexivity.
+Qed.
+
+Proposition extend_env_zero_cancel : forall ρ a,
+    d{{{ ρ ↦ a }}} 0 = a.
 Proof.
   reflexivity.
 Qed.

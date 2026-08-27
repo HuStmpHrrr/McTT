@@ -27,3 +27,6 @@ dep.html
 # Editor related files
 ## Emacs
 *.~undo-tree~
+
+## rocq-mcp scratch buffers
+theories/rocq_mcp_cache_*.v

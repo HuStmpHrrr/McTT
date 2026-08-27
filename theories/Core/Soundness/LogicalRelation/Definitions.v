@@ -4,9 +4,10 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
+From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
 
-Import Domain_Notations.
+Import Domain_Notations Wk_Notations.
 Global Open Scope predicate_scope.
 
 Generalizable All Variables.
@@ -40,7 +41,7 @@ Inductive glu_nat : ctx -> exp -> domain -> Prop :=
      glu_nat Γ M d{{{ succ m' }}} }
 | glu_nat_neut :
   `{ per_bot m m ->
-     (forall {Δ σ M'}, {{ Δ ⊢w σ : Γ }} -> {{ Rne m in length Δ ↘ M' }} -> {{ Δ ⊢ M[σ] ≈ M' : ℕ }}) ->
+     (forall {Δ φ M'}, {{ Δ ⊢k φ : Γ }} -> {{ Rne m in length Δ ↘ M' }} -> {{ Δ ⊢ M⟨φ⟩ ≈ M' : ℕ }}) ->
      glu_nat Γ M d{{{ ⇑ a m }}} }.
 
 #[export]
@@ -54,7 +55,7 @@ Arguments nat_glu_exp_pred i Γ A M m/.
 
 Definition neut_glu_typ_pred i a : glu_typ_pred :=
   fun Γ A => {{ Γ ⊢ A : Type@i }} /\
-            (forall Δ σ A', {{ Δ ⊢w σ : Γ }} -> {{ Rne a in length Δ ↘ A' }} -> {{ Δ ⊢ A[σ] ≈ A' : Type@i }}).
+            (forall Δ φ A', {{ Δ ⊢k φ : Γ }} -> {{ Rne a in length Δ ↘ A' }} -> {{ Δ ⊢ A⟨φ⟩ ≈ A' : Type@i }}).
 Arguments neut_glu_typ_pred i a Γ A/.
 
 Variant neut_glu_exp_pred i a : glu_exp_pred :=
@@ -62,9 +63,9 @@ Variant neut_glu_exp_pred i a : glu_exp_pred :=
   `{ {{ Γ ⊢ A ® neut_glu_typ_pred i a }} ->
      {{ Γ ⊢ M : A }} ->
      {{ Dom m ≈ m ∈ per_bot }} ->
-     (forall Δ σ M', {{ Δ ⊢w σ : Γ }} ->
+     (forall Δ φ M', {{ Δ ⊢k φ : Γ }} ->
                    {{ Rne m in length Δ ↘ M' }} ->
-                   {{ Δ ⊢ M[σ] ≈ M' : A[σ] }}) ->
+                   {{ Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩ }}) ->
      {{ Γ ⊢ M : A ® ⇑ b m ∈ neut_glu_exp_pred i a }} }.
 
 Variant pi_glu_typ_pred i
@@ -76,12 +77,12 @@ Variant pi_glu_typ_pred i
   `{ {{ Γ ⊢ A ≈ Π IT OT : Type@i }} ->
      {{ Γ ⊢ IT : Type@i }} ->
      {{ Γ , IT ⊢ OT : Type@i }} ->
-     (forall Δ σ, {{ Δ ⊢w σ : Γ }} -> {{ Δ ⊢ IT[σ] ® IP }}) ->
-     (forall Δ σ M m,
-         {{ Δ ⊢w σ : Γ }} ->
-         {{ Δ ⊢ M : IT[σ] ® m ∈ IEl }} ->
+     (forall Δ φ, {{ Δ ⊢k φ : Γ }} -> {{ Δ ⊢ IT⟨φ⟩ ® IP }}) ->
+     (forall Δ φ M m,
+         {{ Δ ⊢k φ : Γ }} ->
+         {{ Δ ⊢ M : IT⟨φ⟩ ® m ∈ IEl }} ->
          forall (equiv_m : {{ Dom m ≈ m ∈ IR }}),
-           {{ Δ ⊢ OT[σ,,M] ® OP _ equiv_m }}) ->
+           {{ Δ ⊢ OT[^(ι φ),,M] ® OP _ equiv_m }}) ->
      {{ Γ ⊢ A ® pi_glu_typ_pred i IR IP IEl OP }} }.
 
 Variant pi_glu_exp_pred i
@@ -96,12 +97,12 @@ Variant pi_glu_exp_pred i
      {{ Γ ⊢ A ≈ Π IT OT : Type@i }} ->
      {{ Γ ⊢ IT : Type@i }} ->
      {{ Γ , IT ⊢ OT : Type@i }} ->
-     (forall Δ σ, {{ Δ ⊢w σ : Γ }} -> {{ Δ ⊢ IT[σ] ® IP }}) ->
-     (forall Δ σ N n,
-         {{ Δ ⊢w σ : Γ }} ->
-         {{ Δ ⊢ N : IT[σ] ® n ∈ IEl }} ->
+     (forall Δ φ, {{ Δ ⊢k φ : Γ }} -> {{ Δ ⊢ IT⟨φ⟩ ® IP }}) ->
+     (forall Δ φ N n,
+         {{ Δ ⊢k φ : Γ }} ->
+         {{ Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl }} ->
          forall (equiv_n : {{ Dom n ≈ n ∈ IR }}),
-         exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ OEl _ equiv_n }}) ->
+         exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl _ equiv_n }}) ->
      {{ Γ ⊢ M : A ® m ∈ pi_glu_exp_pred i IR IP IEl elem_rel OEl }} }.
 
 #[export]
@@ -260,7 +261,7 @@ Variant glu_elem_bot i a Γ A M m : Prop :=
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
     {{ Γ ⊢ A ® P }} ->
     {{ Dom m ≈ m ∈ per_bot }} ->
-    (forall Δ σ M', {{ Δ ⊢w σ : Γ }} -> {{ Rne m in length Δ ↘ M' }} -> {{ Δ ⊢ M[σ] ≈ M' : A[σ] }}) ->
+    (forall Δ φ M', {{ Δ ⊢k φ : Γ }} -> {{ Rne m in length Δ ↘ M' }} -> {{ Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩ }}) ->
     {{ Γ ⊢ M : A ® m ∈ glu_elem_bot i a }}.
 #[export]
 Hint Constructors glu_elem_bot : mctt.
@@ -271,7 +272,7 @@ Variant glu_elem_top i a Γ A M m : Prop :=
     {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
     {{ Γ ⊢ A ® P }} ->
     {{ Dom ⇓ a m ≈ ⇓ a m ∈ per_top }} ->
-    (forall Δ σ w, {{ Δ ⊢w σ : Γ }} -> {{ Rnf ⇓ a m in length Δ ↘ w }} -> {{ Δ ⊢ M[σ] ≈ w : A[σ] }}) ->
+    (forall Δ φ w, {{ Δ ⊢k φ : Γ }} -> {{ Rnf ⇓ a m in length Δ ↘ w }} -> {{ Δ ⊢ M⟨φ⟩ ≈ w : A⟨φ⟩ }}) ->
     {{ Γ ⊢ M : A ® m ∈ glu_elem_top i a }}.
 #[export]
 Hint Constructors glu_elem_top : mctt.
@@ -280,7 +281,7 @@ Variant glu_typ_top i a Γ A : Prop :=
 | glu_typ_top_make :
     {{ Γ ⊢ A : Type@i }} ->
     {{ Dom a ≈ a ∈ per_top_typ }} ->
-    (forall Δ σ A', {{ Δ ⊢w σ : Γ }} -> {{ Rtyp a in length Δ ↘ A' }} -> {{ Δ ⊢ A[σ] ≈ A' : Type@i }}) ->
+    (forall Δ φ A', {{ Δ ⊢k φ : Γ }} -> {{ Rtyp a in length Δ ↘ A' }} -> {{ Δ ⊢ A⟨φ⟩ ≈ A' : Type@i }}) ->
     {{ Γ ⊢ A ® glu_typ_top i a }}.
 #[export]
 Hint Constructors glu_typ_top : mctt.
@@ -305,11 +306,10 @@ Variant cons_glu_sub_pred i Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
         {{ Δ ⊢s σ : Γ, A }} ->
         {{ ⟦ A ⟧ ρ ↯ ↘ a }} ->
         {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-        (** Here we use [{{{ A[Wk][σ] }}}] instead of [{{{ A[Wk∘σ] }}}]
-            as syntactic judgement derived from that is
-            a more direct consequence of [{{ Γ, A ⊢ #0 : A[Wk] }}] *)
-        {{ Δ ⊢ #0[σ] : A[Wk][σ] ® ^(ρ 0) ∈ El }} ->
-        {{ Δ ⊢s Wk ∘ σ ® ρ ↯ ∈ TSb }} ->
+        (** [A⟨↑⟩[σ]] rather than [A[Wk ⨟ σ]]: it is the direct instance of
+            [{{ Γ, A ⊢ #0 : A⟨↑⟩ }}] along [σ]. *)
+        {{ Δ ⊢ #0[σ] : A⟨↑⟩[σ] ® ^(ρ 0) ∈ El }} ->
+        {{ Δ ⊢s Wk ⨟ σ ® ρ ↯ ∈ TSb }} ->
         {{ Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }} }.
 
 Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
@@ -336,12 +336,6 @@ Variant glu_rel_exp_with_sub i Δ M A σ ρ : Prop :=
         {{ Δ ⊢ M[σ] : A[σ] ® m ∈ El }} ->
         glu_rel_exp_with_sub i Δ M A σ ρ }.
 
-Variant glu_rel_sub_with_sub Δ τ (Sb : glu_sub_pred) σ ρ : Prop :=
-| mk_glu_rel_sub_with_sub :
-  `{ {{ ⟦ τ ⟧s ρ ↘ ρ' }} ->
-     {{ Δ ⊢s τ ∘ σ ® ρ' ∈ Sb }} ->
-     glu_rel_sub_with_sub Δ τ Sb σ ρ}.
-
 Definition glu_rel_ctx Γ : Prop := exists Sb, {{ EG Γ ∈ glu_ctx_env ↘ Sb }}.
 Arguments glu_rel_ctx Γ/.
 
@@ -354,15 +348,12 @@ Definition glu_rel_exp Γ M A : Prop :=
         glu_rel_exp_with_sub i Δ M A σ ρ.
 Arguments glu_rel_exp Γ M A/.
 
-Definition glu_rel_sub Γ τ Γ' : Prop :=
-  exists Sb Sb',
-    {{ EG Γ ∈ glu_ctx_env ↘ Sb }} /\
-    {{ EG Γ' ∈ glu_ctx_env ↘ Sb' }} /\
-      forall Δ σ ρ,
-        {{ Δ ⊢s σ ® ρ ∈ Sb }} ->
-        glu_rel_sub_with_sub Δ τ Sb' σ ρ.
-Arguments glu_rel_sub Γ τ Γ'/.
+(** There is no [Γ ⊩s τ : Γ'], and the fundamental theorem has two parts, not
+    three: a gluing predicate is indexed by a *value*, and
+    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation once
+    substitution is an operation, so [glu_rel_sub_with_sub] cannot be stated.
+    Concrete substitutions are handled by [glu_rel_exp]-level lemmas instead,
+    exactly as [{{ Γ ⊨s σ : Δ }}] is absent from [completeness_fundamental]. *)
 
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (in custom judg at level 80, Γ custom exp).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (in custom judg at level 80, Γ custom exp, M custom exp, A custom exp).
-Notation "Γ ⊩s τ : Γ'" := (glu_rel_sub Γ τ Γ') (in custom judg at level 80, Γ custom exp, τ custom exp, Γ' custom exp).

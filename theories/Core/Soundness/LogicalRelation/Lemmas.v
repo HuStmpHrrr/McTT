@@ -5,7 +5,8 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Export Realizability.
-Import Domain_Notations.
+From Mctt.Core.Syntactic Require Import Substitution.
+Import Domain_Notations Wk_Notations.
 
 Add Parametric Morphism i a Γ A M : (glu_elem_bot i a Γ A M)
     with signature per_bot ==> iff as glu_elem_bot_morphism_iff4.
@@ -47,11 +48,10 @@ Proof with mautosolve 4.
   functional_read_rewrite_clear.
   assert {{ Γ ⊢ A : Type@(max i j) }} by mauto 4 using lift_exp_max_left.
   assert {{ Γ ⊢ A' : Type@(max i j) }} by mauto 4 using lift_exp_max_right.
-  assert {{ Γ ⊢ A[Id] ≈ V : Type@i }} by mauto 4.
-  assert {{ Γ ⊢ A[Id] ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_left.
-  assert {{ Γ ⊢ A'[Id] ≈ V : Type@j }} by mauto 4.
-  assert {{ Γ ⊢ A'[Id] ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_right.
-  autorewrite with mctt in *...
+  assert {{ Γ ⊢ A ≈ V : Type@i }} by (rewrite <- (exp_wk_id A); mauto 4).
+  assert {{ Γ ⊢ A ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_left.
+  assert {{ Γ ⊢ A' ≈ V : Type@j }} by (rewrite <- (exp_wk_id A'); mauto 4).
+  assert {{ Γ ⊢ A' ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_right...
 Qed.
 
 #[export]
@@ -183,7 +183,7 @@ Section glu_univ_elem_cumulativity.
       rename x2 into OEl'.
       destruct_by_head pi_glu_typ_pred.
       econstructor; intros; mauto 4.
-      + assert {{ Δ ⊢ IT[σ] ® IP }} by mauto.
+      + assert {{ Δ ⊢ IT⟨φ⟩ ® IP }} by mauto.
         enough (forall Γ A, {{ Γ ⊢ A ® IP }} -> {{ Γ ⊢ A ® IP' }}) by mauto 4.
         eapply proj1...
       + match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -191,8 +191,8 @@ Section glu_univ_elem_cumulativity.
         destruct_rel_mod_eval.
         handle_per_univ_elem_irrel.
         assert (forall Γ A, {{ Γ ⊢ A ® OP m equiv_m }} -> {{ Γ ⊢ A ® OP' m equiv_m }}) by (eapply proj1; mauto).
-        enough {{ Δ ⊢ OT[σ,,M] ® OP m equiv_m }} by mauto.
-        enough {{ Δ ⊢ M : IT[σ] ® m ∈ IEl }} by mauto.
+        enough {{ Δ ⊢ OT[^(ι φ),,M] ® OP m equiv_m }} by mauto.
+        enough {{ Δ ⊢ M : IT⟨φ⟩ ® m ∈ IEl }} by mauto.
         eapply IHHglu...
     - rename x into IP'.
       rename x0 into IEl'.
@@ -210,9 +210,9 @@ Section glu_univ_elem_cumulativity.
         handle_per_univ_elem_irrel.
         eexists; split; mauto 4.
         assert (forall Γ A M m, {{ Γ ⊢ M : A ® m ∈ OEl n equiv_n }} -> {{ Γ ⊢ M : A ® m ∈ OEl' n equiv_n }}) by (eapply proj1, proj2; mauto 4).
-        enough {{ Δ ⊢ M[σ] N : OT[σ,,N] ® fa ∈ OEl n equiv_n }} by mauto 4.
-        assert {{ Δ ⊢ N : IT[σ] ® n ∈ IEl }} by (eapply IHHglu; mauto 3).
-        assert (exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M[σ] N : OT[σ,,N] ® mn ∈ OEl n equiv_n }}) by mauto 4.
+        enough {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® fa ∈ OEl n equiv_n }} by mauto 4.
+        assert {{ Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl }} by (eapply IHHglu; mauto 3).
+        assert (exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl n equiv_n }}) by mauto 4.
         destruct_conjs.
         functional_eval_rewrite_clear...
     - rename x into IP'.
@@ -234,19 +234,19 @@ Section glu_univ_elem_cumulativity.
       end.
       eexists; split; mauto 4.
       assert (forall Γ A M m, {{ Γ ⊢ A ® OP n equiv_n }} -> {{ Γ ⊢ M : A ® m ∈ OEl' n equiv_n }} -> {{ Γ ⊢ M : A ® m ∈ OEl n equiv_n }}) by (eapply proj2, proj2; eauto 3).
-      assert {{ Δ ⊢ OT[σ,,N] ® OP n equiv_n }} by mauto 4.
-      enough {{ Δ ⊢ M[σ] N : OT[σ,,N] ® fa ∈ OEl' n equiv_n }} by mauto 4.
-      assert {{ Δ ⊢ N : IT[σ] ® n ∈ IEl' }} by (eapply IHHglu; mauto 3).
-      assert {{ Δ ⊢ IT[σ] ® IP' }} by (eapply glu_univ_elem_trm_typ; mauto 2).
-      assert {{ Δ ⊢ IT0[σ] ® IP' }} by mauto 2.
-      assert {{ Δ ⊢ IT[σ] ≈ IT0[σ] : Type@j }} as HITeq by mauto 2.
-      assert {{ Δ ⊢ N : IT0[σ] ® n ∈ IEl' }} by (rewrite <- HITeq; mauto 3).
-      assert (exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M[σ] N : OT0[σ,,N] ® mn ∈ OEl' n equiv_n }}) by mauto 3.
+      assert {{ Δ ⊢ OT[^(ι φ),,N] ® OP n equiv_n }} by mauto 4.
+      enough {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® fa ∈ OEl' n equiv_n }} by mauto 4.
+      assert {{ Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl' }} by (eapply IHHglu; mauto 3).
+      assert {{ Δ ⊢ IT⟨φ⟩ ® IP' }} by (eapply glu_univ_elem_trm_typ; mauto 2).
+      assert {{ Δ ⊢ IT0⟨φ⟩ ® IP' }} by mauto 2.
+      assert {{ Δ ⊢ IT⟨φ⟩ ≈ IT0⟨φ⟩ : Type@j }} as HITeq by mauto 2.
+      assert {{ Δ ⊢ N : IT0⟨φ⟩ ® n ∈ IEl' }} by (rewrite <- HITeq; mauto 3).
+      assert (exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M⟨φ⟩ N : OT0[^(ι φ),,N] ® mn ∈ OEl' n equiv_n }}) by mauto 3.
       destruct_conjs.
       functional_eval_rewrite_clear.
       assert {{ DG b ∈ glu_univ_elem j ↘ OP' n equiv_n ↘ OEl' n equiv_n }} by mauto 3.
-      assert {{ Δ ⊢ OT0[σ,,N] ® OP' n equiv_n }} by (eapply glu_univ_elem_trm_typ; mauto 3).
-      enough {{ Δ ⊢ OT[σ,,N] ≈ OT0[σ,,N] : Type@j }} as ->...
+      assert {{ Δ ⊢ OT0[^(ι φ),,N] ® OP' n equiv_n }} by (eapply glu_univ_elem_trm_typ; mauto 3).
+      enough {{ Δ ⊢ OT[^(ι φ),,N] ≈ OT0[^(ι φ),,N] : Type@j }} as ->...
     - destruct_by_head neut_glu_exp_pred.
       econstructor; mauto.
       destruct_by_head neut_glu_typ_pred.
@@ -399,11 +399,11 @@ Proof.
   - match_by_head (per_bot b b') ltac:(fun H => specialize (H (length Γ)) as [V []]).
     simpl in *.
     destruct_conjs.
-    assert {{ Γ ⊢ A[Id] ≈ A : Type@i }} as <- by mauto 4.
-    assert {{ Γ ⊢ A'[Id] ≈ A' : Type@i }} as <- by mauto 3.
-    assert {{ Γ ⊢ A'[Id] ≈ V : Type@i }} as -> by mauto 4.
-    eapply wf_subtyp_refl'.
-    mauto 4.
+    assert {{ Γ ⊢ A ≈ V : Type@i }} as HAV by (rewrite <- (exp_wk_id A); mauto 4).
+    assert {{ Γ ⊢ A' ≈ V : Type@i }} as HA'V by (rewrite <- (exp_wk_id A'); mauto 4).
+    gen_presups.
+    rewrite HAV, HA'V.
+    mauto 3.
   - bulky_rewrite.
   - bulky_rewrite.
     mauto 3.
@@ -411,18 +411,8 @@ Proof.
     rename x into IP. rename x0 into IEl. rename x1 into OP. rename x2 into OEl.
     rename A0 into A'. rename IT0 into IT'. rename OT0 into OT'.
     rename x3 into OP'. rename x4 into OEl'.
-    assert {{ Γ ⊢ IT ® IP }}.
-    {
-      assert {{ Γ ⊢ IT[Id] ® IP }} by mauto 4.
-      simpl in *.
-      autorewrite with mctt in *; mauto 3.
-    }
-    assert {{ Γ ⊢ IT' ® IP }}.
-    {
-      assert {{ Γ ⊢ IT'[Id] ® IP }} by mauto 4.
-      simpl in *.
-      autorewrite with mctt in *; mauto 3.
-    }
+    assert {{ Γ ⊢ IT ® IP }} by (rewrite <- (exp_wk_id IT); mauto 4).
+    assert {{ Γ ⊢ IT' ® IP }} by (rewrite <- (exp_wk_id IT'); mauto 4).
     do 2 bulky_rewrite1.
     assert {{ Γ ⊢ IT ≈ IT' : Type@i }} by mauto 4.
     enough {{ Γ, IT' ⊢ OT ⊆ OT' }} by mauto 3.
@@ -444,16 +434,17 @@ Proof.
     assert {{ DG b' ∈ glu_univ_elem i ↘ OP' d{{{ ⇑! a' (length Γ) }}} equiv_len'_len' ↘ OEl' d{{{ ⇑! a' (length Γ) }}} equiv_len'_len' }} by mauto 4.
     assert {{ Γ, IT' ⊢ OT ® OP d{{{ ⇑! a (length Γ) }}} equiv_len_len }}.
     {
-      assert {{ Γ, IT ⊢ #0 : IT[Wk] ® ⇑! a (length Γ) ∈ IEl }} by (eapply var0_glu_elem; mauto 3).
-      assert {{ ⊢ Γ, IT' ≈ Γ, IT }} as -> by mauto.
-      assert {{ Γ, IT ⊢ OT[Wk,,#0] ≈ OT : Type@i }} as <- by (bulky_rewrite1; mauto 2).
-      mauto 4.
+      assert {{ Γ, IT ⊢ #0 : IT⟨↑⟩ ® ⇑! a (length Γ) ∈ IEl }} by (eapply var0_glu_elem; mauto 3).
+      assert {{ ⊢ Γ, IT }} by mauto 3.
+      assert {{ Γ, IT ⊢ OT ® OP d{{{ ⇑! a (length Γ) }}} equiv_len_len }}
+        by (rewrite <- (exp_sub_of_shift_extend_zero OT); mauto 4).
+      eapply glu_univ_elem_typ_resp_ctxsub; [ eassumption | eassumption | mauto 4 ].
     }
     assert {{ Γ, IT' ⊢ OT' ® OP' d{{{ ⇑! a' (length Γ) }}} equiv_len'_len' }}.
     {
-      assert {{ Γ, IT' ⊢ #0 : IT'[Wk] ® ⇑! a' (length Γ) ∈ IEl }} by (eapply var0_glu_elem; mauto 3).
-      assert {{ Γ, IT' ⊢ OT'[Wk,,#0] ® OP' d{{{ ⇑! a' (length Γ) }}} equiv_len'_len' }} by mauto 4.
-      assert {{ Γ, IT' ⊢ OT'[Wk,,#0] ≈ OT' : Type@i }} as <- by (bulky_rewrite1; mauto 2).
+      assert {{ Γ, IT' ⊢ #0 : IT'⟨↑⟩ ® ⇑! a' (length Γ) ∈ IEl }} by (eapply var0_glu_elem; mauto 3).
+      assert {{ ⊢ Γ, IT' }} by mauto 3.
+      rewrite <- (exp_sub_of_shift_extend_zero OT').
       mauto 4.
     }
     mauto 3.
@@ -490,8 +481,8 @@ Proof.
     + intros.
       match_by_head1 (per_bot b b') ltac:(fun H => destruct (H (length Δ)) as [? []]).
       functional_read_rewrite_clear.
-      assert {{ Δ ⊢ A[σ] ⊆ A'[σ] }} by mauto 3.
-      assert {{ Δ ⊢ M[σ] ≈ M' : A[σ] }} by mauto 3.
+      assert {{ Δ ⊢ A⟨φ⟩ ⊆ A'⟨φ⟩ }} by mauto 3.
+      assert {{ Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩ }} by mauto 3.
       mauto 3.
   - simpl in *.
     destruct_conjs.
@@ -509,22 +500,11 @@ Proof.
     + enough {{ Sub Π a ρ B <: Π a' ρ' B' at i }} by (eapply per_elem_subtyping; try eassumption).
       econstructor; mauto 3.
     + intros.
-      assert {{ Γ ⊢w Id : Γ }} by mauto 3.
-      assert {{ Γ ⊢ IT ® IP }}.
-      {
-        assert {{ Γ ⊢ IT[Id] ® IP }} by mauto 3.
-        simpl in *.
-        autorewrite with mctt in *; mauto 3.
-      }
-      assert {{ Γ ⊢ IT' ® IP }}.
-      {
-        assert {{ Γ ⊢ IT'[Id] ® IP }} by mauto 3.
-        simpl in *.
-        autorewrite with mctt in *; mauto 3.
-      }
-      assert {{ Δ ⊢ IT'[σ] ≈ IT[σ] : Type@i }} by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
-      assert {{ Δ ⊢ N : IT'[σ] ® n ∈ IEl }} by (simpl; bulky_rewrite1; eassumption).
-      assert (exists mn : domain, {{ $| m & n |↘ mn }} /\ {{Δ ⊢ M[σ] N : OT'[σ,,N] ® mn ∈ OEl n equiv_n }}) by mauto 3.
+      assert {{ Γ ⊢ IT ® IP }} by (rewrite <- (exp_wk_id IT); mauto 4).
+      assert {{ Γ ⊢ IT' ® IP }} by (rewrite <- (exp_wk_id IT'); mauto 4).
+      assert {{ Δ ⊢ IT'⟨φ⟩ ≈ IT⟨φ⟩ : Type@i }} by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
+      assert {{ Δ ⊢ N : IT'⟨φ⟩ ® n ∈ IEl }} by (simpl; bulky_rewrite1; eassumption).
+      assert (exists mn : domain, {{ $| m & n |↘ mn }} /\ {{Δ ⊢ M⟨φ⟩ N : OT'[^(ι φ),,N] ® mn ∈ OEl n equiv_n }}) by mauto 3.
       destruct_conjs.
       eexists; split; mauto 3.
       match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -538,9 +518,9 @@ Proof.
       end.
       assert {{ DG b ∈ glu_univ_elem i ↘ OP n equiv_n ↘ OEl n equiv_n }} by mauto 3.
       assert {{ DG b' ∈ glu_univ_elem i ↘ OP' n equiv_n ↘ OEl' n equiv_n }} by mauto 3.
-      assert {{ Δ ⊢ OT'[σ,,N] ® OP n equiv_n }} by (eapply glu_univ_elem_trm_typ; mauto 3).
+      assert {{ Δ ⊢ OT'[^(ι φ),,N] ® OP n equiv_n }} by (eapply glu_univ_elem_trm_typ; mauto 3).
       assert {{ Sub b <: b' at i }} by mauto 3.
-      assert {{ Δ ⊢ OT'[σ,,N] ⊆ OT[σ,,N] }} by mauto 3.
+      assert {{ Δ ⊢ OT'[^(ι φ),,N] ⊆ OT[^(ι φ),,N] }} by mauto 3.
       intuition.
 Qed.
 
@@ -673,28 +653,24 @@ Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 
 (** *** Lemmas for [glu_ctx_env] *)
 
-Lemma glu_ctx_env_sub_resp_ctx_eq : forall {Γ Sb},
+(** Context *equality* is not a judgment of this presentation, so this is the
+    refinement form: it goes one way, and [ctxsub_sub] does the transport of the
+    substitution itself. *)
+Lemma glu_ctx_env_sub_resp_ctxsub : forall {Γ Sb},
     {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
     forall {Δ Δ' σ ρ},
       {{ Δ ⊢s σ ® ρ ∈ Sb }} ->
-      {{ ⊢ Δ ≈ Δ' }} ->
+      {{ ⊢ Δ' ⊆ Δ }} ->
       {{ Δ' ⊢s σ ® ρ ∈ Sb }}.
 Proof.
-  induction 1; intros * HSb Hctxeq;
+  induction 1; intros * HSb Hctxsub;
     apply_predicate_equivalence;
     simpl in *;
     mauto 4.
 
   destruct_by_head cons_glu_sub_pred.
   econstructor; mauto 4.
-  rewrite <- Hctxeq; eassumption.
-Qed.
-
-Add Parametric Morphism Sb Γ (H : glu_ctx_env Sb Γ) : Sb
-    with signature wf_ctx_eq ==> eq ==> eq ==> iff as glu_ctx_env_sub_morphism_iff1.
-Proof.
-  intros.
-  split; intros; eapply glu_ctx_env_sub_resp_ctx_eq; mauto.
+  eapply glu_univ_elem_trm_resp_ctxsub; eassumption.
 Qed.
 
 Lemma glu_ctx_env_sub_resp_sub_eq : forall {Γ Sb},
@@ -712,16 +688,19 @@ Proof.
   
   destruct_by_head cons_glu_sub_pred.
   econstructor; mauto 4.
-  assert {{ Γ, A ⊢s Wk : Γ }} by mauto 3.
-  assert {{ Δ ⊢ A[Wk][σ] ≈ A[Wk][σ'] : Type@i }} as <- by mauto 3.
-  assert {{ Δ ⊢ #0[σ] ≈ #0[σ'] : A[Wk][σ] }} as <- by mauto 3.
+  (** The tail: [Wk] postcomposed with either side, by the induction hypothesis. *)
+  2: eapply IHglu_ctx_env; [ eassumption | eapply wf_sub_eq_compose_right; [ eapply wf_sub_shift; mauto 3 | eassumption ] ].
+  assert {{ ⊢ Γ, A }} by mauto 3.
+  assert {{ Γ, A ⊢ A⟨↑⟩ : Type@i }} by (eapply wk_preserves_typ; mauto 3).
+  assert {{ Δ ⊢ A⟨↑⟩[σ] ≈ A⟨↑⟩[σ'] : Type@i }} as <- by mauto 3.
+  assert {{ Δ ⊢ #0[σ] ≈ #0[σ'] : A⟨↑⟩[σ] }} as <- by mauto 3.
   eassumption.
 Qed.
 
 Add Parametric Morphism Sb Γ (H : glu_ctx_env Sb Γ) Δ : (Sb Δ)
     with signature wf_sub_eq Δ Γ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
 Proof.
-  split; intros; eapply glu_ctx_env_sub_resp_sub_eq; mauto.
+  split; intros; eapply glu_ctx_env_sub_resp_sub_eq; mauto 2 using wf_sub_eq_sym.
 Qed.
 
 Lemma cons_glu_sub_pred_resp_wf_sub_eq : forall {i Γ A Sb Δ σ σ' ρ},
@@ -734,19 +713,22 @@ Proof.
   intros * Hglu HA Heq Hσ.
   dependent destruction Hσ.
   gen_presup Heq.
-  assert {{ Δ ⊢s Wk∘σ : Γ }} by mauto 3.
-  assert {{ Δ ⊢s Wk∘σ' : Γ }} by mauto 3.
-  assert {{ Δ ⊢s Wk∘σ ≈ Wk∘σ' : Γ }} by mauto 3.
+  assert {{ ⊢ Γ, A }} by mauto 3.
+  assert {{ Γ, A ⊢s Wk : Γ }} by mauto 3.
+  assert {{ Γ, A ⊢ A⟨↑⟩ : Type@i }} by (eapply wk_preserves_typ; mauto 3).
+  assert {{ Δ ⊢s Wk ⨟ σ : Γ }} by mauto 3.
+  assert {{ Δ ⊢s Wk ⨟ σ' : Γ }} by mauto 3.
+  assert {{ Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ }} by mauto 3.
   econstructor; mauto 3.
-  - assert {{ Δ ⊢ A[Wk][σ] ≈ A[Wk][σ'] : Type@i }} as <- by mauto 4.
-    assert {{ Δ ⊢ #0[σ] ≈ #0[σ'] : A[Wk][σ] }} as <-; mauto 3.
-  - assert {{ Δ ⊢s Wk∘σ ≈ Wk∘σ' : Γ }} as <-; eassumption.
+  - assert {{ Δ ⊢ A⟨↑⟩[σ] ≈ A⟨↑⟩[σ'] : Type@i }} as <- by mauto 4.
+    assert {{ Δ ⊢ #0[σ] ≈ #0[σ'] : A⟨↑⟩[σ] }} as <-; mauto 3.
+  - assert {{ Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ }} as <-; eassumption.
 Qed.
 
 Add Parametric Morphism i Γ A Sb Δ (Hglu : {{ EG Γ ∈ glu_ctx_env ↘ Sb }}) (HA : {{ Γ ⊢ A : Type@i }}) : (cons_glu_sub_pred i Γ A Sb Δ)
     with signature wf_sub_eq Δ {{{ Γ, A }}} ==> eq ==> iff as cons_glu_sub_pred_morphism_iff.
 Proof.
-  split; mauto using cons_glu_sub_pred_resp_wf_sub_eq.
+  split; mauto using cons_glu_sub_pred_resp_wf_sub_eq, wf_sub_eq_sym.
 Qed.
 
 Lemma glu_ctx_env_per_env : forall {Γ Sb env_rel Δ σ ρ},
@@ -800,62 +782,39 @@ Lemma glu_ctx_env_per_ctx_env : forall {Γ Sb},
     exists env_rel, {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }}.
 Proof.
   intros.
-  enough {{ ⊨ Γ }} by eassumption.
-  mauto using completeness_fundamental_ctx.
+  eapply sem_ctx_per_ctx_env, completeness_fundamental_ctx; mauto 2.
 Qed.
 
 #[export]
 Hint Resolve glu_ctx_env_per_ctx_env : mctt.
 
-Lemma glu_ctx_env_resp_per_ctx_helper : forall {Γ Γ' Sb Sb'},
+(** Syntactic context equality is not a judgment here, so this is stated at a
+    single context — which is all [functional_glu_ctx_env] needs.  The two
+    derivations may still ascribe different universe levels to the same type,
+    which is what the cumulativity step at the end is for. *)
+Lemma glu_ctx_env_resp_per_ctx_helper : forall {Γ Sb Sb'},
     {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
-    {{ EG Γ' ∈ glu_ctx_env ↘ Sb' }} ->
-    {{ ⊢ Γ ≈ Γ' }} ->
+    {{ EG Γ ∈ glu_ctx_env ↘ Sb' }} ->
     (Sb -∙> Sb').
 Proof.
-  intros * Hglu Hglu' HΓΓ'.
-  gen Sb' Γ'.
+  intros * Hglu Hglu'.
+  gen Sb'.
   induction Hglu; intros;
-    destruct (completeness_fundamental_ctx_eq _ _ HΓΓ') as [env_relΓ Hper];
-    apply_predicate_equivalence;
-    handle_per_univ_elem_irrel;
     dependent destruction Hglu';
     apply_predicate_equivalence;
-    invert_per_ctx_env Hper;
-    handle_per_ctx_env_irrel;
     try firstorder.
 
   rename i0 into j.
-  rename Γ0 into Γ'.
-  rename A0 into A'.
   rename TSb0 into TSb'.
-  rename i1 into k.
-  inversion HΓΓ' as [|? ? l]; subst.
   assert (TSb -∙> TSb') by intuition.
-  intros Δ σ ρ [].
-  saturate_refl_for per_ctx_env.
-  assert {{ Dom ρ0 ↯ ≈ ρ0 ↯ ∈ tail_rel }}
-    by (eapply glu_ctx_env_per_env; [| | eassumption]; eassumption).
-  assert {{ Δ0 ⊢s Wk∘σ0 ® ρ0 ↯ ∈ TSb' }} by intuition.
-  assert (glu_rel_typ_with_sub j Δ0 A' {{{ Wk∘σ0 }}} d{{{ ρ0 ↯ }}}) as [] by mauto 3.
+  intros Δ' σ' ρ' [].
+  assert {{ Δ ⊢s Wk ⨟ σ ® ρ ↯ ∈ TSb' }} by intuition.
+  assert (glu_rel_typ_with_sub j Δ A {{{ Wk ⨟ σ }}} d{{{ ρ ↯ }}}) as [] by mauto 3.
   destruct_rel_typ.
   handle_functional_glu_univ_elem.
-  rename a0 into a'.
-  rename El0 into El'.
-  rename P0 into P'.
   econstructor; mauto 4.
-  assert (exists Pmax Elmax, {{ DG a ∈ glu_univ_elem (max i l) ↘ Pmax ↘ Elmax }}) as [Pmax [Elmax]]
-      by mauto using glu_univ_elem_cumu_max_left.
-  assert (i <= max i l) by lia.
-  assert {{ Δ0 ⊢ #0[σ0] : A'[Wk][σ0] ® ^(ρ0 0) ∈ Elmax }}.
-  {
-    assert {{ Γ, A ⊢s Wk : Γ }} by mauto 3.
-    assert {{ Δ0 ⊢ A[Wk][σ0] ≈ A'[Wk][σ0] : Type@l }} by mauto 3.
-    assert {{ Δ0 ⊢ A[Wk][σ0] ≈ A'[Wk][σ0] : Type@(max i l) }} as <- by mauto 2 using lift_exp_eq_max_right.
-    eapply glu_univ_elem_exp_cumu_ge; mauto 3.
-  }
-  eapply glu_univ_elem_exp_conv; [eexists | | | |]; intuition.
-  autorewrite with mctt.
+  eapply (@glu_univ_elem_exp_conv i j i a a P P0 El El0); [ mauto 3 | eassumption | eassumption | eassumption | ].
+  rewrite exp_sub_shift.
   eassumption.
 Qed.
 
@@ -864,9 +823,7 @@ Corollary functional_glu_ctx_env : forall {Γ Sb Sb'},
     {{ EG Γ ∈ glu_ctx_env ↘ Sb' }} ->
     (Sb <∙> Sb').
 Proof.
-  intros.
-  assert {{ ⊢ Γ ≈ Γ }} by mauto using glu_ctx_env_wf_ctx.
-  split; eapply glu_ctx_env_resp_per_ctx_helper; eassumption.
+  intros; split; eapply glu_ctx_env_resp_per_ctx_helper; eassumption.
 Qed.
 
 Ltac apply_functional_glu_ctx_env1 :=
@@ -906,7 +863,9 @@ Proof.
   simpl in *.
   match_by_head glu_ctx_env progressive_invert.
   apply_functional_glu_ctx_env.
-  eexists; intuition.
+  (** [i] has to be given: the cumulativity hints let [intuition] pick any
+      larger level for the type, which then no longer matches [TSb]'s. *)
+  exists i; intuition.
   assert (Sb <∙> cons_glu_sub_pred i Γ A TSb0) as -> by eassumption.
   intros Δ σ ρ.
   split; intros [];
@@ -933,55 +892,58 @@ Proof.
     handle_functional_glu_ctx_env;
     eauto.
 
-  rename Δ into Γ'.
+  (** [Δ] is the refining context and [A'] its type; [Γ] and [A] are the ones
+      being refined. *)
   rename i0 into j.
   rename i1 into k.
   rename TSb0 into TSb'.
   destruct_by_head cons_glu_sub_pred.
-  assert (glu_rel_typ_with_sub k Δ A' {{{ Wk∘σ }}} d{{{ ρ ↯ }}}) as [] by intuition.
+  assert (glu_rel_typ_with_sub k Δ0 A {{{ Wk ⨟ σ }}} d{{{ ρ ↯ }}}) as [] by intuition.
   rename a0 into a'.
   rename P0 into P'.
   rename El0 into El'.
-  assert (exists tail_rel, {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ tail_rel }}) as [tail_rel] by mauto 3 using glu_ctx_env_per_ctx_env.
+  assert (exists tail_rel, {{ EF Δ ≈ Δ ∈ per_ctx_env ↘ tail_rel }}) as [tail_rel] by mauto 3 using glu_ctx_env_per_ctx_env.
   assert {{ Dom ρ ↯ ≈ ρ ↯ ∈ tail_rel }} by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  assert {{ ⊢ Γ, A ⊆ Γ', A' }} by mauto 3.
+  assert {{ ⊢ Δ, A' ⊆ Γ, A }} by mauto 3.
   econstructor; mauto; intuition.
-  assert {{ Γ ⊨ A ⊆ A' }} as [] by mauto 3 using completeness_fundamental_subtyp.
-  destruct_conjs.
+  1: eapply ctxsub_sub_cod; mauto 3.
+  assert {{ Δ ⊨ A' ⊆ A }} as HAA' by mauto 3 using completeness_fundamental_subtyp.
+  destruct (subtyp_under_ctx_simple HAA') as [env_relΔ [? [l Hsub]]].
   handle_per_ctx_env_irrel.
   (on_all_hyp_rev: destruct_rel_by_assumption tail_rel).
-  destruct_by_head rel_exp.
-  handle_functional_glu_ctx_env.
-  eapply glu_univ_elem_per_subtyp_trm_conv; mauto 3.
-  autorewrite with mctt.
-  eassumption.
+  destruct_conjs.
+  functional_eval_rewrite_clear.
+  eapply glu_univ_elem_per_subtyp_trm_conv;
+    [ eassumption | eassumption | eassumption | rewrite exp_sub_shift; eassumption | eassumption ].
 Qed.
 
+(** Postcomposition by a Kripke weakening, [sb_wk] — the same operation Lemma
+    6.39 uses on the semantic side.  The head clause is now a [rewrite] away from
+    [glu_univ_elem_exp_monotone], since [M[σ]⟨φ⟩] and [M[^(sb_wk σ φ)]] are the
+    same expression ([exp_wk_sub]).  Only the tail needs a judgmental step: the
+    rearrangement it wants is a [sb_eq], which no gluing predicate respects. *)
 Lemma glu_ctx_env_sub_monotone : forall Γ Sb,
     {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
-    forall Δ' σ Δ τ ρ,
+    forall Δ' φ Δ τ ρ,
       {{ Δ ⊢s τ ® ρ ∈ Sb }} ->
-      {{ Δ' ⊢w σ : Δ }} ->
-      {{ Δ' ⊢s τ ∘ σ ® ρ ∈ Sb }}.
+      {{ Δ' ⊢k φ : Δ }} ->
+      {{ Δ' ⊢s ^(sb_wk τ φ) ® ρ ∈ Sb }}.
 Proof.
-  induction 1; intros * HSb Hσ;
+  induction 1; intros * HSb Hφ;
     apply_predicate_equivalence;
     simpl in *;
-    mauto 3.
+    saturate_kripke_escape.
+  1: (rewrite sb_wk_compose; mauto 3).
 
   destruct_by_head cons_glu_sub_pred.
   econstructor; mauto 3.
-  - assert {{ Δ' ⊢ #0[σ0][σ] : A[Wk][σ0][σ] ® ^(ρ 0) ∈ El }} by (eapply glu_univ_elem_exp_monotone; mauto 3).
-    assert {{ Γ, A ⊢ #0 : A[Wk] }} by mauto 3.
-    assert {{ Γ, A ⊢s Wk : Γ }} by mauto 3.
-    assert {{ Δ' ⊢ #0[σ0∘σ] ≈ #0[σ0][σ] : A[Wk][σ0∘σ] }} as -> by mauto 3.
-    assert {{ Δ' ⊢s σ : Δ }} by mauto 3.
-    assert {{ Δ' ⊢ A[Wk][σ0][σ] ≈ A[Wk][σ0∘σ] : Type@i }} as <- by mauto 3.
-    eassumption.
-  - assert {{ Δ' ⊢s σ : Δ }} by mauto 3.
-    assert {{ Γ, A ⊢s Wk : Γ }} by mauto 3.
-    assert {{ Δ' ⊢s (Wk ∘ σ0) ∘ σ ≈ Wk ∘ (σ0 ∘ σ) : Γ }} as <- by mauto 3.
-    mauto 3.
+  1: (rewrite sb_wk_compose; mauto 3).
+  - rewrite <- !exp_wk_sub.
+    eapply glu_univ_elem_exp_monotone; eassumption.
+  - assert {{ Δ' ⊢s ^(sb_wk {{{ Wk ⨟ σ }}} φ) ® ρ ↯ ∈ TSb }} by mauto 3.
+    assert {{ Δ' ⊢s ^(sb_wk {{{ Wk ⨟ σ }}} φ) : Γ }} by (rewrite sb_wk_compose; mauto 3).
+    eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | eassumption | ].
+    eapply wf_sub_eq_of_sb_eq; [ eassumption | apply sb_wk_shift_pre ].
 Qed.
 
 Lemma cons_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a i P El M c},
@@ -997,10 +959,10 @@ Proof.
   assert {{ Δ ⊢s σ : Γ }} by mauto 2.
   assert {{ Δ ⊢ M : A[σ] }} by mauto 2 using glu_univ_elem_trm_escape.
   assert {{ Δ ⊢s σ,,M : Γ, A }} by mauto 2.
-  econstructor; mauto 3;
-    autorewrite with mctt; mauto 3.
-
-  assert {{ Δ ⊢ #0[σ,,M] ≈ M : A[σ] }} as ->; mauto 2.
+  (** [#0[σ,,M]] is [M] and [Wk ⨟ (σ,,M)] is [σ], both by computation; only
+      [A⟨↑⟩[σ,,M]] needs a rewrite. *)
+  econstructor; mauto 3.
+  rewrite exp_sub_shift_extend; eassumption.
 Qed.
 
 #[export]
@@ -1021,21 +983,12 @@ Proof.
   assert (glu_rel_typ_with_sub i Γ A {{{ Id }}} ρ) as [] by mauto.
   functional_eval_rewrite_clear.
   econstructor; mauto.
-  - match goal with
-    | H: P Γ {{{ A[Id] }}} |- _ =>
-        bulky_rewrite_in H
-    end.
-    eapply realize_glu_elem_bot; mauto.
-    assert {{ ⊢ Γ }} by mauto 3.
-    assert {{ Γ, A ⊢s Wk : Γ }} by mauto 4.
-    assert {{ Γ, A ⊢ A[Wk] : Type@i }} by mauto 4.
-    assert {{ Γ, A ⊢ A[Wk] ≈ A[Wk][Id] : Type@i }} as <- by mauto 3.
-    assert {{ Γ, A ⊢ #0 ≈ #0[Id] : A[Wk] }} as <- by mauto.
-    eapply var_glu_elem_bot; mauto.
-  - assert {{ Γ, A ⊢s Wk : Γ }} by mauto 4.
-    assert {{ Γ, A ⊢s Wk∘Id : Γ }} by mauto 4.
-    assert {{ Γ, A ⊢s Id∘Wk ≈ Wk∘Id : Γ }} as <- by (transitivity {{{ Wk }}}; mauto 3).
-    eapply glu_ctx_env_sub_monotone; mauto 4.
+  (** The head is [var0_glu_elem] once the identity substitutions are gone. *)
+  1: (rewrite !exp_sub_id in H5 |- *; eapply var0_glu_elem; eassumption).
+  (** The tail is the induction hypothesis pushed along [↑]: [Wk ⨟ Id] and
+      [sb_wk Id ↑] both send [x] to [#(S x)], so [eapply] converts them. *)
+  assert {{ ⊢ Γ, A }} by mauto 3.
+  eapply (glu_ctx_env_sub_monotone _ _ H {{{ Γ, A }}} wk_shift Γ {{{ Id }}} ρ); mauto 3.
 Qed.
 
 (** *** Tactics for [glu_rel_*] *)
@@ -1054,15 +1007,6 @@ Ltac destruct_glu_rel_exp_with_sub :=
   repeat
     match goal with
     | H : (forall Δ σ ρ, {{ Δ ⊢s σ ® ρ ∈ ?sub_glu_rel }} -> glu_rel_exp_with_sub _ _ _ _ _ _) |- _ =>
-        destruct_glu_rel_by_assumption sub_glu_rel H; mark H
-    | H : glu_rel_exp_with_sub _ _ _ _ _ _ |- _ =>
-        dependent destruction H
-    end;
-  unmark_all.
-Ltac destruct_glu_rel_sub_with_sub :=
-  repeat
-    match goal with
-    | H : (forall Δ σ ρ, {{ Δ ⊢s σ ® ρ ∈ ?sub_glu_rel }} -> glu_rel_sub_with_sub _ _ _ _ _) |- _ =>
         destruct_glu_rel_by_assumption sub_glu_rel H; mark H
     | H : glu_rel_exp_with_sub _ _ _ _ _ _ |- _ =>
         dependent destruction H
@@ -1141,83 +1085,9 @@ Proof.
   functional_initial_env_rewrite_clear.
   assert {{ Γ ⊢s Id ® ρ ∈ Sb }} by (eapply initial_env_glu_rel_exp; mauto 3).
   destruct_glu_rel_exp_with_sub.
-  enough {{ Γ ⊢ M[Id] : A[Id] }} as HId; mauto 3 using glu_univ_elem_trm_escape.
+  assert {{ Γ ⊢ M[Id] : A[Id] }} as HId by mauto 3 using glu_univ_elem_trm_escape.
+  rewrite !exp_sub_id in HId; eassumption.
 Qed.
 
 #[export]
 Hint Resolve glu_rel_exp_to_wf_exp : mctt.
-
-(** *** Lemmas about [glu_rel_sub] *)
-
-Lemma glu_rel_sub_clean_inversion1 : forall {Γ Sb τ Γ'},
-    {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
-    {{ Γ ⊩s τ : Γ' }} ->
-    exists Sb' : glu_sub_pred,
-      glu_ctx_env Sb' Γ' /\ (forall (Δ : ctx) (σ : sub) (ρ : env), Sb Δ σ ρ -> glu_rel_sub_with_sub Δ τ Sb' σ ρ).
-Proof.
-  intros * ? [? []].
-  destruct_conjs.
-  handle_functional_glu_ctx_env.
-  eexists; split; mauto 3.
-  intros.
-  rewrite_predicate_equivalence_right.
-  mauto 3.
-Qed.
-
-Lemma glu_rel_sub_clean_inversion2 : forall {Γ τ Γ' Sb'},
-    {{ EG Γ' ∈ glu_ctx_env ↘ Sb' }} ->
-    {{ Γ ⊩s τ : Γ' }} ->
-    exists Sb : glu_sub_pred,
-      glu_ctx_env Sb Γ /\ (forall (Δ : ctx) (σ : sub) (ρ : env), Sb Δ σ ρ -> glu_rel_sub_with_sub Δ τ Sb' σ ρ).
-Proof.
-  intros * ? [? [Sb'0]].
-  destruct_conjs.
-  handle_functional_glu_ctx_env.
-  eexists; split; mauto 3.
-  intros.
-  assert (glu_rel_sub_with_sub Δ τ Sb'0 σ ρ) as [] by mauto 3.
-  econstructor; mauto 3.
-  rewrite_predicate_equivalence_right.
-  mauto 3.
-Qed.
-
-Lemma glu_rel_sub_clean_inversion3 : forall {Γ Sb τ Γ' Sb'},
-    {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
-    {{ EG Γ' ∈ glu_ctx_env ↘ Sb' }} ->
-    {{ Γ ⊩s τ : Γ' }} ->
-    forall (Δ : ctx) (σ : sub) (ρ : env), Sb Δ σ ρ -> glu_rel_sub_with_sub Δ τ Sb' σ ρ.
-Proof.
-  intros * ? ? Hglu.
-  eapply glu_rel_sub_clean_inversion2 in Hglu; [| eassumption].
-  destruct_conjs.
-  handle_functional_glu_ctx_env.
-  intros.
-  rewrite_predicate_equivalence_right.
-  mauto 3.
-Qed.
-
-Ltac invert_glu_rel_sub H :=
-  (unshelve eapply (glu_rel_sub_clean_inversion3 _ _) in H; shelve_unifiable; [eassumption | eassumption |])
-  + (unshelve eapply (glu_rel_sub_clean_inversion2 _) in H; shelve_unifiable; [eassumption |];
-     destruct H as [? []])
-  + (unshelve eapply (glu_rel_sub_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
-     destruct H as [? []])
-  + (inversion H; subst).
-
-Lemma glu_rel_sub_wf_sub : forall {Γ σ Δ},
-    {{ Γ ⊩s σ : Δ }} ->
-    {{ Γ ⊢s σ : Δ }}.
-Proof.
-  intros * [SbΓ [SbΔ]].
-  destruct_conjs.
-  assert (exists env_relΓ, {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }}) as [env_relΓ] by mauto 3.
-  assert (exists ρ ρ', initial_env Γ ρ /\ initial_env Γ ρ' /\ {{ Dom ρ ≈ ρ' ∈ env_relΓ }}) as [ρ] by mauto 3 using per_ctx_then_per_env_initial_env.
-  destruct_conjs.
-  functional_initial_env_rewrite_clear.
-  assert {{ Γ ⊢s Id ® ρ ∈ SbΓ }} by (eapply initial_env_glu_rel_exp; mauto 3).
-  destruct_glu_rel_sub_with_sub.
-  mauto 3.
-Qed.
-
-#[export]
-Hint Resolve glu_rel_sub_wf_sub : mctt.
