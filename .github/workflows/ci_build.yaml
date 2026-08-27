@@ -81,12 +81,14 @@ jobs:
             startGroup "Build HTMLs for GitHub pages"
               if [[ "${{ env.DOC_DEPLOY }}" == 'true' ]]; then
                 make coqdoc
-                DOC_BASE="${{ env.DOC_DEPLOY_DEST }}" make depgraphdoc
+                make depgraphdoc
                 mv theories/html html
                 mv theories/dep.html html/dep.html
                 cp assets/styling.css html/styling.css
                 cp -r assets/images html/images
-                sed -i 's!\[Coqdoc\](https://beluga-lang\.github\.io/McTT/dep\.html)![Coqdoc](dep.html)!' README.md
+                # The link has to be absolute for the README as GitHub renders
+                # it, but relative once the README *is* the deployed index.
+                sed -i 's!\[Coqdoc\](https://[A-Za-z0-9.-]*\.github\.io/McTT/dep\.html)![Coqdoc](dep.html)!' README.md
                 pandoc README.md -H assets/include.html --no-highlight --metadata pagetitle='McTT: Building A Correct-By-Construction Proof Checkers For Type Theories' -t html --css styling.css -o html/index.html
               fi
             endGroup

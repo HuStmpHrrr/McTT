@@ -9,9 +9,9 @@
          "Jason Hu"
          "Junyoung Jang")
 (maintainers "the CompLogic group, McGill University")
-(homepage "https://beluga-lang.github.io/McTT/")
-(documentation "https://beluga-lang.github.io/McTT/")
-(source (github Beluga-lang/McTT))
+(homepage "https://hustmphrrr.github.io/McTT/")
+(documentation "https://hustmphrrr.github.io/McTT/")
+(source (github HuStmpHrrr/McTT))
 
 (package
  (name mctt)
