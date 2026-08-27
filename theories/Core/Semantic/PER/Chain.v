@@ -25,7 +25,7 @@
     - [rel_chain_pairwise] — consecutive relatedness in a PER is relatedness of
       every pair, in either direction.  So any pair of members may be read off,
       and a chain may be reordered, reversed, thinned or padded
-      ([rel_chain_incl]).
+      ([rel_chain_incl]), so long as two members remain.
     - [rel_chain_merge] — two chains sharing a value join into one.
 
     Neither holds for a general relation, and together they are all the
@@ -63,35 +63,47 @@ Ltac solve_incl :=
 Section RelChain.
   Context {A : Type} (R : relation A).
 
-  (** [{a₁, …, aₙ} ⊆ R] as a predicate on [[a₁; …; aₙ]].  Lists of fewer than two
-      elements carry no obligation; the two-element case is exactly [R a b], with
-      no residual [True] to step over. *)
+  (** [{a₁, …, aₙ} ⊆ R] as a predicate on [[a₁; …; aₙ]].  A chain has at least
+      two members: the degenerate lists are [False], not [True], so that a chain
+      hypothesis carries its own length bound and every lemma consuming one can
+      be stated at a plain [l] rather than at a [_ :: _ :: _] pattern.  The
+      two-element case is exactly [R a b], with no residual [True] to step
+      over. *)
   Fixpoint rel_chain (l : list A) : Prop :=
     match l with
-    | [] | [_] => True
+    | [] | [_] => False
     | [a; b] => R a b
     | a :: (b :: _) as l' => R a b /\ rel_chain l'
     end.
 
+  (** The length bound, extracted.  This is what lets the statements below be
+      uniform in [l], and it needs nothing of [R]. *)
+  Lemma rel_chain_shape : forall l,
+      rel_chain l ->
+      exists a b l', l = a :: b :: l'.
+  Proof.
+    intros [| a [| b l]] H; [ destruct H | destruct H | exists a, b, l; reflexivity ].
+  Qed.
+
   (** Anything relating all pairs of members relates the consecutive ones, so
       this is the introduction principle for a chain of any length.  It needs no
-      assumption on [R]; it is [rel_chain_pairwise], its converse, that does. *)
-  Lemma rel_chain_intro : forall l,
-      (forall x y, In x l -> In y l -> R x y) ->
-      rel_chain l.
+      assumption on [R]; it is [rel_chain_pairwise], its converse, that does.
+      Two members are named because the conclusion is what asserts they are
+      there. *)
+  Lemma rel_chain_intro : forall a b l,
+      (forall x y, In x (a :: b :: l) -> In y (a :: b :: l) -> R x y) ->
+      rel_chain (a :: b :: l).
   Proof.
-    induction l as [| a l IH]; [ intros; exact I |].
-    intros H.
-    destruct l as [| b l]; [ exact I |].
-    assert (rel_chain (b :: l)) as Hbl by (apply IH; intros; apply H; simpl; auto).
-    destruct l as [| c l].
-    - apply H; simpl; auto.
-    - split; [ apply H; simpl; auto | exact Hbl ].
+    intros a b l; revert a b.
+    induction l as [| c l IH]; intros * H; [ apply H; simpl; auto |].
+    split; [ apply H; simpl; auto |].
+    apply IH; intros; apply H; simpl; auto.
   Qed.
 
   (** Prefixing a chain with one more related value.  Needs nothing of [R]
       either: it is the [cons] of the [Fixpoint], modulo the collapsed
-      two-element case. *)
+      two-element case.  A chain is started by [rel_chain_of_pair], not by
+      consing onto a singleton. *)
   Lemma rel_chain_cons : forall a b l,
       R a b ->
       rel_chain (b :: l) ->
@@ -128,14 +140,15 @@ Section RelChain.
       etransitivity; [ eassumption | eapply IH; eassumption ].
   Qed.
 
-  (** Two members are enough for reflexivity at every member; with only one there
-      is nothing to be symmetric and transitive against. *)
-  Lemma rel_chain_refl : forall a b l x,
-      rel_chain (a :: b :: l) ->
-      In x (a :: b :: l) ->
+  (** Reflexivity at every member, against the second member the chain is
+      guaranteed to have. *)
+  Lemma rel_chain_refl : forall l x,
+      rel_chain l ->
+      In x l ->
       R x x.
   Proof.
     intros * Hchain Hin.
+    destruct (rel_chain_shape _ Hchain) as [a [b [l' ->]]].
     assert (R a b) by (eapply rel_chain_head; [ eassumption | simpl; auto ]).
     destruct Hin as [<- | Hin].
     - etransitivity; [ eassumption | symmetry; eassumption ].
@@ -148,13 +161,14 @@ Section RelChain.
       Consecutive relatedness in a PER is relatedness of every pair.  Both go
       through the head: [R x a] by symmetry on [rel_chain_head] and [R a y] by
       [rel_chain_head] again. *)
-  Lemma rel_chain_pairwise : forall a b l x y,
-      rel_chain (a :: b :: l) ->
-      In x (a :: b :: l) ->
-      In y (a :: b :: l) ->
+  Lemma rel_chain_pairwise : forall l x y,
+      rel_chain l ->
+      In x l ->
+      In y l ->
       R x y.
   Proof.
     intros * Hchain Hx Hy.
+    destruct (rel_chain_shape _ Hchain) as [a [b [l' ->]]].
     assert (R x a).
     { destruct Hx as [<- | Hin].
       - eapply rel_chain_refl; [ eassumption | simpl; auto ].
@@ -167,11 +181,12 @@ Section RelChain.
   Qed.
 
   (** A list drawn from the members of a chain is a chain: order, repetition and
-      omission are all immaterial. *)
-  Corollary rel_chain_incl : forall a b l L,
-      rel_chain (a :: b :: l) ->
-      (forall x, In x L -> In x (a :: b :: l)) ->
-      rel_chain L.
+      omission are all immaterial, save that two members must remain — which is
+      why it is the *conclusion* that names them here. *)
+  Corollary rel_chain_incl : forall l a b L,
+      rel_chain l ->
+      (forall x, In x (a :: b :: L) -> In x l) ->
+      rel_chain (a :: b :: L).
   Proof.
     intros * ? ?.
     apply rel_chain_intro; intros.
@@ -183,26 +198,29 @@ Section RelChain.
       Two chains sharing a value are one chain.  The shared value is what carries
       relatedness across: every member of the one is related to it, and it to
       every member of the other. *)
-  Lemma rel_chain_merge : forall a b l a' b' l' c,
-      rel_chain (a :: b :: l) ->
-      rel_chain (a' :: b' :: l') ->
-      In c (a :: b :: l) ->
-      In c (a' :: b' :: l') ->
-      rel_chain ((a :: b :: l) ++ a' :: b' :: l').
+  Lemma rel_chain_merge : forall l l' c,
+      rel_chain l ->
+      rel_chain l' ->
+      In c l ->
+      In c l' ->
+      rel_chain (l ++ l').
   Proof.
-    intros * ? ? ? ?.
-    apply rel_chain_intro; intros * Hx Hy.
-    apply in_app_or in Hx.
-    apply in_app_or in Hy.
-    destruct Hx as [Hx | Hx], Hy as [Hy | Hy].
-    - eapply (rel_chain_pairwise a b l); eassumption.
+    intros * Hl Hl' ? ?.
+    destruct (rel_chain_shape _ Hl) as [a [b [t ->]]].
+    apply (rel_chain_intro a b (t ++ l')); intros x y Hx Hy.
+    assert (Hx' : In x ((a :: b :: t) ++ l')) by exact Hx.
+    assert (Hy' : In y ((a :: b :: t) ++ l')) by exact Hy.
+    apply in_app_or in Hx'.
+    apply in_app_or in Hy'.
+    destruct Hx' as [Hx' | Hx'], Hy' as [Hy' | Hy'].
+    - eapply (rel_chain_pairwise (a :: b :: t)); eassumption.
     - transitivity c;
-        [ eapply (rel_chain_pairwise a b l) | eapply (rel_chain_pairwise a' b' l') ];
+        [ eapply (rel_chain_pairwise (a :: b :: t)) | eapply (rel_chain_pairwise l') ];
         eassumption.
     - transitivity c;
-        [ eapply (rel_chain_pairwise a' b' l') | eapply (rel_chain_pairwise a b l) ];
+        [ eapply (rel_chain_pairwise l') | eapply (rel_chain_pairwise (a :: b :: t)) ];
         eassumption.
-    - eapply (rel_chain_pairwise a' b' l'); eassumption.
+    - eapply (rel_chain_pairwise l'); eassumption.
   Qed.
 
   (** ** The Four-Value Pattern
@@ -255,7 +273,7 @@ Section RelChain.
       rel_chain [v1; v1; v2; v2].
   Proof.
     intros * H.
-    eapply (rel_chain_incl v1 v2 []); [ exact H | solve_incl ].
+    eapply (rel_chain_incl [v1; v2]); [ exact H | solve_incl ].
   Qed.
 
   (** Reversal, which is the whole of the semantic symmetry lemma: the four
@@ -278,8 +296,8 @@ Lemma rel_chain_mono : forall {A} (R R' : relation A),
     forall l, rel_chain R l -> rel_chain R' l.
 Proof.
   intros * HR l.
-  induction l as [| a l IH]; [ trivial |].
-  destruct l as [| b l]; [ trivial |].
+  induction l as [| a l IH]; [ intros [] |].
+  destruct l as [| b l]; [ intros [] |].
   destruct l as [| c l]; simpl.
   - apply HR.
   - intros [? ?]; split; [ apply HR | apply IH ]; assumption.
@@ -295,8 +313,8 @@ Lemma rel_chain_map : forall {A B} (R : relation A) (R' : relation B) (f : A -> 
     forall l, rel_chain R l -> rel_chain R' (map f l).
 Proof.
   intros * Hf l.
-  induction l as [| a l IH]; [ trivial |].
-  destruct l as [| b l]; [ trivial |].
+  induction l as [| a l IH]; [ intros [] |].
+  destruct l as [| b l]; [ intros [] |].
   destruct l as [| c l]; simpl.
   - apply Hf.
   - intros [? ?]; split; [ apply Hf | apply IH ]; assumption.
@@ -327,7 +345,7 @@ Ltac solve_chain_PER := solve [ typeclasses eauto ].
 Ltac pairwise :=
   match goal with
   | H : rel_chain ?R _ |- ?R _ _ =>
-      eapply (rel_chain_pairwise R _ _ _ _ _ H); first [ solve_in | solve_chain_PER ]
+      eapply (rel_chain_pairwise R _ _ _ H); first [ solve_in | solve_chain_PER ]
   end.
 
 (** Closes a [rel_chain] goal all of whose members occur in one hypothesis; when
@@ -351,6 +369,6 @@ Ltac solve_rel_chain :=
 Ltac merge_rel_chain H1 H2 c :=
   eapply rel_chain_incl;
   [ solve_chain_PER
-  | eapply (rel_chain_merge _ _ _ _ _ _ _ c);
+  | eapply (rel_chain_merge _ _ _ c);
     [ exact H1 | exact H2 | solve_in | solve_in ]
   | solve_incl ].

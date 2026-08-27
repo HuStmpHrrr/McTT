@@ -581,14 +581,15 @@ Qed.
     Both moves are one irrelevance each, through the anchor's left value [x]: to
     the pair [(x, u)], which shares [x]; and thence to [(u, v)], which shares
     [u]. *)
-Lemma per_univ_chain_at_in : forall {i R a b l x y},
-    rel_chain (per_univ i) (a :: b :: l) ->
-    In x (a :: b :: l) ->
-    In y (a :: b :: l) ->
+Lemma per_univ_chain_at_in : forall {i R l x y},
+    rel_chain (per_univ i) l ->
+    In x l ->
+    In y l ->
     {{ DF x ≈ y ∈ per_univ_elem i ↘ R }} ->
-    rel_chain (per_univ_elem i R) (a :: b :: l).
+    rel_chain (per_univ_elem i R) l.
 Proof.
   intros * Hchain Hx Hy HR.
+  destruct (rel_chain_shape _ _ Hchain) as [a [b [l' ->]]].
   apply rel_chain_intro; intros u v Hu Hv.
   assert (Hxu : {{ Dom x ≈ u ∈ per_univ i }}) by pairwise.
   destruct Hxu as [Rxu HRxu].
@@ -1536,10 +1537,17 @@ Ltac solve_per_head :=
   handle_per_univ_elem_irrel;
   pairwise.
 
+(** The peel is driven by the goal's syntactic shape, not by [first]: since
+    [rel_chain R [x; y]] is *convertible* to [R x y], an unguarded
+    [apply rel_chain_of_pair] would also fire on a link goal, and an unguarded
+    [apply rel_chain_cons] would peel one step past the last link. *)
 Ltac solve_per_env_extend_chain :=
-  repeat apply rel_chain_cons;
-  first [ exact I
-        | apply per_env_extend_intro'; first [ pairwise | solve_per_head ] ].
+  repeat
+    match goal with
+    | |- rel_chain _ [_; _] => apply rel_chain_of_pair
+    | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
+    end;
+  apply per_env_extend_intro'; first [ pairwise | solve_per_head ].
 
 Lemma per_ctx_respects_length : forall {Γ Γ'},
     {{ Exp Γ ≈ Γ' ∈ per_ctx }} ->

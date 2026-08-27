@@ -362,7 +362,7 @@ the expensive part.** Two observations:
   `rel_exp_of_typ_inversion_wk`, …) and the algebra of semantic
   substitutions. That is a tactic-and-lemma-API problem, not a semantics
   problem. `Chain.v` itself, the entire mechanization of the four-value
-  pattern, is 214 lines. §6 takes this apart in detail.
+  pattern, is 222 lines. §6 takes this apart in detail.
 
 So: the answer to the question as asked is no. The useful reformulation is that
 the four-value relation should be attacked at the API level — better
@@ -689,7 +689,7 @@ without tactic support is.
 The paper's Agda STLC figures have the same two signs (completeness +4.0 %,
 soundness −23.3 %), so the direction is confirmed. What the MLTT mechanization
 adds is that the completeness penalty is not intrinsic in the proportion
-observed here: the semantics of the four-value pattern is 214 lines
+observed here: the semantics of the four-value pattern is 222 lines
 (`Chain.v`); the 1 153 extra lines are the price of eight binders that the
 layer's tactics were never taught about.
 
