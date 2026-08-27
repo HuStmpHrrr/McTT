@@ -1,0 +1,128 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.Weakening.Definitions</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab119"></a><h1 class="section">Kripke Weakenings</h1>
+
+
+<div class="paragraph"> </div>
+
+    The gluing model is stable only under a sub-class of the weakenings of
+    Section 2.2: those built from <span class="inlinecode">↑</span> alone, with
+    no lifting <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">φ</span> under a binder.  These are the *Kripke* weakenings, written
+    <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>.
+
+<div class="paragraph"> </div>
+
+    Two deviations from the rules a Kripke presentation would give, both
+    inherited from the shape the gluing proofs need:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> The rules recurse on the *codomain*, so the domain <span class="inlinecode"><span class="id" title="var">Γ</span></span> is a parameter.
+      Composition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_compose"><span class="id" title="lemma">kripke_compose</span></a></span>) is then an induction on the *outer*
+      weakening; recursing on the domain instead would ask for a strengthening
+      lemma in that case, which the system does not have.
+
+</li>
+<li> Both rules may coarsen their codomain by a refinement <span class="inlinecode">{{</span> <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Δ'</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">}}</span>,
+      so the judgment is closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_ctxsub"><span class="id" title="lemma">kripke_ctxsub</span></a></span> — which the subtyping
+      cases need.  The price is that <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> no longer implies
+      <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">w</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_wk_lookup"><span class="id" title="projection">wf_wk_lookup</span></a></span> demands a variable *lookup* in <span class="inlinecode"><span class="id" title="var">Γ</span></span> at the
+      very type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟨φ⟩</span>, and refinement only gives a subtype of it.  So the
+      escape lemma is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_escape"><span class="id" title="lemma">kripke_escape</span></a></span>, landing in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a></span> via <span class="inlinecode"><span class="id" title="var">ι</span></span>; it
+      transports judgments just as well.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+    The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a></span> premise is the slack the old explicit-substitution presentation
+    got from stating the rules up to <span class="inlinecode">≈</span>: it makes the judgment <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span>, so a
+    weakening may be presented in any form pointwise equal to the canonical one.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_shiftn"><span class="id" title="lemma">kripke_shiftn</span></a></span> recovers that canonical form, <span class="inlinecode">⇑^<span class="id" title="var">n</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Morphisms</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#"><span class="id" title="library">CtxSub</span></a> <a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#"><span class="id" title="library">SystemOpt</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Wk_Notations"><span class="id" title="module">Wk_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Generalizable All Variables</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Reserved Notation</span> &quot;Γ ⊢k φ : Δ" (<span class="id" title="tactic">in</span> <span class="id" title="var">custom</span> <span class="id" title="var">judg</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 80, <span class="id" title="var">Γ</span> <span class="id" title="var">custom</span> <span class="id" title="var">exp</span>, φ <span class="id" title="keyword">constr</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="var">Δ</span> <span class="id" title="var">custom</span> <span class="id" title="var">exp</span>).<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="wk_kripke" class="idref" href="#wk_kripke"><span class="id" title="definition, inductive"><span id="wk_kripke_ind" class="id"><span id="wk_kripke_sind" class="id">wk_kripke</span></span></span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk"><span class="id" title="definition">wk</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span> :=<br/>
+| <a id="kwk_id" class="idref" href="#kwk_id"><span class="id" title="constructor">kwk_id</span></a> :<br/>
+&nbsp;&nbsp;`( <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#673d04b47989f144cceb6edc0013aee2"><span class="id" title="notation">⊢</span></a> <a id="55485d85e29df2faa6748490a2d4cd13" class="idref" href="#55485d85e29df2faa6748490a2d4cd13"><span class="id" title="binder"><span id="9cfd66c80bf9988ea8f7104e167ac5cd" class="id">Γ</span></span></a> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#673d04b47989f144cceb6edc0013aee2"><span class="id" title="notation">⊆</span></a> <a id="d1f0e078f04502659f58b18dce315e18" class="idref" href="#d1f0e078f04502659f58b18dce315e18"><span class="id" title="binder"><span id="b678146ccad37efbf79e1ef5fce260c8" class="id">Δ</span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a> φ <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_id"><span class="id" title="definition">wk_id</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a id="de9bdb4e9c2be34cf9b5e2f20d66b06e" class="idref" href="#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="binder"><span id="d5be501d00a8c9c4c28302f544699b7d" class="id">Γ</span></span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">k</span></a> φ <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">:</span></a> <a id="1a5881e1d8737656995aacf6627cfe7e" class="idref" href="#1a5881e1d8737656995aacf6627cfe7e"><span class="id" title="binder"><span id="a29d424f5ef817538fc7e2b4f54773f7" class="id">Δ</span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> )<br/>
+| <a id="kwk_shift" class="idref" href="#kwk_shift"><span class="id" title="constructor">kwk_shift</span></a> :<br/>
+&nbsp;&nbsp;`( <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a id="6f77cad99d2eda9ef19109858c066b07" class="idref" href="#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="binder"><span id="918d7ebace48bcbe2bb5610a4828654d" class="id">Γ</span></span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">k</span></a> ψ <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">:</span></a> <a id="a3b36fa55bbd28976f5df3c703691d2e" class="idref" href="#a3b36fa55bbd28976f5df3c703691d2e"><span class="id" title="binder"><span id="14a54cf28ff703fa0f175a234c605ae8" class="id">Δ'</span></span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#e8f8a49e60dc035028caf3b77b02e957"><span class="id" title="notation">,</span></a> <a id="A:16" class="idref" href="#A:16"><span class="id" title="binder"><span id="A:17" class="id">A</span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#673d04b47989f144cceb6edc0013aee2"><span class="id" title="notation">⊢</span></a> <a id="e273140674fe544f680570970fb09272" class="idref" href="#e273140674fe544f680570970fb09272"><span class="id" title="binder"><span id="dfdc7c0fccc582701e176f26c6c6c97f" class="id">Δ'</span></span></a> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#673d04b47989f144cceb6edc0013aee2"><span class="id" title="notation">⊆</span></a> <a id="4a104519ce7b5ca94b65a53586957e9c" class="idref" href="#4a104519ce7b5ca94b65a53586957e9c"><span class="id" title="binder"><span id="da040409d18a8979ea60ea19ee07df4c" class="id">Δ</span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a> φ (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#22e0c57c4f4692d163d781c786647808"><span class="id" title="notation">⊙</span></a> ψ) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a id="c14c0b2265abf3ec26ac01165fe38870" class="idref" href="#c14c0b2265abf3ec26ac01165fe38870"><span class="id" title="binder"><span id="8ca488d962adcdfae0a5af1368ee12c6" class="id">Γ</span></span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">k</span></a> φ <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">:</span></a> <a id="80643a2489befbfaa821c9ea50fd915e" class="idref" href="#80643a2489befbfaa821c9ea50fd915e"><span class="id" title="binder"><span id="e16daab72ef6c21d074ef6277b74adeb" class="id">Δ</span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> )<br/>
+<span class="id" title="keyword">where</span> <a id="94cb9d243dc08e39e6cfa0f060cfbc6a" class="idref" href="#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">&quot;</span></a>Γ ⊢k φ : Δ" := (<a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#wk_kripke:2"><span class="id" title="inductive">wk_kripke</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">Δ</span> φ) (<span class="id" title="tactic">in</span> <span class="id" title="var">custom</span> <span class="id" title="var">judg</span>) : <span class="id" title="var">type_scope</span>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Constructors</span> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#wk_kripke"><span class="id" title="inductive">wk_kripke</span></a> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Instance</span> <a id="wk_kripke_Proper" class="idref" href="#wk_kripke_Proper"><span class="id" title="instance">wk_kripke_Proper</span></a> <a id="a1bcc8e6aeeb7f2dabbc3c426fe5e1eb" class="idref" href="#a1bcc8e6aeeb7f2dabbc3c426fe5e1eb"><span class="id" title="binder">Γ</span></a> <a id="fa2108c3c65d5a25bd378ddc81356e7e" class="idref" href="#fa2108c3c65d5a25bd378ddc81356e7e"><span class="id" title="binder">Δ</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#8dc5652698a6e16f72dd37bd17d3b973"><span class="id" title="notation">==&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#iff"><span class="id" title="definition">iff</span></a>) (<a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#wk_kripke"><span class="id" title="inductive">wk_kripke</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#a1bcc8e6aeeb7f2dabbc3c426fe5e1eb"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#fa2108c3c65d5a25bd378ddc81356e7e"><span class="id" title="variable">Δ</span></a>).<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="keyword">forall</span> <a id="f06109c18237cc73bbbab6fdf140cb94" class="idref" href="#f06109c18237cc73bbbab6fdf140cb94"><span class="id" title="binder"><span id="4e83d4ef0ee23f2bb5e9f27cc38b55f5" class="id">φ</span></span></a> <a id="12b836b5156d2c9c72effb5d94e30fdd" class="idref" href="#12b836b5156d2c9c72effb5d94e30fdd"><span class="id" title="binder"><span id="71682032d0a5526fdf55a7cd571439f6" class="id">ψ</span></span></a>, <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#f06109c18237cc73bbbab6fdf140cb94"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#12b836b5156d2c9c72effb5d94e30fdd"><span class="id" title="variable">ψ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a id="58b9c22bd4c189dcaf393523ec57d769" class="idref" href="#58b9c22bd4c189dcaf393523ec57d769"><span class="id" title="binder"><span id="c2ce69567f90e13bb44c9a8e8f267036" class="id"><span id="beae7fa7544f06ba5b54e3d6acb2ff85" class="id"><span id="2a7d14d57d603d434fd52f55a4120a0a" class="id">Γ</span></span></span></span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">k</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#f06109c18237cc73bbbab6fdf140cb94"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">:</span></a> <a id="132798b8acac29be931b8af59d1aecf3" class="idref" href="#132798b8acac29be931b8af59d1aecf3"><span class="id" title="binder"><span id="d44599d7d25b8a7026b8def0c73be53b" class="id"><span id="c6d5196eeaa0fc95074e568550748e9f" class="id"><span id="470a1afdbbe48f100e3c886f9cdd5bf9" class="id">Δ</span></span></span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">{{</span></a> <a id="18bf8c43a60891738d0d6115aa956824" class="idref" href="#18bf8c43a60891738d0d6115aa956824"><span class="id" title="binder"><span id="e9496c2a50f70ac86950787b66328346" class="id"><span id="60ffb00576919416289d5bb12a3b56d1" class="id"><span id="6c48d2981cee562ec855ecfa4a686fde" class="id">Γ</span></span></span></span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">k</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#12b836b5156d2c9c72effb5d94e30fdd"><span class="id" title="variable">ψ</span></a> <a class="idref" href="Mctt.Core.Soundness.Weakening.Definitions.html#94cb9d243dc08e39e6cfa0f060cfbc6a"><span class="id" title="notation">:</span></a> <a id="588d335e7ef83ff38b48f3b650112d02" class="idref" href="#588d335e7ef83ff38b48f3b650112d02"><span class="id" title="binder"><span id="9ae7365ab03b98eff27d80ee70c686fa" class="id"><span id="083c85cd78a85c3b16fed45608793832" class="id"><span id="a7771386bc693e0f9d7adf834bb6dec0" class="id">Δ</span></span></span></span></a> <a class="idref" href="Mctt.Core.Base.html#2e12ae37c5a5c7396a13d7170e0de451"><span class="id" title="notation">}}</span></a>) <span class="id" title="keyword">as</span> <span class="id" title="var">Himp</span>.<br/>
+&nbsp;&nbsp;{<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span> φ ψ <span class="id" title="var">Heq</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">econstructor</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">try</span> <span class="id" title="var">eassumption</span>; (<span class="id" title="var">etransitivity</span>; [ <span class="id" title="tactic">symmetry</span>; <span class="id" title="var">eassumption</span> | <span class="id" title="var">eassumption</span> ]).<br/>
+&nbsp;&nbsp;}<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> φ ψ <span class="id" title="var">Heq</span>; <span class="id" title="tactic">split</span>; <span class="id" title="tactic">apply</span> <span class="id" title="var">Himp</span>; [ <span class="id" title="tactic">assumption</span> | <span class="id" title="var">now</span> <span class="id" title="tactic">symmetry</span> ].<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

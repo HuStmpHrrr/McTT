@@ -1,0 +1,688 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<div id="toc">
+<h2><a href="Mctt.Algorithmic.Subtyping.html">Mctt.Algorithmic.Subtyping</a></h2>
+<h2><a href="Mctt.Algorithmic.Subtyping.Definitions.html">Mctt.Algorithmic.Subtyping.Definitions</a></h2>
+<h2><a href="Mctt.Algorithmic.Subtyping.Lemmas.html">Mctt.Algorithmic.Subtyping.Lemmas</a></h2>
+<h2><a href="Mctt.Algorithmic.Typing.html">Mctt.Algorithmic.Typing</a></h2>
+<h2><a href="Mctt.Algorithmic.Typing.Definitions.html">Mctt.Algorithmic.Typing.Definitions</a></h2>
+<h2><a href="Mctt.Algorithmic.Typing.Lemmas.html">Mctt.Algorithmic.Typing.Lemmas</a></h2>
+<h2><a href="Mctt.Core.Base.html">Mctt.Core.Base</a></h2>
+<h2><a href="Mctt.Core.Completeness.html">Mctt.Core.Completeness</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.html#lab1">Completeness of Normalization by Evaluation</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Consequences.Rules.html">Mctt.Core.Completeness.Consequences.Rules</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Consequences.Rules.html#lab2">Consequences of Completeness: normal forms respect context equality</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.Consequences.Types.html">Mctt.Core.Completeness.Consequences.Types</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.Consequences.Types.html#lab3">Consequences of Completeness: types are rigid</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.ContextCases.html">Mctt.Core.Completeness.ContextCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.ContextCases.html#lab4">Contexts</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.FunctionCases.html">Mctt.Core.Completeness.FunctionCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab5">Fundamental Theorem: Π-Types</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab6">The Type Judgment of a Π</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab7">Π-Congruence</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab8">λ-Congruence</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab9">Application Congruence</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab14">β</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.FunctionCases.html#lab20">η</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.FundamentalTheorem.html">Mctt.Core.Completeness.FundamentalTheorem</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.FundamentalTheorem.html#lab21">The Fundamental Theorem of the PER Model</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.html">Mctt.Core.Completeness.LogicalRelation</a></h2>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html">Mctt.Core.Completeness.LogicalRelation.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab22">The Semantic Judgments</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab23">Semantic Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab24">Semantic Substitution Equality</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab25">Semantic Judgment for Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab26">Semantic Judgment for Subtyping</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#lab27">Semantic Context Well-Formedness</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html">Mctt.Core.Completeness.LogicalRelation.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab28">Semantic Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab29">Reading a Context PER off <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab30">Semantic Weakenings are Semantic Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab31">Instantiation at the Identity</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab32">Precomposition with a Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab33">Semantic Weakening of a Term Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab34">Precomposition by <span class="inlinecode">⇑</span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab35">Symmetry</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#lab36">Transitivity</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.LogicalRelation.Tactics.html">Mctt.Core.Completeness.LogicalRelation.Tactics</a></h2>
+<h2><a href="Mctt.Core.Completeness.NatCases.html">Mctt.Core.Completeness.NatCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab37">Fundamental Theorem: Natural Numbers</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab38"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as a Type</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab39"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as the Type of a Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab40">The Semantic Recursor</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab41"><span class="inlinecode"><span class="id" title="var">zero</span></span> and <span class="inlinecode"><span class="id" title="var">succ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab42">The Successor Branch's Substitution</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab43">The Motive at an Arbitrary Argument Pair</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab44">The Type of the Successor Branch</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab45">The Successor Branch at an Arbitrary Argument Pair</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab46">The Diagonal, for the Gluing Model</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab47">The Eliminator's Congruence Rule</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab52"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><span class="id" title="var">zero</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab53">The Generic Recursor</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.NatCases.html#lab54"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><span class="id" title="var">succ</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.SubstitutionCases.html">Mctt.Core.Completeness.SubstitutionCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab61">Building Semantic Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab62"><span class="inlinecode"><span class="id" title="var">q</span></span> Preserves Semantic Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab63">Extension is Semantic</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab64">Extension by a Precomposed Term</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab65">Double Extension by Precomposed Terms</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab66">Lifting is Semantic</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab67">Instantiating a Premise in an Extended Context</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab68">The Type Judgment of an Instantiation</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubstitutionCases.html#lab69">The Diagonal of the Above</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.SubtypingCases.html">Mctt.Core.Completeness.SubtypingCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab70">Subtyping</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab71"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Eq</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab72"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Trans</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab73"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Univ</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab74"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Pi</span></span></a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.SubtypingCases.html#lab75"><span class="inlinecode"><span class="id" title="var">Subsump</span></span></a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.UniverseCases.html">Mctt.Core.Completeness.UniverseCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.UniverseCases.html#lab76">The Universe</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Completeness.VariableCases.html">Mctt.Core.Completeness.VariableCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab77">Fundamental Theorem: Variables</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab78">Semantic Weakening</a>
+
+</li>
+<li><a href="Mctt.Core.Completeness.VariableCases.html#lab79">The Variable Case</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Consequences.html">Mctt.Core.Semantic.Consequences</a></h2>
+<h2><a href="Mctt.Core.Semantic.Domain.html">Mctt.Core.Semantic.Domain</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Domain.html#lab80">Equality of Environments</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.html">Mctt.Core.Semantic.Evaluation</a></h2>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Definitions.html">Mctt.Core.Semantic.Evaluation.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab81">Evaluation of Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab82">Evaluation of Expressions</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab83">Evaluation of Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Definitions.html#lab84">The Substitutions that Compute</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Lemmas.html">Mctt.Core.Semantic.Evaluation.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.Evaluation.Lemmas.html#lab85">Inversion</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Evaluation.Tactics.html">Mctt.Core.Semantic.Evaluation.Tactics</a></h2>
+<h2><a href="Mctt.Core.Semantic.NbE.html">Mctt.Core.Semantic.NbE</a></h2>
+<h2><a href="Mctt.Core.Semantic.PER.html">Mctt.Core.Semantic.PER</a></h2>
+<h2><a href="Mctt.Core.Semantic.PER.Chain.html">Mctt.Core.Semantic.PER.Chain</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab86">Several Values Related by One PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab87">Pairwise</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab88">Merge</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Chain.html#lab89">The Four-Value Pattern</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.CoreTactics.html">Mctt.Core.Semantic.PER.CoreTactics</a></h2>
+<h2><a href="Mctt.Core.Semantic.PER.Definitions.html">Mctt.Core.Semantic.PER.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab92">Universe/Element PER</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab93">Universe/Element PER Definition</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab94">Universe/Element PER Induction Principle</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab95">Universe Subtyping</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab96">Context/Environment PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Definitions.html#lab97">Context Subtyping</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.PER.Lemmas.html">Mctt.Core.Semantic.PER.Lemmas</a></h2>
+<ul class="doclist">
+<li><ul class="doclist">
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab98">Chains of Types</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab99">A Canonical Extended Context PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab100">A Canonical Function PER</a>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab101">Closing an Extended Context PER Goal</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Semantic.PER.Lemmas.html#lab102">Context PERs Respect Pointwise Equality of Environments</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Semantic.Readback.html">Mctt.Core.Semantic.Readback</a></h2>
+<h2><a href="Mctt.Core.Semantic.Readback.Definitions.html">Mctt.Core.Semantic.Readback.Definitions</a></h2>
+<h2><a href="Mctt.Core.Semantic.Readback.Lemmas.html">Mctt.Core.Semantic.Readback.Lemmas</a></h2>
+<h2><a href="Mctt.Core.Semantic.Realizability.html">Mctt.Core.Semantic.Realizability</a></h2>
+<h2><a href="Mctt.Core.Soundness.html">Mctt.Core.Soundness</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.html#lab103">Soundness of Normalization by Evaluation</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.ContextCases.html">Mctt.Core.Soundness.ContextCases</a></h2>
+<h2><a href="Mctt.Core.Soundness.FunctionCases.html">Mctt.Core.Soundness.FunctionCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.FunctionCases.html#lab104">Π-Types in the Gluing Model</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.FundamentalTheorem.html">Mctt.Core.Soundness.FundamentalTheorem</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.FundamentalTheorem.html#lab105">The Fundamental Theorem of the Gluing Model</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.html">Mctt.Core.Soundness.LogicalRelation</a></h2>
+<h2><a href="Mctt.Core.Soundness.NatCases.html">Mctt.Core.Soundness.NatCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.NatCases.html#lab106">ℕ and its Eliminator in the Gluing Model</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.NatCases.html#lab107">Instantiated Motives</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.Core.html">Mctt.Core.Soundness.LogicalRelation.Core</a></h2>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html">Mctt.Core.Soundness.LogicalRelation.CoreLemmas</a></h2>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.CoreTactics.html">Mctt.Core.Soundness.LogicalRelation.CoreTactics</a></h2>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.Definitions.html">Mctt.Core.Soundness.LogicalRelation.Definitions</a></h2>
+<h2><a href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html">Mctt.Core.Soundness.LogicalRelation.Lemmas</a></h2>
+<h2><a href="Mctt.Core.Soundness.Realizability.html">Mctt.Core.Soundness.Realizability</a></h2>
+<h2><a href="Mctt.Core.Soundness.SubtypingCases.html">Mctt.Core.Soundness.SubtypingCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.SubtypingCases.html#lab117">Subtyping and Conversion</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.TermStructureCases.html">Mctt.Core.Soundness.TermStructureCases</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.TermStructureCases.html#lab118">Variables and Presuppositions</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.UniverseCases.html">Mctt.Core.Soundness.UniverseCases</a></h2>
+<h2><a href="Mctt.Core.Soundness.Weakening.Definitions.html">Mctt.Core.Soundness.Weakening.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Soundness.Weakening.Definitions.html#lab119">Kripke Weakenings</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Soundness.Weakening.Lemmas.html">Mctt.Core.Soundness.Weakening.Lemmas</a></h2>
+<h2><a href="Mctt.Core.Syntactic.CoreInversions.html">Mctt.Core.Syntactic.CoreInversions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.CoreInversions.html#lab120">Inverting the Typing Rules</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Corollaries.html">Mctt.Core.Syntactic.Corollaries</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Corollaries.html#lab121">Corollaries of the Syntactic Theory</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.CtxSub.html">Mctt.Core.Syntactic.CtxSub</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.CtxSub.html#lab122">Context Refinement</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Presup.html">Mctt.Core.Syntactic.Presup</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab123">Presupposition</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab124">The Two Sides of a Term Equation</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab125">The Two Sides of a Refinement</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Presup.html#lab126">Saturating the Context, with Equality</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.SubEq.html">Mctt.Core.Syntactic.SubEq</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab127">Equivalent Substitutions Preserve Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab128">Statement (2)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab129">Statement (3)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SubEq.html#lab130">Corollary 4.14</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Substitution.html">Mctt.Core.Syntactic.Substitution</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab131">The Algebra of Weakenings and Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab132">Computing with the Operations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab134">Weakenings (Section 2.2)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab135">Substitutions (Section 2.3)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab136">The Instances the Typing Rules Need</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab137">The Generic Recursor</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Substitution.html#lab138">Automation</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.Syntax.html">Mctt.Core.Syntactic.Syntax</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab139">Concrete Syntax Tree</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab140">Abstract Syntax Tree</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab141">Syntactic Normal/Neutral Form</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab142">Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab143">Substitutions</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab144">Equality of Weakenings and Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab145">Syntactic Notations</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.Syntax.html#lab147">Notations for Weakenings</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.html">Mctt.Core.Syntactic.System</a></h2>
+<h2><a href="Mctt.Core.Syntactic.System.Definitions.html">Mctt.Core.Syntactic.System.Definitions</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab148">The Syntactic Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab149">Context Lookup</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab150">The Four Mutually Defined Judgments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab156">Weakening and Substitution Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab157">Immediate &amp; Independent Presuppositions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab158">Subtyping Rules without Extra Arguments</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Definitions.html#lab159">Term Equality is a PER</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Lemmas.html">Mctt.Core.Syntactic.System.Lemmas</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab160">Properties of the Judgments</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab161">Basic Inversions and Presuppositions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab162">Weakening Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab163">Pushing an Operation Inwards</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab164">Saturating with the Lifted Weakenings</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab165">Weakening Preserves the Judgments (<span class="inlinecode"><span class="id" title="var">wk_preserves_wf</span></span>)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab166">Reflexivity of Term Equality</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab167">Substitution Typing (Sections 3.4 and 4.2)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab168">Pushing a Substitution Inwards</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab169">Saturating with the Lifted Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab170">Substitution Preserves the Judgments (<span class="inlinecode"><span class="id" title="var">sub_preserves_wf</span></span>)</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab171">The Substitutions of the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-Eliminator</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab172">Context Conversion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab173">Transporting a Type</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab174">Lifting without the Extra Premise</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab175">Cumulativity</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab176">Types in a Well-formed Context</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab177">Presupposition for Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab178">Context Conversion of Substitutions</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab179">Substitution Equivalence</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab180">Equivalent Substitutions Preserve Typing</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab181">Substitution Equivalence is a PER</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab182">Composition of Equivalent Substitutions</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab183">η-Expansion</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab184">Closed Neutrals</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.System.Lemmas.html#lab185">Conversion</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.System.Tactics.html">Mctt.Core.Syntactic.System.Tactics</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.System.Tactics.html#lab186">Saturating the Context with Presuppositions</a>
+
+</li>
+</ul>
+<h2><a href="Mctt.Core.Syntactic.SystemOpt.html">Mctt.Core.Syntactic.SystemOpt</a></h2>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab187">The Rules with the Redundant Premises Removed</a>
+<ul class="doclist">
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab188">Rewriting the Type of a Judgment</a>
+
+</li>
+<li><a href="Mctt.Core.Syntactic.SystemOpt.html#lab189">The Optimized Rules</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+<h2><a href="Mctt.Entrypoint.html">Mctt.Entrypoint</a></h2>
+<h2><a href="Mctt.Extraction.Evaluation.html">Mctt.Extraction.Evaluation</a></h2>
+<h2><a href="Mctt.Extraction.NbE.html">Mctt.Extraction.NbE</a></h2>
+<h2><a href="Mctt.Extraction.PseudoMonadic.html">Mctt.Extraction.PseudoMonadic</a></h2>
+<h2><a href="Mctt.Extraction.Readback.html">Mctt.Extraction.Readback</a></h2>
+<h2><a href="Mctt.Extraction.Subtyping.html">Mctt.Extraction.Subtyping</a></h2>
+<h2><a href="Mctt.Extraction.TypeCheck.html">Mctt.Extraction.TypeCheck</a></h2>
+<h2><a href="Mctt.Frontend.Elaborator.html">Mctt.Frontend.Elaborator</a></h2>
+<h2><a href="Mctt.Frontend.Parser.html">Mctt.Frontend.Parser</a></h2>
+<h2><a href="Mctt.LibTactics.html">Mctt.LibTactics</a></h2>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
