@@ -79,7 +79,7 @@ own version check):
 
 ```bash
 opam source coq-menhirlib.20260209 --dir=/tmp/menhir-20260209
-make -C /tmp/menhir-20260209/coq-menhirlib install
+make -C /tmp/menhir-20260209/coq-menhirlib all install
 ```
 
 ### Editor support (optional)

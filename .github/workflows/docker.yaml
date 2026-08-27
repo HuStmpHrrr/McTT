@@ -1,6 +1,16 @@
 name: Publish Docker Image for CI
 
-on: workflow_dispatch
+on:
+  # Republish whenever the recipe itself changes, so that ci_build.yaml never
+  # has to compile the image on the fly.
+  push:
+    branches:
+      - main
+      - ext/**
+    paths:
+      - .github/Dockerfile
+      - .github/workflows/docker.yaml
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -33,6 +43,10 @@ jobs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        # A single stable tag, named after the toolchain rather than after the
+        # branch: ci_build.yaml pulls it by name, and every branch that shares
+        # the Dockerfile shares the image.  Keep in sync with IMAGE_TAG there.
+        tags: type=raw,value=rocq-9.2
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v6

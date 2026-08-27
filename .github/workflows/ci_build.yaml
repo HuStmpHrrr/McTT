@@ -4,7 +4,6 @@ on:
     branches:
       - main
       - ext/**
-      - icfp25
   pull_request:
     branches:
       - main
@@ -31,10 +30,13 @@ jobs:
       contents: write
     env:
       REGISTRY: "ghcr.io"
-      IMAGE_TAG: "beluga-lang/mctt:main"
+      # The CI image lives in whichever repository is running the workflow, so a
+      # fork uses its own package instead of one it has no read access to.  The
+      # tag is published by docker.yaml; keep the two in sync.
+      IMAGE_TAG: "rocq-9.2"
       # Only deploy if the build follows from pushing to one of main branches
-      DOC_DEPLOY: ${{ (github.ref_name == 'main' || github.ref_name == 'icfp25' || startsWith(github.ref_name, 'ext/')) && 'true' || 'false' }}
-      DOC_DEPLOY_DEST: ${{ (startsWith(github.ref_name, 'ext/') && github.ref_name) || (github.ref_name == 'icfp25' && github.ref_name) || '' }}
+      DOC_DEPLOY: ${{ (github.ref_name == 'main' || startsWith(github.ref_name, 'ext/')) && 'true' || 'false' }}
+      DOC_DEPLOY_DEST: ${{ (startsWith(github.ref_name, 'ext/') && github.ref_name) || '' }}
     steps:
       - name: Get number of CPU cores
         uses: SimenB/github-actions-cpu-cores@v2
@@ -50,13 +52,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve the CI image
+        id: image
+        # GHCR paths are lowercase, repository names are not necessarily.
+        run: echo "ref=${REGISTRY}/${GITHUB_REPOSITORY,,}:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Pre-pull docker image
-        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_TAG }}
+        # Fall back to building it, so that the first run on a fresh fork — and
+        # any run that races the docker.yaml rebuild of a changed Dockerfile —
+        # still goes green instead of failing on a missing package.
+        run: |
+          docker pull "${{ steps.image.outputs.ref }}" \
+            || docker build -f .github/Dockerfile -t "${{ steps.image.outputs.ref }}" .
 
       - name: Process main steps
         uses: coq-community/docker-coq-action@v1
         with:
-          custom_image: ${{ env.REGISTRY }}/${{ env.IMAGE_TAG }}
+          custom_image: ${{ steps.image.outputs.ref }}
           install: |
           before_script: |
             startGroup "Fix the permission issue"
@@ -102,4 +114,3 @@ jobs:
           target-folder: ${{ env.DOC_DEPLOY_DEST }}
           clean-exclude: |
             ext
-            icfp25
