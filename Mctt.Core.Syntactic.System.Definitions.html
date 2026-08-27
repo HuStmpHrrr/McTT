@@ -36,10 +36,6 @@
 
 <div class="paragraph"> </div>
 
-    This file corresponds to Section 3 of the paper.
-
-<div class="paragraph"> </div>
-
     Because substitution is a meta-level *operation* rather than a syntactic
     constructor, this presentation differs from a calculus of explicit
     substitutions in three ways.
@@ -67,7 +63,7 @@
 </li>
 <li> Weakening and substitution typing are *derived* judgments: not inductive
       types, but statements that an operation maps every binding of one context
-      to something of the right type in the other (Sections 3.3 and 3.4).
+      to something of the right type in the other.
       Their algebraic closure properties — identity, extension, lifting,
       composition — are lemmas rather than constructors, and live in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Lemmas</span></span>.
 
@@ -221,7 +217,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab151"></a><h3 class="section">Congruence rules (Section 3.7)</h3>
+<a id="lab151"></a><h3 class="section">Congruence rules</h3>
 
 </div>
 <div class="code">
@@ -267,7 +263,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab152"></a><h3 class="section">Computation rules (Section 3.8)</h3>
+<a id="lab152"></a><h3 class="section">Computation rules</h3>
 
 </div>
 <div class="code">
@@ -291,7 +287,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab153"></a><h3 class="section">Uniqueness rule (Section 3.9)</h3>
+<a id="lab153"></a><h3 class="section">Uniqueness rule</h3>
 
 </div>
 <div class="code">
@@ -332,7 +328,7 @@ This extra argument is here to be consistent with
 </div>
 
 <div class="doc">
-<a id="lab155"></a><h3 class="section">Subtyping (Section 3.5)</h3>
+<a id="lab155"></a><h3 class="section">Subtyping</h3>
 
 </div>
 <div class="code">
@@ -449,7 +445,7 @@ The two-way scheme is the shape of the soundness fundamental theorem: the
 
 <div class="paragraph"> </div>
 
-    These are the derived judgments of Sections 3.3 and 3.4.
+    These are the derived judgments.
     They are records, not inductive relations: a weakening or a substitution is
     well-typed exactly when it sends each binding of its source context to
     something of the correspondingly transported type in its target.  Nothing
