@@ -1,7 +1,5 @@
 (** * Properties of the Judgments
 
-    This file corresponds to Sections 3.3, 3.4 and 4.1-4.4 of the paper.
-
     With substitution as a meta-level operation, the closure properties that an
     explicit-substitution presentation gets for free from the constructors of
     the substitution judgment have to be proved.  There are two groups:
@@ -367,7 +365,7 @@ Qed.
 #[export]
 Hint Resolve wf_subtyp_refl_typ : mctt.
 
-(** ** Substitution Typing (Sections 3.4 and 4.2) *)
+(** ** Substitution Typing *)
 
 (** A weakening is a substitution.  An explicit-substitution presentation has
     no counterpart to this: there [⇑] is a substitution in its own right.  Here [Wk] is [ι ↑], so
@@ -641,8 +639,8 @@ Qed.
 #[export]
 Hint Resolve wf_sub_compose : mctt.
 
-(** Corollary 4.9: the single substitution lemma, the form in which the
-    elimination rules use all of the above. *)
+(** The single substitution lemma, the form in which the elimination rules use
+    all of the above. *)
 
 Corollary exp_sub_single : forall Γ A B M N,
     {{ Γ , A ⊢ M : B }} ->

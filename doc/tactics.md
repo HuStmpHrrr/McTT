@@ -285,7 +285,7 @@ Built on top of them:
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `simplify_subs` | `Core/Semantic/Evaluation/Tactics.v:13` | `cbn [exp_sub exp_wk] in *`. Since substitution is an operation, `⟦ Type@i[σ] ⟧ ρ ↘ a` has no constructor head until `exp_sub` is unfolded far enough to expose one. The delta list is restricted to the two recursive functions so that `eval_sub` and `sb_q` (both `simpl never`) stay folded. Not to be confused with `simpl_sub` (§3.1), which rewrites the substitution algebra. |
+| `simplify_subs` | `Core/Semantic/Evaluation/Tactics.v:13` | `cbn [exp_sub exp_wk] in *`. Since substitution is an operation, `⟦ Type@i[σ] ⟧ ρ ↘ a` has no constructor head until `exp_sub` is unfolded far enough to expose one. The delta list is restricted to the two recursive functions so that `eval_sub` and `sb_q` (both `simpl never`) stay folded. Not to be confused with `simpl_sub`, which rewrites the substitution algebra. |
 | `simplify_evals` | `Core/Semantic/Evaluation/Tactics.v:15` | The standard "clean up the evaluation hypotheses" step: identify duplicate results, then `directed dependent destruction` every `eval_exp` / `eval_app` / `eval_natrec` / `eval_sub` hypothesis that does not branch, then identify again. |
 
 ---
@@ -637,7 +637,8 @@ pseudo-monadic notations for `sumbool`/`sumor` in
 - **`clean replace` fails on a no-op** by design. Do not "fix" that.
 - **`directed` is load-bearing.** Removing it from a `progressive_invert`
   turns a well-behaved inversion into an unpredictable case split.
-- **`invert_glu_rel_exp` is not one tactic.** See §6.6 — its meaning depends
+- **`invert_glu_rel_exp` is not one tactic.** See *Two deliberate
+  redefinitions* — its meaning depends
   on whether `Soundness/UniverseCases.v` and `Soundness/NatCases.v` are in
   scope.
 - **`Extraction/TypeCheck.v:115` (`impl_obl_tac_helper`) is dead code** — it

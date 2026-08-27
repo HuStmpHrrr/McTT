@@ -86,7 +86,8 @@ Do not "fix" these; they are expected.
 
 - **268 warnings on a clean build** (`make clean && make`, verified). 129
   notation `level-tolerance`, 98 `deprecated-end-tac` (the `...` end-tactic —
-  see `proof-conventions.md` §4), 23 "notations at level 0 should be closed",
+  see *Cost discipline* in `proof-conventions.md`), 23 "notations at level 0
+  should be closed",
   6 `per_univ_elem_core is nested using rel_mod_eval`, 5 `From Coq` (in the
   generated `Parser.v`), and a handful of others. All benign under Rocq 9.2.
 - **`make depgraphdoc` fails locally** with a `dot` assertion

@@ -1,7 +1,5 @@
 (** * The Syntactic Judgments
 
-    This file corresponds to Section 3 of the paper.
-
     Because substitution is a meta-level *operation* rather than a syntactic
     constructor, this presentation differs from a calculus of explicit
     substitutions in three ways.
@@ -18,7 +16,7 @@
 
     - Weakening and substitution typing are *derived* judgments: not inductive
       types, but statements that an operation maps every binding of one context
-      to something of the right type in the other (Sections 3.3 and 3.4).
+      to something of the right type in the other.
       Their algebraic closure properties — identity, extension, lifting,
       composition — are lemmas rather than constructors, and live in [Core.Syntactic.System.Lemmas].
 
@@ -127,7 +125,7 @@ with wf_exp : ctx -> typ -> exp -> Prop :=
 where "Γ ⊢ M : A" := (wf_exp Γ A M) (in custom judg) : type_scope
 
 with wf_exp_eq : ctx -> typ -> exp -> exp -> Prop :=
-(** *** Congruence rules (Section 3.7) *)
+(** *** Congruence rules *)
 | wf_exp_eq_typ_cong :
   `( {{ ⊢ Γ }} ->
      {{ Γ ⊢ Type@i ≈ Type@i : Type@(S i) }} )
@@ -167,7 +165,7 @@ with wf_exp_eq : ctx -> typ -> exp -> exp -> Prop :=
   `( {{ ⊢ Γ }} ->
      {{ #x : A ∈ Γ }} ->
      {{ Γ ⊢ #x ≈ #x : A }} )
-(** *** Computation rules (Section 3.8) *)
+(** *** Computation rules *)
 | wf_exp_eq_pi_beta :
   `( {{ Γ ⊢ A : Type@i }} ->
      {{ Γ , A ⊢ B : Type@i }} ->
@@ -185,7 +183,7 @@ with wf_exp_eq : ctx -> typ -> exp -> exp -> Prop :=
      {{ Γ , ℕ , A ⊢ MS : A[Wk⨟Wk,,succ(#1)] }} ->
      {{ Γ ⊢ M : ℕ }} ->
      {{ Γ ⊢ rec (succ M) return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] }} )
-(** *** Uniqueness rule (Section 3.9) *)
+(** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
   `( {{ Γ ⊢ A : Type@i }} ->
      {{ Γ , A ⊢ B : Type@i }} ->
@@ -209,7 +207,7 @@ with wf_exp_eq : ctx -> typ -> exp -> exp -> Prop :=
      {{ Γ ⊢ M ≈ M'' : A }} )
 where "Γ ⊢ M ≈ M' : A" := (wf_exp_eq Γ A M M') (in custom judg) : type_scope
 
-(** *** Subtyping (Section 3.5) *)
+(** *** Subtyping *)
 with wf_subtyp : ctx -> typ -> typ -> Prop :=
 | wf_subtyp_refl :
   (** We need this extra argument in order to prove the presupposition
@@ -287,7 +285,7 @@ Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup : mctt.
 
 (** ** Weakening and Substitution Typing
 
-    These are the derived judgments of Sections 3.3 and 3.4.
+    These are the derived judgments.
     They are records, not inductive relations: a weakening or a substitution is
     well-typed exactly when it sends each binding of its source context to
     something of the correspondingly transported type in its target.  Nothing

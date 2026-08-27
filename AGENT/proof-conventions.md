@@ -111,13 +111,38 @@ These are the ways an edit to a tactic goes wrong silently.
   add a proof, either give it a `Proof with` clause or write the end tactic
   out.
 
-## 5. When a proof breaks
+## 5. Known debt: the completeness layer lost its automation
+
+The port left `Core/Completeness` proving by hand what it used to prove by
+tactic: `destruct_rel_by_assumption` went from 94 uses to 0, `on_all_hyp` from
+113 to 0, `mauto` from 138 to 14, while `destruct` went 26 → 286 and
+`functional_eval_*` 7 → 112. The tactics are not obsolete — they match
+`forall ρ ρ', {{ Dom ρ ≈ ρ' ∈ R }} -> _`, and `rel_exp_under_ctx` now has eight
+binders in front of that. `LogicalRelation/Tactics.v` grew by one alias line in
+the whole port.
+
+This is the layer's main outstanding work, and it is worth roughly 1 000 lines.
+In order of expected return:
+
+1. Generalize `destruct_rel_by_assumption` / `on_all_hyp` past the eight leading
+   binders, defaulting to `rel_sub_id` / `eval_sub_id` for the instance at `Id`.
+2. Give the eighteen constructions in `Completeness/SubstitutionCases.v`
+   `Hint Extern` entries keyed on the goal's substitution shape — none of them
+   is currently reachable by automation at all.
+3. Extend `functional_eval_rewrite_clear`
+   (`Semantic/Evaluation/Lemmas.v:86`) to the four-value hypotheses; it is used
+   12 times against 112 hand applications of `functional_eval_exp`.
+
+Measurements and the full argument: `../doc/alignment.md` §6.
+
+## 6. When a proof breaks
 
 Diagnose in this order — it is almost always earlier in the list.
 
 1. A hint is missing from `mctt`, or a depth is now too small.
 2. A saturation tactic no longer fires because the hypothesis shape changed
-   (usually a notation or a `simp`/`fold` mismatch — see §3).
+   (usually a notation or a `simp`/`fold` mismatch — see *Invariants you must
+   not break*).
 3. An inversion tactic's clean-inversion premise can no longer be discharged
    by `eassumption`, so it silently falls through to the slow/raw alternative.
 4. Only then is the proof itself wrong.

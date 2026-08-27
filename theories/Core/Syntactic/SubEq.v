@@ -27,7 +27,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Presup.
 Import Syntax_Notations Wk_Notations.
 
-(** ** Statement (2) *)
+(** ** The Equality Half *)
 
 Lemma sub_eq_preserves_exp_eq : forall Γ Δ A M M' σ σ',
     {{ Δ ⊢ M ≈ M' : A }} ->
@@ -44,12 +44,12 @@ Qed.
 #[export]
 Hint Resolve sub_eq_preserves_exp_eq : mctt.
 
-(** ** Statement (3)
+(** ** The Subtyping Half
 
     The subtyping judgment has no symmetry and no [Type@i] to hang an equation
-    on, so the second step goes through [wf_subtyp_refl]: statement (1) gives the
-    equation between the two instances of the right-hand side, and reflexivity of
-    refinement turns it into a refinement. *)
+    on, so the second step goes through [wf_subtyp_refl]: [sub_eq_preserves_exp]
+    gives the equation between the two instances of the right-hand side, and
+    reflexivity of refinement turns it into a refinement. *)
 
 Lemma sub_eq_preserves_subtyp : forall Γ Δ A A' σ σ',
     {{ Δ ⊢ A ⊆ A' }} ->
@@ -68,11 +68,11 @@ Qed.
 #[export]
 Hint Resolve sub_eq_preserves_subtyp : mctt.
 
-(** ** Corollary 4.14
+(** ** Equal Arguments Give Equal Instances
 
-    The form in which the elimination rules use all of the above: equal arguments
-    give equal instances of a type.  [wf_sub_eq_extend] builds the equivalence
-    and statement (1) transports the type along it. *)
+    The form in which the elimination rules use all of the above.
+    [wf_sub_eq_extend] builds the equivalence and [sub_eq_preserves_exp]
+    transports the type along it. *)
 
 Corollary exp_eq_sub_eq_head : forall Γ Δ A B M M' σ i,
     {{ Δ , A ⊢ B : Type@i }} ->

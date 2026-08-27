@@ -31,6 +31,7 @@ invariants you must preserve when editing one, are in
 | [`proof-conventions.md`](proof-conventions.md) | How to pick, extend, and safely edit tactics. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |
+| [`../doc/alignment.md`](../doc/alignment.md) | Where the mechanization diverges from `paper.pdf` and `main.pdf`, and answers to the papers' open questions. The one place that cites them by number. |
 | [`../README.md`](../README.md) | Toolchain setup (Rocq 9.2.0, opam pins, `coq-menhirlib`, `coq-lsp`). Authoritative — do not duplicate it here. |
 
 Keep these files short. If something belongs in the user-facing `README.md` or

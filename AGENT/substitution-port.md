@@ -290,7 +290,7 @@ Other things worth knowing before editing a gluing proof:
   `wf_ctx_extend`) unless `{{ G ⊢ ℕ : Type@0 }}` is already in the context, which
   fails only at `Qed`, as "the proof term is not complete".
 
-The paper's §8 lists this MLTT mechanization as future work — only STLC is
+The paper lists this MLTT mechanization as future work — only STLC is
 mechanized there, in Agda. Everything from the semantic layer on is new proof.
 
 ## Gotchas

@@ -3,7 +3,7 @@
     Weakenings and substitutions are meta-level operations on [exp] (see
     [Core.Syntactic.Syntax]), so the laws that a calculus of explicit
     substitutions postulates as definitional equalities are, here, theorems.
-    This file proves them.  It corresponds to Section 2 of the paper.
+    This file proves them.
 
     Two conventions are worth repeating.
 
@@ -156,7 +156,7 @@ Ltac exp_ind_ext H lift :=
   f_equal;
   solve [ apply H | symmetry; apply H | auto using lift ].
 
-(** ** Weakenings (Section 2.2) *)
+(** ** Weakenings *)
 
 Lemma wk_q_cong : forall φ ψ, wk_eq φ ψ -> wk_eq (wk_q φ) (wk_q ψ).
 Proof. intros * Heq; pointwise_solve. Qed.
@@ -274,7 +274,7 @@ Proof.
   replace (x + n - n) with x by lia; simpl; lia.
 Qed.
 
-(** ** Substitutions (Section 2.3) *)
+(** ** Substitutions *)
 
 Lemma sb_wk_cong : forall σ τ φ φ',
     sb_eq σ τ -> wk_eq φ φ' -> sb_eq (sb_wk σ φ) (sb_wk τ φ').
