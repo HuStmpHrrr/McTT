@@ -1,7 +1,7 @@
 # McTT tactic reference
 
 This document describes every `Ltac` definition and `Tactic Notation` in
-`theories/` — 224 definitions across 35 files — what each one does, why it
+`theories/` — 228 definitions across 35 files — what each one does, why it
 exists, and how the families fit together.
 
 The tactics are not incidental to McTT: the metatheory is proved by
@@ -109,7 +109,7 @@ judgments on paper, e.g.
 
 ## 1. `LibTactics.v` — general infrastructure
 
-73 of the 224 definitions live here. Nothing in this file mentions McTT
+73 of the 228 definitions live here. Nothing in this file mentions McTT
 judgments; it is reusable Ltac.
 
 ### 1.1 Generalization
@@ -440,20 +440,32 @@ make that formal, and these three tactics are the whole intended API of `Chain.v
 
 | Tactic | Line | Description |
 | --- | --- | --- |
-| `pairwise` | 328 | Closes `R x y` from any `rel_chain` hypothesis about `R`, whichever two of its members `x` and `y` are. `first` over the remaining goals rather than a positional `[ \| \| ]`, because the `PER` obligation may or may not survive to become one. |
-| `solve_rel_chain` | 336 | Closes a `rel_chain` goal all of whose members occur in **one** hypothesis, by `pairwise` or else `rel_chain_incl`. |
-| `merge_rel_chain H1 H2 c` | 352 | Closes a `rel_chain` goal whose members are spread over **two** hypotheses: merge them along the shared value `c`, then select. Everything is positional because nothing can be guessed — `rel_chain_merge` leaves *both* chain premises with a metavariable list, so a search tactic would put the same hypothesis in both and only fail later at the inclusion, and `c` is not determined by the goal at all. |
+| `pairwise` | 360 | Closes `R x y` from any `rel_chain` hypothesis about `R`, whichever two of its members `x` and `y` are. `first` over the remaining goals rather than a positional `[ \| \| ]`, because the `PER` obligation may or may not survive to become one. The relation is matched in the **goal** first and only failing that left to the `eapply` to unify (`pairwise_from`, line 356): a goal an `eapply` produced before it could fix the universe level or the element PER has a metavariable where `R` should be, which the syntactic match cannot see. |
+| `solve_rel_chain` | 371 | Closes a `rel_chain` goal all of whose members occur in **one** hypothesis, by `pairwise` or else `rel_chain_incl`. |
+| `merge_rel_chain H1 H2 c` | 388 | Closes a `rel_chain` goal whose members are spread over **two** hypotheses: merge them along the shared value `c`, then select. Everything is positional because nothing can be guessed — `rel_chain_merge` leaves *both* chain premises with a metavariable list, so a search tactic would put the same hypothesis in both and only fail later at the inclusion, and `c` is not determined by the goal at all. |
 
-Three tactics in `Core/Semantic/PER/Lemmas.v` build on them, for the case the
-semantic rules actually need — a chain of *environments*:
+Two tactics in `Core/Semantic/PER/Lemmas.v` mechanize *weak functionality* — the
+paper's `S ⊆_R ↘ R'`, which says a chain in `per_univ i` determines one output
+PER on inhabitants, the same for every pair of the chain. `per_univ i` is what a
+semantic *type* judgment hands over, with each link carrying its own existential
+element PER; these move to the single PER weak functionality promises:
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `destruct_per_univ_chain H` | `Core/Semantic/PER/Lemmas.v:1530` | Splits a four-value `rel_chain` hypothesis into its three links: `destruct H as [[? ?] [[? ?] [? ?]]]`. |
-| `solve_per_head` | `Core/Semantic/PER/Lemmas.v:1532` | Discharges the head component of `per_env_extend_intro'`: introduce the two extended environments and the `per_univ_elem` relating the two type values, identify its outputs by `functional_eval_rewrite_clear`, let `handle_per_univ_elem_irrel` identify its PER with the one the term chain lives in, then read the pair off that chain with `pairwise`. |
-| `solve_per_env_extend_chain` | `Core/Semantic/PER/Lemmas.v:1538` | The whole last step of an extended-context rule: split every link of the goal chain with `per_env_extend_intro'`, take the tails off the chain the underlying substitution arrived with (`pairwise`) and bridge the heads (`solve_per_head`). Length-agnostic, because the four-value pattern wants four environments while the rules with a premise in an extended context want every extension of the four tails by either head. |
+| `functionalize_per_univ_chain H R` | `Core/Semantic/PER/Lemmas.v:635` | Names the element PER of a chain in `per_univ i` and refines the chain to it in place, via `per_univ_chain_functional` (the *existence* half). Takes no anchor and loses nothing: every pair remains available, at `R`, through `pairwise`. |
+| `pairwise_univ` | `Core/Semantic/PER/Lemmas.v:640` | `pairwise` at a `per_univ i` goal, whose existential the refined chain no longer carries. |
+| `retype_rel_chain Htyp Hanchor H` | `Core/Semantic/PER/Lemmas.v:665` | Moves `H` between the element PER the type chain `Htyp` reported and the one `Hanchor` names, via `per_univ_chain_rel_irrel` (the *uniqueness* half). The two need share only one value, and only `H` says which direction is wanted, so both are tried. `H` may be a chain — `rel_chain_Proper` is what rewrites it — or a bare pair. Replaces the recurring three-step `rel_chain_4_related` / `per_univ_elem_*_irrel` / `rewrite` idiom. |
 
-Two side-condition solvers in `Chain.v` support all six: `solve_in` (line 46,
+Three more build on the `Chain.v` tactics for the case the semantic rules
+actually need — a chain of *environments*:
+
+| Tactic | Location | Description |
+| --- | --- | --- |
+| `destruct_per_univ_chain H` | `Core/Semantic/PER/Lemmas.v:1590` | Splits a four-value chain in `per_univ i` into its three links, going through `per_univ_chain_functional` first so the three come out at *one* element PER rather than three independent existential ones. |
+| `solve_per_head` | `Core/Semantic/PER/Lemmas.v:1595` | Discharges the head component of `per_env_extend_intro'`: introduce the two extended environments and the `per_univ_elem` relating the two type values, identify its outputs by `functional_eval_rewrite_clear`, let `handle_per_univ_elem_irrel` identify its PER with the one the term chain lives in, then read the pair off that chain with `pairwise`. |
+| `solve_per_env_extend_chain` | `Core/Semantic/PER/Lemmas.v:1605` | The whole last step of an extended-context rule: split every link of the goal chain with `per_env_extend_intro'`, take the tails off the chain the underlying substitution arrived with (`pairwise`) and bridge the heads (`solve_per_head`). Length-agnostic, because the four-value pattern wants four environments while the rules with a premise in an extended context want every extension of the four tails by either head. |
+
+Two side-condition solvers in `Chain.v` support all of them: `solve_in` (line 46,
 membership in a literal list) and `solve_incl` (line 52,
 `forall x, In x L -> In x L'` for literal `L`, `L'`).
 
@@ -461,10 +473,15 @@ membership in a literal list) and `solve_incl` (line 52,
 does *not* reliably resolve it: the relations involved are context and element
 PERs whose instances (`per_env_PER`, `per_elem_PER`) must be found from a
 *hypothesis*, not from the goal, which the resolution `apply` performs will not
-do. Hence `solve_chain_PER` (line 322, `solve [typeclasses eauto]`) and its
-appearance in all three tactics above. If you write a fourth, discharge the
-`PER` goal explicitly — otherwise it is silently **shelved** and you learn about
-it only at `Qed`, as `Attempt to save an incomplete proof`.
+do. Hence `solve_chain_PER` (line 339, `solve [typeclasses eauto]`) and its
+appearance in every tactic above. Worse, an `eapply` that cannot resolve the
+argument does not fail: it **shelves** it, so the tactic reports success and you
+learn about the hole only at `Qed`, as `Attempt to save an incomplete proof` —
+which is why `pairwise_from` and `solve_rel_chain` wrap their `eapply` in
+`unshelve`, turning the instance back into a goal `solve_chain_PER` must close.
+The relations that really are not PERs — `per_pi` at a domain PER, say — are the
+ones this catches, and there the PER-free `rel_chain_4_*` projections are what to
+use. If you write another chain tactic, do the same.
 
 ---
 
@@ -688,7 +705,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `destruct_glu_rel_by_assumption` | `Core/Soundness/LogicalRelation/Lemmas.v:996` |
 | `destruct_glu_rel_exp_with_sub` | `Core/Soundness/LogicalRelation/Lemmas.v:1006` |
 | `destruct_glu_rel_typ_with_sub` | `Core/Soundness/LogicalRelation/Lemmas.v:1015` |
-| `destruct_per_univ_chain` | `Core/Semantic/PER/Lemmas.v:1530` |
+| `destruct_per_univ_chain` | `Core/Semantic/PER/Lemmas.v:1590` |
 | `destruct_rel_by_assumption` | `Core/Semantic/PER/CoreTactics.v:9` |
 | `destruct_rel_mod_app`, `…_eval`, `destruct_rel_typ` | `Core/Semantic/PER/CoreTactics.v:28, 19, 37` |
 | `directed` | `LibTactics.v:110` (notation 116) |
@@ -707,6 +724,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `find_head` | `LibTactics.v:161` |
 | `functional_alg_type_infer_rewrite_clear`, `…1` | `Algorithmic/Typing/Lemmas.v:43, 37` |
 | `functional_eval_complete` | `Extraction/Evaluation.v:161` |
+| `functionalize_per_univ_chain` | `Core/Semantic/PER/Lemmas.v:635` |
 | `functional_eval_rewrite_clear`, `…1` | `Core/Semantic/Evaluation/Lemmas.v:86, 73` |
 | `functional_initial_env_rewrite_clear`, `…1` | `Core/Semantic/NbE.v:57, 51` |
 | `functional_nbe_complete` | `Extraction/NbE.v:75` |
@@ -744,11 +762,13 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `match_by_head`, `…1` | `LibTactics.v:186, 182` |
 | `mauto` (10 overloads) | `LibTactics.v:197–224` |
 | `mautosolve`, `mautosolve_impl` | `LibTactics.v:229–230, 227` |
-| `merge_rel_chain` | `Core/Semantic/PER/Chain.v:352` |
+| `merge_rel_chain` | `Core/Semantic/PER/Chain.v:388` |
 | `not_let_bind` | `LibTactics.v:79` |
 | `on_all_hyp:`, `on_all_hyp_rev:` | `LibTactics.v:60, 62` |
 | `on_all_marked_hyp`, `…_rev` (+ notations) | `LibTactics.v:50, 54, 58, 59` |
-| `pairwise` | `Core/Semantic/PER/Chain.v:328` |
+| `pairwise` | `Core/Semantic/PER/Chain.v:360` |
+| `pairwise_from` | `Core/Semantic/PER/Chain.v:356` |
+| `pairwise_univ` | `Core/Semantic/PER/Lemmas.v:640` |
 | `per_ctx_env_econstructor` | `Core/Semantic/PER/Lemmas.v:1097` |
 | `per_univ_elem_econstructor` | `Core/Semantic/PER/Lemmas.v:634` |
 | `per_univ_elem_right_irrel_assert`, `…1` | `Core/Semantic/PER/Lemmas.v:343, 331` |
@@ -758,6 +778,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `push_wk`, `…_step`, `…_in`, `…_goal` | `Core/Syntactic/System/Lemmas.v:225, 205, 210, 213` |
 | `reduce_index` | `Core/Syntactic/Substitution.v:78` |
 | `reduce_sub_natrec` | `Core/Syntactic/System/Lemmas.v:1339` |
+| `retype_rel_chain` | `Core/Semantic/PER/Lemmas.v:665` |
 | `rewrite_predicate_equivalence_left`, `…_right` | `Core/Soundness/LogicalRelation/CoreLemmas.v:382, 391` |
 | `rewrite_relation_equivalence_left`, `…_right` | `Core/Semantic/PER/Lemmas.v:267, 276` |
 | `saturate_ctx_sub` | `Core/Syntactic/CtxSub.v:121` |
@@ -773,13 +794,13 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `simpl_sub` | `Core/Syntactic/Substitution.v:904` |
 | `simplify_evals` | `Core/Semantic/Evaluation/Tactics.v:15` |
 | `simplify_subs` | `Core/Semantic/Evaluation/Tactics.v:13` |
-| `solve_chain_PER` | `Core/Semantic/PER/Chain.v:322` |
+| `solve_chain_PER` | `Core/Semantic/PER/Chain.v:339` |
 | `solve_in`, `solve_incl` | `Core/Semantic/PER/Chain.v:46, 52` |
 | `solve_it` | `Core/Completeness/FundamentalTheorem.v:49`; `Core/Soundness/FundamentalTheorem.v:29` |
-| `solve_per_env_extend_chain` | `Core/Semantic/PER/Lemmas.v:1538` |
-| `solve_per_head` | `Core/Semantic/PER/Lemmas.v:1532` |
+| `solve_per_env_extend_chain` | `Core/Semantic/PER/Lemmas.v:1605` |
+| `solve_per_head` | `Core/Semantic/PER/Lemmas.v:1595` |
 | `solve_refl` | `LibTactics.v:404` |
-| `solve_rel_chain` | `Core/Semantic/PER/Chain.v:336` |
+| `solve_rel_chain` | `Core/Semantic/PER/Chain.v:371` |
 | `strong_apply` | `LibTactics.v:321` |
 | `subtyping_impl_tac`, `…1` | `Extraction/Subtyping.v:76, 69` |
 | `subtyping_tac` | `Extraction/Subtyping.v:9` |

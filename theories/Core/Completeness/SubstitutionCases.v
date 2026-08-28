@@ -79,7 +79,7 @@ Proof.
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
   exists a1, a4.
   repeat split; try eassumption.
-  eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ].
+  pairwise.
 Qed.
 
 (** A *member* of that PER, from an element of any PER the values of [A[σ]]
@@ -111,15 +111,13 @@ Proof.
   destruct (HAgen _ _ HΓ2 _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hρ Hev Hev')
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
   assert (a1 = a) as -> by (eapply functional_eval_exp; eassumption).
-  assert (Houter : {{ Dom a ≈ a4 ∈ per_univ i }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  destruct Houter as [R0 HR0].
+  functionalize_per_univ_chain Hchain R0.
   apply per_env_extend_intro'; [ eassumption |].
-  eapply per_head_of; [ exact Ha | exact Ha4 | exact HR0 |].
-  (** [R] and [R0] both relate [a] on the left, and [per_univ_elem] irrelevance is
-      cross-level, so the caller's level [j] never has to match [i]. *)
-  assert (R <~> R0) as HRR0 by (eapply per_univ_elem_right_irrel; [ exact HR | exact HR0 ]).
-  apply HRR0; exact Hc.
+  eapply per_head_of; [ exact Ha | exact Ha4 | pairwise |].
+  (** [Hc] retyped: the chain and [HR] both relate [a] on the left, and
+      [per_univ_elem] irrelevance is cross-level, so the caller's level [j] never
+      has to match [i]. *)
+  retype_rel_chain Hchain HR Hc; exact Hc.
 Qed.
 
 (** A type judgment in [Δ, A] read at an *arbitrary* member of the canonical
@@ -225,8 +223,8 @@ Proof.
   rewrite exp_sub_of_shift in Hb1, Hb4, Hw1, Hw4.
   exists j, R, b1, b2, b3, b4, w1, w2, w3, w4.
   do 4 (split; [ eassumption |]).
-  split; [ eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ] |].
-  split; [ eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ] |].
+  split; [ pairwise |].
+  split; [ pairwise |].
   do 4 (split; [ eassumption |]).
   eassumption.
 Qed.
@@ -266,7 +264,7 @@ Proof.
     rewrite exp_sub_of_wk in Ha1, Ha4.
     exists a1, a4.
     repeat split; try eassumption.
-    eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]. }
+    pairwise. }
   eexists_rel_wk.
   (** Both projections of [⟦q ψ⟧w ρ] are conversions, so nothing has to be
       rewritten below: the goals are stated about [⟦q ψ⟧w ρ] and [exact] sees
@@ -276,11 +274,10 @@ Proof.
   - exact (Hψ _ _ Htail).
   - destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
     rewrite exp_sub_of_wk in Ha1, Ha4.
-    assert (Houter : {{ Dom a1 ≈ a4 ∈ per_univ i }})
-      by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-    destruct Houter as [R HR].
-    eapply (per_head_bridge Hhead Ha1 Ha4 HR Ha2 Ha3).
-    eapply rel_chain_4_commut_left; first [ eassumption | solve_chain_PER ].
+    functionalize_per_univ_chain Hchain R.
+    eapply per_head_bridge;
+      [ exact Hhead | exact Ha1 | exact Ha4 | pairwise | exact Ha2 | exact Ha3
+      | pairwise_univ ].
 Qed.
 
 (** ** Extension is Semantic
@@ -536,14 +533,13 @@ Proof.
   destruct (HAgen _ _ HΔ3 _ _ (rel_sub_id (ex_intro _ _ HΔ3)) _ _ _ _ Hy12
                   (eval_sub_id _) (eval_sub_id _)) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   rewrite exp_sub_id in Hd1, Hd4.
-  (** The head pair, transported from [A[σ]]'s PER to the arbitrary one the
-      [per_head] hypothesis quantifies over.  Both heads are the same two values
-      on all four sides, so [rel_chain_4_of_2] is the whole head chain. *)
-  assert (Houter : {{ Dom c1 ≈ c4 ∈ per_univ i }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  destruct Houter as [R HR].
+  (** Weak functionality names [A[σ]]'s element PER, so the [per_head] hypothesis
+      is instantiated at it directly with no transport.  Both heads are the same
+      two values on all four sides, so [rel_chain_4_of_2] is the whole head
+      chain. *)
+  functionalize_per_univ_chain Hcchain R.
   assert (Hh : {{ Dom ^(d{{{ ⟦ ψ ⟧w ρ }}} 0) ≈ ^(d{{{ ⟦ ψ ⟧w ρ' }}} 0) ∈ R }})
-    by (eapply Hhead; eassumption).
+    by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
   assert (Hheads : rel_chain R [ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)])
     by (apply rel_chain_4_of_2; [ solve_chain_PER | exact Hh ]).
   apply (mk_rel_sub d{{{ x1 ↦ ^(ρ (ψ 0)) }}} d{{{ y1 ↦ ^(ρ (ψ 0)) }}}
@@ -555,10 +551,10 @@ Proof.
     | ].
   (** [Hdchain] is the bridge: after [functional_eval_rewrite_clear] its values
       are [⟦A⟧y1] and [⟦A⟧y2], which are [b2] and [c2], so the [b]- and
-      [c]-chains meet.  Saturating irrelevance once here rather than three times
-      inside [solve_per_head] is also what keeps the last step cheap. *)
+      [c]-chains meet.  [Hcchain] is already at one PER; saturating irrelevance
+      once here rather than inside [solve_per_head] keeps the last step cheap. *)
   functional_eval_rewrite_clear.
-  destruct_per_univ_chain Hcchain.
+  destruct Hcchain as [? [? ?]].
   destruct_per_univ_chain Hbchain.
   destruct_per_univ_chain Hdchain.
   handle_per_univ_elem_irrel.
@@ -637,13 +633,12 @@ Proof.
   destruct (Hσrefl _ _ Hρ) as [w [w' [Hw [Hw' Hww']]]].
   destruct (HAgen _ _ HΓ3 _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hρ Hev Hw')
     as [e1 e2 e3 e4 He1 He2 He3 He4 Hechain].
-  assert (Houter : {{ Dom e1 ≈ e4 ∈ per_univ i }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  destruct Houter as [R HR].
+  functionalize_per_univ_chain Hechain R.
   assert (HPER : PER R) by solve_chain_PER.
   (** [per_head] is a [Definition], so [eapply] on it does not see a product; its
       four arguments are given explicitly instead. *)
-  assert (Hcc' : {{ Dom c ≈ c' ∈ R }}) by (apply (Hhead i R e1 e4); eassumption).
+  assert (Hcc' : {{ Dom c ≈ c' ∈ R }})
+    by (apply (Hhead i R e1 e4); first [ eassumption | pairwise ]).
   (** Both heads on both sides, in either order: the eight extensions use every
       combination, so what the head obligations are read off is this. *)
   assert (Hheads : rel_chain R [c; c'; c; c'])
@@ -652,7 +647,7 @@ Proof.
   (** Not [repeat split]: the third conjunct is itself a chain of conjunctions. *)
   split; [ apply eval_sub_q; eassumption | split; [ apply eval_sub_q; eassumption |]].
   functional_eval_rewrite_clear.
-  destruct_per_univ_chain Hechain.
+  destruct Hechain as [? [? ?]].
   handle_per_univ_elem_irrel.
   solve_per_env_extend_chain.
 Qed.
@@ -822,12 +817,8 @@ Proof.
   subst.
   (** One irrelevance per edge of the graph above, each at the type value the two
       endpoints share. *)
-  assert (Hb23 : {{ DF b2 ≈ b3 ∈ per_univ_elem k ↘ Rm }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+  assert (Hb23 : {{ DF b2 ≈ b3 ∈ per_univ_elem k ↘ Rm }}) by pairwise.
   assert (HRx : Rm <~> Rx) by (eapply per_univ_elem_right_irrel; [ exact Hb23 | exact Ex ]).
-  assert (HRy : Rm <~> Ry) by (eapply per_univ_elem_right_irrel; [ exact Hb23 | exact Ey ]).
-  assert (HRz : Rm <~> Rz)
-    by (eapply per_univ_elem_right_irrel; [ apply per_univ_sym; exact Hb23 | exact Ez ]).
   assert (HRm : Rm <~> Rmid)
     by (etransitivity;
         [ exact HRx
@@ -839,8 +830,8 @@ Proof.
       term chain. *)
   apply rel_chain_of_pair in Hurel, Hvrel, Hwrel, Hgrel.
   rewrite <- HRx in Hurel.
-  rewrite <- HRy in Hvrel.
-  rewrite <- HRz in Hwrel.
+  retype_rel_chain Hbchain Ey Hvrel.
+  retype_rel_chain Hbchain Ez Hwrel.
   rewrite <- HRm in Hgrel.
   assert (C1 : rel_chain Rm [f1; f2; f3; f4; g1]) by (merge_rel_chain Hfchain Hurel f2).
   assert (C2 : rel_chain Rm [f1; f2; f3; f4; g1; v2]) by (merge_rel_chain C1 Hvrel f2).
@@ -936,10 +927,8 @@ Proof.
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  assert (Houter : {{ DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  assert (Hmid : {{ DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+  assert (Houter : {{ DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN }}) by pairwise.
+  assert (Hmid : {{ DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN }}) by pairwise.
   (** The codomain at an arbitrary related pair of arguments. *)
   assert (Hcod : forall w z,
              {{ Dom w ≈ z ∈ RN }} ->

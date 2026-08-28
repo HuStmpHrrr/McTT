@@ -276,7 +276,7 @@ Proof.
   destruct (Hσ _ _ HΓ wk_id (rel_wk_id _) _ _ Hρ) as [? ρσ ρ'σ' ? ? ? ? ? Hchain].
   exists ρσ, ρ'σ'.
   repeat split; try eassumption.
-  eapply rel_chain_4_related; eassumption.
+  pairwise.
 Qed.
 
 (** The companion to [rel_exp_under_ctx_simple] for substitutions:
@@ -350,10 +350,10 @@ Proof.
   destruct Hexp as [mσ m m' m'σ' ? ? ? ? Hmchain].
   exists a, a', R.
   repeat split; try eassumption.
-  - eapply rel_chain_4_related; eassumption.
+  - pairwise.
   - exists m, m'.
     repeat split; try eassumption.
-    eapply rel_chain_4_related; eassumption.
+    pairwise.
 Qed.
 
 Lemma subtyp_under_ctx_simple : forall {Γ A A'},

@@ -77,10 +77,8 @@ Proof.
       of the *unweakened* type in the tails, and reading that shared link off both
       identifies the two element PERs. *)
   handle_per_univ_elem_irrel.
-  assert (Hmid1 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R1 }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (Hmid2 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R2 }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+  assert (Hmid1 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R1 }}) by pairwise.
+  assert (Hmid2 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R2 }}) by pairwise.
   handle_per_univ_elem_irrel.
   exists R1.
   split.
@@ -141,8 +139,9 @@ Proof.
     destruct Hρσ as [Hteq Hhead].
     pose proof (Hheadtyp _ _ Hteq) as Hatyp.
     destruct_by_head PER.Definitions.rel_typ.
-    (** Irrelevance now identifies all seven element PERs — including [head_rel]'s,
-        whose level [j] need not match [i], since [per_univ_elem] irrelevance is
+    (** Weak functionality already gives each chain a single element PER, so
+        irrelevance is left with three: the two chains' and [head_rel]'s, whose
+        level [j] need not match [i] since [per_univ_elem] irrelevance is
         cross-level. *)
     destruct_per_univ_chain Hvchain.
     destruct_per_univ_chain Huchain.

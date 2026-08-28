@@ -695,16 +695,10 @@ Proof.
       the motive's at [succ]. *)
   destruct (rel_typ_of_nat_step HΓ HA _ _ _ _ _ _ HE12)
     as [p1 [p2 [p3 [p4 [Hp1 [Hp2 [Hp3 [Hp4 Hpchain]]]]]]]].
-  assert (Hp12 : {{ Dom p1 ≈ p2 ∈ per_univ i }})
-    by (eapply rel_chain_4_commut_left; first [ eassumption | solve_chain_PER ]).
-  assert (Hp23 : {{ Dom p2 ≈ p3 ∈ per_univ i }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (Houter : {{ Dom p1 ≈ p4 ∈ per_univ i }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  destruct Houter as [RT HRT].
+  functionalize_per_univ_chain Hpchain RT.
   (** The goal's own PER, anchored: this is what makes it a PER, hence what lets
       the two halves of each of the outer links be composed. *)
-  pose proof (per_univ_elem_at_head Hp2 Hp3 Hp23) as HAncT.
+  pose proof (per_univ_elem_at_head Hp2 Hp3 ltac:(pairwise_univ)) as HAncT.
   assert (Hmv : forall ρ1 ρ2 m m',
              rel_chain (per_env_extend A A (per_env_extend {{{ ℕ }}} {{{ ℕ }}} env_relΓ))
                [ρ1; ρ2; d{{{ ρσ ↦ w ↦ r }}}; d{{{ ρ'σ' ↦ z ↦ r' }}}] ->
@@ -717,7 +711,7 @@ Proof.
                                            d{{{ ρσ ↦ w ↦ r }}} d{{{ ρ'σ' ↦ z ↦ r' }}} }})
       by (apply (per_head_of_typ_resp HΓNA HAτ _ _ _ _ Hch); exact Hm).
     eapply per_head_bridge;
-      [ exact HmT | exact Hp1 | exact Hp4 | exact HRT | exact Hp2 | exact Hp3 | exact Hp12 ]. }
+      [ exact HmT | exact Hp1 | exact Hp4 | pairwise | exact Hp2 | exact Hp3 | pairwise_univ ]. }
   (** The two substituted values, from the judgment along [q (q σ)].  Only the
       outer value of each outer obligation is wanted: their inner ones are read at
       [s ↦ w] and [s' ↦ z], which the chain relates to the goal's environments but
@@ -842,8 +836,7 @@ Proof.
     by (intros w z Hwz; apply (Hcod w z); rewrite HRN; exact Hwz).
   pose proof Htyp as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htchain].
   assert (HAncT : {{ DF t2 ≈ t3 ∈ per_univ_elem i
-                       ↘ (per_head A A d{{{ ρσ ↦ p2 }}} d{{{ ρ'σ' ↦ p3 }}}) }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+                       ↘ (per_head A A d{{{ ρσ ↦ p2 }}} d{{{ ρ'σ' ↦ p3 }}}) }}) by pairwise.
   exists (per_head A A d{{{ ρσ ↦ p2 }}} d{{{ ρ'σ' ↦ p3 }}}).
   split; [ exact Htyp |].
   (** *** The Number
@@ -881,17 +874,13 @@ Proof.
   destruct Htypz as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
   assert (HAncZ : {{ DF w2 ≈ w3 ∈ per_univ_elem i
                        ↘ (per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}}) }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+    by pairwise.
   destruct (HMZgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RMZ [HMZtyp HMZexp]].
   destruct HMZtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMZexp as [z1 z2 z3 z4 Hz1 Hz2 Hz3 Hz4 Hzchain].
   assert (c2 = w2) as -> by (eapply functional_eval_exp; [ exact Hc2 | exact Hw2 ]).
   assert (c3 = w3) as -> by (eapply functional_eval_exp; [ exact Hc3 | exact Hw3 ]).
-  assert (HRMZmid : {{ DF w2 ≈ w3 ∈ per_univ_elem k ↘ RMZ }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRMZ : RMZ <~> per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HRMZmid | exact HAncZ ]).
-  rewrite HRMZ in Hzchain.
+  retype_rel_chain Hcchain HAncZ Hzchain.
   assert (Hz12 : {{ Dom z1 ≈ z2 ∈ per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}} }})
     by pairwise.
   assert (Hz23 : {{ Dom z2 ≈ z3 ∈ per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}} }})
@@ -980,7 +969,7 @@ Proof.
   pose proof Htyp as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
   assert (HAncZ : {{ DF w2 ≈ w3 ∈ per_univ_elem i
                        ↘ (per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}}) }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+    by pairwise.
   exists (per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}}).
   split; [ exact Htyp |].
   destruct (HMZgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RMZ [HMZtyp HMZexp]].
@@ -988,11 +977,7 @@ Proof.
   destruct HMZexp as [z1 z2 z3 z4 Hz1 Hz2 Hz3 Hz4 Hzchain].
   assert (c2 = w2) as -> by (eapply functional_eval_exp; [ exact Hc2 | exact Hw2 ]).
   assert (c3 = w3) as -> by (eapply functional_eval_exp; [ exact Hc3 | exact Hw3 ]).
-  assert (HRMZmid : {{ DF w2 ≈ w3 ∈ per_univ_elem k ↘ RMZ }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRMZ : RMZ <~> per_head A A d{{{ ρσ ↦ zero }}} d{{{ ρ'σ' ↦ zero }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HRMZmid | exact HAncZ ]).
-  rewrite HRMZ in Hzchain.
+  retype_rel_chain Hcchain HAncZ Hzchain.
   (** The left two values are the zero branch's, reached through the recursion;
       the right two are the zero branch's own. *)
   apply (mk_rel_exp z1 z2 z3 z4);
@@ -1157,10 +1142,10 @@ Proof.
   pose proof Htyp as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htchain].
   assert (HAncMid : {{ DF t2 ≈ t3 ∈ per_univ_elem i
                          ↘ (per_head A A d{{{ ρσ ↦ succ m2 }}} d{{{ ρ'σ' ↦ succ m3 }}}) }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+    by pairwise.
   assert (HAncOut : {{ DF t1 ≈ t4 ∈ per_univ_elem i
                          ↘ (per_head A A d{{{ ρσ ↦ succ m2 }}} d{{{ ρ'σ' ↦ succ m3 }}}) }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
+    by pairwise.
   rewrite exp_sub_extend_sub in Ht1, Ht4.
   cbn [exp_sub] in Ht1, Ht4.
   (** *** The Recursive Call
@@ -1174,18 +1159,13 @@ Proof.
   assert (q3 = m3) as -> by (eapply functional_eval_exp; [ exact Hq3 | exact Hm3 ]).
   pose proof HtypM as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
   assert (HAncE : {{ DF f2 ≈ f3 ∈ per_univ_elem i
-                       ↘ (per_head A A d{{{ ρσ ↦ m2 }}} d{{{ ρ'σ' ↦ m3 }}}) }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+                       ↘ (per_head A A d{{{ ρσ ↦ m2 }}} d{{{ ρ'σ' ↦ m3 }}}) }}) by pairwise.
   destruct (HEgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RE [HEtyp HEexp]].
   destruct HEtyp as [e1 e2 e3 e4 He1 He2 He3 He4 Hechain].
   destruct HEexp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   assert (e2 = f2) as -> by (eapply functional_eval_exp; [ exact He2 | exact Hf2 ]).
   assert (e3 = f3) as -> by (eapply functional_eval_exp; [ exact He3 | exact Hf3 ]).
-  assert (HREmid : {{ DF f2 ≈ f3 ∈ per_univ_elem k ↘ RE }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRE : RE <~> per_head A A d{{{ ρσ ↦ m2 }}} d{{{ ρ'σ' ↦ m3 }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HREmid | exact HAncE ]).
-  rewrite HRE in Hcchain.
+  retype_rel_chain Hechain HAncE Hcchain.
   (** The two recursions the goal's left-hand side runs *inside* its own
       [eval_natrec_succ] are the ones [E] already evaluates: invert [E]'s two
       evaluations rather than letting [simplify_evals] loose on a context of eight
@@ -1231,11 +1211,7 @@ Proof.
   rewrite exp_sub_natrec_step in HT1, HT4.
   assert (T1 = t2) as -> by (eapply functional_eval_exp; [ exact HT1 | exact Ht2 ]).
   assert (T4 = t3) as -> by (eapply functional_eval_exp; [ exact HT4 | exact Ht3 ]).
-  assert (HouterA : {{ DF t2 ≈ t3 ∈ per_univ_elem j ↘ RA }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  assert (HRA : RA <~> per_head A A d{{{ ρσ ↦ succ m2 }}} d{{{ ρ'σ' ↦ succ m3 }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HouterA | exact HAncMid ]).
-  rewrite HRA in Hxchain.
+  retype_rel_chain HTchain HAncMid Hxchain.
   (** *** Chain B, at the outer substitution *)
   destruct (HMSgen _ _ HΓ' _ _ HsubS _ _ _ _ Hρ
               (eval_sub_extend _ _ _ _ _ (eval_sub_extend _ _ _ _ _ Hev Hm1) Hc1)
@@ -1246,11 +1222,7 @@ Proof.
   rewrite exp_sub_natrec_step in HU1, HU4.
   assert (U1 = t1) as -> by (eapply functional_eval_exp; [ exact HU1 | exact Ht1 ]).
   assert (U4 = t4) as -> by (eapply functional_eval_exp; [ exact HU4 | exact Ht4 ]).
-  assert (HouterB : {{ DF t1 ≈ t4 ∈ per_univ_elem j ↘ RB }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  assert (HRB : RB <~> per_head A A d{{{ ρσ ↦ succ m2 }}} d{{{ ρ'σ' ↦ succ m3 }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HouterB | exact HAncOut ]).
-  rewrite HRB in Hzchain.
+  retype_rel_chain HUchain HAncOut Hzchain.
   (** The two chains share their second values with the step's outputs. *)
   assert (x2 = b2) as -> by (eapply functional_eval_exp; [ exact Hx2 | exact Hb2 ]).
   assert (x3 = g2) as -> by (eapply functional_eval_exp; [ exact Hx3 | exact Hg2 ]).

@@ -75,7 +75,7 @@ Proof.
   rewrite exp_sub_id in HaσI, Ha'σ'I.
   exists a, a'.
   repeat split; try eassumption.
-  eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ].
+  pairwise.
 Qed.
 
 (** The same instance at a weakening instead of at [Id], which is what the gluing

@@ -341,12 +341,30 @@ Ltac solve_chain_PER := solve [ typeclasses eauto ].
 (** Closes [R x y] from any [rel_chain] hypothesis about [R], whichever two of
     its members [x] and [y] are.  [first] over the remaining goals rather than a
     positional [ | | ] because the [PER] obligation may or may not survive to
-    become one. *)
+    become one.
+
+    The relation is matched in the goal first, and only failing that left to the
+    [eapply] to unify: a goal produced by an [eapply] that could not yet fix the
+    universe level or the element PER has a *metavariable* where [R] should be,
+    which the syntactic match cannot see, and there the hypothesis is what
+    determines it.
+
+    [unshelve] because [eapply] resolves the [PER] instance argument itself and
+    *shelves* it when it cannot: without it, a chain at a relation that is not
+    known to be a PER — [per_pi] at a domain PER, say — would let this tactic
+    report success and leave the hole to be discovered at [Qed]. *)
+Ltac pairwise_from H R :=
+  unshelve (eapply (rel_chain_pairwise R _ _ _ H));
+  first [ solve_in | solve_chain_PER ].
+
 Ltac pairwise :=
-  match goal with
-  | H : rel_chain ?R _ |- ?R _ _ =>
-      eapply (rel_chain_pairwise R _ _ _ H); first [ solve_in | solve_chain_PER ]
-  end.
+  first
+    [ match goal with
+      | H : rel_chain ?R _ |- ?R _ _ => pairwise_from H R
+      end
+    | match goal with
+      | H : rel_chain ?R _ |- _ => pairwise_from H R
+      end ].
 
 (** Closes a [rel_chain] goal all of whose members occur in one hypothesis; when
     they come from two, merge those first with [merge_rel_chain]. *)
@@ -355,7 +373,8 @@ Ltac solve_rel_chain :=
     [ pairwise
     | match goal with
       | H : rel_chain ?R _ |- rel_chain ?R _ =>
-          eapply (rel_chain_incl R _ _ _ _ H); first [ solve_incl | solve_chain_PER ]
+          unshelve (eapply (rel_chain_incl R _ _ _ _ H));
+          first [ solve_incl | solve_chain_PER ]
       end ].
 
 (** Closes a [rel_chain] goal whose members are spread over *two* hypotheses:

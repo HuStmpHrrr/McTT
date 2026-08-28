@@ -568,6 +568,15 @@ Proof.
   - pose proof (fun m0 m1 m2 => per_elem_trans _ _ _ _ m0 m1 m2 H); eauto.
 Qed.
 
+(** [per_elem_PER] off a *folded* chain, so that [solve_chain_PER] does not force
+    a pair to be read off one first. *)
+#[export]
+Instance per_elem_chain_PER {i R l} `(H : rel_chain (per_univ_elem i R) l) : PER R.
+Proof.
+  destruct (rel_chain_shape _ _ H) as [a [b [l' ->]]].
+  eapply per_elem_PER; pairwise.
+Qed.
+
 (** ** Chains of Types
 
     A chain in [per_univ i] — which is what a semantic *type* judgment hands over,
@@ -602,18 +611,62 @@ Proof.
   eapply per_univ_elem_cross_irrel; [ exact HRuv | exact HRxu' ].
 Qed.
 
-(** The instance used throughout: a four-value pattern at the PER of its *outer*
-    pair, those two being what a type judgment reports directly. *)
-Corollary per_univ_chain_at : forall {i in_rel a1 a2 a3 a4},
-    rel_chain (per_univ i) [a1; a2; a3; a4] ->
-    {{ DF a1 ≈ a4 ∈ per_univ_elem i ↘ in_rel }} ->
-    rel_chain (per_univ_elem i in_rel) [a1; a2; a3; a4].
+(** Weak functionality of [per_univ i]: a chain in it is *already* a chain at one
+    element PER, with no anchor supplied from outside.  This is the paper's
+    [S ⊆_R ↘ R'] in full; [per_univ_chain_at_in] is the case where the caller
+    insists on a particular [R'].  Any link's PER will do, all of them being
+    logically equivalent, so the first is taken. *)
+Corollary per_univ_chain_functional : forall {i l},
+    rel_chain (per_univ i) l ->
+    exists R, rel_chain (per_univ_elem i R) l.
 Proof.
-  intros * Hchain Hin.
-  (** [exact Hin] first: it is what fixes the anchor pair, which the goal leaves
-      unconstrained and [solve_in] would otherwise guess at. *)
-  eapply per_univ_chain_at_in; [ exact Hchain | | | exact Hin ]; solve_in.
+  intros * Hchain.
+  destruct (rel_chain_shape _ _ Hchain) as [a [b [l' ->]]].
+  assert (Hab : {{ Dom a ≈ b ∈ per_univ i }}) by pairwise.
+  destruct Hab as [R HR].
+  exists R.
+  eapply per_univ_chain_at_in; [ exact Hchain | | | exact HR ]; solve_in.
 Qed.
+
+(** Names the element PER of a chain in [per_univ i] and refines the chain to it,
+    in place.  This is the whole use a type judgment is ever put to, and by weak
+    functionality it takes no anchor and loses nothing: every pair of the chain
+    remains available, at [R], through [pairwise]. *)
+Ltac functionalize_per_univ_chain H R :=
+  apply per_univ_chain_functional in H; destruct H as [R H].
+
+(** [pairwise] at a [per_univ i] goal, whose existential the refined chain no
+    longer carries. *)
+Ltac pairwise_univ := first [ pairwise | eexists; pairwise ].
+
+(** The other half of weak functionality — that the output PER is *unique*, which
+    is what makes [S ⊆_R ↘ R'] well defined.  A chain determines its [R'] from a
+    single value it shares with anything else in the universe: reflexivity at
+    that value is available because the chain is at a PER, and then irrelevance
+    needs no second value. *)
+Lemma per_univ_chain_rel_irrel : forall {i j R R' l x y},
+    rel_chain (per_univ_elem i R) l ->
+    {{ DF x ≈ y ∈ per_univ_elem j ↘ R' }} ->
+    In x l ->
+    R <~> R'.
+Proof.
+  intros * Hchain Hanchor Hx.
+  assert (Hxx : {{ DF x ≈ x ∈ per_univ_elem i ↘ R }})
+    by (eapply rel_chain_refl; first [ eassumption | solve_chain_PER ]).
+  eapply per_univ_elem_right_irrel; [ exact Hxx | exact Hanchor ].
+Qed.
+
+(** Uniqueness put to work: [retype_rel_chain Htyp Hanchor H] moves [H] between
+    the element PER the type chain [Htyp] reported and the one [Hanchor] names.
+    The two need share only one value, and only [H] says which direction is
+    wanted, so both are tried.  [H] may be a [rel_chain] — [rel_chain_Proper] is
+    what rewrites it — or a bare pair, either at the relation itself or under the
+    [per_head] of a type whose values the anchor is about. *)
+Ltac retype_rel_chain Htyp Hanchor H :=
+  let Hiff := fresh "Hiff" in
+  pose proof (per_univ_chain_rel_irrel Htyp Hanchor ltac:(solve_in)) as Hiff;
+  first [ rewrite Hiff in H | rewrite <- Hiff in H ];
+  clear Hiff.
 
 (** This lemma gets rid of the unnecessary PER premise. *)
 Lemma per_univ_elem_pi' :
@@ -1455,15 +1508,13 @@ Qed.
     the only one of the three whose two sides are both unsubstituted, and the one
     an application reads its output PER off of.
 
-    The domain is given as its own four-value pattern together with the element
-    PER of its *outer* pair — the two things a semantic type judgment hands over
-    directly — and the three links at that one PER are recovered here rather than
-    by the caller, since which of the four PERs [handle_per_univ_elem_irrel] would
-    keep is not predictable.  The three codomain premises are, in order, the three
-    obligations [rel_exp_of_typ_under_ctx_q] produces. *)
+    The domain is given as a four-value pattern already at [in_rel], which by weak
+    functionality is all a semantic type judgment hands over
+    ([functionalize_per_univ_chain]); no separate anchor is needed, and the three
+    links come off it by [pairwise].  The three codomain premises are, in order,
+    the three obligations [rel_exp_of_typ_under_ctx_q] produces. *)
 Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3 B4 ρ4},
-    rel_chain (per_univ i) [a1; a2; a3; a4] ->
-    {{ DF a1 ≈ a4 ∈ per_univ_elem i ↘ in_rel }} ->
+    rel_chain (per_univ_elem i in_rel) [a1; a2; a3; a4] ->
     (forall c c',
         {{ Dom c ≈ c' ∈ in_rel }} ->
         exists b b', {{ ⟦ B1 ⟧ ρ1 ↦ c ↘ b }} /\ {{ ⟦ B2 ⟧ ρ2 ↦ c' ↘ b' }} /\ {{ Dom b ≈ b' ∈ per_univ i }}) ->
@@ -1476,9 +1527,10 @@ Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3
     rel_chain (per_univ_elem i (per_pi in_rel B2 ρ2 B3 ρ3))
       [d{{{ Π a1 ρ1 B1 }}}; d{{{ Π a2 ρ2 B2 }}}; d{{{ Π a3 ρ3 B3 }}}; d{{{ Π a4 ρ4 B4 }}}].
 Proof.
-  intros * Hchain Hin HB12 HB23 HB34.
-  (** The three domain links at [in_rel]. *)
-  pose proof (per_univ_chain_at Hchain Hin) as [H12 [H23 H34]].
+  intros * Hchain HB12 HB23 HB34.
+  assert (H12 : {{ DF a1 ≈ a2 ∈ per_univ_elem i ↘ in_rel }}) by pairwise.
+  assert (H23 : {{ DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel }}) by pairwise.
+  assert (H34 : {{ DF a3 ≈ a4 ∈ per_univ_elem i ↘ in_rel }}) by pairwise.
   (** One [per_univ_elem_pi_canonical] per link, up to the [exists R] the
       canonical form wants where the premise offers [per_univ]. *)
   assert (Hlink : forall B ρ B' ρ' a a',
@@ -1495,15 +1547,18 @@ Proof.
   pose proof (Hlink _ _ _ _ _ _ H12 HB12) as HL1.
   pose proof (Hlink _ _ _ _ _ _ H23 HB23) as HL2.
   pose proof (Hlink _ _ _ _ _ _ H34 HB34) as HL3.
-  (** [handle_per_univ_elem_irrel] is not used: it would rewrite the goal into
-      whichever of the three [per_pi]s it happened to keep, and which one that is
-      is not predictable.  Naming the shared Π-value makes each biconditional a
-      single [per_univ_elem_right_irrel]. *)
-  apply rel_chain_4; [| exact HL2 |].
-  - eapply per_univ_elem_resp_iff; [ exact HL1 |].
-    eapply per_univ_elem_right_irrel; [ apply per_univ_sym; exact HL1 | exact HL2 ].
-  - eapply per_univ_elem_resp_iff; [ exact HL3 |].
-    eapply per_univ_elem_right_irrel; [ exact HL3 | apply per_univ_sym; exact HL2 ].
+  (** The three links are a chain in [per_univ i], so weak functionality puts them
+      at one PER and uniqueness says which: the *inner* link's, [HL2] being the
+      anchor that names it.  [handle_per_univ_elem_irrel] would instead keep
+      whichever of the three [per_pi]s it happened to pick, which is not
+      predictable. *)
+  assert (Hpi : rel_chain (per_univ i)
+                  [d{{{ Π a1 ρ1 B1 }}}; d{{{ Π a2 ρ2 B2 }}};
+                   d{{{ Π a3 ρ3 B3 }}}; d{{{ Π a4 ρ4 B4 }}}])
+    by (apply rel_chain_4; eexists; eassumption).
+  functionalize_per_univ_chain Hpi R.
+  retype_rel_chain Hpi HL2 Hpi.
+  exact Hpi.
 Qed.
 
 (** ** Closing an Extended Context PER Goal
@@ -1511,10 +1566,13 @@ Qed.
     Every completeness proof in an extended context ends the same way, and these
     three tactics are that ending.
 
-    [destruct_per_univ_chain] turns a four-value chain in [per_univ i] — three
-    existentials — into the three [per_univ_elem] hypotheses that
-    [handle_per_univ_elem_irrel] saturates over.  Nothing ever does anything else
-    with such a chain: it is only a way of carrying those three around.
+    [destruct_per_univ_chain] turns a four-value chain in [per_univ i] into the
+    three [per_univ_elem] hypotheses that [handle_per_univ_elem_irrel] saturates
+    over.  Nothing ever does anything else with such a chain: it is only a way of
+    carrying those three around.  It goes through
+    [per_univ_chain_functional], so the three come out at *one* element PER
+    rather than at three independent existential ones — which is most of what
+    irrelevance would otherwise have to reconcile.
 
     [solve_per_head] discharges a [per_head] goal.  [per_head] quantifies over an
     *arbitrary* [per_univ_elem] relating the two type values, so the proof is
@@ -1529,7 +1587,10 @@ Qed.
     heads are bridged.  The chain is of any length, because the substitution
     cases want four environments while the rules with a premise in an extended context
     want every extension of the four tails by either of the two heads. *)
-Ltac destruct_per_univ_chain H := destruct H as [[? ?] [[? ?] [? ?]]].
+Ltac destruct_per_univ_chain H :=
+  apply per_univ_chain_functional in H;
+  destruct H as [? H];
+  destruct H as [? [? ?]].
 
 Ltac solve_per_head :=
   hnf; intros ? ? ? ? ? ? ?;

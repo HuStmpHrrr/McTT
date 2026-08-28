@@ -82,28 +82,23 @@ Proof.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ HAgen]].
   destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  assert (Hin : {{ Dom a1 ≈ a4 ∈ per_univ i }})
-    by (eapply rel_chain_4_outer; first [ eassumption | solve_chain_PER ]).
-  destruct Hin as [in_rel Hin].
+  (** The domain PER, named by weak functionality: both the outer pair the caller
+      is owed and the inner one it needs alongside are then just links of the
+      *same* chain, with no refinement step in between. *)
+  functionalize_per_univ_chain Hachain in_rel.
   exists in_rel, a1, a2, a3, a4.
   do 4 (split; [ eassumption |]).
-  split; [ eassumption |].
-  (** The inner pair at the same PER, which is one refinement of the domain's own
-      chain ([per_univ_chain_at]) — the same step [per_univ_elem_pi_chain] takes
-      below, done again here because the caller cannot take it: the chain is not
-      reported. *)
-  split;
-    [ pose proof (per_univ_chain_at Hachain Hin) as [_ [Hmid _]]; exact Hmid |].
+  do 2 (split; [ pairwise |]).
   apply (mk_rel_exp d{{{ Π a1 ρ (B[q σ]) }}} d{{{ Π a2 ρσ B }}}
                     d{{{ Π a3 ρ'σ' B' }}} d{{{ Π a4 ρ' (B'[q σ']) }}});
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
   (** The three codomain obligations are, in order, the three [q]-obligations of
       [B] at an argument pair drawn from the domain PER. *)
-  eapply per_univ_elem_pi_chain; [ exact Hachain | exact Hin | | |];
+  eapply per_univ_elem_pi_chain; [ exact Hachain | | |];
     intros c c' Hc;
-    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1 Hin Hc)
-      as Hpair;
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1
+                  ltac:(pairwise) Hc) as Hpair;
     destruct (rel_exp_of_typ_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ Hpair Hev Hev')
       as [O1 [O2 O3]];
     eassumption.
@@ -215,18 +210,14 @@ Proof.
 
       The other instantiation of [N]'s judgment, the one about [N ≈ N'], and its
       chain identified with the reflexive one: the two agree on the values of [A] —
-      the type is the same on both sides of both judgments — so one irrelevance
-      step puts both chains in one PER, and then they merge. *)
+      the type is the same on both sides of both judgments — so [retype_rel_chain]
+      puts both chains in one PER, and then they merge. *)
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN2 [HNtyp HNexp]].
   destruct HNtyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
   assert (b2 = a2) as -> by (eapply functional_eval_exp; [ exact Hb2 | exact Ha2 ]).
   assert (b3 = a3) as -> by (eapply functional_eval_exp; [ exact Hb3 | exact Ha3 ]).
-  assert (HRN2 : {{ DF a2 ≈ a3 ∈ per_univ_elem l ↘ RN2 }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRN : RN2 <~> RN)
-    by (eapply per_univ_elem_right_irrel; [ exact HRN2 | exact Hmid ]).
-  rewrite HRN in Hnchain.
+  retype_rel_chain Hbchain Hmid Hnchain.
   assert (Hp1n1 : p1 = n1) by (eapply functional_eval_exp; [ exact Hp1 | exact Hn1 ]).
   assert (Hp2n2 : p2 = n2) by (eapply functional_eval_exp; [ exact Hp2 | exact Hn2 ]).
   subst p1 p2.
@@ -244,8 +235,7 @@ Proof.
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
   assert (c3 = d{{{ Π a3 ρ'σ' B }}}) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }}) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   (** *** The Term Chain
 
@@ -358,11 +348,7 @@ Proof.
     as [e1 [e2 [He1 [He2 HanchorA]]]].
   assert (e1 = cA2) as -> by (eapply functional_eval_exp; [ exact He1 | exact HcA2 ]).
   assert (e2 = cA3) as -> by (eapply functional_eval_exp; [ exact He2 | exact HcA3 ]).
-  assert (HcAmid : {{ DF cA2 ≈ cA3 ∈ per_univ_elem k ↘ RA }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRA : RA <~> per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HcAmid | exact HanchorA ]).
-  rewrite HRA in Hhchain.
+  retype_rel_chain HcAchain HanchorA Hhchain.
   (** *** The Inner Instantiation
 
       Along [Id ,, N ≈ Id ,, N] at the substituted environments: its second value
@@ -377,11 +363,7 @@ Proof.
     as [f1 [f2 [Hf1 [Hf2 HanchorB]]]].
   assert (f1 = cB2) as -> by (eapply functional_eval_exp; [ exact Hf1 | exact HcB2 ]).
   assert (f2 = cB3) as -> by (eapply functional_eval_exp; [ exact Hf2 | exact HcB3 ]).
-  assert (HcBmid : {{ DF cB2 ≈ cB3 ∈ per_univ_elem k ↘ RB }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
-  assert (HRB : RB <~> per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}})
-    by (eapply per_univ_elem_right_irrel; [ exact HcBmid | exact HanchorB ]).
-  rewrite HRB in Hgchain.
+  retype_rel_chain HcBchain HanchorB Hgchain.
   (** The goal's second value is produced by this instantiation and by the redex
       alike. *)
   assert (v2 = g2) as -> by (eapply functional_eval_exp; [ exact Hv2 | exact Hg2 ]).
@@ -472,7 +454,7 @@ Proof.
       chain just handed over. *)
   destruct Htyp as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   assert (Hanchor : {{ DF d2 ≈ d3 ∈ per_univ_elem i ↘ (per_pi in_rel B ρσ B ρ'σ') }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+    by pairwise.
   assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   (** [M]'s own chain, brought to the canonical [per_pi]. *)
@@ -483,8 +465,7 @@ Proof.
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
   assert (c3 = d{{{ Π a3 ρ'σ' B }}}) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }})
-    by (eapply rel_chain_4_related; first [ eassumption | solve_chain_PER ]).
+  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }}) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   apply (mk_rel_exp m1 m2 d{{{ λ ρ'σ' (M⟨↑⟩ #0) }}} d{{{ λ ρ' ((M⟨↑⟩ #0)[q σ']) }}});
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn | apply eval_exp_fn |].
@@ -492,7 +473,7 @@ Proof.
       both from the same instance of [M]'s judgment along [Wk], at the substituted
       environments extended by that pair. *)
   apply rel_chain_4;
-    [ eapply rel_chain_4_commut_left; first [ eassumption | solve_chain_PER ] | |];
+    [ pairwise | |];
     hnf; intros c c' Hc;
     pose proof (per_env_extend_intro' Hρσ (per_head_of Ha2 Ha3 Hmid Hc)) as Hpair;
     destruct (rel_exp_under_ctx_shift_at HΓ HA HM _ _ _ _ Hpair)
