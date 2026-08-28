@@ -104,7 +104,7 @@ Lemma alg_type_infer_normal : forall {Γ A A' M},
     {{ Γ ⊢a M ⟹ A }} ->
     nbe_ty Γ A A' ->
     A = A'.
-Proof with (f_equiv; mautosolve 4).
+Proof.
   intros * ? Hinfer Hnbe. gen A'.
   assert {{ Γ ⊢ M : A }} by mauto 3 using alg_type_infer_sound.
   induction Hinfer; intros;
@@ -115,7 +115,7 @@ Proof with (f_equiv; mautosolve 4).
   - assert {{ Γ ⊢ ℕ : Type@0 }} by mauto 3.
     assert {{ Γ ⊢ M : ℕ }} by mauto 3 using alg_type_check_sound.
     assert {{ ⊢ Γ, ℕ }} by mauto 3.
-    assert {{ Γ, ℕ ⊢ A : ^n{{{ Type@i }}} }} by mauto 3 using alg_type_infer_sound...
+    assert {{ Γ, ℕ ⊢ A : ^n{{{ Type@i }}} }} by mauto 3 using alg_type_infer_sound; (f_equiv; mautosolve 4).
   - assert {{ Γ ⊢ A : ^n{{{ Type@i }}} }} by mauto 3 using alg_type_infer_sound.
     assert {{ Γ ⊢ A ≈ C : Type@i }} by mauto 3 using soundness_ty'.
     assert {{ Γ, A ⊢ M : B }} by mauto 3 using alg_type_infer_sound.
@@ -130,13 +130,13 @@ Proof with (f_equiv; mautosolve 4).
     assert (nbe_ty Γ C A0) by mauto 3.
     replace A0 with C by mauto 3.
     assert (nbe_ty {{{ Γ, ^(C : exp) }}} B B') by mauto 3.
-    assert (nbe_ty {{{ Γ, A }}} B B') by mauto 4 using ctxeq_nbe_ty_eq'...
+    assert (nbe_ty {{{ Γ, A }}} B B') by mauto 4 using ctxeq_nbe_ty_eq'; (f_equiv; mautosolve 4).
   - assert {{ Γ ⊢ M : ^n{{{ Π A B }}} }} by mauto 3 using alg_type_infer_sound.
     assert (exists i, {{ Γ ⊢ Π A B : Type@i }}) as [i] by (gen_presups; eauto 2).
     assert ({{ Γ ⊢ A : Type@i }} /\ {{ Γ, ^(A : exp) ⊢ B : Type@i }}) as [] by mauto 3.
     assert {{ Γ ⊢ N : A }} by mauto 3 using alg_type_check_sound.
-    assert {{ Γ ⊢ B[Id,,N] : Type@i }} by mauto 3...
-  - assert (exists i, {{ Γ ⊢ A : Type@i }}) as [i] by mauto 2...
+    assert {{ Γ ⊢ B[Id,,N] : Type@i }} by mauto 3; (f_equiv; mautosolve 4).
+  - assert (exists i, {{ Γ ⊢ A : Type@i }}) as [i] by mauto 2; (f_equiv; mautosolve 4).
 Qed.
 
 #[export]

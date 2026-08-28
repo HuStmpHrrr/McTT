@@ -30,9 +30,9 @@ Import Syntax_Notations Wk_Notations.
 Lemma wf_typ_inversion : forall {Γ i A},
     {{ Γ ⊢ Type@i : A }} ->
     {{ Γ ⊢ Type@(S i) ⊆ A }}.
-Proof with mautosolve.
+Proof.
   intros * H.
-  dependent induction H...
+  dependent induction H; mautosolve.
 Qed.
 
 #[export]
@@ -41,9 +41,9 @@ Hint Resolve wf_typ_inversion : mctt.
 Lemma wf_nat_inversion : forall Γ A,
     {{ Γ ⊢ ℕ : A }} ->
     {{ Γ ⊢ Type@0 ⊆ A }}.
-Proof with mautosolve 4.
+Proof.
   intros * H.
-  dependent induction H...
+  dependent induction H; mautosolve 4.
 Qed.
 
 #[export]
@@ -52,10 +52,10 @@ Hint Resolve wf_nat_inversion : mctt.
 Corollary wf_zero_inversion : forall Γ A,
     {{ Γ ⊢ zero : A }} ->
     {{ Γ ⊢ ℕ ⊆ A }}.
-Proof with mautosolve 4.
+Proof.
   intros * H.
   dependent induction H;
-    try specialize (IHwf_exp eq_refl)...
+    try specialize (IHwf_exp eq_refl); mautosolve 4.
 Qed.
 
 #[export]
@@ -64,11 +64,11 @@ Hint Resolve wf_zero_inversion : mctt.
 Corollary wf_succ_inversion : forall Γ A M,
     {{ Γ ⊢ succ M : A }} ->
     {{ Γ ⊢ M : ℕ }} /\ {{ Γ ⊢ ℕ ⊆ A }}.
-Proof with mautosolve.
+Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ eq_refl);
-    destruct_conjs...
+    destruct_conjs; mautosolve.
 Qed.
 
 #[export]
@@ -80,11 +80,11 @@ Lemma wf_natrec_inversion : forall Γ A M A' MZ MS,
     {{ Γ , ℕ , A' ⊢ MS : A'[Wk ⨟ Wk ,, succ #1] }} /\
     {{ Γ ⊢ M : ℕ }} /\
     {{ Γ ⊢ A'[Id ,, M] ⊆ A }}.
-Proof with mautosolve.
+Proof.
   intros * H.
   dependent induction H;
     try (specialize (IHwf_exp1 _ _ _ _ eq_refl));
-    destruct_conjs; gen_core_presups; repeat split...
+    destruct_conjs; gen_core_presups; repeat split; mautosolve.
 Qed.
 
 #[export]
@@ -93,11 +93,11 @@ Hint Resolve wf_natrec_inversion : mctt.
 Lemma wf_pi_inversion : forall {Γ A B C},
     {{ Γ ⊢ Π A B : C }} ->
     exists i, {{ Γ ⊢ A : Type@i }} /\ {{ Γ , A ⊢ B : Type@i }} /\ {{ Γ ⊢ Type@i ⊆ C }}.
-Proof with mautosolve 4.
+Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
-    destruct_conjs; gen_core_presups; eexists...
+    destruct_conjs; gen_core_presups; eexists; mautosolve 4.
 Qed.
 
 #[export]
@@ -127,12 +127,12 @@ Hint Resolve wf_pi_inversion' : mctt.
 Corollary wf_fn_inversion : forall {Γ A M C},
     {{ Γ ⊢ λ A M : C }} ->
     exists B, {{ Γ , A ⊢ M : B }} /\ {{ Γ ⊢ Π A B ⊆ C }}.
-Proof with mautosolve 3.
+Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
     destruct_conjs; gen_core_presups;
-    eexists; split...
+    eexists; split; mautosolve 3.
 Qed.
 
 #[export]
@@ -141,12 +141,12 @@ Hint Resolve wf_fn_inversion : mctt.
 Lemma wf_app_inversion : forall {Γ M N C},
     {{ Γ ⊢ M N : C }} ->
     exists A B, {{ Γ ⊢ M : Π A B }} /\ {{ Γ ⊢ N : A }} /\ {{ Γ ⊢ B[Id ,, N] ⊆ C }}.
-Proof with mautosolve 4.
+Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
     destruct_conjs;
-    do 2 eexists; repeat split...
+    do 2 eexists; repeat split; mautosolve 4.
 Qed.
 
 #[export]
@@ -155,11 +155,11 @@ Hint Resolve wf_app_inversion : mctt.
 Lemma wf_vlookup_inversion : forall {Γ x A},
     {{ Γ ⊢ #x : A }} ->
     exists A', {{ #x : A' ∈ Γ }} /\ {{ Γ ⊢ A' ⊆ A }}.
-Proof with mautosolve 4.
+Proof.
   intros * H.
   dependent induction H;
     try (specialize (IHwf_exp1 _ eq_refl));
-    destruct_conjs; gen_core_presups; eexists; split...
+    destruct_conjs; gen_core_presups; eexists; split; mautosolve 4.
 Qed.
 
 #[export]

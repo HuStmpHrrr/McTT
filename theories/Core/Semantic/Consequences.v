@@ -94,7 +94,7 @@ Hint Constructors canonical_nat : mctt.
 Theorem canonical_form_of_nat : forall {M},
     {{ ⋅ ⊢ M : ℕ }} ->
     exists W, nbe {{{ ⋅ }}} M {{{ ℕ }}} W /\ canonical_nat W.
-Proof with mautosolve 4.
+Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
   dir_inversion_clear_by_head nbe.
@@ -104,8 +104,8 @@ Proof with mautosolve 4.
   match_by_head1 read_nf ltac:(fun H => dependent induction H);
     intros; mauto 3;
     gen_presups.
-  - eassert ({{ ⋅ ⊢ ^_ : ℕ }} /\ {{ ⋅ ⊢ ℕ ⊆ ℕ }}) as [? _]...
-  - match_by_head1 (wf_exp {{{ ⋅ }}} {{{ ℕ }}}) ltac:(fun H => contradict H)...
+  - eassert ({{ ⋅ ⊢ ^_ : ℕ }} /\ {{ ⋅ ⊢ ℕ ⊆ ℕ }}) as [? _]; mautosolve 4.
+  - match_by_head1 (wf_exp {{{ ⋅ }}} {{{ ℕ }}}) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 #[export]
 Hint Resolve canonical_form_of_nat : mctt.
@@ -113,7 +113,7 @@ Hint Resolve canonical_form_of_nat : mctt.
 Theorem canonical_form_of_typ : forall {i M},
     {{ ⋅ ⊢ M : Type@i }} ->
     exists W, nbe {{{ ⋅ }}} M {{{ Type@i }}} W /\ is_typ_constr W /\ (forall V, W <> n{{{ ⇑ V }}}).
-Proof with mautosolve 4.
+Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
   dir_inversion_clear_by_head nbe.
@@ -124,7 +124,7 @@ Proof with mautosolve 4.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
     intros; split; intros; mauto 3; try congruence;
     gen_presups;
-    match_by_head1 (wf_exp {{{ ⋅ }}} {{{ Type@i }}}) ltac:(fun H => contradict H)...
+    match_by_head1 (wf_exp {{{ ⋅ }}} {{{ Type@i }}}) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 #[export]
 Hint Resolve canonical_form_of_typ : mctt.
@@ -134,7 +134,7 @@ Lemma subtyp_spec : forall {Γ A B},
     (exists k, {{ Γ ⊢ A ≈ B : Type@k }}) \/
       (exists i j, (exists k, {{ Γ ⊢ A ≈ Type@i : Type@k }}) /\ (exists k, {{ Γ ⊢ Type@j ≈ B : Type@k }}) /\ i <= j) \/
       (exists A1 A2 B1 B2, (exists k, {{ Γ ⊢ A ≈ Π A1 A2 : Type@k }}) /\ (exists k, {{ Γ ⊢ Π B1 B2 ≈ B : Type@k }}) /\ (exists k, {{ Γ ⊢ A1 ≈ B1 : Type@k }}) /\ {{ Γ, B1 ⊢ A2 ⊆ B2 }}).
-Proof with (congruence + firstorder (mautosolve 4 + lia)).
+Proof.
   induction 1; mauto 3.
   - destruct_all; firstorder (mauto 3);
       try (right; right; do 4 eexists; firstorder mautosolve 3).
@@ -143,11 +143,11 @@ Proof with (congruence + firstorder (mautosolve 4 + lia)).
           _: {{ Γ ⊢ Type@?j ≈ M' : Type@_ }} |- _ =>
           assert {{ Γ ⊢ Type@j ≈ Type@i : Type@_ }} by mauto 3;
           assert (j = i) as -> by mauto 3
-      end...
+      end; (congruence + firstorder (mautosolve 4 + lia)).
     + assert {{ Γ ⊢ Π ^_ ^_ ≈ Type@_ : Type@_ }} by mauto 3.
-      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3...
+      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
     + assert {{ Γ ⊢ Π ^_ ^_ ≈ Type@_ : Type@_ }} by mauto 3.
-      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3...
+      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
     + match goal with
       | _: {{ Γ ⊢ M' ≈ Π ^?A1 ^?A2 : Type@_ }},
           _: {{ Γ ⊢ Π ^?B1 ^?B2 ≈ M' : Type@_ }} |- _ =>
@@ -156,16 +156,16 @@ Proof with (congruence + firstorder (mautosolve 4 + lia)).
       end.
       right; right.
       do 4 eexists; repeat split; mauto 3.
-      * eexists; eapply exp_eq_trans_typ_max...
+      * eexists; eapply exp_eq_trans_typ_max; (congruence + firstorder (mautosolve 4 + lia)).
       * (** The two codomain refinements live in contexts extended by the three
             equal domains, so [ctxsub_subtyp] moves both into the one we chose. *)
         etransitivity; [| eassumption].
         etransitivity; eapply ctxsub_subtyp; [| eassumption | | mauto 3]; [| mauto 3].
         eapply wf_sub_id_extend_eq', exp_eq_trans_typ_max; [symmetry |]; eassumption.
   - right; left.
-    do 2 eexists...
+    do 2 eexists; (congruence + firstorder (mautosolve 4 + lia)).
   - right; right.
-    do 4 eexists...
+    do 4 eexists; (congruence + firstorder (mautosolve 4 + lia)).
 Qed.
 
 #[export]
@@ -176,26 +176,26 @@ Lemma consistency_ne_helper : forall {i A A'} {W : ne},
     (forall j, A' <> {{{ Type@j }}}) ->
     {{ ⋅, Type@i ⊢ A ⊆ A' }} ->
     ~ {{ ⋅, Type@i ⊢ W : A }}.
-Proof with (congruence + mautosolve 3).
+Proof.
   intros * HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
     try (destruct W; simpl in *; congruence).
   - destruct W; simpl in *; autoinjections.
-    eapply IHHW4; [| | | | mauto 4]...
+    eapply IHHW4; [| | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
-    eapply IHHW3; [| | | | mauto 4]...
+    eapply IHHW3; [| | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
     assert {{ ⋅, Type@i ⊢ Type@i⟨↑⟩ ≈ Type@i : Type@(S i) }} by mauto 3.
     eapply subtyp_spec in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
     assert {{ ⋅, Type@i ⊢ Type@i ≈ Π ^_ ^_ : Type@_ }} by mauto 3.
-    assert ({{{ Π ^_ ^_ }}} = {{{ Type@i }}}) by mauto 3...
+    assert ({{{ Π ^_ ^_ }}} = {{{ Type@i }}}) by mauto 3; (congruence + mautosolve 3).
 Qed.
 
 Theorem consistency : forall {i} M,
     ~ {{ ⋅ ⊢ M : Π Type@i #0 }}.
-Proof with (congruence + mautosolve 3).
+Proof.
   intros * HW.
   assert (exists W1 W2, nbe {{{ ⋅ }}} M {{{ Π Type@i #0 }}} n{{{ λ W1 W2 }}}) as [W1 [W2 Hnbe]] by mauto 3.
   assert (exists W, nbe {{{ ⋅ }}} M {{{ Π Type@i #0 }}} W /\ {{ ⋅ ⊢ M ≈ W : Π Type@i #0 }}) as [? []] by mauto 3 using soundness.
@@ -213,7 +213,7 @@ Proof with (congruence + mautosolve 3).
     try assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3;
     try congruence.
   - assert (_ /\ {{ ^_ ⊢ B ≈ #0 : ^_ }}) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
-    eapply consistency_ne_helper...
+    eapply consistency_ne_helper; (congruence + mautosolve 3).
   - assert (_ /\ {{ ^_ ⊢ B ≈ ^_ : ^_ }}) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     assert (_ /\ {{ ^_ ⊢ ^_ ≈ #0 : ^_ }}) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
@@ -224,5 +224,5 @@ Proof with (congruence + mautosolve 3).
        etransitivity;
        [eapply ctxsub_subtyp; [| eassumption] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]];
        mauto 3).
-    eapply consistency_ne_helper...
+    eapply consistency_ne_helper; (congruence + mautosolve 3).
 Qed.

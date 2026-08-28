@@ -1,6 +1,6 @@
 %{
 
-From Coq Require Import List Arith.PeanoNat String.
+From Stdlib Require Import List Arith.PeanoNat String.
 
 From Mctt Require Import Syntax.
 

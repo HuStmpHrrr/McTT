@@ -22,9 +22,10 @@ Section functional_eval.
           forall r2,
             {{ $| m & n |↘ r2 }} ->
             r1 = r2).
-  Proof with ((on_all_hyp: fun H => erewrite H in *; eauto); solve [eauto]) using.
+  Proof using.
     apply eval_mut_ind; intros;
-      progressive_inversion; do 2 f_equal; try reflexivity...
+      progressive_inversion; do 2 f_equal; try reflexivity;
+    ((on_all_hyp: fun H => erewrite H in *; eauto); solve [eauto]).
   Qed.
 
   Corollary functional_eval_exp : forall M ρ m1 m2,

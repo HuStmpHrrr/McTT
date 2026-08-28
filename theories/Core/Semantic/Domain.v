@@ -80,24 +80,28 @@ Module Domain_Notations.
   Export Syntax_Notations.
 
   Notation "'d{{{' x '}}}'" := x (at level 0, x custom domain at level 99, format "'d{{{'  x  '}}}'") : mctt_scope.
+  (** Declared before the value constructors so that level 1 is left
+      associative, as [e[s]] does for the [exp] entry. *)
+  Notation "ρ '↯'" := (drop_env ρ) (in custom domain at level 1, ρ custom domain, left associativity) : mctt_scope.
   Notation "( x )" := x (in custom domain at level 0, x custom domain at level 60) : mctt_scope.
-  Notation "'^' x" := x (in custom domain at level 0, x constr at level 0) : mctt_scope.
+  Notation "'^' x" := x (in custom domain at level 1, x constr at level 0) : mctt_scope.
   Notation "x" := x (in custom domain at level 0, x ident) : mctt_scope.
-  Notation "'λ' ρ M" := (d_fn ρ M) (in custom domain at level 0, ρ custom domain at level 30, M custom exp at level 30) : mctt_scope.
+  Notation "'λ' ρ M" := (d_fn ρ M) (in custom domain at level 2, ρ custom domain at level 30, M custom exp at level 30) : mctt_scope.
   Notation "f x .. y" := (d_app .. (d_app f x) .. y) (in custom domain at level 40, f custom domain, x custom domain at next level, y custom domain at next level) : mctt_scope.
   Notation "'ℕ'" := d_nat (in custom domain) : mctt_scope.
-  Notation "'𝕌' @ n" := (d_univ n) (in custom domain at level 0, n constr at level 0) : mctt_scope.
-  Notation "'Π' a ρ B" := (d_pi a ρ B) (in custom domain at level 0, a custom domain at level 30, ρ custom domain at level 0, B custom exp at level 30) : mctt_scope.
+  Notation "'𝕌' @ n" := (d_univ n) (in custom domain at level 2, n constr at level 0) : mctt_scope.
+  Notation "'Π' a ρ B" := (d_pi a ρ B) (in custom domain at level 2, a custom domain at level 30, ρ custom domain at level 0, B custom exp at level 30) : mctt_scope.
   Notation "'zero'" := d_zero (in custom domain at level 0) : mctt_scope.
-  Notation "'succ' m" := (d_succ m) (in custom domain at level 30, m custom domain at level 30) : mctt_scope.
+  (** At the level just below [ρ ↦ m], which is what [↦] admits as its right
+      operand, so that [ρ ↦ succ m] needs no parentheses. *)
+  Notation "'succ' m" := (d_succ m) (in custom domain at level 19, m custom domain at level 2) : mctt_scope.
   Notation "'rec' m 'under' ρ 'return' P | 'zero' -> mz | 'succ' -> MS 'end'" := (d_natrec ρ P mz MS m) (in custom domain at level 0, P custom exp at level 60, mz custom domain at level 60, MS custom exp at level 60, ρ custom domain at level 60, m custom domain at level 60) : mctt_scope.
-  Notation "'!' n" := (d_var n) (in custom domain at level 0, n constr at level 0) : mctt_scope.
-  Notation "'⇑' a m" := (d_neut a m) (in custom domain at level 0, a custom domain at level 30, m custom domain at level 30) : mctt_scope.
-  Notation "'⇓' a m" := (d_dom a m) (in custom domain at level 0, a custom domain at level 30, m custom domain at level 30) : mctt_scope.
-  Notation "'⇑!' a n" := (d_neut a (d_var n)) (in custom domain at level 0, a custom domain at level 30, n constr at level 0) : mctt_scope.
+  Notation "'!' n" := (d_var n) (in custom domain at level 2, n constr at level 0) : mctt_scope.
+  Notation "'⇑' a m" := (d_neut a m) (in custom domain at level 2, a custom domain at level 30, m custom domain at level 30) : mctt_scope.
+  Notation "'⇓' a m" := (d_dom a m) (in custom domain at level 2, a custom domain at level 30, m custom domain at level 30) : mctt_scope.
+  Notation "'⇑!' a n" := (d_neut a (d_var n)) (in custom domain at level 2, a custom domain at level 30, n constr at level 0) : mctt_scope.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (in custom domain at level 20, left associativity) : mctt_scope.
-  Notation "ρ '↯'" := (drop_env ρ) (in custom domain at level 10, ρ custom domain) : mctt_scope.
 End Domain_Notations.
 
 Import Domain_Notations.

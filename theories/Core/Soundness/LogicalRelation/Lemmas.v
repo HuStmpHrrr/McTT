@@ -39,7 +39,7 @@ Lemma glu_univ_elem_typ_unique_upto_exp_eq : forall {i j a P P' El El' Γ A A'},
     {{ Γ ⊢ A ® P }} ->
     {{ Γ ⊢ A' ® P' }} ->
     {{ Γ ⊢ A ≈ A' : Type@(max i j) }}.
-Proof with mautosolve 4.
+Proof.
   intros.
   assert {{ Γ ⊢ A ® glu_typ_top i a }} as [] by mauto 3.
   assert {{ Γ ⊢ A' ® glu_typ_top j a }} as [] by mauto 3.
@@ -51,7 +51,7 @@ Proof with mautosolve 4.
   assert {{ Γ ⊢ A ≈ V : Type@i }} by (rewrite <- (exp_wk_id A); mauto 4).
   assert {{ Γ ⊢ A ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_left.
   assert {{ Γ ⊢ A' ≈ V : Type@j }} by (rewrite <- (exp_wk_id A'); mauto 4).
-  assert {{ Γ ⊢ A' ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_right...
+  assert {{ Γ ⊢ A' ≈ V : Type@(max i j) }} by mauto 4 using lift_exp_eq_max_right; mautosolve 4.
 Qed.
 
 #[export]
@@ -64,9 +64,9 @@ Lemma glu_univ_elem_typ_unique_upto_exp_eq_ge : forall {i j a P P' El El' Γ A A
     {{ Γ ⊢ A ® P }} ->
     {{ Γ ⊢ A' ® P' }} ->
     {{ Γ ⊢ A ≈ A' : Type@j }}.
-Proof with mautosolve 4.
+Proof.
   intros.
-  replace j with (max i j) by lia...
+  replace j with (max i j) by lia; mautosolve 4.
 Qed.
 
 #[export]
@@ -89,11 +89,11 @@ Lemma glu_univ_elem_per_univ_elem_typ_escape : forall {i a a' elem_rel P P' El E
     {{ Γ ⊢ A ® P }} ->
     {{ Γ ⊢ A' ® P' }} ->
     {{ Γ ⊢ A ≈ A' : Type@i }}.
-Proof with mautosolve 4.
+Proof.
   simpl in *.
   intros * Hper Hglu Hglu' HA HA'.
   assert {{ DG a ∈ glu_univ_elem i ↘ P' ↘ El' }} by (setoid_rewrite Hper; eassumption).
-  handle_functional_glu_univ_elem...
+  handle_functional_glu_univ_elem; mautosolve 4.
 Qed.
 
 #[export]
@@ -167,7 +167,7 @@ Section glu_univ_elem_cumulativity.
       (forall Γ A, {{ Γ ⊢ A ® P }} -> {{ Γ ⊢ A ® P' }}) /\
         (forall Γ A M m, {{ Γ ⊢ M : A ® m ∈ El }} -> {{ Γ ⊢ M : A ® m ∈ El' }}) /\
         (forall Γ A M m, {{ Γ ⊢ A ® P }} -> {{ Γ ⊢ M : A ® m ∈ El' }} -> {{ Γ ⊢ M : A ® m ∈ El }}).
-  Proof with mautosolve 4.
+  Proof.
     simpl.
     intros * Hge Hglu Hglu'. gen El' P' j.
     induction Hglu using glu_univ_elem_ind; repeat split; intros;
@@ -185,7 +185,7 @@ Section glu_univ_elem_cumulativity.
       econstructor; intros; mauto 4.
       + assert {{ Δ ⊢ IT⟨φ⟩ ® IP }} by mauto.
         enough (forall Γ A, {{ Γ ⊢ A ® IP }} -> {{ Γ ⊢ A ® IP' }}) by mauto 4.
-        eapply proj1...
+        eapply proj1; mautosolve 4.
       + match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
         apply_relation_equivalence.
         destruct_rel_mod_eval.
@@ -193,7 +193,7 @@ Section glu_univ_elem_cumulativity.
         assert (forall Γ A, {{ Γ ⊢ A ® OP m equiv_m }} -> {{ Γ ⊢ A ® OP' m equiv_m }}) by (eapply proj1; mauto).
         enough {{ Δ ⊢ OT[^(ι φ),,M] ® OP m equiv_m }} by mauto.
         enough {{ Δ ⊢ M : IT⟨φ⟩ ® m ∈ IEl }} by mauto.
-        eapply IHHglu...
+        eapply IHHglu; mautosolve 4.
     - rename x into IP'.
       rename x0 into IEl'.
       rename x1 into OP'.
@@ -202,7 +202,7 @@ Section glu_univ_elem_cumulativity.
       handle_per_univ_elem_irrel.
       econstructor; intros; mauto 4.
       + enough (forall Γ A, {{ Γ ⊢ A ® IP }} -> {{ Γ ⊢ A ® IP' }}) by mauto 4.
-        eapply proj1...
+        eapply proj1; mautosolve 4.
       + match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
         handle_per_univ_elem_irrel.
         destruct_rel_mod_eval.
@@ -214,7 +214,7 @@ Section glu_univ_elem_cumulativity.
         assert {{ Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl }} by (eapply IHHglu; mauto 3).
         assert (exists mn, {{ $| m & n |↘ mn }} /\ {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] ® mn ∈ OEl n equiv_n }}) by mauto 4.
         destruct_conjs.
-        functional_eval_rewrite_clear...
+        functional_eval_rewrite_clear; mautosolve 4.
     - rename x into IP'.
       rename x0 into IEl'.
       rename x1 into OP'.
@@ -246,13 +246,13 @@ Section glu_univ_elem_cumulativity.
       functional_eval_rewrite_clear.
       assert {{ DG b ∈ glu_univ_elem j ↘ OP' n equiv_n ↘ OEl' n equiv_n }} by mauto 3.
       assert {{ Δ ⊢ OT0[^(ι φ),,N] ® OP' n equiv_n }} by (eapply glu_univ_elem_trm_typ; mauto 3).
-      enough {{ Δ ⊢ OT[^(ι φ),,N] ≈ OT0[^(ι φ),,N] : Type@j }} as ->...
+      enough {{ Δ ⊢ OT[^(ι φ),,N] ≈ OT0[^(ι φ),,N] : Type@j }} as ->; mautosolve 4.
     - destruct_by_head neut_glu_exp_pred.
       econstructor; mauto.
       destruct_by_head neut_glu_typ_pred.
-      econstructor...
+      econstructor; mautosolve 4.
     - destruct_by_head neut_glu_exp_pred.
-      econstructor...
+      econstructor; mautosolve 4.
   Qed.
 End glu_univ_elem_cumulativity.
 

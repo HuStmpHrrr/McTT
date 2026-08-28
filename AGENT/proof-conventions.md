@@ -104,12 +104,11 @@ These are the ways an edit to a tactic goes wrong silently.
   development. Use the smallest depth that works.
 - Prefer `mauto n using lem` over adding a narrowly useful lemma to the
   database.
-- `Proof with mautosolve.` plus `...` as the end tactic is the house style
-  (`foo; bar...` means `foo; bar; mautosolve`). Note that under Rocq 9.2 the
-  `...` end-tactic is deprecated (`deprecated-end-tac`, 237 occurrences) and is
-  an outright **error** in a plain `Proof.` block with no `with` clause. If you
-  add a proof, either give it a `Proof with` clause or write the end tactic
-  out.
+- `Proof with mautosolve.` plus `...` as the end tactic *was* the house style
+  (`foo; bar...` meant `foo; bar; mautosolve`), but Rocq 9.2 deprecates `...`
+  (`deprecated-end-tac`), so every occurrence has been written out. Do not
+  reintroduce it; spell the end tactic out. A few `Proof with` clauses survive
+  with nothing left to expand — harmless, and not worth a diff.
 
 ## 5. Known debt: the completeness layer lost its automation
 

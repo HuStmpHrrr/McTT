@@ -23,8 +23,8 @@ Section functional_read.
           forall M2,
             {{ Rtyp m in s ↘ M2 }} ->
             M1 = M2).
-  Proof with (functional_eval_rewrite_clear; f_equal; solve [eauto]) using.
-    apply read_mut_ind; intros; progressive_inversion...
+  Proof using.
+    apply read_mut_ind; intros; progressive_inversion; (functional_eval_rewrite_clear; f_equal; solve [eauto]).
   Qed.
 
   Corollary functional_read_nf : forall s m M1 M2,

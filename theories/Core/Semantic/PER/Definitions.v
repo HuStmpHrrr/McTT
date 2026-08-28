@@ -25,6 +25,9 @@ Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A'
 Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 #[export]
 Hint Constructors rel_mod_eval : mctt.
+(** [per_univ_elem_core] nests through this, and generating its induction
+    principle needs a scheme registered here. *)
+Scheme All for rel_mod_eval.
 
 (** Related modulo application *)
 Inductive rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app : forall fa f'a', {{ $| f & a |↘ fa }} -> {{ $| f' & a' |↘ f'a' }} -> {{ Dom fa ≈ f'a' ∈ R }} -> rel_mod_app f a f' a' R.

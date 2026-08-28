@@ -22,8 +22,8 @@ Hint Constructors initial_env_order : mctt.
 Lemma initial_env_order_sound : forall Γ p,
     initial_env Γ p ->
     initial_env_order Γ.
-Proof with (econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; mauto).
-  induction 1...
+Proof.
+  induction 1; (econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; mauto).
 Qed.
 
 #[local]
@@ -106,12 +106,10 @@ Hint Constructors nbe_order : mctt.
 Lemma nbe_order_sound : forall G M A w,
     nbe G M A w ->
     nbe_order G M A.
-Proof with (econstructor; intros;
-            functional_initial_env_rewrite_clear;
-            functional_eval_rewrite_clear;
-            functional_read_rewrite_clear;
-            mauto).
-  induction 1...
+Proof.
+  induction 1;
+    (econstructor; intros; functional_initial_env_rewrite_clear;
+     functional_eval_rewrite_clear; functional_read_rewrite_clear; mauto).
 Qed.
 
 #[local]
@@ -164,12 +162,10 @@ Hint Constructors nbe_ty_order : mctt.
 Lemma nbe_ty_order_sound : forall G A w,
     nbe_ty G A w ->
     nbe_ty_order G A.
-Proof with (econstructor; intros;
-            functional_initial_env_rewrite_clear;
-            functional_eval_rewrite_clear;
-            functional_read_rewrite_clear;
-            mauto).
-  induction 1...
+Proof.
+  induction 1;
+    (econstructor; intros; functional_initial_env_rewrite_clear;
+     functional_eval_rewrite_clear; functional_read_rewrite_clear; mauto).
 Qed.
 
 #[local]

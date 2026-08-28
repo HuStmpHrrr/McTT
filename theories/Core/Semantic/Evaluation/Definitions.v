@@ -24,7 +24,7 @@ Definition eval_wk (φ : wk) (ρ : env) : env := fun x => ρ (φ x).
 Arguments eval_wk _ _ _ /.
 Transparent eval_wk.
 
-Notation "'⟦' φ '⟧w' ρ" := (eval_wk φ ρ) (in custom domain at level 10, φ constr at level 0, ρ custom domain at level 0) : mctt_scope.
+Notation "'⟦' φ '⟧w' ρ" := (eval_wk φ ρ) (in custom domain at level 10, φ constr at level 60, ρ custom domain at level 0) : mctt_scope.
 
 Proposition eval_wk_shift : forall ρ,
     d{{{ ⟦ ↑ ⟧w ρ }}} = d{{{ ρ ↯ }}}.

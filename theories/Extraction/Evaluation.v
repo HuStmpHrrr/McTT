@@ -72,10 +72,10 @@ with eval_natrec_order_sound : forall A MZ MS m p r,
 with eval_app_order_sound: forall m n r,
   {{ $| m & n |↘ r }} ->
   eval_app_order m n.
-Proof with (econstructor; intros; functional_eval_rewrite_clear; eauto).
-  - clear eval_exp_order_sound; induction 1...
-  - clear eval_natrec_order_sound; induction 1...
-  - clear eval_app_order_sound; induction 1...
+Proof.
+  - clear eval_exp_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; eauto).
+  - clear eval_natrec_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; eauto).
+  - clear eval_app_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; eauto).
 Qed.
 
 #[export]

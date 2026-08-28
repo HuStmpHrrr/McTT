@@ -44,7 +44,7 @@ Reserved Notation "Γ ⊢ A ⊆ A'" (in custom judg at level 80, Γ custom exp, 
 Reserved Notation "Γ ⊢w φ : Δ" (in custom judg at level 80, Γ custom exp, φ constr at level 60, Δ custom exp).
 Reserved Notation "Γ ⊢s σ : Δ" (in custom judg at level 80, Γ custom exp, σ custom exp, Δ custom exp).
 Reserved Notation "Γ ⊢s σ ≈ σ' : Δ" (in custom judg at level 80, Γ custom exp, σ custom exp, σ' custom exp, Δ custom exp).
-Reserved Notation "'#' x : A ∈ Γ" (in custom judg at level 80, x constr at level 0, A custom exp, Γ custom exp at level 50).
+Reserved Notation "'#' x : A ∈ Γ" (in custom judg at level 80, x constr at level 0, A custom exp, Γ custom exp).
 
 Generalizable All Variables.
 
@@ -360,8 +360,8 @@ Qed.
 (** ** Immediate & Independent Presuppositions *)
 
 Lemma presup_subtyp_right : forall {Γ A B}, {{ Γ ⊢ A ⊆ B }} -> exists i, {{ Γ ⊢ B : Type@i }}.
-Proof with mautosolve.
-  induction 1...
+Proof.
+  induction 1; mautosolve.
 Qed.
 
 #[export]

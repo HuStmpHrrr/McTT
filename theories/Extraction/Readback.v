@@ -89,10 +89,10 @@ with read_ne_order_sound : forall s d m,
 with read_typ_order_sound : forall s d m,
     {{ Rtyp d in s ↘ m }} ->
     read_typ_order s d.
-Proof with (econstructor; intros; functional_eval_rewrite_clear; mauto).
-  - clear read_nf_order_sound; induction 1...
-  - clear read_ne_order_sound; induction 1...
-  - clear read_typ_order_sound; induction 1...
+Proof.
+  - clear read_nf_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; mauto).
+  - clear read_ne_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; mauto).
+  - clear read_typ_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; mauto).
 Qed.
 
 #[export]

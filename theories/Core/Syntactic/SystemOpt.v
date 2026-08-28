@@ -38,14 +38,14 @@ Import Syntax_Notations Wk_Notations.
 
 Add Parametric Morphism i Γ : (wf_exp Γ)
     with signature wf_exp_eq Γ {{{ Type@i }}} ==> eq ==> iff as wf_exp_morphism_iff3.
-Proof with mautosolve.
-  split; intros; gen_presups...
+Proof.
+  split; intros; gen_presups; mautosolve.
 Qed.
 
 Add Parametric Morphism i Γ : (wf_exp_eq Γ)
     with signature wf_exp_eq Γ {{{ Type@i }}} ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff3.
-Proof with mautosolve.
-  split; intros; gen_presups...
+Proof.
+  split; intros; gen_presups; mautosolve.
 Qed.
 
 Add Parametric Morphism Γ i : (wf_subtyp Γ)

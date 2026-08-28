@@ -9,10 +9,10 @@ Import Domain_Notations.
 Lemma per_nat_then_per_top : forall {n m},
     {{ Dom n ≈ m ∈ per_nat }} ->
     {{ Dom ⇓ ℕ n ≈ ⇓ ℕ m ∈ per_top }}.
-Proof with solve [destruct_conjs; eexists; repeat econstructor; eauto].
+Proof.
   induction 1; simpl in *; intros s;
     try specialize (IHper_nat s);
-    try specialize (H s)...
+    try specialize (H s); solve [destruct_conjs; eexists; repeat econstructor; eauto].
 Qed.
 
 #[export]
@@ -23,26 +23,26 @@ Lemma realize_per_univ_elem_gen : forall {i a a' R},
     {{ Dom a ≈ a' ∈ per_top_typ }}
     /\ (forall {c c'}, {{ Dom c ≈ c' ∈ per_bot }} -> {{ Dom ⇑ a c ≈ ⇑ a' c' ∈ R }})
     /\ (forall {b b'}, {{ Dom b ≈ b' ∈ R }} -> {{ Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top }}).
-Proof with (solve [try (try (eexists; split); econstructor); mauto]).
+Proof.
   intros * Hunivelem. simpl in Hunivelem.
   induction Hunivelem using per_univ_elem_ind; repeat split; intros;
     apply_relation_equivalence; mauto.
   - subst; repeat econstructor.
   - subst.
     eexists.
-    per_univ_elem_econstructor...
+    per_univ_elem_econstructor; (solve [try (try (eexists; split); econstructor); mauto]).
   - subst.
     destruct_by_head per_univ.
     specialize (H2 _ _ _ H0).
     destruct_conjs.
     intro s.
-    specialize (H1 s) as [? []]...
+    specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - destruct IHHunivelem as [? []].
     intro s.
     assert {{ Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel }} by eauto using var_per_bot.
     destruct_rel_mod_eval.
     specialize (H9 (S s)) as [? []].
-    specialize (H2 s) as [? []]...
+    specialize (H2 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - intros c0 c0' equiv_c0_c0'.
     destruct_conjs.
     destruct_rel_mod_eval.
@@ -50,7 +50,7 @@ Proof with (solve [try (try (eexists; split); econstructor); mauto]).
     enough ({{ Dom c ⇓ a c0 ≈ c' ⇓ a' c0' ∈ per_bot }}) by eauto.
     intro s.
     specialize (H3 s) as [? []].
-    specialize (H5 _ _ equiv_c0_c0' s) as [? []]...
+    specialize (H5 _ _ equiv_c0_c0' s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - destruct_conjs.
     intro s.
     assert {{ Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel }} by eauto using var_per_bot.
@@ -68,12 +68,12 @@ Proof with (solve [try (try (eexists; split); econstructor); mauto]).
     end.
     assert {{ Dom ⇓ b fa ≈ ⇓ b' f'a' ∈ per_top }} by eauto.
     specialize (H2 s) as [? []].
-    specialize (H16 (S s)) as [? []]...
+    specialize (H16 (S s)) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - intro s.
-    (on_all_hyp: fun H => destruct (H s) as [? []])...
+    (on_all_hyp: fun H => destruct (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).
   - intro s.
     inversion_clear_by_head per_ne.
-    (on_all_hyp: fun H => specialize (H s) as [? []])...
+    (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).
 Qed.
 
 Corollary per_univ_then_per_top_typ : forall {i a a' R},

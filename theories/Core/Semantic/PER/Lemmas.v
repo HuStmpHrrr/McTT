@@ -25,10 +25,10 @@ Qed.
 Lemma per_bot_sym : forall m n,
     {{ Dom m ≈ n ∈ per_bot }} ->
     {{ Dom n ≈ m ∈ per_bot }}.
-Proof with solve [eauto].
+Proof.
   intros * H s.
   pose proof H s.
-  destruct_conjs...
+  destruct_conjs; solve [eauto].
 Qed.
 
 #[export]
@@ -38,11 +38,11 @@ Lemma per_bot_trans : forall m n l,
     {{ Dom m ≈ n ∈ per_bot }} ->
     {{ Dom n ≈ l ∈ per_bot }} ->
     {{ Dom m ≈ l ∈ per_bot }}.
-Proof with solve [eauto].
+Proof.
   intros * Hmn Hnl s.
   pose proof (Hmn s, Hnl s).
   destruct_conjs.
-  functional_read_rewrite_clear...
+  functional_read_rewrite_clear; solve [eauto].
 Qed.
 
 #[export]
@@ -68,10 +68,10 @@ Hint Resolve var_per_bot : mctt.
 Lemma per_top_sym : forall m n,
     {{ Dom m ≈ n ∈ per_top }} ->
     {{ Dom n ≈ m ∈ per_top }}.
-Proof with solve [eauto].
+Proof.
   intros * H s.
   pose proof H s.
-  destruct_conjs...
+  destruct_conjs; solve [eauto].
 Qed.
 
 #[export]
@@ -81,11 +81,11 @@ Lemma per_top_trans : forall m n l,
     {{ Dom m ≈ n ∈ per_top }} ->
     {{ Dom n ≈ l ∈ per_top }} ->
     {{ Dom m ≈ l ∈ per_top }}.
-Proof with solve [eauto].
+Proof.
   intros * Hmn Hnl s.
   pose proof (Hmn s, Hnl s).
   destruct_conjs.
-  functional_read_rewrite_clear...
+  functional_read_rewrite_clear; solve [eauto].
 Qed.
 
 #[export]
@@ -115,10 +115,10 @@ Hint Resolve per_bot_then_per_top : mctt.
 Lemma per_top_typ_sym : forall m n,
     {{ Dom m ≈ n ∈ per_top_typ }} ->
     {{ Dom n ≈ m ∈ per_top_typ }}.
-Proof with solve [eauto].
+Proof.
   intros * H s.
   pose proof H s.
-  destruct_conjs...
+  destruct_conjs; solve [eauto].
 Qed.
 
 #[export]
@@ -128,11 +128,11 @@ Lemma per_top_typ_trans : forall m n l,
     {{ Dom m ≈ n ∈ per_top_typ }} ->
     {{ Dom n ≈ l ∈ per_top_typ }} ->
     {{ Dom m ≈ l ∈ per_top_typ }}.
-Proof with solve [eauto].
+Proof.
   intros * Hmn Hnl s.
   pose proof (Hmn s, Hnl s).
   destruct_conjs.
-  functional_read_rewrite_clear...
+  functional_read_rewrite_clear; solve [eauto].
 Qed.
 
 #[export]
@@ -149,8 +149,8 @@ Qed.
 Lemma per_nat_sym : forall m n,
     {{ Dom m ≈ n ∈ per_nat }} ->
     {{ Dom n ≈ m ∈ per_nat }}.
-Proof with mautosolve.
-  induction 1; econstructor...
+Proof.
+  induction 1; econstructor; mautosolve.
 Qed.
 
 #[export]
@@ -160,9 +160,9 @@ Lemma per_nat_trans : forall m n l,
     {{ Dom m ≈ n ∈ per_nat }} ->
     {{ Dom n ≈ l ∈ per_nat }} ->
     {{ Dom m ≈ l ∈ per_nat }}.
-Proof with mautosolve.
+Proof.
   intros * H. gen l.
-  induction H; inversion_clear 1; econstructor...
+  induction H; inversion_clear 1; econstructor; mautosolve.
 Qed.
 
 #[export]
@@ -179,9 +179,9 @@ Qed.
 Lemma per_ne_sym : forall m n,
     {{ Dom m ≈ n ∈ per_ne }} ->
     {{ Dom n ≈ m ∈ per_ne }}.
-Proof with mautosolve.
+Proof.
   intros * [].
-  econstructor...
+  econstructor; mautosolve.
 Qed.
 
 #[export]
@@ -191,10 +191,10 @@ Lemma per_ne_trans : forall m n l,
     {{ Dom m ≈ n ∈ per_ne }} ->
     {{ Dom n ≈ l ∈ per_ne }} ->
     {{ Dom m ≈ l ∈ per_ne }}.
-Proof with mautosolve.
+Proof.
   intros * [].
   inversion_clear 1.
-  econstructor...
+  econstructor; mautosolve.
 Qed.
 
 #[export]
@@ -210,7 +210,7 @@ Qed.
 
 Add Parametric Morphism i : (per_univ_elem i)
     with signature (@relation_equivalence domain) ==> eq ==> eq ==> iff as per_univ_elem_morphism_iff.
-Proof with mautosolve.
+Proof.
   simpl.
   intros R R' HRR'.
   split; intros Horig; [gen R' | gen R];
@@ -218,7 +218,7 @@ Proof with mautosolve.
     try (etransitivity; [symmetry + idtac|]; eassumption);
     intros;
     destruct_rel_mod_eval;
-    econstructor...
+    econstructor; mautosolve.
 Qed.
 
 (** The same morphism in forward form.  [apply -> per_univ_elem_morphism_iff]
@@ -310,7 +310,7 @@ Lemma per_univ_elem_right_irrel : forall i i' R a b R' b',
     {{ DF a ≈ b ∈ per_univ_elem i ↘ R }} ->
     {{ DF a ≈ b' ∈ per_univ_elem i' ↘ R' }} ->
     (R <~> R').
-Proof with (destruct_rel_mod_eval; destruct_rel_mod_app; functional_eval_rewrite_clear; econstructor; intuition).
+Proof.
   simpl.
   intros * Horig.
   remember a as a' in |- *.
@@ -323,8 +323,12 @@ Proof with (destruct_rel_mod_eval; destruct_rel_mod_app; functional_eval_rewrite
   specialize (IHHorig _ _ _ eq_refl equiv_a_a').
   split; intros.
   - rename equiv_c_c' into equiv0_c_c'.
-    assert (equiv_c_c' : in_rel c c') by firstorder...
-  - assert (equiv0_c_c' : in_rel0 c c') by firstorder...
+    assert (equiv_c_c' : in_rel c c') by firstorder;
+    (destruct_rel_mod_eval; destruct_rel_mod_app; functional_eval_rewrite_clear;
+     econstructor; intuition).
+  - assert (equiv0_c_c' : in_rel0 c c') by firstorder;
+      (destruct_rel_mod_eval; destruct_rel_mod_app; functional_eval_rewrite_clear;
+       econstructor; intuition).
 Qed.
 
 #[local]
@@ -348,7 +352,7 @@ Lemma per_univ_elem_sym : forall i R a b,
       (forall m m',
           {{ Dom m ≈ m' ∈ R }} ->
           {{ Dom m' ≈ m ∈ R }}).
-Proof with mautosolve.
+Proof.
   simpl.
   induction 1 using per_univ_elem_ind; subst.
   - split.
@@ -357,8 +361,8 @@ Proof with mautosolve.
       rewrite H1 in *.
       destruct_by_head per_univ.
       eexists.
-      eapply proj1...
-  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]...
+      eapply proj1; mautosolve.
+  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
     split.
     + basic_per_univ_elem_econstructor; eauto.
@@ -381,7 +385,7 @@ Proof with mautosolve.
       econstructor; eauto.
       per_univ_elem_right_irrel_assert.
       intuition.
-  - split; [econstructor | intros; apply_relation_equivalence]...
+  - split; [econstructor | intros; apply_relation_equivalence]; mautosolve.
 Qed.
 
 Corollary per_univ_sym : forall i R a b,
@@ -475,7 +479,7 @@ Lemma per_univ_elem_trans : forall i R a1 a2,
           R m1 m2 ->
           R m2 m3 ->
           R m1 m3).
-Proof with (basic_per_univ_elem_econstructor; mautosolve 4).
+Proof.
   induction 1 using per_univ_elem_ind;
     [> split;
      [ intros * HT2; basic_invert_per_univ_elem HT2
@@ -489,7 +493,7 @@ Proof with (basic_per_univ_elem_econstructor; mautosolve 4).
     specialize (H2 _ _ _ H0) as [].
     intuition.
   - (** nat case *)
-    idtac...
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** pi case *)
     destruct_conjs.
     basic_per_univ_elem_econstructor; eauto.
@@ -502,7 +506,7 @@ Proof with (basic_per_univ_elem_econstructor; mautosolve 4).
       assert (in_rel0 c c) by intuition.
       destruct_rel_mod_eval.
       functional_eval_rewrite_clear.
-      handle_per_univ_elem_irrel...
+      handle_per_univ_elem_irrel; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** fun case *)
     intros.
     assert (in_rel c c) by intuition.
@@ -512,7 +516,7 @@ Proof with (basic_per_univ_elem_econstructor; mautosolve 4).
     econstructor; eauto.
     intuition.
   - (** neut case *)
-    idtac...
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
 Qed.
 
 Corollary per_univ_trans : forall i j R a1 a2 a3,
@@ -733,13 +737,13 @@ Ltac invert_per_univ_elem H :=
 Lemma per_univ_elem_cumu : forall i a0 a1 R,
     {{ DF a0 ≈ a1 ∈ per_univ_elem i ↘ R }} ->
     {{ DF a0 ≈ a1 ∈ per_univ_elem (S i) ↘ R }}.
-Proof with solve [eauto].
+Proof.
   simpl.
   induction 1 using per_univ_elem_ind; subst;
     per_univ_elem_econstructor; eauto.
   intros.
   destruct_rel_mod_eval.
-  econstructor...
+  econstructor; solve [eauto].
 Qed.
 
 #[export]
@@ -749,8 +753,8 @@ Lemma per_univ_elem_cumu_ge : forall i i' a0 a1 R,
     i <= i' ->
     {{ DF a0 ≈ a1 ∈ per_univ_elem i ↘ R }} ->
     {{ DF a0 ≈ a1 ∈ per_univ_elem i' ↘ R }}.
-Proof with mautosolve.
-  induction 1...
+Proof.
+  induction 1; mautosolve.
 Qed.
 
 #[export]
@@ -759,17 +763,17 @@ Hint Resolve per_univ_elem_cumu_ge : mctt.
 Lemma per_univ_elem_cumu_max_left : forall i j a0 a1 R,
     {{ DF a0 ≈ a1 ∈ per_univ_elem i ↘ R }} ->
     {{ DF a0 ≈ a1 ∈ per_univ_elem (max i j) ↘ R }}.
-Proof with mautosolve.
+Proof.
   intros.
-  assert (i <= max i j) by lia...
+  assert (i <= max i j) by lia; mautosolve.
 Qed.
 
 Lemma per_univ_elem_cumu_max_right : forall i j a0 a1 R,
     {{ DF a0 ≈ a1 ∈ per_univ_elem j ↘ R }} ->
     {{ DF a0 ≈ a1 ∈ per_univ_elem (max i j) ↘ R }}.
-Proof with mautosolve.
+Proof.
   intros.
-  assert (j <= max i j) by lia...
+  assert (j <= max i j) by lia; mautosolve.
 Qed.
 
 Lemma per_subtyp_to_univ_elem : forall a b i,
@@ -925,11 +929,11 @@ Qed.
 
 Add Parametric Morphism : per_ctx_env
     with signature (@relation_equivalence env) ==> eq ==> eq ==> iff as per_ctx_env_morphism_iff.
-Proof with mautosolve.
+Proof.
   intros R R' HRR'.
   split; intro Horig; [gen R' | gen R];
     induction Horig; econstructor;
-    apply_relation_equivalence; try reflexivity...
+    apply_relation_equivalence; try reflexivity; mautosolve.
 Qed.
 
 Add Parametric Morphism : per_ctx_env
@@ -945,7 +949,7 @@ Lemma per_ctx_env_right_irrel : forall Γ Δ Δ' R R',
     {{ DF Γ ≈ Δ ∈ per_ctx_env ↘ R }} ->
     {{ DF Γ ≈ Δ' ∈ per_ctx_env ↘ R' }} ->
     R <~> R'.
-Proof with (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
+Proof.
   intros * Horig; gen Δ' R'.
   induction Horig; intros * Hright;
     inversion Hright; subst;
@@ -954,8 +958,10 @@ Proof with (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
   specialize (IHHorig _ _ equiv_Γ_Γ'0).
   intros ρ ρ'.
   split; intros [].
-  - assert {{ Dom ρ ↯ ≈ ρ' ↯ ∈ tail_rel0 }} by intuition...
-  - assert {{ Dom ρ ↯ ≈ ρ' ↯ ∈ tail_rel }} by intuition...
+  - assert {{ Dom ρ ↯ ≈ ρ' ↯ ∈ tail_rel0 }} by intuition;
+      (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
+  - assert {{ Dom ρ ↯ ≈ ρ' ↯ ∈ tail_rel }} by intuition;
+      (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
 Qed.
 
 Lemma per_ctx_env_sym : forall Γ Δ R,
@@ -964,7 +970,7 @@ Lemma per_ctx_env_sym : forall Γ Δ R,
       (forall ρ ρ',
           {{ Dom ρ ≈ ρ' ∈ R }} ->
           {{ Dom ρ' ≈ ρ ∈ R }}).
-Proof with solve [intuition].
+Proof.
   simpl.
   induction 1; split; simpl in *; destruct_conjs; try econstructor; intuition;
     pose proof (@relation_equivalence_pointwise env).
@@ -973,7 +979,7 @@ Proof with solve [intuition].
     destruct_rel_mod_eval.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
-    symmetry...
+    symmetry; solve [intuition].
   - apply_relation_equivalence.
     destruct_conjs.
     assert (tail_rel d{{{ ρ' ↯ }}} d{{{ ρ ↯ }}}) by eauto.
@@ -1160,7 +1166,7 @@ Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ A A' env_relΓ
         (env_relΓA <~> fun ρ ρ' =>
              exists (equiv_ρ_drop_ρ'_drop : {{ Dom ρ ↯ ≈ ρ' ↯ ∈ env_relΓ }}),
                {{ Dom ^(ρ 0) ≈ ^(ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop }}).
-Proof with intuition.
+Proof.
   intros * HΓ HΓA.
   inversion HΓA; subst.
   handle_per_ctx_env_irrel.
@@ -1175,16 +1181,16 @@ Proof with intuition.
     (on_all_hyp: destruct_rel_by_assumption tail_rel).
     econstructor; eauto.
     apply -> per_univ_elem_morphism_iff; eauto.
-    split; intros...
+    split; intros; intuition.
     destruct_by_head rel_typ.
-    handle_per_univ_elem_irrel...
+    handle_per_univ_elem_irrel; intuition.
   - intros ρ ρ'.
     split; intros; destruct_conjs;
       assert {{ Dom ρ ↯ ≈ ρ' ↯ ∈ tail_rel }} by intuition;
       (on_all_hyp: destruct_rel_by_assumption tail_rel);
-      unshelve eexists; intros...
+      unshelve eexists; intros; intuition.
     destruct_by_head rel_typ.
-    handle_per_univ_elem_irrel...
+    handle_per_univ_elem_irrel; intuition.
 Qed.
 
 Ltac invert_per_ctx_env H :=

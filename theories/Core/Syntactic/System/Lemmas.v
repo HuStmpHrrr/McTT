@@ -38,45 +38,45 @@ Hint Resolve ctx_lookup_lt : mctt.
 Lemma ctx_decomp : forall {Γ A},
     {{ ⊢ Γ , A }} ->
     {{ ⊢ Γ }} /\ exists i, {{ Γ ⊢ A : Type@i }}.
-Proof with now eauto.
-  inversion 1...
+Proof.
+  inversion 1; now eauto.
 Qed.
 
 #[export]
 Hint Resolve ctx_decomp : mctt.
 
 Corollary ctx_decomp_left : forall {Γ A}, {{ ⊢ Γ , A }} -> {{ ⊢ Γ }}.
-Proof with easy.
-  intros * ?%ctx_decomp...
+Proof.
+  intros * ?%ctx_decomp; easy.
 Qed.
 
 Corollary ctx_decomp_right : forall {Γ A}, {{ ⊢ Γ , A }} -> exists i, {{ Γ ⊢ A : Type@i }}.
-Proof with easy.
-  intros * ?%ctx_decomp...
+Proof.
+  intros * ?%ctx_decomp; easy.
 Qed.
 
 #[export]
 Hint Resolve ctx_decomp_left ctx_decomp_right : mctt.
 
 Lemma presup_exp_ctx : forall {Γ M A}, {{ Γ ⊢ M : A }} -> {{ ⊢ Γ }}.
-Proof with mautosolve 2.
-  induction 1...
+Proof.
+  induction 1; mautosolve 2.
 Qed.
 
 #[export]
 Hint Resolve presup_exp_ctx : mctt.
 
 Lemma presup_exp_eq_ctx : forall {Γ M M' A}, {{ Γ ⊢ M ≈ M' : A }} -> {{ ⊢ Γ }}.
-Proof with mautosolve 2.
-  induction 1...
+Proof.
+  induction 1; mautosolve 2.
 Qed.
 
 #[export]
 Hint Resolve presup_exp_eq_ctx : mctt.
 
 Lemma presup_subtyp_ctx : forall {Γ A B}, {{ Γ ⊢ A ⊆ B }} -> {{ ⊢ Γ }}.
-Proof with mautosolve 2.
-  induction 1...
+Proof.
+  induction 1; mautosolve 2.
 Qed.
 
 #[export]
@@ -335,8 +335,8 @@ Hint Resolve wk_preserves_exp wk_preserves_exp_eq wk_preserves_subtyp : mctt.
     something no congruence rule provides. *)
 
 Lemma wf_exp_eq_refl : forall {Γ A M}, {{ Γ ⊢ M : A }} -> {{ Γ ⊢ M ≈ M : A }}.
-Proof with mautosolve 3.
-  induction 1...
+Proof.
+  induction 1; mautosolve 3.
 Qed.
 
 #[export]
@@ -997,10 +997,10 @@ Lemma exp_eq_trans_typ_max : forall {Γ i i' A A' A''},
     {{ Γ ⊢ A ≈ A' : Type@i }} ->
     {{ Γ ⊢ A' ≈ A'' : Type@i' }} ->
     {{ Γ ⊢ A ≈ A'' : Type@(max i i') }}.
-Proof with mautosolve 4.
+Proof.
   intros.
   assert {{ Γ ⊢ A ≈ A' : Type@(max i i') }} by eauto using lift_exp_eq_max_left.
-  assert {{ Γ ⊢ A' ≈ A'' : Type@(max i i') }} by eauto using lift_exp_eq_max_right...
+  assert {{ Γ ⊢ A' ≈ A'' : Type@(max i i') }} by eauto using lift_exp_eq_max_right; mautosolve 4.
 Qed.
 
 #[export]
