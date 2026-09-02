@@ -19,7 +19,7 @@
       links stay within one column), so [rel_exp_eq_subtyp] cannot reconstruct
       [A']'s own type chain and must be given it.  That is exactly why
       [wf_exp_subtyp] and [wf_exp_eq_subtyp] carry the extra premise
-      [{{ Γ ⊢ A' : Type@i }}];
+      [Γ ⊢ A' : Type@i];
 
     - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Type@i] and not the companion
       premise [Γ ⊨ A' ≈ A' : Type@i], since the second link is the first
@@ -44,8 +44,8 @@ Import Wk_Notations.
     two commutation obligations, and its middle link is what
     [per_subtyp_refl1] consumes. *)
 Lemma subtyp_refl : forall {Γ A A' i},
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ Γ ⊨ A ⊆ A' }}.
+    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ⊨ A ⊆ A'.
 Proof.
   intros * H%rel_exp_of_typ_inversion.
   destruct H as [env_relΓ [HΓ HA]].
@@ -60,7 +60,7 @@ Proof.
         [a3 ≈ a4] and what [subtyp_under_ctx] asks for is [a4 ≈ a3].  A chain in a PER
         relates every pair in either direction, so [pairwise] serves both. *)
     pairwise.
-  - assert (Hmid : {{ Dom a2 ≈ a3 ∈ per_univ i }}) by pairwise.
+  - assert (Hmid : Dom a2 ≈ a3 ∈ per_univ i) by pairwise.
     destruct Hmid as [R HR].
     eapply per_subtyp_refl1; eassumption.
 Qed.
@@ -79,9 +79,9 @@ Hint Resolve subtyp_refl : mctt.
     which reports [Sub ⟦A'⟧ρ'σ' <: ⟦A''⟧ρ'σ'] and so meets the first hypothesis on
     the nose.  [subtyp_under_ctx_simple] is that instance packaged. *)
 Lemma subtyp_trans : forall {Γ A A' A''},
-    {{ Γ ⊨ A ⊆ A' }} ->
-    {{ Γ ⊨ A' ⊆ A'' }} ->
-    {{ Γ ⊨ A ⊆ A'' }}.
+    Γ ⊨ A ⊆ A' ->
+    Γ ⊨ A' ⊆ A'' ->
+    Γ ⊨ A ⊆ A''.
 Proof.
   intros * H1 H2.
   destruct H1 as [env_relΓ [HΓ [i H1gen]]].
@@ -96,9 +96,9 @@ Proof.
   destruct (H2gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [b1 [b2 [b3 [b4 [Hb1 [Hb2 [Hb3 [Hb4 [Hl2 [Hr2 Hsub2]]]]]]]]]].
   (** [ρ'σ'] is self-related, so the second hypothesis may be read at it. *)
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
-  assert (Hρ'σ' : {{ Dom ρ'σ' ≈ ρ'σ' ∈ env_relΓ3 }})
+  assert (Hρ'σ' : Dom ρ'σ' ≈ ρ'σ' ∈ env_relΓ3)
     by (rewrite Hiff3; etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
   destruct (H2simple _ _ Hρ'σ') as [c [c' [Hc [Hc' Hsub3]]]].
   (** The three values of [A'] and the one of [A''] that the two readings share. *)
@@ -130,15 +130,15 @@ Qed.
     real, and it is [per_subtyp_univ].  The ambient level has to be strictly above
     [j], hence [S j]. *)
 Lemma subtyp_univ : forall {Γ i j},
-    {{ ⊨ Γ }} ->
+    ⊨ Γ ->
     i <= j ->
-    {{ Γ ⊨ Type@i ⊆ Type@j }}.
+    Γ ⊨ Type@i ⊆ Type@j.
 Proof.
   intros * HΓsem Hij.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S j).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists d{{{ 𝕌@i }}}, d{{{ 𝕌@i }}}, d{{{ 𝕌@j }}}, d{{{ 𝕌@j }}}.
+  exists 𝕌@i, 𝕌@i, 𝕌@j, 𝕌@j.
   repeat apply conj; try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ].
@@ -156,7 +156,7 @@ Hint Resolve subtyp_univ : mctt.
     among the premises — the two self-equalities give the Π-values and the
     heterogeneous one gives the domain PER — and the fourth is the codomain
     premise, whose extended-context PER is [per_env_extend A' A' env_relΓ] because
-    the repo checks both codomains in [Γ, A'] (see [System/Definitions.v]).
+    the repo checks both codomains in [Γ ▹ A'] (see [System/Definitions.v]).
 
     Moving the quantified argument pair from the domain PER into that extended
     context PER is the one step with content: the two PERs share their *right*
@@ -166,13 +166,13 @@ Hint Resolve subtyp_univ : mctt.
     [subtyp_under_ctx_simple] reports, and [per_subtyp_pi] insists that all of its
     premises and its conclusion agree.  So everything is raised to [max i i0]. *)
 Lemma subtyp_pi : forall {Γ A A' i B B'},
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ ⊨ A' ≈ A' : Type@i }} ->
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ, A' ⊨ B' ≈ B' : Type@i }} ->
-    {{ Γ, A' ⊨ B ⊆ B' }} ->
-    {{ Γ ⊨ Π A B ⊆ Π A' B' }}.
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ A' ≈ A' : Type@i ->
+    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ▹ A' ⊨ B' ≈ B' : Type@i ->
+    Γ ▹ A' ⊨ B ⊆ B' ->
+    Γ ⊨ Π A B ⊆ Π A' B'.
 Proof.
   intros * HAself HA'self HAA' HB HB' Hsub.
   pose proof (rel_exp_of_typ_inversion HAA') as [env_relΓ [HΓ HAA'gen]].
@@ -182,7 +182,7 @@ Proof.
     by (eapply per_ctx_env_right_irrel; [ exact HΓA' | exact HΓA'can ]).
   eexists_subtyp_with (max i i0).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσ HΓ' HΓ); eassumption).
   (** The two Π-values, each from its own self-equality. *)
   destruct (rel_typ_of_pi HAself HB _ _ HΓ' _ _ _ _ _ _ Hσ Hρ Hev Hev')
@@ -191,18 +191,18 @@ Proof.
     as [in2 [q1 [q2 [q3 [q4 [Hq1 [Hq2 [Hq3 [Hq4 [_ [Hmid2 Htyp2]]]]]]]]]]].
   pose proof Htyp1 as [P1 P2 P3 P4 HP1 HP2 HP3 HP4 HPchain].
   pose proof Htyp2 as [Q1 Q2 Q3 Q4 HQ1 HQ2 HQ3 HQ4 HQchain].
-  assert (P2 = d{{{ Π p2 ρσ B }}}) as ->
+  assert (P2 = Πᵈ p2 ρσ B) as ->
     by (eapply functional_eval_exp; [ exact HP2 | apply eval_exp_pi; exact Hp2 ]).
-  assert (Q3 = d{{{ Π q3 ρ'σ' B' }}}) as ->
+  assert (Q3 = Πᵈ q3 ρ'σ' B') as ->
     by (eapply functional_eval_exp; [ exact HQ3 | apply eval_exp_pi; exact Hq3 ]).
   (** The domain PER, from the heterogeneous equality's middle link. *)
   destruct (HAA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   assert (d2 = p2) as -> by (eapply functional_eval_exp; [ exact Hd2 | exact Hp2 ]).
   assert (d3 = q3) as -> by (eapply functional_eval_exp; [ exact Hd3 | exact Hq3 ]).
-  assert (Hmid : {{ Dom p2 ≈ q3 ∈ per_univ i }}) by pairwise.
+  assert (Hmid : Dom p2 ≈ q3 ∈ per_univ i) by pairwise.
   destruct Hmid as [in_rel Hin_rel].
-  exists P1, d{{{ Π p2 ρσ B }}}, Q4, d{{{ Π q3 ρ'σ' B' }}}.
+  exists P1, Πᵈ p2 ρσ B, Q4, Πᵈ q3 ρ'σ' B'.
   (** The two element PERs are named rather than left to [eexists]: [pairwise]
       matches its [rel_chain] hypothesis syntactically, so a metavariable in the
       relation position of the goal finds nothing. *)
@@ -221,7 +221,7 @@ Proof.
       assert (Hii : in_rel <~> in2)
         by (eapply per_univ_elem_left_irrel; [ exact Hin_rel | exact Hmid2 ]).
       rewrite Hii in Hc.
-      assert (Hext : {{ Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΓA' }})
+      assert (Hext : Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΓA')
         by (rewrite HiffA'; apply per_env_extend_intro'; [ exact Hρσ |];
             eapply per_head_of; [ exact Hq2 | exact Hq3 | exact Hmid2 | exact Hc ]).
       destruct (Hsubgen _ _ Hext) as [b0 [b0' [Hb0 [Hb0' Hsubb]]]].
@@ -250,10 +250,10 @@ Hint Resolve subtyp_pi : mctt.
     report, since [per_elem_subtyping] needs its subtyping and both of its type
     values at one level. *)
 Lemma rel_exp_eq_subtyp : forall {Γ A A' i M M'},
-    {{ Γ ⊨ M ≈ M' : A }} ->
-    {{ Γ ⊨ A' ≈ A' : Type@i }} ->
-    {{ Γ ⊨ A ⊆ A' }} ->
-    {{ Γ ⊨ M ≈ M' : A' }}.
+    Γ ⊨ M ≈ M' : A ->
+    Γ ⊨ A' ≈ A' : Type@i ->
+    Γ ⊨ A ⊆ A' ->
+    Γ ⊨ M ≈ M' : A'.
 Proof.
   intros * HM HA' Hsub.
   pose proof (rel_exp_of_typ_inversion HA') as [env_relΓ [HΓ HA'gen]].
@@ -263,9 +263,9 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htchain].
-  assert (Hanchor : {{ DF t2 ≈ t3 ∈ per_univ_elem i ↘ (per_head A' A' ρσ ρ'σ') }})
+  assert (Hanchor : DF t2 ≈ t3 ∈ per_univ_elem i ↘ (per_head A' A' ρσ ρ'σ'))
     by (eapply per_univ_elem_at_head; [ exact Ht2 | exact Ht3 | pairwise ]).
-  assert (Htchain' : rel_chain (per_univ_elem i (per_head A' A' ρσ ρ'σ')) [t1; t2; t3; t4])
+  assert (Htchain' : rel_chain (per_univ_elem i (per_head A' A' ρσ ρ'σ')) ([t1; t2; t3; t4]))
     by (eapply per_univ_chain_at_in; [ exact Htchain | | | exact Hanchor ]; solve_in).
   destruct (HMgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [RA [HAtyp HAexp]].
   destruct HAtyp as [s1 s2 s3 s4 Hs1 Hs2 Hs3 Hs4 Hschain].
@@ -274,18 +274,18 @@ Proof.
     as [u1 [u2 [u3 [u4 [Hu1 [Hu2 [Hu3 [Hu4 [_ [_ Hsubst]]]]]]]]]].
   assert (u2 = s2) as -> by (eapply functional_eval_exp; [ exact Hu2 | exact Hs2 ]).
   assert (u4 = t3) as -> by (eapply functional_eval_exp; [ exact Hu4 | exact Ht3 ]).
-  assert (HsubL : {{ Sub s2 <: t3 at (max (max i j) k) }})
+  assert (HsubL : Sub s2 <: t3 at (max (max i j) k))
     by (eapply per_subtyp_cumu; [ exact Hsubst | lia ]).
   (** Both self-relations have to be read off their own chain *before* the level
       is raised: [pairwise] cannot match a goal whose level is still a
       metavariable. *)
-  assert (HRA0 : {{ DF s2 ≈ s2 ∈ per_univ_elem j ↘ RA }}) by pairwise.
-  assert (HH0 : {{ DF t3 ≈ t3 ∈ per_univ_elem i ↘ (per_head A' A' ρσ ρ'σ') }})
+  assert (HRA0 : DF s2 ≈ s2 ∈ per_univ_elem j ↘ RA) by pairwise.
+  assert (HH0 : DF t3 ≈ t3 ∈ per_univ_elem i ↘ (per_head A' A' ρσ ρ'σ'))
     by pairwise.
-  assert (HRAL : {{ DF s2 ≈ s2 ∈ per_univ_elem (max (max i j) k) ↘ RA }})
+  assert (HRAL : DF s2 ≈ s2 ∈ per_univ_elem (max (max i j) k) ↘ RA)
     by (eapply per_univ_elem_cumu_ge; [| exact HRA0 ]; lia).
-  assert (HHL : {{ DF t3 ≈ t3 ∈ per_univ_elem (max (max i j) k)
-                     ↘ (per_head A' A' ρσ ρ'σ') }})
+  assert (HHL : DF t3 ≈ t3 ∈ per_univ_elem (max (max i j) k)
+                     ↘ (per_head A' A' ρσ ρ'σ'))
     by (eapply per_univ_elem_cumu_ge; [| exact HH0 ]; lia).
   exists (per_head A' A' ρσ ρ'σ').
   split.

@@ -19,9 +19,9 @@ Import Domain_Notations.
     the neutral at its own level. *)
 Lemma eval_var_at_initial_env : forall {Γ x i ρ a},
     initial_env Γ ρ ->
-    {{ ⟦ #x ⟧ ρ ↘ a }} ->
-    {{ Γ ⊢ #x : Type@i }} ->
-    x < length Γ /\ exists b, a = d{{{ ⇑! b (length Γ - x - 1) }}}.
+    ⟦ #x ⟧ ρ ↘ a ->
+    Γ ⊢ #x : Type@i ->
+    x < length Γ /\ exists b, a = ⇑! b (length Γ - x - 1).
 Proof.
   intros * Hρ Hev Hx.
   destruct (wf_vlookup_inversion Hx) as [A [Hlookup _]].
@@ -32,14 +32,14 @@ Proof.
 Qed.
 
 Lemma exp_eq_typ_implies_eq_level : forall {Γ i j k},
-    {{ Γ ⊢ Type@i ≈ Type@j : Type@k }} ->
+    Γ ⊢ Type@i ≈ Type@j : Type@k ->
     i = j.
 Proof.
   intros * H%completeness_fundamental_exp_eq.
   destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a = d{{{ 𝕌@i }}}) as ->
+  assert (a = 𝕌@i) as ->
       by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ]).
-  assert (a' = d{{{ 𝕌@j }}}) as ->
+  assert (a' = 𝕌@j) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_typ ]).
   invert_per_univ_elem HR; congruence.
 Qed.
@@ -48,22 +48,22 @@ Qed.
 Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 
 Inductive is_typ_constr : typ -> Prop :=
-| typ_is_typ_constr : forall i, is_typ_constr {{{ Type@i }}}
-| nat_is_typ_constr : is_typ_constr {{{ ℕ }}}
-| pi_is_typ_constr : forall A B, is_typ_constr {{{ Π A B }}}
-| var_is_typ_constr : forall x, is_typ_constr {{{ #x }}}
+| typ_is_typ_constr : forall i, is_typ_constr Type@i
+| nat_is_typ_constr : is_typ_constr ℕ
+| pi_is_typ_constr : forall A B, is_typ_constr Π A B
+| var_is_typ_constr : forall x, is_typ_constr #x
 .
 #[export]
 Hint Constructors is_typ_constr : mctt.
 
 Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
     is_typ_constr A ->
-    {{ Γ ⊢ A ≈ #x : Type@i }} ->
-    A = {{{ #x }}}.
+    Γ ⊢ A ≈ #x : Type@i ->
+    A = #x.
 Proof.
   intros * Histyp H.
-  assert {{ Γ ⊢ A : Type@i }} by mauto 2.
-  assert {{ Γ ⊢ #x : Type@i }} by mauto 2.
+  assert (Γ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ⊢ #x : Type@i) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
@@ -71,9 +71,9 @@ Proof.
   (** Only the variable case survives: [⇑! b _] has no other constructor to be
       related to. *)
   destruct Histyp;
-    [ assert (a = d{{{ 𝕌@i0 }}}) as ->
+    [ assert (a = 𝕌@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = d{{{ ℕ }}}) as ->
+    | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | idtac
     | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
@@ -94,20 +94,20 @@ Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
 
 Theorem is_typ_constr_and_exp_eq_typ_implies_eq_typ : forall Γ A i j,
     is_typ_constr A ->
-    {{ Γ ⊢ A ≈ Type@i : Type@j }} ->
-    A = {{{ Type@i }}}.
+    Γ ⊢ A ≈ Type@i : Type@j ->
+    A = Type@i.
 Proof.
   intros * Histyp H.
-  assert {{ Γ ⊢ A : Type@j }} by mauto 2.
+  assert (Γ ⊢ A : Type@j) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = d{{{ 𝕌@i }}}) as ->
+  assert (a' = 𝕌@i) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_typ ]).
   destruct Histyp;
-    [ assert (a = d{{{ 𝕌@i0 }}}) as ->
+    [ assert (a = 𝕌@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = d{{{ ℕ }}}) as ->
+    | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | idtac
     | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
@@ -121,18 +121,18 @@ Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 
 Theorem is_typ_constr_and_exp_eq_nat_implies_eq_nat : forall Γ A j,
     is_typ_constr A ->
-    {{ Γ ⊢ A ≈ ℕ : Type@j }} ->
-    A = {{{ ℕ }}}.
+    Γ ⊢ A ≈ ℕ : Type@j ->
+    A = ℕ.
 Proof.
   intros * Histyp H.
-  assert {{ Γ ⊢ A : Type@j }} by mauto 2.
+  assert (Γ ⊢ A : Type@j) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = d{{{ ℕ }}}) as ->
+  assert (a' = ℕᵈ) as ->
       by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_nat ]).
   destruct Histyp;
-    [ assert (a = d{{{ 𝕌@i }}}) as ->
+    [ assert (a = 𝕌@i) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | reflexivity
     | idtac

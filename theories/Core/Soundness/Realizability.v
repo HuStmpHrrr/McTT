@@ -15,7 +15,7 @@ Open Scope list_scope.
     [#(length Γ1)[σ]] for an arbitrary weakening [σ] by way of a context-lookup
     analysis ([wf_ctx_sub_ctx_lookup]) and a subtyping detour. *)
 Lemma wk_var_kripke : forall Γ Δ φ x,
-    {{ Δ ⊢k φ : Γ }} ->
+    Δ ⊢k φ : Γ ->
     φ x = x + (length Δ - length Γ).
 Proof.
   intros * H%kripke_shiftn; destruct H as [_ Hφ].
@@ -26,14 +26,14 @@ Qed.
     context is read back as the de Bruijn *index* counting down from the length
     of wherever the weakening lands. *)
 Corollary wk_var0_kripke : forall Γ A Δ φ,
-    {{ Δ ⊢k φ : Γ , A }} ->
+    Δ ⊢k φ : Γ ▹ A ->
     φ 0 = length Δ - length Γ - 1.
 Proof. intros * H; pose proof (wk_var_kripke _ _ _ 0 H); simpl in *; lia. Qed.
 
 Lemma var_glu_elem_bot : forall a i P El Γ A,
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-    {{ Γ ⊢ A ® P }} ->
-    {{ Γ, A ⊢ #0 : A⟨↑⟩ ® !(length Γ) ∈ glu_elem_bot i a }}.
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Γ ⊢ A ® P ->
+    Γ ▹ A ⊢ #0 : A⟨↑⟩ ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
 Proof.
   intros. saturate_glu_info.
   econstructor; mauto 4.
@@ -41,30 +41,30 @@ Proof.
     mauto 4.
   - intros. progressive_inversion.
     assert (φ 0 = length Δ - length Γ - 1) as <- by (eapply wk_var0_kripke; eassumption).
-    change {{{ #(φ 0) }}} with {{{ #0⟨φ⟩ }}}.
+    change #(φ 0) with #0⟨φ⟩.
     mauto 5.
 Qed.
 
 Theorem realize_glu_univ_elem_gen : forall a i P El,
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     (forall Γ A R,
-        {{ DF a ≈ a ∈ per_univ_elem i ↘ R }} ->
-        {{ Γ ⊢ A ® P }} ->
-        {{ Γ ⊢ A ® glu_typ_top i a }}) /\
+        DF a ≈ a ∈ per_univ_elem i ↘ R ->
+        Γ ⊢ A ® P ->
+        Γ ⊢ A ® glu_typ_top i a) /\
       (forall Γ M A m,
           (** We repeat this to get the relation between [a] and [P]
               more easily after applying [induction 1.] *)
-          {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-          {{ Γ ⊢ M : A ® m ∈ glu_elem_bot i a }} ->
-          {{ Γ ⊢ M : A ® ⇑ a m ∈ El }}) /\
+          DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+          Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->
+          Γ ⊢ M : A ® ⇑ a m ∈ El) /\
       (forall Γ M A m R,
           (** We repeat this to get the relation between [a] and [P]
               more easily after applying [induction 1.] *)
-          {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-          {{ Γ ⊢ M : A ® m ∈ El }} ->
-          {{ DF a ≈ a ∈ per_univ_elem i ↘ R }} ->
-          {{ Dom m ≈ m ∈ R }} ->
-          {{ Γ ⊢ M : A ® m ∈ glu_elem_top i a }}).
+          DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+          Γ ⊢ M : A ® m ∈ El ->
+          DF a ≈ a ∈ per_univ_elem i ↘ R ->
+          Dom m ≈ m ∈ R ->
+          Γ ⊢ M : A ® m ∈ glu_elem_top i a).
 Proof.
   simpl. induction 1 using glu_univ_elem_ind.
   all:split; [| split]; intros;
@@ -127,8 +127,8 @@ Proof.
       pose proof (H13 Γ wk_id ltac:(mauto 3)) as HIT.
       rewrite exp_wk_id in HIT.
       dir_inversion_clear_by_head read_typ.
-      assert {{ Γ ⊢ IT ® glu_typ_top i a }} as [] by mauto 3.
-      assert {{ Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i }} as HA' by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Γ ⊢ IT ® glu_typ_top i a) as [] by mauto 3.
+      assert (Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
       simpl. apply wf_exp_eq_pi_cong'; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
@@ -136,15 +136,15 @@ Proof.
       simplify_evals.
       destruct (H2 _ ltac:(eassumption) _ ltac:(eassumption)) as [? []].
       pose proof (H13 _ _ H16) as HIPφ.
-      assert (IEl {{{ Δ, IT⟨φ⟩ }}} {{{ IT⟨φ⟩⟨↑⟩ }}} {{{ #0 }}} d{{{ ⇑! a (length Δ) }}}) as HEl
+      assert (IEl (Δ ▹ IT⟨φ⟩) IT⟨φ⟩⟨↑⟩ #0 ⇑! a (length Δ)) as HEl
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
-      assert {{ ⊢ Δ, IT⟨φ⟩ }} by mauto 3.
-      assert {{ Δ, IT⟨φ⟩ ⊢k φ ⊙ ↑ : Γ }} as Hk by mauto 3.
+      assert (⊢ Δ ▹ IT⟨φ⟩) by mauto 3.
+      assert (Δ ▹ IT⟨φ⟩ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
       rewrite exp_sub_of_wk_q_extend in HOP.
       specialize (H8 _ _ _ H27 HOP) as [].
-      rewrite <- (exp_wk_id {{{ OT⟨wk_q φ⟩ }}}).
+      rewrite <- (exp_wk_id OT⟨wk_q φ⟩).
       mauto 3.
   - handle_functional_glu_univ_elem.
     apply_equiv_left.
@@ -158,9 +158,9 @@ Proof.
     simplify_evals.
     eexists; repeat split; mauto 3.
     eapply H2; eauto.
-    assert {{ Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i }} as HAeq by (rewrite <- exp_wk_pi; mauto 3).
-    assert {{ Δ ⊢ M⟨φ⟩ : Π IT⟨φ⟩ OT⟨wk_q φ⟩ }} as HM by mauto 3.
-    assert {{ Δ ⊢ M⟨φ⟩ N : OT[^(ι φ),,N] }} as HMN
+    assert (Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+    assert (Δ ⊢ M⟨φ⟩ : Π IT⟨φ⟩ OT⟨wk_q φ⟩) as HM by mauto 3.
+    assert (Δ ⊢ M⟨φ⟩ $ N : OT[(ι φ),,N]) as HMN
       by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; eassumption).
     pose proof (H10 _ _ _ _ H17 H18 equiv_n) as HOP.
     pose proof (H1 _ equiv_n _ H22) as HG.
@@ -170,8 +170,8 @@ Proof.
     + mauto 3 using domain_app_per.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
-      assert {{ Δ0 ⊢k φ ⊙ φ0 : Γ }} as Hkc by (eapply kripke_compose; eassumption).
-      assert {{ Δ0 ⊢ A⟨φ ⊙ φ0⟩ ≈ Π IT⟨φ ⊙ φ0⟩ OT⟨wk_q (φ ⊙ φ0)⟩ : Type@i }} as HAeq'
+      assert (Δ0 ⊢k φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
+      assert (Δ0 ⊢ A⟨φ ⊙ φ0⟩ ≈ Π IT⟨φ ⊙ φ0⟩ OT⟨wk_q (φ ⊙ φ0)⟩ : Type@i) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
@@ -188,22 +188,22 @@ Proof.
       saturate_kripke_escape.
       invert_glu_rel1. clear_dups.
       progressive_invert Hrb.
-      assert {{ ⊢ Γ }} by mauto 2.
+      assert (⊢ Γ) by mauto 2.
       pose proof (H10 _ _ Hk) as HIPφ.
       pose proof (H10 Γ wk_id ltac:(mauto 3)) as HITId.
       rewrite exp_wk_id in HITId.
-      assert {{ Γ ⊢ IT ® glu_typ_top i a }} as [? ? HITrb] by mauto 3.
-      assert {{ Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i }} as HAeq by (rewrite <- exp_wk_pi; mauto 3).
-      assert {{ Δ ⊢ M⟨φ⟩ : Π IT⟨φ⟩ OT⟨wk_q φ⟩ }} as HM by mauto 3.
+      assert (Γ ⊢ IT ® glu_typ_top i a) as [? ? HITrb] by mauto 3.
+      assert (Δ ⊢ A⟨φ⟩ ≈ Π IT⟨φ⟩ OT⟨wk_q φ⟩ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ M⟨φ⟩ : Π IT⟨φ⟩ OT⟨wk_q φ⟩) as HM by mauto 3.
       eapply wf_exp_eq_conv'; [ | symmetry; eapply HAeq ].
       (** Read back a function by η-expanding it and recursing into the body. *)
       etransitivity; [ eapply wf_exp_eq_fn_eta'; eassumption | ].
       cbn [nf_to_exp].
       eapply wf_exp_eq_fn_cong'; [ eapply HITrb; eassumption | ].
-      assert {{ ⊢ Δ, IT⟨φ⟩ }} by mauto 3.
-      assert {{ Δ, IT⟨φ⟩ ⊢k φ ⊙ ↑ : Γ }} as Hk' by mauto 3.
+      assert (⊢ Δ ▹ IT⟨φ⟩) by mauto 3.
+      assert (Δ ▹ IT⟨φ⟩ ⊢k φ ⊙ ↑ : Γ) as Hk' by mauto 3.
       pose proof (var_per_elem (length Δ) H0) as Hvar.
-      assert (IEl {{{ Δ, IT⟨φ⟩ }}} {{{ IT⟨φ⟩⟨↑⟩ }}} {{{ #0 }}} d{{{ ⇑! a (length Δ) }}}) as HEl
+      assert (IEl (Δ ▹ IT⟨φ⟩) IT⟨φ⟩⟨↑⟩ #0 ⇑! a (length Δ)) as HEl
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
       destruct (H14 _ _ _ _ Hk' HEl Hvar) as [mn [Happ HOEl]].
@@ -217,7 +217,7 @@ Proof.
       destruct_rel_mod_app.
       simplify_evals.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
-      specialize (Hrbtop {{{ Δ, IT⟨φ⟩ }}} wk_id M0 ltac:(mauto 3) Hrb).
+      specialize (Hrbtop (Δ ▹ IT⟨φ⟩) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
       trivial.
   (* neut *)
@@ -240,10 +240,10 @@ Proof.
 Qed.
 
 Corollary realize_glu_typ_top : forall a i P El,
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
-      {{ Γ ⊢ A ® P }} ->
-      {{ Γ ⊢ A ® glu_typ_top i a }}.
+      Γ ⊢ A ® P ->
+      Γ ⊢ A ® glu_typ_top i a.
 Proof.
   intros.
   pose proof H.
@@ -253,20 +253,20 @@ Proof.
 Qed.
 
 Theorem realize_glu_elem_bot : forall a i P El,
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A M m,
-      {{ Γ ⊢ M : A ® m ∈ glu_elem_bot i a }} ->
-      {{ Γ ⊢ M : A ® ⇑ a m ∈ El }}.
+      Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->
+      Γ ⊢ M : A ® ⇑ a m ∈ El.
 Proof.
   intros.
   eapply realize_glu_univ_elem_gen; eauto.
 Qed.
 
 Theorem realize_glu_elem_top : forall a i P El,
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A M m,
-      {{ Γ ⊢ M : A ® m ∈ El }} ->
-      {{ Γ ⊢ M : A ® m ∈ glu_elem_top i a }}.
+      Γ ⊢ M : A ® m ∈ El ->
+      Γ ⊢ M : A ® m ∈ glu_elem_top i a.
 Proof.
   intros.
   pose proof H.
@@ -280,9 +280,9 @@ Qed.
 Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.
 
 Corollary var0_glu_elem : forall {i a P El Γ A},
-    {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} ->
-    {{ Γ ⊢ A ® P }} ->
-    {{ Γ, A ⊢ #0 : A⟨↑⟩ ® ⇑! a (length Γ) ∈ El }}.
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Γ ⊢ A ® P ->
+    Γ ▹ A ⊢ #0 : A⟨↑⟩ ® ⇑! a (length Γ) ∈ El.
 Proof.
   intros.
   eapply realize_glu_elem_bot; mauto 4.

@@ -26,7 +26,7 @@ Open Scope list_scope.
     [T] shifted past [Δ] and past [T] itself — that is, [T⟨⇑^(S n)⟩]. *)
 Lemma app_ctx_lookup : forall Δ T Γ n,
     length Δ = n ->
-    {{ #n : T⟨wk_shiftn (S n)⟩ ∈ ^(Δ ++ T :: Γ) }}.
+    (Δ ++ T :: Γ) ∋ #n : T⟨wk_shiftn (S n)⟩.
 Proof.
   induction Δ; intros * <-; simpl.
   - rewrite <- wk_shiftn_succ, wk_shiftn_zero, wk_compose_id_left.
@@ -36,17 +36,17 @@ Proof.
 Qed.
 
 Lemma app_ctx_vlookup : forall Δ T Γ n,
-    {{ ⊢ ^(Δ ++ T :: Γ) }} ->
+    ⊢ (Δ ++ T :: Γ) ->
     length Δ = n ->
-    {{ ^(Δ ++ T :: Γ) ⊢ #n : T⟨wk_shiftn (S n)⟩ }}.
+    (Δ ++ T :: Γ) ⊢ #n : T⟨wk_shiftn (S n)⟩.
 Proof.
   intros; econstructor; auto using app_ctx_lookup.
 Qed.
 
 Lemma ctx_lookup_functional : forall n T Γ,
-    {{ #n : T ∈ Γ }} ->
+    Γ ∋ #n : T ->
     forall T',
-      {{ #n : T' ∈ Γ }} ->
+      Γ ∋ #n : T' ->
       T = T'.
 Proof.
   induction 1; intros; progressive_inversion; eauto.

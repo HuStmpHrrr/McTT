@@ -58,23 +58,23 @@ Import Wk_Notations.
     applied with — the middle link of the type chain being
     [Π a2 ρσ B ≈ Π a3 ρ'σ' B']. *)
 Lemma rel_typ_of_pi : forall {Γ A A' i B B'},
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B' : Type@i }} ->
+    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ A ⊨ B ≈ B' : Type@i ->
     forall Γ' env_rel',
-      {{ EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' }} ->
+      EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
-        {{ Γ' ⊨s σ ≈ σ' : Γ }} ->
-        {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
-        {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-        {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+        Γ' ⊨s σ ≈ σ' : Γ ->
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         exists in_rel a1 a2 a3 a4,
-          {{ ⟦ A[σ] ⟧ ρ ↘ a1 }} /\
-          {{ ⟦ A ⟧ ρσ ↘ a2 }} /\
-          {{ ⟦ A' ⟧ ρ'σ' ↘ a3 }} /\
-          {{ ⟦ A'[σ'] ⟧ ρ' ↘ a4 }} /\
-          {{ DF a1 ≈ a4 ∈ per_univ_elem i ↘ in_rel }} /\
-          {{ DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel }} /\
-          rel_typ i {{{ Π A B }}} σ ρ ρσ {{{ Π A' B' }}} σ' ρ' ρ'σ'
+          ⟦ A[σ] ⟧ ρ ↘ a1 /\
+          ⟦ A ⟧ ρσ ↘ a2 /\
+          ⟦ A' ⟧ ρ'σ' ↘ a3 /\
+          ⟦ A'[σ'] ⟧ ρ' ↘ a4 /\
+          DF a1 ≈ a4 ∈ per_univ_elem i ↘ in_rel /\
+          DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel /\
+          rel_typ i (Π A B) σ ρ ρσ (Π A' B') σ' ρ' ρ'σ'
             (per_pi in_rel B ρσ B' ρ'σ').
 Proof.
   intros * HA HB * HΓ' * Hσj Hρ Hev Hev'.
@@ -89,8 +89,8 @@ Proof.
   exists in_rel, a1, a2, a3, a4.
   do 4 (split; [ eassumption |]).
   do 2 (split; [ pairwise |]).
-  apply (mk_rel_exp d{{{ Π a1 ρ (B[q σ]) }}} d{{{ Π a2 ρσ B }}}
-                    d{{{ Π a3 ρ'σ' B' }}} d{{{ Π a4 ρ' (B'[q σ']) }}});
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
+                    Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
   (** The three codomain obligations are, in order, the three [q]-obligations of
@@ -107,9 +107,9 @@ Qed.
 (** ** Π-Congruence *)
 
 Lemma rel_exp_pi_cong : forall {Γ A A' i B B'},
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B' : Type@i }} ->
-    {{ Γ ⊨ Π A B ≈ Π A' B' : Type@i }}.
+    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ A ⊨ B ≈ B' : Type@i ->
+    Γ ⊨ Π A B ≈ Π A' B' : Type@i.
 Proof.
   intros * HA HB.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
@@ -134,9 +134,9 @@ Hint Resolve rel_exp_pi_cong : mctt.
     precisely the three obligations of [rel_exp_under_ctx_q], and they land in
     precisely the [per_head] that [per_pi] asks for. *)
 Lemma rel_exp_fn_cong : forall {Γ A A' i B M M'},
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ Γ, A ⊨ M ≈ M' : B }} ->
-    {{ Γ ⊨ λ A M ≈ λ A' M' : Π A B }}.
+    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ A ⊨ M ≈ M' : B ->
+    Γ ⊨ λ A M ≈ λ A' M' : Π A B.
 Proof.
   intros * HA HM.
   pose proof (rel_exp_under_ctx_refl_left HA) as HAself.
@@ -150,8 +150,8 @@ Proof.
     as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid Htyp]]]]]]]]]]].
   exists (per_pi in_rel B ρσ B ρ'σ').
   split; [ exact Htyp |].
-  apply (mk_rel_exp d{{{ λ ρ (M[q σ]) }}} d{{{ λ ρσ M }}}
-                    d{{{ λ ρ'σ' M' }}} d{{{ λ ρ' (M'[q σ']) }}});
+  apply (mk_rel_exp λᵈ ρ M[q σ] λᵈ ρσ M
+                    λᵈ ρ'σ' M' λᵈ ρ' M'[q σ']);
     [ apply eval_exp_fn | apply eval_exp_fn | apply eval_exp_fn | apply eval_exp_fn |].
   apply rel_chain_4; hnf; intros c c' Hc;
     pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1 Houter Hc)
@@ -180,11 +180,11 @@ Hint Resolve rel_exp_fn_cong : mctt.
     head PER of its own pair of arguments instead, and [per_head_of_args] moves
     it. *)
 Lemma rel_exp_app_cong : forall {Γ A i B M M' N N'},
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ ⊨ M ≈ M' : Π A B }} ->
-    {{ Γ ⊨ N ≈ N' : A }} ->
-    {{ Γ ⊨ M N ≈ M' N' : B[Id ,, N] }}.
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ M ≈ M' : Π A B ->
+    Γ ⊨ N ≈ N' : A ->
+    Γ ⊨ M $ N ≈ M' $ N' : B[Id ,, N].
 Proof.
   intros * HA HB HM HN.
   (** The type mentions [N] on both sides, so it is the reflexive-left form of
@@ -204,7 +204,7 @@ Proof.
   destruct (rel_typ_of_instance HA HB HNl _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as [l' [RN [a1 [a2 [a3 [a4 [p1 [p2 [p3 [p4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter
        [Hmid [Hp1 [Hp2 [Hp3 [Hp4 [Hpchain [Hcod Htyp]]]]]]]]]]]]]]]]]]]]]].
-  exists (per_head B B d{{{ ρσ ↦ p2 }}} d{{{ ρ'σ' ↦ p3 }}}).
+  exists (per_head B B (ρσ ↦ p2) (ρ'σ' ↦ p3)).
   split; [ exact Htyp |].
   (** *** The Argument
 
@@ -221,7 +221,7 @@ Proof.
   assert (Hp1n1 : p1 = n1) by (eapply functional_eval_exp; [ exact Hp1 | exact Hn1 ]).
   assert (Hp2n2 : p2 = n2) by (eapply functional_eval_exp; [ exact Hp2 | exact Hn2 ]).
   subst p1 p2.
-  assert (Hnall : rel_chain RN [n1; n2; n3; n4; p3; p4])
+  assert (Hnall : rel_chain RN ([n1; n2; n3; n4; p3; p4]))
     by (merge_rel_chain Hnchain Hpchain n1).
   (** *** The Function
 
@@ -231,23 +231,23 @@ Proof.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RM [HMtyp HMexp]].
   destruct HMtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (c2 = d{{{ Π a2 ρσ B }}}) as ->
+  assert (c2 = Πᵈ a2 ρσ B) as ->
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
-  assert (c3 = d{{{ Π a3 ρ'σ' B }}}) as ->
+  assert (c3 = Πᵈ a3 ρ'σ' B) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }}) by pairwise.
+  assert (HRMmid : DF Πᵈ a2 ρσ B ≈ Πᵈ a3 ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   (** *** The Term Chain
 
       Three applications, at the three consecutive pairs of arguments; the middle
       value of each link is the same application as the first of the next, which is
       what makes the three [rel_mod_app]s one chain. *)
-  assert (Hn12 : {{ Dom n1 ≈ n2 ∈ RN }}) by pairwise.
-  assert (Hn23 : {{ Dom n2 ≈ n3 ∈ RN }}) by pairwise.
-  assert (Hn34 : {{ Dom n3 ≈ n4 ∈ RN }}) by pairwise.
-  assert (Hn2p3 : {{ Dom n2 ≈ p3 ∈ RN }}) by pairwise.
-  assert (Hn22 : {{ Dom n2 ≈ n2 ∈ RN }}) by pairwise.
-  assert (Hn24 : {{ Dom n2 ≈ n4 ∈ RN }}) by pairwise.
+  assert (Hn12 : Dom n1 ≈ n2 ∈ RN) by pairwise.
+  assert (Hn23 : Dom n2 ≈ n3 ∈ RN) by pairwise.
+  assert (Hn34 : Dom n3 ≈ n4 ∈ RN) by pairwise.
+  assert (Hn2p3 : Dom n2 ≈ p3 ∈ RN) by pairwise.
+  assert (Hn22 : Dom n2 ≈ n2 ∈ RN) by pairwise.
+  assert (Hn24 : Dom n2 ≈ n4 ∈ RN) by pairwise.
   assert (Hpi1 : per_pi RN B ρσ B ρ'σ' m1 m2)
     by (eapply rel_chain_4_commut_left; first [ eassumption | solve_chain_PER ]).
   assert (Hpi2 : per_pi RN B ρσ B ρ'σ' m2 m3)
@@ -296,11 +296,11 @@ Hint Resolve rel_exp_app_cong : mctt.
     them, which here is [M] itself read at the crossing pair of arguments. Three
     merges then select the goal's four values, all at the canonical head PER. *)
 Lemma rel_exp_pi_beta : forall {Γ A i B M N},
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ, A ⊨ M ≈ M : B }} ->
-    {{ Γ ⊨ N ≈ N : A }} ->
-    {{ Γ ⊨ (λ A M) N ≈ M[Id ,, N] : B[Id ,, N] }}.
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ▹ A ⊨ M ≈ M : B ->
+    Γ ⊨ N ≈ N : A ->
+    Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id ,, N].
 Proof.
   intros * HA HB HM HN.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
@@ -312,17 +312,17 @@ Proof.
   destruct (rel_typ_of_instance HA HB HN _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as [j [RN [a1 [a2 [a3 [a4 [n1 [n2 [n3 [n4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter
        [Hmid [Hn1 [Hn2 [Hn3 [Hn4 [Hnchain [Hcod Htyp]]]]]]]]]]]]]]]]]]]]]].
-  exists (per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}}).
+  exists (per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3)).
   split; [ exact Htyp |].
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   (** The argument pairs the links are read at. *)
-  assert (Hn12 : {{ Dom n1 ≈ n2 ∈ RN }}) by pairwise.
-  assert (Hn13 : {{ Dom n1 ≈ n3 ∈ RN }}) by pairwise.
-  assert (Hn14 : {{ Dom n1 ≈ n4 ∈ RN }}) by pairwise.
-  assert (Hn22 : {{ Dom n2 ≈ n2 ∈ RN }}) by pairwise.
-  assert (Hn23 : {{ Dom n2 ≈ n3 ∈ RN }}) by pairwise.
-  assert (Hn24 : {{ Dom n2 ≈ n4 ∈ RN }}) by pairwise.
+  assert (Hn12 : Dom n1 ≈ n2 ∈ RN) by pairwise.
+  assert (Hn13 : Dom n1 ≈ n3 ∈ RN) by pairwise.
+  assert (Hn14 : Dom n1 ≈ n4 ∈ RN) by pairwise.
+  assert (Hn22 : Dom n2 ≈ n2 ∈ RN) by pairwise.
+  assert (Hn23 : Dom n2 ≈ n3 ∈ RN) by pairwise.
+  assert (Hn24 : Dom n2 ≈ n4 ∈ RN) by pairwise.
   (** *** The Redex
 
       [rel_exp_under_ctx_q] at the argument pair [n1 ≈ n2]. *)
@@ -330,7 +330,7 @@ Proof.
     as Hpair.
   destruct (rel_exp_under_ctx_q HΓ' Hσj HA HM _ _ _ _ _ _ Hpair Hev Hev')
     as [[v1 [v2 [Hv1 [Hv2 Hv]]]] _].
-  assert (Hlink1 : {{ Dom v1 ≈ v2 ∈ per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}} }})
+  assert (Hlink1 : Dom v1 ≈ v2 ∈ per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3))
     by (apply (per_head_of_args Hcod n1 n2 n2 n3 Hn12 Hn23 Hn22); exact Hv).
   apply rel_chain_of_pair in Hlink1.
   (** *** The Outer Instantiation
@@ -376,15 +376,15 @@ Proof.
     as [b1 [b2 [Hb1 [Hb2 Hb]]]].
   assert (b1 = h2) as -> by (eapply functional_eval_exp; [ exact Hb1 | exact Hh2 ]).
   assert (b2 = g3) as -> by (eapply functional_eval_exp; [ exact Hb2 | exact Hg3 ]).
-  assert (Hbridge : {{ Dom h2 ≈ g3 ∈ per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}} }})
+  assert (Hbridge : Dom h2 ≈ g3 ∈ per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3))
     by (apply (per_head_of_args Hcod n1 n3 n2 n3 Hn13 Hn23 Hn23); exact Hb).
   apply rel_chain_of_pair in Hbridge.
   (** *** The Four Values *)
-  assert (Hmerge1 : rel_chain (per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}})
-                      [h4; g3])
+  assert (Hmerge1 : rel_chain (per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3))
+                      ([h4; g3]))
     by (merge_rel_chain Hhchain Hbridge h2).
-  assert (Hmerge2 : rel_chain (per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}})
-                      [g2; g4; h4])
+  assert (Hmerge2 : rel_chain (per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3))
+                      ([g2; g4; h4]))
     by (merge_rel_chain Hmerge1 Hgchain g3).
   apply (mk_rel_exp v1 g2 g4 h4);
     [ eapply eval_exp_app;
@@ -424,7 +424,7 @@ Hint Resolve rel_exp_pi_beta : mctt.
       [eval_exp_app] on the weakened head and [#0];
     - the third is the right commutation of the closure, which is the third
       obligation of [rel_exp_under_ctx_q] for the *weakened* judgment
-      [Γ, A ⊨ M⟨↑⟩ ≈ M⟨↑⟩ : (Π A B)⟨↑⟩] — the value it produces on the right is
+      [Γ ▹ A ⊨ M⟨↑⟩ ≈ M⟨↑⟩ : (Π A B)⟨↑⟩] — the value it produces on the right is
       [⟦M⟨↑⟩[q σ']⟧(ρ' ↦ c')], which is the closure body's, and the [per_head] of
       [(Π A B)⟨↑⟩] it produces it in is identified with [per_pi] by the *outer*
       pair of the same weakening instance.
@@ -433,10 +433,10 @@ Hint Resolve rel_exp_pi_beta : mctt.
     [rel_exp_under_ctx_shift_at], the second off its chain and the third off its
     type PER. *)
 Lemma rel_exp_fn_eta : forall {Γ A i B M},
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ ⊨ M ≈ M : Π A B }} ->
-    {{ Γ ⊨ M ≈ λ A (M⟨↑⟩ #0) : Π A B }}.
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ M ≈ M : Π A B ->
+    Γ ⊨ M ≈ λ A M⟨↑⟩ $ #0 : Π A B.
 Proof.
   intros * HA HB HM.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
@@ -453,21 +453,21 @@ Proof.
       makes it one is that it is an element PER — the middle link of the very type
       chain just handed over. *)
   destruct Htyp as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
-  assert (Hanchor : {{ DF d2 ≈ d3 ∈ per_univ_elem i ↘ (per_pi in_rel B ρσ B ρ'σ') }})
+  assert (Hanchor : DF d2 ≈ d3 ∈ per_univ_elem i ↘ (per_pi in_rel B ρσ B ρ'σ'))
     by pairwise.
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   (** [M]'s own chain, brought to the canonical [per_pi]. *)
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RM [HMtyp HMexp]].
   destruct HMtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (c2 = d{{{ Π a2 ρσ B }}}) as ->
+  assert (c2 = Πᵈ a2 ρσ B) as ->
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
-  assert (c3 = d{{{ Π a3 ρ'σ' B }}}) as ->
+  assert (c3 = Πᵈ a3 ρ'σ' B) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : {{ DF Π a2 ρσ B ≈ Π a3 ρ'σ' B ∈ per_univ_elem k ↘ RM }}) by pairwise.
+  assert (HRMmid : DF Πᵈ a2 ρσ B ≈ Πᵈ a3 ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
-  apply (mk_rel_exp m1 m2 d{{{ λ ρ'σ' (M⟨↑⟩ #0) }}} d{{{ λ ρ' ((M⟨↑⟩ #0)[q σ']) }}});
+  apply (mk_rel_exp m1 m2 λᵈ ρ'σ' (M⟨↑⟩ $ #0) λᵈ ρ' (M⟨↑⟩ $ #0)[q σ']);
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn | apply eval_exp_fn |].
   (** The first link is [M]'s, the other two are read at an argument pair — and
       both from the same instance of [M]'s judgment along [Wk], at the substituted
@@ -479,9 +479,9 @@ Proof.
     destruct (rel_exp_under_ctx_shift_at HΓ HA HM _ _ _ _ Hpair)
       as [j [R [b1 [b2 [b3 [b4 [w1 [w2 [w3 [w4 [Hb1 [Hb2 [Hb3 [Hb4 [Hbouter
          [Hbmid [Hw1 [Hw2 [Hw3 [Hw4 Hwchain]]]]]]]]]]]]]]]]]]]];
-    assert (b2 = d{{{ Π a2 ρσ B }}}) as ->
+    assert (b2 = Πᵈ a2 ρσ B) as ->
       by (eapply functional_eval_exp; [ exact Hb2 | apply eval_exp_pi; exact Ha2 ]);
-    assert (b3 = d{{{ Π a3 ρ'σ' B }}}) as ->
+    assert (b3 = Πᵈ a3 ρ'σ' B) as ->
       by (eapply functional_eval_exp; [ exact Hb3 | apply eval_exp_pi; exact Ha3 ]);
     assert (HRpi : R <~> per_pi in_rel B ρσ B ρ'σ')
       by (eapply per_pi_iff; [ exact Hmid | exact Hbmid ]).
@@ -491,7 +491,7 @@ Proof.
     assert (w2 = m2) as ->
       by (eapply functional_eval_exp; [ exact Hw2 | exact Hm2 ]).
     rewrite HRpi in Hwchain.
-    assert (Hlink : {{ Dom m2 ≈ w4 ∈ per_pi in_rel B ρσ B ρ'σ' }}) by pairwise.
+    assert (Hlink : Dom m2 ≈ w4 ∈ per_pi in_rel B ρσ B ρ'σ') by pairwise.
     destruct (Hlink _ _ Hc) as [r r' Hr Hr' Hrr'].
     econstructor;
       [ exact Hr
@@ -505,7 +505,7 @@ Proof.
       as Hpair'.
     destruct (rel_exp_under_ctx_q HΓ' Hσj HA HMwk _ _ _ _ _ _ Hpair' Hev Hev')
       as [_ [_ [u [v [Hu [Hv Huv]]]]]].
-    assert (HuvR : {{ Dom u ≈ v ∈ R }})
+    assert (HuvR : Dom u ≈ v ∈ R)
       by (eapply Huv; [ exact Hb1 | exact Hb4 | exact Hbouter ]).
     apply HRpi in HuvR.
     destruct (HuvR _ _ Hc) as [r r' Hr Hr' Hrr'].

@@ -19,8 +19,8 @@ Import Domain_Notations.
 
 Section soundness_fundamental.
   Theorem soundness_fundamental :
-    (forall Γ, {{ ⊢ Γ }} -> {{ ⊩ Γ }}) /\
-      (forall Γ A M, {{ Γ ⊢ M : A }} -> {{ Γ ⊩ M : A }}).
+    (forall Γ, ⊢ Γ -> ⊩ Γ) /\
+      (forall Γ A M, Γ ⊢ M : A -> Γ ⊩ M : A).
   Proof.
     apply syntactic_wf_ctx_exp_mut_ind; mauto 3.
   Qed.
@@ -28,10 +28,10 @@ Section soundness_fundamental.
   #[local]
   Ltac solve_it := pose proof soundness_fundamental; firstorder.
 
-  Theorem soundness_fundamental_ctx : forall Γ, {{ ⊢ Γ }} -> {{ ⊩ Γ }}.
+  Theorem soundness_fundamental_ctx : forall Γ, ⊢ Γ -> ⊩ Γ.
   Proof. solve_it. Qed.
 
-  Theorem soundness_fundamental_exp : forall Γ M A, {{ Γ ⊢ M : A }} -> {{ Γ ⊩ M : A }}.
+  Theorem soundness_fundamental_exp : forall Γ M A, Γ ⊢ M : A -> Γ ⊩ M : A.
   Proof. solve_it. Qed.
 End soundness_fundamental.
 

@@ -21,13 +21,13 @@ Import Syntax_Notations Wk_Notations.
 #[local]
 Ltac invert_wf_ctx1 H :=
   match type of H with
-  | {{ ⊢ ^?Γ , ^?A }} =>
+  | ⊢ ?Γ ▹ ?A =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];
       match goal with
-      | _: {{ Γ ⊢ A : Type@_ }} |- _ => clear HAi
-      | _: __mark__ _ {{ Γ ⊢ A : Type@_ }} |- _ => clear HAi
+      | _: Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -45,13 +45,13 @@ Ltac invert_wf_ctx :=
     them. *)
 Ltac gen_core_presup H :=
   match type of H with
-  | {{ ^?Γ ⊢ ^?M : ^?A }} =>
+  | ?Γ ⊢ ?M : ?A =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof presup_exp H as [HΓ HAi];
       match goal with
-      | _: {{ Γ ⊢ A : Type@_ }} |- _ => clear HAi
-      | _: __mark__ _ {{ Γ ⊢ A : Type@_ }} |- _ => clear HAi
+      | _: Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -61,10 +61,10 @@ Ltac gen_core_presup H :=
 
 Ltac gen_lookup_presup H :=
   match type of H with
-  | {{ #?x : ^?A ∈ ^?Γ }} =>
+  | ?Γ ∋ #?x : ?A =>
       match goal with
-      | _: {{ Γ ⊢ A : Type@_ }} |- _ => fail
-      | _: __mark__ _ {{ Γ ⊢ A : Type@_ }} |- _ => fail
+      | _: Γ ⊢ A : Type@_ |- _ => fail
+      | _: __mark__ _ Γ ⊢ A : Type@_ |- _ => fail
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in

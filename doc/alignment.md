@@ -66,8 +66,8 @@ document is about.
 | Paper | Mechanization | Note |
 | --- | --- | --- |
 | `Sub-Univ` at `i ≤ j` (Fig. 4) | `wf_subtyp_univ` at `i < j` | `i = j` comes from `wf_subtyp_refl`. The gap is visible in `completeness_fundamental`, which has to discharge `Sub-Univ` by hand because the semantic lemma is stated at `≤`. |
-| `Sub-Pi` checks `Γ,x:S ⊢ T ⊆ T'` | `wf_subtyp_pi` checks `Γ , A' ⊢ B ⊆ B'` | Interderivable given the `A ≈ A'` premise and context conversion; `Γ , A'` is the form the soundness proof consumes. |
-| `elimNat` congruence with a fixed motive | `wf_exp_eq_natrec_cong` also takes `Γ , ℕ ⊢ A ≈ A' : Type@i` | Strictly stronger, and it is what `Algorithmic` compares. It is also what forces the file order (see §2.4). |
+| `Sub-Pi` checks `Γ,x:S ⊢ T ⊆ T'` | `wf_subtyp_pi` checks `Γ ▹ A' ⊢ B ⊆ B'` | Interderivable given the `A ≈ A'` premise and context conversion; `Γ ▹ A'` is the form the soundness proof consumes. |
+| `elimNat` congruence with a fixed motive | `wf_exp_eq_natrec_cong` also takes `Γ ▹ ℕ ⊢ A ≈ A' : Type@i` | Strictly stronger, and it is what `Algorithmic` compares. It is also what forces the file order (see §2.4). |
 | `λx.t` unannotated (report Def 2.1) | `a_fn : exp -> exp -> exp`, i.e. `λ A M` | The annotation survives into `nf_fn` and the readback, and into the η rule, whose right-hand side is `λ A (M⟨↑⟩ #0)`. Neither document's grammar has it. |
 | `elimNat(x.T) z (x,y.s) t` | `a_natrec A MZ MS M` | Argument order only. |
 | — | `wf_subtyp_refl`, `wf_exp_subtyp`, `wf_exp_eq_subtyp` each carry one extra typing premise | Needed to split presupposition three ways without a mutual induction; the in-file comments give the `Type@0⟨↑⟩ : Type@1` regress that motivates it. |
@@ -83,7 +83,7 @@ elision there.
 ### 2.2 Context equality and context refinement are not judgments
 
 The paper's system has neither, but the pre-port McTT did, and the port removed
-them: `{{ Δ ⊢s Id : Γ }}` *is* refinement, and refinement in both directions is
+them: `Δ ⊢s Id : Γ` *is* refinement, and refinement in both directions is
 context equality. `CtxEq.v` is deleted; `CtxSub.v` survives holding only the
 inductive `ctx_sub` and its bridge to `⊢s Id`, not a system rule. So the
 mechanization is *closer* to the paper here than its own predecessor was.
@@ -100,8 +100,8 @@ those two environments as parameters rather than existentials:
 
 ```coq
 forall ρ ρ' ρσ ρ'σ',
-  {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
-  {{ ⟦ σ ⟧s ρ ↘ ρσ }} -> {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+  Dom ρ ≈ ρ' ∈ env_rel' ->
+  ⟦ σ ⟧s ρ ↘ ρσ -> ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
   exists elem_rel, rel_typ i A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\ ...
 ```
 
@@ -136,7 +136,7 @@ is a simplification the write-ups do not describe.
 Both documents state the fundamental theorems without a substitution part, and
 so does the mechanization — but the mechanization also records *why it cannot
 have one*: `wf_sub` constrains `σ` only at the indices `Δ` types, whereas
-`eval_sub` is total, so `{{ ⋅ ⊢s (fun _ => zero zero) : ⋅ }}` holds vacuously
+`eval_sub` is total, so `⋅ ⊢s (fun _ => zero zero) : ⋅` holds vacuously
 while its semantic counterpart would need `zero zero` to have a value. Concrete
 substitutions are handled by lemmas in `Completeness/SubstitutionCases.v` and
 `Soundness/SubstitutionCases`-style helpers instead. The documents present the
@@ -160,16 +160,16 @@ KW-Id     ⊢ Γ                              KW-Shift  Γ ⊢k φ : Δ   Γ ⊢
 
 ```coq
 Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
-| kwk_id   : `( {{ ⊢ Γ ⊆ Δ }} -> wk_eq φ wk_id -> {{ Γ ⊢k φ : Δ }} )
-| kwk_shift: `( {{ Γ ⊢k ψ : Δ' , A }} -> {{ ⊢ Δ' ⊆ Δ }} ->
-                wk_eq φ (↑ ⊙ ψ) -> {{ Γ ⊢k φ : Δ }} ).
+| kwk_id   : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢k φ : Δ )
+| kwk_shift: `( Γ ⊢k ψ : Δ' ▹ A -> ⊢ Δ' ⊆ Δ ->
+                wk_eq φ (↑ ⊙ ψ) -> Γ ⊢k φ : Δ ).
 ```
 
 Three differences, in increasing order of consequence.
 
 1. **The rules recurse on the codomain, not the domain.** The report's
    `KW-Shift` grows `Γ`; here `Γ` is a parameter and the codomain shrinks from
-   `Δ' , A` to `Δ`. This is forced by composition: `kripke_compose` is an
+   `Δ' ▹ A` to `Δ`. This is forced by composition: `kripke_compose` is an
    induction on the *outer* weakening, and recursing on the domain instead
    would need a strengthening lemma the system does not have.
 2. **A `wk_eq` premise on both rules.** Weakenings are functions, so the slack
@@ -178,7 +178,7 @@ Three differences, in increasing order of consequence.
    be presented in any pointwise-equal form; `kripke_shiftn` recovers the
    canonical `⇑^n`. The report's "every Kripke weakening is a finite
    composition `⇑◦···◦⇑`" is therefore true here only up to `wk_eq`.
-3. **Both rules may coarsen the codomain by `{{ ⊢ Δ' ⊆ Δ }}`.** This is what
+3. **Both rules may coarsen the codomain by `⊢ Δ' ⊆ Δ`.** This is what
    makes the judgment closed under `kripke_ctxsub`, which the subtyping cases
    need. **The price is that report Lemma 7.2 is false as stated**:
    `Γ ⊢k φ : Δ` does *not* imply `Γ ⊢w φ : Δ`, because `wf_wk_lookup` demands a
@@ -187,7 +187,7 @@ Three differences, in increasing order of consequence.
    `ι`:
 
    ```coq
-   Lemma kripke_escape : forall Γ Δ φ, {{ Γ ⊢k φ : Δ }} -> {{ Γ ⊢s ^(ι φ) : Δ }}.
+   Lemma kripke_escape : forall Γ Δ φ, Γ ⊢k φ : Δ -> Γ ⊢s ^(ι φ) : Δ.
    ```
 
    It transports judgments just as well — `kripke_preserves_exp`,
@@ -208,7 +208,7 @@ where `⇑` is a substitution in its own right.
 
 ### 3.3 `wf_sub_eq_q` needs a premise the report does not give it
 
-`{{ Γ ⊢ A[σ] ≈ A[σ'] : Type@i }}`. The tempting shortcut —
+`Γ ⊢ A[σ] ≈ A[σ'] : Type@i`. The tempting shortcut —
 `sub_preserves_exp_eq` on reflexivity of `Δ ⊢ A : Type@i` — yields only
 `A[σ] ≈ A[σ]`. The equation really comes from `sub_eq_preserves_exp`, which is
 not available at that point in the file order (§2.4), hence the premise.
@@ -296,7 +296,7 @@ The variable case is worth spelling out, because it is the one place where a
 bespoke lemma had to be added to the completeness layer to serve soundness.
 `cons_glu_sub_pred` supplies the gluing at `⟦A⟧(ρ↯)` while the goal reads
 `⟦A⟨↑⟩⟧(ρ)`, and those are not equal. `completeness_fundamental_typ_shift`
-produces `{{ Dom a ≈ a' ∈ per_univ i }}` between them and
+produces `Dom a ≈ a' ∈ per_univ i` between them and
 `glu_univ_elem_resp_per_univ` moves `P` and `El` across — exactly the
 paper's argument, and needed in *both* branches of the lookup induction, not
 only the base case the paper considers.
@@ -504,10 +504,10 @@ every predicate already quantified over a weakening. Pre-port
 
 ```coq
 (* neut_glu_exp_pred *)
-(forall Δ σ M', {{ Δ ⊢w σ : Γ }} -> {{ Rne m in length Δ ↘ M' }} ->
-                {{ Δ ⊢ M[σ] ≈ M' : A[σ] }}) -> ...
+(forall Δ σ M', Δ ⊢w σ : Γ -> Rne m in length Δ ↘ M' ->
+                Δ ⊢ M[σ] ≈ M' : A[σ]) -> ...
 (* pi_glu_typ_pred *)
-(forall Δ σ, {{ Δ ⊢w σ : Γ }} -> {{ Δ ⊢ IT[σ] ® IP }}) -> ...
+(forall Δ σ, Δ ⊢w σ : Γ -> Δ ⊢ IT[σ] ® IP) -> ...
 ```
 
 The port replaced the *syntactic object* `σ` inside those quantifiers with a
@@ -517,7 +517,7 @@ cheaply, which is exactly what shows up in the tactic census:
 
 | | explicit subst. | meta-level |
 | --- | --- | --- |
-| `{{ … ⊢s … }}` obligations in proof scripts | 168 | 101 |
+| `… ⊢s …` obligations in proof scripts | 168 | 101 |
 | `assert` | 585 | 427 |
 | `mauto` | 832 | 606 |
 | `autorewrite` | 25 | 0 |
@@ -530,13 +530,13 @@ now an equation to rewrite with.** The clearest single instance is the weakening
 judgment itself. Pre-port:
 
 ```coq
-| wk_id : `( {{ Γ ⊢s σ ≈ Id : Δ }} -> {{ Γ ⊢w σ : Δ }} )
+| wk_id : `( Γ ⊢s σ ≈ Id : Δ -> Γ ⊢w σ : Δ )
 ```
 
 Now:
 
 ```coq
-| kwk_id : `( {{ ⊢ Γ ⊆ Δ }} -> wk_eq φ wk_id -> {{ Γ ⊢k φ : Δ }} )
+| kwk_id : `( ⊢ Γ ⊆ Δ -> wk_eq φ wk_id -> Γ ⊢k φ : Δ )
 ```
 
 A `wf_sub_eq` derivation became a `pointwise_relation nat eq`. Records instead
@@ -565,8 +565,8 @@ Here the judgment *did* change shape. Pre-port, in full:
 
 ```coq
 Definition rel_exp_under_ctx Γ A M M' :=
-  exists env_rel (_ : {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }}) i,
-  forall ρ ρ' (equiv_ρ_ρ' : {{ Dom ρ ≈ ρ' ∈ env_rel }}),
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
+  forall ρ ρ' (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ env_rel),
   exists (elem_rel : relation domain),
      rel_typ i A ρ A ρ' elem_rel /\ rel_exp M ρ M' ρ' elem_rel.
 ```
@@ -601,7 +601,7 @@ are not obsolete; they simply no longer apply.
 
 `destruct_rel_by_assumption` still sits unchanged in
 `Semantic/PER/CoreTactics.v`. It matches a hypothesis of the form
-`forall ρ ρ', {{ Dom ρ ≈ ρ' ∈ R }} -> _`, and there are now eight binders in
+`forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> _`, and there are now eight binders in
 front of that. Nobody generalized it: compare
 `Completeness/LogicalRelation/Tactics.v`, which went **33 → 34 lines**, the one
 added line being `Ltac eexists_rel_wk := eexists_rel_sub`. So a use of a premise

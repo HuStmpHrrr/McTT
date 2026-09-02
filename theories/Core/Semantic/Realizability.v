@@ -7,8 +7,8 @@ From Mctt.Core.Semantic Require Export NbE PER.
 Import Domain_Notations.
 
 Lemma per_nat_then_per_top : forall {n m},
-    {{ Dom n ≈ m ∈ per_nat }} ->
-    {{ Dom ⇓ ℕ n ≈ ⇓ ℕ m ∈ per_top }}.
+    Dom n ≈ m ∈ per_nat ->
+    Dom ⇓ ℕᵈ n ≈ ⇓ ℕᵈ m ∈ per_top.
 Proof.
   induction 1; simpl in *; intros s;
     try specialize (IHper_nat s);
@@ -19,10 +19,10 @@ Qed.
 Hint Resolve per_nat_then_per_top : mctt.
 
 Lemma realize_per_univ_elem_gen : forall {i a a' R},
-    {{ DF a ≈ a' ∈ per_univ_elem i ↘ R }} ->
-    {{ Dom a ≈ a' ∈ per_top_typ }}
-    /\ (forall {c c'}, {{ Dom c ≈ c' ∈ per_bot }} -> {{ Dom ⇑ a c ≈ ⇑ a' c' ∈ R }})
-    /\ (forall {b b'}, {{ Dom b ≈ b' ∈ R }} -> {{ Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top }}).
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    Dom a ≈ a' ∈ per_top_typ
+    /\ (forall {c c'}, Dom c ≈ c' ∈ per_bot -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R)
+    /\ (forall {b b'}, Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top).
 Proof.
   intros * Hunivelem. simpl in Hunivelem.
   induction Hunivelem using per_univ_elem_ind; repeat split; intros;
@@ -39,7 +39,7 @@ Proof.
     specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - destruct IHHunivelem as [? []].
     intro s.
-    assert {{ Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel }} by eauto using var_per_bot.
+    assert (Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by eauto using var_per_bot.
     destruct_rel_mod_eval.
     specialize (H9 (S s)) as [? []].
     specialize (H2 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
@@ -47,26 +47,26 @@ Proof.
     destruct_conjs.
     destruct_rel_mod_eval.
     econstructor; try solve [econstructor; eauto].
-    enough ({{ Dom c ⇓ a c0 ≈ c' ⇓ a' c0' ∈ per_bot }}) by eauto.
+    enough (Dom c $ᵈ ⇓ a c0 ≈ c' $ᵈ ⇓ a' c0' ∈ per_bot) by eauto.
     intro s.
     specialize (H3 s) as [? []].
     specialize (H5 _ _ equiv_c0_c0' s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - destruct_conjs.
     intro s.
-    assert {{ Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel }} by eauto using var_per_bot.
+    assert (Dom ⇑! a s ≈ ⇑! a' s ∈ in_rel) by eauto using var_per_bot.
     destruct_rel_mod_eval.
     destruct_rel_mod_app.
     match goal with
-    | _: {{ $| ^?f0 & ⇑! a s |↘ ^_ }},
-        _: {{ $| ^?f0' & ⇑! a' s |↘ ^_ }},
-          _: {{ ⟦ B ⟧ ρ ↦ ⇑! a s ↘ ^?b0 }},
-            _: {{ ⟦ B' ⟧ ρ' ↦ ⇑! a' s ↘ ^?b0' }} |- _ =>
+    | _: ($| ?f0 & ⇑! a s |↘ _),
+        _: ($| ?f0' & ⇑! a' s |↘ _),
+          _: (⟦ B ⟧ ρ ↦ ⇑! a s ↘ ?b0),
+            _: ⟦ B' ⟧ ρ' ↦ ⇑! a' s ↘ ?b0' |- _ =>
         rename f0 into f;
         rename f0' into f';
         rename b0 into b;
         rename b0' into b'
     end.
-    assert {{ Dom ⇓ b fa ≈ ⇓ b' f'a' ∈ per_top }} by eauto.
+    assert (Dom ⇓ b fa ≈ ⇓ b' f'a' ∈ per_top) by eauto.
     specialize (H2 s) as [? []].
     specialize (H16 (S s)) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - intro s.
@@ -77,8 +77,8 @@ Proof.
 Qed.
 
 Corollary per_univ_then_per_top_typ : forall {i a a' R},
-    {{ DF a ≈ a' ∈ per_univ_elem i ↘ R }} ->
-    {{ Dom a ≈ a' ∈ per_top_typ }}.
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    Dom a ≈ a' ∈ per_top_typ.
 Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
@@ -87,8 +87,8 @@ Qed.
 Hint Resolve per_univ_then_per_top_typ : mctt.
 
 Corollary per_bot_then_per_elem : forall {i a a' R c c'},
-    {{ DF a ≈ a' ∈ per_univ_elem i ↘ R }} ->
-    {{ Dom c ≈ c' ∈ per_bot }} -> {{ Dom ⇑ a c ≈ ⇑ a' c' ∈ R }}.
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    Dom c ≈ c' ∈ per_bot -> Dom ⇑ a c ≈ ⇑ a' c' ∈ R.
 Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
@@ -98,8 +98,8 @@ Qed.
     In fact, Coq complains it cannot add one if we try. *)
 
 Corollary per_elem_then_per_top : forall {i a a' R b b'},
-    {{ DF a ≈ a' ∈ per_univ_elem i ↘ R }} ->
-    {{ Dom b ≈ b' ∈ R }} -> {{ Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top }}.
+    DF a ≈ a' ∈ per_univ_elem i ↘ R ->
+    Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top.
 Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
@@ -108,8 +108,8 @@ Qed.
 Hint Resolve per_elem_then_per_top : mctt.
 
 Lemma per_ctx_then_per_env_initial_env : forall {Γ Γ' env_rel},
-    {{ EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_rel }} ->
-    exists ρ ρ', initial_env Γ ρ /\ initial_env Γ' ρ' /\ {{ Dom ρ ≈ ρ' ∈ env_rel }}.
+    EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_rel ->
+    exists ρ ρ', initial_env Γ ρ /\ initial_env Γ' ρ' /\ Dom ρ ≈ ρ' ∈ env_rel.
 Proof.
   induction 1.
   - do 2 eexists; intuition.
@@ -124,8 +124,8 @@ Proof.
 Qed.
 
 Lemma var_per_elem : forall {a b i R} n,
-    {{ DF a ≈ b ∈ per_univ_elem i ↘ R }} ->
-    {{ Dom ⇑! a n ≈ ⇑! b n ∈ R }}.
+    DF a ≈ b ∈ per_univ_elem i ↘ R ->
+    Dom ⇑! a n ≈ ⇑! b n ∈ R.
 Proof.
   intros.
   eapply per_bot_then_per_elem; mauto.

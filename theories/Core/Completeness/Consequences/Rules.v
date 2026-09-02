@@ -14,11 +14,11 @@ From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations.
 
 Corollary per_ctx_of_exp_eq : forall {Γ A A' i},
-    {{ Γ ⊢ A ≈ A' : Type@i }} ->
-    {{ ⊨ Γ, A ≈ Γ, A' }}.
+    Γ ⊢ A ≈ A' : Type@i ->
+    ⊨ Γ ▹ A ≈ Γ ▹ A'.
 Proof.
   intros * H.
-  assert {{ ⊢ Γ }} by mauto 2.
+  assert (⊢ Γ) by mauto 2.
   eapply rel_ctx_extend; [ apply sem_ctx_per_ctx | ]; mauto 2.
 Qed.
 
@@ -26,8 +26,8 @@ Qed.
 Hint Resolve per_ctx_of_exp_eq : mctt.
 
 Lemma ctxeq_nbe_eq : forall Γ Γ' M A,
-    {{ Γ ⊢ M : A }} ->
-    {{ ⊨ Γ ≈ Γ' }} ->
+    Γ ⊢ M : A ->
+    ⊨ Γ ≈ Γ' ->
     exists W, nbe Γ M A W /\ nbe Γ' M A W.
 Proof.
   intros * HM%completeness_fundamental_exp HΓΓ'.
@@ -45,8 +45,8 @@ Proof.
   pose proof (rel_typ_elem_PER Htyp) as HPER.
   destruct Htyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (Ha : {{ DF a2 ≈ a3 ∈ per_univ_elem i ↘ elem_rel }}) by pairwise.
-  assert (Hm : {{ Dom m2 ≈ m3 ∈ elem_rel }}) by pairwise.
+  assert (Ha : DF a2 ≈ a3 ∈ per_univ_elem i ↘ elem_rel) by pairwise.
+  assert (Hm : Dom m2 ≈ m3 ∈ elem_rel) by pairwise.
   destruct (per_elem_then_per_top Ha Hm (length Γ)) as [W [HW HW']].
   exists W.
   split.
@@ -56,8 +56,8 @@ Proof.
 Qed.
 
 Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,
-    {{ Γ ⊢ M : A }} ->
-    {{ ⊨ Γ ≈ Γ' }} ->
+    Γ ⊢ M : A ->
+    ⊨ Γ ≈ Γ' ->
     nbe Γ M A W ->
     nbe Γ' M A W.
 Proof.
@@ -68,19 +68,19 @@ Proof.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
-    {{ Γ ⊢ A : Type@i }} ->
-    {{ ⊨ Γ ≈ Γ' }} ->
+    Γ ⊢ A : Type@i ->
+    ⊨ Γ ≈ Γ' ->
     exists W, nbe_ty Γ A W /\ nbe_ty Γ' A W.
 Proof.
   intros.
-  assert (exists W, nbe Γ A {{{ Type@i }}} W /\ nbe Γ' A {{{ Type@i }}} W)
+  assert (exists W, nbe Γ A Type@i W /\ nbe Γ' A Type@i W)
     as [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]] by mauto 3 using ctxeq_nbe_eq.
   firstorder.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq' : forall Γ Γ' A i W,
-    {{ Γ ⊢ A : Type@i }} ->
-    {{ ⊨ Γ ≈ Γ' }} ->
+    Γ ⊢ A : Type@i ->
+    ⊨ Γ ≈ Γ' ->
     nbe_ty Γ A W ->
     nbe_ty Γ' A W.
 Proof.

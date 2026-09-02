@@ -23,7 +23,7 @@ From Mctt.Core.Semantic Require Export PER.
 Import Domain_Notations.
 Import Wk_Notations.
 
-Reserved Notation "Γ ⊨w φ : Δ" (in custom judg at level 80, Γ custom exp, φ constr at level 0, Δ custom exp).
+Reserved Notation "Γ ⊨w φ : Δ" (at level 70, φ constr at level 0, Δ at level 69).
 
 (** * Semantic Weakening
 
@@ -34,15 +34,15 @@ Reserved Notation "Γ ⊨w φ : Δ" (in custom judg at level 80, Γ custom exp, 
 
 Definition rel_wk (φ : wk) (R R' : relation env) : Prop :=
   forall ρ ρ',
-    {{ Dom ρ ≈ ρ' ∈ R }} ->
-    {{ Dom ⟦ φ ⟧w ρ ≈ ⟦ φ ⟧w ρ' ∈ R' }}.
+    Dom ρ ≈ ρ' ∈ R ->
+    Dom ⟪φ⟫ ρ ≈ ⟪φ⟫ ρ' ∈ R'.
 
 Definition rel_wk_under_ctx Γ φ Δ : Prop :=
-  exists env_rel (_ : {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }})
-     env_rel' (_ : {{ EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel' }}),
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel)
+     env_rel' (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel'),
     rel_wk φ env_rel env_rel'.
 
-Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) (in custom judg) : type_scope.
+Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
 
 (** * Semantic Substitution Equality
 
@@ -50,15 +50,15 @@ Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) (in custom judg) : typ
     the Kripke-like quantification that makes the judgment usable under context
     extension.  The four environments are the two ways of evaluating each side:
     [σ[φ]] in [ρ] (the substitution [sb_wk σ φ], which is [σ] postcomposed with
-    [φ]) against [σ] in [⟦φ⟧w ρ]. *)
+    [φ]) against [σ] in [⟪φ⟫ ρ]. *)
 
 Inductive rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : relation env) : Prop :=
 | mk_rel_sub : forall ρσφ ρσ ρ'σ' ρ'σ'φ,
-    {{ ⟦ ^(sb_wk σ φ) ⟧s ρ ↘ ρσφ }} ->
-    {{ ⟦ σ ⟧s ⟦ φ ⟧w ρ ↘ ρσ }} ->
-    {{ ⟦ σ' ⟧s ⟦ φ ⟧w ρ' ↘ ρ'σ' }} ->
-    {{ ⟦ ^(sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ }} ->
-    rel_chain R [ρσφ; ρσ; ρ'σ'; ρ'σ'φ] ->
+    ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσφ ->
+    ⟦ σ ⟧s ⟪φ⟫ ρ ↘ ρσ ->
+    ⟦ σ' ⟧s ⟪φ⟫ ρ' ↘ ρ'σ' ->
+    ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ ->
+    rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) ->
     rel_sub σ φ ρ σ' ρ' R.
 #[global]
 Arguments mk_rel_sub {_ _ _ _ _ _}.
@@ -66,12 +66,12 @@ Arguments mk_rel_sub {_ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
 Definition rel_sub_under_ctx Γ Δ σ σ' : Prop :=
-  exists env_rel (_ : {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }})
-     env_rel_o (_ : {{ EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel_o }}),
-  forall Γ' env_rel' (_ : {{ EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' }}) φ,
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel)
+     env_rel_o (_ : EF Δ ≈ Δ ∈ per_ctx_env ↘ env_rel_o),
+  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') φ,
     rel_wk φ env_rel' env_rel ->
     forall ρ ρ',
-      {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
+      Dom ρ ≈ ρ' ∈ env_rel' ->
       rel_sub σ φ ρ σ' ρ' env_rel_o.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
@@ -93,11 +93,11 @@ Hint Unfold valid_sub_under_ctx : mctt.
 
 Inductive rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (ρ' ρ'σ' : env) (R : relation domain) : Prop :=
 | mk_rel_exp : forall mσ m m' m'σ',
-    {{ ⟦ M[σ] ⟧ ρ ↘ mσ }} ->
-    {{ ⟦ M ⟧ ρσ ↘ m }} ->
-    {{ ⟦ M' ⟧ ρ'σ' ↘ m' }} ->
-    {{ ⟦ M'[σ'] ⟧ ρ' ↘ m'σ' }} ->
-    rel_chain R [mσ; m; m'; m'σ'] ->
+    ⟦ M[σ] ⟧ ρ ↘ mσ ->
+    ⟦ M ⟧ ρσ ↘ m ->
+    ⟦ M' ⟧ ρ'σ' ↘ m' ->
+    ⟦ M'[σ'] ⟧ ρ' ↘ m'σ' ->
+    rel_chain R ([mσ; m; m'; m'σ']) ->
     rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R.
 #[global]
 Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
@@ -134,13 +134,13 @@ Hint Unfold rel_typ : mctt.
     genuinely share values instead of merely being pointwise equal, and
     [rel_chain_merge] applies. *)
 Definition rel_exp_under_ctx Γ A M M' : Prop :=
-  exists env_rel (_ : {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }}) i,
-  forall Γ' env_rel' (_ : {{ EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' }}) σ σ',
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
+  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
     rel_sub_under_ctx Γ' Γ σ σ' ->
     forall ρ ρ' ρσ ρ'σ',
-      {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
-      {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-      {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+      Dom ρ ≈ ρ' ∈ env_rel' ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
       exists (elem_rel : relation domain),
         rel_typ i A σ ρ ρσ A σ' ρ' ρ'σ' elem_rel /\
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel.
@@ -160,28 +160,29 @@ Hint Unfold valid_exp_under_ctx : mctt.
     relates the two inner values only. *)
 
 Definition subtyp_under_ctx Γ A A' : Prop :=
-  exists env_rel (_ : {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel }}) i,
-  forall Γ' env_rel' (_ : {{ EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' }}) σ σ',
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
+  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
     rel_sub_under_ctx Γ' Γ σ σ' ->
     forall ρ ρ' ρσ ρ'σ',
-      {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
-      {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-      {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+      Dom ρ ≈ ρ' ∈ env_rel' ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
       exists aσ a a'σ' a',
-          {{ ⟦ A[σ] ⟧ ρ ↘ aσ }} /\
-          {{ ⟦ A ⟧ ρσ ↘ a }} /\
-          {{ ⟦ A'[σ'] ⟧ ρ' ↘ a'σ' }} /\
-          {{ ⟦ A' ⟧ ρ'σ' ↘ a' }} /\
-          {{ Dom aσ ≈ a ∈ per_univ i }} /\
-          {{ Dom a'σ' ≈ a' ∈ per_univ i }} /\
-          {{ Sub a <: a' at i }}.
+          ⟦ A[σ] ⟧ ρ ↘ aσ /\
+          ⟦ A ⟧ ρσ ↘ a /\
+          ⟦ A'[σ'] ⟧ ρ' ↘ a'σ' /\
+          ⟦ A' ⟧ ρ'σ' ↘ a' /\
+          Dom aσ ≈ a ∈ per_univ i /\
+          Dom a'σ' ≈ a' ∈ per_univ i /\
+          Sub a <: a' at i.
 
-Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (in custom judg at level 80, Γ custom exp, Γ' custom exp).
-Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (in custom judg at level 80, Γ custom exp, M custom exp, M' custom exp, A custom exp).
-Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (in custom judg at level 80, Γ custom exp, M custom exp, M' custom exp).
-Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (in custom judg at level 80, Γ custom exp, M custom exp, A custom exp).
-Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (in custom judg at level 80, Γ custom exp, σ custom exp, σ' custom exp, Δ custom exp).
-Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (in custom judg at level 80, Γ custom exp, σ custom exp, Δ custom exp).
+Reserved Notation "⊨ Γ" (at level 70).
+Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
+Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
+Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
+Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
+Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
+Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 
 (** * Semantic Context Well-Formedness
 
@@ -190,16 +191,14 @@ Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (in custom judg at 
     well-formedness of the type — so [sem_ctx_per_ctx_env] reads the PER
     straight off any derivation. *)
 
-Reserved Notation "⊨ Γ" (in custom judg at level 80, Γ custom exp).
-
 Inductive sem_ctx : ctx -> Prop :=
-| sem_ctx_nil : {{ ⊨ ⋅ }}
+| sem_ctx_nil : ⊨ ⋅
 | sem_ctx_cons : forall Γ A i env_rel,
-    {{ ⊨ Γ }} ->
-    {{ EF Γ, A ≈ Γ, A ∈ per_ctx_env ↘ env_rel }} ->
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ ⊨ Γ, A }}
-where "⊨ Γ" := (sem_ctx Γ) (in custom judg) : type_scope.
+    ⊨ Γ ->
+    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
+    Γ ⊨ A ≈ A : Type@i ->
+    ⊨ Γ ▹ A
+where "⊨ Γ" := (sem_ctx Γ) : type_scope.
 
 #[export]
 Hint Constructors sem_ctx : mctt.

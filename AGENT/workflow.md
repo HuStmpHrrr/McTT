@@ -84,10 +84,14 @@ regression; treat these two as the baseline.
 
 Do not "fix" these; they are expected.
 
-- **Exactly 2 warnings on a clean build** (`make clean && make`, verified), both
-  `deprecated-exact-proof` on the `Proof eq_refl true<:...` that menhir's Coq
-  backend emits for its `safe`/`complete` validators, in the generated
-  `Frontend/Parser.v`. Nothing else warns; treat a new warning as a regression.
+- **Exactly 6 warnings on a clean build** (`make clean && make`, verified), all
+  in the generated `Frontend/Parser.v` and all emitted by menhir's Coq backend,
+  not by us: 4 `deprecated-from-Coq` on its own `From Coq Require …` preamble,
+  and 2 `deprecated-exact-proof` on the `Proof eq_refl true<:...` of its
+  `safe`/`complete` validators. Nothing else warns; treat a new warning as a
+  regression. When tallying warnings with a script, note that a warning name can
+  contain uppercase (`deprecated-from-Coq`) — a `[a-z0-9.,-]+` character class
+  silently drops those records.
 - **`make depgraphdoc` fails locally** with a `dot` assertion
   (`mincross.c:1314: flat_reorder`) — that is graphviz 2.30.1 on this host, not
   a Rocq problem. CI builds graphviz 12.1.1 from source, so CI is unaffected.

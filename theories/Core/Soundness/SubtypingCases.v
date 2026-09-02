@@ -12,10 +12,10 @@ From Mctt.Core.Soundness Require Import LogicalRelation.
 Import Domain_Notations.
 
 Lemma glu_rel_exp_subtyp : forall {Γ M A A' i},
-    {{ Γ ⊩ M : A }} ->
-    {{ Γ ⊩ A' : Type@i }} ->
-    {{ Γ ⊢ A ⊆ A' }} ->
-    {{ Γ ⊩ M : A' }}.
+    Γ ⊩ M : A ->
+    Γ ⊩ A' : Type@i ->
+    Γ ⊢ A ⊆ A' ->
+    Γ ⊩ M : A'.
 Proof.
   intros * [] HA' Hsub%completeness_fundamental_subtyp.
   destruct_conjs.
@@ -27,7 +27,7 @@ Proof.
   simplify_evals.
   match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
   handle_functional_glu_univ_elem.
-  assert {{ Dom ρ ≈ ρ ∈ env_relΓ }} by (eapply glu_ctx_env_per_env; mauto).
+  assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; mauto).
   destruct (Hsubsimple _ _ ltac:(eassumption)) as [a1 [a2 [? [? ?]]]].
   functional_eval_rewrite_clear.
   unfold univ_glu_exp_pred' in *.
@@ -43,10 +43,10 @@ Qed.
 Hint Resolve glu_rel_exp_subtyp : mctt.
 
 Lemma glu_rel_exp_conv : forall {Γ M A A' i},
-    {{ Γ ⊩ M : A }} ->
-    {{ Γ ⊩ A' : Type@i }} ->
-    {{ Γ ⊢ A ≈ A' : Type@i }} ->
-    {{ Γ ⊩ M : A' }}.
+    Γ ⊩ M : A ->
+    Γ ⊩ A' : Type@i ->
+    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊩ M : A'.
 Proof.
   mauto 3.
 Qed.

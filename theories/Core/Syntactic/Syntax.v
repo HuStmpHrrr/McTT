@@ -192,7 +192,7 @@ Definition sb_id : sub := fun x => a_var x.
 Arguments sb_id _ /.
 
 (** Extension (cons).  [sb_extend σ M] sends index [0] to [M] and index
-    [S y] to [σ y]; the paper writes it [σ, M/x₀]. *)
+    [S y] to [σ y]; the paper writes it [σ ▹ M/x₀]. *)
 Definition sb_extend (σ : sub) (M : exp) : sub :=
   fun x =>
     match x with
@@ -273,36 +273,37 @@ Instance wk_eq_Equivalence : Equivalence wk_eq := _.
 #[export]
 Instance sb_eq_Equivalence : Equivalence sb_eq := _.
 
-#[global] Declare Custom Entry exp.
-#[global] Declare Custom Entry nf.
-
 #[global] Bind Scope mctt_scope with exp.
 #[global] Bind Scope mctt_scope with sub.
 #[global] Bind Scope mctt_scope with nf.
 #[global] Bind Scope mctt_scope with ne.
 Open Scope mctt_scope.
 
-(** ** Syntactic Notations *)
+(** ** Syntactic Notations
+
+    Every notation below lives in ordinary [constr]: there is no custom entry
+    and hence no delimiter to write.  The price is that a spelling can denote
+    only one sort, so the normal forms — which mirror the expressions
+    constructor for constructor — carry a superscript [ⁿ].  Values carry a
+    superscript [ᵈ]; see [Domain_Notations]. *)
 Module Syntax_Notations.
-  Notation "{{{ x }}}" := x (at level 0, x custom exp at level 99, format "'{{{'  x  '}}}'") : mctt_scope.
-  (** We need to define the substitution notations first to assert
-      [left associativity] of level 1.  Level 0 is for *closed* notations —
-      those beginning and ending in a terminal — so everything else that used to
-      sit there is one level up. *)
-  Notation "e [ s ]" := (exp_sub e s) (in custom exp at level 1, e custom exp, s custom exp at level 60, left associativity, format "e [ s ]") : mctt_scope.
-  Notation "e ⟨ φ ⟩" := (exp_wk e φ) (in custom exp at level 1, e custom exp, φ constr at level 60, left associativity, format "e ⟨ φ ⟩") : mctt_scope.
-  Notation "( x )" := x (in custom exp at level 0, x custom exp at level 60) : mctt_scope.
-  Notation "'^' x" := x (in custom exp at level 1, x constr at level 0) : mctt_scope.
-  Notation "x" := x (in custom exp at level 0, x ident) : mctt_scope.
-  Notation "'λ' A e" := (a_fn A e) (in custom exp at level 2, A custom exp at level 1, e custom exp at level 60) : mctt_scope.
-  Notation "f x .. y" := (a_app .. (a_app f x) .. y) (in custom exp at level 40, f custom exp, x custom exp at next level, y custom exp at next level) : mctt_scope.
-  Notation "'ℕ'" := a_nat (in custom exp) : mctt_scope.
-  Notation "'Type' @ n" := (a_typ n) (in custom exp at level 1, n constr at level 0, format "'Type' @ n") : mctt_scope.
-  Notation "'Π' A B" := (a_pi A B) (in custom exp at level 2, A custom exp at level 1, B custom exp at level 60) : mctt_scope.
-  Notation "'zero'" := a_zero (in custom exp at level 0) : mctt_scope.
-  Notation "'succ' e" := (a_succ e) (in custom exp at level 2, e custom exp at level 1) : mctt_scope.
-  Notation "'rec' e 'return' A | 'zero' -> ez | 'succ' -> es 'end'" := (a_natrec A ez es e) (in custom exp at level 0, A custom exp at level 60, ez custom exp at level 60, es custom exp at level 60, e custom exp at level 60) : mctt_scope.
-  Notation "'#' n" := (a_var n) (in custom exp at level 1, n constr at level 0, format "'#' n") : mctt_scope.
+  (** Substitution and weakening application come first, so that level 1 is
+      created *left* associative; everything else that reads as an atom is at
+      level 0, and the constructor forms with a recursive last argument are at
+      level 2. *)
+  Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
+  Notation "M ⟨ φ ⟩" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M ⟨ φ ⟩") : mctt_scope.
+  Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
+  Notation "'ℕ'" := a_nat : mctt_scope.
+  Notation "'zero'" := a_zero : mctt_scope.
+  Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
+  Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
+  (** Application needs an explicit operator: a [constr] notation may not be
+      pure juxtaposition, which is Rocq's own application. *)
+  Notation "M $ N" := (a_app M N) (at level 10, left associativity) : mctt_scope.
 
   (** *** Substitutions
 
@@ -310,39 +311,41 @@ Module Syntax_Notations.
       unlike the [σ ∘ τ] of the explicit-substitution presentation.  The
       spelling is deliberately different so that no old occurrence parses
       silently under the new orientation. *)
-  Notation "'Id'" := sb_id (in custom exp at level 0) : mctt_scope.
-  Notation "'Wk'" := sb_shift (in custom exp at level 0) : mctt_scope.
-  Notation "σ ⨟ τ" := (sb_compose σ τ) (in custom exp at level 40, right associativity, format "σ ⨟ τ") : mctt_scope.
-  Notation "σ ,, e" := (sb_extend σ e) (in custom exp at level 50, left associativity, format "σ ,, e") : mctt_scope.
-  Notation "'q' σ" := (sb_q σ) (in custom exp at level 30) : mctt_scope.
+  Notation "'Id'" := sb_id : mctt_scope.
+  Notation "'Wk'" := sb_shift : mctt_scope.
+  Notation "σ ⨟ τ" := (sb_compose σ τ) (at level 45, right associativity, format "σ ⨟ τ") : mctt_scope.
+  Notation "σ ,, M" := (sb_extend σ M) (at level 50, left associativity, format "σ ,, M") : mctt_scope.
+  Notation "'q' σ" := (sb_q σ) (at level 30, σ at level 2) : mctt_scope.
 
-  Notation "⋅" := nil (in custom exp at level 0) : mctt_scope.
-  Notation "x , y" := (cons y x) (in custom exp at level 50, left associativity, format "x ,  y") : mctt_scope.
+  (** *** Contexts
 
-  Notation "n{{{ x }}}" := x (at level 0, x custom nf at level 99, format "'n{{{'  x  '}}}'") : mctt_scope.
-  Notation "( x )" := x (in custom nf at level 0, x custom nf at level 60) : mctt_scope.
-  Notation "'^' x" := x (in custom nf at level 1, x constr at level 0) : mctt_scope.
-  Notation "x" := x (in custom nf at level 0, x ident) : mctt_scope.
-  Notation "'λ' A e" := (nf_fn A e) (in custom nf at level 2, A custom nf at level 1, e custom nf at level 60) : mctt_scope.
-  Notation "f x .. y" := (ne_app .. (ne_app f x) .. y) (in custom nf at level 40, f custom nf, x custom nf at next level, y custom nf at next level) : mctt_scope.
-  Notation "'ℕ'" := nf_nat (in custom nf) : mctt_scope.
-  Notation "'Type' @ n" := (nf_typ n) (in custom nf at level 1, n constr at level 0, format "'Type' @ n") : mctt_scope.
-  Notation "'Π' A B" := (nf_pi A B) (in custom nf at level 2, A custom nf at level 1, B custom nf at level 60) : mctt_scope.
-  Notation "'zero'" := nf_zero (in custom nf at level 0) : mctt_scope.
-  Notation "'succ' M" := (nf_succ M) (in custom nf at level 2, M custom nf at level 1) : mctt_scope.
-  Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (in custom nf at level 0, A custom nf at level 60, MZ custom nf at level 60, MS custom nf at level 60, M custom nf at level 60) : mctt_scope.
-  Notation "'#' n" := (ne_var n) (in custom nf at level 1, n constr at level 0, format "'#' n") : mctt_scope.
-  Notation "'⇑' M" := (nf_neut M) (in custom nf at level 1, M custom nf at level 99, format "'⇑'  M") : mctt_scope.
+      Extension is [▹] rather than the paper's comma: a parsing [,] in [constr]
+      would steal Rocq's pair notation.  Both are restricted to [exp] so that
+      an unrelated [list] does not print as a context. *)
+  Notation "⋅" := (@nil exp) : mctt_scope.
+  Notation "Γ ▹ A" := (@cons exp A Γ) (at level 50, left associativity) : mctt_scope.
+
+  (** *** Normal and Neutral Forms *)
+  Notation "'ℕⁿ'" := nf_nat : mctt_scope.
+  Notation "'zeroⁿ'" := nf_zero : mctt_scope.
+  Notation "'succⁿ' M" := (nf_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
+  Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
+  Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
+  Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
+  Notation "'recⁿ' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
 End Syntax_Notations.
 
 (** ** Notations for Weakenings
 
-    Weakenings live outside the [exp] custom entry: they are a separate sort,
-    and after [Substitution.v] establishes that the embedding [ι] is faithful
-    the development speaks almost exclusively of substitutions. *)
+    Weakenings are their own sort, in their own module: after [Substitution.v]
+    establishes that the embedding [ι] is faithful the development speaks almost
+    exclusively of substitutions. *)
 Module Wk_Notations.
   (** [↑] is the paper's [⇑] *as a weakening*.  The glyph differs because [⇑] is
-      already the neutral-form embedding in the [nf] entry, and because the
+      already the neutral-value embedding of [Domain_Notations], and because the
       development needs to keep the shift weakening apart from the shift
       substitution [Wk = ι ↑]. *)
   Notation "↑" := wk_shift : mctt_scope.

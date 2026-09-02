@@ -29,7 +29,7 @@ invariants you must preserve when editing one, are in
 | --- | --- |
 | [`substitution-port.md`](substitution-port.md) | The port to meta-level substitutions (complete): design, order of the development, deviations from the paper, the four-value pattern, and the accumulated gotchas. **Start here before touching anything under `theories/Core/`.** |
 | [`proof-conventions.md`](proof-conventions.md) | How to pick, extend, and safely edit tactics. |
-| [`notations.md`](notations.md) | The level scheme of the `exp`/`nf`/`domain`/`judg` custom entries. Read before adding or moving a notation. |
+| [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |
 | [`../doc/alignment.md`](../doc/alignment.md) | Where the mechanization diverges from `paper.pdf` and `main.pdf`, and answers to the papers' open questions. The one place that cites them by number. |

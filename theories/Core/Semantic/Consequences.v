@@ -6,13 +6,13 @@ Import Domain_Notations.
 Import Wk_Notations.
 
 Lemma idempotent_nbe_ty : forall {Γ i A B C},
-    {{ Γ ⊢ A : Type@i }} ->
+    Γ ⊢ A : Type@i ->
     nbe_ty Γ A B ->
     nbe_ty Γ B C ->
     B = C.
 Proof.
   intros.
-  assert {{ Γ ⊢ A ≈ B : Type@i }} as [? []]%completeness_ty by mauto 2 using soundness_ty'.
+  assert (Γ ⊢ A ≈ B : Type@i) as [? []]%completeness_ty by mauto 2 using soundness_ty'.
   functional_nbe_rewrite_clear.
   reflexivity.
 Qed.
@@ -20,10 +20,10 @@ Qed.
 Hint Resolve idempotent_nbe_ty : mctt.
 
 Lemma adjust_exp_eq_level : forall {Γ A A' i j},
-    {{ Γ ⊢ A ≈ A' : Type@i }} ->
-    {{ Γ ⊢ A : Type@j }} ->
-    {{ Γ ⊢ A' : Type@j }} ->
-    {{ Γ ⊢ A ≈ A' : Type@j }}.
+    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊢ A : Type@j ->
+    Γ ⊢ A' : Type@j ->
+    Γ ⊢ A ≈ A' : Type@j.
 Proof.
   intros * ?%completeness_ty ?%soundness ?%soundness.
   destruct_conjs.
@@ -37,8 +37,8 @@ Proof.
 Qed.
 
 Lemma exp_eq_pi_inversion : forall {Γ A B A' B' i},
-    {{ Γ ⊢ Π A B ≈ Π A' B' : Type@i }} ->
-    {{ Γ ⊢ A ≈ A' : Type@i }} /\ {{ Γ, A ⊢ B ≈ B' : Type@i }}.
+    Γ ⊢ Π A B ≈ Π A' B' : Type@i ->
+    Γ ⊢ A ≈ A' : Type@i /\ Γ ▹ A ⊢ B ≈ B' : Type@i.
 Proof.
   intros * H.
   gen_presups.
@@ -56,17 +56,17 @@ Proof.
   functional_eval_rewrite_clear.
   functional_read_rewrite_clear.
   autoinjections.
-  assert {{ Γ ⊢ A' ≈ A : Type@i }} by mauto 3.
-  (** Context equality is gone: [Γ, A] refines [Γ, A'] because the two heads are
+  assert (Γ ⊢ A' ≈ A : Type@i) by mauto 3.
+  (** Context equality is gone: [Γ ▹ A] refines [Γ ▹ A'] because the two heads are
       equal, and [ctxsub_exp_eq] moves the codomain's normal form across. *)
-  assert {{ Γ, A ⊢s Id : Γ, A' }} by mauto 3.
+  assert (Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
   split; [mauto 3 |].
   etransitivity; [| symmetry]; mauto 3.
 Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
-    {{ Γ ⊢ M : Π A B }} ->
-    exists W1 W2, nbe Γ M {{{ Π A B }}} n{{{ λ W1 W2 }}}.
+    Γ ⊢ M : Π A B ->
+    exists W1 W2, nbe Γ M (Π A B) λⁿ W1 W2.
 Proof.
   intros * [? []]%soundness.
   dir_inversion_clear_by_head nbe.
@@ -78,22 +78,22 @@ Qed.
 Hint Resolve nf_of_pi : mctt.
 
 Theorem canonical_form_of_pi : forall {M A B},
-    {{ ⋅ ⊢ M : Π A B }} ->
-    exists W1 W2, nbe {{{ ⋅ }}} M {{{ Π A B }}} n{{{ λ W1 W2 }}}.
+    ⋅ ⊢ M : Π A B ->
+    exists W1 W2, nbe ⋅ M (Π A B) λⁿ W1 W2.
 Proof. mauto 3. Qed.
 #[export]
 Hint Resolve canonical_form_of_pi : mctt.
 
 Inductive canonical_nat : nf -> Prop :=
-| canonical_nat_zero : canonical_nat n{{{ zero }}}
-| canonical_nat_succ : forall W, canonical_nat W -> canonical_nat n{{{ succ W }}}
+| canonical_nat_zero : canonical_nat zeroⁿ
+| canonical_nat_succ : forall W, canonical_nat W -> canonical_nat succⁿ W
 .
 #[export]
 Hint Constructors canonical_nat : mctt.
 
 Theorem canonical_form_of_nat : forall {M},
-    {{ ⋅ ⊢ M : ℕ }} ->
-    exists W, nbe {{{ ⋅ }}} M {{{ ℕ }}} W /\ canonical_nat W.
+    ⋅ ⊢ M : ℕ ->
+    exists W, nbe ⋅ M ℕ W /\ canonical_nat W.
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
@@ -104,15 +104,15 @@ Proof.
   match_by_head1 read_nf ltac:(fun H => dependent induction H);
     intros; mauto 3;
     gen_presups.
-  - eassert ({{ ⋅ ⊢ ^_ : ℕ }} /\ {{ ⋅ ⊢ ℕ ⊆ ℕ }}) as [? _]; mautosolve 4.
-  - match_by_head1 (wf_exp {{{ ⋅ }}} {{{ ℕ }}}) ltac:(fun H => contradict H); mautosolve 4.
+  - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
+  - match_by_head1 (wf_exp ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 #[export]
 Hint Resolve canonical_form_of_nat : mctt.
 
 Theorem canonical_form_of_typ : forall {i M},
-    {{ ⋅ ⊢ M : Type@i }} ->
-    exists W, nbe {{{ ⋅ }}} M {{{ Type@i }}} W /\ is_typ_constr W /\ (forall V, W <> n{{{ ⇑ V }}}).
+    ⋅ ⊢ M : Type@i ->
+    exists W, nbe ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
@@ -124,35 +124,35 @@ Proof.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
     intros; split; intros; mauto 3; try congruence;
     gen_presups;
-    match_by_head1 (wf_exp {{{ ⋅ }}} {{{ Type@i }}}) ltac:(fun H => contradict H); mautosolve 4.
+    match_by_head1 (wf_exp ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 #[export]
 Hint Resolve canonical_form_of_typ : mctt.
 
 Lemma subtyp_spec : forall {Γ A B},
-    {{ Γ ⊢ A ⊆ B }} ->
-    (exists k, {{ Γ ⊢ A ≈ B : Type@k }}) \/
-      (exists i j, (exists k, {{ Γ ⊢ A ≈ Type@i : Type@k }}) /\ (exists k, {{ Γ ⊢ Type@j ≈ B : Type@k }}) /\ i <= j) \/
-      (exists A1 A2 B1 B2, (exists k, {{ Γ ⊢ A ≈ Π A1 A2 : Type@k }}) /\ (exists k, {{ Γ ⊢ Π B1 B2 ≈ B : Type@k }}) /\ (exists k, {{ Γ ⊢ A1 ≈ B1 : Type@k }}) /\ {{ Γ, B1 ⊢ A2 ⊆ B2 }}).
+    Γ ⊢ A ⊆ B ->
+    (exists k, Γ ⊢ A ≈ B : Type@k) \/
+      (exists i j, (exists k, Γ ⊢ A ≈ Type@i : Type@k) /\ (exists k, Γ ⊢ Type@j ≈ B : Type@k) /\ i <= j) \/
+      (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
   induction 1; mauto 3.
   - destruct_all; firstorder (mauto 3);
       try (right; right; do 4 eexists; firstorder mautosolve 3).
     + match goal with
-      | _: {{ Γ ⊢ M' ≈ Type@?i : Type@_ }},
-          _: {{ Γ ⊢ Type@?j ≈ M' : Type@_ }} |- _ =>
-          assert {{ Γ ⊢ Type@j ≈ Type@i : Type@_ }} by mauto 3;
+      | _: (Γ ⊢ M' ≈ Type@?i : Type@_),
+          _: Γ ⊢ Type@?j ≈ M' : Type@_ |- _ =>
+          assert (Γ ⊢ Type@j ≈ Type@i : Type@_) by mauto 3;
           assert (j = i) as -> by mauto 3
       end; (congruence + firstorder (mautosolve 4 + lia)).
-    + assert {{ Γ ⊢ Π ^_ ^_ ≈ Type@_ : Type@_ }} by mauto 3.
-      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
-    + assert {{ Γ ⊢ Π ^_ ^_ ≈ Type@_ : Type@_ }} by mauto 3.
-      assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
+    + assert (Γ ⊢ Π _ _ ≈ Type@_ : Type@_) by mauto 3.
+      assert (Π _ _ = Type@_) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
+    + assert (Γ ⊢ Π _ _ ≈ Type@_ : Type@_) by mauto 3.
+      assert (Π _ _ = Type@_) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
     + match goal with
-      | _: {{ Γ ⊢ M' ≈ Π ^?A1 ^?A2 : Type@_ }},
-          _: {{ Γ ⊢ Π ^?B1 ^?B2 ≈ M' : Type@_ }} |- _ =>
-          assert {{ Γ ⊢ Π A1 A2 ≈ Π B1 B2 : Type@_ }} by mauto 3;
-          assert ({{ Γ ⊢ A1 ≈ B1 : Type@_ }} /\ {{ Γ, A1 ⊢ A2 ≈ B2 : Type@_ }}) as [] by mauto 3 using exp_eq_pi_inversion
+      | _: (Γ ⊢ M' ≈ Π ?A1 ?A2 : Type@_),
+          _: Γ ⊢ Π ?B1 ?B2 ≈ M' : Type@_ |- _ =>
+          assert (Γ ⊢ Π A1 A2 ≈ Π B1 B2 : Type@_) by mauto 3;
+          assert (Γ ⊢ A1 ≈ B1 : Type@_ /\ Γ ▹ A1 ⊢ A2 ≈ B2 : Type@_) as [] by mauto 3 using exp_eq_pi_inversion
       end.
       right; right.
       do 4 eexists; repeat split; mauto 3.
@@ -173,9 +173,9 @@ Hint Resolve subtyp_spec : mctt.
 
 Lemma consistency_ne_helper : forall {i A A'} {W : ne},
     is_typ_constr A' ->
-    (forall j, A' <> {{{ Type@j }}}) ->
-    {{ ⋅, Type@i ⊢ A ⊆ A' }} ->
-    ~ {{ ⋅, Type@i ⊢ W : A }}.
+    (forall j, A' <> Type@j) ->
+    ⋅ ▹ Type@i ⊢ A ⊆ A' ->
+    ~ ⋅ ▹ Type@i ⊢ W : A.
 Proof.
   intros * HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
@@ -186,19 +186,19 @@ Proof.
     eapply IHHW3; [| | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
-    assert {{ ⋅, Type@i ⊢ Type@i⟨↑⟩ ≈ Type@i : Type@(S i) }} by mauto 3.
+    assert (⋅ ▹ Type@i ⊢ Type@i⟨↑⟩ ≈ Type@i : Type@(S i)) by mauto 3.
     eapply subtyp_spec in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
-    assert {{ ⋅, Type@i ⊢ Type@i ≈ Π ^_ ^_ : Type@_ }} by mauto 3.
-    assert ({{{ Π ^_ ^_ }}} = {{{ Type@i }}}) by mauto 3; (congruence + mautosolve 3).
+    assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
+    assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
 Qed.
 
 Theorem consistency : forall {i} M,
-    ~ {{ ⋅ ⊢ M : Π Type@i #0 }}.
+    ~ ⋅ ⊢ M : Π Type@i #0.
 Proof.
   intros * HW.
-  assert (exists W1 W2, nbe {{{ ⋅ }}} M {{{ Π Type@i #0 }}} n{{{ λ W1 W2 }}}) as [W1 [W2 Hnbe]] by mauto 3.
-  assert (exists W, nbe {{{ ⋅ }}} M {{{ Π Type@i #0 }}} W /\ {{ ⋅ ⊢ M ≈ W : Π Type@i #0 }}) as [? []] by mauto 3 using soundness.
+  assert (exists W1 W2, nbe ⋅ M (Π Type@i #0) λⁿ W1 W2) as [W1 [W2 Hnbe]] by mauto 3.
+  assert (exists W, nbe ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
   gen_presups.
   functional_nbe_rewrite_clear.
   dependent destruction Hnbe.
@@ -208,18 +208,18 @@ Proof.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
   simpl in *.
-  assert (exists B, {{ ⋅, Type@i ⊢ M0 : B }} /\ {{ ⋅ ⊢ Π Type@i B ⊆ Π Type@i #0 }}) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
+  assert (exists B, ⋅ ▹ Type@i ⊢ M0 : B /\ ⋅ ⊢ Π Type@i B ⊆ Π Type@i #0) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
     destruct_conjs;
-    try assert ({{{ Π ^_ ^_ }}} = {{{ Type@_ }}}) by mauto 3;
+    try assert (Π _ _ = Type@_) by mauto 3;
     try congruence.
-  - assert (_ /\ {{ ^_ ⊢ B ≈ #0 : ^_ }}) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
+  - assert (_ /\ _ ⊢ B ≈ #0 : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     eapply consistency_ne_helper; (congruence + mautosolve 3).
-  - assert (_ /\ {{ ^_ ⊢ B ≈ ^_ : ^_ }}) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
-    assert (_ /\ {{ ^_ ⊢ ^_ ≈ #0 : ^_ }}) as [? ?] by mauto 3 using exp_eq_pi_inversion.
+  - assert (_ /\ _ ⊢ B ≈ _ : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
+    assert (_ /\ _ ⊢ _ ≈ #0 : _) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
         extended by the other domain, so both move across the refinement
-        [{{ ⋅, Type@i ⊢s Id : ⋅, ^_ }}] that the domain equation provides. *)
-    assert {{ ^_ ⊢ B ⊆ #0 }} by
+        [⋅ ▹ Type@i ⊢s Id : ⋅ ▹ _] that the domain equation provides. *)
+    assert (_ ⊢ B ⊆ #0) by
       (etransitivity; [mauto 3 |];
        etransitivity;
        [eapply ctxsub_subtyp; [| eassumption] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]];

@@ -116,7 +116,7 @@ The port left `Core/Completeness` proving by hand what it used to prove by
 tactic: `destruct_rel_by_assumption` went from 94 uses to 0, `on_all_hyp` from
 113 to 0, `mauto` from 138 to 14, while `destruct` went 26 → 286 and
 `functional_eval_*` 7 → 112. The tactics are not obsolete — they match
-`forall ρ ρ', {{ Dom ρ ≈ ρ' ∈ R }} -> _`, and `rel_exp_under_ctx` now has eight
+`forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> _`, and `rel_exp_under_ctx` now has eight
 binders in front of that. `LogicalRelation/Tactics.v` grew by one alias line in
 the whole port.
 

@@ -21,7 +21,7 @@
 
     The type of an extended context is written [A] here and the extension term
     [M], following the rest of the development, and not only for uniformity: [S]
-    is [nat]'s constructor, so [{{{ S⟨ψ⟩ }}}] inside a tactic argument is interned
+    is [nat]'s constructor, so [S⟨ψ⟩] inside a tactic argument is interned
     as a *name* and rejected. *)
 
 From Stdlib Require Import List Morphisms_Relations RelationClasses.
@@ -34,14 +34,14 @@ From Mctt.Core.Completeness Require Import ContextCases LogicalRelation Universe
 Import Domain_Notations.
 Import Wk_Notations.
 
-(** The extended context PER of [Δ, A], read off a semantic type judgment: this
+(** The extended context PER of [Δ ▹ A], read off a semantic type judgment: this
     is [per_ctx_env_extend] fed by the [Id] instance of [rel_exp_under_ctx_simple],
     and it is the
     first step of every proof below. *)
 Lemma per_ctx_env_of_typ : forall {Δ A i env_relΔ},
-    {{ EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ EF Δ, A ≈ Δ, A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ) }}.
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ).
 Proof.
   intros * HΔ H.
   pose proof (rel_exp_of_typ_inversion_simple H) as [env_relΔ' [HΔ' HA]].
@@ -50,7 +50,7 @@ Proof.
 Qed.
 
 (** The same for a *substituted* type, which is the context PER every rule with a
-    premise in an extended context needs: [q σ] goes from [Γ, A[σ]] to [Δ, A], and
+    premise in an extended context needs: [q σ] goes from [Γ ▹ A[σ]] to [Δ ▹ A], and
     a Π-, λ- or ℕ-elim-rule instantiates its premise there.
 
     It is not an instance of the lemma above, because [Γ ⊨ A[σ] ≈ A[σ] : Type@i]
@@ -62,10 +62,10 @@ Qed.
     substitution: only two evaluations of [σ] at a related pair are wanted here,
     not the four of a full four-value pattern. *)
 Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A i env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ EF Γ, A[σ] ≈ Γ, A[σ] ∈ per_ctx_env ↘ (per_env_extend {{{ A[σ] }}} {{{ A[σ] }}} env_relΓ) }}.
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    EF Γ ▹ A[σ] ≈ Γ ▹ A[σ] ∈ per_ctx_env ↘ (per_env_extend A[σ] A[σ] env_relΓ).
 Proof.
   intros * HΓ Hσj HA.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
@@ -90,15 +90,15 @@ Qed.
     never the [i] of [A]'s own judgment.  Only [a] is named, since irrelevance
     needs one shared value and the left one is the one the caller has. *)
 Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A i env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
     forall ρ ρ' j a b R c c',
-      {{ Dom ρ ≈ ρ' ∈ env_relΓ }} ->
-      {{ ⟦ A[σ] ⟧ ρ ↘ a }} ->
-      {{ DF a ≈ b ∈ per_univ_elem j ↘ R }} ->
-      {{ Dom c ≈ c' ∈ R }} ->
-      {{ Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend {{{ A[σ] }}} {{{ A[σ] }}} env_relΓ }}.
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      ⟦ A[σ] ⟧ ρ ↘ a ->
+      DF a ≈ b ∈ per_univ_elem j ↘ R ->
+      Dom c ≈ c' ∈ R ->
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ.
 Proof.
   intros * HΓ Hσj HA * Hρ Ha HR Hc.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
@@ -120,7 +120,7 @@ Proof.
   retype_rel_chain Hchain HR Hc; exact Hc.
 Qed.
 
-(** A type judgment in [Δ, A] read at an *arbitrary* member of the canonical
+(** A type judgment in [Δ ▹ A] read at an *arbitrary* member of the canonical
     extended context PER, rather than at one built by [per_env_extend_sub_intro]
     from a [q].  This is what an instantiated codomain needs: the pair of
     environments it is evaluated at is [ρ ↦ m] for some [m] coming from the term
@@ -131,13 +131,13 @@ Qed.
     [HBl] and in the argument [Hρ] — so whichever of the two names the tactic
     keeps, the application still typechecks. *)
 Lemma rel_exp_of_typ_extend_simple : forall {Γ A i B B' j env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B' : Type@j }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ B ≈ B' : Type@j ->
     forall ρ ρ',
-      {{ Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ }} ->
+      Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
       exists b b',
-        {{ ⟦ B ⟧ ρ ↘ b }} /\ {{ ⟦ B' ⟧ ρ' ↘ b' }} /\ {{ Dom b ≈ b' ∈ per_univ j }}.
+        ⟦ B ⟧ ρ ↘ b /\ ⟦ B' ⟧ ρ' ↘ b' /\ Dom b ≈ b' ∈ per_univ j.
 Proof.
   intros * HΓ HA HB * Hρ.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
@@ -153,14 +153,14 @@ Qed.
     and [per_head_of_args] moves between the head PERs at different arguments,
     which no bare [R] admits. *)
 Lemma rel_exp_under_ctx_extend_simple : forall {Γ A i B M M' env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ M ≈ M' : B }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ',
-      {{ Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ }} ->
+      Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
       exists m m',
-        {{ ⟦ M ⟧ ρ ↘ m }} /\ {{ ⟦ M' ⟧ ρ' ↘ m' }} /\
-          {{ Dom m ≈ m' ∈ per_head B B ρ ρ' }}.
+        ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\
+          Dom m ≈ m' ∈ per_head B B ρ ρ'.
 Proof.
   intros * HΓ HA HM * Hρ.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
@@ -173,8 +173,8 @@ Proof.
 Qed.
 
 (** The [Wk] instance of the same, which is the only way a *weakened* term ever
-    acquires a value: the equation [⟦M⟨φ⟩⟧ρ = ⟦M⟧(⟦φ⟧w ρ)] fails outright — the
-    two sides of the λ-case are the closures [λ ρ (N⟨q φ⟩)] and [λ (⟦φ⟧w ρ) N],
+    acquires a value: the equation [⟦M⟨φ⟩⟧ρ = ⟦M⟧(⟪φ⟫ ρ)] fails outright — the
+    two sides of the λ-case are the closures [λ ρ (N⟨q φ⟩)] and [λ (⟪φ⟫ ρ) N],
     which are different values and are not even related — so semantic weakening
     exists only as the instance of a judgment along [Wk], and [⟦M⟨↑⟩⟧(ρ ↦ c)] is
     reachable no other way.  [rel_exp_under_ctx_extend_simple] is the [Id]
@@ -187,23 +187,23 @@ Qed.
     the function PER of [B] at the two tails, when [B] is a Π.  Which of the two a
     caller wants depends on the shape of [B], so neither is chosen here. *)
 Lemma rel_exp_under_ctx_shift_at : forall {Γ A i B M M' env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ ⊨ M ≈ M' : B }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ M ≈ M' : B ->
     forall ρ ρ' c c',
-      {{ Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A A env_relΓ }} ->
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A A env_relΓ ->
       exists j R b1 b2 b3 b4 w1 w2 w3 w4,
-        {{ ⟦ B⟨↑⟩ ⟧ ρ ↦ c ↘ b1 }} /\
-        {{ ⟦ B ⟧ ρ ↘ b2 }} /\
-        {{ ⟦ B ⟧ ρ' ↘ b3 }} /\
-        {{ ⟦ B⟨↑⟩ ⟧ ρ' ↦ c' ↘ b4 }} /\
-        {{ DF b1 ≈ b4 ∈ per_univ_elem j ↘ R }} /\
-        {{ DF b2 ≈ b3 ∈ per_univ_elem j ↘ R }} /\
-        {{ ⟦ M⟨↑⟩ ⟧ ρ ↦ c ↘ w1 }} /\
-        {{ ⟦ M ⟧ ρ ↘ w2 }} /\
-        {{ ⟦ M' ⟧ ρ' ↘ w3 }} /\
-        {{ ⟦ M'⟨↑⟩ ⟧ ρ' ↦ c' ↘ w4 }} /\
-        rel_chain R [w1; w2; w3; w4].
+        ⟦ B⟨↑⟩ ⟧ ρ ↦ c ↘ b1 /\
+        ⟦ B ⟧ ρ ↘ b2 /\
+        ⟦ B ⟧ ρ' ↘ b3 /\
+        ⟦ B⟨↑⟩ ⟧ ρ' ↦ c' ↘ b4 /\
+        DF b1 ≈ b4 ∈ per_univ_elem j ↘ R /\
+        DF b2 ≈ b3 ∈ per_univ_elem j ↘ R /\
+        ⟦ M⟨↑⟩ ⟧ ρ ↦ c ↘ w1 /\
+        ⟦ M ⟧ ρ ↘ w2 /\
+        ⟦ M' ⟧ ρ' ↘ w3 /\
+        ⟦ M'⟨↑⟩ ⟧ ρ' ↦ c' ↘ w4 /\
+        rel_chain R ([w1; w2; w3; w4]).
 Proof.
   intros * HΓ HA HM * Hρ.
   pose proof (per_ctx_env_of_typ HΓ HA) as HΓA.
@@ -216,7 +216,7 @@ Proof.
       which is what makes the *inner* pair of both chains a statement about [ρ] and
       [ρ'] rather than about some environment reached through [σ]. *)
   destruct (HMgen _ _ HΓA _ _ HWk _ _ _ _ Hρ
-                  (eval_sub_shift d{{{ ρ ↦ c }}}) (eval_sub_shift d{{{ ρ' ↦ c' }}}))
+                  (eval_sub_shift (ρ ↦ c)) (eval_sub_shift (ρ' ↦ c')))
     as [R [Htyp Hexp]].
   destruct Htyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct Hexp as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hwchain].
@@ -237,27 +237,27 @@ Qed.
     head obligation is a single bridging step. *)
 
 Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A i},
-    {{ Γ ⊨w ψ : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A⟨ψ⟩ ⊨w (wk_q ψ) : Δ, A }}.
+    Γ ⊨w ψ : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A⟨ψ⟩ ⊨w (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
   pose proof Hψj as [env_relΓ [HΓ [env_relΔ [HΔ Hψ]]]].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   handle_per_ctx_env_irrel.
   (** The commutation obligation of [A] along [ι ψ].  It serves twice — once to
-      build the context PER of [Γ, A⟨ψ⟩], once to bridge the head PERs — so name
+      build the context PER of [Γ ▹ A⟨ψ⟩], once to bridge the head PERs — so name
       it, at an environment pair the caller will supply. *)
   assert (Hcom : forall ρ ρ',
-             {{ Dom ρ ≈ ρ' ∈ env_relΓ }} ->
-             rel_exp A {{{ ^(ι ψ) }}} ρ d{{{ ⟦ ψ ⟧w ρ }}}
-                     A {{{ ^(ι ψ) }}} ρ' d{{{ ⟦ ψ ⟧w ρ' }}} (per_univ i))
+             Dom ρ ≈ ρ' ∈ env_relΓ ->
+             rel_exp A (ι ψ) ρ ⟪ψ⟫ ρ
+                     A (ι ψ) ρ' ⟪ψ⟫ ρ' (per_univ i))
     by (intros ρ ρ' Hρ;
         exact (HAgen _ _ HΓ _ _ (rel_sub_of_wk Hψj) _ _ _ _ Hρ
                      (eval_sub_of_wk _ _) (eval_sub_of_wk _ _))).
   pose proof (per_ctx_env_of_typ HΔ' HA) as HΔA.
-  assert (HΓA : {{ EF Γ, A⟨ψ⟩ ≈ Γ, A⟨ψ⟩ ∈ per_ctx_env
-                     ↘ (per_env_extend {{{ A⟨ψ⟩ }}} {{{ A⟨ψ⟩ }}} env_relΓ) }}).
+  assert (HΓA : EF Γ ▹ A⟨ψ⟩ ≈ Γ ▹ A⟨ψ⟩ ∈ per_ctx_env
+                     ↘ (per_env_extend A⟨ψ⟩ A⟨ψ⟩ env_relΓ)).
   { eapply (per_ctx_env_extend (i := i)); [ eassumption |].
     intros ρ ρ' Hρ.
     destruct (Hcom _ _ Hρ) as [a1 ? ? a4 Ha1 ? ? Ha4 Hchain].
@@ -266,9 +266,9 @@ Proof.
     repeat split; try eassumption.
     pairwise. }
   eexists_rel_wk.
-  (** Both projections of [⟦q ψ⟧w ρ] are conversions, so nothing has to be
-      rewritten below: the goals are stated about [⟦q ψ⟧w ρ] and [exact] sees
-      through to [⟦ψ⟧w (ρ ↯)] and to [ρ 0]. *)
+  (** Both projections of [⟪q ψ⟫ ρ] are conversions, so nothing has to be
+      rewritten below: the goals are stated about [⟪q ψ⟫ ρ] and [exact] sees
+      through to [⟪ψ⟫ (ρ ↯)] and to [ρ 0]. *)
   intros ρ ρ' [Htail Hhead].
   apply per_env_extend_intro.
   - exact (Hψ _ _ Htail).
@@ -285,7 +285,7 @@ Qed.
     The first of the three extension lemmas, and the template for the other two.
     Two things have to be produced at every Kripke stage [Γ' ⊨w φ : Γ]: four
     environments, and the chain relating them in the extended context PER of
-    [Δ, A].
+    [Δ ▹ A].
 
     The four environments are read off the *two* judgments about [σ ,, M] — the
     tails from the substitution judgment, the heads from the term judgment — and
@@ -305,10 +305,10 @@ Qed.
     everything at once — [solve_per_env_extend_chain]. *)
 
 Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A i M M'},
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ ⊨ M ≈ M' : A[σ] }} ->
-    {{ Γ ⊨s σ ,, M ≈ σ' ,, M' : Δ, A }}.
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ M ≈ M' : A[σ] ->
+    Γ ⊨s σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
   intros * Hσj HA HM.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -325,7 +325,7 @@ Proof.
                   (eval_sub_of_wk _ _) (eval_sub_of_wk _ _)) as [Rt [Htyp Hexp]].
   destruct Hexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hheads].
   rewrite exp_sub_of_wk in Hm1, Hm4.
-  apply (mk_rel_sub d{{{ t1 ↦ m1 }}} d{{{ t2 ↦ m2 }}} d{{{ t3 ↦ m3 }}} d{{{ t4 ↦ m4 }}});
+  apply (mk_rel_sub (t1 ↦ m1) (t2 ↦ m2) (t3 ↦ m3) (t4 ↦ m4));
     [ apply eval_sub_wk_extend; eassumption
     | apply eval_sub_extend; eassumption
     | apply eval_sub_extend; eassumption
@@ -352,7 +352,7 @@ Qed.
 
     Same shape as 6.44, but the term judgment lives in [Δ] rather than in [Γ], so
     it is *it* that has to be instantiated more than once, and the type judgment
-    is needed only to build the context PER of [Δ, T] (via
+    is needed only to build the context PER of [Δ ▹ T] (via
     [presup_rel_exp_under_ctx]).
 
     Two instantiations are the obvious ones — along [sb_wk σ φ] for the outer
@@ -373,9 +373,9 @@ Qed.
     chain the goal asks about. *)
 
 Lemma rel_sub_under_ctx_extend_sub : forall {Γ Δ σ σ' T M M'},
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ M ≈ M' : T }} ->
-    {{ Γ ⊨s σ ,, M[σ] ≈ σ' ,, M'[σ'] : Δ, T }}.
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ M ≈ M' : T ->
+    Γ ⊨s σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▹ T.
 Proof.
   intros * Hσj HM.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -391,7 +391,7 @@ Proof.
   (** Tails, and the inner pair among them, which is the environment pair the
       bridging instantiation runs at. *)
   destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htails].
-  assert (Ht12 : {{ Dom t1 ≈ t2 ∈ env_relΔ }}) by pairwise.
+  assert (Ht12 : Dom t1 ≈ t2 ∈ env_relΔ) by pairwise.
   (** The three instantiations: outer, inner, and the bridge. *)
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_wk Hσj Hφj) _ _ _ _ Hρ Ht1 Ht4) as [R1 [Htyp1 Hexp1]].
   destruct (HMgen _ _ HΓ _ _ Hσj _ _ _ _ (Hφ _ _ Hρ) Ht2 Ht3) as [R2 [Htyp2 Hexp2]].
@@ -410,7 +410,7 @@ Proof.
   destruct Htyp3 as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   rewrite exp_sub_id in Hc1, Hc4.
   functional_eval_rewrite_clear.
-  apply (mk_rel_sub d{{{ t1 ↦ f1 }}} d{{{ t2 ↦ g1 }}} d{{{ t3 ↦ g4 }}} d{{{ t4 ↦ f4 }}});
+  apply (mk_rel_sub (t1 ↦ f1) (t2 ↦ g1) (t3 ↦ g4) (t4 ↦ f4));
     [ apply eval_sub_wk_extend; eassumption
     | apply eval_sub_extend; eassumption
     | apply eval_sub_extend; eassumption
@@ -424,8 +424,8 @@ Proof.
   (** And then the three term chains become one.  Neither merge can be guessed:
       the shared value is [⟦M⟧t1] for the first and [⟦M⟧t2] for the second, and
       the intermediate list has to mention both. *)
-  assert (Hm1 : rel_chain R1 [f1; f4; f2; g2]) by (merge_rel_chain Hfchain Hhchain f2).
-  assert (Hm2 : rel_chain R1 [f1; g1; g4; f4]) by (merge_rel_chain Hm1 Hgchain g2).
+  assert (Hm1 : rel_chain R1 ([f1; f4; f2; g2])) by (merge_rel_chain Hfchain Hhchain f2).
+  assert (Hm2 : rel_chain R1 ([f1; g1; g4; f4])) by (merge_rel_chain Hm1 Hgchain g2).
   clear Hfchain Hgchain Hhchain Hm1.
   solve_per_env_extend_chain.
 Qed.
@@ -433,16 +433,16 @@ Qed.
 (** ** Double Extension by Precomposed Terms
 
     Two applications of [rel_sub_under_ctx_extend_sub]: the first builds
-    [Γ ⊨s σ ,, M[σ] : Δ, T], and the second uses *that* as its substitution.  The
+    [Γ ⊨s σ,,M[σ] : Δ ▹ T], and the second uses *that* as its substitution.  The
     only thing to notice is that the outer extension term is [N] precomposed with
     the substitution the first application produced, which is why the statement
     repeats [σ ,, M[σ]]. *)
 
 Corollary rel_sub_under_ctx_extend_sub_double : forall {Γ Δ σ σ' T M M' A N N'},
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ M ≈ M' : T }} ->
-    {{ Δ, T ⊨ N ≈ N' : A }} ->
-    {{ Γ ⊨s σ ,, M[σ] ,, N[σ ,, M[σ]] ≈ σ' ,, M'[σ'] ,, N'[σ' ,, M'[σ']] : Δ, T, A }}.
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ M ≈ M' : T ->
+    Δ ▹ T ⊨ N ≈ N' : A ->
+    Γ ⊨s σ,,M[σ],,N[σ,,M[σ]] ≈ σ',,M'[σ'],,N'[σ',,M'[σ']] : Δ ▹ T ▹ A.
 Proof.
   intros * Hσj HM HN.
   apply rel_sub_under_ctx_extend_sub; [| eassumption ].
@@ -457,24 +457,24 @@ Qed.
     variable [ψ 0].
 
     Tails.  [q σ] extends [σ⟨↑⟩], so the tails of all four values are values of
-    [σ⟨↑⟩] — and that is a semantic substitution [Γ, A[σ] ⊨s σ⟨↑⟩ : Δ] by
-    [rel_sub_under_ctx_wk] applied to the weakening [Γ, A[σ] ⊨w ↑ : Γ].  One
+    [σ⟨↑⟩] — and that is a semantic substitution [Γ ▹ A[σ] ⊨s σ⟨↑⟩ : Δ] by
+    [rel_sub_under_ctx_wk] applied to the weakening [Γ ▹ A[σ] ⊨w ↑ : Γ].  One
     instantiation of *it* therefore produces all four tails together with the chain
     relating them, instead of two instantiations of the σ-judgment followed by a
     merge — that merge is what the proof of [rel_sub_under_ctx_wk] already did once
     and for all.
 
-    Heads.  All four heads are the same two values, [(⟦ψ⟧w ρ) 0] and
-    [(⟦ψ⟧w ρ') 0], because [(#0)⟨ψ⟩] is [#(ψ 0)] and [#0] reads index [0].  The
-    Ctx-Ext biconditional for [Γ, A[σ]] hands them over related in the head PER of
+    Heads.  All four heads are the same two values, [(⟪ψ⟫ ρ) 0] and
+    [(⟪ψ⟫ ρ') 0], because [(#0)⟨ψ⟩] is [#(ψ 0)] and [#0] reads index [0].  The
+    Ctx-Ext biconditional for [Γ ▹ A[σ]] hands them over related in the head PER of
     [A[σ]] at the *dropped* environments, and what remains is to bridge that to the
     head PER of [A] at the tails.  Three instantiations of the type judgment are
     involved, and each is forced:
 
     - along [σ ≈ σ] at the dropped pair, whose outer values are [A[σ]]'s — the
-      source of the bridge, and also what the context PER of [Γ, A[σ]] is built
+      source of the bridge, and also what the context PER of [Γ ▹ A[σ]] is built
       from;
-    - along [σ⟨↑⟩] at [⟦ψ⟧w ρ ≈ ⟦ψ⟧w ρ'], whose inner values are [A]'s at the two
+    - along [σ⟨↑⟩] at [⟪ψ⟫ ρ ≈ ⟪ψ⟫ ρ'], whose inner values are [A]'s at the two
       inner tails — the target;
     - along [Id], to link the two.  [σ⟨↑⟩] and [σ] evaluate at *different*
       environments (postcomposition by a weakening does not commute with
@@ -482,9 +482,9 @@ Qed.
       environments connects them, exactly as in 6.45. *)
 
 Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A i},
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A[σ] ⊨s (q σ) ≈ (q σ') : Δ, A }}.
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A[σ] ⊨s q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * Hσj HA.
   pose proof Hσj as [env_relΓ [HΓ [env_relΔ [HΔ Hσ]]]].
@@ -499,7 +499,7 @@ Proof.
   rename HΓ2 into HΓ; rename HΔ2 into HΔ.
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
-  (** [Γ, A[σ] ⊨s σ⟨↑⟩ : Δ] — the substitution [q σ] extends.  All four tails
+  (** [Γ ▹ A[σ] ⊨s σ⟨↑⟩ : Δ] — the substitution [q σ] extends.  All four tails
       come from this one judgment. *)
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
   pose proof (rel_wk_under_ctx_intro HΓA HΓ Hshift) as Hshiftj.
@@ -508,18 +508,18 @@ Proof.
   handle_per_ctx_env_irrel.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' ψ Hψ ρ ρ' Hρ.
-  (** The Kripke stage lands in [Γ, A[σ]], so the pair [ρ ≈ ρ'] splits into a
+  (** The Kripke stage lands in [Γ ▹ A[σ]], so the pair [ρ ≈ ρ'] splits into a
       tail pair and a head pair — the [per_env_extend] the context PER just
       built. *)
   destruct (Hψ _ _ Hρ) as [Htail Hhead].
   destruct (Hσwk _ _ HΓ' _ Hψ _ _ Hρ) as [x1 y1 y4 x4 Hx1 Hy1 Hy4 Hx4 Htails].
-  (** [σ] itself along [↑], which is what puts [⟦σ⟧((⟦ψ⟧w ρ)↯)] in the same PER
-      as the tails: its leftmost value is [⟦σ⟨↑⟩⟧(⟦ψ⟧w ρ)] again, so
+  (** [σ] itself along [↑], which is what puts [⟦σ⟧((⟪ψ⟫ ρ)↯)] in the same PER
+      as the tails: its leftmost value is [⟦σ⟨↑⟩⟧(⟪ψ⟫ ρ)] again, so
       determinism of substitution evaluation ([env_eq], not [eq]) links the two
       chains. *)
   destruct (Hσ _ _ HΓA' _ Hshift _ _ (Hψ _ _ Hρ)) as [z1 y2 y3 z4 Hz1 Hy2 Hy3 Hz4 Hbtails].
   assert (Heq : env_eq y1 z1) by (eapply functional_eval_sub; eassumption).
-  assert (Hy12 : {{ Dom y1 ≈ y2 ∈ env_relΔ }}) by (rewrite Heq; pairwise).
+  assert (Hy12 : Dom y1 ≈ y2 ∈ env_relΔ) by (rewrite Heq; pairwise).
   (** The three instantiations of the type judgment.  The first is the one the
       head hypothesis speaks about — its outer values are [A[σ]]'s at the dropped
       environments — and it is instantiated at [Hy2] and at the σ-evaluation the
@@ -538,12 +538,12 @@ Proof.
       two values on all four sides, so [rel_chain_4_of_2] is the whole head
       chain. *)
   functionalize_per_univ_chain Hcchain R.
-  assert (Hh : {{ Dom ^(d{{{ ⟦ ψ ⟧w ρ }}} 0) ≈ ^(d{{{ ⟦ ψ ⟧w ρ' }}} 0) ∈ R }})
+  assert (Hh : Dom (⟪ψ⟫ ρ 0) ≈ (⟪ψ⟫ ρ' 0) ∈ R)
     by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
-  assert (Hheads : rel_chain R [ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)])
+  assert (Hheads : rel_chain R ([ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)]))
     by (apply rel_chain_4_of_2; [ solve_chain_PER | exact Hh ]).
-  apply (mk_rel_sub d{{{ x1 ↦ ^(ρ (ψ 0)) }}} d{{{ y1 ↦ ^(ρ (ψ 0)) }}}
-                    d{{{ y4 ↦ ^(ρ' (ψ 0)) }}} d{{{ x4 ↦ ^(ρ' (ψ 0)) }}});
+  apply (mk_rel_sub (x1 ↦ (ρ (ψ 0))) (y1 ↦ (ρ (ψ 0)))
+                    (y4 ↦ (ρ' (ψ 0))) (x4 ↦ (ρ' (ψ 0))));
     [ apply eval_sub_wk_q; eassumption
     | apply eval_sub_q; eassumption
     | apply eval_sub_q; eassumption
@@ -582,20 +582,20 @@ Qed.
     because [per_pi]'s codomain obligation is stated at a *related* pair of
     arguments and not at a single one. *)
 Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A i env_relΓ env_relΔA},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ EF Δ, A ≈ Δ, A ∈ per_ctx_env ↘ env_relΔA }} ->
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
     forall ρ ρ' ρσ ρ'σ' c c',
-      {{ Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend {{{ A[σ] }}} {{{ A[σ] }}} env_relΓ }} ->
-      {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-      {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
       exists s s',
-        {{ ⟦ q σ ⟧s ρ ↦ c ↘ s ↦ c }} /\
-        {{ ⟦ q σ' ⟧s ρ' ↦ c' ↘ s' ↦ c' }} /\
+        ⟦ q σ ⟧s ρ ↦ c ↘ s ↦ c /\
+        ⟦ q σ' ⟧s ρ' ↦ c' ↘ s' ↦ c' /\
         rel_chain env_relΔA
-          [d{{{ s ↦ c }}}; d{{{ s ↦ c' }}}; d{{{ ρσ ↦ c }}}; d{{{ ρσ ↦ c' }}};
-           d{{{ ρ'σ' ↦ c }}}; d{{{ ρ'σ' ↦ c' }}}; d{{{ s' ↦ c }}}; d{{{ s' ↦ c' }}}].
+          ([s ↦ c; s ↦ c'; ρσ ↦ c; ρσ ↦ c';
+           ρ'σ' ↦ c; ρ'σ' ↦ c'; s' ↦ c; s' ↦ c']).
 Proof.
   intros * HΓ HΔA Hσj HA * Hpair Hev Hev'.
   pose proof Hpair as [Hρ Hhead].
@@ -618,15 +618,15 @@ Proof.
   destruct (Hσ _ _ HΓA _ Hshift _ _ Hpair) as [s u2 u3 s' Hs Hu2 Hu3 Hs' Hstails].
   assert (Heq2 : env_eq ρσ u2) by (eapply functional_eval_sub; eassumption).
   assert (Heq3 : env_eq ρ'σ' u3) by (eapply functional_eval_sub; eassumption).
-  assert (Htails : rel_chain env_relΔ [s; ρσ; ρ'σ'; s'])
+  assert (Htails : rel_chain env_relΔ ([s; ρσ; ρ'σ'; s']))
     by (apply rel_chain_4; [ rewrite Heq2 | rewrite Heq2, Heq3 | rewrite Heq3 ]; pairwise).
   (** Heads.  The values of [A] at all four tails, so that irrelevance identifies
       every PER a head obligation quantifies over with the one the two heads are
       related in; and the values of [A[σ]] at [ρ] and [ρ'], which is what the head
       hypothesis speaks of and what links it to them. *)
-  assert (H1 : {{ Dom s ≈ ρσ ∈ env_relΔ }}) by pairwise.
-  assert (H2 : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΔ }}) by pairwise.
-  assert (H3 : {{ Dom ρ'σ' ≈ s' ∈ env_relΔ }}) by pairwise.
+  assert (H1 : Dom s ≈ ρσ ∈ env_relΔ) by pairwise.
+  assert (H2 : Dom ρσ ≈ ρ'σ' ∈ env_relΔ) by pairwise.
+  assert (H3 : Dom ρ'σ' ≈ s' ∈ env_relΔ) by pairwise.
   destruct (HAsimple _ _ H1) as [? [? [? [? [? ?]]]]].
   destruct (HAsimple _ _ H2) as [? [? [? [? [? ?]]]]].
   destruct (HAsimple _ _ H3) as [? [? [? [? [? ?]]]]].
@@ -637,11 +637,11 @@ Proof.
   assert (HPER : PER R) by solve_chain_PER.
   (** [per_head] is a [Definition], so [eapply] on it does not see a product; its
       four arguments are given explicitly instead. *)
-  assert (Hcc' : {{ Dom c ≈ c' ∈ R }})
+  assert (Hcc' : Dom c ≈ c' ∈ R)
     by (apply (Hhead i R e1 e4); first [ eassumption | pairwise ]).
   (** Both heads on both sides, in either order: the eight extensions use every
       combination, so what the head obligations are read off is this. *)
-  assert (Hheads : rel_chain R [c; c'; c; c'])
+  assert (Hheads : rel_chain R ([c; c'; c; c']))
     by (apply rel_chain_4; first [ eassumption | symmetry; eassumption ]).
   exists s, s'.
   (** Not [repeat split]: the third conjunct is itself a chain of conjunctions. *)
@@ -664,23 +664,23 @@ Qed.
     [per_univ j], so merging them is [merge_rel_chain] and selecting is
     [pairwise]. *)
 Lemma rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A i B B' j env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ Δ, A ⊨ B ≈ B' : Type@j }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Δ ▹ A ⊨ B ≈ B' : Type@j ->
     forall ρ ρ' ρσ ρ'σ' c c',
-      {{ Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend {{{ A[σ] }}} {{{ A[σ] }}} env_relΓ }} ->
-      {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-      {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
       (exists b b',
-          {{ ⟦ B[q σ] ⟧ ρ ↦ c ↘ b }} /\ {{ ⟦ B ⟧ ρσ ↦ c' ↘ b' }} /\
-          {{ Dom b ≈ b' ∈ per_univ j }}) /\
+          ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j) /\
       (exists b b',
-          {{ ⟦ B ⟧ ρσ ↦ c ↘ b }} /\ {{ ⟦ B' ⟧ ρ'σ' ↦ c' ↘ b' }} /\
-          {{ Dom b ≈ b' ∈ per_univ j }}) /\
+          ⟦ B ⟧ ρσ ↦ c ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j) /\
       (exists b b',
-          {{ ⟦ B' ⟧ ρ'σ' ↦ c ↘ b }} /\ {{ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ↘ b' }} /\
-          {{ Dom b ≈ b' ∈ per_univ j }}).
+          ⟦ B' ⟧ ρ'σ' ↦ c ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j).
 Proof.
   intros * HΓ Hσj HA HB * Hpair Hev Hev'.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
@@ -696,10 +696,10 @@ Proof.
   destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
     as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   (** The four bridges, at four pairs the chain above relates. *)
-  assert (P1 : {{ Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA }}) by pairwise.
-  assert (P2 : {{ Dom ρσ ↦ c ≈ s ↦ c ∈ env_relΔA }}) by pairwise.
-  assert (P3 : {{ Dom s' ↦ c' ≈ ρ'σ' ↦ c' ∈ env_relΔA }}) by pairwise.
-  assert (P4 : {{ Dom ρ'σ' ↦ c ≈ s' ↦ c' ∈ env_relΔA }}) by pairwise.
+  assert (P1 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ≈ s ↦ c ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ≈ ρ'σ' ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ≈ s' ↦ c' ∈ env_relΔA) by pairwise.
   destruct (HBl _ _ P1) as [x1 [x2 [Hx1 [Hx2 Hx]]]].
   destruct (HBl _ _ P2) as [y1 [y2 [Hy1 [Hy2 Hy]]]].
   destruct (HBr _ _ P3) as [z1 [z2 [Hz1 [Hz2 Hz]]]].
@@ -715,13 +715,13 @@ Proof.
   apply rel_chain_of_pair in Hx, Hy, Hz, Ht.
   (** Merging the five chains into one, along the two values the main
       instantiation contributes. *)
-  assert (M1 : rel_chain (per_univ j) [b1; b2; b3; b4; x2])
+  assert (M1 : rel_chain (per_univ j) ([b1; b2; b3; b4; x2]))
     by (merge_rel_chain Hbchain Hx b2).
-  assert (M2 : rel_chain (per_univ j) [y1; b1; b2; b3; b4; x2])
+  assert (M2 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2]))
     by (merge_rel_chain M1 Hy b2).
-  assert (M3 : rel_chain (per_univ j) [y1; b1; b2; b3; b4; x2; z2])
+  assert (M3 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2; z2]))
     by (merge_rel_chain M2 Hz b3).
-  assert (M4 : rel_chain (per_univ j) [t1; y1; b1; b2; b3; b4; x2; z2])
+  assert (M4 : rel_chain (per_univ j) ([t1; y1; b1; b2; b3; b4; x2; z2]))
     by (merge_rel_chain M3 Ht b3).
   repeat split.
   - exists b1, x2; repeat split; try eassumption.
@@ -758,23 +758,23 @@ Qed.
     [mid] the relatedness obligation, and [L1] nothing but the link that brings the
     whole thing into the PER [mid] is stated at. *)
 Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A i M M' B env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ ⊨s σ ≈ σ' : Δ }} ->
-    {{ Δ ⊨ A ≈ A : Type@i }} ->
-    {{ Δ, A ⊨ M ≈ M' : B }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Δ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ' ρσ ρ'σ' c c',
-      {{ Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend {{{ A[σ] }}} {{{ A[σ] }}} env_relΓ }} ->
-      {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-      {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
       (exists m m',
-          {{ ⟦ M[q σ] ⟧ ρ ↦ c ↘ m }} /\ {{ ⟦ M ⟧ ρσ ↦ c' ↘ m' }} /\
-          {{ Dom m ≈ m' ∈ per_head B B d{{{ ρσ ↦ c }}} d{{{ ρ'σ' ↦ c' }}} }}) /\
+          ⟦ M[q σ] ⟧ ρ ↦ c ↘ m /\ ⟦ M ⟧ ρσ ↦ c' ↘ m' /\
+          Dom m ≈ m' ∈ per_head B B (ρσ ↦ c) (ρ'σ' ↦ c')) /\
       (exists m m',
-          {{ ⟦ M ⟧ ρσ ↦ c ↘ m }} /\ {{ ⟦ M' ⟧ ρ'σ' ↦ c' ↘ m' }} /\
-          {{ Dom m ≈ m' ∈ per_head B B d{{{ ρσ ↦ c }}} d{{{ ρ'σ' ↦ c' }}} }}) /\
+          ⟦ M ⟧ ρσ ↦ c ↘ m /\ ⟦ M' ⟧ ρ'σ' ↦ c' ↘ m' /\
+          Dom m ≈ m' ∈ per_head B B (ρσ ↦ c) (ρ'σ' ↦ c')) /\
       (exists m m',
-          {{ ⟦ M' ⟧ ρ'σ' ↦ c ↘ m }} /\ {{ ⟦ M'[q σ'] ⟧ ρ' ↦ c' ↘ m' }} /\
-          {{ Dom m ≈ m' ∈ per_head B B d{{{ ρσ ↦ c }}} d{{{ ρ'σ' ↦ c' }}} }}).
+          ⟦ M' ⟧ ρ'σ' ↦ c ↘ m /\ ⟦ M'[q σ'] ⟧ ρ' ↦ c' ↘ m' /\
+          Dom m ≈ m' ∈ per_head B B (ρσ ↦ c) (ρ'σ' ↦ c')).
 Proof.
   intros * HΓ Hσj HA HM * Hpair Hev Hev'.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
@@ -795,10 +795,10 @@ Proof.
   destruct Hexp as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
   (** The four pairs the bridges are taken at, all related by the eight-value
       chain of [rel_sub_under_ctx_q]. *)
-  assert (Pm : {{ Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΔA }}) by pairwise.
-  assert (P1 : {{ Dom s ↦ c ≈ ρσ ↦ c ∈ env_relΔA }}) by pairwise.
-  assert (P2 : {{ Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA }}) by pairwise.
-  assert (P3 : {{ Dom s' ↦ c' ≈ ρ'σ' ↦ c ∈ env_relΔA }}) by pairwise.
+  assert (Pm : Dom ρσ ↦ c ≈ ρ'σ' ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P1 : Dom s ↦ c ≈ ρσ ↦ c ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ≈ ρ'σ' ↦ c ∈ env_relΔA) by pairwise.
   destruct (HMmid _ _ Pm) as [dL [dR [Rmid [HdL [HdR [Emid [g1 [g2 [Hg1 [Hg2 Hgrel]]]]]]]]]].
   destruct (HMl _ _ P1) as [x1 [x2 [Rx [Hx1 [Hx2 [Ex [u1 [u2 [Hu1 [Hu2 Hurel]]]]]]]]]].
   destruct (HMl _ _ P2) as [y1 [y2 [Ry [Hy1 [Hy2 [Ey [v1 [v2 [Hv1 [Hv2 Hvrel]]]]]]]]]].
@@ -817,14 +817,14 @@ Proof.
   subst.
   (** One irrelevance per edge of the graph above, each at the type value the two
       endpoints share. *)
-  assert (Hb23 : {{ DF b2 ≈ b3 ∈ per_univ_elem k ↘ Rm }}) by pairwise.
+  assert (Hb23 : DF b2 ≈ b3 ∈ per_univ_elem k ↘ Rm) by pairwise.
   assert (HRx : Rm <~> Rx) by (eapply per_univ_elem_right_irrel; [ exact Hb23 | exact Ex ]).
   assert (HRm : Rm <~> Rmid)
     by (etransitivity;
         [ exact HRx
         | eapply per_univ_elem_right_irrel; [ apply per_univ_sym; exact Ex | exact Emid ]]).
   (** The PER the three obligations must be met in, transported to [Rm]. *)
-  assert (Ehead : {{ DF dL ≈ dR ∈ per_univ_elem k1 ↘ Rm }})
+  assert (Ehead : DF dL ≈ dR ∈ per_univ_elem k1 ↘ Rm)
     by (eapply per_univ_elem_resp_iff; [ exact Emid | symmetry; exact HRm ]).
   (** The four bridging term pairs, transported likewise and merged into the main
       term chain. *)
@@ -833,10 +833,10 @@ Proof.
   retype_rel_chain Hbchain Ey Hvrel.
   retype_rel_chain Hbchain Ez Hwrel.
   rewrite <- HRm in Hgrel.
-  assert (C1 : rel_chain Rm [f1; f2; f3; f4; g1]) by (merge_rel_chain Hfchain Hurel f2).
-  assert (C2 : rel_chain Rm [f1; f2; f3; f4; g1; v2]) by (merge_rel_chain C1 Hvrel f2).
-  assert (C3 : rel_chain Rm [f1; f2; f3; f4; g1; v2; g2]) by (merge_rel_chain C2 Hgrel g1).
-  assert (C4 : rel_chain Rm [f1; f2; f3; f4; g1; v2; g2; w2]) by (merge_rel_chain C3 Hwrel f3).
+  assert (C1 : rel_chain Rm ([f1; f2; f3; f4; g1])) by (merge_rel_chain Hfchain Hurel f2).
+  assert (C2 : rel_chain Rm ([f1; f2; f3; f4; g1; v2])) by (merge_rel_chain C1 Hvrel f2).
+  assert (C3 : rel_chain Rm ([f1; f2; f3; f4; g1; v2; g2])) by (merge_rel_chain C2 Hgrel g1).
+  assert (C4 : rel_chain Rm ([f1; f2; f3; f4; g1; v2; g2; w2])) by (merge_rel_chain C3 Hwrel f3).
   repeat split.
   - exists f1, v2; repeat split; try eassumption.
     eapply per_head_of; [ exact HdL | exact HdR | exact Ehead |].
@@ -883,42 +883,42 @@ Qed.
     PER they live in are reported too: no consumer can avoid needing them, since
     they are what its own argument pairs are drawn from. *)
 Lemma rel_typ_of_instance : forall {Γ A i B N},
-    {{ Γ ⊨ A ≈ A : Type@i }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ ⊨ N ≈ N : A }} ->
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ N ≈ N : A ->
     forall Γ' env_rel',
-      {{ EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' }} ->
+      EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
-        {{ Γ' ⊨s σ ≈ σ' : Γ }} ->
-        {{ Dom ρ ≈ ρ' ∈ env_rel' }} ->
-        {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-        {{ ⟦ σ' ⟧s ρ' ↘ ρ'σ' }} ->
+        Γ' ⊨s σ ≈ σ' : Γ ->
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
         exists j RN a1 a2 a3 a4 n1 n2 n3 n4,
-          {{ ⟦ A[σ] ⟧ ρ ↘ a1 }} /\
-          {{ ⟦ A ⟧ ρσ ↘ a2 }} /\
-          {{ ⟦ A ⟧ ρ'σ' ↘ a3 }} /\
-          {{ ⟦ A[σ'] ⟧ ρ' ↘ a4 }} /\
-          {{ DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN }} /\
-          {{ DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN }} /\
-          {{ ⟦ N[σ] ⟧ ρ ↘ n1 }} /\
-          {{ ⟦ N ⟧ ρσ ↘ n2 }} /\
-          {{ ⟦ N ⟧ ρ'σ' ↘ n3 }} /\
-          {{ ⟦ N[σ'] ⟧ ρ' ↘ n4 }} /\
-          rel_chain RN [n1; n2; n3; n4] /\
+          ⟦ A[σ] ⟧ ρ ↘ a1 /\
+          ⟦ A ⟧ ρσ ↘ a2 /\
+          ⟦ A ⟧ ρ'σ' ↘ a3 /\
+          ⟦ A[σ'] ⟧ ρ' ↘ a4 /\
+          DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN /\
+          DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN /\
+          ⟦ N[σ] ⟧ ρ ↘ n1 /\
+          ⟦ N ⟧ ρσ ↘ n2 /\
+          ⟦ N ⟧ ρ'σ' ↘ n3 /\
+          ⟦ N[σ'] ⟧ ρ' ↘ n4 /\
+          rel_chain RN ([n1; n2; n3; n4]) /\
           (forall w z,
-              {{ Dom w ≈ z ∈ RN }} ->
+              Dom w ≈ z ∈ RN ->
               exists b b',
-                {{ ⟦ B ⟧ ρσ ↦ w ↘ b }} /\ {{ ⟦ B ⟧ ρ'σ' ↦ z ↘ b' }} /\
-                  {{ Dom b ≈ b' ∈ per_univ i }}) /\
-          rel_typ i {{{ B[Id ,, N] }}} σ ρ ρσ {{{ B[Id ,, N] }}} σ' ρ' ρ'σ'
-            (per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}}).
+                ⟦ B ⟧ ρσ ↦ w ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ↘ b' /\
+                  Dom b ≈ b' ∈ per_univ i) /\
+          rel_typ i B[Id,,N] σ ρ ρσ B[Id,,N] σ' ρ' ρ'σ'
+            (per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3)).
 Proof.
   intros * HA HB HN * HΓ' * Hσj Hρ Hev Hev'.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN) as HidN.
   rewrite exp_sub_id in HidN.
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓ }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
     by (eapply (rel_sub_under_ctx_at' Hσj HΓ' HΓ); eassumption).
   (** The argument, and the two pairs of values of its type: the outer one is what
       an extended context PER is built at, the inner one what the codomain is read
@@ -927,14 +927,14 @@ Proof.
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN [HNtyp HNexp]].
   destruct HNtyp as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
-  assert (Houter : {{ DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN }}) by pairwise.
-  assert (Hmid : {{ DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN }}) by pairwise.
+  assert (Houter : DF a1 ≈ a4 ∈ per_univ_elem j ↘ RN) by pairwise.
+  assert (Hmid : DF a2 ≈ a3 ∈ per_univ_elem j ↘ RN) by pairwise.
   (** The codomain at an arbitrary related pair of arguments. *)
   assert (Hcod : forall w z,
-             {{ Dom w ≈ z ∈ RN }} ->
+             Dom w ≈ z ∈ RN ->
              exists b b',
-               {{ ⟦ B ⟧ ρσ ↦ w ↘ b }} /\ {{ ⟦ B ⟧ ρ'σ' ↦ z ↘ b' }} /\
-                 {{ Dom b ≈ b' ∈ per_univ i }}).
+               ⟦ B ⟧ ρσ ↦ w ↘ b /\ ⟦ B ⟧ ρ'σ' ↦ z ↘ b' /\
+                 Dom b ≈ b' ∈ per_univ i).
   { intros w z Hwz.
     eapply (rel_exp_of_typ_extend_simple HΓ HA HB).
     apply per_env_extend_intro'; [ exact Hρσ |].
@@ -952,28 +952,28 @@ Proof.
     as [t2 tB2 tB3 t3 Ht2 HtB2 HtB3 Ht3 HtBchain].
   (** The bridge, at the pair of arguments that crosses from the one
       instantiation to the other. *)
-  assert (Hn1n3 : {{ Dom n1 ≈ n3 ∈ RN }}) by pairwise.
+  assert (Hn1n3 : Dom n1 ≈ n3 ∈ RN) by pairwise.
   destruct (Hcod _ _ Hn1n3) as [d1 [d2 [Hd1 [Hd2 Hd]]]].
   assert (Hd1e : d1 = tA2) by (eapply functional_eval_exp; [ exact Hd1 | exact HtA2 ]).
   assert (Hd2e : d2 = tB3) by (eapply functional_eval_exp; [ exact Hd2 | exact HtB3 ]).
   subst d1 d2.
-  assert (Hbridge : rel_chain (per_univ i) [tA2; tB3])
+  assert (Hbridge : rel_chain (per_univ i) ([tA2; tB3]))
     by (apply rel_chain_of_pair; exact Hd).
-  assert (Hchain1 : rel_chain (per_univ i) [t1; tA2; tB3; t4])
+  assert (Hchain1 : rel_chain (per_univ i) ([t1; tA2; tB3; t4]))
     by (merge_rel_chain HtAchain Hbridge tA2).
-  assert (Hall : rel_chain (per_univ i) [t1; t2; tB2; tB3; t3; t4])
+  assert (Hall : rel_chain (per_univ i) ([t1; t2; tB2; tB3; t3; t4]))
     by (merge_rel_chain Hchain1 HtBchain tB3).
   (** Anchored at the canonical head PER, which is the element PER of the
       judgment. *)
-  assert (Hn23 : {{ Dom n2 ≈ n3 ∈ RN }}) by pairwise.
+  assert (Hn23 : Dom n2 ≈ n3 ∈ RN) by pairwise.
   destruct (per_head_anchor Hcod n2 n3 n2 n3 Hn23 Hn23 Hn23)
     as [e1 [e2 [He1 [He2 Hanchor]]]].
   assert (He1e : e1 = tB2) by (eapply functional_eval_exp; [ exact He1 | exact HtB2 ]).
   assert (He2e : e2 = tB3) by (eapply functional_eval_exp; [ exact He2 | exact HtB3 ]).
   subst e1 e2.
   assert (HallR : rel_chain (per_univ_elem i
-                               (per_head B B d{{{ ρσ ↦ n2 }}} d{{{ ρ'σ' ↦ n3 }}}))
-                    [t1; t2; tB2; tB3; t3; t4])
+                               (per_head B B (ρσ ↦ n2) (ρ'σ' ↦ n3)))
+                    ([t1; t2; tB2; tB3; t3; t4]))
     by (eapply per_univ_chain_at_in; [ exact Hall | | | exact Hanchor ]; solve_in).
   exists j, RN, a1, a2, a3, a4, n1, n2, n3, n4.
   do 12 (split; [ eassumption |]).
@@ -991,15 +991,15 @@ Qed.
     [glu_univ_elem_resp_per_univ] transports a gluing predicate along
     [per_univ]. *)
 Lemma per_univ_of_instance : forall {Γ A i B N env_relΓ},
-    {{ EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ }} ->
-    {{ Γ, A ⊨ B ≈ B : Type@i }} ->
-    {{ Γ ⊨ N ≈ N : A }} ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ N ≈ N : A ->
     forall ρ n,
-      {{ Dom ρ ≈ ρ ∈ env_relΓ }} ->
-      {{ ⟦ N ⟧ ρ ↘ n }} ->
+      Dom ρ ≈ ρ ∈ env_relΓ ->
+      ⟦ N ⟧ ρ ↘ n ->
       exists a b,
-        {{ ⟦ B[Id ,, N] ⟧ ρ ↘ a }} /\ {{ ⟦ B ⟧ ρ ↦ n ↘ b }} /\
-          {{ Dom a ≈ a ∈ per_univ i }} /\ {{ Dom a ≈ b ∈ per_univ i }}.
+        ⟦ B[Id,,N] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ↘ b /\
+          Dom a ≈ a ∈ per_univ i /\ Dom a ≈ b ∈ per_univ i.
 Proof.
   intros * HΓ HB HN * Hρ Hn.
   pose proof (rel_sub_under_ctx_extend_sub (rel_sub_id (ex_intro _ _ HΓ)) HN) as HidN.

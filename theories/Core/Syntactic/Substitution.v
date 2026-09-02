@@ -52,18 +52,18 @@ Section computation.
   Fact wk_compose_var : (φ ⊙ ψ) x = ψ (φ x).                       Proof. reflexivity. Qed.
   Fact wk_shiftn_var : forall n, wk_shiftn n x = x + n.            Proof. reflexivity. Qed.
 
-  Fact sb_id_var : {{{ Id }}} x = {{{ #x }}}.                      Proof. reflexivity. Qed.
-  Fact sb_shift_var : {{{ Wk }}} x = {{{ #(S x) }}}.               Proof. reflexivity. Qed.
-  Fact sb_extend_zero : {{{ σ ,, M }}} 0 = M.                      Proof. reflexivity. Qed.
-  Fact sb_extend_succ : {{{ σ ,, M }}} (S x) = σ x.                Proof. reflexivity. Qed.
-  Fact sb_wk_var : sb_wk σ φ x = {{{ ^(σ x)⟨φ⟩ }}}.                Proof. reflexivity. Qed.
-  Fact sb_of_wk_var : {{{ ^(ι φ) }}} x = {{{ #(φ x) }}}.           Proof. reflexivity. Qed.
-  Fact sb_compose_var : {{{ σ ⨟ τ }}} x = {{{ ^(σ x)[τ] }}}.       Proof. reflexivity. Qed.
-  Fact sb_q_zero : {{{ q σ }}} 0 = {{{ #0 }}}.                     Proof. reflexivity. Qed.
-  Fact sb_q_succ : {{{ q σ }}} (S x) = {{{ ^(σ x)⟨wk_shift⟩ }}}.   Proof. reflexivity. Qed.
+  Fact sb_id_var : Id x = #x.                      Proof. reflexivity. Qed.
+  Fact sb_shift_var : Wk x = #(S x).               Proof. reflexivity. Qed.
+  Fact sb_extend_zero : (σ,,M) 0 = M.                      Proof. reflexivity. Qed.
+  Fact sb_extend_succ : (σ,,M) (S x) = σ x.                Proof. reflexivity. Qed.
+  Fact sb_wk_var : sb_wk σ φ x = (σ x)⟨φ⟩.                Proof. reflexivity. Qed.
+  Fact sb_of_wk_var : (ι φ) x = #(φ x).           Proof. reflexivity. Qed.
+  Fact sb_compose_var : (σ ⨟ τ) x = (σ x)[τ].       Proof. reflexivity. Qed.
+  Fact sb_q_zero : (q σ) 0 = #0.                     Proof. reflexivity. Qed.
+  Fact sb_q_succ : (q σ) (S x) = (σ x)⟨wk_shift⟩.   Proof. reflexivity. Qed.
 
-  Fact exp_wk_var : {{{ #x⟨φ⟩ }}} = {{{ #(φ x) }}}.                Proof. reflexivity. Qed.
-  Fact exp_sub_var : {{{ #x[σ] }}} = σ x.                          Proof. reflexivity. Qed.
+  Fact exp_wk_var : #x⟨φ⟩ = #(φ x).                Proof. reflexivity. Qed.
+  Fact exp_sub_var : #x[σ] = σ x.                          Proof. reflexivity. Qed.
 End computation.
 
 #[export]
@@ -81,36 +81,36 @@ Ltac reduce_index := autorewrite with sb_index in *.
     through those introduces a [q], which is not a simplification.  These are
     stated outside the section above only to fix the argument order. *)
 
-Fact exp_wk_typ : forall φ i, {{{ Type@i⟨φ⟩ }}} = {{{ Type@i }}}.       Proof. reflexivity. Qed.
-Fact exp_wk_nat : forall φ, {{{ ℕ⟨φ⟩ }}} = {{{ ℕ }}}.                   Proof. reflexivity. Qed.
-Fact exp_wk_zero : forall φ, {{{ zero⟨φ⟩ }}} = {{{ zero }}}.            Proof. reflexivity. Qed.
-Fact exp_wk_succ : forall φ M, {{{ (succ M)⟨φ⟩ }}} = {{{ succ M⟨φ⟩ }}}. Proof. reflexivity. Qed.
-Fact exp_sub_typ : forall σ i, {{{ Type@i[σ] }}} = {{{ Type@i }}}.      Proof. reflexivity. Qed.
-Fact exp_sub_nat : forall σ, {{{ ℕ[σ] }}} = {{{ ℕ }}}.                  Proof. reflexivity. Qed.
-Fact exp_sub_zero : forall σ, {{{ zero[σ] }}} = {{{ zero }}}.           Proof. reflexivity. Qed.
-Fact exp_sub_succ : forall σ M, {{{ (succ M)[σ] }}} = {{{ succ M[σ] }}}. Proof. reflexivity. Qed.
+Fact exp_wk_typ : forall φ i, Type@i⟨φ⟩ = Type@i.       Proof. reflexivity. Qed.
+Fact exp_wk_nat : forall φ, ℕ⟨φ⟩ = ℕ.                   Proof. reflexivity. Qed.
+Fact exp_wk_zero : forall φ, zero⟨φ⟩ = zero.            Proof. reflexivity. Qed.
+Fact exp_wk_succ : forall φ M, (succ M)⟨φ⟩ = succ M⟨φ⟩. Proof. reflexivity. Qed.
+Fact exp_sub_typ : forall σ i, Type@i[σ] = Type@i.      Proof. reflexivity. Qed.
+Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
+Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
+Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.
 
 (** The heads that do meet a binder.  Kept out of the databases above: pushing
     an operation inside a [Π] or a [λ] replaces it by a [q], which none of the
     laws below can then cancel against an extension.  They are here so that a
     transported [Π]-type can be *recognised* as one by [rewrite]. *)
 
-Fact exp_wk_pi : forall φ A B, {{{ (Π A B)⟨φ⟩ }}} = {{{ Π A⟨φ⟩ B⟨wk_q φ⟩ }}}.
+Fact exp_wk_pi : forall φ A B, (Π A B)⟨φ⟩ = Π A⟨φ⟩ B⟨wk_q φ⟩.
 Proof. reflexivity. Qed.
 
-Fact exp_wk_fn : forall φ A M, {{{ (λ A M)⟨φ⟩ }}} = {{{ λ A⟨φ⟩ M⟨wk_q φ⟩ }}}.
+Fact exp_wk_fn : forall φ A M, (λ A M)⟨φ⟩ = λ A⟨φ⟩ M⟨wk_q φ⟩.
 Proof. reflexivity. Qed.
 
-Fact exp_wk_app : forall φ M N, {{{ (M N)⟨φ⟩ }}} = {{{ M⟨φ⟩ N⟨φ⟩ }}}.
+Fact exp_wk_app : forall φ M N, (M $ N)⟨φ⟩ = M⟨φ⟩ $ N⟨φ⟩.
 Proof. reflexivity. Qed.
 
-Fact exp_sub_pi : forall σ A B, {{{ (Π A B)[σ] }}} = {{{ Π A[σ] B[q σ] }}}.
+Fact exp_sub_pi : forall σ A B, (Π A B)[σ] = Π A[σ] B[q σ].
 Proof. reflexivity. Qed.
 
-Fact exp_sub_fn : forall σ A M, {{{ (λ A M)[σ] }}} = {{{ λ A[σ] M[q σ] }}}.
+Fact exp_sub_fn : forall σ A M, (λ A M)[σ] = λ A[σ] M[q σ].
 Proof. reflexivity. Qed.
 
-Fact exp_sub_app : forall σ M N, {{{ (M N)[σ] }}} = {{{ M[σ] N[σ] }}}.
+Fact exp_sub_app : forall σ M N, (M $ N)[σ] = M[σ] $ N[σ].
 Proof. reflexivity. Qed.
 
 (** *** Two Shared Tactics
@@ -175,7 +175,7 @@ Proof. intros ? ? ? ? ? ?; now apply wk_compose_cong. Qed.
 
 Lemma exp_wk_wk_eq : forall M φ ψ,
     wk_eq φ ψ ->
-    {{{ M⟨φ⟩ }}} = {{{ M⟨ψ⟩ }}}.
+    M⟨φ⟩ = M⟨ψ⟩.
 Proof. induction M; intros * Heq; exp_ind_ext Heq wk_q_cong. Qed.
 
 #[export]
@@ -207,13 +207,13 @@ Proof. intros * Heq; pointwise_solve. Qed.
 
 Lemma exp_wk_id_ext : forall M φ,
     wk_eq φ wk_id ->
-    {{{ M⟨φ⟩ }}} = M.
+    M⟨φ⟩ = M.
 Proof. induction M; intros * Heq; exp_ind_ext Heq wk_q_id_ext. Qed.
 
 Corollary wk_q_id : wk_eq (wk_q wk_id) wk_id.
 Proof. now apply wk_q_id_ext. Qed.
 
-Corollary exp_wk_id : forall M, {{{ M⟨wk_id⟩ }}} = M.
+Corollary exp_wk_id : forall M, M⟨wk_id⟩ = M.
 Proof. intros; now apply exp_wk_id_ext. Qed.
 
 (** Weakening application respects composition. *)
@@ -225,13 +225,13 @@ Proof. intros * Heq; pointwise_solve. Qed.
 
 Lemma exp_wk_wk_ext : forall M φ ψ χ,
     wk_eq (φ ⊙ ψ) χ ->
-    {{{ M⟨φ⟩⟨ψ⟩ }}} = {{{ M⟨χ⟩ }}}.
+    M⟨φ⟩⟨ψ⟩ = M⟨χ⟩.
 Proof. induction M; intros * Heq; exp_ind_ext Heq wk_q_compose_ext. Qed.
 
 Corollary wk_q_compose : forall φ ψ, wk_eq (wk_q φ ⊙ wk_q ψ) (wk_q (φ ⊙ ψ)).
 Proof. intros; now apply wk_q_compose_ext. Qed.
 
-Corollary exp_wk_wk : forall M φ ψ, {{{ M⟨φ⟩⟨ψ⟩ }}} = {{{ M⟨φ ⊙ ψ⟩ }}}.
+Corollary exp_wk_wk : forall M φ ψ, M⟨φ⟩⟨ψ⟩ = M⟨φ ⊙ ψ⟩.
 Proof. intros; now apply exp_wk_wk_ext. Qed.
 
 Lemma wk_qn_compose : forall n φ ψ,
@@ -288,14 +288,14 @@ Proof. intros * Heq; pointwise; [ reflexivity | now rewrite Heq ]. Qed.
 
 Lemma exp_sub_sb_eq : forall M σ τ,
     sb_eq σ τ ->
-    {{{ M[σ] }}} = {{{ M[τ] }}}.
+    M[σ] = M[τ].
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_cong. Qed.
 
 Lemma sb_extend_cong : forall σ τ M,
-    sb_eq σ τ -> sb_eq {{{ σ ,, M }}} {{{ τ ,, M }}}.
+    sb_eq σ τ -> sb_eq (σ,,M) (τ,,M).
 Proof. intros * Heq; pointwise_solve. Qed.
 
-Lemma sb_of_wk_cong : forall φ ψ, wk_eq φ ψ -> sb_eq {{{ ^(ι φ) }}} {{{ ^(ι ψ) }}}.
+Lemma sb_of_wk_cong : forall φ ψ, wk_eq φ ψ -> sb_eq (ι φ) (ι ψ).
 Proof. intros * Heq; pointwise_solve. Qed.
 
 #[export]
@@ -337,58 +337,58 @@ Qed.
     development may treat a weakening as a substitution. *)
 
 Lemma sb_q_of_wk_ext : forall φ σ,
-    sb_eq {{{ ^(ι φ) }}} σ ->
-    sb_eq {{{ ^(ι (wk_q φ)) }}} {{{ q σ }}}.
+    sb_eq (ι φ) σ ->
+    sb_eq (ι (wk_q φ)) (q σ).
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   rewrite <- Heq; reduce_index; reflexivity.
 Qed.
 
 Lemma exp_sub_of_wk_ext : forall M φ σ,
-    sb_eq {{{ ^(ι φ) }}} σ ->
-    {{{ M[σ] }}} = {{{ M⟨φ⟩ }}}.
+    sb_eq (ι φ) σ ->
+    M[σ] = M⟨φ⟩.
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_of_wk_ext. Qed.
 
-Corollary exp_sub_of_wk : forall M φ, {{{ M[^(ι φ)] }}} = {{{ M⟨φ⟩ }}}.
+Corollary exp_sub_of_wk : forall M φ, M[(ι φ)] = M⟨φ⟩.
 Proof. intros; now apply exp_sub_of_wk_ext. Qed.
 
-Corollary sb_q_of_wk : forall φ, sb_eq {{{ ^(ι (wk_q φ)) }}} {{{ q ^(ι φ) }}}.
+Corollary sb_q_of_wk : forall φ, sb_eq (ι (wk_q φ)) (q (ι φ)).
 Proof. intros; now apply sb_q_of_wk_ext. Qed.
 
-Lemma sb_of_wk_id : sb_eq {{{ ^(ι wk_id) }}} {{{ Id }}}.
+Lemma sb_of_wk_id : sb_eq (ι wk_id) Id.
 Proof. pointwise_solve. Qed.
 
-Lemma sb_of_wk_shift : sb_eq {{{ ^(ι wk_shift) }}} {{{ Wk }}}.
+Lemma sb_of_wk_shift : sb_eq (ι wk_shift) Wk.
 Proof. pointwise_solve. Qed.
 
 Lemma sb_of_wk_compose : forall φ ψ,
-    sb_eq {{{ ^(ι (φ ⊙ ψ)) }}} {{{ ^(ι φ) ⨟ ^(ι ψ) }}}.
+    sb_eq (ι (φ ⊙ ψ)) ((ι φ) ⨟ (ι ψ)).
 Proof. intros *; pointwise_solve. Qed.
 
 (** The identity substitution. *)
 
-Lemma sb_q_id_ext : forall σ, sb_eq σ {{{ Id }}} -> sb_eq {{{ q σ }}} {{{ Id }}}.
+Lemma sb_q_id_ext : forall σ, sb_eq σ Id -> sb_eq (q σ) Id.
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   rewrite Heq; reduce_index; reflexivity.
 Qed.
 
 Lemma exp_sub_id_ext : forall M σ,
-    sb_eq σ {{{ Id }}} ->
-    {{{ M[σ] }}} = M.
+    sb_eq σ Id ->
+    M[σ] = M.
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_id_ext. Qed.
 
-Corollary sb_q_id : sb_eq {{{ q Id }}} {{{ Id }}}.
+Corollary sb_q_id : sb_eq (q Id) Id.
 Proof. now apply sb_q_id_ext. Qed.
 
-Corollary exp_sub_id : forall M, {{{ M[Id] }}} = M.
+Corollary exp_sub_id : forall M, M[Id] = M.
 Proof. intros; now apply exp_sub_id_ext. Qed.
 
 (** Postcomposing with a weakening. *)
 
 Lemma sb_q_wk_ext : forall σ φ τ,
     sb_eq (sb_wk σ φ) τ ->
-    sb_eq (sb_wk {{{ q σ }}} (wk_q φ)) {{{ q τ }}}.
+    sb_eq (sb_wk (q σ) (wk_q φ)) (q τ).
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   rewrite <- Heq; reduce_index.
@@ -398,40 +398,40 @@ Qed.
 
 Lemma exp_wk_sub_ext : forall M σ φ τ,
     sb_eq (sb_wk σ φ) τ ->
-    {{{ M[σ]⟨φ⟩ }}} = {{{ M[τ] }}}.
+    M[σ]⟨φ⟩ = M[τ].
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_wk_ext. Qed.
 
 Corollary sb_q_wk : forall σ φ,
-    sb_eq (sb_wk {{{ q σ }}} (wk_q φ)) {{{ q ^(sb_wk σ φ) }}}.
+    sb_eq (sb_wk (q σ) (wk_q φ)) (q (sb_wk σ φ)).
 Proof. intros; now apply sb_q_wk_ext. Qed.
 
-Corollary exp_wk_sub : forall M σ φ, {{{ M[σ]⟨φ⟩ }}} = {{{ M[^(sb_wk σ φ)] }}}.
+Corollary exp_wk_sub : forall M σ φ, M[σ]⟨φ⟩ = M[(sb_wk σ φ)].
 Proof. intros; now apply exp_wk_sub_ext. Qed.
 
 (** The two instances a Kripke weakening of a [natrec] produces: its motive sits
     under [q] and its scrutinee's type under an extension. *)
 Corollary exp_wk_sub_q : forall M σ φ,
-    {{{ M[q σ]⟨wk_q φ⟩ }}} = {{{ M[q ^(sb_wk σ φ)] }}}.
+    M[q σ]⟨wk_q φ⟩ = M[q (sb_wk σ φ)].
 Proof. intros; apply exp_wk_sub_ext, sb_q_wk. Qed.
 
 Corollary exp_wk_sub_extend_head : forall M σ N φ,
-    {{{ M[σ ,, N]⟨φ⟩ }}} = {{{ M[^(sb_wk σ φ) ,, N⟨φ⟩] }}}.
+    M[σ,,N]⟨φ⟩ = M[(sb_wk σ φ),,N⟨φ⟩].
 Proof. intros; apply exp_wk_sub_ext; intros [| y]; reflexivity. Qed.
 
 (** The successor branch sits under two [q]s. *)
 Corollary sb_q_wk2 : forall σ φ,
-    sb_eq (sb_wk {{{ q (q σ) }}} (wk_q (wk_q φ))) {{{ q (q ^(sb_wk σ φ)) }}}.
+    sb_eq (sb_wk (q (q σ)) (wk_q (wk_q φ))) (q (q (sb_wk σ φ))).
 Proof. intros; rewrite sb_q_wk, sb_q_wk; reflexivity. Qed.
 
 Corollary exp_wk_sub_q2 : forall M σ φ,
-    {{{ M[q (q σ)]⟨wk_q (wk_q φ)⟩ }}} = {{{ M[q (q ^(sb_wk σ φ))] }}}.
+    M[q (q σ)]⟨wk_q (wk_q φ)⟩ = M[q (q (sb_wk σ φ))].
 Proof. intros; apply exp_wk_sub_ext, sb_q_wk2. Qed.
 
 (** Precomposing with a weakening. *)
 
 Lemma sb_q_wk_pre_ext : forall φ σ τ,
     (forall x, σ (φ x) = τ x) ->
-    forall x, {{{ q σ }}} (wk_q φ x) = {{{ q τ }}} x.
+    forall x, (q σ) (wk_q φ x) = (q τ) x.
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   now rewrite Heq.
@@ -439,10 +439,10 @@ Qed.
 
 Lemma exp_sub_wk_ext : forall M φ σ τ,
     (forall x, σ (φ x) = τ x) ->
-    {{{ M⟨φ⟩[σ] }}} = {{{ M[τ] }}}.
+    M⟨φ⟩[σ] = M[τ].
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_wk_pre_ext. Qed.
 
-Corollary exp_sub_wk : forall M φ σ, {{{ M⟨φ⟩[σ] }}} = {{{ M[^(ι φ) ⨟ σ] }}}.
+Corollary exp_sub_wk : forall M φ σ, M⟨φ⟩[σ] = M[(ι φ) ⨟ σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 
 (** The two instances at [↑], spelled with [Wk] instead of [ι ↑].  [Wk] *is*
@@ -451,24 +451,24 @@ Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
     spellings a context lookup needs in order to move its [A⟨↑⟩] along a
     substitution. *)
 
-Corollary exp_sub_shift : forall M σ, {{{ M⟨↑⟩[σ] }}} = {{{ M[Wk ⨟ σ] }}}.
+Corollary exp_sub_shift : forall M σ, M⟨↑⟩[σ] = M[Wk ⨟ σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 
-Corollary exp_sub_of_shift : forall M, {{{ M[Wk] }}} = {{{ M⟨↑⟩ }}}.
+Corollary exp_sub_of_shift : forall M, M[Wk] = M⟨↑⟩.
 Proof. intros; apply exp_sub_of_wk_ext, sb_of_wk_shift. Qed.
 
 (** Instantiating the codomain of a *weakened* [Π]-type.  This is the shape the
     gluing model states its [Π] clauses in: the elimination rule
     produces [OT⟨q φ⟩[Id ,, N]] and the clause speaks of [OT[ι φ ,, N]]. *)
 Corollary exp_sub_wk_q_extend : forall M φ N,
-    {{{ M⟨wk_q φ⟩[Id ,, N] }}} = {{{ M[^(ι φ) ,, N] }}}.
+    M⟨wk_q φ⟩[Id,,N] = M[(ι φ),,N].
 Proof. intros; apply exp_sub_wk_ext; intros [|?]; reflexivity. Qed.
 
 (** The same with the identity replaced by a second weakening: this is what a
     [Π]-clause of the gluing model turns into when it is itself transported along
     a Kripke weakening. *)
 Corollary exp_sub_wk_q_extend_wk : forall M φ ψ N,
-    {{{ M⟨wk_q φ⟩[^(ι ψ) ,, N] }}} = {{{ M[^(ι (φ ⊙ ψ)) ,, N] }}}.
+    M⟨wk_q φ⟩[(ι ψ),,N] = M[(ι (φ ⊙ ψ)),,N].
 Proof. intros; apply exp_sub_wk_ext; intros [|?]; reflexivity. Qed.
 
 (** [ι (q φ)] read as an extension.  This is the converse direction of the two
@@ -476,11 +476,11 @@ Proof. intros; apply exp_sub_wk_ext; intros [|?]; reflexivity. Qed.
     of an extended context has to land back on the [OT⟨q φ⟩] that
     [(Π IT OT)⟨φ⟩] exposes. *)
 Lemma sb_of_wk_q_extend : forall φ,
-    sb_eq {{{ ^(ι (φ ⊙ ↑)) ,, #0 }}} {{{ ^(ι (wk_q φ)) }}}.
+    sb_eq ((ι (φ ⊙ ↑)),,#0) (ι (wk_q φ)).
 Proof. intros *; pointwise; reflexivity. Qed.
 
 Corollary exp_sub_of_wk_q_extend : forall M φ,
-    {{{ M[^(ι (φ ⊙ ↑)) ,, #0] }}} = {{{ M⟨wk_q φ⟩ }}}.
+    M[(ι (φ ⊙ ↑)),,#0] = M⟨wk_q φ⟩.
 Proof.
   intros; rewrite (exp_sub_sb_eq _ _ _ (sb_of_wk_q_extend φ)).
   apply exp_sub_of_wk.
@@ -490,22 +490,22 @@ Qed.
     the canonical variable is the identity.  This is the shape a [Π]-clause of
     the gluing model takes when it is instantiated at the shift out of its own
     extended context. *)
-Corollary exp_sub_of_shift_extend_zero : forall M, {{{ M[^(ι ↑) ,, #0] }}} = M.
+Corollary exp_sub_of_shift_extend_zero : forall M, M[(ι ↑),,#0] = M.
 Proof. intros; apply exp_sub_id_ext; pointwise; reflexivity. Qed.
 
 (** Transporting an instantiated [Π]-codomain along a further weakening: the
     two weakenings fuse and the argument is weakened in place.  This is what the
     readback clauses of the gluing model need in order to iterate. *)
 Corollary exp_wk_sub_of_wk_extend : forall M φ ψ N,
-    {{{ M[^(ι φ) ,, N]⟨ψ⟩ }}} = {{{ M[^(ι (φ ⊙ ψ)) ,, N⟨ψ⟩] }}}.
+    M[(ι φ),,N]⟨ψ⟩ = M[(ι (φ ⊙ ψ)),,N⟨ψ⟩].
 Proof. intros; apply exp_wk_sub_ext; pointwise; reflexivity. Qed.
 
 (** Weakening and substitution commute.  Stating the hypothesis pointwise is
     what removes the induction over the number of enclosing binders: the hypothesis is exactly what survives being lifted. *)
 
 Lemma sb_q_comm_ext : forall φ σ τ ψ,
-    (forall x, σ (φ x) = {{{ ^(τ x)⟨ψ⟩ }}}) ->
-    forall x, {{{ q σ }}} (wk_q φ x) = {{{ ^({{{ q τ }}} x)⟨wk_q ψ⟩ }}}.
+    (forall x, σ (φ x) = (τ x)⟨ψ⟩) ->
+    forall x, (q σ) (wk_q φ x) = ((q τ) x)⟨wk_q ψ⟩.
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   rewrite Heq; do 2 rewrite exp_wk_wk.
@@ -513,8 +513,8 @@ Proof.
 Qed.
 
 Lemma exp_wk_sub_comm_ext : forall M φ σ τ ψ,
-    (forall x, σ (φ x) = {{{ ^(τ x)⟨ψ⟩ }}}) ->
-    {{{ M⟨φ⟩[σ] }}} = {{{ M[τ]⟨ψ⟩ }}}.
+    (forall x, σ (φ x) = (τ x)⟨ψ⟩) ->
+    M⟨φ⟩[σ] = M[τ]⟨ψ⟩.
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_comm_ext. Qed.
 
 (** The instances the rest of the development needs: the commutation above at
@@ -524,11 +524,11 @@ Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_comm_ext. Qed.
     [q]-preservation lemma reduces to. *)
 
 Corollary exp_wk_shift_sub_q : forall M σ,
-    {{{ M⟨↑⟩[q σ] }}} = {{{ M[σ]⟨↑⟩ }}}.
+    M⟨↑⟩[q σ] = M[σ]⟨↑⟩.
 Proof. intros; apply exp_wk_sub_comm_ext; intros; reflexivity. Qed.
 
 Corollary exp_wk_shift_wk_q : forall M φ,
-    {{{ M⟨↑⟩⟨wk_q φ⟩ }}} = {{{ M⟨φ⟩⟨↑⟩ }}}.
+    M⟨↑⟩⟨wk_q φ⟩ = M⟨φ⟩⟨↑⟩.
 Proof.
   intros; do 2 rewrite exp_wk_wk.
   apply exp_wk_wk_eq; pointwise_solve.
@@ -537,15 +537,15 @@ Qed.
 (** "[⇑] cancels an extension" at the level of expressions: an extension is
     invisible to an expression that has just been weakened. *)
 Corollary exp_sub_shift_extend : forall M σ N,
-    {{{ M⟨↑⟩[σ ,, N] }}} = {{{ M[σ] }}}.
+    M⟨↑⟩[σ,,N] = M[σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 
 (** Substitution application respects
     composition. *)
 
 Lemma sb_q_compose_ext : forall σ τ δ,
-    sb_eq {{{ σ ⨟ τ }}} δ ->
-    sb_eq {{{ (q σ) ⨟ (q τ) }}} {{{ q δ }}}.
+    sb_eq (σ ⨟ τ) δ ->
+    sb_eq ((q σ) ⨟ (q τ)) (q δ).
 Proof.
   intros * Heq; pointwise; [ reflexivity | ].
   rewrite <- Heq; reduce_index.
@@ -553,31 +553,31 @@ Proof.
 Qed.
 
 Lemma exp_sub_sub_ext : forall M σ τ δ,
-    sb_eq {{{ σ ⨟ τ }}} δ ->
-    {{{ M[σ][τ] }}} = {{{ M[δ] }}}.
+    sb_eq (σ ⨟ τ) δ ->
+    M[σ][τ] = M[δ].
 Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_compose_ext. Qed.
 
 Corollary sb_q_compose : forall σ τ,
-    sb_eq {{{ (q σ) ⨟ (q τ) }}} {{{ q (σ ⨟ τ) }}}.
+    sb_eq ((q σ) ⨟ (q τ)) (q (σ ⨟ τ)).
 Proof. intros; now apply sb_q_compose_ext. Qed.
 
-Corollary exp_sub_sub : forall M σ τ, {{{ M[σ][τ] }}} = {{{ M[σ ⨟ τ] }}}.
+Corollary exp_sub_sub : forall M σ τ, M[σ][τ] = M[σ ⨟ τ].
 Proof. intros; now apply exp_sub_sub_ext. Qed.
 
 (** Substitutions form a category. *)
 
-Lemma sb_compose_id_left : forall σ, sb_eq {{{ Id ⨟ σ }}} σ.
+Lemma sb_compose_id_left : forall σ, sb_eq (Id ⨟ σ) σ.
 Proof. intros ? ?; reflexivity. Qed.
 
-Lemma sb_compose_id_right : forall σ, sb_eq {{{ σ ⨟ Id }}} σ.
+Lemma sb_compose_id_right : forall σ, sb_eq (σ ⨟ Id) σ.
 Proof. intros ? ?; simpl; apply exp_sub_id. Qed.
 
 Lemma sb_compose_assoc : forall σ τ δ,
-    sb_eq {{{ (σ ⨟ τ) ⨟ δ }}} {{{ σ ⨟ (τ ⨟ δ) }}}.
+    sb_eq ((σ ⨟ τ) ⨟ δ) (σ ⨟ τ ⨟ δ).
 Proof. intros * x; simpl; apply exp_sub_sub. Qed.
 
 (** [σ[φ]] is just [σ ⨟ ι φ]; this is [exp_sub_of_wk] read pointwise. *)
-Lemma sb_wk_compose : forall σ φ, sb_eq (sb_wk σ φ) {{{ σ ⨟ ^(ι φ) }}}.
+Lemma sb_wk_compose : forall σ φ, sb_eq (sb_wk σ φ) (σ ⨟ (ι φ)).
 Proof. intros * x; simpl; symmetry; apply exp_sub_of_wk. Qed.
 
 (** [exp_wk_wk] pointwise: postcomposing twice is postcomposing by the
@@ -593,11 +593,11 @@ Proof. intros * x; simpl; apply exp_wk_wk. Qed.
     weakening lemma needs the general form; [sb_wk_shift_pre] below is the
     instance at [ψ := ⇑]. *)
 Lemma sb_wk_wk_pre : forall σ ψ φ,
-    sb_eq (sb_wk {{{ ^(ι ψ) ⨟ σ }}} φ) {{{ ^(ι ψ) ⨟ ^(sb_wk σ φ) }}}.
+    sb_eq (sb_wk ((ι ψ) ⨟ σ) φ) ((ι ψ) ⨟ (sb_wk σ φ)).
 Proof. intros * x; reflexivity. Qed.
 
 Corollary sb_wk_shift_pre : forall σ φ,
-    sb_eq (sb_wk {{{ Wk ⨟ σ }}} φ) {{{ Wk ⨟ ^(sb_wk σ φ) }}}.
+    sb_eq (sb_wk (Wk ⨟ σ) φ) (Wk ⨟ (sb_wk σ φ)).
 Proof. intros. apply (sb_wk_wk_pre σ wk_shift). Qed.
 
 (** Postcomposition by a weakening distributes over an extension, read at
@@ -606,7 +606,7 @@ Proof. intros. apply (sb_wk_wk_pre σ wk_shift). Qed.
     [(σ ,, t)[ψ]], and [eval_sub_extend] only speaks about a syntactic
     extension. *)
 Lemma sb_wk_extend : forall σ M φ,
-    sb_eq (sb_wk {{{ σ ,, M }}} φ) {{{ ^(sb_wk σ φ) ,, M⟨φ⟩ }}}.
+    sb_eq (sb_wk (σ,,M) φ) ((sb_wk σ φ),,M⟨φ⟩).
 Proof. intros *; pointwise_solve. Qed.
 
 (** The instance of the above at [q σ], with the two heads computed: [q σ] is
@@ -614,20 +614,20 @@ Proof. intros *; pointwise_solve. Qed.
     the completeness substitution cases need in order to see [(q σ)[ψ]] as an
     extension. *)
 Lemma sb_wk_q : forall σ φ,
-    sb_eq (sb_wk {{{ q σ }}} φ) {{{ ^(sb_wk σ (↑ ⊙ φ)) ,, #(φ 0) }}}.
+    sb_eq (sb_wk (q σ) φ) ((sb_wk σ (↑ ⊙ φ)),,#(φ 0)).
 Proof. intros *; pointwise; [ reflexivity | apply exp_wk_wk ]. Qed.
 
 (** [⇑] cancels an extension. *)
-Lemma sb_shift_extend : forall σ M, sb_eq {{{ Wk ⨟ (σ ,, M) }}} σ.
+Lemma sb_shift_extend : forall σ M, sb_eq (Wk ⨟ (σ,,M)) σ.
 Proof. intros * x; reflexivity. Qed.
 
 (** Composition distributes over extension. *)
 Lemma sb_extend_compose : forall σ τ M,
-    sb_eq {{{ (σ ,, M) ⨟ τ }}} {{{ (σ ⨟ τ) ,, M[τ] }}}.
+    sb_eq ((σ,,M) ⨟ τ) (σ ⨟ τ,,M[τ]).
 Proof. intros *; pointwise_solve. Qed.
 
 (** Every substitution is its own expansion. *)
-Lemma sb_expand : forall σ, sb_eq σ {{{ (Wk ⨟ σ) ,, #0[σ] }}}.
+Lemma sb_expand : forall σ, sb_eq σ (Wk ⨟ σ,,#0[σ]).
 Proof. intros *; pointwise_solve. Qed.
 
 (** A lifted substitution meeting an extension.
@@ -638,19 +638,19 @@ Proof. intros *; pointwise_solve. Qed.
     separately because the head of the right-hand side differs, and it is the
     head that the rewrite databases match on. *)
 Lemma sb_q_compose_extend : forall σ τ M,
-    sb_eq {{{ (q σ) ⨟ (τ ,, M) }}} {{{ (σ ⨟ τ) ,, M }}}.
+    sb_eq ((q σ) ⨟ (τ,,M)) (σ ⨟ τ,,M).
 Proof.
   intros *; pointwise; [ reflexivity | apply exp_sub_shift_extend ].
 Qed.
 
 Corollary exp_sub_q_compose_extend : forall M σ τ N,
-    {{{ M[q σ][τ ,, N] }}} = {{{ M[(σ ⨟ τ) ,, N] }}}.
+    M[q σ][τ,,N] = M[σ ⨟ τ,,N].
 Proof.
   intros; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_q_compose_extend.
 Qed.
 
 Lemma sb_q_extend_wk : forall σ φ M,
-    sb_eq {{{ (q σ) ⨟ (^(ι φ) ,, M) }}} {{{ ^(sb_wk σ φ) ,, M }}}.
+    sb_eq ((q σ) ⨟ ((ι φ),,M)) ((sb_wk σ φ),,M).
 Proof.
   intros *; pointwise; [ reflexivity | ].
   rewrite exp_sub_wk_ext with (τ := sb_of_wk φ) by reflexivity.
@@ -658,12 +658,12 @@ Proof.
 Qed.
 
 Corollary exp_sub_q_extend_wk : forall M σ φ N,
-    {{{ M[q σ][^(ι φ) ,, N] }}} = {{{ M[^(sb_wk σ φ) ,, N] }}}.
+    M[q σ][(ι φ),,N] = M[(sb_wk σ φ),,N].
 Proof.
   intros; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_q_extend_wk.
 Qed.
 
-Lemma sb_q_extend : forall σ M, sb_eq {{{ (q σ) ⨟ (Id ,, M) }}} {{{ σ ,, M }}}.
+Lemma sb_q_extend : forall σ M, sb_eq ((q σ) ⨟ (Id,,M)) (σ,,M).
 Proof.
   intros *; pointwise; [ reflexivity | ].
   rewrite exp_sub_wk_ext with (τ := sb_id) by reflexivity.
@@ -671,14 +671,14 @@ Proof.
 Qed.
 
 Corollary exp_sub_q_extend : forall M σ N,
-    {{{ M[q σ][Id ,, N] }}} = {{{ M[σ ,, N] }}}.
+    M[q σ][Id,,N] = M[σ,,N].
 Proof.
   intros; rewrite exp_sub_sub; apply exp_sub_sb_eq, sb_q_extend.
 Qed.
 
 (** A single substitution commutes past a lifted one. *)
 Corollary exp_sub_extend_comm : forall M σ N,
-    {{{ M[q σ][Id ,, N[σ]] }}} = {{{ M[Id ,, N][σ] }}}.
+    M[q σ][Id,,N[σ]] = M[Id,,N][σ].
 Proof.
   intros.
   rewrite exp_sub_q_extend, exp_sub_sub.
@@ -692,7 +692,7 @@ Qed.
     the judgment about [M] can only produce values along a substitution into the
     extended context. *)
 Corollary exp_sub_extend_sub : forall M σ N,
-    {{{ M[Id ,, N][σ] }}} = {{{ M[σ ,, N[σ]] }}}.
+    M[Id,,N][σ] = M[σ,,N[σ]].
 Proof.
   intros.
   rewrite <- exp_sub_extend_comm.
@@ -714,24 +714,24 @@ Qed.
     The single-substitution case for [exp_sub] is [exp_sub_extend_comm] above. *)
 
 (** [Wk ⨟ Wk] is the weakening [↑ ⊙ ↑] in disguise. *)
-Lemma sb_shift_shift : sb_eq {{{ Wk ⨟ Wk }}} {{{ ^(ι (↑ ⊙ ↑)) }}}.
+Lemma sb_shift_shift : sb_eq (Wk ⨟ Wk) (ι (↑ ⊙ ↑)).
 Proof. intros ?; reflexivity. Qed.
 
-Corollary exp_sub_shift_shift : forall M, {{{ M[Wk ⨟ Wk] }}} = {{{ M⟨↑⟩⟨↑⟩ }}}.
+Corollary exp_sub_shift_shift : forall M, M[Wk ⨟ Wk] = M⟨↑⟩⟨↑⟩.
 Proof.
   intros; rewrite sb_shift_shift, exp_sub_of_wk.
   symmetry; apply exp_wk_wk.
 Qed.
 
 Corollary exp_wk_sub_extend : forall M N φ,
-    {{{ (M[Id ,, N])⟨φ⟩ }}} = {{{ M⟨wk_q φ⟩[Id ,, N⟨φ⟩] }}}.
+    M[Id,,N]⟨φ⟩ = M⟨wk_q φ⟩[Id,,N⟨φ⟩].
 Proof.
   intros; symmetry.
   apply exp_wk_sub_comm_ext; intros [| y]; reflexivity.
 Qed.
 
 Corollary exp_wk_sub_extend2 : forall M N N' φ,
-    {{{ (M[Id ,, N ,, N'])⟨φ⟩ }}} = {{{ M⟨wk_q (wk_q φ)⟩[Id ,, N⟨φ⟩ ,, N'⟨φ⟩] }}}.
+    M[Id,,N,,N']⟨φ⟩ = M⟨wk_q (wk_q φ)⟩[Id,,N⟨φ⟩,,N'⟨φ⟩].
 Proof.
   intros; symmetry.
   apply exp_wk_sub_comm_ext; intros [| [| y]]; reflexivity.
@@ -740,14 +740,14 @@ Qed.
 (** The motive of the successor branch is stable under a doubly lifted
     weakening. *)
 Corollary exp_wk_sub_natrec : forall M φ,
-    {{{ (M[Wk⨟Wk ,, succ #1])⟨wk_q (wk_q φ)⟩ }}} = {{{ M⟨wk_q φ⟩[Wk⨟Wk ,, succ #1] }}}.
+    M[Wk ⨟ Wk,,succ #1]⟨wk_q (wk_q φ)⟩ = M⟨wk_q φ⟩[Wk ⨟ Wk,,succ #1].
 Proof.
   intros; symmetry.
   apply exp_wk_sub_comm_ext; intros [| y]; reflexivity.
 Qed.
 
 Corollary exp_sub_sub_extend2 : forall M σ N N',
-    {{{ (M[Id ,, N ,, N'])[σ] }}} = {{{ M[q (q σ)][Id ,, N[σ] ,, N'[σ]] }}}.
+    M[Id,,N,,N'][σ] = M[q (q σ)][Id,,N[σ],,N'[σ]].
 Proof.
   intros.
   do 2 rewrite exp_sub_sub.
@@ -757,7 +757,7 @@ Proof.
 Qed.
 
 Corollary exp_sub_sub_natrec : forall M σ,
-    {{{ (M[Wk⨟Wk ,, succ #1])[q (q σ)] }}} = {{{ M[q σ][Wk⨟Wk ,, succ #1] }}}.
+    M[Wk ⨟ Wk,,succ #1][q (q σ)] = M[q σ][Wk ⨟ Wk,,succ #1].
 Proof.
   intros.
   do 2 rewrite exp_sub_sub.
@@ -774,7 +774,7 @@ Qed.
     ones — and both instances have to be the *same* equation for the two
     four-value patterns to be identified with one another. *)
 Corollary exp_sub_natrec_step : forall M σ N N',
-    {{{ (M[Wk⨟Wk ,, succ #1])[σ ,, N ,, N'] }}} = {{{ M[σ ,, succ N] }}}.
+    M[Wk ⨟ Wk,,succ #1][σ,,N,,N'] = M[σ,,succ N].
 Proof.
   intros.
   rewrite exp_sub_sub.
@@ -784,7 +784,7 @@ Qed.
 (** The two-argument analogue of [exp_sub_extend_sub], which is what the
     right-hand side of that rule — an [MS[Id ,, M ,, E]] — is read through. *)
 Corollary exp_sub_extend_sub2 : forall M σ N N',
-    {{{ M[Id ,, N ,, N'][σ] }}} = {{{ M[σ ,, N[σ] ,, N'[σ]] }}}.
+    M[Id,,N,,N'][σ] = M[σ,,N[σ],,N'[σ]].
 Proof.
   intros.
   rewrite exp_sub_sub_extend2, exp_sub_sub.
@@ -796,11 +796,11 @@ Qed.
 (** [zero[σ]] is [zero], so the zero branch's type is an instance of
     [exp_sub_extend_sub] with the right-hand side already reduced. *)
 Corollary exp_sub_extend_sub_zero : forall M σ,
-    {{{ M[Id ,, zero][σ] }}} = {{{ M[σ ,, zero] }}}.
+    M[Id,,zero][σ] = M[σ,,zero].
 Proof. intros; apply exp_sub_extend_sub. Qed.
 
 Corollary exp_sub_q_extend2 : forall M σ N N',
-    {{{ M[q (q σ)][Id ,, N ,, N'] }}} = {{{ M[σ ,, N ,, N'] }}}.
+    M[q (q σ)][Id,,N,,N'] = M[σ,,N,,N'].
 Proof.
   intros.
   rewrite exp_sub_q_compose_extend.
@@ -810,7 +810,7 @@ Qed.
 (** [exp_sub_natrec_step] along an arbitrary substitution: [τ] need not be a
     literal extension, because [sb_expand] makes every substitution one. *)
 Corollary exp_sub_natrec_step_gen : forall M τ,
-    {{{ (M[Wk⨟Wk ,, succ #1])[τ] }}} = {{{ M[(Wk ⨟ (Wk ⨟ τ)) ,, succ (#0[Wk ⨟ τ])] }}}.
+    M[Wk ⨟ Wk,,succ #1][τ] = M[Wk ⨟ Wk ⨟ τ,,succ #0[Wk ⨟ τ]].
 Proof.
   intros.
   rewrite exp_sub_sub.
@@ -821,15 +821,15 @@ Qed.
 
     An eliminator whose scrutinee is [#0] and whose three other components have
     been weakened past that binder.  If [E] is the eliminator at [M] in [Γ], this
-    is a term of [Γ, ℕ] which the extension [Id ,, M] sends back to [E], and it
+    is a term of [Γ ▹ ℕ] which the extension [Id ,, M] sends back to [E], and it
     exists for one reason: the recursive call of the [ℕ]-[β] rule for [succ]
     appears in the *substitution* [Id ,, M ,, E], and the only way to validate an
     extension semantically ([rel_sub_under_ctx_extend_sub_double]) is by a term of
     the context being extended.  [E] itself is a term of [Γ], one context too
-    short; its generic form is the term of [Γ, ℕ] that is asked for. *)
+    short; its generic form is the term of [Γ ▹ ℕ] that is asked for. *)
 Corollary exp_sub_natrec_generic : forall A MZ MS σ N,
-    {{{ (rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end)[σ ,, N] }}}
-    = {{{ rec N return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end }}}.
+    rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end[σ,,N]
+    = rec N return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end.
 Proof.
   intros; cbn [exp_sub]; f_equal;
     try apply exp_sub_shift_extend;
@@ -841,25 +841,25 @@ Qed.
 (** Its defining property: substituting the generic recursor along [σ ,, M[σ]]
     is substituting the eliminator at [M] along [σ]. *)
 Corollary exp_sub_natrec_generic_self : forall A MZ MS σ M,
-    {{{ (rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end)[σ ,, M[σ]] }}}
-    = {{{ (rec M return A | zero -> MZ | succ -> MS end)[σ] }}}.
+    rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end[σ,,M[σ]]
+    = rec M return A | zero -> MZ | succ -> MS end[σ].
 Proof.
   intros; apply exp_sub_natrec_generic.
 Qed.
 
 (** The type of the [η]-rule: a codomain weakened under one more binder and
     then applied to [#0] is the codomain itself. *)
-Corollary exp_wk_q_shift_single : forall M, {{{ M⟨wk_q ↑⟩[Id ,, #0] }}} = M.
+Corollary exp_wk_q_shift_single : forall M, M⟨wk_q ↑⟩[Id,,#0] = M.
 Proof.
   intros.
   rewrite exp_sub_wk.
-  transitivity {{{ M[Id] }}}; [ apply exp_sub_sb_eq | apply exp_sub_id ].
+  transitivity M[Id]; [ apply exp_sub_sb_eq | apply exp_sub_id ].
   intros [| y]; reduce_index; reflexivity.
 Qed.
 
 (** The action of [q^n] on indices. *)
 
-Lemma sb_qn_lt : forall n σ x, x < n -> sb_qn n σ x = {{{ #x }}}.
+Lemma sb_qn_lt : forall n σ x, x < n -> sb_qn n σ x = #x.
 Proof.
   induction n; intros * Hlt; [ exfalso; lia | ].
   destruct x; [ reflexivity | ].
@@ -868,7 +868,7 @@ Qed.
 
 Lemma sb_qn_ge : forall n σ x,
     n <= x ->
-    sb_qn n σ x = {{{ ^(σ (x - n))⟨wk_shiftn n⟩ }}}.
+    sb_qn n σ x = (σ (x - n))⟨wk_shiftn n⟩.
 Proof.
   induction n; intros * Hle; simpl.
   - replace (x - 0) with x by lia.

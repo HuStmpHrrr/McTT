@@ -18,8 +18,8 @@
       corresponding fact is [sub_preserves_exp] read backwards, which
       is not needed anywhere;
     - [wf_sub] is a record, not an inductive family, so a derivation of
-      [{{ Γ ⊢s σ : Δ }}] carries no information beyond its two fields;
-    - in particular [{{ Γ ⊢s Id : Δ }}] *is* the context refinement that
+      [Γ ⊢s σ : Δ] carries no information beyond its two fields;
+    - in particular [Γ ⊢s Id : Δ] *is* the context refinement that
       [wf_sub_id_inversion] used to extract. *)
 
 From Mctt Require Import LibTactics.
@@ -28,8 +28,8 @@ From Mctt.Core.Syntactic Require Export SubEq.
 Import Syntax_Notations Wk_Notations.
 
 Lemma wf_typ_inversion : forall {Γ i A},
-    {{ Γ ⊢ Type@i : A }} ->
-    {{ Γ ⊢ Type@(S i) ⊆ A }}.
+    Γ ⊢ Type@i : A ->
+    Γ ⊢ Type@(S i) ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve.
@@ -39,8 +39,8 @@ Qed.
 Hint Resolve wf_typ_inversion : mctt.
 
 Lemma wf_nat_inversion : forall Γ A,
-    {{ Γ ⊢ ℕ : A }} ->
-    {{ Γ ⊢ Type@0 ⊆ A }}.
+    Γ ⊢ ℕ : A ->
+    Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -50,8 +50,8 @@ Qed.
 Hint Resolve wf_nat_inversion : mctt.
 
 Corollary wf_zero_inversion : forall Γ A,
-    {{ Γ ⊢ zero : A }} ->
-    {{ Γ ⊢ ℕ ⊆ A }}.
+    Γ ⊢ zero : A ->
+    Γ ⊢ ℕ ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
@@ -62,8 +62,8 @@ Qed.
 Hint Resolve wf_zero_inversion : mctt.
 
 Corollary wf_succ_inversion : forall Γ A M,
-    {{ Γ ⊢ succ M : A }} ->
-    {{ Γ ⊢ M : ℕ }} /\ {{ Γ ⊢ ℕ ⊆ A }}.
+    Γ ⊢ succ M : A ->
+    Γ ⊢ M : ℕ /\ Γ ⊢ ℕ ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
@@ -75,11 +75,11 @@ Qed.
 Hint Resolve wf_succ_inversion : mctt.
 
 Lemma wf_natrec_inversion : forall Γ A M A' MZ MS,
-    {{ Γ ⊢ rec M return A' | zero -> MZ | succ -> MS end : A }} ->
-    {{ Γ ⊢ MZ : A'[Id ,, zero] }} /\
-    {{ Γ , ℕ , A' ⊢ MS : A'[Wk ⨟ Wk ,, succ #1] }} /\
-    {{ Γ ⊢ M : ℕ }} /\
-    {{ Γ ⊢ A'[Id ,, M] ⊆ A }}.
+    Γ ⊢ rec M return A' | zero -> MZ | succ -> MS end : A ->
+    Γ ⊢ MZ : A'[Id,,zero] /\
+    Γ ▹ ℕ ▹ A' ⊢ MS : A'[Wk ⨟ Wk,,succ #1] /\
+    Γ ⊢ M : ℕ /\
+    Γ ⊢ A'[Id,,M] ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
@@ -91,8 +91,8 @@ Qed.
 Hint Resolve wf_natrec_inversion : mctt.
 
 Lemma wf_pi_inversion : forall {Γ A B C},
-    {{ Γ ⊢ Π A B : C }} ->
-    exists i, {{ Γ ⊢ A : Type@i }} /\ {{ Γ , A ⊢ B : Type@i }} /\ {{ Γ ⊢ Type@i ⊆ C }}.
+    Γ ⊢ Π A B : C ->
+    exists i, Γ ⊢ A : Type@i /\ Γ ▹ A ⊢ B : Type@i /\ Γ ⊢ Type@i ⊆ C.
 Proof.
   intros * H.
   dependent induction H;
@@ -105,19 +105,19 @@ Hint Resolve wf_pi_inversion : mctt.
 
 (** The level the domain and the codomain are checked at can always be taken to
     be the level of the [Π]-type itself.  Moving the refinement [Type@j ⊆ Type@i]
-    from [Γ] into [Γ , A] is a weakening, and it is the only step that needs any
+    from [Γ] into [Γ ▹ A] is a weakening, and it is the only step that needs any
     work: both sides are unchanged by it — [Type@j⟨↑⟩] *is* [Type@j] — but only by
     computation, so the step is taken by hand. *)
 Corollary wf_pi_inversion' : forall {Γ A B i},
-    {{ Γ ⊢ Π A B : Type@i }} ->
-    {{ Γ ⊢ A : Type@i }} /\ {{ Γ , A ⊢ B : Type@i }}.
+    Γ ⊢ Π A B : Type@i ->
+    Γ ⊢ A : Type@i /\ Γ ▹ A ⊢ B : Type@i.
 Proof.
   intros * [j [? []]]%wf_pi_inversion.
-  assert {{ ⊢ Γ , A }} by mauto 3.
-  assert {{ Γ , A ⊢w ↑ : Γ }} by mauto 2.
-  assert (wf_subtyp {{{ Γ , A }}} (exp_wk {{{ Type@j }}} ↑) (exp_wk {{{ Type@i }}} ↑)) as H'
+  assert (⊢ Γ ▹ A) by mauto 3.
+  assert (Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
+  assert (wf_subtyp (Γ ▹ A) (exp_wk Type@j ↑) (exp_wk Type@i ↑)) as H'
       by (eapply wk_preserves_subtyp; eassumption).
-  assert {{ Γ , A ⊢ Type@j ⊆ Type@i }} by exact H'.
+  assert (Γ ▹ A ⊢ Type@j ⊆ Type@i) by exact H'.
   split; mauto 3.
 Qed.
 
@@ -125,8 +125,8 @@ Qed.
 Hint Resolve wf_pi_inversion' : mctt.
 
 Corollary wf_fn_inversion : forall {Γ A M C},
-    {{ Γ ⊢ λ A M : C }} ->
-    exists B, {{ Γ , A ⊢ M : B }} /\ {{ Γ ⊢ Π A B ⊆ C }}.
+    Γ ⊢ λ A M : C ->
+    exists B, Γ ▹ A ⊢ M : B /\ Γ ⊢ Π A B ⊆ C.
 Proof.
   intros * H.
   dependent induction H;
@@ -139,8 +139,8 @@ Qed.
 Hint Resolve wf_fn_inversion : mctt.
 
 Lemma wf_app_inversion : forall {Γ M N C},
-    {{ Γ ⊢ M N : C }} ->
-    exists A B, {{ Γ ⊢ M : Π A B }} /\ {{ Γ ⊢ N : A }} /\ {{ Γ ⊢ B[Id ,, N] ⊆ C }}.
+    Γ ⊢ M $ N : C ->
+    exists A B, Γ ⊢ M : Π A B /\ Γ ⊢ N : A /\ Γ ⊢ B[Id,,N] ⊆ C.
 Proof.
   intros * H.
   dependent induction H;
@@ -153,8 +153,8 @@ Qed.
 Hint Resolve wf_app_inversion : mctt.
 
 Lemma wf_vlookup_inversion : forall {Γ x A},
-    {{ Γ ⊢ #x : A }} ->
-    exists A', {{ #x : A' ∈ Γ }} /\ {{ Γ ⊢ A' ⊆ A }}.
+    Γ ⊢ #x : A ->
+    exists A', Γ ∋ #x : A' /\ Γ ⊢ A' ⊆ A.
 Proof.
   intros * H.
   dependent induction H;

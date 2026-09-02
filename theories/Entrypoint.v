@@ -15,10 +15,10 @@ Variant main_result :=
   | AllGood : forall cst_typ cst_exp A M W,
       elaborate cst_typ nil = Some A ->
       elaborate cst_exp nil = Some M ->
-      {{ ⋅ ⊢ M : A }} ->
-      nbe {{{ ⋅ }}} M A W ->
+      ⋅ ⊢ M : A ->
+      nbe ⋅ M A W ->
       main_result
-  | TypeCheckingFailure : forall A M, ~ {{ ⋅ ⊢ M : A }} -> main_result
+  | TypeCheckingFailure : forall A M, ~ ⋅ ⊢ M : A -> main_result
   | ElaborationFailure : forall cst, elaborate cst nil = None -> main_result
   | ParserFailure : Aut.state -> Aut.Gram.token -> main_result
   | ParserTimeout : nat -> main_result
@@ -35,7 +35,7 @@ Equations main (log_fuel : nat) (buf : buffer) : main_result :=
   | Parsed_pr (cst_exp, cst_typ) _ with inspect (elaborate cst_typ nil) => {
     | exist _ (Some A) _ with inspect (elaborate cst_exp nil) => {
       | exist _ (Some M) _ with type_check_closed A _ M _ => {
-        | left  _ with nbe_impl {{{ ⋅ }}} M A _ => {
+        | left  _ with nbe_impl ⋅ M A _ => {
           | exist _ W _ => AllGood cst_typ cst_exp A M W _ _ _ _
           }
         | right _ => TypeCheckingFailure A M _

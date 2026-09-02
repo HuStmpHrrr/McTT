@@ -38,15 +38,15 @@ Import Wk_Notations.
     everything weakened.  This is the form the induction step of [valid_exp_var]
     needs, and it is where the two instantiations live.
 
-    The premise is the context PER of [Γ, C] and not [⊨ Γ, C]: what the extension
+    The premise is the context PER of [Γ ▹ C] and not [⊨ Γ ▹ C]: what the extension
     is needed for is the [Wk]-instantiation, and [rel_sub_shift] factors through
     [rel_wk_shift], which asks only for the two PERs — the tail's coming from [M]'s
     own judgment.  Stating it this way is what lets the η-rule use it, since no
     premise of that rule mentions [Γ] and so [⊨ Γ] is not available there. *)
 Lemma rel_exp_under_ctx_shift : forall {Γ C A M M' env_relΓC},
-    {{ EF Γ, C ≈ Γ, C ∈ per_ctx_env ↘ env_relΓC }} ->
-    {{ Γ ⊨ M ≈ M' : A }} ->
-    {{ Γ, C ⊨ M⟨↑⟩ ≈ M'⟨↑⟩ : A⟨↑⟩ }}.
+    EF Γ ▹ C ≈ Γ ▹ C ∈ per_ctx_env ↘ env_relΓC ->
+    Γ ⊨ M ≈ M' : A ->
+    Γ ▹ C ⊨ M⟨↑⟩ ≈ M'⟨↑⟩ : A⟨↑⟩.
 Proof.
   intros * HΓCper HM.
   destruct HM as [env_relΓ [HΓ [i HMgen]]].
@@ -54,9 +54,9 @@ Proof.
     as HWk.
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  (** The substituted environments are related in [Γ, C] — needed to instantiate
+  (** The substituted environments are related in [Γ ▹ C] — needed to instantiate
       along [Wk] at them. *)
-  assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓC }})
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓC)
     by (eapply rel_sub_under_ctx_at'; eassumption).
   (** The two instantiations. *)
   destruct (HMgen _ _ HΓ' _ _ (rel_sub_under_ctx_shift Hσj) _ _ _ _ Hρ
@@ -77,8 +77,8 @@ Proof.
       of the *unweakened* type in the tails, and reading that shared link off both
       identifies the two element PERs. *)
   handle_per_univ_elem_irrel.
-  assert (Hmid1 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R1 }}) by pairwise.
-  assert (Hmid2 : {{ DF v2 ≈ v3 ∈ per_univ_elem i ↘ R2 }}) by pairwise.
+  assert (Hmid1 : DF v2 ≈ v3 ∈ per_univ_elem i ↘ R1) by pairwise.
+  assert (Hmid2 : DF v2 ≈ v3 ∈ per_univ_elem i ↘ R2) by pairwise.
   handle_per_univ_elem_irrel.
   exists R1.
   split.
@@ -97,15 +97,15 @@ Hint Resolve rel_exp_under_ctx_shift : mctt.
     may be used twice, would split this into two lemmas; with the weakening lemma above doing that work, the induction
     is on the lookup derivation alone and its step case is a single [apply]. *)
 Lemma valid_exp_var : forall {Γ x A},
-    {{ #x : A ∈ Γ }} ->
-    {{ ⊨ Γ }} ->
-    {{ Γ ⊨ #x : A }}.
+    Γ ∋ #x : A ->
+    ⊨ Γ ->
+    Γ ⊨ #x : A.
 Proof.
   induction 1 as [A Γ | x A Γ B Hx IH]; intros HΓ.
-  - (** [#0 : A⟨↑⟩ ∈ Γ, A].  The type is weakened, so its four values come from
+  - (** [Γ ▹ A ∋ #0 : A⟨↑⟩].  The type is weakened, so its four values come from
         the weakening lemma applied to [A]'s own judgment; the term's four values
         are all [ρσ 0] and [ρ'σ' 0], handed over by the head clause of the context
-        PER of [Γ, A].  That clause speaks of the values of [A] in the *tails*, so
+        PER of [Γ ▹ A].  That clause speaks of the values of [A] in the *tails*, so
         the instance of [A]'s judgment at [Wk] is needed a second time — as a
         bridge from those values to the values of [A⟨↑⟩]. *)
     pose proof HΓ as HΓA.
@@ -114,16 +114,16 @@ Proof.
     pose proof (rel_exp_of_typ_inversion (rel_exp_under_ctx_shift HΓAper HA))
       as [env_relΓA [HΓAper' HAwkgen]].
     (** [eexists_rel_exp_with] picks the context PER by [eassumption]; the one the
-        inversion of [⊨ Γ, A] left behind is redundant and must not be picked. *)
+        inversion of [⊨ Γ ▹ A] left behind is redundant and must not be picked. *)
     clear HΓAper env_rel.
     eexists_rel_exp_with i.
-    (** The head clause of the context PER of [Γ, A]: it relates the heads of two
+    (** The head clause of the context PER of [Γ ▹ A]: it relates the heads of two
         related environments at the values of [A] in their *tails*. *)
     pose proof HΓAper' as HΓAcons.
     invert_per_ctx_env HΓAcons.
     rename x into j; rename x0 into head_rel; rename H into Hheadtyp; rename H0 into Hequiv.
     intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-    assert (Hρσ : {{ Dom ρσ ≈ ρ'σ' ∈ env_relΓA }})
+    assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓA)
       by (eapply rel_sub_under_ctx_at'; eassumption).
     (** The type's four values, and the [Wk]-instantiation that bridges them to the
         values [head_rel] is stated at. *)
@@ -146,15 +146,15 @@ Proof.
     destruct_per_univ_chain Hvchain.
     destruct_per_univ_chain Huchain.
     handle_per_univ_elem_irrel.
-    exists (head_rel d{{{ ρσ ↯ }}} d{{{ ρ'σ' ↯ }}} Hteq).
+    exists (head_rel ρσ↯ ρ'σ'↯ Hteq).
     split.
     + apply (mk_rel_exp v1 v2 v3 v4); try eassumption.
       apply rel_chain_4; eassumption.
     + (** [#0[σ]] *is* [σ 0], so the outer values are the heads too. *)
-      apply (mk_rel_exp d{{{ ^(ρσ 0) }}} d{{{ ^(ρσ 0) }}} d{{{ ^(ρ'σ' 0) }}} d{{{ ^(ρ'σ' 0) }}});
+      apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
         try apply eval_exp_var; try (apply eval_sub_index; eassumption).
       apply rel_chain_4_of_2; [ solve_chain_PER | eassumption ].
-  - (** [#(S x) : A⟨↑⟩ ∈ Γ, B] is the weakening of [#x : A ∈ Γ]. *)
+  - (** [Γ ▹ B ∋ #(S x) : A⟨↑⟩] is the weakening of [Γ ∋ #x : A]. *)
     inversion HΓ as [| ? ? ? ? HΓ0 HΓBper ?]; subst.
     exact (rel_exp_under_ctx_shift HΓBper (IH HΓ0)).
 Qed.

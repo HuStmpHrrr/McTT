@@ -119,7 +119,7 @@ Section RelChain.
       metavariable list against a plain application. *)
   Lemma rel_chain_of_pair : forall x y,
       R x y ->
-      rel_chain [x; y].
+      rel_chain ([x; y]).
   Proof.
     intros * H; exact H.
   Qed.
@@ -233,31 +233,31 @@ Section RelChain.
       R v1 v2 ->
       R v2 v3 ->
       R v3 v4 ->
-      rel_chain [v1; v2; v3; v4].
+      rel_chain ([v1; v2; v3; v4]).
   Proof.
     intros; repeat split; assumption.
   Qed.
 
   Lemma rel_chain_4_commut_left : forall v1 v2 v3 v4,
-      rel_chain [v1; v2; v3; v4] -> R v1 v2.
+      rel_chain ([v1; v2; v3; v4]) -> R v1 v2.
   Proof.
     intros * [] ; assumption.
   Qed.
 
   Lemma rel_chain_4_related : forall v1 v2 v3 v4,
-      rel_chain [v1; v2; v3; v4] -> R v2 v3.
+      rel_chain ([v1; v2; v3; v4]) -> R v2 v3.
   Proof.
     intros * [? []]; assumption.
   Qed.
 
   Lemma rel_chain_4_commut_right : forall v1 v2 v3 v4,
-      rel_chain [v1; v2; v3; v4] -> R v3 v4.
+      rel_chain ([v1; v2; v3; v4]) -> R v3 v4.
   Proof.
     intros * [? []]; assumption.
   Qed.
 
   Corollary rel_chain_4_outer : forall v1 v2 v3 v4,
-      rel_chain [v1; v2; v3; v4] -> R v1 v4.
+      rel_chain ([v1; v2; v3; v4]) -> R v1 v4.
   Proof.
     intros * H.
     eapply rel_chain_pairwise; [ exact H | simpl; auto | simpl; auto ].
@@ -270,17 +270,17 @@ Section RelChain.
       substitution ([rel_exp_under_ctx_simple]). *)
   Corollary rel_chain_4_of_2 : forall v1 v2,
       R v1 v2 ->
-      rel_chain [v1; v1; v2; v2].
+      rel_chain ([v1; v1; v2; v2]).
   Proof.
     intros * H.
-    eapply (rel_chain_incl [v1; v2]); [ exact H | solve_incl ].
+    eapply (rel_chain_incl ([v1; v2])); [ exact H | solve_incl ].
   Qed.
 
   (** Reversal, which is the whole of the semantic symmetry lemma: the four
       values of the symmetric judgment are the same four in the opposite
       order. *)
   Corollary rel_chain_4_sym : forall v1 v2 v3 v4,
-      rel_chain [v1; v2; v3; v4] -> rel_chain [v4; v3; v2; v1].
+      rel_chain ([v1; v2; v3; v4]) -> rel_chain ([v4; v3; v2; v1]).
   Proof.
     intros * H.
     eapply rel_chain_incl; [ exact H | solve_incl ].

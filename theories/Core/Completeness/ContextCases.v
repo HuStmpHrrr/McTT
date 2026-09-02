@@ -21,9 +21,9 @@ From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
 Import Domain_Notations.
 
 Lemma rel_ctx_extend : forall {Γ Γ' A A' i},
-    {{ ⊨ Γ ≈ Γ' }} ->
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
-    {{ ⊨ Γ, A ≈ Γ', A' }}.
+    ⊨ Γ ≈ Γ' ->
+    Γ ⊨ A ≈ A' : Type@i ->
+    ⊨ Γ ▹ A ≈ Γ' ▹ A'.
 Proof.
   intros * [env_relΓΓ' HΓΓ'] H.
   pose proof (rel_exp_of_typ_inversion_simple H) as [env_relΓ [HΓ HA]].
@@ -40,9 +40,9 @@ Proof.
 Qed.
 
 Lemma rel_ctx_extend' : forall {Γ A i},
-    {{ ⊨ Γ }} ->
-    {{ Γ ⊨ A : Type@i }} ->
-    {{ ⊨ Γ, A }}.
+    ⊨ Γ ->
+    Γ ⊨ A : Type@i ->
+    ⊨ Γ ▹ A.
 Proof.
   intros * HΓ HA.
   pose proof (rel_ctx_extend (sem_ctx_per_ctx HΓ) HA) as [env_relΓA HΓA].
@@ -53,17 +53,17 @@ Qed.
 Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
 
 Lemma rel_ctx_sub_empty :
-  {{ SubE ⋅ <: ⋅ }}.
+  SubE ⋅ <: ⋅.
 Proof. mauto. Qed.
 
 Lemma rel_ctx_sub_extend : forall {Γ Δ i A A'},
-  {{ SubE Γ <: Δ }} ->
-  {{ ⊨ Γ }} ->
-  {{ ⊨ Δ }} ->
-  {{ Γ ⊨ A : Type@i }} ->
-  {{ Δ ⊨ A' : Type@i }} ->
-  {{ Γ ⊨ A ⊆ A' }} ->
-  {{ SubE Γ , A <: Δ , A' }}.
+  SubE Γ <: Δ ->
+  ⊨ Γ ->
+  ⊨ Δ ->
+  Γ ⊨ A : Type@i ->
+  Δ ⊨ A' : Type@i ->
+  Γ ⊨ A ⊆ A' ->
+  SubE Γ ▹ A <: Δ ▹ A'.
 Proof.
   intros * Hsub HΓ HΔ HA HA' Hsubtyp.
   pose proof (rel_ctx_extend' HΓ HA) as HΓA%sem_ctx_per_ctx_env.

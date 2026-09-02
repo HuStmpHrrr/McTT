@@ -96,14 +96,18 @@ enclosing `match`es varies by call site.
 
 ### Notation scopes
 
-`{{ ... }}` is the syntactic-judgment scope, `{{{ ... }}}` syntactic terms,
-`d{{{ ... }}}` domain values, `n{{{ ... }}}` normal forms. Inside patterns,
-`^?x` matches a term antiquotation. Tactic patterns therefore read like the
-judgments on paper, e.g.
+Every notation lives in ordinary `constr`, in `mctt_scope`, and needs no
+delimiter, so tactic patterns read like the judgments on paper:
 
 ```coq
-| H : {{ ^?Γ ⊢ ^?M : ^?A }} |- _ => ...
+| H : ?Γ ⊢ ?M : ?A |- _ => ...
 ```
+
+Values and normal forms carry a superscript (`ℕᵈ`, `λᵈ`, `#ᵈ n`; `ℕⁿ`, `λⁿ`,
+`#ⁿ n`) because one spelling can denote only one sort. Context extension is
+`Γ ▹ A` and application is `M $ N`. See
+[`../AGENT/notations.md`](../AGENT/notations.md) for the level table and the
+parsing traps.
 
 ---
 
@@ -127,7 +131,7 @@ Definition __mark__ (n : nat) A (a : A) : A := a.
 ```
 
 `mark H` folds `H`'s type into `__mark__ 0 t`, which is *convertible* to `t`
-but no longer *syntactically matches* patterns like `{{ ^?Γ ⊢ ^?M : ^?A }}`.
+but no longer *syntactically matches* patterns like `?Γ ⊢ ?M : ?A`.
 So a `repeat match goal` loop that marks each hypothesis it processes will
 visit every hypothesis exactly once and then terminate.
 
@@ -263,7 +267,7 @@ one shape:
 Ltac functional_eval_rewrite_clear1 :=
   let tactic_error o1 o2 := fail 3 "functional_eval equality between" o1 "and" o2 "cannot be solved by mauto" in
   match goal with
-  | H1 : {{ ⟦ ^?M ⟧ ^?ρ ↘ ^?m1 }}, H2 : {{ ⟦ ^?M ⟧ ^?ρ ↘ ^?m2 }} |- _ =>
+  | H1 : (⟦ ?M ⟧ ?ρ ↘ ?m1), H2 : (⟦ ?M ⟧ ?ρ ↘ ?m2) |- _ =>
       clean replace m2 with m1 by first [solve [mauto 2] | tactic_error m2 m1]; clear H2
   ...
 ```
@@ -325,7 +329,7 @@ all: mauto 3.
 
 | Family | Lines | Description |
 | --- | --- | --- |
-| `saturate_wk`, `saturate_sub`, `saturate_sub_eq` | 92, 97, 1171 | Add the domain and codomain well-formedness of every operation in the context. `wf_sub_dom`/`wf_sub_cod` are **deliberately not** `mctt` hints, so these are how you get them; the canonical opening of a gluing proof is `assert {{ Δ ⊢s σ : Γ }} by mauto 3. saturate_sub.` |
+| `saturate_wk`, `saturate_sub`, `saturate_sub_eq` | 92, 97, 1171 | Add the domain and codomain well-formedness of every operation in the context. `wf_sub_dom`/`wf_sub_cod` are **deliberately not** `mctt` hints, so these are how you get them; the canonical opening of a gluing proof is `assert Δ ⊢s σ : Γ by mauto 3. saturate_sub.` |
 | `push_wk_step`, `push_wk_in`, `push_wk_goal`, `push_wk` | 205, 210, 213, 225 | Move an operation **inward**, toward the leaves: the induction hypothesis produces it on the outside, the rule to be applied wants it on the inside. Alternates `simpl` (which distributes over the term formers) with the `Substitution.v` corollaries that move it past a substitution. Uses `setoid_rewrite` throughout, because the induction hypotheses are still quantified over the target context and plain `rewrite` will not descend under a binder. |
 | `push_sub_step`, `push_sub_in`, `push_sub_goal`, `push_sub` | 523, 529, 532, 540 | The same for substitutions. |
 | `lift_wk_nat`, `lift_wk_step`, `lift_wk` | 245, 253, 262 | Saturate with the **lifted** operations `q φ`, one `assert` per binder. `wf_wk_q` *is* a hint, but reconstructing `q φ` inside the `eauto` search costs three levels on top of the rule application, which puts the wide cases (`λ`-E, `ℕ`-E) out of reach at any terminating depth. `lift_wk_nat` seeds the `ℕ`-eliminator cases separately: their first binder is over the closed type `ℕ`, which has no induction hypothesis of its own for `lift_wk_step` to use. |
@@ -344,10 +348,10 @@ those side facts, so there is machinery to add all of them at once.
 
 | Tactic | Line | Description |
 | --- | --- | --- |
-| `invert_wf_ctx1 H` | 22 | From `⊢ Γ, A` derive `⊢ Γ` and `∃ i, Γ ⊢ A : Type@i` via `ctx_decomp`, but *skip* introducing the level if an equivalent hypothesis (marked or not) is already present. |
+| `invert_wf_ctx1 H` | 22 | From `⊢ Γ ▹ A` derive `⊢ Γ` and `∃ i, Γ ⊢ A : Type@i` via `ctx_decomp`, but *skip* introducing the level if an equivalent hypothesis (marked or not) is already present. |
 | `invert_wf_ctx` | 38 | `invert_wf_ctx1` on every hypothesis, then `clear_dups`. |
 | `gen_core_presup H` | 47 | The core presupposition generator, one case per judgment form: `⊢ Γ ≈ Δ` ⇒ `presup_ctx_eq`; `⊢ Γ ⊆ Δ` ⇒ `presup_ctx_sub`; `Γ ⊢ M : A` ⇒ `presup_exp`; `Γ ⊢s σ : Δ` ⇒ `presup_sub`. |
-| `gen_lookup_presup H` | 63 | From `#x : A ∈ Γ` derive `∃ i, Γ ⊢ A : Type@i`, unless already known. |
+| `gen_lookup_presup H` | 63 | From `Γ ∋ #x : A` derive `∃ i, Γ ⊢ A : Type@i`, unless already known. |
 | `gen_core_presups` | 76 | Run `gen_core_presup` on everything, `invert_wf_ctx`, then `gen_lookup_presup` on everything, then dedupe. |
 
 `Core/Syntactic/Presup.v` extends this to the equality judgments, which are
@@ -424,7 +428,7 @@ instantiate those by hand.
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `destruct_rel_by_assumption in_rel H` | `PER/CoreTactics.v:9` | For every hypothesis `{{ Dom c ≈ c' ∈ in_rel }}` in the context, specialize `H` to it, destruct the result, and `destruct_all`. Marks at level 1 so each argument pair is used once. |
+| `destruct_rel_by_assumption in_rel H` | `PER/CoreTactics.v:9` | For every hypothesis `Dom c ≈ c' ∈ in_rel` in the context, specialize `H` to it, destruct the result, and `destruct_all`. Marks at level 1 so each argument pair is used once. |
 | `destruct_rel_mod_eval` | `PER/CoreTactics.v:19` | Apply the above to every `rel_mod_eval`-valued hypothesis, and `dependent destruction` any bare `rel_mod_eval`. |
 | `destruct_rel_mod_app` | `PER/CoreTactics.v:28` | Same for `rel_mod_app`. |
 | `destruct_rel_typ` | `PER/CoreTactics.v:37` | Same for `rel_typ`. |
@@ -571,7 +575,7 @@ machinery as the PER layer, with `<∙>` (predicate equivalence) in place of
 
 | Tactic | Line | Description |
 | --- | --- | --- |
-| `destruct_glu_rel_by_assumption sub_glu_rel H` | 996 | The `glu` analogue of `destruct_rel_by_assumption`: for every `{{ Δ ⊢s σ ® ρ ∈ Sb }}` in the context, instantiate `H` and destruct. |
+| `destruct_glu_rel_by_assumption sub_glu_rel H` | 996 | The `glu` analogue of `destruct_rel_by_assumption`: for every `Δ ⊢s σ ® ρ ∈ Sb` in the context, instantiate `H` and destruct. |
 | `destruct_glu_rel_exp_with_sub` | 1006 | Apply it to every `glu_rel_exp_with_sub`-valued hypothesis; also destruct bare ones. |
 | `destruct_glu_rel_typ_with_sub` | 1015 | Same for `glu_rel_typ_with_sub`. |
 | `invert_glu_rel_exp H` | 1069 | Fallback chain over `glu_rel_exp_clean_inversion2`, `…1`, then `inversion`. The "clean" versions require a `glu_ctx_env` (and for `2` also a typing) premise, which they discharge by `eassumption`, and give back a single universe level instead of an existential. |
@@ -585,7 +589,7 @@ syntax) twice as the development proceeds and stronger clean-inversion lemmas
 become available:
 
 - `Core/Soundness/UniverseCases.v:56` prepends `glu_rel_exp_clean_inversion2'`,
-  which only needs `{{ Γ ⊩ Type@i : Type@(S i) }}` — automatically available —
+  which only needs `Γ ⊩ Type@i : Type@(S i)` — automatically available —
   rather than an explicit typing premise.
 - `Core/Soundness/NatCases.v:61` prepends `glu_rel_exp_clean_inversion2''`
   for `ℕ`, on top of the universe version.
@@ -618,7 +622,7 @@ predicate to expose the recursive sub-orders, then `econstructor; mauto`.
 | `impl_obl_tac1` / `impl_obl_tac` | `Extraction/NbE.v:35/41`, `123/129`, `181/187` | Three separate copies inside three `Section`s, for `initial_env_order`, `nbe_order`, and `nbe_ty_order` respectively. |
 | `subtyping_tac` | `Extraction/Subtyping.v:9` | Obligations of the *decision* procedure `subtyping_nf_impl`: for a positive goal `⊢anf A ⊆ B`, `subst; mauto 4; try congruence; econstructor`; for a negative goal, introduce, `dependent destruction`, and close by `lia`/`congruence`. |
 | `subtyping_impl_tac1` / `subtyping_impl_tac` | `Extraction/Subtyping.v:69, 76` | Inverts `subtyping_order` and `nbe_ty_order`; then `econstructor; mauto`. |
-| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ, A` and impossible `#x : A ∈ ⋅` / `#(S x) : A ∈ Γ, A` hypotheses, then `intuition (mauto 4)`. |
+| `impl_obl_tac1` / `impl_obl_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
 | `clear_defs` | `Extraction/TypeCheck.v:83` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
 | `impl_obl_tac` | `Extraction/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
 | `impl_obl_tac` | `Extraction/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |

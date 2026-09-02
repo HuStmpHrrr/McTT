@@ -6,15 +6,15 @@ From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases TermStruc
 Import Domain_Notations.
 
 Lemma glu_rel_exp_of_typ : forall {Γ Sb A i},
-    {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
-        {{ Δ ⊢s σ ® ρ ∈ Sb }} ->
-        {{ Δ ⊢ A[σ] : Type@i }} /\
+        Δ ⊢s σ ® ρ ∈ Sb ->
+        Δ ⊢ A[σ] : Type@i /\
           exists a,
-            {{ ⟦ A ⟧ ρ ↘ a }} /\
-              {{ Dom a ≈ a ∈ per_univ i }} /\
-              forall P El, {{ DG a ∈ glu_univ_elem i ↘ P ↘ El }} -> {{ Δ ⊢ A[σ] ® P }}) ->
-    {{ Γ ⊩ A : Type@i }}.
+            ⟦ A ⟧ ρ ↘ a /\
+              Dom a ≈ a ∈ per_univ i /\
+              forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
+    Γ ⊩ A : Type@i.
 Proof.
   intros * ? Hbody.
   eexists; split; mauto.
@@ -24,13 +24,13 @@ Proof.
 Qed.
 
 Lemma glu_rel_exp_typ : forall {Γ i},
-    {{ ⊩ Γ }} ->
-    {{ Γ ⊩ Type@i : Type@(S i) }}.
+    ⊩ Γ ->
+    Γ ⊩ Type@i : Type@(S i).
 Proof.
   intros * [].
   eapply glu_rel_exp_of_typ; mauto 3.
   intros.
-  assert {{ Δ ⊢s σ : Γ }} by mauto 3.
+  assert (Δ ⊢s σ : Γ) by mauto 3.
   split; mauto 4.
   eexists; repeat split; mauto.
   intros.
@@ -47,12 +47,12 @@ Qed.
 Hint Resolve glu_rel_exp_typ : mctt.
 
 Lemma glu_rel_exp_clean_inversion2' : forall {i Γ Sb M},
-    {{ EG Γ ∈ glu_ctx_env ↘ Sb }} ->
-    {{ Γ ⊩ M : Type@i }} ->
-    glu_rel_exp_clean_inversion2_result (S i) Sb M {{{ Type@i }}}.
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ M : Type@i ->
+    glu_rel_exp_clean_inversion2_result (S i) Sb M Type@i.
 Proof.
   intros * ? HM.
-  assert {{ Γ ⊩ Type@i : Type@(S i) }} by mauto 3.
+  assert (Γ ⊩ Type@i : Type@(S i)) by mauto 3.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 

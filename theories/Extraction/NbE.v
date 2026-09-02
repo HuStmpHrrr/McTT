@@ -47,7 +47,7 @@ Section InitialEnvImpl.
   | cons A G, H =>
       let (p, Hp) := initial_env_impl G _ in
       let (a, Ha) := eval_exp_impl A p _ in
-      exist _ d{{{ p ↦ ⇑! a (length G) }}} _.
+      exist _ (p ↦ ⇑! a (length G)) _.
 
 End InitialEnvImpl.
 
@@ -95,9 +95,9 @@ Inductive nbe_order G M A : Prop :=
            eval_exp_order M p) ->
      (forall p a m,
          initial_env G p ->
-         {{ ⟦ A ⟧ p ↘ a }} ->
-         {{ ⟦ M ⟧ p ↘ m }} ->
-         read_nf_order (length G) d{{{ ⇓ a m }}}) ->
+         ⟦ A ⟧ p ↘ a ->
+         ⟦ M ⟧ p ↘ m ->
+         read_nf_order (length G) ⇓ a m) ->
      nbe_order G M A ).
 
 #[local]
@@ -133,7 +133,7 @@ Section NbEDef.
       let (p, Hp) := initial_env_impl G _ in
       let (a, Ha) := eval_exp_impl A p _ in
       let (m, Hm) := eval_exp_impl M p _ in
-      let (w, Hw) := read_nf_impl (length G) d{{{ ⇓ a m }}} _ in
+      let (w, Hw) := read_nf_impl (length G) ⇓ a m _ in
       exist _ w _.
 
 End NbEDef.
@@ -152,7 +152,7 @@ Inductive nbe_ty_order G A : Prop :=
            eval_exp_order A p) ->
      (forall p a,
          initial_env G p ->
-         {{ ⟦ A ⟧ p ↘ a }} ->
+         ⟦ A ⟧ p ↘ a ->
          read_typ_order (length G) a) ->
      nbe_ty_order G A ).
 

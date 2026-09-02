@@ -16,12 +16,12 @@ Import Domain_Notations.
 
 (** A semantic equality read at the initial environment of its own context. *)
 Lemma rel_exp_under_ctx_at_initial_env : forall {Γ A M M'},
-    {{ Γ ⊨ M ≈ M' : A }} ->
+    Γ ⊨ M ≈ M' : A ->
     exists ρ i elem_rel a m m',
       initial_env Γ ρ /\
-      {{ ⟦ A ⟧ ρ ↘ a }} /\ {{ ⟦ M ⟧ ρ ↘ m }} /\ {{ ⟦ M' ⟧ ρ ↘ m' }} /\
-      {{ DF a ≈ a ∈ per_univ_elem i ↘ elem_rel }} /\
-      {{ Dom m ≈ m' ∈ elem_rel }}.
+      ⟦ A ⟧ ρ ↘ a /\ ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ ↘ m' /\
+      DF a ≈ a ∈ per_univ_elem i ↘ elem_rel /\
+      Dom m ≈ m' ∈ elem_rel.
 Proof.
   intros * H.
   destruct H as [env_relΓ [HΓ [i HMgen]]].
@@ -41,10 +41,10 @@ Qed.
 
 (** The same at a type equality, where the element relation is [per_univ i]. *)
 Lemma rel_typ_under_ctx_at_initial_env : forall {Γ A A' i},
-    {{ Γ ⊨ A ≈ A' : Type@i }} ->
+    Γ ⊨ A ≈ A' : Type@i ->
     exists ρ a a',
-      initial_env Γ ρ /\ {{ ⟦ A ⟧ ρ ↘ a }} /\ {{ ⟦ A' ⟧ ρ ↘ a' }} /\
-      {{ Dom a ≈ a' ∈ per_univ i }}.
+      initial_env Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
+      Dom a ≈ a' ∈ per_univ i.
 Proof.
   intros * H%rel_exp_of_typ_inversion_simple.
   destruct H as [env_relΓ [HΓ HA]].
@@ -56,7 +56,7 @@ Proof.
 Qed.
 
 Theorem completeness : forall {Γ M M' A},
-    {{ Γ ⊢ M ≈ M' : A }} ->
+    Γ ⊢ M ≈ M' : A ->
     exists W, nbe Γ M A W /\ nbe Γ M' A W.
 Proof.
   intros * H%completeness_fundamental_exp_eq.
@@ -68,7 +68,7 @@ Proof.
 Qed.
 
 Corollary completeness_ty : forall {Γ i A A'},
-    {{ Γ ⊢ A ≈ A' : Type@i }} ->
+    Γ ⊢ A ≈ A' : Type@i ->
     exists W, nbe_ty Γ A W /\ nbe_ty Γ A' W.
 Proof.
   intros * [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]]%completeness.

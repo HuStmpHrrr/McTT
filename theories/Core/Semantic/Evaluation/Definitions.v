@@ -6,10 +6,10 @@ From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
 Import Wk_Notations.
 
-Reserved Notation "'⟦' M '⟧' ρ '↘' r" (in custom judg at level 80, M custom exp at level 99, ρ custom domain at level 99, r custom domain at level 99).
-Reserved Notation "'rec' m '⟦return' A | 'zero' -> MZ | 'succ' -> MS 'end⟧' ρ '↘' r" (in custom judg at level 80, m custom domain at level 99, A custom exp at level 99, MZ custom exp at level 99, MS custom exp at level 99, ρ custom domain at level 99, r custom domain at level 99).
-Reserved Notation "'$|' m '&' n '|↘' r" (in custom judg at level 80, m custom domain at level 99, n custom domain at level 99, r custom domain at level 99).
-Reserved Notation "'⟦' σ '⟧s' ρ '↘' ρσ" (in custom judg at level 80, σ custom exp at level 99, ρ custom domain at level 99, ρσ custom domain at level 99).
+Reserved Notation "'⟦' M '⟧' ρ '↘' r" (at level 70, M at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'$|' m '&' n '|↘' r" (at level 70, m at level 69, n at level 69, r at level 69).
+Reserved Notation "'⟦' σ '⟧s' ρ '↘' ρσ" (at level 70, σ at level 69, ρ at level 69, ρσ at level 69).
 
 Generalizable All Variables.
 
@@ -24,16 +24,16 @@ Definition eval_wk (φ : wk) (ρ : env) : env := fun x => ρ (φ x).
 Arguments eval_wk _ _ _ /.
 Transparent eval_wk.
 
-Notation "'⟦' φ '⟧w' ρ" := (eval_wk φ ρ) (in custom domain at level 10, φ constr at level 60, ρ custom domain at level 0) : mctt_scope.
+Notation "'⟪' φ '⟫' ρ" := (eval_wk φ ρ) (at level 2, φ constr at level 60, ρ at level 0) : mctt_scope.
 
 Proposition eval_wk_shift : forall ρ,
-    d{{{ ⟦ ↑ ⟧w ρ }}} = d{{{ ρ ↯ }}}.
+    ⟪↑⟫ ρ = ρ↯.
 Proof.
   reflexivity.
 Qed.
 
 Proposition eval_wk_id : forall ρ,
-    d{{{ ⟦ wk_id ⟧w ρ }}} = ρ.
+    ⟪wk_id⟫ ρ = ρ.
 Proof.
   reflexivity.
 Qed.
@@ -42,7 +42,7 @@ Qed.
     [eval_wk] is a function: weakenings compose diagrammatically on the syntax
     and contravariantly on environments. *)
 Proposition eval_wk_compose : forall φ ψ ρ,
-    d{{{ ⟦ φ ⊙ ψ ⟧w ρ }}} = d{{{ ⟦ φ ⟧w (⟦ ψ ⟧w ρ) }}}.
+    ⟪φ ⊙ ψ⟫ ρ = ⟪φ⟫ (⟪ψ⟫ ρ).
 Proof.
   reflexivity.
 Qed.
@@ -53,13 +53,13 @@ Qed.
     and [eval_wk] are [fun]s — which is why the corresponding completeness case
     has no work to do beyond naming them. *)
 Proposition eval_wk_q_tail : forall φ ρ,
-    d{{{ (⟦ (wk_q φ) ⟧w ρ) ↯ }}} = d{{{ ⟦ φ ⟧w (ρ ↯) }}}.
+    (⟪(wk_q φ)⟫ ρ)↯ = ⟪φ⟫ (ρ↯).
 Proof.
   reflexivity.
 Qed.
 
 Proposition eval_wk_q_zero : forall φ ρ,
-    d{{{ ⟦ (wk_q φ) ⟧w ρ }}} 0 = ρ 0.
+    ⟪(wk_q φ)⟫ ρ 0 = ρ 0.
 Proof.
   reflexivity.
 Qed.
@@ -79,52 +79,52 @@ Qed.
  *)
 Inductive eval_exp : exp -> env -> domain -> Prop :=
 | eval_exp_typ :
-  `( {{ ⟦ Type@i ⟧ ρ ↘ 𝕌@i }} )
+  `( ⟦ Type@i ⟧ ρ ↘ 𝕌@i )
 | eval_exp_var :
-  `( {{ ⟦ # x ⟧ ρ ↘ ^(ρ x) }} )
+  `( ⟦ #x ⟧ ρ ↘ (ρ x) )
 | eval_exp_nat :
-  `( {{ ⟦ ℕ ⟧ ρ ↘ ℕ }} )
+  `( ⟦ ℕ ⟧ ρ ↘ ℕᵈ )
 | eval_exp_zero :
-  `( {{ ⟦ zero ⟧ ρ ↘ zero }} )
+  `( ⟦ zero ⟧ ρ ↘ zeroᵈ )
 | eval_exp_succ :
-  `( {{ ⟦ M ⟧ ρ ↘ m }} ->
-     {{ ⟦ succ M ⟧ ρ ↘ succ m }} )
+  `( ⟦ M ⟧ ρ ↘ m ->
+     ⟦ succ M ⟧ ρ ↘ succᵈ m )
 | eval_exp_natrec :
-  `( {{ ⟦ M ⟧ ρ ↘ m }} ->
-     {{ rec m ⟦return A | zero -> MZ | succ -> MS end⟧ ρ ↘ r }} ->
-     {{ ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ r }} )
+  `( ⟦ M ⟧ ρ ↘ m ->
+     ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ r ->
+     ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ r )
 | eval_exp_pi :
-  `( {{ ⟦ A ⟧ ρ ↘ a }} ->
-     {{ ⟦ Π A B ⟧ ρ ↘ Π a ρ B }} )
+  `( ⟦ A ⟧ ρ ↘ a ->
+     ⟦ Π A B ⟧ ρ ↘ Πᵈ a ρ B )
 | eval_exp_fn :
-  `( {{ ⟦ λ A M ⟧ ρ ↘ λ ρ M }} )
+  `( ⟦ λ A M ⟧ ρ ↘ λᵈ ρ M )
 | eval_exp_app :
-  `( {{ ⟦ M ⟧ ρ ↘ m }} ->
-     {{ ⟦ N ⟧ ρ ↘ n }} ->
-     {{ $| m & n |↘ r }} ->
-     {{ ⟦ M N ⟧ ρ ↘ r }} )
-where "'⟦' e '⟧' ρ '↘' r" := (eval_exp e ρ r) (in custom judg)
+  `( ⟦ M ⟧ ρ ↘ m ->
+     ⟦ N ⟧ ρ ↘ n ->
+     $| m & n |↘ r ->
+     ⟦ M $ N ⟧ ρ ↘ r )
+where "'⟦' e '⟧' ρ '↘' r" := (eval_exp e ρ r)
 with eval_natrec : exp -> exp -> exp -> domain -> env -> domain -> Prop :=
 | eval_natrec_zero :
-  `( {{ ⟦ MZ ⟧ ρ ↘ mz }} ->
-     {{ rec zero ⟦return A | zero -> MZ | succ -> MS end⟧ ρ ↘ mz }} )
+  `( ⟦ MZ ⟧ ρ ↘ mz ->
+     ⟦rec zeroᵈ return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ mz )
 | eval_natrec_succ :
-  `( {{ rec b ⟦return A | zero -> MZ | succ -> MS end⟧ ρ ↘ r }} ->
-     {{ ⟦ MS ⟧ ρ ↦ b ↦ r ↘ ms }} ->
-     {{ rec succ b ⟦return A | zero -> MZ | succ -> MS end⟧ ρ ↘ ms }} )
+  `( ⟦rec b return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ r ->
+     ⟦ MS ⟧ ρ ↦ b ↦ r ↘ ms ->
+     ⟦rec succᵈ b return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ ms )
 | eval_natrec_neut :
-  `( {{ ⟦ MZ ⟧ ρ ↘ mz }} ->
-     {{ ⟦ A ⟧ ρ ↦ ⇑ b m ↘ a }} ->
-     {{ rec ⇑ b m ⟦return A | zero -> MZ | succ -> MS end⟧ ρ ↘ ⇑ a (rec m under ρ return A | zero -> mz | succ -> MS end) }} )
-where "'rec' m '⟦return' A | 'zero' -> MZ | 'succ' -> MS 'end⟧' ρ '↘' r" := (eval_natrec A MZ MS m ρ r) (in custom judg)
+  `( ⟦ MZ ⟧ ρ ↘ mz ->
+     ⟦ A ⟧ ρ ↦ ⇑ b m ↘ a ->
+     ⟦rec ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
+where "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' ρ '↘' r" := (eval_natrec A MZ MS m ρ r)
 with eval_app : domain -> domain -> domain -> Prop :=
 | eval_app_fn :
-  `( {{ ⟦ M ⟧ ρ ↦ n ↘ m }} ->
-     {{ $| λ ρ M & n |↘ m }} )
+  `( ⟦ M ⟧ ρ ↦ n ↘ m ->
+     $| λᵈ ρ M & n |↘ m )
 | eval_app_neut :
-  `( {{ ⟦ B ⟧ ρ ↦ n ↘ b }} ->
-     {{ $| ⇑ (Π a ρ B) m & n |↘ ⇑ b (m (⇓ a n)) }} )
-where "'$|' m '&' n '|↘' r" := (eval_app m n r) (in custom judg)
+  `( ⟦ B ⟧ ρ ↦ n ↘ b ->
+     $| ⇑ (Πᵈ a ρ B) m & n |↘ ⇑ b (m $ᵈ ⇓ a n) )
+where "'$|' m '&' n '|↘' r" := (eval_app m n r)
 .
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
@@ -139,7 +139,7 @@ Combined Scheme eval_mut_ind from
 Hint Constructors eval_exp eval_natrec eval_app : mctt.
 
 (** [eval_exp_var] up to conversion.  Its own conclusion carries the value
-    [^(ρ x)], a *flexible application*, so unifying it with a goal whose value is
+    [(ρ x)], a *flexible application*, so unifying it with a goal whose value is
     some other application — [ρσ x], say, which is the shape [eval_sub_intro]
     always leaves — makes unification read [ρ] and [x] off the wrong term and
     fail.  Since substitution is now an operation, those goals are everywhere:
@@ -149,7 +149,7 @@ Hint Constructors eval_exp eval_natrec eval_app : mctt.
     the lookup by conversion is what this is for. *)
 Proposition eval_exp_var_eq : forall x ρ m,
     ρ x = m ->
-    {{ ⟦ # x ⟧ ρ ↘ m }}.
+    ⟦ #x ⟧ ρ ↘ m.
 Proof.
   intros * <-. apply eval_exp_var.
 Qed.
@@ -167,21 +167,21 @@ Definition eval_sub (σ : sub) (ρ ρσ : env) : Prop :=
   forall x, eval_exp (σ x) ρ (ρσ x).
 Arguments eval_sub : simpl never.
 
-Notation "'⟦' σ '⟧s' ρ '↘' ρσ" := (eval_sub σ ρ ρσ) (in custom judg) : mctt_scope.
+Notation "'⟦' σ '⟧s' ρ '↘' ρσ" := (eval_sub σ ρ ρσ) : mctt_scope.
 
 (** Its introduction and elimination principles.  Everything below, and
     everything downstream, goes through these rather than unfolding
     [eval_sub]. *)
 Proposition eval_sub_intro : forall σ ρ ρσ,
-    (forall x, {{ ⟦ ^(σ x) ⟧ ρ ↘ ^(ρσ x) }}) ->
-    {{ ⟦ σ ⟧s ρ ↘ ρσ }}.
+    (forall x, ⟦ (σ x) ⟧ ρ ↘ (ρσ x)) ->
+    ⟦ σ ⟧s ρ ↘ ρσ.
 Proof.
   intros * H. exact H.
 Qed.
 
 Proposition eval_sub_index : forall σ ρ ρσ,
-    {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-    forall x, {{ ⟦ ^(σ x) ⟧ ρ ↘ ^(ρσ x) }}.
+    ⟦ σ ⟧s ρ ↘ ρσ ->
+    forall x, ⟦ (σ x) ⟧ ρ ↘ (ρσ x).
 Proof.
   intros * H. exact H.
 Qed.
@@ -206,27 +206,27 @@ Qed.
     transformation of environments.
  *)
 Lemma eval_sub_of_wk : forall φ ρ,
-    {{ ⟦ ^(ι φ) ⟧s ρ ↘ ⟦ φ ⟧w ρ }}.
+    ⟦ (ι φ) ⟧s ρ ↘ ⟪φ⟫ ρ.
 Proof.
   intros. apply eval_sub_intro. intros. simpl. apply eval_exp_var.
 Qed.
 
 Lemma eval_sub_id : forall ρ,
-    {{ ⟦ Id ⟧s ρ ↘ ρ }}.
+    ⟦ Id ⟧s ρ ↘ ρ.
 Proof.
   intros. apply eval_sub_intro. intros. simpl. apply eval_exp_var.
 Qed.
 
 Lemma eval_sub_shift : forall ρ,
-    {{ ⟦ Wk ⟧s ρ ↘ ρ ↯ }}.
+    ⟦ Wk ⟧s ρ ↘ ρ↯.
 Proof.
   intros. apply eval_sub_of_wk.
 Qed.
 
 Lemma eval_sub_extend : forall σ ρ ρσ M m,
-    {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ M ⟧ ρ ↘ m }} ->
-    {{ ⟦ σ ,, M ⟧s ρ ↘ ρσ ↦ m }}.
+    ⟦ σ ⟧s ρ ↘ ρσ ->
+    ⟦ M ⟧ ρ ↘ m ->
+    ⟦ σ,,M ⟧s ρ ↘ ρσ ↦ m.
 Proof.
   intros * ? ?. apply eval_sub_intro.
   intros [| x]; simpl; [ assumption | apply eval_sub_index; assumption ].
@@ -239,9 +239,9 @@ Qed.
     [eq], so using it means going through [eval_sub_Proper].  Doing so once here
     keeps the completeness substitution cases free of setoid rewriting. *)
 Lemma eval_sub_wk_extend : forall σ M φ ρ ρσ m,
-    {{ ⟦ ^(sb_wk σ φ) ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ M⟨φ⟩ ⟧ ρ ↘ m }} ->
-    {{ ⟦ ^(sb_wk {{{ σ ,, M }}} φ) ⟧s ρ ↘ ρσ ↦ m }}.
+    ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσ ->
+    ⟦ M⟨φ⟩ ⟧ ρ ↘ m ->
+    ⟦ (sb_wk (σ,,M) φ) ⟧s ρ ↘ ρσ ↦ m.
 Proof.
   intros * ? ?.
   rewrite sb_wk_extend.
@@ -255,16 +255,16 @@ Qed.
     nothing is evaluated for them — which is why the completeness case for [q σ]
     has only two head values to relate rather than four. *)
 Lemma eval_sub_q : forall σ ρ ρσ,
-    {{ ⟦ ^(sb_wk σ ↑) ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ q σ ⟧s ρ ↘ ρσ ↦ ^(ρ 0) }}.
+    ⟦ (sb_wk σ ↑) ⟧s ρ ↘ ρσ ->
+    ⟦ q σ ⟧s ρ ↘ ρσ ↦ (ρ 0).
 Proof.
   intros * ?.
   apply eval_sub_extend; [ assumption | apply eval_exp_var ].
 Qed.
 
 Lemma eval_sub_wk_q : forall σ φ ρ ρσ,
-    {{ ⟦ ^(sb_wk (sb_wk σ ↑) φ) ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ ^(sb_wk {{{ q σ }}} φ) ⟧s ρ ↘ ρσ ↦ ^(ρ (φ 0)) }}.
+    ⟦ (sb_wk (sb_wk σ ↑) φ) ⟧s ρ ↘ ρσ ->
+    ⟦ (sb_wk (q σ) φ) ⟧s ρ ↘ ρσ ↦ (ρ (φ 0)).
 Proof.
   intros * ?.
   rewrite sb_wk_q.
@@ -275,8 +275,8 @@ Qed.
 
 (** The single substitution [Id ,, M]. *)
 Corollary eval_sub_single : forall ρ M m,
-    {{ ⟦ M ⟧ ρ ↘ m }} ->
-    {{ ⟦ Id ,, M ⟧s ρ ↘ ρ ↦ m }}.
+    ⟦ M ⟧ ρ ↘ m ->
+    ⟦ Id,,M ⟧s ρ ↘ ρ ↦ m.
 Proof.
   intros. apply eval_sub_extend; [ apply eval_sub_id | assumption ].
 Qed.
@@ -287,16 +287,16 @@ Qed.
     every [(ι φ) x] is a variable — which is exactly what fails in the three
     equations below.  [eval_sub_shift_pre] is the instance at [φ := ↑]. *)
 Lemma eval_sub_wk_pre : forall φ σ ρ ρσ,
-    {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ ^(ι φ) ⨟ σ ⟧s ρ ↘ ⟦ φ ⟧w ρσ }}.
+    ⟦ σ ⟧s ρ ↘ ρσ ->
+    ⟦ (ι φ) ⨟ σ ⟧s ρ ↘ ⟪φ⟫ ρσ.
 Proof.
   intros * H. apply eval_sub_intro.
   intros x. exact (eval_sub_index _ _ _ H (φ x)).
 Qed.
 
 Corollary eval_sub_shift_pre : forall σ ρ ρσ,
-    {{ ⟦ σ ⟧s ρ ↘ ρσ }} ->
-    {{ ⟦ Wk ⨟ σ ⟧s ρ ↘ ρσ ↯ }}.
+    ⟦ σ ⟧s ρ ↘ ρσ ->
+    ⟦ Wk ⨟ σ ⟧s ρ ↘ ρσ↯.
 Proof.
   intros. apply (eval_sub_wk_pre wk_shift). assumption.
 Qed.
@@ -304,7 +304,7 @@ Qed.
 (** No such lemma exists for [q σ], for a general [σ ⨟ τ], or for [σ⟨φ⟩], and
     none can:
 
-      ⟦σ⟨φ⟩⟧(ρ) = ⟦σ⟧(⟦φ⟧w ρ),  ⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧(ρ)),  ⟦σ ⨟ τ⟧(ρ) = ⟦σ⟧(⟦τ⟧(ρ))
+      ⟦σ⟨φ⟩⟧(ρ) = ⟦σ⟧(⟪φ⟫ ρ),  ⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧(ρ)),  ⟦σ ⨟ τ⟧(ρ) = ⟦σ⟧(⟦τ⟧(ρ))
 
     all *fail* as equations once substitution is an operation rather than a
     delayed constructor, because a closure [λ ρ M] captures both an environment

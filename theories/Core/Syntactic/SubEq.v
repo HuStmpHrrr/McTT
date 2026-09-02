@@ -30,14 +30,14 @@ Import Syntax_Notations Wk_Notations.
 (** ** The Equality Half *)
 
 Lemma sub_eq_preserves_exp_eq : forall Γ Δ A M M' σ σ',
-    {{ Δ ⊢ M ≈ M' : A }} ->
-    {{ Γ ⊢s σ ≈ σ' : Δ }} ->
-    {{ Γ ⊢ M[σ] ≈ M'[σ'] : A[σ] }}.
+    Δ ⊢ M ≈ M' : A ->
+    Γ ⊢s σ ≈ σ' : Δ ->
+    Γ ⊢ M[σ] ≈ M'[σ'] : A[σ].
 Proof.
   intros * ? H; saturate_sub_eq.
-  assert {{ Δ ⊢ M' : A }} by mauto 2.
-  assert {{ Γ ⊢ M[σ] ≈ M'[σ] : A[σ] }} by mauto 2.
-  assert {{ Γ ⊢ M'[σ] ≈ M'[σ'] : A[σ] }} by mauto 2.
+  assert (Δ ⊢ M' : A) by mauto 2.
+  assert (Γ ⊢ M[σ] ≈ M'[σ] : A[σ]) by mauto 2.
+  assert (Γ ⊢ M'[σ] ≈ M'[σ'] : A[σ]) by mauto 2.
   etransitivity; eassumption.
 Qed.
 
@@ -52,16 +52,16 @@ Hint Resolve sub_eq_preserves_exp_eq : mctt.
     reflexivity of refinement turns it into a refinement. *)
 
 Lemma sub_eq_preserves_subtyp : forall Γ Δ A A' σ σ',
-    {{ Δ ⊢ A ⊆ A' }} ->
-    {{ Γ ⊢s σ ≈ σ' : Δ }} ->
-    {{ Γ ⊢ A[σ] ⊆ A'[σ'] }}.
+    Δ ⊢ A ⊆ A' ->
+    Γ ⊢s σ ≈ σ' : Δ ->
+    Γ ⊢ A[σ] ⊆ A'[σ'].
 Proof.
   intros * ? H; saturate_sub_eq.
-  assert (exists i, {{ Δ ⊢ A' : Type@i }}) as [i ?] by mauto 2.
-  assert {{ Γ ⊢ A[σ] ⊆ A'[σ] }} by mauto 2.
-  assert {{ Γ ⊢ A'[σ'] : Type@i }} by mauto 2.
-  assert {{ Γ ⊢ A'[σ] ≈ A'[σ'] : Type@i }} by mauto 2.
-  assert {{ Γ ⊢ A'[σ] ⊆ A'[σ'] }} by mauto 2.
+  assert (exists i, Δ ⊢ A' : Type@i) as [i ?] by mauto 2.
+  assert (Γ ⊢ A[σ] ⊆ A'[σ]) by mauto 2.
+  assert (Γ ⊢ A'[σ'] : Type@i) by mauto 2.
+  assert (Γ ⊢ A'[σ] ≈ A'[σ'] : Type@i) by mauto 2.
+  assert (Γ ⊢ A'[σ] ⊆ A'[σ']) by mauto 2.
   etransitivity; eassumption.
 Qed.
 
@@ -75,30 +75,30 @@ Hint Resolve sub_eq_preserves_subtyp : mctt.
     transports the type along it. *)
 
 Corollary exp_eq_sub_eq_head : forall Γ Δ A B M M' σ i,
-    {{ Δ , A ⊢ B : Type@i }} ->
-    {{ Γ ⊢s σ : Δ }} ->
-    {{ Γ ⊢ M ≈ M' : A[σ] }} ->
-    {{ Γ ⊢ B[σ ,, M] ≈ B[σ ,, M'] : Type@i }}.
+    Δ ▹ A ⊢ B : Type@i ->
+    Γ ⊢s σ : Δ ->
+    Γ ⊢ M ≈ M' : A[σ] ->
+    Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Type@i.
 Proof.
   intros.
-  assert (exists j, {{ Δ ⊢ A : Type@j }}) as [j ?] by mauto 3.
-  assert {{ Γ ⊢ M : A[σ] }} by mauto 2.
-  assert {{ Γ ⊢ M' : A[σ] }} by mauto 2.
-  assert {{ Γ ⊢s σ ≈ σ : Δ }} by mauto 2.
-  assert {{ Γ ⊢s σ ,, M ≈ σ ,, M' : Δ , A }} by mauto 2.
+  assert (exists j, Δ ⊢ A : Type@j) as [j ?] by mauto 3.
+  assert (Γ ⊢ M : A[σ]) by mauto 2.
+  assert (Γ ⊢ M' : A[σ]) by mauto 2.
+  assert (Γ ⊢s σ ≈ σ : Δ) by mauto 2.
+  assert (Γ ⊢s σ,,M ≈ σ,,M' : Δ ▹ A) by mauto 2.
   eapply sub_eq_preserves_typ; eassumption.
 Qed.
 
 (** The instance at a single substitution, which is how the [ℕ]- and
     [Π]-eliminators state their types. *)
 Corollary exp_eq_sub_eq_single : forall Γ A B M M' i,
-    {{ Γ , A ⊢ B : Type@i }} ->
-    {{ Γ ⊢ M ≈ M' : A }} ->
-    {{ Γ ⊢ B[Id ,, M] ≈ B[Id ,, M'] : Type@i }}.
+    Γ ▹ A ⊢ B : Type@i ->
+    Γ ⊢ M ≈ M' : A ->
+    Γ ⊢ B[Id,,M] ≈ B[Id,,M'] : Type@i.
 Proof.
   intros.
-  assert {{ ⊢ Γ }} by mauto 3.
-  assert {{ Γ ⊢ M ≈ M' : A[Id] }} by (rewrite exp_sub_id; assumption).
+  assert (⊢ Γ) by mauto 3.
+  assert (Γ ⊢ M ≈ M' : A[Id]) by (rewrite exp_sub_id; assumption).
   eapply exp_eq_sub_eq_head; [ eassumption | mauto 2 | eassumption ].
 Qed.
 
