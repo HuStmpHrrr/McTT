@@ -84,7 +84,7 @@
 </div>
 
 <div class="doc">
-<a id="lab128"></a><h2 class="section">Statement (2)</h2>
+<a id="lab128"></a><h2 class="section">The Equality Half</h2>
 
 </div>
 <div class="code">
@@ -110,15 +110,15 @@
 </div>
 
 <div class="doc">
-<a id="lab129"></a><h2 class="section">Statement (3)</h2>
+<a id="lab129"></a><h2 class="section">The Subtyping Half</h2>
 
 
 <div class="paragraph"> </div>
 
     The subtyping judgment has no symmetry and no <span class="inlinecode"><span class="id" title="var">Type@i</span></span> to hang an equation
-    on, so the second step goes through <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_refl"><span class="id" title="constructor">wf_subtyp_refl</span></a></span>: statement (1) gives the
-    equation between the two instances of the right-hand side, and reflexivity of
-    refinement turns it into a refinement. 
+    on, so the second step goes through <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_refl"><span class="id" title="constructor">wf_subtyp_refl</span></a></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span>
+    gives the equation between the two instances of the right-hand side, and
+    reflexivity of refinement turns it into a refinement. 
 </div>
 <div class="code">
 
@@ -145,14 +145,14 @@
 </div>
 
 <div class="doc">
-<a id="lab130"></a><h2 class="section">Corollary 4.14</h2>
+<a id="lab130"></a><h2 class="section">Equal Arguments Give Equal Instances</h2>
 
 
 <div class="paragraph"> </div>
 
-    The form in which the elimination rules use all of the above: equal arguments
-    give equal instances of a type.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#wf_sub_eq_extend"><span class="id" title="lemma">wf_sub_eq_extend</span></a></span> builds the equivalence
-    and statement (1) transports the type along it. 
+    The form in which the elimination rules use all of the above.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#wf_sub_eq_extend"><span class="id" title="lemma">wf_sub_eq_extend</span></a></span> builds the equivalence and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span>
+    transports the type along it. 
 </div>
 <div class="code">
 
