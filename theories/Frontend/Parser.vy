@@ -6,34 +6,96 @@ From Mctt Require Import Syntax.
 
 Parameter loc : Type.
 
+(** Fold a *reversed* parameter telescope into a binder chain.  [params] below
+    accumulates left-recursively, so the innermost binder comes first and
+    [fold_left] rebuilds the declaration order. *)
+Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
+                       (ps : list (string * Cst.obj)) (body : Cst.obj) : Cst.obj :=
+  List.fold_left (fun acc p => b (fst p) (snd p) acc) ps body.
+
 %}
 
 %token <loc*string> VAR
 %token <loc*nat> INT
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
-%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" EOF (* symbols *)
+%token <loc> MODULE WHERE DEF IMPORT AS USE PRIVATE ABSTRACT EVAL (* module keywords *)
+%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
-%start <Cst.obj * Cst.obj> prog
+%start <Cst.prog> prog
 %type <Cst.obj> obj app_obj atomic_obj
 %type <string * Cst.obj> param
-%type <list (string * Cst.obj)> params
+%type <list (string * Cst.obj)> params params_opt
 %type <string -> Cst.obj -> Cst.obj -> Cst.obj> fnbinder
-%type <(string * Cst.obj) * Cst.obj> let_defn
-%type <list ((string * Cst.obj) * Cst.obj)> let_defns
+%type <(string * Cst.obj) * Cst.obj> legacy_defn
+%type <list ((string * Cst.obj) * Cst.obj)> legacy_defns
+%type <Cst.decl> let_defn
+%type <list Cst.decl> let_defns
+%type <Cst.mods> mods
+%type <list string> path names
+%type <Cst.ispec> ispec
+%type <Cst.cmd> cmd import_cmd
+%type <list Cst.cmd> cmds imports
 
-%on_error_reduce obj params app_obj atomic_obj
+%on_error_reduce obj params params_opt app_obj atomic_obj cmds imports mods path
 
 %%
 
+(* A unit is its imports and its module declaration; what to normalize is said
+   by [eval] commands inside.  Requiring the declaration is what keeps
+   definitions out of the top level. *)
 let prog :=
-  exp = obj; ":"; typ = obj; EOF; <>
+  is = imports; MODULE; p = path; WHERE; cs = cmds; END; EOF;
+    { (List.rev is, (List.rev p, List.rev cs)) }
+
+(* Reversed list of imports, possibly empty *)
+let imports :=
+  | { @nil Cst.cmd }
+  | ~ = imports; ~ = import_cmd; { import_cmd :: imports }
+
+(* Reversed list of commands, possibly empty *)
+let cmds :=
+  | { @nil Cst.cmd }
+  | ~ = cmds; ~ = cmd; { cmd :: cmds }
+
+let cmd :=
+  | MODULE; p = path; ps = params_opt; WHERE; cs = cmds; END;
+      { Cst.c_mod (List.rev p) (List.rev ps) (List.rev cs) }
+  | m = mods; DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
+      { Cst.c_def m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
+  | ~ = import_cmd; <>
+  | EVAL; ~ = obj; { Cst.c_eval obj None }
+  | EVAL; e = obj; ":"; t = obj; { Cst.c_eval e (Some t) }
+
+let import_cmd :=
+  | IMPORT; p = path; ~ = ispec; { Cst.c_import (List.rev p) ispec }
+
+let mods :=
+  | { Cst.md_pub }
+  | PRIVATE; { Cst.md_priv }
+  | ABSTRACT; { Cst.md_abs }
+  | PRIVATE; ABSTRACT; { Cst.md_priv_abs }
+
+let ispec :=
+  | { Cst.i_open }
+  | AS; x = VAR; { Cst.i_as (snd x) }
+  | USE; "("; ns = names; ")"; { Cst.i_use (List.rev ns) }
+
+(* Reversed nonempty list of member names *)
+let names :=
+  | x = VAR; { [snd x] }
+  | ~ = names; ";"; x = VAR; { snd x :: names }
+
+(* Reversed nonempty dotted path *)
+let path :=
+  | x = VAR; { [snd x] }
+  | ~ = path; "."; x = VAR; { snd x :: path }
 
 let fnbinder :=
   | PI; { Cst.pi }
   | LAMBDA; { Cst.fn }
 
 let obj :=
-  | ~ = fnbinder; ~ = params; "->"; ~ = obj; { List.fold_left (fun acc arg => fnbinder (fst arg) (snd arg) acc) params obj }
+  | ~ = fnbinder; ~ = params; "->"; ~ = obj; { fold_params fnbinder params obj }
   | ~ = app_obj; <>
 
   | REC; escr = obj; RETURN; mx = VAR; "."; em = obj;
@@ -41,8 +103,16 @@ let obj :=
     "|"; SUCC; sx = VAR; ","; sr = VAR; "=>"; ms = obj;
     END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
   | SUCC; ~ = obj; { Cst.succ obj }
-  
-  | LET; ds = let_defns; IN; body = obj; { List.fold_left (fun acc arg => Cst.app acc (snd arg)) (List.rev ds) (List.fold_left (fun acc arg => Cst.fn (fst (fst arg)) (snd (fst arg)) acc) ds body) }
+
+  (* The original let, which desugars to an application of a function.  It is
+     kept because it is the form the examples use, and because it needs no
+     terminator: every binding is parenthesised. *)
+  | LET; ds = legacy_defns; IN; body = obj; { List.fold_left (fun acc arg => Cst.app acc (snd arg)) (List.rev ds) (List.fold_left (fun acc arg => Cst.fn (fst (fst arg)) (snd (fst arg)) acc) ds body) }
+
+  (* The declaration form.  Every binding starts with DEF or MODULE, which is
+     what keeps a run of them unambiguous, and the trailing END closes the
+     body. *)
+  | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
 
 
 let app_obj :=
@@ -58,6 +128,11 @@ let atomic_obj :=
 
   | x = VAR; { Cst.var (snd x) }
 
+  (* Dot access.  Binding tighter than application is what makes [X.Y.Z.foo]
+     one name and forces module arguments to be parenthesised, as in
+     [(X.Y.Z a b).foo]. *)
+  | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
+
   | "("; ~ = obj; ")"; <>
 
 (* Reversed nonempty list of parameters *)
@@ -65,18 +140,32 @@ let params :=
   | ~ = params; ~ = param; { param :: params }
   | ~ = param; { [param] }
 
+let params_opt :=
+  | { @nil (string * Cst.obj) }
+  | ~ = params; <>
+
 (* (x : A) *)
 let param :=
   | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, obj) }
 
-(* Reversed nonempty list of definitions *)
+(* Reversed nonempty list of legacy definitions *)
+let legacy_defns :=
+  | ~ = legacy_defns; ~ = legacy_defn; { legacy_defn :: legacy_defns }
+  | ~ = legacy_defn; { [legacy_defn] }
+
+(* ((x : A) := t) *)
+let legacy_defn :=
+  | "("; ~ = param; ":="; ~ = obj; ")"; { (param, obj) }
+
+(* Reversed nonempty list of declarations *)
 let let_defns :=
   | ~ = let_defns; ~ = let_defn; { let_defn :: let_defns }
   | ~ = let_defn; { [let_defn] }
 
-(* (x : A) := t *)
 let let_defn :=
-  | "("; ~ = param; ":="; ~ = obj; ")"; { (param, obj) }
+  | DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj;
+      { Cst.d_def Cst.md_pub (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
+  | MODULE; x = VAR; ":="; ~ = obj; { Cst.d_mod (snd x) obj }
 %%
 
 Extract Constant loc => "Lexing.position * Lexing.position".

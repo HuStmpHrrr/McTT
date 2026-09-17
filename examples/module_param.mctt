@@ -1,0 +1,15 @@
+module ModuleParam where
+
+module Church (A : Type@0) where
+
+def t : Type@0 := forall (z : A) (s : forall (x : A) -> A) -> A end
+
+def two : t A := fun (z : A) (s : forall (x : A) -> A) -> s (s z) end
+
+end
+
+eval let module C := Church Nat in
+       C.two 0 (fun (x : Nat) -> succ x)
+     end : Nat
+
+end

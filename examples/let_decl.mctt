@@ -1,0 +1,9 @@
+module LetDecl where
+
+eval let def n : Nat := 2
+         def m : Nat := succ n
+     in
+       succ m
+     end : Nat
+
+end

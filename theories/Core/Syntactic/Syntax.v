@@ -4,6 +4,32 @@ From Mctt.Core Require Import Base.
 
 (** * Concrete Syntax Tree *)
 Module Cst.
+
+(** ** Modifiers
+
+    [private] hides a definition from importers, [abstract] makes its body
+    opaque.  The two are orthogonal, hence a record rather than a variant. *)
+Record mods : Set :=
+  { md_private : bool
+  ; md_abstract : bool }.
+
+Definition md_pub : mods := {| md_private := false; md_abstract := false |}.
+Definition md_priv : mods := {| md_private := true; md_abstract := false |}.
+Definition md_abs : mods := {| md_private := false; md_abstract := true |}.
+Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
+
+(** ** Objects and Declarations
+
+    [proj] is a *postfix dot*: [X.Y.Z.foo] is a chain of [proj]s over
+    [var "X"], and module arguments arrive as ordinary [app] nodes, so
+    [(X.Y.Z a b).foo] needs no syntax of its own.  Whether a given [proj] or
+    [app] is a module operation or a term operation is decided by name
+    resolution, not by the parser; see [Frontend.Resolve].
+
+    [letb] binds one declaration at a time; the parser folds a run of them into
+    nested [letb]s.  Keeping the recursion out of a [list] is what lets [obj]
+    and [decl] stay an ordinary mutual pair, so [Functional Scheme] still
+    applies to functions defined over them. *)
 Inductive obj : Set :=
 | typ : nat -> obj
 | nat : obj
@@ -13,7 +39,43 @@ Inductive obj : Set :=
 | pi : string -> obj -> obj -> obj
 | fn : string -> obj -> obj -> obj
 | app : obj -> obj -> obj
-| var : string -> obj.
+| var : string -> obj
+| proj : obj -> string -> obj
+| letb : decl -> obj -> obj
+
+with decl : Set :=
+(** [x : A := M], carrying its modifiers *)
+| d_def : mods -> string -> obj -> obj -> decl
+(** [module M := E] *)
+| d_mod : string -> obj -> decl.
+
+(** ** Commands
+
+    What an [import] brings into scope.  [i_open] makes the module reachable
+    under its full path, [i_as] additionally binds a short alias, and [i_use]
+    binds the listed members directly.  All three are name-resolution
+    operations: none of them elaborates to anything. *)
+Inductive ispec : Set :=
+| i_open : ispec
+| i_as : string -> ispec
+| i_use : list string -> ispec.
+
+(** A module declaration carries the *path* it introduces ([module X.Y.Z]
+    nests three levels at once) and its parameter telescope. *)
+Inductive cmd : Set :=
+| c_mod : list string -> list (string * obj) -> list cmd -> cmd
+| c_def : mods -> string -> obj -> obj -> cmd
+| c_import : list string -> ispec -> cmd
+(** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
+    checks [M] against [A] rather than inferring its type. *)
+| c_eval : obj -> option obj -> cmd.
+
+(** A compilation unit: its imports, and the one module declaration everything
+    else it contains lives in.  Only imports may precede that declaration, so no
+    definition is ever made outside a module.  The imports are [c_import]s; the
+    grammar admits nothing else there. *)
+Definition prog : Set := (list cmd * (list string * list cmd))%type.
+
 End Cst.
 
 (** * Abstract Syntax Tree

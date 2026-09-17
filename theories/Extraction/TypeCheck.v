@@ -434,3 +434,23 @@ Lemma type_check_closed_complete : forall A (HA : user_exp A) M (HM : user_exp M
     ⋅ ⊢ M : A ->
     exists H', type_check_closed A HA M HM = left H'.
 Proof. intros; dec_complete. Qed.
+
+(** What an unascribed [eval] needs: a type for a closed term, rather than a
+    type to check it against. *)
+Section type_infer_closed.
+  #[local]
+  Ltac impl_obl_tac :=
+    unfold not in *;
+    intros;
+    destruct_conjs;
+    try assert (⊢ ⋅) by mauto 2;
+    solve [ mauto 3 using user_exp_to_type_infer_order, alg_type_infer_sound
+          | firstorder ].
+
+  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  Equations type_infer_closed M (HM : user_exp M) : { A : nf | ⋅ ⊢ M : A } + { forall A, ~ ⋅ ⊢a M ⟹ A } :=
+  | M, HM =>
+      let*o (exist _ A _) := type_infer ⋅ _ M _ while _ in
+      pureo (exist _ A _)
+  .
+End type_infer_closed.

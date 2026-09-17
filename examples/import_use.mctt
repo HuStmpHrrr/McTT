@@ -1,0 +1,22 @@
+module ImportUse where
+
+module Impl where
+
+private def secret : Nat := 3 end
+
+def exposed : Nat := succ secret end
+
+end
+
+import Impl as I
+
+import Impl use (exposed)
+
+def sum : forall (x : Nat) (y : Nat) -> Nat :=
+  fun (x : Nat) (y : Nat) ->
+    rec x return z . Nat | zero => y | succ p, r => succ r end
+end
+
+eval sum I.exposed exposed : Nat
+
+end

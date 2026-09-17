@@ -4,11 +4,15 @@ open Parser
 open MenhirLibParser.Inter
 open Entrypoint
 
+let eval_failed : eval_result -> bool = function
+  | EvalGood _ -> false
+  | TypeCheckingFailure _ | TypeInferenceFailure _ -> true
+
 let get_exit_code result : int =
   match result with
-  | AllGood _ -> 0
+  (* A unit is only good if every one of its [eval]s is *)
+  | AllGood (_, _, rs) -> if List.exists eval_failed rs then 3 else 0
   (* 1 and 2 have special meanings in Bash-like shells *)
-  | TypeCheckingFailure _ -> 3
   | ElaborationFailure _ -> 4
   | ParserFailure _ -> 5
   | ParserTimeout _ -> 6

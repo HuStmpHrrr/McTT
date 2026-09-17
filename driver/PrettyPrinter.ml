@@ -38,6 +38,18 @@ let rec get_pi_params_of_obj : Cst.obj -> (string * Cst.obj) list * Cst.obj =
      ((px, ep) :: params, eret')
   | eret -> ([], eret)
 
+(* A run of nested [letb]s prints as one [let] with several bindings, which is
+   how it was written. *)
+let rec get_letb_decls_of_obj : Cst.obj -> Cst.decl list * Cst.obj = function
+  | Cst.Coq_letb (d, ebody) ->
+     let decls, ebody' = get_letb_decls_of_obj ebody in
+     (d :: decls, ebody')
+  | ebody -> ([], ebody)
+
+let format_mods (f : Format.formatter) (m : Cst.mods) : unit =
+  if m.Cst.md_private then Format.pp_print_string f "private ";
+  if m.Cst.md_abstract then Format.pp_print_string f "abstract "
+
 let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
@@ -105,9 +117,74 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
   | Cst.Coq_var x -> pp_print_string f x
+  (* Dot binds tighter than application, so the target prints at the precedence
+     of an application argument. *)
+  | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_obj_prec 2) e x
+  | Cst.Coq_letb _ as e ->
+     let decls, ebody = get_letb_decls_of_obj e in
+     let impl f () =
+       pp_print_string f "let";
+       List.iter (fun d -> fprintf f "@ %a" format_decl d) decls;
+       fprintf f "@ in @[<hov 2>%a@]@;<1 -2>end" format_obj ebody
+     in
+     pp_open_vbox f 2;
+     pp_print_paren_if (p >= 1) impl f ();
+     pp_close_box f ()
+
+and format_decl (f : Format.formatter) : Cst.decl -> unit =
+  let open Format in
+  function
+  | Cst.Coq_d_def (m, x, ea, eb) ->
+     fprintf f "@[<hov 2>%adef %s : %a :=@ %a@]" format_mods m x format_obj ea
+       format_obj eb
+  | Cst.Coq_d_mod (x, e) -> fprintf f "@[<hov 2>module %s :=@ %a@]" x format_obj e
 
 and format_obj_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_obj ep
 and format_obj f = format_obj_prec 0 f
+
+(************************************************************)
+(* Formatting Cst.cmd and Cst.prog *)
+(************************************************************)
+
+let format_ispec (f : Format.formatter) : Cst.ispec -> unit =
+  let open Format in
+  function
+  | Cst.Coq_i_open -> ()
+  | Cst.Coq_i_as x -> fprintf f " as %s" x
+  | Cst.Coq_i_use ns -> fprintf f " use (%s)" (String.concat "; " ns)
+
+let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
+  let open Format in
+  function
+  | Cst.Coq_c_mod (path, params, cs) ->
+     pp_open_vbox f 2;
+     fprintf f "module %s" (String.concat "." path);
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
+     pp_print_string f " where";
+     List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
+     fprintf f "@;<1 -2>end";
+     pp_close_box f ()
+  | Cst.Coq_c_def (m, x, ea, eb) ->
+     fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
+       format_obj ea format_obj eb;
+     pp_close_box f ()
+  | Cst.Coq_c_import (path, spec) ->
+     fprintf f "import %s%a" (String.concat "." path) format_ispec spec
+  | Cst.Coq_c_eval (e, ot) -> begin
+     match ot with
+     | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
+     | Some t ->
+        fprintf f "@[<hov 2>eval %a@ : %a@]" format_obj e format_obj t
+   end
+
+let format_prog (f : Format.formatter) ((is, (path, cs)) : Cst.prog) : unit =
+  let open Format in
+  List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
+  pp_open_vbox f 2;
+  fprintf f "module %s where" (String.concat "." path);
+  List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
+  fprintf f "@;<1 -2>end";
+  pp_close_box f ()
 
 (************************************************************)
 (* Formatting exp *)
@@ -174,24 +251,35 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (* Formatting main_result *)
 (************************************************************)
 
-let format_main_result (f : Format.formatter) : main_result -> unit =
+let format_eval_result (f : Format.formatter) : eval_result -> unit =
   let open Format in
   function
-  | AllGood (cst_typ, cst_exp, typ, exp, nf) ->
-     fprintf f "@[<v 2>Parsed:@ @[<hv 0>%a@ : %a@]@]" format_obj cst_exp
-       format_obj cst_typ;
-     pp_force_newline f ();
+  | EvalGood (typ, exp, nf) ->
      fprintf f "@[<v 2>Elaborated:@ @[<hv 0>%a@ : %a@]@]" format_exp exp
        format_exp typ;
      pp_force_newline f ();
      fprintf f "@[<v 2>Normalized Result:@ @[<hv 0>%a@ : %a@]@]" format_nf nf
        format_exp typ
   | TypeCheckingFailure (typ, exp) ->
-     printf "@[<v 2>Type Checking Failure:@ %a@;<1 -2>is not of@ %a@]"
+     fprintf f "@[<v 2>Type Checking Failure:@ %a@;<1 -2>is not of@ %a@]"
        format_exp exp format_exp typ
-  | ElaborationFailure cst_exp ->
+  | TypeInferenceFailure exp ->
+     fprintf f "@[<v 2>Type Inference Failure:@ %a@;<1 -2>has no inferable type@]"
+       format_exp exp
+
+let format_main_result (f : Format.formatter) : main_result -> unit =
+  let open Format in
+  function
+  | AllGood (cst, _, rs) ->
+     fprintf f "@[<v 2>Parsed:@ %a@]" format_prog cst;
+     List.iter
+       (fun r ->
+         pp_force_newline f ();
+         format_eval_result f r)
+       rs
+  | ElaborationFailure cst ->
      printf "@[<v 2>Elaboration Failure:@ %a@;<1 -2>cannot be elaborated@]"
-       format_obj cst_exp
+       format_prog cst
   | ParserFailure (s, t) ->
      printf "@[<v 2>Parser Failure:@ on %a:@ @ @[<hov 0>%a@]@]"
        Lexer.format_token t pp_print_text

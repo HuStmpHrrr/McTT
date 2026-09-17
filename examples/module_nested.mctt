@@ -1,0 +1,17 @@
+module Arith where
+
+module Ops where
+
+def pred : forall (x : Nat) -> Nat :=
+  fun (x : Nat) -> rec x return y . Nat | zero => 0 | succ p, r => p end
+end
+
+def twice : forall (f : forall (x : Nat) -> Nat) (x : Nat) -> Nat :=
+  fun (f : forall (x : Nat) -> Nat) (x : Nat) -> f (f x)
+end
+
+end
+
+eval Ops.twice Ops.pred 5
+
+end

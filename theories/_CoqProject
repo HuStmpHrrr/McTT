@@ -78,4 +78,5 @@
 ./Extraction/TypeCheck.v
 ./Frontend/Elaborator.v
 ./Frontend/Parser.v
+./Frontend/Resolve.v
 ./LibTactics.v

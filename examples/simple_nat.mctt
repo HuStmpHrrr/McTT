@@ -1,1 +1,5 @@
-succ 3 : Nat
+module SimpleNat where
+
+eval succ 3 : Nat
+
+end
