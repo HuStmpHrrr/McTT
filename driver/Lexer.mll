@@ -24,6 +24,7 @@
     | AT _ -> "@"
     | BAR _ -> "|"
     | COLON _ -> ":"
+    | COLONCOLON _ -> "::"
     | COMMA _ -> ","
     | DARROW _ -> "=>"
     | LPAREN _ -> "("
@@ -61,6 +62,7 @@
     | AT r
     | BAR r
     | COLON r
+    | COLONCOLON r
     | COMMA r
     | DARROW r
     | LPAREN r
@@ -107,6 +109,7 @@ rule read =
   | "->" { ARROW (get_range lexbuf) }
   | '@' { AT (get_range lexbuf) }
   | '|' { BAR (get_range lexbuf) }
+  | "::" { COLONCOLON (get_range lexbuf) }
   | ':' { COLON (get_range lexbuf) }
   | ',' { COMMA (get_range lexbuf) }
   | "=>" { DARROW (get_range lexbuf) }

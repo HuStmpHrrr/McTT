@@ -19,7 +19,7 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %token <loc*nat> INT
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> MODULE WHERE DEF IMPORT AS USE PRIVATE ABSTRACT EVAL (* module keywords *)
-%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
+%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
 %type <Cst.obj> obj app_obj atomic_obj
@@ -31,12 +31,13 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
-%type <list string> path names
+%type <list string> path fpath names
+%type <(list string * list string)%type> qpath
 %type <Cst.ispec> ispec
 %type <Cst.cmd> cmd import_cmd
 %type <list Cst.cmd> cmds imports
 
-%on_error_reduce obj params params_opt app_obj atomic_obj cmds imports mods path
+%on_error_reduce obj params params_opt app_obj atomic_obj cmds imports mods path fpath
 
 %%
 
@@ -44,7 +45,7 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
    by [eval] commands inside.  Requiring the declaration is what keeps
    definitions out of the top level. *)
 let prog :=
-  is = imports; MODULE; p = path; WHERE; cs = cmds; END; EOF;
+  is = imports; MODULE; p = fpath; WHERE; cs = cmds; END; EOF;
     { (List.rev is, (List.rev p, List.rev cs)) }
 
 (* Reversed list of imports, possibly empty *)
@@ -67,7 +68,7 @@ let cmd :=
   | EVAL; e = obj; ":"; t = obj; { Cst.c_eval e (Some t) }
 
 let import_cmd :=
-  | IMPORT; p = path; ~ = ispec; { Cst.c_import (List.rev p) ispec }
+  | IMPORT; ~ = qpath; ~ = ispec; { Cst.c_import (fst qpath) (snd qpath) ispec }
 
 let mods :=
   | { Cst.md_pub }
@@ -85,10 +86,22 @@ let names :=
   | x = VAR; { [snd x] }
   | ~ = names; ";"; x = VAR; { snd x :: names }
 
-(* Reversed nonempty dotted path *)
+(* Reversed nonempty dotted path: internal modules *)
 let path :=
   | x = VAR; { [snd x] }
   | ~ = path; "."; x = VAR; { snd x :: path }
+
+(* Reversed nonempty [::] path: a compilation unit *)
+let fpath :=
+  | x = VAR; { [snd x] }
+  | ~ = fpath; "::"; x = VAR; { snd x :: fpath }
+
+(* What an [import] names: an internal module, a unit, or a module of one *)
+let qpath :=
+  | ~ = path; { (@nil string, List.rev path) }
+  | ~ = fpath; "::"; x = VAR; { (List.rev (snd x :: fpath), @nil string) }
+  | ~ = fpath; "::"; x = VAR; "."; ~ = path;
+      { (List.rev (snd x :: fpath), List.rev path) }
 
 let fnbinder :=
   | PI; { Cst.pi }
@@ -128,9 +141,13 @@ let atomic_obj :=
 
   | x = VAR; { Cst.var (snd x) }
 
-  (* Dot access.  Binding tighter than application is what makes [X.Y.Z.foo]
+  (* A unit, named by its [::] path.  Only the [.] level can be selected from,
+     so the [::] segments are all consumed here. *)
+  | ~ = fpath; "::"; x = VAR; { Cst.glob (List.rev (snd x :: fpath)) }
+
+  (* Dot access.  Binding tighter than application is what makes [X::Y.Z.foo]
      one name and forces module arguments to be parenthesised, as in
-     [(X.Y.Z a b).foo]. *)
+     [(X::Y.Z a b).foo]. *)
   | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
 
   | "("; ~ = obj; ")"; <>

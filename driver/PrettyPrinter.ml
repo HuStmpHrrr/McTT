@@ -117,6 +117,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
   | Cst.Coq_var x -> pp_print_string f x
+  | Cst.Coq_glob path -> pp_print_string f (String.concat "::" path)
   (* Dot binds tighter than application, so the target prints at the precedence
      of an application argument. *)
   | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_obj_prec 2) e x
@@ -153,6 +154,13 @@ let format_ispec (f : Format.formatter) : Cst.ispec -> unit =
   | Cst.Coq_i_as x -> fprintf f " as %s" x
   | Cst.Coq_i_use ns -> fprintf f " use (%s)" (String.concat "; " ns)
 
+(* [::] joins a file path and [.] an internal one; either half may be empty. *)
+let string_of_qpath (fp : string list) (ip : string list) : string =
+  match (fp, ip) with
+  | [], _ -> String.concat "." ip
+  | _, [] -> String.concat "::" fp
+  | _, _ -> String.concat "::" fp ^ "." ^ String.concat "." ip
+
 let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
   let open Format in
   function
@@ -168,8 +176,8 @@ let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
      pp_close_box f ()
-  | Cst.Coq_c_import (path, spec) ->
-     fprintf f "import %s%a" (String.concat "." path) format_ispec spec
+  | Cst.Coq_c_import (fp, ip, spec) ->
+     fprintf f "import %s%a" (string_of_qpath fp ip) format_ispec spec
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -181,7 +189,8 @@ let format_prog (f : Format.formatter) ((is, (path, cs)) : Cst.prog) : unit =
   let open Format in
   List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
   pp_open_vbox f 2;
-  fprintf f "module %s where" (String.concat "." path);
+  (* The unit's own name is a [::] path *)
+  fprintf f "module %s where" (String.concat "::" path);
   List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
   fprintf f "@;<1 -2>end";
   pp_close_box f ()
@@ -233,6 +242,21 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
+    (* An absolute qualifier is a [glob] head; a relative one has no surface
+       form, since a bare name is what resolves outward lexically, so its first
+       member is an ordinary name at every depth. Either way the remaining
+       members are a chain of [proj]s over the head. *)
+    | Coq_a_glob p ->
+       let head, ip =
+         match p.p_qual with
+         | Coq_qu_abs fp -> (Cst.Coq_glob fp, p.p_mems)
+         | Coq_qu_rel _ ->
+            (match p.p_mems with
+             | x :: ip -> (Cst.Coq_var x, ip)
+             (* Unreachable: [path_valid] rules out an empty member chain. *)
+             | [] -> (Cst.Coq_var "_", []))
+       in
+       List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
   in
   fun exp ->
     reset_var_suffix ();

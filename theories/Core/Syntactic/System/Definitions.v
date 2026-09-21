@@ -28,25 +28,51 @@
       equality of [Algorithmic] compares.
     - [wf_subtyp_pi] checks the codomains in [Γ ▹ A'] rather than the paper's
       [Γ ▹ A].  The two are interderivable given the premise [Γ ⊢ A ≈ A' : Type@i]
-      and context conversion, and [Γ ▹ A'] is what the soundness proof wants. *)
+      and context conversion, and [Γ ▹ A'] is what the soundness proof wants.
+
+    Every judgment reads a global context [Ψ], which [a_glob] resolves into.  [Ψ]
+    is a *parameter*: no rule changes it, and the well-formedness of [Ψ] itself
+    ([⊢g Ψ], below) is therefore not an induction on [Ψ]. *)
 
 From Stdlib Require Import List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Substitution.
-Import Syntax_Notations Wk_Notations.
+From Mctt.Core.Syntactic Require Export GlobalCtx Substitution.
+Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
-Reserved Notation "⊢ Γ" (at level 70).
-Reserved Notation "Γ ⊢ M : A" (at level 70, M at level 69).
-Reserved Notation "Γ ⊢ M ≈ M' : A" (at level 70, M at level 69, M' at level 69, A at level 69).
-Reserved Notation "Γ ⊢ A ⊆ A'" (at level 70, A at level 69, A' at level 69).
-Reserved Notation "Γ ⊢w φ : Δ" (at level 70, φ constr at level 60, Δ at level 69).
-Reserved Notation "Γ ⊢s σ : Δ" (at level 70, σ at level 69, Δ at level 69).
-Reserved Notation "Γ ⊢s σ ≈ σ' : Δ" (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
+Reserved Notation "⊢ Ψ ⍮ Γ" (at level 70, Ψ at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢ M : A" (at level 70, Γ at level 69, M at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢ M ≈ M' : A" (at level 70, Γ at level 69, M at level 69, M' at level 69, A at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢ A ⊆ A'" (at level 70, Γ at level 69, A at level 69, A' at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢w φ : Δ" (at level 70, Γ at level 69, φ constr at level 60, Δ at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢s σ : Δ" (at level 70, Γ at level 69, σ at level 69, Δ at level 69).
+Reserved Notation "Ψ ⍮ Γ ⊢s σ ≈ σ' : Δ" (at level 70, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
 Reserved Notation "Γ ∋ '#' x : A" (at level 70, x constr at level 0, A at level 69).
+Reserved Notation "⊢g Ψ" (at level 70).
+Reserved Notation "Ψ ⊢e E" (at level 70, E at level 69).
+Reserved Notation "Ψ ⊢m Φ" (at level 70, Φ at level 69).
+Reserved Notation "Ψ ⊢u U" (at level 70, U at level 69).
+Reserved Notation "Ψ ⊢t T" (at level 70, T at level 69).
 
 Generalizable All Variables.
+
+(** ** Closed Expressions
+
+    A global's recorded type and body are closed — members are stored fully
+    generalized over their module's parameters — which is what lets [wf_glob]
+    use them in any [Γ], and what lets weakening and substitution pass through a
+    global without knowing that [Ψ] is well formed.  Stated as the two equations
+    it is used as, so that no new inductive and no [⊢g Ψ] hypothesis is needed. *)
+
+Definition exp_closed (M : exp) : Prop :=
+  (forall φ, M⟨φ⟩ = M) /\ (forall σ, M[σ] = M).
+
+Lemma exp_closed_wk : forall {M}, exp_closed M -> forall φ, M⟨φ⟩ = M.
+Proof. now intros ? []. Qed.
+
+Lemma exp_closed_sub : forall {M}, exp_closed M -> forall σ, M[σ] = M.
+Proof. now intros ? []. Qed.
 
 (** ** Context Lookup
 
@@ -63,53 +89,63 @@ where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
 
 (** ** The Four Mutually Defined Judgments *)
 
-Inductive wf_ctx : ctx -> Prop :=
-| wf_ctx_empty : ⊢ ⋅
+Inductive wf_ctx (Ψ : gctx) : ctx -> Prop :=
+| wf_ctx_empty : ⊢ Ψ ⍮ ⋅
 | wf_ctx_extend :
-  `( ⊢ Γ ->
-     Γ ⊢ A : Type@i ->
-     ⊢ Γ ▹ A )
-where "⊢ Γ" := (wf_ctx Γ) : type_scope
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ A : Type@i ->
+     ⊢ Ψ ⍮ Γ ▹ A )
+where "⊢ Ψ ⍮ Γ" := (wf_ctx Ψ Γ) : type_scope
 
-with wf_exp : ctx -> typ -> exp -> Prop :=
+with wf_exp (Ψ : gctx) : ctx -> typ -> exp -> Prop :=
 | wf_typ :
-  `( ⊢ Γ ->
-     Γ ⊢ Type@i : Type@(S i) )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ Type@i : Type@(S i) )
 | wf_nat :
-  `( ⊢ Γ ->
-     Γ ⊢ ℕ : Type@0 )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ ℕ : Type@0 )
 | wf_zero :
-  `( ⊢ Γ ->
-     Γ ⊢ zero : ℕ )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ zero : ℕ )
 | wf_succ :
-  `( Γ ⊢ M : ℕ ->
-     Γ ⊢ succ M : ℕ )
+  `( Ψ ⍮ Γ ⊢ M : ℕ ->
+     Ψ ⍮ Γ ⊢ succ M : ℕ )
 | wf_natrec :
-  `( Γ ▹ ℕ ⊢ A : Type@i ->
-     Γ ⊢ MZ : A[Id,,zero] ->
-     Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Γ ⊢ M : ℕ ->
-     Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M] )
+  `( Ψ ⍮ Γ ▹ ℕ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+     Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+     Ψ ⍮ Γ ⊢ M : ℕ ->
+     Ψ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M] )
 | wf_pi :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ⊢ Π A B : Type@i )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ⊢ Π A B : Type@i )
 | wf_fn :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ M : B ->
-     Γ ⊢ λ A M : Π A B )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ M : B ->
+     Ψ ⍮ Γ ⊢ λ A M : Π A B )
 | wf_app :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ⊢ M : Π A B ->
-     Γ ⊢ N : A ->
-     Γ ⊢ M $ N : B[Id,,N] )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ⊢ M : Π A B ->
+     Ψ ⍮ Γ ⊢ N : A ->
+     Ψ ⍮ Γ ⊢ M $ N : B[Id,,N] )
 | wf_vlookup :
-  `( ⊢ Γ ->
+  `( ⊢ Ψ ⍮ Γ ->
      Γ ∋ #x : A ->
-     Γ ⊢ #x : A )
+     Ψ ⍮ Γ ⊢ #x : A )
+(** A global is used at the type recorded for it, which needs neither a
+    substitution nor the module's telescope here.  The two extra arguments play
+    the same role as the one of [wf_exp_subtyp]: the first gives the
+    presupposition directly, the second is what weakening and substitution
+    rewrite with. *)
+| wf_glob :
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     exp_closed A ->
+     Ψ ∋ᵍ p ⇒ ge_def b A B ->
+     Ψ ⍮ Γ ⊢ a_glob p : A )
 | wf_exp_subtyp :
-  `( Γ ⊢ M : A ->
+  `( Ψ ⍮ Γ ⊢ M : A ->
      (** We have this extra argument for soundness.
          Note that we need to keep it asymmetric:
          only [A'] is checked. If we check A as well,
@@ -119,96 +155,109 @@ with wf_exp : ctx -> typ -> exp -> Prop :=
          [Γ ⊢ Type@1⟨↑⟩ : Type@2] to apply weakening,
          which requires [Γ ⊢ Type@2⟨↑⟩ : Type@3], and so on.
       *)
-     Γ ⊢ A' : Type@i ->
-     Γ ⊢ A ⊆ A' ->
-     Γ ⊢ M : A' )
-where "Γ ⊢ M : A" := (wf_exp Γ A M) : type_scope
+     Ψ ⍮ Γ ⊢ A' : Type@i ->
+     Ψ ⍮ Γ ⊢ A ⊆ A' ->
+     Ψ ⍮ Γ ⊢ M : A' )
+where "Ψ ⍮ Γ ⊢ M : A" := (wf_exp Ψ Γ A M) : type_scope
 
-with wf_exp_eq : ctx -> typ -> exp -> exp -> Prop :=
+with wf_exp_eq (Ψ : gctx) : ctx -> typ -> exp -> exp -> Prop :=
 (** *** Congruence rules *)
 | wf_exp_eq_typ_cong :
-  `( ⊢ Γ ->
-     Γ ⊢ Type@i ≈ Type@i : Type@(S i) )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ Type@i ≈ Type@i : Type@(S i) )
 | wf_exp_eq_nat_cong :
-  `( ⊢ Γ ->
-     Γ ⊢ ℕ ≈ ℕ : Type@0 )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@0 )
 | wf_exp_eq_zero_cong :
-  `( ⊢ Γ ->
-     Γ ⊢ zero ≈ zero : ℕ )
+  `( ⊢ Ψ ⍮ Γ ->
+     Ψ ⍮ Γ ⊢ zero ≈ zero : ℕ )
 | wf_exp_eq_succ_cong :
-  `( Γ ⊢ M ≈ M' : ℕ ->
-     Γ ⊢ succ M ≈ succ M' : ℕ )
+  `( Ψ ⍮ Γ ⊢ M ≈ M' : ℕ ->
+     Ψ ⍮ Γ ⊢ succ M ≈ succ M' : ℕ )
 | wf_exp_eq_natrec_cong :
-  `( Γ ▹ ℕ ⊢ A : Type@i ->
-     Γ ▹ ℕ ⊢ A ≈ A' : Type@i ->
-     Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
-     Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
-     Γ ⊢ M ≈ M' : ℕ ->
-     Γ ⊢ rec M return A | zero -> MZ | succ -> MS end ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M] )
+  `( Ψ ⍮ Γ ▹ ℕ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Type@i ->
+     Ψ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
+     Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
+     Ψ ⍮ Γ ⊢ M ≈ M' : ℕ ->
+     Ψ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M] )
 | wf_exp_eq_pi_cong :
-  `( Γ ⊢ A : Type@i ->
-     Γ ⊢ A ≈ A' : Type@i ->
-     Γ ▹ A ⊢ B ≈ B' : Type@i ->
-     Γ ⊢ Π A B ≈ Π A' B' : Type@i )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@i ->
+     Ψ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@i )
 | wf_exp_eq_fn_cong :
-  `( Γ ⊢ A : Type@i ->
-     Γ ⊢ A ≈ A' : Type@i ->
-     Γ ▹ A ⊢ M ≈ M' : B ->
-     Γ ⊢ λ A M ≈ λ A' M' : Π A B )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
+     Ψ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B )
 | wf_exp_eq_app_cong :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ⊢ M ≈ M' : Π A B ->
-     Γ ⊢ N ≈ N' : A ->
-     Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ⊢ M ≈ M' : Π A B ->
+     Ψ ⍮ Γ ⊢ N ≈ N' : A ->
+     Ψ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
 | wf_exp_eq_var :
-  `( ⊢ Γ ->
+  `( ⊢ Ψ ⍮ Γ ->
      Γ ∋ #x : A ->
-     Γ ⊢ #x ≈ #x : A )
+     Ψ ⍮ Γ ⊢ #x ≈ #x : A )
+| wf_exp_eq_glob :
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     exp_closed A ->
+     Ψ ∋ᵍ p ⇒ ge_def b A B ->
+     Ψ ⍮ Γ ⊢ a_glob p ≈ a_glob p : A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ▹ A ⊢ M : B ->
-     Γ ⊢ N : A ->
-     Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ M : B ->
+     Ψ ⍮ Γ ⊢ N : A ->
+     Ψ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N] )
 | wf_exp_eq_nat_beta_zero :
-  `( Γ ▹ ℕ ⊢ A : Type@i ->
-     Γ ⊢ MZ : A[Id,,zero] ->
-     Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero] )
+  `( Ψ ⍮ Γ ▹ ℕ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+     Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+     Ψ ⍮ Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero] )
 | wf_exp_eq_nat_beta_succ :
-  `( Γ ▹ ℕ ⊢ A : Type@i ->
-     Γ ⊢ MZ : A[Id,,zero] ->
-     Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-     Γ ⊢ M : ℕ ->
-     Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
+  `( Ψ ⍮ Γ ▹ ℕ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+     Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+     Ψ ⍮ Γ ⊢ M : ℕ ->
+     Ψ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
+(** [δ]: a transparent definition unfolds.  An [abstract] one ([b = false]) and
+    an axiom ([B = None]) do not. *)
+| wf_exp_eq_glob_unfold :
+  `( Ψ ⍮ Γ ⊢ M : A ->
+     exp_closed A ->
+     exp_closed M ->
+     Ψ ∋ᵍ p ⇒ ge_def true A (Some M) ->
+     Ψ ⍮ Γ ⊢ a_glob p ≈ M : A )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
-  `( Γ ⊢ A : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ⊢ M : Π A B ->
-     Γ ⊢ M ≈ λ A M⟨↑⟩ $ #0 : Π A B )
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ⊢ M : Π A B ->
+     Ψ ⍮ Γ ⊢ M ≈ λ A M⟨↑⟩ $ #0 : Π A B )
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
-  `( Γ ⊢ M ≈ M' : A ->
-     Γ ⊢ A' : Type@i ->
+  `( Ψ ⍮ Γ ⊢ M ≈ M' : A ->
+     Ψ ⍮ Γ ⊢ A' : Type@i ->
      (** This extra argument is here to be consistent with
          [wf_exp_subtyp].
       *)
-     Γ ⊢ A ⊆ A' ->
-     Γ ⊢ M ≈ M' : A' )
+     Ψ ⍮ Γ ⊢ A ⊆ A' ->
+     Ψ ⍮ Γ ⊢ M ≈ M' : A' )
 | wf_exp_eq_sym :
-  `( Γ ⊢ M ≈ M' : A ->
-     Γ ⊢ M' ≈ M : A )
+  `( Ψ ⍮ Γ ⊢ M ≈ M' : A ->
+     Ψ ⍮ Γ ⊢ M' ≈ M : A )
 | wf_exp_eq_trans :
-  `( Γ ⊢ M ≈ M' : A ->
-     Γ ⊢ M' ≈ M'' : A ->
-     Γ ⊢ M ≈ M'' : A )
-where "Γ ⊢ M ≈ M' : A" := (wf_exp_eq Γ A M M') : type_scope
+  `( Ψ ⍮ Γ ⊢ M ≈ M' : A ->
+     Ψ ⍮ Γ ⊢ M' ≈ M'' : A ->
+     Ψ ⍮ Γ ⊢ M ≈ M'' : A )
+where "Ψ ⍮ Γ ⊢ M ≈ M' : A" := (wf_exp_eq Ψ Γ A M M') : type_scope
 
 (** *** Subtyping *)
-with wf_subtyp : ctx -> typ -> typ -> Prop :=
+with wf_subtyp (Ψ : gctx) : ctx -> typ -> typ -> Prop :=
 | wf_subtyp_refl :
   (** We need this extra argument in order to prove the presupposition
       lemmas independently.
@@ -217,26 +266,26 @@ with wf_subtyp : ctx -> typ -> typ -> Prop :=
       RHS directly so that we can remove the extra arguments in
       type checking rules immediately.
    *)
-  `( Γ ⊢ M' : Type@i ->
-     Γ ⊢ M ≈ M' : Type@i ->
-     Γ ⊢ M ⊆ M' )
+  `( Ψ ⍮ Γ ⊢ M' : Type@i ->
+     Ψ ⍮ Γ ⊢ M ≈ M' : Type@i ->
+     Ψ ⍮ Γ ⊢ M ⊆ M' )
 | wf_subtyp_trans :
-  `( Γ ⊢ M ⊆ M' ->
-     Γ ⊢ M' ⊆ M'' ->
-     Γ ⊢ M ⊆ M'' )
+  `( Ψ ⍮ Γ ⊢ M ⊆ M' ->
+     Ψ ⍮ Γ ⊢ M' ⊆ M'' ->
+     Ψ ⍮ Γ ⊢ M ⊆ M'' )
 | wf_subtyp_univ :
-  `( ⊢ Γ ->
+  `( ⊢ Ψ ⍮ Γ ->
      i < j ->
-     Γ ⊢ Type@i ⊆ Type@j )
+     Ψ ⍮ Γ ⊢ Type@i ⊆ Type@j )
 | wf_subtyp_pi :
-  `( Γ ⊢ A : Type@i ->
-     Γ ⊢ A' : Type@i ->
-     Γ ⊢ A ≈ A' : Type@i ->
-     Γ ▹ A ⊢ B : Type@i ->
-     Γ ▹ A' ⊢ B' : Type@i ->
-     Γ ▹ A' ⊢ B ⊆ B' ->
-     Γ ⊢ Π A B ⊆ Π A' B' )
-where "Γ ⊢ A ⊆ A'" := (wf_subtyp Γ A A') : type_scope.
+  `( Ψ ⍮ Γ ⊢ A : Type@i ->
+     Ψ ⍮ Γ ⊢ A' : Type@i ->
+     Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+     Ψ ⍮ Γ ▹ A ⊢ B : Type@i ->
+     Ψ ⍮ Γ ▹ A' ⊢ B' : Type@i ->
+     Ψ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
+     Ψ ⍮ Γ ⊢ Π A B ⊆ Π A' B' )
+where "Ψ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Ψ Γ A A') : type_scope.
 
 (** The schemes are [Minimality], not [Induction]: nothing in this development
     is proved by a statement that mentions the derivation itself, and dropping
@@ -283,6 +332,91 @@ Combined Scheme syntactic_wf_ctx_exp_mut_ind from
 #[export]
 Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup : mctt.
 
+(** ** Well-formedness of the Global Context
+
+    A member may mention any name in scope, not only the ones declared before
+    it, and the imports are well formed as a whole; so every judgment below
+    checks against the *same*, whole [Ψ], and [⊢g Ψ] is a conjunction about
+    [Ψ]'s two halves rather than an induction on either.  Weakening along [⊑] is
+    then a lemma about the fixed parameter, not a rule.
+
+    Entries are checked in [⋅]: they are stored closed, generalized over their
+    module's parameters, so [ge_mod]'s telescope is only checked to be a
+    context.
+
+    Two judgments carry the layer: [Ψ ⊢t T] for the import trie and [⊢g Ψ] for
+    the context, the latter assuming the former of [Ψ]'s imports and then asking
+    the same of every frame of its definition stack.  [Ψ ⊢e E], [Ψ ⊢m Φ] and
+    [Ψ ⊢u U] are the machinery both of them share, since a frame of the stack and
+    a unit in the trie are the same kind of thing. *)
+
+Inductive wf_gentry (Ψ : gctx) : gentry -> Prop :=
+(** An axiom: only its type is checked. *)
+| wf_gentry_axiom :
+  `( Ψ ⍮ ⋅ ⊢ A : Type@i ->
+     Ψ ⊢e ge_def b A None )
+(** A definition: its body carries the type recorded for it.  The type is
+    checked separately for the same reason as in [wf_gentry_axiom] — nothing
+    here may appeal to the presupposition lemmas. *)
+| wf_gentry_def :
+  `( Ψ ⍮ ⋅ ⊢ A : Type@i ->
+     Ψ ⍮ ⋅ ⊢ M : A ->
+     Ψ ⊢e ge_def b A (Some M) )
+| wf_gentry_mod :
+  `( ⊢ Ψ ⍮ Δ ->
+     Ψ ⊢m Φ ->
+     Ψ ⊢e ge_mod Δ Φ )
+where "Ψ ⊢e E" := (wf_gentry Ψ E) : type_scope
+
+with wf_gmod (Ψ : gctx) : gmod -> Prop :=
+| wf_gmod_nil : Ψ ⊢m ⋄
+| wf_gmod_ext :
+  `( Ψ ⊢m Φ ->
+     Ψ ⊢e E ->
+     Ψ ⊢m Φ ⊳ x ↦ E )
+where "Ψ ⊢m Φ" := (wf_gmod Ψ Φ) : type_scope.
+
+Scheme wf_gentry_mut_ind := Minimality for wf_gentry Sort Prop
+with wf_gmod_mut_ind := Minimality for wf_gmod Sort Prop.
+Combined Scheme global_wf_mut_ind from
+  wf_gentry_mut_ind,
+  wf_gmod_mut_ind.
+
+(** A unit: its parameter telescope, and the module it declares. *)
+Record wf_gunit (Ψ : gctx) (U : gunit) : Prop := wf_gunit_intro
+{ wf_gunit_params : ⊢ Ψ ⍮ gu_params U
+; wf_gunit_mod : Ψ ⊢m gu_mod U
+}.
+Notation "Ψ ⊢u U" := (wf_gunit Ψ U) : type_scope.
+
+Inductive wf_gtree (Ψ : gctx) : gtree -> Prop :=
+| wf_gtree_nil : Ψ ⊢t ∅
+| wf_gtree_none :
+  `( Ψ ⊢t T ->
+     Ψ ⊢t T' ->
+     Ψ ⊢t T ▸ x ↦ None ⊲ T' )
+| wf_gtree_some :
+  `( Ψ ⊢t T ->
+     Ψ ⊢t T' ->
+     Ψ ⊢u U ->
+     Ψ ⊢t T ▸ x ↦ (Some U) ⊲ T' )
+where "Ψ ⊢t T" := (wf_gtree Ψ T) : type_scope.
+
+(** Canonicity belongs here rather than in [wf_gtree]/[wf_gmod]: it is what
+    makes resolution in a well-formed context deterministic
+    ([gt_lookup_det], [gc_lookup_det]), and it is a property of the whole
+    half, not of one node. *)
+Record wf_gctx (Ψ : gctx) : Prop := wf_gctx_intro
+{ wf_gctx_imports_canon : gt_canon (gc_imports Ψ)
+; wf_gctx_defs_canon : gs_canon (gc_defs Ψ)
+; wf_gctx_imports : Ψ ⊢t gc_imports Ψ
+; wf_gctx_defs : List.Forall (wf_gunit Ψ) (gc_defs Ψ)
+}.
+Notation "⊢g Ψ" := (wf_gctx Ψ) : type_scope.
+
+#[export]
+Hint Constructors wf_gentry wf_gmod wf_gtree : mctt.
+
 (** ** Weakening and Substitution Typing
 
     These are the derived judgments.
@@ -294,28 +428,28 @@ Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup : mctt.
     be proved, which is what [wf_wk_id]–[wf_wk_compose] and
     [wf_sub_id]–[wf_sub_q] do. *)
 
-Record wf_wk (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_intro
-{ wf_wk_dom : ⊢ Γ
-; wf_wk_cod : ⊢ Δ
+Record wf_wk (Ψ : gctx) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_intro
+{ wf_wk_dom : ⊢ Ψ ⍮ Γ
+; wf_wk_cod : ⊢ Ψ ⍮ Δ
 ; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A⟨φ⟩
 }.
-Notation "Γ ⊢w φ : Δ" := (wf_wk Γ Δ φ) : type_scope.
+Notation "Ψ ⍮ Γ ⊢w φ : Δ" := (wf_wk Ψ Γ Δ φ) : type_scope.
 
-Record wf_sub (Γ Δ : ctx) (σ : sub) : Prop := wf_sub_intro
-{ wf_sub_dom : ⊢ Γ
-; wf_sub_cod : ⊢ Δ
-; wf_sub_apply : forall x A, Δ ∋ #x : A -> Γ ⊢ (σ x) : A[σ]
+Record wf_sub (Ψ : gctx) (Γ Δ : ctx) (σ : sub) : Prop := wf_sub_intro
+{ wf_sub_dom : ⊢ Ψ ⍮ Γ
+; wf_sub_cod : ⊢ Ψ ⍮ Δ
+; wf_sub_apply : forall x A, Δ ∋ #x : A -> Ψ ⍮ Γ ⊢ (σ x) : A[σ]
 }.
-Notation "Γ ⊢s σ : Δ" := (wf_sub Γ Δ σ) : type_scope.
+Notation "Ψ ⍮ Γ ⊢s σ : Δ" := (wf_sub Ψ Γ Δ σ) : type_scope.
 
 (** The type at which the images are equated is [A[σ]]; it could equally be
     [A[σ']], since [sub_eq_preserves_exp] shows the two are equal types. *)
-Record wf_sub_eq (Γ Δ : ctx) (σ σ' : sub) : Prop := wf_sub_eq_intro
-{ wf_sub_eq_left : Γ ⊢s σ : Δ
-; wf_sub_eq_right : Γ ⊢s σ' : Δ
-; wf_sub_eq_apply : forall x A, Δ ∋ #x : A -> Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
+Record wf_sub_eq (Ψ : gctx) (Γ Δ : ctx) (σ σ' : sub) : Prop := wf_sub_eq_intro
+{ wf_sub_eq_left : Ψ ⍮ Γ ⊢s σ : Δ
+; wf_sub_eq_right : Ψ ⍮ Γ ⊢s σ' : Δ
+; wf_sub_eq_apply : forall x A, Δ ∋ #x : A -> Ψ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
 }.
-Notation "Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Γ Δ σ σ') : type_scope.
+Notation "Ψ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Ψ Γ Δ σ σ') : type_scope.
 
 (** The projections are deliberately *not* registered in [mctt]: each of them
     has a conclusion ([⊢ Γ], [Γ ⊢s σ : Δ]) that the corresponding introduction
@@ -328,9 +462,9 @@ Notation "Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Γ Δ σ σ') : type_scope.
     ([exp_wk_Proper], [exp_sub_Proper]). *)
 
 #[export]
-Instance wf_wk_Proper Γ Δ : Proper (wk_eq ==> iff) (wf_wk Γ Δ).
+Instance wf_wk_Proper Ψ Γ Δ : Proper (wk_eq ==> iff) (wf_wk Ψ Γ Δ).
 Proof.
-  assert (forall φ ψ, wk_eq φ ψ -> Γ ⊢w φ : Δ -> Γ ⊢w ψ : Δ) as Himp.
+  assert (forall φ ψ, wk_eq φ ψ -> Ψ ⍮ Γ ⊢w φ : Δ -> Ψ ⍮ Γ ⊢w ψ : Δ) as Himp.
   {
     intros φ ψ Heq [? ? Hlk].
     econstructor; try eassumption.
@@ -343,9 +477,9 @@ Proof.
 Qed.
 
 #[export]
-Instance wf_sub_Proper Γ Δ : Proper (sb_eq ==> iff) (wf_sub Γ Δ).
+Instance wf_sub_Proper Ψ Γ Δ : Proper (sb_eq ==> iff) (wf_sub Ψ Γ Δ).
 Proof.
-  assert (forall σ τ, sb_eq σ τ -> Γ ⊢s σ : Δ -> Γ ⊢s τ : Δ) as Himp.
+  assert (forall σ τ, sb_eq σ τ -> Ψ ⍮ Γ ⊢s σ : Δ -> Ψ ⍮ Γ ⊢s τ : Δ) as Himp.
   {
     intros σ τ Heq [? ? Hap].
     econstructor; try eassumption.
@@ -359,7 +493,7 @@ Qed.
 
 (** ** Immediate & Independent Presuppositions *)
 
-Lemma presup_subtyp_right : forall {Γ A B}, Γ ⊢ A ⊆ B -> exists i, Γ ⊢ B : Type@i.
+Lemma presup_subtyp_right : forall {Ψ Γ A B}, Ψ ⍮ Γ ⊢ A ⊆ B -> exists i, Ψ ⍮ Γ ⊢ B : Type@i.
 Proof.
   induction 1; mautosolve.
 Qed.
@@ -369,13 +503,13 @@ Hint Resolve presup_subtyp_right : mctt.
 
 (** ** Subtyping Rules without Extra Arguments *)
 
-Lemma wf_exp_subtyp' : forall Γ A A' M,
-    Γ ⊢ M : A ->
-    Γ ⊢ A ⊆ A' ->
-    Γ ⊢ M : A'.
+Lemma wf_exp_subtyp' : forall Ψ Γ A A' M,
+    Ψ ⍮ Γ ⊢ M : A ->
+    Ψ ⍮ Γ ⊢ A ⊆ A' ->
+    Ψ ⍮ Γ ⊢ M : A'.
 Proof.
   intros.
-  assert (exists i, Γ ⊢ A' : Type@i) as [] by mauto.
+  assert (exists i, Ψ ⍮ Γ ⊢ A' : Type@i) as [] by mauto.
   econstructor; mauto.
 Qed.
 
@@ -384,13 +518,13 @@ Hint Resolve wf_exp_subtyp' : mctt.
 #[export]
 Remove Hints wf_exp_subtyp : mctt.
 
-Lemma wf_exp_eq_subtyp' : forall Γ A A' M M',
-    Γ ⊢ M ≈ M' : A ->
-    Γ ⊢ A ⊆ A' ->
-    Γ ⊢ M ≈ M' : A'.
+Lemma wf_exp_eq_subtyp' : forall Ψ Γ A A' M M',
+    Ψ ⍮ Γ ⊢ M ≈ M' : A ->
+    Ψ ⍮ Γ ⊢ A ⊆ A' ->
+    Ψ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   intros.
-  assert (exists i, Γ ⊢ A' : Type@i) as [] by mauto.
+  assert (exists i, Ψ ⍮ Γ ⊢ A' : Type@i) as [] by mauto.
   econstructor; mauto.
 Qed.
 
@@ -408,7 +542,7 @@ Remove Hints wf_exp_eq_subtyp : mctt.
     [sub_eq_preserves_exp] to move between the types [A[σ]] and [A[σ']]. *)
 
 #[export]
-Instance wf_exp_eq_PER Γ A : PER (wf_exp_eq Γ A).
+Instance wf_exp_eq_PER Ψ Γ A : PER (wf_exp_eq Ψ Γ A).
 Proof.
   split.
   - eauto using wf_exp_eq_sym.
@@ -416,19 +550,19 @@ Proof.
 Qed.
 
 #[export]
-Instance wf_subtyp_Transitive Γ : Transitive (wf_subtyp Γ).
+Instance wf_subtyp_Transitive Ψ Γ : Transitive (wf_subtyp Ψ Γ).
 Proof.
   hnf; mauto.
 Qed.
 
-Add Parametric Morphism Γ T : (wf_exp_eq Γ T)
-    with signature wf_exp_eq Γ T ==> eq ==> iff as wf_exp_eq_morphism_iff1.
+Add Parametric Morphism Ψ Γ T : (wf_exp_eq Ψ Γ T)
+    with signature wf_exp_eq Ψ Γ T ==> eq ==> iff as wf_exp_eq_morphism_iff1.
 Proof.
   split; mauto.
 Qed.
 
-Add Parametric Morphism Γ T : (wf_exp_eq Γ T)
-    with signature eq ==> wf_exp_eq Γ T ==> iff as wf_exp_eq_morphism_iff2.
+Add Parametric Morphism Ψ Γ T : (wf_exp_eq Ψ Γ T)
+    with signature eq ==> wf_exp_eq Ψ Γ T ==> iff as wf_exp_eq_morphism_iff2.
 Proof.
   split; mauto.
 Qed.

@@ -65,6 +65,9 @@ Section type_check.
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
   | ti_vlookup : forall {x}, type_infer_order #x
+  (** A global is in order, and fails: the algorithmic judgments do not yet read
+      a global context, so nothing infers a type for [a_glob]. *)
+  | ti_glob : forall {pth}, type_infer_order (a_glob pth)
   .
 
   #[local]
@@ -202,8 +205,10 @@ Section type_check.
         let (A', _) := nbe_ty_impl G A _ in
         pureo (exist _ A' _)
     (** The catch-all of the explicit-substitution development covered [M[σ]],
-        the one expression that had no inference rule.  Every constructor of
-        [exp] is now inferrable, so the match is exhaustive. *)
+        the one expression that had no inference rule.  [a_glob] has taken its
+        place, and for the same reason: no algorithmic rule mentions it. *)
+    | a_glob _ =>
+        inright _
     }
   .
 
@@ -344,6 +349,11 @@ Section type_check.
     assert (G ⊢ A ≈ A' : Type@i) by (eapply soundness_ty'; mauto 4 using alg_type_check_sound).
     assert (user_exp A') by trivial using user_exp_nf.
     assert (exists j, G ⊢a A' ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 4); firstorder mauto 3.
+  Qed.
+
+  Next Obligation. (* forall A, ~ G ⊢a a_glob pth ⟹ A *)
+    clear_defs.
+    progressive_inversion.
   Qed.
 
   Extraction Inline type_check_functional type_infer_functional.

@@ -92,6 +92,15 @@ Qed.
 #[export]
 Hint Resolve eval_sub_order_sound : mctt.
 
+(** [eval_exp_order] has no rule for a global, so the [a_glob] branch of
+    [eval_exp_impl] below is unreachable. *)
+Lemma eval_exp_order_glob : forall pth p,
+    eval_exp_order (a_glob pth) p ->
+    False.
+Proof.
+  intros * H; inversion H.
+Qed.
+
 #[local]
 Ltac impl_obl_tac1 :=
   match goal with
@@ -126,6 +135,7 @@ Equations eval_exp_impl m p (H : eval_exp_order m p) : { d | eval_exp m p d } by
     let (n , Hn) := eval_exp_impl N p _ in
     let (a, Ha) := eval_app_impl m n _ in
     exist _ a _
+| a_glob pth, p, H => False_rect _ (eval_exp_order_glob pth p H)
 
 with eval_natrec_impl A MZ MS m p (H : eval_natrec_order A MZ MS m p) : { d | eval_natrec A MZ MS m p d } by struct H :=
 | A, MZ, MS, zeroᵈ  , p, H =>

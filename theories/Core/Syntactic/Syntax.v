@@ -20,9 +20,15 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
 
 (** ** Objects and Declarations
 
-    [proj] is a *postfix dot*: [X.Y.Z.foo] is a chain of [proj]s over
-    [var "X"], and module arguments arrive as ordinary [app] nodes, so
-    [(X.Y.Z a b).foo] needs no syntax of its own.  Whether a given [proj] or
+    The two levels of naming are spelled differently.  [::] separates the
+    segments of a *file* path — the name of a compilation unit, which is what
+    [glob] holds — and [.] selects a member of whatever precedes it, be that an
+    internal module, a unit, or a local module binding.
+
+    [proj] is that *postfix dot*: [X::Y::Z.W.foo] is a chain of [proj]s over
+    [glob ["X"; "Y"; "Z"]], and [A.foo] for an internal module [A] is one over
+    [var "A"].  Module arguments arrive as ordinary [app] nodes, so
+    [(X::Y.Z a b).foo] needs no syntax of its own.  Whether a given [proj] or
     [app] is a module operation or a term operation is decided by name
     resolution, not by the parser; see [Frontend.Resolve].
 
@@ -40,6 +46,8 @@ Inductive obj : Set :=
 | fn : string -> obj -> obj -> obj
 | app : obj -> obj -> obj
 | var : string -> obj
+(** A [::] path, hence at least two segments after a [var] *)
+| glob : list string -> obj
 | proj : obj -> string -> obj
 | letb : decl -> obj -> obj
 
@@ -60,20 +68,25 @@ Inductive ispec : Set :=
 | i_as : string -> ispec
 | i_use : list string -> ispec.
 
-(** A module declaration carries the *path* it introduces ([module X.Y.Z]
-    nests three levels at once) and its parameter telescope. *)
+(** A module declaration carries the *internal* path it introduces ([module A.B]
+    nests two levels at once) and its parameter telescope; a unit's own name is
+    declared by [prog] below, not here. *)
 Inductive cmd : Set :=
 | c_mod : list string -> list (string * obj) -> list cmd -> cmd
 | c_def : mods -> string -> obj -> obj -> cmd
-| c_import : list string -> ispec -> cmd
+(** [c_import fp ip] imports the module at internal path [ip] of the unit at
+    file path [fp].  An empty [fp] is this unit, so [import A.B] is
+    [c_import nil ["A"; "B"]] and [import X::Y] is [c_import ["X"; "Y"] nil]. *)
+| c_import : list string -> list string -> ispec -> cmd
 (** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
     checks [M] against [A] rather than inferring its type. *)
 | c_eval : obj -> option obj -> cmd.
 
 (** A compilation unit: its imports, and the one module declaration everything
-    else it contains lives in.  Only imports may precede that declaration, so no
-    definition is ever made outside a module.  The imports are [c_import]s; the
-    grammar admits nothing else there. *)
+    else it contains lives in.  That declaration names the unit, so its path is a
+    [::] one.  Only imports may precede it, so no definition is ever made outside
+    a module.  The imports are [c_import]s; the grammar admits nothing else
+    there. *)
 Definition prog : Set := (list cmd * (list string * list cmd))%type.
 
 End Cst.
@@ -87,6 +100,46 @@ End Cst.
     algebraic laws are theorems (in [Core.Syntactic.Substitution]) rather than
     definitional equalities of the object theory.
  *)
+
+(** ** Qualified Names
+
+    A reference to a global is [X::Y::Z.a.b.c]: a qualifier selecting a module,
+    then a nonempty chain of member selections inside it.  The two halves are
+    spelled differently in the surface language and are different kinds of thing
+    here — the qualifier indexes the ambient structure, the members index one
+    module — so they are separate fields rather than one path. *)
+Inductive qual : Set :=
+(** [X::Y::Z]: a unit, named absolutely.  Units do not nest, so this is a path
+    into the import trie. *)
+| qu_abs : list string -> qual
+(** A de Bruijn index into the enclosing modules, [0] being the innermost: the
+    module being elaborated is not yet an entry of anything, so its members
+    cannot be named absolutely. *)
+| qu_rel : nat -> qual.
+
+Record path : Set :=
+  { p_qual : qual
+  ; p_mems : list string }.
+
+(** Abbreviations, not definitions: a rule keyed on [p_abs]/[p_rel] then has a
+    record literal in its conclusion, so inverting it yields equations that
+    [discriminate] and [injection] see through. *)
+Notation p_abs fp ip := {| p_qual := qu_abs fp; p_mems := ip |}.
+Notation p_rel n ip := {| p_qual := qu_rel n; p_mems := ip |}.
+
+(** An absolute qualifier is nonempty, so it never denotes "this unit" — that is
+    [qu_rel]'s job, and a name with two readings would resolve two ways.  The
+    members are nonempty, so a path never denotes a module: a module is not an
+    [exp] and has no type. *)
+Definition qual_valid (q : qual) : Prop :=
+  match q with
+  | qu_abs fp => fp <> nil
+  | qu_rel _ => True
+  end.
+
+Definition path_valid (p : path) : Prop :=
+  qual_valid (p_qual p) /\ p_mems p <> nil.
+
 Inductive exp : Set :=
 (** Universe *)
 | a_typ : nat -> exp
@@ -100,7 +153,14 @@ Inductive exp : Set :=
 | a_fn : exp -> exp -> exp
 | a_app : exp -> exp -> exp
 (** Variable *)
-| a_var : nat -> exp.
+| a_var : nat -> exp
+(** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])].
+
+    There is no projection constructor: a projection is not an operation on
+    expressions but part of a name, resolved by the elaborator, so
+    [(X::Y.Z x y).bar] elaborates to
+    [a_glob (p_abs ["X"] ["Y"; "Z"; "bar"]) $ x $ y]. *)
+| a_glob : path -> exp.
 
 Abbreviation ctx := (list exp).
 Abbreviation typ := exp.
@@ -239,6 +299,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
+  | a_glob p => a_glob p
   end.
 
 (** * Substitutions
@@ -301,6 +362,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => σ x
+  | a_glob p => a_glob p
   end.
 
 (** Composition of substitutions, again *diagrammatic*: [sb_compose σ τ]

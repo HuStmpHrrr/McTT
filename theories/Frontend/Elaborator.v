@@ -76,6 +76,10 @@ Fixpoint elab_res (s : scope) (d : nat) (o : Cst.obj) (args : list exp) : option
       | Some e => Some (r_ent e args)
       | None => None
       end
+  (** A [::] path names another compilation unit, and a scope holds one unit's
+      names only, so nothing it selects can resolve here; see the single-unit
+      deviation in [AGENT/modules.md]. *)
+  | Cst.glob _ => None
   (** Only a module has members, and the arguments it was given come first. *)
   | Cst.proj o1 x =>
       match elab_res s d o1 nil with
@@ -228,10 +232,13 @@ Definition elab_eval (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : option
 
 (** [i_open] binds nothing: within one unit an imported module is already
     reachable under its full path.  All three forms do update the import depth,
-    and both aliasing forms hide the private members. *)
-Definition elab_import (st : ustate) (p : list string) (spec : Cst.ispec) : option ustate :=
-  match sc_lookup_path p (u_view st) with
-  | Some (e_mod n ms) =>
+    and both aliasing forms hide the private members.
+
+    A nonempty file path names another unit, which is not in scope here, so only
+    an internal import resolves. *)
+Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : option ustate :=
+  match fp, sc_lookup_path ip (u_view st) with
+  | nil, Some (e_mod n ms) =>
       let n' := Nat.max (u_idepth st) (S n) in
       match spec with
       | Cst.i_open => Some (u_refit st (u_frame st) n')
@@ -242,7 +249,7 @@ Definition elab_import (st : ustate) (p : list string) (spec : Cst.ispec) : opti
           | None => None
           end
       end
-  | _ => None
+  | _, _ => None
   end.
 
 (** The loop over the members of a module is an inner [fix] rather than a call to
@@ -268,7 +275,7 @@ Fixpoint elab_cmd (ps : list (string * Cst.obj)) (st : ustate) (c : Cst.cmd) : o
       end
   | Cst.c_def m x oA oM => elab_def ps st m x oA oM
   | Cst.c_eval oM oA => elab_eval st oM oA
-  | Cst.c_import p spec => elab_import st p spec
+  | Cst.c_import fp ip spec => elab_import st fp ip spec
   end.
 
 Fixpoint elab_cmds (ps : list (string * Cst.obj)) (st : ustate) (cs : list Cst.cmd)
@@ -317,8 +324,8 @@ Lemma elab_cmd_eval : forall ps st oM oA,
     elab_cmd ps st (Cst.c_eval oM oA) = elab_eval st oM oA.
 Proof. reflexivity. Qed.
 
-Lemma elab_cmd_import : forall ps st p spec,
-    elab_cmd ps st (Cst.c_import p spec) = elab_import st p spec.
+Lemma elab_cmd_import : forall ps st fp ip spec,
+    elab_cmd ps st (Cst.c_import fp ip spec) = elab_import st fp ip spec.
 Proof. reflexivity. Qed.
 
 Lemma elab_cmds_cons : forall ps st c cs,
@@ -382,7 +389,9 @@ Inductive user_exp : exp -> Prop :=
      user_exp N ->
      user_exp (a_app M N) )
 | user_exp_vlookup :
-  `( user_exp (a_var x) ).
+  `( user_exp (a_var x) )
+| user_exp_glob :
+  `( user_exp (a_glob p) ).
 
 #[export]
 Hint Constructors user_exp : mctt.
@@ -786,6 +795,8 @@ Proof.
   (* [var]: whatever the name resolves to, still under-applied *)
   - destruct (sc_lookup s s0) as [e |] eqn:Hl; [| discriminate].
     inversion_clear H1. simpl. split; mauto 3 using sc_lookup_wf.
+  (* [glob]: a [::] path resolves nothing, so there is nothing to be closed *)
+  - discriminate.
   (* [proj]: the module's arguments come before the member's *)
   - destruct (elab_res s0 d o nil) as [[| [v | n ms] margs] |] eqn:He; try discriminate.
     destruct (sc_lookup s ms) as [e |] eqn:Hl; [| discriminate].
@@ -1016,14 +1027,15 @@ Proof.
     unfold eval_wf; simpl. split; [ exact I | apply Hnest; assumption ].
 Qed.
 
-Lemma u_wf_import : forall st p spec st',
+Lemma u_wf_import : forall st fp ip spec st',
     u_wf st ->
-    elab_import st p spec = Some st' ->
+    elab_import st fp ip spec = Some st' ->
     u_wf st' /\ u_depth st <= u_depth st'.
 Proof.
   unfold elab_import. intros * Hst Hi.
   pose proof (u_wf_view _ Hst) as Hv.
-  destruct (sc_lookup_path p (u_view st)) as [[| n ms] |] eqn:Hl; try discriminate.
+  destruct fp as [| ? ?]; [| discriminate].
+  destruct (sc_lookup_path ip (u_view st)) as [[| n ms] |] eqn:Hl; try discriminate.
   assert (ent_wf (u_depth st) (e_mod n ms)) as Hm by (eapply sc_lookup_path_wf; eassumption).
   inversion_clear Hm.
   assert (Hf : sc_wf (u_depth st) (u_frame st)) by (destruct Hst as [? [? ?]]; assumption).
@@ -1078,7 +1090,7 @@ Proof.
     [ lia |].
   assert (Hrest : cmds_size cs <= n) by lia.
   rewrite elab_cmds_cons in Hcs.
-  destruct c as [p params body | m x oA oM | ip spec | oM oA].
+  destruct c as [p params body | m x oA oM | fp ip spec | oM oA].
   (* the body of a module is smaller, and its members become reachable under [p] *)
   - rewrite cmd_size_mod in Hn. rewrite elab_cmd_mod in Hcs.
     destruct (elab_cmds (List.app ps params) (u_enter st) body) as [st1 |] eqn:Hb;
@@ -1095,8 +1107,8 @@ Proof.
     pose proof (IHn ps cs st1 st' Hrest Hst1 Hcs) as [Hst2 Hle2].
     split; [ assumption | lia ].
   - rewrite elab_cmd_import in Hcs.
-    destruct (elab_import st ip spec) as [st1 |] eqn:Hi; [| discriminate].
-    pose proof (u_wf_import _ _ _ _ Hst Hi) as [Hst1 Hle1].
+    destruct (elab_import st fp ip spec) as [st1 |] eqn:Hi; [| discriminate].
+    pose proof (u_wf_import _ _ _ _ _ Hst Hi) as [Hst1 Hle1].
     pose proof (IHn ps cs st1 st' Hrest Hst1 Hcs) as [Hst2 Hle2].
     split; [ assumption | lia ].
   - rewrite elab_cmd_eval in Hcs.
