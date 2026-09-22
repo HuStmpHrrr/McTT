@@ -113,8 +113,8 @@ Proof.
               : A[Wk ⨟ Wk,,succ #1][Id,,M,,rec M return A | zero -> MZ | succ -> MS end]) as H' by mauto 2.
     rewrite exp_sub_natrec_step in H'; assumption.
 
-  (** [δ], left.  The recorded type is a type because the body is typed at it. *)
-  - assert (exists i, Ψ ⍮ Γ ⊢ A : Type@i) as [] by mauto 2 using presup_exp_typ.
+  (** [δ], left.  The generalized type is a type because the body is typed at it. *)
+  - assert (exists i, Ψ ⍮ Γ ⊢ ctx_pi Δ A : Type@i) as [] by mauto 2 using presup_exp_typ.
     mauto 3.
 Qed.
 
@@ -185,8 +185,8 @@ Ltac gen_presup1 H :=
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)
       let Hσ := fresh "Hσ" in
       let Hσ' := fresh "Hσ'" in
-      pose proof (wf_sub_eq_left _ _ _ _ _ H) as Hσ;
-      pose proof (wf_sub_eq_right _ _ _ _ _ H) as Hσ'
+      pose proof (wf_sub_eq_left _ _ _ _ _ _ H) as Hσ;
+      pose proof (wf_sub_eq_right _ _ _ _ _ _ H) as Hσ'
   end.
 
 Ltac gen_presup H := first [ gen_presup1 H | gen_core_presup H ].

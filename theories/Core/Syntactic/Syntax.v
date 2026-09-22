@@ -154,16 +154,46 @@ Inductive exp : Set :=
 | a_app : exp -> exp -> exp
 (** Variable *)
 | a_var : nat -> exp
-(** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])].
+(** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])];
+    a reference into the unit being elaborated instead names an enclosing module
+    by index, [a_glob (p_rel 0 ["W"; "bar"])].
 
     There is no projection constructor: a projection is not an operation on
     expressions but part of a name, resolved by the elaborator, so
     [(X::Y.Z x y).bar] elaborates to
-    [a_glob (p_abs ["X"] ["Y"; "Z"; "bar"]) $ x $ y]. *)
+    [a_glob (p_abs ["X"; "Y"] ["Z"; "bar"]) $ x $ y]. *)
 | a_glob : path -> exp.
 
 Abbreviation ctx := (list exp).
 Abbreviation typ := exp.
+
+(** ** Telescopes
+
+    A member of a parameterized module is stored open in the telescope of
+    parameters it lives under, and generalized when it is resolved; these two
+    folds are what generalize it.  They are the [exp]-level counterparts of the
+    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
+    appear in a judgment.
+
+    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound *last*
+    and must become the *innermost* binder: the recursion wraps the head first
+    and works outward.  Folding the other way reverses the telescope, and the
+    result is still a well-formed [exp], so nothing catches it early.
+
+    No shifting arises.  If [B] is well formed in [Δ'] and [A] in [Δ' ▹ B], then
+    [Π B A] is well formed in [Δ'] — exactly the invariant [a_pi] wants — so the
+    indices already point at the right parameters. *)
+Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
+  match Δ with
+  | nil => A
+  | cons B Δ' => ctx_pi Δ' (a_pi B A)
+  end.
+
+Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
+  match Δ with
+  | nil => M
+  | cons B Δ' => ctx_fn Δ' (a_fn B M)
+  end.
 
 Fixpoint nat_to_exp n : exp :=
   match n with

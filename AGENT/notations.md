@@ -17,7 +17,7 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 
 | level | forms |
 | --- | --- |
-| 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `∅`, `↑`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
+| 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
 | 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M⟨φ⟩`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n` |
 | 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
@@ -25,7 +25,7 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 | 30 | `q σ`, `ι φ` |
 | 40, left | `φ ⊙ ψ` |
 | 45, right | `σ ⨟ τ` |
-| 50, left | `σ ,, M`, `Γ ▹ A`, `Φ ⊳ x ↦ E`, `T ▸ x ↦ u ⊲ T'` |
+| 50, left | `σ ,, M`, `Γ ▹ A`, `Φ ⊳ x ↦ E` |
 | 70 | every judgment, with its arguments at 69 |
 
 The syntactic judgments carry a global context, spelled with `⍮`:
@@ -34,13 +34,19 @@ The syntactic judgments carry a global context, spelled with `⍮`:
 `⊢ Ψ ⍮ Δ ⊆ Γ` for context refinement.  `⍮` is a terminal of each of those
 notations, not an operator, so it has no level of its own.  The global context's
 own well-formedness uses a letter suffix in the same style as `⊢w`/`⊢s`:
-`⊢g Ψ` (a `gctx`), `Ψ ⊢e E` (an entry), `Ψ ⊢m Φ` (a module), `Ψ ⊢u U` (a unit),
-`Ψ ⊢t T` (the import trie).  `Γ ∋ #x : A` takes no `Ψ`.
+`⊢g Ψ` (a `gctx`), plus three that also carry the
+ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢e E` (an
+entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit).  `wf_gdeps Ψ Θ` and
+`wf_gstack Ψ Ξ` have no notation — both are `Forall`s, only ever mentioned
+through `⊢g Ψ`.  `Γ ∋ #x : A` takes no `Ψ`.
 
-Resolution has one notation per level, distinguished by a superscript because the
-three have the same shape: `Φ ∋ ip ⇒ E` in a module, `T ∋ᵘ fp ⇒ U` in the import
-trie, and `Ψ ∋ᵍ p ⇒ E` for a whole `path`.  A bare `∋` would collide with the
-other two, which is why only the innermost one is unadorned.
+Resolution has two notations, distinguished by a superscript because they have
+the same shape: `Φ ∋ ip ⇒ Δ ⍮ E` in a module, and `Ψ ∋ᵍ p ⇒ Δ ⍮ E` for a whole
+`path`.  A bare `∋` would collide with the other, which is why only the innermost
+one is unadorned.  Resolution across the dependency levels (`gds_lookup`) is a
+*function*, so it needs no notation.
+The `Δ` is the telescope crossed on the way in, accumulated innermost-first, so
+that a use site can generalize what it found with `ctx_pi`/`ctx_fn`.
 
 `M[σ]` and `M⟨φ⟩` are declared first so that level 1 is created *left*
 associative; `ρ↯` likewise in `Domain_Notations`. Level 40 is already left
@@ -75,9 +81,8 @@ would read `M` as `M : A`.
   `⟪φ⟫ ρ` (the `⟦ … ⟧` bracket belongs to evaluation); context lookup is
   `Γ ∋ #x : A` (`#` belongs to `a_var`); and `d_var` is `#ᵈ n` (`!` is a
   terminal of Corelib's `exists ! x, p`).
-- **A key slot at level 0 needs its argument parenthesised.** `T ▸ x ↦ u ⊲ T'`
-  declares both `x` and `u` at 0, so `∅ ▸ x ↦ Some U ⊲ ∅` raises the
-  `level-tolerance` warning; write `(Some U)`.
+- **A slot declared at level 0 needs its argument parenthesised**, or the
+  `level-tolerance` warning fires: in `Φ ⊳ x ↦ E`, `x` is at 0.
 - **`gm_ext` is `⊳`, not `▹`.** `Φ ▹ x ↦ E` at level 50 is an incompatible
   prefix of `Γ ▹ A`, and camlp5 drops one of them.
 
