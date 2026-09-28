@@ -35,28 +35,11 @@ Qed.
 #[export]
 Hint Resolve ctx_lookup_lt : mctt.
 
-Lemma ctx_decomp : forall {Θ Ξ Γ A},
-    ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
-Proof.
-  inversion 1; now eauto.
-Qed.
-
-#[export]
-Hint Resolve ctx_decomp : mctt.
-
-Corollary ctx_decomp_left : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
-Proof.
-  intros * ?%ctx_decomp; easy.
-Qed.
-
-Corollary ctx_decomp_right : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
-Proof.
-  intros * ?%ctx_decomp; easy.
-Qed.
-
-#[export]
-Hint Resolve ctx_decomp_left ctx_decomp_right : mctt.
+(** [wf_ctx_extend] carries no context premise, so [⊢ Γ] is not an inversion of
+    the context judgment any more — it is a presupposition of typing.  These
+    therefore come first, each by an induction that reads it off whichever premise
+    is stated at [Γ] itself; [ctx_decomp] is then a consequence rather than the
+    other way round. *)
 
 Lemma presup_exp_ctx : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof.
@@ -81,6 +64,29 @@ Qed.
 
 #[export]
 Hint Resolve presup_subtyp_ctx : mctt.
+
+Lemma ctx_decomp : forall {Θ Ξ Γ A},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+Proof.
+  inversion 1; eauto using presup_exp_ctx.
+Qed.
+
+#[export]
+Hint Resolve ctx_decomp : mctt.
+
+Corollary ctx_decomp_left : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  intros * ?%ctx_decomp; easy.
+Qed.
+
+Corollary ctx_decomp_right : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+Proof.
+  intros * ?%ctx_decomp; easy.
+Qed.
+
+#[export]
+Hint Resolve ctx_decomp_left ctx_decomp_right : mctt.
 
 (** [wf_wk], [wf_sub] and [wf_sub_eq] carry the well-formedness of both
     contexts.  Rather than register the projections in [mctt] — which would let
@@ -1084,8 +1090,11 @@ Lemma ctx_lookup_wf : forall Θ Ξ Γ x A,
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
 Proof.
   intros * HΓ.
+  (* The step case needs [⊢ Γ] for its induction hypothesis, and the inversion
+     no longer supplies it — it is a presupposition of the head's typing. *)
   induction 1; inversion_clear HΓ;
-    [ | assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i) as [] by eauto ];
+    [ | assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i) as []
+          by eauto using presup_exp_ctx ];
     eexists; mauto 4.
 Qed.
 
@@ -1570,16 +1579,11 @@ Hint Resolve wf_conv wf_exp_eq_conv : mctt.
 
 (** ** The Global Context
 
-    Two facts, one for each direction the global components are used in.
-    Resolution lands in a well-formed entry, which is what turns [⊢g Θ ⍮ Ξ] into
-    the premises of the [a_glob] rules; and growth along [⊑] preserves every
-    judgment, so separate compilation re-derives nothing.
-
-    Resolution hands back the entry at the components it was *checked* against,
-    not at [Θ ⍮ Ξ]: a filed unit saw no stack, and frame [n] saw only the frames
-    outside it.  For the levels that gap closes by [⊑] ([gsub_deps_prefix]); for
-    the stack it cannot, since pushing a frame renumbers every [qu_rel] index, so
-    the statement keeps [gs_at]. *)
+    What survives here is the presupposition of the two outer judgments and the
+    canonicity that resolution's determinism is stated with.  "Resolution lands in
+    a well-formed entry" does *not*: with an entry checked against a stack rather
+    than a telescope, and [gc_lookup] handing back a flat telescope, the two do
+    not line up yet — see the note at the end of the file. *)
 
 (** The presuppositions of the two outer judgments.  Both are immediate from the
     base case and need nothing from [Presup]. *)
@@ -1602,176 +1606,6 @@ Qed.
 #[export]
 Hint Resolve wf_gdep_deps wf_gstack_deps wf_gctx_deps : mctt.
 
-(** ** Growth Preserves the Judgments
-
-    Stated with the target components *inside*, because the mutual principle
-    quantifies the source ones.  [wf_gdep]/[wf_gdeps]/[wf_gstack] are absent:
-    they are relative to [Θ] rather than reading it, so [⊑] says nothing about
-    them. *)
-
-Lemma gsub_preserves_wf : forall Θ' Ξ',
-    (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> ⊢ Θ' ⍮ Ξ' ⍮ Γ) /\
-    (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ' ⍮ Ξ' ⍮ Γ ⊢ M : A) /\
-    (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ' ⍮ Ξ' ⍮ Γ ⊢ M ≈ M' : A) /\
-    (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ' ⍮ Ξ' ⍮ Γ ⊢ A ⊆ A').
-Proof.
-  intros Θ' Ξ'; apply syntactic_wf_mut_ind; intros; unfold gsub in *; mauto 3.
-Qed.
-
-Corollary gsub_preserves_ctx : forall Θ Ξ Θ' Ξ' Γ,
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ' ⍮ Ξ' ⍮ Γ.
-Proof.
-  intros *; pose proof (gsub_preserves_wf Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-Corollary gsub_preserves_exp : forall Θ Ξ Θ' Ξ' Γ A M,
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ' ⍮ Ξ' ⍮ Γ ⊢ M : A.
-Proof.
-  intros *; pose proof (gsub_preserves_wf Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-Corollary gsub_preserves_exp_eq : forall Θ Ξ Θ' Ξ' Γ A M M',
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> Θ' ⍮ Ξ' ⍮ Γ ⊢ M ≈ M' : A.
-Proof.
-  intros *; pose proof (gsub_preserves_wf Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-Corollary gsub_preserves_subtyp : forall Θ Ξ Θ' Ξ' Γ A A',
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> Θ' ⍮ Ξ' ⍮ Γ ⊢ A ⊆ A'.
-Proof.
-  intros *; pose proof (gsub_preserves_wf Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-#[export]
-Hint Resolve gsub_preserves_ctx gsub_preserves_exp
-  gsub_preserves_exp_eq gsub_preserves_subtyp : mctt.
-
-Lemma gsub_preserves_global : forall Θ' Ξ',
-    (forall Θ Ξ Δ E, Θ ⍮ Ξ ⍮ Δ ⊢e E ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ' ⍮ Ξ' ⍮ Δ ⊢e E) /\
-    (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ ->
-        Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ' ⍮ Ξ' ⍮ Δ ⊢m Φ).
-Proof.
-  intros Θ' Ξ'; apply global_wf_mut_ind; intros;
-    mauto 4 using gsub_preserves_ctx, gsub_preserves_exp.
-Qed.
-
-Corollary gsub_preserves_gentry : forall Θ Ξ Θ' Ξ' Δ E,
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Δ ⊢e E -> Θ' ⍮ Ξ' ⍮ Δ ⊢e E.
-Proof.
-  intros *; pose proof (gsub_preserves_global Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-Corollary gsub_preserves_gmod : forall Θ Ξ Θ' Ξ' Δ Φ,
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> Θ' ⍮ Ξ' ⍮ Δ ⊢m Φ.
-Proof.
-  intros *; pose proof (gsub_preserves_global Θ' Ξ'); destruct_all; eauto.
-Qed.
-
-Corollary gsub_preserves_gunit : forall Θ Ξ Θ' Ξ' Δ U,
-    Θ ⍮ Ξ ⊑ Θ' ⍮ Ξ' -> Θ ⍮ Ξ ⍮ Δ ⊢u U -> Θ' ⍮ Ξ' ⍮ Δ ⊢u U.
-Proof.
-  intros * ? []; constructor; mauto 2 using gsub_preserves_gmod.
-Qed.
-
-#[export]
-Hint Resolve gsub_preserves_gentry gsub_preserves_gmod
-  gsub_preserves_gunit : mctt.
-
-(** ** Resolution Lands in a Well-formed Entry *)
-
-Lemma gm_lookup_wf : forall Φ ip Δ' E,
-    Φ ∋ ip ⇒ Δ' ⍮ E ->
-    forall Θ Ξ Δ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> Θ ⍮ Ξ ⍮ Δ' ++ Δ ⊢e E.
-Proof.
-  induction 1; intros Θ Ξ Δ0 HΦ; inversion HΦ; subst; [ assumption | | eauto ].
-  (* Descending into a module adds its parameters to the ambient telescope, and
-     the two associations of the three pieces have to be identified. *)
-  match goal with
-  | H : _ ⍮ _ ⍮ _ ⊢e ge_mod _ _ |- _ => inversion H; subst
-  end.
-  rewrite <- List.app_assoc; eauto.
-Qed.
-
-(** A unit filed in [Θ] is well formed against a *prefix* of [Θ] — the levels
-    below the one it sits at — which is where the level discipline shows up as a
-    statement. *)
-Lemma wf_gdep_in : forall Θ d fp U,
-    wf_gdep Θ d ->
-    List.In (fp, U) d ->
-    Θ ⍮ nil ⍮ ⋅ ⊢u U.
-Proof.
-  induction 1; intros Hin; [ contradiction |].
-  destruct Hin as [Heq |]; [ injection Heq as <- <- |]; eauto.
-Qed.
-
-Lemma wf_gdeps_lookup : forall Θ fp U,
-    wf_gdeps Θ ->
-    gds_lookup Θ fp = Some U ->
-    exists Θ0 Θ1, Θ = Θ0 ++ Θ1 /\ Θ0 ⍮ nil ⍮ ⋅ ⊢u U.
-Proof.
-  unfold gds_lookup; induction 1 as [| Θ d Hds IH Hd ]; intros Heq; simpl in Heq.
-  - discriminate.
-  - rewrite List.concat_app in Heq; simpl in Heq.
-    rewrite List.app_nil_r in Heq.
-    apply gd_lookup_app_inv in Heq as [Heq | Heq].
-    + destruct (IH Heq) as [Θ0 [Θ1 [-> ?]]].
-      exists Θ0, (Θ1 ++ d :: nil); rewrite List.app_assoc; eauto.
-    + exists Θ, (d :: nil); split; [ reflexivity |].
-      eauto using wf_gdep_in, gd_lookup_in.
-Qed.
-
-(** Hence usable with the whole of [Θ], by [gsub_deps_prefix]. *)
-Corollary gds_lookup_wf : forall Θ Ξ fp U,
-    wf_gdeps Θ ->
-    gds_lookup Θ fp = Some U ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢u U.
-Proof.
-  intros * HΘ Heq.
-  destruct (wf_gdeps_lookup _ _ _ HΘ Heq) as [Θ0 [Θ1 [-> ?]]].
-  eauto using gsub_preserves_gunit, gsub_deps_prefix.
-Qed.
-
-(** Frame [n] is well formed against the frames outside it, which is the stack
-    [gs_at] names. *)
-Lemma wf_gstack_nth : forall Θ Ξ n U,
-    wf_gstack Θ Ξ ->
-    List.nth_error Ξ n = Some U ->
-    Θ ⍮ List.skipn (S n) Ξ ⍮ ⋅ ⊢u U.
-Proof.
-  intros * HΞ; induction HΞ in n |- *; intros Hn; [ destruct n; discriminate |].
-  destruct n; simpl in *; [ injection Hn as -> |]; eauto.
-Qed.
-
-(** Both qualifiers land in a [gunit] and then read the member chain the same
-    way; the telescope handed back is the one the entry is well formed in. *)
-Corollary gc_lookup_wf : forall Θ Ξ p Δ E,
-    ⊢g Θ ⍮ Ξ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E ->
-    Θ ⍮ gs_at Ξ p ⍮ Δ ⊢e E.
-Proof.
-  intros * Hg Hlk; inversion Hlk; subst; unfold gs_at; simpl;
-    match goal with
-    | H : List.nth_error _ ?n = Some ?U |- _ =>
-        assert (Θ ⍮ List.skipn (S n) Ξ ⍮ ⋅ ⊢u U)
-          by eauto using wf_gstack_nth, wf_gctx_stack
-    | H : gds_lookup _ _ = Some ?U |- _ =>
-        assert (Θ ⍮ nil ⍮ ⋅ ⊢u U) by eauto using gds_lookup_wf, wf_gctx_deps
-    end;
-    match goal with
-    | H : _ ⍮ _ ⍮ ⋅ ⊢u _ |- _ =>
-        apply wf_gunit_mod in H; rewrite List.app_nil_r in H
-    end;
-    eapply gm_lookup_wf; eassumption.
-Qed.
-
-#[export]
-Hint Resolve gc_lookup_wf : mctt.
-
 (** ** Canonicity Follows from Well-formedness
 
     Name uniqueness is a premise of [wf_gmod_ext] and of [wf_gdep_cons], so the
@@ -1779,7 +1613,7 @@ Hint Resolve gc_lookup_wf : mctt.
     than separate obligations. *)
 
 Lemma wf_global_canon :
-    (forall Θ Ξ Δ E, Θ ⍮ Ξ ⍮ Δ ⊢e E -> ge_canon E) /\
+    (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ge_canon E) /\
     (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> gm_canon Φ).
 Proof.
   apply global_wf_mut_ind; intros; simpl in *; repeat split; trivial.
@@ -1799,8 +1633,7 @@ Qed.
 
 Lemma wf_gdeps_canon : forall Θ, wf_gdeps Θ -> gds_mods_canon Θ.
 Proof.
-  unfold gds_mods_canon; induction 1; [ constructor |].
-  apply List.Forall_app; split; eauto using wf_gdep_canon.
+  unfold gds_mods_canon; induction 1; constructor; eauto using wf_gdep_canon.
 Qed.
 
 Lemma wf_gstack_canon : forall Θ Ξ, wf_gstack Θ Ξ -> gs_canon Ξ.

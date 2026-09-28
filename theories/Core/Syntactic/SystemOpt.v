@@ -26,7 +26,7 @@
     own.  They are now definitional equalities, proved once in
     [Core.Syntactic.Substitution] and used by [rewrite] or by [simpl_sub]; there
     is nothing left to optimize.  [wf_ctx_eq_extend'] goes the same way, since
-    context equality is [Ψ ⍮ Δ ⊢s Id : Γ] in both directions. *)
+    context equality is [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] in both directions. *)
 
 From Stdlib Require Import Lia Setoid.
 From Mctt Require Import LibTactics.
@@ -36,27 +36,27 @@ Import Syntax_Notations Wk_Notations.
 
 (** ** Rewriting the Type of a Judgment *)
 
-Add Parametric Morphism i Ψ Γ : (wf_exp Ψ Γ)
-    with signature wf_exp_eq Ψ Γ Type@i ==> eq ==> iff as wf_exp_morphism_iff3.
+Add Parametric Morphism i Θ Ξ Γ : (wf_exp Θ Ξ Γ)
+    with signature wf_exp_eq Θ Ξ Γ Type@i ==> eq ==> iff as wf_exp_morphism_iff3.
 Proof.
   split; intros; gen_presups; mautosolve.
 Qed.
 
-Add Parametric Morphism i Ψ Γ : (wf_exp_eq Ψ Γ)
-    with signature wf_exp_eq Ψ Γ Type@i ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff3.
+Add Parametric Morphism i Θ Ξ Γ : (wf_exp_eq Θ Ξ Γ)
+    with signature wf_exp_eq Θ Ξ Γ Type@i ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff3.
 Proof.
   split; intros; gen_presups; mautosolve.
 Qed.
 
-Add Parametric Morphism Ψ Γ i : (wf_subtyp Ψ Γ)
-    with signature (wf_exp_eq Ψ Γ Type@i) ==> eq ==> iff as wf_subtyp_morphism_iff1.
+Add Parametric Morphism Θ Ξ Γ i : (wf_subtyp Θ Ξ Γ)
+    with signature (wf_exp_eq Θ Ξ Γ Type@i) ==> eq ==> iff as wf_subtyp_morphism_iff1.
 Proof.
   split; intros; gen_presups;
     etransitivity; mauto 4.
 Qed.
 
-Add Parametric Morphism Ψ Γ j : (wf_subtyp Ψ Γ)
-    with signature eq ==> (wf_exp_eq Ψ Γ Type@j) ==> iff as wf_subtyp_morphism_iff2.
+Add Parametric Morphism Θ Ξ Γ j : (wf_subtyp Θ Ξ Γ)
+    with signature eq ==> (wf_exp_eq Θ Ξ Γ Type@j) ==> iff as wf_subtyp_morphism_iff2.
 Proof.
   split; intros; gen_presups;
     etransitivity; mauto 3.
@@ -70,9 +70,9 @@ Ltac impl_opt_constructor :=
   gen_presups;
   mautosolve 4.
 
-Corollary wf_subtyp_refl' : forall Ψ Γ M M' i,
-    Ψ ⍮ Γ ⊢ M ≈ M' : Type@i ->
-    Ψ ⍮ Γ ⊢ M ⊆ M'.
+Corollary wf_subtyp_refl' : forall Θ Ξ Γ M M' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ⊆ M'.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -82,10 +82,10 @@ Hint Resolve wf_subtyp_refl' : mctt.
 #[export]
 Remove Hints wf_subtyp_refl : mctt.
 
-Corollary wf_conv' : forall Ψ Γ M A A' i,
-    Ψ ⍮ Γ ⊢ M : A ->
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ⊢ M : A'.
+Corollary wf_conv' : forall Θ Ξ Γ M A A' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -95,10 +95,10 @@ Hint Resolve wf_conv' : mctt.
 #[export]
 Remove Hints wf_conv : mctt.
 
-Corollary wf_exp_eq_conv' : forall Ψ Γ M M' A A' i,
-    Ψ ⍮ Γ ⊢ M ≈ M' : A ->
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ⊢ M ≈ M' : A'.
+Corollary wf_exp_eq_conv' : forall Θ Ξ Γ M M' A A' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -109,9 +109,9 @@ Hint Resolve wf_exp_eq_conv' : mctt.
 Remove Hints wf_exp_eq_conv : mctt.
 
 (** [ℕ] is a type at every level, not only at [0]. *)
-Corollary wf_nat' : forall Ψ Γ i,
-    ⊢ Ψ ⍮ Γ ->
-    Ψ ⍮ Γ ⊢ ℕ : Type@i.
+Corollary wf_nat' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@i.
 Proof.
   intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -121,9 +121,9 @@ Hint Resolve wf_nat' : mctt.
 #[export]
 Remove Hints wf_nat : mctt.
 
-Corollary wf_exp_eq_nat_cong' : forall Ψ Γ i,
-    ⊢ Ψ ⍮ Γ ->
-    Ψ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@i.
+Corollary wf_exp_eq_nat_cong' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@i.
 Proof.
   intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -135,11 +135,11 @@ Remove Hints wf_exp_eq_nat_cong : mctt.
 
 (** The motive of the [ℕ]-eliminator is a type because the step case is checked
     in a context that ends with it. *)
-Corollary wf_natrec' : forall Ψ Γ A MZ MS M,
-    Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Ψ ⍮ Γ ⊢ M : ℕ ->
-    Ψ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M].
+Corollary wf_natrec' : forall Θ Ξ Γ A MZ MS M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M].
 Proof.
   impl_opt_constructor.
 Qed.
@@ -149,9 +149,9 @@ Hint Resolve wf_natrec' : mctt.
 #[export]
 Remove Hints wf_natrec : mctt.
 
-Corollary wf_fn' : forall Ψ Γ A B M,
-    Ψ ⍮ Γ ▹ A ⊢ M : B ->
-    Ψ ⍮ Γ ⊢ λ A M : Π A B.
+Corollary wf_fn' : forall Θ Ξ Γ A B M,
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M : Π A B.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -164,14 +164,14 @@ Remove Hints wf_fn : mctt.
 (** Whenever a [Π]-type is the type of a term, [wf_pi_inversion'] recovers its
     two components at the level the [Π]-type itself is a type at — which is the
     level the elimination rules want them at. *)
-Corollary wf_app' : forall Ψ Γ A B M N,
-    Ψ ⍮ Γ ⊢ M : Π A B ->
-    Ψ ⍮ Γ ⊢ N : A ->
-    Ψ ⍮ Γ ⊢ M $ N : B[Id,,N].
+Corollary wf_app' : forall Θ Ξ Γ A B M N,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N].
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Ψ ⍮ Γ ⊢ A : Type@i /\ Ψ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -180,12 +180,12 @@ Hint Resolve wf_app' : mctt.
 #[export]
 Remove Hints wf_app : mctt.
 
-Corollary wf_exp_eq_natrec_cong' : forall Ψ Γ A A' i MZ MZ' MS MS' M M',
-    Ψ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
-    Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
-    Ψ ⍮ Γ ⊢ M ≈ M' : ℕ ->
-    Ψ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end
+Corollary wf_exp_eq_natrec_cong' : forall Θ Ξ Γ A A' i MZ MZ' MS MS' M M',
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end
          ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M].
 Proof.
   impl_opt_constructor.
@@ -196,10 +196,10 @@ Hint Resolve wf_exp_eq_natrec_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_natrec_cong : mctt.
 
-Corollary wf_exp_eq_nat_beta_zero' : forall Ψ Γ A MZ MS,
-    Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Ψ ⍮ Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero].
+Corollary wf_exp_eq_nat_beta_zero' : forall Θ Ξ Γ A MZ MS,
+    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id,,zero].
 Proof.
   impl_opt_constructor.
 Qed.
@@ -209,11 +209,11 @@ Hint Resolve wf_exp_eq_nat_beta_zero' : mctt.
 #[export]
 Remove Hints wf_exp_eq_nat_beta_zero : mctt.
 
-Corollary wf_exp_eq_nat_beta_succ' : forall Ψ Γ A MZ MS M,
-    Ψ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
-    Ψ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
-    Ψ ⍮ Γ ⊢ M : ℕ ->
-    Ψ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end
+Corollary wf_exp_eq_nat_beta_succ' : forall Θ Ξ Γ A MZ MS M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end
          ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M].
 Proof.
   impl_opt_constructor.
@@ -224,10 +224,10 @@ Hint Resolve wf_exp_eq_nat_beta_succ' : mctt.
 #[export]
 Remove Hints wf_exp_eq_nat_beta_succ : mctt.
 
-Corollary wf_exp_eq_pi_cong' : forall Ψ Γ A A' B B' i,
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@i ->
-    Ψ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@i.
+Corollary wf_exp_eq_pi_cong' : forall Θ Ξ Γ A A' B B' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@i.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -240,24 +240,24 @@ Remove Hints wf_exp_eq_pi_cong : mctt.
 (** The domain and the codomain rarely arrive at the same level; this is the
     congruence that takes them as they come, and the counterpart of
     [wf_pi_max]. *)
-Corollary wf_exp_eq_pi_cong_max : forall Ψ Γ A A' B B' i j,
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@j ->
-    Ψ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@(max i j).
+Corollary wf_exp_eq_pi_cong_max : forall Θ Ξ Γ A A' B B' i j,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@(max i j).
 Proof.
   intros.
-  assert (Ψ ⍮ Γ ⊢ A ≈ A' : Type@(max i j)) by eauto using lift_exp_eq_max_left.
-  assert (Ψ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@(max i j)) by eauto using lift_exp_eq_max_right.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(max i j)) by eauto using lift_exp_eq_max_left.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@(max i j)) by eauto using lift_exp_eq_max_right.
   mautosolve 3.
 Qed.
 
 #[export]
 Hint Resolve wf_exp_eq_pi_cong_max : mctt.
 
-Corollary wf_exp_eq_fn_cong' : forall Ψ Γ A A' B M M' i,
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
-    Ψ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B.
+Corollary wf_exp_eq_fn_cong' : forall Θ Ξ Γ A A' B M M' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -267,14 +267,14 @@ Hint Resolve wf_exp_eq_fn_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_fn_cong : mctt.
 
-Corollary wf_exp_eq_app_cong' : forall Ψ Γ A B M M' N N',
-    Ψ ⍮ Γ ⊢ M ≈ M' : Π A B ->
-    Ψ ⍮ Γ ⊢ N ≈ N' : A ->
-    Ψ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N].
+Corollary wf_exp_eq_app_cong' : forall Θ Ξ Γ A B M M' N N',
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Π A B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N].
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Ψ ⍮ Γ ⊢ A : Type@i /\ Ψ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -285,14 +285,14 @@ Remove Hints wf_exp_eq_app_cong : mctt.
 
 (** Here the [Π]-type is not the type of anything, so its two components arrive
     at unrelated levels and [lift_exp_pi_common] is what raises them. *)
-Corollary wf_exp_eq_pi_beta' : forall Ψ Γ A B M N,
-    Ψ ⍮ Γ ▹ A ⊢ M : B ->
-    Ψ ⍮ Γ ⊢ N : A ->
-    Ψ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N].
+Corollary wf_exp_eq_pi_beta' : forall Θ Ξ Γ A B M N,
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ (λ A M) $ N ≈ M[Id,,N] : B[Id,,N].
 Proof.
   intros.
   gen_presups.
-  assert (exists k, Ψ ⍮ Γ ⊢ A : Type@k /\ Ψ ⍮ Γ ▹ A ⊢ B : Type@k) as [? []]
+  assert (exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@k /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@k) as [? []]
       by (eapply lift_exp_pi_common; mauto 2).
   mautosolve 3.
 Qed.
@@ -302,13 +302,13 @@ Hint Resolve wf_exp_eq_pi_beta' : mctt.
 #[export]
 Remove Hints wf_exp_eq_pi_beta : mctt.
 
-Corollary wf_exp_eq_fn_eta' : forall Ψ Γ A B M,
-    Ψ ⍮ Γ ⊢ M : Π A B ->
-    Ψ ⍮ Γ ⊢ M ≈ λ A M⟨↑⟩ $ #0 : Π A B.
+Corollary wf_exp_eq_fn_eta' : forall Θ Ξ Γ A B M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M⟨↑⟩ $ #0 : Π A B.
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Ψ ⍮ Γ ⊢ A : Type@i /\ Ψ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -319,9 +319,9 @@ Remove Hints wf_exp_eq_fn_eta : mctt.
 
 (** A term equation presupposes that both sides are well-typed, so the
     refinement between two contexts extended by equal types needs nothing else. *)
-Corollary wf_sub_id_extend_eq' : forall Ψ Γ A A' i,
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A.
+Corollary wf_sub_id_extend_eq' : forall Θ Ξ Γ A A' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A.
 Proof.
   intros * H; gen_presups; mauto 3.
 Qed.
@@ -336,17 +336,17 @@ Remove Hints wf_sub_id_extend_eq : mctt.
     a common level, is presupposition and cumulativity.  The codomain [B] is
     checked in [Γ ▹ A'] by the premise and in [Γ ▹ A] by the rule, and the two
     are related by context conversion along the domain equation. *)
-Lemma wf_subtyp_pi' : forall Ψ Γ A A' B B' i,
-    Ψ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Ψ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
-    Ψ ⍮ Γ ⊢ Π A B ⊆ Π A' B'.
+Lemma wf_subtyp_pi' : forall Θ Ξ Γ A A' B B' i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ Π A' B'.
 Proof.
   intros * ? Hsub.
-  assert (exists j, Ψ ⍮ Γ ▹ A' ⊢ B : Type@j /\ Ψ ⍮ Γ ▹ A' ⊢ B' : Type@j) as [j []]
+  assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Type@j /\ Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Type@j) as [j []]
       by (apply presup_subtyp; assumption).
   gen_presups.
-  assert (Ψ ⍮ Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
-  assert (Ψ ⍮ Γ ▹ A ⊢ B : Type@j) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j) by mauto 2.
   eapply wf_subtyp_pi with (i := max i j);
     mauto 3 using lift_exp_max_left, lift_exp_max_right, lift_exp_eq_max_left.
 Qed.

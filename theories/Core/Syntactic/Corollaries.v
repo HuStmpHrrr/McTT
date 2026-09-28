@@ -35,10 +35,10 @@ Proof.
     constructor; apply IHΔ; reflexivity.
 Qed.
 
-Lemma app_ctx_vlookup : forall Ψ Δ T Γ n,
-    ⊢ Ψ ⍮ (Δ ++ T :: Γ) ->
+Lemma app_ctx_vlookup : forall Θ Ξ Δ T Γ n,
+    ⊢ Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ->
     length Δ = n ->
-    Ψ ⍮ (Δ ++ T :: Γ) ⊢ #n : T⟨wk_shiftn (S n)⟩.
+    Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ⊢ #n : T⟨wk_shiftn (S n)⟩.
 Proof.
   intros; econstructor; auto using app_ctx_lookup.
 Qed.
