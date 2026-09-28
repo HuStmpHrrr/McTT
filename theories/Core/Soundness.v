@@ -31,7 +31,7 @@ Proof.
       by (eapply realize_glu_elem_top; mauto 3).
   match_by_head per_top ltac:(fun H => destruct (H (length Γ)) as [W []]).
   assert (Γ ⊢k wk_id : Γ) by mauto 3.
-  assert (Γ ⊢ M[Id]⟨wk_id⟩ ≈ W : A[Id]⟨wk_id⟩) as Heq by (eapply Hrb; eassumption).
+  assert (Γ ⊢ M[Id][wk_id]w ≈ W : A[Id][wk_id]w) as Heq by (eapply Hrb; eassumption).
   rewrite !exp_wk_id, !exp_sub_id in Heq.
   exists W; split; [econstructor |]; eassumption.
 Qed.

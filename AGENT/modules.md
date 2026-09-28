@@ -251,7 +251,7 @@ unchanged.
 
     * The `a_glob` rules carry an `exp_closed` premise on the recorded type (and
       on the body, for the δ-rule) instead of a `⊢g Ψ` premise. Closedness is
-      exactly what weakening and substitution need — `A⟨φ⟩ = A`, `A[σ] = A` —
+      exactly what weakening and substitution need — `A[φ]w = A`, `A[σ] = A` —
       and is discharged by the `push_closed` tactic in `System/Lemmas.v`. A
       `⊢g Ψ` premise would have had to be threaded through every statement in
       the layer.

@@ -18,7 +18,7 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 | level | forms |
 | --- | --- |
 | 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
-| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M⟨φ⟩`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n` |
+| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]w`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n` |
 | 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
 | 20, left | `ρ ↦ m` |
@@ -48,8 +48,10 @@ one is unadorned.  Resolution across the dependency levels (`gds_lookup`) is a
 The `Δ` is the telescope crossed on the way in, accumulated innermost-first, so
 that a use site can generalize what it found with `ctx_pi`/`ctx_fn`.
 
-`M[σ]` and `M⟨φ⟩` are declared first so that level 1 is created *left*
-associative; `ρ↯` likewise in `Domain_Notations`. Level 40 is already left
+`M[σ]` and `M[φ]w` share the prefix `M [ _` at the same levels, so Rocq factors
+them and only the closing token (`]` vs `]w`) decides; `M[p]p`, reserved for
+path opening, must follow the same pattern (`p at level 60`).  They are declared
+first so that level 1 is created *left* associative; `ρ↯` likewise in `Domain_Notations`. Level 40 is already left
 associative in `constr`, which is why `⨟` sits at 45.
 
 Judgment arguments are at **69** because a slot between two terminals otherwise

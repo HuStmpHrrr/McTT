@@ -23,10 +23,10 @@ Import Syntax_Notations Wk_Notations.
 Open Scope list_scope.
 
 (** The type of the [n]-th binding of [Δ ++ T :: Γ], when [Δ] has length [n], is
-    [T] shifted past [Δ] and past [T] itself — that is, [T⟨⇑^(S n)⟩]. *)
+    [T] shifted past [Δ] and past [T] itself — that is, [T[⇑^(S n)]w]. *)
 Lemma app_ctx_lookup : forall Δ T Γ n,
     length Δ = n ->
-    (Δ ++ T :: Γ) ∋ #n : T⟨wk_shiftn (S n)⟩.
+    (Δ ++ T :: Γ) ∋ #n : T[wk_shiftn (S n)]w.
 Proof.
   induction Δ; intros * <-; simpl.
   - rewrite <- wk_shiftn_succ, wk_shiftn_zero, wk_compose_id_left.
@@ -38,7 +38,7 @@ Qed.
 Lemma app_ctx_vlookup : forall Θ Ξ Δ T Γ n,
     ⊢ Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ->
     length Δ = n ->
-    Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ⊢ #n : T⟨wk_shiftn (S n)⟩.
+    Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ⊢ #n : T[wk_shiftn (S n)]w.
 Proof.
   intros; econstructor; auto using app_ctx_lookup.
 Qed.

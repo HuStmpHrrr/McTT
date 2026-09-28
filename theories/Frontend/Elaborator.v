@@ -461,14 +461,14 @@ Qed.
 
 Lemma closed_at_wk : forall M n,
     closed_at M n ->
-    forall φ n', wk_bounded φ n n' -> closed_at M⟨φ⟩ n'.
+    forall φ n', wk_bounded φ n n' -> closed_at M[φ]w n'.
 Proof.
   induction 1; intros; simpl; econstructor; eauto using wk_bounded_q.
 Qed.
 
 Lemma closed_at_shiftn : forall M n k,
     closed_at M n ->
-    closed_at M⟨wk_shiftn k⟩ (n + k).
+    closed_at M[wk_shiftn k]w (n + k).
 Proof.
   intros. eapply closed_at_wk; [ eassumption |]. intros ? ?. simpl. lia.
 Qed.

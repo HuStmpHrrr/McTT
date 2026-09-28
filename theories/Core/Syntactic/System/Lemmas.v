@@ -118,15 +118,15 @@ Proof.
   intros; simpl; mauto 2.
 Qed.
 
-(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A⟨φ⟩], it is
+(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w], it is
     exactly what the induction hypothesis of [wk_preserves_wf] supplies at every
     binder, and [wf_sub_q] states the corresponding premise for substitutions
     explicitly. *)
 Lemma wf_wk_q : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ▹ A⟨φ⟩ ⊢w wk_q φ : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros * Hφ ? ?; saturate_wk.
   econstructor; [ mauto 2 | mauto 2 | ].
@@ -170,7 +170,7 @@ Hint Resolve wf_wk_q_nat : mctt.
 Lemma wk_preserves_vlookup : forall Θ Ξ Γ Δ φ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Γ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) : A⟨φ⟩.
+    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) : A[φ]w.
 Proof.
   intros * Hφ ?; saturate_wk.
   econstructor; [ eassumption | eapply wf_wk_lookup; eassumption ].
@@ -179,7 +179,7 @@ Qed.
 Lemma wk_preserves_vlookup_eq : forall Θ Ξ Γ Δ φ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Γ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) ≈ #(φ x) : A⟨φ⟩.
+    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) ≈ #(φ x) : A[φ]w.
 Proof.
   intros * Hφ ?; saturate_wk.
   econstructor; [ eassumption | eapply wf_wk_lookup; eassumption ].
@@ -246,7 +246,7 @@ Ltac push_wk :=
 (** ** Saturating with the Lifted Weakenings
 
     Every binder case of [wk_preserves_wf] needs the lifted weakening
-    [Θ ⍮ Ξ ⍮ Δ ▹ A⟨φ⟩ ⊢w q φ : Γ ▹ A] before the induction hypothesis for the body can
+    [Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w q φ : Γ ▹ A] before the induction hypothesis for the body can
     be used.  It is derivable — [wf_wk_q] is a hint — but only from the
     induction hypothesis for the *domain*, so leaving it to [eauto] costs three
     extra levels of search on top of the rule application, which puts the wider
@@ -279,8 +279,8 @@ Ltac lift_wk_step :=
 Ltac lift_wk := repeat first [ lift_wk_nat | lift_wk_step ].
 
 (** The successor branch of the [ℕ]-eliminator is typed at the motive under two
-    binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1]⟨q (q φ)⟩]
-    where the rule wants [A⟨q φ⟩[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
+    binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1][q (q φ)]w]
+    where the rule wants [A[q φ]w[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
     one: [exp_wk_sub_natrec] only applies to a *doubly lifted* weakening, and in
     the induction hypothesis the weakening is still universally quantified.  So
     we instantiate the hypothesis at the lifted weakening [lift_wk] built, and
@@ -299,13 +299,13 @@ Ltac lift_wk_natrec :=
 Lemma wk_preserves_wf :
   (forall Θ Ξ Γ A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M⟨φ⟩ : A⟨φ⟩) /\
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w : A[φ]w) /\
   (forall Θ Ξ Γ A M M',
       Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩) /\
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w ≈ M'[φ]w : A[φ]w) /\
   (forall Θ Ξ Γ A A',
       Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ ⊆ A'⟨φ⟩).
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ⊆ A'[φ]w).
 Proof.
   apply syntactic_wf_mut_ind'; intros; saturate_wk; push_wk; lift_wk.
   (** The [a_glob] cases: the recorded type is closed, so the operation on it
@@ -325,7 +325,7 @@ Qed.
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ M⟨φ⟩ : A⟨φ⟩.
+    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w : A[φ]w.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -333,7 +333,7 @@ Qed.
 Corollary wk_preserves_exp_eq : forall Θ Ξ Γ Δ A M M' φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩.
+    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w ≈ M'[φ]w : A[φ]w.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -341,7 +341,7 @@ Qed.
 Corollary wk_preserves_subtyp : forall Θ Ξ Γ Δ A A' φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ ⊆ A'⟨φ⟩.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ⊆ A'[φ]w.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -438,7 +438,7 @@ Proof.
   intros * Hσ ? ?; saturate_sub.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
-  (** Both bindings of [Δ ▹ A] are looked up at a type of the form [B⟨↑⟩], and
+  (** Both bindings of [Δ ▹ A] are looked up at a type of the form [B[↑]w], and
       [exp_sub_shift_extend] is precisely the statement that an
       extension is invisible to such a type. *)
   inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
@@ -484,7 +484,7 @@ Proof.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
-  (** [exp_wk_shift_sub_q] at [n = 0] is what moves the [⟨↑⟩]
+  (** [exp_wk_shift_sub_q] at [n = 0] is what moves the [[↑]w]
       of a lookup out through the lifted substitution. *)
   inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q; [ mauto 2 | ].
   eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
@@ -720,11 +720,11 @@ Proof.
 Qed.
 
 (** [#1] is the [ℕ] of [Γ ▹ ℕ ▹ A]: the lookup derivation produces the type
-    [ℕ⟨↑⟩⟨↑⟩], which is [ℕ] only up to computation. *)
+    [ℕ[↑]w[↑]w], which is [ℕ] only up to computation. *)
 Corollary ctx_lookup_nat_1 : forall Γ A, Γ ▹ ℕ ▹ A ∋ #1 : ℕ.
 Proof.
   intros.
-  assert (Γ ▹ ℕ ▹ A ∋ #1 : ℕ⟨↑⟩⟨↑⟩) as H by mauto 2.
+  assert (Γ ▹ ℕ ▹ A ∋ #1 : ℕ[↑]w[↑]w) as H by mauto 2.
   exact H.
 Qed.
 
@@ -774,16 +774,16 @@ Qed.
 
 (** A lookup one binder in is a lookup weakened by [↑]; this is the shape the
     extension case below produces, and [eauto] cannot find it on its own because
-    [#(S x)] has to be *recognised* as [#x⟨↑⟩] before [wk_preserves_exp]
+    [#(S x)] has to be *recognised* as [#x[↑]w] before [wk_preserves_exp]
     applies. *)
 Corollary wk_preserves_vlookup_shift : forall Θ Ξ Γ A B x i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : B ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B⟨↑⟩.
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B[↑]w.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  change #(S x) with #x⟨↑⟩.
+  change #(S x) with #x[↑]w.
   mauto 3.
 Qed.
 
@@ -800,7 +800,7 @@ Proof.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
   inversion Hlk; subst; reduce_index; rewrite exp_sub_id.
-  - (** The top binding: [#0] has type [A'⟨↑⟩] there and [A'⟨↑⟩ ⊆ A⟨↑⟩] by
+  - (** The top binding: [#0] has type [A'[↑]w] there and [A'[↑]w ⊆ A[↑]w] by
         weakening the given subtyping. *)
     eapply wf_exp_subtyp'; [ mauto 2 | ].
     eapply wk_preserves_subtyp; eassumption.
@@ -858,7 +858,7 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 
 (** ** Transporting a Type
 
-    [Type@i] is closed, so [Type@i⟨φ⟩] and [Type@i[σ]] are [Type@i] — but only
+    [Type@i] is closed, so [Type@i[φ]w] and [Type@i[σ]] are [Type@i] — but only
     up to conversion, and [eauto]'s [simple apply] does not reduce.  These four
     spell it out; every "and the type is still a type" step below goes through
     one of them. *)
@@ -866,7 +866,7 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 Corollary wk_preserves_typ : forall Θ Ξ Γ Δ A φ i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i.
 Proof.
   intros.
   assert (wf_exp Θ Ξ Δ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
@@ -876,7 +876,7 @@ Qed.
 Corollary wk_preserves_typ_eq : forall Θ Ξ Γ Δ A A' φ i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A⟨φ⟩ ≈ A'⟨φ⟩ : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ≈ A'[φ]w : Type@i.
 Proof.
   intros.
   assert (wf_exp_eq Θ Ξ Δ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
@@ -919,7 +919,7 @@ Hint Resolve wk_preserves_typ wk_preserves_typ_eq
 Corollary wf_wk_q' : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ▹ A⟨φ⟩ ⊢w wk_q φ : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros; eapply wf_wk_q; mauto 2.
 Qed.
@@ -1500,9 +1500,9 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
 
     The right-hand side of [wf_exp_eq_fn_eta] is well-typed at the same type as
     the left.  Getting there is entirely a matter of moving between the two
-    descriptions of a weakened [Π]-type: [(Π A B)⟨↑⟩] *is* [Π A⟨↑⟩ B⟨q ↑⟩], but
+    descriptions of a weakened [Π]-type: [(Π A B)[↑]w] *is* [Π A[↑]w B[q ↑]w], but
     only by computation, so [eauto] cannot see it and the step is taken by hand.
-    The application's type is [B⟨q ↑⟩[Id ,, #0]], which is [B] by
+    The application's type is [B[q ↑]w[Id ,, #0]], which is [B] by
     [exp_wk_q_shift_single]: lifting a weakening and then substituting the top
     variable for it is the identity. *)
 
@@ -1510,19 +1510,19 @@ Lemma wf_fn_eta_expand : forall Θ Ξ Γ A B M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M⟨↑⟩ $ #0 : Π A B.
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]w $ #0 : Π A B.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
   assert (wf_exp Θ Ξ (Γ ▹ A) (exp_wk (Π A B) ↑) (exp_wk M ↑)) as H'
       by (eapply wk_preserves_exp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M⟨↑⟩ : Π A⟨↑⟩ B⟨wk_q ↑⟩) by exact H'.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A⟨↑⟩ : Type@i) by (eapply wk_preserves_typ; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A⟨↑⟩) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A⟨↑⟩ ⊢ B⟨wk_q ↑⟩ : Type@i)
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]w : Π A[↑]w B[wk_q ↑]w) by exact H'.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]w : Type@i) by (eapply wk_preserves_typ; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]w) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]w ⊢ B[wk_q ↑]w : Type@i)
       by (eapply wk_preserves_typ; [ eassumption | eapply wf_wk_q'; eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M⟨↑⟩ $ #0 : B⟨wk_q ↑⟩[Id,,#0]) by (eapply wf_app; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]w $ #0 : B[wk_q ↑]w[Id,,#0]) by (eapply wf_app; eassumption).
   rewrite exp_wk_q_shift_single in *.
   mauto 2.
 Qed.

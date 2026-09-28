@@ -240,7 +240,7 @@ Qed.
     keeps the completeness substitution cases free of setoid rewriting. *)
 Lemma eval_sub_wk_extend : forall σ M φ ρ ρσ m,
     ⟦ (sb_wk σ φ) ⟧s ρ ↘ ρσ ->
-    ⟦ M⟨φ⟩ ⟧ ρ ↘ m ->
+    ⟦ M[φ]w ⟧ ρ ↘ m ->
     ⟦ (sb_wk (σ,,M) φ) ⟧s ρ ↘ ρσ ↦ m.
 Proof.
   intros * ? ?.
@@ -249,8 +249,8 @@ Proof.
 Qed.
 
 (** The two evaluations of a *lifted* substitution, which are the only reason
-    [sb_wk_q] exists.  [q σ] is the extension of [σ⟨↑⟩] by [#0], so evaluating it
-    extends the evaluation of [σ⟨↑⟩] by the head of the environment; postcomposing
+    [sb_wk_q] exists.  [q σ] is the extension of [σ[↑]w] by [#0], so evaluating it
+    extends the evaluation of [σ[↑]w] by the head of the environment; postcomposing
     by [φ] reads index [φ 0] instead.  Both heads are values *already in* [ρ] —
     nothing is evaluated for them — which is why the completeness case for [q σ]
     has only two head values to relate rather than four. *)
@@ -301,10 +301,10 @@ Proof.
   intros. apply (eval_sub_wk_pre wk_shift). assumption.
 Qed.
 
-(** No such lemma exists for [q σ], for a general [σ ⨟ τ], or for [σ⟨φ⟩], and
+(** No such lemma exists for [q σ], for a general [σ ⨟ τ], or for [σ[φ]w], and
     none can:
 
-      ⟦σ⟨φ⟩⟧(ρ) = ⟦σ⟧(⟪φ⟫ ρ),  ⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧(ρ)),  ⟦σ ⨟ τ⟧(ρ) = ⟦σ⟧(⟦τ⟧(ρ))
+      ⟦σ[φ]w⟧(ρ) = ⟦σ⟧(⟪φ⟫ ρ),  ⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧(ρ)),  ⟦σ ⨟ τ⟧(ρ) = ⟦σ⟧(⟦τ⟧(ρ))
 
     all *fail* as equations once substitution is an operation rather than a
     delayed constructor, because a closure [λ ρ M] captures both an environment

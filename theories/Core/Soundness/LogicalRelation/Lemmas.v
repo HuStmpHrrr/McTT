@@ -183,7 +183,7 @@ Section glu_univ_elem_cumulativity.
       rename x2 into OEl'.
       destruct_by_head pi_glu_typ_pred.
       econstructor; intros; mauto 4.
-      + assert (Δ ⊢ IT⟨φ⟩ ® IP) by mauto.
+      + assert (Δ ⊢ IT[φ]w ® IP) by mauto.
         enough (forall Γ A, Γ ⊢ A ® IP -> Γ ⊢ A ® IP') by mauto 4.
         eapply proj1; mautosolve 4.
       + match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -192,7 +192,7 @@ Section glu_univ_elem_cumulativity.
         handle_per_univ_elem_irrel.
         assert (forall Γ A, Γ ⊢ A ® OP m equiv_m -> Γ ⊢ A ® OP' m equiv_m) by (eapply proj1; mauto).
         enough (Δ ⊢ OT[(ι φ),,M] ® OP m equiv_m) by mauto.
-        enough (Δ ⊢ M : IT⟨φ⟩ ® m ∈ IEl) by mauto.
+        enough (Δ ⊢ M : IT[φ]w ® m ∈ IEl) by mauto.
         eapply IHHglu; mautosolve 4.
     - rename x into IP'.
       rename x0 into IEl'.
@@ -210,9 +210,9 @@ Section glu_univ_elem_cumulativity.
         handle_per_univ_elem_irrel.
         eexists; split; mauto 4.
         assert (forall Γ A M m, Γ ⊢ M : A ® m ∈ OEl n equiv_n -> Γ ⊢ M : A ® m ∈ OEl' n equiv_n) by (eapply proj1, proj2; mauto 4).
-        enough (Δ ⊢ M⟨φ⟩ $ N : OT[(ι φ),,N] ® fa ∈ OEl n equiv_n) by mauto 4.
-        assert (Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl) by (eapply IHHglu; mauto 3).
-        assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M⟨φ⟩ $ N : OT[(ι φ),,N] ® mn ∈ OEl n equiv_n) by mauto 4.
+        enough (Δ ⊢ M[φ]w $ N : OT[(ι φ),,N] ® fa ∈ OEl n equiv_n) by mauto 4.
+        assert (Δ ⊢ N : IT[φ]w ® n ∈ IEl) by (eapply IHHglu; mauto 3).
+        assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]w $ N : OT[(ι φ),,N] ® mn ∈ OEl n equiv_n) by mauto 4.
         destruct_conjs.
         functional_eval_rewrite_clear; mautosolve 4.
     - rename x into IP'.
@@ -235,13 +235,13 @@ Section glu_univ_elem_cumulativity.
       eexists; split; mauto 4.
       assert (forall Γ A M m, Γ ⊢ A ® OP n equiv_n -> Γ ⊢ M : A ® m ∈ OEl' n equiv_n -> Γ ⊢ M : A ® m ∈ OEl n equiv_n) by (eapply proj2, proj2; eauto 3).
       assert (Δ ⊢ OT[(ι φ),,N] ® OP n equiv_n) by mauto 4.
-      enough (Δ ⊢ M⟨φ⟩ $ N : OT[(ι φ),,N] ® fa ∈ OEl' n equiv_n) by mauto 4.
-      assert (Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl') by (eapply IHHglu; mauto 3).
-      assert (Δ ⊢ IT⟨φ⟩ ® IP') by (eapply glu_univ_elem_trm_typ; mauto 2).
-      assert (Δ ⊢ IT0⟨φ⟩ ® IP') by mauto 2.
-      assert (Δ ⊢ IT⟨φ⟩ ≈ IT0⟨φ⟩ : Type@j) as HITeq by mauto 2.
-      assert (Δ ⊢ N : IT0⟨φ⟩ ® n ∈ IEl') by (rewrite <- HITeq; mauto 3).
-      assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M⟨φ⟩ $ N : OT0[(ι φ),,N] ® mn ∈ OEl' n equiv_n) by mauto 3.
+      enough (Δ ⊢ M[φ]w $ N : OT[(ι φ),,N] ® fa ∈ OEl' n equiv_n) by mauto 4.
+      assert (Δ ⊢ N : IT[φ]w ® n ∈ IEl') by (eapply IHHglu; mauto 3).
+      assert (Δ ⊢ IT[φ]w ® IP') by (eapply glu_univ_elem_trm_typ; mauto 2).
+      assert (Δ ⊢ IT0[φ]w ® IP') by mauto 2.
+      assert (Δ ⊢ IT[φ]w ≈ IT0[φ]w : Type@j) as HITeq by mauto 2.
+      assert (Δ ⊢ N : IT0[φ]w ® n ∈ IEl') by (rewrite <- HITeq; mauto 3).
+      assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]w $ N : OT0[(ι φ),,N] ® mn ∈ OEl' n equiv_n) by mauto 3.
       destruct_conjs.
       functional_eval_rewrite_clear.
       assert (DG b ∈ glu_univ_elem j ↘ OP' n equiv_n ↘ OEl' n equiv_n) by mauto 3.
@@ -434,7 +434,7 @@ Proof.
     assert (DG b' ∈ glu_univ_elem i ↘ OP' ⇑! a' (length Γ) equiv_len'_len' ↘ OEl' ⇑! a' (length Γ) equiv_len'_len') by mauto 4.
     assert (Γ ▹ IT' ⊢ OT ® OP ⇑! a (length Γ) equiv_len_len).
     {
-      assert (Γ ▹ IT ⊢ #0 : IT⟨↑⟩ ® ⇑! a (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
+      assert (Γ ▹ IT ⊢ #0 : IT[↑]w ® ⇑! a (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
       assert (⊢ Γ ▹ IT) by mauto 3.
       assert (Γ ▹ IT ⊢ OT ® OP ⇑! a (length Γ) equiv_len_len)
         by (rewrite <- (exp_sub_of_shift_extend_zero OT); mauto 4).
@@ -442,7 +442,7 @@ Proof.
     }
     assert (Γ ▹ IT' ⊢ OT' ® OP' ⇑! a' (length Γ) equiv_len'_len').
     {
-      assert (Γ ▹ IT' ⊢ #0 : IT'⟨↑⟩ ® ⇑! a' (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
+      assert (Γ ▹ IT' ⊢ #0 : IT'[↑]w ® ⇑! a' (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
       assert (⊢ Γ ▹ IT') by mauto 3.
       rewrite <- (exp_sub_of_shift_extend_zero OT').
       mauto 4.
@@ -481,8 +481,8 @@ Proof.
     + intros.
       match_by_head1 (per_bot b b') ltac:(fun H => destruct (H (length Δ)) as [? []]).
       functional_read_rewrite_clear.
-      assert (Δ ⊢ A⟨φ⟩ ⊆ A'⟨φ⟩) by mauto 3.
-      assert (Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩) by mauto 3.
+      assert (Δ ⊢ A[φ]w ⊆ A'[φ]w) by mauto 3.
+      assert (Δ ⊢ M[φ]w ≈ M' : A[φ]w) by mauto 3.
       mauto 3.
   - simpl in *.
     destruct_conjs.
@@ -502,9 +502,9 @@ Proof.
     + intros.
       assert (Γ ⊢ IT ® IP) by (rewrite <- (exp_wk_id IT); mauto 4).
       assert (Γ ⊢ IT' ® IP) by (rewrite <- (exp_wk_id IT'); mauto 4).
-      assert (Δ ⊢ IT'⟨φ⟩ ≈ IT⟨φ⟩ : Type@i) by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
-      assert (Δ ⊢ N : IT'⟨φ⟩ ® n ∈ IEl) by (simpl; bulky_rewrite1; eassumption).
-      assert (exists mn : domain, $| m & n |↘ mn /\ Δ ⊢ M⟨φ⟩ $ N : OT'[(ι φ),,N] ® mn ∈ OEl n equiv_n) by mauto 3.
+      assert (Δ ⊢ IT'[φ]w ≈ IT[φ]w : Type@i) by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
+      assert (Δ ⊢ N : IT'[φ]w ® n ∈ IEl) by (simpl; bulky_rewrite1; eassumption).
+      assert (exists mn : domain, $| m & n |↘ mn /\ Δ ⊢ M[φ]w $ N : OT'[(ι φ),,N] ® mn ∈ OEl n equiv_n) by mauto 3.
       destruct_conjs.
       eexists; split; mauto 3.
       match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -691,9 +691,9 @@ Proof.
   (** The tail: [Wk] postcomposed with either side, by the induction hypothesis. *)
   2: eapply IHglu_ctx_env; [ eassumption | eapply wf_sub_eq_compose_right; [ eapply wf_sub_shift; mauto 3 | eassumption ] ].
   assert (⊢ Γ ▹ A) by mauto 3.
-  assert (Γ ▹ A ⊢ A⟨↑⟩ : Type@i) by (eapply wk_preserves_typ; mauto 3).
-  assert (Δ ⊢ A⟨↑⟩[σ] ≈ A⟨↑⟩[σ'] : Type@i) as <- by mauto 3.
-  assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A⟨↑⟩[σ]) as <- by mauto 3.
+  assert (Γ ▹ A ⊢ A[↑]w : Type@i) by (eapply wk_preserves_typ; mauto 3).
+  assert (Δ ⊢ A[↑]w[σ] ≈ A[↑]w[σ'] : Type@i) as <- by mauto 3.
+  assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A[↑]w[σ]) as <- by mauto 3.
   eassumption.
 Qed.
 
@@ -715,13 +715,13 @@ Proof.
   gen_presup Heq.
   assert (⊢ Γ ▹ A) by mauto 3.
   assert (Γ ▹ A ⊢s Wk : Γ) by mauto 3.
-  assert (Γ ▹ A ⊢ A⟨↑⟩ : Type@i) by (eapply wk_preserves_typ; mauto 3).
+  assert (Γ ▹ A ⊢ A[↑]w : Type@i) by (eapply wk_preserves_typ; mauto 3).
   assert (Δ ⊢s Wk ⨟ σ : Γ) by mauto 3.
   assert (Δ ⊢s Wk ⨟ σ' : Γ) by mauto 3.
   assert (Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) by mauto 3.
   econstructor; mauto 3.
-  - assert (Δ ⊢ A⟨↑⟩[σ] ≈ A⟨↑⟩[σ'] : Type@i) as <- by mauto 4.
-    assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A⟨↑⟩[σ]) as <-; mauto 3.
+  - assert (Δ ⊢ A[↑]w[σ] ≈ A[↑]w[σ'] : Type@i) as <- by mauto 4.
+    assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A[↑]w[σ]) as <-; mauto 3.
   - assert (Δ ⊢s Wk ⨟ σ ≈ Wk ⨟ σ' : Γ) as <-; eassumption.
 Qed.
 
@@ -919,7 +919,7 @@ Qed.
 
 (** Postcomposition by a Kripke weakening, [sb_wk] — the same operation Lemma
     6.39 uses on the semantic side.  The head clause is now a [rewrite] away from
-    [glu_univ_elem_exp_monotone], since [M[σ]⟨φ⟩] and [M[(sb_wk σ φ)]] are the
+    [glu_univ_elem_exp_monotone], since [M[σ][φ]w] and [M[(sb_wk σ φ)]] are the
     same expression ([exp_wk_sub]).  Only the tail needs a judgmental step: the
     rearrangement it wants is a [sb_eq], which no gluing predicate respects. *)
 Lemma glu_ctx_env_sub_monotone : forall Γ Sb,
@@ -960,7 +960,7 @@ Proof.
   assert (Δ ⊢ M : A[σ]) by mauto 2 using glu_univ_elem_trm_escape.
   assert (Δ ⊢s σ,,M : Γ ▹ A) by mauto 2.
   (** [#0[σ,,M]] is [M] and [Wk ⨟ (σ,,M)] is [σ], both by computation; only
-      [A⟨↑⟩[σ,,M]] needs a rewrite. *)
+      [A[↑]w[σ,,M]] needs a rewrite. *)
   econstructor; mauto 3.
   rewrite exp_sub_shift_extend; eassumption.
 Qed.

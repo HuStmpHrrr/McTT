@@ -1013,8 +1013,8 @@ Lemma rel_exp_natrec_generic : forall {Γ A i MZ MS env_relΓ},
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->
-    Γ ▹ ℕ ⊨ rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end
-            ≈ rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end : A.
+    Γ ▹ ℕ ⊨ rec #0 return A[wk_q ↑]w | zero -> MZ[↑]w | succ -> MS[wk_q (wk_q ↑)]w end
+            ≈ rec #0 return A[wk_q ↑]w | zero -> MZ[↑]w | succ -> MS[wk_q (wk_q ↑)]w end : A.
 Proof.
   intros * HΓ HA HMZ HMS.
   pose proof (per_ctx_env_nat HΓ) as HΓN.
@@ -1026,12 +1026,12 @@ Proof.
   pose proof (rel_exp_under_ctx_wk Hupqq HMS) as HMSw.
   rewrite exp_wk_sub_extend in HMZw.
   rewrite exp_wk_sub_natrec in HMSw.
-  (** The conclusion type has to be produced as [A⟨wk_q ↑⟩[Id ,, #0]] and only
+  (** The conclusion type has to be produced as [A[wk_q ↑]w[Id ,, #0]] and only
       then collapsed: rewriting the *goal* by [exp_wk_q_shift_single] backwards
-      would match the [A⟨wk_q ↑⟩] inside the motive instead. *)
-  assert (HEg : Γ ▹ ℕ ⊨ rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end
-                        ≈ rec #0 return A⟨wk_q ↑⟩ | zero -> MZ⟨↑⟩ | succ -> MS⟨wk_q (wk_q ↑)⟩ end
-                        : A⟨wk_q ↑⟩[Id ,, #0])
+      would match the [A[wk_q ↑]w] inside the motive instead. *)
+  assert (HEg : Γ ▹ ℕ ⊨ rec #0 return A[wk_q ↑]w | zero -> MZ[↑]w | succ -> MS[wk_q (wk_q ↑)]w end
+                        ≈ rec #0 return A[wk_q ↑]w | zero -> MZ[↑]w | succ -> MS[wk_q (wk_q ↑)]w end
+                        : A[wk_q ↑]w[Id ,, #0])
     by (eapply rel_exp_natrec_cong;
         [ exact (rel_exp_under_ctx_wk Hupq HA) | exact HMZw | exact HMSw
         | apply (rel_exp_var0_nat HΓ) ]).

@@ -450,15 +450,15 @@ Qed.
 (** * Semantic Weakening of a Term Judgment
 
     A term judgment may be weakened along [Γ ⊨w φ : Δ].  Recall that the
-    equation [⟦M⟨φ⟩⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] fails — the two sides of the [λ]-case are
+    equation [⟦M[φ]w⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] fails — the two sides of the [λ]-case are
     different closures — so the two values must be *related* instead, and the
     only thing that relates them is the judgment about [M] itself, instantiated
     twice:
 
     - along [ι φ ⨟ τ] at [(ρ, ρ')], whose outer values are the goal's outer ones
-      ([exp_sub_wk]: [M⟨φ⟩[τ]] is [M[ι φ ⨟ τ]]);
+      ([exp_sub_wk]: [M[φ]w[τ]] is [M[ι φ ⨟ τ]]);
     - along [ι φ] at [(ρτ, ρ'τ')], whose outer values are the goal's *inner* ones
-      ([exp_sub_of_wk]: [M[ι φ]] is [M⟨φ⟩]).
+      ([exp_sub_of_wk]: [M[ι φ]] is [M[φ]w]).
 
     Both are read at the *same* pair of inner environments, [⟪φ⟫ ρτ] and
     [⟪φ⟫ ρ'τ'] — the first because [eval_sub_wk_pre] names them, the second
@@ -471,7 +471,7 @@ Qed.
 Lemma rel_exp_under_ctx_wk : forall {Γ Δ φ A M M'},
     Γ ⊨w φ : Δ ->
     Δ ⊨ M ≈ M' : A ->
-    Γ ⊨ M⟨φ⟩ ≈ M'⟨φ⟩ : A⟨φ⟩.
+    Γ ⊨ M[φ]w ≈ M'[φ]w : A[φ]w.
 Proof.
   intros * Hφj HM.
   pose proof Hφj as [env_relΓ [HΓ [env_relΔ [HΔ Hφ]]]].
@@ -510,7 +510,7 @@ Proof.
 Qed.
 
 (** The form soundness's variable case consumes: the failing equation
-    [⟦M⟨φ⟩⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] as a *relatedness*.  This is [rel_exp_under_ctx]
+    [⟦M[φ]w⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] as a *relatedness*.  This is [rel_exp_under_ctx]
     at [ι φ],
     where both commutation obligations vanish ([exp_sub_of_wk]) and
     [eval_sub_of_wk] names both inner environments, so the wanted pair — an outer
@@ -522,11 +522,11 @@ Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists a a' R,
-        ⟦ A⟨φ⟩ ⟧ ρ ↘ a /\
+        ⟦ A[φ]w ⟧ ρ ↘ a /\
         ⟦ A ⟧ ⟪φ⟫ ρ' ↘ a' /\
         DF a ≈ a' ∈ per_univ_elem i ↘ R /\
         exists m m',
-          ⟦ M⟨φ⟩ ⟧ ρ ↘ m /\
+          ⟦ M[φ]w ⟧ ρ ↘ m /\
           ⟦ M' ⟧ ⟪φ⟫ ρ' ↘ m' /\
           Dom m ≈ m' ∈ R.
 Proof.

@@ -2,14 +2,14 @@
 
     Three of the old file's four lemmas are gone.  [rel_exp_var_0_sub],
     [rel_exp_var_S_sub] and [rel_exp_var_weaken] validated the rules that
-    computed [#0[σ ,, M]], [#(S x)[σ ,, M]] and [#x⟨↑⟩[σ ,, M]]; all three are now
+    computed [#0[σ ,, M]], [#(S x)[σ ,, M]] and [#x[↑]w[σ ,, M]]; all three are now
     *equations* of [exp_sub] ([sb_extend]'s two clauses and
     [exp_sub_shift_extend]), so there is no longer anything to validate.
 
     What is left is the variable case of the fundamental theorem, and the
     semantic weakening lemma its induction step is an instance of — since a
     lookup one context deeper is literally a weakened lookup:
-    [#(S x)] is [(#x)⟨↑⟩] and the type it reports is [A⟨↑⟩].
+    [#(S x)] is [(#x)[↑]w] and the type it reports is [A[↑]w].
 
     Both rest on a pair of instantiations.  A judgment about [Γ] is used twice:
     once along [Wk ⨟ σ] at [Γ'], whose *outer* values are the goal's outer values
@@ -18,7 +18,7 @@
     ([exp_sub_of_shift]).  The two share their inner values — both evaluate the
     unweakened expression in [ρσ ↯] and [ρ'σ' ↯] — and since evaluation is
     functional that shared pair is what merges the two chains into the one the
-    goal asks for.  Postcomposition would not do: [⟦σ⟨↑⟩⟧ρ] and [⟦σ⟧(ρ↯)] are
+    goal asks for.  Postcomposition would not do: [⟦σ[↑]w⟧ρ] and [⟦σ⟧(ρ↯)] are
     different environments, which is exactly why the bridge is a *merge* and not a
     rewrite. *)
 
@@ -46,7 +46,7 @@ Import Wk_Notations.
 Lemma rel_exp_under_ctx_shift : forall {Γ C A M M' env_relΓC},
     EF Γ ▹ C ≈ Γ ▹ C ∈ per_ctx_env ↘ env_relΓC ->
     Γ ⊨ M ≈ M' : A ->
-    Γ ▹ C ⊨ M⟨↑⟩ ≈ M'⟨↑⟩ : A⟨↑⟩.
+    Γ ▹ C ⊨ M[↑]w ≈ M'[↑]w : A[↑]w.
 Proof.
   intros * HΓCper HM.
   destruct HM as [env_relΓ [HΓ [i HMgen]]].
@@ -102,12 +102,12 @@ Lemma valid_exp_var : forall {Γ x A},
     Γ ⊨ #x : A.
 Proof.
   induction 1 as [A Γ | x A Γ B Hx IH]; intros HΓ.
-  - (** [Γ ▹ A ∋ #0 : A⟨↑⟩].  The type is weakened, so its four values come from
+  - (** [Γ ▹ A ∋ #0 : A[↑]w].  The type is weakened, so its four values come from
         the weakening lemma applied to [A]'s own judgment; the term's four values
         are all [ρσ 0] and [ρ'σ' 0], handed over by the head clause of the context
         PER of [Γ ▹ A].  That clause speaks of the values of [A] in the *tails*, so
         the instance of [A]'s judgment at [Wk] is needed a second time — as a
-        bridge from those values to the values of [A⟨↑⟩]. *)
+        bridge from those values to the values of [A[↑]w]. *)
     pose proof HΓ as HΓA.
     inversion HΓ as [| ? ? i ? HΓ0 HΓAper HA]; subst.
     pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓper HAgen]].
@@ -154,7 +154,7 @@ Proof.
       apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
         try apply eval_exp_var; try (apply eval_sub_index; eassumption).
       apply rel_chain_4_of_2; [ solve_chain_PER | eassumption ].
-  - (** [Γ ▹ B ∋ #(S x) : A⟨↑⟩] is the weakening of [Γ ∋ #x : A]. *)
+  - (** [Γ ▹ B ∋ #(S x) : A[↑]w] is the weakening of [Γ ∋ #x : A]. *)
     inversion HΓ as [| ? ? ? ? HΓ0 HΓBper ?]; subst.
     exact (rel_exp_under_ctx_shift HΓBper (IH HΓ0)).
 Qed.

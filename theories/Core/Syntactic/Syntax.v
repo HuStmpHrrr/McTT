@@ -140,6 +140,79 @@ Definition qual_valid (q : qual) : Prop :=
 Definition path_valid (p : path) : Prop :=
   qual_valid (p_qual p) /\ p_mems p <> nil.
 
+(** ** Path Opening
+
+    An entry is stored as it was checked, so a [qu_rel] index inside it counts
+    frames of the stack *it* was checked under.  Reading it out of the module
+    that contains it re-expresses those indices at the use site.
+
+    [path_module p] is that module: [p] with the entry's own name dropped. *)
+Definition path_module (p : path) : path :=
+  {| p_qual := p_qual p ; p_mems := List.removelast (p_mems p) |}.
+
+(** The converse: the member [x] of the module [mp].  Descending into a nested
+    module is descending into [path_in mp x], since checking its entries pushed
+    one more frame. *)
+Definition path_in (mp : path) (x : string) : path :=
+  {| p_qual := p_qual mp ; p_mems := List.app (p_mems mp) (x :: nil) |}.
+
+(** [path_open q mp] reads [q] out of the module [mp].  The members of [mp] are
+    the modules crossed on the way in: exactly the frames the entry was checked
+    under, innermost first.  An index [m ≤ k] points at one of them, and becomes
+    [mp]'s qualifier entered through the outer [k - m] of those names; an index
+    [m > k] points past them, and becomes the use site's frame [n + (m - k)].
+    Truncated subtraction makes the two cases one expression.  A filed unit
+    ([qu_abs]) is checked against the empty stack, so it never has an index past
+    its own nesting. *)
+Definition path_open (q mp : path) : path :=
+  match p_qual q with
+  | qu_abs _ => q
+  | qu_rel m =>
+      let k := List.length (p_mems mp) in
+      {| p_qual := match p_qual mp with
+                   | qu_abs fp => qu_abs fp
+                   | qu_rel n => qu_rel (n + (m - k))
+                   end
+       ; p_mems := List.app (List.firstn (k - m) (p_mems mp)) (p_mems q) |}
+  end.
+
+(** Opening applies to every carrier of a path; one class gives them one
+    notation.  Compute with [cbn], which refolds recursive calls into [popen]
+    and so keeps the notation, rather than [unfold]. *)
+Class POpen (A : Type) := popen : path -> A -> A.
+
+#[export]
+Instance POpen_path : POpen path := fun mp q => path_open q mp.
+
+(** Available from here on in this file, so that each carrier's opening can be
+    written with the ones before it; [Syntax_Notations] exports the same
+    notation. *)
+Local Notation "M [ p ]p" := (popen p M) (at level 1, left associativity, p at level 60).
+
+Module PathOpen_Examples.
+  Local Open Scope string_scope.
+  Import ListNotations.
+
+  (** From [Q] in [P], [P.R.k] is [p_rel 1 ["R"; "k"]], in the module
+      [p_rel 1 ["R"]]; [k]'s body was checked under [[R, P]]. *)
+  Example module_of_k : path_module (p_rel 1 (["R"; "k"])) = p_rel 1 (["R"]).
+  Proof. reflexivity. Qed.
+  Example open_sibling : path_open (p_rel 0 (["k0"])) (p_rel 1 (["R"])) = p_rel 1 (["R"; "k0"]).
+  Proof. reflexivity. Qed.
+  Example open_self : path_open (p_rel 1 (["p0"])) (p_rel 1 (["R"])) = p_rel 1 (["p0"]).
+  Proof. reflexivity. Qed.
+  Example open_outer : path_open (p_rel 2 (["w0"])) (p_rel 1 (["R"])) = p_rel 2 (["w0"]).
+  Proof. reflexivity. Qed.
+  (** Through a filed unit, relative indices become absolute. *)
+  Example open_abs_inner : path_open (p_rel 0 (["g0"])) (p_abs (["X"]) (["Y"])) = p_abs (["X"]) (["Y"; "g0"]).
+  Proof. reflexivity. Qed.
+  Example open_abs_outer : path_open (p_rel 1 (["f"])) (p_abs (["X"]) (["Y"])) = p_abs (["X"]) (["f"]).
+  Proof. reflexivity. Qed.
+  (** The current module itself is the identity. *)
+  Example open_here : path_open (p_rel 2 (["x"])) (p_rel 0 ([])) = p_rel 2 (["x"]).
+  Proof. reflexivity. Qed.
+End PathOpen_Examples.
+
 Inductive exp : Set :=
 (** Universe *)
 | a_typ : nat -> exp
@@ -294,7 +367,7 @@ Arguments wk_q _ _ /.
 
 (** Composition of weakenings is *diagrammatic*: [wk_compose φ ψ] applies [φ]
     first and then [ψ].  This is the orientation of the paper, and the one for
-    which [M⟨φ⟩⟨ψ⟩ = M⟨φ ⊙ ψ⟩] holds without a flip.  It is the *opposite* of
+    which [M[φ]w[ψ]w = M[φ ⊙ ψ]w] holds without a flip.  It is the *opposite* of
     the orientation of [a_compose] in the explicit-substitution presentation
     this development used previously. *)
 Definition wk_compose (φ ψ : wk) : wk := fun x => ψ (φ x).
@@ -407,6 +480,36 @@ Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
   | S m => sb_q (sb_qn m σ)
   end.
 
+(** ** Opening Expressions
+
+    Only [a_glob] carries a path, so only it moves.  Opening never touches a
+    variable, and member names are not de Bruijn, so there is no lifting under
+    binders: [exp_open] commutes with [exp_wk] and [exp_sub] outright. *)
+Fixpoint exp_open (mp : path) (M : exp) : exp :=
+  match M with
+  | a_typ i => a_typ i
+  | a_nat => a_nat
+  | a_zero => a_zero
+  | a_succ M => a_succ (exp_open mp M)
+  | a_natrec A MZ MS M =>
+      a_natrec (exp_open mp A) (exp_open mp MZ) (exp_open mp MS) (exp_open mp M)
+  | a_pi A B => a_pi (exp_open mp A) (exp_open mp B)
+  | a_fn A M => a_fn (exp_open mp A) (exp_open mp M)
+  | a_app M N => a_app (exp_open mp M) (exp_open mp N)
+  | a_var x => a_var x
+  | a_glob q => a_glob q[mp]p
+  end.
+
+#[export]
+Instance POpen_exp : POpen exp := exp_open.
+
+(** Containers, so that [ctx] and [option exp] need nothing of their own. *)
+#[export]
+Instance POpen_list {A} `{POpen A} : POpen (list A) := fun mp => List.map (fun X => X[mp]p).
+
+#[export]
+Instance POpen_option {A} `{POpen A} : POpen (option A) := fun mp => option_map (fun X => X[mp]p).
+
 (** ** Equality of Weakenings and Substitutions
 
     Weakenings and substitutions are functions, so the algebraic laws that the
@@ -446,7 +549,8 @@ Module Syntax_Notations.
       level 0, and the constructor forms with a recursive last argument are at
       level 2. *)
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
-  Notation "M ⟨ φ ⟩" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M ⟨ φ ⟩") : mctt_scope.
+  Notation "M [ φ ]w" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]w") : mctt_scope.
+  Notation "M [ p ]p" := (popen p M) (at level 1, left associativity, p at level 60, format "M [ p ]p") : mctt_scope.
   Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
   Notation "'ℕ'" := a_nat : mctt_scope.

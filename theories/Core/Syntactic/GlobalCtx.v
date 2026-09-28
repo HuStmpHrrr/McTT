@@ -84,6 +84,37 @@ with gm_canon (Φ : gmod) : Prop :=
   | gm_ext Φ' x E => gm_canon Φ' /\ gm_fresh x Φ' /\ ge_canon E
   end.
 
+(** Opening a module read out through [mp], the path naming the module itself.
+    Its own entries were checked with it as the innermost frame, so they open
+    through [mp]; a nested module's entries had one frame more, so they open
+    through [path_in mp x] — the analogue of lifting a substitution under a
+    binder.  A nested module's parameters were checked in the enclosing frame,
+    so they open through [mp].
+
+    One fixpoint, not a mutual pair: [cbn] refolds a fixpoint into its own name
+    but never into a mutual sibling's, so a mutual [ge_open] would surface as a
+    raw [fix].  The entry case is a non-recursive helper instead, parameterised
+    by how to open a nested module.  There is no instance for a lone [gentry]:
+    which path a nested module opens through depends on the name it is filed
+    under. *)
+Definition ge_open_with (f : path -> gmod -> gmod) (mp : path) (x : string) (E : gentry) : gentry :=
+  match E with
+  | ge_def b A B => ge_def b A[mp]p B[mp]p
+  | ge_mod Δ Φ => ge_mod Δ[mp]p (f (path_in mp x) Φ)
+  end.
+
+Fixpoint gm_open (mp : path) (Φ : gmod) : gmod :=
+  match Φ with
+  | gm_nil => gm_nil
+  | gm_ext Φ x E => gm_ext (gm_open mp Φ) x (ge_open_with gm_open mp x E)
+  end.
+
+#[export]
+Instance POpen_gmod : POpen gmod := gm_open.
+
+(** What [cbn] leaves for an entry it cannot take apart. *)
+Abbreviation ge_open := (ge_open_with popen).
+
 (** Resolution of a member chain, accumulating the telescope crossed on the way
     in.  A later declaration shadows nothing — [gml_old] does not ask [x <> y],
     so determinism comes from [gm_canon] instead. *)

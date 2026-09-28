@@ -72,9 +72,9 @@ Generalizable All Variables.
     needed. *)
 
 Definition exp_closed (M : exp) : Prop :=
-  (forall φ, M⟨φ⟩ = M) /\ (forall σ, M[σ] = M).
+  (forall φ, M[φ]w = M) /\ (forall σ, M[σ] = M).
 
-Lemma exp_closed_wk : forall {M}, exp_closed M -> forall φ, M⟨φ⟩ = M.
+Lemma exp_closed_wk : forall {M}, exp_closed M -> forall φ, M[φ]w = M.
 Proof. now intros ? []. Qed.
 
 Lemma exp_closed_sub : forall {M}, exp_closed M -> forall σ, M[σ] = M.
@@ -89,8 +89,8 @@ Proof. now intros ? []. Qed.
     [exp_wk_shift_sub_q], both of which are stated for [↑]. *)
 
 Inductive ctx_lookup : nat -> typ -> ctx -> Prop :=
-  | here : `(Γ ▹ A ∋ #0 : A⟨↑⟩)
-  | there : `(Γ ∋ #n : A -> Γ ▹ B ∋ #(S n) : A⟨↑⟩)
+  | here : `(Γ ▹ A ∋ #0 : A[↑]w)
+  | there : `(Γ ∋ #n : A -> Γ ▹ B ∋ #(S n) : A[↑]w)
 where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
 
 (** ** The Mutually Defined Judgments
@@ -170,10 +170,10 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
          Note that we need to keep it asymmetric:
          only [A'] is checked. If we check A as well,
          we cannot even construct something like
-         [Γ ⊢ Type@0⟨↑⟩ : Type@1] with the current
+         [Γ ⊢ Type@0[↑]w : Type@1] with the current
          rules. Under the symmetric rule, the example requires
-         [Γ ⊢ Type@1⟨↑⟩ : Type@2] to apply weakening,
-         which requires [Γ ⊢ Type@2⟨↑⟩ : Type@3], and so on.
+         [Γ ⊢ Type@1[↑]w : Type@2] to apply weakening,
+         which requires [Γ ⊢ Type@2[↑]w : Type@3], and so on.
       *)
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
@@ -258,7 +258,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M⟨↑⟩ $ #0 : Π A B )
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]w $ #0 : Π A B )
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -549,7 +549,7 @@ Hint Constructors wf_gentry wf_gmod wf_gunit wf_gdep wf_gdeps wf_gstack : mctt.
 Record wf_wk (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_intro
 { wf_wk_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_wk_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
-; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A⟨φ⟩
+; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A[φ]w
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
 

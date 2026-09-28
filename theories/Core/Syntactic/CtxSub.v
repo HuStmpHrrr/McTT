@@ -64,12 +64,12 @@ Proof.
 
   - assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢w ↑ : Δ) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ A'⟨↑⟩ ⊆ A⟨↑⟩) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ A'[↑]w ⊆ A[↑]w) by mauto 3.
     mauto 3.
 
   - assert (Θ ⍮ Ξ ⍮ Δ ⊢ #n : A) by mauto 3.
     assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ #n⟨↑⟩ : A⟨↑⟩) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ #n[↑]w : A[↑]w) by mauto 3.
     assumption.
 Qed.
 

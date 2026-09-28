@@ -41,7 +41,7 @@ Inductive glu_nat : ctx -> exp -> domain -> Prop :=
      glu_nat Γ M succᵈ m' }
 | glu_nat_neut :
   `{ per_bot m m ->
-     (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M⟨φ⟩ ≈ M' : ℕ) ->
+     (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]w ≈ M' : ℕ) ->
      glu_nat Γ M ⇑ a m }.
 
 #[export]
@@ -55,7 +55,7 @@ Arguments nat_glu_exp_pred i Γ A M m/.
 
 Definition neut_glu_typ_pred i a : glu_typ_pred :=
   fun Γ A => Γ ⊢ A : Type@i /\
-            (forall Δ φ A', Δ ⊢k φ : Γ -> Rne a in length Δ ↘ A' -> Δ ⊢ A⟨φ⟩ ≈ A' : Type@i).
+            (forall Δ φ A', Δ ⊢k φ : Γ -> Rne a in length Δ ↘ A' -> Δ ⊢ A[φ]w ≈ A' : Type@i).
 Arguments neut_glu_typ_pred i a Γ A/.
 
 Variant neut_glu_exp_pred i a : glu_exp_pred :=
@@ -65,7 +65,7 @@ Variant neut_glu_exp_pred i a : glu_exp_pred :=
      Dom m ≈ m ∈ per_bot ->
      (forall Δ φ M', Δ ⊢k φ : Γ ->
                    Rne m in length Δ ↘ M' ->
-                   Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩) ->
+                   Δ ⊢ M[φ]w ≈ M' : A[φ]w) ->
      Γ ⊢ M : A ® ⇑ b m ∈ neut_glu_exp_pred i a }.
 
 Variant pi_glu_typ_pred i
@@ -77,10 +77,10 @@ Variant pi_glu_typ_pred i
   `{ Γ ⊢ A ≈ Π IT OT : Type@i ->
      Γ ⊢ IT : Type@i ->
      Γ ▹ IT ⊢ OT : Type@i ->
-     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT⟨φ⟩ ® IP) ->
+     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]w ® IP) ->
      (forall Δ φ M m,
          Δ ⊢k φ : Γ ->
-         Δ ⊢ M : IT⟨φ⟩ ® m ∈ IEl ->
+         Δ ⊢ M : IT[φ]w ® m ∈ IEl ->
          forall (equiv_m : Dom m ≈ m ∈ IR),
            Δ ⊢ OT[(ι φ),,M] ® OP _ equiv_m) ->
      Γ ⊢ A ® pi_glu_typ_pred i IR IP IEl OP }.
@@ -97,12 +97,12 @@ Variant pi_glu_exp_pred i
      Γ ⊢ A ≈ Π IT OT : Type@i ->
      Γ ⊢ IT : Type@i ->
      Γ ▹ IT ⊢ OT : Type@i ->
-     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT⟨φ⟩ ® IP) ->
+     (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]w ® IP) ->
      (forall Δ φ N n,
          Δ ⊢k φ : Γ ->
-         Δ ⊢ N : IT⟨φ⟩ ® n ∈ IEl ->
+         Δ ⊢ N : IT[φ]w ® n ∈ IEl ->
          forall (equiv_n : Dom n ≈ n ∈ IR),
-         exists mn, $| m & n |↘ mn /\ Δ ⊢ M⟨φ⟩ $ N : OT[(ι φ),,N] ® mn ∈ OEl _ equiv_n) ->
+         exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]w $ N : OT[(ι φ),,N] ® mn ∈ OEl _ equiv_n) ->
      Γ ⊢ M : A ® m ∈ pi_glu_exp_pred i IR IP IEl elem_rel OEl }.
 
 #[export]
@@ -261,7 +261,7 @@ Variant glu_elem_bot i a Γ A M m : Prop :=
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Dom m ≈ m ∈ per_bot ->
-    (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M⟨φ⟩ ≈ M' : A⟨φ⟩) ->
+    (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]w ≈ M' : A[φ]w) ->
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a.
 #[export]
 Hint Constructors glu_elem_bot : mctt.
@@ -272,7 +272,7 @@ Variant glu_elem_top i a Γ A M m : Prop :=
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Dom ⇓ a m ≈ ⇓ a m ∈ per_top ->
-    (forall Δ φ w, Δ ⊢k φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M⟨φ⟩ ≈ w : A⟨φ⟩) ->
+    (forall Δ φ w, Δ ⊢k φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]w ≈ w : A[φ]w) ->
     Γ ⊢ M : A ® m ∈ glu_elem_top i a.
 #[export]
 Hint Constructors glu_elem_top : mctt.
@@ -281,7 +281,7 @@ Variant glu_typ_top i a Γ A : Prop :=
 | glu_typ_top_make :
     Γ ⊢ A : Type@i ->
     Dom a ≈ a ∈ per_top_typ ->
-    (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A⟨φ⟩ ≈ A' : Type@i) ->
+    (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]w ≈ A' : Type@i) ->
     Γ ⊢ A ® glu_typ_top i a.
 #[export]
 Hint Constructors glu_typ_top : mctt.
@@ -306,9 +306,9 @@ Variant cons_glu_sub_pred i Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
         Δ ⊢s σ : Γ ▹ A ->
         ⟦ A ⟧ ρ↯ ↘ a ->
         DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-        (** [A⟨↑⟩[σ]] rather than [A[Wk ⨟ σ]]: it is the direct instance of
-            [Γ ▹ A ⊢ #0 : A⟨↑⟩] along [σ]. *)
-        Δ ⊢ #0[σ] : A⟨↑⟩[σ] ® (ρ 0) ∈ El ->
+        (** [A[↑]w[σ]] rather than [A[Wk ⨟ σ]]: it is the direct instance of
+            [Γ ▹ A ⊢ #0 : A[↑]w] along [σ]. *)
+        Δ ⊢ #0[σ] : A[↑]w[σ] ® (ρ 0) ∈ El ->
         Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }.
 

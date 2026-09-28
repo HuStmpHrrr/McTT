@@ -48,7 +48,7 @@ Hint Resolve presup_typ_glu_rel_exp : mctt.
     [#n[Wk⨟σ]] and [ρ (S n)] *is* [ρ↯ n], so the old chain of [wf_exp_eq]
     rewrites collapses to one [exp_sub_shift].  What is not cheap is the type
     *value*: [cons_glu_sub_pred] supplies [⟦A⟧(ρ↯)] while the goal reads
-    [⟦A⟨↑⟩⟧(ρ)], and those are not equal.
+    [⟦A[↑]w⟧(ρ)], and those are not equal.
     [completeness_fundamental_typ_shift] relates them, and
     [glu_univ_elem_resp_per_univ] moves [P] and [El] across. *)
 Lemma glu_rel_exp_vlookup : forall {Γ x A},

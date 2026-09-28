@@ -106,7 +106,7 @@ Hint Resolve wf_pi_inversion : mctt.
 (** The level the domain and the codomain are checked at can always be taken to
     be the level of the [Π]-type itself.  Moving the refinement [Type@j ⊆ Type@i]
     from [Γ] into [Γ ▹ A] is a weakening, and it is the only step that needs any
-    work: both sides are unchanged by it — [Type@j⟨↑⟩] *is* [Type@j] — but only by
+    work: both sides are unchanged by it — [Type@j[↑]w] *is* [Type@j] — but only by
     computation, so the step is taken by hand. *)
 Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@i ->

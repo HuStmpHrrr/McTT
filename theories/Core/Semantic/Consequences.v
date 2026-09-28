@@ -186,7 +186,7 @@ Proof.
     eapply IHHW3; [| | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
-    assert (⋅ ▹ Type@i ⊢ Type@i⟨↑⟩ ≈ Type@i : Type@(S i)) by mauto 3.
+    assert (⋅ ▹ Type@i ⊢ Type@i[↑]w ≈ Type@i : Type@(S i)) by mauto 3.
     eapply subtyp_spec in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
