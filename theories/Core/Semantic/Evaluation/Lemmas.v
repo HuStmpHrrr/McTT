@@ -24,10 +24,12 @@ Import Domain_Notations.
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
-         two resolutions of a global agree *)
+         two resolutions of a global, or of a parameter, agree *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
         | H1 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : GlobalCtx.gs_param Ξ ?lp = Some _, H2 : GlobalCtx.gs_param Ξ ?lp = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ => specialize (IH _ H); subst
         end;

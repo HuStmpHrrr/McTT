@@ -60,6 +60,12 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      b = false \/ B = None ->
      ⟦ ctx_pi Δ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_glob p) )
+(** A module parameter is a neutral at its type, which mentions no
+    λ-variable. *)
+| eval_exp_param :
+  `( gs_param Ξ lp = Some T ->
+     ⟦ T ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
+     ⟦ a_param lp ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_param lp) )
 where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
 with eval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> domain -> Prop :=
 | eval_natrec_zero :

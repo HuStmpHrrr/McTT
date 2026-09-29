@@ -30,7 +30,7 @@
 ./Core/Semantic/Evaluation/Definitions.v
 ./Core/Semantic/Evaluation/Lemmas.v
 ./Core/Semantic/Evaluation/Tactics.v
-# ./Core/Semantic/NbE.v  (not yet ported to module parameters)
+./Core/Semantic/NbE.v
 # ./Core/Semantic/PER.v  (not yet ported to module parameters)
 ./Core/Semantic/PER/Chain.v
 # ./Core/Semantic/PER/CoreTactics.v  (not yet ported to module parameters)

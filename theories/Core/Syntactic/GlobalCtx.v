@@ -3,7 +3,7 @@ From Stdlib Require Import List String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Syntax.
-Import Syntax_Notations.
+Import Syntax_Notations Wk_Notations.
 
 Generalizable All Variables.
 
@@ -615,3 +615,20 @@ Proof.
   intros * H12 H23; revert Φ1 H12; induction H23; intros; eauto with mctt.
   inversion H12; subst; eauto with mctt.
 Qed.
+
+(** ** Parameters as a Function
+
+    What evaluation uses for [$[n, k]]: the [k]th parameter of frame [n],
+    weakened past the ones after it, at the type [wf_param] gives it. *)
+Fixpoint ctx_get (Γ : ctx) (k : nat) : option typ :=
+  match Γ, k with
+  | nil, _ => None
+  | A :: _, 0 => Some A[↑]ʷ
+  | _ :: Γ', S k' => option_map (fun T => T[↑]ʷ) (ctx_get Γ' k')
+  end.
+
+Definition gs_param (Ξ : gstack) (lp : lpath) : option typ :=
+  match List.nth_error Ξ (lp_mod lp) with
+  | Some U => option_map (fun T => T[↑ₘ (S (lp_mod lp))]ᵐ[sb_params (lp_mod lp)]) (ctx_get (gu_params U) (lp_param lp))
+  | None => None
+  end.

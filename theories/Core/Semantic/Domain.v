@@ -5,10 +5,12 @@ From Mctt.Core.Syntactic Require Export Syntax.
 
 (** * The Semantic Domain
 
-    An environment is the list of the values of the variables in scope, indexed
-    by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] those are [Γ ++ gs_tele Ξ].  The global
+    An environment is the list of the values of the λ-variables in scope,
+    indexed by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] those are [Γ].  The global
     context is not part of it: it does not change during NbE, so evaluation
-    takes it as a separate argument. *)
+    takes it as a separate argument.  A module parameter [$[n, k]] is not a
+    variable of the environment: like an opaque global it evaluates to a
+    neutral, [d_param]. *)
 
 Inductive domain : Set :=
 | d_nat : domain
@@ -28,6 +30,8 @@ with domain_ne : Set :=
 | d_natrec : list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : path -> domain_ne
+(** A parameter of an open module. *)
+| d_param : lpath -> domain_ne
 with domain_nf : Set :=
 | d_dom : domain -> domain -> domain_nf.
 
