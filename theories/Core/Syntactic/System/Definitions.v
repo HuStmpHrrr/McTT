@@ -148,7 +148,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
     else is premised, and that it is a type is a presupposition. *)
 | wf_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : ctx_pi Δ A )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -214,7 +214,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ $[n, k] ≈ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n] )
 | wf_exp_eq_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ a_glob p : ctx_pi Δ A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
@@ -239,7 +239,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     the type is generalized over, so it is [ctx_fn], not the bare [M]. *)
 | wf_exp_eq_glob_unfold :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true A (Some M) ->
+     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true pv A (Some M) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ ctx_fn Δ M : ctx_pi Δ A )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
@@ -332,13 +332,13 @@ with wf_gentry : gdeps -> gstack -> gentry -> Prop :=
 (** An axiom: only its type is checked, there being no body to carry it. *)
 | wf_gentry_axiom :
   `( Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Type@i ->
-     Θ ⍮ Ξ ⊢e ge_def b A None )
+     Θ ⍮ Ξ ⊢e ge_def b pv A None )
 (** A definition: its body carries the type recorded for it, so the type needs no
     premise of its own — that is presupposition, and it is provable here because
     the term judgments are part of this same definition. *)
 | wf_gentry_def :
   `( Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A ->
-     Θ ⍮ Ξ ⊢e ge_def b A (Some M) )
+     Θ ⍮ Ξ ⊢e ge_def b pv A (Some M) )
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
   `( Θ ⍮ Ξ ⍮ Δ' ⊢m Φ ->

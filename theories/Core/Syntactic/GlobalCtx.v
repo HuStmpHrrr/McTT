@@ -33,11 +33,13 @@ Reserved Notation "Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E" (at level 70, Ξ at level 69
 (** ** Modules
 
     A module is a sequence of definitions, in declaration order, whose entries
-    are either terms or nested modules.  [ge_def b A B]: [b] says whether the
-    definition is transparent, and [B] is [None] for an axiom.  [ge_mod Δ Φ]: the
+    are either terms or nested modules.  [ge_def b pv A B]: [b] says whether the
+    definition is transparent, [pv] whether it is private, and [B] is [None] for
+    an axiom.  [pv] is for the elaborator only: no judgment reads it, since
+    whether a name may be written down has nothing to do with what it means.  [ge_mod Δ Φ]: the
     parameters [Δ] the nested module adds to the ones it is already under. *)
 Inductive gentry : Set :=
-| ge_def : bool -> typ -> option exp -> gentry
+| ge_def : bool -> bool -> typ -> option exp -> gentry
 | ge_mod : ctx -> gmod -> gentry
 with gmod : Set :=
 | gm_nil : gmod
@@ -75,7 +77,7 @@ Qed.
     separate obligation. *)
 Fixpoint ge_canon (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ => True
+  | ge_def _ _ _ _ => True
   | ge_mod _ Φ => gm_canon Φ
   end
 with gm_canon (Φ : gmod) : Prop :=
@@ -97,15 +99,15 @@ with gm_canon (Φ : gmod) : Prop :=
     determinism comes from [gm_canon] instead. *)
 Inductive gm_lookup : gmod -> list string -> ctx -> gentry -> Prop :=
 | gml_last :
-  `( gm_ext Φ x (ge_def b A B) ∋ x :: nil ⇒ ⋅ ⍮ ge_def b A B )
+  `( gm_ext Φ x (ge_def b pv A B) ∋ x :: nil ⇒ ⋅ ⍮ ge_def b pv A B )
 (** Read out through the nested module [x], which is closed from here: its
     parameters [Δ'] become λ-bound, below those already collected, and its
     members are applied to them. *)
 | gml_in :
-  `( Φ' ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+  `( Φ' ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
      gm_ext Φ x (ge_mod Δ' Φ') ∋ x :: ip
        ⇒ Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ'
-       ⍮ ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+       ⍮ ge_def b pv A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
                   B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ )
 | gml_old :
   `( Φ ∋ ip ⇒ Δ ⍮ E ->
@@ -197,16 +199,16 @@ Inductive gc_lookup (Θ : gdeps) (Ξ : gstack) : path -> ctx -> gentry -> Prop :
     moved [n] frames in. *)
 | gcl_rel :
   `( List.nth_error Ξ n = Some U ->
-     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
-     Θ ⍮ Ξ ∋ᵍ p_rel n ip ⇒ Δ[↑ₘ n]ᵐ ⍮ ge_def b A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ )
+     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
+     Θ ⍮ Ξ ∋ᵍ p_rel n ip ⇒ Δ[↑ₘ n]ᵐ ⍮ ge_def b pv A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ )
 (** A filed unit is closed: its parameters become λ-bound, below those of the
     nested modules on the way in. *)
 | gcl_abs :
   `( gds_lookup Θ fp = Some U ->
-     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
      Θ ⍮ Ξ ∋ᵍ p_abs fp ip
        ⇒ Δ[close (p_abs fp nil) (List.length (gu_params U))]ᵐ ++ gu_params U
-       ⍮ ge_def b A[ms_close (p_abs fp nil) (List.length (gu_params U)) (List.length Δ)]ᵐ
+       ⍮ ge_def b pv A[ms_close (p_abs fp nil) (List.length (gu_params U)) (List.length Δ)]ᵐ
                   B[ms_close (p_abs fp nil) (List.length (gu_params U)) (List.length Δ)]ᵐ )
 where "Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E" := (gc_lookup Θ Ξ p Δ E) : type_scope.
 
@@ -411,7 +413,7 @@ Proof.
     match goal with
     | H1 : gu_mod ?U ∋ _ ⇒ _ ⍮ _, H2 : gu_mod ?U ∋ _ ⇒ _ ⍮ _ |- _ =>
         destruct (gm_lookup_det _ _ _ _ H1
-                    ltac:(eauto using gs_canon_nth, gds_lookup_canon) _ _ H2) as [-> [= -> -> ->]]
+                    ltac:(eauto using gs_canon_nth, gds_lookup_canon) _ _ H2) as [-> [= -> -> -> ->]]
     end;
     split; reflexivity.
 Qed.
@@ -425,9 +427,9 @@ Qed.
 (** A definition read out through the nested module [x] with parameters [Δ']. *)
 Definition gm_resolve_in (x : string) (Δ' : ctx) (r : option (ctx * gentry)) : option (ctx * gentry) :=
   match r with
-  | Some (Δ, ge_def b A B) =>
+  | Some (Δ, ge_def b pv A B) =>
       Some (Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ',
-            ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+            ge_def b pv A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
                      B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ)
   | _ => None
   end.
@@ -440,7 +442,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option (ctx * gentry) :=
       | x :: ip' =>
           if String.eqb x y
           then match ip', E with
-               | nil, ge_def _ _ _ => Some (nil, E)
+               | nil, ge_def _ _ _ _ => Some (nil, E)
                | _ :: _, ge_mod Δ' Φ' => gm_resolve_in x Δ' (gm_resolve Φ' ip')
                | _, _ => gm_resolve Φ ip
                end
@@ -453,15 +455,15 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option (ctx * gentry) :=
     filed unit. *)
 Definition ge_read_rel (n : nat) (r : option (ctx * gentry)) : option (ctx * gentry) :=
   match r with
-  | Some (Δ, ge_def b A B) => Some (Δ[↑ₘ n]ᵐ, ge_def b A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ)
+  | Some (Δ, ge_def b pv A B) => Some (Δ[↑ₘ n]ᵐ, ge_def b pv A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ)
   | _ => None
   end.
 
 Definition ge_read_abs (fp : list string) (T : ctx) (r : option (ctx * gentry)) : option (ctx * gentry) :=
   match r with
-  | Some (Δ, ge_def b A B) =>
+  | Some (Δ, ge_def b pv A B) =>
       Some (Δ[close (p_abs fp nil) (List.length T)]ᵐ ++ T,
-            ge_def b A[ms_close (p_abs fp nil) (List.length T) (List.length Δ)]ᵐ
+            ge_def b pv A[ms_close (p_abs fp nil) (List.length T) (List.length Δ)]ᵐ
                      B[ms_close (p_abs fp nil) (List.length T) (List.length Δ)]ᵐ)
   | _ => None
   end.
@@ -546,7 +548,7 @@ Qed.
 
 Fixpoint ge_count (E : gentry) : nat :=
   match E with
-  | ge_def _ _ _ => 1
+  | ge_def _ _ _ _ => 1
   | ge_mod _ Φ => gm_count Φ
   end
 with gm_count (Φ : gmod) : nat :=
@@ -567,12 +569,12 @@ Hint Constructors gm_prefix : mctt.
 
 Inductive gm_ins : gmod -> gmod -> list string -> ctx -> gentry -> Prop :=
 | gmi_last :
-  `( gm_ins (Φ ⊳ x ↦ ge_def b A B) Φ (x :: nil) ⋅ (ge_def b A B) )
+  `( gm_ins (Φ ⊳ x ↦ ge_def b pv A B) Φ (x :: nil) ⋅ (ge_def b pv A B) )
 | gmi_in :
-  `( gm_ins Φ' Φp' ip Δ (ge_def b A B) ->
+  `( gm_ins Φ' Φp' ip Δ (ge_def b pv A B) ->
      gm_ins (Φ ⊳ x ↦ ge_mod Δ' Φ') (Φ ⊳ x ↦ ge_mod Δ' Φp') (x :: ip)
        (Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ')
-       (ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+       (ge_def b pv A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
                  B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ) )
 | gmi_old :
   `( gm_ins Φ Φp ip Δ E ->

@@ -38,13 +38,13 @@ Section MSubTransport.
       ⊢ Θ2 ⍮ Ξ2 ⍮ tctx Γ ->
       Θ2 ⍮ Ξ2 ⍮ tctx Γ ⊢ tm Γ $[n, k] : tm Γ (T[↑ₘ (S n)]ᵐ[sb_params n]) /\
       Θ2 ⍮ Ξ2 ⍮ tctx Γ ⊢ tm Γ $[n, k] ≈ tm Γ $[n, k] : tm Γ (T[↑ₘ (S n)]ᵐ[sb_params n]).
-  Hypothesis Hglob : forall r Δ b A B Γ,
-      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b A B ->
+  Hypothesis Hglob : forall r Δ b pv A B Γ,
+      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
       ⊢ Θ2 ⍮ Ξ2 ⍮ tctx Γ ->
       Θ2 ⍮ Ξ2 ⍮ tctx Γ ⊢ tm Γ (a_glob r) : tm Γ (ctx_pi Δ A) /\
       Θ2 ⍮ Ξ2 ⍮ tctx Γ ⊢ tm Γ (a_glob r) ≈ tm Γ (a_glob r) : tm Γ (ctx_pi Δ A).
-  Hypothesis Hunfold : forall r Δ A M Γ,
-      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def true A (Some M) ->
+  Hypothesis Hunfold : forall r Δ A M Γ pv,
+      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def true pv A (Some M) ->
       ⊢ Θ2 ⍮ Ξ2 ⍮ tctx Γ ->
       Θ2 ⍮ Ξ2 ⍮ tctx Γ ⊢ tm Γ (a_glob r) ≈ tm Γ (ctx_fn Δ M) : tm Γ (ctx_pi Δ A).
 
@@ -72,11 +72,11 @@ Section MSubTransport.
       | Hn : List.nth_error Ξ1 _ = Some _, Hk : gu_params _ ∋ # _ : _, HΓ : ⊢ Θ2 ⍮ Ξ2 ⍮ _ |- _ =>
           pose proof (Hparam _ _ _ _ _ Hn Hk HΓ) as [Hp1 Hp2];
           first [ exact Hp1 | exact Hp2 ]
-      | Hl : Θ1 ⍮ Ξ1 ∋ᵍ _ ⇒ _ ⍮ ge_def true _ (Some _), HΓ : ⊢ Θ2 ⍮ Ξ2 ⍮ _
+      | Hl : Θ1 ⍮ Ξ1 ∋ᵍ _ ⇒ _ ⍮ ge_def true _ _ (Some _), HΓ : ⊢ Θ2 ⍮ Ξ2 ⍮ _
         |- _ ⍮ _ ⍮ _ ⊢ _ ≈ _[_]ᵐ : _ =>
-          exact (Hunfold _ _ _ _ _ Hl HΓ)
-      | Hl : Θ1 ⍮ Ξ1 ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _, HΓ : ⊢ Θ2 ⍮ Ξ2 ⍮ _ |- _ =>
-          pose proof (Hglob _ _ _ _ _ _ Hl HΓ) as [Hg1 Hg2];
+          exact (Hunfold _ _ _ _ _ _ Hl HΓ)
+      | Hl : Θ1 ⍮ Ξ1 ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ _, HΓ : ⊢ Θ2 ⍮ Ξ2 ⍮ _ |- _ =>
+          pose proof (Hglob _ _ _ _ _ _ _ Hl HΓ) as [Hg1 Hg2];
           first [ exact Hg1 | exact Hg2 ]
       end.
     (* η *)
@@ -124,10 +124,10 @@ Proof. intros [X |] ? ? HX; cbn in *; [ rewrite (exp_msub_shift_nil _ _ _ HX) |]
 
 (** ** Pushing a Frame *)
 
-Lemma gc_lookup_push : forall Θ U Ξ r Δ b A B,
+Lemma gc_lookup_push : forall Θ U Ξ r Δ b pv A B,
     units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ r ⇒ Δ ⍮ ge_def b A B ->
-    Θ ⍮ U :: Ξ ∋ᵍ r[p_rel 1 nil]ᵖ ⇒ Δ[↑ₘ 1]ᵐ ⍮ ge_def b A[↑ₘ 1]ᵐ B[↑ₘ 1]ᵐ.
+    Θ ⍮ Ξ ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
+    Θ ⍮ U :: Ξ ∋ᵍ r[p_rel 1 nil]ᵖ ⇒ Δ[↑ₘ 1]ᵐ ⍮ ge_def b pv A[↑ₘ 1]ᵐ B[↑ₘ 1]ᵐ.
 Proof.
   intros * HΘ Hlk; inversion Hlk; subst.
   - (* an open frame, one further out *)
@@ -136,7 +136,7 @@ Proof.
   - (* a filed unit: closed, so nothing moves *)
     destruct (HΘ _ _ ltac:(eassumption)) as [Hp Hc].
     match goal with H : gu_mod U0 ∋ _ ⇒ _ ⍮ _ |- _ =>
-      destruct (Hc _ _ _ _ _ H) as (HΔ & HA & HB) end.
+      destruct (Hc _ _ _ _ _ _ H) as (HΔ & HA & HB) end.
     assert (ctx_scoped 0 nil (Δ0[close (p_abs fp nil) (length (gu_params U0))]ᵐ ++ gu_params U0)) as HR
       by (apply ctx_scoped_app; split;
           [ rewrite Nat.add_0_r; apply ctx_scoped_msub_close; [ apply close_ok_abs | assumption ]
@@ -168,13 +168,13 @@ Proof.
   - intros * Hl HΓ.
     rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, (exp_msub_ext _ _ _ (ms_qn_shift _ _)).
     cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-    pose proof (gc_lookup_push _ U _ _ _ _ _ _ HΘ Hl) as Hl'.
+    pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'.
     split; econstructor; eassumption.
   - intros * Hl HΓ.
     rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, ctx_fn_msub,
       !(exp_msub_ext _ _ _ (ms_qn_shift _ _)).
     cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-    pose proof (gc_lookup_push _ U _ _ _ _ _ _ HΘ Hl) as Hl'; cbn in Hl'.
+    pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'; cbn in Hl'.
     econstructor; eassumption.
   - repeat split; intros * H; rewrite <- (List.app_nil_r Γ[↑ₘ 1]ᵐ);
       [ exact (Hc _ _ _ H eq_refl eq_refl)
@@ -205,7 +205,7 @@ Lemma ctx_msub_id : forall (Δ : ctx), Δ[ms_id]ᵐ = Δ.
 Proof. induction Δ; cbn; [ reflexivity |]; rewrite exp_msub_qn_id; f_equal; assumption. Qed.
 
 Corollary rebase_preserves_wf : forall Θ1 Θ2 Ξ1 Ξ2,
-    (forall r Δ b A B, Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b A B -> Θ2 ⍮ Ξ2 ∋ᵍ r ⇒ Δ ⍮ ge_def b A B) ->
+    (forall r Δ b pv A B, Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B -> Θ2 ⍮ Ξ2 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B) ->
     (forall n U, List.nth_error Ξ1 n = Some U ->
        exists U', List.nth_error Ξ2 n = Some U' /\ gu_params U' = gu_params U) ->
     ⊢ Θ2 ⍮ Ξ2 ⍮ ⋅ ->

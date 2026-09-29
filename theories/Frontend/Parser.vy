@@ -45,8 +45,8 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
    by [eval] commands inside.  Requiring the declaration is what keeps
    definitions out of the top level. *)
 let prog :=
-  is = imports; MODULE; p = fpath; WHERE; cs = cmds; END; EOF;
-    { (List.rev is, (List.rev p, List.rev cs)) }
+  is = imports; MODULE; p = fpath; ps = params_opt; WHERE; cs = cmds; END; EOF;
+    { (List.rev is, (List.rev p, List.rev ps, List.rev cs)) }
 
 (* Reversed list of imports, possibly empty *)
 let imports :=

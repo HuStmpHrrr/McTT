@@ -2,354 +2,426 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax.
+From Mctt.Core.Syntactic Require Import Syntax GlobalCtx.
 From Mctt.Frontend Require Import Resolve.
 
-Import Syntax_Notations.
+Import Syntax_Notations GlobalCtx_Notations.
 
 Open Scope string_scope.
 
 (** * Elaboration
 
-    Elaboration turns a whole compilation unit into a single closed expression
-    together with its type; see [Frontend.Resolve] for the two things a name can
-    resolve to and for how the definition telescope is used. *)
+    A compilation unit elaborates into the global context: given the units
+    already filed, [Θ], it produces its own [gunit], to be filed next, and one
+    obligation per [eval].  A definition becomes a [ge_def] of the frame it is
+    declared in, a nested module a [ge_mod]; a name becomes a parameter
+    [$[n, k]], a member [a_glob] (relative for the open frames, absolute for a
+    filed unit), or a λ-variable.  An [eval] is checked where it stands: on the
+    stack of frames as they are at that point. *)
 
-(** ** Objects
+(** ** Results *)
 
-    Resolving a dotted name gives either a term or a module, and in the latter
-    case the module arguments supplied so far still have to be carried along, to
-    be prepended to the arguments of whichever member is eventually selected. *)
+Inductive eres (A : Type) : Type :=
+| eok : A -> eres A
+| eerr : string -> eres A.
+
+Arguments eok {A}.
+Arguments eerr {A}.
+
+Definition ebind {A B} (m : eres A) (f : A -> eres B) : eres B :=
+  match m with
+  | eok a => f a
+  | eerr e => eerr e
+  end.
+
+Notation "'let*' x ':=' m 'in' f" := (ebind m (fun x => f))
+  (at level 200, x name, m at level 100, f at level 200, right associativity).
+
+Definition echeck (b : bool) (e : string) : eres unit := if b then eok tt else eerr e.
+
+(** ** Open Frames
+
+    A frame being elaborated: its names, the frame itself, and what [import]
+    declared in it — aliases, and the units it made reachable by their full
+    path.  The imports that precede a unit's declaration are outside all of its
+    frames, in an [oscope] of their own. *)
+Record oscope : Set := os_mk
+  { os_alias : list (string * target)
+  ; os_units : list (list string) }.
+
+Record oframe : Set := of_mk
+  { of_names : eframe
+  ; of_unit : gunit
+  ; of_scope : oscope }.
+
+Definition of_alias (f : oframe) : list (string * target) := os_alias (of_scope f).
+
+Fixpoint alias_lookup (x : string) (al : list (string * target)) : option target :=
+  match al with
+  | nil => None
+  | (y, t) :: al' => if String.eqb x y then Some t else alias_lookup x al'
+  end.
+
+Fixpoint ls_lookup (x : string) (ls : lscope) : option lent :=
+  match ls with
+  | nil => None
+  | (y, e) :: ls' => if String.eqb x y then Some e else ls_lookup x ls'
+  end.
+
+(** A name not yet taken in a frame, by a member or an alias. *)
+Definition of_fresh (x : string) (f : oframe) : bool :=
+  match em_lookup x (ef_mod (of_names f)), alias_lookup x (of_alias f) with
+  | None, None => true
+  | _, _ => false
+  end.
+
+Definition of_add (x : string) (E : gentry) (en : ename) (f : oframe) : oframe :=
+  {| of_names := ef_mk (ef_params (of_names f)) (em_ext (ef_mod (of_names f)) x en)
+   ; of_unit := gu_mk (gu_params (of_unit f)) (gu_mod (of_unit f) ⊳ x ↦ E)
+   ; of_scope := of_scope f |}.
+
+Definition os_fresh (x : string) (sc : oscope) : bool :=
+  match alias_lookup x (os_alias sc) with None => true | Some _ => false end.
+
+Definition os_alias_add (x : string) (t : target) (sc : oscope) : oscope :=
+  os_mk ((x, t) :: os_alias sc) (os_units sc).
+
+Definition os_unit_add (fp : list string) (sc : oscope) : oscope :=
+  os_mk (os_alias sc) (fp :: os_units sc).
+
+Definition os_has_unit (fp : list string) (sc : oscope) : bool :=
+  List.existsb (path_beq fp) (os_units sc).
+
+Definition of_new (xs : list string) (Δ : ctx) : oframe :=
+  {| of_names := ef_mk xs em_nil; of_unit := gu_mk Δ gm_nil; of_scope := os_mk nil nil |}.
+
+(** ** Terms *)
+
+(** Resolving a dotted name gives a term or a module, the latter with the
+    module arguments supplied so far. *)
 Inductive res : Set :=
 | r_exp : exp -> res
-| r_ent : entry -> list exp -> res.
+| r_mod : mref -> res.
 
-(** A module is not a term, and an under-applied member is not one either. *)
-Definition res_term (d : nat) (r : option res) : option exp :=
+Definition res_term (r : eres res) : eres exp :=
   match r with
-  | Some (r_exp M) => Some M
-  | Some (r_ent (e_val v) args) => sc_use d v args
-  | _ => None
+  | eok (r_exp M) => eok M
+  | eok (r_mod _) => eerr "a module is not a term"
+  | eerr e => eerr e
   end.
 
-(** [args] are the arguments the elaborated object is applied to, outermost
-    last; they are threaded through so that the head of an application spine can
-    decide whether they are module arguments or ordinary ones. *)
-Fixpoint elab_res (s : scope) (d : nat) (o : Cst.obj) (args : list exp) : option res :=
-  match o with
-  | Cst.typ n => Some (r_exp (sc_apply Type@n args))
-  | Cst.nat => Some (r_exp (sc_apply ℕ args))
-  | Cst.zero => Some (r_exp (sc_apply zero args))
-  | Cst.succ o =>
-      match res_term d (elab_res s d o nil) with
-      | Some M => Some (r_exp (sc_apply (succ M) args))
-      | None => None
+Definition res_mod (r : eres res) : eres mref :=
+  match r with
+  | eok (r_mod mr) => eok mr
+  | eok (r_exp _) => eerr "a term is not a module"
+  | eerr e => eerr e
+  end.
+
+(** A member of a module that is not open: only a public one can be named, and
+    only once the closed modules crossed have their arguments. *)
+Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
+  match em_lookup x (mr_mod mr) with
+  | None => eerr ("no member " ++ x)
+  | Some (en_def pv) =>
+      let args' := List.app (mr_args mr) args in
+      let* _ := echeck (negb (mr_public mr && pv)) (x ++ " is private") in
+      let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
+                  ("module arguments missing for " ++ x) in
+      eok (r_exp (sc_apply (a_glob {| p_qual := mr_qual mr; p_mems := List.app (mr_mems mr) (x :: nil) |}) args'))
+  | Some (en_mod n Φ) =>
+      eok (r_mod {| mr_qual := mr_qual mr; mr_mems := List.app (mr_mems mr) (x :: nil); mr_mod := Φ;
+                    mr_public := true; mr_arity := mr_arity mr + n; mr_args := List.app (mr_args mr) args |})
+  end.
+
+Definition mr_apply (mr : mref) (args : list exp) : mref :=
+  {| mr_qual := mr_qual mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
+     mr_public := mr_public mr; mr_arity := mr_arity mr; mr_args := List.app (mr_args mr) args |}.
+
+Definition tg_use (t : target) (args : list exp) : eres res :=
+  match t with
+  | tg_mod mr => eok (r_mod (mr_apply mr args))
+  | tg_mem mr x => mr_member mr x args
+  end.
+
+(** A name looked up in the open frames, from [i] frames in: an alias, then a
+    member — any member, private or not, the frame being open — then a
+    parameter. *)
+Definition tg_local (d i : nat) (t : target) : target :=
+  match tg_shift i t with
+  | tg_mod mr => tg_mod (mr_weaken d 0 mr)
+  | tg_mem mr y => tg_mem (mr_weaken d 0 mr) y
+  end.
+
+Fixpoint fr_lookup (os : oscope) (d : nat) (x : string) (i : nat) (fs : list oframe) (args : list exp)
+  : eres res :=
+  match fs with
+  | nil =>
+      match alias_lookup x (os_alias os) with
+      | Some t => tg_use (tg_local d i t) args
+      | None => eerr ("unbound name " ++ x)
       end
-  | Cst.natrec on mx om oz sx sr os =>
-      match res_term d (elab_res s d on nil),
-            res_term (S d) (elab_res (sc_push mx d s) (S d) om nil),
-            res_term d (elab_res s d oz nil),
-            res_term (S (S d)) (elab_res (sc_push sr (S d) (sc_push sx d s)) (S (S d)) os nil) with
-      | Some N, Some A, Some MZ, Some MS =>
-          Some (r_exp (sc_apply (rec N return A | zero -> MZ | succ -> MS end) args))
-      | _, _, _, _ => None
-      end
-  | Cst.pi x oA oB =>
-      match res_term d (elab_res s d oA nil),
-            res_term (S d) (elab_res (sc_push x d s) (S d) oB nil) with
-      | Some A, Some B => Some (r_exp (sc_apply (Π A B) args))
-      | _, _ => None
-      end
-  | Cst.fn x oA oM =>
-      match res_term d (elab_res s d oA nil),
-            res_term (S d) (elab_res (sc_push x d s) (S d) oM nil) with
-      | Some A, Some M => Some (r_exp (sc_apply (λ A M) args))
-      | _, _ => None
-      end
-  | Cst.app o1 o2 =>
-      match res_term d (elab_res s d o2 nil) with
-      | Some N => elab_res s d o1 (N :: args)
-      | None => None
-      end
-  | Cst.var x =>
-      match sc_lookup x s with
-      | Some e => Some (r_ent e args)
-      | None => None
-      end
-  (** A [::] path names another compilation unit, and a scope holds one unit's
-      names only, so nothing it selects can resolve here; see the single-unit
-      deviation in [AGENT/modules.md]. *)
-  | Cst.glob _ => None
-  (** Only a module has members, and the arguments it was given come first. *)
-  | Cst.proj o1 x =>
-      match elab_res s d o1 nil with
-      | Some (r_ent (e_mod _ ms) margs) =>
-          match sc_lookup x ms with
-          | Some e => Some (r_ent e (List.app margs args))
-          | None => None
-          end
-      | _ => None
-      end
-  | Cst.letb (Cst.d_def m x oA oM) obody =>
-      match res_term d (elab_res s d oA nil), res_term d (elab_res s d oM nil) with
-      | Some A, Some M =>
-          let v := v_bind (Cst.md_abstract m) d 0 false M in
-          match res_term (S d) (elab_res (sc_cons x (e_val v) s) (S d) obody nil) with
-          | Some B => Some (r_exp (sc_apply ((λ A B) $ M) args))
-          | None => None
-          end
-      | _, _ => None
-      end
-  (** A local module binding emits nothing at all: the arguments are baked into
-      the members and the alias is recorded. *)
-  | Cst.letb (Cst.d_mod x oE) obody =>
-      match elab_res s d oE nil with
-      | Some (r_ent (e_mod n ms) margs) =>
-          match sc_fix d margs ms with
-          | Some ms' =>
-              match res_term d (elab_res (sc_cons x (e_mod n ms') s) d obody nil) with
-              | Some M => Some (r_exp (sc_apply M args))
-              | None => None
+  | f :: fs' =>
+      match alias_lookup x (of_alias f) with
+      | Some t => tg_use (tg_local d i t) args
+      | None =>
+          match em_lookup x (ef_mod (of_names f)) with
+          | Some (en_def _) => eok (r_exp (sc_apply (a_glob (p_rel i (x :: nil))) args))
+          | Some (en_mod n Φ) =>
+              eok (r_mod {| mr_qual := qu_rel i; mr_mems := x :: nil; mr_mod := Φ;
+                            mr_public := true; mr_arity := n; mr_args := args |})
+          | None =>
+              match index_of x (ef_params (of_names f)) with
+              | Some k => eok (r_exp (sc_apply $[i, k] args))
+              | None => fr_lookup os d x (S i) fs' args
               end
-          | None => None
           end
-      | _ => None
       end
   end.
 
-Definition elab (s : scope) (d : nat) (o : Cst.obj) : option exp :=
-  res_term d (elab_res s d o nil).
+(** A filed unit is closed: its parameters are among what a use of its
+    members has to supply. *)
+Definition unit_mref (Θ : gdeps) (fp : list string) (args : list exp) : eres mref :=
+  match gds_lookup Θ fp with
+  | Some U =>
+      eok {| mr_qual := qu_abs fp; mr_mems := nil; mr_mod := gm_erase (gu_mod U);
+             mr_public := true; mr_arity := List.length (gu_params U); mr_args := args |}
+  | None => eerr "unknown unit"
+  end.
+
+(** A unit is named by its full path only where it has been imported. *)
+Definition unit_reachable (os : oscope) (fs : list oframe) (fp : list string) : bool :=
+  os_has_unit fp os || List.existsb (fun f => os_has_unit fp (of_scope f)) fs.
+
+Section Terms.
+  Variable (Θ : gdeps) (os : oscope) (fs : list oframe).
+
+  (** [args] are the arguments the object is applied to, outermost last, so
+      that the head of a spine decides whether they are module arguments. *)
+  Fixpoint elab_res (ls : lscope) (d : nat) (o : Cst.obj) (args : list exp) : eres res :=
+    match o with
+    | Cst.typ n => eok (r_exp (sc_apply Type@n args))
+    | Cst.nat => eok (r_exp (sc_apply ℕ args))
+    | Cst.zero => eok (r_exp (sc_apply zero args))
+    | Cst.succ o =>
+        let* M := res_term (elab_res ls d o nil) in
+        eok (r_exp (sc_apply (succ M) args))
+    | Cst.natrec on mx om oz sx sr os =>
+        let* N := res_term (elab_res ls d on nil) in
+        let* A := res_term (elab_res (ls_push mx d ls) (S d) om nil) in
+        let* MZ := res_term (elab_res ls d oz nil) in
+        let* MS := res_term (elab_res (ls_push sr (S d) (ls_push sx d ls)) (S (S d)) os nil) in
+        eok (r_exp (sc_apply (rec N return A | zero -> MZ | succ -> MS end) args))
+    | Cst.pi x oA oB =>
+        let* A := res_term (elab_res ls d oA nil) in
+        let* B := res_term (elab_res (ls_push x d ls) (S d) oB nil) in
+        eok (r_exp (sc_apply (Π A B) args))
+    | Cst.fn x oA oM =>
+        let* A := res_term (elab_res ls d oA nil) in
+        let* M := res_term (elab_res (ls_push x d ls) (S d) oM nil) in
+        eok (r_exp (sc_apply (λ A M) args))
+    | Cst.app o1 o2 =>
+        let* N := res_term (elab_res ls d o2 nil) in
+        elab_res ls d o1 (N :: args)
+    | Cst.var x =>
+        match ls_lookup x ls with
+        | Some (le_term M n) => eok (r_exp (sc_apply (sc_shift d n M) args))
+        | Some (le_mod mr n) => eok (r_mod (mr_apply (mr_weaken d n mr) args))
+        | None => fr_lookup os d x 0 fs args
+        end
+    | Cst.glob fp =>
+        let* _ := echeck (unit_reachable os fs fp) "the unit is not imported" in
+        let* mr := unit_mref Θ fp args in
+        eok (r_mod mr)
+    | Cst.proj o1 x =>
+        let* mr := res_mod (elab_res ls d o1 nil) in
+        mr_member mr x args
+    | Cst.letb (Cst.d_def m x oA oM) obody =>
+        let* A := res_term (elab_res ls d oA nil) in
+        let* M := res_term (elab_res ls d oM nil) in
+        let e := if Cst.md_abstract m then le_term #0 (S d) else le_term M d in
+        let* B := res_term (elab_res ((x, e) :: ls) (S d) obody nil) in
+        eok (r_exp (sc_apply ((λ A B) $ M) args))
+    (** A local module binding emits nothing: it names the module, with its
+        arguments. *)
+    | Cst.letb (Cst.d_mod x oE) obody =>
+        let* mr := res_mod (elab_res ls d oE nil) in
+        let* M := res_term (elab_res ((x, le_mod mr d) :: ls) d obody nil) in
+        eok (r_exp (sc_apply M args))
+    end.
+
+  Definition elab (o : Cst.obj) : eres exp := res_term (elab_res nil 0 o nil).
+
+  (** A parameter telescope: each type sees the parameters before it as
+      λ-variables. *)
+  Fixpoint elab_params (ls : lscope) (d : nat) (ps : list (string * Cst.obj)) (Δ : ctx) : eres ctx :=
+    match ps with
+    | nil => eok Δ
+    | (x, oA) :: ps' =>
+        let* A := res_term (elab_res ls d oA nil) in
+        elab_params (ls_push x d ls) (S d) ps' (Δ ▹ A)
+    end.
+End Terms.
 
 (** ** Commands
 
-    A unit is elaborated left to right.  [u_frame] holds what the module
-    currently being elaborated has declared, [u_outer] what it inherited; the
-    telescope and the depth are shared by the whole unit, since every definition
-    anywhere in it contributes one binder to the same nest. *)
-Record ustate : Set :=
-  { u_outer : scope
-  ; u_frame : scope
-  ; u_depth : nat
-  ; u_tele : list (exp * exp)
-  ; u_evals : list ((option typ * exp)%type)
-  ; u_idepth : nat }.
+    The state of a unit being elaborated: the open frames, innermost first,
+    and the [eval] obligations so far, each with the stack it is checked on. *)
+Definition eval_obl : Set := (gstack * exp * option typ)%type.
 
-Definition u_init : ustate :=
-  {| u_outer := sc_nil; u_frame := sc_nil; u_depth := 0; u_tele := nil;
-     u_evals := nil; u_idepth := 0 |}.
+Record ustate : Set := us_mk
+  { us_outer : oscope
+  ; us_frames : list oframe
+  ; us_evals : list eval_obl }.
 
-Definition u_view (st : ustate) : scope := sc_app (u_frame st) (u_outer st).
+Definition us_stack (st : ustate) : gstack := List.map of_unit (us_frames st).
 
-(** Starting the body of a module: what the enclosing scope declared becomes
-    inherited, and the import depth restarts at [0]. *)
-Definition u_enter (st : ustate) : ustate :=
-  {| u_outer := u_view st; u_frame := sc_nil; u_depth := u_depth st;
-     u_tele := u_tele st; u_evals := u_evals st; u_idepth := 0 |}.
-
-Definition u_push_eval (st : ustate) (e : (option typ * exp)%type) : ustate :=
-  {| u_outer := u_outer st; u_frame := u_frame st; u_depth := u_depth st;
-     u_tele := u_tele st; u_evals := List.app (u_evals st) (cons e nil);
-     u_idepth := u_idepth st |}.
-
-Definition u_refit (st : ustate) (fr : scope) (n : nat) : ustate :=
-  {| u_outer := u_outer st; u_frame := fr; u_depth := u_depth st;
-     u_tele := u_tele st; u_evals := u_evals st; u_idepth := n |}.
-
-(** The parameters of the enclosing modules, prepended to a member's type and
-    body as ordinary binders.  This is the whole of parameterization: a member of
-    a parameterized module is a function, and [(X.Y.Z a b).foo] is [foo] applied
-    to [a] and [b]. *)
-Definition tele_pi (ps : list (string * Cst.obj)) (o : Cst.obj) : Cst.obj :=
-  List.fold_right (fun p acc => Cst.pi (fst p) (snd p) acc) o ps.
-
-Definition tele_fn (ps : list (string * Cst.obj)) (o : Cst.obj) : Cst.obj :=
-  List.fold_right (fun p acc => Cst.fn (fst p) (snd p) acc) o ps.
-
-(** The telescope becomes the nest [(λ A₁ (λ A₂ … $ M₂) $ M₁], entry [i] having
-    been elaborated at depth [i].  A type mentioned inside the nest lives at its
-    far end, so to be reported it has to be closed by the substitution the nest
-    performs. *)
-Definition tele_nest (t : list (exp * exp)) (M : exp) : exp :=
-  List.fold_right (fun p body => (λ (fst p) body) $ (snd p)) M t.
-
-Definition tele_close (t : list (exp * exp)) : sub :=
-  List.fold_left (fun σ p => σ ,, (snd p)[σ]) t Id.
-
-(** An identity function at [A], which is how an ascribed [eval] gets checked
-    against its type *inside* the nest.  Doing it outside would check it against
-    [A[tele_close]] instead, where every [abstract] definition [A] mentions has
-    already been unfolded — the reported type does leak that way, but the check
-    must not. *)
-Definition ascribe (A M : exp) : exp := (λ A #0) $ M.
-
-(** Leaving the body of a module: its members become reachable under [p], while
-    the depth, the telescope and the obligations it accumulated stay. *)
-Definition u_close (p : list string) (st st' : ustate) : ustate :=
-  {| u_outer := u_outer st
-   ; u_frame := sc_insert p (e_mod (u_idepth st') (u_frame st')) (u_frame st)
-   ; u_depth := u_depth st'
-   ; u_tele := u_tele st'
-   ; u_evals := u_evals st'
-   ; u_idepth := u_idepth st |}.
-
-(** A definition contributes one telescope entry, and binds a name to it at the
-    depth the entry was elaborated at. *)
-Definition elab_def (ps : list (string * Cst.obj)) (st : ustate)
-  (m : Cst.mods) (x : string) (oA oM : Cst.obj) : option ustate :=
-  let d := u_depth st in
-  match elab (u_view st) d (tele_pi ps oA), elab (u_view st) d (tele_fn ps oM) with
-  | Some A, Some M =>
-      Some {| u_outer := u_outer st
-            ; u_frame :=
-                sc_cons x
-                  (e_val (v_bind (Cst.md_abstract m) d (List.length ps) (Cst.md_private m) M))
-                  (u_frame st)
-            ; u_depth := S d
-            ; u_tele := List.app (u_tele st) (cons (A, M) nil)
-            ; u_evals := u_evals st
-            ; u_idepth := u_idepth st |}
-  | _, _ => None
+Definition us_top (st : ustate) (f : oframe -> eres oframe) : eres ustate :=
+  match us_frames st with
+  | g :: gs => let* g' := f g in eok (us_mk (us_outer st) (g' :: gs) (us_evals st))
+  | nil => eerr "outside of any module"
   end.
 
-(** An [eval] declares nothing; it records one closed obligation, built from the
-    definitions that precede it. *)
-Definition elab_eval (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : option ustate :=
-  let d := u_depth st in
-  let t := u_tele st in
-  match elab (u_view st) d oM with
-  | Some M =>
-      match oA with
-      | None => Some (u_push_eval st (None, tele_nest t M))
-      | Some oA =>
-          match elab (u_view st) d oA with
-          | Some A =>
-              Some (u_push_eval st (Some A[tele_close t], tele_nest t (ascribe A M)))
-          | None => None
-          end
-      end
-  | None => None
+(** What [import] declares goes into the innermost frame, or before the unit's
+    declaration into the scope outside it. *)
+Definition us_scope (st : ustate) (f : oscope -> eres oscope) : eres ustate :=
+  match us_frames st with
+  | g :: gs =>
+      let* sc := f (of_scope g) in
+      eok (us_mk (us_outer st) ({| of_names := of_names g; of_unit := of_unit g; of_scope := sc |} :: gs)
+             (us_evals st))
+  | nil => let* sc := f (us_outer st) in eok (us_mk sc nil (us_evals st))
   end.
 
-(** [i_open] binds nothing: within one unit an imported module is already
-    reachable under its full path.  All three forms do update the import depth,
-    and both aliasing forms hide the private members.
+(** A definition is checked against the members before it, and becomes one. *)
+Definition elab_def (Θ : gdeps) (st : ustate) (m : Cst.mods) (x : string) (oA oM : Cst.obj)
+  : eres ustate :=
+  us_top st (fun f =>
+    let* _ := echeck (of_fresh x f) (x ++ " is already declared") in
+    let* A := elab Θ (us_outer st) (us_frames st) oA in
+    let* M := elab Θ (us_outer st) (us_frames st) oM in
+    eok (of_add x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))
+           (en_def (Cst.md_private m)) f)).
 
-    A nonempty file path names another unit, which is not in scope here, so only
-    an internal import resolves. *)
-Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : option ustate :=
-  match fp, sc_lookup_path ip (u_view st) with
-  | nil, Some (e_mod n ms) =>
-      let n' := Nat.max (u_idepth st) (S n) in
-      match spec with
-      | Cst.i_open => Some (u_refit st (u_frame st) n')
-      | Cst.i_as y => Some (u_refit st (sc_cons y (e_mod n (sc_public ms)) (u_frame st)) n')
-      | Cst.i_use ns =>
-          match sc_take ns (sc_public ms) (u_frame st) with
-          | Some fr => Some (u_refit st fr n')
-          | None => None
-          end
-      end
-  | _, _ => None
+Definition elab_eval (Θ : gdeps) (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : eres ustate :=
+  let* M := elab Θ (us_outer st) (us_frames st) oM in
+  let* A := match oA with
+            | None => eok None
+            | Some oA => let* A := elab Θ (us_outer st) (us_frames st) oA in eok (Some A)
+            end in
+  eok (us_mk (us_outer st) (us_frames st) (List.app (us_evals st) ((us_stack st, M, A) :: nil))).
+
+(** [import] binds names only: the module's full path, for a unit, and with
+    [as] or [use] the names given. *)
+Definition elab_import (Θ : gdeps) (st : ustate) (fp ip : list string) (spec : Cst.ispec)
+  : eres ustate :=
+  let* mr := match fp, ip with
+             | nil, x :: ip' =>
+                 res_mod (elab_res Θ (us_outer st) (us_frames st) nil 0
+                            (List.fold_left Cst.proj ip' (Cst.var x)) nil)
+             | nil, nil => eerr "nothing to import"
+             | _, _ =>
+                 let* mr := unit_mref Θ fp nil in
+                 List.fold_left (fun acc x => let* mr := acc in res_mod (mr_member mr x nil))
+                   ip (eok mr)
+             end in
+  us_scope st (fun sc =>
+    let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
+    match spec with
+    | Cst.i_open => eok sc
+    | Cst.i_as y =>
+        let* _ := echeck (os_fresh y sc) (y ++ " is already declared") in
+        eok (os_alias_add y (tg_mod mr) sc)
+    | Cst.i_use ns =>
+        List.fold_left
+          (fun acc n =>
+             let* sc := acc in
+             let* _ := echeck (os_fresh n sc) (n ++ " is already declared") in
+             match em_lookup n (mr_mod mr) with
+             | Some (en_def pv) =>
+                 let* _ := echeck (negb (mr_public mr && pv)) (n ++ " is private") in
+                 eok (os_alias_add n (tg_mem mr n) sc)
+             | Some (en_mod k Φ) =>
+                 eok (os_alias_add n
+                        (tg_mod {| mr_qual := mr_qual mr; mr_mems := List.app (mr_mems mr) (n :: nil);
+                                   mr_mod := Φ; mr_public := true; mr_arity := mr_arity mr + k;
+                                   mr_args := mr_args mr |}) sc)
+             | None => eerr ("no member " ++ n)
+             end)
+          ns (eok sc)
+    end).
+
+(** Opening a module pushes its frame; closing it pops the frame and files it
+    as a member of the one outside. *)
+Definition us_open (st : ustate) (f : oframe) : ustate :=
+  us_mk (us_outer st) (f :: us_frames st) (us_evals st).
+
+Definition us_close (x : string) (st : ustate) : eres ustate :=
+  match us_frames st with
+  | f :: g :: gs =>
+      let E := ge_mod (gu_params (of_unit f)) (gu_mod (of_unit f)) in
+      let en := en_mod (List.length (gu_params (of_unit f))) (ef_mod (of_names f)) in
+      eok (us_mk (us_outer st) (of_add x E en g :: gs) (us_evals st))
+  | _ => eerr "no module to close"
   end.
 
-(** The loop over the members of a module is an inner [fix] rather than a call to
-    [elab_cmds]: the body of a module sits under a [list], and neither mutual
-    recursion (which would ask the guard condition to compare [Cst.cmd] with
-    [list Cst.cmd]) nor a recursion on the list (which would ask it to see
-    through the [list]) is accepted.  [elab_cmd_mod] discharges the duplication
-    the inner [fix] creates. *)
-Fixpoint elab_cmd (ps : list (string * Cst.obj)) (st : ustate) (c : Cst.cmd) : option ustate :=
+(** The loop over a module body is an inner [fix]: the body sits under a
+    [list], which neither mutual recursion nor a recursion on the list gets
+    past the guard condition.  [module A.B] opens [A], with no parameters, and
+    [B] inside it; a name already declared cannot be reopened, since what
+    follows it may already depend on its members. *)
+Fixpoint elab_cmd (Θ : gdeps) (st : ustate) (c : Cst.cmd) : eres ustate :=
   match c with
-  | Cst.c_mod p params body =>
-      match (fix go (st : ustate) (cs : list Cst.cmd) : option ustate :=
-               match cs with
-               | nil => Some st
-               | c :: cs' =>
-                   match elab_cmd (List.app ps params) st c with
-                   | Some st' => go st' cs'
-                   | None => None
-                   end
-               end) (u_enter st) body with
-      | Some st' => Some (u_close p st st')
-      | None => None
-      end
-  | Cst.c_def m x oA oM => elab_def ps st m x oA oM
-  | Cst.c_eval oM oA => elab_eval st oM oA
-  | Cst.c_import fp ip spec => elab_import st fp ip spec
+  | Cst.c_mod p ps body =>
+      let go := fix go (st : ustate) (cs : list Cst.cmd) : eres ustate :=
+                  match cs with
+                  | nil => eok st
+                  | c :: cs' => let* st' := elab_cmd Θ st c in go st' cs'
+                  end in
+      (fix open_path (p : list string) (st : ustate) : eres ustate :=
+         match p with
+         | nil => eerr "empty module name"
+         | x :: p' =>
+             let* _ := us_top st (fun f =>
+                         let* _ := echeck (of_fresh x f) (x ++ " is already declared") in eok f) in
+             let* f := match p' with
+                       | nil =>
+                           let* Δ := elab_params Θ (us_outer st) (us_frames st) nil 0 ps ⋅ in
+                           eok (of_new (List.rev (List.map fst ps)) Δ)
+                       | _ => eok (of_new nil ⋅)
+                       end in
+             let* st1 := match p' with
+                         | nil => go (us_open st f) body
+                         | _ => open_path p' (us_open st f)
+                         end in
+             us_close x st1
+         end) p st
+  | Cst.c_def m x oA oM => elab_def Θ st m x oA oM
+  | Cst.c_eval oM oA => elab_eval Θ st oM oA
+  | Cst.c_import fp ip spec => elab_import Θ st fp ip spec
   end.
 
-Fixpoint elab_cmds (ps : list (string * Cst.obj)) (st : ustate) (cs : list Cst.cmd)
-  : option ustate :=
+Fixpoint elab_cmds (Θ : gdeps) (st : ustate) (cs : list Cst.cmd) : eres ustate :=
   match cs with
-  | nil => Some st
-  | c :: cs' =>
-      match elab_cmd ps st c with
-      | Some st' => elab_cmds ps st' cs'
-      | None => None
-      end
+  | nil => eok st
+  | c :: cs' => let* st' := elab_cmd Θ st c in elab_cmds Θ st' cs'
   end.
 
-(** The inner [fix] of [elab_cmd] and [elab_cmds] are the same loop, so a module
-    is elaborated by elaborating its body in the entered state. *)
-Lemma elab_cmds_go : forall cs ps st,
-    (fix go (st : ustate) (cs : list Cst.cmd) : option ustate :=
-       match cs with
-       | nil => Some st
-       | c :: cs' =>
-           match elab_cmd ps st c with
-           | Some st' => go st' cs'
-           | None => None
-           end
-       end) st cs = elab_cmds ps st cs.
-Proof.
-  induction cs as [| c cs IHcs]; intros; simpl; [ reflexivity |].
-  destruct (elab_cmd ps st c); [ apply IHcs | reflexivity ].
-Qed.
+(** ** Units
 
-Lemma elab_cmd_mod : forall ps st p params body,
-    elab_cmd ps st (Cst.c_mod p params body) =
-      match elab_cmds (List.app ps params) (u_enter st) body with
-      | Some st' => Some (u_close p st st')
-      | None => None
-      end.
-Proof.
-  intros. rewrite <- elab_cmds_go. reflexivity.
-Qed.
-
-Lemma elab_cmd_def : forall ps st m x oA oM,
-    elab_cmd ps st (Cst.c_def m x oA oM) = elab_def ps st m x oA oM.
-Proof. reflexivity. Qed.
-
-Lemma elab_cmd_eval : forall ps st oM oA,
-    elab_cmd ps st (Cst.c_eval oM oA) = elab_eval st oM oA.
-Proof. reflexivity. Qed.
-
-Lemma elab_cmd_import : forall ps st fp ip spec,
-    elab_cmd ps st (Cst.c_import fp ip spec) = elab_import st fp ip spec.
-Proof. reflexivity. Qed.
-
-Lemma elab_cmds_cons : forall ps st c cs,
-    elab_cmds ps st (cons c cs) =
-      match elab_cmd ps st c with
-      | Some st' => elab_cmds ps st' cs
-      | None => None
-      end.
-Proof. reflexivity. Qed.
-
-(** ** Compilation Units
-
-    An [eval] is closed off where it stands, against the definitions in scope
-    there. *)
-Definition elaborate_prog (prg : Cst.prog) : option (list ((option typ * exp)%type)) :=
-  let (imports, top) := prg in
-  let (p, cs) := top in
-  match elab_cmds nil u_init imports with
-  | Some st0 =>
-      match elab_cmds nil (u_enter st0) cs with
-      | Some st => Some (u_evals st)
-      | None => None
-      end
-  | None => None
+    A unit, elaborated against the units filed so far: its imports, outside
+    of its frame; its parameters, which see them; then its body in its frame,
+    which is what is filed under its path. *)
+Definition elaborate_prog (Θ : gdeps) (prg : Cst.prog)
+  : eres ((list string * gunit) * list eval_obl)%type :=
+  let '(imports, (fp, ps, cs)) := prg in
+  let* _ := echeck (match gds_lookup Θ fp with None => true | Some _ => false end)
+              "the unit is already filed" in
+  let* st0 := elab_cmds Θ (us_mk (os_mk nil nil) nil nil) imports in
+  let* Δ := elab_params Θ (us_outer st0) nil nil 0 ps ⋅ in
+  let* st := elab_cmds Θ (us_open st0 (of_new (List.rev (List.map fst ps)) Δ)) cs in
+  match us_frames st with
+  | f :: nil => eok ((fp, of_unit f), us_evals st)
+  | _ => eerr "unbalanced modules"
   end.
 
 (** ** User Expressions
@@ -413,726 +485,3 @@ Proof.
   - clear user_exp_ne; induction M; mauto 3.
 Qed.
 
-(** ** Closedness
-
-    Elaboration success used to be characterized by a *set* of free names
-    ([cst_variables] and [well_scoped]).  That characterization does not survive
-    modules: whether [X.Y.Z] elaborates depends on whether [X] is a module and on
-    how many parameters it has, and no set of names records that.  What is left
-    of it, and what the pipeline actually needs, is the other half of the old
-    statement — that a successful elaboration at depth [d] produces a term with
-    no index beyond [d], so a whole unit produces a closed one. *)
-Inductive closed_at : exp -> nat -> Prop :=
- | ca_var : forall x n, x < n -> closed_at (a_var x) n
- | ca_lam : forall t b n, closed_at t n -> closed_at b (1+n) -> closed_at (a_fn t b) n
- | ca_pi : forall t b n, closed_at t n -> closed_at b (1+n) -> closed_at (a_pi t b) n
- | ca_app : forall a1 a2 n, closed_at a1 n -> closed_at a2 n ->
-            closed_at (a_app a1 a2) n
- | ca_nat : forall n, closed_at (a_nat) n
- | ca_zero : forall n, closed_at (a_zero) n
- | ca_type : forall n m, closed_at (a_typ m) n
- | ca_succ : forall a n, closed_at a n -> closed_at (a_succ a) n
- | ca_natrec : forall n m z s l, closed_at n l -> closed_at m (1+l) -> closed_at z l -> closed_at s (2+l) -> closed_at (a_natrec m z s n) l
-.
-
-#[export]
-Hint Constructors closed_at : mctt.
-
-(** *** Bounded Weakenings and Substitutions
-
-    Closedness is preserved by any weakening or substitution that respects the
-    bound, which is all the elaborator ever applies. *)
-Definition wk_bounded (φ : wk) (n n' : nat) : Prop := forall x, x < n -> φ x < n'.
-
-Definition sb_bounded (σ : sub) (n n' : nat) : Prop := forall x, x < n -> closed_at (σ x) n'.
-
-Lemma closed_at_le : forall M n,
-    closed_at M n ->
-    forall n', n <= n' -> closed_at M n'.
-Proof.
-  induction 1; intros ? Hle; econstructor; solve [ lia | eauto with arith ].
-Qed.
-
-Lemma wk_bounded_q : forall φ n n',
-    wk_bounded φ n n' ->
-    wk_bounded (wk_q φ) (S n) (S n').
-Proof.
-  intros ? ? ? Hφ [| x] ?; simpl; [ lia |].
-  apply ->Nat.succ_lt_mono. apply Hφ. lia.
-Qed.
-
-Lemma closed_at_wk : forall M n,
-    closed_at M n ->
-    forall φ n', wk_bounded φ n n' -> closed_at M[φ]ʷ n'.
-Proof.
-  induction 1; intros; simpl; econstructor; eauto using wk_bounded_q.
-Qed.
-
-Lemma closed_at_shiftn : forall M n k,
-    closed_at M n ->
-    closed_at M[wk_shiftn k]ʷ (n + k).
-Proof.
-  intros. eapply closed_at_wk; [ eassumption |]. intros ? ?. simpl. lia.
-Qed.
-
-Lemma sb_bounded_q : forall σ n n',
-    sb_bounded σ n n' ->
-    sb_bounded (sb_q σ) (S n) (S n').
-Proof.
-  intros ? ? ? Hσ [| x] ?; unfold sb_q; simpl.
-  - constructor. lia.
-  - eapply closed_at_wk; [ apply Hσ; lia |]. intros ? ?. simpl. lia.
-Qed.
-
-Lemma closed_at_sub : forall M n,
-    closed_at M n ->
-    forall σ n', sb_bounded σ n n' -> closed_at M[σ] n'.
-Proof.
-  induction 1; intros ? ? Hσ; simpl; try (apply Hσ; assumption);
-    econstructor; eauto 6 using sb_bounded_q with mctt.
-Qed.
-
-(** *** Well-formed Scopes
-
-    The invariant a scope satisfies during elaboration: the term a name resolves
-    to is closed at the depth it was elaborated at, and that depth has already
-    been reached. *)
-Inductive ent_wf : nat -> entry -> Prop :=
-| ew_val : forall d v,
-    v_depth v <= d ->
-    closed_at (v_term v) (v_depth v) ->
-    ent_wf d (e_val v)
-| ew_mod : forall d n ms,
-    sc_wf d ms ->
-    ent_wf d (e_mod n ms)
-with sc_wf : nat -> scope -> Prop :=
-| sw_nil : forall d, sc_wf d sc_nil
-| sw_cons : forall d x e s,
-    ent_wf d e ->
-    sc_wf d s ->
-    sc_wf d (sc_cons x e s).
-
-#[export]
-Hint Constructors ent_wf sc_wf : mctt.
-
-Lemma ent_wf_le : forall d e, ent_wf d e -> forall d', d <= d' -> ent_wf d' e
-with sc_wf_le : forall d s, sc_wf d s -> forall d', d <= d' -> sc_wf d' s.
-Proof.
-  - destruct 1; intros.
-    + econstructor; [ lia | assumption ].
-    + econstructor. eapply sc_wf_le; eassumption.
-  - destruct 1; intros; [ constructor |].
-    econstructor; [ eapply ent_wf_le | eapply sc_wf_le ]; eassumption.
-Qed.
-
-Lemma sc_lookup_wf : forall s d x e,
-    sc_wf d s ->
-    sc_lookup x s = Some e ->
-    ent_wf d e.
-Proof.
-  induction s; intros * Hs Hl; simpl in *; [ discriminate |].
-  inversion_clear Hs. destruct (string_dec _ _); mauto 3.
-  inversion Hl; subst; assumption.
-Qed.
-
-Lemma sc_lookup_path_wf : forall p s d e,
-    sc_wf d s ->
-    sc_lookup_path p s = Some e ->
-    ent_wf d e.
-Proof.
-  induction p as [| x [| y p] IHp]; intros * Hs Hl; simpl in *; try discriminate.
-  - mauto 3 using sc_lookup_wf.
-  - destruct (sc_lookup x s) as [[| n ms] |] eqn:Hx; try discriminate.
-    assert (ent_wf d (e_mod n ms)) as Hm by mauto 3 using sc_lookup_wf.
-    inversion_clear Hm. eapply IHp; eassumption.
-Qed.
-
-Lemma sc_app_wf : forall s t d,
-    sc_wf d s ->
-    sc_wf d t ->
-    sc_wf d (sc_app s t).
-Proof.
-  induction s; intros * Hs Ht; simpl; [ assumption |].
-  inversion_clear Hs. mauto 3.
-Qed.
-
-Lemma sc_app_wf_inv : forall s t d,
-    sc_wf d (sc_app s t) ->
-    sc_wf d s /\ sc_wf d t.
-Proof.
-  induction s; intros * Hst; simpl in *; [ mauto 3 |].
-  inversion_clear Hst. firstorder mauto 3.
-Qed.
-
-Lemma sc_insert_wf : forall p e s d,
-    ent_wf d e ->
-    sc_wf d s ->
-    sc_wf d (sc_insert p e s).
-Proof.
-  induction p as [| x [| y p] IHp]; intros * He Hs; simpl; [ assumption | mauto 3 |].
-  destruct (sc_lookup x s) as [[v | n ms] |] eqn:Hx; [ mauto 4 | | mauto 4 ].
-  assert (ent_wf d (e_mod n ms)) as Hm by mauto 3 using sc_lookup_wf.
-  inversion_clear Hm. mauto 4.
-Qed.
-
-Lemma ent_public_wf : forall e d e',
-    ent_wf d e ->
-    ent_public e = Some e' ->
-    ent_wf d e'
-with sc_public_wf : forall s d,
-    sc_wf d s ->
-    sc_wf d (sc_public s).
-Proof.
-  - destruct e; intros * He Hp; simpl in *.
-    + destruct (v_private v); [ discriminate |].
-      inversion Hp; subst; assumption.
-    + inversion_clear He. inversion Hp; subst.
-      econstructor. apply sc_public_wf. assumption.
-  - destruct s; intros * Hs; simpl; [ constructor |].
-    inversion_clear Hs.
-    destruct (ent_public e) eqn:Hp.
-    + econstructor; [ eapply ent_public_wf | apply sc_public_wf ]; eassumption.
-    + apply sc_public_wf. assumption.
-Qed.
-
-Lemma sc_take_wf : forall ns ms s d s',
-    sc_wf d ms ->
-    sc_wf d s ->
-    sc_take ns ms s = Some s' ->
-    sc_wf d s'.
-Proof.
-  induction ns; intros * Hms Hs Ht; simpl in *.
-  - inversion Ht; subst; assumption.
-  - destruct (sc_lookup a ms) as [e |] eqn:Hl; [| discriminate].
-    pose proof (sc_lookup_wf ms d a e Hms Hl).
-    eapply (IHns ms (sc_cons a e s) d); mauto 3.
-Qed.
-
-(** *** Using an Entry *)
-
-Lemma closed_at_sc_shift : forall M n d,
-    closed_at M n ->
-    n <= d ->
-    closed_at (sc_shift d n M) d.
-Proof.
-  unfold sc_shift. intros.
-  remember (d - n) as k eqn:Hk.
-  replace d with (n + k) by lia.
-  apply closed_at_shiftn. assumption.
-Qed.
-
-Lemma closed_at_sc_apply : forall args M d,
-    closed_at M d ->
-    List.Forall (fun N => closed_at N d) args ->
-    closed_at (sc_apply M args) d.
-Proof.
-  unfold sc_apply. induction args; intros * HM Hargs; simpl; [ assumption |].
-  inversion_clear Hargs. mauto 3.
-Qed.
-
-Lemma closed_at_sc_use : forall d v args M,
-    ent_wf d (e_val v) ->
-    List.Forall (fun N => closed_at N d) args ->
-    sc_use d v args = Some M ->
-    closed_at M d.
-Proof.
-  unfold sc_use. intros * Hv Hargs Hu.
-  destruct (Nat.leb _ _); [| discriminate].
-  inversion Hu; subst. inversion_clear Hv.
-  apply closed_at_sc_apply; [ apply closed_at_sc_shift |]; assumption.
-Qed.
-
-Lemma ent_fix_wf : forall e d args e',
-    ent_wf d e ->
-    List.Forall (fun N => closed_at N d) args ->
-    ent_fix d args e = Some e' ->
-    ent_wf d e'
-with sc_fix_wf : forall s d args s',
-    sc_wf d s ->
-    List.Forall (fun N => closed_at N d) args ->
-    sc_fix d args s = Some s' ->
-    sc_wf d s'.
-Proof.
-  - destruct e as [v | n ms]; intros * He Hargs Hf; simpl in *.
-    + destruct (Nat.leb _ _); [| discriminate].
-      inversion Hf; subst. inversion_clear He.
-      econstructor; simpl; [ lia |].
-      apply closed_at_sc_apply; [ apply closed_at_sc_shift |]; assumption.
-    + inversion_clear He.
-      destruct (sc_fix d args ms) as [ms' |] eqn:Hms; [| discriminate].
-      inversion Hf; subst.
-      econstructor. eapply (sc_fix_wf ms d args ms'); eassumption.
-  - destruct s as [| x en t]; intros * Hs Hargs Hf; simpl in *.
-    + inversion Hf; subst; constructor.
-    + inversion_clear Hs.
-      destruct (ent_fix d args en) as [en' |] eqn:Hen; [| discriminate].
-      destruct (sc_fix d args t) as [t' |] eqn:Ht; [| discriminate].
-      inversion Hf; subst.
-      econstructor;
-        [ eapply (ent_fix_wf en d args en') | eapply (sc_fix_wf t d args t') ];
-        eassumption.
-Qed.
-
-(** *** Elaboration of Objects
-
-    What [elab_res] returns is well formed at the current depth: a term is
-    closed there, and a module is a well-formed scope together with arguments
-    closed there. *)
-Definition res_wf (d : nat) (r : res) : Prop :=
-  match r with
-  | r_exp M => closed_at M d
-  | r_ent e args => ent_wf d e /\ List.Forall (fun N => closed_at N d) args
-  end.
-
-Lemma res_term_closed : forall d r M,
-    res_wf d r ->
-    res_term d (Some r) = Some M ->
-    closed_at M d.
-Proof.
-  destruct r as [| [] ?]; intros * Hr Ht; simpl in *; try discriminate.
-  - inversion Ht; subst; assumption.
-  - destruct Hr. mauto 3 using closed_at_sc_use.
-Qed.
-
-Lemma sc_push_wf : forall x d s,
-    sc_wf d s ->
-    sc_wf (S d) (sc_push x d s).
-Proof.
-  unfold sc_push. intros. econstructor.
-  - econstructor; simpl; [ lia | constructor; lia ].
-  - eapply sc_wf_le; [ eassumption | lia ].
-Qed.
-
-(** A local definition binds either the λ it emits or the term itself; either
-    way the entry lives one binder deeper. *)
-Lemma ent_wf_bind : forall ab d ar priv M,
-    closed_at M d ->
-    ent_wf (S d) (e_val (v_bind ab d ar priv M)).
-Proof.
-  unfold v_bind, v_bound, v_inline. intros * HM.
-  destruct ab; econstructor; simpl; [ lia | constructor; lia | lia | assumption ].
-Qed.
-
-#[local]
-Hint Resolve sc_push_wf ent_wf_bind : mctt.
-
-(** The statements of the mutual induction over [Cst.obj] and [Cst.decl]:
-    [elab_res] matches on a declaration inline, so the declaration's part of the
-    statement is just its objects'. *)
-Definition elab_res_wf_stmt (o : Cst.obj) : Prop :=
-  forall s d args r,
-    sc_wf d s ->
-    List.Forall (fun N => closed_at N d) args ->
-    elab_res s d o args = Some r ->
-    res_wf d r.
-
-Definition elab_decl_wf_stmt (dcl : Cst.decl) : Prop :=
-  match dcl with
-  | Cst.d_def _ _ oA oM => elab_res_wf_stmt oA /\ elab_res_wf_stmt oM
-  | Cst.d_mod _ oE => elab_res_wf_stmt oE
-  end.
-
-Scheme obj_mut := Induction for Cst.obj Sort Prop
-  with decl_mut := Induction for Cst.decl Sort Prop.
-
-(** Every premise of [elab_res] is a sub-elaboration that produced a term.  The
-    induction hypothesis is spelled out rather than folded so that it unifies,
-    and it comes last so that the sub-elaboration itself fixes the scope and the
-    object. *)
-Lemma elab_sub_closed : forall s d o M,
-    res_term d (elab_res s d o nil) = Some M ->
-    sc_wf d s ->
-    (forall s' d' args r,
-        sc_wf d' s' ->
-        List.Forall (fun N => closed_at N d') args ->
-        elab_res s' d' o args = Some r ->
-        res_wf d' r) ->
-    closed_at M d.
-Proof.
-  intros * Ht Hs Ho.
-  destruct (elab_res s d o nil) as [r |] eqn:He; [| discriminate].
-  eapply res_term_closed; [| eassumption].
-  eapply Ho; mauto 3.
-Qed.
-
-(** [elab_res] only returns something when each of its sub-elaborations does:
-    name every branch, and drop the impossible ones. *)
-#[local]
-Ltac elab_res_wf_tac :=
-  repeat match goal with
-    | H: context[res_term ?d (elab_res ?s ?d' ?o nil)] |- _ =>
-        (* the equations this very tactic produces are not to be split again *)
-        lazymatch type of H with
-        | res_term _ _ = Some _ => fail
-        | _ =>
-            let Hc := fresh "Hc" in
-            destruct (res_term d (elab_res s d' o nil)) as [? |] eqn:Hc;
-            [| discriminate H]
-        end
-    end;
-  match goal with
-  | H: Some _ = Some _ |- _ => inversion_clear H
-  end;
-  simpl; apply closed_at_sc_apply; [| assumption].
-
-(** The scope of a sub-elaboration is whatever [sc_push] made of the current
-    one, and its induction hypothesis is in the context. *)
-#[local]
-Ltac elab_sub_closed_tac :=
-  eapply elab_sub_closed; [ eassumption | mauto 3 | eassumption ].
-
-Lemma elab_res_wf : forall o, elab_res_wf_stmt o.
-Proof.
-  apply (obj_mut elab_res_wf_stmt elab_decl_wf_stmt);
-    unfold elab_res_wf_stmt, elab_decl_wf_stmt in *;
-    intros; simpl in *; mauto 3.
-  (* [typ], [nat], [zero]: a constant applied to the arguments *)
-  1-3: inversion_clear H1; simpl; apply closed_at_sc_apply; mauto 3.
-  (* [succ], [natrec], [pi], [fn]: a former applied to the arguments *)
-  1-4: elab_res_wf_tac; econstructor; elab_sub_closed_tac.
-  (* [app]: the argument joins the spine *)
-  - destruct (res_term d (elab_res s d o0 nil)) as [N |] eqn:Hc; [| discriminate].
-    eapply H; [ eassumption | | eassumption ].
-    econstructor; [| assumption ]. elab_sub_closed_tac.
-  (* [var]: whatever the name resolves to, still under-applied *)
-  - destruct (sc_lookup s s0) as [e |] eqn:Hl; [| discriminate].
-    inversion_clear H1. simpl. split; mauto 3 using sc_lookup_wf.
-  (* [glob]: a [::] path resolves nothing, so there is nothing to be closed *)
-  - discriminate.
-  (* [proj]: the module's arguments come before the member's *)
-  - destruct (elab_res s0 d o nil) as [[| [v | n ms] margs] |] eqn:He; try discriminate.
-    destruct (sc_lookup s ms) as [e |] eqn:Hl; [| discriminate].
-    inversion_clear H2.
-    assert (res_wf d (r_ent (e_mod n ms) margs)) as [Hm Hargs]
-      by (eapply H; [ eassumption | constructor | eassumption ]).
-    inversion_clear Hm. simpl. split; [ mauto 3 using sc_lookup_wf |].
-    apply List.Forall_app. split; assumption.
-  (* [letb]: the binding extends the scope the body is elaborated in *)
-  - destruct d as [m x oA oM | x oE].
-    (* a definition emits its own [λ], so the body is one binder deeper *)
-    + destruct H as [HA HM]. elab_res_wf_tac.
-      econstructor; [ econstructor; [ elab_sub_closed_tac |] | elab_sub_closed_tac ].
-      eapply elab_sub_closed; [ eassumption | | eassumption ].
-      econstructor;
-        [ apply ent_wf_bind; elab_sub_closed_tac
-        | eapply sc_wf_le; [ eassumption | lia ] ].
-    (* a module binding emits nothing, but its members absorb the arguments *)
-    + destruct (elab_res s d0 oE nil) as [[| [v | n ms] margs] |] eqn:He;
-        try discriminate.
-      destruct (sc_fix d0 margs ms) as [ms' |] eqn:Hf; [| discriminate].
-      elab_res_wf_tac.
-      assert (res_wf d0 (r_ent (e_mod n ms) margs)) as [Hm Hargs]
-        by (eapply H; [ eassumption | constructor | eassumption ]).
-      inversion_clear Hm.
-      eapply elab_sub_closed; [ eassumption | | eassumption ].
-      econstructor; [ econstructor; eapply sc_fix_wf | ]; eassumption.
-Qed.
-
-Corollary elab_closed : forall s d o M,
-    sc_wf d s ->
-    elab s d o = Some M ->
-    closed_at M d.
-Proof.
-  unfold elab. intros.
-  eapply elab_sub_closed; [ eassumption | eassumption | apply elab_res_wf ].
-Qed.
-
-(** ** Closedness of a Unit
-
-    The telescope of a unit: entry [i] was elaborated at depth [i], so the nest
-    it becomes is closed, and the substitution it performs takes a type living
-    at its far end down to a closed one. *)
-Inductive tele_wf : nat -> list (exp * exp) -> Prop :=
-| tw_nil : forall k, tele_wf k nil
-| tw_cons : forall k A M t,
-    closed_at A k ->
-    closed_at M k ->
-    tele_wf (S k) t ->
-    tele_wf k (cons (A, M) t).
-
-#[export]
-Hint Constructors tele_wf : mctt.
-
-Lemma tele_wf_app : forall t k A M,
-    tele_wf k t ->
-    closed_at A (k + List.length t) ->
-    closed_at M (k + List.length t) ->
-    tele_wf k (List.app t (cons (A, M) nil)).
-Proof.
-  induction t as [| [A' M'] t IHt]; intros * Ht HA HM; simpl in *.
-  - rewrite Nat.add_0_r in *. mauto 3.
-  - inversion_clear Ht.
-    replace (k + S (List.length t)) with (S k + List.length t) in HA by lia.
-    replace (k + S (List.length t)) with (S k + List.length t) in HM by lia.
-    econstructor; [ assumption | assumption | apply IHt; assumption ].
-Qed.
-
-Lemma closed_at_tele_nest : forall t k M,
-    tele_wf k t ->
-    closed_at M (k + List.length t) ->
-    closed_at (tele_nest t M) k.
-Proof.
-  induction t as [| [A M'] t IHt]; intros * Ht HM; simpl in *.
-  - rewrite Nat.add_0_r in HM. assumption.
-  - inversion_clear Ht.
-    replace (k + S (List.length t)) with (S k + List.length t) in HM by lia.
-    econstructor; [ econstructor; [ assumption | apply IHt; assumption ] | assumption ].
-Qed.
-
-Lemma sb_bounded_tele_close : forall t k σ,
-    tele_wf k t ->
-    sb_bounded σ k 0 ->
-    sb_bounded (List.fold_left (fun σ p => σ ,, (snd p)[σ]) t σ) (k + List.length t) 0.
-Proof.
-  induction t as [| [A M] t IHt]; intros * Ht Hσ; simpl in *.
-  - rewrite Nat.add_0_r. assumption.
-  - inversion_clear Ht.
-    replace (k + S (List.length t)) with (S k + List.length t) by lia.
-    apply IHt; [ assumption |].
-    intros [| x] ?; simpl; [ mauto 3 using closed_at_sub | apply Hσ; lia ].
-Qed.
-
-Corollary closed_at_tele_close : forall t A,
-    tele_wf 0 t ->
-    closed_at A (List.length t) ->
-    closed_at A[tele_close t] 0.
-Proof.
-  unfold tele_close. intros.
-  eapply closed_at_sub; [ eassumption |].
-  apply (sb_bounded_tele_close t 0 Id); [ assumption |].
-  intros ? ?. lia.
-Qed.
-
-(** *** Well-formed Unit States
-
-    A state is well formed when both of its scopes are well formed at the depth
-    reached so far, its telescope accounts for exactly that depth, and every
-    obligation it has collected is closed. *)
-Definition eval_wf (e : (option typ * exp)%type) : Prop :=
-  match fst e with
-  | Some A => closed_at A 0
-  | None => True
-  end /\ closed_at (snd e) 0.
-
-Definition u_wf (st : ustate) : Prop :=
-  sc_wf (u_depth st) (u_outer st) /\
-  sc_wf (u_depth st) (u_frame st) /\
-  tele_wf 0 (u_tele st) /\
-  List.length (u_tele st) = u_depth st /\
-  List.Forall eval_wf (u_evals st).
-
-Lemma u_wf_view : forall st, u_wf st -> sc_wf (u_depth st) (u_view st).
-Proof.
-  unfold u_view. intros ? [? [? ?]]. apply sc_app_wf; assumption.
-Qed.
-
-Lemma u_wf_init : u_wf u_init.
-Proof. unfold u_wf, u_init; simpl. repeat split; mauto 3. Qed.
-
-Lemma u_wf_enter : forall st, u_wf st -> u_wf (u_enter st).
-Proof.
-  intros ? Hst. pose proof (u_wf_view _ Hst).
-  destruct Hst as [? [? [? [? ?]]]].
-  unfold u_wf, u_enter; simpl. repeat split; mauto 3.
-Qed.
-
-Lemma u_wf_close : forall p st st',
-    u_wf st ->
-    u_wf st' ->
-    u_depth st <= u_depth st' ->
-    u_wf (u_close p st st').
-Proof.
-  intros * [Ho [Hf _]] [_ [Hf' [Ht' [Hlen' Hev']]]] Hle.
-  unfold u_wf, u_close; simpl. repeat split; try assumption.
-  - eapply sc_wf_le; eassumption.
-  - apply sc_insert_wf; [ econstructor; eassumption | eapply sc_wf_le; eassumption ].
-Qed.
-
-Lemma u_wf_push_eval : forall st e,
-    u_wf st ->
-    eval_wf e ->
-    u_wf (u_push_eval st e).
-Proof.
-  intros * [? [? [? [? ?]]]] ?.
-  unfold u_wf, u_push_eval; simpl. repeat split; try assumption.
-  apply List.Forall_app. split; [ assumption | econstructor; [ assumption | constructor ] ].
-Qed.
-
-Lemma u_wf_refit : forall st fr n,
-    u_wf st ->
-    sc_wf (u_depth st) fr ->
-    u_wf (u_refit st fr n).
-Proof.
-  intros * [? [? [? [? ?]]]] ?.
-  unfold u_wf, u_refit; simpl. repeat split; assumption.
-Qed.
-
-Lemma u_depth_enter : forall st, u_depth (u_enter st) = u_depth st.
-Proof. reflexivity. Qed.
-
-Lemma u_depth_close : forall p st st', u_depth (u_close p st st') = u_depth st'.
-Proof. reflexivity. Qed.
-
-(** *** Elaboration of Commands *)
-
-Lemma u_wf_def : forall ps st m x oA oM st',
-    u_wf st ->
-    elab_def ps st m x oA oM = Some st' ->
-    u_wf st' /\ u_depth st <= u_depth st'.
-Proof.
-  unfold elab_def. intros * Hst Hd.
-  pose proof (u_wf_view _ Hst) as Hv.
-  destruct (elab (u_view st) (u_depth st) (tele_pi ps oA)) as [A |] eqn:HA; [| discriminate].
-  destruct (elab (u_view st) (u_depth st) (tele_fn ps oM)) as [M |] eqn:HM; [| discriminate].
-  pose proof (elab_closed _ _ _ _ Hv HA).
-  pose proof (elab_closed _ _ _ _ Hv HM).
-  destruct Hst as [Ho [Hf [Ht [Hlen Hev]]]].
-  inversion Hd; subst; clear Hd.
-  unfold u_wf; simpl. repeat split.
-  - eapply sc_wf_le; [ eassumption | lia ].
-  - econstructor; [ apply ent_wf_bind; assumption | eapply sc_wf_le; [ eassumption | lia ] ].
-  - apply tele_wf_app;
-      [ assumption | simpl; rewrite Hlen; assumption | simpl; rewrite Hlen; assumption ].
-  - rewrite List.length_app, Hlen. simpl. lia.
-  - assumption.
-  - lia.
-Qed.
-
-Lemma u_wf_eval : forall st oM oA st',
-    u_wf st ->
-    elab_eval st oM oA = Some st' ->
-    u_wf st' /\ u_depth st <= u_depth st'.
-Proof.
-  unfold elab_eval. intros * Hst He.
-  pose proof (u_wf_view _ Hst) as Hv.
-  assert (Ht : tele_wf 0 (u_tele st)) by (destruct Hst as [? [? [? ?]]]; assumption).
-  assert (Hlen : List.length (u_tele st) = u_depth st)
-    by (destruct Hst as [? [? [? [? ?]]]]; assumption).
-  assert (Hnest : forall N,
-             closed_at N (u_depth st) -> closed_at (tele_nest (u_tele st) N) 0)
-    by (intros; apply closed_at_tele_nest; [ assumption | simpl; rewrite Hlen; assumption ]).
-  destruct (elab (u_view st) (u_depth st) oM) as [M |] eqn:HM; [| discriminate].
-  pose proof (elab_closed _ _ _ _ Hv HM).
-  destruct oA as [oA |].
-  - destruct (elab (u_view st) (u_depth st) oA) as [A |] eqn:HA; [| discriminate].
-    pose proof (elab_closed _ _ _ _ Hv HA).
-    inversion He; subst; clear He.
-    split; [| unfold u_push_eval; simpl; lia].
-    apply u_wf_push_eval; [ assumption |].
-    unfold eval_wf, ascribe; simpl. split.
-    + apply closed_at_tele_close; [ assumption | rewrite Hlen; assumption ].
-    + apply Hnest.
-      econstructor; [ econstructor; [ assumption | constructor; lia ] | assumption ].
-  - inversion He; subst; clear He.
-    split; [| unfold u_push_eval; simpl; lia].
-    apply u_wf_push_eval; [ assumption |].
-    unfold eval_wf; simpl. split; [ exact I | apply Hnest; assumption ].
-Qed.
-
-Lemma u_wf_import : forall st fp ip spec st',
-    u_wf st ->
-    elab_import st fp ip spec = Some st' ->
-    u_wf st' /\ u_depth st <= u_depth st'.
-Proof.
-  unfold elab_import. intros * Hst Hi.
-  pose proof (u_wf_view _ Hst) as Hv.
-  destruct fp as [| ? ?]; [| discriminate].
-  destruct (sc_lookup_path ip (u_view st)) as [[| n ms] |] eqn:Hl; try discriminate.
-  assert (ent_wf (u_depth st) (e_mod n ms)) as Hm by (eapply sc_lookup_path_wf; eassumption).
-  inversion_clear Hm.
-  assert (Hf : sc_wf (u_depth st) (u_frame st)) by (destruct Hst as [? [? ?]]; assumption).
-  destruct spec as [| y | ns];
-    [| | destruct (sc_take ns (sc_public ms) (u_frame st)) as [fr |] eqn:Ht; [| discriminate] ];
-    inversion Hi; subst; clear Hi;
-    (split; [| unfold u_refit; simpl; lia]); apply u_wf_refit; try assumption.
-  - econstructor; [ econstructor; apply sc_public_wf; assumption | assumption ].
-  (* the [sc_take] that produced the frame fixes what its premises are about *)
-  - eapply sc_take_wf; [| | eassumption ];
-      [ apply sc_public_wf; assumption | assumption ].
-Qed.
-
-(** *** Elaboration of a Unit
-
-    [elab_cmds] recurses on a module's body, which [list]'s induction principle
-    does not see, so the induction is on a measure instead. *)
-Fixpoint cmd_size (c : Cst.cmd) : nat :=
-  match c with
-  | Cst.c_mod _ _ cs =>
-      S ((fix sizes (cs : list Cst.cmd) : nat :=
-            match cs with
-            | nil => 0
-            | c :: cs => cmd_size c + sizes cs
-            end) cs)
-  | _ => 1
-  end.
-
-Fixpoint cmds_size (cs : list Cst.cmd) : nat :=
-  match cs with
-  | nil => 0
-  | c :: cs => cmd_size c + cmds_size cs
-  end.
-
-Lemma cmd_size_mod : forall p params cs,
-    cmd_size (Cst.c_mod p params cs) = S (cmds_size cs).
-Proof. reflexivity. Qed.
-
-Lemma cmd_size_pos : forall c, 1 <= cmd_size c.
-Proof. destruct c; simpl; lia. Qed.
-
-Lemma elab_cmds_wf : forall n ps cs st st',
-    cmds_size cs <= n ->
-    u_wf st ->
-    elab_cmds ps st cs = Some st' ->
-    u_wf st' /\ u_depth st <= u_depth st'.
-Proof.
-  induction n as [| n IHn]; intros * Hn Hst Hcs;
-    (destruct cs as [| c cs];
-     [ simpl in Hcs; inversion Hcs; subst; split; [ assumption | lia ] |]);
-    pose proof (cmd_size_pos c); simpl in Hn;
-    [ lia |].
-  assert (Hrest : cmds_size cs <= n) by lia.
-  rewrite elab_cmds_cons in Hcs.
-  destruct c as [p params body | m x oA oM | fp ip spec | oM oA].
-  (* the body of a module is smaller, and its members become reachable under [p] *)
-  - rewrite cmd_size_mod in Hn. rewrite elab_cmd_mod in Hcs.
-    destruct (elab_cmds (List.app ps params) (u_enter st) body) as [st1 |] eqn:Hb;
-      [| discriminate].
-    pose proof (IHn (List.app ps params) body (u_enter st) st1
-                  ltac:(lia) (u_wf_enter _ Hst) Hb) as [Hst1 Hle1].
-    rewrite u_depth_enter in Hle1.
-    pose proof (IHn ps cs (u_close p st st1) st' Hrest
-                  (u_wf_close _ _ _ Hst Hst1 Hle1) Hcs) as [Hst2 Hle2].
-    rewrite u_depth_close in Hle2. split; [ assumption | lia ].
-  - rewrite elab_cmd_def in Hcs.
-    destruct (elab_def ps st m x oA oM) as [st1 |] eqn:Hd; [| discriminate].
-    pose proof (u_wf_def _ _ _ _ _ _ _ Hst Hd) as [Hst1 Hle1].
-    pose proof (IHn ps cs st1 st' Hrest Hst1 Hcs) as [Hst2 Hle2].
-    split; [ assumption | lia ].
-  - rewrite elab_cmd_import in Hcs.
-    destruct (elab_import st fp ip spec) as [st1 |] eqn:Hi; [| discriminate].
-    pose proof (u_wf_import _ _ _ _ _ Hst Hi) as [Hst1 Hle1].
-    pose proof (IHn ps cs st1 st' Hrest Hst1 Hcs) as [Hst2 Hle2].
-    split; [ assumption | lia ].
-  - rewrite elab_cmd_eval in Hcs.
-    destruct (elab_eval st oM oA) as [st1 |] eqn:He; [| discriminate].
-    pose proof (u_wf_eval _ _ _ _ Hst He) as [Hst1 Hle1].
-    pose proof (IHn ps cs st1 st' Hrest Hst1 Hcs) as [Hst2 Hle2].
-    split; [ assumption | lia ].
-Qed.
-
-(** Every obligation a unit elaborates to is closed, so [run_eval] may hand it
-    to [type_check_closed] and to [nbe]. *)
-Theorem elaborate_prog_wf : forall prg es,
-    elaborate_prog prg = Some es ->
-    List.Forall eval_wf es.
-Proof.
-  unfold elaborate_prog. intros [imports [p cs]] * He.
-  destruct (elab_cmds nil u_init imports) as [st0 |] eqn:H0; [| discriminate].
-  destruct (elab_cmds nil (u_enter st0) cs) as [st |] eqn:H1; [| discriminate].
-  inversion He; subst; clear He.
-  pose proof (elab_cmds_wf (cmds_size imports) nil imports u_init st0
-                ltac:(lia) u_wf_init H0) as [Hst0 _].
-  pose proof (elab_cmds_wf (cmds_size cs) nil cs (u_enter st0) st
-                ltac:(lia) (u_wf_enter _ Hst0) H1) as [Hst _].
-  destruct Hst as [? [? [? [? ?]]]]. assumption.
-Qed.

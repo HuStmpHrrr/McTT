@@ -234,12 +234,12 @@ Qed.
 
 Ltac saturate_closed :=
   repeat match goal with
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ ?A _ |- _ =>
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ ?A _ |- _ =>
       assert_fails (assert (exp_scoped 0 _ (ctx_pi Δ A)) by eassumption);
-      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ (Some ?M) |- _ =>
+      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hc Hl)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ _ (Some ?M) |- _ =>
       assert_fails (assert (exp_scoped 0 _ (ctx_fn Δ M)) by eassumption);
-      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hc Hl)
+      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hc Hl)
   | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : ?T |- _ =>
       assert_fails (assert (exp_scoped 0 _ T[↑ₘ (S n)]ᵐ[sb_params n]) by eassumption);
       pose proof (wf_param_type_closed _ _ _ _ _ _ _ Hc Hn Hk)

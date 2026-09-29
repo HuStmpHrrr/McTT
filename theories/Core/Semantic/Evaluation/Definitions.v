@@ -51,12 +51,12 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** δ: a transparent definition is its body. *)
 | eval_exp_glob_delta :
-  `( gc_resolve Θ Ξ p = Some (Δ, ge_def true A (Some M)) ->
+  `( gc_resolve Θ Ξ p = Some (Δ, ge_def true pv A (Some M)) ->
      ⟦ ctx_fn Δ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ m ->
      ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m )
 (** An opaque definition or an axiom stays a neutral at its type. *)
 | eval_exp_glob_neut :
-  `( gc_resolve Θ Ξ p = Some (Δ, ge_def b A B) ->
+  `( gc_resolve Θ Ξ p = Some (Δ, ge_def b pv A B) ->
      b = false \/ B = None ->
      ⟦ ctx_pi Δ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_glob p) )

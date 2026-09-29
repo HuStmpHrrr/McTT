@@ -174,31 +174,31 @@ Qed.
 (** ** What Resolution Hands Back is Well Typed *)
 
 Definition rwf (Θ : gdeps) (Ξ : gstack) : Prop :=
-  forall p Δ b A B,
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+  forall p Δ b pv A B,
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_pi Δ A : Type@i) /\
     (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_fn Δ M : ctx_pi Δ A).
 
 Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
-  | ge_def _ A B =>
+  | ge_def _ pv A B =>
       (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Type@i) /\ (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A)
   | ge_mod Δ Φ => ins_typed Θ Ξ Δ Φ
   end.
 
 (** A member, typed in the frame it was inserted into, is typed in the whole
     module. *)
-Lemma ins_typed_full : forall Θ Ξ P Φ ip Δ b A B,
+Lemma ins_typed_full : forall Θ Ξ P Φ ip Δ b pv A B,
     ins_typed Θ Ξ P Φ ->
     ⊢ Θ ⍮ gu_mk P Φ :: Ξ ⍮ ⋅ ->
-    Φ ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+    Φ ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
     (exists i, Θ ⍮ gu_mk P Φ :: Ξ ⍮ ⋅ ⊢ ctx_pi Δ A : Type@i) /\
     (forall M, B = Some M -> Θ ⍮ gu_mk P Φ :: Ξ ⍮ ⋅ ⊢ ctx_fn Δ M : ctx_pi Δ A).
 Proof.
   intros * Hins Hb Hl.
   destruct (gm_lookup_ins _ _ _ _ Hl) as [Φq Hi].
   destruct (frame_grow _ _ _ _ _ (gm_ins_prefix _ _ _ _ _ Hi) Hb) as (_ & He & _).
-  destruct (Hins _ _ _ _ _ _ Hi) as [[i HT] HM].
+  destruct (Hins _ _ _ _ _ _ _ Hi) as [[i HT] HM].
   split; [ exists i; auto | intros; auto ].
 Qed.
 
@@ -208,19 +208,19 @@ Lemma rwf_push : forall Θ U Ξ,
     ins_typed Θ Ξ (gu_params U) (gu_mod U) ->
     rwf Θ (U :: Ξ).
 Proof.
-  intros * Hg HR HU p Δ b A B Hlk.
+  intros * Hg HR HU p Δ b pv A B Hlk.
   assert (Hb : ⊢ Θ ⍮ U :: Ξ ⍮ ⋅) by (constructor; assumption).
   assert (HΞ : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; exact (proj1 (wf_gctx_pop _ _ _ Hg))).
   destruct (push_preserves_wf _ _ _ Hg) as (_ & Hp & _).
-  inversion Hlk as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf Hm]; subst.
+  inversion Hlk as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf Hm]; subst.
   - destruct n as [| n]; cbn in Hn.
     + (* a member of the new frame *)
       injection Hn as <-; destruct U as [P Φ].
       rewrite ctx_msub_shift_zero, exp_msub_shift_zero, opt_msub_shift_zero.
       eapply ins_typed_full; eassumption.
     + (* further out: push it *)
-      pose proof (gcl_rel Θ Ξ _ _ _ _ _ _ _ Hn Hm) as Hl0.
-      destruct (HR _ _ _ _ _ Hl0) as [[i HA] HM].
+      pose proof (gcl_rel Θ Ξ _ _ _ _ _ _ _ _ Hn Hm) as Hl0.
+      destruct (HR _ _ _ _ _ _ Hl0) as [[i HA] HM].
       split.
       * exists i; pose proof (Hp nil _ _ HA) as H'; cbn [ctx_msub msubst MSub_ctx] in H'.
         rewrite ctx_pi_msub, (exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_msub_shift_shift,
@@ -230,11 +230,11 @@ Proof.
         rewrite ctx_pi_msub, ctx_fn_msub, !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_msub_shift_shift,
           !exp_msub_shift_shift in H'; exact H'.
   - (* a filed unit, read out as before: pushing moves nothing in it *)
-    pose proof (gcl_abs Θ Ξ _ _ _ _ _ _ _ Hf Hm) as Hl0.
+    pose proof (gcl_abs Θ Ξ _ _ _ _ _ _ _ _ Hf Hm) as Hl0.
     assert (HΘ : units_scoped Θ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ HΞ)).
     assert (Hfix : ms_abs_fix (↑ₘ 1)) by (intros ? ?; reflexivity).
-    destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ HΘ Hl0 ltac:(intros ? ?; discriminate)) as (HΔ & HA0 & HB0).
-    destruct (HR _ _ _ _ _ Hl0) as [[i HA] HM].
+    destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ _ HΘ Hl0 ltac:(intros ? ?; discriminate)) as (HΔ & HA0 & HB0).
+    destruct (HR _ _ _ _ _ _ Hl0) as [[i HA] HM].
     revert HA HM HΔ HA0 HB0.
     generalize (Δ0[close (p_abs fp nil) (length (gu_params U0))]ᵐ ++ gu_params U0) as Δa.
     generalize A0[ms_close (p_abs fp nil) (length (gu_params U0)) (length Δ0)]ᵐ as Aa.
@@ -259,13 +259,13 @@ Lemma rwf_level : forall Θ d,
     (forall fp U, List.In (fp, U) d -> ins_typed Θ nil (gu_params U) (gu_mod U)) ->
     rwf (d :: Θ) nil.
 Proof.
-  intros * HΘ Hd HR HU p Δ b A B Hlk.
+  intros * HΘ Hd HR HU p Δ b pv A B Hlk.
   assert (Hb : ⊢ d :: Θ ⍮ nil ⍮ ⋅)
     by (apply wf_ctx_empty, wf_gctx_intro, wf_gstack_nil, wf_gdeps_cons; assumption).
   pose proof (wf_gdep_fresh _ _ Hd) as Hfr.
   assert (Hgrow : forall fq V, gds_lookup Θ fq = Some V -> gds_lookup (d :: Θ) fq = Some V)
     by (intros; apply gds_lookup_level; assumption).
-  inversion Hlk as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf Hm]; subst;
+  inversion Hlk as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf Hm]; subst;
     [ destruct n; discriminate |].
   pose proof Hf as Hl; unfold gds_lookup in Hl; cbn [List.concat] in Hl.
   apply gd_lookup_app_inv in Hl as [Hl | Hl].
@@ -276,14 +276,14 @@ Proof.
     destruct U as [PU ΦU]; cbn in *.
     destruct (gm_lookup_ins _ _ _ _ Hm) as [Φq Hi].
     destruct (closable_file Θ (d :: Θ) fp PU ΦU ltac:(assumption) HUi Hf Hgrow Hb
-                (S (gm_count Φq)) Φq _ _ _ _ _ ltac:(lia) Hi) as [[i HT] HM].
+                (S (gm_count Φq)) Φq _ _ _ _ _ _ ltac:(lia) Hi) as [[i HT] HM].
     rewrite ctx_pi_app, <- ctx_pi_close.
     split; [ eapply ctx_pi_wf0; eassumption |].
     intros M' HB; destruct B0 as [M0 |]; cbn in HB; inversion HB; subst.
     rewrite ctx_fn_app, <- ctx_fn_close; eapply ctx_fn_wf0; [ eassumption | apply HM; reflexivity ].
   - (* filed below *)
-    pose proof (gcl_abs Θ nil _ _ _ _ _ _ _ Hl Hm) as Hl0.
-    destruct (HR _ _ _ _ _ Hl0) as [[i HA] HM].
+    pose proof (gcl_abs Θ nil _ _ _ _ _ _ _ _ Hl Hm) as Hl0.
+    destruct (HR _ _ _ _ _ _ Hl0) as [[i HA] HM].
     destruct (levels_grow Θ (d :: Θ) nil Hgrow Hb) as (_ & He & _).
     split; [ exists i; apply He, HA | intros; apply He, HM; assumption ].
 Qed.
@@ -297,11 +297,11 @@ Lemma ins_typed_ext : forall Θ Ξ P Φ x E,
     entry_typed Θ (gu_mk P Φ :: Ξ) E ->
     ins_typed Θ Ξ P (Φ ⊳ x ↦ E).
 Proof.
-  intros * Hw HΦ HE Φq ip Δ b A B Hi.
-  inversion Hi as [| ? ? ? ? ? ? ? ? ? ? Hi' | ? ? ? ? ? ? ? Hi']; subst.
+  intros * Hw HΦ HE Φq ip Δ b pv A B Hi.
+  inversion Hi as [| ? ? ? ? ? ? ? ? ? ? ? Hi' | ? ? ? ? ? ? ? Hi']; subst.
   - exact HE.
   - cbn [entry_typed] in HE.
-    destruct (closable_pop Θ Ξ P Φ x Δ' Φ' Hw HE (S (gm_count Φp')) Φp' _ _ _ _ _ ltac:(lia) Hi')
+    destruct (closable_pop Θ Ξ P Φ x Δ' Φ' Hw HE (S (gm_count Φp')) Φp' _ _ _ _ _ _ ltac:(lia) Hi')
       as [[i HT] HM].
     rewrite ctx_pi_app, <- ctx_pi_close.
     split; [ eapply ctx_pi_wf0; eassumption |].
@@ -322,8 +322,8 @@ Proof.
     assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2; destruct_conjs.
   (* a global: its generalized type is a type at [⋅], and closed *)
   all: try match goal with
-    | Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
-        destruct (HR _ _ _ _ _ Hl) as [[i HA] _]; exists i;
+    | Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ _, HΓ : ⊢ _ ⍮ _ ⍮ _ |- _ =>
+        destruct (HR _ _ _ _ _ _ Hl) as [[i HA] _]; exists i;
         eapply (closed_weaken_exp _ _ _ _ _ _ nil);
         [ assumption | exact HA | eapply wf_gc_lookup_type_closed; eassumption | exact I ]
     end.
@@ -372,22 +372,22 @@ Proof. apply presup_global. Qed.
 
 (** What a use of a global needs: its generalized type and body, in any
     well-formed context. *)
-Corollary wf_glob_typ : forall Θ Ξ Γ p Δ b A B,
+Corollary wf_glob_typ : forall Θ Ξ Γ p Δ b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@i.
 Proof.
-  intros * HΓ Hl; destruct (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ) _ _ _ _ _ Hl) as [[i HA] _].
+  intros * HΓ Hl; destruct (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ) _ _ _ _ _ _ Hl) as [[i HA] _].
   exists i; eapply (closed_weaken_exp _ _ _ _ _ _ nil);
     [ assumption | exact HA | eapply wf_gc_lookup_type_closed; eassumption | exact I ].
 Qed.
 
-Corollary wf_glob_body : forall Θ Ξ Γ p Δ b A M,
+Corollary wf_glob_body : forall Θ Ξ Γ p Δ b pv A M,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A (Some M) ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A (Some M) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A.
 Proof.
-  intros * HΓ Hl; destruct (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ) _ _ _ _ _ Hl) as [_ HM].
+  intros * HΓ Hl; destruct (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ) _ _ _ _ _ _ Hl) as [_ HM].
   eapply closed_weaken_exp;
     [ assumption | apply HM; reflexivity
     | eapply wf_gc_lookup_body_closed; eassumption

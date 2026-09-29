@@ -1,178 +1,125 @@
 From Stdlib Require Import Lia List PeanoNat Relation_Operators String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax.
+From Mctt.Core.Syntactic Require Import Syntax GlobalCtx.
 
-Import Syntax_Notations Wk_Notations.
+Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
-(** * Scopes and Name Resolution
+(** * Names in Scope
 
-    Modules, global definitions and local bindings live entirely in the
-    front end: a compilation unit is compiled down to one *closed* [exp], so
-    the core calculus, its metatheory and [nbe] are untouched.
+    The elaborator emits into the global context: a unit becomes a [gunit], a
+    definition a [ge_def], a nested module a [ge_mod], and a name one of
+    [$[n, k]], [a_glob] or a λ-variable.  What the global context does not
+    record is names that are not members: a frame's parameters are a nameless
+    [ctx].  So the elaborator keeps, per open frame, a copy of the frame with
+    the types stripped and the parameters named: an [eframe].
 
-    Every definition [x : A := M] becomes one entry of a *definition telescope*,
-    emitted as the nest [(λ A body) $ M].  This is what makes [A] checked and [M]
-    checked against it.  What the [abstract] modifier changes is only what the
-    name [x] resolves to inside [body]:
+    Visibility: a private member can be named from the frame it is declared
+    in and from the frames nested inside it, i.e. when it is reached as a
+    member of a frame on the stack.  Through a module that is not open — a
+    sibling, a module nested in one, a filed unit — only public members are
+    reachable. *)
 
-    - [abstract]: the variable the [λ] just bound.  Type checking [body] then
-      never sees [M] — which is precisely opacity — while the trailing
-      application restores the value, so evaluation is unaffected.
-    - transparent: [M] itself, substituted at every use site.  Delta reduction
-      by inlining is the only form of transparency available, the core having no
-      [let]; the cost is that [M] is duplicated, and re-checked, per use.
+(** ** Frames *)
 
-    Consequently the only thing a name has to resolve to is either a term
-    together with the depth at which that term was elaborated, or a module. *)
+(** A member, types stripped: whether a definition is private; how many
+    parameters a nested module has, and its members. *)
+Inductive ename : Set :=
+| en_def : bool -> ename
+| en_mod : nat -> emod -> ename
+with emod : Set :=
+| em_nil : emod
+| em_ext : emod -> string -> ename -> emod.
 
-(** ** Entries
+(** An open frame: [ef_params] names its parameters, the [k]th one being
+    [$[_, k]], i.e. innermost first; [ef_mod] its members so far. *)
+Record eframe : Set := ef_mk
+  { ef_params : list string
+  ; ef_mod : emod }.
 
-    [v_arity] is the number of module parameters that a use of the member still
-    has to supply: the parameters of every enclosing module are prepended to a
-    member's type and body as ordinary binders, so [(X.Y.Z a b).foo] is just
-    [foo] applied to [a] and [b].  Since dot binds tighter than application,
-    module arguments must be parenthesised, as in the design document. *)
-Record val : Set :=
-  { v_depth : nat
-  ; v_term : exp
-  ; v_arity : nat
-  ; v_private : bool }.
-
-Inductive entry : Set :=
-| e_val : val -> entry
-(** [e_mod n ms] has import depth [n]; see [ImportDepth] below. *)
-| e_mod : nat -> scope -> entry
-
-(** The global and the local scope have the same shape: a tree whose leaves are
-    terms, so that every prefix of a dotted name denotes either a module or a
-    term.  Innermost binding first, so shadowing is "first match wins".
-
-    This is an association list spelled out as an inductive rather than a
-    [list (string * entry)]: the guard condition does not see through the pair,
-    so with a [list] none of the mutual recursions below would be accepted. *)
-with scope : Set :=
-| sc_nil : scope
-| sc_cons : string -> entry -> scope -> scope.
-
-Fixpoint sc_app (s t : scope) : scope :=
-  match s with
-  | sc_nil => t
-  | sc_cons x e s' => sc_cons x e (sc_app s' t)
+Fixpoint em_lookup (x : string) (Φ : emod) : option ename :=
+  match Φ with
+  | em_nil => None
+  | em_ext Φ' y E => if String.eqb x y then Some E else em_lookup x Φ'
   end.
 
-Fixpoint sc_lookup (x : string) (s : scope) : option entry :=
-  match s with
-  | sc_nil => None
-  | sc_cons y e s' => if string_dec y x then Some e else sc_lookup x s'
-  end.
-
-Fixpoint sc_lookup_path (p : list string) (s : scope) : option entry :=
-  match p with
-  | nil => None
-  | x :: nil => sc_lookup x s
-  | x :: p' =>
-      match sc_lookup x s with
-      | Some (e_mod _ ms) => sc_lookup_path p' ms
-      | _ => None
-      end
-  end.
-
-(** Insertion merges with the modules already there, so that [module X.A] and
-    [module X.B] end up as two members of one [X]. *)
-Fixpoint sc_insert (p : list string) (e : entry) (s : scope) : scope :=
-  match p with
-  | nil => s
-  | x :: nil => sc_cons x e s
-  | x :: p' =>
-      match sc_lookup x s with
-      | Some (e_mod n ms) => sc_cons x (e_mod n (sc_insert p' e ms)) s
-      | _ => sc_cons x (e_mod 0 (sc_insert p' e sc_nil)) s
-      end
-  end.
-
-(** Hiding what [private] hides.  This is the *only* effect of [private], and it
-    happens only at [import]: within the declaring unit a private member is an
-    ordinary one. *)
-Fixpoint ent_public (e : entry) : option entry :=
-  match e with
-  | e_val v => if v_private v then None else Some (e_val v)
-  | e_mod n ms => Some (e_mod n (sc_public ms))
+(** What a module filed in [Θ] looks like to the elaborator. *)
+Fixpoint ge_erase (E : gentry) : ename :=
+  match E with
+  | ge_def _ pv _ _ => en_def pv
+  | ge_mod Δ Φ => en_mod (List.length Δ) (gm_erase Φ)
   end
-with sc_public (s : scope) : scope :=
-  match s with
-  | sc_nil => sc_nil
-  | sc_cons x e s' =>
-      match ent_public e with
-      | Some e' => sc_cons x e' (sc_public s')
-      | None => sc_public s'
-      end
+with gm_erase (Φ : gmod) : emod :=
+  match Φ with
+  | gm_nil => em_nil
+  | gm_ext Φ' x E => em_ext (gm_erase Φ') x (ge_erase E)
   end.
 
-(** ** Using an Entry *)
+Fixpoint index_of (x : string) (xs : list string) : option nat :=
+  match xs with
+  | nil => None
+  | y :: xs' => if String.eqb x y then Some 0 else option_map S (index_of x xs')
+  end.
 
-(** A term elaborated at depth [n], moved to the deeper depth [d]. *)
+(** ** What a Name Denotes
+
+    A module reached by a dotted prefix: where it is ([mr_qual], [mr_mems]),
+    its members, whether only its public members may be named, how many
+    arguments a use of a member has to supply ([mr_arity]: the parameters of
+    the closed modules crossed, which resolution generalizes over), and the
+    arguments given so far. *)
+Record mref : Set := mr_mk
+  { mr_qual : qual
+  ; mr_mems : list string
+  ; mr_mod : emod
+  ; mr_public : bool
+  ; mr_arity : nat
+  ; mr_args : list exp }.
+
+(** What an alias names: a module, or a definition of one. *)
+Inductive target : Set :=
+| tg_mod : mref -> target
+| tg_mem : mref -> string -> target.
+
+(** An alias recorded in frame [j] is used from [i] frames further in: its
+    relative qualifier and its arguments move out by [i]. *)
+Definition qual_shift (i : nat) (ql : qual) : qual :=
+  match ql with
+  | qu_rel m => qu_rel (i + m)
+  | qu_abs fp => qu_abs fp
+  end.
+
+Definition mr_shift (i : nat) (mr : mref) : mref :=
+  {| mr_qual := qual_shift i (mr_qual mr); mr_mems := mr_mems mr; mr_mod := mr_mod mr;
+     mr_public := mr_public mr; mr_arity := mr_arity mr;
+     mr_args := List.map (fun M => M[↑ₘ i]ᵐ) (mr_args mr) |}.
+
+Definition tg_shift (i : nat) (t : target) : target :=
+  match t with
+  | tg_mod mr => tg_mod (mr_shift i mr)
+  | tg_mem mr x => tg_mem (mr_shift i mr) x
+  end.
+
+(** ** The Local Scope
+
+    Bindings made inside a term: a λ-variable, or a [let], each recorded with
+    the depth it was elaborated at and moved to the use site by weakening. *)
+Inductive lent : Set :=
+| le_term : exp -> nat -> lent
+| le_mod : mref -> nat -> lent.
+
+Definition lscope : Set := list (string * lent).
+
+Definition ls_push (x : string) (d : nat) (ls : lscope) : lscope := (x, le_term #0 (S d)) :: ls.
+
 Definition sc_shift (d n : nat) (M : exp) : exp := M[wk_shiftn (d - n)]ʷ.
 
 Definition sc_apply (M : exp) (args : list exp) : exp := List.fold_left a_app args M.
 
-(** A member may not be used before all of its module parameters are given. *)
-Definition sc_use (d : nat) (v : val) (args : list exp) : option exp :=
-  if Nat.leb (v_arity v) (List.length args)
-  then Some (sc_apply (sc_shift d (v_depth v) (v_term v)) args)
-  else None.
-
-(** The two ways of binding a name at depth [d]: to the variable a binder just
-    introduced, or to an already elaborated term. *)
-Definition v_bound (d ar : nat) (priv : bool) : val :=
-  {| v_depth := S d; v_term := #0; v_arity := ar; v_private := priv |}.
-
-Definition v_inline (d ar : nat) (priv : bool) (M : exp) : val :=
-  {| v_depth := d; v_term := M; v_arity := ar; v_private := priv |}.
-
-(** Which of the two a definition binds its name to, given [abstract]. *)
-Definition v_bind (ab : bool) (d ar : nat) (priv : bool) (M : exp) : val :=
-  if ab then v_bound d ar priv else v_inline d ar priv M.
-
-Definition sc_push (x : string) (d : nat) (s : scope) : scope :=
-  sc_cons x (e_val (v_bound d 0 false)) s.
-
-(** Baking module arguments into every member of a module.  This is what
-    [let module M := X.Y.Z a b] and [import X.Y.Z as N] do: no term is emitted,
-    the arguments are merely recorded. *)
-Fixpoint ent_fix (d : nat) (args : list exp) (e : entry) : option entry :=
-  match e with
-  | e_val v =>
-      if Nat.leb (List.length args) (v_arity v)
-      then Some (e_val (v_inline d (v_arity v - List.length args) (v_private v)
-                                 (sc_apply (sc_shift d (v_depth v) (v_term v)) args)))
-      else None
-  | e_mod n ms =>
-      match sc_fix d args ms with
-      | Some ms' => Some (e_mod n ms')
-      | None => None
-      end
-  end
-with sc_fix (d : nat) (args : list exp) (s : scope) : option scope :=
-  match s with
-  | sc_nil => Some sc_nil
-  | sc_cons x e s' =>
-      match ent_fix d args e, sc_fix d args s' with
-      | Some e', Some s'' => Some (sc_cons x e' s'')
-      | _, _ => None
-      end
-  end.
-
-(** Binding the members named by [import ... use (f; g)]. *)
-Fixpoint sc_take (ns : list string) (ms s : scope) : option scope :=
-  match ns with
-  | nil => Some s
-  | x :: ns' =>
-      match sc_lookup x ms with
-      | Some e => sc_take ns' ms (sc_cons x e s)
-      | None => None
-      end
-  end.
+Definition mr_weaken (d n : nat) (mr : mref) : mref :=
+  {| mr_qual := mr_qual mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
+     mr_public := mr_public mr; mr_arity := mr_arity mr;
+     mr_args := List.map (sc_shift d n) (mr_args mr) |}.
 
 (** * Import Depths
 

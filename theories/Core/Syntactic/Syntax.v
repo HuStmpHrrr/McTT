@@ -84,10 +84,10 @@ Inductive cmd : Set :=
 
 (** A compilation unit: its imports, and the one module declaration everything
     else it contains lives in.  That declaration names the unit, so its path is a
-    [::] one.  Only imports may precede it, so no definition is ever made outside
-    a module.  The imports are [c_import]s; the grammar admits nothing else
-    there. *)
-Definition prog : Set := (list cmd * (list string * list cmd))%type.
+    [::] one, and carries the unit's parameters.  Only imports may precede it, so
+    no definition is ever made outside a module.  The imports are [c_import]s;
+    the grammar admits nothing else there. *)
+Definition prog : Set := (list cmd * (list string * list (string * obj) * list cmd))%type.
 
 End Cst.
 

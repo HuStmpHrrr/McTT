@@ -238,20 +238,20 @@ Section Close.
       exists U', List.nth_error Ξ2 n = Some U' /\ gu_params U' = gu_params U /\
         forall d, T[↑ₘ (S (S n))]ᵐ[sb_params (S n)][ms_close mp c d]ᵐ = T[↑ₘ (S n)]ᵐ[sb_params n].
   (** resolution *)
-  Hypothesis Hglob_out : forall r Δ b A B,
-      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b A B -> p_qual r <> qu_rel 0 ->
+  Hypothesis Hglob_out : forall r Δ b pv A B,
+      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B -> p_qual r <> qu_rel 0 ->
       Θ2 ⍮ Ξ2 ∋ᵍ r[mp]ᵖ ⇒ Δ[close mp c]ᵐ ⍮
-        ge_def b A[ms_close mp c (length Δ)]ᵐ B[ms_close mp c (length Δ)]ᵐ.
-  Hypothesis Hglob_here : forall r Δ b A B,
-      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b A B -> p_qual r = qu_rel 0 ->
+        ge_def b pv A[ms_close mp c (length Δ)]ᵐ B[ms_close mp c (length Δ)]ᵐ.
+  Hypothesis Hglob_here : forall r Δ b pv A B,
+      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B -> p_qual r = qu_rel 0 ->
       Θ2 ⍮ Ξ2 ∋ᵍ r[mp]ᵖ ⇒ Δ[close mp c]ᵐ ++ P ⍮
-        ge_def b A[ms_close mp c (length Δ)]ᵐ B[ms_close mp c (length Δ)]ᵐ.
+        ge_def b pv A[ms_close mp c (length Δ)]ᵐ B[ms_close mp c (length Δ)]ᵐ.
   (** the closed frame's members, generalized *)
-  Hypothesis Hhere_typ : forall r Δ b A B,
-      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b A B -> p_qual r = qu_rel 0 ->
+  Hypothesis Hhere_typ : forall r Δ b pv A B,
+      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B -> p_qual r = qu_rel 0 ->
       exists i, Θ2 ⍮ Ξ2 ⍮ P ⊢ (ctx_pi Δ A)[close mp c]ᵐ : Type@i.
-  Hypothesis Hhere_body : forall r Δ A M,
-      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def true A (Some M) -> p_qual r = qu_rel 0 ->
+  Hypothesis Hhere_body : forall r Δ A M pv,
+      Θ1 ⍮ Ξs ∋ᵍ r ⇒ Δ ⍮ ge_def true pv A (Some M) -> p_qual r = qu_rel 0 ->
       Θ2 ⍮ Ξ2 ⍮ P ⊢ (ctx_fn Δ M)[close mp c]ᵐ : (ctx_pi Δ A)[close mp c]ᵐ.
 
   Lemma close_preserves_wf :
@@ -283,14 +283,14 @@ Section Close.
         rewrite <- Hp in Hk; split; econstructor; eassumption.
     - (* a global: its type is closed, so closing it is closing at the top *)
       intros * Hl HΓ; rewrite !(exp_msub_ext _ _ _ (Hqn _)).
-      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hsrc Hl) as HscA.
+      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hsrc Hl) as HscA.
       rewrite <- (exp_msub_close_shiftn _ _ _ _ _ HscA).
       cbn [msubst MSub_exp exp_msub ms_glob ms_close].
       destruct (p_qual r) as [fp | [| m]] eqn:Hr.
       2:{ (* a member of the closed frame, applied to its parameters *)
-          pose proof (Hglob_here _ _ _ _ _ Hl Hr) as Hl'.
-          destruct (Hhere_typ _ _ _ _ _ Hl Hr) as [i HY].
-          pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
+          pose proof (Hglob_here _ _ _ _ _ _ Hl Hr) as Hl'.
+          destruct (Hhere_typ _ _ _ _ _ _ Hl Hr) as [i HY].
+          pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
           rewrite ctx_pi_app, <- ctx_pi_close in HscT.
           assert (HF0 : Θ2 ⍮ Ξ2 ⍮ Γ[close mp c]ᵐ ++ P ⊢ a_glob r[mp]ᵖ
                         : ctx_pi (Δ[close mp c]ᵐ ++ P) A[ms_close mp c (length Δ)]ᵐ)
@@ -299,21 +299,21 @@ Section Close.
             <- (exp_closed_wk _ _ (wk_shiftn (length Γ[close mp c]ᵐ + length P)) HscT) in HF0.
           rewrite <- (ctx_msub_length (close mp c) Γ).
           split; [ eapply app_vars_typed | eapply app_vars_eq ]; eauto using wf_exp_eq_refl. }
-      all: pose proof (Hglob_out _ _ _ _ _ Hl ltac:(rewrite Hr; discriminate)) as Hl'.
-      all: pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
+      all: pose proof (Hglob_out _ _ _ _ _ _ Hl ltac:(rewrite Hr; discriminate)) as Hl'.
+      all: pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
       all: rewrite ctx_pi_close, (exp_closed_wk _ _ _ HscT); split; econstructor; eassumption.
     - intros * Hl HΓ; rewrite !(exp_msub_ext _ _ _ (Hqn _)).
-      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hsrc Hl) as HscA.
-      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hsrc Hl) as HscM.
+      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hsrc Hl) as HscA.
+      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hsrc Hl) as HscM.
       rewrite <- (exp_msub_close_shiftn _ _ _ _ _ HscA), <- (exp_msub_close_shiftn _ _ _ _ _ HscM).
       cbn [msubst MSub_exp exp_msub ms_glob ms_close].
       destruct (p_qual r) as [fp | [| m]] eqn:Hr.
       2:{ (* unfold, then β once per parameter *)
-          pose proof (Hglob_here _ _ _ _ _ Hl Hr) as Hl'; cbn [msubst MSub_option option_map] in Hl'.
-          destruct (Hhere_typ _ _ _ _ _ Hl Hr) as [i HY].
-          pose proof (Hhere_body _ _ _ _ Hl Hr) as HZ.
-          pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
-          pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscB.
+          pose proof (Hglob_here _ _ _ _ _ _ Hl Hr) as Hl'; cbn [msubst MSub_option option_map] in Hl'.
+          destruct (Hhere_typ _ _ _ _ _ _ Hl Hr) as [i HY].
+          pose proof (Hhere_body _ _ _ _ _ Hl Hr) as HZ.
+          pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
+          pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscB.
           rewrite ctx_pi_app, <- ctx_pi_close in HscT.
           rewrite ctx_fn_app, <- ctx_fn_close in HscB.
           assert (HF0 : Θ2 ⍮ Ξ2 ⍮ Γ[close mp c]ᵐ ++ P ⊢ a_glob r[mp]ᵖ
@@ -325,10 +325,10 @@ Section Close.
             <- (exp_closed_wk _ _ (wk_shiftn (length Γ[close mp c]ᵐ + length P)) HscB) in HF0.
           rewrite <- (ctx_msub_length (close mp c) Γ).
           eapply wf_exp_eq_trans; [ eapply app_vars_eq; eassumption | eapply app_vars_beta; eassumption ]. }
-      all: pose proof (Hglob_out _ _ _ _ _ Hl ltac:(rewrite Hr; discriminate)) as Hl';
+      all: pose proof (Hglob_out _ _ _ _ _ _ Hl ltac:(rewrite Hr; discriminate)) as Hl';
         cbn [msubst MSub_option option_map] in Hl'.
-      all: pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
-      all: pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hg2 Hl') as HscB.
+      all: pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscT.
+      all: pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hg2 Hl') as HscB.
       all: rewrite ctx_pi_close, ctx_fn_close, (exp_closed_wk _ _ _ HscT), (exp_closed_wk _ _ _ HscB);
         econstructor; eassumption.
     - repeat split; intros * H;
@@ -380,7 +380,7 @@ Lemma frame_grow : forall Θ Ξ P Φp Φ,
     (forall Γ A A', Θ ⍮ gu_mk P Φp :: Ξ ⍮ Γ ⊢ A ⊆ A' -> Θ ⍮ gu_mk P Φ :: Ξ ⍮ Γ ⊢ A ⊆ A').
 Proof.
   intros * Hp Hb; apply rebase_preserves_wf; [| | assumption ].
-  - intros * Hl; inversion Hl as [? ? ? ? ? ? ? Hn Hm |]; subst; [| econstructor; eassumption ].
+  - intros * Hl; inversion Hl as [? ? ? ? ? ? ? ? Hn Hm |]; subst; [| econstructor; eassumption ].
     destruct n as [| n]; cbn in Hn; [ injection Hn as <- |];
       (eapply gcl_rel; [ cbn; first [ reflexivity | eassumption ] | cbn in *; eauto using gm_prefix_lookup ]).
   - intros [| n] U Hn; cbn in *; [ injection Hn as <- |]; eexists; split; eauto.
@@ -420,14 +420,14 @@ Lemma opt_msub_nil : forall (B : option exp) n μ, opt_scoped n nil B -> ms_abs_
 Proof. intros [X |] * H Hμ; cbn in *; [ erewrite exp_msub_nil by eassumption |]; reflexivity. Qed.
 
 (** What a filed unit hands back mentions no frame. *)
-Lemma gc_lookup_abs_nil : forall Θ Ξ r Δ b A B,
+Lemma gc_lookup_abs_nil : forall Θ Ξ r Δ b pv A B,
     units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ r ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
     (forall n, p_qual r <> qu_rel n) ->
     ctx_scoped 0 nil Δ /\ exp_scoped (length Δ) nil A /\ opt_scoped (length Δ) nil B.
 Proof.
   intros * HΘ Hl Hr; inversion Hl; subst; [ exfalso; eapply Hr; reflexivity |].
-  eapply (gc_lookup_scoped Θ nil _ _ b _ _ I HΘ); econstructor; eassumption.
+  eapply (gc_lookup_scoped Θ nil _ _ b _ _ _ I HΘ); econstructor; eassumption.
 Qed.
 
 Lemma ctx_msub_shift_close : forall (Δ : ctx) n x c d,
@@ -442,19 +442,19 @@ Lemma opt_msub_shift_close : forall (B : option exp) n x c d,
     B[↑ₘ (S n)]ᵐ[ms_close (p_rel 0 (x :: nil)) c d]ᵐ = B[↑ₘ n]ᵐ.
 Proof. intros [X |] *; cbn; rewrite ?exp_msub_shift_close; reflexivity. Qed.
 
-Lemma gcl_rel0 : forall Θ Ξ U ip Δ b A B,
-    List.nth_error Ξ 0 = Some U -> gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
-    Θ ⍮ Ξ ∋ᵍ p_rel 0 ip ⇒ Δ ⍮ ge_def b A B.
+Lemma gcl_rel0 : forall Θ Ξ U ip Δ b pv A B,
+    List.nth_error Ξ 0 = Some U -> gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
+    Θ ⍮ Ξ ∋ᵍ p_rel 0 ip ⇒ Δ ⍮ ge_def b pv A B.
 Proof.
-  intros * Hn Hl; pose proof (gcl_rel Θ Ξ _ _ _ _ _ _ _ Hn Hl) as H.
+  intros * Hn Hl; pose proof (gcl_rel Θ Ξ _ _ _ _ _ _ _ _ Hn Hl) as H.
   rewrite ctx_msub_shift_zero, exp_msub_shift_zero, opt_msub_shift_zero in H; exact H.
 Qed.
 
 (** ** Members, Generalized, at Their Insertion *)
 
 Definition ins_typed (Θ : gdeps) (Ξ : gstack) (P : ctx) (Φ : gmod) : Prop :=
-  forall Φq ip Δ b A B,
-    gm_ins Φ Φq ip Δ (ge_def b A B) ->
+  forall Φq ip Δ b pv A B,
+    gm_ins Φ Φq ip Δ (ge_def b pv A B) ->
     (exists i, Θ ⍮ gu_mk P Φq :: Ξ ⍮ ⋅ ⊢ ctx_pi Δ A : Type@i) /\
     (forall M, B = Some M -> Θ ⍮ gu_mk P Φq :: Ξ ⍮ ⋅ ⊢ ctx_fn Δ M : ctx_pi Δ A).
 
@@ -472,9 +472,9 @@ Section Pop.
 
   (** Each member of [x], closed, is well typed where [x] stood when it was
       inserted. *)
-  Lemma closable_pop : forall n Φq ip Δ b A B,
+  Lemma closable_pop : forall n Φq ip Δ b pv A B,
       gm_count Φq < n ->
-      gm_ins Φ' Φq ip Δ (ge_def b A B) ->
+      gm_ins Φ' Φq ip Δ (ge_def b pv A B) ->
       (exists i, Θ ⍮ Tgt Φq ⍮ Δ' ⊢ (ctx_pi Δ A)[close mx (length Δ')]ᵐ : Type@i) /\
       (forall M, B = Some M ->
          Θ ⍮ Tgt Φq ⍮ Δ' ⊢ (ctx_fn Δ M)[close mx (length Δ')]ᵐ : (ctx_pi Δ A)[close mx (length Δ')]ᵐ).
@@ -491,7 +491,7 @@ Section Pop.
     assert (Hbase : ⊢ Θ ⍮ Tgt Φq ⍮ Δ')
       by (eapply (frame_grow _ _ _ Φ); [ auto with mctt | assumption | eapply wf_gmod_ctx; eassumption ]).
     assert (HΘ : units_scoped Θ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hsrc)).
-    destruct (Hins _ _ _ _ _ _ Hi) as [[i HT] Hb].
+    destruct (Hins _ _ _ _ _ _ _ Hi) as [[i HT] Hb].
     destruct (close_preserves_wf Θ Θ Ξ1 (Tgt Φq) Δ' Φq mx) as (_ & He & _ & _).
     - exact Hbase.
     - exact Hsrc.
@@ -502,41 +502,41 @@ Section Pop.
                          | split; [ reflexivity | intros; apply exp_params_close_out ] ]).
     - (* outside [x]: one frame nearer, or a filed unit, which nothing moves *)
       intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst.
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst.
       + destruct n0 as [| m]; [ contradiction |].
         rewrite ctx_msub_shift_close, ctx_msub_length, exp_msub_shift_close, opt_msub_shift_close,
           path_open_in_succ.
         destruct m as [| m]; cbn in Hn; [ injection Hn as <- |];
           (eapply gcl_rel; [ cbn; first [ reflexivity | eassumption ] | cbn in *; eauto with mctt ]).
-      + destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ HΘ Hl ltac:(intros ? ?; discriminate)) as (HΔ & HA & HB).
+      + destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ _ HΘ Hl ltac:(intros ? ?; discriminate)) as (HΔ & HA & HB).
         rewrite (ctx_msub_nil _ _ _ HΔ (ms_close_abs_fix _ _ _)),
           (exp_msub_nil _ _ _ HA (ms_close_abs_fix _ _ _)), (opt_msub_nil _ _ _ HB (ms_close_abs_fix _ _ _)).
         cbn; econstructor; eassumption.
     - (* a member of [x] is read out through it *)
       intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, exp_msub_shift_zero, opt_msub_shift_zero, path_open_in_rel.
       eapply gcl_rel0; [ reflexivity | cbn; eapply gml_in; eassumption ].
     - (* and was inserted before, so is closed already *)
       intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, exp_msub_shift_zero.
       destruct (gm_lookup_ins _ _ _ _ Hm) as [Φr Hir].
       pose proof (gm_ins_count _ _ _ _ _ Hir) as Hcr.
       pose proof (gm_ins_prefix _ _ _ _ _ Hir) as Hpr.
-      destruct (IH Φr _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [[j HT'] _].
+      destruct (IH Φr _ _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [[j HT'] _].
       exists j; eapply (frame_grow _ _ _ (Φ ⊳ x ↦ ge_mod Δ' Φr)); [ auto with mctt | exact Htgt | exact HT' ].
     - intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, !exp_msub_shift_zero.
       match goal with H : _[↑ₘ 0]ᵐ = Some _ |- _ => rewrite opt_msub_shift_zero in H; subst end.
       destruct (gm_lookup_ins _ _ _ _ Hm) as [Φr Hir].
       pose proof (gm_ins_count _ _ _ _ _ Hir) as Hcr.
       pose proof (gm_ins_prefix _ _ _ _ _ Hir) as Hpr.
-      destruct (IH Φr _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [_ HM'].
+      destruct (IH Φr _ _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [_ HM'].
       eapply (frame_grow _ _ _ (Φ ⊳ x ↦ ge_mod Δ' Φr)); [ auto with mctt | exact Htgt | exact (HM' _ eq_refl) ].
     - split.
       + exists i; exact (He _ _ _ HT).
@@ -588,9 +588,9 @@ Section File.
 
   (** Each member of the unit, closed, is well typed under its parameters
       once the unit is filed. *)
-  Lemma closable_file : forall n Φq ip Δ b A B,
+  Lemma closable_file : forall n Φq ip Δ b pv A B,
       gm_count Φq < n ->
-      gm_ins ΦU Φq ip Δ (ge_def b A B) ->
+      gm_ins ΦU Φq ip Δ (ge_def b pv A B) ->
       (exists i, Θ2 ⍮ nil ⍮ PU ⊢ (ctx_pi Δ A)[close mf (length PU)]ᵐ : Type@i) /\
       (forall M, B = Some M ->
          Θ2 ⍮ nil ⍮ PU ⊢ (ctx_fn Δ M)[close mf (length PU)]ᵐ : (ctx_pi Δ A)[close mf (length PU)]ᵐ).
@@ -603,7 +603,7 @@ Section File.
     assert (Hbase : ⊢ Θ2 ⍮ nil ⍮ PU) by (eapply levels_grow; eassumption).
     assert (HΘ : units_scoped Θ') by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hsrc)).
     assert (HPs : ctx_scoped 0 nil PU) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ HP)).
-    destruct (Hins _ _ _ _ _ _ Hi) as [[i HT] Hb].
+    destruct (Hins _ _ _ _ _ _ _ Hi) as [[i HT] Hb].
     destruct (close_preserves_wf Θ' Θ2 nil nil PU Φq mf) as (_ & He & _ & _).
     - exact Hbase.
     - exact Hsrc.
@@ -611,33 +611,33 @@ Section File.
     - intros [| m] U k T Hn; discriminate.
     - (* no frame outside the unit: only the levels below, which nothing moves *)
       intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst.
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst.
       + destruct n0 as [| m]; [ contradiction | destruct m; discriminate ].
-      + destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ HΘ Hl ltac:(intros ? ?; discriminate)) as (HΔ & HA & HB).
+      + destruct (gc_lookup_abs_nil _ _ _ _ _ _ _ _ HΘ Hl ltac:(intros ? ?; discriminate)) as (HΔ & HA & HB).
         rewrite (ctx_msub_nil _ _ _ HΔ (ms_close_abs_fix _ _ _)),
           (exp_msub_nil _ _ _ HA (ms_close_abs_fix _ _ _)), (opt_msub_nil _ _ _ HB (ms_close_abs_fix _ _ _)).
         cbn; econstructor; eauto.
     - (* a member of the unit is read out of it, filed *)
       intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, exp_msub_shift_zero, opt_msub_shift_zero.
       cbn; eapply (gcl_abs _ _ _ (gu_mk PU ΦU)); [ exact Hfp | cbn; eauto using gm_prefix_lookup ].
     - intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, exp_msub_shift_zero.
       destruct (gm_lookup_ins _ _ _ _ Hm) as [Φr Hir].
       pose proof (gm_ins_count _ _ _ _ _ Hir) as Hcr.
-      destruct (IH Φr _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [HT' _]; exact HT'.
+      destruct (IH Φr _ _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [HT' _]; exact HT'.
     - intros * Hl Hr.
-      inversion Hl as [? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
+      inversion Hl as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf' Hm]; subst; cbn in Hr; [| discriminate ].
       injection Hr as ->; cbn in Hn; injection Hn as <-; cbn in Hm.
       rewrite ctx_msub_shift_zero, !exp_msub_shift_zero.
       match goal with H : _[↑ₘ 0]ᵐ = Some _ |- _ => rewrite opt_msub_shift_zero in H; subst end.
       destruct (gm_lookup_ins _ _ _ _ Hm) as [Φr Hir].
       pose proof (gm_ins_count _ _ _ _ _ Hir) as Hcr.
-      destruct (IH Φr _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [_ HM'];
+      destruct (IH Φr _ _ _ _ _ _ ltac:(lia) (gm_prefix_ins _ _ _ _ _ _ Hpq Hir)) as [_ HM'];
         exact (HM' _ eq_refl).
     - split.
       + exists i; exact (He _ _ _ HT).

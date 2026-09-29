@@ -310,8 +310,8 @@ Qed.
 (** Every definition [Φ] resolves to is scoped by the frames [cs], the first of
     which is [Φ]'s own, under the parameters on its member chain. *)
 Definition lookups_scoped (Φ : gmod) (cs : list nat) : Prop :=
-  forall ip Δ b A B,
-    Φ ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+  forall ip Δ b pv A B,
+    Φ ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
     ctx_scoped 0 cs Δ /\ exp_scoped (length Δ) cs A /\ opt_scoped (length Δ) cs B.
 
 (** A unit checked with the frames [cs] outside it. *)
@@ -356,10 +356,10 @@ Qed.
 
 (** Hence resolution in such a context hands back something scoped by the
     frames in scope, with no free λ-variable once generalized. *)
-Lemma gc_lookup_scoped : forall Θ Ξ p Δ b A B,
+Lemma gc_lookup_scoped : forall Θ Ξ p Δ b pv A B,
     gs_scoped Ξ ->
     units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     ctx_scoped 0 (gs_cs Ξ) Δ /\ exp_scoped (length Δ) (gs_cs Ξ) A /\
     opt_scoped (length Δ) (gs_cs Ξ) B.
 Proof.
@@ -367,7 +367,7 @@ Proof.
   - (* an open frame: its entry shifted past the frames nearer in *)
     pose proof (gs_scoped_nth _ _ _ HΞ ltac:(eassumption)) as [_ Hc].
     destruct (gs_cs_split _ _ _ ltac:(eassumption)) as [Hsp Hlen].
-    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ H) as (HΔ & HA & HB) end.
+    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ _ H) as (HΔ & HA & HB) end.
     pose proof (ctx_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HΔ) as HΔ'.
     pose proof (exp_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HA) as HA'.
     pose proof (opt_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HB) as HB'.
@@ -375,7 +375,7 @@ Proof.
     rewrite ctx_msub_length; auto.
   - (* a filed unit: closed, so no parameter is left *)
     destruct (HΘ _ _ ltac:(eassumption)) as [Hp Hc].
-    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ H) as (HΔ & HA & HB) end.
+    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ _ H) as (HΔ & HA & HB) end.
     rewrite List.length_app, ctx_msub_length; repeat split.
     + apply ctx_scoped_cs_nil, ctx_scoped_app; split;
         [ rewrite Nat.add_0_r; apply ctx_scoped_msub_close; [ apply close_ok_abs | assumption ]
@@ -392,13 +392,13 @@ Proof.
   unfold gs_cs; rewrite List.length_map; apply List.nth_error_Some; congruence.
 Qed.
 
-Corollary gc_lookup_closed : forall Θ Ξ p Δ b A B,
+Corollary gc_lookup_closed : forall Θ Ξ p Δ b pv A B,
     gs_scoped Ξ ->
     units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A) /\ opt_scoped 0 (gs_cs Ξ) (option_map (ctx_fn Δ) B).
 Proof.
-  intros * HΞ HΘ Hlk; destruct (gc_lookup_scoped _ _ _ _ _ _ _ HΞ HΘ Hlk) as (HΔ & HA & HB).
+  intros * HΞ HΘ Hlk; destruct (gc_lookup_scoped _ _ _ _ _ _ _ _ HΞ HΘ Hlk) as (HΔ & HA & HB).
   split; [ apply ctx_pi_scoped; rewrite ?Nat.add_0_r; assumption |].
   destruct B; cbn in *; [ apply ctx_fn_scoped; rewrite ?Nat.add_0_r; assumption | auto ].
 Qed.
@@ -452,7 +452,7 @@ Definition ctx_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : Prop :=
 
 Definition entry_scoped (cs : list nat) (E : gentry) : Prop :=
   match E with
-  | ge_def _ A B => exp_scoped 0 cs A /\ opt_scoped 0 cs B
+  | ge_def _ pv A B => exp_scoped 0 cs A /\ opt_scoped 0 cs B
   | ge_mod Δ Φ => ctx_scoped 0 cs Δ /\ lookups_scoped Φ (length Δ :: cs)
   end.
 
@@ -491,12 +491,12 @@ Proof.
     | Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : _, HΞ : gs_scoped ?Ξ
       |- exp_scoped _ _ _[_]ᵐ[_] =>
         eapply exp_scoped_mono; [| exact (param_type_scoped _ _ _ _ _ HΞ Hn Hk) ]; lia
-    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _, HΞ : gs_scoped _, HΘ : units_scoped _
+    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ _, HΞ : gs_scoped _, HΘ : units_scoped _
       |- exp_scoped _ _ (ctx_pi _ _) =>
-        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
-    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ (Some _), HΞ : gs_scoped _, HΘ : units_scoped _
+        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
+    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ (Some _), HΞ : gs_scoped _, HΘ : units_scoped _
       |- exp_scoped _ _ (ctx_fn _ _) =>
-        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
+        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
     end.
   all: try lia.
   - (* [rec], successor *)
@@ -510,7 +510,7 @@ Proof.
     + (* a member of the nested module, closed *)
       match goal with H : entry_scoped _ _ |- _ => cbn in H; destruct H as [HΔ' HΦ'] end.
       match goal with
-      | Hi : _ ∋ _ ⇒ _ ⍮ ge_def _ _ _ |- _ => destruct (HΦ' _ _ _ _ _ Hi) as (HΔ2 & HA & HB)
+      | Hi : _ ∋ _ ⇒ _ ⍮ ge_def _ _ _ _ |- _ => destruct (HΦ' _ _ _ _ _ _ Hi) as (HΔ2 & HA & HB)
       end.
       rewrite List.length_app, ctx_msub_length; repeat split.
       * apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; apply ctx_scoped_msub_close | ];
@@ -531,9 +531,9 @@ Qed.
 
 (** In a well-formed context, what a global resolves to has no free
     λ-variable. *)
-Corollary wf_gc_lookup_closed : forall Θ Ξ Γ p Δ b A B,
+Corollary wf_gc_lookup_closed : forall Θ Ξ Γ p Δ b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A) /\ opt_scoped 0 (gs_cs Ξ) (option_map (ctx_fn Δ) B).
 Proof.
   intros * HΓ Hlk; destruct wf_scoped as [Hctx _].
@@ -541,18 +541,18 @@ Proof.
   eapply gc_lookup_closed; eassumption.
 Qed.
 
-Corollary wf_gc_lookup_type_closed : forall Θ Ξ Γ p Δ b A B,
+Corollary wf_gc_lookup_type_closed : forall Θ Ξ Γ p Δ b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
     exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A).
 Proof.
   intros; eapply wf_gc_lookup_closed; eassumption.
 Qed.
 
-Corollary wf_gc_lookup_body_closed : forall Θ Ξ Γ p Δ b A M,
+Corollary wf_gc_lookup_body_closed : forall Θ Ξ Γ p Δ b pv A M,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A (Some M) ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A (Some M) ->
     exp_scoped 0 (gs_cs Ξ) (ctx_fn Δ M).
 Proof.
-  intros * HΓ Hlk; apply (wf_gc_lookup_closed _ _ _ _ _ _ _ _ HΓ Hlk).
+  intros * HΓ Hlk; apply (wf_gc_lookup_closed _ _ _ _ _ _ _ _ _ HΓ Hlk).
 Qed.
