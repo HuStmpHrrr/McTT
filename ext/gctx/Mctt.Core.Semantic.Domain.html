@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Semantic.Domain</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Equations</span>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span> <span class="id" title="library">String</span> <span class="id" title="library">Morphisms</span> <span class="id" title="library">Relation_Definitions</span> <span class="id" title="library">RelationClasses</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#"><span class="id" title="library">Syntax</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab1"></a><h1 class="section">The Semantic Domain</h1>
+
+
+<div class="paragraph"> </div>
+
+    An environment is the list of the values of the λ-variables in scope,
+    indexed by de Bruijn index; for <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#1e0a67298a15ae5e10df8e3bce8ac256"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> those are <span class="inlinecode"><span class="id" title="var">Γ</span></span>.  The global
+    context is not part of it: it does not change during NbE, so evaluation
+    takes it as a separate argument.  A module parameter <span class="inlinecode">$[<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">k</span>]</span> is not a
+    variable of the environment: like an opaque global it evaluates to a
+    neutral, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#d_param"><span class="id" title="constructor">d_param</span></a></span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="domain" class="idref" href="#domain"><span class="id" title="definition, inductive"><span id="domain_rect" class="id"><span id="domain_ind" class="id"><span id="domain_rec" class="id"><span id="domain_sind" class="id">domain</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+| <a id="d_nat" class="idref" href="#d_nat"><span class="id" title="constructor">d_nat</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_pi" class="idref" href="#d_pi"><span class="id" title="constructor">d_pi</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_univ" class="idref" href="#d_univ"><span class="id" title="constructor">d_univ</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_zero" class="idref" href="#d_zero"><span class="id" title="constructor">d_zero</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_succ" class="idref" href="#d_succ"><span class="id" title="constructor">d_succ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_fn" class="idref" href="#d_fn"><span class="id" title="constructor">d_fn</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+| <a id="d_neut" class="idref" href="#d_neut"><span class="id" title="constructor">d_neut</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="domain_ne" class="idref" href="#domain_ne"><span class="id" title="definition, inductive"><span id="domain_ne_rect" class="id"><span id="domain_ne_ind" class="id"><span id="domain_ne_rec" class="id"><span id="domain_ne_sind" class="id">domain_ne</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+Notice that the number x here is not a de Bruijn index but an absolute
+    representation of names.  That is, this number does not change relative to the
+    binding structure it currently exists in.
+ 
+</div>
+<div class="code">
+| <a id="d_var" class="idref" href="#d_var"><span class="id" title="constructor">d_var</span></a> : <span class="id" title="keyword">forall</span> (<a id="x:7" class="idref" href="#x:7"><span class="id" title="binder">x</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>), <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+| <a id="d_app" class="idref" href="#d_app"><span class="id" title="constructor">d_app</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_nf:3"><span class="id" title="inductive">domain_nf</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+| <a id="d_natrec" class="idref" href="#d_natrec"><span class="id" title="constructor">d_natrec</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+</div>
+
+<div class="doc">
+An opaque definition or an axiom. 
+</div>
+<div class="code">
+| <a id="d_glob" class="idref" href="#d_glob"><span class="id" title="constructor">d_glob</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="record">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+</div>
+
+<div class="doc">
+A parameter of an open module. 
+</div>
+<div class="code">
+| <a id="d_param" class="idref" href="#d_param"><span class="id" title="constructor">d_param</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lpath"><span class="id" title="record">lpath</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne:2"><span class="id" title="inductive">domain_ne</span></a><br/>
+<span class="id" title="keyword">with</span> <a id="domain_nf" class="idref" href="#domain_nf"><span class="id" title="definition, inductive"><span id="domain_nf_rect" class="id"><span id="domain_nf_ind" class="id"><span id="domain_nf_rec" class="id"><span id="domain_nf_sind" class="id">domain_nf</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+| <a id="d_dom" class="idref" href="#d_dom"><span class="id" title="constructor">d_dom</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain:1"><span class="id" title="inductive">domain</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_nf:3"><span class="id" title="inductive">domain_nf</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Notation</span> <a id="env" class="idref" href="#env"><span class="id" title="abbreviation">env</span></a> := (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>).<br/>
+
+<br/>
+<span class="id" title="keyword">Derive</span> <span class="id" title="var">NoConfusion</span> <span class="id" title="keyword">for</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_ne"><span class="id" title="inductive">domain_ne</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain_nf"><span class="id" title="inductive">domain_nf</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The value of the variable <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span>. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="env_var" class="idref" href="#env_var"><span class="id" title="definition">env_var</span></a> (<a id="912f528bcc2a3307968970578885417a" class="idref" href="#912f528bcc2a3307968970578885417a"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="x:9" class="idref" href="#x:9"><span class="id" title="binder">x</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a> := <span class="id" title="definition">List.nth_error</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#912f528bcc2a3307968970578885417a"><span class="id" title="variable">ρ</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#x:9"><span class="id" title="variable">x</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="extend_env" class="idref" href="#extend_env"><span class="id" title="definition">extend_env</span></a> (<a id="08a2c986d0dd6a1e2a07939a13a16080" class="idref" href="#08a2c986d0dd6a1e2a07939a13a16080"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) (<a id="d:11" class="idref" href="#d:11"><span class="id" title="binder">d</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> := <a class="idref" href="Mctt.Core.Semantic.Domain.html#d:11"><span class="id" title="variable">d</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#08a2c986d0dd6a1e2a07939a13a16080"><span class="id" title="variable">ρ</span></a>.<br/>
+<span class="id" title="keyword">Arguments</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#extend_env"><span class="id" title="definition">extend_env</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> /.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="drop_env" class="idref" href="#drop_env"><span class="id" title="definition">drop_env</span></a> (<a id="e024d34e0c5146c8d00101c83855eeda" class="idref" href="#e024d34e0c5146c8d00101c83855eeda"><span class="id" title="binder">ρ</span></a> : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#env"><span class="id" title="abbreviation">env</span></a> := <span class="id" title="definition">List.tl</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#e024d34e0c5146c8d00101c83855eeda"><span class="id" title="variable">ρ</span></a>.<br/>
+<span class="id" title="keyword">Arguments</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#drop_env"><span class="id" title="definition">drop_env</span></a> <span class="id" title="var">_</span> /.<br/>
+
+<br/>
+#[<span class="id" title="var">global</span>] <span class="id" title="keyword">Bind</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">mctt_scope</span> <span class="id" title="keyword">with</span> <span class="id" title="var">domain</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab2"></a><h2 class="section">Semantic Notations</h2>
+
+
+<div class="paragraph"> </div>
+
+    Values live in ordinary <span class="inlinecode"><span class="id" title="keyword">constr</span></span> alongside the expressions, so the four
+    spellings the two sorts would otherwise share — <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span>, <span class="inlinecode"><span class="id" title="var">Π</span></span>
+    and the closure's <span class="inlinecode"><span class="id" title="var">λ</span></span> — carry a superscript <span class="inlinecode">ᵈ</span> here.  Everything that is
+    specific to values (<span class="inlinecode">↦</span>, <span class="inlinecode">↯</span>, <span class="inlinecode">𝕌@<span class="id" title="var">n</span></span>, <span class="inlinecode">⇑</span>, <span class="inlinecode">⇓</span>, <span class="inlinecode">⇑!</span>, <span class="inlinecode">#ᵈ</span> <span class="inlinecode"><span class="id" title="var">n</span></span>) keeps the
+    spelling of the paper. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Module</span> <a id="Domain_Notations" class="idref" href="#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Declared before the value constructors so that level 1 is left
+      associative, as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> does in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a></span>. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="83726bb21c301922bf0f1fe268841ca3" class="idref" href="#83726bb21c301922bf0f1fe268841ca3"><span class="id" title="notation">&quot;</span></a>ρ '↯'" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#drop_env"><span class="id" title="definition">drop_env</span></a> ρ) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="tactic">left</span> <span class="id" title="keyword">associativity</span>) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="7747591b975a25f5b496069cd3509ee1" class="idref" href="#7747591b975a25f5b496069cd3509ee1"><span class="id" title="notation">&quot;</span></a>'𝕌' @ n" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_univ"><span class="id" title="constructor">d_univ</span></a> <span class="id" title="var">n</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">n</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 0, <span class="id" title="var">format</span> "'𝕌' @ n") : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="794796e12831144a16bf49dec0c1542c" class="idref" href="#794796e12831144a16bf49dec0c1542c"><span class="id" title="notation">&quot;</span></a>'#ᵈ' n" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_var"><span class="id" title="constructor">d_var</span></a> <span class="id" title="var">n</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">n</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 0, <span class="id" title="var">format</span> "'#ᵈ' n") : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="d8f274d7852a5eed6fa336253d12233d" class="idref" href="#d8f274d7852a5eed6fa336253d12233d"><span class="id" title="notation">&quot;</span></a>'ℕᵈ'" := <a class="idref" href="Mctt.Core.Semantic.Domain.html#d_nat"><span class="id" title="constructor">d_nat</span></a> : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="635ebd98165c58c81650da35d810a4d5" class="idref" href="#635ebd98165c58c81650da35d810a4d5"><span class="id" title="notation">&quot;</span></a>'zeroᵈ'" := <a class="idref" href="Mctt.Core.Semantic.Domain.html#d_zero"><span class="id" title="constructor">d_zero</span></a> : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="014b30fae663572c21992bdee7850354" class="idref" href="#014b30fae663572c21992bdee7850354"><span class="id" title="notation">&quot;</span></a>'succᵈ' m" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_succ"><span class="id" title="constructor">d_succ</span></a> <span class="id" title="var">m</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="e8681b590172eff7e06dd9aa6708d1a3" class="idref" href="#e8681b590172eff7e06dd9aa6708d1a3"><span class="id" title="notation">&quot;</span></a>'λᵈ' ρ M" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_fn"><span class="id" title="constructor">d_fn</span></a> ρ <span class="id" title="var">M</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 9) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="5089c39d891cd12c3dc924c352284d83" class="idref" href="#5089c39d891cd12c3dc924c352284d83"><span class="id" title="notation">&quot;</span></a>'Πᵈ' a ρ B" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_pi"><span class="id" title="constructor">d_pi</span></a> <span class="id" title="var">a</span> ρ <span class="id" title="var">B</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, <span class="id" title="var">a</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 0, <span class="id" title="var">B</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 9) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="ff7dc3e6a1eca71e90d2c42c2c28543b" class="idref" href="#ff7dc3e6a1eca71e90d2c42c2c28543b"><span class="id" title="notation">&quot;</span></a>'⇑' a m" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_neut"><span class="id" title="constructor">d_neut</span></a> <span class="id" title="var">a</span> <span class="id" title="var">m</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, <span class="id" title="var">a</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="0b6e5f57d5364b7925009ac598539a44" class="idref" href="#0b6e5f57d5364b7925009ac598539a44"><span class="id" title="notation">&quot;</span></a>'⇓' a m" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_dom"><span class="id" title="constructor">d_dom</span></a> <span class="id" title="var">a</span> <span class="id" title="var">m</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, <span class="id" title="var">a</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="52e2304f4c456a60cf72abbd0d71033d" class="idref" href="#52e2304f4c456a60cf72abbd0d71033d"><span class="id" title="notation">&quot;</span></a>'⇑!' a n" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_neut"><span class="id" title="constructor">d_neut</span></a> <span class="id" title="var">a</span> (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_var"><span class="id" title="constructor">d_var</span></a> <span class="id" title="var">n</span>)) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 2, <span class="id" title="var">a</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 1, <span class="id" title="var">n</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 0) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="de5ba097cb43146affa29de3622acb11" class="idref" href="#de5ba097cb43146affa29de3622acb11"><span class="id" title="notation">&quot;</span></a>m '$ᵈ' n" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_app"><span class="id" title="constructor">d_app</span></a> <span class="id" title="var">m</span> <span class="id" title="var">n</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 10, <span class="id" title="tactic">left</span> <span class="id" title="keyword">associativity</span>, <span class="id" title="var">format</span> "m  $ᵈ  n") : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="22cdd02d7dad5526d1307f811acf2885" class="idref" href="#22cdd02d7dad5526d1307f811acf2885"><span class="id" title="notation">&quot;</span></a>'recᵈ' m 'under' ρ 'return' P | 'zero' -&gt; mz | 'succ' -&gt; MS 'end'" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#d_natrec"><span class="id" title="constructor">d_natrec</span></a> ρ <span class="id" title="var">P</span> <span class="id" title="var">mz</span> <span class="id" title="var">MS</span> <span class="id" title="var">m</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 0, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="var">P</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="var">mz</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="var">MS</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60) : <span class="id" title="var">mctt_scope</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="024e7ed689b45f79045ed7176cdfd8d3" class="idref" href="#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">&quot;</span></a>ρ ↦ m" := (<a class="idref" href="Mctt.Core.Semantic.Domain.html#extend_env"><span class="id" title="definition">extend_env</span></a> ρ <span class="id" title="var">m</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 20, <span class="id" title="tactic">left</span> <span class="id" title="keyword">associativity</span>) : <span class="id" title="var">mctt_scope</span>.<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The two projections of an extended environment. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Proposition</span> <a id="drop_env_extend_env_cancel" class="idref" href="#drop_env_extend_env_cancel"><span class="id" title="lemma">drop_env_extend_env_cancel</span></a> : <span class="id" title="keyword">forall</span> <a id="b718f095d62e5502d2f981daa87f0cb4" class="idref" href="#b718f095d62e5502d2f981daa87f0cb4"><span class="id" title="binder">ρ</span></a> <a id="a:14" class="idref" href="#a:14"><span class="id" title="binder">a</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.Domain.html#83726bb21c301922bf0f1fe268841ca3"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Semantic.Domain.html#b718f095d62e5502d2f981daa87f0cb4"><span class="id" title="variable">ρ</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">↦</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#a:14"><span class="id" title="variable">a</span></a><a class="idref" href="Mctt.Core.Semantic.Domain.html#83726bb21c301922bf0f1fe268841ca3"><span class="id" title="notation">)↯</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#b718f095d62e5502d2f981daa87f0cb4"><span class="id" title="variable">ρ</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Proposition</span> <a id="extend_env_zero_cancel" class="idref" href="#extend_env_zero_cancel"><span class="id" title="lemma">extend_env_zero_cancel</span></a> : <span class="id" title="keyword">forall</span> <a id="c16b7012a6c600a956fcfe9f6cb4626c" class="idref" href="#c16b7012a6c600a956fcfe9f6cb4626c"><span class="id" title="binder">ρ</span></a> <a id="a:16" class="idref" href="#a:16"><span class="id" title="binder">a</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.Domain.html#env_var"><span class="id" title="definition">env_var</span></a> (<a class="idref" href="Mctt.Core.Semantic.Domain.html#c16b7012a6c600a956fcfe9f6cb4626c"><span class="id" title="variable">ρ</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">↦</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#a:16"><span class="id" title="variable">a</span></a>) 0 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#a:16"><span class="id" title="variable">a</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Proposition</span> <a id="extend_env_succ" class="idref" href="#extend_env_succ"><span class="id" title="lemma">extend_env_succ</span></a> : <span class="id" title="keyword">forall</span> <a id="c6846dcc32db6012878372768800bcda" class="idref" href="#c6846dcc32db6012878372768800bcda"><span class="id" title="binder">ρ</span></a> <a id="a:18" class="idref" href="#a:18"><span class="id" title="binder">a</span></a> <a id="x:19" class="idref" href="#x:19"><span class="id" title="binder">x</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.Domain.html#env_var"><span class="id" title="definition">env_var</span></a> (<a class="idref" href="Mctt.Core.Semantic.Domain.html#c6846dcc32db6012878372768800bcda"><span class="id" title="variable">ρ</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#024e7ed689b45f79045ed7176cdfd8d3"><span class="id" title="notation">↦</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#a:18"><span class="id" title="variable">a</span></a>) (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#x:19"><span class="id" title="variable">x</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#env_var"><span class="id" title="definition">env_var</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#c6846dcc32db6012878372768800bcda"><span class="id" title="variable">ρ</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#x:19"><span class="id" title="variable">x</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">reflexivity</span>. <span class="id" title="keyword">Qed</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
