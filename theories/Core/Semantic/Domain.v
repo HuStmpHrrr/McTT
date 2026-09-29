@@ -1,17 +1,22 @@
 From Equations Require Import Equations.
-From Stdlib Require Import Morphisms Relation_Definitions RelationClasses.
+From Stdlib Require Import List String Morphisms Relation_Definitions RelationClasses.
 
 From Mctt.Core.Syntactic Require Export Syntax.
 
-Reserved Notation "'env'".
+(** * The Semantic Domain
+
+    An environment is the list of the values of the variables in scope, indexed
+    by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] those are [Γ ++ gs_tele Ξ].  The global
+    context is not part of it: it does not change during NbE, so evaluation
+    takes it as a separate argument. *)
 
 Inductive domain : Set :=
 | d_nat : domain
-| d_pi : domain -> env -> exp -> domain
+| d_pi : domain -> list domain -> exp -> domain
 | d_univ : nat -> domain
 | d_zero : domain
 | d_succ : domain -> domain
-| d_fn : env -> exp -> domain
+| d_fn : list domain -> exp -> domain
 | d_neut : domain -> domain_ne -> domain
 with domain_ne : Set :=
 (** Notice that the number x here is not a de Bruijn index but an absolute
@@ -20,58 +25,24 @@ with domain_ne : Set :=
  *)
 | d_var : forall (x : nat), domain_ne
 | d_app : domain_ne -> domain_nf -> domain_ne
-| d_natrec : env -> typ -> domain -> exp -> domain_ne -> domain_ne
+| d_natrec : list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
+(** An opaque definition or an axiom. *)
+| d_glob : path -> domain_ne
 with domain_nf : Set :=
-| d_dom : domain -> domain -> domain_nf
-where "'env'" := (nat -> domain).
+| d_dom : domain -> domain -> domain_nf.
+
+Notation env := (list domain).
 
 Derive NoConfusion for domain domain_ne domain_nf.
 
-Definition empty_env : env := fun x => d_zero.
-Arguments empty_env _ /.
+(** The value of the variable [#x]. *)
+Definition env_var (ρ : env) (x : nat) : option domain := List.nth_error ρ x.
 
-Definition extend_env (ρ : env) (d : domain) : env :=
-  fun n =>
-    match n with
-    | 0 => d
-    | S n' => ρ n'
-    end.
-Arguments extend_env _ _ _ /.
-Transparent extend_env.
+Definition extend_env (ρ : env) (d : domain) : env := d :: ρ.
+Arguments extend_env _ _ /.
 
-Definition drop_env (ρ : env) : env := fun n => ρ (S n).
-Arguments drop_env _ _ /.
-Transparent drop_env.
-
-(** ** Equality of Environments
-
-    Environments are functions, and this development is axiom-free, so
-    "the same environment" means pointwise equality — exactly as [wk_eq] and
-    [sb_eq] do for weakenings and substitutions in [Syntax.v].  This matters as
-    soon as substitutions are evaluated: their evaluation is defined pointwise,
-    so determinism can only deliver [env_eq], never [eq].
-
-    Note that [env_eq] is *not* a congruence for [eval_exp]: a closure
-    [λ ρ M] carries its environment, so [env_eq ρ ρ'] makes [λ ρ M] and
-    [λ ρ' M] distinct values.  Relating those is the job of the PER model, not
-    of [eq].
- *)
-Definition env_eq : relation env := pointwise_relation nat eq.
-
-#[export]
-Instance env_eq_Equivalence : Equivalence env_eq := _.
-
-#[export]
-Instance extend_env_Proper : Proper (env_eq ==> eq ==> env_eq) extend_env.
-Proof.
-  intros ρ ρ' Hρ d d' <- [| n]; [ reflexivity | apply Hρ ].
-Qed.
-
-#[export]
-Instance drop_env_Proper : Proper (env_eq ==> env_eq) drop_env.
-Proof.
-  intros ρ ρ' Hρ n. apply Hρ.
-Qed.
+Definition drop_env (ρ : env) : env := List.tl ρ.
+Arguments drop_env _ /.
 
 #[global] Bind Scope mctt_scope with domain.
 
@@ -106,20 +77,15 @@ End Domain_Notations.
 
 Import Domain_Notations.
 
-(** The two projections of an extended environment.  Both hold by conversion,
-    but they are still worth stating: the tactics that drive the PER model
-    ([functional_eval_rewrite_clear], [handle_per_univ_elem_irrel]) match
-    hypotheses against goals *syntactically*, so a goal phrased over
-    [(ρ ↦ a) ↯] or [(ρ ↦ a) 0] has to be rewritten before it can meet a
-    hypothesis phrased over [ρ] or [a]. *)
+(** The two projections of an extended environment. *)
 Proposition drop_env_extend_env_cancel : forall ρ a,
     (ρ ↦ a)↯ = ρ.
-Proof.
-  reflexivity.
-Qed.
+Proof. reflexivity. Qed.
 
 Proposition extend_env_zero_cancel : forall ρ a,
-    (ρ ↦ a) 0 = a.
-Proof.
-  reflexivity.
-Qed.
+    env_var (ρ ↦ a) 0 = Some a.
+Proof. reflexivity. Qed.
+
+Proposition extend_env_succ : forall ρ a x,
+    env_var (ρ ↦ a) (S x) = env_var ρ x.
+Proof. reflexivity. Qed.

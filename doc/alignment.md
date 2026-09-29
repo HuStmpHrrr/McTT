@@ -31,7 +31,7 @@ Worth stating first, so the divergences below read as the exceptions they are.
   `eval_sub σ ρ ρσ := forall x, eval_exp (σ x) ρ (ρσ x)` — the pointwise
   definition of report §5.7, as a `Definition` rather than a fourth clause of
   the evaluation induction. The three equations report §5.7 says *fail*
-  (`⟦σ[φ]w⟧`, `⟦M[σ]⟧`, `⟦σ ⨟ τ⟧`) fail here for the reason it gives, and are
+  (`⟦σ[φ]ʷ⟧`, `⟦M[σ]⟧`, `⟦σ ⨟ τ⟧`) fail here for the reason it gives, and are
   recorded as such in `Semantic/Evaluation/Definitions.v`.
 - **The four-value pattern.** Report Def 6.30/6.31 are `rel_sub` and `rel_exp`
   in `Completeness/LogicalRelation/Definitions.v`, with the same four values in
@@ -68,15 +68,15 @@ document is about.
 | `Sub-Univ` at `i ≤ j` (Fig. 4) | `wf_subtyp_univ` at `i < j` | `i = j` comes from `wf_subtyp_refl`. The gap is visible in `completeness_fundamental`, which has to discharge `Sub-Univ` by hand because the semantic lemma is stated at `≤`. |
 | `Sub-Pi` checks `Γ,x:S ⊢ T ⊆ T'` | `wf_subtyp_pi` checks `Γ ▹ A' ⊢ B ⊆ B'` | Interderivable given the `A ≈ A'` premise and context conversion; `Γ ▹ A'` is the form the soundness proof consumes. |
 | `elimNat` congruence with a fixed motive | `wf_exp_eq_natrec_cong` also takes `Γ ▹ ℕ ⊢ A ≈ A' : Type@i` | Strictly stronger, and it is what `Algorithmic` compares. It is also what forces the file order (see §2.4). |
-| `λx.t` unannotated (report Def 2.1) | `a_fn : exp -> exp -> exp`, i.e. `λ A M` | The annotation survives into `nf_fn` and the readback, and into the η rule, whose right-hand side is `λ A (M[↑]w #0)`. Neither document's grammar has it. |
+| `λx.t` unannotated (report Def 2.1) | `a_fn : exp -> exp -> exp`, i.e. `λ A M` | The annotation survives into `nf_fn` and the readback, and into the η rule, whose right-hand side is `λ A (M[↑]ʷ #0)`. Neither document's grammar has it. |
 | `elimNat(x.T) z (x,y.s) t` | `a_natrec A MZ MS M` | Argument order only. |
-| — | `wf_subtyp_refl`, `wf_exp_subtyp`, `wf_exp_eq_subtyp` each carry one extra typing premise | Needed to split presupposition three ways without a mutual induction; the in-file comments give the `Type@0[↑]w : Type@1` regress that motivates it. |
+| — | `wf_subtyp_refl`, `wf_exp_subtyp`, `wf_exp_eq_subtyp` each carry one extra typing premise | Needed to split presupposition three ways without a mutual induction; the in-file comments give the `Type@0[↑]ʷ : Type@1` regress that motivates it. |
 | — | `wf_exp_eq_typ_cong`, `_nat_cong`, `_zero_cong` | With explicit substitutions these instances came free from the `_sub` equations. |
 
 Two further presentational differences, neither of them a real gap: the
 mechanization states the `natrec` successor type as `A[Wk⨟Wk,,succ(#1)]` — a
 *substitution* composition — where the report writes `T[⇑◦⇑, succ x₁/x₀]` with a
-weakening composition; and η uses `M[↑]w` where the paper writes `t[⇑]`. Both
+weakening composition; and η uses `M[↑]ʷ` where the paper writes `t[⇑]`. Both
 agree because `ι` is faithful (`Substitution.v`), which is a theorem here and an
 elision there.
 
@@ -182,7 +182,7 @@ Three differences, in increasing order of consequence.
    makes the judgment closed under `kripke_ctxsub`, which the subtyping cases
    need. **The price is that report Lemma 7.2 is false as stated**:
    `Γ ⊢k φ : Δ` does *not* imply `Γ ⊢w φ : Δ`, because `wf_wk_lookup` demands a
-   variable lookup in `Γ` at the very type `A[φ]w` and refinement only gives a
+   variable lookup in `Γ` at the very type `A[φ]ʷ` and refinement only gives a
    subtype of it. The escape lemma is `kripke_escape`, landing in `wf_sub` via
    `ι`:
 
@@ -295,7 +295,7 @@ rules — only one extra appeal appears there.
 The variable case is worth spelling out, because it is the one place where a
 bespoke lemma had to be added to the completeness layer to serve soundness.
 `cons_glu_sub_pred` supplies the gluing at `⟦A⟧(ρ↯)` while the goal reads
-`⟦A[↑]w⟧(ρ)`, and those are not equal. `completeness_fundamental_typ_shift`
+`⟦A[↑]ʷ⟧(ρ)`, and those are not equal. `completeness_fundamental_typ_shift`
 produces `Dom a ≈ a' ∈ per_univ i` between them and
 `glu_univ_elem_resp_per_univ` moves `P` and `El` across — exactly the
 paper's argument, and needed in *both* branches of the lookup induction, not
@@ -394,7 +394,7 @@ forced tower is the multi-kind situation in miniature, and its cost is legible:
   (report Def 6.26), sits below `rel_sub`, with its own identity/shift/
   composition lemmas.
 - **The chain does not widen.** `rel_sub`'s four values are
-  `⟦σ[φ]w⟧(ρ)`, `⟦σ⟧(⟦φ⟧ρ)`, `⟦σ'⟧(⟦φ⟧ρ')`, `⟦σ'[φ]w⟧(ρ')` — a substitution
+  `⟦σ[φ]ʷ⟧(ρ)`, `⟦σ⟧(⟦φ⟧ρ)`, `⟦σ'⟧(⟦φ⟧ρ')`, `⟦σ'[φ]ʷ⟧(ρ')` — a substitution
   *and* a weakening are in play, and it is still four values, because the
   Kripke quantification absorbs the weakening tier instead of adding a link to
   the chain. This is the encouraging part: the pattern's width is set by the

@@ -79,7 +79,7 @@ Proof.
 Qed.
 
 (** The same instance at a weakening instead of at [Id], which is what the gluing
-    model needs: it reads a type's value at [ρ] after [[φ]w], while the context
+    model needs: it reads a type's value at [ρ] after [[φ]ʷ], while the context
     relation it recurses on supplies the value at [⟪φ⟫ ρ].  The two are not
     equal, and [per_univ i] is what relates them. *)
 Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A' i},
@@ -89,7 +89,7 @@ Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A' i},
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_rel ->
       exists a a',
-        ⟦ A[φ]w ⟧ ρ ↘ a /\
+        ⟦ A[φ]ʷ ⟧ ρ ↘ a /\
         ⟦ A' ⟧ ⟪φ⟫ ρ' ↘ a' /\
         Dom a ≈ a' ∈ per_univ i.
 Proof.

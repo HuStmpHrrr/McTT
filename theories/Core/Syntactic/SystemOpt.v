@@ -304,7 +304,7 @@ Remove Hints wf_exp_eq_pi_beta : mctt.
 
 Corollary wf_exp_eq_fn_eta' : forall Θ Ξ Γ A B M,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]w $ #0 : Π A B.
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.
   intros.
   gen_presups.

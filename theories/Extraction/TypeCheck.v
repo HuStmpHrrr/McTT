@@ -28,10 +28,10 @@ Section lookup.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations lookup G (HG : ⊢ G) x : { A | G ∋ #x : A } + { forall A, ~ G ∋ #x : A } :=
   | G ▹ A, HG, x with x => {
-    | 0 => pureo (exist _ A[↑]w _)
+    | 0 => pureo (exist _ A[↑]ʷ _)
     | S x' =>
         let*o (exist _ B _) := lookup G _ x' while _ in
-        pureo (exist _ B[↑]w _)
+        pureo (exist _ B[↑]ʷ _)
     }
   | ⋅, HG, x => inright _.
 End lookup.

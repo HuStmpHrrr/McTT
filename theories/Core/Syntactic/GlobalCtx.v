@@ -84,37 +84,6 @@ with gm_canon (Φ : gmod) : Prop :=
   | gm_ext Φ' x E => gm_canon Φ' /\ gm_fresh x Φ' /\ ge_canon E
   end.
 
-(** Opening a module read out through [mp], the path naming the module itself.
-    Its own entries were checked with it as the innermost frame, so they open
-    through [mp]; a nested module's entries had one frame more, so they open
-    through [path_in mp x] — the analogue of lifting a substitution under a
-    binder.  A nested module's parameters were checked in the enclosing frame,
-    so they open through [mp].
-
-    One fixpoint, not a mutual pair: [cbn] refolds a fixpoint into its own name
-    but never into a mutual sibling's, so a mutual [ge_open] would surface as a
-    raw [fix].  The entry case is a non-recursive helper instead, parameterised
-    by how to open a nested module.  There is no instance for a lone [gentry]:
-    which path a nested module opens through depends on the name it is filed
-    under. *)
-Definition ge_open_with (f : path -> gmod -> gmod) (mp : path) (x : string) (E : gentry) : gentry :=
-  match E with
-  | ge_def b A B => ge_def b A[mp]p B[mp]p
-  | ge_mod Δ Φ => ge_mod Δ[mp]p (f (path_in mp x) Φ)
-  end.
-
-Fixpoint gm_open (mp : path) (Φ : gmod) : gmod :=
-  match Φ with
-  | gm_nil => gm_nil
-  | gm_ext Φ x E => gm_ext (gm_open mp Φ) x (ge_open_with gm_open mp x E)
-  end.
-
-#[export]
-Instance POpen_gmod : POpen gmod := gm_open.
-
-(** What [cbn] leaves for an entry it cannot take apart. *)
-Abbreviation ge_open := (ge_open_with popen).
-
 (** Resolution of a member chain to a definition, accumulating the parameters of
     the nested modules crossed on the way in, innermost first.
 
@@ -129,11 +98,15 @@ Abbreviation ge_open := (ge_open_with popen).
 Inductive gm_lookup : gmod -> list string -> ctx -> gentry -> Prop :=
 | gml_last :
   `( gm_ext Φ x (ge_def b A B) ∋ x :: nil ⇒ ⋅ ⍮ ge_def b A B )
+(** Read out through the nested module [x], which is closed from here: its
+    parameters [Δ'] become λ-bound, below those already collected, and its
+    members are applied to them. *)
 | gml_in :
   `( Φ' ∋ ip ⇒ Δ ⍮ ge_def b A B ->
      gm_ext Φ x (ge_mod Δ' Φ') ∋ x :: ip
-       ⇒ Δ[p_rel 0 (x :: nil)]p ++ Δ'
-       ⍮ ge_def b A[p_rel 0 (x :: nil)]p B[p_rel 0 (x :: nil)]p )
+       ⇒ Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ'
+       ⍮ ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+                  B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ )
 | gml_old :
   `( Φ ∋ ip ⇒ Δ ⍮ E ->
      gm_ext Φ y E' ∋ ip ⇒ Δ ⍮ E )
@@ -196,19 +169,9 @@ Definition gds_mods_canon (Θ : gdeps) : Prop :=
 (** ** The Definition Stack
 
     The modules open around the point being checked, innermost first.  Their
-    members are not yet entries of anything, so they are named by [qu_rel].  A
-    frame records only the parameters its module adds; [gs_tele] accumulates
-    them. *)
+    members are not yet entries of anything, so they are named by [qu_rel], and
+    their parameters are in scope as [$[n, k]]: frame [n], parameter [k]. *)
 Definition gstack : Set := list gunit.
-
-(** The parameters in scope on a stack, innermost first.  A frame's parameters,
-    and everything below them, were checked one frame further out, so on the way
-    up they are shifted by one frame: [p_rel m] becomes [p_rel (1 + m)]. *)
-Fixpoint gs_tele (Ξ : gstack) : ctx :=
-  match Ξ with
-  | nil => nil
-  | U :: Ξ' => (gu_params U ++ gs_tele Ξ')[p_rel 1 nil]p
-  end.
 
 Definition gs_canon (Ξ : gstack) : Prop :=
   List.Forall (fun U => gm_canon (gu_mod U)) Ξ.
@@ -230,18 +193,21 @@ Definition gs_canon (Ξ : gstack) : Prop :=
     re-expressed at the use site by shifting [n] frames.  For [qu_abs fp] it sits
     in a filed unit, which was checked as the only frame of an empty stack. *)
 Inductive gc_lookup (Θ : gdeps) (Ξ : gstack) : path -> ctx -> gentry -> Prop :=
+(** A frame on the stack is open: its members are handed back as they are,
+    moved [n] frames in. *)
 | gcl_rel :
   `( List.nth_error Ξ n = Some U ->
      gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
-     Θ ⍮ Ξ ∋ᵍ p_rel n ip
-       ⇒ (Δ ++ gs_tele (List.skipn n Ξ))[p_rel n nil]p
-       ⍮ ge_def b A[p_rel n nil]p B[p_rel n nil]p )
+     Θ ⍮ Ξ ∋ᵍ p_rel n ip ⇒ Δ[↑ₘ n]ᵐ ⍮ ge_def b A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ )
+(** A filed unit is closed: its parameters become λ-bound, below those of the
+    nested modules on the way in. *)
 | gcl_abs :
   `( gds_lookup Θ fp = Some U ->
      gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
      Θ ⍮ Ξ ∋ᵍ p_abs fp ip
-       ⇒ (Δ ++ gs_tele (U :: nil))[p_abs fp nil]p
-       ⍮ ge_def b A[p_abs fp nil]p B[p_abs fp nil]p )
+       ⇒ Δ[close (p_abs fp nil) (List.length (gu_params U))]ᵐ ++ gu_params U
+       ⍮ ge_def b A[ms_close (p_abs fp nil) (List.length (gu_params U)) (List.length Δ)]ᵐ
+                  B[ms_close (p_abs fp nil) (List.length (gu_params U)) (List.length Δ)]ᵐ )
 where "Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E" := (gc_lookup Θ Ξ p Δ E) : type_scope.
 
 #[export]
@@ -448,4 +414,202 @@ Proof.
                     ltac:(eauto using gs_canon_nth, gds_lookup_canon) _ _ H2) as [-> [= -> -> ->]]
     end;
     split; reflexivity.
+Qed.
+
+(** ** Resolution as a Function
+
+    What evaluation uses: the newest entry of a name wins, which in a canonical
+    context is the only one, so the function agrees with [gc_lookup]
+    ([gc_resolve_sound], [gc_resolve_complete]). *)
+
+(** A definition read out through the nested module [x] with parameters [Δ']. *)
+Definition gm_resolve_in (x : string) (Δ' : ctx) (r : option (ctx * gentry)) : option (ctx * gentry) :=
+  match r with
+  | Some (Δ, ge_def b A B) =>
+      Some (Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ',
+            ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+                     B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ)
+  | _ => None
+  end.
+
+Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option (ctx * gentry) :=
+  match Φ with
+  | gm_nil => None
+  | gm_ext Φ y E =>
+      match ip with
+      | x :: ip' =>
+          if String.eqb x y
+          then match ip', E with
+               | nil, ge_def _ _ _ => Some (nil, E)
+               | _ :: _, ge_mod Δ' Φ' => gm_resolve_in x Δ' (gm_resolve Φ' ip')
+               | _, _ => gm_resolve Φ ip
+               end
+          else gm_resolve Φ ip
+      | nil => None
+      end
+  end.
+
+(** Reading a definition out of an open frame [n] frames out, and out of a
+    filed unit. *)
+Definition ge_read_rel (n : nat) (r : option (ctx * gentry)) : option (ctx * gentry) :=
+  match r with
+  | Some (Δ, ge_def b A B) => Some (Δ[↑ₘ n]ᵐ, ge_def b A[↑ₘ n]ᵐ B[↑ₘ n]ᵐ)
+  | _ => None
+  end.
+
+Definition ge_read_abs (fp : list string) (T : ctx) (r : option (ctx * gentry)) : option (ctx * gentry) :=
+  match r with
+  | Some (Δ, ge_def b A B) =>
+      Some (Δ[close (p_abs fp nil) (List.length T)]ᵐ ++ T,
+            ge_def b A[ms_close (p_abs fp nil) (List.length T) (List.length Δ)]ᵐ
+                     B[ms_close (p_abs fp nil) (List.length T) (List.length Δ)]ᵐ)
+  | _ => None
+  end.
+
+Definition gc_resolve (Θ : gdeps) (Ξ : gstack) (p : path) : option (ctx * gentry) :=
+  match p_qual p with
+  | qu_rel n =>
+      match List.nth_error Ξ n with
+      | Some U => ge_read_rel n (gm_resolve (gu_mod U) (p_mems p))
+      | None => None
+      end
+  | qu_abs fp =>
+      match gds_lookup Θ fp with
+      | Some U => ge_read_abs fp (gu_params U) (gm_resolve (gu_mod U) (p_mems p))
+      | None => None
+      end
+  end.
+
+Lemma gm_resolve_sound : forall Φ ip Δ E,
+    gm_resolve Φ ip = Some (Δ, E) -> Φ ∋ ip ⇒ Δ ⍮ E.
+Proof.
+  fix IH 1; intros [| Φ y E] ip Δ E0 H; cbn in H; [ discriminate |].
+  destruct ip as [| x ip']; [ discriminate |].
+  destruct (String.eqb_spec x y) as [-> |]; [| apply gml_old; eapply IH; exact H ].
+  destruct ip' as [| z ip''], E as [b A B | Δ' Φ'].
+  - injection H as <- <-; apply gml_last.
+  - apply gml_old; eapply IH; exact H.
+  - apply gml_old; eapply IH; exact H.
+  - unfold gm_resolve_in in H.
+    destruct (gm_resolve Φ' (z :: ip'')) as [[Δ1 [b A B | ]] |] eqn:E1; try discriminate.
+    injection H as <- <-; apply gml_in; eapply IH; exact E1.
+Qed.
+
+Lemma gc_resolve_sound : forall Θ Ξ p Δ E,
+    gc_resolve Θ Ξ p = Some (Δ, E) -> Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E.
+Proof.
+  intros Θ Ξ [[fp | n] ip] Δ E H; unfold gc_resolve in H; cbn [p_qual p_mems] in H.
+  - destruct (gds_lookup Θ fp) as [U |] eqn:Hf; [| discriminate ].
+    unfold ge_read_abs in H.
+    destruct (gm_resolve (gu_mod U) ip) as [[Δ0 [b A B |]] |] eqn:E0; try discriminate.
+    injection H as <- <-; econstructor; [ eassumption | apply gm_resolve_sound; exact E0 ].
+  - destruct (List.nth_error Ξ n) as [U |] eqn:Hn; [| discriminate ].
+    unfold ge_read_rel in H.
+    destruct (gm_resolve (gu_mod U) ip) as [[Δ0 [b A B |]] |] eqn:E0; try discriminate.
+    injection H as <- <-; econstructor; [ eassumption | apply gm_resolve_sound; exact E0 ].
+Qed.
+
+Lemma gm_resolve_complete : forall Φ ip Δ E,
+    Φ ∋ ip ⇒ Δ ⍮ E -> gm_canon Φ -> gm_resolve Φ ip = Some (Δ, E).
+Proof.
+  induction 1; intros Hc; cbn in Hc |- *; destruct_all.
+  - rewrite String.eqb_refl; reflexivity.
+  - rewrite String.eqb_refl.
+    destruct ip as [| z ip]; [ exfalso; exact (gm_lookup_nonnil _ _ _ _ H eq_refl) |].
+    rewrite IHgm_lookup by assumption; reflexivity.
+  (* an older entry: canonicity says the newer name is not its head *)
+  - destruct ip as [| z ip]; [ exfalso; exact (gm_lookup_nonnil _ _ _ _ H eq_refl) |].
+    destruct (String.eqb_spec z y) as [-> |]; [| auto ].
+    exfalso; eapply (gm_fresh_no_lookup _ y); [ eassumption | eassumption | reflexivity ].
+Qed.
+
+Lemma gc_resolve_complete : forall Θ Ξ p Δ E,
+    gs_canon Ξ -> gds_mods_canon Θ ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E -> gc_resolve Θ Ξ p = Some (Δ, E).
+Proof.
+  intros * Hs Hd Hlk; inversion Hlk; subst; unfold gc_resolve; cbn [p_qual p_mems].
+  - match goal with Hn : List.nth_error _ _ = Some _ |- _ => rewrite Hn end.
+    rewrite (gm_resolve_complete _ _ _ _ ltac:(eassumption) ltac:(eauto using gs_canon_nth));
+      reflexivity.
+  - match goal with Hn : gds_lookup _ _ = Some _ |- _ => rewrite Hn end.
+    rewrite (gm_resolve_complete _ _ _ _ ltac:(eassumption) ltac:(eauto using gds_lookup_canon));
+      reflexivity.
+Qed.
+
+(** ** Insertion Order
+
+    A module is built one member at a time, nested members included, and each
+    member was checked against the module as it stood just before it: that is
+    the [gm_prefix] it was inserted at.  [gm_ins] is [gm_lookup] recording that
+    prefix; it is what lets a property of every member be proved in the order
+    the members were inserted, each from the ones before it. *)
+
+Fixpoint ge_count (E : gentry) : nat :=
+  match E with
+  | ge_def _ _ _ => 1
+  | ge_mod _ Φ => gm_count Φ
+  end
+with gm_count (Φ : gmod) : nat :=
+  match Φ with
+  | gm_nil => 0
+  | gm_ext Φ' _ E => gm_count Φ' + ge_count E
+  end.
+
+(** [Φp] is [Φ] as it stood at some earlier point: later entries dropped, and
+    the last nested module possibly still being filled. *)
+Inductive gm_prefix : gmod -> gmod -> Prop :=
+| gmp_refl : `( gm_prefix Φ Φ )
+| gmp_old : `( gm_prefix Φp Φ -> gm_prefix Φp (Φ ⊳ y ↦ E) )
+| gmp_in : `( gm_prefix Φp' Φ' -> gm_prefix (Φ ⊳ x ↦ ge_mod Δ' Φp') (Φ ⊳ x ↦ ge_mod Δ' Φ') ).
+
+#[export]
+Hint Constructors gm_prefix : mctt.
+
+Inductive gm_ins : gmod -> gmod -> list string -> ctx -> gentry -> Prop :=
+| gmi_last :
+  `( gm_ins (Φ ⊳ x ↦ ge_def b A B) Φ (x :: nil) ⋅ (ge_def b A B) )
+| gmi_in :
+  `( gm_ins Φ' Φp' ip Δ (ge_def b A B) ->
+     gm_ins (Φ ⊳ x ↦ ge_mod Δ' Φ') (Φ ⊳ x ↦ ge_mod Δ' Φp') (x :: ip)
+       (Δ[close (p_rel 0 (x :: nil)) (List.length Δ')]ᵐ ++ Δ')
+       (ge_def b A[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ
+                 B[ms_close (p_rel 0 (x :: nil)) (List.length Δ') (List.length Δ)]ᵐ) )
+| gmi_old :
+  `( gm_ins Φ Φp ip Δ E ->
+     gm_ins (Φ ⊳ y ↦ E') Φp ip Δ E ).
+
+#[export]
+Hint Constructors gm_ins : mctt.
+
+Lemma gm_ins_lookup : forall Φ Φp ip Δ E, gm_ins Φ Φp ip Δ E -> Φ ∋ ip ⇒ Δ ⍮ E.
+Proof. induction 1; econstructor; eassumption. Qed.
+
+Lemma gm_lookup_ins : forall Φ ip Δ E, Φ ∋ ip ⇒ Δ ⍮ E -> exists Φp, gm_ins Φ Φp ip Δ E.
+Proof. induction 1; destruct_all; eexists; econstructor; eassumption. Qed.
+
+Lemma gm_ins_prefix : forall Φ Φp ip Δ E, gm_ins Φ Φp ip Δ E -> gm_prefix Φp Φ.
+Proof. induction 1; eauto with mctt. Qed.
+
+Lemma gm_ins_count : forall Φ Φp ip Δ E, gm_ins Φ Φp ip Δ E -> gm_count Φp < gm_count Φ.
+Proof.
+  induction 1; cbn [gm_count ge_count]; lia.
+Qed.
+
+Lemma gm_prefix_lookup : forall Φp Φ ip Δ E, gm_prefix Φp Φ -> Φp ∋ ip ⇒ Δ ⍮ E -> Φ ∋ ip ⇒ Δ ⍮ E.
+Proof.
+  intros until 1; revert ip Δ E; induction H; intros * Hl; [ assumption | econstructor; auto |].
+  inversion Hl; subst; [ eapply gml_in | eapply gml_old ]; auto.
+Qed.
+
+Lemma gm_prefix_ins : forall Φp Φ Φq ip Δ E,
+    gm_prefix Φp Φ -> gm_ins Φp Φq ip Δ E -> gm_ins Φ Φq ip Δ E.
+Proof.
+  intros until 1; revert Φq ip Δ E; induction H; intros * Hi; [ assumption | econstructor; auto |].
+  inversion Hi; subst; [ eapply gmi_in | eapply gmi_old ]; auto.
+Qed.
+
+Lemma gm_prefix_trans : forall Φ1 Φ2 Φ3, gm_prefix Φ1 Φ2 -> gm_prefix Φ2 Φ3 -> gm_prefix Φ1 Φ3.
+Proof.
+  intros * H12 H23; revert Φ1 H12; induction H23; intros; eauto with mctt.
+  inversion H12; subst; eauto with mctt.
 Qed.

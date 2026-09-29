@@ -15,7 +15,7 @@
       so the judgment is closed under [kripke_ctxsub] — which the subtyping
       cases need.  The price is that [Γ ⊢k φ : Δ] no longer implies
       [Γ ⊢w φ : Δ]: [wf_wk_lookup] demands a variable *lookup* in [Γ] at the
-      very type [A[φ]w], and refinement only gives a subtype of it.  So the
+      very type [A[φ]ʷ], and refinement only gives a subtype of it.  So the
       escape lemma is [kripke_escape], landing in [wf_sub] via [ι]; it
       transports judgments just as well.
 

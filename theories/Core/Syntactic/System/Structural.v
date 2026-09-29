@@ -131,15 +131,15 @@ Proof.
   intros; simpl; mauto 2.
 Qed.
 
-(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w], it is
+(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ], it is
     exactly what the induction hypothesis of [wk_preserves_wf] supplies at every
     binder, and [wf_sub_q] states the corresponding premise for substitutions
     explicitly. *)
 Lemma wf_wk_q : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w wk_q φ : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros * Hφ ? ?; saturate_wk.
   econstructor; [ mauto 2 | mauto 2 | ].
@@ -182,8 +182,8 @@ Hint Resolve wf_wk_q_nat : mctt.
     the search wander. *)
 Lemma wk_preserves_vlookup : forall Θ Ξ Γ Δ φ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Γ ++ gs_tele Ξ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) : A[φ]w.
+    Γ ∋ #x : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) : A[φ]ʷ.
 Proof.
   intros * Hφ ?; saturate_wk.
   econstructor; [ eassumption | eapply wf_wk_lookup; eassumption ].
@@ -191,8 +191,8 @@ Qed.
 
 Lemma wk_preserves_vlookup_eq : forall Θ Ξ Γ Δ φ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Γ ++ gs_tele Ξ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) ≈ #(φ x) : A[φ]w.
+    Γ ∋ #x : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ #(φ x) ≈ #(φ x) : A[φ]ʷ.
 Proof.
   intros * Hφ ?; saturate_wk.
   econstructor; [ eassumption | eapply wf_wk_lookup; eassumption ].
@@ -220,21 +220,36 @@ Hint Resolve wk_preserves_vlookup wk_preserves_vlookup_eq : mctt.
     type and the type the rule wants coincide.  It is a separate tactic rather
     than part of the sets below, because it applies in three cases only. *)
 
+(** A parameter's type has no λ-variable either. *)
+Lemma wf_param_type_closed : forall Θ Ξ Γ n U k T,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    List.nth_error Ξ n = Some U ->
+    gu_params U ∋ #k : T ->
+    exp_scoped 0 (gs_cs Ξ) T[↑ₘ (S n)]ᵐ[sb_params n].
+Proof.
+  intros * HΓ Hn Hk; destruct wf_scoped as [Hctx _].
+  destruct (Hctx _ _ _ HΓ) as (_ & HΞ & _).
+  eapply param_type_scoped; eassumption.
+Qed.
+
 Ltac saturate_closed :=
   repeat match goal with
   | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ ?A _ |- _ =>
-      assert_fails (assert (exp_scoped 0 (ctx_pi Δ A)) by assumption);
+      assert_fails (assert (exp_scoped 0 _ (ctx_pi Δ A)) by eassumption);
       pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hc Hl)
   | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ (Some ?M) |- _ =>
-      assert_fails (assert (exp_scoped 0 (ctx_fn Δ M)) by assumption);
+      assert_fails (assert (exp_scoped 0 _ (ctx_fn Δ M)) by eassumption);
       pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hc Hl)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : ?T |- _ =>
+      assert_fails (assert (exp_scoped 0 _ T[↑ₘ (S n)]ᵐ[sb_params n]) by eassumption);
+      pose proof (wf_param_type_closed _ _ _ _ _ _ _ Hc Hn Hk)
   end.
 
 Ltac push_closed :=
   saturate_closed;
   repeat match goal with
-  | Hc : exp_scoped 0 ?X |- context [ exp_wk ?X ?φ ] => rewrite (exp_closed_wk X φ Hc)
-  | Hc : exp_scoped 0 ?X |- context [ exp_sub ?X ?σ ] => rewrite (exp_closed_sub X σ Hc)
+  | Hc : exp_scoped 0 _ ?X |- context [ exp_wk ?X ?φ ] => rewrite (exp_closed_wk X _ φ Hc)
+  | Hc : exp_scoped 0 _ ?X |- context [ exp_sub ?X ?σ ] => rewrite (exp_closed_sub X _ σ Hc)
   end.
 
 Ltac push_wk_step H :=
@@ -264,7 +279,7 @@ Ltac push_wk :=
 (** ** Saturating with the Lifted Weakenings
 
     Every binder case of [wk_preserves_wf] needs the lifted weakening
-    [Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w q φ : Γ ▹ A] before the induction hypothesis for the body can
+    [Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w q φ : Γ ▹ A] before the induction hypothesis for the body can
     be used.  It is derivable — [wf_wk_q] is a hint — but only from the
     induction hypothesis for the *domain*, so leaving it to [eauto] costs three
     extra levels of search on top of the rule application, which puts the wider
@@ -297,8 +312,8 @@ Ltac lift_wk_step :=
 Ltac lift_wk := repeat first [ lift_wk_nat | lift_wk_step ].
 
 (** The successor branch of the [ℕ]-eliminator is typed at the motive under two
-    binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1][q (q φ)]w]
-    where the rule wants [A[q φ]w[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
+    binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1][q (q φ)]ʷ]
+    where the rule wants [A[q φ]ʷ[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
     one: [exp_wk_sub_natrec] only applies to a *doubly lifted* weakening, and in
     the induction hypothesis the weakening is still universally quantified.  So
     we instantiate the hypothesis at the lifted weakening [lift_wk] built, and
@@ -317,13 +332,13 @@ Ltac lift_wk_natrec :=
 Lemma wk_preserves_wf :
   (forall Θ Ξ Γ A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w : A[φ]w) /\
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ : A[φ]ʷ) /\
   (forall Θ Ξ Γ A M M',
       Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w ≈ M'[φ]w : A[φ]w) /\
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ) /\
   (forall Θ Ξ Γ A A',
       Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ⊆ A'[φ]w).
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ).
 Proof.
   apply syntactic_wf_mut_ind'; intros; saturate_wk; push_wk; lift_wk.
   (** The [a_glob] cases: the recorded type is closed, so the operation on it
@@ -343,7 +358,7 @@ Qed.
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w : A[φ]w.
+    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ : A[φ]ʷ.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -351,7 +366,7 @@ Qed.
 Corollary wk_preserves_exp_eq : forall Θ Ξ Γ Δ A M M' φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]w ≈ M'[φ]w : A[φ]w.
+    Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -359,7 +374,7 @@ Qed.
 Corollary wk_preserves_subtyp : forall Θ Ξ Γ Δ A A' φ,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ⊆ A'[φ]w.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ.
 Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
@@ -456,7 +471,7 @@ Proof.
   intros * Hσ ? ?; saturate_sub.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
-  (** Both bindings of [Δ ▹ A] are looked up at a type of the form [B[↑]w], and
+  (** Both bindings of [Δ ▹ A] are looked up at a type of the form [B[↑]ʷ], and
       [exp_sub_shift_extend] is precisely the statement that an
       extension is invisible to such a type. *)
   inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
@@ -502,7 +517,7 @@ Proof.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
-  (** [exp_wk_shift_sub_q] at [n = 0] is what moves the [[↑]w]
+  (** [exp_wk_shift_sub_q] at [n = 0] is what moves the [[↑]ʷ]
       of a lookup out through the lifted substitution. *)
   inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q; [ mauto 2 | ].
   eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
@@ -530,7 +545,7 @@ Hint Resolve wf_sub_q_nat : mctt.
 
 Lemma sub_preserves_vlookup : forall Θ Ξ Γ Δ σ x A,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Δ ++ gs_tele Ξ ∋ #x : A ->
+    Δ ∋ #x : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ].
 Proof.
   intros; eapply wf_sub_apply; eassumption.
@@ -538,7 +553,7 @@ Qed.
 
 Lemma sub_preserves_vlookup_eq : forall Θ Ξ Γ Δ σ x A,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Δ ++ gs_tele Ξ ∋ #x : A ->
+    Δ ∋ #x : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ x) : A[σ].
 Proof.
   intros; apply wf_exp_eq_refl; eapply wf_sub_apply; eassumption.
@@ -738,11 +753,11 @@ Proof.
 Qed.
 
 (** [#1] is the [ℕ] of [Γ ▹ ℕ ▹ A]: the lookup derivation produces the type
-    [ℕ[↑]w[↑]w], which is [ℕ] only up to computation. *)
+    [ℕ[↑]ʷ[↑]ʷ], which is [ℕ] only up to computation. *)
 Corollary ctx_lookup_nat_1 : forall Γ A, Γ ▹ ℕ ▹ A ∋ #1 : ℕ.
 Proof.
   intros.
-  assert (Γ ▹ ℕ ▹ A ∋ #1 : ℕ[↑]w[↑]w) as H by mauto 2.
+  assert (Γ ▹ ℕ ▹ A ∋ #1 : ℕ[↑]ʷ[↑]ʷ) as H by mauto 2.
   exact H.
 Qed.
 
@@ -758,7 +773,7 @@ Proof.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk : Γ ▹ ℕ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ succ #1 : ℕ)
-    by (do 2 econstructor; [ assumption | apply ctx_lookup_app_l, ctx_lookup_nat_1 ]).
+    by (econstructor; eapply wf_vlookup; [ assumption | apply ctx_lookup_nat_1 ]).
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@0) by mauto 3.
   eapply wf_sub_extend; [ eassumption | eassumption | assumption ].
 Qed.
@@ -783,7 +798,7 @@ Hint Resolve wf_sub_nat_single wf_sub_zero wf_sub_natrec_step : mctt.
 
 Corollary ctxsub_vlookup : forall Θ Ξ Γ Δ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
-    Γ ++ gs_tele Ξ ∋ #x : A ->
+    Γ ∋ #x : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
 Proof.
   intros.
@@ -793,16 +808,16 @@ Qed.
 
 (** A lookup one binder in is a lookup weakened by [↑]; this is the shape the
     extension case below produces, and [eauto] cannot find it on its own because
-    [#(S x)] has to be *recognised* as [#x[↑]w] before [wk_preserves_exp]
+    [#(S x)] has to be *recognised* as [#x[↑]ʷ] before [wk_preserves_exp]
     applies. *)
 Corollary wk_preserves_vlookup_shift : forall Θ Ξ Γ A B x i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : B ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B[↑]w.
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B[↑]ʷ.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-  change #(S x) with #x[↑]w.
+  change #(S x) with #x[↑]ʷ.
   mauto 3.
 Qed.
 
@@ -819,7 +834,7 @@ Proof.
   econstructor; [ eassumption | mauto 2 | ].
   intros x B Hlk.
   inversion Hlk; subst; reduce_index; rewrite exp_sub_id.
-  - (** The top binding: [#0] has type [A'[↑]w] there and [A'[↑]w ⊆ A[↑]w] by
+  - (** The top binding: [#0] has type [A'[↑]ʷ] there and [A'[↑]ʷ ⊆ A[↑]ʷ] by
         weakening the given subtyping. *)
     eapply wf_exp_subtyp'; [ mauto 2 | ].
     eapply wk_preserves_subtyp; eassumption.
@@ -877,7 +892,7 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 
 (** ** Transporting a Type
 
-    [Type@i] is closed, so [Type@i[φ]w] and [Type@i[σ]] are [Type@i] — but only
+    [Type@i] is closed, so [Type@i[φ]ʷ] and [Type@i[σ]] are [Type@i] — but only
     up to conversion, and [eauto]'s [simple apply] does not reduce.  These four
     spell it out; every "and the type is still a type" step below goes through
     one of them. *)
@@ -885,7 +900,7 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 Corollary wk_preserves_typ : forall Θ Ξ Γ Δ A φ i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i.
 Proof.
   intros.
   assert (wf_exp Θ Ξ Δ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
@@ -895,7 +910,7 @@ Qed.
 Corollary wk_preserves_typ_eq : forall Θ Ξ Γ Δ A A' φ i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]w ≈ A'[φ]w : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
 Proof.
   intros.
   assert (wf_exp_eq Θ Ξ Δ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
@@ -938,7 +953,7 @@ Hint Resolve wk_preserves_typ wk_preserves_typ_eq
 Corollary wf_wk_q' : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]w ⊢w wk_q φ : Γ ▹ A.
+    Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros; eapply wf_wk_q; mauto 2.
 Qed.
@@ -1130,28 +1145,18 @@ Qed.
 Hint Resolve ctx_wf_gctx : mctt.
 
 (** A local binding is a type in its context by the weakening [ctx_lookup]
-    carries; a parameter of a frame is one in the frames outside it, and pushing
-    the frame carries that up. *)
+    carries. *)
 Lemma ctx_lookup_wf : forall Ξ Θ Γ x A,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Γ ++ gs_tele Ξ ∋ #x : A ->
+    Γ ∋ #x : A ->
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
 Proof.
-  induction Ξ as [| U Ξ IHΞ]; intros Θ Γ; induction Γ as [| B Γ IHΓ];
-    intros x A HΓ Hlk; cbn [List.app] in Hlk.
-  1: inversion Hlk.
-  2: (* a parameter of the innermost frame, or of one further out *)
-     apply ctx_wf_gctx in HΓ as Hg0; destruct (wf_gctx_pop _ _ _ Hg0) as [Hg HU];
-     rewrite gs_tele_cons in Hlk; apply ctx_lookup_open_inv in Hlk as [A0 [Hlk ->]];
-     destruct (IHΞ _ _ _ _ HU Hlk) as [i HA0];
-     exists i; destruct (push_preserves_wf _ _ _ Hg0) as (_ & Hpe & _ & _);
-     exact (Hpe nil _ _ HA0).
-  (* a local binding: at the top, or under it *)
-  all: inversion HΓ; subst; inversion Hlk; subst;
+  intros Ξ Θ Γ; induction Γ as [| B Γ IHΓ]; intros x A HΓ Hlk; [ inversion Hlk |].
+  inversion HΓ; subst; inversion Hlk; subst;
     [| edestruct IHΓ as [k ?]; [ eauto using presup_exp_ctx | eassumption |] ];
     match goal with
-    | H : _ ⍮ _ ⍮ _ ⊢ ?T : Type@?k |- exists _, _ ⍮ _ ⍮ _ ⊢ ?T[↑]w : _ =>
-        exists k; change (Type@k) with (Type@k[↑]w);
+    | H : _ ⍮ _ ⍮ _ ⊢ ?T : Type@?k |- exists _, _ ⍮ _ ⍮ _ ⊢ ?T[↑]ʷ : _ =>
+        exists k; change (Type@k) with (Type@k[↑]ʷ);
         eapply wk_preserves_exp; [ exact H | mauto 2 ]
     end.
 Qed.

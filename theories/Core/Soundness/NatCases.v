@@ -376,7 +376,7 @@ Hint Resolve cons_glu_sub_pred_q_nat_helper : mctt.
 (** Kripke-weakening the scrutinee's type collapses its two substitution steps
     into one with [sb_wk]. *)
 Fact natrec_typ_sub_wk : forall A σ M φ,
-    A[σ,,M][φ]w = A[q (sb_wk σ φ)][Id,,M[φ]w].
+    A[σ,,M][φ]ʷ = A[q (sb_wk σ φ)][Id,,M[φ]ʷ].
 Proof.
   intros; rewrite exp_sub_q_extend; apply exp_wk_sub_extend_head.
 Qed.
@@ -389,7 +389,7 @@ Lemma glu_rel_exp_natrec_neut_helper : forall {i Γ SbΓ A MZ MS Δ M a m σ ρ 
     Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@i ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     Dom m ≈ m ∈ per_bot ->
-    (forall Δ' φ V, Δ' ⊢k φ : Δ -> Rne m in length Δ' ↘ V -> Δ' ⊢ M[φ]w ≈ V : ℕ) ->
+    (forall Δ' φ V, Δ' ⊢k φ : Δ -> Rne m in length Δ' ↘ V -> Δ' ⊢ M[φ]ʷ ≈ V : ℕ) ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     ⟦ A ⟧ ρ ↦ ⇑ a m ↘ am ->
     DG am ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -503,13 +503,13 @@ Proof.
     + assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)] ® glu_typ_top i m0) as [? ? Hrbt]
           by (eapply realize_glu_typ_top; eassumption).
       assert (Δ' ▹ ℕ ⊢k wk_id : Δ' ▹ ℕ) by mauto 3.
-      assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)][wk_id]w ≈ B' : Type@i) as Hat by (eapply Hrbt; eassumption).
+      assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Type@i) as Hat by (eapply Hrbt; eassumption).
       rewrite exp_wk_id in Hat; eassumption.
     + rewrite exp_sub_q_extend, <- exp_sub_extend_sub_zero.
       assert (Δ' ⊢ MZ[(sb_wk σ φ)] : A[Id,,zero][(sb_wk σ φ)] ® mz ∈ glu_elem_top i azero)
           as [? ? ? ? ? ? Hrbz] by (eapply realize_glu_elem_top; eassumption).
       assert (Δ' ⊢k wk_id : Δ') by mauto 3.
-      assert (Δ' ⊢ MZ[(sb_wk σ φ)][wk_id]w ≈ MZ0 : A[Id,,zero][(sb_wk σ φ)][wk_id]w) as Hmz
+      assert (Δ' ⊢ MZ[(sb_wk σ φ)][wk_id]ʷ ≈ MZ0 : A[Id,,zero][(sb_wk σ φ)][wk_id]ʷ) as Hmz
           by (eapply Hrbz; eassumption).
       rewrite ! exp_wk_id in Hmz; eassumption.
     + rewrite <- exp_sub_sub_natrec.
@@ -517,8 +517,8 @@ Proof.
                   : A[Wk ⨟ Wk,,succ #1][q (q (sb_wk σ φ))] ® ms ∈ glu_elem_top i bs)
           as [? ? ? ? ? ? Hrbs] by (eapply realize_glu_elem_top; eassumption).
       assert (Δ' ▹ ℕ ▹ A[q (sb_wk σ φ)] ⊢k wk_id : Δ' ▹ ℕ ▹ A[q (sb_wk σ φ)]) by mauto 3.
-      assert (Δ' ▹ ℕ ▹ A[q (sb_wk σ φ)] ⊢ MS[q (q (sb_wk σ φ))][wk_id]w ≈ MS'
-                  : A[Wk ⨟ Wk,,succ #1][q (q (sb_wk σ φ))][wk_id]w) as Hms
+      assert (Δ' ▹ ℕ ▹ A[q (sb_wk σ φ)] ⊢ MS[q (q (sb_wk σ φ))][wk_id]ʷ ≈ MS'
+                  : A[Wk ⨟ Wk,,succ #1][q (q (sb_wk σ φ))][wk_id]ʷ) as Hms
           by (eapply Hrbs; eassumption).
       rewrite ! exp_wk_id in Hms; eassumption.
     + mauto 3.

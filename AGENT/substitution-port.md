@@ -23,12 +23,12 @@ Explicit substitutions are gone: there is no `sub` syntactic category, no
 judgments. Instead
 
 - `wk := nat -> nat` and `sub := nat -> exp` are meta-level functions,
-- `exp_wk M φ` (`M[φ]w`) and `exp_sub M σ` (`M[σ]`) are recursive functions,
+- `exp_wk M φ` (`M[φ]ʷ`) and `exp_sub M σ` (`M[σ]`) are recursive functions,
 - the substitution algebra is a set of **theorems** in
   `Core/Syntactic/Substitution.v`, most of them plain `=` rather than `≈`,
 - `wf_wk` / `wf_sub` / `wf_sub_eq` are **records**, not inductive families.
 
-Two tiers matter: `sb_q σ (x+1)` must weaken (`(σ x)[↑]w`), not substitute, or
+Two tiers matter: `sb_q σ (x+1)` must weaken (`(σ x)[↑]ʷ`), not substitute, or
 `exp_sub` is not structurally recursive. Composition is **diagrammatic**:
 `wk_compose φ ψ = fun x => ψ (φ x)`, `sb_compose σ τ = fun x => (σ x)[τ]`,
 written `σ ⨟ τ` (U+2A1F — *not* `∘`) and `φ ⊙ ψ`.
@@ -114,7 +114,7 @@ passes, and `dune exec mctt examples/nary.mctt` prints `6 : Nat`.
 | --- | --- |
 | `Syntax.v` | `exp` with 9 constructors; `wk`/`sub` and their operations |
 | `Substitution.v` | the algebra, as equations; `simpl_sub`; rewrite dbs `sb`, `sb_index` |
-| `System/Definitions.v` | the four judgments; `wf_wk`/`wf_sub`/`wf_sub_eq` records; `ctx_lookup` weakens with `[↑]w` |
+| `System/Definitions.v` | the four judgments; `wf_wk`/`wf_sub`/`wf_sub_eq` records; `ctx_lookup` weakens with `[↑]ʷ` |
 | `System/Lemmas.v` | everything from `wf_wk` to `wf_sub_eq` (see order above) |
 | `System/Tactics.v` | `invert_wf_ctx`, `gen_core_presup(s)`, `gen_lookup_presup` |
 | `Presup.v` | `presup_exp_eq`, `presup_subtyp`; `gen_presup(s)`, whose `gen_presup1` gained a `wf_sub_eq` case |
@@ -227,7 +227,7 @@ file's header comment before touching it; the three things it records are:
   strengthening lemma the system does not have.
 - Both rules may coarsen their codomain by `⊢ Δ' ⊆ Δ`, which the subtyping
   cases need. The price: `⊢k` does **not** imply `⊢w`, because `wf_wk_lookup`
-  demands a lookup at exactly `A[φ]w` and refinement only gives a subtype. So the
+  demands a lookup at exactly `A[φ]ʷ` and refinement only gives a subtype. So the
   escape lemma cannot land in `⊢w`; `kripke_escape` lands in `wf_sub` via `ι`.
 - The `wk_eq` premise on each rule is what makes the judgment `Proper`, so a
   weakening may be presented in any pointwise-equal form; `kripke_shiftn`
@@ -269,8 +269,8 @@ Other things worth knowing before editing a gluing proof:
 
 ### Algorithmic, Extraction, Frontend
 
-- `Wk∘Wk` is `Wk ⨟ Wk` everywhere; `A[Wk]` is `A[↑]w`.
-- `wf_subtyp_univ_weaken` is gone: `Type@i[↑]w` *is* `Type@i`, so `wf_subtyp_ge`
+- `Wk∘Wk` is `Wk ⨟ Wk` everywhere; `A[Wk]` is `A[↑]ʷ`.
+- `wf_subtyp_univ_weaken` is gone: `Type@i[↑]ʷ` *is* `Type@i`, so `wf_subtyp_ge`
   (`⊢ Γ -> i <= j -> Γ ⊢ Type@i ⊆ Type@j`) subsumes it. The old call
   site silently no-op'd, because `repeat match goal` swallows an
   unresolved-reference error.
@@ -299,11 +299,11 @@ Convertible is **not** syntactically equal. `rewrite` and `assert … as ->` mat
 syntactically; `eapply`/`apply`/`exact`/`eassumption` unify up to
 fixpoint/delta reduction. So these need no rewrite at all: `#0[σ,,M]`,
 `Wk ⨟ (σ,,M)`, `(ρ ↦ v) ↯`, `#(S n)[σ]`, `(Π A B)[σ]`, `(λ A M)[σ]`, `(M N)[σ]`,
-`Type@i[σ]`, `ℕ[σ]`, `ℕ[↑]w`, `Type@i[↑]w`, `zero[σ]`, `(succ M)[σ]`, `#0[φ]w`,
-`^(ι wk_id)`, and `natrec` under both `[σ]` and `[φ]w`.
+`Type@i[σ]`, `ℕ[σ]`, `ℕ[↑]ʷ`, `Type@i[↑]ʷ`, `zero[σ]`, `(succ M)[σ]`, `#0[φ]ʷ`,
+`^(ι wk_id)`, and `natrec` under both `[σ]` and `[φ]ʷ`.
 
-- `exp_wk_sub : M[σ][φ]w = M[^(sb_wk σ φ)]` **over-matches**: it also matches
-  `A[σ,,M][φ]w`. Order rewrite chains most-specific-first, e.g.
+- `exp_wk_sub : M[σ][φ]ʷ = M[^(sb_wk σ φ)]` **over-matches**: it also matches
+  `A[σ,,M][φ]ʷ`. Order rewrite chains most-specific-first, e.g.
   `rewrite natrec_typ_sub_wk, exp_wk_sub_q2, exp_wk_sub_q, exp_wk_sub.`
 - Two similarly-named tactics, easily confused: `simpl_sub` (`Substitution.v`) is
   `autorewrite with sb in *`, `simplify_subs` (`Evaluation/Tactics.v`) is

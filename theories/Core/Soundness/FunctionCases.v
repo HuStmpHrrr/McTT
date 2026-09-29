@@ -22,7 +22,7 @@ From Mctt.Core.Soundness Require Import
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 
-(** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening: [A[σ][φ]w] and
+(** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening: [A[σ][φ]ʷ] and
     [A[(sb_wk σ φ)]] are the same expression, so the head premise needs only a
     [rewrite] rather than the old instance of [Sub-Comp]. *)
 Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a i P El Γ'' φ M c},
@@ -32,7 +32,7 @@ Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a i P El Γ'' φ M
     ⟦ A ⟧ ρ ↘ a ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ'' ⊢k φ : Γ' ->
-    Γ'' ⊢ M : A[σ][φ]w ® c ∈ El ->
+    Γ'' ⊢ M : A[σ][φ]ʷ ® c ∈ El ->
     Γ'' ⊢s (sb_wk σ φ),,M ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
 Proof.
   intros.
@@ -56,7 +56,7 @@ Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N i},
     Γ ▹ A ⊢ M : B ->
     Δ' ⊢k φ : Δ ->
     Δ' ⊢ N : A[(sb_wk σ φ)] ->
-    Δ' ⊢ (λ A M)[σ][φ]w $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N].
+    Δ' ⊢ (λ A M)[σ][φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N].
 Proof.
   intros.
   saturate_kripke_escape.
@@ -236,7 +236,7 @@ Proof.
     assert (Δ0 ⊢ N : A[(sb_wk σ φ)]) by (rewrite <- exp_wk_sub; mauto 2 using glu_univ_elem_trm_escape).
     (** The [pi_glu_exp_pred] app clause states the head in [exp_sub]-reduced
         form, so the [β] equation must be spelled that way for [rewrite]. *)
-    assert (Δ0 ⊢ (λ A[σ] M[q σ])[φ]w $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N]) as ->
+    assert (Δ0 ⊢ (λ A[σ] M[q σ])[φ]ʷ $ N ≈ M[(sb_wk σ φ),,N] : B[(sb_wk σ φ),,N]) as ->
         by (eapply exp_eq_fn_sub_wk_beta; eassumption).
     assert (Δ0 ⊢s (sb_wk σ φ),,N ® ρ ↦ n ∈ SbΓA) as HSbΓA by (unfold SbΓA; mauto 2).
     (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
@@ -331,18 +331,18 @@ Proof.
       by (eapply glu_univ_elem_resp_per_univ; eassumption).
   handle_functional_glu_univ_elem.
   assert (Δ ⊢k wk_id : Δ) by mauto 3.
-  assert (Δ ⊢ IT[wk_id]w ® IP) as HIT by mauto 2.
+  assert (Δ ⊢ IT[wk_id]ʷ ® IP) as HIT by mauto 2.
   rewrite exp_wk_id in HIT.
   assert (Δ ⊢ IT : Type@i) by (eapply glu_univ_elem_univ_lvl; revgoals; eassumption).
   assert (Δ ⊢ IT ≈ A[σ] : Type@i) as HAeq by (eapply glu_univ_elem_typ_unique_upto_exp_eq'; revgoals; eassumption).
-  assert (Δ ⊢ N[σ] : IT[wk_id]w ® n ∈ IEl) by (rewrite exp_wk_id, HAeq; eassumption).
-  assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[σ][wk_id]w $ N[σ] : OT[(ι wk_id),,N[σ]] ® mn ∈ OEl n equiv_n) as [] by mauto 2.
+  assert (Δ ⊢ N[σ] : IT[wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id, HAeq; eassumption).
+  assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[σ][wk_id]ʷ $ N[σ] : OT[(ι wk_id),,N[σ]] ® mn ∈ OEl n equiv_n) as [] by mauto 2.
   destruct_conjs.
   functional_eval_rewrite_clear.
   rewrite exp_wk_id in *.
   assert (Δ ⊢s σ : Γ) by mauto 2.
   assert (Δ ⊢ N[σ] : A[σ]) by mauto 2.
-  assert (Δ ⊢ N[σ] : A[σ][wk_id]w ® n ∈ IEl) by (rewrite exp_wk_id; eassumption).
+  assert (Δ ⊢ N[σ] : A[σ][wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id; eassumption).
   assert (Δ ⊢s σ,,N[σ] ® ρ ↦ n ∈ SbΓA) as Hcons by (unfold SbΓA; mauto 2).
   (on_all_hyp: destruct_glu_rel_by_assumption SbΓA).
   simplify_evals.

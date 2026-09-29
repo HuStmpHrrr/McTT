@@ -65,6 +65,7 @@
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v
+./Core/Syntactic/ModSubst.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
 ./Core/Syntactic/System/Definitions.v
@@ -72,6 +73,7 @@
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/Scoping.v
 ./Core/Syntactic/System/Structural.v
+./Core/Syntactic/System/Discharge.v
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/System/Transport.v
 ./Core/Syntactic/SystemOpt.v

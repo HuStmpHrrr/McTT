@@ -112,7 +112,7 @@ with sc_public (s : scope) : scope :=
 (** ** Using an Entry *)
 
 (** A term elaborated at depth [n], moved to the deeper depth [d]. *)
-Definition sc_shift (d n : nat) (M : exp) : exp := M[wk_shiftn (d - n)]w.
+Definition sc_shift (d n : nat) (M : exp) : exp := M[wk_shiftn (d - n)]ʷ.
 
 Definition sc_apply (M : exp) (args : list exp) : exp := List.fold_left a_app args M.
 

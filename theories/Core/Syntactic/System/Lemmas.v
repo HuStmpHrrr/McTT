@@ -70,7 +70,7 @@ Hint Resolve wf_sub_eq_refl : mctt.
 
 Lemma sub_eq_preserves_vlookup : forall Θ Ξ Γ Δ σ σ' x A,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Δ ++ gs_tele Ξ ∋ #x : A ->
+    Δ ∋ #x : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ].
 Proof.
   intros; eapply wf_sub_eq_apply; eassumption.
@@ -390,9 +390,9 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
 
     The right-hand side of [wf_exp_eq_fn_eta] is well-typed at the same type as
     the left.  Getting there is entirely a matter of moving between the two
-    descriptions of a weakened [Π]-type: [(Π A B)[↑]w] *is* [Π A[↑]w B[q ↑]w], but
+    descriptions of a weakened [Π]-type: [(Π A B)[↑]ʷ] *is* [Π A[↑]ʷ B[q ↑]ʷ], but
     only by computation, so [eauto] cannot see it and the step is taken by hand.
-    The application's type is [B[q ↑]w[Id ,, #0]], which is [B] by
+    The application's type is [B[q ↑]ʷ[Id ,, #0]], which is [B] by
     [exp_wk_q_shift_single]: lifting a weakening and then substituting the top
     variable for it is the identity. *)
 
@@ -400,19 +400,19 @@ Lemma wf_fn_eta_expand : forall Θ Ξ Γ A B M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]w $ #0 : Π A B.
+    Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
   assert (wf_exp Θ Ξ (Γ ▹ A) (exp_wk (Π A B) ↑) (exp_wk M ↑)) as H'
       by (eapply wk_preserves_exp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]w : Π A[↑]w B[wk_q ↑]w) by exact H'.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]w : Type@i) by (eapply wk_preserves_typ; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]w) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]w ⊢ B[wk_q ↑]w : Type@i)
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : Π A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : Type@i)
       by (eapply wk_preserves_typ; [ eassumption | eapply wf_wk_q'; eassumption ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]w $ #0 : B[wk_q ↑]w[Id,,#0]) by (eapply wf_app; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0]) by (eapply wf_app; eassumption).
   rewrite exp_wk_q_shift_single in *.
   mauto 2.
 Qed.
@@ -424,17 +424,22 @@ Hint Resolve wf_fn_eta_expand : mctt.
 
     A neutral's head is a variable, and the empty context has none. *)
 
-(** Closed means closed at the empty stack too: a frame's parameters are
-    variables in scope. *)
-Lemma no_closed_neutral : forall {Θ A} {W : ne},
-    ~ Θ ⍮ nil ⍮ ⋅ ⊢ W : A.
+(** Closed means closed at the empty stack, where no frame parameter nor
+    member is in scope, and with no global context, where no axiom or opaque
+    definition is. *)
+Lemma no_closed_neutral : forall {A} {W : ne},
+    ~ nil ⍮ nil ⍮ ⋅ ⊢ W : A.
 Proof.
   intros * H.
   dependent induction H; destruct W;
     try (simpl in *; congruence);
     autoinjections;
     eauto.
-  inversion_by_head ctx_lookup.
+  - inversion_by_head ctx_lookup.
+  - match goal with Hn : List.nth_error nil ?n = Some _ |- _ => destruct n; discriminate end.
+  - match goal with Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ _ |- _ => inversion Hl; subst end;
+      [ match goal with Hn : List.nth_error nil ?n = Some _ |- _ => destruct n; discriminate end
+      | discriminate ].
 Qed.
 
 #[export]

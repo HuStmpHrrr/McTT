@@ -257,8 +257,13 @@ unchanged.
       leave it alone (`push_closed`).
     * `⊢g Θ ⍮ Ξ` has the single premise `wf_gstack Θ Ξ`. Units are checked at
       `⋅` with their parameters as the whole telescope; members are checked in
-      the frame the module pushes, local context `⋅`, with the frames'
-      parameters in scope as `Γ ++ gs_tele Ξ`.
+      the frame the module pushes, local context `⋅`. A frame's parameters
+      are `$[n, k]` (`a_param`, rule `wf_param`), not local variables.
+    * A member of an open frame resolves as stored, shifted `↑ₘ n`
+      (`gcl_rel`); reading out of a closed module (`gml_in`, `gcl_abs`)
+      applies `close mp c` (module substitution `msub`, `ModSubst.v`), which
+      turns the parameters into λ-variables and the members into
+      `app_vars` applications.
 
     **Every `wf_*` judgment is one mutual block** (eleven judgments), with
     `wf_mut_ind_all` over all of them.
@@ -266,15 +271,18 @@ unchanged.
     **Presupposition** is the mutual theorem `presup_global`
     (`System/GlobalPresup.v`): term judgments give `rwf Θ Ξ` (every resolved
     global's `ctx_pi Δ A` is a type at `⋅`, its body typed there), modules and
-    units give `mod_typed` (members typed in the frame they push). A definition
+    units give `ins_typed` (each member, generalized, typed in the frame it
+    was *inserted* into: `gm_ins`/`gm_prefix`, `GlobalCtx.v`). A definition
     records only `M : A`; that `A` is a type comes from presupposition of that
-    derivation inside `⊢g`. The frame-to-frame steps are instances of one
-    transport along a path opening (`open_preserves_wf`, `System/Transport.v`):
-    push a frame (`p_rel 1 []`), grow a frame (identity), pop through a nested
-    module (`p_rel 0 [x]`), file a unit (`p_abs fp []`), plus localizing the
-    parameters in scope (`localize_wf`). `presup_exp_typ`, `presup_exp_eq`,
-    `presup_subtyp`, `presup_sub_eq` are the full statements (well-formed
-    context, both sides typed, the type a type).
+    derivation inside `⊢g`. Every frame-to-frame step is an instance of one
+    transport along a module substitution (`msub_preserves_wf`,
+    `System/Transport.v`): push a frame (`↑ₘ 1`), grow a frame or add a level
+    (identity, `rebase_preserves_wf`), close a frame (`close_preserves_wf`,
+    `System/Discharge.v`). Closing a nested module or a unit being filed
+    (`closable_pop`, `closable_file`) is by induction on insertion order: each
+    member needs only the members before it closed. `presup_exp_typ`,
+    `presup_exp_eq`, `presup_subtyp`, `presup_sub_eq` are the full statements
+    (well-formed context, both sides typed, the type a type).
 
 ## Module theory
 

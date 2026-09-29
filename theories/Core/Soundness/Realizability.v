@@ -33,7 +33,7 @@ Proof. intros * H; pose proof (wk_var_kripke _ _ _ 0 H); simpl in *; lia. Qed.
 Lemma var_glu_elem_bot : forall a i P El Γ A,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
-    Γ ▹ A ⊢ #0 : A[↑]w ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
+    Γ ▹ A ⊢ #0 : A[↑]ʷ ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
 Proof.
   intros. saturate_glu_info.
   econstructor; mauto 4.
@@ -41,7 +41,7 @@ Proof.
     mauto 4.
   - intros. progressive_inversion.
     assert (φ 0 = length Δ - length Γ - 1) as <- by (eapply wk_var0_kripke; eassumption).
-    change #(φ 0) with #0[φ]w.
+    change #(φ 0) with #0[φ]ʷ.
     mauto 5.
 Qed.
 
@@ -128,7 +128,7 @@ Proof.
       rewrite exp_wk_id in HIT.
       dir_inversion_clear_by_head read_typ.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [] by mauto 3.
-      assert (Δ ⊢ A[φ]w ≈ Π IT[φ]w OT[wk_q φ]w : Type@i) as HA' by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
       simpl. apply wf_exp_eq_pi_cong'; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
@@ -136,15 +136,15 @@ Proof.
       simplify_evals.
       destruct (H2 _ ltac:(eassumption) _ ltac:(eassumption)) as [? []].
       pose proof (H13 _ _ H16) as HIPφ.
-      assert (IEl (Δ ▹ IT[φ]w) IT[φ]w[↑]w #0 ⇑! a (length Δ)) as HEl
+      assert (IEl (Δ ▹ IT[φ]ʷ) IT[φ]ʷ[↑]ʷ #0 ⇑! a (length Δ)) as HEl
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
-      assert (⊢ Δ ▹ IT[φ]w) by mauto 3.
-      assert (Δ ▹ IT[φ]w ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
+      assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
+      assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
       rewrite exp_sub_of_wk_q_extend in HOP.
       specialize (H8 _ _ _ H27 HOP) as [].
-      rewrite <- (exp_wk_id OT[wk_q φ]w).
+      rewrite <- (exp_wk_id OT[wk_q φ]ʷ).
       mauto 3.
   - handle_functional_glu_univ_elem.
     apply_equiv_left.
@@ -158,9 +158,9 @@ Proof.
     simplify_evals.
     eexists; repeat split; mauto 3.
     eapply H2; eauto.
-    assert (Δ ⊢ A[φ]w ≈ Π IT[φ]w OT[wk_q φ]w : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
-    assert (Δ ⊢ M[φ]w : Π IT[φ]w OT[wk_q φ]w) as HM by mauto 3.
-    assert (Δ ⊢ M[φ]w $ N : OT[(ι φ),,N]) as HMN
+    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+    assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
+    assert (Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N]) as HMN
       by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; eassumption).
     pose proof (H10 _ _ _ _ H17 H18 equiv_n) as HOP.
     pose proof (H1 _ equiv_n _ H22) as HG.
@@ -171,7 +171,7 @@ Proof.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
       assert (Δ0 ⊢k φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
-      assert (Δ0 ⊢ A[φ ⊙ φ0]w ≈ Π IT[φ ⊙ φ0]w OT[wk_q (φ ⊙ φ0)]w : Type@i) as HAeq'
+      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Type@i) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
@@ -193,17 +193,17 @@ Proof.
       pose proof (H10 Γ wk_id ltac:(mauto 3)) as HITId.
       rewrite exp_wk_id in HITId.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [? ? HITrb] by mauto 3.
-      assert (Δ ⊢ A[φ]w ≈ Π IT[φ]w OT[wk_q φ]w : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
-      assert (Δ ⊢ M[φ]w : Π IT[φ]w OT[wk_q φ]w) as HM by mauto 3.
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
       eapply wf_exp_eq_conv'; [ | symmetry; eapply HAeq ].
       (** Read back a function by η-expanding it and recursing into the body. *)
       etransitivity; [ eapply wf_exp_eq_fn_eta'; eassumption | ].
       cbn [nf_to_exp].
       eapply wf_exp_eq_fn_cong'; [ eapply HITrb; eassumption | ].
-      assert (⊢ Δ ▹ IT[φ]w) by mauto 3.
-      assert (Δ ▹ IT[φ]w ⊢k φ ⊙ ↑ : Γ) as Hk' by mauto 3.
+      assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
+      assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk' by mauto 3.
       pose proof (var_per_elem (length Δ) H0) as Hvar.
-      assert (IEl (Δ ▹ IT[φ]w) IT[φ]w[↑]w #0 ⇑! a (length Δ)) as HEl
+      assert (IEl (Δ ▹ IT[φ]ʷ) IT[φ]ʷ[↑]ʷ #0 ⇑! a (length Δ)) as HEl
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
       destruct (H14 _ _ _ _ Hk' HEl Hvar) as [mn [Happ HOEl]].
@@ -217,7 +217,7 @@ Proof.
       destruct_rel_mod_app.
       simplify_evals.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
-      specialize (Hrbtop (Δ ▹ IT[φ]w) wk_id M0 ltac:(mauto 3) Hrb).
+      specialize (Hrbtop (Δ ▹ IT[φ]ʷ) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
       trivial.
   (* neut *)
@@ -282,7 +282,7 @@ Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.
 Corollary var0_glu_elem : forall {i a P El Γ A},
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
-    Γ ▹ A ⊢ #0 : A[↑]w ® ⇑! a (length Γ) ∈ El.
+    Γ ▹ A ⊢ #0 : A[↑]ʷ ® ⇑! a (length Γ) ∈ El.
 Proof.
   intros.
   eapply realize_glu_elem_bot; mauto 4.

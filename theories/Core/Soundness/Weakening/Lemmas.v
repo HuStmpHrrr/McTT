@@ -93,7 +93,7 @@ Qed.
 Corollary kripke_preserves_exp : forall Γ Δ A M φ,
     Δ ⊢ M : A ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]w : A[φ]w.
+    Γ ⊢ M[φ]ʷ : A[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
   rewrite <- (exp_sub_of_wk M φ), <- (exp_sub_of_wk A φ); mauto 2.
@@ -102,7 +102,7 @@ Qed.
 Corollary kripke_preserves_exp_eq : forall Γ Δ A M M' φ,
     Δ ⊢ M ≈ M' : A ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]w ≈ M'[φ]w : A[φ]w.
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
   rewrite <- (exp_sub_of_wk M φ), <- (exp_sub_of_wk M' φ), <- (exp_sub_of_wk A φ); mauto 2.
@@ -111,7 +111,7 @@ Qed.
 Corollary kripke_preserves_subtyp : forall Γ Δ A A' φ,
     Δ ⊢ A ⊆ A' ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]w ⊆ A'[φ]w.
+    Γ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ.
 Proof.
   intros * ? ?%kripke_escape.
   rewrite <- (exp_sub_of_wk A φ), <- (exp_sub_of_wk A' φ); mauto 2.
@@ -127,7 +127,7 @@ Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subty
 Corollary kripke_preserves_typ : forall Γ Δ A φ i,
     Δ ⊢ A : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]w : Type@i.
+    Γ ⊢ A[φ]ʷ : Type@i.
 Proof.
   intros.
   assert (wf_exp Γ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
@@ -137,7 +137,7 @@ Qed.
 Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
     Δ ⊢ A ≈ A' : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]w ≈ A'[φ]w : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
 Proof.
   intros.
   assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
@@ -147,7 +147,7 @@ Qed.
 Corollary kripke_preserves_nat : forall Γ Δ M φ,
     Δ ⊢ M : ℕ ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]w : ℕ.
+    Γ ⊢ M[φ]ʷ : ℕ.
 Proof.
   intros.
   assert (wf_exp Γ (exp_wk a_nat φ) (exp_wk M φ)) by mauto 2.
@@ -157,7 +157,7 @@ Qed.
 Corollary kripke_preserves_nat_eq : forall Γ Δ M M' φ,
     Δ ⊢ M ≈ M' : ℕ ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]w ≈ M'[φ]w : ℕ.
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ℕ.
 Proof.
   intros.
   assert (wf_exp_eq Γ (exp_wk a_nat φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
@@ -171,7 +171,7 @@ Qed.
 Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
     Δ ⊢ A ≈ Type@j : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]w ≈ Type@j : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ Type@j : Type@i.
 Proof.
   intros.
   assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk (a_typ j) φ)) by mauto 2.
@@ -181,7 +181,7 @@ Qed.
 Corollary kripke_preserves_typ_eq_nat : forall Γ Δ A φ i,
     Δ ⊢ A ≈ ℕ : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]w ≈ ℕ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ ℕ : Type@i.
 Proof.
   intros.
   assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_nat φ)) by mauto 2.
@@ -200,7 +200,7 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 Corollary kripke_q_escape : forall Γ Δ A φ i,
     Δ ⊢ A : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ▹ A[φ]w ⊢s (ι (wk_q φ)) : Δ ▹ A.
+    Γ ▹ A[φ]ʷ ⊢s (ι (wk_q φ)) : Δ ▹ A.
 Proof.
   intros * ? ?%kripke_escape.
   rewrite sb_q_of_wk, <- (exp_sub_of_wk A φ); mauto 3.
@@ -210,7 +210,7 @@ Corollary kripke_preserves_exp_q : forall Γ Δ A B M φ i,
     Δ ▹ A ⊢ M : B ->
     Δ ⊢ A : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ▹ A[φ]w ⊢ M[wk_q φ]w : B[wk_q φ]w.
+    Γ ▹ A[φ]ʷ ⊢ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros.
   rewrite <- (exp_sub_of_wk M), <- (exp_sub_of_wk B).
@@ -221,10 +221,10 @@ Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
     Δ ▹ A ⊢ B : Type@j ->
     Δ ⊢ A : Type@i ->
     Γ ⊢k φ : Δ ->
-    Γ ▹ A[φ]w ⊢ B[wk_q φ]w : Type@j.
+    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Type@j.
 Proof.
   intros.
-  assert (wf_exp (Γ ▹ A[φ]w) (exp_wk (a_typ j) (wk_q φ)) (exp_wk B (wk_q φ)))
+  assert (wf_exp (Γ ▹ A[φ]ʷ) (exp_wk (a_typ j) (wk_q φ)) (exp_wk B (wk_q φ)))
     by (eapply kripke_preserves_exp_q; eassumption).
   assumption.
 Qed.

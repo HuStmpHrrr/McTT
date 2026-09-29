@@ -43,7 +43,7 @@ From Stdlib Require Import List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export GlobalCtx Substitution.
+From Mctt.Core.Syntactic Require Export GlobalCtx ModSubst.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at level 69, Ξ at level 69, Γ at level 69).
@@ -70,8 +70,8 @@ Generalizable All Variables.
     [exp_wk_shift_sub_q], both of which are stated for [↑]. *)
 
 Inductive ctx_lookup : nat -> typ -> ctx -> Prop :=
-  | here : `(Γ ▹ A ∋ #0 : A[↑]w)
-  | there : `(Γ ∋ #n : A -> Γ ▹ B ∋ #(S n) : A[↑]w)
+  | here : `(Γ ▹ A ∋ #0 : A[↑]ʷ)
+  | there : `(Γ ∋ #n : A -> Γ ▹ B ∋ #(S n) : A[↑]ʷ)
 where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
 
 (** ** The Mutually Defined Judgments
@@ -127,20 +127,25 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
-(** The variables in scope are the local binders on top of the parameters of
-    the modules open around them, [gs_tele Ξ].  Those were shifted to the top of
-    the stack as they were accumulated, so a lookup needs no adjustment of its
-    own. *)
 | wf_vlookup :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ++ gs_tele Ξ ∋ #x : A ->
+     Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
-(** A global is used at its type generalized over everything in scope where it
-    was declared, which resolution hands back as [Δ]: a member of a
-    parameterized module is stored open in its parameters, so [X.foo] is a
-    function of them, applied by the elaborator as ordinary [a_app]s.  That type
-    is closed in a well-formed context, so it needs no adjustment to be used in
-    [Γ]; nothing else is premised, and that it is a type is a presupposition. *)
+(** A parameter of an open module.  Its type was checked in the frame's
+    telescope, over the frames outside it: the telescope's own variables are the
+    frame's parameters, and the frames outside, with their parameters and
+    members, are [1 + n] further out from here.  No local variable occurs in it, so it needs no adjustment to be used
+    in [Γ]. *)
+| wf_param :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     List.nth_error Ξ n = Some U ->
+     gu_params U ∋ #k : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n] )
+(** A global is used at the type resolution hands back: generalized over the
+    parameters of the closed modules it is read out of, which [X.foo] is then
+    applied to, and mentioning those of the open ones as parameters.  No local
+    variable occurs in it, so it needs no adjustment to be used in [Γ]; nothing
+    else is premised, and that it is a type is a presupposition. *)
 | wf_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
@@ -151,10 +156,10 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
          Note that we need to keep it asymmetric:
          only [A'] is checked. If we check A as well,
          we cannot even construct something like
-         [Γ ⊢ Type@0[↑]w : Type@1] with the current
+         [Γ ⊢ Type@0[↑]ʷ : Type@1] with the current
          rules. Under the symmetric rule, the example requires
-         [Γ ⊢ Type@1[↑]w : Type@2] to apply weakening,
-         which requires [Γ ⊢ Type@2[↑]w : Type@3], and so on.
+         [Γ ⊢ Type@1[↑]ʷ : Type@2] to apply weakening,
+         which requires [Γ ⊢ Type@2[↑]ʷ : Type@3], and so on.
       *)
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
@@ -200,8 +205,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
 | wf_exp_eq_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ++ gs_tele Ξ ∋ #x : A ->
+     Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
+| wf_exp_eq_param :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     List.nth_error Ξ n = Some U ->
+     gu_params U ∋ #k : T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ $[n, k] ≈ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n] )
 | wf_exp_eq_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
@@ -236,7 +246,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]w $ #0 : Π A B )
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : Π A B )
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -527,14 +537,14 @@ Hint Constructors wf_gentry wf_gmod wf_gunit wf_gdep wf_gdeps wf_gstack : mctt.
 Record wf_wk (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_intro
 { wf_wk_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_wk_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
-; wf_wk_lookup : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Γ ++ gs_tele Ξ ∋ #(φ x) : A[φ]w
+; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A[φ]ʷ
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
 
 Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_sub_intro
 { wf_sub_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_sub_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
-; wf_sub_apply : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ]
+; wf_sub_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ]
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 
@@ -543,7 +553,7 @@ Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope
 Record wf_sub_eq (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ σ' : sub) : Prop := wf_sub_eq_intro
 { wf_sub_eq_left : Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ
 ; wf_sub_eq_right : Θ ⍮ Ξ ⍮ Γ ⊢s σ' : Δ
-; wf_sub_eq_apply : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
+; wf_sub_eq_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ') : type_scope.
 

@@ -406,27 +406,27 @@ Hint Resolve rel_exp_pi_beta : mctt.
     substitution — and so the one place the difference between the two
     presentations bites.  With an explicit substitution [M[Wk]] was a *delayed*
     term and [eval_exp_sub] evaluated it in the shifted environment, which made
-    this rule a three-liner.  Now [M[↑]w] is a term of its own, and
-    [⟦M[↑]w⟧(ρ ↦ c)] is *not* [⟦M⟧ρ]: the two λ-cases are the closures
-    [λ (ρ ↦ c) (N[wk_q ↑]w)] and [λ ρ N], which are different values.  So the
+    this rule a three-liner.  Now [M[↑]ʷ] is a term of its own, and
+    [⟦M[↑]ʷ⟧(ρ ↦ c)] is *not* [⟦M⟧ρ]: the two λ-cases are the closures
+    [λ (ρ ↦ c) (N[wk_q ↑]ʷ)] and [λ ρ N], which are different values.  So the
     weakening has to be crossed semantically, by instantiating [M]'s own judgment
     along [Wk], which is what [rel_exp_under_ctx_shift_at] does.
 
     The type is [rel_typ_of_pi] unchanged, and the four values of the term are
-    [⟦M[σ]⟧ρ], [⟦M⟧ρσ], [λ ρ'σ' (M[↑]w #0)] and [λ ρ' ((M[↑]w #0)[q σ'])], the last
+    [⟦M[σ]⟧ρ], [⟦M⟧ρσ], [λ ρ'σ' (M[↑]ʷ #0)] and [λ ρ' ((M[↑]ʷ #0)[q σ'])], the last
     two by [eval_exp_fn] alone.  Of the three links,
 
     - the first is [M]'s own left commutation, so η contributes nothing to it;
     - the second *is* η: [M] and the closure of its own weakened body agree on
       every argument, which is [rel_exp_under_ctx_shift_at] at the substituted
       environments, read at the argument pair — the closure's application
-      evaluates [M[↑]w #0] in [ρ'σ' ↦ c'], which is [eval_app_fn] followed by
+      evaluates [M[↑]ʷ #0] in [ρ'σ' ↦ c'], which is [eval_app_fn] followed by
       [eval_exp_app] on the weakened head and [#0];
     - the third is the right commutation of the closure, which is the third
       obligation of [rel_exp_under_ctx_q] for the *weakened* judgment
-      [Γ ▹ A ⊨ M[↑]w ≈ M[↑]w : (Π A B)[↑]w] — the value it produces on the right is
-      [⟦M[↑]w[q σ']⟧(ρ' ↦ c')], which is the closure body's, and the [per_head] of
-      [(Π A B)[↑]w] it produces it in is identified with [per_pi] by the *outer*
+      [Γ ▹ A ⊨ M[↑]ʷ ≈ M[↑]ʷ : (Π A B)[↑]ʷ] — the value it produces on the right is
+      [⟦M[↑]ʷ[q σ']⟧(ρ' ↦ c')], which is the closure body's, and the [per_head] of
+      [(Π A B)[↑]ʷ] it produces it in is identified with [per_pi] by the *outer*
       pair of the same weakening instance.
 
     So both nontrivial links are read off one application of
@@ -436,7 +436,7 @@ Lemma rel_exp_fn_eta : forall {Γ A i B M},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ⊨ M ≈ M : Π A B ->
-    Γ ⊨ M ≈ λ A M[↑]w $ #0 : Π A B.
+    Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.
   intros * HA HB HM.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
@@ -467,7 +467,7 @@ Proof.
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
   assert (HRMmid : DF Πᵈ a2 ρσ B ≈ Πᵈ a3 ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
-  apply (mk_rel_exp m1 m2 λᵈ ρ'σ' (M[↑]w $ #0) λᵈ ρ' (M[↑]w $ #0)[q σ']);
+  apply (mk_rel_exp m1 m2 λᵈ ρ'σ' (M[↑]ʷ $ #0) λᵈ ρ' (M[↑]ʷ $ #0)[q σ']);
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn | apply eval_exp_fn |].
   (** The first link is [M]'s, the other two are read at an argument pair — and
       both from the same instance of [M]'s judgment along [Wk], at the substituted
@@ -486,7 +486,7 @@ Proof.
     assert (HRpi : R <~> per_pi in_rel B ρσ B ρ'σ')
       by (eapply per_pi_iff; [ exact Hmid | exact Hbmid ]).
   - (** η itself: the instance's *inner* value on the left is [⟦M⟧ρσ], the goal's
-        second, and its outer value on the right is [⟦M[↑]w⟧(ρ'σ' ↦ c')], which is
+        second, and its outer value on the right is [⟦M[↑]ʷ⟧(ρ'σ' ↦ c')], which is
         the head the closure applies. *)
     assert (w2 = m2) as ->
       by (eapply functional_eval_exp; [ exact Hw2 | exact Hm2 ]).
@@ -500,7 +500,7 @@ Proof.
       | exact Hrr' ].
   - (** The closure's own right commutation, from the weakened judgment along
         [q σ']; the weakening instance's *outer* type pair is what identifies the
-        [per_head] of [(Π A B)[↑]w] it arrives in with [per_pi]. *)
+        [per_head] of [(Π A B)[↑]ʷ] it arrives in with [per_pi]. *)
     pose proof (per_env_extend_sub_intro HΓ' Hσj HA _ _ _ _ _ _ _ _ Hρ Ha1 Houter Hc)
       as Hpair'.
     destruct (rel_exp_under_ctx_q HΓ' Hσj HA HMwk _ _ _ _ _ _ Hpair' Hev Hev')
@@ -509,7 +509,7 @@ Proof.
       by (eapply Huv; [ exact Hb1 | exact Hb4 | exact Hbouter ]).
     apply HRpi in HuvR.
     destruct (HuvR _ _ Hc) as [r r' Hr Hr' Hrr'].
-    (** [(M[↑]w #0)[q σ']] *is* [(M[↑]w[q σ']) #0], since [(#0)[q σ']] is [#0] by
+    (** [(M[↑]ʷ #0)[q σ']] *is* [(M[↑]ʷ[q σ']) #0], since [(#0)[q σ']] is [#0] by
         [sb_q_zero], so the head is the value [rel_exp_under_ctx_q] reports. *)
     econstructor;
       [ apply eval_app_fn; eapply eval_exp_app;

@@ -27,7 +27,7 @@ Proof.
     destruct_all.
     gen_presups.
     (** The explicit-substitution development weakened [Type@i ⊆ Type@j] into the
-        extended context by [wf_subtyp_sub]; [Type@i[↑]w] is now [Type@i], so
+        extended context by [wf_subtyp_sub]; [Type@i[↑]ʷ] is now [Type@i], so
         [wf_subtyp_ge] rederives it from [⊢ Γ ▹ A] alone. *)
     apply_subtyping.
     assert (Γ ▹ (nf_to_exp A') ⊢ B : Type@(max x x0)) by mauto using lift_exp_max_right.

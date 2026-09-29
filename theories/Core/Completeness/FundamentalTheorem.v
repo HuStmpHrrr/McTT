@@ -75,7 +75,7 @@ Proof.
   eassumption.
 Qed.
 
-(** The weakening instance soundness needs, in its variable case.  [⟦A[↑]w⟧(ρ)]
+(** The weakening instance soundness needs, in its variable case.  [⟦A[↑]ʷ⟧(ρ)]
     and [⟦A⟧(ρ↯)] are not equal; this relatedness replaces the equation, and
     moving [P] and [El] along it with [glu_univ_elem_resp_per_univ] is all
     soundness does with it. *)
@@ -85,7 +85,7 @@ Corollary completeness_fundamental_typ_shift : forall {Γ B A i env_rel ρ},
     EF Γ ▹ B ≈ Γ ▹ B ∈ per_ctx_env ↘ env_rel ->
     Dom ρ ≈ ρ ∈ env_rel ->
     exists a a',
-      ⟦ A[↑]w ⟧ ρ ↘ a /\
+      ⟦ A[↑]ʷ ⟧ ρ ↘ a /\
       ⟦ A ⟧ ρ↯ ↘ a' /\
       Dom a ≈ a' ∈ per_univ i.
 Proof.

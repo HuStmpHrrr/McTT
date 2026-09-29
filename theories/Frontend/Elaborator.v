@@ -390,6 +390,8 @@ Inductive user_exp : exp -> Prop :=
      user_exp (a_app M N) )
 | user_exp_vlookup :
   `( user_exp (a_var x) )
+| user_exp_param :
+  `( user_exp (a_param lp) )
 | user_exp_glob :
   `( user_exp (a_glob p) ).
 
@@ -461,14 +463,14 @@ Qed.
 
 Lemma closed_at_wk : forall M n,
     closed_at M n ->
-    forall φ n', wk_bounded φ n n' -> closed_at M[φ]w n'.
+    forall φ n', wk_bounded φ n n' -> closed_at M[φ]ʷ n'.
 Proof.
   induction 1; intros; simpl; econstructor; eauto using wk_bounded_q.
 Qed.
 
 Lemma closed_at_shiftn : forall M n k,
     closed_at M n ->
-    closed_at M[wk_shiftn k]w (n + k).
+    closed_at M[wk_shiftn k]ʷ (n + k).
 Proof.
   intros. eapply closed_at_wk; [ eassumption |]. intros ? ?. simpl. lia.
 Qed.

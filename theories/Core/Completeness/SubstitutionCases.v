@@ -21,7 +21,7 @@
 
     The type of an extended context is written [A] here and the extension term
     [M], following the rest of the development, and not only for uniformity: [S]
-    is [nat]'s constructor, so [S[ψ]w] inside a tactic argument is interned
+    is [nat]'s constructor, so [S[ψ]ʷ] inside a tactic argument is interned
     as a *name* and rejected. *)
 
 From Stdlib Require Import List Morphisms_Relations RelationClasses.
@@ -173,16 +173,16 @@ Proof.
 Qed.
 
 (** The [Wk] instance of the same, which is the only way a *weakened* term ever
-    acquires a value: the equation [⟦M[φ]w⟧ρ = ⟦M⟧(⟪φ⟫ ρ)] fails outright — the
-    two sides of the λ-case are the closures [λ ρ (N[q φ]w)] and [λ (⟪φ⟫ ρ) N],
+    acquires a value: the equation [⟦M[φ]ʷ⟧ρ = ⟦M⟧(⟪φ⟫ ρ)] fails outright — the
+    two sides of the λ-case are the closures [λ ρ (N[q φ]ʷ)] and [λ (⟪φ⟫ ρ) N],
     which are different values and are not even related — so semantic weakening
-    exists only as the instance of a judgment along [Wk], and [⟦M[↑]w⟧(ρ ↦ c)] is
+    exists only as the instance of a judgment along [Wk], and [⟦M[↑]ʷ⟧(ρ ↦ c)] is
     reachable no other way.  [rel_exp_under_ctx_extend_simple] is the [Id]
     instance of the same idea, and this one the [Wk] instance.
 
     Unlike there, the element PER is *not* replaced by a canonical [per_head]:
     [B]'s own four values are reported instead, together with the PER at its outer
-    pair — which [per_head_iff] turns into the head PER of [B[↑]w] at the two
+    pair — which [per_head_iff] turns into the head PER of [B[↑]ʷ] at the two
     extended environments — and at its inner one — which [per_pi_iff] turns into
     the function PER of [B] at the two tails, when [B] is a Π.  Which of the two a
     caller wants depends on the shape of [B], so neither is chosen here. *)
@@ -193,16 +193,16 @@ Lemma rel_exp_under_ctx_shift_at : forall {Γ A i B M M' env_relΓ},
     forall ρ ρ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A A env_relΓ ->
       exists j R b1 b2 b3 b4 w1 w2 w3 w4,
-        ⟦ B[↑]w ⟧ ρ ↦ c ↘ b1 /\
+        ⟦ B[↑]ʷ ⟧ ρ ↦ c ↘ b1 /\
         ⟦ B ⟧ ρ ↘ b2 /\
         ⟦ B ⟧ ρ' ↘ b3 /\
-        ⟦ B[↑]w ⟧ ρ' ↦ c' ↘ b4 /\
+        ⟦ B[↑]ʷ ⟧ ρ' ↦ c' ↘ b4 /\
         DF b1 ≈ b4 ∈ per_univ_elem j ↘ R /\
         DF b2 ≈ b3 ∈ per_univ_elem j ↘ R /\
-        ⟦ M[↑]w ⟧ ρ ↦ c ↘ w1 /\
+        ⟦ M[↑]ʷ ⟧ ρ ↦ c ↘ w1 /\
         ⟦ M ⟧ ρ ↘ w2 /\
         ⟦ M' ⟧ ρ' ↘ w3 /\
-        ⟦ M'[↑]w ⟧ ρ' ↦ c' ↘ w4 /\
+        ⟦ M'[↑]ʷ ⟧ ρ' ↦ c' ↘ w4 /\
         rel_chain R ([w1; w2; w3; w4]).
 Proof.
   intros * HΓ HA HM * Hρ.
@@ -239,14 +239,14 @@ Qed.
 Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A i},
     Γ ⊨w ψ : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A[ψ]w ⊨w (wk_q ψ) : Δ ▹ A.
+    Γ ▹ A[ψ]ʷ ⊨w (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
   pose proof Hψj as [env_relΓ [HΓ [env_relΔ [HΔ Hψ]]]].
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΔ' [HΔ' HAgen]].
   handle_per_ctx_env_irrel.
   (** The commutation obligation of [A] along [ι ψ].  It serves twice — once to
-      build the context PER of [Γ ▹ A[ψ]w], once to bridge the head PERs — so name
+      build the context PER of [Γ ▹ A[ψ]ʷ], once to bridge the head PERs — so name
       it, at an environment pair the caller will supply. *)
   assert (Hcom : forall ρ ρ',
              Dom ρ ≈ ρ' ∈ env_relΓ ->
@@ -256,8 +256,8 @@ Proof.
         exact (HAgen _ _ HΓ _ _ (rel_sub_of_wk Hψj) _ _ _ _ Hρ
                      (eval_sub_of_wk _ _) (eval_sub_of_wk _ _))).
   pose proof (per_ctx_env_of_typ HΔ' HA) as HΔA.
-  assert (HΓA : EF Γ ▹ A[ψ]w ≈ Γ ▹ A[ψ]w ∈ per_ctx_env
-                     ↘ (per_env_extend A[ψ]w A[ψ]w env_relΓ)).
+  assert (HΓA : EF Γ ▹ A[ψ]ʷ ≈ Γ ▹ A[ψ]ʷ ∈ per_ctx_env
+                     ↘ (per_env_extend A[ψ]ʷ A[ψ]ʷ env_relΓ)).
   { eapply (per_ctx_env_extend (i := i)); [ eassumption |].
     intros ρ ρ' Hρ.
     destruct (Hcom _ _ Hρ) as [a1 ? ? a4 Ha1 ? ? Ha4 Hchain].
@@ -400,7 +400,7 @@ Proof.
   destruct Hexp1 as [f1 f2 f3 f4 Hf1 Hf2 Hf3 Hf4 Hfchain].
   destruct Hexp2 as [g1 g2 g3 g4 Hg1 Hg2 Hg3 Hg4 Hgchain].
   destruct Hexp3 as [h1 h2 h3 h4 Hh1 Hh2 Hh3 Hh4 Hhchain].
-  (** [M[σ][ι φ] = M[σ][φ]w] on the outer pair and [M[Id] = M] on the bridge: both
+  (** [M[σ][ι φ] = M[σ][φ]ʷ] on the outer pair and [M[Id] = M] on the bridge: both
       rewrites are what make the values *the same* values, so that
       [functional_eval_rewrite_clear] can identify them below. *)
   rewrite <- exp_wk_sub in Hf1, Hf4.
@@ -453,11 +453,11 @@ Qed.
 
     The lemma the case files use most, and the one whose two halves are furthest
     apart.  [sb_wk_q] is what makes it a four-value pattern at all: it says
-    [(q σ)[ψ]w] is again an extension, by [σ] postcomposed with [↑ ⊙ ψ] and by the
+    [(q σ)[ψ]ʷ] is again an extension, by [σ] postcomposed with [↑ ⊙ ψ] and by the
     variable [ψ 0].
 
-    Tails.  [q σ] extends [σ[↑]w], so the tails of all four values are values of
-    [σ[↑]w] — and that is a semantic substitution [Γ ▹ A[σ] ⊨s σ[↑]w : Δ] by
+    Tails.  [q σ] extends [σ[↑]ʷ], so the tails of all four values are values of
+    [σ[↑]ʷ] — and that is a semantic substitution [Γ ▹ A[σ] ⊨s σ[↑]ʷ : Δ] by
     [rel_sub_under_ctx_wk] applied to the weakening [Γ ▹ A[σ] ⊨w ↑ : Γ].  One
     instantiation of *it* therefore produces all four tails together with the chain
     relating them, instead of two instantiations of the σ-judgment followed by a
@@ -465,7 +465,7 @@ Qed.
     and for all.
 
     Heads.  All four heads are the same two values, [(⟪ψ⟫ ρ) 0] and
-    [(⟪ψ⟫ ρ') 0], because [(#0)[ψ]w] is [#(ψ 0)] and [#0] reads index [0].  The
+    [(⟪ψ⟫ ρ') 0], because [(#0)[ψ]ʷ] is [#(ψ 0)] and [#0] reads index [0].  The
     Ctx-Ext biconditional for [Γ ▹ A[σ]] hands them over related in the head PER of
     [A[σ]] at the *dropped* environments, and what remains is to bridge that to the
     head PER of [A] at the tails.  Three instantiations of the type judgment are
@@ -474,9 +474,9 @@ Qed.
     - along [σ ≈ σ] at the dropped pair, whose outer values are [A[σ]]'s — the
       source of the bridge, and also what the context PER of [Γ ▹ A[σ]] is built
       from;
-    - along [σ[↑]w] at [⟪ψ⟫ ρ ≈ ⟪ψ⟫ ρ'], whose inner values are [A]'s at the two
+    - along [σ[↑]ʷ] at [⟪ψ⟫ ρ ≈ ⟪ψ⟫ ρ'], whose inner values are [A]'s at the two
       inner tails — the target;
-    - along [Id], to link the two.  [σ[↑]w] and [σ] evaluate at *different*
+    - along [Id], to link the two.  [σ[↑]ʷ] and [σ] evaluate at *different*
       environments (postcomposition by a weakening does not commute with
       evaluation), so nothing but a fresh instantiation at a related pair of
       environments connects them, exactly as in 6.45. *)
@@ -499,7 +499,7 @@ Proof.
   rename HΓ2 into HΓ; rename HΔ2 into HΔ.
   pose proof (per_ctx_env_of_typ HΔ HA) as HΔA.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
-  (** [Γ ▹ A[σ] ⊨s σ[↑]w : Δ] — the substitution [q σ] extends.  All four tails
+  (** [Γ ▹ A[σ] ⊨s σ[↑]ʷ : Δ] — the substitution [q σ] extends.  All four tails
       come from this one judgment. *)
   pose proof (rel_wk_shift HΓ HΓA) as Hshift.
   pose proof (rel_wk_under_ctx_intro HΓA HΓ Hshift) as Hshiftj.
@@ -514,7 +514,7 @@ Proof.
   destruct (Hψ _ _ Hρ) as [Htail Hhead].
   destruct (Hσwk _ _ HΓ' _ Hψ _ _ Hρ) as [x1 y1 y4 x4 Hx1 Hy1 Hy4 Hx4 Htails].
   (** [σ] itself along [↑], which is what puts [⟦σ⟧((⟪ψ⟫ ρ)↯)] in the same PER
-      as the tails: its leftmost value is [⟦σ[↑]w⟧(⟪ψ⟫ ρ)] again, so
+      as the tails: its leftmost value is [⟦σ[↑]ʷ⟧(⟪ψ⟫ ρ)] again, so
       determinism of substitution evaluation ([env_eq], not [eq]) links the two
       chains. *)
   destruct (Hσ _ _ HΓA' _ Hshift _ _ (Hψ _ _ Hρ)) as [z1 y2 y3 z4 Hz1 Hy2 Hy3 Hz4 Hbtails].
@@ -571,7 +571,7 @@ Qed.
     That is the one place the operational presentation genuinely costs something.
     A rule like Π-congruence compares [B[q σ]] at [ρ ↦ c] with [B] at
     [(⟦σ⟧ρ) ↦ c'], and [⟦q σ⟧(ρ ↦ c)] is *not* [(⟦σ⟧ρ) ↦ c]: its tail is
-    [⟦σ[↑]w⟧(ρ ↦ c)], and postcomposition by a weakening does not commute with
+    [⟦σ[↑]ʷ⟧(ρ ↦ c)], and postcomposition by a weakening does not commute with
     evaluation (a closure captures an environment).  So the two are related only
     in the PER, and the relating is what this lemma packages.
 

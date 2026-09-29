@@ -187,7 +187,7 @@ Instance POpen_path : POpen path := fun mp q => path_open q mp.
 (** Available from here on in this file, so that each carrier's opening can be
     written with the ones before it; [Syntax_Notations] exports the same
     notation. *)
-Local Notation "M [ p ]p" := (popen p M) (at level 1, left associativity, p at level 60).
+Local Notation "M [ p ]ᵖ" := (popen p M) (at level 1, left associativity, p at level 60).
 
 Module PathOpen_Examples.
   Local Open Scope string_scope.
@@ -213,6 +213,14 @@ Module PathOpen_Examples.
   Proof. reflexivity. Qed.
 End PathOpen_Examples.
 
+(** A module parameter: the [lp_param]-th parameter of the frame [lp_mod] frames
+    out, both innermost first.  Module parameters are not λ-bound: they are in
+    scope because their module is open, so they are not de Bruijn indices of the
+    local context, and weakening and substitution leave them alone. *)
+Record lpath : Set := lp_mk
+  { lp_mod : nat
+  ; lp_param : nat }.
+
 Inductive exp : Set :=
 (** Universe *)
 | a_typ : nat -> exp
@@ -227,6 +235,8 @@ Inductive exp : Set :=
 | a_app : exp -> exp -> exp
 (** Variable *)
 | a_var : nat -> exp
+(** Module parameter *)
+| a_param : lpath -> exp
 (** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])];
     a reference into the unit being elaborated instead names an enclosing module
     by index, [a_glob (p_rel 0 ["W"; "bar"])].
@@ -304,6 +314,9 @@ with ne : Set :=
 | ne_natrec : nf -> nf -> nf -> ne -> ne
 | ne_app : ne -> nf -> ne
 | ne_var : nat -> ne
+| ne_param : lpath -> ne
+(** An opaque definition or an axiom: it does not unfold. *)
+| ne_glob : path -> ne
 .
 
 Fixpoint nf_to_exp (M : nf) : exp :=
@@ -321,6 +334,8 @@ with ne_to_exp (M : ne) : exp :=
   | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
+  | ne_param lp => a_param lp
+  | ne_glob p => a_glob p
   end
 .
 
@@ -333,7 +348,7 @@ with ne_eq_dec : forall (M M' : ne),
     ({M = M'} + {M <> M'})%type.
 Proof.
   all: intros; decide equality;
-    apply PeanoNat.Nat.eq_dec.
+    repeat (apply PeanoNat.Nat.eq_dec || decide equality || apply String.string_dec).
 Defined.
 
 (** * Weakenings
@@ -367,7 +382,7 @@ Arguments wk_q _ _ /.
 
 (** Composition of weakenings is *diagrammatic*: [wk_compose φ ψ] applies [φ]
     first and then [ψ].  This is the orientation of the paper, and the one for
-    which [M[φ]w[ψ]w = M[φ ⊙ ψ]w] holds without a flip.  It is the *opposite* of
+    which [M[φ]ʷ[ψ]ʷ = M[φ ⊙ ψ]ʷ] holds without a flip.  It is the *opposite* of
     the orientation of [a_compose] in the explicit-substitution presentation
     this development used previously. *)
 Definition wk_compose (φ ψ : wk) : wk := fun x => ψ (φ x).
@@ -402,6 +417,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
+  | a_param lp => a_param lp
   | a_glob p => a_glob p
   end.
 
@@ -465,6 +481,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => σ x
+  | a_param lp => a_param lp
   | a_glob p => a_glob p
   end.
 
@@ -480,35 +497,98 @@ Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
   | S m => sb_q (sb_qn m σ)
   end.
 
-(** ** Opening Expressions
+(** * Module Substitutions
 
-    Only [a_glob] carries a path, so only it moves.  Opening never touches a
-    variable, and member names are not de Bruijn, so there is no lifting under
-    binders: [exp_open] commutes with [exp_wk] and [exp_sub] outright. *)
-Fixpoint exp_open (mp : path) (M : exp) : exp :=
+    The third operation, next to weakening and substitution: [μ] says what each
+    module parameter and each global becomes, and what it puts in is weakened
+    past the binders it lands under, exactly as [q σ] does.  λ-variables are
+    left alone.  Resolution uses two instances: [↑ₘ n], when a member of the
+    frame [n] frames out is used from here, and [close mp c], when the innermost
+    frame, seen from outside as [mp] and with [c] parameters, is closed — its
+    parameters become λ-bound and its members are applied to them. *)
+Record msub : Set := ms_mk
+  { ms_param : lpath -> exp
+  ; ms_glob : path -> exp }.
+
+Definition ms_q (μ : msub) : msub :=
+  ms_mk (fun lp => exp_wk (ms_param μ lp) wk_shift) (fun p => exp_wk (ms_glob μ p) wk_shift).
+
+Fixpoint ms_qn (n : nat) (μ : msub) : msub :=
+  match n with
+  | 0 => μ
+  | S m => ms_q (ms_qn m μ)
+  end.
+
+(** One notation for every carrier; compute with [cbn]. *)
+Class MSub (A : Type) := msubst : msub -> A -> A.
+
+Fixpoint exp_msub (μ : msub) (M : exp) : exp :=
   match M with
   | a_typ i => a_typ i
   | a_nat => a_nat
   | a_zero => a_zero
-  | a_succ M => a_succ (exp_open mp M)
+  | a_succ M => a_succ (exp_msub μ M)
   | a_natrec A MZ MS M =>
-      a_natrec (exp_open mp A) (exp_open mp MZ) (exp_open mp MS) (exp_open mp M)
-  | a_pi A B => a_pi (exp_open mp A) (exp_open mp B)
-  | a_fn A M => a_fn (exp_open mp A) (exp_open mp M)
-  | a_app M N => a_app (exp_open mp M) (exp_open mp N)
+      a_natrec (exp_msub (ms_q μ) A)
+               (exp_msub μ MZ)
+               (exp_msub (ms_q (ms_q μ)) MS)
+               (exp_msub μ M)
+  | a_pi A B => a_pi (exp_msub μ A) (exp_msub (ms_q μ) B)
+  | a_fn A M => a_fn (exp_msub μ A) (exp_msub (ms_q μ) M)
+  | a_app M N => a_app (exp_msub μ M) (exp_msub μ N)
   | a_var x => a_var x
-  | a_glob q => a_glob q[mp]p
+  | a_param lp => ms_param μ lp
+  | a_glob p => ms_glob μ p
   end.
 
 #[export]
-Instance POpen_exp : POpen exp := exp_open.
-
-(** Containers, so that [ctx] and [option exp] need nothing of their own. *)
-#[export]
-Instance POpen_list {A} `{POpen A} : POpen (list A) := fun mp => List.map (fun X => X[mp]p).
+Instance MSub_exp : MSub exp := exp_msub.
 
 #[export]
-Instance POpen_option {A} `{POpen A} : POpen (option A) := fun mp => option_map (fun X => X[mp]p).
+Instance MSub_option {A} `{MSub A} : MSub (option A) := fun μ => option_map (msubst μ).
+
+(** A telescope: each binding lies under the bindings below it. *)
+Fixpoint ctx_msub (μ : msub) (Δ : ctx) : ctx :=
+  match Δ with
+  | nil => nil
+  | A :: Δ' => exp_msub (ms_qn (List.length Δ') μ) A :: ctx_msub μ Δ'
+  end.
+
+#[export]
+Instance MSub_ctx : MSub ctx := ctx_msub.
+
+(** [M $ #(d + c - 1) $ … $ #d]: [M] applied to [c] variables past [d], the
+    outermost first. *)
+Fixpoint app_vars (M : exp) (d c : nat) : exp :=
+  match c with
+  | 0 => M
+  | S c' => app_vars (a_app M (a_var (d + c'))) d c'
+  end.
+
+(** [↑ₘ n]: everything is [n] frames further out. *)
+Definition ms_shift (n : nat) : msub :=
+  ms_mk (fun lp => a_param (lp_mk (n + lp_mod lp) (lp_param lp)))
+        (fun p => a_glob p[p_rel n nil]ᵖ).
+
+(** Closing the innermost frame, seen from outside as [mp], with [c]
+    parameters, [d] binders in: its parameters become the λ-variables past [d],
+    its members are applied to them, and everything else is one frame nearer. *)
+Definition ms_close (mp : path) (c d : nat) : msub :=
+  ms_mk (fun lp =>
+           match lp_mod lp with
+           | 0 => a_var (d + lp_param lp)
+           | S m => a_param (lp_mk m (lp_param lp))
+           end)
+        (fun p =>
+           match p_qual p with
+           | qu_rel 0 => app_vars (a_glob p[mp]ᵖ) d c
+           | _ => a_glob p[mp]ᵖ
+           end).
+
+(** Reading a frame's telescope as its parameters: the [i]-th binding of frame
+    [n] is the parameter [(n, i)]. *)
+Definition sb_params (n : nat) : sub := fun i => a_param (lp_mk n i).
+Arguments sb_params _ _ /.
 
 (** ** Equality of Weakenings and Substitutions
 
@@ -549,10 +629,14 @@ Module Syntax_Notations.
       level 0, and the constructor forms with a recursive last argument are at
       level 2. *)
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
-  Notation "M [ φ ]w" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]w") : mctt_scope.
-  Notation "M [ p ]p" := (popen p M) (at level 1, left associativity, p at level 60, format "M [ p ]p") : mctt_scope.
+  Notation "M [ φ ]ʷ" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]ʷ") : mctt_scope.
+  Notation "M [ p ]ᵖ" := (popen p M) (at level 1, left associativity, p at level 60, format "M [ p ]ᵖ") : mctt_scope.
   Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  Notation "M [ μ ]ᵐ" := (msubst μ M) (at level 1, left associativity, μ at level 60, format "M [ μ ]ᵐ") : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
+  Notation "'$[' n , k ']'" := (a_param (lp_mk n k)) (at level 0, n at level 60, k at level 60) : mctt_scope.
+  Notation "'↑ₘ' n" := (ms_shift n) (at level 2, n at level 1) : mctt_scope.
+  Notation "'close' mp c" := (ms_close mp c 0) (at level 2, mp at level 1, c at level 1) : mctt_scope.
   Notation "'ℕ'" := a_nat : mctt_scope.
   Notation "'zero'" := a_zero : mctt_scope.
   Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
