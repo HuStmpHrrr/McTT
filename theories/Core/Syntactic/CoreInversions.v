@@ -154,7 +154,7 @@ Hint Resolve wf_app_inversion : mctt.
 
 Lemma wf_vlookup_inversion : forall {Θ Ξ Γ x A},
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : A ->
-    exists A', Γ ∋ #x : A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.
+    exists A', Γ ++ gs_tele Ξ ∋ #x : A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.
 Proof.
   intros * H.
   dependent induction H;

@@ -61,25 +61,6 @@ Reserved Notation "Θ ⍮ Ξ ⊢u U" (at level 70, Ξ at level 69, U at level 69
 
 Generalizable All Variables.
 
-(** ** Closed Expressions
-
-    A member is stored open, but what a use site builds from it — [ctx_pi Δ A],
-    [ctx_fn Δ M], generalized over the telescope resolution accumulated — is
-    closed, which is what lets [wf_glob] use it in any [Γ], and what lets
-    weakening and substitution pass through a global without knowing that the
-    global context is well formed.  Stated as the two equations
-    it is used as, so that no new inductive and no [⊢g Θ ⍮ Ξ] hypothesis is
-    needed. *)
-
-Definition exp_closed (M : exp) : Prop :=
-  (forall φ, M[φ]w = M) /\ (forall σ, M[σ] = M).
-
-Lemma exp_closed_wk : forall {M}, exp_closed M -> forall φ, M[φ]w = M.
-Proof. now intros ? []. Qed.
-
-Lemma exp_closed_sub : forall {M}, exp_closed M -> forall σ, M[σ] = M.
-Proof. now intros ? []. Qed.
-
 (** ** Context Lookup
 
     A lookup carries the weakenings that separate the binding from the top of
@@ -146,22 +127,22 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
+(** The variables in scope are the local binders on top of the parameters of
+    the modules open around them, [gs_tele Ξ].  Those were shifted to the top of
+    the stack as they were accumulated, so a lookup needs no adjustment of its
+    own. *)
 | wf_vlookup :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
+     Γ ++ gs_tele Ξ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
-(** A global is used at the type recorded for it, generalized over the telescope
-    resolution accumulated: a member of a parameterized module is stored open in
-    its parameters, so [X.foo] is a function of them.  No substitution arises —
-    the arguments are applied by the elaborator, as ordinary [a_app]s.
-
-    The two extra arguments play the same role as the one of [wf_exp_subtyp]: the
-    first gives the presupposition directly, the second is what weakening and
-    substitution rewrite with.  Closedness is asked of the *generalized* type,
-    which is the one that appears in the conclusion. *)
+(** A global is used at its type generalized over everything in scope where it
+    was declared, which resolution hands back as [Δ]: a member of a
+    parameterized module is stored open in its parameters, so [X.foo] is a
+    function of them, applied by the elaborator as ordinary [a_app]s.  That type
+    is closed in a well-formed context, so it needs no adjustment to be used in
+    [Γ]; nothing else is premised, and that it is a type is a presupposition. *)
 | wf_glob :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@i ->
-     exp_closed (ctx_pi Δ A) ->
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : ctx_pi Δ A )
 | wf_exp_subtyp :
@@ -219,11 +200,10 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
 | wf_exp_eq_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Γ ∋ #x : A ->
+     Γ ++ gs_tele Ξ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
 | wf_exp_eq_glob :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@i ->
-     exp_closed (ctx_pi Δ A) ->
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ a_glob p : ctx_pi Δ A )
 (** *** Computation rules *)
@@ -248,9 +228,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
     an axiom ([B = None]) do not.  The body unfolds to under the same telescope
     the type is generalized over, so it is [ctx_fn], not the bare [M]. *)
 | wf_exp_eq_glob_unfold :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A ->
-     exp_closed (ctx_pi Δ A) ->
-     exp_closed (ctx_fn Δ M) ->
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true A (Some M) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ ctx_fn Δ M : ctx_pi Δ A )
 (** *** Uniqueness rule *)
@@ -549,14 +527,14 @@ Hint Constructors wf_gentry wf_gmod wf_gunit wf_gdep wf_gdeps wf_gstack : mctt.
 Record wf_wk (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_intro
 { wf_wk_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_wk_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
-; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A[φ]w
+; wf_wk_lookup : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Γ ++ gs_tele Ξ ∋ #(φ x) : A[φ]w
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
 
 Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_sub_intro
 { wf_sub_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_sub_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
-; wf_sub_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ]
+; wf_sub_apply : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ]
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 
@@ -565,7 +543,7 @@ Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope
 Record wf_sub_eq (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ σ' : sub) : Prop := wf_sub_eq_intro
 { wf_sub_eq_left : Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ
 ; wf_sub_eq_right : Θ ⍮ Ξ ⍮ Γ ⊢s σ' : Δ
-; wf_sub_eq_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
+; wf_sub_eq_apply : forall x A, Δ ++ gs_tele Ξ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ' x) : A[σ]
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ') : type_scope.
 

@@ -73,12 +73,26 @@ Proof.
     assumption.
 Qed.
 
+(** A parameter in scope sits past the local context, which a refinement does
+    not change the length of. *)
+Lemma ctx_sub_vlookup_tele : forall Θ Ξ Γ Δ x A,
+    Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
+    Γ ++ gs_tele Ξ ∋ #x : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
+Proof.
+  intros * HΔ Hlk.
+  apply ctx_lookup_app_inv in Hlk as [Hlk | (y & A0 & -> & HT & ->)];
+    [ eauto using ctx_sub_vlookup |].
+  rewrite <- (ctx_sub_length _ _ _ _ HΔ).
+  econstructor; [ mauto 2 | apply ctx_lookup_app_r; assumption ].
+Qed.
+
 Lemma ctx_sub_escape : forall Θ Ξ Δ Γ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ.
 Proof.
   intros * HΔ.
   econstructor; [ mauto 2 | mauto 2 | ].
   intros x A ?; reduce_index; rewrite exp_sub_id.
-  eauto using ctx_sub_vlookup.
+  eauto using ctx_sub_vlookup_tele.
 Qed.
 
 #[export]

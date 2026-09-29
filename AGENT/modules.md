@@ -249,57 +249,32 @@ unchanged.
     Two consequences of keeping `Ψ` a *parameter* of the judgments rather than
     an index, since no rule changes it:
 
-    * The `a_glob` rules carry an `exp_closed` premise on the recorded type (and
-      on the body, for the δ-rule) instead of a `⊢g Ψ` premise. Closedness is
-      exactly what weakening and substitution need — `A[φ]w = A`, `A[σ] = A` —
-      and is discharged by the `push_closed` tactic in `System/Lemmas.v`. A
-      `⊢g Ψ` premise would have had to be threaded through every statement in
-      the layer.
-    * `⊢g Ψ` is a one-constructor member of the mutual block with exactly two
-      premises:
-      `wf_gdeps Ψ (gc_deps Ψ)` and `wf_gstack Ψ (gc_stack Ψ)`, each checked with
-      *all* of `Ψ` in scope. Nothing else is a field: name canonicity follows
-      from well-formedness (`wf_gmod_canon`, `wf_gdeps_canon`,
-      `wf_gstack_canon` in `System/Lemmas.v`), so `wf_gc_lookup_det` derives
-      determinism of resolution from `⊢g Ψ` alone, and the dependency levels are
-      unconstrained — they are structure, not a condition (see the level section
-      above). Weakening along `⊑` is therefore a lemma (`gsub_preserves_wf`,
-      `gsub_preserves_global`, `gsub_preserves_gdeps`, `gsub_preserves_gstack`)
-      rather than a rule, and the well-formedness of a filed unit does not depend
-      on which level it sits at. `Ψ ⍮ Δ ⊢m Φ`/`Ψ ⍮ Δ ⊢e E` (modules and entries)
-      and `Ψ ⍮ Δ ⊢u U` (a unit: its parameters extend `Δ` to a context, its body a
-      module) are the judgments that make it up; `wf_gdep`/`wf_gdeps` walk the
-      levels, and `wf_gstack` the frames. Each
-      construct records only *its own* parameters and takes the cumulated ambient
-      telescope as a parameter, matching how `ge_mod`, `gu_params` and `gs_tele`
-      store them. `gc_lookup_wf` is the converse direction: in a well-formed
-      context, whatever `a_glob p` resolves to is a well-formed entry *in the
-      telescope resolution accumulated*.
+    * The `a_glob` rules premise only `⊢ Θ⍮Ξ⍮Γ` and resolution, at type
+      `ctx_pi Δ A`. Resolution generalizes a member over its member-chain
+      parameters *and* the full telescope of its frame (`gcl_rel`/`gcl_abs`),
+      so what it hands back is closed in a well-formed context
+      (`wf_gc_lookup_closed`, `System/Scoping.v`); weakening and substitution
+      leave it alone (`push_closed`).
+    * `⊢g Θ ⍮ Ξ` has the single premise `wf_gstack Θ Ξ`. Units are checked at
+      `⋅` with their parameters as the whole telescope; members are checked in
+      the frame the module pushes, local context `⋅`, with the frames'
+      parameters in scope as `Γ ++ gs_tele Ξ`.
 
-    **Every `wf_*` judgment is one mutual block.** `wf_ctx`, `wf_exp`,
-    `wf_exp_eq`, `wf_subtyp`, `wf_gentry`, `wf_gmod`, `wf_gunit`, `wf_gdep`,
-    `wf_gdeps`, `wf_gstack` and `wf_gctx` are members of a single
-    `Inductive … with …` chain, which is what makes presupposition provable for
-    all of them at once. Nothing is stratified and nothing is a `Record`: the
-    field accessors a record would have given are `Lemma`s of the same name
-    (`wf_gunit_params`, `wf_gunit_mod`, `wf_gctx_deps`, `wf_gctx_stack`), each
-    `now inversion 1`.
+    **Every `wf_*` judgment is one mutual block** (eleven judgments), with
+    `wf_mut_ind_all` over all of them.
 
-    A `Scheme` may name any *subset* of the block, so the induction principles
-    are cut to what each proof needs: `syntactic_wf_mut_ind` (the four term
-    judgments), `syntactic_wf_mut_ind'` (three), `syntactic_wf_ctx_exp_mut_ind`
-    (two), `global_wf_mut_ind` (`wf_gentry`/`wf_gmod`), and `wf_mut_ind_all`
-    (all eleven). Judgments left out of a scheme survive as ordinary
-    hypotheses, which is why the outer global judgments are proved by plain
-    induction (`gsub_preserves_gdep`, `wf_gdep_canon`, …).
-
-    One bridge is still missing. `gc_lookup_wf` yields `A : Type@i` in the
-    accumulated `Δ`, while `wf_glob` wants `ctx_pi Δ A : Type@j` in an arbitrary
-    `Γ`; closing that gap needs a `ctx_pi` formation lemma whose `j` is a max
-    over `Δ`'s levels, which no entry records. Nothing needs it yet, because the
-    `a_glob` rules carry their own typing and closedness premises rather than a
-    `⊢g Ψ` premise — and they must, since a `⊢g Ψ` premise would make
-    `gsub_preserves_wf` demand `⊢g Ψ'`, which `⊑` does not supply.
+    **Presupposition** is the mutual theorem `presup_global`
+    (`System/GlobalPresup.v`): term judgments give `rwf Θ Ξ` (every resolved
+    global's `ctx_pi Δ A` is a type at `⋅`, its body typed there), modules and
+    units give `mod_typed` (members typed in the frame they push). A definition
+    records only `M : A`; that `A` is a type comes from presupposition of that
+    derivation inside `⊢g`. The frame-to-frame steps are instances of one
+    transport along a path opening (`open_preserves_wf`, `System/Transport.v`):
+    push a frame (`p_rel 1 []`), grow a frame (identity), pop through a nested
+    module (`p_rel 0 [x]`), file a unit (`p_abs fp []`), plus localizing the
+    parameters in scope (`localize_wf`). `presup_exp_typ`, `presup_exp_eq`,
+    `presup_subtyp`, `presup_sub_eq` are the full statements (well-formed
+    context, both sides typed, the type a type).
 
 ## Module theory
 

@@ -154,7 +154,7 @@ Definition path_module (p : path) : path :=
     module is descending into [path_in mp x], since checking its entries pushed
     one more frame. *)
 Definition path_in (mp : path) (x : string) : path :=
-  {| p_qual := p_qual mp ; p_mems := List.app (p_mems mp) (x :: nil) |}.
+  {| p_qual := p_qual mp ; p_mems := p_mems mp ++ x :: nil |}.
 
 (** [path_open q mp] reads [q] out of the module [mp].  The members of [mp] are
     the modules crossed on the way in: exactly the frames the entry was checked
@@ -173,7 +173,7 @@ Definition path_open (q mp : path) : path :=
                    | qu_abs fp => qu_abs fp
                    | qu_rel n => qu_rel (n + (m - k))
                    end
-       ; p_mems := List.app (List.firstn (k - m) (p_mems mp)) (p_mems q) |}
+       ; p_mems := List.firstn (k - m) (p_mems mp) ++ p_mems q |}
   end.
 
 (** Opening applies to every carrier of a path; one class gives them one

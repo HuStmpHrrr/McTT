@@ -40,7 +40,7 @@ Lemma app_ctx_vlookup : forall Θ Ξ Δ T Γ n,
     length Δ = n ->
     Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ⊢ #n : T[wk_shiftn (S n)]w.
 Proof.
-  intros; econstructor; auto using app_ctx_lookup.
+  intros; econstructor; [ assumption | apply ctx_lookup_app_l, app_ctx_lookup; assumption ].
 Qed.
 
 Lemma ctx_lookup_functional : forall n T Γ,

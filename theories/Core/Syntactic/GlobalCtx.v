@@ -115,15 +115,25 @@ Instance POpen_gmod : POpen gmod := gm_open.
 (** What [cbn] leaves for an entry it cannot take apart. *)
 Abbreviation ge_open := (ge_open_with popen).
 
-(** Resolution of a member chain, accumulating the telescope crossed on the way
-    in.  A later declaration shadows nothing — [gml_old] does not ask [x <> y],
-    so determinism comes from [gm_canon] instead. *)
+(** Resolution of a member chain to a definition, accumulating the parameters of
+    the nested modules crossed on the way in, innermost first.
+
+    What a nested module contains was checked with that module as the innermost
+    frame, so each step out re-expresses it through [p_rel 0 [x]]: an index into
+    the nested module becomes a member path through [x], and every other index
+    moves in by one.  The parameters [Δ'] of [x] were checked in the enclosing
+    frame already, so they are not opened.
+
+    A later declaration shadows nothing — [gml_old] does not ask [x <> y], so
+    determinism comes from [gm_canon] instead. *)
 Inductive gm_lookup : gmod -> list string -> ctx -> gentry -> Prop :=
 | gml_last :
-  `( gm_ext Φ x E ∋ x :: nil ⇒ ⋅ ⍮ E )
+  `( gm_ext Φ x (ge_def b A B) ∋ x :: nil ⇒ ⋅ ⍮ ge_def b A B )
 | gml_in :
-  `( Φ' ∋ ip ⇒ Δ ⍮ E ->
-     gm_ext Φ x (ge_mod Δ' Φ') ∋ x :: ip ⇒ Δ ++ Δ' ⍮ E )
+  `( Φ' ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+     gm_ext Φ x (ge_mod Δ' Φ') ∋ x :: ip
+       ⇒ Δ[p_rel 0 (x :: nil)]p ++ Δ'
+       ⍮ ge_def b A[p_rel 0 (x :: nil)]p B[p_rel 0 (x :: nil)]p )
 | gml_old :
   `( Φ ∋ ip ⇒ Δ ⍮ E ->
      gm_ext Φ y E' ∋ ip ⇒ Δ ⍮ E )
@@ -185,14 +195,20 @@ Definition gds_mods_canon (Θ : gdeps) : Prop :=
 
 (** ** The Definition Stack
 
-    The unit being elaborated, innermost frame first: its members are not yet
-    entries of anything, so they are named by [qu_rel].  A frame is a [gunit] in
-    the same sense a filed one is — its parameters are its *whole* telescope, so
-    entering a parameterized module pushes a frame recording the accumulated
-    parameters rather than only the ones it adds.  Nothing accumulates across
-    frames here, which is what makes [qu_rel] and [qu_abs] read a unit the same
-    way. *)
+    The modules open around the point being checked, innermost first.  Their
+    members are not yet entries of anything, so they are named by [qu_rel].  A
+    frame records only the parameters its module adds; [gs_tele] accumulates
+    them. *)
 Definition gstack : Set := list gunit.
+
+(** The parameters in scope on a stack, innermost first.  A frame's parameters,
+    and everything below them, were checked one frame further out, so on the way
+    up they are shifted by one frame: [p_rel m] becomes [p_rel (1 + m)]. *)
+Fixpoint gs_tele (Ξ : gstack) : ctx :=
+  match Ξ with
+  | nil => nil
+  | U :: Ξ' => (gu_params U ++ gs_tele Ξ')[p_rel 1 nil]p
+  end.
 
 Definition gs_canon (Ξ : gstack) : Prop :=
   List.Forall (fun U => gm_canon (gu_mod U)) Ξ.
@@ -203,19 +219,29 @@ Definition gs_canon (Ξ : gstack) : Prop :=
     context: they are read by different qualifiers, they grow differently, and
     well-formedness of each is relative to its own component.
 
-    The two qualifiers reach a [gunit] differently and then read the member chain
-    the same way.  The telescope handed back is the one the entry is well formed
-    in, and it is the unit's own parameters in both cases: a unit is checked in
-    the empty telescope whether it was filed or is still open. *)
+    A definition is handed back generalized over *every* parameter in scope where
+    it was declared: those of the nested modules on its member chain, then those
+    of the frame it was found in and of every frame outside that.  Its type is
+    therefore closed, which is what lets it be used anywhere, and what makes
+    reading it out a renaming of paths and nothing more — no parameter of a
+    module it is read out of is left free in it.
+
+    For [qu_rel n] the definition sits in frame [n], so everything found is
+    re-expressed at the use site by shifting [n] frames.  For [qu_abs fp] it sits
+    in a filed unit, which was checked as the only frame of an empty stack. *)
 Inductive gc_lookup (Θ : gdeps) (Ξ : gstack) : path -> ctx -> gentry -> Prop :=
 | gcl_rel :
   `( List.nth_error Ξ n = Some U ->
-     gu_mod U ∋ ip ⇒ Δ ⍮ E ->
-     Θ ⍮ Ξ ∋ᵍ p_rel n ip ⇒ Δ ++ gu_params U ⍮ E )
+     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+     Θ ⍮ Ξ ∋ᵍ p_rel n ip
+       ⇒ (Δ ++ gs_tele (List.skipn n Ξ))[p_rel n nil]p
+       ⍮ ge_def b A[p_rel n nil]p B[p_rel n nil]p )
 | gcl_abs :
   `( gds_lookup Θ fp = Some U ->
-     gu_mod U ∋ ip ⇒ Δ ⍮ E ->
-     Θ ⍮ Ξ ∋ᵍ p_abs fp ip ⇒ Δ ++ gu_params U ⍮ E )
+     gu_mod U ∋ ip ⇒ Δ ⍮ ge_def b A B ->
+     Θ ⍮ Ξ ∋ᵍ p_abs fp ip
+       ⇒ (Δ ++ gs_tele (U :: nil))[p_abs fp nil]p
+       ⍮ ge_def b A[p_abs fp nil]p B[p_abs fp nil]p )
 where "Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E" := (gc_lookup Θ Ξ p Δ E) : type_scope.
 
 #[export]
@@ -272,13 +298,12 @@ Proof.
                | Hf : gm_fresh ?x _, H : _ ∋ _ ⇒ _ ⍮ _ |- _ =>
                    apply (gm_fresh_no_lookup _ x _ _ _ Hf H); reflexivity
                end];
-    (* the two that recurse agree by the induction hypothesis; the other side's
-       lookup is the one whose entry the goal compares against. *)
+    (* the two that recurse agree by the induction hypothesis, and [gml_in]
+       re-expresses the same definition the same way. *)
     try match goal with
-        | H : _ ∋ _ ⇒ _ ⍮ ?E0 |- _ /\ _ = ?E0 =>
-            destruct (IHgm_lookup ltac:(eassumption) _ _ H) as [-> ->]
-        end;
-    split; reflexivity.
+        | IH : gm_canon ?Φ -> _, Hc : gm_canon ?Φ, H : ?Φ ∋ _ ⇒ _ ⍮ _ |- _ =>
+            destruct (IH Hc _ _ H) as [-> Heq]; try injection Heq as -> -> ->
+        end; subst; auto.
 Qed.
 
 Corollary gm_lookup_det_tele : forall Φ ip Δ E Δ' E',
@@ -418,9 +443,9 @@ Proof.
           rewrite H in H'; injection H' as <-
       end ];
     match goal with
-    | H1 : _ ∋ _ ⇒ _ ⍮ ?A, H2 : _ ∋ _ ⇒ _ ⍮ ?B |- _ /\ ?A = ?B =>
+    | H1 : gu_mod ?U ∋ _ ⇒ _ ⍮ _, H2 : gu_mod ?U ∋ _ ⇒ _ ⍮ _ |- _ =>
         destruct (gm_lookup_det _ _ _ _ H1
-                    ltac:(eauto using gs_canon_nth, gds_lookup_canon) _ _ H2) as [-> ->]
+                    ltac:(eauto using gs_canon_nth, gds_lookup_canon) _ _ H2) as [-> [= -> -> ->]]
     end;
     split; reflexivity.
 Qed.

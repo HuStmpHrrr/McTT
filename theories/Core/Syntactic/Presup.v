@@ -1,10 +1,10 @@
 (** * Presupposition
 
-    This file proves two of the three presupposition statements: the two sides
-    of a term equation are well-typed terms, and the two sides of a refinement
-    are types.  The third — that the type of a well-typed term is a type — needs
-    no induction over equality and is [presup_exp_typ] in
-    [Core.Syntactic.System.Lemmas].
+    This file proves presupposition for term equality, refinement and
+    substitution equivalence, in full: the context is well formed, both sides
+    are well typed, and the type is a type.  Presupposition for typing is
+    [presup_exp] in [Core.Syntactic.System.Lemmas], from the mutual theorem
+    [presup_global].
 
     A presentation with a fixed [ℕ]-eliminator motive can prove all three
     simultaneously, before substitution equivalence.  Here the three are
@@ -40,7 +40,7 @@ Import Syntax_Notations Wk_Notations.
 
 (** ** The Two Sides of a Term Equation *)
 
-Lemma presup_exp_eq : forall {Θ Ξ Γ M M' A},
+Lemma presup_exp_eq_sides : forall {Θ Ξ Γ M M' A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A.
 Proof.
@@ -113,9 +113,16 @@ Proof.
               : A[Wk ⨟ Wk,,succ #1][Id,,M,,rec M return A | zero -> MZ | succ -> MS end]) as H' by mauto 2.
     rewrite exp_sub_natrec_step in H'; assumption.
 
-  (** [δ], left.  The generalized type is a type because the body is typed at it. *)
-  - assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@i) as [] by mauto 2 using presup_exp_typ.
-    mauto 3.
+  (** [δ], right: the generalized body, which [presup_global] types. *)
+  - eapply wf_glob_body; eassumption.
+Qed.
+
+Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+Proof.
+  intros * H; destruct (presup_exp_eq_sides H) as [HM HM'].
+  repeat split; eauto using presup_exp_ctx, presup_exp_typ.
 Qed.
 
 Corollary presup_exp_eq_left : forall {Θ Ξ Γ M M' A},
@@ -143,11 +150,18 @@ Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
     raises both.  ([wf_subtyp_refl]'s case is where [presup_exp_eq] is used, and
     the only place it is needed.) *)
 
-Lemma presup_subtyp : forall {Θ Ξ Γ A A'},
+Lemma presup_subtyp_types : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i.
 Proof.
   induction 1; destruct_conjs; eapply lift_exp_common; mauto 2.
+Qed.
+
+Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i.
+Proof.
+  intros * H; split; [ eapply presup_subtyp_ctx; eassumption | apply presup_subtyp_types, H ].
 Qed.
 
 Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
@@ -159,6 +173,16 @@ Qed.
 
 #[export]
 Hint Resolve presup_subtyp_left : mctt.
+
+(** ** Substitution Equivalence *)
+
+Theorem presup_sub_eq : forall {Θ Ξ Γ Δ σ σ'},
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ /\ Θ ⍮ Ξ ⍮ Γ ⊢s σ' : Δ /\ ⊢ Θ ⍮ Ξ ⍮ Δ.
+Proof.
+  intros * [Hσ Hσ' _].
+  exact (conj (wf_sub_dom _ _ _ _ _ Hσ) (conj Hσ (conj Hσ' (wf_sub_cod _ _ _ _ _ Hσ)))).
+Qed.
 
 (** ** Saturating the Context, with Equality
 
@@ -173,13 +197,13 @@ Ltac gen_presup1 H :=
   | ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?M ≈ ?M' : ?A =>
       let HM := fresh "HM" in
       let HM' := fresh "HM'" in
-      pose proof presup_exp_eq H as [HM HM'];
+      pose proof presup_exp_eq_sides H as [HM HM'];
       try gen_core_presup HM
   | ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?A ⊆ ?A' =>
       let i := fresh "i" in
       let HA := fresh "HA" in
       let HA' := fresh "HA'" in
-      pose proof presup_subtyp H as [i [HA HA']];
+      pose proof presup_subtyp_types H as [i [HA HA']];
       try gen_core_presup HA
   | wf_sub_eq _ _ _ _ _ =>
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)

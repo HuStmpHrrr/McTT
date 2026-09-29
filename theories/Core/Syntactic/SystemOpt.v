@@ -343,7 +343,7 @@ Lemma wf_subtyp_pi' : forall Θ Ξ Γ A A' B B' i,
 Proof.
   intros * ? Hsub.
   assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Type@j /\ Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Type@j) as [j []]
-      by (apply presup_subtyp; assumption).
+      by (apply presup_subtyp_types; assumption).
   gen_presups.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j) by mauto 2.
