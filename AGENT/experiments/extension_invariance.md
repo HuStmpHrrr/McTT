@@ -1,3 +1,5 @@
+> The code of this experiment was removed; it is in commit 842d4d8 under `experiments/extension_invariance/`.
+
 # Approach Y: invariance under resolution-preserving extensions (grow, level)
 
 Files: `Ext.v`, `PERExt.v`, `MonoAttempt.v`, `Kripke.v` (`build.sh`).

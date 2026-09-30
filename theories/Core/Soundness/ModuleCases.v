@@ -93,49 +93,7 @@ Proof.
   eapply glu_rel_exp_subtyp; eassumption.
 Qed.
 
-(** ** 4. Composition: again only the *syntactic* soundness of the first step *)
-
-Section Compose.
-  Variables (Θ1 Θ2 Θ3 : gdeps) (Ξ1 Ξ2 Ξ3 : gstack) (μ ν : msub) (E E' : ctx).
-  Hypothesis Hμ : syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E.
-
-  (** The gluing fields of the composite: [kglu_fundamental] at the middle
-      context, applied to the derivations [μ]'s syntactic fields supply. *)
-  Theorem glu_msub_then : glu_msub Θ2 Ξ2 Θ3 Ξ3 ν E' ->
-      glu_msub Θ1 Ξ1 Θ3 Ξ3 (ms_then μ E ν) (E[ν]ᵐ ++ E').
-  Proof.
-    intros Hν.
-    destruct (msub_preserves_wf' _ _ _ _ _ _ Hμ) as (Hc1 & _).
-    destruct kglu_fundamental as (Kc & Ke).
-    pose proof Hμ as [Hb Hp Hg Hu].
-    constructor.
-    - exact (syn_msub_then _ _ _ _ _ _ _ _ _ _ Hμ (gms_syn _ _ _ _ _ _ Hν)).
-    - exact (Kc _ _ _ Hb _ _ _ _ Hν).
-    - intros * Hn Hk HΓ1 _.
-      pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-      destruct (Hp _ _ _ _ _ Hn Hk HΓ1 HΓ2) as [D1 _].
-      pose proof (Ke _ _ _ _ _ D1 _ _ _ _ Hν) as H.
-      rewrite tctx_then, !tm_then in H; exact H.
-    - intros * Hl HΓ1 _.
-      pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-      destruct (Hg _ _ _ _ _ _ _ Hl HΓ1 HΓ2) as [D1 _].
-      pose proof (Ke _ _ _ _ _ D1 _ _ _ _ Hν) as H.
-      rewrite tctx_then, !tm_then in H; exact H.
-  Qed.
-End Compose.
-
-(** Kripke gluing moves along any *syntactically* sound substitution. *)
-Lemma kglu_transport_syn : forall Θ1 Ξ1 Θ2 Ξ2 μ E Γ M A,
-    syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E ->
-    kglu_exp Θ1 Ξ1 Γ M A ->
-    kglu_exp Θ2 Ξ2 (Γ[μ]ᵐ ++ E) M[ms_qn (length Γ) μ]ᵐ A[ms_qn (length Γ) μ]ᵐ.
-Proof.
-  intros * Hμ H Θ3 Ξ3 ν E' Hν.
-  pose proof (H _ _ _ _ (glu_msub_then _ _ _ _ _ _ _ _ _ _ Hμ Hν)) as H'.
-  rewrite <- tctx_then, <- !tm_then in H'; exact H'.
-Qed.
-
-(** ** 5. Closed gluing at [⋅] weakens to every glued context
+(** ** 4. Closed gluing at [⋅] weakens to every glued context
 
     Simpler than [closed_weaken_sem]: [nil_glu_sub_pred] does not constrain
     the environment, and the terms are the same, so no closedness is needed. *)
@@ -161,7 +119,7 @@ Section Weaken.
   Qed.
 End Weaken.
 
-(** ** 6. The identity is sound, given [⊩g]: every resolved global and
+(** ** 5. The identity is sound, given [⊩g]: every resolved global and
     parameter glued at [⋅] *)
 
 Definition glu_rwf (Θ : gdeps) (Ξ : gstack) : Prop :=
@@ -202,7 +160,7 @@ Section Identity.
   Qed.
 End Identity.
 
-(** ** 7. [⊩g] from the gluing of resolved types and bodies
+(** ** 6. [⊩g] from the gluing of resolved types and bodies
 
     δ evaluates the body at [nil], and a global or parameter is a neutral
     annotated with its type evaluated at [nil].  Since [nil_glu_sub_pred]
@@ -380,7 +338,7 @@ Section Raw.
   Proof. intros HP n U k T Hn Hk; exact (param_glu_of_raw _ _ _ _ Hn Hk (HP _ _ _ _ Hn Hk)). Qed.
 End Raw.
 
-(** ** 8. The gluing model's interface to [global_induction] *)
+(** ** 7. The gluing model's interface to [global_induction] *)
 
 Definition glu_valid (Θ : gdeps) (Ξ : gstack) (A M : exp) : Prop :=
   @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A.

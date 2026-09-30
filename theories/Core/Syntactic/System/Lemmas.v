@@ -422,24 +422,21 @@ Hint Resolve wf_fn_eta_expand : mctt.
 
 (** ** Closed Neutrals
 
-    A neutral's head is a variable, and the empty context has none. *)
+    A neutral with no global or parameter at its head has a variable there, and
+    the empty context has none. *)
 
-(** Closed means closed at the empty stack, where no frame parameter nor
-    member is in scope, and with no global context, where no axiom or opaque
-    definition is. *)
-Lemma no_closed_neutral : forall {A} {W : ne},
-    ~ nil ⍮ nil ⍮ ⋅ ⊢ W : A.
+Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
+    ne_clean W ->
+    ~ Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A.
 Proof.
-  intros * H.
-  dependent induction H; destruct W;
-    try (simpl in *; congruence);
-    autoinjections;
+  intros * HW H.
+  dependent induction H;
+    (* subsumption: the same neutral *)
+    try solve [ eapply IHwf_exp1; [ exact HW | reflexivity | reflexivity ] ];
+    destruct W; try (simpl in *; congruence);
+    autoinjections; cbn in *; destruct_all;
     eauto.
-  - inversion_by_head ctx_lookup.
-  - match goal with Hn : List.nth_error nil ?n = Some _ |- _ => destruct n; discriminate end.
-  - match goal with Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ _ |- _ => inversion Hl; subst end;
-      [ match goal with Hn : List.nth_error nil ?n = Some _ |- _ => destruct n; discriminate end
-      | discriminate ].
+  inversion_by_head ctx_lookup.
 Qed.
 
 #[export]

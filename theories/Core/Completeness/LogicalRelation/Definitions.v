@@ -237,10 +237,3 @@ Existing Class rel_wk_under_ctx.
 #[export] Instance rel_wk_under_ctx_mono {GC : GCtx} {Γ φ Δ} (Hφ : Γ ⊨w φ : Δ) : WkMono φ.
 Proof. destruct Hφ as [? [? [? [? []]]]]; assumption. Qed.
 
-(** That a weakening moves no variable down: from a semantic weakening in
-    scope, or from how the weakening is built. *)
-Ltac solve_wk_mono :=
-  repeat first
-    [ eapply rel_wk_mono; eassumption
-    | apply wk_mono_id | apply wk_mono_shift
-    | apply wk_mono_q | apply wk_mono_compose ].

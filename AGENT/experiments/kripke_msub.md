@@ -1,3 +1,5 @@
+> The code of this experiment was removed; it is in commit 842d4d8 under `experiments/kripke_msub/`.
+
 # Experiment X: Kripke validity over module substitutions
 
 `Exp.v` (777 lines) builds against the current `.vo`s with no `Admitted`.

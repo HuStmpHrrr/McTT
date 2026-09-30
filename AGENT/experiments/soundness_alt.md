@@ -1,3 +1,5 @@
+> The code of this experiment was removed; it is in commit 842d4d8 under `experiments/soundness_alt/`.
+
 # Soundness via extension invariance: negative
 
 `Exp.v` has 392 lines and no `Admitted`. Its only axiom is funext.

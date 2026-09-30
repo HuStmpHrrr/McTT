@@ -274,24 +274,6 @@ Proof.
         end; subst; auto.
 Qed.
 
-Corollary gm_lookup_det_tele : forall Φ ip Δ E Δ' E',
-    gm_canon Φ ->
-    Φ ∋ ip ⇒ Δ ⍮ E ->
-    Φ ∋ ip ⇒ Δ' ⍮ E' ->
-    Δ = Δ'.
-Proof.
-  intros * Hc H1 H2; destruct (gm_lookup_det _ _ _ _ H1 Hc _ _ H2); assumption.
-Qed.
-
-Corollary gm_lookup_det_entry : forall Φ ip Δ E Δ' E',
-    gm_canon Φ ->
-    Φ ∋ ip ⇒ Δ ⍮ E ->
-    Φ ∋ ip ⇒ Δ' ⍮ E' ->
-    E = E'.
-Proof.
-  intros * Hc H1 H2; destruct (gm_lookup_det _ _ _ _ H1 Hc _ _ H2); assumption.
-Qed.
-
 Lemma gs_canon_nth : forall Ξ n U,
     gs_canon Ξ ->
     List.nth_error Ξ n = Some U ->
@@ -338,15 +320,6 @@ Qed.
     resolves to.  This is what lets a unit checked against the levels below it be
     used in the full context. *)
 
-Lemma gd_lookup_app : forall d d' fp U,
-    gd_lookup d fp = Some U ->
-    gd_lookup (d ++ d') fp = Some U.
-Proof.
-  unfold gd_lookup; induction d as [| fV d IH]; simpl; intros * Heq;
-    [ discriminate |].
-  destruct (path_beq fp (fst fV)); [ assumption | now apply IH ].
-Qed.
-
 Lemma gd_lookup_app_inv : forall d d' fp U,
     gd_lookup (d ++ d') fp = Some U ->
     gd_lookup d fp = Some U \/ gd_lookup d' fp = Some U.
@@ -354,25 +327,6 @@ Proof.
   unfold gd_lookup; induction d as [| fV d IH]; simpl; intros * Heq;
     [ now right |].
   destruct (path_beq fp (fst fV)); [ now left | now apply IH ].
-Qed.
-
-Lemma gds_lookup_app : forall Θ Θ' fp U,
-    gds_lookup Θ fp = Some U ->
-    gds_lookup (Θ ++ Θ') fp = Some U.
-Proof.
-  unfold gds_lookup; intros *; rewrite List.concat_app; apply gd_lookup_app.
-Qed.
-
-Lemma gd_fresh_app : forall fp d d',
-    gd_fresh fp (d ++ d') <-> gd_fresh fp d /\ gd_fresh fp d'.
-Proof.
-  unfold gd_fresh; intros *; rewrite List.map_app, List.in_app_iff; tauto.
-Qed.
-
-Lemma gds_fresh_app : forall fp Θ Θ',
-    gds_fresh fp (Θ ++ Θ') <-> gds_fresh fp Θ /\ gds_fresh fp Θ'.
-Proof.
-  unfold gds_fresh; intros *; rewrite List.concat_app; apply gd_fresh_app.
 Qed.
 
 (** A fresh path resolves nowhere, which is how freshness bounds [gd_lookup]. *)
@@ -583,9 +537,6 @@ Inductive gm_ins : gmod -> gmod -> list string -> ctx -> gentry -> Prop :=
 #[export]
 Hint Constructors gm_ins : mctt.
 
-Lemma gm_ins_lookup : forall Φ Φp ip Δ E, gm_ins Φ Φp ip Δ E -> Φ ∋ ip ⇒ Δ ⍮ E.
-Proof. induction 1; econstructor; eassumption. Qed.
-
 Lemma gm_lookup_ins : forall Φ ip Δ E, Φ ∋ ip ⇒ Δ ⍮ E -> exists Φp, gm_ins Φ Φp ip Δ E.
 Proof. induction 1; destruct_all; eexists; econstructor; eassumption. Qed.
 
@@ -632,6 +583,64 @@ Definition gs_param (Ξ : gstack) (lp : lpath) : option typ :=
   | Some U => option_map (fun T => T[↑ₘ (S (lp_mod lp))]ᵐ[sb_params (lp_mod lp)]) (ctx_get (gu_params U) (lp_param lp))
   | None => None
   end.
+
+(** ** Transparent Global Contexts
+
+    Every definition is transparent and has a body, and no open frame has
+    parameters: then no global and no parameter is a neutral, which is what
+    canonicity and consistency need.  A filed unit or a nested module may have
+    parameters, since its members are resolved abstracted over them. *)
+
+Fixpoint ge_transparent (E : gentry) : Prop :=
+  match E with
+  | ge_def b _ _ B => b = true /\ B <> None
+  | ge_mod _ Φ => gm_transparent Φ
+  end
+with gm_transparent (Φ : gmod) : Prop :=
+  match Φ with
+  | gm_nil => True
+  | gm_ext Φ _ E => gm_transparent Φ /\ ge_transparent E
+  end.
+
+Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=
+  (forall fp U, List.In (fp, U) (List.concat Θ) -> gm_transparent (gu_mod U)) /\
+  (forall U, List.In U Ξ -> gu_params U = nil /\ gm_transparent (gu_mod U)).
+
+Lemma gm_transparent_lookup' : forall Φ ip Δ E,
+    gm_transparent Φ -> Φ ∋ ip ⇒ Δ ⍮ E -> ge_transparent E.
+Proof.
+  induction 2; cbn in *; destruct_all; auto.
+  destruct (IHgm_lookup ltac:(assumption)) as [-> HB].
+  split; [ reflexivity | destruct B; cbn in *; congruence ].
+Qed.
+
+Lemma gm_transparent_lookup : forall Φ ip Δ b pv A B,
+    gm_transparent Φ ->
+    Φ ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
+    b = true /\ B <> None.
+Proof. intros * HΦ Hl; exact (gm_transparent_lookup' _ _ _ _ HΦ Hl). Qed.
+
+Lemma gc_transparent_lookup : forall Θ Ξ p Δ b pv A B,
+    gc_transparent Θ Ξ ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
+    b = true /\ B <> None.
+Proof.
+  intros * [HΘ HΞ] Hl; inversion Hl; subst;
+    match goal with Hm : gu_mod ?U ∋ _ ⇒ _ ⍮ ge_def _ _ _ ?B0 |- _ =>
+      assert (HU : gm_transparent (gu_mod U))
+        by first [ eapply HΞ, List.nth_error_In; eassumption
+                 | eapply HΘ, gd_lookup_in; eassumption ];
+      destruct (gm_transparent_lookup _ _ _ _ _ _ _ HU Hm) as [-> HB];
+      split; [ reflexivity | destruct B0; cbn in *; congruence ]
+    end.
+Qed.
+
+Lemma gc_transparent_param : forall Θ Ξ lp, gc_transparent Θ Ξ -> gs_param Ξ lp = None.
+Proof.
+  intros * [_ HΞ]; unfold gs_param.
+  destruct (List.nth_error Ξ (lp_mod lp)) as [U |] eqn:Hn; [| reflexivity ].
+  destruct (HΞ _ (List.nth_error_In _ _ Hn)) as [-> _]; reflexivity.
+Qed.
 
 (** ** A Fixed Global Context
 

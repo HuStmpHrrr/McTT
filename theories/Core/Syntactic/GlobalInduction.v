@@ -58,8 +58,7 @@ End MSub.
 (** ** 2. Syntactic transport, with the source context available
 
     [msub_preserves_wf] with hypotheses that may also use [⊢ Θ1 ⍮ Ξ1 ⍮ Γ]
-    (the minimality scheme keeps the premise, so the proof is the same).  This
-    weaker demand is what makes [syn_msub] compose. *)
+    (the minimality scheme keeps the premise, so the proof is the same). *)
 
 Section MSubTransport'.
   Variables (Θ1 Θ2 : gdeps) (Ξ1 Ξ2 : gstack) (μ : msub) (E : ctx).
@@ -101,7 +100,7 @@ Section MSubTransport'.
   Qed.
 End MSubTransport'.
 
-(** ** 3. Composition *)
+(** ** 3. Composing module substitutions *)
 
 Lemma ms_eq_trans : forall μ1 μ2 μ3, ms_eq μ1 μ2 -> ms_eq μ2 μ3 -> ms_eq μ1 μ3.
 Proof. intros * [H1 H2] [H3 H4]; split; intros; rewrite ?H1, ?H2, ?H3, ?H4; reflexivity. Qed.
@@ -127,54 +126,6 @@ Proof.
   change ((A :: Δ)[ms_comp μ ν]ᵐ) with (A[ms_qn (length Δ) (ms_comp μ ν)]ᵐ :: Δ[ms_comp μ ν]ᵐ).
   rewrite IH, ctx_msub_length, exp_msub_msub; f_equal.
   apply exp_msub_ext, ms_eq_sym, ms_qn_comp.
-Qed.
-
-(** First [μ] (out of [Θ1 ⍮ Ξ1], extending by [E]), then [ν] (extending by
-    [E']): [ν] is lifted past [E]. *)
-Definition ms_then (μ : msub) (E : ctx) (ν : msub) : msub := ms_comp μ (ms_qn (length E) ν).
-
-Lemma tctx_then : forall μ E ν E' Γ,
-    (Γ[μ]ᵐ ++ E)[ν]ᵐ ++ E' = Γ[ms_then μ E ν]ᵐ ++ (E[ν]ᵐ ++ E').
-Proof.
-  intros; unfold ms_then; rewrite ctx_msub_app, ctx_msub_msub, List.app_assoc; reflexivity.
-Qed.
-
-Lemma tm_then : forall μ E ν Γ (M : exp),
-    M[ms_qn (length Γ) μ]ᵐ[ms_qn (length (Γ[μ]ᵐ ++ E)) ν]ᵐ = M[ms_qn (length Γ) (ms_then μ E ν)]ᵐ.
-Proof.
-  intros; unfold ms_then; rewrite exp_msub_msub; apply exp_msub_ext.
-  rewrite List.length_app, ctx_msub_length, <- ms_qn_add.
-  apply ms_eq_sym, ms_qn_comp.
-Qed.
-
-(** Syntactic soundness composes. *)
-Lemma syn_msub_then : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3 μ ν E E',
-    syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E -> syn_msub Θ2 Ξ2 Θ3 Ξ3 ν E' ->
-    syn_msub Θ1 Ξ1 Θ3 Ξ3 (ms_then μ E ν) (E[ν]ᵐ ++ E').
-Proof.
-  intros * Hμ Hν.
-  destruct (msub_preserves_wf' _ _ _ _ _ _ Hμ) as (Hc1 & He1 & Hq1 & _).
-  destruct (msub_preserves_wf' _ _ _ _ _ _ Hν) as (Hc2 & He2 & Hq2 & _).
-  pose proof Hμ as [Hb Hp Hg Hu].
-  constructor.
-  - exact (Hc2 _ _ _ Hb eq_refl eq_refl).
-  - intros * Hn Hk HΓ1 _.
-    pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-    destruct (Hp _ _ _ _ _ Hn Hk HΓ1 HΓ2) as [D1 D2].
-    pose proof (He2 _ _ _ _ _ D1 eq_refl eq_refl) as D1'.
-    pose proof (Hq2 _ _ _ _ _ _ D2 eq_refl eq_refl) as D2'.
-    rewrite tctx_then, !tm_then in D1', D2'; split; assumption.
-  - intros * Hl HΓ1 _.
-    pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-    destruct (Hg _ _ _ _ _ _ _ Hl HΓ1 HΓ2) as [D1 D2].
-    pose proof (He2 _ _ _ _ _ D1 eq_refl eq_refl) as D1'.
-    pose proof (Hq2 _ _ _ _ _ _ D2 eq_refl eq_refl) as D2'.
-    rewrite tctx_then, !tm_then in D1', D2'; split; assumption.
-  - intros * Hl HΓ1 _.
-    pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-    pose proof (Hu _ _ _ _ _ _ Hl HΓ1 HΓ2) as D2.
-    pose proof (Hq2 _ _ _ _ _ _ D2 eq_refl eq_refl) as D2'.
-    rewrite tctx_then, !tm_then in D2'; assumption.
 Qed.
 
 Lemma syn_msub_id : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> syn_msub Θ Ξ Θ Ξ ms_id nil.
@@ -220,9 +171,6 @@ Proof. intros * H; rewrite ctx_pi_msub, (exp_msub_ext _ _ _ (H _)); reflexivity.
 Lemma ctx_fn_msub_qn : forall μ Δ A, (forall n, ms_eq (ms_qn n μ) μ) ->
     (ctx_fn Δ A)[μ]ᵐ = ctx_fn Δ[μ]ᵐ A[μ]ᵐ.
 Proof. intros * H; rewrite ctx_fn_msub, (exp_msub_ext _ _ _ (H _)); reflexivity. Qed.
-
-Lemma ms_qn_shift_all : forall n k, ms_eq (ms_qn n (↑ₘ k)) (↑ₘ k).
-Proof. intros; apply ms_qn_shift. Qed.
 
 (** An embedding is syntactically sound. *)
 Lemma syn_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,

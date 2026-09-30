@@ -2,6 +2,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
+From Mctt.Core.Semantic Require Export Transparency.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
@@ -142,13 +143,41 @@ Hint Resolve canonical_form_of_pi : mctt.
 #[export]
 Hint Resolve subtyp_spec : mctt.
 
+(** At explicit [Θ Ξ], so that the induction does not have to generalize the
+    instance. *)
+Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
+    gc_transparent Θ Ξ ->
+    ne_clean W ->
+    is_typ_constr A' ->
+    (forall j, A' <> Type@j) ->
+    wf_subtyp Θ Ξ (⋅ ▹ Type@i) A A' ->
+    ~ wf_exp Θ Ξ (⋅ ▹ Type@i) A W.
+Proof.
+  intros * Htr HWc HA' HA'eq Heq HW. gen A'.
+  dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
+    try (destruct W; simpl in *; congruence).
+  (* a parameter or a global: not the head of a neutral at a transparent context *)
+  all: try solve [ destruct W; simpl in *; try congruence; contradiction ].
+  - destruct W; simpl in *; autoinjections; destruct_all.
+    eapply IHHW4; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
+  - destruct W; simpl in *; autoinjections; destruct_all.
+    eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
+  - destruct W; simpl in *; autoinjections.
+    pose (GC := gc_mk Θ Ξ).
+    do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
+    assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
+    eapply (@subtyp_spec GC) in Heq as [| []]; destruct_conjs;
+      try (eapply HA'eq; mautosolve 4).
+    assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
+    assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
+Qed.
+
 (** ** Canonical Forms and Consistency
 
-    Only at the empty global context: an axiom [c : ℕ] is a closed neutral, and
-    an axiom of type [Π Type@i #0] refutes consistency.  There, a neutral has no
-    head in the empty local context ([no_closed_neutral]). *)
-
-Definition gc_empty : GCtx := gc_mk nil nil.
+    Only at a transparent global context: an axiom [c : ℕ] is a closed
+    neutral, and an axiom of type [Π Type@i #0] refutes consistency.  There, a
+    normal form has no global or parameter head ([nbe_clean]), and such a
+    neutral has no head in the empty local context ([no_closed_neutral]). *)
 
 Inductive canonical_nat : nf -> Prop :=
 | canonical_nat_zero : canonical_nat zeroⁿ
@@ -157,8 +186,9 @@ Inductive canonical_nat : nf -> Prop :=
 #[export]
 Hint Constructors canonical_nat : mctt.
 
-Section Empty_GCtx.
-  #[local] Existing Instance gc_empty.
+Section Transparent_GCtx.
+  Context {GC : GCtx}.
+  Hypothesis Htr : gc_transparent gc_deps gc_stack.
 
 Theorem canonical_form_of_nat : forall {M},
     ⋅ ⊢ M : ℕ ->
@@ -166,12 +196,13 @@ Theorem canonical_form_of_nat : forall {M},
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ _ Htr _ _ _ _ H) as Hc).
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head1 eval_exp ltac:(fun H => clear H).
-  gen M.
+  gen M; revert Hc.
   match_by_head1 read_nf ltac:(fun H => dependent induction H);
-    intros; mauto 3;
+    intros; cbn in *; destruct_all; mauto 3;
     gen_presups.
   - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
   - match_by_head1 (wf_exp gc_deps gc_stack ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
@@ -184,44 +215,18 @@ Theorem canonical_form_of_typ : forall {i M},
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ _ Htr _ _ _ _ H) as Hc).
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head1 eval_exp ltac:(fun H => clear H).
-  gen M.
+  gen M; revert Hc.
   dir_inversion_clear_by_head read_nf.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
-    intros; split; intros; mauto 3; try congruence;
+    intros; cbn in *; destruct_all; split; intros; mauto 3; try congruence;
     gen_presups;
     match_by_head1 (wf_exp gc_deps gc_stack ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 Hint Resolve canonical_form_of_typ : mctt.
-
-Lemma consistency_ne_helper : forall {i A A'} {W : ne},
-    is_typ_constr A' ->
-    (forall j, A' <> Type@j) ->
-    ⋅ ▹ Type@i ⊢ A ⊆ A' ->
-    ~ ⋅ ▹ Type@i ⊢ W : A.
-Proof.
-  intros * HA' HA'eq Heq HW. gen A'.
-  dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
-    try (destruct W; simpl in *; congruence).
-  (* a parameter or a global: there is none at the empty global context *)
-  all: try solve [ match goal with Hn : List.nth_error _ ?n = Some _ |- _ => destruct n; cbn in Hn; discriminate end
-                 | match goal with Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ _ |- _ => inversion Hl; subst;
-                     [ match goal with Hn : List.nth_error _ ?n = Some _ |- _ => destruct n; cbn in Hn; discriminate end
-                     | cbn in *; discriminate ] end ].
-  - destruct W; simpl in *; autoinjections.
-    eapply IHHW4; [| | | | | | mauto 4]; (congruence + mautosolve 3).
-  - destruct W; simpl in *; autoinjections.
-    eapply IHHW3; [| | | | | | mauto 4]; (congruence + mautosolve 3).
-  - destruct W; simpl in *; autoinjections.
-    do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
-    assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
-    eapply (@subtyp_spec gc_empty) in Heq as [| []]; destruct_conjs;
-      try (eapply HA'eq; mautosolve 4).
-    assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
-    assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
-Qed.
 
 Theorem consistency : forall {i} M,
     ~ ⋅ ⊢ M : Π Type@i #0.
@@ -231,6 +236,7 @@ Proof.
   assert (exists W, nbe_f ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
   gen_presups.
   functional_nbe_rewrite_clear.
+  pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc; cbn in Hc; destruct_all.
   dependent destruction Hnbe.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
@@ -259,23 +265,27 @@ Proof.
 Qed.
 
 
-End Empty_GCtx.
+End Transparent_GCtx.
 
 #[export]
 Hint Resolve canonical_form_of_nat : mctt.
 #[export]
 Hint Resolve canonical_form_of_typ : mctt.
 
-(** The same, with the empty global context spelled out. *)
-Corollary canonical_form_of_nat_nil : forall M,
-    wf_exp nil nil ⋅ ℕ M ->
-    exists W, nbe nil nil ⋅ M ℕ W /\ canonical_nat W.
-Proof. intros M; exact (@canonical_form_of_nat M). Qed.
+(** The same, with the global context spelled out. *)
+Corollary canonical_form_of_nat_gctx : forall Θ Ξ M,
+    gc_transparent Θ Ξ ->
+    wf_exp Θ Ξ ⋅ ℕ M ->
+    exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat W.
+Proof. intros * Htr HM; exact (@canonical_form_of_nat (gc_mk Θ Ξ) Htr M HM). Qed.
 
-Corollary canonical_form_of_typ_nil : forall i M,
-    wf_exp nil nil ⋅ Type@i M ->
-    exists W, nbe nil nil ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
-Proof. intros i M; exact (@canonical_form_of_typ i M). Qed.
+Corollary canonical_form_of_typ_gctx : forall Θ Ξ i M,
+    gc_transparent Θ Ξ ->
+    wf_exp Θ Ξ ⋅ Type@i M ->
+    exists W, nbe Θ Ξ ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+Proof. intros * Htr HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr i M HM). Qed.
 
-Corollary consistency_nil : forall i M, ~ wf_exp nil nil ⋅ (Π Type@i #0) M.
-Proof. intros i M; exact (@consistency i M). Qed.
+Corollary consistency_gctx : forall Θ Ξ i M,
+    gc_transparent Θ Ξ ->
+    ~ wf_exp Θ Ξ ⋅ (Π Type@i #0) M.
+Proof. intros * Htr; exact (@consistency (gc_mk Θ Ξ) Htr i M). Qed.

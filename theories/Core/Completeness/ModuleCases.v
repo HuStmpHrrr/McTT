@@ -122,49 +122,11 @@ Proof.
   rewrite <- exp_msub_shift_wk; eapply rel_exp_fn_eta; eassumption.
 Qed.
 
-(** ** 4. Composition *)
-
-Section Compose.
-  Variables (Θ1 Θ2 Θ3 : gdeps) (Ξ1 Ξ2 Ξ3 : gstack) (μ ν : msub) (E E' : ctx).
-  (** Only the *syntactic* soundness of the first step is needed. *)
-  Hypothesis Hμ : syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E.
-  Hypothesis Hν : sem_msub Θ2 Ξ2 Θ3 Ξ3 ν E'.
-
-  (** The semantic fields of the composite come from the *fundamental theorem
-      at the middle context*, applied to the syntactic derivation [μ]'s
-      syntactic field supplies, instantiated at [ν].  [μ]'s own semantic fields
-      are not used. *)
-  Theorem sem_msub_then : sem_msub Θ1 Ξ1 Θ3 Ξ3 (ms_then μ E ν) (E[ν]ᵐ ++ E').
-  Proof.
-    destruct (msub_preserves_wf' _ _ _ _ _ _ Hμ) as (Hc1 & _).
-    destruct kripke_fundamental as (Kc & Ke & Kq & _).
-    pose proof Hμ as [Hb Hp Hg Hu].
-    constructor.
-    - exact (syn_msub_then _ _ _ _ _ _ _ _ _ _ Hμ (sms_syn _ _ _ _ _ _ Hν)).
-    - exact (Kc _ _ _ Hb _ _ _ _ Hν).
-    - intros * Hn Hk HΓ1 _.
-      pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-      destruct (Hp _ _ _ _ _ Hn Hk HΓ1 HΓ2) as [D1 _].
-      destruct (Ke _ _ _ _ _ D1 _ _ _ _ Hν) as [_ H].
-      rewrite tctx_then, !tm_then in H; exact H.
-    - intros * Hl HΓ1 _.
-      pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-      destruct (Hg _ _ _ _ _ _ _ Hl HΓ1 HΓ2) as [D1 _].
-      destruct (Ke _ _ _ _ _ D1 _ _ _ _ Hν) as [_ H].
-      rewrite tctx_then, !tm_then in H; exact H.
-    - intros * Hl HΓ1 _.
-      pose proof (Hc1 _ _ _ HΓ1 eq_refl eq_refl) as HΓ2.
-      pose proof (Hu _ _ _ _ _ _ Hl HΓ1 HΓ2) as D2.
-      destruct (Kq _ _ _ _ _ _ D2 _ _ _ _ Hν) as [_ H].
-      rewrite tctx_then, !tm_then in H; exact H.
-  Qed.
-End Compose.
-
-(** ** 5. The identity is sound, given the semantics of what resolution hands back
+(** ** 4. The identity is sound, given the semantics of what resolution hands back
 
     [sem_rwf]/[sem_pwf] are the semantic [rwf]: every resolved global, and every
     parameter, is valid at [⋅] in the *same* global context.  They are stated
-    directly on [a_glob p] / [$[n, k]], i.e. already including δ; section 8
+    directly on [a_glob p] / [$[n, k]], i.e. already including δ; section 5
     reduces them to the validity of the resolved type and body. *)
 
 Definition sem_rwf (Θ : gdeps) (Ξ : gstack) : Prop :=
@@ -235,64 +197,7 @@ Section Identity.
   Qed.
 End Identity.
 
-(** ** 6. Pushing a frame is sound, given the semantics of the bigger stack *)
-
-Section Push.
-  Variables (Θ : gdeps) (U : gunit) (Ξ : gstack).
-  Hypothesis Hg : ⊢g Θ ⍮ U :: Ξ.
-  Hypothesis HR : sem_rwf Θ (U :: Ξ).
-  Hypothesis HP : sem_pwf Θ (U :: Ξ).
-
-  Theorem sem_msub_push : sem_msub Θ Ξ Θ (U :: Ξ) (↑ₘ 1) nil.
-  Proof.
-    assert (HΘ : units_scoped Θ) by (eapply wf_scoped; eassumption).
-    assert (Hb : ⊢ Θ ⍮ U :: Ξ ⍮ ⋅) by (constructor; assumption).
-    assert (Hsc : gs_scoped (U :: Ξ)) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-    constructor; [ constructor | | | | ].
-    (* the syntactic fields: [push_preserves_wf]'s *)
-    - assumption.
-    - intros * Hn Hk _ HΓ.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), exp_params_shift.
-      cbn [msubst MSub_exp exp_msub ms_param ms_shift lp_mod lp_param].
-      split; econstructor; cbn; eassumption.
-    - intros * Hl _ HΓ.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, (exp_msub_ext _ _ _ (ms_qn_shift _ _)).
-      cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-      pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'.
-      split; econstructor; eassumption.
-    - intros * Hl _ HΓ.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, ctx_fn_msub,
-        !(exp_msub_ext _ _ _ (ms_qn_shift _ _)).
-      cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-      pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'; cbn in Hl'.
-      econstructor; eassumption.
-    (* the semantic fields: a parameter or a global of the smaller stack is one
-       of the bigger stack, which is sound by [HR]/[HP] *)
-    - constructor.
-    - intros * Hn Hk _ HΓs.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), exp_params_shift.
-      cbn [msubst MSub_exp exp_msub ms_param ms_shift lp_mod lp_param].
-      eapply closed_weaken_sem; [ eassumption | apply (HP (S n) U0 k T Hn Hk) | | reflexivity | reflexivity ].
-      eapply exp_closed_wk, (param_type_scoped (U :: Ξ) (S n)); eassumption.
-    - intros * Hl _ HΓs.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, (exp_msub_ext _ _ _ (ms_qn_shift _ _)).
-      cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-      pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'.
-      eapply closed_weaken_sem; [ eassumption | apply (HR _ _ _ _ _ _ Hl') | | reflexivity | reflexivity ].
-      eapply exp_closed_wk, wf_gc_lookup_type_closed; eassumption.
-    - intros * Hl _ HΓs.
-      rewrite !(exp_msub_ext _ _ _ (ms_qn_shift _ _)), ctx_pi_msub, ctx_fn_msub,
-        !(exp_msub_ext _ _ _ (ms_qn_shift _ _)).
-      cbn [msubst MSub_exp exp_msub ms_glob ms_shift].
-      pose proof (gc_lookup_push _ U _ _ _ _ _ _ _ HΘ Hl) as Hl'; cbn in Hl'.
-      eapply closed_weaken_sem;
-        [ eassumption | apply (HR _ _ _ _ _ _ Hl'); reflexivity | | reflexivity | ].
-      + eapply exp_closed_wk, wf_gc_lookup_type_closed; eassumption.
-      + eapply exp_closed_wk, wf_gc_lookup_body_closed; eassumption.
-  Qed.
-End Push.
-
-(** ** 7. [sem_rwf]/[sem_pwf] from the validity of resolved types and bodies
+(** ** 5. [sem_rwf]/[sem_pwf] from the validity of resolved types and bodies
 
     The δ-rule evaluates the generalized body in the *empty* environment, and a
     global or parameter is a neutral annotated with its type evaluated there.
@@ -450,68 +355,4 @@ Section Raw.
       unfold gs_param; cbn; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
   Qed.
 End Raw.
-
-(** ** 8. Kripke validity moves along *syntactically* sound substitutions
-
-    A consequence of [sem_msub_then] needing only [syn_msub] of its first
-    step: closing, pushing and growing need no semantic argument at all to move
-    a Kripke-valid judgment.  Semantics is needed only for the *last* step into
-    the context where the judgment is finally read off. *)
-
-Lemma kexp_transport_syn : forall Θ1 Ξ1 Θ2 Ξ2 μ E Γ A M M',
-    syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E ->
-    kexp_eq Θ1 Ξ1 Γ A M M' ->
-    kexp_eq Θ2 Ξ2 (Γ[μ]ᵐ ++ E) A[ms_qn (length Γ) μ]ᵐ M[ms_qn (length Γ) μ]ᵐ M'[ms_qn (length Γ) μ]ᵐ.
-Proof.
-  intros * Hμ H Θ3 Ξ3 ν E' Hν.
-  destruct (H _ _ _ _ (sem_msub_then _ _ _ _ _ _ _ _ _ _ Hμ Hν)) as [H1 H2].
-  rewrite <- tctx_then in H1, H2; rewrite <- !tm_then in H2.
-  split; assumption.
-Qed.
-
-(** ** 9. Rebasing (growing a frame, adding a level) is sound, given the
-    semantics, *at the target*, of the source's globals only *)
-
-Section Rebase.
-  Variables (Θ1 Θ2 : gdeps) (Ξ1 Ξ2 : gstack).
-  #[local] Notation G2 := (gc_mk Θ2 Ξ2).
-  Hypothesis Hr : forall r Δ b pv A B,
-      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B -> Θ2 ⍮ Ξ2 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B.
-  Hypothesis Hn : forall n U, List.nth_error Ξ1 n = Some U ->
-      exists U', List.nth_error Ξ2 n = Some U' /\ gu_params U' = gu_params U.
-  Hypothesis Hb : ⊢ Θ2 ⍮ Ξ2 ⍮ ⋅.
-  Hypothesis HR : forall p Δ b pv A B,
-      Θ1 ⍮ Ξ1 ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-      @rel_exp_under_ctx G2 ⋅ (ctx_pi Δ A) (a_glob p) (a_glob p) /\
-      (forall M, b = true -> B = Some M -> @rel_exp_under_ctx G2 ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M)).
-  Hypothesis HP : forall n U k T,
-      List.nth_error Ξ1 n = Some U ->
-      gu_params U ∋ #k : T ->
-      @rel_exp_under_ctx G2 ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) $[n, k] $[n, k].
-
-  Theorem sem_msub_rebase : sem_msub Θ1 Ξ1 Θ2 Ξ2 ms_id nil.
-  Proof.
-    assert (Hsc : gs_scoped Ξ2) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-    constructor; [ constructor | | | | ].
-    - assumption.
-    - intros * Hn1 Hk _ HΓ; rewrite !exp_msub_qn_id.
-      destruct (Hn _ _ Hn1) as (U' & Hn2 & Hp).
-      rewrite <- Hp in Hk; split; econstructor; eassumption.
-    - intros * Hl _ HΓ; rewrite !exp_msub_qn_id; split; econstructor; eauto.
-    - intros * Hl _ HΓ; rewrite !exp_msub_qn_id; econstructor; eauto.
-    - constructor.
-    - intros * Hn1 Hk _ HΓs; rewrite !exp_msub_qn_id; rewrite ctx_msub_id, List.app_nil_r in *.
-      destruct (Hn _ _ Hn1) as (U' & Hn2 & Hp).
-      eapply closed_weaken_sem; [ eassumption | apply (HP _ _ _ _ Hn1 Hk) | | reflexivity | reflexivity ].
-      rewrite <- Hp in Hk.
-      eapply exp_closed_wk, param_type_scoped; eassumption.
-    - intros * Hl HΓ HΓs; rewrite !exp_msub_qn_id; rewrite ctx_msub_id, List.app_nil_r in *.
-      eapply closed_weaken_sem; [ eassumption | apply (HR _ _ _ _ _ _ Hl) | | reflexivity | reflexivity ].
-      eapply exp_closed_wk, wf_gc_lookup_type_closed; [ exact Hb | apply Hr; eassumption ].
-    - intros * Hl HΓ HΓs; rewrite !exp_msub_qn_id; rewrite ctx_msub_id, List.app_nil_r in *.
-      eapply closed_weaken_sem; [ eassumption | apply (HR _ _ _ _ _ _ Hl); reflexivity | | reflexivity | ].
-      + eapply exp_closed_wk, wf_gc_lookup_type_closed; [ exact Hb | apply Hr; eassumption ].
-      + eapply exp_closed_wk, wf_gc_lookup_body_closed; [ exact Hb | apply Hr; eassumption ].
-  Qed.
-End Rebase.
 

@@ -342,6 +342,23 @@ with ne_to_exp (M : ne) : exp :=
 Coercion nf_to_exp : nf >-> exp.
 Coercion ne_to_exp : ne >-> exp.
 
+(** A normal form with no global and no parameter at the head of a neutral. *)
+
+Fixpoint nf_clean (W : nf) : Prop :=
+  match W with
+  | nf_typ _ | nf_nat | nf_zero => True
+  | nf_succ W => nf_clean W
+  | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
+  | nf_neut M => ne_clean M
+  end
+with ne_clean (M : ne) : Prop :=
+  match M with
+  | ne_natrec A MZ MS M => nf_clean A /\ nf_clean MZ /\ nf_clean MS /\ ne_clean M
+  | ne_app M N => ne_clean M /\ nf_clean N
+  | ne_var _ => True
+  | ne_param _ | ne_glob _ => False
+  end.
+
 Fact nf_eq_dec : forall (M M' : nf),
     ({M = M'} + {M <> M'})%type
 with ne_eq_dec : forall (M M' : ne),

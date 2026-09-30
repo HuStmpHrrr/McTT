@@ -67,7 +67,7 @@ parameters)`.
 ## The global rules (glob, param, δ)
 
 The models are not monotone under growing the global context: both break at Π
-(`experiments/extension_invariance`, `experiments/soundness_alt`).  Instead:
+(`AGENT/experiments/extension_invariance.md`, `AGENT/experiments/soundness_alt.md`).  Instead:
 
 * `Core/Completeness/ModuleCases.v`: a judgment is valid when it is valid, at the
   fixed-context sense, after every *sound* module substitution (`sem_msub`: the
@@ -84,5 +84,7 @@ The models are not monotone under growing the global context: both break at Π
   `gctx_glu` (`Core/Soundness/GlobalCases.v`, gluing model, with
   `Core/Soundness/ModuleCases.v`).  Both fundamental theorems are then the old
   ones at the identity.
-* Canonical forms and consistency hold only at the empty global context: an
-  axiom is a closed neutral (`Core/Semantic/Consequences.v`).
+* Canonical forms and consistency hold at a *transparent* global context
+  (`gc_transparent`: every definition transparent with a body, no open frame
+  with parameters), where no global or parameter is a neutral
+  (`Core/Semantic/Transparency.v`: `nbe_clean`); an axiom is a closed neutral.

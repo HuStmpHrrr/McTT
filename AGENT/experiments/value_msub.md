@@ -1,3 +1,5 @@
+> The code of this experiment was removed; it is in commit 842d4d8 under `experiments/value_msub/`.
+
 # Approach Z: moving values along a module substitution
 
 Proofs in `Exp.v` (compiles with `rocq c -R . Mctt`, no admits; only
