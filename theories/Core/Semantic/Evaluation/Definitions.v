@@ -1,4 +1,4 @@
-From Stdlib Require Import List Morphisms String.
+From Stdlib Require Import Lia List Morphisms String.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution GlobalCtx.
@@ -26,8 +26,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
 | eval_exp_var :
-  `( env_var ρ x = Some m ->
-     ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m )
+  `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )
 | eval_exp_nat :
   `( ⟦ ℕ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ℕᵈ )
 | eval_exp_zero :
@@ -101,40 +100,116 @@ Combined Scheme eval_mut_ind from
 #[export]
 Hint Constructors eval_exp eval_natrec eval_app : mctt.
 
+(** [eval_exp_var] up to conversion: its value [ρ x] is a flexible
+    application, which unification would read [ρ] and [x] off the wrong term
+    of. *)
+Proposition eval_exp_var_eq : forall {Θ Ξ} x (ρ : env) m,
+    ρ x = m ->
+    ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
+Proof. intros * <-; apply eval_exp_var. Qed.
+
 (** * Evaluation of Substitutions
 
-    Pointwise on the variables the target environment has: each of its values is
-    what the substitution computes from [ρ].  The number of variables is the
-    context's business, which [per_ctx] fixes. *)
+    Pointwise, at every variable: each value of [ρσ] is what the substitution
+    computes from [ρ].  A list ends, so past its end [ρσ] reads [zeroᵈ]; a result
+    therefore exists only when [σ] is, far enough out, a variable past [ρ]. *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (σ : sub) (ρ ρσ : env) : Prop :=
-  forall x m, env_var ρσ x = Some m -> ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
+  forall x, ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x.
 Arguments eval_sub : simpl never.
 
 Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" := (eval_sub Θ Ξ σ ρ ρσ) : mctt_scope.
 
-Lemma eval_sub_id : forall Θ Ξ ρ, ⟦ Id ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ.
-Proof. intros * x m H; constructor; assumption. Qed.
+Lemma eval_sub_id : forall {Θ Ξ} ρ, ⟦ Id ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ.
+Proof. intros * x; constructor. Qed.
 
-Lemma eval_sub_shift : forall Θ Ξ ρ, ⟦ Wk ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ↯.
-Proof.
-  intros Θ Ξ [| d ρ] x m H; cbn in *; [ destruct x; discriminate |].
-  constructor; assumption.
-Qed.
+Lemma eval_sub_shift : forall {Θ Ξ} ρ, ⟦ Wk ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ↯.
+Proof. intros * x; rewrite env_var_drop; constructor. Qed.
 
-Lemma eval_sub_extend : forall Θ Ξ σ ρ ρσ M m,
+Lemma eval_sub_extend : forall {Θ Ξ} σ ρ ρσ M m,
     ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ σ,,M ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
 Proof.
-  intros * H HM [| x] n Hx; cbn in Hx; [ injection Hx as <-; assumption | apply H, Hx ].
+  intros * H HM [| x]; [ assumption | apply H ].
 Qed.
 
-Corollary eval_sub_single : forall Θ Ξ ρ M m,
+Corollary eval_sub_single : forall {Θ Ξ} ρ M m,
     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ Id,,M ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρ ↦ m.
 Proof.
   intros; apply eval_sub_extend; [ apply eval_sub_id | assumption ].
 Qed.
 
+Proposition eval_sub_intro : forall {Θ Ξ} σ (ρ ρσ : env),
+    (forall x, ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x) ->
+    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ.
+Proof. intros * H. exact H. Qed.
+
+Proposition eval_sub_index : forall {Θ Ξ} σ (ρ ρσ : env),
+    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    forall x, ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x.
+Proof. intros * H. exact H. Qed.
+
+(** Both arguments that [eval_sub] inspects pointwise may be replaced by
+    pointwise-equal ones; the input environment may not — a closure captures
+    it. *)
 #[export]
-Hint Resolve eval_sub_id eval_sub_shift eval_sub_extend eval_sub_single : mctt.
+Instance eval_sub_Proper : forall {Θ Ξ}, Proper (sb_eq ==> eq ==> env_eq ==> iff) (eval_sub Θ Ξ).
+Proof.
+  intros Θ Ξ σ σ' Hσ ρ ρ0 <- ρσ ρσ' Hρσ.
+  split; intros H x; [ rewrite <- (Hσ x), <- (Hρσ x) | rewrite (Hσ x), (Hρσ x) ]; apply H.
+Qed.
+
+(** ** The Substitutions that Compute
+
+    The image of a weakening under [ι] — one that moves no variable down, so
+    that [⟪φ⟫ ρ] is [ρ ∘ φ] everywhere — the identity, and an extension. *)
+Lemma eval_sub_of_wk : forall {Θ Ξ} φ ρ `{Hφ : WkMono φ},
+    ⟦ ι φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρ.
+Proof.
+  intros Θ Ξ φ ρ Hφ x; cbn; rewrite (eval_wk_eq _ _ Hφ x); apply eval_exp_var.
+Qed.
+
+(** The weakening of an extension. *)
+Lemma eval_sub_wk_extend : forall {Θ Ξ} σ M φ ρ ρσ m,
+    ⟦ sb_wk σ φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ M[φ]ʷ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+    ⟦ sb_wk (σ,,M) φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
+Proof. intros * ? ? [| x]; [ assumption | apply H ]. Qed.
+
+(** The two evaluations of a lifted substitution: [q σ] extends [σ[↑]] by
+    [#0], so its head is a value already in [ρ]. *)
+Lemma eval_sub_q : forall {Θ Ξ} σ ρ ρσ,
+    ⟦ sb_wk σ ↑ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ q σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ρ 0.
+Proof.
+  intros * H [| x]; [ cbn; apply eval_exp_var |].
+  rewrite sb_q_succ; exact (H x).
+Qed.
+
+Lemma eval_sub_wk_q : forall {Θ Ξ} σ φ ρ ρσ,
+    ⟦ sb_wk (sb_wk σ ↑) φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ sb_wk (q σ) φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ρ (φ 0).
+Proof.
+  intros * H [| x]; cbn [sb_wk]; [ rewrite sb_q_zero; cbn; apply eval_exp_var |].
+  rewrite sb_q_succ; exact (H x).
+Qed.
+
+(** Precomposition by a weakening reindexes the environment [σ] evaluates to. *)
+Lemma eval_sub_wk_pre : forall {Θ Ξ} φ σ ρ ρσ `{Hφ : WkMono φ},
+    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ (ι φ) ⨟ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρσ.
+Proof.
+  intros Θ Ξ φ σ ρ ρσ Hφ H x; rewrite (eval_wk_eq _ _ Hφ x); exact (H (φ x)).
+Qed.
+
+Corollary eval_sub_shift_pre : forall {Θ Ξ} σ ρ ρσ,
+    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
+    ⟦ Wk ⨟ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ↯.
+Proof. intros * H x; rewrite env_var_drop; exact (H (S x)). Qed.
+
+#[export]
+Hint Resolve eval_sub_id eval_sub_shift eval_sub_extend eval_sub_single eval_sub_wk_extend
+             eval_sub_q eval_sub_wk_q eval_sub_shift_pre : mctt.
+#[export]
+Hint Resolve eval_sub_index : mctt.

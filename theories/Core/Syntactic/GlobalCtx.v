@@ -632,3 +632,12 @@ Definition gs_param (Ξ : gstack) (lp : lpath) : option typ :=
   | Some U => option_map (fun T => T[↑ₘ (S (lp_mod lp))]ᵐ[sb_params (lp_mod lp)]) (ctx_get (gu_params U) (lp_param lp))
   | None => None
   end.
+
+(** ** A Fixed Global Context
+
+    The semantic model and the two metatheorems about NbE are stated for one
+    global context at a time.  Found by instance resolution, it keeps their
+    judgments in the short forms of [Core.Semantic.Fixed]. *)
+Class GCtx : Set := gc_mk
+  { gc_deps : gdeps
+  ; gc_stack : gstack }.

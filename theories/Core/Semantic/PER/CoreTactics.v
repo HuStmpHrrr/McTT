@@ -4,7 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import PER.Definitions.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
 Ltac destruct_rel_by_assumption in_rel H :=
   repeat

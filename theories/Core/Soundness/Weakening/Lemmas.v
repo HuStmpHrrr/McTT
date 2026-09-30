@@ -5,7 +5,10 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Syntactic Require Export CtxSub SystemOpt.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
-Import Syntax_Notations Wk_Notations.
+Import Syntax_Notations Wk_Notations Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** In the form the gluing proofs use it: a Kripke weakening is a substitution.  Not [Γ ⊢w φ : Δ] — see [Definitions]. *)
 Lemma kripke_escape : forall Γ Δ φ,
@@ -22,9 +25,15 @@ Proof.
     mauto 4.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac saturate_kripke_escape :=
   match_by_head wk_kripke ltac:(fun H => pose proof (kripke_escape _ _ _ H));
   clear_dups.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma kripke_id : forall Γ, ⊢ Γ -> Γ ⊢k wk_id : Γ.
 Proof. intros; eapply kwk_id; [ mauto 2 | reflexivity ]. Qed.
@@ -37,14 +46,13 @@ Proof.
     | symmetry; apply wk_compose_id_right ].
 Qed.
 
-#[export]
 Hint Resolve kripke_id kripke_shift : mctt.
 
 (** The codomain may always be coarsened: this is the closure property the
     subtyping cases need, and the reason for the refinement premise. *)
 Lemma kripke_ctxsub : forall Γ Δ Δ' φ,
     Γ ⊢k φ : Δ ->
-    ⊢ Δ ⊆ Δ' ->
+    Δ ⊆ Δ' ->
     Γ ⊢k φ : Δ'.
 Proof.
   intros * H ?; destruct H.
@@ -52,7 +60,6 @@ Proof.
   - eapply kwk_shift; [ eassumption | etransitivity; eassumption | eassumption ].
 Qed.
 
-#[export]
 Hint Resolve kripke_ctxsub : mctt.
 
 Lemma kripke_compose : forall Γ Δ Θ φ ψ,
@@ -70,7 +77,6 @@ Proof.
     eauto.
 Qed.
 
-#[export]
 Hint Resolve kripke_compose : mctt.
 
 (** Equivalently: every Kripke weakening is [⇑^n], and
@@ -82,7 +88,7 @@ Lemma kripke_shiftn : forall Γ Δ φ,
     length Δ <= length Γ /\ wk_eq φ (wk_shiftn (length Γ - length Δ)).
 Proof.
   intros * H; induction H as [ | ? ? ? ? ? ? ? [Hle Hψ] ];
-    match goal with H : ctx_sub _ _ |- _ => pose proof (ctx_sub_length _ _ H) end;
+    match goal with H : ctx_sub _ _ _ _ |- _ => pose proof (ctx_sub_length _ _ _ _ H) end;
     match goal with H : wk_eq _ _ |- _ => rewrite H end;
     unfold_ops; simpl in *;
     (split; [ lia | intro x ]).
@@ -117,7 +123,6 @@ Proof.
   rewrite <- (exp_sub_of_wk A φ), <- (exp_sub_of_wk A' φ); mauto 2.
 Qed.
 
-#[export]
 Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
 
 (** [Type@i] and [ℕ] are closed, so transporting them is the identity — but
@@ -130,7 +135,7 @@ Corollary kripke_preserves_typ : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ : Type@i.
 Proof.
   intros.
-  assert (wf_exp Γ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
+  assert (wf_exp _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
   assumption.
 Qed.
 
@@ -140,7 +145,7 @@ Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
     Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
+  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
   assumption.
 Qed.
 
@@ -150,7 +155,7 @@ Corollary kripke_preserves_nat : forall Γ Δ M φ,
     Γ ⊢ M[φ]ʷ : ℕ.
 Proof.
   intros.
-  assert (wf_exp Γ (exp_wk a_nat φ) (exp_wk M φ)) by mauto 2.
+  assert (wf_exp _ _ Γ (exp_wk a_nat φ) (exp_wk M φ)) by mauto 2.
   assumption.
 Qed.
 
@@ -160,7 +165,7 @@ Corollary kripke_preserves_nat_eq : forall Γ Δ M M' φ,
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ℕ.
 Proof.
   intros.
-  assert (wf_exp_eq Γ (exp_wk a_nat φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
+  assert (wf_exp_eq _ _ Γ (exp_wk a_nat φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
   assumption.
 Qed.
 
@@ -174,7 +179,7 @@ Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
     Γ ⊢ A[φ]ʷ ≈ Type@j : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk (a_typ j) φ)) by mauto 2.
+  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk (a_typ j) φ)) by mauto 2.
   assumption.
 Qed.
 
@@ -184,11 +189,10 @@ Corollary kripke_preserves_typ_eq_nat : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ ≈ ℕ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_nat φ)) by mauto 2.
+  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_nat φ)) by mauto 2.
   assumption.
 Qed.
 
-#[export]
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
              kripke_preserves_nat kripke_preserves_nat_eq
              kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
@@ -224,12 +228,11 @@ Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
     Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Type@j.
 Proof.
   intros.
-  assert (wf_exp (Γ ▹ A[φ]ʷ) (exp_wk (a_typ j) (wk_q φ)) (exp_wk B (wk_q φ)))
+  assert (wf_exp _ _ (Γ ▹ A[φ]ʷ) (exp_wk (a_typ j) (wk_q φ)) (exp_wk B (wk_q φ)))
     by (eapply kripke_preserves_exp_q; eassumption).
   assumption.
 Qed.
 
-#[export]
 Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
 
 (** Both presuppositions, as [saturate_sub] supplies them for [wf_sub]: not
@@ -240,7 +243,24 @@ Proof. intros * ?%kripke_escape; eapply wf_sub_dom; eassumption. Qed.
 Corollary kripke_cod : forall Γ Δ φ, Γ ⊢k φ : Δ -> ⊢ Δ.
 Proof. intros * ?%kripke_escape; eapply wf_sub_cod; eassumption. Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve kripke_id kripke_shift : mctt.
+#[export]
+Hint Resolve kripke_ctxsub : mctt.
+#[export]
+Hint Resolve kripke_compose : mctt.
+#[export]
+Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
+#[export]
+Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
+kripke_preserves_nat kripke_preserves_nat_eq
+kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
+#[export]
+Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
 Ltac saturate_kripke :=
   match_by_head wk_kripke ltac:(fun H => pose proof (kripke_dom _ _ _ H);
                                          pose proof (kripke_cod _ _ _ H));
   clear_dups.
+

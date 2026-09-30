@@ -5,7 +5,10 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Corollaries Substitution.
 From Mctt.Core.Soundness.LogicalRelation Require Import CoreTactics Definitions.
 From Mctt.Core.Soundness.Weakening Require Export Lemmas.
-Import Domain_Notations Wk_Notations.
+Import Domain_Notations Wk_Notations Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma glu_nat_per_nat : forall Γ M a,
     glu_nat Γ M a ->
@@ -35,17 +38,16 @@ Proof.
   mauto.
 Qed.
 
-#[export]
 Hint Resolve glu_nat_escape : mctt.
 
 (** Where the explicit-substitution development transported [glu_nat] along a
-    context *equality*, it now travels along a refinement: [⊢ Δ ⊆ Γ] is
+    context *equality*, it now travels along a refinement: [Δ ⊆ Γ] is
     what the [ctxsub_*] lemmas need, and an equality gives refinements both
     ways.  The same replacement happens to every [wf_ctx_eq] morphism instance
     below. *)
 Lemma glu_nat_resp_ctxsub : forall Γ M a Δ,
     glu_nat Γ M a ->
-    ⊢ Δ ⊆ Γ ->
+    Δ ⊆ Γ ->
     glu_nat Δ M a.
 Proof.
   induction 1; intros.
@@ -56,7 +58,6 @@ Proof.
     intros; mauto 4.
 Qed.
 
-#[export]
 Hint Resolve glu_nat_resp_ctxsub : mctt.
 
 Lemma glu_nat_resp_exp_eq : forall Γ M a,
@@ -75,7 +76,7 @@ Qed.
 Hint Resolve glu_nat_resp_exp_eq : mctt.
 
 Add Parametric Morphism Γ : (glu_nat Γ)
-    with signature wf_exp_eq Γ ℕ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ ℕ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
 Proof.
   split; mauto using glu_nat_resp_exp_eq.
 Qed.
@@ -96,6 +97,15 @@ Proof.
   - mauto 4.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_nat_escape : mctt.
+#[export]
+Hint Resolve glu_nat_resp_ctxsub : mctt.
+#[export] Existing Instance glu_ctx_env_sub_morphism_iff2_Proper.
+#[local]
+Hint Resolve glu_nat_per_nat glu_nat_resp_exp_eq : mctt.
 #[global]
 Ltac simpl_glu_rel :=
   apply_equiv_left;
@@ -104,6 +114,10 @@ Ltac simpl_glu_rel :=
   destruct_all;
   gen_presups.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 Lemma glu_univ_elem_univ_lvl : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
@@ -111,7 +125,7 @@ Lemma glu_univ_elem_univ_lvl : forall i P El a,
       Γ ⊢ A : Type@i.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel; trivial.
 Qed.
 
@@ -123,7 +137,7 @@ Lemma glu_univ_elem_typ_resp_exp_eq : forall i P El a,
       Γ ⊢ A' ® P.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel; mauto 4.
 
   split; [trivial |].
@@ -132,7 +146,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (P Γ)
-    with signature wf_exp_eq Γ Type@i ==> iff as glu_univ_elem_typ_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> iff as glu_univ_elem_typ_morphism_iff1.
 Proof.
   split; intros; eapply glu_univ_elem_typ_resp_exp_eq; mauto 2.
 Qed.
@@ -145,7 +159,7 @@ Lemma glu_univ_elem_trm_resp_typ_exp_eq : forall i P El a,
       Γ ⊢ M : A' ® m ∈ El.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel; repeat split; intros; mauto 3;
     [firstorder | | transitivity A[φ]ʷ; mauto 4 | assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i); mauto 3].
 
@@ -153,7 +167,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (El Γ)
-    with signature wf_exp_eq Γ Type@i ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_typ_exp_eq;
@@ -164,15 +178,15 @@ Lemma glu_univ_elem_typ_resp_ctxsub : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A Δ,
       Γ ⊢ A ® P ->
-      ⊢ Δ ⊆ Γ ->
+      Δ ⊆ Γ ->
       Δ ⊢ A ® P.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel; mauto 3.
 
   - assert (Δ ⊢ IT : Type@i) by mauto 3.
-    assert (⊢ Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
+    assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
     econstructor; mauto 3; intros; mauto 4.
 
   - split; [ mauto 3 | intros; mauto 4 ].
@@ -182,11 +196,11 @@ Lemma glu_univ_elem_trm_resp_ctxsub : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A M m Δ,
       Γ ⊢ M : A ® m ∈ El ->
-      ⊢ Δ ⊆ Γ ->
+      Δ ⊆ Γ ->
       Δ ⊢ M : A ® m ∈ El.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel.
 
   - repeat apply conj; [ mauto 3 | mauto 3 | ].
@@ -195,7 +209,7 @@ Proof.
   - split; mauto 3.
 
   - assert (Δ ⊢ IT : Type@i) by mauto 3.
-    assert (⊢ Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
+    assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
     econstructor; mauto 3; intros; mauto 4.
 
   - econstructor; [ split | | | ]; mauto 3; intros; mauto 4.
@@ -231,7 +245,6 @@ Proof.
   mauto using glu_nat_resp_wk'.
 Qed.
 
-#[export]
 Hint Resolve glu_nat_resp_wk : mctt.
 
 Lemma glu_univ_elem_trm_escape : forall i P El a,
@@ -241,7 +254,7 @@ Lemma glu_univ_elem_trm_escape : forall i P El a,
       Γ ⊢ M : A.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel; mauto 4.
 Qed.
 
@@ -250,7 +263,7 @@ Lemma glu_univ_elem_per_univ : forall i P El a,
     Dom a ≈ a ∈ per_univ i.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros; eexists;
+  glu_univ_elem_induction1; intros; eexists;
     try solve [per_univ_elem_econstructor; try reflexivity; trivial].
 
   - subst. eapply per_univ_elem_core_univ'; trivial.
@@ -259,7 +272,6 @@ Proof.
     mauto.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 
 Lemma glu_univ_elem_per_elem : forall i P El a,
@@ -270,7 +282,7 @@ Lemma glu_univ_elem_per_elem : forall i P El a,
       Dom m ≈ m ∈ R.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H);
     simpl_glu_rel;
     try fold (per_univ j m m);
@@ -292,7 +304,7 @@ Lemma glu_univ_elem_trm_typ : forall i P El a,
       Γ ⊢ A ® P.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel;
     mauto 4.
 
@@ -320,7 +332,7 @@ Lemma glu_univ_elem_trm_resp_exp_eq : forall i P El a,
       Γ ⊢ M' : A ® m ∈ El.
 Proof.
   simpl.
-  induction 1 using glu_univ_elem_ind; intros;
+  glu_univ_elem_induction1; intros;
     simpl_glu_rel;
     repeat split; mauto 3.
 
@@ -346,7 +358,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ T : (El Γ T)
-    with signature wf_exp_eq Γ T ==> eq ==> iff as glu_univ_elem_trm_morphism_iff3.
+    with signature wf_exp_eq gc_deps gc_stack Γ T ==> eq ==> iff as glu_univ_elem_trm_morphism_iff3.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_exp_eq;
@@ -363,11 +375,25 @@ Proof.
   unshelve basic_glu_univ_elem_econstructor; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_core_univ' : mctt.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
+#[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
+#[export]
+Hint Resolve glu_nat_resp_wk : mctt.
+#[export]
+Hint Resolve glu_univ_elem_per_univ : mctt.
+#[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
+#[export]
+Hint Resolve glu_univ_elem_core_univ' : mctt.
 Ltac glu_univ_elem_econstructor :=
   eapply glu_univ_elem_core_univ' + basic_glu_univ_elem_econstructor.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_univ_elem_univ_simple_constructor : forall {i},
     glu_univ_elem (S i) (univ_glu_typ_pred i (S i)) (univ_glu_exp_pred i (S i)) 𝕌@i.
@@ -376,9 +402,12 @@ Proof.
   glu_univ_elem_econstructor; mauto; reflexivity.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_univ_simple_constructor : mctt.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_univ_elem_univ_simple_constructor : mctt.
 Ltac rewrite_predicate_equivalence_left :=
   repeat match goal with
     | H : ?R1 <∙> ?R2 |- _ =>
@@ -410,13 +439,17 @@ Ltac apply_predicate_equivalence :=
   rewrite_predicate_equivalence_left;
   clear_predicate_equivalence.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 (** *** Simple Morphism instance for [glu_univ_elem] *)
 Add Parametric Morphism i : (glu_univ_elem i)
     with signature glu_typ_pred_equivalence ==> glu_exp_pred_equivalence ==> eq ==> iff as simple_glu_univ_elem_morphism_iff.
 Proof with mautosolve.
   intros P P' ? El El'.
   split; intro Horig; [gen El' P' | gen El P];
-    induction Horig using glu_univ_elem_ind; unshelve glu_univ_elem_econstructor;
+    glu_univ_elem_induction Horig; unshelve glu_univ_elem_econstructor;
     try (etransitivity; [symmetry + idtac|]; eassumption); eauto.
 Qed.
 
@@ -482,7 +515,7 @@ Lemma functional_glu_univ_elem : forall i a P P' El El',
 Proof.
   simpl.
   intros * Ha Ha'. gen P' El'.
-  induction Ha using glu_univ_elem_ind; intros; basic_invert_glu_univ_elem Ha';
+  glu_univ_elem_induction Ha; intros; basic_invert_glu_univ_elem Ha';
     apply_predicate_equivalence; try solve [split; reflexivity].
   assert ((IP <∙> IP0) /\ (IEl <∙> IEl0)) as [] by mauto.
   apply_predicate_equivalence.
@@ -508,6 +541,17 @@ Proof.
       eexists; split; intuition.
 Qed.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance simple_glu_univ_elem_morphism_iff_Proper.
+#[export] Existing Instance neut_glu_typ_pred_morphism_iff_Proper.
+#[export] Existing Instance neut_glu_typ_pred_morphism_glu_typ_pred_equivalence_Proper.
+#[export] Existing Instance neut_glu_exp_pred_morphism_iff_Proper.
+#[export] Existing Instance neut_glu_exp_pred_morphism_glu_exp_pred_equivalence_Proper.
+#[export] Existing Instance pi_glu_typ_pred_morphism_iff_Proper.
+#[export] Existing Instance pi_glu_typ_pred_morphism_glu_typ_pred_equivalence_Proper.
+#[export] Existing Instance pi_glu_exp_pred_morphism_iff_Proper.
+#[export] Existing Instance pi_glu_exp_pred_morphism_glu_exp_pred_equivalence_Proper.
 Ltac apply_functional_glu_univ_elem1 :=
   let tactic_error o1 o2 := fail 2 "functional_glu_univ_elem biconditional between" o1 "and" o2 "cannot be solved" in
   match goal with
@@ -534,6 +578,10 @@ Ltac handle_functional_glu_univ_elem :=
   apply_functional_glu_univ_elem;
   apply_predicate_equivalence;
   clear_dups.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a ρ B in_rel P El},
   DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
@@ -629,12 +677,18 @@ Proof.
     intros []; econstructor; mauto.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac invert_glu_univ_elem H :=
   (unshelve eapply (glu_univ_elem_pi_clean_inversion2 _ _) in H; shelve_unifiable; [eassumption | eassumption |];
    destruct H as [? [? [? [? [? []]]]]])
   + (unshelve eapply (glu_univ_elem_pi_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
    destruct H as [? [? [? [? [? [? [? [? []]]]]]]]])
   + basic_invert_glu_univ_elem H.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_univ_elem_resp_per_univ : forall i a a' P El,
     Dom a ≈ a' ∈ per_univ i ->
@@ -645,7 +699,7 @@ Proof.
   intros * [elem_rel Hper] Horig.
   pose proof Hper.
   gen P El.
-  induction Hper using per_univ_elem_ind; intros; subst;
+  per_univ_elem_induction Hper; intros; subst;
     saturate_refl_for per_univ_elem;
     invert_glu_univ_elem Horig; glu_univ_elem_econstructor; try eassumption; mauto;
     handle_per_univ_elem_irrel;
@@ -681,6 +735,10 @@ Proof with mautosolve.
   symmetry; mauto.
 Qed.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance glu_univ_elem_morphism_iff'_Proper.
+
 Ltac saturate_glu_by_per1 :=
   match goal with
   | H : glu_univ_elem ?i ?P ?El ?a,
@@ -697,13 +755,20 @@ Ltac saturate_glu_by_per :=
   clear_dups;
   repeat saturate_glu_by_per1.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma per_univ_glu_univ_elem : forall i a,
     Dom a ≈ a ∈ per_univ i ->
     exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El.
 Proof.
   simpl.
-  intros * [? Hper].
-  induction Hper using per_univ_elem_ind; intros;
+  (** [per_univ_elem_induction] wants distinct indices; [induction] abstracted
+      the right one. *)
+  intros i a [R Hper].
+  enough (forall a0, DF a0 ≈ a ∈ per_univ_elem i ↘ R -> exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El) by eauto.
+  clear Hper; intros a0 Hper.
+  per_univ_elem_induction Hper; intros;
     try solve [do 2 eexists; unshelve (glu_univ_elem_econstructor; try reflexivity; subst; trivial)].
 
   - destruct_conjs.
@@ -734,7 +799,6 @@ Proof.
     glu_univ_elem_econstructor; try reflexivity; mauto.
 Qed.
 
-#[export]
 Hint Resolve per_univ_glu_univ_elem : mctt.
 
 Corollary per_univ_elem_glu_univ_elem : forall i a R,
@@ -745,8 +809,12 @@ Proof.
   apply per_univ_glu_univ_elem; mauto.
 Qed.
 
-#[export]
 Hint Resolve per_univ_elem_glu_univ_elem : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_univ_glu_univ_elem per_univ_elem_glu_univ_elem : mctt.
 
 Ltac saturate_glu_info1 :=
   match goal with
@@ -764,6 +832,9 @@ Ltac saturate_glu_info :=
   clear_dups;
   repeat saturate_glu_info1.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 (** Kripke weakenings compose, so a gluing predicate stated at [Γ] survives
     being pushed along one: the two [[]ʷ]s that appear collapse to a single
     [[φ ⊙ ψ]ʷ] by [exp_wk_wk], and the [q] of a [Π] codomain absorbs the second
@@ -779,7 +850,7 @@ Lemma glu_univ_elem_typ_monotone : forall i a P El,
       Δ ⊢k φ : Γ ->
       Δ ⊢ A[φ]ʷ ® P.
 Proof.
-  simpl. induction 1 using glu_univ_elem_ind; intros;
+  simpl. glu_univ_elem_induction1; intros;
     saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
@@ -807,7 +878,7 @@ Lemma glu_univ_elem_exp_monotone : forall i a P El,
       Δ ⊢k φ : Γ ->
       Δ ⊢ M[φ]ʷ : A[φ]ʷ ® m ∈ El.
 Proof.
-  simpl. induction 1 using glu_univ_elem_ind; intros;
+  simpl. glu_univ_elem_induction1; intros;
     saturate_kripke;
     handle_functional_glu_univ_elem;
     simpl in *;
@@ -838,7 +909,7 @@ Qed.
 
 Lemma glu_elem_bot_resp_ctxsub : forall i a Γ A M m Δ,
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->
-    ⊢ Δ ⊆ Γ ->
+    Δ ⊆ Γ ->
     Δ ⊢ M : A ® m ∈ glu_elem_bot i a.
 Proof.
   intros * [] ?; econstructor;
@@ -848,7 +919,7 @@ Qed.
 
 Lemma glu_elem_top_resp_ctxsub : forall i a Γ A M m Δ,
     Γ ⊢ M : A ® m ∈ glu_elem_top i a ->
-    ⊢ Δ ⊆ Γ ->
+    Δ ⊆ Γ ->
     Δ ⊢ M : A ® m ∈ glu_elem_top i a.
 Proof.
   intros * [] ?; econstructor;
@@ -858,17 +929,16 @@ Qed.
 
 Lemma glu_typ_top_resp_ctxsub : forall i a Γ A Δ,
     Γ ⊢ A ® glu_typ_top i a ->
-    ⊢ Δ ⊆ Γ ->
+    Δ ⊆ Γ ->
     Δ ⊢ A ® glu_typ_top i a.
 Proof.
   intros * [] ?; econstructor; [ mauto 3 | eassumption | intros ]; mauto 4.
 Qed.
 
-#[export]
 Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Add Parametric Morphism i a Γ : (glu_elem_bot i a Γ)
-    with signature wf_exp_eq Γ Type@i ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
@@ -880,7 +950,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ A : (glu_elem_bot i a Γ A)
-    with signature wf_exp_eq Γ A ==> eq ==> iff as glu_elem_bot_morphism_iff3.
+    with signature wf_exp_eq gc_deps gc_stack Γ A ==> eq ==> iff as glu_elem_bot_morphism_iff3.
 Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
@@ -891,7 +961,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_elem_top i a Γ)
-    with signature wf_exp_eq Γ Type@i ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
@@ -903,7 +973,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ A : (glu_elem_top i a Γ A)
-    with signature wf_exp_eq Γ A ==> eq ==> iff as glu_elem_top_morphism_iff3.
+    with signature wf_exp_eq gc_deps gc_stack Γ A ==> eq ==> iff as glu_elem_top_morphism_iff3.
 Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
@@ -914,7 +984,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_typ_top i a Γ)
-    with signature wf_exp_eq Γ Type@i ==> iff as glu_typ_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> iff as glu_typ_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3;
@@ -934,3 +1004,15 @@ Proof.
     induction Horig; econstructor;
     try (etransitivity; [symmetry + idtac|]; eassumption); eauto.
 Qed.
+
+End Fixed_GCtx.
+
+#[export] Existing Instance glu_univ_elem_morphism_iff_Proper.
+#[export] Existing Instance glu_elem_bot_morphism_iff2_Proper.
+#[export] Existing Instance glu_elem_bot_morphism_iff3_Proper.
+#[export] Existing Instance glu_elem_top_morphism_iff2_Proper.
+#[export] Existing Instance glu_elem_top_morphism_iff3_Proper.
+#[export] Existing Instance glu_typ_top_morphism_iff2_Proper.
+#[export] Existing Instance simple_glu_ctx_env_morphism_iff_Proper.
+#[export]
+Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.

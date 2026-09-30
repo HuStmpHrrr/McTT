@@ -4,7 +4,11 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export NbE PER.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma per_nat_then_per_top : forall {n m},
     Dom n ≈ m ∈ per_nat ->
@@ -15,7 +19,6 @@ Proof.
     try specialize (H s); solve [destruct_conjs; eexists; repeat econstructor; eauto].
 Qed.
 
-#[export]
 Hint Resolve per_nat_then_per_top : mctt.
 
 Lemma realize_per_univ_elem_gen : forall {i a a' R},
@@ -25,7 +28,7 @@ Lemma realize_per_univ_elem_gen : forall {i a a' R},
     /\ (forall {b b'}, Dom b ≈ b' ∈ R -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top).
 Proof.
   intros * Hunivelem. simpl in Hunivelem.
-  induction Hunivelem using per_univ_elem_ind; repeat split; intros;
+  per_univ_elem_induction Hunivelem; repeat split; intros;
     apply_relation_equivalence; mauto.
   - subst; repeat econstructor.
   - subst.
@@ -83,7 +86,6 @@ Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
 
-#[export]
 Hint Resolve per_univ_then_per_top_typ : mctt.
 
 Corollary per_bot_then_per_elem : forall {i a a' R c c'},
@@ -104,12 +106,11 @@ Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
 
-#[export]
 Hint Resolve per_elem_then_per_top : mctt.
 
 Lemma per_ctx_then_per_env_initial_env : forall {Γ Γ' env_rel},
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_rel ->
-    exists ρ ρ', initial_env Γ ρ /\ initial_env Γ' ρ' /\ Dom ρ ≈ ρ' ∈ env_rel.
+    exists ρ ρ', initial_env_f Γ ρ /\ initial_env_f Γ' ρ' /\ Dom ρ ≈ ρ' ∈ env_rel.
 Proof.
   induction 1.
   - do 2 eexists; intuition.
@@ -130,3 +131,12 @@ Proof.
   intros.
   eapply per_bot_then_per_elem; mauto.
 Qed.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_nat_then_per_top : mctt.
+#[export]
+Hint Resolve per_univ_then_per_top_typ : mctt.
+#[export]
+Hint Resolve per_elem_then_per_top : mctt.

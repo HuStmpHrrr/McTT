@@ -18,7 +18,11 @@ From Stdlib Require Import Morphisms_Relations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma rel_ctx_extend : forall {Γ Γ' A A' i},
     ⊨ Γ ≈ Γ' ->
@@ -49,7 +53,6 @@ Proof.
   econstructor; eassumption.
 Qed.
 
-#[export]
 Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
 
 Lemma rel_ctx_sub_empty :
@@ -77,5 +80,11 @@ Proof.
   eassumption.
 Qed.
 
+Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
 #[export]
 Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.

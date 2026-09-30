@@ -18,7 +18,7 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 #[export]
 Hint Constructors initial_env : mctt.
 
-Lemma functional_initial_env : forall Θ Ξ Γ ρ,
+Lemma functional_initial_env : forall {Θ Ξ} Γ ρ,
     initial_env Θ Ξ Γ ρ ->
     forall ρ',
       initial_env Θ Ξ Γ ρ' ->
@@ -33,14 +33,16 @@ Qed.
 #[export]
 Hint Resolve functional_initial_env : mctt.
 
-Lemma initial_env_spec : forall Θ Ξ x Γ ρ A,
+Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
     initial_env Θ Ξ Γ ρ ->
     Γ ∋ #x : A ->
-    exists a, env_var ρ x = Some (⇑! a (length Γ - x - 1)).
+    exists a, ρ x = ⇑! a (length Γ - x - 1).
 Proof.
   induction x; intros * Hinit Hlookup;
-    dependent destruction Hlookup; dependent destruction Hinit; simpl; mauto 3.
-  eexists; repeat f_equal; lia.
+    dependent destruction Hlookup; dependent destruction Hinit; simpl.
+  - eexists; cbn; repeat f_equal; lia.
+  - destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a'.
+    cbn; unfold env_var in *; rewrite Ha'; repeat f_equal; lia.
 Qed.
 
 #[export]
@@ -67,7 +69,7 @@ Inductive nbe (Θ : gdeps) (Ξ : gstack) : ctx -> exp -> typ -> nf -> Prop :=
 #[export]
 Hint Constructors nbe : mctt.
 
-Lemma functional_nbe : forall Θ Ξ Γ M A w w',
+Lemma functional_nbe : forall {Θ Ξ} Γ M A w w',
     nbe Θ Ξ Γ M A w ->
     nbe Θ Ξ Γ M A w' ->
     w = w'.
@@ -122,7 +124,7 @@ Qed.
 #[export]
 Hint Resolve lift_nbe_max_left lift_nbe_max_right : mctt.
 
-Lemma functional_nbe_of_typ : forall Θ Ξ Γ A i j W W',
+Lemma functional_nbe_of_typ : forall {Θ Ξ} Γ A i j W W',
     nbe Θ Ξ Γ A Type@i W ->
     nbe Θ Ξ Γ A Type@j W' ->
     W = W'.
@@ -144,7 +146,7 @@ Inductive nbe_ty (Θ : gdeps) (Ξ : gstack) : ctx -> typ -> nf -> Prop :=
 #[export]
 Hint Constructors nbe_ty : mctt.
 
-Lemma functional_nbe_ty : forall Θ Ξ Γ M w w',
+Lemma functional_nbe_ty : forall {Θ Ξ} Γ M w w',
     nbe_ty Θ Ξ Γ M w ->
     nbe_ty Θ Ξ Γ M w' ->
     w = w'.
@@ -157,7 +159,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma nbe_type_to_nbe_ty : forall Θ Ξ Γ M i w,
+Lemma nbe_type_to_nbe_ty : forall {Θ Ξ} Γ M i w,
     nbe Θ Ξ Γ M Type@i w ->
     nbe_ty Θ Ξ Γ M w.
 Proof.

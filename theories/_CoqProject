@@ -12,18 +12,18 @@
 # ./Core/Completeness.v  (not yet ported to module parameters)
 # ./Core/Completeness/Consequences/Rules.v  (not yet ported to module parameters)
 # ./Core/Completeness/Consequences/Types.v  (not yet ported to module parameters)
-# ./Core/Completeness/ContextCases.v  (not yet ported to module parameters)
-# ./Core/Completeness/FunctionCases.v  (not yet ported to module parameters)
+./Core/Completeness/ContextCases.v
+./Core/Completeness/FunctionCases.v
 # ./Core/Completeness/FundamentalTheorem.v  (not yet ported to module parameters)
-# ./Core/Completeness/LogicalRelation.v  (not yet ported to module parameters)
-# ./Core/Completeness/LogicalRelation/Definitions.v  (not yet ported to module parameters)
-# ./Core/Completeness/LogicalRelation/Lemmas.v  (not yet ported to module parameters)
-# ./Core/Completeness/LogicalRelation/Tactics.v  (not yet ported to module parameters)
-# ./Core/Completeness/NatCases.v  (not yet ported to module parameters)
-# ./Core/Completeness/SubstitutionCases.v  (not yet ported to module parameters)
-# ./Core/Completeness/SubtypingCases.v  (not yet ported to module parameters)
-# ./Core/Completeness/UniverseCases.v  (not yet ported to module parameters)
-# ./Core/Completeness/VariableCases.v  (not yet ported to module parameters)
+./Core/Completeness/LogicalRelation.v
+./Core/Completeness/LogicalRelation/Definitions.v
+./Core/Completeness/LogicalRelation/Lemmas.v
+./Core/Completeness/LogicalRelation/Tactics.v
+./Core/Completeness/NatCases.v
+./Core/Completeness/SubstitutionCases.v
+./Core/Completeness/SubtypingCases.v
+./Core/Completeness/UniverseCases.v
+./Core/Completeness/VariableCases.v
 # ./Core/Semantic/Consequences.v  (not yet ported to module parameters)
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
@@ -31,32 +31,33 @@
 ./Core/Semantic/Evaluation/Lemmas.v
 ./Core/Semantic/Evaluation/Tactics.v
 ./Core/Semantic/NbE.v
-# ./Core/Semantic/PER.v  (not yet ported to module parameters)
+./Core/Semantic/Fixed.v
+./Core/Semantic/PER.v
 ./Core/Semantic/PER/Chain.v
-# ./Core/Semantic/PER/CoreTactics.v  (not yet ported to module parameters)
-# ./Core/Semantic/PER/Definitions.v  (not yet ported to module parameters)
-# ./Core/Semantic/PER/Lemmas.v  (not yet ported to module parameters)
+./Core/Semantic/PER/CoreTactics.v
+./Core/Semantic/PER/Definitions.v
+./Core/Semantic/PER/Lemmas.v
 ./Core/Semantic/Readback.v
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
-# ./Core/Semantic/Realizability.v  (not yet ported to module parameters)
+./Core/Semantic/Realizability.v
 # ./Core/Soundness.v  (not yet ported to module parameters)
 # ./Core/Soundness/ContextCases.v  (not yet ported to module parameters)
 # ./Core/Soundness/FunctionCases.v  (not yet ported to module parameters)
 # ./Core/Soundness/FundamentalTheorem.v  (not yet ported to module parameters)
 # ./Core/Soundness/LogicalRelation.v  (not yet ported to module parameters)
 # ./Core/Soundness/NatCases.v  (not yet ported to module parameters)
-# ./Core/Soundness/LogicalRelation/Core.v  (not yet ported to module parameters)
-# ./Core/Soundness/LogicalRelation/CoreLemmas.v  (not yet ported to module parameters)
-# ./Core/Soundness/LogicalRelation/CoreTactics.v  (not yet ported to module parameters)
-# ./Core/Soundness/LogicalRelation/Definitions.v  (not yet ported to module parameters)
+./Core/Soundness/LogicalRelation/Core.v
+./Core/Soundness/LogicalRelation/CoreLemmas.v
+./Core/Soundness/LogicalRelation/CoreTactics.v
+./Core/Soundness/LogicalRelation/Definitions.v
 # ./Core/Soundness/LogicalRelation/Lemmas.v  (not yet ported to module parameters)
-# ./Core/Soundness/Realizability.v  (not yet ported to module parameters)
+./Core/Soundness/Realizability.v
 # ./Core/Soundness/SubtypingCases.v  (not yet ported to module parameters)
 # ./Core/Soundness/TermStructureCases.v  (not yet ported to module parameters)
 # ./Core/Soundness/UniverseCases.v  (not yet ported to module parameters)
-# ./Core/Soundness/Weakening/Definitions.v  (not yet ported to module parameters)
-# ./Core/Soundness/Weakening/Lemmas.v  (not yet ported to module parameters)
+./Core/Soundness/Weakening/Definitions.v
+./Core/Soundness/Weakening/Lemmas.v
 ./Core/Syntactic/CoreInversions.v
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v

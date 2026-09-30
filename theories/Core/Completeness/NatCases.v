@@ -41,20 +41,23 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation SubstitutionCases UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** [ℕ]'s own [per_univ_elem], at the canonical element PER and at any level.
     Every [ℕ]-obligation below is this lemma; naming it is what keeps the level
     from being left as an unresolved existential, which is what
     [per_univ_elem_econstructor] under an [eapply] would do. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma per_univ_elem_nat : forall i,
     DF ℕᵈ ≈ ℕᵈ ∈ per_univ_elem i ↘ per_nat.
 Proof.
   intros; per_univ_elem_econstructor; reflexivity.
 Qed.
 
-#[export]
 Hint Resolve per_univ_elem_nat : mctt.
 
 (** ** [ℕ] as a Type
@@ -79,7 +82,6 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_of_typ_nat : mctt.
 
 Corollary valid_exp_nat : forall {Γ i},
@@ -91,7 +93,6 @@ Proof.
   eapply rel_exp_of_typ_nat; eassumption.
 Qed.
 
-#[export]
 Hint Resolve valid_exp_nat : mctt.
 
 (** ** [ℕ] as the Type of a Term
@@ -141,13 +142,26 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_of_nat : mctt.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_univ_elem_nat : mctt.
+#[export]
+Hint Resolve rel_exp_of_typ_nat : mctt.
+#[export]
+Hint Resolve valid_exp_nat : mctt.
+#[export]
+Hint Resolve rel_exp_of_nat : mctt.
 Ltac eexists_rel_exp_of_nat :=
   apply rel_exp_of_nat;
   eexists;
   eexists; [eassumption |].
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** The head PER of [ℕ] *is* [per_nat], in both directions.  Every context
     extension by [ℕ] goes through this, and so does every argument obligation of
@@ -179,7 +193,7 @@ Corollary per_ctx_env_nat : forall {Γ env_relΓ},
 Proof.
   intros * HΓ.
   eapply per_ctx_env_of_typ; [ eassumption |].
-  eapply (@rel_exp_of_typ_nat _ 0); eassumption.
+  eapply (@rel_exp_of_typ_nat _ _ 0); eassumption.
 Qed.
 
 Corollary per_env_extend_nat_intro : forall {env_relΓ ρ ρ' m m'},
@@ -324,7 +338,6 @@ Proof.
   eapply rel_exp_zero; eassumption.
 Qed.
 
-#[export]
 Hint Resolve valid_exp_zero : mctt.
 
 Lemma rel_exp_succ_cong : forall {Γ M M'},
@@ -342,7 +355,6 @@ Proof.
   apply rel_chain_4; apply per_nat_succ; pairwise.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_succ_cong : mctt.
 
 (** ** The Successor Branch's Substitution
@@ -401,7 +413,7 @@ Proof.
     as HWk.
   eapply rel_sub_under_ctx_extend;
     [ eapply rel_sub_under_ctx_shift; exact HWk
-    | eapply (@rel_exp_of_typ_nat _ 0); exact HΓ
+    | eapply (@rel_exp_of_typ_nat _ _ 0); exact HΓ
     | apply rel_exp_succ_cong; eapply rel_exp_var1_nat; eassumption ].
 Qed.
 
@@ -452,7 +464,7 @@ Lemma rel_typ_of_nat_motive : forall {Γ A A' i env_relΓ},
                      ↘ (per_head A A (ρσ ↦ w) (ρ'σ' ↦ z))).
 Proof.
   intros * HΓ HA * HΓ' * Hσj Hρ Hev Hev' * Hwz.
-  pose proof (@rel_exp_of_typ_nat _ 0 _ HΓ) as Hnat.
+  pose proof (@rel_exp_of_typ_nat _ _ 0 _ HΓ) as Hnat.
   pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
   (** The three pairs of arguments the four instantiations run at.  [ℕ[σ]] is [ℕ],
       so the extended context PER is the unsubstituted one and its introduction
@@ -619,7 +631,7 @@ Lemma rel_exp_of_nat_step : forall {Γ A i MS MS' env_relΓ},
                 Dom m ≈ m' ∈ per_head A A (ρσ ↦ succᵈ w) (ρ'σ' ↦ succᵈ z)).
 Proof.
   intros * HΓ HA HMS * HΓ' * Hσj Hρ Hev Hev' * Hwz Hrr'.
-  pose proof (@rel_exp_of_typ_nat _ 0 _ HΓ) as Hnat.
+  pose proof (@rel_exp_of_typ_nat _ _ 0 _ HΓ) as Hnat.
   pose proof (per_ctx_env_nat HΓ) as HΓN.
   pose proof (per_ctx_env_nat HΓ') as HΓ'N.
   pose proof (per_ctx_env_of_typ HΓN HA) as HΓNA.
@@ -806,7 +818,7 @@ Proof.
   pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
   pose proof (rel_exp_of_nat_inversion HM) as [env_relΓ [HΓ HMgen]].
-  pose proof (@rel_exp_of_typ_nat _ i _ HΓ) as Hnat.
+  pose proof (@rel_exp_of_typ_nat _ _ i _ HΓ) as Hnat.
   destruct HMZ as [? [? [k HMZgen]]].
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -932,7 +944,6 @@ Proof.
     | apply (per_head_of_args Hcodn m3 m4 m2 p3 Hm34 Hm2p3 Hm24); exact Hu34 ].
 Qed.
 
-#[export]
 Hint Resolve rel_exp_natrec_cong : mctt.
 
 (** ** [β] at [zero]
@@ -955,7 +966,7 @@ Lemma rel_exp_nat_beta_zero : forall {Γ A i MZ MS},
 Proof.
   intros * HA HMZ.
   destruct HMZ as [env_relΓ [HΓ [k HMZgen]]].
-  pose proof (@rel_exp_of_typ_nat _ i _ HΓ) as Hnat.
+  pose proof (@rel_exp_of_typ_nat _ _ i _ HΓ) as Hnat.
   eexists_rel_exp_with i.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (rel_typ_of_instance Hnat HA (rel_exp_zero HΓ) _ _ HΓ' _ _ _ _ _ _
@@ -990,7 +1001,6 @@ Proof.
     | exact Hzchain ].
 Qed.
 
-#[export]
 Hint Resolve rel_exp_nat_beta_zero : mctt.
 
 (** ** The Generic Recursor
@@ -1018,7 +1028,7 @@ Lemma rel_exp_natrec_generic : forall {Γ A i MZ MS env_relΓ},
 Proof.
   intros * HΓ HA HMZ HMS.
   pose proof (per_ctx_env_nat HΓ) as HΓN.
-  pose proof (@rel_exp_of_typ_nat _ 0 _ HΓ) as Hnat0.
+  pose proof (@rel_exp_of_typ_nat _ _ 0 _ HΓ) as Hnat0.
   pose proof (rel_wk_under_ctx_intro HΓN HΓ (rel_wk_shift HΓ HΓN)) as Hup.
   pose proof (rel_wk_under_ctx_q Hup Hnat0) as Hupq.
   pose proof (rel_wk_under_ctx_q Hupq HA) as Hupqq.
@@ -1089,7 +1099,7 @@ Lemma rel_exp_nat_beta_succ : forall {Γ A i MZ MS M},
 Proof.
   intros * HA HMZ HMS HM.
   pose proof (rel_exp_of_nat_inversion HM) as [env_relΓ [HΓ HMgen]].
-  pose proof (@rel_exp_of_typ_nat _ i _ HΓ) as Hnat.
+  pose proof (@rel_exp_of_typ_nat _ _ i _ HΓ) as Hnat.
   pose proof (rel_exp_natrec_generic HΓ HA HMZ HMS) as HEg.
   pose proof (rel_exp_natrec_cong HA HMZ HMS HM) as HE.
   destruct HE as [envE [HΓE [k HEgen]]].
@@ -1244,5 +1254,17 @@ Proof.
       [ pairwise | transitivity g1; [ symmetry; exact Hg | pairwise ] ] ].
 Qed.
 
+Hint Resolve rel_exp_nat_beta_succ : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve valid_exp_zero : mctt.
+#[export]
+Hint Resolve rel_exp_succ_cong : mctt.
+#[export]
+Hint Resolve rel_exp_natrec_cong : mctt.
+#[export]
+Hint Resolve rel_exp_nat_beta_zero : mctt.
 #[export]
 Hint Resolve rel_exp_nat_beta_succ : mctt.

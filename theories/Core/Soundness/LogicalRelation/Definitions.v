@@ -7,10 +7,14 @@ From Mctt.Core.Semantic Require Export PER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
 
-Import Domain_Notations Wk_Notations.
+Import Domain_Notations Wk_Notations Fixed_Notations.
+
 Global Open Scope predicate_scope.
 
 Generalizable All Variables.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Notation "'glu_typ_pred_args'" := (Tcons ctx (Tcons typ Tnil)).
 Notation "'glu_typ_pred'" := (predicate glu_typ_pred_args).
@@ -44,19 +48,18 @@ Inductive glu_nat : ctx -> exp -> domain -> Prop :=
      (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ℕ) ->
      glu_nat Γ M ⇑ a m }.
 
-#[export]
 Hint Constructors glu_nat : mctt.
 
 Definition nat_glu_typ_pred i : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ℕ : Type@i.
-Arguments nat_glu_typ_pred i Γ A/.
+#[global] Arguments nat_glu_typ_pred i Γ A/.
 
 Definition nat_glu_exp_pred i : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® nat_glu_typ_pred i /\ glu_nat Γ M m.
-Arguments nat_glu_exp_pred i Γ A M m/.
+#[global] Arguments nat_glu_exp_pred i Γ A M m/.
 
 Definition neut_glu_typ_pred i a : glu_typ_pred :=
   fun Γ A => Γ ⊢ A : Type@i /\
             (forall Δ φ A', Δ ⊢k φ : Γ -> Rne a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Type@i).
-Arguments neut_glu_typ_pred i a Γ A/.
+#[global] Arguments neut_glu_typ_pred i a Γ A/.
 
 Variant neut_glu_exp_pred i a : glu_exp_pred :=
 | mk_neut_glu_exp_pred :
@@ -105,11 +108,10 @@ Variant pi_glu_exp_pred i
          exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N] ® mn ∈ OEl _ equiv_n) ->
      Γ ⊢ M : A ® m ∈ pi_glu_exp_pred i IR IP IEl elem_rel OEl }.
 
-#[export]
 Hint Constructors neut_glu_exp_pred pi_glu_typ_pred pi_glu_exp_pred : mctt.
 
 Definition univ_glu_typ_pred j i : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Type@j :  Type@i.
-Arguments univ_glu_typ_pred j i Γ A/.
+#[global] Arguments univ_glu_typ_pred j i Γ A/.
 Transparent univ_glu_typ_pred.
 
 Section Gluing.
@@ -123,8 +125,7 @@ Section Gluing.
         Γ ⊢ A ≈ Type@j : Type@i /\
         Γ ⊢ M ® glu_univ_typ_rec lt_j_i m.
 
-  #[global]
-  Arguments univ_glu_exp_pred' {j} lt_j_i Γ A M m/.
+#[global] Arguments univ_glu_exp_pred' {j} lt_j_i Γ A M m/.
 
   Inductive glu_univ_elem_core : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
   | glu_univ_elem_core_univ :
@@ -166,7 +167,6 @@ Section Gluing.
           DG ⇑ a b ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
 End Gluing.
 
-#[export]
 Hint Constructors glu_univ_elem_core : mctt.
 
 Equations glu_univ_elem (i : nat) : glu_typ_pred -> glu_exp_pred -> domain -> Prop by wf i :=
@@ -174,13 +174,13 @@ Equations glu_univ_elem (i : nat) : glu_typ_pred -> glu_exp_pred -> domain -> Pr
 
 Definition glu_univ_typ (i : nat) (a : domain) : glu_typ_pred :=
   fun Γ A => exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El /\ Γ ⊢ A ® P.
-Arguments glu_univ_typ i a Γ A/.
+#[global] Arguments glu_univ_typ i a Γ A/.
 
 Definition univ_glu_exp_pred j i : glu_exp_pred :=
     fun Γ A M m =>
       Γ ⊢ M : A /\ Γ ⊢ A ≈ Type@j : Type@i /\
         Γ ⊢ M ® glu_univ_typ j m.
-Arguments univ_glu_exp_pred j i Γ A M m/.
+#[global] Arguments univ_glu_exp_pred j i Γ A M m/.
 
 Section GluingInduction.
   Hypothesis
@@ -263,7 +263,6 @@ Variant glu_elem_bot i a Γ A M m : Prop :=
     Dom m ≈ m ∈ per_bot ->
     (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : A[φ]ʷ) ->
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a.
-#[export]
 Hint Constructors glu_elem_bot : mctt.
 
 Variant glu_elem_top i a Γ A M m : Prop :=
@@ -274,7 +273,6 @@ Variant glu_elem_top i a Γ A M m : Prop :=
     Dom ⇓ a m ≈ ⇓ a m ∈ per_top ->
     (forall Δ φ w, Δ ⊢k φ : Γ -> Rnf ⇓ a m in length Δ ↘ w -> Δ ⊢ M[φ]ʷ ≈ w : A[φ]ʷ) ->
     Γ ⊢ M : A ® m ∈ glu_elem_top i a.
-#[export]
 Hint Constructors glu_elem_top : mctt.
 
 Variant glu_typ_top i a Γ A : Prop :=
@@ -283,7 +281,6 @@ Variant glu_typ_top i a Γ A : Prop :=
     Dom a ≈ a ∈ per_top_typ ->
     (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Type@i) ->
     Γ ⊢ A ® glu_typ_top i a.
-#[export]
 Hint Constructors glu_typ_top : mctt.
 
 Variant glu_rel_typ_with_sub i Δ A σ ρ : Prop :=
@@ -296,7 +293,7 @@ Variant glu_rel_typ_with_sub i Δ A σ ρ : Prop :=
 
 Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢s σ : ⋅.
-Arguments nil_glu_sub_pred Δ σ ρ/.
+#[global] Arguments nil_glu_sub_pred Δ σ ρ/.
 
 (** The parameters are ordered differently from the Agda version
     so that we can return [glu_sub_pred]. *)
@@ -312,10 +309,13 @@ Variant cons_glu_sub_pred i Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
         Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }.
 
+(** As with [wf_ctx_empty], the base case carries what the judgment is relative
+    to: without it, [⊢ ⋅] would not follow ([glu_ctx_env_wf_ctx]). *)
 Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_nil :
   `{ forall Sb,
         Sb <∙> nil_glu_sub_pred ->
+        wf_gctx gc_deps gc_stack ->
         EG ⋅ ∈ glu_ctx_env ↘ Sb }
 | glu_ctx_env_cons :
   `{ forall i TSb Sb,
@@ -337,7 +337,7 @@ Variant glu_rel_exp_with_sub i Δ M A σ ρ : Prop :=
         glu_rel_exp_with_sub i Δ M A σ ρ }.
 
 Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
-Arguments glu_rel_ctx Γ/.
+#[global] Arguments glu_rel_ctx Γ/.
 
 Definition glu_rel_exp Γ M A : Prop :=
   exists Sb,
@@ -346,7 +346,7 @@ Definition glu_rel_exp Γ M A : Prop :=
       forall Δ σ ρ,
         Δ ⊢s σ ® ρ ∈ Sb ->
         glu_rel_exp_with_sub i Δ M A σ ρ.
-Arguments glu_rel_exp Γ M A/.
+#[global] Arguments glu_rel_exp Γ M A/.
 
 (** There is no [Γ ⊩s $ τ : Γ'], and the fundamental theorem has two parts, not
     three: a gluing predicate is indexed by a *value*, and
@@ -357,3 +357,72 @@ Arguments glu_rel_exp Γ M A/.
 
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
+
+End Fixed_GCtx.
+
+Notation "'glu_typ_pred_args'" := (Tcons ctx (Tcons typ Tnil)).
+Notation "'glu_typ_pred'" := (predicate glu_typ_pred_args).
+Notation "'glu_typ_pred_equivalence'" := (@predicate_equivalence glu_typ_pred_args) (only parsing).
+Notation "Γ ⊢ A ® R" := ((R Γ A : (Prop : Type)) : (Prop : (Type : Type))) (at level 70, A at level 69, R constr).
+Notation "'glu_exp_pred_args'" := (Tcons ctx (Tcons typ (Tcons exp (Tcons domain Tnil)))).
+Notation "'glu_exp_pred'" := (predicate glu_exp_pred_args).
+Notation "'glu_exp_pred_equivalence'" := (@predicate_equivalence glu_exp_pred_args) (only parsing).
+Notation "Γ ⊢ M : A ® m ∈ R" := (R Γ A M m : (Prop : (Type : Type))) (at level 70, M at level 69, m at level 69, R constr).
+Notation "'glu_sub_pred_args'" := (Tcons ctx (Tcons sub (Tcons env Tnil))).
+Notation "'glu_sub_pred'" := (predicate glu_sub_pred_args).
+Notation "'glu_sub_pred_equivalence'" := (@predicate_equivalence glu_sub_pred_args) (only parsing).
+Notation "Γ ⊢s σ ® ρ ∈ R" := ((R Γ σ ρ : Prop) : (Prop : (Type : Type))) (at level 70, σ at level 69, ρ at level 69, R constr).
+Notation "'DG' a ∈ R ↘ P ↘ El" := (R P El a : ((Prop : Type) : (Type : Type))) (at level 70, a at level 69, R constr, P constr, El constr).
+Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : Type))) (at level 70, A at level 69, R constr, Sb constr).
+#[export]
+Hint Constructors glu_nat : mctt.
+#[export]
+Hint Constructors neut_glu_exp_pred pi_glu_typ_pred pi_glu_exp_pred : mctt.
+#[export]
+Hint Constructors glu_univ_elem_core : mctt.
+#[export]
+Hint Constructors glu_elem_bot : mctt.
+#[export]
+Hint Constructors glu_elem_top : mctt.
+#[export]
+Hint Constructors glu_typ_top : mctt.
+Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
+Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
+
+(** [induction H using glu_univ_elem_ind] no longer applies, for the reason
+    [per_univ_elem_induction] explains.  This does what it did. *)
+Ltac glu_induction_hintro := let H := fresh "H" in intro H.
+
+Ltac glu_univ_elem_induction_core HH ih :=
+  lazymatch type of HH with
+  | glu_univ_elem ?i ?P ?El ?a =>
+      repeat match goal with
+             | Hd : ?T |- _ =>
+                 lazymatch Hd with HH => fail | i => fail | P => fail | El => fail | a => fail | _ => idtac end;
+                 lazymatch T with
+                 | context [i] => revert Hd | context [P] => revert Hd
+                 | context [El] => revert Hd | context [a] => revert Hd
+                 end
+             end;
+      revert HH; revert i P El a;
+      refine (glu_univ_elem_ind _ _ _ _ _);
+      [ do 5 intro; do 3 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
+      | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro ]; cbv beta
+  end.
+
+(** As [induction H using glu_univ_elem_ind]: the hypothesis on the motive at
+    the domain of a [Π] is [IHH]; those under a binder are [H]s, as
+    [induction] does not see them as inductive hypotheses. *)
+Ltac glu_univ_elem_induction H :=
+  let IHn := fresh "IH" H in
+  let HH := fresh "Hglue" in
+  rename H into HH;
+  glu_univ_elem_induction_core HH ltac:(idtac; let n := fresh IHn in intro n).
+
+(** As [induction 1 using glu_univ_elem_ind]. *)
+Ltac glu_univ_elem_induction1 :=
+  intros until 1;
+  match goal with
+  | H : glu_univ_elem _ _ _ _ |- _ =>
+      glu_univ_elem_induction_core H ltac:(idtac; let n := fresh "IH" in intro n)
+  end.

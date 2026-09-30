@@ -31,13 +31,17 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import ContextCases LogicalRelation UniverseCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** The extended context PER of [Δ ▹ A], read off a semantic type judgment: this
     is [per_ctx_env_extend] fed by the [Id] instance of [rel_exp_under_ctx_simple],
     and it is the
     first step of every proof below. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma per_ctx_env_of_typ : forall {Δ A i env_relΔ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     Δ ⊨ A ≈ A : Type@i ->
@@ -269,8 +273,9 @@ Proof.
   (** Both projections of [⟪q ψ⟫ ρ] are conversions, so nothing has to be
       rewritten below: the goals are stated about [⟪q ψ⟫ ρ] and [exact] sees
       through to [⟪ψ⟫ (ρ ↯)] and to [ρ 0]. *)
+  split; [ typeclasses eauto |].
   intros ρ ρ' [Htail Hhead].
-  apply per_env_extend_intro.
+  apply per_env_extend_intro; rewrite ?eval_wk_q_zero; rewrite ?eval_wk_q_tail by typeclasses eauto.
   - exact (Hψ _ _ Htail).
   - destruct (Hcom _ _ Htail) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hchain].
     rewrite exp_sub_of_wk in Ha1, Ha4.
@@ -518,6 +523,7 @@ Proof.
       determinism of substitution evaluation ([env_eq], not [eq]) links the two
       chains. *)
   destruct (Hσ _ _ HΓA' _ Hshift _ _ (Hψ _ _ Hρ)) as [z1 y2 y3 z4 Hz1 Hy2 Hy3 Hz4 Hbtails].
+  rewrite ?eval_wk_shift in *.
   assert (Heq : env_eq y1 z1) by (eapply functional_eval_sub; eassumption).
   assert (Hy12 : Dom y1 ≈ y2 ∈ env_relΔ) by (rewrite Heq; pairwise).
   (** The three instantiations of the type judgment.  The first is the one the
@@ -541,12 +547,12 @@ Proof.
   assert (Hh : Dom (⟪ψ⟫ ρ 0) ≈ (⟪ψ⟫ ρ' 0) ∈ R)
     by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
   assert (Hheads : rel_chain R ([ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)]))
-    by (apply rel_chain_4_of_2; [ solve_chain_PER | exact Hh ]).
+    by (apply rel_chain_4_of_2; [ solve_chain_PER | rewrite <- !(eval_wk_app ψ); exact Hh ]).
   apply (mk_rel_sub (x1 ↦ (ρ (ψ 0))) (y1 ↦ (ρ (ψ 0)))
                     (y4 ↦ (ρ' (ψ 0))) (x4 ↦ (ρ' (ψ 0))));
     [ apply eval_sub_wk_q; eassumption
-    | apply eval_sub_q; eassumption
-    | apply eval_sub_q; eassumption
+    | rewrite <- (eval_wk_app ψ); apply eval_sub_q; eassumption
+    | rewrite <- (eval_wk_app ψ); apply eval_sub_q; eassumption
     | apply eval_sub_wk_q; eassumption
     | ].
   (** [Hdchain] is the bridge: after [functional_eval_rewrite_clear] its values
@@ -616,6 +622,7 @@ Proof.
       are the tails of [⟦q σ⟧(ρ ↦ c)] and [⟦q σ'⟧(ρ' ↦ c')]. *)
   pose proof (rel_wk_shift HΓ3 HΓA) as Hshift.
   destruct (Hσ _ _ HΓA _ Hshift _ _ Hpair) as [s u2 u3 s' Hs Hu2 Hu3 Hs' Hstails].
+  rewrite ?eval_wk_shift in *.
   assert (Heq2 : env_eq ρσ u2) by (eapply functional_eval_sub; eassumption).
   assert (Heq3 : env_eq ρ'σ' u3) by (eapply functional_eval_sub; eassumption).
   assert (Htails : rel_chain env_relΔ ([s; ρσ; ρ'σ'; s']))
@@ -1015,3 +1022,6 @@ Proof.
   split; [| eassumption ].
   etransitivity; [ eassumption | symmetry; eassumption ].
 Qed.
+
+End Fixed_GCtx.
+

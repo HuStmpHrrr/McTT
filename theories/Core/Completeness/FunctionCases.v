@@ -38,7 +38,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import
   ContextCases LogicalRelation SubstitutionCases UniverseCases VariableCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** ** The Type Judgment of a Π
@@ -57,6 +57,10 @@ Import Wk_Notations.
     [q σ] is stated at, and the inner one, which is what [per_pi_iff] must be
     applied with — the middle link of the type chain being
     [Π a2 ρσ B ≈ Π a3 ρ'σ' B']. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma rel_typ_of_pi : forall {Γ A A' i B B'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ▹ A ⊨ B ≈ B' : Type@i ->
@@ -122,7 +126,6 @@ Proof.
   eapply rel_typ_implies_rel_exp; eassumption.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_pi_cong : mctt.
 
 (** ** λ-Congruence
@@ -164,7 +167,6 @@ Proof.
   - econstructor; [ apply eval_app_fn; exact Hp1 | apply eval_app_fn; exact Hp2 | exact Hp ].
 Qed.
 
-#[export]
 Hint Resolve rel_exp_fn_cong : mctt.
 
 (** ** Application Congruence
@@ -272,7 +274,6 @@ Proof.
     | apply (per_head_of_args Hcod n3 n4 n2 p3 Hn34 Hn2p3 Hn24); exact Hu ].
 Qed.
 
-#[export]
 Hint Resolve rel_exp_app_cong : mctt.
 
 (** ** β
@@ -397,7 +398,6 @@ Proof.
   merge_rel_chain Hlink1 Hmerge2 g2.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_pi_beta : mctt.
 
 (** ** η
@@ -519,5 +519,17 @@ Proof.
       | exact Hrr' ].
 Qed.
 
+Hint Resolve rel_exp_fn_eta : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve rel_exp_pi_cong : mctt.
+#[export]
+Hint Resolve rel_exp_fn_cong : mctt.
+#[export]
+Hint Resolve rel_exp_app_cong : mctt.
+#[export]
+Hint Resolve rel_exp_pi_beta : mctt.
 #[export]
 Hint Resolve rel_exp_fn_eta : mctt.

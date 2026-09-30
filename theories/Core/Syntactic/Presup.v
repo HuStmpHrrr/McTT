@@ -205,7 +205,7 @@ Ltac gen_presup1 H :=
       let HA' := fresh "HA'" in
       pose proof presup_subtyp_types H as [i [HA HA']];
       try gen_core_presup HA
-  | wf_sub_eq _ _ _ _ _ =>
+  | wf_sub_eq _ _ _ _ _ _ =>
       (** The two projections of [wf_sub_eq]; see [saturate_sub_eq]. *)
       let Hσ := fresh "Hσ" in
       let Hσ' := fresh "Hσ'" in

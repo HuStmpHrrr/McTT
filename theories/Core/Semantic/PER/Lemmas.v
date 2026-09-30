@@ -4,8 +4,12 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import PER.Chain PER.CoreTactics PER.Definitions.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import ListNotations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Add Parametric Morphism R0 `(R0_morphism : Proper _ ((@relation_equivalence domain) ==> (@relation_equivalence domain)) R0) A ρ A' ρ' : (rel_mod_eval R0 A ρ A' ρ')
     with signature (@relation_equivalence domain) ==> iff as rel_mod_eval_morphism.
@@ -31,7 +35,6 @@ Proof.
   destruct_conjs; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_bot_sym : mctt.
 
 Lemma per_bot_trans : forall m n l,
@@ -45,11 +48,9 @@ Proof.
   functional_read_rewrite_clear; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_bot_trans : mctt.
 
-#[export]
-Instance per_bot_PER : PER per_bot.
+#[local] Instance per_bot_PER : PER per_bot.
 Proof.
   split.
   - eauto using per_bot_sym.
@@ -62,7 +63,6 @@ Proof.
   intros ? ?. repeat econstructor.
 Qed.
 
-#[export]
 Hint Resolve var_per_bot : mctt.
 
 Lemma per_top_sym : forall m n,
@@ -74,7 +74,6 @@ Proof.
   destruct_conjs; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_top_sym : mctt.
 
 Lemma per_top_trans : forall m n l,
@@ -88,11 +87,9 @@ Proof.
   functional_read_rewrite_clear; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_top_trans : mctt.
 
-#[export]
-Instance per_top_PER : PER per_top.
+#[local] Instance per_top_PER : PER per_top.
 Proof.
   split.
   - eauto using per_top_sym.
@@ -109,7 +106,6 @@ Proof.
   eexists; split; constructor; eassumption.
 Qed.
 
-#[export]
 Hint Resolve per_bot_then_per_top : mctt.
 
 Lemma per_top_typ_sym : forall m n,
@@ -121,7 +117,6 @@ Proof.
   destruct_conjs; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_top_typ_sym : mctt.
 
 Lemma per_top_typ_trans : forall m n l,
@@ -135,11 +130,9 @@ Proof.
   functional_read_rewrite_clear; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_top_typ_trans : mctt.
 
-#[export]
-Instance per_top_typ_PER : PER per_top_typ.
+#[local] Instance per_top_typ_PER : PER per_top_typ.
 Proof.
   split.
   - eauto using per_top_typ_sym.
@@ -153,7 +146,6 @@ Proof.
   induction 1; econstructor; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve per_nat_sym : mctt.
 
 Lemma per_nat_trans : forall m n l,
@@ -165,11 +157,9 @@ Proof.
   induction H; inversion_clear 1; econstructor; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve per_nat_trans : mctt.
 
-#[export]
-Instance per_nat_PER : PER per_nat.
+#[local] Instance per_nat_PER : PER per_nat.
 Proof.
   split.
   - eauto using per_nat_sym.
@@ -184,7 +174,6 @@ Proof.
   econstructor; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve per_ne_sym : mctt.
 
 Lemma per_ne_trans : forall m n l,
@@ -197,11 +186,9 @@ Proof.
   econstructor; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve per_ne_trans : mctt.
 
-#[export]
-Instance per_ne_PER : PER per_ne.
+#[local] Instance per_ne_PER : PER per_ne.
 Proof.
   split.
   - eauto using per_ne_sym.
@@ -214,7 +201,7 @@ Proof.
   simpl.
   intros R R' HRR'.
   split; intros Horig; [gen R' | gen R];
-    induction Horig using per_univ_elem_ind; basic_per_univ_elem_econstructor; eauto;
+    per_univ_elem_induction Horig; basic_per_univ_elem_econstructor; eauto;
     try (etransitivity; [symmetry + idtac|]; eassumption);
     intros;
     destruct_rel_mod_eval;
@@ -264,6 +251,42 @@ Proof.
   mauto.
 Qed.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance rel_mod_eval_morphism_Proper.
+#[export] Existing Instance rel_mod_app_morphism_Proper.
+#[export]
+Hint Resolve per_bot_sym : mctt.
+#[export]
+Hint Resolve per_bot_trans : mctt.
+#[export] Existing Instance per_bot_PER.
+#[export]
+Hint Resolve var_per_bot : mctt.
+#[export]
+Hint Resolve per_top_sym : mctt.
+#[export]
+Hint Resolve per_top_trans : mctt.
+#[export] Existing Instance per_top_PER.
+#[export]
+Hint Resolve per_bot_then_per_top : mctt.
+#[export]
+Hint Resolve per_top_typ_sym : mctt.
+#[export]
+Hint Resolve per_top_typ_trans : mctt.
+#[export] Existing Instance per_top_typ_PER.
+#[export]
+Hint Resolve per_nat_sym : mctt.
+#[export]
+Hint Resolve per_nat_trans : mctt.
+#[export] Existing Instance per_nat_PER.
+#[export]
+Hint Resolve per_ne_sym : mctt.
+#[export]
+Hint Resolve per_ne_trans : mctt.
+#[export] Existing Instance per_ne_PER.
+#[export] Existing Instance per_univ_elem_morphism_iff_Proper.
+#[export] Existing Instance per_univ_elem_morphism_relation_equivalence_Proper.
+#[export] Existing Instance rel_typ_morphism_Proper.
 Ltac rewrite_relation_equivalence_left :=
   repeat match goal with
     | H : ?R1 <~> ?R2 |- _ =>
@@ -295,16 +318,26 @@ Ltac apply_relation_equivalence :=
   rewrite_relation_equivalence_left;
   clear_relation_equivalence.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 (** [apply_relation_equivalence] only ever *rewrites*, and [setoid_rewrite] needs
     the relation to be rewritable in place.  When both sides of the [<~>] are
     applications — as the head relations [head_rel _ _ D] of a context PER are,
     for two different witnesses [D] — the conclusion is left untouched.  This
     closes such a conclusion from the biconditional directly. *)
+End Fixed_GCtx.
+
 Ltac use_relation_equivalence :=
   match goal with
   | H : ?R1 <~> ?R2 |- ?R1 _ _ => apply H
   | H : ?R1 <~> ?R2 |- ?R2 _ _ => apply H
   end.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma per_univ_elem_right_irrel : forall i i' R a b R' b',
     DF a ≈ b ∈ per_univ_elem i ↘ R ->
@@ -315,7 +348,7 @@ Proof.
   intros * Horig.
   remember a as a' in |- *.
   gen a' b' R'.
-  induction Horig using per_univ_elem_ind; intros * Heq Hright;
+  per_univ_elem_induction Horig; intros * Heq Hright;
     subst; basic_invert_per_univ_elem Hright; unfold per_univ;
     intros;
     apply_relation_equivalence;
@@ -330,6 +363,8 @@ Proof.
       (destruct_rel_mod_eval; destruct_rel_mod_app; functional_eval_rewrite_clear;
        econstructor; intuition).
 Qed.
+
+End Fixed_GCtx.
 
 #[local]
 Ltac per_univ_elem_right_irrel_assert1 :=
@@ -346,6 +381,10 @@ Ltac per_univ_elem_right_irrel_assert1 :=
 #[local]
 Ltac per_univ_elem_right_irrel_assert := repeat per_univ_elem_right_irrel_assert1.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 Lemma per_univ_elem_sym : forall i R a b,
     DF a ≈ b ∈ per_univ_elem i ↘ R ->
     DF b ≈ a ∈ per_univ_elem i ↘ R /\
@@ -354,7 +393,7 @@ Lemma per_univ_elem_sym : forall i R a b,
           Dom m' ≈ m ∈ R).
 Proof.
   simpl.
-  induction 1 using per_univ_elem_ind; subst.
+  per_univ_elem_induction1; subst.
   - split.
     + apply per_univ_elem_core_univ'; firstorder.
     + intros.
@@ -431,6 +470,8 @@ Proof.
   eauto using per_univ_elem_right_irrel.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac do_per_univ_elem_irrel_assert1 :=
   let tactic_error o1 o2 := fail 2 "per_univ_elem_irrel biconditional between" o1 "and" o2 "cannot be solved" in
   match goal with
@@ -470,6 +511,10 @@ Ltac handle_per_univ_elem_irrel :=
   apply_relation_equivalence;
   clear_dups.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 Lemma per_univ_elem_trans : forall i R a1 a2,
     per_univ_elem i R a1 a2 ->
     (forall j a3,
@@ -480,7 +525,7 @@ Lemma per_univ_elem_trans : forall i R a1 a2,
           R m2 m3 ->
           R m1 m3).
 Proof.
-  induction 1 using per_univ_elem_ind;
+  per_univ_elem_induction1;
     [> split;
      [ intros * HT2; basic_invert_per_univ_elem HT2
      | intros * HTR1 HTR2; apply_relation_equivalence ] ..]; mauto.
@@ -548,24 +593,21 @@ Proof.
   firstorder.
 Qed.
 
-#[export]
-Instance per_univ_PER {i R} : PER (per_univ_elem i R).
+#[local] Instance per_univ_PER {i R} : PER (per_univ_elem i R).
 Proof.
   split.
   - auto using per_univ_sym.
   - eauto using per_univ_trans.
 Qed.
 
-#[export]
-Instance per_univ_PER' {i} : PER (per_univ i).
+#[local] Instance per_univ_PER' {i} : PER (per_univ i).
 Proof.
   split.
   - auto using per_univ_sym'.
   - eauto using per_univ_trans'.
 Qed.
 
-#[export]
-Instance per_elem_PER {i R a b} `(H : per_univ_elem i R a b) : PER R.
+#[local] Instance per_elem_PER {i R a b} `(H : per_univ_elem i R a b) : PER R.
 Proof.
   split.
   - pose proof (fun m m' => per_elem_sym _ _ _ _ m m' H). eauto.
@@ -574,8 +616,7 @@ Qed.
 
 (** [per_elem_PER] off a *folded* chain, so that [solve_chain_PER] does not force
     a pair to be read off one first. *)
-#[export]
-Instance per_elem_chain_PER {i R l} `(H : rel_chain (per_univ_elem i R) l) : PER R.
+#[local] Instance per_elem_chain_PER {i R l} `(H : rel_chain (per_univ_elem i R) l) : PER R.
 Proof.
   destruct (rel_chain_shape _ _ H) as [a [b [l' ->]]].
   eapply per_elem_PER; pairwise.
@@ -636,12 +677,28 @@ Qed.
     in place.  This is the whole use a type judgment is ever put to, and by weak
     functionality it takes no anchor and loses nothing: every pair of the chain
     remains available, at [R], through [pairwise]. *)
+End Fixed_GCtx.
+
+#[export] Existing Instance per_univ_PER.
+#[export] Existing Instance per_univ_PER'.
+#[export] Existing Instance per_elem_PER.
+#[export] Existing Instance per_elem_chain_PER.
 Ltac functionalize_per_univ_chain H R :=
   apply per_univ_chain_functional in H; destruct H as [R H].
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 (** [pairwise] at a [per_univ i] goal, whose existential the refined chain no
     longer carries. *)
+End Fixed_GCtx.
+
 Ltac pairwise_univ := first [ pairwise | eexists; pairwise ].
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** The other half of weak functionality — that the output PER is *unique*, which
     is what makes [S ⊆_R ↘ R'] well defined.  A chain determines its [R'] from a
@@ -666,11 +723,17 @@ Qed.
     wanted, so both are tried.  [H] may be a [rel_chain] — [rel_chain_Proper] is
     what rewrites it — or a bare pair, either at the relation itself or under the
     [per_head] of a type whose values the anchor is about. *)
+End Fixed_GCtx.
+
 Ltac retype_rel_chain Htyp Hanchor H :=
   let Hiff := fresh "Hiff" in
   pose proof (per_univ_chain_rel_irrel Htyp Hanchor ltac:(solve_in)) as Hiff;
   first [ rewrite Hiff in H | rewrite <- Hiff in H ];
   clear Hiff.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** This lemma gets rid of the unnecessary PER premise. *)
 Lemma per_univ_elem_pi' :
@@ -689,10 +752,15 @@ Proof.
   typeclasses eauto.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac per_univ_elem_econstructor :=
   (repeat intro; hnf; eapply per_univ_elem_pi') + basic_per_univ_elem_econstructor.
 
-#[export]
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 Hint Resolve per_univ_elem_pi' : mctt.
 
 Lemma per_univ_elem_pi_clean_inversion : forall {i j a a' in_rel ρ ρ' B B' elem_rel},
@@ -730,23 +798,30 @@ Proof.
     intuition.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_univ_elem_pi' : mctt.
 Ltac invert_per_univ_elem H :=
   (unshelve eapply (per_univ_elem_pi_clean_inversion _) in H; shelve_unifiable; [eassumption |]; destruct H as [? []])
   + basic_invert_per_univ_elem H.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma per_univ_elem_cumu : forall i a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem (S i) ↘ R.
 Proof.
   simpl.
-  induction 1 using per_univ_elem_ind; subst;
+  per_univ_elem_induction1; subst;
     per_univ_elem_econstructor; eauto.
   intros.
   destruct_rel_mod_eval.
   econstructor; solve [eauto].
 Qed.
 
-#[export]
 Hint Resolve per_univ_elem_cumu : mctt.
 
 Lemma per_univ_elem_cumu_ge : forall i i' a0 a1 R,
@@ -757,7 +832,6 @@ Proof.
   induction 1; mautosolve.
 Qed.
 
-#[export]
 Hint Resolve per_univ_elem_cumu_ge : mctt.
 
 Lemma per_univ_elem_cumu_max_left : forall i j a0 a1 R,
@@ -830,7 +904,7 @@ Lemma per_subtyp_refl1 : forall a b i R,
     DF a ≈ b ∈ per_univ_elem i ↘ R ->
     Sub a <: b at i.
 Proof.
-  simpl; induction 1 using per_univ_elem_ind;
+  simpl; per_univ_elem_induction1;
     subst;
     mauto;
     destruct_all.
@@ -844,7 +918,6 @@ Proof.
     trivial.
 Qed.
 
-#[export]
 Hint Resolve per_subtyp_refl1 : mctt.
 
 Lemma per_subtyp_refl2 : forall a b i R,
@@ -856,7 +929,6 @@ Proof.
   eauto using per_subtyp_refl1.
 Qed.
 
-#[export]
 Hint Resolve per_subtyp_refl2 : mctt.
 
 Lemma per_subtyp_trans : forall a1 a2 i,
@@ -880,11 +952,9 @@ Proof.
       intuition.
 Qed.
 
-#[export]
 Hint Resolve per_subtyp_trans : mctt.
 
-#[export]
-Instance per_subtyp_trans_ins i : Transitive (per_subtyp i).
+#[local] Instance per_subtyp_trans_ins i : Transitive (per_subtyp i).
 Proof.
   eauto using per_subtyp_trans.
 Qed.
@@ -908,7 +978,6 @@ Proof.
   lia.
 Qed.
 
-#[export]
 Hint Resolve per_subtyp_cumu : mctt.
 
 Lemma per_subtyp_cumu_left : forall a1 a2 i j,
@@ -1023,6 +1092,23 @@ Proof.
   eauto using per_ctx_env_right_irrel.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_univ_elem_cumu : mctt.
+#[export]
+Hint Resolve per_univ_elem_cumu_ge : mctt.
+#[export]
+Hint Resolve per_subtyp_refl1 : mctt.
+#[export]
+Hint Resolve per_subtyp_refl2 : mctt.
+#[export]
+Hint Resolve per_subtyp_trans : mctt.
+#[export] Existing Instance per_subtyp_trans_ins.
+#[export]
+Hint Resolve per_subtyp_cumu : mctt.
+#[export] Existing Instance per_ctx_env_morphism_iff_Proper.
+#[export] Existing Instance per_ctx_env_morphism_relation_equivalence_Proper.
 Ltac do_per_ctx_env_irrel_assert1 :=
   let tactic_error o1 o2 := fail 3 "per_ctx_env_irrel equality between" o1 "and" o2 "cannot be solved" in
   match goal with
@@ -1061,6 +1147,10 @@ Ltac handle_per_ctx_env_irrel :=
   do_per_ctx_env_irrel_assert;
   apply_relation_equivalence;
   clear_dups.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma per_ctx_env_trans : forall Γ1 Γ2 R,
     DF Γ1 ≈ Γ2 ∈ per_ctx_env ↘ R ->
@@ -1118,16 +1208,14 @@ Proof.
   firstorder.
 Qed.
 
-#[export]
-Instance per_ctx_PER {R} : PER (per_ctx_env R).
+#[local] Instance per_ctx_PER {R} : PER (per_ctx_env R).
 Proof.
   split.
   - auto using per_ctx_sym.
   - eauto using per_ctx_trans.
 Qed.
 
-#[export]
-Instance per_env_PER {R Γ Δ} (H : per_ctx_env R Γ Δ) : PER R.
+#[local] Instance per_env_PER {R Γ Δ} (H : per_ctx_env R Γ Δ) : PER R.
 Proof.
   split.
   - pose proof (fun ρ ρ' => per_env_sym _ _ _ ρ ρ' H); auto.
@@ -1151,11 +1239,20 @@ Proof.
   typeclasses eauto.
 Qed.
 
-#[export]
 Hint Resolve per_ctx_env_cons' : mctt.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance per_ctx_PER.
+#[export] Existing Instance per_env_PER.
+#[export]
+Hint Resolve per_ctx_env_cons' : mctt.
 Ltac per_ctx_env_econstructor :=
   (repeat intro; hnf; eapply per_ctx_env_cons') + econstructor.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma per_ctx_env_cons_clean_inversion : forall {Γ Γ' env_relΓ A A' env_relΓA},
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ env_relΓ ->
@@ -1193,9 +1290,15 @@ Proof.
     handle_per_univ_elem_irrel; intuition.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac invert_per_ctx_env H :=
   (unshelve eapply (per_ctx_env_cons_clean_inversion _) in H; [eassumption | |]; destruct H as [? [? []]])
   + (inversion H; subst).
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** ** A Canonical Extended Context PER
 
@@ -1593,6 +1696,8 @@ Qed.
     heads are bridged.  The chain is of any length, because the substitution
     cases want four environments while the rules with a premise in an extended context
     want every extension of the four tails by either of the two heads. *)
+End Fixed_GCtx.
+
 Ltac destruct_per_univ_chain H :=
   apply per_univ_chain_functional in H;
   destruct H as [? H];
@@ -1604,10 +1709,16 @@ Ltac solve_per_head :=
   handle_per_univ_elem_irrel;
   pairwise.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 (** The peel is driven by the goal's syntactic shape, not by [first]: since
     [rel_chain R [x; y]] is *convertible* to [R x y], an unguarded
     [apply rel_chain_of_pair] would also fire on a link goal, and an unguarded
     [apply rel_chain_cons] would peel one step past the last link. *)
+End Fixed_GCtx.
+
 Ltac solve_per_env_extend_chain :=
   repeat
     match goal with
@@ -1615,6 +1726,10 @@ Ltac solve_per_env_extend_chain :=
     | |- rel_chain _ (_ :: _ :: _) => apply rel_chain_cons
     end;
   apply per_env_extend_intro'; first [ pairwise | solve_per_head ].
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma per_ctx_respects_length : forall {Γ Γ'},
     Exp Γ ≈ Γ' ∈ per_ctx ->
@@ -1712,11 +1827,9 @@ Proof.
     + solve_refl.
 Qed.
 
-#[export]
 Hint Resolve per_ctx_subtyp_trans : mctt.
 
-#[export]
-Instance per_ctx_subtyp_trans_ins : Transitive per_ctx_subtyp.
+#[local] Instance per_ctx_subtyp_trans_ins : Transitive per_ctx_subtyp.
 Proof.
   eauto using per_ctx_subtyp_trans.
 Qed.
@@ -1756,11 +1869,17 @@ Proof.
   first [ eassumption | use_relation_equivalence; eassumption ].
 Qed.
 
-#[export]
-Instance per_ctx_env_Proper {Γ Δ R} (H : EF Γ ≈ Δ ∈ per_ctx_env ↘ R) :
+#[local] Instance per_ctx_env_Proper {Γ Δ R} (H : EF Γ ≈ Δ ∈ per_ctx_env ↘ R) :
   Proper (env_eq ==> env_eq ==> iff) R.
 Proof.
   intros ρ1 ρ2 Heq ρ1' ρ2' Heq'.
   split; intros; eapply per_ctx_env_resp_env_eq;
     try eassumption; symmetry; eassumption.
 Qed.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_ctx_subtyp_trans : mctt.
+#[export] Existing Instance per_ctx_subtyp_trans_ins.
+#[export] Existing Instance per_ctx_env_Proper.

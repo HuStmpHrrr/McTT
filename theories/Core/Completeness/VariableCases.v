@@ -29,7 +29,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution SystemOpt.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** ** Semantic Weakening
@@ -43,6 +43,10 @@ Import Wk_Notations.
     [rel_wk_shift], which asks only for the two PERs — the tail's coming from [M]'s
     own judgment.  Stating it this way is what lets the η-rule use it, since no
     premise of that rule mentions [Γ] and so [⊨ Γ] is not available there. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma rel_exp_under_ctx_shift : forall {Γ C A M M' env_relΓC},
     EF Γ ▹ C ≈ Γ ▹ C ∈ per_ctx_env ↘ env_relΓC ->
     Γ ⊨ M ≈ M' : A ->
@@ -88,7 +92,6 @@ Proof.
     merge_rel_chain Hmchain Hnchain m2.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_under_ctx_shift : mctt.
 
 (** ** The Variable Case
@@ -159,5 +162,11 @@ Proof.
     exact (rel_exp_under_ctx_shift HΓBper (IH HΓ0)).
 Qed.
 
+Hint Resolve valid_exp_var : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve rel_exp_under_ctx_shift : mctt.
 #[export]
 Hint Resolve valid_exp_var : mctt.

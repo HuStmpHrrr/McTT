@@ -23,8 +23,12 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma rel_exp_of_typ_inversion : forall {Γ A A' i},
     Γ ⊨ A ≈ A' : Type@i ->
@@ -184,7 +188,6 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_of_typ : mctt.
 
 (** The semantic presupposition: a term judgment carries a type judgment inside
@@ -205,10 +208,18 @@ Proof.
   eapply rel_typ_implies_rel_exp; eassumption.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve rel_exp_of_typ : mctt.
 Ltac eexists_rel_exp_of_typ :=
   apply rel_exp_of_typ;
   eexists;
   eexists; [eassumption |].
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma valid_exp_typ : forall {i Γ},
     ⊨ Γ ->
@@ -226,7 +237,6 @@ Proof.
   apply rel_chain_4; assumption.
 Qed.
 
-#[export]
 Hint Resolve valid_exp_typ : mctt.
 
 (** Cumulativity acts on the chain member by member, which is [rel_chain_mono]
@@ -246,7 +256,6 @@ Proof.
   intros ? ? [R HR]; exists R; now apply per_univ_elem_cumu.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_cumu : mctt.
 
 (** Iterated, which is how a Π-type reconciles the level of its domain with that
@@ -260,5 +269,13 @@ Proof.
   induction 1; eauto using rel_exp_cumu.
 Qed.
 
+Hint Resolve rel_exp_cumu_ge : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve valid_exp_typ : mctt.
+#[export]
+Hint Resolve rel_exp_cumu : mctt.
 #[export]
 Hint Resolve rel_exp_cumu_ge : mctt.

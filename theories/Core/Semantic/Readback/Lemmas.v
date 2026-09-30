@@ -6,7 +6,7 @@ From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Core.Semantic.Readback Require Import Definitions.
 Import Domain_Notations.
 
-  Lemma functional_read : forall Θ Ξ,
+  Lemma functional_read : forall {Θ Ξ},
     (forall s m M1,
         Rnf m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
         forall M2,
@@ -26,28 +26,28 @@ Import Domain_Notations.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; (functional_eval_rewrite_clear; f_equal; solve [eauto]).
   Qed.
 
-  Corollary functional_read_nf : forall Θ Ξ s m M1 M2,
+  Corollary functional_read_nf : forall {Θ Ξ} s m M1 M2,
       Rnf m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
       Rnf m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
       M1 = M2.
   Proof.
-    intros Θ Ξ; pose proof (functional_read Θ Ξ); firstorder.
+    intros Θ Ξ; pose proof (@functional_read Θ Ξ); firstorder.
   Qed.
 
-  Lemma functional_read_ne : forall Θ Ξ s m M1 M2,
+  Lemma functional_read_ne : forall {Θ Ξ} s m M1 M2,
       Rne m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
       Rne m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
       M1 = M2.
   Proof.
-    intros Θ Ξ; pose proof (functional_read Θ Ξ); firstorder.
+    intros Θ Ξ; pose proof (@functional_read Θ Ξ); firstorder.
   Qed.
 
-  Lemma functional_read_typ : forall Θ Ξ s m M1 M2,
+  Lemma functional_read_typ : forall {Θ Ξ} s m M1 M2,
       Rtyp m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
       Rtyp m in Θ ⍮ Ξ ⍮ s ↘ M2 ->
       M1 = M2.
   Proof.
-    intros Θ Ξ; pose proof (functional_read Θ Ξ); firstorder.
+    intros Θ Ξ; pose proof (@functional_read Θ Ξ); firstorder.
   Qed.
 
 #[export]

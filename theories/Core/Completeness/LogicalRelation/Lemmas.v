@@ -5,18 +5,22 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness.LogicalRelation Require Import Definitions Tactics.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** Context PERs are only ever determined up to [<~>] ([per_ctx_env_right_irrel]),
     so every judgment must be transportable along it.  For [rel_wk] both
     arguments are relations on environments; for the other two layers only the
     result PER is. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Add Parametric Morphism φ : (rel_wk φ)
     with signature (@relation_equivalence env) ==> (@relation_equivalence env) ==> iff as rel_wk_morphism.
 Proof.
   intros R1 R1' H1 R2 R2' H2.
-  unfold rel_wk; split; intros H ρ ρ' Hρ; apply H2; apply H; now apply H1.
+  split; intros [Hm H]; split; auto; intros ρ ρ' Hρ; apply H2; apply H; now apply H1.
 Qed.
 
 Add Parametric Morphism M σ ρ ρσ M' σ' ρ' ρ'σ' : (rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ')
@@ -52,7 +56,6 @@ Proof.
   simpl; repeat split; eassumption.
 Qed.
 
-#[export]
 Hint Resolve rel_exp_implies_rel_typ : mctt.
 
 Lemma rel_typ_implies_rel_exp : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ' R},
@@ -66,7 +69,6 @@ Proof.
   intros; eexists; eassumption.
 Qed.
 
-#[export]
 Hint Resolve rel_typ_implies_rel_exp : mctt.
 
 (** The element PER of a type chain is a PER, which is the precondition of every
@@ -82,7 +84,6 @@ Proof.
   eauto using per_elem_PER.
 Qed.
 
-#[export]
 Hint Resolve rel_typ_elem_PER : mctt.
 
 (** * Semantic Weakenings
@@ -94,13 +95,12 @@ Hint Resolve rel_typ_elem_PER : mctt.
     [eval_wk_compose]) is a [reflexivity] — which is exactly what fails one layer up, for
     substitutions. *)
 
-(** [⟪wk_id⟫ ρ] is [fun x => ρ x], so this is the identity. *)
+(** [⟪wk_id⟫ ρ] is [ρ], so this is the identity. *)
 Lemma rel_wk_id : forall R, rel_wk wk_id R R.
 Proof.
-  intros R ρ ρ' H. exact H.
+  intros R; split; [ apply wk_mono_id |]; intros ρ ρ' H; rewrite !eval_wk_id; exact H.
 Qed.
 
-#[export]
 Hint Resolve rel_wk_id : mctt.
 
 (** A weakening acts contravariantly on environments, so the
@@ -110,7 +110,8 @@ Lemma rel_wk_compose : forall {φ ψ R R' R''},
     rel_wk φ R' R'' ->
     rel_wk (φ ⊙ ψ) R R''.
 Proof.
-  intros * Hψ Hφ ρ ρ' H.
+  intros * [Hψm Hψ] [Hφm Hφ]; split; [ apply wk_mono_compose; assumption |].
+  intros ρ ρ' H; rewrite !eval_wk_compose by assumption.
   exact (Hφ _ _ (Hψ _ _ H)).
 Qed.
 
@@ -121,7 +122,7 @@ Lemma rel_wk_shift : forall {Γ A R R'},
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
     rel_wk ↑ R' R.
 Proof.
-  intros * HΓ HΓA ρ ρ' H.
+  intros * HΓ HΓA; split; [ apply wk_mono_shift |]; intros ρ ρ' H; rewrite !eval_wk_shift.
   invert_per_ctx_env HΓA.
   apply_relation_equivalence.
   destruct H as [? ?].
@@ -170,7 +171,6 @@ Proof.
   eexists; econstructor; apply Equivalence_Reflexive.
 Qed.
 
-#[export]
 Hint Resolve sem_ctx_per_ctx_env : mctt.
 
 Corollary sem_ctx_per_ctx : forall {Γ},
@@ -180,7 +180,6 @@ Proof.
   intros * H. apply sem_ctx_per_ctx_env in H. exact H.
 Qed.
 
-#[export]
 Hint Resolve sem_ctx_per_ctx : mctt.
 
 (** * Semantic Weakenings are Semantic Substitutions
@@ -198,10 +197,12 @@ Lemma rel_sub_of_wk : forall {Δ ψ Γ},
     Δ ⊨w ψ : Γ ->
     Δ ⊨s (ι ψ) ≈ (ι ψ) : Γ.
 Proof.
-  intros * [env_relΔ [HΔ [env_relΓ [HΓ Hψ]]]].
+  intros * [env_relΔ [HΔ [env_relΓ [HΓ [Hψm Hψ]]]]].
   eexists_rel_sub.
-  intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
-  econstructor; try apply eval_sub_of_wk.
+  intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
+  apply mk_rel_sub with (ρσφ := ⟪ψ ⊙ φ⟫ ρ) (ρσ := ⟪ψ⟫ (⟪φ⟫ ρ)) (ρ'σ' := ⟪ψ⟫ (⟪φ⟫ ρ')) (ρ'σ'φ := ⟪ψ ⊙ φ⟫ ρ');
+    try (apply eval_sub_of_wk; try typeclasses eauto); try (apply wk_mono_compose; assumption); try assumption.
+  rewrite !eval_wk_compose by assumption.
   apply rel_chain_4_of_2; [ solve_chain_PER |].
   exact (Hψ _ _ (Hφ _ _ Hρ)).
 Qed.
@@ -216,7 +217,6 @@ Proof.
   apply rel_wk_id.
 Qed.
 
-#[export]
 Hint Resolve rel_sub_id : mctt.
 
 (** [⇑] as a weakening judgment — the form the weakening lemmas below, and
@@ -233,7 +233,6 @@ Proof.
   eapply rel_wk_shift; eassumption.
 Qed.
 
-#[export]
 Hint Resolve rel_wk_under_ctx_shift : mctt.
 
 Corollary rel_sub_shift : forall {Γ A},
@@ -244,7 +243,6 @@ Proof.
   apply (rel_sub_of_wk (rel_wk_under_ctx_shift H)).
 Qed.
 
-#[export]
 Hint Resolve rel_sub_shift : mctt.
 
 (** * Instantiation at the Identity
@@ -274,6 +272,7 @@ Proof.
   eexists_rel_sub.
   intros ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ wk_id (rel_wk_id _) _ _ Hρ) as [? ρσ ρ'σ' ? ? ? ? ? Hchain].
+  rewrite !eval_wk_id in *.
   exists ρσ, ρ'σ'.
   repeat split; try eassumption.
   pairwise.
@@ -404,6 +403,7 @@ Proof.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ' _ (rel_wk_compose Hφ Hψ) _ _ Hρ) as [a1 a2 ? a4 Ha1 Ha2 ? Ha4 Ha].
+  rewrite eval_wk_compose in Ha2 by (eapply rel_wk_mono; eassumption).
   destruct (Hσ _ _ HΓ _ Hψ _ _ (Hφ _ _ Hρ)) as [b1 b2 ? b4 Hb1 Hb2 ? Hb4 Hb].
   apply (mk_rel_sub a1 b1 b4 a4);
     [ rewrite sb_wk_wk; exact Ha1 | exact Hb1 | exact Hb4 | rewrite sb_wk_wk; exact Ha4 |].
@@ -438,12 +438,12 @@ Proof.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' ψ Hψ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ' _ Hψ _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
-  pose proof (rel_chain_map _ _ (eval_wk φ) Hφ _ Hchain) as Hchain'.
+  pose proof (rel_chain_map _ _ (eval_wk φ) (rel_wk_app _ _ _ Hφ) _ Hchain) as Hchain'.
   simpl in Hchain'.
   apply (mk_rel_sub ⟪φ⟫ v1 ⟪φ⟫ v2
                     ⟪φ⟫ v3 ⟪φ⟫ v4);
     [ rewrite sb_wk_wk_pre | | | rewrite sb_wk_wk_pre |];
-    try (apply eval_sub_wk_pre; eassumption).
+    try ((apply eval_sub_wk_pre; try typeclasses eauto); eassumption).
   exact Hchain'.
 Qed.
 
@@ -575,7 +575,9 @@ Proof.
   eexists_rel_sub.
   intros Γ' env_rel' HΓ' φ Hφ ρ ρ' Hρ.
   destruct (Hσ _ _ HΓ' _ Hφ _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
-  pose proof (rel_chain_map _ _ drop_env Hdrop _ Hchain) as Hchain'.
+  assert (Hdrop' : forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΔA -> Dom ρ↯ ≈ ρ'↯ ∈ env_relΔ)
+    by (intros; rewrite <- !eval_wk_shift; apply Hdrop; assumption).
+  pose proof (rel_chain_map _ _ drop_env Hdrop' _ Hchain) as Hchain'.
   simpl in Hchain'.
   apply (mk_rel_sub v1↯ v2↯ v3↯ v4↯);
     [ rewrite sb_wk_shift_pre | | | rewrite sb_wk_shift_pre |];
@@ -762,3 +764,27 @@ Proof.
   pose proof (rel_exp_under_ctx_sym H).
   eapply rel_exp_under_ctx_trans; eassumption.
 Qed.
+
+End Fixed_GCtx.
+
+#[export] Existing Instance rel_wk_morphism_Proper.
+#[export] Existing Instance rel_exp_morphism_Proper.
+#[export] Existing Instance rel_sub_morphism_Proper.
+#[export]
+Hint Resolve rel_exp_implies_rel_typ : mctt.
+#[export]
+Hint Resolve rel_typ_implies_rel_exp : mctt.
+#[export]
+Hint Resolve rel_typ_elem_PER : mctt.
+#[export]
+Hint Resolve rel_wk_id : mctt.
+#[export]
+Hint Resolve sem_ctx_per_ctx_env : mctt.
+#[export]
+Hint Resolve sem_ctx_per_ctx : mctt.
+#[export]
+Hint Resolve rel_sub_id : mctt.
+#[export]
+Hint Resolve rel_wk_under_ctx_shift : mctt.
+#[export]
+Hint Resolve rel_sub_shift : mctt.

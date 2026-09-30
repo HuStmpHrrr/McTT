@@ -6,7 +6,10 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Export Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
-Import Domain_Notations Wk_Notations.
+Import Domain_Notations Wk_Notations Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Add Parametric Morphism i a Γ A M : (glu_elem_bot i a Γ A M)
     with signature per_bot ==> iff as glu_elem_bot_morphism_iff4.
@@ -54,7 +57,6 @@ Proof.
   assert (Γ ⊢ A' ≈ V : Type@(max i j)) by mauto 4 using lift_exp_eq_max_right; mautosolve 4.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq : mctt.
 
 Lemma glu_univ_elem_typ_unique_upto_exp_eq_ge : forall {i j a P P' El El' Γ A A'},
@@ -69,7 +71,6 @@ Proof.
   replace j with (max i j) by lia; mautosolve 4.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq_ge : mctt.
 
 Lemma glu_univ_elem_typ_unique_upto_exp_eq' : forall {i a P El Γ A A'},
@@ -79,7 +80,6 @@ Lemma glu_univ_elem_typ_unique_upto_exp_eq' : forall {i a P El Γ A A'},
     Γ ⊢ A ≈ A' : Type@i.
 Proof. mautosolve 4. Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq' : mctt.
 
 Lemma glu_univ_elem_per_univ_elem_typ_escape : forall {i a a' elem_rel P P' El El' Γ A A'},
@@ -96,7 +96,6 @@ Proof.
   handle_functional_glu_univ_elem; mautosolve 4.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_per_univ_elem_typ_escape : mctt.
 
 Lemma glu_univ_elem_per_univ_typ_escape : forall {i a a' P P' El El' Γ A A'},
@@ -111,7 +110,6 @@ Proof.
   mauto 4.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_per_univ_typ_escape : mctt.
 
 Lemma glu_univ_elem_per_univ_typ_iff : forall {i a a' P P' El El'},
@@ -137,7 +135,6 @@ Proof.
   mauto.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_cumu_ge : mctt.
 
 Corollary glu_univ_elem_cumu_max_left : forall {i j a P El},
@@ -170,7 +167,7 @@ Section glu_univ_elem_cumulativity.
   Proof.
     simpl.
     intros * Hge Hglu Hglu'. gen El' P' j.
-    induction Hglu using glu_univ_elem_ind; repeat split; intros;
+    glu_univ_elem_induction Hglu; repeat split; intros;
       try assert (DF a ≈ a ∈ per_univ_elem j ↘ in_rel) by mauto 2;
       invert_glu_univ_elem Hglu';
       handle_functional_glu_univ_elem;
@@ -386,7 +383,7 @@ Lemma glu_univ_elem_per_subtyp_typ_escape : forall {i a a' P P' El El' Γ A A'},
 Proof.
   intros * Hsubtyp Hglu Hglu' HA HA'.
   gen A' A Γ. gen El' El P' P.
-  induction Hsubtyp using per_subtyp_ind; intros; subst;
+  induction Hsubtyp; intros; subst;
     saturate_refl_for per_univ_elem;
     invert_glu_univ_elem Hglu;
     handle_functional_glu_univ_elem;
@@ -450,7 +447,6 @@ Proof.
     mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_univ_elem_per_subtyp_typ_escape : mctt.
 
 Lemma glu_univ_elem_per_subtyp_trm_if : forall {i a a' P P' El El' Γ A A' M m},
@@ -464,7 +460,7 @@ Proof.
   intros * Hsubtyp Hglu Hglu' HA HA'.
   assert (Γ ⊢ A ⊆ A') by (eapply glu_univ_elem_per_subtyp_typ_escape; only 4: eapply glu_univ_elem_trm_typ; mauto).
   gen m M A' A. gen Γ. gen El' El P' P.
-  induction Hsubtyp using per_subtyp_ind; intros; subst;
+  induction Hsubtyp; intros; subst;
     saturate_refl_for per_univ_elem;
     invert_glu_univ_elem Hglu;
     handle_functional_glu_univ_elem;
@@ -557,7 +553,6 @@ Proof.
   eapply HEl; mauto.
 Qed.
 
-#[export]
 Hint Resolve mk_glu_rel_typ_with_sub' : mctt.
 
 Lemma mk_glu_rel_typ_with_sub'' : forall {i Δ A σ ρ a},
@@ -571,7 +566,6 @@ Proof.
   eapply mk_glu_rel_typ_with_sub'; mauto.
 Qed.
 
-#[export]
 Hint Resolve mk_glu_rel_typ_with_sub'' : mctt.
 
 Lemma mk_glu_rel_exp_with_sub' : forall {i Δ A M σ ρ a m},
@@ -586,7 +580,6 @@ Proof.
   eapply HEl; mauto.
 Qed.
 
-#[export]
 Hint Resolve mk_glu_rel_exp_with_sub' : mctt.
 
 Lemma mk_glu_rel_exp_with_sub'' : forall {i Δ A M σ ρ a m},
@@ -601,7 +594,6 @@ Proof.
   eapply mk_glu_rel_exp_with_sub'; mauto.
 Qed.
 
-#[export]
 Hint Resolve mk_glu_rel_exp_with_sub'' : mctt.
 
 Lemma glu_rel_exp_with_sub_implies_glu_rel_exp_sub_with_typ : forall {i Δ A M σ Γ ρ},
@@ -617,7 +609,6 @@ Proof.
   eapply glu_univ_elem_trm_typ; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_exp_sub_with_typ : mctt.
 
 Lemma glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : forall {i Δ A j σ ρ},
@@ -633,7 +624,6 @@ Proof.
   econstructor; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : mctt.
 
 Lemma glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : forall {Δ A j σ Γ ρ},
@@ -648,7 +638,6 @@ Proof.
   repeat split; try do 2 eexists; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 
 (** *** Lemmas for [glu_ctx_env] *)
@@ -660,7 +649,7 @@ Lemma glu_ctx_env_sub_resp_ctxsub : forall {Γ Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall {Δ Δ' σ ρ},
       Δ ⊢s σ ® ρ ∈ Sb ->
-      ⊢ Δ' ⊆ Δ ->
+      Δ' ⊆ Δ ->
       Δ' ⊢s σ ® ρ ∈ Sb.
 Proof.
   induction 1; intros * HSb Hctxsub;
@@ -680,10 +669,12 @@ Lemma glu_ctx_env_sub_resp_sub_eq : forall {Γ Sb},
       Δ ⊢s σ ≈ σ' : Γ ->
       Δ ⊢s σ' ® ρ ∈ Sb.
 Proof.
+  (** [gen_presup] misses [wf_sub_eq] (its pattern is one argument short), so
+      the two projections are taken by hand, here and below. *)
   induction 1; intros * HSb Hsubeq;
     apply_predicate_equivalence;
     simpl in *;
-    gen_presup Hsubeq;
+    (pose proof (wf_sub_eq_left _ _ _ _ _ _ Hsubeq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hsubeq) as Hσ');
     try eassumption.
   
   destruct_by_head cons_glu_sub_pred.
@@ -698,7 +689,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism Sb Γ (H : glu_ctx_env Sb Γ) Δ : (Sb Δ)
-    with signature wf_sub_eq Δ Γ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
+    with signature wf_sub_eq gc_deps gc_stack Δ Γ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
 Proof.
   split; intros; eapply glu_ctx_env_sub_resp_sub_eq; mauto 2 using wf_sub_eq_sym.
 Qed.
@@ -712,7 +703,7 @@ Lemma cons_glu_sub_pred_resp_wf_sub_eq : forall {i Γ A Sb Δ σ σ' ρ},
 Proof.
   intros * Hglu HA Heq Hσ.
   dependent destruction Hσ.
-  gen_presup Heq.
+  (pose proof (wf_sub_eq_left _ _ _ _ _ _ Heq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ _ Heq) as Hσ').
   assert (⊢ Γ ▹ A) by mauto 3.
   assert (Γ ▹ A ⊢s Wk : Γ) by mauto 3.
   assert (Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; mauto 3).
@@ -726,7 +717,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i Γ A Sb Δ (Hglu : EG Γ ∈ glu_ctx_env ↘ Sb) (HA : Γ ⊢ A : Type@i) : (cons_glu_sub_pred i Γ A Sb Δ)
-    with signature wf_sub_eq Δ (Γ ▹ A) ==> eq ==> iff as cons_glu_sub_pred_morphism_iff.
+    with signature wf_sub_eq gc_deps gc_stack Δ (Γ ▹ A) ==> eq ==> iff as cons_glu_sub_pred_morphism_iff.
 Proof.
   split; mauto using cons_glu_sub_pred_resp_wf_sub_eq, wf_sub_eq_sym.
 Qed.
@@ -774,7 +765,6 @@ Proof.
     eassumption.
 Qed.
 
-#[export]
 Hint Resolve glu_ctx_env_wf_ctx glu_ctx_env_sub_escape : mctt.
 
 Lemma glu_ctx_env_per_ctx_env : forall {Γ Sb},
@@ -785,7 +775,6 @@ Proof.
   eapply sem_ctx_per_ctx_env, completeness_fundamental_ctx; mauto 2.
 Qed.
 
-#[export]
 Hint Resolve glu_ctx_env_per_ctx_env : mctt.
 
 (** Syntactic context equality is not a judgment here, so this is stated at a
@@ -826,6 +815,44 @@ Proof.
   intros; split; eapply glu_ctx_env_resp_per_ctx_helper; eassumption.
 Qed.
 
+End Fixed_GCtx.
+
+#[export] Existing Instance glu_elem_bot_morphism_iff4_Proper.
+#[export] Existing Instance glu_elem_top_morphism_iff4_Proper.
+#[export]
+Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq : mctt.
+#[export]
+Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq_ge : mctt.
+#[export]
+Hint Resolve glu_univ_elem_typ_unique_upto_exp_eq' : mctt.
+#[export]
+Hint Resolve glu_univ_elem_per_univ_elem_typ_escape : mctt.
+#[export]
+Hint Resolve glu_univ_elem_per_univ_typ_escape : mctt.
+#[export]
+Hint Resolve glu_univ_elem_cumu_ge : mctt.
+#[export]
+Hint Resolve glu_univ_elem_per_subtyp_typ_escape : mctt.
+#[export]
+Hint Resolve mk_glu_rel_typ_with_sub' : mctt.
+#[export]
+Hint Resolve mk_glu_rel_typ_with_sub'' : mctt.
+#[export]
+Hint Resolve mk_glu_rel_exp_with_sub' : mctt.
+#[export]
+Hint Resolve mk_glu_rel_exp_with_sub'' : mctt.
+#[export]
+Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_exp_sub_with_typ : mctt.
+#[export]
+Hint Resolve glu_rel_exp_with_sub_implies_glu_rel_typ_with_sub : mctt.
+#[export]
+Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
+#[export] Existing Instance glu_ctx_env_sub_morphism_iff2_Proper.
+#[export] Existing Instance cons_glu_sub_pred_morphism_iff_Proper.
+#[export]
+Hint Resolve glu_ctx_env_wf_ctx glu_ctx_env_sub_escape : mctt.
+#[export]
+Hint Resolve glu_ctx_env_per_ctx_env : mctt.
 Ltac apply_functional_glu_ctx_env1 :=
   let tactic_error o1 o2 := fail 2 "functional_glu_ctx_env biconditional between" o1 "and" o2 "cannot be solved" in
   match goal with
@@ -848,6 +875,10 @@ Ltac handle_functional_glu_ctx_env :=
   apply_functional_glu_ctx_env;
   apply_predicate_equivalence;
   clear_dups.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_ctx_env_cons_clean_inversion : forall {Γ TSb A Sb},
   EG Γ ∈ glu_ctx_env ↘ TSb ->
@@ -872,13 +903,19 @@ Proof.
     econstructor; intuition.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac invert_glu_ctx_env H :=
   (unshelve eapply (glu_ctx_env_cons_clean_inversion _) in H; shelve_unifiable; [eassumption |];
    destruct H as [? [? []]])
   + dependent destruction H.
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+
 Lemma glu_ctx_env_subtyp_sub_if : forall Γ Γ' Sb Sb' Δ σ ρ,
-    ⊢ Γ ⊆ Γ' ->
+    Γ ⊆ Γ' ->
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     EG Γ' ∈ glu_ctx_env ↘ Sb' ->
     Δ ⊢s σ ® ρ ∈ Sb ->
@@ -904,9 +941,9 @@ Proof.
   rename El0 into El'.
   assert (exists tail_rel, EF Δ ≈ Δ ∈ per_ctx_env ↘ tail_rel) as [tail_rel] by mauto 3 using glu_ctx_env_per_ctx_env.
   assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  assert (⊢ Δ ▹ A' ⊆ Γ ▹ A) by mauto 3.
+  assert (Δ ▹ A' ⊆ Γ ▹ A) by mauto 3.
   econstructor; mauto; intuition.
-  1: eapply ctxsub_sub_cod; mauto 3.
+  1: eapply ctxsub_sub_cod with (Γ := Δ ▹ A'); mauto 3.
   assert (Δ ⊨ A' ⊆ A) as HAA' by mauto 3 using completeness_fundamental_subtyp.
   destruct (subtyp_under_ctx_simple HAA') as [env_relΔ [? [l Hsub]]].
   handle_per_ctx_env_irrel.
@@ -965,11 +1002,10 @@ Proof.
   rewrite exp_sub_shift_extend; eassumption.
 Qed.
 
-#[export]
 Hint Resolve cons_glu_sub_pred_helper : mctt.
 
 Lemma initial_env_glu_rel_exp : forall {Γ ρ Sb},
-    initial_env Γ ρ ->
+    initial_env_f Γ ρ ->
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊢s Id ® ρ ∈ Sb.
 Proof.
@@ -993,6 +1029,10 @@ Qed.
 
 (** *** Tactics for [glu_rel_*] *)
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve cons_glu_sub_pred_helper : mctt.
 Ltac destruct_glu_rel_by_assumption sub_glu_rel H :=
   repeat
     match goal with
@@ -1021,6 +1061,10 @@ Ltac destruct_glu_rel_typ_with_sub :=
         dependent destruction H
     end;
   unmark_all.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** *** Lemmas about [glu_rel_exp] *)
 
@@ -1066,12 +1110,18 @@ Proof.
   eapply glu_univ_elem_exp_conv; revgoals; mauto 3.
 Qed.
 
+End Fixed_GCtx.
+
 Ltac invert_glu_rel_exp H :=
   (unshelve eapply (glu_rel_exp_clean_inversion2 _ _) in H; shelve_unifiable; [eassumption | eassumption |];
    unfold glu_rel_exp_clean_inversion2_result in H)
   + (unshelve eapply (glu_rel_exp_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
      destruct H as [])
   + (inversion H; subst).
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_rel_exp_to_wf_exp : forall {Γ A M},
     Γ ⊩ M : A ->
@@ -1080,7 +1130,7 @@ Proof.
   intros * [Sb].
   destruct_conjs.
   assert (exists env_rel, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) as [env_rel] by mauto 3.
-  assert (exists ρ ρ', initial_env Γ ρ /\ initial_env Γ ρ' /\ Dom ρ ≈ ρ' ∈ env_rel) as [ρ] by mauto using per_ctx_then_per_env_initial_env.
+  assert (exists ρ ρ', initial_env_f Γ ρ /\ initial_env_f Γ ρ' /\ Dom ρ ≈ ρ' ∈ env_rel) as [ρ] by mauto using per_ctx_then_per_env_initial_env.
   destruct_conjs.
   functional_initial_env_rewrite_clear.
   assert (Γ ⊢s Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
@@ -1088,6 +1138,10 @@ Proof.
   assert (Γ ⊢ M[Id] : A[Id]) as HId by mauto 3 using glu_univ_elem_trm_escape.
   rewrite !exp_sub_id in HId; eassumption.
 Qed.
+
+Hint Resolve glu_rel_exp_to_wf_exp : mctt.
+
+End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_exp_to_wf_exp : mctt.

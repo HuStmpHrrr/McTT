@@ -5,7 +5,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
 
-  Lemma functional_eval : forall Θ Ξ,
+  Lemma functional_eval : forall {Θ Ξ},
     (forall M ρ m1,
         ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m1 ->
         forall m2,
@@ -36,41 +36,38 @@ Import Domain_Notations.
       try congruence; intuition congruence.
   Qed.
 
-  Corollary functional_eval_exp : forall Θ Ξ M ρ m1 m2,
+  Corollary functional_eval_exp : forall {Θ Ξ} M ρ m1 m2,
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m1 ->
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m2 ->
       m1 = m2.
   Proof.
-    intros Θ Ξ; pose proof (functional_eval Θ Ξ); firstorder.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); firstorder.
   Qed.
 
-  Corollary functional_eval_natrec : forall Θ Ξ A MZ MS m ρ r1 r2,
+  Corollary functional_eval_natrec : forall {Θ Ξ} A MZ MS m ρ r1 r2,
       ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
       ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
-    intros Θ Ξ; pose proof (functional_eval Θ Ξ); intuition.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
-  Corollary functional_eval_app : forall Θ Ξ m n r1 r2,
+  Corollary functional_eval_app : forall {Θ Ξ} m n r1 r2,
       $| m & n | Θ ⍮ Ξ ↘ r1 ->
       $| m & n | Θ ⍮ Ξ ↘ r2 ->
       r1 = r2.
   Proof.
-    intros Θ Ξ; pose proof (functional_eval Θ Ξ); intuition.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
-  (** An evaluated substitution is determined at every variable both results
-      have: [eval_sub] fixes the values, [per_ctx] the number of them. *)
-  Corollary functional_eval_sub : forall Θ Ξ σ ρ ρσ1 ρσ2 x m1 m2,
+  (** An evaluated substitution is determined pointwise. *)
+  Corollary functional_eval_sub : forall {Θ Ξ} σ ρ ρσ1 ρσ2,
       ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ1 ->
       ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ2 ->
-      env_var ρσ1 x = Some m1 ->
-      env_var ρσ2 x = Some m2 ->
-      m1 = m2.
+      env_eq ρσ1 ρσ2.
   Proof.
-    intros * H1 H2 Hx1 Hx2.
-    eapply functional_eval_exp; [ apply H1 | apply H2 ]; eassumption.
+    intros * H1 H2 x.
+    eapply functional_eval_exp; [ apply H1 | apply H2 ].
   Qed.
 
 #[export]
@@ -101,7 +98,7 @@ Ltac functional_eval_rewrite_clear := repeat functional_eval_rewrite_clear1.
     evaluation needs is the [eval_natrec] inside it.  Naming that inversion keeps
     the rest of the context — six other evaluations, at environments a global
     [cbn] would rewrite — untouched. *)
-Proposition eval_exp_natrec_inversion : forall Θ Ξ A MZ MS M ρ r,
+Proposition eval_exp_natrec_inversion : forall {Θ Ξ} A MZ MS M ρ r,
     ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
     exists m,
       ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m /\

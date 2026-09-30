@@ -3,8 +3,14 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Export Domain Evaluation Readback.
-Import Domain_Notations.
+From Mctt.Core.Semantic Require Export Fixed.
+Import Domain_Notations Fixed_Notations.
+
+Reserved Notation "'Sub' a <: b 'at' i" (at level 70, a at level 69, b at level 69, i constr).
+Reserved Notation "'SubE' Γ <: Δ" (at level 70, Γ at level 69, Δ at level 69).
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Notation "'Dom' a ≈ b ∈ R" := ((R a b : Prop) : Prop) (at level 70, a at level 69, b at level 69, R constr).
 Notation "'DF' a ≈ b ∈ R ↘ R'" := ((R R' a b : Prop) : Prop) (at level 70, a at level 69, b at level 69, R constr, R' constr).
@@ -21,9 +27,7 @@ Generalizable All Variables.
 (** *** Helper Bundles *)
 (** Related modulo evaluation *)
 Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
-#[global]
-Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
-#[export]
+#[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
 (** [per_univ_elem_core] nests through this, and generating its induction
     principle needs a scheme registered here. *)
@@ -31,35 +35,24 @@ Scheme All for rel_mod_eval.
 
 (** Related modulo application *)
 Inductive rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app : forall fa f'a', $| f & a |↘ fa -> $| f' & a' |↘ f'a' -> Dom fa ≈ f'a' ∈ R -> rel_mod_app f a f' a' R.
-#[global]
-Arguments mk_rel_mod_app {_ _ _ _ _}.
-#[export]
+#[global] Arguments mk_rel_mod_app {_ _ _ _ _}.
 Hint Constructors rel_mod_app : mctt.
 
 (** *** (Some Elements of) PER Lattice *)
 
 Definition per_bot : relation domain_ne := fun m n => (forall s, exists L, Rne m in s ↘ L /\ Rne n in s ↘ L).
-#[global]
-Arguments per_bot /.
-#[export]
+#[global] Arguments per_bot /.
 Hint Transparent per_bot : mctt.
-#[export]
 Hint Unfold per_bot : mctt.
 
 Definition per_top : relation domain_nf := fun m n => (forall s, exists L, Rnf m in s ↘ L /\ Rnf n in s ↘ L).
-#[global]
-Arguments per_top /.
-#[export]
+#[global] Arguments per_top /.
 Hint Transparent per_top : mctt.
-#[export]
 Hint Unfold per_top : mctt.
 
 Definition per_top_typ : relation domain := fun a b => (forall s, exists C, Rtyp a in s ↘ C /\ Rtyp b in s ↘ C).
-#[global]
-Arguments per_top_typ /.
-#[export]
+#[global] Arguments per_top_typ /.
 Hint Transparent per_top_typ : mctt.
-#[export]
 Hint Unfold per_top_typ : mctt.
 
 Inductive per_nat : relation domain :=
@@ -71,7 +64,6 @@ Inductive per_nat : relation domain :=
   `{ Dom m ≈ n ∈ per_bot ->
      Dom ⇑ a m ≈ ⇑ b n ∈ per_nat }
 .
-#[export]
 Hint Constructors per_nat : mctt.
 
 Inductive per_ne : relation domain :=
@@ -79,7 +71,6 @@ Inductive per_ne : relation domain :=
   `{ Dom m ≈ m' ∈ per_bot ->
      Dom ⇑ a m ≈ ⇑ a' m' ∈ per_ne }
 .
-#[export]
 Hint Constructors per_ne : mctt.
 
 (** * Universe/Element PER *)
@@ -158,18 +149,14 @@ Section Per_univ_elem_core_def.
 
 End Per_univ_elem_core_def.
 
-#[export]
 Hint Constructors per_univ_elem_core : mctt.
 
 Equations per_univ_elem (i : nat) : relation domain -> domain -> domain -> Prop by wf i :=
 | i => per_univ_elem_core i (fun j lt_j_i a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R').
 
 Definition per_univ (i : nat) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
-#[global]
-Arguments per_univ _ _ _ /.
-#[export]
+#[global] Arguments per_univ _ _ _ /.
 Hint Transparent per_univ : mctt.
-#[export]
 Hint Unfold per_univ : mctt.
 
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
@@ -182,7 +169,6 @@ Proof.
   econstructor; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve per_univ_elem_core_univ' : mctt.
 
 (** ** Universe/Element PER Induction Principle *)
@@ -233,7 +219,6 @@ Section Per_univ_elem_ind_def.
   | i, a, b, R, H := per_univ_elem_ind' i a b R _.
 End Per_univ_elem_ind_def.
 
-Reserved Notation "'Sub' a <: b 'at' i" (at level 70, a at level 69, b at level 69, i constr).
 
 (** * Universe Subtyping *)
 
@@ -260,14 +245,11 @@ Inductive per_subtyp : nat -> domain -> domain -> Prop :=
         Sub Πᵈ a ρ B <: Πᵈ a' ρ' B' at i)
 where "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 
-#[export]
  Hint Constructors per_subtyp : mctt.
 
 Definition rel_typ i A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) A ρ A' ρ' R'.
-Arguments rel_typ _ _ _ _ _ _ /.
-#[export]
+#[global] Arguments rel_typ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
-#[export]
 Hint Unfold rel_typ : mctt.
 
 (** * Context/Environment PER *)
@@ -290,17 +272,13 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
                Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) ->
         EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
 .
-#[export]
 Hint Constructors per_ctx_env : mctt.
 
 Definition per_ctx : relation ctx := fun Γ Γ' => exists R', per_ctx_env R' Γ Γ'.
 Definition valid_ctx : ctx -> Prop := fun Γ => per_ctx Γ Γ.
-#[export]
 Hint Transparent valid_ctx : mctt.
-#[export]
 Hint Unfold valid_ctx : mctt.
 
-Reserved Notation "'SubE' Γ <: Δ" (at level 70, Γ at level 69, Δ at level 69).
 
 (** * Context Subtyping *)
 
@@ -321,5 +299,91 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
         SubE Γ ▹ A <: Γ' ▹ A' }
 where "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 
+Hint Constructors per_ctx_subtyp : mctt.
+
+End Fixed_GCtx.
+
+Notation "'Dom' a ≈ b ∈ R" := ((R a b : Prop) : Prop) (at level 70, a at level 69, b at level 69, R constr).
+Notation "'DF' a ≈ b ∈ R ↘ R'" := ((R R' a b : Prop) : Prop) (at level 70, a at level 69, b at level 69, R constr, R' constr).
+Notation "'Exp' a ≈ b ∈ R" := (R a b : (Prop : Type)) (at level 70, a at level 69, b at level 69, R constr).
+Notation "'EF' a ≈ b ∈ R ↘ R'" := (R R' a b : (Prop : Type)) (at level 70, a at level 69, b at level 69, R constr, R' constr).
+Notation "R ~> R'" := (subrelation R R') (at level 70, right associativity).
+Notation "R <~> R'" := (relation_equivalence R R') (at level 95, no associativity).
+#[export]
+Hint Constructors rel_mod_eval : mctt.
+#[export]
+Hint Constructors rel_mod_app : mctt.
+#[export]
+Hint Transparent per_bot : mctt.
+#[export]
+Hint Unfold per_bot : mctt.
+#[export]
+Hint Transparent per_top : mctt.
+#[export]
+Hint Unfold per_top : mctt.
+#[export]
+Hint Transparent per_top_typ : mctt.
+#[export]
+Hint Unfold per_top_typ : mctt.
+#[export]
+Hint Constructors per_nat : mctt.
+#[export]
+Hint Constructors per_ne : mctt.
+#[export]
+Hint Constructors per_univ_elem_core : mctt.
+#[export]
+Hint Transparent per_univ : mctt.
+#[export]
+Hint Unfold per_univ : mctt.
+#[export]
+Hint Resolve per_univ_elem_core_univ' : mctt.
+Notation "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
+#[export]
+Hint Constructors per_subtyp : mctt.
+#[export]
+Hint Transparent rel_typ : mctt.
+#[export]
+Hint Unfold rel_typ : mctt.
+#[export]
+Hint Constructors per_ctx_env : mctt.
+#[export]
+Hint Transparent valid_ctx : mctt.
+#[export]
+Hint Unfold valid_ctx : mctt.
+Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 #[export]
 Hint Constructors per_ctx_subtyp : mctt.
+
+(** [induction H using per_univ_elem_ind] no longer applies: the instance is
+    an argument of [per_univ_elem] that the eliminator does not quantify over
+    as an index.  This does what that [induction] did: the hypotheses about
+    the indices move into the motive, and each case introduces exactly its own
+    binders. *)
+Ltac per_univ_elem_induction_core HH ih :=
+  lazymatch type of HH with
+  | per_univ_elem ?i ?R ?a ?b =>
+      repeat match goal with
+             | Hd : ?T |- _ =>
+                 lazymatch Hd with HH => fail | i => fail | R => fail | a => fail | b => fail | _ => idtac end;
+                 lazymatch T with
+                 | context [i] => revert Hd | context [R] => revert Hd
+                 | context [a] => revert Hd | context [b] => revert Hd
+                 end
+             end;
+      revert HH; revert i R a b;
+      refine (per_univ_elem_ind _ _ _ _ _);
+      [ do 8 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+  end.
+
+(** As [induction H using per_univ_elem_ind]: the hypotheses on the motive are
+    [IHH]. *)
+Ltac per_univ_elem_induction H :=
+  let IHn := fresh "IH" H in
+  let HH := fresh "Hpue" in
+  rename H into HH;
+  per_univ_elem_induction_core HH ltac:(intro IHn).
+
+(** As [induction 1 using per_univ_elem_ind]. *)
+Ltac per_univ_elem_induction1 :=
+  intros until 1;
+  match goal with H : per_univ_elem _ _ _ _ |- _ => per_univ_elem_induction_core H ltac:(intro) end.

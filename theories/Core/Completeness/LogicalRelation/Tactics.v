@@ -1,7 +1,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import PER.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
 Ltac eexists_rel_exp :=
   eexists;
@@ -42,3 +42,4 @@ Ltac invert_rel_typ_body :=
   handle_per_univ_elem_irrel;
   clear_dups;
   try rewrite <- per_univ_elem_equation_1 in *.
+

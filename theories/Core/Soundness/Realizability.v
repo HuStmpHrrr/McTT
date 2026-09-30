@@ -5,9 +5,12 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness.LogicalRelation Require Export Core.
-Import Domain_Notations Wk_Notations.
+Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Open Scope list_scope.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 (** A Kripke weakening is [⇑^n] on the nose ([kripke_shiftn]), so it acts on a
     variable by index arithmetic alone.  This replaces the [var_weaken_gen]
@@ -66,7 +69,7 @@ Theorem realize_glu_univ_elem_gen : forall a i P El,
           Dom m ≈ m ∈ R ->
           Γ ⊢ M : A ® m ∈ glu_elem_top i a).
 Proof.
-  simpl. induction 1 using glu_univ_elem_ind.
+  simpl. glu_univ_elem_induction1.
   all:split; [| split]; intros;
     apply_equiv_left;
     gen_presups;
@@ -276,7 +279,6 @@ Proof.
   eapply glu_univ_elem_per_elem; eauto.
 Qed.
 
-#[export]
 Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.
 
 Corollary var0_glu_elem : forall {i a P El Γ A},
@@ -288,3 +290,8 @@ Proof.
   eapply realize_glu_elem_bot; mauto 4.
   eauto using var_glu_elem_bot.
 Qed.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.

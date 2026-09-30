@@ -33,7 +33,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import LogicalRelation UniverseCases SubstitutionCases FunctionCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 (** ** [Sub-Eq]
@@ -43,6 +43,10 @@ Import Wk_Notations.
     the equality supplies all three parts at once: its outer two links *are* the
     two commutation obligations, and its middle link is what
     [per_subtyp_refl1] consumes. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma subtyp_refl : forall {Γ A A' i},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ A ⊆ A'.
@@ -65,7 +69,6 @@ Proof.
     eapply per_subtyp_refl1; eassumption.
 Qed.
 
-#[export]
 Hint Resolve subtyp_refl : mctt.
 
 (** ** [Sub-Trans]
@@ -114,11 +117,9 @@ Proof.
       (eapply per_subtyp_cumu; [ eassumption | lia ]).
 Qed.
 
-#[export]
 Hint Resolve subtyp_trans : mctt.
 
-#[export]
-Instance subtyp_Transitive Γ : Transitive (subtyp_under_ctx Γ).
+#[local] Instance subtyp_Transitive Γ : Transitive (subtyp_under_ctx Γ).
 Proof.
   intros A A' A''; apply subtyp_trans.
 Qed.
@@ -145,7 +146,6 @@ Proof.
   - apply per_subtyp_univ; lia.
 Qed.
 
-#[export]
 Hint Resolve subtyp_univ : mctt.
 
 (** ** [Sub-Pi]
@@ -232,7 +232,6 @@ Proof.
     + eapply per_univ_elem_cumu_max_left; pairwise.
 Qed.
 
-#[export]
 Hint Resolve subtyp_pi : mctt.
 
 (** ** [Subsump]
@@ -296,5 +295,18 @@ Proof.
     eapply per_elem_subtyping; [ exact HsubL | exact HRAL | exact HHL | exact Hwz ].
 Qed.
 
+Hint Resolve rel_exp_eq_subtyp : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve subtyp_refl : mctt.
+#[export]
+Hint Resolve subtyp_trans : mctt.
+#[export] Existing Instance subtyp_Transitive.
+#[export]
+Hint Resolve subtyp_univ : mctt.
+#[export]
+Hint Resolve subtyp_pi : mctt.
 #[export]
 Hint Resolve rel_exp_eq_subtyp : mctt.

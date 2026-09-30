@@ -20,22 +20,31 @@ Import ListNotations.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 Reserved Notation "Γ ⊨w φ : Δ" (at level 70, φ constr at level 0, Δ at level 69).
+Reserved Notation "⊨ Γ" (at level 70).
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 (** * Semantic Weakening
 
     Because a weakening is an operation, related environments are not
     automatically related after it is applied; the semantic judgment for
     weakenings simply demands it.  Stripped of its two context witnesses this is
-    just [Proper (R ==> R') (eval_wk φ)], and that is the form the proofs use. *)
+    [Proper (R ==> R') (eval_wk φ)], for a weakening that moves no variable
+    down: environments are lists, and that is what makes weakenings compose on
+    them ([eval_wk_compose]).  Every weakening the proofs instantiate this at is
+    built from [↑] and [wk_q], hence is one. *)
 
-Definition rel_wk (φ : wk) (R R' : relation env) : Prop :=
-  forall ρ ρ',
-    Dom ρ ≈ ρ' ∈ R ->
-    Dom ⟪φ⟫ ρ ≈ ⟪φ⟫ ρ' ∈ R'.
+Record rel_wk (φ : wk) (R R' : relation env) : Prop := mk_rel_wk
+  { rel_wk_mono : WkMono φ
+  ; rel_wk_app :> forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ R ->
+      Dom ⟪φ⟫ ρ ≈ ⟪φ⟫ ρ' ∈ R' }.
 
 Definition rel_wk_under_ctx Γ φ Δ : Prop :=
   exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel)
@@ -60,9 +69,7 @@ Inductive rel_sub (σ : sub) (φ : wk) (ρ : env) (σ' : sub) (ρ' : env) (R : r
     ⟦ (sb_wk σ' φ) ⟧s ρ' ↘ ρ'σ'φ ->
     rel_chain R ([ρσφ; ρσ; ρ'σ'; ρ'σ'φ]) ->
     rel_sub σ φ ρ σ' ρ' R.
-#[global]
-Arguments mk_rel_sub {_ _ _ _ _ _}.
-#[export]
+#[global] Arguments mk_rel_sub {_ _ _ _ _ _}.
 Hint Constructors rel_sub : mctt.
 
 Definition rel_sub_under_ctx Γ Δ σ σ' : Prop :=
@@ -75,11 +82,8 @@ Definition rel_sub_under_ctx Γ Δ σ σ' : Prop :=
       rel_sub σ φ ρ σ' ρ' env_rel_o.
 
 Definition valid_sub_under_ctx Γ Δ σ := rel_sub_under_ctx Γ Δ σ σ.
-#[global]
-Arguments valid_sub_under_ctx _ _ _ /.
-#[export]
+#[global] Arguments valid_sub_under_ctx _ _ _ /.
 Hint Transparent valid_sub_under_ctx : mctt.
-#[export]
 Hint Unfold valid_sub_under_ctx : mctt.
 
 (** * Semantic Judgment for Terms
@@ -99,9 +103,7 @@ Inductive rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (�
     ⟦ M'[σ'] ⟧ ρ' ↘ m'σ' ->
     rel_chain R ([mσ; m; m'; m'σ']) ->
     rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' R.
-#[global]
-Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
-#[export]
+#[global] Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
 Hint Constructors rel_exp : mctt.
 
 (** The same pattern one universe up: the four values of a *type* are related in
@@ -109,10 +111,8 @@ Hint Constructors rel_exp : mctt.
     the term chain then lives in. *)
 Definition rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R :=
   rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ_elem i R).
-Arguments rel_typ _ _ _ _ _ _ _ _ _ _ /.
-#[export]
+#[global] Arguments rel_typ _ _ _ _ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
-#[export]
 Hint Unfold rel_typ : mctt.
 
 (** The notation [⟦σ⟧(ρ)] for the environment [σ] evaluates to suggests that
@@ -146,11 +146,8 @@ Definition rel_exp_under_ctx Γ A M M' : Prop :=
         rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' elem_rel.
 
 Definition valid_exp_under_ctx Γ A M := rel_exp_under_ctx Γ A M M.
-#[global]
-Arguments valid_exp_under_ctx _ _ _ /.
-#[export]
+#[global] Arguments valid_exp_under_ctx _ _ _ /.
 Hint Transparent valid_exp_under_ctx : mctt.
-#[export]
 Hint Unfold valid_exp_under_ctx : mctt.
 
 (** * Semantic Judgment for Subtyping
@@ -176,7 +173,6 @@ Definition subtyp_under_ctx Γ A A' : Prop :=
           Dom a'σ' ≈ a' ∈ per_univ i /\
           Sub a <: a' at i.
 
-Reserved Notation "⊨ Γ" (at level 70).
 Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
 Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
 Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
@@ -200,5 +196,51 @@ Inductive sem_ctx : ctx -> Prop :=
     ⊨ Γ ▹ A
 where "⊨ Γ" := (sem_ctx Γ) : type_scope.
 
+Hint Constructors sem_ctx : mctt.
+
+End Fixed_GCtx.
+
+Notation "Γ ⊨w φ : Δ" := (rel_wk_under_ctx Γ φ Δ) : type_scope.
+#[export]
+Hint Constructors rel_sub : mctt.
+#[export]
+Hint Transparent valid_sub_under_ctx : mctt.
+#[export]
+Hint Unfold valid_sub_under_ctx : mctt.
+#[export]
+Hint Constructors rel_exp : mctt.
+#[export]
+Hint Transparent rel_typ : mctt.
+#[export]
+Hint Unfold rel_typ : mctt.
+#[export]
+Hint Transparent valid_exp_under_ctx : mctt.
+#[export]
+Hint Unfold valid_exp_under_ctx : mctt.
+Notation "⊨ Γ ≈ Γ'" := (per_ctx Γ Γ')  (at level 70, Γ' at level 69).
+Notation "Γ ⊨ M ≈ M' : A" := (rel_exp_under_ctx Γ A M M') (at level 70, M at level 69, M' at level 69, A at level 69).
+Notation "Γ ⊨ M ⊆ M'" := (subtyp_under_ctx Γ M M') (at level 70, M at level 69, M' at level 69).
+Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level 69, A at level 69).
+Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
+Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
+Notation "⊨ Γ" := (sem_ctx Γ) : type_scope.
 #[export]
 Hint Constructors sem_ctx : mctt.
+
+(** A semantic weakening in scope says its weakening moves no variable
+    down. *)
+Existing Class rel_wk.
+#[export] Existing Instance rel_wk_mono.
+
+Existing Class rel_wk_under_ctx.
+
+#[export] Instance rel_wk_under_ctx_mono {GC : GCtx} {Γ φ Δ} (Hφ : Γ ⊨w φ : Δ) : WkMono φ.
+Proof. destruct Hφ as [? [? [? [? []]]]]; assumption. Qed.
+
+(** That a weakening moves no variable down: from a semantic weakening in
+    scope, or from how the weakening is built. *)
+Ltac solve_wk_mono :=
+  repeat first
+    [ eapply rel_wk_mono; eassumption
+    | apply wk_mono_id | apply wk_mono_shift
+    | apply wk_mono_q | apply wk_mono_compose ].

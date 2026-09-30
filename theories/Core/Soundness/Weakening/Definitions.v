@@ -11,7 +11,7 @@
       Composition ([kripke_compose]) is then an induction on the *outer*
       weakening; recursing on the domain instead would ask for a strengthening
       lemma in that case, which the system does not have.
-    - Both rules may coarsen their codomain by a refinement [⊢ Δ' ⊆ Δ],
+    - Both rules may coarsen their codomain by a refinement [Δ' ⊆ Δ],
       so the judgment is closed under [kripke_ctxsub] — which the subtyping
       cases need.  The price is that [Γ ⊢k φ : Δ] no longer implies
       [Γ ⊢w φ : Δ]: [wf_wk_lookup] demands a variable *lookup* in [Γ] at the
@@ -28,29 +28,31 @@ From Stdlib Require Import Morphisms.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export CtxSub SystemOpt.
-Import Syntax_Notations Wk_Notations.
+From Mctt.Core.Semantic Require Export Fixed.
+Import Syntax_Notations Wk_Notations Fixed_Notations.
 
 Generalizable All Variables.
 
 Reserved Notation "Γ ⊢k φ : Δ" (at level 70, φ constr at level 60, Δ at level 69).
 
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
 | kwk_id :
-  `( ⊢ Γ ⊆ Δ ->
+  `( Γ ⊆ Δ ->
      wk_eq φ wk_id ->
      Γ ⊢k φ : Δ )
 | kwk_shift :
   `( Γ ⊢k ψ : Δ' ▹ A ->
-     ⊢ Δ' ⊆ Δ ->
+     Δ' ⊆ Δ ->
      wk_eq φ (↑ ⊙ ψ) ->
      Γ ⊢k φ : Δ )
 where "Γ ⊢k φ : Δ" := (wk_kripke Γ Δ φ) : type_scope.
 
-#[export]
 Hint Constructors wk_kripke : mctt.
 
-#[export]
-Instance wk_kripke_Proper Γ Δ : Proper (wk_eq ==> iff) (wk_kripke Γ Δ).
+#[local] Instance wk_kripke_Proper Γ Δ : Proper (wk_eq ==> iff) (wk_kripke Γ Δ).
 Proof.
   assert (forall φ ψ, wk_eq φ ψ -> Γ ⊢k φ : Δ -> Γ ⊢k ψ : Δ) as Himp.
   {
@@ -59,3 +61,10 @@ Proof.
   }
   intros φ ψ Heq; split; apply Himp; [ assumption | now symmetry ].
 Qed.
+
+End Fixed_GCtx.
+
+Notation "Γ ⊢k φ : Δ" := (wk_kripke Γ Δ φ) : type_scope.
+#[export]
+Hint Constructors wk_kripke : mctt.
+#[export] Existing Instance wk_kripke_Proper.
