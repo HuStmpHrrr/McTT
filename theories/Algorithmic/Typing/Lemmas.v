@@ -6,7 +6,10 @@ From Mctt.Core.Completeness Require Import Consequences.Rules.
 From Mctt.Core.Semantic Require Import Consequences.
 From Mctt.Core.Syntactic Require Import Corollaries.
 From Mctt.Frontend Require Import Elaborator.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma functional_alg_type_infer : forall {Γ A A' M},
     Γ ⊢a M ⟹ A ->
@@ -29,10 +32,22 @@ Proof.
   - assert (A = A0) as <- by mauto using ctx_lookup_functional.
     functional_nbe_rewrite_clear.
     reflexivity.
+  (** A parameter and a global are looked up by a *function*, so the two
+      derivations read the same type without appealing to canonicity of the
+      global context. *)
+  - assert (T = T0) as <- by congruence.
+    functional_nbe_rewrite_clear.
+    reflexivity.
+  - assert (Δ = Δ0) as <- by congruence.
+    assert (A = A0) as <- by congruence.
+    functional_nbe_rewrite_clear.
+    reflexivity.
 Qed.
 
 #[local]
 Hint Resolve functional_alg_type_infer : mctt.
+
+End Fixed_GCtx.
 
 Ltac functional_alg_type_infer_rewrite_clear1 :=
   let tactic_error o1 o2 := fail 3 "functional_alg_type_infer equality between" o1 "and" o2 "cannot be solved by mauto" in
@@ -41,6 +56,9 @@ Ltac functional_alg_type_infer_rewrite_clear1 :=
       clean replace A2 with A1 by first [solve [mauto 2 using functional_alg_type_infer] | tactic_error A2 A1]; clear H2
   end.
 Ltac functional_alg_type_infer_rewrite_clear := repeat functional_alg_type_infer_rewrite_clear1.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Type@i -> Γ ⊢ M : A) /\
@@ -82,6 +100,23 @@ Proof.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
     assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
+  (** [gs_param] and [gc_resolve] are the function forms of the two premises of
+      [wf_param] and of the resolution premise of [wf_glob]; the soundness
+      direction of each ([gs_param_sound], [gc_resolve_sound]) has no side
+      condition, so the declarative rule applies at once.  The inferred normal
+      form is the declarative type by [soundness_ty']. *)
+  - assert (Γ ⊢ a_param lp : T)
+      by (destruct lp as [n0 k];
+          destruct (gs_param_sound _ _ _ _ ltac:(eassumption)) as [U [T0 [? [? ->]]]];
+          mauto 3).
+    assert (exists i, Γ ⊢ T : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (Γ ⊢ T ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
+    mauto 3.
+  - assert (gc_lookup gc_deps gc_stack p Δ (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
+    assert (Γ ⊢ a_glob p : ctx_pi Δ A) by mauto 3.
+    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (Γ ⊢ ctx_pi Δ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
+    mauto 3.
 Qed.
 
 Lemma alg_type_check_sound : forall {Γ i A M},
@@ -102,7 +137,7 @@ Qed.
 Lemma alg_type_infer_normal : forall {Γ A A' M},
     ⊢ Γ ->
     Γ ⊢a M ⟹ A ->
-    nbe_ty Γ A A' ->
+    nbe_ty_f Γ A A' ->
     A = A'.
 Proof.
   intros * ? Hinfer Hnbe. gen A'.
@@ -125,21 +160,31 @@ Proof.
     simplify_evals.
     dir_inversion_by_head read_typ; subst.
     functional_initial_env_rewrite_clear.
-    assert (initial_env (Γ ▹ (C : exp)) (ρ ↦ ⇑! a (length Γ))) by mauto 3.
-    assert (nbe_ty Γ A C) by mauto 3.
-    assert (nbe_ty Γ C A0) by mauto 3.
+    assert (initial_env_f (Γ ▹ (C : exp)) (ρ ↦ ⇑! a (length Γ))) by mauto 3.
+    assert (nbe_ty_f Γ A C) by mauto 3.
+    assert (nbe_ty_f Γ C A0) by mauto 3.
     replace A0 with C by mauto 3.
-    assert (nbe_ty (Γ ▹ (C : exp)) B B') by mauto 3.
-    assert (nbe_ty (Γ ▹ A) B B') by mauto 4 using ctxeq_nbe_ty_eq'; (f_equiv; mautosolve 4).
+    assert (nbe_ty_f (Γ ▹ (C : exp)) B B') by mauto 3.
+    assert (nbe_ty_f (Γ ▹ A) B B') by mauto 4 using ctxeq_nbe_ty_eq'; (f_equiv; mautosolve 4).
   - assert (Γ ⊢ M : Πⁿ A B) by mauto 3 using alg_type_infer_sound.
     assert (exists i, Γ ⊢ Π A B : Type@i) as [i] by (gen_presups; eauto 2).
     assert (Γ ⊢ A : Type@i /\ Γ ▹ (A : exp) ⊢ B : Type@i) as [] by mauto 3.
     assert (Γ ⊢ N : A) by mauto 3 using alg_type_check_sound.
     assert (Γ ⊢ B[Id,,N] : Type@i) by mauto 3; (f_equiv; mautosolve 4).
   - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
+  (** A parameter and a global infer the normal form of a type of the ambient
+      context, so [idempotent_nbe_ty] closes both; what that type is comes from
+      [wf_param_typ] and [wf_glob_typ]. *)
+  - destruct lp as [n0 k].
+    destruct (gs_param_sound _ _ _ _ ltac:(eassumption)) as [U [T0 [? [? ->]]]].
+    assert (exists i, Γ ⊢ T0[↑ₘ (S n0)]ᵐ[sb_params n0] : Type@i) as [i]
+        by mauto 3 using wf_param_typ.
+    (f_equiv; mautosolve 4).
+  - assert (gc_lookup gc_deps gc_stack p Δ (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
+    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+    (f_equiv; mautosolve 4).
 Qed.
 
-#[export]
 Hint Resolve alg_type_infer_normal : mctt.
 
 Lemma alg_type_check_typ_implies_alg_type_infer_typ : forall {Γ A i},
@@ -158,7 +203,6 @@ Proof.
   firstorder.
 Qed.
 
-#[export]
 Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
 
 Lemma alg_type_check_pi_implies_alg_type_infer_pi : forall {Γ M A B i},
@@ -185,19 +229,18 @@ Proof.
   assert (exists j, Γ ⊢ Π A0 B0 : Type@j) as [j] by (gen_presups; eauto 2).
   assert (Γ ⊢ A0 : Type@j /\ Γ ▹ (A0 : exp) ⊢ B0 : Type@j) as [] by mauto 3.
   do 2 eexists.
-  assert (nbe_ty Γ A A0) by mauto 3.
+  assert (nbe_ty_f Γ A A0) by mauto 3.
   assert (Γ ⊢ A ≈ A0 : Type@i) by mauto 3 using soundness_ty'.
   repeat split; mauto 3.
-  assert (initial_env (Γ ▹ A) (ρ ↦ ⇑! a (length Γ))) by mauto 3.
-  assert (nbe_ty (Γ ▹ A) B B') by mauto 3.
-  assert (initial_env (Γ ▹ (A0 : exp)) (ρ ↦ ⇑! a0 (length Γ))) by mauto 3.
-  assert (nbe_ty (Γ ▹ (A0 : exp)) B0 B0) by mauto 3.
+  assert (initial_env_f (Γ ▹ A) (ρ ↦ ⇑! a (length Γ))) by mauto 3.
+  assert (nbe_ty_f (Γ ▹ A) B B') by mauto 3.
+  assert (initial_env_f (Γ ▹ (A0 : exp)) (ρ ↦ ⇑! a0 (length Γ))) by mauto 3.
+  assert (nbe_ty_f (Γ ▹ (A0 : exp)) B0 B0) by mauto 3.
   assert (⊨ Γ ▹ (A0 : exp) ≈ Γ ▹ A) by mauto 3.
-  assert (nbe_ty (Γ ▹ A) B0 B0) by mauto 4 using ctxeq_nbe_ty_eq'.
+  assert (nbe_ty_f (Γ ▹ A) B0 B0) by mauto 4 using ctxeq_nbe_ty_eq'.
   mauto 3.
 Qed.
 
-#[export]
 Hint Resolve alg_type_check_pi_implies_alg_type_infer_pi : mctt.
 
 Lemma alg_type_check_subtyp : forall {Γ A A' M},
@@ -210,7 +253,6 @@ Proof.
   mauto 3 using alg_subtyping_trans.
 Qed.
 
-#[export]
 Hint Resolve alg_type_check_subtyp : mctt.
 
 Corollary alg_type_check_conv : forall {Γ i A A' M},
@@ -221,7 +263,6 @@ Proof.
   mauto 3.
 Qed.
 
-#[export]
 Hint Resolve alg_type_check_conv : mctt.
 
 Lemma alg_type_check_complete : forall {Γ A M},
@@ -229,8 +270,17 @@ Lemma alg_type_check_complete : forall {Γ A M},
     Γ ⊢ M : A ->
     Γ ⊢a M ⟸ A.
 Proof.
-  intros * Hue.
-  induction 1; gen_presups; inversion Hue; subst; clear Hue; mauto 4 using alg_subtyping_complete, alg_type_check_subtyp.
+  (** The global context is an index of [wf_exp]: fix it for the induction, the
+      way [subtyp_spec] does.  [user_exp] is reverted so that the two equations
+      come first in every case, and so that the recursive hypotheses keep their
+      [user_exp] premise. *)
+  intros * Hue H.
+  revert Hue.
+  remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
+  induction H; subst;
+    repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
+    intros Hue;
+    gen_presups; inversion Hue; subst; clear Hue; mauto 4 using alg_subtyping_complete, alg_type_check_subtyp.
   - econstructor; mauto 3.
     unshelve solve [mauto using alg_subtyping_complete]; constructor.
   - econstructor; mauto 3.
@@ -247,7 +297,7 @@ Proof.
   - assert (exists j, Γ ⊢a A ⟹ Typeⁿ@j /\ j <= i) as [j []] by mauto 3.
     assert (Γ ▹ A ⊢a M ⟸ B) by mauto 3.
     assert (exists B', Γ ▹ A ⊢a M ⟹ B' /\ Γ ▹ A ⊢a B' ⊆ B) as [B' []] by (inversion_clear_by_head alg_type_check; firstorder).
-    assert (exists W, nbe_ty Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by mauto 3 using soundness_ty.
+    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by mauto 3 using soundness_ty.
     assert (⊢ Γ ▹ A) by mauto 3.
     assert (Γ ▹ A ⊢ M : B') by mauto 3 using alg_type_infer_sound.
     assert (exists j, Γ ▹ A ⊢ B' : Type@j) as [] by (gen_presups; eauto 2).
@@ -263,17 +313,39 @@ Proof.
     assert (Γ ⊢ A' : Type@j /\ Γ ▹ (A' : exp) ⊢ B' : Type@j) as [] by mauto 3.
     assert (Γ ⊢ N : A') by mauto 3.
     assert (Γ ⊢ B'[Id,,N] : Type@j) by mauto 3.
-    assert (exists W, nbe_ty Γ B'[Id,,N] W /\ Γ ⊢ B'[Id,,N] ≈ W : Type@j) as [W []] by (eapply soundness_ty; mauto 3).
+    assert (exists W, nbe_ty_f Γ B'[Id,,N] W /\ Γ ⊢ B'[Id,,N] ≈ W : Type@j) as [W []] by (eapply soundness_ty; mauto 3).
     assert (Γ ▹ A ⊢ B' : Type@j) by mauto 4.
     assert (Γ ▹ A ⊢ B' ⊆ B) by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
     assert (Γ ⊢ B'[Id,,N] ⊆ B[Id,,N]) by mauto 3.
     assert (Γ ⊢ W ⊆ B[Id,,N]) by (transitivity B'[Id,,N]; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
-  - assert (exists W, nbe_ty Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by (eapply soundness_ty; mauto 3).
+  - assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by (eapply soundness_ty; mauto 3).
+    econstructor; mauto 4 using alg_subtyping_complete.
+  (** The two premises of [wf_param] are [gs_param]'s answer
+      ([gs_param_complete], no side condition). *)
+  - assert (Γ ⊢ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n]) by mauto 3.
+    assert (gs_param gc_stack (lp_mk n k) = Some T[↑ₘ (S n)]ᵐ[sb_params n])
+      by mauto 3 using gs_param_complete.
+    assert (exists i, Γ ⊢ T[↑ₘ (S n)]ᵐ[sb_params n] : Type@i) as [i]
+        by mauto 3 using wf_param_typ.
+    assert (exists W, nbe_ty_f Γ T[↑ₘ (S n)]ᵐ[sb_params n] W
+                      /\ Γ ⊢ T[↑ₘ (S n)]ᵐ[sb_params n] ≈ W : Type@i) as [W []]
+        by (eapply soundness_ty; mauto 3).
+    econstructor; mauto 4 using alg_subtyping_complete.
+  (** Resolution's answer, on the other hand, is [gc_resolve]'s only because the
+      global context is canonical, which is exactly what [⊢g gc_deps ⍮ gc_stack]
+      gives; [⊢ Γ] is where that comes from. *)
+  - assert (wf_gctx gc_deps gc_stack) by mauto 2 using ctx_wf_gctx.
+    assert (gs_canon gc_stack) by (eapply wf_gstack_canon, wf_gctx_stack; eassumption).
+    assert (gds_mods_canon gc_deps) by (eapply wf_gdeps_canon, wf_gctx_deps; eassumption).
+    assert (gc_resolve gc_deps gc_stack p = Some (Δ, ge_def b pv A B))
+      by (apply gc_resolve_complete; assumption).
+    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (exists W, nbe_ty_f Γ (ctx_pi Δ A) W /\ Γ ⊢ ctx_pi Δ A ≈ W : Type@i) as [W []]
+        by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
 Qed.
 
-#[export]
 Hint Resolve alg_type_check_complete : mctt.
 
 Corollary alg_type_infer_complete : forall {Γ A M},
@@ -287,7 +359,6 @@ Proof.
   firstorder.
 Qed.
 
-#[export]
 Hint Resolve alg_type_infer_complete : mctt.
 
 Corollary alg_type_infer_typ_complete : forall {Γ i A},
@@ -298,7 +369,6 @@ Proof.
   mauto 4 using alg_type_check_complete.
 Qed.
 
-#[export]
 Hint Resolve alg_type_infer_typ_complete : mctt.
 
 Corollary alg_type_infer_pi_complete : forall {Γ i A},
@@ -309,5 +379,25 @@ Proof.
   mauto 4 using alg_type_check_complete.
 Qed.
 
+Hint Resolve alg_type_infer_pi_complete : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve alg_type_infer_normal : mctt.
+#[export]
+Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
+#[export]
+Hint Resolve alg_type_check_pi_implies_alg_type_infer_pi : mctt.
+#[export]
+Hint Resolve alg_type_check_subtyp : mctt.
+#[export]
+Hint Resolve alg_type_check_conv : mctt.
+#[export]
+Hint Resolve alg_type_check_complete : mctt.
+#[export]
+Hint Resolve alg_type_infer_complete : mctt.
+#[export]
+Hint Resolve alg_type_infer_typ_complete : mctt.
 #[export]
 Hint Resolve alg_type_infer_pi_complete : mctt.

@@ -3,7 +3,7 @@ From Mctt.Algorithmic.Subtyping Require Import Definitions.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import SystemOpt.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
-Import Syntax_Notations.
+Import Syntax_Notations Fixed_Notations.
 
 #[local]
 Ltac apply_subtyping :=
@@ -12,6 +12,9 @@ Ltac apply_subtyping :=
         H1 : ?Γ ⊢ ?A ⊆ ?B |- _ =>
         assert (Γ ⊢ M : B) by mauto; clear H
     end.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma alg_subtyping_nf_sound : forall A B,
     ⊢anf A ⊆ B ->
@@ -78,8 +81,14 @@ Lemma alg_subtyping_complete : forall Γ A B,
     Γ ⊢ A ⊆ B ->
     Γ ⊢a A ⊆ B.
 Proof.
-  induction 1; mauto.
-  - apply completeness in H0 as [W [? ?]].
+  (** The global context is an index of [wf_subtyp]: fix it for the induction,
+      the way [subtyp_spec] does. *)
+  intros * H.
+  remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
+  induction H; subst;
+    repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
+    mauto.
+  - match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H as [W [? ?]]).
     econstructor; mauto.
   - assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
     assert (Γ ⊢ Type@j : Type@(S j)) by mauto.
@@ -91,10 +100,12 @@ Proof.
   - (** [ctxeq_nbe_eq] takes the semantic context equality now that the syntactic
         one is gone; [per_ctx_of_exp_eq] is what builds it from the domains. *)
     assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.
-    eapply ctxeq_nbe_eq in H5; [ |eassumption].
-    match goal with
-    | H : _ |- _ => apply completeness in H
-    end.
+    (** The codomain's normal form is read in [Γ ▹ A]; the recursive call gives
+        it in [Γ ▹ A'], so it is moved across.  [Γ ▹ A ⊢ B : Type@i] is still
+        needed below, so this is an extra fact rather than a rewrite of it. *)
+    assert (exists W, nbe_f (Γ ▹ A) B Type@i W /\ nbe_f (Γ ▹ A') B Type@i W)
+      by mauto 3 using ctxeq_nbe_eq.
+    match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H).
     assert (Γ ⊢ Π A B : Type@i) as ?%soundness by mauto.
     assert (Γ ⊢ Π A' B' : Type@i) as ?%soundness by mauto.
     destruct_all.
@@ -123,3 +134,5 @@ Proof.
   transitivity B'; [eassumption |].
   mauto.
 Qed.
+
+End Fixed_GCtx.

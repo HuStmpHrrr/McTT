@@ -1,5 +1,10 @@
 (library
  (name McttExtracted)
- (public_name mctt.extracted))
+ (public_name mctt.extracted)
+ ; [String] extracts to an empty module, all of it being realized by OCaml's
+ ; own strings; left in, it would shadow OCaml's [String] in the modules that
+ ; use it.
+ (modules
+  (:standard \ String)))
 
 (documentation)

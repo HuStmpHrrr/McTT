@@ -235,19 +235,20 @@ unchanged.
    precede it.
 10. **`eval` is new**: the spec has no command for normalizing a term, and a
     unit no longer ends in a bare expression.
-11. **Only the syntactic layer knows about `a_glob`.** `Syntax.v` gained
-    `a_glob : path -> exp` and `GlobalCtx.v` the global
-    context it refers into; `Core/Syntactic` now threads that context through
-    every judgment (`Ψ ⍮ Γ ⊢ M : A`, …) and has three rules for `a_glob` —
-    `wf_glob`, `wf_exp_eq_glob` and the δ-rule `wf_exp_eq_glob_unfold`, which
-    unfolds a non-`abstract` definition's body. `Core/Semantic` downwards does
-    not: `eval_exp_order` has no case (the branch of `eval_exp_impl` is
-    discharged by `eval_exp_order_glob`), and `type_infer` answers `inright` for
-    it, so a term containing a global fails to type-check. Elaboration never
-    produces one, so nothing regresses.
+11. **`a_glob` and `a_param` run through the whole development.** `Syntax.v`
+    gained `a_glob : path -> exp` and `a_param : lpath -> exp`, and
+    `GlobalCtx.v` the global context they refer into; every judgment threads
+    that context (`Θ ⍮ Ξ ⍮ Γ ⊢ M : A`, …). The syntactic layer has `wf_glob`,
+    `wf_param`, their congruences and the δ-rule `wf_exp_eq_glob_unfold`, which
+    unfolds a non-`abstract` definition's body. `Core/Semantic` evaluates a
+    transparent global to its body and anything else to a neutral (`d_glob`,
+    `d_param`), and the algorithmic layer infers the normal form of the type
+    resolution hands back (`ati_glob`, `ati_param`), so a term containing a
+    global type-checks.
 
-    Two consequences of keeping `Ψ` a *parameter* of the judgments rather than
-    an index, since no rule changes it:
+    Three things to know about the global context in the rules. Note it is an
+    *index* of the mutual block, not a parameter, so `induction 1` on a term
+    judgment abstracts it — the proofs `remember` it first (see `subtyp_spec`).
 
     * The `a_glob` rules premise only `⊢ Θ⍮Ξ⍮Γ` and resolution, at type
       `ctx_pi Δ A`. Resolution generalizes a member over its member-chain

@@ -185,12 +185,14 @@ let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
         fprintf f "@[<hov 2>eval %a@ : %a@]" format_obj e format_obj t
    end
 
-let format_prog (f : Format.formatter) ((is, (path, cs)) : Cst.prog) : unit =
+let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) : unit =
   let open Format in
   List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
   pp_open_vbox f 2;
   (* The unit's own name is a [::] path *)
-  fprintf f "module %s where" (String.concat "::" path);
+  fprintf f "module %s" (String.concat "::" path);
+  List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
+  pp_print_string f " where";
   List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
   fprintf f "@;<1 -2>end";
   pp_close_box f ()
@@ -257,6 +259,10 @@ let exp_to_obj =
              | [] -> (Cst.Coq_var "_", []))
        in
        List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
+    (* A module parameter carries no name, only its frame and position, so it
+       prints as [$frame.index]. *)
+    | Coq_a_param lp ->
+       Cst.Coq_var ("$" ^ string_of_int lp.lp_mod ^ "." ^ string_of_int lp.lp_param)
   in
   fun exp ->
     reset_var_suffix ();
@@ -278,32 +284,40 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 let format_eval_result (f : Format.formatter) : eval_result -> unit =
   let open Format in
   function
-  | EvalGood (typ, exp, nf) ->
+  | EvalGood (_, typ, exp, nf) ->
      fprintf f "@[<v 2>Elaborated:@ @[<hv 0>%a@ : %a@]@]" format_exp exp
        format_exp typ;
      pp_force_newline f ();
      fprintf f "@[<v 2>Normalized Result:@ @[<hv 0>%a@ : %a@]@]" format_nf nf
        format_exp typ
-  | TypeCheckingFailure (typ, exp) ->
+  | StackFailure (_, exp) ->
+     fprintf f "@[<v 2>Ill-Formed Global Context:@ %a@;<1 -2>is checked where definitions are ill formed@]"
+       format_exp exp
+  | TypeCheckingFailure (_, typ, exp) ->
      fprintf f "@[<v 2>Type Checking Failure:@ %a@;<1 -2>is not of@ %a@]"
        format_exp exp format_exp typ
-  | TypeInferenceFailure exp ->
+  | TypeInferenceFailure (_, exp) ->
      fprintf f "@[<v 2>Type Inference Failure:@ %a@;<1 -2>has no inferable type@]"
        format_exp exp
 
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in
   function
-  | AllGood (cst, _, rs) ->
+  | AllGood (cst, _, _, _, ur, rs) ->
      fprintf f "@[<v 2>Parsed:@ %a@]" format_prog cst;
      List.iter
        (fun r ->
          pp_force_newline f ();
          format_eval_result f r)
-       rs
-  | ElaborationFailure cst ->
-     printf "@[<v 2>Elaboration Failure:@ %a@;<1 -2>cannot be elaborated@]"
-       format_prog cst
+       rs;
+     (match ur with
+      | UnitGood _ -> ()
+      | UnitFailure _ ->
+         pp_force_newline f ();
+         fprintf f "@[<v 2>Ill-Formed Unit:@ some definition does not type-check@]")
+  | ElaborationFailure (cst, msg) ->
+     printf "@[<v 2>Elaboration Failure:@ %a@;<1 -2>cannot be elaborated:@ %s@]"
+       format_prog cst msg
   | ParserFailure (s, t) ->
      printf "@[<v 2>Parser Failure:@ on %a:@ @ @[<hov 0>%a@]@]"
        Lexer.format_token t pp_print_text

@@ -22,17 +22,8 @@ COQDOCFLAGS := \
   --with-header $(EXTRA_DIR)/header.html --with-footer $(EXTRA_DIR)/footer.html
 export COQDOCFLAGS
 
-# The driver is extracted from [Entrypoint.v], which is left out of
-# [_CoqProject] while the semantic development is being ported; until it is
-# back, there is nothing to extract.
-ENTRYPOINT_ENABLED := $(shell grep -qx '\./Entrypoint\.v' _CoqProject && echo yes)
-
 post-all:: $(COQPARSERFILE) $(PARSERMESSAGEEXTRACTIONFILE) check_parserMessages
-ifeq ($(ENTRYPOINT_ENABLED),yes)
 	@echo "Separate Extraction main." | $(COQTOP) $(COQFLAGS) $(COQLIBS) -topfile Entrypoint.v -l Entrypoint.v
-else
-	@echo "SKIP extraction: Entrypoint.v is not in _CoqProject"
-endif
 
 $(COQPARSERFILE): %.v : %.vy
 	@echo "MENHIR $?"

@@ -5,9 +5,12 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
-From Mctt.Extraction Require Import NbE PseudoMonadic Subtyping.
+From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping.
 From Mctt.Frontend Require Import Elaborator.
-Import Domain_Notations Wk_Notations.
+Import Domain_Notations Wk_Notations Fixed_Notations.
+
+Section Fixed_GCtx.
+Context {GC : GCtx}.
 
 Section lookup.
   #[local]
@@ -65,9 +68,11 @@ Section type_check.
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
   | ti_vlookup : forall {x}, type_infer_order #x
-  (** A global is in order, and fails: the algorithmic judgments do not yet read
-      a global context, so nothing infers a type for [a_glob]. *)
+  (** A global and a parameter are read off the global context, which does not
+      recurse: the normal form of the type resolution hands back is asked for in
+      the obligations, from the well-formedness of [G]. *)
   | ti_glob : forall {pth}, type_infer_order (a_glob pth)
+  | ti_param : forall {lp}, type_infer_order (a_param lp)
   .
 
   #[local]
@@ -180,7 +185,7 @@ Section type_check.
         let*o (exist _ i _) :=  get_level_of_type_nf UA' while _ in
         let*b->o _ := type_check G A'[Id,,zero] _ MZ _ while _ in
         let*b->o _ := type_check (G ▹ ℕ ▹ A') A'[Wk ⨟ Wk,,succ #1] _ MS _ while _ in
-        let (A'', _) := nbe_ty_impl G A'[Id,,M'] _ in
+        let (A'', _) := nbe_ty_impl gc_deps gc_stack G A'[Id,,M'] _ in
         pureo (exist _ A'' _)
     | Π B C =>
         let*o (exist _ UB _) := type_infer G _ B _ while _ in
@@ -192,23 +197,33 @@ Section type_check.
         let*o (exist _ UA' _) := type_infer G _ A' _ while _ in
         let*o (exist _ i _) :=  get_level_of_type_nf UA' while _ in
         let*o (exist _ B' _) := type_infer (G ▹ A') _ M' _ while _ in
-        let (A'', _) := nbe_ty_impl G A' _ in
+        let (A'', _) := nbe_ty_impl gc_deps gc_stack G A' _ in
         pureo (exist _ (Πⁿ A'' B') _)
     | M' $ N' =>
         let*o (exist _ C _) := type_infer G _ M' _ while _ in
         let*o (existT _ A (exist _ B _)) := get_subterms_of_pi_nf C while _ in
         let*b->o _ := type_check G (A : nf) _ N' _ while _ in
-        let (B', _) := nbe_ty_impl G (B : nf)[Id,,N'] _ in
+        let (B', _) := nbe_ty_impl gc_deps gc_stack G (B : nf)[Id,,N'] _ in
         pureo (exist _ B' _)
     | #x =>
         let*o (exist _ A _) := lookup G _ x while _ in
-        let (A', _) := nbe_ty_impl G A _ in
+        let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
         pureo (exist _ A' _)
-    (** The catch-all of the explicit-substitution development covered [M[σ]],
-        the one expression that had no inference rule.  [a_glob] has taken its
-        place, and for the same reason: no algorithmic rule mentions it. *)
-    | a_glob _ =>
-        inright _
+    (** What resolution hands back, normalized: the generalized type of a
+        global, and the type of a parameter.  Neither mentions a λ-variable, but
+        both are read at [G], so both are normalized there. *)
+    | a_glob pth with inspect (gc_resolve gc_deps gc_stack pth) => {
+      | exist _ (Some (Δ, ge_def b pv A B)) _ =>
+          let (C, _) := nbe_ty_impl gc_deps gc_stack G (ctx_pi Δ A) _ in
+          pureo (exist _ C _)
+      | exist _ _ _ => inright _
+      }
+    | a_param lp with inspect (gs_param gc_stack lp) => {
+      | exist _ (Some T) _ =>
+          let (C, _) := nbe_ty_impl gc_deps gc_stack G T _ in
+          pureo (exist _ C _)
+      | exist _ None _ => inright _
+      }
     }
   .
 
@@ -226,7 +241,7 @@ Section type_check.
     assert (G ▹ ℕ ⊢ A' : Typeⁿ@i) as HA' by mauto 3 using alg_type_infer_sound.
     (** [sub_preserves_exp] has to be applied by hand: unifying its conclusion
         would ask [?A[?σ] ≟ Type@i], which [eapply] cannot solve. *)
-    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ).
   Qed.
 
   Next Obligation. (* exists j, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Type@i *)
@@ -237,10 +252,10 @@ Section type_check.
     assert (G ▹ ℕ ⊢ A' : Typeⁿ@i) as HA' by mauto 3 using alg_type_infer_sound.
     assert (⊢ G ▹ ℕ ▹ A') by mauto 2.
     assert (G ▹ ℕ ▹ A' ⊢s Wk ⨟ Wk,,succ #1 : G ▹ ℕ) as Hσ by mauto 3.
-    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ).
   Qed.
 
-  Next Obligation. (* nbe_ty_order G A'[Id,,M'] *)
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
     clear_defs.
     enough (exists i, G ⊢ A'[Id,,M'] : Typeⁿ@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
         by eauto 3 using nbe_ty_order_sound.
@@ -250,7 +265,7 @@ Section type_check.
     assert (G ▹ ℕ ⊢ A' : Typeⁿ@i) as HA' by mauto 3 using alg_type_infer_sound.
     assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
-    exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
+    exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ).
   Qed.
 
   Next Obligation. (* G ⊢a rec M' return A' | zero -> MZ | succ -> MS end ⟹ A'' /\ (exists j, G ⊢a A'' ⟹ Typeⁿ@j) *)
@@ -261,7 +276,7 @@ Section type_check.
     assert (G ▹ ℕ ⊢ A' : Typeⁿ@i) as HA' by mauto 3 using alg_type_infer_sound.
     assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
-    assert (G ⊢ A'[Id,,M'] : Typeⁿ@i) by exact (sub_preserves_exp _ _ _ _ _ HA' Hσ).
+    assert (G ⊢ A'[Id,,M'] : Typeⁿ@i) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ).
     assert (G ⊢ A'[Id,,M'] ≈ A'' : Type@i) by (eapply soundness_ty'; mauto 3).
     assert (user_exp A'') by trivial using user_exp_nf.
     assert (exists j, G ⊢a A'' ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 3); firstorder.
@@ -284,7 +299,7 @@ Section type_check.
     mauto 3.
   Qed.
 
-  Next Obligation. (* nbe_ty_order G A' *)
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G A' *)
     clear_defs.
     assert (G ⊢ A' : Type@i) as [? []]%soundness_ty by mauto 4 using alg_type_infer_sound.
     mauto 3 using nbe_ty_order_sound.
@@ -313,7 +328,7 @@ Section type_check.
     eexists; mauto 4 using alg_type_infer_sound.
   Qed.
 
-  Next Obligation. (* nbe_ty_order G s[Id,,N'] *)
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G s[Id,,N'] *)
     clear_defs.
     functional_alg_type_infer_rewrite_clear.
     progressive_inversion.
@@ -337,7 +352,7 @@ Section type_check.
     firstorder.
   Qed.
 
-  Next Obligation. (* nbe_ty_order G A *)
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G A *)
     clear_defs.
     assert (exists i, G ⊢ A : Type@i) as [? [? []]%soundness_ty] by mauto 3.
     mauto 3 using nbe_ty_order_sound.
@@ -351,10 +366,59 @@ Section type_check.
     assert (exists j, G ⊢a A' ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 4); firstorder mauto 3.
   Qed.
 
-  Next Obligation. (* forall A, ~ G ⊢a a_glob pth ⟹ A *)
-    clear_defs.
-    progressive_inversion.
-  Qed.
+  (** ** The Global Cases
+
+      The obligations of [a_glob] and [a_param] come down to one fact, that the
+      type resolution hands back is a type at [G], or, when nothing resolves, to
+      an inversion.  [glob_obl] does not depend on the order [Equations]
+      presents them in. *)
+
+  #[local]
+  Ltac resolved_typ :=
+    match goal with
+    | Hr : gc_resolve _ _ _ = Some (_, ge_def _ _ _ _) |- _ =>
+        eapply wf_glob_typ; [ eassumption | apply gc_resolve_sound; exact Hr ]
+    | lp : lpath, Hp : gs_param _ _ = Some _ |- _ =>
+        destruct lp; destruct (gs_param_sound _ _ _ _ Hp) as (? & ? & ? & ? & ->);
+        eapply wf_param_typ; eassumption
+    end.
+
+  #[local]
+  Ltac glob_obl :=
+    clear_defs;
+    first
+      [ match goal with
+        | |- nbe_ty_order _ _ ?G ?X =>
+            enough (exists i, G ⊢ X : Type@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
+              by eauto 3 using nbe_ty_order_sound;
+            resolved_typ
+        end
+      | match goal with
+        | |- _ /\ _ =>
+            split; [ mauto 3 |];
+            match goal with
+            | _ : nbe_ty gc_deps gc_stack ?G ?X ?C |- _ =>
+                assert (exists i, G ⊢ X : Type@i) as [i HX] by resolved_typ;
+                assert (G ⊢ X ≈ C : Type@i) by (eapply soundness_ty'; mauto 3);
+                assert (user_exp C) by trivial using user_exp_nf;
+                assert (exists j, G ⊢a C ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 3);
+                firstorder
+            end
+        end
+      | (* nothing resolves, so nothing is inferred *)
+        repeat intro;
+        match goal with
+        | H : _ ⊢a a_glob _ ⟹ _ |- _ => inversion H; subst; congruence
+        | H : _ ⊢a a_param _ ⟹ _ |- _ => inversion H; subst; congruence
+        end ].
+
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
+  Next Obligation. glob_obl. Qed.
 
   Extraction Inline type_check_functional type_infer_functional.
 
@@ -407,8 +471,8 @@ Section type_check_closed.
     mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations type_check_closed A (HA : user_exp A) M (HM : user_exp M) : { ⋅ ⊢ M : A } + { ~ ⋅ ⊢ M : A } :=
-  | A, HA, M, HM =>
+  Equations type_check_closed (Hg : wf_gctx gc_deps gc_stack) A (HA : user_exp A) M (HM : user_exp M) : { ⋅ ⊢ M : A } + { ~ ⋅ ⊢ M : A } :=
+  | Hg, A, HA, M, HM =>
       let*o->b (exist _ UA _) := type_infer ⋅ _ A _ while _ in
       let*o->b (exist _ i _) :=  get_level_of_type_nf UA while _ in
       let*b _ := type_check ⋅ A _ M _ while _ in
@@ -440,9 +504,9 @@ Section type_check_closed.
   Qed.
 End type_check_closed.
 
-Lemma type_check_closed_complete : forall A (HA : user_exp A) M (HM : user_exp M),
+Lemma type_check_closed_complete : forall (Hg : wf_gctx gc_deps gc_stack) A (HA : user_exp A) M (HM : user_exp M),
     ⋅ ⊢ M : A ->
-    exists H', type_check_closed A HA M HM = left H'.
+    exists H', type_check_closed Hg A HA M HM = left H'.
 Proof. intros; dec_complete. Qed.
 
 (** What an unascribed [eval] needs: a type for a closed term, rather than a
@@ -458,9 +522,11 @@ Section type_infer_closed.
           | firstorder ].
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations type_infer_closed M (HM : user_exp M) : { A : nf | ⋅ ⊢ M : A } + { forall A, ~ ⋅ ⊢a M ⟹ A } :=
-  | M, HM =>
+  Equations type_infer_closed (Hg : wf_gctx gc_deps gc_stack) M (HM : user_exp M) : { A : nf | ⋅ ⊢ M : A } + { forall A, ~ ⋅ ⊢a M ⟹ A } :=
+  | Hg, M, HM =>
       let*o (exist _ A _) := type_infer ⋅ _ M _ while _ in
       pureo (exist _ A _)
   .
 End type_infer_closed.
+
+End Fixed_GCtx.

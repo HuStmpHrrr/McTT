@@ -1,10 +1,9 @@
 # Porting the Semantic Development to Global Contexts
 
 The semantic files (`Core/Semantic/PER*`, `Core/Completeness`, `Core/Soundness`,
-…) were written before judgments and evaluation took a global context
-`Θ ⍮ Ξ`.  They are ported file by file; a file not yet ported is commented out
-of `theories/_CoqProject` with the suffix `(not yet ported to module
-parameters)`.
+…), the algorithmic system and the extraction were written before judgments
+and evaluation took a global context `Θ ⍮ Ξ`.  All of them are ported; these
+are the conventions they follow.
 
 ## The conventions
 
@@ -51,18 +50,13 @@ parameters)`.
   hints and instances are local inside and re-exported after `End`;
   `#[global] Arguments` stays inside.
 
-## The tools (run from `theories/`)
+## Building
 
-* `python3 ../scripts/port_semantic.py FILE…` — **resets FILE to `HEAD`**, then
-  applies the generic edits (the induction tactic, instance goals after
-  `apply eval_sub_of_wk`, explicit applications) and any per-file edits recorded
-  in it, then `fix_gctx.py`.  Run it once per file; after that edit the file by
-  hand — rerunning discards manual edits.
-* `python3 ../scripts/fix_gctx.py FILE…` — the section wrapping alone.
-* `python3 ../scripts/enable_modules.py FILE…` — uncomment in `_CoqProject`;
-  then `rocq makefile -f _CoqProject -o CoqMakefile.mk`.
-* Build one file: `make -f CoqMakefile.mk Core/…/X.vo`.  Use the rocq MCP to
-  step through a failing proof.
+* Build one file: `make -f CoqMakefile.mk Core/…/X.vo` from `theories/`.  Use
+  the rocq MCP to step through a failing proof.
+* The mutual block's global context is an *index*, so `induction` on a
+  judgment at `gc_deps gc_stack` abstracts it: `remember` it first (see
+  `subtyp_spec`), or state the lemma at explicit `Θ Ξ`.
 
 ## The global rules (glob, param, δ)
 
@@ -88,3 +82,13 @@ The models are not monotone under growing the global context: both break at Π
   (`gc_transparent`: every definition transparent with a body, no open frame
   with parameters), where no global or parameter is a neutral
   (`Core/Semantic/Transparency.v`: `nbe_clean`); an axiom is a closed neutral.
+
+## What the driver needs
+
+`Frontend/Elaborator.v` hands back a `gunit` and one obligation per `eval`,
+each `(gstack * exp * option typ)` — the stack of frames as they stood at that
+point.  Nothing proves that stack well formed (the elaborator has no soundness
+proof yet), so `Entrypoint.v` has to *check* it: a decision procedure for
+`⊢ Γ`, `⊢e`, `⊢m`, `⊢u` and `⊢g`, built on `Extraction/TypeCheck.v`
+(`type_infer` plus `get_level_of_type_nf` decides "is a type").  Checking the
+unit as well catches the definitions that follow the last `eval`.

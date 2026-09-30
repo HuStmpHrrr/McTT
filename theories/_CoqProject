@@ -2,12 +2,12 @@
 
 -arg -w -arg -cast-in-pattern,-notation-overridden
 
-# ./Algorithmic/Subtyping.v  (not yet ported to module parameters)
-# ./Algorithmic/Subtyping/Definitions.v  (not yet ported to module parameters)
-# ./Algorithmic/Subtyping/Lemmas.v  (not yet ported to module parameters)
-# ./Algorithmic/Typing.v  (not yet ported to module parameters)
-# ./Algorithmic/Typing/Definitions.v  (not yet ported to module parameters)
-# ./Algorithmic/Typing/Lemmas.v  (not yet ported to module parameters)
+./Algorithmic/Subtyping.v
+./Algorithmic/Subtyping/Definitions.v
+./Algorithmic/Subtyping/Lemmas.v
+./Algorithmic/Typing.v
+./Algorithmic/Typing/Definitions.v
+./Algorithmic/Typing/Lemmas.v
 ./Core/Base.v
 ./Core/Completeness.v
 ./Core/Completeness/Consequences/Rules.v
@@ -84,13 +84,14 @@
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/System/Transport.v
 ./Core/Syntactic/SystemOpt.v
-# ./Entrypoint.v  (not yet ported to module parameters)
-# ./Extraction/Evaluation.v  (not yet ported to module parameters)
-# ./Extraction/NbE.v  (not yet ported to module parameters)
+./Entrypoint.v
+./Extraction/Evaluation.v
+./Extraction/GlobalCheck.v
+./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
-# ./Extraction/Readback.v  (not yet ported to module parameters)
-# ./Extraction/Subtyping.v  (not yet ported to module parameters)
-# ./Extraction/TypeCheck.v  (not yet ported to module parameters)
+./Extraction/Readback.v
+./Extraction/Subtyping.v
+./Extraction/TypeCheck.v
 ./Frontend/Elaborator.v
 ./Frontend/Parser.v
 ./Frontend/Resolve.v

@@ -86,14 +86,14 @@ Ltac functional_nbe_complete :=
 (** The order of NbE in [Θ ⍮ Ξ ⍮ Γ]. *)
 Inductive nbe_order Θ Ξ G M A : Prop :=
 | nbe_order_run :
-  `( initial_env_order Θ Ξ (G ++ gs_tele Ξ) ->
-     (forall p, initial_env Θ Ξ (G ++ gs_tele Ξ) p -> eval_exp_order Θ Ξ A p) ->
-     (forall p, initial_env Θ Ξ (G ++ gs_tele Ξ) p -> eval_exp_order Θ Ξ M p) ->
+  `( initial_env_order Θ Ξ G ->
+     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p) ->
+     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ M p) ->
      (forall p a m,
-         initial_env Θ Ξ (G ++ gs_tele Ξ) p ->
+         initial_env Θ Ξ G p ->
          ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
          ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m ->
-         read_nf_order Θ Ξ (List.length (G ++ gs_tele Ξ)) ⇓ a m) ->
+         read_nf_order Θ Ξ (List.length G) ⇓ a m) ->
      nbe_order Θ Ξ G M A ).
 
 #[local]
@@ -126,10 +126,10 @@ Section NbEDef.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations nbe_impl Θ Ξ G M A (H : nbe_order Θ Ξ G M A) : { w | nbe Θ Ξ G M A w } by struct H :=
   | Θ, Ξ, G, M, A, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ (G ++ gs_tele Ξ) _ in
+      let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
       let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
-      let (w, Hw) := read_nf_impl Θ Ξ (List.length (G ++ gs_tele Ξ)) ⇓ a m _ in
+      let (w, Hw) := read_nf_impl Θ Ξ (List.length G) ⇓ a m _ in
       exist _ w _.
 
 End NbEDef.
@@ -143,12 +143,12 @@ Qed.
 
 Inductive nbe_ty_order Θ Ξ G A : Prop :=
 | nbe_ty_order_run :
-  `( initial_env_order Θ Ξ (G ++ gs_tele Ξ) ->
-     (forall p, initial_env Θ Ξ (G ++ gs_tele Ξ) p -> eval_exp_order Θ Ξ A p) ->
+  `( initial_env_order Θ Ξ G ->
+     (forall p, initial_env Θ Ξ G p -> eval_exp_order Θ Ξ A p) ->
      (forall p a,
-         initial_env Θ Ξ (G ++ gs_tele Ξ) p ->
+         initial_env Θ Ξ G p ->
          ⟦ A ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-         read_typ_order Θ Ξ (List.length (G ++ gs_tele Ξ)) a) ->
+         read_typ_order Θ Ξ (List.length G) a) ->
      nbe_ty_order Θ Ξ G A ).
 
 #[local]
@@ -181,9 +181,9 @@ Section NbETyDef.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations nbe_ty_impl Θ Ξ G A (H : nbe_ty_order Θ Ξ G A) : { w | nbe_ty Θ Ξ G A w } by struct H :=
   | Θ, Ξ, G, A, H =>
-      let (p, Hp) := initial_env_impl Θ Ξ (G ++ gs_tele Ξ) _ in
+      let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
-      let (w, Hw) := read_typ_impl Θ Ξ (List.length (G ++ gs_tele Ξ)) a _ in
+      let (w, Hw) := read_typ_impl Θ Ξ (List.length G) a _ in
       exist _ w _.
 
 End NbETyDef.
