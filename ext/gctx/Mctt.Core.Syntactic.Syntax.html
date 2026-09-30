@@ -37,7 +37,7 @@
 </div>
 
 <div class="doc">
-<a id="lab53"></a><h1 class="section">Concrete Syntax Tree</h1>
+<a id="lab201"></a><h1 class="section">Concrete Syntax Tree</h1>
 
 </div>
 <div class="code">
@@ -47,7 +47,7 @@
 </div>
 
 <div class="doc">
-<a id="lab54"></a><h2 class="section">Modifiers</h2>
+<a id="lab202"></a><h2 class="section">Modifiers</h2>
 
 
 <div class="paragraph"> </div>
@@ -70,7 +70,7 @@
 </div>
 
 <div class="doc">
-<a id="lab55"></a><h2 class="section">Objects and Declarations</h2>
+<a id="lab203"></a><h2 class="section">Objects and Declarations</h2>
 
 
 <div class="paragraph"> </div>
@@ -137,7 +137,7 @@ A <span class="inlinecode">::</span> path, hence at least two segments after a <
 </div>
 
 <div class="doc">
-<a id="lab56"></a><h2 class="section">Commands</h2>
+<a id="lab204"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -203,7 +203,7 @@ A compilation unit: its imports, and the one module declaration everything
 </div>
 
 <div class="doc">
-<a id="lab57"></a><h1 class="section">Abstract Syntax Tree</h1>
+<a id="lab205"></a><h1 class="section">Abstract Syntax Tree</h1>
 
 
 <div class="paragraph"> </div>
@@ -217,7 +217,7 @@ A compilation unit: its imports, and the one module declaration everything
  
 <div class="paragraph"> </div>
 
-<a id="lab58"></a><h2 class="section">Qualified Names</h2>
+<a id="lab206"></a><h2 class="section">Qualified Names</h2>
 
 
 <div class="paragraph"> </div>
@@ -289,7 +289,7 @@ An absolute qualifier is nonempty, so it never denotes "this unit" — that is
 </div>
 
 <div class="doc">
-<a id="lab59"></a><h2 class="section">Path Opening</h2>
+<a id="lab207"></a><h2 class="section">Path Opening</h2>
 
 
 <div class="paragraph"> </div>
@@ -492,7 +492,7 @@ Globals.  <span class="inlinecode"><span class="id" title="var">X</span>::<span 
 </div>
 
 <div class="doc">
-<a id="lab60"></a><h2 class="section">Telescopes</h2>
+<a id="lab208"></a><h2 class="section">Telescopes</h2>
 
 
 <div class="paragraph"> </div>
@@ -559,7 +559,7 @@ Globals.  <span class="inlinecode"><span class="id" title="var">X</span>::<span 
 </div>
 
 <div class="doc">
-<a id="lab61"></a><h2 class="section">Syntactic Normal/Neutral Form</h2>
+<a id="lab209"></a><h2 class="section">Syntactic Normal/Neutral Form</h2>
 
 </div>
 <div class="code">
@@ -624,7 +624,7 @@ An opaque definition or an axiom: it does not unfold.
 </div>
 
 <div class="doc">
-<a id="lab62"></a><h1 class="section">Weakenings</h1>
+<a id="lab210"></a><h1 class="section">Weakenings</h1>
 
 
 <div class="paragraph"> </div>
@@ -741,7 +741,7 @@ Application of a weakening to an expression.  Whenever we pass under a
 </div>
 
 <div class="doc">
-<a id="lab63"></a><h1 class="section">Substitutions</h1>
+<a id="lab211"></a><h1 class="section">Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -878,7 +878,7 @@ Composition of substitutions, again *diagrammatic*: <span class="inlinecode"><a 
 </div>
 
 <div class="doc">
-<a id="lab64"></a><h1 class="section">Module Substitutions</h1>
+<a id="lab212"></a><h1 class="section">Module Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -1011,8 +1011,8 @@ Closing the innermost frame, seen from outside as <span class="inlinecode"><a cl
 </div>
 
 <div class="doc">
-Reading a frame's telescope as its parameters: the <span class="inlinecode"><span class="id" title="var">i</span></span>-th binding of frame
-    <span class="inlinecode"><span class="id" title="var">n</span></span> is the parameter <span class="inlinecode">(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">i</span>)</span>. 
+Reading a frame's telescope as its parameters: the <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>-th binding of frame
+    <span class="inlinecode"><span class="id" title="var">n</span></span> is the parameter <span class="inlinecode">(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a>)</span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="sb_params" class="idref" href="#sb_params"><span class="id" title="definition">sb_params</span></a> (<a id="n:145" class="idref" href="#n:145"><span class="id" title="binder">n</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sub"><span class="id" title="definition">sub</span></a> := <span class="id" title="keyword">fun</span> <a id="i:146" class="idref" href="#i:146"><span class="id" title="binder">i</span></a> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_param"><span class="id" title="constructor">a_param</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#lp_mk"><span class="id" title="constructor">lp_mk</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#n:145"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#i:146"><span class="id" title="variable">i</span></a>).<br/>
@@ -1022,14 +1022,14 @@ Reading a frame's telescope as its parameters: the <span class="inlinecode"><spa
 </div>
 
 <div class="doc">
-<a id="lab65"></a><h2 class="section">Equality of Weakenings and Substitutions</h2>
+<a id="lab213"></a><h2 class="section">Equality of Weakenings and Substitutions</h2>
 
 
 <div class="paragraph"> </div>
 
     Weakenings and substitutions are functions, so the algebraic laws that the
     paper states as equalities of weakenings or of substitutions (for instance
-    <span class="inlinecode"><span class="id" title="var">q</span>(<span class="id" title="var">id</span>)</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">id</span></span>) are function equalities.  Rather than assume functional
+    <span class="inlinecode"><span class="id" title="var">q</span>(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a>)</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span>) are function equalities.  Rather than assume functional
     extensionality — this development is otherwise axiom-free — we use
     pointwise equality throughout, and lift it through the two application
     operations with the congruence lemmas <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_wk_eq"><span class="id" title="lemma">exp_wk_wk_eq</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_sb_eq"><span class="id" title="lemma">exp_sub_sb_eq</span></a></span>
@@ -1060,7 +1060,7 @@ Reading a frame's telescope as its parameters: the <span class="inlinecode"><spa
 </div>
 
 <div class="doc">
-<a id="lab66"></a><h2 class="section">Syntactic Notations</h2>
+<a id="lab214"></a><h2 class="section">Syntactic Notations</h2>
 
 
 <div class="paragraph"> </div>
@@ -1110,7 +1110,7 @@ Application needs an explicit operator: a <span class="inlinecode"><span class="
 </div>
 
 <div class="doc">
-<a id="lab67"></a><h3 class="section">Substitutions</h3>
+<a id="lab215"></a><h3 class="section">Substitutions</h3>
 
 
 <div class="paragraph"> </div>
@@ -1131,7 +1131,7 @@ Application needs an explicit operator: a <span class="inlinecode"><span class="
 </div>
 
 <div class="doc">
-<a id="lab68"></a><h3 class="section">Contexts</h3>
+<a id="lab216"></a><h3 class="section">Contexts</h3>
 
 
 <div class="paragraph"> </div>
@@ -1148,7 +1148,7 @@ Application needs an explicit operator: a <span class="inlinecode"><span class="
 </div>
 
 <div class="doc">
-<a id="lab69"></a><h3 class="section">Normal and Neutral Forms</h3>
+<a id="lab217"></a><h3 class="section">Normal and Neutral Forms</h3>
 
 </div>
 <div class="code">
@@ -1168,7 +1168,7 @@ Application needs an explicit operator: a <span class="inlinecode"><span class="
 </div>
 
 <div class="doc">
-<a id="lab70"></a><h2 class="section">Notations for Weakenings</h2>
+<a id="lab218"></a><h2 class="section">Notations for Weakenings</h2>
 
 
 <div class="paragraph"> </div>

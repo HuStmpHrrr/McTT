@@ -41,7 +41,7 @@
 </div>
 
 <div class="doc">
-<a id="lab153"></a><h1 class="section">Names in Scope</h1>
+<a id="lab301"></a><h1 class="section">Names in Scope</h1>
 
 
 <div class="paragraph"> </div>
@@ -62,7 +62,7 @@
     reachable. 
 <div class="paragraph"> </div>
 
-<a id="lab154"></a><h2 class="section">Frames</h2>
+<a id="lab302"></a><h2 class="section">Frames</h2>
 
 <div class="paragraph"> </div>
 
@@ -125,7 +125,7 @@ What a module filed in <span class="inlinecode"><a class="idref" href="Mctt.Fron
 </div>
 
 <div class="doc">
-<a id="lab155"></a><h2 class="section">What a Name Denotes</h2>
+<a id="lab303"></a><h2 class="section">What a Name Denotes</h2>
 
 
 <div class="paragraph"> </div>
@@ -160,8 +160,8 @@ What an alias names: a module, or a definition of one.
 </div>
 
 <div class="doc">
-An alias recorded in frame <span class="inlinecode"><span class="id" title="var">j</span></span> is used from <span class="inlinecode"><span class="id" title="var">i</span></span> frames further in: its
-    relative qualifier and its arguments move out by <span class="inlinecode"><span class="id" title="var">i</span></span>. 
+An alias recorded in frame <span class="inlinecode"><span class="id" title="var">j</span></span> is used from <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> frames further in: its
+    relative qualifier and its arguments move out by <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="qual_shift" class="idref" href="#qual_shift"><span class="id" title="definition">qual_shift</span></a> (<a id="i:31" class="idref" href="#i:31"><span class="id" title="binder">i</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="ql:32" class="idref" href="#ql:32"><span class="id" title="binder">ql</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qual"><span class="id" title="inductive">qual</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#qual"><span class="id" title="inductive">qual</span></a> :=<br/>
@@ -187,7 +187,7 @@ An alias recorded in frame <span class="inlinecode"><span class="id" title="var"
 </div>
 
 <div class="doc">
-<a id="lab156"></a><h2 class="section">The Local Scope</h2>
+<a id="lab304"></a><h2 class="section">The Local Scope</h2>
 
 
 <div class="paragraph"> </div>
@@ -222,13 +222,13 @@ An alias recorded in frame <span class="inlinecode"><span class="id" title="var"
 </div>
 
 <div class="doc">
-<a id="lab157"></a><h1 class="section">Import Depths</h1>
+<a id="lab305"></a><h1 class="section">Import Depths</h1>
 
 
 <div class="paragraph"> </div>
 
     The rule of the design document — start at <span class="inlinecode">0</span> and replace the current
-    depth <span class="inlinecode"><span class="id" title="var">n</span></span> by <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a>(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">+</span> <span class="inlinecode">1)</span> for an import of depth <span class="inlinecode"><span class="id" title="var">m</span></span> — assigns each
+    depth <span class="inlinecode"><span class="id" title="var">n</span></span> by <span class="inlinecode"><span class="id" title="definition">max</span>(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">+</span> <span class="inlinecode">1)</span> for an import of depth <span class="inlinecode"><span class="id" title="var">m</span></span> — assigns each
     module the length of the longest import chain below it.  Such an assignment
     is a *ranking* of the import graph, and ranking and acyclicity are two views
     of the same property: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depth_acyclic"><span class="id" title="lemma">depth_acyclic</span></a></span> is one direction, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depths_ranks"><span class="id" title="lemma">depths_ranks</span></a></span> the
@@ -241,8 +241,8 @@ An alias recorded in frame <span class="inlinecode"><span class="id" title="var"
 </div>
 
 <div class="doc">
-A finite import graph in declaration order: node <span class="inlinecode"><span class="id" title="var">i</span></span> imports the nodes
-      listed in <span class="inlinecode"><span class="id" title="abbreviation">nth</span></span> <span class="inlinecode"><span class="id" title="var">i</span></span> <span class="inlinecode"><span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span>. 
+A finite import graph in declaration order: node <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> imports the nodes
+      listed in <span class="inlinecode"><span class="id" title="abbreviation">nth</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="graph" class="idref" href="#graph"><span class="id" title="definition">graph</span></a> : <span class="id" title="keyword">Set</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>).<br/>

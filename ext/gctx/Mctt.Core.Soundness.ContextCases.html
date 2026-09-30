@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.ContextCases</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="Fixed_GCtx" class="idref" href="#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<a id="Fixed_GCtx.GC" class="idref" href="#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>}.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+As <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_ctx_empty"><span class="id" title="constructor">wf_ctx_empty</span></a></span>, relative to a well-formed global context. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Lemma</span> <a id="glu_rel_ctx_empty" class="idref" href="#glu_rel_ctx_empty"><span class="id" title="lemma">glu_rel_ctx_empty</span></a> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gctx"><span class="id" title="inductive">wf_gctx</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_deps"><span class="id" title="method">gc_deps</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_stack"><span class="id" title="method">gc_stack</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span>; <span class="id" title="tactic">do</span> 2 <span class="id" title="tactic">econstructor</span>; [<span class="id" title="tactic">reflexivity</span> | <span class="id" title="tactic">assumption</span>].<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_ctx_empty</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="glu_rel_ctx_extend" class="idref" href="#glu_rel_ctx_extend"><span class="id" title="lemma">glu_rel_ctx_extend</span></a> : <span class="id" title="keyword">forall</span> {<a id="da7a5918a812e0216f4a54d21f7406c4" class="idref" href="#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="binder">Γ</span></a> <a id="A:3" class="idref" href="#A:3"><span class="id" title="binder">A</span></a> <a id="i:4" class="idref" href="#i:4"><span class="id" title="binder">i</span></a>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.ContextCases.html#A:3"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Soundness.ContextCases.html#A:3"><span class="id" title="variable">A</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * [<span class="id" title="var">Sb</span>] <span class="id" title="var">HA</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HA</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="var">mauto</span> 3; <span class="id" title="tactic">reflexivity</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_ctx_extend</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Soundness.ContextCases.html#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">glu_rel_ctx_empty</span> : <span class="id" title="var">mctt</span>.<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">glu_rel_ctx_extend</span> : <span class="id" title="var">mctt</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab6"></a><h1 class="section">Several Values Related by One PER</h1>
+<a id="lab104"></a><h1 class="section">Several Values Related by One PER</h1>
 
 
 <div class="paragraph"> </div>
@@ -87,7 +87,7 @@
 <div class="paragraph"> </div>
 
     Everything here is generic in the carrier and the relation; it is filed under
-    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> because a PER is the only thing it is ever used at. 
+    <span class="inlinecode"><span class="id" title="library">PER</span></span> because a PER is the only thing it is ever used at. 
 </div>
 <div class="code">
 
@@ -274,7 +274,7 @@ Reflexivity at every member, against the second member the chain is
 </div>
 
 <div class="doc">
-<a id="lab7"></a><h2 class="section">Pairwise</h2>
+<a id="lab105"></a><h2 class="section">Pairwise</h2>
 
 
 <div class="paragraph"> </div>
@@ -326,7 +326,7 @@ A list drawn from the members of a chain is a chain: order, repetition and
 </div>
 
 <div class="doc">
-<a id="lab8"></a><h2 class="section">Merge</h2>
+<a id="lab106"></a><h2 class="section">Merge</h2>
 
 
 <div class="paragraph"> </div>
@@ -365,7 +365,7 @@ A list drawn from the members of a chain is a chain: order, repetition and
 </div>
 
 <div class="doc">
-<a id="lab9"></a><h2 class="section">The Four-Value Pattern</h2>
+<a id="lab107"></a><h2 class="section">The Four-Value Pattern</h2>
 
 
 <div class="paragraph"> </div>
@@ -421,8 +421,8 @@ A list drawn from the members of a chain is a chain: order, repetition and
 The degenerate four-value pattern, in which both commutation obligations
       hold by *equality* of the two values compared — the situation of every
       judgment about weakenings, where evaluation really does commute
-      (<span class="inlinecode"><span class="id" title="var">rel_sub_of_wk</span></span>), and of every instance of a judgment at the identity
-      substitution (<span class="inlinecode"><span class="id" title="var">rel_exp_under_ctx_simple</span></span>). 
+      (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_of_wk"><span class="id" title="lemma">rel_sub_of_wk</span></a></span>), and of every instance of a judgment at the identity
+      substitution (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span>). 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Corollary</span> <a id="rel_chain_4_of_2" class="idref" href="#rel_chain_4_of_2"><span class="id" title="lemma">rel_chain_4_of_2</span></a> : <span class="id" title="keyword">forall</span> <a id="v1:57" class="idref" href="#v1:57"><span class="id" title="binder">v1</span></a> <a id="v2:58" class="idref" href="#v2:58"><span class="id" title="binder">v2</span></a>,<br/>
@@ -456,7 +456,7 @@ Reversal, which is the whole of the semantic symmetry lemma: the four
 <div class="doc">
 Weakening the relation.  No assumption on either relation: a chain is a
     conjunction of links, so it is monotone in whatever relates them.  This is
-    what moves between <span class="inlinecode"><span class="id" title="var">per_univ_elem</span></span> <span class="inlinecode"><span class="id" title="var">i</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> and <span class="inlinecode"><span class="id" title="var">per_univ</span></span> <span class="inlinecode"><span class="id" title="var">i</span></span>, and it gives the
+    what moves between <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>, and it gives the
     <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#relation_equivalence"><span class="id" title="definition">relation_equivalence</span></a></span> morphism below. 
 </div>
 <div class="code">
@@ -477,8 +477,8 @@ Weakening the relation.  No assumption on either relation: a chain is a
 
 <div class="doc">
 Transporting a chain along a map that preserves relatedness.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_mono"><span class="id" title="lemma">rel_chain_mono</span></a></span>
-    is the case <span class="inlinecode"><span class="id" title="var">f</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">id</span></span>; the case that matters is <span class="inlinecode"><span class="id" title="var">f</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">eval_wk</span></span> <span class="inlinecode">φ</span>, where the
-    hypothesis is literally <span class="inlinecode"><span class="id" title="var">rel_wk</span></span> <span class="inlinecode">φ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><span class="id" title="var">R'</span></span> — so a chain of environments related
+    is the case <span class="inlinecode"><span class="id" title="var">f</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#id"><span class="id" title="definition">id</span></a></span>; the case that matters is <span class="inlinecode"><span class="id" title="var">f</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk"><span class="id" title="definition">eval_wk</span></a></span> <span class="inlinecode">φ</span>, where the
+    hypothesis is literally <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_wk"><span class="id" title="record">rel_wk</span></a></span> <span class="inlinecode">φ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><span class="id" title="var">R'</span></span> — so a chain of environments related
     in a context PER becomes a chain of weakened environments related in
     another. 
 </div>
@@ -512,9 +512,9 @@ Transporting a chain along a map that preserves relatedness.  <span class="inlin
 </div>
 
 <div class="doc">
-Every lemma above that needs <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> takes it as an instance argument, and
+Every lemma above that needs <span class="inlinecode"><span class="id" title="library">PER</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> takes it as an instance argument, and
     <span class="inlinecode"><span class="id" title="tactic">apply</span></span> does not always resolve it: the relations it is used at are context
-    and element PERs, whose instances (<span class="inlinecode"><span class="id" title="var">per_env_PER</span></span>, <span class="inlinecode"><span class="id" title="var">per_elem_PER</span></span>) are found
+    and element PERs, whose instances (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_PER"><span class="id" title="instance">per_env_PER</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_PER"><span class="id" title="instance">per_elem_PER</span></a></span>) are found
     from a hypothesis rather than from the goal, which the resolution <span class="inlinecode"><span class="id" title="tactic">apply</span></span>
     runs will not do.  Discharging it explicitly is enough. 
 </div>
@@ -527,7 +527,7 @@ Every lemma above that needs <span class="inlinecode"><a class="idref" href="htt
 <div class="doc">
 Closes <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode"><span class="id" title="var">y</span></span> from any <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain"><span class="id" title="definition">rel_chain</span></a></span> hypothesis about <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span>, whichever two of
     its members <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> and <span class="inlinecode"><span class="id" title="var">y</span></span> are.  <span class="inlinecode"><span class="id" title="tactic">first</span></span> over the remaining goals rather than a
-    positional <span class="inlinecode"></span> <span class="inlinecode">|</span> <span class="inlinecode">|</span> <span class="inlinecode"></span> because the <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> obligation may or may not survive to
+    positional <span class="inlinecode"></span> <span class="inlinecode">|</span> <span class="inlinecode">|</span> <span class="inlinecode"></span> because the <span class="inlinecode"><span class="id" title="library">PER</span></span> obligation may or may not survive to
     become one.
 
 <div class="paragraph"> </div>
@@ -540,9 +540,9 @@ Closes <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Ch
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">unshelve</span></span> because <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> resolves the <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> instance argument itself and
+    <span class="inlinecode"><span class="id" title="var">unshelve</span></span> because <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> resolves the <span class="inlinecode"><span class="id" title="library">PER</span></span> instance argument itself and
     *shelves* it when it cannot: without it, a chain at a relation that is not
-    known to be a PER — <span class="inlinecode"><span class="id" title="var">per_pi</span></span> at a domain PER, say — would let this tactic
+    known to be a PER — <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi"><span class="id" title="definition">per_pi</span></a></span> at a domain PER, say — would let this tactic
     report success and leave the hole to be discovered at <span class="inlinecode"><span class="id" title="keyword">Qed</span></span>. 
 </div>
 <div class="code">
@@ -587,7 +587,7 @@ Closes a <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.
     metavariable list, so a search tactic would put the same hypothesis in both
     and only fail later, at the inclusion; and the shared value is not determined
     by the goal at all.  So every goal is addressed positionally, including the
-    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> instance argument of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_incl"><span class="id" title="lemma">rel_chain_incl</span></a></span>, which unlike that of
+    <span class="inlinecode"><span class="id" title="library">PER</span></span> instance argument of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_incl"><span class="id" title="lemma">rel_chain_incl</span></a></span>, which unlike that of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_merge"><span class="id" title="lemma">rel_chain_merge</span></a></span> is not resolved by the <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> itself. 
 </div>
 <div class="code">

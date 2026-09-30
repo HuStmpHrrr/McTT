@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab37"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
+<a id="lab185"></a><h1 class="section">The Algebra of Weakenings and Substitutions</h1>
 
 
 <div class="paragraph"> </div>
@@ -87,7 +87,7 @@
 </div>
 
 <div class="doc">
-<a id="lab38"></a><h2 class="section">Computing with the Operations</h2>
+<a id="lab186"></a><h2 class="section">Computing with the Operations</h2>
 
 
 <div class="paragraph"> </div>
@@ -204,7 +204,7 @@ The heads that do meet a binder.  Kept out of the databases above: pushing
 </div>
 
 <div class="doc">
-<a id="lab39"></a><h3 class="section">Two Shared Tactics</h3>
+<a id="lab187"></a><h3 class="section">Two Shared Tactics</h3>
 
 
 <div class="paragraph"> </div>
@@ -272,7 +272,7 @@ One case of an induction over <span class="inlinecode"><a class="idref" href="Mc
 </div>
 
 <div class="doc">
-<a id="lab40"></a><h2 class="section">Weakenings</h2>
+<a id="lab188"></a><h2 class="section">Weakenings</h2>
 
 </div>
 <div class="code">
@@ -451,7 +451,7 @@ The <span class="inlinecode"><span class="id" title="var">n</span></span>-fold s
 </div>
 
 <div class="doc">
-<a id="lab41"></a><h2 class="section">Substitutions</h2>
+<a id="lab189"></a><h2 class="section">Substitutions</h2>
 
 </div>
 <div class="code">
@@ -932,7 +932,7 @@ Substitutions form a category.
 <div class="doc">
 Postcomposition by a weakening slides past *pre*composition by a weakening:
     both sides send <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> to <span class="inlinecode">(σ</span> <span class="inlinecode">(ψ</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a>))[φ]ʷ</span>.  Nothing has to be transported across
-    <span class="inlinecode">ψ</span>, because <span class="inlinecode">(<span class="id" title="var">ι</span></span> <span class="inlinecode">ψ)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> is a variable — the same reason <span class="inlinecode"><span class="id" title="var">eval_sub_wk_pre</span></span>
+    <span class="inlinecode">ψ</span>, because <span class="inlinecode">(<span class="id" title="var">ι</span></span> <span class="inlinecode">ψ)</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> is a variable — the same reason <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub_wk_pre"><span class="id" title="lemma">eval_sub_wk_pre</span></a></span>
     exists while its analogue for a general composition does not.  The semantic
     weakening lemma needs the general form; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_shift_pre"><span class="id" title="lemma">sb_wk_shift_pre</span></a></span> below is the
     instance at <span class="inlinecode">ψ</span> <span class="inlinecode">:=</span> <span class="inlinecode">⇑</span>. 
@@ -1104,7 +1104,7 @@ The form the completeness proof uses it in: an instantiated type or term,
 </div>
 
 <div class="doc">
-<a id="lab42"></a><h2 class="section">The Instances the Typing Rules Need</h2>
+<a id="lab190"></a><h2 class="section">The Instances the Typing Rules Need</h2>
 
 
 <div class="paragraph"> </div>
@@ -1270,7 +1270,7 @@ The two-argument analogue of <span class="inlinecode"><a class="idref" href="Mct
 </div>
 
 <div class="doc">
-<a id="lab43"></a><h2 class="section">The Generic Recursor</h2>
+<a id="lab191"></a><h2 class="section">The Generic Recursor</h2>
 
 
 <div class="paragraph"> </div>
@@ -1280,7 +1280,7 @@ The two-argument analogue of <span class="inlinecode"><a class="idref" href="Mct
     is a term of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> which the extension <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> sends back to <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Transport.html#MSubTransport.E"><span class="id" title="variable">E</span></a></span>, and it
     exists for one reason: the recursive call of the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><span class="id" title="var">β</span></span> rule for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span>
     appears in the *substitution* <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Transport.html#MSubTransport.E"><span class="id" title="variable">E</span></a></span>, and the only way to validate an
-    extension semantically (<span class="inlinecode"><span class="id" title="var">rel_sub_under_ctx_extend_sub_double</span></span>) is by a term of
+    extension semantically (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub_double"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub_double</span></a></span>) is by a term of
     the context being extended.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Transport.html#MSubTransport.E"><span class="id" title="variable">E</span></a></span> itself is a term of <span class="inlinecode"><span class="id" title="var">Γ</span></span>, one context too
     short; its generic form is the term of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> that is asked for. 
 </div>
@@ -1362,7 +1362,7 @@ The action of <span class="inlinecode"><span class="id" title="var">q</span>^<sp
 </div>
 
 <div class="doc">
-<a id="lab44"></a><h2 class="section">Automation</h2>
+<a id="lab192"></a><h2 class="section">Automation</h2>
 
 
 <div class="paragraph"> </div>
