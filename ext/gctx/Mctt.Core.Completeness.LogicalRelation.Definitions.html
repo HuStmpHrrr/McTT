@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab34"></a><h1 class="section">The Semantic Judgments</h1>
+<a id="lab30"></a><h1 class="section">The Semantic Judgments</h1>
 
 
 <div class="paragraph"> </div>
@@ -81,7 +81,7 @@
 </div>
 
 <div class="doc">
-<a id="lab35"></a><h1 class="section">Semantic Weakening</h1>
+<a id="lab31"></a><h1 class="section">Semantic Weakening</h1>
 
 
 <div class="paragraph"> </div>
@@ -116,7 +116,7 @@
 </div>
 
 <div class="doc">
-<a id="lab36"></a><h1 class="section">Semantic Substitution Equality</h1>
+<a id="lab32"></a><h1 class="section">Semantic Substitution Equality</h1>
 
 
 <div class="paragraph"> </div>
@@ -161,7 +161,7 @@
 </div>
 
 <div class="doc">
-<a id="lab37"></a><h1 class="section">Semantic Judgment for Terms</h1>
+<a id="lab33"></a><h1 class="section">Semantic Judgment for Terms</h1>
 
 
 <div class="paragraph"> </div>
@@ -250,7 +250,7 @@ The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <s
 </div>
 
 <div class="doc">
-<a id="lab38"></a><h1 class="section">Semantic Judgment for Subtyping</h1>
+<a id="lab34"></a><h1 class="section">Semantic Judgment for Subtyping</h1>
 
 
 <div class="paragraph"> </div>
@@ -291,7 +291,7 @@ The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <s
 </div>
 
 <div class="doc">
-<a id="lab39"></a><h1 class="section">Semantic Context Well-Formedness</h1>
+<a id="lab35"></a><h1 class="section">Semantic Context Well-Formedness</h1>
 
 
 <div class="paragraph"> </div>
@@ -366,18 +366,6 @@ A semantic weakening in scope says its weakening moves no variable
 <span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span>φ <span class="id" title="keyword">as</span> [? [? [? [? []]]]]; <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
-</div>
-
-<div class="doc">
-That a weakening moves no variable down: from a semantic weakening in
-    scope, or from how the weakening is built. 
-</div>
-<div class="code">
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">solve_wk_mono</span> :=<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">first</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_wk_mono"><span class="id" title="projection">rel_wk_mono</span></a>; <span class="id" title="var">eassumption</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#wk_mono_id"><span class="id" title="lemma">wk_mono_id</span></a> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#wk_mono_shift"><span class="id" title="lemma">wk_mono_shift</span></a><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#wk_mono_q"><span class="id" title="lemma">wk_mono_q</span></a> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#wk_mono_compose"><span class="id" title="lemma">wk_mono_compose</span></a> ].<br/>
 </div>
 </div>
 <div id="footer">
