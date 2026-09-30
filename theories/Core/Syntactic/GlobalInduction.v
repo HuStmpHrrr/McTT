@@ -382,7 +382,7 @@ Section FilePrefix.
   Hypothesis HU : Θ' ⍮ nil ⍮ PU ⊢m ΦU.
   Hypothesis Hins : ins_typed Θ' nil PU ΦU.
   Hypothesis Hfp : gds_lookup Θ2 fp = Some (gu_mk PU Φt).
-  Hypothesis Hgrow : forall fq V, gds_lookup Θ' fq = Some V -> gds_lookup Θ2 fq = Some V.
+  Hypothesis Hgrow : Θ' ⊑ Θ2.
   Hypothesis Htgt : ⊢ Θ2 ⍮ nil ⍮ ⋅.
 
   Lemma closable_file_prefix : forall n Φq ip Δ b pv A B,
@@ -610,8 +610,8 @@ Section Induction.
   Proof.
     intros * HΘ Hd HG Θ2 Ξ2 μ He.
     pose proof (wf_gdep_fresh _ _ Hd) as Hfr.
-    assert (Hgrow : forall fq V, gds_lookup Θ0 fq = Some V -> gds_lookup (d :: Θ0) fq = Some V)
-      by (intros; apply gds_lookup_level; assumption).
+    assert (Hgrow : Θ0 ⊑ d :: Θ0)
+      by (unfold gds_sub; intros; apply gds_lookup_level; assumption).
     assert (Hlow : forall r Δ b pv A B, Θ0 ⍮ nil ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
                      d :: Θ0 ⍮ nil ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B).
     { intros * Hl; inversion Hl; subst; [ destruct n; discriminate | econstructor; eauto ]. }
@@ -642,8 +642,8 @@ Section Induction.
       assert (Hgq : ⊢g Θq ⍮ nil).
       { apply wf_gctx_intro, wf_gstack_nil, wf_gdeps_cons; [ assumption |].
         apply wf_gdep_cons; [ apply wf_gdep_nil; assumption | constructor; exact HwUq | exact Hfp | unfold gd_fresh; cbn; tauto ]. }
-      assert (Hgq' : forall fq V, gds_lookup Θ0 fq = Some V -> gds_lookup Θq fq = Some V).
-      { intros; apply gds_lookup_level; [| assumption ].
+      assert (Hgq' : Θ0 ⊑ Θq).
+      { unfold gds_sub; intros; apply gds_lookup_level; [| assumption ].
         intros fq' V' [[= <- <-] | []]; exact Hfp. }
       assert (Hlq : forall r Δ' b' pv' A' B', Θq ⍮ nil ∋ᵍ r ⇒ Δ' ⍮ ge_def b' pv' A' B' ->
                       d :: Θ0 ⍮ nil ∋ᵍ r ⇒ Δ' ⍮ ge_def b' pv' A' B').

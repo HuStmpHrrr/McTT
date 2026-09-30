@@ -149,6 +149,19 @@ Definition gd_lookup (d : gdep) (fp : list string) : option gunit :=
 Definition gds_lookup (Θ : gdeps) (fp : list string) : option gunit :=
   gd_lookup (List.concat Θ) fp.
 
+(** One [gdeps] is below another when everything filed in it is filed, the
+    same, in the other: what filing more units, or merging, preserves. *)
+Definition gds_sub (Θ Θ' : gdeps) : Prop :=
+  forall fp U, gds_lookup Θ fp = Some U -> gds_lookup Θ' fp = Some U.
+
+Notation "Θ ⊑ Θ'" := (gds_sub Θ Θ') (at level 70) : type_scope.
+
+Lemma gds_sub_refl : forall Θ, gds_sub Θ Θ.
+Proof. intros ? ? ? H; exact H. Qed.
+
+Lemma gds_sub_trans : forall Θ1 Θ2 Θ3, gds_sub Θ1 Θ2 -> gds_sub Θ2 Θ3 -> gds_sub Θ1 Θ3.
+Proof. intros * H12 H23 ? ? H; apply H23, H12, H. Qed.
+
 (** A path not yet filed in one level, and one not yet filed at any level.  As
     for [gm_fresh], these are premises of the rules that file a unit, so name
     uniqueness across the whole of [gdeps] is part of well-formedness.

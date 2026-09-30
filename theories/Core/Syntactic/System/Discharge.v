@@ -548,7 +548,7 @@ End Pop.
 
 (** More levels: what resolved still does. *)
 Lemma levels_grow : forall Θ1 Θ2 Ξ,
-    (forall fq V, gds_lookup Θ1 fq = Some V -> gds_lookup Θ2 fq = Some V) ->
+    Θ1 ⊑ Θ2 ->
     ⊢ Θ2 ⍮ Ξ ⍮ ⋅ ->
     (forall Γ, ⊢ Θ1 ⍮ Ξ ⍮ Γ -> ⊢ Θ2 ⍮ Ξ ⍮ Γ) /\
     (forall Γ A M, Θ1 ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ2 ⍮ Ξ ⍮ Γ ⊢ M : A) /\
@@ -583,7 +583,7 @@ Section File.
   Hypothesis HU : Θ' ⍮ nil ⍮ PU ⊢m ΦU.
   Hypothesis Hins : ins_typed Θ' nil PU ΦU.
   Hypothesis Hfp : gds_lookup Θ2 fp = Some (gu_mk PU ΦU).
-  Hypothesis Hgrow : forall fq V, gds_lookup Θ' fq = Some V -> gds_lookup Θ2 fq = Some V.
+  Hypothesis Hgrow : Θ' ⊑ Θ2.
   Hypothesis Htgt : ⊢ Θ2 ⍮ nil ⍮ ⋅.
 
   (** Each member of the unit, closed, is well typed under its parameters

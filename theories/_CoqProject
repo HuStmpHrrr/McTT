@@ -63,6 +63,7 @@
 ./Core/Soundness/UniverseCases.v
 ./Core/Soundness/Weakening/Definitions.v
 ./Core/Soundness/Weakening/Lemmas.v
+./Core/Syntactic/Command.v
 ./Core/Syntactic/CoreInversions.v
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
@@ -75,6 +76,7 @@
 ./Core/Syntactic/ModSubst.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
+./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/GlobalPresup.v
 ./Core/Syntactic/System/Lemmas.v

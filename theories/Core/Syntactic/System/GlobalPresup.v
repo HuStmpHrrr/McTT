@@ -263,8 +263,8 @@ Proof.
   assert (Hb : ⊢ d :: Θ ⍮ nil ⍮ ⋅)
     by (apply wf_ctx_empty, wf_gctx_intro, wf_gstack_nil, wf_gdeps_cons; assumption).
   pose proof (wf_gdep_fresh _ _ Hd) as Hfr.
-  assert (Hgrow : forall fq V, gds_lookup Θ fq = Some V -> gds_lookup (d :: Θ) fq = Some V)
-    by (intros; apply gds_lookup_level; assumption).
+  assert (Hgrow : Θ ⊑ d :: Θ)
+    by (unfold gds_sub; intros; apply gds_lookup_level; assumption).
   inversion Hlk as [? ? ? ? ? ? ? ? Hn Hm | ? ? ? ? ? ? ? ? Hf Hm]; subst;
     [ destruct n; discriminate |].
   pose proof Hf as Hl; unfold gds_lookup in Hl; cbn [List.concat] in Hl.
