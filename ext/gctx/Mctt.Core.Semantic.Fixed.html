@@ -44,12 +44,12 @@
 
     The semantic development fixes the global context once per section, with
     <span class="inlinecode"><span class="id" title="keyword">Context</span></span> <span class="inlinecode">`{<a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="record">GCtx</span></a>}</span>, and writes every judgment, evaluation and readback
-    relative to it.  These notations are the forms without <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#1e0a67298a15ae5e10df8e3bce8ac256"><span class="id" title="variable">Ξ</span></a></span>; where two
+    relative to it.  These notations are the forms without <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>; where two
     global contexts meet, the long forms are used. 
 <div class="paragraph"> </div>
 
  The short forms cannot share a file with the long ones: <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and
-    <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#1e0a67298a15ae5e10df8e3bce8ac256"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> do not parse together.  So they are a module, imported by
+    <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> do not parse together.  So they are a module, imported by
     the files that fix the global context, which then spell a judgment at
     another global context by its constant. 
 </div>

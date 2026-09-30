@@ -57,7 +57,7 @@
 <div class="paragraph"> </div>
 
     The <span class="inlinecode">::</span> level is not one flat list but a list of *dependency levels*: a
-    unit's level is <span class="inlinecode">1</span> <span class="inlinecode">+</span> <span class="inlinecode"><span class="id" title="definition">max</span></span> of the levels of the units it imports, <span class="inlinecode">0</span> when it
+    unit's level is <span class="inlinecode">1</span> <span class="inlinecode">+</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> of the levels of the units it imports, <span class="inlinecode">0</span> when it
     imports nothing.  Levels are most recent first, as frames are in a <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gstack"><span class="id" title="definition">gstack</span></a></span>,
     so a unit is filed above exactly the levels it may depend on.  The structure
     is what grants cycle freedom, so nothing here states it as a proposition; the
