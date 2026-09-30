@@ -12,13 +12,17 @@ From Mctt.Core.Completeness Require Export FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Export SystemOpt.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
 (** A semantic equality read at the initial environment of its own context. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma rel_exp_under_ctx_at_initial_env : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
     exists ρ i elem_rel a m m',
-      initial_env Γ ρ /\
+      initial_env_f Γ ρ /\
       ⟦ A ⟧ ρ ↘ a /\ ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ ↘ m' /\
       DF a ≈ a ∈ per_univ_elem i ↘ elem_rel /\
       Dom m ≈ m' ∈ elem_rel.
@@ -43,7 +47,7 @@ Qed.
 Lemma rel_typ_under_ctx_at_initial_env : forall {Γ A A' i},
     Γ ⊨ A ≈ A' : Type@i ->
     exists ρ a a',
-      initial_env Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
+      initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
       Dom a ≈ a' ∈ per_univ i.
 Proof.
   intros * H%rel_exp_of_typ_inversion_simple.
@@ -57,7 +61,7 @@ Qed.
 
 Theorem completeness : forall {Γ M M' A},
     Γ ⊢ M ≈ M' : A ->
-    exists W, nbe Γ M A W /\ nbe Γ M' A W.
+    exists W, nbe_f Γ M A W /\ nbe_f Γ M' A W.
 Proof.
   intros * H%completeness_fundamental_exp_eq.
   destruct (rel_exp_under_ctx_at_initial_env H)
@@ -69,8 +73,17 @@ Qed.
 
 Corollary completeness_ty : forall {Γ i A A'},
     Γ ⊢ A ≈ A' : Type@i ->
-    exists W, nbe_ty Γ A W /\ nbe_ty Γ A' W.
+    exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W.
 Proof.
   intros * [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]]%completeness.
   mauto 3.
 Qed.
+
+End Fixed_GCtx.
+
+
+(** Completeness at a global context named explicitly. *)
+Theorem completeness_gctx : forall Θ Ξ Γ M M' A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    exists W, nbe Θ Ξ Γ M A W /\ nbe Θ Ξ Γ M' A W.
+Proof. intros * H; exact (@completeness (gc_mk Θ Ξ) _ _ _ _ H). Qed.

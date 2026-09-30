@@ -2,13 +2,17 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma idempotent_nbe_ty : forall {Γ i A B C},
     Γ ⊢ A : Type@i ->
-    nbe_ty Γ A B ->
-    nbe_ty Γ B C ->
+    nbe_ty_f Γ A B ->
+    nbe_ty_f Γ B C ->
     B = C.
 Proof.
   intros.
@@ -16,7 +20,6 @@ Proof.
   functional_nbe_rewrite_clear.
   reflexivity.
 Qed.
-#[export]
 Hint Resolve idempotent_nbe_ty : mctt.
 
 Lemma adjust_exp_eq_level : forall {Γ A A' i j},
@@ -66,7 +69,7 @@ Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
     Γ ⊢ M : Π A B ->
-    exists W1 W2, nbe Γ M (Π A B) λⁿ W1 W2.
+    exists W1 W2, nbe_f Γ M (Π A B) λⁿ W1 W2.
 Proof.
   intros * [? []]%soundness.
   dir_inversion_clear_by_head nbe.
@@ -74,60 +77,13 @@ Proof.
   dir_inversion_clear_by_head read_nf.
   do 2 eexists; mauto 4.
 Qed.
-#[export]
 Hint Resolve nf_of_pi : mctt.
 
 Theorem canonical_form_of_pi : forall {M A B},
     ⋅ ⊢ M : Π A B ->
-    exists W1 W2, nbe ⋅ M (Π A B) λⁿ W1 W2.
+    exists W1 W2, nbe_f ⋅ M (Π A B) λⁿ W1 W2.
 Proof. mauto 3. Qed.
-#[export]
 Hint Resolve canonical_form_of_pi : mctt.
-
-Inductive canonical_nat : nf -> Prop :=
-| canonical_nat_zero : canonical_nat zeroⁿ
-| canonical_nat_succ : forall W, canonical_nat W -> canonical_nat succⁿ W
-.
-#[export]
-Hint Constructors canonical_nat : mctt.
-
-Theorem canonical_form_of_nat : forall {M},
-    ⋅ ⊢ M : ℕ ->
-    exists W, nbe ⋅ M ℕ W /\ canonical_nat W.
-Proof.
-  intros * [? []]%soundness.
-  eexists; split; [eassumption |].
-  dir_inversion_clear_by_head nbe.
-  invert_rel_typ_body.
-  match_by_head1 eval_exp ltac:(fun H => clear H).
-  gen M.
-  match_by_head1 read_nf ltac:(fun H => dependent induction H);
-    intros; mauto 3;
-    gen_presups.
-  - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
-  - match_by_head1 (wf_exp ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
-Qed.
-#[export]
-Hint Resolve canonical_form_of_nat : mctt.
-
-Theorem canonical_form_of_typ : forall {i M},
-    ⋅ ⊢ M : Type@i ->
-    exists W, nbe ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
-Proof.
-  intros * [? []]%soundness.
-  eexists; split; [eassumption |].
-  dir_inversion_clear_by_head nbe.
-  invert_rel_typ_body.
-  match_by_head1 eval_exp ltac:(fun H => clear H).
-  gen M.
-  dir_inversion_clear_by_head read_nf.
-  match_by_head1 read_typ ltac:(fun H => dependent induction H);
-    intros; split; intros; mauto 3; try congruence;
-    gen_presups;
-    match_by_head1 (wf_exp ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
-Qed.
-#[export]
-Hint Resolve canonical_form_of_typ : mctt.
 
 Lemma subtyp_spec : forall {Γ A B},
     Γ ⊢ A ⊆ B ->
@@ -135,7 +91,12 @@ Lemma subtyp_spec : forall {Γ A B},
       (exists i j, (exists k, Γ ⊢ A ≈ Type@i : Type@k) /\ (exists k, Γ ⊢ Type@j ≈ B : Type@k) /\ i <= j) \/
       (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
-  induction 1; mauto 3.
+  (** The global context is an index of [wf_subtyp]: fix it for the induction. *)
+  intros * H.
+  remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
+  induction H; subst;
+    repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
+    mauto 3.
   - destruct_all; firstorder (mauto 3);
       try (right; right; do 4 eexists; firstorder mautosolve 3).
     + match goal with
@@ -168,8 +129,72 @@ Proof.
     do 4 eexists; (congruence + firstorder (mautosolve 4 + lia)).
 Qed.
 
+Hint Resolve subtyp_spec : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve idempotent_nbe_ty : mctt.
+#[export]
+Hint Resolve nf_of_pi : mctt.
+#[export]
+Hint Resolve canonical_form_of_pi : mctt.
 #[export]
 Hint Resolve subtyp_spec : mctt.
+
+(** ** Canonical Forms and Consistency
+
+    Only at the empty global context: an axiom [c : ℕ] is a closed neutral, and
+    an axiom of type [Π Type@i #0] refutes consistency.  There, a neutral has no
+    head in the empty local context ([no_closed_neutral]). *)
+
+Definition gc_empty : GCtx := gc_mk nil nil.
+
+Inductive canonical_nat : nf -> Prop :=
+| canonical_nat_zero : canonical_nat zeroⁿ
+| canonical_nat_succ : forall W, canonical_nat W -> canonical_nat succⁿ W
+.
+#[export]
+Hint Constructors canonical_nat : mctt.
+
+Section Empty_GCtx.
+  #[local] Existing Instance gc_empty.
+
+Theorem canonical_form_of_nat : forall {M},
+    ⋅ ⊢ M : ℕ ->
+    exists W, nbe_f ⋅ M ℕ W /\ canonical_nat W.
+Proof.
+  intros * [? []]%soundness.
+  eexists; split; [eassumption |].
+  dir_inversion_clear_by_head nbe.
+  invert_rel_typ_body.
+  match_by_head1 eval_exp ltac:(fun H => clear H).
+  gen M.
+  match_by_head1 read_nf ltac:(fun H => dependent induction H);
+    intros; mauto 3;
+    gen_presups.
+  - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
+  - match_by_head1 (wf_exp gc_deps gc_stack ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
+Qed.
+Hint Resolve canonical_form_of_nat : mctt.
+
+Theorem canonical_form_of_typ : forall {i M},
+    ⋅ ⊢ M : Type@i ->
+    exists W, nbe_f ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+Proof.
+  intros * [? []]%soundness.
+  eexists; split; [eassumption |].
+  dir_inversion_clear_by_head nbe.
+  invert_rel_typ_body.
+  match_by_head1 eval_exp ltac:(fun H => clear H).
+  gen M.
+  dir_inversion_clear_by_head read_nf.
+  match_by_head1 read_typ ltac:(fun H => dependent induction H);
+    intros; split; intros; mauto 3; try congruence;
+    gen_presups;
+    match_by_head1 (wf_exp gc_deps gc_stack ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
+Qed.
+Hint Resolve canonical_form_of_typ : mctt.
 
 Lemma consistency_ne_helper : forall {i A A'} {W : ne},
     is_typ_constr A' ->
@@ -180,14 +205,19 @@ Proof.
   intros * HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
     try (destruct W; simpl in *; congruence).
+  (* a parameter or a global: there is none at the empty global context *)
+  all: try solve [ match goal with Hn : List.nth_error _ ?n = Some _ |- _ => destruct n; cbn in Hn; discriminate end
+                 | match goal with Hl : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ _ |- _ => inversion Hl; subst;
+                     [ match goal with Hn : List.nth_error _ ?n = Some _ |- _ => destruct n; cbn in Hn; discriminate end
+                     | cbn in *; discriminate ] end ].
   - destruct W; simpl in *; autoinjections.
-    eapply IHHW4; [| | | | mauto 4]; (congruence + mautosolve 3).
+    eapply IHHW4; [| | | | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
-    eapply IHHW3; [| | | | mauto 4]; (congruence + mautosolve 3).
+    eapply IHHW3; [| | | | | | mauto 4]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
     assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
-    eapply subtyp_spec in Heq as [| []]; destruct_conjs;
+    eapply (@subtyp_spec gc_empty) in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
     assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
@@ -197,8 +227,8 @@ Theorem consistency : forall {i} M,
     ~ ⋅ ⊢ M : Π Type@i #0.
 Proof.
   intros * HW.
-  assert (exists W1 W2, nbe ⋅ M (Π Type@i #0) λⁿ W1 W2) as [W1 [W2 Hnbe]] by mauto 3.
-  assert (exists W, nbe ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
+  assert (exists W1 W2, nbe_f ⋅ M (Π Type@i #0) λⁿ W1 W2) as [W1 [W2 Hnbe]] by mauto 3.
+  assert (exists W, nbe_f ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
   gen_presups.
   functional_nbe_rewrite_clear.
   dependent destruction Hnbe.
@@ -219,10 +249,33 @@ Proof.
     (** The middle refinement and the right-hand equation live in the context
         extended by the other domain, so both move across the refinement
         [⋅ ▹ Type@i ⊢s Id : ⋅ ▹ _] that the domain equation provides. *)
-    assert (_ ⊢ B ⊆ #0) by
-      (etransitivity; [mauto 3 |];
-       etransitivity;
-       [eapply ctxsub_subtyp; [| eassumption] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]];
+    assert (⋅ ▹ Type@i ⊢ B ⊆ #0) by
+      (match goal with Hs : _ ▹ _ ⊢ ?X ⊆ ?Y |- _ =>
+         transitivity X; [mauto 3 |]; transitivity Y;
+         [eapply ctxsub_subtyp; [| exact Hs] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]]
+       end;
        mauto 3).
     eapply consistency_ne_helper; (congruence + mautosolve 3).
 Qed.
+
+
+End Empty_GCtx.
+
+#[export]
+Hint Resolve canonical_form_of_nat : mctt.
+#[export]
+Hint Resolve canonical_form_of_typ : mctt.
+
+(** The same, with the empty global context spelled out. *)
+Corollary canonical_form_of_nat_nil : forall M,
+    wf_exp nil nil ⋅ ℕ M ->
+    exists W, nbe nil nil ⋅ M ℕ W /\ canonical_nat W.
+Proof. intros M; exact (@canonical_form_of_nat M). Qed.
+
+Corollary canonical_form_of_typ_nil : forall i M,
+    wf_exp nil nil ⋅ Type@i M ->
+    exists W, nbe nil nil ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+Proof. intros i M; exact (@canonical_form_of_typ i M). Qed.
+
+Corollary consistency_nil : forall i M, ~ wf_exp nil nil ⋅ (Π Type@i #0) M.
+Proof. intros i M; exact (@consistency i M). Qed.

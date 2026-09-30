@@ -18,11 +18,20 @@ From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
   UniverseCases VariableCases.
 From Mctt.Core.Completeness Require Export LogicalRelation.
+From Mctt.Core.Completeness Require Import GlobalCases.
 From Mctt.Core.Syntactic Require Export SystemOpt.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
 Section FundamentalTheorem.
+  Context {GC : GCtx}.
+
+  (** The identity is sound at a well-formed global context. *)
+  Lemma sem_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> sem_msub gc_deps gc_stack gc_deps gc_stack ms_id nil.
+  Proof.
+    intros Hg; destruct (gctx_sem _ _ Hg) as [HR HP].
+    apply sem_msub_id; [ assumption | apply sem_rwf_of_raw | apply sem_pwf_of_raw ]; assumption.
+  Qed.
 
   Theorem completeness_fundamental :
     (forall Γ, ⊢ Γ -> ⊨ Γ) /\
@@ -30,18 +39,18 @@ Section FundamentalTheorem.
       (forall Γ A M M', Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A) /\
       (forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A').
   Proof.
-    apply syntactic_wf_mut_ind; mauto 3.
-    (** [mauto] misses the rules whose semantic lemma is in [valid_] form while
-        the goal's head is [rel_exp_under_ctx] (so [Hint Resolve] never fires),
-        the two PER rules, and [Sub-Univ], stated at [i <= j] rather than
-        [i < j]. *)
-    - intros; apply valid_exp_typ; assumption.
-    - intros; apply valid_exp_nat; assumption.
-    - intros; apply valid_exp_zero; assumption.
-    - intros; eapply valid_exp_var; eassumption.
-    - intros; apply rel_exp_under_ctx_sym; assumption.
-    - intros; eapply rel_exp_under_ctx_trans; eassumption.
-    - intros; apply subtyp_univ; [ assumption | lia ].
+    destruct kripke_fundamental as (Kc & Ke & Kq & Ks).
+    repeat split; intros * H;
+      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
+      [ pose proof (Kc _ _ _ H _ _ _ _ Hid) as H'
+      | destruct (Ke _ _ _ _ _ H _ _ _ _ Hid) as [_ H']
+      | destruct (Kq _ _ _ _ _ _ H _ _ _ _ Hid) as [_ H']
+      | destruct (Ks _ _ _ _ _ H _ _ _ _ Hid) as [_ H'] ];
+      rewrite ?ctx_msub_id, ?List.app_nil_r, ?exp_msub_qn_id in H';
+      destruct GC; exact H'.
   Qed.
 
   #[local]
@@ -60,6 +69,9 @@ Section FundamentalTheorem.
   Proof. solve_it. Qed.
 
 End FundamentalTheorem.
+
+Section Corollaries.
+  Context {GC : GCtx}.
 
 (** The substitution instance soundness needs, in its [Π]-β case. *)
 Corollary completeness_fundamental_sub_single : forall Γ M A,
@@ -97,8 +109,11 @@ Proof.
     as [env_rel' [Hper' Hbridge]].
   handle_per_ctx_env_irrel.
   destruct (Hbridge _ _ Hρ) as [a [a' ?]].
+  rewrite eval_wk_shift in *.
   exists a, a'; eassumption.
 Qed.
+
+End Corollaries.
 
 #[export]
 Hint Resolve completeness_fundamental_ctx completeness_fundamental_exp

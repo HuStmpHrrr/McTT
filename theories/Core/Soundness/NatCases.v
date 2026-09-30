@@ -22,6 +22,11 @@ From Mctt.Core.Soundness Require Import
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 
+Import Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma glu_rel_exp_nat : forall {Γ i},
     ⊩ Γ ->
     Γ ⊩ ℕ : Type@i.
@@ -41,7 +46,6 @@ Proof.
   simplify_subs; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_nat : mctt.
 
 Lemma glu_rel_exp_clean_inversion2'' : forall {Γ Sb M},
@@ -54,6 +58,10 @@ Proof.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_exp_nat : mctt.
 Ltac invert_glu_rel_exp H ::=
   (unshelve eapply (glu_rel_exp_clean_inversion2'' _) in H; shelve_unifiable; [eassumption |];
    unfold glu_rel_exp_clean_inversion2_result in H)
@@ -64,6 +72,10 @@ Ltac invert_glu_rel_exp H ::=
   + (unshelve eapply (glu_rel_exp_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
      destruct H as [])
   + (inversion H; subst).
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 
 Lemma glu_rel_exp_of_nat : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
@@ -95,7 +107,6 @@ Proof.
   econstructor; simplify_subs; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_zero : mctt.
 
 Lemma glu_rel_exp_succ : forall {Γ M},
@@ -117,7 +128,6 @@ Proof.
   econstructor; mauto.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_succ : mctt.
 
 (** ** Instantiated Motives
@@ -567,7 +577,7 @@ Proof.
   assert (⊩ Γ) as [SbΓ] by mauto 2.
   assert (Γ ⊩ ℕ : Type@i) as Hℕ by mauto 3.
   pose (SbΓℕ := cons_glu_sub_pred i Γ ℕ SbΓ).
-  assert (EG Γ ▹ ℕ ∈ glu_ctx_env ↘ SbΓℕ) by (invert_glu_rel_exp Hℕ; econstructor; mauto 3; try reflexivity).
+  assert (EG Γ ▹ ℕ ∈ glu_ctx_env ↘ SbΓℕ) by (invert_glu_rel_exp Hℕ; eapply glu_ctx_env_cons with (i := i); mauto 3; try reflexivity).
   assert (Γ ▹ ℕ ⊩ Type@i : Type@(S i)) by mauto 3.
   pose proof HM.
   invert_glu_rel_exp HM.
@@ -650,5 +660,13 @@ Proof.
   mauto 3 using glu_rel_exp_natrec_intro.
 Qed.
 
+Hint Resolve glu_rel_exp_natrec : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_exp_zero : mctt.
+#[export]
+Hint Resolve glu_rel_exp_succ : mctt.
 #[export]
 Hint Resolve glu_rel_exp_natrec : mctt.

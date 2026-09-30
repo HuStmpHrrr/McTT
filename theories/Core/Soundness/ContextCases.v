@@ -1,14 +1,18 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Soundness Require Import LogicalRelation.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
-Lemma glu_rel_ctx_empty : ⊩ ⋅.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+(** As [wf_ctx_empty], relative to a well-formed global context. *)
+Lemma glu_rel_ctx_empty : wf_gctx gc_deps gc_stack -> ⊩ ⋅.
 Proof.
-  do 2 econstructor; reflexivity.
+  intros; do 2 econstructor; [reflexivity | assumption].
 Qed.
 
-#[export]
 Hint Resolve glu_rel_ctx_empty : mctt.
 
 Lemma glu_rel_ctx_extend : forall {Γ A i},
@@ -23,5 +27,11 @@ Proof.
   econstructor; mauto 3; reflexivity.
 Qed.
 
+Hint Resolve glu_rel_ctx_extend : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_ctx_empty : mctt.
 #[export]
 Hint Resolve glu_rel_ctx_extend : mctt.

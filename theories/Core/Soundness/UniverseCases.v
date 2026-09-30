@@ -3,7 +3,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation SubtypingCases TermStructureCases.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma glu_rel_exp_of_typ : forall {Γ Sb A i},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
@@ -43,7 +47,6 @@ Proof.
   gen_presups; mauto 3.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_typ : mctt.
 
 Lemma glu_rel_exp_clean_inversion2' : forall {i Γ Sb M},
@@ -56,6 +59,10 @@ Proof.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_exp_typ : mctt.
 Ltac invert_glu_rel_exp H ::=
   (unshelve eapply (glu_rel_exp_clean_inversion2' _) in H; shelve_unifiable; [eassumption |];
    unfold glu_rel_exp_clean_inversion2_result in H)
@@ -64,3 +71,4 @@ Ltac invert_glu_rel_exp H ::=
   + (unshelve eapply (glu_rel_exp_clean_inversion1 _) in H; shelve_unifiable; [eassumption |];
      destruct H as [])
   + (inversion H; subst).
+

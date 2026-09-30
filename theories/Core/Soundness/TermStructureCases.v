@@ -9,8 +9,12 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma presup_glu_rel_exp : forall {Γ M A},
     Γ ⊩ M : A ->
@@ -30,7 +34,6 @@ Proof.
   eassumption.
 Qed.
 
-#[export]
 Hint Resolve presup_ctx_glu_rel_exp : mctt.
 
 Lemma presup_typ_glu_rel_exp : forall {Γ M A},
@@ -41,7 +44,6 @@ Proof.
   eassumption.
 Qed.
 
-#[export]
 Hint Resolve presup_typ_glu_rel_exp : mctt.
 
 (** Syntactically the variable case is now cheap — [#(S n)[σ]] *is*
@@ -106,5 +108,13 @@ Proof.
     eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
 Qed.
 
+Hint Resolve glu_rel_exp_vlookup : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve presup_ctx_glu_rel_exp : mctt.
+#[export]
+Hint Resolve presup_typ_glu_rel_exp : mctt.
 #[export]
 Hint Resolve glu_rel_exp_vlookup : mctt.

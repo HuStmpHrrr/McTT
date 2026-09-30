@@ -11,7 +11,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
 From Mctt.Core.Completeness Require Import ContextCases.
 From Mctt.Core.Semantic Require Import Realizability.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Corollary per_ctx_of_exp_eq : forall {Γ A A' i},
     Γ ⊢ A ≈ A' : Type@i ->
@@ -22,13 +26,12 @@ Proof.
   eapply rel_ctx_extend; [ apply sem_ctx_per_ctx | ]; mauto 2.
 Qed.
 
-#[export]
 Hint Resolve per_ctx_of_exp_eq : mctt.
 
 Lemma ctxeq_nbe_eq : forall Γ Γ' M A,
     Γ ⊢ M : A ->
     ⊨ Γ ≈ Γ' ->
-    exists W, nbe Γ M A W /\ nbe Γ' M A W.
+    exists W, nbe_f Γ M A W /\ nbe_f Γ' M A W.
 Proof.
   intros * HM%completeness_fundamental_exp HΓΓ'.
   pose proof (per_ctx_respects_length HΓΓ') as Hlen.
@@ -58,11 +61,11 @@ Qed.
 Corollary ctxeq_nbe_eq' : forall Γ Γ' M A W,
     Γ ⊢ M : A ->
     ⊨ Γ ≈ Γ' ->
-    nbe Γ M A W ->
-    nbe Γ' M A W.
+    nbe_f Γ M A W ->
+    nbe_f Γ' M A W.
 Proof.
   intros.
-  assert (exists W, nbe Γ M A W /\ nbe Γ' M A W) as [? []] by mauto 3 using ctxeq_nbe_eq.
+  assert (exists W, nbe_f Γ M A W /\ nbe_f Γ' M A W) as [? []] by mauto 3 using ctxeq_nbe_eq.
   functional_nbe_rewrite_clear.
   eassumption.
 Qed.
@@ -70,10 +73,10 @@ Qed.
 Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
     Γ ⊢ A : Type@i ->
     ⊨ Γ ≈ Γ' ->
-    exists W, nbe_ty Γ A W /\ nbe_ty Γ' A W.
+    exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W.
 Proof.
   intros.
-  assert (exists W, nbe Γ A Type@i W /\ nbe Γ' A Type@i W)
+  assert (exists W, nbe_f Γ A Type@i W /\ nbe_f Γ' A Type@i W)
     as [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]] by mauto 3 using ctxeq_nbe_eq.
   firstorder.
 Qed.
@@ -81,12 +84,17 @@ Qed.
 Corollary ctxeq_nbe_ty_eq' : forall Γ Γ' A i W,
     Γ ⊢ A : Type@i ->
     ⊨ Γ ≈ Γ' ->
-    nbe_ty Γ A W ->
-    nbe_ty Γ' A W.
+    nbe_ty_f Γ A W ->
+    nbe_ty_f Γ' A W.
 Proof.
   intros.
-  assert (exists W, nbe_ty Γ A W /\ nbe_ty Γ' A W) as [? []]
+  assert (exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W) as [? []]
       by mauto 3 using ctxeq_nbe_ty_eq.
   functional_nbe_rewrite_clear.
   eassumption.
 Qed.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve per_ctx_of_exp_eq : mctt.

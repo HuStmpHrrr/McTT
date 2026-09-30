@@ -63,3 +63,26 @@ parameters)`.
   then `rocq makefile -f _CoqProject -o CoqMakefile.mk`.
 * Build one file: `make -f CoqMakefile.mk Core/…/X.vo`.  Use the rocq MCP to
   step through a failing proof.
+
+## The global rules (glob, param, δ)
+
+The models are not monotone under growing the global context: both break at Π
+(`experiments/extension_invariance`, `experiments/soundness_alt`).  Instead:
+
+* `Core/Completeness/ModuleCases.v`: a judgment is valid when it is valid, at the
+  fixed-context sense, after every *sound* module substitution (`sem_msub`: the
+  premises of `msub_preserves_wf` plus validity at the target of what it puts
+  in).  `kripke_fundamental` proves this for every rule; composition needs only
+  the syntactic half of the first step.
+* `Core/Syntactic/GlobalInduction.v`: the model-independent part — `syn_msub`,
+  embeddings (`Emb`), and `global_induction`, over a validity predicate and a
+  sound-substitution predicate.  By age: every item is typed where it was inserted, in a
+  context of older items only (`ins_typed`; a truncated level for filed units;
+  a telescope suffix for parameters), and embeds into the final context
+  (`Emb`).
+* Its instances: `gctx_sem` (`Core/Completeness/GlobalCases.v`, PER model) and
+  `gctx_glu` (`Core/Soundness/GlobalCases.v`, gluing model, with
+  `Core/Soundness/ModuleCases.v`).  Both fundamental theorems are then the old
+  ones at the identity.
+* Canonical forms and consistency hold only at the empty global context: an
+  axiom is a closed neutral (`Core/Semantic/Consequences.v`).

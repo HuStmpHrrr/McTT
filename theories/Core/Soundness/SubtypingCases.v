@@ -9,7 +9,11 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
+
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
 
 Lemma glu_rel_exp_subtyp : forall {Γ M A A' i},
     Γ ⊩ M : A ->
@@ -39,7 +43,6 @@ Proof.
     eapply glu_univ_elem_typ_cumu_max_left; [| exact HPEl |]; eassumption.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_subtyp : mctt.
 
 Lemma glu_rel_exp_conv : forall {Γ M A A' i},
@@ -51,5 +54,11 @@ Proof.
   mauto 3.
 Qed.
 
+Hint Resolve glu_rel_exp_conv : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_exp_subtyp : mctt.
 #[export]
 Hint Resolve glu_rel_exp_conv : mctt.

@@ -25,6 +25,11 @@ Import Domain_Notations Wk_Notations.
 (** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening: [A[σ][φ]ʷ] and
     [A[(sb_wk σ φ)]] are the same expression, so the head premise needs only a
     [rewrite] rather than the old instance of [Sub-Comp]. *)
+Import Fixed_Notations.
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a i P El Γ'' φ M c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ' ⊢s σ ® ρ ∈ Sb ->
@@ -142,7 +147,6 @@ Proof.
     eassumption.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_pi : mctt.
 
 Lemma glu_rel_exp_of_pi : forall {Γ M A B i Sb},
@@ -264,7 +268,6 @@ Proof.
   mauto 3 using glu_rel_exp_fn_helper.
 Qed.
 
-#[export]
 Hint Resolve glu_rel_exp_fn : mctt.
 
 Lemma glu_rel_exp_app_helper : forall {Γ M N A B i},
@@ -383,5 +386,13 @@ Proof.
   mauto 2 using glu_rel_exp_app_helper.
 Qed.
 
+Hint Resolve glu_rel_exp_app : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve glu_rel_exp_pi : mctt.
+#[export]
+Hint Resolve glu_rel_exp_fn : mctt.
 #[export]
 Hint Resolve glu_rel_exp_app : mctt.

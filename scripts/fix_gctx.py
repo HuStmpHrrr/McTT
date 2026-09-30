@@ -93,9 +93,9 @@ def transform(src):
             j = k; continue
         if re.match(r'Add Parametric Morphism\b', l):
             k = j; cmd = [l]
-            while not re.search(r'\bas\s+([\w']+)\s*\.', cmd[-1]):
+            while not re.search(r"\bas\s+([\w']+)\s*\.", cmd[-1]):
                 k += 1; cmd.append(body[k])
-            name = re.search(r'\bas\s+([\w']+)\s*\.', cmd[-1]).group(1)
+            name = re.search(r"\bas\s+([\w']+)\s*\.", cmd[-1]).group(1)
             chunk.extend(cmd); tail.append('#[export] Existing Instance %s_Proper.' % name)
             j = k + 1; continue
         if re.match(r'(Reserved Notation|Notation|Infix)\b', l):

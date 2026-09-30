@@ -26,8 +26,10 @@ def mono_apply(s):
     return re.sub(r'\bapply (eval_sub_of_wk|eval_sub_wk_pre)\b(?!;\s*try typeclasses)', r'(apply \1; try typeclasses eauto)', s)
 
 def induction(s):
-    s = re.sub(r'induction 1 using per_univ_elem_ind', 'per_univ_elem_induction1', s)
-    return re.sub(r'induction (\w+) using per_univ_elem_ind', r'per_univ_elem_induction \1', s)
+    for e in ('per_univ_elem', 'glu_univ_elem'):
+        s = re.sub(r'induction 1 using %s_ind\b' % e, '%s_induction1' % e, s)
+        s = re.sub(r'induction (\w+) using %s_ind\b' % e, r'%s_induction \1' % e, s)
+    return s
 
 EDITS = {}
 

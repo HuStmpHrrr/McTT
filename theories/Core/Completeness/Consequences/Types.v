@@ -13,12 +13,16 @@ From Mctt.Core Require Import Base.
 From Mctt.Core Require Export Completeness.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Export SystemOpt.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
 (** A variable of a context evaluates, in that context's initial environment, to
     the neutral at its own level. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
 Lemma eval_var_at_initial_env : forall {Γ x i ρ a},
-    initial_env Γ ρ ->
+    initial_env_f Γ ρ ->
     ⟦ #x ⟧ ρ ↘ a ->
     Γ ⊢ #x : Type@i ->
     x < length Γ /\ exists b, a = ⇑! b (length Γ - x - 1).
@@ -44,7 +48,6 @@ Proof.
   invert_per_univ_elem HR; congruence.
 Qed.
 
-#[export]
 Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 
 Inductive is_typ_constr : typ -> Prop :=
@@ -53,7 +56,6 @@ Inductive is_typ_constr : typ -> Prop :=
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
 | var_is_typ_constr : forall x, is_typ_constr #x
 .
-#[export]
 Hint Constructors is_typ_constr : mctt.
 
 Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
@@ -89,7 +91,6 @@ Proof.
     lia.
 Qed.
 
-#[export]
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
 
 Theorem is_typ_constr_and_exp_eq_typ_implies_eq_typ : forall Γ A i j,
@@ -116,7 +117,6 @@ Proof.
   - match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
 Qed.
 
-#[export]
 Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 
 Theorem is_typ_constr_and_exp_eq_nat_implies_eq_nat : forall Γ A j,
@@ -141,5 +141,17 @@ Proof.
   match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
 Qed.
 
+Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.
+
+End Fixed_GCtx.
+
+#[export]
+Hint Resolve exp_eq_typ_implies_eq_level : mctt.
+#[export]
+Hint Constructors is_typ_constr : mctt.
+#[export]
+Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
+#[export]
+Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 #[export]
 Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.

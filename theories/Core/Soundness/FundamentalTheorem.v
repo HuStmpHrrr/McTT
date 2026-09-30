@@ -3,26 +3,35 @@
     In two parts: contexts and terms.  The substitution conjunct is gone with
     the [⊩s] judgment, and the equality
     judgments never had one — the gluing model relates a term to a value, not two
-    terms to each other. *)
+    terms to each other.  It is [kglu_fundamental] at the identity, which is
+    sound because every well-formed global context glues ([gctx_glu]). *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Soundness Require Import
-  ContextCases
-  FunctionCases
-  NatCases
-  SubtypingCases
-  TermStructureCases
-  UniverseCases.
+From Mctt.Core.Soundness Require Import GlobalCases.
 From Mctt.Core.Soundness Require Export LogicalRelation.
-Import Domain_Notations.
+Import Domain_Notations Fixed_Notations.
 
 Section soundness_fundamental.
+  Context {GC : GCtx}.
+
+  (** The identity is sound at a well-formed global context. *)
+  Lemma glu_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> glu_msub gc_deps gc_stack gc_deps gc_stack ms_id nil.
+  Proof.
+    intros Hg; destruct (gctx_glu _ _ Hg) as [HR HP].
+    apply glu_msub_id; [ assumption | apply glu_rwf_of_raw | apply glu_pwf_of_raw ]; assumption.
+  Qed.
+
   Theorem soundness_fundamental :
     (forall Γ, ⊢ Γ -> ⊩ Γ) /\
       (forall Γ A M, Γ ⊢ M : A -> Γ ⊩ M : A).
   Proof.
-    apply syntactic_wf_ctx_exp_mut_ind; mauto 3.
+    destruct kglu_fundamental as (Kc & Ke).
+    split; intros * H;
+      [ pose proof (Kc _ _ _ H _ _ _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ H))) as H'
+      | pose proof (Ke _ _ _ _ _ H _ _ _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H' ];
+      rewrite ?ctx_msub_id, ?List.app_nil_r, ?exp_msub_qn_id in H';
+      destruct GC; exact H'.
   Qed.
 
   #[local]
