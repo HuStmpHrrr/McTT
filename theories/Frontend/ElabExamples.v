@@ -75,13 +75,10 @@ Example a_preapplied :
 Proof.
   apply sel_frame; [ intros [] |].
   apply fb_next.
-  - intros [Ha | [Hd | Hp]].
-    + apply Ha; intros [].
-    + destruct Hd as (c & [] & _).
-    + destruct Hp as [Hp | []]; discriminate.
+  - (* [M] binds only [B] *)
+    cbn. intros [H | []]; discriminate.
   - change (s_term (U_a $ #1)) with (s_term (apps (a_glob (p_abs ("U" :: nil) (sf_path U_frame ++ "a" :: nil))) (#1 :: nil))).
-    apply (fb_def _ _ _ _ _ "a" true false Type@0 #0 (#1 :: nil)).
-    + intros [].
+    apply fb_here, (fr_def _ _ _ _ "a" true false Type@0 #0 (#1 :: nil)).
     + exists nil, nil; repeat split. intros (c & [] & _).
     + match goal with |- preapp ?off _ _ => change (#1 :: nil) with (nil ++ vars_desc off (List.length (sf_params U_frame))) end.
       repeat constructor.
@@ -231,3 +228,95 @@ Proof. elab_ok. Qed.
 Example unit_not_imported : forall u, ~ elab_spec (unit_of
   (c_eval (proj (glob ("L" :: "M" :: nil)) "f") None :: nil)) u.
 Proof. elab_fails. Qed.
+
+(** ** One Binding per Name per Frame
+
+    Each program below is rejected by the elaborator with the message shown,
+    and so related to nothing by the specification. *)
+
+Ltac elab_err := vm_compute; reflexivity.
+
+(** [def x … ; import M as x]: an alias may not take a member's name. *)
+Definition alias_after_member : Cst.prog := unit_of
+  (c_mod ("M" :: nil) nil nil :: c_def md_pub "x" nat Cst.zero ::
+   c_import nil ("M" :: nil) (i_as "x") :: nil).
+Example alias_after_member_err : elaborate_core alias_after_member = eerr "x is already declared".
+Proof. elab_err. Qed.
+Example alias_after_member_spec : forall u, ~ elab_spec alias_after_member u.
+Proof. elab_fails. Qed.
+
+(** [import M as x ; def x …]: a member may not take an alias's name. *)
+Definition member_after_alias : Cst.prog := unit_of
+  (c_mod ("M" :: nil) nil nil :: c_import nil ("M" :: nil) (i_as "x") ::
+   c_def md_pub "x" nat Cst.zero :: nil).
+Example member_after_alias_err : elaborate_core member_after_alias = eerr "x is already declared".
+Proof. elab_err. Qed.
+
+(** [def exposed … ; import Impl use (exposed)]: nor may a [use]d name. *)
+Definition use_after_member : Cst.prog := unit_of
+  (c_mod ("Impl" :: nil) nil (c_def md_pub "exposed" nat Cst.zero :: nil) ::
+   c_def md_pub "exposed" nat Cst.zero ::
+   c_import nil ("Impl" :: nil) (i_use ("exposed" :: nil)) :: nil).
+Example use_after_member_err : elaborate_core use_after_member = eerr "exposed is already declared".
+Proof. elab_err. Qed.
+
+(** [module M (x : Nat) where def x … end]: a member may not take a
+    parameter's name … *)
+Definition member_param : Cst.prog := unit_of
+  (c_mod ("M" :: nil) (("x", nat) :: nil) (c_def md_pub "x" nat Cst.zero :: nil) :: nil).
+Example member_param_err : elaborate_core member_param = eerr "x is already declared".
+Proof. elab_err. Qed.
+Example member_param_spec : forall u, ~ elab_spec member_param u.
+Proof. elab_fails. Qed.
+
+(** … nor may a module, here the first segment of [module x.y] in the
+    unit's own frame. *)
+Definition module_param : Cst.prog :=
+  (nil, ("T" :: nil, ("x", nat) :: nil, c_mod ("x" :: "y" :: nil) nil nil :: nil)).
+Example module_param_err : elaborate_core module_param = eerr "x is already declared".
+Proof. elab_err. Qed.
+
+(** An alias may not take a parameter's name (here the unit's). *)
+Definition alias_param : Cst.prog :=
+  (nil, ("T" :: nil, ("x", nat) :: nil,
+         c_mod ("M" :: nil) nil nil :: c_import nil ("M" :: nil) (i_as "x") :: nil)).
+Example alias_param_err : elaborate_core alias_param = eerr "x is already declared".
+Proof. elab_err. Qed.
+Example alias_param_spec : forall u, ~ elab_spec alias_param u.
+Proof. elab_fails. Qed.
+
+(** [module M (x : Nat) (x : Nat)]: a telescope may not repeat a name … *)
+Definition dup_params : Cst.prog := unit_of
+  (c_mod ("M" :: nil) (("x", nat) :: ("x", nat) :: nil) nil :: nil).
+Example dup_params_err : elaborate_core dup_params = eerr "duplicate parameter x".
+Proof. elab_err. Qed.
+Example dup_params_spec : forall u, ~ elab_spec dup_params u.
+Proof. elab_fails. Qed.
+
+(** … also the unit's. *)
+Definition dup_unit_params : Cst.prog := (nil, ("T" :: nil, ("x", nat) :: ("x", nat) :: nil, nil)).
+Example dup_unit_params_err : elaborate_core dup_unit_params = eerr "duplicate parameter x".
+Proof. elab_err. Qed.
+
+(** Leading imports: an alias is fresh against the earlier leading aliases. *)
+Definition dup_leading : Cst.prog :=
+  (c_import ("L" :: "A" :: nil) nil (i_as "N") :: c_import ("L" :: "B" :: nil) nil (i_as "N") :: nil,
+   ("T" :: nil, nil, nil)).
+Example dup_leading_err : elaborate_core dup_leading = eerr "N is already declared".
+Proof. elab_err. Qed.
+
+(** Shadowing across frames is still allowed: a parameter of a module may
+    reuse a member name of the enclosing frame, a member of a nested module
+    may reuse the enclosing frame's parameter name, and the innermost binding
+    wins. *)
+Example shadow_param :
+  elab_spec (nil, ("T" :: nil, ("x", nat) :: nil,
+                   c_def md_pub "y" nat Cst.zero ::
+                   c_mod ("M" :: nil) (("y", nat) :: nil)
+                     (c_def md_pub "x" nat (var "y") :: c_eval (var "x") None :: nil) :: nil))
+    (nil, ⋅ ▹ ℕ,
+     cc_def "y" true false ℕ zero ::
+     cc_mod "M" (⋅ ▹ ℕ)
+       (cc_def "x" true false ℕ #0 ::
+        cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
+Proof. elab_ok. Qed.

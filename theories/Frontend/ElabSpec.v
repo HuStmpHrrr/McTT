@@ -1,4 +1,4 @@
-From Stdlib Require Import List String.
+From Stdlib Require Import List Permutation String.
 
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Syntax Command.
@@ -21,11 +21,18 @@ Import Syntax_Notations.
       declares it, and the members of a nested module are those its own
       [cc_mod] body declares.  So the spec keeps no symbol table besides the
       output.
+    - *One binding per name per frame.*  Within a frame, a name is bound at
+      most once — as an import alias, a member, or a parameter: declaring a
+      name the frame already binds is an error ([sf_fresh], [NoDup] of a
+      telescope's names), declaring one an enclosing frame binds is
+      shadowing.  So a frame binds a name to at most one thing ([fr_binds]),
+      with no priority between its kinds of binding ([sf_wf] is the
+      invariant, [scmd_wf] that it holds).
     - A name is resolved, innermost first, against: the local binders ([λ],
       [Π], [rec], [let], [let module]); then, frame by frame from the innermost
-      open frame outward, the frame's import aliases, its members, its
-      parameters; then the aliases of the imports that precede the unit.  The
-      first binding found wins, so every outer binding is shadowed.
+      open frame outward, what the frame binds; then the aliases of the
+      imports that precede the unit.  The first frame binding the name wins,
+      so every outer binding is shadowed.
     - A *parameter* of an open frame is a λ-variable; a *member* of an open
       frame is its absolute path [p_abs unit (chain ++ [x])] *pre-applied* to
       the parameters of every frame from its own outward (rule [preapp]).
@@ -46,6 +53,10 @@ Definition cc_name (c : ccmd) : option string :=
 
 Definition declares (cs : list ccmd) (x : string) : Prop :=
   exists c, In c cs /\ cc_name c = Some x.
+
+(** The names the commands [cs] declare, in order. *)
+Definition decl_names (cs : list ccmd) : list string :=
+  flat_map (fun c => match cc_name c with Some x => x :: nil | None => nil end) cs.
 
 (** [c] is the last of the commands [cs] to declare [x]: what [x] means as a
     member of a frame (or module) whose commands are [cs].  The elaborator
@@ -162,11 +173,13 @@ Record sscope : Set := ss_mk
 
 Definition ss_empty : sscope := ss_mk nil nil.
 
-(** [y] is bound to [t] by the latest alias for it. *)
-Definition ss_binds (sc : sscope) (y : string) (t : starget) : Prop :=
-  exists al1 al2, ss_alias sc = al1 ++ (y, t) :: al2 /\ ~ In y (map fst al1).
+(** [y] is bound to [t] by an alias.  An alias is fresh where it is made, so
+    there is at most one per name ([ss_wf]). *)
+Definition ss_binds (sc : sscope) (y : string) (t : starget) : Prop := In (y, t) (ss_alias sc).
 
 Definition ss_free (sc : sscope) (y : string) : Prop := ~ In y (map fst (ss_alias sc)).
+
+Definition ss_wf (sc : sscope) : Prop := NoDup (map fst (ss_alias sc)).
 
 Definition ss_add (y : string) (t : starget) (sc : sscope) : sscope :=
   ss_mk ((y, t) :: ss_alias sc) (ss_units sc).
@@ -195,15 +208,25 @@ Definition sf_emit (F : sframe) (c : ccmd) : sframe :=
 (** A frame's parameters as a core context, innermost first. *)
 Definition ptele (ps : list (string * typ)) : ctx := rev (map snd ps).
 
-(** Does the frame bind [x] at all — by an alias, a member, a parameter? *)
-Definition sf_binds (F : sframe) (x : string) : Prop :=
-  ~ ss_free (sf_scope F) x \/ declares (sf_cmds F) x \/ In x (map fst (sf_params F)).
 
-(** A name can be declared in a frame if the frame has no member and no alias
-    of that name.  Shadowing a parameter of the frame, or anything of an
-    enclosing frame, is allowed. *)
-Definition sf_fresh (F : sframe) (x : string) : Prop :=
-  ss_free (sf_scope F) x /\ ~ declares (sf_cmds F) x.
+(** The names a frame binds other than by an alias: its members and its
+    parameters. *)
+Definition sf_taken (F : sframe) : list string := decl_names (sf_cmds F) ++ map fst (sf_params F).
+
+(** All the names a frame binds: by an alias, as a member, as a parameter. *)
+Definition sf_names (F : sframe) : list string := map fst (ss_alias (sf_scope F)) ++ sf_taken F.
+
+Definition sf_binds (F : sframe) (x : string) : Prop := In x (sf_names F).
+
+(** *Freshness.*  A name can be declared in a frame — as a member, or as an
+    alias by [import … as]/[use] — only if the frame binds it in no way: not
+    by an alias, not as a member, not as a parameter.  Binding a name that an
+    enclosing frame binds is allowed, and shadows it. *)
+Definition sf_fresh (F : sframe) (x : string) : Prop := ~ sf_binds F x.
+
+(** The invariant that freshness maintains: within a frame, every name has
+    at most one binding. *)
+Definition sf_wf (F : sframe) : Prop := NoDup (sf_names F).
 
 (** ** Pre-application
 
@@ -236,46 +259,49 @@ Inductive preapp : nat -> list sframe -> list exp -> Prop :=
     preapp (off + List.length (sf_params F)) Fs args ->
     preapp off (F :: Fs) (args ++ vars_desc off (List.length (sf_params F))).
 
-(** ** Name Resolution in the Open Frames
 
-    [fbind fp O off Fs x r]: in the unit [fp], with leading imports [O], the
-    name [x] — not bound locally — denotes [r] when the telescope of the first
-    frame of [Fs] starts [off] binders in.  Within a frame an alias comes
-    before a member, a member before a parameter; a frame binding [x] at all
-    hides every frame outside it.  An alias was resolved in the scope of its
-    frame, outside all its local binders and inner frames' parameters, so it is
-    weakened by [off]. *)
-Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres -> Prop :=
-| fb_alias : forall off F Fs x t,
+(** ** Name Resolution in the Open Frames *)
+
+(** [fr_binds fp off Fs F x r]: the open frame [F], whose telescope starts
+    [off] binders in and which is enclosed by the frames [Fs], binds [x] to
+    [r].  The frame binds [x] at most once ([sf_wf]), so these rules never
+    compete. *)
+Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : string -> sres -> Prop :=
+(** An alias, made in the scope of its frame — outside all local binders and
+    the parameters of the frames inside it — so weakened by [off]. *)
+| fr_alias : forall x t,
     ss_binds (sf_scope F) x t ->
-    fbind fp O off (F :: Fs) x (st_res (wk_starget off t))
-(** A member definition of an open frame, private or not, pre-applied. *)
-| fb_def : forall off F Fs x b pv A M vs,
-    ss_free (sf_scope F) x ->
+    fr_binds fp off Fs F x (st_res (wk_starget off t))
+(** A member definition, private or not: its absolute path, pre-applied. *)
+| fr_def : forall x b pv A M vs,
     cs_member (sf_cmds F) x (cc_def x b pv A M) ->
     preapp off (F :: Fs) vs ->
-    fbind fp O off (F :: Fs) x (s_term (apps (a_glob (p_abs fp (sf_path F ++ x :: nil))) vs))
-(** A module member of an open frame: a reference, pre-applied likewise; its
-    arity counts those arguments and its own parameters. *)
-| fb_mod : forall off F Fs x Δ cs vs,
-    ss_free (sf_scope F) x ->
+    fr_binds fp off Fs F x (s_term (apps (a_glob (p_abs fp (sf_path F ++ x :: nil))) vs))
+(** A module member: a reference, pre-applied likewise; its arity counts
+    those arguments and its own parameters. *)
+| fr_mod : forall x Δ cs vs,
     cs_member (sf_cmds F) x (cc_mod x Δ cs) ->
     preapp off (F :: Fs) vs ->
-    fbind fp O off (F :: Fs) x
+    fr_binds fp off Fs F x
       (s_mod (sr_mk fp (sf_path F ++ x :: nil) (Some cs) (List.length vs + List.length Δ) vs))
-(** A parameter: the variable [preapp] passes for it — the last parameter of
-    that name, as many binders past [off] as there are parameters after it. *)
-| fb_param : forall off F Fs x ps1 A ps2,
-    ss_free (sf_scope F) x ->
-    ~ declares (sf_cmds F) x ->
+(** A parameter: the variable [preapp] passes for it, as many binders past
+    [off] as there are parameters after it. *)
+| fr_param : forall x ps1 A ps2,
     sf_params F = ps1 ++ (x, A) :: ps2 ->
-    ~ In x (map fst ps2) ->
-    fbind fp O off (F :: Fs) x (s_term (a_var (off + List.length ps2)))
+    fr_binds fp off Fs F x (s_term (a_var (off + List.length ps2))).
+
+(** [fbind fp O off Fs x r]: in the unit [fp], with leading imports [O], the
+    name [x] — not bound locally — denotes [r] when the telescope of the first
+    frame of [Fs] starts [off] binders in.  The innermost frame binding [x]
+    decides; outside all frames, the leading imports' aliases. *)
+Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres -> Prop :=
+| fb_here : forall off F Fs x r,
+    fr_binds fp off Fs F x r ->
+    fbind fp O off (F :: Fs) x r
 | fb_next : forall off F Fs x r,
     ~ sf_binds F x ->
     fbind fp O (off + List.length (sf_params F)) Fs x r ->
     fbind fp O off (F :: Fs) x r
-(** Outside all frames: the leading imports' aliases. *)
 | fb_outer : forall off x t,
     ss_binds O x t ->
     fbind fp O off nil x (st_res (wk_starget off t)).
@@ -395,20 +421,27 @@ Inductive itarget (fp : fpath) (O : sscope) (Fs : list sframe) : fpath -> list s
 | it_unit : forall fq ip,
     fq <> nil -> itarget fp O Fs fq ip (sr_mk fq ip None 0 nil).
 
-(** [use (n₁; …)] binds each [nᵢ] in turn to the member [R.nᵢ]; the names may
-    not repeat an alias of the scope. *)
-Inductive use_binds (R : sref) : list string -> sscope -> sscope -> Prop :=
-| ub_nil : forall sc, use_binds R nil sc sc
-| ub_cons : forall n ns t sc sc',
-    ss_free sc n ->
-    select R n t ->
-    use_binds R ns (ss_add n t sc) sc' ->
-    use_binds R (n :: ns) sc sc'.
+(** An alias must be fresh in its frame: not an alias already in the scope
+    [sc], and not one of the names [taken] by the frame's members and
+    parameters ([sf_taken]; nothing for the leading imports, which have no
+    frame). *)
+Definition alias_fresh (taken : list string) (sc : sscope) (y : string) : Prop :=
+  ~ In y taken /\ ss_free sc y.
 
-Inductive ibinds (R : sref) : Cst.ispec -> sscope -> sscope -> Prop :=
-| ib_open : forall sc, ibinds R Cst.i_open sc sc
-| ib_as : forall y sc, ss_free sc y -> ibinds R (Cst.i_as y) sc (ss_add y (st_mod R) sc)
-| ib_use : forall ns sc sc', use_binds R ns sc sc' -> ibinds R (Cst.i_use ns) sc sc'.
+(** [use (n₁; …)] binds each [nᵢ] in turn to the member [R.nᵢ], each fresh,
+    also with respect to the ones before it. *)
+Inductive use_binds (R : sref) (taken : list string) : list string -> sscope -> sscope -> Prop :=
+| ub_nil : forall sc, use_binds R taken nil sc sc
+| ub_cons : forall n ns t sc sc',
+    alias_fresh taken sc n ->
+    select R n t ->
+    use_binds R taken ns (ss_add n t sc) sc' ->
+    use_binds R taken (n :: ns) sc sc'.
+
+Inductive ibinds (R : sref) (taken : list string) : Cst.ispec -> sscope -> sscope -> Prop :=
+| ib_open : forall sc, ibinds R taken Cst.i_open sc sc
+| ib_as : forall y sc, alias_fresh taken sc y -> ibinds R taken (Cst.i_as y) sc (ss_add y (st_mod R) sc)
+| ib_use : forall ns sc sc', use_binds R taken ns sc sc' -> ibinds R taken (Cst.i_use ns) sc sc'.
 
 (** Only an import of another unit is a core command. *)
 Definition import_cmd (fq : fpath) (ip : list string) : option ccmd :=
@@ -421,12 +454,14 @@ Definition opt_list {A} (o : option A) : list A :=
   match o with Some a => a :: nil | None => nil end.
 
 (** An import, resolved in the scope [O]/[Fs], updates the import scope [sc]
-    and emits at most one command. *)
-Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) : sscope -> Cst.cmd -> sscope -> option ccmd -> Prop :=
+    of a frame whose other names are [taken], and emits at most one
+    command. *)
+Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) (taken : list string)
+  : sscope -> Cst.cmd -> sscope -> option ccmd -> Prop :=
 | si_intro : forall sc fq ip spec R sc',
     itarget fp O Fs fq ip R ->
-    ibinds R spec (ss_add_unit fq sc) sc' ->
-    simport fp O Fs sc (Cst.c_import fq ip spec) sc' (import_cmd fq ip).
+    ibinds R taken spec (ss_add_unit fq sc) sc' ->
+    simport fp O Fs taken sc (Cst.c_import fq ip spec) sc' (import_cmd fq ip).
 
 (** ** Commands
 
@@ -435,7 +470,7 @@ Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) : sscope -> Cst.c
     [Fs], to [F'].  A command only ever changes the innermost frame. *)
 Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> sframe -> Prop :=
 (** A definition sees the members before it, not itself; [abstract] makes it
-    opaque, [private] private. *)
+    opaque, [private] private.  Its name is fresh in the frame. *)
 | sc_def : forall Fs F m x oA oM A M,
     sf_fresh F x ->
     selt fp O (F :: Fs) nil oA A ->
@@ -450,17 +485,19 @@ Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> s
     selt fp O (F :: Fs) nil oA A ->
     scmd fp O Fs F (Cst.c_eval oM (Some oA)) (sf_emit F (cc_eval M (Some A)))
 | sc_import : forall Fs F fq ip spec sc' oc,
-    simport fp O (F :: Fs) (sf_scope F) (Cst.c_import fq ip spec) sc' oc ->
+    simport fp O (F :: Fs) (sf_taken F) (sf_scope F) (Cst.c_import fq ip spec) sc' oc ->
     scmd fp O Fs F (Cst.c_import fq ip spec) (sf_mk (sf_path F) (sf_params F) (sf_cmds F ++ opt_list oc) sc')
-(** [module x (ps) where body end]: the parameters are elaborated in [F],
-    the body in a new frame [x] inside it, which becomes a member of [F]. *)
+(** [module x (ps) where body end]: [x] is fresh in [F]; the parameters,
+    pairwise distinct, are elaborated in [F]; the body in a new frame [x]
+    inside it, which becomes a member of [F]. *)
 | sc_mod : forall Fs F x ps body tys N,
     sf_fresh F x ->
+    NoDup (map fst ps) ->
     sparams fp O (F :: Fs) nil ps tys ->
     scmds fp O (F :: Fs) (sf_new (sf_path F ++ x :: nil) tys) body N ->
     scmd fp O Fs F (Cst.c_mod (x :: nil) ps body) (sf_emit F (cc_mod x (ptele tys) (sf_cmds N)))
-(** [module x.p (ps) where …]: a module [x] without parameters, holding
-    [module p (ps) where …]. *)
+(** [module x.p (ps) where …]: a module [x], fresh in [F], without
+    parameters, holding [module p (ps) where …]. *)
 | sc_mod_path : forall Fs F x p ps body N,
     p <> nil ->
     sf_fresh F x ->
@@ -473,23 +510,114 @@ with scmds (fp : fpath) (O : sscope) : list sframe -> sframe -> list Cst.cmd -> 
     scmd fp O Fs F c F1 -> scmds fp O Fs F1 cs F2 -> scmds fp O Fs F (c :: cs) F2.
 
 (** The imports that precede the unit's declaration: outside all frames, each
-    resolved in the scope the earlier ones built. *)
+    resolved in the scope the earlier ones built; an alias is fresh against
+    the earlier leading aliases only. *)
 Inductive simports (fp : fpath) : sscope -> list Cst.cmd -> sscope -> list ccmd -> Prop :=
 | sis_nil : forall O, simports fp O nil O nil
 | sis_cons : forall O fq ip spec O1 oc cs O2 is,
-    simport fp O nil O (Cst.c_import fq ip spec) O1 oc ->
+    simport fp O nil nil O (Cst.c_import fq ip spec) O1 oc ->
     simports fp O1 cs O2 is ->
     simports fp O (Cst.c_import fq ip spec :: cs) O2 (opt_list oc ++ is).
 
 (** ** Units
 
     A unit [import …; module fp (ps) where cs end]: the leading imports; the
-    parameters, which see them; the body, in the unit's own frame (member
-    chain [nil]).  It elaborates to its leading imports' commands, its
-    parameter telescope, and its frame's commands. *)
+    parameters, pairwise distinct, which see them; the body, in the unit's own
+    frame (member chain [nil]).  It elaborates to its leading imports'
+    commands, its parameter telescope, and its frame's commands. *)
 Inductive elab_spec : Cst.prog -> cunit -> Prop :=
 | es_intro : forall imports fp ps cs O imps tys F,
     simports fp ss_empty imports O imps ->
+    NoDup (map fst ps) ->
     sparams fp O nil nil ps tys ->
     scmds fp O nil (sf_new nil tys) cs F ->
     elab_spec (imports, (fp, ps, cs)) (imps, ptele tys, sf_cmds F).
+
+(** ** The Invariant
+
+    Elaboration keeps every name bound at most once in each frame, and in the
+    leading imports' scope.  This is what makes [fr_binds] a partial function
+    of the name (and is what the correctness proof needs of a state). *)
+
+Lemma NoDup_insert : forall (l1 l2 : list string) x,
+    NoDup (l1 ++ l2) -> ~ In x (l1 ++ l2) -> NoDup (l1 ++ x :: l2).
+Proof.
+  intros. apply (Permutation_NoDup (Permutation_middle l1 l2 x)).
+  constructor; assumption.
+Qed.
+
+Lemma decl_names_app : forall cs1 cs2, decl_names (cs1 ++ cs2) = decl_names cs1 ++ decl_names cs2.
+Proof. intros; unfold decl_names; apply flat_map_app. Qed.
+
+Lemma sf_wf_emit : forall F c,
+    sf_wf F ->
+    (forall x, cc_name c = Some x -> sf_fresh F x) ->
+    sf_wf (sf_emit F c).
+Proof.
+  unfold sf_wf, sf_fresh, sf_binds, sf_names, sf_taken, sf_emit; cbn; intros F c Hw Hf.
+  rewrite decl_names_app. unfold decl_names at 2; cbn.
+  destruct (cc_name c) as [x |]; cbn; rewrite ?app_nil_r, <- ?app_assoc in *; [| assumption ].
+  rewrite !app_assoc, <- (app_assoc _ (x :: nil)). cbn. apply NoDup_insert; rewrite <- !app_assoc; [ assumption |].
+  apply Hf; reflexivity.
+Qed.
+
+Lemma alias_fresh_wf : forall taken sc y t,
+    NoDup (map fst (ss_alias sc) ++ taken) -> alias_fresh taken sc y ->
+    NoDup (map fst (ss_alias (ss_add y t sc)) ++ taken).
+Proof.
+  intros * Hw [Ht Hs]. cbn. constructor; [| assumption ].
+  intros Hin; apply in_app_or in Hin as [|]; auto.
+Qed.
+
+Lemma ibinds_wf : forall R taken spec sc sc',
+    ibinds R taken spec sc sc' ->
+    NoDup (map fst (ss_alias sc) ++ taken) -> NoDup (map fst (ss_alias sc') ++ taken).
+Proof.
+  induction 1 as [| | ns sc sc' Hu]; intros Hw; [ assumption | eapply alias_fresh_wf; eassumption |].
+  induction Hu; [ assumption |]. apply IHHu. eapply alias_fresh_wf; eassumption.
+Qed.
+
+Lemma ss_alias_add_unit : forall fq sc, ss_alias (ss_add_unit fq sc) = ss_alias sc.
+Proof. intros [] ?; reflexivity. Qed.
+
+Lemma simport_wf : forall fp O Fs taken sc c sc' oc,
+    simport fp O Fs taken sc c sc' oc ->
+    NoDup (map fst (ss_alias sc) ++ taken) -> NoDup (map fst (ss_alias sc') ++ taken).
+Proof.
+  intros * Hs Hw. inversion Hs; subst. eapply ibinds_wf; [ eassumption |].
+  rewrite ss_alias_add_unit; assumption.
+Qed.
+
+Lemma sf_wf_new : forall ch tys, NoDup (map fst tys) -> sf_wf (sf_new ch tys).
+Proof. intros; unfold sf_wf, sf_names, sf_taken, sf_new; cbn; assumption. Qed.
+
+Scheme scmd_wf_ind := Induction for scmd Sort Prop
+  with scmds_wf_ind := Induction for scmds Sort Prop.
+
+(** Commands keep a frame well formed. *)
+Theorem scmd_wf : forall fp O Fs F c F', scmd fp O Fs F c F' -> sf_wf F -> sf_wf F'.
+Proof.
+  intros fp O.
+  apply (scmd_wf_ind fp O (fun Fs F c F' _ => sf_wf F -> sf_wf F') (fun Fs F cs F' _ => sf_wf F -> sf_wf F'));
+    intros; auto.
+  - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
+  - apply sf_wf_emit; [ assumption |]. discriminate.
+  - apply sf_wf_emit; [ assumption |]. discriminate.
+  - unfold sf_wf, sf_names, sf_taken in *; cbn.
+    rewrite decl_names_app.
+    replace (decl_names (opt_list oc)) with (@nil string)
+      by (inversion s; subst; destruct fq; reflexivity).
+    rewrite app_nil_r. eapply simport_wf; eassumption.
+  - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
+  - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
+Qed.
+
+Theorem scmds_wf : forall fp O Fs F cs F', scmds fp O Fs F cs F' -> sf_wf F -> sf_wf F'.
+Proof. induction 1; eauto using scmd_wf. Qed.
+
+Theorem simports_wf : forall fp O cs O' is, simports fp O cs O' is -> ss_wf O -> ss_wf O'.
+Proof.
+  induction 1; intros Hw; [ assumption |]. apply IHsimports.
+  unfold ss_wf in *. pose proof (simport_wf _ _ _ _ _ _ _ _ H) as Hs.
+  rewrite !app_nil_r in Hs. auto.
+Qed.

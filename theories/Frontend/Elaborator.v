@@ -74,11 +74,33 @@ Fixpoint ls_lookup (x : string) (ls : lscope) : option lent :=
   | (y, e) :: ls' => if String.eqb x y then Some e else ls_lookup x ls'
   end.
 
-(** A name not yet taken in a frame, by a member or an alias. *)
+(** A name taken in a frame by a member or a parameter. *)
+Definition of_taken (x : string) (f : oframe) : bool :=
+  match em_lookup x (ef_mod (of_names f)), index_of x (ef_params (of_names f)) with
+  | None, None => false
+  | _, _ => true
+  end.
+
+(** A name not yet taken in a frame, by a member, an alias or a parameter:
+    within one frame, a name has at most one binding.  Shadowing a name of an
+    enclosing frame is allowed. *)
 Definition of_fresh (x : string) (f : oframe) : bool :=
-  match em_lookup x (ef_mod (of_names f)), alias_lookup x (of_alias f) with
-  | None, None => true
-  | _, _ => false
+  match alias_lookup x (of_alias f) with
+  | None => negb (of_taken x f)
+  | Some _ => false
+  end.
+
+(** A name repeated in a parameter telescope. *)
+Fixpoint first_dup (xs : list string) : option string :=
+  match xs with
+  | nil => None
+  | x :: xs' => if List.existsb (String.eqb x) xs' then Some x else first_dup xs'
+  end.
+
+Definition check_params (ps : list (string * Cst.obj)) : eres unit :=
+  match first_dup (List.map fst ps) with
+  | None => eok tt
+  | Some x => eerr ("duplicate parameter " ++ x)
   end.
 
 (** A new member [x], declared by the command [c]. *)
@@ -372,9 +394,9 @@ Definition import_target (st : ustate) (fp ip : list string) : eres mref :=
   end.
 
 (** [use n]: the name [n] for the member [n] of [mr]. *)
-Definition use_bind (mr : mref) (acc : eres oscope) (n : string) : eres oscope :=
+Definition use_bind (taken : string -> bool) (mr : mref) (acc : eres oscope) (n : string) : eres oscope :=
   let* sc := acc in
-  let* _ := echeck (os_fresh n sc) (n ++ " is already declared") in
+  let* _ := echeck (negb (taken n) && os_fresh n sc) (n ++ " is already declared") in
   match mr_mod mr with
   | None =>
       (* REVISIT: privacy of imported members *)
@@ -396,21 +418,27 @@ Definition use_bind (mr : mref) (acc : eres oscope) (n : string) : eres oscope :
       end
   end.
 
-(** What an import of [mr] from the unit [fp] binds in the scope [sc]. *)
-Definition import_binds (fp : list string) (mr : mref) (spec : Cst.ispec) (sc : oscope) : eres oscope :=
+(** What an import of [mr] from the unit [fp] binds in the scope [sc].  A
+    name it binds must be fresh in the frame: not an alias of [sc], and not
+    [taken] by a member or a parameter. *)
+Definition import_binds (taken : string -> bool) (fp : list string) (mr : mref) (spec : Cst.ispec)
+  (sc : oscope) : eres oscope :=
   let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
   match spec with
   | Cst.i_open => eok sc
   | Cst.i_as y =>
-      let* _ := echeck (os_fresh y sc) (y ++ " is already declared") in
+      let* _ := echeck (negb (taken y) && os_fresh y sc) (y ++ " is already declared") in
       eok (os_alias_add y (tg_mod mr) sc)
-  | Cst.i_use ns => List.fold_left (use_bind mr) ns (eok sc)
+  | Cst.i_use ns => List.fold_left (use_bind taken mr) ns (eok sc)
   end.
 
 Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : eres ustate :=
   let* mr := import_target st fp ip in
   let oc := match fp with nil => None | _ => Some (cc_import fp ip) end in
-  us_scope st oc (import_binds fp mr spec).
+  (* before the unit's declaration there is no frame, so nothing is taken but
+     the earlier aliases *)
+  let taken := match us_frames st with g :: _ => fun y => of_taken y g | nil => fun _ => false end in
+  us_scope st oc (import_binds taken fp mr spec).
 
 (** Opening a module pushes its frame; closing it pops the frame and makes it
     a member of the one outside. *)
@@ -447,6 +475,7 @@ Fixpoint elab_cmd (st : ustate) (c : Cst.cmd) : eres ustate :=
                          let* _ := echeck (of_fresh x f) (x ++ " is already declared") in eok f) in
              let* f := match p' with
                        | nil =>
+                           let* _ := check_params ps in
                            let* Δ := elab_params (us_unit st) (us_outer st) (us_frames st) nil 0 ps ⋅ in
                            eok (of_new (List.rev (List.map fst ps)) Δ (List.app (us_path st) (x :: nil)))
                        | _ => eok (of_new nil ⋅ (List.app (us_path st) (x :: nil)))
@@ -475,6 +504,7 @@ Fixpoint elab_cmds (st : ustate) (cs : list Cst.cmd) : eres ustate :=
 Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(imports, (fp, ps, cs)) := prg in
   let* st0 := elab_cmds (us_mk fp (os_mk nil nil) nil nil) imports in
+  let* _ := check_params ps in
   let* Δ := elab_params fp (us_outer st0) nil nil 0 ps ⋅ in
   let* st := elab_cmds (us_open st0 (of_new (List.rev (List.map fst ps)) Δ nil)) cs in
   match us_frames st with

@@ -352,11 +352,19 @@ Lemma ss_lookup_some : forall sc x tg,
     alias_lookup x (os_alias (to_os sc)) = Some tg -> exists t, ss_binds sc x t /\ tg = to_target t.
 Proof.
   intros * H; rewrite os_alias_to in *. destruct (alias_lookup_some _ _ _ H) as (t & al1 & al2 & -> & E & Hn).
-  exists t; split; [ exists al1, al2 |]; auto.
+  exists t; split; [ unfold ss_binds; rewrite E; apply in_or_app; right; left |]; reflexivity.
 Qed.
 
-Lemma ss_binds_lookup : forall sc x t, ss_binds sc x t -> alias_lookup x (os_alias (to_os sc)) = Some (to_target t).
-Proof. intros * (al1 & al2 & E & Hn); rewrite os_alias_to in *; rewrite E; apply alias_lookup_split; assumption. Qed.
+(** With one alias per name, an alias is the one found. *)
+Lemma ss_binds_lookup : forall sc x t l,
+    NoDup (map fst (ss_alias sc) ++ l) ->
+    ss_binds sc x t -> alias_lookup x (os_alias (to_os sc)) = Some (to_target t).
+Proof.
+  intros * Hnd Hb; rewrite os_alias_to. unfold ss_binds in Hb.
+  apply in_split in Hb as (al1 & al2 & E). rewrite E in *. apply alias_lookup_split.
+  rewrite map_app, <- app_assoc in Hnd. cbn in Hnd. apply NoDup_remove_2 in Hnd.
+  intros Hin; apply Hnd, in_or_app; left; assumption.
+Qed.
 
 Lemma tg_use_fin : forall off t args r,
     tg_use (tg_local off (to_target t)) args = eok r <-> fin (st_res (wk_starget off t)) args = Some r.
@@ -577,6 +585,70 @@ Proof. intros; exact (fr_tele_len_to (F :: Fs)). Qed.
 Lemma sc_apply_apps : forall M xs ys, sc_apply (apps M xs) ys = sc_apply M (xs ++ ys).
 Proof. intros; symmetry; apply sc_apply_app. Qed.
 
+(** ** One Binding per Name *)
+
+Lemma NoDup_app_disj : forall (l1 l2 : list string) x, NoDup (l1 ++ l2) -> In x l1 -> In x l2 -> False.
+Proof.
+  induction l1 as [| a l1 IH]; cbn; intros l2 x Hnd H1 H2; [ assumption |].
+  inversion Hnd; subst. destruct H1 as [<- | H1]; [| eauto ].
+  apply H3, in_or_app; right; assumption.
+Qed.
+
+Lemma in_decl_names : forall cs x, In x (decl_names cs) <-> declares cs x.
+Proof.
+  intros; unfold decl_names, declares; rewrite in_flat_map. split.
+  - intros (c & Hin & Hx). exists c; split; [ assumption |].
+    destruct (cc_name c); cbn in Hx; [ destruct Hx as [<- | []]; reflexivity | destruct Hx ].
+  - intros (c & Hin & Hx). exists c; split; [ assumption |]. rewrite Hx; left; reflexivity.
+Qed.
+
+Lemma cs_member_declares : forall cs x c, cs_member cs x c -> declares cs x.
+Proof.
+  intros * (cs1 & cs2 & -> & Hn & _). exists c; split; [ apply in_or_app; right; left |]; auto.
+Qed.
+
+(** In a well-formed frame a member is not also an alias … *)
+Lemma wf_member_free : forall F x c, sf_wf F -> cs_member (sf_cmds F) x c -> ss_free (sf_scope F) x.
+Proof.
+  intros * Hw Hm Hin. apply cs_member_declares, in_decl_names in Hm.
+  eapply NoDup_app_disj; [ exact Hw | exact Hin | apply in_or_app; left; exact Hm ].
+Qed.
+
+(** … and a parameter is neither an alias, nor a member, nor repeated. *)
+Lemma wf_param : forall F x A ps1 ps2,
+    sf_wf F -> sf_params F = ps1 ++ (x, A) :: ps2 ->
+    ss_free (sf_scope F) x /\ ~ declares (sf_cmds F) x /\ ~ In x (map fst ps2).
+Proof.
+  intros * Hw Hp. unfold sf_wf, sf_names, sf_taken in Hw. rewrite Hp, map_app in Hw.
+  assert (Hx : In x (map fst ps1 ++ map fst ((x, A) :: ps2))) by (apply in_or_app; right; left; reflexivity).
+  repeat split.
+  - intros Hin. eapply NoDup_app_disj; [ exact Hw | exact Hin | apply in_or_app; right; exact Hx ].
+  - intros Hd. apply in_decl_names in Hd.
+    apply NoDup_app_remove_l in Hw.
+    eapply NoDup_app_disj; [ exact Hw | exact Hd | exact Hx ].
+  - intros Hin. do 2 apply NoDup_app_remove_l in Hw. cbn in Hw. apply NoDup_remove_2 in Hw. apply Hw, in_or_app; right; exact Hin.
+Qed.
+
+Lemma wf_alias_nodup : forall F, sf_wf F -> NoDup (map fst (ss_alias (sf_scope F)) ++ sf_taken F).
+Proof. intros; assumption. Qed.
+
+Lemma not_binds : forall F x,
+    ss_free (sf_scope F) x -> ~ declares (sf_cmds F) x -> ~ In x (map fst (sf_params F)) -> ~ sf_binds F x.
+Proof.
+  unfold sf_binds, sf_names, sf_taken. intros * Ha Hd Hp Hin.
+  apply in_app_or in Hin as [Hin | Hin]; [ exact (Ha Hin) |].
+  apply in_app_or in Hin as [Hin | Hin]; [ apply Hd, in_decl_names, Hin | exact (Hp Hin) ].
+Qed.
+
+Lemma binds_not : forall F x,
+    ~ sf_binds F x -> ss_free (sf_scope F) x /\ ~ declares (sf_cmds F) x /\ ~ In x (map fst (sf_params F)).
+Proof.
+  unfold sf_binds, sf_names, sf_taken. intros * Hn; repeat split; intros Hin; apply Hn.
+  - apply in_or_app; left; assumption.
+  - apply in_or_app; right; apply in_or_app; left; apply in_decl_names; assumption.
+  - apply in_or_app; right; apply in_or_app; right; assumption.
+Qed.
+
 Ltac rewrite_free :=
   match goal with Hf : ss_free _ _ |- _ => rewrite (proj2 (ss_lookup_none _ _) Hf) end.
 Ltac rewrite_member :=
@@ -584,64 +656,69 @@ Ltac rewrite_member :=
 
 Section Lookup.
   Variable (fp : fpath) (O : sscope).
+  Hypothesis (HO : ss_wf O).
 
   Lemma fr_lookup_iff : forall Fs off x args r,
+      Forall sf_wf Fs ->
       fr_lookup fp (to_os O) off x (map to_of Fs) args = eok r <->
       exists sr, fbind fp O off Fs x sr /\ fin sr args = Some r.
   Proof.
-    induction Fs as [| F Fs IH]; intros; cbn [map fr_lookup]; split.
+    induction Fs as [| F Fs IH]; intros off x args r HFs; cbn [map fr_lookup]; split.
     - intros H. destruct (alias_lookup x (os_alias (to_os O))) as [tg |] eqn:E; [| discriminate ].
       destruct (ss_lookup_some _ _ _ E) as (t & Hb & ->). apply tg_use_fin in H.
       eexists; split; [ apply fb_outer; eassumption | exact H ].
     - intros (sr & Hf & H). inversion Hf; subst.
-      match goal with Hb : ss_binds _ _ _ |- _ => rewrite (ss_binds_lookup _ _ _ Hb) end.
+      rewrite (ss_binds_lookup _ _ _ nil ltac:(rewrite app_nil_r; exact HO) ltac:(eassumption)).
       apply tg_use_fin; assumption.
-    - intros H. rewrite fr_tele_len_cons_to in H. simpl_to.
+    - inversion HFs as [| ? ? HF HFs']; subst.
+      intros H. rewrite fr_tele_len_cons_to in H. simpl_to.
       destruct (alias_lookup x (os_alias (to_os (sf_scope F)))) as [tg |] eqn:Ea.
       + destruct (ss_lookup_some _ _ _ Ea) as (t & Hb & ->). apply tg_use_fin in H.
-        eexists; split; [ apply fb_alias; eassumption | exact H ].
+        eexists; split; [ apply fb_here, fr_alias; eassumption | exact H ].
       + apply ss_lookup_none in Ea.
         destruct (em_lookup x (emod_of (sf_cmds F))) as [[pv | n Φ] |] eqn:Em.
         * found_member Em. inv_eok.
-          eexists; split; [ eapply fb_def; [ eassumption | eassumption | apply preapp_iff; reflexivity ] |].
+          eexists; split; [ eapply fb_here, fr_def; [ eassumption | apply preapp_iff; reflexivity ] |].
           cbn [fin]. rewrite sc_apply_apps. reflexivity.
         * found_member Em. inv_eok.
-          eexists; split; [ eapply fb_mod; [ eassumption | eassumption | apply preapp_iff; reflexivity ] |].
+          eexists; split; [ eapply fb_here, fr_mod; [ eassumption | apply preapp_iff; reflexivity ] |].
           cbn [fin]. rewrite length_vars_desc. reflexivity.
         * apply em_lookup_of_none in Em.
           destruct (index_of x (rev (map fst (sf_params F)))) as [k |] eqn:Ei.
           -- apply param_index_some in Ei as (ps1 & A & ps2 & Hps & Hn & ->). inv_eok.
-             eexists; split; [ eapply fb_param; eassumption | reflexivity ].
+             eexists; split; [ eapply fb_here, fr_param; eassumption | reflexivity ].
           -- apply param_index_none in Ei. rewrite length_ptele in H.
-             apply IH in H as (sr & Hf & Hfin). exists sr; split; [| assumption ].
-             apply fb_next; [| assumption ].
-             intros [Hb | [Hb | Hb]]; contradiction.
-    - intros (sr & Hf & H). rewrite fr_tele_len_cons_to. simpl_to.
-      inversion Hf; subst.
-      + match goal with Hb : ss_binds _ _ _ |- _ => rewrite (ss_binds_lookup _ _ _ Hb) end.
-        apply tg_use_fin; assumption.
-      + rewrite_free. rewrite_member. cbn [en_of].
-        match goal with Hp : preapp _ _ _ |- _ => apply preapp_iff in Hp; subst end.
-        cbn [fin] in H; inv_some. rewrite sc_apply_apps. reflexivity.
-      + rewrite_free. rewrite_member. cbn [en_of].
-        match goal with Hp : preapp _ _ _ |- _ => apply preapp_iff in Hp; subst end.
-        cbn [fin] in H; inv_some. rewrite length_vars_desc. reflexivity.
-      + rewrite_free.
-        match goal with Hd : ~ declares _ _ |- _ => rewrite (proj2 (em_lookup_of_none _ _) Hd) end.
-        match goal with Hp : sf_params _ = _ |- _ => rewrite Hp end.
-        rewrite param_index_split by assumption.
-        cbn [fin] in H; inv_some. reflexivity.
-      + match goal with Hn : ~ sf_binds _ _ |- _ => unfold sf_binds in Hn;
-        assert (Ha : ss_free (sf_scope F) x)
-          by (unfold ss_free; destruct (in_dec string_dec x (map fst (ss_alias (sf_scope F)))) as [Hi | Hi];
-              [ exfalso; apply Hn; left; intros Hf'; exact (Hf' Hi) | exact Hi ]);
-        rewrite (proj2 (ss_lookup_none _ _) Ha),
-          (proj2 (em_lookup_of_none _ _) (fun Hb => Hn (or_intror (or_introl Hb)))),
-          (proj2 (param_index_none _ _) (fun Hb => Hn (or_intror (or_intror Hb)))),
-          length_ptele end.
+             apply IH in H as (sr & Hf & Hfin); [| assumption ]. exists sr; split; [| assumption ].
+             apply fb_next; [ apply not_binds; assumption | assumption ].
+    - inversion HFs as [| ? ? HF HFs']; subst.
+      intros (sr & Hf & H). rewrite fr_tele_len_cons_to. simpl_to.
+      inversion Hf as [? ? ? ? ? Hb | ? ? ? ? ? Hn Hnext |]; subst.
+      + inversion Hb; subst.
+        * rewrite (ss_binds_lookup _ _ _ _ (wf_alias_nodup _ HF) ltac:(eassumption)).
+          apply tg_use_fin; assumption.
+        * rewrite (proj2 (ss_lookup_none _ _) (wf_member_free _ _ _ HF ltac:(eassumption))).
+          rewrite_member. cbn [en_of].
+          match goal with Hp : preapp _ _ _ |- _ => apply preapp_iff in Hp; subst end.
+          cbn [fin] in H; inv_some. rewrite sc_apply_apps. reflexivity.
+        * rewrite (proj2 (ss_lookup_none _ _) (wf_member_free _ _ _ HF ltac:(eassumption))).
+          rewrite_member. cbn [en_of].
+          match goal with Hp : preapp _ _ _ |- _ => apply preapp_iff in Hp; subst end.
+          cbn [fin] in H; inv_some. rewrite length_vars_desc. reflexivity.
+        * match goal with Hp : sf_params _ = _ |- _ =>
+            destruct (wf_param _ _ _ _ _ HF Hp) as (Ha & Hd & Hn2); rewrite Hp end.
+          rewrite (proj2 (ss_lookup_none _ _) Ha).
+          match goal with Hp : sf_params _ = _ |- _ => rewrite <- Hp end.
+          rewrite (proj2 (em_lookup_of_none _ _) Hd).
+          match goal with Hp : sf_params _ = _ |- _ => rewrite Hp end.
+          rewrite param_index_split by assumption.
+          cbn [fin] in H; inv_some. reflexivity.
+      + destruct (binds_not _ _ Hn) as (Ha & Hd & Hp).
+        rewrite (proj2 (ss_lookup_none _ _) Ha), (proj2 (em_lookup_of_none _ _) Hd),
+          (proj2 (param_index_none _ _) Hp), length_ptele.
         apply IH; eauto.
   Qed.
 End Lookup.
+
 
 (** ** Objects *)
 
@@ -669,6 +746,7 @@ Scheme obj_mind := Induction for Cst.obj Sort Prop
 
 Section Objects.
   Variable (fp : fpath) (O : sscope) (Fs : list sframe).
+  Hypotheses (HO : ss_wf O) (HFs : Forall sf_wf Fs).
 
   #[local] Abbreviation elab_res := (elab_res fp (to_os O) (map to_of Fs)).
 
@@ -752,12 +830,12 @@ Section Objects.
       + intros Hr. destruct (ls_lookup s (to_ls L)) as [e |] eqn:E.
         * apply ls_lookup_some in E as (L1 & b & L2 & -> & Hb & Hn & ->).
           apply lent_fin in Hr. eexists; split; [ apply sel_local; exists L1, L2; eauto | exact Hr ].
-        * apply ls_lookup_none in E. apply fr_lookup_iff in Hr as (sr & Hb & Hf).
+        * apply ls_lookup_none in E. apply (fr_lookup_iff fp O HO) in Hr as (sr & Hb & Hf); [| exact HFs ].
           eexists; split; [ apply sel_frame; eassumption | exact Hf ].
       + intros (sr & Hs & Hf); inversion Hs; subst.
         * match goal with Hl : lbound _ _ _ _ |- _ => destruct Hl as (L1 & L2 & -> & Hb & Hn & ->) end.
           rewrite (ls_lookup_bound _ _ _ _ Hb Hn). apply lent_fin; assumption.
-        * match goal with Hn : ~ In _ (map lb_name _) |- _ => rewrite (proj2 (ls_lookup_none _ _) Hn) end. apply fr_lookup_iff; eauto.
+        * match goal with Hn : ~ In _ (map lb_name _) |- _ => rewrite (proj2 (ls_lookup_none _ _) Hn) end. apply (fr_lookup_iff fp O HO); eauto.
     - (* glob *)
       cbn [Elaborator.elab_res]. rewrite ebind_echeck, unit_reachable_iff. split.
       + intros [Hu Hr]; inv_eok. eexists; split; [ constructor; assumption | reflexivity ].
@@ -836,107 +914,149 @@ Proof.
   destruct (alias_lookup y (os_alias (to_os sc))); split; congruence.
 Qed.
 
-Lemma use_bind_iff : forall R sc n sc1,
-    use_bind (to_mref R) (eok (to_os sc)) n = eok sc1 <->
-    exists t, ss_free sc n /\ select R n t /\ sc1 = to_os (ss_add n t sc).
+(** [taken] decides membership in the list [tl]. *)
+Definition decides (taken : string -> bool) (tl : list string) : Prop := forall y, taken y = true <-> In y tl.
+
+Lemma alias_fresh_check : forall taken tl sc y,
+    decides taken tl ->
+    negb (taken y) && os_fresh y (to_os sc) = true <-> alias_fresh tl sc y.
 Proof.
-  intros [u ms sg ar ag] sc n sc1. unfold use_bind. rewrite ebind_eok. split.
-  - intros (sc0 & [=<-] & H). apply ebind_echeck in H as [Hf H]. apply os_fresh_to in Hf.
-    cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map] in H.
-    destruct sg as [cs |]; cbn [option_map] in H.
-    + destruct (em_lookup n (emod_of cs)) as [[pv | k Φ] |] eqn:Em; cbn in H; [| | discriminate ].
-      * found_member Em. destruct pv; cbn in H; [ discriminate |]. inv_eok.
-        eexists; repeat split; [ eassumption | eapply sl_def; [ reflexivity | eassumption ] | reflexivity ].
-      * found_member Em. inv_eok.
-        eexists; repeat split; [ eassumption | eapply sl_mod; [ reflexivity | eassumption ] | reflexivity ].
-    + inv_eok. eexists; repeat split; [ eassumption | apply sl_opaque; reflexivity | reflexivity ].
-  - intros (t & Hf & Hs & ->). exists (to_os sc); split; [ reflexivity |].
-    apply ebind_echeck; split; [ apply os_fresh_to; assumption |].
-    inversion Hs; subst; cbn [sr_sig] in *; subst;
-      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map].
-    + reflexivity.
-    + rewrite_member. reflexivity.
-    + rewrite_member. reflexivity.
-Qed.
-
-Lemma fold_use_err : forall mr ns e, exists e', fold_left (use_bind mr) ns (eerr e) = eerr e'.
-Proof. induction ns; intros; cbn; eauto. Qed.
-
-Lemma use_binds_iff : forall ns R sc sc'',
-    fold_left (use_bind (to_mref R)) ns (eok (to_os sc)) = eok sc'' <->
-    exists sc', use_binds R ns sc sc' /\ sc'' = to_os sc'.
-Proof.
-  induction ns as [| n ns IH]; intros; cbn [fold_left]; split.
-  - intros H; inv_eok. eexists; split; [ constructor | reflexivity ].
-  - intros (sc' & Hu & ->); inversion Hu; subst; reflexivity.
-  - intros H. destruct (use_bind (to_mref R) (eok (to_os sc)) n) as [sc1 | e] eqn:E.
-    + apply use_bind_iff in E as (t & Hf & Hs & ->). apply IH in H as (sc' & Hu & ->).
-      eexists; split; [ econstructor; eassumption | reflexivity ].
-    + destruct (fold_use_err (to_mref R) ns e) as [e' He]; congruence.
-  - intros (sc' & Hu & ->); inversion Hu; subst.
-    match goal with Hf : ss_free _ _, Hs : select _ _ ?t |- _ => rewrite (proj2 (use_bind_iff R sc n (to_os (ss_add n t sc))) (ex_intro _ t (conj Hf (conj Hs eq_refl)))) end.
-    apply IH; eauto.
-Qed.
-
-Lemma import_binds_unit : forall fq mr spec sc,
-    import_binds fq mr spec (to_os sc) =
-      match spec with
-      | Cst.i_open => eok (to_os (ss_add_unit fq sc))
-      | Cst.i_as y =>
-          let* _ := echeck (os_fresh y (to_os (ss_add_unit fq sc))) (y ++ " is already declared")%string in
-          eok (os_alias_add y (tg_mod mr) (to_os (ss_add_unit fq sc)))
-      | Cst.i_use ns => fold_left (use_bind mr) ns (eok (to_os (ss_add_unit fq sc)))
-      end.
-Proof. intros; destruct fq; reflexivity. Qed.
-
-Lemma import_binds_iff : forall fq R spec sc sc'',
-    import_binds fq (to_mref R) spec (to_os sc) = eok sc'' <->
-    exists sc', ibinds R spec (ss_add_unit fq sc) sc' /\ sc'' = to_os sc'.
-Proof.
-  intros. rewrite import_binds_unit. destruct spec as [| y | ns].
-  - split; [ intros H; inv_eok; eexists; split; [ constructor | reflexivity ]
-           | intros (sc' & Hb & ->); inversion Hb; subst; reflexivity ].
-  - rewrite ebind_echeck, os_fresh_to. split.
-    + intros [Hf H]; inv_eok. eexists; split; [ constructor; assumption | reflexivity ].
-    + intros (sc' & Hb & ->); inversion Hb; subst. split; [ assumption | reflexivity ].
-  - rewrite use_binds_iff. split.
-    + intros (sc' & Hu & ->). eexists; split; [ constructor; eassumption | reflexivity ].
-    + intros (sc' & Hb & ->); inversion Hb; subst. eauto.
+  intros * Ht. unfold alias_fresh. rewrite andb_true_iff, negb_true_iff, os_fresh_to.
+  specialize (Ht y). destruct (taken y); split; intros [H1 H2]; split; try assumption; try discriminate.
+  - exfalso; exact (H1 (proj1 Ht eq_refl)).
+  - intros Hy; discriminate (proj2 Ht Hy).
+  - reflexivity.
 Qed.
 
 Section Imports.
+  Variable (taken : string -> bool) (tl : list string).
+  Hypothesis (Ht : decides taken tl).
+
+  Lemma use_bind_iff : forall R sc n sc1,
+      use_bind taken (to_mref R) (eok (to_os sc)) n = eok sc1 <->
+      exists t, alias_fresh tl sc n /\ select R n t /\ sc1 = to_os (ss_add n t sc).
+  Proof.
+    intros [u ms sg ar ag] sc n sc1. unfold use_bind. rewrite ebind_eok. split.
+    - intros (sc0 & [=<-] & H). apply ebind_echeck in H as [Hf H]. apply (alias_fresh_check _ _ _ _ Ht) in Hf.
+      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map] in H.
+      destruct sg as [cs |]; cbn [option_map] in H.
+      + destruct (em_lookup n (emod_of cs)) as [[pv | k Φ] |] eqn:Em; cbn in H; [| | discriminate ].
+        * found_member Em. destruct pv; cbn in H; [ discriminate |]. inv_eok.
+          eexists; split; [ eassumption |]; split; [ eapply sl_def; [ reflexivity | eassumption ] | reflexivity ].
+        * found_member Em. inv_eok.
+          eexists; split; [ eassumption |]; split; [ eapply sl_mod; [ reflexivity | eassumption ] | reflexivity ].
+      + inv_eok. eexists; split; [ eassumption |]; split; [ apply sl_opaque; reflexivity | reflexivity ].
+    - intros (t & Hf & Hs & ->). exists (to_os sc); split; [ reflexivity |].
+      apply ebind_echeck; split; [ apply (alias_fresh_check _ _ _ _ Ht); assumption |].
+      inversion Hs; subst; cbn [sr_sig] in *; subst;
+        cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map].
+      + reflexivity.
+      + rewrite_member. reflexivity.
+      + rewrite_member. reflexivity.
+  Qed.
+
+  Lemma fold_use_err : forall mr ns e, exists e', fold_left (use_bind taken mr) ns (eerr e) = eerr e'.
+  Proof. induction ns; intros; cbn; eauto. Qed.
+
+  Lemma use_binds_iff : forall ns R sc sc'',
+      fold_left (use_bind taken (to_mref R)) ns (eok (to_os sc)) = eok sc'' <->
+      exists sc', use_binds R tl ns sc sc' /\ sc'' = to_os sc'.
+  Proof.
+    induction ns as [| n ns IH]; intros; cbn [fold_left]; split.
+    - intros H; inv_eok. eexists; split; [ constructor | reflexivity ].
+    - intros (sc' & Hu & ->); inversion Hu; subst; reflexivity.
+    - intros H. destruct (use_bind taken (to_mref R) (eok (to_os sc)) n) as [sc1 | e] eqn:E.
+      + apply use_bind_iff in E as (t & Hf & Hs & ->). apply IH in H as (sc' & Hu & ->).
+        eexists; split; [ econstructor; eassumption | reflexivity ].
+      + destruct (fold_use_err (to_mref R) ns e) as [e' He]; congruence.
+    - intros (sc' & Hu & ->); inversion Hu; subst.
+      match goal with Hf : alias_fresh _ _ _, Hs : select _ _ ?t |- _ =>
+        rewrite (proj2 (use_bind_iff R sc n (to_os (ss_add n t sc))) (ex_intro _ t (conj Hf (conj Hs eq_refl)))) end.
+      apply IH; eauto.
+  Qed.
+
+  Lemma import_binds_unit : forall fq mr spec sc,
+      import_binds taken fq mr spec (to_os sc) =
+        match spec with
+        | Cst.i_open => eok (to_os (ss_add_unit fq sc))
+        | Cst.i_as y =>
+            let* _ := echeck (negb (taken y) && os_fresh y (to_os (ss_add_unit fq sc)))
+                        (y ++ " is already declared")%string in
+            eok (os_alias_add y (tg_mod mr) (to_os (ss_add_unit fq sc)))
+        | Cst.i_use ns => fold_left (use_bind taken mr) ns (eok (to_os (ss_add_unit fq sc)))
+        end.
+  Proof. intros; destruct fq; reflexivity. Qed.
+
+  Lemma import_binds_iff : forall fq R spec sc sc'',
+      import_binds taken fq (to_mref R) spec (to_os sc) = eok sc'' <->
+      exists sc', ibinds R tl spec (ss_add_unit fq sc) sc' /\ sc'' = to_os sc'.
+  Proof.
+    intros. rewrite import_binds_unit. destruct spec as [| y | ns].
+    - split; [ intros H; inv_eok; eexists; split; [ constructor | reflexivity ]
+             | intros (sc' & Hb & ->); inversion Hb; subst; reflexivity ].
+    - rewrite ebind_echeck, (alias_fresh_check _ _ _ _ Ht). split.
+      + intros [Hf H]; inv_eok. eexists; split; [ constructor; assumption | reflexivity ].
+      + intros (sc' & Hb & ->); inversion Hb; subst. split; [ assumption | reflexivity ].
+    - rewrite use_binds_iff. split.
+      + intros (sc' & Hu & ->). eexists; split; [ constructor; eassumption | reflexivity ].
+      + intros (sc' & Hb & ->); inversion Hb; subst. eauto.
+  Qed.
+End Imports.
+
+Section ImportTargets.
   Variable (fp : fpath).
 
   Lemma import_target_iff : forall O Fs u fq ip mr,
+      ss_wf O -> Forall sf_wf Fs ->
       import_target (us_mk fp (to_os O) (map to_of Fs) u) fq ip = eok mr <->
       exists R, itarget fp O Fs fq ip R /\ mr = to_mref R.
   Proof.
-    intros. unfold import_target. destruct fq as [| a fq]; [ destruct ip as [| x ip] |]; cbn beta iota.
+    intros * HO HFs. unfold import_target. destruct fq as [| a fq]; [ destruct ip as [| x ip] |]; cbn beta iota.
     - split; [ discriminate | intros (R & HR & _); inversion HR; congruence ].
     - split.
-      + intros H. destruct (proj1 (elab_mod_iff fp O Fs nil _ mr) H) as (R & HR & ->).
+      + intros H. destruct (proj1 (elab_mod_iff fp O Fs HO HFs nil _ mr) H) as (R & HR & ->).
         eexists; split; [ constructor; eassumption | reflexivity ].
       + intros (R & HR & ->). inversion HR; subst; [| congruence ].
-        exact (proj2 (elab_mod_iff fp O Fs nil _ _) (ex_intro _ R (conj ltac:(eassumption) eq_refl))).
+        exact (proj2 (elab_mod_iff fp O Fs HO HFs nil _ _) (ex_intro _ R (conj ltac:(eassumption) eq_refl))).
     - split.
       + intros H; inv_eok. eexists; split; [ constructor; discriminate | reflexivity ].
       + intros (R & HR & ->). inversion HR; subst. reflexivity.
   Qed.
 
-  Lemma import_iff : forall O Fs u fq ip spec sc sc'',
+  Lemma import_iff : forall taken tl O Fs u fq ip spec sc sc'',
+      decides taken tl -> ss_wf O -> Forall sf_wf Fs ->
       (exists mr, import_target (us_mk fp (to_os O) (map to_of Fs) u) fq ip = eok mr /\
-             import_binds fq mr spec (to_os sc) = eok sc'') <->
-      exists sc', simport fp O Fs sc (Cst.c_import fq ip spec) sc' (import_cmd fq ip) /\ sc'' = to_os sc'.
+             import_binds taken fq mr spec (to_os sc) = eok sc'') <->
+      exists sc', simport fp O Fs tl sc (Cst.c_import fq ip spec) sc' (import_cmd fq ip) /\ sc'' = to_os sc'.
   Proof.
-    intros; split.
-    - intros (mr & Ht & Hb). apply import_target_iff in Ht as (R & HR & ->).
-      apply import_binds_iff in Hb as (sc' & Hb & ->).
+    intros * Ht HO HFs; split.
+    - intros (mr & Htg & Hb). apply (import_target_iff _ _ _ _ _ _ HO HFs) in Htg as (R & HR & ->).
+      apply (import_binds_iff _ _ Ht) in Hb as (sc' & Hb & ->).
       eexists; split; [ econstructor; eassumption | reflexivity ].
     - intros (sc' & Hs & ->). inversion Hs; subst. exists (to_mref R); split.
-      + apply import_target_iff; eauto.
-      + apply import_binds_iff; eauto.
+      + apply (import_target_iff _ _ _ _ _ _ HO HFs); eauto.
+      + apply (import_binds_iff _ _ Ht); eauto.
   Qed.
-End Imports.
+End ImportTargets.
+
+(** What a frame's [of_taken] decides: its members and parameters. *)
+Lemma of_taken_decides : forall F, decides (fun y => of_taken y (to_of F)) (sf_taken F).
+Proof.
+  intros F y. unfold of_taken, sf_taken. simpl_to. rewrite in_app_iff, in_decl_names.
+  destruct (em_lookup y (emod_of (sf_cmds F))) eqn:Em.
+  - split; [ intros _; left | reflexivity ].
+    destruct (declares_dec (sf_cmds F) y) as [| Hd]; [ assumption |].
+    apply em_lookup_of_none in Hd; congruence.
+  - apply em_lookup_of_none in Em.
+    destruct (index_of y (rev (map fst (sf_params F)))) eqn:Ei.
+    + split; [ intros _; right | reflexivity ].
+      apply param_index_some in Ei as (ps1 & A & ps2 & -> & _).
+      rewrite map_app; apply in_or_app; right; left; reflexivity.
+    + apply param_index_none in Ei. split; [ discriminate | intros [|]; contradiction ].
+Qed.
+
+Lemma nothing_decides : decides (fun _ => false) nil.
+Proof. intros y; split; [ discriminate | intros [] ]. Qed.
 
 (** ** Commands *)
 
@@ -971,7 +1091,8 @@ Proof. reflexivity. Qed.
 Lemma elab_cmd_mod_one : forall st x ps body,
     elab_cmd st (Cst.c_mod (x :: nil) ps body) =
       let* _ := us_top st (fun f => let* _ := echeck (of_fresh x f) (x ++ " is already declared")%string in eok f) in
-      let* f := (let* Δ := elab_params (us_unit st) (us_outer st) (us_frames st) nil 0 ps ⋅ in
+      let* f := (let* _ := check_params ps in
+                 let* Δ := elab_params (us_unit st) (us_outer st) (us_frames st) nil 0 ps ⋅ in
                  eok (of_new (rev (map fst ps)) Δ (us_path st ++ x :: nil))) in
       let* st1 := elab_cmds (us_open st f) body in
       us_close x st1.
@@ -1010,11 +1131,38 @@ Proof. reflexivity. Qed.
 
 Lemma of_fresh_to : forall F x, of_fresh x (to_of F) = true <-> sf_fresh F x.
 Proof.
-  intros; unfold of_fresh, sf_fresh; simpl_to. split.
-  - intros H. destruct (em_lookup x (emod_of (sf_cmds F))) eqn:Em; cbn in H; [ discriminate |].
-    destruct (alias_lookup x (map to_alias (ss_alias (sf_scope F)))) eqn:Ea; cbn in H; [ discriminate |].
-    split; [ apply ss_lookup_none | apply em_lookup_of_none ]; assumption.
-  - intros [Hf Hd]. rewrite (proj2 (em_lookup_of_none _ _) Hd), (proj2 (ss_lookup_none _ _) Hf). reflexivity.
+  intros F x. unfold of_fresh, sf_fresh, sf_binds, sf_names. simpl_to.
+  pose proof (of_taken_decides F x) as Ht. rewrite in_app_iff.
+  destruct (alias_lookup x (os_alias (to_os (sf_scope F)))) eqn:Ea.
+  - split; [ discriminate |]. intros Hn; exfalso; apply Hn; left.
+    destruct (in_dec string_dec x (map fst (ss_alias (sf_scope F)))) as [| Hi]; [ assumption |].
+    apply ss_lookup_none in Hi; congruence.
+  - apply ss_lookup_none in Ea. rewrite negb_true_iff.
+    destruct (of_taken x (to_of F)); split; intros H.
+    + discriminate.
+    + exfalso; apply H; right; apply Ht; reflexivity.
+    + intros [Hi | Hi]; [ exact (Ea Hi) | apply Ht in Hi; discriminate ].
+    + reflexivity.
+Qed.
+
+Lemma first_dup_none : forall xs, first_dup xs = None <-> NoDup xs.
+Proof.
+  induction xs as [| a xs IH]; cbn; split; intros H.
+  - constructor.
+  - reflexivity.
+  - destruct (existsb (String.eqb a) xs) eqn:E; [ discriminate |]. constructor; [| apply IH; assumption ].
+    intros Hin.
+    assert (existsb (String.eqb a) xs = true)
+      by (apply existsb_exists; exists a; split; [ assumption | apply String.eqb_refl ]).
+    congruence.
+  - inversion H; subst. destruct (existsb (String.eqb a) xs) eqn:E; [| apply IH; assumption ].
+    apply existsb_exists in E as (b & Hb & Hab). apply String.eqb_eq in Hab; subst. contradiction.
+Qed.
+
+Lemma check_params_ok : forall ps u, check_params ps = eok u <-> NoDup (map fst ps).
+Proof.
+  intros ps []. unfold check_params. rewrite <- first_dup_none.
+  destruct (first_dup (map fst ps)); split; congruence.
 Qed.
 
 Lemma to_of_emit : forall F c x e,
@@ -1083,26 +1231,30 @@ Section Commands.
 
   #[local] Abbreviation st_of O F Fs imps := (us_mk fp (to_os O) (to_of F :: map to_of Fs) imps).
 
+  (** A command, run in a well-formed state. *)
   Definition P_cmd (c : Cst.cmd) : Prop :=
     forall O Fs F imps st',
+      ss_wf O -> Forall sf_wf Fs -> sf_wf F ->
       elab_cmd (st_of O F Fs imps) c = eok st' <->
       exists F', scmd fp O Fs F c F' /\ st' = st_of O F' Fs imps.
 
   Definition P_cmds (cs : list Cst.cmd) : Prop :=
     forall O Fs F imps st',
+      ss_wf O -> Forall sf_wf Fs -> sf_wf F ->
       elab_cmds (st_of O F Fs imps) cs = eok st' <->
       exists F', scmds fp O Fs F cs F' /\ st' = st_of O F' Fs imps.
 
   Lemma P_cmds_of : forall cs, Forall P_cmd cs -> P_cmds cs.
   Proof.
-    induction 1 as [| c cs Hc Hcs IH]; intros O Fs F imps st'; split.
+    induction 1 as [| c cs Hc Hcs IH]; intros O Fs F imps st' HO HFs HF; split.
     - intros H; cbn in H; inv_eok. eexists; split; [ constructor | reflexivity ].
     - intros (F' & Hs & ->). inversion Hs; subst; reflexivity.
     - intros H. rewrite elab_cmds_cons in H. apply ebind_eok in H as (st1 & H1 & H2).
-      apply Hc in H1 as (F1 & Hs1 & ->). apply IH in H2 as (F2 & Hs2 & ->).
+      apply Hc in H1 as (F1 & Hs1 & ->); [| assumption.. ].
+      apply IH in H2 as (F2 & Hs2 & ->); [| eauto using scmd_wf .. ].
       eexists; split; [ econstructor; eassumption | reflexivity ].
     - intros (F' & Hs & ->). inversion Hs; subst. rewrite elab_cmds_cons. apply ebind_eok.
-      eexists; split; [ apply Hc; eauto | apply IH; eauto ].
+      eexists; split; [ apply Hc; eauto | apply IH; eauto using scmd_wf ].
   Qed.
 
   Lemma us_top_fresh : forall O F Fs imps x u,
@@ -1125,98 +1277,124 @@ Section Commands.
     apply cmd_ind'.
     - (* module *)
       intros p ps body Hbody. apply P_cmds_of in Hbody.
-      destruct p as [| x p]; [ intros O Fs F imps st'; split;
+      destruct p as [| x p]; [ intros O Fs F imps st' _ _ _; split;
                                [ intros H; cbn in H; discriminate | intros (F' & Hs & _); inversion Hs ] |].
-      revert x. induction p as [| y p IHp]; intros x O Fs F imps st'.
+      revert x. induction p as [| y p IHp]; intros x O Fs F imps st' HO HFs HF.
       + rewrite elab_cmd_mod_one. split.
         * intros H. apply ebind_eok in H as (u & Hu & H). apply us_top_fresh in Hu.
-          apply ebind_eok in H as (f & Hf & H). apply ebind_eok in Hf as (Δ & HΔ & Hf). inv_eok.
-          destruct (proj1 (elab_params_iff fp O (F :: Fs) ps nil ⋅ Δ) HΔ) as (tys & Htys & ->).
+          apply ebind_eok in H as (f & Hf & H). apply ebind_eok in Hf as ([] & Hc & Hf).
+          apply check_params_ok in Hc.
+          apply ebind_eok in Hf as (Δ & HΔ & Hf). inv_eok.
+          destruct (proj1 (elab_params_iff fp O (F :: Fs) HO (Forall_cons _ HF HFs) ps nil ⋅ Δ) HΔ)
+            as (tys & Htys & ->).
           apply ebind_eok in H as (st1 & Hst1 & H).
-          rewrite app_nil_r, (of_new_to _ _ _ (sparams_names _ _ _ _ _ _ Htys)) in Hst1.
-          destruct (proj1 (Hbody O (F :: Fs) (sf_new (sf_path F ++ x :: nil) tys) imps st1) Hst1)
+          pose proof (sparams_names _ _ _ _ _ _ Htys) as Hnames.
+          rewrite app_nil_r, (of_new_to _ _ _ Hnames) in Hst1.
+          destruct (proj1 (Hbody O (F :: Fs) (sf_new (sf_path F ++ x :: nil) tys) imps st1
+                             HO (Forall_cons _ HF HFs) ltac:(apply sf_wf_new; rewrite Hnames; exact Hc)) Hst1)
             as (N & HN & ->).
           cbn [map] in H. rewrite us_close_cons in H. inv_eok.
           eexists; split; [ eapply sc_mod; eassumption |].
           do 2 f_equal. apply to_of_close. apply (scmds_shape _ _ _ _ _ _ HN).
         * intros (F' & Hs & ->). inversion Hs; subst; [| congruence ].
-          match goal with Ht : sparams _ _ _ _ _ _, HN : scmds _ _ _ _ _ _ |- _ => rename Ht into Htys; rename HN into HN' end.
+          match goal with
+          | Ht : sparams _ _ _ _ _ _, HN : scmds _ _ _ _ _ _, Hc : NoDup _ |- _ =>
+              rename Ht into Htys; rename HN into HN'; rename Hc into Hnd
+          end.
+          pose proof (sparams_names _ _ _ _ _ _ Htys) as Hnames.
           apply ebind_eok; eexists; split; [ apply fresh_us_top; eassumption |].
           apply ebind_eok; eexists; split.
-          { apply ebind_eok; eexists; split;
-              [ exact (proj2 (elab_params_iff fp O (F :: Fs) ps nil ⋅ _) (ex_intro _ tys (conj Htys eq_refl)))
+          { apply ebind_eok; exists tt; split; [ apply check_params_ok; exact Hnd |].
+            apply ebind_eok; eexists; split;
+              [ exact (proj2 (elab_params_iff fp O (F :: Fs) HO (Forall_cons _ HF HFs) ps nil ⋅ _)
+                         (ex_intro _ tys (conj Htys eq_refl)))
               | reflexivity ]. }
           apply ebind_eok; eexists; split.
-          { rewrite app_nil_r, (of_new_to _ _ _ (sparams_names _ _ _ _ _ _ Htys)).
-            exact (proj2 (Hbody O (F :: Fs) _ imps _) (ex_intro _ N (conj HN' eq_refl))). }
+          { rewrite app_nil_r, (of_new_to _ _ _ Hnames).
+            exact (proj2 (Hbody O (F :: Fs) _ imps _ HO (Forall_cons _ HF HFs)
+                            ltac:(apply sf_wf_new; rewrite Hnames; exact Hnd))
+                     (ex_intro _ N (conj HN' eq_refl))). }
           cbn [map]. rewrite us_close_cons. do 3 f_equal.
           apply to_of_close. exact (scmds_shape _ _ _ _ _ _ HN').
-      + rewrite elab_cmd_mod_path. split.
+      + assert (Hnew : sf_wf (sf_new (sf_path F ++ x :: nil) nil)) by (apply sf_wf_new; constructor).
+        rewrite elab_cmd_mod_path. split.
         * intros H. apply ebind_eok in H as (u & Hu & H). apply us_top_fresh in Hu.
           cbn [ebind] in H. apply ebind_eok in H as (st1 & Hst1 & H).
-          destruct (proj1 (IHp y O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) imps st1) Hst1)
+          destruct (proj1 (IHp y O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) imps st1
+                             HO (Forall_cons _ HF HFs) Hnew) Hst1)
             as (N & HN & ->).
           cbn [map] in H. rewrite us_close_cons in H. inv_eok.
           eexists; split; [ eapply sc_mod_path; [ discriminate | eassumption | eassumption ] |].
-          do 2 f_equal. apply (to_of_close _ _ _ nil). match goal with HN : scmd _ _ _ _ _ _ |- _ => exact (scmd_shape _ _ _ _ _ _ HN) end.
+          do 2 f_equal. apply (to_of_close _ _ _ nil). exact (scmd_shape _ _ _ _ _ _ HN).
         * intros (F' & Hs & ->). inversion Hs; subst.
           apply ebind_eok; eexists; split; [ apply fresh_us_top; eassumption |].
           cbn [ebind]. apply ebind_eok; eexists; split.
-          { exact (proj2 (IHp y O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) imps _)
+          { exact (proj2 (IHp y O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) imps _
+                            HO (Forall_cons _ HF HFs) Hnew)
                      (ex_intro _ N (conj ltac:(eassumption) eq_refl))). }
           cbn [map]. rewrite us_close_cons. do 3 f_equal.
-          apply (to_of_close _ _ _ nil). match goal with HN : scmd _ _ _ _ _ _ |- _ => exact (scmd_shape _ _ _ _ _ _ HN) end.
+          apply (to_of_close _ _ _ nil).
+          match goal with HN : scmd _ _ _ _ _ _ |- _ => exact (scmd_shape _ _ _ _ _ _ HN) end.
     - (* definition *)
-      intros m x oA oM O Fs F imps st'. rewrite elab_cmd_def. unfold elab_def.
+      intros m x oA oM O Fs F imps st' HO HFs HF.
+      pose proof (Forall_cons _ HF HFs) as HFFs.
+      rewrite elab_cmd_def. unfold elab_def.
       rewrite us_top_cons, ebind_eok. split.
       + intros (g & Hg & H). inv_eok. apply ebind_echeck in Hg as [Hfr Hg].
         apply ebind_eok in Hg as (A & HA & Hg). apply ebind_eok in Hg as (M & HM & Hg). inv_eok.
-        pose proof (proj1 (elab_term_iff fp O (F :: Fs) nil oA A) HA) as HA'.
-        pose proof (proj1 (elab_term_iff fp O (F :: Fs) nil oM M) HM) as HM'.
+        pose proof (proj1 (elab_term_iff fp O (F :: Fs) HO HFFs nil oA A) HA) as HA'.
+        pose proof (proj1 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM M) HM) as HM'.
         eexists; split; [ apply sc_def; [ apply of_fresh_to; exact Hfr | exact HA' | exact HM' ] |].
         do 2 f_equal. apply to_of_emit; reflexivity.
       + intros (F' & Hs & ->). inversion Hs; subst. eexists; split.
         * apply ebind_echeck; split; [ apply of_fresh_to; assumption |].
-          apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) nil oA _) ltac:(eassumption)) |].
-          apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) nil oM _) ltac:(eassumption)) |].
+          apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) HO HFFs nil oA _) ltac:(eassumption)) |].
+          apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM _) ltac:(eassumption)) |].
           reflexivity.
         * do 3 f_equal. apply to_of_emit; reflexivity.
     - (* import *)
-      intros fq ip spec O Fs F imps st'. rewrite elab_cmd_import. unfold elab_import.
+      intros fq ip spec O Fs F imps st' HO HFs HF.
+      pose proof (Forall_cons _ HF HFs) as HFFs.
+      rewrite elab_cmd_import. unfold elab_import. cbn [us_frames].
       rewrite ebind_eok. split.
       + intros (mr & Hmr & H). rewrite us_scope_cons in H. apply ebind_eok in H as (sc'' & Hb & H). inv_eok.
-        destruct (proj1 (import_iff fp O (F :: Fs) imps fq ip spec (sf_scope F) sc'') (ex_intro _ mr (conj Hmr Hb)))
+        destruct (proj1 (import_iff fp _ _ O (F :: Fs) imps fq ip spec (sf_scope F) sc''
+                           (of_taken_decides F) HO HFFs) (ex_intro _ mr (conj Hmr Hb)))
           as (sc' & Hs & ->).
         eexists; split; [ apply sc_import; eassumption |].
         do 2 f_equal. exact (to_of_import F fq ip sc').
       + intros (F' & Hs & ->). inversion Hs; subst.
-        match goal with Hi : simport _ _ _ _ _ _ _ |- _ => rename Hi into Himp; pose proof Himp as Hi'; inversion Hi'; subst; clear Hi' end.
-        destruct (proj2 (import_iff fp O (F :: Fs) imps fq ip spec (sf_scope F) _)
+        match goal with Hi : simport _ _ _ _ _ _ _ _ |- _ =>
+          rename Hi into Himp; pose proof Himp as Hi'; inversion Hi'; subst; clear Hi' end.
+        destruct (proj2 (import_iff fp _ _ O (F :: Fs) imps fq ip spec (sf_scope F) _
+                           (of_taken_decides F) HO HFFs)
                     (ex_intro _ sc' (conj Himp eq_refl))) as (mr & Hmr & Hb).
         exists mr; split; [ exact Hmr |]. rewrite us_scope_cons. apply ebind_eok; eexists; split; [ exact Hb |].
         do 3 f_equal. exact (to_of_import F fq ip sc').
     - (* eval *)
-      intros oM oA O Fs F imps st'. rewrite elab_cmd_eval. unfold elab_eval.
+      intros oM oA O Fs F imps st' HO HFs HF.
+      pose proof (Forall_cons _ HF HFs) as HFFs.
+      rewrite elab_cmd_eval. unfold elab_eval.
       rewrite us_top_cons, ebind_eok. destruct oA as [oA |]; split.
       + intros (g & Hg & H). inv_eok. apply ebind_eok in Hg as (M & HM & Hg).
         apply ebind_eok in Hg as (oT & HT & Hg). inv_eok. apply ebind_eok in HT as (A & HA & HT). inv_eok.
         eexists; split.
-        * apply sc_eval_typ; [ exact (proj1 (elab_term_iff fp O (F :: Fs) nil oM M) HM)
-                             | exact (proj1 (elab_term_iff fp O (F :: Fs) nil oA A) HA) ].
+        * apply sc_eval_typ; [ exact (proj1 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM M) HM)
+                             | exact (proj1 (elab_term_iff fp O (F :: Fs) HO HFFs nil oA A) HA) ].
         * do 2 f_equal. exact (to_of_eval F M (Some A)).
       + intros (F' & Hs & ->). inversion Hs; subst. eexists; split.
-        * apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) nil oM _) ltac:(eassumption)) |].
+        * apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM _) ltac:(eassumption)) |].
           apply ebind_eok; eexists; split.
-          -- apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) nil oA _) ltac:(eassumption)) |].
+          -- apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) HO HFFs nil oA _) ltac:(eassumption)) |].
              reflexivity.
           -- reflexivity.
         * do 3 f_equal. apply to_of_eval.
       + intros (g & Hg & H). inv_eok. apply ebind_eok in Hg as (M & HM & Hg). cbn [ebind] in Hg. inv_eok.
         eexists; split.
-        * apply sc_eval. exact (proj1 (elab_term_iff fp O (F :: Fs) nil oM M) HM).
+        * apply sc_eval. exact (proj1 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM M) HM).
         * do 2 f_equal. exact (to_of_eval F M None).
       + intros (F' & Hs & ->). inversion Hs; subst. eexists; split.
-        * apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) nil oM _) ltac:(eassumption)) |].
+        * apply ebind_eok; eexists; split; [ exact (proj2 (elab_term_iff fp O (F :: Fs) HO HFFs nil oM _) ltac:(eassumption)) |].
           reflexivity.
         * do 3 f_equal. apply to_of_eval.
   Qed.
@@ -1224,12 +1402,19 @@ Section Commands.
   Corollary elab_cmds_iff : forall cs, P_cmds cs.
   Proof. intros; apply P_cmds_of, Forall_forall; intros; apply elab_cmd_iff. Qed.
 
+  Lemma simport_ss_wf : forall O Fs sc c sc' oc, simport fp O Fs nil sc c sc' oc -> ss_wf sc -> ss_wf sc'.
+  Proof.
+    unfold ss_wf; intros * Hs Hw. pose proof (simport_wf _ _ _ _ _ _ _ _ Hs) as H.
+    rewrite !app_nil_r in H. auto.
+  Qed.
+
   (** The imports before the unit's declaration, outside all frames. *)
   Lemma elab_cmds_outer_iff : forall cs O imps st',
+      ss_wf O ->
       elab_cmds (us_mk fp (to_os O) nil imps) cs = eok st' <->
       exists O' is, simports fp O cs O' is /\ st' = us_mk fp (to_os O') nil (rev is ++ imps).
   Proof.
-    induction cs as [| c cs IH]; intros; split.
+    induction cs as [| c cs IH]; intros O imps st' HO; split.
     - intros H; cbn in H; inv_eok. exists O, nil; split; [ constructor | reflexivity ].
     - intros (O' & is & Hs & ->). inversion Hs; subst. reflexivity.
     - intros H. rewrite elab_cmds_cons in H. apply ebind_eok in H as (st1 & H1 & H2).
@@ -1237,26 +1422,28 @@ Section Commands.
       + exfalso. destruct p as [| x [| y p] ];
           [ cbn in H1 | rewrite elab_cmd_mod_one in H1 | rewrite elab_cmd_mod_path in H1 ]; cbn in H1; discriminate.
       + exfalso. rewrite elab_cmd_def in H1. cbn in H1. discriminate.
-      + rewrite elab_cmd_import in H1. unfold elab_import in H1.
+      + rewrite elab_cmd_import in H1. unfold elab_import in H1. cbn [us_frames] in H1.
         apply ebind_eok in H1 as (mr & Hmr & H1). rewrite us_scope_nil in H1.
         apply ebind_eok in H1 as (sc'' & Hb & H1). inv_eok.
-        destruct (proj1 (import_iff fp O nil imps fq ip spec O sc'') (ex_intro _ mr (conj Hmr Hb)))
+        destruct (proj1 (import_iff fp _ _ O nil imps fq ip spec O sc'' nothing_decides HO (Forall_nil _))
+                    (ex_intro _ mr (conj Hmr Hb)))
           as (O1 & Hs1 & ->).
-        apply IH in H2 as (O2 & is & Hs2 & ->).
+        apply IH in H2 as (O2 & is & Hs2 & ->); [| eapply simport_ss_wf; eassumption ].
         exists O2, (opt_list (import_cmd fq ip) ++ is); split; [ econstructor; eassumption |].
         f_equal. rewrite rev_app_distr, <- app_assoc. f_equal. destruct fq; reflexivity.
       + exfalso. rewrite elab_cmd_eval in H1. cbn in H1. discriminate.
     - intros (O' & is & Hs & ->). inversion Hs; subst.
-      match goal with Hi : simport _ _ _ _ _ _ _ |- _ => pose proof Hi as Hi'; inversion Hi'; subst; clear Hi' end.
+      match goal with Hi : simport _ _ _ _ _ _ _ _ |- _ => pose proof Hi as Hi'; inversion Hi'; subst; clear Hi' end.
       rewrite elab_cmds_cons, elab_cmd_import.
-      unfold elab_import.
-      match goal with Hi : simport _ _ _ _ _ ?O1 _, Hr : simports _ ?O1 _ _ ?is0 |- _ =>
-        destruct (proj2 (import_iff fp O nil imps fq ip spec O _) (ex_intro _ O1 (conj Hi eq_refl)))
+      unfold elab_import. cbn [us_frames].
+      match goal with Hi : simport _ _ _ _ _ _ ?O1 _, Hr : simports _ ?O1 _ _ ?is0 |- _ =>
+        destruct (proj2 (import_iff fp _ _ O nil imps fq ip spec O _ nothing_decides HO (Forall_nil _))
+                    (ex_intro _ O1 (conj Hi eq_refl)))
           as (mr & Hmr & Hb);
         apply ebind_eok; eexists; split;
         [ apply ebind_eok; exists mr; split; [ exact Hmr |];
           rewrite us_scope_nil; apply ebind_eok; eexists; split; [ exact Hb | reflexivity ] |];
-        apply IH; exists O', is0; split; [ exact Hr |]
+        apply IH; [ eapply simport_ss_wf; eassumption |]; exists O', is0; split; [ exact Hr |]
       end.
       f_equal. rewrite rev_app_distr, <- app_assoc. f_equal. destruct fq; reflexivity.
   Qed.
@@ -1264,27 +1451,40 @@ End Commands.
 
 (** ** The Theorems *)
 
+Lemma ss_wf_empty : ss_wf ss_empty.
+Proof. constructor. Qed.
+
 Theorem elaborate_core_iff : forall prg u, elaborate_core prg = eok u <-> elab_spec prg u.
 Proof.
   intros [imports [[fp ps] cs]] u. cbv beta iota zeta delta [elaborate_core]. split.
   - intros H. apply ebind_eok in H as (st0 & H0 & H).
-    destruct (proj1 (elab_cmds_outer_iff fp imports ss_empty nil st0) H0) as (O & imps & Hi & ->).
+    destruct (proj1 (elab_cmds_outer_iff fp imports ss_empty nil st0 ss_wf_empty) H0) as (O & imps & Hi & ->).
+    pose proof (simports_wf _ _ _ _ _ Hi ss_wf_empty) as HO.
+    apply ebind_eok in H as ([] & Hc & H). apply check_params_ok in Hc.
     apply ebind_eok in H as (Δ & HΔ & H).
-    destruct (proj1 (elab_params_iff fp O nil ps nil ⋅ Δ) HΔ) as (tys & Htys & ->).
+    destruct (proj1 (elab_params_iff fp O nil HO (Forall_nil _) ps nil ⋅ Δ) HΔ) as (tys & Htys & ->).
     apply ebind_eok in H as (st & Hst & H).
-    rewrite (app_nil_r (ptele tys)), (of_new_to _ _ _ (sparams_names _ _ _ _ _ _ Htys)) in Hst.
-    destruct (proj1 (elab_cmds_iff fp cs O nil (sf_new nil tys) (rev imps ++ nil) st) Hst) as (F & HF & ->).
+    pose proof (sparams_names _ _ _ _ _ _ Htys) as Hnames.
+    rewrite (app_nil_r (ptele tys)), (of_new_to _ _ _ Hnames) in Hst.
+    destruct (proj1 (elab_cmds_iff fp cs O nil (sf_new nil tys) (rev imps ++ nil) st HO (Forall_nil _)
+                       ltac:(apply sf_wf_new; rewrite Hnames; exact Hc)) Hst) as (F & HF & ->).
     cbn [us_frames map] in H. inv_eok.
     simpl_to. rewrite app_nil_r, rev_involutive, rev_involutive, (scmds_shape _ _ _ _ _ _ HF).
     econstructor; eassumption.
-  - intros Hs. inversion Hs as [? ? ? ? O imps tys F Hi Htys HF]; subst.
+  - intros Hs. inversion Hs as [? ? ? ? O imps tys F Hi Hnd Htys HF]; subst.
+    pose proof (simports_wf _ _ _ _ _ Hi ss_wf_empty) as HO.
+    pose proof (sparams_names _ _ _ _ _ _ Htys) as Hnames.
     apply ebind_eok; eexists; split;
-      [ exact (proj2 (elab_cmds_outer_iff fp imports ss_empty nil _) (ex_intro _ O (ex_intro _ imps (conj Hi eq_refl)))) |].
+      [ exact (proj2 (elab_cmds_outer_iff fp imports ss_empty nil _ ss_wf_empty)
+                 (ex_intro _ O (ex_intro _ imps (conj Hi eq_refl)))) |].
+    apply ebind_eok; exists tt; split; [ apply check_params_ok; exact Hnd |].
     apply ebind_eok; eexists; split;
-      [ exact (proj2 (elab_params_iff fp O nil ps nil ⋅ _) (ex_intro _ tys (conj Htys eq_refl))) |].
+      [ exact (proj2 (elab_params_iff fp O nil HO (Forall_nil _) ps nil ⋅ _) (ex_intro _ tys (conj Htys eq_refl))) |].
     apply ebind_eok; eexists; split.
-    { rewrite (app_nil_r (ptele tys)), (of_new_to _ _ _ (sparams_names _ _ _ _ _ _ Htys)).
-      exact (proj2 (elab_cmds_iff fp cs O nil (sf_new nil tys) _ _) (ex_intro _ F (conj HF eq_refl))). }
+    { rewrite (app_nil_r (ptele tys)), (of_new_to _ _ _ Hnames).
+      exact (proj2 (elab_cmds_iff fp cs O nil (sf_new nil tys) _ _ HO (Forall_nil _)
+                      ltac:(apply sf_wf_new; rewrite Hnames; exact Hnd))
+               (ex_intro _ F (conj HF eq_refl))). }
     cbn [us_frames us_imps map]. simpl_to.
     rewrite app_nil_r, rev_involutive, rev_involutive, (scmds_shape _ _ _ _ _ _ HF). reflexivity.
 Qed.
