@@ -1331,3 +1331,70 @@ Section TopT.
       exact (Hty _ _ _ _ H1 H2 H3).
   Qed.
 End TopT.
+
+Lemma list_choice : forall {A} (P : nat -> A -> Prop) n,
+    (forall i, i < n -> exists x, P i x) ->
+    exists l, List.length l = n /\ forall i x, List.nth_error l i = Some x -> P i x.
+Proof.
+  intros A P n; induction n as [| n IH]; intros H.
+  - exists nil; split; [ reflexivity | intros [] ? ?; discriminate ].
+  - destruct (IH ltac:(intros; apply H; lia)) as (l & Hl & Hp).
+    destruct (H n ltac:(lia)) as [x Hx].
+    exists (l ++ x :: nil); split; [ rewrite List.length_app; cbn; lia |].
+    intros i y Hy.
+    destruct (Nat.lt_ge_cases i n) as [Hi | Hi].
+    + rewrite List.nth_error_app1 in Hy by lia; auto.
+    + rewrite List.nth_error_app2 in Hy by lia.
+      destruct (i - List.length l) as [| k] eqn:Hk; cbn in Hy; [| destruct k; discriminate ].
+      injection Hy as <-; replace i with n by lia; exact Hx.
+Qed.
+
+Section Neut.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  #[local] Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp Θ Ξ κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
+
+  (** A neutral at a telescope type, applied: the head applied to the
+      arguments at the telescope's types. *)
+  Lemma apps_neut : forall Δ A κ ρ0 t h cs v,
+      List.length cs = List.length Δ ->
+      ⟦ ctx_pi Δ A ⟧ κ ⍮ ρ0 ↘ t -> apps Θ Ξ (⇑ t h) cs v ->
+      exists a tls, v = ⇑ a (napp h tls cs) /\ ⟦ A ⟧ κ ⍮ List.rev cs ++ ρ0 ↘ a /\
+        List.length tls = List.length Δ /\
+        forall i T tl, List.nth_error Δ (List.length Δ - S i) = Some T -> List.nth_error tls i = Some tl ->
+          ⟦ T ⟧ κ ⍮ List.rev (List.firstn i cs) ++ ρ0 ↘ tl.
+  Proof.
+    induction Δ as [| T Δ IH] using List.rev_ind; intros * Hl Ht Hv.
+    - destruct cs; [| discriminate ]; inversion Hv; subst.
+      exists t, nil; repeat split; [ exact Ht | intros ? ? ? H; destruct (List.length _ - _); discriminate ].
+    - rewrite List.length_app in Hl; cbn in Hl.
+      destruct cs as [| c cs]; [ cbn in Hl; lia |].
+      rewrite ctx_pi_snoc in Ht; inversion Ht; subst.
+      inversion Hv as [| ? ? ? fc ? Hfc Hrest]; subst.
+      inversion Hfc; subst.
+      destruct (IH A κ (c :: ρ0) _ _ cs v ltac:(cbn in Hl; lia) ltac:(eassumption) Hrest) as (a' & tls & -> & Ha' & Hlt & Htl).
+      exists a', (a :: tls); split; [ reflexivity |].
+      split; [ cbn; rewrite <- List.app_assoc; exact Ha' |].
+      split; [ rewrite List.length_app; cbn; lia |].
+      intros [| i] T' tl HT' Htl'; cbn in Htl'.
+      + injection Htl' as <-.
+        rewrite List.length_app, Nat.add_comm in HT'; cbn in HT'; rewrite Nat.sub_0_r in HT'.
+        rewrite List.nth_error_app2, Nat.sub_diag in HT' by lia; cbn in HT'; injection HT' as <-.
+        cbn; assumption.
+      + rewrite List.length_app, Nat.add_comm in HT'; cbn in HT'.
+        assert (Hi : i < List.length Δ) by (assert (Hn0 : List.nth_error tls i <> None) by congruence; apply List.nth_error_Some in Hn0; lia).
+        rewrite List.nth_error_app1 in HT' by lia.
+        cbn; rewrite <- List.app_assoc; apply Htl; assumption.
+  Qed.
+
+  Lemma nsim_napp : forall tls tys cs h h',
+      nsim Θ Ξ h h' -> List.length tls = List.length tys ->
+      (forall i tl ty, List.nth_error tls i = Some tl -> List.nth_error tys i = Some ty -> vsim Θ Ξ tl ty) ->
+      nsim Θ Ξ (napp h tls cs) (napp h' tys cs).
+  Proof.
+    induction tls as [| tl tls IH]; intros [| ty tys] [| c cs] * Hh Hl Hv; cbn in *; try lia; auto.
+    apply IH; [ apply ns_app; [ exact Hh | apply (Hv 0); reflexivity | apply vs_refl ] | lia |].
+    intros i; apply (Hv (S i)).
+  Qed.
+End Neut.

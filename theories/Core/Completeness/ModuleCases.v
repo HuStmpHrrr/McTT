@@ -390,6 +390,87 @@ Section Raw.
       apply Hirr; exact Hng.
   Qed.
 
+  (** An opaque definition or an axiom: a neutral at its type, applied. *)
+  Lemma glob_neut_sem : forall p Δ b pv A B i,
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B -> b = false \/ B = None ->
+      @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Type@i) (ctx_pi Δ A) (ctx_pi Δ A) ->
+      @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (a_glob p).
+  Proof.
+    intros * Hl Hop HT.
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
+    destruct (top_chainT Θ Ξ _ _ _ _ _ _ Hg Hl)
+      as (y & Ar & Br & θ & csf & pos & HA & HB & HsA & HsB & Hlpos & Hpos & Hpart & Hmain).
+    destruct (@typ_nil_eval (gc_mk Θ Ξ) _ _ HT) as (t & R0 & Ht & HR0).
+    set (f := ⇑ t (d_glob p)).
+    assert (Hd : @per_bot (gc_mk Θ Ξ) (d_glob p) (d_glob p)) by (intros s; eexists; split; constructor).
+    pose proof (@per_bot_then_per_elem (gc_mk Θ Ξ) _ _ _ _ _ _ HR0 Hd) as Hff.
+    assert (Hfull : forall cs v, List.length cs = List.length Δ -> apps Θ Ξ f cs v ->
+               exists v', gres Θ Ξ p cs v' /\ vsim Θ Ξ v v').
+    { intros cs v Hlc Hv.
+      destruct (apps_neut _ _ _ _ _ _ _ _ _ _ Hlc Ht Hv) as (a & tls & -> & Ha & Hltls & Htls).
+      rewrite List.app_nil_r in Ha.
+      destruct (Hmain _ Hlc) as (κf & Δf & Φf & rconf & Hff' & Hfy & Hres & Hcf & Hpath & Hlrc & Hconf & Hgne).
+      rewrite HA in Ha.
+      destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Ha (exp_scoped_ok_cs _ _ _ HsA) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcf))
+        as (ar & Har & Hsa).
+      (* the raw parameter types, position by position *)
+      assert (Hty : forall j, j < List.length Δ -> exists ty,
+                 forall e rc, List.nth_error pos j = Some e -> List.nth_error rconf j = Some rc ->
+                   ty_ok Θ Ξ e rc ty /\ forall tl, List.nth_error tls j = Some tl -> vsim Θ Ξ tl ty).
+      { intros j Hj.
+        destruct (List.nth_error pos j) as [[[[R θj] nR] csR] |] eqn:He;
+          [| apply List.nth_error_None in He; lia ].
+        destruct (List.nth_error rconf j) as [[κj ρj] |] eqn:Hrc;
+          [| apply List.nth_error_None in Hrc; lia ].
+        destruct (List.nth_error tls j) as [tl |] eqn:Htl;
+          [| apply List.nth_error_None in Htl; lia ].
+        destruct (Hpos _ _ He) as (T & HT' & HTok); cbn in HTok; destruct HTok as (-> & HsR).
+        specialize (Hconf _ _ _ He Hrc); cbn in Hconf; destruct Hconf as [HlR Hcfj].
+        pose proof (Htls _ _ _ HT' Htl) as Htl'; rewrite List.app_nil_r in Htl'.
+        destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Htl' (exp_scoped_ok_cs _ _ _ HsR) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcfj))
+          as (ty & Hty & Hsty).
+        exists ty; intros e rc He' Hrc'.
+        injection He' as <-; injection Hrc' as <-; cbn; split; [ exact Hty |].
+        intros tl' Htl''; injection Htl'' as <-; exact Hsty. }
+      destruct (list_choice _ _ Hty) as (tys & Hltys & Htys).
+      assert (Hgn : eval_gne Θ Ξ κf (addr_depth (me_addr κf)) (d_glob p) (napp (d_glob p) tys cs)).
+      { apply Hgne; [ assumption |].
+        intros i0 e rc ty He Hrc Hty0; exact (proj1 (Htys _ _ Hty0 _ _ He Hrc)). }
+      exists (⇑ ar (napp (d_glob p) tys cs)); split.
+      - apply Hres; eapply eval_ent_neut; [ eassumption | eassumption | | eassumption |].
+        + destruct Hop as [-> | ->]; [ left; reflexivity | right; destruct Br; cbn in HB; [ discriminate | reflexivity ] ].
+        + rewrite Hpath; exact Hgn.
+      - apply vs_neut; [ exact Hsa |].
+        apply nsim_napp; [ apply ns_refl | lia |].
+        intros j tl ty Htl Hty0.
+        assert (Hj : j < List.length Δ) by (assert (Hn0 : List.nth_error tys j <> None) by congruence; apply List.nth_error_Some in Hn0; lia).
+        destruct (List.nth_error pos j) as [e |] eqn:He; [| apply List.nth_error_None in He; lia ].
+        destruct (List.nth_error rconf j) as [rc |] eqn:Hrc; [| apply List.nth_error_None in Hrc; lia ].
+        exact (proj2 (Htys _ _ Hty0 _ _ He Hrc) _ Htl). }
+    assert (Hg0 : exists g, forall ρ, eval_exp Θ Ξ me_top (a_glob p) ρ g).
+    { destruct Δ as [| T Δ'] eqn:HΔ.
+      - destruct (Hfull nil f eq_refl (apps_nil _ _ _)) as (v' & (g & Hg' & _) & _); eauto.
+      - destruct (Hpart nil ltac:(cbn; lia)) as (v & g & Hg' & _); eauto. }
+    destruct Hg0 as [g Hgv].
+    assert (Hap : appsim Θ Ξ (List.length Δ) f g).
+    { split.
+      - intros cs v Hlc Hv.
+        destruct (Hfull _ _ Hlc Hv) as (v'' & Hres & Hs).
+        exists v''; split; [ eapply gres_det; eassumption | exact Hs ].
+      - intros cs Hlc; destruct (Hpart _ Hlc) as (v & Hres).
+        exists v; eapply gres_det; eassumption. }
+    pose proof (@per_tele_appsim (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ Ht HR0 Hff Hap) as Hfg.
+    eapply (@rel_exp_val_nil (gc_mk Θ Ξ)) with (g := g); [ exact HT | | reflexivity | exact Hgv |].
+    - intros; eapply exp_closed_sub; eassumption.
+    - intros a R Ha HR.
+      pose proof (functional_eval_exp _ _ _ _ _ Ha Ht) as ->.
+      pose proof (@per_univ_elem_right_irrel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR0 HR) as Hirr.
+      unfold relation_equivalence, predicate_equivalence, pointwise_lifting in Hirr.
+      apply Hirr.
+      eapply (@per_elem_trans (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR0); [ eapply (@per_elem_sym (gc_mk Θ Ξ)); [ exact HR0 | exact Hfg ] | exact Hfg ].
+  Qed.
+
   (** One global at a time, so that it can be used inside an induction. *)
   Lemma glob_sem_of_raw : forall p Δ b pv A B,
       Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
@@ -407,9 +488,9 @@ Section Raw.
     destruct b; [ destruct B as [M |] |].
     - pose proof (Hdelta M eq_refl eq_refl) as H.
       eapply rel_exp_under_ctx_trans; [ exact H | apply rel_exp_under_ctx_sym; exact H ].
-    - (* OPTA-TODO opaque *) admit.
-    - (* OPTA-TODO opaque *) admit.
-  Admitted.
+    - eapply glob_neut_sem; [ eassumption | right; reflexivity | exact HT ].
+    - eapply glob_neut_sem; [ eassumption | left; reflexivity | exact HT ].
+  Qed.
 
   Lemma sem_rwf_of_raw : sem_rwf_raw Θ Ξ -> sem_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_sem_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
