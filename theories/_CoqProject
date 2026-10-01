@@ -43,6 +43,7 @@
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
+./Core/Semantic/Simulation.v
 ./Core/Semantic/Transparency.v
 ./Core/Soundness.v
 ./Core/Soundness/ContextCases.v
