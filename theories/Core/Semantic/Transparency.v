@@ -1,8 +1,8 @@
 (** * NbE at a Transparent Global Context
 
-    At a transparent global context ([gc_transparent]) no global and no
-    parameter evaluates to a neutral, so neither ever reaches a normal form:
-    the only neutrals are variables. *)
+    At a transparent global context ([gc_transparent]) no global evaluates to
+    a neutral, so none ever reaches a normal form: the only neutrals are
+    variables.  Module parameters are λ-variables and impose nothing. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -59,11 +59,9 @@ Section Transparent.
     all: repeat match goal with H : dclean (_ _) |- _ => inversion_clear H end.
     all: try solve [ eauto 7 with mctt ].
     - (* an opaque definition or an axiom *)
-      destruct (gc_transparent_lookup _ _ _ _ _ _ _ _ Htr ltac:(eapply gc_resolve_sound; eassumption)).
+      match goal with H : gc_resolve _ _ _ = Some _ |- _ =>
+        destruct (gc_transparent_resolve _ _ _ _ _ _ _ Htr H) end.
       intuition congruence.
-    - (* a parameter *)
-      match goal with H : gs_param _ _ = Some _ |- _ =>
-        rewrite (gc_transparent_param _ _ _ Htr) in H; discriminate end.
   Qed.
 
   Lemma read_clean :

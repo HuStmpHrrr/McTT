@@ -39,7 +39,6 @@
 ./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness/LogicalRelation.v
 ./Core/Soundness/ModuleCases.v
-./Core/Soundness/GlobalCases.v
 ./Core/Soundness/NatCases.v
 ./Core/Soundness/LogicalRelation/Core.v
 ./Core/Soundness/LogicalRelation/CoreLemmas.v
@@ -69,3 +68,13 @@
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/SystemOpt.v
 ./LibTactics.v
+./Algorithmic/Subtyping.v
+./Algorithmic/Subtyping/Definitions.v
+./Algorithmic/Subtyping/Lemmas.v
+./Algorithmic/Typing.v
+./Algorithmic/Typing/Definitions.v
+./Algorithmic/Typing/Lemmas.v
+./Core/Completeness/Consequences/Rules.v
+./Core/Completeness/Consequences/Types.v
+./Core/Semantic/Consequences.v
+./Core/Semantic/Transparency.v

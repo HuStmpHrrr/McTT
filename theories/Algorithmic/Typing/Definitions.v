@@ -1,3 +1,4 @@
+From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Subtyping Require Export Definitions.
 From Mctt.Core Require Import Base.
 Import Domain_Notations Fixed_Notations.
@@ -51,20 +52,10 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
-(** A parameter of an open frame, at the type [wf_param] gives it.  The two
-    premises of that rule are a lookup in a list and a lookup in a telescope, so
-    they are one call of [gs_param] here: a function, which keeps the inferred
-    type determined by the term without appealing to canonicity of the global
-    context, and keeps the extracted checker a table lookup. *)
-| ati_param :
-  `( gs_param gc_stack lp = Some T ->
-     nbe_ty_f Γ T C ->
-     Γ ⊢a a_param lp ⟹ C )
-(** A global, at the generalized type resolution hands back.  [gc_resolve] is
-    [gc_lookup] as a function, for the same two reasons. *)
+(** A global, at the closed type resolution hands back. *)
 | ati_glob :
-  `( gc_resolve gc_deps gc_stack p = Some (Δ, ge_def b pv A B) ->
-     nbe_ty_f Γ (ctx_pi Δ A) C ->
+  `( gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B) ->
+     nbe_ty_f Γ A C ->
      Γ ⊢a a_glob p ⟹ C )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
 
@@ -83,3 +74,62 @@ with alg_type_infer_mut_ind := Induction for alg_type_infer Sort Prop.
 Combined Scheme alg_type_mut_ind from
   alg_type_check_mut_ind,
   alg_type_infer_mut_ind.
+
+(** ** User Expressions
+
+    The expressions the type checker is willing to be given.  Every [exp] is one:
+    the distinction the predicate used to make disappeared when substitution
+    stopped being a constructor, and it is kept only because [type_check_closed]
+    is indexed by it. *)
+Generalizable All Variables.
+
+Inductive user_exp : exp -> Prop :=
+| user_exp_typ :
+  `( user_exp (a_typ i) )
+| user_exp_nat :
+  `( user_exp a_nat )
+| user_exp_zero :
+  `( user_exp a_zero )
+| user_exp_succ :
+  `( user_exp M ->
+     user_exp (a_succ M) )
+| user_exp_natrec :
+  `( user_exp A ->
+     user_exp MZ ->
+     user_exp MS ->
+     user_exp M ->
+     user_exp (a_natrec A MZ MS M) )
+| user_exp_pi :
+  `( user_exp A ->
+     user_exp B ->
+     user_exp (a_pi A B) )
+| user_exp_fn :
+  `( user_exp A ->
+     user_exp M ->
+     user_exp (a_fn A M) )
+| user_exp_app :
+  `( user_exp M ->
+     user_exp N ->
+     user_exp (a_app M N) )
+| user_exp_vlookup :
+  `( user_exp (a_var x) )
+| user_exp_glob :
+  `( user_exp (a_glob p) ).
+
+#[export]
+Hint Constructors user_exp : mctt.
+
+Lemma user_exp_all : forall M, user_exp M.
+Proof.
+  induction M; mauto 3.
+Qed.
+
+#[export]
+Hint Resolve user_exp_all : mctt.
+
+Lemma user_exp_nf : forall M, user_exp (nf_to_exp M)
+with user_exp_ne : forall M, user_exp (ne_to_exp M).
+Proof.
+  - clear user_exp_nf; induction M; mauto 3.
+  - clear user_exp_ne; induction M; mauto 3.
+Qed.
