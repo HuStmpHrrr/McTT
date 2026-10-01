@@ -12,7 +12,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Syntactic Require Import System GlobalInduction.
 From Mctt.Core.Semantic Require Import Evaluation Readback Simulation Bridge.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -1398,3 +1398,146 @@ Section Neut.
     intros i; apply (Hv (S i)).
   Qed.
 End Neut.
+
+(** ** The bridges, independently of a model *)
+
+Section Bridges.
+  Variables (Θ : gdeps) (Ξ : gstack).
+  Hypothesis Hg : ⊢g Θ ⍮ Ξ.
+
+  #[local] Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp Θ Ξ κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
+
+  (** δ: the raw global is applicatively simulated by the transformed body. *)
+  Lemma glob_delta_appsim : forall p Δ pv A M n0,
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true pv A (Some M) ->
+      ⟦ ctx_fn Δ M ⟧ me_top ⍮ nil ↘ n0 ->
+      exists g, (forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g) /\ appsim Θ Ξ (List.length Δ) n0 g.
+  Proof.
+    intros * Hl Hn0.
+    destruct (top_chain Θ Ξ _ _ _ _ _ _ Hg Hl)
+      as (y & Ar & Br & θ & csf & HA & HB & HsA & HsB & Hpart & Hmain).
+    destruct Br as [Mr |]; cbn in HB; [ injection HB as HMr | discriminate ].
+    assert (Hfull : forall cs v, List.length cs = List.length Δ ->
+               ⟦ M ⟧ me_top ⍮ List.rev cs ↘ v ->
+               exists v', gres Θ Ξ p cs v' /\ vsim Θ Ξ v v').
+    { intros cs v Hlc Hv.
+      destruct (Hmain _ Hlc) as (κf & Δf & Φf & Hff & Hfy & Hres & Hcf).
+      rewrite HMr in Hv.
+      destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Hv (exp_scoped_ok_cs _ _ _ HsB) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcf))
+        as (v' & Hv' & Hs).
+      exists v'; split; [ apply Hres; eapply eval_ent_delta; eassumption | exact Hs ]. }
+    assert (Hg0 : exists g, forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g).
+    { destruct Δ as [| T Δ'] eqn:HΔ.
+      - destruct (Hfull nil n0 eq_refl Hn0) as (v' & (g & Hg' & _) & _); eauto.
+      - destruct (Hpart nil ltac:(cbn; lia)) as (v & g & Hg' & _); eauto. }
+    destruct Hg0 as [g Hgv]; exists g; split; [ exact Hgv |].
+    split.
+    - intros cs v Hlc Hv.
+      pose proof (apps_ctx_fn _ _ _ _ _ _ _ _ _ Hlc Hn0 Hv) as Hv'.
+      rewrite List.app_nil_r in Hv'.
+      destruct (Hfull _ _ Hlc Hv') as (v'' & Hres & Hs).
+      exists v''; split; [ eapply gres_det; eassumption | exact Hs ].
+    - intros cs Hlc; destruct (Hpart _ Hlc) as (v & Hres).
+      exists v; eapply gres_det; eassumption.
+  Qed.
+
+  (** An opaque definition or an axiom: the raw global is applicatively
+      simulated by the neutral at the transformed type. *)
+  Lemma glob_neut_appsim : forall p Δ b pv A B t,
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B -> b = false \/ B = None ->
+      ⟦ ctx_pi Δ A ⟧ me_top ⍮ nil ↘ t ->
+      exists g, (forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g) /\ appsim Θ Ξ (List.length Δ) (⇑ t (d_glob p)) g.
+  Proof.
+    intros * Hl Hop Ht.
+    destruct (top_chainT Θ Ξ _ _ _ _ _ _ Hg Hl)
+      as (y & Ar & Br & θ & csf & pos & HA & HB & HsA & HsB & Hlpos & Hpos & Hpart & Hmain).
+    set (f := ⇑ t (d_glob p)).
+    assert (Hfull : forall cs v, List.length cs = List.length Δ -> apps Θ Ξ f cs v ->
+               exists v', gres Θ Ξ p cs v' /\ vsim Θ Ξ v v').
+    { intros cs v Hlc Hv.
+      destruct (apps_neut _ _ _ _ _ _ _ _ _ _ Hlc Ht Hv) as (a & tls & -> & Ha & Hltls & Htls).
+      rewrite List.app_nil_r in Ha.
+      destruct (Hmain _ Hlc) as (κf & Δf & Φf & rconf & Hff' & Hfy & Hres & Hcf & Hpath & Hlrc & Hconf & Hgne).
+      rewrite HA in Ha.
+      destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Ha (exp_scoped_ok_cs _ _ _ HsA) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcf))
+        as (ar & Har & Hsa).
+      assert (Hty : forall j, j < List.length Δ -> exists ty,
+                 forall e rc, List.nth_error pos j = Some e -> List.nth_error rconf j = Some rc ->
+                   ty_ok Θ Ξ e rc ty /\ forall tl, List.nth_error tls j = Some tl -> vsim Θ Ξ tl ty).
+      { intros j Hj.
+        destruct (List.nth_error pos j) as [[[[R θj] nR] csR] |] eqn:He;
+          [| apply List.nth_error_None in He; lia ].
+        destruct (List.nth_error rconf j) as [[κj ρj] |] eqn:Hrc;
+          [| apply List.nth_error_None in Hrc; lia ].
+        destruct (List.nth_error tls j) as [tl |] eqn:Htl;
+          [| apply List.nth_error_None in Htl; lia ].
+        destruct (Hpos _ _ He) as (T & HT' & HTok); cbn in HTok; destruct HTok as (-> & HsR).
+        specialize (Hconf _ _ _ He Hrc); cbn in Hconf; destruct Hconf as [HlR Hcfj].
+        pose proof (Htls _ _ _ HT' Htl) as Htl'; rewrite List.app_nil_r in Htl'.
+        destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Htl' (exp_scoped_ok_cs _ _ _ HsR) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcfj))
+          as (ty & Hty & Hsty).
+        exists ty; intros e rc He' Hrc'.
+        injection He' as <-; injection Hrc' as <-; cbn; split; [ exact Hty |].
+        intros tl' Htl''; injection Htl'' as <-; exact Hsty. }
+      destruct (list_choice _ _ Hty) as (tys & Hltys & Htys).
+      assert (Hgn : eval_gne Θ Ξ κf (addr_depth (me_addr κf)) (d_glob p) (napp (d_glob p) tys cs)).
+      { apply Hgne; [ assumption |].
+        intros i0 e rc ty He Hrc Hty0; exact (proj1 (Htys _ _ Hty0 _ _ He Hrc)). }
+      exists (⇑ ar (napp (d_glob p) tys cs)); split.
+      - apply Hres; eapply eval_ent_neut; [ eassumption | eassumption | | eassumption |].
+        + destruct Hop as [-> | ->]; [ left; reflexivity | right; destruct Br; cbn in HB; [ discriminate | reflexivity ] ].
+        + rewrite Hpath; exact Hgn.
+      - apply vs_neut; [ exact Hsa |].
+        apply nsim_napp; [ apply ns_refl | lia |].
+        intros j tl ty Htl Hty0.
+        assert (Hj : j < List.length Δ) by (assert (Hn0 : List.nth_error tys j <> None) by congruence; apply List.nth_error_Some in Hn0; lia).
+        destruct (List.nth_error pos j) as [e |] eqn:He; [| apply List.nth_error_None in He; lia ].
+        destruct (List.nth_error rconf j) as [rc |] eqn:Hrc; [| apply List.nth_error_None in Hrc; lia ].
+        exact (proj2 (Htys _ _ Hty0 _ _ He Hrc) _ Htl). }
+    assert (Hg0 : exists g, forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g).
+    { destruct Δ as [| T Δ'] eqn:HΔ.
+      - destruct (Hfull nil f eq_refl (apps_nil _ _ _)) as (v' & (g & Hg' & _) & _); eauto.
+      - destruct (Hpart nil ltac:(cbn; lia)) as (v & g & Hg' & _); eauto. }
+    destruct Hg0 as [g Hgv]; exists g; split; [ exact Hgv |].
+    split.
+    - intros cs v Hlc Hv.
+      destruct (Hfull _ _ Hlc Hv) as (v'' & Hres & Hs).
+      exists v''; split; [ eapply gres_det; eassumption | exact Hs ].
+    - intros cs Hlc; destruct (Hpart _ Hlc) as (v & Hres).
+      exists v; eapply gres_det; eassumption.
+  Qed.
+
+  (** A parameter of an open frame, given its type and those of the parameters
+      bound before it evaluate at the top level. *)
+  Lemma param_raw : forall n U k T,
+      List.nth_error Ξ n = Some U -> gu_params U ∋ #k : T ->
+      (forall k' T', k <= k' -> gu_params U ∋ #k' : T' ->
+         exists t, ⟦ T'[↑ₘ (S n)]ᵐ[sb_params n] ⟧ me_top ⍮ nil ↘ t) ->
+      exists a, (forall ρ, ⟦ $[n, k] ⟧ me_top ⍮ ρ ↘ ⇑ a (d_param (lp_mk n k))) /\
+        forall t, ⟦ T[↑ₘ (S n)]ᵐ[sb_params n] ⟧ me_top ⍮ nil ↘ t -> vsim Θ Ξ t a.
+  Proof.
+    intros n U k T Hn Hk Hall.
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
+    destruct (gs_scoped_nth _ _ _ Hsc Hn) as [HPs _].
+    pose proof (ctx_lookup_length _ _ _ Hk) as Hkl.
+    destruct (ctx_lookup_nth _ _ _ Hk) as (A & HA & ->).
+    assert (Hev : forall k' A', k <= k' -> List.nth_error (gu_params U) k' = Some A' ->
+                    exists t, eval_exp Θ Ξ me_top (exp_tsub (θp n k') A') nil t).
+    { intros k' A' Hle HA'.
+      destruct (ctx_lookup_exists (gu_params U) k' ltac:(apply List.nth_error_Some; congruence)) as [T' Hk'].
+      destruct (ctx_lookup_nth _ _ _ Hk') as (A'' & HA'' & ->).
+      rewrite HA' in HA''; injection HA'' as <-.
+      destruct (Hall _ _ Hle Hk') as [t Ht].
+      rewrite param_type_tsub in Ht; eauto. }
+    destruct (ptele_exists Θ Ξ _ _ _ Hn HPs (List.length (gu_params U) - k) k ltac:(lia) Hev) as [ρ Hρ].
+    destruct (Hev k A (le_n _) HA) as [t0 Ht0].
+    destruct (param_value Θ Ξ _ _ _ _ _ _ Hn HA (exp_scoped_ok _ _ _ (ctx_scoped_nth _ _ _ _ HPs HA)) Hρ Ht0)
+      as (a & Ha & Hs).
+    exists a; split.
+    - intros ρ0; eapply eval_param_env; exact Ha.
+    - intros t Ht; rewrite param_type_tsub in Ht.
+      pose proof (functional_eval_exp _ _ _ _ _ Ht Ht0) as ->; exact Hs.
+  Qed.
+End Bridges.

@@ -26,11 +26,11 @@ Definition sem_snd Θ1 Ξ1 Θ2 Ξ2 μ : Prop := sem_msub Θ1 Ξ1 Θ2 Ξ2 μ nil.
 
 (** Every parameter from [k] out of a source frame has its image valid, so the
     image frame's parameters from the image of [k] out do. *)
-Lemma emb_params_from : forall Θ1 Ξ1 Θ2 Ξ2 μ n U k T n' U' k',
-    Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SP sem_valid Θ1 Ξ1 Θ2 Ξ2 μ ->
+Lemma emb_params_from : forall (V : gdeps -> gstack -> exp -> exp -> Prop) Θ1 Ξ1 Θ2 Ξ2 μ n U k T n' U' k',
+    Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SP V Θ1 Ξ1 Θ2 Ξ2 μ ->
     List.nth_error Ξ1 n = Some U -> gu_params U ∋ #k : T ->
     $[n, k][μ]ᵐ = $[n', k'] -> List.nth_error Ξ2 n' = Some U' ->
-    forall k2 T2, k' <= k2 -> gu_params U' ∋ #k2 : T2 -> vtyp sem_valid Θ2 Ξ2 (T2[↑ₘ (S n')]ᵐ[sb_params n']).
+    forall k2 T2, k' <= k2 -> gu_params U' ∋ #k2 : T2 -> vtyp V Θ2 Ξ2 (T2[↑ₘ (S n')]ᵐ[sb_params n']).
 Proof.
   intros * He HP Hn Hk Heq Hn' k2 T2 Hle Hk2.
   destruct He as [_ _ Hp _ Hf].
@@ -74,7 +74,7 @@ Proof.
     rewrite Heq, HT in *.
     eapply closed_weaken_sem; [ eassumption | | | reflexivity | reflexivity ].
     + apply (param_sem_gen _ _ Hg _ _ _ _ Hn' Hk').
-      intros k2 T2 Hle Hk2; exact (emb_params_from _ _ _ _ _ _ _ _ _ _ _ _ He HP Hn Hk Heq Hn' _ _ Hle Hk2).
+      intros k2 T2 Hle Hk2; exact (emb_params_from _ _ _ _ _ _ _ _ _ _ _ _ _ He HP Hn Hk Heq Hn' _ _ Hle Hk2).
     + eapply exp_closed_wk, param_type_scoped; eassumption.
   - intros * Hl0 _ HΓs; rewrite !Hqe.
     destruct (Hl _ _ _ _ _ _ Hl0) as (r' & Heq & Hl').

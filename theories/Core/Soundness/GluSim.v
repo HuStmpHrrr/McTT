@@ -3,9 +3,10 @@
     A term glued to a value is glued to every value simulating it, and a type
     glued to a type value to every simulating one. *)
 
+From Stdlib Require Import PeanoNat List.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Import Realizability Simulation PERSim.
+From Mctt.Core.Semantic Require Import Realizability Simulation Bridge BridgeGlob PERSim.
 From Mctt.Core.Soundness Require Import LogicalRelation.
 Import Domain_Notations Fixed_Notations.
 
@@ -93,3 +94,47 @@ Section Fixed_GCtx.
     exists R; eapply per_univ_elem_sim_r; eassumption.
   Qed.
 End Fixed_GCtx.
+
+Section Tele.
+  Context {GC : GCtx}.
+
+  (** Glued at a telescope type to a value, glued to whatever simulates it
+      applicatively. *)
+  Lemma glu_tele_appsim : forall Δ A κ ρ0 t i P El Γ M T f g,
+      eval_exp gc_deps gc_stack κ (ctx_pi Δ A) ρ0 t ->
+      DG t ∈ glu_univ_elem i ↘ P ↘ El ->
+      Γ ⊢ M : T ® f ∈ El ->
+      appsim gc_deps gc_stack (List.length Δ) f g ->
+      Γ ⊢ M : T ® g ∈ El.
+  Proof.
+    induction Δ as [| T0 Δ IH] using List.rev_ind; intros * Ht Hglu Hf Hs.
+    - destruct Hs as [H1 _].
+      destruct (H1 nil f eq_refl (apps_nil _ _ _)) as (v' & Hv' & Hfv).
+      inversion Hv'; subst.
+      eapply glu_univ_elem_trm_sim; eassumption.
+    - rewrite ctx_pi_snoc in Ht; inversion Ht; subst.
+      rewrite List.length_app, Nat.add_comm in Hs; cbn in Hs.
+      pose proof (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR].
+      pose proof HR as HR'.
+      basic_invert_per_univ_elem HR'.
+      unshelve eapply (glu_univ_elem_pi_clean_inversion1 _) in Hglu; shelve_unifiable; [ eassumption |].
+      destruct Hglu as (IP & IEl & OP & OEl & erel & HIP & HOP & Hel & HP & HEl).
+      apply HEl in Hf; apply HEl.
+      inversion Hf as [? ? ? ? IT OT HM Hff HT HIT HOT HITP Happ]; subst.
+      pose proof (per_tele_appsim (Δ ++ T0 :: nil) A κ ρ0 _ i erel f g
+                    ltac:(rewrite ctx_pi_snoc; exact Ht) Hel Hff
+                    ltac:(rewrite List.length_app, Nat.add_comm; exact Hs)) as Hfg.
+      econstructor; eauto.
+      + eapply per_elem_trans; [ exact Hel | eapply per_elem_sym; [ exact Hel | exact Hfg ] | exact Hfg ].
+      + intros * Hk HN equiv_n.
+        destruct (Happ _ _ _ _ Hk HN equiv_n) as (fn & Hfn & HMN).
+        destruct (appsim_head _ _ _ _ _ _ _ Hs Hfn) as [gn Hgn].
+        pose proof (appsim_step _ _ _ _ _ _ _ _ Hs Hfn Hgn) as Hs'.
+        exists gn; split; [ exact Hgn |].
+        match goal with
+        | H : forall c c' (e : in_rel c c'), rel_mod_eval _ _ _ _ _ _ _ _ |- _ =>
+            destruct (H _ _ equiv_n) as [b b' Hb Hb' _]
+        end.
+        eapply IH; [ exact Hb | eapply HOP; exact Hb | exact HMN | exact Hs' ].
+  Qed.
+End Tele.

@@ -16,7 +16,10 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic Require Export GlobalInduction.
-From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases GlobalCases.
+From Mctt.Core.Completeness Require ModuleCases.
+From Mctt.Core.Semantic Require Import Simulation Bridge BridgeGlob PERSim.
+From Mctt.Core.Soundness Require Import GluSim.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases
   SubtypingCases UniverseCases FunctionCases NatCases.
@@ -192,19 +195,21 @@ Section Cook.
     apply (Heq Δ σ ρ'); apply (Heq Δ σ ρ) in Hσ; exact Hσ.
   Qed.
 
-  (** A neutral: a closed [G] that evaluates anywhere to [⇑ a d], [a] the value
-      of its type at [nil], and reads back to itself. *)
-  Lemma glu_neut_nil : forall T G i d,
+  (** A closed [G] that evaluates anywhere to [g], glued wherever the neutral
+      [⇑ a d] at its type at [nil] is; [d] reads back to [G]. *)
+  Lemma glu_val_nil : forall T G i d g,
       ⋅ ⊩ T : Type@i ->
       (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
       (forall φ, T[φ]ʷ = T) -> (forall φ, G[φ]ʷ = G) ->
       (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
       Dom d ≈ d ∈ per_bot ->
       (forall s (M' : ne), Rne d in s ↘ M' -> (M' : exp) = G) ->
-      (forall ρ a, ⟦ T ⟧ nil ↘ a -> ⟦ G ⟧ ρ ↘ ⇑ a d) ->
+      (forall ρ, ⟦ G ⟧ ρ ↘ g) ->
+      (forall j P El t Δ M A, ⟦ T ⟧ nil ↘ t -> DG t ∈ glu_univ_elem j ↘ P ↘ El ->
+         Δ ⊢ M : A ® ⇑ t d ∈ El -> Δ ⊢ M : A ® g ∈ El) ->
       ⋅ ⊩ G : T.
   Proof.
-    intros * HT HTs HGs HTw HGw HGty Hd Hrb Hev.
+    intros * HT HTs HGs HTw HGw HGty Hd Hrb Hgv Htr.
     pose proof (glu_rel_exp_to_wf_exp HT) as HTwf.
     pose proof HT as [Sb0 [H0 _]].
     pose proof (glu_rel_exp_clean_inversion2' H0 HT) as HTi.
@@ -220,24 +225,27 @@ Section Cook.
     functional_eval_rewrite_clear.
     assert (HPa0 : glu_univ_elem i Pa Ela a0) by (eapply glu_univ_elem_resp_per_univ; eassumption).
     rewrite HTs in HTPa.
-    econstructor; [ exact HevT | apply Hev; exact Ha0 | exact HPa |].
+    econstructor; [ exact HevT | first [ rewrite HGs; apply Hgv | apply Hgv ] | exact HPa |].
     rewrite HGs, HTs.
+    apply (Htr _ _ _ _ _ _ _ Ha0 HPa0).
     eapply realize_glu_elem_bot; [ exact HPa0 |].
     econstructor; [ apply HGty; exact HΔ | exact HPa0 | exact HTPa | exact Hd |].
     intros * Hk Hr; rewrite (Hrb _ _ Hr), HGw, HTw.
     pose proof (HGty _ (kripke_dom _ _ _ Hk)); mauto 3.
   Qed.
 
-  (** δ: a closed [G] that evaluates anywhere to what [N] evaluates to at
-      [nil], and is syntactically [N], is glued. *)
-  Lemma glu_delta_nil : forall T N G,
+  (** δ: a closed [G], syntactically [N], that evaluates anywhere to [g],
+      glued wherever [N]'s value at [nil] is. *)
+  Lemma glu_delta_val : forall T N G g,
       ⋅ ⊩ N : T ->
       (forall σ, T[σ] = T) -> (forall σ, N[σ] = N) -> (forall σ, G[σ] = G) ->
       (forall Δ, ⊢ Δ -> Δ ⊢ G ≈ N : T) ->
-      (forall ρ m, ⟦ N ⟧ nil ↘ m -> ⟦ G ⟧ ρ ↘ m) ->
+      (forall ρ, ⟦ G ⟧ ρ ↘ g) ->
+      (forall j P El t n Δ M A, ⟦ T ⟧ nil ↘ t -> ⟦ N ⟧ nil ↘ n -> DG t ∈ glu_univ_elem j ↘ P ↘ El ->
+         Δ ⊢ M : A ® n ∈ El -> Δ ⊢ M : A ® g ∈ El) ->
       ⋅ ⊩ G : T.
   Proof.
-    intros * HN HTs HNs HGs Hδ Hev.
+    intros * HN HTs HNs HGs Hδ Hgv Htr.
     destruct (presup_typ_glu_rel_exp HN) as [k HT].
     pose proof (glu_rel_exp_to_wf_exp HT) as HTwf.
     pose proof HN as [Sb0 [H0 [i HNi]]].
@@ -245,11 +253,14 @@ Section Cook.
     assert (HΔ : ⊢ Δ) by exact (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape H0 _ _ _ Hσ)).
     destruct (HNi _ _ _ Hσ) as [? ? P El HevT HevN HP HNσ].
     destruct (HNi _ _ _ (glu_nil_sb _ _ _ _ H0 Hσ nil)) as [? ? P0 El0 HevT0 HevN0 HP0 HNσ0].
+    try rewrite HTs in HevT0; try rewrite HNs in HevN0.
+    pose proof (Htr _ _ _ _ _ _ _ _ HevT0 HevN0 HP0 HNσ0) as HNg.
     destruct (typ_nil_rel _ _ nil ρ HTwf) as (b0 & b & Hb0 & Hb & Hrel).
+    try rewrite HTs in HevT.
     functional_eval_rewrite_clear.
-    econstructor; [ exact HevT | apply Hev; exact HevN0 | exact HP |].
+    econstructor; [ first [ rewrite HTs; exact HevT | exact HevT ] | first [ rewrite HGs; apply Hgv | apply Hgv ] | exact HP |].
     assert (HTP : Δ ⊢ T[σ] ® P) by (eapply glu_univ_elem_trm_typ; eassumption).
-    assert (Δ ⊢ N[σ] : T[σ] ® m0 ∈ El) by (eapply glu_univ_elem_exp_conv; eassumption).
+    assert (Δ ⊢ N[σ] : T[σ] ® g ∈ El) by (eapply glu_univ_elem_exp_conv; eassumption).
     eapply glu_univ_elem_trm_resp_exp_eq; [ exact HP | eassumption |].
     rewrite HNs, HGs, HTs.
     pose proof (Hδ _ HΔ); mauto 3.
@@ -278,20 +289,77 @@ Section Raw.
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (Type@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_fn Δ M) (ctx_pi Δ A)) ->
       @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) (ctx_pi Δ A).
-  Proof. (* OPTA-TODO *) Admitted.
+  Proof.
+    intros p Δ b pv A B Hl [[i HT] HM].
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
+    pose proof (@glu_rel_exp_to_wf_exp (gc_mk Θ Ξ) _ _ _ HT) as HTwf.
+    destruct (@typ_nil_rel (gc_mk Θ Ξ) _ _ nil nil HTwf) as (t & _ & Ht & _ & _).
+    assert (Hneut : b = false \/ B = None -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) (ctx_pi Δ A)).
+    { intros Hop.
+      destruct (glob_neut_appsim Θ Ξ Hg _ _ _ _ _ _ _ Hl Hop Ht) as (g & Hgv & Hap).
+      eapply (@glu_val_nil (gc_mk Θ Ξ)) with (d := d_glob p) (g := g);
+        [ exact HT | | reflexivity | | reflexivity | | | | exact Hgv |].
+      - intros; eapply exp_closed_sub; eassumption.
+      - intros; eapply exp_closed_wk; eassumption.
+      - intros Δ' HΔ'; econstructor; eassumption.
+      - intros s; eexists; split; constructor.
+      - intros * Hrb; inversion Hrb; reflexivity.
+      - intros * Ht' Hglu HM'.
+        pose proof (functional_eval_exp _ _ _ _ _ Ht' Ht) as ->.
+        eapply (@glu_tele_appsim (gc_mk Θ Ξ)); [ exact Ht | exact Hglu | exact HM' | exact Hap ]. }
+    destruct b; [ destruct B as [M |] |].
+    - pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsM.
+      pose proof (HM M eq_refl) as HMv.
+      pose proof (@glu_rel_exp_to_wf_exp (gc_mk Θ Ξ) _ _ _ HMv) as HMwf.
+      destruct (@Mctt.Core.Completeness.ModuleCases.exp_nil_eval (gc_mk Θ Ξ) _ _
+                  (@completeness_fundamental_exp (gc_mk Θ Ξ) _ _ _ HMwf)) as (n0 & _ & _ & _ & Hn0 & _).
+      destruct (glob_delta_appsim Θ Ξ Hg _ _ _ _ _ _ Hl Hn0) as (g & Hgv & Hap).
+      eapply (@glu_delta_val (gc_mk Θ Ξ)) with (g := g); [ exact HMv | | | reflexivity | | exact Hgv |].
+      + intros; eapply exp_closed_sub; eassumption.
+      + intros; eapply exp_closed_sub; eassumption.
+      + intros Δ' HΔ'; econstructor; eassumption.
+      + intros * Ht' Hn Hglu HM'.
+        pose proof (functional_eval_exp _ _ _ _ _ Hn Hn0) as ->.
+        eapply (@glu_tele_appsim (gc_mk Θ Ξ)); [ exact Ht' | exact Hglu | exact HM' | exact Hap ].
+    - apply Hneut; right; reflexivity.
+    - apply Hneut; left; reflexivity.
+  Qed.
 
   Lemma param_glu_of_raw : forall n U k T,
       List.nth_error Ξ n = Some U ->
       gu_params U ∋ #k : T ->
-      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) (Type@i)) ->
+      (forall k' T', k <= k' -> gu_params U ∋ #k' : T' ->
+         exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (T'[↑ₘ (S n)]ᵐ[sb_params n]) (Type@i)) ->
       @glu_rel_exp (gc_mk Θ Ξ) ⋅ $[n, k] (T[↑ₘ (S n)]ᵐ[sb_params n]).
-  Proof. (* OPTA-TODO *) Admitted.
+  Proof.
+    intros n U k T Hn Hk Hall.
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
+    pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
+    destruct (param_raw Θ Ξ Hg _ _ _ _ Hn Hk) as (a & Hgv & Hs).
+    { intros k' T' Hle Hk'.
+      destruct (Hall _ _ Hle Hk') as [i Hi].
+      pose proof (@glu_rel_exp_to_wf_exp (gc_mk Θ Ξ) _ _ _ Hi) as Hwf.
+      destruct (@typ_nil_rel (gc_mk Θ Ξ) _ _ nil nil Hwf) as (t & _ & Ht & _ & _); eauto. }
+    destruct (Hall _ _ (le_n _) Hk) as [i HT].
+    eapply (@glu_val_nil (gc_mk Θ Ξ)) with (d := d_param {| lp_mod := n; lp_param := k |}) (g := ⇑ a (d_param (lp_mk n k)));
+      [ exact HT | | reflexivity | | reflexivity | | | | exact Hgv |].
+    - intros; eapply exp_closed_sub; eassumption.
+    - intros; eapply exp_closed_wk; eassumption.
+    - intros Δ' HΔ'; econstructor; eassumption.
+    - intros s; eexists; split; constructor.
+    - intros * Hrb; inversion Hrb; reflexivity.
+    - intros * Ht Hglu HM.
+      eapply (@glu_univ_elem_trm_sim (gc_mk Θ Ξ)); [ exact Hglu | exact HM |].
+      apply vs_neut; [ exact (Hs _ Ht) | apply ns_refl ].
+  Qed.
 
   Lemma glu_rwf_of_raw : glu_rwf_raw Θ Ξ -> glu_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_glu_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
 
   Lemma glu_pwf_of_raw : glu_pwf_raw Θ Ξ -> glu_pwf Θ Ξ.
-  Proof. intros HP n U k T Hn Hk; exact (param_glu_of_raw _ _ _ _ Hn Hk (HP _ _ _ _ Hn Hk)). Qed.
+  Proof. intros HP n U k T Hn Hk; apply (param_glu_of_raw _ _ _ _ Hn Hk); intros; eapply HP; eassumption. Qed.
 End Raw.
 
 (** ** 7. The gluing model's interface to [global_induction] *)
@@ -303,16 +371,17 @@ Theorem glu_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,
     Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SG glu_valid Θ1 Ξ1 Θ2 Ξ2 μ -> SP glu_valid Θ1 Ξ1 Θ2 Ξ2 μ ->
     glu_msub Θ1 Ξ1 Θ2 Ξ2 μ nil.
 Proof.
-  intros * He HG HP; pose proof He as [Hg Hq Hp Hl].
+  intros * He HG HP; pose proof He as [Hg Hq Hp Hl Hf].
   assert (Hqe : forall n (X : exp), X[ms_qn n μ]ᵐ = X[μ]ᵐ) by (intros; apply exp_msub_ext, Hq).
   constructor.
   - exact (syn_msub_emb _ _ _ _ _ He).
   - apply (@glu_rel_ctx_empty (gc_mk Θ2 Ξ2)); exact Hg.
   - intros * Hn Hk _ HΓs; rewrite !Hqe; rewrite List.app_nil_r in *.
     destruct (Hp _ _ _ _ Hn Hk) as (n' & U' & k' & T' & Heq & Hn' & Hk' & HT).
-    pose proof (HP _ _ _ _ Hn Hk) as HPv; unfold vtyp in HPv.
     rewrite Heq, HT in *.
-    apply glu_rel_exp_nil_weaken; [ exact HΓs | exact (param_glu_of_raw _ _ Hg _ _ _ _ Hn' Hk' HPv) ].
+    apply glu_rel_exp_nil_weaken; [ exact HΓs |].
+    apply (param_glu_of_raw _ _ Hg _ _ _ _ Hn' Hk').
+    intros k2 T2 Hle Hk2; exact (emb_params_from glu_valid _ _ _ _ _ _ _ _ _ _ _ _ He HP Hn Hk Heq Hn' _ _ Hle Hk2).
   - intros * Hl0 _ HΓs; rewrite !Hqe; rewrite List.app_nil_r in *.
     destruct (Hl _ _ _ _ _ _ Hl0) as (r' & Heq & Hl').
     destruct (HG _ _ _ _ _ _ Hl0) as [HT HM].
