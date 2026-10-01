@@ -421,7 +421,7 @@ End Close.
 
 (** The frame a module is checked in, at the level of the stack it is pushed
     on. *)
-Notation gs_push Ξ P Φ := (gu_mk P (ctx_ptys (List.length Ξ) P) Φ :: Ξ).
+Abbreviation gs_push Ξ P Φ := (gu_mk P (ctx_ptys (List.length Ξ) P) Φ :: Ξ).
 
 Lemma wf_gmod_gstack : forall Θ Ξ P Φ, Θ ⍮ Ξ ⍮ P ⊢m Φ -> wf_gstack Θ Ξ.
 Proof.

@@ -216,3 +216,11 @@ End check_ctx.
     not determine the open modules its [⊢e] derivations went through: those
     judgments are decided where the modules are still open, command by command,
     by the interpreter ([Extraction.Command]), which only needs [check_ctx]. *)
+
+(** Freshness is a non-membership of [gm_names], so [in_dec] decides it; the
+    orientation is the only thing to fix. *)
+Definition check_gm_fresh (x : string) (Φ : gmod) : { gm_fresh x Φ } + { ~ gm_fresh x Φ } :=
+  match List.in_dec String.string_dec x (gm_names Φ) with
+  | left h => right (fun hfresh => hfresh h)
+  | right h => left h
+  end.

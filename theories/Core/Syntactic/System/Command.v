@@ -64,6 +64,20 @@ Fixpoint gm_has_mod (Φ : gmod) (ip : list string) : Prop :=
   | x :: ip' => match gm_find_mod Φ x with Some Φx => gm_has_mod Φx ip' | None => False end
   end.
 
+(** Closing a module keeps its shape, so it has the nested modules it had. *)
+Lemma gm_find_mod_close : forall L mp Δ Φ x,
+    gm_find_mod (gm_close L mp Δ Φ) x = option_map (gm_close L mp Δ) (gm_find_mod Φ x).
+Proof.
+  intros L mp Δ; induction Φ as [| Φ IH y E]; intros x; cbn; [ reflexivity |].
+  destruct (String.eqb x y); [ destruct E; reflexivity | apply IH ].
+Qed.
+
+Lemma gm_has_mod_close : forall ip L mp Δ Φ, gm_has_mod (gm_close L mp Δ Φ) ip <-> gm_has_mod Φ ip.
+Proof.
+  induction ip as [| x ip IH]; intros; cbn; [ tauto |].
+  rewrite gm_find_mod_close; destruct (gm_find_mod Φ x); cbn; [ apply IH | tauto ].
+Qed.
+
 (** ** Merging Filed Units
 
     Loading starts from nothing, so a unit's level is the length of its longest
