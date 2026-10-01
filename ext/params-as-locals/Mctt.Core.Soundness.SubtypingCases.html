@@ -1,0 +1,118 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.SubtypingCases</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab139"></a><h1 class="section">Subtyping and Conversion</h1>
+
+
+<div class="paragraph"> </div>
+
+    Only the term rules survive: with the <span class="inlinecode">⊩<span class="id" title="var">s</span></span> judgment gone, so are
+    <span class="inlinecode"><span class="id" title="var">glu_rel_sub_subtyp</span></span> and <span class="inlinecode"><span class="id" title="var">glu_rel_sub_conv</span></span>, and context subtyping is now
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#ctx_sub"><span class="id" title="inductive">ctx_sub</span></a></span> rather than a judgment the gluing model has a rule for. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#"><span class="id" title="library">FundamentalTheorem</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Realizability.html#"><span class="id" title="library">Realizability</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="Fixed_GCtx" class="idref" href="#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<a id="Fixed_GCtx.GC" class="idref" href="#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>}.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="glu_rel_exp_subtyp" class="idref" href="#glu_rel_exp_subtyp"><span class="id" title="lemma">glu_rel_exp_subtyp</span></a> : <span class="id" title="keyword">forall</span> {<a id="da7a5918a812e0216f4a54d21f7406c4" class="idref" href="#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="binder">Γ</span></a> <a id="M:3" class="idref" href="#M:3"><span class="id" title="binder">M</span></a> <a id="A:4" class="idref" href="#A:4"><span class="id" title="binder">A</span></a> <a id="A':5" class="idref" href="#A':5"><span class="id" title="binder">A'</span></a> <a id="i:6" class="idref" href="#i:6"><span class="id" title="binder">i</span></a>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#M:3"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':5"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#a378667de6da5f8acc3b38b7ba0cf6df"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#a378667de6da5f8acc3b38b7ba0cf6df"><span class="id" title="notation">⊆</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':5"><span class="id" title="variable">A'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#M:3"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':5"><span class="id" title="variable">A'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * [] <span class="id" title="var">HA'</span> <span class="id" title="var">Hsub</span>%<a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_subtyp"><span class="id" title="lemma">completeness_fundamental_subtyp</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a> <span class="id" title="var">Hsub</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> [<span class="id" title="var">HΓ</span> [<span class="id" title="var">k</span> <span class="id" title="var">Hsubsimple</span>]]].<br/>
+&nbsp;&nbsp;<span class="id" title="var">invert_glu_rel_exp</span> <span class="id" title="var">HA'</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">split</span>; [<span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">exists</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a> <span class="id" title="var">i</span> <span class="id" title="var">k</span>); <span class="id" title="tactic">intros</span> <span class="id" title="var">Δ</span> σ ρ <span class="id" title="var">HSb</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">destruct_glu_rel_exp_with_sub</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">simplify_evals</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="keyword">ltac</span>:(<span class="id" title="keyword">fun</span> <span class="id" title="var">H</span> =&gt; <span class="id" title="var">directed</span> <span class="id" title="var">invert_glu_univ_elem</span> <span class="id" title="var">H</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="var">handle_functional_glu_univ_elem</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">Dom</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">≈</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">∈</span></a> <span class="id" title="var">env_relΓ</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_ctx_env_per_env"><span class="id" title="lemma">glu_ctx_env_per_env</span></a>; <span class="id" title="var">mauto</span>).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hsubsimple</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="keyword">ltac</span>:(<span class="id" title="var">eassumption</span>)) <span class="id" title="keyword">as</span> [<span class="id" title="var">a1</span> [<span class="id" title="var">a2</span> [? [? ?]]]].<br/>
+&nbsp;&nbsp;<span class="id" title="var">functional_eval_rewrite_clear</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#univ_glu_exp_pred'"><span class="id" title="definition">univ_glu_exp_pred'</span></a> <span class="id" title="tactic">in</span> *.<br/>
+&nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#mk_glu_rel_exp_with_sub'"><span class="id" title="lemma">mk_glu_rel_exp_with_sub'</span></a>; <span class="id" title="tactic">try</span> <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_univ_elem_cumu_max_left"><span class="id" title="lemma">glu_univ_elem_cumu_max_left</span></a>; <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">intros</span> <span class="id" title="var">P</span> <span class="id" title="var">El</span> <span class="id" title="var">HPEl</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_univ_elem_per_subtyp_trm_conv"><span class="id" title="lemma">glu_univ_elem_per_subtyp_trm_conv</span></a>; <span class="id" title="tactic">try</span> <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#glu_univ_elem_typ_cumu_max_left"><span class="id" title="lemma">glu_univ_elem_typ_cumu_max_left</span></a>; [| <span class="id" title="tactic">exact</span> <span class="id" title="var">HPEl</span> |]; <span class="id" title="var">eassumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_exp_subtyp</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="glu_rel_exp_conv" class="idref" href="#glu_rel_exp_conv"><span class="id" title="lemma">glu_rel_exp_conv</span></a> : <span class="id" title="keyword">forall</span> {<a id="de9bdb4e9c2be34cf9b5e2f20d66b06e" class="idref" href="#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="binder">Γ</span></a> <a id="M:8" class="idref" href="#M:8"><span class="id" title="binder">M</span></a> <a id="A:9" class="idref" href="#A:9"><span class="id" title="binder">A</span></a> <a id="A':10" class="idref" href="#A':10"><span class="id" title="binder">A'</span></a> <a id="i:11" class="idref" href="#i:11"><span class="id" title="binder">i</span></a>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#M:8"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A:9"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':10"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#bdcc82f89347a6b5859b8b80abd26627"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A:9"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#bdcc82f89347a6b5859b8b80abd26627"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':10"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#bdcc82f89347a6b5859b8b80abd26627"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#M:8"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#A':10"><span class="id" title="variable">A'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">mauto</span> 3.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_exp_conv</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Soundness.SubtypingCases.html#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">glu_rel_exp_subtyp</span> : <span class="id" title="var">mctt</span>.<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">glu_rel_exp_conv</span> : <span class="id" title="var">mctt</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
