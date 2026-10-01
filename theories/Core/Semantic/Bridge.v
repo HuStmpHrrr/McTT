@@ -205,3 +205,205 @@ Section Raw.
     cbn [lp_param]; rewrite (skipn_nth _ _ _ HA), <- HΓ'; exact Hρ.
   Qed.
 End Raw.
+
+(** ** The algebra of [tsub] *)
+
+Definition ts_pre (θ : tsub) (φ : wk) : tsub :=
+  ts_mk (fun x => ts_var θ (φ x)) (ts_param θ) (ts_glob θ).
+
+Definition ts_post (θ : tsub) (φ : wk) : tsub :=
+  ts_mk (fun x => (ts_var θ x)[φ]ʷ) (fun lp => (ts_param θ lp)[φ]ʷ) (fun p => (ts_glob θ p)[φ]ʷ).
+
+Definition ts_comp (θ2 θ1 : tsub) : tsub :=
+  ts_mk (fun x => exp_tsub θ1 (ts_var θ2 x)) (fun lp => exp_tsub θ1 (ts_param θ2 lp))
+        (fun p => exp_tsub θ1 (ts_glob θ2 p)).
+
+Lemma ts_pre_q : forall θ φ, ts_eq (ts_pre (ts_q θ) (wk_q φ)) (ts_q (ts_pre θ φ)).
+Proof. intros; repeat split; intros; [ destruct x |..]; reflexivity. Qed.
+
+Lemma exp_tsub_wk : forall M θ φ, exp_tsub θ M[φ]ʷ = exp_tsub (ts_pre θ φ) M.
+Proof.
+  induction M; intros; cbn; try reflexivity; f_equal; eauto.
+  all: try (rewrite IHM2; apply exp_tsub_ext, ts_pre_q).
+  all: try (rewrite IHM1; apply exp_tsub_ext, ts_pre_q).
+  all: try (rewrite IHM3; apply exp_tsub_ext;
+            eapply ts_eq_trans; [ apply ts_pre_q | apply ts_q_eq, ts_pre_q ]).
+Qed.
+
+Lemma ts_post_q : forall θ φ, ts_eq (ts_post (ts_q θ) (wk_q φ)) (ts_q (ts_post θ φ)).
+Proof.
+  intros; repeat split; intros; [ destruct x |..]; cbn; try reflexivity.
+  all: rewrite !exp_wk_wk; apply exp_wk_wk_eq; intros y; reflexivity.
+Qed.
+
+Lemma exp_wk_tsub : forall M θ φ, (exp_tsub θ M)[φ]ʷ = exp_tsub (ts_post θ φ) M.
+Proof.
+  induction M; intros; cbn; try reflexivity; f_equal; eauto.
+  all: try (rewrite IHM2; apply exp_tsub_ext, ts_post_q).
+  all: try (rewrite IHM1; apply exp_tsub_ext, ts_post_q).
+  all: try (rewrite IHM3; apply exp_tsub_ext;
+            eapply ts_eq_trans; [ apply ts_post_q | apply ts_q_eq, ts_post_q ]).
+Qed.
+
+Lemma ts_comp_q : forall θ2 θ1, ts_eq (ts_comp (ts_q θ2) (ts_q θ1)) (ts_q (ts_comp θ2 θ1)).
+Proof.
+  intros; repeat split; intros; [ destruct x |..]; cbn; try reflexivity.
+  all: rewrite exp_tsub_wk, exp_wk_tsub; apply exp_tsub_ext; repeat split; intros; reflexivity.
+Qed.
+
+Lemma exp_tsub_comp : forall M θ2 θ1, exp_tsub θ1 (exp_tsub θ2 M) = exp_tsub (ts_comp θ2 θ1) M.
+Proof.
+  induction M; intros; cbn; try reflexivity; f_equal; eauto.
+  all: try (rewrite IHM2; apply exp_tsub_ext, ts_comp_q).
+  all: try (rewrite IHM1; apply exp_tsub_ext, ts_comp_q).
+  all: try (rewrite IHM3; apply exp_tsub_ext;
+            eapply ts_eq_trans; [ apply ts_comp_q | apply ts_q_eq, ts_comp_q ]).
+Qed.
+
+Lemma bfree_tsub : forall M θ,
+    bfree M -> (forall x, bfree (ts_var θ x)) -> (forall lp, bfree (ts_param θ lp)) ->
+    (forall p, bfree (ts_glob θ p)) -> bfree (exp_tsub θ M).
+Proof. induction M; intros; cbn in *; intuition. Qed.
+
+Section Eq.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  #[local] Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp Θ Ξ κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
+
+  (** ** Configurations related with equal values
+
+      Stronger than [cfg]: each in-scope leaf's image evaluates on the left to
+      exactly what the leaf does on the right.  These compose. *)
+  Record cfg_eq (θ : tsub) (n : nat) (P : lpath -> Prop) (Q : path -> Prop)
+    (κ : menv) (ρ : env) (κ' : menv) (ρ' : env) : Prop :=
+    { ce_bv : forall x, bfree (ts_var θ x)
+    ; ce_bp : forall lp, bfree (ts_param θ lp)
+    ; ce_bg : forall p, bfree (ts_glob θ p)
+    ; ce_var : forall x v, x < n -> ⟦ ts_var θ x ⟧ κ ⍮ ρ ↘ v -> ⟦ #x ⟧ κ' ⍮ ρ' ↘ v
+    ; ce_param : forall lp v, P lp -> ⟦ ts_param θ lp ⟧ κ ⍮ ρ ↘ v -> ⟦ a_param lp ⟧ κ' ⍮ ρ' ↘ v
+    ; ce_glob : forall p v, Q p -> ⟦ ts_glob θ p ⟧ κ ⍮ ρ ↘ v -> ⟦ a_glob p ⟧ κ' ⍮ ρ' ↘ v }.
+
+  Lemma cfg_eq_cfg : forall θ n P Q κ ρ κ' ρ',
+      cfg_eq θ n P Q κ ρ κ' ρ' -> cfg Θ Ξ θ n P Q κ ρ κ' ρ'.
+  Proof.
+    intros * [Hbv Hbp Hbg Hv Hp Hg]; constructor; auto.
+    - intros * Hx Hev; pose proof (Hv _ _ Hx Hev) as H; inversion H; subst; apply vs_refl.
+    - intros * HP Hev; eexists; split; [ eapply Hp; eassumption | apply vs_refl ].
+    - intros p HQ; apply gl_eval; intros v Hev; eexists; split; [ eapply Hg; eassumption | apply vs_refl ].
+  Qed.
+
+  (** A binder-free term evaluates as its image does. *)
+  Lemma eval_bfree_eq : forall M θ n P Q κ ρ κ' ρ' v,
+      bfree M -> exp_ok n P Q M -> cfg_eq θ n P Q κ ρ κ' ρ' ->
+      ⟦ exp_tsub θ M ⟧ κ ⍮ ρ ↘ v -> ⟦ M ⟧ κ' ⍮ ρ' ↘ v.
+  Proof.
+    induction M; intros * Hb Hok Hc Hev; cbn in *; try contradiction.
+    all: try solve [ inversion Hev; subst; constructor ].
+    - inversion Hev; subst; constructor; eauto.
+    - destruct Hb, Hok; inversion Hev; subst; econstructor; eauto.
+    - eapply (ce_var _ _ _ _ _ _ _ _ Hc); eassumption.
+    - eapply (ce_param _ _ _ _ _ _ _ _ Hc); eassumption.
+    - eapply (ce_glob _ _ _ _ _ _ _ _ Hc); eassumption.
+  Qed.
+
+  Lemma cfg_eq_comp : forall θ2 θ1 n1 P1 Q1 n2 P2 Q2 κ1 ρ1 κ2 ρ2 κ3 ρ3,
+      cfg_eq θ1 n1 P1 Q1 κ1 ρ1 κ2 ρ2 ->
+      cfg_eq θ2 n2 P2 Q2 κ2 ρ2 κ3 ρ3 ->
+      (forall x, x < n2 -> exp_ok n1 P1 Q1 (ts_var θ2 x)) ->
+      (forall lp, P2 lp -> exp_ok n1 P1 Q1 (ts_param θ2 lp)) ->
+      (forall p, Q2 p -> exp_ok n1 P1 Q1 (ts_glob θ2 p)) ->
+      cfg_eq (ts_comp θ2 θ1) n2 P2 Q2 κ1 ρ1 κ3 ρ3.
+  Proof.
+    intros * H1 H2 Hsv Hsp Hsg; pose proof H1 as [Hbv1 Hbp1 Hbg1 _ _ _]; pose proof H2 as [Hbv2 Hbp2 Hbg2 Hv2 Hp2 Hg2].
+    constructor; cbn; intros.
+    - apply bfree_tsub; auto.
+    - apply bfree_tsub; auto.
+    - apply bfree_tsub; auto.
+    - eapply Hv2; [ assumption | eapply eval_bfree_eq; eauto ].
+    - eapply Hp2; [ assumption | eapply eval_bfree_eq; eauto ].
+    - eapply Hg2; [ assumption | eapply eval_bfree_eq; eauto ].
+  Qed.
+
+  Lemma cfg_eq_mono : forall θ n P Q P' Q' κ ρ κ' ρ' m,
+      cfg_eq θ n P Q κ ρ κ' ρ' -> m <= n -> (forall lp, P' lp -> P lp) -> (forall p, Q' p -> Q p) ->
+      cfg_eq θ m P' Q' κ ρ κ' ρ'.
+  Proof.
+    intros * [Hbv Hbp Hbg Hv Hp Hg] Hm HP HQ; constructor; intros;
+      [ auto | auto | auto | eapply Hv; [ lia | eassumption ] | eauto | eauto ].
+  Qed.
+
+  (** ** Applying to a list of arguments, outermost first *)
+
+  Inductive apps : domain -> list domain -> domain -> Prop :=
+  | apps_nil : forall f, apps f nil f
+  | apps_cons : forall f c cs fc v, eval_app Θ Ξ f c fc -> apps fc cs v -> apps f (c :: cs) v.
+
+  Lemma apps_app : forall f cs1 cs2 v, apps f (cs1 ++ cs2) v <-> exists h, apps f cs1 h /\ apps h cs2 v.
+  Proof.
+    intros f cs1; revert f; induction cs1 as [| c cs1 IH]; intros; cbn; split.
+    - eauto using apps_nil.
+    - intros (h & Hh & Hv); inversion Hh; subst; exact Hv.
+    - intros H; inversion H; subst.
+      match goal with H : apps _ (cs1 ++ cs2) _ |- _ => apply IH in H as (h & ? & ?) end.
+      exists h; split; [ econstructor |]; eassumption.
+    - intros (h & Hh & Hv); inversion Hh; subst; econstructor; [ eassumption | apply IH; eauto ].
+  Qed.
+
+  Lemma functional_apps : forall f cs v1 v2, apps f cs v1 -> apps f cs v2 -> v1 = v2.
+  Proof.
+    intros * H; revert v2; induction H; intros v2 H'; inversion H' as [| ? ? ? fc' ? Hfc' Hrest]; subst; [ reflexivity |].
+    pose proof (functional_eval_app _ _ _ _ H Hfc') as <-; eauto.
+  Qed.
+
+  (** [f] applied to arguments is simulated by [g] applied to them. *)
+  Definition appsim (n : nat) (f g : domain) : Prop :=
+    (forall cs v, List.length cs = n -> apps f cs v -> exists v', apps g cs v' /\ vsim Θ Ξ v v') /\
+    (forall cs, List.length cs < n -> exists v', apps g cs v').
+
+  Lemma appsim_step : forall n f g c fc gc,
+      appsim (S n) f g -> eval_app Θ Ξ f c fc -> eval_app Θ Ξ g c gc -> appsim n fc gc.
+  Proof.
+    intros * [H1 H2] Hf Hg; split.
+    - intros cs v Hl Hv.
+      destruct (H1 (c :: cs) v ltac:(cbn; lia) (apps_cons _ _ _ _ _ Hf Hv)) as (v' & Hv' & Hs).
+      inversion Hv' as [| ? ? ? gc' ? Hgc' Hrest]; subst.
+      pose proof (functional_eval_app _ _ _ _ Hg Hgc') as <-; eauto.
+    - intros cs Hl.
+      destruct (H2 (c :: cs) ltac:(cbn; lia)) as (v' & Hv').
+      inversion Hv' as [| ? ? ? gc' ? Hgc' Hrest]; subst.
+      pose proof (functional_eval_app _ _ _ _ Hg Hgc') as <-; eauto.
+  Qed.
+
+  Lemma appsim_head : forall n f g c fc, appsim (S n) f g -> eval_app Θ Ξ f c fc -> exists gc, eval_app Θ Ξ g c gc.
+  Proof.
+    intros * [H1 H2] Hf; destruct n as [| n].
+    - destruct (H1 (c :: nil) fc eq_refl (apps_cons _ _ _ _ _ Hf (apps_nil _))) as (v' & Hv' & _).
+      inversion Hv' as [| ? ? ? gc' ? Hgc' Hrest]; subst; eauto.
+    - destruct (H2 (c :: nil) ltac:(cbn; lia)) as (v' & Hv').
+      inversion Hv' as [| ? ? ? gc' ? Hgc' Hrest]; subst; eauto.
+  Qed.
+
+  (** *** A definition's telescope, on the left *)
+
+  Lemma ctx_fn_snoc : forall Δ T M, ctx_fn (Δ ++ T :: nil) M = λ T (ctx_fn Δ M).
+  Proof. induction Δ as [| B Δ IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
+
+  Lemma ctx_pi_snoc : forall Δ T A, ctx_pi (Δ ++ T :: nil) A = Π T (ctx_pi Δ A).
+  Proof. induction Δ as [| B Δ IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
+
+  Lemma apps_ctx_fn : forall Δ M κ ρ f cs v,
+      List.length cs = List.length Δ ->
+      ⟦ ctx_fn Δ M ⟧ κ ⍮ ρ ↘ f -> apps f cs v -> ⟦ M ⟧ κ ⍮ List.rev cs ++ ρ ↘ v.
+  Proof.
+    induction Δ as [| T Δ IH] using List.rev_ind; intros * Hl Hf Hv.
+    - destruct cs; [| discriminate ]; inversion Hv; subst; exact Hf.
+    - rewrite List.length_app in Hl; cbn in Hl.
+      destruct cs as [| c cs]; [ cbn in Hl; lia |].
+      rewrite ctx_fn_snoc in Hf; inversion Hf; subst.
+      inversion Hv; subst.
+      match goal with H : eval_app _ _ (λᵈ _ _ _) _ _ |- _ => inversion H; subst end.
+      cbn; rewrite <- List.app_assoc; cbn.
+      eapply IH; [ cbn in Hl; lia | eassumption | eassumption ].
+  Qed.
+End Eq.
