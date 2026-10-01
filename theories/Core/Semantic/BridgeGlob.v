@@ -608,3 +608,129 @@ Section Top.
              ++ intros [[fq | m] ms] Hq; cbn in *; auto; lia.
   Qed.
 End Top.
+
+(** ** Telescope positions *)
+
+Definition tsub_bfree (θ : tsub) : Prop :=
+  (forall x, bfree (ts_var θ x)) /\ (forall lp, bfree (ts_param θ lp)) /\ (forall p, bfree (ts_glob θ p)).
+
+Lemma tsub_bfree_id : tsub_bfree ts_id.
+Proof. repeat split; intros; exact I. Qed.
+
+Lemma tsub_bfree_ms_close : forall mp c d, tsub_bfree (ts_ms (ms_close mp c d)).
+Proof. intros; destruct (bfree_close mp c d) as (A1 & A2 & A3); repeat split; assumption. Qed.
+
+Lemma tsub_bfree_comp : forall θ2 θ1, tsub_bfree θ2 -> tsub_bfree θ1 -> tsub_bfree (ts_comp θ2 θ1).
+Proof.
+  intros * (A1 & A2 & A3) (B1 & B2 & B3); repeat split; intros; cbn; apply bfree_tsub; auto.
+Qed.
+
+Fixpoint napp (h : domain_ne) (tys args : list domain) : domain_ne :=
+  match tys, args with
+  | t :: tys', c :: args' => napp (h $ᵈ ⇓ t c) tys' args'
+  | _, _ => h
+  end.
+
+Lemma napp_app : forall tys1 args1 tys2 args2 h,
+    List.length tys1 = List.length args1 ->
+    napp h (tys1 ++ tys2) (args1 ++ args2) = napp (napp h tys1 args1) tys2 args2.
+Proof.
+  induction tys1 as [| t tys1 IH]; intros [| c args1] * Hl; cbn in *; try lia; auto.
+Qed.
+
+Lemma napp_snoc : forall tys args t c h,
+    List.length tys = List.length args ->
+    napp h (tys ++ t :: nil) (args ++ c :: nil) = napp h tys args $ᵈ ⇓ t c.
+Proof. intros; rewrite napp_app by assumption; reflexivity. Qed.
+
+(** The positions of a telescope's own parameters, in application order. *)
+Fixpoint tele_pos (cs : list nat) (j : nat) (l : list exp) : list (exp * tsub * nat * list nat) :=
+  match l with
+  | nil => nil
+  | T :: l' => (T, ts_id, j, cs) :: tele_pos cs (S j) l'
+  end.
+
+Lemma tele_pos_length : forall cs l j, List.length (tele_pos cs j l) = List.length l.
+Proof. induction l; intros; cbn; auto. Qed.
+
+Lemma tele_pos_nth : forall cs l j i e,
+    List.nth_error (tele_pos cs j l) i = Some e -> exists T, List.nth_error l i = Some T /\ e = (T, ts_id, j + i, cs).
+Proof.
+  induction l as [| T l IH]; intros * H; destruct i; cbn in *; try discriminate.
+  - injection H as <-; exists T; rewrite Nat.add_0_r; auto.
+  - destruct (IH _ _ _ H) as (T' & HT' & ->); exists T'; split; [ assumption | replace (j + S i) with (S j + i) by lia; reflexivity ].
+Qed.
+
+(** The positions of an inner telescope, read one nested module out. *)
+Fixpoint lift_pos (x : string) (c : nat) (k : nat) (l : list (exp * tsub * nat * list nat)) :=
+  match l with
+  | nil => nil
+  | (R, θ, n, csR) :: l' => (R, ts_comp θ (ts_ms (ms_close (p_rel 0 (x :: nil)) c k)), n, csR) :: lift_pos x c (S k) l'
+  end.
+
+Lemma lift_pos_length : forall x c l k, List.length (lift_pos x c k l) = List.length l.
+Proof. induction l as [| [[[? ?] ?] ?] l IH]; intros; cbn; auto. Qed.
+
+Lemma lift_pos_nth : forall x c l k i e,
+    List.nth_error (lift_pos x c k l) i = Some e ->
+    exists R θ n csR, List.nth_error l i = Some (R, θ, n, csR) /\
+      e = (R, ts_comp θ (ts_ms (ms_close (p_rel 0 (x :: nil)) c (k + i))), n, csR).
+Proof.
+  induction l as [| [[[R θ] n] csR] l IH]; intros * H; destruct i; cbn in *; try discriminate.
+  - injection H as <-; do 4 eexists; split; [ reflexivity |]; rewrite Nat.add_0_r; reflexivity.
+  - destruct (IH _ _ _ H) as (R' & θ' & n' & csR' & HR & ->); do 4 eexists; split; [ eassumption |].
+    replace (k + S i) with (S k + i) by lia; reflexivity.
+Qed.
+
+Lemma nth_error_rev_tele : forall (Δ : ctx) j, j < List.length Δ ->
+    List.nth_error (List.rev Δ) j = List.nth_error Δ (List.length Δ - S j).
+Proof.
+  intros * Hj; rewrite List.nth_error_rev; apply Nat.ltb_lt in Hj; rewrite Hj; reflexivity.
+Qed.
+
+Lemma ctx_msub_nth : forall μ (Δ : ctx) e A, List.nth_error Δ e = Some A ->
+    List.nth_error Δ[μ]ᵐ e = Some A[ms_qn (List.length Δ - S e) μ]ᵐ.
+Proof.
+  induction Δ as [| B Δ IH]; intros [| e] A H; cbn in *; try discriminate.
+  - injection H as ->; rewrite Nat.sub_0_r; reflexivity.
+  - rewrite (IH _ _ H); reflexivity.
+Qed.
+
+Lemma addr_depth_in : forall a x, addr_depth (path_in a x) = S (addr_depth a).
+Proof. intros; unfold addr_depth, path_in; cbn; rewrite List.length_app; cbn; lia. Qed.
+
+Section Fargs.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  (** A frame's arguments applied to a head, at its raw parameter types. *)
+  Lemma fargs_napp : forall (Δ : ctx) (cs tys : list domain) κ h,
+      List.length cs = List.length Δ -> List.length tys = List.length Δ ->
+      (forall j T ty, List.nth_error Δ (List.length Δ - S j) = Some T -> List.nth_error tys j = Some ty ->
+         eval_exp Θ Ξ κ T (List.rev (List.firstn j cs)) ty) ->
+      eval_fargs Θ Ξ κ Δ (List.rev cs) h (napp h tys cs).
+  Proof.
+    induction Δ as [| T Δ IH]; intros cs tys κ h Hc Ht Hev.
+    - destruct cs; [| discriminate ]; destruct tys; [| discriminate ]; constructor.
+    - destruct cs as [| c cs] using List.rev_ind; [ discriminate |].
+      destruct tys as [| ty tys] using List.rev_ind; [ discriminate |].
+      clear IHcs IHtys.
+      rewrite !List.length_app in *; cbn in *.
+      rewrite List.rev_app_distr; cbn.
+      rewrite napp_snoc by lia.
+      constructor.
+      + apply IH; [ lia | lia |].
+        intros j T' ty' HT' Hty'.
+        assert (Hj : j < List.length Δ) by (assert (Hn : List.nth_error tys j <> None) by congruence; apply List.nth_error_Some in Hn; lia).
+        pose proof (Hev j T' ty') as Hev'.
+        replace (List.length Δ - j) with (S (List.length Δ - S j)) in Hev' by lia; cbn in Hev'.
+        rewrite List.nth_error_app1 in Hev' by lia.
+        specialize (Hev' HT' Hty').
+        rewrite List.firstn_app in Hev'.
+        replace (j - List.length cs) with 0 in Hev' by lia; cbn in Hev'; rewrite List.app_nil_r in Hev'; exact Hev'.
+      + replace (List.rev cs) with (List.rev (List.firstn (List.length Δ) (cs ++ c :: nil))).
+        * apply (Hev (List.length Δ)); [ rewrite Nat.sub_diag; reflexivity |].
+          rewrite List.nth_error_app2 by lia; replace (List.length Δ - List.length tys) with 0 by lia; reflexivity.
+        * rewrite List.firstn_app, List.firstn_all2 by lia.
+          replace (List.length Δ - List.length cs) with 0 by lia; cbn; rewrite List.app_nil_r; reflexivity.
+  Qed.
+End Fargs.
