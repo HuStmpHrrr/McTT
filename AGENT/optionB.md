@@ -49,6 +49,58 @@ image `σ k` there is no offset to move to, and `M[σ][τ] = M[σ ⨟ τ]` fails
 Applying the closed member to the parameter variables is the same computation
 with the offset carried by ordinary variables, which substitution handles.
 
-## Status / notes
+## Judgments (`System/Definitions.v`)
 
-(updated as work proceeds)
+* `wf_param`, `wf_exp_eq_param` gone.  `wf_glob`, `wf_exp_eq_glob`,
+  `wf_exp_eq_glob_unfold` premise `gc_resolve Θ Ξ p = Some (ge_def b pv A B)`
+  (the function, so no canonicity is needed anywhere) and type `a_glob p` at `A`
+  (δ: `a_glob p ≈ M : A`).
+* `Θ ⍮ Ξ ⍮ mp ⊢e E`, `Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ`, `Θ ⍮ Ξ ⍮ mp ⊢u U`: `mp` is the
+  module path of the thing checked.  `wf_gmod_nil` premises
+  `⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ`; `wf_gmod_ext` pushes `(mp, gu_mk Δ Φ)` and checks
+  `E` at `path_in mp x`; `wf_gentry_def`/`_axiom` check in `gs_tele Ξ` and store
+  `ctx_pi`/`ctx_fn` of it.
+* `wf_gdep_cons` checks a unit at `Θ ⍮ nil ⍮ p_abs fp nil`; `wf_gstack_cons`
+  adds `frame_fresh Θ Ξ mp` (bottom frame: unit not filed; inner frame:
+  `path_in` of the enclosing frame with a fresh name).  Still one mutual block.
+
+## Metatheory
+
+* `Scoping.v` (no frame counts): every judgment scoped, every resolvable entry
+  closed (`wf_gc_resolve_closed`); weakening/substitution leave globals alone.
+* `GlobalCtx.v`: `gc_sub` lemmas for push / grow / close-nested / file /
+  add-level — pure lookup facts.
+* `GlobalPresup.v`: `Emb`, `emb_preserves_wf`, and `global_induction_all`, one
+  mutual induction over all eleven judgments, parametric in the notion `V` of a
+  valid entry: everything resolvable at `Θ ⍮ Ξ` is `V`-valid at every context
+  `Θ ⍮ Ξ` embeds into (`Good`).  `presup_global` is its instance at syntactic
+  typing; `presup_exp_typ` etc. keep their full statements.
+* `Completeness/ModuleCases.v`: `sem_emb` (embedding + globals valid at the
+  target), `kripke_fundamental` (every rule, case lemmas at the target),
+  `gctx_sem := global_induction sem_entry`.  `Soundness/ModuleCases.v`: the
+  same for gluing (`glu_emb`, `kglu_fundamental`, `gctx_glu`).
+* `completeness_gctx`, `soundness_gctx'`: statements unchanged.  Assumptions:
+  `functional_extensionality_dep`, `eq_rect_eq` only.
+
+## Build state
+
+`make -f CoqMakefile.mk real-all` builds everything in `_CoqProject`: all of
+`Core/` (incl. Consequences, Transparency), `Algorithmic/`, and
+`Extraction/{PseudoMonadic,Evaluation,Readback,NbE,Subtyping,TypeCheck}`.
+Removed from `_CoqProject` (not ported): `Core/Syntactic/Command.v`,
+`Core/Syntactic/System/Command.v`, `Extraction/{GlobalCheck,Command}.v`,
+`Frontend/*`, `Entrypoint.v` (so no extraction / driver).  `user_exp` moved
+from `Frontend/Elaborator.v` to `Algorithmic/Typing/Definitions.v`.
+
+## What downstream needs
+
+* `System/Command.v`: `gs_push` takes the module path; `gs_add` stores
+  `ctx_pi (gs_tele Ξ) A` / `ctx_fn (gs_tele Ξ) M`; closing a module inserts
+  `ge_mod Δ Φ` into the parent (no `close`); `run_wf` needs `frame_fresh` for
+  pushes.  The merge/level/restriction part is untouched by the design.
+* `Extraction/GlobalCheck.v`: decide the new `⊢e/⊢m/⊢u` (check in `gs_tele`,
+  compare the stored closed forms) and `frame_fresh`.
+* `Frontend/Elaborator.v`: emit absolute paths `p_abs unit chain` (it knows the
+  unit name and the open-module chain), apply a member to the parameter
+  variables of its enclosing modules (they are λ-variables `#k` now), and emit
+  eval obligations in context `gs_tele`.  `PrettyPrinter.ml`: no `a_param`.

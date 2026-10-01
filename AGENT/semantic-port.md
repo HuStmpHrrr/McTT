@@ -1,5 +1,9 @@
 # Porting the Semantic Development to Global Contexts
 
+> **Option B branch:** "The global rules" below (Kripke over module
+> substitutions, `GlobalInduction.v`) is replaced by embeddings; see
+> [`optionB.md`](optionB.md).
+
 The semantic files (`Core/Semantic/PER*`, `Core/Completeness`, `Core/Soundness`,
 …), the algorithmic system and the extraction were written before judgments
 and evaluation took a global context `Θ ⍮ Ξ`.  All of them are ported; these

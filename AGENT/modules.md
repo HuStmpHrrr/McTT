@@ -1,5 +1,9 @@
 # Modules, Global and Local Bindings
 
+> **Option B branch:** the core global layer described below (relative paths,
+> `a_param`, `↑ₘ`/`close`, `Discharge`/`Transport`) is replaced on this branch;
+> see [`optionB.md`](optionB.md).
+
 The design as built.  The request it implements is
 [`modules-spec.md`](modules-spec.md); everything below that contradicts it is
 listed under [Deviations](#deviations-from-the-specification).
