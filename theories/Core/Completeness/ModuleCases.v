@@ -18,7 +18,7 @@ From Mctt.Core.Syntactic Require Export GlobalInduction.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
   UniverseCases VariableCases LogicalRelation.
-From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic Require Import Realizability Simulation PERSim Bridge.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -221,65 +221,86 @@ Proof.
   all: cbn; repeat split.
 Qed.
 
-(** δ: a closed term [G] that evaluates anywhere to what [N] evaluates to at
-    [nil] is equal to [N]. *)
-Lemma rel_exp_delta_nil : forall {GC : GCtx} T N G,
+(** δ: a closed [G] that evaluates anywhere to [g], related to what [N]
+    evaluates to at [nil], is equal to [N]. *)
+Lemma rel_exp_delta_val : forall {GC : GCtx} T N G g,
     ⋅ ⊨ N : T ->
     (forall σ, T[σ] = T) -> (forall σ, N[σ] = N) -> (forall σ, G[σ] = G) ->
-    (forall ρ m, eval_exp gc_deps gc_stack me_top N nil m -> eval_exp gc_deps gc_stack me_top G ρ m) ->
+    (forall ρ, eval_exp gc_deps gc_stack me_top G ρ g) ->
+    (forall n a i R, eval_exp gc_deps gc_stack me_top N nil n -> eval_exp gc_deps gc_stack me_top T nil a ->
+       DF a ≈ a ∈ per_univ_elem i ↘ R -> Dom n ≈ g ∈ R) ->
     ⋅ ⊨ G ≈ N : T.
 Proof.
-  intros * HN HT HNc HG Hδ.
+  intros * HN HT HNc HG Hev Hgr.
   destruct HN as [env_rel [Hnil [i HNgen]]].
   eexists_rel_exp_with i.
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (HNgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R1 [Ht1 He1]].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hevσ Hevσ'.
+  destruct (HNgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hevσ Hevσ') as [R1 [Ht1 He1]].
   destruct (HNgen _ _ HΓ' _ _ (rel_sub_zero_nil _ _ HΓ') _ _ _ _ Hρ
               (eval_sub_zero_nil _) (eval_sub_zero_nil _)) as [R2 [Ht2 He2]].
   destruct Ht1 as [a1 a2 a3 a4 Ha1 ? ? Ha4 Hty1].
-  destruct Ht2 as [b1 b2 b3 b4 Hb1 ? ? Hb4 Hty2].
+  destruct Ht2 as [b1 b2 b3 b4 Hb1 Hb2 ? Hb4 Hty2].
   destruct He1 as [v1 v2 v3 v4 Hv1 ? ? Hv4 Hc1].
-  destruct He2 as [w1 w2 w3 w4 Hw1 ? ? Hw4 Hc2].
+  destruct He2 as [w1 w2 w3 w4 Hw1 Hw2 ? Hw4 Hc2].
   rewrite HT in Ha1, Ha4, Hb1, Hb4.
   rewrite HNc in Hv1, Hv4, Hw1, Hw4.
+  assert (Hb : DF b2 ≈ b2 ∈ per_univ_elem i ↘ R2) by pairwise.
+  pose proof (Hgr _ _ _ _ Hw2 Hb2 Hb) as Hr.
   functional_eval_rewrite_clear.
   assert (Hm1 : DF a1 ≈ a1 ∈ per_univ_elem i ↘ R1) by pairwise.
   assert (Hm2 : DF a1 ≈ a1 ∈ per_univ_elem i ↘ R2) by pairwise.
   handle_per_univ_elem_irrel.
+  assert (Hm : DF a1 ≈ a1 ∈ per_univ_elem i ↘ R1) by pairwise.
   exists R1; split.
   - apply (mk_rel_exp a1 a2 a3 a4); rewrite ?HT; assumption.
-  - apply (mk_rel_exp w2 w2 v3 v4); rewrite ?HG, ?HNc; try (apply Hδ; assumption); try assumption.
-    merge_rel_chain Hc1 Hc2 v1.
+  - apply (mk_rel_exp g g v3 v4); rewrite ?HG, ?HNc; try apply Hev; try assumption.
+    assert (Hw : rel_chain R1 (w2 :: w2 :: v3 :: v4 :: nil)) by merge_rel_chain Hc1 Hc2 v1.
+    cbn in Hw |- *; destruct Hw as (Hl1 & Hl2 & Hl3).
+    assert (Hgw : R1 g w2) by (eapply per_elem_sym; eassumption).
+    repeat split; [ eapply (per_elem_trans _ _ _ _ _ _ _ Hm); eassumption
+                  | eapply (per_elem_trans _ _ _ _ _ _ _ Hm); eassumption | exact Hl3 ].
 Qed.
 
-(** A neutral: a closed [G] that evaluates anywhere to [⇑ a d], [a] the type at
+(** A closed [G] that evaluates anywhere to [g], an element of the type at
     [nil]. *)
-Lemma rel_exp_neut_nil : forall {GC : GCtx} T G i d,
+Lemma rel_exp_val_nil : forall {GC : GCtx} T G i g,
     ⋅ ⊨ T : Type@i ->
     (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
-    per_bot d d ->
-    (forall ρ a, eval_exp gc_deps gc_stack me_top T nil a -> eval_exp gc_deps gc_stack me_top G ρ (⇑ a d)) ->
+    (forall ρ, eval_exp gc_deps gc_stack me_top G ρ g) ->
+    (forall a R, eval_exp gc_deps gc_stack me_top T nil a -> DF a ≈ a ∈ per_univ_elem i ↘ R -> Dom g ≈ g ∈ R) ->
     ⋅ ⊨ G : T.
 Proof.
-  intros * HT HTc HG Hd Hev0.
+  intros * HT HTc HG Hev Hgr.
   destruct (rel_exp_of_typ_inversion HT) as [env_rel [Hnil HTgen]].
   eexists_rel_exp_with i.
-  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (rel_exp_implies_rel_typ (HTgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')) as [R1 Ht1].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hevσ Hevσ'.
+  destruct (rel_exp_implies_rel_typ (HTgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hevσ Hevσ')) as [R1 Ht1].
   destruct (rel_exp_implies_rel_typ (HTgen _ _ HΓ' _ _ (rel_sub_zero_nil _ _ HΓ') _ _ _ _ Hρ
               (eval_sub_zero_nil _) (eval_sub_zero_nil _))) as [R2 Ht2].
   exists R1; split; [ exact Ht1 |].
   destruct Ht1 as [a1 a2 a3 a4 Ha1 ? ? Ha4 Hty1].
-  destruct Ht2 as [b1 b2 b3 b4 Hb1 ? ? Hb4 Hty2].
+  destruct Ht2 as [b1 b2 b3 b4 Hb1 Hb2 ? Hb4 Hty2].
   rewrite HTc in Ha1, Ha4, Hb1, Hb4.
+  assert (Hb : DF b2 ≈ b2 ∈ per_univ_elem i ↘ R2) by pairwise.
+  pose proof (Hgr _ _ Hb2 Hb) as Hr.
   functional_eval_rewrite_clear.
   assert (Hm1 : DF a1 ≈ a1 ∈ per_univ_elem i ↘ R1) by pairwise.
   assert (Hm2 : DF a1 ≈ a1 ∈ per_univ_elem i ↘ R2) by pairwise.
-  assert (Hb : DF b2 ≈ b2 ∈ per_univ_elem i ↘ R2) by pairwise.
-  pose proof (per_bot_then_per_elem Hb Hd) as Hr.
   handle_per_univ_elem_irrel.
-  apply (mk_rel_exp (⇑ b2 d) (⇑ b2 d) (⇑ b2 d) (⇑ b2 d)); rewrite ?HG; try (apply Hev0; assumption).
+  apply (mk_rel_exp g g g g); rewrite ?HG; try apply Hev.
   cbn; repeat split; exact Hr.
+Qed.
+
+(** A closed type valid at [⋅] evaluates at [nil]. *)
+Lemma typ_nil_eval : forall {GC : GCtx} T i,
+    ⋅ ⊨ T : Type@i -> exists a R, eval_exp gc_deps gc_stack me_top T nil a /\ DF a ≈ a ∈ per_univ_elem i ↘ R.
+Proof.
+  intros * HT.
+  destruct (rel_exp_of_typ_inversion_simple HT) as [env_rel [Hnil H]].
+  assert (Hρ : env_rel nil nil) by (inversion Hnil as [? Heq |]; subst; apply Heq; exact I).
+  destruct (H _ _ Hρ) as (a & a' & Ha & Ha' & [R HR]).
+  pose proof (functional_eval_exp _ _ _ _ _ Ha Ha') as <-.
+  exists a, R; split; assumption.
 Qed.
 
 (** The semantic [rwf]: validity at [⋅] of what resolution hands back. *)
@@ -312,7 +333,51 @@ Section Raw.
   Lemma sem_rwf_of_raw : sem_rwf_raw Θ Ξ -> sem_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_sem_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
 
+  (** A parameter of an open frame, given that its own type and those of the
+      parameters bound before it are valid. *)
+  Lemma param_sem_gen : forall n U k T,
+      List.nth_error Ξ n = Some U ->
+      gu_params U ∋ #k : T ->
+      (forall k' T', k <= k' -> gu_params U ∋ #k' : T' ->
+         exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Type@i) (T'[↑ₘ (S n)]ᵐ[sb_params n]) (T'[↑ₘ (S n)]ᵐ[sb_params n])) ->
+      @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) $[n, k] $[n, k].
+  Proof.
+    intros n U k T Hn Hk Hall.
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
+    pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
+    destruct (gs_scoped_nth _ _ _ Hsc Hn) as [HPs _].
+    pose proof (ctx_lookup_length _ _ _ Hk) as Hkl.
+    destruct (ctx_lookup_nth _ _ _ Hk) as (A & HA & ->).
+    rewrite param_type_tsub in HsT.
+    (* the types of the parameters from [k] out evaluate at the top level *)
+    assert (Hev : forall k' A', k <= k' -> List.nth_error (gu_params U) k' = Some A' ->
+                    exists t, eval_exp Θ Ξ me_top (exp_tsub (θp n k') A') nil t).
+    { intros k' A' Hle HA'.
+      destruct (ctx_lookup_exists (gu_params U) k' ltac:(apply List.nth_error_Some; congruence)) as [T' Hk'].
+      destruct (ctx_lookup_nth _ _ _ Hk') as (A'' & HA'' & ->).
+      rewrite HA' in HA''; injection HA'' as <-.
+      destruct (Hall _ _ Hle Hk') as [i Hi].
+      rewrite param_type_tsub in Hi.
+      destruct (@typ_nil_eval (gc_mk Θ Ξ) _ _ Hi) as (t & R & Ht & _); eauto. }
+    destruct (ptele_exists Θ Ξ _ _ _ Hn HPs (List.length (gu_params U) - k) k ltac:(lia) Hev) as [ρ Hρ].
+    destruct (Hall _ _ (le_n _) Hk) as [i Hi].
+    rewrite param_type_tsub in Hi |- *.
+    destruct (@typ_nil_eval (gc_mk Θ Ξ) _ _ Hi) as (t & R0 & Ht & HR0).
+    destruct (param_value Θ Ξ _ _ _ _ _ _ Hn HA (exp_scoped_ok _ _ _ (ctx_scoped_nth _ _ _ _ HPs HA)) Hρ Ht)
+      as (a & Ha & Hs).
+    eapply (@rel_exp_val_nil (gc_mk Θ Ξ)) with (g := ⇑ a (d_param (lp_mk n k))); [ exact Hi | | reflexivity | |].
+    - intros; eapply exp_closed_sub; eassumption.
+    - intros ρ0; eapply eval_param_env; exact Ha.
+    - intros a0 R Ha0 HR.
+      pose proof (functional_eval_exp _ _ _ _ _ Ha0 Ht) as ->.
+      assert (Hta : @per_univ_elem (gc_mk Θ Ξ) i R t a) by (eapply (@per_univ_elem_sim_r (gc_mk Θ Ξ)); [ exact HR | exact Hs ]).
+      assert (Hd : @per_bot (gc_mk Θ Ξ) (d_param (lp_mk n k)) (d_param (lp_mk n k))) by (intros s; eexists; split; constructor).
+      pose proof (@per_bot_then_per_elem (gc_mk Θ Ξ) _ _ _ _ _ _ Hta Hd) as Hr.
+      eapply (@per_elem_trans (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR); [ eapply (@per_elem_sym (gc_mk Θ Ξ)); [ exact HR | exact Hr ] | exact Hr ].
+  Qed.
+
   Lemma sem_pwf_of_raw : sem_pwf_raw Θ Ξ -> sem_pwf Θ Ξ.
-  Proof. (* OPTA-TODO *) Admitted.
+  Proof. intros HP n U k T Hn Hk; apply (param_sem_gen _ _ _ _ Hn Hk); intros; eapply HP; eassumption. Qed.
 End Raw.
 

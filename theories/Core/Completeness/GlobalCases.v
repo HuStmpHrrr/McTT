@@ -13,7 +13,7 @@ From Mctt.Core.Completeness Require Export ModuleCases.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
   UniverseCases VariableCases LogicalRelation.
-From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic Require Import Realizability Bridge.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -24,18 +24,35 @@ Definition sem_valid (Θ : gdeps) (Ξ : gstack) (A M : exp) : Prop :=
 
 Definition sem_snd Θ1 Ξ1 Θ2 Ξ2 μ : Prop := sem_msub Θ1 Ξ1 Θ2 Ξ2 μ nil.
 
-Lemma param_sem_of_raw : forall Θ Ξ n U k T,
-    ⊢g Θ ⍮ Ξ ->
-    List.nth_error Ξ n = Some U -> gu_params U ∋ #k : T ->
-    vtyp sem_valid Θ Ξ (T[↑ₘ (S n)]ᵐ[sb_params n]) ->
-    @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) $[n, k] $[n, k].
-Proof. (* OPTA-TODO *) Admitted.
+(** Every parameter from [k] out of a source frame has its image valid, so the
+    image frame's parameters from the image of [k] out do. *)
+Lemma emb_params_from : forall Θ1 Ξ1 Θ2 Ξ2 μ n U k T n' U' k',
+    Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SP sem_valid Θ1 Ξ1 Θ2 Ξ2 μ ->
+    List.nth_error Ξ1 n = Some U -> gu_params U ∋ #k : T ->
+    $[n, k][μ]ᵐ = $[n', k'] -> List.nth_error Ξ2 n' = Some U' ->
+    forall k2 T2, k' <= k2 -> gu_params U' ∋ #k2 : T2 -> vtyp sem_valid Θ2 Ξ2 (T2[↑ₘ (S n')]ᵐ[sb_params n']).
+Proof.
+  intros * He HP Hn Hk Heq Hn' k2 T2 Hle Hk2.
+  destruct He as [_ _ Hp _ Hf].
+  destruct (Hf _ _ _ _ Hn Hk) as (n'' & U'' & o & Hn'' & Hlen & Hmap).
+  pose proof (ctx_lookup_length _ _ _ Hk) as Hkl.
+  rewrite (Hmap _ Hkl) in Heq; injection Heq as <- <-.
+  rewrite Hn' in Hn''; injection Hn'' as <-.
+  pose proof (ctx_lookup_length _ _ _ Hk2) as Hk2l.
+  destruct (ctx_lookup_exists (gu_params U) (k2 - o) ltac:(lia)) as [T0 Hk0].
+  destruct (Hp _ _ _ _ Hn Hk0) as (n3 & U3 & k3 & T3 & Heq3 & Hn3 & Hk3 & HT3).
+  rewrite (Hmap (k2 - o) ltac:(lia)) in Heq3; injection Heq3 as <- <-.
+  rewrite Hn' in Hn3; injection Hn3 as <-.
+  replace (k2 - o + o) with k2 in Hk3 by lia.
+  pose proof (ctx_lookup_det _ _ _ _ Hk3 Hk2) as <-.
+  rewrite <- HT3; unfold SP in HP; eapply HP; eassumption.
+Qed.
 
 Theorem sem_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,
     Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SG sem_valid Θ1 Ξ1 Θ2 Ξ2 μ -> SP sem_valid Θ1 Ξ1 Θ2 Ξ2 μ ->
     sem_snd Θ1 Ξ1 Θ2 Ξ2 μ.
 Proof.
-  intros * [Hg Hq Hp Hl] HG HP.
+  intros * He HG HP; pose proof He as [Hg Hq Hp Hl Hf].
   assert (Hb : ⊢ Θ2 ⍮ Ξ2 ⍮ ⋅) by (constructor; assumption).
   assert (Hsc : gs_scoped Ξ2) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
   assert (Hqe : forall n (X : exp), X[ms_qn n μ]ᵐ = X[μ]ᵐ) by (intros; apply exp_msub_ext, Hq).
@@ -55,8 +72,10 @@ Proof.
     destruct (Hp _ _ _ _ Hn Hk) as (n' & U' & k' & T' & Heq & Hn' & Hk' & HT).
     pose proof (HP _ _ _ _ Hn Hk) as HPv.
     rewrite Heq, HT in *.
-    eapply closed_weaken_sem; [ eassumption | eapply param_sem_of_raw; eassumption | | reflexivity | reflexivity ].
-    eapply exp_closed_wk, param_type_scoped; eassumption.
+    eapply closed_weaken_sem; [ eassumption | | | reflexivity | reflexivity ].
+    + apply (param_sem_gen _ _ Hg _ _ _ _ Hn' Hk').
+      intros k2 T2 Hle Hk2; exact (emb_params_from _ _ _ _ _ _ _ _ _ _ _ _ He HP Hn Hk Heq Hn' _ _ Hle Hk2).
+    + eapply exp_closed_wk, param_type_scoped; eassumption.
   - intros * Hl0 _ HΓs; rewrite !Hqe.
     destruct (Hl _ _ _ _ _ _ Hl0) as (r' & Heq & Hl').
     destruct (HG _ _ _ _ _ _ Hl0) as [HT HM].

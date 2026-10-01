@@ -62,6 +62,12 @@ Proof.
     rewrite exp_wk_wk; apply exp_wk_wk_eq; intros x; cbn; lia.
 Qed.
 
+Lemma ctx_lookup_det : forall Γ k T T', Γ ∋ #k : T -> Γ ∋ #k : T' -> T = T'.
+Proof.
+  intros * H H'; destruct (ctx_lookup_nth _ _ _ H) as (A & HA & ->), (ctx_lookup_nth _ _ _ H') as (A' & HA' & ->).
+  rewrite HA in HA'; injection HA' as <-; reflexivity.
+Qed.
+
 Lemma skipn_nth : forall (Γ : ctx) k A, List.nth_error Γ k = Some A ->
     List.skipn k Γ = A :: List.skipn (S k) Γ.
 Proof.
