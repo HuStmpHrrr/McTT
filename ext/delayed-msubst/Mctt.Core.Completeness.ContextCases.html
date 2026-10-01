@@ -1,0 +1,154 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Completeness.ContextCases</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab4"></a><h1 class="section">Contexts</h1>
+
+
+<div class="paragraph"> </div>
+
+    The two rules of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_ctx"><span class="id" title="inductive">wf_ctx</span></a></span>, plus the two context-subtyping facts that
+    <span class="inlinecode"><span class="id" title="library">Consequences</span></span> needs.  <span class="inlinecode"><span class="id" title="var">valid_ctx_empty</span></span> is gone: <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> is now the inductive
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx"><span class="id" title="inductive">sem_ctx</span></a></span>, so the empty case *is* a constructor
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx_nil"><span class="id" title="constructor">sem_ctx_nil</span></a></span>).  What remains is the extension step, and it is the one place
+    in the development that has to *build* a context PER rather than take one
+    apart.
+
+<div class="paragraph"> </div>
+
+    Building one means choosing the head relation, and the choice — the
+    impredicative <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span>, "whatever every <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> relating the values
+    of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="var">A'</span></span> relates" — is made once at the PER layer, by
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a></span>.  All that is left here is to feed it the premise it
+    wants, which is exactly what <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion_simple"><span class="id" title="lemma">rel_exp_of_typ_inversion_simple</span></a></span> delivers. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">Morphisms_Relations</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a> <a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#"><span class="id" title="library">UniverseCases</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="Fixed_GCtx" class="idref" href="#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<a id="Fixed_GCtx.GC" class="idref" href="#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>}.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="rel_ctx_extend" class="idref" href="#rel_ctx_extend"><span class="id" title="lemma">rel_ctx_extend</span></a> : <span class="id" title="keyword">forall</span> {<a id="da7a5918a812e0216f4a54d21f7406c4" class="idref" href="#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="binder">Γ</span></a> <a id="28c80ccb35b6b642d2124359e321a0f2" class="idref" href="#28c80ccb35b6b642d2124359e321a0f2"><span class="id" title="binder">Γ'</span></a> <a id="A:4" class="idref" href="#A:4"><span class="id" title="binder">A</span></a> <a id="A':5" class="idref" href="#A':5"><span class="id" title="binder">A'</span></a> <a id="i:6" class="idref" href="#i:6"><span class="id" title="binder">i</span></a>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#c39fa89ec53700b2c9f682b036d53e9a"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#c39fa89ec53700b2c9f682b036d53e9a"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#28c80ccb35b6b642d2124359e321a0f2"><span class="id" title="variable">Γ'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#f6a1684f00f8c1a384b6e80446b93f01"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#f6a1684f00f8c1a384b6e80446b93f01"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A':5"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#f6a1684f00f8c1a384b6e80446b93f01"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#c39fa89ec53700b2c9f682b036d53e9a"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#c39fa89ec53700b2c9f682b036d53e9a"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#28c80ccb35b6b642d2124359e321a0f2"><span class="id" title="variable">Γ'</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A':5"><span class="id" title="variable">A'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * [<span class="id" title="var">env_relΓΓ'</span> <span class="id" title="var">HΓΓ'</span>] <span class="id" title="var">H</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion_simple"><span class="id" title="lemma">rel_exp_of_typ_inversion_simple</span></a> <span class="id" title="var">H</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> [<span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span>]].<br/>
+</div>
+
+<div class="doc">
+Both witnesses have <span class="inlinecode"><span class="id" title="var">Γ</span></span> on the left, so they agree up to <span class="inlinecode">&lt;~&gt;</span>.  Naming the
+      equivalence rather than calling <span class="inlinecode"><span class="id" title="var">handle_per_ctx_env_irrel</span></span> keeps
+      <span class="inlinecode"><span class="id" title="var">env_relΓΓ'</span></span> — the only one that witnesses the *tail* of the goal — in
+      place. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hirrel</span> : <span class="id" title="var">env_relΓΓ'</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#e8aac4a093c83da9a780e8c256235d19"><span class="id" title="notation">&lt;~&gt;</span></a> <span class="id" title="var">env_relΓ</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_right_irrel"><span class="id" title="lemma">per_ctx_env_right_irrel</span></a>; [<span class="id" title="tactic">exact</span> <span class="id" title="var">HΓΓ'</span> | <span class="id" title="tactic">exact</span> <span class="id" title="var">HΓ</span>]).<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a>; [ <span class="id" title="var">eassumption</span> |].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> ρ ρ' <span class="id" title="var">H</span>ρ%<span class="id" title="var">Hirrel</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">now</span> <span class="id" title="tactic">apply</span> <span class="id" title="var">HA</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="rel_ctx_extend'" class="idref" href="#rel_ctx_extend'"><span class="id" title="lemma">rel_ctx_extend'</span></a> : <span class="id" title="keyword">forall</span> {<a id="de9bdb4e9c2be34cf9b5e2f20d66b06e" class="idref" href="#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="binder">Γ</span></a> <a id="A:8" class="idref" href="#A:8"><span class="id" title="binder">A</span></a> <a id="i:9" class="idref" href="#i:9"><span class="id" title="binder">i</span></a>},<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:8"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:8"><span class="id" title="variable">A</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend"><span class="id" title="lemma">rel_ctx_extend</span></a> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx"><span class="id" title="lemma">sem_ctx_per_ctx</span></a> <span class="id" title="var">HΓ</span>) <span class="id" title="var">HA</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓA</span> <span class="id" title="var">HΓA</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="var">eassumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">rel_ctx_extend</span> <span class="id" title="var">rel_ctx_extend'</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="rel_ctx_sub_empty" class="idref" href="#rel_ctx_sub_empty"><span class="id" title="lemma">rel_ctx_sub_empty</span></a> :<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">SubE</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">&lt;:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">mauto</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Lemma</span> <a id="rel_ctx_sub_extend" class="idref" href="#rel_ctx_sub_extend"><span class="id" title="lemma">rel_ctx_sub_extend</span></a> : <span class="id" title="keyword">forall</span> {<a id="2c1ebf9f6f644b76d36a0d699f8e9ac4" class="idref" href="#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="binder">Γ</span></a> <a id="23b343961b75c91ab8529a041c031a1d" class="idref" href="#23b343961b75c91ab8529a041c031a1d"><span class="id" title="binder">Δ</span></a> <a id="i:12" class="idref" href="#i:12"><span class="id" title="binder">i</span></a> <a id="A:13" class="idref" href="#A:13"><span class="id" title="binder">A</span></a> <a id="A':14" class="idref" href="#A':14"><span class="id" title="binder">A'</span></a>},<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">SubE</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">&lt;:</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#23b343961b75c91ab8529a041c031a1d"><span class="id" title="variable">Δ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#23b343961b75c91ab8529a041c031a1d"><span class="id" title="variable">Δ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:13"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#23b343961b75c91ab8529a041c031a1d"><span class="id" title="variable">Δ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A':14"><span class="id" title="variable">A'</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#85c5dfb57224ee6dfd2b9028982fe06b"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:13"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#85c5dfb57224ee6dfd2b9028982fe06b"><span class="id" title="notation">⊆</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A':14"><span class="id" title="variable">A'</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">SubE</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#2c1ebf9f6f644b76d36a0d699f8e9ac4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A:13"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#::type_scope:'SubE'_x_'&lt;:'_x"><span class="id" title="notation">&lt;:</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#23b343961b75c91ab8529a041c031a1d"><span class="id" title="variable">Δ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#A':14"><span class="id" title="variable">A'</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">Hsub</span> <span class="id" title="var">HΓ</span> <span class="id" title="var">HΔ</span> <span class="id" title="var">HA</span> <span class="id" title="var">HA'</span> <span class="id" title="var">Hsubtyp</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend'"><span class="id" title="lemma">rel_ctx_extend'</span></a> <span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΓA</span>%<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend'"><span class="id" title="lemma">rel_ctx_extend'</span></a> <span class="id" title="var">HΔ</span> <span class="id" title="var">HA'</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΔA'</span>%<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">HΓA</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓA</span> <span class="id" title="var">HΓA</span>], <span class="id" title="var">HΔA'</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΔA'</span> <span class="id" title="var">HΔA'</span>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a> <span class="id" title="var">Hsubtyp</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> [<span class="id" title="var">HΓ'</span> [<span class="id" title="var">j</span> <span class="id" title="var">Hsub2</span>]]].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">try</span> <span class="id" title="var">eassumption</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">intros</span> ρ ρ' <span class="id" title="var">a</span> <span class="id" title="var">a'</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Ha</span> <span class="id" title="var">Ha'</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">Hsub2</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ) <span class="id" title="keyword">as</span> [<span class="id" title="var">a2</span> [<span class="id" title="var">a2'</span> [<span class="id" title="var">Ha2</span> [<span class="id" title="var">Ha2'</span> <span class="id" title="var">Hsubaa'</span>]]]].<br/>
+&nbsp;&nbsp;<span class="id" title="var">functional_eval_rewrite_clear</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="var">eassumption</span>.<br/>
+<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">rel_ctx_sub_empty</span> <span class="id" title="var">rel_ctx_sub_extend</span> : <span class="id" title="var">mctt</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#Fixed_GCtx"><span class="id" title="section">Fixed_GCtx</span></a>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">rel_ctx_extend</span> <span class="id" title="var">rel_ctx_extend'</span> : <span class="id" title="var">mctt</span>.<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">rel_ctx_sub_empty</span> <span class="id" title="var">rel_ctx_sub_extend</span> : <span class="id" title="var">mctt</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

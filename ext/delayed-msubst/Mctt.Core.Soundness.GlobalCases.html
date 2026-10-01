@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.GlobalCases</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab161"></a><h1 class="section">Every Well-Formed Global Context Glues</h1>
+
+
+<div class="paragraph"> </div>
+
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalInduction.html#global_induction"><span class="id" title="lemma">global_induction</span></a></span> for the gluing model, whose sound substitutions are
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_msub"><span class="id" title="record">glu_msub</span></a></span>: every resolved global's generalized type and body, and every
+    parameter's type, glues at <span class="inlinecode">⋅</span> in the context itself. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.html#"><span class="id" title="library">System</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#"><span class="id" title="library">ModuleCases</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GlobalCtx_Notations"><span class="id" title="module">GlobalCtx_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Theorem</span> <a id="gctx_glu" class="idref" href="#gctx_glu"><span class="id" title="lemma">gctx_glu</span></a> : <span class="id" title="keyword">forall</span> <a id="9a8b14c362f893ac43e46f6a3df6db9f" class="idref" href="#9a8b14c362f893ac43e46f6a3df6db9f"><span class="id" title="binder">Θ</span></a> <a id="15e8c24b72dd286d43d25c6004c5b75e" class="idref" href="#15e8c24b72dd286d43d25c6004c5b75e"><span class="id" title="binder">Ξ</span></a>, <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#4cc75ea505a55db7ebb6b6716a808f1d"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#4cc75ea505a55db7ebb6b6716a808f1d"><span class="id" title="notation">g</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#9a8b14c362f893ac43e46f6a3df6db9f"><span class="id" title="variable">Θ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#4cc75ea505a55db7ebb6b6716a808f1d"><span class="id" title="notation">⍮</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#15e8c24b72dd286d43d25c6004c5b75e"><span class="id" title="variable">Ξ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_rwf_raw"><span class="id" title="definition">glu_rwf_raw</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#9a8b14c362f893ac43e46f6a3df6db9f"><span class="id" title="variable">Θ</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#15e8c24b72dd286d43d25c6004c5b75e"><span class="id" title="variable">Ξ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_pwf_raw"><span class="id" title="definition">glu_pwf_raw</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#9a8b14c362f893ac43e46f6a3df6db9f"><span class="id" title="variable">Θ</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#15e8c24b72dd286d43d25c6004c5b75e"><span class="id" title="variable">Ξ</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">exact</span> (<a class="idref" href="Mctt.Core.Syntactic.GlobalInduction.html#global_induction"><span class="id" title="lemma">global_induction</span></a> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_valid"><span class="id" title="definition">glu_valid</span></a> (<span class="id" title="keyword">fun</span> <a id="a8a0172da165d3b07d9859b1a2fd2243" class="idref" href="#a8a0172da165d3b07d9859b1a2fd2243"><span class="id" title="binder"><span id="55b044df245887178010065ad91ef415" class="id">Θ1</span></span></a> <a id="42c79a4d7a3d91f7706a15ef044b2e58" class="idref" href="#42c79a4d7a3d91f7706a15ef044b2e58"><span class="id" title="binder"><span id="bf6577c0ff7685763775795a057a6c43" class="id">Ξ1</span></span></a> <a id="f2d2c84007bf23181faa5bb678e8e8b0" class="idref" href="#f2d2c84007bf23181faa5bb678e8e8b0"><span class="id" title="binder"><span id="3f998d02f937b85009cec1c7558ab8e8" class="id">Θ2</span></span></a> <a id="3141983d79788c3c338cde5eb9b179c0" class="idref" href="#3141983d79788c3c338cde5eb9b179c0"><span class="id" title="binder"><span id="70b1a6b44cbf9fce887bb2f557ccffa8" class="id">Ξ2</span></span></a> <a id="1e55420d230aa73c9b29ffd89a5d44cc" class="idref" href="#1e55420d230aa73c9b29ffd89a5d44cc"><span class="id" title="binder"><span id="c181b43235b5166e7ad4cfccfd423b63" class="id">μ</span></span></a> =&gt; <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_msub"><span class="id" title="record">glu_msub</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#a8a0172da165d3b07d9859b1a2fd2243"><span class="id" title="variable">Θ1</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#42c79a4d7a3d91f7706a15ef044b2e58"><span class="id" title="variable">Ξ1</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#f2d2c84007bf23181faa5bb678e8e8b0"><span class="id" title="variable">Θ2</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#3141983d79788c3c338cde5eb9b179c0"><span class="id" title="variable">Ξ2</span></a> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#1e55420d230aa73c9b29ffd89a5d44cc"><span class="id" title="variable">μ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#glu_msub_emb"><span class="id" title="lemma">glu_msub_emb</span></a> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#kglu_read"><span class="id" title="lemma">kglu_read</span></a>). <span class="id" title="keyword">Qed</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
