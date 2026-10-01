@@ -26,8 +26,8 @@ Generalizable All Variables.
 
 (** *** Helper Bundles *)
 (** Related modulo evaluation *)
-Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
-#[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
+Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) κ A ρ κ' A' ρ' R' : Prop := mk_rel_mod_eval : forall a a', ⟦ A ⟧ κ ⍮ ρ ↘ a -> ⟦ A' ⟧ κ' ⍮ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R κ A ρ κ' A' ρ' R'.
+#[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
 (** [per_univ_elem_core] nests through this, and generating its induction
     principle needs a scheme registered here. *)
@@ -99,9 +99,9 @@ Section Per_univ_elem_core_def.
          (equiv_a_a' : DF a ≈ a' ∈ per_univ_elem_core ↘ in_rel),
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
-              rel_mod_eval per_univ_elem_core B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
+              rel_mod_eval per_univ_elem_core κ B (ρ ↦ c) κ' B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
           (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
-          DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
+          DF Πᵈ a κ ρ B ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
   | per_univ_elem_core_neut :
     `{ forall (elem_rel : relation domain),
           Dom b ≈ b' ∈ per_bot ->
@@ -119,16 +119,16 @@ Section Per_univ_elem_core_def.
           (elem_rel <~> per_nat) ->
           motive elem_rel ℕᵈ ℕᵈ)
       (case_Pi :
-        forall {a ρ B a' ρ' B' in_rel}
+        forall {a κ ρ B a' κ' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
            {elem_rel},
           DF a ≈ a' ∈ per_univ_elem_core ↘ in_rel ->
           motive in_rel a a' ->
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
-              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
+              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y) κ B (ρ ↦ c) κ' B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
           (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
-          motive elem_rel Πᵈ a ρ B Πᵈ a' ρ' B')
+          motive elem_rel Πᵈ a κ ρ B Πᵈ a' κ' ρ' B')
       (case_ne : forall {a b a' b' elem_rel},
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
@@ -185,16 +185,16 @@ Section Per_univ_elem_ind_def.
           (elem_rel <~> per_nat) ->
           motive i elem_rel ℕᵈ ℕᵈ)
       (case_Pi :
-        forall i {a ρ B a' ρ' B' in_rel}
+        forall i {a κ ρ B a' κ' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
            {elem_rel},
           DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
           motive i in_rel a a' ->
           PER in_rel ->
           (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
-              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
+              rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y) κ B (ρ ↦ c) κ' B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
           (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
-          motive i elem_rel Πᵈ a ρ B Πᵈ a' ρ' B')
+          motive i elem_rel Πᵈ a κ ρ B Πᵈ a' κ' ρ' B')
       (case_ne : forall i {a b a' b' elem_rel},
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
@@ -210,7 +210,7 @@ Section Per_univ_elem_ind_def.
       per_univ_elem_core_strong_ind i _ (motive i)
         (fun _ _ _ j_lt_i eq HE => case_U i j_lt_i eq HE (fun A B R' H' => per_univ_elem_ind' _ R' A B _))
         (fun _ => case_N i)
-        (fun _ _ _ _ _ _ _ out_rel _ _ IHA per _ => case_Pi i out_rel _ IHA per _)
+        (fun _ _ _ _ _ _ _ _ _ out_rel _ _ IHA per _ => case_Pi i out_rel _ IHA per _)
         (fun _ _ _ _ _ => case_ne i)
         R a b H.
 
@@ -237,17 +237,17 @@ Inductive per_subtyp : nat -> domain -> domain -> Prop :=
         DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
         (forall c c' b b',
             Dom c ≈ c' ∈ in_rel ->
-            ⟦ B ⟧ ρ ↦ c ↘ b ->
-            ⟦ B' ⟧ ρ' ↦ c' ↘ b' ->
+            ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
+            ⟦ B' ⟧ κ' ⍮ ρ' ↦ c' ↘ b' ->
             Sub b <: b' at i) ->
-        DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-        DF Πᵈ a' ρ' B' ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel' ->
-        Sub Πᵈ a ρ B <: Πᵈ a' ρ' B' at i)
+        DF Πᵈ a κ ρ B ≈ Πᵈ a κ ρ B ∈ per_univ_elem i ↘ elem_rel ->
+        DF Πᵈ a' κ' ρ' B' ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem i ↘ elem_rel' ->
+        Sub Πᵈ a κ ρ B <: Πᵈ a' κ' ρ' B' at i)
 where "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 
  Hint Constructors per_subtyp : mctt.
 
-Definition rel_typ i A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) A ρ A' ρ' R'.
+Definition rel_typ i A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) me_top A ρ me_top A' ρ' R'.
 #[global] Arguments rel_typ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
 Hint Unfold rel_typ : mctt.
@@ -372,7 +372,7 @@ Ltac per_univ_elem_induction_core HH ih :=
              end;
       revert HH; revert i R a b;
       refine (per_univ_elem_ind _ _ _ _ _);
-      [ do 8 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      [ do 8 intro | do 3 intro | do 13 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
 (** As [induction H using per_univ_elem_ind]: the hypotheses on the motive are

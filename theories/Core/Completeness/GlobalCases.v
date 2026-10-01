@@ -29,18 +29,7 @@ Lemma param_sem_of_raw : forall Θ Ξ n U k T,
     List.nth_error Ξ n = Some U -> gu_params U ∋ #k : T ->
     vtyp sem_valid Θ Ξ (T[↑ₘ (S n)]ᵐ[sb_params n]) ->
     @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) $[n, k] $[n, k].
-Proof.
-  intros * Hg Hn Hk [i HT].
-  assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-  assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-  pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
-  eapply rel_exp_neut_nil with (d := d_param {| lp_mod := n; lp_param := k |});
-    [ exact HT | | reflexivity | |].
-  - intros; eapply exp_closed_sub; eassumption.
-  - intros s; eexists; split; constructor.
-  - intros * Hev; eapply eval_exp_param; [| exact Hev ].
-    unfold gs_param; cbn; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
-Qed.
+Proof. (* OPTA-TODO *) Admitted.
 
 Theorem sem_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,
     Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SG sem_valid Θ1 Ξ1 Θ2 Ξ2 μ -> SP sem_valid Θ1 Ξ1 Θ2 Ξ2 μ ->

@@ -152,12 +152,12 @@ Section Gluing.
           DG a ∈ glu_univ_elem_core ↘ IP ↘ IEl ->
           DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
           (forall {c} (equiv_c : Dom c ≈ c ∈ in_rel) b,
-              ⟦ B ⟧ ρ ↦ c ↘ b ->
+              ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
               DG b ∈ glu_univ_elem_core ↘ OP _ equiv_c ↘ OEl _ equiv_c) ->
-          DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
+          DF Πᵈ a κ ρ B ≈ Πᵈ a κ ρ B ∈ per_univ_elem i ↘ elem_rel ->
           typ_rel <∙> pi_glu_typ_pred i in_rel IP IEl OP ->
           el_rel <∙> pi_glu_exp_pred i in_rel IP IEl elem_rel OEl ->
-          DG Πᵈ a ρ B ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+          DG Πᵈ a κ ρ B ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_neut :
     `{ forall typ_rel el_rel,
@@ -201,7 +201,7 @@ Section GluingInduction.
           motive i P El ℕᵈ)
 
       (case_pi :
-        forall i a B (ρ : env) (in_rel : relation domain) (IP : glu_typ_pred)
+        forall i a κ B (ρ : env) (in_rel : relation domain) (IP : glu_typ_pred)
           (IEl : glu_exp_pred) (OP : forall c : domain, Dom c ≈ c ∈ in_rel -> glu_typ_pred)
           (OEl : forall c : domain, Dom c ≈ c ∈ in_rel -> glu_exp_pred) (P : glu_typ_pred) (El : glu_exp_pred)
           (elem_rel : relation domain),
@@ -209,15 +209,15 @@ Section GluingInduction.
           motive i IP IEl a ->
           DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
           (forall (c : domain) (equiv_c : Dom c ≈ c ∈ in_rel) (b : domain),
-              ⟦ B ⟧ ρ ↦ c ↘ b ->
+              ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
               DG b ∈ glu_univ_elem i ↘ OP c equiv_c ↘ OEl c equiv_c) ->
           (forall (c : domain) (equiv_c : Dom c ≈ c ∈ in_rel) (b : domain),
-              ⟦ B ⟧ ρ ↦ c ↘ b ->
+              ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
               motive i (OP c equiv_c) (OEl c equiv_c) b) ->
-          DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
+          DF Πᵈ a κ ρ B ≈ Πᵈ a κ ρ B ∈ per_univ_elem i ↘ elem_rel ->
           P <∙> pi_glu_typ_pred i in_rel IP IEl OP ->
           El <∙> pi_glu_exp_pred i in_rel IP IEl elem_rel OEl ->
-          motive i P El Πᵈ a ρ B)
+          motive i P El Πᵈ a κ ρ B)
 
       (case_neut :
         forall i b a
@@ -407,7 +407,7 @@ Ltac glu_univ_elem_induction_core HH ih :=
       revert HH; revert i P El a;
       refine (glu_univ_elem_ind _ _ _ _ _);
       [ do 5 intro; do 3 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
-      | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro ]; cbv beta
+      | do 13 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro ]; cbv beta
   end.
 
 (** As [induction H using glu_univ_elem_ind]: the hypothesis on the motive at

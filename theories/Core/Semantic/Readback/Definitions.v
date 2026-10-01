@@ -29,10 +29,10 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      (** Normal form of eta-expanded body *)
      $| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ ⇑! a s ↘ b ->
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
 
-     Rnf ⇓ (Πᵈ a ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
+     Rnf ⇓ (Πᵈ a κ ρ B) m in Θ ⍮ Ξ ⍮ s ↘ λⁿ A M )
 | read_nf_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
@@ -46,22 +46,22 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rne m $ᵈ n in Θ ⍮ Ξ ⍮ s ↘ M $ⁿ N )
 | read_ne_natrec :
   `( (** Normal form of motive *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ ⇑! ℕᵈ s ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
      (** Normal form of mz *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ zeroᵈ ↘ bz ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ zeroᵈ ↘ bz ->
      Rnf ⇓ bz mz in Θ ⍮ Ξ ⍮ s ↘ MZ ->
 
      (** Normal form of MS *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
-     ⟦ MS ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
+     ⟦ MS ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
      Rnf ⇓ bs ms in Θ ⍮ Ξ ⍮ S (S s) ↘ MS' ->
 
      (** Neutral form of m *)
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
 
-     Rne recᵈ m under ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
+     Rne recᵈ m under κ ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
 | read_ne_glob :
   `( Rne d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
 | read_ne_param :
@@ -77,10 +77,10 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
 
      (** Normal form of ret type *)
-     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↦ ⇑! a s ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
-     Rtyp Πᵈ a ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
+     Rtyp Πᵈ a κ ρ B in Θ ⍮ Ξ ⍮ s ↘ Πⁿ A B')
 | read_typ_neut :
   `( Rne b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)

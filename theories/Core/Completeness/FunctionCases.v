@@ -93,8 +93,8 @@ Proof.
   exists in_rel, a1, a2, a3, a4.
   do 4 (split; [ eassumption |]).
   do 2 (split; [ pairwise |]).
-  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
-                    Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
+  apply (mk_rel_exp Πᵈ a1 me_top ρ B[q σ] Πᵈ a2 me_top ρσ B
+                    Πᵈ a3 me_top ρ'σ' B' Πᵈ a4 me_top ρ' B'[q σ']);
     [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
     | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
   (** The three codomain obligations are, in order, the three [q]-obligations of
@@ -153,8 +153,8 @@ Proof.
     as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid Htyp]]]]]]]]]]].
   exists (per_pi in_rel B ρσ B ρ'σ').
   split; [ exact Htyp |].
-  apply (mk_rel_exp λᵈ ρ M[q σ] λᵈ ρσ M
-                    λᵈ ρ'σ' M' λᵈ ρ' M'[q σ']);
+  apply (mk_rel_exp λᵈ me_top ρ M[q σ] λᵈ me_top ρσ M
+                    λᵈ me_top ρ'σ' M' λᵈ me_top ρ' M'[q σ']);
     [ apply eval_exp_fn | apply eval_exp_fn | apply eval_exp_fn | apply eval_exp_fn |].
   apply rel_chain_4; hnf; intros c c' Hc;
     pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1 Houter Hc)
@@ -233,11 +233,11 @@ Proof.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RM [HMtyp HMexp]].
   destruct HMtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (c2 = Πᵈ a2 ρσ B) as ->
+  assert (c2 = Πᵈ a2 me_top ρσ B) as ->
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
-  assert (c3 = Πᵈ a3 ρ'σ' B) as ->
+  assert (c3 = Πᵈ a3 me_top ρ'σ' B) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : DF Πᵈ a2 ρσ B ≈ Πᵈ a3 ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
+  assert (HRMmid : DF Πᵈ a2 me_top ρσ B ≈ Πᵈ a3 me_top ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   (** *** The Term Chain
 
@@ -461,13 +461,13 @@ Proof.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RM [HMtyp HMexp]].
   destruct HMtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (c2 = Πᵈ a2 ρσ B) as ->
+  assert (c2 = Πᵈ a2 me_top ρσ B) as ->
     by (eapply functional_eval_exp; [ exact Hc2 | apply eval_exp_pi; exact Ha2 ]).
-  assert (c3 = Πᵈ a3 ρ'σ' B) as ->
+  assert (c3 = Πᵈ a3 me_top ρ'σ' B) as ->
     by (eapply functional_eval_exp; [ exact Hc3 | apply eval_exp_pi; exact Ha3 ]).
-  assert (HRMmid : DF Πᵈ a2 ρσ B ≈ Πᵈ a3 ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
+  assert (HRMmid : DF Πᵈ a2 me_top ρσ B ≈ Πᵈ a3 me_top ρ'σ' B ∈ per_univ_elem k ↘ RM) by pairwise.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
-  apply (mk_rel_exp m1 m2 λᵈ ρ'σ' (M[↑]ʷ $ #0) λᵈ ρ' (M[↑]ʷ $ #0)[q σ']);
+  apply (mk_rel_exp m1 m2 λᵈ me_top ρ'σ' (M[↑]ʷ $ #0) λᵈ me_top ρ' (M[↑]ʷ $ #0)[q σ']);
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn | apply eval_exp_fn |].
   (** The first link is [M]'s, the other two are read at an argument pair — and
       both from the same instance of [M]'s judgment along [Wk], at the substituted
@@ -479,9 +479,9 @@ Proof.
     destruct (rel_exp_under_ctx_shift_at HΓ HA HM _ _ _ _ Hpair)
       as [j [R [b1 [b2 [b3 [b4 [w1 [w2 [w3 [w4 [Hb1 [Hb2 [Hb3 [Hb4 [Hbouter
          [Hbmid [Hw1 [Hw2 [Hw3 [Hw4 Hwchain]]]]]]]]]]]]]]]]]]]];
-    assert (b2 = Πᵈ a2 ρσ B) as ->
+    assert (b2 = Πᵈ a2 me_top ρσ B) as ->
       by (eapply functional_eval_exp; [ exact Hb2 | apply eval_exp_pi; exact Ha2 ]);
-    assert (b3 = Πᵈ a3 ρ'σ' B) as ->
+    assert (b3 = Πᵈ a3 me_top ρ'σ' B) as ->
       by (eapply functional_eval_exp; [ exact Hb3 | apply eval_exp_pi; exact Ha3 ]);
     assert (HRpi : R <~> per_pi in_rel B ρσ B ρ'σ')
       by (eapply per_pi_iff; [ exact Hmid | exact Hbmid ]).

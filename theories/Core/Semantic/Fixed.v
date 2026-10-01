@@ -32,14 +32,19 @@ Module Fixed_Notations.
   
   (** ** Evaluation and Readback *)
   
-  Notation "'⟦' M '⟧' ρ '↘' r" := (eval_exp gc_deps gc_stack M ρ r)
+  Notation "'⟦' M '⟧' ρ '↘' r" := (eval_exp gc_deps gc_stack me_top M ρ r)
     (at level 70, M at level 69, ρ at level 69, r at level 69).
+  Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp gc_deps gc_stack κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
   Notation "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' ρ '↘' r" :=
-    (eval_natrec gc_deps gc_stack A MZ MS m ρ r)
+    (eval_natrec gc_deps gc_stack me_top A MZ MS m ρ r)
     (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, ρ at level 69, r at level 69).
+  Notation "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' κ '⍮' ρ '↘' r" :=
+    (eval_natrec gc_deps gc_stack κ A MZ MS m ρ r)
+    (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, κ at level 69, ρ at level 69, r at level 69).
   Notation "'$|' m '&' n '|↘' r" := (eval_app gc_deps gc_stack m n r)
     (at level 70, m at level 69, n at level 69, r at level 69).
-  Notation "'⟦' σ '⟧s' ρ '↘' ρσ" := (eval_sub gc_deps gc_stack σ ρ ρσ)
+  Notation "'⟦' σ '⟧s' ρ '↘' ρσ" := (eval_sub gc_deps gc_stack me_top σ ρ ρσ)
     (at level 70, σ at level 69, ρ at level 69, ρσ at level 69) : mctt_scope.
   Notation "'Rnf' m 'in' s ↘ M" := (read_nf gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
   Notation "'Rne' m 'in' s ↘ M" := (read_ne gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).

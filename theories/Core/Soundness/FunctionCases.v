@@ -107,7 +107,7 @@ Proof.
   rename m into a.
   (** The domain's own PER, read off its gluing predicate. *)
   assert (Dom a ≈ a ∈ per_univ i) as [in_rel Hin] by mauto 3.
-  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ i) as [elem_rel Helem].
+  assert (Dom Πᵈ a me_top ρ B ≈ Πᵈ a me_top ρ B ∈ per_univ i) as [elem_rel Helem].
   {
     eexists.
     eapply per_univ_elem_pi_canonical; [ eassumption |].
@@ -157,7 +157,7 @@ Lemma glu_rel_exp_of_pi : forall {Γ M A B i Sb},
         exists a m,
           ⟦ A ⟧ ρ ↘ a /\
             ⟦ M ⟧ ρ ↘ m /\
-            forall (P : glu_typ_pred) (El : glu_exp_pred), DG Πᵈ a ρ B ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ] : (Π A B)[σ] ® m ∈ El) ->
+            forall (P : glu_typ_pred) (El : glu_exp_pred), DG Πᵈ a me_top ρ B ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ M[σ] : (Π A B)[σ] ® m ∈ El) ->
     Γ ⊩ M : Π A B.
 Proof.
   intros * ? HPi%rel_exp_of_typ_inversion_simple Hbody.

@@ -8,18 +8,29 @@ From Mctt.Core.Syntactic Require Export Syntax.
     An environment is the list of the values of the λ-variables in scope,
     indexed by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] those are [Γ].  The global
     context is not part of it: it does not change during NbE, so evaluation
-    takes it as a separate argument.  A module parameter [$[n, k]] is not a
-    variable of the environment: like an opaque global it evaluates to a
-    neutral, [d_param]. *)
+    takes it as a separate argument.
+
+    Where evaluation is in the global context is a *module environment*
+    [menv]: the frames in scope, innermost first.  A closed frame
+    [me_frame a args κ] is a module (at the address [a], a path into the global
+    context whose members are its module chain) applied to the values [args]
+    of its parameters, innermost parameter first; [me_base j] is the open frames
+    of the stack from [j] outward, whose parameters are neutrals ([d_param]).
+    Module parameters are not variables of the environment: they are read off
+    the module environment, which every closure captures.  A global needing
+    the parameters of a closed frame is the value [d_gfn κ a c args ip]: the
+    frame at [a], outside of which is [κ], with [c] parameters of which [args]
+    are given, and the member chain [ip] still to resolve in it. *)
 
 Inductive domain : Set :=
 | d_nat : domain
-| d_pi : domain -> list domain -> exp -> domain
+| d_pi : domain -> menv -> list domain -> exp -> domain
 | d_univ : nat -> domain
 | d_zero : domain
 | d_succ : domain -> domain
-| d_fn : list domain -> exp -> domain
+| d_fn : menv -> list domain -> exp -> domain
 | d_neut : domain -> domain_ne -> domain
+| d_gfn : menv -> path -> nat -> list domain -> list string -> domain
 with domain_ne : Set :=
 (** Notice that the number x here is not a de Bruijn index but an absolute
     representation of names.  That is, this number does not change relative to the
@@ -27,17 +38,20 @@ with domain_ne : Set :=
  *)
 | d_var : forall (x : nat), domain_ne
 | d_app : domain_ne -> domain_nf -> domain_ne
-| d_natrec : list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
-(** An opaque definition or an axiom. *)
+| d_natrec : menv -> list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
+(** An opaque definition or an axiom, named from the top level. *)
 | d_glob : path -> domain_ne
-(** A parameter of an open module. *)
+(** A parameter of an open module, named from the top level. *)
 | d_param : lpath -> domain_ne
 with domain_nf : Set :=
-| d_dom : domain -> domain -> domain_nf.
+| d_dom : domain -> domain -> domain_nf
+with menv : Set :=
+| me_base : nat -> menv
+| me_frame : path -> list domain -> menv -> menv.
 
 Notation env := (list domain).
 
-Derive NoConfusion for domain domain_ne domain_nf.
+Derive NoConfusion for domain domain_ne domain_nf menv.
 
 (** The value of the variable [#x], [zeroᵈ] past the end: a well-typed term
     only reads the variables its context has, so the default is never seen by
@@ -80,18 +94,53 @@ Module Domain_Notations.
   Notation "'ℕᵈ'" := d_nat : mctt_scope.
   Notation "'zeroᵈ'" := d_zero : mctt_scope.
   Notation "'succᵈ' m" := (d_succ m) (at level 2, m at level 1) : mctt_scope.
-  Notation "'λᵈ' ρ M" := (d_fn ρ M) (at level 2, ρ at level 1, M at level 9) : mctt_scope.
-  Notation "'Πᵈ' a ρ B" := (d_pi a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
+  Notation "'λᵈ' κ ρ M" := (d_fn κ ρ M) (at level 2, κ at level 1, ρ at level 1, M at level 9) : mctt_scope.
+  Notation "'Πᵈ' a κ ρ B" := (d_pi a κ ρ B) (at level 2, a at level 1, κ at level 0, ρ at level 0, B at level 9) : mctt_scope.
   Notation "'⇑' a m" := (d_neut a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇓' a m" := (d_dom a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
   Notation "m '$ᵈ' n" := (d_app m n) (at level 10, left associativity, format "m  $ᵈ  n") : mctt_scope.
-  Notation "'recᵈ' m 'under' ρ 'return' P | 'zero' -> mz | 'succ' -> MS 'end'" := (d_natrec ρ P mz MS m) (at level 0, m at level 60, ρ at level 60, P at level 60, mz at level 60, MS at level 60) : mctt_scope.
+  Notation "'recᵈ' m 'under' κ ρ 'return' P | 'zero' -> mz | 'succ' -> MS 'end'" := (d_natrec κ ρ P mz MS m) (at level 0, m at level 60, κ at level 0, ρ at level 60, P at level 60, mz at level 60, MS at level 60) : mctt_scope.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
 End Domain_Notations.
 
 Import Domain_Notations.
+
+(** ** Module Environments
+
+    Frame [n] of a module environment is what [me_drop n] leaves on top: a
+    closed frame, or the open stack frame [j + n'] when only [me_base j] is
+    left.  So [me_drop] is the semantic counterpart of [↑ₘ n]: arithmetic on
+    the frame index, nothing done to any term. *)
+Abbreviation me_top := (me_base 0).
+
+Fixpoint me_drop (n : nat) (κ : menv) : menv :=
+  match n, κ with
+  | 0, _ => κ
+  | S n', me_frame _ _ κ' => me_drop n' κ'
+  | S n', me_base j => me_base (S n' + j)
+  end.
+
+(** The address of the innermost frame. *)
+Definition me_addr (κ : menv) : path :=
+  match κ with
+  | me_base j => p_rel j nil
+  | me_frame a _ _ => a
+  end.
+
+Lemma me_drop_base : forall n j, me_drop n (me_base j) = me_base (n + j).
+Proof. intros [| n] j; reflexivity. Qed.
+
+Lemma me_drop_add : forall n m κ, me_drop n (me_drop m κ) = me_drop (n + m) κ.
+Proof.
+  intros n m; revert n; induction m as [| m IH]; intros n κ.
+  - rewrite Nat.add_0_r; reflexivity.
+  - destruct κ as [j | a args κ].
+    + change (me_drop (S m) (me_base j)) with (me_base (S m + j)).
+      rewrite !me_drop_base; f_equal; lia.
+    + rewrite Nat.add_succ_r; cbn [me_drop]; apply IH.
+Qed.
 
 (** The two projections of an extended environment. *)
 Proposition drop_env_extend_env_cancel : forall ρ a,

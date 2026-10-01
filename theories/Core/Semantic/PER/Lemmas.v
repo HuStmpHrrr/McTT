@@ -11,7 +11,7 @@ Import ListNotations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Add Parametric Morphism R0 `(R0_morphism : Proper _ ((@relation_equivalence domain) ==> (@relation_equivalence domain)) R0) A ρ A' ρ' : (rel_mod_eval R0 A ρ A' ρ')
+Add Parametric Morphism R0 `(R0_morphism : Proper _ ((@relation_equivalence domain) ==> (@relation_equivalence domain)) R0) κ A ρ κ' A' ρ' : (rel_mod_eval R0 κ A ρ κ' A' ρ')
     with signature (@relation_equivalence domain) ==> iff as rel_mod_eval_morphism.
 Proof.
   split; intros []; econstructor; try eassumption;
@@ -737,15 +737,15 @@ Section Fixed_GCtx.
 
 (** This lemma gets rid of the unnecessary PER premise. *)
 Lemma per_univ_elem_pi' :
-  forall i a a' ρ B ρ' B'
+  forall i a a' κ ρ B κ' ρ' B'
     (in_rel : relation domain)
     (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
     elem_rel,
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
     (forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
-        rel_mod_eval (per_univ_elem i) B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
+        rel_mod_eval (per_univ_elem i) κ B (ρ ↦ c) κ' B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
     (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel.
+    DF Πᵈ a κ ρ B ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
   basic_per_univ_elem_econstructor; eauto.
@@ -763,12 +763,12 @@ Section Fixed_GCtx.
 
 Hint Resolve per_univ_elem_pi' : mctt.
 
-Lemma per_univ_elem_pi_clean_inversion : forall {i j a a' in_rel ρ ρ' B B' elem_rel},
+Lemma per_univ_elem_pi_clean_inversion : forall {i j a a' in_rel κ ρ κ' ρ' B B' elem_rel},
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem j ↘ elem_rel ->
+    DF Πᵈ a κ ρ B ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem j ↘ elem_rel ->
     exists (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain),
       (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
-          rel_mod_eval (per_univ_elem j) B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) /\
+          rel_mod_eval (per_univ_elem j) κ B (ρ ↦ c) κ' B' (ρ' ↦ c') (out_rel equiv_c_c')) /\
         (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')).
 Proof.
   intros * Ha HΠ.
@@ -778,7 +778,7 @@ Proof.
   split.
   - instantiate (1 := fun c c' (equiv_c_c' : in_rel c c') m m' =>
                         forall R,
-                          rel_typ j B (ρ ↦ c) B' (ρ' ↦ c') R ->
+                          rel_mod_eval (per_univ_elem j) κ B (ρ ↦ c) κ' B' (ρ' ↦ c') R ->
                           R m m').
     intros.
     assert (in_rel0 c c') by intuition.
@@ -786,14 +786,14 @@ Proof.
     econstructor; eauto.
     apply -> per_univ_elem_morphism_iff; eauto.
     split; intuition.
-    destruct_by_head rel_typ.
+    destruct_by_head rel_mod_eval.
     handle_per_univ_elem_irrel.
     intuition.
   - split; intros;
       [assert (in_rel0 c c') by intuition; (on_all_hyp: destruct_rel_by_assumption in_rel0)
       | assert (in_rel c c') by intuition; (on_all_hyp: destruct_rel_by_assumption in_rel)];
       econstructor; intuition.
-    destruct_by_head rel_typ.
+    destruct_by_head rel_mod_eval.
     handle_per_univ_elem_irrel.
     intuition.
 Qed.
@@ -908,7 +908,7 @@ Proof.
     subst;
     mauto;
     destruct_all.
-  assert (DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
+  assert (DF Πᵈ a κ ρ B ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
     by (eapply per_univ_elem_pi'; eauto; intros; destruct_rel_mod_eval; mauto).
   saturate_refl.
   econstructor; eauto.
@@ -1569,10 +1569,10 @@ Lemma per_univ_elem_pi_canonical : forall {i a a' in_rel ρ B ρ' B'},
           ⟦ B ⟧ ρ ↦ c ↘ b /\
           ⟦ B' ⟧ ρ' ↦ c' ↘ b' /\
           DF b ≈ b' ∈ per_univ_elem i ↘ R) ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ (per_pi in_rel B ρ B' ρ').
+    DF Πᵈ a me_top ρ B ≈ Πᵈ a' me_top ρ' B' ∈ per_univ_elem i ↘ (per_pi in_rel B ρ B' ρ').
 Proof.
   intros * Ha HB.
-  eapply (per_univ_elem_pi' _ _ _ _ _ _ _ in_rel
+  eapply (per_univ_elem_pi' _ _ _ _ _ _ _ _ _ in_rel
             (fun c c' (_ : Dom c ≈ c' ∈ in_rel) =>
                per_head B B' (ρ ↦ c) (ρ' ↦ c')));
     [ eassumption | | reflexivity ].
@@ -1589,7 +1589,7 @@ Qed.
     judgment and a domain from another need no lifting. *)
 Corollary per_pi_iff : forall {i j a a' in_rel ρ B ρ' B' R},
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
-    DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem j ↘ R ->
+    DF Πᵈ a me_top ρ B ≈ Πᵈ a' me_top ρ' B' ∈ per_univ_elem j ↘ R ->
     R <~> per_pi in_rel B ρ B' ρ'.
 Proof.
   intros * Ha HΠ.
@@ -1634,7 +1634,7 @@ Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3
         Dom c ≈ c' ∈ in_rel ->
         exists b b', ⟦ B3 ⟧ ρ3 ↦ c ↘ b /\ ⟦ B4 ⟧ ρ4 ↦ c' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
     rel_chain (per_univ_elem i (per_pi in_rel B2 ρ2 B3 ρ3))
-      ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2; Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]).
+      ([Πᵈ a1 me_top ρ1 B1; Πᵈ a2 me_top ρ2 B2; Πᵈ a3 me_top ρ3 B3; Πᵈ a4 me_top ρ4 B4]).
 Proof.
   intros * Hchain HB12 HB23 HB34.
   assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ in_rel) by pairwise.
@@ -1647,7 +1647,7 @@ Proof.
              (forall c c',
                  Dom c ≈ c' ∈ in_rel ->
                  exists b b', ⟦ B ⟧ ρ ↦ c ↘ b /\ ⟦ B' ⟧ ρ' ↦ c' ↘ b' /\ Dom b ≈ b' ∈ per_univ i) ->
-             DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ (per_pi in_rel B ρ B' ρ')).
+             DF Πᵈ a me_top ρ B ≈ Πᵈ a' me_top ρ' B' ∈ per_univ_elem i ↘ (per_pi in_rel B ρ B' ρ')).
   { intros * Ha HB.
     apply per_univ_elem_pi_canonical; [ eassumption |].
     intros c c' Hc.
@@ -1662,8 +1662,8 @@ Proof.
       whichever of the three [per_pi]s it happened to pick, which is not
       predictable. *)
   assert (Hpi : rel_chain (per_univ i)
-                  ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2;
-                   Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]))
+                  ([Πᵈ a1 me_top ρ1 B1; Πᵈ a2 me_top ρ2 B2;
+                   Πᵈ a3 me_top ρ3 B3; Πᵈ a4 me_top ρ4 B4]))
     by (apply rel_chain_4; eexists; eassumption).
   functionalize_per_univ_chain Hpi R.
   retype_rel_chain Hpi HL2 Hpi.

@@ -458,7 +458,7 @@ Proof.
       by (rewrite <- exp_sub_sub_natrec; mauto 3).
   eexists; split; [mauto 3 |].
   enough (Δ ⊢ rec M return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end
-             : A[σ,,M] ® recᵈ m under ρ return A | zero -> mz | succ -> MS end ∈ glu_elem_bot i am)
+             : A[σ,,M] ® recᵈ m under me_top ρ return A | zero -> mz | succ -> MS end ∈ glu_elem_bot i am)
       by (eapply realize_glu_elem_bot; mauto 3).
   econstructor; [| eassumption | eassumption | |].
   - rewrite <- (exp_sub_q_extend A σ M); mauto 3.

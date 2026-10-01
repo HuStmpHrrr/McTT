@@ -12,7 +12,7 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
 | initial_env_cons :
   `( initial_env Θ Ξ Γ ρ ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ me_top ⍮ ρ ↘ a ->
      initial_env Θ Ξ (A :: Γ) (ρ ↦ ⇑! a (length Γ))).
 
 #[export]
@@ -61,8 +61,8 @@ Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewri
 Inductive nbe (Θ : gdeps) (Ξ : gstack) : ctx -> exp -> typ -> nf -> Prop :=
 | nbe_run :
   `( initial_env Θ Ξ Γ ρ ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ me_top ⍮ ρ ↘ a ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ me_top ⍮ ρ ↘ m ->
      Rnf ⇓ a m in Θ ⍮ Ξ ⍮ length Γ ↘ w ->
      nbe Θ Ξ Γ M A w ).
 
@@ -139,7 +139,7 @@ Hint Resolve functional_nbe_of_typ : mctt.
 Inductive nbe_ty (Θ : gdeps) (Ξ : gstack) : ctx -> typ -> nf -> Prop :=
 | nbe_ty_run :
   `( initial_env Θ Ξ Γ ρ ->
-     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ me_top ⍮ ρ ↘ m ->
      Rtyp m in Θ ⍮ Ξ ⍮ length Γ ↘ W ->
      nbe_ty Θ Ξ Γ M W ).
 

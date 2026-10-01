@@ -226,7 +226,7 @@ Section glu_univ_elem_cumulativity.
       destruct_rel_mod_app.
       handle_per_univ_elem_irrel.
       match goal with
-      | _: ⟦ B ⟧ ρ ↦ n ↘ ?a |- _ =>
+      | _: ⟦ B ⟧ κ ⍮ ρ ↦ n ↘ ?a |- _ =>
           rename a into b
       end.
       eexists; split; mauto 4.
@@ -422,8 +422,8 @@ Proof.
     destruct_rel_mod_eval.
     handle_per_univ_elem_irrel.
     match goal with
-    | _: (⟦ B ⟧ ρ ↦ ⇑! a (length Γ) ↘ ?a0),
-        _: ⟦ B' ⟧ ρ' ↦ ⇑! a' (length Γ) ↘ ?a0' |- _ =>
+    | _: (⟦ B ⟧ κ ⍮ ρ ↦ ⇑! a (length Γ) ↘ ?a0),
+        _: ⟦ B' ⟧ κ' ⍮ ρ' ↦ ⇑! a' (length Γ) ↘ ?a0' |- _ =>
         rename a0 into b;
         rename a0' into b'
     end.
@@ -493,7 +493,7 @@ Proof.
     rename x3 into OP'. rename x4 into OEl'.
     handle_per_univ_elem_irrel.
     econstructor; mauto 3.
-    + enough (Sub Πᵈ a ρ B <: Πᵈ a' ρ' B' at i) by (eapply per_elem_subtyping; try eassumption).
+    + enough (Sub Πᵈ a κ ρ B <: Πᵈ a' κ' ρ' B' at i) by (eapply per_elem_subtyping; try eassumption).
       econstructor; mauto 3.
     + intros.
       assert (Γ ⊢ IT ® IP) by (rewrite <- (exp_wk_id IT); mauto 4).
@@ -507,8 +507,8 @@ Proof.
       destruct_rel_mod_eval.
       handle_per_univ_elem_irrel.
       match goal with
-      | _: (⟦ B ⟧ ρ ↦ n ↘ ?a),
-          _: ⟦ B' ⟧ ρ' ↦ n ↘ ?a' |- _ =>
+      | _: (⟦ B ⟧ κ ⍮ ρ ↦ n ↘ ?a),
+          _: ⟦ B' ⟧ κ' ⍮ ρ' ↦ n ↘ ?a' |- _ =>
           rename a into b;
           rename a' into b'
       end.

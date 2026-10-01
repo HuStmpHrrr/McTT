@@ -62,8 +62,8 @@ Proof.
     match goal with
     | _: ($| ?f0 & ⇑! a s |↘ _),
         _: ($| ?f0' & ⇑! a' s |↘ _),
-          _: (⟦ B ⟧ ρ ↦ ⇑! a s ↘ ?b0),
-            _: ⟦ B' ⟧ ρ' ↦ ⇑! a' s ↘ ?b0' |- _ =>
+          _: (⟦ B ⟧ κ ⍮ ρ ↦ ⇑! a s ↘ ?b0),
+            _: ⟦ B' ⟧ κ' ⍮ ρ' ↦ ⇑! a' s ↘ ?b0' |- _ =>
         rename f0 into f;
         rename f0' into f';
         rename b0 into b;

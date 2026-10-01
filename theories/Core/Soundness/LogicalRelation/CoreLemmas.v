@@ -583,16 +583,16 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a ρ B in_rel P El},
+Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a κ ρ B in_rel P El},
   DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
-  DG Πᵈ a ρ B ∈ glu_univ_elem i ↘ P ↘ El ->
+  DG Πᵈ a κ ρ B ∈ glu_univ_elem i ↘ P ↘ El ->
   exists IP IEl (OP : forall c (equiv_c_c : Dom c ≈ c ∈ in_rel), glu_typ_pred)
      (OEl : forall c (equiv_c_c : Dom c ≈ c ∈ in_rel), glu_exp_pred) elem_rel,
       DG a ∈ glu_univ_elem i ↘ IP ↘ IEl /\
         (forall c (equiv_c : Dom c ≈ c ∈ in_rel) b,
-            ⟦ B ⟧ ρ ↦ c ↘ b ->
+            ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
             DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
-        DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
+        DF Πᵈ a κ ρ B ≈ Πᵈ a κ ρ B ∈ per_univ_elem i ↘ elem_rel /\
         (P <∙> pi_glu_typ_pred i in_rel IP IEl OP) /\
         (El <∙> pi_glu_exp_pred i in_rel IP IEl elem_rel OEl).
 Proof.
@@ -606,11 +606,11 @@ Proof.
   repeat split.
   1,3: eassumption.
   1: instantiate (1 := fun c equiv_c Γ A M m => forall (b : domain) Pb Elb,
-                          ⟦ B ⟧ ρ ↦ c ↘ b ->
+                          ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
                           DG b ∈ glu_univ_elem i ↘ Pb ↘ Elb ->
                           Γ ⊢ M : A ® m ∈ Elb).
   1: instantiate (1 := fun c equiv_c Γ A => forall (b : domain) Pb Elb,
-                          ⟦ B ⟧ ρ ↦ c ↘ b ->
+                          ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
                           DG b ∈ glu_univ_elem i ↘ Pb ↘ Elb ->
                           Γ ⊢ A ® Pb).
   2-5: intros []; econstructor; mauto.
@@ -640,7 +640,7 @@ Proof.
   - assert (exists mn : domain,
                $| m & n |↘ mn /\
                  (forall (b : domain) (Pb : glu_typ_pred) (Elb : glu_exp_pred),
-                     ⟦ B ⟧ ρ ↦ n ↘ b ->
+                     ⟦ B ⟧ κ ⍮ ρ ↦ n ↘ b ->
                      DG b ∈ glu_univ_elem i ↘ Pb ↘ Elb ->
                      Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N] ® mn ∈ Elb)) by intuition.
     destruct_conjs.
@@ -653,16 +653,16 @@ Proof.
     intuition.
 Qed.
 
-Lemma glu_univ_elem_pi_clean_inversion2 : forall {i a ρ B in_rel IP IEl P El},
+Lemma glu_univ_elem_pi_clean_inversion2 : forall {i a κ ρ B in_rel IP IEl P El},
   DF a ≈ a ∈ per_univ_elem i ↘ in_rel ->
   DG a ∈ glu_univ_elem i ↘ IP ↘ IEl ->
-  DG Πᵈ a ρ B ∈ glu_univ_elem i ↘ P ↘ El ->
+  DG Πᵈ a κ ρ B ∈ glu_univ_elem i ↘ P ↘ El ->
   exists (OP : forall c (equiv_c_c : Dom c ≈ c ∈ in_rel), glu_typ_pred)
      (OEl : forall c (equiv_c_c : Dom c ≈ c ∈ in_rel), glu_exp_pred) elem_rel,
     (forall c (equiv_c : Dom c ≈ c ∈ in_rel) b,
-        ⟦ B ⟧ ρ ↦ c ↘ b ->
+        ⟦ B ⟧ κ ⍮ ρ ↦ c ↘ b ->
         DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
-      DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
+      DF Πᵈ a κ ρ B ≈ Πᵈ a κ ρ B ∈ per_univ_elem i ↘ elem_rel /\
       (P <∙> pi_glu_typ_pred i in_rel IP IEl OP) /\
       (El <∙> pi_glu_exp_pred i in_rel IP IEl elem_rel OEl).
 Proof.
@@ -777,12 +777,12 @@ Proof.
     + saturate_refl; eassumption.
     + instantiate (1 := fun (c : domain) (equiv_c : in_rel c c) Γ A M m =>
                           forall b P El,
-                            ⟦ B' ⟧ ρ' ↦ c ↘ b ->
+                            ⟦ B' ⟧ κ' ⍮ ρ' ↦ c ↘ b ->
                             glu_univ_elem i P El b ->
                             Γ ⊢ M : A ® m ∈ El).
       instantiate (1 := fun (c : domain) (equiv_c : in_rel c c) Γ A =>
                           forall b P El,
-                            ⟦ B' ⟧ ρ' ↦ c ↘ b ->
+                            ⟦ B' ⟧ κ' ⍮ ρ' ↦ c ↘ b ->
                             glu_univ_elem i P El b ->
                             Γ ⊢ A ® P).
       intros.
@@ -790,7 +790,7 @@ Proof.
       handle_per_univ_elem_irrel.
       rewrite simple_glu_univ_elem_morphism_iff; try (eassumption + reflexivity);
         split; intros; handle_functional_glu_univ_elem; intuition.
-    + enough (DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel) by (etransitivity; [symmetry |]; eassumption).
+    + enough (DF Πᵈ a κ ρ B ≈ Πᵈ a' κ' ρ' B' ∈ per_univ_elem i ↘ elem_rel) by (etransitivity; [symmetry |]; eassumption).
       per_univ_elem_econstructor; mauto.
       intros.
       (on_all_hyp: destruct_rel_by_assumption in_rel).

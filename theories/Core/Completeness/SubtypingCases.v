@@ -191,9 +191,9 @@ Proof.
     as [in2 [q1 [q2 [q3 [q4 [Hq1 [Hq2 [Hq3 [Hq4 [_ [Hmid2 Htyp2]]]]]]]]]]].
   pose proof Htyp1 as [P1 P2 P3 P4 HP1 HP2 HP3 HP4 HPchain].
   pose proof Htyp2 as [Q1 Q2 Q3 Q4 HQ1 HQ2 HQ3 HQ4 HQchain].
-  assert (P2 = Πᵈ p2 ρσ B) as ->
+  assert (P2 = Πᵈ p2 me_top ρσ B) as ->
     by (eapply functional_eval_exp; [ exact HP2 | apply eval_exp_pi; exact Hp2 ]).
-  assert (Q3 = Πᵈ q3 ρ'σ' B') as ->
+  assert (Q3 = Πᵈ q3 me_top ρ'σ' B') as ->
     by (eapply functional_eval_exp; [ exact HQ3 | apply eval_exp_pi; exact Hq3 ]).
   (** The domain PER, from the heterogeneous equality's middle link. *)
   destruct (HAA'gen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
@@ -202,7 +202,7 @@ Proof.
   assert (d3 = q3) as -> by (eapply functional_eval_exp; [ exact Hd3 | exact Hq3 ]).
   assert (Hmid : Dom p2 ≈ q3 ∈ per_univ i) by pairwise.
   destruct Hmid as [in_rel Hin_rel].
-  exists P1, Πᵈ p2 ρσ B, Q4, Πᵈ q3 ρ'σ' B'.
+  exists P1, Πᵈ p2 me_top ρσ B, Q4, Πᵈ q3 me_top ρ'σ' B'.
   (** The two element PERs are named rather than left to [eexists]: [pairwise]
       matches its [rel_chain] hypothesis syntactically, so a metavariable in the
       relation position of the goal finds nothing. *)

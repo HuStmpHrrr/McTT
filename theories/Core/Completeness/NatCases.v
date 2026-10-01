@@ -251,8 +251,8 @@ Lemma per_bot_natrec : forall {i Aa Ab MZa MZb MSa MSb ρa ρb za zb m m'}
           ⟦ MSa ⟧ ρa ↦ w ↦ r ↘ s /\ ⟦ MSb ⟧ ρb ↦ z ↦ r' ↘ s' /\
             Dom s ≈ s' ∈ Rel succᵈ w succᵈ z) ->
     Dom m ≈ m' ∈ per_bot ->
-    Dom recᵈ m under ρa return Aa | zero -> za | succ -> MSa end
-         ≈ recᵈ m' under ρb return Ab | zero -> zb | succ -> MSb end ∈ per_bot.
+    Dom recᵈ m under me_top ρa return Aa | zero -> za | succ -> MSa end
+         ≈ recᵈ m' under me_top ρb return Ab | zero -> zb | succ -> MSb end ∈ per_bot.
 Proof.
   intros * Hmot Hza Hzb Hz Hsucc Hm s.
   assert (Hvar : Dom ⇑! ℕᵈ s ≈ ⇑! ℕᵈ s ∈ per_nat) by mauto.
@@ -775,8 +775,8 @@ Lemma per_bot_natrec_diag : forall {Γ A i MZ MS env_relΓ ρ mz m},
     ⟦ MZ ⟧ ρ ↘ mz ->
     Dom mz ≈ mz ∈ per_head A A (ρ ↦ zeroᵈ) (ρ ↦ zeroᵈ) ->
     Dom m ≈ m ∈ per_bot ->
-    Dom recᵈ m under ρ return A | zero -> mz | succ -> MS end
-         ≈ recᵈ m under ρ return A | zero -> mz | succ -> MS end ∈ per_bot.
+    Dom recᵈ m under me_top ρ return A | zero -> mz | succ -> MS end
+         ≈ recᵈ m under me_top ρ return A | zero -> mz | succ -> MS end ∈ per_bot.
 Proof.
   intros * HΓ HA HMS Hρ Hmz Hz Hm.
   pose proof (rel_sub_id (ex_intro _ _ HΓ)) as Hid.
@@ -1182,9 +1182,9 @@ Proof.
       evaluations at six different environments. *)
   pose proof Hc1 as Hc1'.
   cbn [exp_sub] in Hc1'.
-  destruct (eval_exp_natrec_inversion _ _ _ _ _ _ Hc1') as [n1 [Hn1 Hrec1]].
+  destruct (eval_exp_natrec_inversion _ _ _ _ _ _ _ Hc1') as [n1 [Hn1 Hrec1]].
   assert (n1 = m1) as -> by (eapply functional_eval_exp; [ exact Hn1 | exact Hm1 ]).
-  destruct (eval_exp_natrec_inversion _ _ _ _ _ _ Hc2) as [n2 [Hn2 Hrec2]].
+  destruct (eval_exp_natrec_inversion _ _ _ _ _ _ _ Hc2) as [n2 [Hn2 Hrec2]].
   assert (n2 = m2) as -> by (eapply functional_eval_exp; [ exact Hn2 | exact Hm2 ]).
   (** *** The Successor Branch
 

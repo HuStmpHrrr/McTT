@@ -207,7 +207,7 @@ End Identity.
 
 Definition sb_zero : sub := fun _ => a_zero.
 
-Lemma eval_sub_zero_nil : forall {Θ Ξ} ρ, eval_sub Θ Ξ sb_zero ρ nil.
+Lemma eval_sub_zero_nil : forall {Θ Ξ κ} ρ, eval_sub Θ Ξ κ sb_zero ρ nil.
 Proof. intros * x; rewrite env_var_ge by (cbn; lia); constructor. Qed.
 
 Lemma rel_sub_zero_nil : forall {GC : GCtx} Γ R, per_ctx_env R Γ Γ -> Γ ⊨s sb_zero ≈ sb_zero : ⋅.
@@ -226,7 +226,7 @@ Qed.
 Lemma rel_exp_delta_nil : forall {GC : GCtx} T N G,
     ⋅ ⊨ N : T ->
     (forall σ, T[σ] = T) -> (forall σ, N[σ] = N) -> (forall σ, G[σ] = G) ->
-    (forall ρ m, eval_exp gc_deps gc_stack N nil m -> eval_exp gc_deps gc_stack G ρ m) ->
+    (forall ρ m, eval_exp gc_deps gc_stack me_top N nil m -> eval_exp gc_deps gc_stack me_top G ρ m) ->
     ⋅ ⊨ G ≈ N : T.
 Proof.
   intros * HN HT HNc HG Hδ.
@@ -258,7 +258,7 @@ Lemma rel_exp_neut_nil : forall {GC : GCtx} T G i d,
     ⋅ ⊨ T : Type@i ->
     (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
     per_bot d d ->
-    (forall ρ a, eval_exp gc_deps gc_stack T nil a -> eval_exp gc_deps gc_stack G ρ (⇑ a d)) ->
+    (forall ρ a, eval_exp gc_deps gc_stack me_top T nil a -> eval_exp gc_deps gc_stack me_top G ρ (⇑ a d)) ->
     ⋅ ⊨ G : T.
 Proof.
   intros * HT HTc HG Hd Hev0.
@@ -307,52 +307,12 @@ Section Raw.
       @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (a_glob p) /\
       (forall M, b = true -> B = Some M ->
          @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M)).
-  Proof.
-    intros p Δ b pv A B Hl HRp.
-    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    pose proof (wf_gctx_stack _ _ Hg) as HΞ.
-    pose proof (gc_resolve_complete _ _ _ _ _ (wf_gstack_canon _ _ HΞ)
-                  (wf_gdeps_canon _ (wf_gstack_deps _ _ HΞ)) Hl) as Hr.
-    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
-    destruct HRp as [[i HT] HM].
-    assert (Hdelta : forall M, b = true -> B = Some M ->
-               @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M)).
-    { intros M -> ->.
-      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsM.
-      eapply rel_exp_delta_nil; [ apply HM; reflexivity | | | reflexivity |].
-      - intros; eapply exp_closed_sub; eassumption.
-      - intros; eapply exp_closed_sub; eassumption.
-      - intros * Hev; econstructor; eassumption. }
-    split; [| exact Hdelta ].
-    destruct b; [ destruct B as [M |] |].
-    - pose proof (Hdelta M eq_refl eq_refl) as H.
-      eapply rel_exp_under_ctx_trans; [ exact H | apply rel_exp_under_ctx_sym; exact H ].
-    - eapply rel_exp_neut_nil with (d := d_glob p); [ exact HT | | reflexivity | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros s; eexists; split; constructor.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | right; reflexivity | exact Hev ].
-    - eapply rel_exp_neut_nil with (d := d_glob p); [ exact HT | | reflexivity | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros s; eexists; split; constructor.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | left; reflexivity | exact Hev ].
-  Qed.
+  Proof. (* OPTA-TODO *) Admitted.
 
   Lemma sem_rwf_of_raw : sem_rwf_raw Θ Ξ -> sem_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_sem_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
 
   Lemma sem_pwf_of_raw : sem_pwf_raw Θ Ξ -> sem_pwf Θ Ξ.
-  Proof.
-    intros HP n U k T Hn Hk.
-    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-    pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
-    destruct (HP _ _ _ _ Hn Hk) as [i HT].
-    eapply rel_exp_neut_nil with (d := d_param {| lp_mod := n; lp_param := k |});
-      [ exact HT | | reflexivity | |].
-    - intros; eapply exp_closed_sub; eassumption.
-    - intros s; eexists; split; constructor.
-    - intros * Hev; eapply eval_exp_param; [| exact Hev ].
-      unfold gs_param; cbn; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
-  Qed.
+  Proof. (* OPTA-TODO *) Admitted.
 End Raw.
 

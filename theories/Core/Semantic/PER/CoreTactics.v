@@ -19,9 +19,9 @@ Ltac destruct_rel_by_assumption in_rel H :=
 Ltac destruct_rel_mod_eval :=
   repeat
     match goal with
-    | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_mod_eval _ _ _ _ _ _) |- _ =>
+    | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_mod_eval _ _ _ _ _ _ _ _) |- _ =>
         destruct_rel_by_assumption in_rel H; mark H
-    | H : rel_mod_eval _ _ _ _ _ _ |- _ =>
+    | H : rel_mod_eval _ _ _ _ _ _ _ _ |- _ =>
         dependent destruction H
     end;
   unmark_all.

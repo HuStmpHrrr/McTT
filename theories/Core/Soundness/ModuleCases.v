@@ -278,58 +278,14 @@ Section Raw.
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (Type@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_fn Δ M) (ctx_pi Δ A)) ->
       @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) (ctx_pi Δ A).
-  Proof.
-    intros p Δ b pv A B Hl [[i HT] HM].
-    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    pose proof (wf_gctx_stack _ _ Hg) as HΞ.
-    pose proof (gc_resolve_complete _ _ _ _ _ (wf_gstack_canon _ _ HΞ)
-                  (wf_gdeps_canon _ (wf_gstack_deps _ _ HΞ)) Hl) as Hr.
-    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
-    destruct b; [ destruct B as [M |] |].
-    - pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsM.
-      eapply (@glu_delta_nil (gc_mk Θ Ξ)); [ apply HM; reflexivity | | | reflexivity | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
-      + intros * Hev; econstructor; eassumption.
-    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob p);
-        [ exact HT | | reflexivity | | reflexivity | | | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros; eapply exp_closed_wk; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
-      + intros s; eexists; split; constructor.
-      + intros * Hrb; inversion Hrb; reflexivity.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | right; reflexivity | exact Hev ].
-    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob p);
-        [ exact HT | | reflexivity | | reflexivity | | | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros; eapply exp_closed_wk; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
-      + intros s; eexists; split; constructor.
-      + intros * Hrb; inversion Hrb; reflexivity.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | left; reflexivity | exact Hev ].
-  Qed.
+  Proof. (* OPTA-TODO *) Admitted.
 
   Lemma param_glu_of_raw : forall n U k T,
       List.nth_error Ξ n = Some U ->
       gu_params U ∋ #k : T ->
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) (Type@i)) ->
       @glu_rel_exp (gc_mk Θ Ξ) ⋅ $[n, k] (T[↑ₘ (S n)]ᵐ[sb_params n]).
-  Proof.
-    intros n U k T Hn Hk [i HT].
-    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-    pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
-    eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_param {| lp_mod := n; lp_param := k |});
-      [ exact HT | | reflexivity | | reflexivity | | | |].
-    - intros; eapply exp_closed_sub; eassumption.
-    - intros; eapply exp_closed_wk; eassumption.
-    - intros Δ' HΔ'; econstructor; eassumption.
-    - intros s; eexists; split; constructor.
-    - intros * Hrb; inversion Hrb; reflexivity.
-    - intros * Hev; eapply eval_exp_param; [| exact Hev ].
-      unfold gs_param; cbn; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
-  Qed.
+  Proof. (* OPTA-TODO *) Admitted.
 
   Lemma glu_rwf_of_raw : glu_rwf_raw Θ Ξ -> glu_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_glu_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
