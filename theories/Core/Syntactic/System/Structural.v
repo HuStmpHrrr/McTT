@@ -20,7 +20,7 @@ From Stdlib Require Import Lia Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Export Transport.
+From Mctt.Core.Syntactic.System Require Export Scoping.
 Import Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
@@ -216,40 +216,25 @@ Hint Resolve wk_preserves_vlookup wk_preserves_vlookup_eq : mctt.
     throughout. *)
 
 (** What a global resolves to is closed in a well-formed context
-    ([wf_gc_lookup_closed]), so an operation on it vanishes, and the transported
+    ([wf_gc_resolve_closed]), so an operation on it vanishes, and the transported
     type and the type the rule wants coincide.  It is a separate tactic rather
     than part of the sets below, because it applies in three cases only. *)
 
-(** A parameter's type has no λ-variable either. *)
-Lemma wf_param_type_closed : forall Θ Ξ Γ n U k T,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    List.nth_error Ξ n = Some U ->
-    gu_params U ∋ #k : T ->
-    exp_scoped 0 (gs_cs Ξ) T[↑ₘ (S n)]ᵐ[sb_params n].
-Proof.
-  intros * HΓ Hn Hk; destruct wf_scoped as [Hctx _].
-  destruct (Hctx _ _ _ HΓ) as (_ & HΞ & _).
-  eapply param_type_scoped; eassumption.
-Qed.
-
 Ltac saturate_closed :=
   repeat match goal with
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ ?A _ |- _ =>
-      assert_fails (assert (exp_scoped 0 _ (ctx_pi Δ A)) by eassumption);
-      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ _ (Some ?M) |- _ =>
-      assert_fails (assert (exp_scoped 0 _ (ctx_fn Δ M)) by eassumption);
-      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : ?T |- _ =>
-      assert_fails (assert (exp_scoped 0 _ T[↑ₘ (S n)]ᵐ[sb_params n]) by eassumption);
-      pose proof (wf_param_type_closed _ _ _ _ _ _ _ Hc Hn Hk)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : gc_resolve ?Θ ?Ξ _ = Some (ge_def _ _ ?A _) |- _ =>
+      assert_fails (assert (exp_scoped 0 A) by eassumption);
+      pose proof (wf_gc_resolve_type_closed _ _ _ _ _ _ _ _ Hc Hl)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : gc_resolve ?Θ ?Ξ _ = Some (ge_def _ _ _ (Some ?M)) |- _ =>
+      assert_fails (assert (exp_scoped 0 M) by eassumption);
+      pose proof (wf_gc_resolve_body_closed _ _ _ _ _ _ _ _ Hc Hl)
   end.
 
 Ltac push_closed :=
   saturate_closed;
   repeat match goal with
-  | Hc : exp_scoped 0 _ ?X |- context [ exp_wk ?X ?φ ] => rewrite (exp_closed_wk X _ φ Hc)
-  | Hc : exp_scoped 0 _ ?X |- context [ exp_sub ?X ?σ ] => rewrite (exp_closed_sub X _ σ Hc)
+  | Hc : exp_scoped 0 ?X |- context [ exp_wk ?X ?φ ] => rewrite (exp_closed_wk X φ Hc)
+  | Hc : exp_scoped 0 ?X |- context [ exp_sub ?X ?σ ] => rewrite (exp_closed_sub X σ Hc)
   end.
 
 Ltac push_wk_step H :=
@@ -1121,14 +1106,14 @@ Qed.
 (** What the global context guarantees about the parameters in scope: popping a
     frame leaves a well-formed context, whose parameters are well formed. *)
 
-Lemma wf_gmod_ctx : forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ.
+Lemma wf_gmod_ctx : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ.
 Proof.
   induction 1; assumption.
 Qed.
 
-Lemma wf_gctx_pop : forall Θ U Ξ,
-    ⊢g Θ ⍮ U :: Ξ ->
-    ⊢g Θ ⍮ Ξ /\ ⊢ Θ ⍮ Ξ ⍮ gu_params U.
+Lemma wf_gctx_pop : forall Θ mp U Ξ,
+    ⊢g Θ ⍮ (mp, U) :: Ξ ->
+    ⊢g Θ ⍮ Ξ /\ ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
 Proof.
   intros * Hg; inversion Hg as [? ? Hs]; inversion Hs; subst.
   split; [ constructor; assumption |].
