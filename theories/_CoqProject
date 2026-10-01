@@ -61,6 +61,7 @@
 ./Core/Soundness/LogicalRelation/CoreTactics.v
 ./Core/Soundness/LogicalRelation/Definitions.v
 ./Core/Soundness/LogicalRelation/Lemmas.v
+./Core/Soundness/GluSim.v
 ./Core/Soundness/Realizability.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/TermStructureCases.v
