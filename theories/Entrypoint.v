@@ -1,108 +1,92 @@
 From Stdlib Require Extraction.
 From Stdlib Require Import ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlNativeString ExtrOcamlZInt.
-
-From Equations Require Import Equations.
+From Stdlib Require Import List String.
 
 From Mctt Require Import LibTactics.
-From Mctt.Algorithmic Require Import Typing.
-From Mctt.Core Require Import Base Completeness Soundness.
-From Mctt.Core.Syntactic Require Import SystemOpt.
-From Mctt.Extraction Require Import NbE TypeCheck GlobalCheck.
+From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Semantic Require Import NbE.
+From Mctt.Core.Syntactic.System Require Import Command.
+From Mctt.Extraction Require Import Command.
 From Mctt.Frontend Require Import Elaborator Parser.
 Import MenhirLibParser.Inter.
-Import Syntax_Notations.
+Import Syntax_Notations GlobalCtx_Notations.
 
-(** A compilation unit elaborates to its unit and one obligation per [eval]:
-    a closed expression, the type it was ascribed if it was, and the stack of
-    frames it stands on; see [Frontend.Elaborator].  The unit is the first to
-    be filed, so it is elaborated against no other.  Nothing proves the
-    elaborator's stacks well formed, so each is checked before the expression
-    is. *)
-Variant eval_result :=
-  | EvalGood : forall Ξ A M W,
-      nil ⍮ Ξ ⍮ ⋅ ⊢ M : A ->
-      nbe nil Ξ ⋅ M A W ->
-      eval_result
-  | StackFailure : forall Ξ (M : exp), ~ ⊢g nil ⍮ Ξ -> eval_result
-  | TypeCheckingFailure : forall Ξ A M, ~ nil ⍮ Ξ ⍮ ⋅ ⊢ M : A -> eval_result
-  | TypeInferenceFailure : forall Ξ M,
-      (forall A, ~ @alg_type_infer (gc_mk nil Ξ) ⋅ A M) -> eval_result
-.
+(** * The Driver's Entry Point
 
-Definition inspect {A} (x : A) : { y | x = y } := exist _ x eq_refl.
-Extraction Inline inspect.
-
-#[local]
-Ltac impl_obl_tac :=
-  try reflexivity;
-  try eassumption;
-  try apply user_exp_all;
-  try (on_all_hyp: fun H => apply (@soundness (gc_mk nil _)) in H as [? []]);
-  try (eapply nbe_order_sound; eassumption).
-
-#[tactic="impl_obl_tac"]
-Equations run_eval (e : eval_obl) : eval_result :=
-| (Ξ, M, oA) with check_gctx_closed Ξ => {
-  | right _ => StackFailure Ξ M _
-  | left Hg with oA => {
-    | Some A with @type_check_closed (gc_mk nil Ξ) Hg A _ M _ => {
-      | left _ with nbe_impl nil Ξ ⋅ M A _ => {
-        | exist _ W _ => EvalGood Ξ A M W _ _
-        }
-      | right _ => TypeCheckingFailure Ξ A M _
-      }
-    | None with @type_infer_closed (gc_mk nil Ξ) Hg M _ => {
-      | inleft (exist _ A _) with nbe_impl nil Ξ ⋅ M A _ => {
-        | exist _ W _ => EvalGood Ξ A M W _ _
-        }
-      | inright _ => TypeInferenceFailure Ξ M _
-      }
-    }
-  }
-.
-Next Obligation. (* nbe_order nil Ξ ⋅ M A, from the inferred type *)
-  match goal with
-  | HM : wf_exp _ _ ⋅ _ ?M |- nbe_order nil ?Ξ ⋅ ?M _ =>
-      apply (@soundness (gc_mk nil Ξ)) in HM as [? []]
-  end.
-  eapply nbe_order_sound; eassumption.
-Qed.
-
-(** The definitions that follow the last [eval] are seen by no obligation, so
-    the unit itself is checked as well. *)
-Variant unit_result :=
-  | UnitGood : forall U, nil ⍮ nil ⊢u U -> unit_result
-  | UnitFailure : forall U, ~ nil ⍮ nil ⊢u U -> unit_result
-.
-
-Definition check_unit (U : gunit) : unit_result :=
-  match check_gunit_closed U with
-  | left H => UnitGood U H
-  | right H => UnitFailure U H
-  end.
+    The program on the command line is parsed, elaborated into core commands,
+    and run by the verified interpreter of [Extraction.Command], which loads
+    every unit it imports.  Two things come from the driver: [load_path], the
+    file IO that finds a unit under the search root, and [read], which lexes and
+    parses what it found — the lexer being OCaml.  The termination proof of the
+    loader is a [Prop] argument, erased by extraction: it holds when the search
+    root has finitely many units ([load_step_wf]). *)
 
 Variant main_result :=
-  | AllGood : forall cst fp U es ur rs,
-      elaborate_prog nil cst = eok ((fp, U), es) ->
-      ur = check_unit U ->
-      rs = List.map run_eval es ->
-      main_result
-  | ElaborationFailure : forall cst msg, elaborate_prog nil cst = eerr msg -> main_result
+  | AllGood : Cst.prog -> gdeps -> gunit -> list eval_entry -> main_result
+  | ElaborationFailure : Cst.prog -> string -> main_result
+  | RunFailure : Cst.prog -> run_error -> main_result
   | ParserFailure : Aut.state -> Aut.Gram.token -> main_result
   | ParserTimeout : nat -> main_result
 .
 
-#[tactic="impl_obl_tac"]
-Equations main (log_fuel : nat) (buf : buffer) : main_result :=
-| log_fuel, buf with Parser.prog log_fuel buf => {
-  | Parsed_pr cst _ with inspect (elaborate_prog nil cst) => {
-    | exist _ (eok ((fp, U), es)) _ => AllGood cst fp U es (check_unit U) (List.map run_eval es) _ _ _
-    | exist _ (eerr msg) _ => ElaborationFailure cst msg _
-    }
-  | Fail_pr_full s t               => ParserFailure s t
-  | Timeout_pr                     => ParserTimeout log_fuel
-  }
-.
+Section Main.
+  Variable load_path : list string -> option string.
+  Variable read : string -> option Cst.prog.
+  Hypothesis Hwf : well_founded (load_step load_path).
+
+  (** Elaborated once more only to report its message: the interpreter's
+      [to_core] keeps the option. *)
+  Definition main (log_fuel : nat) (buf : buffer) : main_result :=
+    match Parser.prog log_fuel buf with
+    | Parsed_pr prg _ =>
+        match elaborate_core prg with
+        | eerr msg => ElaborationFailure prg msg
+        | eok _ =>
+            match prog_impl load_path read to_core prg (Hwf _) with
+            | rok (Θ, U, log) => AllGood prg Θ U log
+            | rerr e => RunFailure prg e
+            end
+        end
+    | Fail_pr_full s t => ParserFailure s t
+    | Timeout_pr => ParserTimeout log_fuel
+    end.
+
+  (** What [AllGood] certifies: the program means a well-formed global
+      context, the one computed up to the order of units within a level, and
+      every reported [eval] is well typed with the normal form shown. *)
+  Theorem main_sound : forall log_fuel buf prg Θ U log,
+      main log_fuel buf = AllGood prg Θ U log ->
+      (exists ΘR, prog_sem load_path read to_core prg ΘR U /\ gds_equiv ΘR Θ /\
+                  wf_gdeps ΘR /\ wf_gunit ΘR nil U) /\
+      (forall e, In e log ->
+         ⊢g ev_deps e ⍮ ev_stack e /\ ev_deps e ⍮ ev_stack e ⍮ ⋅ ⊢ ev_exp e : ev_typ e /\
+         nbe (ev_deps e) (ev_stack e) ⋅ (ev_exp e) (ev_typ e) (ev_nf e)).
+  Proof.
+    intros * H; unfold main in H.
+    destruct (Parser.prog log_fuel buf); try discriminate.
+    destruct (elaborate_core _); try discriminate.
+    destruct (prog_impl load_path read to_core _ _) as [[[Θ' U'] log'] |] eqn:Hr; try discriminate.
+    injection H as <- <- <- <-.
+    destruct (prog_impl_sound _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
+    split; [| exact Hlog ].
+    destruct (prog_sem_wf _ _ _ _ _ _ Hsem) as [HΘ HU].
+    exists ΘR; tauto.
+  Qed.
+
+  (** And a program that has a meaning is run to completion. *)
+  Theorem main_complete : forall log_fuel buf prg buf' ΘR U,
+      Parser.prog log_fuel buf = Parsed_pr prg buf' ->
+      prog_sem load_path read to_core prg ΘR U ->
+      (forall msg, elaborate_core prg <> eerr msg) ->
+      exists Θ log, main log_fuel buf = AllGood prg Θ U log /\ gds_equiv ΘR Θ.
+  Proof.
+    intros * Hp Hsem Hel; unfold main; rewrite Hp.
+    destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
+    destruct (prog_impl_complete _ _ _ _ _ _ Hsem (Hwf _)) as (Θ & log & Hr & Heq).
+    rewrite Hr; eauto.
+  Qed.
+End Main.
 
 Extraction Language OCaml.
 

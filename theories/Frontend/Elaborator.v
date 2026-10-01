@@ -2,22 +2,21 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax GlobalCtx.
+From Mctt.Core.Syntactic Require Import Syntax GlobalCtx Command.
 From Mctt.Frontend Require Import Resolve.
 
-Import Syntax_Notations GlobalCtx_Notations.
+Import Syntax_Notations.
 
 Open Scope string_scope.
 
 (** * Elaboration
 
-    A compilation unit elaborates into the global context: given the units
-    already filed, [Θ], it produces its own [gunit], to be filed next, and one
-    obligation per [eval].  A definition becomes a [ge_def] of the frame it is
-    declared in, a nested module a [ge_mod]; a name becomes a parameter
-    [$[n, k]], a member [a_glob] (relative for the open frames, absolute for a
-    filed unit), or a λ-variable.  An [eval] is checked where it stands: on the
-    stack of frames as they are at that point. *)
+    A compilation unit elaborates into core commands, needing no other unit: a
+    definition becomes a [cc_def] of the frame it is declared in, a nested
+    module a [cc_mod], an [import] of another unit a [cc_import]; a name
+    becomes a parameter [$[n, k]], a member [a_glob] (relative for the open
+    frames, absolute for an imported unit), or a λ-variable.  A path into an
+    imported unit is resolved lexically: typing decides what it names. *)
 
 (** ** Results *)
 
@@ -41,17 +40,19 @@ Definition echeck (b : bool) (e : string) : eres unit := if b then eok tt else e
 
 (** ** Open Frames
 
-    A frame being elaborated: its names, the frame itself, and what [import]
-    declared in it — aliases, and the units it made reachable by their full
-    path.  The imports that precede a unit's declaration are outside all of its
-    frames, in an [oscope] of their own. *)
+    A frame being elaborated: its names, its parameters, the commands it has
+    emitted so far (last first), and what [import] declared in it — aliases,
+    and the units it made reachable by their full path.  The imports that
+    precede a unit's declaration are outside all of its frames, in an [oscope]
+    of their own. *)
 Record oscope : Set := os_mk
   { os_alias : list (string * target)
   ; os_units : list (list string) }.
 
 Record oframe : Set := of_mk
   { of_names : eframe
-  ; of_unit : gunit
+  ; of_params : ctx
+  ; of_cmds : list ccmd
   ; of_scope : oscope }.
 
 Definition of_alias (f : oframe) : list (string * target) := os_alias (of_scope f).
@@ -75,9 +76,11 @@ Definition of_fresh (x : string) (f : oframe) : bool :=
   | _, _ => false
   end.
 
-Definition of_add (x : string) (E : gentry) (en : ename) (f : oframe) : oframe :=
+(** A new member [x], declared by the command [c]. *)
+Definition of_add (x : string) (en : ename) (c : ccmd) (f : oframe) : oframe :=
   {| of_names := ef_mk (ef_params (of_names f)) (em_ext (ef_mod (of_names f)) x en)
-   ; of_unit := gu_mk (gu_params (of_unit f)) (gu_mod (of_unit f) ⊳ x ↦ E)
+   ; of_params := of_params f
+   ; of_cmds := c :: of_cmds f
    ; of_scope := of_scope f |}.
 
 Definition os_fresh (x : string) (sc : oscope) : bool :=
@@ -93,9 +96,14 @@ Definition os_has_unit (fp : list string) (sc : oscope) : bool :=
   List.existsb (path_beq fp) (os_units sc).
 
 Definition of_new (xs : list string) (Δ : ctx) : oframe :=
-  {| of_names := ef_mk xs em_nil; of_unit := gu_mk Δ gm_nil; of_scope := os_mk nil nil |}.
+  {| of_names := ef_mk xs em_nil; of_params := Δ; of_cmds := nil; of_scope := os_mk nil nil |}.
 
 (** ** Terms *)
+
+(** A path into an imported unit, with the arguments supplied so far. *)
+Definition mr_opaque (fp mems : list string) (args : list exp) : mref :=
+  {| mr_qual := qu_abs fp; mr_mems := mems; mr_mod := None;
+     mr_public := true; mr_arity := 0; mr_args := args |}.
 
 (** Resolving a dotted name gives a term or a module, the latter with the
     module arguments supplied so far. *)
@@ -103,10 +111,16 @@ Inductive res : Set :=
 | r_exp : exp -> res
 | r_mod : mref -> res.
 
+(** An opaque path is a term if it names a member at all. *)
 Definition res_term (r : eres res) : eres exp :=
   match r with
   | eok (r_exp M) => eok M
-  | eok (r_mod _) => eerr "a module is not a term"
+  | eok (r_mod mr) =>
+      match mr_mod mr, mr_mems mr with
+      | None, _ :: _ => eok (sc_apply (a_glob {| p_qual := mr_qual mr; p_mems := mr_mems mr |}) (mr_args mr))
+      | None, nil => eerr "a unit is not a term"
+      | Some _, _ => eerr "a module is not a term"
+      end
   | eerr e => eerr e
   end.
 
@@ -118,19 +132,28 @@ Definition res_mod (r : eres res) : eres mref :=
   end.
 
 (** A member of a module that is not open: only a public one can be named, and
-    only once the closed modules crossed have their arguments. *)
+    only once the closed modules crossed have their arguments.  A member of an
+    opaque path extends it. *)
 Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
-  match em_lookup x (mr_mod mr) with
-  | None => eerr ("no member " ++ x)
-  | Some (en_def pv) =>
-      let args' := List.app (mr_args mr) args in
-      let* _ := echeck (negb (mr_public mr && pv)) (x ++ " is private") in
-      let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
-                  ("module arguments missing for " ++ x) in
-      eok (r_exp (sc_apply (a_glob {| p_qual := mr_qual mr; p_mems := List.app (mr_mems mr) (x :: nil) |}) args'))
-  | Some (en_mod n Φ) =>
-      eok (r_mod {| mr_qual := mr_qual mr; mr_mems := List.app (mr_mems mr) (x :: nil); mr_mod := Φ;
-                    mr_public := true; mr_arity := mr_arity mr + n; mr_args := List.app (mr_args mr) args |})
+  let args' := List.app (mr_args mr) args in
+  let mems' := List.app (mr_mems mr) (x :: nil) in
+  match mr_mod mr with
+  | None =>
+      (* REVISIT: privacy of imported members *)
+      eok (r_mod {| mr_qual := mr_qual mr; mr_mems := mems'; mr_mod := None;
+                    mr_public := true; mr_arity := 0; mr_args := args' |})
+  | Some Φ =>
+      match em_lookup x Φ with
+      | None => eerr ("no member " ++ x)
+      | Some (en_def pv) =>
+          let* _ := echeck (negb (mr_public mr && pv)) (x ++ " is private") in
+          let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
+                      ("module arguments missing for " ++ x) in
+          eok (r_exp (sc_apply (a_glob {| p_qual := mr_qual mr; p_mems := mems' |}) args'))
+      | Some (en_mod n Φx) =>
+          eok (r_mod {| mr_qual := mr_qual mr; mr_mems := mems'; mr_mod := Some Φx;
+                        mr_public := true; mr_arity := mr_arity mr + n; mr_args := args' |})
+      end
   end.
 
 Definition mr_apply (mr : mref) (args : list exp) : mref :=
@@ -167,7 +190,7 @@ Fixpoint fr_lookup (os : oscope) (d : nat) (x : string) (i : nat) (fs : list ofr
           match em_lookup x (ef_mod (of_names f)) with
           | Some (en_def _) => eok (r_exp (sc_apply (a_glob (p_rel i (x :: nil))) args))
           | Some (en_mod n Φ) =>
-              eok (r_mod {| mr_qual := qu_rel i; mr_mems := x :: nil; mr_mod := Φ;
+              eok (r_mod {| mr_qual := qu_rel i; mr_mems := x :: nil; mr_mod := Some Φ;
                             mr_public := true; mr_arity := n; mr_args := args |})
           | None =>
               match index_of x (ef_params (of_names f)) with
@@ -178,22 +201,12 @@ Fixpoint fr_lookup (os : oscope) (d : nat) (x : string) (i : nat) (fs : list ofr
       end
   end.
 
-(** A filed unit is closed: its parameters are among what a use of its
-    members has to supply. *)
-Definition unit_mref (Θ : gdeps) (fp : list string) (args : list exp) : eres mref :=
-  match gds_lookup Θ fp with
-  | Some U =>
-      eok {| mr_qual := qu_abs fp; mr_mems := nil; mr_mod := gm_erase (gu_mod U);
-             mr_public := true; mr_arity := List.length (gu_params U); mr_args := args |}
-  | None => eerr "unknown unit"
-  end.
-
 (** A unit is named by its full path only where it has been imported. *)
 Definition unit_reachable (os : oscope) (fs : list oframe) (fp : list string) : bool :=
   os_has_unit fp os || List.existsb (fun f => os_has_unit fp (of_scope f)) fs.
 
 Section Terms.
-  Variable (Θ : gdeps) (os : oscope) (fs : list oframe).
+  Variable (os : oscope) (fs : list oframe).
 
   (** [args] are the arguments the object is applied to, outermost last, so
       that the head of a spine decides whether they are module arguments. *)
@@ -230,8 +243,7 @@ Section Terms.
         end
     | Cst.glob fp =>
         let* _ := echeck (unit_reachable os fs fp) "the unit is not imported" in
-        let* mr := unit_mref Θ fp args in
-        eok (r_mod mr)
+        eok (r_mod (mr_opaque fp nil args))
     | Cst.proj o1 x =>
         let* mr := res_mod (elab_res ls d o1 nil) in
         mr_member mr x args
@@ -265,66 +277,64 @@ End Terms.
 (** ** Commands
 
     The state of a unit being elaborated: the open frames, innermost first,
-    and the [eval] obligations so far, each with the stack it is checked on. *)
-Definition eval_obl : Set := (gstack * exp * option typ)%type.
-
+    and the commands emitted before the unit's declaration (last first). *)
 Record ustate : Set := us_mk
   { us_outer : oscope
   ; us_frames : list oframe
-  ; us_evals : list eval_obl }.
-
-Definition us_stack (st : ustate) : gstack := List.map of_unit (us_frames st).
+  ; us_imps : list ccmd }.
 
 Definition us_top (st : ustate) (f : oframe -> eres oframe) : eres ustate :=
   match us_frames st with
-  | g :: gs => let* g' := f g in eok (us_mk (us_outer st) (g' :: gs) (us_evals st))
+  | g :: gs => let* g' := f g in eok (us_mk (us_outer st) (g' :: gs) (us_imps st))
   | nil => eerr "outside of any module"
   end.
 
 (** What [import] declares goes into the innermost frame, or before the unit's
-    declaration into the scope outside it. *)
-Definition us_scope (st : ustate) (f : oscope -> eres oscope) : eres ustate :=
+    declaration into the scope outside it; so does the [cc_import] it emits. *)
+Definition us_scope (st : ustate) (oc : option ccmd) (f : oscope -> eres oscope) : eres ustate :=
+  let cons_opt cs := match oc with Some c => c :: cs | None => cs end in
   match us_frames st with
   | g :: gs =>
       let* sc := f (of_scope g) in
-      eok (us_mk (us_outer st) ({| of_names := of_names g; of_unit := of_unit g; of_scope := sc |} :: gs)
-             (us_evals st))
-  | nil => let* sc := f (us_outer st) in eok (us_mk sc nil (us_evals st))
+      eok (us_mk (us_outer st)
+             ({| of_names := of_names g; of_params := of_params g;
+                 of_cmds := cons_opt (of_cmds g); of_scope := sc |} :: gs)
+             (us_imps st))
+  | nil => let* sc := f (us_outer st) in eok (us_mk sc nil (cons_opt (us_imps st)))
   end.
 
-(** A definition is checked against the members before it, and becomes one. *)
-Definition elab_def (Θ : gdeps) (st : ustate) (m : Cst.mods) (x : string) (oA oM : Cst.obj)
-  : eres ustate :=
+(** A definition is elaborated against the members before it, and becomes one. *)
+Definition elab_def (st : ustate) (m : Cst.mods) (x : string) (oA oM : Cst.obj) : eres ustate :=
   us_top st (fun f =>
     let* _ := echeck (of_fresh x f) (x ++ " is already declared") in
-    let* A := elab Θ (us_outer st) (us_frames st) oA in
-    let* M := elab Θ (us_outer st) (us_frames st) oM in
-    eok (of_add x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))
-           (en_def (Cst.md_private m)) f)).
+    let* A := elab (us_outer st) (us_frames st) oA in
+    let* M := elab (us_outer st) (us_frames st) oM in
+    eok (of_add x (en_def (Cst.md_private m))
+           (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M) f)).
 
-Definition elab_eval (Θ : gdeps) (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : eres ustate :=
-  let* M := elab Θ (us_outer st) (us_frames st) oM in
-  let* A := match oA with
-            | None => eok None
-            | Some oA => let* A := elab Θ (us_outer st) (us_frames st) oA in eok (Some A)
-            end in
-  eok (us_mk (us_outer st) (us_frames st) (List.app (us_evals st) ((us_stack st, M, A) :: nil))).
+Definition elab_eval (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : eres ustate :=
+  us_top st (fun f =>
+    let* M := elab (us_outer st) (us_frames st) oM in
+    let* A := match oA with
+              | None => eok None
+              | Some oA => let* A := elab (us_outer st) (us_frames st) oA in eok (Some A)
+              end in
+    eok {| of_names := of_names f; of_params := of_params f;
+           of_cmds := cc_eval M A :: of_cmds f; of_scope := of_scope f |}).
 
 (** [import] binds names only: the module's full path, for a unit, and with
-    [as] or [use] the names given. *)
-Definition elab_import (Θ : gdeps) (st : ustate) (fp ip : list string) (spec : Cst.ispec)
-  : eres ustate :=
+    [as] or [use] the names given.  Only an import of another unit is a
+    command. *)
+Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : eres ustate :=
   let* mr := match fp, ip with
              | nil, x :: ip' =>
-                 res_mod (elab_res Θ (us_outer st) (us_frames st) nil 0
+                 res_mod (elab_res (us_outer st) (us_frames st) nil 0
                             (List.fold_left Cst.proj ip' (Cst.var x)) nil)
              | nil, nil => eerr "nothing to import"
-             | _, _ =>
-                 let* mr := unit_mref Θ fp nil in
-                 List.fold_left (fun acc x => let* mr := acc in res_mod (mr_member mr x nil))
-                   ip (eok mr)
+             | _, _ => eok (mr_opaque fp ip nil)
              end in
-  us_scope st (fun sc =>
+  let oc := match fp with nil => None | _ => Some (cc_import fp ip) end in
+  us_scope st oc (fun sc =>
     let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
     match spec with
     | Cst.i_open => eok sc
@@ -336,31 +346,40 @@ Definition elab_import (Θ : gdeps) (st : ustate) (fp ip : list string) (spec : 
           (fun acc n =>
              let* sc := acc in
              let* _ := echeck (os_fresh n sc) (n ++ " is already declared") in
-             match em_lookup n (mr_mod mr) with
-             | Some (en_def pv) =>
-                 let* _ := echeck (negb (mr_public mr && pv)) (n ++ " is private") in
-                 eok (os_alias_add n (tg_mem mr n) sc)
-             | Some (en_mod k Φ) =>
+             match mr_mod mr with
+             | None =>
+                 (* REVISIT: privacy of imported members *)
                  eok (os_alias_add n
                         (tg_mod {| mr_qual := mr_qual mr; mr_mems := List.app (mr_mems mr) (n :: nil);
-                                   mr_mod := Φ; mr_public := true; mr_arity := mr_arity mr + k;
+                                   mr_mod := None; mr_public := true; mr_arity := 0;
                                    mr_args := mr_args mr |}) sc)
-             | None => eerr ("no member " ++ n)
+             | Some Φ =>
+                 match em_lookup n Φ with
+                 | Some (en_def pv) =>
+                     let* _ := echeck (negb (mr_public mr && pv)) (n ++ " is private") in
+                     eok (os_alias_add n (tg_mem mr n) sc)
+                 | Some (en_mod k Φn) =>
+                     eok (os_alias_add n
+                            (tg_mod {| mr_qual := mr_qual mr; mr_mems := List.app (mr_mems mr) (n :: nil);
+                                       mr_mod := Some Φn; mr_public := true; mr_arity := mr_arity mr + k;
+                                       mr_args := mr_args mr |}) sc)
+                 | None => eerr ("no member " ++ n)
+                 end
              end)
           ns (eok sc)
     end).
 
-(** Opening a module pushes its frame; closing it pops the frame and files it
-    as a member of the one outside. *)
+(** Opening a module pushes its frame; closing it pops the frame and makes it
+    a member of the one outside. *)
 Definition us_open (st : ustate) (f : oframe) : ustate :=
-  us_mk (us_outer st) (f :: us_frames st) (us_evals st).
+  us_mk (us_outer st) (f :: us_frames st) (us_imps st).
 
 Definition us_close (x : string) (st : ustate) : eres ustate :=
   match us_frames st with
   | f :: g :: gs =>
-      let E := ge_mod (gu_params (of_unit f)) (gu_mod (of_unit f)) in
-      let en := en_mod (List.length (gu_params (of_unit f))) (ef_mod (of_names f)) in
-      eok (us_mk (us_outer st) (of_add x E en g :: gs) (us_evals st))
+      let en := en_mod (List.length (ef_params (of_names f))) (ef_mod (of_names f)) in
+      let c := cc_mod x (of_params f) (List.rev (of_cmds f)) in
+      eok (us_mk (us_outer st) (of_add x en c g :: gs) (us_imps st))
   | _ => eerr "no module to close"
   end.
 
@@ -369,13 +388,13 @@ Definition us_close (x : string) (st : ustate) : eres ustate :=
     past the guard condition.  [module A.B] opens [A], with no parameters, and
     [B] inside it; a name already declared cannot be reopened, since what
     follows it may already depend on its members. *)
-Fixpoint elab_cmd (Θ : gdeps) (st : ustate) (c : Cst.cmd) : eres ustate :=
+Fixpoint elab_cmd (st : ustate) (c : Cst.cmd) : eres ustate :=
   match c with
   | Cst.c_mod p ps body =>
       let go := fix go (st : ustate) (cs : list Cst.cmd) : eres ustate :=
                   match cs with
                   | nil => eok st
-                  | c :: cs' => let* st' := elab_cmd Θ st c in go st' cs'
+                  | c :: cs' => let* st' := elab_cmd st c in go st' cs'
                   end in
       (fix open_path (p : list string) (st : ustate) : eres ustate :=
          match p with
@@ -385,7 +404,7 @@ Fixpoint elab_cmd (Θ : gdeps) (st : ustate) (c : Cst.cmd) : eres ustate :=
                          let* _ := echeck (of_fresh x f) (x ++ " is already declared") in eok f) in
              let* f := match p' with
                        | nil =>
-                           let* Δ := elab_params Θ (us_outer st) (us_frames st) nil 0 ps ⋅ in
+                           let* Δ := elab_params (us_outer st) (us_frames st) nil 0 ps ⋅ in
                            eok (of_new (List.rev (List.map fst ps)) Δ)
                        | _ => eok (of_new nil ⋅)
                        end in
@@ -395,33 +414,35 @@ Fixpoint elab_cmd (Θ : gdeps) (st : ustate) (c : Cst.cmd) : eres ustate :=
                          end in
              us_close x st1
          end) p st
-  | Cst.c_def m x oA oM => elab_def Θ st m x oA oM
-  | Cst.c_eval oM oA => elab_eval Θ st oM oA
-  | Cst.c_import fp ip spec => elab_import Θ st fp ip spec
+  | Cst.c_def m x oA oM => elab_def st m x oA oM
+  | Cst.c_eval oM oA => elab_eval st oM oA
+  | Cst.c_import fp ip spec => elab_import st fp ip spec
   end.
 
-Fixpoint elab_cmds (Θ : gdeps) (st : ustate) (cs : list Cst.cmd) : eres ustate :=
+Fixpoint elab_cmds (st : ustate) (cs : list Cst.cmd) : eres ustate :=
   match cs with
   | nil => eok st
-  | c :: cs' => let* st' := elab_cmd Θ st c in elab_cmds Θ st' cs'
+  | c :: cs' => let* st' := elab_cmd st c in elab_cmds st' cs'
   end.
 
 (** ** Units
 
-    A unit, elaborated against the units filed so far: its imports, outside
-    of its frame; its parameters, which see them; then its body in its frame,
-    which is what is filed under its path. *)
-Definition elaborate_prog (Θ : gdeps) (prg : Cst.prog)
-  : eres ((list string * gunit) * list eval_obl)%type :=
-  let '(imports, (fp, ps, cs)) := prg in
-  let* _ := echeck (match gds_lookup Θ fp with None => true | Some _ => false end)
-              "the unit is already filed" in
-  let* st0 := elab_cmds Θ (us_mk (os_mk nil nil) nil nil) imports in
-  let* Δ := elab_params Θ (us_outer st0) nil nil 0 ps ⋅ in
-  let* st := elab_cmds Θ (us_open st0 (of_new (List.rev (List.map fst ps)) Δ)) cs in
+    A unit: its imports, outside of its frame; its parameters, which see them;
+    then its body in its frame.  Its own path is [prog_path]'s business. *)
+Definition elaborate_core (prg : Cst.prog) : eres cunit :=
+  let '(imports, (_, ps, cs)) := prg in
+  let* st0 := elab_cmds (us_mk (os_mk nil nil) nil nil) imports in
+  let* Δ := elab_params (us_outer st0) nil nil 0 ps ⋅ in
+  let* st := elab_cmds (us_open st0 (of_new (List.rev (List.map fst ps)) Δ)) cs in
   match us_frames st with
-  | f :: nil => eok ((fp, of_unit f), us_evals st)
+  | f :: nil => eok (List.rev (us_imps st), of_params f, List.rev (of_cmds f))
   | _ => eerr "unbalanced modules"
+  end.
+
+Definition to_core (prg : Cst.prog) : option cunit :=
+  match elaborate_core prg with
+  | eok u => Some u
+  | eerr _ => None
   end.
 
 (** ** User Expressions

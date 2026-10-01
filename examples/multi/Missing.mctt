@@ -1,0 +1,7 @@
+import Lib::Nowhere
+
+module Missing where
+
+eval 0 : Nat
+
+end

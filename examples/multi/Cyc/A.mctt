@@ -1,0 +1,7 @@
+import Cyc::B
+
+module Cyc::A where
+
+def a : Nat := 0 end
+
+end

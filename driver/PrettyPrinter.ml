@@ -1,4 +1,6 @@
 open McttExtracted.Entrypoint
+open McttExtracted.Command1
+module Command1 = McttExtracted.Command1
 open McttExtracted.Syntax
 module Parser = McttExtracted.Parser
 module ParserMessages = McttExtracted.ParserMessages
@@ -281,45 +283,42 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (* Formatting main_result *)
 (************************************************************)
 
-let format_eval_result (f : Format.formatter) : eval_result -> unit =
+let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
+  Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
+    format_nf r.ev_nf format_exp r.ev_typ
+
+let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   let open Format in
   function
-  | EvalGood (_, typ, exp, nf) ->
-     fprintf f "@[<v 2>Elaborated:@ @[<hv 0>%a@ : %a@]@]" format_exp exp
-       format_exp typ;
-     pp_force_newline f ();
-     fprintf f "@[<v 2>Normalized Result:@ @[<hv 0>%a@ : %a@]@]" format_nf nf
-       format_exp typ
-  | StackFailure (_, exp) ->
-     fprintf f "@[<v 2>Ill-Formed Global Context:@ %a@;<1 -2>is checked where definitions are ill formed@]"
-       format_exp exp
-  | TypeCheckingFailure (_, typ, exp) ->
-     fprintf f "@[<v 2>Type Checking Failure:@ %a@;<1 -2>is not of@ %a@]"
+  | Coq_re_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
+  | Coq_re_def (x, _, typ, exp) ->
+     fprintf f "@[<hov 2>Error: the body of %s,@ %a,@ is not of type@ %a@]" x
        format_exp exp format_exp typ
-  | TypeInferenceFailure (_, exp) ->
-     fprintf f "@[<v 2>Type Inference Failure:@ %a@;<1 -2>has no inferable type@]"
-       format_exp exp
+  | Coq_re_eval_check (_, exp, typ) ->
+     fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
+       format_exp typ
+  | Coq_re_eval_infer (_, exp) ->
+     fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
+  | Coq_re_cycle ch ->
+     fprintf f "@[<hov 2>Error: cyclic import:@ %s@]"
+       (String.concat " -> " (List.map Command1.path_str ch))
+  | Coq_re_unit (fp, msg) ->
+     fprintf f "@[<hov 2>Error: %s:@ %s@]" (Command1.path_str fp) msg
 
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in
   function
-  | AllGood (cst, _, _, _, ur, rs) ->
-     fprintf f "@[<v 2>Parsed:@ %a@]" format_prog cst;
-     List.iter
-       (fun r ->
-         pp_force_newline f ();
-         format_eval_result f r)
-       rs;
-     (match ur with
-      | UnitGood _ -> ()
-      | UnitFailure _ ->
-         pp_force_newline f ();
-         fprintf f "@[<v 2>Ill-Formed Unit:@ some definition does not type-check@]")
-  | ElaborationFailure (cst, msg) ->
-     printf "@[<v 2>Elaboration Failure:@ %a@;<1 -2>cannot be elaborated:@ %s@]"
-       format_prog cst msg
+  | AllGood (_, _, _, log) ->
+     pp_open_vbox f 0;
+     List.iteri
+       (fun i r ->
+         if i > 0 then pp_print_cut f ();
+         format_eval f r)
+       log;
+     pp_close_box f ()
+  | RunFailure (_, e) -> format_run_error f e
+  | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg
   | ParserFailure (s, t) ->
-     printf "@[<v 2>Parser Failure:@ on %a:@ @ @[<hov 0>%a@]@]"
-       Lexer.format_token t pp_print_text
-       (ParserMessages.message (Parser.Aut.coq_N_of_state s))
-  | ParserTimeout fuel -> printf "@[<v 2>Parser Timeout with Fuel %d@]" fuel
+     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_print_text
+       (String.trim (ParserMessages.message (Parser.Aut.coq_N_of_state s)))
+  | ParserTimeout fuel -> fprintf f "@[<hov 2>Error: parser timeout with fuel %d@]" fuel

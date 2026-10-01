@@ -1,0 +1,7 @@
+import Lib::Bad
+
+module BadDep where
+
+eval 0 : Nat
+
+end

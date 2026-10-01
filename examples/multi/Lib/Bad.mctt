@@ -1,0 +1,5 @@
+module Lib::Bad where
+
+def wrong : Nat := Type@0 end
+
+end

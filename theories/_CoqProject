@@ -87,6 +87,7 @@
 ./Core/Syntactic/System/Transport.v
 ./Core/Syntactic/SystemOpt.v
 ./Entrypoint.v
+./Extraction/Command.v
 ./Extraction/Evaluation.v
 ./Extraction/GlobalCheck.v
 ./Extraction/NbE.v

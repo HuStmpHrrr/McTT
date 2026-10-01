@@ -1,0 +1,5 @@
+module Lib::Other where
+
+def x : Nat := 0 end
+
+end

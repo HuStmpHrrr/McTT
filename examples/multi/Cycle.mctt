@@ -1,0 +1,8 @@
+(* Cyc::A imports Cyc::B, which imports Cyc::A. *)
+import Cyc::A
+
+module Cycle where
+
+eval Cyc::A.a : Nat
+
+end

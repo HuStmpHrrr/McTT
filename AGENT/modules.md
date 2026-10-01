@@ -338,3 +338,22 @@ interfaces — is future work, and none of it is forced by the present design.
 * A grammar change means `make -C theories update_parserMessages`, filling in
   each `<YOUR SYNTAX ERROR MESSAGE HERE>`, then `check_parserMessages`; the build
   fails on a missing sentence.
+
+## The driver pipeline (supersedes the elaboration description above)
+
+* `Frontend/Elaborator.v`: `elaborate_core : Cst.prog -> eres cunit` is lexical
+  and reads no filed unit. A path into an imported unit stays unresolved
+  (`mr_opaque`) and is checked by typing. Privacy of imported members is not
+  checked (REVISIT).
+* `Core/Syntactic/System/Command.v`: the static semantics of core commands
+  (`run_cmd`/`run_cmds`/`run_unit`, `prog_sem`). `import` loads through
+  `load_path`, runs the unit from nothing, and merges it in; the chain rules
+  cycles out. The main theorem is `run_wf`.
+* `Extraction/Command.v`: the interpreter `prog_impl`, which accumulates one
+  gdeps and checks each unit against its restriction to the unit's closure.
+  It recurses on `Acc load_step`, which is erased, and is sound and complete
+  for `prog_sem` (`prog_impl_sound`, `prog_impl_complete`).
+* `Entrypoint.v`: `main load_path read`, with `main_sound`/`main_complete`.
+  The driver passes `load_path` (unit `X::Y` is `<search-root>/X/Y.mctt`,
+  flag `--search-root`, default `.`) and `read` (OCaml lexer + extracted
+  parser). Multi-file tests are under `examples/multi`.

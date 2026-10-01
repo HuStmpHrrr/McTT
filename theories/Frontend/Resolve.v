@@ -1,24 +1,23 @@
 From Stdlib Require Import Lia List PeanoNat Relation_Operators String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax GlobalCtx.
+From Mctt.Core.Syntactic Require Import Syntax.
 
-Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
+Import Syntax_Notations Wk_Notations.
 
 (** * Names in Scope
 
-    The elaborator emits into the global context: a unit becomes a [gunit], a
-    definition a [ge_def], a nested module a [ge_mod], and a name one of
-    [$[n, k]], [a_glob] or a λ-variable.  What the global context does not
-    record is names that are not members: a frame's parameters are a nameless
-    [ctx].  So the elaborator keeps, per open frame, a copy of the frame with
-    the types stripped and the parameters named: an [eframe].
+    The elaborator emits core commands: a definition becomes a [cc_def], a
+    nested module a [cc_mod], and a name one of [$[n, k]], [a_glob] or a
+    λ-variable.  Commands do not record names that are not members: a frame's
+    parameters are a nameless [ctx].  So the elaborator keeps, per open frame,
+    its members with the types stripped and its parameters named: an [eframe].
 
     Visibility: a private member can be named from the frame it is declared
     in and from the frames nested inside it, i.e. when it is reached as a
     member of a frame on the stack.  Through a module that is not open — a
-    sibling, a module nested in one, a filed unit — only public members are
-    reachable. *)
+    sibling, a module nested in one — only public members are reachable.  An
+    imported unit is not known at all, only its path. *)
 
 (** ** Frames *)
 
@@ -43,18 +42,6 @@ Fixpoint em_lookup (x : string) (Φ : emod) : option ename :=
   | em_ext Φ' y E => if String.eqb x y then Some E else em_lookup x Φ'
   end.
 
-(** What a module filed in [Θ] looks like to the elaborator. *)
-Fixpoint ge_erase (E : gentry) : ename :=
-  match E with
-  | ge_def _ pv _ _ => en_def pv
-  | ge_mod Δ Φ => en_mod (List.length Δ) (gm_erase Φ)
-  end
-with gm_erase (Φ : gmod) : emod :=
-  match Φ with
-  | gm_nil => em_nil
-  | gm_ext Φ' x E => em_ext (gm_erase Φ') x (ge_erase E)
-  end.
-
 Fixpoint index_of (x : string) (xs : list string) : option nat :=
   match xs with
   | nil => None
@@ -67,11 +54,13 @@ Fixpoint index_of (x : string) (xs : list string) : option nat :=
     its members, whether only its public members may be named, how many
     arguments a use of a member has to supply ([mr_arity]: the parameters of
     the closed modules crossed, which resolution generalizes over), and the
-    arguments given so far. *)
+    arguments given so far.  Its members are [None] for a path into an
+    imported unit, which is *opaque*: whether it names a module or a
+    definition is left to typing, and [mr_public]/[mr_arity] mean nothing. *)
 Record mref : Set := mr_mk
   { mr_qual : qual
   ; mr_mems : list string
-  ; mr_mod : emod
+  ; mr_mod : option emod
   ; mr_public : bool
   ; mr_arity : nat
   ; mr_args : list exp }.

@@ -1,0 +1,7 @@
+import Lib::Wrong
+
+module Misnamed where
+
+eval 0 : Nat
+
+end

@@ -1,12 +1,20 @@
 open McttLib.Main
 
 let () =
-  if Array.length Sys.argv <> 2
-  then begin
-    Printf.fprintf stderr
-      "Missing <input-file> argument.\nUsage: %s <input-file>\n" Sys.argv.(0);
-    exit 7
-  end;
-  let filename = Sys.argv.(1) in
-  let code = main_of_filename filename in
-  exit code
+  let search_root = ref "." in
+  let files = ref [] in
+  let usage =
+    Printf.sprintf "Usage: %s [--search-root <dir>] <input-file>" Sys.argv.(0)
+  in
+  let specs =
+    [ ( "--search-root",
+        Arg.Set_string search_root,
+        "<dir> where imported units are looked up: X::Y is <dir>/X/Y.mctt \
+         (default: the current directory)" ) ]
+  in
+  Arg.parse specs (fun f -> files := f :: !files) usage;
+  match !files with
+  | [ filename ] -> exit (main_of_filename ~search_root:!search_root filename)
+  | _ ->
+     prerr_endline usage;
+     exit 7
