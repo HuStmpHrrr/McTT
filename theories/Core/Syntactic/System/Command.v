@@ -25,14 +25,13 @@ Reserved Notation "Θ ⍮ Ξ ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ'"
 
 (** ** The Stack
 
-    A frame is an unfinished unit or module, a [gunit]: parameters, and the
-    members declared so far. *)
-
-Definition gs_push (Δ : ctx) (Ξ : gstack) : gstack := gu_mk Δ ⋄ :: Ξ.
+    A frame is an unfinished unit or module, a [gunit]: parameters, their
+    types at the frame's level, and the members declared so far.  A frame is
+    pushed empty: [gs_push Ξ Δ ⋄] ([Discharge]). *)
 
 Definition gs_add (x : string) (E : gentry) (Ξ : gstack) : gstack :=
   match Ξ with
-  | U :: Ξ' => gu_mk (gu_params U) (gu_mod U ⊳ x ↦ E) :: Ξ'
+  | U :: Ξ' => gu_mk (gu_params U) (gu_ptys U) (gu_mod U ⊳ x ↦ E) :: Ξ'
   | nil => nil
   end.
 
@@ -42,9 +41,9 @@ Definition gs_fresh (x : string) (Ξ : gstack) : Prop :=
   | nil => False
   end.
 
-(** Filing puts a unit on a new level above everything filed so far, hence
-    above every unit it imported. *)
-Definition file (fp : fpath) (U : gunit) (Θ : gdeps) : gdeps := ((fp, U) :: nil) :: Θ.
+(** Filing puts a unit, closed, on a new level above everything filed so far,
+    hence above every unit it imported. *)
+Definition file (fp : fpath) (U : gunit) (Θ : gdeps) : gdeps := ((fp, gu_close fp U) :: nil) :: Θ.
 
 (** ** Nested Modules
 
@@ -129,8 +128,8 @@ Section Semantics.
   | rc_mod : forall ch Θ Ξ x Δ cs Θ' U,
       ⊢ Θ ⍮ Ξ ⍮ Δ ->
       gs_fresh x Ξ ->
-      Θ ⍮ gs_push Δ Ξ ⊢[ch] cs ⇝* Θ' ⍮ U :: Ξ ->
-      Θ ⍮ Ξ ⊢[ch] cc_mod x Δ cs ⇝ Θ' ⍮ gs_add x (ge_mod Δ (gu_mod U)) Ξ
+      Θ ⍮ gs_push Ξ Δ ⋄ ⊢[ch] cs ⇝* Θ' ⍮ U :: Ξ ->
+      Θ ⍮ Ξ ⊢[ch] cc_mod x Δ cs ⇝ Θ' ⍮ gs_add x (ge_mod Δ (gm_close (List.length Ξ) (p_rel (Nat.pred (List.length Ξ)) (x :: nil)) Δ (gu_mod U))) Ξ
   (** Filed already, by an earlier import in any unit: shared, not reloaded. *)
   | rc_import_filed : forall ch Θ Ξ fp ip U,
       gds_lookup Θ fp = Some U ->
@@ -175,7 +174,7 @@ Section Semantics.
   | ru_intro : forall ch imps P cs Θ1 Θ2 U,
       nil ⍮ nil ⊢[ch] imps ⇝* Θ1 ⍮ nil ->
       ⊢ Θ1 ⍮ nil ⍮ P ->
-      Θ1 ⍮ gs_push P nil ⊢[ch] cs ⇝* Θ2 ⍮ U :: nil ->
+      Θ1 ⍮ gs_push (@nil gunit) P ⋄ ⊢[ch] cs ⇝* Θ2 ⍮ U :: nil ->
       run_unit ch (imps, P, cs) Θ2 U.
 
   (** The unit given on the command line: run like an imported one, with
@@ -196,7 +195,7 @@ Section GrowLevels.
   Hypothesis Hsub : Θ ⊑ Θ'.
 
   Lemma global_levels_grow :
-    (forall Θ0 Ξ E, Θ0 ⍮ Ξ ⊢e E -> Θ0 = Θ -> ⊢g Θ' ⍮ Ξ -> Θ' ⍮ Ξ ⊢e E) /\
+    (forall Θ0 Ξ x E, Θ0 ⍮ Ξ ⊢e x ↦ E -> Θ0 = Θ -> ⊢g Θ' ⍮ Ξ -> Θ' ⍮ Ξ ⊢e x ↦ E) /\
     (forall Θ0 Ξ Δ Φ, Θ0 ⍮ Ξ ⍮ Δ ⊢m Φ -> Θ0 = Θ -> ⊢g Θ' ⍮ Ξ -> Θ' ⍮ Ξ ⍮ Δ ⊢m Φ).
   Proof.
     apply global_wf_mut_ind; intros; subst.
@@ -208,9 +207,9 @@ Section GrowLevels.
     - econstructor; apply Hc; assumption.
     - assert (HΦ : Θ' ⍮ Ξ ⍮ Δ ⊢m Φ) by auto.
       econstructor; [ exact HΦ | | assumption ].
-      match goal with IH : _ = _ -> ⊢g _ ⍮ gu_mk Δ Φ :: Ξ -> _ |- _ => apply IH end;
+      match goal with IH : _ = _ -> ⊢g _ ⍮ gu_mk Δ _ Φ :: Ξ -> _ |- _ => apply IH end;
         [ reflexivity |].
-      constructor; constructor; [ apply wf_gctx_stack; assumption | constructor; exact HΦ ].
+      constructor; constructor; [ apply wf_gctx_stack; assumption | constructor; [ exact HΦ | reflexivity ] ].
   Qed.
 
   Lemma gstack_levels_grow : forall Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ' -> ⊢g Θ' ⍮ Ξ.
@@ -220,7 +219,7 @@ Section GrowLevels.
     assert (HΞ' : ⊢g Θ' ⍮ Ξ) by (apply IH; [ constructor |]; assumption).
     inversion HU; subst.
     constructor; constructor; [ apply wf_gctx_stack; exact HΞ' |].
-    constructor; eapply (proj2 global_levels_grow); eauto.
+    constructor; [ eapply (proj2 global_levels_grow); eauto | assumption ].
   Qed.
 End GrowLevels.
 
@@ -289,8 +288,8 @@ Section Determinism.
           destruct (IH1 _ _ _ H1); subst
       end.
       match goal with
-      | IH2 : forall _ _ _, run_cmds _ ?T (gs_push ?P nil) ?cs _ _ -> _,
-        H2 : run_cmds _ ?T (gs_push ?P nil) ?cs _ _ |- _ =>
+      | IH2 : forall _ _ _, run_cmds _ ?T (gs_push (@nil gunit) ?P ⋄) ?cs _ _ -> _,
+        H2 : run_cmds _ ?T (gs_push (@nil gunit) ?P ⋄) ?cs _ _ |- _ =>
           destruct (IH2 _ _ _ H2) as [? Heq]; injection Heq; intros; subst
       end; split; reflexivity.
   Qed.
@@ -568,7 +567,7 @@ Qed.
 (** ** Filing *)
 
 Lemma file_lookup : forall fp U Θ fq,
-    gds_lookup (file fp U Θ) fq = if path_beq fq fp then Some U else gds_lookup Θ fq.
+    gds_lookup (file fp U Θ) fq = if path_beq fq fp then Some (gu_close fp U) else gds_lookup Θ fq.
 Proof.
   intros; unfold file; rewrite gds_lookup_cons, gd_lookup_cons; destruct (path_beq fq fp); reflexivity.
 Qed.
@@ -594,18 +593,24 @@ Proof. intros * H; unfold file; rewrite gds_level_cons, H; reflexivity. Qed.
 
 (** ** Merging Keeps Well-formedness *)
 
+(** What [wf_gdep_cons] files: a unit checked as the only frame, closed. *)
+Definition unit_ok (Θ : gdeps) (fp : fpath) (U : gunit) : Prop :=
+  exists U0, U = gu_close fp U0 /\ Θ ⍮ nil ⊢u U0.
+
 Lemma wf_gdep_iff : forall Θ d,
     wf_gdep Θ d <->
     wf_gdeps Θ /\ NoDup (map fst d) /\
-    (forall fp U, In (fp, U) d -> Θ ⍮ nil ⊢u U /\ gds_fresh fp Θ).
+    (forall fp U, In (fp, U) d -> unit_ok Θ fp U /\ gds_fresh fp Θ).
 Proof.
   intros; split.
   - induction 1 as [| Θ d U fp Hd IH HU Hfr Hfr']; [ split; [ assumption | split; [ constructor | contradiction ] ] |].
     destruct IH as (HΘ & Hnd & Hu); split; [ assumption | split; [ constructor; assumption |] ].
-    intros fq V [[= <- <-] | Hin]; auto.
+    intros fq V [[= <- <-] | Hin]; [ split; [ exists U; split; [ reflexivity | assumption ] | assumption ] | auto ].
   - induction d as [| [fp U] d IH]; intros (HΘ & Hnd & Hu); [ constructor; assumption |].
-    inversion Hnd; subst; constructor; [ apply IH; split; [ assumption | split; [ assumption | intros; apply Hu; right; assumption ] ]
-                                      | apply (Hu fp U); left; reflexivity | apply (Hu fp U); left; reflexivity | assumption ].
+    inversion Hnd; subst.
+    destruct (Hu fp U ltac:(left; reflexivity)) as [(U0 & -> & HU0) Hfr].
+    constructor; [ apply IH; split; [ assumption | split; [ assumption | intros; apply Hu; right; assumption ] ]
+                 | exact HU0 | exact Hfr | assumption ].
 Qed.
 
 Lemma wf_file : forall fp U Θ,
@@ -650,11 +655,17 @@ Lemma agree_pop_r : forall d Θ Θ', wf_gdeps (d :: Θ') -> gds_agree Θ (d :: �
 Proof. intros * Hwf Hag; apply gds_agree_sym, (agree_pop_l d); [| apply gds_agree_sym ]; assumption. Qed.
 
 (** [global_levels_grow] for a filed unit, which sees no frame. *)
-Lemma unit_levels_grow : forall Θ Θ' U,
+Lemma unit_levels_grow0 : forall Θ Θ' U,
     Θ ⊑ Θ' -> wf_gdeps Θ' -> Θ ⍮ nil ⊢u U -> Θ' ⍮ nil ⊢u U.
 Proof.
-  intros * Hsub HΘ' HU; inversion HU; subst; constructor.
+  intros * Hsub HΘ' HU; inversion HU; subst; constructor; [| assumption ].
   eapply (proj2 (global_levels_grow _ _ Hsub)); [ eassumption | reflexivity | constructor; constructor; exact HΘ' ].
+Qed.
+
+Lemma unit_levels_grow : forall Θ Θ' fp U,
+    Θ ⊑ Θ' -> wf_gdeps Θ' -> unit_ok Θ fp U -> unit_ok Θ' fp U.
+Proof.
+  intros * Hsub HΘ' (U0 & -> & HU); exists U0; split; [ reflexivity | eapply unit_levels_grow0; eassumption ].
 Qed.
 
 Lemma gd_union_keys : forall d d',
@@ -805,14 +816,14 @@ Section WellFormed.
       filed below it. *)
   Definition canon (Θ : gdeps) : Prop :=
     forall fp U, gds_lookup Θ fp = Some U ->
-      exists src prg u ch ΘU, load_path fp = Some src /\ read src = Some prg /\ to_core prg = Some u /\
-        run_unit ch u ΘU U /\ gds_level Θ fp = Some (List.length ΘU).
+      exists src prg u ch ΘU U0, load_path fp = Some src /\ read src = Some prg /\ to_core prg = Some u /\
+        run_unit ch u ΘU U0 /\ U = gu_close fp U0 /\ gds_level Θ fp = Some (List.length ΘU).
 
   Lemma canon_agree : forall Θ1 Θ2, canon Θ1 -> canon Θ2 -> gds_agree Θ1 Θ2.
   Proof.
     intros * H1 H2 fp U1 U2 E1 E2.
-    destruct (H1 _ _ E1) as (src & prg & u & ch & ΘU & Hl & Hr & Ht & Hu & Hlv).
-    destruct (H2 _ _ E2) as (src' & prg' & u' & ch' & ΘU' & Hl' & Hr' & Ht' & Hu' & Hlv').
+    destruct (H1 _ _ E1) as (src & prg & u & ch & ΘU & U0 & Hl & Hr & Ht & Hu & -> & Hlv).
+    destruct (H2 _ _ E2) as (src' & prg' & u' & ch' & ΘU' & U0' & Hl' & Hr' & Ht' & Hu' & -> & Hlv').
     rewrite Hl in Hl'; injection Hl' as <-; rewrite Hr in Hr'; injection Hr' as <-;
       rewrite Ht in Ht'; injection Ht' as <-.
     destruct (proj2 (proj2 (run_functional load_path read to_core)) _ _ _ _ Hu _ _ _ Hu') as [<- <-].
@@ -830,18 +841,18 @@ Section WellFormed.
     intros * Hn Hl Hr Ht Hu Hc fq V HV; rewrite file_lookup in HV.
     destruct (path_beq fq fp) eqn:Hb.
     - apply path_beq_true in Hb as ->; injection HV as <-.
-      exists src, prg, u, ch, ΘU; repeat split; try assumption; apply file_level, Hn.
-    - destruct (Hc _ _ HV) as (src' & prg' & u' & ch' & ΘV & ? & ? & ? & ? & Hlv).
-      exists src', prg', u', ch', ΘV; repeat split; try assumption; apply file_level_old, Hlv.
+      exists src, prg, u, ch, ΘU, U; repeat split; try assumption; apply file_level, Hn.
+    - destruct (Hc _ _ HV) as (src' & prg' & u' & ch' & ΘV & V0 & ? & ? & ? & ? & ? & Hlv).
+      exists src', prg', u', ch', ΘV, V0; repeat split; try assumption; apply file_level_old, Hlv.
   Qed.
 
   Lemma canon_merge : forall Θ1 Θ2, canon Θ1 -> canon Θ2 -> canon (gds_merge Θ1 Θ2).
   Proof.
     intros * H1 H2 fp U HU; pose proof (canon_agree _ _ H1 H2) as Hag.
     apply merge_inv in HU as [HU | HU];
-      [ destruct (H1 _ _ HU) as (src & prg & u & ch & ΘU & ? & ? & ? & ? & Hlv)
-      | destruct (H2 _ _ HU) as (src & prg & u & ch & ΘU & ? & ? & ? & ? & Hlv) ];
-      exists src, prg, u, ch, ΘU; repeat split; try assumption; apply merge_level; auto.
+      [ destruct (H1 _ _ HU) as (src & prg & u & ch & ΘU & U0 & ? & ? & ? & ? & ? & Hlv)
+      | destruct (H2 _ _ HU) as (src & prg & u & ch & ΘU & U0 & ? & ? & ? & ? & ? & Hlv) ];
+      exists src, prg, u, ch, ΘU, U0; repeat split; try assumption; apply merge_level; auto.
   Qed.
 
   Theorem run_wf :
@@ -854,26 +865,27 @@ Section WellFormed.
     apply run_mut_dind.
     - (* a definition: the new member is checked against the frame so far *)
       intros ch Θ Ξ x b pv A M HM Hfr HΞ Hc.
-      destruct Ξ as [| [P Φ] Ξ]; [ contradiction |]; cbn in *.
+      destruct Ξ as [| [P X Φ] Ξ]; [ contradiction |]; cbn in *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
       pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? Hs0 HU]; subst.
-      inversion HU; subst.
+      inversion HU as [? ? ? ? Hpt]; subst; cbn in Hpt; subst X.
       constructor; constructor; [ exact Hs0 |].
-      constructor; cbn; econstructor; [ eassumption | constructor; exact HM | exact Hfr ].
+      constructor; [ cbn; econstructor; [ eassumption | constructor; exact HM | exact Hfr ] | reflexivity ].
     - (* a module: its body ends on a frame with the parameters it opened with *)
       intros ch Θ Ξ x Δ cs Θ' U HΔ Hfr Hr IH HΞ Hc.
-      assert (Hpush : ⊢g Θ ⍮ gs_push Δ Ξ).
+      assert (Hpush : ⊢g Θ ⍮ gs_push Ξ Δ ⋄).
       { pose proof (ctx_wf_gctx _ _ _ HΔ) as HΞ0.
-        constructor; constructor; [ apply wf_gctx_stack, HΞ0 | constructor; constructor; exact HΔ ]. }
+        constructor; constructor; [ apply wf_gctx_stack, HΞ0 | constructor; [ constructor; exact HΔ | reflexivity ] ]. }
       destruct (IH Hpush Hc) as (HΞ' & Hc' & Hsub).
       pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as HP.
       split; [| split; assumption ].
-      destruct Ξ as [| [P Φ] Ξ]; [ contradiction |]; cbn in *.
+      destruct Ξ as [| [P X Φ] Ξ]; [ contradiction |]; cbn in *.
       pose proof (wf_gctx_stack _ _ HΞ') as Hs; inversion Hs as [| ? ? ? Hs1 HU]; subst.
       inversion Hs1 as [| ? ? ? Hs0 HV]; subst.
-      inversion HU; inversion HV; subst.
+      inversion HU as [? ? ? HUm _]; inversion HV as [? ? ? HVm HVp]; subst; cbn in HVp; subst X.
+      try rewrite HP in HUm.
       constructor; constructor; [ exact Hs0 |].
-      constructor; cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
+      constructor; [ cbn; econstructor; [ eassumption | apply wf_gentry_mod; exact HUm | exact Hfr ] | reflexivity ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - (* a load: the unit is filed on its own, then merged in *)
       intros ch Θ Ξ fp ip src prg u ΘU U Hn Hnin Hl Hr Hp Ht Hu IH Hm HΞ Hc.
@@ -894,7 +906,7 @@ Section WellFormed.
     - (* a unit: its imports from nothing, its parameters, then its body *)
       intros ch imps P cs Θ1 Θ2 U Hi IHi HP Hb IHb.
       destruct (IHi ltac:(constructor; constructor; constructor) canon_nil) as (H1 & Hc1 & _).
-      assert (Hpush : ⊢g Θ1 ⍮ gs_push P nil)
+      assert (Hpush : ⊢g Θ1 ⍮ gs_push (@nil gunit) P ⋄)
         by (constructor; constructor; [ apply wf_gctx_stack, H1 | constructor; constructor; exact HP ]).
       destruct (IHb Hpush Hc1) as (H2 & Hc2 & _).
       pose proof (wf_gctx_stack _ _ H2) as Hs; inversion Hs; subst.
@@ -914,7 +926,7 @@ Section WellFormed.
       destruct (proj2 (proj2 run_wf) _ _ _ _ Hu) as (HΘU & HcU & _);
       pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu f ltac:(left; reflexivity)) as HfU;
       assert (Hag : gds_agree Θ (file f U ΘU)) by (apply canon_agree; [| eapply canon_file ]; eassumption);
-      rewrite (merge_right _ _ Hag f U); [ discriminate | rewrite file_lookup, path_beq_refl; reflexivity ]
+      rewrite (merge_right _ _ Hag f (gu_close f U)); [ discriminate | rewrite file_lookup, path_beq_refl; reflexivity ]
     end.
   Qed.
 
@@ -1142,7 +1154,7 @@ Qed.
     [Θ], at its level in [Θ]. *)
 Definition closure_ok (S : list fpath) (Θ : gdeps) : Prop :=
   forall fp U, In fp S -> gds_lookup Θ fp = Some U ->
-    exists ΘU, ΘU ⍮ nil ⊢u U /\ gds_level Θ fp = Some (List.length ΘU) /\
+    exists ΘU, unit_ok ΘU fp U /\ gds_level Θ fp = Some (List.length ΘU) /\
       forall x V, gds_lookup ΘU x = Some V ->
         In x S /\ gds_lookup Θ x = Some V /\ gds_level Θ x = gds_level ΘU x.
 
@@ -1324,16 +1336,16 @@ Section Runs.
   Corollary restrict_wf_canon : forall S Θ,
       wf_gdeps Θ -> canon Θ ->
       (forall fp U, In fp S -> gds_lookup Θ fp = Some U ->
-         forall src prg u ch ΘU, load_path fp = Some src -> read src = Some prg -> to_core prg = Some u ->
-           run_unit ch u ΘU U -> ΘU ⊑ Θ /\ forall x, In x (gds_dom ΘU) -> In x S) ->
+         forall src prg u ch ΘU U0, load_path fp = Some src -> read src = Some prg -> to_core prg = Some u ->
+           run_unit ch u ΘU U0 -> ΘU ⊑ Θ /\ forall x, In x (gds_dom ΘU) -> In x S) ->
       wf_gdeps (gds_restrict S Θ).
   Proof.
     intros * Hwf Hc Hcl; apply restrict_wf; [ exact Hwf |]; intros fp U Hin HU.
-    destruct (Hc _ _ HU) as (src & prg & u & ch & ΘU & Hl & Hr & Ht & Hu & Hlv).
-    destruct (Hcl _ _ Hin HU _ _ _ _ _ Hl Hr Ht Hu) as [Hsub Hdom].
+    destruct (Hc _ _ HU) as (src & prg & u & ch & ΘU & U0 & Hl & Hr & Ht & Hu & -> & Hlv).
+    destruct (Hcl _ _ Hin HU _ _ _ _ _ _ Hl Hr Ht Hu) as [Hsub Hdom].
     destruct (proj2 (proj2 (run_wf load_path read to_core)) _ _ _ _ Hu) as (_ & HcU & HwU).
     pose proof (canon_agree _ _ _ _ _ HcU Hc) as Hag.
-    exists ΘU; split; [ exact HwU | split; [ exact Hlv |] ].
+    exists ΘU; split; [ exists U0; split; [ reflexivity | exact HwU ] | split; [ exact Hlv |] ].
     intros x V HV; split; [ apply Hdom, gds_dom_lookup; rewrite HV; discriminate |].
     split; [ apply Hsub, HV | symmetry; exact (proj2 (Hag _ _ _ HV (Hsub _ _ HV))) ].
   Qed.
