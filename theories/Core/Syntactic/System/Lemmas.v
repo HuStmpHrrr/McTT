@@ -498,7 +498,7 @@ Qed.
 #[export]
 Hint Resolve wf_gdep_deps wf_gstack_deps wf_gctx_deps : mctt.
 
-Lemma wf_gentry_gctx : forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ⊢g Θ ⍮ Ξ.
+Lemma wf_gentry_gctx : forall Θ Ξ x E, Θ ⍮ Ξ ⊢e x ↦ E -> ⊢g Θ ⍮ Ξ.
 Proof. inversion 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, wf_gmod_ctx. Qed.
 
 Lemma wf_gunit_ctx : forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U.
@@ -519,7 +519,7 @@ Theorem presup_ambient :
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
-  (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ⊢g Θ ⍮ Ξ) /\
+  (forall Θ Ξ x E, Θ ⍮ Ξ ⊢e x ↦ E -> ⊢g Θ ⍮ Ξ) /\
   (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ) /\
   (forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U) /\
   (forall Θ d, wf_gdep Θ d -> wf_gdeps Θ) /\
@@ -539,10 +539,11 @@ Qed.
     than separate obligations. *)
 
 Lemma wf_global_canon :
-    (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ge_canon E) /\
+    (forall Θ Ξ x E, Θ ⍮ Ξ ⊢e x ↦ E -> ge_canon E) /\
     (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> gm_canon Φ).
 Proof.
   apply global_wf_mut_ind; intros; simpl in *; repeat split; trivial.
+  apply gm_close_canon; assumption.
 Qed.
 
 Corollary wf_gmod_canon : forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> gm_canon Φ.
@@ -554,7 +555,7 @@ Lemma wf_gdep_canon : forall Θ d,
     wf_gdep Θ d ->
     List.Forall (fun fU => gm_canon (gu_mod (snd fU))) d.
 Proof.
-  induction 1; constructor; simpl; eauto using wf_gmod_canon, wf_gunit_mod.
+  induction 1; constructor; simpl; eauto using gm_close_canon, wf_gmod_canon, wf_gunit_mod.
 Qed.
 
 Lemma wf_gdeps_canon : forall Θ, wf_gdeps Θ -> gds_mods_canon Θ.
@@ -572,12 +573,12 @@ Qed.
 Hint Resolve wf_gmod_canon wf_gdeps_canon wf_gstack_canon : mctt.
 
 (** Hence resolution in a well-formed context is deterministic, in both the
-    entry and the telescope it is generalized over. *)
-Corollary wf_gc_lookup_det : forall Θ Ξ p Δ E Δ' E',
+    entry. *)
+Corollary wf_gc_lookup_det : forall Θ Ξ p E E',
     ⊢g Θ ⍮ Ξ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ' ⍮ E' ->
-    Δ = Δ' /\ E = E'.
+    Θ ⍮ Ξ ∋ᵍ p ⇒ E ->
+    Θ ⍮ Ξ ∋ᵍ p ⇒ E' ->
+    E = E'.
 Proof.
   intros * [] ? ?; eapply gc_lookup_det;
     eauto using wf_gstack_canon, wf_gdeps_canon, wf_gstack_deps.

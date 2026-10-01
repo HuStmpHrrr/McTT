@@ -59,7 +59,7 @@ Section Transparent.
     all: repeat match goal with H : dclean (_ _) |- _ => inversion_clear H end.
     all: try solve [ eauto 7 with mctt ].
     - (* an opaque definition or an axiom *)
-      destruct (gc_transparent_lookup _ _ _ _ _ _ _ _ Htr ltac:(eapply gc_resolve_sound; eassumption)).
+      destruct (gc_transparent_lookup _ _ _ _ _ _ _ Htr ltac:(eapply gc_resolve_sound; eassumption)).
       intuition congruence.
     - (* a parameter *)
       match goal with H : gs_param _ _ = Some _ |- _ =>

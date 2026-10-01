@@ -19,9 +19,12 @@ Generalizable All Variables.
     Three mutually defined relations: evaluation proper, its
     [ℕ]-eliminator case, and semantic application.  All three are relative to
     the global context [Θ ⍮ Ξ], which does not change during NbE.  A global is
-    resolved there: a transparent definition unfolds to its body — generalized
-    and opened into this context by resolution, hence closed, and evaluated in
-    the empty environment — and anything else is a neutral at its type. *)
+    looked up there ([gc_resolve], which follows names and nothing else): a
+    transparent definition unfolds to its body — stored closed, so evaluated in
+    the empty environment — and anything else is a neutral at its stored type.
+    A parameter is a neutral at the type its frame stores for it.  No rule
+    applies a substitution, a weakening or a module substitution to a term, or
+    builds one. *)
 Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
@@ -50,14 +53,14 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** δ: a transparent definition is its body. *)
 | eval_exp_glob_delta :
-  `( gc_resolve Θ Ξ p = Some (Δ, ge_def true pv A (Some M)) ->
-     ⟦ ctx_fn Δ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ m ->
+  `( gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ m ->
      ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m )
 (** An opaque definition or an axiom stays a neutral at its type. *)
 | eval_exp_glob_neut :
-  `( gc_resolve Θ Ξ p = Some (Δ, ge_def b pv A B) ->
+  `( gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
      b = false \/ B = None ->
-     ⟦ ctx_pi Δ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_glob p) )
 (** A module parameter is a neutral at its type, which mentions no
     λ-variable. *)
