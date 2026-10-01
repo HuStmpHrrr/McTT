@@ -6,16 +6,14 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Extraction Require Import PseudoMonadic TypeCheck.
-From Mctt.Frontend Require Import Elaborator.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding the Global-Context Judgments
 
     The elaborator hands the driver a [gstack] and one obligation per [eval],
     and nothing proves that stack well formed — so the driver has to check it.
-    These are the decision procedures for the six judgments it needs, on top of
-    [Extraction.TypeCheck]: [⊢ Θ ⍮ Ξ ⍮ Γ], [⊢e], [⊢m], [⊢u], [wf_gstack] and
-    [⊢g].
+    These are the decision procedures for the judgments the interpreter needs,
+    on top of [Extraction.TypeCheck]: [⊢ Θ ⍮ Ξ ⍮ Γ], types and terms.
 
     [wf_gdep]/[wf_gdeps] are *not* decided here: the levels are what a unit is
     compiled against, so the driver is given them already checked ([nil], for
@@ -212,24 +210,6 @@ Section check_ctx.
 
 End check_ctx.
 
-(** ** Pushing a Frame
-
-    An entry of [Φ ⊳ x ↦ E] is checked with [gu_mk Δ Φ] as the innermost frame,
-    so the recursion has to *build* a global context out of the module it has
-    checked so far. *)
-Lemma wf_gctx_push : forall Θ Ξ Δ Φ,
-    ⊢g Θ ⍮ Ξ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢m Φ ->
-    ⊢g Θ ⍮ (gu_mk Δ Φ :: Ξ).
-Proof.
-  intros * HΞ HΦ.
-  apply wf_gctx_intro, wf_gstack_cons;
-    [ now apply wf_gctx_stack | now apply wf_gunit_intro ].
-Qed.
-
-#[local]
-Hint Resolve wf_gctx_push : mctt.
-
 (** Freshness is a non-membership of [gm_names], so [in_dec] decides it; the
     orientation is the only thing to fix. *)
 Definition check_gm_fresh (x : string) (Φ : gmod) : { gm_fresh x Φ } + { ~ gm_fresh x Φ } :=
@@ -238,157 +218,7 @@ Definition check_gm_fresh (x : string) (Φ : gmod) : { gm_fresh x Φ } + { ~ gm_
   | right h => left h
   end.
 
-(** ** Entries and Modules
-
-    Mutually structural on the [gentry]/[gmod] being checked.  The stack is a
-    *parameter*, not the measure: [wf_gmod_ext] checks its entry one frame
-    deeper, so [Ξ] grows exactly where [Φ] shrinks. *)
-
-Section check_gmod.
-
-  #[local]
-  Ltac check_gmod_tac :=
-    intros;
-    cbn beta in *;
-    try eassumption;
-    lazymatch goal with
-    | |- ~ _ => intro; progressive_inversion; firstorder (mautosolve 3)
-    | _ => mautosolve 3
-    end.
-
-  #[tactic="check_gmod_tac",derive(equations=no,eliminator=no)]
-  Equations check_gmod Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) Δ Φ :
-    { Θ ⍮ Ξ ⍮ Δ ⊢m Φ } + { ~ Θ ⍮ Ξ ⍮ Δ ⊢m Φ } by struct Φ :=
-  | Θ, Ξ, HΞ, Δ, ⋄ =>
-      let*b _ := check_ctx Θ Ξ HΞ Δ while _ in
-      pureb _
-  | Θ, Ξ, HΞ, Δ, Φ ⊳ x ↦ E =>
-      let*b HΦ := check_gmod Θ Ξ HΞ Δ Φ while _ in
-      let*b _ := check_entry Θ (gu_mk Δ Φ :: Ξ) _ E while _ in
-      let*b _ := check_gm_fresh x Φ while _ in
-      pureb _
-  with check_entry Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) E :
-    { Θ ⍮ Ξ ⊢e E } + { ~ Θ ⍮ Ξ ⊢e E } by struct E :=
-  | Θ, Ξ, HΞ, ge_def b pv A None =>
-      let*o->b (exist _ i _) := check_typ Θ Ξ ⋅ _ A while _ in
-      pureb _
-  | Θ, Ξ, HΞ, ge_def b pv A (Some M) =>
-      let*b _ := check_exp Θ Ξ ⋅ _ A M while _ in
-      pureb _
-  | Θ, Ξ, HΞ, ge_mod Δ Φ =>
-      let*b _ := check_gmod Θ Ξ HΞ Δ Φ while _ in
-      pureb _
-  .
-
-End check_gmod.
-
-(** ** Units, the Stack, and the Global Context *)
-
-Section check_gctx.
-
-  #[local]
-  Ltac check_gctx_tac :=
-    intros;
-    cbn beta in *;
-    try eassumption;
-    lazymatch goal with
-    | |- ~ _ => intro; progressive_inversion; firstorder (mautosolve 3)
-    | _ => mautosolve 3
-    end.
-
-  (** A unit's parameters are its whole telescope, so there is no ambient one to
-      extend: the module is checked at [gu_params U] and nowhere else. *)
-  #[tactic="check_gctx_tac",derive(equations=no,eliminator=no)]
-  Equations check_gunit Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) U :
-    { Θ ⍮ Ξ ⊢u U } + { ~ Θ ⍮ Ξ ⊢u U } :=
-  | Θ, Ξ, HΞ, U =>
-      let*b _ := check_gmod Θ Ξ HΞ (gu_params U) (gu_mod U) while _ in
-      pureb _
-  .
-
-  (** Structural on [Ξ]: a frame is checked against the frames outside it, which
-      are exactly the ones already checked. *)
-  #[tactic="check_gctx_tac",derive(equations=no,eliminator=no)]
-  Equations check_gstack Θ (HΘ : wf_gdeps Θ) Ξ :
-    { wf_gstack Θ Ξ } + { ~ wf_gstack Θ Ξ } :=
-  | Θ, HΘ, nil => pureb _
-  | Θ, HΘ, U :: Ξ =>
-      let*b HΞ := check_gstack Θ HΘ Ξ while _ in
-      let*b _ := check_gunit Θ Ξ _ U while _ in
-      pureb _
-  .
-
-  #[tactic="check_gctx_tac",derive(equations=no,eliminator=no)]
-  Equations check_gctx Θ (HΘ : wf_gdeps Θ) Ξ :
-    { ⊢g Θ ⍮ Ξ } + { ~ ⊢g Θ ⍮ Ξ } :=
-  | Θ, HΘ, Ξ =>
-      let*b _ := check_gstack Θ HΘ Ξ while _ in
-      pureb _
-  .
-
-End check_gctx.
-
-(** ** What the Driver Calls
-
-    One compilation unit at a time, so there are no dependency levels to check
-    (deviation 3 in [AGENT/modules.md]).  A checked global context is what
-    [type_check_closed] and [type_infer_closed] ask for, and [wf_ctx_empty]
-    turns it into the empty local context an [eval] obligation is checked in. *)
-
-Lemma wf_gctx_empty : ⊢g nil ⍮ nil.
-Proof. mauto 3. Qed.
-
-Definition check_gctx_closed : forall Ξ, { ⊢g nil ⍮ Ξ } + { ~ ⊢g nil ⍮ Ξ } :=
-  check_gctx nil wf_gdeps_nil.
-
-(** The definitions that follow the last [eval] are seen by no obligation, so
-    the unit is checked too — on the empty stack, a unit's parameters being its
-    whole telescope. *)
-Definition check_gunit_closed : forall U, { nil ⍮ nil ⊢u U } + { ~ nil ⍮ nil ⊢u U } :=
-  check_gunit nil nil wf_gctx_empty.
-
-Section check_ctx_closed.
-
-  #[local]
-  Ltac check_ctx_closed_tac :=
-    intros;
-    cbn beta in *;
-    lazymatch goal with
-    | |- ~ _ => intro; progressive_inversion; firstorder (mautosolve 3)
-    | _ => mautosolve 3
-    end.
-
-  #[tactic="check_ctx_closed_tac",derive(equations=no,eliminator=no)]
-  Equations check_ctx_closed Ξ : { ⊢ nil ⍮ Ξ ⍮ ⋅ } + { ~ ⊢ nil ⍮ Ξ ⍮ ⋅ } :=
-  | Ξ =>
-      let*b _ := check_gctx_closed Ξ while _ in
-      pureb _
-  .
-
-End check_ctx_closed.
-
-Extraction Inline check_gmod_functional check_entry_functional.
-Extraction Inline check_gctx check_gctx_closed.
-
-(** The decision procedures above carry their soundness proofs; completeness is
-    the usual [dec_complete]. *)
-
-Lemma check_gctx_complete : forall Θ (HΘ : wf_gdeps Θ) Ξ,
-    ⊢g Θ ⍮ Ξ ->
-    exists H, check_gctx Θ HΘ Ξ = left H.
-Proof. intros; dec_complete. Qed.
-
-Lemma check_gctx_closed_complete : forall Ξ,
-    ⊢g nil ⍮ Ξ ->
-    exists H, check_gctx_closed Ξ = left H.
-Proof. intros; dec_complete. Qed.
-
-Lemma check_ctx_closed_complete : forall Ξ,
-    ⊢ nil ⍮ Ξ ⍮ ⋅ ->
-    exists H, check_ctx_closed Ξ = left H.
-Proof. intros; dec_complete. Qed.
-
-Lemma check_gunit_closed_complete : forall U,
-    nil ⍮ nil ⊢u U ->
-    exists H, check_gunit_closed U = left H.
-Proof. intros; dec_complete. Qed.
+(** The command layer ([Extraction.Command]) checks one command at a time, so
+    these are all the decision procedures it needs: a context, a type, a term,
+    and freshness of a member's name.  The global judgments themselves are
+    never decided: the interpreter builds them, command by command. *)

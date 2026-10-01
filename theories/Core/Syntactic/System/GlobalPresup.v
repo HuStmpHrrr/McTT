@@ -228,6 +228,20 @@ Proof.
   destruct Hin as [[= <- <-] |]; eauto.
 Qed.
 
+(** The telescope of the frames' parameters is a well-formed context: the
+    innermost frame's module was checked over it, one frame out, and pushing
+    the frame is an embedding. *)
+Lemma wf_gs_tele : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ.
+Proof.
+  intros Θ [| [mp U] Ξ] Hg; [ constructor; exact Hg |].
+  pose proof (wf_gctx_stack _ _ Hg) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
+  inversion HU as [? ? ? ? HΦ]; subst.
+  pose proof (wf_gmod_ctx _ _ _ _ _ HΦ) as HP.
+  destruct (emb_preserves_wf Θ Ξ Θ ((mp, U) :: Ξ)) as (Hc & _).
+  - constructor; [ exact Hg | apply gc_sub_push; exact Hff ].
+  - exact (Hc _ HP).
+Qed.
+
 Lemma wf_gdep_lookup : forall Θ d,
     wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gd_lookup d fp = Some U.
 Proof.

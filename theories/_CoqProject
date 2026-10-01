@@ -86,3 +86,5 @@
 ./Extraction/TypeCheck.v
 ./Core/Syntactic/Command.v
 ./Core/Syntactic/System/Command.v
+./Extraction/GlobalCheck.v
+./Extraction/Command.v

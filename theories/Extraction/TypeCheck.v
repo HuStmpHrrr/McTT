@@ -513,4 +513,23 @@ Section type_infer_closed.
   .
 End type_infer_closed.
 
+(** The same in a well-formed context: an [eval] inside a module sees the
+    frames' parameters. *)
+Section type_infer_at.
+  #[local]
+  Ltac impl_obl_tac :=
+    unfold not in *;
+    intros;
+    destruct_conjs;
+    solve [ mauto 3 using user_exp_to_type_infer_order, alg_type_infer_sound
+          | firstorder ].
+
+  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  Equations type_infer_at G (HG : ⊢ G) M (HM : user_exp M) : { A : nf | G ⊢ M : A } + { forall A, ~ G ⊢a M ⟹ A } :=
+  | G, HG, M, HM =>
+      let*o (exist _ A _) := type_infer G HG M _ while _ in
+      pureo (exist _ A _)
+  .
+End type_infer_at.
+
 End Fixed_GCtx.
