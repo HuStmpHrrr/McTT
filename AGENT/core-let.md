@@ -520,8 +520,7 @@ statement.  Every other existing theorem keeps its exact statement.
       sel L (Cst.letb (Cst.d_def x oA oM) ob) (s_term (ℓ A ≔ M in B))
   ```
 
-  `sel_let_abs` is deleted.  `shift_by` becomes unused if `lb_let` was its
-  only user, in which case it is deleted too.
+  `sel_let_abs` is deleted.  `shift_by` stays, because `wk_sref` uses it.
 * **ElabCorrect.v**: the let case of `elab_res_iff` loses its
   `md_abstract` split, and `to_ls` loses the `lb_let` clause.
   `elaborate_core_iff` and its corollaries keep their statements.
