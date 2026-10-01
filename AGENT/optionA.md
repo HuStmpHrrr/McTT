@@ -29,7 +29,10 @@ Branch: `optionA-delayed-msub` (worktree agent-a03ff549a1c2314d5).
 
 ## Proof strategy
 
-The syntactic layer and `GlobalInduction` are untouched.  The models are
+The typing judgments are untouched.  The one syntactic-layer change is in
+`GlobalInduction`: the `Emb` record gained `em_frame` (the frame map with an
+offset), needed to get *all later* parameters of a frame valid — the open-frame
+parameter rule evaluates the whole suffix of the telescope.  The models are
 ported mechanically (closures carry `κ`; top-level evaluation is at `me_top`).
 The only places where evaluation of a global/parameter matters are the bridge
 lemmas (`glob_sem_of_raw`, `param_sem_of_raw`, `glob_glu_of_raw`,
@@ -38,3 +41,15 @@ lemmas (`glob_sem_of_raw`, `param_sem_of_raw`, `glob_glu_of_raw`,
 `(κ2,ρ2)`, where `θ` replaces leaves by binder-free terms whose values agree
 with the right's leaves, gives related values; `vsim`-related values are
 interchangeable in the PER model and the gluing model and read back equally.
+
+## Status
+
+* Done.  `make -f CoqMakefile.mk real-all` builds everything (Core, Algorithmic,
+  Consequences, Extraction, Entrypoint, Frontend); nothing commented out of `_CoqProject`.
+* `completeness_gctx`, `soundness_gctx'` unchanged statements; Print Assumptions:
+  only `functional_extensionality_dep`, `eq_rect_eq`.  No Admitted.
+* Extraction: orders for the 8 relations; lookup-dependent premises are stated
+  in forall-form (for every result of the lookup) so the Equations impls recurse on a
+  subterm; `eval_pend_impl` gets its sub-order by a dependent match on the order
+  returning a function of the `Nat.ltb` equation (inversion lemmas are not guard-transparent).
+* New files: Simulation.v 744, Bridge.v 409, PERSim.v 141, BridgeGlob.v 1543, GluSim.v 140.
