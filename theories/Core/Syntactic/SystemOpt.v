@@ -317,6 +317,58 @@ Hint Resolve wf_exp_eq_fn_eta' : mctt.
 #[export]
 Remove Hints wf_exp_eq_fn_eta : mctt.
 
+(** A let presupposes its context, which carries the type of its annotation and
+    of its body. *)
+Corollary wf_let' : forall Θ Ξ Γ A M B C,
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M].
+Proof.
+  intros; gen_presups; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve wf_let' : mctt.
+#[export]
+Remove Hints wf_let : mctt.
+
+Corollary wf_ctx_extend_def' : forall Θ Ξ Γ A M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M.
+Proof.
+  intros; gen_presups; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve wf_ctx_extend_def' : mctt.
+#[export]
+Remove Hints wf_ctx_extend_def : mctt.
+
+Corollary wf_exp_eq_let_cong' : forall Θ Ξ Γ A A' M M' B B' C i,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M].
+Proof.
+  intros; gen_presups; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_let_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_let_cong : mctt.
+
+Corollary wf_exp_eq_let_zeta' : forall Θ Ξ Γ A M B C,
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M].
+Proof.
+  intros; gen_presups; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_let_zeta' : mctt.
+#[export]
+Remove Hints wf_exp_eq_let_zeta : mctt.
+
 (** A term equation presupposes that both sides are well-typed, so the
     refinement between two contexts extended by equal types needs nothing else. *)
 Corollary wf_sub_id_extend_eq' : forall Θ Ξ Γ A A' i,

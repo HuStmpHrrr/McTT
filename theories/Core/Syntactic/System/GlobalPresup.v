@@ -35,32 +35,73 @@ Proof.
     constructor; auto.
 Qed.
 
+Lemma ctx_lookup_def_app_r : forall E T x A M,
+    T ∋ #x ≔ M : A ->
+    E ++ T ∋ #(x + length E) ≔ M[wk_shiftn (length E)]ʷ : A[wk_shiftn (length E)]ʷ.
+Proof.
+  induction E as [| B E IH]; intros * H; cbn.
+  - rewrite Nat.add_0_r, !(exp_wk_wk_eq _ _ _ wk_shiftn_zero), !exp_wk_id; assumption.
+  - rewrite Nat.add_succ_r, <- !(exp_wk_wk_eq _ _ _ (wk_shiftn_succ _)), <- !exp_wk_wk.
+    constructor; auto.
+Qed.
+
 Lemma wf_wk_shiftn_app : forall Θ Ξ E T,
     ⊢ Θ ⍮ Ξ ⍮ E ++ T ->
     ⊢ Θ ⍮ Ξ ⍮ T ->
     Θ ⍮ Ξ ⍮ E ++ T ⊢w wk_shiftn (length E) : T.
 Proof.
-  intros; econstructor; [ eassumption | assumption |].
-  intros; apply ctx_lookup_app_r; assumption.
+  intros; econstructor; [ eassumption | assumption | |];
+    intros; [ apply ctx_lookup_app_r | apply ctx_lookup_def_app_r ]; assumption.
 Qed.
 
 Lemma ctx_app_wf_right : forall Θ Ξ E T, ⊢ Θ ⍮ Ξ ⍮ E ++ T -> ⊢ Θ ⍮ Ξ ⍮ T.
 Proof.
   induction E as [| B E IH]; intros * H; cbn in *; [ assumption |].
-  apply IH; eapply ctx_decomp_left; eassumption.
+  apply IH; eapply ctx_decomp_tail; eassumption.
 Qed.
+
+(** [wf_let] at a universe, which [Type@j[Id,,M]] is by computation only. *)
+Lemma wf_let_typ : forall Θ Ξ Γ A M B i j,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Type@j.
+Proof.
+  intros.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Type@j[Id,,M]) as Hl by (eapply wf_let; eassumption).
+  exact Hl.
+Qed.
+
+Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ A M B i j,
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Type@j.
+Proof.
+  intros.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Type@j[Id,,M]) as Hl
+      by (eapply wf_exp_eq_let_zeta; eassumption).
+  exact Hl.
+Qed.
+
+#[export]
+Hint Resolve wf_let_typ wf_exp_eq_let_zeta_typ : mctt.
 
 Lemma ctx_pi_wf : forall Θ Ξ Δ Γ A i,
     ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Type@i ->
     exists j, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@j.
 Proof.
-  induction Δ as [| B Δ IH]; intros * HΔ HA; cbn in *; [ eauto |].
-  inversion HΔ; subst.
-  match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
-    eapply IH; [ eauto using presup_exp_ctx |];
-    econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
-  end.
+  induction Δ as [| [B | B N] Δ IH]; intros * HΔ HA; cbn in *; [ eauto | |];
+    inversion HΔ; subst.
+  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
+      eapply IH; [ eauto using presup_exp_ctx |];
+      econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
+    end.
+  - (** A definition is generalized as a [let], which is a type at the type's
+        own level. *)
+    eapply IH; [ eauto using presup_exp_ctx |].
+    eapply wf_let_typ; eassumption.
 Qed.
 
 Lemma ctx_fn_wf : forall Θ Ξ Δ Γ A M i,
@@ -69,13 +110,20 @@ Lemma ctx_fn_wf : forall Θ Ξ Δ Γ A M i,
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A.
 Proof.
-  induction Δ as [| B Δ IH]; intros * HΔ HA HM; cbn in *; [ assumption |].
-  inversion HΔ; subst.
-  match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
-    eapply IH with (i := max k i); [ eauto using presup_exp_ctx | |];
-    [ econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
-    | econstructor; eassumption ]
-  end.
+  induction Δ as [| [B | B N] Δ IH]; intros * HΔ HA HM; cbn in *; [ assumption | |];
+    inversion HΔ; subst.
+  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
+      eapply IH with (i := max k i); [ eauto using presup_exp_ctx | |];
+      [ econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
+      | econstructor; eassumption ]
+    end.
+  - (** The body's [let] has the type [A[Id,,N]], which is the type's [let] by
+        ζ. *)
+    assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : Type@i) by (eapply wf_let_typ; eassumption).
+    eapply IH with (i := i); [ eauto using presup_exp_ctx | eassumption |].
+    eapply wf_exp_subtyp'; [ eapply wf_let; eassumption |].
+    eapply wf_subtyp_refl; [ eassumption |].
+    eapply wf_exp_eq_sym, wf_exp_eq_let_zeta_typ; eassumption.
 Qed.
 
 Corollary ctx_pi_wf0 : forall Θ Ξ Δ A i,
@@ -396,8 +444,7 @@ Proof.
         [ assumption | exact HA | eapply wf_gc_resolve_type_closed; eassumption | exact I ]
     end.
   all: mauto 3.
-  - eexists; mauto 3.
-  - eexists; mauto 3.
+  all: eexists; mauto 3.
 Qed.
 
 Lemma entry_typed_def : forall Θ Ξ A M b pv Θ2 Ξ2,

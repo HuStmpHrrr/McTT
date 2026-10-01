@@ -32,8 +32,8 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
     [app] is a module operation or a term operation is decided by name
     resolution, not by the parser; see [Frontend.Resolve].
 
-    [letb] binds one declaration at a time; the parser folds a run of them into
-    nested [letb]s.  Keeping the recursion out of a [list] is what lets [obj]
+    [letb] binds one declaration at a time; the parser folds the bindings of
+    [let x : A := a; y : B := b in body end] into nested [letb]s.  Keeping the recursion out of a [list] is what lets [obj]
     and [decl] stay an ordinary mutual pair, so [Functional Scheme] still
     applies to functions defined over them. *)
 Inductive obj : Set :=
@@ -52,8 +52,9 @@ Inductive obj : Set :=
 | letb : decl -> obj -> obj
 
 with decl : Set :=
-(** [x : A := M], carrying its modifiers *)
-| d_def : mods -> string -> obj -> obj -> decl
+(** [x : A := M].  A local definition is always transparent and has no
+    modifiers. *)
+| d_def : string -> obj -> obj -> decl
 (** [module M := E] *)
 | d_mod : string -> obj -> decl.
 
@@ -154,10 +155,26 @@ Inductive exp : Set :=
     expressions but part of a name, resolved by the elaborator, so
     [(X::Y.Z x y).bar] elaborates to
     [a_glob (p_abs ["X"; "Y"] ["Z"; "bar"]) $ x $ y]. *)
-| a_glob : path -> exp.
+| a_glob : path -> exp
+(** Local definition: [a_let A M B] binds [#0] in [B] to [M] at type [A]. *)
+| a_let : exp -> exp -> exp -> exp.
 
-Abbreviation ctx := (list exp).
 Abbreviation typ := exp.
+
+(** ** Contexts
+
+    A context entry is an assumption [x : A] or a local definition
+    [x : A := M].  Both occupy one de Bruijn index. *)
+Inductive centry : Set :=
+| ce_ass : typ -> centry
+| ce_def : typ -> exp -> centry.
+
+Definition ce_typ (e : centry) : typ :=
+  match e with
+  | ce_ass A | ce_def A _ => A
+  end.
+
+Abbreviation ctx := (list centry).
 
 (** ** Telescopes
 
@@ -174,17 +191,22 @@ Abbreviation typ := exp.
 
     No shifting arises.  If [B] is well formed in [Δ'] and [A] in [Δ' ▹ B], then
     [Π B A] is well formed in [Δ'] — exactly the invariant [a_pi] wants — so the
-    indices already point at the right parameters. *)
+    indices already point at the right parameters.
+
+    A local definition in a telescope is generalized as a [let], as a section
+    does with [Let].  The elaborator only builds telescopes of assumptions. *)
 Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
   match Δ with
   | nil => A
-  | cons B Δ' => ctx_pi Δ' (a_pi B A)
+  | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
+  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let B N A)
   end.
 
 Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
   match Δ with
   | nil => M
-  | cons B Δ' => ctx_fn Δ' (a_fn B M)
+  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let B N M)
   end.
 
 Fixpoint nat_to_exp n : exp :=
@@ -342,6 +364,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
   | a_glob p => a_glob p
+  | a_let A M B => a_let (exp_wk A φ) (exp_wk M φ) (exp_wk B (wk_q φ))
   end.
 
 (** * Substitutions
@@ -405,6 +428,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => σ x
   | a_glob p => a_glob p
+  | a_let A M B => a_let (exp_sub A σ) (exp_sub M σ) (exp_sub B (sb_q σ))
   end.
 
 (** Composition of substitutions, again *diagrammatic*: [sb_compose σ τ]
@@ -466,6 +490,7 @@ Module Syntax_Notations.
   Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (a_let A M B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
   Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
   (** Application needs an explicit operator: a [constr] notation may not be
       pure juxtaposition, which is Rocq's own application. *)
@@ -486,10 +511,13 @@ Module Syntax_Notations.
   (** *** Contexts
 
       Extension is [▹] rather than the paper's comma: a parsing [,] in [constr]
-      would steal Rocq's pair notation.  Both are restricted to [exp] so that
-      an unrelated [list] does not print as a context. *)
-  Notation "⋅" := (@nil exp) : mctt_scope.
-  Notation "Γ ▹ A" := (@cons exp A Γ) (at level 50, left associativity) : mctt_scope.
+      would steal Rocq's pair notation.  Both are restricted to [centry] so
+      that an unrelated [list] does not print as a context.  A definition
+      entry is [Γ ▸ A ≔ M]; it has its own first token because [Γ ▹ A] would
+      otherwise be a proper prefix of it. *)
+  Notation "⋅" := (@nil centry) : mctt_scope.
+  Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
 
   (** *** Normal and Neutral Forms *)
   Notation "'ℕⁿ'" := nf_nat : mctt_scope.

@@ -30,13 +30,20 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
   | a_var x => x < n
+  | a_let A M B => exp_scoped n A /\ exp_scoped n M /\ exp_scoped (S n) B
+  end.
+
+Definition ce_scoped (n : nat) (e : centry) : Prop :=
+  match e with
+  | ce_ass A => exp_scoped n A
+  | ce_def A M => exp_scoped n A /\ exp_scoped n M
   end.
 
 (** Each binding is scoped by the bindings below it, and the bottom one by [n]. *)
 Fixpoint ctx_scoped (n : nat) (Γ : ctx) : Prop :=
   match Γ with
   | nil => True
-  | A :: Γ => exp_scoped (length Γ + n) A /\ ctx_scoped n Γ
+  | e :: Γ => ce_scoped (length Γ + n) e /\ ctx_scoped n Γ
   end.
 
 Definition opt_scoped (n : nat) (B : option exp) : Prop :=
@@ -146,10 +153,28 @@ Proof.
   rewrite IHΓ, List.length_app, Nat.add_assoc; tauto.
 Qed.
 
+
 Lemma ctx_scoped_lookup : forall Γ x A n,
     ctx_scoped n Γ ->
     Γ ∋ #x : A ->
     exp_scoped (length Γ + n) A.
+Proof.
+  intros * HΓ Hlk; induction Hlk; cbn in *; destruct_all;
+    apply exp_scoped_shift; auto.
+Qed.
+
+Lemma ctx_lookup_def_lookup : forall Γ x A M, Γ ∋ #x ≔ M : A -> Γ ∋ #x : A.
+Proof.
+  induction 1; constructor; assumption.
+Qed.
+
+#[export]
+Hint Resolve ctx_lookup_def_lookup : mctt.
+
+Lemma ctx_scoped_lookup_def : forall Γ x A M n,
+    ctx_scoped n Γ ->
+    Γ ∋ #x ≔ M : A ->
+    exp_scoped (length Γ + n) M.
 Proof.
   intros * HΓ Hlk; induction Hlk; cbn in *; destruct_all;
     apply exp_scoped_shift; auto.
@@ -168,8 +193,8 @@ Lemma ctx_pi_scoped : forall Δ A n,
     exp_scoped (length Δ + n) A ->
     exp_scoped n (ctx_pi Δ A).
 Proof.
-  induction Δ; intros * HΔ HA; cbn in *; destruct_all; [ assumption |].
-  apply IHΔ; cbn; auto.
+  induction Δ as [| [] Δ IHΔ]; intros * HΔ HA; cbn in *; destruct_all; [ assumption | |].
+  all: apply IHΔ; cbn; auto.
 Qed.
 
 Lemma ctx_fn_scoped : forall Δ M n,
@@ -177,8 +202,8 @@ Lemma ctx_fn_scoped : forall Δ M n,
     exp_scoped (length Δ + n) M ->
     exp_scoped n (ctx_fn Δ M).
 Proof.
-  induction Δ; intros * HΔ HM; cbn in *; destruct_all; [ assumption |].
-  apply IHΔ; cbn; auto.
+  induction Δ as [| [] Δ IHΔ]; intros * HΔ HM; cbn in *; destruct_all; [ assumption | |].
+  all: apply IHΔ; cbn; auto.
 Qed.
 
 (** The substitutions the rules instantiate with. *)
@@ -282,6 +307,13 @@ Proof.
   all: try match goal with
     | |- exp_scoped (length ?Γ + 0) _ => rewrite Nat.add_0_r; assumption
     | H : ?Γ ∋ # ?x : ?A |- ?x < _ => apply ctx_lookup_length in H; assumption
+    | H : ?Γ ∋ # ?x ≔ ?M : ?A, HΓ : ctx_scoped 0 ?Γ |- exp_scoped _ ?M =>
+        pose proof (ctx_scoped_lookup_def _ _ _ _ _ HΓ H) as Hs; rewrite Nat.add_0_r in Hs; exact Hs
+    | H : ?Γ ∋ # ?x ≔ ?M : ?A |- ?x < _ =>
+        apply ctx_lookup_def_lookup, ctx_lookup_length in H; assumption
+    | H : ?Γ ∋ # ?x ≔ ?M : ?A, HΓ : ctx_scoped 0 ?Γ |- exp_scoped _ ?A =>
+        apply ctx_lookup_def_lookup in H;
+        pose proof (ctx_scoped_lookup _ _ _ _ HΓ H) as Hs; rewrite Nat.add_0_r in Hs; exact Hs
     | H : ?Γ ∋ # ?x : ?A, HΓ : ctx_scoped 0 ?Γ |- exp_scoped _ ?A =>
         pose proof (ctx_scoped_lookup _ _ _ _ HΓ H) as Hs; rewrite Nat.add_0_r in Hs; exact Hs
     | H : gc_resolve _ _ _ = Some (ge_def _ _ _ _), Hc : gctx_closed _ _ |- exp_scoped _ _ =>

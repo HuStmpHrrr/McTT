@@ -33,6 +33,19 @@ Ltac invert_wf_ctx1 H :=
           let HA := fresh "HA" in
           destruct HAi as [i HA]
       end
+  | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▸ ?A ≔ ?M =>
+      let HΓ := fresh "HΓ" in
+      let HAi := fresh "HAi" in
+      let HM := fresh "HM" in
+      pose proof ctx_decomp_def H as [HΓ [HAi HM]];
+      match goal with
+      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _ =>
+          let i := fresh "i" in
+          let HA := fresh "HA" in
+          destruct HAi as [i HA]
+      end
   end.
 
 Ltac invert_wf_ctx :=
@@ -69,6 +82,14 @@ Ltac gen_lookup_presup H :=
           let i := fresh "i" in
           let HA := fresh "HA" in
           pose proof (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) H) as [i HA]
+      end
+  | ?Γ ∋ #?x ≔ ?M : ?A =>
+      match goal with
+      | _: _ ⍮ _ ⍮ Γ ⊢ M : A |- _ => fail
+      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ M : A |- _ => fail
+      | _ =>
+          let HM := fresh "HM" in
+          pose proof (ctx_lookup_def_wf _ _ _ _ _ _ ltac:(eassumption) H) as HM
       end
   end.
 

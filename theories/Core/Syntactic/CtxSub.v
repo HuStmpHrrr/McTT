@@ -36,6 +36,24 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⊢ Δ ▹ A' ⊆ Γ ▹ A
+(** A definition refines a definition of a supertype with an equal body. *)
+| ctx_sub_extend_def : forall Δ Γ A A' M M' i,
+    Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' ≈ M : A ->
+    Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▸ A ≔ M
+(** Knowing a definition refines knowing only its type. *)
+| ctx_sub_forget : forall Δ Γ A A' M' i,
+    Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
+    Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹ A
 where "Θ ⍮ Ξ ⊢ Δ ⊆ Γ" := (ctx_sub Θ Ξ Δ Γ) : type_scope.
 
 #[export]
@@ -53,45 +71,35 @@ Proof. induction 1; mauto 2. Qed.
 #[export]
 Hint Resolve ctx_sub_dom ctx_sub_cod : mctt.
 
-(** The [Var] case of [ctx_sub_escape], by induction on the lookup rather than
-    on the refinement: the [here] case is where [A' ⊆ A] is used, and the
-    [there] case is plain weakening. *)
-Lemma ctx_sub_vlookup : forall Θ Ξ Γ x A,
-    Γ ∋ #x : A ->
-    forall Δ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
-Proof.
-  induction 1; intros * HΔ; dependent destruction HΔ.
-
-  - assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢w ↑ : Δ) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by mauto 3.
-    mauto 3.
-
-  - assert (Θ ⍮ Ξ ⍮ Δ ⊢ #n : A) by mauto 3.
-    assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢ #n[↑]ʷ : A[↑]ʷ) by mauto 3.
-    assumption.
-Qed.
-
+(** Each rule is one of the identity refinements of [Structural]. *)
 Lemma ctx_sub_escape : forall Θ Ξ Δ Γ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ.
 Proof.
-  intros * HΔ.
-  econstructor; [ mauto 2 | mauto 2 | ].
-  intros x A ?; reduce_index; rewrite exp_sub_id.
-  eauto using ctx_sub_vlookup.
+  induction 1;
+    [ apply wf_sub_id; mauto 2
+    | eapply wf_sub_id_extend
+    | eapply wf_sub_id_extend_def
+    | eapply wf_sub_id_forget ]; eassumption.
 Qed.
 
 #[export]
 Hint Resolve ctx_sub_escape : mctt.
+
+Lemma ctx_sub_vlookup : forall Θ Ξ Γ x A,
+    Γ ∋ #x : A ->
+    forall Δ, Θ ⍮ Ξ ⊢ Δ ⊆ Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
+Proof.
+  intros; eapply ctxsub_vlookup; mauto 2.
+Qed.
 
 (** The induction is on [Γ], not on the derivation: [wf_ctx_extend] has no
     context premise, so an induction on [⊢ Γ ▹ A] yields no hypothesis about
     [Γ]. *)
 Lemma ctx_sub_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⊢ Γ ⊆ Γ.
 Proof.
-  intros Θ Ξ Γ; induction Γ as [| A Γ IH]; intros HΓ; inversion_clear HΓ;
+  intros Θ Ξ Γ; induction Γ as [| [A | A M] Γ IH]; intros HΓ; inversion_clear HΓ;
     mauto 3 using presup_exp_ctx.
-  econstructor; mauto 3 using presup_exp_ctx.
+  - econstructor; mauto 3 using presup_exp_ctx.
+  - eapply ctx_sub_extend_def; mauto 3 using presup_exp_ctx.
 Qed.
 
 #[export]
@@ -103,14 +111,29 @@ Lemma ctx_sub_trans : forall Θ Ξ Γ0 Γ1,
       Θ ⍮ Ξ ⊢ Γ1 ⊆ Γ2 ->
       Θ ⍮ Ξ ⊢ Γ0 ⊆ Γ2.
 Proof.
-  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | ].
-  rename A into A1. rename A0 into A2. rename A' into A0.
+  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | |].
   (** The two steps ascribe unrelated levels to the middle type, so both have to
       be raised before the refinements can be composed. *)
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
-  eapply ctx_sub_extend with (i := max i i0);
-    mauto 3 using lift_exp_max_left, lift_exp_max_right.
+  all: assert (Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ) by mauto 2.
+  - rename A into A1. rename A0 into A2. rename A' into A0.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
+    eapply ctx_sub_extend with (i := max i i0);
+      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+  - (** Two definitions: the bodies are equal at the outer type. *)
+    rename A into A1. rename A0 into A2. rename A' into A0.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A0 ⊆ A2) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M0 : A2) by mauto 3.
+    eapply ctx_sub_extend_def with (i := max i i0);
+      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+  - rename A into A1. rename A0 into A2. rename A' into A0.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
+    eapply ctx_sub_forget with (i := max i i0);
+      mauto 3 using lift_exp_max_left, lift_exp_max_right.
+  - rename A into A1. rename A0 into A2. rename A' into A0.
+    assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
+    eapply ctx_sub_forget with (i := max i i0);
+      mauto 3 using lift_exp_max_left, lift_exp_max_right.
 Qed.
 
 #[export]

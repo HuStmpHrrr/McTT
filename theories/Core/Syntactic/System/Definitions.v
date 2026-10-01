@@ -54,6 +54,7 @@ Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" (at level 70, Ξ at level 69, 
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, Δ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
 Reserved Notation "Γ ∋ '#' x : A" (at level 70, x constr at level 0, A at level 69).
+Reserved Notation "Γ ∋ '#' x ≔ M : A" (at level 70, x constr at level 0, M at level 69, A at level 69).
 Reserved Notation "⊢g Θ ⍮ Ξ" (at level 70, Θ at level 69, Ξ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ mp ⊢e E" (at level 70, Ξ at level 69, mp at level 69, E at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" (at level 70, Ξ at level 69, mp at level 69, Δ at level 69, Φ at level 69).
@@ -71,8 +72,15 @@ Generalizable All Variables.
 
 Inductive ctx_lookup : nat -> typ -> ctx -> Prop :=
   | here : `(Γ ▹ A ∋ #0 : A[↑]ʷ)
-  | there : `(Γ ∋ #n : A -> Γ ▹ B ∋ #(S n) : A[↑]ʷ)
+  | here_def : `(Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ)
+  | there : `(Γ ∋ #n : A -> e :: Γ ∋ #(S n) : A[↑]ʷ)
 where "Γ ∋ '#' x : A" := (ctx_lookup x A Γ) : type_scope.
+
+(** The body of a definition entry, weakened to the use site like its type. *)
+Inductive ctx_lookup_def : nat -> typ -> exp -> ctx -> Prop :=
+  | def_here : `(Γ ▸ A ≔ M ∋ #0 ≔ M[↑]ʷ : A[↑]ʷ)
+  | def_there : `(Γ ∋ #n ≔ M : A -> e :: Γ ∋ #(S n) ≔ M[↑]ʷ : A[↑]ʷ)
+where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 
 (** ** The Mutually Defined Judgments
 
@@ -92,6 +100,10 @@ Inductive wf_ctx : gdeps -> gstack -> ctx -> Prop :=
 | wf_ctx_extend :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A )
+| wf_ctx_extend_def :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M )
 where "⊢ Θ ⍮ Ξ ⍮ Γ" := (wf_ctx Θ Ξ Γ) : type_scope
 
 with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
@@ -127,6 +139,11 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
+| wf_let :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M] )
 | wf_vlookup :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
@@ -192,6 +209,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N ≈ M' $ N' : B[Id,,N] )
+| wf_exp_eq_let_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M] )
 | wf_exp_eq_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
@@ -218,6 +242,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
+(** [ζ]: a local definition is substituted into its body. *)
+| wf_exp_eq_let_zeta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M] )
+(** [δ] for local definitions: a defined variable is its body.  It is stated
+    at every depth, since weakening moves a definition arbitrarily deep. *)
+| wf_exp_eq_var_delta :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Γ ∋ #x ≔ M : A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ M : A )
 (** [δ]: a transparent definition unfolds.  An [abstract] one ([b = false]) and
     an axiom ([B = None]) do not.  Both are stored closed. *)
 | wf_exp_eq_glob_unfold :
@@ -499,7 +535,7 @@ Lemma wf_gctx_stack : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gstack Θ Ξ.
 Proof. now inversion 1. Qed.
 
 #[export]
-Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup : mctt.
+Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup ctx_lookup_def : mctt.
 
 #[export]
 Hint Constructors wf_gentry wf_gmod wf_gunit wf_gdep wf_gdeps wf_gstack : mctt.
@@ -519,6 +555,8 @@ Record wf_wk (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (φ : wk) : Prop := wf_wk_
 { wf_wk_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_wk_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
 ; wf_wk_lookup : forall x A, Δ ∋ #x : A -> Γ ∋ #(φ x) : A[φ]ʷ
+(** A renaming sends a definition to the same definition. *)
+; wf_wk_lookup_def : forall x A M, Δ ∋ #x ≔ M : A -> Γ ∋ #(φ x) ≔ M[φ]ʷ : A[φ]ʷ
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ" := (wf_wk Θ Ξ Γ Δ φ) : type_scope.
 
@@ -526,6 +564,8 @@ Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_s
 { wf_sub_dom : ⊢ Θ ⍮ Ξ ⍮ Γ
 ; wf_sub_cod : ⊢ Θ ⍮ Ξ ⍮ Δ
 ; wf_sub_apply : forall x A, Δ ∋ #x : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ]
+(** A substitution sends a definition to something equal to its body. *)
+; wf_sub_apply_def : forall x A M, Δ ∋ #x ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ M[σ] : A[σ]
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 
@@ -553,12 +593,16 @@ Instance wf_wk_Proper Θ Ξ Γ Δ : Proper (wk_eq ==> iff) (wf_wk Θ Ξ Γ Δ).
 Proof.
   assert (forall φ ψ, wk_eq φ ψ -> Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢w ψ : Δ) as Himp.
   {
-    intros φ ψ Heq [? ? Hlk].
+    intros φ ψ Heq [? ? Hlk Hlkd].
     econstructor; try eassumption.
-    intros x A ?.
-    replace (ψ x) with (φ x) by apply Heq.
-    rewrite <- Heq.
-    now apply Hlk.
+    - intros x A ?.
+      replace (ψ x) with (φ x) by apply Heq.
+      rewrite <- Heq.
+      now apply Hlk.
+    - intros x A M ?.
+      replace (ψ x) with (φ x) by apply Heq.
+      rewrite <- !Heq.
+      now apply Hlkd.
   }
   intros φ ψ Heq; split; apply Himp; [ assumption | now symmetry ].
 Qed.
@@ -568,12 +612,16 @@ Instance wf_sub_Proper Θ Ξ Γ Δ : Proper (sb_eq ==> iff) (wf_sub Θ Ξ Γ Δ)
 Proof.
   assert (forall σ τ, sb_eq σ τ -> Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢s τ : Δ) as Himp.
   {
-    intros σ τ Heq [? ? Hap].
+    intros σ τ Heq [? ? Hap Hapd].
     econstructor; try eassumption.
-    intros x A ?.
-    replace (τ x) with (σ x) by apply Heq.
-    rewrite <- Heq.
-    now apply Hap.
+    - intros x A ?.
+      replace (τ x) with (σ x) by apply Heq.
+      rewrite <- Heq.
+      now apply Hap.
+    - intros x A M ?.
+      replace (τ x) with (σ x) by apply Heq.
+      rewrite <- !Heq.
+      now apply Hapd.
   }
   intros σ τ Heq; split; apply Himp; [ assumption | now symmetry ].
 Qed.

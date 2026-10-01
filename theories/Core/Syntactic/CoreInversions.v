@@ -152,6 +152,21 @@ Qed.
 #[export]
 Hint Resolve wf_app_inversion : mctt.
 
+Lemma wf_let_inversion : forall {Θ Ξ Γ A M B T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : T ->
+    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
+           Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp1 _ _ _ eq_refl);
+    destruct_conjs; gen_core_presups;
+    do 2 eexists; repeat split; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_let_inversion : mctt.
+
 Lemma wf_vlookup_inversion : forall {Θ Ξ Γ x A},
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : A ->
     exists A', Γ ∋ #x : A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.

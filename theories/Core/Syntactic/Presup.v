@@ -101,6 +101,18 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] : Type@i) by mauto 2.
     eapply wf_conv; eassumption.
 
+  (** [let], right: as for [λ], the body moves by context conversion, and the
+      type moves along the equal bodies. *)
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢s Id : Γ ▸ A ≔ M) by mauto 3.
+    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by mauto 2 using presup_exp_typ.
+    assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A' ≔ M' in B' : C[Id,,M']) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Type@j) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Type@j) by mauto 3.
+    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+
   (** [rec]-[succ], right.  The right-hand side is a double substitution, and
       the type it gets from [wf_exp] is the motive under the step
       substitution — which is the type of the equation only after
