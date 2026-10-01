@@ -491,3 +491,120 @@ Section Chain.
       intros * Heq; rewrite (Hhd _ _ Heq), (Hold' _ _ Heq); reflexivity.
   Qed.
 End Chain.
+
+Section Top.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  #[local] Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp Θ Ξ κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
+
+  (** A global applied to arguments, from the top level. *)
+  Definition gres (p : path) (cs : list domain) (v : domain) : Prop :=
+    exists g, (forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g) /\ apps Θ Ξ g cs v.
+
+  Lemma gres_det : forall p cs v g,
+      gres p cs v -> (forall ρ, ⟦ a_glob p ⟧ me_top ⍮ ρ ↘ g) -> apps Θ Ξ g cs v.
+  Proof.
+    intros * (g' & Hg' & Hv) Hg.
+    pose proof (functional_eval_exp _ _ _ _ _ (Hg' nil) (Hg nil)) as <-; exact Hv.
+  Qed.
+
+  Lemma top_chain : forall p Δ b pv A B,
+      ⊢g Θ ⍮ Ξ ->
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
+      exists y Ar Br θ csf,
+        A = exp_tsub θ Ar /\ B = option_map (exp_tsub θ) Br /\
+        exp_scoped 0 csf Ar /\ opt_scoped 0 csf Br /\
+        (forall cs', List.length cs' < List.length Δ -> exists v, gres p cs' v) /\
+        forall args, List.length args = List.length Δ ->
+          exists κf Δf Φf, frame_at Θ Ξ (me_addr κf) = Some (Δf, Φf) /\
+            gm_find Φf y = Some (ge_def b pv Ar Br) /\
+            (forall v, eval_ent Θ Ξ κf (y :: nil) v -> gres p args v) /\
+            cfg_eq Θ Ξ θ 0 (param_ok csf) (path_ok csf) me_top (List.rev args) κf nil.
+  Proof.
+    intros * Hg Hl.
+    pose proof (wf_gctx_stack _ _ Hg) as HΞ.
+    pose proof (wf_gstack_canon _ _ HΞ) as Hcs.
+    pose proof (wf_gdeps_canon _ (wf_gstack_deps _ _ HΞ)) as Hcd.
+    inversion Hl as [n U ip Δ0 ? ? A0 B0 Hn Hm | fp U ip Δ0 ? ? A0 B0 Hf Hm]; subst.
+    - (* a member of an open frame *)
+      pose proof (stack_rscoped _ _ HΞ _ _ Hn) as Hrs.
+      destruct (chain Θ Ξ _ _ _ _ Hm (gs_canon_nth _ _ _ Hcs Hn) _ _ _ _ eq_refl
+                  (List.length (gu_params U) :: gs_cs (List.skipn (S n) Ξ)) ltac:(congruence)
+                  ltac:(intros; eapply gm_rscoped_find; eassumption))
+        as (y & Ar & Br & θ & csf & -> & -> & HsA & HsB & Hcsf & Hbp & Hbg & Hbv & Hip1 & Hip2 & Hdyn).
+      assert (Hfr : frame_at Θ Ξ (me_addr (me_base n)) = Some (gu_params U, gu_mod U))
+        by (unfold frame_at; cbn; rewrite Hn; reflexivity).
+      destruct (Hdyn _ _ _ Hfr ltac:(intros; reflexivity)) as [Hpart Hmain].
+      assert (Hglob : forall r ρ, eval_ent Θ Ξ (me_base n) ip r -> ⟦ a_glob (p_rel n ip) ⟧ me_top ⍮ ρ ↘ r)
+        by (intros * Hr; constructor; rewrite me_drop_base, Nat.add_0_r; exact Hr).
+      exists y, Ar, Br, (ts_comp θ (ts_ms (↑ₘ n))), csf.
+      split; [ rewrite exp_tsub_ms, exp_tsub_comp; reflexivity |].
+      split; [ rewrite opt_tsub_ms, opt_tsub_comp; reflexivity |].
+      do 2 (split; [ assumption |]).
+      rewrite ctx_msub_length.
+      split.
+      + intros cs' Hl'; destruct (Hpart _ Hl') as (v & r & Hr & Hv).
+        exists v, r; split; [ intros; apply Hglob, Hr | exact Hv ].
+      + intros args Hla; destruct (Hmain _ Hla) as (κf & Δf & Φf & Hff & Hfy & Hres & Hcf).
+        exists κf, Δf, Φf; split; [ assumption |]; split; [ assumption |]; split.
+        * intros v Hv; destruct (Hres _ Hv) as (r & Hr & Hv').
+          exists r; split; [ intros; apply Hglob, Hr | exact Hv' ].
+        * eapply cfg_eq_comp; [ apply (cfg_eq_shift _ _ _ (List.length Δ0) (param_ok (List.length (gu_params U) :: gs_cs (List.skipn (S n) Ξ))) (path_ok (List.length (gu_params U) :: gs_cs (List.skipn (S n) Ξ)))) | exact Hcf | intros; lia | exact Hip1 | exact Hip2 ].
+    - (* a member of a filed unit *)
+      pose proof (deps_rscoped _ (wf_gstack_deps _ _ HΞ) _ _ Hf) as Hrs.
+      set (c := List.length (gu_params U)).
+      destruct (chain Θ Ξ _ _ _ _ Hm (gds_lookup_canon _ _ _ Hcd Hf) _ _ _ _ eq_refl
+                  (c :: nil) ltac:(congruence)
+                  ltac:(intros; eapply gm_rscoped_find; eassumption))
+        as (y & Ar & Br & θ & csf & -> & -> & HsA & HsB & Hcsf & Hbp & Hbg & Hbv & Hip1 & Hip2 & Hdyn).
+      assert (Hfr : forall argsT, frame_at Θ Ξ (me_addr (me_frame (p_abs fp nil) argsT (me_base 0))) = Some (gu_params U, gu_mod U))
+        by (intros; unfold frame_at; cbn; rewrite Hf; reflexivity).
+      assert (Hglob : forall r ρ, eval_pend Θ Ξ (me_base 0) (p_abs fp nil) c nil ip r ->
+                        ⟦ a_glob (p_abs fp ip) ⟧ me_top ⍮ ρ ↘ r)
+        by (intros * Hr; econstructor; eassumption).
+      exists y, Ar, Br, (ts_comp θ (ts_ms (ms_close (p_abs fp nil) c (List.length Δ0)))), csf.
+      split; [ rewrite exp_tsub_ms, exp_tsub_comp; reflexivity |].
+      split; [ rewrite opt_tsub_ms, opt_tsub_comp; reflexivity |].
+      do 2 (split; [ assumption |]).
+      rewrite List.length_app, ctx_msub_length; fold c.
+      split.
+      + intros cs' Hl'.
+        destruct (Nat.lt_ge_cases (List.length cs') c) as [Hlt | Hge].
+        * destruct (pend_partial Θ Ξ (me_base 0) (p_abs fp nil) c ip cs' nil ltac:(cbn; lia)) as (r & v & Hr & Hv).
+          exists v, r; split; [ intros; apply Hglob, Hr | exact Hv ].
+        * destruct (proj1 (Hdyn _ _ _ (Hfr (List.rev (List.firstn c cs'))) ltac:(intros; reflexivity))
+                       (List.skipn c cs') ltac:(rewrite List.length_skipn; lia)) as (v & Hv).
+          destruct (pend_feed Θ Ξ (me_base 0) (p_abs fp nil) c ip (List.firstn c cs') nil (List.skipn c cs') v
+                      ltac:(rewrite List.length_firstn; cbn; lia)
+                      ltac:(rewrite List.app_nil_r; exact Hv)) as (r & Hr & Hv').
+          rewrite List.firstn_skipn in Hv'.
+          exists v, r; split; [ intros; apply Hglob, Hr | exact Hv' ].
+      + intros args Hla.
+        set (argsT := List.firstn c args).
+        set (argsin := List.skipn c args).
+        assert (HlT : List.length argsT = c) by (unfold argsT; rewrite List.length_firstn; lia).
+        assert (Hlin : List.length argsin = List.length Δ0) by (unfold argsin; rewrite List.length_skipn; lia).
+        destruct (proj2 (Hdyn _ _ _ (Hfr (List.rev argsT)) ltac:(intros; reflexivity)) argsin Hlin)
+          as (κf & Δf & Φf & Hff & Hfy & Hres & Hcf).
+        exists κf, Δf, Φf; split; [ assumption |]; split; [ assumption |]; split.
+        * intros v Hv; destruct (Hres v Hv) as (r0 & Hr0 & Hv0).
+          destruct (pend_feed Θ Ξ (me_base 0) (p_abs fp nil) c ip argsT nil argsin v
+                      ltac:(cbn; lia) ltac:(rewrite List.app_nil_r; exists r0; split; assumption)) as (r & Hr & Hv').
+          unfold argsT, argsin in Hv'; rewrite List.firstn_skipn in Hv'.
+          exists r; split; [ intros; apply Hglob, Hr | exact Hv' ].
+        * assert (Hargs : List.rev args = List.rev argsin ++ List.rev argsT)
+            by (unfold argsT, argsin; rewrite <- List.rev_app_distr, List.firstn_skipn; reflexivity).
+          rewrite Hargs.
+          pose proof (cfg_eq_close_abs Θ Ξ fp U (List.rev argsT) (List.rev argsin) Hf
+                        ltac:(rewrite List.length_rev; assumption)) as Hν.
+          rewrite List.length_rev, Hlin in Hν.
+          eapply cfg_eq_comp; [ exact Hν | exact Hcf | intros; lia | |].
+          -- intros lp Hlp; eapply exp_ok_PQ; [ apply Hip1; exact Hlp | | ].
+             ++ intros [m k] (c' & Hc0 & Hk) Hm0; cbn in *; subst; injection Hc0 as <-; exact Hk.
+             ++ intros [[fq | m] ms] Hq; cbn in *; auto; lia.
+          -- intros p Hp; eapply exp_ok_PQ; [ apply Hip2; exact Hp | | ].
+             ++ intros [m k] (c' & Hc0 & Hk) Hm0; cbn in *; subst; injection Hc0 as <-; exact Hk.
+             ++ intros [[fq | m] ms] Hq; cbn in *; auto; lia.
+  Qed.
+End Top.
