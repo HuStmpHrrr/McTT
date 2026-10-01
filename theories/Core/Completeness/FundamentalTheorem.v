@@ -26,30 +26,22 @@ Import Wk_Notations.
 Section FundamentalTheorem.
   Context {GC : GCtx}.
 
-  (** The identity is sound at a well-formed global context. *)
-  Lemma sem_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> sem_msub gc_deps gc_stack gc_deps gc_stack ms_id nil.
-  Proof.
-    intros Hg; destruct (gctx_sem _ _ Hg) as [HR HP].
-    apply sem_msub_id; [ assumption | apply sem_rwf_of_raw | apply sem_pwf_of_raw ]; assumption.
-  Qed.
-
   Theorem completeness_fundamental :
     (forall Γ, ⊢ Γ -> ⊨ Γ) /\
       (forall Γ A M, Γ ⊢ M : A -> Γ ⊨ M : A) /\
       (forall Γ A M M', Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A) /\
       (forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A').
   Proof.
-    destruct kripke_fundamental as (Kc & Ke & Kq & Ks).
+    destruct ext_fundamental as (Kc & Ke & Kq & Ks).
     repeat split; intros * H;
-      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
-      [ pose proof (Kc _ _ _ H _ _ _ _ Hid) as H'
-      | destruct (Ke _ _ _ _ _ H _ _ _ _ Hid) as [_ H']
-      | destruct (Kq _ _ _ _ _ _ H _ _ _ _ Hid) as [_ H']
-      | destruct (Ks _ _ _ _ _ H _ _ _ _ Hid) as [_ H'] ];
-      rewrite ?ctx_msub_id, ?List.app_nil_r, ?exp_msub_qn_id in H';
+      [ pose proof (sem_ext_id _ _ (ctx_wf_gctx _ _ _ H)) as Hid
+      | pose proof (sem_ext_id _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
+      | pose proof (sem_ext_id _ _ (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
+      | pose proof (sem_ext_id _ _ (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
+      [ pose proof (Kc _ _ _ H _ _ Hid) as H'
+      | destruct (Ke _ _ _ _ _ H _ _ Hid) as [_ H']
+      | destruct (Kq _ _ _ _ _ _ H _ _ Hid) as [_ H']
+      | destruct (Ks _ _ _ _ _ H _ _ Hid) as [_ H'] ];
       destruct GC; exact H'.
   Qed.
 
