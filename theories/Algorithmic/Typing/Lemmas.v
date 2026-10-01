@@ -38,8 +38,7 @@ Proof.
   - assert (T = T0) as <- by congruence.
     functional_nbe_rewrite_clear.
     reflexivity.
-  - assert (Δ = Δ0) as <- by congruence.
-    assert (A = A0) as <- by congruence.
+  - assert (A = A0) as <- by congruence.
     functional_nbe_rewrite_clear.
     reflexivity.
 Qed.
@@ -100,22 +99,19 @@ Proof.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
     assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
-  (** [gs_param] and [gc_resolve] are the function forms of the two premises of
-      [wf_param] and of the resolution premise of [wf_glob]; the soundness
-      direction of each ([gs_param_sound], [gc_resolve_sound]) has no side
-      condition, so the declarative rule applies at once.  The inferred normal
-      form is the declarative type by [soundness_ty']. *)
-  - assert (Γ ⊢ a_param lp : T)
-      by (destruct lp as [n0 k];
-          destruct (gs_param_sound _ _ _ _ ltac:(eassumption)) as [U [T0 [? [? ->]]]];
-          mauto 3).
+  (** [gs_param] is the premise of [wf_param], and [gc_resolve] the function
+      form of the resolution premise of [wf_glob]; its soundness direction
+      ([gc_resolve_sound]) has no side condition, so the declarative rule
+      applies at once.  The inferred normal form is the declarative type by
+      [soundness_ty']. *)
+  - assert (Γ ⊢ a_param lp : T) by mauto 3.
     assert (exists i, Γ ⊢ T : Type@i) as [i] by (gen_presups; eauto 2).
     assert (Γ ⊢ T ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
-  - assert (gc_lookup gc_deps gc_stack p Δ (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
-    assert (Γ ⊢ a_glob p : ctx_pi Δ A) by mauto 3.
-    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
-    assert (Γ ⊢ ctx_pi Δ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
+  - assert (gc_lookup gc_deps gc_stack p (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
+    assert (Γ ⊢ a_glob p : A) by mauto 3.
+    assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (Γ ⊢ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
 Qed.
 
@@ -175,13 +171,10 @@ Proof.
   (** A parameter and a global infer the normal form of a type of the ambient
       context, so [idempotent_nbe_ty] closes both; what that type is comes from
       [wf_param_typ] and [wf_glob_typ]. *)
-  - destruct lp as [n0 k].
-    destruct (gs_param_sound _ _ _ _ ltac:(eassumption)) as [U [T0 [? [? ->]]]].
-    assert (exists i, Γ ⊢ T0[↑ₘ (S n0)]ᵐ[sb_params n0] : Type@i) as [i]
-        by mauto 3 using wf_param_typ.
+  - assert (exists i, Γ ⊢ T : Type@i) as [i] by mauto 3 using wf_param_typ.
     (f_equiv; mautosolve 4).
-  - assert (gc_lookup gc_deps gc_stack p Δ (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
-    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+  - assert (gc_lookup gc_deps gc_stack p (ge_def b pv A B)) by (apply gc_resolve_sound; eassumption).
+    assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
     (f_equiv; mautosolve 4).
 Qed.
 
@@ -321,15 +314,10 @@ Proof.
     econstructor; mauto 4 using alg_subtyping_complete.
   - assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
-  (** The two premises of [wf_param] are [gs_param]'s answer
-      ([gs_param_complete], no side condition). *)
-  - assert (Γ ⊢ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n]) by mauto 3.
-    assert (gs_param gc_stack (lp_mk n k) = Some T[↑ₘ (S n)]ᵐ[sb_params n])
-      by mauto 3 using gs_param_complete.
-    assert (exists i, Γ ⊢ T[↑ₘ (S n)]ᵐ[sb_params n] : Type@i) as [i]
-        by mauto 3 using wf_param_typ.
-    assert (exists W, nbe_ty_f Γ T[↑ₘ (S n)]ᵐ[sb_params n] W
-                      /\ Γ ⊢ T[↑ₘ (S n)]ᵐ[sb_params n] ≈ W : Type@i) as [W []]
+  (** The premise of [wf_param] is [gs_param]'s answer. *)
+  - assert (Γ ⊢ a_param lp : T) by mauto 3.
+    assert (exists i, Γ ⊢ T : Type@i) as [i] by mauto 3 using wf_param_typ.
+    assert (exists W, nbe_ty_f Γ T W /\ Γ ⊢ T ≈ W : Type@i) as [W []]
         by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
   (** Resolution's answer, on the other hand, is [gc_resolve]'s only because the
@@ -338,10 +326,10 @@ Proof.
   - assert (wf_gctx gc_deps gc_stack) by mauto 2 using ctx_wf_gctx.
     assert (gs_canon gc_stack) by (eapply wf_gstack_canon, wf_gctx_stack; eassumption).
     assert (gds_mods_canon gc_deps) by (eapply wf_gdeps_canon, wf_gctx_deps; eassumption).
-    assert (gc_resolve gc_deps gc_stack p = Some (Δ, ge_def b pv A B))
+    assert (gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B))
       by (apply gc_resolve_complete; assumption).
-    assert (exists i, Γ ⊢ ctx_pi Δ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
-    assert (exists W, nbe_ty_f Γ (ctx_pi Δ A) W /\ Γ ⊢ ctx_pi Δ A ≈ W : Type@i) as [W []]
+    assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []]
         by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
 Qed.

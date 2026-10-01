@@ -60,11 +60,11 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( gs_param gc_stack lp = Some T ->
      nbe_ty_f Γ T C ->
      Γ ⊢a a_param lp ⟹ C )
-(** A global, at the generalized type resolution hands back.  [gc_resolve] is
-    [gc_lookup] as a function, for the same two reasons. *)
+(** A global, at the type it is stored with.  [gc_resolve] is [gc_lookup] as a
+    function, for the same two reasons. *)
 | ati_glob :
-  `( gc_resolve gc_deps gc_stack p = Some (Δ, ge_def b pv A B) ->
-     nbe_ty_f Γ (ctx_pi Δ A) C ->
+  `( gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B) ->
+     nbe_ty_f Γ A C ->
      Γ ⊢a a_glob p ⟹ C )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
 

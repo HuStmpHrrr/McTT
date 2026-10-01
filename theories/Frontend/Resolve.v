@@ -30,8 +30,9 @@ with emod : Set :=
 | em_nil : emod
 | em_ext : emod -> string -> ename -> emod.
 
-(** An open frame: [ef_params] names its parameters, the [k]th one being
-    [$[_, k]], i.e. innermost first; [ef_mod] its members so far. *)
+(** An open frame: [ef_params] names its parameters, innermost first (the
+    [k]th of [c] being the parameter [$[_, c - 1 - k]], parameters being
+    counted from the outside); [ef_mod] its members so far. *)
 Record eframe : Set := ef_mk
   { ef_params : list string
   ; ef_mod : emod }.
@@ -70,24 +71,8 @@ Inductive target : Set :=
 | tg_mod : mref -> target
 | tg_mem : mref -> string -> target.
 
-(** An alias recorded in frame [j] is used from [i] frames further in: its
-    relative qualifier and its arguments move out by [i]. *)
-Definition qual_shift (i : nat) (ql : qual) : qual :=
-  match ql with
-  | qu_rel m => qu_rel (i + m)
-  | qu_abs fp => qu_abs fp
-  end.
-
-Definition mr_shift (i : nat) (mr : mref) : mref :=
-  {| mr_qual := qual_shift i (mr_qual mr); mr_mems := mr_mems mr; mr_mod := mr_mod mr;
-     mr_public := mr_public mr; mr_arity := mr_arity mr;
-     mr_args := List.map (fun M => M[↑ₘ i]ᵐ) (mr_args mr) |}.
-
-Definition tg_shift (i : nat) (t : target) : target :=
-  match t with
-  | tg_mod mr => tg_mod (mr_shift i mr)
-  | tg_mem mr x => tg_mem (mr_shift i mr) x
-  end.
+(** Frames are named by level, so an alias recorded in one frame means the
+    same in every frame nested inside it: nothing moves. *)
 
 (** ** The Local Scope
 

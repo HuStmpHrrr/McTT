@@ -41,13 +41,13 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      (forall m n, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_app_order Θ Ξ m n) ->
      eval_exp_order Θ Ξ (M $ N) p )
 | eeo_glob_delta :
-  `( gc_resolve Θ Ξ pth = Some (Δ, ge_def true pv A (Some M)) ->
-     eval_exp_order Θ Ξ (ctx_fn Δ M) nil ->
+  `( gc_resolve Θ Ξ pth = Some (ge_def true pv A (Some M)) ->
+     eval_exp_order Θ Ξ M nil ->
      eval_exp_order Θ Ξ (a_glob pth) p )
 | eeo_glob_neut :
-  `( gc_resolve Θ Ξ pth = Some (Δ, ge_def b pv A B) ->
+  `( gc_resolve Θ Ξ pth = Some (ge_def b pv A B) ->
      b = false \/ B = None ->
-     eval_exp_order Θ Ξ (ctx_pi Δ A) nil ->
+     eval_exp_order Θ Ξ A nil ->
      eval_exp_order Θ Ξ (a_glob pth) p )
 | eeo_param :
   `( gs_param Ξ lp = Some T ->
@@ -180,16 +180,16 @@ Section EvalImpl.
       let (a, Ha) := eval_app_impl m n _ in
       exist _ a _
   | a_glob pth, p, H with inspect (gc_resolve Θ Ξ pth) := {
-    | exist _ (Some (Δ, ge_def true pv A (Some M))) E =>
-        let (m, Hm) := eval_exp_impl (ctx_fn Δ M) nil _ in
+    | exist _ (Some (ge_def true pv A (Some M))) E =>
+        let (m, Hm) := eval_exp_impl M nil _ in
         exist _ m _
-    | exist _ (Some (Δ, ge_def true _ A None)) E =>
-        let (a, Ha) := eval_exp_impl (ctx_pi Δ A) nil _ in
+    | exist _ (Some (ge_def true _ A None)) E =>
+        let (a, Ha) := eval_exp_impl A nil _ in
         exist _ (⇑ a (d_glob pth)) _
-    | exist _ (Some (Δ, ge_def false _ A B)) E =>
-        let (a, Ha) := eval_exp_impl (ctx_pi Δ A) nil _ in
+    | exist _ (Some (ge_def false _ A B)) E =>
+        let (a, Ha) := eval_exp_impl A nil _ in
         exist _ (⇑ a (d_glob pth)) _
-    | exist _ (Some (Δ, ge_mod _ _)) E => False_rect _ _
+    | exist _ (Some (ge_mod _ _)) E => False_rect _ _
     | exist _ None E => False_rect _ _ }
   | a_param lp, p, H with inspect (gs_param Ξ lp) := {
     | exist _ (Some T) E =>

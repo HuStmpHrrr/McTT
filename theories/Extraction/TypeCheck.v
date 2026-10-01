@@ -209,12 +209,12 @@ Section type_check.
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
         pureo (exist _ A' _)
-    (** What resolution hands back, normalized: the generalized type of a
-        global, and the type of a parameter.  Neither mentions a λ-variable, but
+    (** What resolution hands back, normalized: the stored type of a global,
+        and the stored type of a parameter.  Neither mentions a λ-variable, but
         both are read at [G], so both are normalized there. *)
     | a_glob pth with inspect (gc_resolve gc_deps gc_stack pth) => {
-      | exist _ (Some (Δ, ge_def b pv A B)) _ =>
-          let (C, _) := nbe_ty_impl gc_deps gc_stack G (ctx_pi Δ A) _ in
+      | exist _ (Some (ge_def b pv A B)) _ =>
+          let (C, _) := nbe_ty_impl gc_deps gc_stack G A _ in
           pureo (exist _ C _)
       | exist _ _ _ => inright _
       }
@@ -376,10 +376,9 @@ Section type_check.
   #[local]
   Ltac resolved_typ :=
     match goal with
-    | Hr : gc_resolve _ _ _ = Some (_, ge_def _ _ _ _) |- _ =>
+    | Hr : gc_resolve _ _ _ = Some (ge_def _ _ _ _) |- _ =>
         eapply wf_glob_typ; [ eassumption | apply gc_resolve_sound; exact Hr ]
-    | lp : lpath, Hp : gs_param _ _ = Some _ |- _ =>
-        destruct lp; destruct (gs_param_sound _ _ _ _ Hp) as (? & ? & ? & ? & ->);
+    | Hp : gs_param _ _ = Some _ |- _ =>
         eapply wf_param_typ; eassumption
     end.
 

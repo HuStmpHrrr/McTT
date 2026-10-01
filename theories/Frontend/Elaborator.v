@@ -14,8 +14,8 @@ Open Scope string_scope.
     A compilation unit elaborates into core commands, needing no other unit: a
     definition becomes a [cc_def] of the frame it is declared in, a nested
     module a [cc_mod], an [import] of another unit a [cc_import]; a name
-    becomes a parameter [$[n, k]], a member [a_glob] (relative for the open
-    frames, absolute for an imported unit), or a λ-variable.  A path into an
+    becomes a parameter [$[L, k]], a member [a_glob] (by frame level for the
+    open frames, absolute for an imported unit), or a λ-variable.  A path into an
     imported unit is resolved lexically: typing decides what it names. *)
 
 (** ** Results *)
@@ -166,36 +166,37 @@ Definition tg_use (t : target) (args : list exp) : eres res :=
   | tg_mem mr x => mr_member mr x args
   end.
 
-(** A name looked up in the open frames, from [i] frames in: an alias, then a
+(** A name looked up in the open frames, innermost first: an alias, then a
     member — any member, private or not, the frame being open — then a
-    parameter. *)
-Definition tg_local (d i : nat) (t : target) : target :=
-  match tg_shift i t with
+    parameter.  The frame [f] of [f :: fs'] is at level [length fs']. *)
+Definition tg_local (d : nat) (t : target) : target :=
+  match t with
   | tg_mod mr => tg_mod (mr_weaken d 0 mr)
   | tg_mem mr y => tg_mem (mr_weaken d 0 mr) y
   end.
 
-Fixpoint fr_lookup (os : oscope) (d : nat) (x : string) (i : nat) (fs : list oframe) (args : list exp)
+Fixpoint fr_lookup (os : oscope) (d : nat) (x : string) (fs : list oframe) (args : list exp)
   : eres res :=
   match fs with
   | nil =>
       match alias_lookup x (os_alias os) with
-      | Some t => tg_use (tg_local d i t) args
+      | Some t => tg_use (tg_local d t) args
       | None => eerr ("unbound name " ++ x)
       end
   | f :: fs' =>
       match alias_lookup x (of_alias f) with
-      | Some t => tg_use (tg_local d i t) args
+      | Some t => tg_use (tg_local d t) args
       | None =>
           match em_lookup x (ef_mod (of_names f)) with
-          | Some (en_def _) => eok (r_exp (sc_apply (a_glob (p_rel i (x :: nil))) args))
+          | Some (en_def _) => eok (r_exp (sc_apply (a_glob (p_rel (List.length fs') (x :: nil))) args))
           | Some (en_mod n Φ) =>
-              eok (r_mod {| mr_qual := qu_rel i; mr_mems := x :: nil; mr_mod := Some Φ;
+              eok (r_mod {| mr_qual := qu_rel (List.length fs'); mr_mems := x :: nil; mr_mod := Some Φ;
                             mr_public := true; mr_arity := n; mr_args := args |})
           | None =>
               match index_of x (ef_params (of_names f)) with
-              | Some k => eok (r_exp (sc_apply $[i, k] args))
-              | None => fr_lookup os d x (S i) fs' args
+              | Some k =>
+                  eok (r_exp (sc_apply $[List.length fs', List.length (ef_params (of_names f)) - S k] args))
+              | None => fr_lookup os d x fs' args
               end
           end
       end
@@ -239,7 +240,7 @@ Section Terms.
         match ls_lookup x ls with
         | Some (le_term M n) => eok (r_exp (sc_apply (sc_shift d n M) args))
         | Some (le_mod mr n) => eok (r_mod (mr_apply (mr_weaken d n mr) args))
-        | None => fr_lookup os d x 0 fs args
+        | None => fr_lookup os d x fs args
         end
     | Cst.glob fp =>
         let* _ := echeck (unit_reachable os fs fp) "the unit is not imported" in
