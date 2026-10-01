@@ -498,16 +498,18 @@ Qed.
 #[export]
 Hint Resolve wf_gdep_deps wf_gstack_deps wf_gctx_deps : mctt.
 
-Lemma wf_gentry_gctx : forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ⊢g Θ ⍮ Ξ.
-Proof. inversion 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, wf_gmod_ctx. Qed.
+Lemma wf_gentry_gctx : forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> ⊢g Θ ⍮ Ξ.
+Proof.
+  inversion 1; subst; eauto using ctx_wf_gctx, presup_exp_ctx, wf_gmod_ctx.
+Qed.
 
-Lemma wf_gunit_ctx : forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U.
+Lemma wf_gunit_ctx : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
 Proof. eauto using wf_gmod_ctx, wf_gunit_mod. Qed.
 
-Corollary wf_gunit_gctx : forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> ⊢g Θ ⍮ Ξ.
+Corollary wf_gunit_gctx : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> ⊢g Θ ⍮ Ξ.
 Proof. eauto using ctx_wf_gctx, wf_gunit_ctx. Qed.
 
-Corollary wf_gmod_gctx : forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> ⊢g Θ ⍮ Ξ.
+Corollary wf_gmod_gctx : forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢g Θ ⍮ Ξ.
 Proof. eauto using ctx_wf_gctx, wf_gmod_ctx. Qed.
 
 (** Each judgment presupposes what it is relative to: a term judgment its
@@ -519,9 +521,9 @@ Theorem presup_ambient :
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
-  (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ⊢g Θ ⍮ Ξ) /\
-  (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ) /\
-  (forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U) /\
+  (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> ⊢g Θ ⍮ Ξ) /\
+  (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
+  (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
   (forall Θ d, wf_gdep Θ d -> wf_gdeps Θ) /\
   (forall Θ Ξ, wf_gstack Θ Ξ -> wf_gdeps Θ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ /\ wf_gstack Θ Ξ).
@@ -530,55 +532,4 @@ Proof.
     (conj wf_gunit_ctx (conj wf_gdep_deps (conj wf_gstack_deps _)))))))));
     intros * H; eauto using presup_exp_ctx, presup_exp_eq_ctx, presup_subtyp_ctx.
   exact (conj (wf_gctx_deps _ _ H) (wf_gctx_stack _ _ H)).
-Qed.
-
-(** ** Canonicity Follows from Well-formedness
-
-    Name uniqueness is a premise of [wf_gmod_ext] and of [wf_gdep_cons], so the
-    predicates resolution's determinism is stated with are consequences rather
-    than separate obligations. *)
-
-Lemma wf_global_canon :
-    (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> ge_canon E) /\
-    (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> gm_canon Φ).
-Proof.
-  apply global_wf_mut_ind; intros; simpl in *; repeat split; trivial.
-Qed.
-
-Corollary wf_gmod_canon : forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ -> gm_canon Φ.
-Proof.
-  intros *; pose proof wf_global_canon; destruct_all; eauto.
-Qed.
-
-Lemma wf_gdep_canon : forall Θ d,
-    wf_gdep Θ d ->
-    List.Forall (fun fU => gm_canon (gu_mod (snd fU))) d.
-Proof.
-  induction 1; constructor; simpl; eauto using wf_gmod_canon, wf_gunit_mod.
-Qed.
-
-Lemma wf_gdeps_canon : forall Θ, wf_gdeps Θ -> gds_mods_canon Θ.
-Proof.
-  unfold gds_mods_canon; induction 1; constructor; eauto using wf_gdep_canon.
-Qed.
-
-Lemma wf_gstack_canon : forall Θ Ξ, wf_gstack Θ Ξ -> gs_canon Ξ.
-Proof.
-  unfold gs_canon; induction 1; constructor;
-    eauto using wf_gmod_canon, wf_gunit_mod.
-Qed.
-
-#[export]
-Hint Resolve wf_gmod_canon wf_gdeps_canon wf_gstack_canon : mctt.
-
-(** Hence resolution in a well-formed context is deterministic, in both the
-    entry and the telescope it is generalized over. *)
-Corollary wf_gc_lookup_det : forall Θ Ξ p Δ E Δ' E',
-    ⊢g Θ ⍮ Ξ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ' ⍮ E' ->
-    Δ = Δ' /\ E = E'.
-Proof.
-  intros * [] ? ?; eapply gc_lookup_det;
-    eauto using wf_gstack_canon, wf_gdeps_canon, wf_gstack_deps.
 Qed.

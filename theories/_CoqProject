@@ -9,7 +9,6 @@
 ./Core/Completeness/FundamentalTheorem.v
 ./Core/Completeness/LogicalRelation.v
 ./Core/Completeness/ModuleCases.v
-./Core/Completeness/GlobalCases.v
 ./Core/Completeness/LogicalRelation/Definitions.v
 ./Core/Completeness/LogicalRelation/Lemmas.v
 ./Core/Completeness/LogicalRelation/Tactics.v
@@ -57,7 +56,6 @@
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/GlobalCtx.v
-./Core/Syntactic/GlobalInduction.v
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v

@@ -64,8 +64,6 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rne recᵈ m under ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
 | read_ne_glob :
   `( Rne d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
-| read_ne_param :
-  `( Rne d_param lp in Θ ⍮ Ξ ⍮ s ↘ ne_param lp )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
