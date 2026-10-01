@@ -140,7 +140,7 @@ Definition param_vars (off n : nat) : list exp :=
 (** A path into an imported unit, with the arguments supplied so far. *)
 Definition mr_opaque (fp mems : list string) (args : list exp) : mref :=
   {| mr_unit := fp; mr_mems := mems; mr_mod := None;
-     mr_public := true; mr_arity := 0; mr_args := args |}.
+     mr_public := true; mr_args := args |}.
 
 (** Resolving a dotted name gives a term or a module, the latter with the
     module arguments supplied so far. *)
@@ -168,17 +168,14 @@ Definition res_mod (r : eres res) : eres mref :=
   | eerr e => eerr e
   end.
 
-(** A definition [x] of the module [mr], with [args] more arguments: a term
-    once the closed modules crossed have their arguments. *)
+(** A definition [x] of the module [mr], with [args] more arguments.  It is a
+    closed constant, so it is a term whatever the number of arguments. *)
 Definition mr_def (mr : mref) (x : string) (args : list exp) : eres res :=
   let args' := List.app (mr_args mr) args in
-  let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
-              ("module arguments missing for " ++ x) in
   eok (r_exp (sc_apply (a_glob {| p_unit := mr_unit mr; p_mems := List.app (mr_mems mr) (x :: nil) |}) args')).
 
-(** A member of a module that is not open: only a public one can be named, and
-    only once the closed modules crossed have their arguments.  A member of an
-    opaque path extends it. *)
+(** A member of a module that is not open: only a public one can be named.  A
+    member of an opaque path extends it. *)
 Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
   let args' := List.app (mr_args mr) args in
   let mems' := List.app (mr_mems mr) (x :: nil) in
@@ -186,7 +183,7 @@ Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
   | None =>
       (* REVISIT: privacy of imported members *)
       eok (r_mod {| mr_unit := mr_unit mr; mr_mems := mems'; mr_mod := None;
-                    mr_public := true; mr_arity := 0; mr_args := args' |})
+                    mr_public := true; mr_args := args' |})
   | Some Φ =>
       match em_lookup x Φ with
       | None => eerr ("no member " ++ x)
@@ -195,13 +192,13 @@ Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
           mr_def mr x args
       | Some (en_mod n Φx) =>
           eok (r_mod {| mr_unit := mr_unit mr; mr_mems := mems'; mr_mod := Some Φx;
-                        mr_public := true; mr_arity := mr_arity mr + n; mr_args := args' |})
+                        mr_public := true; mr_args := args' |})
       end
   end.
 
 Definition mr_apply (mr : mref) (args : list exp) : mref :=
   {| mr_unit := mr_unit mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
-     mr_public := mr_public mr; mr_arity := mr_arity mr; mr_args := List.app (mr_args mr) args |}.
+     mr_public := mr_public mr; mr_args := List.app (mr_args mr) args |}.
 
 Definition tg_use (t : target) (args : list exp) : eres res :=
   match t with
@@ -242,7 +239,7 @@ Fixpoint fr_lookup (fp : list string) (os : oscope) (off : nat) (x : string) (fs
               eok (r_exp (sc_apply (a_glob (p_abs fp (List.app (of_path f) (x :: nil)))) (List.app vs args)))
           | Some (en_mod n Φ) =>
               eok (r_mod {| mr_unit := fp; mr_mems := List.app (of_path f) (x :: nil); mr_mod := Some Φ;
-                            mr_public := true; mr_arity := fr_tele_len fs + n; mr_args := List.app vs args |})
+                            mr_public := true; mr_args := List.app vs args |})
           | None =>
               match index_of x (ef_params (of_names f)) with
               | Some k => eok (r_exp (sc_apply (a_var (off + k)) args))
@@ -402,7 +399,7 @@ Definition use_bind (taken : string -> bool) (mr : mref) (acc : eres oscope) (n 
       (* REVISIT: privacy of imported members *)
       eok (os_alias_add n
              (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
-                        mr_mod := None; mr_public := true; mr_arity := 0;
+                        mr_mod := None; mr_public := true;
                         mr_args := mr_args mr |}) sc)
   | Some Φ =>
       match em_lookup n Φ with
@@ -412,7 +409,7 @@ Definition use_bind (taken : string -> bool) (mr : mref) (acc : eres oscope) (n 
       | Some (en_mod k Φn) =>
           eok (os_alias_add n
                  (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
-                            mr_mod := Some Φn; mr_public := true; mr_arity := mr_arity mr + k;
+                            mr_mod := Some Φn; mr_public := true;
                             mr_args := mr_args mr |}) sc)
       | None => eerr ("no member " ++ n)
       end

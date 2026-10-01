@@ -53,19 +53,16 @@ Fixpoint index_of (x : string) (xs : list string) : option nat :=
 (** ** What a Name Denotes
 
     A module reached by a dotted prefix: where it is ([mr_unit], [mr_mems]),
-    its members, whether only its public members may be named, how many
-    arguments a use of a member has to supply ([mr_arity]: the parameters of
-    the modules enclosing it, which a member is generalized over), and the
+    its members, whether only its public members may be named, and the
     arguments given so far — for a module of an open frame, its parameter
     variables to begin with.  Its members are [None] for a path into an
     imported unit, which is *opaque*: whether it names a module or a
-    definition is left to typing, and [mr_public]/[mr_arity] mean nothing. *)
+    definition is left to typing, and [mr_public] means nothing. *)
 Record mref : Set := mr_mk
   { mr_unit : list string
   ; mr_mems : list string
   ; mr_mod : option emod
   ; mr_public : bool
-  ; mr_arity : nat
   ; mr_args : list exp }.
 
 (** What an alias names: a module, or a definition of one. *)
@@ -92,7 +89,7 @@ Definition sc_apply (M : exp) (args : list exp) : exp := List.fold_left a_app ar
 
 Definition mr_weaken (d n : nat) (mr : mref) : mref :=
   {| mr_unit := mr_unit mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
-     mr_public := mr_public mr; mr_arity := mr_arity mr;
+     mr_public := mr_public mr;
      mr_args := List.map (sc_shift d n) (mr_args mr) |}.
 
 (** * Import Depths

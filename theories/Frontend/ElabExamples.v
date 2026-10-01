@@ -207,11 +207,16 @@ Proof. elab_ok. Qed.
 Example no_self : forall u, ~ elab_spec (unit_of (c_def md_pub "x" nat (var "x") :: nil)) u.
 Proof. elab_fails. Qed.
 
-(** A member of a closed parameterized module needs its arguments. *)
-Example missing_args : forall u, ~ elab_spec (unit_of
-  (c_mod ("M" :: nil) (("A", typ 0) :: nil) (c_def md_pub "f" (typ 0) (var "A") :: nil) ::
-   c_eval (proj (var "M") "f") None :: nil)) u.
-Proof. elab_fails. Qed.
+(** A member of a closed parameterized module is a closed constant, so it is
+    a term without its module arguments. *)
+Example partial_args :
+  elab_spec (unit_of
+    (c_mod ("M" :: nil) (("A", typ 0) :: nil) (c_def md_pub "f" (typ 0) (var "A") :: nil) ::
+     c_eval (proj (var "M") "f") None :: nil))
+    (nil, ⋅,
+     cc_mod "M" (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
+     cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "f" :: nil))) None :: nil).
+Proof. elab_ok. Qed.
 
 (** [module A.B] is [A] without parameters holding [B]; its members are named
     by the dotted chain and pre-applied to nothing but [B]'s parameters. *)
@@ -319,4 +324,36 @@ Example shadow_param :
      cc_mod "M" (⋅ ▹ ℕ)
        (cc_def "x" true false ℕ #0 ::
         cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
+Proof. elab_ok. Qed.
+
+(** ** The Running Example of [ElabSpec]
+
+    module Main where
+      module M (A : Type@0) where
+        def id (x : A) : A := x end
+        module N (B : Type@0) where
+          def k (x : A) (y : B) : A := id x end
+        end
+      end
+      def j : forall (x : Nat) -> Nat := M.id Nat end
+    end *)
+Definition running : Cst.prog := (nil, ("Main" :: nil, nil,
+  c_mod ("M" :: nil) (("A", typ 0) :: nil)
+    (c_def md_pub "id" (pi "x" (var "A") (var "A")) (fn "x" (var "A") (var "x")) ::
+     c_mod ("N" :: nil) (("B", typ 0) :: nil)
+       (c_def md_pub "k" (pi "x" (var "A") (pi "y" (var "B") (var "A")))
+          (fn "x" (var "A") (fn "y" (var "B") (app (var "id") (var "x")))) :: nil) :: nil) ::
+  c_def md_pub "j" (pi "x" nat nat) (app (proj (var "M") "id") nat) :: nil)).
+
+Definition Main_M_id : exp := a_glob (p_abs ("Main" :: nil) ("M" :: "id" :: nil)).
+
+Example running_spec :
+  elab_spec running
+    (nil, ⋅,
+     cc_mod "M" (⋅ ▹ Type@0)
+       (cc_def "id" true false (Π #0 #1) (λ #0 #0) ::
+        cc_mod "N" (⋅ ▹ Type@0)
+          (cc_def "k" true false (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main_M_id $ #3 $ #1)))
+             :: nil) :: nil) ::
+     cc_def "j" true false (Π ℕ ℕ) (Main_M_id $ ℕ) :: nil).
 Proof. elab_ok. Qed.
