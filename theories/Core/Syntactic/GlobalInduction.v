@@ -148,7 +148,21 @@ Record Emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (μ : msub)
         gu_params U' ∋ #k' : T' /\ T[↑ₘ (S n)]ᵐ[sb_params n][μ]ᵐ = T'[↑ₘ (S n')]ᵐ[sb_params n']
   ; em_glob : forall r Δ b pv A B,
       Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
-      exists r', (a_glob r)[μ]ᵐ = a_glob r' /\ Θ2 ⍮ Ξ2 ∋ᵍ r' ⇒ Δ[μ]ᵐ ⍮ ge_def b pv A[μ]ᵐ B[μ]ᵐ }.
+      exists r', (a_glob r)[μ]ᵐ = a_glob r' /\ Θ2 ⍮ Ξ2 ∋ᵍ r' ⇒ Δ[μ]ᵐ ⍮ ge_def b pv A[μ]ᵐ B[μ]ᵐ
+  (** A frame with a parameter goes to one frame, whose telescope it is a
+      suffix of: its parameters are moved by one offset. *)
+  ; em_frame : forall n U k T,
+      List.nth_error Ξ1 n = Some U -> gu_params U ∋ #k : T ->
+      exists n' U' o, List.nth_error Ξ2 n' = Some U' /\
+        List.length (gu_params U') = List.length (gu_params U) + o /\
+        forall k0, k0 < List.length (gu_params U) -> $[n, k0][μ]ᵐ = $[n', k0 + o] }.
+
+Lemma ctx_lookup_exists : forall (Γ : ctx) x, x < List.length Γ -> exists A, Γ ∋ #x : A.
+Proof.
+  induction Γ as [| B Γ IH]; intros [| x] Hx; cbn in Hx; try lia.
+  - eexists; constructor.
+  - destruct (IH x ltac:(lia)) as [A HA]; eexists; constructor; eassumption.
+Qed.
 
 Lemma opt_msub_msub : forall (B : option exp) μ ν, B[μ]ᵐ[ν]ᵐ = B[ms_comp μ ν]ᵐ.
 Proof. intros [X |] *; cbn; rewrite ?exp_msub_msub; reflexivity. Qed.
@@ -176,7 +190,7 @@ Proof. intros * H; rewrite ctx_fn_msub, (exp_msub_ext _ _ _ (H _)); reflexivity.
 Lemma syn_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,
     Emb Θ1 Ξ1 Θ2 Ξ2 μ -> syn_msub Θ1 Ξ1 Θ2 Ξ2 μ nil.
 Proof.
-  intros * [Hg Hq Hp Hl].
+  intros * [Hg Hq Hp Hl _].
   assert (Hb : ⊢ Θ2 ⍮ Ξ2 ⍮ ⋅) by (constructor; assumption).
   assert (Hqe : forall n (X : exp), X[ms_qn n μ]ᵐ = X[μ]ᵐ) by (intros; apply exp_msub_ext, Hq).
   constructor.
@@ -197,7 +211,7 @@ Qed.
 Lemma Emb_comp : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2 ν μ,
     Emb Θ1 Ξ1 Θ Ξ ν -> Emb Θ Ξ Θ2 Ξ2 μ -> Emb Θ1 Ξ1 Θ2 Ξ2 (ms_comp ν μ).
 Proof.
-  intros * [_ Hq1 Hp1 Hl1] [Hg Hq2 Hp2 Hl2]; constructor.
+  intros * [_ Hq1 Hp1 Hl1 Hf1] [Hg Hq2 Hp2 Hl2 Hf2]; constructor.
   - exact Hg.
   - intros n; eapply ms_eq_trans; [ apply ms_qn_comp | apply ms_comp_cong; auto ].
   - intros * Hn Hk.
@@ -208,6 +222,14 @@ Proof.
     destruct (Hl1 _ _ _ _ _ _ Hl) as (r1 & Heq1 & Hl').
     destruct (Hl2 _ _ _ _ _ _ Hl') as (r2 & Heq2 & Hl'').
     exists r2; rewrite <- exp_msub_msub, Heq1, <- ctx_msub_msub, <- exp_msub_msub, <- opt_msub_msub; auto.
+  - intros * Hn Hk.
+    destruct (Hf1 _ _ _ _ Hn Hk) as (n1 & U1 & o1 & Hn1 & Hlen1 & Hm1).
+    pose proof (ctx_lookup_length _ _ _ Hk) as Hkl.
+    destruct (ctx_lookup_exists (gu_params U1) (k + o1) ltac:(lia)) as [T1 Hk1].
+    destruct (Hf2 _ _ _ _ Hn1 Hk1) as (n2 & U2 & o2 & Hn2 & Hlen2 & Hm2).
+    exists n2, U2, (o1 + o2); repeat split; [ assumption | lia |].
+    intros k0 Hk0; rewrite <- exp_msub_msub, (Hm1 _ Hk0), (Hm2 (k0 + o1) ltac:(lia)).
+    rewrite Nat.add_assoc; reflexivity.
 Qed.
 
 (** An embedding preceded by one that moves nothing. *)
@@ -217,9 +239,11 @@ Lemma Emb_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2 μ,
        exists U', List.nth_error Ξ n = Some U' /\ gu_params U' = gu_params U) ->
     Emb Θ Ξ Θ2 Ξ2 μ -> Emb Θ1 Ξ1 Θ2 Ξ2 μ.
 Proof.
-  intros * Hr Hn [Hg Hq Hp Hl]; constructor; auto.
-  intros * Hn1 Hk; destruct (Hn _ _ Hn1) as (U' & Hn' & HP).
-  rewrite <- HP in Hk; eauto.
+  intros * Hr Hn [Hg Hq Hp Hl Hf]; constructor; auto.
+  - intros * Hn1 Hk; destruct (Hn _ _ Hn1) as (U' & Hn' & HP).
+    rewrite <- HP in Hk; eauto.
+  - intros * Hn1 Hk; destruct (Hn _ _ Hn1) as (U' & Hn' & HP).
+    rewrite <- HP in Hk; rewrite <- HP; eauto.
 Qed.
 
 Lemma Emb_id : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> Emb Θ Ξ Θ Ξ ms_id.
@@ -228,6 +252,8 @@ Proof.
   - intros; apply ms_qn_id.
   - intros * Hn Hk; exists n, U, k, T; rewrite !exp_msub_id; repeat split; assumption.
   - intros * Hl; exists r; rewrite ctx_msub_id, !exp_msub_id, opt_msub_id; split; [ reflexivity | assumption ].
+  - intros * Hn Hk; exists n, U, 0; repeat split; [ assumption | lia |].
+    intros; rewrite exp_msub_id, Nat.add_0_r; reflexivity.
 Qed.
 
 Lemma Emb_push : forall Θ U Ξ, ⊢g Θ ⍮ U :: Ξ -> Emb Θ Ξ Θ (U :: Ξ) (↑ₘ 1).
@@ -239,6 +265,8 @@ Proof.
   - intros * Hn Hk; exists (S n), U0, k, T; rewrite exp_params_shift; auto.
   - intros * Hl; exists r[p_rel 1 nil]ᵖ; split; [ reflexivity |].
     apply gc_lookup_push; assumption.
+  - intros * Hn Hk; exists (S n), U0, 0; repeat split; [ assumption | lia |].
+    intros; rewrite Nat.add_0_r; reflexivity.
 Qed.
 
 (** Popping: a global of a pushed stack not in the new frame is one of the
@@ -335,6 +363,11 @@ Proof.
       assert (Hfix : ms_abs_fix (ms_off (length Pa))) by (intros ? ?; reflexivity).
       rewrite (ctx_msub_nil _ _ _ HΔ Hfix), (exp_msub_nil _ _ _ HA Hfix), (opt_msub_nil _ _ _ HB Hfix).
       econstructor; eassumption.
+  - intros [| n] U k T Hn Hk; cbn in Hn.
+    + injection Hn as <-; exists 0, (gu_mk (Pa ++ Pb) Φ), (length Pa); cbn.
+      split; [ reflexivity | split; [ rewrite List.length_app; lia | intros; reflexivity ] ].
+    + exists (S n), U, 0; repeat split; [ assumption | lia |].
+      intros; rewrite Nat.add_0_r; reflexivity.
 Qed.
 
 (** *** Frames, prefixes and levels *)

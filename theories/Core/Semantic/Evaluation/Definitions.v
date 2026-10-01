@@ -96,12 +96,13 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : menv -> exp -> env -> domain -> 
   `( me_drop (lp_mod lp) κ = me_frame a args κ' ->
      ⟦ a_param lp ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↘ args (lp_param lp) )
 (** One of the open frame [j] is a neutral, at its type evaluated where the
-    frame was checked. *)
+    frame was checked, in the environment of the parameters bound before it
+    (the suffix of the telescope from it). *)
 | eval_exp_param_open :
   `( me_drop (lp_mod lp) κ = me_base j ->
      List.nth_error Ξ j = Some U ->
-     eval_ptele Θ Ξ (me_base (S j)) j (List.length (gu_params U)) (gu_params U) ρp ->
-     ⟦ a_param lp ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↘ ρp (lp_param lp) )
+     eval_ptele Θ Ξ (me_base (S j)) j (List.length (gu_params U)) (List.skipn (lp_param lp) (gu_params U)) (v :: ρp) ->
+     ⟦ a_param lp ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↘ v )
 | eval_exp_glob_rel :
   `( eval_ent Θ Ξ (me_drop m κ) ip r ->
      ⟦ a_glob (p_rel m ip) ⟧ Θ ⍮ Ξ ⍮ κ ⍮ ρ ↘ r )

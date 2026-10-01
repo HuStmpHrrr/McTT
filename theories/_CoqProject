@@ -45,6 +45,7 @@
 ./Core/Semantic/Realizability.v
 ./Core/Semantic/Simulation.v
 ./Core/Semantic/PERSim.v
+./Core/Semantic/Bridge.v
 ./Core/Semantic/Transparency.v
 ./Core/Soundness.v
 ./Core/Soundness/ContextCases.v
