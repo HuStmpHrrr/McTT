@@ -228,6 +228,28 @@ Proof.
   destruct Hin as [[= <- <-] |]; eauto.
 Qed.
 
+Lemma wf_gdep_lookup : forall Θ d,
+    wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gd_lookup d fp = Some U.
+Proof.
+  induction 1 as [| Θ d fp U Hd IH HU Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
+  unfold gd_lookup, path_beq in *; cbn.
+  destruct Hin as [[= <- <-] | Hin].
+  - destruct (path_eq_dec fp fp); [ reflexivity | contradiction ].
+  - destruct (path_eq_dec fq fp) as [-> |]; [| eauto ].
+    exfalso; apply (Hfr' (List.in_map fst _ _ Hin)).
+Qed.
+
+(** Every frame of a well-formed stack belongs to a unit not filed. *)
+Lemma wf_gstack_frames : forall Θ Ξ, wf_gstack Θ Ξ ->
+    forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (p_unit mp) = None.
+Proof.
+  induction 1 as [| Θ Ξ mq V HΞ IH HV Hff]; intros mp U Hin; [ contradiction |].
+  destruct Hin as [[= <- <-] | Hin]; [| eauto ].
+  destruct Ξ as [| [mr W] Ξ']; cbn in Hff.
+  - apply gds_fresh_no_lookup; exact Hff.
+  - destruct Hff as (x & -> & _); cbn; apply (IH mr W); left; reflexivity.
+Qed.
+
 Section Induction.
   (** [V Θ Ξ E]: the (closed) entry [E] is valid at [Θ ⍮ Ξ]. *)
   Variable V : gdeps -> gstack -> gentry -> Prop.

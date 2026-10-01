@@ -84,3 +84,5 @@
 ./Extraction/Readback.v
 ./Extraction/Subtyping.v
 ./Extraction/TypeCheck.v
+./Core/Syntactic/Command.v
+./Core/Syntactic/System/Command.v
