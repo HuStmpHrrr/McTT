@@ -51,6 +51,8 @@ with menv : Set :=
 
 Notation env := (list domain).
 
+Derive NoConfusion for Ascii.ascii String.string.
+Derive NoConfusion for qual path lpath.
 Derive NoConfusion for domain domain_ne domain_nf menv.
 
 (** The value of the variable [#x], [zeroᵈ] past the end: a well-typed term
