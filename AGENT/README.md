@@ -30,6 +30,7 @@ invariants you must preserve when editing one, are in
 | [`substitution-port.md`](substitution-port.md) | The port to meta-level substitutions (complete): design, order of the development, deviations from the paper, the four-value pattern, and the accumulated gotchas. **Start here before touching anything under `theories/Core/`.** |
 | [`proof-conventions.md`](proof-conventions.md) | How to pick, extend, and safely edit tactics. |
 | [`modules.md`](modules.md) | Modules, global and local bindings (complete): why they are an elaboration-layer feature only, the definition telescope, what is proved, and the deviations from [`modules-spec.md`](modules-spec.md). **Start here before touching anything under `theories/Frontend/`, or `Core/Syntactic/GlobalCtx.v`.** |
+| [`elab-spec.md`](elab-spec.md) | The declarative specification of the elaborator (`Frontend/ElabSpec.v`) and its proof of soundness and completeness (`Frontend/ElabCorrect.v`). |
 | [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |

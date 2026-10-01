@@ -146,6 +146,14 @@ Definition res_mod (r : eres res) : eres mref :=
   | eerr e => eerr e
   end.
 
+(** A definition [x] of the module [mr], with [args] more arguments: a term
+    once the closed modules crossed have their arguments. *)
+Definition mr_def (mr : mref) (x : string) (args : list exp) : eres res :=
+  let args' := List.app (mr_args mr) args in
+  let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
+              ("module arguments missing for " ++ x) in
+  eok (r_exp (sc_apply (a_glob {| p_unit := mr_unit mr; p_mems := List.app (mr_mems mr) (x :: nil) |}) args')).
+
 (** A member of a module that is not open: only a public one can be named, and
     only once the closed modules crossed have their arguments.  A member of an
     opaque path extends it. *)
@@ -162,9 +170,7 @@ Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
       | None => eerr ("no member " ++ x)
       | Some (en_def pv) =>
           let* _ := echeck (negb (mr_public mr && pv)) (x ++ " is private") in
-          let* _ := echeck (Nat.leb (mr_arity mr) (List.length args'))
-                      ("module arguments missing for " ++ x) in
-          eok (r_exp (sc_apply (a_glob {| p_unit := mr_unit mr; p_mems := mems' |}) args'))
+          mr_def mr x args
       | Some (en_mod n Φx) =>
           eok (r_mod {| mr_unit := mr_unit mr; mr_mems := mems'; mr_mod := Some Φx;
                         mr_public := true; mr_arity := mr_arity mr + n; mr_args := args' |})
@@ -178,7 +184,9 @@ Definition mr_apply (mr : mref) (args : list exp) : mref :=
 Definition tg_use (t : target) (args : list exp) : eres res :=
   match t with
   | tg_mod mr => eok (r_mod (mr_apply mr args))
-  | tg_mem mr x => mr_member mr x args
+  (** [x] was checked to be a public definition of [mr] when the alias was
+      made, so it is not looked up again. *)
+  | tg_mem mr x => mr_def mr x args
   end.
 
 (** A name looked up in the open frames, [off] binders in: an alias, then a
@@ -354,49 +362,55 @@ Definition elab_eval (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : eres u
 (** [import] binds names only: the module's full path, for a unit, and with
     [as] or [use] the names given.  Only an import of another unit is a
     command. *)
+Definition import_target (st : ustate) (fp ip : list string) : eres mref :=
+  match fp, ip with
+  | nil, x :: ip' =>
+      res_mod (elab_res (us_unit st) (us_outer st) (us_frames st) nil 0
+                 (List.fold_left Cst.proj ip' (Cst.var x)) nil)
+  | nil, nil => eerr "nothing to import"
+  | _, _ => eok (mr_opaque fp ip nil)
+  end.
+
+(** [use n]: the name [n] for the member [n] of [mr]. *)
+Definition use_bind (mr : mref) (acc : eres oscope) (n : string) : eres oscope :=
+  let* sc := acc in
+  let* _ := echeck (os_fresh n sc) (n ++ " is already declared") in
+  match mr_mod mr with
+  | None =>
+      (* REVISIT: privacy of imported members *)
+      eok (os_alias_add n
+             (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
+                        mr_mod := None; mr_public := true; mr_arity := 0;
+                        mr_args := mr_args mr |}) sc)
+  | Some Φ =>
+      match em_lookup n Φ with
+      | Some (en_def pv) =>
+          let* _ := echeck (negb (mr_public mr && pv)) (n ++ " is private") in
+          eok (os_alias_add n (tg_mem mr n) sc)
+      | Some (en_mod k Φn) =>
+          eok (os_alias_add n
+                 (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
+                            mr_mod := Some Φn; mr_public := true; mr_arity := mr_arity mr + k;
+                            mr_args := mr_args mr |}) sc)
+      | None => eerr ("no member " ++ n)
+      end
+  end.
+
+(** What an import of [mr] from the unit [fp] binds in the scope [sc]. *)
+Definition import_binds (fp : list string) (mr : mref) (spec : Cst.ispec) (sc : oscope) : eres oscope :=
+  let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
+  match spec with
+  | Cst.i_open => eok sc
+  | Cst.i_as y =>
+      let* _ := echeck (os_fresh y sc) (y ++ " is already declared") in
+      eok (os_alias_add y (tg_mod mr) sc)
+  | Cst.i_use ns => List.fold_left (use_bind mr) ns (eok sc)
+  end.
+
 Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : eres ustate :=
-  let* mr := match fp, ip with
-             | nil, x :: ip' =>
-                 res_mod (elab_res (us_unit st) (us_outer st) (us_frames st) nil 0
-                            (List.fold_left Cst.proj ip' (Cst.var x)) nil)
-             | nil, nil => eerr "nothing to import"
-             | _, _ => eok (mr_opaque fp ip nil)
-             end in
+  let* mr := import_target st fp ip in
   let oc := match fp with nil => None | _ => Some (cc_import fp ip) end in
-  us_scope st oc (fun sc =>
-    let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
-    match spec with
-    | Cst.i_open => eok sc
-    | Cst.i_as y =>
-        let* _ := echeck (os_fresh y sc) (y ++ " is already declared") in
-        eok (os_alias_add y (tg_mod mr) sc)
-    | Cst.i_use ns =>
-        List.fold_left
-          (fun acc n =>
-             let* sc := acc in
-             let* _ := echeck (os_fresh n sc) (n ++ " is already declared") in
-             match mr_mod mr with
-             | None =>
-                 (* REVISIT: privacy of imported members *)
-                 eok (os_alias_add n
-                        (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
-                                   mr_mod := None; mr_public := true; mr_arity := 0;
-                                   mr_args := mr_args mr |}) sc)
-             | Some Φ =>
-                 match em_lookup n Φ with
-                 | Some (en_def pv) =>
-                     let* _ := echeck (negb (mr_public mr && pv)) (n ++ " is private") in
-                     eok (os_alias_add n (tg_mem mr n) sc)
-                 | Some (en_mod k Φn) =>
-                     eok (os_alias_add n
-                            (tg_mod {| mr_unit := mr_unit mr; mr_mems := List.app (mr_mems mr) (n :: nil);
-                                       mr_mod := Some Φn; mr_public := true; mr_arity := mr_arity mr + k;
-                                       mr_args := mr_args mr |}) sc)
-                 | None => eerr ("no member " ++ n)
-                 end
-             end)
-          ns (eok sc)
-    end).
+  us_scope st oc (import_binds fp mr spec).
 
 (** Opening a module pushes its frame; closing it pops the frame and makes it
     a member of the one outside. *)
