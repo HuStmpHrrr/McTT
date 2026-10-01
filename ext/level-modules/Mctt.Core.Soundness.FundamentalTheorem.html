@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Soundness.FundamentalTheorem</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab121"></a><h1 class="section">The Fundamental Theorem of the Gluing Model</h1>
+
+
+<div class="paragraph"> </div>
+
+    In two parts: contexts and terms.  The substitution conjunct is gone with
+    the <span class="inlinecode">⊩<span class="id" title="var">s</span></span> judgment, and the equality
+    judgments never had one — the gluing model relates a term to a value, not two
+    terms to each other.  It is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#kglu_fundamental"><span class="id" title="lemma">kglu_fundamental</span></a></span> at the identity, which is
+    sound because every well-formed global context glues (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#gctx_glu"><span class="id" title="lemma">gctx_glu</span></a></span>). 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#"><span class="id" title="library">GlobalCases</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Soundness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Section</span> <a id="soundness_fundamental" class="idref" href="#soundness_fundamental"><span class="id" title="section">soundness_fundamental</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Context</span> {<a id="soundness_fundamental.GC" class="idref" href="#soundness_fundamental.GC"><span class="id" title="variable">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>}.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="soundness_fundamental" class="idref" href="#soundness_fundamental"><span class="id" title="lemma">soundness_fundamental</span></a> :<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="da7a5918a812e0216f4a54d21f7406c4" class="idref" href="#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="binder">Γ</span></a>, <a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="variable">Γ</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">(</span></a><span class="id" title="keyword">forall</span> <a id="55485d85e29df2faa6748490a2d4cd13" class="idref" href="#55485d85e29df2faa6748490a2d4cd13"><span class="id" title="binder">Γ</span></a> <a id="A:4" class="idref" href="#A:4"><span class="id" title="binder">A</span></a> <a id="M:5" class="idref" href="#M:5"><span class="id" title="binder">M</span></a>, <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#55485d85e29df2faa6748490a2d4cd13"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#M:5"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#A:4"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#55485d85e29df2faa6748490a2d4cd13"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#M:5"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#A:4"><span class="id" title="variable">A</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">)</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#kglu_fundamental"><span class="id" title="lemma">kglu_fundamental</span></a> <span class="id" title="keyword">as</span> (<span class="id" title="var">Kc</span> &amp; <span class="id" title="var">Ke</span>).<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; <span class="id" title="tactic">intros</span> * <span class="id" title="var">H</span>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">Kc</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#glu_ext_id"><span class="id" title="lemma">glu_ext_id</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#ctx_wf_gctx"><span class="id" title="lemma">ctx_wf_gctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>))) <span class="id" title="keyword">as</span> <span class="id" title="var">H'</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">Ke</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Soundness.GlobalCases.html#glu_ext_id"><span class="id" title="lemma">glu_ext_id</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#ctx_wf_gctx"><span class="id" title="lemma">ctx_wf_gctx</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#presup_exp_ctx"><span class="id" title="lemma">presup_exp_ctx</span></a> <span class="id" title="var">H</span>)))) <span class="id" title="keyword">as</span> <span class="id" title="var">H'</span> ];<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#soundness_fundamental.GC"><span class="id" title="variable">GC</span></a>; <span class="id" title="tactic">exact</span> <span class="id" title="var">H'</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;#[<span class="id" title="var">local</span>]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Ltac</span> <span class="id" title="var">solve_it</span> := <span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#soundness_fundamental"><span class="id" title="lemma">soundness_fundamental</span></a>; <span class="id" title="tactic">firstorder</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="soundness_fundamental_ctx" class="idref" href="#soundness_fundamental_ctx"><span class="id" title="lemma">soundness_fundamental_ctx</span></a> : <span class="id" title="keyword">forall</span> <a id="6b23b3527a5ae82de0dbe08d52926f19" class="idref" href="#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="binder">Γ</span></a>, <a class="idref" href="Mctt.Core.Semantic.Fixed.html#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="variable">Γ</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="var">solve_it</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="soundness_fundamental_exp" class="idref" href="#soundness_fundamental_exp"><span class="id" title="lemma">soundness_fundamental_exp</span></a> : <span class="id" title="keyword">forall</span> <a id="de9bdb4e9c2be34cf9b5e2f20d66b06e" class="idref" href="#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="binder">Γ</span></a> <a id="M:8" class="idref" href="#M:8"><span class="id" title="binder">M</span></a> <a id="A:9" class="idref" href="#A:9"><span class="id" title="binder">A</span></a>, <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#M:8"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#A:9"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#de9bdb4e9c2be34cf9b5e2f20d66b06e"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#M:8"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#A:9"><span class="id" title="variable">A</span></a>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Proof</span>. <span class="id" title="var">solve_it</span>. <span class="id" title="keyword">Qed</span>.<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Soundness.FundamentalTheorem.html#soundness_fundamental"><span class="id" title="section">soundness_fundamental</span></a>.<br/>
+
+<br/>
+#[<span class="id" title="var">export</span>]<br/>
+<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">soundness_fundamental_ctx</span> <span class="id" title="var">soundness_fundamental_exp</span> : <span class="id" title="var">mctt</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
