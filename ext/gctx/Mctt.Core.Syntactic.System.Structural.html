@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab272"></a><h1 class="section">Properties of the Judgments</h1>
+<a id="lab274"></a><h1 class="section">Properties of the Judgments</h1>
 
 
 <div class="paragraph"> </div>
@@ -78,7 +78,7 @@
 </div>
 
 <div class="doc">
-<a id="lab273"></a><h2 class="section">Basic Inversions and Presuppositions</h2>
+<a id="lab275"></a><h2 class="section">Basic Inversions and Presuppositions</h2>
 
 </div>
 <div class="code">
@@ -212,7 +212,7 @@ The variable rules look up in the local context extended by the parameters
 </div>
 
 <div class="doc">
-<a id="lab274"></a><h2 class="section">Weakening Typing</h2>
+<a id="lab276"></a><h2 class="section">Weakening Typing</h2>
 
 </div>
 <div class="code">
@@ -235,7 +235,7 @@ The variable rules look up in the local context extended by the parameters
 </div>
 
 <div class="doc">
-The extra premise <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> is needed for <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span>, it is
+The extra premise <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> is needed for <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span>, it is
     exactly what the induction hypothesis of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span> supplies at every
     binder, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_q"><span class="id" title="lemma">wf_sub_q</span></a></span> states the corresponding premise for substitutions
     explicitly. 
@@ -328,7 +328,7 @@ A weakening transports a variable by its defining property.  Registering
 </div>
 
 <div class="doc">
-<a id="lab275"></a><h2 class="section">Pushing an Operation Inwards</h2>
+<a id="lab277"></a><h2 class="section">Pushing an Operation Inwards</h2>
 
 
 <div class="paragraph"> </div>
@@ -427,13 +427,13 @@ The parentheses around <span class="inlinecode"><span class="id" title="var">on_
 </div>
 
 <div class="doc">
-<a id="lab276"></a><h2 class="section">Saturating with the Lifted Weakenings</h2>
+<a id="lab278"></a><h2 class="section">Saturating with the Lifted Weakenings</h2>
 
 
 <div class="paragraph"> </div>
 
     Every binder case of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span> needs the lifted weakening
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span> <span class="inlinecode">⊢<span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> before the induction hypothesis for the body can
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span> <span class="inlinecode">⊢<span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> before the induction hypothesis for the body can
     be used.  It is derivable — <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_wk_q"><span class="id" title="lemma">wf_wk_q</span></a></span> is a hint — but only from the
     induction hypothesis for the *domain*, so leaving it to <span class="inlinecode"><span class="id" title="tactic">eauto</span></span> costs three
     extra levels of search on top of the rule application, which puts the wider
@@ -445,7 +445,7 @@ The parentheses around <span class="inlinecode"><span class="id" title="var">on_
     <span class="inlinecode"><span class="id" title="var">lift_wk_nat</span></span> seeds the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-eliminator cases, whose first binder is over the
     closed type <span class="inlinecode"><span class="id" title="var">ℕ</span></span>: <span class="inlinecode"><span class="id" title="var">lift_wk_step</span></span> cannot start there, because the domain of
     that binder has no induction hypothesis of its own.  It is guarded by the
-    presence of a motive <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> so that it fires only in those
+    presence of a motive <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> so that it fires only in those
     four cases. 
 </div>
 <div class="code">
@@ -498,7 +498,7 @@ The successor branch of the <span class="inlinecode"><span class="id" title="var
 </div>
 
 <div class="doc">
-<a id="lab277"></a><h2 class="section">Weakening Preserves the Judgments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span>)</h2>
+<a id="lab279"></a><h2 class="section">Weakening Preserves the Judgments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_wf"><span class="id" title="lemma">wk_preserves_wf</span></a></span>)</h2>
 
 </div>
 <div class="code">
@@ -585,7 +585,7 @@ What is left are exactly the four rules for the <span class="inlinecode"><span c
 </div>
 
 <div class="doc">
-<a id="lab278"></a><h2 class="section">Reflexivity of Term Equality</h2>
+<a id="lab280"></a><h2 class="section">Reflexivity of Term Equality</h2>
 
 
 <div class="paragraph"> </div>
@@ -599,7 +599,7 @@ What is left are exactly the four rules for the <span class="inlinecode"><span c
 <div class="paragraph"> </div>
 
     It is needed before <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span>, whose <span class="inlinecode"><span class="id" title="var">Var</span></span> case for the equality judgment
-    asks for <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode">σ</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at an arbitrary image of the substitution —
+    asks for <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode">σ</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span> <span class="inlinecode">$</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Discharge.html#Pop.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at an arbitrary image of the substitution —
     something no congruence rule provides. 
 </div>
 <div class="code">
@@ -634,7 +634,7 @@ This is what lets <span class="inlinecode"><span class="id" title="var">saturate
 <div class="doc">
 Refinement is reflexive at a type.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_refl"><span class="id" title="constructor">wf_subtyp_refl</span></a></span> asks for an equation,
     which for reflexivity is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_exp_eq_refl"><span class="id" title="lemma">wf_exp_eq_refl</span></a></span>; stating the composite is what lets
-    a goal <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> be closed from a typing derivation in one step, which is
+    a goal <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> be closed from a typing derivation in one step, which is
     how every inversion lemma's introduction case ends.  (Once presupposition is
     available, <span class="inlinecode"><span class="id" title="library">Core.Syntactic.SystemOpt</span></span> drops the typing premise of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_refl"><span class="id" title="constructor">wf_subtyp_refl</span></a></span> outright; this lemma stays because going through that one
@@ -654,7 +654,7 @@ Refinement is reflexive at a type.  <span class="inlinecode"><a class="idref" hr
 </div>
 
 <div class="doc">
-<a id="lab279"></a><h2 class="section">Substitution Typing</h2>
+<a id="lab281"></a><h2 class="section">Substitution Typing</h2>
 
 <div class="paragraph"> </div>
 
@@ -774,7 +774,7 @@ Both bindings of <span class="inlinecode"><span class="id" title="var">Δ</span>
 
 <div class="paragraph"> </div>
 
-    As in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_wk_q"><span class="id" title="lemma">wf_wk_q</span></a></span>, the premise <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> is taken explicitly.  It
+    As in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_wk_q"><span class="id" title="lemma">wf_wk_q</span></a></span>, the premise <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> is taken explicitly.  It
     could be dropped once <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span> is available; we keep it, because
     it is exactly what the induction hypothesis of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span> supplies
     at each binder, and dropping it would make <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_q"><span class="id" title="lemma">wf_sub_q</span></a></span> depend on
@@ -862,7 +862,7 @@ As with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syst
 </div>
 
 <div class="doc">
-<a id="lab280"></a><h2 class="section">Pushing a Substitution Inwards</h2>
+<a id="lab282"></a><h2 class="section">Pushing a Substitution Inwards</h2>
 
 
 <div class="paragraph"> </div>
@@ -916,7 +916,7 @@ As with <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syst
 </div>
 
 <div class="doc">
-<a id="lab281"></a><h2 class="section">Saturating with the Lifted Substitutions</h2>
+<a id="lab283"></a><h2 class="section">Saturating with the Lifted Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -975,7 +975,7 @@ The successor branch of the <span class="inlinecode"><span class="id" title="var
 </div>
 
 <div class="doc">
-<a id="lab282"></a><h2 class="section">Substitution Preserves the Judgments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span>)</h2>
+<a id="lab284"></a><h2 class="section">Substitution Preserves the Judgments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#sub_preserves_wf"><span class="id" title="lemma">sub_preserves_wf</span></a></span>)</h2>
 
 </div>
 <div class="code">
@@ -1093,7 +1093,7 @@ The single substitution lemma, the form in which the elimination rules use
 </div>
 
 <div class="doc">
-<a id="lab283"></a><h2 class="section">The Substitutions of the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-Eliminator</h2>
+<a id="lab285"></a><h2 class="section">The Substitutions of the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-Eliminator</h2>
 
 
 <div class="paragraph"> </div>
@@ -1145,7 +1145,7 @@ The single substitution lemma, the form in which the elimination rules use
 </div>
 
 <div class="doc">
-The premise is context well-formedness rather than <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>
+The premise is context well-formedness rather than <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>
     so that this applies at the motive of *either* side of a congruence. 
 </div>
 <div class="code">
@@ -1172,13 +1172,13 @@ The premise is context well-formedness rather than <span class="inlinecode"><a c
 </div>
 
 <div class="doc">
-<a id="lab284"></a><h2 class="section">Context Conversion</h2>
+<a id="lab286"></a><h2 class="section">Context Conversion</h2>
 
 
 <div class="paragraph"> </div>
 
     An explicit-substitution presentation needs two further inductive judgments
-    for this — context subtyping <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and context equivalence <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> —
+    for this — context subtyping <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and context equivalence <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> —
     each with a mutual induction of its own (this is what <span class="inlinecode"><span class="id" title="library">Core.Syntactic.CtxSub</span></span>
     and <span class="inlinecode"><span class="id" title="var">Core.Syntactic.CtxEq</span></span> used to be).  With substitution as an operation
     neither is needed: <span class="inlinecode"><span class="id" title="var">Δ</span></span> refines <span class="inlinecode"><span class="id" title="var">Γ</span></span> exactly when the *identity* substitution
@@ -1189,7 +1189,7 @@ The premise is context well-formedness rather than <span class="inlinecode"><a c
 
 <div class="paragraph"> </div>
 
-    So <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> is read "<span class="inlinecode"><span class="id" title="var">Δ</span></span> refines <span class="inlinecode"><span class="id" title="var">Γ</span></span>"; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_id"><span class="id" title="lemma">wf_sub_id</span></a></span> is its
+    So <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> is read "<span class="inlinecode"><span class="id" title="var">Δ</span></span> refines <span class="inlinecode"><span class="id" title="var">Γ</span></span>"; <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_id"><span class="id" title="lemma">wf_sub_id</span></a></span> is its
     reflexivity and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_compose"><span class="id" title="lemma">wf_sub_compose</span></a></span> its transitivity. 
 </div>
 <div class="code">
@@ -1316,7 +1316,7 @@ Equal types give refinements in both directions; this is the instance
 </div>
 
 <div class="doc">
-<a id="lab285"></a><h2 class="section">Transporting a Type</h2>
+<a id="lab287"></a><h2 class="section">Transporting a Type</h2>
 
 
 <div class="paragraph"> </div>
@@ -1381,7 +1381,7 @@ Equal types give refinements in both directions; this is the instance
 </div>
 
 <div class="doc">
-<a id="lab286"></a><h2 class="section">Lifting without the Extra Premise</h2>
+<a id="lab288"></a><h2 class="section">Lifting without the Extra Premise</h2>
 
 
 <div class="paragraph"> </div>
@@ -1423,7 +1423,7 @@ Equal types give refinements in both directions; this is the instance
 </div>
 
 <div class="doc">
-<a id="lab287"></a><h2 class="section">Cumulativity</h2>
+<a id="lab289"></a><h2 class="section">Cumulativity</h2>
 
 
 <div class="paragraph"> </div>
@@ -1612,7 +1612,7 @@ Two types are always types at a *common* level.  Stating it in this form —
 </div>
 
 <div class="doc">
-<a id="lab288"></a><h2 class="section">Types in a Well-formed Context</h2>
+<a id="lab290"></a><h2 class="section">Types in a Well-formed Context</h2>
 
 
 <div class="paragraph"> </div>

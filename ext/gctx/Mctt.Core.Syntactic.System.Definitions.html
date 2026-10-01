@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab232"></a><h1 class="section">The Syntactic Judgments</h1>
+<a id="lab234"></a><h1 class="section">The Syntactic Judgments</h1>
 
 
 <div class="paragraph"> </div>
@@ -94,11 +94,11 @@
 <div class="paragraph"> </div>
 
     Every judgment reads the two global components <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_glob"><span class="id" title="constructor">a_glob</span></a></span> resolves into, kept
-    apart rather than bundled: the dependency levels <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> and the definition stack
-    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>, so a judgment reads <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.  They are *indices*, not
+    apart rather than bundled: the dependency levels <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> and the definition stack
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>, so a judgment reads <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.  They are *indices*, not
     parameters: no rule about terms changes them, but a filed unit is checked
     against the levels below it and a stack frame with the frames inside it
-    dropped, so <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> really is an induction that varies them — exactly as
+    dropped, so <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> really is an induction that varies them — exactly as
     <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> varies <span class="inlinecode"><span class="id" title="var">Γ</span></span>. 
 </div>
 <div class="code">
@@ -133,7 +133,7 @@
 </div>
 
 <div class="doc">
-<a id="lab233"></a><h2 class="section">Context Lookup</h2>
+<a id="lab235"></a><h2 class="section">Context Lookup</h2>
 
 
 <div class="paragraph"> </div>
@@ -156,7 +156,7 @@
 </div>
 
 <div class="doc">
-<a id="lab234"></a><h2 class="section">The Mutually Defined Judgments</h2>
+<a id="lab236"></a><h2 class="section">The Mutually Defined Judgments</h2>
 
 
 <div class="paragraph"> </div>
@@ -278,7 +278,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab235"></a><h3 class="section">Congruence rules</h3>
+<a id="lab237"></a><h3 class="section">Congruence rules</h3>
 
 </div>
 <div class="code">
@@ -333,7 +333,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab236"></a><h3 class="section">Computation rules</h3>
+<a id="lab238"></a><h3 class="section">Computation rules</h3>
 
 </div>
 <div class="code">
@@ -369,7 +369,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab237"></a><h3 class="section">Uniqueness rule</h3>
+<a id="lab239"></a><h3 class="section">Uniqueness rule</h3>
 
 </div>
 <div class="code">
@@ -381,7 +381,7 @@ We have this extra argument for soundness.
 </div>
 
 <div class="doc">
-<a id="lab238"></a><h3 class="section">Subsumption and the PER rules</h3>
+<a id="lab240"></a><h3 class="section">Subsumption and the PER rules</h3>
 
 </div>
 <div class="code">
@@ -410,7 +410,7 @@ This extra argument is here to be consistent with
 </div>
 
 <div class="doc">
-<a id="lab239"></a><h3 class="section">Subtyping</h3>
+<a id="lab241"></a><h3 class="section">Subtyping</h3>
 
 </div>
 <div class="code">
@@ -454,24 +454,24 @@ We need this extra argument in order to prove the presupposition
 </div>
 
 <div class="doc">
-<a id="lab240"></a><h2 class="section">Well-formedness of the Global Context</h2>
+<a id="lab242"></a><h2 class="section">Well-formedness of the Global Context</h2>
 
 
 <div class="paragraph"> </div>
 
     Part of the same mutual definition: an entry's type and body are checked by
-    the term judgments, and <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> is what a use of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_glob"><span class="id" title="constructor">a_glob</span></a></span> appeals to, so
+    the term judgments, and <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> is what a use of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_glob"><span class="id" title="constructor">a_glob</span></a></span> appeals to, so
     the two directions are genuinely interdependent and presupposition has to be
     proved for all of them at once.
 
 <div class="paragraph"> </div>
 
     A member may mention any name in scope, not only the ones declared before it,
-    so within one unit everything is checked against the same <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>.  Across
+    so within one unit everything is checked against the same <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>.  Across
     units it is not: a level is checked against the levels below it, and a frame
     against the frames outside it, which is why both components are indices of the
-    whole block.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdep"><span class="id" title="inductive">wf_gdep</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdeps"><span class="id" title="inductive">wf_gdeps</span></a></span> mention only <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span> only
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> — keeping the two apart is what lets each say exactly what it is
+    whole block.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdep"><span class="id" title="inductive">wf_gdep</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdeps"><span class="id" title="inductive">wf_gdeps</span></a></span> mention only <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span> only
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> — keeping the two apart is what lets each say exactly what it is
     relative to.
 
 <div class="paragraph"> </div>
@@ -535,7 +535,7 @@ An internal module, under the parameters <span class="inlinecode"><a class="idre
 
 <div class="doc">
 The base case is what makes <span class="inlinecode">⊢<span class="id" title="var">m</span></span> presuppose its telescope, which is why no
-    rule above carries a <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> premise. 
+    rule above carries a <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> premise. 
 </div>
 <div class="code">
 | <a id="wf_gmod_nil" class="idref" href="#wf_gmod_nil"><span class="id" title="constructor">wf_gmod_nil</span></a> :<br/>
@@ -574,11 +574,11 @@ A unit: its parameters are its *whole* telescope, whether it has been filed
 </div>
 
 <div class="doc">
-One dependency level, checked against the levels <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> below it: a filed unit
+One dependency level, checked against the levels <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> below it: a filed unit
     is a finished compilation unit, so it sees no stack, and not its own level
-    either.  Its path is fresh both in <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> and in the part of this level already
+    either.  Its path is fresh both in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> and in the part of this level already
     filed, so a path is filed exactly once in the whole of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a></span>.  No ambient
-    global context appears — <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> is all a level is relative to. 
+    global context appears — <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is all a level is relative to. 
 </div>
 <div class="code">
 <br/>
@@ -734,7 +734,7 @@ The global subset: the shape of <span class="inlinecode"><a class="idref" href="
 
 <div class="doc">
 The whole block, for a statement that has to cross between the two
-    directions — the term judgments appeal to <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> and the global ones to
+    directions — the term judgments appeal to <span class="inlinecode">⊢<span class="id" title="var">g</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> and the global ones to
     typing, so presupposition is proved here or not at all. 
 </div>
 <div class="code">
@@ -769,8 +769,8 @@ The whole block, for a statement that has to cross between the two
 
 <div class="doc">
 The projections the <span class="inlinecode"><span class="id" title="keyword">Record</span></span>s used to provide.  Two of the old four are
-    presuppositions instead, so they live in <span class="inlinecode"><span class="id" title="library">Presup</span></span>: <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gu_params"><span class="id" title="projection">gu_params</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span> of
-    <span class="inlinecode">⊢<span class="id" title="var">m</span></span>, hence of <span class="inlinecode">⊢<span class="id" title="var">u</span></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdeps"><span class="id" title="inductive">wf_gdeps</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span>. 
+    presuppositions instead, so they live in <span class="inlinecode"><span class="id" title="library">Presup</span></span>: <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gu_params"><span class="id" title="projection">gu_params</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span> of
+    <span class="inlinecode">⊢<span class="id" title="var">m</span></span>, hence of <span class="inlinecode">⊢<span class="id" title="var">u</span></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdeps"><span class="id" title="inductive">wf_gdeps</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span>. 
 </div>
 <div class="code">
 
@@ -794,7 +794,7 @@ The projections the <span class="inlinecode"><span class="id" title="keyword">Re
 </div>
 
 <div class="doc">
-<a id="lab241"></a><h2 class="section">Weakening and Substitution Typing</h2>
+<a id="lab243"></a><h2 class="section">Weakening and Substitution Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -894,7 +894,7 @@ The projections are deliberately *not* registered in <span class="inlinecode"><s
 </div>
 
 <div class="doc">
-<a id="lab242"></a><h2 class="section">Immediate &amp; Independent Presuppositions</h2>
+<a id="lab244"></a><h2 class="section">Immediate &amp; Independent Presuppositions</h2>
 
 </div>
 <div class="code">
@@ -913,7 +913,7 @@ The projections are deliberately *not* registered in <span class="inlinecode"><s
 </div>
 
 <div class="doc">
-<a id="lab243"></a><h2 class="section">Subtyping Rules without Extra Arguments</h2>
+<a id="lab245"></a><h2 class="section">Subtyping Rules without Extra Arguments</h2>
 
 </div>
 <div class="code">
@@ -956,7 +956,7 @@ The projections are deliberately *not* registered in <span class="inlinecode"><s
 </div>
 
 <div class="doc">
-<a id="lab244"></a><h2 class="section">Term Equality is a PER</h2>
+<a id="lab246"></a><h2 class="section">Term Equality is a PER</h2>
 
 
 <div class="paragraph"> </div>

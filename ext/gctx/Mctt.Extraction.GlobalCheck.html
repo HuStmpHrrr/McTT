@@ -44,7 +44,7 @@
 </div>
 
 <div class="doc">
-<a id="lab307"></a><h1 class="section">Deciding the Global-Context Judgments</h1>
+<a id="lab322"></a><h1 class="section">Deciding the Global-Context Judgments</h1>
 
 
 <div class="paragraph"> </div>
@@ -52,14 +52,14 @@
     The elaborator hands the driver a <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gstack"><span class="id" title="definition">gstack</span></a></span> and one obligation per <span class="inlinecode"><span class="id" title="tactic">eval</span></span>,
     and nothing proves that stack well formed — so the driver has to check it.
     These are the decision procedures for the six judgments it needs, on top of
-    <span class="inlinecode"><span class="id" title="library">Extraction.TypeCheck</span></span>: <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>, <span class="inlinecode">⊢<span class="id" title="var">e</span></span>, <span class="inlinecode">⊢<span class="id" title="var">m</span></span>, <span class="inlinecode">⊢<span class="id" title="var">u</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span> and
+    <span class="inlinecode"><span class="id" title="library">Extraction.TypeCheck</span></span>: <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>, <span class="inlinecode">⊢<span class="id" title="var">e</span></span>, <span class="inlinecode">⊢<span class="id" title="var">m</span></span>, <span class="inlinecode">⊢<span class="id" title="var">u</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gstack"><span class="id" title="inductive">wf_gstack</span></a></span> and
     <span class="inlinecode">⊢<span class="id" title="var">g</span></span>.
 
 <div class="paragraph"> </div>
 
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdep"><span class="id" title="inductive">wf_gdep</span></a></span>/<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gdeps"><span class="id" title="inductive">wf_gdeps</span></a></span> are *not* decided here: the levels are what a unit is
     compiled against, so the driver is given them already checked (<span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span>, for
-    now — see deviation 3 in <span class="inlinecode"><span class="id" title="var">AGENT</span>/<span class="id" title="var">modules.md</span></span>).  <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> is therefore a parameter
+    now — see deviation 3 in <span class="inlinecode"><span class="id" title="var">AGENT</span>/<span class="id" title="var">modules.md</span></span>).  <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is therefore a parameter
     of everything below, and only <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> and the local context are traversed. 
 <div class="paragraph"> </div>
 
@@ -77,14 +77,14 @@
 </div>
 
 <div class="doc">
-<a id="lab308"></a><h2 class="section">The Bridge to the Algorithmic Judgments</h2>
+<a id="lab323"></a><h2 class="section">The Bridge to the Algorithmic Judgments</h2>
 
 
 <div class="paragraph"> </div>
 
     Everything algorithmic fixes its global context as an instance and so reads
     it as <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_deps"><span class="id" title="projection">gc_deps</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypeCheck.html#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a></span>/<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_stack"><span class="id" title="projection">gc_stack</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypeCheck.html#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a></span>.  Unifying that against an explicit
-    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> would ask for a solution of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_deps"><span class="id" title="projection">gc_deps</span></a></span> <span class="inlinecode">?<a class="idref" href="Mctt.Extraction.TypeCheck.html#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a></span> <span class="inlinecode">≟</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#90eb7ac9596a6235893ddf262600e791"><span class="id" title="variable">Θ</span></a></span>, which no unifier
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> would ask for a solution of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_deps"><span class="id" title="projection">gc_deps</span></a></span> <span class="inlinecode">?<a class="idref" href="Mctt.Extraction.TypeCheck.html#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a></span> <span class="inlinecode">≟</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>, which no unifier
     finds, so each crossing instantiates <span class="inlinecode"><a class="idref" href="Mctt.Extraction.TypeCheck.html#Fixed_GCtx.GC"><span class="id" title="variable">GC</span></a></span> by hand — once, here.  Below this
     section only the long forms appear. 
 </div>
@@ -201,7 +201,7 @@ The two ways "is <span class="inlinecode"><a class="idref" href="Mctt.Core.Seman
 </div>
 
 <div class="doc">
-<a id="lab309"></a><h2 class="section">Types and Terms at an Explicit Global Context</h2>
+<a id="lab324"></a><h2 class="section">Types and Terms at an Explicit Global Context</h2>
 
 <div class="paragraph"> </div>
 
@@ -288,7 +288,7 @@ The type of a well-typed term is a type, so failing to see that <span class="inl
 </div>
 
 <div class="doc">
-<a id="lab310"></a><h2 class="section">Local Contexts</h2>
+<a id="lab325"></a><h2 class="section">Local Contexts</h2>
 
 
 <div class="paragraph"> </div>
@@ -330,7 +330,7 @@ The type of a well-typed term is a type, so failing to see that <span class="inl
 </div>
 
 <div class="doc">
-<a id="lab311"></a><h2 class="section">Pushing a Frame</h2>
+<a id="lab326"></a><h2 class="section">Pushing a Frame</h2>
 
 
 <div class="paragraph"> </div>
@@ -372,7 +372,7 @@ Freshness is a non-membership of <span class="inlinecode"><a class="idref" href=
 </div>
 
 <div class="doc">
-<a id="lab312"></a><h2 class="section">Entries and Modules</h2>
+<a id="lab327"></a><h2 class="section">Entries and Modules</h2>
 
 
 <div class="paragraph"> </div>
@@ -429,7 +429,7 @@ Freshness is a non-membership of <span class="inlinecode"><a class="idref" href=
 </div>
 
 <div class="doc">
-<a id="lab313"></a><h2 class="section">Units, the Stack, and the Global Context</h2>
+<a id="lab328"></a><h2 class="section">Units, the Stack, and the Global Context</h2>
 
 </div>
 <div class="code">
@@ -498,7 +498,7 @@ Structural on <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Re
 </div>
 
 <div class="doc">
-<a id="lab314"></a><h2 class="section">What the Driver Calls</h2>
+<a id="lab329"></a><h2 class="section">What the Driver Calls</h2>
 
 
 <div class="paragraph"> </div>
