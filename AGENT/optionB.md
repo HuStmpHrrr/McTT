@@ -82,7 +82,41 @@ with the offset carried by ordinary variables, which substitution handles.
 * `completeness_gctx`, `soundness_gctx'`: statements unchanged.  Assumptions:
   `functional_extensionality_dep`, `eq_rect_eq` only.
 
-## Build state
+## End to end (second round)
+
+Everything is re-enabled; `make` (Rocq + extraction), `dune build --root .`,
+`dune runtest --root .` pass, all 34 expect tests with unchanged expectations.
+
+* `System/Command.v`: frames carry their path; `gs_push mp Δ Ξ`; `rc_def`
+  checks in `gs_tele Ξ` and files `gs_def` (the closed `ctx_pi`/`ctx_fn`);
+  `rc_mod` checks `⊢ Δ ++ gs_tele Ξ`, pushes `path_in (gs_path Ξ) x`, and files
+  `ge_mod Δ Φ` as it is; evals check in `gs_tele Ξ`; `ru_intro` is for
+  `run_unit (fp :: ch)`, the unit's frame being `p_abs fp nil`.
+  Statement changes, all forced by frames being named:
+  `run_wf`/`import_coherent` take `stack_in ch Ξ` (every frame's unit is on the
+  chain, so no load files it); the unit clause of `run_wf`, `prog_sem_wf`,
+  `closure_ok` say `⊢u` at `p_abs fp nil`; `run_functional`'s unit clause asks
+  the chains to have the same head; `run_chain_irrel`'s unit clause keeps the
+  head; `canon` records `run_unit (fp :: ch)`; `equiv_exp` is for any `Γ`.
+  New: `levels_grow`, `frame_fresh_grow`, `wf_gstack_frames`, `wf_gs_tele`.
+* `Extraction/Command.v`: `linv` gains `li_stack`; `linv_push` takes the
+  member name, `linv_push_unit` pushes a unit's frame (fresh by `gi_chain`);
+  `run_unit_step` matches the chain's head; evals are logged at `gs_tele`
+  (`eval_ok`, `prog_impl_sound`, `main_sound`), inference by the new
+  `type_infer_at`.  `GlobalCheck.v` keeps `check_typ/exp/ctx`,
+  `check_gm_fresh` only (the global deciders were unused).
+* Front end: `mref` has `mr_unit` (absolute); `oframe` has `of_path`;
+  `fr_lookup` tracks the offset `off` of the current frame's telescope: a
+  parameter is `#(off + k)`, a member `a_glob (p_abs fp chain) $ vars…` with
+  the parameter variables of its frame and those outside (`param_vars`), an
+  alias's arguments are weakened by `off`.  The printer prints a global of the
+  printed unit by its member chain (so outputs are unchanged) and an unnamed
+  variable as `$k`.
+* `Print Assumptions` of `prog_impl_sound`, `prog_impl_complete`: funext and
+  `eq_rect_eq`; `main_sound`, `main_complete` additionally `Parser.loc : Type`,
+  the pre-existing `Parameter` of `Parser.vy` (the lexer's location type).
+
+## Build state (first round)
 
 `make -f CoqMakefile.mk real-all` builds everything in `_CoqProject`: all of
 `Core/` (incl. Consequences, Transparency), `Algorithmic/`, and
