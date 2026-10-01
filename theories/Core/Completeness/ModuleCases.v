@@ -18,7 +18,7 @@ From Mctt.Core.Syntactic Require Export GlobalInduction.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
   UniverseCases VariableCases LogicalRelation.
-From Mctt.Core.Semantic Require Import Realizability Simulation PERSim Bridge.
+From Mctt.Core.Semantic Require Import Realizability Simulation PERSim Bridge BridgeGlob.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -303,6 +303,25 @@ Proof.
   exists a, R; split; assumption.
 Qed.
 
+(** A closed term valid at [⋅] evaluates at [nil], in its type there. *)
+Lemma exp_nil_eval : forall {GC : GCtx} T N,
+    ⋅ ⊨ N : T ->
+    exists n a i R, eval_exp gc_deps gc_stack me_top N nil n /\ eval_exp gc_deps gc_stack me_top T nil a /\
+      DF a ≈ a ∈ per_univ_elem i ↘ R /\ Dom n ≈ n ∈ R.
+Proof.
+  intros * H.
+  destruct H as [env_rel [HΓ [i HMgen]]].
+  assert (Hρ : env_rel nil nil) by (inversion HΓ as [? Heq |]; subst; apply Heq; exact I).
+  destruct (HMgen _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+    as [R [Ht He]].
+  destruct Ht as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hty].
+  destruct He as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hc].
+  exists m2, a2, i, R; repeat split; [ assumption | assumption | pairwise |].
+  assert (DF a2 ≈ a2 ∈ per_univ_elem i ↘ R) by pairwise.
+  cbn in Hc; destruct_all.
+  eapply per_elem_trans; [ eassumption | eassumption | eapply per_elem_sym; eassumption ].
+Qed.
+
 (** The semantic [rwf]: validity at [⋅] of what resolution hands back. *)
 Definition sem_rwf_raw (Θ : gdeps) (Ξ : gstack) : Prop :=
   forall p Δ b pv A B,
@@ -320,6 +339,57 @@ Section Raw.
   Variables (Θ : gdeps) (Ξ : gstack).
   Hypothesis Hg : ⊢g Θ ⍮ Ξ.
 
+  (** δ: a transparent global against its resolved, transformed body. *)
+  Lemma glob_delta_sem : forall p Δ pv A M,
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true pv A (Some M) ->
+      @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (ctx_fn Δ M) (ctx_fn Δ M) ->
+      @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M).
+  Proof.
+    intros * Hl HM.
+    assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
+    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
+    pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsM.
+    destruct (top_chain Θ Ξ _ _ _ _ _ _ Hg Hl)
+      as (y & Ar & Br & θ & csf & HA & HB & HsA & HsB & Hpart & Hmain).
+    destruct Br as [Mr |]; cbn in HB; [ injection HB as HMr | discriminate ].
+    destruct (@exp_nil_eval (gc_mk Θ Ξ) _ _ HM) as (n0 & t & i & R & Hn0 & Ht & HR & Hnn).
+    (* the raw value at [nil], applied to arguments *)
+    assert (Hfull : forall cs v, List.length cs = List.length Δ ->
+               eval_exp Θ Ξ me_top M (List.rev cs) v ->
+               exists v', gres Θ Ξ p cs v' /\ vsim Θ Ξ v v').
+    { intros cs v Hlc Hv.
+      destruct (Hmain _ Hlc) as (κf & Δf & Φf & Hff & Hfy & Hres & Hcf).
+      rewrite HMr in Hv.
+      destruct (sim_eval_exp _ _ _ _ _ _ _ _ _ _ _ _ Hv (exp_scoped_ok_cs _ _ _ HsB) (cfg_eq_cfg _ _ _ _ _ _ _ _ _ _ Hcf))
+        as (v' & Hv' & Hs).
+      exists v'; split; [ apply Hres; eapply eval_ent_delta; eassumption | exact Hs ]. }
+    assert (Hg0 : exists g, forall ρ, eval_exp Θ Ξ me_top (a_glob p) ρ g).
+    { destruct Δ as [| T Δ'] eqn:HΔ.
+      - destruct (Hfull nil n0 eq_refl Hn0) as (v' & (g & Hg' & _) & _); eauto.
+      - destruct (Hpart nil ltac:(cbn; lia)) as (v & g & Hg' & _); eauto. }
+    destruct Hg0 as [g Hgv].
+    assert (Hap : appsim Θ Ξ (List.length Δ) n0 g).
+    { split.
+      - intros cs v Hlc Hv.
+        pose proof (apps_ctx_fn _ _ _ _ _ _ _ _ _ Hlc Hn0 Hv) as Hv'.
+        rewrite List.app_nil_r in Hv'.
+        destruct (Hfull _ _ Hlc Hv') as (v'' & Hres & Hs).
+        exists v''; split; [ eapply gres_det; eassumption | exact Hs ].
+      - intros cs Hlc; destruct (Hpart _ Hlc) as (v & Hres).
+        exists v; eapply gres_det; eassumption. }
+    pose proof (@per_tele_appsim (gc_mk Θ Ξ) _ _ _ _ _ _ _ _ _ Ht HR Hnn Hap) as Hng.
+    eapply (@rel_exp_delta_val (gc_mk Θ Ξ)) with (g := g); [ exact HM | | | | exact Hgv |].
+    - intros; eapply exp_closed_sub; eassumption.
+    - intros; eapply exp_closed_sub; eassumption.
+    - reflexivity.
+    - intros n a i' R' Hn Ha HR'.
+      pose proof (functional_eval_exp _ _ _ _ _ Hn Hn0) as ->.
+      pose proof (functional_eval_exp _ _ _ _ _ Ha Ht) as ->.
+      pose proof (@per_univ_elem_right_irrel (gc_mk Θ Ξ) _ _ _ _ _ _ _ HR HR') as Hirr.
+      unfold relation_equivalence, predicate_equivalence, pointwise_lifting in Hirr.
+      apply Hirr; exact Hng.
+  Qed.
+
   (** One global at a time, so that it can be used inside an induction. *)
   Lemma glob_sem_of_raw : forall p Δ b pv A B,
       Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
@@ -328,7 +398,18 @@ Section Raw.
       @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (a_glob p) /\
       (forall M, b = true -> B = Some M ->
          @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M)).
-  Proof. (* OPTA-TODO *) Admitted.
+  Proof.
+    intros p Δ b pv A B Hl [[i HT] HM].
+    assert (Hdelta : forall M, b = true -> B = Some M ->
+               @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (a_glob p) (ctx_fn Δ M)).
+    { intros M -> ->; apply (glob_delta_sem _ _ _ _ _ Hl), HM; reflexivity. }
+    split; [| exact Hdelta ].
+    destruct b; [ destruct B as [M |] |].
+    - pose proof (Hdelta M eq_refl eq_refl) as H.
+      eapply rel_exp_under_ctx_trans; [ exact H | apply rel_exp_under_ctx_sym; exact H ].
+    - (* OPTA-TODO opaque *) admit.
+    - (* OPTA-TODO opaque *) admit.
+  Admitted.
 
   Lemma sem_rwf_of_raw : sem_rwf_raw Θ Ξ -> sem_rwf Θ Ξ.
   Proof. intros HR p * Hl; exact (glob_sem_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
