@@ -202,6 +202,10 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
 (************************************************************)
 (* Formatting exp *)
 (************************************************************)
+(* The unit whose terms are printed: a global of that unit is printed by its
+   member chain alone, the way it was written. *)
+let current_unit : string list ref = ref []
+
 let exp_to_obj =
   let new_var, reset_var_suffix =
     let suffix = ref 0 in
@@ -231,7 +235,12 @@ let exp_to_obj =
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
     | Coq_a_nat -> Cst.Coq_nat
     | Coq_a_typ i -> Cst.Coq_typ i
-    | Coq_a_var x -> Cst.Coq_var (List.nth ctx x)
+    (* A variable past the local binders is a parameter of an open module,
+       which has no name here: it prints as [$k], counting outwards. *)
+    | Coq_a_var x ->
+       (match List.nth_opt ctx x with
+        | Some y -> Cst.Coq_var y
+        | None -> Cst.Coq_var ("$" ^ string_of_int (x - List.length ctx)))
     | Coq_a_fn (ep, ebody) ->
        let px = match ep with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
@@ -246,25 +255,20 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
-    (* An absolute qualifier is a [glob] head; a relative one has no surface
-       form, since a bare name is what resolves outward lexically, so its first
-       member is an ordinary name at every depth. Either way the remaining
-       members are a chain of [proj]s over the head. *)
+    (* A path is absolute.  Into the unit being printed, the member chain is
+       what was written, its first member an ordinary name; into another unit,
+       the unit is a [glob] head.  Either way the remaining members are a
+       chain of [proj]s over the head. *)
     | Coq_a_glob p ->
        let head, ip =
-         match p.p_qual with
-         | Coq_qu_abs fp -> (Cst.Coq_glob fp, p.p_mems)
-         | Coq_qu_rel _ ->
-            (match p.p_mems with
-             | x :: ip -> (Cst.Coq_var x, ip)
-             (* Unreachable: [path_valid] rules out an empty member chain. *)
-             | [] -> (Cst.Coq_var "_", []))
+         if p.p_unit = !current_unit then
+           (match p.p_mems with
+            | x :: ip -> (Cst.Coq_var x, ip)
+            (* Unreachable: [path_valid] rules out an empty member chain. *)
+            | [] -> (Cst.Coq_var "_", []))
+         else (Cst.Coq_glob p.p_unit, p.p_mems)
        in
        List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
-    (* A module parameter carries no name, only its frame and position, so it
-       prints as [$frame.index]. *)
-    | Coq_a_param lp ->
-       Cst.Coq_var ("$" ^ string_of_int lp.lp_mod ^ "." ^ string_of_int lp.lp_param)
   in
   fun exp ->
     reset_var_suffix ();
@@ -308,7 +312,8 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in
   function
-  | AllGood (_, _, _, log) ->
+  | AllGood ((_, ((path, _), _)), _, _, log) ->
+     current_unit := path;
      pp_open_vbox f 0;
      List.iteri
        (fun i r ->
@@ -316,7 +321,9 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
          format_eval f r)
        log;
      pp_close_box f ()
-  | RunFailure (_, e) -> format_run_error f e
+  | RunFailure ((_, ((path, _), _)), e) ->
+     current_unit := path;
+     format_run_error f e
   | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg
   | ParserFailure (s, t) ->
      fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_print_text

@@ -2,8 +2,16 @@
 
 -arg -w -arg -cast-in-pattern,-notation-overridden
 
+./Algorithmic/Subtyping.v
+./Algorithmic/Subtyping/Definitions.v
+./Algorithmic/Subtyping/Lemmas.v
+./Algorithmic/Typing.v
+./Algorithmic/Typing/Definitions.v
+./Algorithmic/Typing/Lemmas.v
 ./Core/Base.v
 ./Core/Completeness.v
+./Core/Completeness/Consequences/Rules.v
+./Core/Completeness/Consequences/Types.v
 ./Core/Completeness/ContextCases.v
 ./Core/Completeness/FunctionCases.v
 ./Core/Completeness/FundamentalTheorem.v
@@ -17,6 +25,7 @@
 ./Core/Completeness/SubtypingCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
+./Core/Semantic/Consequences.v
 ./Core/Semantic/Domain.v
 ./Core/Semantic/Evaluation.v
 ./Core/Semantic/Evaluation/Definitions.v
@@ -33,6 +42,7 @@
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
+./Core/Semantic/Transparency.v
 ./Core/Soundness.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
@@ -51,6 +61,7 @@
 ./Core/Soundness/UniverseCases.v
 ./Core/Soundness/Weakening/Definitions.v
 ./Core/Soundness/Weakening/Lemmas.v
+./Core/Syntactic/Command.v
 ./Core/Syntactic/CoreInversions.v
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
@@ -60,6 +71,7 @@
 ./Core/Syntactic/Substitution.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
+./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/GlobalPresup.v
 ./Core/Syntactic/System/Lemmas.v
@@ -67,24 +79,16 @@
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/SystemOpt.v
-./LibTactics.v
-./Algorithmic/Subtyping.v
-./Algorithmic/Subtyping/Definitions.v
-./Algorithmic/Subtyping/Lemmas.v
-./Algorithmic/Typing.v
-./Algorithmic/Typing/Definitions.v
-./Algorithmic/Typing/Lemmas.v
-./Core/Completeness/Consequences/Rules.v
-./Core/Completeness/Consequences/Types.v
-./Core/Semantic/Consequences.v
-./Core/Semantic/Transparency.v
+./Entrypoint.v
+./Extraction/Command.v
 ./Extraction/Evaluation.v
+./Extraction/GlobalCheck.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v
 ./Extraction/Subtyping.v
 ./Extraction/TypeCheck.v
-./Core/Syntactic/Command.v
-./Core/Syntactic/System/Command.v
-./Extraction/GlobalCheck.v
-./Extraction/Command.v
+./Frontend/Elaborator.v
+./Frontend/Parser.v
+./Frontend/Resolve.v
+./LibTactics.v

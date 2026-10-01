@@ -8,10 +8,12 @@ Import Syntax_Notations Wk_Notations.
 (** * Names in Scope
 
     The elaborator emits core commands: a definition becomes a [cc_def], a
-    nested module a [cc_mod], and a name one of [$[n, k]], [a_glob] or a
-    λ-variable.  Commands do not record names that are not members: a frame's
-    parameters are a nameless [ctx].  So the elaborator keeps, per open frame,
-    its members with the types stripped and its parameters named: an [eframe].
+    nested module a [cc_mod], and a name an [a_glob] — an absolute path,
+    applied to the parameters it is generalized over — or a λ-variable, which
+    includes the parameters of the open frames.  Commands do not record names
+    that are not members: a frame's parameters are a nameless [ctx].  So the
+    elaborator keeps, per open frame, its members with the types stripped and
+    its parameters named: an [eframe].
 
     Visibility: a private member can be named from the frame it is declared
     in and from the frames nested inside it, i.e. when it is reached as a
@@ -30,8 +32,8 @@ with emod : Set :=
 | em_nil : emod
 | em_ext : emod -> string -> ename -> emod.
 
-(** An open frame: [ef_params] names its parameters, the [k]th one being
-    [$[_, k]], i.e. innermost first; [ef_mod] its members so far. *)
+(** An open frame: [ef_params] names its parameters, innermost first, as the
+    λ-variables they are; [ef_mod] its members so far. *)
 Record eframe : Set := ef_mk
   { ef_params : list string
   ; ef_mod : emod }.
@@ -50,15 +52,16 @@ Fixpoint index_of (x : string) (xs : list string) : option nat :=
 
 (** ** What a Name Denotes
 
-    A module reached by a dotted prefix: where it is ([mr_qual], [mr_mems]),
+    A module reached by a dotted prefix: where it is ([mr_unit], [mr_mems]),
     its members, whether only its public members may be named, how many
     arguments a use of a member has to supply ([mr_arity]: the parameters of
-    the closed modules crossed, which resolution generalizes over), and the
-    arguments given so far.  Its members are [None] for a path into an
+    the modules enclosing it, which a member is generalized over), and the
+    arguments given so far — for a module of an open frame, its parameter
+    variables to begin with.  Its members are [None] for a path into an
     imported unit, which is *opaque*: whether it names a module or a
     definition is left to typing, and [mr_public]/[mr_arity] mean nothing. *)
 Record mref : Set := mr_mk
-  { mr_qual : qual
+  { mr_unit : list string
   ; mr_mems : list string
   ; mr_mod : option emod
   ; mr_public : bool
@@ -70,24 +73,6 @@ Inductive target : Set :=
 | tg_mod : mref -> target
 | tg_mem : mref -> string -> target.
 
-(** An alias recorded in frame [j] is used from [i] frames further in: its
-    relative qualifier and its arguments move out by [i]. *)
-Definition qual_shift (i : nat) (ql : qual) : qual :=
-  match ql with
-  | qu_rel m => qu_rel (i + m)
-  | qu_abs fp => qu_abs fp
-  end.
-
-Definition mr_shift (i : nat) (mr : mref) : mref :=
-  {| mr_qual := qual_shift i (mr_qual mr); mr_mems := mr_mems mr; mr_mod := mr_mod mr;
-     mr_public := mr_public mr; mr_arity := mr_arity mr;
-     mr_args := List.map (fun M => M[↑ₘ i]ᵐ) (mr_args mr) |}.
-
-Definition tg_shift (i : nat) (t : target) : target :=
-  match t with
-  | tg_mod mr => tg_mod (mr_shift i mr)
-  | tg_mem mr x => tg_mem (mr_shift i mr) x
-  end.
 
 (** ** The Local Scope
 
@@ -106,7 +91,7 @@ Definition sc_shift (d n : nat) (M : exp) : exp := M[wk_shiftn (d - n)]ʷ.
 Definition sc_apply (M : exp) (args : list exp) : exp := List.fold_left a_app args M.
 
 Definition mr_weaken (d n : nat) (mr : mref) : mref :=
-  {| mr_qual := mr_qual mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
+  {| mr_unit := mr_unit mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
      mr_public := mr_public mr; mr_arity := mr_arity mr;
      mr_args := List.map (sc_shift d n) (mr_args mr) |}.
 

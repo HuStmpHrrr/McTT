@@ -54,14 +54,15 @@ Section Main.
 
   (** What [AllGood] certifies: the program means a well-formed global
       context, the one computed up to the order of units within a level, and
-      every reported [eval] is well typed with the normal form shown. *)
+      every reported [eval] is well typed, in the context of the parameters of
+      the frames it stands in, with the normal form shown. *)
   Theorem main_sound : forall log_fuel buf prg Θ U log,
       main log_fuel buf = AllGood prg Θ U log ->
       (exists ΘR, prog_sem load_path read to_core prg ΘR U /\ gds_equiv ΘR Θ /\
-                  wf_gdeps ΘR /\ wf_gunit ΘR nil U) /\
+                  wf_gdeps ΘR /\ wf_gunit ΘR nil (p_abs (prog_path prg) nil) U) /\
       (forall e, In e log ->
-         ⊢g ev_deps e ⍮ ev_stack e /\ ev_deps e ⍮ ev_stack e ⍮ ⋅ ⊢ ev_exp e : ev_typ e /\
-         nbe (ev_deps e) (ev_stack e) ⋅ (ev_exp e) (ev_typ e) (ev_nf e)).
+         ⊢g ev_deps e ⍮ ev_stack e /\ ev_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e /\
+         nbe (ev_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e)).
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
