@@ -58,7 +58,7 @@ Definition en_of (c : ccmd) : option ename :=
 
 Definition to_mref (R : sref) : mref :=
   {| mr_unit := sr_unit R; mr_mems := sr_mems R; mr_mod := option_map emod_of (sr_sig R);
-     mr_public := true; mr_arity := sr_arity R; mr_args := sr_args R |}.
+     mr_public := true; mr_args := sr_args R |}.
 
 Definition to_target (t : starget) : target :=
   match t with
@@ -93,10 +93,7 @@ Definition fin (r : sres) (args : list exp) : option res :=
   match r with
   | s_term M => Some (r_exp (sc_apply M args))
   | s_mod R => Some (r_mod (to_mref (sr_app R args)))
-  | s_def R x =>
-      if Nat.leb (sr_arity R) (List.length (sr_args R ++ args))
-      then Some (r_exp (sc_apply (a_glob (p_abs (sr_unit R) (sr_mems R ++ x :: nil))) (sr_args R ++ args)))
-      else None
+  | s_def R x => Some (r_exp (sc_apply (a_glob (p_abs (sr_unit R) (sr_mems R ++ x :: nil))) (sr_args R ++ args)))
   end.
 
 (** ** Generalities *)
@@ -147,7 +144,7 @@ Lemma mr_def_fin : forall R x args r,
     mr_def (to_mref R) x args = eok r <-> fin (s_def R x) args = Some r.
 Proof.
   intros; unfold mr_def, fin, to_mref; cbn.
-  destruct (Nat.leb _ _); cbn; split; intros H; inversion H; subst; reflexivity.
+  split; intros H; inversion H; subst; reflexivity.
 Qed.
 
 (** Term and module positions. *)
@@ -165,15 +162,14 @@ Proof.
       rewrite app_nil_r in H.
       destruct (sr_mems R) eqn:Hm'; [ discriminate |].
       inversion H; subst. rewrite <- Hm'. constructor; [ assumption | congruence ].
-    + rewrite app_nil_r in Hf. destruct (Nat.leb _ _) eqn:Hl; [| discriminate ].
-      inversion Hf; subst; cbn in H; inversion H; subst.
-      constructor. apply Nat.leb_le; assumption.
+    + rewrite app_nil_r in Hf.
+      inversion Hf; subst; cbn in H; inversion H; subst. constructor.
   - intros (sr & HP & Hat).
     inversion Hat; subst.
     + rewrite (proj2 (Hm _) (ex_intro _ _ (conj HP eq_refl))). reflexivity.
     + assert (Hf : fin (s_def R x) nil =
                    Some (r_exp (sc_apply (a_glob (p_abs (sr_unit R) (sr_mems R ++ x :: nil))) (sr_args R)))).
-      { cbn; rewrite app_nil_r; apply Nat.leb_le in H; rewrite H; reflexivity. }
+      { cbn; rewrite app_nil_r; reflexivity. }
       rewrite (proj2 (Hm _) (ex_intro _ _ (conj HP Hf))). reflexivity.
     + rewrite (proj2 (Hm _) (ex_intro _ _ (conj HP eq_refl))). cbn.
       rewrite H, app_nil_r. destruct (sr_mems R); [ contradiction | reflexivity ].
@@ -190,7 +186,7 @@ Proof.
     + inversion Hf; subst; discriminate.
     + inversion Hf; subst; cbn in H; inversion H; subst.
       rewrite sr_app_nil. eauto.
-    + destruct (Nat.leb _ _); inversion Hf; subst; discriminate.
+    + inversion Hf; subst; discriminate.
   - intros (R & HP & ->).
     rewrite (proj2 (Hm (r_mod (to_mref R))) (ex_intro _ _ (conj HP (f_equal (fun R => Some (r_mod (to_mref R))) (sr_app_nil R))))).
     reflexivity.
@@ -403,9 +399,6 @@ Proof.
     apply map_ext_in. intros i Hi. apply in_seq in Hi. f_equal. lia.
 Qed.
 
-Lemma length_vars_desc : forall off n, List.length (vars_desc off n) = n.
-Proof. intros; unfold vars_desc; rewrite length_map, length_seq; reflexivity. Qed.
-
 (** [preapp] passes the variables of the frames' telescope suffix that starts
     at the member's frame, outermost first: the elaborator's [param_vars]. *)
 Lemma preapp_iff : forall Fs off vs, preapp off Fs vs <-> vs = vars_desc off (tele Fs).
@@ -558,22 +551,22 @@ Lemma mr_member_iff : forall R x args r,
     mr_member (to_mref R) x args = eok r <->
     exists t, select R x t /\ fin (st_res t) args = Some r.
 Proof.
-  intros [u ms sg ar ag] x args r. split.
-  - intros H. unfold mr_member in H; cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity] in H.
+  intros [u ms sg ag] x args r. split.
+  - intros H. unfold mr_member in H; cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_public sr_sig sr_args sr_mems sr_unit] in H.
     destruct sg as [cs |]; cbn [option_map] in H.
     + destruct (em_lookup x (emod_of cs)) as [[pv | n Φ] |] eqn:Em; cbn in H; [| | discriminate ].
       * found_member Em. destruct pv; cbn in H; [ discriminate |].
-        exists (st_def (sr_mk u ms (Some cs) ar ag) x). split.
+        exists (st_def (sr_mk u ms (Some cs) ag) x). split.
         -- eapply sl_def; [ reflexivity | eassumption ].
-        -- apply (proj1 (mr_def_fin (sr_mk u ms (Some cs) ar ag) x args r)); exact H.
+        -- apply (proj1 (mr_def_fin (sr_mk u ms (Some cs) ag) x args r)); exact H.
       * found_member Em. inv_eok.
         eexists; split; [ eapply sl_mod; [ reflexivity | eassumption ] | reflexivity ].
     + inv_eok. eexists; split; [ apply sl_opaque; reflexivity | reflexivity ].
   - intros (t & Hs & Hf). inversion Hs; subst; cbn [sr_sig] in *; subst; unfold mr_member;
-      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public option_map sr_sig sr_args sr_mems sr_unit sr_arity].
+      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_public option_map sr_sig sr_args sr_mems sr_unit].
     + cbn in Hf; inv_some; reflexivity.
     + rewrite (em_lookup_member _ _ _ H0); cbn [en_of negb andb].
-      apply (proj2 (mr_def_fin (sr_mk u ms (Some cs) ar ag) x args r)); exact Hf.
+      apply (proj2 (mr_def_fin (sr_mk u ms (Some cs) ag) x args r)); exact Hf.
     + rewrite (em_lookup_member _ _ _ H0); cbn [en_of]. cbn in Hf; inv_some; reflexivity.
 Qed.
 
@@ -682,7 +675,7 @@ Section Lookup.
           cbn [fin]. rewrite sc_apply_apps. reflexivity.
         * found_member Em. inv_eok.
           eexists; split; [ eapply fb_here, fr_mod; [ eassumption | apply preapp_iff; reflexivity ] |].
-          cbn [fin]. rewrite length_vars_desc. reflexivity.
+          cbn [fin]. reflexivity.
         * apply em_lookup_of_none in Em.
           destruct (index_of x (rev (map fst (sf_params F)))) as [k |] eqn:Ei.
           -- apply param_index_some in Ei as (ps1 & A & ps2 & Hps & Hn & ->). inv_eok.
@@ -703,7 +696,7 @@ Section Lookup.
         * rewrite (proj2 (ss_lookup_none _ _) (wf_member_free _ _ _ HF ltac:(eassumption))).
           rewrite_member. cbn [en_of].
           match goal with Hp : preapp _ _ _ |- _ => apply preapp_iff in Hp; subst end.
-          cbn [fin] in H; inv_some. rewrite length_vars_desc. reflexivity.
+          cbn [fin] in H; inv_some. reflexivity.
         * match goal with Hp : sf_params _ = _ |- _ =>
             destruct (wf_param _ _ _ _ _ HF Hp) as (Ha & Hd & Hn2); rewrite Hp end.
           rewrite (proj2 (ss_lookup_none _ _) Ha).
@@ -936,9 +929,9 @@ Section Imports.
       use_bind taken (to_mref R) (eok (to_os sc)) n = eok sc1 <->
       exists t, alias_fresh tl sc n /\ select R n t /\ sc1 = to_os (ss_add n t sc).
   Proof.
-    intros [u ms sg ar ag] sc n sc1. unfold use_bind. rewrite ebind_eok. split.
+    intros [u ms sg ag] sc n sc1. unfold use_bind. rewrite ebind_eok. split.
     - intros (sc0 & [=<-] & H). apply ebind_echeck in H as [Hf H]. apply (alias_fresh_check _ _ _ _ Ht) in Hf.
-      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map] in H.
+      cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_public sr_sig sr_args sr_mems sr_unit option_map] in H.
       destruct sg as [cs |]; cbn [option_map] in H.
       + destruct (em_lookup n (emod_of cs)) as [[pv | k Φ] |] eqn:Em; cbn in H; [| | discriminate ].
         * found_member Em. destruct pv; cbn in H; [ discriminate |]. inv_eok.
@@ -949,7 +942,7 @@ Section Imports.
     - intros (t & Hf & Hs & ->). exists (to_os sc); split; [ reflexivity |].
       apply ebind_echeck; split; [ apply (alias_fresh_check _ _ _ _ Ht); assumption |].
       inversion Hs; subst; cbn [sr_sig] in *; subst;
-        cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_arity mr_public sr_sig sr_args sr_mems sr_unit sr_arity option_map].
+        cbn [to_mref mr_mod mr_args mr_mems mr_unit mr_public sr_sig sr_args sr_mems sr_unit option_map].
       + reflexivity.
       + rewrite_member. reflexivity.
       + rewrite_member. reflexivity.

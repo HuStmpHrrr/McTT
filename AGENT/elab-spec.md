@@ -1,12 +1,12 @@
 # A declarative specification of the elaborator
 
-Branch `ext/params-as-locals-elab-spec` (on `ext/params-as-locals`, option B).
+Branch `ext/params-as-locals` (option B).
 
 | File | What |
 | --- | --- |
-| `theories/Frontend/ElabSpec.v` (623 lines) | The spec `elab_spec : Cst.prog -> cunit -> Prop`, and its invariant `sf_wf` with `scmd_wf`/`scmds_wf`/`simports_wf`. Imports only `Syntax`, `Command`; no elaborator data structure. |
+| `theories/Frontend/ElabSpec.v` (742 lines) | The spec `elab_spec : Cst.prog -> cunit -> Prop`, and its invariant `sf_wf` with `scmd_wf`/`scmds_wf`/`simports_wf`. Imports only `Syntax`, `Command`; no elaborator data structure. |
 | `theories/Frontend/ElabCorrect.v` (1515) | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
-| `theories/Frontend/ElabExamples.v` (322) | Hand-written `Cst.prog`s: pre-application, `examples/module_param`, `import_use`, `multi/Main`, privacy, redeclaration, shadowing, missing arguments, dotted modules, unimported units, and every program the one-binding rule rejects, with its error message. |
+| `theories/Frontend/ElabExamples.v` (354) | Hand-written `Cst.prog`s: the running example, pre-application, `examples/module_param`, `import_use`, `multi/Main`, privacy, redeclaration, shadowing, members used without their module arguments, dotted modules, unimported units, and every program the one-binding rule rejects, with its error message. |
 
 ## Theorems (all `Closed under the global context`)
 
@@ -30,6 +30,63 @@ fst ps)` in `sc_mod`/`es_intro`; the invariant is `sf_wf F := NoDup (sf_names
 F)`, `ss_wf O`. Because of it `fr_binds` (alias / member / parameter of one
 frame) has no priority between its rules, and `ss_binds` is plain `In`.
 
+## Running example
+
+The comments in `ElabSpec.v` explain the definitions with this program.
+`ElabExamples.running_spec` checks the output below.
+
+```
+module Main where
+  module M (A : Type@0) where
+    def id (x : A) : A := x end
+    module N (B : Type@0) where
+      def k (x : A) (y : B) : A := id x end
+    end
+  end
+  def j : forall (x : Nat) -> Nat := M.id Nat end
+end
+```
+
+It elaborates to the following core unit.  `Main.M.id` stands for
+`a_glob (p_abs ["Main"] ["M"; "id"])`, and the transparency and privacy flags
+of `cc_def` are omitted.
+
+```
+cc_mod "M" (⋅ ▹ Type@0)
+  [ cc_def "id" (Π #0 #1) (λ #0 #0);
+    cc_mod "N" (⋅ ▹ Type@0)
+      [ cc_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
+cc_def "j" (Π ℕ ℕ) (Main.M.id $ ℕ)
+```
+
+**The body of `k`.** While it is elaborated, three frames are open (`sframe`),
+innermost first:
+
+| Frame | `sf_path` | `sf_params` | `sf_cmds` so far |
+| --- | --- | --- | --- |
+| `N` | `["M"; "N"]` | `B` | none |
+| `M` | `["M"]` | `A` | the `cc_def` of `id` |
+| `Main` | `[]` | none | none, because `cc_mod "M"` is emitted only when `M` ends |
+
+The local bindings are `[lb_var "y"; lb_var "x"]`, so `x` is `#1`.  The name
+`id` is not local, so `fbind` looks it up in the frames, starting with
+`off = 2` for the two local binders.  `N` does not bind `id`, so the search
+moves to `M` and adds the one parameter of `N`, giving `off = 3`.  `M` binds
+`id` as a member definition (`fr_def`).  A member is stored generalized over
+the parameters of its own frame and of every enclosing frame, so it must be
+applied to them.  `preapp 3 [M; Main] [#3]` holds because `Main` has no
+parameters and the one parameter `A` of `M` is `#3`.  So `id` denotes
+`Main.M.id $ #3`, and `id x` is `Main.M.id $ #3 $ #1`.
+
+**The body of `j`.** Here `M` has been closed and only `Main` is open.  `M` is
+found as a member module of `Main` (`fr_mod`).  It denotes a module reference
+(`sref`) with unit `["Main"]`, chain `["M"]`, the commands of `M`, and no
+arguments.  `M.id` selects the public definition `id` (`select`), which
+gives `s_def R "id"`.  Applying it to `Nat` adds `ℕ` to the arguments of the
+reference (`sapp`).  The result is the term `Main.M.id $ ℕ` (`as_term`).
+`M.id` alone is also a term, `Main.M.id`, because a member is a closed
+constant: here its type is `Π (A : Type@0). Π A A`.
+
 ## The spec in one paragraph
 
 State: leading-import scope `O`, open frames `Fs` (innermost first), each `sframe`
@@ -37,7 +94,7 @@ State: leading-import scope `O`, open frames `Fs` (innermost first), each `sfram
 far**, import scope (aliases, reachable units). Members are read off the emitted
 commands (`cs_member`), so there is no symbol table. Objects: `sel fp O Fs L o
 r` with `r` a term, a module reference (`sref`: unit, chain, signature =
-commands of its `cc_mod` or `None` if opaque, arity, args so far) or a
+commands of its `cc_mod` or `None` if opaque, args so far) or a
 definition of a reference awaiting its module arguments (`s_def`); `as_term`
 says when that is a term. Name lookup: locals (`lbound`/`ldenote`), then frames
 (`fbind`: the innermost frame binding the name decides, via `fr_binds`), then
@@ -80,9 +137,10 @@ Rule changes (the one-binding rule; the 34 expect tests are unchanged):
 
 ## Remaining behaviours worth knowing
 
-* `M.f a` supplies `M`'s argument after the projection (`s_def` + `as_term`);
-  surplus arguments become term applications; arity is checked only for
-  definitions of non-opaque references.
+* `M.f a` supplies `M`'s argument after the projection (`s_def` + `as_term`).
+  The elaborator does not count module arguments: `M.f` with fewer than `M`'s
+  parameters is a partial application of a closed constant, and typing checks
+  the rest.
 * Imports inside a module die with it (aliases and unit reachability).
 * Privacy of members of imported units is not checked (REVISIT, kept).
 * A unit's parameter may reuse a leading alias's name (different scopes; the
