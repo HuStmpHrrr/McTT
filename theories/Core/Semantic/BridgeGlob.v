@@ -1029,3 +1029,305 @@ Section ChainT.
       intros * Heq; rewrite (Hhd _ _ Heq), (Hold' _ _ Heq); reflexivity.
   Qed.
 End ChainT.
+
+Fixpoint lift_with (f : nat -> tsub) (k : nat) (l : list (exp * tsub * nat * list nat)) :=
+  match l with
+  | nil => nil
+  | (R, θ, n, csR) :: l' => (R, ts_comp θ (f k), n, csR) :: lift_with f (S k) l'
+  end.
+
+Lemma lift_with_length : forall f l k, List.length (lift_with f k l) = List.length l.
+Proof. induction l as [| [[[? ?] ?] ?] l IH]; intros; cbn; auto. Qed.
+
+Lemma lift_with_nth : forall f l k i e,
+    List.nth_error (lift_with f k l) i = Some e ->
+    exists R θ n csR, List.nth_error l i = Some (R, θ, n, csR) /\ e = (R, ts_comp θ (f (k + i)), n, csR).
+Proof.
+  induction l as [| [[[R θ] n] csR] l IH]; intros * H; destruct i; cbn in *; try discriminate.
+  - injection H as <-; do 4 eexists; split; [ reflexivity |]; rewrite Nat.add_0_r; reflexivity.
+  - destruct (IH _ _ _ H) as (R' & θ' & n' & csR' & HR & ->); do 4 eexists; split; [ eassumption |].
+    replace (k + S i) with (S k + i) by lia; reflexivity.
+Qed.
+
+Lemma lift_with_nth' : forall f k l i R θ n csR,
+    List.nth_error l i = Some (R, θ, n, csR) ->
+    List.nth_error (lift_with f k l) i = Some (R, ts_comp θ (f (k + i)), n, csR).
+Proof.
+  intros f k l; revert k; induction l as [| [[[R0 θ0] n0] cs0] l IH]; intros k [| i] * H; cbn in *; try discriminate.
+  - injection H as <- <- <- <-; rewrite Nat.add_0_r; reflexivity.
+  - rewrite (IH _ _ _ _ _ _ H); replace (S k + i) with (k + S i) by lia; reflexivity.
+Qed.
+
+Section TopT.
+  Variables (Θ : gdeps) (Ξ : gstack).
+
+  #[local] Notation "'⟦' M '⟧' κ '⍮' ρ '↘' r" := (eval_exp Θ Ξ κ M ρ r)
+    (at level 70, M at level 69, κ at level 69, ρ at level 69, r at level 69).
+
+  (** A position at the top level: the raw type, its replacement, its
+      variables and its frames. *)
+  Definition tpos_ok (i : nat) (e : (exp * tsub * nat * list nat)%type) (T : exp) : Prop :=
+    match e with (R, θ, nR, csR) => T = exp_tsub θ R /\ exp_scoped nR csR R end.
+
+  Lemma top_chainT : forall p Δ b pv A B,
+      ⊢g Θ ⍮ Ξ ->
+      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
+      exists y Ar Br θ csf pos,
+        A = exp_tsub θ Ar /\ B = option_map (exp_tsub θ) Br /\
+        exp_scoped 0 csf Ar /\ opt_scoped 0 csf Br /\
+        List.length pos = List.length Δ /\
+        (forall i e, List.nth_error pos i = Some e ->
+           exists T, List.nth_error Δ (List.length Δ - S i) = Some T /\ tpos_ok i e T) /\
+        (forall cs', List.length cs' < List.length Δ -> exists v, gres Θ Ξ p cs' v) /\
+        forall args, List.length args = List.length Δ ->
+          exists κf Δf Φf rconf, frame_at Θ Ξ (me_addr κf) = Some (Δf, Φf) /\
+            gm_find Φf y = Some (ge_def b pv Ar Br) /\
+            (forall v, eval_ent Θ Ξ κf (y :: nil) v -> gres Θ Ξ p args v) /\
+            cfg_eq Θ Ξ θ 0 (param_ok csf) (path_ok csf) me_top (List.rev args) κf nil /\
+            path_in (me_addr κf) y = p /\
+            List.length rconf = List.length Δ /\
+            (forall i e rc, List.nth_error pos i = Some e -> List.nth_error rconf i = Some rc ->
+               conf_ok Θ Ξ me_top args i e rc) /\
+            (forall tys, List.length tys = List.length Δ ->
+               (forall i e rc ty, List.nth_error pos i = Some e -> List.nth_error rconf i = Some rc ->
+                  List.nth_error tys i = Some ty -> ty_ok Θ Ξ e rc ty) ->
+               eval_gne Θ Ξ κf (addr_depth (me_addr κf)) (d_glob p) (napp (d_glob p) tys args)).
+  Proof.
+    intros * Hg Hl.
+    pose proof (wf_gctx_stack _ _ Hg) as HΞ.
+    pose proof (wf_gstack_canon _ _ HΞ) as Hcs.
+    pose proof (wf_gdeps_canon _ (wf_gstack_deps _ _ HΞ)) as Hcd.
+    inversion Hl as [n U ip Δ0 ? ? A0 B0 Hn Hm | fp U ip Δ0 ? ? A0 B0 Hf Hm]; subst.
+    - (* a member of an open frame *)
+      pose proof (stack_rscoped _ _ HΞ _ _ Hn) as Hrs.
+      set (cs := List.length (gu_params U) :: gs_cs (List.skipn (S n) Ξ)).
+      destruct (chainT Θ Ξ _ _ _ _ Hm (gs_canon_nth _ _ _ Hcs Hn) _ _ _ _ eq_refl cs ltac:(unfold cs; congruence)
+                  ltac:(intros; eapply gm_rscoped_find; eassumption))
+        as (y & Ar & Br & θ & csf & pos & -> & -> & HsA & HsB & Hcsf & Hbθ & Hip1 & Hip2 & Hlpos & Hpos & Hdyn).
+      assert (Hfr : frame_at Θ Ξ (me_addr (me_base n)) = Some (gu_params U, gu_mod U))
+        by (unfold frame_at; cbn; rewrite Hn; reflexivity).
+      destruct (Hdyn _ _ _ Hfr ltac:(intros; reflexivity)) as [Hpart Hmain].
+      assert (Hglob : forall r ρ, eval_ent Θ Ξ (me_base n) ip r -> ⟦ a_glob (p_rel n ip) ⟧ me_top ⍮ ρ ↘ r)
+        by (intros * Hr; constructor; rewrite me_drop_base, Nat.add_0_r; exact Hr).
+      exists y, Ar, Br, (ts_comp θ (ts_ms (↑ₘ n))), csf,
+        (List.map (fun e => match e with (R, θi, nR, csR) => (R, ts_comp θi (ts_ms (↑ₘ n)), nR, csR) end) pos).
+      split; [ rewrite exp_tsub_ms, exp_tsub_comp; reflexivity |].
+      split; [ rewrite opt_tsub_ms, opt_tsub_comp; reflexivity |].
+      do 2 (split; [ assumption |]).
+      rewrite ctx_msub_length.
+      split; [ rewrite List.length_map; assumption |].
+      split.
+      { intros i e Hie; rewrite List.nth_error_map in Hie.
+        destruct (List.nth_error pos i) as [[[[R θi] nR] csR] |] eqn:HR; cbn in Hie; [| discriminate ].
+        injection Hie as <-.
+        destruct (Hpos _ _ HR) as (T & HT & HTok); cbn in HTok; destruct HTok as (-> & HsR & _).
+        exists (exp_tsub (ts_ms (↑ₘ n)) (exp_tsub θi R)); split.
+        - rewrite (ctx_msub_nth _ _ _ _ HT), exp_tsub_ms.
+          f_equal; apply exp_tsub_ext, ts_ms_eq, ms_qn_shift.
+        - cbn; split; [ rewrite exp_tsub_comp; reflexivity | assumption ]. }
+      split.
+      { intros cs' Hl'; destruct (Hpart _ Hl') as (v & r & Hr & Hv).
+        exists v, r; split; [ intros; apply Hglob, Hr | exact Hv ]. }
+      intros args Hla.
+      destruct (Hmain _ Hla) as (κf & Δf & Φf & rconf & Hff & Hfy & Hres & Hcf & Hpath & Hdepth & Hlrc & Hconf & Hgne).
+      exists κf, Δf, Φf, rconf; split; [ assumption |]; split; [ assumption |].
+      split; [ intros v Hv; destruct (Hres _ Hv) as (r & Hr & Hv'); exists r; split; [ intros; apply Hglob, Hr | exact Hv' ] |].
+      split.
+      { eapply cfg_eq_comp; [ apply (cfg_eq_shift _ _ _ (List.length Δ0) (param_ok cs) (path_ok cs)) | exact Hcf | intros; lia | exact Hip1 | exact Hip2 ]. }
+      split; [ rewrite Hpath; reflexivity |].
+      split; [ assumption |].
+      split.
+      { intros i e rc Hie Hrc; rewrite List.nth_error_map in Hie.
+        destruct (List.nth_error pos i) as [[[[R θi] nR] csR] |] eqn:HR; cbn in Hie; [| discriminate ].
+        injection Hie as <-.
+        destruct rc as [κi ρi].
+        specialize (Hconf _ _ _ HR Hrc); cbn in Hconf |- *; destruct Hconf as [HlR Hcfi].
+        destruct (Hpos _ _ HR) as (T & HT & HTok); cbn in HTok; destruct HTok as (_ & _ & _ & Hv & Hp & Hg').
+        split; [ assumption |].
+        eapply cfg_eq_comp; [ apply (cfg_eq_shift _ _ _ i (param_ok cs) (path_ok cs)) | exact Hcfi | exact Hv | exact Hp | exact Hg' ]. }
+      intros tys Hlt Hty.
+      apply Hgne; [ constructor | assumption |].
+      intros i e rc ty Hie Hrc Hty0.
+      destruct e as [[[R θi] nR] csR].
+      exact (Hty i (R, ts_comp θi (ts_ms (↑ₘ n)), nR, csR) rc ty ltac:(rewrite List.nth_error_map, Hie; reflexivity) Hrc Hty0).
+    - (* a member of a filed unit *)
+      pose proof (deps_rscoped _ (wf_gstack_deps _ _ HΞ) _ _ Hf) as Hrs.
+      assert (HsT : ctx_scoped 0 nil (gu_params U)).
+      { destruct wf_scoped as (_ & _ & _ & _ & _ & _ & _ & _ & Hu & _).
+        destruct (Hu _ (wf_gstack_deps _ _ HΞ) _ _ Hf) as [H _]; exact H. }
+      set (c := List.length (gu_params U)).
+      destruct (chainT Θ Ξ _ _ _ _ Hm (gds_lookup_canon _ _ _ Hcd Hf) _ _ _ _ eq_refl (c :: nil) ltac:(congruence)
+                  ltac:(intros; eapply gm_rscoped_find; eassumption))
+        as (y & Ar & Br & θ & csf & pos & -> & -> & HsA & HsB & Hcsf & Hbθ & Hip1 & Hip2 & Hlpos & Hpos & Hdyn).
+      assert (Hfr : forall argsT, frame_at Θ Ξ (me_addr (me_frame (p_abs fp nil) argsT (me_base 0))) = Some (gu_params U, gu_mod U))
+        by (intros; unfold frame_at; cbn; rewrite Hf; reflexivity).
+      assert (Hglob : forall r ρ, eval_pend Θ Ξ (me_base 0) (p_abs fp nil) c nil ip r ->
+                        ⟦ a_glob (p_abs fp ip) ⟧ me_top ⍮ ρ ↘ r)
+        by (intros * Hr; econstructor; eassumption).
+      set (n := List.length Δ0).
+      exists y, Ar, Br, (ts_comp θ (ts_ms (ms_close (p_abs fp nil) c n))), csf,
+        (tele_pos nil 0 (List.rev (gu_params U)) ++
+         lift_with (fun i => ts_ms (ms_close (p_abs fp nil) c i)) 0 pos).
+      assert (Hltot : List.length (Δ0[close (p_abs fp nil) c]ᵐ ++ gu_params U) = n + c)
+        by (rewrite List.length_app, ctx_msub_length; reflexivity).
+      rewrite Hltot.
+      assert (Hnthc : forall i e, List.nth_error (lift_with (fun i => ts_ms (ms_close (p_abs fp nil) c i)) 0 pos) i = Some e ->
+                  exists R θi nR csR, List.nth_error pos i = Some (R, θi, nR, csR) /\
+                    e = (R, ts_comp θi (ts_ms (ms_close (p_abs fp nil) c i)), nR, csR)).
+      { intros i e H; destruct (lift_with_nth _ _ _ _ _ H) as (R & θi & nR & csR & HR & ->); do 4 eexists; split; [ exact HR | reflexivity ]. }
+      assert (Hnthc' : forall i R θi nR csR, List.nth_error pos i = Some (R, θi, nR, csR) ->
+                  List.nth_error (lift_with (fun i => ts_ms (ms_close (p_abs fp nil) c i)) 0 pos) i = Some (R, ts_comp θi (ts_ms (ms_close (p_abs fp nil) c i)), nR, csR)).
+      { intros * H; exact (lift_with_nth' _ 0 _ _ _ _ _ _ H). }
+      split; [ rewrite exp_tsub_ms, exp_tsub_comp; reflexivity |].
+      split; [ rewrite opt_tsub_ms, opt_tsub_comp; reflexivity |].
+      do 2 (split; [ assumption |]).
+      split; [ rewrite List.length_app, tele_pos_length, lift_with_length, List.length_rev; fold c n; lia |].
+      split.
+      { intros i e Hie.
+        destruct (Nat.lt_ge_cases i c) as [Hic | Hic].
+        - rewrite List.nth_error_app1 in Hie by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+          destruct (tele_pos_nth _ _ _ _ _ Hie) as (T & HT & ->); cbn [Nat.add] in *.
+          rewrite nth_error_rev_tele in HT by (fold c; lia); fold c in HT.
+          exists T; split.
+          + rewrite List.nth_error_app2 by (rewrite ctx_msub_length; fold n; lia).
+            rewrite ctx_msub_length; fold n; replace (n + c - S i - n) with (c - S i) by lia; exact HT.
+          + cbn; split; [ symmetry; apply exp_tsub_id |].
+            pose proof (ctx_scoped_nth _ _ _ _ HsT HT) as H; fold c in H; replace (c - S (c - S i)) with i in H by lia; exact H.
+        - rewrite List.nth_error_app2 in Hie by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+          rewrite tele_pos_length, List.length_rev in Hie; fold c in Hie.
+          destruct (Hnthc _ _ Hie) as (R & θi & nR & csR & HR & ->).
+          destruct (Hpos _ _ HR) as (Tin & HTin & HTok); cbn in HTok.
+          destruct HTok as (-> & HsR & _).
+          assert (Hin_n0 : i - c < List.length pos) by (apply List.nth_error_Some; congruence).
+          assert (Hin_n : i - c < n) by (unfold n, c in *; lia).
+          exists (exp_tsub (ts_ms (ms_close (p_abs fp nil) c (i - c))) (exp_tsub θi R)); split.
+          + rewrite List.nth_error_app1 by (rewrite ctx_msub_length; fold n; lia).
+            replace (n + c - S i) with (n - S (i - c)) by lia.
+            rewrite (ctx_msub_nth _ _ _ _ HTin), exp_tsub_ms.
+            replace (List.length Δ0 - S (n - S (i - c))) with (i - c) by (unfold n, c in *; lia).
+            replace (List.length Δ0 - S (List.length Δ0 - S (i - c))) with (i - c) by (unfold n, c in *; lia).
+            f_equal; apply exp_tsub_ext, ts_ms_eq.
+            pose proof (ms_qn_close (i - c) (p_abs fp nil) c 0) as Hq; rewrite Nat.add_0_r in Hq; exact Hq.
+          + cbn; split; [ rewrite exp_tsub_comp; reflexivity | assumption ]. }
+      split.
+      { intros cs' Hl'.
+        destruct (Nat.lt_ge_cases (List.length cs') c) as [Hlt | Hge].
+        - destruct (pend_partial Θ Ξ (me_base 0) (p_abs fp nil) c ip cs' nil ltac:(cbn; lia)) as (r & v & Hr & Hv).
+          exists v, r; split; [ intros; apply Hglob, Hr | exact Hv ].
+        - destruct (proj1 (Hdyn _ _ _ (Hfr (List.rev (List.firstn c cs'))) ltac:(intros; reflexivity))
+                       (List.skipn c cs') ltac:(rewrite List.length_skipn; fold n; lia)) as (v & Hv).
+          destruct (pend_feed Θ Ξ (me_base 0) (p_abs fp nil) c ip (List.firstn c cs') nil (List.skipn c cs') v
+                      ltac:(rewrite List.length_firstn; cbn; lia)
+                      ltac:(rewrite List.app_nil_r; exact Hv)) as (r & Hr & Hv').
+          rewrite List.firstn_skipn in Hv'.
+          exists v, r; split; [ intros; apply Hglob, Hr | exact Hv' ]. }
+      intros args Hla.
+      set (argsT := List.firstn c args).
+      set (argsin := List.skipn c args).
+      assert (HlT : List.length argsT = c) by (unfold argsT; rewrite List.length_firstn; lia).
+      assert (Hlin : List.length argsin = n) by (unfold argsin; rewrite List.length_skipn; fold n; lia).
+      assert (Hsplit : args = argsT ++ argsin) by (unfold argsT, argsin; symmetry; apply List.firstn_skipn).
+      destruct (proj2 (Hdyn _ _ _ (Hfr (List.rev argsT)) ltac:(intros; reflexivity)) argsin Hlin)
+        as (κf & Δf & Φf & rconfin & Hff & Hfy & Hres & Hcf & Hpath & Hdepth & Hlrc & Hconf & Hgne).
+      exists κf, Δf, Φf, (List.map (fun j => (me_base 0, List.rev (List.firstn j argsT))) (List.seq 0 c) ++ rconfin).
+      split; [ assumption |]; split; [ assumption |].
+      split.
+      { intros v Hv; destruct (Hres v Hv) as (r0 & Hr0 & Hv0).
+        destruct (pend_feed Θ Ξ (me_base 0) (p_abs fp nil) c ip argsT nil argsin v
+                    ltac:(cbn; lia) ltac:(rewrite List.app_nil_r; exists r0; split; assumption)) as (r & Hr & Hv').
+        rewrite <- Hsplit in Hv'.
+        exists r; split; [ intros; apply Hglob, Hr | exact Hv' ]. }
+      split.
+      { rewrite Hsplit, List.rev_app_distr.
+        pose proof (cfg_eq_close_abs Θ Ξ fp U (List.rev argsT) (List.rev argsin) Hf
+                      ltac:(rewrite List.length_rev; assumption)) as Hν.
+        rewrite List.length_rev, Hlin in Hν.
+        eapply cfg_eq_comp; [ exact Hν | exact Hcf | intros; lia | |].
+        - intros lp Hlp; eapply exp_ok_PQ; [ apply Hip1; exact Hlp | | ].
+          + intros [m k] (c' & Hc0 & Hk) Hm0; cbn in Hm0, Hc0 |- *; rewrite Hm0 in Hc0; injection Hc0 as <-; exact Hk.
+          + intros [[fq | m] ms] Hq; cbn in *; auto; lia.
+        - intros p Hp; eapply exp_ok_PQ; [ apply Hip2; exact Hp | | ].
+          + intros [m k] (c' & Hc0 & Hk) Hm0; cbn in Hm0, Hc0 |- *; rewrite Hm0 in Hc0; injection Hc0 as <-; exact Hk.
+          + intros [[fq | m] ms] Hq; cbn in *; auto; lia. }
+      split; [ rewrite Hpath; reflexivity |].
+      split; [ rewrite List.length_app, List.length_map, List.length_seq; lia |].
+      split.
+      { intros i e rc Hie Hrc.
+        destruct (Nat.lt_ge_cases i c) as [Hic | Hic].
+        - rewrite List.nth_error_app1 in Hie by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+          rewrite List.nth_error_app1 in Hrc by (rewrite List.length_map, List.length_seq; lia).
+          destruct (tele_pos_nth _ _ _ _ _ Hie) as (T & HT & ->); cbn [Nat.add] in *.
+          rewrite nth_map_seq in Hrc by lia; injection Hrc as <-; cbn.
+          split; [ rewrite List.length_rev, List.length_firstn; lia |].
+          rewrite Hsplit, firstn_app_le by lia; apply cfg_eq_id.
+        - rewrite List.nth_error_app2 in Hie by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+          rewrite List.nth_error_app2 in Hrc by (rewrite List.length_map, List.length_seq; lia).
+          rewrite tele_pos_length, List.length_rev in Hie; fold c in Hie; rewrite List.length_map, List.length_seq in Hrc.
+          destruct (Hnthc _ _ Hie) as (R & θi & nR & csR & HR & ->).
+          destruct rc as [κi ρi].
+          specialize (Hconf _ _ _ HR Hrc); cbn in Hconf; destruct Hconf as [HlR Hcfi].
+          destruct (Hpos _ _ HR) as (Tin & HTin & HTok); cbn in HTok.
+          destruct HTok as (_ & HsR & Hbi & Hv & Hp & Hg').
+          assert (Hin_n0 : i - c < List.length pos) by (apply List.nth_error_Some; congruence).
+          cbn; split; [ assumption |].
+          rewrite Hsplit, firstn_app_ge by lia; rewrite HlT, List.rev_app_distr.
+          pose proof (cfg_eq_close_abs Θ Ξ fp U (List.rev argsT) (List.rev (List.firstn (i - c) argsin)) Hf
+                        ltac:(rewrite List.length_rev; assumption)) as Hν.
+          assert (Hin_n : i - c <= List.length argsin) by (rewrite Hlin; unfold n, c in *; lia).
+          rewrite List.length_rev, List.length_firstn, Nat.min_l in Hν by exact Hin_n.
+          eapply cfg_eq_comp; [ exact Hν | exact Hcfi | | |].
+          + intros x0 Hx0; eapply exp_ok_PQ; [ apply Hv; exact Hx0 | | ].
+            * intros [m k] (c' & Hc0 & Hk) Hm0; cbn in Hm0, Hc0 |- *; rewrite Hm0 in Hc0; injection Hc0 as <-; exact Hk.
+            * intros [[fq | m] ms] Hq; cbn in *; auto; lia.
+          + intros lp Hlp; eapply exp_ok_PQ; [ apply Hp; exact Hlp | | ].
+            * intros [m k] (c' & Hc0 & Hk) Hm0; cbn in Hm0, Hc0 |- *; rewrite Hm0 in Hc0; injection Hc0 as <-; exact Hk.
+            * intros [[fq | m] ms] Hq; cbn in *; auto; lia.
+          + intros p Hp0; eapply exp_ok_PQ; [ apply Hg'; exact Hp0 | | ].
+            * intros [m k] (c' & Hc0 & Hk) Hm0; cbn in Hm0, Hc0 |- *; rewrite Hm0 in Hc0; injection Hc0 as <-; exact Hk.
+            * intros [[fq | m] ms] Hq; cbn in *; auto; lia. }
+      intros tys Hlt Hty.
+      set (tysT := List.firstn c tys).
+      set (tysin := List.skipn c tys).
+      assert (HltT : List.length tysT = c) by (unfold tysT; rewrite List.length_firstn; lia).
+      assert (Hltin : List.length tysin = n) by (unfold tysin; rewrite List.length_skipn; fold n; lia).
+      assert (Hg1 : eval_gne Θ Ξ (me_frame (p_abs fp nil) (List.rev argsT) (me_base 0))
+                      (addr_depth (me_addr (me_frame (p_abs fp nil) (List.rev argsT) (me_base 0))))
+                      (d_glob (p_abs fp ip)) (napp (d_glob (p_abs fp ip)) tysT argsT)).
+      { cbn [me_addr addr_depth p_mems p_qual List.length Nat.add].
+        econstructor; [ constructor | unfold frame_at; cbn; rewrite Hf; reflexivity |].
+        apply fargs_napp; [ assumption | assumption |].
+        intros j T ty HT Hty0.
+        assert (Hj : j < c) by (assert (Hn0 : List.nth_error tysT j <> None) by congruence; apply List.nth_error_Some in Hn0; lia).
+        apply (Hty j (T, ts_id, j, nil) (me_base 0, List.rev (List.firstn j argsT)) ty).
+        - rewrite List.nth_error_app1 by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+          clear - Hj HT.
+          assert (H : forall l k j T, List.nth_error l j = Some T -> List.nth_error (tele_pos nil k l) j = Some (T, ts_id, k + j, nil)).
+          { induction l as [| T0 l IHl]; intros k [| j0] T0' H; cbn in *; try discriminate.
+            - injection H as <-; rewrite Nat.add_0_r; reflexivity.
+            - rewrite (IHl _ _ _ H); replace (S k + j0) with (k + S j0) by lia; reflexivity. }
+          apply (H _ 0 j T); rewrite nth_error_rev_tele by (fold c; lia); exact HT.
+        - rewrite List.nth_error_app1 by (rewrite List.length_map, List.length_seq; lia).
+          rewrite nth_map_seq by lia; reflexivity.
+        - unfold tysT in Hty0; rewrite List.nth_error_firstn in Hty0.
+          destruct (Nat.ltb_spec j c); [ exact Hty0 | lia ]. }
+      pose proof (Hgne _ _ tysin Hg1 Hltin) as Hgin.
+      assert (Htys : tys = tysT ++ tysin) by (unfold tysT, tysin; symmetry; apply List.firstn_skipn).
+      rewrite Hsplit; rewrite Htys at 1; rewrite (napp_app tysT argsT tysin argsin) by lia.
+      rewrite Htys in Hty.
+      apply Hgin.
+      intros i e rc ty Hie Hrc Hty0.
+      destruct e as [[[R θi] nR] csR]; destruct rc as [κi ρi].
+      assert (H1 : List.nth_error (tele_pos nil 0 (List.rev (gu_params U)) ++
+                     lift_with (fun i => ts_ms (ms_close (p_abs fp nil) c i)) 0 pos) (c + i) =
+                     Some (R, ts_comp θi (ts_ms (ms_close (p_abs fp nil) c i)), nR, csR)).
+      { rewrite List.nth_error_app2 by (rewrite tele_pos_length, List.length_rev; fold c; lia).
+        rewrite tele_pos_length, List.length_rev; fold c; rewrite Nat.add_comm, Nat.add_sub.
+        apply Hnthc'; exact Hie. }
+      assert (H2 : List.nth_error (List.map (fun j => (me_base 0, List.rev (List.firstn j argsT))) (List.seq 0 c) ++ rconfin) (c + i) = Some (κi, ρi)).
+      { rewrite List.nth_error_app2 by (rewrite List.length_map, List.length_seq; lia).
+        rewrite List.length_map, List.length_seq, Nat.add_comm, Nat.add_sub; exact Hrc. }
+      assert (H3 : List.nth_error (tysT ++ tysin) (c + i) = Some ty).
+      { rewrite List.nth_error_app2 by lia; rewrite HltT, Nat.add_comm, Nat.add_sub; exact Hty0. }
+      exact (Hty _ _ _ _ H1 H2 H3).
+  Qed.
+End TopT.
