@@ -216,33 +216,22 @@ Hint Resolve wk_preserves_vlookup wk_preserves_vlookup_eq : mctt.
     throughout. *)
 
 (** What a global resolves to is closed in a well-formed context
-    ([wf_gc_lookup_closed]), so an operation on it vanishes, and the transported
-    type and the type the rule wants coincide.  It is a separate tactic rather
-    than part of the sets below, because it applies in three cases only. *)
-
-(** A parameter's type has no λ-variable either. *)
-Lemma wf_param_type_closed : forall Θ Ξ Γ n U k T,
-    ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    List.nth_error Ξ n = Some U ->
-    gu_params U ∋ #k : T ->
-    exp_scoped 0 (gs_cs Ξ) T[↑ₘ (S n)]ᵐ[sb_params n].
-Proof.
-  intros * HΓ Hn Hk; destruct wf_scoped as [Hctx _].
-  destruct (Hctx _ _ _ HΓ) as (_ & HΞ & _).
-  eapply param_type_scoped; eassumption.
-Qed.
+    ([wf_gc_lookup_closed]), as is a parameter's type ([wf_param_type_closed]),
+    so an operation on it vanishes, and the transported type and the type the
+    rule wants coincide.  It is a separate tactic rather than part of the sets
+    below, because it applies in three cases only. *)
 
 Ltac saturate_closed :=
   repeat match goal with
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ ?A _ |- _ =>
-      assert_fails (assert (exp_scoped 0 _ (ctx_pi Δ A)) by eassumption);
-      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ?Δ ⍮ ge_def _ _ _ (Some ?M) |- _ =>
-      assert_fails (assert (exp_scoped 0 _ (ctx_fn Δ M)) by eassumption);
-      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hc Hl)
-  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : ?T |- _ =>
-      assert_fails (assert (exp_scoped 0 _ T[↑ₘ (S n)]ᵐ[sb_params n]) by eassumption);
-      pose proof (wf_param_type_closed _ _ _ _ _ _ _ Hc Hn Hk)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ge_def _ _ ?A _ |- _ =>
+      assert_fails (assert (exp_scoped 0 _ A) by eassumption);
+      pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hc Hl)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hl : ?Θ ⍮ ?Ξ ∋ᵍ _ ⇒ ge_def _ _ _ (Some ?M) |- _ =>
+      assert_fails (assert (exp_scoped 0 _ M) by eassumption);
+      pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hc Hl)
+  | Hc : ⊢ ?Θ ⍮ ?Ξ ⍮ _, Hp : gs_param ?Ξ _ = Some ?T |- _ =>
+      assert_fails (assert (exp_scoped 0 _ T) by eassumption);
+      pose proof (wf_param_type_closed _ _ _ _ _ Hc Hp)
   end.
 
 Ltac push_closed :=

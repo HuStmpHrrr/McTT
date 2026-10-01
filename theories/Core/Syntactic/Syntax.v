@@ -107,14 +107,20 @@ End Cst.
     then a nonempty chain of member selections inside it.  The two halves are
     spelled differently in the surface language and are different kinds of thing
     here — the qualifier indexes the ambient structure, the members index one
-    module — so they are separate fields rather than one path. *)
+    module — so they are separate fields rather than one path.
+
+    Both qualifiers are *absolute*: neither changes when a frame is pushed
+    around the point where the name is written.  That is what lets resolution
+    hand an entry back exactly as it is stored. *)
 Inductive qual : Set :=
 (** [X::Y::Z]: a unit, named absolutely.  Units do not nest, so this is a path
     into the import trie. *)
 | qu_abs : list string -> qual
-(** A de Bruijn index into the enclosing modules, [0] being the innermost: the
-    module being elaborated is not yet an entry of anything, so its members
-    cannot be named absolutely. *)
+(** A *de Bruijn level* into the frames open around the point of use: [0] is the
+    outermost (the unit being elaborated), and a frame keeps its level while
+    frames are pushed inside it.  The module being elaborated is not yet an
+    entry of anything, so its members cannot be named by a [qu_abs] path; its
+    level is its absolute name for as long as it is open. *)
 | qu_rel : nat -> qual.
 
 Record path : Set :=
@@ -140,83 +146,17 @@ Definition qual_valid (q : qual) : Prop :=
 Definition path_valid (p : path) : Prop :=
   qual_valid (p_qual p) /\ p_mems p <> nil.
 
-(** ** Path Opening
+(** The member [ip] of the module [mp]: what a member of a frame becomes once
+    that frame is closed and filed as [mp]. *)
+Definition p_app (mp : path) (ip : list string) : path :=
+  {| p_qual := p_qual mp ; p_mems := p_mems mp ++ ip |}.
 
-    An entry is stored as it was checked, so a [qu_rel] index inside it counts
-    frames of the stack *it* was checked under.  Reading it out of the module
-    that contains it re-expresses those indices at the use site.
-
-    [path_module p] is that module: [p] with the entry's own name dropped. *)
-Definition path_module (p : path) : path :=
-  {| p_qual := p_qual p ; p_mems := List.removelast (p_mems p) |}.
-
-(** The converse: the member [x] of the module [mp].  Descending into a nested
-    module is descending into [path_in mp x], since checking its entries pushed
-    one more frame. *)
-Definition path_in (mp : path) (x : string) : path :=
-  {| p_qual := p_qual mp ; p_mems := p_mems mp ++ x :: nil |}.
-
-(** [path_open q mp] reads [q] out of the module [mp].  The members of [mp] are
-    the modules crossed on the way in: exactly the frames the entry was checked
-    under, innermost first.  An index [m ≤ k] points at one of them, and becomes
-    [mp]'s qualifier entered through the outer [k - m] of those names; an index
-    [m > k] points past them, and becomes the use site's frame [n + (m - k)].
-    Truncated subtraction makes the two cases one expression.  A filed unit
-    ([qu_abs]) is checked against the empty stack, so it never has an index past
-    its own nesting. *)
-Definition path_open (q mp : path) : path :=
-  match p_qual q with
-  | qu_abs _ => q
-  | qu_rel m =>
-      let k := List.length (p_mems mp) in
-      {| p_qual := match p_qual mp with
-                   | qu_abs fp => qu_abs fp
-                   | qu_rel n => qu_rel (n + (m - k))
-                   end
-       ; p_mems := List.firstn (k - m) (p_mems mp) ++ p_mems q |}
-  end.
-
-(** Opening applies to every carrier of a path; one class gives them one
-    notation.  Compute with [cbn], which refolds recursive calls into [popen]
-    and so keeps the notation, rather than [unfold]. *)
-Class POpen (A : Type) := popen : path -> A -> A.
-
-#[export]
-Instance POpen_path : POpen path := fun mp q => path_open q mp.
-
-(** Available from here on in this file, so that each carrier's opening can be
-    written with the ones before it; [Syntax_Notations] exports the same
-    notation. *)
-Local Notation "M [ p ]ᵖ" := (popen p M) (at level 1, left associativity, p at level 60).
-
-Module PathOpen_Examples.
-  Local Open Scope string_scope.
-  Import ListNotations.
-
-  (** From [Q] in [P], [P.R.k] is [p_rel 1 ["R"; "k"]], in the module
-      [p_rel 1 ["R"]]; [k]'s body was checked under [[R, P]]. *)
-  Example module_of_k : path_module (p_rel 1 (["R"; "k"])) = p_rel 1 (["R"]).
-  Proof. reflexivity. Qed.
-  Example open_sibling : path_open (p_rel 0 (["k0"])) (p_rel 1 (["R"])) = p_rel 1 (["R"; "k0"]).
-  Proof. reflexivity. Qed.
-  Example open_self : path_open (p_rel 1 (["p0"])) (p_rel 1 (["R"])) = p_rel 1 (["p0"]).
-  Proof. reflexivity. Qed.
-  Example open_outer : path_open (p_rel 2 (["w0"])) (p_rel 1 (["R"])) = p_rel 2 (["w0"]).
-  Proof. reflexivity. Qed.
-  (** Through a filed unit, relative indices become absolute. *)
-  Example open_abs_inner : path_open (p_rel 0 (["g0"])) (p_abs (["X"]) (["Y"])) = p_abs (["X"]) (["Y"; "g0"]).
-  Proof. reflexivity. Qed.
-  Example open_abs_outer : path_open (p_rel 1 (["f"])) (p_abs (["X"]) (["Y"])) = p_abs (["X"]) (["f"]).
-  Proof. reflexivity. Qed.
-  (** The current module itself is the identity. *)
-  Example open_here : path_open (p_rel 2 (["x"])) (p_rel 0 ([])) = p_rel 2 (["x"]).
-  Proof. reflexivity. Qed.
-End PathOpen_Examples.
-
-(** A module parameter: the [lp_param]-th parameter of the frame [lp_mod] frames
-    out, both innermost first.  Module parameters are not λ-bound: they are in
-    scope because their module is open, so they are not de Bruijn indices of the
-    local context, and weakening and substitution leave them alone. *)
+(** A module parameter: the [lp_param]-th parameter of the frame at level
+    [lp_mod], both counted from the outside ([0] is the outermost frame, and the
+    first parameter of a telescope).  Module parameters are not λ-bound: they
+    are in scope because their module is open, so they are not de Bruijn indices
+    of the local context, and weakening and substitution leave them alone.  Like
+    a [qu_rel] path, a parameter keeps its name while frames are pushed. *)
 Record lpath : Set := lp_mk
   { lp_mod : nat
   ; lp_param : nat }.
@@ -519,10 +459,9 @@ Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
     The third operation, next to weakening and substitution: [μ] says what each
     module parameter and each global becomes, and what it puts in is weakened
     past the binders it lands under, exactly as [q σ] does.  λ-variables are
-    left alone.  Resolution uses two instances: [↑ₘ n], when a member of the
-    frame [n] frames out is used from here, and [close mp c], when the innermost
-    frame, seen from outside as [mp] and with [c] parameters, is closed — its
-    parameters become λ-bound and its members are applied to them. *)
+    left alone.  Only the *judgments* use one: closing a frame ([ms_close]) when
+    a nested module ends or a unit is filed, which is done once, to the stored
+    entries.  Resolution and evaluation never apply one. *)
 Record msub : Set := ms_mk
   { ms_param : lpath -> exp
   ; ms_glob : path -> exp }.
@@ -582,30 +521,34 @@ Fixpoint app_vars (M : exp) (d c : nat) : exp :=
   | S c' => app_vars (a_app M (a_var (d + c'))) d c'
   end.
 
-(** [↑ₘ n]: everything is [n] frames further out. *)
-Definition ms_shift (n : nat) : msub :=
-  ms_mk (fun lp => a_param (lp_mk (n + lp_mod lp) (lp_param lp)))
-        (fun p => a_glob p[p_rel n nil]ᵖ).
-
-(** Closing the innermost frame, seen from outside as [mp], with [c]
-    parameters, [d] binders in: its parameters become the λ-variables past [d],
-    its members are applied to them, and everything else is one frame nearer. *)
-Definition ms_close (mp : path) (c d : nat) : msub :=
+(** Closing the frame at level [L], filed from now on as the module [mp], with
+    [c] parameters, [d] binders in: its parameters become the λ-variables past
+    [d] (parameter [0], the outermost, the furthest out), its members are read
+    out of [mp] and applied to them, and everything else stays as it is — no
+    other frame changes its level. *)
+Definition ms_close (L : nat) (mp : path) (c d : nat) : msub :=
   ms_mk (fun lp =>
-           match lp_mod lp with
-           | 0 => a_var (d + lp_param lp)
-           | S m => a_param (lp_mk m (lp_param lp))
-           end)
+           if Nat.eqb (lp_mod lp) L then a_var (d + (c - S (lp_param lp))) else a_param lp)
         (fun p =>
            match p_qual p with
-           | qu_rel 0 => app_vars (a_glob p[mp]ᵖ) d c
-           | _ => a_glob p[mp]ᵖ
+           | qu_rel m => if Nat.eqb m L then app_vars (a_glob (p_app mp (p_mems p))) d c else a_glob p
+           | qu_abs _ => a_glob p
            end).
 
-(** Reading a frame's telescope as its parameters: the [i]-th binding of frame
-    [n] is the parameter [(n, i)]. *)
-Definition sb_params (n : nat) : sub := fun i => a_param (lp_mk n i).
-Arguments sb_params _ _ /.
+(** Reading the first [j] bindings of the telescope of the frame at level [L] as
+    its parameters: the variable [#i] under them is the parameter [j - 1 - i]. *)
+Definition sb_params (L j : nat) : sub := fun i => a_param (lp_mk L (j - S i)).
+Arguments sb_params _ _ _ /.
+
+(** The types of a telescope's parameters, at their own names: the [j]-th, read
+    with its [j] predecessors as parameters.  Indexed by parameter, i.e. the
+    outermost first — so a telescope truncated to its outer bindings has a
+    prefix of these. *)
+Fixpoint ctx_ptys (L : nat) (Δ : ctx) : list typ :=
+  match Δ with
+  | nil => nil
+  | A :: Δ' => ctx_ptys L Δ' ++ (exp_sub A (sb_params L (List.length Δ')) :: nil)
+  end.
 
 (** ** Equality of Weakenings and Substitutions
 
@@ -647,13 +590,11 @@ Module Syntax_Notations.
       level 2. *)
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
   Notation "M [ φ ]ʷ" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]ʷ") : mctt_scope.
-  Notation "M [ p ]ᵖ" := (popen p M) (at level 1, left associativity, p at level 60, format "M [ p ]ᵖ") : mctt_scope.
   Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   Notation "M [ μ ]ᵐ" := (msubst μ M) (at level 1, left associativity, μ at level 60, format "M [ μ ]ᵐ") : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
   Notation "'$[' n , k ']'" := (a_param (lp_mk n k)) (at level 0, n at level 60, k at level 60) : mctt_scope.
-  Notation "'↑ₘ' n" := (ms_shift n) (at level 2, n at level 1) : mctt_scope.
-  Notation "'close' mp c" := (ms_close mp c 0) (at level 2, mp at level 1, c at level 1) : mctt_scope.
+  Notation "'close' L mp c" := (ms_close L mp c 0) (at level 2, L at level 1, mp at level 1, c at level 1) : mctt_scope.
   Notation "'ℕ'" := a_nat : mctt_scope.
   Notation "'zero'" := a_zero : mctt_scope.
   Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.

@@ -55,7 +55,7 @@ Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" (at level 70, Ξ at level 69, 
 Reserved Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" (at level 70, Ξ at level 69, Γ at level 69, σ at level 69, σ' at level 69, Δ at level 69).
 Reserved Notation "Γ ∋ '#' x : A" (at level 70, x constr at level 0, A at level 69).
 Reserved Notation "⊢g Θ ⍮ Ξ" (at level 70, Θ at level 69, Ξ at level 69).
-Reserved Notation "Θ ⍮ Ξ ⊢e E" (at level 70, Ξ at level 69, E at level 69).
+Reserved Notation "Θ ⍮ Ξ ⊢e x ↦ E" (at level 70, Ξ at level 69, x at level 0, E at level 69).
 Reserved Notation "Θ ⍮ Ξ ⍮ Δ ⊢m Φ" (at level 70, Ξ at level 69, Δ at level 69, Φ at level 69).
 Reserved Notation "Θ ⍮ Ξ ⊢u U" (at level 70, Ξ at level 69, U at level 69).
 
@@ -131,25 +131,24 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
-(** A parameter of an open module.  Its type was checked in the frame's
-    telescope, over the frames outside it: the telescope's own variables are the
-    frame's parameters, and the frames outside, with their parameters and
-    members, are [1 + n] further out from here.  No local variable occurs in it, so it needs no adjustment to be used
-    in [Γ]. *)
+(** A parameter of an open module, at the type its frame stores for it: the
+    binding of the frame's telescope, with the bindings before it read as the
+    parameters they are ([ctx_ptys], which [⊢u] asks the frame to agree with).
+    No local variable occurs in it, so it needs no adjustment to be used in
+    [Γ]. *)
 | wf_param :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     List.nth_error Ξ n = Some U ->
-     gu_params U ∋ #k : T ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n] )
-(** A global is used at the type resolution hands back: generalized over the
-    parameters of the closed modules it is read out of, which [X.foo] is then
-    applied to, and mentioning those of the open ones as parameters.  No local
-    variable occurs in it, so it needs no adjustment to be used in [Γ]; nothing
-    else is premised, and that it is a type is a presupposition. *)
+     gs_param Ξ lp = Some T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_param lp : T )
+(** A global is used at the type it is stored with: generalized already over
+    the parameters of the closed modules it was read out of, which [X.foo] is
+    then applied to, and mentioning those of the open ones as parameters.  No
+    local variable occurs in it, so it needs no adjustment to be used in [Γ];
+    nothing else is premised, and that it is a type is a presupposition. *)
 | wf_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : ctx_pi Δ A )
+     Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : A )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      (** We have this extra argument for soundness.
@@ -209,13 +208,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
 | wf_exp_eq_param :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     List.nth_error Ξ n = Some U ->
-     gu_params U ∋ #k : T ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ $[n, k] ≈ $[n, k] : T[↑ₘ (S n)]ᵐ[sb_params n] )
+     gs_param Ξ lp = Some T ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_param lp ≈ a_param lp : T )
 | wf_exp_eq_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ a_glob p : ctx_pi Δ A )
+     Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ a_glob p : A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -235,12 +233,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
 (** [δ]: a transparent definition unfolds.  An [abstract] one ([b = false]) and
-    an axiom ([B = None]) do not.  The body unfolds to under the same telescope
-    the type is generalized over, so it is [ctx_fn], not the bare [M]. *)
+    an axiom ([B = None]) do not.  The body is stored generalized as the type
+    is, so it unfolds to as it is. *)
 | wf_exp_eq_glob_unfold :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def true pv A (Some M) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ ctx_fn Δ M : ctx_pi Δ A )
+     Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def true pv A (Some M) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ M : A )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -311,12 +309,14 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
     [Θ] and [Ξ] — keeping the two apart is what lets each say exactly what it is
     relative to.
 
-    A member of a parameterized module is stored *open* in that module's
-    parameters — generalizing it is [ctx_pi]'s job, at the use site — so it is
-    checked in the telescope it lives under, which the judgment takes as an
-    argument rather than reading off the entry.  [ge_mod] records only the
-    parameters it adds to that telescope; a [gunit] records the whole of it, which
-    is why a unit is always checked at [⋅].
+    A member is checked in the frame it is declared in, where the frame's
+    parameters are [$[L, k]] and its earlier members [p_rel L _], [L] the
+    frame's level; that is how a member of an open frame is stored.  When the
+    frame is closed — at the end of a nested module ([wf_gentry_mod]) or when a
+    unit is filed ([wf_gdep_cons]) — what is *stored* is each member closed
+    ([gm_close]/[gu_close]): generalized over the frame's parameters, and with
+    the frame's members read out of the module it is filed as.  So the judgments
+    close a frame once, and nothing that reads an entry ever transforms it.
 
     Canonicity is part of well-formedness: [wf_gmod_ext] asks for freshness, so a
     well-formed context resolves deterministically without a separate condition,
@@ -328,22 +328,24 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
     members declared so far.  The local context is therefore [⋅] — an entry binds
     nothing of its own. *)
 
-with wf_gentry : gdeps -> gstack -> gentry -> Prop :=
+with wf_gentry : gdeps -> gstack -> String.string -> gentry -> Prop :=
 (** An axiom: only its type is checked, there being no body to carry it. *)
 | wf_gentry_axiom :
   `( Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Type@i ->
-     Θ ⍮ Ξ ⊢e ge_def b pv A None )
+     Θ ⍮ Ξ ⊢e x ↦ ge_def b pv A None )
 (** A definition: its body carries the type recorded for it, so the type needs no
     premise of its own — that is presupposition, and it is provable here because
     the term judgments are part of this same definition. *)
 | wf_gentry_def :
   `( Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A ->
-     Θ ⍮ Ξ ⊢e ge_def b pv A (Some M) )
-(** An internal module, under the parameters [Δ'] it declares. *)
+     Θ ⍮ Ξ ⊢e x ↦ ge_def b pv A (Some M) )
+(** An internal module [x], under the parameters [Δ'] it declares.  It is
+    checked as a frame of its own, at level [length Ξ]; what is stored is that
+    frame closed, filed as the member [x] of the enclosing frame. *)
 | wf_gentry_mod :
   `( Θ ⍮ Ξ ⍮ Δ' ⊢m Φ ->
-     Θ ⍮ Ξ ⊢e ge_mod Δ' Φ )
-where "Θ ⍮ Ξ ⊢e E" := (wf_gentry Θ Ξ E) : type_scope
+     Θ ⍮ Ξ ⊢e x ↦ ge_mod Δ' (gm_close (List.length Ξ) (p_rel (Nat.pred (List.length Ξ)) (x :: nil)) Δ' Φ) )
+where "Θ ⍮ Ξ ⊢e x ↦ E" := (wf_gentry Θ Ξ x E) : type_scope
 
 with wf_gmod : gdeps -> gstack -> ctx -> gmod -> Prop :=
 (** The base case is what makes [⊢m] presuppose its telescope, which is why no
@@ -352,28 +354,30 @@ with wf_gmod : gdeps -> gstack -> ctx -> gmod -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Δ ->
      Θ ⍮ Ξ ⍮ Δ ⊢m ⋄ )
 (** The entry is checked against the members declared *before* it: the module so
-    far is [gu_mk Δ Φ], and pushing it as the innermost frame is what makes a
-    [qu_rel] reference inside [E] reach its earlier siblings — and nothing later,
-    nor itself. *)
+    far is [Φ], and pushing it as the innermost frame — at level [length Ξ], with
+    its parameter types read off [Δ] — is what makes a [qu_rel] reference inside
+    [E] reach its earlier siblings — and nothing later, nor itself. *)
 | wf_gmod_ext :
   `( Θ ⍮ Ξ ⍮ Δ ⊢m Φ ->
-     Θ ⍮ gu_mk Δ Φ :: Ξ ⊢e E ->
+     Θ ⍮ gu_mk Δ (ctx_ptys (List.length Ξ) Δ) Φ :: Ξ ⊢e x ↦ E ->
      gm_fresh x Φ ->
      Θ ⍮ Ξ ⍮ Δ ⊢m Φ ⊳ x ↦ E )
 where "Θ ⍮ Ξ ⍮ Δ ⊢m Φ" := (wf_gmod Θ Ξ Δ Φ) : type_scope
 
-(** A unit: its parameters are its *whole* telescope, whether it has been filed
-    or is still open on the stack, so there is no ambient one to extend. *)
+(** A unit, open: its parameters are its *whole* telescope, so there is no
+    ambient one to extend, and the parameter types it stores are those of its
+    telescope at the level it is pushed at. *)
 
 with wf_gunit : gdeps -> gstack -> gunit -> Prop :=
 | wf_gunit_intro :
   `( Θ ⍮ Ξ ⍮ gu_params U ⊢m gu_mod U ->
+     gu_ptys U = ctx_ptys (List.length Ξ) (gu_params U) ->
      Θ ⍮ Ξ ⊢u U )
 where "Θ ⍮ Ξ ⊢u U" := (wf_gunit Θ Ξ U) : type_scope
 
 (** One dependency level, checked against the levels [Θ] below it: a filed unit
-    is a finished compilation unit, so it sees no stack, and not its own level
-    either.  Its path is fresh both in [Θ] and in the part of this level already
+    is a finished compilation unit, so it is checked as the only frame of an
+    empty stack, and does not see its own level either; it is filed closed.  Its path is fresh both in [Θ] and in the part of this level already
     filed, so a path is filed exactly once in the whole of [gdeps].  No ambient
     global context appears — [Θ] is all a level is relative to. *)
 
@@ -388,7 +392,7 @@ with wf_gdep : gdeps -> gdep -> Prop :=
      Θ ⍮ nil ⊢u U ->
      gds_fresh fp Θ ->
      gd_fresh fp d ->
-     wf_gdep Θ ((fp, U) :: d) )
+     wf_gdep Θ ((fp, gu_close fp U) :: d) )
 
 (** The levels, accumulated one at a time, each checked against those already
     piled up — so the newest level is at the front, as the newest frame is in a
@@ -405,8 +409,8 @@ with wf_gdeps : gdeps -> Prop :=
 
 (** The definition stack, innermost frame first, relative to the levels.  Read
     exactly like [wf_gdep_cons], and for the same reason: a frame is checked
-    against the frames *outside* it, so it cannot see itself, and a [qu_rel] index
-    occurring inside it counts outward from there. *)
+    against the frames *outside* it, so it cannot see itself; its level is the
+    number of frames outside it. *)
 
 with wf_gstack : gdeps -> gstack -> Prop :=
 | wf_gstack_nil :

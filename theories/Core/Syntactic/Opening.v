@@ -47,33 +47,3 @@ Qed.
 #[export]
 Hint Resolve ctx_lookup_msub : mctt.
 
-(** ** Parameters as a Function *)
-
-Lemma ctx_get_sound : forall Γ k T, ctx_get Γ k = Some T -> Γ ∋ #k : T.
-Proof.
-  induction Γ as [| A Γ IH]; intros [| k] T H; cbn in H; try discriminate.
-  - injection H as <-; constructor.
-  - destruct (ctx_get Γ k) eqn:E; cbn in H; [ injection H as <- | discriminate ].
-    constructor; auto.
-Qed.
-
-Lemma ctx_get_complete : forall Γ k T, Γ ∋ #k : T -> ctx_get Γ k = Some T.
-Proof. induction 1; cbn; [| rewrite IHctx_lookup ]; reflexivity. Qed.
-
-Lemma gs_param_sound : forall Ξ n k T,
-    gs_param Ξ {| lp_mod := n; lp_param := k |} = Some T ->
-    exists U T0, List.nth_error Ξ n = Some U /\ gu_params U ∋ #k : T0 /\
-      T = T0[↑ₘ (S n)]ᵐ[sb_params n].
-Proof.
-  unfold gs_param; cbn; intros * H.
-  destruct (List.nth_error Ξ n) as [U |] eqn:Hn; [| discriminate ].
-  destruct (ctx_get (gu_params U) k) as [T0 |] eqn:Hk; cbn in H; [| discriminate ].
-  injection H as <-; exists U, T0; auto using ctx_get_sound.
-Qed.
-
-Lemma gs_param_complete : forall Ξ n U k T,
-    List.nth_error Ξ n = Some U -> gu_params U ∋ #k : T ->
-    gs_param Ξ {| lp_mod := n; lp_param := k |} = Some T[↑ₘ (S n)]ᵐ[sb_params n].
-Proof.
-  unfold gs_param; cbn; intros * Hn Hk; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
-Qed.

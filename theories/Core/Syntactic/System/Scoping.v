@@ -1,17 +1,17 @@
 (** * Scoping
 
     Every well-formed term is well scoped: its λ-variables are among the local
-    binders, and its module parameters among those of the frames open around
-    it.  What this buys is closedness of globals.  Resolution hands a definition
-    back generalized over the parameters of the modules it is read out of, so in
-    a well-formed context its type and body have no free λ-variable, and
-    weakening and substitution leave them alone.  The [a_glob] rules rely on
-    exactly that instead of premising it.
+    binders, and its module parameters and frame references among the frames
+    open around it.  What this buys is closedness of globals: an entry is
+    stored as a term at [⋅], so in a well-formed context its type and body have
+    no free λ-variable, and weakening and substitution leave them alone.  The
+    [a_glob] rules rely on exactly that instead of premising it.  The frames
+    mentioned matter when a frame is closed: an entry of a frame further out
+    does not mention it, so closing it leaves that entry alone.
 
     A scope is the number [n] of λ-variables and the parameter counts [cs] of
-    the frames, innermost first.  Scoping is proved for all eleven judgments at
-    once: the term judgments need closedness of what resolution hands back,
-    which comes from [⊢g], which is checked by the term judgments. *)
+    the frames, *by level* (outermost first), so pushing a frame appends to
+    [cs].  Scoping is proved for all eleven judgments at once. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -26,7 +26,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 Definition param_ok (cs : list nat) (lp : lpath) : Prop :=
   exists c, List.nth_error cs (lp_mod lp) = Some c /\ lp_param lp < c.
 
-(** A relative path names one of the frames in scope. *)
+(** A frame reference names one of the frames in scope. *)
 Definition path_ok (cs : list nat) (p : path) : Prop :=
   match p_qual p with
   | qu_abs _ => True
@@ -59,8 +59,17 @@ Definition opt_scoped (n : nat) (cs : list nat) (B : option exp) : Prop :=
   | Some M => exp_scoped n cs M
   end.
 
-(** The parameter counts of the frames on a stack. *)
-Definition gs_cs (Ξ : gstack) : list nat := List.map (fun U => length (gu_params U)) Ξ.
+(** The parameter counts of the frames on a stack, by level. *)
+Definition gs_cs (Ξ : gstack) : list nat := List.rev (List.map (fun U => length (gu_ptys U)) Ξ).
+
+Lemma gs_cs_length : forall Ξ, length (gs_cs Ξ) = length Ξ.
+Proof. intros; unfold gs_cs; rewrite List.length_rev, List.length_map; reflexivity. Qed.
+
+Lemma gs_cs_cons : forall U Ξ, gs_cs (U :: Ξ) = gs_cs Ξ ++ length (gu_ptys U) :: nil.
+Proof. reflexivity. Qed.
+
+Lemma gs_cs_app : forall Ξa Ξb, gs_cs (Ξa ++ Ξb) = gs_cs Ξb ++ gs_cs Ξa.
+Proof. intros; unfold gs_cs; rewrite List.map_app, List.rev_app_distr; reflexivity. Qed.
 
 (** ** Syntactic Facts *)
 
@@ -74,19 +83,23 @@ Proof.
     end.
 Qed.
 
-(** With no frames, a well-scoped term has no parameter, so any frames will do. *)
-Lemma exp_scoped_cs_nil : forall M n cs, exp_scoped n nil M -> exp_scoped n cs M.
+(** More frames pushed inside: what was in scope still is, at the same level. *)
+Lemma exp_scoped_cs_app : forall M n cs cs', exp_scoped n cs M -> exp_scoped n (cs ++ cs') M.
 Proof.
   induction M; intros * HM; cbn in *; destruct_all; repeat split; auto.
-  - destruct HM as [c [Hc _]]; destruct (lp_mod l); discriminate.
-  - unfold path_ok in *; destruct (p_qual p); cbn in *; auto; lia.
+  - destruct HM as [c [Hc Hk]]; exists c; split; [| assumption ].
+    rewrite List.nth_error_app1 by (apply List.nth_error_Some; congruence); assumption.
+  - unfold path_ok in *; destruct (p_qual p); cbn in *; auto; rewrite List.length_app; lia.
 Qed.
 
-Lemma opt_scoped_cs_nil : forall B n cs, opt_scoped n nil B -> opt_scoped n cs B.
-Proof. intros [M|] *; cbn; eauto using exp_scoped_cs_nil. Qed.
+Corollary exp_scoped_cs_nil : forall M n cs, exp_scoped n nil M -> exp_scoped n cs M.
+Proof. intros; apply (exp_scoped_cs_app _ _ nil); assumption. Qed.
 
-Lemma ctx_scoped_cs_nil : forall Γ n cs, ctx_scoped n nil Γ -> ctx_scoped n cs Γ.
-Proof. induction Γ; intros * H; cbn in *; destruct_all; eauto using exp_scoped_cs_nil. Qed.
+Lemma opt_scoped_cs_app : forall B n cs cs', opt_scoped n cs B -> opt_scoped n (cs ++ cs') B.
+Proof. intros [M|] *; cbn; eauto using exp_scoped_cs_app. Qed.
+
+Lemma ctx_scoped_cs_app : forall Γ n cs cs', ctx_scoped n cs Γ -> ctx_scoped n (cs ++ cs') Γ.
+Proof. induction Γ; intros * H; cbn in *; destruct_all; eauto using exp_scoped_cs_app. Qed.
 
 (** What each operation has to satisfy on the scope, lifted under one binder. *)
 
@@ -170,21 +183,7 @@ Proof.
   intros; eapply exp_scoped_sub_id; [ eassumption | lia ].
 Qed.
 
-(** ** Module Substitution *)
-
-(** Shifting by [length pre] frames: the frames skipped over are [pre]. *)
-Lemma exp_scoped_msub_shift : forall M n cs pre,
-    exp_scoped n cs M -> exp_scoped n (pre ++ cs) M[↑ₘ (length pre)]ᵐ.
-Proof.
-  induction M; intros * HM; cbn in *; destruct_all; repeat split.
-  all: try rewrite (exp_msub_ext _ _ _ (ms_q_shift _)).
-  all: try rewrite (exp_msub_ext _ (ms_q (ms_q (↑ₘ _))) _ (ms_qn_shift 2 _)).
-  all: auto.
-  - destruct HM as [c [Hc Hk]]; exists c; cbn; split; [| assumption ].
-    rewrite List.nth_error_app2 by lia; rewrite Nat.add_comm, Nat.add_sub; assumption.
-  - destruct p as [[fp | m] ip]; unfold path_ok in *; cbn in *; auto.
-    rewrite Nat.sub_0_r, List.length_app; lia.
-Qed.
+(** ** Closing a Frame *)
 
 Lemma app_vars_scoped : forall M N cs d c,
     exp_scoped N cs M -> d + c <= N -> exp_scoped N cs (app_vars M d c).
@@ -193,60 +192,66 @@ Proof.
   apply IHc; [ cbn; split; [ assumption | lia ] | lia ].
 Qed.
 
-(** Where the closed frame is read out to: a nested module of the next frame
-    out, or a filed unit. *)
-Definition close_ok (cs : list nat) (mp : path) : Prop :=
-  forall c (r : path), path_ok (c :: cs) r -> path_ok cs r[mp]ᵖ.
+Lemma path_ok_app : forall cs mp ip, path_ok cs mp -> path_ok cs (p_app mp ip).
+Proof. intros * H; exact H. Qed.
 
-Lemma close_ok_in : forall cs x, 0 < length cs -> close_ok cs (p_rel 0 (x :: nil)).
-Proof.
-  intros * Hlt c [[fp | [| m]] ip]; unfold path_ok; cbn; auto; intros; lia.
-Qed.
-
-Lemma close_ok_abs : forall cs fp, close_ok cs (p_abs fp nil).
-Proof. intros * c [[fp' | m] ip]; unfold path_ok; cbn; auto. Qed.
-
-(** Closing the innermost frame, [n] binders in: its [c] parameters become the
-    λ-variables past [n]. *)
+(** Closing the frame at level [length cs], [n] binders in: its [c]
+    parameters become the λ-variables past [n]. *)
 Lemma exp_scoped_msub_close : forall M n c cs mp,
-    close_ok cs mp ->
-    exp_scoped n (c :: cs) M -> exp_scoped (n + c) cs M[ms_close mp c n]ᵐ.
+    path_ok cs mp ->
+    exp_scoped n (cs ++ c :: nil) M -> exp_scoped (n + c) cs M[ms_close (length cs) mp c n]ᵐ.
 Proof.
   induction M; intros * Hmp HM; cbn in *; destruct_all; repeat split.
-  all: try rewrite (exp_msub_ext _ _ _ (ms_q_close _ _ _)).
-  all: try rewrite (exp_msub_ext _ (ms_q (ms_q (ms_close _ _ _))) _ (ms_qn_close 2 _ _ _)).
+  all: try rewrite (exp_msub_ext _ _ _ (ms_q_close _ _ _ _)).
+  all: try rewrite (exp_msub_ext _ (ms_q (ms_q (ms_close _ _ _ _))) _ (ms_qn_close 2 _ _ _ _)).
   all: try (replace (S (n + c)) with (S n + c) by lia; auto).
   all: try (replace (S (S (n + c))) with (2 + n + c) by lia; auto).
   all: auto; try lia.
   - replace (S (S n + c)) with (S (S n) + c) by lia; auto.
-  - match goal with l : lpath |- _ => destruct l as [[| m] k] end;
+  - match goal with l : lpath |- _ => destruct l as [m k] end;
       destruct HM as [c' [Hc Hk]]; cbn in *.
-    + injection Hc as <-; lia.
-    + exists c'; auto.
-  - pose proof (Hmp c p HM) as Hp.
-    destruct p as [[fp | [| m]] ip]; cbn; auto.
-    apply app_vars_scoped; cbn; auto.
+    destruct (Nat.eqb_spec m (length cs)) as [-> |].
+    + rewrite List.nth_error_app2, Nat.sub_diag in Hc by lia; injection Hc as <-; cbn; lia.
+    + exists c'; split; [| assumption ].
+      assert (m < length (cs ++ c :: nil)) by (apply List.nth_error_Some; congruence).
+      rewrite List.length_app in *; cbn in *.
+      rewrite List.nth_error_app1 in Hc by lia; assumption.
+  - destruct p as [[fp | m] ip]; unfold path_ok in *; cbn in *; auto.
+    destruct (Nat.eqb_spec m (length cs)) as [-> |].
+    + apply app_vars_scoped; cbn; [ exact Hmp | lia ].
+    + rewrite List.length_app in HM; cbn in *; lia.
 Qed.
-
-(** Reading a frame's telescope as its parameters. *)
-Lemma exp_scoped_sb_params : forall M n cs m c,
-    exp_scoped n cs M -> List.nth_error cs m = Some c -> n <= c ->
-    exp_scoped 0 cs M[sb_params m].
-Proof.
-  intros * HM Hc Hle; eapply exp_scoped_sub; [ eassumption |].
-  intros x Hx; exists c; cbn; split; [ assumption | lia ].
-Qed.
-
-Lemma opt_scoped_msub_shift : forall B n cs pre,
-    opt_scoped n cs B -> opt_scoped n (pre ++ cs) B[↑ₘ (length pre)]ᵐ.
-Proof. intros [M|] *; cbn; eauto using exp_scoped_msub_shift. Qed.
 
 Lemma opt_scoped_msub_close : forall B n c cs mp,
-    close_ok cs mp ->
-    opt_scoped n (c :: cs) B -> opt_scoped (n + c) cs B[ms_close mp c n]ᵐ.
+    path_ok cs mp ->
+    opt_scoped n (cs ++ c :: nil) B -> opt_scoped (n + c) cs B[ms_close (length cs) mp c n]ᵐ.
 Proof. intros [M|] *; cbn; eauto using exp_scoped_msub_close. Qed.
 
-(** ** Telescopes *)
+(** Closing a frame leaves alone what does not mention it. *)
+Lemma exp_msub_close_fix : forall M n cs mp c d,
+    exp_scoped n cs M -> M[ms_close (length cs) mp c d]ᵐ = M.
+Proof.
+  induction M; intros * HM; cbn in *; destruct_all; f_equal.
+  all: try rewrite (exp_msub_ext _ _ _ (ms_q_close _ _ _ _)).
+  all: try rewrite (exp_msub_ext _ (ms_q (ms_q (ms_close _ _ _ _))) _ (ms_qn_close 2 _ _ _ _)).
+  all: eauto.
+  - destruct l as [m k]; destruct HM as [c' [Hc _]]; cbn in *.
+    destruct (Nat.eqb_spec m (length cs)) as [-> |]; [| reflexivity ].
+    exfalso; assert (Hlt : length cs < length cs) by (apply List.nth_error_Some; congruence); lia.
+  - destruct p as [[fp | m] ip]; unfold path_ok in *; cbn in *; [ reflexivity |].
+    destruct (Nat.eqb_spec m (length cs)); [ lia | reflexivity ].
+Qed.
+
+Lemma opt_msub_close_fix : forall B n cs mp c d,
+    opt_scoped n cs B -> B[ms_close (length cs) mp c d]ᵐ = B.
+Proof. intros [M|] * H; cbn in *; [ erewrite exp_msub_close_fix by eassumption |]; reflexivity. Qed.
+
+Lemma ctx_msub_close_fix : forall Δ n cs mp c,
+    ctx_scoped n cs Δ -> Δ[close (length cs) mp c]ᵐ = Δ.
+Proof.
+  induction Δ; intros * H; cbn in *; destruct_all; [ reflexivity |]; f_equal; eauto.
+  rewrite (exp_msub_ext _ _ _ (ms_qn_close _ _ _ _ _)); eapply exp_msub_close_fix; eassumption.
+Qed.
 
 Lemma ctx_scoped_app : forall Γ Δ n cs,
     ctx_scoped n cs (Γ ++ Δ) <-> ctx_scoped (length Δ + n) cs Γ /\ ctx_scoped n cs Δ.
@@ -287,39 +292,58 @@ Proof.
   apply IHΔ; cbn; auto.
 Qed.
 
-Lemma ctx_scoped_msub_shift : forall Δ n cs pre,
-    ctx_scoped n cs Δ -> ctx_scoped n (pre ++ cs) Δ[↑ₘ (length pre)]ᵐ.
+
+(** ** Parameter Types *)
+
+Lemma ctx_ptys_nth : forall L Δ j T,
+    List.nth_error (ctx_ptys L Δ) j = Some T ->
+    exists Δa A Δb, Δ = Δa ++ A :: Δb /\ length Δb = j /\ T = A[sb_params L j].
 Proof.
-  induction Δ; intros * H; cbn in *; destruct_all; [ auto |]; split; [| auto ].
-  rewrite ctx_msub_length, (exp_msub_ext _ _ _ (ms_qn_shift _ _)).
-  apply exp_scoped_msub_shift; assumption.
+  induction Δ as [| A Δ IH]; intros * Hj; cbn in Hj; [ destruct j; discriminate |].
+  destruct (Nat.lt_ge_cases j (length Δ)).
+  - rewrite List.nth_error_app1 in Hj by (rewrite ctx_ptys_length; lia).
+    destruct (IH _ _ Hj) as (Δa & B & Δb & -> & Hl & ->).
+    exists (A :: Δa), B, Δb; auto.
+  - rewrite List.nth_error_app2 in Hj by (rewrite ctx_ptys_length; lia).
+    rewrite ctx_ptys_length in Hj.
+    destruct (j - length Δ) as [| k] eqn:E; cbn in Hj; [| destruct k; discriminate ].
+    injection Hj as <-; exists nil, A, Δ; repeat split; f_equal; f_equal; lia.
 Qed.
 
-(** A closed telescope sits on the [c] variables its frame's parameters became. *)
-Lemma ctx_scoped_msub_close : forall Δ c cs mp,
-    close_ok cs mp ->
-    ctx_scoped 0 (c :: cs) Δ -> ctx_scoped c cs Δ[close mp c]ᵐ.
+Lemma ctx_ptys_scoped : forall Δ cs j T,
+    ctx_scoped 0 cs Δ ->
+    List.nth_error (ctx_ptys (length cs) Δ) j = Some T ->
+    exp_scoped 0 (cs ++ length Δ :: nil) T.
 Proof.
-  induction Δ; intros * Hmp H; cbn in *; destruct_all; [ auto |]; split; [| auto ].
-  rewrite ctx_msub_length, (exp_msub_ext _ _ _ (ms_qn_close _ _ _ _)), !Nat.add_0_r.
-  apply exp_scoped_msub_close; rewrite ?Nat.add_0_r in *; assumption.
+  intros * HΔ Hj.
+  destruct (ctx_ptys_nth _ _ _ _ Hj) as (Δa & A & Δb & -> & Hl & ->).
+  apply ctx_scoped_app in HΔ as [_ [HA _]].
+  rewrite Nat.add_0_r, Hl in HA.
+  eapply exp_scoped_sub; [ apply exp_scoped_cs_app; exact HA |].
+  intros x Hx; unfold param_ok; cbn [lp_mod lp_param sb_params]; exists (length (Δa ++ A :: Δb)); split.
+  - cbn [lp_mod]; rewrite List.nth_error_app2, Nat.sub_diag by lia; reflexivity.
+  - cbn [lp_param]; rewrite List.length_app; cbn [length]; lia.
 Qed.
 
 (** ** What a Well-formed Global Context Guarantees *)
 
-(** Every definition [Φ] resolves to is scoped by the frames [cs], the first of
-    which is [Φ]'s own, under the parameters on its member chain. *)
+(** Every definition [Φ] resolves to is closed, and mentions the frames [cs]. *)
 Definition lookups_scoped (Φ : gmod) (cs : list nat) : Prop :=
-  forall ip Δ b pv A B,
-    Φ ∋ ip ⇒ Δ ⍮ ge_def b pv A B ->
-    ctx_scoped 0 cs Δ /\ exp_scoped (length Δ) cs A /\ opt_scoped (length Δ) cs B.
+  forall ip b pv A B,
+    Φ ∋ ip ⇒ ge_def b pv A B ->
+    exp_scoped 0 cs A /\ opt_scoped 0 cs B.
 
-(** A unit checked with the frames [cs] outside it. *)
+(** A frame at level [length cs]: its telescope is scoped by the frames
+    outside it, and its members and parameter types by those and itself. *)
 Definition unit_scoped (U : gunit) (cs : list nat) : Prop :=
-  ctx_scoped 0 cs (gu_params U) /\ lookups_scoped (gu_mod U) (length (gu_params U) :: cs).
+  ctx_scoped 0 cs (gu_params U) /\
+  length (gu_ptys U) = length (gu_params U) /\
+  lookups_scoped (gu_mod U) (cs ++ length (gu_params U) :: nil) /\
+  (forall j T, List.nth_error (gu_ptys U) j = Some T -> exp_scoped 0 (cs ++ length (gu_params U) :: nil) T).
 
+(** A filed unit is closed: it mentions no frame. *)
 Definition units_scoped (Θ : gdeps) : Prop :=
-  forall fp U, gds_lookup Θ fp = Some U -> unit_scoped U nil.
+  forall fp U, gds_lookup Θ fp = Some U -> lookups_scoped (gu_mod U) nil.
 
 (** Each frame is scoped by the frames outside it. *)
 Fixpoint gs_scoped (Ξ : gstack) : Prop :=
@@ -328,97 +352,89 @@ Fixpoint gs_scoped (Ξ : gstack) : Prop :=
   | U :: Ξ' => unit_scoped U (gs_cs Ξ') /\ gs_scoped Ξ'
   end.
 
-Lemma gs_scoped_nth : forall Ξ n U,
+Lemma gs_scoped_app : forall Ξa Ξb, gs_scoped (Ξa ++ Ξb) -> gs_scoped Ξb.
+Proof. induction Ξa; intros * H; cbn in *; destruct_all; auto. Qed.
+
+Lemma gs_scoped_frame : forall Ξ n U,
     gs_scoped Ξ ->
-    List.nth_error Ξ n = Some U ->
-    unit_scoped U (gs_cs (List.skipn (S n) Ξ)).
+    gs_frame Ξ n = Some U ->
+    exists Ξa Ξb, Ξ = Ξa ++ U :: Ξb /\ length Ξb = n /\ unit_scoped U (gs_cs Ξb) /\
+      gs_cs Ξ = (gs_cs Ξb ++ length (gu_ptys U) :: nil) ++ gs_cs Ξa.
 Proof.
-  induction Ξ as [| V Ξ IH]; intros [|n] U HΞ Hn; cbn in *; try discriminate;
-    destruct_all; [ injection Hn as ->; assumption |].
-  apply IH; assumption.
+  intros * HΞ Hn.
+  destruct (gs_frame_split _ _ _ Hn) as (Ξa & Ξb & -> & Hl).
+  pose proof (gs_scoped_app _ _ HΞ) as [HU _].
+  exists Ξa, Ξb; split; [ reflexivity | split; [ assumption | split; [ assumption |] ] ].
+  rewrite gs_cs_app, gs_cs_cons; reflexivity.
 Qed.
 
-Lemma gs_cs_split : forall Ξ n U,
-    List.nth_error Ξ n = Some U ->
-    gs_cs Ξ = List.firstn n (gs_cs Ξ) ++ length (gu_params U) :: gs_cs (List.skipn (S n) Ξ) /\
-    length (List.firstn n (gs_cs Ξ)) = n.
-Proof.
-  induction Ξ as [| V Ξ IH]; intros [|n] U Hn; cbn in *; try discriminate.
-  - injection Hn as ->; auto.
-  - destruct (IH _ _ Hn) as [H1 H2]; unfold gs_cs in *; cbn; rewrite H1 at 1; cbn; auto.
-Qed.
-
-Lemma gs_cs_nth : forall Ξ n U,
-    List.nth_error Ξ n = Some U -> List.nth_error (gs_cs Ξ) n = Some (length (gu_params U)).
-Proof.
-  intros * H; unfold gs_cs; rewrite List.nth_error_map, H; reflexivity.
-Qed.
-
-(** Hence resolution in such a context hands back something scoped by the
-    frames in scope, with no free λ-variable once generalized. *)
-Lemma gc_lookup_scoped : forall Θ Ξ p Δ b pv A B,
+(** Hence resolution in such a context hands back something closed, and
+    scoped by the frames in scope. *)
+Lemma gc_lookup_scoped : forall Θ Ξ p b pv A B,
     gs_scoped Ξ ->
     units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    ctx_scoped 0 (gs_cs Ξ) Δ /\ exp_scoped (length Δ) (gs_cs Ξ) A /\
-    opt_scoped (length Δ) (gs_cs Ξ) B.
+    Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+    exp_scoped 0 (gs_cs Ξ) A /\ opt_scoped 0 (gs_cs Ξ) B.
 Proof.
   intros * HΞ HΘ Hlk; inversion Hlk; subst.
-  - (* an open frame: its entry shifted past the frames nearer in *)
-    pose proof (gs_scoped_nth _ _ _ HΞ ltac:(eassumption)) as [_ Hc].
-    destruct (gs_cs_split _ _ _ ltac:(eassumption)) as [Hsp Hlen].
-    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ _ H) as (HΔ & HA & HB) end.
-    pose proof (ctx_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HΔ) as HΔ'.
-    pose proof (exp_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HA) as HA'.
-    pose proof (opt_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ)) HB) as HB'.
-    rewrite Hlen, <- Hsp in HΔ', HA', HB'.
-    rewrite ctx_msub_length; auto.
-  - (* a filed unit: closed, so no parameter is left *)
-    destruct (HΘ _ _ ltac:(eassumption)) as [Hp Hc].
-    match goal with H : gu_mod U ∋ _ ⇒ _ ⍮ _ |- _ => destruct (Hc _ _ _ _ _ _ H) as (HΔ & HA & HB) end.
-    rewrite List.length_app, ctx_msub_length; repeat split.
-    + apply ctx_scoped_cs_nil, ctx_scoped_app; split;
-        [ rewrite Nat.add_0_r; apply ctx_scoped_msub_close; [ apply close_ok_abs | assumption ]
-        | assumption ].
-    + apply exp_scoped_cs_nil, exp_scoped_msub_close; [ apply close_ok_abs | assumption ].
-    + apply opt_scoped_cs_nil, opt_scoped_msub_close; [ apply close_ok_abs | assumption ].
+  - destruct (gs_scoped_frame _ _ _ HΞ ltac:(eassumption)) as (Ξa & Ξb & -> & _ & (_ & Hlen & Hc & _) & Hcs).
+    match goal with H : gu_mod U ∋ _ ⇒ _ |- _ => destruct (Hc _ _ _ _ _ H) as [HA HB] end.
+    rewrite Hcs; rewrite <- Hlen in HA, HB; split; [ apply exp_scoped_cs_app | apply opt_scoped_cs_app ]; assumption.
+  - match goal with H : gu_mod U ∋ _ ⇒ _ |- _ => destruct (HΘ _ _ ltac:(eassumption) _ _ _ _ _ H) as [HA HB] end.
+    split; [ apply exp_scoped_cs_nil | destruct B; cbn in *; [ apply exp_scoped_cs_nil |] ]; auto.
 Qed.
 
 (** A path that resolves names a frame in scope. *)
-Lemma gc_lookup_path_ok : forall Θ Ξ p Δ E,
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ E -> path_ok (gs_cs Ξ) p.
+Lemma gc_lookup_path_ok : forall Θ Ξ p E,
+    Θ ⍮ Ξ ∋ᵍ p ⇒ E -> path_ok (gs_cs Ξ) p.
 Proof.
   intros * Hlk; inversion Hlk; subst; unfold path_ok; cbn; auto.
-  unfold gs_cs; rewrite List.length_map; apply List.nth_error_Some; congruence.
+  rewrite gs_cs_length; eapply gs_frame_lt; eassumption.
 Qed.
 
-Corollary gc_lookup_closed : forall Θ Ξ p Δ b pv A B,
+(** A parameter's type is closed, and a parameter that has one is in scope. *)
+Lemma param_type_scoped : forall Ξ lp T,
     gs_scoped Ξ ->
-    units_scoped Θ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A) /\ opt_scoped 0 (gs_cs Ξ) (option_map (ctx_fn Δ) B).
+    gs_param Ξ lp = Some T ->
+    exp_scoped 0 (gs_cs Ξ) T.
 Proof.
-  intros * HΞ HΘ Hlk; destruct (gc_lookup_scoped _ _ _ _ _ _ _ _ HΞ HΘ Hlk) as (HΔ & HA & HB).
-  split; [ apply ctx_pi_scoped; rewrite ?Nat.add_0_r; assumption |].
-  destruct B; cbn in *; [ apply ctx_fn_scoped; rewrite ?Nat.add_0_r; assumption | auto ].
+  unfold gs_param; intros * HΞ Hp.
+  destruct (gs_frame Ξ (lp_mod lp)) as [U |] eqn:Hn; [| discriminate ].
+  destruct (gs_scoped_frame _ _ _ HΞ Hn) as (Ξa & Ξb & -> & _ & (_ & Hlen & _ & Hc) & Hcs).
+  rewrite Hcs, Hlen; apply exp_scoped_cs_app, (Hc _ _ Hp).
 Qed.
 
-(** A parameter's type has no λ-variable: the frame's own are read as its
-    parameters, and the frames outside are shifted past those nearer in. *)
-Lemma param_type_scoped : forall Ξ n U k T,
-    gs_scoped Ξ ->
-    List.nth_error Ξ n = Some U ->
-    gu_params U ∋ #k : T ->
-    exp_scoped 0 (gs_cs Ξ) T[↑ₘ (S n)]ᵐ[sb_params n].
+Lemma param_ok_scoped : forall Ξ lp T,
+    gs_param Ξ lp = Some T ->
+    param_ok (gs_cs Ξ) lp.
 Proof.
-  intros * HΞ Hn Hk.
-  pose proof (gs_scoped_nth _ _ _ HΞ Hn) as [HP _].
-  destruct (gs_cs_split _ _ _ Hn) as [Hsp Hlen].
-  pose proof (ctx_scoped_lookup _ _ _ _ _ HP Hk) as HT; rewrite Nat.add_0_r in HT.
-  pose proof (exp_scoped_msub_shift _ _ _ (List.firstn n (gs_cs Ξ) ++ length (gu_params U) :: nil) HT) as HT'.
-  rewrite List.length_app, Hlen, Nat.add_1_r, <- List.app_assoc in HT'; cbn [List.app] in HT'.
-  rewrite <- Hsp in HT'.
-  eapply exp_scoped_sb_params; [ exact HT' | apply gs_cs_nth; eassumption | lia ].
+  unfold gs_param, param_ok; intros * Hp.
+  destruct (gs_frame Ξ (lp_mod lp)) as [U |] eqn:Hn; [| discriminate ].
+  destruct (gs_frame_split _ _ _ Hn) as (Ξa & Ξb & -> & Hl).
+  exists (length (gu_ptys U)); split.
+  - rewrite gs_cs_app, gs_cs_cons, <- List.app_assoc, List.nth_error_app2 by (rewrite gs_cs_length; lia).
+    rewrite gs_cs_length, Hl, Nat.sub_diag; reflexivity.
+  - apply List.nth_error_Some; congruence.
+Qed.
+
+(** What a closed module stores is scoped by the frames outside the closed
+    one. *)
+Lemma gm_close_scoped : forall cs mp Δ Φ,
+    path_ok cs mp ->
+    ctx_scoped 0 cs Δ ->
+    lookups_scoped Φ (cs ++ length Δ :: nil) ->
+    lookups_scoped (gm_close (length cs) mp Δ Φ) cs.
+Proof.
+  intros * Hmp HΔ HΦ ip b pv A B Hl.
+  destruct (gm_close_lookup_inv _ _ _ _ _ _ Hl _ eq_refl) as (b0 & pv0 & A0 & B0 & Hl0 & Heq).
+  injection Heq as -> -> -> ->.
+  destruct (HΦ _ _ _ _ _ Hl0) as [HA HB].
+  split.
+  - apply ctx_pi_scoped; [ assumption |]; rewrite Nat.add_0_r.
+    apply (exp_scoped_msub_close _ 0); assumption.
+  - destruct B0; cbn in *; [| exact I ].
+    apply ctx_fn_scoped; [ assumption |]; rewrite Nat.add_0_r.
+    apply (exp_scoped_msub_close _ 0); assumption.
 Qed.
 
 (** The substitutions the rules instantiate with. *)
@@ -438,6 +454,7 @@ Proof. intros; eapply exp_scoped_sub; [ eassumption |]; intros [|x] ?; cbn; lia.
 #[local]
 Hint Resolve exp_scoped_sub1 exp_scoped_sub2 exp_scoped_sub_succ exp_scoped_shift : mctt.
 
+
 (** ** Every Judgment is Well Scoped *)
 
 #[local] Arguments units_scoped : simpl never.
@@ -453,7 +470,7 @@ Definition ctx_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : Prop :=
 Definition entry_scoped (cs : list nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ pv A B => exp_scoped 0 cs A /\ opt_scoped 0 cs B
-  | ge_mod Δ Φ => ctx_scoped 0 cs Δ /\ lookups_scoped Φ (length Δ :: cs)
+  | ge_mod Δ Φ => lookups_scoped Φ cs
   end.
 
 Theorem wf_scoped :
@@ -465,11 +482,11 @@ Theorem wf_scoped :
       exp_scoped (length Γ) (gs_cs Ξ) A) /\
   (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
       ctx_ok Θ Ξ Γ /\ exp_scoped (length Γ) (gs_cs Ξ) A /\ exp_scoped (length Γ) (gs_cs Ξ) A') /\
-  (forall Θ Ξ E, Θ ⍮ Ξ ⊢e E -> entry_scoped (gs_cs Ξ) E) /\
+  (forall Θ Ξ x E, Θ ⍮ Ξ ⊢e x ↦ E -> Ξ <> nil -> entry_scoped (gs_cs Ξ) E) /\
   (forall Θ Ξ Δ Φ, Θ ⍮ Ξ ⍮ Δ ⊢m Φ ->
-      ctx_scoped 0 (gs_cs Ξ) Δ /\ lookups_scoped Φ (length Δ :: gs_cs Ξ)) /\
+      ctx_scoped 0 (gs_cs Ξ) Δ /\ lookups_scoped Φ (gs_cs Ξ ++ length Δ :: nil)) /\
   (forall Θ Ξ U, Θ ⍮ Ξ ⊢u U -> unit_scoped U (gs_cs Ξ)) /\
-  (forall Θ d, wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> unit_scoped U nil) /\
+  (forall Θ d, wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> lookups_scoped (gu_mod U) nil) /\
   (forall Θ, wf_gdeps Θ -> units_scoped Θ) /\
   (forall Θ Ξ, wf_gstack Θ Ξ -> gs_scoped Ξ /\ units_scoped Θ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> gs_scoped Ξ /\ units_scoped Θ).
@@ -480,46 +497,49 @@ Proof.
   (* variables, parameters and globals are in scope, and what a global
      resolves to is closed *)
   all: try match goal with
-    | H : _ ⍮ _ ∋ᵍ ?p ⇒ _ ⍮ _ |- path_ok _ ?p => eapply gc_lookup_path_ok; exact H
+    | H : _ ⍮ _ ∋ᵍ ?p ⇒ _ |- path_ok _ ?p => eapply gc_lookup_path_ok; exact H
+    | H : gs_param _ ?lp = Some _ |- param_ok _ ?lp => eapply param_ok_scoped; exact H
     | |- exp_scoped (length ?Γ + 0) _ _ => rewrite Nat.add_0_r; assumption
     | H : ?Γ ∋ # ?x : ?A |- ?x < _ => apply ctx_lookup_length in H; assumption
     | H : ?Γ ∋ # ?x : ?A, HΓ : ctx_scoped 0 _ ?Γ |- exp_scoped _ _ ?A =>
         pose proof (ctx_scoped_lookup _ _ _ _ _ HΓ H) as Hs; rewrite Nat.add_0_r in Hs; exact Hs
-    | Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : _ |- param_ok _ _ =>
-        exists (length (gu_params U)); split;
-        [ apply gs_cs_nth; assumption | apply ctx_lookup_length in Hk; assumption ]
-    | Hn : List.nth_error ?Ξ ?n = Some ?U, Hk : gu_params ?U ∋ # ?k : _, HΞ : gs_scoped ?Ξ
-      |- exp_scoped _ _ _[_]ᵐ[_] =>
-        eapply exp_scoped_mono; [| exact (param_type_scoped _ _ _ _ _ HΞ Hn Hk) ]; lia
-    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ _, HΞ : gs_scoped _, HΘ : units_scoped _
-      |- exp_scoped _ _ (ctx_pi _ _) =>
-        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
-    | H : _ ⍮ _ ∋ᵍ _ ⇒ _ ⍮ ge_def _ _ _ (Some _), HΞ : gs_scoped _, HΘ : units_scoped _
-      |- exp_scoped _ _ (ctx_fn _ _) =>
-        eapply exp_scoped_mono; [| apply (gc_lookup_closed _ _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
+    | H : gs_param ?Ξ _ = Some ?T, HΞ : gs_scoped ?Ξ |- exp_scoped _ _ ?T =>
+        eapply exp_scoped_mono; [| exact (param_type_scoped _ _ _ HΞ H) ]; lia
+    | H : _ ⍮ _ ∋ᵍ _ ⇒ ge_def _ _ ?A _, HΞ : gs_scoped _, HΘ : units_scoped _
+      |- exp_scoped _ _ ?A =>
+        eapply exp_scoped_mono; [| apply (gc_lookup_scoped _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
+    | H : _ ⍮ _ ∋ᵍ _ ⇒ ge_def _ _ _ (Some ?M), HΞ : gs_scoped _, HΘ : units_scoped _
+      |- exp_scoped _ _ ?M =>
+        eapply exp_scoped_mono; [| apply (gc_lookup_scoped _ _ _ _ _ _ _ HΞ HΘ H) ]; lia
     end.
   all: try lia.
   - (* [rec], successor *)
     rewrite ?Nat.add_0_r in *.
     eapply exp_scoped_sub2; [ eassumption | eassumption | cbn; repeat split; assumption ].
+  - (* a nested module, closed *)
+    rewrite <- (gs_cs_length Ξ); apply gm_close_scoped; [| assumption | assumption ].
+    unfold path_ok; cbn; rewrite gs_cs_length; destruct Ξ; cbn; [ congruence | lia ].
   - (* the empty module *)
     intros ? * Hlk; inversion Hlk.
   - (* extending a module *)
+    match goal with H : _ -> entry_scoped _ ?E |- _ =>
+      specialize (H ltac:(discriminate)); rewrite gs_cs_cons in H; cbn [gu_ptys] in H; rewrite ctx_ptys_length in H end.
     unfold lookups_scoped; intros * Hlk; inversion Hlk; subst.
     + match goal with H : entry_scoped _ _ |- _ => cbn in H; destruct H end; cbn; auto.
-    + (* a member of the nested module, closed *)
-      match goal with H : entry_scoped _ _ |- _ => cbn in H; destruct H as [HΔ' HΦ'] end.
-      match goal with
-      | Hi : _ ∋ _ ⇒ _ ⍮ ge_def _ _ _ _ |- _ => destruct (HΦ' _ _ _ _ _ _ Hi) as (HΔ2 & HA & HB)
-      end.
-      rewrite List.length_app, ctx_msub_length; repeat split.
-      * apply ctx_scoped_app; split; [ rewrite Nat.add_0_r; apply ctx_scoped_msub_close | ];
-          try apply close_ok_in; cbn; auto; lia.
-      * apply exp_scoped_msub_close; [ apply close_ok_in; cbn; lia | assumption ].
-      * apply opt_scoped_msub_close; [ apply close_ok_in; cbn; lia | assumption ].
+    + match goal with H : entry_scoped _ _ |- _ => cbn in H; eapply H; eassumption end.
     + match goal with H : lookups_scoped Φ _ |- _ => eapply H; eassumption end.
-  - split; assumption.
-  - match goal with H : (_, _) = (_, _) |- _ => injection H as <- <- end; assumption.
+  - (* a frame: its parameter types are those of its telescope *)
+    unfold unit_scoped.
+    match goal with Hp : gu_ptys _ = _ |- _ =>
+      refine (conj _ (conj _ (conj _ _)));
+      [ assumption | rewrite Hp; apply ctx_ptys_length | assumption
+      | intros * Hj; rewrite Hp, <- (gs_cs_length Ξ) in Hj; eapply ctx_ptys_scoped; eassumption ]
+    end.
+  - (* a unit, closed as it is filed *)
+    match goal with H : (_, _) = (_, _) |- _ => injection H as <- <- end.
+    match goal with H : unit_scoped _ _ |- _ => destruct H as (HP & _ & HM & _) end.
+    cbn [gu_close gu_mod gu_params].
+    apply (gm_close_scoped nil); [ exact I | exact HP | exact HM ].
   - eauto.
   - intros fp U Hl; discriminate.
   - (* a level filed on top: its own units, or the ones below *)
@@ -531,28 +551,38 @@ Qed.
 
 (** In a well-formed context, what a global resolves to has no free
     λ-variable. *)
-Corollary wf_gc_lookup_closed : forall Θ Ξ Γ p Δ b pv A B,
+Corollary wf_gc_lookup_closed : forall Θ Ξ Γ p b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A) /\ opt_scoped 0 (gs_cs Ξ) (option_map (ctx_fn Δ) B).
+    Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+    exp_scoped 0 (gs_cs Ξ) A /\ opt_scoped 0 (gs_cs Ξ) B.
 Proof.
   intros * HΓ Hlk; destruct wf_scoped as [Hctx _].
   destruct (Hctx _ _ _ HΓ) as (_ & HΞ & HΘ).
-  eapply gc_lookup_closed; eassumption.
+  eapply gc_lookup_scoped; eassumption.
 Qed.
 
-Corollary wf_gc_lookup_type_closed : forall Θ Ξ Γ p Δ b pv A B,
+Corollary wf_gc_lookup_type_closed : forall Θ Ξ Γ p b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    exp_scoped 0 (gs_cs Ξ) (ctx_pi Δ A).
+    Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+    exp_scoped 0 (gs_cs Ξ) A.
 Proof.
   intros; eapply wf_gc_lookup_closed; eassumption.
 Qed.
 
-Corollary wf_gc_lookup_body_closed : forall Θ Ξ Γ p Δ b pv A M,
+Corollary wf_gc_lookup_body_closed : forall Θ Ξ Γ p b pv A M,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A (Some M) ->
-    exp_scoped 0 (gs_cs Ξ) (ctx_fn Δ M).
+    Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A (Some M) ->
+    exp_scoped 0 (gs_cs Ξ) M.
 Proof.
-  intros * HΓ Hlk; apply (wf_gc_lookup_closed _ _ _ _ _ _ _ _ _ HΓ Hlk).
+  intros * HΓ Hlk; apply (wf_gc_lookup_closed _ _ _ _ _ _ _ _ HΓ Hlk).
+Qed.
+
+Corollary wf_param_type_closed : forall Θ Ξ Γ lp T,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    gs_param Ξ lp = Some T ->
+    exp_scoped 0 (gs_cs Ξ) T.
+Proof.
+  intros * HΓ Hp; destruct wf_scoped as [Hctx _].
+  destruct (Hctx _ _ _ HΓ) as (_ & HΞ & _).
+  eapply param_type_scoped; eassumption.
 Qed.
