@@ -63,8 +63,6 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
      read_ne_order Θ Ξ s recᵈ m under p return B | zero -> mz | succ -> MS end )
 | rne_glob :
   `( read_ne_order Θ Ξ s (d_glob p) )
-| rne_param :
-  `( read_ne_order Θ Ξ s (d_param lp) )
 
 with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | rtyp_univ :
@@ -143,7 +141,6 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
   with read_ne_impl s d (H : read_ne_order Θ Ξ s d) : { m | Rne d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, #ᵈ x, H => exist _ #ⁿ (s - x - 1) _
 | s, d_glob p, H => exist _ (ne_glob p) _
-| s, d_param lp, H => exist _ (ne_param lp) _
 | s, m $ᵈ n, H =>
     let (M, HM) := read_ne_impl s m _ in
     let (N, HN) := read_nf_impl s n _ in

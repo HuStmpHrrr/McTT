@@ -9,7 +9,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import NbE.
 Import Domain_Notations.
 
-(** ** Values Without Global or Parameter Neutrals *)
+(** ** Values Without Global Neutrals *)
 
 Inductive dclean : domain -> Prop :=
 | dclean_nat : dclean ℕᵈ

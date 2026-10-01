@@ -78,3 +78,9 @@
 ./Core/Completeness/Consequences/Types.v
 ./Core/Semantic/Consequences.v
 ./Core/Semantic/Transparency.v
+./Extraction/Evaluation.v
+./Extraction/NbE.v
+./Extraction/PseudoMonadic.v
+./Extraction/Readback.v
+./Extraction/Subtyping.v
+./Extraction/TypeCheck.v

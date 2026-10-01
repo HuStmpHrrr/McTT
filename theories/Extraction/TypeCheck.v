@@ -6,7 +6,6 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping.
-From Mctt.Frontend Require Import Elaborator.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -68,11 +67,10 @@ Section type_check.
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
   | ti_vlookup : forall {x}, type_infer_order #x
-  (** A global and a parameter are read off the global context, which does not
-      recurse: the normal form of the type resolution hands back is asked for in
-      the obligations, from the well-formedness of [G]. *)
+  (** A global is read off the global context, which does not recurse: the
+      normal form of the type resolution hands back is asked for in the
+      obligations, from the well-formedness of [G]. *)
   | ti_glob : forall {pth}, type_infer_order (a_glob pth)
-  | ti_param : forall {lp}, type_infer_order (a_param lp)
   .
 
   #[local]
@@ -209,20 +207,13 @@ Section type_check.
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
         pureo (exist _ A' _)
-    (** What resolution hands back, normalized: the generalized type of a
-        global, and the type of a parameter.  Neither mentions a λ-variable, but
-        both are read at [G], so both are normalized there. *)
+    (** What resolution hands back, normalized: the closed type of a global,
+        normalized at [G]. *)
     | a_glob pth with inspect (gc_resolve gc_deps gc_stack pth) => {
-      | exist _ (Some (Δ, ge_def b pv A B)) _ =>
-          let (C, _) := nbe_ty_impl gc_deps gc_stack G (ctx_pi Δ A) _ in
+      | exist _ (Some (ge_def b pv A B)) _ =>
+          let (C, _) := nbe_ty_impl gc_deps gc_stack G A _ in
           pureo (exist _ C _)
       | exist _ _ _ => inright _
-      }
-    | a_param lp with inspect (gs_param gc_stack lp) => {
-      | exist _ (Some T) _ =>
-          let (C, _) := nbe_ty_impl gc_deps gc_stack G T _ in
-          pureo (exist _ C _)
-      | exist _ None _ => inright _
       }
     }
   .
@@ -376,11 +367,8 @@ Section type_check.
   #[local]
   Ltac resolved_typ :=
     match goal with
-    | Hr : gc_resolve _ _ _ = Some (_, ge_def _ _ _ _) |- _ =>
-        eapply wf_glob_typ; [ eassumption | apply gc_resolve_sound; exact Hr ]
-    | lp : lpath, Hp : gs_param _ _ = Some _ |- _ =>
-        destruct lp; destruct (gs_param_sound _ _ _ _ Hp) as (? & ? & ? & ? & ->);
-        eapply wf_param_typ; eassumption
+    | Hr : gc_resolve _ _ _ = Some (ge_def _ _ _ _) |- _ =>
+        eapply wf_glob_typ; [ eassumption | exact Hr ]
     end.
 
   #[local]
@@ -409,12 +397,8 @@ Section type_check.
         repeat intro;
         match goal with
         | H : _ ⊢a a_glob _ ⟹ _ |- _ => inversion H; subst; congruence
-        | H : _ ⊢a a_param _ ⟹ _ |- _ => inversion H; subst; congruence
         end ].
 
-  Next Obligation. glob_obl. Qed.
-  Next Obligation. glob_obl. Qed.
-  Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
