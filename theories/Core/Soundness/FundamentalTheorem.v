@@ -15,22 +15,14 @@ Import Domain_Notations Fixed_Notations.
 Section soundness_fundamental.
   Context {GC : GCtx}.
 
-  (** The identity is sound at a well-formed global context. *)
-  Lemma glu_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> glu_msub gc_deps gc_stack gc_deps gc_stack ms_id nil.
-  Proof.
-    intros Hg; destruct (gctx_glu _ _ Hg) as [HR HP].
-    apply glu_msub_id; [ assumption | apply glu_rwf_of_raw | apply glu_pwf_of_raw ]; assumption.
-  Qed.
-
   Theorem soundness_fundamental :
     (forall Γ, ⊢ Γ -> ⊩ Γ) /\
       (forall Γ A M, Γ ⊢ M : A -> Γ ⊩ M : A).
   Proof.
     destruct kglu_fundamental as (Kc & Ke).
     split; intros * H;
-      [ pose proof (Kc _ _ _ H _ _ _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ H))) as H'
-      | pose proof (Ke _ _ _ _ _ H _ _ _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H' ];
-      rewrite ?ctx_msub_id, ?List.app_nil_r, ?exp_msub_qn_id in H';
+      [ pose proof (Kc _ _ _ H _ _ (glu_ext_id _ _ (ctx_wf_gctx _ _ _ H))) as H'
+      | pose proof (Ke _ _ _ _ _ H _ _ (glu_ext_id _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H' ];
       destruct GC; exact H'.
   Qed.
 

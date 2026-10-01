@@ -1,14 +1,11 @@
 (** * The Global Rules in the Gluing Model
 
     As [Core/Completeness/ModuleCases.v], for soundness: a judgment of
-    [Θ ⍮ Ξ] glues when it glues after every *sound* module substitution out of
-    [Θ ⍮ Ξ] ([glu_msub]: [syn_msub], and what it puts in glued at the
-    target).  The fundamental theorem holds in this form for contexts and
-    typing ([kglu_fundamental]); at the identity it is the fixed-context
-    theorem, given that every resolved global and parameter glues at [⋅]
-    ([glu_fundamental_at]).  There is no unfolding field: the gluing model has
-    no equality judgment, and δ is used only syntactically, where [syn_msub]
-    transports it. *)
+    [Θ1 ⍮ Ξ1] glues in every well-formed extension in which what [Θ1 ⍮ Ξ1]
+    resolves glues ([glu_ext]).  The fundamental theorem holds in this form for
+    contexts and typing ([kglu_fundamental]).  There is no unfolding field: the
+    gluing model has no equality judgment, and δ is used only syntactically,
+    where the extension carries it as it is. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
@@ -23,77 +20,29 @@ From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructu
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
-(** ** 1. Sound module substitutions *)
+(** ** 1. Glued extensions *)
 
-Section MSub.
-  Variables (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) (μ : msub) (E : ctx).
-
-  #[local] Notation G2 := (gc_mk Θ2 Ξ2).
-  #[local] Notation tctx Γ := (Γ[μ]ᵐ ++ E).
-  #[local] Notation tm Γ M := (M[ms_qn (length Γ) μ]ᵐ).
-
-  Record glu_msub : Prop :=
-    { gms_syn : syn_msub Θ1 Ξ1 Θ2 Ξ2 μ E
-    ; gms_base : @glu_rel_ctx G2 E
-    ; gms_param : forall n U k T Γ,
-        List.nth_error Ξ1 n = Some U ->
-        gu_params U ∋ #k : T ->
-        ⊢ Θ1 ⍮ Ξ1 ⍮ Γ ->
-        @glu_rel_ctx G2 (tctx Γ) ->
-        @glu_rel_exp G2 (tctx Γ) (tm Γ $[n, k]) (tm Γ (T[↑ₘ (S n)]ᵐ[sb_params n]))
-    ; gms_glob : forall r Δ b pv A B Γ,
-        Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ Δ ⍮ ge_def b pv A B ->
-        ⊢ Θ1 ⍮ Ξ1 ⍮ Γ ->
-        @glu_rel_ctx G2 (tctx Γ) ->
-        @glu_rel_exp G2 (tctx Γ) (tm Γ (a_glob r)) (tm Γ (ctx_pi Δ A))
-    }.
-End MSub.
+Record glu_ext (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  { gex_ext : gc_ext Θ1 Ξ1 Θ2 Ξ2
+  ; gex_wf : ⊢g Θ2 ⍮ Ξ2
+  ; gex_glob : forall r b pv A B,
+      Θ1 ⍮ Ξ1 ∋ᵍ r ⇒ ge_def b pv A B ->
+      @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ (a_glob r) A
+  ; gex_param : forall lp T,
+      gs_param Ξ1 lp = Some T ->
+      @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ (a_param lp) T
+  }.
 
 (** ** 2. Kripke gluing *)
 
 Definition kglu_ctx Θ1 Ξ1 Γ : Prop :=
-  forall Θ2 Ξ2 μ E, glu_msub Θ1 Ξ1 Θ2 Ξ2 μ E ->
-    @glu_rel_ctx (gc_mk Θ2 Ξ2) (Γ[μ]ᵐ ++ E).
+  forall Θ2 Ξ2, glu_ext Θ1 Ξ1 Θ2 Ξ2 -> @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ.
 
 (** [glu_rel_exp] already contains the gluing of its context. *)
 Definition kglu_exp Θ1 Ξ1 Γ M A : Prop :=
-  forall Θ2 Ξ2 μ E, glu_msub Θ1 Ξ1 Θ2 Ξ2 μ E ->
-    @glu_rel_exp (gc_mk Θ2 Ξ2) (Γ[μ]ᵐ ++ E) M[ms_qn (length Γ) μ]ᵐ A[ms_qn (length Γ) μ]ᵐ.
+  forall Θ2 Ξ2, glu_ext Θ1 Ξ1 Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
 
-(** ** 3. The fundamental theorem, Kripke form *)
-
-Theorem kglu_fundamental :
-  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> kglu_ctx Θ Ξ Γ) /\
-  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> kglu_exp Θ Ξ Γ M A).
-Proof.
-  apply syntactic_wf_ctx_exp_mut_ind; unfold kglu_ctx, kglu_exp; intros;
-    repeat match goal with IH : forall _ _ _ _, glu_msub _ _ _ _ _ _ -> _ |- _ =>
-      specialize (IH _ _ _ _ ltac:(eassumption)) end.
-  all: cbn [length ctx_msub msubst MSub_ctx MSub_exp exp_msub ms_qn List.app] in *.
-  all: try rewrite !exp_msub_sub1 in *; try rewrite !exp_msub_sub2 in *;
-      try rewrite !exp_msub_sub_succ in *.
-  (* ⋅ : the base of the substitution; ▹ : the ordinary case *)
-  all: try solve [ eapply gms_base; eassumption ].
-  (* the ordinary rules: the (ported) fixed-context case lemmas, at the target *)
-  all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_nat; assumption
-    | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
-    | eapply glu_rel_exp_natrec; eassumption
-    | eapply glu_rel_exp_pi; eassumption | eapply glu_rel_exp_fn; eassumption
-    | eapply glu_rel_exp_app; eassumption ].
-  all: try solve [ eapply glu_rel_exp_vlookup;
-                   [ assumption | apply ctx_lookup_app_left, ctx_lookup_msub; eassumption ] ].
-  (* parameters and globals: what the sound substitution supplies *)
-  all: try solve [ eapply gms_param; eassumption ].
-  all: try solve [ eapply gms_glob; eassumption ].
-  all: try solve [ eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption ].
-  (* subsumption: the subtyping premise is transported syntactically *)
-  match goal with Hμ : glu_msub _ _ _ _ _ _ |- _ =>
-    destruct (msub_preserves_wf' _ _ _ _ _ _ (gms_syn _ _ _ _ _ _ Hμ)) as (_ & _ & _ & Hsub) end.
-  match goal with Hs : wf_subtyp _ _ _ _ _ |- _ => pose proof (Hsub _ _ _ _ _ Hs eq_refl eq_refl) end.
-  eapply glu_rel_exp_subtyp; eassumption.
-Qed.
-
-(** ** 4. Closed gluing at [⋅] weakens to every glued context
+(** ** Closed gluing at [⋅] weakens to every glued context
 
     Simpler than [closed_weaken_sem]: [nil_glu_sub_pred] does not constrain
     the environment, and the terms are the same, so no closedness is needed. *)
@@ -119,48 +68,38 @@ Section Weaken.
   Qed.
 End Weaken.
 
-(** ** 5. The identity is sound, given [⊩g]: every resolved global and
-    parameter glued at [⋅] *)
 
-Definition glu_rwf (Θ : gdeps) (Ξ : gstack) : Prop :=
-  forall p Δ b pv A B,
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) (ctx_pi Δ A).
+(** ** 3. The fundamental theorem, Kripke form *)
 
-Definition glu_pwf (Θ : gdeps) (Ξ : gstack) : Prop :=
-  forall n U k T,
-    List.nth_error Ξ n = Some U ->
-    gu_params U ∋ #k : T ->
-    @glu_rel_exp (gc_mk Θ Ξ) ⋅ $[n, k] (T[↑ₘ (S n)]ᵐ[sb_params n]).
+Theorem kglu_fundamental :
+  (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> kglu_ctx Θ Ξ Γ) /\
+  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> kglu_exp Θ Ξ Γ M A).
+Proof.
+  apply syntactic_wf_ctx_exp_mut_ind; unfold kglu_ctx, kglu_exp; intros;
+    repeat match goal with IH : forall _ _, glu_ext _ _ _ _ -> _ |- _ =>
+      specialize (IH _ _ ltac:(eassumption)) end.
+  (* ⋅ : the extension is well formed *)
+  all: try solve [ apply (@glu_rel_ctx_empty (gc_mk _ _)); eapply gex_wf; eassumption ].
+  (* the ordinary rules: the (ported) fixed-context case lemmas, at the extension *)
+  all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_nat; assumption
+    | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
+    | eapply glu_rel_exp_natrec; eassumption
+    | eapply glu_rel_exp_pi; eassumption | eapply glu_rel_exp_fn; eassumption
+    | eapply glu_rel_exp_app; eassumption ].
+  all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].
+  (* parameters and globals: glued at [⋅] in the extension *)
+  all: try solve [ eapply glu_rel_exp_nil_weaken; [ eassumption | eapply gex_param; eassumption ] ].
+  all: try solve [ eapply glu_rel_exp_nil_weaken; [ eassumption | eapply gex_glob; eassumption ] ].
+  all: try solve [ eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption ].
+  (* subsumption: the subtyping premise is read in the extension *)
+  match goal with Hμ : glu_ext _ _ _ _ |- _ =>
+    destruct (rebase_preserves_wf _ _ _ _ (gex_ext _ _ _ _ Hμ)
+                ltac:(constructor; exact (gex_wf _ _ _ _ Hμ))) as (_ & _ & _ & Hsub) end.
+  match goal with Hs : wf_subtyp _ _ _ _ _ |- _ => pose proof (Hsub _ _ _ Hs) end.
+  eapply glu_rel_exp_subtyp; eassumption.
+Qed.
 
-Section Identity.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Hypothesis Hg : ⊢g Θ ⍮ Ξ.
-  Hypothesis HR : glu_rwf Θ Ξ.
-  Hypothesis HP : glu_pwf Θ Ξ.
-
-  Theorem glu_msub_id : glu_msub Θ Ξ Θ Ξ ms_id nil.
-  Proof.
-    constructor.
-    - exact (syn_msub_id _ _ Hg).
-    - apply (@glu_rel_ctx_empty (gc_mk Θ Ξ)); exact Hg.
-    - intros * Hn Hk _ HΓs; rewrite !exp_msub_qn_id; rewrite ctx_msub_id, List.app_nil_r in *.
-      apply glu_rel_exp_nil_weaken; [ exact HΓs | exact (HP _ _ _ _ Hn Hk) ].
-    - intros * Hl _ HΓs; rewrite !exp_msub_qn_id; rewrite ctx_msub_id, List.app_nil_r in *.
-      apply glu_rel_exp_nil_weaken; [ exact HΓs | exact (HR _ _ _ _ _ _ Hl) ].
-  Qed.
-
-  (** The soundness fundamental theorem at a fixed, glued global context. *)
-  Corollary glu_fundamental_at : forall Γ M A,
-      Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> @glu_rel_exp (gc_mk Θ Ξ) Γ M A.
-  Proof.
-    intros * H.
-    pose proof (proj2 kglu_fundamental _ _ _ _ _ H _ _ _ _ glu_msub_id) as H'.
-    rewrite ctx_msub_id, List.app_nil_r, !exp_msub_qn_id in H'; exact H'.
-  Qed.
-End Identity.
-
-(** ** 6. [⊩g] from the gluing of resolved types and bodies
+(** ** 6. Gluing from the gluing of resolved types and bodies
 
     δ evaluates the body at [nil], and a global or parameter is a neutral
     annotated with its type evaluated at [nil].  Since [nil_glu_sub_pred]
@@ -256,37 +195,24 @@ Section Cook.
   Qed.
 End Cook.
 
-(** The raw [⊩g]: gluing at [⋅] of what resolution hands back. *)
-Definition glu_rwf_raw (Θ : gdeps) (Ξ : gstack) : Prop :=
-  forall p Δ b pv A B,
-    Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-    (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (Type@i)) /\
-    (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_fn Δ M) (ctx_pi Δ A)).
-
-Definition glu_pwf_raw (Θ : gdeps) (Ξ : gstack) : Prop :=
-  forall n U k T,
-    List.nth_error Ξ n = Some U ->
-    gu_params U ∋ #k : T ->
-    exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) (Type@i).
-
 Section Raw.
   Variables (Θ : gdeps) (Ξ : gstack).
   Hypothesis Hg : ⊢g Θ ⍮ Ξ.
 
-  Lemma glob_glu_of_raw : forall p Δ b pv A B,
-      Θ ⍮ Ξ ∋ᵍ p ⇒ Δ ⍮ ge_def b pv A B ->
-      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_pi Δ A) (Type@i)) /\
-      (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ (ctx_fn Δ M) (ctx_pi Δ A)) ->
-      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) (ctx_pi Δ A).
+  Lemma glob_glu_of_raw : forall p b pv A B,
+      Θ ⍮ Ξ ∋ᵍ p ⇒ ge_def b pv A B ->
+      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Type@i)) ->
+      (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A) ->
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) A.
   Proof.
-    intros p Δ b pv A B Hl [[i HT] HM].
+    intros p b pv A B Hl [i HT] HM.
     assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
     pose proof (wf_gctx_stack _ _ Hg) as HΞ.
-    pose proof (gc_resolve_complete _ _ _ _ _ (wf_gstack_canon _ _ HΞ)
+    pose proof (gc_resolve_complete _ _ _ _ (wf_gstack_canon _ _ HΞ)
                   (wf_gdeps_canon _ (wf_gstack_deps _ _ HΞ)) Hl) as Hr.
-    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsT.
+    pose proof (wf_gc_lookup_type_closed _ _ _ _ _ _ _ _ Hb Hl) as HsT.
     destruct b; [ destruct B as [M |] |].
-    - pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ _ Hb Hl) as HsM.
+    - pose proof (wf_gc_lookup_body_closed _ _ _ _ _ _ _ _ Hb Hl) as HsM.
       eapply (@glu_delta_nil (gc_mk Θ Ξ)); [ apply HM; reflexivity | | | reflexivity | |].
       + intros; eapply exp_closed_sub; eassumption.
       + intros; eapply exp_closed_sub; eassumption.
@@ -310,32 +236,23 @@ Section Raw.
       + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | left; reflexivity | exact Hev ].
   Qed.
 
-  Lemma param_glu_of_raw : forall n U k T,
-      List.nth_error Ξ n = Some U ->
-      gu_params U ∋ #k : T ->
-      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ (T[↑ₘ (S n)]ᵐ[sb_params n]) (Type@i)) ->
-      @glu_rel_exp (gc_mk Θ Ξ) ⋅ $[n, k] (T[↑ₘ (S n)]ᵐ[sb_params n]).
+  Lemma param_glu_of_raw : forall lp T,
+      gs_param Ξ lp = Some T ->
+      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ T (Type@i)) ->
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_param lp) T.
   Proof.
-    intros n U k T Hn Hk [i HT].
+    intros * Hp [i HT].
     assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
-    assert (Hsc : gs_scoped Ξ) by (destruct wf_scoped as [Hc _]; apply (Hc _ _ _ Hb)).
-    pose proof (param_type_scoped _ _ _ _ _ Hsc Hn Hk) as HsT.
-    eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_param {| lp_mod := n; lp_param := k |});
+    pose proof (wf_param_type_closed _ _ _ _ _ Hb Hp) as HsT.
+    eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_param lp);
       [ exact HT | | reflexivity | | reflexivity | | | |].
     - intros; eapply exp_closed_sub; eassumption.
     - intros; eapply exp_closed_wk; eassumption.
     - intros Δ' HΔ'; econstructor; eassumption.
     - intros s; eexists; split; constructor.
     - intros * Hrb; inversion Hrb; reflexivity.
-    - intros * Hev; eapply eval_exp_param; [| exact Hev ].
-      unfold gs_param; cbn; rewrite Hn, (ctx_get_complete _ _ _ Hk); reflexivity.
+    - intros * Hev; eapply eval_exp_param; [ exact Hp | exact Hev ].
   Qed.
-
-  Lemma glu_rwf_of_raw : glu_rwf_raw Θ Ξ -> glu_rwf Θ Ξ.
-  Proof. intros HR p * Hl; exact (glob_glu_of_raw _ _ _ _ _ _ Hl (HR _ _ _ _ _ _ Hl)). Qed.
-
-  Lemma glu_pwf_of_raw : glu_pwf_raw Θ Ξ -> glu_pwf Θ Ξ.
-  Proof. intros HP n U k T Hn Hk; exact (param_glu_of_raw _ _ _ _ Hn Hk (HP _ _ _ _ Hn Hk)). Qed.
 End Raw.
 
 (** ** 7. The gluing model's interface to [global_induction] *)
@@ -343,33 +260,22 @@ End Raw.
 Definition glu_valid (Θ : gdeps) (Ξ : gstack) (A M : exp) : Prop :=
   @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A.
 
-Theorem glu_msub_emb : forall Θ1 Ξ1 Θ2 Ξ2 μ,
-    Emb Θ1 Ξ1 Θ2 Ξ2 μ -> SG glu_valid Θ1 Ξ1 Θ2 Ξ2 μ -> SP glu_valid Θ1 Ξ1 Θ2 Ξ2 μ ->
-    glu_msub Θ1 Ξ1 Θ2 Ξ2 μ nil.
+Lemma glu_ext_of_raw : forall Θ1 Ξ1 Θ2 Ξ2,
+    gc_ext Θ1 Ξ1 Θ2 Ξ2 -> ⊢g Θ2 ⍮ Ξ2 ->
+    SG glu_valid Θ1 Ξ1 Θ2 Ξ2 -> SP glu_valid Θ1 Ξ1 Θ2 Ξ2 ->
+    glu_ext Θ1 Ξ1 Θ2 Ξ2.
 Proof.
-  intros * He HG HP; pose proof He as [Hg Hq Hp Hl].
-  assert (Hqe : forall n (X : exp), X[ms_qn n μ]ᵐ = X[μ]ᵐ) by (intros; apply exp_msub_ext, Hq).
-  constructor.
-  - exact (syn_msub_emb _ _ _ _ _ He).
-  - apply (@glu_rel_ctx_empty (gc_mk Θ2 Ξ2)); exact Hg.
-  - intros * Hn Hk _ HΓs; rewrite !Hqe; rewrite List.app_nil_r in *.
-    destruct (Hp _ _ _ _ Hn Hk) as (n' & U' & k' & T' & Heq & Hn' & Hk' & HT).
-    pose proof (HP _ _ _ _ Hn Hk) as HPv; unfold vtyp in HPv.
-    rewrite Heq, HT in *.
-    apply glu_rel_exp_nil_weaken; [ exact HΓs | exact (param_glu_of_raw _ _ Hg _ _ _ _ Hn' Hk' HPv) ].
-  - intros * Hl0 _ HΓs; rewrite !Hqe; rewrite List.app_nil_r in *.
-    destruct (Hl _ _ _ _ _ _ Hl0) as (r' & Heq & Hl').
-    destruct (HG _ _ _ _ _ _ Hl0) as [HT HM].
-    rewrite Heq, ctx_pi_msub_qn in * by assumption.
-    apply glu_rel_exp_nil_weaken; [ exact HΓs |].
-    apply (glob_glu_of_raw _ _ Hg _ _ _ _ _ _ Hl').
-    split; [ exact HT |].
-    intros M' HB; destruct B as [M |]; cbn in HB; inversion HB; subst.
-    rewrite <- ctx_fn_msub_qn by assumption; apply HM; reflexivity.
+  intros * He Hg HS HP; pose proof He as [Hr Hp]; constructor; [ assumption | assumption | |].
+  - intros * Hl; destruct (HS _ _ _ _ _ Hl) as [HT HM].
+    exact (glob_glu_of_raw _ _ Hg _ _ _ _ _ (Hr _ _ Hl) HT HM).
+  - intros * Hp1; exact (param_glu_of_raw _ _ Hg _ _ (Hp _ _ Hp1) (HP _ _ Hp1)).
 Qed.
 
-Lemma kglu_read : forall Θ1 Ξ1 Θ2 Ξ2 μ A M,
-    glu_msub Θ1 Ξ1 Θ2 Ξ2 μ nil ->
+Lemma kglu_read : forall Θ1 Ξ1 Θ2 Ξ2 A M,
     Θ1 ⍮ Ξ1 ⍮ ⋅ ⊢ M : A ->
-    glu_valid Θ2 Ξ2 A[μ]ᵐ M[μ]ᵐ.
-Proof. intros * Hμ HM; exact (proj2 kglu_fundamental _ _ _ _ _ HM _ _ _ _ Hμ). Qed.
+    gc_ext Θ1 Ξ1 Θ2 Ξ2 -> ⊢g Θ2 ⍮ Ξ2 ->
+    SG glu_valid Θ1 Ξ1 Θ2 Ξ2 -> SP glu_valid Θ1 Ξ1 Θ2 Ξ2 ->
+    glu_valid Θ2 Ξ2 A M.
+Proof.
+  intros * HM He Hg HS HP; exact (proj2 kglu_fundamental _ _ _ _ _ HM _ _ (glu_ext_of_raw _ _ _ _ He Hg HS HP)).
+Qed.
