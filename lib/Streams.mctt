@@ -1,0 +1,112 @@
+(* A client of [Prelude::Data::Stream] and its laws: the natural numbers,
+   the even and odd numbers, the squares and two Fibonacci-like streams are
+   read with [nth] and summed through [take], and closed instances of the
+   laws normalize to [true]. *)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Parity use (double)
+import Prelude::Data::Vec as V
+import Prelude::Data::VecLaws use (sumVec)
+import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan; nats)
+import Prelude::Data::Stream::Properties use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate; nthNats; nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumToHead; sumTake)
+
+module Streams where
+
+def square (x : Nat) : Nat := mult x x end
+
+(* The even numbers [0, 2, 4, ...]. *)
+def evens : Stream Nat := map Nat Nat double nats end
+
+(* The odd numbers [1, 3, 5, ...], iterating [+ 2] from [1]. *)
+def odds : Stream Nat := iterate Nat (fun (x : Nat) -> succ (succ x)) 1 end
+
+def squares : Stream Nat := map Nat Nat square nats end
+
+(* A pair of numbers, as a function from the index 0 or 1. *)
+def Pair : Type@0 := forall (b : Nat) -> Nat end
+
+(* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
+def fibStep (p : Pair) : Pair :=
+  fun (b : Nat) ->
+    rec b return y . Nat
+    | zero => p 1
+    | succ q, r => plus (p 0) (p 1)
+    end
+end
+
+(* The Fibonacci-like stream from the seeds [a] and [b]: the first
+   components of the iterated pairs. *)
+def fibLike (a : Nat) (b : Nat) : Stream Nat :=
+  map Pair Nat (fun (p : Pair) -> p 0)
+    (iterate Pair fibStep
+       (fun (i : Nat) -> rec i return y . Nat | zero => a | succ q, r => b end))
+end
+
+def fibs : Stream Nat := fibLike 0 1 end
+
+def lucas : Stream Nat := fibLike 2 1 end
+
+(* [0 + 1 + ... + 5]. *)
+eval sumVec 6 (take Nat 6 nats)
+
+eval V.nth Nat 5 (take Nat 5 evens) 4 true
+
+eval nth Nat odds 6
+
+(* [0 + 1 + 4 + 9 + 16]. *)
+eval sumVec 5 (take Nat 5 squares)
+
+eval nth Nat fibs 10
+
+eval nth Nat lucas 8
+
+eval sumVec 10 (take Nat 10 fibs)
+
+(* The prefix sums of the squares. *)
+eval nth Nat (scan Nat Nat plus 0 squares) 5
+
+(* Interleaving the evens and the odds gives back the natural numbers. *)
+eval nth Nat (interleave Nat evens odds) 7
+
+eval nth Nat (drop Nat 4 squares) 3
+
+eval nth Nat (zipWith Nat Nat Nat plus evens odds) 4
+
+eval head Nat (tail Nat (cons Nat 9 nats))
+
+eval nth Nat (const Nat 3) 100
+
+(* A proof of a closed equation normalizes to [true], of type [True]. *)
+eval headCons 9 nats
+
+eval tailCons 9 squares 3
+
+eval nthConst 3 100
+
+eval nthMap square nats 4
+
+eval nthZipWith plus evens odds 3
+
+eval nthIterate (fun (x : Nat) -> succ (succ x)) 1 4
+
+eval tailIterate (fun (x : Nat) -> succ (succ x)) 1 4
+
+eval nthNats 12
+
+eval nthDrop 3 squares 1
+
+eval nthTake 5 squares 3 true
+
+eval scanSum squares 4
+
+eval scanSum fibs 6
+
+eval nthInterleaveEven 3 evens odds
+
+eval nthInterleaveOdd 3 evens odds
+
+eval sumToHead squares 3
+
+eval sumTake 5 nats
+
+end

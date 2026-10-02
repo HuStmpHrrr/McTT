@@ -977,3 +977,80 @@ let%expect_test "lib/Powers.mctt" =
     Evaluate Prelude::Arith::Factorial.factLeSucc 3 --> true : True
     Evaluate Prelude::Arith::Factorial.lePowFact 3 --> true : True
     |}]
+
+let%expect_test "lib/Streams.mctt" =
+  let _ = main_of_lib "Streams.mctt" in
+  [%expect {|
+    Evaluate Prelude::Data::VecLaws.sumVec 6
+               (Prelude::Data::Stream.take Nat 6 Prelude::Data::Stream.nats)
+      --> 15 : Nat
+    Evaluate Prelude::Data::Vec.nth Nat 5
+               (Prelude::Data::Stream.take Nat 5 evens)
+               4
+               true --> 8 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat odds 6 --> 13 : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 5
+               (Prelude::Data::Stream.take Nat 5 squares) --> 30 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat fibs 10 --> 55 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat lucas 8 --> 47 : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 10
+               (Prelude::Data::Stream.take Nat 10 fibs) --> 88 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat
+               (Prelude::Data::Stream.scan Nat Nat Prelude::Arith::Plus.plus 0
+                 squares)
+               5 --> 30 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat
+               (Prelude::Data::Stream.interleave Nat evens odds)
+               7 --> 7 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat
+               (Prelude::Data::Stream.drop Nat 4 squares)
+               3 --> 49 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat
+               (Prelude::Data::Stream.zipWith Nat Nat Nat
+                  Prelude::Arith::Plus.plus
+                  evens
+                 odds)
+               4 --> 17 : Nat
+    Evaluate Prelude::Data::Stream.head Nat
+               (Prelude::Data::Stream.tail Nat
+                 (Prelude::Data::Stream.cons Nat 9 Prelude::Data::Stream.nats))
+      --> 0 : Nat
+    Evaluate Prelude::Data::Stream.nth Nat (Prelude::Data::Stream.const Nat 3)
+               100 --> 3 : Nat
+    Evaluate Prelude::Data::Stream::Properties.headCons 9
+               Prelude::Data::Stream.nats --> true : True
+    Evaluate Prelude::Data::Stream::Properties.tailCons 9 squares 3 --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.nthConst 3 100 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthMap square
+               Prelude::Data::Stream.nats
+               4 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthZipWith
+               Prelude::Arith::Plus.plus
+               evens
+               odds
+               3 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthIterate
+               (fun (x1 : Nat) -> succ (succ x1))
+               1
+               4 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.tailIterate
+               (fun (x1 : Nat) -> succ (succ x1))
+               1
+               4 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthNats 12 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthDrop 3 squares 1 --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.nthTake 5 squares 3 true --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.scanSum squares 4 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.scanSum fibs 6 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthInterleaveEven 3 evens odds
+      --> true : True
+    Evaluate Prelude::Data::Stream::Properties.nthInterleaveOdd 3 evens odds
+      --> true : True
+    Evaluate Prelude::Data::Stream::Properties.sumToHead squares 3 --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.sumTake 5
+               Prelude::Data::Stream.nats --> true : True
+    |}]
