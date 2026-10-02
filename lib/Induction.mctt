@@ -1,0 +1,85 @@
+(* A client of [Prelude::Arith::Induction] and [Prelude::Arith::Decide]:
+   halving by strong and by two-step induction, decisions eliminated into
+   [Nat] to show which branch they compute, and the equality test [eqb]. *)
+import Prelude::Logic use (Not; orElim; iffFwd; iffBwd; existsIntro; existsElim; decStable)
+import Prelude::Arith::Equality use (Eq)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Order use (Le; Lt; leSucc)
+import Prelude::Arith::Parity use (Even; double)
+import Prelude::Arith::Induction use (caseNat; twoStepInd; strongInd)
+import Prelude::Arith::Decide use (decEq; decLe; decLt; eqb; eqbSpec; eqbZero)
+
+module Induction where
+
+(* Halving by strong induction: [half (succ (succ q))] calls itself at [q],
+   which is below [succ (succ q)] by [leSucc q].  The two case analyses
+   give the result as a function of the hypothesis for all smaller numbers. *)
+def half (n : Nat) : Nat :=
+  strongInd (fun (k : Nat) -> Nat)
+    (fun (k : Nat) (r : forall (m : Nat) (lt : Lt m k) -> Nat) ->
+       caseNat (fun (x : Nat) -> forall (r : forall (m : Nat) (lt : Lt m x) -> Nat) -> Nat)
+         (fun (r : forall (m : Nat) (lt : Lt m 0) -> Nat) -> 0)
+         (fun (p : Nat) ->
+            caseNat (fun (y : Nat) -> forall (r : forall (m : Nat) (lt : Lt m (succ y)) -> Nat) -> Nat)
+              (fun (r : forall (m : Nat) (lt : Lt m 1) -> Nat) -> 0)
+              (fun (q : Nat) (r : forall (m : Nat) (lt : Lt m (succ (succ q))) -> Nat) ->
+                 succ (r q (leSucc q)))
+              p)
+         k r)
+    n
+end
+
+(* Halving by two-step induction, which needs no order hypothesis. *)
+def halfTwo (n : Nat) : Nat :=
+  twoStepInd (fun (k : Nat) -> Nat) 0 0 (fun (k : Nat) (h : Nat) -> succ h) n
+end
+
+eval half 7
+
+eval half 20
+
+eval halfTwo 7
+
+eval halfTwo 20
+
+(* A closed instance of two-step induction at a proposition. *)
+eval twoStepInd (fun (k : Nat) -> Even (double k)) true true
+       (fun (k : Nat) (h : Even (double k)) -> h) 5
+
+(* Case analysis: the predecessor. *)
+eval caseNat (fun (k : Nat) -> Nat) 0 (fun (k : Nat) -> k) 9
+
+(* Decisions, eliminated into [Nat]: 1 for the positive branch, 0 for the
+   negative one. *)
+eval orElim (Eq 3 3) (Not (Eq 3 3)) Nat (decEq 3 3)
+       (fun (h : Eq 3 3) -> 1) (fun (h : Not (Eq 3 3)) -> 0)
+
+eval orElim (Eq 3 4) (Not (Eq 3 4)) Nat (decEq 3 4)
+       (fun (h : Eq 3 4) -> 1) (fun (h : Not (Eq 3 4)) -> 0)
+
+eval orElim (Le 2 5) (Not (Le 2 5)) Nat (decLe 2 5)
+       (fun (h : Le 2 5) -> 1) (fun (h : Not (Le 2 5)) -> 0)
+
+eval orElim (Lt 5 5) (Not (Lt 5 5)) Nat (decLt 5 5)
+       (fun (h : Lt 5 5) -> 1) (fun (h : Not (Lt 5 5)) -> 0)
+
+(* A decidable proposition is stable under double negation. *)
+eval decStable (Eq 4 4) (decEq 4 4) (fun (n : Not (Eq 4 4)) -> n true)
+
+eval eqb 6 6
+
+eval eqb 6 2
+
+(* Both directions of [eqbSpec] at closed numbers. *)
+eval iffFwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) true
+
+eval iffBwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) true
+
+eval eqbZero 2 3 true
+
+(* An existence proof, eliminated into [Nat] to recover its witness. *)
+eval existsElim (fun (k : Nat) -> Eq (plus k k) 6) Nat
+       (existsIntro (fun (k : Nat) -> Eq (plus k k) 6) 3 true)
+       (fun (k : Nat) (p : Eq (plus k k) 6) -> k)
+
+end

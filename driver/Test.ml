@@ -738,3 +738,89 @@ let%expect_test "lib/Programs.mctt" =
                3
                0 --> 6 : Nat
     |}]
+
+let%expect_test "lib/Induction.mctt" =
+  let _ = main_of_lib "Induction.mctt" in
+  [%expect {|
+    Evaluate half 7 --> 3 : Nat
+    Evaluate half 20 --> 10 : Nat
+    Evaluate halfTwo 7 --> 3 : Nat
+    Evaluate halfTwo 20 --> 10 : Nat
+    Evaluate Prelude::Arith::Induction.twoStepInd
+               (fun (x1 : Nat)
+                 -> Prelude::Arith::Parity.Even
+                      (Prelude::Arith::Parity.double x1))
+               true
+               true
+               (fun (x2 : Nat)
+                    (x3 : Prelude::Arith::Parity.Even
+                            (Prelude::Arith::Parity.double x2))
+                 -> x3)
+               5 --> true : True
+    Evaluate Prelude::Arith::Induction.caseNat (fun (x1 : Nat) -> Nat) 0
+               (fun (x2 : Nat) -> x2)
+               9 --> 8 : Nat
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Equality.Eq 3 3)
+               (Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 3))
+               Nat
+               (Prelude::Arith::Decide.decEq 3 3)
+               (fun (x1 : Prelude::Arith::Equality.Eq 3 3) -> 1)
+               (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 3))
+                 -> 0) --> 1 : Nat
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Equality.Eq 3 4)
+               (Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 4))
+               Nat
+               (Prelude::Arith::Decide.decEq 3 4)
+               (fun (x1 : Prelude::Arith::Equality.Eq 3 4) -> 1)
+               (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 4))
+                 -> 0) --> 0 : Nat
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Le 2 5)
+               (Prelude::Logic.Not (Prelude::Arith::Order.Le 2 5))
+               Nat
+               (Prelude::Arith::Decide.decLe 2 5)
+               (fun (x1 : Prelude::Arith::Order.Le 2 5) -> 1)
+               (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Order.Le 2 5))
+                 -> 0) --> 1 : Nat
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Lt 5 5)
+               (Prelude::Logic.Not (Prelude::Arith::Order.Lt 5 5))
+               Nat
+               (Prelude::Arith::Decide.decLt 5 5)
+               (fun (x1 : Prelude::Arith::Order.Lt 5 5) -> 1)
+               (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Order.Lt 5 5))
+                 -> 0) --> 0 : Nat
+    Evaluate Prelude::Logic.decStable (Prelude::Arith::Equality.Eq 4 4)
+               (Prelude::Arith::Decide.decEq 4 4)
+               (fun (x1 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 4 4))
+                 -> x1 true) --> true : True
+    Evaluate Prelude::Arith::Decide.eqb 6 6 --> 1 : Nat
+    Evaluate Prelude::Arith::Decide.eqb 6 2 --> 0 : Nat
+    Evaluate Prelude::Logic.iffFwd
+               (Prelude::Arith::Equality.Eq (Prelude::Arith::Decide.eqb 5 5) 1)
+               (Prelude::Arith::Equality.Eq 5 5)
+               (Prelude::Arith::Decide.eqbSpec 5 5)
+               true --> true : True
+    Evaluate Prelude::Logic.iffBwd
+               (Prelude::Arith::Equality.Eq (Prelude::Arith::Decide.eqb 5 5) 1)
+               (Prelude::Arith::Equality.Eq 5 5)
+               (Prelude::Arith::Decide.eqbSpec 5 5)
+               true --> true : True
+    Evaluate Prelude::Arith::Decide.eqbZero 2 3 true --> fun (x1 : False) -> x1
+      : forall (x1 : False) -> False
+    Evaluate Prelude::Logic.existsElim
+               (fun (x1 : Nat)
+                 -> Prelude::Arith::Equality.Eq (Prelude::Arith::Plus.plus x1 x1)
+                      6)
+               Nat
+               (Prelude::Logic.existsIntro
+                  (fun (x2 : Nat)
+                    -> Prelude::Arith::Equality.Eq
+                         (Prelude::Arith::Plus.plus x2 x2)
+                         6)
+                  3
+                 true)
+               (fun (x3 : Nat)
+                    (x4 : Prelude::Arith::Equality.Eq
+                            (Prelude::Arith::Plus.plus x3 x3)
+                            6)
+                 -> x3) --> 3 : Nat
+    |}]

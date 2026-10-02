@@ -1,0 +1,111 @@
+(* Decidability of equality and order on natural numbers, and a boolean-style
+   equality test [eqb] with its specification. *)
+import Prelude::Logic use (Not; orInl; orInr; Iff; iffIntro; Dec)
+import Prelude::Arith::Equality use (Eq)
+import Prelude::Arith::Order use (Le; Lt)
+
+module Prelude::Arith::Decide where
+
+(* Equality of numbers is decidable.  In the step, [Eq (succ p) (succ q)]
+   computes to [Eq p q], so the hypothesis already has the goal's type. *)
+def decEq : forall (n : Nat) (m : Nat) -> Dec (Eq n m) :=
+  fun (n : Nat) ->
+    rec n return x . (forall (m : Nat) -> Dec (Eq x m))
+    | zero => fun (m : Nat) ->
+        rec m return z . Dec (Eq 0 z)
+        | zero => orInl True (Not True) true
+        | succ q, s => orInr False (Not False) (fun (h : False) -> h)
+        end
+    | succ p, ih => fun (m : Nat) ->
+        rec m return z . Dec (Eq (succ p) z)
+        | zero => orInr False (Not False) (fun (h : False) -> h)
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The order is decidable, by the same recursion as [decEq]. *)
+def decLe : forall (n : Nat) (m : Nat) -> Dec (Le n m) :=
+  fun (n : Nat) ->
+    rec n return x . (forall (m : Nat) -> Dec (Le x m))
+    | zero => fun (m : Nat) -> orInl True (Not True) true
+    | succ p, ih => fun (m : Nat) ->
+        rec m return z . Dec (Le (succ p) z)
+        | zero => orInr False (Not False) (fun (h : False) -> h)
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The strict order is decidable, as an instance of [decLe]. *)
+def decLt (n : Nat) (m : Nat) : Dec (Lt n m) := decLe (succ n) m end
+
+(* The equality test: [eqb n m] is 1 when [n] and [m] are equal, and 0
+   otherwise. *)
+def eqb : forall (n : Nat) (m : Nat) -> Nat :=
+  fun (n : Nat) ->
+    rec n return y . (forall (m : Nat) -> Nat)
+    | zero => fun (m : Nat) ->
+        rec m return z . Nat | zero => 1 | succ q, s => 0 end
+    | succ p, r => fun (m : Nat) ->
+        rec m return z . Nat | zero => 0 | succ q, s => r q end
+    end
+end
+
+(* [eqb] answers 1 only on equal numbers. *)
+def eqbSound : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 1) -> Eq n m :=
+  fun (n : Nat) ->
+    rec n return x . (forall (m : Nat) (h : Eq (eqb x m) 1) -> Eq x m)
+    | zero => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq (eqb 0 z) 1) -> Eq 0 z)
+        | zero => fun (h : True) -> h
+        | succ q, s => fun (h : False) -> h
+        end
+    | succ p, ih => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq (eqb (succ p) z) 1) -> Eq (succ p) z)
+        | zero => fun (h : False) -> h
+        | succ q, s => fun (h : Eq (eqb p q) 1) -> ih q h
+        end
+    end
+end
+
+(* [eqb] answers 1 on all equal numbers. *)
+def eqbComplete : forall (n : Nat) (m : Nat) (h : Eq n m) -> Eq (eqb n m) 1 :=
+  fun (n : Nat) ->
+    rec n return x . (forall (m : Nat) (h : Eq x m) -> Eq (eqb x m) 1)
+    | zero => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq 0 z) -> Eq (eqb 0 z) 1)
+        | zero => fun (h : True) -> h
+        | succ q, s => fun (h : False) -> h
+        end
+    | succ p, ih => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq (succ p) z) -> Eq (eqb (succ p) z) 1)
+        | zero => fun (h : False) -> h
+        | succ q, s => fun (h : Eq p q) -> ih q h
+        end
+    end
+end
+
+(* The specification of [eqb]: it answers 1 exactly on equal numbers. *)
+def eqbSpec (n : Nat) (m : Nat) : Iff (Eq (eqb n m) 1) (Eq n m) :=
+  iffIntro (Eq (eqb n m) 1) (Eq n m) (eqbSound n m) (eqbComplete n m)
+end
+
+(* When [eqb] answers 0, the numbers differ. *)
+def eqbZero : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 0) -> Not (Eq n m) :=
+  fun (n : Nat) ->
+    rec n return x . (forall (m : Nat) (h : Eq (eqb x m) 0) -> Not (Eq x m))
+    | zero => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq (eqb 0 z) 0) -> Not (Eq 0 z))
+        | zero => fun (h : False) (e : True) -> h
+        | succ q, s => fun (h : True) (e : False) -> e
+        end
+    | succ p, ih => fun (m : Nat) ->
+        rec m return z . (forall (h : Eq (eqb (succ p) z) 0) -> Not (Eq (succ p) z))
+        | zero => fun (h : True) (e : False) -> e
+        | succ q, s => fun (h : Eq (eqb p q) 0) -> ih q h
+        end
+    end
+end
+
+end

@@ -1,5 +1,6 @@
 (* Propositions as types in Type@0: [True] holds, [False] has no proof;
-   negation, and Church-encoded conjunction and disjunction. *)
+   negation, Church-encoded conjunction, disjunction, equivalence and
+   existence over numbers, and decidability. *)
 module Prelude::Logic where
 
 def Not (A : Type@0) : Type@0 := forall (a : A) -> False end
@@ -54,6 +55,70 @@ end
    function of the target proposition. *)
 def orSwap (A : Type@0) (B : Type@0) (h : Or A B) : Or B A :=
   fun (C : Type@0) (f : forall (b : B) -> C) (g : forall (a : A) -> C) -> h C g f
+end
+
+(* Logical equivalence: implications both ways, as a conjunction.  Like
+   [And], it lives in [Type@1]. *)
+def Iff (A : Type@0) (B : Type@0) : Type@1 :=
+  And (forall (a : A) -> B) (forall (b : B) -> A)
+end
+
+def iffIntro (A : Type@0) (B : Type@0) (f : forall (a : A) -> B) (g : forall (b : B) -> A)
+    : Iff A B :=
+  andIntro (forall (a : A) -> B) (forall (b : B) -> A) f g
+end
+
+(* The forward implication of an equivalence. *)
+def iffFwd (A : Type@0) (B : Type@0) (h : Iff A B) (a : A) : B :=
+  andFst (forall (x : A) -> B) (forall (y : B) -> A) h a
+end
+
+(* The backward implication of an equivalence. *)
+def iffBwd (A : Type@0) (B : Type@0) (h : Iff A B) (b : B) : A :=
+  andSnd (forall (x : A) -> B) (forall (y : B) -> A) h b
+end
+
+def iffRefl (A : Type@0) : Iff A A :=
+  iffIntro A A (fun (a : A) -> a) (fun (a : A) -> a)
+end
+
+def iffSym (A : Type@0) (B : Type@0) (h : Iff A B) : Iff B A :=
+  andSwap (forall (a : A) -> B) (forall (b : B) -> A) h
+end
+
+(* Existence of a number satisfying [P], Church-encoded: a proof eliminates
+   into any proposition [C] that follows from some witness and its proof.
+   It quantifies over [Type@0], so it lives in [Type@1]; hence [P] must be a
+   predicate into [Type@0], and an [Exists] cannot be nested in another. *)
+def Exists (P : forall (n : Nat) -> Type@0) : Type@1 :=
+  forall (C : Type@0) (f : forall (n : Nat) (p : P n) -> C) -> C
+end
+
+def existsIntro (P : forall (n : Nat) -> Type@0) (n : Nat) (p : P n) : Exists P :=
+  fun (C : Type@0) (f : forall (m : Nat) (q : P m) -> C) -> f n p
+end
+
+(* Elimination of an existence proof into a proposition [C]. *)
+def existsElim (P : forall (n : Nat) -> Type@0) (C : Type@0) (h : Exists P)
+    (f : forall (n : Nat) (p : P n) -> C) : C :=
+  h C f
+end
+
+(* A proposition is decidable when it holds or is refuted.  [Dec A] is a
+   disjunction, so it lives in [Type@1], and is eliminated with [orElim]. *)
+def Dec (A : Type@0) : Type@1 := Or A (Not A) end
+
+(* A decidable proposition is stable under double negation. *)
+def decStable (A : Type@0) (d : Dec A) (h : Not (Not A)) : A :=
+  orElim A (Not A) A d (fun (a : A) -> a) (fun (n : Not A) -> absurd A (h n))
+end
+
+(* Decidability is preserved by negation.  As for [orSwap], the result is
+   built as a function of the target proposition, since [Dec] is in
+   [Type@1] and [orElim] only targets [Type@0]. *)
+def decNot (A : Type@0) (d : Dec A) : Dec (Not A) :=
+  fun (C : Type@0) (f : forall (n : Not A) -> C) (g : forall (nn : Not (Not A)) -> C) ->
+    d C (fun (a : A) -> g (fun (n : Not A) -> n a)) (fun (n : Not A) -> f n)
 end
 
 end
