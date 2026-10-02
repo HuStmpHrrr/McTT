@@ -1,0 +1,262 @@
+(* Laws of [Prelude::Arith::Gcd]: the values at [0], [1] and the diagonal,
+   independence from the fuel, divisibility of both arguments, the greatest
+   divisor property, and commutativity.  It also proves the facts about
+   [Prelude::Arith::Divides] that Euclid's step needs: a divisor divides
+   every multiple, and it cancels from a sum. *)
+import Prelude::Logic use (absurd; And; andIntro; andFst; andSnd; orElim)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
+import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusEqZeroRight)
+import Prelude::Arith::Mult use (mult; multZero; multAssoc)
+import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leTotal; leCases)
+import Prelude::Arith::Div use (div; mod; divModSpec; modLt; modSmall; modSelf; modOne; modPlusDivisor)
+import Prelude::Arith::Divides use (Divides; dividesRefl; dividesZero; dividesPlus; dividesMult)
+import Prelude::Arith::Gcd use (gcdFuel; gcd)
+
+module Prelude::Arith::Gcd::Properties where
+
+(* A number divisible by [succ d] is its quotient times [succ d]: the
+   division equation with a zero remainder. *)
+def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
+    Eq (mult (div b (succ d)) (succ d)) b :=
+  fun (d : Nat) (b : Nat) (h : Eq (mod b (succ d)) 0) ->
+    let k : Nat := succ d;
+        m : Nat := mult (div b k) k;
+        dropZero : Eq m (plus m 0) := sym (plus m 0) m (plusZero m);
+        toRem : Eq (plus m 0) (plus m (mod b k)) :=
+          cong (fun (y : Nat) -> plus m y) 0 (mod b k) (sym (mod b k) 0 h)
+    in trans m (plus m 0) b dropZero (trans (plus m 0) (plus m (mod b k)) b toRem (divModSpec b d))
+    end
+end
+
+(* A divisor of [b] divides every multiple [mult m b]. *)
+def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
+    Divides k (mult m b) :=
+  fun (k : Nat) (b : Nat) (m : Nat) ->
+    rec k return x . (forall (h : Divides x b) -> Divides x (mult m b))
+    | zero => fun (h : Eq b 0) ->
+        transport (fun (y : Nat) -> Eq (mult m y) 0) 0 b (sym b 0 h) (multZero m)
+    | succ d, ih => fun (h : Divides (succ d) b) ->
+        let e : Nat := succ d;
+            q : Nat := div b e;
+            toB : Eq (mult (mult m q) e) (mult m b) :=
+              trans (mult (mult m q) e) (mult m (mult q e)) (mult m b)
+                (multAssoc m q e)
+                (cong (fun (y : Nat) -> mult m y) (mult q e) b (dividesQuot d b h))
+        in transport (fun (y : Nat) -> Divides e y) (mult (mult m q) e) (mult m b) toB
+             (dividesMult e (mult m q))
+        end
+    end
+end
+
+(* Adding a multiple of [succ d] does not change the remainder by
+   [succ d]. *)
+def modPlusMult : forall (d : Nat) (t : Nat) (y : Nat) ->
+    Eq (mod (plus (mult t (succ d)) y) (succ d)) (mod y (succ d)) :=
+  fun (d : Nat) (t : Nat) (y : Nat) ->
+    rec t return x . Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
+    | zero => refl (mod y (succ d))
+    | succ p, ih =>
+        let k : Nat := succ d;
+            m : Nat := mult p k;
+            assoc : Eq (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) :=
+              cong (fun (z : Nat) -> mod z k) (plus (plus k m) y) (plus k (plus m y))
+                (plusAssoc k m y)
+        in trans (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) (mod y k) assoc
+             (trans (mod (plus k (plus m y)) k) (mod (plus m y) k) (mod y k)
+                (modPlusDivisor (plus m y) d) ih)
+        end
+    end
+end
+
+(* A divisor of [x] and of [plus x y] divides [y]. *)
+def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
+    (hx : Divides k x) (hxy : Divides k (plus x y)) -> Divides k y :=
+  fun (k : Nat) (x : Nat) (y : Nat) ->
+    rec k return w . (forall (hx : Divides w x) (hxy : Divides w (plus x y)) -> Divides w y)
+    | zero => fun (hx : Eq x 0) (hxy : Eq (plus x y) 0) -> plusEqZeroRight x y hxy
+    | succ d, ih => fun (hx : Divides (succ d) x) (hxy : Eq (mod (plus x y) (succ d)) 0) ->
+        let e : Nat := succ d;
+            m : Nat := mult (div x e) e;
+            atM : Eq (mod (plus m y) e) 0 :=
+              transport (fun (z : Nat) -> Eq (mod (plus z y) e) 0) x m
+                (sym m x (dividesQuot d x hx)) hxy
+        in trans (mod y e) (mod (plus m y) e) 0
+             (sym (mod (plus m y) e) (mod y e) (modPlusMult d (div x e) y)) atM
+        end
+    end
+end
+
+(* Euclid's algorithm with fuel above [b] gives a common divisor.  Both
+   halves are proved together: the step divides [a] because it divides
+   [succ d] and the remainder [mod a (succ d)]. *)
+def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
+    And (Divides (gcdFuel f a b) a) (Divides (gcdFuel f a b) b) :=
+  fun (f : Nat) ->
+    rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x) ->
+                        And (Divides (gcdFuel x a b) a) (Divides (gcdFuel x a b) b))
+    | zero => fun (a : Nat) (b : Nat) (h : False) ->
+        exfalso h return w . And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)
+    | succ p, ih => fun (a : Nat) (b : Nat) ->
+        rec b return z . (forall (h : Lt z (succ p)) ->
+                            And (Divides (gcdFuel (succ p) a z) a) (Divides (gcdFuel (succ p) a z) z))
+        | zero => fun (h : True) ->
+            andIntro (Divides a a) (Divides a 0) (dividesRefl a) (dividesZero a)
+        | succ d, s => fun (h : Le (succ d) p) ->
+            let e : Nat := succ d;
+                r : Nat := mod a e;
+                q : Nat := div a e;
+                g : Nat := gcdFuel p e r;
+                both : And (Divides g e) (Divides g r) :=
+                  ih e r (leTrans (succ r) e p (modLt a d) h);
+                ge : Divides g e := andFst (Divides g e) (Divides g r) both;
+                gr : Divides g r := andSnd (Divides g e) (Divides g r) both;
+                ga : Divides g a :=
+                  transport (fun (y : Nat) -> Divides g y) (plus (mult q e) r) a (divModSpec a d)
+                    (dividesPlus g (mult q e) r (dividesMultLeft g e q ge) gr)
+            in andIntro (Divides g a) (Divides g e) ga ge
+            end
+        end
+    end
+end
+
+(* The gcd divides its first argument. *)
+def gcdDividesLeft : forall (a : Nat) (b : Nat) -> Divides (gcd a b) a :=
+  fun (a : Nat) (b : Nat) ->
+    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+end
+
+(* The gcd divides its second argument. *)
+def gcdDividesRight : forall (a : Nat) (b : Nat) -> Divides (gcd a b) b :=
+  fun (a : Nat) (b : Nat) ->
+    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+end
+
+(* With fuel above [b], every common divisor of [a] and [b] divides the
+   result.  The step passes the divisor to [succ d] and to the remainder,
+   which it divides by [dividesPlusCancel]. *)
+def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f)
+    (ha : Divides k a) (hb : Divides k b) -> Divides k (gcdFuel f a b) :=
+  fun (k : Nat) (f : Nat) ->
+    rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x)
+                        (ha : Divides k a) (hb : Divides k b) -> Divides k (gcdFuel x a b))
+    | zero => fun (a : Nat) (b : Nat) (h : False) (ha : Divides k a) (hb : Divides k b) ->
+        absurd (Divides k (gcdFuel 0 a b)) h
+    | succ p, ih => fun (a : Nat) (b : Nat) ->
+        rec b return z . (forall (h : Lt z (succ p)) (ha : Divides k a) (hb : Divides k z) ->
+                            Divides k (gcdFuel (succ p) a z))
+        | zero => fun (h : True) (ha : Divides k a) (hb : Divides k 0) -> ha
+        | succ d, s => fun (h : Le (succ d) p) (ha : Divides k a) (hb : Divides k (succ d)) ->
+            let e : Nat := succ d;
+                r : Nat := mod a e;
+                q : Nat := div a e;
+                hsum : Divides k (plus (mult q e) r) :=
+                  transport (fun (y : Nat) -> Divides k y) a (plus (mult q e) r)
+                    (sym (plus (mult q e) r) a (divModSpec a d)) ha;
+                hr : Divides k r :=
+                  dividesPlusCancel k (mult q e) r (dividesMultLeft k e q hb) hsum
+            in ih e r (leTrans (succ r) e p (modLt a d) h) hb hr
+            end
+        end
+    end
+end
+
+(* The gcd is the greatest common divisor: every common divisor divides
+   it. *)
+def gcdGreatest : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+    Divides k (gcd a b) :=
+  fun (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+    gcdFuelGreatest k (succ b) a b (leRefl b) ha hb
+end
+
+(* Any two fuels above [b] give the same result. *)
+def gcdFuelEnough : forall (f : Nat) (g : Nat) (a : Nat) (b : Nat)
+    (hf : Lt b f) (hg : Lt b g) -> Eq (gcdFuel f a b) (gcdFuel g a b) :=
+  fun (f : Nat) ->
+    rec f return x . (forall (g : Nat) (a : Nat) (b : Nat) (hf : Lt b x) (hg : Lt b g) ->
+                        Eq (gcdFuel x a b) (gcdFuel g a b))
+    | zero => fun (g : Nat) (a : Nat) (b : Nat) (hf : False) (hg : Lt b g) ->
+        absurd (Eq (gcdFuel 0 a b) (gcdFuel g a b)) hf
+    | succ p, ih => fun (g : Nat) ->
+        rec g return y . (forall (a : Nat) (b : Nat) (hf : Lt b (succ p)) (hg : Lt b y) ->
+                            Eq (gcdFuel (succ p) a b) (gcdFuel y a b))
+        | zero => fun (a : Nat) (b : Nat) (hf : Lt b (succ p)) (hg : False) ->
+            absurd (Eq (gcdFuel (succ p) a b) (gcdFuel 0 a b)) hg
+        | succ q, t => fun (a : Nat) (b : Nat) ->
+            rec b return z . (forall (hf : Lt z (succ p)) (hg : Lt z (succ q)) ->
+                                Eq (gcdFuel (succ p) a z) (gcdFuel (succ q) a z))
+            | zero => fun (hf : True) (hg : True) -> refl a
+            | succ d, s => fun (hf : Le (succ d) p) (hg : Le (succ d) q) ->
+                let e : Nat := succ d;
+                    r : Nat := mod a e;
+                    hr : Le (succ r) e := modLt a d
+                in ih q e r (leTrans (succ r) e p hr hf) (leTrans (succ r) e q hr hg)
+                end
+            end
+        end
+    end
+end
+
+(* The gcd with [0] on the left is the other number. *)
+def gcdZeroLeft : forall (b : Nat) -> Eq (gcd 0 b) b :=
+  fun (b : Nat) ->
+    rec b return x . Eq (gcd 0 x) x
+    | zero => true
+    | succ d, ih => refl (succ d)
+    end
+end
+
+def gcdZeroRight : forall (a : Nat) -> Eq (gcd a 0) a :=
+  fun (a : Nat) -> refl a
+end
+
+(* The gcd of a number with itself is the number: the first step leaves
+   [mod n n], which is [0]. *)
+def gcdSelf : forall (n : Nat) -> Eq (gcd n n) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (gcd x x) x
+    | zero => true
+    | succ d, ih =>
+        cong (fun (y : Nat) -> gcdFuel (succ d) (succ d) y) (mod (succ d) (succ d)) 0 (modSelf d)
+    end
+end
+
+(* The gcd with [1] is [1]: the first step leaves [mod a 1], which is
+   [0]. *)
+def gcdOneRight : forall (a : Nat) -> Eq (gcd a 1) 1 :=
+  fun (a : Nat) -> cong (fun (y : Nat) -> gcdFuel 1 1 y) (mod a 1) 0 (modOne a)
+end
+
+(* Below [b], the first step of Euclid's algorithm swaps the arguments:
+   [mod a b] is [a]. *)
+def gcdSwapSmall : forall (a : Nat) (b : Nat) (h : Lt a b) -> Eq (gcd a b) (gcd b a) :=
+  fun (a : Nat) (b : Nat) ->
+    rec b return x . (forall (h : Lt a x) -> Eq (gcd a x) (gcd x a))
+    | zero => fun (h : Lt a 0) -> absurd (Eq (gcd a 0) (gcd 0 a)) h
+    | succ d, ih => fun (h : Lt a (succ d)) ->
+        let e : Nat := succ d;
+            swap : Eq (gcdFuel e e (mod a e)) (gcdFuel e e a) :=
+              cong (fun (y : Nat) -> gcdFuel e e y) (mod a e) a (modSmall a d h)
+        in trans (gcdFuel e e (mod a e)) (gcdFuel e e a) (gcdFuel (succ a) e a) swap
+             (gcdFuelEnough e (succ a) e a h (leRefl a))
+        end
+    end
+end
+
+(* The gcd is commutative: compare the arguments, and swap the smaller one
+   to the right with [gcdSwapSmall]. *)
+def gcdComm : forall (a : Nat) (b : Nat) -> Eq (gcd a b) (gcd b a) :=
+  fun (a : Nat) (b : Nat) ->
+    orElim (Le a b) (Le b a) (Eq (gcd a b) (gcd b a)) (leTotal a b)
+      (fun (hab : Le a b) ->
+         orElim (Lt a b) (Eq a b) (Eq (gcd a b) (gcd b a)) (leCases a b hab)
+           (fun (lt : Lt a b) -> gcdSwapSmall a b lt)
+           (fun (e : Eq a b) ->
+              transport (fun (y : Nat) -> Eq (gcd a y) (gcd y a)) a b e (refl (gcd a a))))
+      (fun (hba : Le b a) ->
+         orElim (Lt b a) (Eq b a) (Eq (gcd a b) (gcd b a)) (leCases b a hba)
+           (fun (lt : Lt b a) -> sym (gcd b a) (gcd a b) (gcdSwapSmall b a lt))
+           (fun (e : Eq b a) ->
+              transport (fun (y : Nat) -> Eq (gcd y b) (gcd b y)) b a e (refl (gcd b b))))
+end
+
+end
