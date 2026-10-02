@@ -135,7 +135,7 @@ term = 'forall' , {parameter} , '->' , term
      (* application *)
      | {atomic term}
      (* let expression *)
-     | 'let' , {let definition} , 'in' , term
+     | 'let' , let definition , {';' , let definition} , 'in' , term , 'end'
      (* successor of a natural number *)
      | 'succ' , term
      (* natural number eliminator *)
@@ -156,7 +156,10 @@ atomic term = 'Type', '@' , nat
 
 parameter = '(' , id , ':' , type , ')';
 
-let definition = '(' , parameter , ':=' , term , ')';
+(* each definition sees the earlier ones *)
+let definition = id , ':' , type , ':=' , term
+               (* local module *)
+               | 'module' , id , ':=' , term;
 
 (* This describes the return type of the eliminator
    when id is bound to the scrutinee *)
@@ -172,8 +175,8 @@ id = ? sequence of upper- or lower-case ASCII alphabet characters ?;
 nat = ? natural number ?;
 ```
 
-Here, we omit spaces between tokens. Note that the current let
-expression does not support delta reduction.
+Here, we omit spaces between tokens. A let-bound variable is
+definitionally equal to its definition.
 
 ## Branches
 

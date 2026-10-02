@@ -126,20 +126,19 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_letb _ as e ->
      let decls, ebody = get_letb_decls_of_obj e in
      let impl f () =
-       pp_print_string f "let";
-       List.iter (fun d -> fprintf f "@ %a" format_decl d) decls;
-       fprintf f "@ in @[<hov 2>%a@]@;<1 -2>end" format_obj ebody
+       fprintf f "let @[<hv 0>%a@]@ in @[<hov 2>%a@]@ end"
+         (pp_print_list ~pp_sep:(fun f () -> fprintf f ";@ ") format_decl) decls
+         format_obj ebody
      in
-     pp_open_vbox f 2;
+     pp_open_hvbox f 0;
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
 
 and format_decl (f : Format.formatter) : Cst.decl -> unit =
   let open Format in
   function
-  | Cst.Coq_d_def (m, x, ea, eb) ->
-     fprintf f "@[<hov 2>%adef %s : %a :=@ %a@]" format_mods m x format_obj ea
-       format_obj eb
+  | Cst.Coq_d_def (x, ea, eb) ->
+     fprintf f "@[<hov 2>%s : %a :=@ %a@]" x format_obj ea format_obj eb
   | Cst.Coq_d_mod (x, e) -> fprintf f "@[<hov 2>module %s :=@ %a@]" x format_obj e
 
 and format_obj_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_obj ep
@@ -255,6 +254,12 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
+    | Coq_a_let (ea, em, ebody) ->
+       let px = match ea with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
+       let ea' = impl ctx ea in
+       let em' = impl ctx em in
+       let ebody' = impl (px :: ctx) ebody in
+       Cst.Coq_letb (Cst.Coq_d_def (px, ea', em'), ebody')
     (* A path is absolute.  Into the unit being printed, the member chain is
        what was written, its first member an ordinary name; into another unit,
        the unit is a [glob] head.  Either way the remaining members are a

@@ -1,0 +1,18 @@
+module LetDelta where
+
+def Nary (n : Nat) : Type@0 :=
+  rec n return y . Type@0
+  | zero => Nat
+  | succ m, r => forall (a : Nat) -> r
+  end
+end
+
+(* Checking [f] against [Nary n], and applying it to three arguments, both
+   need [n] to be [3]. *)
+eval let n : Nat := 3;
+         f : Nary n := fun (a : Nat) (b : Nat) (c : Nat) -> a
+     in
+       f 1 2 3
+     end : Nat
+
+end
