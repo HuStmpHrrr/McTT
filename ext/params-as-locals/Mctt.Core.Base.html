@@ -31,6 +31,27 @@
 #[<span class="id" title="var">global</span>] <span class="id" title="var">Declare</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">mctt_scope</span>.<br/>
 #[<span class="id" title="var">global</span>] <span class="id" title="keyword">Delimit</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">mctt_scope</span> <span class="id" title="keyword">with</span> <span class="id" title="var">mctt</span>.<br/>
 #[<span class="id" title="var">global</span>] <span class="id" title="keyword">Bind</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">mctt_scope</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Sortclass</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+The <span class="inlinecode"><span class="id" title="var">mctt</span></span> hint database is created here, in the module every other
+    module loads first, so that no <span class="inlinecode"><span class="id" title="keyword">Hint</span></span> <span class="inlinecode">...</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">mctt</span></span> creates it implicitly. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Create HintDb</span> <span class="id" title="var">mctt</span> <span class="id" title="var">discriminated</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">Syntax.cmd</span></span>, <span class="inlinecode"><span class="id" title="var">Command.ccmd</span></span> and <span class="inlinecode"><span class="id" title="var">Domain.domain</span></span> nest through <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a></span>; with
+    this scheme registered, their generated induction principles carry the
+    induction hypothesis for the list elements (as <span class="inlinecode"><span class="id" title="var">list_all</span></span>). 
+</div>
+<div class="code">
+<span class="id" title="keyword">Scheme</span> <span class="id" title="keyword">All</span> <span class="id" title="keyword">for</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a>.<br/>
 </div>
 </div>
 <div id="footer">

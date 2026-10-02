@@ -32,10 +32,12 @@
 <span class="id" title="keyword">From</span> <span class="id" title="keyword">Equations</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <span class="id" title="library">Equations</span>.<br/>
 
 <br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+
+<br/>
 <span class="id" title="keyword">Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">predicate_scope</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Create HintDb</span> <span class="id" title="var">mctt</span> <span class="id" title="var">discriminated</span>.<br/>
 </div>
 
 <div class="doc">
@@ -142,7 +144,7 @@ Transparency setting for generalized rewriting.
 &nbsp;&nbsp;&nbsp;&nbsp;| [ <span class="id" title="var">H</span> : ?<span class="id" title="var">X</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#f031fe1957c4a4a8e217aa46af2b4e25"><span class="id" title="notation">\/</span></a> ?<span class="id" title="var">Y</span> |- <span class="id" title="var">_</span> ] =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| [ <span class="id" title="var">ev</span> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#87727981cdc1579fef00b9d9c1d3b9da"><span class="id" title="notation">{</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#87727981cdc1579fef00b9d9c1d3b9da"><span class="id" title="notation">}</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#87727981cdc1579fef00b9d9c1d3b9da"><span class="id" title="notation">+</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#87727981cdc1579fef00b9d9c1d3b9da"><span class="id" title="notation">{</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#87727981cdc1579fef00b9d9c1d3b9da"><span class="id" title="notation">}</span></a> |- <span class="id" title="var">_</span> ] =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">ev</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| [ <span class="id" title="var">ev</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#53e8e3b7ca0342c8b99a777b3c5faf3a"><span class="id" title="notation">+</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#53e8e3b7ca0342c8b99a777b3c5faf3a"><span class="id" title="notation">{</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#53e8e3b7ca0342c8b99a777b3c5faf3a"><span class="id" title="notation">}</span></a> |- <span class="id" title="var">_</span> ] =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">ev</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| [ <span class="id" title="var">ev</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e03f39daf98516fa530d3f6f5a1b4d92"><span class="id" title="notation">+</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> ] =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">ev</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| [ <span class="id" title="var">ev</span> : <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> ] =&gt; <span class="id" title="tactic">destruct</span> <span class="id" title="var">ev</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
 <br/>
