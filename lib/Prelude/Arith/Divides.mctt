@@ -1,0 +1,124 @@
+(* Divisibility, decided by the remainder of [Prelude::Arith::Div], with its
+   basic laws and its link to [Prelude::Arith::Parity]. *)
+import Prelude::Logic use (absurd; And; andIntro; andFst; andSnd; orElim)
+import Prelude::Arith::Equality use (Eq; sym; trans; cong; transport)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Parity use (Even; Odd; evenOrOdd)
+import Prelude::Arith::Div use (wrap; mod; modSelf; modOne; modPlus)
+import Prelude::Function::Combinators use (Generic)
+
+module Prelude::Arith::Divides where
+
+(* [Divides k n] says that [k] divides [n].  The divisor [k] is the actual
+   one (not shifted like the [d] of [Prelude::Arith::Div]): [Divides 0 n] is
+   [Eq n 0], and [Divides (succ d) n] is [Eq (mod n d) 0].  It computes, so a
+   closed instance is [True] or [False]. *)
+def Divides (k : Nat) (n : Nat) : Type@0 :=
+  rec k return y . Type@0
+  | zero => Eq n 0
+  | succ d, s => Eq (mod n d) 0
+  end
+end
+
+def dividesRefl : forall (n : Nat) -> Divides n n :=
+  fun (n : Nat) ->
+    rec n return x . Divides x x
+    | zero => true
+    | succ d, ih => modSelf d
+    end
+end
+
+def dividesZero : forall (k : Nat) -> Divides k 0 :=
+  fun (k : Nat) ->
+    rec k return x . Divides x 0
+    | zero => true
+    | succ d, ih => true
+    end
+end
+
+def oneDivides : forall (n : Nat) -> Divides 1 n :=
+  fun (n : Nat) -> modOne n
+end
+
+(* A divisor of two numbers divides their sum.  For a positive divisor, the
+   remainder of [a + b] is [a] steps of [wrap] from [mod b d], which is [0]
+   by [hb], so it is [mod a d], which is [0] by [ha]. *)
+def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+    Divides k (plus a b) :=
+  fun (k : Nat) (a : Nat) (b : Nat) ->
+    rec k return x . (forall (ha : Divides x a) (hb : Divides x b) -> Divides x (plus a b))
+    | zero => fun (ha : Eq a 0) (hb : Eq b 0) ->
+        transport (fun (y : Nat) -> Eq (plus y b) 0) 0 a (sym a 0 ha) hb
+    | succ d, ih => fun (ha : Eq (mod a d) 0) (hb : Eq (mod b d) 0) ->
+        let w : forall (r : Nat) -> Nat := fun (r : Nat) -> wrap r d;
+            split : Eq (mod (plus a b) d) (Generic.iterate Nat w a (mod b d)) := modPlus a b d;
+            atZero : Eq (Generic.iterate Nat w a (mod b d)) (mod a d) :=
+              cong (fun (y : Nat) -> Generic.iterate Nat w a y) (mod b d) 0 hb
+        in trans (mod (plus a b) d) (mod a d) 0
+             (trans (mod (plus a b) d) (Generic.iterate Nat w a (mod b d)) (mod a d) split atZero)
+             ha
+        end
+    end
+end
+
+(* Every multiple of [k] is divisible by [k]. *)
+def dividesMult : forall (k : Nat) (m : Nat) -> Divides k (mult m k) :=
+  fun (k : Nat) (m : Nat) ->
+    rec m return x . Divides k (mult x k)
+    | zero => dividesZero k
+    | succ p, ih => dividesPlus k k (mult p k) (dividesRefl k) ih
+    end
+end
+
+(* The remainder by two is the parity flag: [0] for even numbers and [1] for
+   odd ones.  Both halves are proved together, since the step exchanges
+   them. *)
+def modTwoParity : forall (n : Nat) ->
+    And (forall (h : Even n) -> Eq (mod n 1) 0) (forall (h : Odd n) -> Eq (mod n 1) 1) :=
+  fun (n : Nat) ->
+    rec n return x . And (forall (h : Even x) -> Eq (mod x 1) 0)
+                         (forall (h : Odd x) -> Eq (mod x 1) 1)
+    | zero => andIntro (forall (h : True) -> True) (forall (h : False) -> False)
+                (fun (h : True) -> true) (fun (h : False) -> h)
+    | succ p, ih =>
+        let r : Nat := mod p 1;
+            fromOdd : forall (h : Odd p) -> Eq (wrap r 1) 0 :=
+              fun (h : Odd p) ->
+                transport (fun (y : Nat) -> Eq (wrap y 1) 0) 1 r
+                  (sym r 1 (andSnd (forall (h : Even p) -> Eq r 0) (forall (h : Odd p) -> Eq r 1) ih h))
+                  true;
+            fromEven : forall (h : Even p) -> Eq (wrap r 1) 1 :=
+              fun (h : Even p) ->
+                transport (fun (y : Nat) -> Eq (wrap y 1) 1) 0 r
+                  (sym r 0 (andFst (forall (h : Even p) -> Eq r 0) (forall (h : Odd p) -> Eq r 1) ih h))
+                  true
+        in andIntro (forall (h : Odd p) -> Eq (wrap r 1) 0) (forall (h : Even p) -> Eq (wrap r 1) 1)
+             fromOdd fromEven
+        end
+    end
+end
+
+(* An even number is divisible by two. *)
+def evenDividesTwo : forall (n : Nat) (h : Even n) -> Divides 2 n :=
+  fun (n : Nat) (h : Even n) ->
+    andFst (forall (h : Even n) -> Eq (mod n 1) 0) (forall (h : Odd n) -> Eq (mod n 1) 1)
+      (modTwoParity n) h
+end
+
+(* A number divisible by two is even: were it odd, its remainder would be
+   [1] rather than [0]. *)
+def dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
+  fun (n : Nat) (h : Eq (mod n 1) 0) ->
+    orElim (Even n) (Odd n) (Even n) (evenOrOdd n)
+      (fun (e : Even n) -> e)
+      (fun (o : Odd n) ->
+         absurd (Even n)
+           (trans 1 (mod n 1) 0
+              (sym (mod n 1) 1
+                 (andSnd (forall (h : Even n) -> Eq (mod n 1) 0) (forall (h : Odd n) -> Eq (mod n 1) 1)
+                    (modTwoParity n) o))
+              h))
+end
+
+end

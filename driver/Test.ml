@@ -738,3 +738,30 @@ let%expect_test "lib/Programs.mctt" =
                3
                0 --> 6 : Nat
     |}]
+
+let%expect_test "lib/Division.mctt" =
+  let _ = main_of_lib "Division.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::Div.div 17 3 --> 4 : Nat
+    Evaluate Prelude::Arith::Div.mod 17 3 --> 1 : Nat
+    Evaluate Prelude::Arith::Div.div 17 4 --> 3 : Nat
+    Evaluate Prelude::Arith::Div.mod 17 4 --> 2 : Nat
+    Evaluate Prelude::Arith::Div.div 20 4 --> 4 : Nat
+    Evaluate Prelude::Arith::Div.mod 20 4 --> 0 : Nat
+    Evaluate Prelude::Arith::Div.divModSpec 17 4 --> true : True
+    Evaluate Prelude::Arith::Div.modLt 17 4 --> true : True
+    Evaluate Prelude::Arith::Div.modSmall 3 4 true --> true : True
+    Evaluate Prelude::Arith::Div.divSmall 3 4 true --> true : True
+    Evaluate Prelude::Arith::Div.modSelf 6 --> true : True
+    Evaluate Prelude::Arith::Div.modPlusDivisor 9 4 --> true : True
+    Evaluate Prelude::Arith::Div.divOne 7 --> true : True
+    Evaluate Prelude::Arith::Divides.Divides 3 12 --> True : Type@0
+    Evaluate Prelude::Arith::Divides.Divides 3 13 --> False : Type@0
+    Evaluate Prelude::Arith::Divides.dividesRefl 5 --> true : True
+    Evaluate Prelude::Arith::Divides.dividesZero 4 --> true : True
+    Evaluate Prelude::Arith::Divides.oneDivides 9 --> true : True
+    Evaluate Prelude::Arith::Divides.dividesPlus 3 6 9 true true --> true : True
+    Evaluate Prelude::Arith::Divides.dividesMult 3 4 --> true : True
+    Evaluate Prelude::Arith::Divides.evenDividesTwo 8 true --> true : True
+    Evaluate Prelude::Arith::Divides.dividesTwoEven 10 true --> true : True
+    |}]
