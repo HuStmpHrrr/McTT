@@ -6,7 +6,7 @@ Branch `ext/params-as-locals` (option B).
 | --- | --- |
 | `theories/Frontend/ElabSpec.v` (742 lines) | The spec `elab_spec : Cst.prog -> cunit -> Prop`, and its invariant `sf_wf` with `scmd_wf`/`scmds_wf`/`simports_wf`. Imports only `Syntax`, `Command`; no elaborator data structure. |
 | `theories/Frontend/ElabCorrect.v` (1515) | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
-| `theories/Frontend/ElabExamples.v` (354) | Hand-written `Cst.prog`s: the running example, pre-application, `examples/module_param`, `import_use`, `multi/Main`, privacy, redeclaration, shadowing, members used without their module arguments, dotted modules, unimported units, and every program the one-binding rule rejects, with its error message. |
+| `theories/Frontend/ElabExamples.v` (354) | Hand-written `Cst.prog`s: the running example, pre-application, `examples/module_param`, `import_use`, `multi/Main`, privacy, redeclaration, shadowing, members used without their module arguments, dotted modules, unimported units, local definitions (`let_nested`, `let_multi`, `let_shadow`), and every program the one-binding rule rejects, with its error message. |
 
 ## Theorems (all `Closed under the global context`)
 
@@ -104,7 +104,9 @@ parameter `i` of `n` in a frame whose telescope starts `off` binders in being
 `#(off + n-1-i)`; a parameter reference `fr_param` denotes exactly the variable
 `preapp` passes for it. Selection through a reference (`select`) reaches only
 public definitions, supplies no parameters, and extends opaque paths.
-Commands: `scmd fp O Fs F c F'` changes only the innermost frame.
+A term `let x : A := M in B end` is `sel_let`: it denotes the core `ℓ A ≔ M in B`,
+with `B` elaborated under `lb_var x`; `let module x := E` is `sel_let_mod`, with no
+core binder (`lb_mod`). Commands: `scmd fp O Fs F c F'` changes only the innermost frame.
 
 ## Proof structure
 

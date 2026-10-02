@@ -377,6 +377,29 @@ Proof.
     auto.
 Qed.
 
+(** Close [R a c] from hypotheses relating [a] and [c] through a chain of
+    others, given [PER R] in the context.  Each step picks a hypothesis
+    leaving [a]; [match] backtracks over the choice. *)
+#[global]
+Ltac solve_per_n n :=
+  lazymatch n with
+  | O => fail
+  | S ?n' =>
+      first
+        [ eassumption
+        | symmetry; eassumption
+        | match goal with
+          | |- ?R ?a ?c =>
+              match goal with
+              | H : R a ?b |- _ => transitivity b; [ exact H | solve_per_n n' ]
+              | H : R ?b a |- _ => transitivity b; [ symmetry; exact H | solve_per_n n' ]
+              end
+          end ]
+  end.
+
+#[global]
+Ltac solve_per := solve [ solve_per_n 5 ].
+
 #[global]
 Ltac saturate_refl :=
   repeat match goal with

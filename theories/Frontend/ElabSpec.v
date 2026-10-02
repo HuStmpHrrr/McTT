@@ -268,7 +268,7 @@ Definition sf_emit (F : sframe) (c : ccmd) : sframe :=
 
 (** [ptele ps] is the parameter list [ps] as a core context, innermost
     first. *)
-Definition ptele (ps : list (string * typ)) : ctx := rev (map snd ps).
+Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (snd p)) ps).
 
 
 (** [sf_taken F] lists the names that [F] binds as members or parameters. *)
@@ -374,20 +374,19 @@ Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres
 
 (** A local binding is one of the following.
 
-    - [lb_var x] is a λ-variable, or an [abstract] [let].
-    - [lb_let x M] is a transparent [let]; uses of [x] are replaced by [M].
+    - [lb_var x] is a core variable, bound by a λ, a Π, a recursor or a
+      [let].
     - [lb_mod x R] is a [let module] naming [R]; it has no core binder. *)
 Inductive lbind : Set :=
 | lb_var : string -> lbind
-| lb_let : string -> exp -> lbind
 | lb_mod : string -> sref -> lbind.
 
 Definition lb_name (b : lbind) : string :=
-  match b with lb_var x | lb_let x _ | lb_mod x _ => x end.
+  match b with lb_var x | lb_mod x _ => x end.
 
 (** [lb_binders b] is the number of core binders that [b] introduces. *)
 Definition lb_binders (b : lbind) : nat :=
-  match b with lb_var _ | lb_let _ _ => 1 | lb_mod _ _ => 0 end.
+  match b with lb_var _ => 1 | lb_mod _ _ => 0 end.
 
 (** [nbinders L] is the number of core binders in [L], which is listed
     innermost first. *)
@@ -398,12 +397,10 @@ Definition nbinders (L : list lbind) : nat := fold_right (fun b n => lb_binders 
 Definition lbound (L : list lbind) (x : string) (k : nat) (b : lbind) : Prop :=
   exists L1 L2, L = L1 ++ b :: L2 /\ lb_name b = x /\ ~ In x (map lb_name L1) /\ k = nbinders L1.
 
-(** [ldenote k b] is what [b] denotes [k] binders further in.  The body of a
-    [let] was elaborated outside its own binder, hence the shift by [k + 1]. *)
+(** [ldenote k b] is what [b] denotes [k] binders further in. *)
 Definition ldenote (k : nat) (b : lbind) : sres :=
   match b with
   | lb_var _ => s_term (a_var k)
-  | lb_let _ M => s_term (shift_by (S k) M)
   | lb_mod _ R => s_mod (wk_sref k R)
   end.
 
@@ -462,17 +459,12 @@ Section Objects.
       unit_in fq O Fs -> sel L (Cst.glob fq) (s_mod (sr_mk fq nil None nil))
   | sel_proj : forall L o x R t,
       sel L o (s_mod R) -> select R x t -> sel L (Cst.proj o x) (st_res t)
-  (** [let x : A := M in B] elaborates to [(λ A B) $ M], with one core binder.
-      Inside [B], a transparent [x] stands for [M] itself, and an [abstract]
-      [x] is the bound variable. *)
-  | sel_let : forall L m x oA oM ob A M B,
-      Cst.md_abstract m = false ->
-      selt L oA A -> selt L oM M -> selt (lb_let x M :: L) ob B ->
-      sel L (Cst.letb (Cst.d_def m x oA oM) ob) (s_term ((λ A B) $ M))
-  | sel_let_abs : forall L m x oA oM ob A M B,
-      Cst.md_abstract m = true ->
+  (** [let x : A := M in B end] elaborates to the core [ℓ A ≔ M in B].
+      Inside [B], [x] is the variable of the [let], which the core binds to
+      [M]. *)
+  | sel_let : forall L x oA oM ob A M B,
       selt L oA A -> selt L oM M -> selt (lb_var x :: L) ob B ->
-      sel L (Cst.letb (Cst.d_def m x oA oM) ob) (s_term ((λ A B) $ M))
+      sel L (Cst.letb (Cst.d_def x oA oM) ob) (s_term (ℓ A ≔ M in B))
   (** [let module x := E in B] adds no core binder.  Inside [B], [x] names the
       module that [E] denotes. *)
   | sel_let_mod : forall L x oE ob R B,

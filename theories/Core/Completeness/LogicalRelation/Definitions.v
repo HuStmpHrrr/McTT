@@ -178,8 +178,9 @@ Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at
 (** * Semantic Context Well-Formedness
 
     An inductive judgment whose extension step carries both the context PER
-    witness and the semantic well-formedness of the type, so
-    [sem_ctx_per_ctx_env] reads the PER off any derivation. *)
+    witness and the semantic well-formedness of the type (and, for a
+    definition, of its body), so [sem_ctx_per_ctx_env] reads the PER off any
+    derivation. *)
 
 Inductive sem_ctx : ctx -> Prop :=
 | sem_ctx_nil : ⊨ ⋅
@@ -188,6 +189,12 @@ Inductive sem_ctx : ctx -> Prop :=
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
     Γ ⊨ A ≈ A : Type@i ->
     ⊨ Γ ▹ A
+| sem_ctx_cons_def : forall Γ A M i env_rel,
+    ⊨ Γ ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ env_rel ->
+    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ M ≈ M : A ->
+    ⊨ Γ ▸ A ≔ M
 where "⊨ Γ" := (sem_ctx Γ) : type_scope.
 
 Hint Constructors sem_ctx : mctt.

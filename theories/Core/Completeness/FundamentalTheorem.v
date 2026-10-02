@@ -88,10 +88,10 @@ Qed.
     and [⟦A⟧(ρ↯)] are not equal; this relatedness replaces the equation, and
     moving [P] and [El] along it with [glu_univ_elem_resp_per_univ] is all
     soundness does with it. *)
-Corollary completeness_fundamental_typ_shift : forall {Γ B A i env_rel ρ},
-    ⊢ Γ ▹ B ->
+Corollary completeness_fundamental_typ_shift : forall {Γ e A i env_rel ρ},
+    ⊢ (e :: Γ)%list ->
     Γ ⊢ A : Type@i ->
-    EF Γ ▹ B ≈ Γ ▹ B ∈ per_ctx_env ↘ env_rel ->
+    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ env_rel ->
     Dom ρ ≈ ρ ∈ env_rel ->
     exists a a',
       ⟦ A[↑]ʷ ⟧ ρ ↘ a /\
@@ -99,7 +99,7 @@ Corollary completeness_fundamental_typ_shift : forall {Γ B A i env_rel ρ},
       Dom a ≈ a' ∈ per_univ i.
 Proof.
   intros * ? ? Hper Hρ.
-  assert (Γ ▹ B ⊨w ↑ : Γ)
+  assert ((e :: Γ)%list ⊨w ↑ : Γ)
     by (apply rel_wk_under_ctx_shift, completeness_fundamental_ctx; eassumption).
   assert (Γ ⊨ A : Type@i) by (apply completeness_fundamental_exp; eassumption).
   destruct (rel_exp_of_typ_inversion_wk ltac:(eassumption) ltac:(eassumption))

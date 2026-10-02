@@ -170,6 +170,9 @@ Proof.
     pose (GC := gc_mk Θ Ξ).
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
     assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
+    assert (rigid_typ (⋅ ▹ Type@i) A').
+    { assert (exists k, ⋅ ▹ Type@i ⊢ A' : Type@k) as [k ?] by (gen_presups; eauto).
+      eapply rigid_typ_of_is_typ_constr; [ eapply ctx_ass_of_lookup_typ | eassumption | eassumption ]. }
     eapply (@subtyp_spec GC) in Heq as [| []]; destruct_conjs;
       try (eapply HA'eq; mautosolve 4).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.

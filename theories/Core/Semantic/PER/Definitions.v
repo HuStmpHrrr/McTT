@@ -287,6 +287,12 @@ Definition rel_typ i A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) A ρ A' ρ
 Hint Transparent rel_typ : mctt.
 Hint Unfold rel_typ : mctt.
 
+(** Two terms evaluate to related elements. *)
+Definition rel_elem M ρ M' ρ' (R : relation domain) := rel_mod_eval (fun R a a' => R a a') M ρ M' ρ' R.
+#[global] Arguments rel_elem _ _ _ _ _ /.
+Hint Transparent rel_elem : mctt.
+Hint Unfold rel_elem : mctt.
+
 (** * Context/Environment PER *)
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
@@ -306,6 +312,28 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
              exists (equiv_ρ_drop_ρ'_drop : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel),
                Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) ->
         EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
+(** A definition entry: the bodies are related, and each head of the
+    environment is related to the value of *both* bodies in that head's tail.
+    Asking for both bodies on each side makes the relation invariant under
+    swapping the two contexts, which is what symmetry needs. *)
+| per_ctx_env_cons_def :
+  `{ forall tail_rel
+        (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
+        env_rel
+        (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
+        PER tail_rel ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            rel_typ i A ρ A' ρ' (head_rel equiv_ρ_ρ')) ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            rel_elem M ρ M' ρ' (head_rel equiv_ρ_ρ')) ->
+        (env_rel <~> fun ρ ρ' =>
+             exists (equiv_ρ_drop_ρ'_drop : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel),
+               Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop /\
+               (exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) /\
+               (exists m, ⟦ M' ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) /\
+               (exists m', ⟦ M ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) /\
+               (exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop)) ->
+        EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
 .
 Hint Constructors per_ctx_env : mctt.
 
@@ -332,6 +360,16 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
         EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
         EF Γ' ▹ A' ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel' ->
         SubE Γ ▹ A <: Γ' ▹ A' }
+(** A context ending in a definition refines another context when its
+    environments are environments of the other.  This covers a definition of a
+    supertype with an equal body and an assumption of a supertype. *)
+| per_ctx_subtyp_def :
+  `{ forall env_rel env_rel',
+        SubE Γ <: Γ' ->
+        EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ env_rel ->
+        EF (e :: Γ')%list ≈ (e :: Γ')%list ∈ per_ctx_env ↘ env_rel' ->
+        (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_rel -> Dom ρ ≈ ρ' ∈ env_rel') ->
+        SubE Γ ▸ A ≔ M <: (e :: Γ')%list }
 where "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 
 Hint Constructors per_ctx_subtyp : mctt.
@@ -383,6 +421,10 @@ Hint Constructors per_subtyp : mctt.
 Hint Transparent rel_typ : mctt.
 #[export]
 Hint Unfold rel_typ : mctt.
+#[export]
+Hint Transparent rel_elem : mctt.
+#[export]
+Hint Unfold rel_elem : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
 #[export]

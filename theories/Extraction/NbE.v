@@ -16,7 +16,12 @@ Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_exp_order Θ Ξ A p) ->
-     initial_env_order Θ Ξ (A :: Γ)).
+     initial_env_order Θ Ξ (Γ ▹ A))
+| ie_cons_def :
+  `( initial_env_order Θ Ξ Γ ->
+     (forall p, initial_env Θ Ξ Γ p ->
+           eval_exp_order Θ Ξ M p) ->
+     initial_env_order Θ Ξ (Γ ▸ A ≔ M)).
 
 #[local]
 Hint Constructors initial_env_order : mctt.
@@ -46,10 +51,14 @@ Section InitialEnvImpl.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations initial_env_impl Θ Ξ G (H : initial_env_order Θ Ξ G) : { p | initial_env Θ Ξ G p } by struct H :=
   | Θ, Ξ, nil, H => exist _ nil _
-  | Θ, Ξ, cons A G, H =>
+  | Θ, Ξ, cons (ce_ass A) G, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
-      exist _ (p ↦ ⇑! a (List.length G)) _.
+      exist _ (p ↦ ⇑! a (List.length G)) _
+  | Θ, Ξ, cons (ce_def A M) G, H =>
+      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+      let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
+      exist _ (p ↦ m) _.
 
 End InitialEnvImpl.
 

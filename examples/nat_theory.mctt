@@ -1,0 +1,144 @@
+module NatTheory where
+
+(* Propositions are types in Type@0: [True] holds trivially, [False] has no
+   proof, and [Not A] is a function into [False]. *)
+module Logic where
+  def Not (A : Type@0) : Type@0 := forall (a : A) -> False end
+  def absurd (A : Type@0) (f : False) : A := exfalso f return x . A end
+end
+
+module Arith where
+  def plus (n : Nat) (m : Nat) : Nat :=
+    rec n return y . Nat
+    | zero => m
+    | succ p, r => succ r
+    end
+  end
+
+  (* Equality of numbers, computed by recursion on both sides. *)
+  def Eq : forall (n : Nat) (m : Nat) -> Type@0 :=
+    fun (n : Nat) ->
+      rec n return y . (forall (m : Nat) -> Type@0)
+      | zero => fun (m : Nat) ->
+          rec m return z . Type@0 | zero => True | succ q, s => False end
+      | succ p, r => fun (m : Nat) ->
+          rec m return z . Type@0 | zero => False | succ q, s => r q end
+      end
+  end
+
+  def refl : forall (n : Nat) -> Eq n n :=
+    fun (n : Nat) ->
+      rec n return x . Eq x x
+      | zero => true
+      | succ p, ih => ih
+      end
+  end
+
+  def zeroNeSucc : forall (n : Nat) -> Logic.Not (Eq 0 (succ n)) :=
+    fun (n : Nat) (h : Eq 0 (succ n)) -> h
+  end
+
+  def sym : forall (a : Nat) (b : Nat) (h : Eq a b) -> Eq b a :=
+    fun (a : Nat) ->
+      rec a return x . (forall (b : Nat) (h : Eq x b) -> Eq b x)
+      | zero => fun (b : Nat) ->
+          rec b return z . (forall (h : Eq 0 z) -> Eq z 0)
+          | zero => fun (h : True) -> h
+          | succ q, s => fun (h : Eq 0 (succ q)) -> Logic.absurd (Eq (succ q) 0) h
+          end
+      | succ p, ih => fun (b : Nat) ->
+          rec b return z . (forall (h : Eq (succ p) z) -> Eq z (succ p))
+          | zero => fun (h : Eq (succ p) 0) -> h
+          | succ q, s => fun (h : Eq (succ p) (succ q)) -> ih q h
+          end
+      end
+  end
+
+  def trans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Eq a b) (hbc : Eq b c) -> Eq a c :=
+    fun (a : Nat) ->
+      rec a return x . (forall (b : Nat) (c : Nat) (hab : Eq x b) (hbc : Eq b c) -> Eq x c)
+      | zero => fun (b : Nat) ->
+          rec b return z . (forall (c : Nat) (hab : Eq 0 z) (hbc : Eq z c) -> Eq 0 c)
+          | zero => fun (c : Nat) (hab : True) (hbc : Eq 0 c) -> hbc
+          | succ q, s => fun (c : Nat) (hab : Eq 0 (succ q)) (hbc : Eq (succ q) c) ->
+              Logic.absurd (Eq 0 c) hab
+          end
+      | succ p, ih => fun (b : Nat) ->
+          rec b return z . (forall (c : Nat) (hab : Eq (succ p) z) (hbc : Eq z c) -> Eq (succ p) c)
+          | zero => fun (c : Nat) (hab : Eq (succ p) 0) (hbc : Eq 0 c) ->
+              Logic.absurd (Eq (succ p) c) hab
+          | succ q, s => fun (c : Nat) ->
+              rec c return w . (forall (hab : Eq (succ p) (succ q)) (hbc : Eq (succ q) w) -> Eq (succ p) w)
+              | zero => fun (hab : Eq p q) (hbc : Eq (succ q) 0) -> Logic.absurd (Eq (succ p) 0) hbc
+              | succ r, t => fun (hab : Eq p q) (hbc : Eq q r) -> ih q r hab hbc
+              end
+          end
+      end
+  end
+
+  def plusZero : forall (n : Nat) -> Eq (plus n 0) n :=
+    fun (n : Nat) ->
+      rec n return x . Eq (plus x 0) x
+      | zero => true
+      | succ p, ih => ih
+      end
+  end
+
+  def plusSucc : forall (n : Nat) (m : Nat) -> Eq (plus n (succ m)) (succ (plus n m)) :=
+    fun (n : Nat) (m : Nat) ->
+      rec n return x . Eq (plus x (succ m)) (succ (plus x m))
+      | zero => refl m
+      | succ p, ih => ih
+      end
+  end
+
+  def plusComm : forall (a : Nat) (b : Nat) -> Eq (plus a b) (plus b a) :=
+    fun (a : Nat) (b : Nat) ->
+      rec a return x . Eq (plus x b) (plus b x)
+      | zero => sym (plus b 0) b (plusZero b)
+      | succ p, ih =>
+          let back : Eq (succ (plus b p)) (plus b (succ p)) :=
+                sym (plus b (succ p)) (succ (plus b p)) (plusSucc b p)
+          in trans (succ (plus p b)) (succ (plus b p)) (plus b (succ p)) ih back
+          end
+      end
+  end
+end
+
+(* Iterating a function, as a module parameterized by it. *)
+module Iter (A : Type@0) (f : forall (a : A) -> A) where
+  def iter (n : Nat) (a : A) : A :=
+    rec n return y . A
+    | zero => a
+    | succ p, r => f r
+    end
+  end
+end
+
+(* Addition is iterated successor. *)
+def iterSucc : forall (n : Nat) (m : Nat) ->
+    Arith.Eq (Iter.iter Nat (fun (x : Nat) -> succ x) n m) (Arith.plus n m) :=
+  fun (n : Nat) (m : Nat) ->
+    rec n return x . Arith.Eq (Iter.iter Nat (fun (y : Nat) -> succ y) x m) (Arith.plus x m)
+    | zero => Arith.refl m
+    | succ p, ih => ih
+    end
+end
+
+(* Proofs of closed equations compute: their type normalizes to [True], and by
+   η every proof of [True] is [true]. *)
+eval Arith.plusComm 2 3
+eval Arith.sym 4 4 (Arith.refl 4)
+eval Arith.zeroNeSucc 5
+eval iterSucc 3 4
+eval Iter.iter Nat (fun (x : Nat) -> Arith.plus x x) 3 1
+
+(* A let-bound number is known inside the body (δ), so [true] proves the
+   equation about it; [Doubling] names a module instance. *)
+eval let module Doubling := Iter Nat (fun (x : Nat) -> Arith.plus x x);
+         n : Nat := 2;
+         p : Arith.Eq (Doubling.iter n 1) 4 := true
+     in p
+     end
+
+end

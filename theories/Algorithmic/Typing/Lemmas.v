@@ -28,6 +28,9 @@ Proof.
   - assert (Πⁿ A B = Πⁿ A0 B0) as [= <- <-] by intuition.
     functional_nbe_rewrite_clear.
     reflexivity.
+  - assert (C = C0) as <- by intuition.
+    functional_nbe_rewrite_clear.
+    reflexivity.
   - assert (A = A0) as <- by mauto using ctx_lookup_functional.
     functional_nbe_rewrite_clear.
     reflexivity.
@@ -96,6 +99,14 @@ Proof.
     assert (Γ ⊢ A : Type@i /\ Γ ▹ (A : exp) ⊢ B : Type@i) as [] by mauto 3.
     assert (Γ ⊢ N : A) by mauto 2.
     assert (Γ ⊢ B[Id,,N] ≈ C : Type@i) as <- by mauto 4 using soundness_ty'.
+    mauto 3.
+  - assert (Γ ⊢ A : Type@i) by mauto 2.
+    assert (Γ ⊢ M : A) by mauto 2.
+    assert (⊢ Γ ▸ A ≔ M) by mauto 2.
+    assert (Γ ▸ A ≔ M ⊢ B : C) by mauto 2.
+    assert (exists j, Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ C[Id,,M] : Type@j) by mauto 3.
+    assert (Γ ⊢ C[Id,,M] ≈ D : Type@j) as <- by mauto 3 using soundness_ty'.
     mauto 3.
   - assert (Γ ⊢ #x : A) by mauto 2.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
@@ -166,6 +177,12 @@ Proof.
     assert (Γ ⊢ A : Type@i /\ Γ ▹ (A : exp) ⊢ B : Type@i) as [] by mauto 3.
     assert (Γ ⊢ N : A) by mauto 3 using alg_type_check_sound.
     assert (Γ ⊢ B[Id,,N] : Type@i) by mauto 3; (f_equiv; mautosolve 4).
+  - assert (Γ ⊢ A : Typeⁿ@i) by mauto 3 using alg_type_infer_sound.
+    assert (Γ ⊢ M : A) by mauto 3 using alg_type_check_sound.
+    assert (⊢ Γ ▸ A ≔ M) by mauto 2.
+    assert (Γ ▸ A ≔ M ⊢ B : C) by mauto 3 using alg_type_infer_sound.
+    assert (exists j, Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ C[Id,,M] : Type@j) by mauto 3; (f_equiv; mautosolve 4).
   - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
   (** A global infers the normal form of a type of the ambient context, so
       [idempotent_nbe_ty] closes it; that it is a type is [wf_glob_typ]. *)
@@ -312,6 +329,22 @@ Proof.
     assert (Γ ▹ A ⊢ B' ⊆ B) by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
     assert (Γ ⊢ B'[Id,,N] ⊆ B[Id,,N]) by mauto 3.
     assert (Γ ⊢ W ⊆ B[Id,,N]) by (transitivity B'[Id,,N]; mauto 3).
+    econstructor; mauto 4 using alg_subtyping_complete.
+  - assert (exists j, Γ ⊢a A ⟹ Typeⁿ@j /\ j <= i) as [j []] by mauto 3.
+    assert (⊢ Γ ▸ A ≔ M) by mauto 2.
+    assert (Γ ▸ A ≔ M ⊢a B ⟸ C) by mauto 2.
+    assert (exists C', Γ ▸ A ≔ M ⊢a B ⟹ C' /\ Γ ▸ A ≔ M ⊢a C' ⊆ C) as [C' []]
+        by (inversion_clear_by_head alg_type_check; firstorder).
+    assert (Γ ▸ A ≔ M ⊢ B : C') by mauto 3 using alg_type_infer_sound.
+    assert (exists k, Γ ▸ A ≔ M ⊢ C' : Type@k) as [k] by (gen_presups; eauto 2).
+    assert (exists k', Γ ▸ A ≔ M ⊢ C : Type@k') as [k'] by (gen_presups; eauto 2).
+    assert (Γ ▸ A ≔ M ⊢ C' ⊆ C)
+      by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
+    assert (Γ ⊢ C'[Id,,M] : Type@k) by mauto 3.
+    assert (exists W, nbe_ty_f Γ C'[Id,,M] W /\ Γ ⊢ C'[Id,,M] ≈ W : Type@k) as [W []]
+        by (eapply soundness_ty; mauto 3).
+    assert (Γ ⊢ C'[Id,,M] ⊆ C[Id,,M]) by mauto 3.
+    assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
   - assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.

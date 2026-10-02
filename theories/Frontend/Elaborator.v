@@ -289,12 +289,11 @@ Section Terms.
     | Cst.proj o1 x =>
         let* mr := res_mod (elab_res ls d o1 nil) in
         mr_member mr x args
-    | Cst.letb (Cst.d_def m x oA oM) obody =>
+    | Cst.letb (Cst.d_def x oA oM) obody =>
         let* A := res_term (elab_res ls d oA nil) in
         let* M := res_term (elab_res ls d oM nil) in
-        let e := if Cst.md_abstract m then le_term #0 (S d) else le_term M d in
-        let* B := res_term (elab_res ((x, e) :: ls) (S d) obody nil) in
-        eok (r_exp (sc_apply ((λ A B) $ M) args))
+        let* B := res_term (elab_res (ls_push x d ls) (S d) obody nil) in
+        eok (r_exp (sc_apply (ℓ A ≔ M in B) args))
     (** A local module binding names the module and emits nothing. *)
     | Cst.letb (Cst.d_mod x oE) obody =>
         let* mr := res_mod (elab_res ls d oE nil) in

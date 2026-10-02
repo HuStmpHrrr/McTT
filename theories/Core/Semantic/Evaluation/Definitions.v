@@ -59,6 +59,12 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
      $| m & n | Θ ⍮ Ξ ↘ r ->
      ⟦ M $ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A local definition extends the environment by the value of its body;
+    nothing is substituted. *)
+| eval_exp_let :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
+     ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** δ: a transparent definition evaluates to its body.  The body is stored
     closed, so it is evaluated in the empty environment. *)
 | eval_exp_glob_delta :

@@ -14,11 +14,11 @@ Import Syntax_Notations Wk_Notations.
 
 Open Scope list_scope.
 
-(** The type of the [n]-th binding of [Δ ++ T :: Γ], when [Δ] has length [n], is
+(** The type of the [n]-th binding of [Δ ++ ce_ass T :: Γ], when [Δ] has length [n], is
     [T] shifted past [Δ] and past [T] itself — that is, [T[⇑^(S n)]ʷ]. *)
 Lemma app_ctx_lookup : forall Δ T Γ n,
     length Δ = n ->
-    (Δ ++ T :: Γ) ∋ #n : T[wk_shiftn (S n)]ʷ.
+    (Δ ++ ce_ass T :: Γ) ∋ #n : T[wk_shiftn (S n)]ʷ.
 Proof.
   induction Δ; intros * <-; simpl.
   - rewrite <- wk_shiftn_succ, wk_shiftn_zero, wk_compose_id_left.
@@ -28,9 +28,9 @@ Proof.
 Qed.
 
 Lemma app_ctx_vlookup : forall Θ Ξ Δ T Γ n,
-    ⊢ Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ->
+    ⊢ Θ ⍮ Ξ ⍮ (Δ ++ ce_ass T :: Γ) ->
     length Δ = n ->
-    Θ ⍮ Ξ ⍮ (Δ ++ T :: Γ) ⊢ #n : T[wk_shiftn (S n)]ʷ.
+    Θ ⍮ Ξ ⍮ (Δ ++ ce_ass T :: Γ) ⊢ #n : T[wk_shiftn (S n)]ʷ.
 Proof.
   intros; econstructor; [ assumption | apply app_ctx_lookup; assumption ].
 Qed.

@@ -77,6 +77,21 @@ Proof.
   pairwise.
 Qed.
 
+(** The same at any context PER of [Γ]. *)
+Corollary rel_exp_of_typ_inversion_simple_at : forall {Γ A A' i env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A ≈ A' : Type@i ->
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i.
+Proof.
+  intros * HΓ H.
+  pose proof (rel_exp_of_typ_inversion_simple H) as [env_relΓ' [HΓ' HA]].
+  assert (E : env_relΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  intros ρ ρ' Hρ%E.
+  exact (HA _ _ Hρ).
+Qed.
+
 (** The same instance at a weakening instead of [Id], as the gluing model needs:
     it reads a type's value at [ρ] after [[φ]ʷ], while the context relation
     supplies the value at [⟪φ⟫ ρ].  The two values are not equal; [per_univ i]

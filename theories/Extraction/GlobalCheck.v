@@ -183,8 +183,8 @@ End check_exp.
 (** ** Local Contexts
 
     By structural recursion on [Γ]: the base case appeals to the
-    well-formedness of the global context, and each step is one call of
-    [check_typ]. *)
+    well-formedness of the global context.  An assumption is one call of
+    [check_typ], and a definition is one call of [check_exp]. *)
 
 Section check_ctx.
 
@@ -205,6 +205,10 @@ Section check_ctx.
   | Θ, Ξ, HΞ, Γ ▹ A =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
       let*o->b (exist _ i _) := check_typ Θ Ξ Γ HΓ A while _ in
+      pureb _
+  | Θ, Ξ, HΞ, Γ ▸ A ≔ M =>
+      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
+      let*b _ := check_exp Θ Ξ Γ HΓ A M while _ in
       pureb _
   .
 

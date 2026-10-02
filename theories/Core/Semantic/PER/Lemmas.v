@@ -334,6 +334,19 @@ Ltac use_relation_equivalence :=
   | H : ?R1 <~> ?R2 |- ?R2 _ _ => apply H
   end.
 
+(** Move every hypothesis across the equivalences in context, from left to
+    right, where [apply_relation_equivalence] cannot rewrite (the
+    relations are applied to dependent evidence). *)
+Ltac move_by_relation_equivalence :=
+  repeat match goal with
+    | Heq : ?R1 <~> ?R2, H : ?R1 ?x ?y |- _ => apply Heq in H
+    end.
+
+Ltac move_goal_by_relation_equivalence :=
+  try match goal with
+    | Heq : ?R1 <~> ?R2 |- ?R1 _ _ => apply Heq
+    end.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -1031,6 +1044,24 @@ Proof.
       (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
   - assert (Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition;
       (destruct_rel_typ; handle_per_univ_elem_irrel; eexists; intuition).
+  - (** A definition: the heads are tied to the bodies, which are related
+        across the two right-hand contexts through the left body. *)
+    specialize (IHHorig _ _ equiv_Γ_Γ'0).
+    intros ρ ρ'.
+    split; intros [Ht ?];
+      [ assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel0) by intuition
+      | assert (Ht0 : Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) by intuition ];
+      exists Ht0; destruct_conjs;
+      (** The bodies are read at each tail against itself, too. *)
+      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel) by (etransitivity; [| symmetry]; intuition);
+      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel) by (etransitivity; [symmetry |]; intuition);
+      assert (Dom ρ↯ ≈ ρ↯ ∈ tail_rel0) by (etransitivity; [| symmetry]; intuition);
+      assert (Dom ρ'↯ ≈ ρ'↯ ∈ tail_rel0) by (etransitivity; [symmetry |]; intuition);
+      destruct_rel_typ; handle_per_univ_elem_irrel;
+      match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
+      move_by_relation_equivalence;
+      repeat split; try (move_goal_by_relation_equivalence; solve_per);
+      eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per.
 Qed.
 
 Lemma per_ctx_env_sym : forall Γ Δ R,
@@ -1041,7 +1072,8 @@ Lemma per_ctx_env_sym : forall Γ Δ R,
           Dom ρ' ≈ ρ ∈ R).
 Proof.
   simpl.
-  induction 1; split; simpl in *; destruct_conjs; try econstructor; intuition;
+  induction 1.
+  1,2: split; simpl in *; destruct_conjs; try econstructor; intuition;
     pose proof (@relation_equivalence_pointwise env).
   - assert (tail_rel ρ' ρ) by eauto.
     assert (tail_rel ρ ρ) by (etransitivity; eassumption).
@@ -1055,6 +1087,42 @@ Proof.
     assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
     destruct_rel_mod_eval.
     eexists; symmetry; handle_per_univ_elem_irrel; intuition.
+  - (** A definition.  The swapped context has the same head relation, and its
+        environment relation lists the same four ties in another order. *)
+    simpl in *; destruct_conjs.
+    split.
+    + eapply per_ctx_env_cons_def with (head_rel := head_rel); [ eassumption | eassumption | | |].
+      * intros ρ ρ' Hρ.
+        assert (tail_rel ρ' ρ) by eauto.
+        assert (tail_rel ρ ρ) by (etransitivity; eassumption).
+        destruct_rel_mod_eval.
+        handle_per_univ_elem_irrel.
+        econstructor; eauto.
+        symmetry; solve [intuition].
+      * intros ρ ρ' Hρ.
+        assert (tail_rel ρ' ρ) by eauto.
+        assert (tail_rel ρ ρ) by (etransitivity; eassumption).
+        destruct_rel_mod_eval.
+        handle_per_univ_elem_irrel.
+        match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
+        move_by_relation_equivalence.
+        econstructor; try eassumption.
+        move_goal_by_relation_equivalence; solve_per.
+      * intros ρ ρ'; split; intros Hρ;
+          [ apply H2 in Hρ | apply H2 ]; destruct Hρ as [e Hρ]; exists e; tauto.
+    + intros ρ ρ' Hρ.
+      apply H2 in Hρ; apply H2.
+      destruct Hρ as [e ?]; destruct_conjs.
+      assert (Ht : tail_rel ρ'↯ ρ↯) by eauto.
+      exists Ht.
+      assert (tail_rel ρ↯ ρ↯) by (etransitivity; eassumption).
+      assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; eassumption).
+      destruct_rel_mod_eval.
+      handle_per_univ_elem_irrel.
+      match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end.
+      move_by_relation_equivalence.
+      repeat split; try (move_goal_by_relation_equivalence; solve_per);
+        eexists; split; try eassumption; move_goal_by_relation_equivalence; solve_per.
 Qed.
 
 Corollary per_ctx_sym : forall Γ Δ R,
@@ -1109,6 +1177,16 @@ Hint Resolve per_subtyp_trans : mctt.
 Hint Resolve per_subtyp_cumu : mctt.
 #[export] Existing Instance per_ctx_env_morphism_iff_Proper.
 #[export] Existing Instance per_ctx_env_morphism_relation_equivalence_Proper.
+(** The ties of a definition entry, closed from the instances of the type and
+    body premises at the tails in context: the head relations of one type
+    value coincide, and the ties follow by symmetry and transitivity. *)
+Ltac solve_def_heads :=
+  destruct_rel_typ; handle_per_univ_elem_irrel;
+  match goal with H : per_univ_elem _ _ _ _ |- _ => pose proof (per_elem_PER H) end;
+  move_by_relation_equivalence;
+  repeat split; try (move_goal_by_relation_equivalence; solve_per);
+  try (eexists; split; [ eassumption | move_goal_by_relation_equivalence; solve_per ]).
+
 Ltac do_per_ctx_env_irrel_assert1 :=
   let tactic_error o1 o2 := fail 3 "per_ctx_env_irrel equality between" o1 "and" o2 "cannot be solved" in
   match goal with
@@ -1187,6 +1265,36 @@ Proof with solve [eauto using per_univ_trans].
     eexists.
     apply_relation_equivalence.
     etransitivity; intuition.
+  - (** A definition: the right body is moved across the middle one. *)
+    destruct IHper_ctx_env as [IHctx IHenv].
+    eapply per_ctx_env_cons_def with (head_rel := head_rel); [ eauto | eassumption | | |].
+    + intros.
+      assert (tail_rel ρ ρ) by intuition.
+      assert (tail_rel0 ρ ρ') by intuition.
+      destruct_rel_typ.
+      handle_per_univ_elem_irrel.
+      econstructor; intuition.
+      eapply per_univ_trans; [| eassumption]; eassumption.
+    + intros.
+      assert (tail_rel ρ ρ) by intuition.
+      assert (tail_rel0 ρ ρ') by intuition.
+      assert (tail_rel0 ρ ρ) by intuition.
+      destruct_rel_typ; handle_per_univ_elem_irrel.
+      econstructor; try eassumption.
+      solve_def_heads.
+    + intros ρ ρ'; split; intros [Ht ?]; destruct_conjs; exists Ht;
+        assert (tail_rel ρ↯ ρ↯) by (etransitivity; [| symmetry]; eassumption);
+        assert (tail_rel ρ'↯ ρ'↯) by (etransitivity; [symmetry |]; eassumption);
+        assert (tail_rel0 ρ↯ ρ↯) by intuition;
+        assert (tail_rel0 ρ'↯ ρ'↯) by intuition;
+        assert (tail_rel0 ρ↯ ρ'↯) by intuition;
+        solve_def_heads.
+  - cbn beta in *; destruct_conjs.
+    assert (Ht : tail_rel ρ1↯ ρ3↯) by eauto.
+    exists Ht.
+    assert (tail_rel ρ1↯ ρ1↯) by (etransitivity; [| symmetry]; eassumption).
+    assert (tail_rel ρ3↯ ρ3↯) by (etransitivity; [symmetry |]; eassumption).
+    solve_def_heads.
 Qed.
 
 Corollary per_ctx_trans : forall Γ1 Γ2 Γ3 R,
@@ -1503,6 +1611,126 @@ Proof.
   intros * ? ?; apply per_env_extend_intro; assumption.
 Qed.
 
+(** ** A Canonical Context PER for a Definition Entry
+
+    [def_tie S M ρ] says that the head of [ρ] is the value of [M] in the tail
+    of [ρ], up to the head PER of [S].  Two environments are related at
+    [Δ ▸ S ≔ M] when they are related at [Δ ▹ S] and each satisfies the
+    tie. *)
+Definition def_tie (S : typ) (M : exp) (ρ : env) : Prop :=
+  exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ per_head S S ρ↯ ρ↯.
+
+Definition per_env_extend_def (S : typ) (M : exp) (R : relation env) : relation env :=
+  fun ρ ρ' =>
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R /\ def_tie S M ρ /\ def_tie S M ρ'.
+
+(** The head PER of a type is the same at any two related pairs of tails. *)
+Lemma per_head_resp_simple : forall {S R i},
+    PER R ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    forall ρ1 ρ2 ρ3 ρ4,
+      rel_chain R ([ρ1; ρ2; ρ3; ρ4]) ->
+      per_head S S ρ1 ρ2 <~> per_head S S ρ3 ρ4.
+Proof.
+  intros * HPER HS * Hchain.
+  assert (H12 : Dom ρ1 ≈ ρ2 ∈ R) by pairwise.
+  assert (H32 : Dom ρ3 ≈ ρ2 ∈ R) by pairwise.
+  assert (H34 : Dom ρ3 ≈ ρ4 ∈ R) by pairwise.
+  destruct (HS _ _ H12) as [a1 [a2 [Ha1 [Ha2 Ha12]]]].
+  destruct (HS _ _ H32) as [a3 [a2' [Ha3 [Ha2' Ha32]]]].
+  destruct (HS _ _ H34) as [a3' [a4 [Ha3' [Ha4 Ha34]]]].
+  assert (a2' = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (a3' = a3) as -> by (eapply functional_eval_exp; eassumption).
+  eapply per_head_resp; [ exact Ha1 | exact Ha2 | exact Ha3 | exact Ha4 |].
+  apply rel_chain_4; [ exact Ha12 | symmetry; exact Ha32 | exact Ha34 ].
+Qed.
+
+(** The premise [per_ctx_env_cons_def] asks for, at the canonical relation. *)
+Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ i},
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_relΔ ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_relΔ ->
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
+    EF Δ ▸ S ≔ M ≈ Δ ▸ S ≔ M ∈ per_ctx_env ↘ per_env_extend_def S M env_relΔ.
+Proof.
+  intros * HΔ HS HM.
+  assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
+  eapply per_ctx_env_cons_def
+    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ');
+    [ eassumption | eassumption | | |].
+  - intros ρ ρ' Hρ.
+    destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
+    econstructor; try eassumption.
+    eapply per_univ_elem_resp_iff; [ eassumption |].
+    eapply per_head_iff; eassumption.
+  - intros ρ ρ' Hρ.
+    destruct (HM _ _ Hρ) as [m [m' [Hm [Hm' Hmm']]]].
+    econstructor; eassumption.
+  - intros ρ ρ'.
+    (** A tie at a single environment and a tie read across the related pair
+        are the same, since the head PER does not depend on the tails. *)
+    assert (Hmove : forall ρ1 ρ2,
+               Dom ρ1 ≈ ρ2 ∈ env_relΔ ->
+               (per_head S S ρ1 ρ1 <~> per_head S S ρ1 ρ2) /\
+                 (per_head S S ρ2 ρ2 <~> per_head S S ρ1 ρ2)).
+    { intros ρ1 ρ2 H12.
+      assert (H11 : Dom ρ1 ≈ ρ1 ∈ env_relΔ) by solve_per.
+      assert (H22 : Dom ρ2 ≈ ρ2 ∈ env_relΔ) by solve_per.
+      split; eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per. }
+    split.
+    + intros [[Ht Hh] [[m [Hm Htie]] [m' [Hm' Htie']]]].
+      destruct (Hmove _ _ Ht) as [H1 H2].
+      exists Ht.
+      repeat split; try eassumption.
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+    + intros [Ht [Hh [[m [Hm Htie]] [_ [[m' [Hm' Htie']] _]]]]].
+      destruct (Hmove _ _ Ht) as [H1 H2].
+      repeat split; try eassumption.
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+Qed.
+
+(** The tie propagates along the relation of an assumption entry, and from a
+    body to a related one.  So it is enough to establish it at one environment
+    of a chain. *)
+Lemma def_tie_resp : forall {S M M' R i ρ ρ'},
+    PER R ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R ->
+    def_tie S M ρ ->
+    def_tie S M' ρ'.
+Proof.
+  intros * HPER HS HM [Ht Hh] [m [Hm Htie]].
+  assert (H11 : Dom ρ↯ ≈ ρ↯ ∈ R) by solve_per.
+  assert (H22 : Dom ρ'↯ ≈ ρ'↯ ∈ R) by solve_per.
+  destruct (HM _ _ Ht) as [m1 [m2 [Hm1 [Hm2 Hm12]]]].
+  assert (m1 = m) as -> by (eapply functional_eval_exp; eassumption).
+  exists m2; split; [ eassumption |].
+  assert (E1 : per_head S S ρ↯ ρ↯ <~> per_head S S ρ↯ ρ'↯)
+    by (eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per).
+  assert (E2 : per_head S S ρ'↯ ρ'↯ <~> per_head S S ρ↯ ρ'↯)
+    by (eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per).
+  apply E2; apply E1 in Htie.
+  destruct (HS _ _ Ht) as [a [a' [Ha [Ha' [R' HR']]]]].
+  pose proof (per_head_iff Ha Ha' HR') as E3.
+  assert (PER R') by (eapply per_elem_PER; eassumption).
+  apply E3; apply E3 in Htie, Hh, Hm12.
+  solve_per.
+Qed.
+
 (** Transporting a [per_head] to another pair of environments, the bridging
     step of the completeness proofs.  The two head relations are equal because
     their types are related in [per_univ]: the first two evaluations and the
@@ -1728,8 +1956,22 @@ Lemma per_ctx_subtyp_to_env : forall Γ Δ,
         EF Δ ≈ Δ ∈ per_ctx_env ↘ R'.
 Proof.
   destruct 1; destruct_all.
-  - repeat eexists; econstructor; apply Equivalence_Reflexive.
-  - eauto.
+  1: repeat eexists; econstructor; apply Equivalence_Reflexive.
+  all: eauto.
+Qed.
+
+(** An inclusion of context PERs holds for any other names of them. *)
+Lemma per_ctx_env_incl_irrel : forall Γ Δ R R1 R' R2 ρ ρ',
+    (forall ρ ρ', R1 ρ ρ' -> R2 ρ ρ') ->
+    R ρ ρ' ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R1 ->
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ R' ->
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ R2 ->
+    R' ρ ρ'.
+Proof.
+  intros * Hinc Hρ HR HR1 HR' HR2.
+  apply (per_ctx_env_right_irrel _ _ _ _ _ HR' HR2), Hinc, (per_ctx_env_right_irrel _ _ _ _ _ HR HR1), Hρ.
 Qed.
 
 Lemma per_ctx_env_subtyping : forall Γ Δ,
@@ -1741,6 +1983,7 @@ Lemma per_ctx_env_subtyping : forall Γ Δ,
       R' ρ ρ'.
 Proof.
   induction 1; intros;
+    try solve [ eapply per_ctx_env_incl_irrel; eassumption ];
     handle_per_ctx_env_irrel;
     (on_all_hyp: fun H => directed invert_per_ctx_env H);
     apply_relation_equivalence;
@@ -1764,14 +2007,21 @@ Lemma per_ctx_subtyp_refl1 : forall Γ Δ R,
 Proof.
   induction 1; mauto.
 
-  assert (exists R, EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R) by
-    (eexists; eapply per_ctx_env_cons'; eassumption).
-  destruct_all.
-  econstructor; try solve [saturate_refl; mauto 2].
-  intros.
-  destruct_rel_typ.
-  simplify_evals.
-  eauto using per_subtyp_refl1.
+  - assert (exists R, EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R) by
+      (eexists; eapply per_ctx_env_cons'; eassumption).
+    destruct_all.
+    econstructor; try solve [saturate_refl; mauto 2].
+    intros.
+    destruct_rel_typ.
+    simplify_evals.
+    eauto using per_subtyp_refl1.
+  - (** A definition: both sides' environments are the related ones. *)
+    assert (HR : EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel) by (econstructor; eassumption).
+    eapply per_ctx_subtyp_def with (env_rel := env_rel) (env_rel' := env_rel);
+      [ assumption
+      | etransitivity; [ exact HR | symmetry; exact HR ]
+      | etransitivity; [ symmetry; exact HR | exact HR ]
+      | auto ].
 Qed.
 
 Lemma per_ctx_subtyp_refl2 : forall Γ Δ R,
@@ -1792,8 +2042,8 @@ Proof.
     mauto 1;
     clear_PER.
 
-  handle_per_ctx_env_irrel.
-  econstructor; try eassumption.
+  1: handle_per_ctx_env_irrel.
+  1: econstructor; try eassumption.
   - firstorder.
   - instantiate (1 := max i i0).
     intros.
@@ -1807,6 +2057,16 @@ Proof.
   - econstructor; intuition.
     + typeclasses eauto.
     + solve_refl.
+  - (** A definition: the inclusions of environments compose. *)
+    match goal with HS : SubE (e :: Γ') <: ?Γ3 |- _ =>
+      destruct (per_ctx_subtyp_to_env _ _ HS) as [R2 [R3 [HR2 HR3]]];
+      destruct Γ3 as [| e3 Γ3']; [ inversion HS |];
+      assert (SubE Γ' <: Γ3') by (inversion HS; assumption);
+      eapply per_ctx_subtyp_def with (env_rel' := R3); [ eauto | eassumption | eassumption |];
+      intros ρ ρ' Hρ;
+      eapply per_ctx_env_subtyping; [ exact HS | eassumption | eassumption | ];
+      handle_per_ctx_env_irrel; eauto
+    end.
 Qed.
 
 Hint Resolve per_ctx_subtyp_trans : mctt.
@@ -1834,20 +2094,27 @@ Lemma per_ctx_env_resp_env_eq : forall {Γ Δ R},
       Dom ρ2 ≈ ρ2' ∈ R.
 Proof.
   intros * H.
-  induction H; intros * Heq Heq' HR; apply_relation_equivalence; [ trivial |].
-  destruct HR as [Dtail1 Hhead1].
-  assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq).
-  assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq').
-  assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]).
-  assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption).
-  unshelve eexists; [ exact Dtail2 |].
-  rewrite <- (Heq 0), <- (Heq' 0).
-  pose proof (H0 _ _ Dtail1).
-  pose proof (H0 _ _ Dmix).
-  pose proof (H0 _ _ Dtail2).
-  destruct_rel_typ.
-  handle_per_univ_elem_irrel.
-  first [ eassumption | use_relation_equivalence; eassumption ].
+  induction H; intros * Heq Heq' HR; apply_relation_equivalence; [ trivial | |];
+    destruct HR as [Dtail1 Hhead1];
+    assert (Hd : env_eq ρ1↯ ρ2↯) by (now rewrite Heq);
+    assert (Hd' : env_eq ρ1'↯ ρ2'↯) by (now rewrite Heq');
+    assert (Dmix : Dom ρ1↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; [ reflexivity | eassumption | eassumption ]);
+    assert (Dtail2 : Dom ρ2↯ ≈ ρ2'↯ ∈ tail_rel) by (eapply IHper_ctx_env; eassumption);
+    unshelve eexists; try exact Dtail2;
+    rewrite <- (Heq 0), <- (Heq' 0).
+  - pose proof (H0 _ _ Dtail1).
+    pose proof (H0 _ _ Dmix).
+    pose proof (H0 _ _ Dtail2).
+    destruct_rel_typ.
+    handle_per_univ_elem_irrel.
+    first [ eassumption | use_relation_equivalence; eassumption ].
+  - (** A definition: the bodies at the new tails are related to the old
+        heads through the other side's body. *)
+    destruct_conjs.
+    assert (Dom ρ2↯ ≈ ρ2↯ ∈ tail_rel) by solve_per.
+    assert (Dom ρ2'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
+    assert (Dom ρ1'↯ ≈ ρ2'↯ ∈ tail_rel) by solve_per.
+    solve_def_heads.
 Qed.
 
 #[local] Instance per_ctx_env_Proper {Γ Δ R} (H : EF Γ ≈ Δ ∈ per_ctx_env ↘ R) :

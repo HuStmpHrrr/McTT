@@ -13,7 +13,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
+  ContextCases FunctionCases LetCases NatCases SubstitutionCases SubtypingCases
   TrueFalseCases UniverseCases VariableCases LogicalRelation.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
@@ -56,7 +56,8 @@ Proof.
     repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _ |- _ =>
       specialize (IH _ _ ltac:(eassumption)) end;
     destruct_conjs.
-  all: try solve [ constructor | eapply rel_ctx_extend'; eassumption ].
+  all: try solve [ constructor | eapply rel_ctx_extend'; eassumption
+    | eapply rel_ctx_extend_def'; eassumption ].
   all: try (split; [ assumption |]).
   all: try solve [ apply valid_exp_typ; assumption | apply valid_exp_nat; assumption
     | apply valid_exp_zero; assumption
@@ -69,6 +70,9 @@ Proof.
     | eapply rel_exp_pi_cong; eassumption
     | eapply rel_exp_fn_cong; eassumption
     | eapply rel_exp_app_cong; eassumption
+    | eapply valid_exp_let; eassumption
+    | eapply rel_exp_let_cong; eassumption
+    | eapply rel_exp_let_zeta; eassumption
     | eapply rel_exp_pi_beta; eassumption
     | eapply rel_exp_nat_beta_zero; eassumption
     | eapply rel_exp_nat_beta_succ; eassumption
@@ -79,7 +83,7 @@ Proof.
     | eapply subtyp_trans; eassumption
     | eapply subtyp_pi; eassumption
     | apply subtyp_univ; [assumption | lia] ].
-  all: try solve [ eapply valid_exp_var; eassumption ].
+  all: try solve [ eapply valid_exp_var; eassumption | eapply rel_exp_var_delta; eassumption ].
   all: try solve [ eapply sme_unfold; eassumption ].
   all: try solve [ eapply sme_glob; eassumption ].
   eapply rel_exp_fn_eta; eassumption.

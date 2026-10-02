@@ -114,31 +114,29 @@ Proof.
 Qed.
 
 (** [⟪↑⟫ ρ] is [ρ↯], and the Ctx-Ext biconditional says precisely
-    that a [Γ ▹ A]-environment has a related tail. *)
-Lemma rel_wk_shift : forall {Γ A R R'},
+    that an environment of an extended context has a related tail.  This holds
+    for an assumption entry and a definition entry alike. *)
+Lemma rel_wk_shift : forall {Γ e R R'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
-    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
+    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R' ->
     rel_wk ↑ R' R.
 Proof.
   intros * HΓ HΓA; split; [ apply wk_mono_shift |]; intros ρ ρ' H; rewrite !eval_wk_shift.
-  invert_per_ctx_env HΓA.
-  apply_relation_equivalence.
-  destruct H as [? ?].
-  eassumption.
+  inversion HΓA; subst; handle_per_ctx_env_irrel;
+    apply_relation_equivalence; destruct_conjs; eassumption.
 Qed.
 
 (** The tail of an extended context, with [rel_wk_shift] for it.  Inverting
     the extension rule produces the tail PER, so unlike [rel_wk_shift] this needs
     no externally supplied witness for [Γ]; this is what allows
     [rel_sub_under_ctx_shift] its premise. *)
-Corollary rel_wk_shift_tail : forall {Γ A R},
-    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R ->
+Corollary rel_wk_shift_tail : forall {Γ e R},
+    EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     exists R', EF Γ ≈ Γ ∈ per_ctx_env ↘ R' /\ rel_wk ↑ R R'.
 Proof.
   intros * H.
-  inversion H; subst.
-  eexists; split; [ eassumption |].
-  eapply rel_wk_shift; eassumption.
+  inversion H; subst;
+    (eexists; split; [ eassumption | eapply rel_wk_shift; eassumption ]).
 Qed.
 
 (** The introduction rule of [Γ ⊨w φ : Δ], packaging its three components.
@@ -165,7 +163,7 @@ Lemma sem_ctx_per_ctx_env : forall {Γ},
     ⊨ Γ ->
     exists R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R.
 Proof.
-  induction 1; [| eexists; eassumption ].
+  induction 1; [| eexists; eassumption .. ].
   eexists; econstructor; apply Equivalence_Reflexive.
 Qed.
 
@@ -215,25 +213,33 @@ Qed.
 
 Hint Resolve rel_sub_id : mctt.
 
+(** The tail of a semantically well-formed context is semantically
+    well-formed. *)
+Lemma sem_ctx_tail : forall {Γ e},
+    ⊨ (e :: Γ)%list ->
+    ⊨ Γ.
+Proof.
+  intros * H; inversion H; assumption.
+Qed.
+
 (** [⇑] as a weakening judgment — the form the weakening lemmas below, and
     soundness through them, are instantiated at. *)
-Corollary rel_wk_under_ctx_shift : forall {Γ A},
-    ⊨ Γ ▹ A ->
-    Γ ▹ A ⊨w ↑ : Γ.
+Corollary rel_wk_under_ctx_shift : forall {Γ e},
+    ⊨ (e :: Γ)%list ->
+    (e :: Γ)%list ⊨w ↑ : Γ.
 Proof.
   intros * H.
   pose proof (sem_ctx_per_ctx_env H) as [env_relΓA HΓA].
-  inversion H as [| ? ? ? ? HΓ ? ?]; subst.
-  pose proof (sem_ctx_per_ctx_env HΓ) as [env_relΓ HΓ'].
+  pose proof (sem_ctx_per_ctx_env (sem_ctx_tail H)) as [env_relΓ HΓ'].
   eapply rel_wk_under_ctx_intro; try eassumption.
   eapply rel_wk_shift; eassumption.
 Qed.
 
 Hint Resolve rel_wk_under_ctx_shift : mctt.
 
-Corollary rel_sub_shift : forall {Γ A},
-    ⊨ Γ ▹ A ->
-    Γ ▹ A ⊨s Wk : Γ.
+Corollary rel_sub_shift : forall {Γ e},
+    ⊨ (e :: Γ)%list ->
+    (e :: Γ)%list ⊨s Wk : Γ.
 Proof.
   intros * H.
   apply (rel_sub_of_wk (rel_wk_under_ctx_shift H)).
@@ -346,6 +352,25 @@ Proof.
   - exists m, m'.
     repeat split; try eassumption.
     pairwise.
+Qed.
+
+(** The same with the element PER replaced by the canonical head PER of the
+    type, at any context PER of [Γ].  Taking the context PER as an argument
+    lets several such instances be read at one relation. *)
+Corollary rel_exp_under_ctx_simple_at : forall {Γ A M M' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ M ≈ M' : A ->
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_relΓ ->
+      exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head A A ρ ρ'.
+Proof.
+  intros * HΓ H.
+  pose proof (rel_exp_under_ctx_simple H) as [env_relΓ' [HΓ' [i HM]]].
+  assert (E : env_relΓ <~> env_relΓ') by (eapply per_ctx_env_right_irrel; eassumption).
+  intros ρ ρ' Hρ%E.
+  destruct (HM _ _ Hρ) as [a [a' [R [Ha [Ha' [HR [m [m' [Hm [Hm' Hmm']]]]]]]]]].
+  exists m, m'; repeat split; try eassumption.
+  eapply per_head_of; eassumption.
 Qed.
 
 Lemma subtyp_under_ctx_simple : forall {Γ A A'},
@@ -554,8 +579,8 @@ Qed.
     The second is a [rel_wk], the hypothesis of [rel_chain_map], so the chain is
     transported along the drop member by member. *)
 
-Lemma rel_sub_under_ctx_shift : forall {Γ Δ A σ σ'},
-    Γ ⊨s σ ≈ σ' : Δ ▹ A ->
+Lemma rel_sub_under_ctx_shift : forall {Γ Δ e σ σ'},
+    Γ ⊨s σ ≈ σ' : (e :: Δ)%list ->
     Γ ⊨s Wk ⨟ σ ≈ Wk ⨟ σ' : Δ.
 Proof.
   intros * [env_relΓ [HΓ [env_relΔA [HΔA Hσ]]]].
@@ -743,6 +768,90 @@ Proof.
   intros * H.
   pose proof (rel_exp_under_ctx_sym H).
   eapply rel_exp_under_ctx_trans; eassumption.
+Qed.
+
+(** * Changing the Context PER
+
+    A substitution judgment may be read with a smaller domain relation or a
+    larger codomain relation, and a term judgment in any context whose
+    relation is included in that of its own context.  This is how a judgment
+    about [Γ ▹ A] serves for [Γ ▸ A ≔ M], and a judgment about [Γ ▸ A ≔ M] for
+    [Γ ▸ A ≔ M'] when [M] and [M'] are related. *)
+
+Lemma rel_sub_under_ctx_restrict : forall {Γ1 Γ2 Δ1 Δ2 σ σ' R1 R2 S1 S2},
+    EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
+    EF Γ2 ≈ Γ2 ∈ per_ctx_env ↘ R2 ->
+    EF Δ1 ≈ Δ1 ∈ per_ctx_env ↘ S1 ->
+    EF Δ2 ≈ Δ2 ∈ per_ctx_env ↘ S2 ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ S1 -> Dom ρ ≈ ρ' ∈ S2) ->
+    Γ2 ⊨s σ ≈ σ' : Δ1 ->
+    Γ1 ⊨s σ ≈ σ' : Δ2.
+Proof.
+  intros * HΓ1 HΓ2 HΔ1 HΔ2 HR HS [R2' [HΓ2' [S1' [HΔ1' Hσ]]]].
+  assert (ER : R2' <~> R2) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (ES : S1' <~> S1) by (eapply per_ctx_env_right_irrel; eassumption).
+  exists R1, HΓ1, S2, HΔ2.
+  intros Γ' env_rel' HΓ' φ [Hφm Hφ] ρ ρ' Hρ.
+  assert (Hφ' : rel_wk φ env_rel' R2')
+    by (split; [ assumption | intros; apply ER, HR, Hφ; assumption ]).
+  destruct (Hσ _ _ HΓ' _ Hφ' _ _ Hρ) as [v1 v2 v3 v4 H1 H2 H3 H4 Hchain].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| eassumption ].
+  intros; apply HS, ES; assumption.
+Qed.
+
+Lemma rel_exp_under_ctx_restrict : forall {Γ1 Γ2 R1 R2 A M M'},
+    EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
+    EF Γ2 ≈ Γ2 ∈ per_ctx_env ↘ R2 ->
+    (forall ρ ρ', Dom ρ ≈ ρ' ∈ R1 -> Dom ρ ≈ ρ' ∈ R2) ->
+    Γ2 ⊨ M ≈ M' : A ->
+    Γ1 ⊨ M ≈ M' : A.
+Proof.
+  intros * HΓ1 HΓ2 HR [R2' [HΓ2' [i HM]]].
+  exists R1, HΓ1, i.
+  intros Γ' env_rel' HΓ' σ σ' Hσ.
+  apply (HM _ _ HΓ').
+  eapply rel_sub_under_ctx_restrict; [ eassumption | eassumption | exact HΓ1 | exact HΓ2 | | exact HR | exact Hσ ].
+  auto.
+Qed.
+
+(** * Equality from Pointwise Relatedness
+
+    Two valid terms of [T] are equal when their values at related environments
+    are related.  The commutation obligations come from the two validity
+    judgments, and the relatedness obligation from the pointwise premise read
+    at the substituted environments. *)
+Lemma rel_exp_under_ctx_of_simple : forall {Γ T N N' env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ N : T ->
+    Γ ⊨ N' : T ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_relΓ ->
+        exists n n', ⟦ N ⟧ ρ ↘ n /\ ⟦ N' ⟧ ρ' ↘ n' /\ Dom n ≈ n' ∈ per_head T T ρ ρ') ->
+    Γ ⊨ N ≈ N' : T.
+Proof.
+  intros * HΓ [R1' [HΓ1 [i HN]]] [R2' [HΓ2 [j HN']]] Hpt.
+  exists env_relΓ, HΓ, i.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HN _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R1 [Ht1 He1]].
+  destruct (HN' _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R2 [Ht2 He2]].
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ) by (eapply rel_sub_under_ctx_at'; eassumption).
+  destruct (Hpt _ _ Hρσ) as [n [n' [Hn [Hn' Hnn']]]].
+  destruct Ht1 as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hty1].
+  destruct Ht2 as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hty2].
+  destruct He1 as [v1 v2 v3 v4 Hv1 Hv2 Hv3 Hv4 Hc1].
+  destruct He2 as [w1 w2 w3 w4 Hw1 Hw2 Hw3 Hw4 Hc2].
+  functional_eval_rewrite_clear.
+  assert (Hmid1 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ R1) by pairwise.
+  assert (Hmid2 : DF a2 ≈ a3 ∈ per_univ_elem j ↘ R2) by pairwise.
+  assert (HPER : PER R1) by (eapply per_elem_PER; eassumption).
+  apply (per_head_iff Ha2 Ha3 Hmid1) in Hnn'.
+  assert (E : R2 <~> R1) by (eapply per_univ_elem_right_irrel; eassumption).
+  exists R1; split.
+  - econstructor; eassumption.
+  - apply (mk_rel_exp v1 v2 w3 w4); try eassumption.
+    apply rel_chain_4; [ pairwise | eassumption | apply E; pairwise ].
 Qed.
 
 End Fixed_GCtx.

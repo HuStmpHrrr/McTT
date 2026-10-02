@@ -16,7 +16,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases
-  SubtypingCases UniverseCases FunctionCases NatCases TrueFalseCases.
+  SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -59,6 +59,8 @@ Proof.
   all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].
   all: try solve [ eapply gme_glob; eassumption ].
   all: try solve [ eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption ].
+  all: try solve [ eapply glu_rel_ctx_extend_def; [ eapply presup_ctx_glu_rel_exp | |]; eassumption ].
+  all: try solve [ eapply glu_rel_exp_let; eassumption ].
   (* subsumption: the subtyping premise is moved syntactically *)
   match goal with Hμ : glu_emb _ _ _ _ |- _ =>
     destruct (emb_preserves_wf _ _ _ _ (gme_emb _ _ _ _ Hμ)) as (_ & _ & _ & Hsub) end.
@@ -77,8 +79,8 @@ Section Weaken.
 
   Lemma wf_sub_nil : forall Δ σ, ⊢ Δ -> Δ ⊢s σ : ⋅.
   Proof.
-    intros * HΔ; constructor; [ exact HΔ | constructor; eapply ctx_wf_gctx; exact HΔ |].
-    intros * Hx; inversion Hx.
+    intros * HΔ; constructor; [ exact HΔ | constructor; eapply ctx_wf_gctx; exact HΔ | |];
+      intros * Hx; inversion Hx.
   Qed.
 
   Lemma glu_rel_exp_nil_weaken : forall Γ N T, ⊩ Γ -> ⋅ ⊩ N : T -> Γ ⊩ N : T.
@@ -86,7 +88,7 @@ Section Weaken.
     intros * [SbΓ HΓ] [Sb0 [H0 [i Hi]]].
     exists SbΓ; split; [ exact HΓ |]; exists i; intros Δ σ ρ Hσ.
     apply Hi.
-    inversion H0 as [Sb' Heq Hg |]; subst.
+    inversion H0 as [Sb' Heq Hg | |]; subst.
     apply (Heq Δ σ ρ); cbn.
     apply wf_sub_nil, (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HΓ _ _ _ Hσ)).
   Qed.
@@ -113,7 +115,7 @@ Section Cook.
     intros * HT%completeness_fundamental_exp.
     destruct (rel_exp_of_typ_inversion_simple HT) as [env_rel [Hnil H]].
     apply H.
-    inversion Hnil as [? Heq |]; subst.
+    inversion Hnil as [? Heq | |]; subst.
     apply Heq; exact I.
   Qed.
 
@@ -121,7 +123,7 @@ Section Cook.
       EG ⋅ ∈ glu_ctx_env ↘ Sb -> Δ ⊢s σ ® ρ ∈ Sb -> forall ρ', Δ ⊢s σ ® ρ' ∈ Sb.
   Proof.
     intros * H0 Hσ ρ'.
-    inversion H0 as [Sb' Heq Hg |]; subst.
+    inversion H0 as [Sb' Heq Hg | |]; subst.
     apply (Heq Δ σ ρ'); apply (Heq Δ σ ρ) in Hσ; exact Hσ.
   Qed.
 

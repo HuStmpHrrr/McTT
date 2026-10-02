@@ -16,9 +16,10 @@ Section lookup.
   Ltac impl_obl_tac1 :=
     match goal with
     | |- ~ _ => intro
-    | H: ⊢ _ ▹ _ |- _ => inversion_clear H
+    | H: ⊢ _ :: _ |- _ => inversion_clear H
     | H: ⋅ ∋ #_ : _ |- _ => inversion_clear H
-    | H: _ ▹ _ ∋ #(S _) : _ |- _ => inversion_clear H
+    | H: _ :: _ ∋ #(S _) : _ |- _ => inversion_clear H
+    | |- ?e :: _ ∋ #0 : (ce_typ ?e)[↑]ʷ => destruct e; constructor
     end.
 
   #[local]
@@ -29,8 +30,8 @@ Section lookup.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations lookup G (HG : ⊢ G) x : { A | G ∋ #x : A } + { forall A, ~ G ∋ #x : A } :=
-  | G ▹ A, HG, x with x => {
-    | 0 => pureo (exist _ A[↑]ʷ _)
+  | cons e G, HG, x with x => {
+    | 0 => pureo (exist _ (ce_typ e)[↑]ʷ _)
     | S x' =>
         let*o (exist _ B _) := lookup G _ x' while _ in
         pureo (exist _ B[↑]ʷ _)
@@ -71,6 +72,7 @@ Section type_check.
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
+  | ti_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B -> type_infer_order (ℓ A ≔ M in B)
   | ti_vlookup : forall {x}, type_infer_order #x
   (** A global is read off the global context without recursion; the
       obligations obtain the normal form of its resolved type from the
@@ -220,6 +222,13 @@ Section type_check.
         let*b->o _ := type_check G (A : nf) _ N' _ while _ in
         let (B', _) := nbe_ty_impl gc_deps gc_stack G (B : nf)[Id,,N'] _ in
         pureo (exist _ B' _)
+    | ℓ A' ≔ M' in B' =>
+        let*o (exist _ UA' _) := type_infer G _ A' _ while _ in
+        let*o (exist _ i _) :=  get_level_of_type_nf UA' while _ in
+        let*b->o _ := type_check G A' _ M' _ while _ in
+        let*o (exist _ C _) := type_infer (G ▸ A' ≔ M') _ B' _ while _ in
+        let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id,,M'] _ in
+        pureo (exist _ D _)
     | #x =>
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
@@ -447,6 +456,44 @@ Section type_check.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
+
+  Next Obligation. (* exists i, G ⊢ A' : Type@i *)
+    clear_defs.
+    eexists; mauto 4 using alg_type_infer_sound.
+  Qed.
+
+  Next Obligation. (* ⊢ G ▸ A' ≔ M' *)
+    clear_defs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    mauto 3.
+  Qed.
+
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
+    clear_defs.
+    destruct_conjs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    assert (⊢ G ▸ A' ≔ M') by mauto 3.
+    assert (exists j, G ▸ A' ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢ C[Id,,M'] : Type@j) as [? []]%soundness_ty by mauto 3.
+    mauto 3 using nbe_ty_order_sound.
+  Qed.
+
+  Next Obligation. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (exists i, G ⊢a D ⟹ Typeⁿ@i) *)
+    clear_defs.
+    split; [mauto 3 |].
+    destruct_conjs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    assert (⊢ G ▸ A' ≔ M') by mauto 3.
+    assert (exists j, G ▸ A' ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢ C[Id,,M'] : Type@j) by mauto 3.
+    assert (G ⊢ C[Id,,M'] ≈ D : Type@j) by (eapply soundness_ty'; mauto 3).
+    assert (user_exp D) by trivial using user_exp_nf.
+    assert (exists k, G ⊢a D ⟹ Typeⁿ@k /\ k <= j) as [? []] by (gen_presups; mauto 3).
+    firstorder.
+  Qed.
 
   Extraction Inline type_check_functional type_infer_functional.
 
