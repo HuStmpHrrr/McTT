@@ -25,9 +25,20 @@ export COQDOCFLAGS
 post-all:: $(COQPARSERFILE) $(PARSERMESSAGEEXTRACTIONFILE) check_parserMessages
 	@echo "Separate Extraction main." | $(COQTOP) $(COQFLAGS) $(COQLIBS) -topfile Entrypoint.v -l Entrypoint.v
 
+# Menhir (as of 20260209, with --coq or --rocq alike) still emits pre-9.0
+# syntax: "From Coq" (deprecated-from-Coq) and "Proof term." for the
+# validator theorems (deprecated-exact-proof).  Rewrite both into the
+# equivalent current syntax right after generation; the proof terms and
+# their opacity are unchanged.  On failure the half-made file is removed so
+# that make does not mistake it for up to date.
+MENHIRPOSTSED := \
+  -e 's/^From Coq\([. ]\)/From Stdlib\1/' \
+  -e 's/^Proof \(.*\)\.$$/Proof. exact (\1). Qed./'
+
 $(COQPARSERFILE): %.v : %.vy
 	@echo "MENHIR $?"
 	@$(MENHIR) --coq "$?"
+	@sed $(MENHIRPOSTSED) "$@" > "$@.tmp" && mv "$@.tmp" "$@" || { rm -f "$@" "$@.tmp"; exit 1; }
 
 $(PARSERMESSAGEEXTRACTIONFILE): $(PARSERMESSAGEFILE) $(COQPARSERORIGFILE)
 	@echo "MENHIR $? PARSER MESSAGE"
