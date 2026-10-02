@@ -48,6 +48,12 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a N ⟸ A ->
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
+| ati_let :
+  `( Γ ⊢a A ⟹ Typeⁿ@i ->
+     Γ ⊢a M ⟸ A ->
+     Γ ▸ A ≔ M ⊢a B ⟹ C ->
+     nbe_ty_f Γ C[Id,,M] D ->
+     Γ ⊢a ℓ A ≔ M in B ⟹ D )
 | ati_vlookup :
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
@@ -111,6 +117,11 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp M ->
      user_exp N ->
      user_exp (a_app M N) )
+| user_exp_let :
+  `( user_exp A ->
+     user_exp M ->
+     user_exp B ->
+     user_exp (a_let A M B) )
 | user_exp_vlookup :
   `( user_exp (a_var x) )
 | user_exp_glob :

@@ -40,6 +40,10 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
      eval_exp_order Θ Ξ N p ->
      (forall m n, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_app_order Θ Ξ m n) ->
      eval_exp_order Θ Ξ (M $ N) p )
+| eeo_let :
+  `( eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_exp_order Θ Ξ B (p ↦ m)) ->
+     eval_exp_order Θ Ξ (ℓ A ≔ M in B) p )
 | eeo_glob_delta :
   `( gc_resolve Θ Ξ pth = Some (ge_def true pv A (Some M)) ->
      eval_exp_order Θ Ξ M nil ->
@@ -169,6 +173,10 @@ Section EvalImpl.
       let (n , Hn) := eval_exp_impl N p _ in
       let (a, Ha) := eval_app_impl m n _ in
       exist _ a _
+  | ℓ A ≔ M in B, p, H =>
+      let (m, Hm) := eval_exp_impl M p _ in
+      let (r, Hr) := eval_exp_impl B (p ↦ m) _ in
+      exist _ r _
   | a_glob pth, p, H with inspect (gc_resolve Θ Ξ pth) := {
     | exist _ (Some (ge_def true pv A (Some M))) E =>
         let (m, Hm) := eval_exp_impl M nil _ in
