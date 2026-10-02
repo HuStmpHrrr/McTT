@@ -817,9 +817,9 @@ Record wf_sub (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ : sub) : Prop := wf_s
 (** A substitution sends a definition to something equal to its body. *)
 ; wf_sub_apply_def : forall x A M, Δ ∋ #x ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ M[σ] : A[σ]
 (** A substitution sends a module slot to the unit it holds, transported:
-    as a literal, or as a slot holding that unit. *)
+    as a well-formed literal, or as a slot holding that unit. *)
 ; wf_sub_apply_mod : forall x U, Δ ∋ #x ⇒ₘ U ->
-    σ x = se_mod (me_lit U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ⇒ₘ U[σ]ᵘ
+    (σ x = se_mod (me_lit U[σ]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ⇒ₘ U[σ]ᵘ
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ" := (wf_sub Θ Ξ Γ Δ σ) : type_scope.
 

@@ -1577,3 +1577,8 @@ Ltac simpl_sub := autorewrite with sb in *.
 #[export]
 Hint Rewrite -> exp_sub_id exp_sub_sub exp_sub_shift_extend
                 exp_sub_q_extend exp_sub_q_compose_extend : mctt.
+
+(** A unit is moved by its telescope and definition ([gunit_wk_mk],
+    [gunit_sub_mk]); [simpl] leaves it folded. *)
+#[global] Arguments gunit_wk : simpl never.
+#[global] Arguments gunit_sub : simpl never.

@@ -170,38 +170,10 @@ Proof.
     rewrite (IHH _ _ _ _ eq_refl), map_app; reflexivity.
 Qed.
 
-(** Under a substitution that sends module slots to slots or literals, the
-    root stays a root. *)
-Definition sb_mod_simple (σ : sub) : Prop :=
-  forall x, match σ x with
-       | se_mod H => exists U, H = me_lit U
-       | _ => True
-       end.
-
-Lemma modexp_spine_sub : forall H R args pre σ,
-    sb_mod_simple σ ->
-    modexp_spine H = (R, args, pre) ->
-    modexp_spine H[σ]ᵐ = (R[σ]ᵐ, map (fun N => N[σ]) args, pre).
-Proof.
-  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ Hs; cbn in Hs |- *; try (injection Hs as <- <- <-; reflexivity).
-  - injection Hs as <- <- <-; specialize (Hσ n); cbn.
-    destruct (σ n) as [y | M | H0] eqn:E; cbn; [ reflexivity | reflexivity |].
-    destruct Hσ as [U ->]; reflexivity.
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ Hσ eq_refl); reflexivity.
-  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
-    rewrite (IHH _ _ _ _ Hσ eq_refl), map_app; reflexivity.
-Qed.
-
 Lemma me_noargs_wk : forall H φ, me_noargs H -> me_noargs (modexp_wk H φ).
 Proof. induction H; intros; cbn in *; auto. Qed.
 
-Lemma me_noargs_sub : forall H σ, sb_mod_simple σ -> me_noargs H -> me_noargs H[σ]ᵐ.
-Proof.
-  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ HH; cbn in *; auto.
-  specialize (Hσ n); destruct (σ n); cbn; auto.
-  destruct Hσ as [U ->]; exact I.
-Qed.
+
 
 (** ** The [Π] of a Type *)
 
@@ -421,6 +393,38 @@ Qed.
 Definition sub_mod_compat (σ : sub) (Γ Δ : ctx) : Prop :=
   forall x U, Δ ∋ #x ⇒ₘ U ->
     σ x = se_mod (me_lit U[σ]ᵘ) \/ exists y, σ x = se_var y /\ Γ ∋ #y ⇒ₘ U[σ]ᵘ.
+
+(** The root of a module expression, if it is a slot, is a module slot of
+    [Γ].  A same-unit substitution sends such a root to a root. *)
+Fixpoint me_slot_root (Γ : ctx) (H : modexp) : Prop :=
+  match H with
+  | me_mem H _ | me_app H _ => me_slot_root Γ H
+  | me_var x => exists U, Γ ∋ #x ⇒ₘ U
+  | _ => True
+  end.
+
+Lemma modexp_spine_sub : forall H R args pre σ Γ Δ,
+    sub_mod_compat σ Γ Δ ->
+    me_slot_root Δ H ->
+    modexp_spine H = (R, args, pre) ->
+    modexp_spine H[σ]ᵐ = (R[σ]ᵐ, map (fun N => N[σ]) args, pre).
+Proof.
+  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ Hr Hs; cbn in Hr, Hs |- *;
+    try (injection Hs as <- <- <-; reflexivity).
+  - injection Hs as <- <- <-; destruct Hr as [U HU]; cbn.
+    destruct (Hσ _ _ HU) as [-> | (y & -> & _)]; reflexivity.
+  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
+    rewrite (IHH _ _ _ _ _ _ Hσ Hr eq_refl); reflexivity.
+  - destruct (modexp_spine H) as [[R' args'] pre'] eqn:E; injection Hs as <- <- <-.
+    rewrite (IHH _ _ _ _ _ _ Hσ Hr eq_refl), map_app; reflexivity.
+Qed.
+
+Lemma me_noargs_sub : forall H σ Γ Δ,
+    sub_mod_compat σ Γ Δ -> me_slot_root Δ H -> me_noargs H -> me_noargs H[σ]ᵐ.
+Proof.
+  induction H as [| n | H IHH y | H IHH N |]; intros * Hσ Hr HH; cbn in *; eauto.
+  destruct Hr as [U HU]; destruct (Hσ _ _ HU) as [-> | (y & -> & _)]; exact I.
+Qed.
 
 Lemma sub_mod_compat_q : forall σ Γ Δ e,
     sub_mod_compat σ Γ Δ -> sub_mod_compat (q σ) (centry_sub e σ :: Γ) (e :: Δ).

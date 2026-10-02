@@ -19,7 +19,7 @@ From Stdlib Require Import Lia Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic.System Require Export Scoping.
+From Mctt.Core.Syntactic.System Require Export Scoping MemberLemmas.
 Import Syntax_Notations Wk_Notations.
 #[local] Open Scope list_scope.
 
@@ -51,6 +51,59 @@ Hint Resolve ctx_lookup_app_l : mctt.
     the context judgment but a presupposition of typing.  These come first, each
     by an induction that reads it off whichever premise is stated at [Γ];
     [ctx_decomp] is a consequence. *)
+
+Lemma presup_ext_eq_ctx : forall {Θ Ξ Γ Ψ Ψ'}, Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; auto.
+Qed.
+
+#[export]
+Hint Resolve presup_ext_eq_ctx : mctt.
+
+Lemma presup_unit_eq_ctx : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_unit_eq_ctx : mctt.
+
+Lemma presup_modexp_eq_ctx : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof.
+  induction 1; mautosolve 2.
+Qed.
+
+#[export]
+Hint Resolve presup_modexp_eq_ctx : mctt.
+
+(** A unit equivalence presupposes the reflexive instances of both sides. *)
+Lemma wf_unit_eq_refl_left : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof. intros; eapply wf_unit_eq_trans; [ eassumption | apply wf_unit_eq_sym; eassumption ]. Qed.
+
+Lemma wf_unit_eq_refl_right : forall {Θ Ξ Γ U U'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U' ≈ U'.
+Proof. intros; eapply wf_unit_eq_trans; [ apply wf_unit_eq_sym; eassumption | eassumption ]. Qed.
+
+Lemma wf_modexp_eq_refl_left : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H.
+Proof. intros; eapply wf_me_trans; [ eassumption | apply wf_me_sym; eassumption ]. Qed.
+
+Lemma wf_modexp_eq_refl_right : forall {Θ Ξ Γ H H'}, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H' ≈ H'.
+Proof. intros; eapply wf_me_trans; [ apply wf_me_sym; eassumption | eassumption ]. Qed.
+
+Lemma ctx_decomp_mod : forall {Θ Ξ Γ U},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof.
+  inversion 1; eauto using presup_unit_eq_ctx.
+Qed.
+
+Corollary ctx_decomp_mod_left : forall {Θ Ξ Γ U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof. intros * ?%ctx_decomp_mod; easy. Qed.
+
+Corollary ctx_decomp_mod_unit : forall {Θ Ξ Γ U}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+Proof. intros * ?%ctx_decomp_mod; easy. Qed.
+
+#[export]
+Hint Resolve ctx_decomp_mod_left ctx_decomp_mod_unit : mctt.
 
 Lemma presup_exp_ctx : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof.
@@ -129,7 +182,7 @@ Hint Resolve ctx_decomp_def_left ctx_decomp_def_typ ctx_decomp_def_body : mctt.
 (** The tail of a well-formed context, whatever its head. *)
 Corollary ctx_decomp_tail : forall {Θ Ξ Γ e}, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof.
-  intros * H; destruct e; eauto using ctx_decomp_left, ctx_decomp_def_left.
+  intros * H; destruct e; eauto using ctx_decomp_left, ctx_decomp_def_left, ctx_decomp_mod_left.
 Qed.
 
 #[export]
@@ -156,13 +209,35 @@ Ltac saturate_sub :=
 Lemma wf_wk_id : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢w wk_id : Γ.
 Proof.
   intros; econstructor; try eassumption;
-    intros; rewrite !exp_wk_id; assumption.
+    intros; rewrite ?exp_wk_id, ?gunit_wk_id; assumption.
 Qed.
 
 Lemma wf_wk_shift : forall Θ Ξ Γ e, ⊢ Θ ⍮ Ξ ⍮ e :: Γ -> Θ ⍮ Ξ ⍮ e :: Γ ⊢w ↑ : Γ.
 Proof.
-  intros * H; econstructor; [ eassumption | mauto 2 | |];
+  intros * H; econstructor; [ eassumption | mauto 2 | | |];
     intros; simpl; mauto 2.
+Qed.
+
+(** Lifting a weakening over any entry: the lookups move along with it.  The
+    two contexts must be well formed; the rules below supply them. *)
+Lemma wf_wk_q_gen : forall Θ Ξ Γ Δ φ e,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ centry_wk e φ :: Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ e :: Γ ->
+    Θ ⍮ Ξ ⍮ centry_wk e φ :: Δ ⊢w wk_q φ : e :: Γ.
+Proof.
+  intros * Hφ ? ?.
+  econstructor; [ assumption | assumption | | |].
+  - intros x B Hlk; inversion Hlk; subst; simpl; rewrite exp_wk_shift_wk_q.
+    + econstructor.
+    + econstructor.
+    + econstructor; eapply wf_wk_lookup; eassumption.
+  - intros x B N Hlk.
+    inversion Hlk; subst; simpl; rewrite !exp_wk_shift_wk_q; econstructor.
+    eapply wf_wk_lookup_def; eassumption.
+  - intros x U Hlk.
+    inversion Hlk; subst; simpl; rewrite gunit_wk_shift_wk_q; econstructor.
+    eapply wf_wk_lookup_mod; eassumption.
 Qed.
 
 (** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ], it is
@@ -175,14 +250,7 @@ Lemma wf_wk_q : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i ->
     Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w wk_q φ : Γ ▹ A.
 Proof.
-  intros * Hφ ? ?; saturate_wk.
-  econstructor; [ mauto 2 | mauto 2 | |].
-  - intros x B Hlk; simpl in Hlk.
-    inversion Hlk; subst; simpl; rewrite exp_wk_shift_wk_q; econstructor.
-    eapply wf_wk_lookup; eassumption.
-  - intros x B N Hlk.
-    inversion Hlk; subst; simpl; rewrite !exp_wk_shift_wk_q; econstructor.
-    eapply wf_wk_lookup_def; eassumption.
+  intros * Hφ ? ?; apply (wf_wk_q_gen _ _ _ _ _ (ce_ass A)); mauto 2.
 Qed.
 
 (** The same over a definition: the body is weakened along with its type. *)
@@ -194,15 +262,29 @@ Lemma wf_wk_q_def : forall Θ Ξ Γ Δ φ A M i,
     Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ : A[φ]ʷ ->
     Θ ⍮ Ξ ⍮ Δ ▸ A[φ]ʷ ≔ M[φ]ʷ ⊢w wk_q φ : Γ ▸ A ≔ M.
 Proof.
-  intros * Hφ ? ? ? ?; saturate_wk.
-  econstructor; [ mauto 2 | mauto 2 | |].
-  - intros x B Hlk; simpl in Hlk.
-    inversion Hlk; subst; simpl; rewrite exp_wk_shift_wk_q;
-      econstructor.
-    eapply wf_wk_lookup; eassumption.
-  - intros x B N Hlk.
-    inversion Hlk; subst; simpl; rewrite !exp_wk_shift_wk_q; econstructor.
-    eapply wf_wk_lookup_def; eassumption.
+  intros * Hφ ? ? ? ?; apply (wf_wk_q_gen _ _ _ _ _ (ce_def A M)); mauto 2.
+Qed.
+
+(** The same over a module slot. *)
+Lemma wf_wk_q_mod : forall Θ Ξ Γ Δ φ U,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk U φ ≈ gunit_wk U φ ->
+    Θ ⍮ Ξ ⍮ Δ ▹ₘ gunit_wk U φ ⊢w wk_q φ : Γ ▹ₘ U.
+Proof.
+  intros * Hφ ? ?; apply (wf_wk_q_gen _ _ _ _ _ (ce_mod U)); mauto 2.
+Qed.
+
+(** Lifting over a whole extension, given that both extended contexts are
+    well formed. *)
+Lemma wf_wk_ext : forall Θ Ξ Ψ Γ Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ tele_wk Ψ φ ++ Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
+    Θ ⍮ Ξ ⍮ tele_wk Ψ φ ++ Δ ⊢w wk_qn (length Ψ) φ : Ψ ++ Γ.
+Proof.
+  induction Ψ as [| e Ψ IH]; intros * Hφ HΔ HΓ; cbn in *; [ assumption |].
+  apply wf_wk_q_gen; [ apply IH; eauto using ctx_decomp_tail | assumption | assumption ].
 Qed.
 
 Lemma wf_wk_compose : forall Θ Ξ Γ Δ Δ' φ ψ,
@@ -211,17 +293,20 @@ Lemma wf_wk_compose : forall Θ Ξ Γ Δ Δ' φ ψ,
     Θ ⍮ Ξ ⍮ Γ ⊢w φ ⊙ ψ : Δ'.
 Proof.
   intros * Hψ Hφ; saturate_wk.
-  econstructor; [ eassumption | eassumption | |].
+  econstructor; [ eassumption | eassumption | | |].
   - intros x B ?; simpl; rewrite <- exp_wk_wk.
     eapply wf_wk_lookup; [ eassumption | ].
     eapply wf_wk_lookup; eassumption.
   - intros x B N ?; simpl; rewrite <- !exp_wk_wk.
     eapply wf_wk_lookup_def; [ eassumption | ].
     eapply wf_wk_lookup_def; eassumption.
+  - intros x U ?; simpl; rewrite <- gunit_wk_wk.
+    eapply wf_wk_lookup_mod; [ eassumption | ].
+    eapply wf_wk_lookup_mod; eassumption.
 Qed.
 
 #[export]
-Hint Resolve wf_wk_id wf_wk_shift wf_wk_q wf_wk_q_def wf_wk_compose : mctt.
+Hint Resolve wf_wk_id wf_wk_shift wf_wk_q wf_wk_q_def wf_wk_q_mod wf_wk_compose : mctt.
 
 (** [ℕ] is closed, so lifting a weakening over a [ℕ] binder needs no premises.
     This is the shape the [ℕ]-eliminator rules present. *)
@@ -412,6 +497,138 @@ Ltac lift_wk_natrec :=
       rewrite exp_wk_sub_natrec in H
   end.
 
+(** ** Facts about Modules for the Transport Lemmas *)
+
+Lemma ext_eq_ctx : forall Θ Ξ Γ Ψ Ψ',
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ /\ ⊢ Θ ⍮ Ξ ⍮ Ψ' ++ Γ.
+Proof.
+  induction 1; cbn; split; destruct_all; mauto 3 using wf_unit_eq_refl_left.
+Qed.
+
+Lemma ext_eq_ctx_left : forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ.
+Proof. intros * H; exact (proj1 (ext_eq_ctx _ _ _ _ _ H)). Qed.
+
+Lemma ext_eq_ctx_right : forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> ⊢ Θ ⍮ Ξ ⍮ Ψ' ++ Γ.
+Proof. intros * H; exact (proj2 (ext_eq_ctx _ _ _ _ _ H)). Qed.
+
+#[export]
+Hint Resolve ext_eq_ctx_left ext_eq_ctx_right : mctt.
+
+(** The tail of a well-formed context [Ψ ++ Γ]. *)
+Lemma ctx_app_wf_tail : forall Θ Ξ Ψ Γ, ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Γ.
+Proof. induction Ψ; intros; cbn in *; eauto using ctx_decomp_tail. Qed.
+
+Lemma ctx_app_wf_suffix : forall Θ Ξ Ψ1 Ψ0 Γ, ⊢ Θ ⍮ Ξ ⍮ (Ψ1 ++ Ψ0) ++ Γ -> ⊢ Θ ⍮ Ξ ⍮ Ψ0 ++ Γ.
+Proof. intros; rewrite <- List.app_assoc in *; eapply ctx_app_wf_tail; eassumption. Qed.
+
+Lemma tele_ass_wk : forall Δ φ, tele_ass Δ -> tele_ass (tele_wk Δ φ).
+Proof.
+  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+Qed.
+
+Lemma tele_ass_sub : forall Δ σ, tele_ass Δ -> tele_ass (tele_sub Δ σ).
+Proof.
+  induction 1 as [| e Δ [A ->] HΔ IH]; cbn; constructor; eauto.
+Qed.
+
+Lemma body_shape_wk : forall Φ Φ' φ φ', body_shape Φ Φ' -> body_shape (gmod_wk Φ φ) (gmod_wk Φ' φ').
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] * Hs; cbn in *; try contradiction; auto.
+  - destruct Hs as (Hs & -> & HE); repeat split; auto.
+    destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; auto.
+  - destruct Hs as (Hs & Hc); split; auto.
+    destruct c, c'; cbn in *; auto.
+Qed.
+
+Lemma body_shape_sub : forall Φ Φ' σ σ', body_shape Φ Φ' -> body_shape (gmod_sub Φ σ) (gmod_sub Φ' σ').
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] * Hs; cbn in *; try contradiction; auto.
+  - destruct Hs as (Hs & -> & HE); repeat split; auto.
+    destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; auto.
+  - destruct Hs as (Hs & Hc); split; auto.
+    destruct c, c'; cbn in *; auto.
+Qed.
+
+Lemma exp_wk_sub_extend_mod : forall M H φ,
+    M[Id ,,ₘ H][φ]ʷ = M[wk_q φ]ʷ[Id ,,ₘ modexp_wk H φ].
+Proof.
+  intros; rewrite exp_wk_sub, exp_sub_wk; apply exp_sub_sb_eq; intros [| x]; reflexivity.
+Qed.
+
+Lemma exp_sub_sub_extend_mod : forall M H σ,
+    M[Id ,,ₘ H][σ] = M[q σ][Id ,,ₘ H[σ]ᵐ].
+Proof.
+  intros; rewrite exp_sub_extend_mod_sub, exp_sub_q_extend_mod; reflexivity.
+Qed.
+
+(** A well-typed weakening sends module slots to slots of the same unit, and a
+    well-typed substitution sends them to the same unit. *)
+Lemma wf_wk_mod_compat : forall Θ Ξ Γ Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> wk_mod_compat φ Δ Γ.
+Proof. intros * Hφ x U HU; eapply wf_wk_lookup_mod; eassumption. Qed.
+
+Lemma wf_sub_mod_compat : forall Θ Ξ Γ Δ σ, Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ -> sub_mod_compat σ Δ Γ.
+Proof.
+  intros * Hσ x U HU; destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[? _] | ?]; [ left | right ]; assumption.
+Qed.
+
+#[export]
+Hint Resolve wf_wk_mod_compat wf_sub_mod_compat : mctt.
+
+Lemma ext_eq_length : forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> length Ψ = length Ψ'.
+Proof. induction 1; cbn; auto. Qed.
+
+(** The lifted weakening into an extension, from the judgments about it. *)
+Lemma wf_wk_ext_of_ext : forall Θ Ξ Γ Ψ Ψ' Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_wk Ψ φ ≈ tele_wk Ψ' φ ->
+    Θ ⍮ Ξ ⍮ tele_wk Ψ φ ++ Δ ⊢w wk_qn (length Ψ) φ : Ψ ++ Γ /\
+    Θ ⍮ Ξ ⍮ tele_wk Ψ' φ ++ Δ ⊢w wk_qn (length Ψ') φ : Ψ' ++ Γ.
+Proof.
+  intros * Hφ HΨ HΨφ; split; apply wf_wk_ext; eauto using ext_eq_ctx_left, ext_eq_ctx_right.
+Qed.
+
+(** The import checks of a body, moved along a weakening of the unit. *)
+Lemma wk_body_checks : forall Θ Ξ Γ Δu Φ Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ (body_ctx Φ ++ Δu) ++ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ tele_wk (body_ctx Φ ++ Δu) φ ++ Δ ->
+    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
+       forall Δ1 φ0, Θ ⍮ Ξ ⍮ Δ1 ⊢w φ0 : body_ctx Φ0 ++ Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ1 ⊢ᵐ modexp_wk E φ0 ≈ modexp_wk E φ0) ->
+    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
+       member_ok Θ Ξ (body_ctx Φ0 ++ Δu ++ Γ) E n) ->
+    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks (gmod_wk Φ (wk_qn (length Δu) φ))) ->
+       Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ tele_wk Δu φ ++ Δ ⊢ᵐ E ≈ E) /\
+    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks (gmod_wk Φ (wk_qn (length Δu) φ))) -> List.In n ns ->
+       member_ok Θ Ξ (body_ctx Φ0 ++ tele_wk Δu φ ++ Δ) E n).
+Proof.
+  intros * Hφ HΨ HΨφ HE Hm.
+  assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt).
+  split.
+  - intros Φ0' E' ns Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
+    injection Heq as Heq1 Hc'. subst Φ0'.
+    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
+    rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
+    assert (Hlift : Θ ⍮ Ξ ⍮ tele_wk (body_ctx Φ0 ++ Δu) φ ++ Δ ⊢w wk_qn (length (body_ctx Φ0 ++ Δu)) φ : (body_ctx Φ0 ++ Δu) ++ Γ).
+    { rewrite HΨ1, <- !List.app_assoc in HΨ, HΨφ; rewrite tele_wk_app, <- List.app_assoc in HΨφ.
+      apply wf_wk_ext; [ assumption | eapply ctx_app_wf_tail; eassumption | rewrite <- !List.app_assoc in HΨ |- *; exact (ctx_app_wf_tail _ _ Ψ1 _ HΨ) ]. }
+    assert (Heqw : wk_eq (wk_qn (gm_binders Φ0) (wk_qn (length Δu) φ)) (wk_qn (length (body_ctx Φ0 ++ Δu)) φ))
+      by (rewrite wk_qn_add, List.length_app, length_body_ctx; reflexivity).
+    rewrite (modexp_wk_wk_eq _ _ _ Heqw); rewrite <- List.app_assoc in Hlift; eauto.
+  - intros Φ0' E' ns n Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
+    injection Heq as Heq1 Hc'. subst Φ0'.
+    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    intros Hn.
+    rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
+    assert (Heqw : wk_eq (wk_qn (gm_binders Φ0) (wk_qn (length Δu) φ)) (wk_qn (length (body_ctx Φ0 ++ Δu)) φ))
+      by (rewrite wk_qn_add, List.length_app, length_body_ctx; reflexivity).
+    rewrite (modexp_wk_wk_eq _ _ _ Heqw).
+    destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
+      eapply (proj1 (member_type_wk _ _ Hc)); try eassumption;
+      rewrite List.app_assoc; apply wk_mod_compat_ext; eauto with mctt.
+Qed.
+
 (** ** Weakening Preserves the Judgments ([wk_preserves_wf]) *)
 
 Lemma wk_preserves_wf :
@@ -423,7 +640,16 @@ Lemma wk_preserves_wf :
       forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : A[φ]ʷ) /\
   (forall Θ Ξ Γ A A',
       Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ).
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ⊆ A'[φ]ʷ) /\
+  (forall Θ Ξ Γ Ψ Ψ',
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_wk Ψ φ ≈ tele_wk Ψ' φ) /\
+  (forall Θ Ξ Γ U U',
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk U φ ≈ gunit_wk U' φ) /\
+  (forall Θ Ξ Γ H H',
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
+      forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk H φ ≈ modexp_wk H' φ).
 Proof.
   apply syntactic_wf_mut_ind'; intros; saturate_wk; push_wk; lift_wk.
   (** The [a_glob] cases: the recorded type is closed, so the operation on it
@@ -437,7 +663,120 @@ Proof.
       reach in time, so we take that step by hand. *)
   all: try solve [ econstructor; mauto 3 ].
   (** What is left are exactly the four rules for the [ℕ]-eliminator. *)
-  all: lift_wk_natrec; econstructor; mauto 2.
+  all: try solve [ lift_wk_natrec; econstructor; mauto 2 ].
+  (** The module rules. *)
+  all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod; eauto using wf_wk_q_mod ].
+  all: try solve [ rewrite !exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta; eauto using wf_wk_q_mod ].
+  all: try solve [ rewrite exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_cong;
+                   [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
+  all: try solve [ first [ eapply wf_mem | eapply wf_exp_eq_mem_delta ];
+                   [ apply me_noargs_wk; assumption | eauto
+                   | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
+                   | eauto
+                   | unfold member_unfold in *; eapply member_unfold_wk; eauto using wf_gctx_closed, wf_wk_mod_compat
+                   | eauto ] ].
+  all: try solve [ rewrite ?apps_wk, ?member_ref_wk; first [ eapply wf_mem_app | eapply wf_exp_eq_mem_app ];
+                   [ eauto | apply modexp_spine_wk; eassumption
+                   | match goal with H : _ <> nil |- _ => destruct args; [ contradiction H; reflexivity | discriminate ] end
+                   | rewrite <- member_ref_wk, <- apps_wk; eauto ] ].
+  all: try solve [ cbn [tele_wk]; first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
+                   eauto 7 using wf_wk_ext, ext_eq_ctx_left, ext_eq_ctx_right, presup_exp_ctx, presup_exp_eq_ctx, presup_unit_eq_ctx ].
+  all: try solve [ eapply wf_me_path; [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
+  all: try solve [ eapply wf_me_var; [ eauto | eapply wf_wk_lookup_mod; eauto ] ].
+  all: try solve [ eapply wf_me_mem;
+                   [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
+                   | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
+  (** Extensions: the entry is moved by the weakening lifted over the
+      extension before it. *)
+  all: try solve [ cbn [tele_wk];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?Ψ ?Ψ', IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_wk ?Ψ _) (tele_wk ?Ψ' _),
+      Hφ : wf_wk _ _ ?Δ ?Γ ?φ |- _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
+        [ exact (IHx _ _ Hφ) | .. ];
+        rewrite ?Hlen in *; eauto
+    end ].
+  (** Units. *)
+  all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?Ψ ?Ψ', IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_wk ?Ψ _) (tele_wk ?Ψ' _),
+      Hφ : wf_wk _ _ ?Δ ?Γ ?φ |- _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        eapply wf_unit_eq_alias; [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption | eauto | rewrite <- ?Hlen in *; eauto ]
+    end ].
+  all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
+    match goal with
+    | IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_wk (body_ctx ?Φ ++ ?Δu) _) (tele_wk (body_ctx ?Φ' ++ ?Δu') _),
+      Hx : wf_ext_eq _ _ ?Γ _ _,
+      HE : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> forall _ _, _,
+      Hm : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> _,
+      HE' : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> forall _ _, _,
+      Hm' : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> _,
+      Hφ : wf_wk _ _ _ ?Γ _ |- _ =>
+        let Hxφ := fresh "Hxφ" in
+        pose proof (IHx _ _ Hφ) as Hxφ;
+        let Hc1 := fresh "Hc" in let Hc2 := fresh "Hc" in let Hc3 := fresh "Hc" in let Hc4 := fresh "Hc" in
+        destruct (wk_body_checks _ _ _ Δu Φ _ _ Hφ ltac:(eauto with mctt) ltac:(eauto with mctt) HE Hm) as [Hc1 Hc2];
+        destruct (wk_body_checks _ _ _ Δu' Φ' _ _ Hφ ltac:(eauto with mctt) ltac:(eauto with mctt) HE' Hm') as [Hc3 Hc4];
+        eapply wf_unit_eq_body;
+        [ rewrite !body_ctx_wk, <- !tele_wk_app; exact Hxφ
+        | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
+        | rewrite !length_tele_wk; assumption
+        | apply body_shape_wk; assumption
+        | rewrite gm_names_wk; assumption
+        | exact Hc1 | exact Hc2 | exact Hc3 | exact Hc4 ]
+    end ].
+  (** The remaining cases name their induction hypotheses by shape. *)
+  all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?D ?D', IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ _ _,
+      IHE : forall _ _, wf_wk _ _ _ (?D ++ ?Γ) _ -> wf_modexp_eq _ _ _ _ _,
+      IHE' : forall _ _, wf_wk _ _ _ (?D' ++ ?Γ) _ -> wf_modexp_eq _ _ _ _ _,
+      Hφ : wf_wk _ _ _ ?Γ _ |- wf_unit_eq _ _ _ (gu_mk (tele_wk ?D _) _) _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_wk_ext_of_ext _ _ _ _ _ _ _ Hφ Hx (IHx _ _ Hφ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        eapply wf_unit_eq_alias;
+        [ exact (IHx _ _ Hφ) | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
+        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) ]
+    end ].
+  all: try solve [
+    match goal with
+    | Hm : member_type _ _ ?Γ (me_path ?p) nil mk_mod _, Hφ : wf_wk _ _ _ ?Γ _ |- _ =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        eapply wf_me_path; [ eauto | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) ]
+    end ].
+  all: try solve [
+    match goal with
+    | Hm : member_type _ _ ?Γ ?H nil mk_mod _, Hm' : member_type _ _ ?Γ ?H' nil mk_mod _,
+      Hφ : wf_wk _ _ _ ?Γ _ |- wf_modexp_eq _ _ _ (me_app (modexp_wk ?H _) _) (me_app (modexp_wk ?H' _) _) =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        eapply wf_me_app;
+        [ eauto
+        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto
+        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto ]
+    end ].
+  all: try solve [
+    match goal with
+    | HU : wf_unit_eq _ _ ?Γ ?U ?U', IHU : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_unit_eq _ _ _ _ _,
+      IHB : forall _ _, wf_wk _ _ _ (ce_mod ?U :: ?Γ) _ -> _,
+      IHL : forall _ _, wf_wk _ _ _ ?Γ _ -> _,
+      Hφ : wf_wk _ _ _ ?Γ _ |- _ =>
+        pose proof (IHU _ _ Hφ) as HUφ;
+        pose proof (IHL _ _ Hφ) as HL; rewrite exp_wk_sub_extend_mod in HL |- *;
+        eapply wf_exp_eq_let_mod_cong;
+        [ exact HUφ
+        | apply IHB; apply wf_wk_q_mod; eauto using wf_unit_eq_refl_left
+        | exact HL ]
+    end ].
 Qed.
 
 Corollary wk_preserves_exp : forall Θ Ξ Γ Δ A M φ,
@@ -464,8 +803,32 @@ Proof.
   intros; pose proof wk_preserves_wf; destruct_all; eauto.
 Qed.
 
+Corollary wk_preserves_ext : forall Θ Ξ Γ Δ Ψ Ψ' φ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_wk Ψ φ ≈ tele_wk Ψ' φ.
+Proof.
+  intros; pose proof wk_preserves_wf; destruct_all; eauto.
+Qed.
+
+Corollary wk_preserves_unit : forall Θ Ξ Γ Δ U U' φ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ gunit_wk U φ ≈ gunit_wk U' φ.
+Proof.
+  intros; pose proof wk_preserves_wf; destruct_all; eauto.
+Qed.
+
+Corollary wk_preserves_modexp : forall Θ Ξ Γ Δ H H' φ,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk H φ ≈ modexp_wk H' φ.
+Proof.
+  intros; pose proof wk_preserves_wf; destruct_all; eauto.
+Qed.
+
 #[export]
-Hint Resolve wk_preserves_exp wk_preserves_exp_eq wk_preserves_subtyp : mctt.
+Hint Resolve wk_preserves_exp wk_preserves_exp_eq wk_preserves_subtyp wk_preserves_ext wk_preserves_unit wk_preserves_modexp : mctt.
 
 (** ** Reflexivity of Term Equality
 
@@ -480,7 +843,10 @@ Hint Resolve wk_preserves_exp wk_preserves_exp_eq wk_preserves_subtyp : mctt.
 
 Lemma wf_exp_eq_refl : forall {Θ Ξ Γ A M}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M : A.
 Proof.
-  induction 1; mautosolve 3.
+  induction 1; try mautosolve 3.
+  all: first [ eapply wf_exp_eq_let_mod_cong; mauto 3
+             | eapply wf_exp_eq_mem_cong; [ eassumption | eapply wf_mem; eassumption | eapply wf_mem; eassumption ]
+             | eapply wf_exp_eq_mem_cong; [ eassumption | eapply wf_mem_app; eassumption | eapply wf_mem_app; eassumption ] ].
 Qed.
 
 #[export]
@@ -518,8 +884,10 @@ Lemma wf_sub_of_wk : forall Θ Ξ Γ Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢s (ι φ) : Δ.
 Proof.
   intros * Hφ; saturate_wk.
-  econstructor; [ eassumption | eassumption | |];
+  econstructor; [ eassumption | eassumption | | |];
     intros; simpl; rewrite ?exp_sub_of_wk; mauto 2.
+  right; eexists; split; [ reflexivity |].
+  rewrite gunit_sub_of_wk; eapply wf_wk_lookup_mod; eassumption.
 Qed.
 
 #[export]
@@ -543,6 +911,30 @@ Qed.
 #[export]
 Hint Resolve wf_sub_id wf_sub_shift : mctt.
 
+(** Extension of a substitution: the image of every binding of the tail is
+    unchanged, so only the head is checked. *)
+Lemma wf_sub_extend_gen : forall Θ Ξ Γ Δ σ e en,
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ e :: Δ ->
+    (forall A, e :: Δ ∋ #0 : A -> Θ ⍮ Ξ ⍮ Γ ⊢ sentry_exp en : A[sb_extend σ en]) ->
+    (forall A M, e :: Δ ∋ #0 ≔ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ sentry_exp en ≈ M[sb_extend σ en] : A[sb_extend σ en]) ->
+    (forall U, e :: Δ ∋ #0 ⇒ₘ U -> (en = se_mod (me_lit U[sb_extend σ en]ᵘ) /\ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[sb_extend σ en]ᵘ ≈ U[sb_extend σ en]ᵘ) \/
+                                 exists y, en = se_var y /\ Γ ∋ #y ⇒ₘ U[sb_extend σ en]ᵘ) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s sb_extend σ en : e :: Δ.
+Proof.
+  intros * Hσ HΔ H0 H0d H0m; saturate_sub.
+  econstructor; [ eassumption | eassumption | | |].
+  - intros [| x] B Hlk; [ apply H0; assumption |].
+    inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend.
+    eapply wf_sub_apply; eassumption.
+  - intros [| x] B L Hlk; [ apply H0d; assumption |].
+    inversion Hlk; subst; reduce_index; rewrite !exp_sub_shift_extend.
+    eapply wf_sub_apply_def; eassumption.
+  - intros [| x] U Hlk; [ apply H0m; assumption |].
+    inversion Hlk; subst; reduce_index; rewrite gunit_sub_shift_extend.
+    eapply wf_sub_apply_mod; eassumption.
+Qed.
+
 (** [wf_sub_extend] *)
 Lemma wf_sub_extend : forall Θ Ξ Γ Δ σ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
@@ -550,17 +942,9 @@ Lemma wf_sub_extend : forall Θ Ξ Γ Δ σ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ,,M : Δ ▹ A.
 Proof.
-  intros * Hσ ? ?; saturate_sub.
-  econstructor; [ eassumption | mauto 2 | |].
-  - intros x B Hlk.
-    (** Both bindings of [Δ ▹ A] are looked up at a type of the form [B[↑]ʷ], and
-        [exp_sub_shift_extend] is precisely the statement that an
-        extension is invisible to such a type. *)
-    inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
-      [ assumption | eapply wf_sub_apply; eassumption ].
-  - intros x B N Hlk.
-    inversion Hlk; subst; reduce_index; rewrite !exp_sub_shift_extend.
-    eapply wf_sub_apply_def; eassumption.
+  intros * Hσ ? ?; apply wf_sub_extend_gen; [ assumption | mauto 2 | | |];
+    intros * Hlk; inversion Hlk; subst; cbn.
+  rewrite exp_sub_shift_extend; assumption.
 Qed.
 
 (** Extension into a definition: the new image must equal the substituted
@@ -573,14 +957,21 @@ Lemma wf_sub_extend_def : forall Θ Ξ Γ Δ σ A M N i,
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ M[σ] : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ,,N : Δ ▸ A ≔ M.
 Proof.
-  intros * Hσ ? ? ? ?; saturate_sub.
-  econstructor; [ eassumption | mauto 2 | |].
-  - intros x B Hlk.
-    inversion Hlk; subst; reduce_index; rewrite exp_sub_shift_extend;
-      [ assumption | eapply wf_sub_apply; eassumption ].
-  - intros x B L Hlk.
-    inversion Hlk; subst; reduce_index; rewrite !exp_sub_shift_extend;
-      [ assumption | eapply wf_sub_apply_def; eassumption ].
+  intros * Hσ ? ? ? ?; apply wf_sub_extend_gen; [ assumption | mauto 2 | | |];
+    intros * Hlk; inversion Hlk; subst; cbn; rewrite ?exp_sub_shift_extend; assumption.
+Qed.
+
+(** Extension into a module slot, by the literal of its unit.  The
+    transported unit is taken well formed; [sub_preserves_unit] supplies it. *)
+Lemma wf_sub_extend_mod : forall Θ Ξ Γ Δ σ U,
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ ,,ₘ me_lit U[σ]ᵘ : Δ ▹ₘ U.
+Proof.
+  intros * Hσ ? ?; apply wf_sub_extend_gen; [ assumption | mauto 2 | | |];
+    intros * Hlk; inversion Hlk; subst; cbn.
+  left; rewrite gunit_sub_shift_extend; split; [ reflexivity | assumption ].
 Qed.
 
 (** [wf_sub_single] *)
@@ -603,6 +994,13 @@ Proof.
   rewrite !exp_sub_id; mauto 2.
 Qed.
 
+Corollary wf_sub_single_mod : forall Θ Ξ Γ U,
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s Id ,,ₘ me_lit U : Γ ▹ₘ U.
+Proof.
+  intros; rewrite <- (gunit_sub_id U) at 2; apply wf_sub_extend_mod; rewrite ?gunit_sub_id; mauto 3.
+Qed.
+
 (** [wf_sub_wk] *)
 Lemma wf_sub_wk : forall Θ Ξ Γ Γ' Δ σ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
@@ -610,11 +1008,42 @@ Lemma wf_sub_wk : forall Θ Ξ Γ Γ' Δ σ φ,
     Θ ⍮ Ξ ⍮ Γ' ⊢s (sb_wk σ φ) : Δ.
 Proof.
   intros * Hσ Hφ; saturate_wk; saturate_sub.
-  econstructor; [ eassumption | eassumption | |].
-  - intros x A ?; reduce_index; rewrite <- exp_wk_sub.
+  econstructor; [ eassumption | eassumption | | |].
+  - intros x A ?; rewrite <- !exp_wk_sub.
     eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | eassumption ].
-  - intros x A M ?; reduce_index; rewrite <- !exp_wk_sub.
+  - intros x A M ?; rewrite <- !exp_wk_sub.
     eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | eassumption ].
+  - intros x U HU; reduce_index; rewrite <- gunit_wk_sub.
+    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[-> HUσ] | (y & -> & Hy)]; cbn.
+    + left; split; [ reflexivity | eapply wk_preserves_unit; eassumption ].
+    + right; eexists; split; [ reflexivity | eapply wf_wk_lookup_mod; eassumption ].
+Qed.
+
+(** Lifting a substitution over any entry.  As in [wf_wk_q_gen], the two
+    contexts must be well formed. *)
+Lemma wf_sub_q_gen : forall Θ Ξ Γ Δ σ e,
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ centry_sub e σ :: Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ e :: Δ ->
+    Θ ⍮ Ξ ⍮ centry_sub e σ :: Γ ⊢s q σ : e :: Δ.
+Proof.
+  intros * Hσ ? ?; saturate_sub.
+  econstructor; [ eassumption | eassumption | | |].
+  - intros x B Hlk.
+    inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q; try (econstructor; [ eassumption | constructor ]).
+    rewrite <- sentry_exp_wk; fold (exp_sub (a_var n) σ).
+    eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
+  - intros x B N Hlk.
+    inversion Hlk; subst; reduce_index; rewrite !exp_wk_shift_sub_q.
+    + eapply wf_exp_eq_var_delta; [ eassumption | constructor ].
+    + rewrite <- sentry_exp_wk; fold (exp_sub (a_var n) σ).
+      eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | mauto 2 ].
+  - intros x U Hlk; inversion Hlk; subst; cbn.
+    + right; exists 0; rewrite sb_q_zero, gunit_wk_shift_sub_q; split; [ reflexivity | constructor ].
+    + rewrite sb_q_succ, gunit_wk_shift_sub_q.
+      match goal with Hl : _ ∋ # _ ⇒ₘ _ |- _ => destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ Hl) as [[-> HUσ] | (y & -> & Hy)] end.
+      * left; split; [ reflexivity | eapply wk_preserves_unit; [ eassumption | mauto 2 ] ].
+      * right; exists (S y); split; [ reflexivity | constructor; assumption ].
 Qed.
 
 (** [wf_sub_q].
@@ -630,17 +1059,7 @@ Lemma wf_sub_q : forall Θ Ξ Γ Δ σ A i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢s q σ : Δ ▹ A.
 Proof.
-  intros * Hσ ? ?; saturate_sub.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
-  econstructor; [ eassumption | mauto 2 | |].
-  - intros x B Hlk.
-    (** [exp_wk_shift_sub_q] at [n = 0] is what moves the [[↑]ʷ]
-        of a lookup out through the lifted substitution. *)
-    inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q; [ mauto 2 | ].
-    eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
-  - intros x B N Hlk.
-    inversion Hlk; subst; reduce_index; rewrite !exp_wk_shift_sub_q.
-    eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | mauto 2 ].
+  intros * Hσ ? ?; apply (wf_sub_q_gen _ _ _ _ _ (ce_ass A)); mauto 2.
 Qed.
 
 (** The lifted substitution over a definition: its head [#0] is the substituted
@@ -653,21 +1072,34 @@ Lemma wf_sub_q_def : forall Θ Ξ Γ Δ σ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢s q σ : Δ ▸ A ≔ M.
 Proof.
-  intros * Hσ ? ? ? ?; saturate_sub.
-  assert (⊢ Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ]) by mauto 2.
-  econstructor; [ eassumption | mauto 2 | |].
-  - intros x B Hlk.
-    inversion Hlk; subst; reduce_index; rewrite exp_wk_shift_sub_q;
-      [ mauto 2 | ].
-    eapply wk_preserves_exp; [ eapply wf_sub_apply; eassumption | mauto 2 ].
-  - intros x B N Hlk.
-    inversion Hlk; subst; reduce_index; rewrite !exp_wk_shift_sub_q.
-    + eapply wf_exp_eq_var_delta; [ eassumption | constructor ].
-    + eapply wk_preserves_exp_eq; [ eapply wf_sub_apply_def; eassumption | mauto 2 ].
+  intros * Hσ ? ? ? ?; apply (wf_sub_q_gen _ _ _ _ _ (ce_def A M)); mauto 2.
+Qed.
+
+(** The lifted substitution over a module slot. *)
+Lemma wf_sub_q_mod : forall Θ Ξ Γ Δ σ U,
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ₘ U[σ]ᵘ ⊢s q σ : Δ ▹ₘ U.
+Proof.
+  intros * Hσ ? ?; apply (wf_sub_q_gen _ _ _ _ _ (ce_mod U)); mauto 2.
+Qed.
+
+(** Lifting over a whole extension, given that both extended contexts are
+    well formed. *)
+Lemma wf_sub_ext : forall Θ Ξ Ψ Γ Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Δ ->
+    ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Γ ->
+    Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Δ ⊢s sb_qn (length Ψ) σ : Ψ ++ Γ.
+Proof.
+  induction Ψ as [| e Ψ IH]; intros * Hσ HΔ HΓ; cbn in *; [ assumption |].
+  apply wf_sub_q_gen; [ apply IH; eauto using ctx_decomp_tail | assumption | assumption ].
 Qed.
 
 #[export]
-Hint Resolve wf_sub_extend wf_sub_extend_def wf_sub_single wf_sub_single_def wf_sub_wk wf_sub_q wf_sub_q_def : mctt.
+Hint Resolve wf_sub_extend wf_sub_extend_def wf_sub_extend_mod wf_sub_single wf_sub_single_def
+  wf_sub_single_mod wf_sub_wk wf_sub_q wf_sub_q_def wf_sub_q_mod : mctt.
 
 (** [ℕ] is closed, so [ℕ[σ]] is [ℕ] by computation and lifting a substitution
     over a [ℕ] binder needs no premises.  Compare [wf_wk_q_nat]. *)
@@ -700,7 +1132,7 @@ Hint Resolve wf_sub_q_False : mctt.
 Lemma sub_preserves_vlookup : forall Θ Ξ Γ Δ σ x A,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
     Δ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) : A[σ].
+    Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] : A[σ].
 Proof.
   intros; eapply wf_sub_apply; eassumption.
 Qed.
@@ -708,7 +1140,7 @@ Qed.
 Lemma sub_preserves_vlookup_eq : forall Θ Ξ Γ Δ σ x A,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
     Δ ∋ #x : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ (σ x) : A[σ].
+    Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ #x[σ] : A[σ].
 Proof.
   intros; apply wf_exp_eq_refl; eapply wf_sub_apply; eassumption.
 Qed.
@@ -716,7 +1148,7 @@ Qed.
 Lemma sub_preserves_vlookup_def : forall Θ Ξ Γ Δ σ x A M,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
     Δ ∋ #x ≔ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ (σ x) ≈ M[σ] : A[σ].
+    Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ] ≈ M[σ] : A[σ].
 Proof.
   intros; eapply wf_sub_apply_def; eassumption.
 Qed.
@@ -813,6 +1245,65 @@ Ltac lift_sub_natrec :=
       rewrite exp_sub_sub_natrec in H
   end.
 
+(** The root of a well-formed module expression, if a slot, is a module slot. *)
+Lemma modexp_eq_slot_root : forall Θ Ξ Γ H H',
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> me_slot_root Γ H /\ me_slot_root Γ H'.
+Proof.
+  induction 1; cbn; destruct_all; eauto 6.
+Qed.
+
+Lemma wf_sub_ext_of_ext : forall Θ Ξ Γ Ψ Ψ' Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ' σ ->
+    Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Δ ⊢s sb_qn (length Ψ) σ : Ψ ++ Γ /\
+    Θ ⍮ Ξ ⍮ tele_sub Ψ' σ ++ Δ ⊢s sb_qn (length Ψ') σ : Ψ' ++ Γ.
+Proof.
+  intros * Hσ HΨ HΨσ; split; apply wf_sub_ext; eauto using ext_eq_ctx_left, ext_eq_ctx_right.
+Qed.
+
+(** The import checks of a body unit, moved by a substitution. *)
+Lemma sub_body_checks : forall Θ Ξ Γ Δu Φ Δ σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ (body_ctx Φ ++ Δu) ++ Γ ->
+    ⊢ Θ ⍮ Ξ ⍮ tele_sub (body_ctx Φ ++ Δu) σ ++ Δ ->
+    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
+       forall Δ1 σ0, Θ ⍮ Ξ ⍮ Δ1 ⊢s σ0 : body_ctx Φ0 ++ Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ1 ⊢ᵐ E[σ0]ᵐ ≈ E[σ0]ᵐ) ->
+    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
+       member_ok Θ Ξ (body_ctx Φ0 ++ Δu ++ Γ) E n) ->
+    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks (gmod_sub Φ (sb_qn (length Δu) σ))) ->
+       Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ tele_sub Δu σ ++ Δ ⊢ᵐ E ≈ E) /\
+    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks (gmod_sub Φ (sb_qn (length Δu) σ))) -> List.In n ns ->
+       member_ok Θ Ξ (body_ctx Φ0 ++ tele_sub Δu σ ++ Δ) E n).
+Proof.
+  intros * Hσ HΨ HΨσ HE Hm.
+  assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt).
+  split.
+  - intros Φ0' E' ns Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
+    injection Heq as Heq1 Hc'. subst Φ0'.
+    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
+    rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
+    assert (Hlift : Θ ⍮ Ξ ⍮ tele_sub (body_ctx Φ0 ++ Δu) σ ++ Δ ⊢s sb_qn (length (body_ctx Φ0 ++ Δu)) σ : (body_ctx Φ0 ++ Δu) ++ Γ).
+    { rewrite HΨ1, <- !List.app_assoc in HΨ, HΨσ; rewrite tele_sub_app, <- List.app_assoc in HΨσ.
+      apply wf_sub_ext; [ assumption | eapply ctx_app_wf_tail; eassumption
+                        | rewrite <- !List.app_assoc in HΨ |- *; exact (ctx_app_wf_tail _ _ Ψ1 _ HΨ) ]. }
+    assert (Heqs : sb_eq (sb_qn (gm_binders Φ0) (sb_qn (length Δu) σ)) (sb_qn (length (body_ctx Φ0 ++ Δu)) σ))
+      by (rewrite sb_qn_add, List.length_app, length_body_ctx; reflexivity).
+    rewrite (modexp_sub_sb_eq _ _ _ Heqs); rewrite <- List.app_assoc in Hlift; eauto.
+  - intros Φ0' E' ns n Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
+    injection Heq as Heq1 Hc'. subst Φ0'.
+    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    intros Hn.
+    rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
+    assert (Heqs : sb_eq (sb_qn (gm_binders Φ0) (sb_qn (length Δu) σ)) (sb_qn (length (body_ctx Φ0 ++ Δu)) σ))
+      by (rewrite sb_qn_add, List.length_app, length_body_ctx; reflexivity).
+    rewrite (modexp_sub_sb_eq _ _ _ Heqs).
+    destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
+      eapply (proj1 (member_type_sub _ _ Hc)); try eassumption;
+      rewrite List.app_assoc; apply sub_mod_compat_ext; eauto with mctt.
+Qed.
+
 (** ** Substitution Preserves the Judgments ([sub_preserves_wf]) *)
 
 Lemma sub_preserves_wf :
@@ -824,13 +1315,145 @@ Lemma sub_preserves_wf :
       forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M'[σ] : A[σ]) /\
   (forall Θ Ξ Δ A A',
       Θ ⍮ Ξ ⍮ Δ ⊢ A ⊆ A' ->
-      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ]).
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ]) /\
+  (forall Θ Ξ Δ Ψ Ψ',
+      Θ ⍮ Ξ ⍮ Δ ⊢ˣ Ψ ≈ Ψ' ->
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ' σ) /\
+  (forall Θ Ξ Δ U U',
+      Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U' ->
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U'[σ]ᵘ) /\
+  (forall Θ Ξ Δ H H',
+      Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' ->
+      forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ).
 Proof.
   apply syntactic_wf_mut_ind'; intros; saturate_sub; push_sub; lift_sub.
   all: try solve [ push_closed; mauto 3 ].
   all: try solve [ mauto 4 ].
   all: try solve [ econstructor; mauto 3 ].
-  all: lift_sub_natrec; econstructor; mauto 2.
+  all: try solve [ lift_sub_natrec; econstructor; mauto 2 ].
+  (** The module rules.  A local module is lifted over by [q σ] at the
+      transported unit. *)
+  all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod; eauto using wf_sub_q_mod ].
+  all: try solve [ rewrite !exp_sub_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta; eauto using wf_sub_q_mod ].
+  all: try solve [
+    match goal with
+    | HU : wf_unit_eq _ _ ?Γ ?U ?U', IHU : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_unit_eq _ _ _ _ _,
+      IHB : forall _ _, wf_sub _ _ _ (ce_mod ?U :: ?Γ) _ -> _,
+      IHL : forall _ _, wf_sub _ _ _ ?Γ _ -> _,
+      Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
+        pose proof (IHU _ _ Hσ) as HUσ;
+        pose proof (IHL _ _ Hσ) as HL; rewrite exp_sub_sub_extend_mod in HL |- *;
+        eapply wf_exp_eq_let_mod_cong;
+        [ exact HUσ
+        | apply IHB; apply wf_sub_q_mod; eauto using wf_unit_eq_refl_left
+        | exact HL ]
+    end ].
+  (** Members.  The root of a well-formed module expression is a module slot
+      or no slot, so it stays a root. *)
+  all: try solve [
+    match goal with
+    | HH : wf_modexp_eq _ _ ?Γ ?H ?H, Hσ : wf_sub _ _ _ ?Γ ?σ |- _ =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hcm;
+        pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)) as Hr;
+        first [ eapply wf_mem | eapply wf_exp_eq_mem_delta ];
+        [ eapply me_noargs_sub; eassumption | eauto
+        | eapply (proj1 (member_type_sub _ _ Hc)); eassumption
+        | eauto
+        | unfold member_unfold in *; eapply member_unfold_sub; eassumption
+        | eauto ]
+    end ].
+  all: try solve [
+    match goal with
+    | HH : wf_modexp_eq _ _ ?Γ ?H ?H, Hσ : wf_sub _ _ _ ?Γ ?σ |- _ =>
+        pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hcm;
+        pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)) as Hr;
+        rewrite ?apps_sub, ?member_ref_sub; first [ eapply wf_mem_app | eapply wf_exp_eq_mem_app ];
+        [ eauto | eapply modexp_spine_sub; eassumption
+        | match goal with H : _ <> nil |- _ => destruct args; [ contradiction H; reflexivity | discriminate ] end
+        | rewrite <- member_ref_sub, <- apps_sub; eauto ]
+    end ].
+  (** Extensions. *)
+  all: try solve [ cbn [tele_sub];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?Ψ ?Ψ', IHx : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_sub ?Ψ _) (tele_sub ?Ψ' _),
+      Hσ : wf_sub _ _ ?Δ ?Γ ?σ |- _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
+        [ exact (IHx _ _ Hσ) | .. ];
+        rewrite ?Hlen in *; eauto
+    end ].
+  (** Units. *)
+  all: try solve [ rewrite !gunit_sub_mk; cbn [moddef_sub];
+    match goal with
+    | Hx : wf_ext_eq _ _ ?Γ ?D ?D', IHx : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_ext_eq _ _ _ _ _,
+      IHE : forall _ _, wf_sub _ _ _ (?D ++ ?Γ) _ -> wf_modexp_eq _ _ _ _ _,
+      IHE' : forall _ _, wf_sub _ _ _ (?D' ++ ?Γ) _ -> wf_modexp_eq _ _ _ _ _,
+      Hσ : wf_sub _ _ _ ?Γ _ |- wf_unit_eq _ _ _ (gu_mk (tele_sub ?D _) _) _ =>
+        let Hl := fresh "Hl" in
+        let Hr := fresh "Hr" in
+        destruct (wf_sub_ext_of_ext _ _ _ _ _ _ _ Hσ Hx (IHx _ _ Hσ)) as [Hl Hr];
+        pose proof (ext_eq_length _ _ _ _ _ Hx) as Hlen;
+        eapply wf_unit_eq_alias;
+        [ exact (IHx _ _ Hσ) | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
+        | rewrite <- Hlen; exact (IHE _ _ Hl) | exact (IHE' _ _ Hr) ]
+    end ].
+  all: try solve [ rewrite !gunit_sub_mk; cbn [moddef_sub];
+    match goal with
+    | IHx : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_sub (body_ctx ?Φ ++ ?Δu) _) (tele_sub (body_ctx ?Φ' ++ ?Δu') _),
+      Hx : wf_ext_eq _ _ ?Γ _ _,
+      HE : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> forall _ _, _,
+      Hm : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> _,
+      HE' : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> forall _ _, _,
+      Hm' : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> _,
+      Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
+        let Hxσ := fresh "Hxσ" in
+        pose proof (IHx _ _ Hσ) as Hxσ;
+        let Hc1 := fresh "Hc" in let Hc2 := fresh "Hc" in let Hc3 := fresh "Hc" in let Hc4 := fresh "Hc" in
+        destruct (sub_body_checks _ _ _ Δu Φ _ _ Hσ ltac:(eauto with mctt) ltac:(eauto with mctt) HE Hm) as [Hc1 Hc2];
+        destruct (sub_body_checks _ _ _ Δu' Φ' _ _ Hσ ltac:(eauto with mctt) ltac:(eauto with mctt) HE' Hm') as [Hc3 Hc4];
+        eapply wf_unit_eq_body;
+        [ rewrite !body_ctx_sub, <- !tele_sub_app; exact Hxσ
+        | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
+        | rewrite !length_tele_sub; assumption
+        | apply body_shape_sub; assumption
+        | rewrite gm_names_sub; assumption
+        | exact Hc1 | exact Hc2 | exact Hc3 | exact Hc4 ]
+    end ].
+  (** Module expressions. *)
+  all: try solve [
+    match goal with
+    | Hm : member_type _ _ ?Γ (me_path ?p) nil mk_mod _, Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        eapply wf_me_path; [ eauto | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) ]
+    end ].
+  all: try solve [
+    match goal with
+    | Hx : _ ∋ #?x ⇒ₘ _, Hσ : wf_sub _ _ _ _ ?σ |- wf_modexp_eq _ _ _ (sentry_modexp (?σ ?x)) _ =>
+        destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ Hx) as [[-> HUσ] | (y & -> & Hy)]; cbn;
+        [ apply wf_me_lit; exact HUσ | eapply wf_me_var; eauto ]
+    end ].
+  all: try solve [
+    match goal with
+    | Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hcm;
+        first [ eapply wf_me_mem | eapply wf_me_app ];
+        try (eapply (proj1 (member_type_sub _ _ Hc)); eassumption); eauto
+    end ].
+  all: try solve [
+    match goal with
+    | Hm : member_type _ _ ?Γ ?H nil mk_mod _, Hm' : member_type _ _ ?Γ ?H' nil mk_mod _,
+      Hσ : wf_sub _ _ _ ?Γ _ |- wf_modexp_eq _ _ _ (me_app ?H[_]ᵐ _) (me_app ?H'[_]ᵐ _) =>
+        assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
+        eapply wf_me_app;
+        [ eauto
+        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto
+        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto ]
+    end ].
 Qed.
 
 Corollary sub_preserves_exp : forall Θ Ξ Γ Δ A M σ,
@@ -857,8 +1480,32 @@ Proof.
   intros; pose proof sub_preserves_wf; destruct_all; eauto.
 Qed.
 
+Corollary sub_preserves_ext : forall Θ Ξ Γ Δ Ψ Ψ' σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ˣ Ψ ≈ Ψ' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ tele_sub Ψ σ ≈ tele_sub Ψ' σ.
+Proof.
+  intros; pose proof sub_preserves_wf; destruct_all; eauto.
+Qed.
+
+Corollary sub_preserves_unit : forall Θ Ξ Γ Δ U U' σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U[σ]ᵘ ≈ U'[σ]ᵘ.
+Proof.
+  intros; pose proof sub_preserves_wf; destruct_all; eauto.
+Qed.
+
+Corollary sub_preserves_modexp : forall Θ Ξ Γ Δ H H' σ,
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ.
+Proof.
+  intros; pose proof sub_preserves_wf; destruct_all; eauto.
+Qed.
+
 #[export]
-Hint Resolve sub_preserves_exp sub_preserves_exp_eq sub_preserves_subtyp : mctt.
+Hint Resolve sub_preserves_exp sub_preserves_exp_eq sub_preserves_subtyp sub_preserves_ext sub_preserves_unit sub_preserves_modexp : mctt.
 
 (** [wf_sub_compose]: substitutions form a category over well-formed contexts.  The
     identity and associativity laws are [sb_compose_id_left],
@@ -870,8 +1517,13 @@ Lemma wf_sub_compose : forall Θ Ξ Γ Γ' Δ σ τ,
     Θ ⍮ Ξ ⍮ Γ' ⊢s σ ⨟ τ : Δ.
 Proof.
   intros * Hσ Hτ; saturate_sub.
-  econstructor; [ eassumption | eassumption | |];
-    intros; reduce_index; rewrite <- ?exp_sub_sub; mauto 3.
+  econstructor; [ eassumption | eassumption | | |].
+  - intros; rewrite <- !exp_sub_sub; mauto 3.
+  - intros; rewrite <- !exp_sub_sub; mauto 3.
+  - intros x U HU; reduce_index; rewrite <- gunit_sub_sub.
+    destruct (wf_sub_apply_mod _ _ _ _ _ Hσ _ _ HU) as [[-> HUσ] | (y & -> & Hy)]; cbn.
+    + left; split; [ reflexivity | eapply sub_preserves_unit; eassumption ].
+    + eapply wf_sub_apply_mod; eassumption.
 Qed.
 
 #[export]
@@ -988,8 +1640,8 @@ Corollary ctxsub_vlookup : forall Θ Ξ Γ Δ x A,
     Θ ⍮ Ξ ⍮ Δ ⊢ #x : A.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ (Id x) : A[Id]) as H' by mauto 2.
-  rewrite exp_sub_id in H'; assumption.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ #x[Id] : A[Id]) as H' by mauto 2.
+  rewrite !exp_sub_id in H'; assumption.
 Qed.
 
 (** A lookup one binder in is a lookup weakened by [↑]; this is the shape the
@@ -1013,8 +1665,18 @@ Corollary ctxsub_vlookup_def : forall Θ Ξ Γ Δ x A M,
     Θ ⍮ Ξ ⍮ Δ ⊢ #x ≈ M : A.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ (Id x) ≈ M[Id] : A[Id]) as H' by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ #x[Id] ≈ M[Id] : A[Id]) as H' by mauto 2.
   rewrite !exp_sub_id in H'; assumption.
+Qed.
+
+(** A refinement keeps every module slot. *)
+Corollary ctxsub_lookup_mod : forall Θ Ξ Γ Δ x U,
+    Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
+    Γ ∋ #x ⇒ₘ U ->
+    Δ ∋ #x ⇒ₘ U.
+Proof.
+  intros * H HU; destruct (wf_sub_apply_mod _ _ _ _ _ H _ _ HU) as [[[=] _] | (y & [= <-] & Hy)].
+  rewrite gunit_sub_id in Hy; exact Hy.
 Qed.
 
 (** Extending a refinement by one binding on each side: the bindings below the
@@ -1026,11 +1688,12 @@ Lemma wf_sub_id_extend_gen : forall Θ Ξ Γ Δ e e',
     ⊢ Θ ⍮ Ξ ⍮ e :: Γ ->
     (forall B, e :: Γ ∋ #0 : B -> Θ ⍮ Ξ ⍮ e' :: Δ ⊢ #0 : B) ->
     (forall B N, e :: Γ ∋ #0 ≔ N : B -> Θ ⍮ Ξ ⍮ e' :: Δ ⊢ #0 ≈ N : B) ->
+    (forall U, e :: Γ ∋ #0 ⇒ₘ U -> e' :: Δ ∋ #0 ⇒ₘ U) ->
     Θ ⍮ Ξ ⍮ e' :: Δ ⊢s Id : e :: Γ.
 Proof.
-  intros * HId ? ? Hhd Hhdd; saturate_sub.
+  intros * HId ? ? Hhd Hhdd Hhdm; saturate_sub.
   assert (Θ ⍮ Ξ ⍮ e' :: Δ ⊢w ↑ : Δ) by mauto 2.
-  econstructor; [ eassumption | eassumption | |].
+  econstructor; [ eassumption | eassumption | | |].
   - intros [| x] B Hlk; reduce_index; rewrite exp_sub_id; [ auto |].
     inversion Hlk; subst.
     change #(S x) with #x[↑]ʷ.
@@ -1039,6 +1702,8 @@ Proof.
     inversion Hlk; subst.
     change #(S x) with #x[↑]ʷ.
     eapply wk_preserves_exp_eq; [ eapply ctxsub_vlookup_def | ]; eassumption.
+  - intros [| x] U Hlk; reduce_index; rewrite gunit_sub_id; right; eexists; split; try reflexivity; [ auto |].
+    inversion Hlk; subst; constructor; eapply ctxsub_lookup_mod; eassumption.
 Qed.
 
 Lemma wf_sub_id_extend : forall Θ Ξ Γ Δ A A' i,
@@ -1051,7 +1716,7 @@ Proof.
   intros * HId ? ? ?; saturate_sub.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▹ A') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢w ↑ : Δ) by mauto 2.
-  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | |];
+  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | | |];
     intros * Hlk; inversion Hlk; subst.
   (** The top binding: [#0] has type [A'[↑]ʷ] there and [A'[↑]ʷ ⊆ A[↑]ʷ] by
       weakening the given subtyping. *)
@@ -1074,7 +1739,7 @@ Proof.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢w ↑ : Δ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢ A'[↑]ʷ ⊆ A[↑]ʷ) by (eapply wk_preserves_subtyp; eassumption).
-  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | |];
+  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | | |];
     intros * Hlk; inversion Hlk; subst.
   - eapply wf_exp_subtyp'; [ mauto 2 | eassumption ].
   - eapply wf_exp_eq_trans; [ eapply wf_exp_eq_subtyp' | ].
@@ -1095,10 +1760,22 @@ Proof.
   intros * HId ? ? ? ?; saturate_sub.
   assert (⊢ Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M') by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢w ↑ : Δ) by mauto 2.
-  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | |];
+  eapply wf_sub_id_extend_gen; [ eassumption | eassumption | mauto 2 | | |];
     intros * Hlk; inversion Hlk; subst.
   eapply wf_exp_subtyp'; [ mauto 2 | ].
   eapply wk_preserves_subtyp; eassumption.
+Qed.
+
+(** A module slot refines a slot of the same unit. *)
+Lemma wf_sub_id_extend_mod : forall Θ Ξ Γ Δ U,
+    Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ▹ₘ U ⊢s Id : Γ ▹ₘ U.
+Proof.
+  intros * HId ? ?; saturate_sub.
+  eapply wf_sub_id_extend_gen; [ eassumption | mauto 2 | mauto 2 | | |];
+    intros * Hlk; inversion Hlk; subst; constructor.
 Qed.
 
 (** Equal types give refinements in both directions; this is the instance
@@ -1129,7 +1806,7 @@ Qed.
 
 #[export]
 Hint Resolve wf_sub_id_extend wf_sub_id_extend_eq wf_sub_id_extend_def wf_sub_id_forget
-             wf_sub_id_extend_def_eq : mctt.
+             wf_sub_id_extend_def_eq wf_sub_id_extend_mod : mctt.
 
 Corollary ctxsub_exp : forall Θ Ξ Γ Δ A M,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
@@ -1410,7 +2087,7 @@ Qed.
 Lemma ctx_wf_gctx : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢g Θ ⍮ Ξ.
 Proof.
   intros Θ Ξ Γ; induction Γ as [| B Γ IH]; intros HΓ; inversion HΓ; subst;
-    eauto using presup_exp_ctx.
+    eauto using presup_exp_ctx, presup_unit_eq_ctx.
 Qed.
 
 #[export]
