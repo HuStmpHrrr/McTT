@@ -161,6 +161,10 @@ Proof.
   - destruct W; simpl in *; autoinjections; destruct_all.
     eapply IHHW4; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections; destruct_all.
+    (** The scrutinee of [efq] is a neutral of type [⊥]. *)
+    eapply (IHHW2 Htr W ltac:(eassumption) i eq_refl eq_refl ⊥);
+      [ constructor | congruence | gen_presups; mauto 3 ].
+  - destruct W; simpl in *; autoinjections; destruct_all.
     eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
   - destruct W; simpl in *; autoinjections.
     pose (GC := gc_mk Θ Ξ).
@@ -170,6 +174,20 @@ Proof.
       try (eapply HA'eq; mautosolve 4).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
     assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
+Qed.
+
+(** In the empty context, a neutral without a global head has no type: its
+    head would be a variable. *)
+Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
+    ne_clean W ->
+    ~ wf_exp Θ Ξ ⋅ A W.
+Proof.
+  intros * HWc HW.
+  dependent induction HW; try (destruct W; simpl in *; congruence);
+    try solve [ eauto ].
+  all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
+    try contradiction; eauto.
+  match_by_head ctx_lookup ltac:(fun H => inversion H).
 Qed.
 
 (** ** Canonical Forms and Consistency
@@ -265,6 +283,20 @@ Proof.
     eapply consistency_ne_helper; (congruence + mautosolve 3).
 Qed.
 
+(** There is no closed proof of [⊥]: its normal form would be a closed
+    neutral. *)
+Theorem consistency_False : forall M,
+    ~ ⋅ ⊢ M : ⊥.
+Proof.
+  intros * [W [Hnbe HMW]]%soundness.
+  pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc.
+  dir_inversion_clear_by_head nbe.
+  invert_rel_typ_body.
+  match_by_head read_nf ltac:(fun H => directed dependent destruction H).
+  simpl in *.
+  gen_presups.
+  eapply no_closed_neutral; eassumption.
+Qed.
 
 End Transparent_GCtx.
 
@@ -290,3 +322,8 @@ Corollary consistency_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
     ~ wf_exp Θ Ξ ⋅ (Π Type@i #0) M.
 Proof. intros * Htr; exact (@consistency (gc_mk Θ Ξ) Htr i M). Qed.
+
+Corollary consistency_False_gctx : forall Θ Ξ M,
+    gc_transparent Θ Ξ ->
+    ~ wf_exp Θ Ξ ⋅ ⊥ M.
+Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.

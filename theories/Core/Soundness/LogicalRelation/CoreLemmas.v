@@ -95,8 +95,79 @@ Proof.
   - mauto 4.
 Qed.
 
+(** The same lemmas for [glu_False], which is the neutral case of
+    [glu_nat] at [⊥]. *)
+Lemma glu_False_per_ne : forall Γ M a,
+    glu_False Γ M a ->
+    Dom a ≈ a ∈ per_ne.
+Proof.
+  destruct 1; mauto.
+Qed.
+
+#[local]
+Hint Resolve glu_False_per_ne : mctt.
+
+Lemma glu_False_escape : forall Γ M a,
+    glu_False Γ M a ->
+    ⊢ Γ ->
+    Γ ⊢ M : ⊥.
+Proof.
+  destruct 1; intros.
+  assert (Γ ⊢k wk_id : Γ) by mauto 2.
+  match_by_head (per_bot m m) ltac:(fun H => specialize (H (length Γ)) as [M' []]).
+  clear_dups.
+  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : ⊥) as HM by mauto.
+  rewrite exp_wk_id in HM.
+  gen_presups.
+  mauto.
+Qed.
+
+Hint Resolve glu_False_escape : mctt.
+
+Lemma glu_False_resp_ctxsub : forall Γ M a Δ,
+    glu_False Γ M a ->
+    Δ ⊆ Γ ->
+    glu_False Δ M a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros; mauto 4.
+Qed.
+
+Hint Resolve glu_False_resp_ctxsub : mctt.
+
+Lemma glu_False_resp_exp_eq : forall Γ M a,
+    glu_False Γ M a ->
+    forall M',
+    Γ ⊢ M ≈ M' : ⊥ ->
+    glu_False Γ M' a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros.
+  transitivity M[φ]ʷ; mauto.
+Qed.
+
+#[local]
+Hint Resolve glu_False_resp_exp_eq : mctt.
+
+Lemma glu_False_readback : forall Γ M a,
+    glu_False Γ M a ->
+    forall Δ φ M',
+      Δ ⊢k φ : Γ ->
+      Rnf ⇓ ⊥ᵈ a in length Δ ↘ M' ->
+      Δ ⊢ M[φ]ʷ ≈ M' : ⊥.
+Proof.
+  destruct 1; intros; progressive_inversion; gen_presups.
+  mauto 4.
+Qed.
+
 End Fixed_GCtx.
 
+#[export]
+Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
+#[local]
+Hint Resolve glu_False_per_ne glu_False_resp_exp_eq : mctt.
 #[export]
 Hint Resolve glu_nat_escape : mctt.
 #[export]
@@ -206,6 +277,10 @@ Proof.
 
   - split; mauto 3.
 
+  - split; mauto 3.
+
+  - split; mauto 3.
+
   - assert (Δ ⊢ IT : Type@i) by mauto 3.
     assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
     econstructor; mauto 3; intros; mauto 4.
@@ -244,6 +319,22 @@ Proof.
 Qed.
 
 Hint Resolve glu_nat_resp_wk : mctt.
+
+Lemma glu_False_resp_wk : forall Γ M a,
+    glu_False Γ M a ->
+    forall Δ φ,
+      Δ ⊢k φ : Γ ->
+      glu_False Δ M[φ]ʷ a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros Δ' ψ M' **.
+  rewrite exp_wk_wk.
+  assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
+  mauto 4.
+Qed.
+
+Hint Resolve glu_False_resp_wk : mctt.
 
 Lemma glu_univ_elem_trm_escape : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -380,7 +471,7 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
 #[export]
-Hint Resolve glu_nat_resp_wk : mctt.
+Hint Resolve glu_nat_resp_wk glu_False_resp_wk : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
@@ -881,6 +972,8 @@ Proof.
     destruct_all.
   - repeat eexists; mauto 2.
     eapply glu_univ_elem_typ_monotone; eauto.
+  - split; mauto 2.
+  - split; mauto 2.
   - split; mauto 2.
 
   - simpl_glu_rel.

@@ -59,6 +59,7 @@
 ./Core/Soundness/Realizability.v
 ./Core/Soundness/SubtypingCases.v
 ./Core/Soundness/TermStructureCases.v
+./Core/Soundness/TrueFalseCases.v
 ./Core/Soundness/UniverseCases.v
 ./Core/Soundness/Weakening/Definitions.v
 ./Core/Soundness/Weakening/Lemmas.v

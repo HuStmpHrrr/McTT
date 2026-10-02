@@ -117,6 +117,37 @@ Proof.
     + intros.
       saturate_kripke_escape.
       eapply wf_exp_eq_conv'; [ eapply glu_nat_readback; eassumption | mauto 3 ].
+  (* True *)
+  - econstructor; eauto; intros.
+    progressive_inversion.
+    mauto 3.
+  - handle_functional_glu_univ_elem.
+    match_by_head glu_univ_elem invert_glu_univ_elem.
+    apply_equiv_left.
+    repeat split; eauto.
+    mauto 3.
+  - econstructor; mauto 3.
+    + apply_equiv_left. trivial.
+    + intros.
+      saturate_kripke_escape.
+      progressive_inversion.
+      eapply wf_exp_eq_conv'; [ apply wf_exp_eq_true_eta; mauto 3 | mauto 3 ].
+  (* False *)
+  - econstructor; eauto; intros.
+    progressive_inversion.
+    mauto 3.
+  - handle_functional_glu_univ_elem.
+    match_by_head glu_univ_elem invert_glu_univ_elem.
+    apply_equiv_left.
+    repeat split; eauto.
+    intros.
+    eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
+  - econstructor; mauto 3.
+    + bulky_rewrite. mauto 3.
+    + apply_equiv_left. trivial.
+    + intros.
+      saturate_kripke_escape.
+      eapply wf_exp_eq_conv'; [ eapply glu_False_readback; eassumption | mauto 3 ].
   (* pi *)
   - match_by_head pi_glu_typ_pred progressive_invert.
     handle_per_univ_elem_irrel.
