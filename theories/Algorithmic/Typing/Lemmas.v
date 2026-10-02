@@ -74,6 +74,13 @@ Proof.
     assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Type@i) by mauto 3.
     assert (Γ ⊢ A[Id,,M] ≈ B : Type@i) as <- by mauto 4 using soundness_ty'.
     mauto 4.
+  - assert (Γ ⊢ ⊥ : Type@0) by mauto 2.
+    assert (⊢ Γ ▹ ⊥) by mauto 2.
+    assert (Γ ▹ ⊥ ⊢ A : Type@i) by mauto 2.
+    assert (Γ ⊢ M : ⊥) by mauto 2.
+    assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ B : Type@i) as <- by mauto 4 using soundness_ty'.
+    mauto 4.
   - assert (Γ ⊢ A : Type@i) by mauto 2.
     assert (⊢ Γ ▹ A) by mauto 3.
     mauto 3.
@@ -135,6 +142,10 @@ Proof.
     assert (Γ ⊢ M : ℕ) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▹ ℕ) by mauto 3.
     assert (Γ ▹ ℕ ⊢ A : Typeⁿ@i) by mauto 3 using alg_type_infer_sound; (f_equiv; mautosolve 4).
+  - assert (Γ ⊢ ⊥ : Type@0) by mauto 3.
+    assert (Γ ⊢ M : ⊥) by mauto 3 using alg_type_check_sound.
+    assert (⊢ Γ ▹ ⊥) by mauto 3.
+    assert (Γ ▹ ⊥ ⊢ A : Typeⁿ@i) by mauto 3 using alg_type_infer_sound; (f_equiv; mautosolve 4).
   - assert (Γ ⊢ A : Typeⁿ@i) by mauto 3 using alg_type_infer_sound.
     assert (Γ ⊢ A ≈ C : Type@i) by mauto 3 using soundness_ty'.
     assert (Γ ▹ A ⊢ M : B) by mauto 3 using alg_type_infer_sound.
@@ -263,6 +274,12 @@ Proof.
   - econstructor; mauto 3.
     mauto using alg_subtyping_complete.
   - assert (exists j, Γ ▹ ℕ ⊢a A ⟹ Typeⁿ@j /\ j <= i) as [j []] by mauto 3.
+    assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
+    econstructor; mauto using alg_subtyping_complete, soundness_ty'.
+  - econstructor; mauto 3.
+    mauto using alg_subtyping_complete.
+  - assert (exists j, Γ ▹ ⊥ ⊢a A ⟹ Typeⁿ@j /\ j <= i) as [j []] by mauto 3.
     assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
     assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
