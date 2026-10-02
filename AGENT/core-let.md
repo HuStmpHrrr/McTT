@@ -538,7 +538,7 @@ statement.  Every other existing theorem keeps its exact statement.
 
 ## 10. Driver tests (`examples/`, `driver/Test.ml`)
 
-* New `let_delta.mctt`.  It is Nat-only, since `vector.mctt`'s `Vec` is a
+* New `LetDelta.mctt`.  It is Nat-only, since `Vector.mctt`'s `Vec` is a
   Church encoding.  It defines `Nary : Nat -> Type@0` by recursion, and then:
 
   ```
@@ -549,9 +549,9 @@ statement.  Every other existing theorem keeps its exact statement.
 
   This needs `n ≡ 3` both to check `f`'s body against `Nary n` and to apply
   `f` three times.  Under the old abstract reading it is rejected.  A second
-  eval does the `Vec ℕ n` / `Vec ℕ 3` example with `vector.mctt`'s
+  eval does the `Vec ℕ n` / `Vec ℕ 3` example with `Vector.mctt`'s
   definitions.
-* New `let_multi.mctt`: three declarations, each depending on the previous
+* New `LetMulti.mctt`: three declarations, each depending on the previous
   one.
 * Expected outputs change only where the printed elaborated expression
   changes: an `Evaluate` line now shows `let … in … end` instead of an

@@ -105,11 +105,18 @@ possible.
 
 Once `make` finishes, you can run the binary:
 ```
-dune exec mctt examples/nary.mctt # or your own example
+dune exec mctt examples/Nary.mctt # or your own example
 ```
 or more directly
 ```
-_build/default/driver/mctt.exe examples/nary.mctt # or your own example
+_build/default/driver/mctt.exe examples/Nary.mctt # or your own example
+```
+
+A program can import units from other files, found under `--search-root`
+(the current directory by default). `examples/multi/NatTheory.mctt` uses the
+small library in `examples/multi/Prelude`:
+```
+dune exec mctt -- --search-root examples/multi examples/multi/NatTheory.mctt
 ```
 
 To build Coq proof only, you can go into and only build the `theories` directory:

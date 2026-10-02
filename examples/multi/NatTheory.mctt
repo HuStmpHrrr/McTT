@@ -1,0 +1,39 @@
+(* A client of the [Prelude] library: [Prelude::NatEq], [Prelude::Plus] and
+   [Prelude::Iter] are separate units, loaded once each. *)
+import Prelude::NatEq use (Eq; refl; sym; zeroNeSucc)
+import Prelude::Plus use (plus; plusComm)
+import Prelude::Iter as Iter
+
+module NatTheory where
+
+(* [Prelude::Iter] instantiated with [succ]: iterating it is addition. *)
+def iterSucc : forall (n : Nat) (m : Nat) ->
+    Eq (Iter.iter Nat (fun (x : Nat) -> succ x) n m) (plus n m) :=
+  fun (n : Nat) (m : Nat) ->
+    rec n return x . Eq (Iter.iter Nat (fun (y : Nat) -> succ y) x m) (plus x m)
+    | zero => refl m
+    | succ p, ih => ih
+    end
+end
+
+(* A proof of a closed equation normalizes to [true], of type [True]. *)
+eval plusComm 2 3
+
+eval sym 4 4 (refl 4)
+
+eval zeroNeSucc 5
+
+eval iterSucc 3 4
+
+(* The same unit, instantiated with doubling. *)
+eval Iter.iter Nat (fun (x : Nat) -> plus x x) 3 1
+
+(* A let-bound number is known in the body, so [true] proves the equation;
+   [Doubling] names an instance of [Prelude::Iter]. *)
+eval let module Doubling := Iter Nat (fun (x : Nat) -> plus x x);
+         n : Nat := 2;
+         p : Eq (Doubling.iter n 1) 4 := true
+     in p
+     end
+
+end

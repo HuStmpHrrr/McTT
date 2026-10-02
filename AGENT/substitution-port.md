@@ -106,7 +106,7 @@ every case and which the lemmas above are deliberately kept free of.
 ## Status
 
 **The port is complete.** All 77 files of `_CoqProject` compile, `dune runtest`
-passes, and `dune exec mctt examples/nary.mctt` prints `6 : Nat`.
+passes, and `dune exec mctt examples/Nary.mctt` prints `6 : Nat`.
 
 ### Syntactic layer
 

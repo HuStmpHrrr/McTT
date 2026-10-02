@@ -1,0 +1,9 @@
+(* Propositions as types in Type@0: [True] holds, [False] has no proof. *)
+module Prelude::Logic where
+
+def Not (A : Type@0) : Type@0 := forall (a : A) -> False end
+
+(* From a proof of [False], anything follows. *)
+def absurd (A : Type@0) (f : False) : A := exfalso f return x . A end
+
+end

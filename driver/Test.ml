@@ -85,12 +85,12 @@ let%expect_test "recursion on a natural number that always returns zero is of \
     "eval rec 3 return y . Nat | zero => 0 | succ n, r => 0 end : Nat" in
   [%expect {| Evaluate rec 3 return x1 . Nat | zero => 0 | succ x2, x3 => 0 end --> 0 : Nat |}]
 
-let%expect_test "simple_nat.mctt works" =
-  let _ = main_of_example "simple_nat.mctt" in
+let%expect_test "SimpleNat.mctt works" =
+  let _ = main_of_example "SimpleNat.mctt" in
   [%expect {| Evaluate 4 --> 4 : Nat |}]
 
-let%expect_test "simple_rec.mctt works" =
-  let _ = main_of_example "simple_rec.mctt" in
+let%expect_test "SimpleRec.mctt works" =
+  let _ = main_of_example "SimpleRec.mctt" in
   [%expect {|
     Evaluate fun (x1 : Nat)
                -> rec x1 return x2 . Nat | zero => 1 | succ x3, x4 => succ x4 end
@@ -99,8 +99,8 @@ let%expect_test "simple_rec.mctt works" =
       : forall (x1 : Nat) -> Nat
     |}]
 
-let%expect_test "true_false.mctt works" =
-  let _ = main_of_example "true_false.mctt" in
+let%expect_test "TrueFalse.mctt works" =
+  let _ = main_of_example "TrueFalse.mctt" in
   [%expect {|
     Evaluate true --> true : True
     Evaluate fun (x1 : True) -> x1 --> fun (x1 : True) -> true
@@ -110,8 +110,8 @@ let%expect_test "true_false.mctt works" =
       : forall (x1 : False) -> Nat
     |}]
 
-let%expect_test "let_true_false.mctt works" =
-  let _ = main_of_example "let_true_false.mctt" in
+let%expect_test "LetTrueFalse.mctt works" =
+  let _ = main_of_example "LetTrueFalse.mctt" in
   [%expect {|
     Evaluate let x1 : True := true;
                  x2 : forall (x3 : False) -> Nat :=
@@ -120,18 +120,23 @@ let%expect_test "let_true_false.mctt works" =
              end --> true : True
     |}]
 
-let%expect_test "nat_theory.mctt works" =
-  let _ = main_of_example "nat_theory.mctt" in
+let%expect_test "multi/NatTheory.mctt: the Prelude library" =
+  let _ = main_of_multi "NatTheory.mctt" in
   [%expect {|
-    Evaluate Arith.plusComm 2 3 --> true : True
-    Evaluate Arith.sym 4 4 (Arith.refl 4) --> true : True
-    Evaluate Arith.zeroNeSucc 5 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Plus.plusComm 2 3 --> true : True
+    Evaluate Prelude::NatEq.sym 4 4 (Prelude::NatEq.refl 4) --> true : True
+    Evaluate Prelude::NatEq.zeroNeSucc 5 --> fun (x1 : False) -> x1
       : forall (x1 : False) -> False
     Evaluate iterSucc 3 4 --> true : True
-    Evaluate Iter.iter Nat (fun (x1 : Nat) -> Arith.plus x1 x1) 3 1 --> 8 : Nat
+    Evaluate Prelude::Iter.iter Nat (fun (x1 : Nat) -> Prelude::Plus.plus x1 x1)
+               3
+               1 --> 8 : Nat
     Evaluate let x1 : Nat := 2;
-                 x2 : Arith.Eq
-                        (Iter.iter Nat (fun (x3 : Nat) -> Arith.plus x3 x3) x1 1)
+                 x2 : Prelude::NatEq.Eq
+                        (Prelude::Iter.iter Nat
+                           (fun (x3 : Nat) -> Prelude::Plus.plus x3 x3)
+                           x1
+                          1)
                         4 := true
              in x2
              end --> true : True
@@ -149,8 +154,8 @@ let%expect_test "exfalso needs a motive" =
       This token is invalid for the beginning of an expression.
     |}]
 
-let%expect_test "pair.mctt works" =
-  let _ = main_of_example "pair.mctt" in
+let%expect_test "Pair.mctt works" =
+  let _ = main_of_example "Pair.mctt" in
   [%expect {|
     Evaluate (fun (x1 : forall (A1 : Type@0)
                                (A2 : Type@0)
@@ -211,8 +216,8 @@ let%expect_test "pair.mctt works" =
                               -> x34)) --> 5 : Nat
     |}]
 
-let%expect_test "vector.mctt works" =
-  let _ = main_of_example "vector.mctt" in
+let%expect_test "Vector.mctt works" =
+  let _ = main_of_example "Vector.mctt" in
   [%expect {|
     Evaluate (fun (x1 : forall (A1 : Type@0)
                                (x2 : Nat)
@@ -315,58 +320,19 @@ let%expect_test "vector.mctt works" =
                  -> x74 x82 x84 x85) --> 7 : Nat
     |}]
 
-let%expect_test "nary.mctt works" =
-  let _ = main_of_example "nary.mctt" in
+let%expect_test "Nary.mctt works" =
+  let _ = main_of_example "Nary.mctt" in
   [%expect {|
-    Evaluate (fun (x1 : forall (x2 : Nat) -> Type@0)
-                  (x3 : forall (x4 : x1 0) -> Nat)
-                  (x5 : forall (x6 : Nat)
-                               (x7 : x1 (succ x6))
-                               (x8 : Nat)
-                          -> x1 x6)
-                  (x9 : Nat)
-                  (x10 : x1 x9)
-               -> (rec x9 return x11 . forall (x14 : x1 x11) -> Nat
-                   | zero => x3
-                   | succ x12, x13 =>
-                     fun (x15 : x1 (succ x12)) -> x13 (x5 x12 x15 (succ x12))
-                   end)
-                    x10)
-               (fun (x16 : Nat)
-                 -> rec x16 return x17 . Type@0
-                    | zero => Nat
-                    | succ x18, A1 => forall (x19 : Nat) -> A1
-                    end)
-               (fun (x20 : Nat) -> x20)
-               (fun (x21 : Nat)
-                    (x22 : rec succ x21 return x23 . Type@0
-                           | zero => Nat
-                           | succ x24, A2 => forall (x25 : Nat) -> A2
-                           end)
-                    (x26 : Nat)
-                 -> x22 x26)
-               3
-               ((fun (x27 : forall (x28 : Nat)
-                                   (x29 : Nat)
-                              -> Nat)
-                     (x30 : Nat)
-                     (x31 : Nat)
-                     (x32 : Nat)
-                  -> x27 x30 (x27 x31 x32))
-                 (fun (x33 : Nat)
-                      (x34 : Nat)
-                   -> rec x33 return x35 . Nat
-                      | zero => x34
-                      | succ x36, x37 => succ x37
-                      end)) --> 6 : Nat
+    Evaluate sum 3 1 2 3 --> 6 : Nat
+    Evaluate let x1 : Arity.Fn Nat 4 := sum 4 in x1 1 2 3 4 end --> 10 : Nat
     |}]
 
-let%expect_test "simple_let.mctt works" =
-  let _ = main_of_example "simple_let.mctt" in
+let%expect_test "SimpleLet.mctt works" =
+  let _ = main_of_example "SimpleLet.mctt" in
   [%expect {| Evaluate let x1 : Nat := 0 in succ x1 end --> 1 : Nat |}]
 
-let%expect_test "let_two_vars.mctt works" =
-  let _ = main_of_example "let_two_vars.mctt" in
+let%expect_test "LetTwoVars.mctt works" =
+  let _ = main_of_example "LetTwoVars.mctt" in
   [%expect {|
     Evaluate let x1 : Nat := 0;
                  x2 : forall (x3 : Nat) -> Nat := fun (x4 : Nat) -> x4
@@ -374,8 +340,8 @@ let%expect_test "let_two_vars.mctt works" =
              end --> 0 : Nat
     |}]
 
-let%expect_test "let_nary.mctt works" =
-  let _ = main_of_example "let_nary.mctt" in
+let%expect_test "LetNary.mctt works" =
+  let _ = main_of_example "LetNary.mctt" in
   [%expect {|
     Evaluate let x1 : forall (x2 : Nat) -> Type@0 :=
                    fun (x3 : Nat)
@@ -420,8 +386,8 @@ let%expect_test "let_nary.mctt works" =
              end --> 6 : Nat
     |}]
 
-let%expect_test "let_vector.mctt works" =
-  let _ = main_of_example "let_vector.mctt" in
+let%expect_test "LetVector.mctt works" =
+  let _ = main_of_example "LetVector.mctt" in
   [%expect {|
     Evaluate let x1 : forall (A1 : Type@0)
                              (x2 : Nat)
@@ -525,8 +491,8 @@ let%expect_test "let_vector.mctt works" =
              end --> 7 : Nat
     |}]
 
-let%expect_test "def_abstract.mctt works" =
-  let _ = main_of_example "def_abstract.mctt" in
+let%expect_test "DefAbstract.mctt works" =
+  let _ = main_of_example "DefAbstract.mctt" in
   [%expect {|
     Evaluate double four
       --> rec four return x1 . Nat
@@ -540,24 +506,24 @@ let%expect_test "def_abstract.mctt works" =
           end : Nat
     |}]
 
-let%expect_test "module_nested.mctt works" =
-  let _ = main_of_example "module_nested.mctt" in
+let%expect_test "ModuleNested.mctt works" =
+  let _ = main_of_example "ModuleNested.mctt" in
   [%expect {| Evaluate Ops.twice Ops.pred 5 --> 3 : Nat |}]
 
-let%expect_test "module_param.mctt works" =
-  let _ = main_of_example "module_param.mctt" in
+let%expect_test "ModuleParam.mctt works" =
+  let _ = main_of_example "ModuleParam.mctt" in
   [%expect {| Evaluate Church.two Nat 0 (fun (x1 : Nat) -> succ x1) --> 2 : Nat |}]
 
-let%expect_test "import_use.mctt works" =
-  let _ = main_of_example "import_use.mctt" in
+let%expect_test "ImportUse.mctt works" =
+  let _ = main_of_example "ImportUse.mctt" in
   [%expect {| Evaluate sum Impl.exposed Impl.exposed --> 8 : Nat |}]
 
-let%expect_test "let_decl.mctt works" =
-  let _ = main_of_example "let_decl.mctt" in
+let%expect_test "LetDecl.mctt works" =
+  let _ = main_of_example "LetDecl.mctt" in
   [%expect {| Evaluate let x1 : Nat := 2; x2 : Nat := succ x1 in succ x2 end --> 4 : Nat |}]
 
-let%expect_test "let_delta.mctt works" =
-  let _ = main_of_example "let_delta.mctt" in
+let%expect_test "LetDelta.mctt works" =
+  let _ = main_of_example "LetDelta.mctt" in
   [%expect {|
     Evaluate let x1 : Nat := 3;
                  x2 : Nary x1 := fun (x3 : Nat)
@@ -568,8 +534,8 @@ let%expect_test "let_delta.mctt works" =
              end --> 1 : Nat
     |}]
 
-let%expect_test "let_multi.mctt works" =
-  let _ = main_of_example "let_multi.mctt" in
+let%expect_test "LetMulti.mctt works" =
+  let _ = main_of_example "LetMulti.mctt" in
   [%expect {|
     Evaluate let A1 : Type@0 := Nat;
                  x1 : A1 := 2;

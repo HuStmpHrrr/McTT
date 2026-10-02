@@ -1,0 +1,41 @@
+module Nary where
+
+(* Functions of any number of arguments over a type [A]. *)
+module Arity (A : Type@0) where
+
+  (* [Fn n] takes [n] arguments of type [A] and returns an [A]. *)
+  def Fn (n : Nat) : Type@0 :=
+    rec n return y . Type@0
+    | zero => A
+    | succ m, r => forall (a : A) -> r
+    end
+  end
+
+  (* [fold op n acc] takes [n] more arguments, combining each into [acc]. *)
+  def fold (op : forall (a : A) (b : A) -> A) (n : Nat) : forall (acc : A) -> Fn n :=
+    rec n return y . (forall (acc : A) -> Fn y)
+    | zero => fun (acc : A) -> acc
+    | succ m, r => fun (acc : A) (a : A) -> r (op acc a)
+    end
+  end
+
+end
+
+def add (a : Nat) (b : Nat) : Nat :=
+  rec a return y . Nat
+  | zero => b
+  | succ p, r => succ r
+  end
+end
+
+(* The sum of [n] numbers, as a function of [n] arguments. *)
+def sum (n : Nat) : Arity.Fn Nat n := Arity.fold Nat add n 0 end
+
+eval sum 3 1 2 3 : Nat
+
+eval let module N := Arity Nat;
+         sumFour : N.Fn 4 := sum 4
+     in sumFour 1 2 3 4
+     end
+
+end

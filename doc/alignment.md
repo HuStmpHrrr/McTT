@@ -462,7 +462,7 @@ rule block of `System/Definitions.v` fell 482 → 288 (−40 %), with
 Together those absorb the whole of the new 550-line algebra and more.
 
 **Certification.** All 76 files compile under Rocq 9.2.0 (`make -C theories`),
-`dune runtest` passes, `dune exec mctt examples/nary.mctt` prints `6 : Nat`, and
+`dune runtest` passes, `dune exec mctt examples/Nary.mctt` prints `6 : Nat`, and
 the axiom footprint is the two inherited standard-library axioms named in §4. So
 the certification half of the third question is discharged as well.
 

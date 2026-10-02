@@ -12,7 +12,7 @@ first, or prefix commands with `opam exec --switch=rocq-9.2.0 --`.
 ```sh
 make                              # build everything (Rocq + OCaml driver)
 dune runtest                      # the test suite — NOT mentioned in README.md
-dune exec mctt examples/nary.mctt # end-to-end smoke test; must print `6 : Nat`
+dune exec mctt examples/Nary.mctt # end-to-end smoke test; must print `6 : Nat`
 ```
 
 Treat a change as verified only when all three pass, **and run `make` before

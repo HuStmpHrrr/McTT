@@ -83,7 +83,7 @@ Proof.
       repeat constructor.
 Qed.
 
-(** ** [examples/module_param.mctt]: a parameterized module and [let module] *)
+(** ** [examples/ModuleParam.mctt]: a parameterized module and [let module] *)
 Definition church : Cst.prog :=
   (nil, ("ModuleParam" :: nil, nil,
          c_mod ("Church" :: nil) (("A", typ 0) :: nil)
@@ -109,7 +109,7 @@ Example church_spec :
      cc_eval (Church_two $ ℕ $ zero $ λ ℕ (succ #0)) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
-(** ** [examples/import_use.mctt]: privacy, [import … as], [import … use] *)
+(** ** [examples/ImportUse.mctt]: privacy, [import … as], [import … use] *)
 Definition import_use : Cst.prog :=
   (nil, ("ImportUse" :: nil, nil,
          c_mod ("Impl" :: nil) nil
@@ -157,7 +157,7 @@ Example main_spec :
                    succ (succ (succ (succ (succ zero)))))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
-(** ** [examples/true_false.mctt]: the unit type and the empty type
+(** ** [examples/TrueFalse.mctt]: the unit type and the empty type
 
     The motive of [exfalso] binds [x], so [Nat] is elaborated under one more
     binder. *)
