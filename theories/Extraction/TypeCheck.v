@@ -352,42 +352,6 @@ Section type_check.
     firstorder.
   Qed.
 
-  Next Obligation. (* exists i, G ⊢ A' : Type@i *)
-    clear_defs.
-    eexists; mauto 4 using alg_type_infer_sound.
-  Qed.
-
-  Next Obligation. (* ⊢ G ▸ A' ≔ M' *)
-    clear_defs.
-    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
-    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
-    mauto 3.
-  Qed.
-
-  Next Obligation. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
-    clear_defs.
-    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
-    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
-    assert (⊢ G ▸ A' ≔ M') by mauto 3.
-    assert (G ▸ A' ≔ M' ⊢ C : Typeⁿ@H1) by mauto 4 using alg_type_infer_sound.
-    assert (G ⊢ C[Id,,M'] : Typeⁿ@H1) as [? []]%soundness_ty by mauto 3.
-    mauto 3 using nbe_ty_order_sound.
-  Qed.
-
-  Next Obligation. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (exists i, G ⊢a D ⟹ Typeⁿ@i) *)
-    clear_defs.
-    split; [mauto 3 |].
-    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
-    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
-    assert (⊢ G ▸ A' ≔ M') by mauto 3.
-    assert (G ▸ A' ≔ M' ⊢ C : Typeⁿ@H1) by mauto 4 using alg_type_infer_sound.
-    assert (G ⊢ C[Id,,M'] : Typeⁿ@H1) by mauto 3.
-    assert (G ⊢ C[Id,,M'] ≈ D : Type@H1) by (eapply soundness_ty'; mauto 3).
-    assert (user_exp D) by trivial using user_exp_nf.
-    assert (exists j, G ⊢a D ⟹ Typeⁿ@j /\ j <= H1) as [? []] by (gen_presups; mauto 3).
-    firstorder.
-  Qed.
-
   Next Obligation. (* nbe_ty_order gc_deps gc_stack G A *)
     clear_defs.
     assert (exists i, G ⊢ A : Type@i) as [? [? []]%soundness_ty] by mauto 3.
@@ -448,6 +412,44 @@ Section type_check.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
   Next Obligation. glob_obl. Qed.
+
+  Next Obligation. (* exists i, G ⊢ A' : Type@i *)
+    clear_defs.
+    eexists; mauto 4 using alg_type_infer_sound.
+  Qed.
+
+  Next Obligation. (* ⊢ G ▸ A' ≔ M' *)
+    clear_defs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    mauto 3.
+  Qed.
+
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
+    clear_defs.
+    destruct_conjs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    assert (⊢ G ▸ A' ≔ M') by mauto 3.
+    assert (exists j, G ▸ A' ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢ C[Id,,M'] : Type@j) as [? []]%soundness_ty by mauto 3.
+    mauto 3 using nbe_ty_order_sound.
+  Qed.
+
+  Next Obligation. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (exists i, G ⊢a D ⟹ Typeⁿ@i) *)
+    clear_defs.
+    split; [mauto 3 |].
+    destruct_conjs.
+    assert (G ⊢ A' : Type@i) by mauto 4 using alg_type_infer_sound.
+    assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
+    assert (⊢ G ▸ A' ≔ M') by mauto 3.
+    assert (exists j, G ▸ A' ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢ C[Id,,M'] : Type@j) by mauto 3.
+    assert (G ⊢ C[Id,,M'] ≈ D : Type@j) by (eapply soundness_ty'; mauto 3).
+    assert (user_exp D) by trivial using user_exp_nf.
+    assert (exists k, G ⊢a D ⟹ Typeⁿ@k /\ k <= j) as [? []] by (gen_presups; mauto 3).
+    firstorder.
+  Qed.
 
   Extraction Inline type_check_functional type_infer_functional.
 
