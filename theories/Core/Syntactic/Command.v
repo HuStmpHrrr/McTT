@@ -12,7 +12,7 @@ From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations.
 
 (** A unit's absolute path, [X::Y]. *)
-Notation fpath := (list string).
+Abbreviation fpath := (list string).
 
 Inductive ccmd : Set :=
 (** [def x : A := M]: transparency, privacy, type and body.  A [def] always

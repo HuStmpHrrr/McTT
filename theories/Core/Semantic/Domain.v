@@ -35,7 +35,7 @@ with domain_ne : Set :=
 with domain_nf : Set :=
 | d_dom : domain -> domain -> domain_nf.
 
-Notation env := (list domain).
+Abbreviation env := (list domain).
 
 Derive NoConfusion for domain domain_ne domain_nf.
 
@@ -48,6 +48,7 @@ Fixpoint env_var (ρ : env) (x : nat) : domain :=
   | 0 => List.hd d_zero ρ
   | S x' => env_var (List.tl ρ) x'
   end.
+#[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
 
 (** [env_var] is [nth], but defined by recursion on the index so that [ρ↯ x]

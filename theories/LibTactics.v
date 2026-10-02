@@ -1,9 +1,10 @@
 From Stdlib Require Export Equivalence Lia Morphisms Program.Equality Program.Tactics Relation_Definitions RelationClasses.
 From Equations Require Export Equations.
 
+From Mctt.Core Require Import Base.
+
 Open Scope predicate_scope.
 
-Create HintDb mctt discriminated.
 (** Rewrite hint databases live in their own namespace, so [mctt] has to be
     created a second time for the [Hint Rewrite ... : mctt] declarations. *)
 Create Rewrite HintDb mctt.
