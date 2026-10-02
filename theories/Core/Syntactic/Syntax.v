@@ -134,6 +134,21 @@ Definition path_valid (p : path) : Prop :=
 Definition path_in (mp : path) (x : string) : path :=
   {| p_unit := p_unit mp ; p_mems := p_mems mp ++ x :: nil |}.
 
+(** The terms, and the module syntax nested in them.  The two are one
+    mutual family: a term binds a local module ([a_let] with [b_mod]) and
+    selects members of module expressions ([a_mem]), and a module body
+    contains terms.
+
+    - [modexp] is a module expression: a global module [me_path], a local
+      module slot [me_var], a submodule [me_mem], an argument [me_app], or a
+      literal unit [me_lit].  A literal is produced only by substitution, when
+      [ζ] replaces a module slot by its unit.
+    - [gunit] is a unit: its parameter telescope, innermost first, and its
+      definition, a body or an alias.  The definition is under the parameters.
+    - [gmod] is a module body, newest entry last.  Each named entry binds one
+      index for the entries after it; a check entry ([gm_check]) binds none.
+    - [centry] is a context entry: an assumption, a definition, or a module
+      slot [ce_mod U], which binds one index to the unit [U]. *)
 Inductive exp : Set :=
 (** Universe *)
 | a_typ : nat -> exp
@@ -159,32 +174,98 @@ Inductive exp : Set :=
     also when [X::Y::Z] is the unit being elaborated.  A global is closed: it
     stands for the member generalized over the parameters of every module
     enclosing it, outermost first, and is applied to them.  Inside its own
-    module those are the parameter variables in scope.
-
-    There is no projection constructor: a projection is not an operation on
-    expressions but part of a name, resolved by the elaborator, so
-    [(X::Y.Z x y).bar] elaborates to
-    [a_glob (p_abs ["X"; "Y"] ["Z"; "bar"]) $ x $ y]. *)
+    module those are the parameter variables in scope. *)
 | a_glob : path -> exp
-(** Local definition: [a_let A M B] binds [#0] in [B] to [M] at type [A]. *)
-| a_let : exp -> exp -> exp -> exp.
+(** Local binding: [a_let b B] binds [#0] in [B] to the definition or the
+    module [b]. *)
+| a_let : bnd -> exp -> exp
+(** The member [x] of the module [H]. *)
+| a_mem : modexp -> string -> exp
+with modexp : Set :=
+| me_path : path -> modexp
+| me_var : nat -> modexp
+| me_mem : modexp -> string -> modexp
+| me_app : modexp -> exp -> modexp
+| me_lit : gunit -> modexp
+with bnd : Set :=
+(** [b_def A M]: a definition of type [A] *)
+| b_def : exp -> exp -> bnd
+| b_mod : gunit -> bnd
+with gunit : Set :=
+| gu_mk : list centry -> moddef -> gunit
+with moddef : Set :=
+| md_body : gmod -> moddef
+| md_alias : modexp -> moddef
+with gmod : Set :=
+| gm_nil : gmod
+| gm_ext : gmod -> string -> gentry -> gmod
+| gm_check : gmod -> bcheck -> gmod
+(** The check-only entries of a local body: an [import] of a module, with the
+    names it [use]s, and an [eval], which no rule accepts. *)
+with bcheck : Set :=
+| bc_import : modexp -> list string -> bcheck
+| bc_eval : exp -> option exp -> bcheck
+(** [ge_def b pv A B]: [b] says whether the definition is transparent, [pv]
+    whether it is private, and [B] is [None] for an axiom.  A filed definition
+    is closed; a definition of a local body is read in the body's context. *)
+with gentry : Set :=
+| ge_def : bool -> bool -> exp -> option exp -> gentry
+| ge_mod : gunit -> gentry
+with centry : Set :=
+| ce_ass : exp -> centry
+| ce_def : exp -> exp -> centry
+| ce_mod : gunit -> centry.
 
 Abbreviation typ := exp.
 
 (** ** Contexts
 
-    A context entry is an assumption [x : A] or a local definition
-    [x : A := M].  Both occupy one de Bruijn index. *)
-Inductive centry : Set :=
-| ce_ass : typ -> centry
-| ce_def : typ -> exp -> centry.
+    A context entry occupies one de Bruijn index, whether it is an
+    assumption, a definition or a module slot. *)
+Abbreviation ctx := (list centry).
 
+(** The type of an entry; a module slot has none, and reads as [⊤]. *)
 Definition ce_typ (e : centry) : typ :=
   match e with
   | ce_ass A | ce_def A _ => A
+  | ce_mod _ => a_True
   end.
 
-Abbreviation ctx := (list centry).
+(** ** Units
+
+    A body unit and a body entry, the forms every global module has. *)
+Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
+Abbreviation ge_body Δ Φ := (ge_mod (gu_body Δ Φ)).
+
+Definition gu_params (U : gunit) : ctx := match U with gu_mk Δ _ => Δ end.
+
+Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
+
+(** The body of a body unit, and the empty body for an alias. *)
+Definition gu_mod (U : gunit) : gmod :=
+  match U with
+  | gu_mk _ (md_body Φ) => Φ
+  | gu_mk _ (md_alias _) => gm_nil
+  end.
+
+(** The number of indices a body binds. *)
+Fixpoint gm_binders (Φ : gmod) : nat :=
+  match Φ with
+  | gm_nil => 0
+  | gm_ext Φ' _ _ => S (gm_binders Φ')
+  | gm_check Φ' _ => gm_binders Φ'
+  end.
+
+(** A body as the context entries it binds, innermost first.  A check entry
+    binds nothing. *)
+Fixpoint body_ctx (Φ : gmod) : ctx :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_mod U) => cons (ce_mod U) (body_ctx Φ')
+  | gm_check Φ' _ => body_ctx Φ'
+  end.
 
 (** ** Telescopes
 
@@ -199,25 +280,169 @@ Abbreviation ctx := (list centry).
     and works outward.  Folding the other way reverses the telescope, and the
     result is still a well-formed [exp], so nothing catches it early.
 
-    No shifting arises.  If [B] is well formed in [Δ'] and [A] in [Δ' ▹ B], then
-    [Π B A] is well formed in [Δ'] — exactly the invariant [a_pi] wants — so the
-    indices already point at the right parameters.
-
     A local definition in a telescope is generalized as a [let], as a section
-    does with [Let].  The elaborator only builds telescopes of assumptions. *)
+    does with [Let], and a module slot as a local module.  The elaborator only
+    builds parameter telescopes of assumptions. *)
 Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
   match Δ with
   | nil => A
   | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
-  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let B N A)
+  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def B N) A)
+  | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
   end.
 
 Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
   match Δ with
   | nil => M
   | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
-  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let B N M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def B N) M)
+  | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
   end.
+
+(** ** Induction
+
+    The family is nested through [list centry] and [option exp], so its
+    induction principle is written by hand.  [syn_mut_ind] has one motive per
+    sort; a telescope carries [Forall] of the entry motive, and a definition
+    body the motive of every expression it may hold. *)
+Section syn_mut_ind.
+  Variables (Pe : exp -> Prop) (Pm : modexp -> Prop) (Pb : bnd -> Prop)
+    (Pu : gunit -> Prop) (Pd : moddef -> Prop) (Pg : gmod -> Prop)
+    (Pk : bcheck -> Prop) (Pn : gentry -> Prop) (Pc : centry -> Prop).
+
+  Hypotheses
+    (case_typ : forall i, Pe (a_typ i))
+    (case_nat : Pe a_nat)
+    (case_zero : Pe a_zero)
+    (case_succ : forall M, Pe M -> Pe (a_succ M))
+    (case_natrec : forall A MZ MS M, Pe A -> Pe MZ -> Pe MS -> Pe M -> Pe (a_natrec A MZ MS M))
+    (case_True : Pe a_True)
+    (case_true : Pe a_true)
+    (case_False : Pe a_False)
+    (case_exfalso : forall A M, Pe A -> Pe M -> Pe (a_exfalso A M))
+    (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
+    (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
+    (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
+    (case_var : forall x, Pe (a_var x))
+    (case_glob : forall p, Pe (a_glob p))
+    (case_let : forall b B, Pb b -> Pe B -> Pe (a_let b B))
+    (case_mem : forall H x, Pm H -> Pe (a_mem H x))
+    (case_me_path : forall p, Pm (me_path p))
+    (case_me_var : forall k, Pm (me_var k))
+    (case_me_mem : forall H y, Pm H -> Pm (me_mem H y))
+    (case_me_app : forall H N, Pm H -> Pe N -> Pm (me_app H N))
+    (case_me_lit : forall U, Pu U -> Pm (me_lit U))
+    (case_b_def : forall A M, Pe A -> Pe M -> Pb (b_def A M))
+    (case_b_mod : forall U, Pu U -> Pb (b_mod U))
+    (case_gu_mk : forall Δ D, List.Forall Pc Δ -> Pd D -> Pu (gu_mk Δ D))
+    (case_md_body : forall Φ, Pg Φ -> Pd (md_body Φ))
+    (case_md_alias : forall E, Pm E -> Pd (md_alias E))
+    (case_gm_nil : Pg gm_nil)
+    (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
+    (case_gm_check : forall Φ c, Pg Φ -> Pk c -> Pg (gm_check Φ c))
+    (case_bc_import : forall E ns, Pm E -> Pk (bc_import E ns))
+    (case_bc_eval : forall M A, Pe M -> (forall A', A = Some A' -> Pe A') -> Pk (bc_eval M A))
+    (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
+    (case_ge_mod : forall U, Pu U -> Pn (ge_mod U))
+    (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
+    (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
+    (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
+
+  Fixpoint exp_mut (M : exp) : Pe M :=
+    match M with
+    | a_typ i => case_typ i
+    | a_nat => case_nat
+    | a_zero => case_zero
+    | a_succ M => case_succ M (exp_mut M)
+    | a_natrec A MZ MS M => case_natrec A MZ MS M (exp_mut A) (exp_mut MZ) (exp_mut MS) (exp_mut M)
+    | a_True => case_True
+    | a_true => case_true
+    | a_False => case_False
+    | a_exfalso A M => case_exfalso A M (exp_mut A) (exp_mut M)
+    | a_pi A B => case_pi A B (exp_mut A) (exp_mut B)
+    | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
+    | a_app M N => case_app M N (exp_mut M) (exp_mut N)
+    | a_var x => case_var x
+    | a_glob p => case_glob p
+    | a_let b B => case_let b B (bnd_mut b) (exp_mut B)
+    | a_mem H x => case_mem H x (modexp_mut H)
+    end
+  with modexp_mut (H : modexp) : Pm H :=
+    match H with
+    | me_path p => case_me_path p
+    | me_var k => case_me_var k
+    | me_mem H y => case_me_mem H y (modexp_mut H)
+    | me_app H N => case_me_app H N (modexp_mut H) (exp_mut N)
+    | me_lit U => case_me_lit U (gunit_mut U)
+    end
+  with bnd_mut (b : bnd) : Pb b :=
+    match b with
+    | b_def A M => case_b_def A M (exp_mut A) (exp_mut M)
+    | b_mod U => case_b_mod U (gunit_mut U)
+    end
+  with gunit_mut (U : gunit) : Pu U :=
+    match U with
+    | gu_mk Δ D =>
+        case_gu_mk Δ D
+          ((fix tele_mut (Δ : list centry) : List.Forall Pc Δ :=
+              match Δ with
+              | nil => List.Forall_nil _
+              | cons e Δ' => List.Forall_cons _ (centry_mut e) (tele_mut Δ')
+              end) Δ)
+          (moddef_mut D)
+    end
+  with moddef_mut (D : moddef) : Pd D :=
+    match D with
+    | md_body Φ => case_md_body Φ (gmod_mut Φ)
+    | md_alias E => case_md_alias E (modexp_mut E)
+    end
+  with gmod_mut (Φ : gmod) : Pg Φ :=
+    match Φ with
+    | gm_nil => case_gm_nil
+    | gm_ext Φ x E => case_gm_ext Φ x E (gmod_mut Φ) (gentry_mut E)
+    | gm_check Φ c => case_gm_check Φ c (gmod_mut Φ) (bcheck_mut c)
+    end
+  with bcheck_mut (c : bcheck) : Pk c :=
+    match c with
+    | bc_import E ns => case_bc_import E ns (modexp_mut E)
+    | bc_eval M A =>
+        case_bc_eval M A (exp_mut M)
+          (match A as o return (forall A', o = Some A' -> Pe A') with
+           | Some A0 => fun A' e => match e in _ = o' return match o' with Some A' => Pe A' | None => True end with
+                                   | eq_refl => exp_mut A0 end
+           | None => fun A' e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
+                                 | eq_refl => I end)
+           end)
+    end
+  with gentry_mut (E : gentry) : Pn E :=
+    match E with
+    | ge_def b pv A B =>
+        case_ge_def b pv A B (exp_mut A)
+          (match B as o return (forall M, o = Some M -> Pe M) with
+           | Some M0 => fun M e => match e in _ = o' return match o' with Some M => Pe M | None => True end with
+                                  | eq_refl => exp_mut M0 end
+           | None => fun M e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
+                                | eq_refl => I end)
+           end)
+    | ge_mod U => case_ge_mod U (gunit_mut U)
+    end
+  with centry_mut (e : centry) : Pc e :=
+    match e with
+    | ce_ass A => case_ce_ass A (exp_mut A)
+    | ce_def A M => case_ce_def A M (exp_mut A) (exp_mut M)
+    | ce_mod U => case_ce_mod U (gunit_mut U)
+    end.
+
+  Theorem syn_mut_ind :
+    (forall M, Pe M) /\ (forall H, Pm H) /\ (forall b, Pb b) /\ (forall U, Pu U) /\
+    (forall D, Pd D) /\ (forall Φ, Pg Φ) /\ (forall c, Pk c) /\ (forall E, Pn E) /\
+    (forall e, Pc e).
+  Proof.
+    repeat split; [ exact exp_mut | exact modexp_mut | exact bnd_mut | exact gunit_mut
+                  | exact moddef_mut | exact gmod_mut | exact bcheck_mut | exact gentry_mut
+                  | exact centry_mut ].
+  Qed.
+End syn_mut_ind.
 
 Fixpoint nat_to_exp n : exp :=
   match n with
@@ -385,37 +610,132 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
   | a_glob p => a_glob p
-  | a_let A M B => a_let (exp_wk A φ) (exp_wk M φ) (exp_wk B (wk_q φ))
+  | a_let b B => a_let (bnd_wk b φ) (exp_wk B (wk_q φ))
+  | a_mem H x => a_mem (modexp_wk H φ) x
+  end
+with modexp_wk (H : modexp) (φ : wk) : modexp :=
+  match H with
+  | me_path p => me_path p
+  | me_var k => me_var (φ k)
+  | me_mem H y => me_mem (modexp_wk H φ) y
+  | me_app H N => me_app (modexp_wk H φ) (exp_wk N φ)
+  | me_lit U => me_lit (gunit_wk U φ)
+  end
+with bnd_wk (b : bnd) (φ : wk) : bnd :=
+  match b with
+  | b_def A M => b_def (exp_wk A φ) (exp_wk M φ)
+  | b_mod U => b_mod (gunit_wk U φ)
+  end
+(** The entry of a telescope at position [i] from the outermost is under [i]
+    binders, and the definition under all of them. *)
+with gunit_wk (U : gunit) (φ : wk) : gunit :=
+  match U with
+  | gu_mk Δ D =>
+      gu_mk ((fix tele_wk (Δ : list centry) : list centry :=
+                match Δ with
+                | nil => nil
+                | cons e Δ' => cons (centry_wk e (wk_qn (List.length Δ') φ)) (tele_wk Δ')
+                end) Δ)
+            (moddef_wk D (wk_qn (List.length Δ) φ))
+  end
+with moddef_wk (D : moddef) (φ : wk) : moddef :=
+  match D with
+  | md_body Φ => md_body (gmod_wk Φ φ)
+  | md_alias E => md_alias (modexp_wk E φ)
+  end
+with gmod_wk (Φ : gmod) (φ : wk) : gmod :=
+  match Φ with
+  | gm_nil => gm_nil
+  | gm_ext Φ x E => gm_ext (gmod_wk Φ φ) x (gentry_wk E (wk_qn (gm_binders Φ) φ))
+  | gm_check Φ c => gm_check (gmod_wk Φ φ) (bcheck_wk c (wk_qn (gm_binders Φ) φ))
+  end
+with bcheck_wk (c : bcheck) (φ : wk) : bcheck :=
+  match c with
+  | bc_import E ns => bc_import (modexp_wk E φ) ns
+  | bc_eval M A => bc_eval (exp_wk M φ) (match A with Some A => Some (exp_wk A φ) | None => None end)
+  end
+with gentry_wk (E : gentry) (φ : wk) : gentry :=
+  match E with
+  | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
+  | ge_mod U => ge_mod (gunit_wk U φ)
+  end
+with centry_wk (e : centry) (φ : wk) : centry :=
+  match e with
+  | ce_ass A => ce_ass (exp_wk A φ)
+  | ce_def A M => ce_def (exp_wk A φ) (exp_wk M φ)
+  | ce_mod U => ce_mod (gunit_wk U φ)
+  end.
+
+(** A telescope under [φ], each entry under the binders of the entries outside
+    it. *)
+Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
+  match Δ with
+  | nil => nil
+  | cons e Δ' => cons (centry_wk e (wk_qn (List.length Δ') φ)) (tele_wk Δ' φ)
   end.
 
 (** * Substitutions
 
-    A substitution maps each de Bruijn index to an expression.  Like
-    weakenings, substitutions are not part of the object syntax: applying one
-    is a meta-level recursion on the expression.
- *)
+    A substitution maps each de Bruijn index to an entry, [sentry]: a
+    variable, which is a variable of either sort, a term for a term variable,
+    or a module expression for a module slot.  Like weakenings, substitutions
+    are not part of the object syntax: applying one is a meta-level recursion
+    on the expression.
 
-Definition sub : Set := nat -> exp.
+    An entry of the wrong sort reads as a closed default, [a_zero] or the
+    module [me_path (p_abs nil nil)], which every operation fixes.  The
+    defaults are the semantic projections of an entry of the other sort, so
+    evaluation commutes with every substitution. *)
+Inductive sentry : Set :=
+| se_var : nat -> sentry
+| se_exp : exp -> sentry
+| se_mod : modexp -> sentry.
 
-Definition sb_id : sub := fun x => a_var x.
+Definition sub : Set := nat -> sentry.
+
+Definition exp_junk : exp := a_zero.
+Definition modexp_junk : modexp := me_path {| p_unit := nil; p_mems := nil |}.
+
+Definition sentry_exp (e : sentry) : exp :=
+  match e with
+  | se_var x => a_var x
+  | se_exp M => M
+  | se_mod _ => exp_junk
+  end.
+
+Definition sentry_modexp (e : sentry) : modexp :=
+  match e with
+  | se_var x => me_var x
+  | se_exp _ => modexp_junk
+  | se_mod H => H
+  end.
+
+Definition sentry_wk (e : sentry) (φ : wk) : sentry :=
+  match e with
+  | se_var x => se_var (φ x)
+  | se_exp M => se_exp (exp_wk M φ)
+  | se_mod H => se_mod (modexp_wk H φ)
+  end.
+
+Definition sb_id : sub := fun x => se_var x.
 Arguments sb_id _ /.
 
-(** Extension (cons).  [sb_extend σ M] sends index [0] to [M] and index
+(** Extension (cons).  [sb_extend σ e] sends index [0] to [e] and index
     [S y] to [σ y]; the paper writes it [σ ▹ M/x₀]. *)
-Definition sb_extend (σ : sub) (M : exp) : sub :=
+Definition sb_extend (σ : sub) (e : sentry) : sub :=
   fun x =>
     match x with
-    | 0 => M
+    | 0 => e
     | S y => σ y
     end.
 Arguments sb_extend _ _ _ /.
 
 (** Postcomposition of a substitution with a weakening, pointwise. *)
-Definition sb_wk (σ : sub) (φ : wk) : sub := fun x => exp_wk (σ x) φ.
+Definition sb_wk (σ : sub) (φ : wk) : sub := fun x => sentry_wk (σ x) φ.
 Arguments sb_wk _ _ _ /.
 
 (** The embedding [ι] of weakenings into substitutions. *)
-Definition sb_of_wk (φ : wk) : sub := fun x => a_var (φ x).
+Definition sb_of_wk (φ : wk) : sub := fun x => se_var (φ x).
 Arguments sb_of_wk _ _ /.
 
 (** [⇑] regarded as a substitution. *)
@@ -429,8 +749,15 @@ Arguments sb_shift _ /.
     and it is what lets [simpl] normalise the body of [exp_sub] without
     exposing the encoding of lifting.  Use [sb_q_zero] and [sb_q_succ] to
     compute with it. *)
-Definition sb_q (σ : sub) : sub := sb_extend (sb_wk σ wk_shift) (a_var 0).
+Definition sb_q (σ : sub) : sub := sb_extend (sb_wk σ wk_shift) (se_var 0).
 Arguments sb_q : simpl never.
+
+(** [sb_qn n σ] is the paper's [q^n(σ)]. *)
+Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
+  match n with
+  | 0 => σ
+  | S m => sb_q (sb_qn m σ)
+  end.
 
 (** Application of a substitution to an expression. *)
 Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
@@ -451,22 +778,79 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
-  | a_var x => σ x
+  | a_var x => sentry_exp (σ x)
   | a_glob p => a_glob p
-  | a_let A M B => a_let (exp_sub A σ) (exp_sub M σ) (exp_sub B (sb_q σ))
+  | a_let b B => a_let (bnd_sub b σ) (exp_sub B (sb_q σ))
+  | a_mem H x => a_mem (modexp_sub H σ) x
+  end
+with modexp_sub (H : modexp) (σ : sub) : modexp :=
+  match H with
+  | me_path p => me_path p
+  | me_var k => sentry_modexp (σ k)
+  | me_mem H y => me_mem (modexp_sub H σ) y
+  | me_app H N => me_app (modexp_sub H σ) (exp_sub N σ)
+  | me_lit U => me_lit (gunit_sub U σ)
+  end
+with bnd_sub (b : bnd) (σ : sub) : bnd :=
+  match b with
+  | b_def A M => b_def (exp_sub A σ) (exp_sub M σ)
+  | b_mod U => b_mod (gunit_sub U σ)
+  end
+with gunit_sub (U : gunit) (σ : sub) : gunit :=
+  match U with
+  | gu_mk Δ D =>
+      gu_mk ((fix tele_sub (Δ : list centry) : list centry :=
+                match Δ with
+                | nil => nil
+                | cons e Δ' => cons (centry_sub e (sb_qn (List.length Δ') σ)) (tele_sub Δ')
+                end) Δ)
+            (moddef_sub D (sb_qn (List.length Δ) σ))
+  end
+with moddef_sub (D : moddef) (σ : sub) : moddef :=
+  match D with
+  | md_body Φ => md_body (gmod_sub Φ σ)
+  | md_alias E => md_alias (modexp_sub E σ)
+  end
+with gmod_sub (Φ : gmod) (σ : sub) : gmod :=
+  match Φ with
+  | gm_nil => gm_nil
+  | gm_ext Φ x E => gm_ext (gmod_sub Φ σ) x (gentry_sub E (sb_qn (gm_binders Φ) σ))
+  | gm_check Φ c => gm_check (gmod_sub Φ σ) (bcheck_sub c (sb_qn (gm_binders Φ) σ))
+  end
+with bcheck_sub (c : bcheck) (σ : sub) : bcheck :=
+  match c with
+  | bc_import E ns => bc_import (modexp_sub E σ) ns
+  | bc_eval M A => bc_eval (exp_sub M σ) (match A with Some A => Some (exp_sub A σ) | None => None end)
+  end
+with gentry_sub (E : gentry) (σ : sub) : gentry :=
+  match E with
+  | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
+  | ge_mod U => ge_mod (gunit_sub U σ)
+  end
+with centry_sub (e : centry) (σ : sub) : centry :=
+  match e with
+  | ce_ass A => ce_ass (exp_sub A σ)
+  | ce_def A M => ce_def (exp_sub A σ) (exp_sub M σ)
+  | ce_mod U => ce_mod (gunit_sub U σ)
+  end.
+
+Fixpoint tele_sub (Δ : ctx) (σ : sub) : ctx :=
+  match Δ with
+  | nil => nil
+  | cons e Δ' => cons (centry_sub e (sb_qn (List.length Δ') σ)) (tele_sub Δ' σ)
+  end.
+
+Definition sentry_sub (e : sentry) (τ : sub) : sentry :=
+  match e with
+  | se_var x => τ x
+  | se_exp M => se_exp (exp_sub M τ)
+  | se_mod H => se_mod (modexp_sub H τ)
   end.
 
 (** Composition of substitutions, again diagrammatic: [sb_compose σ τ]
     applies [σ] first and then [τ]. *)
-Definition sb_compose (σ τ : sub) : sub := fun x => exp_sub (σ x) τ.
+Definition sb_compose (σ τ : sub) : sub := fun x => sentry_sub (σ x) τ.
 Arguments sb_compose _ _ _ /.
-
-(** [sb_qn n σ] is the paper's [q^n(σ)]. *)
-Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
-  match n with
-  | 0 => σ
-  | S m => sb_q (sb_qn m σ)
-  end.
 
 (** ** Equality of Weakenings and Substitutions
 
@@ -489,6 +873,8 @@ Instance wk_eq_Equivalence : Equivalence wk_eq := _.
 Instance sb_eq_Equivalence : Equivalence sb_eq := _.
 
 #[global] Bind Scope mctt_scope with exp.
+#[global] Bind Scope mctt_scope with modexp.
+#[global] Bind Scope mctt_scope with gunit.
 #[global] Bind Scope mctt_scope with sub.
 #[global] Bind Scope mctt_scope with nf.
 #[global] Bind Scope mctt_scope with ne.
@@ -508,6 +894,8 @@ Module Syntax_Notations.
       level 2. *)
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
   Notation "M [ φ ]ʷ" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]ʷ") : mctt_scope.
+  Notation "H [ σ ]ᵐ" := (modexp_sub H σ) (at level 1, left associativity, σ at level 60, format "H [ σ ]ᵐ") : mctt_scope.
+  Notation "U [ σ ]ᵘ" := (gunit_sub U σ) (at level 1, left associativity, σ at level 60, format "U [ σ ]ᵘ") : mctt_scope.
   Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
   Notation "'ℕ'" := a_nat : mctt_scope.
@@ -515,7 +903,8 @@ Module Syntax_Notations.
   Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'ℓ' A ≔ M 'in' B" := (a_let A M B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
   Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
   Notation "'⊤'" := a_True : mctt_scope.
   Notation "'⋆'" := a_true : mctt_scope.
@@ -531,7 +920,8 @@ Module Syntax_Notations.
   Notation "'Id'" := sb_id : mctt_scope.
   Notation "'Wk'" := sb_shift : mctt_scope.
   Notation "σ ⨟ τ" := (sb_compose σ τ) (at level 45, right associativity, format "σ ⨟ τ") : mctt_scope.
-  Notation "σ ,, M" := (sb_extend σ M) (at level 50, left associativity, format "σ ,, M") : mctt_scope.
+  Notation "σ ,, M" := (sb_extend σ (se_exp M)) (at level 50, left associativity, format "σ ,, M") : mctt_scope.
+  Notation "σ ',,ₘ' H" := (sb_extend σ (se_mod H)) (at level 50, left associativity, format "σ  ,,ₘ  H") : mctt_scope.
   Notation "'q' σ" := (sb_q σ) (at level 30, σ at level 2) : mctt_scope.
 
   (** *** Contexts
@@ -544,6 +934,7 @@ Module Syntax_Notations.
   Notation "⋅" := (@nil centry) : mctt_scope.
   Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
   Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ '▹ₘ' U" := (@cons centry (ce_mod U) Γ) (at level 50, left associativity) : mctt_scope.
 
   (** *** Normal and Neutral Forms *)
   Notation "'ℕⁿ'" := nf_nat : mctt_scope.

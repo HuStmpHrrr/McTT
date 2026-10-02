@@ -70,6 +70,7 @@
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/GlobalCtx.v
+./Core/Syntactic/Members.v
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v

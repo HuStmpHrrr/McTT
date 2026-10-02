@@ -26,18 +26,11 @@ Generalizable All Variables.
 
 (** ** Modules
 
-    A module is a sequence of definitions, in declaration order, whose entries
-    are either terms or nested modules.  [ge_def b pv A B]: [b] says whether the
-    definition is transparent, [pv] whether it is private, and [B] is [None] for
-    an axiom; [A] and [B] are closed.  [pv] is for the elaborator only.
-    [ge_mod Δ Φ]: the parameters [Δ] the nested module adds to the ones it is
-    already under, a telescope over those. *)
-Inductive gentry : Set :=
-| ge_def : bool -> bool -> typ -> option exp -> gentry
-| ge_mod : ctx -> gmod -> gentry
-with gmod : Set :=
-| gm_nil : gmod
-| gm_ext : gmod -> string -> gentry -> gmod.
+    A module is a sequence of entries, in declaration order: definitions and
+    nested modules (see [gentry] in [Syntax]).  A nested module of a filed
+    unit is a body [ge_body Δ Φ], with [Δ] the parameters it adds to the ones
+    it is already under, or an alias [ge_mod (gu_mk T (md_alias E))], with [T]
+    its full telescope. *)
 
 Module GlobalCtx_Notations.
 
@@ -53,6 +46,7 @@ Fixpoint gm_names (Φ : gmod) : list string :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' x _ => x :: gm_names Φ'
+  | gm_check Φ' _ => gm_names Φ'
   end.
 
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
@@ -67,7 +61,9 @@ Qed.
 (** ** Resolution in a Module
 
     The newest entry of a name decides; names are fresh in a well-formed
-    module, so there is no other.  Only a definition is handed back. *)
+    module, so there is no other.  Only a definition is handed back, and only
+    through body modules: a path through an alias resolves to nothing here (see
+    [gm_module]). *)
 Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
   match Φ with
   | gm_nil => None
@@ -78,20 +74,21 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
           if String.eqb x y
           then match ip', E with
                | nil, ge_def _ _ _ _ => Some E
-               | _ :: _, ge_mod _ Φ' => gm_resolve Φ' ip'
+               | _ :: _, ge_mod (gu_mk _ (md_body Φ')) => gm_resolve Φ' ip'
                | _, _ => None
                end
           else gm_resolve Φ ip
       end
+  | gm_check Φ _ => gm_resolve Φ ip
   end.
 
 Lemma gm_resolve_def : forall Φ ip E,
     gm_resolve Φ ip = Some E -> exists b pv A B, E = ge_def b pv A B.
 Proof.
-  fix IH 1; intros [| Φ y E] ip E0 H; cbn in H; [ discriminate |].
+  fix IH 1; intros [| Φ y E | Φ c] ip E0 H; cbn in H; [ discriminate | | eapply IH; exact H ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct ip' as [| z ip''], E as [b pv A B | Δ' Φ']; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate.
   - injection H as <-; eauto.
   - eapply IH; exact H.
 Qed.
@@ -100,7 +97,7 @@ Qed.
 Lemma gm_resolve_head : forall Φ ip E,
     gm_resolve Φ ip = Some E -> exists x ip', ip = x :: ip' /\ List.In x (gm_names Φ).
 Proof.
-  fix IH 1; intros [| Φ y E] ip E0 H; cbn in H; [ discriminate |].
+  fix IH 1; intros [| Φ y E | Φ c] ip E0 H; cbn in H; [ discriminate | | exact (IH _ _ _ H) ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb_spec x y) as [-> |].
   - exists y, ip'; cbn; auto.
@@ -118,21 +115,82 @@ Proof.
   destruct (String.eqb_spec z x) as [-> |]; [ contradiction | assumption ].
 Qed.
 
+Lemma gm_resolve_nil : forall Φ, gm_resolve Φ nil = None.
+Proof. induction Φ; cbn; auto. Qed.
+
 Lemma gm_resolve_in : forall Φ x Δ' Φ' ip E0,
     gm_resolve Φ' ip = Some E0 ->
-    gm_resolve (Φ ⊳ x ↦ ge_mod Δ' Φ') (x :: ip) = Some E0.
+    gm_resolve (Φ ⊳ x ↦ ge_body Δ' Φ') (x :: ip) = Some E0.
 Proof.
   intros * Hr; cbn; rewrite String.eqb_refl.
-  destruct ip; [ destruct Φ'; cbn in Hr; discriminate | assumption ].
+  destruct ip; [ rewrite gm_resolve_nil in Hr; discriminate | assumption ].
+Qed.
+
+(** ** Resolution of a Module
+
+    What a module path denotes: a body module with its full telescope, or the
+    first alias on the path, with the rest of the chain.  An alias is stored
+    closed, over its full telescope, so the rest of the chain is read inside
+    it. *)
+Inductive modres : Set :=
+| mr_body : ctx -> modres
+| mr_alias : gunit -> list string -> modres.
+
+(** The submodule [x :: ip] of [Φ], whose enclosing telescope is [T]. *)
+Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option modres :=
+  match Φ with
+  | gm_nil => None
+  | gm_check Φ0 _ => gm_submodule T Φ0 x ip
+  | gm_ext Φ0 y E =>
+      if String.eqb x y then
+        match E with
+        | ge_mod (gu_mk Δ (md_body Φ')) =>
+            match ip with
+            | nil => Some (mr_body (Δ ++ T))
+            | z :: ip' => gm_submodule (Δ ++ T) Φ' z ip'
+            end
+        | ge_mod (gu_mk Δ (md_alias E')) => Some (mr_alias (gu_mk Δ (md_alias E')) ip)
+        | ge_def _ _ _ _ => None
+        end
+      else gm_submodule T Φ0 x ip
+  end.
+
+Definition gm_module (T : ctx) (Φ : gmod) (ip : list string) : option modres :=
+  match ip with
+  | nil => Some (mr_body T)
+  | x :: ip' => gm_submodule T Φ x ip'
+  end.
+
+Lemma gm_submodule_head : forall Φ T x ip r,
+    gm_submodule T Φ x ip = Some r -> List.In x (gm_names Φ).
+Proof.
+  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | exact (IH _ _ _ _ _ H) ].
+  destruct (String.eqb_spec x y) as [-> |]; [ cbn; auto |].
+  cbn; right; exact (IH _ _ _ _ _ H).
+Qed.
+
+Lemma gm_submodule_ext_fresh : forall Φ T x E y ip r,
+    gm_fresh x Φ ->
+    gm_submodule T Φ y ip = Some r ->
+    gm_submodule T (Φ ⊳ x ↦ E) y ip = Some r.
+Proof.
+  intros * Hf Hr; cbn.
+  pose proof (gm_submodule_head _ _ _ _ _ Hr).
+  destruct (String.eqb_spec y x) as [-> |]; [ contradiction | assumption ].
+Qed.
+
+Lemma gm_submodule_in : forall Φ T x Δ' Φ' ip r,
+    gm_module (Δ' ++ T) Φ' ip = Some r ->
+    gm_submodule T (Φ ⊳ x ↦ ge_body Δ' Φ') x ip = Some r.
+Proof.
+  intros * Hr; cbn; rewrite String.eqb_refl.
+  destruct ip; cbn in Hr; assumption.
 Qed.
 
 (** ** Units
 
     A unit is a parameterized module in full: the parameters it abstracts over,
-    and the module it declares.  Units do not nest. *)
-Record gunit : Set := gu_mk
-  { gu_params : ctx
-  ; gu_mod : gmod }.
+    and the module it declares (see [gunit] in [Syntax]).  Units do not nest. *)
 
 Definition path_eq_dec := List.list_eq_dec String.string_dec.
 
@@ -304,6 +362,10 @@ Proof.
   apply strip_prefix_app.
 Qed.
 
+(** The member chain [ip] of the module [mp]. *)
+Definition path_app (mp : path) (ip : list string) : path :=
+  {| p_unit := p_unit mp ; p_mems := p_mems mp ++ ip |}.
+
 (** The members of [p] inside the module [mp], if [p] is in it. *)
 Definition path_strip (mp p : path) : option (list string) :=
   if path_beq (p_unit mp) (p_unit p) then strip_prefix (p_mems mp) (p_mems p) else None.
@@ -319,6 +381,25 @@ Fixpoint gs_find (Ξ : gstack) (p : path) : option (gunit * list string) :=
       end
   end.
 
+(** The innermost open frame [p] is in, with the telescope of the frames
+    outside it. *)
+Fixpoint gs_find_tele (Ξ : gstack) (p : path) : option (gunit * list string * ctx) :=
+  match Ξ with
+  | nil => None
+  | (mp, U) :: Ξ' =>
+      match path_strip mp p with
+      | Some ip => Some (U, ip, gs_tele Ξ')
+      | None => gs_find_tele Ξ' p
+      end
+  end.
+
+Lemma gs_find_tele_find : forall Ξ p,
+    gs_find Ξ p = option_map (fun r => let '(U, ip, _) := r in (U, ip)) (gs_find_tele Ξ p).
+Proof.
+  induction Ξ as [| [mp U] Ξ IH]; intros; cbn; [ reflexivity |].
+  destruct (path_strip mp p); [ reflexivity | apply IH ].
+Qed.
+
 (** A path inside an open frame is read there, and anything else in the filed
     unit it names.  Nothing is re-expressed: entries are closed and paths
     absolute. *)
@@ -328,6 +409,20 @@ Definition gc_resolve (Θ : gdeps) (Ξ : gstack) (p : path) : option gentry :=
   | None =>
       match gds_lookup Θ (p_unit p) with
       | Some U => gm_resolve (gu_mod U) (p_mems p)
+      | None => None
+      end
+  end.
+
+(** A module path inside an open frame is read there, provided it names a
+    closed module: the open frame itself is not a module yet.  The telescope of
+    the frame is its own parameters on top of those of the frames outside. *)
+Definition gc_module (Θ : gdeps) (Ξ : gstack) (p : path) : option modres :=
+  match gs_find_tele Ξ p with
+  | Some (U, nil, _) => None
+  | Some (U, x :: ip, T) => gm_submodule (gu_params U ++ T) (gu_mod U) x ip
+  | None =>
+      match gds_lookup Θ (p_unit p) with
+      | Some U => gm_module (gu_params U) (gu_mod U) (p_mems p)
       | None => None
       end
   end.
@@ -367,72 +462,118 @@ Qed.
 
 (** ** How Resolution Grows
 
-    Every way a global context grows preserves what resolves: this is the whole
-    of what moving a judgment from one global context to a bigger one needs.
-    [Ψ1 ⊑ᵍ Ψ2] says so. *)
-Definition gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+    Every way a global context grows preserves what resolves, both definitions
+    and modules: this is the whole of what moving a judgment from one global
+    context to a bigger one needs. *)
+Definition gc_dsub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   forall p E, gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E.
 
+Definition gc_msub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
+
+Definition gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  gc_dsub Θ1 Ξ1 Θ2 Ξ2 /\ gc_msub Θ1 Ξ1 Θ2 Ξ2.
+
+Lemma gc_sub_resolve : forall Θ1 Ξ1 Θ2 Ξ2 p E,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E.
+Proof. intros * [H _]; apply H. Qed.
+
+Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
+Proof. intros * [_ H]; apply H. Qed.
+
 Lemma gc_sub_refl : forall Θ Ξ, gc_sub Θ Ξ Θ Ξ.
-Proof. intros ? ? ? ? H; exact H. Qed.
+Proof. split; intros ? ? H; exact H. Qed.
 
 Lemma gc_sub_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ2 Ξ2 Θ3 Ξ3 -> gc_sub Θ1 Ξ1 Θ3 Ξ3.
-Proof. intros * H12 H23 ? ? H; apply H23, H12, H. Qed.
+Proof. intros * [H12 M12] [H23 M23]; split; intros ? ? H; [ apply H23, H12, H | apply M23, M12, H ]. Qed.
 
 (** A frame may be pushed when its module path is fresh where it is pushed: a
-    unit not filed below, or a member not yet declared in the enclosing frame. *)
+    unit not filed below, named by its root path, or a member not yet declared
+    in the enclosing frame.  The root condition makes every prefix of a path
+    that resolves resolve as well. *)
 Definition frame_fresh (Θ : gdeps) (Ξ : gstack) (mp : path) : Prop :=
   match Ξ with
-  | nil => gds_fresh (p_unit mp) Θ
+  | nil => gds_fresh (p_unit mp) Θ /\ p_mems mp = nil
   | (mq, U) :: _ => exists x, mp = path_in mq x /\ gm_fresh x (gu_mod U)
   end.
-
-
 
 Lemma gc_sub_push : forall Θ Ξ mp U,
     frame_fresh Θ Ξ mp ->
     gc_sub Θ Ξ Θ ((mp, U) :: Ξ).
 Proof.
-  intros * Hf p E Hr; unfold gc_resolve in *; cbn.
-  destruct (path_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
-  exfalso; unfold path_strip in Hs.
-  destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| discriminate ].
-  apply path_beq_true in Hb.
-  destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
-  - rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
-  - destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
-    pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
-    unfold path_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
-    destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & [= <- <-] & Hin); contradiction.
+  intros * Hf; split.
+  - intros p E Hr; unfold gc_resolve in *; cbn.
+    destruct (path_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
+    exfalso; unfold path_strip in Hs.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| discriminate ].
+    apply path_beq_true in Hb.
+    destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
+    + destruct Hf as [Hf _].
+      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+    + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
+      pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
+      unfold path_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
+      destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & [= <- <-] & Hin); contradiction.
+  - intros p r Hr; unfold gc_module in *; cbn.
+    destruct (path_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
+    exfalso; unfold path_strip in Hs.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| discriminate ].
+    apply path_beq_true in Hb.
+    destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
+    + destruct Hf as [Hf _].
+      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+    + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
+      pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
+      unfold path_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
+      exact (Hx (gm_submodule_head _ _ _ _ _ Hr)).
 Qed.
 
 Lemma gc_sub_grow : forall Θ Ξ mp Δ Φ x E,
     gm_fresh x Φ ->
-    gc_sub Θ ((mp, gu_mk Δ Φ) :: Ξ) Θ ((mp, gu_mk Δ (Φ ⊳ x ↦ E)) :: Ξ).
+    gc_sub Θ ((mp, gu_body Δ Φ) :: Ξ) Θ ((mp, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ).
 Proof.
-  intros * Hf p E0 Hr; unfold gc_resolve in *; cbn in *.
-  destruct (path_strip mp p); [ cbn in *; apply gm_resolve_ext_fresh; assumption | exact Hr ].
+  intros * Hf; split.
+  - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
+    destruct (path_strip mp p); [ cbn in *; apply gm_resolve_ext_fresh; assumption | exact Hr ].
+  - intros p r Hr; unfold gc_module in *; cbn in *.
+    destruct (path_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
+    cbn in *; apply gm_submodule_ext_fresh; assumption.
 Qed.
 
 (** Closing a nested module into its parent: its members are read through the
     parent exactly as they were read in the frame. *)
 Lemma gc_sub_close : forall Θ Ξ mp Δ Φ x Δ' Φ',
     gm_fresh x Φ ->
-    gc_sub Θ ((path_in mp x, gu_mk Δ' Φ') :: (mp, gu_mk Δ Φ) :: Ξ)
-           Θ ((mp, gu_mk Δ (Φ ⊳ x ↦ ge_mod Δ' Φ')) :: Ξ).
+    gc_sub Θ ((path_in mp x, gu_body Δ' Φ') :: (mp, gu_body Δ Φ) :: Ξ)
+           Θ ((mp, gu_body Δ (Φ ⊳ x ↦ ge_body Δ' Φ')) :: Ξ).
 Proof.
-  intros * Hf p E0 Hr; unfold gc_resolve in *; cbn in *.
-  unfold path_strip in *; cbn in *.
-  destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| exact Hr ].
-  destruct (strip_prefix (p_mems mp ++ x :: nil) (p_mems p)) as [ip |] eqn:Hs.
-  - rewrite (strip_prefix_snoc _ _ _ _ Hs).
-    exact (gm_resolve_in Φ x Δ' Φ' ip E0 Hr).
-  - destruct (strip_prefix (p_mems mp) (p_mems p)) as [ip |] eqn:Hs'; [| exact Hr ].
-    cbn in *; destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & -> & Hin).
-    destruct (String.eqb_spec z x) as [-> |].
-    + rewrite (strip_prefix_snoc_none _ _ _ _ Hs') in Hs; discriminate.
-    + cbn; destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
+  intros * Hf; split.
+  - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
+    unfold path_strip in *; cbn in *.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| exact Hr ].
+    destruct (strip_prefix (p_mems mp ++ x :: nil) (p_mems p)) as [ip |] eqn:Hs.
+    + rewrite (strip_prefix_snoc _ _ _ _ Hs).
+      exact (gm_resolve_in Φ x Δ' Φ' ip E0 Hr).
+    + destruct (strip_prefix (p_mems mp) (p_mems p)) as [ip |] eqn:Hs'; [| exact Hr ].
+      cbn in *; destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & -> & Hin).
+      destruct (String.eqb_spec z x) as [-> |].
+      * rewrite (strip_prefix_snoc_none _ _ _ _ Hs') in Hs; discriminate.
+      * cbn; destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
+  - intros p r Hr; unfold gc_module in *; cbn in *.
+    unfold path_strip in *; cbn in *.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| exact Hr ].
+    destruct (strip_prefix (p_mems mp ++ x :: nil) (p_mems p)) as [ip |] eqn:Hs.
+    + rewrite (strip_prefix_snoc _ _ _ _ Hs).
+      destruct ip as [| z ip]; [ discriminate |].
+      apply gm_submodule_in; cbn; exact Hr.
+    + destruct (strip_prefix (p_mems mp) (p_mems p)) as [ip |] eqn:Hs'; [| exact Hr ].
+      destruct ip as [| z ip]; [ discriminate |].
+      cbn in *.
+      destruct (String.eqb_spec z x) as [-> |].
+      * rewrite (strip_prefix_snoc_none _ _ _ _ Hs') in Hs; discriminate.
+      * destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
 Qed.
 
 (** Filing a unit: what was read in its open frame is read in the level it is
@@ -442,31 +583,46 @@ Lemma gc_sub_file : forall Θ d fp U,
     (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
     gc_sub Θ ((p_abs fp nil, U) :: nil) (d :: Θ) nil.
 Proof.
-  intros * Hd Hfr p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
-  unfold path_strip in Hr; cbn [p_unit p_mems strip_prefix] in Hr.
-  destruct (path_beq fp (p_unit p)) eqn:Hb.
-  - apply path_beq_true in Hb; subst; cbn [gu_mod] in Hr.
-    unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd); exact Hr.
-  - destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
-    erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+  intros * Hd Hfr; split.
+  - intros p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
+    unfold path_strip in Hr; cbn [p_unit p_mems strip_prefix] in Hr.
+    destruct (path_beq fp (p_unit p)) eqn:Hb.
+    + apply path_beq_true in Hb; subst.
+      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd); exact Hr.
+    + destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
+      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+  - intros p r Hr; unfold gc_module in *; cbn [gs_find_tele] in *.
+    unfold path_strip in Hr; cbn [p_unit p_mems strip_prefix] in Hr.
+    destruct (path_beq fp (p_unit p)) eqn:Hb.
+    + apply path_beq_true in Hb; subst.
+      destruct (p_mems p) as [| x ip] eqn:Hp; [ discriminate |].
+      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd).
+      cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
+    + destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
+      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
 Qed.
 
 Lemma gc_sub_level : forall Θ d,
     (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
     gc_sub Θ nil (d :: Θ) nil.
 Proof.
-  intros * Hfr p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
-  destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
-  rewrite (gds_lookup_level _ _ _ _ Hfr Hl); exact Hr.
+  intros * Hfr; split; intros p E0 Hr; unfold gc_resolve, gc_module in *; cbn [gs_find gs_find_tele] in *;
+    destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; try discriminate;
+    rewrite (gds_lookup_level _ _ _ _ Hfr Hl); exact Hr.
 Qed.
 
 (** Filing more units under the same stack. *)
 Lemma gc_sub_levels : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
 Proof.
-  intros * Hs p E Hr; unfold gc_resolve in *.
-  destruct (gs_find Ξ p) as [[U ip] |]; [ exact Hr |].
-  destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
-  rewrite (Hs _ _ E1); exact Hr.
+  intros * Hs; split.
+  - intros p E Hr; unfold gc_resolve in *.
+    destruct (gs_find Ξ p) as [[U ip] |]; [ exact Hr |].
+    destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
+    rewrite (Hs _ _ E1); exact Hr.
+  - intros p r Hr; unfold gc_module in *.
+    destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; [ exact Hr |].
+    destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
+    rewrite (Hs _ _ E1); exact Hr.
 Qed.
 
 (** ** Transparent Global Contexts
@@ -478,12 +634,14 @@ Qed.
 Fixpoint ge_transparent (E : gentry) : Prop :=
   match E with
   | ge_def b _ _ B => b = true /\ B <> None
-  | ge_mod _ Φ => gm_transparent Φ
+  | ge_mod (gu_mk _ (md_body Φ)) => gm_transparent Φ
+  | ge_mod (gu_mk _ (md_alias _)) => True
   end
 with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_transparent Φ /\ ge_transparent E
+  | gm_check Φ _ => gm_transparent Φ
   end.
 
 Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=
@@ -493,11 +651,11 @@ Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=
 Lemma gm_transparent_resolve : forall Φ ip E,
     gm_transparent Φ -> gm_resolve Φ ip = Some E -> ge_transparent E.
 Proof.
-  fix IH 1; intros [| Φ y E] ip E0 HΦ H; cbn in H, HΦ; [ discriminate |].
+  fix IH 1; intros [| Φ y E | Φ c] ip E0 HΦ H; cbn in H, HΦ; [ discriminate | | eapply IH; eassumption ].
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b pv A B | Δ' Φ']; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate.
   - injection H as <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
 Qed.

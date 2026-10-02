@@ -203,9 +203,6 @@ Definition ge_entries (E : gentry) (ip : list String.string) : option gentry :=
   | ge_mod _ Φ => gm_resolve Φ ip
   end.
 
-Definition path_app (mp : path) (ip : list String.string) : path :=
-  {| p_unit := p_unit mp ; p_mems := p_mems mp ++ ip |}.
-
 Lemma gm_resolve_ext_here : forall Φ x E ip,
     gm_resolve (Φ ⊳ x ↦ E) (x :: ip) = ge_entries E ip.
 Proof.
