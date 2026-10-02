@@ -906,21 +906,21 @@ let%expect_test "lib/Division.mctt" =
 let%expect_test "lib/Vectors.mctt" =
   let _ = main_of_lib "Vectors.mctt" in
   [%expect {|
-    Evaluate Prelude::Data::VecLaws.sumVec 3 oneTwoThree --> 6 : Nat
+    Evaluate Prelude::Data::Vec::Properties.sumVec 3 oneTwoThree --> 6 : Nat
     Evaluate Prelude::Data::Vec.head Nat 2 oneTwoThree --> 1 : Nat
     Evaluate Prelude::Data::Vec.nth Nat 3 oneTwoThree 2 true --> 3 : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 2
+    Evaluate Prelude::Data::Vec::Properties.sumVec 2
                (Prelude::Data::Vec.tail Nat 2 oneTwoThree) --> 5 : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 3
+    Evaluate Prelude::Data::Vec::Properties.sumVec 3
                (Prelude::Data::Vec.map Nat Nat square 3 oneTwoThree) --> 14 : Nat
     Evaluate Prelude::Data::Vec.nth Nat 5
                (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive)
                3
                true --> 4 : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 5
+    Evaluate Prelude::Data::Vec::Properties.sumVec 5
                (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive) --> 15
       : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 4
+    Evaluate Prelude::Data::Vec::Properties.sumVec 4
                (Prelude::Data::Vec.replicate Nat 4 6) --> 24 : Nat
     Evaluate Prelude::Data::Vec.foldr Nat Nat
                (fun (x1 : Nat)
@@ -930,16 +930,131 @@ let%expect_test "lib/Vectors.mctt" =
                5
                (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive) --> 5
       : Nat
-    Evaluate Prelude::Data::VecLaws.sumReplicate 4 6 --> true : True
-    Evaluate Prelude::Data::VecLaws.sumAppend 3 2 oneTwoThree fourFive --> true
-      : True
-    Evaluate Prelude::Data::VecLaws.nthMap Nat square 3 oneTwoThree 1 true
+    Evaluate Prelude::Data::Vec::Properties.sumReplicate 4 6 --> true : True
+    Evaluate Prelude::Data::Vec::Properties.sumAppend 3 2 oneTwoThree fourFive
       --> true : True
-    Evaluate Prelude::Data::VecLaws.nthReplicate 4 6 3 true --> true : True
-    Evaluate Prelude::Data::VecLaws.nthAppendLeft 3 2 oneTwoThree fourFive 1 true
+    Evaluate Prelude::Data::Vec::Properties.nthMap Nat square 3 oneTwoThree 1
                true --> true : True
-    Evaluate Prelude::Data::VecLaws.nthAppendRight 3 2 oneTwoThree fourFive 1
+    Evaluate Prelude::Data::Vec::Properties.nthReplicate 4 6 3 true --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.nthAppendLeft 3 2 oneTwoThree
+               fourFive
+               1
+               true
                true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.nthAppendRight 3 2 oneTwoThree
+               fourFive
+               1
+               true --> true : True
+    Evaluate Prelude::Data::Vec.nth Nat 4
+               (Prelude::Data::Vec.tabulate Nat square 4)
+               3
+               true --> 9 : Nat
+    Evaluate Prelude::Data::Vec::Properties.sumVec 4
+               (Prelude::Data::Vec.tabulate Nat square 4) --> 14 : Nat
+    Evaluate Prelude::Data::Vec::Properties.sumVec 2
+               (Prelude::Data::Vec.zipWith Nat Nat Nat Prelude::Arith::Mult.mult
+                  2
+                  (Prelude::Data::Vec.take Nat 2 1 oneTwoThree)
+                 fourFive) --> 14 : Nat
+    Evaluate Prelude::Data::Vec.foldl Nat Nat
+               (fun (x1 : Nat)
+                    (x2 : Nat)
+                 -> Prelude::Arith::Plus.plus (Prelude::Arith::Mult.mult 10 x1)
+                      x2)
+               0
+               3
+               oneTwoThree --> 123 : Nat
+    Evaluate Prelude::Data::Vec.last Nat 4 oneToFive --> 5 : Nat
+    Evaluate Prelude::Data::Vec.last Nat 3
+               (Prelude::Data::Vec.snoc Nat 3 oneTwoThree 7) --> 7 : Nat
+    Evaluate Prelude::Data::Vec::Properties.sumVec 4
+               (Prelude::Data::Vec.init Nat 4 oneToFive) --> 10 : Nat
+    Evaluate Prelude::Data::Vec.head Nat 4
+               (Prelude::Data::Vec.reverse Nat 5 oneToFive) --> 5 : Nat
+    Evaluate Prelude::Data::Vec.last Nat 4
+               (Prelude::Data::Vec.reverse Nat 5 oneToFive) --> 1 : Nat
+    Evaluate Prelude::Data::Vec.nth Nat 3
+               (Prelude::Data::Vec.take Nat 3 2 oneToFive)
+               2
+               true --> 3 : Nat
+    Evaluate Prelude::Data::Vec.nth Nat 2
+               (Prelude::Data::Vec.drop Nat 3 2 oneToFive)
+               0
+               true --> 4 : Nat
+    Evaluate Prelude::Data::Vec.allb Nat (fun (x1 : Nat) -> x1) 5 oneToFive --> 1
+      : Nat
+    Evaluate Prelude::Data::Vec.allb Nat (fun (x1 : Nat) -> x1) 4
+               (Prelude::Data::Vec.cons Nat 3 0 oneTwoThree) --> 0 : Nat
+    Evaluate Prelude::Data::Vec.anyb Nat (fun (x1 : Nat) -> x1) 3
+               (Prelude::Data::Vec.snoc Nat 2
+                  (Prelude::Data::Vec.replicate Nat 2 0)
+                 9) --> 1 : Nat
+    Evaluate Prelude::Data::Vec.anyb Nat (fun (x1 : Nat) -> x1) 3
+               (Prelude::Data::Vec.replicate Nat 3 0) --> 0 : Nat
+    Evaluate Prelude::Data::Vec::Properties.nthTabulate square 4 3 true --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.nthZipWith Nat Nat
+               Prelude::Arith::Mult.mult
+               2
+               (Prelude::Data::Vec.take Nat 2 1 oneTwoThree)
+               fourFive
+               1
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.nthReverse 5 oneToFive 1 true true
+      --> true : True
+    Evaluate Prelude::Data::Vec::Properties.takeAppend 3 2 oneTwoThree fourFive 2
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.dropAppend 3 2 oneTwoThree fourFive 1
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.appendTakeDrop 3 2 oneToFive 4 true
+      --> true : True
+    Evaluate Prelude::Data::Vec::Properties.lastSnoc 3 oneTwoThree 7 --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumMapPlus 2 3 oneTwoThree --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumMapScale 3 3 oneTwoThree --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumZipWithPlus 2 fourFive
+               (Prelude::Data::Vec.tail Nat 2 oneTwoThree) --> true : True
+    Evaluate Prelude::Data::Vec::Properties.foldlPlus 4 3 oneTwoThree --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumSnoc 3 oneTwoThree 7 --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumInitLast 4 oneToFive --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumReverse 5 oneToFive --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.sumTabulate square 4 --> true : True
+    Evaluate Prelude::Data::Vec::Properties.allbSound Nat (fun (x1 : Nat) -> x1)
+               5
+               oneToFive
+               true
+               2
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.allbComplete Nat
+               (fun (x1 : Nat) -> x1)
+               4
+               (Prelude::Data::Vec.replicate Nat 4 3)
+               (fun (x2 : Nat)
+                    (x3 : Prelude::Arith::Order.Lt x2 4)
+                 -> true) --> true : True
+    Evaluate Prelude::Data::Vec::Properties.anybSound Nat (fun (x1 : Nat) -> x1)
+               3
+               (Prelude::Data::Vec.snoc Nat 2
+                  (Prelude::Data::Vec.replicate Nat 2 0)
+                 9)
+               true
+               Nat
+               (fun (x2 : Nat)
+                    (x3 : Prelude::Arith::Order.Lt x2 3)
+                    (x4 : Prelude::Arith::Order.Lt 0
+                            (Prelude::Data::Vec.snoc Nat 2
+                               (Prelude::Data::Vec.replicate Nat 2 0)
+                               9
+                               x2
+                              x3))
+                 -> x2) --> 2 : Nat
   |}]
 
 let%expect_test "lib/Powers.mctt" =
