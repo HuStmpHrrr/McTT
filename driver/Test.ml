@@ -693,3 +693,35 @@ let%expect_test "an unexpected character is reported" =
 let%expect_test "an unterminated comment is reported" =
   let _ = main_of_body "eval 0 (* open" in
   [%expect {| Error: unterminated comment |}]
+
+let%expect_test "lib/Programs.mctt" =
+  let _ = main_of_lib "Programs.mctt" in
+  [%expect {|
+    Evaluate Prelude::Sub.pred 5 --> 4 : Nat
+    Evaluate Prelude::Sub.sub 10 3 --> 7 : Nat
+    Evaluate Prelude::Sub.sub 3 10 --> 0 : Nat
+    Evaluate Prelude::MinMax.min 4 9 --> 4 : Nat
+    Evaluate Prelude::MinMax.max 4 9 --> 9 : Nat
+    Evaluate Prelude::Fun.ack 2 3 --> 9 : Nat
+    Evaluate Prelude::Fun.ack 3 3 --> 61 : Nat
+    Evaluate Prelude::Sub.plusSub 6 4 --> true : True
+    Evaluate Prelude::Sub.subSelf 7 --> true : True
+    Evaluate Prelude::Sub.subSuccRight 9 4 --> true : True
+    Evaluate Prelude::MinMax.plusMinMax 3 8 --> true : True
+    Evaluate Prelude::MinMax.minComm 2 5 --> true : True
+    Evaluate Prelude::MinMax.maxComm 6 1 --> true : True
+    Evaluate Prelude::Fun.ackZero 4 --> true : True
+    Evaluate Prelude::Fun.ackTwo 5 --> true : True
+    Evaluate Prelude::Fun.iteratePlus (fun (x1 : Nat) -> Prelude::Plus.plus x1 3)
+               2
+               3
+               1 --> true : True
+    Evaluate Prelude::Fun.iterateComm (fun (x1 : Nat) -> succ (succ x1)) 3 4 0
+      --> true : True
+    Evaluate Prelude::Fun.Generic.compose Nat Nat Nat (Prelude::Sub.sub 20)
+               (fun (x1 : Nat) -> Prelude::MinMax.max x1 5)
+               2 --> 15 : Nat
+    Evaluate Prelude::Fun.Generic.const Nat Nat 7 100 --> 7 : Nat
+    Evaluate Prelude::Fun.Generic.iterate Nat (Prelude::Fun.ack 1) 3 0 --> 6
+      : Nat
+    |}]
