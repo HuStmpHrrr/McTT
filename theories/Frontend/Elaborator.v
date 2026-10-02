@@ -11,15 +11,12 @@ Open Scope string_scope.
 
 (** * Elaboration
 
-    A compilation unit elaborates into core commands, needing no other unit: a
-    definition becomes a [cc_def] of the frame it is declared in, a nested
-    module a [cc_mod], an [import] of another unit a [cc_import]; a name
-    becomes a λ-variable — a local binder, or a parameter of an open frame —
-    or a member [a_glob], named by its absolute path.  A member is filed
-    generalized over the parameters of the modules enclosing it, so a member of
-    an open frame is applied to the parameter variables of that frame and the
-    frames outside it.  A path into an imported unit is resolved lexically:
-    typing decides what it names. *)
+    A unit elaborates into core commands without reading any other unit.  A
+    name becomes a λ-variable (a local binder or a parameter of an open frame)
+    or a member [a_glob], named by its absolute path.  A member is generalized
+    over the parameters of the modules enclosing it, so a member of an open
+    frame is applied to the parameter variables of its frame and the frames
+    outside it.  A path into an imported unit is left to typing. *)
 
 (** ** Results *)
 
@@ -43,11 +40,9 @@ Definition echeck (b : bool) (e : string) : eres unit := if b then eok tt else e
 
 (** ** Open Frames
 
-    A frame being elaborated: its names, its parameters, the commands it has
-    emitted so far (last first), and what [import] declared in it — aliases,
-    and the units it made reachable by their full path.  The imports that
-    precede a unit's declaration are outside all of its frames, in an [oscope]
-    of their own. *)
+    A frame being elaborated: its names, its parameters, the commands emitted
+    so far (last first), and its imports' aliases and units.  The imports that
+    precede a unit's declaration have an [oscope] of their own. *)
 Record oscope : Set := os_mk
   { os_alias : list (string * target)
   ; os_units : list (list string) }.
@@ -57,7 +52,7 @@ Record oframe : Set := of_mk
   ; of_params : ctx
   ; of_cmds : list ccmd
   ; of_scope : oscope
-  (** the member chain from the unit's root to this frame *)
+  (** The member chain from the unit's root to this frame. *)
   ; of_path : list string }.
 
 Definition of_alias (f : oframe) : list (string * target) := os_alias (of_scope f).
@@ -81,9 +76,7 @@ Definition of_taken (x : string) (f : oframe) : bool :=
   | _, _ => true
   end.
 
-(** A name not yet taken in a frame, by a member, an alias or a parameter:
-    within one frame, a name has at most one binding.  Shadowing a name of an
-    enclosing frame is allowed. *)
+(** A name not bound in a frame by a member, an alias or a parameter. *)
 Definition of_fresh (x : string) (f : oframe) : bool :=
   match alias_lookup x (of_alias f) with
   | None => negb (of_taken x f)
@@ -128,7 +121,7 @@ Definition of_new (xs : list string) (Δ : ctx) (ip : list string) : oframe :=
      of_path := ip |}.
 
 (** The parameter variables of the frames [fs], outermost first, seen [off]
-    binders in: what a member of the innermost of them is applied to. *)
+    binders in.  A member of the innermost frame is applied to them. *)
 Definition fr_tele_len (fs : list oframe) : nat :=
   List.fold_right (fun f n => List.length (of_params f) + n) 0 fs.
 
@@ -142,8 +135,7 @@ Definition mr_opaque (fp mems : list string) (args : list exp) : mref :=
   {| mr_unit := fp; mr_mems := mems; mr_mod := None;
      mr_public := true; mr_args := args |}.
 
-(** Resolving a dotted name gives a term or a module, the latter with the
-    module arguments supplied so far. *)
+(** A dotted name resolves to a term or to a module. *)
 Inductive res : Set :=
 | r_exp : exp -> res
 | r_mod : mref -> res.
@@ -168,14 +160,13 @@ Definition res_mod (r : eres res) : eres mref :=
   | eerr e => eerr e
   end.
 
-(** A definition [x] of the module [mr], with [args] more arguments.  It is a
-    closed constant, so it is a term whatever the number of arguments. *)
+(** The definition [x] of the module [mr], with [args] more arguments.  It is
+    a closed constant, so any number of arguments is allowed. *)
 Definition mr_def (mr : mref) (x : string) (args : list exp) : eres res :=
   let args' := List.app (mr_args mr) args in
   eok (r_exp (sc_apply (a_glob {| p_unit := mr_unit mr; p_mems := List.app (mr_mems mr) (x :: nil) |}) args')).
 
-(** A member of a module that is not open: only a public one can be named.  A
-    member of an opaque path extends it. *)
+(** A member of a module that is not open; only a public one can be named. *)
 Definition mr_member (mr : mref) (x : string) (args : list exp) : eres res :=
   let args' := List.app (mr_args mr) args in
   let mems' := List.app (mr_mems mr) (x :: nil) in
@@ -203,18 +194,14 @@ Definition mr_apply (mr : mref) (args : list exp) : mref :=
 Definition tg_use (t : target) (args : list exp) : eres res :=
   match t with
   | tg_mod mr => eok (r_mod (mr_apply mr args))
-  (** [x] was checked to be a public definition of [mr] when the alias was
-      made, so it is not looked up again. *)
+  (** [x] was checked to be a public definition when the alias was made. *)
   | tg_mem mr x => mr_def mr x args
   end.
 
-(** A name looked up in the open frames, [off] binders in: an alias, then a
-    member — any member, private or not, the frame being open — then a
-    parameter.  [off] counts the local binders and the parameters of the
-    frames already passed, so it is where the current frame's telescope
-    starts.  An alias was elaborated in the scope of its frame, so its
-    arguments are weakened past those [off] binders.  [fp] is the unit's own
-    path. *)
+(** A name looked up in the open frames: an alias, then any member, then a
+    parameter.  [off] counts the binders between the use site and the
+    current frame's parameters, past which an alias's arguments are weakened.
+    [fp] is the unit's own path. *)
 Definition tg_local (off : nat) (t : target) : target :=
   match t with
   | tg_mod mr => tg_mod (mr_weaken off 0 mr)
@@ -256,8 +243,8 @@ Definition unit_reachable (os : oscope) (fs : list oframe) (fp : list string) : 
 Section Terms.
   Variable (fp : list string) (os : oscope) (fs : list oframe).
 
-  (** [args] are the arguments the object is applied to, outermost last, so
-      that the head of a spine decides whether they are module arguments. *)
+  (** [args] are the arguments the object is applied to, outermost last; the
+      head of the spine decides whether they are module arguments. *)
   Fixpoint elab_res (ls : lscope) (d : nat) (o : Cst.obj) (args : list exp) : eres res :=
     match o with
     | Cst.typ n => eok (r_exp (sc_apply Type@n args))
@@ -295,14 +282,12 @@ Section Terms.
     | Cst.proj o1 x =>
         let* mr := res_mod (elab_res ls d o1 nil) in
         mr_member mr x args
-    | Cst.letb (Cst.d_def m x oA oM) obody =>
+    | Cst.letb (Cst.d_def x oA oM) obody =>
         let* A := res_term (elab_res ls d oA nil) in
         let* M := res_term (elab_res ls d oM nil) in
-        let e := if Cst.md_abstract m then le_term #0 (S d) else le_term M d in
-        let* B := res_term (elab_res ((x, e) :: ls) (S d) obody nil) in
-        eok (r_exp (sc_apply ((λ A B) $ M) args))
-    (** A local module binding emits nothing: it names the module, with its
-        arguments. *)
+        let* B := res_term (elab_res (ls_push x d ls) (S d) obody nil) in
+        eok (r_exp (sc_apply (ℓ A ≔ M in B) args))
+    (** A local module binding names the module and emits nothing. *)
     | Cst.letb (Cst.d_mod x oE) obody =>
         let* mr := res_mod (elab_res ls d oE nil) in
         let* M := res_term (elab_res ((x, le_mod mr d) :: ls) d obody nil) in
@@ -325,7 +310,7 @@ End Terms.
 (** ** Commands
 
     The state of a unit being elaborated: the open frames, innermost first,
-    and the commands emitted before the unit's declaration (last first). *)
+    and the commands emitted before the unit's declaration, last first. *)
 Record ustate : Set := us_mk
   { us_unit : list string
   ; us_outer : oscope
@@ -345,8 +330,8 @@ Definition us_path (st : ustate) : list string :=
   | nil => nil
   end.
 
-(** What [import] declares goes into the innermost frame, or before the unit's
-    declaration into the scope outside it; so does the [cc_import] it emits. *)
+(** An import goes into the innermost frame, or, before the unit's
+    declaration, into the scope outside it. *)
 Definition us_scope (st : ustate) (oc : option ccmd) (f : oscope -> eres oscope) : eres ustate :=
   let cons_opt cs := match oc with Some c => c :: cs | None => cs end in
   match us_frames st with
@@ -378,9 +363,8 @@ Definition elab_eval (st : ustate) (oM : Cst.obj) (oA : option Cst.obj) : eres u
     eok {| of_names := of_names f; of_params := of_params f;
            of_cmds := cc_eval M A :: of_cmds f; of_scope := of_scope f; of_path := of_path f |}).
 
-(** [import] binds names only: the module's full path, for a unit, and with
-    [as] or [use] the names given.  Only an import of another unit is a
-    command. *)
+(** An import binds names: a unit's full path, and the names given with
+    [as] or [use].  Only an import of another unit emits a command. *)
 Definition import_target (st : ustate) (fp ip : list string) : eres mref :=
   match fp, ip with
   | nil, x :: ip' =>
@@ -415,9 +399,8 @@ Definition use_bind (taken : string -> bool) (mr : mref) (acc : eres oscope) (n 
       end
   end.
 
-(** What an import of [mr] from the unit [fp] binds in the scope [sc].  A
-    name it binds must be fresh in the frame: not an alias of [sc], and not
-    [taken] by a member or a parameter. *)
+(** What an import of [mr] from the unit [fp] binds in the scope [sc].  Each
+    name must be neither an alias of [sc] nor [taken]. *)
 Definition import_binds (taken : string -> bool) (fp : list string) (mr : mref) (spec : Cst.ispec)
   (sc : oscope) : eres oscope :=
   let sc := match fp with nil => sc | _ => os_unit_add fp sc end in
@@ -437,8 +420,8 @@ Definition elab_import (st : ustate) (fp ip : list string) (spec : Cst.ispec) : 
   let taken := match us_frames st with g :: _ => fun y => of_taken y g | nil => fun _ => false end in
   us_scope st oc (import_binds taken fp mr spec).
 
-(** Opening a module pushes its frame; closing it pops the frame and makes it
-    a member of the one outside. *)
+(** Opening a module pushes its frame; closing it pops the frame and makes the
+    module a member of the frame outside. *)
 Definition us_open (st : ustate) (f : oframe) : ustate :=
   us_mk (us_unit st) (us_outer st) (f :: us_frames st) (us_imps st).
 
@@ -451,11 +434,10 @@ Definition us_close (x : string) (st : ustate) : eres ustate :=
   | _ => eerr "no module to close"
   end.
 
-(** The loop over a module body is an inner [fix]: the body sits under a
-    [list], which neither mutual recursion nor a recursion on the list gets
-    past the guard condition.  [module A.B] opens [A], with no parameters, and
-    [B] inside it; a name already declared cannot be reopened, since what
-    follows it may already depend on its members. *)
+(** The loop over a module body is an inner [fix], since the body is nested
+    in a [list].  [module A.B] opens [A], without parameters, and [B] inside
+    it.  A declared module cannot be reopened, because later commands may
+    depend on its members. *)
 Fixpoint elab_cmd (st : ustate) (c : Cst.cmd) : eres ustate :=
   match c with
   | Cst.c_mod p ps body =>
@@ -496,8 +478,8 @@ Fixpoint elab_cmds (st : ustate) (cs : list Cst.cmd) : eres ustate :=
 
 (** ** Units
 
-    A unit: its imports, outside of its frame; its parameters, which see them;
-    then its body in its frame.  Its own path names its members. *)
+    A unit's imports are elaborated outside its frame, then its parameters,
+    then its body in its own frame. *)
 Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(imports, (fp, ps, cs)) := prg in
   let* st0 := elab_cmds (us_mk fp (os_mk nil nil) nil nil) imports in

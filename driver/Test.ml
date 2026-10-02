@@ -313,165 +313,166 @@ let%expect_test "nary.mctt works" =
 
 let%expect_test "simple_let.mctt works" =
   let _ = main_of_example "simple_let.mctt" in
-  [%expect {| Evaluate (fun (x1 : Nat) -> succ x1) 0 --> 1 : Nat |}]
+  [%expect {| Evaluate let x1 : Nat := 0 in succ x1 end --> 1 : Nat |}]
 
 let%expect_test "let_two_vars.mctt works" =
   let _ = main_of_example "let_two_vars.mctt" in
   [%expect {|
-    Evaluate (fun (x1 : Nat)
-                  (x2 : forall (x3 : Nat) -> Nat)
-               -> x2 x1) 0
-               (fun (x4 : Nat) -> x4) --> 0 : Nat
+    Evaluate let x1 : Nat := 0;
+                 x2 : forall (x3 : Nat) -> Nat := fun (x4 : Nat) -> x4
+             in x2 x1
+             end --> 0 : Nat
     |}]
 
 let%expect_test "let_nary.mctt works" =
   let _ = main_of_example "let_nary.mctt" in
   [%expect {|
-    Evaluate (fun (x1 : forall (x2 : Nat) -> Type@0)
-                  (x3 : forall (x4 : x1 0) -> Nat)
-                  (x5 : forall (x6 : Nat)
-                               (x7 : x1 (succ x6))
-                               (x8 : Nat)
-                          -> x1 x6)
-                  (x9 : Nat)
-                  (x10 : x1 x9)
-               -> (rec x9 return x11 . forall (x14 : x1 x11) -> Nat
-                   | zero => x3
-                   | succ x12, x13 =>
-                     fun (x15 : x1 (succ x12)) -> x13 (x5 x12 x15 (succ x12))
-                   end)
-                    x10)
-               (fun (x16 : Nat)
-                 -> rec x16 return x17 . Type@0
-                    | zero => Nat
-                    | succ x18, A1 => forall (x19 : Nat) -> A1
-                    end)
-               (fun (x20 : Nat) -> x20)
-               (fun (x21 : Nat)
-                    (x22 : rec succ x21 return x23 . Type@0
-                           | zero => Nat
-                           | succ x24, A2 => forall (x25 : Nat) -> A2
-                           end)
-                    (x26 : Nat)
-                 -> x22 x26)
-               3
-               ((fun (x27 : forall (x28 : Nat)
-                                   (x29 : Nat)
-                              -> Nat)
-                     (x30 : Nat)
-                     (x31 : Nat)
-                     (x32 : Nat)
-                  -> x27 x30 (x27 x31 x32))
-                 (fun (x33 : Nat)
-                      (x34 : Nat)
-                   -> rec x33 return x35 . Nat
-                      | zero => x34
-                      | succ x36, x37 => succ x37
-                      end)) --> 6 : Nat
+    Evaluate let x1 : forall (x2 : Nat) -> Type@0 :=
+                   fun (x3 : Nat)
+                     -> rec x3 return x4 . Type@0
+                        | zero => Nat
+                        | succ x5, A1 => forall (x6 : Nat) -> A1
+                        end;
+                 x7 : forall (x8 : x1 0) -> Nat := fun (x9 : Nat) -> x9;
+                 x10 : forall (x11 : Nat)
+                              (x12 : x1 (succ x11))
+                              (x13 : Nat)
+                         -> x1 x11 :=
+                   fun (x14 : Nat)
+                       (x15 : rec succ x14 return x16 . Type@0
+                              | zero => Nat
+                              | succ x17, A2 => forall (x18 : Nat) -> A2
+                              end)
+                       (x19 : Nat)
+                     -> x15 x19;
+                 x20 : Nat := 3;
+                 x21 : x1 x20 :=
+                   let x22 : forall (x23 : Nat)
+                                    (x24 : Nat)
+                               -> Nat :=
+                         fun (x25 : Nat)
+                             (x26 : Nat)
+                           -> rec x25 return x27 . Nat
+                              | zero => x26
+                              | succ x28, x29 => succ x29
+                              end
+                   in fun (x30 : Nat)
+                          (x31 : Nat)
+                          (x32 : Nat)
+                        -> x22 x30 (x22 x31 x32)
+                   end
+             in (rec x20 return x33 . forall (x36 : x1 x33) -> Nat
+                 | zero => x7
+                 | succ x34, x35 =>
+                   fun (x37 : x1 (succ x34)) -> x35 (x10 x34 x37 (succ x34))
+                 end)
+                  x21
+             end --> 6 : Nat
     |}]
 
 let%expect_test "let_vector.mctt works" =
   let _ = main_of_example "let_vector.mctt" in
   [%expect {|
-    Evaluate (fun (x1 : forall (A1 : Type@0)
-                               (x2 : Nat)
-                          -> Type@2)
-                  (x3 : forall (A2 : Type@0) -> x1 A2 0)
-                  (x4 : forall (A3 : Type@0)
-                               (x5 : Nat)
-                               (x6 : A3)
-                               (x7 : x1 A3 x5)
-                          -> x1 A3 (succ x5))
-                  (x8 : forall (A4 : Type@0)
-                               (x9 : Nat)
-                               (x10 : x1 A4 x9)
-                               (x11 : forall (x12 : Nat) -> Type@1)
-                               (x13 : x11 0)
-                               (x14 : forall (x15 : Nat)
-                                             (x16 : A4)
-                                             (x17 : x11 x15)
-                                        -> x11 (succ x15))
-                          -> x11 x9)
-               -> (fun (x18 : forall (A5 : Type@0)
-                                     (x19 : Nat)
-                                     (x20 : x1 A5 (succ x19))
-                                -> A5)
-                       (x21 : x1 (forall (x22 : Nat) -> Nat) 3)
-                    -> x18 (forall (x23 : Nat) -> Nat) 2 x21 4)
-                    (fun (A6 : Type@0)
-                         (x24 : Nat)
-                         (x25 : x1 A6 (succ x24))
-                      -> x8 A6 (succ x24) x25
-                           (fun (x26 : Nat)
-                             -> rec x26 return x27 . Type@0
-                                | zero => Nat
-                                | succ x28, A7 => A6
-                                end)
-                           0
-                           (fun (x29 : Nat)
-                                (x30 : A6)
-                                (x31 : rec x29 return x32 . Type@0
-                                       | zero => Nat
-                                       | succ x33, A8 => A6
-                                       end)
-                             -> x30))
-                    (x4 (forall (x34 : Nat) -> Nat) 2
-                       (fun (x35 : Nat) -> succ (succ (succ x35)))
-                      (x4 (forall (x36 : Nat) -> Nat) 1
-                         (fun (x37 : Nat) -> succ x37)
-                        (x4 (forall (x38 : Nat) -> Nat) 0
-                           (fun (x39 : Nat) -> succ (succ x39))
-                          (x3 (forall (x40 : Nat) -> Nat))))))
-               (fun (A9 : Type@0)
-                    (x41 : Nat)
-                 -> forall (x42 : forall (x43 : Nat) -> Type@1)
-                           (x44 : x42 0)
-                           (x45 : forall (x46 : Nat)
-                                         (x47 : A9)
-                                         (x48 : x42 x46)
-                                    -> x42 (succ x46))
-                      -> x42 x41)
-               (fun (A10 : Type@0)
-                    (x49 : forall (x50 : Nat) -> Type@1)
-                    (x51 : x49 0)
-                    (x52 : forall (x53 : Nat)
-                                  (x54 : A10)
-                                  (x55 : x49 x53)
-                             -> x49 (succ x53))
-                 -> x51)
-               (fun (A11 : Type@0)
-                    (x56 : Nat)
-                    (x57 : A11)
-                    (x58 : forall (x59 : forall (x60 : Nat) -> Type@1)
-                                  (x61 : x59 0)
-                                  (x62 : forall (x63 : Nat)
-                                                (x64 : A11)
-                                                (x65 : x59 x63)
-                                           -> x59 (succ x63))
-                             -> x59 x56)
-                    (x66 : forall (x67 : Nat) -> Type@1)
-                    (x68 : x66 0)
-                    (x69 : forall (x70 : Nat)
-                                  (x71 : A11)
-                                  (x72 : x66 x70)
-                             -> x66 (succ x70))
-                 -> x69 x56 x57 (x58 x66 x68 x69))
-               (fun (A12 : Type@0)
-                    (x73 : Nat)
-                    (x74 : forall (x75 : forall (x76 : Nat) -> Type@1)
-                                  (x77 : x75 0)
-                                  (x78 : forall (x79 : Nat)
-                                                (x80 : A12)
-                                                (x81 : x75 x79)
-                                           -> x75 (succ x79))
-                             -> x75 x73)
-                    (x82 : forall (x83 : Nat) -> Type@1)
-                    (x84 : x82 0)
-                    (x85 : forall (x86 : Nat)
-                                  (x87 : A12)
-                                  (x88 : x82 x86)
-                             -> x82 (succ x86))
-                 -> x74 x82 x84 x85) --> 7 : Nat
+    Evaluate let x1 : forall (A1 : Type@0)
+                             (x2 : Nat)
+                        -> Type@2 :=
+                   fun (A2 : Type@0)
+                       (x3 : Nat)
+                     -> forall (x4 : forall (x5 : Nat) -> Type@1)
+                               (x6 : x4 0)
+                               (x7 : forall (x8 : Nat)
+                                            (x9 : A2)
+                                            (x10 : x4 x8)
+                                       -> x4 (succ x8))
+                          -> x4 x3;
+                 x11 : forall (A3 : Type@0) -> x1 A3 0 :=
+                   fun (A4 : Type@0)
+                       (x12 : forall (x13 : Nat) -> Type@1)
+                       (x14 : x12 0)
+                       (x15 : forall (x16 : Nat)
+                                     (x17 : A4)
+                                     (x18 : x12 x16)
+                                -> x12 (succ x16))
+                     -> x14;
+                 x19 : forall (A5 : Type@0)
+                              (x20 : Nat)
+                              (x21 : A5)
+                              (x22 : x1 A5 x20)
+                         -> x1 A5 (succ x20) :=
+                   fun (A6 : Type@0)
+                       (x23 : Nat)
+                       (x24 : A6)
+                       (x25 : forall (x26 : forall (x27 : Nat) -> Type@1)
+                                     (x28 : x26 0)
+                                     (x29 : forall (x30 : Nat)
+                                                   (x31 : A6)
+                                                   (x32 : x26 x30)
+                                              -> x26 (succ x30))
+                                -> x26 x23)
+                       (x33 : forall (x34 : Nat) -> Type@1)
+                       (x35 : x33 0)
+                       (x36 : forall (x37 : Nat)
+                                     (x38 : A6)
+                                     (x39 : x33 x37)
+                                -> x33 (succ x37))
+                     -> x36 x23 x24 (x25 x33 x35 x36);
+                 x40 : forall (A7 : Type@0)
+                              (x41 : Nat)
+                              (x42 : x1 A7 x41)
+                              (x43 : forall (x44 : Nat) -> Type@1)
+                              (x45 : x43 0)
+                              (x46 : forall (x47 : Nat)
+                                            (x48 : A7)
+                                            (x49 : x43 x47)
+                                       -> x43 (succ x47))
+                         -> x43 x41 :=
+                   fun (A8 : Type@0)
+                       (x50 : Nat)
+                       (x51 : forall (x52 : forall (x53 : Nat) -> Type@1)
+                                     (x54 : x52 0)
+                                     (x55 : forall (x56 : Nat)
+                                                   (x57 : A8)
+                                                   (x58 : x52 x56)
+                                              -> x52 (succ x56))
+                                -> x52 x50)
+                       (x59 : forall (x60 : Nat) -> Type@1)
+                       (x61 : x59 0)
+                       (x62 : forall (x63 : Nat)
+                                     (x64 : A8)
+                                     (x65 : x59 x63)
+                                -> x59 (succ x63))
+                     -> x51 x59 x61 x62;
+                 x66 : forall (A9 : Type@0)
+                              (x67 : Nat)
+                              (x68 : x1 A9 (succ x67))
+                         -> A9 :=
+                   fun (A10 : Type@0)
+                       (x69 : Nat)
+                       (x70 : x1 A10 (succ x69))
+                     -> x40 A10 (succ x69) x70
+                          (fun (x71 : Nat)
+                            -> rec x71 return x72 . Type@0
+                               | zero => Nat
+                               | succ x73, A11 => A10
+                               end)
+                          0
+                          (fun (x74 : Nat)
+                               (x75 : A10)
+                               (x76 : rec x74 return x77 . Type@0
+                                      | zero => Nat
+                                      | succ x78, A12 => A10
+                                      end)
+                            -> x75);
+                 x79 : x1 (forall (x80 : Nat) -> Nat) 3 :=
+                   x19 (forall (x81 : Nat) -> Nat) 2
+                     (fun (x82 : Nat) -> succ (succ (succ x82)))
+                     (x19 (forall (x83 : Nat) -> Nat) 1
+                        (fun (x84 : Nat) -> succ x84)
+                       (x19 (forall (x85 : Nat) -> Nat) 0
+                          (fun (x86 : Nat) -> succ (succ x86))
+                         (x11 (forall (x87 : Nat) -> Nat))))
+             in x66 (forall (x88 : Nat) -> Nat) 2 x79 4
+             end --> 7 : Nat
     |}]
 
 let%expect_test "def_abstract.mctt works" =
@@ -503,7 +504,34 @@ let%expect_test "import_use.mctt works" =
 
 let%expect_test "let_decl.mctt works" =
   let _ = main_of_example "let_decl.mctt" in
-  [%expect {| Evaluate (fun (x1 : Nat) -> (fun (x2 : Nat) -> 4) 3) 2 --> 4 : Nat |}]
+  [%expect {| Evaluate let x1 : Nat := 2; x2 : Nat := succ x1 in succ x2 end --> 4 : Nat |}]
+
+let%expect_test "let_delta.mctt works" =
+  let _ = main_of_example "let_delta.mctt" in
+  [%expect {|
+    Evaluate let x1 : Nat := 3;
+                 x2 : Nary x1 := fun (x3 : Nat)
+                                     (x4 : Nat)
+                                     (x5 : Nat)
+                                   -> x3
+             in x2 1 2 3
+             end --> 1 : Nat
+    |}]
+
+let%expect_test "let_multi.mctt works" =
+  let _ = main_of_example "let_multi.mctt" in
+  [%expect {|
+    Evaluate let A1 : Type@0 := Nat;
+                 x1 : A1 := 2;
+                 x2 : forall (x3 : A1) -> A1 :=
+                   fun (x4 : A1)
+                     -> rec x4 return x5 . A1
+                        | zero => x1
+                        | succ x6, x7 => succ x7
+                        end
+             in x2 x1
+             end --> 4 : Nat
+    |}]
 
 (* let%test "lambda" = *)
 (*   parse "fun (x : Type 5).y" = Some (Coq_fn (x, Coq_typ 5, Coq_var y)) *)

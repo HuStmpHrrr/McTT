@@ -10,7 +10,7 @@ listed under [Deviations](#deviations-from-the-specification).
 
 ## The one idea
 
-**Modules, `def`s and `let`s live entirely in the front end.**  `nbe` and
+**Modules and `def`s live entirely in the front end.**  `nbe` and
 `type_check_closed` are untouched, because a compilation unit elaborates to
 *closed* `exp`s.  `a_glob` and `GlobalCtx.v` are the seam left for separate
 compilation: the syntactic judgments now carry a global context `Ψ` and have
@@ -140,9 +140,10 @@ eval M.foo Nat bar : Nat  (* type checked   *)
 end
 ```
 
-Inside a term, `let x (y : Some) : Thing := … in … end` binds a local
-definition (the same telescope machinery, one binder deeper) and
-`let module M := X.Y.Z x y in … end` binds a local module.
+Inside a term, `let x : A := a; y : B := b in … end` binds local definitions,
+each one a core `let` (`ℓ A ≔ a in …`, see [`core-let.md`](core-let.md)), and
+`let module M := X.Y.Z x y in … end` binds a local module.  The two kinds of
+binding may be mixed in one `let`, separated by `;`.
 
 `eval M` infers `M`'s type, `eval M : A` checks `M` against `A`.  An `eval` sees
 only the definitions declared before it.  The driver exits `3` if any `eval`

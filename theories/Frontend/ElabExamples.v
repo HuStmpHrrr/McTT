@@ -12,32 +12,32 @@ Import Cst.
 
 (** * The Specification on Concrete Programs
 
-    Surface programs written as [Cst.prog] values by hand (the parser is
-    extracted, so it does not run here).  Positive examples state the core
-    unit, checked by [vm_compute] and transported to [elab_spec] by
-    soundness; negative ones show that the specification relates the program
-    to nothing, by [elaborate_core_fails]. *)
+    Surface programs are written as [Cst.prog] values, since the parser runs
+    only after extraction.  Positive examples give the core unit, checked by
+    [vm_compute] and transferred to [elab_spec] by soundness; negative ones
+    are related to nothing, by [elaborate_core_fails]. *)
 
 Ltac elab_ok := apply elaborate_core_sound; vm_compute; reflexivity.
 Ltac elab_fails := apply elaborate_core_fails; eexists; vm_compute; reflexivity.
 
 (** ** Pre-application
 
-    module U (A : Type@0) where
-      def a : Type@0 := A end
-      module M (B : Type@0) where
-        def b : Type@0 := B end
-        eval a
-        eval b
-        eval fun (x : Nat) -> b
-      end
-      eval M.b Nat
-    end
+<<
+module U (A : Type@0) where
+  def a : Type@0 := A end
+  module M (B : Type@0) where
+    def b : Type@0 := B end
+    eval a
+    eval b
+    eval fun (x : Nat) -> b
+  end
+  eval M.b Nat
+end
+>>
 
-    Inside [M], [B] is [#0] and [A] is [#1].  [a] is a member of [U], so it is
-    pre-applied to [A] only; [b] is a member of [M], so to [A] and [B]; under
-    the [fun] both move one binder out.  Outside [M], [M] is closed: [M.b] is
-    pre-applied to [A] (open) and gets [B] from the user. *)
+    Inside [M], [B] is [#0] and [A] is [#1].  [a] is applied to [A], and [b]
+    to [A] and [B]; under the [fun] both shift by one.  Outside [M], [M.b] is
+    applied to [A] and gets [B] from the user. *)
 Definition nested : Cst.prog :=
   (nil, ("U" :: nil, ("A", typ 0) :: nil,
          c_def md_pub "a" (typ 0) (var "A") ::
@@ -63,9 +63,8 @@ Example nested_spec :
      cc_eval (U_M_b $ #0 $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
-(** The first [eval] of [M], derived by hand from the rules: [a] is not bound
-    in [M]'s frame ([fb_next]), so it is the definition of [U]'s frame,
-    pre-applied to [U]'s telescope, which starts one binder in. *)
+(** The first [eval] of [M], derived from the rules: [a] is not bound in [M]
+    ([fb_next]), so it is [U]'s member applied to [U]'s parameter. *)
 Definition U_frame : sframe :=
   sf_mk nil (("A", Type@0) :: nil) (cc_def "a" true false Type@0 #0 :: nil) ss_empty.
 Definition M_frame : sframe := sf_mk ("M" :: nil) (("B", Type@0) :: nil) nil ss_empty.
@@ -191,8 +190,7 @@ Example redeclare_alias : forall u, ~ elab_spec (unit_of
    c_def md_pub "x" nat Cst.zero :: nil)) u.
 Proof. elab_fails. Qed.
 
-(** … but shadowing an enclosing frame's member is allowed, and the inner
-    one wins inside. *)
+(** … but shadowing an enclosing frame's member is allowed. *)
 Example shadow_parent :
   elab_spec (unit_of
     (c_def md_pub "x" nat Cst.zero ::
@@ -218,8 +216,7 @@ Example partial_args :
      cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "f" :: nil))) None :: nil).
 Proof. elab_ok. Qed.
 
-(** [module A.B] is [A] without parameters holding [B]; its members are named
-    by the dotted chain and pre-applied to nothing but [B]'s parameters. *)
+(** [module A.B] is [A], without parameters, holding [B]. *)
 Example dotted_module :
   elab_spec (unit_of
     (c_mod ("A" :: "B" :: nil) (("X", typ 0) :: nil) (c_def md_abs "y" (typ 0) (var "X") :: nil) ::
@@ -310,10 +307,9 @@ Definition dup_leading : Cst.prog :=
 Example dup_leading_err : elaborate_core dup_leading = eerr "N is already declared".
 Proof. elab_err. Qed.
 
-(** Shadowing across frames is still allowed: a parameter of a module may
-    reuse a member name of the enclosing frame, a member of a nested module
-    may reuse the enclosing frame's parameter name, and the innermost binding
-    wins. *)
+(** Across frames, shadowing is allowed: a module's parameter may reuse a
+    member name of the enclosing frame, and a nested member may reuse the
+    enclosing frame's parameter name. *)
 Example shadow_param :
   elab_spec (nil, ("T" :: nil, ("x", nat) :: nil,
                    c_def md_pub "y" nat Cst.zero ::
@@ -326,17 +322,79 @@ Example shadow_param :
         cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
+(** ** Local Definitions
+
+    A [let] elaborates to a core [let], and its name is a core variable like
+    a [fun] binder.  The core typing rules, not the elaborator, unfold it. *)
+
+(** A [let] inside the definiens of another [let]:
+
+<<
+fun (a : Nat) -> let x : Nat := let y : Nat := a in succ y end in succ x end
+>>
+*)
+Example let_nested :
+  elab_spec (unit_of
+    (c_eval (fn "a" nat
+               (letb (d_def "x" nat (letb (d_def "y" nat (var "a")) (Cst.succ (var "y"))))
+                  (Cst.succ (var "x")))) None :: nil))
+    (nil, ⋅, cc_eval (λ ℕ (ℓ ℕ ≔ (ℓ ℕ ≔ #0 in succ #0) in succ #0)) None :: nil).
+Proof. elab_ok. Qed.
+
+(** Each binding sees the earlier ones, in its type and in its definiens:
+
+<<
+let A : Type@0 := Nat; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> succ z in f z end
+>>
+*)
+Example let_multi :
+  elab_spec (unit_of
+    (c_eval (letb (d_def "A" (typ 0) nat)
+               (letb (d_def "z" (var "A") Cst.zero)
+                  (letb (d_def "f" (pi "n" (var "A") (var "A")) (fn "n" (var "A") (Cst.succ (var "z"))))
+                     (app (var "f") (var "z"))))) None :: nil))
+    (nil, ⋅,
+     cc_eval (ℓ Type@0 ≔ ℕ in ℓ #0 ≔ zero in ℓ (Π #1 #2) ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+Proof. elab_ok. Qed.
+
+(** A [let] may shadow a member of the frame.  The definiens still sees the
+    member, which is applied to the parameter [A]; in the body, [A] lies one
+    binder further out.
+
+<<
+module M (A : Type@0) where
+  def y : Nat := 0 end
+  eval let y : Nat := succ y in fun (a : A) -> y end
+end
+>>
+*)
+Definition T_M_y : exp := a_glob (p_abs ("T" :: nil) ("M" :: "y" :: nil)).
+
+Example let_shadow :
+  elab_spec (unit_of
+    (c_mod ("M" :: nil) (("A", typ 0) :: nil)
+       (c_def md_pub "y" nat Cst.zero ::
+        c_eval (letb (d_def "y" nat (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil) :: nil))
+    (nil, ⋅,
+     cc_mod "M" (⋅ ▹ Type@0)
+       (cc_def "y" true false ℕ zero ::
+        cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
+Proof. elab_ok. Qed.
+
 (** ** The Running Example of [ElabSpec]
 
-    module Main where
-      module M (A : Type@0) where
-        def id (x : A) : A := x end
-        module N (B : Type@0) where
-          def k (x : A) (y : B) : A := id x end
-        end
-      end
-      def j : forall (x : Nat) -> Nat := M.id Nat end
-    end *)
+<<
+module Main where
+  module M (A : Type@0) where
+    def id (x : A) : A := x end
+    module N (B : Type@0) where
+      def k (x : A) (y : B) : A := id x end
+    end
+  end
+  def j : forall (x : Nat) -> Nat := M.id Nat end
+end
+>>
+*)
 Definition running : Cst.prog := (nil, ("Main" :: nil, nil,
   c_mod ("M" :: nil) (("A", typ 0) :: nil)
     (c_def md_pub "id" (pi "x" (var "A") (var "A")) (fn "x" (var "A") (var "x")) ::
