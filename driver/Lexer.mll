@@ -2,6 +2,9 @@
   open Lexing
   open McttExtracted.Parser
 
+  (* A lexing error, with its message. *)
+  exception Error of string
+
   let get_range lexbuf = (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 
   let format_position (f: Format.formatter) (p: position): unit =
@@ -156,19 +159,17 @@ rule read =
   | "abstract" { ABSTRACT (get_range lexbuf) }
   | "eval" { EVAL (get_range lexbuf) }
   | string { VAR (get_range lexbuf, Lexing.lexeme lexbuf) }
-  | _ as c { failwith (Format.asprintf "@[<v 2>Lexer error:@ @[<v 2>Unexpected character %C@ at %a@]@]@." c format_position lexbuf.lex_start_p) }
+  | _ as c { raise (Error (Format.asprintf "unexpected character %C at %a" c format_position lexbuf.lex_start_p)) }
 and comment =
   parse
   | "*)" { read lexbuf }
+  | eof { raise (Error "unterminated comment") }
   | _ { comment lexbuf }
 
 {
   let rec lexbuf_to_token_buffer lexbuf =
     lazy
       begin
-        try
-          MenhirLibParser.Inter.Buf_cons (read lexbuf, lexbuf_to_token_buffer lexbuf)
-        with
-        | Failure s -> prerr_string s; raise Exit
+        MenhirLibParser.Inter.Buf_cons (read lexbuf, lexbuf_to_token_buffer lexbuf)
       end
 }

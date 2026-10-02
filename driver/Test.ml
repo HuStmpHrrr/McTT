@@ -677,3 +677,19 @@ let%expect_test "lib/Order.mctt" =
     Evaluate Prelude::Parity.evenSuccOdd 4 true --> true : True
     Evaluate Prelude::Parity.evenPlus 4 6 true true --> true : True
     |}]
+
+let%expect_test "a missing input file is reported" =
+  let _ = main_of_filename "../examples/Missing.mctt" in
+  [%expect {| Error: ../examples/Missing.mctt: No such file or directory |}]
+
+let%expect_test "a directory is not an input file" =
+  let _ = main_of_filename "../examples" in
+  [%expect {| Error: ../examples is a directory |}]
+
+let%expect_test "an unexpected character is reported" =
+  let _ = main_of_body "eval 0 $ 1" in
+  [%expect {| Error: unexpected character '$' at line 1, column 26 |}]
+
+let%expect_test "an unterminated comment is reported" =
+  let _ = main_of_body "eval 0 (* open" in
+  [%expect {| Error: unterminated comment |}]
