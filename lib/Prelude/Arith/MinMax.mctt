@@ -1,9 +1,9 @@
 (* Minimum and maximum, by recursion on both arguments, with their laws
-   stated with [Prelude::NatEq]. *)
-import Prelude::NatEq use (Eq; refl; sym; trans)
-import Prelude::Plus use (plus; plusZero; plusSucc)
+   stated with [Prelude::Arith::Equality]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans)
+import Prelude::Arith::Plus use (plus; plusZero; plusSucc)
 
-module Prelude::MinMax where
+module Prelude::Arith::MinMax where
 
 def min (a : Nat) (b : Nat) : Nat :=
   (rec a return y . (forall (x : Nat) -> Nat)

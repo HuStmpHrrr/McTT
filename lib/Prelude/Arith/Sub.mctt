@@ -1,10 +1,9 @@
 (* Predecessor and truncated subtraction, with their laws stated with
-   [Prelude::NatEq]. *)
-import Prelude::Logic use (absurd)
-import Prelude::NatEq use (Eq; refl; sym)
-import Prelude::Plus use (plus; plusComm)
+   [Prelude::Arith::Equality]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; transport)
+import Prelude::Arith::Plus use (plus; plusComm)
 
-module Prelude::Sub where
+module Prelude::Arith::Sub where
 
 (* The predecessor; [pred 0] is [0]. *)
 def pred (n : Nat) : Nat :=
@@ -28,25 +27,6 @@ def sub (a : Nat) (b : Nat) : Nat :=
    end) a
 end
 
-(* Equal numbers satisfy the same predicates. *)
-def transport : forall (P : forall (n : Nat) -> Type@0) (x : Nat) (y : Nat)
-    (h : Eq x y) (px : P x) -> P y :=
-  fun (P : forall (n : Nat) -> Type@0) (x : Nat) ->
-    (rec x return u . (forall (Q : forall (n : Nat) -> Type@0) (y : Nat)
-                         (h : Eq u y) (pu : Q u) -> Q y)
-     | zero => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
-         rec y return v . (forall (h : Eq 0 v) (pu : Q 0) -> Q v)
-         | zero => fun (h : True) (pu : Q 0) -> pu
-         | succ q, s => fun (h : Eq 0 (succ q)) (pu : Q 0) -> absurd (Q (succ q)) h
-         end
-     | succ p, ih => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
-         rec y return v . (forall (h : Eq (succ p) v) (pu : Q (succ p)) -> Q v)
-         | zero => fun (h : Eq (succ p) 0) (pu : Q (succ p)) -> absurd (Q 0) h
-         | succ q, s => fun (h : Eq p q) (pu : Q (succ p)) ->
-             ih (fun (n : Nat) -> Q (succ n)) q h pu
-         end
-     end) P
-end
 
 def predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
   fun (n : Nat) -> refl n

@@ -1,8 +1,8 @@
-(* Addition and its laws, stated with [Prelude::NatEq]. *)
+(* Addition and its laws, stated with [Prelude::Arith::Equality]. *)
 import Prelude::Logic use (absurd)
-import Prelude::NatEq use (Eq; refl; sym; trans)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans)
 
-module Prelude::Plus where
+module Prelude::Arith::Plus where
 
 def plus (n : Nat) (m : Nat) : Nat :=
   rec n return y . Nat

@@ -1,0 +1,61 @@
+(* The Ackermann function, by higher-order primitive recursion, with its
+   defining equations and closed forms for [ack 1] and [ack 2]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans)
+import Prelude::Arith::Plus use (plus; plusSucc)
+import Prelude::Function::Combinators use (Generic)
+
+module Prelude::Arith::Ackermann where
+
+(* The Ackermann function. Recursion on [m] returns a function [Nat -> Nat]:
+   [ack (succ m)] iterates [ack m] [succ n] times from [1], so
+   [ack (succ m) 0] is [ack m 1] and [ack (succ m) (succ n)] is
+   [ack m (ack (succ m) n)]. *)
+def ack (m : Nat) (n : Nat) : Nat :=
+  (rec m return y . (forall (x : Nat) -> Nat)
+   | zero => fun (x : Nat) -> succ x
+   | succ p, r => fun (x : Nat) -> Generic.iterate Nat r (succ x) 1
+   end) n
+end
+
+def ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
+  fun (n : Nat) -> refl n
+end
+
+def ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
+  fun (m : Nat) -> refl (ack m 1)
+end
+
+def ackSuccSucc : forall (m : Nat) (n : Nat) ->
+    Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) :=
+  fun (m : Nat) (n : Nat) -> refl (ack m (ack (succ m) n))
+end
+
+def ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
+  fun (n : Nat) ->
+    rec n return x . Eq (ack 1 x) (succ (succ x))
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+(* [ack 2 n] is [2 n + 3]: the step rewrites [ack 1] by [ackOne] and moves a
+   successor past [plusSucc]. *)
+def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
+  fun (n : Nat) ->
+    rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
+    | zero => true
+    | succ p, ih =>
+        let prev : Nat := ack 2 p;
+            step : Eq (ack 1 prev) (succ (succ prev)) := ackOne prev;
+            target : Nat := succ (succ (succ (plus (succ p) (succ p))));
+            shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target :=
+              sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p)
+        in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p)))))) target
+             (trans (ack 1 prev) (succ (succ prev))
+                (succ (succ (succ (succ (succ (plus p p)))))) step ih)
+             shift
+        end
+    end
+end
+
+end

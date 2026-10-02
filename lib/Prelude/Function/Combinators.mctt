@@ -1,11 +1,9 @@
-(* Generic higher-order programs over a type parameter, their laws at [Nat],
-   and the Ackermann function by higher-order primitive recursion. *)
-import Prelude::NatEq use (Eq; refl; sym; trans)
-import Prelude::Plus use (plus; plusComm; plusSucc)
-import Prelude::Sub use (transport)
-import Prelude::Iter as Iter
+(* Generic combinators over a type parameter, with their laws at [Nat]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude::Arith::Plus use (plus; plusComm; plusSucc)
+import Prelude::Function::Iter as Iter
 
-module Prelude::Fun where
+module Prelude::Function::Combinators where
 
 (* Combinators over an arbitrary type [A]. *)
 module Generic (A : Type@0) where
@@ -21,18 +19,11 @@ def compose (B : Type@0) (C : Type@0) (g : forall (b : B) -> C)
   g (f a)
 end
 
-(* [iterate f n a] applies [f] to [a] [n] times; it is [Prelude::Iter]. *)
+(* [iterate f n a] applies [f] to [a] [n] times; it is [Prelude::Function::Iter]. *)
 def iterate (f : forall (a : A) -> A) (n : Nat) (a : A) : A :=
   Iter.iter A f n a
 end
 
-end
-
-(* Equal arguments give equal results. *)
-def cong : forall (f : forall (n : Nat) -> Nat) (x : Nat) (y : Nat) (h : Eq x y) ->
-    Eq (f x) (f y) :=
-  fun (f : forall (n : Nat) -> Nat) (x : Nat) (y : Nat) (h : Eq x y) ->
-    transport (fun (m : Nat) -> Eq (f x) (f m)) x y h (refl (f x))
 end
 
 def constApply : forall (c : Nat) (a : Nat) -> Eq (Generic.const Nat Nat c a) c :=
@@ -85,58 +76,6 @@ def iterateComm : forall (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : 
          (trans mn (Generic.iterate Nat f (plus m n) a) (Generic.iterate Nat f (plus n m) a)
             toPlus swap)
          (iteratePlus f n m a)
-    end
-end
-
-(* The Ackermann function. Recursion on [m] returns a function [Nat -> Nat]:
-   [ack (succ m)] iterates [ack m] [succ n] times from [1], so
-   [ack (succ m) 0] is [ack m 1] and [ack (succ m) (succ n)] is
-   [ack m (ack (succ m) n)]. *)
-def ack (m : Nat) (n : Nat) : Nat :=
-  (rec m return y . (forall (x : Nat) -> Nat)
-   | zero => fun (x : Nat) -> succ x
-   | succ p, r => fun (x : Nat) -> Generic.iterate Nat r (succ x) 1
-   end) n
-end
-
-def ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
-  fun (n : Nat) -> refl n
-end
-
-def ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
-  fun (m : Nat) -> refl (ack m 1)
-end
-
-def ackSuccSucc : forall (m : Nat) (n : Nat) ->
-    Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) :=
-  fun (m : Nat) (n : Nat) -> refl (ack m (ack (succ m) n))
-end
-
-def ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
-  fun (n : Nat) ->
-    rec n return x . Eq (ack 1 x) (succ (succ x))
-    | zero => true
-    | succ p, ih => ih
-    end
-end
-
-(* [ack 2 n] is [2 n + 3]: the step rewrites [ack 1] by [ackOne] and moves a
-   successor past [plusSucc]. *)
-def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
-  fun (n : Nat) ->
-    rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
-    | zero => true
-    | succ p, ih =>
-        let prev : Nat := ack 2 p;
-            step : Eq (ack 1 prev) (succ (succ prev)) := ackOne prev;
-            target : Nat := succ (succ (succ (plus (succ p) (succ p))));
-            shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target :=
-              sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p)
-        in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p)))))) target
-             (trans (ack 1 prev) (succ (succ prev))
-                (succ (succ (succ (succ (succ (plus p p)))))) step ih)
-             shift
-        end
     end
 end
 

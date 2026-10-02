@@ -126,18 +126,20 @@ let%expect_test "LetTrueFalse.mctt works" =
 let%expect_test "lib/NatTheory.mctt" =
   let _ = main_of_lib "NatTheory.mctt" in
   [%expect {|
-    Evaluate Prelude::Plus.plusComm 2 3 --> true : True
-    Evaluate Prelude::NatEq.sym 4 4 (Prelude::NatEq.refl 4) --> true : True
-    Evaluate Prelude::NatEq.zeroNeSucc 5 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Plus.plusComm 2 3 --> true : True
+    Evaluate Prelude::Arith::Equality.sym 4 4 (Prelude::Arith::Equality.refl 4)
+      --> true : True
+    Evaluate Prelude::Arith::Equality.zeroNeSucc 5 --> fun (x1 : False) -> x1
       : forall (x1 : False) -> False
     Evaluate iterSucc 3 4 --> true : True
-    Evaluate Prelude::Iter.iter Nat (fun (x1 : Nat) -> Prelude::Plus.plus x1 x1)
+    Evaluate Prelude::Function::Iter.iter Nat
+               (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 x1)
                3
                1 --> 8 : Nat
     Evaluate let x1 : Nat := 2;
-                 x2 : Prelude::NatEq.Eq
-                        (Prelude::Iter.iter Nat
-                           (fun (x3 : Nat) -> Prelude::Plus.plus x3 x3)
+                 x2 : Prelude::Arith::Equality.Eq
+                        (Prelude::Function::Iter.iter Nat
+                           (fun (x3 : Nat) -> Prelude::Arith::Plus.plus x3 x3)
                            x1
                           1)
                         4 := true
@@ -628,54 +630,57 @@ let%expect_test "a file declaring another unit is reported" =
 let%expect_test "lib/Arithmetic.mctt" =
   let _ = main_of_lib "Arithmetic.mctt" in
   [%expect {|
-    Evaluate Prelude::Mult.mult 6 7 --> 42 : Nat
-    Evaluate Prelude::Plus.plus (Prelude::Mult.mult 3 4) (Prelude::Mult.mult 2 5)
-      --> 22 : Nat
-    Evaluate Prelude::Plus.plusAssoc 1 2 3 --> true : True
-    Evaluate Prelude::Mult.multComm 3 4 --> true : True
-    Evaluate Prelude::Mult.multAssoc 2 3 4 --> true : True
-    Evaluate Prelude::Mult.multDistribLeft 2 3 4 --> true : True
-    Evaluate Prelude::Mult.multDistribRight 2 3 4 --> true : True
-    Evaluate Prelude::NatEq.cong (fun (x1 : Nat) -> Prelude::Mult.mult x1 x1) 3 3
-               (Prelude::NatEq.refl 3) --> true : True
-    Evaluate Prelude::Plus.plusCancelLeft 2 3 3 true --> true : True
-    Evaluate Prelude::Plus.plusCancelRight 4 4 1 true --> true : True
-    Evaluate Prelude::Plus.plusEqZero 0 0 true --> true : True
-    Evaluate Prelude::Mult.multEqZero 2 0 true (fun (x1 : False) -> x1) --> true
-      : True
-  |}]
+    Evaluate Prelude::Arith::Mult.mult 6 7 --> 42 : Nat
+    Evaluate Prelude::Arith::Plus.plus (Prelude::Arith::Mult.mult 3 4)
+               (Prelude::Arith::Mult.mult 2 5) --> 22 : Nat
+    Evaluate Prelude::Arith::Plus.plusAssoc 1 2 3 --> true : True
+    Evaluate Prelude::Arith::Mult.multComm 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.multAssoc 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.multDistribLeft 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.multDistribRight 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Equality.cong
+               (fun (x1 : Nat) -> Prelude::Arith::Mult.mult x1 x1)
+               3
+               3
+               (Prelude::Arith::Equality.refl 3) --> true : True
+    Evaluate Prelude::Arith::Plus.plusCancelLeft 2 3 3 true --> true : True
+    Evaluate Prelude::Arith::Plus.plusCancelRight 4 4 1 true --> true : True
+    Evaluate Prelude::Arith::Plus.plusEqZero 0 0 true --> true : True
+    Evaluate Prelude::Arith::Mult.multEqZero 2 0 true (fun (x1 : False) -> x1)
+      --> true : True
+    |}]
 
-let%expect_test "lib/Order.mctt" =
-  let _ = main_of_lib "Order.mctt" in
+let%expect_test "lib/OrderParity.mctt" =
+  let _ = main_of_lib "OrderParity.mctt" in
   [%expect {|
-    Evaluate Prelude::Order.leTrans 1 2 5 true true --> true : True
-    Evaluate Prelude::Order.leAntisym 3 3 true true --> true : True
-    Evaluate Prelude::Order.leSucc 4 --> true : True
-    Evaluate Prelude::Order.lePlusRight 2 3 --> true : True
-    Evaluate Prelude::Logic.orElim (Prelude::Order.Le 5 2)
-               (Prelude::Order.Le 2 5)
+    Evaluate Prelude::Arith::Order.leTrans 1 2 5 true true --> true : True
+    Evaluate Prelude::Arith::Order.leAntisym 3 3 true true --> true : True
+    Evaluate Prelude::Arith::Order.leSucc 4 --> true : True
+    Evaluate Prelude::Arith::Order.lePlusRight 2 3 --> true : True
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Le 5 2)
+               (Prelude::Arith::Order.Le 2 5)
                Nat
-               (Prelude::Order.leTotal 5 2)
-               (fun (x1 : Prelude::Order.Le 5 2) -> 0)
-               (fun (x2 : Prelude::Order.Le 2 5) -> 1) --> 1 : Nat
-    Evaluate Prelude::Order.ltIrrefl 3 --> fun (x1 : False) -> x1
+               (Prelude::Arith::Order.leTotal 5 2)
+               (fun (x1 : Prelude::Arith::Order.Le 5 2) -> 0)
+               (fun (x2 : Prelude::Arith::Order.Le 2 5) -> 1) --> 1 : Nat
+    Evaluate Prelude::Arith::Order.ltIrrefl 3 --> fun (x1 : False) -> x1
       : forall (x1 : False) -> False
-    Evaluate Prelude::Order.notLtZero 2 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Order.notLtZero 2 --> fun (x1 : False) -> x1
       : forall (x1 : False) -> False
-    Evaluate Prelude::Order.leb 2 5 --> 1 : Nat
-    Evaluate Prelude::Order.leb 5 2 --> 0 : Nat
-    Evaluate Prelude::Order.lebComplete 2 5 true --> true : True
-    Evaluate Prelude::Order.lebZero 5 2 true --> true : True
-    Evaluate Prelude::Parity.double 7 --> 14 : Nat
-    Evaluate Prelude::Parity.evenDouble 7 --> true : True
-    Evaluate Prelude::Logic.orElim (Prelude::Parity.Even 7)
-               (Prelude::Parity.Odd 7)
+    Evaluate Prelude::Arith::Order.leb 2 5 --> 1 : Nat
+    Evaluate Prelude::Arith::Order.leb 5 2 --> 0 : Nat
+    Evaluate Prelude::Arith::Order.lebComplete 2 5 true --> true : True
+    Evaluate Prelude::Arith::Order.lebZero 5 2 true --> true : True
+    Evaluate Prelude::Arith::Parity.double 7 --> 14 : Nat
+    Evaluate Prelude::Arith::Parity.evenDouble 7 --> true : True
+    Evaluate Prelude::Logic.orElim (Prelude::Arith::Parity.Even 7)
+               (Prelude::Arith::Parity.Odd 7)
                Nat
-               (Prelude::Parity.evenOrOdd 7)
-               (fun (x1 : Prelude::Parity.Even 7) -> 0)
-               (fun (x2 : Prelude::Parity.Odd 7) -> 1) --> 1 : Nat
-    Evaluate Prelude::Parity.evenSuccOdd 4 true --> true : True
-    Evaluate Prelude::Parity.evenPlus 4 6 true true --> true : True
+               (Prelude::Arith::Parity.evenOrOdd 7)
+               (fun (x1 : Prelude::Arith::Parity.Even 7) -> 0)
+               (fun (x2 : Prelude::Arith::Parity.Odd 7) -> 1) --> 1 : Nat
+    Evaluate Prelude::Arith::Parity.evenSuccOdd 4 true --> true : True
+    Evaluate Prelude::Arith::Parity.evenPlus 4 6 true true --> true : True
     |}]
 
 let%expect_test "a missing input file is reported" =
@@ -697,31 +702,39 @@ let%expect_test "an unterminated comment is reported" =
 let%expect_test "lib/Programs.mctt" =
   let _ = main_of_lib "Programs.mctt" in
   [%expect {|
-    Evaluate Prelude::Sub.pred 5 --> 4 : Nat
-    Evaluate Prelude::Sub.sub 10 3 --> 7 : Nat
-    Evaluate Prelude::Sub.sub 3 10 --> 0 : Nat
-    Evaluate Prelude::MinMax.min 4 9 --> 4 : Nat
-    Evaluate Prelude::MinMax.max 4 9 --> 9 : Nat
-    Evaluate Prelude::Fun.ack 2 3 --> 9 : Nat
-    Evaluate Prelude::Fun.ack 3 3 --> 61 : Nat
-    Evaluate Prelude::Sub.plusSub 6 4 --> true : True
-    Evaluate Prelude::Sub.subSelf 7 --> true : True
-    Evaluate Prelude::Sub.subSuccRight 9 4 --> true : True
-    Evaluate Prelude::MinMax.plusMinMax 3 8 --> true : True
-    Evaluate Prelude::MinMax.minComm 2 5 --> true : True
-    Evaluate Prelude::MinMax.maxComm 6 1 --> true : True
-    Evaluate Prelude::Fun.ackZero 4 --> true : True
-    Evaluate Prelude::Fun.ackTwo 5 --> true : True
-    Evaluate Prelude::Fun.iteratePlus (fun (x1 : Nat) -> Prelude::Plus.plus x1 3)
+    Evaluate Prelude::Arith::Sub.pred 5 --> 4 : Nat
+    Evaluate Prelude::Arith::Sub.sub 10 3 --> 7 : Nat
+    Evaluate Prelude::Arith::Sub.sub 3 10 --> 0 : Nat
+    Evaluate Prelude::Arith::MinMax.min 4 9 --> 4 : Nat
+    Evaluate Prelude::Arith::MinMax.max 4 9 --> 9 : Nat
+    Evaluate Prelude::Arith::Ackermann.ack 2 3 --> 9 : Nat
+    Evaluate Prelude::Arith::Ackermann.ack 3 3 --> 61 : Nat
+    Evaluate Prelude::Arith::Sub.plusSub 6 4 --> true : True
+    Evaluate Prelude::Arith::Sub.subSelf 7 --> true : True
+    Evaluate Prelude::Arith::Sub.subSuccRight 9 4 --> true : True
+    Evaluate Prelude::Arith::MinMax.plusMinMax 3 8 --> true : True
+    Evaluate Prelude::Arith::MinMax.minComm 2 5 --> true : True
+    Evaluate Prelude::Arith::MinMax.maxComm 6 1 --> true : True
+    Evaluate Prelude::Arith::Ackermann.ackZero 4 --> true : True
+    Evaluate Prelude::Arith::Ackermann.ackTwo 5 --> true : True
+    Evaluate Prelude::Function::Combinators.iteratePlus
+               (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 3)
                2
                3
                1 --> true : True
-    Evaluate Prelude::Fun.iterateComm (fun (x1 : Nat) -> succ (succ x1)) 3 4 0
-      --> true : True
-    Evaluate Prelude::Fun.Generic.compose Nat Nat Nat (Prelude::Sub.sub 20)
-               (fun (x1 : Nat) -> Prelude::MinMax.max x1 5)
+    Evaluate Prelude::Function::Combinators.iterateComm
+               (fun (x1 : Nat) -> succ (succ x1))
+               3
+               4
+               0 --> true : True
+    Evaluate Prelude::Function::Combinators.Generic.compose Nat Nat Nat
+               (Prelude::Arith::Sub.sub 20)
+               (fun (x1 : Nat) -> Prelude::Arith::MinMax.max x1 5)
                2 --> 15 : Nat
-    Evaluate Prelude::Fun.Generic.const Nat Nat 7 100 --> 7 : Nat
-    Evaluate Prelude::Fun.Generic.iterate Nat (Prelude::Fun.ack 1) 3 0 --> 6
+    Evaluate Prelude::Function::Combinators.Generic.const Nat Nat 7 100 --> 7
       : Nat
+    Evaluate Prelude::Function::Combinators.Generic.iterate Nat
+               (Prelude::Arith::Ackermann.ack 1)
+               3
+               0 --> 6 : Nat
     |}]

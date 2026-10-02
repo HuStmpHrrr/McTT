@@ -1,9 +1,9 @@
 (* Parity of natural numbers: [Even] and [Odd] computed by recursion, with
    doubling and the basic laws. *)
 import Prelude::Logic use (absurd; And; andIntro; andSwap; Or; orInl; orSwap)
-import Prelude::Plus use (plus)
+import Prelude::Arith::Plus use (plus)
 
-module Prelude::Parity where
+module Prelude::Arith::Parity where
 
 (* Exchanges the parity flags 0 (even) and 1 (odd). *)
 def flip (b : Nat) : Nat :=

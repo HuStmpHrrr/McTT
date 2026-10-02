@@ -1,10 +1,10 @@
 (* The order on natural numbers, computed by recursion on both sides like
-   [Prelude::NatEq.Eq], with its basic laws and a decision function. *)
+   [Prelude::Arith::Equality.Eq], with its basic laws and a decision function. *)
 import Prelude::Logic use (Not; absurd; Or; orInl; orInr)
-import Prelude::NatEq use (Eq)
-import Prelude::Plus use (plus)
+import Prelude::Arith::Equality use (Eq)
+import Prelude::Arith::Plus use (plus)
 
-module Prelude::Order where
+module Prelude::Arith::Order where
 
 (* [Le n m] computes to [True] or [False]: [Le 0 m] is [True],
    [Le (succ n) 0] is [False], and [Le (succ n) (succ m)] is [Le n m]. *)

@@ -1,10 +1,10 @@
-(* A client of [Prelude::Order] and [Prelude::Parity]: closed instances of
+(* A client of [Prelude::Arith::Order] and [Prelude::Arith::Parity]: closed instances of
    their theorems normalize to [true], and [leb] decides the order. *)
 import Prelude::Logic use (orElim)
-import Prelude::Order use (Le; leTrans; leAntisym; leSucc; lePlusRight; leTotal; ltIrrefl; notLtZero; leb; lebComplete; lebZero)
-import Prelude::Parity use (Even; Odd; double; evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
+import Prelude::Arith::Order use (Le; leTrans; leAntisym; leSucc; lePlusRight; leTotal; ltIrrefl; notLtZero; leb; lebComplete; lebZero)
+import Prelude::Arith::Parity use (Even; Odd; double; evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
 
-module Order where
+module OrderParity where
 
 eval leTrans 1 2 5 true true
 

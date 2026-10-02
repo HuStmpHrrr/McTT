@@ -1,6 +1,6 @@
 (* Iteration of an arbitrary function: a unit parameterized by the type and
    the function, so each client instantiates it as it needs. *)
-module Prelude::Iter (A : Type@0) (f : forall (a : A) -> A) where
+module Prelude::Function::Iter (A : Type@0) (f : forall (a : A) -> A) where
 
 def iter (n : Nat) (a : A) : A :=
   rec n return y . A

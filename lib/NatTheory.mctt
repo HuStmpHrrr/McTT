@@ -1,12 +1,12 @@
-(* A client of the [Prelude] library: [Prelude::NatEq], [Prelude::Plus] and
-   [Prelude::Iter] are separate units, loaded once each. *)
-import Prelude::NatEq use (Eq; refl; sym; zeroNeSucc)
-import Prelude::Plus use (plus; plusComm)
-import Prelude::Iter as Iter
+(* A client of the [Prelude] library: [Prelude::Arith::Equality], [Prelude::Arith::Plus] and
+   [Prelude::Function::Iter] are separate units, loaded once each. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; zeroNeSucc)
+import Prelude::Arith::Plus use (plus; plusComm)
+import Prelude::Function::Iter as Iter
 
 module NatTheory where
 
-(* [Prelude::Iter] instantiated with [succ]: iterating it is addition. *)
+(* [Prelude::Function::Iter] instantiated with [succ]: iterating it is addition. *)
 def iterSucc : forall (n : Nat) (m : Nat) ->
     Eq (Iter.iter Nat (fun (x : Nat) -> succ x) n m) (plus n m) :=
   fun (n : Nat) (m : Nat) ->
@@ -29,7 +29,7 @@ eval iterSucc 3 4
 eval Iter.iter Nat (fun (x : Nat) -> plus x x) 3 1
 
 (* A let-bound number is known in the body, so [true] proves the equation;
-   [Doubling] names an instance of [Prelude::Iter]. *)
+   [Doubling] names an instance of [Prelude::Function::Iter]. *)
 eval let module Doubling := Iter Nat (fun (x : Nat) -> plus x x);
          n : Nat := 2;
          p : Eq (Doubling.iter n 1) 4 := true

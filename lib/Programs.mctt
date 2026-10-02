@@ -1,10 +1,11 @@
 (* A client of the programs in the [Prelude] library: subtraction, minimum and
    maximum, generic combinators, and the Ackermann function, run on closed
    instances. *)
-import Prelude::Sub use (pred; sub; subSelf; plusSub; subSuccRight)
-import Prelude::MinMax use (min; max; minComm; maxComm; plusMinMax)
-import Prelude::Fun use (Generic; ack; ackZero; ackTwo; iteratePlus; iterateComm)
-import Prelude::Plus use (plus)
+import Prelude::Arith::Sub use (pred; sub; subSelf; plusSub; subSuccRight)
+import Prelude::Arith::MinMax use (min; max; minComm; maxComm; plusMinMax)
+import Prelude::Function::Combinators use (Generic; iteratePlus; iterateComm)
+import Prelude::Arith::Ackermann use (ack; ackZero; ackTwo)
+import Prelude::Arith::Plus use (plus)
 
 module Programs where
 

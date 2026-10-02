@@ -2,7 +2,7 @@
    basic laws. *)
 import Prelude::Logic use (Not; absurd)
 
-module Prelude::NatEq where
+module Prelude::Arith::Equality where
 
 def Eq : forall (n : Nat) (m : Nat) -> Type@0 :=
   fun (n : Nat) ->
@@ -81,6 +81,26 @@ def cong : forall (f : forall (x : Nat) -> Nat) (a : Nat) (b : Nat) (h : Eq a b)
          | succ q, s => fun (h : Eq p q) -> ih (fun (y : Nat) -> g (succ y)) q h
          end
      end) f
+end
+
+(* Equal numbers satisfy the same predicates. *)
+def transport : forall (P : forall (n : Nat) -> Type@0) (x : Nat) (y : Nat)
+    (h : Eq x y) (px : P x) -> P y :=
+  fun (P : forall (n : Nat) -> Type@0) (x : Nat) ->
+    (rec x return u . (forall (Q : forall (n : Nat) -> Type@0) (y : Nat)
+                         (h : Eq u y) (pu : Q u) -> Q y)
+     | zero => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
+         rec y return v . (forall (h : Eq 0 v) (pu : Q 0) -> Q v)
+         | zero => fun (h : True) (pu : Q 0) -> pu
+         | succ q, s => fun (h : Eq 0 (succ q)) (pu : Q 0) -> absurd (Q (succ q)) h
+         end
+     | succ p, ih => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
+         rec y return v . (forall (h : Eq (succ p) v) (pu : Q (succ p)) -> Q v)
+         | zero => fun (h : Eq (succ p) 0) (pu : Q (succ p)) -> absurd (Q 0) h
+         | succ q, s => fun (h : Eq p q) (pu : Q (succ p)) ->
+             ih (fun (n : Nat) -> Q (succ n)) q h pu
+         end
+     end) P
 end
 
 end
