@@ -1,0 +1,547 @@
+(* Laws of [Prelude::Data::Vec], stated with [Prelude::Arith::Equality] on
+   number-valued observations: elements read with [nth], sums of vectors of
+   numbers, and the answers of the tests [allb] and [anyb].  Bound proofs are
+   irrelevant to the elements read ([nthIrrel]), which, with [sumExt], lets
+   laws relate vectors that agree only up to those proofs. *)
+import Prelude::Logic use (absurd)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude::Arith::Plus use (plus; plusZero; plusComm; plusAssoc; plusLeftComm; plusSwapMiddle)
+import Prelude::Arith::Mult use (mult; multZero; multDistribLeft)
+import Prelude::Arith::Sub use (sub)
+import Prelude::Arith::Order use (Le; Lt; leStep; lePlusRight)
+import Prelude::Arith::Monotone use (ltLeTrans; ltPlusMonoRight; subLe)
+import Prelude::Arith::Sum use (sumTo)
+import Prelude::Data::Vec as V
+
+module Prelude::Data::Vec::Properties where
+
+(* The sum of a vector of numbers. *)
+def sumVec (n : Nat) (v : V.Vec Nat n) : Nat :=
+  V.foldr Nat Nat (fun (a : Nat) (b : Nat) -> plus a b) 0 n v
+end
+
+(* Reading an element of a mapped vector applies the function to it. *)
+def nthMap : forall (A : Type@0) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+    (i : Nat) (h : Lt i n) ->
+    Eq (V.nth Nat n (V.map A Nat f n v) i h) (f (V.nth A n v i h)) :=
+  fun (A : Type@0) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+      (i : Nat) (h : Lt i n) -> refl (f (v i h))
+end
+
+def nthReplicate : forall (n : Nat) (c : Nat) (i : Nat) (h : Lt i n) ->
+    Eq (V.nth Nat n (V.replicate Nat n c) i h) c :=
+  fun (n : Nat) (c : Nat) (i : Nat) (h : Lt i n) -> refl c
+end
+
+(* An index below [m] reads the first part of an append, whichever proofs
+   of the two bounds are given.  The induction on [m] and [i] computes both
+   bounds to [True] at index 0, where eta for [True] identifies them. *)
+def nthAppendLeft : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n)
+    (i : Nat) (h : Lt i (plus m n)) (hm : Lt i m) ->
+    Eq (V.nth Nat (plus m n) (V.append Nat m n u v) i h) (V.nth Nat m u i hm) :=
+  fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) ->
+    (rec m return k . (forall (w : V.Vec Nat k) (i : Nat) (h : Lt i (plus k n)) (hm : Lt i k) ->
+                         Eq (V.nth Nat (plus k n) (V.append Nat k n w v) i h) (V.nth Nat k w i hm))
+     | zero => fun (w : V.Vec Nat 0) (i : Nat) (h : Lt i n) (hm : Lt i 0) ->
+         absurd (Eq (v i h) (w i hm)) hm
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) (i : Nat) ->
+         rec i return x . (forall (h : Lt x (succ (plus p n))) (hm : Lt x (succ p)) ->
+                             Eq (V.nth Nat (succ (plus p n)) (V.append Nat (succ p) n w v) x h)
+                                (V.nth Nat (succ p) w x hm))
+         | zero => fun (h : True) (hm : True) -> refl (w 0 true)
+         | succ q, s => fun (h : Lt q (plus p n)) (hm : Lt q p) ->
+             ih (V.tail Nat p w) q h hm
+         end
+     end) u
+end
+
+(* The index [plus m j] reads element [j] of the second part of an append. *)
+def nthAppendRight : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n)
+    (j : Nat) (h : Lt j n) ->
+    Eq (V.nth Nat (plus m n) (V.append Nat m n u v) (plus m j) (ltPlusMonoRight m j n h))
+       (V.nth Nat n v j h) :=
+  fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) (j : Nat) (h : Lt j n) ->
+    (rec m return k . (forall (w : V.Vec Nat k) ->
+                         Eq (V.nth Nat (plus k n) (V.append Nat k n w v) (plus k j) (ltPlusMonoRight k j n h))
+                            (V.nth Nat n v j h))
+     | zero => fun (w : V.Vec Nat 0) -> refl (v j h)
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) -> ih (V.tail Nat p w)
+     end) u
+end
+
+(* A vector of [n] copies of [c] sums to [mult n c]. *)
+def sumReplicate : forall (n : Nat) (c : Nat) ->
+    Eq (sumVec n (V.replicate Nat n c)) (mult n c) :=
+  fun (n : Nat) (c : Nat) ->
+    rec n return x . Eq (sumVec x (V.replicate Nat x c)) (mult x c)
+    | zero => true
+    | succ p, ih =>
+        cong (fun (y : Nat) -> plus c y) (sumVec p (V.replicate Nat p c)) (mult p c) ih
+    end
+end
+
+(* The sum of an append is the sum of the parts.  In the step, the tail of
+   [append (succ p) n u v] is [append p n (tail u) v] by eta, and the head
+   is moved out by [plusAssoc]. *)
+def sumAppend : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) ->
+    Eq (sumVec (plus m n) (V.append Nat m n u v)) (plus (sumVec m u) (sumVec n v)) :=
+  fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) ->
+    (rec m return k . (forall (w : V.Vec Nat k) ->
+                         Eq (sumVec (plus k n) (V.append Nat k n w v))
+                            (plus (sumVec k w) (sumVec n v)))
+     | zero => fun (w : V.Vec Nat 0) -> refl (sumVec n v)
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) ->
+         let a : Nat := V.head Nat p w;
+             t : V.Vec Nat p := V.tail Nat p w;
+             rest : Nat := sumVec (plus p n) (V.append Nat p n t v);
+             step : Eq (plus a rest) (plus a (plus (sumVec p t) (sumVec n v))) :=
+               cong (fun (y : Nat) -> plus a y) rest (plus (sumVec p t) (sumVec n v)) (ih t);
+             assoc : Eq (plus a (plus (sumVec p t) (sumVec n v)))
+                        (plus (plus a (sumVec p t)) (sumVec n v)) :=
+               sym (plus (plus a (sumVec p t)) (sumVec n v)) (plus a (plus (sumVec p t) (sumVec n v)))
+                 (plusAssoc a (sumVec p t) (sumVec n v))
+         in trans (plus a rest) (plus a (plus (sumVec p t) (sumVec n v)))
+              (plus (plus a (sumVec p t)) (sumVec n v)) step assoc
+         end
+     end) u
+end
+
+(* Proof irrelevance for bounds: reading index [i] gives the same element
+   whichever proof of [Lt i n] is given.  At index 0 both proofs are of
+   [True], which eta identifies; at [succ i] the claim is the hypothesis for
+   the tail. *)
+def nthIrrel : forall (n : Nat) (v : V.Vec Nat n) (i : Nat) (h : Lt i n) (g : Lt i n) ->
+    Eq (V.nth Nat n v i h) (V.nth Nat n v i g) :=
+  fun (n : Nat) (v : V.Vec Nat n) ->
+    (rec n return k . (forall (w : V.Vec Nat k) (i : Nat) (h : Lt i k) (g : Lt i k) ->
+                         Eq (w i h) (w i g))
+     | zero => fun (w : V.Vec Nat 0) (i : Nat) (h : Lt i 0) (g : Lt i 0) ->
+         absurd (Eq (w i h) (w i g)) h
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) (i : Nat) ->
+         rec i return x . (forall (h : Lt x (succ p)) (g : Lt x (succ p)) -> Eq (w x h) (w x g))
+         | zero => fun (h : True) (g : True) -> refl (w 0 true)
+         | succ q, s => fun (h : Lt q p) (g : Lt q p) -> ih (V.tail Nat p w) q h g
+         end
+     end) v
+end
+
+(* Vectors that agree at every index have the same sum. *)
+def sumExt : forall (n : Nat) (u : V.Vec Nat n) (v : V.Vec Nat n)
+    (e : forall (i : Nat) (h : Lt i n) -> Eq (u i h) (v i h)) ->
+    Eq (sumVec n u) (sumVec n v) :=
+  fun (n : Nat) ->
+    rec n return k . (forall (u : V.Vec Nat k) (v : V.Vec Nat k)
+                        (e : forall (i : Nat) (h : Lt i k) -> Eq (u i h) (v i h)) ->
+                        Eq (sumVec k u) (sumVec k v))
+    | zero => fun (u : V.Vec Nat 0) (v : V.Vec Nat 0)
+                  (e : forall (i : Nat) (h : Lt i 0) -> Eq (u i h) (v i h)) -> true
+    | succ p, ih => fun (u : V.Vec Nat (succ p)) (v : V.Vec Nat (succ p))
+                        (e : forall (i : Nat) (h : Lt i (succ p)) -> Eq (u i h) (v i h)) ->
+        let a : Nat := u 0 true;
+            b : Nat := v 0 true;
+            su : Nat := sumVec p (V.tail Nat p u);
+            sv : Nat := sumVec p (V.tail Nat p v)
+        in trans (plus a su) (plus b su) (plus b sv)
+             (cong (fun (y : Nat) -> plus y su) a b (e 0 true))
+             (cong (fun (y : Nat) -> plus b y) su sv
+                (ih (V.tail Nat p u) (V.tail Nat p v)
+                   (fun (i : Nat) (h : Lt i p) -> e (succ i) h)))
+        end
+    end
+end
+
+def nthTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) (i : Nat) (h : Lt i n) ->
+    Eq (V.nth Nat n (V.tabulate Nat f n) i h) (f i) :=
+  fun (f : forall (i : Nat) -> Nat) (n : Nat) (i : Nat) (h : Lt i n) -> refl (f i)
+end
+
+(* Reading an element of [zipWith f u v] applies [f] to the two elements. *)
+def nthZipWith : forall (A : Type@0) (B : Type@0) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
+    (u : V.Vec A n) (v : V.Vec B n) (i : Nat) (h : Lt i n) ->
+    Eq (V.nth Nat n (V.zipWith A B Nat f n u v) i h) (f (V.nth A n u i h) (V.nth B n v i h)) :=
+  fun (A : Type@0) (B : Type@0) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
+      (u : V.Vec A n) (v : V.Vec B n) (i : Nat) (h : Lt i n) -> refl (f (u i h) (v i h))
+end
+
+(* The last element of [snoc n v a] is [a]. *)
+def lastSnoc : forall (n : Nat) (v : V.Vec Nat n) (a : Nat) ->
+    Eq (V.last Nat n (V.snoc Nat n v a)) a :=
+  fun (n : Nat) (v : V.Vec Nat n) (a : Nat) ->
+    (rec n return k . (forall (w : V.Vec Nat k) -> Eq (V.last Nat k (V.snoc Nat k w a)) a)
+     | zero => fun (w : V.Vec Nat 0) -> refl a
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) -> ih (V.tail Nat p w)
+     end) v
+end
+
+(* Element [i] of [reverse n v] is element [sub n (succ i)] of [v], for any
+   proof that this index is in bounds. *)
+def nthReverse : forall (n : Nat) (v : V.Vec Nat n) (i : Nat) (h : Lt i n)
+    (g : Lt (sub n (succ i)) n) ->
+    Eq (V.nth Nat n (V.reverse Nat n v) i h) (V.nth Nat n v (sub n (succ i)) g) :=
+  fun (n : Nat) ->
+    rec n return k . (forall (v : V.Vec Nat k) (i : Nat) (h : Lt i k) (g : Lt (sub k (succ i)) k) ->
+                        Eq (V.nth Nat k (V.reverse Nat k v) i h) (V.nth Nat k v (sub k (succ i)) g))
+    | zero => fun (v : V.Vec Nat 0) (i : Nat) (h : Lt i 0) (g : Lt (sub 0 (succ i)) 0) ->
+        absurd (Eq (V.nth Nat 0 (V.reverse Nat 0 v) i h) (v (sub 0 (succ i)) g)) h
+    | succ p, ih => fun (v : V.Vec Nat (succ p)) (i : Nat) (h : Lt i (succ p))
+                        (g : Lt (sub p i) (succ p)) ->
+        nthIrrel (succ p) v (sub p i) (subLe p i) g
+    end
+end
+
+(* The first [m] elements of [append m n u v] are those of [u]. *)
+def takeAppend : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n)
+    (i : Nat) (h : Lt i m) ->
+    Eq (V.nth Nat m (V.take Nat m n (V.append Nat m n u v)) i h) (V.nth Nat m u i h) :=
+  fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) (i : Nat) (h : Lt i m) ->
+    nthAppendLeft m n u v i (ltLeTrans i m (plus m n) h (lePlusRight m n)) h
+end
+
+(* The last [n] elements of [append m n u v] are those of [v]. *)
+def dropAppend : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n)
+    (j : Nat) (h : Lt j n) ->
+    Eq (V.nth Nat n (V.drop Nat m n (V.append Nat m n u v)) j h) (V.nth Nat n v j h) :=
+  fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) (j : Nat) (h : Lt j n) ->
+    nthAppendRight m n u v j h
+end
+
+(* Appending the [take] and the [drop] of a vector gives it back.  By
+   induction on [m]: the tail of [take (succ p) n w] is [take p n] of the
+   tail, and likewise for [drop], by conversion. *)
+def appendTakeDrop : forall (m : Nat) (n : Nat) (v : V.Vec Nat (plus m n))
+    (i : Nat) (h : Lt i (plus m n)) ->
+    Eq (V.nth Nat (plus m n)
+          (V.append Nat m n (V.take Nat m n v) (V.drop Nat m n v)) i h)
+       (V.nth Nat (plus m n) v i h) :=
+  fun (m : Nat) (n : Nat) ->
+    rec m return k . (forall (w : V.Vec Nat (plus k n)) (i : Nat) (h : Lt i (plus k n)) ->
+                        Eq (V.nth Nat (plus k n)
+                              (V.append Nat k n (V.take Nat k n w) (V.drop Nat k n w)) i h)
+                           (w i h))
+    | zero => fun (w : V.Vec Nat n) (i : Nat) (h : Lt i n) -> refl (w i h)
+    | succ p, ih => fun (w : V.Vec Nat (succ (plus p n))) (i : Nat) ->
+        rec i return x . (forall (h : Lt x (succ (plus p n))) ->
+                            Eq (V.nth Nat (succ (plus p n))
+                                  (V.append Nat (succ p) n (V.take Nat (succ p) n w)
+                                     (V.drop Nat (succ p) n w)) x h)
+                               (w x h))
+        | zero => fun (h : True) -> refl (w 0 true)
+        | succ q, s => fun (h : Lt q (plus p n)) -> ih (V.tail Nat (plus p n) w) q h
+        end
+    end
+end
+
+(* Adding [c] to every element adds [mult n c] to the sum. *)
+def sumMapPlus : forall (c : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    Eq (sumVec n (V.map Nat Nat (plus c) n v)) (plus (sumVec n v) (mult n c)) :=
+  fun (c : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    (rec n return k . (forall (w : V.Vec Nat k) ->
+                         Eq (sumVec k (V.map Nat Nat (plus c) k w)) (plus (sumVec k w) (mult k c)))
+     | zero => fun (w : V.Vec Nat 0) -> true
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) ->
+         let a : Nat := w 0 true;
+             t : V.Vec Nat p := V.tail Nat p w;
+             sm : Nat := sumVec p (V.map Nat Nat (plus c) p t);
+             s : Nat := sumVec p t;
+             m : Nat := mult p c;
+             step : Eq (plus (plus c a) sm) (plus (plus c a) (plus s m)) :=
+               cong (fun (y : Nat) -> plus (plus c a) y) sm (plus s m) (ih t);
+             swap : Eq (plus (plus c a) (plus s m)) (plus (plus a c) (plus s m)) :=
+               cong (fun (y : Nat) -> plus y (plus s m)) (plus c a) (plus a c) (plusComm c a)
+         in trans (plus (plus c a) sm) (plus (plus a c) (plus s m)) (plus (plus a s) (plus c m))
+              (trans (plus (plus c a) sm) (plus (plus c a) (plus s m)) (plus (plus a c) (plus s m))
+                 step swap)
+              (plusSwapMiddle a c s m)
+         end
+     end) v
+end
+
+(* Multiplying every element by [c] multiplies the sum by [c]. *)
+def sumMapScale : forall (c : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    Eq (sumVec n (V.map Nat Nat (mult c) n v)) (mult c (sumVec n v)) :=
+  fun (c : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    (rec n return k . (forall (w : V.Vec Nat k) ->
+                         Eq (sumVec k (V.map Nat Nat (mult c) k w)) (mult c (sumVec k w)))
+     | zero => fun (w : V.Vec Nat 0) -> sym (mult c 0) 0 (multZero c)
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) ->
+         let a : Nat := w 0 true;
+             t : V.Vec Nat p := V.tail Nat p w;
+             sm : Nat := sumVec p (V.map Nat Nat (mult c) p t);
+             s : Nat := sumVec p t
+         in trans (plus (mult c a) sm) (plus (mult c a) (mult c s)) (mult c (plus a s))
+              (cong (fun (y : Nat) -> plus (mult c a) y) sm (mult c s) (ih t))
+              (sym (mult c (plus a s)) (plus (mult c a) (mult c s)) (multDistribLeft c a s))
+         end
+     end) v
+end
+
+(* The sum of [zipWith plus u v] is the sum of the sums. *)
+def sumZipWithPlus : forall (n : Nat) (u : V.Vec Nat n) (v : V.Vec Nat n) ->
+    Eq (sumVec n (V.zipWith Nat Nat Nat plus n u v)) (plus (sumVec n u) (sumVec n v)) :=
+  fun (n : Nat) ->
+    rec n return k . (forall (u : V.Vec Nat k) (v : V.Vec Nat k) ->
+                        Eq (sumVec k (V.zipWith Nat Nat Nat plus k u v))
+                           (plus (sumVec k u) (sumVec k v)))
+    | zero => fun (u : V.Vec Nat 0) (v : V.Vec Nat 0) -> true
+    | succ p, ih => fun (u : V.Vec Nat (succ p)) (v : V.Vec Nat (succ p)) ->
+        let a : Nat := u 0 true;
+            b : Nat := v 0 true;
+            tu : V.Vec Nat p := V.tail Nat p u;
+            tv : V.Vec Nat p := V.tail Nat p v;
+            sz : Nat := sumVec p (V.zipWith Nat Nat Nat plus p tu tv);
+            su : Nat := sumVec p tu;
+            sv : Nat := sumVec p tv
+        in trans (plus (plus a b) sz) (plus (plus a b) (plus su sv)) (plus (plus a su) (plus b sv))
+             (cong (fun (y : Nat) -> plus (plus a b) y) sz (plus su sv) (ih tu tv))
+             (plusSwapMiddle a b su sv)
+        end
+    end
+end
+
+(* A left fold of [plus] from [a] adds the sum to [a]. *)
+def foldlPlus : forall (a : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    Eq (V.foldl Nat Nat plus a n v) (plus a (sumVec n v)) :=
+  fun (a : Nat) (n : Nat) (v : V.Vec Nat n) ->
+    (rec n return k . (forall (w : V.Vec Nat k) (acc : Nat) ->
+                         Eq (V.foldl Nat Nat plus acc k w) (plus acc (sumVec k w)))
+     | zero => fun (w : V.Vec Nat 0) (acc : Nat) -> sym (plus acc 0) acc (plusZero acc)
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) (acc : Nat) ->
+         let b : Nat := w 0 true;
+             s : Nat := sumVec p (V.tail Nat p w)
+         in trans (V.foldl Nat Nat plus (plus acc b) p (V.tail Nat p w)) (plus (plus acc b) s)
+              (plus acc (plus b s))
+              (ih (V.tail Nat p w) (plus acc b)) (plusAssoc acc b s)
+         end
+     end) v a
+end
+
+(* The sum of [snoc n v a] is the sum of [v] plus [a]. *)
+def sumSnoc : forall (n : Nat) (v : V.Vec Nat n) (a : Nat) ->
+    Eq (sumVec (succ n) (V.snoc Nat n v a)) (plus (sumVec n v) a) :=
+  fun (n : Nat) (v : V.Vec Nat n) (a : Nat) ->
+    (rec n return k . (forall (w : V.Vec Nat k) ->
+                         Eq (sumVec (succ k) (V.snoc Nat k w a)) (plus (sumVec k w) a))
+     | zero => fun (w : V.Vec Nat 0) -> plusZero a
+     | succ p, ih => fun (w : V.Vec Nat (succ p)) ->
+         let b : Nat := w 0 true;
+             t : V.Vec Nat p := V.tail Nat p w;
+             r : Nat := sumVec (succ p) (V.snoc Nat p t a);
+             s : Nat := sumVec p t
+         in trans (plus b r) (plus b (plus s a)) (plus (plus b s) a)
+              (cong (fun (y : Nat) -> plus b y) r (plus s a) (ih t))
+              (sym (plus (plus b s) a) (plus b (plus s a)) (plusAssoc b s a))
+         end
+     end) v
+end
+
+(* A vector sums to the sum of its [init] plus its [last].  In the step, the
+   [init] of the tail and the tail of the [init] agree up to bound proofs. *)
+def sumInitLast : forall (n : Nat) (v : V.Vec Nat (succ n)) ->
+    Eq (sumVec (succ n) v) (plus (sumVec n (V.init Nat n v)) (V.last Nat n v)) :=
+  fun (n : Nat) ->
+    rec n return k . (forall (v : V.Vec Nat (succ k)) ->
+                        Eq (sumVec (succ k) v) (plus (sumVec k (V.init Nat k v)) (V.last Nat k v)))
+    | zero => fun (v : V.Vec Nat 1) -> plusZero (v 0 true)
+    | succ p, ih => fun (w : V.Vec Nat (succ (succ p))) ->
+        let a : Nat := w 0 true;
+            t : V.Vec Nat (succ p) := V.tail Nat (succ p) w;
+            l : Nat := V.last Nat (succ p) w;
+            sa : Nat := sumVec p (V.init Nat p t);
+            sb : Nat := sumVec p (V.tail Nat p (V.init Nat (succ p) w));
+            step : Eq (plus a (sumVec (succ p) t)) (plus a (plus sa l)) :=
+              cong (fun (y : Nat) -> plus a y) (sumVec (succ p) t) (plus sa l) (ih t);
+            assoc : Eq (plus a (plus sa l)) (plus (plus a sa) l) :=
+              sym (plus (plus a sa) l) (plus a (plus sa l)) (plusAssoc a sa l);
+            ext : Eq sa sb :=
+              sumExt p (V.init Nat p t) (V.tail Nat p (V.init Nat (succ p) w))
+                (fun (i : Nat) (h : Lt i p) ->
+                   nthIrrel (succ (succ p)) w (succ i) (leStep (succ i) p h)
+                     (leStep (succ (succ i)) (succ p) h));
+            swap : Eq (plus (plus a sa) l) (plus (plus a sb) l) :=
+              cong (fun (y : Nat) -> plus (plus a y) l) sa sb ext
+        in trans (plus a (sumVec (succ p) t)) (plus a (plus sa l)) (plus (plus a sb) l) step
+             (trans (plus a (plus sa l)) (plus (plus a sa) l) (plus (plus a sb) l) assoc swap)
+        end
+    end
+end
+
+(* The tail of [reverse (succ p) w] is the reverse of [init p w], pointwise. *)
+def tailReverse : forall (p : Nat) (w : V.Vec Nat (succ p)) (i : Nat) (h : Lt i p) ->
+    Eq (V.tail Nat p (V.reverse Nat (succ p) w) i h) (V.reverse Nat p (V.init Nat p w) i h) :=
+  fun (p : Nat) ->
+    rec p return k . (forall (w : V.Vec Nat (succ k)) (i : Nat) (h : Lt i k) ->
+                        Eq (V.tail Nat k (V.reverse Nat (succ k) w) i h)
+                           (V.reverse Nat k (V.init Nat k w) i h))
+    | zero => fun (w : V.Vec Nat 1) (i : Nat) (h : Lt i 0) ->
+        absurd (Eq (V.tail Nat 0 (V.reverse Nat 1 w) i h) (V.reverse Nat 0 (V.init Nat 0 w) i h)) h
+    | succ q, ih => fun (w : V.Vec Nat (succ (succ q))) (i : Nat) (h : Lt i (succ q)) ->
+        nthIrrel (succ (succ q)) w (sub q i) (subLe (succ q) (succ i))
+          (leStep (succ (sub q i)) (succ q) (subLe q i))
+    end
+end
+
+(* Reversal preserves the sum: the head of the reverse is the [last], and its
+   tail is the reverse of the [init]. *)
+def sumReverse : forall (n : Nat) (v : V.Vec Nat n) ->
+    Eq (sumVec n (V.reverse Nat n v)) (sumVec n v) :=
+  fun (n : Nat) ->
+    rec n return k . (forall (v : V.Vec Nat k) -> Eq (sumVec k (V.reverse Nat k v)) (sumVec k v))
+    | zero => fun (v : V.Vec Nat 0) -> true
+    | succ p, ih => fun (w : V.Vec Nat (succ p)) ->
+        let l : Nat := V.last Nat p w;
+            iw : V.Vec Nat p := V.init Nat p w;
+            t : V.Vec Nat p := V.tail Nat p (V.reverse Nat (succ p) w);
+            st : Nat := sumVec p t;
+            si : Nat := sumVec p iw;
+            sr : Nat := sumVec p (V.reverse Nat p iw);
+            toInit : Eq st si :=
+              trans st sr si (sumExt p t (V.reverse Nat p iw) (tailReverse p w)) (ih iw);
+            step : Eq (plus l st) (plus l si) := cong (fun (y : Nat) -> plus l y) st si toInit;
+            back : Eq (plus si l) (sumVec (succ p) w) :=
+              sym (sumVec (succ p) w) (plus si l) (sumInitLast p w)
+        in trans (plus l st) (plus l si) (sumVec (succ p) w) step
+             (trans (plus l si) (plus si l) (sumVec (succ p) w) (plusComm l si) back)
+        end
+    end
+end
+
+(* Moving the first summand of [sumTo] to the front: [sumTo f (succ p)] is
+   [f 0] plus the sum of the shifted function [fun i -> f (succ i)]. *)
+def sumToShift : forall (p : Nat) (f : forall (i : Nat) -> Nat) ->
+    Eq (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) p)) (sumTo f (succ p)) :=
+  fun (p : Nat) ->
+    rec p return k . (forall (f : forall (i : Nat) -> Nat) ->
+                        Eq (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) k)) (sumTo f (succ k)))
+    | zero => fun (f : forall (i : Nat) -> Nat) -> refl (plus (f 0) 0)
+    | succ q, ih => fun (f : forall (i : Nat) -> Nat) ->
+        let g : Nat := sumTo (fun (i : Nat) -> f (succ i)) q;
+            b : Nat := f (succ q);
+            r : Nat := sumTo f (succ q)
+        in trans (plus (f 0) (plus b g)) (plus b (plus (f 0) g)) (plus b r)
+             (plusLeftComm (f 0) b g)
+             (cong (fun (y : Nat) -> plus b y) (plus (f 0) g) r (ih f))
+        end
+    end
+end
+
+(* A tabulated vector sums like [sumTo], from the other end. *)
+def sumTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
+    Eq (sumVec n (V.tabulate Nat f n)) (sumTo f n) :=
+  fun (f : forall (i : Nat) -> Nat) (n : Nat) ->
+    (rec n return k . (forall (g : forall (i : Nat) -> Nat) ->
+                         Eq (sumVec k (V.tabulate Nat g k)) (sumTo g k))
+     | zero => fun (g : forall (i : Nat) -> Nat) -> true
+     | succ p, ih => fun (g : forall (i : Nat) -> Nat) ->
+         let s : Nat := sumVec p (V.tabulate Nat (fun (i : Nat) -> g (succ i)) p);
+             t : Nat := sumTo (fun (i : Nat) -> g (succ i)) p
+         in trans (plus (g 0) s) (plus (g 0) t) (sumTo g (succ p))
+              (cong (fun (y : Nat) -> plus (g 0) y) s t (ih (fun (i : Nat) -> g (succ i))))
+              (sumToShift p g)
+         end
+     end) f
+end
+
+(* One step of [allb]: [rec x | zero => 0 | succ => b] is 1 exactly when [x]
+   is positive and [b] is 1.  These three lemmas take the step apart and put
+   it together. *)
+def allbStepHead : forall (x : Nat) (b : Nat)
+    (e : Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1) -> Lt 0 x :=
+  fun (x : Nat) (b : Nat) ->
+    rec x return z . (forall (e : Eq (rec z return y . Nat | zero => 0 | succ q, s => b end) 1) ->
+                        Lt 0 z)
+    | zero => fun (e : False) -> e
+    | succ r, t => fun (e : Eq b 1) -> true
+    end
+end
+
+def allbStepTail : forall (x : Nat) (b : Nat)
+    (e : Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1) -> Eq b 1 :=
+  fun (x : Nat) (b : Nat) ->
+    rec x return z . (forall (e : Eq (rec z return y . Nat | zero => 0 | succ q, s => b end) 1) ->
+                        Eq b 1)
+    | zero => fun (e : False) -> absurd (Eq b 1) e
+    | succ r, t => fun (e : Eq b 1) -> e
+    end
+end
+
+def allbStepIntro : forall (x : Nat) (b : Nat) (hx : Lt 0 x) (hb : Eq b 1) ->
+    Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1 :=
+  fun (x : Nat) (b : Nat) ->
+    rec x return z . (forall (hx : Lt 0 z) (hb : Eq b 1) ->
+                        Eq (rec z return y . Nat | zero => 0 | succ q, s => b end) 1)
+    | zero => fun (hx : False) (hb : Eq b 1) -> absurd False hx
+    | succ r, t => fun (hx : True) (hb : Eq b 1) -> hb
+    end
+end
+
+(* [allb] answers 1 only when the test is positive on every element. *)
+def allbSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+    (e : Eq (V.allb A p n v) 1) -> V.All A (fun (a : A) -> Lt 0 (p a)) n v :=
+  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec A k) (e : Eq (V.allb A p k v) 1) ->
+                        V.All A (fun (a : A) -> Lt 0 (p a)) k v)
+    | zero => fun (v : V.Vec A 0) (e : True) (i : Nat) (h : Lt i 0) -> absurd (Lt 0 (p (v i h))) h
+    | succ m, ih => fun (w : V.Vec A (succ m)) ->
+        let b : Nat := V.allb A p m (V.tail A m w)
+        in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => 0 | succ q, s => b end) 1)
+               (i : Nat) ->
+             rec i return x . (forall (h : Lt x (succ m)) -> Lt 0 (p (w x h)))
+             | zero => fun (h : True) -> allbStepHead (p (w 0 true)) b e
+             | succ j, s => fun (h : Lt j m) -> ih (V.tail A m w) (allbStepTail (p (w 0 true)) b e) j h
+             end
+        end
+    end
+end
+
+(* [allb] answers 1 when the test is positive on every element. *)
+def allbComplete : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+    (h : V.All A (fun (a : A) -> Lt 0 (p a)) n v) -> Eq (V.allb A p n v) 1 :=
+  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec A k) (h : V.All A (fun (a : A) -> Lt 0 (p a)) k v) ->
+                        Eq (V.allb A p k v) 1)
+    | zero => fun (v : V.Vec A 0) (h : V.All A (fun (a : A) -> Lt 0 (p a)) 0 v) -> true
+    | succ m, ih => fun (w : V.Vec A (succ m))
+                        (h : V.All A (fun (a : A) -> Lt 0 (p a)) (succ m) w) ->
+        allbStepIntro (p (w 0 true)) (V.allb A p m (V.tail A m w)) (h 0 true)
+          (ih (V.tail A m w) (fun (i : Nat) (hi : Lt i m) -> h (succ i) hi))
+    end
+end
+
+(* One step of [anyb]: when [rec x | zero => b | succ => 1] is 1, either [x]
+   is positive or [b] is 1.  The conclusion is eliminated into any [C]. *)
+def anybStepCases : forall (x : Nat) (b : Nat)
+    (e : Eq (rec x return y . Nat | zero => b | succ q, s => 1 end) 1)
+    (C : Type@0) (l : forall (hx : Lt 0 x) -> C) (r : forall (hb : Eq b 1) -> C) -> C :=
+  fun (x : Nat) (b : Nat) ->
+    rec x return z . (forall (e : Eq (rec z return y . Nat | zero => b | succ q, s => 1 end) 1)
+                        (C : Type@0) (l : forall (hx : Lt 0 z) -> C) (r : forall (hb : Eq b 1) -> C) -> C)
+    | zero => fun (e : Eq b 1) (C : Type@0) (l : forall (hx : False) -> C)
+                  (r : forall (hb : Eq b 1) -> C) -> r e
+    | succ q, t => fun (e : True) (C : Type@0) (l : forall (hx : True) -> C)
+                       (r : forall (hb : Eq b 1) -> C) -> l true
+    end
+end
+
+(* When [anyb] answers 1, the test is positive on some element. *)
+def anybSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+    (e : Eq (V.anyb A p n v) 1) -> V.Any A (fun (a : A) -> Lt 0 (p a)) n v :=
+  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec A k) (e : Eq (V.anyb A p k v) 1) ->
+                        V.Any A (fun (a : A) -> Lt 0 (p a)) k v)
+    | zero => fun (v : V.Vec A 0) (e : False) ->
+        exfalso e return z . V.Any A (fun (a : A) -> Lt 0 (p a)) 0 v
+    | succ m, ih => fun (w : V.Vec A (succ m)) ->
+        let b : Nat := V.anyb A p m (V.tail A m w)
+        in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => b | succ q, s => 1 end) 1)
+               (C : Type@0)
+               (k : forall (i : Nat) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) -> C) ->
+             anybStepCases (p (w 0 true)) b e C
+               (fun (hx : Lt 0 (p (w 0 true))) -> k 0 true hx)
+               (fun (hb : Eq b 1) ->
+                  ih (V.tail A m w) hb C
+                    (fun (i : Nat) (h : Lt i m) (q : Lt 0 (p (w (succ i) h))) -> k (succ i) h q))
+        end
+    end
+end
+
+end

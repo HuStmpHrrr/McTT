@@ -1,10 +1,13 @@
-(* A client of [Prelude::Data::Vec] and [Prelude::Data::VecLaws]: small
-   vectors of numbers are built, mapped, appended, read and summed, and
+(* A client of [Prelude::Data::Vec] and [Prelude::Data::Vec::Properties]: small
+   vectors of numbers are built, mapped, zipped, appended, split, reversed,
+   folded, read and summed, and
    closed instances of the laws normalize to [true].  Index bounds on closed
    numbers compute to [True], so [true] proves them. *)
+import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Order use (Lt)
 import Prelude::Data::Vec as V
-import Prelude::Data::VecLaws use (sumVec; nthMap; nthReplicate; nthAppendLeft; nthAppendRight; sumReplicate; sumAppend)
+import Prelude::Data::Vec::Properties use (sumVec; nthMap; nthReplicate; nthAppendLeft; nthAppendRight; sumReplicate; sumAppend; nthTabulate; nthZipWith; lastSnoc; nthReverse; takeAppend; dropAppend; appendTakeDrop; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate; allbSound; allbComplete; anybSound)
 
 module Vectors where
 
@@ -52,5 +55,87 @@ eval nthReplicate 4 6 3 true
 eval nthAppendLeft 3 2 oneTwoThree fourFive 1 true true
 
 eval nthAppendRight 3 2 oneTwoThree fourFive 1 true
+
+(* The vector [1, 2, 3, 4, 5]. *)
+def oneToFive : V.Vec Nat 5 := V.append Nat 3 2 oneTwoThree fourFive end
+
+(* [0, 1, 4, 9], tabulated. *)
+eval V.nth Nat 4 (V.tabulate Nat square 4) 3 true
+
+eval sumVec 4 (V.tabulate Nat square 4)
+
+(* The elementwise products of [1, 2] and [4, 5], summed: [1 * 4 + 2 * 5]. *)
+eval sumVec 2 (V.zipWith Nat Nat Nat mult 2 (V.take Nat 2 1 oneTwoThree) fourFive)
+
+(* A left fold builds the digits [1, 2, 3] into the number 123. *)
+eval V.foldl Nat Nat (fun (b : Nat) (a : Nat) -> plus (mult 10 b) a) 0 3 oneTwoThree
+
+eval V.last Nat 4 oneToFive
+
+eval V.last Nat 3 (V.snoc Nat 3 oneTwoThree 7)
+
+eval sumVec 4 (V.init Nat 4 oneToFive)
+
+(* [reverse] puts 5 first and 1 last. *)
+eval V.head Nat 4 (V.reverse Nat 5 oneToFive)
+
+eval V.last Nat 4 (V.reverse Nat 5 oneToFive)
+
+eval V.nth Nat 3 (V.take Nat 3 2 oneToFive) 2 true
+
+eval V.nth Nat 2 (V.drop Nat 3 2 oneToFive) 0 true
+
+(* Tests with the identity: [allb] is 1 on [1, ..., 5] and 0 on [0, 1, 2, 3];
+   [anyb] is 1 on [0, 0, 9] and 0 on [0, 0, 0]. *)
+eval V.allb Nat (fun (x : Nat) -> x) 5 oneToFive
+
+eval V.allb Nat (fun (x : Nat) -> x) 4 (V.cons Nat 3 0 oneTwoThree)
+
+eval V.anyb Nat (fun (x : Nat) -> x) 3 (V.snoc Nat 2 (V.replicate Nat 2 0) 9)
+
+eval V.anyb Nat (fun (x : Nat) -> x) 3 (V.replicate Nat 3 0)
+
+(* Closed instances of the new laws. *)
+eval nthTabulate square 4 3 true
+
+eval nthZipWith Nat Nat mult 2 (V.take Nat 2 1 oneTwoThree) fourFive 1 true
+
+eval nthReverse 5 oneToFive 1 true true
+
+eval takeAppend 3 2 oneTwoThree fourFive 2 true
+
+eval dropAppend 3 2 oneTwoThree fourFive 1 true
+
+eval appendTakeDrop 3 2 oneToFive 4 true
+
+eval lastSnoc 3 oneTwoThree 7
+
+eval sumMapPlus 2 3 oneTwoThree
+
+eval sumMapScale 3 3 oneTwoThree
+
+eval sumZipWithPlus 2 fourFive (V.tail Nat 2 oneTwoThree)
+
+eval foldlPlus 4 3 oneTwoThree
+
+eval sumSnoc 3 oneTwoThree 7
+
+eval sumInitLast 4 oneToFive
+
+eval sumReverse 5 oneToFive
+
+eval sumTabulate square 4
+
+(* [allbSound] gives, at index 2, a proof of [Lt 0 3], which is [true]. *)
+eval allbSound Nat (fun (x : Nat) -> x) 5 oneToFive true 2 true
+
+(* Every element of [replicate 4 3] is 3, so [Lt 0 3], that is [True], holds
+   at every index. *)
+eval allbComplete Nat (fun (x : Nat) -> x) 4 (V.replicate Nat 4 3)
+       (fun (i : Nat) (h : Lt i 4) -> true)
+
+(* [anybSound] is eliminated into [Nat] to recover the index it found. *)
+eval anybSound Nat (fun (x : Nat) -> x) 3 (V.snoc Nat 2 (V.replicate Nat 2 0) 9) true Nat
+       (fun (i : Nat) (h : Lt i 3) (q : Lt 0 (V.snoc Nat 2 (V.replicate Nat 2 0) 9 i h)) -> i)
 
 end
