@@ -1,0 +1,21 @@
+(* The Fibonacci numbers, computed in linear time by iterating on a pair of
+   consecutive values. *)
+import Prelude::Arith::Plus use (plus)
+
+module Prelude::Arith::Fibonacci where
+
+(* [fibFrom n a b] is the [n]-th term of the Fibonacci-like sequence that
+   starts with [a] and [b]: [fibFrom 0 a b] is [a], and
+   [fibFrom (succ n) a b] is [fibFrom n b (plus a b)].  The pair [a], [b]
+   holds two consecutive terms. *)
+def fibFrom (n : Nat) (a : Nat) (b : Nat) : Nat :=
+  (rec n return y . (forall (x : Nat) (z : Nat) -> Nat)
+   | zero => fun (x : Nat) (z : Nat) -> x
+   | succ p, r => fun (x : Nat) (z : Nat) -> r z (plus x z)
+   end) a b
+end
+
+(* The Fibonacci numbers [0, 1, 1, 2, 3, 5, ...]. *)
+def fib (n : Nat) : Nat := fibFrom n 0 1 end
+
+end
