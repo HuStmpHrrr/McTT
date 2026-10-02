@@ -19,7 +19,7 @@ Section Fixed_GCtx.
 Notation "'glu_typ_pred_args'" := (Tcons ctx (Tcons typ Tnil)).
 Notation "'glu_typ_pred'" := (predicate glu_typ_pred_args).
 Notation "'glu_typ_pred_equivalence'" := (@predicate_equivalence glu_typ_pred_args) (only parsing).
-(** This type annotation is to distinguish this notation from others *)
+(** This type annotation distinguishes this notation from others. *)
 Notation "Γ ⊢ A ® R" := ((R Γ A : (Prop : Type)) : (Prop : (Type : Type))) (at level 70, A at level 69, R constr).
 
 Notation "'glu_exp_pred_args'" := (Tcons ctx (Tcons typ (Tcons exp (Tcons domain Tnil)))).
@@ -348,12 +348,12 @@ Definition glu_rel_exp Γ M A : Prop :=
         glu_rel_exp_with_sub i Δ M A σ ρ.
 #[global] Arguments glu_rel_exp Γ M A/.
 
-(** There is no [Γ ⊩s $ τ : Γ'], and the fundamental theorem has two parts, not
-    three: a gluing predicate is indexed by a *value*, and
-    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation once
-    substitution is an operation, so [glu_rel_sub_with_sub] cannot be stated.
-    Concrete substitutions are handled by [glu_rel_exp]-level lemmas instead,
-    exactly as [Γ ⊨s σ : Δ] is absent from [completeness_fundamental]. *)
+(** There is no gluing judgment for substitutions, so the fundamental theorem
+    has two parts. A gluing predicate is indexed by a value, and
+    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation when substitution is an
+    operation, so such a judgment cannot be stated. Concrete substitutions are
+    handled by lemmas about [glu_rel_exp] instead, just as
+    [completeness_fundamental] has no substitution part. *)
 
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
@@ -389,8 +389,9 @@ Hint Constructors glu_typ_top : mctt.
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 
-(** [induction H using glu_univ_elem_ind] no longer applies, for the reason
-    [per_univ_elem_induction] explains.  This does what it did. *)
+(** [induction H using glu_univ_elem_ind] does not apply, for the reason
+    [per_univ_elem_induction] explains. The tactics below perform the same
+    induction. *)
 Ltac glu_induction_hintro := let H := fresh "H" in intro H.
 
 Ltac glu_univ_elem_induction_core HH ih :=

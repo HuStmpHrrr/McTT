@@ -1,10 +1,11 @@
 (** * The Fundamental Theorem of the Gluing Model
 
-    In two parts: contexts and terms.  The substitution conjunct is gone with
-    the [⊩s] judgment, and the equality
-    judgments never had one — the gluing model relates a term to a value, not two
-    terms to each other.  It is [kglu_fundamental] at the identity, which is
-    sound because every well-formed global context glues ([gctx_glu]). *)
+    The theorem has two parts, for contexts and for terms. There is no part for
+    substitutions, since the gluing model has no substitution judgment, and none
+    for equalities, since the model relates a term to a value rather than two
+    terms to each other. It is [kglu_fundamental] at the identity embedding,
+    which is sound because every well-formed global context glues
+    ([gctx_glu]). *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

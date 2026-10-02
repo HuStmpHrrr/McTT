@@ -6,9 +6,8 @@ From Mctt Require Import Syntax.
 
 Parameter loc : Type.
 
-(** Fold a *reversed* parameter telescope into a binder chain.  [params] below
-    accumulates left-recursively, so the innermost binder comes first and
-    [fold_left] rebuilds the declaration order. *)
+(** Fold a reversed parameter telescope into a binder chain.  [params]
+    accumulates left-recursively, so [fold_left] restores declaration order. *)
 Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
                        (ps : list (string * Cst.obj)) (body : Cst.obj) : Cst.obj :=
   List.fold_left (fun acc p => b (fst p) (snd p) acc) ps body.
@@ -41,9 +40,8 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 
 %%
 
-(* A unit is its imports and its module declaration; what to normalize is said
-   by [eval] commands inside.  Requiring the declaration is what keeps
-   definitions out of the top level. *)
+(* A unit is its imports and its module declaration, so definitions cannot
+   appear at the top level. *)
 let prog :=
   is = imports; MODULE; p = fpath; ps = params_opt; WHERE; cs = cmds; END; EOF;
     { (List.rev is, (List.rev p, List.rev ps, List.rev cs)) }
@@ -117,14 +115,11 @@ let obj :=
     END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
   | SUCC; ~ = obj; { Cst.succ obj }
 
-  (* The original let, which desugars to an application of a function.  It is
-     kept because it is the form the examples use, and because it needs no
-     terminator: every binding is parenthesised. *)
+  (* A let of parenthesised bindings, which desugars to an application of a
+     function. *)
   | LET; ds = legacy_defns; IN; body = obj; { List.fold_left (fun acc arg => Cst.app acc (snd arg)) (List.rev ds) (List.fold_left (fun acc arg => Cst.fn (fst (fst arg)) (snd (fst arg)) acc) ds body) }
 
-  (* The declaration form.  Every binding starts with DEF or MODULE, which is
-     what keeps a run of them unambiguous, and the trailing END closes the
-     body. *)
+  (* A let of declarations, each starting with DEF or MODULE, closed by END. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
 
 
@@ -145,9 +140,8 @@ let atomic_obj :=
      so the [::] segments are all consumed here. *)
   | ~ = fpath; "::"; x = VAR; { Cst.glob (List.rev (snd x :: fpath)) }
 
-  (* Dot access.  Binding tighter than application is what makes [X::Y.Z.foo]
-     one name and forces module arguments to be parenthesised, as in
-     [(X::Y.Z a b).foo]. *)
+  (* Dot access binds tighter than application, so [X::Y.Z.foo] is one name
+     and module arguments are parenthesised, as in [(X::Y.Z a b).foo]. *)
   | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
 
   | "("; ~ = obj; ")"; <>
@@ -165,7 +159,7 @@ let params_opt :=
 let param :=
   | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, obj) }
 
-(* Reversed nonempty list of legacy definitions *)
+(* Reversed nonempty list of parenthesised definitions *)
 let legacy_defns :=
   | ~ = legacy_defns; ~ = legacy_defn; { legacy_defn :: legacy_defns }
   | ~ = legacy_defn; { [legacy_defn] }

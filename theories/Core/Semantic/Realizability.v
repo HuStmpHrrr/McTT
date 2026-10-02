@@ -95,9 +95,9 @@ Proof.
   intros * ?%realize_per_univ_elem_gen; firstorder.
 Qed.
 
-(** We cannot add [per_bot_then_per_elem] as a hint
-    because we don't know what "R" is (i.e. the pattern becomes higher-order.)
-    In fact, Coq complains it cannot add one if we try. *)
+(** [per_bot_then_per_elem] is not a hint: its conclusion has the relation [R]
+    in head position, so the pattern would be higher-order, and Rocq rejects
+    it. *)
 
 Corollary per_elem_then_per_top : forall {i a a' R b b'},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->

@@ -44,7 +44,7 @@ Ltac destruct_rel_typ :=
     end;
   unmark_all.
 
-(** Universe/Element PER Helper Tactics *)
+(** Helper tactics for the universe/element PER. *)
 
 Ltac basic_invert_per_univ_elem H :=
   progress simp per_univ_elem in H;

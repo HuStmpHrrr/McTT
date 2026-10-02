@@ -5,11 +5,11 @@ From Mctt.Core.Syntactic Require Export Syntax.
 
 (** * The Semantic Domain
 
-    An environment is the list of the values of the λ-variables in scope,
-    indexed by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] those are [Γ].  The global
-    context is not part of it: it does not change during NbE, so evaluation
-    takes it as a separate argument.  Module parameters are λ-variables, so
-    they are in the environment like any other. *)
+    An environment is the list of values of the λ-variables in scope, indexed
+    by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] these are the variables of [Γ].  The
+    global context does not change during NbE, so it is not part of the
+    environment; evaluation takes it as a separate argument.  Module parameters
+    are λ-variables and so live in the environment. *)
 
 Inductive domain : Set :=
 | d_nat : domain
@@ -20,10 +20,8 @@ Inductive domain : Set :=
 | d_fn : list domain -> exp -> domain
 | d_neut : domain -> domain_ne -> domain
 with domain_ne : Set :=
-(** Notice that the number x here is not a de Bruijn index but an absolute
-    representation of names.  That is, this number does not change relative to the
-    binding structure it currently exists in.
- *)
+(** [x] is a de Bruijn level, not an index: it names a variable absolutely and
+    does not change under binders. *)
 | d_var : forall (x : nat), domain_ne
 | d_app : domain_ne -> domain_nf -> domain_ne
 | d_natrec : list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
@@ -36,10 +34,10 @@ Notation env := (list domain).
 
 Derive NoConfusion for domain domain_ne domain_nf.
 
-(** The value of the variable [#x], [zeroᵈ] past the end: a well-typed term
-    only reads the variables its context has, so the default is never seen by
-    one.  As a coercion it lets an environment be applied like the function it
-    stands for, [ρ x]. *)
+(** The value of the variable [#x], or [zeroᵈ] past the end of the list.  A
+    well-typed term only reads the variables in its context, so it never sees
+    the default.  As a coercion, it lets an environment be applied as a
+    function, [ρ x]. *)
 Fixpoint env_var (ρ : env) (x : nat) : domain :=
   match x with
   | 0 => List.hd d_zero ρ
@@ -47,7 +45,8 @@ Fixpoint env_var (ρ : env) (x : nat) : domain :=
   end.
 Coercion env_var : list >-> Funclass.
 
-(** By recursion on the index, so that [ρ↯ x] is [ρ (S x)] by conversion. *)
+(** [env_var] is [nth], but defined by recursion on the index so that [ρ↯ x]
+    is [ρ (S x)] by conversion. *)
 Lemma env_var_nth : forall ρ x, env_var ρ x = List.nth x ρ d_zero.
 Proof. intros ρ x; revert ρ; induction x; intros [| d ρ]; cbn; auto; rewrite IHx; destruct x; reflexivity. Qed.
 
@@ -61,16 +60,15 @@ Arguments drop_env _ /.
 
 (** ** Semantic Notations
 
-    Values live in ordinary [constr] alongside the expressions, so the four
-    spellings the two sorts would otherwise share — [ℕ], [zero], [succ], [Π]
-    and the closure's [λ] — carry a superscript [ᵈ] here.  Everything that is
-    specific to values ([↦], [↯], [𝕌@n], [⇑], [⇓], [⇑!], [#ᵈ n]) keeps the
-    spelling of the paper. *)
+    Value notations share [constr] with expression notations, so the
+    spellings the two would otherwise share ([ℕ], [zero], [succ], [Π] and the
+    closure's [λ]) carry a superscript [ᵈ].  Notations specific to values
+    ([↦], [↯], [𝕌@n], [⇑], [⇓], [⇑!], [#ᵈ n]) follow the paper. *)
 Module Domain_Notations.
   Export Syntax_Notations.
 
-  (** Declared before the value constructors so that level 1 is left
-      associative, as [M[σ]] does in [Syntax_Notations]. *)
+  (** Declared first so that level 1 is left associative, as for [M[σ]] in
+      [Syntax_Notations]. *)
   Notation "ρ '↯'" := (drop_env ρ) (at level 1, left associativity) : mctt_scope.
   Notation "'𝕌' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌' @ n") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
@@ -108,11 +106,11 @@ Proof. reflexivity. Qed.
 
 (** ** Pointwise Equality
 
-    Two environments are equal as the functions they stand for: evaluating a
-    substitution determines its result only up to this, since a list can end
-    in any number of [zeroᵈ]s.  Evaluation does not respect it — [λᵈ ρ M]
-    carries its environment — so relating values of pointwise-equal
-    environments is the job of the PER model. *)
+    Two environments are equal when they agree at every index.  Evaluating a
+    substitution determines its result only up to this equality, since a list
+    can end in any number of [zeroᵈ]s.  Evaluation does not respect it, because
+    [λᵈ ρ M] carries its environment; values from pointwise-equal environments
+    are related by the PER model instead. *)
 Definition env_eq : relation env := fun ρ ρ' => forall x, env_var ρ x = env_var ρ' x.
 
 #[export]
@@ -131,12 +129,11 @@ Import Wk_Notations.
 
 (** ** Weakening an Environment
 
-    A weakening renames variables, so evaluating one looks up the renamed
-    variable: [(⟪φ⟫ ρ) x] is [ρ (φ x)].  The list stops where the lookups leave
-    [ρ]: it has one entry for each [x] with [φ x] among the variables of [ρ].
-    For the weakenings built from [↑] and [wk_q] — which are strictly
-    increasing — those [x] are an initial segment, so [⟪φ⟫ ρ] is [ρ ∘ φ] at
-    every index, and [⟪↑⟫ ρ] is [ρ↯], [⟪wk_id⟫ ρ] is [ρ], as lists. *)
+    A weakening renames variables, so [(⟪φ⟫ ρ) x] is [ρ (φ x)].  The list
+    [⟪φ⟫ ρ] has one entry for each [x] with [φ x] among the variables of [ρ].
+    For weakenings built from [↑] and [wk_q], which are strictly increasing,
+    those [x] form an initial segment.  Hence [⟪φ⟫ ρ] is [ρ ∘ φ] at every
+    index, and as lists [⟪↑⟫ ρ] is [ρ↯] and [⟪wk_id⟫ ρ] is [ρ]. *)
 
 Fixpoint wk_count (φ : wk) (n m : nat) : nat :=
   match m with
@@ -152,8 +149,8 @@ Definition eval_wk (φ : wk) (ρ : env) : env :=
 
 Notation "'⟪' φ '⟫' ρ" := (eval_wk φ ρ) (at level 2, φ constr at level 60, ρ at level 0) : mctt_scope.
 
-(** A weakening that preserves the order of variables.  A class, so that the
-    lemmas needing it take it by instance resolution. *)
+(** A weakening that preserves the order of variables.  [WkMono] is a class so
+    that lemmas needing it obtain it by instance resolution. *)
 Definition wk_mono (φ : wk) : Prop := forall x y, x < y -> φ x < φ y.
 
 Class WkMono (φ : wk) : Prop := wk_mono_of : wk_mono φ.
@@ -196,8 +193,8 @@ Proof.
   intros * H; induction H; [ lia |]; cbn [wk_count]; lia.
 Qed.
 
-(** The variables kept are an initial segment: those below [φ]'s first
-    variable past [n]. *)
+(** The variables kept form an initial segment: those below the first variable
+    that [φ] sends past [n]. *)
 Lemma wk_count_spec : forall φ n m, wk_mono φ ->
     forall x, x < wk_count φ n m <-> x < m /\ φ x < n.
 Proof.
@@ -242,7 +239,7 @@ Proof.
   intros; rewrite env_var_nth; apply List.nth_overflow; assumption.
 Qed.
 
-(** At every index. *)
+(** [⟪φ⟫ ρ] is [ρ ∘ φ] at every index, including past the end of the list. *)
 Lemma eval_wk_eq : forall φ ρ, wk_mono φ -> forall x, env_var (⟪φ⟫ ρ) x = env_var ρ (φ x).
 Proof.
   intros * Hφ x; destruct (Nat.lt_ge_cases x (wk_len φ (List.length ρ))) as [Hx | Hx].
@@ -331,6 +328,6 @@ Qed.
 
 #[export] Hint Extern 1 (WkMono _) => typeclasses eauto : mctt core.
 
-(** [eval_wk_eq] with the order preservation found by instance resolution. *)
+(** [eval_wk_eq], with monotonicity found by instance resolution. *)
 Lemma eval_wk_app : forall φ `{Hφ : WkMono φ} ρ x, env_var (⟪φ⟫ ρ) x = env_var ρ (φ x).
 Proof. intros φ Hφ ρ x; exact (eval_wk_eq φ ρ Hφ x). Qed.

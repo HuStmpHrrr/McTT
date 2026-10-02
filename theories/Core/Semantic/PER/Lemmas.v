@@ -208,12 +208,12 @@ Proof.
     econstructor; mautosolve.
 Qed.
 
-(** The same morphism in forward form.  [apply -> per_univ_elem_morphism_iff]
-    requires the level to be known already, and building a context PER is exactly
-    the situation where it is not: the level of the head relation is pinned down
-    only by the witness supplied for it.  Consuming the witness first leaves the
-    [<~>] as the sole goal — and leaves the relation being moved *to* implicit,
-    so the caller never has to spell out the impredicative head relation. *)
+(** The morphism in forward form.  [apply -> per_univ_elem_morphism_iff] needs
+    the level to be known, which is not the case when building a context PER:
+    there the level of the head relation is fixed only by the witness supplied
+    for it.  Taking the witness first leaves [<~>] as the only goal, and leaves
+    the target relation implicit, so the caller never spells out the
+    impredicative head relation. *)
 Lemma per_univ_elem_resp_iff : forall {i R R' a a'},
     DF a ≈ a' ∈ per_univ_elem i ↘ R ->
     (R <~> R') ->
@@ -322,13 +322,12 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** [apply_relation_equivalence] only ever *rewrites*, and [setoid_rewrite] needs
-    the relation to be rewritable in place.  When both sides of the [<~>] are
-    applications — as the head relations [head_rel _ _ D] of a context PER are,
-    for two different witnesses [D] — the conclusion is left untouched.  This
-    closes such a conclusion from the biconditional directly. *)
 End Fixed_GCtx.
 
+(** Closes [R1 x y] or [R2 x y] from [R1 <~> R2] directly.
+    [apply_relation_equivalence] only rewrites, and [setoid_rewrite] leaves the
+    conclusion untouched when both sides of [<~>] are applications, as the head
+    relations [head_rel _ _ D] of a context PER are for two witnesses [D]. *)
 Ltac use_relation_equivalence :=
   match goal with
   | H : ?R1 <~> ?R2 |- ?R1 _ _ => apply H
@@ -493,7 +492,7 @@ Ltac do_per_univ_elem_irrel_assert1 :=
       end
   | H1 : (DF ?a ≈ _ ∈ per_univ_elem ?i ↘ ?R1),
       H2 : DF _ ≈ ?a ∈ per_univ_elem ?i' ↘ ?R2 |- _ =>
-      (** Order matters less here as H1 and H2 cannot be exchanged *)
+      (** Order matters less here, as [H1] and [H2] cannot be exchanged. *)
       assert_fails (unify R1 R2);
       match goal with
       | H : R1 <~> R2 |- _ => fail 1
@@ -529,7 +528,7 @@ Proof.
     [> split;
      [ intros * HT2; basic_invert_per_univ_elem HT2
      | intros * HTR1 HTR2; apply_relation_equivalence ] ..]; mauto.
-  - (** univ case *)
+  - (** The univ case. *)
     subst.
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
@@ -537,9 +536,9 @@ Proof.
     eexists.
     specialize (H2 _ _ _ H0) as [].
     intuition.
-  - (** nat case *)
+  - (** The nat case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
-  - (** pi case *)
+  - (** The pi case. *)
     destruct_conjs.
     basic_per_univ_elem_econstructor; eauto.
     + handle_per_univ_elem_irrel.
@@ -552,7 +551,7 @@ Proof.
       destruct_rel_mod_eval.
       functional_eval_rewrite_clear.
       handle_per_univ_elem_irrel; (basic_per_univ_elem_econstructor; mautosolve 4).
-  - (** fun case *)
+  - (** The function case. *)
     intros.
     assert (in_rel c c) by intuition.
     destruct_rel_mod_eval.
@@ -560,7 +559,7 @@ Proof.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
     intuition.
-  - (** neut case *)
+  - (** The neut case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
 Qed.
 
@@ -614,8 +613,8 @@ Proof.
   - pose proof (fun m0 m1 m2 => per_elem_trans _ _ _ _ m0 m1 m2 H); eauto.
 Qed.
 
-(** [per_elem_PER] off a *folded* chain, so that [solve_chain_PER] does not force
-    a pair to be read off one first. *)
+(** [per_elem_PER] from a chain, so that [solve_chain_PER] need not read a
+    pair off it first. *)
 #[local] Instance per_elem_chain_PER {i R l} `(H : rel_chain (per_univ_elem i R) l) : PER R.
 Proof.
   destruct (rel_chain_shape _ _ H) as [a [b [l' ->]]].
@@ -624,17 +623,15 @@ Qed.
 
 (** ** Chains of Types
 
-    A chain in [per_univ i] — which is what a semantic *type* judgment hands over,
-    each link carrying its own element PER — refined to a chain at one PER, given
-    any one of its pairs at that PER.  This is the only use irrelevance is ever
-    put to in the Completeness layer, and it is the step that makes a type
-    judgment usable: what the consumer wants is not "each pair is related at some
-    PER" but "all of them at *the* PER", namely the one the judgment's own
-    element chain lives in.
+    A semantic type judgment provides a chain in [per_univ i], each link with
+    its own element PER.  What its consumer needs is the whole chain at one
+    PER, namely the one the judgment's element chain lives in.
+    [per_univ_chain_at_in] refines the chain to the PER of any one of its
+    pairs; this is the only use of irrelevance in the completeness proof.
 
-    Both moves are one irrelevance each, through the anchor's left value [x]: to
-    the pair [(x, u)], which shares [x]; and thence to [(u, v)], which shares
-    [u]. *)
+    The proof uses irrelevance twice, through the left value [x] of the given
+    pair: first to the pair [(x, u)], which shares [x], then to [(u, v)],
+    which shares [u]. *)
 Lemma per_univ_chain_at_in : forall {i R l x y},
     rel_chain (per_univ i) l ->
     In x l ->
@@ -656,11 +653,10 @@ Proof.
   eapply per_univ_elem_cross_irrel; [ exact HRuv | exact HRxu' ].
 Qed.
 
-(** Weak functionality of [per_univ i]: a chain in it is *already* a chain at one
-    element PER, with no anchor supplied from outside.  This is the paper's
-    [S ⊆_R ↘ R'] in full; [per_univ_chain_at_in] is the case where the caller
-    insists on a particular [R'].  Any link's PER will do, all of them being
-    logically equivalent, so the first is taken. *)
+(** Weak functionality of [per_univ i]: a chain in it is a chain at one
+    element PER, with no anchor needed.  This is the paper's [S ⊆_R ↘ R'];
+    [per_univ_chain_at_in] is the case where the caller fixes [R'].  All the
+    links' PERs are equivalent, so the first is taken. *)
 Corollary per_univ_chain_functional : forall {i l},
     rel_chain (per_univ i) l ->
     exists R, rel_chain (per_univ_elem i R) l.
@@ -673,16 +669,15 @@ Proof.
   eapply per_univ_chain_at_in; [ exact Hchain | | | exact HR ]; solve_in.
 Qed.
 
-(** Names the element PER of a chain in [per_univ i] and refines the chain to it,
-    in place.  This is the whole use a type judgment is ever put to, and by weak
-    functionality it takes no anchor and loses nothing: every pair of the chain
-    remains available, at [R], through [pairwise]. *)
 End Fixed_GCtx.
 
 #[export] Existing Instance per_univ_PER.
 #[export] Existing Instance per_univ_PER'.
 #[export] Existing Instance per_elem_PER.
 #[export] Existing Instance per_elem_chain_PER.
+(** Names the element PER of a chain in [per_univ i] and refines the chain to
+    it, in place.  Nothing is lost: every pair of the chain remains available
+    at [R] through [pairwise]. *)
 Ltac functionalize_per_univ_chain H R :=
   apply per_univ_chain_functional in H; destruct H as [R H].
 
@@ -690,21 +685,20 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** [pairwise] at a [per_univ i] goal, whose existential the refined chain no
-    longer carries. *)
 End Fixed_GCtx.
 
+(** [pairwise] at a [per_univ i] goal, supplying the existential that the
+    refined chain no longer carries. *)
 Ltac pairwise_univ := first [ pairwise | eexists; pairwise ].
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** The other half of weak functionality — that the output PER is *unique*, which
-    is what makes [S ⊆_R ↘ R'] well defined.  A chain determines its [R'] from a
-    single value it shares with anything else in the universe: reflexivity at
-    that value is available because the chain is at a PER, and then irrelevance
-    needs no second value. *)
+(** The other half of weak functionality: the output PER is unique, so
+    [S ⊆_R ↘ R'] is well defined.  One value shared with any other element of
+    the universe determines [R']: the chain is at a PER, so it is reflexive at
+    that value, and irrelevance then needs no second value. *)
 Lemma per_univ_chain_rel_irrel : forall {i j R R' l x y},
     rel_chain (per_univ_elem i R) l ->
     DF x ≈ y ∈ per_univ_elem j ↘ R' ->
@@ -717,14 +711,14 @@ Proof.
   eapply per_univ_elem_right_irrel; [ exact Hxx | exact Hanchor ].
 Qed.
 
-(** Uniqueness put to work: [retype_rel_chain Htyp Hanchor H] moves [H] between
-    the element PER the type chain [Htyp] reported and the one [Hanchor] names.
-    The two need share only one value, and only [H] says which direction is
-    wanted, so both are tried.  [H] may be a [rel_chain] — [rel_chain_Proper] is
-    what rewrites it — or a bare pair, either at the relation itself or under the
-    [per_head] of a type whose values the anchor is about. *)
 End Fixed_GCtx.
 
+(** [retype_rel_chain Htyp Hanchor H] moves [H] between the element PER of the
+    type chain [Htyp] and the one [Hanchor] names.  The two need share only
+    one value.  Only [H] determines the direction, so both are tried.  [H] may
+    be a [rel_chain] (rewritten through [rel_chain_Proper]) or a bare pair,
+    either at the relation itself or under the [per_head] of a type the anchor
+    is about. *)
 Ltac retype_rel_chain Htyp Hanchor H :=
   let Hiff := fresh "Hiff" in
   pose proof (per_univ_chain_rel_irrel Htyp Hanchor ltac:(solve_in)) as Hiff;
@@ -735,7 +729,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** This lemma gets rid of the unnecessary PER premise. *)
+(** The [per_univ_elem] rule for [Π] without its PER premise. *)
 Lemma per_univ_elem_pi' :
   forall i a a' ρ B ρ' B'
     (in_rel : relation domain)
@@ -1130,7 +1124,7 @@ Ltac do_per_ctx_env_irrel_assert1 :=
         end
     | H1 : (DF ?Γ ≈ _ ∈ per_ctx_env ↘ ?R1),
         H2 : DF _ ≈ ?Γ ∈ per_ctx_env ↘ ?R2 |- _ =>
-        (** Order matters less here as H1 and H2 cannot be exchanged *)
+        (** Order matters less here, as [H1] and [H2] cannot be exchanged. *)
         assert_fails (unify R1 R2);
         match goal with
         | H : R1 <~> R2 |- _ => fail 1
@@ -1178,7 +1172,7 @@ Proof with solve [eauto using per_univ_trans].
       destruct_rel_typ.
       handle_per_univ_elem_irrel.
       econstructor; intuition.
-      (** This one cannot be replaced with `etransitivity` as we need different `i`s. *)
+      (** This cannot be [etransitivity], as the two levels [i] differ. *)
       eapply per_univ_trans; [| eassumption]; eassumption.
   - destruct_conjs.
     assert (tail_rel ρ1↯ ρ3↯) by eauto.
@@ -1222,7 +1216,7 @@ Proof.
   - pose proof (fun ρ0 ρ1 ρ2 => per_env_trans _ _ _ ρ0 ρ1 ρ2 H); eauto.
 Qed.
 
-(** This lemma removes the PER argument *)
+(** [per_ctx_env_cons] without its PER premise. *)
 Lemma per_ctx_env_cons' : forall {Γ Γ' i A A' tail_rel}
                              (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
                              env_rel,
@@ -1303,17 +1297,17 @@ Section Fixed_GCtx.
 (** ** A Canonical Extended Context PER
 
     [per_ctx_env_cons] leaves the head relation of an extended context
-    existentially quantified, and indexed by the evidence relating the tails.
-    Both are inconvenient downstream: the completeness substitution cases have to
-    *build* the context PER of [Δ ▹ S] and then relate four environments in it, which means producing the
-    head evidence three times, once per link of the chain.
+    existentially quantified and indexed by the evidence relating the tails.
+    The completeness cases for substitutions build the context PER of
+    [Δ ▹ S] and relate four environments in it, so they would have to produce
+    the head evidence once per link of the chain.
 
-    So name the head relation once and for all, impredicatively — [per_head S S'
-    ρ ρ'] is "whatever every [per_univ_elem] relating the values of [S] and [S']
-    in [ρ] and [ρ'] relates".  This is the choice [rel_ctx_extend] already makes;
-    what is new is that it does not mention the tail evidence, so the whole
-    extended PER collapses to a *conjunction* ([per_env_extend]) rather than a
-    dependent pair. *)
+    [per_head] names the head relation once, impredicatively:
+    [per_head S S' ρ ρ'] relates what every [per_univ_elem] relating the
+    values of [S] and [S'] in [ρ] and [ρ'] relates.  [rel_ctx_extend] makes
+    the same choice.  [per_head] does not mention the tail evidence, so the
+    extended PER [per_env_extend] is a conjunction rather than a dependent
+    pair. *)
 
 Definition per_head (S S' : typ) (ρ ρ' : env) : relation domain :=
   fun m m' =>
@@ -1328,10 +1322,10 @@ Definition per_env_extend (S S' : typ) (R : relation env) : relation env :=
     Dom ρ↯ ≈ ρ'↯ ∈ R /\
       Dom (ρ 0) ≈ (ρ' 0) ∈ per_head S S' ρ↯ ρ'↯.
 
-(** [per_head] *is* the PER the types denote, because evaluation is functional
-    and [per_univ_elem] is irrelevant in its relation argument.  This direction is
-    the one with content, and it is also the one every head obligation of
-    completeness needs: produce a [per_head] from an element PER already at hand. *)
+(** [per_head] is the PER the types denote, because evaluation is functional
+    and [per_univ_elem] is irrelevant in its relation argument.  This direction
+    has the content, and it is the one completeness needs: a [per_head] from
+    an element PER already at hand. *)
 Lemma per_head_of : forall {S S' ρ ρ' i R a a' m m'},
     ⟦ S ⟧ ρ ↘ a ->
     ⟦ S' ⟧ ρ' ↘ a' ->
@@ -1346,8 +1340,7 @@ Proof.
   eassumption.
 Qed.
 
-(** The converse instantiates the universal quantification at the witness
-    itself. *)
+(** The converse instantiates the universal quantification at the witness. *)
 Corollary per_head_iff : forall {S S' ρ ρ' i R a a'},
     ⟦ S ⟧ ρ ↘ a ->
     ⟦ S' ⟧ ρ' ↘ a' ->
@@ -1359,12 +1352,10 @@ Proof.
   - intros Hm. eapply Hm; eassumption.
 Qed.
 
-(** Hence any related pair of type values is a [per_univ_elem] *at the canonical
-    head PER of the expressions they came from*.  This is the form in which an
-    obligation of the shape "the motive at an arbitrary argument pair" is handed
-    to a semantic recursion: what a type judgment reports is a level and an
-    anonymous element PER, and what the recursion's family must be is the head
-    PER, so the level is kept and the PER replaced. *)
+(** Hence any related pair of type values is a [per_univ_elem] at the head PER
+    of the expressions they came from.  A type judgment reports a level and an
+    anonymous element PER, whereas a semantic recursion needs its motive at the
+    head PER; this lemma keeps the level and replaces the PER. *)
 Corollary per_univ_elem_at_head : forall {S S' ρ ρ' i a a'},
     ⟦ S ⟧ ρ ↘ a ->
     ⟦ S' ⟧ ρ' ↘ a' ->
@@ -1376,12 +1367,11 @@ Proof.
   eapply per_head_iff; eassumption.
 Qed.
 
-(** So the head PER of a type does not depend on *which* environment of a related
+(** The head PER of a type does not depend on which environments of a related
     family it is read in: any two evaluations of [S] and [S'] whose four values
-    form a chain give the same relation.  This is what lets a judgment proved at
-    one pair of environments be used at another — the situation of every rule
-    whose type is an instantiated codomain, where the environment the type is
-    evaluated in is not the one the term chain was produced at. *)
+    form a chain give the same relation.  This lets a judgment proved at one
+    pair of environments be used at another, as in every rule whose type is an
+    instantiated codomain. *)
 Lemma per_head_resp : forall {S S' ρ1 ρ2 ρ3 ρ4 i a1 a2 a3 a4},
     ⟦ S ⟧ ρ1 ↘ a1 ->
     ⟦ S' ⟧ ρ2 ↘ a2 ->
@@ -1393,8 +1383,8 @@ Proof.
   intros * Ha1 Ha2 Ha3 Ha4 Hchain.
   assert (H12 : Dom a1 ≈ a2 ∈ per_univ i) by pairwise.
   destruct H12 as [R HR].
-  (** Refining the chain to [R] is what identifies the two head PERs: each is
-      [R] by [per_head_iff], at its own pair of type values. *)
+  (** Refining the chain to [R] identifies the two head PERs: each is [R] by
+      [per_head_iff], at its own pair of type values. *)
   assert (HchainR : rel_chain (per_univ_elem i R) ([a1; a2; a3; a4]))
     by (eapply per_univ_chain_at_in; [ exact Hchain | | | exact HR ]; solve_in).
   assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem i ↘ R) by pairwise.
@@ -1402,13 +1392,12 @@ Proof.
   eapply per_head_iff; [ exact Ha3 | exact Ha4 | exact H34 ].
 Qed.
 
-(** The form of the above that an elimination rule needs, where the two pairs of
-    environments differ only in their heads.  The chain [per_head_resp] asks for
-    is not at hand there; what is, is the codomain judgment read at an *arbitrary*
-    related pair of arguments, and each link of the chain is one instance of it —
-    the middle one at the crossing pair [(u, y)], which is why that relatedness is
-    a premise and not derived: [RN] is a PER at every use, but taking it as such
-    would oblige every caller to produce the instance. *)
+(** [per_head_resp] for an elimination rule, where the two pairs of
+    environments differ only in their heads.  There the codomain judgment is
+    available at any related pair of arguments, and each link of the chain is
+    an instance of it; the middle one is at the crossing pair [(u, y)].  That
+    relatedness is a premise rather than derived: [RN] is a PER at every use,
+    but requiring it would oblige every caller to provide the instance. *)
 Lemma per_head_of_args : forall {i B ρ ρ' RN},
     (forall x y,
         Dom x ≈ y ∈ RN ->
@@ -1430,12 +1419,11 @@ Proof.
   apply rel_chain_4; [ exact Hb_xy | symmetry; exact Hb_uy | exact Hb_uv ].
 Qed.
 
-(** The two moves above in the form their callers use them in: the codomain at one
-    argument pair, reported as a [per_univ_elem] *at the head PER of another*.
-    This is the only way an element PER handed over by a judgment can be
-    identified with the canonical one — irrelevance needs a shared type value, and
-    the shared value is precisely the codomain's value at the pair the judgment was
-    read at, while the PER wanted is the one at the pair the *goal* names. *)
+(** The codomain at one argument pair, as a [per_univ_elem] at the head PER of
+    another pair.  This is how an element PER provided by a judgment is
+    identified with the canonical one: irrelevance needs a shared type value,
+    which is the codomain's value at the pair the judgment was read at, while
+    the PER wanted is the one at the pair the goal names. *)
 Corollary per_head_anchor : forall {i B ρ ρ' RN},
     (forall x y,
         Dom x ≈ y ∈ RN ->
@@ -1460,9 +1448,9 @@ Proof.
     | eapply per_head_of_args; eassumption ].
 Qed.
 
-(** Hence the premise [per_ctx_env_cons] asks for, at the canonical head
-    relation.  Its own premise is the shape [rel_exp_of_typ_inversion_simple]
-    delivers, which is how the Completeness layer feeds it. *)
+(** The premise of [per_ctx_env_cons], at the canonical head relation.  Its
+    own premise has the shape that [rel_exp_of_typ_inversion_simple]
+    provides. *)
 Lemma per_ctx_env_extend : forall {Δ Δ' S S' env_relΔ i},
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ env_relΔ ->
     (forall ρ ρ',
@@ -1484,14 +1472,11 @@ Proof.
     + intros [? ?]; split; eassumption.
 Qed.
 
-(** The introduction rule of [per_env_extend], which is where the collapse to a
-    conjunction pays off: it is [split], and it applies to *any* pair of
-    environments rather than only to a literal extension.  That generality
-    matters, because completeness must place environments of the form [⟪q ψ⟫ ρ]
-    and
-    [⟦σ ,, M⟧s ρ] in an extended context PER, and only the second of those is a
-    literal [ρ ↦ m].  For the ones that are, both projections are conversions, so
-    the premises are discharged by [assumption] all the same. *)
+(** The introduction rule of [per_env_extend].  Since the extended PER is a
+    conjunction, this is [split], and it applies to any pair of environments,
+    not only to literal extensions.  Completeness needs this generality: it
+    places both [⟪q ψ⟫ ρ] and [⟦σ ,, M⟧s ρ] in an extended context PER, and
+    only the latter is a literal [ρ ↦ m]. *)
 Lemma per_env_extend_intro : forall {S S' R ρ ρ'},
     Dom ρ↯ ≈ ρ'↯ ∈ R ->
     Dom (ρ 0) ≈ (ρ' 0) ∈ per_head S S' ρ↯ ρ'↯ ->
@@ -1500,11 +1485,10 @@ Proof.
   intros * ? ?; split; assumption.
 Qed.
 
-(** The same rule pre-projected, for the common case of a literal extension.
-    Stating it separately is not redundancy: the premises of
-    [per_env_extend_intro] applied to [ρ ↦ m] mention [(ρ ↦ m) ↯] and
-    [(ρ ↦ m) 0], and although those are convertible to [ρ] and [m], the tactics
-    that discharge head obligations match syntactically. *)
+(** [per_env_extend_intro] for a literal extension [ρ ↦ m].  The premises of
+    the general rule mention [(ρ ↦ m) ↯] and [(ρ ↦ m) 0]; these are convertible
+    to [ρ] and [m], but the tactics that discharge head obligations match
+    syntactically. *)
 Corollary per_env_extend_intro' : forall {S S' R ρ ρ' m m'},
     Dom ρ ≈ ρ' ∈ R ->
     Dom m ≈ m' ∈ per_head S S' ρ ρ' ->
@@ -1513,11 +1497,12 @@ Proof.
   intros * ? ?; apply per_env_extend_intro; assumption.
 Qed.
 
-(** Transporting a [per_head] to another pair of environments, which is the
-    "bridging" step of every completeness proof.  The two head relations are equal
-    because their types are related in [per_univ]: [Ha]/[Ha'] name the source's
-    types and [HR] its PER, [Hb]/[Hb'] the target's, and [Hab] says the two left
-    types agree — enough, since [per_univ_elem] is irrelevant on either side. *)
+(** Transporting a [per_head] to another pair of environments, the bridging
+    step of the completeness proofs.  The two head relations are equal because
+    their types are related in [per_univ]: the first two evaluations and the
+    PER describe the source types, the next two evaluations the target types,
+    and the last premise relates the two left types.  That suffices because
+    [per_univ_elem] is irrelevant on either side. *)
 Lemma per_head_bridge : forall {S S' ρ ρ' T T' u u' i R a a' b b' m m'},
     Dom m ≈ m' ∈ per_head S S' ρ ρ' ->
     ⟦ S ⟧ ρ ↘ a ->
@@ -1538,29 +1523,28 @@ Qed.
 
 (** ** A Canonical Function PER
 
-    The same device one level down.  [per_univ_elem_core_pi] leaves the codomain
-    family [out_rel] existentially quantified and indexed by the evidence
-    relating the two arguments, so a Π-value's element PER is determined only up
-    to that choice.  The four-value pattern of a Π-*type* cannot live with
-    that: its three links compare Π-values whose codomain expressions and
-    environments all differ ([B[q σ]] at [ρ], [B] at [⟦σ⟧ρ], …), yet they must
-    all be links of one and the same element PER.
+    The same construction one level down.  [per_univ_elem_core_pi] leaves the
+    codomain family [out_rel] existentially quantified and indexed by the
+    evidence relating the two arguments, so a Π-value's element PER is
+    determined only up to that choice.  The four-value pattern of a Π-type
+    compares Π-values whose codomain expressions and environments all differ
+    ([B[q σ]] at [ρ], [B] at [⟦σ⟧ρ], …), yet all its links must be at one
+    element PER.
 
-    So name the family canonically, exactly as [per_head] does for a context
-    extension — and with the very same relation, since "the PER the codomain
-    denotes at [ρ ↦ c] and [ρ' ↦ c']" is what a head PER already means.  Being
-    independent of the evidence and of the level is what lets one [per_pi] serve
-    every link. *)
+    [per_pi] names the family canonically, with [per_head] as the codomain
+    relation: the PER the codomain denotes at [ρ ↦ c] and [ρ' ↦ c'] is a head
+    PER.  It is independent of the evidence and of the level, so one [per_pi]
+    serves every link. *)
 
 Definition per_pi (in_rel : relation domain) (B : typ) (ρ : env) (B' : typ) (ρ' : env) : relation domain :=
   fun f f' =>
     forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel),
       rel_mod_app f c f' c' (per_head B B' (ρ ↦ c) (ρ' ↦ c')).
 
-(** Building a Π-value at that PER.  The codomain premise is stated with the
-    element PER existentially quantified — the shape a four-value chain hands
-    over after [destruct_per_univ_chain] — because [per_head_iff] is what turns
-    any such PER into the canonical one. *)
+(** Building a Π-value at [per_pi].  The codomain premise has the element PER
+    existentially quantified, which is the shape a four-value chain provides
+    after [destruct_per_univ_chain]; [per_head_iff] turns any such PER into the
+    canonical one. *)
 Lemma per_univ_elem_pi_canonical : forall {i a a' in_rel ρ B ρ' B'},
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
     (forall c c',
@@ -1583,10 +1567,10 @@ Proof.
   eapply per_head_iff; eassumption.
 Qed.
 
-(** And reading one off, which is how an application is justified: whatever PER a
-    Π-value carries, it is the canonical one.  Note the two levels are
-    unrelated — [per_univ_elem] irrelevance is cross-level — so a Π-type from one
-    judgment and a domain from another need no lifting. *)
+(** Whatever PER a Π-value carries, it is [per_pi]; this justifies
+    application.  The two levels are unrelated, since [per_univ_elem]
+    irrelevance is cross-level, so a Π-type from one judgment and a domain from
+    another need no lifting. *)
 Corollary per_pi_iff : forall {i j a a' in_rel ρ B ρ' B' R},
     DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
     DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem j ↘ R ->
@@ -1595,11 +1579,11 @@ Proof.
   intros * Ha HΠ.
   invert_per_univ_elem HΠ.
   rename x into out_rel; rename H into Hout; rename H0 into HR.
-  (** [HR] identifies [R] with the family-indexed relation; what is left is that
+  (** [HR] identifies [R] with the family-indexed relation; it remains to show
       the family is pointwise the canonical head PER.  Transitivity of
-      [relation_equivalence] must be used *before* introducing the two values: at
-      that point the goal is a [pointwise_lifting], which is no longer a relation
-      position and neither [rewrite] nor [etransitivity] applies to it. *)
+      [relation_equivalence] must be used before introducing the two values:
+      afterwards the goal is a [pointwise_lifting], where neither [rewrite] nor
+      [etransitivity] applies. *)
   etransitivity; [ exact HR |].
   intros f f'; split; intros Hf c c' equiv_c_c';
     specialize (Hf _ _ equiv_c_c');
@@ -1608,20 +1592,18 @@ Proof.
   - rewrite (per_head_iff Hb Hb' Hbb'); exact Hf.
 Qed.
 
-(** The four-value pattern of a Π-type, at one element PER — the shape asked for
-    by every semantic judgment whose type is a Π.  Each of the three links is
-    built by [per_univ_elem_pi_canonical] at its own codomain pair, so each
-    arrives carrying its own canonical [per_pi]; that the three agree is
-    [per_univ_elem] irrelevance applied to the links themselves, consecutive
-    links sharing a Π-value.  The one they are stated at is the *inner* link's,
-    the only one of the three whose two sides are both unsubstituted, and the one
-    an application reads its output PER off of.
+(** The four-value pattern of a Π-type at one element PER, as required by
+    every semantic judgment whose type is a Π.  Each link is built by
+    [per_univ_elem_pi_canonical] at its own codomain pair and so carries its
+    own [per_pi]; the three agree by irrelevance, since consecutive links share
+    a Π-value.  The chain is stated at the inner link's PER: the only link
+    whose sides are both unsubstituted, and the one an application reads its
+    output PER from.
 
-    The domain is given as a four-value pattern already at [in_rel], which by weak
-    functionality is all a semantic type judgment hands over
-    ([functionalize_per_univ_chain]); no separate anchor is needed, and the three
-    links come off it by [pairwise].  The three codomain premises are, in order,
-    the three obligations [rel_exp_of_typ_under_ctx_q] produces. *)
+    The domain is a four-value pattern already at [in_rel], which by weak
+    functionality is what a semantic type judgment provides
+    ([functionalize_per_univ_chain]).  The three codomain premises are, in
+    order, the three obligations produced by [rel_exp_of_typ_under_ctx_q]. *)
 Lemma per_univ_elem_pi_chain : forall {i in_rel a1 a2 a3 a4 B1 ρ1 B2 ρ2 B3 ρ3 B4 ρ4},
     rel_chain (per_univ_elem i in_rel) ([a1; a2; a3; a4]) ->
     (forall c c',
@@ -1640,8 +1622,8 @@ Proof.
   assert (H12 : DF a1 ≈ a2 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H23 : DF a2 ≈ a3 ∈ per_univ_elem i ↘ in_rel) by pairwise.
   assert (H34 : DF a3 ≈ a4 ∈ per_univ_elem i ↘ in_rel) by pairwise.
-  (** One [per_univ_elem_pi_canonical] per link, up to the [exists R] the
-      canonical form wants where the premise offers [per_univ]. *)
+  (** One [per_univ_elem_pi_canonical] per link, adapting the premise's
+      [per_univ] to the [exists R] the lemma wants. *)
   assert (Hlink : forall B ρ B' ρ' a a',
              DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
              (forall c c',
@@ -1656,11 +1638,10 @@ Proof.
   pose proof (Hlink _ _ _ _ _ _ H12 HB12) as HL1.
   pose proof (Hlink _ _ _ _ _ _ H23 HB23) as HL2.
   pose proof (Hlink _ _ _ _ _ _ H34 HB34) as HL3.
-  (** The three links are a chain in [per_univ i], so weak functionality puts them
-      at one PER and uniqueness says which: the *inner* link's, [HL2] being the
-      anchor that names it.  [handle_per_univ_elem_irrel] would instead keep
-      whichever of the three [per_pi]s it happened to pick, which is not
-      predictable. *)
+  (** The three links are a chain in [per_univ i], so weak functionality puts
+      them at one PER, and uniqueness, with [HL2] as anchor, makes it the inner
+      link's.  [handle_per_univ_elem_irrel] would keep an unpredictable one of
+      the three [per_pi]s. *)
   assert (Hpi : rel_chain (per_univ i)
                   ([Πᵈ a1 ρ1 B1; Πᵈ a2 ρ2 B2;
                    Πᵈ a3 ρ3 B3; Πᵈ a4 ρ4 B4]))
@@ -1672,30 +1653,25 @@ Qed.
 
 (** ** Closing an Extended Context PER Goal
 
-    Every completeness proof in an extended context ends the same way, and these
-    three tactics are that ending.
+    Every completeness proof in an extended context ends the same way, with
+    these three tactics.
 
-    [destruct_per_univ_chain] turns a four-value chain in [per_univ i] into the
-    three [per_univ_elem] hypotheses that [handle_per_univ_elem_irrel] saturates
-    over.  Nothing ever does anything else with such a chain: it is only a way of
-    carrying those three around.  It goes through
-    [per_univ_chain_functional], so the three come out at *one* element PER
-    rather than at three independent existential ones — which is most of what
-    irrelevance would otherwise have to reconcile.
-
-    [solve_per_head] discharges a [per_head] goal.  [per_head] quantifies over an
-    *arbitrary* [per_univ_elem] relating the two type values, so the proof is
-    always the same four steps: introduce it, identify its two values with ones
-    already named, let irrelevance identify its PER with the one the term chain
-    lives in, and read the wanted pair off that chain.
-
-    [solve_per_env_extend_chain] is the whole last step: a chain of environments,
-    all of them extensions, to be related in an extended context PER.  Splitting
-    each link into a tail and a head is [per_env_extend_intro']; the tails then
-    come straight off the chain the underlying substitution arrived with, and the
-    heads are bridged.  The chain is of any length, because the substitution
-    cases want four environments while the rules with a premise in an extended context
-    want every extension of the four tails by either of the two heads. *)
+    - [destruct_per_univ_chain] turns a four-value chain in [per_univ i] into
+      the three [per_univ_elem] hypotheses that [handle_per_univ_elem_irrel]
+      works on.  It goes through [per_univ_chain_functional], so the three are
+      at one element PER rather than three independent ones.
+    - [solve_per_head] discharges a [per_head] goal.  [per_head] quantifies
+      over an arbitrary [per_univ_elem] relating the two type values, so the
+      proof is always the same: introduce it, identify its two values with
+      known ones, let irrelevance identify its PER with that of the term
+      chain, and read the pair off that chain.
+    - [solve_per_env_extend_chain] relates a chain of extended environments in
+      an extended context PER.  [per_env_extend_intro'] splits each link into
+      a tail and a head; the tails come from the chain of the underlying
+      substitution, and the heads are bridged.  The chain may have any length:
+      substitution cases need four environments, while rules with a premise in
+      an extended context need every extension of the four tails by either of
+      the two heads. *)
 End Fixed_GCtx.
 
 Ltac destruct_per_univ_chain H :=
@@ -1713,12 +1689,12 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** The peel is driven by the goal's syntactic shape, not by [first]: since
-    [rel_chain R [x; y]] is *convertible* to [R x y], an unguarded
-    [apply rel_chain_of_pair] would also fire on a link goal, and an unguarded
-    [apply rel_chain_cons] would peel one step past the last link. *)
 End Fixed_GCtx.
 
+(** The links are peeled by matching the goal's shape rather than with
+    [first]: [rel_chain R [x; y]] is convertible to [R x y], so an unguarded
+    [apply rel_chain_of_pair] would also fire on a link goal, and an unguarded
+    [apply rel_chain_cons] would peel past the last link. *)
 Ltac solve_per_env_extend_chain :=
   repeat
     match goal with
@@ -1836,13 +1812,12 @@ Qed.
 
 (** * Context PERs Respect Pointwise Equality of Environments
 
-    Evaluating a substitution pins its result environment down only up to
-    [env_eq] ([functional_eval_sub]), so every use of a context PER in the
-    completeness proof needs this lemma.  It is *not* an instance of
-    "evaluation respects [env_eq]", which is false — see the closing comment of
-    [Evaluation/Definitions.v].  What makes it true is that a context PER only
-    ever inspects an environment pointwise, and that the head relations it
-    produces at pointwise-equal environments coincide up to [<~>] by
+    Evaluating a substitution determines its result only up to [env_eq]
+    ([functional_eval_sub]), so every use of a context PER in the completeness
+    proof needs this lemma.  It does not follow from evaluation respecting
+    [env_eq], which is false because a closure captures its environment.  It
+    holds because a context PER inspects an environment only pointwise, and
+    its head relations at pointwise-equal environments coincide up to [<~>] by
     irrelevance. *)
 Lemma per_ctx_env_resp_env_eq : forall {Γ Δ R},
     EF Γ ≈ Δ ∈ per_ctx_env ↘ R ->

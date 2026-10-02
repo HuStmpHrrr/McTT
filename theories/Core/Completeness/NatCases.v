@@ -1,37 +1,28 @@
 (** * Fundamental Theorem: Natural Numbers
 
-    Four of the old file's lemmas are gone.  [rel_exp_nat_sub],
-    [rel_exp_zero_sub], [rel_exp_succ_sub] and [rel_exp_natrec_sub] validated the
-    rules that pushed a substitution through [ℕ], [zero], [succ] and the
-    eliminator; all four are now *equations* of [exp_sub] — indeed
-    [exp_sub] matches on the expression, so [ℕ[σ]] literally *is* [ℕ],
-    [zero[σ]] *is* [zero], and
+    Substitution pushes through [ℕ], [zero], [succ] and the eliminator by
+    computation of [exp_sub]: [ℕ[σ]] is [ℕ], [zero[σ]] is [zero], and
+<<
+(rec M return A | zero -> MZ | succ -> MS end)[σ]
+  ≡ rec M[σ] return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end
+>>
+    So what is validated here is the eliminator's congruence rule and its two
+    β-rules, together with the semantic recursion they share.
 
-      [(rec M return A | zero -> MZ | succ -> MS end)[σ]]
+    That recursion, [per_nat_natrec], is stated once over a family of element PERs
+    [Rel : domain -> domain -> relation domain] indexed by the pair of arguments.
+    It is a family because the zero branch lives in the PER of the motive at
+    [zero], the successor branch in the PER of the motive at [succ w], and the goal
+    in the PER of the motive at the scrutinee; dependent elimination means these
+    differ.
 
-    *is* [rec M[σ] return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end].
-
-    What is left is the eliminator's congruence rule and its two β-rules, and the
-    semantic recursion the three of them share.  That recursion is
-    [per_nat_natrec], and it is stated here once, over an abstract *family* of
-    element PERs
-
-      [Rel : domain -> domain -> relation domain]
-
-    indexed by the pair of arguments.  A family and not a single relation: the
-    zero branch lives in the PER of the motive at [zero], the successor branch in
-    the PER of the motive at [succ w], and the goal in the PER of the motive at
-    the argument the eliminator was applied to.  Dependent elimination is exactly
-    the statement that those are different relations, so no single [R] can serve.
-
-    Abstracting over the family is also what makes *one* helper do the work of two.
-    The "one-sided substituted" recursion — the eliminator with [A[q σ]], [MZ[σ]],
-    [MS[q (q σ)]] at [ρ] on the left and the unsubstituted one at [⟦σ'⟧ρ'] on the
-    right — has [per_nat_natrec]'s premises with [(Aa, ρa) := (A[q σ], ρ)] and its
-    family the head PER of that pair; nothing in the proof looks at the *shape* of
-    [Aa], so it is the same lemma at a different instance.  Hence three
-    instantiations of [per_nat_natrec] — one per link of the four-value pattern —
-    and no second induction. *)
+    Abstracting over the family also lets one lemma cover the one-sided
+    substituted recursion, with [A[q σ]], [MZ[σ]], [MS[q (q σ)]] at [ρ] on the left
+    and the unsubstituted eliminator at [⟦σ'⟧ρ'] on the right.  This is
+    [per_nat_natrec] at [(Aa, ρa) := (A[q σ], ρ)], with the head PER of that pair
+    as the family, since the proof never inspects the shape of [Aa].  So there are
+    three instantiations of [per_nat_natrec], one per link of the four-value
+    pattern, and only one induction. *)
 
 From Stdlib Require Import List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -44,10 +35,10 @@ From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
-(** [ℕ]'s own [per_univ_elem], at the canonical element PER and at any level.
-    Every [ℕ]-obligation below is this lemma; naming it is what keeps the level
-    from being left as an unresolved existential, which is what
-    [per_univ_elem_econstructor] under an [eapply] would do. *)
+(** [ℕ]'s [per_univ_elem], at the canonical element PER and at any level.
+    Every [ℕ] obligation below uses this lemma; naming it keeps the level from
+    becoming an unresolved existential, as [per_univ_elem_econstructor] under
+    [eapply] would leave it. *)
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -62,12 +53,11 @@ Hint Resolve per_univ_elem_nat : mctt.
 
 (** ** [ℕ] as a Type
 
-    Stated from the context PER and not from [⊨ Γ], because that is all the callers
-    have: inside the eliminator's congruence rule the only thing known about [Γ] is
-    the PER its hypotheses' inversions produce, and [⊨ Γ] does not follow from it.
-    The level is arbitrary — [rel_typ_of_instance] reads the domain and the codomain
-    of a dependent elimination at *one* level, and the codomain's is the motive's,
-    so [ℕ]'s judgment has to be available there. *)
+    Stated from the context PER rather than from [⊨ Γ], because inside the
+    eliminator's congruence rule the only thing known about [Γ] is the PER its
+    hypotheses' inversions produce, and [⊨ Γ] does not follow from it.  The level
+    is arbitrary because [rel_typ_of_instance] reads the domain and codomain of a
+    dependent elimination at one level, the motive's. *)
 Lemma rel_exp_of_typ_nat : forall {Γ i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ ℕ ≈ ℕ : Type@i.
@@ -77,7 +67,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hn : Dom ℕᵈ ≈ ℕᵈ ∈ per_univ i)
     by (eexists; apply per_univ_elem_nat).
-  (** [ℕ[σ]] *is* [ℕ], so all four values are handed over by the same rule. *)
+  (** [ℕ[σ]] is [ℕ], so all four values come from the same rule. *)
   econstructor; try apply eval_exp_nat.
   apply rel_chain_4; assumption.
 Qed.
@@ -97,9 +87,9 @@ Hint Resolve valid_exp_nat : mctt.
 
 (** ** [ℕ] as the Type of a Term
 
-    The [ℕ] analogue of [rel_exp_of_typ_inversion]: a judgment at type [ℕ] is a
-    four-value pattern in [per_nat] and nothing else, because the four values of
-    the type are all [ℕ] and [per_univ_elem]'s [ℕ] case pins the element PER. *)
+    The [ℕ] analogue of [rel_exp_of_typ_inversion]: a judgment at type [ℕ] is
+    exactly a four-value pattern in [per_nat], because the four values of the type
+    are all [ℕ] and the [ℕ] case of [per_univ_elem] fixes the element PER. *)
 Lemma rel_exp_of_nat_inversion : forall {Γ M M' },
     Γ ⊨ M ≈ M' : ℕ ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
@@ -163,10 +153,10 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-(** The head PER of [ℕ] *is* [per_nat], in both directions.  Every context
-    extension by [ℕ] goes through this, and so does every argument obligation of
-    the eliminator, since the argument PER a caller has is [per_nat] while the
-    context PER of [Γ ▹ ℕ] speaks of [per_head ℕ ℕ]. *)
+(** The head PER of [ℕ] is [per_nat], in both directions.  Every context
+    extension by [ℕ] uses this, as does every argument obligation of the
+    eliminator: callers have [per_nat], while the context PER of [Γ ▹ ℕ] speaks of
+    [per_head ℕ ℕ]. *)
 Lemma per_head_of_nat : forall {ρ ρ' m m'},
     Dom m ≈ m' ∈ per_nat ->
     Dom m ≈ m' ∈ per_head ℕ ℕ ρ ρ'.
@@ -185,8 +175,8 @@ Proof.
     [ apply eval_exp_nat | apply eval_exp_nat | apply per_univ_elem_nat ].
 Qed.
 
-(** The context PER of [Γ ▹ ℕ] and its two rules.  [ℕ[σ]] is [ℕ], so the
-    substituted form [per_ctx_env_of_typ_sub] would produce is this one. *)
+(** The context PER of [Γ ▹ ℕ] and its two rules.  Since [ℕ[σ]] is [ℕ], this
+    is also the substituted form [per_ctx_env_of_typ_sub] would produce. *)
 Corollary per_ctx_env_nat : forall {Γ env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Γ ▹ ℕ ≈ Γ ▹ ℕ ∈ per_ctx_env ↘ (per_env_extend ℕ ℕ env_relΓ).
@@ -215,25 +205,24 @@ Qed.
 
 (** ** The Semantic Recursor
 
-    The three obligations are the semantic contents of the eliminator's three
-    premises, each stated at the pair of arguments the *recursion* needs it at
-    rather than at the pair some judgment happened to be read at:
+    The three obligations are the semantic content of the eliminator's three
+    premises, each stated at the argument pair the recursion needs:
 
-    - [Hmot] — the motive at an arbitrary pair of related arguments, reported as a
-      [per_univ_elem] *at the family*, which is what pins [Rel] down;
-    - [Hz] — the zero branch, in the family at [(zero, zero)];
-    - [Hsucc] — the successor branch, at an arbitrary argument pair and an
-      arbitrary pair of recursive results related in the family *there*, landing
-      in the family at the successors.
+    - [Hmot]: the motive at an arbitrary pair of related arguments, as a
+      [per_univ_elem] at the family, which pins down [Rel];
+    - [Hz]: the zero branch, in the family at [(zero, zero)];
+    - [Hsucc]: the successor branch, at an arbitrary argument pair and a pair of
+      recursive results related in the family there, landing in the family at
+      the successors.
 
     Nothing else about [Aa], [Ab], [MZa], … is used, which is why the same lemma
     serves the substituted links.
 
-    [per_bot_natrec] is the neutral case, split off because it is where the
-    obligations are consumed at *three* fixed argument pairs — a fresh variable,
-    [zero], and the successor of that variable — the three [read_ne_natrec] reads
-    the motive at.  The recursive call's argument is [⇑! b (S s)], the variable at
-    the motive's own value, so [Hsucc] is instantiated at [var_per_elem]. *)
+    [per_bot_natrec] is the neutral case.  It uses the obligations at three fixed
+    argument pairs (a fresh variable, [zero], and the successor of that variable),
+    which are where [read_ne_natrec] reads the motive.  The recursive call's
+    argument is [⇑! b (S s)], the variable at the motive's value, so [Hsucc] is
+    instantiated at [var_per_elem]. *)
 Lemma per_bot_natrec : forall {i Aa Ab MZa MZb MSa MSb ρa ρb za zb m m'}
                               {Rel : domain -> domain -> relation domain},
     (forall w z,
@@ -314,10 +303,9 @@ Qed.
 
 (** ** [zero] and [succ]
 
-    Both rules are one-line four-value patterns.  [zero[σ]] *is* [zero] and
-    [(succ M)[σ]] *is* [succ (M[σ])], so the two commutation links of the pattern
-    carry no content beyond the links they are built from, and every value is
-    handed over by the same evaluation rule on both sides of the substitution. *)
+    Both rules are one-line four-value patterns.  [zero[σ]] is [zero] and
+    [(succ M)[σ]] is [succ (M[σ])], so the two commutation links add nothing to the
+    links they are built from. *)
 Lemma rel_exp_zero : forall {Γ env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ zero ≈ zero : ℕ.
@@ -359,11 +347,11 @@ Hint Resolve rel_exp_succ_cong : mctt.
 
 (** ** The Successor Branch's Substitution
 
-    The type of the successor branch is [A[Wk ⨟ Wk ,, succ #1]] — the motive at the
-    successor of the number, in the context [Γ ▹ ℕ ▹ A] where [#1] is that number.
-    Validating that substitution needs [#1 : ℕ] there, and *not* via
-    [valid_exp_var], whose premise [⊨ Γ ▹ ℕ ▹ A] is strictly stronger than the
-    context PER a caller inside the eliminator's rules has. *)
+    The successor branch has type [A[Wk ⨟ Wk ,, succ #1]], the motive at the
+    successor of the number, in [Γ ▹ ℕ ▹ A] where [#1] is that number.  Validating
+    the substitution needs [#1 : ℕ] there, but not via [valid_exp_var], whose
+    premise [⊨ Γ ▹ ℕ ▹ A] is stronger than the context PER available inside the
+    eliminator's rules. *)
 Lemma rel_exp_var1_nat : forall {Γ A i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
@@ -376,16 +364,16 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσj HΓ' HΓNA _ _ _ _ Hρ Hev Hev') as [Htail _].
   apply per_env_extend_nat_elim in Htail as [_ Hhead].
-  (** [#1[σ]] *is* [σ 1] and [(ρσ ↯) 0] *is* [ρσ 1], so both commutation links are
-      the same value on both sides and the pattern collapses onto its middle. *)
+  (** [#1[σ]] is [σ 1] and [(ρσ ↯) 0] is [ρσ 1], so both commutation links
+    relate a value to itself and the pattern collapses onto its middle. *)
   apply (mk_rel_exp (ρσ 1) (ρσ 1) (ρ'σ' 1) (ρ'σ' 1));
     try apply eval_exp_var; try (apply eval_sub_index; eassumption).
   apply rel_chain_4_of_2; first [ solve_chain_PER | eassumption ].
 Qed.
 
-(** Its companion one context shorter, which is what the *scrutinee* of the
-    generic recursor is.  Same proof: [#0[σ]] is [σ 0] and [ρσ 0] is the head of
-    [ρσ], so the four-value pattern collapses onto its middle. *)
+(** The same one context shorter, which is the scrutinee of the generic
+    recursor.  [#0[σ]] is [σ 0] and [ρσ 0] is the head of [ρσ], so again the
+    pattern collapses onto its middle. *)
 Lemma rel_exp_var0_nat : forall {Γ env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ #0 ≈ #0 : ℕ.
@@ -419,25 +407,23 @@ Qed.
 
 (** ** The Motive at an Arbitrary Argument Pair
 
-    [per_nat_natrec]'s first obligation, delivered for all three links at *one*
-    family of element PERs,
+    The first obligation of [per_nat_natrec], for all three links, in one family of
+    element PERs, the head PER of the motive at the environments the goal names:
+<<
+Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)
+>>
+    It must be one family because a recursion cannot mix relations, while the
+    three links compare the motive at three different pairs of expressions and
+    environments ([A[q σ]] at [ρ] against [A] at [⟦σ⟧ρ], and so on).
 
-      [Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)],
-
-    the head PER of the motive at the environments the *goal* names.  That it can
-    be one family is the point: the three links compare values of the motive at
-    three different pairs of expressions and environments ([A[q σ]] at [ρ] against
-    [A] at [⟦σ⟧ρ], and so on), and a recursion cannot mix relations, so every one
-    of them has to be reported in this single [Rel].
-
-    Doing so is one anchoring plus one chain.  The anchor is the motive's own
-    relatedness link at [(w, z)], read as a [per_univ_elem] *at* [Rel w z] by
-    [per_univ_elem_at_head]; the chain collects every value the three obligations
-    mention together with the anchor's two, so that refining it along the anchor
-    ([per_univ_chain_at_in]) puts all of them in [Rel w z] at once.  Four
-    instantiations of [rel_exp_of_typ_under_ctx_q] produce its links — the motive
-    at [(w, z)] both reflexively and as [A ≈ A'], and reflexively at [(w, w)] and
-    [(z, z)], which are what bridge the two argument values. *)
+    The proof is one anchor and one chain.  The anchor is the motive's relatedness
+    link at [(w, z)], read as a [per_univ_elem] at [Rel w z] by
+    [per_univ_elem_at_head].  The chain collects every value the three obligations
+    mention together with the anchor's two, so refining it along the anchor
+    ([per_univ_chain_at_in]) puts them all in [Rel w z].  Four instantiations of
+    [rel_exp_of_typ_under_ctx_q] produce its links: the motive at [(w, z)] both
+    reflexively and as [A ≈ A'], and reflexively at [(w, w)] and [(z, z)], which
+    bridge the two argument values. *)
 Lemma rel_typ_of_nat_motive : forall {Γ A A' i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
@@ -466,9 +452,9 @@ Proof.
   intros * HΓ HA * HΓ' * Hσj Hρ Hev Hev' * Hwz.
   pose proof (@rel_exp_of_typ_nat _ _ 0 _ HΓ) as Hnat.
   pose proof (rel_exp_under_ctx_refl_left HA) as HAl.
-  (** The three pairs of arguments the four instantiations run at.  [ℕ[σ]] is [ℕ],
-      so the extended context PER is the unsubstituted one and its introduction
-      rule is [per_env_extend_nat_intro]. *)
+  (** The three argument pairs the four instantiations run at.  [ℕ[σ]] is [ℕ],
+    so the extended context PER is the unsubstituted one, with introduction rule
+    [per_env_extend_nat_intro]. *)
   assert (Hρρ : Dom ρ ≈ ρ ∈ env_rel') by (transitivity ρ'; [| symmetry]; exact Hρ).
   assert (Hww : Dom w ≈ w ∈ per_nat) by (transitivity z; [| symmetry]; exact Hwz).
   assert (Hzz : Dom z ≈ z ∈ per_nat) by (transitivity w; [symmetry |]; exact Hwz).
@@ -483,8 +469,8 @@ Proof.
     as [_ [[a2 [d1 [Ha2 [Hd1 Had1]]]] [e1 [f1 [He1 [Hf1 Hef1]]]]]].
   destruct (rel_exp_of_typ_under_ctx_q HΓ' Hσj Hnat HA _ _ _ _ _ _ Hp_ww Hev Hev')
     as [_ [[a3 [e2 [Ha3 [He2 Hae2]]]] _]].
-  (** Naming the values the instantiations share, explicitly: which of two names
-      [functional_eval_rewrite_clear] keeps is what the merge below selects on. *)
+  (** The shared values are named explicitly, because the merge below depends on
+    which of two names [functional_eval_rewrite_clear] keeps. *)
   assert (c2 = c1) as -> by (eapply functional_eval_exp; eassumption).
   assert (g2 = g1) as -> by (eapply functional_eval_exp; eassumption).
   assert (a2 = a1) as -> by (eapply functional_eval_exp; eassumption).
@@ -520,19 +506,17 @@ Qed.
 
 (** ** The Type of the Successor Branch
 
-    [MS]'s type is [A[Wk ⨟ Wk ,, succ #1]], so every value the successor
-    obligation of [per_nat_natrec] produces is related in *that* type's head PER,
-    while the obligation's goal is stated in the head PER of the motive [A] at
-    [succ] of the number.  The two are the two ends of a single instantiation of
-    [A]'s judgment along [Wk ⨟ Wk ,, succ #1], and this lemma is that
-    instantiation: its outer values are the ones the premises come with, its inner
-    ones the ones the goal asks for, and its chain is what [per_head_bridge]
-    consumes to move between them.
+    [MS] has type [A[Wk ⨟ Wk ,, succ #1]], so the values the successor obligation
+    of [per_nat_natrec] produces are related in that type's head PER, while the
+    obligation's goal is in the head PER of [A] at [succ] of the number.  These are
+    the two ends of one instantiation of [A]'s judgment along
+    [Wk ⨟ Wk ,, succ #1], and this lemma is that instantiation: its outer values
+    are those of the premises, its inner values those of the goal, and
+    [per_head_bridge] consumes its chain to move between them.
 
-    That the substitution's evaluation can be *named* at all — [ρ1 ↦ succ x1] on
-    the nose, rather than something merely related to it — is because neither of
-    its components hides a closure: the tail is a *pre*composition by a weakening,
-    which does compute ([eval_sub_shift_pre]), and the head is a variable under a
+    The substitution's evaluation can be named exactly, as [ρ1 ↦ succ x1], because
+    neither component hides a closure: the tail is a precomposition by a weakening,
+    which computes ([eval_sub_shift_pre]), and the head is a variable under
     [succ]. *)
 Lemma rel_typ_of_nat_step_gen : forall {Γ A i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
@@ -585,27 +569,23 @@ Qed.
 
 (** ** The Successor Branch at an Arbitrary Argument Pair
 
-    The companion of [rel_typ_of_nat_motive] for the *term* obligation: the three
-    successor premises of the three [per_nat_natrec] instantiations, delivered —
-    as they must be — in the one family [Rel] of the motive's head PERs, here at
-    [(succ w, succ z)].
+    The term counterpart of [rel_typ_of_nat_motive]: the successor premises of the
+    three [per_nat_natrec] instantiations, in the one family [Rel] of the motive's
+    head PERs, here at [(succ w, succ z)].
 
-    Two moves are needed for each of them, and both are forced by the operational
-    reading of substitution.  The values [MS] takes are related in the head PER of
-    its *type*, [A[Wk ⨟ Wk ,, succ #1]], at whichever pair of environments they
-    were read at; the goal asks for the head PER of [A] at [ρσ ↦ succ w] and
-    [ρ'σ' ↦ succ z].  So each premise is moved along the environments
-    ([per_head_of_typ_resp], through the chain below) and then along the
-    substitution ([per_head_bridge], through [rel_typ_of_nat_step]) — which is
-    what [Hmv] does once for all six.
+    Each needs two moves.  The values of [MS] are related in the head PER of its
+    type [A[Wk ⨟ Wk ,, succ #1]] at the environments where they were read, while
+    the goal asks for the head PER of [A] at [ρσ ↦ succ w] and [ρ'σ' ↦ succ z].  So
+    each premise is moved along the environments ([per_head_of_typ_resp], through
+    the chain below) and then along the substitution ([per_head_bridge], through
+    [rel_typ_of_nat_step]); [Hmv] does this once for all six.
 
-    The chain is over eight environments of [Γ ▹ ℕ ▹ A], and again not because any
-    one consumer wants eight: [rel_exp_under_ctx_q] reports its inner values at
-    the environments [q σ] *reaches*, and at a doubly extended context those are
-    two levels of [s ↦ w] away from the ones the goal names.  Every value the six
-    premises mention is an extension of one of the four tails of
-    [rel_sub_under_ctx_q] by one
-    of the two heads [r], [r'], and the chain says they are all related. *)
+    The chain is over eight environments of [Γ ▹ ℕ ▹ A].  [rel_exp_under_ctx_q]
+    reports its inner values at the environments [q σ] reaches, and in a doubly
+    extended context those are two levels of [s ↦ w] away from the ones the goal
+    names.  Every value the six premises mention is an extension of one of the four
+    tails of [rel_sub_under_ctx_q] by one of the two heads [r], [r'], and the chain
+    relates them all. *)
 Lemma rel_exp_of_nat_step : forall {Γ A i MS MS' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
@@ -637,9 +617,9 @@ Proof.
   pose proof (per_ctx_env_of_typ HΓN HA) as HΓNA.
   pose proof (presup_rel_exp_under_ctx HMS) as [i0 HAτ].
   pose proof (rel_exp_of_typ_extend_simple HΓ Hnat HA) as HAsimple.
-  (** [ℕ[σ]] is [ℕ], so the context [q σ] is a substitution *into* is the
-      unsubstituted [Γ' ▹ ℕ] — but only up to the reduction of [exp_sub], which the
-      applications below would have to see through. *)
+  (** [ℕ[σ]] is [ℕ], so the context [q σ] maps into is the unsubstituted
+    [Γ' ▹ ℕ], but only up to the reduction of [exp_sub], which the applications
+    below would have to see through. *)
   pose proof (rel_sub_under_ctx_q Hσj Hnat) as Hqσj.
   cbn [exp_sub] in Hqσj.
   assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_relΓ)
@@ -725,9 +705,9 @@ Proof.
     eapply per_head_bridge;
       [ exact HmT | exact Hp1 | exact Hp4 | pairwise | exact Hp2 | exact Hp3 | pairwise_univ ]. }
   (** The two substituted values, from the judgment along [q (q σ)].  Only the
-      outer value of each outer obligation is wanted: their inner ones are read at
-      [s ↦ w] and [s' ↦ z], which the chain relates to the goal's environments but
-      does not equal. *)
+    outer value of each outer obligation is used: the inner ones are read at
+    [s ↦ w] and [s' ↦ z], which the chain relates to the goal's environments but
+    does not equal. *)
   destruct (rel_typ_of_nat_motive HΓ HA _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev' _ _ Hwz)
     as [[b1 [c1 [Hb1 [Hc1 Hbc1]]]] _].
   pose proof (per_env_extend_sub_intro HΓ'N Hqσj HA _ _ _ _ _ _ _ _ Hnp Hb1 Hbc1 Hrr')
@@ -763,10 +743,10 @@ Qed.
 (** ** The Diagonal, for the Gluing Model
 
     The gluing model needs [per_bot_natrec] at one environment and no
-    substitution, with the
-    zero branch's value coming from a gluing predicate rather than from a semantic
-    judgment.  Instantiating the two obligations above at [Id] — where [⟦Id⟧s ρ]
-    *is* [ρ] — makes their middle components exactly the two it asks for. *)
+    substitution, with the zero branch's value coming from a gluing predicate
+    rather than a semantic judgment.  Instantiating the two obligations above at
+    [Id], where [⟦Id⟧s ρ] is [ρ], gives exactly the two it asks for as their middle
+    components. *)
 Lemma per_bot_natrec_diag : forall {Γ A i MZ MS env_relΓ ρ mz m},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
@@ -794,18 +774,17 @@ Qed.
 (** ** The Eliminator's Congruence Rule
 
     Three instantiations of [per_nat_natrec], at the three links of the number's
-    chain and at *one* family of element PERs — the head PER of the motive at the
-    arguments the *type* names, which is what [rel_typ_of_instance] reports and so
-    what the goal's type component fixes.  The motive obligation of each is one of
-    the three [rel_typ_of_nat_motive] produces, its successor obligation one of the
-    three [rel_exp_of_nat_step] produces, and its zero obligation one link of
-    [MZ]'s own chain, whose element PER is identified with the family at
-    [(zero, zero)] by reading the type [A[Id ,, zero]] a second time through
-    [rel_typ_of_instance].
+    chain, in one family of element PERs: the head PER of the motive at the
+    arguments the type names, which [rel_typ_of_instance] reports.  For each, the
+    motive obligation is one of the three [rel_typ_of_nat_motive] produces, the
+    successor obligation one of the three [rel_exp_of_nat_step] produces, and the
+    zero obligation one link of [MZ]'s chain, whose element PER is identified with
+    the family at [(zero, zero)] by reading the type [A[Id ,, zero]] through
+    [rel_typ_of_instance] a second time.
 
-    Each link then arrives in the family at its own pair of arguments, and
-    [per_head_of_args] moves it to the pair the type names — the same final step as
-    in [rel_exp_app_cong], for the same reason. *)
+    Each link then lands in the family at its own argument pair, and
+    [per_head_of_args] moves it to the pair the type names, as in
+    [rel_exp_app_cong]. *)
 Lemma rel_exp_natrec_cong : forall {Γ A A' i MZ MZ' MS MS' M M'},
     Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ MZ ≈ MZ' : A[Id ,, zero] ->
@@ -824,15 +803,15 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   (** *** The Type
 
-      [A[Id ,, M]] is an instance of the motive, so all of it — and the number's
-      four values, and the motive at an arbitrary related pair, which the moves
-      below need — comes from [rel_typ_of_instance]. *)
+    [A[Id ,, M]] is an instance of the motive, so the type, the number's four
+    values, and the motive at an arbitrary related pair (needed by the moves below)
+    all come from [rel_typ_of_instance]. *)
   destruct (rel_typ_of_instance Hnat HAl HMl _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as [l [RN [a1 [a2 [a3 [a4 [p1 [p2 [p3 [p4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter
        [Hmid [Hp1 [Hp2 [Hp3 [Hp4 [Hpchain [Hcod Htyp]]]]]]]]]]]]]]]]]]]]]].
-  (** The domain is [ℕ], so the PER its values live in is [per_nat] — which every
-      obligation below is stated at, [per_nat] being what an argument pair of the
-      recursor is drawn from. *)
+  (** The domain is [ℕ], so its values live in [per_nat], from which the
+    recursor's argument pairs are drawn and at which every obligation below is
+    stated. *)
   assert (a2 = ℕᵈ) as ->
     by (eapply functional_eval_exp; [ exact Ha2 | apply eval_exp_nat ]).
   assert (a3 = ℕᵈ) as ->
@@ -853,9 +832,9 @@ Proof.
   split; [ exact Htyp |].
   (** *** The Number
 
-      Its other judgment, [M ≈ M'], whose two outer values are the type's two
-      first ones; the two chains therefore merge, and the six values of the merge
-      are every argument pair the three instantiations run at. *)
+    Its other judgment, [M ≈ M'], whose two outer values are the type's first two.
+    The two chains merge, and the six values of the merge are all the argument
+    pairs the three instantiations run at. *)
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (Hp1m1 : p1 = m1) by (eapply functional_eval_exp; [ exact Hp1 | exact Hm1 ]).
@@ -871,10 +850,10 @@ Proof.
   assert (Hm24 : Dom m2 ≈ m4 ∈ per_nat) by pairwise.
   (** *** The Zero Branch
 
-      Its type is the motive at [zero], so reading that type through
-      [rel_typ_of_instance] a second time identifies the element PER [MZ]'s
-      judgment hands over with the family at [(zero, zero)] — the two agree on the
-      type's inner values, which is all irrelevance needs. *)
+    Its type is the motive at [zero], so reading that type through
+    [rel_typ_of_instance] again identifies the element PER of [MZ]'s judgment with
+    the family at [(zero, zero)]; the two agree on the type's inner values, which is
+    all irrelevance needs. *)
   destruct (rel_typ_of_instance Hnat HAl (rel_exp_zero HΓ) _ _ HΓ' _ _ _ _ _ _
               Hσj Hρ Hev Hev')
     as [lz [RNz [b1 [b2 [b3 [b4 [q1 [q2 [q3 [q4 [Hb1 [Hb2 [Hb3 [Hb4 [Houterz
@@ -901,10 +880,9 @@ Proof.
     by pairwise.
   (** *** The Three Recursions
 
-      The motive and the successor branch at an arbitrary argument pair, both
-      already in the one family; the family is supplied explicitly, since
-      [per_nat_natrec] cannot read it off an obligation without solving for a
-      relation under two binders. *)
+    The motive and the successor branch at an arbitrary argument pair, both already
+    in the one family.  The family is given explicitly, since [per_nat_natrec]
+    cannot infer a relation under two binders from an obligation. *)
   pose proof (rel_typ_of_nat_motive HΓ HA _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as Hmotgen.
   pose proof (rel_exp_of_nat_step HΓ HAl HMS _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
@@ -948,17 +926,16 @@ Hint Resolve rel_exp_natrec_cong : mctt.
 
 (** ** [β] at [zero]
 
-    The recursion at [zero] *is* the evaluation of the zero branch — that is
-    [eval_natrec_zero], read from right to left — so the two sides of the rule have
-    literally the same two inner values and [MZ]'s own chain is the goal's.  All
-    that has to be done is to name the element PER the goal's type component fixes,
-    which is the head PER of the motive at [(zero, zero)], and to identify it with
-    the one [MZ]'s judgment hands over.  Reading the type [A[Id ,, zero]] through
-    [rel_typ_of_instance] does both, exactly as in the zero-branch step of
+    The recursion at [zero] is the evaluation of the zero branch ([eval_natrec_zero]
+    read right to left), so both sides of the rule have the same two inner values
+    and [MZ]'s chain is the goal's.  What remains is to name the element PER fixed
+    by the goal's type, the head PER of the motive at [(zero, zero)], and to
+    identify it with the one from [MZ]'s judgment.  Reading [A[Id ,, zero]] through
+    [rel_typ_of_instance] does both, as in the zero-branch step of
     [rel_exp_natrec_cong].
 
-    The successor branch plays no part, so — unlike the syntactic rule, which
-    needs it to have a type at all — the premise about it can be dropped. *)
+    The successor branch plays no part, so unlike the syntactic rule this one has no
+    premise about it. *)
 Lemma rel_exp_nat_beta_zero : forall {Γ A i MZ MS},
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
@@ -1005,19 +982,18 @@ Hint Resolve rel_exp_nat_beta_zero : mctt.
 
 (** ** The Generic Recursor
 
-    The eliminator of [exp_sub_natrec_generic], validated semantically.  It is
-    needed because the [ℕ]-[β] rule for [succ] mentions the recursive call [E]
-    inside a *substitution* — [Id ,, M ,, E] — and the only way to
-    validate a substitution extension is [rel_sub_under_ctx_extend_sub_double],
-    whose last premise is a term of the context being extended.  [E] is a term of
-    [Γ]; what is asked for is a term of [Γ ▹ ℕ].  Its generic form — scrutinee
-    [#0], everything else weakened past that binder — is that term, and
-    [exp_sub_natrec_generic_self] turns it back into [E] under any extension whose
-    head is [M].
+    The eliminator of [exp_sub_natrec_generic], validated semantically.  The [ℕ]-β
+    rule for [succ] mentions the recursive call [E] inside the substitution
+    [Id ,, M ,, E], and a substitution extension can only be validated by
+    [rel_sub_under_ctx_extend_sub_double], whose last premise is a term of the
+    context being extended.  [E] is a term of [Γ], but a term of [Γ ▹ ℕ] is
+    needed.  The generic form (scrutinee [#0], everything else weakened past that
+    binder) is such a term, and [exp_sub_natrec_generic_self] turns it back into
+    [E] under any extension whose head is [M].
 
-    The proof is [rel_exp_natrec_cong] at the weakened premises, which is what
-    [rel_exp_under_ctx_wk] delivers; the two type rewrites are the syntactic
-    lemmas that say weakening commutes with the two instantiated motives. *)
+    The proof is [rel_exp_natrec_cong] at the weakened premises, which
+    [rel_exp_under_ctx_wk] provides; the two type rewrites are the syntactic lemmas
+    saying weakening commutes with the two instantiated motives. *)
 Lemma rel_exp_natrec_generic : forall {Γ A i MZ MS env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
@@ -1036,9 +1012,9 @@ Proof.
   pose proof (rel_exp_under_ctx_wk Hupqq HMS) as HMSw.
   rewrite exp_wk_sub_extend in HMZw.
   rewrite exp_wk_sub_natrec in HMSw.
-  (** The conclusion type has to be produced as [A[wk_q ↑]ʷ[Id ,, #0]] and only
-      then collapsed: rewriting the *goal* by [exp_wk_q_shift_single] backwards
-      would match the [A[wk_q ↑]ʷ] inside the motive instead. *)
+  (** The conclusion type is produced as [A[wk_q ↑]ʷ[Id ,, #0]] and only then
+    collapsed: rewriting the goal backwards by [exp_wk_q_shift_single] would match
+    the [A[wk_q ↑]ʷ] inside the motive instead. *)
   assert (HEg : Γ ▹ ℕ ⊨ rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end
                         ≈ rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end
                         : A[wk_q ↑]ʷ[Id ,, #0])
@@ -1051,43 +1027,40 @@ Qed.
 
 (** ** [β] at [succ]
 
-    The rule the whole [ℕ] section has been building towards.  Both sides run the
-    successor branch, so the two inner values are shared and the work is entirely
-    in the *outer* ones: the left side reaches [MS] through
-    [eval_natrec_succ] under [σ], the right side reaches it through the
-    doubly-extended substitution [σ ,, M[σ] ,, E[σ]], and nothing computes
-    [MS[Id ,, M ,, E][σ] = MS[σ ,, M[σ] ,, E[σ]]] semantically — no composition
-    law for evaluated substitutions exists (see the closing comment of
+    Both sides run the successor branch, so the two inner values are shared and the
+    work is in the outer ones.  The left side reaches [MS] through
+    [eval_natrec_succ] under [σ]; the right side through the doubly extended
+    substitution [σ ,, M[σ] ,, E[σ]].  Nothing computes
+    [MS[Id ,, M ,, E][σ] = MS[σ ,, M[σ] ,, E[σ]]] semantically, since evaluated
+    substitutions have no composition law (see the closing comment of
     [Core/Semantic/Evaluation/Definitions.v]).
 
-    What replaces it is two more instances of [MS]'s own judgment, each a
-    four-value pattern of its own:
+    Instead, two more instances of [MS]'s judgment are used, each a four-value
+    pattern:
 
-      - chain A at [Γ ⊨s Id ,, M ,, E], whose *outer* environments are [ρσ] and
-        [ρ'σ'] and whose inner ones are the two the recursion produces.  Its
-        fourth value is the goal's third.
-      - chain B at [Γ' ⊨s σ ,, M[σ] ,, E[σ]], whose outer environments are [ρ] and
-        [ρ'].  Its fourth value is the goal's fourth, modulo
-        [exp_sub_extend_sub2].
+    - chain A, at [Γ ⊨s Id ,, M ,, E], whose outer environments are [ρσ] and
+      [ρ'σ'] and whose inner ones are the two the recursion produces.  Its fourth
+      value is the goal's third.
+    - chain B, at [Γ' ⊨s σ ,, M[σ] ,, E[σ]], whose outer environments are [ρ] and
+      [ρ'].  Its fourth value is the goal's fourth, modulo
+      [exp_sub_extend_sub2].
 
-    Both are supplied by [rel_sub_under_ctx_extend_sub_double] applied to the
-    generic recursor, at [Id] and at [σ] respectively.  Their element PERs are
-    both identified with the goal's by irrelevance, because
-    [exp_sub_natrec_step] makes their type components' outer values the *same*
-    evaluations as the goal type's — this is the one place the generalisation of
-    that lemma from [Id] to an arbitrary [σ] is used.
+    Both come from [rel_sub_under_ctx_extend_sub_double] applied to the generic
+    recursor, at [Id] and at [σ] respectively.  Their element PERs are identified
+    with the goal's by irrelevance, because [exp_sub_natrec_step] makes the outer
+    values of their types the same evaluations as the goal type's; this is the one
+    use of that lemma at an arbitrary [σ] rather than at [Id].
 
     The three links of the goal are then:
 
-      - [v1 ≈ v2] from the first obligation of [rel_exp_of_nat_step] at
-        [(m1, m2, c1, c2)];
-      - [v2 ≈ v3] by [pairwise] on chain A;
-      - [v3 ≈ v4] by [pairwise] on chain A, the *second* step obligation at
-        [(m1, m3, c1, c3)] read backwards, and [pairwise] on chain B.
+    - [v1 ≈ v2], from the first obligation of [rel_exp_of_nat_step] at
+      [(m1, m2, c1, c2)];
+    - [v2 ≈ v3], by [pairwise] on chain A;
+    - [v3 ≈ v4], by [pairwise] on chain A, the second step obligation at
+      [(m1, m3, c1, c3)] read backwards, and [pairwise] on chain B.
 
     Each obligation lands in the motive's head PER at its own argument pair, and
-    [per_head_of_args] moves it to the pair the goal type names — as everywhere
-    else in this file. *)
+    [per_head_of_args] moves it to the pair the goal type names. *)
 Lemma rel_exp_nat_beta_succ : forall {Γ A i MZ MS M},
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
@@ -1176,10 +1149,9 @@ Proof.
   assert (e2 = f2) as -> by (eapply functional_eval_exp; [ exact He2 | exact Hf2 ]).
   assert (e3 = f3) as -> by (eapply functional_eval_exp; [ exact He3 | exact Hf3 ]).
   retype_rel_chain Hechain HAncE Hcchain.
-  (** The two recursions the goal's left-hand side runs *inside* its own
-      [eval_natrec_succ] are the ones [E] already evaluates: invert [E]'s two
-      evaluations rather than letting [simplify_evals] loose on a context of eight
-      evaluations at six different environments. *)
+  (** The two recursions the left side runs inside its [eval_natrec_succ] are the
+    ones [E] already evaluates.  Inverting [E]'s two evaluations avoids running
+    [simplify_evals] on a context of eight evaluations at six environments. *)
   pose proof Hc1 as Hc1'.
   cbn [exp_sub] in Hc1'.
   destruct (eval_exp_natrec_inversion _ _ _ _ _ _ Hc1') as [n1 [Hn1 Hrec1]].
@@ -1188,8 +1160,8 @@ Proof.
   assert (n2 = m2) as -> by (eapply functional_eval_exp; [ exact Hn2 | exact Hm2 ]).
   (** *** The Successor Branch
 
-      [E]'s chain lives at [(m2, m3)]; each obligation of the step runs at the
-      pair of arguments *it* is about, so move the relevant link there first. *)
+    [E]'s chain lives at [(m2, m3)], while each obligation of the step runs at the
+    argument pair it is about, so the relevant link is moved there first. *)
   pose proof (rel_exp_of_nat_step HΓ HA HMS _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as Hstepgen.
   assert (Hc12 : Dom c1 ≈ c2 ∈ per_head A A (ρσ ↦ m1) (ρ'σ' ↦ m2))

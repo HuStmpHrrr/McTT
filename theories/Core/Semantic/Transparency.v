@@ -1,8 +1,9 @@
 (** * NbE at a Transparent Global Context
 
     At a transparent global context ([gc_transparent]) no global evaluates to
-    a neutral, so none ever reaches a normal form: the only neutrals are
-    variables.  Module parameters are λ-variables and impose nothing. *)
+    a neutral, so no global reaches a normal form and the only neutrals are
+    variables.  Module parameters are λ-variables, so they need no special
+    treatment. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

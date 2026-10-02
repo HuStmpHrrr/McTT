@@ -1,13 +1,12 @@
 (** * ℕ and its Eliminator in the Gluing Model
 
-    Substituting a [natrec] is definitional here, so every congruence step that
-    used to relate [(rec M …)[σ]] to [rec M[σ] …] is reflexivity, and [Δ ▹ ℕ[σ]]
-    *is* [Δ ▹ ℕ].  What the port has to pay for instead is that [⟦A[Id,,zero]⟧ρ]
-    is stuck: the two instantiated motives of the eliminator are not
-    values of [A] at an extended environment, only related to them.
-    [per_univ_zero_instance] and [per_univ_nat_step_instance] supply those two
-    relations, and [saturate_glu_by_per] moves the gluing predicates along
-    them. *)
+    Substitution into [natrec] is definitional, so congruence steps for
+    [(rec M …)[σ]] are reflexivity, and [Δ ▹ ℕ[σ]] is [Δ ▹ ℕ]. The difficulty is
+    that [⟦A[Id,,zero]⟧ρ] is stuck: the two instantiated motives of the
+    eliminator are not values of [A] at an extended environment, only related
+    to them. [per_univ_zero_instance] and [per_univ_nat_step_instance] supply
+    those two relations, and [saturate_glu_by_per] moves the gluing predicates
+    along them. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -365,8 +364,8 @@ Qed.
 #[local]
 Hint Resolve cons_glu_sub_pred_q_helper : mctt.
 
-(** [ℕ[σ]] is [ℕ], so this is [cons_glu_sub_pred_q_helper] verbatim — but only
-    up to conversion, so the instance must be spelled out. *)
+(** [ℕ[σ]] is [ℕ], so this is [cons_glu_sub_pred_q_helper], but only up to
+    conversion, so the instance must be spelled out. *)
 Lemma cons_glu_sub_pred_q_nat_helper : forall {Γ SbΓ Δ σ ρ i},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
@@ -462,8 +461,8 @@ Proof.
       by (eapply realize_glu_elem_bot; mauto 3).
   econstructor; [| eassumption | eassumption | |].
   - rewrite <- (exp_sub_q_extend A σ M); mauto 3.
-  - (** [per_bot_natrec_diag] replaces the hand-rolled readback-existence
-        argument: its zero obligation is [MZ]'s own semantic element. *)
+  - (** [per_bot_natrec_diag] gives the readback; its zero obligation is
+        [MZ]'s own semantic element. *)
     assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
     assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
     assert (Γ ▹ ℕ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.

@@ -1,13 +1,12 @@
 (** * Properties of the Judgments
 
-    With substitution as a meta-level operation, the closure properties that an
-    explicit-substitution presentation gets for free from the constructors of
-    the substitution judgment have to be proved.  There are two groups:
+    Substitution is a meta-level operation, so its closure properties are
+    lemmas rather than rules.  There are two groups:
 
-    - the *algebraic* ones — that [wk_id], [↑], [wk_q], [_⊙_] and their
-      substitution counterparts are well-typed;
-    - the *transport* ones — that weakening and substitution preserve typing,
-      term equality and subtyping ([wk_preserves_wf], [sub_preserves_wf],
+    - the algebraic ones: [wk_id], [↑], [wk_q], [_⊙_] and their substitution
+      counterparts are well-typed;
+    - the transport ones: weakening and substitution preserve typing, term
+      equality and subtyping ([wk_preserves_wf], [sub_preserves_wf],
       [sub_eq_preserves_exp]).
 
     The two groups are interleaved, because [wf_sub_q] needs
@@ -49,10 +48,9 @@ Qed.
 Hint Resolve ctx_lookup_app_l : mctt.
 
 (** [wf_ctx_extend] carries no context premise, so [⊢ Γ] is not an inversion of
-    the context judgment any more — it is a presupposition of typing.  These
-    therefore come first, each by an induction that reads it off whichever premise
-    is stated at [Γ] itself; [ctx_decomp] is then a consequence rather than the
-    other way round. *)
+    the context judgment but a presupposition of typing.  These come first, each
+    by an induction that reads it off whichever premise is stated at [Γ];
+    [ctx_decomp] is a consequence. *)
 
 Lemma presup_exp_ctx : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ.
 Proof.
@@ -205,7 +203,7 @@ Hint Resolve wk_preserves_vlookup wk_preserves_vlookup_eq : mctt.
 
     Every type in an elimination rule is a substitution instance, so
     transporting a judgment along an operation produces a type with that
-    operation on the *outside*, whereas the rule to be applied wants it on the
+    operation on the outside, whereas the rule to be applied wants it on the
     inside.  [push_wk] alternates [simpl] — which distributes a weakening over
     the term formers — with the corollaries of [Substitution] that move it past
     a substitution.
@@ -255,8 +253,7 @@ Ltac push_wk_goal :=
 (** The parentheses around [on_all_hyp:] are required, not cosmetic: its
     argument is parsed at [tactic4], which already includes [_ ; _], so an
     unparenthesised continuation is silently absorbed into the per-hypothesis
-    tactic instead of running afterwards.  This is the spelling used throughout
-    [Core.Completeness]. *)
+    tactic instead of running afterwards. *)
 Ltac push_wk :=
   (on_all_hyp: (fun H => try push_wk_in H));
   push_wk_goal.
@@ -266,7 +263,7 @@ Ltac push_wk :=
     Every binder case of [wk_preserves_wf] needs the lifted weakening
     [Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w q φ : Γ ▹ A] before the induction hypothesis for the body can
     be used.  It is derivable — [wf_wk_q] is a hint — but only from the
-    induction hypothesis for the *domain*, so leaving it to [eauto] costs three
+    induction hypothesis for the domain, so leaving it to [eauto] costs three
     extra levels of search on top of the rule application, which puts the wider
     cases ([λ]-E, [ℕ]-E) out of reach at any depth that terminates.  Adding
     each lifted weakening to the context up front costs one [assert] instead.
@@ -299,7 +296,7 @@ Ltac lift_wk := repeat first [ lift_wk_nat | lift_wk_step ].
 (** The successor branch of the [ℕ]-eliminator is typed at the motive under two
     binders, so its induction hypothesis produces [A[Wk⨟Wk,,succ #1][q (q φ)]ʷ]
     where the rule wants [A[q φ]ʷ[Wk⨟Wk,,succ #1]].  [push_wk] cannot do this
-    one: [exp_wk_sub_natrec] only applies to a *doubly lifted* weakening, and in
+    one: [exp_wk_sub_natrec] only applies to a doubly lifted weakening, and in
     the induction hypothesis the weakening is still universally quantified.  So
     we instantiate the hypothesis at the lifted weakening [lift_wk] built, and
     rewrite in the result. *)
@@ -370,14 +367,13 @@ Hint Resolve wk_preserves_exp wk_preserves_exp_eq wk_preserves_subtyp : mctt.
 (** ** Reflexivity of Term Equality
 
     Reflexivity at a well-typed term is not a rule: every congruence rule of
-    the equality judgment carries one premise per subterm, so reflexivity is an induction
-    over typing.  (This is what the three congruence rules [wf_exp_eq_typ_cong],
-    [wf_exp_eq_nat_cong] and [wf_exp_eq_zero_cong] are for; with explicit
-    substitutions their instances were derivable from the [_sub] equations.)
+    the equality judgment carries one premise per subterm, so reflexivity is an
+    induction over typing.  The congruence rules [wf_exp_eq_typ_cong],
+    [wf_exp_eq_nat_cong] and [wf_exp_eq_zero_cong] exist for this purpose.
 
-    It is needed before [sub_preserves_wf], whose [Var] case for the equality judgment
-    asks for [Θ ⍮ Ξ ⍮ Γ ⊢ σ $ x ≈ σ $ x : A[σ]] at an arbitrary image of the substitution —
-    something no congruence rule provides. *)
+    It is needed before [sub_preserves_wf], whose [Var] case for the equality
+    judgment asks for [Θ ⍮ Ξ ⍮ Γ ⊢ σ $ x ≈ σ $ x : A[σ]] at an arbitrary image
+    of the substitution, which no congruence rule provides. *)
 
 Lemma wf_exp_eq_refl : forall {Θ Ξ Γ A M}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M : A.
 Proof.
@@ -398,10 +394,9 @@ Qed.
 (** Refinement is reflexive at a type.  [wf_subtyp_refl] asks for an equation,
     which for reflexivity is [wf_exp_eq_refl]; stating the composite is what lets
     a goal [Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A] be closed from a typing derivation in one step, which is
-    how every inversion lemma's introduction case ends.  (Once presupposition is
-    available, [Core.Syntactic.SystemOpt] drops the typing premise of
-    [wf_subtyp_refl] outright; this lemma stays because going through that one
-    costs a level of search that [mauto] cannot always spare.) *)
+    how every inversion lemma's introduction case ends.  [Core.Syntactic.SystemOpt]
+    drops the typing premise of [wf_subtyp_refl], but going through that costs
+    a level of search that [mauto] cannot always spare. *)
 Lemma wf_subtyp_refl_typ : forall Θ Ξ Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
 Proof.
   intros; eapply wf_subtyp_refl; mauto 2.
@@ -412,10 +407,9 @@ Hint Resolve wf_subtyp_refl_typ : mctt.
 
 (** ** Substitution Typing *)
 
-(** A weakening is a substitution.  An explicit-substitution presentation has
-    no counterpart to this: there [⇑] is a substitution in its own right.  Here [Wk] is [ι ↑], so
-    every rule whose type mentions [Wk] — the successor branch of the
-    [ℕ]-eliminator, typed at [A[Wk⨟Wk,,succ #1]] — needs this bridge. *)
+(** A weakening is a substitution.  [Wk] is [ι ↑], so every rule whose type
+    mentions [Wk], such as the successor branch of the [ℕ]-eliminator, typed at
+    [A[Wk⨟Wk,,succ #1]], needs this bridge. *)
 Lemma wf_sub_of_wk : forall Θ Ξ Γ Δ φ,
     Θ ⍮ Ξ ⍮ Γ ⊢w φ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢s (ι φ) : Δ.
@@ -553,7 +547,7 @@ Hint Resolve sub_preserves_vlookup sub_preserves_vlookup_eq : mctt.
     tactic.
 
     - The single-substitution equation is [exp_sub_extend_comm],
-      whose *right*-hand side is the unpushed form, so it is used backwards.
+      whose right-hand side is the unpushed form, so it is used backwards.
     - [sb_q] is [simpl never] — otherwise the laws about it could not be stated
       at all — so [simpl] leaves an application [q σ 0] behind, which the
       computation rule [sb_q_zero] finishes.  This comes up in the [η] rule,
@@ -747,7 +741,7 @@ Proof.
 Qed.
 
 (** The premise is context well-formedness rather than [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Type@i]
-    so that this applies at the motive of *either* side of a congruence. *)
+    so that this applies at the motive of either side of a congruence. *)
 Corollary wf_sub_natrec_step : forall Θ Ξ Γ A,
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ->
     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ.
@@ -768,15 +762,11 @@ Hint Resolve wf_sub_nat_single wf_sub_zero wf_sub_natrec_step : mctt.
 
 (** ** Context Conversion
 
-    An explicit-substitution presentation needs two further inductive judgments
-    for this — context subtyping [⊢ Θ ⍮ Ξ ⍮ Δ ⊆ Γ] and context equivalence [⊢ Θ ⍮ Ξ ⍮ Δ ≈ Γ] —
-    each with a mutual induction of its own (this is what [Core.Syntactic.CtxSub]
-    and [Core.Syntactic.CtxEq] used to be).  With substitution as an operation
-    neither is needed: [Δ] refines [Γ] exactly when the *identity* substitution
-    is well-typed from [Δ] to [Γ].  Indeed [wf_sub_apply] at [Id] says precisely
-    that every binding of [Γ] is inhabited in [Δ] at the same type — up to
-    subtyping, via [wf_exp_subtyp'] — because [A[Id]] is [A].  Transporting a
-    judgment along a refinement is then [sub_preserves_wf] at [Id].
+    [Δ] refines [Γ] exactly when the identity substitution is well-typed from
+    [Δ] to [Γ]: [wf_sub_apply] at [Id] says that every binding of [Γ] is
+    inhabited in [Δ] at the same type, up to subtyping via [wf_exp_subtyp'],
+    because [A[Id]] is [A].  Transporting a judgment along a refinement is then
+    [sub_preserves_wf] at [Id].
 
     So [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] is read "[Δ] refines [Γ]"; [wf_sub_id] is its
     reflexivity and [wf_sub_compose] its transitivity. *)
@@ -793,7 +783,7 @@ Qed.
 
 (** A lookup one binder in is a lookup weakened by [↑]; this is the shape the
     extension case below produces, and [eauto] cannot find it on its own because
-    [#(S x)] has to be *recognised* as [#x[↑]ʷ] before [wk_preserves_exp]
+    [#(S x)] has to be recognised as [#x[↑]ʷ] before [wk_preserves_exp]
     applies. *)
 Corollary wk_preserves_vlookup_shift : forall Θ Ξ Γ A B x i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -928,12 +918,11 @@ Hint Resolve wk_preserves_typ wk_preserves_typ_eq
 
 (** ** Lifting without the Extra Premise
 
-    Now that [wk_preserves_wf] and [sub_preserves_wf] are available, the already-transported type
-    premise of [wf_wk_q] and [wf_sub_q] is redundant: it *is* the conclusion of
-    [wk_preserves_typ], respectively [sub_preserves_typ].  This is the
-    simplification anticipated in the remark on [wf_sub_q].
-    We supersede the original hints, as [Definitions] does for the subtyping
-    rules. *)
+    Given [wk_preserves_wf] and [sub_preserves_wf], the transported type
+    premise of [wf_wk_q] and [wf_sub_q] is redundant: it is the conclusion of
+    [wk_preserves_typ], respectively [sub_preserves_typ] (see the remark on
+    [wf_sub_q]).  These versions replace [wf_wk_q] and [wf_sub_q] as hints, as
+    [Definitions] does for the subtyping rules. *)
 
 Corollary wf_wk_q' : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
@@ -958,9 +947,8 @@ Remove Hints wf_wk_q wf_sub_q : mctt.
 
 (** ** Cumulativity
 
-    With subtyping in the system these are no longer rules, but they are
-    derivable, and the presupposition lemma needs them to put two types at a
-    common universe. *)
+    Cumulativity is not a rule but is derivable.  The presupposition lemma
+    needs it to put two types at a common universe. *)
 
 Lemma wf_cumu : forall Θ Ξ Γ A i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -1053,7 +1041,7 @@ Qed.
 #[export]
 Hint Resolve exp_eq_trans_typ_max : mctt.
 
-(** Two types are always types at a *common* level.  Stating it in this form —
+(** Two types are always types at a common level.  Stating it in this form —
     with the level existentially quantified rather than spelled [max i j] — is
     what lets a proof reach it with [eapply] and leave both levels to
     unification, which is the only way to use cumulativity in a case whose level
@@ -1067,7 +1055,7 @@ Proof.
   exists (max i j); split; mauto 3 using lift_exp_max_left, lift_exp_max_right.
 Qed.
 
-(** [wf_pi] checks the domain and the codomain at the *same* level, which is
+(** [wf_pi] checks the domain and the codomain at the same level, which is
     almost never how they arrive: the domain's level comes from its own premise
     and the codomain's from presupposition.  This is the form that takes them as
     they come.  It is a hint, and the level it produces is a [max] of two evars,
@@ -1100,7 +1088,7 @@ Qed.
 
 (** ** Types in a Well-formed Context
 
-    Every binding of a well-formed context is a type *in that context*: the
+    Every binding of a well-formed context is a type in that context: the
     weakening carried by [ctx_lookup] is exactly what makes this so. *)
 
 (** What the global context guarantees about the parameters in scope: popping a

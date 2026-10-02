@@ -1,8 +1,8 @@
 (** * Subtyping and Conversion
 
-    Only the term rules survive: with the [⊩s] judgment gone, so are
-    [glu_rel_sub_subtyp] and [glu_rel_sub_conv], and context subtyping is now
-    [ctx_sub] rather than a judgment the gluing model has a rule for. *)
+    The gluing model has subsumption and conversion rules for terms only: there
+    is no substitution judgment, and context subtyping is the syntactic
+    relation [ctx_sub]. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

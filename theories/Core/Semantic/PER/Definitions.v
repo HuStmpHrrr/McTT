@@ -16,24 +16,23 @@ Notation "'Dom' a ≈ b ∈ R" := ((R a b : Prop) : Prop) (at level 70, a at lev
 Notation "'DF' a ≈ b ∈ R ↘ R'" := ((R R' a b : Prop) : Prop) (at level 70, a at level 69, b at level 69, R constr, R' constr).
 Notation "'Exp' a ≈ b ∈ R" := (R a b : (Prop : Type)) (at level 70, a at level 69, b at level 69, R constr).
 Notation "'EF' a ≈ b ∈ R ↘ R'" := (R R' a b : (Prop : Type)) (at level 70, a at level 69, b at level 69, R constr, R' constr).
-(** Precedences of the next notations follow the ones in the standard library.
-    However, we do not use the ones in the standard library so that we can change
-    the relation if necessary in the future. *)
+(** The next two notations have the precedences of their standard-library
+    counterparts, but are defined separately from them. *)
 Notation "R ~> R'" := (subrelation R R') (at level 70, right associativity).
 Notation "R <~> R'" := (relation_equivalence R R') (at level 95, no associativity).
 
 Generalizable All Variables.
 
 (** *** Helper Bundles *)
-(** Related modulo evaluation *)
+(** Related modulo evaluation. *)
 Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
 #[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
-(** [per_univ_elem_core] nests through this, and generating its induction
-    principle needs a scheme registered here. *)
+(** [per_univ_elem_core] nests through [rel_mod_eval], so generating its
+    induction principle needs this scheme. *)
 Scheme All for rel_mod_eval.
 
-(** Related modulo application *)
+(** Related modulo application. *)
 Inductive rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app : forall fa f'a', $| f & a |↘ fa -> $| f' & a' |↘ f'a' -> Dom fa ≈ f'a' ∈ R -> rel_mod_app f a f' a' R.
 #[global] Arguments mk_rel_mod_app {_ _ _ _ _}.
 Hint Constructors rel_mod_app : mctt.
@@ -354,11 +353,11 @@ Notation "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 #[export]
 Hint Constructors per_ctx_subtyp : mctt.
 
-(** [induction H using per_univ_elem_ind] no longer applies: the instance is
-    an argument of [per_univ_elem] that the eliminator does not quantify over
-    as an index.  This does what that [induction] did: the hypotheses about
-    the indices move into the motive, and each case introduces exactly its own
-    binders. *)
+(** Induction on a [per_univ_elem] hypothesis.  [induction H using
+    per_univ_elem_ind] does not apply, because the instance is an argument of
+    [per_univ_elem] that the eliminator does not quantify over as an index.
+    This tactic moves the hypotheses about the indices into the motive, and
+    each case introduces exactly its own binders. *)
 Ltac per_univ_elem_induction_core HH ih :=
   lazymatch type of HH with
   | per_univ_elem ?i ?R ?a ?b =>
@@ -375,15 +374,15 @@ Ltac per_univ_elem_induction_core HH ih :=
       [ do 8 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
-(** As [induction H using per_univ_elem_ind]: the hypotheses on the motive are
-    [IHH]. *)
+(** The analogue of [induction H using per_univ_elem_ind]; the induction
+    hypotheses are named [IHH]. *)
 Ltac per_univ_elem_induction H :=
   let IHn := fresh "IH" H in
   let HH := fresh "Hpue" in
   rename H into HH;
   per_univ_elem_induction_core HH ltac:(intro IHn).
 
-(** As [induction 1 using per_univ_elem_ind]. *)
+(** The analogue of [induction 1 using per_univ_elem_ind]. *)
 Ltac per_univ_elem_induction1 :=
   intros until 1;
   match goal with H : per_univ_elem _ _ _ _ |- _ => per_univ_elem_induction_core H ltac:(intro) end.
