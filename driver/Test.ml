@@ -99,6 +99,29 @@ let%expect_test "simple_rec.mctt works" =
       : forall (x1 : Nat) -> Nat
     |}]
 
+let%expect_test "true_false.mctt works" =
+  let _ = main_of_example "true_false.mctt" in
+  [%expect {|
+    Evaluate true --> true : True
+    Evaluate fun (x1 : True) -> x1 --> fun (x1 : True) -> true
+      : forall (x1 : True) -> True
+    Evaluate fun (x1 : False) -> exfalso x1 return x2 . Nat
+      --> fun (x1 : False) -> exfalso x1 return x2 . Nat
+      : forall (x1 : False) -> Nat
+    |}]
+
+let%expect_test "zero is not of True" =
+  let _ = main_of_body "eval zero : True" in
+  [%expect {| Error: 0 is not of type True |}]
+
+let%expect_test "exfalso needs a motive" =
+  let _ = main_of_body "eval exfalso f end" in
+  [%expect {|
+    Error: on "end" (at line 1, column 34 - line 1, column 37): Either an
+      expression or "return" keyword is expected.
+      This token is invalid for the beginning of an expression.
+    |}]
+
 let%expect_test "pair.mctt works" =
   let _ = main_of_example "pair.mctt" in
   [%expect {|
