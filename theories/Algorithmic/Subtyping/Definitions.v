@@ -12,8 +12,8 @@ Definition not_univ_pi (A : nf) : Prop :=
   | _ => True
   end.
 
-(** Subtyping of normal forms is about syntax alone: it neither evaluates nor
-    reads a judgment, so it is stated once, outside the fixed global context. *)
+(** Subtyping of normal forms is purely syntactic: it neither evaluates nor
+    refers to a judgment, so it is defined outside the fixed global context. *)
 Inductive alg_subtyping_nf : nf -> nf -> Prop :=
 | asnf_refl : forall A A',
     not_univ_pi A ->

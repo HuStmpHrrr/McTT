@@ -12,11 +12,8 @@ Open Scope list_scope.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** A Kripke weakening is [⇑^n] on the nose ([kripke_shiftn]), so it acts on a
-    variable by index arithmetic alone.  This replaces the [var_weaken_gen]
-    induction of the explicit-substitution development, which had to compute
-    [#(length Γ1)[σ]] for an arbitrary weakening [σ] by way of a context-lookup
-    analysis ([wf_ctx_sub_ctx_lookup]) and a subtyping detour. *)
+(** A Kripke weakening is [⇑^n] on the nose ([kripke_shiftn]), so it acts on
+    a variable by index arithmetic alone. *)
 Lemma wk_var_kripke : forall Γ Δ φ x,
     Δ ⊢k φ : Γ ->
     φ x = x + (length Δ - length Γ).
@@ -26,8 +23,8 @@ Proof.
 Qed.
 
 (** The instance the gluing model needs: the canonical variable of an extended
-    context is read back as the de Bruijn *index* counting down from the length
-    of wherever the weakening lands. *)
+    context reads back as the de Bruijn index counting down from the length of
+    the context the weakening lands in. *)
 Corollary wk_var0_kripke : forall Γ A Δ φ,
     Δ ⊢k φ : Γ ▹ A ->
     φ 0 = length Δ - length Γ - 1.

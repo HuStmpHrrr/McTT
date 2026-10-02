@@ -52,7 +52,8 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
-(** A global, at the closed type resolution hands back. *)
+(** A global infers the normal form of the closed type that resolution
+    returns for it. *)
 | ati_glob :
   `( gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B) ->
      nbe_ty_f Γ A C ->
@@ -77,10 +78,9 @@ Combined Scheme alg_type_mut_ind from
 
 (** ** User Expressions
 
-    The expressions the type checker is willing to be given.  Every [exp] is one:
-    the distinction the predicate used to make disappeared when substitution
-    stopped being a constructor, and it is kept only because [type_check_closed]
-    is indexed by it. *)
+    The expressions the type checker accepts.  Every [exp] is one
+    ([user_exp_all]); the predicate exists because [type_check_closed] is
+    indexed by it. *)
 Generalizable All Variables.
 
 Inductive user_exp : exp -> Prop :=

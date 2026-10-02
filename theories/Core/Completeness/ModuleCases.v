@@ -1,7 +1,7 @@
 (** * The Global Rules: Validity along an Embedding
 
     A judgment of the global context [Θ1 ⍮ Ξ1] is valid at every [Θ2 ⍮ Ξ2] it
-    *embeds* into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2]
+    embeds into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2]
     ([sem_emb]).  Entries are closed and paths absolute, so an embedding moves
     nothing: the fundamental theorem holds in this form for every rule
     ([kripke_fundamental]), each case being the fixed-context case lemma at the
@@ -102,11 +102,11 @@ Qed.
 
 (** ** Globals from the validity of their types and bodies
 
-    The δ-rule evaluates the generalized body in the *empty* environment, and a
+    The δ-rule evaluates the generalized body in the empty environment, and a
     global or parameter is a neutral annotated with its type evaluated there.
-    [nil] is reached by [sb_zero], which evaluates to [nil] in any environment
-    (a list environment reads [zeroᵈ] past its end); so instantiating a [⋅]
-    judgment at [sb_zero] relates the value at [nil] to the value anywhere. *)
+    [nil] is reached by [sb_zero], which evaluates to [nil] in any environment (a
+    list environment reads [zeroᵈ] past its end), so instantiating a [⋅] judgment
+    at [sb_zero] relates the value at [nil] to the value anywhere. *)
 
 Definition sb_zero : sub := fun _ => a_zero.
 

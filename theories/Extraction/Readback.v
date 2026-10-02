@@ -169,10 +169,9 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     exist _ ⇑ⁿ B _.
 
 
-(** The definitions of [read_*_impl] already come with soundness proofs,
-    so we only need to prove completeness. However, the completeness
-    is also obvious from the soundness of eval orders and functional
-    nature of readback. *)
+(** The [read_*_impl] functions are sound by construction.  Completeness
+    follows from the soundness of the readback orders and the functionality
+    of readback. *)
 
 #[local]
 Ltac functional_read_complete :=

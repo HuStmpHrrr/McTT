@@ -114,8 +114,8 @@ Definition gds_agree (Θ Θ' : gdeps) : Prop :=
 
 (** ** Privacy
 
-    REVISIT: privacy is checked by the elaborator only, which tracks what is
-    visible in the current scope.  Nothing here reads [ge_def]'s privacy flag. *)
+    REVISIT: privacy is checked only by the elaborator, and nothing here reads
+    the privacy flag of [ge_def]. *)
 
 Section Semantics.
   (** File IO: the contents of the unit at a path, if there is one. *)

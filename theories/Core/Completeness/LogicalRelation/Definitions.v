@@ -1,19 +1,18 @@
 (** * The Semantic Judgments
 
-    The judgments are defined in four layers — weakenings, substitutions, terms, subtyping — and then packaged
-    by an inductive [⊨ Γ].
+    The judgments are defined in four layers (weakenings, substitutions, terms,
+    subtyping) and packaged by an inductive [⊨ Γ].
 
-    Each of the middle two layers states its conclusion as a *four-value
-    pattern* (see [Core/Semantic/PER/Chain.v]):
-
-      {⟦M[σ]⟧(ρ), ⟦M⟧(⟦σ⟧(ρ)), ⟦M'⟧(⟦σ'⟧(ρ')), ⟦M'[σ']⟧(ρ')} ⊆ R
-
-    whose three consecutive links are, in order, the *commutation* obligation on
-    the left, the *relatedness* obligation in the middle, and the commutation
-    obligation on the right.  With explicit substitutions the two commutations
-    are reflexivity, because [⟦M[σ]⟧(ρ)] and [⟦M⟧(⟦σ⟧(ρ))] are then the same
-    derivation; with substitution as an operation they are not even equal, and discharging them at every case of the fundamental theorem is the
-    price of the operational presentation. *)
+    The substitution and term layers state their conclusion as a four-value
+    pattern (see [Core/Semantic/PER/Chain.v]):
+<<
+{⟦M[σ]⟧(ρ), ⟦M⟧(⟦σ⟧(ρ)), ⟦M'⟧(⟦σ'⟧(ρ')), ⟦M'[σ']⟧(ρ')} ⊆ R
+>>
+    Its three consecutive links are the commutation obligation on the left, the
+    relatedness obligation in the middle, and the commutation obligation on the
+    right.  Substitution is an operation, so [⟦M[σ]⟧(ρ)] and [⟦M⟧(⟦σ⟧(ρ))] are in
+    general not equal, and every case of the fundamental theorem must discharge
+    both commutations. *)
 
 From Stdlib Require Import List Relations.
 Import ListNotations.
@@ -32,13 +31,12 @@ Section Fixed_GCtx.
 
 (** * Semantic Weakening
 
-    Because a weakening is an operation, related environments are not
-    automatically related after it is applied; the semantic judgment for
-    weakenings simply demands it.  Stripped of its two context witnesses this is
-    [Proper (R ==> R') (eval_wk φ)], for a weakening that moves no variable
-    down: environments are lists, and that is what makes weakenings compose on
-    them ([eval_wk_compose]).  Every weakening the proofs instantiate this at is
-    built from [↑] and [wk_q], hence is one. *)
+    A weakening is an operation, so related environments need not stay related
+    after it is applied; the semantic judgment for weakenings requires that they
+    do.  Without its two context witnesses it is [Proper (R ==> R') (eval_wk φ)],
+    for a weakening that moves no variable down: environments are lists, which is
+    what makes weakenings compose on them ([eval_wk_compose]).  Every weakening
+    the proofs use is built from [↑] and [wk_q], hence is of this kind. *)
 
 Record rel_wk (φ : wk) (R R' : relation env) : Prop := mk_rel_wk
   { rel_wk_mono : WkMono φ
@@ -88,11 +86,11 @@ Hint Unfold valid_sub_under_ctx : mctt.
 
 (** * Semantic Judgment for Terms
 
-    Terms are asked to be stable under semantic *substitutions* rather than
-    weakenings.  [rel_exp] is the four-value pattern of one expression pair; the
-    two environments [ρσ] and [ρ'σ'] are parameters rather than existentials
-    because the type chain and the term chain must be read in the *same* pair of
-    environments — an environment carries into closures, so replacing it by a
+    Terms are required to be stable under semantic substitutions rather than
+    weakenings.  [rel_exp] is the four-value pattern of one expression pair.  The
+    two environments [ρσ] and [ρ'σ'] are parameters rather than existentials,
+    because the type chain and the term chain must be read in the same pair of
+    environments: closures capture their environment, so replacing it by a
     pointwise-equal one changes the values. *)
 
 Inductive rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (ρ' ρ'σ' : env) (R : relation domain) : Prop :=
@@ -106,33 +104,30 @@ Inductive rel_exp (M : exp) (σ : sub) (ρ ρσ : env) (M' : exp) (σ' : sub) (�
 #[global] Arguments mk_rel_exp {_ _ _ _ _ _ _ _ _}.
 Hint Constructors rel_exp : mctt.
 
-(** The same pattern one universe up: the four values of a *type* are related in
-    [per_univ_elem i R], which additionally pins down the element PER [R] that
-    the term chain then lives in. *)
+(** The same pattern one universe up: the four values of a type are related in
+    [per_univ_elem i R], which also fixes the element PER [R] that the term chain
+    lives in. *)
 Definition rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R :=
   rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ_elem i R).
 #[global] Arguments rel_typ _ _ _ _ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
 Hint Unfold rel_typ : mctt.
 
-(** The notation [⟦σ⟧(ρ)] for the environment [σ] evaluates to suggests that
-    evaluation is a metafunction.  Here it is a relation, and
-    [functional_eval_sub] pins its result down only up to [env_eq] — which is
-    *not* enough to substitute one witness for another, since evaluation does not
-    respect [env_eq] (a closure captures its environment).  So the two
-    environments are quantified **universally**, over evaluation witnesses
-    supplied by the caller, rather than existentially: any two proofs that [σ]
-    evaluates at [ρ] are then interchangeable by construction.
+(** The notation [⟦σ⟧(ρ)] suggests that evaluation of [σ] is a function.  It is
+    a relation, and [functional_eval_sub] determines its result only up to
+    [env_eq].  That does not allow substituting one witness for another, since
+    evaluation does not respect [env_eq] (a closure captures its environment).  So
+    the two environments are quantified universally, over evaluation witnesses
+    supplied by the caller, rather than existentially; any two proofs that [σ]
+    evaluates at [ρ] are then interchangeable.
 
-    Nothing is lost.  The judgment no longer *claims* that [σ] evaluates at [ρ],
-    but that claim is already part of [rel_sub_under_ctx Γ' Γ σ σ'], which every
-    instantiation must supply anyway.  And nothing is gained for free: each case
-    of the fundamental theorem must now produce its values at whatever
-    environment the caller names.  That it can is exactly what makes the
-    inductive cases fit together — a premise's values arrive in the *same*
-    environment as the conclusion's, so two instantiations of one judgment
-    genuinely share values instead of merely being pointwise equal, and
-    [rel_chain_merge] applies. *)
+    The judgment does not itself claim that [σ] evaluates at [ρ]; that is part of
+    [rel_sub_under_ctx Γ' Γ σ σ'], which every instantiation supplies.  In return,
+    each case of the fundamental theorem must produce its values at whatever
+    environment the caller names.  This is what makes the inductive cases fit: a
+    premise's values arrive in the same environment as the conclusion's, so two
+    instantiations of one judgment share values rather than being pointwise
+    equal, and [rel_chain_merge] applies. *)
 Definition rel_exp_under_ctx Γ A M M' : Prop :=
   exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
   forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
@@ -182,10 +177,9 @@ Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at
 
 (** * Semantic Context Well-Formedness
 
-    Unlike [valid_ctx] (which is just [per_ctx Γ Γ]), this is inductive, and each
-    extension step carries both the context PER witness and the semantic
-    well-formedness of the type — so [sem_ctx_per_ctx_env] reads the PER
-    straight off any derivation. *)
+    An inductive judgment whose extension step carries both the context PER
+    witness and the semantic well-formedness of the type, so
+    [sem_ctx_per_ctx_env] reads the PER off any derivation. *)
 
 Inductive sem_ctx : ctx -> Prop :=
 | sem_ctx_nil : ⊨ ⋅

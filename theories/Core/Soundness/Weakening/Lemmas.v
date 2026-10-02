@@ -10,7 +10,8 @@ Import Syntax_Notations Wk_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** In the form the gluing proofs use it: a Kripke weakening is a substitution.  Not [Γ ⊢w φ : Δ] — see [Definitions]. *)
+(** A Kripke weakening is a substitution, in the form the gluing proofs use.
+    It is not [Γ ⊢w φ : Δ]; see [Definitions]. *)
 Lemma kripke_escape : forall Γ Δ φ,
     Γ ⊢k φ : Δ ->
     Γ ⊢s (ι φ) : Δ.
@@ -79,10 +80,9 @@ Qed.
 
 Hint Resolve kripke_compose : mctt.
 
-(** Equivalently: every Kripke weakening is [⇑^n], and
-    [n] is the difference of the two lengths.  The gluing model needs this
-    because a readback turns a de Bruijn *level* into an index by counting from
-    the length of the context it lands in. *)
+(** Every Kripke weakening is [⇑^n], where [n] is the difference of the two
+    lengths. The gluing model needs this because readback turns a de Bruijn
+    level into an index by counting from the length of the target context. *)
 Lemma kripke_shiftn : forall Γ Δ φ,
     Γ ⊢k φ : Δ ->
     length Δ <= length Γ /\ wk_eq φ (wk_shiftn (length Γ - length Δ)).
@@ -125,9 +125,9 @@ Qed.
 
 Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
 
-(** [Type@i] and [ℕ] are closed, so transporting them is the identity — but
-    only up to reduction, which [eauto]'s [simple apply] does not do.  Compare
-    [wk_preserves_typ] in [System.Lemmas]. *)
+(** [Type@i] and [ℕ] are closed, so transporting them is the identity, but
+    only up to reduction, which the [simple apply] of [eauto] does not
+    perform. Compare [wk_preserves_typ] in [System.Lemmas]. *)
 
 Corollary kripke_preserves_typ : forall Γ Δ A φ i,
     Δ ⊢ A : Type@i ->
@@ -197,9 +197,9 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
              kripke_preserves_nat kripke_preserves_nat_eq
              kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
 
-(** [q φ] is *not* a Kripke weakening — it is not a shift.  It is still a
-    substitution, though, and that is all the [Π] clauses of the gluing model
-    need in order to type a codomain in the extended context. *)
+(** [q φ] is not a Kripke weakening, since it is not a shift. It is still a
+    substitution, which is all the [Π] clauses of the gluing model need to type
+    a codomain in the extended context. *)
 
 Corollary kripke_q_escape : forall Γ Δ A φ i,
     Δ ⊢ A : Type@i ->

@@ -1,16 +1,8 @@
 (** * Corollaries of the Syntactic Theory
 
-    This file used to collect some thirty rearrangements of the substitution
-    calculus — [q σ ∘ (τ ,, t) ≈ σ ∘ τ ,, t], [A[Wk][σ ,, M] ≈ A[σ]],
-    [Type@i[σ] : Type@(S i)] and so on — each proved as a judgmental equality
-    from the congruence and computation rules.  With substitution as an
-    operation every one of them is a propositional equality of [exp], proved
-    once and for all in [Substitution]; the typing corollaries that remained
-    were instances of [sub_preserves_exp] and its siblings.
-
-    What is left is the reasoning about *context lookup* that the soundness
-    proof's variable case needs, which is genuinely about lists and not about
-    substitution. *)
+    Reasoning about context lookup, needed by the variable case of the
+    soundness proof.  The laws of the substitution calculus are propositional
+    equalities of [exp], proved in [Substitution]. *)
 
 From Stdlib Require Import List.
 

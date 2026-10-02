@@ -10,8 +10,8 @@ Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at l
 
 Generalizable All Variables.
 
-(** Readback into a context with [s] variables, relative to the global context
-    closures are evaluated in. *)
+(** Readback of values into normal and neutral forms in a context with [s]
+    variables.  The global context is needed to evaluate closures. *)
 Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_type :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
@@ -25,9 +25,9 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ ℕᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 | read_nf_fn :
-  `( (** Normal form of arg type *)
+  `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     (** Normal form of eta-expanded body *)
+     (** The normal form of the η-expanded body. *)
      $| m & ⇑! a s | Θ ⍮ Ξ ↘ m' ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
      Rnf ⇓ b m' in Θ ⍮ Ξ ⍮ S s ↘ M ->
@@ -45,20 +45,20 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rnf n in Θ ⍮ Ξ ⍮ s ↘ N ->
      Rne m $ᵈ n in Θ ⍮ Ξ ⍮ s ↘ M $ⁿ N )
 | read_ne_natrec :
-  `( (** Normal form of motive *)
+  `( (** The normal form of the motive. *)
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 
-     (** Normal form of mz *)
+     (** The normal form of the zero case. *)
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ zeroᵈ ↘ bz ->
      Rnf ⇓ bz mz in Θ ⍮ Ξ ⍮ s ↘ MZ ->
 
-     (** Normal form of MS *)
+     (** The normal form of the successor case. *)
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ succᵈ (⇑! ℕᵈ s) ↘ bs ->
      ⟦ MS ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s) ↘ ms ->
      Rnf ⇓ bs ms in Θ ⍮ Ξ ⍮ S (S s) ↘ MS' ->
 
-     (** Neutral form of m *)
+     (** The neutral form of the scrutinee. *)
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
 
      Rne recᵈ m under ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
@@ -71,10 +71,10 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_nat :
   `( Rtyp ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
 | read_typ_pi :
-  `( (** Normal form of arg type *)
+  `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
 
-     (** Normal form of ret type *)
+     (** The normal form of the return type. *)
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! a s ↘ b ->
      Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
 

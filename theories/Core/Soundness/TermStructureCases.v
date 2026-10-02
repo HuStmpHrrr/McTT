@@ -1,8 +1,7 @@
 (** * Variables and Presuppositions
 
-    The old [glu_rel_exp_sub] is gone with the [⊩s] judgment: there is no
-    substitution rule, because [⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧ρ)] fails as an
-    equation and the gluing predicates are indexed by values, not by relations. *)
+    There is no substitution rule: [⟦M[σ]⟧(ρ) = ⟦M⟧(⟦σ⟧ρ)] is not an equation,
+    and the gluing predicates are indexed by values, not by relations. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -46,11 +45,10 @@ Qed.
 
 Hint Resolve presup_typ_glu_rel_exp : mctt.
 
-(** Syntactically the variable case is now cheap — [#(S n)[σ]] *is*
-    [#n[Wk⨟σ]] and [ρ (S n)] *is* [ρ↯ n], so the old chain of [wf_exp_eq]
-    rewrites collapses to one [exp_sub_shift].  What is not cheap is the type
-    *value*: [cons_glu_sub_pred] supplies [⟦A⟧(ρ↯)] while the goal reads
-    [⟦A[↑]ʷ⟧(ρ)], and those are not equal.
+(** The variable case. Syntactically it is direct: [#(S n)[σ]] is
+    [#n[Wk⨟σ]] and [ρ (S n)] is [ρ↯ n], so one [exp_sub_shift] suffices. The
+    type value needs more work: [cons_glu_sub_pred] supplies [⟦A⟧(ρ↯)] while
+    the goal mentions [⟦A[↑]ʷ⟧(ρ)], and the two are not equal.
     [completeness_fundamental_typ_shift] relates them, and
     [glu_univ_elem_resp_per_univ] moves [P] and [El] across. *)
 Lemma glu_rel_exp_vlookup : forall {Γ x A},

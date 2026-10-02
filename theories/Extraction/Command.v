@@ -1,20 +1,23 @@
 (** * Running Commands
 
-    The executable for [Core.Syntactic.System.Command]: sound by construction
-    (every result carries its [post_*]), complete by [run_impl_complete].
+    The executable for [Core.Syntactic.System.Command].  It is sound by
+    construction, since every result carries its [post_*], and complete by
+    [run_impl_complete].
 
-    It accumulates: one [Θ] for the whole program, into which every loaded
-    unit is filed once, and a table [K] giving each filed unit's closure, the
-    paths of the state its own run ended in.  A unit being run tracks the
-    closure [D] of what it has imported so far, and is checked against
-    [gds_restrict D Θ], which [equiv_restrict] relates to the judgment's state
-    by weakening in both directions.  Loading recurses on the accessibility of
-    the chain ([load_step]), which is well founded when [load_path] knows
-    finitely many files ([load_step_wf]); the executable never sees them.
+    A run maintains:
 
-    Besides, a run logs each [eval] it checked, normalized ([eval_entry],
-    certified by [eval_ok]), and fails with a [run_error] carrying the terms
-    involved. *)
+    - one [Θ] for the whole program, in which every loaded unit is filed once;
+    - a table [K] giving the closure of each filed unit, that is, the paths
+      of the state its own run ended in;
+    - for the unit being run, the closure [D] of what it has imported so far.
+
+    A unit is checked against [gds_restrict D Θ], which [equiv_restrict]
+    relates to the judgment's state by weakening in both directions.  Loading
+    recurses on the accessibility of the import chain ([load_step]).
+
+    A run also logs each [eval] it checked, with its normal form
+    ([eval_entry], certified by [eval_ok]), and fails with a [run_error]
+    carrying the terms involved. *)
 
 From Stdlib Require Import List String Wellfounded Wf_nat.
 
@@ -84,7 +87,7 @@ Qed.
 
 Definition path_str (fp : fpath) : string := String.concat "::" fp.
 
-(** The chain up to the unit imported again, which is where the cycle starts. *)
+(** The chain up to the unit imported again, where the cycle starts. *)
 Fixpoint chain_to (fp : fpath) (ch : list fpath) : list fpath :=
   match ch with
   | nil => nil
@@ -100,9 +103,9 @@ Definition cycle_msg (cyc : list fpath) : string :=
 
 (** ** Results
 
-    What a run fails on, with the terms involved where there are any, so that
-    the driver can print them.  The message of [re_unit] is about the unit at
-    the path it carries, which it does not repeat. *)
+    The errors a run can fail with, carrying the terms involved, if any, for
+    the driver to print.  The message of [re_unit] concerns the unit at the
+    path it carries and does not repeat that path. *)
 
 Inductive run_error : Set :=
 | re_msg : string -> run_error
@@ -119,10 +122,10 @@ Inductive rres (A : Type) : Type :=
 Arguments rok {A}.
 Arguments rerr {A}.
 
-(** An [eval], checked and normalized: in the restriction [ev_deps] of the
-    state to the imports so far, on the stack [ev_stack], in the context of the
-    frames' parameters, the expression [ev_exp] has type [ev_typ] (the ascribed
-    one, or the inferred one), and normalizes to [ev_nf]. *)
+(** A checked and normalized [eval]: in the restriction [ev_deps] of the
+    state to the imports so far, on the stack [ev_stack], and in the context
+    of the frames' parameters, the expression [ev_exp] has type [ev_typ]
+    (ascribed or inferred) and normalizes to [ev_nf]. *)
 Record eval_entry : Set :=
   { ev_deps : gdeps; ev_stack : gstack; ev_exp : exp; ev_typ : typ; ev_nf : nf }.
 
@@ -132,7 +135,7 @@ Definition eval_ok (e : eval_entry) : Prop :=
 
 Definition logs_ok (l : list eval_entry) : Prop := forall e, In e l -> eval_ok e.
 
-(** The log of a run, in program order, each entry certified. *)
+(** The log of a run, in program order, with every entry certified. *)
 Definition elog : Set := {l | logs_ok l}.
 
 Definition log_nil : elog := exist logs_ok nil (fun e (H : In e nil) => False_ind _ H).
@@ -200,25 +203,26 @@ Section Impl.
   Definition closedK (K : kmap) (D : list fpath) : Prop :=
     forall x Dx, In x D -> kfind K x = Some Dx -> incl Dx D.
 
-  (** A filed unit is what loading its file yields, under a chain starting with
-      it, at the height of the state that run ended in; that state is filed as
-      well, and [K] has its domain, closed. *)
+  (** A filed unit is what loading its file yields, under a chain starting
+      with it, at the height of the state that run ended in.  That state is
+      filed as well, and [K] records its domain, closed. *)
   Definition entry_ok (Θ : gdeps) (K : kmap) (fp : fpath) (U : gunit) : Prop :=
     exists D, kfind K fp = Some D /\ closedK K D /\
       exists src prg u ch ΘU, load_path fp = Some src /\ read src = Some prg /\ prog_path prg = fp /\
         to_core prg = Some u /\ run_unit (fp :: ch) u ΘU U /\
         gds_level Θ fp = Some (List.length ΘU) /\ ΘU ⊑ Θ /\ set_eq D (gds_dom ΘU).
 
-  (** The global state, for a run under chain [ch]: nothing on the chain is
-      filed yet. *)
+  (** The invariant of the global state for a run under chain [ch]; in
+      particular, nothing on the chain is filed yet. *)
   Record ginv (ch : list fpath) (Θ : gdeps) (K : kmap) : Prop :=
     { gi_wf : wf_gdeps Θ
     ; gi_chain : forall x, In x ch -> gds_lookup Θ x = None
     ; gi_entry : forall fp U, gds_lookup Θ fp = Some U -> entry_ok Θ K fp U
     ; gi_kdom : forall fp D, kfind K fp = Some D -> gds_lookup Θ fp <> None }.
 
-  (** The state of a unit being run, against the judgment's state [ΘR]: the
-      units [D] it imported are those of [ΘR], filed alike in [Θ]. *)
+  (** The invariant of the unit being run, relative to the judgment's state
+      [ΘR]: the units [D] it imported are those of [ΘR], filed identically in
+      [Θ]. *)
   Record linv (ch : list fpath) (Θ : gdeps) (K : kmap) (D : list fpath) (ΘR : gdeps) (Ξ : gstack) : Prop :=
     { li_g : ginv ch Θ K
     ; li_sub : ΘR ⊑ Θ
@@ -231,8 +235,8 @@ Section Impl.
   Definition ext (Θ : gdeps) (K : kmap) (Θ' : gdeps) (K' : kmap) : Prop :=
     Θ ⊑ Θ' /\ forall x Dx, kfind K x = Some Dx -> kfind K' x = Some Dx.
 
-  (** What a run filed, it imported: at the top level, the result has exactly
-      the domain of the judgment's. *)
+  (** Whatever a run files, it imports; hence at the top level the result has
+      exactly the domain of the judgment's state. *)
   Definition grows (Θ Θ' : gdeps) (D' : list fpath) : Prop :=
     forall x, In x (gds_dom Θ') -> In x (gds_dom Θ) \/ In x D'.
 
@@ -342,7 +346,7 @@ Section Impl.
     destruct Ξ as [| [mp U] Ξ]; [ contradiction |]; cbn; exists x; split; [ reflexivity | exact Hfr ].
   Qed.
 
-  (** A unit's own frame: its path heads the chain, so nothing filed it. *)
+  (** A unit's own frame: its path heads the chain, so it is not filed. *)
   Lemma linv_push_unit {fp ch Θ K D ΘR P} :
     linv (fp :: ch) Θ K D ΘR nil -> ⊢ gds_restrict D Θ ⍮ nil ⍮ P ->
     ⊢ ΘR ⍮ nil ⍮ P /\ linv (fp :: ch) Θ K D ΘR (gs_push (p_abs fp nil) P nil).
@@ -382,8 +386,8 @@ Section Impl.
 
   (** ** One Step per Rule
 
-      Each lemma is the [post_*] of one branch of the executable, from the
-      checks that branch made. *)
+      Each lemma proves the [post_*] of one branch of the executable from the
+      checks that branch makes. *)
 
   Lemma def_ok {ch Θ K D Ξ x b pv A M} :
     gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -447,8 +451,9 @@ Section Impl.
     exists ΘR; split; [ exact Hr | split; [ exact Hli | split; [ apply ext_refl | apply grows_refl ] ] ].
   Qed.
 
-  (** A filed unit the unit being run has not imported: the judgment loads it,
-      which the entry of [Θ] justifies once the chain is changed. *)
+  (** Importing a filed unit that the unit being run has not imported yet:
+      the judgment loads it, which the entry of [Θ] justifies once the chain
+      is changed. *)
   Lemma import_hit_ok {ch Θ K D Ξ fp ip U Dfp} :
     ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp -> gm_has_mod (gu_mod U) ip ->
     post_cmd ch Θ K D Ξ (cc_import fp ip) (cst Θ K (p_union D (fp :: Dfp)) Ξ).
@@ -490,8 +495,8 @@ Section Impl.
     constructor; auto; intros x [<- | Hx]; auto.
   Qed.
 
-  (** A loaded unit is filed above the restriction to its closure, which is
-      where the judgment files it, above the state it ended in. *)
+  (** A loaded unit is filed above the restriction to its closure, matching
+      the judgment, which files it above the state its run ended in. *)
   Definition load_state (fp : fpath) (D : list fpath) (Ξ : gstack) (r : ustate) : cstate :=
     cst (gds_merge (us_deps r) (file fp (us_unit r) (gds_restrict (us_dom r) (us_deps r))))
         ((fp, us_dom r) :: us_k r) (p_union D (fp :: us_dom r)) Ξ.
@@ -635,7 +640,7 @@ Section Impl.
   Lemma unit_pre {ch Θ K} : ginv ch Θ K -> exists ΘR, linv ch Θ K nil ΘR nil.
   Proof. intros G; exists nil; exact (nil_linv G). Qed.
 
-  (** The imports ran on the empty stack, and left it empty. *)
+  (** The imports run on the empty stack and leave it empty. *)
   Lemma unit_imports {ch Θ K imps r1} :
     ginv ch Θ K -> post_cmds ch Θ K nil nil imps r1 ->
     exists ΘR1, run_cmds ch nil nil imps ΘR1 nil /\ cs_stack r1 = nil /\
@@ -686,13 +691,12 @@ Section Impl.
 
   (** ** The Executable
 
-      Commands are structural, and so are the lists of them nested in modules
-      ([cmds_step] takes the function for one command as a uniform parameter,
-      so the guard checker sees through it).  Only a load recurses on something
-      else: the chain grows by an unfiled path [load_path] knows, which
-      [load_step] makes well founded given finitely many files
-      ([load_step_wf]); the executable takes the accessibility proof, and
-      never the files. *)
+      Recursion on commands is structural, including on the command lists
+      nested in modules: [cmds_step] takes the function for one command as a
+      uniform parameter, so the guard checker sees through it.  Only a load
+      recurses on something else: the chain grows by an unfiled path that
+      [load_path] knows ([load_step]).  The executable takes the
+      accessibility proof, never the list of files. *)
 
   Definition load_step (ch' ch : list fpath) : Prop :=
     exists fp s, ch' = fp :: ch /\ ~ In fp ch /\ load_path fp = Some s.
@@ -701,8 +705,8 @@ Section Impl.
     load_step (fp :: ch) ch :=
     ex_intro _ fp (ex_intro _ src (conj eq_refl (conj Hn Hs))).
 
-  (** How a unit loaded under chain [ch] is run; its log is the evals of the
-      unit itself, not of those it loaded. *)
+  (** How a unit loaded under chain [ch] is run.  Its log holds the evals of
+      the unit itself, not of the units it loads. *)
   Definition loader (ch : list fpath) : Type :=
     forall fp src, ~ In fp ch -> load_path fp = Some src ->
       forall Θ K u, ginv (fp :: ch) Θ K -> rres ({r | post_unit (fp :: ch) Θ K u r} * elog)%type.
@@ -856,9 +860,9 @@ Section Impl.
   Lemma run_unit_impl_unfold : forall ch Hacc, run_unit_impl ch Hacc = run_unit_step ch (loader_of ch Hacc).
   Proof. intros ? []; reflexivity. Qed.
 
-  (** The program given on the command line: run like an imported unit, with
-      itself as the whole chain, from nothing filed.  The log is of its own
-      evals; those of the units it loaded are checked, but not returned. *)
+  (** The program given on the command line is run like an imported unit,
+      with itself as the whole chain and nothing filed.  The log holds its
+      own evals; those of the units it loads are checked but not returned. *)
   Definition prog_impl (prg : Cst.prog) (Hacc : Acc load_step (prog_path prg :: nil)) :
     rres (gdeps * gunit * list eval_entry)%type :=
     match to_core prg with
@@ -873,7 +877,7 @@ Section Impl.
   (** ** Soundness
 
       By construction: a result carries its [post_*], whatever the loader and
-      whatever the accessibility proof. *)
+      the accessibility proof. *)
 
   Lemma top_equiv : forall ΘU Θ, canon ΘU -> canon Θ -> ΘU ⊑ Θ -> Θ ⊑ ΘU -> gds_equiv ΘU Θ.
   Proof.
@@ -926,10 +930,10 @@ Section Impl.
 
   (** ** Completeness
 
-      By induction on the derivation, for every accessibility proof: the
+      By induction on the derivation, for every accessibility proof.  The
       executable loads only where the derivation does ([rc_import_load]), and
-      then under the same chain.  Where it shares a unit filed already, the
-      derivation loads it but the executable does not recurse. *)
+      under the same chain.  For a unit filed already, the derivation loads it,
+      but the executable shares it without recursing. *)
 
   Theorem run_impl_complete :
     (forall ch ΘR Ξ c ΘR' Ξ', run_cmd ch ΘR Ξ c ΘR' Ξ' ->
@@ -1066,10 +1070,9 @@ Section Impl.
 
   (** ** The Program
 
-      Nothing is filed but what the program imported, so the whole of the
-      accumulated [Θ] is equivalent to the judgment's.  Each entry of the log
-      is an eval of the program, typed in the restriction it was checked in,
-      and normalized there. *)
+      Only what the program imports is filed, so the whole accumulated [Θ] is
+      equivalent to the judgment's.  Each log entry is an eval of the program,
+      typed and normalized in the restriction it was checked in. *)
 
   Theorem prog_impl_sound : forall prg Hacc Θ U log,
       prog_impl prg Hacc = rok (Θ, U, log) ->
@@ -1110,9 +1113,9 @@ End Impl.
 
 (** ** Finitely Many Files
 
-    Only here is it assumed that [load_path] knows finitely many files: each
-    load adds one of them to the chain, so loading terminates, whichever
-    order it happens in.  The executable never sees the list. *)
+    Only here is [load_path] assumed to know finitely many files.  Each load
+    adds one of them to the chain, so loading terminates, in whatever order
+    it happens.  The executable never sees the list. *)
 
 Section Files.
   Variable load_path : fpath -> option string.

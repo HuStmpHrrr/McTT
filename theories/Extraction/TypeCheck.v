@@ -45,8 +45,9 @@ Section type_check.
   | _               => inright _
   .
 
-  (** Don't forget to use 9th bit of [Extraction Flag] (for example, [Set Extraction Flag 1007.]).
-      Otherwise, this function would introduce redundant pair construction/pattern matching. *)
+  (** Extraction should set the 9th bit of [Extraction Flag] (for example,
+      [Set Extraction Flag 1007.]); otherwise this function introduces
+      redundant pair construction and pattern matching. *)
   #[derive(equations=no,eliminator=no)]
   Equations get_subterms_of_pi_nf (A : nf) : { B & { C | A = Πⁿ B C } } + { forall B C, A <> Πⁿ B C } :=
   | Πⁿ B C => pureo (existT _ B (exist _ C _))
@@ -67,9 +68,9 @@ Section type_check.
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
   | ti_vlookup : forall {x}, type_infer_order #x
-  (** A global is read off the global context, which does not recurse: the
-      normal form of the type resolution hands back is asked for in the
-      obligations, from the well-formedness of [G]. *)
+  (** A global is read off the global context without recursion; the
+      obligations obtain the normal form of its resolved type from the
+      well-formedness of [G]. *)
   | ti_glob : forall {pth}, type_infer_order (a_glob pth)
   .
 
@@ -207,7 +208,7 @@ Section type_check.
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
         pureo (exist _ A' _)
-    (** What resolution hands back, normalized: the closed type of a global,
+    (** A global infers the closed type that resolution returns for it,
         normalized at [G]. *)
     | a_glob pth with inspect (gc_resolve gc_deps gc_stack pth) => {
       | exist _ (Some (ge_def b pv A B)) _ =>
@@ -230,8 +231,8 @@ Section type_check.
     assert (G ⊢ ℕ : Type@0) by mauto 2.
     assert (⊢ G ▹ ℕ) by mauto 2.
     assert (G ▹ ℕ ⊢ A' : Typeⁿ@i) as HA' by mauto 3 using alg_type_infer_sound.
-    (** [sub_preserves_exp] has to be applied by hand: unifying its conclusion
-        would ask [?A[?σ] ≟ Type@i], which [eapply] cannot solve. *)
+    (** [sub_preserves_exp] is applied by hand: unifying its conclusion would
+        require solving [?A[?σ] ≟ Type@i], which [eapply] cannot do. *)
     exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ).
   Qed.
 
@@ -359,10 +360,10 @@ Section type_check.
 
   (** ** The Global Cases
 
-      The obligations of [a_glob] and [a_param] come down to one fact, that the
-      type resolution hands back is a type at [G], or, when nothing resolves, to
-      an inversion.  [glob_obl] does not depend on the order [Equations]
-      presents them in. *)
+      The obligations of [a_glob] reduce to one fact, that the type
+      resolution returns is a type at [G], or, when nothing resolves, to an
+      inversion.  [glob_obl] does not depend on the order in which [Equations]
+      presents them. *)
 
   #[local]
   Ltac resolved_typ :=
@@ -513,8 +514,8 @@ Section type_infer_closed.
   .
 End type_infer_closed.
 
-(** The same in a well-formed context: an [eval] inside a module sees the
-    frames' parameters. *)
+(** The same in a well-formed context, for an [eval] inside a module, which
+    sees the parameters of its enclosing frames. *)
 Section type_infer_at.
   #[local]
   Ltac impl_obl_tac :=

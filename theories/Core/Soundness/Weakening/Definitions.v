@@ -1,28 +1,26 @@
 (** * Kripke Weakenings
 
-    The gluing model is stable only under a sub-class of the weakenings: those
-    built from [↑] alone, with no lifting [q φ] under a binder.  These are the
-    *Kripke* weakenings, written [Γ ⊢k φ : Δ].
+    The gluing model is stable only under a subclass of the weakenings: those
+    built from [↑] alone, with no lifting [q φ] under a binder. These are the
+    Kripke weakenings, written [Γ ⊢k φ : Δ].
 
-    Two deviations from the rules a Kripke presentation would give, both
-    inherited from the shape the gluing proofs need:
+    The rules differ from a standard Kripke presentation in two ways, both to
+    fit the gluing proofs:
 
-    - The rules recurse on the *codomain*, so the domain [Γ] is a parameter.
-      Composition ([kripke_compose]) is then an induction on the *outer*
-      weakening; recursing on the domain instead would ask for a strengthening
-      lemma in that case, which the system does not have.
-    - Both rules may coarsen their codomain by a refinement [Δ' ⊆ Δ],
-      so the judgment is closed under [kripke_ctxsub] — which the subtyping
-      cases need.  The price is that [Γ ⊢k φ : Δ] no longer implies
-      [Γ ⊢w φ : Δ]: [wf_wk_lookup] demands a variable *lookup* in [Γ] at the
-      very type [A[φ]ʷ], and refinement only gives a subtype of it.  So the
-      escape lemma is [kripke_escape], landing in [wf_sub] via [ι]; it
-      transports judgments just as well.
+    - The rules recurse on the codomain, so the domain [Γ] is a parameter.
+      Composition ([kripke_compose]) is then an induction on the outer
+      weakening; recursing on the domain would need a strengthening lemma,
+      which the system does not have.
+    - Both rules may coarsen their codomain by a refinement [Δ' ⊆ Δ], so the
+      judgment is closed under [kripke_ctxsub], which the subtyping cases
+      need. As a consequence [Γ ⊢k φ : Δ] does not imply [Γ ⊢w φ : Δ]:
+      [wf_wk_lookup] demands a variable lookup in [Γ] at exactly [A[φ]ʷ], and
+      refinement only gives a subtype of it. The escape lemma is therefore
+      [kripke_escape], which lands in [wf_sub] via [ι].
 
-    The [wk_eq] premise is the slack the old explicit-substitution presentation
-    got from stating the rules up to [≈]: it makes the judgment [Proper], so a
-    weakening may be presented in any form pointwise equal to the canonical one.
-    [kripke_shiftn] recovers that canonical form, [⇑^n]. *)
+    The [wk_eq] premise makes the judgment [Proper]: a weakening may be
+    presented in any form pointwise equal to the canonical one, [⇑^n], which
+    [kripke_shiftn] recovers. *)
 
 From Stdlib Require Import Morphisms.
 

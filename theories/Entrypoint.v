@@ -16,11 +16,13 @@ Import Syntax_Notations GlobalCtx_Notations.
 
     The program on the command line is parsed, elaborated into core commands,
     and run by the verified interpreter of [Extraction.Command], which loads
-    every unit it imports.  Two things come from the driver: [load_path], the
-    file IO that finds a unit under the search root, and [read], which lexes and
-    parses what it found — the lexer being OCaml.  The termination proof of the
-    loader is a [Prop] argument, erased by extraction: it holds when the search
-    root has finitely many units ([load_step_wf]). *)
+    every unit it imports.  The driver supplies two functions:
+
+    - [load_path], the file IO that finds a unit under the search root;
+    - [read], which lexes (in OCaml) and parses what was found.
+
+    Termination of the loader is a [Prop] argument, erased by extraction; it
+    holds when the search root has finitely many units ([load_step_wf]). *)
 
 Variant main_result :=
   | AllGood : Cst.prog -> gdeps -> gunit -> list eval_entry -> main_result
@@ -35,8 +37,8 @@ Section Main.
   Variable read : string -> option Cst.prog.
   Hypothesis Hwf : well_founded (load_step load_path).
 
-  (** Elaborated once more only to report its message: the interpreter's
-      [to_core] keeps the option. *)
+  (** The program is elaborated here only to report the error message, since
+      the interpreter's [to_core] returns an option. *)
   Definition main (log_fuel : nat) (buf : buffer) : main_result :=
     match Parser.prog log_fuel buf with
     | Parsed_pr prg _ =>
@@ -52,10 +54,10 @@ Section Main.
     | Timeout_pr => ParserTimeout log_fuel
     end.
 
-  (** What [AllGood] certifies: the program means a well-formed global
-      context, the one computed up to the order of units within a level, and
-      every reported [eval] is well typed, in the context of the parameters of
-      the frames it stands in, with the normal form shown. *)
+  (** What [AllGood] certifies: the program denotes a well-formed global
+      context, equal to the computed one up to the order of units within a
+      level, and every reported [eval] is well typed, in the context of the
+      parameters of its enclosing frames, with the normal form shown. *)
   Theorem main_sound : forall log_fuel buf prg Θ U log,
       main log_fuel buf = AllGood prg Θ U log ->
       (exists ΘR, prog_sem load_path read to_core prg ΘR U /\ gds_equiv ΘR Θ /\
@@ -75,7 +77,7 @@ Section Main.
     exists ΘR; tauto.
   Qed.
 
-  (** And a program that has a meaning is run to completion. *)
+  (** A program that has a meaning runs to completion. *)
   Theorem main_complete : forall log_fuel buf prg buf' ΘR U,
       Parser.prog log_fuel buf = Parsed_pr prg buf' ->
       prog_sem load_path read to_core prg ΘR U ->

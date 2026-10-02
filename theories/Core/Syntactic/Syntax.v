@@ -21,11 +21,11 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
 (** ** Objects and Declarations
 
     The two levels of naming are spelled differently.  [::] separates the
-    segments of a *file* path — the name of a compilation unit, which is what
-    [glob] holds — and [.] selects a member of whatever precedes it, be that an
+    segments of a file path, the name of a compilation unit, which is what
+    [glob] holds; [.] selects a member of whatever precedes it, be that an
     internal module, a unit, or a local module binding.
 
-    [proj] is that *postfix dot*: [X::Y::Z.W.foo] is a chain of [proj]s over
+    [proj] is that postfix dot: [X::Y::Z.W.foo] is a chain of [proj]s over
     [glob ["X"; "Y"; "Z"]], and [A.foo] for an internal module [A] is one over
     [var "A"].  Module arguments arrive as ordinary [app] nodes, so
     [(X::Y.Z a b).foo] needs no syntax of its own.  Whether a given [proj] or
@@ -68,7 +68,7 @@ Inductive ispec : Set :=
 | i_as : string -> ispec
 | i_use : list string -> ispec.
 
-(** A module declaration carries the *internal* path it introduces ([module A.B]
+(** A module declaration carries the internal path it introduces ([module A.B]
     nests two levels at once) and its parameter telescope; a unit's own name is
     declared by [prog] below, not here. *)
 Inductive cmd : Set :=
@@ -93,9 +93,8 @@ End Cst.
 
 (** * Abstract Syntax Tree
 
-    Note that, unlike a calculus of explicit substitutions, there is no
-    constructor for substitution application and no syntactic category of
-    substitutions.  Weakenings and substitutions are meta-level operations
+    Unlike a calculus of explicit substitutions, there is no constructor for
+    substitution application and no syntactic category of substitutions.  Weakenings and substitutions are meta-level operations
     (recursive functions on [exp]) defined further down in this file, and their
     algebraic laws are theorems (in [Core.Syntactic.Substitution]) rather than
     definitional equalities of the object theory.
@@ -105,12 +104,12 @@ End Cst.
 
     A reference to a global is [X::Y::Z.a.b.c]: the unit it lives in, named
     absolutely, then the chain of member selections inside it from the unit's
-    root.  Names are *absolute*, also inside the unit being elaborated: an open
+    root.  Names are absolute, also inside the unit being elaborated: an open
     module is named by the same path it will have once it is closed and its
     unit filed, so what a path denotes never depends on where it is read, and
     resolving it is a lookup with no re-expression.
 
-    The same record names a *module*: [p_mems] is then the chain to it, empty
+    The same record names a module: [p_mems] is then the chain to it, empty
     for the unit itself. *)
 Record path : Set := path_mk
   { p_unit : list string
@@ -145,7 +144,7 @@ Inductive exp : Set :=
 (** Variable *)
 | a_var : nat -> exp
 (** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])],
-    also when [X::Y::Z] is the unit being elaborated.  A global is *closed*: it
+    also when [X::Y::Z] is the unit being elaborated.  A global is closed: it
     stands for the member generalized over the parameters of every module
     enclosing it, outermost first, and is applied to them.  Inside its own
     module those are the parameter variables in scope.
@@ -161,14 +160,14 @@ Abbreviation typ := exp.
 
 (** ** Telescopes
 
-    A member of a parameterized module is stored open in the telescope of
-    parameters it lives under, and generalized when it is resolved; these two
-    folds are what generalize it.  They are the [exp]-level counterparts of the
+    A member of a parameterized module is checked in the telescope of
+    parameters it lives under, and stored generalized over it by these two
+    folds.  They are the [exp]-level counterparts of the
     elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
     appear in a judgment.
 
-    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound *last*
-    and must become the *innermost* binder: the recursion wraps the head first
+    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last
+    and must become the innermost binder: the recursion wraps the head first
     and works outward.  Folding the other way reverses the telescope, and the
     result is still a well-formed [exp], so nothing catches it early.
 
@@ -304,11 +303,9 @@ Definition wk_q (φ : wk) : wk :=
     end.
 Arguments wk_q _ _ /.
 
-(** Composition of weakenings is *diagrammatic*: [wk_compose φ ψ] applies [φ]
+(** Composition of weakenings is diagrammatic: [wk_compose φ ψ] applies [φ]
     first and then [ψ].  This is the orientation of the paper, and the one for
-    which [M[φ]ʷ[ψ]ʷ = M[φ ⊙ ψ]ʷ] holds without a flip.  It is the *opposite* of
-    the orientation of [a_compose] in the explicit-substitution presentation
-    this development used previously. *)
+    which [M[φ]ʷ[ψ]ʷ = M[φ ⊙ ψ]ʷ] holds without a flip. *)
 Definition wk_compose (φ ψ : wk) : wk := fun x => ψ (φ x).
 Arguments wk_compose _ _ _ /.
 
@@ -380,7 +377,7 @@ Arguments sb_shift _ /.
 
 (** Lifting a substitution under a binder: [q(σ) := σ[⇑], x₀/x₀].
 
-    Unlike the other operations, [sb_q] is deliberately *never* unfolded by
+    Unlike the other operations, [sb_q] is never unfolded by
     [simpl]: keeping it folded is what makes goals mentioning [q σ] readable,
     and it is what lets [simpl] normalise the body of [exp_sub] without
     exposing the encoding of lifting.  Use [sb_q_zero] and [sb_q_succ] to
@@ -407,7 +404,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_glob p => a_glob p
   end.
 
-(** Composition of substitutions, again *diagrammatic*: [sb_compose σ τ]
+(** Composition of substitutions, again diagrammatic: [sb_compose σ τ]
     applies [σ] first and then [τ]. *)
 Definition sb_compose (σ τ : sub) : sub := fun x => exp_sub (σ x) τ.
 Arguments sb_compose _ _ _ /.
@@ -454,7 +451,7 @@ Open Scope mctt_scope.
     superscript [ᵈ]; see [Domain_Notations]. *)
 Module Syntax_Notations.
   (** Substitution and weakening application come first, so that level 1 is
-      created *left* associative; everything else that reads as an atom is at
+      created left associative; everything else that reads as an atom is at
       level 0, and the constructor forms with a recursive last argument are at
       level 2. *)
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
@@ -473,10 +470,7 @@ Module Syntax_Notations.
 
   (** *** Substitutions
 
-      Note that [σ ⨟ τ] is *diagrammatic* composition — [σ] first, then [τ] —
-      unlike the [σ ∘ τ] of the explicit-substitution presentation.  The
-      spelling is deliberately different so that no old occurrence parses
-      silently under the new orientation. *)
+      [σ ⨟ τ] is diagrammatic composition: [σ] first, then [τ]. *)
   Notation "'Id'" := sb_id : mctt_scope.
   Notation "'Wk'" := sb_shift : mctt_scope.
   Notation "σ ⨟ τ" := (sb_compose σ τ) (at level 45, right associativity, format "σ ⨟ τ") : mctt_scope.
@@ -510,7 +504,7 @@ End Syntax_Notations.
     establishes that the embedding [ι] is faithful the development speaks almost
     exclusively of substitutions. *)
 Module Wk_Notations.
-  (** [↑] is the paper's [⇑] *as a weakening*.  The glyph differs because [⇑] is
+  (** [↑] is the paper's [⇑] as a weakening.  The glyph differs because [⇑] is
       already the neutral-value embedding of [Domain_Notations], and because the
       development needs to keep the shift weakening apart from the shift
       substitution [Wk = ι ↑]. *)

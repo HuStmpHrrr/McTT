@@ -31,8 +31,8 @@ Proof.
   - assert (A = A0) as <- by mauto using ctx_lookup_functional.
     functional_nbe_rewrite_clear.
     reflexivity.
-  (** A global is looked up by a *function*, so the two derivations read the
-      same type. *)
+  (** Globals are resolved by a function, so both derivations read the same
+      type. *)
   - assert (A = A0) as <- by congruence.
     functional_nbe_rewrite_clear.
     reflexivity.
@@ -94,9 +94,9 @@ Proof.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
     assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
-  (** [wf_glob]'s resolution premise is the same function call, so the
-      declarative rule applies at once.  The inferred normal form is the
-      declarative type by [soundness_ty']. *)
+  (** The resolution premise of [wf_glob] is the same function call, so the
+      declarative rule applies directly; [soundness_ty'] relates the inferred
+      normal form to the declarative type. *)
   - assert (Γ ⊢ a_glob p : A) by mauto 3.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
     assert (Γ ⊢ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
@@ -247,10 +247,10 @@ Lemma alg_type_check_complete : forall {Γ A M},
     Γ ⊢ M : A ->
     Γ ⊢a M ⟸ A.
 Proof.
-  (** The global context is an index of [wf_exp]: fix it for the induction, the
-      way [subtyp_spec] does.  [user_exp] is reverted so that the two equations
-      come first in every case, and so that the recursive hypotheses keep their
-      [user_exp] premise. *)
+  (** The global context is an index of [wf_exp], so it is fixed for the
+      induction, as in [subtyp_spec].  [user_exp] is reverted so that the two
+      equations come first in every case and the induction hypotheses keep
+      their [user_exp] premise. *)
   intros * Hue H.
   revert Hue.
   remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.

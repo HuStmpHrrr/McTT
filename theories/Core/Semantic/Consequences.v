@@ -61,8 +61,8 @@ Proof.
   functional_read_rewrite_clear.
   autoinjections.
   assert (Γ ⊢ A' ≈ A : Type@i) by mauto 3.
-  (** Context equality is gone: [Γ ▹ A] refines [Γ ▹ A'] because the two heads are
-      equal, and [ctxsub_exp_eq] moves the codomain's normal form across. *)
+  (** [Γ ▹ A] refines [Γ ▹ A'] because the two heads are equal, and
+      [ctxsub_exp_eq] moves the codomain's normal form across. *)
   assert (Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
   split; [mauto 3 |].
   etransitivity; [| symmetry]; mauto 3.
@@ -92,7 +92,7 @@ Lemma subtyp_spec : forall {Γ A B},
       (exists i j, (exists k, Γ ⊢ A ≈ Type@i : Type@k) /\ (exists k, Γ ⊢ Type@j ≈ B : Type@k) /\ i <= j) \/
       (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
-  (** The global context is an index of [wf_subtyp]: fix it for the induction. *)
+  (** The global context is an index of [wf_subtyp], so fix it for the induction. *)
   intros * H.
   remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
   induction H; subst;
@@ -143,7 +143,7 @@ Hint Resolve canonical_form_of_pi : mctt.
 #[export]
 Hint Resolve subtyp_spec : mctt.
 
-(** At explicit [Θ Ξ], so that the induction does not have to generalize the
+(** Stated at explicit [Θ Ξ] so that the induction need not generalize the
     instance. *)
 Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
     gc_transparent Θ Ξ ->
@@ -156,7 +156,7 @@ Proof.
   intros * Htr HWc HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
     try (destruct W; simpl in *; congruence).
-  (* a parameter or a global: not the head of a neutral at a transparent context *)
+  (* a global: not the head of a neutral at a transparent context *)
   all: try solve [ destruct W; simpl in *; try congruence; contradiction ].
   - destruct W; simpl in *; autoinjections; destruct_all.
     eapply IHHW4; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
@@ -174,10 +174,11 @@ Qed.
 
 (** ** Canonical Forms and Consistency
 
-    Only at a transparent global context: an axiom [c : ℕ] is a closed
-    neutral, and an axiom of type [Π Type@i #0] refutes consistency.  There, a
-    normal form has no global or parameter head ([nbe_clean]), and such a
-    neutral has no head in the empty local context ([no_closed_neutral]). *)
+    These hold only at a transparent global context: otherwise an axiom
+    [c : ℕ] is a closed neutral, and an axiom of type [Π Type@i #0] refutes
+    consistency.  At a transparent context a normal form has no global head
+    ([nbe_clean]), and a neutral without one has no head in the empty local
+    context ([no_closed_neutral]). *)
 
 Inductive canonical_nat : nf -> Prop :=
 | canonical_nat_zero : canonical_nat zeroⁿ
@@ -254,7 +255,7 @@ Proof.
     assert (_ /\ _ ⊢ _ ≈ #0 : _) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
         extended by the other domain, so both move across the refinement
-        [⋅ ▹ Type@i ⊢s Id : ⋅ ▹ _] that the domain equation provides. *)
+        [⋅ ▹ Type@i ⊢s Id : ⋅ ▹ _] given by the domain equation. *)
     assert (⋅ ▹ Type@i ⊢ B ⊆ #0) by
       (match goal with Hs : _ ▹ _ ⊢ ?X ⊆ ?Y |- _ =>
          transitivity X; [mauto 3 |]; transitivity Y;
@@ -272,7 +273,7 @@ Hint Resolve canonical_form_of_nat : mctt.
 #[export]
 Hint Resolve canonical_form_of_typ : mctt.
 
-(** The same, with the global context spelled out. *)
+(** The theorems above, with the global context explicit. *)
 Corollary canonical_form_of_nat_gctx : forall Θ Ξ M,
     gc_transparent Θ Ξ ->
     wf_exp Θ Ξ ⋅ ℕ M ->

@@ -29,9 +29,8 @@ Proof.
   - on_all_hyp: fun H => apply wf_pi_inversion in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
-    (** The explicit-substitution development weakened [Type@i ⊆ Type@j] into the
-        extended context by [wf_subtyp_sub]; [Type@i[↑]ʷ] is now [Type@i], so
-        [wf_subtyp_ge] rederives it from [⊢ Γ ▹ A] alone. *)
+    (** [Type@i[↑]ʷ] is [Type@i], so [wf_subtyp_ge] derives [Type@i ⊆ Type@j]
+        in the extended context from [⊢ Γ ▹ A] alone. *)
     apply_subtyping.
     assert (Γ ▹ (nf_to_exp A') ⊢ B : Type@(max x x0)) by mauto using lift_exp_max_right.
     assert (Γ ▹ (nf_to_exp A') ⊢ B' : Type@(max x x0)) by mauto using lift_exp_max_left.
@@ -81,8 +80,8 @@ Lemma alg_subtyping_complete : forall Γ A B,
     Γ ⊢ A ⊆ B ->
     Γ ⊢a A ⊆ B.
 Proof.
-  (** The global context is an index of [wf_subtyp]: fix it for the induction,
-      the way [subtyp_spec] does. *)
+  (** The global context is an index of [wf_subtyp], so it is fixed for the
+      induction, as in [subtyp_spec]. *)
   intros * H.
   remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
   induction H; subst;
@@ -97,12 +96,13 @@ Proof.
     econstructor; mauto 2.
     progressive_inversion.
     mauto.
-  - (** [ctxeq_nbe_eq] takes the semantic context equality now that the syntactic
-        one is gone; [per_ctx_of_exp_eq] is what builds it from the domains. *)
+  - (** [ctxeq_nbe_eq] takes a semantic context equality, which
+        [per_ctx_of_exp_eq] builds from the domains. *)
     assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.
-    (** The codomain's normal form is read in [Γ ▹ A]; the recursive call gives
-        it in [Γ ▹ A'], so it is moved across.  [Γ ▹ A ⊢ B : Type@i] is still
-        needed below, so this is an extra fact rather than a rewrite of it. *)
+    (** The codomain's normal form is read back in [Γ ▹ A], but the induction
+        hypothesis gives it in [Γ ▹ A'], so it is transported.  This is added
+        as a fact rather than a rewrite because [Γ ▹ A ⊢ B : Type@i] is still
+        needed below. *)
     assert (exists W, nbe_f (Γ ▹ A) B Type@i W /\ nbe_f (Γ ▹ A') B Type@i W)
       by mauto 3 using ctxeq_nbe_eq.
     match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H).

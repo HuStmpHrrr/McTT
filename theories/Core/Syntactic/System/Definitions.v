@@ -1,43 +1,35 @@
 (** * The Syntactic Judgments
 
-    Because substitution is a meta-level *operation* rather than a syntactic
-    constructor, this presentation differs from a calculus of explicit
-    substitutions in three ways.
+    Substitution is a meta-level operation rather than a syntactic
+    constructor, so:
 
-    - There is no [wf_exp_sub] rule and there are no [_sub] computation rules in
-      the equational theory.  The equations they used to postulate — how a
-      substitution distributes over each term former, how substitutions compose,
-      what the identity does — are theorems about [exp_sub], proved in
-      [Core.Syntactic.Substitution].  What used to be a derivation step is now a
-      [rewrite].
+    - there is no [wf_exp_sub] rule and there are no [_sub] computation rules;
+      how a substitution distributes over each term former, how substitutions
+      compose and what the identity does are theorems about [exp_sub], proved
+      in [Core.Syntactic.Substitution] and used by [rewrite];
+    - the four judgments about terms (context well-formedness, typing, term
+      equality and subtyping) mention no substitution judgment, and are
+      mutually defined with the seven that make up global well-formedness;
+    - weakening and substitution typing are derived judgments: statements that
+      an operation maps every binding of one context to something of the right
+      type in the other.  Their closure properties (identity, extension,
+      lifting, composition) are lemmas, in [Core.Syntactic.System.Structural].
 
-    - Consequently the four judgments about terms — context well-formedness,
-      typing, term equality and subtyping — carry no substitution judgment.  They
-      are mutually defined with the seven that make up global well-formedness.
+    Two rules are stated more generally than in the paper:
 
-    - Weakening and substitution typing are *derived* judgments: not inductive
-      types, but statements that an operation maps every binding of one context
-      to something of the right type in the other.
-      Their algebraic closure properties — identity, extension, lifting,
-      composition — are lemmas rather than constructors, and live in [Core.Syntactic.System.Lemmas].
+    - [wf_exp_eq_natrec_cong] also lets the motive vary.  This is strictly
+      stronger, and is what the algorithmic equality of [Algorithmic]
+      compares.
+    - [wf_subtyp_pi] checks the codomains in [Γ ▹ A'] rather than [Γ ▹ A].  The
+      two are interderivable given [Γ ⊢ A ≈ A' : Type@i] and context
+      conversion, and [Γ ▹ A'] is what the soundness proof wants.
 
-    Two rules are stated slightly more generally than in the paper, both times
-    following the presentation this development already had:
-
-    - [wf_exp_eq_natrec_cong] also allows the motive to vary.  The paper keeps it
-      fixed; allowing it to vary is strictly stronger and is what the algorithmic
-      equality of [Algorithmic] compares.
-    - [wf_subtyp_pi] checks the codomains in [Γ ▹ A'] rather than the paper's
-      [Γ ▹ A].  The two are interderivable given the premise [Γ ⊢ A ≈ A' : Type@i]
-      and context conversion, and [Γ ▹ A'] is what the soundness proof wants.
-
-    Every judgment reads the two global components [a_glob] resolves into, kept
-    apart rather than bundled: the dependency levels [Θ] and the definition stack
-    [Ξ], so a judgment reads [Θ ⍮ Ξ ⍮ Γ ⊢ M : A].  They are *indices*, not
-    parameters: no rule about terms changes them, but a filed unit is checked
-    against the levels below it and a stack frame with the frames inside it
-    dropped, so [⊢g Θ ⍮ Ξ] really is an induction that varies them — exactly as
-    [⊢ Γ] varies [Γ]. *)
+    Every judgment reads the two global components [a_glob] resolves into: the
+    dependency levels [Θ] and the definition stack [Ξ], as in
+    [Θ ⍮ Ξ ⍮ Γ ⊢ M : A].  They are indices, not parameters: no rule about terms
+    changes them, but a filed unit is checked against the levels below it and a
+    stack frame against the frames outside it, so [⊢g Θ ⍮ Ξ] is an induction
+    that varies them, as [⊢ Γ] varies [Γ]. *)
 
 From Stdlib Require Import List Classes.RelationClasses Setoid Morphisms.
 
@@ -65,7 +57,7 @@ Generalizable All Variables.
 
     A lookup carries the weakenings that separate the binding from the top of
     the context, so [Var] below needs no shifting of its own.  The shift here is
-    the *weakening* [↑], not the substitution [Wk]: everything that has to move a
+    the weakening [↑], not the substitution [Wk]: everything that has to move a
     looked-up type past a lifted operation does so with [exp_wk_shift_wk_q] or
     [exp_wk_shift_sub_q], both of which are stated for [↑]. *)
 
@@ -141,15 +133,11 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : A )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-     (** We have this extra argument for soundness.
-         Note that we need to keep it asymmetric:
-         only [A'] is checked. If we check A as well,
-         we cannot even construct something like
-         [Γ ⊢ Type@0[↑]ʷ : Type@1] with the current
-         rules. Under the symmetric rule, the example requires
-         [Γ ⊢ Type@1[↑]ʷ : Type@2] to apply weakening,
-         which requires [Γ ⊢ Type@2[↑]ʷ : Type@3], and so on.
-      *)
+     (** This premise is needed for soundness.  It is asymmetric: only [A'] is
+         checked.  Checking [A] as well would make even
+         [Γ ⊢ Type@0[↑]ʷ : Type@1] underivable, since weakening it would require
+         [Γ ⊢ Type@1[↑]ʷ : Type@2], which requires [Γ ⊢ Type@2[↑]ʷ : Type@3], and
+         so on. *)
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A' )
@@ -234,9 +222,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-     (** This extra argument is here to be consistent with
-         [wf_exp_subtyp].
-      *)
+     (** This premise mirrors the one of [wf_exp_subtyp]. *)
      Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A' )
 | wf_exp_eq_sym :
@@ -251,13 +237,8 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A" := (wf_exp_eq Θ Ξ Γ A M M') : type_
 (** *** Subtyping *)
 with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
 | wf_subtyp_refl :
-  (** We need this extra argument in order to prove the presupposition
-      lemmas independently.
-
-      The main point of this assumption gives presupposition for
-      RHS directly so that we can remove the extra arguments in
-      type checking rules immediately.
-   *)
+  (** This premise lets the presupposition lemmas be proved independently: it
+      gives presupposition for the right-hand side directly. *)
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ⊆ M' )
@@ -282,24 +263,17 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
 (** ** Well-formedness of the Global Context
 
     Part of the same mutual definition: an entry's type and body are checked by
-    the term judgments, and [⊢g Θ ⍮ Ξ] is what a use of [a_glob] appeals to, so
-    the two directions are genuinely interdependent and presupposition has to be
-    proved for all of them at once.
+    the term judgments, and a use of [a_glob] appeals to [⊢g Θ ⍮ Ξ].
 
-    A member may mention any name in scope, not only the ones declared before it,
-    so within one unit everything is checked against the same [Θ] and [Ξ].  Across
-    units it is not: a level is checked against the levels below it, and a frame
-    against the frames outside it, which is why both components are indices of the
-    whole block.  [wf_gdep] and [wf_gdeps] mention only [Θ], and [wf_gstack] only
-    [Θ] and [Ξ] — keeping the two apart is what lets each say exactly what it is
-    relative to.
+    A level is checked against the levels below it, and a frame against the
+    frames outside it, which is why both components are indices of the whole
+    block.  [wf_gdep] and [wf_gdeps] mention only [Θ], and [wf_gstack] only [Θ]
+    and [Ξ], so each says exactly what it is relative to.
 
-    A member of a parameterized module is stored *open* in that module's
-    parameters — generalizing it is [ctx_pi]'s job, at the use site — so it is
-    checked in the telescope it lives under, which the judgment takes as an
-    argument rather than reading off the entry.  [ge_mod] records only the
-    parameters it adds to that telescope; a [gunit] records the whole of it, which
-    is why a unit is always checked at [⋅].
+    A member of a parameterized module is checked in the telescope of
+    parameters it lives under, and stored generalized over it ([ctx_pi],
+    [ctx_fn]).  [ge_mod] records only the parameters it adds to that telescope;
+    a [gunit] records all of it, which is why a unit is checked at [⋅].
 
     Canonicity is part of well-formedness: [wf_gmod_ext] asks for freshness, so a
     well-formed context resolves deterministically without a separate condition,
@@ -310,7 +284,7 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A'" := (wf_subtyp Θ Ξ Γ A A') : type_scope
     that frame is what [wf_gmod_ext] pushed, and it carries the parameters and the
     members declared so far.  The local context is the telescope of all the
     frames' parameters, [gs_tele Ξ]: parameters are ordinary λ-variables.  A
-    definition is *stored* generalized over that telescope, so what is filed is
+    definition is stored generalized over that telescope, so what is filed is
     closed, and nothing has to be done to it when it is read anywhere else.  [mp]
     is the entry's own module path, which a nested module's frame is named by. *)
 
@@ -336,7 +310,7 @@ with wf_gmod : gdeps -> gstack -> path -> ctx -> gmod -> Prop :=
 | wf_gmod_nil :
   `( ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
      Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m ⋄ )
-(** The entry is checked against the members declared *before* it: the module so
+(** The entry is checked against the members declared before it: the module so
     far is [gu_mk Δ Φ], pushed as the innermost frame under its own path. *)
 | wf_gmod_ext :
   `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
@@ -373,8 +347,8 @@ with wf_gdep : gdeps -> gdep -> Prop :=
 (** The levels, accumulated one at a time, each checked against those already
     piled up — so the newest level is at the front, as the newest frame is in a
     [gstack].  A unit can therefore only mention units at strictly lower levels,
-    and *that* is where cycle freedom comes from: it is the shape of this
-    judgment, not a proposition about the levels. *)
+    so cycle freedom comes from the shape of this judgment, not from a
+    proposition about the levels. *)
 
 with wf_gdeps : gdeps -> Prop :=
 | wf_gdeps_nil : wf_gdeps nil
@@ -385,7 +359,7 @@ with wf_gdeps : gdeps -> Prop :=
 
 (** The definition stack, innermost frame first, relative to the levels.  Read
     exactly like [wf_gdep_cons], and for the same reason: a frame is checked
-    against the frames *outside* it, so it cannot see itself, and a [qu_rel] index
+    against the frames outside it, so it cannot see itself, and a [qu_rel] index
     occurring inside it counts outward from there. *)
 
 with wf_gstack : gdeps -> gstack -> Prop :=
@@ -409,10 +383,8 @@ where "⊢g Θ ⍮ Ξ" := (wf_gctx Θ Ξ) : type_scope.
     the derivation arguments keeps the goals of a mutual induction readable and
     within reach of [mauto].
 
-    A [Scheme] may name any *subset* of the block, and the judgments it leaves
-    out survive as ordinary hypotheses in the cases that mention them.  That is
-    what keeps the four-, three- and two-way principles below the same shape they
-    had when the global layer was declared separately. *)
+    A [Scheme] may name any subset of the block, and the judgments it leaves
+    out survive as ordinary hypotheses in the cases that mention them. *)
 
 Scheme wf_ctx_mut_ind := Minimality for wf_ctx Sort Prop
 with wf_exp_mut_ind := Minimality for wf_exp Sort Prop
@@ -426,7 +398,7 @@ Combined Scheme syntactic_wf_mut_ind from
 
 (** The three-way scheme is the shape of [wk_preserves_wf], [sub_preserves_wf]
     and [sub_eq_preserves_exp]: each of them
-    transports the three judgments *about a fixed context* along an operation,
+    transports the three judgments about a fixed context along an operation,
     and says nothing about context well-formedness.  Generating it as a scheme
     in its own right (rather than combining the four-way one) means it takes
     exactly three predicates: the [⊢ Γ] premises of rules like [wf_typ] survive
@@ -488,9 +460,9 @@ Combined Scheme wf_mut_ind_all from
   wf_gstack_mut_ind_all,
   wf_gctx_mut_ind_all.
 
-(** The projections the [Record]s used to provide.  Two of the old four are
-    presuppositions instead, so they live in [Presup]: [⊢ Θ ⍮ Ξ ⍮ gu_params U] of
-    [⊢m], hence of [⊢u], and [wf_gdeps Θ] of [wf_gstack]. *)
+(** Projections of the global judgments.  Two further ones are
+    presuppositions, in [Presup]: [⊢ Θ ⍮ Ξ ⍮ gu_params U] of [⊢m], hence of
+    [⊢u], and [wf_gdeps Θ] of [wf_gstack]. *)
 
 Lemma wf_gunit_mod : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> Θ ⍮ Ξ ⍮ mp ⍮ gu_params U ⊢m gu_mod U.
 Proof. now inversion 1. Qed.
@@ -538,7 +510,7 @@ Record wf_sub_eq (Θ : gdeps) (Ξ : gstack) (Γ Δ : ctx) (σ σ' : sub) : Prop 
 }.
 Notation "Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq Θ Ξ Γ Δ σ σ') : type_scope.
 
-(** The projections are deliberately *not* registered in [mctt]: each of them
+(** The projections are not registered in [mctt]: each of them
     has a conclusion ([⊢ Γ], [Γ ⊢s σ : Δ]) that the corresponding introduction
     rule also produces, so the pair would let [eauto] cycle. [Lemmas.v] states
     the presuppositions it actually wants as separate lemmas. *)
@@ -622,7 +594,7 @@ Remove Hints wf_exp_eq_subtyp : mctt.
 
 (** ** Term Equality is a PER
 
-    Reflexivity at a well-typed term is *not* available here — it needs an
+    Reflexivity at a well-typed term is not available here — it needs an
     induction over typing, so it lives in [Core.Syntactic.System.Lemmas]
     together with the [PERElem] instance that lets [saturate_refl] use it.  The
     same goes for [wf_sub_eq], whose symmetry and transitivity need

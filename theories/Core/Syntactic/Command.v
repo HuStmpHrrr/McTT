@@ -1,8 +1,8 @@
 (** * Commands
 
-    The *core* commands a unit is elaborated into: names resolved, and [use]
-    and [as] gone, being the elaborator's business.  Their meaning, as moves of
-    the global state, is [Core.Syntactic.System.Command]. *)
+    The core commands a unit is elaborated into: names are resolved, and [use]
+    and [as] have been handled by the elaborator.  Their meaning, as steps of
+    the global state, is given in [Core.Syntactic.System.Command]. *)
 
 From Stdlib Require Import List String.
 
@@ -15,13 +15,13 @@ Import Syntax_Notations.
 Notation fpath := (list string).
 
 Inductive ccmd : Set :=
-(** [def x : A := M]: transparency, privacy, type, body.  A [def] always has
-    one; an [abstract] one is opaque, not bodiless. *)
+(** [def x : A := M]: transparency, privacy, type and body.  A [def] always
+    has a body; an [abstract] one is opaque, not bodiless. *)
 | cc_def : string -> bool -> bool -> typ -> exp -> ccmd
 (** [module x (Δ) where cs end] *)
 | cc_mod : string -> ctx -> list ccmd -> ccmd
-(** [import X::Y.M], whatever the [use]/[as]: the unit and the member path to
-    the module imported, empty for the unit itself *)
+(** [import X::Y.M], whatever its [use]/[as]: the unit, and the member path
+    of the imported module (empty for the unit itself). *)
 | cc_import : fpath -> list string -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.

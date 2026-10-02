@@ -7,24 +7,18 @@ Import Syntax_Notations Wk_Notations.
 
 (** * Names in Scope
 
-    The elaborator emits core commands: a definition becomes a [cc_def], a
-    nested module a [cc_mod], and a name an [a_glob] — an absolute path,
-    applied to the parameters it is generalized over — or a λ-variable, which
-    includes the parameters of the open frames.  Commands do not record names
-    that are not members: a frame's parameters are a nameless [ctx].  So the
-    elaborator keeps, per open frame, its members with the types stripped and
-    its parameters named: an [eframe].
+    Core commands do not name a frame's parameters, so for each open frame the
+    elaborator keeps an [eframe]: its members, without their types, and its
+    named parameters.
 
-    Visibility: a private member can be named from the frame it is declared
-    in and from the frames nested inside it, i.e. when it is reached as a
-    member of a frame on the stack.  Through a module that is not open — a
-    sibling, a module nested in one — only public members are reachable.  An
-    imported unit is not known at all, only its path. *)
+    A private member can be named from its own frame and the frames nested in
+    it.  Through a module that is not open, only public members are reachable.
+    Of an imported unit only the path is known. *)
 
 (** ** Frames *)
 
-(** A member, types stripped: whether a definition is private; how many
-    parameters a nested module has, and its members. *)
+(** A member without its type: whether a definition is private, or the
+    number of parameters and the members of a nested module. *)
 Inductive ename : Set :=
 | en_def : bool -> ename
 | en_mod : nat -> emod -> ename
@@ -32,8 +26,8 @@ with emod : Set :=
 | em_nil : emod
 | em_ext : emod -> string -> ename -> emod.
 
-(** An open frame: [ef_params] names its parameters, innermost first, as the
-    λ-variables they are; [ef_mod] its members so far. *)
+(** An open frame: [ef_params] names its parameters, innermost first, and
+    [ef_mod] holds its members so far. *)
 Record eframe : Set := ef_mk
   { ef_params : list string
   ; ef_mod : emod }.
@@ -52,12 +46,10 @@ Fixpoint index_of (x : string) (xs : list string) : option nat :=
 
 (** ** What a Name Denotes
 
-    A module reached by a dotted prefix: where it is ([mr_unit], [mr_mems]),
-    its members, whether only its public members may be named, and the
-    arguments given so far — for a module of an open frame, its parameter
-    variables to begin with.  Its members are [None] for a path into an
-    imported unit, which is *opaque*: whether it names a module or a
-    definition is left to typing, and [mr_public] means nothing. *)
+    A module reached by a dotted prefix: its unit and member chain, its
+    members, whether only public members may be named, and the arguments
+    given so far.  The members are [None] for a path into an imported unit,
+    which is _opaque_: typing decides what it names. *)
 Record mref : Set := mr_mk
   { mr_unit : list string
   ; mr_mems : list string
@@ -73,8 +65,8 @@ Inductive target : Set :=
 
 (** ** The Local Scope
 
-    Bindings made inside a term: a λ-variable, or a [let], each recorded with
-    the depth it was elaborated at and moved to the use site by weakening. *)
+    Bindings made inside a term, each recorded with the depth it was
+    elaborated at and weakened to the use site. *)
 Inductive lent : Set :=
 | le_term : exp -> nat -> lent
 | le_mod : mref -> nat -> lent.
@@ -94,12 +86,10 @@ Definition mr_weaken (d n : nat) (mr : mref) : mref :=
 
 (** * Import Depths
 
-    The rule of the design document — start at [0] and replace the current
-    depth [n] by [max(n, m + 1)] for an import of depth [m] — assigns each
-    module the length of the longest import chain below it.  Such an assignment
-    is a *ranking* of the import graph, and ranking and acyclicity are two views
-    of the same property: [depth_acyclic] is one direction, [depths_ranks] the
-    other. *)
+    Starting at [0] and replacing the depth [n] by [max(n, m + 1)] for each
+    import of depth [m] assigns every module the length of the longest import
+    chain below it.  Such a ranking exists exactly when the import graph is
+    acyclic: [depth_acyclic] and [depths_ranks] are the two directions. *)
 Section ImportDepth.
 
   (** A finite import graph in declaration order: node [i] imports the nodes
@@ -128,9 +118,8 @@ Section ImportDepth.
     pose proof (ranks_clos_trans _ _ Hr _ _ Hc). lia.
   Qed.
 
-  (** Conversely, depths always exist.  A unit can only import what it has
-      already declared, so its import graph comes in declaration order; this is
-      the general acyclic case up to a topological sort. *)
+  (** Conversely, depths exist for a graph in declaration order, which is
+      every acyclic graph up to a topological sort. *)
   Definition ordered (g : graph) : Prop := forall i j, edge g i j -> j < i.
 
   Definition rank_of (d : list nat) (is : list nat) : nat :=
@@ -207,7 +196,7 @@ Section ImportDepth.
     apply depths_from_ranks; simpl; auto.
   Qed.
 
-  (** So the depth rule really does rule out cycles. *)
+  (** The depth rule rules out cycles. *)
   Corollary ordered_acyclic : forall g,
       ordered g ->
       forall i, ~ clos_trans nat (edge g) i i.

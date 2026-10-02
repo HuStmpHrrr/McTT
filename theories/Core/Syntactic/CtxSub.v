@@ -1,18 +1,15 @@
 (** * Context Refinement
 
-    [Θ ⍮ Ξ ⊢ Δ ⊆ Γ] transports a judgment from [Γ] to [Δ].  It is inductive, because
-    the gluing model recurses on it — but unlike the presentation
-    with explicit substitutions, the transport lemmas are *not* proved by that
-    induction.  [ctx_sub_escape] turns a refinement into [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ]
-    once and for all, and then [sub_preserves_wf] at [Id] does the transport:
-    that is
-    [ctxsub_exp] and friends in [System.Lemmas], all stated for [Id].
+    [Θ ⍮ Ξ ⊢ Δ ⊆ Γ] transports a judgment from [Γ] to [Δ].  It is inductive
+    because the gluing model recurses on it, but the transport lemmas are not
+    proved by that induction: [ctx_sub_escape] turns a refinement into
+    [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ], and [sub_preserves_wf] at [Id] does the transport
+    ([ctxsub_exp] and related lemmas in [System.Lemmas]).
 
-    The length equation that comes with the inductive shape is the one thing
-    [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] does *not* give: [Θ ⍮ Ξ ⍮ ⋅ ▹ ℕ ⊢s Id : ⋅] holds, since
-    [⋅] has no binding to inhabit.  The Kripke weakenings of soundness read a de
-    Bruijn *level* off the length of their domain, so they need a refinement that
-    preserves it. *)
+    The inductive shape also preserves length, which [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] does
+    not: [Θ ⍮ Ξ ⍮ ⋅ ▹ ℕ ⊢s Id : ⋅] holds, since [⋅] has no binding to inhabit.
+    The Kripke weakenings of soundness read a de Bruijn level off the length of
+    their domain, so they need a refinement that preserves it. *)
 
 From Stdlib Require Import RelationClasses.
 

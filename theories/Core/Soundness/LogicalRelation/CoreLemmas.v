@@ -40,11 +40,9 @@ Qed.
 
 Hint Resolve glu_nat_escape : mctt.
 
-(** Where the explicit-substitution development transported [glu_nat] along a
-    context *equality*, it now travels along a refinement: [Δ ⊆ Γ] is
-    what the [ctxsub_*] lemmas need, and an equality gives refinements both
-    ways.  The same replacement happens to every [wf_ctx_eq] morphism instance
-    below. *)
+(** [glu_nat] is stable under context refinement [Δ ⊆ Γ], which is what the
+    [ctxsub_*] lemmas need. The other context-transport lemmas below are stated
+    in the same refinement form. *)
 Lemma glu_nat_resp_ctxsub : forall Γ M a Δ,
     glu_nat Γ M a ->
     Δ ⊆ Γ ->
@@ -835,13 +833,11 @@ Ltac saturate_glu_info :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** Kripke weakenings compose, so a gluing predicate stated at [Γ] survives
-    being pushed along one: the two [[]ʷ]s that appear collapse to a single
-    [[φ ⊙ ψ]ʷ] by [exp_wk_wk], and the [q] of a [Π] codomain absorbs the second
-    weakening's extension by [exp_sub_wk_q_extend_wk].  Both were judgmental
-    rearrangements of the substitution calculus before; they are propositional
-    equalities now, which is why every case here is a [rewrite] away from the
-    hypothesis it came from. *)
+(** Gluing predicates are monotone along Kripke weakenings. Two weakenings
+    collapse to a single [[φ ⊙ ψ]ʷ] by [exp_wk_wk], and the [q] of a [Π]
+    codomain absorbs the extension of the second weakening by
+    [exp_sub_wk_q_extend_wk]. Both are propositional equalities, so each case
+    is a [rewrite] away from its hypothesis. *)
 
 Lemma glu_univ_elem_typ_monotone : forall i a P El,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -902,10 +898,9 @@ Proof.
     + do 2 rewrite exp_wk_wk; mauto 4.
 Qed.
 
-(** The [wf_ctx_eq] instances of the explicit-substitution development become
-    refinement lemmas, as with [glu_nat_resp_ctxsub]: a Kripke weakening into
-    [Δ] extends to one into [Γ] by [kripke_ctxsub], which is all three of these
-    need. *)
+(** Transport along a context refinement, as in [glu_nat_resp_ctxsub]: a
+    Kripke weakening into [Δ] extends to one into [Γ] by [kripke_ctxsub], which
+    is all three lemmas need. *)
 
 Lemma glu_elem_bot_resp_ctxsub : forall i a Γ A M m Δ,
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->

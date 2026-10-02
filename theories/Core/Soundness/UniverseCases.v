@@ -42,8 +42,8 @@ Proof.
   apply_predicate_equivalence.
   cbn.
   mauto 4.
-  (** [Type@i[σ]] is [Type@i], so what was an instance of [Typ-Sub] is now
-      reflexivity — and that needs [⊢ Δ], which only a presupposition supplies. *)
+  (** [Type@i[σ]] is [Type@i], so the equation is reflexivity, which needs
+      [⊢ Δ] from a presupposition. *)
   gen_presups; mauto 3.
 Qed.
 

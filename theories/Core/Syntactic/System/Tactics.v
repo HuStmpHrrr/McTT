@@ -40,9 +40,9 @@ Ltac invert_wf_ctx :=
   clear_dups.
 
 (** The presuppositions that need no induction over equality: [presup_exp_typ]
-    for typing, and the two projections of a weakening or a substitution.  The [wf_wk] and [wf_sub] cases are exactly [saturate_wk] and
-    [saturate_sub], so [gen_core_presups] calls those rather than repeating
-    them. *)
+    for typing, and the two projections of a weakening or a substitution.  The
+    [wf_wk] and [wf_sub] cases are exactly [saturate_wk] and [saturate_sub],
+    which [gen_core_presups] calls. *)
 Ltac gen_core_presup H :=
   match type of H with
   | ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?M : ?A =>
