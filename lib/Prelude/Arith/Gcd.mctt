@@ -1,0 +1,29 @@
+(* The greatest common divisor, by Euclid's algorithm.  [gcd a b] replaces
+   [(a, b)] by [(b, mod a b)] until the second number is [0]; the recursion
+   is primitive, on a fuel bound above [b], since every step strictly lowers
+   the second number.  Fuel is preferred to strong induction, whose
+   recursive calls are transported along order proofs and compute slowly.
+   [gcd a 0] is [a], so [gcd 0 0] is [0]. *)
+import Prelude::Arith::Div use (mod)
+
+module Prelude::Arith::Gcd where
+
+(* Euclid's algorithm with [fuel] steps: [gcdFuel (succ f) a (succ d)] is
+   [gcdFuel f (succ d) (mod a (succ d))], and [gcdFuel f a 0] is [a] for
+   positive fuel.  Without fuel it answers [a]; fuel above [b] is enough, see
+   [Prelude::Arith::Gcd::Properties.gcdFuelEnough]. *)
+def gcdFuel (fuel : Nat) : forall (a : Nat) (b : Nat) -> Nat :=
+  rec fuel return y . (forall (a : Nat) (b : Nat) -> Nat)
+  | zero => fun (a : Nat) (b : Nat) -> a
+  | succ f, r => fun (a : Nat) (b : Nat) ->
+      rec b return z . Nat
+      | zero => a
+      | succ d, s => r (succ d) (mod a (succ d))
+      end
+  end
+end
+
+(* The greatest common divisor, with fuel [succ b]. *)
+def gcd (a : Nat) (b : Nat) : Nat := gcdFuel (succ b) a b end
+
+end

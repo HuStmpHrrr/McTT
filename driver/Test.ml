@@ -1227,3 +1227,54 @@ let%expect_test "lib/Combinatorics.mctt" =
     Evaluate Prelude::Arith::Fibonacci::Properties.fibSum 5 --> true : True
     Evaluate Prelude::Arith::Fibonacci::Properties.fibPlus 3 2 --> true : True
     |}]
+
+let%expect_test "lib/NumberTheory.mctt" =
+  let _ = main_of_lib "NumberTheory.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::Gcd.gcd 12 18 --> 6 : Nat
+    Evaluate Prelude::Arith::Gcd.gcd 17 5 --> 1 : Nat
+    Evaluate Prelude::Arith::Gcd.gcd 0 9 --> 9 : Nat
+    Evaluate Prelude::Arith::Gcd.gcd 9 0 --> 9 : Nat
+    Evaluate nthPrime 0 --> 2 : Nat
+    Evaluate nthPrime 1 --> 3 : Nat
+    Evaluate nthPrime 2 --> 5 : Nat
+    Evaluate nthPrime 3 --> 7 : Nat
+    Evaluate nthPrime 4 --> 11 : Nat
+    Evaluate nthPrime 5 --> 13 : Nat
+    Evaluate nthPrime 6 --> 17 : Nat
+    Evaluate nthPrime 7 --> 19 : Nat
+    Evaluate nthPrime 8 --> 23 : Nat
+    Evaluate nthPrime 9 --> 29 : Nat
+    Evaluate nthPrime 10 --> 31 : Nat
+    Evaluate Prelude::Arith::Sum.sumTo Prelude::Arith::Prime.isPrime 30 --> 10
+      : Nat
+    Evaluate Prelude::Arith::Sum.sumTo
+               (fun (x1 : Nat)
+                 -> Prelude::Arith::Mult.mult x1
+                      (Prelude::Arith::Prime.isPrime x1))
+               30 --> 129 : Nat
+    Evaluate Prelude::Arith::Prime.smallestDivisor 91 --> 7 : Nat
+    Evaluate Prelude::Arith::Prime.smallestDivisor 29 --> 29 : Nat
+    Evaluate Prelude::Arith::Prime.Prime 29 --> True : Type@0
+    Evaluate Prelude::Arith::Prime.Prime 27 --> False : Type@0
+    Evaluate Prelude::Arith::Gcd::Properties.gcdZeroLeft 5 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdZeroRight 5 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdSelf 7 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdOneRight 9 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdDividesLeft 6 9 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdDividesRight 6 9 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdGreatest 2 8 12 true true
+      --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.gcdComm 6 9 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.dividesMultLeft 3 6 2 true --> true
+      : True
+    Evaluate Prelude::Arith::Gcd::Properties.dividesPlusCancel 3 6 9 true true
+      --> true : True
+    Evaluate Prelude::Arith::Prime.twoPrime --> true : True
+    Evaluate Prelude::Arith::Prime.sevenPrime --> true : True
+    Evaluate Prelude::Arith::Prime.nineNotPrime --> fun (x1 : False) -> x1
+      : forall (x1 : False) -> False
+    Evaluate Prelude::Arith::Prime.smallestDivisorDivides 15 --> true : True
+    Evaluate Prelude::Arith::Prime.primeGeTwo 13 true --> true : True
+    Evaluate Prelude::Arith::Prime.primeSmallestDivisor 13 true --> true : True
+  |}]
