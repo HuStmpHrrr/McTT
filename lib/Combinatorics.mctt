@@ -1,0 +1,94 @@
+(* A client of [Prelude::Arith::Binomial] and [Prelude::Arith::Fibonacci]:
+   the first rows of Pascal's triangle and of the Fibonacci numbers, and
+   closed instances of their laws, which normalize to [true]. *)
+import Prelude::Arith::Binomial use (choose)
+import Prelude::Arith::Binomial::Properties use (chooseZero; chooseSelf; chooseOne; chooseOver; pascal; chooseSymm; chooseSymmSub; rowSum)
+import Prelude::Arith::Fibonacci use (fib)
+import Prelude::Arith::Fibonacci::Properties use (fibSucc; fibPos; fibMono; fibMonoPlus; fibSum; fibPlus)
+import Prelude::Arith::Sum use (sumTo)
+
+module Combinatorics where
+
+(* Rows 0 to 6 of Pascal's triangle, entry by entry. *)
+eval choose 0 0
+
+eval choose 1 0
+eval choose 1 1
+
+eval choose 2 0
+eval choose 2 1
+eval choose 2 2
+
+eval choose 3 0
+eval choose 3 1
+eval choose 3 2
+eval choose 3 3
+
+eval choose 4 0
+eval choose 4 1
+eval choose 4 2
+eval choose 4 3
+eval choose 4 4
+
+eval choose 5 0
+eval choose 5 1
+eval choose 5 2
+eval choose 5 3
+eval choose 5 4
+eval choose 5 5
+
+eval choose 6 0
+eval choose 6 1
+eval choose 6 2
+eval choose 6 3
+eval choose 6 4
+eval choose 6 5
+eval choose 6 6
+
+(* Above the diagonal, the coefficients vanish. *)
+eval choose 3 5
+
+(* Row 6 sums to [pow 2 6]. *)
+eval sumTo (choose 6) 7
+
+eval fib 0
+
+eval fib 1
+
+eval fib 10
+
+(* [fib 0 + ... + fib 9], which is [fib 11] minus one. *)
+eval sumTo fib 10
+
+(* A proof of a closed proposition normalizes to [true], of type [True].
+   The numbers stay small: checking [Eq n n] takes time exponential in
+   [n]. *)
+eval chooseZero 5
+
+eval chooseSelf 5
+
+eval chooseOne 5
+
+eval chooseOver 3 5 true
+
+eval pascal 4 2
+
+eval chooseSymm 2 3
+
+eval chooseSymmSub 5 2 true
+
+eval rowSum 4
+
+eval fibSucc 5
+
+eval fibPos 5
+
+eval fibMono 5
+
+eval fibMonoPlus 2 4
+
+eval fibSum 5
+
+eval fibPlus 3 2
+
+end

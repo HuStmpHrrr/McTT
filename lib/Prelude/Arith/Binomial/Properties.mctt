@@ -1,0 +1,216 @@
+(* Laws of [Prelude::Arith::Binomial]: the edges of Pascal's triangle,
+   vanishing above the diagonal, Pascal's rule, symmetry, and the row sum
+   [sumTo (choose n) (succ n) = pow 2 n]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusSwapMiddle)
+import Prelude::Arith::Sub use (sub)
+import Prelude::Arith::Order use (Le; Lt; leRefl; leStep)
+import Prelude::Arith::Monotone use (plusSubCancel)
+import Prelude::Arith::Pow use (pow)
+import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Binomial use (choose)
+
+module Prelude::Arith::Binomial::Properties where
+
+(* Equal summands have equal sums. *)
+def plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+    (hac : Eq a c) (hbd : Eq b d) -> Eq (plus a b) (plus c d) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) ->
+    trans (plus a b) (plus c b) (plus c d)
+      (cong (fun (y : Nat) -> plus y b) a c hac)
+      (cong (fun (y : Nat) -> plus c y) b d hbd)
+end
+
+def chooseZero : forall (n : Nat) -> Eq (choose n 0) 1 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (choose x 0) 1
+    | zero => true
+    | succ p, ih => true
+    end
+end
+
+(* Pascal's rule, which holds by computation. *)
+def pascal : forall (n : Nat) (k : Nat) ->
+    Eq (choose (succ n) (succ k)) (plus (choose n k) (choose n (succ k))) :=
+  fun (n : Nat) (k : Nat) -> refl (plus (choose n k) (choose n (succ k)))
+end
+
+(* Above the diagonal, the coefficients vanish.  In the step,
+   [Lt (succ p) (succ q)] computes to [Lt p q], which bounds both summands
+   of Pascal's rule. *)
+def chooseOver : forall (n : Nat) (k : Nat) (h : Lt n k) -> Eq (choose n k) 0 :=
+  fun (n : Nat) ->
+    rec n return x . (forall (k : Nat) (h : Lt x k) -> Eq (choose x k) 0)
+    | zero => fun (k : Nat) ->
+        rec k return z . (forall (h : Lt 0 z) -> Eq (choose 0 z) 0)
+        | zero => fun (h : False) -> h
+        | succ q, s => fun (h : True) -> true
+        end
+    | succ p, ih => fun (k : Nat) ->
+        rec k return z . (forall (h : Lt (succ p) z) -> Eq (choose (succ p) z) 0)
+        | zero => fun (h : False) -> h
+        | succ q, s => fun (h : Lt p q) ->
+            plusCongBoth (choose p q) (choose p (succ q)) 0 0
+              (ih q h) (ih (succ q) (leStep (succ p) q h))
+        end
+    end
+end
+
+(* The diagonal: [choose n n] is [1], since [choose p (succ p)] vanishes. *)
+def chooseSelf : forall (n : Nat) -> Eq (choose n n) 1 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (choose x x) 1
+    | zero => true
+    | succ p, ih =>
+        plusCongBoth (choose p p) (choose p (succ p)) 1 0
+          ih (chooseOver p (succ p) (leRefl p))
+    end
+end
+
+def chooseOne : forall (n : Nat) -> Eq (choose n 1) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (choose x 1) x
+    | zero => true
+    | succ p, ih =>
+        plusCongBoth (choose p 0) (choose p 1) 1 p (chooseZero p) ih
+    end
+end
+
+(* The coefficient [choose (plus a b) a], indexed by the sizes [a] of the
+   chosen part and [b] of the rest. *)
+def split (a : Nat) (b : Nat) : Nat := choose (plus a b) a end
+
+def splitZeroLeft : forall (b : Nat) -> Eq (split 0 b) 1 :=
+  fun (b : Nat) -> chooseZero b
+end
+
+def splitZeroRight : forall (a : Nat) -> Eq (split a 0) 1 :=
+  fun (a : Nat) ->
+    trans (choose (plus a 0) a) (choose a a) 1
+      (cong (fun (y : Nat) -> choose y a) (plus a 0) a (plusZero a))
+      (chooseSelf a)
+end
+
+(* Pascal's rule for [split]: [split (succ a) (succ b)] is
+   [plus (split a (succ b)) (split (succ a) b)].  The second summand needs
+   [plus a (succ b) = succ (plus a b)]. *)
+def splitSucc : forall (a : Nat) (b : Nat) ->
+    Eq (split (succ a) (succ b)) (plus (split a (succ b)) (split (succ a) b)) :=
+  fun (a : Nat) (b : Nat) ->
+    cong (fun (y : Nat) -> plus (split a (succ b)) y)
+      (choose (plus a (succ b)) (succ a)) (choose (succ (plus a b)) (succ a))
+      (cong (fun (y : Nat) -> choose y (succ a)) (plus a (succ b)) (succ (plus a b))
+         (plusSucc a b))
+end
+
+(* [split] is symmetric.  The induction on [a] and then on [b] follows the
+   rule [splitSucc], which is symmetric up to the order of the summands. *)
+def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (split x b) (split b x))
+    | zero => fun (b : Nat) ->
+        trans (split 0 b) 1 (split b 0) (splitZeroLeft b)
+          (sym (split b 0) 1 (splitZeroRight b))
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (split (succ p) y) (split y (succ p))
+        | zero =>
+            trans (split (succ p) 0) 1 (split 0 (succ p)) (splitZeroRight (succ p))
+              (sym (split 0 (succ p)) 1 (splitZeroLeft (succ p)))
+        | succ q, s =>
+            let lhs : Nat := split (succ p) (succ q);
+                la : Nat := split p (succ q);
+                lb : Nat := split (succ p) q;
+                ra : Nat := split q (succ p);
+                rb : Nat := split (succ q) p;
+                rhs : Nat := split (succ q) (succ p);
+                mid : Eq (plus la lb) (plus rb ra) := plusCongBoth la lb rb ra (ih (succ q)) s;
+                swap : Eq (plus rb ra) (plus ra rb) := plusComm rb ra
+            in trans lhs (plus la lb) rhs (splitSucc p q)
+                 (trans (plus la lb) (plus rb ra) rhs mid
+                    (trans (plus rb ra) (plus ra rb) rhs swap
+                       (sym rhs (plus ra rb) (splitSucc q p))))
+            end
+        end
+    end
+end
+
+(* Symmetry: choosing [a] of [plus a b] is choosing the [b] left out. *)
+def chooseSymm : forall (a : Nat) (b : Nat) ->
+    Eq (choose (plus a b) a) (choose (plus a b) b) :=
+  fun (a : Nat) (b : Nat) ->
+    trans (choose (plus a b) a) (choose (plus b a) b) (choose (plus a b) b)
+      (splitSymm a b)
+      (cong (fun (y : Nat) -> choose y b) (plus b a) (plus a b) (plusComm b a))
+end
+
+(* Symmetry with subtraction: below [n], [choose n k] is [choose n (n - k)]. *)
+def chooseSymmSub : forall (n : Nat) (k : Nat) (h : Le k n) ->
+    Eq (choose n k) (choose n (sub n k)) :=
+  fun (n : Nat) (k : Nat) (h : Le k n) ->
+    let m : Nat := sub n k;
+        back : Eq (plus m k) n := plusSubCancel n k h;
+        forth : Eq n (plus m k) := sym (plus m k) n back
+    in trans (choose n k) (choose (plus m k) k) (choose n m)
+         (cong (fun (y : Nat) -> choose y k) n (plus m k) forth)
+         (trans (choose (plus m k) k) (choose (plus m k) m) (choose n m)
+            (sym (choose (plus m k) m) (choose (plus m k) k) (chooseSymm m k))
+            (cong (fun (y : Nat) -> choose y m) (plus m k) n back))
+    end
+end
+
+(* A prefix of row [succ p] sums to the same prefix of row [p] plus the
+   prefix of row [p] one shorter, by Pascal's rule on each entry. *)
+def rowPrefixSucc : forall (p : Nat) (m : Nat) ->
+    Eq (sumTo (choose (succ p)) (succ m))
+       (plus (sumTo (choose p) (succ m)) (sumTo (choose p) m)) :=
+  fun (p : Nat) (m : Nat) ->
+    rec m return x . Eq (sumTo (choose (succ p)) (succ x))
+                        (plus (sumTo (choose p) (succ x)) (sumTo (choose p) x))
+    | zero =>
+        (* The goal computes to [Eq 1 (plus (plus (choose p 0) 0) 0)]. *)
+        sym (plus (plus (choose p 0) 0) 0) 1
+          (trans (plus (plus (choose p 0) 0) 0) (plus (choose p 0) 0) 1
+             (plusZero (plus (choose p 0) 0))
+             (trans (plus (choose p 0) 0) (choose p 0) 1 (plusZero (choose p 0)) (chooseZero p)))
+    | succ q, ih =>
+        let a : Nat := choose p q;
+            b : Nat := choose p (succ q);
+            c : Nat := sumTo (choose p) (succ q);
+            d : Nat := sumTo (choose p) q;
+            lhs : Nat := plus (plus a b) (sumTo (choose (succ p)) (succ q));
+            step : Eq lhs (plus (plus a b) (plus c d)) :=
+              cong (fun (y : Nat) -> plus (plus a b) y)
+                (sumTo (choose (succ p)) (succ q)) (plus c d) ih;
+            swap : Eq (plus (plus a b) (plus c d)) (plus (plus b a) (plus c d)) :=
+              cong (fun (y : Nat) -> plus y (plus c d)) (plus a b) (plus b a) (plusComm a b)
+        in trans lhs (plus (plus a b) (plus c d)) (plus (plus b c) (plus a d)) step
+             (trans (plus (plus a b) (plus c d)) (plus (plus b a) (plus c d))
+                (plus (plus b c) (plus a d)) swap (plusSwapMiddle b a c d))
+        end
+    end
+end
+
+(* Row [n] of Pascal's triangle sums to [pow 2 n].  Row [succ p] sums to
+   twice row [p] by [rowPrefixSucc], since [choose p (succ p)] vanishes; and
+   [pow 2 (succ p)] computes to [plus P (plus P 0)]. *)
+def rowSum : forall (n : Nat) -> Eq (sumTo (choose n) (succ n)) (pow 2 n) :=
+  fun (n : Nat) ->
+    rec n return x . Eq (sumTo (choose x) (succ x)) (pow 2 x)
+    | zero => true
+    | succ p, ih =>
+        let s : Nat := sumTo (choose p) (succ p);
+            P : Nat := pow 2 p;
+            longer : Nat := sumTo (choose p) (succ (succ p));
+            dropTop : Eq longer s :=
+              cong (fun (y : Nat) -> plus y s) (choose p (succ p)) 0
+                (chooseOver p (succ p) (leRefl p));
+            first : Eq longer P := trans longer s P dropTop ih;
+            second : Eq s (plus P 0) := trans s P (plus P 0) ih (sym (plus P 0) P (plusZero P))
+        in trans (sumTo (choose (succ p)) (succ (succ p))) (plus longer s) (plus P (plus P 0))
+             (rowPrefixSucc p (succ p))
+             (plusCongBoth longer s P (plus P 0) first second)
+        end
+    end
+end
+
+end

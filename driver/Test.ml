@@ -1053,4 +1053,62 @@ let%expect_test "lib/Streams.mctt" =
       : True
     Evaluate Prelude::Data::Stream::Properties.sumTake 5
                Prelude::Data::Stream::Properties.nats --> true : True
+  |}]
+
+let%expect_test "lib/Combinatorics.mctt" =
+  let _ = main_of_lib "Combinatorics.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::Binomial.choose 0 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 1 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 1 1 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 2 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 2 1 --> 2 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 2 2 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 3 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 3 1 --> 3 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 3 2 --> 3 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 3 3 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 4 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 4 1 --> 4 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 4 2 --> 6 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 4 3 --> 4 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 4 4 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 1 --> 5 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 2 --> 10 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 3 --> 10 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 4 --> 5 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 5 5 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 1 --> 6 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 2 --> 15 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 3 --> 20 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 4 --> 15 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 5 --> 6 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 6 6 --> 1 : Nat
+    Evaluate Prelude::Arith::Binomial.choose 3 5 --> 0 : Nat
+    Evaluate Prelude::Arith::Sum.sumTo (Prelude::Arith::Binomial.choose 6) 7
+      --> 64 : Nat
+    Evaluate Prelude::Arith::Fibonacci.fib 0 --> 0 : Nat
+    Evaluate Prelude::Arith::Fibonacci.fib 1 --> 1 : Nat
+    Evaluate Prelude::Arith::Fibonacci.fib 10 --> 55 : Nat
+    Evaluate Prelude::Arith::Sum.sumTo Prelude::Arith::Fibonacci.fib 10 --> 88
+      : Nat
+    Evaluate Prelude::Arith::Binomial::Properties.chooseZero 5 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.chooseSelf 5 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.chooseOne 5 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.chooseOver 3 5 true --> true
+      : True
+    Evaluate Prelude::Arith::Binomial::Properties.pascal 4 2 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.chooseSymm 2 3 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.chooseSymmSub 5 2 true --> true
+      : True
+    Evaluate Prelude::Arith::Binomial::Properties.rowSum 4 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibSucc 5 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibPos 5 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibMono 5 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibMonoPlus 2 4 --> true
+      : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibSum 5 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.fibPlus 3 2 --> true : True
     |}]
