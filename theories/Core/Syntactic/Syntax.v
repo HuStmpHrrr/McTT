@@ -123,7 +123,7 @@ Record path : Set := path_mk
 (** An abbreviation, not a definition: a rule keyed on [p_abs] then has a record
     literal in its conclusion, so inverting it yields equations that
     [discriminate] and [injection] see through. *)
-Notation p_abs fp ip := {| p_unit := fp; p_mems := ip |}.
+Abbreviation p_abs fp ip := {| p_unit := fp; p_mems := ip |}.
 
 (** A unit is named by a nonempty file path, and a path to a term by a nonempty
     member chain: a module is not an [exp] and has no type. *)

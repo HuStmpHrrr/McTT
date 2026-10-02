@@ -35,7 +35,7 @@ with domain_ne : Set :=
 with domain_nf : Set :=
 | d_dom : domain -> domain -> domain_nf.
 
-Notation env := (list domain).
+Abbreviation env := (list domain).
 
 Derive NoConfusion for domain domain_ne domain_nf.
 
