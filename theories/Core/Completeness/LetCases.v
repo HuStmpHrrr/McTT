@@ -198,6 +198,36 @@ Proof.
     eapply per_head_of; [ eassumption | eassumption | exact Ha22 | pairwise ].
 Qed.
 
+(** What the gluing model needs of an instantiated type in a definition
+    context, as [per_univ_of_instance] for an assumption: [⟦B[Id,,M]⟧ρ] and
+    [⟦B⟧(ρ ↦ ⟦M⟧ρ)] are related. *)
+Lemma per_univ_of_instance_def : forall {Γ A i M B k env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : Type@i ->
+    Γ ⊨ M : A ->
+    Γ ▸ A ≔ M ⊨ B : Type@k ->
+    forall ρ n,
+      Dom ρ ≈ ρ ∈ env_relΓ ->
+      ⟦ M ⟧ ρ ↘ n ->
+      exists a b,
+        ⟦ B[Id,,M] ⟧ ρ ↘ a /\ ⟦ B ⟧ ρ ↦ n ↘ b /\
+          Dom a ≈ a ∈ per_univ k /\ Dom a ≈ b ∈ per_univ k.
+Proof.
+  intros * HΓ HA HM HB * Hρ Hn.
+  pose proof (rel_sub_under_ctx_extend_sub_def (rel_sub_id (ex_intro _ _ HΓ)) HA HM) as HidM.
+  rewrite exp_sub_id in HidM.
+  pose proof (rel_exp_of_typ_inversion HB) as [env_relΓA [HΓA HBgen]].
+  destruct (HBgen _ _ HΓ _ _ HidM _ _ _ _ Hρ
+                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn)
+                  (eval_sub_extend _ _ _ _ _ (eval_sub_id _) Hn))
+    as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
+  destruct Hchain as [Ht12 _].
+  exists t1, t2.
+  do 2 (split; [ eassumption |]).
+  split; [| eassumption ].
+  etransitivity; [ eassumption | symmetry; eassumption ].
+Qed.
+
 (** [q σ] from [Γ ▸ A[σ] ≔ M[σ]] into [Δ ▸ A ≔ M].  The tie at [⟦q σ⟧ρ]
     is the tie at [ρ] moved along the left commutation of [M] at [σ], read at
     the tail [ρ↯]. *)

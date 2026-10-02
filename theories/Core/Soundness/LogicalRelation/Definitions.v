@@ -291,6 +291,15 @@ Variant glu_rel_typ_with_sub i Δ A σ ρ : Prop :=
         Δ ⊢ A[σ] ® P ->
         glu_rel_typ_with_sub i Δ A σ ρ }.
 
+Variant glu_rel_exp_with_sub i Δ M A σ ρ : Prop :=
+| mk_glu_rel_exp_with_sub :
+  `{ forall P El,
+        ⟦ A ⟧ ρ ↘ a ->
+        ⟦ M ⟧ ρ ↘ m ->
+        DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ ⊢ M[σ] : A[σ] ® m ∈ El ->
+        glu_rel_exp_with_sub i Δ M A σ ρ }.
+
 Definition nil_glu_sub_pred : glu_sub_pred :=
   fun Δ σ ρ => Δ ⊢s σ : ⋅.
 #[global] Arguments nil_glu_sub_pred Δ σ ρ/.
@@ -309,6 +318,20 @@ Variant cons_glu_sub_pred i Γ A (TSb : glu_sub_pred) : glu_sub_pred :=
         Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢s σ ® ρ ∈ cons_glu_sub_pred i Γ A TSb }.
 
+(** A definition entry glues as an assumption entry whose head is also tied
+    to the value of the body in the tail ([def_tie]).  The syntactic half of
+    the tie is part of [Δ ⊢s σ : Γ ▸ A ≔ M]. *)
+Variant cons_def_glu_sub_pred i Γ A M (TSb : glu_sub_pred) : glu_sub_pred :=
+| mk_cons_def_glu_sub_pred :
+  `{ forall P El,
+        Δ ⊢s σ : Γ ▸ A ≔ M ->
+        ⟦ A ⟧ ρ↯ ↘ a ->
+        DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ ⊢ #0[σ] : A[↑]ʷ[σ] ® (ρ 0) ∈ El ->
+        def_tie A M ρ ->
+        Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
+        Δ ⊢s σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
+
 (** As with [wf_ctx_empty], the base case carries what the judgment is relative
     to: without it, [⊢ ⋅] would not follow ([glu_ctx_env_wf_ctx]). *)
 Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
@@ -325,16 +348,20 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
             Δ ⊢s σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
         Sb <∙> cons_glu_sub_pred i Γ A TSb ->
-        EG Γ ▹ A ∈ glu_ctx_env ↘ Sb }.
-
-Variant glu_rel_exp_with_sub i Δ M A σ ρ : Prop :=
-| mk_glu_rel_exp_with_sub :
-  `{ forall P El,
-        ⟦ A ⟧ ρ ↘ a ->
-        ⟦ M ⟧ ρ ↘ m ->
-        DG a ∈ glu_univ_elem i ↘ P ↘ El ->
-        Δ ⊢ M[σ] : A[σ] ® m ∈ El ->
-        glu_rel_exp_with_sub i Δ M A σ ρ }.
+        EG Γ ▹ A ∈ glu_ctx_env ↘ Sb }
+| glu_ctx_env_cons_def :
+  `{ forall i TSb Sb,
+        EG Γ ∈ glu_ctx_env ↘ TSb ->
+        Γ ⊢ A : Type@i ->
+        Γ ⊢ M : A ->
+        (forall Δ σ ρ,
+            Δ ⊢s σ ® ρ ∈ TSb ->
+            glu_rel_typ_with_sub i Δ A σ ρ) ->
+        (forall Δ σ ρ,
+            Δ ⊢s σ ® ρ ∈ TSb ->
+            glu_rel_exp_with_sub i Δ M A σ ρ) ->
+        Sb <∙> cons_def_glu_sub_pred i Γ A M TSb ->
+        EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ Sb }.
 
 Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
 #[global] Arguments glu_rel_ctx Γ/.
