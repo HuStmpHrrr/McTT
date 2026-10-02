@@ -927,4 +927,39 @@ let%expect_test "lib/Vectors.mctt" =
                true --> true : True
     Evaluate Prelude::Data::VecLaws.nthAppendRight 3 2 oneTwoThree fourFive 1
                true --> true : True
+
+let%expect_test "lib/Powers.mctt" =
+  let _ = main_of_lib "Powers.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::Pow.pow 2 10 --> 1024 : Nat
+    Evaluate Prelude::Arith::Pow.pow 3 4 --> 81 : Nat
+    Evaluate Prelude::Arith::Pow.pow 0 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Sum.sumTo
+               (Prelude::Function::Combinators.Generic.id Nat)
+               11 --> 55 : Nat
+    Evaluate Prelude::Arith::Sum.sumTo
+               (fun (x1 : Nat) -> Prelude::Arith::Mult.mult x1 x1)
+               6 --> 55 : Nat
+    Evaluate Prelude::Arith::Factorial.fact 5 --> 120 : Nat
+    Evaluate Prelude::Arith::Factorial.fact 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Pow.powZero 7 --> true : True
+    Evaluate Prelude::Arith::Pow.powOne 9 --> true : True
+    Evaluate Prelude::Arith::Pow.onePow 6 --> true : True
+    Evaluate Prelude::Arith::Pow.powPlus 2 1 3 --> true : True
+    Evaluate Prelude::Arith::Pow.powMult 2 2 2 --> true : True
+    Evaluate Prelude::Arith::Pow.powMultBase 2 2 2 --> true : True
+    Evaluate Prelude::Arith::Sum.sumToPlus
+               (Prelude::Function::Combinators.Generic.id Nat)
+               (fun (x1 : Nat) -> Prelude::Arith::Mult.mult x1 x1)
+               4 --> true : True
+    Evaluate Prelude::Arith::Sum.sumToScale 3
+               (Prelude::Function::Combinators.Generic.id Nat)
+               4 --> true : True
+    Evaluate Prelude::Arith::Sum.sumToConst 4 5 --> true : True
+    Evaluate Prelude::Arith::Sum.gauss 4 --> true : True
+    Evaluate Prelude::Arith::Sum.sumOdd 4 --> true : True
+    Evaluate Prelude::Arith::Factorial.factSucc 3 --> true : True
+    Evaluate Prelude::Arith::Factorial.factPos 4 --> true : True
+    Evaluate Prelude::Arith::Factorial.factLeSucc 3 --> true : True
+    Evaluate Prelude::Arith::Factorial.lePowFact 3 --> true : True
     |}]

@@ -1,0 +1,79 @@
+(* The factorial, with its defining equations, positivity, monotonicity in
+   one step, and the bound [pow 2 n <= fact (succ n)]. *)
+import Prelude::Logic use (absurd)
+import Prelude::Arith::Equality use (Eq; refl)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Order use (Le; Lt; leTrans; lePlusRight; lePlusLeft)
+import Prelude::Arith::Pow use (pow)
+
+module Prelude::Arith::Factorial where
+
+(* [fact 0] is [1] and [fact (succ p)] is [mult (succ p) (fact p)]. *)
+def fact (n : Nat) : Nat :=
+  rec n return y . Nat
+  | zero => 1
+  | succ p, r => mult (succ p) r
+  end
+end
+
+def factZero : Eq (fact 0) 1 := true end
+
+def factSucc : forall (n : Nat) -> Eq (fact (succ n)) (mult (succ n) (fact n)) :=
+  fun (n : Nat) -> refl (mult (succ n) (fact n))
+end
+
+(* Every factorial is positive.  [fact (succ p)] computes to
+   [plus (fact p) (mult p (fact p))], which is at least [fact p]. *)
+def factPos : forall (n : Nat) -> Lt 0 (fact n) :=
+  fun (n : Nat) ->
+    rec n return x . Lt 0 (fact x)
+    | zero => true
+    | succ p, ih =>
+        leTrans 1 (fact p) (fact (succ p)) ih (lePlusRight (fact p) (mult p (fact p)))
+    end
+end
+
+(* The factorial does not decrease from [n] to [succ n]. *)
+def factLeSucc : forall (n : Nat) -> Le (fact n) (fact (succ n)) :=
+  fun (n : Nat) -> lePlusRight (fact n) (mult n (fact n))
+end
+
+(* Addition is monotone in both summands. *)
+def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+    (hab : Le a b) (hcd : Le c d) -> Le (plus a c) (plus b d) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
+                        (hab : Le x b) (hcd : Le c d) -> Le (plus x c) (plus b d))
+    | zero => fun (b : Nat) (c : Nat) (d : Nat) (hab : True) (hcd : Le c d) ->
+        leTrans c d (plus b d) hcd (lePlusLeft b d)
+    | succ p, ih => fun (b : Nat) ->
+        rec b return z . (forall (c : Nat) (d : Nat) (hab : Le (succ p) z) (hcd : Le c d) ->
+                            Le (plus (succ p) c) (plus z d))
+        | zero => fun (c : Nat) (d : Nat) (hab : False) (hcd : Le c d) ->
+            absurd (Le (succ (plus p c)) d) hab
+        | succ q, s => fun (c : Nat) (d : Nat) (hab : Le p q) (hcd : Le c d) ->
+            ih q c d hab hcd
+        end
+    end
+end
+
+(* Powers of two are bounded by factorials: [pow 2 n <= fact (succ n)].  In
+   the step, [mult 2 P] computes to [plus P (plus P 0)] and
+   [mult (succ (succ p)) F] to [plus F (plus F (mult p F))], so two uses of
+   [lePlusMono] on the hypothesis [P <= F] conclude. *)
+def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
+  fun (n : Nat) ->
+    rec n return x . Le (pow 2 x) (fact (succ x))
+    | zero => true
+    | succ p, ih =>
+        let P : Nat := pow 2 p;
+            F : Nat := fact (succ p);
+            inner : Le (plus P 0) (plus F (mult p F)) :=
+              lePlusMono P F 0 (mult p F) ih true
+        in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner
+        end
+    end
+end
+
+end
