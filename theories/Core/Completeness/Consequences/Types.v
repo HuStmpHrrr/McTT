@@ -53,6 +53,8 @@ Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 Inductive is_typ_constr : typ -> Prop :=
 | typ_is_typ_constr : forall i, is_typ_constr Type@i
 | nat_is_typ_constr : is_typ_constr ℕ
+| True_is_typ_constr : is_typ_constr ⊤
+| False_is_typ_constr : is_typ_constr ⊥
 | pi_is_typ_constr : forall A B, is_typ_constr Π A B
 | var_is_typ_constr : forall x, is_typ_constr #x
 .
@@ -77,6 +79,10 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
+    | assert (a = ⊤ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
+    | assert (a = ⊥ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
     | idtac
     | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
     invert_per_univ_elem HR.
@@ -110,6 +116,10 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
+    | assert (a = ⊤ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
+    | assert (a = ⊥ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
     | idtac
     | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
     invert_per_univ_elem HR.
@@ -135,6 +145,10 @@ Proof.
     [ assert (a = 𝕌@i) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | reflexivity
+    | assert (a = ⊤ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
+    | assert (a = ⊥ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
     | idtac
     | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
     invert_per_univ_elem HR.

@@ -24,6 +24,12 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_nat_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ ℕᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+(** η for [⊤]: every value of type [⊤] reads back as [⋆]. *)
+| read_nf_true :
+  `( Rnf ⇓ ⊤ᵈ m in Θ ⍮ Ξ ⍮ s ↘ ⋆ⁿ )
+| read_nf_False_neut :
+  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rnf ⇓ ⊥ᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 | read_nf_fn :
   `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
@@ -62,6 +68,15 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
 
      Rne recᵈ m under ρ return B | zero -> mz | succ -> MS end in Θ ⍮ Ξ ⍮ s ↘ recⁿ M return B' | zero -> MZ | succ -> MS' end )
+| read_ne_exfalso :
+  `( (** The normal form of the motive. *)
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑! ⊥ᵈ s ↘ b ->
+     Rtyp b in Θ ⍮ Ξ ⍮ S s ↘ B' ->
+
+     (** The neutral form of the scrutinee. *)
+     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+
+     Rne efqᵈ m under ρ return B in Θ ⍮ Ξ ⍮ s ↘ efqⁿ M return B' )
 | read_ne_glob :
   `( Rne d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
@@ -70,6 +85,10 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
   `( Rtyp 𝕌@i in Θ ⍮ Ξ ⍮ s ↘ Typeⁿ@i )
 | read_typ_nat :
   `( Rtyp ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
+| read_typ_True :
+  `( Rtyp ⊤ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊤ⁿ )
+| read_typ_False :
+  `( Rtyp ⊥ᵈ in Θ ⍮ Ξ ⍮ s ↘ ⊥ⁿ )
 | read_typ_pi :
   `( (** The normal form of the argument type. *)
      Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->

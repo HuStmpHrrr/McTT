@@ -14,7 +14,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases NatCases SubstitutionCases SubtypingCases
-  UniverseCases VariableCases LogicalRelation.
+  TrueFalseCases UniverseCases VariableCases LogicalRelation.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -62,6 +62,10 @@ Proof.
     | apply valid_exp_zero; assumption
     | apply rel_exp_succ_cong; assumption
     | eapply rel_exp_natrec_cong; eassumption
+    | apply valid_exp_True; assumption | apply valid_exp_False; assumption
+    | apply valid_exp_true; assumption
+    | eapply rel_exp_exfalso_cong; eassumption
+    | apply rel_exp_true_eta; assumption
     | eapply rel_exp_pi_cong; eassumption
     | eapply rel_exp_fn_cong; eassumption
     | eapply rel_exp_app_cong; eassumption

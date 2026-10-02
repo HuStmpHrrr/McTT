@@ -24,7 +24,7 @@
     Both rely on extra premises that [Definitions] carries on those two rules
     for this purpose.
 
-    Six of the sixteen term-equality rules need an argument of their own, all
+    Seven of the twenty-one term-equality rules need an argument of their own, all
     for the same reason: a congruence rule states its equation at the type
     built from the left premises, so the right-hand side is typed by its own
     rule, at its own type, and then moved to the type of the equation by
@@ -63,6 +63,18 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ rec M' return A' | zero -> MZ' | succ -> MS' end : A'[Id,,M']) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ℕ) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ℕ) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.
+    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+
+  (** [efq], right.  As for [rec], with no branches to transport. *)
+  - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ efq M' return A' : A'[Id,,M']) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ⊥) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.

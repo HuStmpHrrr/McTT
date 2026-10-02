@@ -30,6 +30,19 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_natrec_order Θ Ξ A MZ MS m p) ->
      eval_exp_order Θ Ξ rec M return A | zero -> MZ | succ -> MS end p )
+| eeo_True :
+  `( eval_exp_order Θ Ξ ⊤ p )
+| eeo_true :
+  `( eval_exp_order Θ Ξ ⋆ p )
+| eeo_False :
+  `( eval_exp_order Θ Ξ ⊥ p )
+(** The scrutinee of [efq] must evaluate to a neutral, since no other value
+    has a rule. *)
+| eeo_exfalso :
+  `( eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
+     (forall b m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> eval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
+     eval_exp_order Θ Ξ (efq M return A) p )
 | eeo_pi :
   `( eval_exp_order Θ Ξ A p ->
      eval_exp_order Θ Ξ (Π A B) p )
@@ -135,10 +148,20 @@ Section EvalImpl.
           rewrite H1 in H2; discriminate H2
       end.
 
+  (** The [efq] case: the order says that the scrutinee evaluates to a
+      neutral, which rules out every other value. *)
+  #[local]
+  Ltac impl_obl_exfalso :=
+    repeat match goal with
+      | H : forall m, eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
+          destruct (H _ Hm) as (? & ? & ?); clear H
+      end.
+
   #[local]
   Ltac impl_obl_tac :=
     intros; cbv beta in *;
     repeat impl_obl_tac1;
+    impl_obl_exfalso;
     try match goal with H : eval_exp_order _ _ (a_glob _) _ |- _ => inversion H; subst; clear H end;
     impl_obl_glob;
     try solve [ intuition discriminate ];
@@ -159,6 +182,14 @@ Section EvalImpl.
       let (m , Hm) := eval_exp_impl M p _ in
       let (r, Hr)  := eval_natrec_impl A MZ MS m p _ in
       exist _ r _
+  | ⊤     , p, H => exist _ ⊤ᵈ _
+  | ⋆     , p, H => exist _ ⋆ᵈ _
+  | ⊥     , p, H => exist _ ⊥ᵈ _
+  | efq M return A, p, H with eval_exp_impl M p _ := {
+    | exist _ (⇑ b m) Hm =>
+        let (a, Ha) := eval_exp_impl A (p ↦ ⇑ b m) _ in
+        exist _ ⇑ a (efqᵈ m under p return A) _
+    | exist _ _ Hm => False_rect _ _ }
   | Π A B , p, H =>
       let (r , Hr) := eval_exp_impl A p _ in
       exist _ Πᵈ r p B _

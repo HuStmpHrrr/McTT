@@ -16,7 +16,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases
-  SubtypingCases UniverseCases FunctionCases NatCases.
+  SubtypingCases UniverseCases FunctionCases NatCases TrueFalseCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -51,6 +51,9 @@ Proof.
   all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_nat; assumption
     | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
     | eapply glu_rel_exp_natrec; eassumption
+    | apply glu_rel_exp_True; assumption | apply glu_rel_exp_False; assumption
+    | apply glu_rel_exp_true; assumption
+    | eapply glu_rel_exp_exfalso; eassumption
     | eapply glu_rel_exp_pi; eassumption | eapply glu_rel_exp_fn; eassumption
     | eapply glu_rel_exp_app; eassumption ].
   all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].

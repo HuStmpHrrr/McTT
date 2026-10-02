@@ -17,6 +17,9 @@ Inductive domain : Set :=
 | d_univ : nat -> domain
 | d_zero : domain
 | d_succ : domain -> domain
+| d_True : domain
+| d_true : domain
+| d_False : domain
 | d_fn : list domain -> exp -> domain
 | d_neut : domain -> domain_ne -> domain
 with domain_ne : Set :=
@@ -25,6 +28,8 @@ with domain_ne : Set :=
 | d_var : forall (x : nat), domain_ne
 | d_app : domain_ne -> domain_nf -> domain_ne
 | d_natrec : list domain -> typ -> domain -> exp -> domain_ne -> domain_ne
+(** The [⊥]-eliminator on a neutral, with its motive as a closure. *)
+| d_exfalso : list domain -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : path -> domain_ne
 with domain_nf : Set :=
@@ -61,8 +66,8 @@ Arguments drop_env _ /.
 (** ** Semantic Notations
 
     Value notations share [constr] with expression notations, so the
-    spellings the two would otherwise share ([ℕ], [zero], [succ], [Π] and the
-    closure's [λ]) carry a superscript [ᵈ].  Notations specific to values
+    spellings the two would otherwise share ([ℕ], [zero], [succ], [⊤], [⋆],
+    [⊥], [Π] and the closure's [λ]) carry a superscript [ᵈ].  Notations specific to values
     ([↦], [↯], [𝕌@n], [⇑], [⇓], [⇑!], [#ᵈ n]) follow the paper. *)
 Module Domain_Notations.
   Export Syntax_Notations.
@@ -75,6 +80,9 @@ Module Domain_Notations.
   Notation "'ℕᵈ'" := d_nat : mctt_scope.
   Notation "'zeroᵈ'" := d_zero : mctt_scope.
   Notation "'succᵈ' m" := (d_succ m) (at level 2, m at level 1) : mctt_scope.
+  Notation "'⊤ᵈ'" := d_True : mctt_scope.
+  Notation "'⋆ᵈ'" := d_true : mctt_scope.
+  Notation "'⊥ᵈ'" := d_False : mctt_scope.
   Notation "'λᵈ' ρ M" := (d_fn ρ M) (at level 2, ρ at level 1, M at level 9) : mctt_scope.
   Notation "'Πᵈ' a ρ B" := (d_pi a ρ B) (at level 2, a at level 1, ρ at level 0, B at level 9) : mctt_scope.
   Notation "'⇑' a m" := (d_neut a m) (at level 2, a at level 1, m at level 1) : mctt_scope.
@@ -82,6 +90,7 @@ Module Domain_Notations.
   Notation "'⇑!' a n" := (d_neut a (d_var n)) (at level 2, a at level 1, n at level 0) : mctt_scope.
   Notation "m '$ᵈ' n" := (d_app m n) (at level 10, left associativity, format "m  $ᵈ  n") : mctt_scope.
   Notation "'recᵈ' m 'under' ρ 'return' P | 'zero' -> mz | 'succ' -> MS 'end'" := (d_natrec ρ P mz MS m) (at level 0, m at level 60, ρ at level 60, P at level 60, mz at level 60, MS at level 60) : mctt_scope.
+  Notation "'efqᵈ' m 'under' ρ 'return' P" := (d_exfalso ρ P m) (at level 2, m at level 60, ρ at level 60, P at level 60) : mctt_scope.
 
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
 End Domain_Notations.
