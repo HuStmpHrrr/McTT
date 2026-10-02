@@ -1,0 +1,10 @@
+module TrueFalse where
+
+eval true
+
+(* By eta for True, the body normalizes to true. *)
+eval fun (u : True) -> u
+
+eval fun (f : False) -> exfalso f return x. Nat
+
+end
