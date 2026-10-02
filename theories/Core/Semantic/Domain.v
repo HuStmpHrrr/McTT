@@ -48,6 +48,7 @@ Fixpoint env_var (ρ : env) (x : nat) : domain :=
   | 0 => List.hd d_zero ρ
   | S x' => env_var (List.tl ρ) x'
   end.
+#[warning="-uniform-inheritance"]
 Coercion env_var : list >-> Funclass.
 
 (** [env_var] is [nth], but defined by recursion on the index so that [ρ↯ x]
