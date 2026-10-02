@@ -1035,6 +1035,62 @@ Proof.
   apply exp_wk_wk_eq; pointwise_solve.
 Qed.
 
+Corollary modexp_wk_shift_wk_q : forall H φ,
+    modexp_wk (modexp_wk H ↑) (wk_q φ) = modexp_wk (modexp_wk H φ) ↑.
+Proof.
+  intros; do 2 rewrite modexp_wk_wk.
+  apply modexp_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary bnd_wk_shift_wk_q : forall b φ,
+    bnd_wk (bnd_wk b ↑) (wk_q φ) = bnd_wk (bnd_wk b φ) ↑.
+Proof.
+  intros; do 2 rewrite bnd_wk_wk.
+  apply bnd_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary gunit_wk_shift_wk_q : forall U φ,
+    gunit_wk (gunit_wk U ↑) (wk_q φ) = gunit_wk (gunit_wk U φ) ↑.
+Proof.
+  intros; do 2 rewrite gunit_wk_wk.
+  apply gunit_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary moddef_wk_shift_wk_q : forall D φ,
+    moddef_wk (moddef_wk D ↑) (wk_q φ) = moddef_wk (moddef_wk D φ) ↑.
+Proof.
+  intros; do 2 rewrite moddef_wk_wk.
+  apply moddef_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary gmod_wk_shift_wk_q : forall Φ φ,
+    gmod_wk (gmod_wk Φ ↑) (wk_q φ) = gmod_wk (gmod_wk Φ φ) ↑.
+Proof.
+  intros; do 2 rewrite gmod_wk_wk.
+  apply gmod_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary bcheck_wk_shift_wk_q : forall c φ,
+    bcheck_wk (bcheck_wk c ↑) (wk_q φ) = bcheck_wk (bcheck_wk c φ) ↑.
+Proof.
+  intros; do 2 rewrite bcheck_wk_wk.
+  apply bcheck_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary gentry_wk_shift_wk_q : forall E φ,
+    gentry_wk (gentry_wk E ↑) (wk_q φ) = gentry_wk (gentry_wk E φ) ↑.
+Proof.
+  intros; do 2 rewrite gentry_wk_wk.
+  apply gentry_wk_wk_eq; pointwise_solve.
+Qed.
+
+Corollary centry_wk_shift_wk_q : forall e φ,
+    centry_wk (centry_wk e ↑) (wk_q φ) = centry_wk (centry_wk e φ) ↑.
+Proof.
+  intros; do 2 rewrite centry_wk_wk.
+  apply centry_wk_wk_eq; pointwise_solve.
+Qed.
+
 (** "[⇑] cancels an extension" at the level of expressions: an extension is
     invisible to an expression that has just been weakened. *)
 Corollary exp_sub_shift_extend : forall M σ en, exp_sub (exp_wk M wk_shift) (sb_extend σ en) = exp_sub M σ.

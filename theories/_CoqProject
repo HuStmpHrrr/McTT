@@ -80,6 +80,7 @@
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/GlobalPresup.v
 ./Core/Syntactic/System/Lemmas.v
+./Core/Syntactic/System/MemberLemmas.v
 ./Core/Syntactic/System/Scoping.v
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
