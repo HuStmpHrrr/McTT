@@ -169,6 +169,38 @@ Proof.
   assumption.
 Qed.
 
+(** The same for [⊤] and [⊥]. *)
+
+Corollary kripke_preserves_True : forall Γ Δ M φ,
+    Δ ⊢ M : ⊤ ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ M[φ]ʷ : ⊤.
+Proof.
+  intros.
+  assert (wf_exp _ _ Γ (exp_wk a_True φ) (exp_wk M φ)) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_False : forall Γ Δ M φ,
+    Δ ⊢ M : ⊥ ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ M[φ]ʷ : ⊥.
+Proof.
+  intros.
+  assert (wf_exp _ _ Γ (exp_wk a_False φ) (exp_wk M φ)) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_False_eq : forall Γ Δ M M' φ,
+    Δ ⊢ M ≈ M' : ⊥ ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ⊥.
+Proof.
+  intros.
+  assert (wf_exp_eq _ _ Γ (exp_wk a_False φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
+  assumption.
+Qed.
+
 (** The two shapes the gluing predicates state a type in: [A ≈ Type@j] for the
     universe and [A ≈ ℕ] for [ℕ].  Both right-hand sides are closed, so they are
     their own transports — again invisible to [eauto]. *)
@@ -193,9 +225,31 @@ Proof.
   assumption.
 Qed.
 
+Corollary kripke_preserves_typ_eq_True : forall Γ Δ A φ i,
+    Δ ⊢ A ≈ ⊤ : Type@i ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ ⊤ : Type@i.
+Proof.
+  intros.
+  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_True φ)) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_typ_eq_False : forall Γ Δ A φ i,
+    Δ ⊢ A ≈ ⊥ : Type@i ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ ⊥ : Type@i.
+Proof.
+  intros.
+  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_False φ)) by mauto 2.
+  assumption.
+Qed.
+
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
              kripke_preserves_nat kripke_preserves_nat_eq
-             kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
+             kripke_preserves_True kripke_preserves_False kripke_preserves_False_eq
+             kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat
+             kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False : mctt.
 
 (** [q φ] is not a Kripke weakening, since it is not a shift. It is still a
     substitution, which is all the [Π] clauses of the gluing model need to type
@@ -257,6 +311,9 @@ Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subty
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 kripke_preserves_nat kripke_preserves_nat_eq
 kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
+#[export]
+Hint Resolve kripke_preserves_True kripke_preserves_False kripke_preserves_False_eq
+kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False : mctt.
 #[export]
 Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
 Ltac saturate_kripke :=

@@ -403,6 +403,8 @@ Proof.
     mauto 3.
   - bulky_rewrite.
   - bulky_rewrite.
+  - bulky_rewrite.
+  - bulky_rewrite.
     mauto 3.
   - destruct_by_head pi_glu_typ_pred.
     rename x into IP. rename x0 into IEl. rename x1 into OP. rename x2 into OEl.
