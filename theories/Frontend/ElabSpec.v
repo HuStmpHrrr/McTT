@@ -437,6 +437,13 @@ Section Objects.
       selt L oz MZ ->
       selt (lb_var sr :: lb_var sx :: L) os MS ->
       sel L (Cst.natrec on mx om oz sx sr os) (s_term (rec N return A | zero -> MZ | succ -> MS end))
+  | sel_true_ty : forall L, sel L Cst.true_ty (s_term ⊤)
+  | sel_true_tm : forall L, sel L Cst.true_tm (s_term ⋆)
+  | sel_false_ty : forall L, sel L Cst.false_ty (s_term ⊥)
+  | sel_exfalso : forall L om mx oA M A,
+      selt L om M ->
+      selt (lb_var mx :: L) oA A ->
+      sel L (Cst.exfalso om mx oA) (s_term (efq M return A))
   | sel_pi : forall L x oA oB A B,
       selt L oA A -> selt (lb_var x :: L) oB B -> sel L (Cst.pi x oA oB) (s_term (Π A B))
   | sel_fn : forall L x oA oM A M,
