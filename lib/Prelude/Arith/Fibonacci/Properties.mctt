@@ -1,7 +1,7 @@
 (* Laws of [Prelude::Arith::Fibonacci]: the defining recurrence, positivity,
    monotonicity, the sum identity and the addition formula. *)
 import Prelude::Arith::Equality use (Eq; sym; trans; cong; transport)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusAssoc)
+import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusAssoc; plusRightComm)
 import Prelude::Arith::Mult use (mult; multDistribLeft; multDistribRight)
 import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; lePlusRight; lePlusLeft)
 import Prelude::Arith::Sum use (sumTo)
@@ -90,17 +90,6 @@ def fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n)) :=
                 (trans (plus f g) (plus g f) rhs swap back))
         end
     end
-end
-
-(* The last two summands of a sum can be exchanged. *)
-def plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (plus (plus a b) c) (plus (plus a c) b) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    trans (plus (plus a b) c) (plus a (plus b c)) (plus (plus a c) b)
-      (plusAssoc a b c)
-      (trans (plus a (plus b c)) (plus a (plus c b)) (plus (plus a c) b)
-         (cong (fun (y : Nat) -> plus a y) (plus b c) (plus c b) (plusComm b c))
-         (sym (plus (plus a c) b) (plus a (plus c b)) (plusAssoc a c b)))
 end
 
 (* The addition formula

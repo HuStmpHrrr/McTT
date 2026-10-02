@@ -8,26 +8,17 @@ import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sub use (pred)
 import Prelude::Arith::Order use (Le; leb)
-import Prelude::Arith::Decide use (eqb; eqbCases)
-import Prelude::Arith::Div use (pick; mod)
+import Prelude::Arith::Decide use (pick; eqb; eqbCases)
+import Prelude::Arith::Div use (mod)
 import Prelude::Arith::Divides use (Divides; dividesRefl)
 import Prelude::Arith::Induction use (caseNat)
 import Prelude::Function::Combinators use (Generic)
 
 module Prelude::Arith::Prime where
 
-(* [choose b z s] is [z 0] when [b] is 0, and [s 0] otherwise.  Unlike
-   [pick], the branches are functions, so only the chosen one is
-   computed. *)
-def choose (b : Nat) (z : forall (u : Nat) -> Nat) (s : forall (u : Nat) -> Nat) : Nat :=
-  (rec b return y . (forall (u : Nat) -> Nat)
-   | zero => z
-   | succ k, t => s
-   end) 0
-end
-
 (* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
-   exactly when [a] is at most [b]. *)
+   exactly when [a] is at most [b].  It is kept apart from
+   [Prelude::Arith::Sub.sub], whose evaluation takes exponential time. *)
 def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
@@ -39,9 +30,9 @@ def trialDivision (n : Nat) (none : Nat) (found : forall (d : Nat) -> Nat) (fuel
   rec fuel return y . (forall (d : Nat) -> Nat)
   | zero => fun (d : Nat) -> none
   | succ f, r => fun (d : Nat) ->
-      choose (monus (mult d d) n)
+      pick (monus (mult d d) n)
         (fun (u : Nat) ->
-           choose (eqb (mod n d) 0) (fun (v : Nat) -> r (succ d)) (fun (v : Nat) -> found d))
+           pick (eqb (mod n d) 0) (fun (v : Nat) -> r (succ d)) (fun (v : Nat) -> found d))
         (fun (u : Nat) -> none)
   end
 end
@@ -55,7 +46,9 @@ def smallestDivisor (n : Nat) : Nat := trialDivision n n (fun (d : Nat) -> d) n 
 def noSmallDivisor (n : Nat) : Nat := trialDivision n 1 (fun (d : Nat) -> 0) n 2 end
 
 (* The primality test: [1] for primes, [0] otherwise. *)
-def isPrime (n : Nat) : Nat := pick (leb 2 n) 0 (noSmallDivisor n) end
+def isPrime (n : Nat) : Nat :=
+  pick (leb 2 n) (fun (u : Nat) -> 0) (fun (u : Nat) -> noSmallDivisor n)
+end
 
 (* [Prime n] says that [n] is prime.  It computes, so a closed instance is
    [True] or [False]. *)
@@ -71,10 +64,10 @@ def trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
     | succ f, ih => fun (d : Nat) ->
         let next : Nat := trialDivision n n (fun (y : Nat) -> y) f (succ d);
             inner : Nat :=
-              choose (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d)
-        in caseNat (fun (b : Nat) -> Divides (choose b (fun (u : Nat) -> inner) (fun (u : Nat) -> n)) n)
+              pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d)
+        in caseNat (fun (b : Nat) -> Divides (pick b (fun (u : Nat) -> inner) (fun (u : Nat) -> n)) n)
              (eqbCases (mod n d) 0
-                (fun (b : Nat) -> Divides (choose b (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
+                (fun (b : Nat) -> Divides (pick b (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
                 (fun (h : Eq (eqb (mod n d) 0) 0) -> ih (succ d))
                 (fun (h : Eq (mod n d) 0) -> h))
              (fun (k : Nat) -> dividesRefl n)
@@ -102,19 +95,19 @@ def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
             next : Nat := trialDivision n n (fun (y : Nat) -> y) f (succ d)
         in caseNat
              (fun (b : Nat) ->
-                forall (h : Eq (choose b
-                                  (fun (u : Nat) ->
-                                     choose (eqb (mod n d) 0) (fun (v : Nat) -> flagNext)
-                                       (fun (v : Nat) -> 0))
-                                  (fun (u : Nat) -> 1)) 1) ->
-                Eq (choose b
-                      (fun (u : Nat) ->
-                         choose (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d))
-                      (fun (u : Nat) -> n)) n)
+                forall (h : Eq (pick b
+                                (fun (u : Nat) ->
+                                   pick (eqb (mod n d) 0) (fun (v : Nat) -> flagNext)
+                                     (fun (v : Nat) -> 0))
+                                (fun (u : Nat) -> 1)) 1) ->
+                Eq (pick b
+                    (fun (u : Nat) ->
+                       pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d))
+                    (fun (u : Nat) -> n)) n)
              (caseNat
                 (fun (c : Nat) ->
-                   forall (h : Eq (choose c (fun (v : Nat) -> flagNext) (fun (v : Nat) -> 0)) 1) ->
-                   Eq (choose c (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
+                   forall (h : Eq (pick c (fun (v : Nat) -> flagNext) (fun (v : Nat) -> 0)) 1) ->
+                   Eq (pick c (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
                 (fun (h : Eq flagNext 1) -> ih (succ d) h)
                 (fun (k : Nat) (h : False) -> absurd (Eq d n) h)
                 (eqb (mod n d) 0))

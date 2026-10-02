@@ -2,7 +2,7 @@
    vanishing above the diagonal, Pascal's rule, symmetry, and the row sum
    [sumTo (choose n) (succ n) = pow 2 n]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusSwapMiddle)
+import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusSwapMiddle; plusCongBoth)
 import Prelude::Arith::Sub use (sub)
 import Prelude::Arith::Order use (Le; Lt; leRefl; leStep)
 import Prelude::Arith::Monotone use (plusSubCancel)
@@ -11,15 +11,6 @@ import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Binomial use (choose)
 
 module Prelude::Arith::Binomial::Properties where
-
-(* Equal summands have equal sums. *)
-def plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-    (hac : Eq a c) (hbd : Eq b d) -> Eq (plus a b) (plus c d) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) ->
-    trans (plus a b) (plus c b) (plus c d)
-      (cong (fun (y : Nat) -> plus y b) a c hac)
-      (cong (fun (y : Nat) -> plus c y) b d hbd)
-end
 
 def chooseZero : forall (n : Nat) -> Eq (choose n 0) 1 :=
   fun (n : Nat) ->

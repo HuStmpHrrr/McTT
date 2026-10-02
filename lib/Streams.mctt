@@ -5,10 +5,11 @@
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Parity use (double)
+import Prelude::Arith::Sum use (sumToShift)
 import Prelude::Data::Vec as V
-import Prelude::Data::VecLaws use (sumVec)
+import Prelude::Data::Vec::Properties use (sumVec)
 import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan)
-import Prelude::Data::Stream::Properties use (nats; headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate; nthNats; nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumToHead; sumTake)
+import Prelude::Data::Stream::Properties use (nats; headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate; nthNats; nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
 
 module Streams where
 
@@ -105,7 +106,7 @@ eval nthInterleaveEven 3 evens odds
 
 eval nthInterleaveOdd 3 evens odds
 
-eval sumToHead squares 3
+eval sumToShift squares 3
 
 eval sumTake 5 nats
 

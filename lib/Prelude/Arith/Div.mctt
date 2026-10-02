@@ -6,26 +6,25 @@
    reaching the divisor, and the quotient grows by one at each wrap.  The
    theorems are stated for a positive divisor [succ d]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm)
+import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusAssoc)
 import Prelude::Arith::Mult use (mult; multOne)
 import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leSucc; ltNotEq)
-import Prelude::Arith::Decide use (eqb; eqbRefl; eqbCases; leEqbZero)
+import Prelude::Arith::Decide use (pick; eqb; eqbRefl; eqbCases; leEqbZero)
 import Prelude::Function::Combinators use (Generic; iteratePlus; iterateComm)
 
 module Prelude::Arith::Div where
 
-(* [pick b z s] is [z] when [b] is 0, and [s] otherwise. *)
-def pick (b : Nat) (z : Nat) (s : Nat) : Nat :=
-  rec b return y . Nat | zero => z | succ k, t => s end
-end
-
 (* One step of the remainder modulo [succ d]: [succ r], or [0] when [r] has
    reached [d]. *)
-def wrap (r : Nat) (d : Nat) : Nat := pick (eqb r d) (succ r) 0 end
+def wrap (r : Nat) (d : Nat) : Nat :=
+  pick (eqb r d) (fun (u : Nat) -> succ r) (fun (u : Nat) -> 0)
+end
 
 (* One step of the quotient: it grows by one exactly when the remainder
    wraps. *)
-def carry (r : Nat) (d : Nat) (q : Nat) : Nat := pick (eqb r d) q (succ q) end
+def carry (r : Nat) (d : Nat) (q : Nat) : Nat :=
+  pick (eqb r d) (fun (u : Nat) -> q) (fun (u : Nat) -> succ q)
+end
 
 (* The remainder of [n] by [succ d]: [n] steps of [wrap] from [0]. *)
 def modSucc (n : Nat) (d : Nat) : Nat :=
@@ -96,7 +95,10 @@ def divModSpec : forall (n : Nat) (d : Nat) ->
             q : Nat := div p (succ d);
             m : Nat := mult q (succ d)
         in eqbCases r d
-             (fun (b : Nat) -> Eq (plus (mult (pick b q (succ q)) (succ d)) (pick b (succ r) 0)) (succ p))
+             (fun (b : Nat) ->
+                Eq (plus (mult (pick b (fun (u : Nat) -> q) (fun (u : Nat) -> succ q)) (succ d))
+                         (pick b (fun (u : Nat) -> succ r) (fun (u : Nat) -> 0)))
+                   (succ p))
              (fun (h : Eq (eqb r d) 0) ->
                 trans (plus m (succ r)) (succ (plus m r)) (succ p) (plusSucc m r) ih)
              (fun (h : Eq r d) ->
@@ -120,7 +122,7 @@ def modLt : forall (n : Nat) (d : Nat) -> Lt (mod n (succ d)) (succ d) :=
     | zero => true
     | succ p, ih =>
         let r : Nat := mod p (succ d)
-        in eqbCases r d (fun (b : Nat) -> Le (pick b (succ r) 0) d)
+        in eqbCases r d (fun (b : Nat) -> Le (pick b (fun (u : Nat) -> succ r) (fun (u : Nat) -> 0)) d)
              (fun (h : Eq (eqb r d) 0) -> leEqbZero r d ih h)
              (fun (h : Eq r d) -> true)
         end
@@ -135,7 +137,8 @@ def modSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (mod n (succ
     | succ p, ih => fun (h : Le (succ p) d) ->
         let hp : Eq (mod p (succ d)) p := ih (leTrans p (succ p) d (leSucc p) h);
             atP : Eq (wrap p d) (succ p) :=
-              eqbCases p d (fun (b : Nat) -> Eq (pick b (succ p) 0) (succ p))
+              eqbCases p d
+                (fun (b : Nat) -> Eq (pick b (fun (u : Nat) -> succ p) (fun (u : Nat) -> 0)) (succ p))
                 (fun (e : Eq (eqb p d) 0) -> refl p)
                 (fun (e : Eq p d) -> ltNotEq p d h e)
         in transport (fun (x : Nat) -> Eq (wrap x d) (succ p)) p (mod p (succ d))
@@ -154,7 +157,7 @@ def divSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (div n (succ
             hq : Eq (div p (succ d)) 0 := ih hp;
             hr : Eq (mod p (succ d)) p := modSmall p d hp;
             atZero : Eq (carry p d 0) 0 :=
-              eqbCases p d (fun (b : Nat) -> Eq (pick b 0 1) 0)
+              eqbCases p d (fun (b : Nat) -> Eq (pick b (fun (u : Nat) -> 0) (fun (u : Nat) -> 1)) 0)
                 (fun (e : Eq (eqb p d) 0) -> true)
                 (fun (e : Eq p d) -> ltNotEq p d h e);
             atP : Eq (carry p d (div p (succ d))) 0 :=
@@ -171,7 +174,7 @@ def modSelf : forall (d : Nat) -> Eq (mod (succ d) (succ d)) 0 :=
   fun (d : Nat) ->
     let hd : Eq (mod d (succ d)) d := modSmall d d (leRefl d);
         atD : Eq (wrap d d) 0 :=
-          eqbCases d d (fun (b : Nat) -> Eq (pick b (succ d) 0) 0)
+          eqbCases d d (fun (b : Nat) -> Eq (pick b (fun (u : Nat) -> succ d) (fun (u : Nat) -> 0)) 0)
             (fun (e : Eq (eqb d d) 0) ->
                transport (fun (m : Nat) -> Eq m 1) (eqb d d) 0 e (eqbRefl d))
             (fun (e : Eq d d) -> true)
@@ -206,6 +209,26 @@ def modPlusDivisor : forall (n : Nat) (d : Nat) ->
          (trans (mod (plus k n) k) (Generic.iterate Nat w k (mod n k))
             (Generic.iterate Nat w n (mod k k)) split comm)
          back
+    end
+end
+
+(* Adding a multiple of [succ d] does not change the remainder by
+   [succ d]. *)
+def modPlusMult : forall (d : Nat) (t : Nat) (y : Nat) ->
+    Eq (mod (plus (mult t (succ d)) y) (succ d)) (mod y (succ d)) :=
+  fun (d : Nat) (t : Nat) (y : Nat) ->
+    rec t return x . Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
+    | zero => refl (mod y (succ d))
+    | succ p, ih =>
+        let k : Nat := succ d;
+            m : Nat := mult p k;
+            assoc : Eq (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) :=
+              cong (fun (z : Nat) -> mod z k) (plus (plus k m) y) (plus k (plus m y))
+                (plusAssoc k m y)
+        in trans (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) (mod y k) assoc
+             (trans (mod (plus k (plus m y)) k) (mod (plus m y) k) (mod y k)
+                (modPlusDivisor (plus m y) d) ih)
+        end
     end
 end
 

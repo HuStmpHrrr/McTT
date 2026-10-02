@@ -1,90 +1,16 @@
 (* Laws of [Prelude::Arith::Gcd]: the values at [0], [1] and the diagonal,
    independence from the fuel, divisibility of both arguments, the greatest
-   divisor property, and commutativity.  It also proves the facts about
-   [Prelude::Arith::Divides] that Euclid's step needs: a divisor divides
-   every multiple, and it cancels from a sum. *)
+   divisor property, and commutativity. *)
 import Prelude::Logic use (absurd; And; andIntro; andFst; andSnd; orElim)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
-import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusEqZeroRight)
-import Prelude::Arith::Mult use (mult; multZero; multAssoc)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leTotal; leCases)
-import Prelude::Arith::Div use (div; mod; divModSpec; modLt; modSmall; modSelf; modOne; modPlusDivisor)
-import Prelude::Arith::Divides use (Divides; dividesRefl; dividesZero; dividesPlus; dividesMult)
+import Prelude::Arith::Div use (div; mod; divModSpec; modLt; modSmall; modSelf; modOne)
+import Prelude::Arith::Divides use (Divides; dividesRefl; dividesZero; dividesPlus; dividesMultLeft; dividesPlusCancel)
 import Prelude::Arith::Gcd use (gcdFuel; gcd)
 
 module Prelude::Arith::Gcd::Properties where
-
-(* A number divisible by [succ d] is its quotient times [succ d]: the
-   division equation with a zero remainder. *)
-def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
-    Eq (mult (div b (succ d)) (succ d)) b :=
-  fun (d : Nat) (b : Nat) (h : Eq (mod b (succ d)) 0) ->
-    let k : Nat := succ d;
-        m : Nat := mult (div b k) k;
-        dropZero : Eq m (plus m 0) := sym (plus m 0) m (plusZero m);
-        toRem : Eq (plus m 0) (plus m (mod b k)) :=
-          cong (fun (y : Nat) -> plus m y) 0 (mod b k) (sym (mod b k) 0 h)
-    in trans m (plus m 0) b dropZero (trans (plus m 0) (plus m (mod b k)) b toRem (divModSpec b d))
-    end
-end
-
-(* A divisor of [b] divides every multiple [mult m b]. *)
-def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
-    Divides k (mult m b) :=
-  fun (k : Nat) (b : Nat) (m : Nat) ->
-    rec k return x . (forall (h : Divides x b) -> Divides x (mult m b))
-    | zero => fun (h : Eq b 0) ->
-        transport (fun (y : Nat) -> Eq (mult m y) 0) 0 b (sym b 0 h) (multZero m)
-    | succ d, ih => fun (h : Divides (succ d) b) ->
-        let e : Nat := succ d;
-            q : Nat := div b e;
-            toB : Eq (mult (mult m q) e) (mult m b) :=
-              trans (mult (mult m q) e) (mult m (mult q e)) (mult m b)
-                (multAssoc m q e)
-                (cong (fun (y : Nat) -> mult m y) (mult q e) b (dividesQuot d b h))
-        in transport (fun (y : Nat) -> Divides e y) (mult (mult m q) e) (mult m b) toB
-             (dividesMult e (mult m q))
-        end
-    end
-end
-
-(* Adding a multiple of [succ d] does not change the remainder by
-   [succ d]. *)
-def modPlusMult : forall (d : Nat) (t : Nat) (y : Nat) ->
-    Eq (mod (plus (mult t (succ d)) y) (succ d)) (mod y (succ d)) :=
-  fun (d : Nat) (t : Nat) (y : Nat) ->
-    rec t return x . Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
-    | zero => refl (mod y (succ d))
-    | succ p, ih =>
-        let k : Nat := succ d;
-            m : Nat := mult p k;
-            assoc : Eq (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) :=
-              cong (fun (z : Nat) -> mod z k) (plus (plus k m) y) (plus k (plus m y))
-                (plusAssoc k m y)
-        in trans (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) (mod y k) assoc
-             (trans (mod (plus k (plus m y)) k) (mod (plus m y) k) (mod y k)
-                (modPlusDivisor (plus m y) d) ih)
-        end
-    end
-end
-
-(* A divisor of [x] and of [plus x y] divides [y]. *)
-def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
-    (hx : Divides k x) (hxy : Divides k (plus x y)) -> Divides k y :=
-  fun (k : Nat) (x : Nat) (y : Nat) ->
-    rec k return w . (forall (hx : Divides w x) (hxy : Divides w (plus x y)) -> Divides w y)
-    | zero => fun (hx : Eq x 0) (hxy : Eq (plus x y) 0) -> plusEqZeroRight x y hxy
-    | succ d, ih => fun (hx : Divides (succ d) x) (hxy : Eq (mod (plus x y) (succ d)) 0) ->
-        let e : Nat := succ d;
-            m : Nat := mult (div x e) e;
-            atM : Eq (mod (plus m y) e) 0 :=
-              transport (fun (z : Nat) -> Eq (mod (plus z y) e) 0) x m
-                (sym m x (dividesQuot d x hx)) hxy
-        in trans (mod y e) (mod (plus m y) e) 0
-             (sym (mod (plus m y) e) (mod y e) (modPlusMult d (div x e) y)) atM
-        end
-    end
-end
 
 (* Euclid's algorithm with fuel above [b] gives a common divisor.  Both
    halves are proved together: the step divides [a] because it divides

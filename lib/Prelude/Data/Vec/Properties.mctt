@@ -5,12 +5,12 @@
    laws relate vectors that agree only up to those proofs. *)
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusComm; plusAssoc; plusLeftComm; plusSwapMiddle)
+import Prelude::Arith::Plus use (plus; plusZero; plusComm; plusAssoc; plusSwapMiddle)
 import Prelude::Arith::Mult use (mult; multZero; multDistribLeft)
 import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Le; Lt; leStep; lePlusRight)
+import Prelude::Arith::Order use (Lt; leStep; lePlusRight)
 import Prelude::Arith::Monotone use (ltLeTrans; ltPlusMonoRight; subLe)
-import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Sum use (sumTo; sumToShift)
 import Prelude::Data::Vec as V
 
 module Prelude::Data::Vec::Properties where
@@ -405,25 +405,6 @@ def sumReverse : forall (n : Nat) (v : V.Vec Nat n) ->
     end
 end
 
-(* Moving the first summand of [sumTo] to the front: [sumTo f (succ p)] is
-   [f 0] plus the sum of the shifted function [fun i -> f (succ i)]. *)
-def sumToShift : forall (p : Nat) (f : forall (i : Nat) -> Nat) ->
-    Eq (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) p)) (sumTo f (succ p)) :=
-  fun (p : Nat) ->
-    rec p return k . (forall (f : forall (i : Nat) -> Nat) ->
-                        Eq (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) k)) (sumTo f (succ k)))
-    | zero => fun (f : forall (i : Nat) -> Nat) -> refl (plus (f 0) 0)
-    | succ q, ih => fun (f : forall (i : Nat) -> Nat) ->
-        let g : Nat := sumTo (fun (i : Nat) -> f (succ i)) q;
-            b : Nat := f (succ q);
-            r : Nat := sumTo f (succ q)
-        in trans (plus (f 0) (plus b g)) (plus b (plus (f 0) g)) (plus b r)
-             (plusLeftComm (f 0) b g)
-             (cong (fun (y : Nat) -> plus b y) (plus (f 0) g) r (ih f))
-        end
-    end
-end
-
 (* A tabulated vector sums like [sumTo], from the other end. *)
 def sumTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
     Eq (sumVec n (V.tabulate Nat f n)) (sumTo f n) :=
@@ -436,7 +417,7 @@ def sumTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
              t : Nat := sumTo (fun (i : Nat) -> g (succ i)) p
          in trans (plus (g 0) s) (plus (g 0) t) (sumTo g (succ p))
               (cong (fun (y : Nat) -> plus (g 0) y) s t (ih (fun (i : Nat) -> g (succ i))))
-              (sumToShift p g)
+              (sym (sumTo g (succ p)) (plus (g 0) t) (sumToShift g p))
          end
      end) f
 end

@@ -63,6 +63,26 @@ def plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
+(* The last two summands of a sum can be exchanged. *)
+def plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (plus (plus a b) c) (plus (plus a c) b) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    trans (plus (plus a b) c) (plus a (plus b c)) (plus (plus a c) b)
+      (plusAssoc a b c)
+      (trans (plus a (plus b c)) (plus a (plus c b)) (plus (plus a c) b)
+         (cong (fun (y : Nat) -> plus a y) (plus b c) (plus c b) (plusComm b c))
+         (sym (plus (plus a c) b) (plus a (plus c b)) (plusAssoc a c b)))
+end
+
+(* Equal summands have equal sums. *)
+def plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+    (hac : Eq a c) (hbd : Eq b d) -> Eq (plus a b) (plus c d) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) ->
+    trans (plus a b) (plus c b) (plus c d)
+      (cong (fun (y : Nat) -> plus y b) a c hac)
+      (cong (fun (y : Nat) -> plus c y) b d hbd)
+end
+
 (* The two middle summands of a sum of sums can be exchanged. *)
 def plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=

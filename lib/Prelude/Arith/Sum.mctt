@@ -1,7 +1,7 @@
 (* Finite sums [sumTo f n] of [f i] for [i < n], with linearity laws, sums
    of constants, and the closed forms of Gauss and of the odd numbers. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusSwapMiddle)
+import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusLeftComm; plusSwapMiddle)
 import Prelude::Arith::Mult use (mult; multZero; multSucc; multComm; multDistribLeft; multDistribRight)
 import Prelude::Function::Combinators use (Generic)
 
@@ -38,6 +38,24 @@ def sumToExt : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat
         in trans (plus (f p) sf) (plus (g p) sf) (plus (g p) sg)
              (cong (fun (y : Nat) -> plus y sf) (f p) (g p) (h p))
              (cong (fun (y : Nat) -> plus (g p) y) sf sg ih)
+        end
+    end
+end
+
+(* The first summand splits off: [sumTo f (succ n)] is [f 0] plus the sum
+   of the shifted function [fun i -> f (succ i)]. *)
+def sumToShift : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
+    Eq (sumTo f (succ n)) (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) n)) :=
+  fun (f : forall (i : Nat) -> Nat) (n : Nat) ->
+    rec n return x . Eq (sumTo f (succ x)) (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) x))
+    | zero => refl (plus (f 0) 0)
+    | succ p, ih =>
+        let b : Nat := f (succ p);
+            l : Nat := sumTo f (succ p);
+            r : Nat := sumTo (fun (i : Nat) -> f (succ i)) p
+        in trans (plus b l) (plus b (plus (f 0) r)) (plus (f 0) (plus b r))
+             (cong (fun (y : Nat) -> plus b y) l (plus (f 0) r) ih)
+             (plusLeftComm b (f 0) r)
         end
     end
 end

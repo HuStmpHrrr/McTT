@@ -1096,7 +1096,7 @@ let%expect_test "lib/Powers.mctt" =
 let%expect_test "lib/Streams.mctt" =
   let _ = main_of_lib "Streams.mctt" in
   [%expect {|
-    Evaluate Prelude::Data::VecLaws.sumVec 6
+    Evaluate Prelude::Data::Vec::Properties.sumVec 6
                (Prelude::Data::Stream.take Nat 6
                  Prelude::Data::Stream::Properties.nats) --> 15 : Nat
     Evaluate Prelude::Data::Vec.nth Nat 5
@@ -1104,11 +1104,11 @@ let%expect_test "lib/Streams.mctt" =
                4
                true --> 8 : Nat
     Evaluate Prelude::Data::Stream.nth Nat odds 6 --> 13 : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 5
+    Evaluate Prelude::Data::Vec::Properties.sumVec 5
                (Prelude::Data::Stream.take Nat 5 squares) --> 30 : Nat
     Evaluate Prelude::Data::Stream.nth Nat fibs 10 --> 55 : Nat
     Evaluate Prelude::Data::Stream.nth Nat lucas 8 --> 47 : Nat
-    Evaluate Prelude::Data::VecLaws.sumVec 10
+    Evaluate Prelude::Data::Vec::Properties.sumVec 10
                (Prelude::Data::Stream.take Nat 10 fibs) --> 88 : Nat
     Evaluate Prelude::Data::Stream.nth Nat
                (Prelude::Data::Stream.scan Nat Nat Prelude::Arith::Plus.plus 0
@@ -1164,11 +1164,10 @@ let%expect_test "lib/Streams.mctt" =
       --> true : True
     Evaluate Prelude::Data::Stream::Properties.nthInterleaveOdd 3 evens odds
       --> true : True
-    Evaluate Prelude::Data::Stream::Properties.sumToHead squares 3 --> true
-      : True
+    Evaluate Prelude::Arith::Sum.sumToShift squares 3 --> true : True
     Evaluate Prelude::Data::Stream::Properties.sumTake 5
                Prelude::Data::Stream::Properties.nats --> true : True
-  |}]
+    |}]
 
 let%expect_test "lib/Combinatorics.mctt" =
   let _ = main_of_lib "Combinatorics.mctt" in
@@ -1266,10 +1265,9 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate Prelude::Arith::Gcd::Properties.gcdGreatest 2 8 12 true true
       --> true : True
     Evaluate Prelude::Arith::Gcd::Properties.gcdComm 6 9 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.dividesMultLeft 3 6 2 true --> true
+    Evaluate Prelude::Arith::Divides.dividesMultLeft 3 6 2 true --> true : True
+    Evaluate Prelude::Arith::Divides.dividesPlusCancel 3 6 9 true true --> true
       : True
-    Evaluate Prelude::Arith::Gcd::Properties.dividesPlusCancel 3 6 9 true true
-      --> true : True
     Evaluate Prelude::Arith::Prime.twoPrime --> true : True
     Evaluate Prelude::Arith::Prime.sevenPrime --> true : True
     Evaluate Prelude::Arith::Prime.nineNotPrime --> fun (x1 : False) -> x1
@@ -1277,4 +1275,4 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate Prelude::Arith::Prime.smallestDivisorDivides 15 --> true : True
     Evaluate Prelude::Arith::Prime.primeGeTwo 13 true --> true : True
     Evaluate Prelude::Arith::Prime.primeSmallestDivisor 13 true --> true : True
-  |}]
+    |}]

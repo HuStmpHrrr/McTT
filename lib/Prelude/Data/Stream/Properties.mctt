@@ -4,13 +4,13 @@
    interleaving at even and odd indices of [Prelude::Arith::Parity], and
    sums of taken prefixes. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusComm; plusLeftComm)
+import Prelude::Arith::Plus use (plus; plusComm)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Arith::Parity use (double)
-import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Sum use (sumTo; sumToShift)
 import Prelude::Function::Combinators use (iterateSucc)
 import Prelude::Data::Vec as V
-import Prelude::Data::VecLaws use (sumVec)
+import Prelude::Data::Vec::Properties use (sumVec)
 import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan)
 
 module Prelude::Data::Stream::Properties where
@@ -123,26 +123,8 @@ def nthInterleaveOdd : forall (n : Nat) (s : Stream Nat) (t : Stream Nat) ->
   fun (n : Nat) (s : Stream Nat) (t : Stream Nat) -> nthInterleaveEven n t (tail Nat s)
 end
 
-(* A sum of [succ n] elements splits off the first one, which [sumTo] adds
-   last. *)
-def sumToHead : forall (s : Stream Nat) (n : Nat) ->
-    Eq (sumTo s (succ n)) (plus (s 0) (sumTo (tail Nat s) n)) :=
-  fun (s : Stream Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo s (succ x)) (plus (s 0) (sumTo (tail Nat s) x))
-    | zero => refl (plus (s 0) 0)
-    | succ p, ih =>
-        let b : Nat := s (succ p);
-            l : Nat := sumTo s (succ p);
-            r : Nat := sumTo (tail Nat s) p
-        in trans (plus b l) (plus b (plus (s 0) r)) (plus (s 0) (plus b r))
-             (cong (fun (y : Nat) -> plus b y) l (plus (s 0) r) ih)
-             (plusLeftComm b (s 0) r)
-        end
-    end
-end
-
 (* The vector sum of the first [n] elements is their [sumTo].  The vector
-   sum adds the first element first, so the step uses [sumToHead]; the tail
+   sum adds the first element first, so the step uses [sumToShift]; the tail
    of [take (succ p) u] is [take p (tail u)] by eta. *)
 def sumTake : forall (n : Nat) (s : Stream Nat) ->
     Eq (sumVec n (take Nat n s)) (sumTo (nth Nat s) n) :=
@@ -154,7 +136,7 @@ def sumTake : forall (n : Nat) (s : Stream Nat) ->
              ts : Nat := sumTo (tail Nat u) p
          in trans (plus (u 0) vs) (plus (u 0) ts) (sumTo u (succ p))
               (cong (fun (y : Nat) -> plus (u 0) y) vs ts (ih (tail Nat u)))
-              (sym (sumTo u (succ p)) (plus (u 0) ts) (sumToHead u p))
+              (sym (sumTo u (succ p)) (plus (u 0) ts) (sumToShift u p))
          end
      end) s
 end

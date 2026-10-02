@@ -4,11 +4,12 @@
    small, since they compute with remainders and equalities of numbers. *)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sum use (sumTo)
-import Prelude::Arith::Divides use (Divides)
+import Prelude::Arith::Decide use (pick)
+import Prelude::Arith::Divides use (dividesMultLeft; dividesPlusCancel)
 import Prelude::Function::Combinators use (Generic)
 import Prelude::Arith::Gcd use (gcd)
-import Prelude::Arith::Gcd::Properties use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdDividesLeft; gcdDividesRight; gcdGreatest; gcdComm; dividesMultLeft; dividesPlusCancel)
-import Prelude::Arith::Prime use (choose; smallestDivisor; isPrime; Prime; smallestDivisorDivides; primeGeTwo; primeSmallestDivisor; twoPrime; sevenPrime; nineNotPrime)
+import Prelude::Arith::Gcd::Properties use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdDividesLeft; gcdDividesRight; gcdGreatest; gcdComm)
+import Prelude::Arith::Prime use (smallestDivisor; isPrime; Prime; smallestDivisorDivides; primeGeTwo; primeSmallestDivisor; twoPrime; sevenPrime; nineNotPrime)
 
 module NumberTheory where
 
@@ -24,8 +25,8 @@ eval gcd 9 0
    [2 n + 2], which contain one by Bertrand's postulate. *)
 def nextPrime (n : Nat) : Nat :=
   (rec n return y . (forall (c : Nat) -> Nat)
-   | zero => fun (c : Nat) -> choose (isPrime c) (fun (u : Nat) -> succ c) (fun (u : Nat) -> c)
-   | succ p, r => fun (c : Nat) -> choose (isPrime c) (fun (u : Nat) -> r (succ c)) (fun (u : Nat) -> c)
+   | zero => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> succ c) (fun (u : Nat) -> c)
+   | succ p, r => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> r (succ c)) (fun (u : Nat) -> c)
    end) (succ n)
 end
 
