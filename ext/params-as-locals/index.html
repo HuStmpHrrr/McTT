@@ -145,9 +145,14 @@ opam pin add coq-lsp ./coq-lsp</code></pre>
 <p>Makefile will try to find out the number of your CPU cores and
 parallel as much as possible.</p>
 <p>Once <code>make</code> finishes, you can run the binary:</p>
-<pre><code>dune exec mctt examples/nary.mctt # or your own example</code></pre>
+<pre><code>dune exec mctt examples/Nary.mctt # or your own example</code></pre>
 <p>or more directly</p>
-<pre><code>_build/default/driver/mctt.exe examples/nary.mctt # or your own example</code></pre>
+<pre><code>_build/default/driver/mctt.exe examples/Nary.mctt # or your own example</code></pre>
+<p>A program can import units from other files, found under
+<code>--search-root</code> (the current directory by default). The
+library <code>lib/Prelude</code> proves basic properties of natural
+numbers, and <code>lib/NatTheory.mctt</code> uses it:</p>
+<pre><code>dune exec mctt -- --search-root lib lib/NatTheory.mctt</code></pre>
 <p>To build Coq proof only, you can go into and only build the
 <code>theories</code> directory:</p>
 <pre><code>cd theories
