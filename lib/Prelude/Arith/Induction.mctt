@@ -1,8 +1,8 @@
 (* Derived induction principles on natural numbers: case analysis, two-step
    induction and strong (course-of-values) induction, all from [rec]. *)
-import Prelude::Logic use (absurd; Or; orInl; orInr; orElim; And; andIntro; andFst; andSnd)
+import Prelude::Logic use (absurd; orElim; And; andIntro; andFst; andSnd)
 import Prelude::Arith::Equality use (Eq; sym; transport)
-import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order use (Le; Lt; leCases)
 
 module Prelude::Arith::Induction where
 
@@ -32,26 +32,6 @@ def twoStepInd (P : forall (n : Nat) -> Type@0) (pz : P 0) (po : P 1)
              (andSnd (P p) (P (succ p)) ih)
              (step p (andFst (P p) (P (succ p)) ih))
        end)
-end
-
-(* A number at most [p] is either below [p] or equal to it.  In the step,
-   [Lt (succ m) (succ q)] and [Eq (succ m) (succ q)] compute to [Lt m q] and
-   [Eq m q], so the hypothesis already has the goal's type.  The impossible
-   case uses [exfalso] directly, since the goal is in [Type@1]. *)
-def leCases : forall (m : Nat) (p : Nat) (h : Le m p) -> Or (Lt m p) (Eq m p) :=
-  fun (m : Nat) ->
-    rec m return x . (forall (p : Nat) (h : Le x p) -> Or (Lt x p) (Eq x p))
-    | zero => fun (p : Nat) ->
-        rec p return z . (forall (h : True) -> Or (Lt 0 z) (Eq 0 z))
-        | zero => fun (h : True) -> orInr (Lt 0 0) (Eq 0 0) true
-        | succ q, s => fun (h : True) -> orInl (Lt 0 (succ q)) (Eq 0 (succ q)) true
-        end
-    | succ r, ih => fun (p : Nat) ->
-        rec p return z . (forall (h : Le (succ r) z) -> Or (Lt (succ r) z) (Eq (succ r) z))
-        | zero => fun (h : False) -> exfalso h return w . Or (Lt (succ r) 0) (Eq (succ r) 0)
-        | succ q, s => fun (h : Le r q) -> ih q h
-        end
-    end
 end
 
 (* Strong induction: if [P n] follows from [P m] for all [m] below [n], then

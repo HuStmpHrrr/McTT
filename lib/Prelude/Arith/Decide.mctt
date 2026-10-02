@@ -1,5 +1,5 @@
 (* Decidability of equality and order on natural numbers, and a boolean-style
-   equality test [eqb] with its specification. *)
+   equality test [eqb] with its specification and case analysis. *)
 import Prelude::Logic use (Not; orInl; orInr; Iff; iffIntro; Dec)
 import Prelude::Arith::Equality use (Eq)
 import Prelude::Arith::Order use (Le; Lt)
@@ -104,6 +104,63 @@ def eqbZero : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 0) -> Not (Eq n m) :=
         rec m return z . (forall (h : Eq (eqb (succ p) z) 0) -> Not (Eq (succ p) z))
         | zero => fun (h : True) (e : False) -> e
         | succ q, s => fun (h : Eq (eqb p q) 0) -> ih q h
+        end
+    end
+end
+
+def eqbRefl : forall (n : Nat) -> Eq (eqb n n) 1 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (eqb x x) 1
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+(* Case analysis on [eqb a b] for a predicate [P]: it suffices to prove [P 0]
+   when [eqb a b] is 0, and [P 1] when [a] and [b] are equal. *)
+def eqbCases : forall (a : Nat) (b : Nat) (P : forall (m : Nat) -> Type@0)
+    (hz : forall (h : Eq (eqb a b) 0) -> P 0) (hs : forall (h : Eq a b) -> P 1) ->
+    P (eqb a b) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (P : forall (m : Nat) -> Type@0)
+        (hz : forall (h : Eq (eqb x b) 0) -> P 0) (hs : forall (h : Eq x b) -> P 1) ->
+        P (eqb x b))
+    | zero => fun (b : Nat) ->
+        rec b return z . (forall (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : Eq (eqb 0 z) 0) -> P 0) (hs : forall (h : Eq 0 z) -> P 1) ->
+            P (eqb 0 z))
+        | zero => fun (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : False) -> P 0) (hs : forall (h : True) -> P 1) -> hs true
+        | succ q, s => fun (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : True) -> P 0) (hs : forall (h : False) -> P 1) -> hz true
+        end
+    | succ p, ih => fun (b : Nat) ->
+        rec b return z . (forall (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : Eq (eqb (succ p) z) 0) -> P 0)
+            (hs : forall (h : Eq (succ p) z) -> P 1) ->
+            P (eqb (succ p) z))
+        | zero => fun (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : True) -> P 0) (hs : forall (h : False) -> P 1) -> hz true
+        | succ q, s => fun (P : forall (m : Nat) -> Type@0)
+            (hz : forall (h : Eq (eqb p q) 0) -> P 0) (hs : forall (h : Eq p q) -> P 1) ->
+            ih q P hz hs
+        end
+    end
+end
+
+(* A number at most [b] for which [eqb] answers 0 is strictly below [b]. *)
+def leEqbZero : forall (a : Nat) (b : Nat) (h : Le a b) (e : Eq (eqb a b) 0) -> Lt a b :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (h : Le x b) (e : Eq (eqb x b) 0) -> Lt x b)
+    | zero => fun (b : Nat) ->
+        rec b return z . (forall (h : Le 0 z) (e : Eq (eqb 0 z) 0) -> Lt 0 z)
+        | zero => fun (h : True) (e : False) -> e
+        | succ q, s => fun (h : True) (e : True) -> true
+        end
+    | succ p, ih => fun (b : Nat) ->
+        rec b return z . (forall (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) -> Lt (succ p) z)
+        | zero => fun (h : False) (e : True) -> h
+        | succ q, s => fun (h : Le p q) (e : Eq (eqb p q) 0) -> ih q h e
         end
     end
 end

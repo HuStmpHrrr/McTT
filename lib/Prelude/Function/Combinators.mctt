@@ -1,6 +1,6 @@
 (* Generic combinators over a type parameter, with their laws at [Nat]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusComm; plusSucc)
+import Prelude::Arith::Plus use (plus; plusComm)
 import Prelude::Function::Iter as Iter
 
 module Prelude::Function::Combinators where

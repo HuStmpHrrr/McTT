@@ -1,7 +1,7 @@
 (* Finite sums [sumTo f n] of [f i] for [i < n], with linearity laws, sums
    of constants, and the closed forms of Gauss and of the odd numbers. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusLeftComm)
+import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusSwapMiddle)
 import Prelude::Arith::Mult use (mult; multZero; multSucc; multComm; multDistribLeft; multDistribRight)
 import Prelude::Function::Combinators use (Generic)
 
@@ -39,22 +39,6 @@ def sumToExt : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat
              (cong (fun (y : Nat) -> plus y sf) (f p) (g p) (h p))
              (cong (fun (y : Nat) -> plus (g p) y) sf sg ih)
         end
-    end
-end
-
-(* The two middle summands of a sum of sums can be exchanged. *)
-def plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs : Nat := plus (plus a b) (plus c d);
-        mid : Nat := plus a (plus b (plus c d));
-        inner : Nat := plus a (plus c (plus b d));
-        rhs : Nat := plus (plus a c) (plus b d);
-        swap : Eq mid inner :=
-          cong (fun (y : Nat) -> plus a y) (plus b (plus c d)) (plus c (plus b d))
-            (plusLeftComm b c d);
-        back : Eq inner rhs := sym rhs inner (plusAssoc a c (plus b d))
-    in trans lhs mid rhs (plusAssoc a b (plus c d)) (trans mid inner rhs swap back)
     end
 end
 

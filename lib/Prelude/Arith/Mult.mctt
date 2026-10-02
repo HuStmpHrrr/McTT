@@ -2,7 +2,7 @@
    the laws of [Prelude::Arith::Plus]. *)
 import Prelude::Logic use (Not; absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusComm; plusAssoc; plusLeftComm; plusEqZero)
+import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusLeftComm; plusEqZero)
 
 module Prelude::Arith::Mult where
 
@@ -127,6 +127,37 @@ def multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
         in trans (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c))
              (plus (mult b c) (mult p (mult b c))) distrib step
         end
+    end
+end
+
+(* The first factor of a product can be moved past the second. *)
+def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (mult a (mult b c)) (mult b (mult a c)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    let left : Eq (mult a (mult b c)) (mult (mult a b) c) :=
+          sym (mult (mult a b) c) (mult a (mult b c)) (multAssoc a b c);
+        swap : Eq (mult (mult a b) c) (mult (mult b a) c) :=
+          cong (fun (y : Nat) -> mult y c) (mult a b) (mult b a) (multComm a b)
+    in trans (mult a (mult b c)) (mult (mult b a) c) (mult b (mult a c))
+         (trans (mult a (mult b c)) (mult (mult a b) c) (mult (mult b a) c) left swap)
+         (multAssoc b a c)
+    end
+end
+
+(* The two middle factors of a product of products can be exchanged. *)
+def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    let lhs : Nat := mult (mult a b) (mult c d);
+        mid : Nat := mult a (mult b (mult c d));
+        inner : Nat := mult a (mult c (mult b d));
+        rhs : Nat := mult (mult a c) (mult b d);
+        assoc : Eq lhs mid := multAssoc a b (mult c d);
+        swap : Eq mid inner :=
+          cong (fun (y : Nat) -> mult a y) (mult b (mult c d)) (mult c (mult b d))
+            (multLeftComm b c d);
+        back : Eq inner rhs := sym rhs inner (multAssoc a c (mult b d))
+    in trans lhs mid rhs assoc (trans mid inner rhs swap back)
     end
 end
 

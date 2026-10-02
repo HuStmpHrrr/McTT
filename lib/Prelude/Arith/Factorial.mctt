@@ -1,10 +1,10 @@
 (* The factorial, with its defining equations, positivity, monotonicity in
    one step, and the bound [pow 2 n <= fact (succ n)]. *)
-import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Order use (Le; Lt; leTrans; lePlusRight; lePlusLeft)
+import Prelude::Arith::Order use (Le; Lt; leTrans; lePlusRight)
+import Prelude::Arith::Monotone use (lePlusMono)
 import Prelude::Arith::Pow use (pow)
 
 module Prelude::Arith::Factorial where
@@ -37,25 +37,6 @@ end
 (* The factorial does not decrease from [n] to [succ n]. *)
 def factLeSucc : forall (n : Nat) -> Le (fact n) (fact (succ n)) :=
   fun (n : Nat) -> lePlusRight (fact n) (mult n (fact n))
-end
-
-(* Addition is monotone in both summands. *)
-def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-    (hab : Le a b) (hcd : Le c d) -> Le (plus a c) (plus b d) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
-                        (hab : Le x b) (hcd : Le c d) -> Le (plus x c) (plus b d))
-    | zero => fun (b : Nat) (c : Nat) (d : Nat) (hab : True) (hcd : Le c d) ->
-        leTrans c d (plus b d) hcd (lePlusLeft b d)
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (c : Nat) (d : Nat) (hab : Le (succ p) z) (hcd : Le c d) ->
-                            Le (plus (succ p) c) (plus z d))
-        | zero => fun (c : Nat) (d : Nat) (hab : False) (hcd : Le c d) ->
-            absurd (Le (succ (plus p c)) d) hab
-        | succ q, s => fun (c : Nat) (d : Nat) (hab : Le p q) (hcd : Le c d) ->
-            ih q c d hab hcd
-        end
-    end
 end
 
 (* Powers of two are bounded by factorials: [pow 2 n <= fact (succ n)].  In

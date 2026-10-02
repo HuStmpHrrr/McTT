@@ -2,7 +2,6 @@
    vectors of numbers are built, mapped, appended, read and summed, and
    closed instances of the laws normalize to [true].  Index bounds on closed
    numbers compute to [True], so [true] proves them. *)
-import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Data::Vec as V
 import Prelude::Data::VecLaws use (sumVec; nthMap; nthReplicate; nthAppendLeft; nthAppendRight; sumReplicate; sumAppend)

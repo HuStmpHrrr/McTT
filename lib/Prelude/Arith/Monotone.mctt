@@ -105,6 +105,15 @@ def ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
     end
 end
 
+(* Addition preserves a strict bound in its second argument. *)
+def ltPlusMonoRight : forall (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) -> Lt (plus m j) (plus m n) :=
+  fun (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) ->
+    rec m return x . Lt (plus x j) (plus x n)
+    | zero => h
+    | succ p, ih => ih
+    end
+end
+
 (* Truncated subtraction never exceeds its first argument. *)
 def subLe : forall (a : Nat) (b : Nat) -> Le (sub a b) a :=
   fun (a : Nat) (b : Nat) ->

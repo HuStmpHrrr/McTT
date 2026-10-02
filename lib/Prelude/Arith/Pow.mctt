@@ -3,7 +3,7 @@
    [Prelude::Arith::Mult]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus; plusZero)
-import Prelude::Arith::Mult use (mult; multOne; oneMult; multComm; multAssoc)
+import Prelude::Arith::Mult use (mult; multOne; oneMult; multAssoc; multSwapMiddle)
 
 module Prelude::Arith::Pow where
 
@@ -34,37 +34,6 @@ def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
     rec n return x . Eq (pow 1 x) 1
     | zero => true
     | succ p, ih => trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusZero (pow 1 p)) ih
-    end
-end
-
-(* The first factor of a product can be moved past the second. *)
-def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (mult a (mult b c)) (mult b (mult a c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    let left : Eq (mult a (mult b c)) (mult (mult a b) c) :=
-          sym (mult (mult a b) c) (mult a (mult b c)) (multAssoc a b c);
-        swap : Eq (mult (mult a b) c) (mult (mult b a) c) :=
-          cong (fun (y : Nat) -> mult y c) (mult a b) (mult b a) (multComm a b)
-    in trans (mult a (mult b c)) (mult (mult b a) c) (mult b (mult a c))
-         (trans (mult a (mult b c)) (mult (mult a b) c) (mult (mult b a) c) left swap)
-         (multAssoc b a c)
-    end
-end
-
-(* The two middle factors of a product of products can be exchanged. *)
-def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs : Nat := mult (mult a b) (mult c d);
-        mid : Nat := mult a (mult b (mult c d));
-        inner : Nat := mult a (mult c (mult b d));
-        rhs : Nat := mult (mult a c) (mult b d);
-        assoc : Eq lhs mid := multAssoc a b (mult c d);
-        swap : Eq mid inner :=
-          cong (fun (y : Nat) -> mult a y) (mult b (mult c d)) (mult c (mult b d))
-            (multLeftComm b c d);
-        back : Eq inner rhs := sym rhs inner (multAssoc a c (mult b d))
-    in trans lhs mid rhs assoc (trans mid inner rhs swap back)
     end
 end
 

@@ -6,6 +6,7 @@ import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus; plusAssoc)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Lt)
+import Prelude::Arith::Monotone use (ltPlusMonoRight)
 import Prelude::Data::Vec as V
 
 module Prelude::Data::VecLaws where
@@ -50,23 +51,14 @@ def nthAppendLeft : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat 
      end) u
 end
 
-(* Adding [m] on the left preserves a strict bound. *)
-def ltPlusLeft : forall (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) -> Lt (plus m j) (plus m n) :=
-  fun (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) ->
-    rec m return x . Lt (plus x j) (plus x n)
-    | zero => h
-    | succ p, ih => ih
-    end
-end
-
 (* The index [plus m j] reads element [j] of the second part of an append. *)
 def nthAppendRight : forall (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n)
     (j : Nat) (h : Lt j n) ->
-    Eq (V.nth Nat (plus m n) (V.append Nat m n u v) (plus m j) (ltPlusLeft m j n h))
+    Eq (V.nth Nat (plus m n) (V.append Nat m n u v) (plus m j) (ltPlusMonoRight m j n h))
        (V.nth Nat n v j h) :=
   fun (m : Nat) (n : Nat) (u : V.Vec Nat m) (v : V.Vec Nat n) (j : Nat) (h : Lt j n) ->
     (rec m return k . (forall (w : V.Vec Nat k) ->
-                         Eq (V.nth Nat (plus k n) (V.append Nat k n w v) (plus k j) (ltPlusLeft k j n h))
+                         Eq (V.nth Nat (plus k n) (V.append Nat k n w v) (plus k j) (ltPlusMonoRight k j n h))
                             (V.nth Nat n v j h))
      | zero => fun (w : V.Vec Nat 0) -> refl (v j h)
      | succ p, ih => fun (w : V.Vec Nat (succ p)) -> ih (V.tail Nat p w)

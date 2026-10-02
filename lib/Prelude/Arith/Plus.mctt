@@ -1,6 +1,6 @@
 (* Addition and its laws, stated with [Prelude::Arith::Equality]. *)
 import Prelude::Logic use (absurd)
-import Prelude::Arith::Equality use (Eq; refl; sym; trans)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 
 module Prelude::Arith::Plus where
 
@@ -60,6 +60,22 @@ def plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
         in trans (succ (plus p (plus b c))) (succ (plus b (plus p c))) (plus b (succ (plus p c)))
              ih back
         end
+    end
+end
+
+(* The two middle summands of a sum of sums can be exchanged. *)
+def plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    let lhs : Nat := plus (plus a b) (plus c d);
+        mid : Nat := plus a (plus b (plus c d));
+        inner : Nat := plus a (plus c (plus b d));
+        rhs : Nat := plus (plus a c) (plus b d);
+        swap : Eq mid inner :=
+          cong (fun (y : Nat) -> plus a y) (plus b (plus c d)) (plus c (plus b d))
+            (plusLeftComm b c d);
+        back : Eq inner rhs := sym rhs inner (plusAssoc a c (plus b d))
+    in trans lhs mid rhs (plusAssoc a b (plus c d)) (trans mid inner rhs swap back)
     end
 end
 

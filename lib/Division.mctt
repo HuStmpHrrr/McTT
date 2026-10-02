@@ -1,25 +1,39 @@
 (* A client of [Prelude::Arith::Div] and [Prelude::Arith::Divides]: computed
    quotients and remainders, and closed instances of their theorems.  The
-   second argument [d] of [div] and [mod] stands for the divisor [succ d], so
-   [div 17 3] divides 17 by 4. *)
-import Prelude::Arith::Div use (div; mod; divModSpec; modLt; modSmall; divSmall; modSelf; modPlusDivisor; divOne)
-import Prelude::Arith::Divides use (Divides; dividesRefl; dividesZero; oneDivides; dividesPlus; dividesMult; evenDividesTwo; dividesTwoEven)
+   theorems take [d] for the positive divisor [succ d], so [divModSpec 17 4]
+   is the division equation for 17 by 5. *)
+import Prelude::Arith::Div use (div; mod; divSucc; modSucc; divZeroDivisor; modZeroDivisor; divZero; modZero; divModSpec; modLt; modSmall; divSmall; modSelf; modPlusDivisor; modOne; divOne)
+import Prelude::Arith::Divides use (Divides; zeroDivides; dividesRefl; dividesZero; oneDivides; dividesPlus; dividesMult; evenDividesTwo; dividesTwoEven)
 
 module Division where
 
-(* 17 = 4 * 4 + 1. *)
-eval div 17 3
-
-eval mod 17 3
-
 (* 17 = 3 * 5 + 2. *)
-eval div 17 4
+eval div 17 5
 
-eval mod 17 4
+eval mod 17 5
+
+(* By convention, dividing by zero gives quotient 0 and leaves the dividend
+   as the remainder. *)
+eval div 17 0
+
+eval mod 17 0
 
 eval div 20 4
 
 eval mod 20 4
+
+(* The implementation divides by the successor: 17 = 4 * 4 + 1. *)
+eval divSucc 17 3
+
+eval modSucc 17 3
+
+eval divZeroDivisor 17
+
+eval modZeroDivisor 17
+
+eval divZero 4
+
+eval modZero 0
 
 eval divModSpec 17 4
 
@@ -33,12 +47,21 @@ eval modSelf 6
 
 eval modPlusDivisor 9 4
 
+eval modOne 7
+
 eval divOne 7
 
-(* Divisibility computes: 3 divides 12, and does not divide 13. *)
+(* Divisibility computes: 3 divides 12, and does not divide 13; 0 divides
+   only 0. *)
 eval Divides 3 12
 
 eval Divides 3 13
+
+eval Divides 0 0
+
+eval Divides 0 5
+
+eval zeroDivides 0 true
 
 eval dividesRefl 5
 

@@ -1,88 +1,22 @@
-(* Euclidean division by a positive divisor.  [div n d] and [mod n d] are the
-   quotient and remainder of [n] by [succ d], so division by zero cannot be
-   expressed.  Both are primitive recursive in the dividend: the remainder
-   counts up and wraps to [0] on reaching the divisor, and the quotient grows
-   by one at each wrap. *)
+(* Euclidean division.  [div n k] and [mod n k] are the quotient and remainder
+   of [n] by [k]; they are total, with [div n 0 = 0] and [mod n 0 = n].  They
+   are implemented by [divSucc n d] and [modSucc n d], which divide by
+   [succ d], so [div n (succ d)] computes to [divSucc n d].  Both are primitive
+   recursive in the dividend: the remainder counts up and wraps to [0] on
+   reaching the divisor, and the quotient grows by one at each wrap.  The
+   theorems are stated for a positive divisor [succ d]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm)
 import Prelude::Arith::Mult use (mult; multOne)
-import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leSucc; ltIrrefl)
+import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leSucc; ltNotEq)
+import Prelude::Arith::Decide use (eqb; eqbRefl; eqbCases; leEqbZero)
 import Prelude::Function::Combinators use (Generic; iteratePlus; iterateComm)
 
 module Prelude::Arith::Div where
 
-(* Decision of equality: [eqb a b] is 1 when [a] and [b] are equal, and 0
-   otherwise. *)
-def eqb : forall (a : Nat) (b : Nat) -> Nat :=
-  fun (a : Nat) ->
-    rec a return y . (forall (b : Nat) -> Nat)
-    | zero => fun (b : Nat) ->
-        rec b return z . Nat | zero => 1 | succ q, s => 0 end
-    | succ p, r => fun (b : Nat) ->
-        rec b return z . Nat | zero => 0 | succ q, s => r q end
-    end
-end
-
 (* [pick b z s] is [z] when [b] is 0, and [s] otherwise. *)
 def pick (b : Nat) (z : Nat) (s : Nat) : Nat :=
   rec b return y . Nat | zero => z | succ k, t => s end
-end
-
-def eqbRefl : forall (n : Nat) -> Eq (eqb n n) 1 :=
-  fun (n : Nat) ->
-    rec n return x . Eq (eqb x x) 1
-    | zero => true
-    | succ p, ih => ih
-    end
-end
-
-(* Case analysis on [eqb a b] for a predicate [P]: it suffices to prove [P 0]
-   when [eqb a b] is 0, and [P 1] when [a] and [b] are equal. *)
-def eqbCases : forall (a : Nat) (b : Nat) (P : forall (m : Nat) -> Type@0)
-    (hz : forall (h : Eq (eqb a b) 0) -> P 0) (hs : forall (h : Eq a b) -> P 1) ->
-    P (eqb a b) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (P : forall (m : Nat) -> Type@0)
-        (hz : forall (h : Eq (eqb x b) 0) -> P 0) (hs : forall (h : Eq x b) -> P 1) ->
-        P (eqb x b))
-    | zero => fun (b : Nat) ->
-        rec b return z . (forall (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : Eq (eqb 0 z) 0) -> P 0) (hs : forall (h : Eq 0 z) -> P 1) ->
-            P (eqb 0 z))
-        | zero => fun (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : False) -> P 0) (hs : forall (h : True) -> P 1) -> hs true
-        | succ q, s => fun (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : True) -> P 0) (hs : forall (h : False) -> P 1) -> hz true
-        end
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : Eq (eqb (succ p) z) 0) -> P 0)
-            (hs : forall (h : Eq (succ p) z) -> P 1) ->
-            P (eqb (succ p) z))
-        | zero => fun (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : True) -> P 0) (hs : forall (h : False) -> P 1) -> hz true
-        | succ q, s => fun (P : forall (m : Nat) -> Type@0)
-            (hz : forall (h : Eq (eqb p q) 0) -> P 0) (hs : forall (h : Eq p q) -> P 1) ->
-            ih q P hz hs
-        end
-    end
-end
-
-(* Below the bound and different from it means strictly below it. *)
-def leEqbZero : forall (a : Nat) (b : Nat) (h : Le a b) (e : Eq (eqb a b) 0) -> Le (succ a) b :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (h : Le x b) (e : Eq (eqb x b) 0) -> Le (succ x) b)
-    | zero => fun (b : Nat) ->
-        rec b return z . (forall (h : Le 0 z) (e : Eq (eqb 0 z) 0) -> Le 1 z)
-        | zero => fun (h : True) (e : False) -> e
-        | succ q, s => fun (h : True) (e : True) -> true
-        end
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) -> Le (succ (succ p)) z)
-        | zero => fun (h : False) (e : True) -> h
-        | succ q, s => fun (h : Le p q) (e : Eq (eqb p q) 0) -> ih q h e
-        end
-    end
 end
 
 (* One step of the remainder modulo [succ d]: [succ r], or [0] when [r] has
@@ -94,37 +28,72 @@ def wrap (r : Nat) (d : Nat) : Nat := pick (eqb r d) (succ r) 0 end
 def carry (r : Nat) (d : Nat) (q : Nat) : Nat := pick (eqb r d) q (succ q) end
 
 (* The remainder of [n] by [succ d]: [n] steps of [wrap] from [0]. *)
-def mod (n : Nat) (d : Nat) : Nat :=
+def modSucc (n : Nat) (d : Nat) : Nat :=
   Generic.iterate Nat (fun (r : Nat) -> wrap r d) n 0
 end
 
 (* The quotient of [n] by [succ d]. *)
-def div (n : Nat) (d : Nat) : Nat :=
+def divSucc (n : Nat) (d : Nat) : Nat :=
   rec n return y . Nat
   | zero => 0
-  | succ p, q => carry (mod p d) d q
+  | succ p, q => carry (modSucc p d) d q
   end
 end
 
-def divZero : forall (d : Nat) -> Eq (div 0 d) 0 :=
-  fun (d : Nat) -> true
+(* The quotient of [n] by [k], which is [0] when [k] is [0]. *)
+def div (n : Nat) (k : Nat) : Nat :=
+  rec k return y . Nat
+  | zero => 0
+  | succ d, r => divSucc n d
+  end
 end
 
-def modZero : forall (d : Nat) -> Eq (mod 0 d) 0 :=
-  fun (d : Nat) -> true
+(* The remainder of [n] by [k], which is [n] when [k] is [0]. *)
+def mod (n : Nat) (k : Nat) : Nat :=
+  rec k return y . Nat
+  | zero => n
+  | succ d, r => modSucc n d
+  end
 end
 
-(* The division equation [n = div n d * succ d + mod n d].  In the step, a
-   remainder that does not wrap adds one to the remainder; one that wraps is
-   equal to [d], and the added [succ d] moves into the quotient. *)
+def divZeroDivisor : forall (n : Nat) -> Eq (div n 0) 0 :=
+  fun (n : Nat) -> true
+end
+
+def modZeroDivisor : forall (n : Nat) -> Eq (mod n 0) n :=
+  fun (n : Nat) -> refl n
+end
+
+(* Zero divided by any divisor, zero included, has quotient [0]. *)
+def divZero : forall (k : Nat) -> Eq (div 0 k) 0 :=
+  fun (k : Nat) ->
+    rec k return x . Eq (div 0 x) 0
+    | zero => true
+    | succ d, ih => true
+    end
+end
+
+(* Zero divided by any divisor, zero included, has remainder [0]. *)
+def modZero : forall (k : Nat) -> Eq (mod 0 k) 0 :=
+  fun (k : Nat) ->
+    rec k return x . Eq (mod 0 x) 0
+    | zero => true
+    | succ d, ih => true
+    end
+end
+
+(* The division equation [n = div n (succ d) * succ d + mod n (succ d)].  In
+   the step, a remainder that does not wrap adds one to the remainder; one
+   that wraps is equal to [d], and the added [succ d] moves into the
+   quotient. *)
 def divModSpec : forall (n : Nat) (d : Nat) ->
-    Eq (plus (mult (div n d) (succ d)) (mod n d)) n :=
+    Eq (plus (mult (div n (succ d)) (succ d)) (mod n (succ d))) n :=
   fun (n : Nat) (d : Nat) ->
-    rec n return x . Eq (plus (mult (div x d) (succ d)) (mod x d)) x
+    rec n return x . Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
     | zero => true
     | succ p, ih =>
-        let r : Nat := mod p d;
-            q : Nat := div p d;
+        let r : Nat := mod p (succ d);
+            q : Nat := div p (succ d);
             m : Nat := mult q (succ d)
         in eqbCases r d
              (fun (b : Nat) -> Eq (plus (mult (pick b q (succ q)) (succ d)) (pick b (succ r) 0)) (succ p))
@@ -143,14 +112,14 @@ def divModSpec : forall (n : Nat) (d : Nat) ->
     end
 end
 
-(* The remainder is below the divisor.  [Lt (mod n d) (succ d)] computes to
-   [Le (mod n d) d]. *)
-def modLt : forall (n : Nat) (d : Nat) -> Lt (mod n d) (succ d) :=
+(* The remainder is below the divisor.  [Lt (mod n (succ d)) (succ d)]
+   computes to [Le (mod n (succ d)) d]. *)
+def modLt : forall (n : Nat) (d : Nat) -> Lt (mod n (succ d)) (succ d) :=
   fun (n : Nat) (d : Nat) ->
-    rec n return x . Lt (mod x d) (succ d)
+    rec n return x . Lt (mod x (succ d)) (succ d)
     | zero => true
     | succ p, ih =>
-        let r : Nat := mod p d
+        let r : Nat := mod p (succ d)
         in eqbCases r d (fun (b : Nat) -> Le (pick b (succ r) 0) d)
              (fun (h : Eq (eqb r d) 0) -> leEqbZero r d ih h)
              (fun (h : Eq r d) -> true)
@@ -158,114 +127,112 @@ def modLt : forall (n : Nat) (d : Nat) -> Lt (mod n d) (succ d) :=
     end
 end
 
-(* A number below the bound is different from it. *)
-def ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
-  fun (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) ->
-    ltIrrefl a (transport (fun (x : Nat) -> Lt a x) b a (sym a b e) h)
-end
-
 (* A dividend below the divisor is its own remainder. *)
-def modSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (mod n d) n :=
+def modSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (mod n (succ d)) n :=
   fun (n : Nat) (d : Nat) ->
-    rec n return x . (forall (h : Lt x (succ d)) -> Eq (mod x d) x)
+    rec n return x . (forall (h : Lt x (succ d)) -> Eq (mod x (succ d)) x)
     | zero => fun (h : True) -> true
     | succ p, ih => fun (h : Le (succ p) d) ->
-        let hp : Eq (mod p d) p := ih (leTrans p (succ p) d (leSucc p) h);
+        let hp : Eq (mod p (succ d)) p := ih (leTrans p (succ p) d (leSucc p) h);
             atP : Eq (wrap p d) (succ p) :=
               eqbCases p d (fun (b : Nat) -> Eq (pick b (succ p) 0) (succ p))
                 (fun (e : Eq (eqb p d) 0) -> refl p)
                 (fun (e : Eq p d) -> ltNotEq p d h e)
-        in transport (fun (x : Nat) -> Eq (wrap x d) (succ p)) p (mod p d)
-             (sym (mod p d) p hp) atP
+        in transport (fun (x : Nat) -> Eq (wrap x d) (succ p)) p (mod p (succ d))
+             (sym (mod p (succ d)) p hp) atP
         end
     end
 end
 
 (* A dividend below the divisor has quotient [0]. *)
-def divSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (div n d) 0 :=
+def divSmall : forall (n : Nat) (d : Nat) (h : Lt n (succ d)) -> Eq (div n (succ d)) 0 :=
   fun (n : Nat) (d : Nat) ->
-    rec n return x . (forall (h : Lt x (succ d)) -> Eq (div x d) 0)
+    rec n return x . (forall (h : Lt x (succ d)) -> Eq (div x (succ d)) 0)
     | zero => fun (h : True) -> true
     | succ p, ih => fun (h : Le (succ p) d) ->
         let hp : Le p d := leTrans p (succ p) d (leSucc p) h;
-            hq : Eq (div p d) 0 := ih hp;
-            hr : Eq (mod p d) p := modSmall p d hp;
+            hq : Eq (div p (succ d)) 0 := ih hp;
+            hr : Eq (mod p (succ d)) p := modSmall p d hp;
             atZero : Eq (carry p d 0) 0 :=
               eqbCases p d (fun (b : Nat) -> Eq (pick b 0 1) 0)
                 (fun (e : Eq (eqb p d) 0) -> true)
                 (fun (e : Eq p d) -> ltNotEq p d h e);
-            atP : Eq (carry p d (div p d)) 0 :=
-              transport (fun (y : Nat) -> Eq (carry p d y) 0) 0 (div p d)
-                (sym (div p d) 0 hq) atZero
-        in transport (fun (x : Nat) -> Eq (carry x d (div p d)) 0) p (mod p d)
-             (sym (mod p d) p hr) atP
+            atP : Eq (carry p d (div p (succ d))) 0 :=
+              transport (fun (y : Nat) -> Eq (carry p d y) 0) 0 (div p (succ d))
+                (sym (div p (succ d)) 0 hq) atZero
+        in transport (fun (x : Nat) -> Eq (carry x d (div p (succ d))) 0) p (mod p (succ d))
+             (sym (mod p (succ d)) p hr) atP
         end
     end
 end
 
 (* The divisor itself has remainder [0]. *)
-def modSelf : forall (d : Nat) -> Eq (mod (succ d) d) 0 :=
+def modSelf : forall (d : Nat) -> Eq (mod (succ d) (succ d)) 0 :=
   fun (d : Nat) ->
-    let hd : Eq (mod d d) d := modSmall d d (leRefl d);
+    let hd : Eq (mod d (succ d)) d := modSmall d d (leRefl d);
         atD : Eq (wrap d d) 0 :=
           eqbCases d d (fun (b : Nat) -> Eq (pick b (succ d) 0) 0)
             (fun (e : Eq (eqb d d) 0) ->
                transport (fun (m : Nat) -> Eq m 1) (eqb d d) 0 e (eqbRefl d))
             (fun (e : Eq d d) -> true)
-    in transport (fun (x : Nat) -> Eq (wrap x d) 0) d (mod d d) (sym (mod d d) d hd) atD
+    in transport (fun (x : Nat) -> Eq (wrap x d) 0) d (mod d (succ d))
+         (sym (mod d (succ d)) d hd) atD
     end
+end
+
+(* The remainder of a sum is determined by the remainder of the second
+   summand: [mod (a + b) (succ d)] runs [a] more steps of [wrap] from
+   [mod b (succ d)]. *)
+def modPlus : forall (a : Nat) (b : Nat) (d : Nat) ->
+    Eq (mod (plus a b) (succ d))
+       (Generic.iterate Nat (fun (r : Nat) -> wrap r d) a (mod b (succ d))) :=
+  fun (a : Nat) (b : Nat) (d : Nat) -> iteratePlus (fun (r : Nat) -> wrap r d) a b 0
 end
 
 (* The remainder is periodic: adding the divisor does not change it.  The
    proof commutes the [succ d] extra steps of [wrap] to the start, where they
    return to [0] by [modSelf]. *)
-def modPlusDivisor : forall (n : Nat) (d : Nat) -> Eq (mod (plus (succ d) n) d) (mod n d) :=
+def modPlusDivisor : forall (n : Nat) (d : Nat) ->
+    Eq (mod (plus (succ d) n) (succ d)) (mod n (succ d)) :=
   fun (n : Nat) (d : Nat) ->
     let w : forall (r : Nat) -> Nat := fun (r : Nat) -> wrap r d;
-        split : Eq (mod (plus (succ d) n) d) (Generic.iterate Nat w (succ d) (mod n d)) :=
-          iteratePlus w (succ d) n 0;
-        comm : Eq (Generic.iterate Nat w (succ d) (mod n d)) (Generic.iterate Nat w n (mod (succ d) d)) :=
-          iterateComm w (succ d) n 0;
-        back : Eq (Generic.iterate Nat w n (mod (succ d) d)) (mod n d) :=
-          cong (fun (y : Nat) -> Generic.iterate Nat w n y) (mod (succ d) d) 0 (modSelf d)
-    in trans (mod (plus (succ d) n) d) (Generic.iterate Nat w n (mod (succ d) d)) (mod n d)
-         (trans (mod (plus (succ d) n) d) (Generic.iterate Nat w (succ d) (mod n d))
-            (Generic.iterate Nat w n (mod (succ d) d)) split comm)
+        k : Nat := succ d;
+        split : Eq (mod (plus k n) k) (Generic.iterate Nat w k (mod n k)) := modPlus k n d;
+        comm : Eq (Generic.iterate Nat w k (mod n k)) (Generic.iterate Nat w n (mod k k)) :=
+          iterateComm w k n 0;
+        back : Eq (Generic.iterate Nat w n (mod k k)) (mod n k) :=
+          cong (fun (y : Nat) -> Generic.iterate Nat w n y) (mod k k) 0 (modSelf d)
+    in trans (mod (plus k n) k) (Generic.iterate Nat w n (mod k k)) (mod n k)
+         (trans (mod (plus k n) k) (Generic.iterate Nat w k (mod n k))
+            (Generic.iterate Nat w n (mod k k)) split comm)
          back
     end
 end
 
-(* The remainder of a sum is determined by the remainder of the second
-   summand: [mod (a + b)] runs [a] more steps of [wrap] from [mod b]. *)
-def modPlus : forall (a : Nat) (b : Nat) (d : Nat) ->
-    Eq (mod (plus a b) d) (Generic.iterate Nat (fun (r : Nat) -> wrap r d) a (mod b d)) :=
-  fun (a : Nat) (b : Nat) (d : Nat) -> iteratePlus (fun (r : Nat) -> wrap r d) a b 0
-end
-
 (* Division by one: the remainder is [0]. *)
-def modOne : forall (n : Nat) -> Eq (mod n 0) 0 :=
+def modOne : forall (n : Nat) -> Eq (mod n 1) 0 :=
   fun (n : Nat) ->
-    rec n return x . Eq (mod x 0) 0
+    rec n return x . Eq (mod x 1) 0
     | zero => true
     | succ p, ih =>
-        transport (fun (x : Nat) -> Eq (wrap x 0) 0) 0 (mod p 0) (sym (mod p 0) 0 ih) true
+        transport (fun (x : Nat) -> Eq (wrap x 0) 0) 0 (mod p 1) (sym (mod p 1) 0 ih) true
     end
 end
 
 (* Division by one: the quotient is the dividend, by [divModSpec] and
    [modOne]. *)
-def divOne : forall (n : Nat) -> Eq (div n 0) n :=
+def divOne : forall (n : Nat) -> Eq (div n 1) n :=
   fun (n : Nat) ->
-    let q : Nat := div n 0;
-        spec : Eq (plus (mult q 1) (mod n 0)) n := divModSpec n 0;
-        dropMod : Eq (plus (mult q 1) 0) (plus (mult q 1) (mod n 0)) :=
-          cong (fun (y : Nat) -> plus (mult q 1) y) 0 (mod n 0) (sym (mod n 0) 0 (modOne n));
+    let q : Nat := div n 1;
+        spec : Eq (plus (mult q 1) (mod n 1)) n := divModSpec n 0;
+        dropMod : Eq (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) :=
+          cong (fun (y : Nat) -> plus (mult q 1) y) 0 (mod n 1) (sym (mod n 1) 0 (modOne n));
         dropPlus : Eq (mult q 1) (plus (mult q 1) 0) :=
           sym (plus (mult q 1) 0) (mult q 1) (plusZero (mult q 1));
         dropMult : Eq q (mult q 1) := sym (mult q 1) q (multOne q)
     in trans q (mult q 1) n dropMult
          (trans (mult q 1) (plus (mult q 1) 0) n dropPlus
-            (trans (plus (mult q 1) 0) (plus (mult q 1) (mod n 0)) n dropMod spec))
+            (trans (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) n dropMod spec))
     end
 end
 
