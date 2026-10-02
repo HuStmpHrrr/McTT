@@ -738,3 +738,44 @@ let%expect_test "lib/Programs.mctt" =
                3
                0 --> 6 : Nat
     |}]
+
+let%expect_test "lib/Lattice.mctt" =
+  let _ = main_of_lib "Lattice.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::MinMax.min (Prelude::Arith::MinMax.max 2 7)
+               (Prelude::Arith::MinMax.max 5 3) --> 5 : Nat
+    Evaluate Prelude::Arith::MinMax.max (Prelude::Arith::MinMax.min 9 4)
+               (Prelude::Arith::MinMax.min 6 8) --> 6 : Nat
+    Evaluate Prelude::Arith::Plus.plus (Prelude::Arith::Sub.sub 9 4) 4 --> 9
+      : Nat
+    Evaluate Prelude::Arith::Monotone.lePlusMono 1 2 3 4 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.lePlusCancel 3 2 5 true --> true : True
+    Evaluate Prelude::Arith::Monotone.leMultMono 2 3 2 4 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.ltTrans 1 2 4 true true --> true : True
+    Evaluate Prelude::Arith::Monotone.ltLeTrans 1 3 3 true true --> true : True
+    Evaluate Prelude::Arith::Monotone.leLtTrans 2 2 5 true true --> true : True
+    Evaluate Prelude::Arith::Monotone.ltSucc 6 --> true : True
+    Evaluate Prelude::Arith::Monotone.ltPlus 4 2 --> true : True
+    Evaluate Prelude::Arith::Monotone.subLe 7 3 --> true : True
+    Evaluate Prelude::Arith::Monotone.subMonoLeft 4 6 2 true --> true : True
+    Evaluate Prelude::Arith::Monotone.subMonoRight 8 2 5 true --> true : True
+    Evaluate Prelude::Arith::Monotone.plusSubCancel 9 4 true --> true : True
+    Evaluate Prelude::Arith::Monotone.subPlusCancel 9 4 true --> true : True
+    Evaluate Prelude::Arith::Monotone.subPos 5 2 true --> true : True
+    Evaluate Prelude::Arith::Lattice.minAssoc 4 2 7 --> true : True
+    Evaluate Prelude::Arith::Lattice.maxAssoc 4 2 7 --> true : True
+    Evaluate Prelude::Arith::Lattice.minMaxAbsorb 5 3 --> true : True
+    Evaluate Prelude::Arith::Lattice.maxMinAbsorb 3 5 --> true : True
+    Evaluate Prelude::Arith::Lattice.minMaxDistrib 4 2 6 --> true : True
+    Evaluate Prelude::Arith::Lattice.maxMinDistrib 4 2 6 --> true : True
+    Evaluate Prelude::Arith::Lattice.minLe 3 8 --> true : True
+    Evaluate Prelude::Arith::Lattice.leMax 8 3 --> true : True
+    Evaluate Prelude::Arith::Lattice.leMin 2 4 5 true true --> true : True
+    Evaluate Prelude::Arith::Lattice.maxLe 3 4 6 true true --> true : True
+    Evaluate Prelude::Arith::Lattice.minEqLeft 3 5 true --> true : True
+    Evaluate Prelude::Arith::Lattice.maxEqRight 3 5 true --> true : True
+    Evaluate Prelude::Arith::Lattice.minMono 2 3 4 6 true true --> true : True
+    Evaluate Prelude::Arith::Lattice.maxMono 2 3 6 7 true true --> true : True
+    |}]

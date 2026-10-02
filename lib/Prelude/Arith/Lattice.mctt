@@ -1,0 +1,280 @@
+(* The natural numbers as a distributive lattice under
+   [Prelude::Arith::MinMax.min] and [Prelude::Arith::MinMax.max]: associativity,
+   absorption and distributivity, and the order-theoretic characterization of
+   [min] and [max] as greatest lower and least upper bounds. *)
+import Prelude::Logic use (absurd)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans)
+import Prelude::Arith::MinMax use (min; max; minComm; minIdem)
+import Prelude::Arith::Order use (Le; leRefl; leTrans)
+
+module Prelude::Arith::Lattice where
+
+def minAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (min (min a b) c) (min a (min b c)) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) -> Eq (min (min x b) c) (min x (min b c)))
+    | zero => fun (b : Nat) (c : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (c : Nat) -> Eq (min (min (succ p) y) c) (min (succ p) (min y c)))
+        | zero => fun (c : Nat) -> true
+        | succ q, s => fun (c : Nat) ->
+            rec c return z . Eq (min (min (succ p) (succ q)) z) (min (succ p) (min (succ q) z))
+            | zero => true
+            | succ r, t => ih q r
+            end
+        end
+    end
+end
+
+def maxAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (max (max a b) c) (max a (max b c)) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) -> Eq (max (max x b) c) (max x (max b c)))
+    | zero => fun (b : Nat) (c : Nat) -> refl (max b c)
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (c : Nat) -> Eq (max (max (succ p) y) c) (max (succ p) (max y c)))
+        | zero => fun (c : Nat) -> refl (max (succ p) c)
+        | succ q, s => fun (c : Nat) ->
+            rec c return z . Eq (max (max (succ p) (succ q)) z) (max (succ p) (max (succ q) z))
+            | zero => refl (max p q)
+            | succ r, t => ih q r
+            end
+        end
+    end
+end
+
+(* Absorption: the minimum of [a] and something above [a] is [a]. *)
+def minMaxAbsorb : forall (a : Nat) (b : Nat) -> Eq (min a (max a b)) a :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (min x (max x b)) x)
+    | zero => fun (b : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (min (succ p) (max (succ p) y)) (succ p)
+        | zero => minIdem p
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* Absorption, dually: the maximum of [a] and something below [a] is [a]. *)
+def maxMinAbsorb : forall (a : Nat) (b : Nat) -> Eq (max a (min a b)) a :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (max x (min x b)) x)
+    | zero => fun (b : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (max (succ p) (min (succ p) y)) (succ p)
+        | zero => refl p
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The minimum distributes over the maximum. *)
+def minMaxDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (min a (max b c)) (max (min a b) (min a c)) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) -> Eq (min x (max b c)) (max (min x b) (min x c)))
+    | zero => fun (b : Nat) (c : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (c : Nat) ->
+                            Eq (min (succ p) (max y c)) (max (min (succ p) y) (min (succ p) c)))
+        | zero => fun (c : Nat) -> refl (min (succ p) c)
+        | succ q, s => fun (c : Nat) ->
+            rec c return z . Eq (min (succ p) (max (succ q) z))
+                                (max (min (succ p) (succ q)) (min (succ p) z))
+            | zero => refl (min p q)
+            | succ r, t => ih q r
+            end
+        end
+    end
+end
+
+(* The maximum distributes over the minimum.  Two of the cases are instances
+   of absorption, the second one up to [minComm]. *)
+def maxMinDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (max a (min b c)) (min (max a b) (max a c)) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) -> Eq (max x (min b c)) (min (max x b) (max x c)))
+    | zero => fun (b : Nat) (c : Nat) -> refl (min b c)
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (c : Nat) ->
+                            Eq (max (succ p) (min y c)) (min (max (succ p) y) (max (succ p) c)))
+        | zero => fun (c : Nat) ->
+            sym (min (succ p) (max (succ p) c)) (succ p) (minMaxAbsorb (succ p) c)
+        | succ q, s => fun (c : Nat) ->
+            rec c return z . Eq (max (succ p) (min (succ q) z))
+                                (min (max (succ p) (succ q)) (max (succ p) z))
+            | zero =>
+                (* The goal computes to [Eq p (min (max p q) p)]. *)
+                sym (min (max p q) p) p
+                  (trans (min (max p q) p) (min p (max p q)) p
+                     (minComm (max p q) p) (minMaxAbsorb p q))
+            | succ r, t => ih q r
+            end
+        end
+    end
+end
+
+(* The minimum is a lower bound of its first argument. *)
+def minLe : forall (a : Nat) (b : Nat) -> Le (min a b) a :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Le (min x b) x)
+    | zero => fun (b : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Le (min (succ p) y) (succ p)
+        | zero => true
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The minimum is a lower bound of its second argument. *)
+def minLeRight : forall (a : Nat) (b : Nat) -> Le (min a b) b :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Le (min x b) b)
+    | zero => fun (b : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Le (min (succ p) y) y
+        | zero => true
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The maximum is an upper bound of its first argument. *)
+def leMax : forall (a : Nat) (b : Nat) -> Le a (max a b) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Le x (max x b))
+    | zero => fun (b : Nat) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Le (succ p) (max (succ p) y)
+        | zero => leRefl p
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* The maximum is an upper bound of its second argument. *)
+def leMaxRight : forall (a : Nat) (b : Nat) -> Le b (max a b) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Le b (max x b))
+    | zero => fun (b : Nat) -> leRefl b
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Le y (max (succ p) y)
+        | zero => true
+        | succ q, s => ih q
+        end
+    end
+end
+
+def minLeMax : forall (a : Nat) (b : Nat) -> Le (min a b) (max a b) :=
+  fun (a : Nat) (b : Nat) -> leTrans (min a b) a (max a b) (minLe a b) (leMax a b)
+end
+
+(* The minimum is the greatest lower bound: a common lower bound is below it. *)
+def leMin : forall (c : Nat) (a : Nat) (b : Nat) (hca : Le c a) (hcb : Le c b) -> Le c (min a b) :=
+  fun (c : Nat) ->
+    rec c return w . (forall (a : Nat) (b : Nat) (hca : Le w a) (hcb : Le w b) -> Le w (min a b))
+    | zero => fun (a : Nat) (b : Nat) (hca : True) (hcb : True) -> true
+    | succ p, ih => fun (a : Nat) ->
+        rec a return x . (forall (b : Nat) (hca : Le (succ p) x) (hcb : Le (succ p) b) ->
+                            Le (succ p) (min x b))
+        | zero => fun (b : Nat) (hca : False) (hcb : Le (succ p) b) -> absurd (Le (succ p) 0) hca
+        | succ q, s => fun (b : Nat) ->
+            rec b return y . (forall (hca : Le p q) (hcb : Le (succ p) y) ->
+                                Le (succ p) (min (succ q) y))
+            | zero => fun (hca : Le p q) (hcb : False) -> absurd (Le (succ p) 0) hcb
+            | succ r, t => fun (hca : Le p q) (hcb : Le p r) -> ih q r hca hcb
+            end
+        end
+    end
+end
+
+(* The converse of [leMin], for the first argument. *)
+def leMinLeft : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c a :=
+  fun (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) ->
+    leTrans c (min a b) a h (minLe a b)
+end
+
+(* The converse of [leMin], for the second argument. *)
+def leMinRight : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c b :=
+  fun (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) ->
+    leTrans c (min a b) b h (minLeRight a b)
+end
+
+(* The maximum is the least upper bound: a common upper bound is above it. *)
+def maxLe : forall (a : Nat) (b : Nat) (c : Nat) (hac : Le a c) (hbc : Le b c) -> Le (max a b) c :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (c : Nat) (hac : Le x c) (hbc : Le b c) -> Le (max x b) c)
+    | zero => fun (b : Nat) (c : Nat) (hac : True) (hbc : Le b c) -> hbc
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (c : Nat) (hac : Le (succ p) c) (hbc : Le y c) ->
+                            Le (max (succ p) y) c)
+        | zero => fun (c : Nat) (hac : Le (succ p) c) (hbc : True) -> hac
+        | succ q, s => fun (c : Nat) ->
+            rec c return w . (forall (hac : Le (succ p) w) (hbc : Le (succ q) w) ->
+                                Le (max (succ p) (succ q)) w)
+            | zero => fun (hac : False) (hbc : False) -> absurd (Le (succ (max p q)) 0) hac
+            | succ r, t => fun (hac : Le p r) (hbc : Le q r) -> ih q r hac hbc
+            end
+        end
+    end
+end
+
+(* The converse of [maxLe], for the first argument. *)
+def maxLeLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le a c :=
+  fun (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) ->
+    leTrans a (max a b) c (leMax a b) h
+end
+
+(* The converse of [maxLe], for the second argument. *)
+def maxLeRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le b c :=
+  fun (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) ->
+    leTrans b (max a b) c (leMaxRight a b) h
+end
+
+(* Below its second argument, the minimum is the first. *)
+def minEqLeft : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (min a b) a :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (min x b) x)
+    | zero => fun (b : Nat) (h : True) -> true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (h : Le (succ p) y) -> Eq (min (succ p) y) (succ p))
+        | zero => fun (h : False) -> absurd (Eq 0 (succ p)) h
+        | succ q, s => fun (h : Le p q) -> ih q h
+        end
+    end
+end
+
+(* Below its second argument, the maximum is the second. *)
+def maxEqRight : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (max a b) b :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (max x b) b)
+    | zero => fun (b : Nat) (h : True) -> refl b
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . (forall (h : Le (succ p) y) -> Eq (max (succ p) y) y)
+        | zero => fun (h : False) -> absurd (Eq (succ p) 0) h
+        | succ q, s => fun (h : Le p q) -> ih q h
+        end
+    end
+end
+
+(* The minimum is monotone in both arguments. *)
+def minMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+    (hab : Le a b) (hcd : Le c d) -> Le (min a c) (min b d) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hab : Le a b) (hcd : Le c d) ->
+    leMin (min a c) b d
+      (leTrans (min a c) a b (minLe a c) hab)
+      (leTrans (min a c) c d (minLeRight a c) hcd)
+end
+
+(* The maximum is monotone in both arguments. *)
+def maxMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+    (hab : Le a b) (hcd : Le c d) -> Le (max a c) (max b d) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hab : Le a b) (hcd : Le c d) ->
+    maxLe a c (max b d)
+      (leTrans a b (max b d) hab (leMax b d))
+      (leTrans c d (max b d) hcd (leMaxRight b d))
+end
+
+end
