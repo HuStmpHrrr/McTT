@@ -1,0 +1,43 @@
+(* A client of [Prelude::Order] and [Prelude::Parity]: closed instances of
+   their theorems normalize to [true], and [leb] decides the order. *)
+import Prelude::Logic use (orElim)
+import Prelude::Order use (Le; leTrans; leAntisym; leSucc; lePlusRight; leTotal; ltIrrefl; notLtZero; leb; lebComplete; lebZero)
+import Prelude::Parity use (Even; Odd; double; evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
+
+module Order where
+
+eval leTrans 1 2 5 true true
+
+eval leAntisym 3 3 true true
+
+eval leSucc 4
+
+eval lePlusRight 2 3
+
+(* [leTotal] at closed numbers, eliminated into [Nat]: 0 for the left side,
+   1 for the right. *)
+eval orElim (Le 5 2) (Le 2 5) Nat (leTotal 5 2) (fun (h : Le 5 2) -> 0) (fun (h : Le 2 5) -> 1)
+
+eval ltIrrefl 3
+
+eval notLtZero 2
+
+eval leb 2 5
+
+eval leb 5 2
+
+eval lebComplete 2 5 true
+
+eval lebZero 5 2 true
+
+eval double 7
+
+eval evenDouble 7
+
+eval orElim (Even 7) (Odd 7) Nat (evenOrOdd 7) (fun (h : Even 7) -> 0) (fun (h : Odd 7) -> 1)
+
+eval evenSuccOdd 4 true
+
+eval evenPlus 4 6 true true
+
+end
