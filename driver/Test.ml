@@ -624,3 +624,36 @@ let%expect_test "an ill-typed imported unit is reported" =
 let%expect_test "a file declaring another unit is reported" =
   let _ = main_of_multi "Misnamed.mctt" in
   [%expect {| Error: Lib::Wrong: the file of the unit declares another unit |}]
+
+let%expect_test "lib/Order.mctt" =
+  let _ = main_of_lib "Order.mctt" in
+  [%expect {|
+    Evaluate Prelude::Order.leTrans 1 2 5 true true --> true : True
+    Evaluate Prelude::Order.leAntisym 3 3 true true --> true : True
+    Evaluate Prelude::Order.leSucc 4 --> true : True
+    Evaluate Prelude::Order.lePlusRight 2 3 --> true : True
+    Evaluate Prelude::Logic.orElim (Prelude::Order.Le 5 2)
+               (Prelude::Order.Le 2 5)
+               Nat
+               (Prelude::Order.leTotal 5 2)
+               (fun (x1 : Prelude::Order.Le 5 2) -> 0)
+               (fun (x2 : Prelude::Order.Le 2 5) -> 1) --> 1 : Nat
+    Evaluate Prelude::Order.ltIrrefl 3 --> fun (x1 : False) -> x1
+      : forall (x1 : False) -> False
+    Evaluate Prelude::Order.notLtZero 2 --> fun (x1 : False) -> x1
+      : forall (x1 : False) -> False
+    Evaluate Prelude::Order.leb 2 5 --> 1 : Nat
+    Evaluate Prelude::Order.leb 5 2 --> 0 : Nat
+    Evaluate Prelude::Order.lebComplete 2 5 true --> true : True
+    Evaluate Prelude::Order.lebZero 5 2 true --> true : True
+    Evaluate Prelude::Parity.double 7 --> 14 : Nat
+    Evaluate Prelude::Parity.evenDouble 7 --> true : True
+    Evaluate Prelude::Logic.orElim (Prelude::Parity.Even 7)
+               (Prelude::Parity.Odd 7)
+               Nat
+               (Prelude::Parity.evenOrOdd 7)
+               (fun (x1 : Prelude::Parity.Even 7) -> 0)
+               (fun (x2 : Prelude::Parity.Odd 7) -> 1) --> 1 : Nat
+    Evaluate Prelude::Parity.evenSuccOdd 4 true --> true : True
+    Evaluate Prelude::Parity.evenPlus 4 6 true true --> true : True
+    |}]

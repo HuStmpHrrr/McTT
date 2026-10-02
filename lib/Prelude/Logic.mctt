@@ -1,9 +1,59 @@
-(* Propositions as types in Type@0: [True] holds, [False] has no proof. *)
+(* Propositions as types in Type@0: [True] holds, [False] has no proof;
+   negation, and Church-encoded conjunction and disjunction. *)
 module Prelude::Logic where
 
 def Not (A : Type@0) : Type@0 := forall (a : A) -> False end
 
 (* From a proof of [False], anything follows. *)
 def absurd (A : Type@0) (f : False) : A := exfalso f return x . A end
+
+
+(* Conjunction, Church-encoded: a proof of [And A B] eliminates into any
+   proposition [C].  It quantifies over [Type@0], so it lives in [Type@1]. *)
+def And (A : Type@0) (B : Type@0) : Type@1 :=
+  forall (C : Type@0) (f : forall (a : A) (b : B) -> C) -> C
+end
+
+def andIntro (A : Type@0) (B : Type@0) (a : A) (b : B) : And A B :=
+  fun (C : Type@0) (f : forall (x : A) (y : B) -> C) -> f a b
+end
+
+def andFst (A : Type@0) (B : Type@0) (h : And A B) : A :=
+  h A (fun (a : A) (b : B) -> a)
+end
+
+def andSnd (A : Type@0) (B : Type@0) (h : And A B) : B :=
+  h B (fun (a : A) (b : B) -> b)
+end
+
+def andSwap (A : Type@0) (B : Type@0) (h : And A B) : And B A :=
+  fun (C : Type@0) (f : forall (b : B) (a : A) -> C) ->
+    h C (fun (a : A) (b : B) -> f b a)
+end
+
+(* Disjunction, Church-encoded like [And], and likewise in [Type@1]. *)
+def Or (A : Type@0) (B : Type@0) : Type@1 :=
+  forall (C : Type@0) (f : forall (a : A) -> C) (g : forall (b : B) -> C) -> C
+end
+
+def orInl (A : Type@0) (B : Type@0) (a : A) : Or A B :=
+  fun (C : Type@0) (f : forall (x : A) -> C) (g : forall (y : B) -> C) -> f a
+end
+
+def orInr (A : Type@0) (B : Type@0) (b : B) : Or A B :=
+  fun (C : Type@0) (f : forall (x : A) -> C) (g : forall (y : B) -> C) -> g b
+end
+
+(* Case analysis on a disjunction, into a proposition [C]. *)
+def orElim (A : Type@0) (B : Type@0) (C : Type@0) (h : Or A B)
+    (f : forall (a : A) -> C) (g : forall (b : B) -> C) : C :=
+  h C f g
+end
+
+(* Swapping needs no elimination into [Type@1]: the result is itself a
+   function of the target proposition. *)
+def orSwap (A : Type@0) (B : Type@0) (h : Or A B) : Or B A :=
+  fun (C : Type@0) (f : forall (b : B) -> C) (g : forall (a : A) -> C) -> h C g f
+end
 
 end

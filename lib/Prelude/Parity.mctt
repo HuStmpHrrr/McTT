@@ -1,0 +1,91 @@
+(* Parity of natural numbers: [Even] and [Odd] computed by recursion, with
+   doubling and the basic laws. *)
+import Prelude::Logic use (absurd; And; andIntro; andSwap; Or; orInl; orSwap)
+import Prelude::Plus use (plus)
+
+module Prelude::Parity where
+
+(* Exchanges the parity flags 0 (even) and 1 (odd). *)
+def flip (b : Nat) : Nat :=
+  rec b return y . Nat | zero => 1 | succ q, s => 0 end
+end
+
+(* [HasParity n b] says that [n] has parity [b], where 0 is even and 1 is
+   odd.  It recurses on [n] and flips [b] at each step, so by conversion
+   [Even (succ n)] is [Odd n] and [Odd (succ n)] is [Even n]. *)
+def HasParity : forall (n : Nat) (b : Nat) -> Type@0 :=
+  fun (n : Nat) ->
+    rec n return y . (forall (b : Nat) -> Type@0)
+    | zero => fun (b : Nat) ->
+        rec b return z . Type@0 | zero => True | succ q, s => False end
+    | succ p, r => fun (b : Nat) -> r (flip b)
+    end
+end
+
+def Even (n : Nat) : Type@0 := HasParity n 0 end
+
+def Odd (n : Nat) : Type@0 := HasParity n 1 end
+
+def double (n : Nat) : Nat :=
+  rec n return y . Nat
+  | zero => 0
+  | succ p, r => succ (succ r)
+  end
+end
+
+def evenDouble : forall (n : Nat) -> Even (double n) :=
+  fun (n : Nat) ->
+    rec n return x . Even (double x)
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+def evenSuccOdd : forall (n : Nat) (h : Even n) -> Odd (succ n) :=
+  fun (n : Nat) (h : Even n) -> h
+end
+
+def oddSuccEven : forall (n : Nat) (h : Odd n) -> Even (succ n) :=
+  fun (n : Nat) (h : Odd n) -> h
+end
+
+(* Every number is even or odd: the step swaps the two sides. *)
+def evenOrOdd : forall (n : Nat) -> Or (Even n) (Odd n) :=
+  fun (n : Nat) ->
+    rec n return x . Or (Even x) (Odd x)
+    | zero => orInl (Even 0) (Odd 0) true
+    | succ p, ih => orSwap (Even p) (Odd p) ih
+    end
+end
+
+(* No number is both even and odd.  The statement does not use [Not],
+   since [And] lives in [Type@1] and [Not] takes a proposition in [Type@0]. *)
+def notEvenAndOdd : forall (n : Nat) (h : And (Even n) (Odd n)) -> False :=
+  fun (n : Nat) ->
+    rec n return x . (forall (h : And (Even x) (Odd x)) -> False)
+    | zero => fun (h : And True False) -> h False (fun (a : True) (b : False) -> b)
+    | succ p, ih => fun (h : And (Odd p) (Even p)) -> ih (andSwap (Odd p) (Even p) h)
+    end
+end
+
+(* The sum of two even numbers is even.  The induction on [a] carries both
+   "even [a] gives even [plus a b]" and "odd [a] gives odd [plus a b]",
+   which the step swaps. *)
+def evenPlus : forall (a : Nat) (b : Nat) (ha : Even a) (hb : Even b) -> Even (plus a b) :=
+  fun (a : Nat) (b : Nat) (ha : Even a) (hb : Even b) ->
+    let both : And (forall (h : Even a) -> Even (plus a b))
+                   (forall (h : Odd a) -> Odd (plus a b)) :=
+          rec a return x . And (forall (h : Even x) -> Even (plus x b))
+                               (forall (h : Odd x) -> Odd (plus x b))
+          | zero => andIntro (forall (h : True) -> Even b) (forall (h : False) -> Odd b)
+                      (fun (h : True) -> hb)
+                      (fun (h : False) -> absurd (Odd b) h)
+          | succ p, ih => andSwap (forall (h : Even p) -> Even (plus p b))
+                                  (forall (h : Odd p) -> Odd (plus p b)) ih
+          end
+    in both (Even (plus a b)) (fun (f : forall (h : Even a) -> Even (plus a b))
+                                   (g : forall (h : Odd a) -> Odd (plus a b)) -> f ha)
+    end
+end
+
+end
