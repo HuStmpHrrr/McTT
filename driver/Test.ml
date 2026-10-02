@@ -624,3 +624,23 @@ let%expect_test "an ill-typed imported unit is reported" =
 let%expect_test "a file declaring another unit is reported" =
   let _ = main_of_multi "Misnamed.mctt" in
   [%expect {| Error: Lib::Wrong: the file of the unit declares another unit |}]
+
+let%expect_test "lib/Arithmetic.mctt" =
+  let _ = main_of_lib "Arithmetic.mctt" in
+  [%expect {|
+    Evaluate Prelude::Mult.mult 6 7 --> 42 : Nat
+    Evaluate Prelude::Plus.plus (Prelude::Mult.mult 3 4) (Prelude::Mult.mult 2 5)
+      --> 22 : Nat
+    Evaluate Prelude::Plus.plusAssoc 1 2 3 --> true : True
+    Evaluate Prelude::Mult.multComm 3 4 --> true : True
+    Evaluate Prelude::Mult.multAssoc 2 3 4 --> true : True
+    Evaluate Prelude::Mult.multDistribLeft 2 3 4 --> true : True
+    Evaluate Prelude::Mult.multDistribRight 2 3 4 --> true : True
+    Evaluate Prelude::NatEq.cong (fun (x1 : Nat) -> Prelude::Mult.mult x1 x1) 3 3
+               (Prelude::NatEq.refl 3) --> true : True
+    Evaluate Prelude::Plus.plusCancelLeft 2 3 3 true --> true : True
+    Evaluate Prelude::Plus.plusCancelRight 4 4 1 true --> true : True
+    Evaluate Prelude::Plus.plusEqZero 0 0 true --> true : True
+    Evaluate Prelude::Mult.multEqZero 2 0 true (fun (x1 : False) -> x1) --> true
+      : True
+  |}]

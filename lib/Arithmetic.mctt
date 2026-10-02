@@ -1,0 +1,35 @@
+(* A client of the arithmetic in [Prelude]: closed instances of the laws of
+   addition and multiplication, and a few computations. *)
+import Prelude::NatEq use (Eq; refl; cong)
+import Prelude::Plus use (plus; plusAssoc; plusCancelLeft; plusCancelRight; plusEqZero)
+import Prelude::Mult use (mult; multComm; multAssoc; multDistribLeft; multDistribRight; multEqZero)
+
+module Arithmetic where
+
+eval mult 6 7
+
+eval plus (mult 3 4) (mult 2 5)
+
+(* A proof of a closed equation normalizes to [true], of type [True]. *)
+eval plusAssoc 1 2 3
+
+eval multComm 3 4
+
+eval multAssoc 2 3 4
+
+eval multDistribLeft 2 3 4
+
+eval multDistribRight 2 3 4
+
+eval cong (fun (x : Nat) -> mult x x) 3 3 (refl 3)
+
+eval plusCancelLeft 2 3 3 true
+
+eval plusCancelRight 4 4 1 true
+
+eval plusEqZero 0 0 true
+
+(* [Not (Eq 2 0)] computes to [False -> False]. *)
+eval multEqZero 2 0 true (fun (h : False) -> h)
+
+end

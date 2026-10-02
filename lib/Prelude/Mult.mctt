@@ -1,0 +1,144 @@
+(* Multiplication and its laws, stated with [Prelude::NatEq] and proved from
+   the laws of [Prelude::Plus]. *)
+import Prelude::Logic use (Not; absurd)
+import Prelude::NatEq use (Eq; refl; sym; trans; cong)
+import Prelude::Plus use (plus; plusZero; plusComm; plusAssoc; plusLeftComm; plusEqZero)
+
+module Prelude::Mult where
+
+(* Multiplication by recursion on the first factor:
+   [mult (succ p) m] is [plus m (mult p m)]. *)
+def mult (n : Nat) (m : Nat) : Nat :=
+  rec n return y . Nat
+  | zero => 0
+  | succ p, r => plus m r
+  end
+end
+
+def multZero : forall (n : Nat) -> Eq (mult n 0) 0 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (mult x 0) 0
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+def multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (mult n m)) :=
+  fun (n : Nat) (m : Nat) ->
+    rec n return x . Eq (mult x (succ m)) (plus x (mult x m))
+    | zero => true
+    | succ p, ih =>
+        (* After the successors cancel, the goal is
+           [Eq (plus m (mult p (succ m))) (plus p (plus m (mult p m)))]. *)
+        let step : Eq (plus m (mult p (succ m))) (plus m (plus p (mult p m))) :=
+              cong (fun (y : Nat) -> plus m y) (mult p (succ m)) (plus p (mult p m)) ih;
+            swap : Eq (plus m (plus p (mult p m))) (plus p (plus m (mult p m))) :=
+              plusLeftComm m p (mult p m)
+        in trans (plus m (mult p (succ m))) (plus m (plus p (mult p m)))
+             (plus p (plus m (mult p m))) step swap
+        end
+    end
+end
+
+def multOne : forall (n : Nat) -> Eq (mult n 1) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (mult x 1) x
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+def oneMult : forall (n : Nat) -> Eq (mult 1 n) n :=
+  fun (n : Nat) -> plusZero n
+end
+
+def multComm : forall (a : Nat) (b : Nat) -> Eq (mult a b) (mult b a) :=
+  fun (a : Nat) (b : Nat) ->
+    rec a return x . Eq (mult x b) (mult b x)
+    | zero => sym (mult b 0) 0 (multZero b)
+    | succ p, ih =>
+        let step : Eq (plus b (mult p b)) (plus b (mult b p)) :=
+              cong (fun (y : Nat) -> plus b y) (mult p b) (mult b p) ih;
+            back : Eq (plus b (mult b p)) (mult b (succ p)) :=
+              sym (mult b (succ p)) (plus b (mult b p)) (multSucc b p)
+        in trans (plus b (mult p b)) (plus b (mult b p)) (mult b (succ p)) step back
+        end
+    end
+end
+
+def multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (mult (plus a b) c) (plus (mult a c) (mult b c)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    rec a return x . Eq (mult (plus x b) c) (plus (mult x c) (mult b c))
+    | zero => refl (mult b c)
+    | succ p, ih =>
+        let step : Eq (plus c (mult (plus p b) c)) (plus c (plus (mult p c) (mult b c))) :=
+              cong (fun (y : Nat) -> plus c y)
+                (mult (plus p b) c) (plus (mult p c) (mult b c)) ih;
+            assoc : Eq (plus c (plus (mult p c) (mult b c))) (plus (plus c (mult p c)) (mult b c)) :=
+              sym (plus (plus c (mult p c)) (mult b c)) (plus c (plus (mult p c) (mult b c)))
+                (plusAssoc c (mult p c) (mult b c))
+        in trans (plus c (mult (plus p b) c)) (plus c (plus (mult p c) (mult b c)))
+             (plus (plus c (mult p c)) (mult b c)) step assoc
+        end
+    end
+end
+
+def multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    rec a return x . Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
+    | zero => true
+    | succ p, ih =>
+        (* [plus (plus b c) (mult p (plus b c))] is rearranged, through
+           [plus b (plus c (plus X Y))], into [plus (plus b X) (plus c Y)]. *)
+        let bc : Nat := plus b c;
+            x : Nat := mult p b;
+            y : Nat := mult p c;
+            step : Eq (plus bc (mult p bc)) (plus bc (plus x y)) :=
+              cong (fun (z : Nat) -> plus bc z) (mult p bc) (plus x y) ih;
+            assoc : Eq (plus bc (plus x y)) (plus b (plus c (plus x y))) :=
+              plusAssoc b c (plus x y);
+            swap : Eq (plus b (plus c (plus x y))) (plus b (plus x (plus c y))) :=
+              cong (fun (z : Nat) -> plus b z) (plus c (plus x y)) (plus x (plus c y))
+                (plusLeftComm c x y);
+            regroup : Eq (plus b (plus x (plus c y))) (plus (plus b x) (plus c y)) :=
+              sym (plus (plus b x) (plus c y)) (plus b (plus x (plus c y)))
+                (plusAssoc b x (plus c y))
+        in trans (plus bc (mult p bc)) (plus bc (plus x y)) (plus (plus b x) (plus c y)) step
+             (trans (plus bc (plus x y)) (plus b (plus c (plus x y))) (plus (plus b x) (plus c y))
+                assoc
+                (trans (plus b (plus c (plus x y))) (plus b (plus x (plus c y)))
+                   (plus (plus b x) (plus c y)) swap regroup))
+        end
+    end
+end
+
+def multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (mult (mult a b) c) (mult a (mult b c)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    rec a return x . Eq (mult (mult x b) c) (mult x (mult b c))
+    | zero => true
+    | succ p, ih =>
+        let distrib : Eq (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c)) :=
+              multDistribRight b (mult p b) c;
+            step : Eq (plus (mult b c) (mult (mult p b) c)) (plus (mult b c) (mult p (mult b c))) :=
+              cong (fun (y : Nat) -> plus (mult b c) y) (mult (mult p b) c) (mult p (mult b c)) ih
+        in trans (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c))
+             (plus (mult b c) (mult p (mult b c))) distrib step
+        end
+    end
+end
+
+(* A product is zero only if a factor is: with a nonzero first factor, the
+   second one is zero. *)
+def multEqZero : forall (a : Nat) (b : Nat) (h : Eq (mult a b) 0) (ha : Not (Eq a 0)) -> Eq b 0 :=
+  fun (a : Nat) (b : Nat) ->
+    rec a return x . (forall (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) -> Eq b 0)
+    | zero => fun (h : True) (ha : Not True) -> absurd (Eq b 0) (ha true)
+    | succ p, ih => fun (h : Eq (plus b (mult p b)) 0) (ha : Not False) ->
+        plusEqZero b (mult p b) h
+    end
+end
+
+end

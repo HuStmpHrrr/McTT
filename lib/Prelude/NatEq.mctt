@@ -64,4 +64,23 @@ def trans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Eq a b) (hbc : Eq b c) -
     end
 end
 
+(* Every function on numbers respects equality. The proof is by induction on
+   both numbers, with the function generalized so that the successor case can
+   use the hypothesis at [fun y -> f (succ y)]. *)
+def cong : forall (f : forall (x : Nat) -> Nat) (a : Nat) (b : Nat) (h : Eq a b) -> Eq (f a) (f b) :=
+  fun (f : forall (x : Nat) -> Nat) (a : Nat) ->
+    (rec a return x . (forall (g : forall (y : Nat) -> Nat) (b : Nat) (h : Eq x b) -> Eq (g x) (g b))
+     | zero => fun (g : forall (y : Nat) -> Nat) (b : Nat) ->
+         rec b return z . (forall (h : Eq 0 z) -> Eq (g 0) (g z))
+         | zero => fun (h : True) -> refl (g 0)
+         | succ q, s => fun (h : Eq 0 (succ q)) -> absurd (Eq (g 0) (g (succ q))) h
+         end
+     | succ p, ih => fun (g : forall (y : Nat) -> Nat) (b : Nat) ->
+         rec b return z . (forall (h : Eq (succ p) z) -> Eq (g (succ p)) (g z))
+         | zero => fun (h : Eq (succ p) 0) -> absurd (Eq (g (succ p)) (g 0)) h
+         | succ q, s => fun (h : Eq p q) -> ih (fun (y : Nat) -> g (succ y)) q h
+         end
+     end) f
+end
+
 end
