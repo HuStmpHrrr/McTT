@@ -15,24 +15,28 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Syntactic Require Export SystemOpt.
 Import Domain_Notations Fixed_Notations.
 
-(** A variable of a context evaluates, in that context's initial environment, to
-    the neutral at its own level. *)
-
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** [x] is bound by an assumption of [Γ], not by a definition. *)
+Definition ctx_ass (Γ : ctx) (x : nat) : Prop :=
+  exists A, List.nth_error Γ x = Some (ce_ass A).
+
+(** A variable bound by an assumption evaluates, in the initial environment of
+    its context, to the neutral at its own level. *)
 Lemma eval_var_at_initial_env : forall {Γ x i ρ a},
+    ctx_ass Γ x ->
     initial_env_f Γ ρ ->
     ⟦ #x ⟧ ρ ↘ a ->
     Γ ⊢ #x : Type@i ->
     x < length Γ /\ exists b, a = ⇑! b (length Γ - x - 1).
 Proof.
-  intros * Hρ Hev Hx.
-  destruct (wf_vlookup_inversion Hx) as [A [Hlookup _]].
+  intros * [A Hlookup] Hρ Hev Hx.
   pose proof (initial_env_spec _ _ _ _ Hρ Hlookup) as [b Heq].
-  split; [ mauto 2 |].
-  exists b.
-  eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ].
+  split.
+  - apply List.nth_error_Some; congruence.
+  - exists b.
+    eapply functional_eval_exp; [ exact Hev | apply eval_exp_var_eq; exact Heq ].
 Qed.
 
 Lemma exp_eq_typ_implies_eq_level : forall {Γ i j k},
@@ -58,18 +62,30 @@ Inductive is_typ_constr : typ -> Prop :=
 .
 Hint Constructors is_typ_constr : mctt.
 
+(** A type is rigid in [Γ] when it is a type constructor or a variable bound
+    by an assumption.  A variable bound by a definition is not rigid, since it
+    is equal to its body. *)
+Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
+| typ_is_rigid : forall i, rigid_typ Γ Type@i
+| nat_is_rigid : rigid_typ Γ ℕ
+| pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
+| var_is_rigid : forall x, ctx_ass Γ x -> rigid_typ Γ #x
+.
+Hint Constructors rigid_typ : mctt.
+
 Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
-    is_typ_constr A ->
+    rigid_typ Γ A ->
+    ctx_ass Γ x ->
     Γ ⊢ A ≈ #x : Type@i ->
     A = #x.
 Proof.
-  intros * Histyp H.
+  intros * Histyp Hx H.
   assert (Γ ⊢ A : Type@i) by mauto 2.
   assert (Γ ⊢ #x : Type@i) by mauto 2.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  destruct (eval_var_at_initial_env Hρ Ha' ltac:(eassumption)) as [Hxlt [b ->]].
+  destruct (eval_var_at_initial_env Hx Hρ Ha' ltac:(eassumption)) as [Hxlt [b ->]].
   (** Only the variable case survives: [⇑! b _] has no other constructor to be
       related to. *)
   destruct Histyp;
@@ -78,7 +94,8 @@ Proof.
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | idtac
-    | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
+    | match goal with Hc : ctx_ass _ _ |- _ =>
+        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end ];
     invert_per_univ_elem HR.
   - (** [Π A B] evaluates to a [Π]-value once its domain does. *)
     match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
@@ -94,7 +111,7 @@ Qed.
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
 
 Theorem is_typ_constr_and_exp_eq_typ_implies_eq_typ : forall Γ A i j,
-    is_typ_constr A ->
+    rigid_typ Γ A ->
     Γ ⊢ A ≈ Type@i : Type@j ->
     A = Type@i.
 Proof.
@@ -111,7 +128,8 @@ Proof.
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | idtac
-    | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
+    | match goal with Hc : ctx_ass _ _ |- _ =>
+        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end ];
     invert_per_univ_elem HR.
   - congruence.
   - match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
@@ -120,7 +138,7 @@ Qed.
 Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 
 Theorem is_typ_constr_and_exp_eq_nat_implies_eq_nat : forall Γ A j,
-    is_typ_constr A ->
+    rigid_typ Γ A ->
     Γ ⊢ A ≈ ℕ : Type@j ->
     A = ℕ.
 Proof.
@@ -136,7 +154,8 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | reflexivity
     | idtac
-    | destruct (eval_var_at_initial_env Hρ Ha ltac:(eassumption)) as [? [? ->]] ];
+    | match goal with Hc : ctx_ass _ _ |- _ =>
+        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end ];
     invert_per_univ_elem HR.
   match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
 Qed.
@@ -148,7 +167,7 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 #[export]
-Hint Constructors is_typ_constr : mctt.
+Hint Constructors is_typ_constr rigid_typ : mctt.
 #[export]
 Hint Resolve is_typ_constr_and_exp_eq_var_implies_eq_var : mctt.
 #[export]

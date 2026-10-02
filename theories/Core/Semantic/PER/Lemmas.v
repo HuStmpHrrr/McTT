@@ -1621,6 +1621,127 @@ Proof.
   intros * ? ?; apply per_env_extend_intro; assumption.
 Qed.
 
+(** ** A Canonical Context PER for a Definition Entry
+
+    [def_tie S M ρ] says that the head of [ρ] is the value of [M] in the tail
+    of [ρ], up to the head PER of [S].  Two environments are related at
+    [Δ ▸ S ≔ M] when they are related at [Δ ▹ S] and each satisfies the
+    tie. *)
+Definition def_tie (S : typ) (M : exp) (ρ : env) : Prop :=
+  exists m, ⟦ M ⟧ ρ↯ ↘ m /\ Dom m ≈ (ρ 0) ∈ per_head S S ρ↯ ρ↯.
+
+Definition per_env_extend_def (S : typ) (M : exp) (R : relation env) : relation env :=
+  fun ρ ρ' =>
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R /\ def_tie S M ρ /\ def_tie S M ρ'.
+
+(** The head PER of a type is the same at any two related pairs of tails. *)
+Lemma per_head_resp_simple : forall {S R i},
+    PER R ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    forall ρ1 ρ2 ρ3 ρ4,
+      rel_chain R ([ρ1; ρ2; ρ3; ρ4]) ->
+      per_head S S ρ1 ρ2 <~> per_head S S ρ3 ρ4.
+Proof.
+  intros * HPER HS * Hchain.
+  assert (H12 : Dom ρ1 ≈ ρ2 ∈ R) by pairwise.
+  assert (H32 : Dom ρ3 ≈ ρ2 ∈ R) by pairwise.
+  assert (H34 : Dom ρ3 ≈ ρ4 ∈ R) by pairwise.
+  destruct (HS _ _ H12) as [a1 [a2 [Ha1 [Ha2 Ha12]]]].
+  destruct (HS _ _ H32) as [a3 [a2' [Ha3 [Ha2' Ha32]]]].
+  destruct (HS _ _ H34) as [a3' [a4 [Ha3' [Ha4 Ha34]]]].
+  assert (a2' = a2) as -> by (eapply functional_eval_exp; eassumption).
+  assert (a3' = a3) as -> by (eapply functional_eval_exp; eassumption).
+  eapply per_head_resp; [ exact Ha1 | exact Ha2 | exact Ha3 | exact Ha4 |].
+  apply rel_chain_4; [ exact Ha12 | symmetry; exact Ha32 | exact Ha34 ].
+Qed.
+
+(** The premise [per_ctx_env_cons_def] asks for, at the canonical relation. *)
+Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ i},
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_relΔ ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ env_relΔ ->
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
+    EF Δ ▸ S ≔ M ≈ Δ ▸ S ≔ M ∈ per_ctx_env ↘ per_env_extend_def S M env_relΔ.
+Proof.
+  intros * HΔ HS HM.
+  assert (HPER : PER env_relΔ) by (eapply per_env_PER; eassumption).
+  eapply per_ctx_env_cons_def
+    with (head_rel := fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ env_relΔ) => per_head S S ρ ρ');
+    [ eassumption | eassumption | | |].
+  - intros ρ ρ' Hρ.
+    destruct (HS _ _ Hρ) as [a [a' [Ha [Ha' [R HR]]]]].
+    econstructor; try eassumption.
+    eapply per_univ_elem_resp_iff; [ eassumption |].
+    eapply per_head_iff; eassumption.
+  - intros ρ ρ' Hρ.
+    destruct (HM _ _ Hρ) as [m [m' [Hm [Hm' Hmm']]]].
+    econstructor; eassumption.
+  - intros ρ ρ'.
+    (** A tie at a single environment and a tie read across the related pair
+        are the same, since the head PER does not depend on the tails. *)
+    assert (Hmove : forall ρ1 ρ2,
+               Dom ρ1 ≈ ρ2 ∈ env_relΔ ->
+               (per_head S S ρ1 ρ1 <~> per_head S S ρ1 ρ2) /\
+                 (per_head S S ρ2 ρ2 <~> per_head S S ρ1 ρ2)).
+    { intros ρ1 ρ2 H12.
+      assert (H11 : Dom ρ1 ≈ ρ1 ∈ env_relΔ) by solve_per.
+      assert (H22 : Dom ρ2 ≈ ρ2 ∈ env_relΔ) by solve_per.
+      split; eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per. }
+    split.
+    + intros [[Ht Hh] [[m [Hm Htie]] [m' [Hm' Htie']]]].
+      destruct (Hmove _ _ Ht) as [H1 H2].
+      exists Ht.
+      repeat split; try eassumption.
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+    + intros [Ht [Hh [[m [Hm Htie]] [_ [[m' [Hm' Htie']] _]]]]].
+      destruct (Hmove _ _ Ht) as [H1 H2].
+      repeat split; try eassumption.
+      * eexists; split; [ eassumption | apply H1; eassumption ].
+      * eexists; split; [ eassumption | apply H2; eassumption ].
+Qed.
+
+(** The tie propagates along the relation of an assumption entry, and from a
+    body to a related one.  So it is enough to establish it at one environment
+    of a chain. *)
+Lemma def_tie_resp : forall {S M M' R i ρ ρ'},
+    PER R ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists a a', ⟦ S ⟧ ρ ↘ a /\ ⟦ S ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i) ->
+    (forall ρ ρ',
+        Dom ρ ≈ ρ' ∈ R ->
+        exists m m', ⟦ M ⟧ ρ ↘ m /\ ⟦ M' ⟧ ρ' ↘ m' /\ Dom m ≈ m' ∈ per_head S S ρ ρ') ->
+    Dom ρ ≈ ρ' ∈ per_env_extend S S R ->
+    def_tie S M ρ ->
+    def_tie S M' ρ'.
+Proof.
+  intros * HPER HS HM [Ht Hh] [m [Hm Htie]].
+  assert (H11 : Dom ρ↯ ≈ ρ↯ ∈ R) by solve_per.
+  assert (H22 : Dom ρ'↯ ≈ ρ'↯ ∈ R) by solve_per.
+  destruct (HM _ _ Ht) as [m1 [m2 [Hm1 [Hm2 Hm12]]]].
+  assert (m1 = m) as -> by (eapply functional_eval_exp; eassumption).
+  exists m2; split; [ eassumption |].
+  assert (E1 : per_head S S ρ↯ ρ↯ <~> per_head S S ρ↯ ρ'↯)
+    by (eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per).
+  assert (E2 : per_head S S ρ'↯ ρ'↯ <~> per_head S S ρ↯ ρ'↯)
+    by (eapply (per_head_resp_simple HPER HS); apply rel_chain_4; solve_per).
+  apply E2; apply E1 in Htie.
+  destruct (HS _ _ Ht) as [a [a' [Ha [Ha' [R' HR']]]]].
+  pose proof (per_head_iff Ha Ha' HR') as E3.
+  assert (PER R') by (eapply per_elem_PER; eassumption).
+  apply E3; apply E3 in Htie, Hh, Hm12.
+  solve_per.
+Qed.
+
+
 (** Transporting a [per_head] to another pair of environments, which is the
     "bridging" step of every completeness proof.  The two head relations are equal
     because their types are related in [per_univ]: [Ha]/[Ha'] name the source's

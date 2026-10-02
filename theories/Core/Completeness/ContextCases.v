@@ -55,6 +55,81 @@ Qed.
 
 Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
 
+(** ** Definition Entries
+
+    The canonical context PER of [Γ ▸ A ≔ M] is [per_env_extend_def], fed by
+    the [Id] instances of the judgments of [A] and [M]. *)
+Lemma per_ctx_env_of_def : forall {Γ A i M env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ A : Type@i ->
+    Γ ⊨ M : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend_def A M env_relΓ.
+Proof.
+  intros * HΓ HA HM.
+  eapply per_ctx_env_extend_def; [ eassumption | |].
+  - exact (rel_exp_of_typ_inversion_simple_at HΓ HA).
+  - exact (rel_exp_under_ctx_simple_at HΓ HM).
+Qed.
+
+Lemma rel_ctx_extend_def' : forall {Γ A i M},
+    ⊨ Γ ->
+    Γ ⊨ A : Type@i ->
+    Γ ⊨ M : A ->
+    ⊨ Γ ▸ A ≔ M.
+Proof.
+  intros * HΓ HA HM.
+  destruct (sem_ctx_per_ctx_env HΓ) as [env_relΓ HΓ'].
+  econstructor; [ eassumption | eapply per_ctx_env_of_def; eassumption | eassumption | eassumption ].
+Qed.
+
+Hint Resolve rel_ctx_extend_def' : mctt.
+
+(** A definition entry refines an assumption entry of the same type. *)
+Lemma per_ctx_env_def_forget : forall {Γ A i M R R'},
+    Γ ⊨ A : Type@i ->
+    Γ ⊨ M : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
+    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
+Proof.
+  intros * HA HM HR HR' ρ ρ' Hρ.
+  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
+  pose proof (per_ctx_env_of_def HΓ HA HM) as Hd.
+  pose proof (per_ctx_env_extend HΓ HAs) as Ha.
+  assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (E2 : R' <~> per_env_extend A A env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  apply E2; apply E1 in Hρ.
+  destruct Hρ as [? _]; assumption.
+Qed.
+
+(** Definition entries with related bodies relate the same environments. *)
+Lemma per_ctx_env_def_conv : forall {Γ A i M M' R R'},
+    Γ ⊨ A : Type@i ->
+    Γ ⊨ M ≈ M' : A ->
+    EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
+    EF Γ ▸ A ≔ M' ≈ Γ ▸ A ≔ M' ∈ per_ctx_env ↘ R' ->
+    forall ρ ρ', Dom ρ ≈ ρ' ∈ R -> Dom ρ ≈ ρ' ∈ R'.
+Proof.
+  intros * HA HM HR HR' ρ ρ' Hρ.
+  pose proof (rel_exp_of_typ_inversion_simple HA) as [env_relΓ [HΓ HAs]].
+  pose proof (per_ctx_env_of_def HΓ HA (rel_exp_under_ctx_refl_left HM)) as Hd.
+  pose proof (per_ctx_env_of_def HΓ HA (rel_exp_under_ctx_refl_right HM)) as Hd'.
+  pose proof (per_ctx_env_extend HΓ HAs) as Ha.
+  assert (E1 : R <~> per_env_extend_def A M env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (E2 : R' <~> per_env_extend_def A M' env_relΓ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (PER env_relΓ) by (eapply per_env_PER; eassumption).
+  assert (PER (per_env_extend A A env_relΓ)) by (eapply per_env_PER; eassumption).
+  apply E2; apply E1 in Hρ.
+  destruct Hρ as [Hρ [Ht Ht']].
+  assert (Hρρ : Dom ρ ≈ ρ ∈ per_env_extend A A env_relΓ) by solve_per.
+  assert (Hρ'ρ' : Dom ρ' ≈ ρ' ∈ per_env_extend A A env_relΓ) by solve_per.
+  pose proof (rel_exp_of_typ_inversion_simple_at HΓ HA) as HAat.
+  pose proof (rel_exp_under_ctx_simple_at HΓ HM) as HMat.
+  split; [ exact Hρ | split ].
+  - exact (def_tie_resp _ HAat HMat Hρρ Ht).
+  - exact (def_tie_resp _ HAat HMat Hρ'ρ' Ht').
+Qed.
+
 Lemma rel_ctx_sub_empty :
   SubE ⋅ <: ⋅.
 Proof. mauto. Qed.
@@ -85,6 +160,6 @@ Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
+Hint Resolve rel_ctx_extend rel_ctx_extend' rel_ctx_extend_def' : mctt.
 #[export]
 Hint Resolve rel_ctx_sub_empty rel_ctx_sub_extend : mctt.

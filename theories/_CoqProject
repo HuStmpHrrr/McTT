@@ -15,6 +15,7 @@
 ./Core/Completeness/ContextCases.v
 ./Core/Completeness/FunctionCases.v
 ./Core/Completeness/FundamentalTheorem.v
+./Core/Completeness/LetCases.v
 ./Core/Completeness/LogicalRelation.v
 ./Core/Completeness/ModuleCases.v
 ./Core/Completeness/LogicalRelation/Definitions.v
