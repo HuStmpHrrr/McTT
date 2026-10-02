@@ -6,14 +6,19 @@ Import Domain_Notations.
 
 Generalizable All Variables.
 
-(** The initial environment of a context: every variable in scope is a
-    neutral at its own level. *)
+(** The initial environment of a context: every assumption in scope is a
+    neutral at its own level, and every definition is the value of its body.
+    A definition's level is therefore never given to a neutral. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
 | initial_env_cons :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     initial_env Θ Ξ (A :: Γ) (ρ ↦ ⇑! a (length Γ))).
+     initial_env Θ Ξ (Γ ▹ A) (ρ ↦ ⇑! a (length Γ)))
+| initial_env_cons_def :
+  `( initial_env Θ Ξ Γ ρ ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m)).
 
 #[export]
 Hint Constructors initial_env : mctt.
@@ -25,7 +30,7 @@ Lemma functional_initial_env : forall {Θ Ξ} Γ ρ,
       ρ = ρ'.
 Proof.
   induction 1; intros ? Hother; inversion_clear Hother; eauto.
-  erewrite IHinitial_env in *; try eassumption;
+  all: erewrite IHinitial_env in *; try eassumption;
     functional_eval_rewrite_clear;
     eauto.
 Qed.
@@ -33,14 +38,18 @@ Qed.
 #[export]
 Hint Resolve functional_initial_env : mctt.
 
+(** Only an assumption is a neutral in the initial environment; a definition
+    is the value of its body. *)
 Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
     initial_env Θ Ξ Γ ρ ->
-    Γ ∋ #x : A ->
+    List.nth_error Γ x = Some (ce_ass A) ->
     exists a, ρ x = ⇑! a (length Γ - x - 1).
 Proof.
   induction x; intros * Hinit Hlookup;
-    dependent destruction Hlookup; dependent destruction Hinit; simpl.
+    dependent destruction Hinit; simpl in *; try discriminate.
   - eexists; cbn; repeat f_equal; lia.
+  - destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a'.
+    cbn; unfold env_var in *; rewrite Ha'; repeat f_equal; lia.
   - destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a'.
     cbn; unfold env_var in *; rewrite Ha'; repeat f_equal; lia.
 Qed.

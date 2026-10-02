@@ -41,6 +41,11 @@ Ltac destruct_rel_typ :=
         destruct_rel_by_assumption in_rel H; mark H
     | H : rel_typ _ _ _ _ _ _ |- _ =>
         dependent destruction H
+    (** The bodies of a definition entry come with the types. *)
+    | H : (forall c c' (equiv_c_c' : Dom c ≈ c' ∈ ?in_rel), rel_elem _ _ _ _ _) |- _ =>
+        destruct_rel_by_assumption in_rel H; mark H
+    | H : rel_elem _ _ _ _ _ |- _ =>
+        dependent destruction H
     end;
   unmark_all.
 
