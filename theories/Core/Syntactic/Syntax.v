@@ -42,6 +42,10 @@ Inductive obj : Set :=
 | zero : obj
 | succ : obj -> obj
 | natrec : obj -> string -> obj -> obj -> string -> string -> obj -> obj
+| true_ty : obj
+| true_tm : obj
+| false_ty : obj
+| exfalso : obj -> string -> obj -> obj
 | pi : string -> obj -> obj -> obj
 | fn : string -> obj -> obj -> obj
 | app : obj -> obj -> obj
@@ -137,6 +141,13 @@ Inductive exp : Set :=
 | a_zero : exp
 | a_succ : exp -> exp
 | a_natrec : exp -> exp -> exp -> exp -> exp
+(** The unit type, with η *)
+| a_True : exp
+| a_true : exp
+(** The empty type.  [a_exfalso A M] eliminates [M] into the motive [A], which
+    binds the scrutinee. *)
+| a_False : exp
+| a_exfalso : exp -> exp -> exp
 (** Functions *)
 | a_pi : exp -> exp -> exp
 | a_fn : exp -> exp -> exp
@@ -215,11 +226,15 @@ Inductive nf : Set :=
 | nf_nat : nf
 | nf_zero : nf
 | nf_succ : nf -> nf
+| nf_True : nf
+| nf_true : nf
+| nf_False : nf
 | nf_pi : nf -> nf -> nf
 | nf_fn : nf -> nf -> nf
 | nf_neut : ne -> nf
 with ne : Set :=
 | ne_natrec : nf -> nf -> nf -> ne -> ne
+| ne_exfalso : nf -> ne -> ne
 | ne_app : ne -> nf -> ne
 | ne_var : nat -> ne
 (** An opaque definition or an axiom: it does not unfold. *)
@@ -232,6 +247,9 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_nat => a_nat
   | nf_zero => a_zero
   | nf_succ M => a_succ (nf_to_exp M)
+  | nf_True => a_True
+  | nf_true => a_true
+  | nf_False => a_False
   | nf_pi A B => a_pi (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
   | nf_neut M => ne_to_exp M
@@ -239,6 +257,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
+  | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => a_glob p
@@ -252,7 +271,7 @@ Coercion ne_to_exp : ne >-> exp.
 
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_nat | nf_zero => True
+  | nf_typ _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
   | nf_succ W => nf_clean W
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
   | nf_neut M => ne_clean M
@@ -260,6 +279,7 @@ Fixpoint nf_clean (W : nf) : Prop :=
 with ne_clean (M : ne) : Prop :=
   match M with
   | ne_natrec A MZ MS M => nf_clean A /\ nf_clean MZ /\ nf_clean MS /\ ne_clean M
+  | ne_exfalso A M => nf_clean A /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
@@ -334,6 +354,10 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
                (exp_wk MZ φ)
                (exp_wk MS (wk_q (wk_q φ)))
                (exp_wk M φ)
+  | a_True => a_True
+  | a_true => a_true
+  | a_False => a_False
+  | a_exfalso A M => a_exfalso (exp_wk A (wk_q φ)) (exp_wk M φ)
   | a_pi A B => a_pi (exp_wk A φ) (exp_wk B (wk_q φ))
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
@@ -397,6 +421,10 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
                (exp_sub MZ σ)
                (exp_sub MS (sb_q (sb_q σ)))
                (exp_sub M σ)
+  | a_True => a_True
+  | a_true => a_true
+  | a_False => a_False
+  | a_exfalso A M => a_exfalso (exp_sub A (sb_q σ)) (exp_sub M σ)
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
@@ -464,6 +492,10 @@ Module Syntax_Notations.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
+  Notation "'⊤'" := a_True : mctt_scope.
+  Notation "'⋆'" := a_true : mctt_scope.
+  Notation "'⊥'" := a_False : mctt_scope.
+  Notation "'efq' M 'return' A" := (a_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
   (** Application needs an explicit operator: a [constr] notation may not be
       pure juxtaposition, which is Rocq's own application. *)
   Notation "M $ N" := (a_app M N) (at level 10, left associativity) : mctt_scope.
@@ -489,6 +521,9 @@ Module Syntax_Notations.
   Notation "'ℕⁿ'" := nf_nat : mctt_scope.
   Notation "'zeroⁿ'" := nf_zero : mctt_scope.
   Notation "'succⁿ' M" := (nf_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'⊤ⁿ'" := nf_True : mctt_scope.
+  Notation "'⋆ⁿ'" := nf_true : mctt_scope.
+  Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
@@ -496,6 +531,7 @@ Module Syntax_Notations.
   Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
   Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
   Notation "'recⁿ' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
+  Notation "'efqⁿ' M 'return' A" := (ne_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
 End Syntax_Notations.
 
 (** ** Notations for Weakenings

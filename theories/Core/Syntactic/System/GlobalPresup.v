@@ -398,6 +398,7 @@ Proof.
   all: mauto 3.
   - eexists; mauto 3.
   - eexists; mauto 3.
+  - eexists; mauto 3.
 Qed.
 
 Lemma entry_typed_def : forall Θ Ξ A M b pv Θ2 Ξ2,

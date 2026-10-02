@@ -86,6 +86,12 @@ Fact exp_sub_typ : forall σ i, Type@i[σ] = Type@i.      Proof. reflexivity. Qe
 Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
 Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
 Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.
+Fact exp_wk_True : forall φ, ⊤[φ]ʷ = ⊤.                  Proof. reflexivity. Qed.
+Fact exp_wk_true : forall φ, ⋆[φ]ʷ = ⋆.                  Proof. reflexivity. Qed.
+Fact exp_wk_False : forall φ, ⊥[φ]ʷ = ⊥.                 Proof. reflexivity. Qed.
+Fact exp_sub_True : forall σ, ⊤[σ] = ⊤.                 Proof. reflexivity. Qed.
+Fact exp_sub_true : forall σ, ⋆[σ] = ⋆.                 Proof. reflexivity. Qed.
+Fact exp_sub_False : forall σ, ⊥[σ] = ⊥.                Proof. reflexivity. Qed.
 
 (** The heads that do meet a binder.  Kept out of the databases above: pushing
     an operation inside a [Π] or a [λ] replaces it by a [q], which none of the
@@ -890,6 +896,8 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 exp_wk_var exp_sub_var
                 exp_wk_typ exp_wk_nat exp_wk_zero
                 exp_sub_typ exp_sub_nat exp_sub_zero
+                exp_wk_True exp_wk_true exp_wk_False
+                exp_sub_True exp_sub_true exp_sub_False
                 exp_wk_id exp_sub_id exp_wk_wk exp_sub_sub
                 exp_wk_sub exp_sub_of_wk
                 exp_sub_shift_extend

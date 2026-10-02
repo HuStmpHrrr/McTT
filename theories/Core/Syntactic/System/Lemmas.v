@@ -143,6 +143,17 @@ Qed.
 #[export]
 Hint Resolve wf_sub_eq_q_nat : mctt.
 
+Corollary wf_sub_eq_q_False : forall Θ Ξ Γ Δ σ σ',
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢s q σ ≈ q σ' : Δ ▹ ⊥.
+Proof.
+  intros * H; saturate_sub_eq.
+  apply (wf_sub_eq_q Θ Ξ Γ Δ σ σ' ⊥ 0); simpl; mauto 2.
+Qed.
+
+#[export]
+Hint Resolve wf_sub_eq_q_False : mctt.
+
 Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
@@ -210,6 +221,10 @@ Ltac lift_sub_eq_nat :=
       let T := constr:(wf_sub_eq Θ Ξ (cons a_nat Γ) (cons a_nat Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_eq_q_nat; exact Hσ)
+  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
+      let T := constr:(wf_sub_eq Θ Ξ (cons a_False Γ) (cons a_False Δ) (sb_q σ) (sb_q σ')) in
+      assert_fails (assert T by assumption);
+      assert T by (apply wf_sub_eq_q_False; exact Hσ)
   end.
 
 Ltac lift_sub_eq_step :=

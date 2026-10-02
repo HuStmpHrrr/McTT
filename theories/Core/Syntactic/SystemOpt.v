@@ -129,6 +129,55 @@ Hint Resolve wf_exp_eq_nat_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_nat_cong : mctt.
 
+(** So are [⊤] and [⊥]. *)
+Corollary wf_True' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@i.
+Proof.
+  intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_True' : mctt.
+#[export]
+Remove Hints wf_True : mctt.
+
+Corollary wf_exp_eq_True_cong' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@i.
+Proof.
+  intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_True_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_True_cong : mctt.
+
+Corollary wf_False' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@i.
+Proof.
+  intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_False' : mctt.
+#[export]
+Remove Hints wf_False : mctt.
+
+Corollary wf_exp_eq_False_cong' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@i.
+Proof.
+  intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_False_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_False_cong : mctt.
+
 (** The motive of the [ℕ]-eliminator is a type because the step case is checked
     in a context that ends with it. *)
 Corollary wf_natrec' : forall Θ Ξ Γ A MZ MS M,
@@ -191,6 +240,19 @@ Qed.
 Hint Resolve wf_exp_eq_natrec_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_natrec_cong : mctt.
+
+Corollary wf_exp_eq_exfalso_cong' : forall Θ Ξ Γ A A' i M M',
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M].
+Proof.
+  impl_opt_constructor.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_exfalso_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_exfalso_cong : mctt.
 
 Corollary wf_exp_eq_nat_beta_zero' : forall Θ Ξ Γ A MZ MS,
     Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->

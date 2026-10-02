@@ -174,6 +174,18 @@ Qed.
 #[export]
 Hint Resolve wf_wk_q_nat : mctt.
 
+(** The same for [⊥], the binder of the [⊥]-eliminator's motive. *)
+Corollary wf_wk_q_False : forall Θ Ξ Γ Δ φ,
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ▹ ⊥ ⊢w wk_q φ : Γ ▹ ⊥.
+Proof.
+  intros * Hφ; saturate_wk.
+  apply (wf_wk_q Θ Ξ Γ Δ φ ⊥ 0); simpl; mauto 2.
+Qed.
+
+#[export]
+Hint Resolve wf_wk_q_False : mctt.
+
 (** A weakening transports a variable by its defining property.  Registering
     this — rather than [wf_wk_lookup] itself — as a hint keeps [eauto] away from
     the record projection, whose conclusion is a bare [ctx_lookup] and would let
@@ -272,7 +284,8 @@ Ltac push_wk :=
     closed type [ℕ]: [lift_wk_step] cannot start there, because the domain of
     that binder has no induction hypothesis of its own.  It is guarded by the
     presence of a motive [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Type@i] so that it fires only in those
-    four cases. *)
+    four cases.  Its second branch does the same for the motive
+    [Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i] of the [⊥]-eliminator. *)
 
 Ltac lift_wk_nat :=
   match goal with
@@ -280,6 +293,10 @@ Ltac lift_wk_nat :=
       let T := constr:(wf_wk Θ Ξ (cons a_nat Δ) (cons a_nat Γ) (wk_q φ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_wk_q_nat; exact Hφ)
+  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
+      let T := constr:(wf_wk Θ Ξ (cons a_False Δ) (cons a_False Γ) (wk_q φ)) in
+      assert_fails (assert T by assumption);
+      assert T by (apply wf_wk_q_False; exact Hφ)
   end.
 
 Ltac lift_wk_step :=
@@ -518,6 +535,17 @@ Qed.
 #[export]
 Hint Resolve wf_sub_q_nat : mctt.
 
+Corollary wf_sub_q_False : forall Θ Ξ Γ Δ σ,
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢s q σ : Δ ▹ ⊥.
+Proof.
+  intros * Hσ; saturate_sub.
+  apply (wf_sub_q Θ Ξ Γ Δ σ ⊥ 0); simpl; mauto 2.
+Qed.
+
+#[export]
+Hint Resolve wf_sub_q_False : mctt.
+
 (** As with [wk_preserves_vlookup], it is these two rather than [wf_sub_apply]
     that go into [mctt]: the projection's conclusion mentions [σ x], which
     [eauto] would happily try to unify with any term at all. *)
@@ -587,6 +615,10 @@ Ltac lift_sub_nat :=
       let T := constr:(wf_sub Θ Ξ (cons a_nat Γ) (cons a_nat Δ) (sb_q σ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_q_nat; exact Hσ)
+  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
+      let T := constr:(wf_sub Θ Ξ (cons a_False Γ) (cons a_False Δ) (sb_q σ)) in
+      assert_fails (assert T by assumption);
+      assert T by (apply wf_sub_q_False; exact Hσ)
   end.
 
 Ltac lift_sub_step :=
@@ -759,6 +791,19 @@ Qed.
 
 #[export]
 Hint Resolve wf_sub_nat_single wf_sub_zero wf_sub_natrec_step : mctt.
+
+(** The substitution [Id ,, M] at which the [⊥]-eliminator is typed. *)
+Corollary wf_sub_False_single : forall Θ Ξ Γ M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥.
+Proof.
+  intros.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0) by mauto 3.
+  eapply wf_sub_single; eassumption.
+Qed.
+
+#[export]
+Hint Resolve wf_sub_False_single : mctt.
 
 (** ** Context Conversion
 

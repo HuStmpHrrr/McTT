@@ -105,6 +105,19 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M] )
+| wf_True :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@0 )
+| wf_true :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
+| wf_False :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0 )
+| wf_exfalso :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A : A[Id,,M] )
 | wf_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
@@ -164,6 +177,20 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M] )
+| wf_exp_eq_True_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@0 )
+| wf_exp_eq_true_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ ≈ ⋆ : ⊤ )
+| wf_exp_eq_False_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@0 )
+| wf_exp_eq_exfalso_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
@@ -218,6 +245,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ λ A M[↑]ʷ $ #0 : Π A B )
+| wf_exp_eq_true_eta :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊤ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ ⋆ : ⊤ )
 (** *** Subsumption and the PER rules *)
 | wf_exp_eq_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
