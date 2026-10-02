@@ -65,6 +65,12 @@ Inductive per_nat : relation domain :=
 .
 Hint Constructors per_nat : mctt.
 
+(** Every pair of values is related at [⊤]: its elements are equal by η. *)
+Definition per_True : relation domain := fun _ _ => True.
+#[global] Arguments per_True /.
+Hint Transparent per_True : mctt.
+Hint Unfold per_True : mctt.
+
 Inductive per_ne : relation domain :=
 | per_ne_neut :
   `{ Dom m ≈ m' ∈ per_bot ->
@@ -91,6 +97,16 @@ Section Per_univ_elem_core_def.
     forall (elem_rel : relation domain),
       (elem_rel <~> per_nat) ->
       DF ℕᵈ ≈ ℕᵈ ∈ per_univ_elem_core ↘ elem_rel
+  | per_univ_elem_core_True :
+    forall (elem_rel : relation domain),
+      (elem_rel <~> per_True) ->
+      DF ⊤ᵈ ≈ ⊤ᵈ ∈ per_univ_elem_core ↘ elem_rel
+  (** [⊥] has no canonical elements, so its elements are those of a neutral
+      type. *)
+  | per_univ_elem_core_False :
+    forall (elem_rel : relation domain),
+      (elem_rel <~> per_ne) ->
+      DF ⊥ᵈ ≈ ⊥ᵈ ∈ per_univ_elem_core ↘ elem_rel
   | per_univ_elem_core_pi :
     `{ forall (in_rel : relation domain)
          (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -117,6 +133,12 @@ Section Per_univ_elem_core_def.
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
           motive elem_rel ℕᵈ ℕᵈ)
+      (case_True : forall {elem_rel},
+          (elem_rel <~> per_True) ->
+          motive elem_rel ⊤ᵈ ⊤ᵈ)
+      (case_False : forall {elem_rel},
+          (elem_rel <~> per_ne) ->
+          motive elem_rel ⊥ᵈ ⊥ᵈ)
       (case_Pi :
         forall {a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -137,6 +159,8 @@ Section Per_univ_elem_core_def.
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
   | R, a, b, (per_univ_elem_core_univ _ lt_j_i HE eq)                 => case_U lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_nat _ HE)                            => case_nat HE;
+  | R, a, b, (per_univ_elem_core_True _ HE)                           => case_True HE;
+  | R, a, b, (per_univ_elem_core_False _ HE)                          => case_False HE;
   | R, a, b, (per_univ_elem_core_pi _ out_rel _ equiv_a_a' per HT HE) =>
       case_Pi out_rel equiv_a_a' (per_univ_elem_core_strong_ind _ _ _ equiv_a_a') per
         (fun _ _ equiv_c_c' => match HT _ _ equiv_c_c' with
@@ -183,6 +207,12 @@ Section Per_univ_elem_ind_def.
       (case_N : forall i {elem_rel},
           (elem_rel <~> per_nat) ->
           motive i elem_rel ℕᵈ ℕᵈ)
+      (case_True : forall i {elem_rel},
+          (elem_rel <~> per_True) ->
+          motive i elem_rel ⊤ᵈ ⊤ᵈ)
+      (case_False : forall i {elem_rel},
+          (elem_rel <~> per_ne) ->
+          motive i elem_rel ⊥ᵈ ⊥ᵈ)
       (case_Pi :
         forall i {a ρ B a' ρ' B' in_rel}
            (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -209,6 +239,8 @@ Section Per_univ_elem_ind_def.
       per_univ_elem_core_strong_ind i _ (motive i)
         (fun _ _ _ j_lt_i eq HE => case_U i j_lt_i eq HE (fun A B R' H' => per_univ_elem_ind' _ R' A B _))
         (fun _ => case_N i)
+        (fun _ => case_True i)
+        (fun _ => case_False i)
         (fun _ _ _ _ _ _ _ out_rel _ _ IHA per _ => case_Pi i out_rel _ IHA per _)
         (fun _ _ _ _ _ => case_ne i)
         R a b H.
@@ -227,6 +259,10 @@ Inductive per_subtyp : nat -> domain -> domain -> Prop :=
      Sub ⇑ a b <: ⇑ a' b' at i )
 | per_subtyp_nat :
   `( Sub ℕᵈ <: ℕᵈ at i )
+| per_subtyp_True :
+  `( Sub ⊤ᵈ <: ⊤ᵈ at i )
+| per_subtyp_False :
+  `( Sub ⊥ᵈ <: ⊥ᵈ at i )
 | per_subtyp_univ :
   `( i <= j ->
      j < k ->
@@ -327,6 +363,10 @@ Hint Unfold per_top_typ : mctt.
 #[export]
 Hint Constructors per_nat : mctt.
 #[export]
+Hint Transparent per_True : mctt.
+#[export]
+Hint Unfold per_True : mctt.
+#[export]
 Hint Constructors per_ne : mctt.
 #[export]
 Hint Constructors per_univ_elem_core : mctt.
@@ -370,8 +410,8 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _);
-      [ do 8 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      refine (per_univ_elem_ind _ _ _ _ _ _ _);
+      [ do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

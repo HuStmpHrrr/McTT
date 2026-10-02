@@ -18,6 +18,9 @@ Inductive dclean : domain -> Prop :=
 | dclean_univ : forall i, dclean 𝕌@i
 | dclean_zero : dclean zeroᵈ
 | dclean_succ : forall m, dclean m -> dclean (succᵈ m)
+| dclean_True : dclean ⊤ᵈ
+| dclean_true : dclean ⋆ᵈ
+| dclean_False : dclean ⊥ᵈ
 | dclean_fn : forall (ρ : env) M, (forall x, dclean (env_var ρ x)) -> dclean (λᵈ ρ M)
 | dclean_neut : forall a m, dclean a -> dclean_ne m -> dclean (⇑ a m)
 with dclean_ne : domain_ne -> Prop :=
@@ -26,6 +29,9 @@ with dclean_ne : domain_ne -> Prop :=
 | dclean_natrec : forall (ρ : env) A mz MS m,
     (forall x, dclean (env_var ρ x)) -> dclean mz -> dclean_ne m ->
     dclean_ne (recᵈ m under ρ return A | zero -> mz | succ -> MS end)
+| dclean_exfalso : forall (ρ : env) A m,
+    (forall x, dclean (env_var ρ x)) -> dclean_ne m ->
+    dclean_ne (efqᵈ m under ρ return A)
 with dclean_nf : domain_nf -> Prop :=
 | dclean_dom : forall a m, dclean a -> dclean m -> dclean_nf (⇓ a m).
 
@@ -59,6 +65,10 @@ Section Transparent.
       intros; auto with mctt.
     all: repeat match goal with H : dclean (_ _) |- _ => inversion_clear H end.
     all: try solve [ eauto 7 with mctt ].
+    - (* the [⊥]-eliminator, whose scrutinee is clean *)
+      match goal with H : env_clean ?ρ -> dclean (⇑ _ _), Hρ : env_clean ?ρ |- _ =>
+        specialize (H Hρ); inversion_clear H end.
+      eauto 7 with mctt.
     - (* an opaque definition or an axiom *)
       match goal with H : gc_resolve _ _ _ = Some _ |- _ =>
         destruct (gc_transparent_resolve _ _ _ _ _ _ _ Htr H) end.

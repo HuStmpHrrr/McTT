@@ -401,6 +401,8 @@ Proof.
       eexists.
       eapply proj1; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
+  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
+  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - destruct_conjs.
     split.
     + basic_per_univ_elem_econstructor; eauto.
@@ -537,6 +539,10 @@ Proof.
     specialize (H2 _ _ _ H0) as [].
     intuition.
   - (** The nat case. *)
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
+  - (** The [⊤] case. *)
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
+  - (** The [⊥] case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The pi case. *)
     destruct_conjs.
@@ -932,7 +938,7 @@ Lemma per_subtyp_trans : forall a1 a2 i,
       Sub a1 <: a3 at i.
 Proof.
   induction 1; intros ? Hsub; simpl in *.
-  1-3: progressive_inversion; mauto.
+  1-5: progressive_inversion; mauto.
   - econstructor; lia.
   - dependent destruction Hsub.
     handle_per_univ_elem_irrel.
