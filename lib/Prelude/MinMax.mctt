@@ -1,0 +1,117 @@
+(* Minimum and maximum, by recursion on both arguments, with their laws
+   stated with [Prelude::NatEq]. *)
+import Prelude::NatEq use (Eq; refl; sym; trans)
+import Prelude::Plus use (plus; plusZero; plusSucc)
+
+module Prelude::MinMax where
+
+def min (a : Nat) (b : Nat) : Nat :=
+  (rec a return y . (forall (x : Nat) -> Nat)
+   | zero => fun (x : Nat) -> 0
+   | succ p, r => fun (x : Nat) ->
+       rec x return z . Nat
+       | zero => 0
+       | succ q, s => succ (r q)
+       end
+   end) b
+end
+
+def max (a : Nat) (b : Nat) : Nat :=
+  (rec a return y . (forall (x : Nat) -> Nat)
+   | zero => fun (x : Nat) -> x
+   | succ p, r => fun (x : Nat) ->
+       rec x return z . Nat
+       | zero => succ p
+       | succ q, s => succ (r q)
+       end
+   end) b
+end
+
+def minComm : forall (a : Nat) (b : Nat) -> Eq (min a b) (min b a) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (min x b) (min b x))
+    | zero => fun (b : Nat) ->
+        rec b return y . Eq (min 0 y) (min y 0)
+        | zero => true
+        | succ q, s => true
+        end
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (min (succ p) y) (min y (succ p))
+        | zero => true
+        | succ q, s => ih q
+        end
+    end
+end
+
+def maxComm : forall (a : Nat) (b : Nat) -> Eq (max a b) (max b a) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (max x b) (max b x))
+    | zero => fun (b : Nat) ->
+        rec b return y . Eq (max 0 y) (max y 0)
+        | zero => true
+        | succ q, s => refl q
+        end
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (max (succ p) y) (max y (succ p))
+        | zero => refl p
+        | succ q, s => ih q
+        end
+    end
+end
+
+def minIdem : forall (n : Nat) -> Eq (min n n) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (min x x) x
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+def minZero : forall (n : Nat) -> Eq (min n 0) 0 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (min x 0) 0
+    | zero => true
+    | succ p, ih => true
+    end
+end
+
+def maxIdem : forall (n : Nat) -> Eq (max n n) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (max x x) x
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+def maxZero : forall (n : Nat) -> Eq (max n 0) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (max x 0) x
+    | zero => true
+    | succ p, ih => refl p
+    end
+end
+
+(* The minimum and the maximum add up to the sum. In the successor case both
+   sides are moved past [plusSucc] and meet at the induction hypothesis. *)
+def plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max a b)) (plus a b) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (plus (min x b) (max x b)) (plus x b))
+    | zero => fun (b : Nat) -> refl b
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (plus (min (succ p) y) (max (succ p) y)) (plus (succ p) y)
+        | zero => sym (plus p 0) p (plusZero p)
+        | succ q, s =>
+            let m : Nat := min p q;
+                M : Nat := max p q;
+                left : Eq (plus m (succ M)) (succ (plus m M)) := plusSucc m M;
+                right : Eq (succ (plus p q)) (plus p (succ q)) :=
+                  sym (plus p (succ q)) (succ (plus p q)) (plusSucc p q)
+            in trans (plus m (succ M)) (succ (plus p q)) (plus p (succ q))
+                 (trans (plus m (succ M)) (succ (plus m M)) (succ (plus p q)) left (ih q))
+                 right
+            end
+        end
+    end
+end
+
+end

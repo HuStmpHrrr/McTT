@@ -1,0 +1,110 @@
+(* Predecessor and truncated subtraction, with their laws stated with
+   [Prelude::NatEq]. *)
+import Prelude::Logic use (absurd)
+import Prelude::NatEq use (Eq; refl; sym)
+import Prelude::Plus use (plus; plusComm)
+
+module Prelude::Sub where
+
+(* The predecessor; [pred 0] is [0]. *)
+def pred (n : Nat) : Nat :=
+  rec n return y . Nat
+  | zero => 0
+  | succ p, r => p
+  end
+end
+
+(* Truncated subtraction [sub a b], which is [0] when [b] exceeds [a]. It
+   recurses on [b] and then on [a], so [sub (succ a) (succ b)] is [sub a b]
+   by computation. *)
+def sub (a : Nat) (b : Nat) : Nat :=
+  (rec b return y . (forall (x : Nat) -> Nat)
+   | zero => fun (x : Nat) -> x
+   | succ q, r => fun (x : Nat) ->
+       rec x return z . Nat
+       | zero => 0
+       | succ p, s => r p
+       end
+   end) a
+end
+
+(* Equal numbers satisfy the same predicates. *)
+def transport : forall (P : forall (n : Nat) -> Type@0) (x : Nat) (y : Nat)
+    (h : Eq x y) (px : P x) -> P y :=
+  fun (P : forall (n : Nat) -> Type@0) (x : Nat) ->
+    (rec x return u . (forall (Q : forall (n : Nat) -> Type@0) (y : Nat)
+                         (h : Eq u y) (pu : Q u) -> Q y)
+     | zero => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
+         rec y return v . (forall (h : Eq 0 v) (pu : Q 0) -> Q v)
+         | zero => fun (h : True) (pu : Q 0) -> pu
+         | succ q, s => fun (h : Eq 0 (succ q)) (pu : Q 0) -> absurd (Q (succ q)) h
+         end
+     | succ p, ih => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
+         rec y return v . (forall (h : Eq (succ p) v) (pu : Q (succ p)) -> Q v)
+         | zero => fun (h : Eq (succ p) 0) (pu : Q (succ p)) -> absurd (Q 0) h
+         | succ q, s => fun (h : Eq p q) (pu : Q (succ p)) ->
+             ih (fun (n : Nat) -> Q (succ n)) q h pu
+         end
+     end) P
+end
+
+def predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
+  fun (n : Nat) -> refl n
+end
+
+def subZero : forall (n : Nat) -> Eq (sub n 0) n :=
+  fun (n : Nat) -> refl n
+end
+
+def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (sub 0 x) 0
+    | zero => true
+    | succ p, ih => true
+    end
+end
+
+def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (sub x x) 0
+    | zero => true
+    | succ p, ih => ih
+    end
+end
+
+(* Subtracting successors is subtracting the numbers. *)
+def subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
+  fun (a : Nat) (b : Nat) -> refl (sub a b)
+end
+
+(* Subtracting one more takes one more predecessor. *)
+def subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
+  fun (a : Nat) ->
+    rec a return x . (forall (b : Nat) -> Eq (sub x (succ b)) (pred (sub x b)))
+    | zero => fun (b : Nat) ->
+        transport (fun (m : Nat) -> Eq 0 (pred m)) 0 (sub 0 b)
+          (sym (sub 0 b) 0 (zeroSub b)) true
+    | succ p, ih => fun (b : Nat) ->
+        rec b return y . Eq (sub (succ p) (succ y)) (pred (sub (succ p) y))
+        | zero => refl p
+        | succ q, s => ih q
+        end
+    end
+end
+
+(* Adding [b] on the left and subtracting it again gives back [a]. *)
+def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
+  fun (b : Nat) (a : Nat) ->
+    rec b return x . Eq (sub (plus x a) x) a
+    | zero => refl a
+    | succ p, ih => ih
+    end
+end
+
+def plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
+  fun (a : Nat) (b : Nat) ->
+    transport (fun (m : Nat) -> Eq (sub m b) a) (plus b a) (plus a b)
+      (plusComm b a) (plusSubLeft b a)
+end
+
+end

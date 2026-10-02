@@ -1,0 +1,54 @@
+(* A client of the programs in the [Prelude] library: subtraction, minimum and
+   maximum, generic combinators, and the Ackermann function, run on closed
+   instances. *)
+import Prelude::Sub use (pred; sub; subSelf; plusSub; subSuccRight)
+import Prelude::MinMax use (min; max; minComm; maxComm; plusMinMax)
+import Prelude::Fun use (Generic; ack; ackZero; ackTwo; iteratePlus; iterateComm)
+import Prelude::Plus use (plus)
+
+module Programs where
+
+eval pred 5
+
+eval sub 10 3
+
+(* Subtraction is truncated at [0]. *)
+eval sub 3 10
+
+eval min 4 9
+
+eval max 4 9
+
+eval ack 2 3
+
+eval ack 3 3
+
+(* A proof of a closed equation normalizes to [true], of type [True]. *)
+eval plusSub 6 4
+
+eval subSelf 7
+
+eval subSuccRight 9 4
+
+eval plusMinMax 3 8
+
+eval minComm 2 5
+
+eval maxComm 6 1
+
+eval ackZero 4
+
+eval ackTwo 5
+
+eval iteratePlus (fun (x : Nat) -> plus x 3) 2 3 1
+
+eval iterateComm (fun (x : Nat) -> succ (succ x)) 3 4 0
+
+(* The generic combinators, instantiated at [Nat]. *)
+eval Generic.compose Nat Nat Nat (sub 20) (fun (x : Nat) -> max x 5) 2
+
+eval Generic.const Nat Nat 7 100
+
+eval Generic.iterate Nat (ack 1) 3 0
+
+end
