@@ -110,6 +110,33 @@ let%expect_test "true_false.mctt works" =
       : forall (x1 : False) -> Nat
     |}]
 
+let%expect_test "let_true_false.mctt works" =
+  let _ = main_of_example "let_true_false.mctt" in
+  [%expect {|
+    Evaluate let x1 : True := true;
+                 x2 : forall (x3 : False) -> Nat :=
+                   fun (x4 : False) -> exfalso x4 return x5 . Nat
+             in x1
+             end --> true : True
+    |}]
+
+let%expect_test "nat_theory.mctt works" =
+  let _ = main_of_example "nat_theory.mctt" in
+  [%expect {|
+    Evaluate Arith.plusComm 2 3 --> true : True
+    Evaluate Arith.sym 4 4 (Arith.refl 4) --> true : True
+    Evaluate Arith.zeroNeSucc 5 --> fun (x1 : False) -> x1
+      : forall (x1 : False) -> False
+    Evaluate iterSucc 3 4 --> true : True
+    Evaluate Iter.iter Nat (fun (x1 : Nat) -> Arith.plus x1 x1) 3 1 --> 8 : Nat
+    Evaluate let x1 : Nat := 2;
+                 x2 : Arith.Eq
+                        (Iter.iter Nat (fun (x3 : Nat) -> Arith.plus x3 x3) x1 1)
+                        4 := true
+             in x2
+             end --> true : True
+    |}]
+
 let%expect_test "zero is not of True" =
   let _ = main_of_body "eval zero : True" in
   [%expect {| Error: 0 is not of type True |}]
