@@ -1,0 +1,130 @@
+(* Exponentiation by recursion on the exponent, with its laws stated with
+   [Prelude::Arith::Equality] and proved from those of
+   [Prelude::Arith::Mult]. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude::Arith::Plus use (plus; plusZero)
+import Prelude::Arith::Mult use (mult; multOne; oneMult; multComm; multAssoc)
+
+module Prelude::Arith::Pow where
+
+(* [pow a n] is [a] to the power [n]: [pow a 0] is [1] and
+   [pow a (succ p)] is [mult a (pow a p)]. *)
+def pow (a : Nat) (n : Nat) : Nat :=
+  rec n return y . Nat
+  | zero => 1
+  | succ p, r => mult a r
+  end
+end
+
+def powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
+  fun (a : Nat) -> true
+end
+
+def powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
+  fun (a : Nat) (n : Nat) -> refl (mult a (pow a n))
+end
+
+def powOne : forall (a : Nat) -> Eq (pow a 1) a :=
+  fun (a : Nat) -> multOne a
+end
+
+(* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
+def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
+  fun (n : Nat) ->
+    rec n return x . Eq (pow 1 x) 1
+    | zero => true
+    | succ p, ih => trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusZero (pow 1 p)) ih
+    end
+end
+
+(* The first factor of a product can be moved past the second. *)
+def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+    Eq (mult a (mult b c)) (mult b (mult a c)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) ->
+    let left : Eq (mult a (mult b c)) (mult (mult a b) c) :=
+          sym (mult (mult a b) c) (mult a (mult b c)) (multAssoc a b c);
+        swap : Eq (mult (mult a b) c) (mult (mult b a) c) :=
+          cong (fun (y : Nat) -> mult y c) (mult a b) (mult b a) (multComm a b)
+    in trans (mult a (mult b c)) (mult (mult b a) c) (mult b (mult a c))
+         (trans (mult a (mult b c)) (mult (mult a b) c) (mult (mult b a) c) left swap)
+         (multAssoc b a c)
+    end
+end
+
+(* The two middle factors of a product of products can be exchanged. *)
+def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
+  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+    let lhs : Nat := mult (mult a b) (mult c d);
+        mid : Nat := mult a (mult b (mult c d));
+        inner : Nat := mult a (mult c (mult b d));
+        rhs : Nat := mult (mult a c) (mult b d);
+        assoc : Eq lhs mid := multAssoc a b (mult c d);
+        swap : Eq mid inner :=
+          cong (fun (y : Nat) -> mult a y) (mult b (mult c d)) (mult c (mult b d))
+            (multLeftComm b c d);
+        back : Eq inner rhs := sym rhs inner (multAssoc a c (mult b d))
+    in trans lhs mid rhs assoc (trans mid inner rhs swap back)
+    end
+end
+
+(* Powers turn sums of exponents into products.  The step multiplies the
+   induction hypothesis by [a] and reassociates. *)
+def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
+    Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) :=
+  fun (a : Nat) (m : Nat) (n : Nat) ->
+    rec m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
+    | zero => sym (mult 1 (pow a n)) (pow a n) (oneMult (pow a n))
+    | succ p, ih =>
+        let lhs : Nat := mult a (pow a (plus p n));
+            mid : Nat := mult a (mult (pow a p) (pow a n));
+            rhs : Nat := mult (mult a (pow a p)) (pow a n);
+            step : Eq lhs mid :=
+              cong (fun (y : Nat) -> mult a y) (pow a (plus p n))
+                (mult (pow a p) (pow a n)) ih
+        in trans lhs mid rhs step (sym rhs mid (multAssoc a (pow a p) (pow a n)))
+        end
+    end
+end
+
+(* A power of a product is the product of the powers. *)
+def powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
+    Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) :=
+  fun (a : Nat) (b : Nat) (n : Nat) ->
+    rec n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
+    | zero => true
+    | succ p, ih =>
+        let lhs : Nat := mult (mult a b) (pow (mult a b) p);
+            mid : Nat := mult (mult a b) (mult (pow a p) (pow b p));
+            rhs : Nat := mult (mult a (pow a p)) (mult b (pow b p));
+            step : Eq lhs mid :=
+              cong (fun (y : Nat) -> mult (mult a b) y) (pow (mult a b) p)
+                (mult (pow a p) (pow b p)) ih
+        in trans lhs mid rhs step (multSwapMiddle a b (pow a p) (pow b p))
+        end
+    end
+end
+
+(* A power of a power multiplies the exponents.  The step splits
+   [pow a (plus n (mult p n))] by [powPlus] and recombines the bases by
+   [powMultBase]. *)
+def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
+    Eq (pow a (mult m n)) (pow (pow a m) n) :=
+  fun (a : Nat) (m : Nat) (n : Nat) ->
+    rec m return x . Eq (pow a (mult x n)) (pow (pow a x) n)
+    | zero => sym (pow 1 n) 1 (onePow n)
+    | succ p, ih =>
+        let lhs : Nat := pow a (plus n (mult p n));
+            split : Nat := mult (pow a n) (pow a (mult p n));
+            mid : Nat := mult (pow a n) (pow (pow a p) n);
+            rhs : Nat := pow (mult a (pow a p)) n;
+            step : Eq split mid :=
+              cong (fun (y : Nat) -> mult (pow a n) y) (pow a (mult p n))
+                (pow (pow a p) n) ih;
+            back : Eq mid rhs := sym rhs mid (powMultBase a (pow a p) n)
+        in trans lhs split rhs (powPlus a n (mult p n)) (trans split mid rhs step back)
+        end
+    end
+end
+
+end

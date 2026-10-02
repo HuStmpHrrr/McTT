@@ -1,0 +1,61 @@
+(* A client of [Prelude::Arith::Pow], [Prelude::Arith::Sum] and
+   [Prelude::Arith::Factorial]: a few computations, and closed instances of
+   their theorems, which normalize to [true]. *)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Pow use (pow; powZero; powOne; onePow; powPlus; powMult; powMultBase)
+import Prelude::Arith::Sum use (sumTo; sumToPlus; sumToScale; sumToConst; gauss; sumOdd)
+import Prelude::Arith::Factorial use (fact; factSucc; factPos; factLeSucc; lePowFact)
+import Prelude::Function::Combinators use (Generic)
+
+module Powers where
+
+eval pow 2 10
+
+eval pow 3 4
+
+eval pow 0 0
+
+(* [0 + 1 + ... + 10]. *)
+eval sumTo (Generic.id Nat) 11
+
+(* [0 + 1 + 4 + ... + 25]. *)
+eval sumTo (fun (i : Nat) -> mult i i) 6
+
+eval fact 5
+
+eval fact 0
+
+(* A proof of a closed equation normalizes to [true], of type [True].  The
+   numbers stay at most about 20: checking [Eq n n] takes time exponential
+   in [n] (about 6s at [n = 27]). *)
+eval powZero 7
+
+eval powOne 9
+
+eval onePow 6
+
+eval powPlus 2 1 3
+
+eval powMult 2 2 2
+
+eval powMultBase 2 2 2
+
+eval sumToPlus (Generic.id Nat) (fun (i : Nat) -> mult i i) 4
+
+eval sumToScale 3 (Generic.id Nat) 4
+
+eval sumToConst 4 5
+
+eval gauss 4
+
+eval sumOdd 4
+
+eval factSucc 3
+
+eval factPos 4
+
+eval factLeSucc 3
+
+eval lePowFact 3
+
+end
