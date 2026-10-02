@@ -889,4 +889,42 @@ let%expect_test "lib/Division.mctt" =
     Evaluate Prelude::Arith::Divides.dividesMult 3 4 --> true : True
     Evaluate Prelude::Arith::Divides.evenDividesTwo 8 true --> true : True
     Evaluate Prelude::Arith::Divides.dividesTwoEven 10 true --> true : True
+
+let%expect_test "lib/Vectors.mctt" =
+  let _ = main_of_lib "Vectors.mctt" in
+  [%expect {|
+    Evaluate Prelude::Data::VecLaws.sumVec 3 oneTwoThree --> 6 : Nat
+    Evaluate Prelude::Data::Vec.head Nat 2 oneTwoThree --> 1 : Nat
+    Evaluate Prelude::Data::Vec.nth Nat 3 oneTwoThree 2 true --> 3 : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 2
+               (Prelude::Data::Vec.tail Nat 2 oneTwoThree) --> 5 : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 3
+               (Prelude::Data::Vec.map Nat Nat square 3 oneTwoThree) --> 14 : Nat
+    Evaluate Prelude::Data::Vec.nth Nat 5
+               (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive)
+               3
+               true --> 4 : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 5
+               (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive) --> 15
+      : Nat
+    Evaluate Prelude::Data::VecLaws.sumVec 4
+               (Prelude::Data::Vec.replicate Nat 4 6) --> 24 : Nat
+    Evaluate Prelude::Data::Vec.foldr Nat Nat
+               (fun (x1 : Nat)
+                    (x2 : Nat)
+                 -> succ x2)
+               0
+               5
+               (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive) --> 5
+      : Nat
+    Evaluate Prelude::Data::VecLaws.sumReplicate 4 6 --> true : True
+    Evaluate Prelude::Data::VecLaws.sumAppend 3 2 oneTwoThree fourFive --> true
+      : True
+    Evaluate Prelude::Data::VecLaws.nthMap Nat square 3 oneTwoThree 1 true
+      --> true : True
+    Evaluate Prelude::Data::VecLaws.nthReplicate 4 6 3 true --> true : True
+    Evaluate Prelude::Data::VecLaws.nthAppendLeft 3 2 oneTwoThree fourFive 1 true
+               true --> true : True
+    Evaluate Prelude::Data::VecLaws.nthAppendRight 3 2 oneTwoThree fourFive 1
+               true --> true : True
     |}]

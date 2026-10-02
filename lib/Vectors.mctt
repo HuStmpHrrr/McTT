@@ -1,0 +1,57 @@
+(* A client of [Prelude::Data::Vec] and [Prelude::Data::VecLaws]: small
+   vectors of numbers are built, mapped, appended, read and summed, and
+   closed instances of the laws normalize to [true].  Index bounds on closed
+   numbers compute to [True], so [true] proves them. *)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Data::Vec as V
+import Prelude::Data::VecLaws use (sumVec; nthMap; nthReplicate; nthAppendLeft; nthAppendRight; sumReplicate; sumAppend)
+
+module Vectors where
+
+(* The vector [1, 2, 3]. *)
+def oneTwoThree : V.Vec Nat 3 :=
+  V.cons Nat 2 1 (V.cons Nat 1 2 (V.cons Nat 0 3 (V.nil Nat)))
+end
+
+(* The vector [4, 5]. *)
+def fourFive : V.Vec Nat 2 :=
+  V.cons Nat 1 4 (V.cons Nat 0 5 (V.nil Nat))
+end
+
+def square (x : Nat) : Nat := mult x x end
+
+eval sumVec 3 oneTwoThree
+
+eval V.head Nat 2 oneTwoThree
+
+eval V.nth Nat 3 oneTwoThree 2 true
+
+eval sumVec 2 (V.tail Nat 2 oneTwoThree)
+
+eval sumVec 3 (V.map Nat Nat square 3 oneTwoThree)
+
+eval V.nth Nat 5 (V.append Nat 3 2 oneTwoThree fourFive) 3 true
+
+eval sumVec 5 (V.append Nat 3 2 oneTwoThree fourFive)
+
+eval sumVec 4 (V.replicate Nat 4 6)
+
+(* The length of a vector, as a right fold. *)
+eval V.foldr Nat Nat (fun (a : Nat) (b : Nat) -> succ b) 0 5
+       (V.append Nat 3 2 oneTwoThree fourFive)
+
+(* A proof of a closed equation normalizes to [true], of type [True]. *)
+eval sumReplicate 4 6
+
+eval sumAppend 3 2 oneTwoThree fourFive
+
+eval nthMap Nat square 3 oneTwoThree 1 true
+
+eval nthReplicate 4 6 3 true
+
+eval nthAppendLeft 3 2 oneTwoThree fourFive 1 true true
+
+eval nthAppendRight 3 2 oneTwoThree fourFive 1 true
+
+end

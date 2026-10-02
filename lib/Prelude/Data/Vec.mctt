@@ -1,0 +1,70 @@
+(* Vectors of length [n] over [A], encoded as functions from bounded indices:
+   [Vec n] is [forall (i : Nat) (h : Lt i n) -> A].
+
+   This encoding is chosen over nested Church-encoded pairs because a Church
+   pair quantifies over its target type, so it lives one universe above its
+   components and a vector built from nested pairs would climb a universe per
+   element; bounded-index functions stay in [Type@0] for every length.  It
+   also makes the operations compute well: [Lt] reduces on successors, so
+   [head] and [tail] need no proof terms, [nth] is application, and
+   [nth (map f v) i] is [f (nth v i)] and [nth (replicate n c) i] is [c] by
+   conversion.  With eta for functions, [tail (cons a v)] is [v]. *)
+import Prelude::Logic use (absurd)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Order use (Lt)
+
+module Prelude::Data::Vec (A : Type@0) where
+
+def Vec (n : Nat) : Type@0 := forall (i : Nat) (h : Lt i n) -> A end
+
+(* The empty vector; [Lt i 0] computes to [False]. *)
+def nil : Vec 0 := fun (i : Nat) (h : Lt i 0) -> absurd A h end
+
+(* [cons n a v] puts [a] in front of [v], by cases on the index. *)
+def cons (n : Nat) (a : A) (v : Vec n) : Vec (succ n) :=
+  fun (i : Nat) ->
+    rec i return x . (forall (h : Lt x (succ n)) -> A)
+    | zero => fun (h : Lt 0 (succ n)) -> a
+    | succ p, r => fun (h : Lt p n) -> v p h
+    end
+end
+
+(* The [i]-th element, given a proof that [i] is in bounds. *)
+def nth (n : Nat) (v : Vec n) (i : Nat) (h : Lt i n) : A := v i h end
+
+(* The first element; [Lt 0 (succ n)] computes to [True]. *)
+def head (n : Nat) (v : Vec (succ n)) : A := v 0 true end
+
+(* All elements but the first; [Lt (succ i) (succ n)] computes to [Lt i n]. *)
+def tail (n : Nat) (v : Vec (succ n)) : Vec n :=
+  fun (i : Nat) (h : Lt i n) -> v (succ i) h
+end
+
+def replicate (n : Nat) (c : A) : Vec n := fun (i : Nat) (h : Lt i n) -> c end
+
+(* Applies [f] to every element; the result is a vector over [B]. *)
+def map (B : Type@0) (f : forall (a : A) -> B) (n : Nat) (v : Vec n) :
+    forall (i : Nat) (h : Lt i n) -> B :=
+  fun (i : Nat) (h : Lt i n) -> f (v i h)
+end
+
+(* Right fold: [foldr B f z n v] is [f v0 (f v1 (... (f v(n-1) z)))]. *)
+def foldr (B : Type@0) (f : forall (a : A) (b : B) -> B) (z : B) (n : Nat) (v : Vec n) : B :=
+  (rec n return k . (forall (w : Vec k) -> B)
+   | zero => fun (w : Vec 0) -> z
+   | succ p, r => fun (w : Vec (succ p)) -> f (head p w) (r (tail p w))
+   end) v
+end
+
+(* Concatenation, by recursion on the length [m] of the first vector, so the
+   length [plus m n] computes: [append 0 n u v] is [v], and
+   [append (succ m) n u v] is [cons (head u) (append m n (tail u) v)]. *)
+def append (m : Nat) (n : Nat) (u : Vec m) (v : Vec n) : Vec (plus m n) :=
+  (rec m return k . (forall (w : Vec k) -> Vec (plus k n))
+   | zero => fun (w : Vec 0) -> v
+   | succ p, r => fun (w : Vec (succ p)) ->
+       cons (plus p n) (head p w) (r (tail p w))
+   end) u
+end
+
+end
