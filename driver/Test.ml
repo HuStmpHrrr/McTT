@@ -823,6 +823,7 @@ let%expect_test "lib/Induction.mctt" =
                             (Prelude::Arith::Plus.plus x3 x3)
                             6)
                  -> x3) --> 3 : Nat
+  |}]
 
 let%expect_test "lib/Lattice.mctt" =
   let _ = main_of_lib "Lattice.mctt" in
@@ -863,6 +864,7 @@ let%expect_test "lib/Lattice.mctt" =
     Evaluate Prelude::Arith::Lattice.maxEqRight 3 5 true --> true : True
     Evaluate Prelude::Arith::Lattice.minMono 2 3 4 6 true true --> true : True
     Evaluate Prelude::Arith::Lattice.maxMono 2 3 6 7 true true --> true : True
+  |}]
 
 let%expect_test "lib/Division.mctt" =
   let _ = main_of_lib "Division.mctt" in
@@ -889,6 +891,7 @@ let%expect_test "lib/Division.mctt" =
     Evaluate Prelude::Arith::Divides.dividesMult 3 4 --> true : True
     Evaluate Prelude::Arith::Divides.evenDividesTwo 8 true --> true : True
     Evaluate Prelude::Arith::Divides.dividesTwoEven 10 true --> true : True
+  |}]
 
 let%expect_test "lib/Vectors.mctt" =
   let _ = main_of_lib "Vectors.mctt" in
@@ -927,6 +930,7 @@ let%expect_test "lib/Vectors.mctt" =
                true --> true : True
     Evaluate Prelude::Data::VecLaws.nthAppendRight 3 2 oneTwoThree fourFive 1
                true --> true : True
+  |}]
 
 let%expect_test "lib/Powers.mctt" =
   let _ = main_of_lib "Powers.mctt" in
