@@ -73,6 +73,30 @@ Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 .
 Hint Constructors rigid_typ : mctt.
 
+(** A well-formed type constructor is rigid in a context whose variables are
+    all bound by assumptions. *)
+Lemma rigid_typ_of_is_typ_constr : forall Γ A i,
+    (forall x B, Γ ∋ #x : B -> ctx_ass Γ x) ->
+    is_typ_constr A ->
+    Γ ⊢ A : Type@i ->
+    rigid_typ Γ A.
+Proof.
+  intros * HΓ HA HAi.
+  destruct HA; mauto 2.
+  destruct (wf_vlookup_inversion HAi) as [B [Hlookup _]].
+  constructor; eapply HΓ; eassumption.
+Qed.
+
+(** The context of [consistency]. *)
+Lemma ctx_ass_of_lookup_typ : forall i x B,
+    ⋅ ▹ Type@i ∋ #x : B ->
+    ctx_ass (⋅ ▹ Type@i) x.
+Proof.
+  intros * H.
+  dependent destruction H; [ eexists; reflexivity |].
+  inversion H.
+Qed.
+
 Theorem is_typ_constr_and_exp_eq_var_implies_eq_var : forall Γ A x i,
     rigid_typ Γ A ->
     ctx_ass Γ x ->
