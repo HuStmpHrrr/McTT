@@ -113,10 +113,10 @@ _build/default/driver/mctt.exe examples/Nary.mctt # or your own example
 ```
 
 A program can import units from other files, found under `--search-root`
-(the current directory by default). `examples/multi/NatTheory.mctt` uses the
-small library in `examples/multi/Prelude`:
+(the current directory by default). The library `lib/Prelude` proves basic
+properties of natural numbers, and `lib/NatTheory.mctt` uses it:
 ```
-dune exec mctt -- --search-root examples/multi examples/multi/NatTheory.mctt
+dune exec mctt -- --search-root lib lib/NatTheory.mctt
 ```
 
 To build Coq proof only, you can go into and only build the `theories` directory:

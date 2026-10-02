@@ -12,6 +12,9 @@ let main_of_example s = main_of_filename ("../examples/" ^ s)
 let main_of_multi s =
   main_of_filename ~search_root:"../examples/multi" ("../examples/multi/" ^ s)
 
+(* The programs under [lib] use the [Prelude] library, looked up from there. *)
+let main_of_lib s = main_of_filename ~search_root:"../lib" ("../lib/" ^ s)
+
 (* Every unit needs its top level module declaration, so the small inline cases
    get a throwaway one. *)
 let main_of_body body = main_of_program_string ("module Test where " ^ body ^ " end")
@@ -120,8 +123,8 @@ let%expect_test "LetTrueFalse.mctt works" =
              end --> true : True
     |}]
 
-let%expect_test "multi/NatTheory.mctt: the Prelude library" =
-  let _ = main_of_multi "NatTheory.mctt" in
+let%expect_test "lib/NatTheory.mctt" =
+  let _ = main_of_lib "NatTheory.mctt" in
   [%expect {|
     Evaluate Prelude::Plus.plusComm 2 3 --> true : True
     Evaluate Prelude::NatEq.sym 4 4 (Prelude::NatEq.refl 4) --> true : True
