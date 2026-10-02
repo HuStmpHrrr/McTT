@@ -313,7 +313,7 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
                Dom (ρ 0) ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) ->
         EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel }
 (** A definition entry: the bodies are related, and each head of the
-    environment is related to the value of *both* bodies in that head's tail.
+    environment is related to the value of both bodies in that head's tail.
     Asking for both bodies on each side makes the relation invariant under
     swapping the two contexts, which is what symmetry needs. *)
 | per_ctx_env_cons_def :
