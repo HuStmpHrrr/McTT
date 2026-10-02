@@ -21,6 +21,11 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
 | rnf_nat_neut :
   `( read_ne_order Θ Ξ s m ->
      read_nf_order Θ Ξ s ⇓ ℕᵈ (⇑ a m) )
+| rnf_true :
+  `( read_nf_order Θ Ξ s ⇓ ⊤ᵈ m )
+| rnf_False_neut :
+  `( read_ne_order Θ Ξ s m ->
+     read_nf_order Θ Ξ s ⇓ ⊥ᵈ (⇑ a m) )
 | rnf_fn :
   `( read_typ_order Θ Ξ s a ->
      eval_app_order Θ Ξ m ⇑! a s ->
@@ -61,6 +66,13 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
          read_nf_order Θ Ξ (S (S s)) ⇓ bs ms) ->
      read_ne_order Θ Ξ s m ->
      read_ne_order Θ Ξ s recᵈ m under p return B | zero -> mz | succ -> MS end )
+| rne_exfalso :
+  `( eval_exp_order Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) ->
+     (forall b,
+         ⟦ B ⟧ Θ ⍮ Ξ ⍮ p ↦ ⇑! ⊥ᵈ s ↘ b ->
+         read_typ_order Θ Ξ (S s) b) ->
+     read_ne_order Θ Ξ s m ->
+     read_ne_order Θ Ξ s efqᵈ m under p return B )
 | rne_glob :
   `( read_ne_order Θ Ξ s (d_glob p) )
 
@@ -69,6 +81,10 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
   `( read_typ_order Θ Ξ s 𝕌@i )
 | rtyp_nat :
   `( read_typ_order Θ Ξ s ℕᵈ )
+| rtyp_True :
+  `( read_typ_order Θ Ξ s ⊤ᵈ )
+| rtyp_False :
+  `( read_typ_order Θ Ξ s ⊥ᵈ )
 | rtyp_pi :
   `( read_typ_order Θ Ξ s a ->
      eval_exp_order Θ Ξ B (p ↦ ⇑! a s) ->
@@ -128,6 +144,10 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ ℕᵈ (⇑ _ m)  , H =>
     let (M, HM) := read_ne_impl s m _ in
     exist _ ⇑ⁿ M _
+| s, ⇓ ⊤ᵈ m, H => exist _ ⋆ⁿ _
+| s, ⇓ ⊥ᵈ (⇑ _ m), H =>
+    let (M, HM) := read_ne_impl s m _ in
+    exist _ ⇑ⁿ M _
 | s, ⇓ (Πᵈ a p B) m, H =>
     let (A, HA) := read_typ_impl s a _ in
     let (m', Hm') := eval_app_impl Θ Ξ m ⇑! a s _ in
@@ -155,10 +175,17 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (MS', HMS') := read_nf_impl (S (S s)) ⇓ bs ms _ in
     let (M, HM) := read_ne_impl s m _ in
     exist _ recⁿ M return B' | zero -> MZ | succ -> MS' end _
+| s, efqᵈ m under p return B, H =>
+    let (b, Hb) := eval_exp_impl Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) _ in
+    let (B', HB') := read_typ_impl (S s) b _ in
+    let (M, HM) := read_ne_impl s m _ in
+    exist _ (efqⁿ M return B') _
 
       with read_typ_impl s d (H : read_typ_order Θ Ξ s d) : { m | Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, 𝕌@i, H => exist _ Typeⁿ@i _
 | s, ℕᵈ, H => exist _ ℕⁿ _
+| s, ⊤ᵈ, H => exist _ ⊤ⁿ _
+| s, ⊥ᵈ, H => exist _ ⊥ⁿ _
 | s, Πᵈ a p B, H =>
     let (A, HA) := read_typ_impl s a _ in
     let (b, Hb) := eval_exp_impl Θ Ξ B (p ↦ ⇑! a s) _ in

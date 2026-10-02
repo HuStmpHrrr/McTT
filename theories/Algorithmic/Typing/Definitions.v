@@ -34,6 +34,17 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a M ⟸ ℕ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B )
+| ati_True :
+  `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
+| ati_true :
+  `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
+| ati_False :
+  `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
+| ati_exfalso :
+  `( Γ ▹ ⊥ ⊢a A ⟹ Typeⁿ@i ->
+     Γ ⊢a M ⟸ ⊥ ->
+     nbe_ty_f Γ A[Id,,M] B ->
+     Γ ⊢a efq M return A ⟹ B )
 | ati_pi :
   `( Γ ⊢a A ⟹ Typeⁿ@i ->
      Γ ▹ A ⊢a B ⟹ Typeⁿ@j ->
@@ -99,6 +110,16 @@ Inductive user_exp : exp -> Prop :=
      user_exp MS ->
      user_exp M ->
      user_exp (a_natrec A MZ MS M) )
+| user_exp_True :
+  `( user_exp a_True )
+| user_exp_true :
+  `( user_exp a_true )
+| user_exp_False :
+  `( user_exp a_False )
+| user_exp_exfalso :
+  `( user_exp A ->
+     user_exp M ->
+     user_exp (a_exfalso A M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->
