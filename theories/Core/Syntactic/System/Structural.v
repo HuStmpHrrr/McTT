@@ -366,8 +366,8 @@ Ltac lift_wk_nat :=
       let T := constr:(wf_wk Θ Ξ (cons (ce_ass a_nat) Δ) (cons (ce_ass a_nat) Γ) (wk_q φ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_wk_q_nat; exact Hφ)
-  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
-      let T := constr:(wf_wk Θ Ξ (cons a_False Δ) (cons a_False Γ) (wk_q φ)) in
+  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Γ) (a_typ _) _, Hφ : wf_wk ?Θ ?Ξ ?Δ ?Γ ?φ |- _ =>
+      let T := constr:(wf_wk Θ Ξ (cons (ce_ass a_False) Δ) (cons (ce_ass a_False) Γ) (wk_q φ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_wk_q_False; exact Hφ)
   end.
@@ -770,8 +770,8 @@ Ltac lift_sub_nat :=
       let T := constr:(wf_sub Θ Ξ (cons (ce_ass a_nat) Γ) (cons (ce_ass a_nat) Δ) (sb_q σ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_q_nat; exact Hσ)
-  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
-      let T := constr:(wf_sub Θ Ξ (cons a_False Γ) (cons a_False Δ) (sb_q σ)) in
+  | _ : wf_exp ?Θ ?Ξ (cons (ce_ass a_False) ?Δ) (a_typ _) _, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
+      let T := constr:(wf_sub Θ Ξ (cons (ce_ass a_False) Γ) (cons (ce_ass a_False) Δ) (sb_q σ)) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_q_False; exact Hσ)
   end.

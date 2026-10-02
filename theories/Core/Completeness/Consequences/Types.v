@@ -70,6 +70,8 @@ Hint Constructors is_typ_constr : mctt.
 Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | typ_is_rigid : forall i, rigid_typ Γ Type@i
 | nat_is_rigid : rigid_typ Γ ℕ
+| True_is_rigid : rigid_typ Γ ⊤
+| False_is_rigid : rigid_typ Γ ⊥
 | pi_is_rigid : forall A B, rigid_typ Γ (Π A B)
 | var_is_rigid : forall x, ctx_ass Γ x -> rigid_typ Γ #x
 .
