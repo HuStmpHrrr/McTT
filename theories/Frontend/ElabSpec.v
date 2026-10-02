@@ -7,56 +7,56 @@ Import Syntax_Notations.
 
 (** * A Declarative Specification of Elaboration
 
-    This file defines [elab_spec prg u], which holds when the surface unit
-    [prg] elaborates to the core unit [u].  The definition does not use the
-    elaborator's data structures.  [Frontend/ElabCorrect.v] proves that
-    [elaborate_core] computes exactly this relation.
+    [elab_spec prg u] holds when the surface unit [prg] elaborates to the core
+    unit [u].  It is stated without the elaborator's data structures;
+    [Frontend/ElabCorrect.v] proves that [elaborate_core] computes exactly this
+    relation.
 
-    The spec makes the following design choices.
-
-    - There is no symbol table.  The members of a frame are the names
-      declared by the core commands that the frame has emitted so far.
-    - A frame binds each name at most once, whether as an import alias, a
-      member or a parameter.  Declaring a name twice in the same frame is an
-      error.  Declaring a name that an enclosing frame binds shadows it.
-    - A name is looked up first in the local binders, then in the open frames
-      from the innermost outward, and finally in the aliases of the unit's
-      leading imports.  The first binding found wins.
+    - The members of a frame are the names declared by the core commands it
+      has emitted so far, so there is no separate symbol table.
+    - A frame binds each name at most once, as an import alias, a member or a
+      parameter.  Redeclaring a name in the same frame is an error; declaring
+      a name that an enclosing frame binds shadows it.
+    - A name is looked up in the local binders, then in the open frames from
+      the innermost outward, then in the aliases of the unit's leading
+      imports.
     - The parameters of the open frames are λ-variables.  A member of an open
-      frame is written as its absolute path, applied to the parameters of its
-      own frame and of every frame enclosing it.
-    - A module that is not open at the use site is reached through a module
-      reference.  Only its public definitions can be selected, and the user
-      writes its arguments explicitly.
-    - The elaborator does not read other units.  A path into an imported unit
-      is accepted as written, and type checking decides whether it is valid.
+      frame is its absolute path applied to the parameters of its own frame
+      and of every enclosing frame.
+    - A module that is not open is reached through a module reference.  Only
+      its public definitions can be selected, and its arguments are written
+      explicitly.
+    - Other units are not read.  A path into an imported unit is accepted as
+      written, and type checking decides whether it is valid.
 
-    The comments below explain the definitions with this running example.
+    The running example of this file is
 
-      module Main where
-        module M (A : Type@0) where
-          def id (x : A) : A := x end
-          module N (B : Type@0) where
-            def k (x : A) (y : B) : A := id x end
-          end
-        end
-        def j : forall (x : Nat) -> Nat := M.id Nat end
-      end
+<<
+module Main where
+  module M (A : Type@0) where
+    def id (x : A) : A := x end
+    module N (B : Type@0) where
+      def k (x : A) (y : B) : A := id x end
+    end
+  end
+  def j : forall (x : Nat) -> Nat := M.id Nat end
+end
+>>
 
-    It elaborates to the following core unit, where [Main.M.id] stands for
-    [a_glob (p_abs ["Main"] ["M"; "id"])] and the transparency and privacy
-    flags of [cc_def] are omitted.  [ElabExamples.running_spec] checks this.
+    which elaborates to the core unit below ([ElabExamples.running_spec]).
+    [Main.M.id] abbreviates [a_glob (p_abs ["Main"] ["M"; "id"])], and the
+    flags of [cc_def] are omitted.
 
-      cc_mod "M" (⋅ ▹ Type@0)
-        [ cc_def "id" (Π #0 #1) (λ #0 #0);
-          cc_mod "N" (⋅ ▹ Type@0)
-            [ cc_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
-      cc_def "j" (Π ℕ ℕ) (Main.M.id $ ℕ)
+<<
+cc_mod "M" (⋅ ▹ Type@0)
+  [ cc_def "id" (Π #0 #1) (λ #0 #0);
+    cc_mod "N" (⋅ ▹ Type@0)
+      [ cc_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
+cc_def "j" (Π ℕ ℕ) (Main.M.id $ ℕ)
+>>
 
-    Inside [M], [id] is used as [Main.M.id $ A]: it is applied to the
-    parameter of its frame.  In the body of [k], [A] is [#3], so [id x] is
-    [Main.M.id $ #3 $ #1].  Outside [M], in [j], no parameter is open, so the
-    user supplies [A] by writing [M.id Nat]. *)
+    In the body of [k], [A] is [#3], so [id x] is [Main.M.id $ #3 $ #1].  In
+    [j], no parameter of [M] is open, so [A] is written: [M.id Nat]. *)
 
 (** ** Declarations Read Off Core Commands *)
 
@@ -86,16 +86,16 @@ Definition cs_member (cs : list ccmd) (x : string) (c : ccmd) : Prop :=
 (** ** What a Name Denotes *)
 
 (** A module reference names a module that is not open at the use site.
+
     - [sr_unit] is the path of the unit that contains the module.
     - [sr_mems] is the chain of member names from the unit's root to the
       module.
     - [sr_sig] is the list of the module's commands.  It is [None] when the
-      module belongs to another unit, since the elaborator does not read other
-      units.  Such a reference is called _opaque_.
+      module belongs to another unit; such a reference is _opaque_.
     - [sr_args] lists the arguments supplied so far, outermost first.
 
-    In the running example, [M] used in [j] is the reference with unit
-    [Main], chain [["M"]], the commands of [M], and no arguments. *)
+    In [j], [M] is the reference with unit [Main], chain [["M"]], the commands
+    of [M], and no arguments. *)
 Record sref : Set := sr_mk
   { sr_unit : fpath
   ; sr_mems : list string
@@ -112,11 +112,9 @@ Inductive starget : Set :=
 | st_def : sref -> string -> starget.
 
 (** An object denotes a term, a module, or the definition [x] of a module
-    [R].  The third form is needed for [M.f a], where the argument [a] belongs
-    to [M] but is written after the projection [.f].  It becomes a term once
-    [R] has all its arguments ([as_term]).  In the running example, [M.id]
-    denotes [s_def R "id"], where [R] is the reference to [M] described above,
-    and [M.id Nat] denotes [s_def (sr_app R [ℕ]) "id"]. *)
+    [R].  The third form lets [M.f a] supply the argument [a] of [M] after the
+    projection.  In [j], [M.id] denotes [s_def R "id"] for the reference [R]
+    to [M], and [M.id Nat] denotes [s_def (sr_app R [ℕ]) "id"]. *)
 Inductive sres : Set :=
 | s_term : exp -> sres
 | s_mod : sref -> sres
@@ -142,19 +140,18 @@ Definition sapp (r : sres) (N : exp) : sres :=
   | s_def R x => s_def (sr_app R (N :: nil)) x
   end.
 
-(** [as_term r M] holds when the denotation [r] can be used as the term [M].
+(** [as_term r M] holds when the denotation [r] is the term [M].
+
     - A term is itself.
     - The definition [x] of [R] is the absolute path of [x] applied to the
-      arguments of [R].  A member is a closed constant, generalized over the
-      parameters of the modules enclosing it, so it is a term whatever the
-      number of arguments.  Type checking decides whether they fit.
+      arguments of [R].  A member is a closed constant, so any number of
+      arguments is allowed; type checking decides whether they fit.
     - An opaque reference with a nonempty member chain is the path it names,
-      applied to its arguments.  Type checking decides whether the path names
-      a definition.
+      applied to its arguments.
     - A module of the current unit is never a term.
 
-    In the running example, [M.id Nat] is the term [Main.M.id $ ℕ].  [M.id]
-    alone is the term [Main.M.id], of type [Π (A : Type@0). Π A A]. *)
+    So [M.id Nat] is [Main.M.id $ ℕ], and [M.id] alone is [Main.M.id], of
+    type [Π (A : Type@0). Π A A]. *)
 Inductive as_term : sres -> exp -> Prop :=
 | at_term : forall M, as_term (s_term M) M
 | at_def : forall R x,
@@ -167,17 +164,14 @@ Inductive as_term : sres -> exp -> Prop :=
 (** *** Member Selection
 
     [select R x t] holds when [R.x] denotes [t].
-    - If [R] is opaque, [R.x] is an opaque reference whose chain is extended
-      by [x].  Privacy is not checked in this case (REVISIT, as in the
-      elaborator).
-    - If [R] declares [x] as a public definition, [R.x] is that definition.
-      A private definition cannot be selected.  It is visible only in its own
-      frame and the frames nested in it, where [fbind] finds it directly.
-    - If [R] declares [x] as a module with parameters [Δ], [R.x] is a
-      reference to that module.  It keeps the arguments of [R].
 
-    In the running example, [M.id] selects the public definition [id], and
-    [M.N] would select a reference to [N]. *)
+    - If [R] is opaque, [R.x] is an opaque reference with [x] appended to its
+      chain.  REVISIT: privacy is not checked here.
+    - If [R] declares [x] as a public definition, [R.x] is that definition.
+      A private definition is visible only in its own frame and the frames
+      nested in it, where [fbind] finds it.
+    - If [R] declares [x] as a module, [R.x] is a reference to it with the
+      arguments of [R]. *)
 Inductive select : sref -> string -> starget -> Prop :=
 | sl_opaque : forall R x,
     sr_sig R = None ->
@@ -193,8 +187,7 @@ Inductive select : sref -> string -> starget -> Prop :=
 
 (** *** Weakening
 
-    A denotation built at one point may be used [k] binders further in.  These
-    functions shift all its terms by [k]. *)
+    These functions shift a denotation by [k] binders. *)
 Definition shift_by (k : nat) (M : exp) : exp := M[wk_shiftn k]ʷ.
 
 Definition wk_sref (k : nat) (R : sref) : sref :=
@@ -208,11 +201,12 @@ Definition wk_starget (k : nat) (t : starget) : starget :=
 
 (** ** Scopes *)
 
-(** A scope records what the imports of a frame bind.  The leading imports
-    of a unit also build a scope.
+(** A scope records what the imports of a frame, or the leading imports of a
+    unit, bind.
+
     - [ss_alias] lists the aliases, latest first.
-    - [ss_units] lists the units imported so far.  An imported unit can be
-      named by its full path. *)
+    - [ss_units] lists the imported units, which can be named by their full
+      path. *)
 Record sscope : Set := ss_mk
   { ss_alias : list (string * starget)
   ; ss_units : list fpath }.
@@ -220,9 +214,7 @@ Record sscope : Set := ss_mk
 (** The empty scope binds nothing. *)
 Definition ss_empty : sscope := ss_mk nil nil.
 
-(** [ss_binds sc y t] holds when [sc] has the alias [y] for [t].  Every alias
-    is checked for freshness when it is made, so a scope has at most one alias
-    per name ([ss_wf]). *)
+(** [ss_binds sc y t] holds when [sc] has the alias [y] for [t]. *)
 Definition ss_binds (sc : sscope) (y : string) (t : starget) : Prop := In (y, t) (ss_alias sc).
 
 (** [ss_free sc y] holds when [sc] has no alias named [y]. *)
@@ -245,6 +237,7 @@ Definition ss_add_unit (fp : fpath) (sc : sscope) : sscope :=
 
 (** An open frame is a module, or the unit itself, whose body is being
     elaborated.
+
     - [sf_path] is its member chain from the unit's root.  It is [nil] for
       the unit itself.
     - [sf_params] lists its parameters and their elaborated types, in
@@ -252,8 +245,9 @@ Definition ss_add_unit (fp : fpath) (sc : sscope) : sscope :=
     - [sf_cmds] lists the core commands it has emitted so far, in order.
     - [sf_scope] records what its imports bind.
 
-    While the body of [k] is elaborated in the running example, three frames
-    are open, innermost first.
+    While the body of [k] is elaborated, three frames are open, innermost
+    first.
+
     - [N] has path [["M"; "N"]], parameter [B], and no commands yet.
     - [M] has path [["M"]], parameter [A], and the command for [id].
     - [Main] has path [nil], no parameters, and no commands yet.  The command
@@ -264,7 +258,7 @@ Record sframe : Set := sf_mk
   ; sf_cmds : list ccmd
   ; sf_scope : sscope }.
 
-(** [sf_new ch ps] is a new frame with member chain [ch] and parameters
+(** [sf_new ch ps] is an empty frame with member chain [ch] and parameters
     [ps]. *)
 Definition sf_new (ch : list string) (ps : list (string * typ)) : sframe := sf_mk ch ps nil ss_empty.
 
@@ -287,45 +281,35 @@ Definition sf_names (F : sframe) : list string := map fst (ss_alias (sf_scope F)
 (** [sf_binds F x] holds when [F] binds [x]. *)
 Definition sf_binds (F : sframe) (x : string) : Prop := In x (sf_names F).
 
-(** A name may be declared in a frame only if the frame does not bind it yet.
-    This applies to members, and to aliases made by [import … as] or [use].
-    A name that an enclosing frame binds may be declared again, and the new
-    binding shadows the old one. *)
+(** A member or alias may be declared in a frame only if the frame does not
+    bind its name yet.  Names bound by enclosing frames may be shadowed. *)
 Definition sf_fresh (F : sframe) (x : string) : Prop := ~ sf_binds F x.
 
-(** [sf_wf F] states that [F] binds each name at most once.  Freshness keeps
-    it true. *)
+(** [sf_wf F] states that [F] binds each name at most once. *)
 Definition sf_wf (F : sframe) : Prop := NoDup (sf_names F).
 
 (** ** Pre-application
 
-    This is the core of option B.  The parameters of the open frames are
-    λ-variables.  Seen from a use site, the local binders come first, then the
-    parameters of the innermost frame, then those of the next frame outward,
-    and so on.  Within each frame, the last parameter is the nearest.
+    The parameters of the open frames are λ-variables.  Seen from a use site,
+    the local binders come first, then the parameters of the innermost frame,
+    then those of the next frame outward, and so on; within a frame, the last
+    parameter is the nearest.  If [off] binders lie between the use site and
+    the last of [n] parameters of a frame, then its parameters, in declaration
+    order, are [vars_desc off n]:
 
-    Suppose a frame has [n] parameters, and [off] binders lie between the use
-    site and its last parameter.  Then its parameters, in declaration order,
-    are
+<<
+#(off + n - 1), …, #(off + 1), #off
+>>
 
-      [#(off + n - 1), …, #(off + 1), #off]
+    A member is generalized over the parameters of its own frame and of every
+    enclosing frame, outermost first, so a use applies it to those variables.
+    [preapp off (F :: Fs) args] holds when [args] are these variables for a
+    member of [F], where [Fs] encloses [F] and [off] binders lie between the
+    use site and the last parameter of [F].  Frames nested inside [F]
+    contribute no arguments; their parameters are among the [off] binders.
 
-    which is [vars_desc off n].
-
-    A member of an open frame is stored generalized over the parameters of its
-    own frame and of every enclosing frame, outermost first.  A use of the
-    member therefore applies it to exactly those variables.  Let [F] be the
-    member's frame, [Fs] the frames enclosing [F], and [off] the number of
-    binders between the use site and the last parameter of [F].  Then
-    [preapp off (F :: Fs) args] holds when [args] are the variables to apply
-    the member to.  They start with the parameters of the outermost frame and
-    end with those of [F].  Frames nested inside [F] add no arguments; their
-    parameters are among the [off] binders.
-
-    In the running example, the body of [k] uses [id] under the binders [x]
-    and [y].  The member [id] belongs to [M].  Between the use site and [A]
-    lie [y], [x] and [B], so [off] is [3].  [Main] has no parameters, so
-    [preapp 3 [M; Main] [#3]] holds, and [id] is applied to [#3]. *)
+    In the body of [k], [id] is a member of [M], and [y], [x] and [B] lie
+    between the use site and [A], so [preapp 3 [M; Main] [#3]] holds. *)
 Definition vars_desc (off n : nat) : list exp :=
   map (fun i => a_var (off + (n - 1 - i))) (seq 0 n).
 
@@ -340,29 +324,27 @@ Inductive preapp : nat -> list sframe -> list exp -> Prop :=
 
 (** [fr_binds fp off Fs F x r] holds when the open frame [F] binds [x] to
     [r].  Here [fp] is the current unit, [Fs] are the frames enclosing [F],
-    and [off] binders lie between the use site and the last parameter of [F].
-    A frame binds a name at most once, so at most one rule applies. *)
+    and [off] binders lie between the use site and the last parameter of
+    [F]. *)
 Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : string -> sres -> Prop :=
-(** An alias was resolved where its import appeared, outside these [off]
-    binders, so it is weakened by [off]. *)
+(** An alias was resolved outside these [off] binders. *)
 | fr_alias : forall x t,
     ss_binds (sf_scope F) x t ->
     fr_binds fp off Fs F x (st_res (wk_starget off t))
 (** A member definition, public or private, is its absolute path applied to
-    the variables that [preapp] gives. *)
+    the variables given by [preapp]. *)
 | fr_def : forall x b pv A M vs,
     cs_member (sf_cmds F) x (cc_def x b pv A M) ->
     preapp off (F :: Fs) vs ->
     fr_binds fp off Fs F x (s_term (apps (a_glob (p_abs fp (sf_path F ++ x :: nil))) vs))
-(** A member module is a reference that carries the same variables as its
-    arguments. *)
+(** A member module is a reference with those variables as arguments. *)
 | fr_mod : forall x Δ cs vs,
     cs_member (sf_cmds F) x (cc_mod x Δ cs) ->
     preapp off (F :: Fs) vs ->
     fr_binds fp off Fs F x
       (s_mod (sr_mk fp (sf_path F ++ x :: nil) (Some cs) vs))
-(** A parameter is a variable.  It lies [off] binders back, plus one binder
-    for each parameter declared after it. *)
+(** A parameter lies [off] binders back, plus one for each later
+    parameter. *)
 | fr_param : forall x ps1 A ps2,
     sf_params F = ps1 ++ (x, A) :: ps2 ->
     fr_binds fp off Fs F x (s_term (a_var (off + List.length ps2))).
@@ -370,13 +352,12 @@ Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : st
 (** [fbind fp O off Fs x r] holds when the name [x], which is not bound
     locally, denotes [r].  Here [O] is the scope of the unit's leading
     imports, and [off] binders lie between the use site and the last parameter
-    of the first frame in [Fs].  The innermost frame that binds [x] decides.
-    If no frame binds [x], it is looked up in the aliases of [O].
+    of the first frame in [Fs].  The innermost frame that binds [x] decides;
+    if none does, the aliases of [O] are used.
 
-    In the running example, [id] in the body of [k] is found as follows.  [N]
-    does not bind [id], so the search moves to [M], with [off] increased by
-    the one parameter of [N] from [2] to [3].  [M] binds [id] as a member
-    definition, so [id] denotes [Main.M.id $ #3]. *)
+    In the body of [k], [N] does not bind [id], so the search moves to [M]
+    with [off] increased from [2] to [3]; [M] binds [id], which denotes
+    [Main.M.id $ #3]. *)
 Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres -> Prop :=
 | fb_here : forall off F Fs x r,
     fr_binds fp off Fs F x r ->
@@ -392,12 +373,10 @@ Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres
 (** ** Local Binders *)
 
 (** A local binding is one of the following.
-    - [lb_var x] is a λ-variable.  An [abstract] [let] is also one, because
-      its body is hidden behind its binder.
-    - [lb_let x M] is a transparent [let].  Every use of [x] is replaced by
-      [M], so its core binder is never referenced.
-    - [lb_mod x R] is a [let module].  It names the module [R] and has no core
-      binder. *)
+
+    - [lb_var x] is a λ-variable, or an [abstract] [let].
+    - [lb_let x M] is a transparent [let]; uses of [x] are replaced by [M].
+    - [lb_mod x R] is a [let module] naming [R]; it has no core binder. *)
 Inductive lbind : Set :=
 | lb_var : string -> lbind
 | lb_let : string -> exp -> lbind
@@ -410,8 +389,8 @@ Definition lb_name (b : lbind) : string :=
 Definition lb_binders (b : lbind) : nat :=
   match b with lb_var _ | lb_let _ _ => 1 | lb_mod _ _ => 0 end.
 
-(** [nbinders L] is the number of core binders in [L].  Local bindings are
-    listed innermost first. *)
+(** [nbinders L] is the number of core binders in [L], which is listed
+    innermost first. *)
 Definition nbinders (L : list lbind) : nat := fold_right (fun b n => lb_binders b + n) 0 L.
 
 (** [lbound L x k b] holds when [b] is the innermost binding of [x] in [L],
@@ -419,9 +398,8 @@ Definition nbinders (L : list lbind) : nat := fold_right (fun b n => lb_binders 
 Definition lbound (L : list lbind) (x : string) (k : nat) (b : lbind) : Prop :=
   exists L1 L2, L = L1 ++ b :: L2 /\ lb_name b = x /\ ~ In x (map lb_name L1) /\ k = nbinders L1.
 
-(** [ldenote k b] is what the binding [b] denotes [k] binders further in.
-    The body of a [let] was elaborated outside the [let]'s own binder, so it
-    is shifted by [k + 1]. *)
+(** [ldenote k b] is what [b] denotes [k] binders further in.  The body of a
+    [let] was elaborated outside its own binder, hence the shift by [k + 1]. *)
 Definition ldenote (k : nat) (b : lbind) : sres :=
   match b with
   | lb_var _ => s_term (a_var k)
@@ -436,13 +414,12 @@ Definition ldenote (k : nat) (b : lbind) : sres :=
     are the open frames, innermost first, and [L] are the local bindings.
     [selt fp O Fs L o M] holds when [o] denotes the term [M].
 
-    In the running example, the body of [k] is elaborated with the local
-    bindings [[lb_var "y"; lb_var "x"]].  So [x] is [#1], [id] is resolved by
-    [fbind] with [off = 2], and [id x] is [Main.M.id $ #3 $ #1]. *)
+    The body of [k] is elaborated with [L = [lb_var "y"; lb_var "x"]], so [x]
+    is [#1], [id] is resolved by [fbind] with [off = 2], and [id x] is
+    [Main.M.id $ #3 $ #1]. *)
 
 (** [unit_in fp O Fs] holds when the unit [fp] is imported, by a leading
-    import or by an import in one of the open frames.  Only then can it be
-    named by its full path. *)
+    import or in an open frame, and so can be named by its full path. *)
 Definition unit_in (fp : fpath) (O : sscope) (Fs : list sframe) : Prop :=
   In fp (ss_units O) \/ exists F, In F Fs /\ In fp (ss_units (sf_scope F)).
 
@@ -521,15 +498,14 @@ Inductive itarget (fp : fpath) (O : sscope) (Fs : list sframe) : fpath -> list s
 | it_unit : forall fq ip,
     fq <> nil -> itarget fp O Fs fq ip (sr_mk fq ip None nil).
 
-(** [alias_fresh taken sc y] holds when [y] can be made an alias.  It must not
-    be one of the [taken] names, which are the members and parameters of the
-    frame ([sf_taken]).  It must not be an alias in [sc] either.  The leading
-    imports have no frame, so their [taken] is empty. *)
+(** [alias_fresh taken sc y] holds when [y] is neither one of the frame's
+    members and parameters [taken] nor an alias in [sc].  For the leading
+    imports, [taken] is empty. *)
 Definition alias_fresh (taken : list string) (sc : sscope) (y : string) : Prop :=
   ~ In y taken /\ ss_free sc y.
 
-(** [use (n₁; …)] binds each [nᵢ] to the member [R.nᵢ], in order.  Each name
-    must be fresh, also with respect to the names bound before it. *)
+(** [use (n₁; …)] binds each [nᵢ] to the member [R.nᵢ], in order; each name
+    must be fresh, including against the earlier ones. *)
 Inductive use_binds (R : sref) (taken : list string) : list string -> sscope -> sscope -> Prop :=
 | ub_nil : forall sc, use_binds R taken nil sc sc
 | ub_cons : forall n ns t sc sc',
@@ -557,10 +533,9 @@ Definition import_cmd (fq : fpath) (ip : list string) : option ccmd :=
 Definition opt_list {A} (o : option A) : list A :=
   match o with Some a => a :: nil | None => nil end.
 
-(** [simport fp O Fs taken sc c sc' oc] describes the import command [c] in a
-    frame whose scope is [sc] and whose members and parameters are [taken].
-    The import is resolved with [O] and [Fs].  It changes the scope to [sc']
-    and emits [oc], which is at most one core command. *)
+(** [simport fp O Fs taken sc c sc' oc]: the import [c], in a frame with
+    scope [sc] and members and parameters [taken], changes the scope to [sc']
+    and emits at most one core command [oc]. *)
 Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) (taken : list string)
   : sscope -> Cst.cmd -> sscope -> option ccmd -> Prop :=
 | si_intro : forall sc fq ip spec R sc',
@@ -572,12 +547,9 @@ Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) (taken : list str
 
     [scmd fp O Fs F c F'] holds when the command [c] takes the innermost open
     frame [F] to [F'].  Here [fp] is the current unit, [O] is the scope of its
-    leading imports, and [Fs] are the frames enclosing [F].  A command changes
-    only the innermost frame. *)
+    leading imports, and [Fs] are the frames enclosing [F]. *)
 Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> sframe -> Prop :=
-(** A definition sees the members declared before it, but not itself.  Its
-    name must be fresh in the frame.  [abstract] makes it opaque, and
-    [private] makes it private. *)
+(** A definition sees the members declared before it, but not itself. *)
 | sc_def : forall Fs F m x oA oM A M,
     sf_fresh F x ->
     selt fp O (F :: Fs) nil oA A ->
@@ -594,18 +566,16 @@ Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> s
 | sc_import : forall Fs F fq ip spec sc' oc,
     simport fp O (F :: Fs) (sf_taken F) (sf_scope F) (Cst.c_import fq ip spec) sc' oc ->
     scmd fp O Fs F (Cst.c_import fq ip spec) (sf_mk (sf_path F) (sf_params F) (sf_cmds F ++ opt_list oc) sc')
-(** [module x (ps) where body end] requires [x] to be fresh in [F] and the
-    parameter names to be distinct.  The parameters are elaborated in [F].
-    The body is elaborated in a new frame for [x], nested in [F].  The
-    resulting module becomes a member of [F]. *)
+(** The parameters of [module x (ps) where body end] are elaborated in [F],
+    and its body in a new frame nested in [F]. *)
 | sc_mod : forall Fs F x ps body tys N,
     sf_fresh F x ->
     NoDup (map fst ps) ->
     sparams fp O (F :: Fs) nil ps tys ->
     scmds fp O (F :: Fs) (sf_new (sf_path F ++ x :: nil) tys) body N ->
     scmd fp O Fs F (Cst.c_mod (x :: nil) ps body) (sf_emit F (cc_mod x (ptele tys) (sf_cmds N)))
-(** [module x.p (ps) where … end] declares a module [x] without parameters,
-    fresh in [F], that contains [module p (ps) where … end]. *)
+(** [module x.p (ps) where … end] is a module [x] without parameters that
+    contains [module p (ps) where … end]. *)
 | sc_mod_path : forall Fs F x p ps body N,
     p <> nil ->
     sf_fresh F x ->
@@ -617,10 +587,8 @@ with scmds (fp : fpath) (O : sscope) : list sframe -> sframe -> list Cst.cmd -> 
 | scs_cons : forall Fs F c cs F1 F2,
     scmd fp O Fs F c F1 -> scmds fp O Fs F1 cs F2 -> scmds fp O Fs F (c :: cs) F2.
 
-(** [simports] elaborates the imports that precede the unit's declaration.
-    They lie outside all frames, and each is resolved in the scope that the
-    earlier ones built.  An alias only needs to be fresh with respect to the
-    earlier leading aliases. *)
+(** [simports] elaborates the imports that precede the unit's declaration,
+    each in the scope built by the earlier ones. *)
 Inductive simports (fp : fpath) : sscope -> list Cst.cmd -> sscope -> list ccmd -> Prop :=
 | sis_nil : forall O, simports fp O nil O nil
 | sis_cons : forall O fq ip spec O1 oc cs O2 is,
@@ -630,12 +598,9 @@ Inductive simports (fp : fpath) : sscope -> list Cst.cmd -> sscope -> list ccmd 
 
 (** ** Units
 
-    A unit has the form [import …; module fp (ps) where cs end].  Its leading
-    imports are elaborated first.  Its parameters, which must have distinct
-    names, are elaborated next, in the scope of those imports.  Its body is
-    elaborated last, in the unit's own frame, whose member chain is [nil].
-    The core unit consists of the commands of the leading imports, the
-    parameter context, and the commands of the frame. *)
+    A unit [import …; module fp (ps) where cs end] elaborates to the commands
+    of its leading imports, its parameter context, and the commands of its
+    own frame, whose member chain is [nil]. *)
 Inductive elab_spec : Cst.prog -> cunit -> Prop :=
 | es_intro : forall imports fp ps cs O imps tys F,
     simports fp ss_empty imports O imps ->
@@ -646,9 +611,9 @@ Inductive elab_spec : Cst.prog -> cunit -> Prop :=
 
 (** ** The Invariant
 
-    Elaboration keeps every name bound at most once in each frame, and in the
-    scope of the leading imports.  So [fr_binds] gives each name at most one
-    meaning, which the correctness proof relies on. *)
+    Elaboration keeps every name bound at most once in each frame and in the
+    scope of the leading imports, so [fr_binds] gives each name at most one
+    meaning. *)
 
 Lemma NoDup_insert : forall (l1 l2 : list string) x,
     NoDup (l1 ++ l2) -> ~ In x (l1 ++ l2) -> NoDup (l1 ++ x :: l2).
