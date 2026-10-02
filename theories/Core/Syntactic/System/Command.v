@@ -222,9 +222,9 @@ Combined Scheme run_mut_ind from run_cmd_mind, run_cmds_mind, run_unit_mind.
 Section Determinism.
   Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
-  #[local] Notation run_cmd := (run_cmd load_path read to_core).
-  #[local] Notation run_cmds := (run_cmds load_path read to_core).
-  #[local] Notation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
+  #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
+  #[local] Abbreviation run_unit := (run_unit load_path read to_core).
 
   (** A unit runs in a frame named by the head of its chain, so two runs of it
       agree when their chains have the same head. *)
@@ -837,9 +837,9 @@ Qed.
 Section WellFormed.
   Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
-  #[local] Notation run_cmd := (run_cmd load_path read to_core).
-  #[local] Notation run_cmds := (run_cmds load_path read to_core).
-  #[local] Notation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
+  #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
+  #[local] Abbreviation run_unit := (run_unit load_path read to_core).
 
   Lemma run_chain_fresh :
     (forall ch Θ Ξ c Θ' Ξ', run_cmd ch Θ Ξ c Θ' Ξ' ->
@@ -1308,10 +1308,10 @@ Proof. intros; apply wf_trim, restrict_map_wf; assumption. Qed.
 Section Runs.
   Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
-  #[local] Notation run_cmd := (run_cmd load_path read to_core).
-  #[local] Notation run_cmds := (run_cmds load_path read to_core).
-  #[local] Notation run_unit := (run_unit load_path read to_core).
-  #[local] Notation canon := (canon load_path read to_core).
+  #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
+  #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
+  #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation canon := (canon load_path read to_core).
 
   Lemma run_dom_mono :
     (forall ch Θ Ξ c Θ' Ξ', run_cmd ch Θ Ξ c Θ' Ξ' ->

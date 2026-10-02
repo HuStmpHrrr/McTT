@@ -188,12 +188,12 @@ Qed.
 Section Impl.
   Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
-  #[local] Notation run_cmd := (run_cmd load_path read to_core).
-  #[local] Notation run_cmds := (run_cmds load_path read to_core).
-  #[local] Notation run_unit := (run_unit load_path read to_core).
-  #[local] Notation canon := (canon load_path read to_core).
-  #[local] Notation run_wf := (run_wf load_path read to_core).
-  #[local] Notation run_functional := (run_functional load_path read to_core).
+  #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
+  #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
+  #[local] Abbreviation run_unit := (run_unit load_path read to_core).
+  #[local] Abbreviation canon := (canon load_path read to_core).
+  #[local] Abbreviation run_wf := (run_wf load_path read to_core).
+  #[local] Abbreviation run_functional := (run_functional load_path read to_core).
 
   (** ** The Invariants *)
 
