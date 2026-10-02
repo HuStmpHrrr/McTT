@@ -9,9 +9,9 @@ Import Domain_Notations.
 
 Generalizable All Variables.
 
-(** The termination orders mirror [eval_exp], [eval_natrec] and [eval_app],
-    relative to the same global context.  A transparent global recurses into
-    its resolved body, which is what the δ order records. *)
+(** The termination orders mirror [eval_exp], [eval_natrec] and [eval_app]
+    in the same global context.  A transparent global recurses into its
+    resolved body, which [eeo_glob_delta] records. *)
 
 Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_typ :
@@ -30,6 +30,19 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_natrec_order Θ Ξ A MZ MS m p) ->
      eval_exp_order Θ Ξ rec M return A | zero -> MZ | succ -> MS end p )
+| eeo_True :
+  `( eval_exp_order Θ Ξ ⊤ p )
+| eeo_true :
+  `( eval_exp_order Θ Ξ ⋆ p )
+| eeo_False :
+  `( eval_exp_order Θ Ξ ⊥ p )
+(** The scrutinee of [efq] must evaluate to a neutral, since no other value
+    has a rule. *)
+| eeo_exfalso :
+  `( eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> exists b n, m = ⇑ b n) ->
+     (forall b m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ ⇑ b m -> eval_exp_order Θ Ξ A (p ↦ ⇑ b m)) ->
+     eval_exp_order Θ Ξ (efq M return A) p )
 | eeo_pi :
   `( eval_exp_order Θ Ξ A p ->
      eval_exp_order Θ Ξ (Π A B) p )
@@ -114,8 +127,7 @@ Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 Section EvalImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
 
-  (** A variable does not recurse: the environment is total, so it is just
-      looked up. *)
+  (** A variable is looked up in the environment, without recursion. *)
   Definition eval_var_impl x p (H : eval_exp_order Θ Ξ #x p) : { d | ⟦ #x ⟧ Θ ⍮ Ξ ⍮ p ↘ d }.
   Proof.
     exists (env_var p x); apply eval_exp_var.
@@ -129,8 +141,8 @@ Section EvalImpl.
     | H : eval_app_order _ _ _ _ |- _ => progressive_invert H
     end.
 
-  (** The global and parameter cases: the resolution the order was built for is
-      the one computed, which fixes the body, or rules the case out. *)
+  (** The global cases: the resolution recorded in the order is the one
+      computed, which either fixes the body or rules the case out. *)
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
@@ -140,10 +152,20 @@ Section EvalImpl.
           rewrite H1 in H2; discriminate H2
       end.
 
+  (** The [efq] case: the order says that the scrutinee evaluates to a
+      neutral, which rules out every other value. *)
+  #[local]
+  Ltac impl_obl_exfalso :=
+    repeat match goal with
+      | H : forall m, eval_exp _ _ ?M ?p m -> exists _ _, m = ⇑ _ _, Hm : eval_exp _ _ ?M ?p _ |- _ =>
+          destruct (H _ Hm) as (? & ? & ?); clear H
+      end.
+
   #[local]
   Ltac impl_obl_tac :=
     intros; cbv beta in *;
     repeat impl_obl_tac1;
+    impl_obl_exfalso;
     try match goal with H : eval_exp_order _ _ (a_glob _) _ |- _ => inversion H; subst; clear H end;
     impl_obl_glob;
     try solve [ intuition discriminate ];
@@ -164,6 +186,14 @@ Section EvalImpl.
       let (m , Hm) := eval_exp_impl M p _ in
       let (r, Hr)  := eval_natrec_impl A MZ MS m p _ in
       exist _ r _
+  | ⊤     , p, H => exist _ ⊤ᵈ _
+  | ⋆     , p, H => exist _ ⋆ᵈ _
+  | ⊥     , p, H => exist _ ⊥ᵈ _
+  | efq M return A, p, H with eval_exp_impl M p _ := {
+    | exist _ (⇑ b m) Hm =>
+        let (a, Ha) := eval_exp_impl A (p ↦ ⇑ b m) _ in
+        exist _ ⇑ a (efqᵈ m under p return A) _
+    | exist _ _ Hm => False_rect _ _ }
   | Π A B , p, H =>
       let (r , Hr) := eval_exp_impl A p _ in
       exist _ Πᵈ r p B _
@@ -216,10 +246,9 @@ Extraction Inline eval_exp_impl_functional
   eval_natrec_impl_functional
   eval_app_impl_functional.
 
-(** The definitions of [eval_*_impl] already come with soundness proofs,
-    so we only need to prove completeness. However, the completeness
-    is also obvious from the soundness of eval orders and functional
-    nature of eval. *)
+(** The [eval_*_impl] functions are sound by construction.  Completeness
+    follows from the soundness of the evaluation orders and the functionality
+    of evaluation. *)
 
 #[local]
 Ltac functional_eval_complete :=

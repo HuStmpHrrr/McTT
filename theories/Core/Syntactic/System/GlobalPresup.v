@@ -3,11 +3,11 @@
     Presupposition is proved for all eleven judgments at once.  A global is used
     at its resolved type without premising that it is a type, and a definition's
     type is not checked separately from its body; that each is a type is what
-    presupposition of the *entry's* own derivation gives, and that derivation is
+    presupposition of the entry's own derivation gives, and that derivation is
     part of [⊢g], so the induction has to range over the global judgments too.
 
     Every entry is closed and every path absolute, so a global context only
-    ever grows by *embedding*: everything that resolves keeps resolving to the
+    ever grows by embedding: everything that resolves keeps resolving to the
     same entry ([gc_sub]), and a judgment moves along an embedding unchanged
     ([emb_preserves_wf]).  The induction over the global judgments is stated
     once, for an arbitrary notion [V] of a valid entry ([global_induction]):

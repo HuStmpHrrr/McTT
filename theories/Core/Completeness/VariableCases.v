@@ -1,26 +1,18 @@
 (** * Fundamental Theorem: Variables
 
-    Three of the old file's four lemmas are gone.  [rel_exp_var_0_sub],
-    [rel_exp_var_S_sub] and [rel_exp_var_weaken] validated the rules that
-    computed [#0[σ ,, M]], [#(S x)[σ ,, M]] and [#x[↑]ʷ[σ ,, M]]; all three are now
-    *equations* of [exp_sub] ([sb_extend]'s two clauses and
-    [exp_sub_shift_extend]), so there is no longer anything to validate.
+    Substitution into a variable computes ([sb_extend]'s two clauses and
+    [exp_sub_shift_extend]), so only the variable rule itself is validated here,
+    together with the semantic weakening lemma its induction step is an instance
+    of: [#(S x)] is [(#x)[↑]ʷ], and the type it reports is [A[↑]ʷ].
 
-    What is left is the variable case of the fundamental theorem, and the
-    semantic weakening lemma its induction step is an instance of — since a
-    lookup one context deeper is literally a weakened lookup:
-    [#(S x)] is [(#x)[↑]ʷ] and the type it reports is [A[↑]ʷ].
-
-    Both rest on a pair of instantiations.  A judgment about [Γ] is used twice:
-    once along [Wk ⨟ σ] at [Γ'], whose *outer* values are the goal's outer values
-    ([exp_sub_shift]), and once along [Wk] at the
-    substituted environments, whose outer values are the goal's *inner* values
-    ([exp_sub_of_shift]).  The two share their inner values — both evaluate the
-    unweakened expression in [ρσ ↯] and [ρ'σ' ↯] — and since evaluation is
-    functional that shared pair is what merges the two chains into the one the
-    goal asks for.  Postcomposition would not do: [⟦σ[↑]ʷ⟧ρ] and [⟦σ⟧(ρ↯)] are
-    different environments, which is exactly why the bridge is a *merge* and not a
-    rewrite. *)
+    Both rest on two instantiations of a judgment about [Γ]: along [Wk ⨟ σ] at
+    [Γ'], whose outer values are the goal's outer values ([exp_sub_shift]), and
+    along [Wk] at the substituted environments, whose outer values are the goal's
+    inner values ([exp_sub_of_shift]).  The two share their inner values, since
+    both evaluate the unweakened expression in [ρσ ↯] and [ρ'σ' ↯], and as
+    evaluation is functional this shared pair merges the two chains into the one
+    the goal asks for.  [⟦σ[↑]ʷ⟧ρ] and [⟦σ⟧(ρ↯)] are different environments,
+    which is why the bridge is a merge and not a rewrite. *)
 
 From Stdlib Require Import List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -34,15 +26,15 @@ Import Wk_Notations.
 
 (** ** Semantic Weakening
 
-    The judgment of a context survives being read in an extension of it, with
+    A judgment of a context still holds when read in an extension of it, with
     everything weakened.  This is the form the induction step of [valid_exp_var]
-    needs, and it is where the two instantiations live.
+    needs.
 
-    The premise is the context PER of the extension and not its [⊨]: what the extension
-    is needed for is the [Wk]-instantiation, and [rel_sub_shift] factors through
-    [rel_wk_shift], which asks only for the two PERs — the tail's coming from [M]'s
-    own judgment.  Stating it this way is what lets the η-rule use it, since no
-    premise of that rule mentions [Γ] and so [⊨ Γ] is not available there. *)
+    The premise is the context PER of the extension, not its [⊨]: the extension
+    is only needed for the [Wk] instantiation, and [rel_sub_shift] factors through
+    [rel_wk_shift], which asks only for the two PERs, the tail's coming from [M]'s
+    judgment.  This lets the η-rule use the lemma, since no premise of that rule
+    mentions [Γ] and so [⊨ Γ] is not available there. *)
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -77,9 +69,9 @@ Proof.
       values are the goal's outer ones, the second's are the goal's inner ones. *)
   rewrite <- exp_sub_shift in Hv1, Hv4, Hm1, Hm4.
   rewrite exp_sub_of_shift in Hu1, Hu4, Hn1, Hn4.
-  (** [v2 = u2] and [v3 = u3] by functionality: the two chains meet at the values
-      of the *unweakened* type in the tails, and reading that shared link off both
-      identifies the two element PERs. *)
+  (** [v2 = u2] and [v3 = u3] by functionality: the two chains meet at the
+    values of the unweakened type in the tails, and that shared link identifies
+    the two element PERs. *)
   handle_per_univ_elem_irrel.
   assert (Hmid1 : DF v2 ≈ v3 ∈ per_univ_elem i ↘ R1) by pairwise.
   assert (Hmid2 : DF v2 ≈ v3 ∈ per_univ_elem i ↘ R2) by pairwise.
@@ -102,11 +94,11 @@ Hint Resolve rel_exp_under_ctx_shift : mctt.
     lookup, so the induction step is [rel_exp_under_ctx_shift]. *)
 
 (** [Γ ▹ A ∋ #0 : A[↑]ʷ].  The type is weakened, so its four values come from
-    the weakening lemma applied to [A]'s own judgment; the term's four values
-    are all [ρσ 0] and [ρ'σ' 0], handed over by the head clause of the context
-    PER of [Γ ▹ A].  That clause speaks of the values of [A] in the tails, so
-    the instance of [A]'s judgment at [Wk] is needed a second time, as a
-    bridge from those values to the values of [A[↑]ʷ]. *)
+    the weakening lemma applied to [A]'s judgment.  The term's values are all
+    [ρσ 0] and [ρ'σ' 0], given by the head clause of the context PER of [Γ ▹ A].
+    That clause speaks of the values of [A] in the tails, so the [Wk] instance of
+    [A]'s judgment is used a second time, to bridge those values to the values of
+    [A[↑]ʷ]. *)
 Lemma valid_exp_var_here : forall {Γ A},
     ⊨ Γ ▹ A ->
     Γ ▹ A ⊨ #0 : A[↑]ʷ.
@@ -122,7 +114,7 @@ Proof.
   clear HΓAper env_rel.
   eexists_rel_exp_with i.
   (** The head clause of the context PER of [Γ ▹ A]: it relates the heads of two
-      related environments at the values of [A] in their *tails*. *)
+      related environments at the values of [A] in their tails. *)
   pose proof HΓAper' as HΓAcons.
   invert_per_ctx_env HΓAcons.
   rename x into j; rename x0 into head_rel; rename H into Hheadtyp; rename H0 into Hequiv.
@@ -154,7 +146,7 @@ Proof.
   split.
   + apply (mk_rel_exp v1 v2 v3 v4); try eassumption.
     apply rel_chain_4; eassumption.
-  + (** [#0[σ]] *is* [σ 0], so the outer values are the heads too. *)
+  + (** [#0[σ]] is [σ 0], so the outer values are the heads too. *)
     apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
       try apply eval_exp_var; try (apply eval_sub_index; eassumption).
     apply rel_chain_4_of_2; [ solve_chain_PER | eassumption ].

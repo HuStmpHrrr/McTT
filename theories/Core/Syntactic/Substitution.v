@@ -2,27 +2,24 @@
 
     Weakenings and substitutions are meta-level operations on [exp] (see
     [Core.Syntactic.Syntax]), so the laws that a calculus of explicit
-    substitutions postulates as definitional equalities are, here, theorems.
-    This file proves them.
+    substitutions postulates as definitional equalities are theorems here.
 
-    Two conventions are worth repeating.
+    Two conventions:
 
-    - Composition is *diagrammatic*: [σ ⨟ τ] applies [σ] first and then [τ].
+    - Composition is diagrammatic: [σ ⨟ τ] applies [σ] first and then [τ].
     - Weakenings and substitutions are functions, so a law the paper states as
-      an equality of substitutions is here an equality of the pointwise
-      relation [sb_eq] (respectively [wk_eq]) rather than a Leibniz equality.
-      This keeps the development free of functional extensionality.  The
-      congruence lemmas [exp_wk_wk_eq] and [exp_sub_sb_eq], together with the
-      [Proper] instances registered below, let ordinary [rewrite] cross the
-      boundary between the two.
+      an equality of substitutions is an equality of the pointwise relation
+      [sb_eq] (respectively [wk_eq]), which avoids functional
+      extensionality.  The congruence lemmas [exp_wk_wk_eq] and
+      [exp_sub_sb_eq], with the [Proper] instances registered below, let
+      [rewrite] cross between the two.
 
     Most laws come in two forms: a general one taking the relevant pointwise
     equation as a hypothesis (suffix [_ext]), and the specialisation that
-    matches the paper.  The general form is what makes the inductions go
-    through, because it is what survives passing under a binder; the
-    specialisation is what the rest of the development uses.  In particular it
-    is what lets us dispense with an induction over the number of enclosing
-    binders. *)
+    matches the paper.  The general form makes the inductions go through,
+    because it survives passing under a binder, so no induction over the
+    number of enclosing binders is needed; the rest of the development uses
+    the specialisation. *)
 
 From Stdlib Require Import Lia Morphisms Relation_Definitions RelationClasses Setoid.
 
@@ -89,11 +86,17 @@ Fact exp_sub_typ : forall σ i, Type@i[σ] = Type@i.      Proof. reflexivity. Qe
 Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
 Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
 Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.
+Fact exp_wk_True : forall φ, ⊤[φ]ʷ = ⊤.                  Proof. reflexivity. Qed.
+Fact exp_wk_true : forall φ, ⋆[φ]ʷ = ⋆.                  Proof. reflexivity. Qed.
+Fact exp_wk_False : forall φ, ⊥[φ]ʷ = ⊥.                 Proof. reflexivity. Qed.
+Fact exp_sub_True : forall σ, ⊤[σ] = ⊤.                 Proof. reflexivity. Qed.
+Fact exp_sub_true : forall σ, ⋆[σ] = ⋆.                 Proof. reflexivity. Qed.
+Fact exp_sub_False : forall σ, ⊥[σ] = ⊥.                Proof. reflexivity. Qed.
 
 (** The heads that do meet a binder.  Kept out of the databases above: pushing
     an operation inside a [Π] or a [λ] replaces it by a [q], which none of the
     laws below can then cancel against an extension.  They are here so that a
-    transported [Π]-type can be *recognised* as one by [rewrite]. *)
+    transported [Π]-type can be recognised as one by [rewrite]. *)
 
 Fact exp_wk_pi : forall φ A B, (Π A B)[φ]ʷ = Π A[φ]ʷ B[wk_q φ]ʷ.
 Proof. reflexivity. Qed.
@@ -115,8 +118,7 @@ Proof. reflexivity. Qed.
 
 (** *** Two Shared Tactics
 
-    Almost every proof below is one of two shapes, so they are worth naming
-    once instead of being spelled out each time.
+    Almost every proof below has one of two shapes.
 
     [pointwise] opens a goal about weakenings or substitutions at index [0] and
     at index [S _] and normalises both; [pointwise_solve] additionally closes
@@ -126,7 +128,7 @@ Proof. reflexivity. Qed.
 (** Every operation but [sb_q] is a one-line definition, so [cbv delta] puts a
     pointwise statement into a normal form in which the only remaining opaque
     applications are of [exp_wk], [exp_sub] and [sb_q].  Unlike rewriting, this
-    reaches *under* the [forall] of a pointwise hypothesis, which is why
+    reaches under the [forall] of a pointwise hypothesis, which is why
     [reduce_index] alone is not enough. *)
 Ltac unfold_ops :=
   cbv beta delta [ wk_eq sb_eq pointwise_relation
@@ -445,11 +447,10 @@ Proof. induction M; intros * Heq; exp_ind_ext Heq sb_q_wk_pre_ext. Qed.
 Corollary exp_sub_wk : forall M φ σ, M[φ]ʷ[σ] = M[(ι φ) ⨟ σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 
-(** The two instances at [↑], spelled with [Wk] instead of [ι ↑].  [Wk] *is*
-    [ι ↑] by definition, but [rewrite] matches syntactically, and it is [Wk] that
-    the semantic shift lemmas speak of — so these are the
-    spellings a context lookup needs in order to move its [A[↑]ʷ] along a
-    substitution. *)
+(** The two instances at [↑], spelled with [Wk] instead of [ι ↑].  [Wk] is
+    [ι ↑] by definition, but [rewrite] matches syntactically, and the semantic
+    shift lemmas speak of [Wk]; a context lookup needs these spellings to move
+    its [A[↑]ʷ] along a substitution. *)
 
 Corollary exp_sub_shift : forall M σ, M[↑]ʷ[σ] = M[Wk ⨟ σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
@@ -457,7 +458,7 @@ Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 Corollary exp_sub_of_shift : forall M, M[Wk] = M[↑]ʷ.
 Proof. intros; apply exp_sub_of_wk_ext, sb_of_wk_shift. Qed.
 
-(** Instantiating the codomain of a *weakened* [Π]-type.  This is the shape the
+(** Instantiating the codomain of a weakened [Π]-type.  This is the shape the
     gluing model states its [Π] clauses in: the elimination rule
     produces [OT[q φ]ʷ[Id ,, N]] and the clause speaks of [OT[ι φ ,, N]]. *)
 Corollary exp_sub_wk_q_extend : forall M φ N,
@@ -500,8 +501,9 @@ Corollary exp_wk_sub_of_wk_extend : forall M φ ψ N,
     M[(ι φ),,N][ψ]ʷ = M[(ι (φ ⊙ ψ)),,N[ψ]ʷ].
 Proof. intros; apply exp_wk_sub_ext; pointwise; reflexivity. Qed.
 
-(** Weakening and substitution commute.  Stating the hypothesis pointwise is
-    what removes the induction over the number of enclosing binders: the hypothesis is exactly what survives being lifted. *)
+(** Weakening and substitution commute.  The pointwise hypothesis is what
+    survives being lifted, so no induction over the number of enclosing
+    binders is needed. *)
 
 Lemma sb_q_comm_ext : forall φ σ τ ψ,
     (forall x, σ (φ x) = (τ x)[ψ]ʷ) ->
@@ -540,8 +542,7 @@ Corollary exp_sub_shift_extend : forall M σ N,
     M[↑]ʷ[σ,,N] = M[σ].
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
 
-(** Substitution application respects
-    composition. *)
+(** Substitution application respects composition. *)
 
 Lemma sb_q_compose_ext : forall σ τ δ,
     sb_eq (σ ⨟ τ) δ ->
@@ -586,7 +587,7 @@ Proof. intros * x; simpl; symmetry; apply exp_sub_of_wk. Qed.
 Lemma sb_wk_wk : forall σ ψ φ, sb_eq (sb_wk (sb_wk σ ψ) φ) (sb_wk σ (ψ ⊙ φ)).
 Proof. intros * x; simpl; apply exp_wk_wk. Qed.
 
-(** Postcomposition by a weakening slides past *pre*composition by a weakening:
+(** Postcomposition by a weakening slides past precomposition by a weakening:
     both sides send [x] to [(σ (ψ x))[φ]ʷ].  Nothing has to be transported across
     [ψ], because [(ι ψ) x] is a variable — the same reason [eval_sub_wk_pre]
     exists while its analogue for a general composition does not.  The semantic
@@ -633,10 +634,9 @@ Proof. intros *; pointwise_solve. Qed.
 (** A lifted substitution meeting an extension.
     These are the equations behind the [β]-rule and the elimination rules. *)
 
-(** The general form — the old [sub_decompose_q], now an equation.  The two
-    lemmas below are its instances at [τ := ι φ] and [τ := Id]; both are stated
-    separately because the head of the right-hand side differs, and it is the
-    head that the rewrite databases match on. *)
+(** The general form.  The two lemmas below are its instances at [τ := ι φ]
+    and [τ := Id], stated separately because the head of the right-hand side
+    differs, and the rewrite databases match on that head. *)
 Lemma sb_q_compose_extend : forall σ τ M,
     sb_eq ((q σ) ⨟ (τ,,M)) (σ ⨟ τ,,M).
 Proof.
@@ -686,7 +686,7 @@ Proof.
 Qed.
 
 (** The form the completeness proof uses it in: an instantiated type or term,
-    substituted, is the instantiation *along* the substitution.  Every rule whose
+    substituted, is the instantiation along the substitution.  Every rule whose
     type is an [M[Id ,, N]] reads its two outer values through this equation,
     because those are values at [ρ] and [ρ'] of the substituted expression while
     the judgment about [M] can only produce values along a substitution into the
@@ -768,11 +768,11 @@ Qed.
 
 (** The type of the [ℕ]-[β] rule for [succ]: the successor branch's motive,
     instantiated at [N] and the recursive call, is the motive at [succ N].  Stated
-    along an arbitrary [σ] and not just [Id], because the semantic rule reads this
-    type at *two* substitutions — [Id ,, M ,, E] out of [Γ] for its two inner
+    along an arbitrary [σ] and not just [Id], because the semantic rule reads
+    this type at two substitutions, [Id ,, M ,, E] out of [Γ] for its two inner
     values and [σ ,, M[σ] ,, E[σ]] out of the caller's [Γ'] for its two outer
-    ones — and both instances have to be the *same* equation for the two
-    four-value patterns to be identified with one another. *)
+    ones, and both instances must be the same equation for the two four-value
+    patterns to be identified. *)
 Corollary exp_sub_natrec_step : forall M σ N N',
     M[Wk ⨟ Wk,,succ #1][σ,,N,,N'] = M[σ,,succ N].
 Proof.
@@ -823,7 +823,7 @@ Qed.
     been weakened past that binder.  If [E] is the eliminator at [M] in [Γ], this
     is a term of [Γ ▹ ℕ] which the extension [Id ,, M] sends back to [E], and it
     exists for one reason: the recursive call of the [ℕ]-[β] rule for [succ]
-    appears in the *substitution* [Id ,, M ,, E], and the only way to validate an
+    appears in the substitution [Id ,, M ,, E], and the only way to validate an
     extension semantically ([rel_sub_under_ctx_extend_sub_double]) is by a term of
     the context being extended.  [E] itself is a term of [Γ], one context too
     short; its generic form is the term of [Γ ▹ ℕ] that is asked for. *)
@@ -896,6 +896,8 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 exp_wk_var exp_sub_var
                 exp_wk_typ exp_wk_nat exp_wk_zero
                 exp_sub_typ exp_sub_nat exp_sub_zero
+                exp_wk_True exp_wk_true exp_wk_False
+                exp_sub_True exp_sub_true exp_sub_False
                 exp_wk_id exp_sub_id exp_wk_wk exp_sub_sub
                 exp_wk_sub exp_sub_of_wk
                 exp_sub_shift_extend

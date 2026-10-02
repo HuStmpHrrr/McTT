@@ -1,7 +1,7 @@
 (** * The Global Rules: Validity along an Embedding
 
     A judgment of the global context [Θ1 ⍮ Ξ1] is valid at every [Θ2 ⍮ Ξ2] it
-    *embeds* into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2]
+    embeds into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2]
     ([sem_emb]).  Entries are closed and paths absolute, so an embedding moves
     nothing: the fundamental theorem holds in this form for every rule
     ([kripke_fundamental]), each case being the fixed-context case lemma at the
@@ -14,7 +14,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases LetCases NatCases SubstitutionCases SubtypingCases
-  UniverseCases VariableCases LogicalRelation.
+  TrueFalseCases UniverseCases VariableCases LogicalRelation.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -63,6 +63,10 @@ Proof.
     | apply valid_exp_zero; assumption
     | apply rel_exp_succ_cong; assumption
     | eapply rel_exp_natrec_cong; eassumption
+    | apply valid_exp_True; assumption | apply valid_exp_False; assumption
+    | apply valid_exp_true; assumption
+    | eapply rel_exp_exfalso_cong; eassumption
+    | apply rel_exp_true_eta; assumption
     | eapply rel_exp_pi_cong; eassumption
     | eapply rel_exp_fn_cong; eassumption
     | eapply rel_exp_app_cong; eassumption
@@ -106,11 +110,11 @@ Qed.
 
 (** ** Globals from the validity of their types and bodies
 
-    The δ-rule evaluates the generalized body in the *empty* environment, and a
+    The δ-rule evaluates the generalized body in the empty environment, and a
     global or parameter is a neutral annotated with its type evaluated there.
-    [nil] is reached by [sb_zero], which evaluates to [nil] in any environment
-    (a list environment reads [zeroᵈ] past its end); so instantiating a [⋅]
-    judgment at [sb_zero] relates the value at [nil] to the value anywhere. *)
+    [nil] is reached by [sb_zero], which evaluates to [nil] in any environment (a
+    list environment reads [zeroᵈ] past its end), so instantiating a [⋅] judgment
+    at [sb_zero] relates the value at [nil] to the value anywhere. *)
 
 Definition sb_zero : sub := fun _ => a_zero.
 

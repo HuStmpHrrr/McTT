@@ -6,14 +6,13 @@ Import Domain_Notations.
 (** * The Short Forms, for a Fixed Global Context
 
     The semantic development fixes the global context once per section, with
-    [Context `{GCtx}], and writes every judgment, evaluation and readback
-    relative to it.  These notations are the forms without [Θ ⍮ Ξ]; where two
+    [Context `{GCtx}].  These notations write judgments, evaluation and
+    readback without [Θ ⍮ Ξ], relative to that fixed context.  Where two
     global contexts meet, the long forms are used. *)
 
-(** The short forms cannot share a file with the long ones: [⊢ Γ] and
-    [⊢ Θ ⍮ Ξ ⍮ Γ] do not parse together.  So they are a module, imported by
-    the files that fix the global context, which then spell a judgment at
-    another global context by its constant. *)
+(** The short and long forms do not parse together ([⊢ Γ] against
+    [⊢ Θ ⍮ Ξ ⍮ Γ]), so the short forms are a separate module.  Files that
+    import it refer to a judgment at another global context by its constant. *)
 Module Fixed_Notations.
 
 (** ** Judgments *)
@@ -27,7 +26,7 @@ Module Fixed_Notations.
   Notation "Γ ⊢s σ : Δ" := (wf_sub gc_deps gc_stack Γ Δ σ) (at level 70, σ at level 69, Δ at level 69) : type_scope.
   Notation "Γ ⊢s σ ≈ σ' : Δ" := (wf_sub_eq gc_deps gc_stack Γ Δ σ σ')
     (at level 70, σ at level 69, σ' at level 69, Δ at level 69) : type_scope.
-  (** [⊢ Δ ⊆ Γ] would not parse alongside [⊢ Γ] and the long forms. *)
+  (** Not [⊢ Δ ⊆ Γ], which would not parse alongside [⊢ Γ] and the long forms. *)
   Notation "Δ ⊆ Γ" := (ctx_sub gc_deps gc_stack Δ Γ) (at level 70, Γ at level 69) : type_scope.
   
   (** ** Evaluation and Readback *)

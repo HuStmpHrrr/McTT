@@ -10,19 +10,18 @@ Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding the Global-Context Judgments
 
-    The elaborator hands the driver a [gstack] and one obligation per [eval],
-    and nothing proves that stack well formed — so the driver has to check it.
-    These are the decision procedures for the judgments the interpreter needs,
-    on top of [Extraction.TypeCheck]: [⊢ Θ ⍮ Ξ ⍮ Γ], types and terms.
+    The decision procedures the command interpreter needs, built on
+    [Extraction.TypeCheck]: well-formedness of local contexts [⊢ Θ ⍮ Ξ ⍮ Γ],
+    of types and of terms.
 
-    [wf_gdep]/[wf_gdeps] are *not* decided here: the levels are what a unit is
-    compiled against, so the driver is given them already checked ([nil], for
-    now — see deviation 3 in [AGENT/modules.md]).  [Θ] is therefore a parameter
-    of everything below, and only [Ξ] and the local context are traversed. *)
+    [wf_gdep] and [wf_gdeps] are not decided here: the levels are what a unit
+    is compiled against, and they are given already checked.  [Θ] is
+    therefore a parameter of everything below, and only [Ξ] and the local
+    context are traversed. *)
 
-(** [wf_gctx] is the one judgment of the block whose constructor is not a global
-    hint — nothing in the metatheory builds a [⊢g] forwards.  Every decision
-    procedure below does. *)
+(** [wf_gctx] is the only judgment of its block whose constructor is not a
+    global hint, since nothing in the metatheory builds a [⊢g] forwards.  The
+    decision procedures below do, so it is a local hint here. *)
 #[local]
 Hint Constructors wf_gctx : mctt.
 #[local]
@@ -30,11 +29,11 @@ Hint Resolve wf_gctx_stack : mctt.
 
 (** ** The Bridge to the Algorithmic Judgments
 
-    Everything algorithmic fixes its global context as an instance and so reads
-    it as [gc_deps GC]/[gc_stack GC].  Unifying that against an explicit
-    [Θ ⍮ Ξ] would ask for a solution of [gc_deps ?GC ≟ Θ], which no unifier
-    finds, so each crossing instantiates [GC] by hand — once, here.  Below this
-    section only the long forms appear. *)
+    The algorithmic judgments take their global context as an instance [GC]
+    and read it as [gc_deps GC] and [gc_stack GC].  Unifying that with an
+    explicit [Θ ⍮ Ξ] would require solving [gc_deps ?GC ≟ Θ], which no
+    unifier does, so this section instantiates [GC] by hand.  Below it, only
+    the explicit forms appear. *)
 
 Section Bridge.
 
@@ -51,8 +50,8 @@ Section Bridge.
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
   Proof.
-    (** [exact], not [eapply]: [nf_to_exp Typeⁿ@i] and [Type@i] are convertible
-        but unifying them the other way round is beyond the unifier. *)
+    (** [exact] rather than [eapply]: [nf_to_exp Typeⁿ@i] and [Type@i] are
+        convertible, but the unifier cannot unify them in this direction. *)
     intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeⁿ@i _ H HΓ).
   Qed.
 
@@ -65,8 +64,8 @@ Section Bridge.
     intros; eapply (alg_type_check_sound (GC := gc_mk Θ Ξ)); eassumption.
   Qed.
 
-  (** [user_exp] no longer restricts anything ([user_exp_all]), so completeness
-      of the algorithm carries no side condition on this side of the bridge. *)
+  (** Every expression is a [user_exp] ([user_exp_all]), so completeness has
+      no side condition on this side of the bridge. *)
   Lemma alg_type_check_complete' : forall Θ Ξ Γ A M,
       Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
       @alg_type_check (gc_mk Θ Ξ) Γ A M.
@@ -86,9 +85,9 @@ Section Bridge.
     eauto.
   Qed.
 
-  (** The two ways "is [A] a type?" fails: nothing is inferred for [A], or what
-      is inferred is not a universe.  Each contradicts completeness, the second
-      through functionality of inference. *)
+  (** The two ways "is [A] a type?" can fail: nothing is inferred for [A], or
+      what is inferred is not a universe.  Each contradicts completeness, the
+      second through functionality of inference. *)
   Lemma not_wf_typ_of_no_infer : forall Θ Ξ Γ A,
       (forall B : nf, ~ @alg_type_infer (gc_mk Θ Ξ) Γ B A) ->
       forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
@@ -120,8 +119,8 @@ Hint Resolve alg_type_infer_typ_sound' alg_type_check_sound'
 
 (** ** Types and Terms at an Explicit Global Context *)
 
-(** [get_level_of_type_nf] hands its witness back as an equation between two
-    [nf]s; every obligation that uses it wants the levels instead. *)
+(** [get_level_of_type_nf] returns its witness as an equation between two
+    [nf]s; the obligations that use it need the levels instead. *)
 #[local]
 Ltac invert_nf_typ_eq :=
   subst;
@@ -143,8 +142,8 @@ Section check_exp.
     | _ => mautosolve 3
     end.
 
-  (** "Is [A] a type?", asked exactly as [type_check]'s Π case asks it: infer a
-      type for [A], then insist the answer is a universe. *)
+  (** "Is [A] a type?", decided as in the Π case of [type_check]: infer a type
+      for [A], then require it to be a universe. *)
   #[tactic="check_typ_tac",derive(equations=no,eliminator=no)]
   Equations check_typ Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } :=
@@ -164,8 +163,8 @@ Section check_exp.
     lazymatch goal with
     | |- type_check_order _ => apply tc_ti, user_exp_to_type_infer_order, user_exp_all
     | |- exists _, _ => eexists; eassumption
-    (** The type of a well-typed term is a type, so failing to see that [A] is
-        one already rules the judgment out. *)
+    (** The type of a well-typed term is a type, so if [A] is not one, the
+        judgment cannot hold. *)
     | |- ~ _ ⍮ _ ⍮ _ ⊢ _ : _ => intro; gen_presups; firstorder (mautosolve 3)
     | _ => mautosolve 3
     end.
@@ -183,9 +182,9 @@ End check_exp.
 
 (** ** Local Contexts
 
-    Structural on [Γ]: the base case is where the global context is appealed to.
-    An assumption is one call of [check_typ], and a definition is one call of
-    [check_exp]. *)
+    By structural recursion on [Γ]: the base case appeals to the
+    well-formedness of the global context.  An assumption is one call of
+    [check_typ], and a definition is one call of [check_exp]. *)
 
 Section check_ctx.
 
@@ -215,15 +214,15 @@ Section check_ctx.
 
 End check_ctx.
 
-(** Freshness is a non-membership of [gm_names], so [in_dec] decides it; the
-    orientation is the only thing to fix. *)
+(** Freshness is non-membership in [gm_names], so [in_dec] decides it, with
+    the two outcomes swapped. *)
 Definition check_gm_fresh (x : string) (Φ : gmod) : { gm_fresh x Φ } + { ~ gm_fresh x Φ } :=
   match List.in_dec String.string_dec x (gm_names Φ) with
   | left h => right (fun hfresh => hfresh h)
   | right h => left h
   end.
 
-(** The command layer ([Extraction.Command]) checks one command at a time, so
-    these are all the decision procedures it needs: a context, a type, a term,
-    and freshness of a member's name.  The global judgments themselves are
-    never decided: the interpreter builds them, command by command. *)
+(** [Extraction.Command] checks one command at a time, so these are all the
+    decision procedures it needs: a context, a type, a term, and freshness of
+    a member's name.  The global judgments themselves are never decided; the
+    interpreter builds them command by command. *)

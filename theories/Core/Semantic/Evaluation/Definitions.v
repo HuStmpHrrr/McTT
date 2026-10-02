@@ -16,12 +16,12 @@ Generalizable All Variables.
 
 (** * Evaluation of Expressions
 
-    Three mutually defined relations: evaluation proper, its
-    [ℕ]-eliminator case, and semantic application.  All three are relative to
-    the global context [Θ ⍮ Ξ], which does not change during NbE.  A global is
-    resolved there, which is a lookup: a transparent definition unfolds to its
-    body — stored closed, so evaluated in the empty environment — and anything
-    else is a neutral at its type.  No rule applies an operation to a term. *)
+    Three mutually defined relations: evaluation proper, its [ℕ]-eliminator
+    case, and semantic application.  All three are relative to the global
+    context [Θ ⍮ Ξ], which does not change during NbE.  A global is resolved by
+    lookup in [Θ ⍮ Ξ]: a transparent definition unfolds to its body, and any
+    other global is a neutral at its type.  No rule applies a syntactic
+    operation such as substitution to a term. *)
 Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
@@ -38,6 +38,17 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+| eval_exp_True :
+  `( ⟦ ⊤ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
+| eval_exp_true :
+  `( ⟦ ⋆ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+| eval_exp_False :
+  `( ⟦ ⊥ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )
+(** [⊥] has no canonical values, so the eliminator only meets a neutral. *)
+| eval_exp_exfalso :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ b m ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
+     ⟦ efq M return A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (efqᵈ m under ρ return A) )
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ Π A B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ a ρ B )
@@ -54,8 +65,8 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ m ↘ r ->
      ⟦ ℓ A ≔ M in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** δ: a transparent definition is its body, stored closed, so it is
-    evaluated in the empty environment as it is. *)
+(** δ: a transparent definition evaluates to its body.  The body is stored
+    closed, so it is evaluated in the empty environment. *)
 | eval_exp_glob_delta :
   `( gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ m ->
@@ -101,9 +112,9 @@ Combined Scheme eval_mut_ind from
 #[export]
 Hint Constructors eval_exp eval_natrec eval_app : mctt.
 
-(** [eval_exp_var] up to conversion: its value [ρ x] is a flexible
-    application, which unification would read [ρ] and [x] off the wrong term
-    of. *)
+(** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
+    application, so unifying against it directly can pick the wrong [ρ] and
+    [x]. *)
 Proposition eval_exp_var_eq : forall {Θ Ξ} x (ρ : env) m,
     ρ x = m ->
     ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
@@ -111,9 +122,10 @@ Proof. intros * <-; apply eval_exp_var. Qed.
 
 (** * Evaluation of Substitutions
 
-    Pointwise, at every variable: each value of [ρσ] is what the substitution
-    computes from [ρ].  A list ends, so past its end [ρσ] reads [zeroᵈ]; a result
-    therefore exists only when [σ] is, far enough out, a variable past [ρ]. *)
+    Evaluation of a substitution is pointwise: at every variable [x], [ρσ x]
+    is the value of [σ x] in [ρ].  Past its end [ρσ] reads [zeroᵈ], so a
+    result exists only when, from some index on, every [σ x] evaluates to
+    [zeroᵈ], for example as a variable past the end of [ρ]. *)
 Definition eval_sub (Θ : gdeps) (Ξ : gstack) (σ : sub) (ρ ρσ : env) : Prop :=
   forall x, ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x.
 Arguments eval_sub : simpl never.
@@ -151,9 +163,9 @@ Proposition eval_sub_index : forall {Θ Ξ} σ (ρ ρσ : env),
     forall x, ⟦ σ x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρσ x.
 Proof. intros * H. exact H. Qed.
 
-(** Both arguments that [eval_sub] inspects pointwise may be replaced by
-    pointwise-equal ones; the input environment may not — a closure captures
-    it. *)
+(** The substitution and the result environment may be replaced by
+    pointwise-equal ones.  The input environment may not, since a closure
+    captures it. *)
 #[export]
 Instance eval_sub_Proper : forall {Θ Ξ}, Proper (sb_eq ==> eq ==> env_eq ==> iff) (eval_sub Θ Ξ).
 Proof.
@@ -163,23 +175,27 @@ Qed.
 
 (** ** The Substitutions that Compute
 
-    The image of a weakening under [ι] — one that moves no variable down, so
-    that [⟪φ⟫ ρ] is [ρ ∘ φ] everywhere — the identity, and an extension. *)
+    Evaluation of the substitutions that occur in practice:
+
+    - the image under [ι] of an order-preserving weakening, for which
+      [⟪φ⟫ ρ] is [ρ ∘ φ] at every index;
+    - weakened extensions and lifts;
+    - precomposition by a weakening. *)
 Lemma eval_sub_of_wk : forall {Θ Ξ} φ ρ `{Hφ : WkMono φ},
     ⟦ ι φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ⟪φ⟫ ρ.
 Proof.
   intros Θ Ξ φ ρ Hφ x; cbn; rewrite (eval_wk_eq _ _ Hφ x); apply eval_exp_var.
 Qed.
 
-(** The weakening of an extension. *)
+(** A weakened extension. *)
 Lemma eval_sub_wk_extend : forall {Θ Ξ} σ M φ ρ ρσ m,
     ⟦ sb_wk σ φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ M[φ]ʷ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
     ⟦ sb_wk (σ,,M) φ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ m.
 Proof. intros * ? ? [| x]; [ assumption | apply H ]. Qed.
 
-(** The two evaluations of a lifted substitution: [q σ] extends [σ[↑]] by
-    [#0], so its head is a value already in [ρ]. *)
+(** A lifted substitution, plain and weakened.  [q σ] extends [σ[↑]] by [#0],
+    so its head is a value already in [ρ]. *)
 Lemma eval_sub_q : forall {Θ Ξ} σ ρ ρσ,
     ⟦ sb_wk σ ↑ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ->
     ⟦ q σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ ↦ ρ 0.

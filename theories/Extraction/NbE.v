@@ -74,9 +74,8 @@ Proof.
   eexists; reflexivity.
 Qed.
 
-(** A similar approach works for nbe implementations.
-    However, as we have 2 implementations (each for [nbe] and [nbe_ty]),
-    We define a tactic to deal with both cases. *)
+(** The same approach works for the NbE implementations; as there are two
+    of them, for [nbe] and [nbe_ty], one tactic handles both. *)
 
 Ltac functional_nbe_complete :=
   lazymatch goal with

@@ -259,6 +259,13 @@ Section Terms.
         let* MZ := res_term (elab_res ls d oz nil) in
         let* MS := res_term (elab_res (ls_push sr (S d) (ls_push sx d ls)) (S (S d)) os nil) in
         eok (r_exp (sc_apply (rec N return A | zero -> MZ | succ -> MS end) args))
+    | Cst.true_ty => eok (r_exp (sc_apply ⊤ args))
+    | Cst.true_tm => eok (r_exp (sc_apply ⋆ args))
+    | Cst.false_ty => eok (r_exp (sc_apply ⊥ args))
+    | Cst.exfalso om mx oA =>
+        let* M := res_term (elab_res ls d om nil) in
+        let* A := res_term (elab_res (ls_push mx d ls) (S d) oA nil) in
+        eok (r_exp (sc_apply (efq M return A) args))
     | Cst.pi x oA oB =>
         let* A := res_term (elab_res ls d oA nil) in
         let* B := res_term (elab_res (ls_push x d ls) (S d) oB nil) in

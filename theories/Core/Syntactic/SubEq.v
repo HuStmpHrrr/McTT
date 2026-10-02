@@ -2,25 +2,19 @@
 
     The equality and subtyping halves, [sub_eq_preserves_exp_eq] and
     [sub_eq_preserves_subtyp].  The typing half is [sub_eq_preserves_exp] in
-    [Core.Syntactic.System.Lemmas], where it has to be, because presupposition
-    needs it.
+    [Core.Syntactic.System.Lemmas], because presupposition needs it.
 
-    Proving all three by one mutual induction on the derivation, case by case, is
-    unavoidable if they come *before* presupposition.  In the order this
-    development uses — typing, then presupposition, then the rest — these two are
-    not inductions at all.  An equivalence [σ ≈ σ'] is both a pair of
-    substitutions and a relation between them, so it can always be used twice:
+    Since presupposition is available, these two are not inductions.  An
+    equivalence [σ ≈ σ'] is both a pair of substitutions and a relation between
+    them, so it can be used twice:
 
     - transport the judgment along [σ] alone, by [sub_preserves_wf];
     - move its right-hand side from [σ] to [σ'], by [sub_eq_preserves_exp]
-      applied to that right-hand side — which is a *typing* derivation, and is exactly what
+      applied to the typing derivation of that right-hand side, which
       presupposition provides;
     - compose.
 
-    Nothing about any particular rule enters, so the fifteen cases a direct
-    induction works through (β for [Π], both β rules for [ℕ], η, and the
-    congruences) all disappear.  This is the one place where having presupposition first pays for
-    the extra arguments [Definitions] carries to get it. *)
+    No particular rule enters the argument. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

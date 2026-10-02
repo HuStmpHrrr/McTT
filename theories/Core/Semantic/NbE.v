@@ -6,9 +6,9 @@ Import Domain_Notations.
 
 Generalizable All Variables.
 
-(** The initial environment of a context: every assumption in scope is a
-    neutral at its own level, and every definition is the value of its body.
-    A definition's level is therefore never given to a neutral. *)
+(** The initial environment of a context: each assumption in scope is a
+    neutral at its own de Bruijn level, and each definition is the value of its
+    body.  A definition's level is never given to a neutral. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
 | initial_env_cons :
@@ -65,8 +65,8 @@ Ltac functional_initial_env_rewrite_clear1 :=
   end.
 Ltac functional_initial_env_rewrite_clear := repeat functional_initial_env_rewrite_clear1.
 
-(** NbE in [Θ ⍮ Ξ ⍮ Γ]: only [Γ] has variables; parameters and globals are
-    evaluated through [Θ ⍮ Ξ]. *)
+(** NbE in [Θ ⍮ Ξ ⍮ Γ]: evaluate in the initial environment of [Γ], then read
+    back.  Only [Γ] contributes variables; globals are resolved in [Θ ⍮ Ξ]. *)
 Inductive nbe (Θ : gdeps) (Ξ : gstack) : ctx -> exp -> typ -> nf -> Prop :=
 | nbe_run :
   `( initial_env Θ Ξ Γ ρ ->

@@ -75,6 +75,15 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          format_obj escr mx format_obj em format_obj ez sx sr format_obj es
      in
      pp_print_paren_if (p >= 1) impl f ()
+  | Cst.Coq_true_ty -> fprintf f "True"
+  | Cst.Coq_true_tm -> fprintf f "true"
+  | Cst.Coq_false_ty -> fprintf f "False"
+  | Cst.Coq_exfalso (escr, mx, em) ->
+     let impl f () =
+       fprintf f "@[<hov 2>exfalso %a@ return %s .@ %a@]" format_obj escr mx
+         format_obj em
+     in
+     pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_app (ef, ea) ->
      let impl f () =
        fprintf f "%a@ %a" (format_obj_prec 1) ef (format_obj_prec 2) ea
@@ -233,6 +242,14 @@ let exp_to_obj =
        let es' = impl (sr :: sx :: ctx) es in
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
     | Coq_a_nat -> Cst.Coq_nat
+    | Coq_a_True -> Cst.Coq_true_ty
+    | Coq_a_true -> Cst.Coq_true_tm
+    | Coq_a_False -> Cst.Coq_false_ty
+    | Coq_a_exfalso (em, escr) ->
+       let mx = new_var () in
+       let escr' = impl ctx escr in
+       let em' = impl (mx :: ctx) em in
+       Cst.Coq_exfalso (escr', mx, em')
     | Coq_a_typ i -> Cst.Coq_typ i
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)

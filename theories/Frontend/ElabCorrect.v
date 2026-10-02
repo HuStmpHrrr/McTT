@@ -792,6 +792,21 @@ Section Objects.
       + intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some.
         bwd_term H L. bwd_term H0 (lb_var s :: L). bwd_term H1 L.
         bwd_term H2 (lb_var s1 :: lb_var s0 :: L). reflexivity.
+    - (* true_ty *) cbn [Elaborator.elab_res].
+      split; [ intros H; inv_eok; eexists; split; [ constructor | reflexivity ]
+             | intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some; reflexivity ].
+    - (* true_tm *) cbn [Elaborator.elab_res].
+      split; [ intros H; inv_eok; eexists; split; [ constructor | reflexivity ]
+             | intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some; reflexivity ].
+    - (* false_ty *) cbn [Elaborator.elab_res].
+      split; [ intros H; inv_eok; eexists; split; [ constructor | reflexivity ]
+             | intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some; reflexivity ].
+    - (* exfalso *)
+      cbn [Elaborator.elab_res]. split.
+      + intros Hr. fwd_term H L Hr. fwd_term H0 (lb_var s :: L) Hr. inv_eok.
+        eexists; split; [ constructor; eassumption | reflexivity ].
+      + intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some.
+        bwd_term H L. bwd_term H0 (lb_var s :: L). reflexivity.
     - (* pi *)
       cbn [Elaborator.elab_res]. split.
       + intros Hr. fwd_term H L Hr. fwd_term H0 (lb_var s :: L) Hr. inv_eok.

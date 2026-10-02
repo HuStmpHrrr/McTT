@@ -37,6 +37,10 @@
     | LAMBDA _ -> "fun"
     | PI _ -> "forall"
     | NAT _ -> "Nat"
+    | TRUE_TY _ -> "True"
+    | TRUE _ -> "true"
+    | FALSE_TY _ -> "False"
+    | EXFALSO _ -> "exfalso"
     | INT (_, i) -> string_of_int i
     | TYPE _ -> "Type"
     | VAR (_, s) -> s
@@ -75,6 +79,10 @@
     | LAMBDA r
     | PI r
     | NAT r
+    | TRUE_TY r
+    | TRUE r
+    | FALSE_TY r
+    | EXFALSO r
     | TYPE r
     | EOF r
     | INT (r, _)
@@ -126,6 +134,10 @@ rule read =
   | [' ' '\t'] { read lexbuf }
   | ['\n'] { new_line lexbuf; read lexbuf }
   | "Nat" { NAT (get_range lexbuf) }
+  | "True" { TRUE_TY (get_range lexbuf) }
+  | "true" { TRUE (get_range lexbuf) }
+  | "False" { FALSE_TY (get_range lexbuf) }
+  | "exfalso" { EXFALSO (get_range lexbuf) }
   | ['0'-'9']+ as lxm { INT (get_range lexbuf, int_of_string lxm) }
   | "Type" { TYPE (get_range lexbuf) }
   | eof { EOF (get_range lexbuf) }

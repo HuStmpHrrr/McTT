@@ -1,20 +1,17 @@
 (** * The Universe
 
-    Two of the typing rules mention the universe directly ([wf_typ] and
-    [wf_exp_eq_typ_cong]), and cumulativity ([rel_exp_cumu]) is what lets any two
-    type judgments be brought to a common level.  The old [rel_exp_typ_sub] is
-    gone: [Type@i[σ]] *is* [Type@i], since [exp_sub] computes on a constructor
-    that binds nothing, so the rule it validated no longer exists.
+    The rules that mention the universe directly ([wf_typ] and
+    [wf_exp_eq_typ_cong]), and cumulativity ([rel_exp_cumu]), which brings any two
+    type judgments to a common level.  [Type@i[σ]] is [Type@i] because [exp_sub]
+    computes on it, so the universe has no substitution rule.
 
-    Everything here is organised around the pair [rel_exp_of_typ_inversion] /
-    [rel_exp_of_typ], which are exact converses.  They say that a judgment
-    [Γ ⊨ A ≈ A' : Type@i] is nothing more than the four-value pattern of [A] and
-    [A'] in [per_univ i]: the type chain of [rel_exp_under_ctx] is forced (all
-    four of its values are [𝕌@i], since substitution does not touch [Type@i]), and
-    it pins the
-    element PER down to [per_univ i].  So the universe is the one place where the
-    two chains of a term judgment decouple, and stripping the trivial one is what
-    makes the type-level lemmas of the following files readable. *)
+    The file is organised around the converse pair [rel_exp_of_typ_inversion] /
+    [rel_exp_of_typ]: a judgment [Γ ⊨ A ≈ A' : Type@i] is exactly the four-value
+    pattern of [A] and [A'] in [per_univ i].  The type chain of [rel_exp_under_ctx]
+    is forced (all four of its values are [𝕌@i]) and fixes the element PER to
+    [per_univ i].  So the universe is where the two chains of a term judgment
+    decouple, and stripping the trivial one keeps the type-level lemmas of the
+    later files readable. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -46,20 +43,18 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
   (** The type chain is a chain of universes, so inverting it identifies [R]
-      with [per_univ i] — and then [Hexp] already is the goal. *)
+    with [per_univ i], and then [Hexp] is the goal. *)
   destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
   simpl in Hchain; destruct Hchain as [? [? ?]].
   invert_rel_typ_body.
   eassumption.
 Qed.
 
-(** The instance of the above at [Id], as [rel_exp_under_ctx_simple] is the
-    instance of a general judgment at [Id].  This is the form a *context* PER
-    wants, because
-    [per_ctx_env_cons] asks for the evaluations of [A] and [A'] in the
-    environments themselves and not in some substituted pair — and at [Id] they
-    coincide, since [Id] evaluates to the environment itself and [A[Id]] is
-    [A].  So the whole chain collapses onto its middle link. *)
+(** The instance of the above at [Id].  This is the form a context PER needs:
+    [per_ctx_env_cons] asks for the values of [A] and [A'] in the environments
+    themselves, and at [Id] these coincide with the substituted ones, since [Id]
+    evaluates to the environment itself and [A[Id]] is [A].  The chain collapses
+    onto its middle link. *)
 Corollary rel_exp_of_typ_inversion_simple : forall {Γ A A' i},
     Γ ⊨ A ≈ A' : Type@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
@@ -97,10 +92,10 @@ Proof.
   exact (HA _ _ Hρ).
 Qed.
 
-(** The same instance at a weakening instead of at [Id], which is what the gluing
-    model needs: it reads a type's value at [ρ] after [[φ]ʷ], while the context
-    relation it recurses on supplies the value at [⟪φ⟫ ρ].  The two are not
-    equal, and [per_univ i] is what relates them. *)
+(** The same instance at a weakening instead of [Id], as the gluing model needs:
+    it reads a type's value at [ρ] after [[φ]ʷ], while the context relation
+    supplies the value at [⟪φ⟫ ρ].  The two values are not equal; [per_univ i]
+    relates them. *)
 Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A' i},
     Γ ⊨w φ : Δ ->
     Δ ⊨ A ≈ A' : Type@i ->
@@ -127,16 +122,15 @@ Proof.
   pairwise.
 Qed.
 
-(** [per_head_resp] in the form a type *judgment* supplies its premises in: the
-    four values it asks for are four instances of the judgment, and what selects
-    the pairs to instantiate at is a chain of environments.
+(** [per_head_resp] in the form a type judgment supplies its premises: the four
+    values it asks for are four instances of the judgment, at pairs selected by a
+    chain of environments.
 
     Every rule with a premise in an extended context needs this, because the
-    environments [q σ] evaluates to are related to the ones the goal names without
-    being equal to them, so a head PER read at the former has to be moved
-    to the latter.  Stated over an arbitrary context PER rather than at the shape
-    of one particular extension, since the movement happens at each level of a
-    nested [q]. *)
+    environments [q σ] evaluates to are related to, but not equal to, the ones the
+    goal names, so a head PER read at the former must be moved to the latter.  It
+    is stated over an arbitrary context PER because the move happens at each level
+    of a nested [q]. *)
 Lemma per_head_of_typ_resp : forall {Γ A A' i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A' : Type@i ->
@@ -153,21 +147,20 @@ Proof.
   destruct (HAsimple _ _ H12) as [a1 [a2 [Ha1 [Ha2 Ha12]]]].
   destruct (HAsimple _ _ H32) as [a3 [a2' [Ha3 [Ha2' Ha32]]]].
   destruct (HAsimple _ _ H34) as [a3' [a4 [Ha3' [Ha4 Ha34]]]].
-  (** The middle link runs the *wrong way*: [A] is on the left of the judgment and
-      [A'] on the right, so the only instance whose values are [⟦A'⟧ρ2] and
-      [⟦A⟧ρ3] is the one at [(ρ3, ρ2)]. *)
+  (** The middle link runs the other way: [A] is on the left of the judgment and
+    [A'] on the right, so the instance whose values are [⟦A'⟧ρ2] and [⟦A⟧ρ3] is
+    the one at [(ρ3, ρ2)]. *)
   assert (a2' = a2) as -> by (eapply functional_eval_exp; eassumption).
   assert (a3' = a3) as -> by (eapply functional_eval_exp; eassumption).
   eapply per_head_resp; [ exact Ha1 | exact Ha2 | exact Ha3 | exact Ha4 |].
   apply rel_chain_4; [ exact Ha12 | symmetry; exact Ha32 | exact Ha34 ].
 Qed.
 
-(** The shape a caller of the above always wants it in: a member of the extended
-    context PER of [Γ ▹ A] whose *head* pair was read at some other pair of tails
-    than the one the goal names.  Every eliminator's premises are in that
-    position, because the head pair they have comes from a domain PER or from
-    [per_nat] and is stated at the environments the [q] of the rule reached, not at
-    the ones the goal does. *)
+(** The form callers use: a member of the extended context PER of [Γ ▹ A] whose
+    head pair was read at a different pair of tails than the one the goal names.
+    Every eliminator's premises are in this position, because their head pair
+    comes from a domain PER or from [per_nat] and is stated at the environments
+    the rule's [q] reached. *)
 Corollary per_env_extend_move : forall {Γ A i env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A : Type@i ->
@@ -205,11 +198,11 @@ Qed.
 
 Hint Resolve rel_exp_of_typ : mctt.
 
-(** The semantic presupposition: a term judgment carries a type judgment inside
-    it, namely its own type chain, which lives in [per_univ_elem i elem_rel] and
-    so — forgetting the element PER — in [per_univ i].  This is the semantic
-    counterpart of [presup_exp_eq], and it is what lets the substitution cases build
-    the context PER of [Δ ▹ T] from a judgment about a *term* of [T]. *)
+(** Semantic presupposition: a term judgment contains a type judgment, its own
+    type chain, which lives in [per_univ_elem i elem_rel] and hence in
+    [per_univ i].  This is the semantic counterpart of [presup_exp_eq]; the
+    substitution cases use it to build the context PER of [Δ ▹ T] from a judgment
+    about a term of [T]. *)
 Corollary presup_rel_exp_under_ctx : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
     exists i, Γ ⊨ A ≈ A : Type@i.
@@ -243,8 +236,8 @@ Proof.
   intros * H.
   pose proof (sem_ctx_per_ctx_env H) as [env_relΓ HΓ].
   eexists_rel_exp_of_typ.
-  (** [Type@i] ignores every environment, so the two substituted ones — which
-      the caller now names — are not used at all. *)
+  (** [Type@i] ignores the environment, so the two substituted environments
+    named by the caller are unused. *)
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hu : per_univ (S i) 𝕌@i 𝕌@i)
     by (eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ]).
@@ -254,8 +247,8 @@ Qed.
 
 Hint Resolve valid_exp_typ : mctt.
 
-(** Cumulativity acts on the chain member by member, which is [rel_chain_mono]
-    at [per_univ_elem_cumu]. *)
+(** Cumulativity acts on the chain member by member: [rel_chain_mono] at
+    [per_univ_elem_cumu]. *)
 Lemma rel_exp_cumu : forall {i Γ A A'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ A ≈ A' : Type@(S i).
@@ -273,9 +266,9 @@ Qed.
 
 Hint Resolve rel_exp_cumu : mctt.
 
-(** Iterated, which is how a Π-type reconciles the level of its domain with that
-    of its codomain: [per_univ_elem_pi_canonical] insists the two agree, while the
-    syntax lets [A] and [B] be typed at unrelated levels. *)
+(** Iterated cumulativity.  This is how a Π-type reconciles the levels of its
+    domain and codomain: [per_univ_elem_pi_canonical] requires them to agree,
+    while the syntax allows [A] and [B] at unrelated levels. *)
 Corollary rel_exp_cumu_ge : forall {i j Γ A A'},
     i <= j ->
     Γ ⊨ A ≈ A' : Type@i ->

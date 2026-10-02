@@ -1,17 +1,14 @@
 (** * Contexts
 
-    The two rules of [wf_ctx], plus the two context-subtyping facts that
-    [Consequences] needs.  [valid_ctx_empty] is gone: [⊨ Γ] is now the inductive
-    [sem_ctx], so the empty case *is* a constructor
-    ([sem_ctx_nil]).  What remains is the extension step, and it is the one place
-    in the development that has to *build* a context PER rather than take one
-    apart.
+    The two rules of [wf_ctx], and the two context-subtyping facts that
+    [Consequences] needs.  [⊨ Γ] is the inductive [sem_ctx], so the empty context
+    is the constructor [sem_ctx_nil].  The extension step is the one place that
+    builds a context PER rather than taking one apart.
 
-    Building one means choosing the head relation, and the choice — the
-    impredicative [per_head], "whatever every [per_univ_elem] relating the values
-    of [A] and [A'] relates" — is made once at the PER layer, by
-    [per_ctx_env_extend].  All that is left here is to feed it the premise it
-    wants, which is exactly what [rel_exp_of_typ_inversion_simple] delivers. *)
+    The head relation of the extension is the impredicative [per_head], "whatever
+    every [per_univ_elem] relating the values of [A] and [A'] relates", chosen once
+    by [per_ctx_env_extend].  This file supplies its premise, which is what
+    [rel_exp_of_typ_inversion_simple] delivers. *)
 
 From Stdlib Require Import Morphisms_Relations.
 
@@ -31,10 +28,9 @@ Lemma rel_ctx_extend : forall {Γ Γ' A A' i},
 Proof.
   intros * [env_relΓΓ' HΓΓ'] H.
   pose proof (rel_exp_of_typ_inversion_simple H) as [env_relΓ [HΓ HA]].
-  (** Both witnesses have [Γ] on the left, so they agree up to [<~>].  Naming the
-      equivalence rather than calling [handle_per_ctx_env_irrel] keeps
-      [env_relΓΓ'] — the only one that witnesses the *tail* of the goal — in
-      place. *)
+  (** Both witnesses have [Γ] on the left, so they agree up to [<~>].  Naming
+    the equivalence, rather than calling [handle_per_ctx_env_irrel], keeps
+    [env_relΓΓ'], the only witness for the tail of the goal, in place. *)
   assert (Hirrel : env_relΓΓ' <~> env_relΓ)
     by (eapply per_ctx_env_right_irrel; [exact HΓΓ' | exact HΓ]).
   eexists.

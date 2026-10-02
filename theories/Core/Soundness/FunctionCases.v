@@ -1,14 +1,13 @@
 (** * Π-Types in the Gluing Model
 
-    The two pi predicates quantify over Kripke weakenings, so a codomain
-    obligation arrives as [OT[(ι φ),,M]] where it used to arrive as
-    [OT[q τ][Id,,M]].  [exp_sub_q_extend_wk] is what bridges the two, replacing
-    the deleted [sub_decompose_q_typ], and [sb_wk σ φ] replaces [σ ∘ τ]
-    throughout.
+    The Π gluing predicates quantify over Kripke weakenings, so a codomain
+    obligation has the form [OT[(ι φ),,M]]. [exp_sub_q_extend_wk] relates it
+    to the [q]-form, and [sb_wk σ φ] is a substitution followed by a Kripke
+    weakening.
 
-    The extended context PER is built canonically with [per_ctx_env_extend], out
-    of exactly what [rel_exp_of_typ_inversion_simple] delivers, so the head
-    obligations are [per_env_extend_intro'] followed by [per_head_of]. *)
+    The extended context PER is built with [per_ctx_env_extend] from what
+    [rel_exp_of_typ_inversion_simple] delivers, so the head obligations follow
+    from [per_env_extend_intro'] and [per_head_of]. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -22,9 +21,9 @@ From Mctt.Core.Soundness Require Import
   UniverseCases.
 Import Domain_Notations Wk_Notations.
 
-(** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening: [A[σ][φ]ʷ] and
-    [A[(sb_wk σ φ)]] are the same expression, so the head premise needs only a
-    [rewrite] rather than the old instance of [Sub-Comp]. *)
+(** [cons_glu_sub_pred_helper] postcomposed by a Kripke weakening. Since
+    [A[σ][φ]ʷ] and [A[(sb_wk σ φ)]] are the same expression, the head premise
+    needs only a [rewrite]. *)
 Import Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -49,11 +48,11 @@ Qed.
 #[local]
 Hint Resolve cons_glu_sub_pred_pi_helper : mctt.
 
-(** β at a substitution followed by a Kripke weakening.  Both sides of the
-    equation the [pi_glu_exp_pred] app clause needs are instances of
-    [wf_exp_eq_pi_beta] at [(sb_wk σ φ)] once [exp_wk_sub] has collapsed the two
-    steps into one substitution and [exp_sub_q_extend] has put the two bodies
-    into [q]-form. *)
+(** β at a substitution followed by a Kripke weakening. Both sides of the
+    equation needed by the application clause of [pi_glu_exp_pred] are
+    instances of [wf_exp_eq_pi_beta] at [(sb_wk σ φ)], once [exp_wk_sub] has
+    merged the two steps into one substitution and [exp_sub_q_extend] has put
+    both bodies into [q]-form. *)
 Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N i},
     Δ ⊢s σ : Γ ->
     Γ ⊢ A : Type@i ->
@@ -122,8 +121,8 @@ Proof.
   invert_glu_univ_elem HPEl.
   handle_per_univ_elem_irrel.
   handle_functional_glu_univ_elem.
-  (** [(Π A B)[σ]] *is* [Π A[σ] B[q σ]], so the first premise of
-      [mk_pi_glu_typ_pred] is reflexivity and it is what pins [IT] and [OT]. *)
+  (** [(Π A B)[σ]] is [Π A[σ] B[q σ]] by definition, so the first premise of
+      [mk_pi_glu_typ_pred] is reflexivity; it determines [IT] and [OT]. *)
   assert (Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
   assert (Δ ▹ A[σ] ⊢ B[q σ] : Type@i) by mauto 3.
   assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Type@i) as HPieq by mauto 3.
@@ -137,8 +136,8 @@ Proof.
     apply_predicate_equivalence.
     unfold univ_glu_exp_pred' in *.
     destruct_conjs.
-    (** The codomain families are the [invert_glu_univ_elem] existentials, so pull
-        the obligation's own instance out of the family rather than by name. *)
+    (** The codomain families are existentials from [invert_glu_univ_elem], so
+        take the instance needed here from the family rather than by name. *)
     match goal with
     | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem i _ _ b |- _ =>
         pose proof (H m equiv_m _ ltac:(eassumption))
@@ -291,9 +290,9 @@ Proof.
   destruct_conjs.
   assert (Γ ⊢ M : Π A B) by mauto 2.
   invert_glu_rel_exp HM.
-  (** The type of an application is an *instantiated* codomain, which the gluing
+  (** The type of an application is an instantiated codomain, which the gluing
       model cannot evaluate: [⟦B[Id,,N]⟧ρ] is stuck, and it is not
-      [⟦B⟧(ρ ↦ ⟦N⟧ρ)] either.  [per_univ_of_instance] relates the two and
+      [⟦B⟧(ρ ↦ ⟦N⟧ρ)]. [per_univ_of_instance] relates the two, and
       [glu_univ_elem_resp_per_univ] transports the predicate. *)
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (Γ ▹ A ⊨ B : Type@i) by mauto 3 using completeness_fundamental_exp.

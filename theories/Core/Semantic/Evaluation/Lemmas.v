@@ -24,12 +24,16 @@ Import Domain_Notations.
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
-         two resolutions of a global agree *)
+         two resolutions of a global agree, and two neutral scrutinees of [efq]
+         that are equal have equal parts; an induction hypothesis is never
+         spent on the premise it is about *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
         | H1 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
-        | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ => specialize (IH _ H); subst
+        | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
+            assert_fails (constr_eq a b); specialize (IH _ H); subst
+        | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
         end;
       try congruence; intuition congruence.
   Qed.
@@ -83,19 +87,17 @@ Ltac functional_eval_rewrite_clear1 :=
   | H1 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
-(** There is deliberately no [eval_sub] case: [functional_eval_sub] is
-    pointwise, so there is nothing to [replace]. *)
+(** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
+    equality, so there is nothing to [replace]. *)
 Ltac functional_eval_rewrite_clear := repeat functional_eval_rewrite_clear1.
 
 (** * Inversion
 
-    [simplify_evals] takes evaluation hypotheses apart wholesale, which is what
-    the cases with no substitutions left in them want.  The [ℕ]-[β] rule for
-    [succ] wants one hypothesis inverted and the rest left alone: its recursive
-    call arrives as an evaluation of the *eliminator*, and what the rule's own
-    evaluation needs is the [eval_natrec] inside it.  Naming that inversion keeps
-    the rest of the context — six other evaluations, at environments a global
-    [cbn] would rewrite — untouched. *)
+    [simplify_evals] inverts all evaluation hypotheses at once.  The [ℕ]-[β]
+    rule for [succ] needs a single one inverted: its recursive call arrives as
+    an evaluation of the eliminator, and the rule needs the [eval_natrec]
+    inside it.  [eval_exp_natrec_inversion] does just that and leaves the other
+    hypotheses untouched. *)
 Proposition eval_exp_natrec_inversion : forall {Θ Ξ} A MZ MS M ρ r,
     ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
     exists m,

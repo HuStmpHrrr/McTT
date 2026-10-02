@@ -1,7 +1,7 @@
 (** * The Rules with the Redundant Premises Removed
 
-    Every rule carries the premises a *presupposition-free*
-    formulation needs: the [Π]-rules check the domain and the codomain, the
+    Every rule carries the premises a presupposition-free formulation
+    needs: the [Π]-rules check the domain and the codomain, the
     [ℕ]-eliminator checks the motive, the congruence rules check the left-hand
     side.  Once presupposition is available all of those are consequences of the
     remaining premises, and this file restates each rule without them.  The
@@ -19,14 +19,10 @@
     and [wf_exp_eq_morphism_iff2] from [Definitions] they let [rewrite] replace a
     term by an equal one anywhere in a judgment, including in the type.
 
-    Making substitution an operation removes a third of this file.  The original
-    development also restated every [_sub] rule — [Type@i[σ] ≈ Type@i],
-    [ℕ[σ] ≈ ℕ], [(Π A B)[σ] ≈ Π A[σ] B[q σ]], and the [λ], application and
-    [ℕ]-eliminator equations — because those were rules with premises of their
-    own.  They are now definitional equalities, proved once in
-    [Core.Syntactic.Substitution] and used by [rewrite] or by [simpl_sub]; there
-    is nothing left to optimize.  [wf_ctx_eq_extend'] goes the same way, since
-    context equality is [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] in both directions. *)
+    Equations such as [(Π A B)[σ] = Π A[σ] B[q σ]] are not rules but
+    equalities of [exp], proved in [Core.Syntactic.Substitution] and used by
+    [rewrite] or [simpl_sub], so they need no optimized form.  Neither does
+    context equality, which is [Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ] in both directions. *)
 
 From Stdlib Require Import Lia Setoid.
 From Mctt Require Import LibTactics.
@@ -133,6 +129,55 @@ Hint Resolve wf_exp_eq_nat_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_nat_cong : mctt.
 
+(** So are [⊤] and [⊥]. *)
+Corollary wf_True' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@i.
+Proof.
+  intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_True' : mctt.
+#[export]
+Remove Hints wf_True : mctt.
+
+Corollary wf_exp_eq_True_cong' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@i.
+Proof.
+  intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_True_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_True_cong : mctt.
+
+Corollary wf_False' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@i.
+Proof.
+  intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_False' : mctt.
+#[export]
+Remove Hints wf_False : mctt.
+
+Corollary wf_exp_eq_False_cong' : forall Θ Ξ Γ i,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@i.
+Proof.
+  intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_False_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_False_cong : mctt.
+
 (** The motive of the [ℕ]-eliminator is a type because the step case is checked
     in a context that ends with it. *)
 Corollary wf_natrec' : forall Θ Ξ Γ A MZ MS M,
@@ -195,6 +240,19 @@ Qed.
 Hint Resolve wf_exp_eq_natrec_cong' : mctt.
 #[export]
 Remove Hints wf_exp_eq_natrec_cong : mctt.
+
+Corollary wf_exp_eq_exfalso_cong' : forall Θ Ξ Γ A A' i M M',
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M].
+Proof.
+  impl_opt_constructor.
+Qed.
+
+#[export]
+Hint Resolve wf_exp_eq_exfalso_cong' : mctt.
+#[export]
+Remove Hints wf_exp_eq_exfalso_cong : mctt.
 
 Corollary wf_exp_eq_nat_beta_zero' : forall Θ Ξ Γ A MZ MS,
     Θ ⍮ Ξ ⍮ Γ ⊢ MZ : A[Id,,zero] ->

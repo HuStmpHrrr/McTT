@@ -157,6 +157,24 @@ Example main_spec :
                    succ (succ (succ (succ (succ zero)))))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
+(** ** [examples/true_false.mctt]: the unit type and the empty type
+
+    The motive of [exfalso] binds [x], so [Nat] is elaborated under one more
+    binder. *)
+Definition true_false : Cst.prog :=
+  (nil, ("TrueFalse" :: nil, nil,
+         c_eval true_tm None ::
+         c_eval (fn "u" true_ty (var "u")) None ::
+         c_eval (fn "f" false_ty (exfalso (var "f") "x" nat)) None :: nil)).
+
+Example true_false_spec :
+  elab_spec true_false
+    (nil, ⋅,
+     cc_eval ⋆ None ::
+     cc_eval (λ ⊤ #0) None ::
+     cc_eval (λ ⊥ (efq #0 return ℕ)) None :: nil).
+Proof. elab_ok. Qed.
+
 (** ** Scoping Rules, Positive and Negative *)
 
 Definition unit_of (cs : list Cst.cmd) : Cst.prog := (nil, ("T" :: nil, nil, cs)).

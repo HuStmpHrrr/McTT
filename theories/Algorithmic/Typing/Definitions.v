@@ -34,6 +34,17 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a M ⟸ ℕ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B )
+| ati_True :
+  `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
+| ati_true :
+  `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
+| ati_False :
+  `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
+| ati_exfalso :
+  `( Γ ▹ ⊥ ⊢a A ⟹ Typeⁿ@i ->
+     Γ ⊢a M ⟸ ⊥ ->
+     nbe_ty_f Γ A[Id,,M] B ->
+     Γ ⊢a efq M return A ⟹ B )
 | ati_pi :
   `( Γ ⊢a A ⟹ Typeⁿ@i ->
      Γ ▹ A ⊢a B ⟹ Typeⁿ@j ->
@@ -58,7 +69,8 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
-(** A global, at the closed type resolution hands back. *)
+(** A global infers the normal form of the closed type that resolution
+    returns for it. *)
 | ati_glob :
   `( gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B) ->
      nbe_ty_f Γ A C ->
@@ -83,10 +95,9 @@ Combined Scheme alg_type_mut_ind from
 
 (** ** User Expressions
 
-    The expressions the type checker is willing to be given.  Every [exp] is one:
-    the distinction the predicate used to make disappeared when substitution
-    stopped being a constructor, and it is kept only because [type_check_closed]
-    is indexed by it. *)
+    The expressions the type checker accepts.  Every [exp] is one
+    ([user_exp_all]); the predicate exists because [type_check_closed] is
+    indexed by it. *)
 Generalizable All Variables.
 
 Inductive user_exp : exp -> Prop :=
@@ -105,6 +116,16 @@ Inductive user_exp : exp -> Prop :=
      user_exp MS ->
      user_exp M ->
      user_exp (a_natrec A MZ MS M) )
+| user_exp_True :
+  `( user_exp a_True )
+| user_exp_true :
+  `( user_exp a_true )
+| user_exp_False :
+  `( user_exp a_False )
+| user_exp_exfalso :
+  `( user_exp A ->
+     user_exp M ->
+     user_exp (a_exfalso A M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->

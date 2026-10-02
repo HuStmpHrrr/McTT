@@ -1,11 +1,11 @@
 (** * The Global Rules in the Gluing Model
 
-    As [Core/Completeness/ModuleCases.v], for soundness: a judgment of
-    [Θ1 ⍮ Ξ1] glues at every [Θ2 ⍮ Ξ2] it embeds into, provided what resolves
-    at [Θ1 ⍮ Ξ1] glues there ([glu_emb]).  An embedding moves nothing, so the
-    fundamental theorem holds in this form for contexts and typing
-    ([kglu_fundamental]), each case being the fixed-context one at the target;
-    the subtyping premise of subsumption is moved syntactically
+    The soundness counterpart of [Core/Completeness/ModuleCases.v]: a judgment
+    of [Θ1 ⍮ Ξ1] glues at every [Θ2 ⍮ Ξ2] it embeds into, provided everything
+    that resolves at [Θ1 ⍮ Ξ1] glues there ([glu_emb]). An embedding moves
+    nothing, so the fundamental theorem holds in this form for contexts and
+    typing ([kglu_fundamental]), each case being the fixed-context one at the
+    target. The subtyping premise of subsumption is moved syntactically
     ([emb_preserves_wf]). *)
 
 From Stdlib Require Import Lia List PeanoNat.
@@ -16,7 +16,7 @@ From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases
-  SubtypingCases UniverseCases FunctionCases LetCases NatCases.
+  SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -51,6 +51,9 @@ Proof.
   all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_nat; assumption
     | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
     | eapply glu_rel_exp_natrec; eassumption
+    | apply glu_rel_exp_True; assumption | apply glu_rel_exp_False; assumption
+    | apply glu_rel_exp_true; assumption
+    | eapply glu_rel_exp_exfalso; eassumption
     | eapply glu_rel_exp_pi; eassumption | eapply glu_rel_exp_fn; eassumption
     | eapply glu_rel_exp_app; eassumption ].
   all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].
@@ -94,11 +97,12 @@ End Weaken.
 (** ** Globals from the gluing of their types and bodies
 
     δ evaluates the body at [nil], and a global or parameter is a neutral
-    annotated with its type evaluated at [nil].  Since [nil_glu_sub_pred]
-    leaves the environment free, the [⋅]-judgment can simply be instantiated at
-    [nil]; the only semantic fact needed is that the values of a closed type at
+    annotated with its type evaluated at [nil]. Since [nil_glu_sub_pred]
+    leaves the environment free, the [⋅]-judgment can be instantiated at
+    [nil]. The only semantic fact needed is that the values of a closed type at
     two environments are related ([typ_nil_rel], from completeness at [⋅]),
-    which [glu_univ_elem_resp_per_univ]/[glu_univ_elem_exp_conv] consume. *)
+    which [glu_univ_elem_resp_per_univ] and [glu_univ_elem_exp_conv]
+    consume. *)
 
 Section Cook.
   Context {GC : GCtx}.

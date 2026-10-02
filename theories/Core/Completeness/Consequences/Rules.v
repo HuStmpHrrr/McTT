@@ -1,8 +1,8 @@
 (** * Consequences of Completeness: normal forms respect context equality
 
-    Context equality is no longer a judgment, so the hypothesis here is the
-    semantic one.  [per_ctx_of_exp_eq] is the only instance anything needs:
-    extending one context by two judgmentally equal types. *)
+    Context equality is not a judgment, so the hypothesis here is semantic.
+    [per_ctx_of_exp_eq] is the instance needed: extending one context by two
+    judgmentally equal types. *)
 
 From Stdlib Require Import RelationClasses.
 

@@ -1,8 +1,8 @@
 (** * Soundness of Normalization by Evaluation
 
-    Where the explicit-substitution development had to travel through [A[Id][Id]] to line the statement up with the gluing
-    predicate, [exp_sub_id] and [exp_wk_id] now discharge the same bookkeeping by
-    rewriting. *)
+    The fundamental theorem of the gluing model, instantiated at the identity
+    substitution.  [exp_sub_id] and [exp_wk_id] line the statement up with the
+    gluing predicate by rewriting. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.

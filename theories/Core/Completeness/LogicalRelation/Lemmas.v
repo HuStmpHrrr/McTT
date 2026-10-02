@@ -40,9 +40,8 @@ Proof.
 Qed.
 
 (** The four values of a type chain in [per_univ i] each come with their own
-    element PER; irrelevance identifies them, and only then is there a single [R]
-    for the term chain to live in.  With explicit substitutions this lemma was a
-    one-liner because the chain had a single link. *)
+    element PER; irrelevance identifies them, giving a single [R] for the term
+    chain to live in. *)
 Lemma rel_exp_implies_rel_typ : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ'},
     rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i) ->
     exists R, rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R.
@@ -88,12 +87,11 @@ Hint Resolve rel_typ_elem_PER : mctt.
 
 (** * Semantic Weakenings
 
-    All three are about the bare [rel_wk], because that is the form the proofs
-    use: the two context witnesses of [rel_wk_under_ctx] are carried by whatever
-    produced them.  Each holds because [eval_wk] is a *function* and the
-    corresponding equation for [⟪_⟫] ([eval_wk_id], [eval_wk_shift],
-    [eval_wk_compose]) is a [reflexivity] — which is exactly what fails one layer up, for
-    substitutions. *)
+    All three lemmas concern the bare [rel_wk], the form the proofs use: the two
+    context witnesses of [rel_wk_under_ctx] are carried by whatever produced them.
+    Each holds because [eval_wk] is a function and the corresponding equation for
+    [⟪_⟫] ([eval_wk_id], [eval_wk_shift], [eval_wk_compose]) holds by
+    [reflexivity], which is what fails for substitutions. *)
 
 (** [⟪wk_id⟫ ρ] is [ρ], so this is the identity. *)
 Lemma rel_wk_id : forall R, rel_wk wk_id R R.
@@ -128,10 +126,10 @@ Proof.
     apply_relation_equivalence; destruct_conjs; eassumption.
 Qed.
 
-(** The tail of an extended context, together with [rel_wk_shift] for it.
-    Inverting the extension rule produces the tail PER, so — unlike
-    [rel_wk_shift] — this needs no witness for [Γ] supplied from outside, which is what lets
-    [rel_sub_under_ctx_shift] be stated with the premise it has. *)
+(** The tail of an extended context, with [rel_wk_shift] for it.  Inverting
+    the extension rule produces the tail PER, so unlike [rel_wk_shift] this needs
+    no externally supplied witness for [Γ]; this is what allows
+    [rel_sub_under_ctx_shift] its premise. *)
 Corollary rel_wk_shift_tail : forall {Γ e R},
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ R ->
     exists R', EF Γ ≈ Γ ∈ per_ctx_env ↘ R' /\ rel_wk ↑ R R'.
@@ -141,10 +139,10 @@ Proof.
     (eexists; split; [ eassumption | eapply rel_wk_shift; eassumption ]).
 Qed.
 
-(** The introduction rule of [Γ ⊨w φ : Δ], packaging its three components.  Every
-    Kripke-style premise in the development hands out a [rel_wk] together with
-    the two context PERs it connects — never the judgment itself — so recovering
-    the judgment is a step that recurs in each of the substitution cases. *)
+(** The introduction rule of [Γ ⊨w φ : Δ], packaging its three components.
+    Kripke-style premises provide a [rel_wk] together with the two context PERs
+    it connects, not the judgment itself, so each substitution case needs this
+    step. *)
 Lemma rel_wk_under_ctx_intro : forall {Γ Δ φ R R'},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
     EF Δ ≈ Δ ∈ per_ctx_env ↘ R' ->
@@ -183,13 +181,11 @@ Hint Resolve sem_ctx_per_ctx : mctt.
 (** * Semantic Weakenings are Semantic Substitutions
 
     The degenerate four-value pattern.  Both commutation obligations are
-    discharged by [eval_sub_of_wk] alone, because
-
-      [sb_wk (ι ψ) φ] is [ι (ψ ⊙ φ)]   and   [⟪ψ ⊙ φ⟫ ρ] is [⟪ψ⟫ (⟪φ⟫ ρ)]
-
-    both hold by conversion — a weakening substitutes only variables, and a
-    variable carries no environment into a closure.  So all four values are
-    literally the same two, and [rel_chain_4_of_2] finishes. *)
+    discharged by [eval_sub_of_wk] alone, because [sb_wk (ι ψ) φ] is
+    [ι (ψ ⊙ φ)] and [⟪ψ ⊙ φ⟫ ρ] is [⟪ψ⟫ (⟪φ⟫ ρ)] by conversion: a weakening
+    substitutes only variables, and a variable carries no environment into a
+    closure.  So the four values are the same two, and [rel_chain_4_of_2]
+    finishes. *)
 
 Lemma rel_sub_of_wk : forall {Δ ψ Γ},
     Δ ⊨w ψ : Γ ->
@@ -253,15 +249,14 @@ Hint Resolve rel_sub_shift : mctt.
 
 (** * Instantiation at the Identity
 
-    A semantic judgment is a statement about arbitrary semantic substitutions;
-    instantiating it at [Id] recovers the two-value statement of the
-    explicit-substitution presentation.  Two things make the collapse work: the
-    Kripke quantification is instantiated at [wk_id] via [rel_wk_id], and [Id]
-    evaluates to the environment itself ([eval_sub_id]), which the universal form
-    of [rel_exp_under_ctx] lets us name as the substituted environment.  Then [M[Id]] is
-    *syntactically* [M] ([exp_sub_id]), so both commutation obligations of each
-    chain compare a value with itself and only the middle link survives.  These
-    are the forms the case files and [Core/Completeness.v] consume. *)
+    A semantic judgment quantifies over semantic substitutions; instantiating it
+    at [Id] gives a two-value statement.  The Kripke quantification is
+    instantiated at [wk_id] via [rel_wk_id], and [Id] evaluates to the environment
+    itself ([eval_sub_id]), which the universal form of [rel_exp_under_ctx] allows
+    naming as the substituted environment.  Since [M[Id]] is syntactically [M]
+    ([exp_sub_id]), both commutation obligations of each chain compare a value
+    with itself, and only the middle link remains.  The case files and
+    [Core/Completeness.v] use these forms. *)
 
 Lemma rel_sub_under_ctx_simple : forall {Γ Δ σ σ'},
     Γ ⊨s σ ≈ σ' : Δ ->
@@ -284,13 +279,12 @@ Proof.
   pairwise.
 Qed.
 
-(** The companion to [rel_exp_under_ctx_simple] for substitutions:
-    [rel_sub_under_ctx] keeps the
-    two substituted environments existential — the *existence* of [⟦σ⟧(ρ)] is
-    genuine content there, so there is nothing to remove — but a caller with
-    evaluations of its own needs to relate *those*.  Both forms are needed, and
-    reconciling them is easy at this layer, because a context PER, unlike
-    evaluation, does respect [env_eq] ([per_ctx_env_Proper]). *)
+(** The companion of [rel_exp_under_ctx_simple] for substitutions.
+    [rel_sub_under_ctx] keeps the two substituted environments existential, since
+    their existence is real content there, but a caller with its own evaluations
+    needs to relate those.  Both forms are needed, and reconciling them is easy at
+    this layer, because a context PER, unlike evaluation, respects [env_eq]
+    ([per_ctx_env_Proper]). *)
 Lemma rel_sub_under_ctx_at : forall {Γ Δ σ σ'},
     Γ ⊨s σ ≈ σ' : Δ ->
     exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ)
@@ -311,11 +305,10 @@ Proof.
   now rewrite Heq, Heq'.
 Qed.
 
-(** The same at the caller's own context PERs rather than at ones it must then
-    identify with its own.  This is the form every case file wants: taking the two
-    witnesses as arguments confines [handle_per_ctx_env_irrel] — which renames
-    hypotheses, and so breaks any proof script that mentions them afterwards — to
-    this proof. *)
+(** The same at the caller's own context PERs, the form every case file uses.
+    Taking the two witnesses as arguments confines [handle_per_ctx_env_irrel],
+    which renames hypotheses and so breaks proof scripts that mention them later,
+    to this proof. *)
 Corollary rel_sub_under_ctx_at' : forall {Γ Δ σ σ' env_relΓ env_relΔ},
     Γ ⊨s σ ≈ σ' : Δ ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
@@ -395,8 +388,8 @@ Proof.
   intros ρ ρ' Hρ.
   destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
     as [aσ [a [a'σ' [a' [HaσI [? [Ha'σ'I [? [Hl [Hr Hsub]]]]]]]]]].
-  (** Both commutation obligations of [subtyp_under_ctx] now compare a value
-      with itself, so there is nothing to transport the subtyping along. *)
+  (** Both commutation obligations of [subtyp_under_ctx] compare a value with
+    itself, so the subtyping need not be transported. *)
   rewrite exp_sub_id in HaσI, Ha'σ'I.
   exists a, a'.
   repeat split; eassumption.
@@ -404,18 +397,17 @@ Qed.
 
 (** * Precomposition with a Weakening
 
-    Two instantiations of the same hypothesis, at two different weakenings.  Take
-    an arbitrary [Γ' ⊨w φ : Γ] and [ρ ≈ ρ' ∈ R_Γ'], and instantiate
-    [Δ ⊨s σ ≈ σ' : Δ']
+    Two instantiations of the same hypothesis at two weakenings.  Given
+    [Γ' ⊨w φ : Γ] and [ρ ≈ ρ' ∈ R_Γ'], instantiate [Δ ⊨s σ ≈ σ' : Δ']:
 
-    - at [Γ'] with the composite [ψ ⊙ φ] ([rel_wk_compose]), whose *outer* values are
-      the outer values wanted — because [σ[ψ][φ]] is [σ[ψ ⊙ φ]] ([sb_wk_wk]);
-    - at [Δ] with [ψ] itself and the weakened pair [⟪φ⟫ ρ ≈ ⟪φ⟫ ρ'], whose
-      outer values are the *inner* values wanted.
+    - at [Γ'] with the composite [ψ ⊙ φ] ([rel_wk_compose]), whose outer values
+      are the outer values wanted, because [σ[ψ][φ]] is [σ[ψ ⊙ φ]] ([sb_wk_wk]);
+    - at [Δ] with [ψ] and the weakened pair [⟪φ⟫ ρ ≈ ⟪φ⟫ ρ'], whose outer values
+      are the inner values wanted.
 
     Their inner values coincide, since [⟪ψ ⊙ φ⟫ ρ] and [⟪ψ⟫ (⟪φ⟫ ρ)] are
-    convertible: both chains contain the value of [σ] at that one environment.
-    So this is again a merge — up to [env_eq], as in transitivity, because
+    convertible, so both chains contain the value of [σ] at that environment.  The
+    chains then merge, up to [env_eq] as in transitivity, because
     [functional_eval_sub] is all that identifies two evaluations of [σ]. *)
 
 Lemma rel_sub_under_ctx_wk : forall {Γ ψ Δ σ σ' Δ'},
@@ -440,18 +432,17 @@ Proof.
   merge_rel_chain Hc Ha a2.
 Qed.
 
-(** *Pre*composition by a weakening, which — unlike the general composition of
-    two semantic substitutions — *is* semantic.  Nothing has to be instantiated
-    twice: the four environments wanted are the [⟪φ⟫]-images of the four the
-    hypothesis supplies, by [eval_sub_wk_pre] on the two inner ones and by the
-    same lemma after [sb_wk_wk_pre] on the two outer ones.  The chain then
-    transports member by member along [rel_chain_map], whose hypothesis is
-    literally [rel_wk φ].
+(** Precomposition by a weakening, which, unlike general composition of two
+    semantic substitutions, is semantic.  Nothing is instantiated twice: the four
+    environments wanted are the [⟪φ⟫]-images of the four the hypothesis supplies,
+    by [eval_sub_wk_pre] on the inner two and by the same lemma after
+    [sb_wk_wk_pre] on the outer two.  The chain is transported member by member by
+    [rel_chain_map], whose hypothesis is [rel_wk φ].
 
-    That the general case fails is what forces the generic-recursor detour in the
-    [ℕ]-elimination [β]-rule: [Γ'' ⊨s σ ⨟ τ : Γ] would need the value of
-    [(σ x)[τ]] for every index [x], which is a statement about *terms* that the
-    substitution judgment does not make. *)
+    The general case fails because [Γ'' ⊨s σ ⨟ τ : Γ] would need the value of
+    [(σ x)[τ]] for every index [x], a statement about terms that the substitution
+    judgment does not make.  This is why the [ℕ]-elimination [β]-rule goes
+    through the generic recursor. *)
 
 Lemma rel_sub_under_ctx_wk_pre : forall {Γ Δ Δ' φ σ σ'},
     Γ ⊨s σ ≈ σ' : Δ ->
@@ -474,24 +465,22 @@ Qed.
 
 (** * Semantic Weakening of a Term Judgment
 
-    A term judgment may be weakened along [Γ ⊨w φ : Δ].  Recall that the
-    equation [⟦M[φ]ʷ⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] fails — the two sides of the [λ]-case are
-    different closures — so the two values must be *related* instead, and the
-    only thing that relates them is the judgment about [M] itself, instantiated
-    twice:
+    A term judgment may be weakened along [Γ ⊨w φ : Δ].  The equation
+    [⟦M[φ]ʷ⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] fails (in the [λ] case the two sides are different
+    closures), so the two values must be related instead, by the judgment about
+    [M] instantiated twice:
 
     - along [ι φ ⨟ τ] at [(ρ, ρ')], whose outer values are the goal's outer ones
       ([exp_sub_wk]: [M[φ]ʷ[τ]] is [M[ι φ ⨟ τ]]);
-    - along [ι φ] at [(ρτ, ρ'τ')], whose outer values are the goal's *inner* ones
+    - along [ι φ] at [(ρτ, ρ'τ')], whose outer values are the goal's inner ones
       ([exp_sub_of_wk]: [M[ι φ]] is [M[φ]ʷ]).
 
-    Both are read at the *same* pair of inner environments, [⟪φ⟫ ρτ] and
-    [⟪φ⟫ ρ'τ'] — the first because [eval_sub_wk_pre] names them, the second
-    because [eval_sub_of_wk] does — so their inner values coincide on the nose
-    and the two chains merge.  This is where the universal form of
-    [rel_exp_under_ctx] pays
-    off: with existential environments the two instantiations would have spoken
-    about merely pointwise-equal environments, hence about unrelated closures. *)
+    Both are read at the same pair of inner environments, [⟪φ⟫ ρτ] and
+    [⟪φ⟫ ρ'τ'] (named by [eval_sub_wk_pre] and [eval_sub_of_wk] respectively), so
+    their inner values coincide and the two chains merge.  This relies on the
+    universal form of [rel_exp_under_ctx]: with existential environments the two
+    instantiations would concern merely pointwise-equal environments, hence
+    unrelated closures. *)
 
 Lemma rel_exp_under_ctx_wk : forall {Γ Δ φ A M M'},
     Γ ⊨w φ : Δ ->
@@ -534,12 +523,11 @@ Proof.
     merge_rel_chain Hc1 Hc2 v2.
 Qed.
 
-(** The form soundness's variable case consumes: the failing equation
-    [⟦M[φ]ʷ⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] as a *relatedness*.  This is [rel_exp_under_ctx]
-    at [ι φ],
-    where both commutation obligations vanish ([exp_sub_of_wk]) and
-    [eval_sub_of_wk] names both inner environments, so the wanted pair — an outer
-    value against the opposite inner one — is one [pairwise] away. *)
+(** The form the variable case of soundness uses: the failing equation
+    [⟦M[φ]ʷ⟧(ρ) = ⟦M⟧(⟪φ⟫ ρ)] as a relatedness.  This is [rel_exp_under_ctx] at
+    [ι φ], where both commutation obligations vanish ([exp_sub_of_wk]) and
+    [eval_sub_of_wk] names both inner environments, so the wanted pair (an outer
+    value against the opposite inner one) is one [pairwise] away. *)
 Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
     Γ ⊨w φ : Δ ->
     Δ ⊨ M ≈ M' : A ->
@@ -578,18 +566,18 @@ Qed.
 
 (** * Precomposition by [⇑]
 
-    Nothing is instantiated twice here: the four values of the hypothesis are
-    *already* the four values wanted, once each is dropped.  Two facts do the
-    work, and both are the [⇑] case of something that fails in general:
+    Nothing is instantiated twice: once dropped, the four values of the hypothesis
+    are the four values wanted.  Two facts do the work, each the [⇑] case of
+    something that fails in general:
 
-    - [eval_sub_shift_pre] — [⟦⇑ ⨟ σ⟧(ρ)] is [⟦σ⟧(ρ)↯], because [⇑] substitutes
-      only variables (and [sb_wk_shift_pre] says postcomposing by [φ] slides
+    - [eval_sub_shift_pre]: [⟦⇑ ⨟ σ⟧(ρ)] is [⟦σ⟧(ρ)↯], because [⇑] substitutes
+      only variables (and [sb_wk_shift_pre] says postcomposition by [φ] slides
       past, so the same holds of the two [φ]-weakened values);
-    - [rel_wk_shift_tail] — the Ctx-Ext biconditional, which is exactly the
-      statement that dropping takes [R_{Δ ▹ A}] to [R_Δ].
+    - [rel_wk_shift_tail]: the Ctx-Ext biconditional, which says that dropping
+      takes [R_{Δ ▹ A}] to [R_Δ].
 
-    The second is a [rel_wk], i.e. precisely the hypothesis of [rel_chain_map],
-    so the chain transports along the drop member by member. *)
+    The second is a [rel_wk], the hypothesis of [rel_chain_map], so the chain is
+    transported along the drop member by member. *)
 
 Lemma rel_sub_under_ctx_shift : forall {Γ Δ e σ σ'},
     Γ ⊨s σ ≈ σ' : (e :: Δ)%list ->
@@ -612,8 +600,8 @@ Qed.
 
 (** * Symmetry
 
-    The four values of the symmetric judgment are the *same* four in the
-    opposite order, so symmetry is [rel_chain_4_sym] and nothing else. *)
+    The four values of the symmetric judgment are the same four in the opposite
+    order, so symmetry is [rel_chain_4_sym]. *)
 
 Lemma rel_exp_sym : forall {M σ ρ ρσ M' σ' ρ' ρ'σ' R},
     PER R ->
@@ -647,12 +635,10 @@ Proof.
   symmetry; eassumption.
 Qed.
 
-(** Instantiate the hypothesis at the swapped substitution pair and
-    the swapped environment pair; both of its chains then come out reversed, and
-    reversing them again is [rel_exp_sym].  The universal form of
-    [rel_exp_under_ctx] is
-    what makes the swap legal at all: the caller's two evaluations serve, read in
-    the other order. *)
+(** Instantiate the hypothesis at the swapped substitution pair and the swapped
+    environment pair; both chains come out reversed, and reversing them again is
+    [rel_exp_sym].  The universal form of [rel_exp_under_ctx] makes the swap
+    possible: the caller's two evaluations serve, read in the other order. *)
 Lemma rel_exp_under_ctx_sym : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
     Γ ⊨ M' ≈ M : A.
@@ -670,12 +656,11 @@ Qed.
 
 (** * Transitivity
 
-    Two four-value chains, and the value they share is the one both sides
-    evaluate [σ2[φ]] to.  It is shared only up to [env_eq]
-    ([functional_eval_sub] pins an evaluated substitution down no further), which
-    is why this needs [per_ctx_env_resp_env_eq]; with that link prefixed, the two
-    chains genuinely overlap and [rel_chain_merge] joins them into one, from
-    which [rel_chain_incl] selects the four values wanted. *)
+    Two four-value chains, sharing the value both sides evaluate [σ2[φ]] to.  It
+    is shared only up to [env_eq] ([functional_eval_sub] determines an evaluated
+    substitution no further), hence [per_ctx_env_resp_env_eq]; with that link
+    prefixed the two chains overlap, [rel_chain_merge] joins them, and
+    [rel_chain_incl] selects the four values wanted. *)
 
 Lemma rel_sub_under_ctx_trans : forall {Γ Δ σ1 σ2 σ3},
     Γ ⊨s σ1 ≈ σ2 : Δ ->
@@ -699,10 +684,9 @@ Proof.
   merge_rel_chain Ha Hc ρ'σ2φ.
 Qed.
 
-(** The reflexive instances of a substitution judgment.  The substitution cases
-    and [rel_exp_under_ctx_trans]
-    both need to instantiate a second judgment at *one* side of a given
-    substitution pair; symmetry and transitivity supply them. *)
+(** The reflexive instances of a substitution judgment.  The substitution
+    cases and [rel_exp_under_ctx_trans] instantiate a second judgment at one side
+    of a given substitution pair; symmetry and transitivity supply these. *)
 
 Corollary rel_sub_under_ctx_refl_left : forall {Γ Δ σ σ'},
     Γ ⊨s σ ≈ σ' : Δ ->
@@ -722,18 +706,16 @@ Proof.
   eapply rel_sub_under_ctx_trans; eassumption.
 Qed.
 
-(** Two four-value chains again, but this time the shared values are
-    shared *on the nose*: the second judgment is instantiated at the reflexive
-    right-hand substitution [σ'] and the reflexive right-hand environment pair
-    [ρ' ≈ ρ'] — with the caller's own [ρ'σ'] named on both sides — so its first
-    two values are literally [⟦M2[σ']⟧(ρ')] and [⟦M2⟧(ρ'σ')], which are the last
-    two of the first chain.  Under the existential form of [rel_exp_under_ctx]
-    they would
-    only have been [env_eq]-related environments, hence merely *some* pair of
-    values of [M2], and nothing would join.
+(** Two four-value chains, this time sharing values exactly.  The second
+    judgment is instantiated at the reflexive right-hand substitution [σ'] and the
+    reflexive right-hand environment pair [ρ' ≈ ρ'], with the caller's [ρ'σ']
+    named on both sides, so its first two values are [⟦M2[σ']⟧(ρ')] and
+    [⟦M2⟧(ρ'σ')], the last two of the first chain.  With existential environments
+    they would only be values of [M2] at [env_eq]-related environments, and the
+    chains would not join.
 
     The two element PERs are identified through the type chains, which overlap in
-    [⟦A⟧(ρ'σ')] — cross-level irrelevance, so the two judgments' universe levels
+    [⟦A⟧(ρ'σ')]; irrelevance is cross-level, so the two judgments' universe levels
     need not agree. *)
 
 Lemma rel_exp_under_ctx_trans : forall {Γ A M1 M2 M3},
@@ -767,10 +749,8 @@ Proof.
     merge_rel_chain Hc1 Hc2 v3.
 Qed.
 
-(** The term-level reflexive instances.  The substitution cases need one: it
-    bridges the
-    values of a term at two different environments, and the bridge is that same
-    term judgment taken reflexively. *)
+(** The term-level reflexive instances.  The substitution cases use one to
+    bridge the values of a term at two different environments. *)
 
 Corollary rel_exp_under_ctx_refl_left : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->

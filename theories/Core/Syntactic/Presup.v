@@ -1,37 +1,35 @@
 (** * Presupposition
 
-    This file proves presupposition for term equality, refinement and
-    substitution equivalence, in full: the context is well formed, both sides
-    are well typed, and the type is a type.  Presupposition for typing is
-    [presup_exp] in [Core.Syntactic.System.Lemmas], from the mutual theorem
+    Presupposition for term equality, refinement and substitution
+    equivalence: the context is well formed, both sides are well typed, and
+    the type is a type.  Presupposition for typing is [presup_exp] in
+    [Core.Syntactic.System.Lemmas], derived from the mutual theorem
     [presup_global].
 
-    A presentation with a fixed [ℕ]-eliminator motive can prove all three
-    simultaneously, before substitution equivalence.  Here the three are
-    separated and these two come *after* it, because [wf_exp_eq_natrec_cong]
-    lets the motive vary: the type of the equation is [A[Id ,, M]] while the
-    right-hand side is naturally typed at [A'[Id ,, M']], and bridging those two
-    is exactly [sub_eq_preserves_exp].  That statement is about typing
-    derivations only, so it is provable directly by induction on [wf_exp] and
-    does not need presupposition itself — which is what breaks the apparent
-    circularity.
+    These statements come after [sub_eq_preserves_exp], because
+    [wf_exp_eq_natrec_cong] lets the motive vary: the equation is at
+    [A[Id ,, M]], while the right-hand side is naturally typed at
+    [A'[Id ,, M']], and [sub_eq_preserves_exp] bridges the two.  That lemma is
+    about typing derivations only, so it is proved by induction on [wf_exp]
+    without presupposition.
 
     None of the three statements needs a mutual induction:
 
-    - [presup_exp_eq]'s [wf_exp_eq_subtyp] case gets [Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i] from a
-      premise rather than from [presup_subtyp];
-    - [presup_subtyp]'s [wf_subtyp_refl] case calls the finished
+    - the [wf_exp_eq_subtyp] case of [presup_exp_eq] gets
+      [Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i] from a premise rather than from
+      [presup_subtyp];
+    - the [wf_subtyp_refl] case of [presup_subtyp] uses the finished
       [presup_exp_eq].
 
-    Both facts are consequences of the extra arguments that [Definitions]
-    carries on those two rules for precisely this purpose.
+    Both rely on extra premises that [Definitions] carries on those two rules
+    for this purpose.
 
-    Of the sixteen rules for term equality, six need an argument of their own,
-    and all six need it for the same reason: a congruence rule states its
-    equation at the type built from the *left* premises, so the right-hand side
-    has to be built by its own typing rule, at its own type, and then moved to
-    the type of the equation by [wf_conv].  The remaining rules — including [η],
-    whose right-hand side is [wf_fn_eta_expand] — are hints. *)
+    Seven of the twenty-one term-equality rules need an argument of their own, all
+    for the same reason: a congruence rule states its equation at the type
+    built from the left premises, so the right-hand side is typed by its own
+    rule, at its own type, and then moved to the type of the equation by
+    [wf_conv].  The remaining rules, including [η] (whose right-hand side is
+    [wf_fn_eta_expand]), are hints. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -65,6 +63,18 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ rec M' return A' | zero -> MZ' | succ -> MS' end : A'[Id,,M']) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ℕ) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ℕ) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.
+    eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+
+  (** [efq], right.  As for [rec], with no branches to transport. *)
+  - assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' : Γ ▹ ⊥) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ efq M' return A' : A'[Id,,M']) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ⊥) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.
@@ -156,7 +166,7 @@ Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
 
 (** ** The Two Sides of a Refinement
 
-    A refinement holds between types at a *common* universe level, which is what
+    A refinement holds between types at a common universe level, which is what
     makes the statement existential and its cases uniform: in each of them the
     two sides are types at levels that need not agree, and [lift_exp_common]
     raises both.  ([wf_subtyp_refl]'s case is where [presup_exp_eq] is used, and
@@ -200,9 +210,8 @@ Qed.
 
     [gen_presup] extends [gen_core_presup] with the two statements above.  The
     equality case calls [gen_core_presup] on the left-hand typing it has just
-    produced, so that [⊢ Θ ⍮ Ξ ⍮ Γ] and the type of the equation are added as well —
-    which is what the corresponding tactic did when presupposition was one
-    four-way conjunction. *)
+    produced, so that [⊢ Θ ⍮ Ξ ⍮ Γ] and the type of the equation are added as
+    well. *)
 
 Ltac gen_presup1 H :=
   match type of H with

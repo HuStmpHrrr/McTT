@@ -403,6 +403,8 @@ Proof.
     mauto 3.
   - bulky_rewrite.
   - bulky_rewrite.
+  - bulky_rewrite.
+  - bulky_rewrite.
     mauto 3.
   - destruct_by_head pi_glu_typ_pred.
     rename x into IP. rename x0 into IEl. rename x1 into OP. rename x2 into OEl.
@@ -642,9 +644,8 @@ Hint Resolve glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub : mctt.
 
 (** *** Lemmas for [glu_ctx_env] *)
 
-(** Context *equality* is not a judgment of this presentation, so this is the
-    refinement form: it goes one way, and [ctxsub_sub] does the transport of the
-    substitution itself. *)
+(** Stated for context refinement, since context equality is not a judgment.
+    It goes one way, and [ctxsub_sub] transports the substitution itself. *)
 Lemma glu_ctx_env_sub_resp_ctxsub : forall {Γ Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall {Δ Δ' σ ρ},
@@ -806,10 +807,10 @@ Qed.
 
 Hint Resolve glu_ctx_env_per_ctx_env : mctt.
 
-(** Syntactic context equality is not a judgment here, so this is stated at a
-    single context — which is all [functional_glu_ctx_env] needs.  The two
-    derivations may still ascribe different universe levels to the same type,
-    which is what the cumulativity step at the end is for. *)
+(** Stated at a single context, since syntactic context equality is not a
+    judgment; this is all [functional_glu_ctx_env] needs. The two derivations
+    may still assign different universe levels to the same type, which the
+    final cumulativity step handles. *)
 Lemma glu_ctx_env_resp_per_ctx_helper : forall {Γ Sb Sb'},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     EG Γ ∈ glu_ctx_env ↘ Sb' ->
@@ -1039,11 +1040,12 @@ Proof.
   solve_per.
 Qed.
 
-(** Postcomposition by a Kripke weakening, [sb_wk] — the same operation Lemma
-    6.39 uses on the semantic side.  The head clause is now a [rewrite] away from
-    [glu_univ_elem_exp_monotone], since [M[σ][φ]ʷ] and [M[(sb_wk σ φ)]] are the
-    same expression ([exp_wk_sub]).  Only the tail needs a judgmental step: the
-    rearrangement it wants is a [sb_eq], which no gluing predicate respects. *)
+(** Postcomposition by a Kripke weakening, [sb_wk], the operation Lemma 6.39
+    uses on the semantic side. The head clause follows from
+    [glu_univ_elem_exp_monotone] by a [rewrite], since [M[σ][φ]ʷ] and
+    [M[(sb_wk σ φ)]] are the same expression ([exp_wk_sub]). Only the tail
+    needs a judgmental step: the rearrangement it needs is an [sb_eq], which no
+    gluing predicate respects. *)
 Lemma glu_ctx_env_sub_monotone : forall Γ Sb,
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     forall Δ' φ Δ τ ρ,

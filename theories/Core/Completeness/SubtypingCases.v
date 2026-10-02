@@ -3,28 +3,21 @@
     The four rules of [wf_subtyp] and the subsumption rule of [wf_exp_subtyp],
     validated semantically.
 
-    [subtyp_under_ctx] spells a subtyping judgment out as *three* facts at each
-    instantiation — the two commutation links [⟦A[σ]⟧ρ ≈ ⟦A⟧ρσ] and
-    [⟦A'[σ']⟧ρ' ≈ ⟦A'⟧ρ'σ'], and [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ' at i] between the two
-    middles.  So it is a four-value pattern with its middle link replaced by a
-    subtyping: the two ends still have to be reconciled with the values the caller
-    names, and only the *comparison* in the middle is asymmetric.  Every proof
-    below has the same three-part shape as a result, and the interesting work is
-    always in the middle part.
+    At each instantiation, [subtyp_under_ctx] states three facts: the two
+    commutation links [⟦A[σ]⟧ρ ≈ ⟦A⟧ρσ] and [⟦A'[σ']⟧ρ' ≈ ⟦A'⟧ρ'σ'], and
+    [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ' at i] between the two middles.  It is a four-value
+    pattern whose middle link is a subtyping, so every proof below has three
+    parts, and the interesting one is the middle.
 
-    Two consequences of that shape are worth recording, because both look like
-    omissions and are not:
+    Two consequences of this shape look like omissions but are not:
 
-    - the judgment never relates [A'] at two *different* environments (both of its
+    - the judgment never relates [A'] at two different environments (both of its
       links stay within one column), so [rel_exp_eq_subtyp] cannot reconstruct
-      [A']'s own type chain and must be given it.  That is exactly why
-      [wf_exp_subtyp] and [wf_exp_eq_subtyp] carry the extra premise
-      [Γ ⊢ A' : Type@i];
-
-    - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Type@i] and not the companion
-      premise [Γ ⊨ A' ≈ A' : Type@i], since the second link is the first
-      judgment's own third-to-fourth link read backwards.
- *)
+      [A']'s type chain and must be given it.  This is why [wf_exp_subtyp] and
+      [wf_exp_eq_subtyp] carry the extra premise [Γ ⊢ A' : Type@i];
+    - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Type@i], not also
+      [Γ ⊨ A' ≈ A' : Type@i], since the second link is the first judgment's
+      third-to-fourth link read backwards. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -39,10 +32,9 @@ Import Wk_Notations.
 (** ** [Sub-Eq]
 
     A type equality is a subtyping, because [per_subtyp_refl1] turns any related
-    pair of type values into a subtyping between them.  The four-value pattern of
-    the equality supplies all three parts at once: its outer two links *are* the
-    two commutation obligations, and its middle link is what
-    [per_subtyp_refl1] consumes. *)
+    pair of type values into a subtyping.  The four-value pattern of the equality
+    supplies all three parts: its outer links are the two commutation obligations,
+    and its middle link is what [per_subtyp_refl1] consumes. *)
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
@@ -60,9 +52,9 @@ Proof.
   exists a1, a2, a4, a3.
   repeat apply conj; try eassumption.
   - pairwise.
-  - (** The second obligation runs the other way round: what the chain has is
-        [a3 ≈ a4] and what [subtyp_under_ctx] asks for is [a4 ≈ a3].  A chain in a PER
-        relates every pair in either direction, so [pairwise] serves both. *)
+  - (** The second obligation runs the other way: the chain has [a3 ≈ a4] and
+      [subtyp_under_ctx] asks for [a4 ≈ a3].  A chain in a PER relates every pair
+      in both directions, so [pairwise] serves both. *)
     pairwise.
   - assert (Hmid : Dom a2 ≈ a3 ∈ per_univ i) by pairwise.
     destruct Hmid as [R HR].
@@ -73,14 +65,14 @@ Hint Resolve subtyp_refl : mctt.
 
 (** ** [Sub-Trans]
 
-    Transitivity is where the asymmetry of [subtyp_under_ctx] costs something.  The two
-    hypotheses instantiated at the *same* data do not chain: the first reports
-    [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ'] and the second [Sub ⟦A'⟧ρσ <: ⟦A''⟧ρ'σ'], whose
-    middles are the values of [A'] at *different* environments.  What does chain is
-    the second hypothesis taken a second time, at [Id] and at the pair
-    [(ρ'σ', ρ'σ')] — legitimate because [ρσ ≈ ρ'σ'] makes [ρ'σ'] self-related —
-    which reports [Sub ⟦A'⟧ρ'σ' <: ⟦A''⟧ρ'σ'] and so meets the first hypothesis on
-    the nose.  [subtyp_under_ctx_simple] is that instance packaged. *)
+    The asymmetry of [subtyp_under_ctx] makes transitivity nontrivial.  The two
+    hypotheses at the same data do not chain: the first gives
+    [Sub ⟦A⟧ρσ <: ⟦A'⟧ρ'σ'] and the second [Sub ⟦A'⟧ρσ <: ⟦A''⟧ρ'σ'], whose middles
+    are values of [A'] at different environments.  What does chain is the second
+    hypothesis taken again at [Id] and at the pair [(ρ'σ', ρ'σ')], which is allowed
+    because [ρσ ≈ ρ'σ'] makes [ρ'σ'] self-related.  It gives
+    [Sub ⟦A'⟧ρ'σ' <: ⟦A''⟧ρ'σ'], which meets the first hypothesis exactly.
+    [subtyp_under_ctx_simple] packages that instance. *)
 Lemma subtyp_trans : forall {Γ A A' A''},
     Γ ⊨ A ⊆ A' ->
     Γ ⊨ A' ⊆ A'' ->
@@ -126,10 +118,10 @@ Qed.
 
 (** ** [Sub-Univ]
 
-    [Type@i[σ]] *is* [Type@i], so all four values of both columns are already
-    equal and the two commutation obligations are reflexivity.  Only the middle is
-    real, and it is [per_subtyp_univ].  The ambient level has to be strictly above
-    [j], hence [S j]. *)
+    [Type@i[σ]] is [Type@i], so all four values in both columns are equal and the
+    two commutation obligations are reflexivity.  Only the middle has content, and
+    it is [per_subtyp_univ].  The ambient level must be strictly above [j], hence
+    [S j]. *)
 Lemma subtyp_univ : forall {Γ i j},
     ⊨ Γ ->
     i <= j ->
@@ -150,21 +142,22 @@ Hint Resolve subtyp_univ : mctt.
 
 (** ** [Sub-Pi]
 
-    [per_subtyp_pi] wants four things: the two Π-values self-related, a domain PER
-    relating them, and a codomain subtyping valid at every argument pair of that
-    PER.  The first three are [rel_typ_of_pi] read at the three type equalities
-    among the premises — the two self-equalities give the Π-values and the
-    heterogeneous one gives the domain PER — and the fourth is the codomain
-    premise, whose extended-context PER is [per_env_extend A' A' env_relΓ] because
-    the repo checks both codomains in [Γ ▹ A'] (see [System/Definitions.v]).
+    [per_subtyp_pi] needs the two Π-values self-related, a domain PER relating
+    them, and a codomain subtyping at every argument pair of that PER.  The first
+    three come from [rel_typ_of_pi] at the three type equalities among the
+    premises (the two self-equalities give the Π-values, the heterogeneous one the
+    domain PER).  The fourth is the codomain premise, whose extended context PER is
+    [per_env_extend A' A' env_relΓ] because both codomains are checked in
+    [Γ ▹ A'] (see [System/Definitions.v]).
 
-    Moving the quantified argument pair from the domain PER into that extended
-    context PER is the one step with content: the two PERs share their *right*
-    value [⟦A'⟧ρ'σ'], so [per_univ_elem_left_irrel] identifies them.
+    The one step with content moves the quantified argument pair from the domain
+    PER into that extended context PER: the two PERs share their right value
+    [⟦A'⟧ρ'σ'], so [per_univ_elem_left_irrel] identifies them.
 
-    Levels: the premises fix [i], the codomain subtyping arrives at whatever level
-    [subtyp_under_ctx_simple] reports, and [per_subtyp_pi] insists that all of its
-    premises and its conclusion agree.  So everything is raised to [max i i0]. *)
+    Levels: the premises fix [i], the codomain subtyping comes at whatever level
+    [subtyp_under_ctx_simple] reports, and [per_subtyp_pi] requires all its
+    premises and its conclusion to agree, so everything is raised to
+    [max i i0]. *)
 Lemma subtyp_pi : forall {Γ A A' i B B'},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ⊨ A' ≈ A' : Type@i ->
@@ -236,18 +229,16 @@ Hint Resolve subtyp_pi : mctt.
 
 (** ** [Subsump]
 
-    The term chain is already there; all that changes is the PER it is read in.
+    The term chain is unchanged; only the PER it is read in changes.
     [per_elem_subtyping] moves a single pair up a subtyping, and [rel_chain_mono]
-    lifts that to the whole chain — the chain's *shape* is untouched, which is the
-    point of stating the four-value pattern over a [rel_chain] in the first place.
+    lifts that to the whole chain without changing its shape.
 
-    Two choices make the bookkeeping small.  The target PER is [A']'s canonical
-    head PER rather than an anonymous witness, so that
+    Two choices keep the bookkeeping small.  The target PER is the canonical head
+    PER of [A'] rather than an anonymous witness, so that
     [per_univ_elem_at_head]/[per_univ_chain_at_in] can pin [A']'s chain to it
-    instead of leaving an existential for [per_elem_subtyping] to guess.  And the
-    common level is [max (max i j) k], the three levels the three hypotheses
-    report, since [per_elem_subtyping] needs its subtyping and both of its type
-    values at one level. *)
+    instead of leaving an existential for [per_elem_subtyping].  And the common
+    level is [max (max i j) k], the levels of the three hypotheses, since
+    [per_elem_subtyping] needs its subtyping and both type values at one level. *)
 Lemma rel_exp_eq_subtyp : forall {Γ A A' i M M'},
     Γ ⊨ M ≈ M' : A ->
     Γ ⊨ A' ≈ A' : Type@i ->
@@ -275,9 +266,8 @@ Proof.
   assert (u4 = t3) as -> by (eapply functional_eval_exp; [ exact Hu4 | exact Ht3 ]).
   assert (HsubL : Sub s2 <: t3 at (max (max i j) k))
     by (eapply per_subtyp_cumu; [ exact Hsubst | lia ]).
-  (** Both self-relations have to be read off their own chain *before* the level
-      is raised: [pairwise] cannot match a goal whose level is still a
-      metavariable. *)
+  (** Both self-relations are read off their chains before the level is raised:
+    [pairwise] cannot match a goal whose level is still a metavariable. *)
   assert (HRA0 : DF s2 ≈ s2 ∈ per_univ_elem j ↘ RA) by pairwise.
   assert (HH0 : DF t3 ≈ t3 ∈ per_univ_elem i ↘ (per_head A' A' ρσ ρ'σ'))
     by pairwise.

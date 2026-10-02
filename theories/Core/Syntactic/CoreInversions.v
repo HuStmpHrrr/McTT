@@ -8,19 +8,12 @@
     only two cases: the introduction rule, where refinement is reflexivity, and
     [wf_exp_subtyp], where it is transitivity.
 
-    Making substitution an operation removes half of this file.  The original
-    development also inverted the substitution judgments — [M[σ] : A], [Id : Δ],
-    [Wk : Δ], [σ ⨟ τ : Δ], [σ ,, M : Δ] — because each of those was an inductive
-    rule that could be the last step of a derivation.  None of them is a rule any
-    more:
+    Substitutions need no inversion lemmas:
 
-    - [M[σ]] is not a term former, so there is nothing to invert; the
-      corresponding fact is [sub_preserves_exp] read backwards, which
-      is not needed anywhere;
+    - [M[σ]] is not a term former, so there is nothing to invert;
     - [wf_sub] is a record, not an inductive family, so a derivation of
       [Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ] carries no information beyond its two fields;
-    - in particular [Θ ⍮ Ξ ⍮ Γ ⊢s Id : Δ] *is* the context refinement that
-      [wf_sub_id_inversion] used to extract. *)
+      in particular [Θ ⍮ Ξ ⍮ Γ ⊢s Id : Δ] is itself a context refinement. *)
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -90,6 +83,55 @@ Qed.
 #[export]
 Hint Resolve wf_natrec_inversion : mctt.
 
+Lemma wf_True_inversion : forall Θ Ξ Γ A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_True_inversion : mctt.
+
+Corollary wf_true_inversion : forall Θ Ξ Γ A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp eq_refl); mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_true_inversion : mctt.
+
+Lemma wf_False_inversion : forall Θ Ξ Γ A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_False_inversion : mctt.
+
+Lemma wf_exfalso_inversion : forall Θ Ξ Γ A M A',
+    Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A' : A ->
+    (exists i, Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A' : Type@i) /\
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ /\
+    Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    try (specialize (IHwf_exp1 _ _ eq_refl));
+    destruct_conjs; gen_core_presups; repeat split; mautosolve.
+Qed.
+
+#[export]
+Hint Resolve wf_exfalso_inversion : mctt.
+
 Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
     exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ C.
@@ -106,7 +148,7 @@ Hint Resolve wf_pi_inversion : mctt.
 (** The level the domain and the codomain are checked at can always be taken to
     be the level of the [Π]-type itself.  Moving the refinement [Type@j ⊆ Type@i]
     from [Γ] into [Γ ▹ A] is a weakening, and it is the only step that needs any
-    work: both sides are unchanged by it — [Type@j[↑]ʷ] *is* [Type@j] — but only by
+    work: both sides are unchanged by it ([Type@j[↑]ʷ] is [Type@j]), but only by
     computation, so the step is taken by hand. *)
 Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@i ->

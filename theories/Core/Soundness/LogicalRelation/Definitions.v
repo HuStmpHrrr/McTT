@@ -19,7 +19,7 @@ Section Fixed_GCtx.
 Notation "'glu_typ_pred_args'" := (Tcons ctx (Tcons typ Tnil)).
 Notation "'glu_typ_pred'" := (predicate glu_typ_pred_args).
 Notation "'glu_typ_pred_equivalence'" := (@predicate_equivalence glu_typ_pred_args) (only parsing).
-(** This type annotation is to distinguish this notation from others *)
+(** This type annotation distinguishes this notation from others. *)
 Notation "Γ ⊢ A ® R" := ((R Γ A : (Prop : Type)) : (Prop : (Type : Type))) (at level 70, A at level 69, R constr).
 
 Notation "'glu_exp_pred_args'" := (Tcons ctx (Tcons typ (Tcons exp (Tcons domain Tnil)))).
@@ -55,6 +55,30 @@ Definition nat_glu_typ_pred i : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ℕ : T
 
 Definition nat_glu_exp_pred i : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® nat_glu_typ_pred i /\ glu_nat Γ M m.
 #[global] Arguments nat_glu_exp_pred i Γ A M m/.
+
+Definition True_glu_typ_pred i : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ⊤ : Type@i.
+#[global] Arguments True_glu_typ_pred i Γ A/.
+
+(** A term of type [⊤] is glued to every value: by η, all its terms are
+    equal to [⋆], which is what every value reads back as. *)
+Definition True_glu_exp_pred i : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® True_glu_typ_pred i /\ Γ ⊢ M : ⊤.
+#[global] Arguments True_glu_exp_pred i Γ A M m/.
+
+(** [⊥] has no canonical values, so its gluing is that of the neutrals of
+    [glu_nat]. *)
+Inductive glu_False : ctx -> exp -> domain -> Prop :=
+| glu_False_neut :
+  `{ per_bot m m ->
+     (forall {Δ φ M'}, Δ ⊢k φ : Γ -> Rne m in length Δ ↘ M' -> Δ ⊢ M[φ]ʷ ≈ M' : ⊥) ->
+     glu_False Γ M ⇑ a m }.
+
+Hint Constructors glu_False : mctt.
+
+Definition False_glu_typ_pred i : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ⊥ : Type@i.
+#[global] Arguments False_glu_typ_pred i Γ A/.
+
+Definition False_glu_exp_pred i : glu_exp_pred := fun Γ A M m => Γ ⊢ A ® False_glu_typ_pred i /\ glu_False Γ M m.
+#[global] Arguments False_glu_exp_pred i Γ A M m/.
 
 Definition neut_glu_typ_pred i a : glu_typ_pred :=
   fun Γ A => Γ ⊢ A : Type@i /\
@@ -142,6 +166,18 @@ Section Gluing.
           el_rel <∙> nat_glu_exp_pred i ->
           DG ℕᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
+  | glu_univ_elem_core_True :
+    `{ forall typ_rel el_rel,
+          typ_rel <∙> True_glu_typ_pred i ->
+          el_rel <∙> True_glu_exp_pred i ->
+          DG ⊤ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+
+  | glu_univ_elem_core_False :
+    `{ forall typ_rel el_rel,
+          typ_rel <∙> False_glu_typ_pred i ->
+          el_rel <∙> False_glu_exp_pred i ->
+          DG ⊥ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+
   | glu_univ_elem_core_pi :
     `{ forall (in_rel : relation domain)
          IP IEl
@@ -200,6 +236,18 @@ Section GluingInduction.
           El <∙> nat_glu_exp_pred i ->
           motive i P El ℕᵈ)
 
+      (case_True :
+        forall i (P : glu_typ_pred) (El : glu_exp_pred),
+          P <∙> True_glu_typ_pred i ->
+          El <∙> True_glu_exp_pred i ->
+          motive i P El ⊤ᵈ)
+
+      (case_False :
+        forall i (P : glu_typ_pred) (El : glu_exp_pred),
+          P <∙> False_glu_typ_pred i ->
+          El <∙> False_glu_exp_pred i ->
+          motive i P El ⊥ᵈ)
+
       (case_pi :
         forall i a B (ρ : env) (in_rel : relation domain) (IP : glu_typ_pred)
           (IEl : glu_exp_pred) (OP : forall c : domain, Dom c ≈ c ∈ in_rel -> glu_typ_pred)
@@ -246,6 +294,8 @@ Section GluingInduction.
              HP'
              HEl')
         (case_nat i)
+        (case_True i)
+        (case_False i)
         _ (* (case_pi i) *)
         (case_neut i)
         P El a
@@ -375,12 +425,12 @@ Definition glu_rel_exp Γ M A : Prop :=
         glu_rel_exp_with_sub i Δ M A σ ρ.
 #[global] Arguments glu_rel_exp Γ M A/.
 
-(** There is no [Γ ⊩s $ τ : Γ'], and the fundamental theorem has two parts, not
-    three: a gluing predicate is indexed by a *value*, and
-    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation once
-    substitution is an operation, so [glu_rel_sub_with_sub] cannot be stated.
-    Concrete substitutions are handled by [glu_rel_exp]-level lemmas instead,
-    exactly as [Γ ⊨s σ : Δ] is absent from [completeness_fundamental]. *)
+(** There is no gluing judgment for substitutions, so the fundamental theorem
+    has two parts. A gluing predicate is indexed by a value, and
+    [⟦τ ⨟ σ⟧(ρ) = ⟦τ⟧(⟦σ⟧ρ)] is not an equation when substitution is an
+    operation, so such a judgment cannot be stated. Concrete substitutions are
+    handled by lemmas about [glu_rel_exp] instead, just as
+    [completeness_fundamental] has no substitution part. *)
 
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
@@ -404,6 +454,8 @@ Notation "'EG' A ∈ R ↘ Sb " := (R Sb A : ((Prop : (Type : Type)) : (Type : T
 #[export]
 Hint Constructors glu_nat : mctt.
 #[export]
+Hint Constructors glu_False : mctt.
+#[export]
 Hint Constructors neut_glu_exp_pred pi_glu_typ_pred pi_glu_exp_pred : mctt.
 #[export]
 Hint Constructors glu_univ_elem_core : mctt.
@@ -416,8 +468,9 @@ Hint Constructors glu_typ_top : mctt.
 Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 
-(** [induction H using glu_univ_elem_ind] no longer applies, for the reason
-    [per_univ_elem_induction] explains.  This does what it did. *)
+(** [induction H using glu_univ_elem_ind] does not apply, for the reason
+    [per_univ_elem_induction] explains. The tactics below perform the same
+    induction. *)
 Ltac glu_induction_hintro := let H := fresh "H" in intro H.
 
 Ltac glu_univ_elem_induction_core HH ih :=
@@ -432,8 +485,9 @@ Ltac glu_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i P El a;
-      refine (glu_univ_elem_ind _ _ _ _ _);
+      refine (glu_univ_elem_ind _ _ _ _ _ _ _);
       [ do 5 intro; do 3 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
+      | do 3 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro ]; cbv beta
   end.
 

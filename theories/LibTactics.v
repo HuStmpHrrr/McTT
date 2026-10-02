@@ -8,7 +8,7 @@ Create HintDb mctt discriminated.
     created a second time for the [Hint Rewrite ... : mctt] declarations. *)
 Create Rewrite HintDb mctt.
 
-(** Transparency setting for generalized rewriting *)
+(** Transparency setting for generalized rewriting. *)
 #[export]
 Typeclasses Transparent arrows.
 
@@ -116,7 +116,7 @@ Ltac directed tac :=
 Tactic Notation "directed" tactic2(tac) := directed tac.
 
 Ltac progressive_invert H :=
-  (** We use dependent destruction as it is more general than inversion *)
+  (** We use dependent destruction, as it is more general than inversion. *)
   directed dependent destruction H.
 
 #[local]
@@ -229,7 +229,7 @@ Ltac mautosolve_impl pow := unshelve solve [mauto pow]; solve [constructor].
 Tactic Notation "mautosolve" := mautosolve_impl integer:(5).
 Tactic Notation "mautosolve" int_or_var(pow) := mautosolve_impl pow.
 
-(** Improve type class resolution for Equivalence and PER *)
+(** Improve type class resolution for [Equivalence] and [PER]. *)
 
 #[export]
 Hint Extern 1 => eassumption : typeclass_instances.
@@ -244,7 +244,7 @@ Hint Extern 1 (@Transitive _ (@predicate_equivalence _)) => simple apply @Equiva
 Hint Extern 1 (@Transitive _ (@predicate_implication _)) => simple apply @PreOrder_Transitive : typeclass_instances.
 
 
-(** Default setting for [intuition] tactic *)
+(** Default setting for the [intuition] tactic. *)
 Ltac Tauto.intuition_solver ::= auto with mctt core solve_subterm.
 
 Ltac exvar T tac :=
@@ -262,7 +262,8 @@ Ltac exvar T tac :=
         clear x; tac x'
   end.
 
-(** this tactic traverses to the bottom of a lemma following universals and conjunctions to the bottom and apply a tactic *)
+(** [deepexec lem tac] follows the universals and conjunctions of [lem] down
+    to its conclusions and applies [tac] there. *)
 Ltac deepexec lem tac :=
   let T := type of lem in
   let T' := eval simpl in T in
@@ -282,7 +283,8 @@ Ltac deepexec lem tac :=
   | _ => tac lem
   end.
 
-(** this tactic is similar to above, but the traversal cuts off when it sees an assumption applicable to a cut-off argument C *)
+(** [cutexec lem C tac] is like [deepexec], but stops at an assumption to
+    which the cut-off argument [C] applies. *)
 Ltac cutexec lem C tac :=
   let CT := type of C in
   let T := type of lem in
@@ -425,8 +427,8 @@ Ltac saturate_refl_for hd :=
 
 #[global]
 Ltac solve_refl :=
-  (** Sometimes `reflexivity` does not work as (simple) unification fails for some unknown reason.
-      Thus, we try [Equivalence_Reflexive] as well. *)
+  (** [reflexivity] sometimes fails because simple unification fails, so
+      [Equivalence_Reflexive] is tried as well. *)
   solve [reflexivity || apply Equivalence_Reflexive].
 
 (** *** Helper Instances for Generalized Rewriting *)
@@ -472,7 +474,8 @@ Proof.
   split; intros []; econstructor; unfold Symmetric, Transitive in *; intuition.
 Qed.
 
-(** The following facility converts search of Proper from type class instances to the local context *)
+(** The following facility turns a search for a [Proper] instance into a
+    search of the local context. *)
 
 Class PERElem (A : Type) (P : A -> Prop) (R : A -> A -> Prop) :=
   per_elem : forall a, P a -> R a a.

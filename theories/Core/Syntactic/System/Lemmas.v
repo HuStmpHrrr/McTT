@@ -53,10 +53,10 @@ Hint Resolve ctxsub_sub : mctt.
 (** * Substitution Equivalence
 
     The closure properties below are the [wf_sub_eq] counterparts of
-    [wf_sub_id]–[wf_sub_q].  Note the asymmetry: [Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ]
-    equates the images at [A[σ]], so getting symmetry and transitivity needs to
-    know that [A[σ]] and [A[σ']] are equal types.  That is
-    [sub_eq_preserves_exp], which is why it comes first and why the [PER] instance comes last. *)
+    [wf_sub_id]–[wf_sub_q].  [Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ] equates the images at
+    [A[σ]], so symmetry and transitivity need [A[σ]] and [A[σ']] to be equal
+    types.  That is [sub_eq_preserves_exp], which therefore comes first, and
+    the [PER] instance last. *)
 
 Lemma wf_sub_eq_refl : forall Θ Ξ Γ Δ σ,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
@@ -105,7 +105,7 @@ Hint Resolve ctxsub_sub_eq : mctt.
 
 (** The tempting justification of the second component is
     "[sub_preserves_exp_eq] applied to reflexivity", which does not give it:
-    [sub_preserves_wf] transports along a *single* substitution and so only
+    [sub_preserves_wf] transports along a single substitution and so only
     yields [A[σ] ≈ A[σ]].  The equation really comes from [sub_eq_preserves_exp],
     which is proved by an induction that appeals to this lemma.  We break the
     cycle by taking the equation as a premise; that is precisely what the
@@ -169,6 +169,17 @@ Qed.
 
 #[export]
 Hint Resolve wf_sub_eq_q_nat : mctt.
+
+Corollary wf_sub_eq_q_False : forall Θ Ξ Γ Δ σ σ',
+    Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢s q σ ≈ q σ' : Δ ▹ ⊥.
+Proof.
+  intros * H; saturate_sub_eq.
+  apply (wf_sub_eq_q Θ Ξ Γ Δ σ σ' ⊥ 0); simpl; mauto 2.
+Qed.
+
+#[export]
+Hint Resolve wf_sub_eq_q_False : mctt.
 
 Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
@@ -253,13 +264,12 @@ Hint Resolve wf_sub_eq_extend wf_sub_eq_id_extend wf_sub_eq_extend_def wf_sub_eq
 
 (** ** Equivalent Substitutions Preserve Typing
 
-    This is about *typing* derivations only, so it is a plain induction on
+    This is about typing derivations only, so it is a plain induction on
     [wf_exp]: the subtyping premise of [wf_exp_subtyp] is discharged by
-    [sub_preserves_subtyp] rather than by an induction hypothesis.  This matters
-    for the order of the development.  Because McTT's [wf_exp_eq_natrec_cong]
-    lets the motive vary — with a fixed motive this would not arise — the
-    presupposition lemma needs to move a type along an equivalence of
-    substitutions, i.e. it needs this lemma.  Its counterparts for equality and
+    [sub_preserves_subtyp] rather than by an induction hypothesis.  Because
+    [wf_exp_eq_natrec_cong] lets the motive vary, the presupposition lemma
+    needs to move a type along an equivalence of substitutions, that is, it
+    needs this lemma.  Its counterparts for equality and
     subtyping ([sub_eq_preserves_exp_eq], [sub_eq_preserves_subtyp]) in turn
     need presupposition for the symmetry case, and so come after it, in
     [Core.Syntactic.SubEq]. *)
@@ -270,6 +280,10 @@ Ltac lift_sub_eq_nat :=
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass a_nat) Γ) (cons (ce_ass a_nat) Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
       assert T by (apply wf_sub_eq_q_nat; exact Hσ)
+  | _ : wf_exp ?Θ ?Ξ (cons a_False ?Δ) (a_typ _) _, Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ' |- _ =>
+      let T := constr:(wf_sub_eq Θ Ξ (cons a_False Γ) (cons a_False Δ) (sb_q σ) (sb_q σ')) in
+      assert_fails (assert T by assumption);
+      assert T by (apply wf_sub_eq_q_False; exact Hσ)
   end.
 
 Ltac lift_sub_eq_step :=
@@ -460,7 +474,7 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
 
     The right-hand side of [wf_exp_eq_fn_eta] is well-typed at the same type as
     the left.  Getting there is entirely a matter of moving between the two
-    descriptions of a weakened [Π]-type: [(Π A B)[↑]ʷ] *is* [Π A[↑]ʷ B[q ↑]ʷ], but
+    descriptions of a weakened [Π]-type: [(Π A B)[↑]ʷ] is [Π A[↑]ʷ B[q ↑]ʷ], but
     only by computation, so [eauto] cannot see it and the step is taken by hand.
     The application's type is [B[q ↑]ʷ[Id ,, #0]], which is [B] by
     [exp_wk_q_shift_single]: lifting a weakening and then substituting the top
@@ -514,8 +528,7 @@ Hint Resolve no_closed_neutral : mctt.
 
 (** ** Conversion
 
-    The rules the system would have had before subtyping was added: subsumption
-    specialised to an equation.  They come last because, registered as hints,
+    Subsumption specialised to an equation.  They come last because, registered as hints,
     they let [eauto] change the type of a goal at will — which is what the
     presupposition proof needs on almost every case, and what the proofs above
     are deliberately kept free of. *)

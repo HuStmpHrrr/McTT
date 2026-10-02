@@ -9,21 +9,19 @@ Generalizable All Variables.
 
 (** * Global Contexts
 
-    Two levels, spelled differently in the surface language and represented
-    differently here.  [X::Y::Z] names a *unit*, and units are not declared
-    inside one another, so the [::] level is flat.  [X.W] names an internal
-    module of one unit, and internal modules nest inside that unit's
-    declarations, so the [.] level is a module.
+    Names have two levels, spelled differently in the surface language and
+    represented differently here.  [X::Y::Z] names a unit; units are not
+    declared inside one another, so the [::] level is flat.  [X.W] names an
+    internal module of one unit; internal modules nest, so the [.] level is a
+    module.
 
-    The [::] level is a list of *dependency levels*, most recent first: a unit
-    is filed above exactly the levels it may depend on, and that structure is
-    what grants cycle freedom.
+    The [::] level is a list of dependency levels, most recent first: a unit is
+    filed above exactly the levels it may depend on, which rules out cycles.
 
-    A member is stored *closed*: its type and body are generalized over the
-    parameters of every module enclosing it, outermost first, by the rule that
-    checks it ([wf_gentry_def]).  So nothing about a member depends on where it
-    is read from, and resolving a path is a lookup that hands the stored entry
-    back unchanged — which is what lets evaluation stay free of syntactic
+    A member is stored closed: [wf_gentry_def] generalizes its type and body
+    over the parameters of every enclosing module, outermost first.  Nothing
+    about a member depends on where it is read from, so resolving a path hands
+    the stored entry back unchanged, and evaluation needs no syntactic
     operations. *)
 
 (** ** Modules

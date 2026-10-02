@@ -1,13 +1,13 @@
 (** * The Fundamental Theorem of the PER Model
 
-    In four parts: contexts, terms, term equality, subtyping.  There is no substitution conjunct, and there cannot be:
-    [wf_sub] constrains [σ] only at the indices [Δ] types, whereas [eval_sub] is
-    total, so [⋅ ⊢s (fun _ => zero $ zero) : ⋅] holds vacuously while
-    its semantic counterpart would need [zero zero] to have a value.  Nothing
-    needs the general statement; it is only ever appealed to at concrete
-    substitutions, which the lemmas of [SubstitutionCases.v] build directly.
-    Context refinement and context equality are likewise gone, being
-    [Δ ⊢s Id : Γ] in one and both directions. *)
+    In four parts: contexts, terms, term equality and subtyping.  There is no
+    substitution part, and there cannot be: [wf_sub] constrains [σ] only at the
+    indices [Δ] types, whereas [eval_sub] is total, so
+    [⋅ ⊢s (fun _ => zero $ zero) : ⋅] holds vacuously while its semantic
+    counterpart would need [zero zero] to have a value.  The concrete semantic
+    substitutions that are needed are built directly by the lemmas of
+    [SubstitutionCases.v].  Context refinement and context equality are not
+    separate judgments: they are [Δ ⊢s Id : Γ] in one direction and in both. *)
 
 From Stdlib Require Import Lia.
 

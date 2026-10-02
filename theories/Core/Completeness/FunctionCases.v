@@ -1,34 +1,27 @@
 (** * Fundamental Theorem: Π-Types
 
-    Four of the old file's lemmas are gone.  [rel_exp_pi_sub], [rel_exp_fn_sub]
-    and [rel_exp_app_sub] validated the rules that pushed a substitution under a
-    Π, a λ and an application; all three are now *equations* of [exp_sub], holding
-    by iota-conversion, so [(Π A B)[σ]] simply *is* [Π (A[σ]) (B[q σ])] and there
-    is nothing left to validate.  With them goes [rel_exp_pi_core], which existed
-    to share the evidence-indexed [out_rel] family between the congruence and the
-    substitution rule; the canonical [per_pi] replaces it.
+    Substitution pushes through [Π], [λ] and application by computation of
+    [exp_sub]: [(Π A B)[σ]] is [Π (A[σ]) (B[q σ])].  So only the congruence, β and
+    η rules are validated here.
 
-    What remains is organised around one lemma, [rel_typ_of_pi]: the type
-    judgment of a Π, in the form a *stage* of [subtyp_under_ctx] asks for.  Its output is
-    the same for all five rules below, because in every one of them the type of
-    the judgment is a Π built from the same two premises — a domain judgment and a
-    judgment in the extended context — and the element PER is therefore always the
-    one canonical [per_pi].  The remaining work of each rule is then only about
-    its own four values:
+    The file is organised around [rel_typ_of_pi]: the type judgment of a Π, in the
+    form needed at each stage of [subtyp_under_ctx].  In all five rules the type is
+    a Π built from a domain judgment and a judgment in the extended context, so the
+    element PER is always the canonical [per_pi].  The remaining work of each rule
+    concerns its own four values:
 
-    - [rel_exp_pi_cong] has nothing more to do: the type judgment *is* the goal,
+    - [rel_exp_pi_cong] has nothing more to do: the type judgment is the goal,
       read at [per_univ i] instead of at the element PER.
-    - [rel_exp_fn_cong] applies [rel_exp_under_ctx_q], whose three obligations are
-      exactly [per_pi]'s three links once [eval_app_fn] has stripped the λ.
-    - [rel_exp_app_cong], [rel_exp_pi_beta] and [rel_exp_fn_eta] all read the
-      canonical [per_pi] off a Π-typed judgment with [per_pi_iff], and differ only
-      in what they then do with the [rel_mod_app] it hands over.
+    - [rel_exp_fn_cong] applies [rel_exp_under_ctx_q], whose three obligations
+      are the three links of [per_pi] once [eval_app_fn] has stripped the λ.
+    - [rel_exp_app_cong], [rel_exp_pi_beta] and [rel_exp_fn_eta] read the
+      canonical [per_pi] off a Π-typed judgment with [per_pi_iff], and differ in
+      what they do with the resulting [rel_mod_app].
 
-    The one place cumulativity is needed is the level: [per_univ_elem_pi_canonical]
-    insists the domain and the codomain of a Π-value be related at *one* level,
-    while the syntax types [A] and [B] at unrelated ones, so every rule whose
-    codomain level comes from a presupposition lifts both to their maximum with
-    [rel_exp_cumu_ge]. *)
+    Cumulativity is needed for the level: [per_univ_elem_pi_canonical] requires the
+    domain and codomain of a Π-value to be related at one level, while the syntax
+    types [A] and [B] at unrelated ones.  So every rule whose codomain level comes
+    from a presupposition lifts both to their maximum with [rel_exp_cumu_ge]. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations PeanoNat RelationClasses.
 Import ListNotations.
@@ -43,19 +36,17 @@ Import Wk_Notations.
 
 (** ** The Type Judgment of a Π
 
-    A stage of [subtyp_under_ctx] — a related pair of environments and a related
-    pair of
-    substitutions out of it — turned into the four Π-values it determines,
-    together with the canonical element PER they all carry.  Both the four values
-    and the PER are forced: [(Π A B)[σ]] is [Π (A[σ]) (B[q σ])] definitionally, so
-    [eval_exp_pi] applies to the substituted head as it stands, and the [per_pi]
-    is the one [per_univ_elem_pi_chain] produces.
+    A stage of [subtyp_under_ctx], that is, a related pair of environments and a
+    related pair of substitutions out of it, determines four Π-values and the
+    canonical element PER they carry.  Both are forced: [(Π A B)[σ]] is
+    [Π (A[σ]) (B[q σ])] definitionally, so [eval_exp_pi] applies to the
+    substituted head directly, and the [per_pi] is the one
+    [per_univ_elem_pi_chain] produces.
 
-    The domain's own four values are reported together with the *two* pairs a
-    caller can need them at, exactly as [rel_typ_of_instance] reports [N]'s: the
-    outer pair, which [per_env_extend_sub_intro] and every irrelevance step along
-    [q σ] is stated at, and the inner one, which is what [per_pi_iff] must be
-    applied with — the middle link of the type chain being
+    As in [rel_typ_of_instance], the domain's four values are reported with both
+    pairs a caller may need: the outer pair, at which [per_env_extend_sub_intro]
+    and every irrelevance step along [q σ] are stated, and the inner pair, at which
+    [per_pi_iff] must be applied, since the middle link of the type chain is
     [Π a2 ρσ B ≈ Π a3 ρ'σ' B']. *)
 
 Section Fixed_GCtx.
@@ -86,9 +77,9 @@ Proof.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ HAgen]].
   destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
-  (** The domain PER, named by weak functionality: both the outer pair the caller
-      is owed and the inner one it needs alongside are then just links of the
-      *same* chain, with no refinement step in between. *)
+  (** The domain PER, named by weak functionality: the outer pair the caller is
+    owed and the inner pair it needs are links of the same chain, with no
+    refinement step in between. *)
   functionalize_per_univ_chain Hachain in_rel.
   exists in_rel, a1, a2, a3, a4.
   do 4 (split; [ eassumption |]).
@@ -130,12 +121,11 @@ Hint Resolve rel_exp_pi_cong : mctt.
 
 (** ** λ-Congruence
 
-    A λ evaluates to a closure with no premise at all ([eval_exp_fn]), so all four
-    of the goal's values are known before anything is proved, and every link of
-    the chain is an application of two closures — which [eval_app_fn] turns into
-    evaluation of the two bodies in the two extended environments.  Those are
-    precisely the three obligations of [rel_exp_under_ctx_q], and they land in
-    precisely the [per_head] that [per_pi] asks for. *)
+    A λ evaluates to a closure with no premise ([eval_exp_fn]), so all four values
+    of the goal are known up front.  Each link of the chain applies two closures,
+    which [eval_app_fn] turns into evaluating the two bodies in the two extended
+    environments.  These are the three obligations of [rel_exp_under_ctx_q], and
+    they land in the [per_head] that [per_pi] asks for. *)
 Lemma rel_exp_fn_cong : forall {Γ A A' i B M M'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
@@ -171,16 +161,14 @@ Hint Resolve rel_exp_fn_cong : mctt.
 
 (** ** Application Congruence
 
-    The first of the two rules whose *type* is not a Π but an instantiated
-    codomain, and so the first client of [rel_typ_of_instance]: everything the type
-    [B[Id,,N]] costs — two instantiations of the codomain judgment, a bridge between
-    them, two merges — is done there, once, for this rule and for β and for the
-    ℕ-eliminator.  What is left here is the term side.
+    The type of this rule is an instantiated codomain rather than a Π.  Everything
+    the type [B[Id,,N]] costs (two instantiations of the codomain judgment, a
+    bridge between them, two merges) is done once in [rel_typ_of_instance], which
+    also serves β and the ℕ-eliminator.  What is left here is the term side.
 
-    The element PER is the canonical one: the head PER of [B] at the arguments the
-    *type* names, [⟦N⟧ρσ] and [⟦N⟧ρ'σ']. Each link of [M]'s chain arrives at the
-    head PER of its own pair of arguments instead, and [per_head_of_args] moves
-    it. *)
+    The element PER is the head PER of [B] at the arguments the type names,
+    [⟦N⟧ρσ] and [⟦N⟧ρ'σ'].  Each link of [M]'s chain arrives in the head PER of its
+    own pair of arguments, and [per_head_of_args] moves it. *)
 Lemma rel_exp_app_cong : forall {Γ A i B M M' N N'},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
@@ -189,9 +177,8 @@ Lemma rel_exp_app_cong : forall {Γ A i B M M' N N'},
     Γ ⊨ M $ N ≈ M' $ N' : B[Id ,, N].
 Proof.
   intros * HA HB HM HN.
-  (** The type mentions [N] on both sides, so it is the reflexive-left form of
-      [HN] that the type judgment is built from; [HN] itself is only ever used for
-      the term chain. *)
+  (** The type mentions [N] on both sides, so the type judgment is built from the
+    reflexive-left form of [HN]; [HN] itself is used only for the term chain. *)
   pose proof (rel_exp_under_ctx_refl_left HN) as HNl.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
   destruct HM as [? [? [k HMgen]]].
@@ -200,9 +187,9 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   (** *** The Type
 
-      Nothing about it is specific to this rule, so all of it — the type judgment,
-      the argument's four values, and the codomain at an arbitrary related pair of
-      arguments — comes from [rel_typ_of_instance]. *)
+    Nothing here is specific to this rule: the type judgment, the argument's four
+    values, and the codomain at an arbitrary related pair of arguments all come
+    from [rel_typ_of_instance]. *)
   destruct (rel_typ_of_instance HA HB HNl _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
     as [l' [RN [a1 [a2 [a3 [a4 [p1 [p2 [p3 [p4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter
        [Hmid [Hp1 [Hp2 [Hp3 [Hp4 [Hpchain [Hcod Htyp]]]]]]]]]]]]]]]]]]]]]].
@@ -210,10 +197,9 @@ Proof.
   split; [ exact Htyp |].
   (** *** The Argument
 
-      The other instantiation of [N]'s judgment, the one about [N ≈ N'], and its
-      chain identified with the reflexive one: the two agree on the values of [A] —
-      the type is the same on both sides of both judgments — so [retype_rel_chain]
-      puts both chains in one PER, and then they merge. *)
+    The other instantiation of [N]'s judgment, for [N ≈ N'], identified with the
+    reflexive one.  Both agree on the values of [A], so [retype_rel_chain] puts
+    both chains in one PER, and they merge. *)
   destruct (HNgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RN2 [HNtyp HNexp]].
   destruct HNtyp as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain].
   destruct HNexp as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
@@ -227,9 +213,9 @@ Proof.
     by (merge_rel_chain Hnchain Hpchain n1).
   (** *** The Function
 
-      Its type chain's middle link is a Π of the values of [A] and the syntactic
-      [B], which identifies its element PER with the canonical [per_pi] — and then
-      each link of its term chain is a function of an argument pair. *)
+    The middle link of its type chain is a Π of the values of [A] and the
+    syntactic [B], which identifies its element PER with the canonical [per_pi].
+    Each link of its term chain is then a function of an argument pair. *)
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [RM [HMtyp HMexp]].
   destruct HMtyp as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hcchain].
   destruct HMexp as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
@@ -241,9 +227,9 @@ Proof.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   (** *** The Term Chain
 
-      Three applications, at the three consecutive pairs of arguments; the middle
-      value of each link is the same application as the first of the next, which is
-      what makes the three [rel_mod_app]s one chain. *)
+    Three applications, at the three consecutive argument pairs.  The middle value
+    of each link is the first value of the next, so the three [rel_mod_app]s form
+    one chain. *)
   assert (Hn12 : Dom n1 ≈ n2 ∈ RN) by pairwise.
   assert (Hn23 : Dom n2 ≈ n3 ∈ RN) by pairwise.
   assert (Hn34 : Dom n3 ≈ n4 ∈ RN) by pairwise.
@@ -278,24 +264,23 @@ Hint Resolve rel_exp_app_cong : mctt.
 
 (** ** β
 
-    Its type is [B[Id,,N]] again, so [rel_typ_of_instance] settles that half,
-    and what it reports alongside — [N]'s four values, the PER they live in, and the
-    codomain at an arbitrary related pair — is exactly what the term half needs, so
-    nothing here instantiates a *type* judgment at all.
+    The type is [B[Id,,N]] again, so [rel_typ_of_instance] settles it, and what it
+    also reports ([N]'s four values, their PER, and the codomain at an arbitrary
+    related pair) is what the term side needs.  No type judgment is instantiated
+    here.
 
-    The four values of the term are
-    [⟦M[q σ]⟧(ρ ↦ n1)], [⟦M⟧(ρσ ↦ n2)], [⟦M[Id,,N]⟧ρ'σ'] and [⟦M[Id,,N][σ']⟧ρ'].
-    The first is so because [((λ A M) N)[σ]] *is* [(λ A[σ] M[q σ]) (N[σ])] and
-    applying a closure evaluates its body in the extended environment
-    ([eval_app_fn]) — which means the redex contributes no evaluation of its own:
-    its value is the one [rel_exp_under_ctx_q]'s first obligation already produces,
-    at the argument pair [n1 ≈ n2].  That obligation *is* the first link.
+    The four values of the term are [⟦M[q σ]⟧(ρ ↦ n1)], [⟦M⟧(ρσ ↦ n2)],
+    [⟦M[Id,,N]⟧ρ'σ'] and [⟦M[Id,,N][σ']⟧ρ'].  The first holds because
+    [((λ A M) N)[σ]] is [(λ A[σ] M[q σ]) (N[σ])] and applying a closure evaluates
+    its body in the extended environment ([eval_app_fn]).  So the redex adds no
+    evaluation of its own: the first link is the first obligation of
+    [rel_exp_under_ctx_q] at the argument pair [n1 ≈ n2].
 
     The other two values need the same two instantiations of [M]'s judgment that
-    the type needed of [B]'s — along [σ ,, N[σ]] for the outer one, along [Id ,, N]
-    at the substituted environments for the inner — and the same bridge between
-    them, which here is [M] itself read at the crossing pair of arguments. Three
-    merges then select the goal's four values, all at the canonical head PER. *)
+    the type needed of [B]'s (along [σ ,, N[σ]] for the outer one, along [Id ,, N]
+    at the substituted environments for the inner one) and the same bridge, which
+    here is [M] at the crossing pair of arguments.  Three merges then select the
+    goal's four values, all in the canonical head PER. *)
 Lemma rel_exp_pi_beta : forall {Γ A i B M N},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
@@ -402,35 +387,30 @@ Hint Resolve rel_exp_pi_beta : mctt.
 
 (** ** η
 
-    The one rule whose statement mentions a weakening rather than a
-    substitution — and so the one place the difference between the two
-    presentations bites.  With an explicit substitution [M[Wk]] was a *delayed*
-    term and [eval_exp_sub] evaluated it in the shifted environment, which made
-    this rule a three-liner.  Now [M[↑]ʷ] is a term of its own, and
-    [⟦M[↑]ʷ⟧(ρ ↦ c)] is *not* [⟦M⟧ρ]: the two λ-cases are the closures
-    [λ (ρ ↦ c) (N[wk_q ↑]ʷ)] and [λ ρ N], which are different values.  So the
-    weakening has to be crossed semantically, by instantiating [M]'s own judgment
-    along [Wk], which is what [rel_exp_under_ctx_shift_at] does.
+    The only rule whose statement mentions a weakening rather than a substitution.
+    [M[↑]ʷ] is a term in its own right, and [⟦M[↑]ʷ⟧(ρ ↦ c)] is not [⟦M⟧ρ]: in the
+    λ case they are the different closures [λ (ρ ↦ c) (N[wk_q ↑]ʷ)] and [λ ρ N].
+    So the weakening is crossed semantically, by instantiating [M]'s judgment along
+    [Wk] with [rel_exp_under_ctx_shift_at].
 
-    The type is [rel_typ_of_pi] unchanged, and the four values of the term are
+    The type is [rel_typ_of_pi] unchanged.  The four values of the term are
     [⟦M[σ]⟧ρ], [⟦M⟧ρσ], [λ ρ'σ' (M[↑]ʷ #0)] and [λ ρ' ((M[↑]ʷ #0)[q σ'])], the last
-    two by [eval_exp_fn] alone.  Of the three links,
+    two by [eval_exp_fn].  Of the three links:
 
-    - the first is [M]'s own left commutation, so η contributes nothing to it;
-    - the second *is* η: [M] and the closure of its own weakened body agree on
-      every argument, which is [rel_exp_under_ctx_shift_at] at the substituted
-      environments, read at the argument pair — the closure's application
-      evaluates [M[↑]ʷ #0] in [ρ'σ' ↦ c'], which is [eval_app_fn] followed by
-      [eval_exp_app] on the weakened head and [#0];
-    - the third is the right commutation of the closure, which is the third
-      obligation of [rel_exp_under_ctx_q] for the *weakened* judgment
-      [Γ ▹ A ⊨ M[↑]ʷ ≈ M[↑]ʷ : (Π A B)[↑]ʷ] — the value it produces on the right is
-      [⟦M[↑]ʷ[q σ']⟧(ρ' ↦ c')], which is the closure body's, and the [per_head] of
-      [(Π A B)[↑]ʷ] it produces it in is identified with [per_pi] by the *outer*
-      pair of the same weakening instance.
+    - the first is [M]'s own left commutation;
+    - the second is η proper: [M] and the closure of its weakened body agree on
+      every argument.  This is [rel_exp_under_ctx_shift_at] at the substituted
+      environments, read at the argument pair; applying the closure evaluates
+      [M[↑]ʷ #0] in [ρ'σ' ↦ c'], by [eval_app_fn] and then [eval_exp_app];
+    - the third is the right commutation of the closure, the third obligation of
+      [rel_exp_under_ctx_q] for the weakened judgment
+      [Γ ▹ A ⊨ M[↑]ʷ ≈ M[↑]ʷ : (Π A B)[↑]ʷ].  Its right value is
+      [⟦M[↑]ʷ[q σ']⟧(ρ' ↦ c')], the closure body's, and the outer pair of the
+      same weakening instance identifies its [per_head] of [(Π A B)[↑]ʷ] with
+      [per_pi].
 
-    So both nontrivial links are read off one application of
-    [rel_exp_under_ctx_shift_at], the second off its chain and the third off its
+    So both nontrivial links come from one application of
+    [rel_exp_under_ctx_shift_at]: the second from its chain, the third from its
     type PER. *)
 Lemma rel_exp_fn_eta : forall {Γ A i B M},
     Γ ⊨ A ≈ A : Type@i ->
@@ -449,9 +429,9 @@ Proof.
     as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid Htyp]]]]]]]]]]].
   exists (per_pi in_rel B ρσ B ρ'σ').
   split; [ exact Htyp |].
-  (** [pairwise] needs [per_pi in_rel B ρσ B ρ'σ'] to be known a PER, and what
-      makes it one is that it is an element PER — the middle link of the very type
-      chain just handed over. *)
+  (** [pairwise] needs [per_pi in_rel B ρσ B ρ'σ'] to be a PER.  It is one
+    because it is an element PER: the middle link of the type chain just
+    obtained. *)
   destruct Htyp as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hdchain].
   assert (Hanchor : DF d2 ≈ d3 ∈ per_univ_elem i ↘ (per_pi in_rel B ρσ B ρ'σ'))
     by pairwise.
@@ -469,9 +449,9 @@ Proof.
   rewrite (per_pi_iff Hmid HRMmid) in Hmchain.
   apply (mk_rel_exp m1 m2 λᵈ ρ'σ' (M[↑]ʷ $ #0) λᵈ ρ' (M[↑]ʷ $ #0)[q σ']);
     [ exact Hm1 | exact Hm2 | apply eval_exp_fn | apply eval_exp_fn |].
-  (** The first link is [M]'s, the other two are read at an argument pair — and
-      both from the same instance of [M]'s judgment along [Wk], at the substituted
-      environments extended by that pair. *)
+  (** The first link is [M]'s; the other two are read at an argument pair, both
+    from the same instance of [M]'s judgment along [Wk] at the substituted
+    environments extended by that pair. *)
   apply rel_chain_4;
     [ pairwise | |];
     hnf; intros c c' Hc;
@@ -485,9 +465,9 @@ Proof.
       by (eapply functional_eval_exp; [ exact Hb3 | apply eval_exp_pi; exact Ha3 ]);
     assert (HRpi : R <~> per_pi in_rel B ρσ B ρ'σ')
       by (eapply per_pi_iff; [ exact Hmid | exact Hbmid ]).
-  - (** η itself: the instance's *inner* value on the left is [⟦M⟧ρσ], the goal's
-        second, and its outer value on the right is [⟦M[↑]ʷ⟧(ρ'σ' ↦ c')], which is
-        the head the closure applies. *)
+  - (** η itself: the instance's inner value on the left is [⟦M⟧ρσ], the goal's
+      second, and its outer value on the right is [⟦M[↑]ʷ⟧(ρ'σ' ↦ c')], the head
+      the closure applies. *)
     assert (w2 = m2) as ->
       by (eapply functional_eval_exp; [ exact Hw2 | exact Hm2 ]).
     rewrite HRpi in Hwchain.
@@ -498,9 +478,9 @@ Proof.
       | apply eval_app_fn; eapply eval_exp_app;
         [ exact Hw4 | apply eval_exp_var | exact Hr' ]
       | exact Hrr' ].
-  - (** The closure's own right commutation, from the weakened judgment along
-        [q σ']; the weakening instance's *outer* type pair is what identifies the
-        [per_head] of [(Π A B)[↑]ʷ] it arrives in with [per_pi]. *)
+  - (** The closure's right commutation, from the weakened judgment along [q σ'].
+      The outer type pair of the weakening instance identifies the [per_head] of
+      [(Π A B)[↑]ʷ] it lands in with [per_pi]. *)
     pose proof (per_env_extend_sub_intro HΓ' Hσj HA _ _ _ _ _ _ _ _ Hρ Ha1 Houter Hc)
       as Hpair'.
     destruct (rel_exp_under_ctx_q HΓ' Hσj HA HMwk _ _ _ _ _ _ Hpair' Hev Hev')
@@ -509,8 +489,8 @@ Proof.
       by (eapply Huv; [ exact Hb1 | exact Hb4 | exact Hbouter ]).
     apply HRpi in HuvR.
     destruct (HuvR _ _ Hc) as [r r' Hr Hr' Hrr'].
-    (** [(M[↑]ʷ #0)[q σ']] *is* [(M[↑]ʷ[q σ']) #0], since [(#0)[q σ']] is [#0] by
-        [sb_q_zero], so the head is the value [rel_exp_under_ctx_q] reports. *)
+    (** [(M[↑]ʷ #0)[q σ']] is [(M[↑]ʷ[q σ']) #0], since [(#0)[q σ']] is [#0] by
+      [sb_q_zero], so the head is the value [rel_exp_under_ctx_q] reports. *)
     econstructor;
       [ apply eval_app_fn; eapply eval_exp_app;
         [ exact Hu | apply eval_exp_var | exact Hr ]

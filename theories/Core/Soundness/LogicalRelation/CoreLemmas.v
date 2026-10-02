@@ -40,11 +40,9 @@ Qed.
 
 Hint Resolve glu_nat_escape : mctt.
 
-(** Where the explicit-substitution development transported [glu_nat] along a
-    context *equality*, it now travels along a refinement: [Δ ⊆ Γ] is
-    what the [ctxsub_*] lemmas need, and an equality gives refinements both
-    ways.  The same replacement happens to every [wf_ctx_eq] morphism instance
-    below. *)
+(** [glu_nat] is stable under context refinement [Δ ⊆ Γ], which is what the
+    [ctxsub_*] lemmas need. The other context-transport lemmas below are stated
+    in the same refinement form. *)
 Lemma glu_nat_resp_ctxsub : forall Γ M a Δ,
     glu_nat Γ M a ->
     Δ ⊆ Γ ->
@@ -97,8 +95,79 @@ Proof.
   - mauto 4.
 Qed.
 
+(** The same lemmas for [glu_False], which is the neutral case of
+    [glu_nat] at [⊥]. *)
+Lemma glu_False_per_ne : forall Γ M a,
+    glu_False Γ M a ->
+    Dom a ≈ a ∈ per_ne.
+Proof.
+  destruct 1; mauto.
+Qed.
+
+#[local]
+Hint Resolve glu_False_per_ne : mctt.
+
+Lemma glu_False_escape : forall Γ M a,
+    glu_False Γ M a ->
+    ⊢ Γ ->
+    Γ ⊢ M : ⊥.
+Proof.
+  destruct 1; intros.
+  assert (Γ ⊢k wk_id : Γ) by mauto 2.
+  match_by_head (per_bot m m) ltac:(fun H => specialize (H (length Γ)) as [M' []]).
+  clear_dups.
+  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : ⊥) as HM by mauto.
+  rewrite exp_wk_id in HM.
+  gen_presups.
+  mauto.
+Qed.
+
+Hint Resolve glu_False_escape : mctt.
+
+Lemma glu_False_resp_ctxsub : forall Γ M a Δ,
+    glu_False Γ M a ->
+    Δ ⊆ Γ ->
+    glu_False Δ M a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros; mauto 4.
+Qed.
+
+Hint Resolve glu_False_resp_ctxsub : mctt.
+
+Lemma glu_False_resp_exp_eq : forall Γ M a,
+    glu_False Γ M a ->
+    forall M',
+    Γ ⊢ M ≈ M' : ⊥ ->
+    glu_False Γ M' a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros.
+  transitivity M[φ]ʷ; mauto.
+Qed.
+
+#[local]
+Hint Resolve glu_False_resp_exp_eq : mctt.
+
+Lemma glu_False_readback : forall Γ M a,
+    glu_False Γ M a ->
+    forall Δ φ M',
+      Δ ⊢k φ : Γ ->
+      Rnf ⇓ ⊥ᵈ a in length Δ ↘ M' ->
+      Δ ⊢ M[φ]ʷ ≈ M' : ⊥.
+Proof.
+  destruct 1; intros; progressive_inversion; gen_presups.
+  mauto 4.
+Qed.
+
 End Fixed_GCtx.
 
+#[export]
+Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
+#[local]
+Hint Resolve glu_False_per_ne glu_False_resp_exp_eq : mctt.
 #[export]
 Hint Resolve glu_nat_escape : mctt.
 #[export]
@@ -208,6 +277,10 @@ Proof.
 
   - split; mauto 3.
 
+  - split; mauto 3.
+
+  - split; mauto 3.
+
   - assert (Δ ⊢ IT : Type@i) by mauto 3.
     assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_typ).
     econstructor; mauto 3; intros; mauto 4.
@@ -246,6 +319,22 @@ Proof.
 Qed.
 
 Hint Resolve glu_nat_resp_wk : mctt.
+
+Lemma glu_False_resp_wk : forall Γ M a,
+    glu_False Γ M a ->
+    forall Δ φ,
+      Δ ⊢k φ : Γ ->
+      glu_False Δ M[φ]ʷ a.
+Proof.
+  destruct 1; intros.
+  econstructor; trivial.
+  intros Δ' ψ M' **.
+  rewrite exp_wk_wk.
+  assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
+  mauto 4.
+Qed.
+
+Hint Resolve glu_False_resp_wk : mctt.
 
 Lemma glu_univ_elem_trm_escape : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -382,7 +471,7 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
 #[export]
-Hint Resolve glu_nat_resp_wk : mctt.
+Hint Resolve glu_nat_resp_wk glu_False_resp_wk : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
@@ -835,13 +924,11 @@ Ltac saturate_glu_info :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** Kripke weakenings compose, so a gluing predicate stated at [Γ] survives
-    being pushed along one: the two [[]ʷ]s that appear collapse to a single
-    [[φ ⊙ ψ]ʷ] by [exp_wk_wk], and the [q] of a [Π] codomain absorbs the second
-    weakening's extension by [exp_sub_wk_q_extend_wk].  Both were judgmental
-    rearrangements of the substitution calculus before; they are propositional
-    equalities now, which is why every case here is a [rewrite] away from the
-    hypothesis it came from. *)
+(** Gluing predicates are monotone along Kripke weakenings. Two weakenings
+    collapse to a single [[φ ⊙ ψ]ʷ] by [exp_wk_wk], and the [q] of a [Π]
+    codomain absorbs the extension of the second weakening by
+    [exp_sub_wk_q_extend_wk]. Both are propositional equalities, so each case
+    is a [rewrite] away from its hypothesis. *)
 
 Lemma glu_univ_elem_typ_monotone : forall i a P El,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -886,6 +973,8 @@ Proof.
   - repeat eexists; mauto 2.
     eapply glu_univ_elem_typ_monotone; eauto.
   - split; mauto 2.
+  - split; mauto 2.
+  - split; mauto 2.
 
   - simpl_glu_rel.
     assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Type@i) as HAeq by mauto 2.
@@ -902,10 +991,9 @@ Proof.
     + do 2 rewrite exp_wk_wk; mauto 4.
 Qed.
 
-(** The [wf_ctx_eq] instances of the explicit-substitution development become
-    refinement lemmas, as with [glu_nat_resp_ctxsub]: a Kripke weakening into
-    [Δ] extends to one into [Γ] by [kripke_ctxsub], which is all three of these
-    need. *)
+(** Transport along a context refinement, as in [glu_nat_resp_ctxsub]: a
+    Kripke weakening into [Δ] extends to one into [Γ] by [kripke_ctxsub], which
+    is all three lemmas need. *)
 
 Lemma glu_elem_bot_resp_ctxsub : forall i a Γ A M m Δ,
     Γ ⊢ M : A ® m ∈ glu_elem_bot i a ->

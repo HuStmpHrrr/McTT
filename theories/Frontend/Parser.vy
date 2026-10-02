@@ -17,6 +17,7 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %token <loc*string> VAR
 %token <loc*nat> INT
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
+%token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT AS USE PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
@@ -113,6 +114,9 @@ let obj :=
     END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
   | SUCC; ~ = obj; { Cst.succ obj }
 
+  | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
+    { Cst.exfalso escr (snd mx) em }
+
   (* [let x : A := a; y : B := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
@@ -128,6 +132,10 @@ let atomic_obj :=
   | NAT; { Cst.nat }
   | ZERO; { Cst.zero }
   | n = INT; { nat_rect (fun _ => Cst.obj) Cst.zero (fun _ => Cst.succ) (snd n) }
+
+  | TRUE_TY; { Cst.true_ty }
+  | TRUE; { Cst.true_tm }
+  | FALSE_TY; { Cst.false_ty }
 
   | x = VAR; { Cst.var (snd x) }
 
