@@ -122,6 +122,18 @@ Proof.
     eapply per_bot_then_per_elem; eauto.
     erewrite per_ctx_respects_length; mauto.
     eexists; eauto.
+  - (** A definition slot holds the value of the body. *)
+    destruct IHper_ctx_env as [ρ [ρ' [? [? Hρ]]]].
+    assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
+    assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
+    match goal with
+    | Hbody : forall ρ ρ' (_ : Dom ρ ≈ ρ' ∈ tail_rel), rel_elem _ _ _ _ _ |- _ =>
+        destruct (Hbody _ _ Hρ)
+    end.
+    do 2 eexists; repeat split; only 1-2: econstructor; eauto.
+    apply_relation_equivalence.
+    exists Hρ.
+    solve_def_heads.
 Qed.
 
 Lemma var_per_elem : forall {a b i R} n,

@@ -29,9 +29,26 @@ Qed.
 
 Hint Resolve glu_rel_ctx_extend : mctt.
 
+Lemma glu_rel_ctx_extend_def : forall {Γ A M i},
+    ⊩ Γ ->
+    Γ ⊩ A : Type@i ->
+    Γ ⊩ M : A ->
+    ⊩ Γ ▸ A ≔ M.
+Proof.
+  intros * [Sb] HA HM.
+  assert (Γ ⊢ A : Type@i) by mauto 3.
+  assert (Γ ⊢ M : A) by mauto 3.
+  invert_glu_rel_exp HM.
+  invert_glu_rel_exp HA.
+  eexists.
+  econstructor; mauto 3; reflexivity.
+Qed.
+
+Hint Resolve glu_rel_ctx_extend_def : mctt.
+
 End Fixed_GCtx.
 
 #[export]
 Hint Resolve glu_rel_ctx_empty : mctt.
 #[export]
-Hint Resolve glu_rel_ctx_extend : mctt.
+Hint Resolve glu_rel_ctx_extend glu_rel_ctx_extend_def : mctt.
