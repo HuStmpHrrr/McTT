@@ -982,8 +982,8 @@ let%expect_test "lib/Streams.mctt" =
   let _ = main_of_lib "Streams.mctt" in
   [%expect {|
     Evaluate Prelude::Data::VecLaws.sumVec 6
-               (Prelude::Data::Stream.take Nat 6 Prelude::Data::Stream.nats)
-      --> 15 : Nat
+               (Prelude::Data::Stream.take Nat 6
+                 Prelude::Data::Stream::Properties.nats) --> 15 : Nat
     Evaluate Prelude::Data::Vec.nth Nat 5
                (Prelude::Data::Stream.take Nat 5 evens)
                4
@@ -1013,17 +1013,17 @@ let%expect_test "lib/Streams.mctt" =
                4 --> 17 : Nat
     Evaluate Prelude::Data::Stream.head Nat
                (Prelude::Data::Stream.tail Nat
-                 (Prelude::Data::Stream.cons Nat 9 Prelude::Data::Stream.nats))
-      --> 0 : Nat
+                 (Prelude::Data::Stream.cons Nat 9
+                   Prelude::Data::Stream::Properties.nats)) --> 0 : Nat
     Evaluate Prelude::Data::Stream.nth Nat (Prelude::Data::Stream.const Nat 3)
                100 --> 3 : Nat
     Evaluate Prelude::Data::Stream::Properties.headCons 9
-               Prelude::Data::Stream.nats --> true : True
+               Prelude::Data::Stream::Properties.nats --> true : True
     Evaluate Prelude::Data::Stream::Properties.tailCons 9 squares 3 --> true
       : True
     Evaluate Prelude::Data::Stream::Properties.nthConst 3 100 --> true : True
     Evaluate Prelude::Data::Stream::Properties.nthMap square
-               Prelude::Data::Stream.nats
+               Prelude::Data::Stream::Properties.nats
                4 --> true : True
     Evaluate Prelude::Data::Stream::Properties.nthZipWith
                Prelude::Arith::Plus.plus
@@ -1052,5 +1052,5 @@ let%expect_test "lib/Streams.mctt" =
     Evaluate Prelude::Data::Stream::Properties.sumToHead squares 3 --> true
       : True
     Evaluate Prelude::Data::Stream::Properties.sumTake 5
-               Prelude::Data::Stream.nats --> true : True
+               Prelude::Data::Stream::Properties.nats --> true : True
     |}]

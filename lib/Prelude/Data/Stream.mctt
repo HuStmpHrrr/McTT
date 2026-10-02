@@ -1,26 +1,25 @@
 (* Infinite streams over [A], encoded as functions from indices:
-   [Stream A] is [forall (n : Nat) -> A].  Reading an element is
-   application, so most laws hold by conversion pointwise.  Each operation
-   takes its element types as arguments, so the unit also holds [nats],
-   which is specific to numbers. *)
+   [Stream] is [forall (n : Nat) -> A].  Reading an element is application,
+   so most laws hold by conversion pointwise.  Operations into streams over
+   other types take those types as arguments. *)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Function::Iter as Iter
 import Prelude::Data::Vec as V
 
-module Prelude::Data::Stream where
+module Prelude::Data::Stream (A : Type@0) where
 
-def Stream (A : Type@0) : Type@0 := forall (n : Nat) -> A end
+def Stream : Type@0 := forall (n : Nat) -> A end
 
 (* The [n]-th element. *)
-def nth (A : Type@0) (s : Stream A) (n : Nat) : A := s n end
+def nth (s : Stream) (n : Nat) : A := s n end
 
-def head (A : Type@0) (s : Stream A) : A := s 0 end
+def head (s : Stream) : A := s 0 end
 
 (* All elements but the first. *)
-def tail (A : Type@0) (s : Stream A) : Stream A := fun (n : Nat) -> s (succ n) end
+def tail (s : Stream) : Stream := fun (n : Nat) -> s (succ n) end
 
-(* [cons A a s] puts [a] in front of [s], by cases on the index. *)
-def cons (A : Type@0) (a : A) (s : Stream A) : Stream A :=
+(* [cons a s] puts [a] in front of [s], by cases on the index. *)
+def cons (a : A) (s : Stream) : Stream :=
   fun (n : Nat) ->
     rec n return y . A
     | zero => a
@@ -29,63 +28,60 @@ def cons (A : Type@0) (a : A) (s : Stream A) : Stream A :=
 end
 
 (* The stream with every element equal to [a]. *)
-def const (A : Type@0) (a : A) : Stream A := fun (n : Nat) -> a end
+def const (a : A) : Stream := fun (n : Nat) -> a end
 
 (* Applies [f] to every element; the result is a stream over [B]. *)
-def map (A : Type@0) (B : Type@0) (f : forall (a : A) -> B) (s : Stream A) : Stream B :=
+def map (B : Type@0) (f : forall (a : A) -> B) (s : Stream) : forall (n : Nat) -> B :=
   fun (n : Nat) -> f (s n)
 end
 
 (* Combines two streams elementwise with [f]. *)
-def zipWith (A : Type@0) (B : Type@0) (C : Type@0) (f : forall (a : A) (b : B) -> C)
-    (s : Stream A) (t : Stream B) : Stream C :=
+def zipWith (B : Type@0) (C : Type@0) (f : forall (a : A) (b : B) -> C)
+    (s : Stream) (t : forall (n : Nat) -> B) : forall (n : Nat) -> C :=
   fun (n : Nat) -> f (s n) (t n)
 end
 
 (* The stream [a, f a, f (f a), ...]: element [n] is [f] applied [n] times
    to [a], by [Prelude::Function::Iter]. *)
-def iterate (A : Type@0) (f : forall (a : A) -> A) (a : A) : Stream A :=
+def iterate (f : forall (a : A) -> A) (a : A) : Stream :=
   fun (n : Nat) -> Iter.iter A f n a
 end
 
 (* The first [n] elements, as a vector of [Prelude::Data::Vec]. *)
-def take (A : Type@0) (n : Nat) (s : Stream A) : V.Vec A n :=
+def take (n : Nat) (s : Stream) : V.Vec A n :=
   fun (i : Nat) (h : Lt i n) -> s i
 end
 
-(* [drop A k s] removes the first [k] elements.  It takes the tail first,
-   so [drop A (succ k) s] is [drop A k (tail A s)]. *)
-def drop (A : Type@0) (k : Nat) (s : Stream A) : Stream A :=
-  (rec k return y . (forall (u : Stream A) -> Stream A)
-   | zero => fun (u : Stream A) -> u
-   | succ p, r => fun (u : Stream A) -> r (tail A u)
+(* [drop k s] removes the first [k] elements.  It takes the tail first,
+   so [drop (succ k) s] is [drop k (tail s)]. *)
+def drop (k : Nat) (s : Stream) : Stream :=
+  (rec k return y . (forall (u : Stream) -> Stream)
+   | zero => fun (u : Stream) -> u
+   | succ p, r => fun (u : Stream) -> r (tail u)
    end) s
 end
 
 (* Alternates the elements of [s] and [t], starting with [s].  Element
-   [succ n] of [interleave A s t] is element [n] of
-   [interleave A t (tail A s)]. *)
-def interleave (A : Type@0) (s : Stream A) (t : Stream A) : Stream A :=
+   [succ n] of [interleave s t] is element [n] of
+   [interleave t (tail s)]. *)
+def interleave (s : Stream) (t : Stream) : Stream :=
   fun (n : Nat) ->
-    (rec n return y . (forall (u : Stream A) (v : Stream A) -> A)
-     | zero => fun (u : Stream A) (v : Stream A) -> u 0
-     | succ p, r => fun (u : Stream A) (v : Stream A) -> r v (tail A u)
+    (rec n return y . (forall (u : Stream) (v : Stream) -> A)
+     | zero => fun (u : Stream) (v : Stream) -> u 0
+     | succ p, r => fun (u : Stream) (v : Stream) -> r v (tail u)
      end) s t
 end
 
-(* The left scan: element [n] of [scan A B f z s] folds [f] over the first
+(* The left scan: element [n] of [scan B f z s] folds [f] over the first
    [n] elements of [s] from [z], so it is [z], [f z s0], [f (f z s0) s1],
    and so on. *)
-def scan (A : Type@0) (B : Type@0) (f : forall (b : B) (a : A) -> B) (z : B) (s : Stream A)
-    : Stream B :=
+def scan (B : Type@0) (f : forall (b : B) (a : A) -> B) (z : B) (s : Stream)
+    : forall (n : Nat) -> B :=
   fun (n : Nat) ->
     rec n return y . B
     | zero => z
     | succ p, r => f r (s p)
     end
 end
-
-(* The natural numbers [0, 1, 2, ...], iterating the successor from [0]. *)
-def nats : Stream Nat := iterate Nat (fun (x : Nat) -> succ x) 0 end
 
 end

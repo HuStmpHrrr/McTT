@@ -1,7 +1,8 @@
 (* Laws of [Prelude::Data::Stream] on streams of numbers, stated pointwise
-   with [Prelude::Arith::Equality]: elements of the operations, the scan by
-   addition as prefix sums of [Prelude::Arith::Sum], interleaving at even and
-   odd indices of [Prelude::Arith::Parity], and sums of taken prefixes. *)
+   with [Prelude::Arith::Equality], and the stream [nats]: elements of the
+   operations, the scan by addition as prefix sums of [Prelude::Arith::Sum],
+   interleaving at even and odd indices of [Prelude::Arith::Parity], and
+   sums of taken prefixes. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus; plusComm; plusLeftComm)
 import Prelude::Arith::Order use (Lt)
@@ -10,7 +11,7 @@ import Prelude::Arith::Sum use (sumTo)
 import Prelude::Function::Combinators use (iterateSucc)
 import Prelude::Data::Vec as V
 import Prelude::Data::VecLaws use (sumVec)
-import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan; nats)
+import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan)
 
 module Prelude::Data::Stream::Properties where
 
@@ -53,6 +54,9 @@ def tailIterate : forall (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
     Eq (nth Nat (tail Nat (iterate Nat f a)) n) (nth Nat (iterate Nat f (f a)) n) :=
   fun (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) -> iterateSucc f n a
 end
+
+(* The natural numbers [0, 1, 2, ...], iterating the successor from [0]. *)
+def nats : Stream Nat := iterate Nat (fun (x : Nat) -> succ x) 0 end
 
 (* Element [n] of [nats] is [n]. *)
 def nthNats : forall (n : Nat) -> Eq (nth Nat nats n) n :=
