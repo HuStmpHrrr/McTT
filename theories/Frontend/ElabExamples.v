@@ -322,6 +322,65 @@ Example shadow_param :
         cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
+(** ** Local Definitions
+
+    A [let] elaborates to a core [let], and its name is a core variable like
+    a [fun] binder.  The core typing rules, not the elaborator, unfold it. *)
+
+(** A [let] inside the definiens of another [let]:
+
+<<
+fun (a : Nat) -> let x : Nat := let y : Nat := a in succ y end in succ x end
+>>
+*)
+Example let_nested :
+  elab_spec (unit_of
+    (c_eval (fn "a" nat
+               (letb (d_def "x" nat (letb (d_def "y" nat (var "a")) (Cst.succ (var "y"))))
+                  (Cst.succ (var "x")))) None :: nil))
+    (nil, ⋅, cc_eval (λ ℕ (ℓ ℕ ≔ (ℓ ℕ ≔ #0 in succ #0) in succ #0)) None :: nil).
+Proof. elab_ok. Qed.
+
+(** Each binding sees the earlier ones, in its type and in its definiens:
+
+<<
+let A : Type@0 := Nat; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> succ z in f z end
+>>
+*)
+Example let_multi :
+  elab_spec (unit_of
+    (c_eval (letb (d_def "A" (typ 0) nat)
+               (letb (d_def "z" (var "A") Cst.zero)
+                  (letb (d_def "f" (pi "n" (var "A") (var "A")) (fn "n" (var "A") (Cst.succ (var "z"))))
+                     (app (var "f") (var "z"))))) None :: nil))
+    (nil, ⋅,
+     cc_eval (ℓ Type@0 ≔ ℕ in ℓ #0 ≔ zero in ℓ (Π #1 #2) ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+Proof. elab_ok. Qed.
+
+(** A [let] may shadow a member of the frame.  The definiens still sees the
+    member, which is applied to the parameter [A]; in the body, [A] lies one
+    binder further out.
+
+<<
+module M (A : Type@0) where
+  def y : Nat := 0 end
+  eval let y : Nat := succ y in fun (a : A) -> y end
+end
+>>
+*)
+Definition T_M_y : exp := a_glob (p_abs ("T" :: nil) ("M" :: "y" :: nil)).
+
+Example let_shadow :
+  elab_spec (unit_of
+    (c_mod ("M" :: nil) (("A", typ 0) :: nil)
+       (c_def md_pub "y" nat Cst.zero ::
+        c_eval (letb (d_def "y" nat (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil) :: nil))
+    (nil, ⋅,
+     cc_mod "M" (⋅ ▹ Type@0)
+       (cc_def "y" true false ℕ zero ::
+        cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
+Proof. elab_ok. Qed.
+
 (** ** The Running Example of [ElabSpec]
 
 <<

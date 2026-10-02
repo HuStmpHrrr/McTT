@@ -74,7 +74,6 @@ Definition to_of (F : sframe) : oframe :=
 Definition to_lent (d : nat) (b : lbind) : lent :=
   match b with
   | lb_var _ => le_term (a_var 0) (S d)
-  | lb_let _ M => le_term M d
   | lb_mod _ R => le_mod (to_mref R) d
   end.
 
@@ -510,12 +509,9 @@ Lemma lent_fin : forall L1 b L2 args r,
     end = eok r <-> fin (ldenote (nbinders L1) b) args = Some r.
 Proof.
   intros. rewrite nbinders_app, nbinders_cons.
-  destruct b as [y | y M | y R]; cbn [lb_binders to_lent ldenote fin].
+  destruct b as [y | y R]; cbn [lb_binders to_lent ldenote fin].
   - unfold sc_shift. cbn [exp_wk wk_shiftn].
     replace (nbinders L1 + (1 + nbinders L2) - S (nbinders L2)) with (nbinders L1) by lia.
-    split; intros H; inversion H; reflexivity.
-  - unfold sc_shift, shift_by.
-    replace (nbinders L1 + (1 + nbinders L2) - nbinders L2) with (S (nbinders L1)) by lia.
     split; intros H; inversion H; reflexivity.
   - rewrite mr_weaken_to.
     replace (nbinders L1 + (0 + nbinders L2) - nbinders L2) with (nbinders L1) by lia.
@@ -746,7 +742,7 @@ Section Objects.
 
   Definition P_decl (d : Cst.decl) : Prop :=
     match d with
-    | Cst.d_def _ _ oA oM => P_obj oA /\ P_obj oM
+    | Cst.d_def _ oA oM => P_obj oA /\ P_obj oM
     | Cst.d_mod _ oE => P_obj oE
     end.
 
@@ -838,21 +834,12 @@ Section Objects.
         * apply (sel_mod_iff _ H); eauto.
         * apply mr_member_iff; eauto.
     - (* letb *)
-      destruct d as [m x oA oM | x oE]; cbn [P_decl] in H; cbn [Elaborator.elab_res].
+      destruct d as [x oA oM | x oE]; cbn [P_decl] in H; cbn [Elaborator.elab_res].
       + destruct H as [HA HM]. split.
-        * intros Hr. fwd_term HA L Hr. fwd_term HM L Hr.
-          destruct (Cst.md_abstract m) eqn:Ea.
-          -- fwd_term H0 (lb_var x :: L) Hr. inv_eok.
-             eexists; split; [ eapply sel_let_abs; eassumption | reflexivity ].
-          -- fwd_term H0 (lb_let x M0 :: L) Hr. inv_eok.
-             eexists; split; [ eapply sel_let; eassumption | reflexivity ].
+        * intros Hr. fwd_term HA L Hr. fwd_term HM L Hr. fwd_term H0 (lb_var x :: L) Hr. inv_eok.
+          eexists; split; [ eapply sel_let; eassumption | reflexivity ].
         * intros (sr & Hs & Hf); inversion Hs; subst; cbn in Hf; inv_some.
-          -- bwd_term HA L. bwd_term HM L.
-             match goal with Ea : Cst.md_abstract _ = _ |- _ => rewrite Ea end.
-             bwd_term H0 (lb_let x M :: L). reflexivity.
-          -- bwd_term HA L. bwd_term HM L.
-             match goal with Ea : Cst.md_abstract _ = _ |- _ => rewrite Ea end.
-             bwd_term H0 (lb_var x :: L). reflexivity.
+          bwd_term HA L. bwd_term HM L. bwd_term H0 (lb_var x :: L). reflexivity.
       + rewrite ebind_eok. split.
         * intros (mr & Hm & Hr). apply (sel_mod_iff _ H) in Hm as (R & HR & ->).
           fwd_term H0 (lb_mod x R :: L) Hr. inv_eok.
