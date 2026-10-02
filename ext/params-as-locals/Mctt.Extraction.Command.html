@@ -31,30 +31,45 @@
 </div>
 
 <div class="doc">
-<a id="lab264"></a><h1 class="section">Running Commands</h1>
+<a id="lab295"></a><h1 class="section">Running Commands</h1>
 
 
 <div class="paragraph"> </div>
 
-    The executable for <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>: sound by construction
-    (every result carries its <span class="inlinecode"><span class="id" title="var">post_</span>*</span>), complete by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_impl_complete"><span class="id" title="lemma">run_impl_complete</span></a></span>.
+    The executable for <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>.  It is sound by
+    construction, since every result carries its <span class="inlinecode"><span class="id" title="var">post_</span>*</span>, and complete by
+    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_impl_complete"><span class="id" title="lemma">run_impl_complete</span></a></span>.
 
 <div class="paragraph"> </div>
 
-    It accumulates: one <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> for the whole program, into which every loaded
-    unit is filed once, and a table <span class="inlinecode"><span class="id" title="var">K</span></span> giving each filed unit's closure, the
-    paths of the state its own run ended in.  A unit being run tracks the
-    closure <span class="inlinecode"><span class="id" title="var">D</span></span> of what it has imported so far, and is checked against
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#gds_restrict"><span class="id" title="definition">gds_restrict</span></a></span> <span class="inlinecode"><span class="id" title="var">D</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>, which <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#equiv_restrict"><span class="id" title="lemma">equiv_restrict</span></a></span> relates to the judgment's state
-    by weakening in both directions.  Loading recurses on the accessibility of
-    the chain (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step"><span class="id" title="definition">load_step</span></a></span>), which is well founded when <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span> knows
-    finitely many files (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step_wf"><span class="id" title="lemma">load_step_wf</span></a></span>); the executable never sees them.
+    A run maintains:
 
 <div class="paragraph"> </div>
 
-    Besides, a run logs each <span class="inlinecode"><span class="id" title="tactic">eval</span></span> it checked, normalized (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#eval_entry"><span class="id" title="record">eval_entry</span></a></span>,
-    certified by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#eval_ok"><span class="id" title="definition">eval_ok</span></a></span>), and fails with a <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_error"><span class="id" title="inductive">run_error</span></a></span> carrying the terms
-    involved. 
+<ul class="doclist">
+<li> one <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> for the whole program, in which every loaded unit is filed once;
+
+</li>
+<li> a table <span class="inlinecode"><span class="id" title="var">K</span></span> giving the closure of each filed unit, that is, the paths
+      of the state its own run ended in;
+
+</li>
+<li> for the unit being run, the closure <span class="inlinecode"><span class="id" title="var">D</span></span> of what it has imported so far.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+    A unit is checked against <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#gds_restrict"><span class="id" title="definition">gds_restrict</span></a></span> <span class="inlinecode"><span class="id" title="var">D</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>, which <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#equiv_restrict"><span class="id" title="lemma">equiv_restrict</span></a></span>
+    relates to the judgment's state by weakening in both directions.  Loading
+    recurses on the accessibility of the import chain (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step"><span class="id" title="definition">load_step</span></a></span>).
+
+<div class="paragraph"> </div>
+
+    A run also logs each <span class="inlinecode"><span class="id" title="tactic">eval</span></span> it checked, with its normal form
+    (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#eval_entry"><span class="id" title="record">eval_entry</span></a></span>, certified by <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#eval_ok"><span class="id" title="definition">eval_ok</span></a></span>), and fails with a <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_error"><span class="id" title="inductive">run_error</span></a></span>
+    carrying the terms involved. 
 </div>
 <div class="code">
 
@@ -77,7 +92,7 @@
 </div>
 
 <div class="doc">
-<a id="lab265"></a><h2 class="section">Deciders</h2>
+<a id="lab296"></a><h2 class="section">Deciders</h2>
 
 </div>
 <div class="code">
@@ -121,7 +136,7 @@
 </div>
 
 <div class="doc">
-<a id="lab266"></a><h2 class="section">Closures and Paths</h2>
+<a id="lab297"></a><h2 class="section">Closures and Paths</h2>
 
 </div>
 <div class="code">
@@ -156,7 +171,7 @@
 </div>
 
 <div class="doc">
-The chain up to the unit imported again, which is where the cycle starts. 
+The chain up to the unit imported again, where the cycle starts. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="chain_to" class="idref" href="#chain_to"><span class="id" title="definition">chain_to</span></a> (<a id="fp:37" class="idref" href="#fp:37"><span class="id" title="binder">fp</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="ch:38" class="idref" href="#ch:38"><span class="id" title="binder">ch</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a> :=<br/>
@@ -183,14 +198,14 @@ The cycle, from the unit imported again back to itself.
 </div>
 
 <div class="doc">
-<a id="lab267"></a><h2 class="section">Results</h2>
+<a id="lab298"></a><h2 class="section">Results</h2>
 
 
 <div class="paragraph"> </div>
 
-    What a run fails on, with the terms involved where there are any, so that
-    the driver can print them.  The message of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#re_unit"><span class="id" title="constructor">re_unit</span></a></span> is about the unit at
-    the path it carries, which it does not repeat. 
+    The errors a run can fail with, carrying the terms involved, if any, for
+    the driver to print.  The message of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#re_unit"><span class="id" title="constructor">re_unit</span></a></span> concerns the unit at the
+    path it carries and does not repeat that path. 
 </div>
 <div class="code">
 
@@ -216,10 +231,10 @@ The cycle, from the unit imported again back to itself.
 </div>
 
 <div class="doc">
-An <span class="inlinecode"><span class="id" title="tactic">eval</span></span>, checked and normalized: in the restriction <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_deps"><span class="id" title="projection">ev_deps</span></a></span> of the
-    state to the imports so far, on the stack <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_stack"><span class="id" title="projection">ev_stack</span></a></span>, in the context of the
-    frames' parameters, the expression <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_exp"><span class="id" title="projection">ev_exp</span></a></span> has type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_typ"><span class="id" title="projection">ev_typ</span></a></span> (the ascribed
-    one, or the inferred one), and normalizes to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_nf"><span class="id" title="projection">ev_nf</span></a></span>. 
+A checked and normalized <span class="inlinecode"><span class="id" title="tactic">eval</span></span>: in the restriction <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_deps"><span class="id" title="projection">ev_deps</span></a></span> of the
+    state to the imports so far, on the stack <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_stack"><span class="id" title="projection">ev_stack</span></a></span>, and in the context
+    of the frames' parameters, the expression <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_exp"><span class="id" title="projection">ev_exp</span></a></span> has type <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_typ"><span class="id" title="projection">ev_typ</span></a></span>
+    (ascribed or inferred) and normalizes to <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#ev_nf"><span class="id" title="projection">ev_nf</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Record</span> <a id="eval_entry" class="idref" href="#eval_entry"><span class="id" title="record">eval_entry</span></a> : <span class="id" title="keyword">Set</span> :=<br/>
@@ -237,7 +252,7 @@ An <span class="inlinecode"><span class="id" title="tactic">eval</span></span>, 
 </div>
 
 <div class="doc">
-The log of a run, in program order, each entry certified. 
+The log of a run, in program order, with every entry certified. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="elog" class="idref" href="#elog"><span class="id" title="definition">elog</span></a> : <span class="id" title="keyword">Set</span> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#bc4528e836ab0e91ea7e942fb09e898f"><span class="id" title="notation">{</span></a><a id="l:58" class="idref" href="#l:58"><span class="id" title="binder">l</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#bc4528e836ab0e91ea7e942fb09e898f"><span class="id" title="notation">|</span></a> <a class="idref" href="Mctt.Extraction.Command.html#logs_ok"><span class="id" title="definition">logs_ok</span></a> <a class="idref" href="Mctt.Extraction.Command.html#l:58"><span class="id" title="variable">l</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Specif.html#bc4528e836ab0e91ea7e942fb09e898f"><span class="id" title="notation">}</span></a>.<br/>
@@ -318,7 +333,7 @@ Normalize a checked <span class="inlinecode"><span class="id" title="tactic">eva
 </div>
 
 <div class="doc">
-<a id="lab268"></a><h2 class="section">The Invariants</h2>
+<a id="lab299"></a><h2 class="section">The Invariants</h2>
 
 </div>
 <div class="code">
@@ -340,9 +355,9 @@ A set of paths closed under the closures <span class="inlinecode"><span class="i
 </div>
 
 <div class="doc">
-A filed unit is what loading its file yields, under a chain starting with
-      it, at the height of the state that run ended in; that state is filed as
-      well, and <span class="inlinecode"><span class="id" title="var">K</span></span> has its domain, closed. 
+A filed unit is what loading its file yields, under a chain starting
+      with it, at the height of the state that run ended in.  That state is
+      filed as well, and <span class="inlinecode"><span class="id" title="var">K</span></span> records its domain, closed. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="entry_ok" class="idref" href="#entry_ok"><span class="id" title="definition">entry_ok</span></a> (<a id="02502eb5bf7bd7639d86da4cec095acc" class="idref" href="#02502eb5bf7bd7639d86da4cec095acc"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="K:106" class="idref" href="#K:106"><span class="id" title="binder">K</span></a> : <a class="idref" href="Mctt.Extraction.Command.html#kmap"><span class="id" title="definition">kmap</span></a>) (<a id="fp:107" class="idref" href="#fp:107"><span class="id" title="binder">fp</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="U:108" class="idref" href="#U:108"><span class="id" title="binder">U</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gunit"><span class="id" title="record">gunit</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -355,8 +370,8 @@ A filed unit is what loading its file yields, under a chain starting with
 </div>
 
 <div class="doc">
-The global state, for a run under chain <span class="inlinecode"><span class="id" title="var">ch</span></span>: nothing on the chain is
-      filed yet. 
+The invariant of the global state for a run under chain <span class="inlinecode"><span class="id" title="var">ch</span></span>; in
+      particular, nothing on the chain is filed yet. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Record</span> <a id="ginv" class="idref" href="#ginv"><span class="id" title="record">ginv</span></a> (<a id="ch:115" class="idref" href="#ch:115"><span class="id" title="binder">ch</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="403b781c263a2bc51310a58183cd7f12" class="idref" href="#403b781c263a2bc51310a58183cd7f12"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="K:117" class="idref" href="#K:117"><span class="id" title="binder">K</span></a> : <a class="idref" href="Mctt.Extraction.Command.html#kmap"><span class="id" title="definition">kmap</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -369,8 +384,9 @@ The global state, for a run under chain <span class="inlinecode"><span class="id
 </div>
 
 <div class="doc">
-The state of a unit being run, against the judgment's state <span class="inlinecode"><span class="id" title="var">ΘR</span></span>: the
-      units <span class="inlinecode"><span class="id" title="var">D</span></span> it imported are those of <span class="inlinecode"><span class="id" title="var">ΘR</span></span>, filed alike in <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>. 
+The invariant of the unit being run, relative to the judgment's state
+      <span class="inlinecode"><span class="id" title="var">ΘR</span></span>: the units <span class="inlinecode"><span class="id" title="var">D</span></span> it imported are those of <span class="inlinecode"><span class="id" title="var">ΘR</span></span>, filed identically in
+      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Record</span> <a id="linv" class="idref" href="#linv"><span class="id" title="record">linv</span></a> (<a id="ch:128" class="idref" href="#ch:128"><span class="id" title="binder">ch</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="2b6c2e75c04b1df4577ec38651a6c3b0" class="idref" href="#2b6c2e75c04b1df4577ec38651a6c3b0"><span class="id" title="binder">Θ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="K:130" class="idref" href="#K:130"><span class="id" title="binder">K</span></a> : <a class="idref" href="Mctt.Extraction.Command.html#kmap"><span class="id" title="definition">kmap</span></a>) (<a id="D:131" class="idref" href="#D:131"><span class="id" title="binder">D</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="71e09533e06b20e20be64291e616cefc" class="idref" href="#71e09533e06b20e20be64291e616cefc"><span class="id" title="binder">ΘR</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="ba7a0f55281eeff63bc7b0f1d99f431c" class="idref" href="#ba7a0f55281eeff63bc7b0f1d99f431c"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gstack"><span class="id" title="definition">gstack</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -390,8 +406,8 @@ The state of a unit being run, against the judgment's state <span class="inlinec
 </div>
 
 <div class="doc">
-What a run filed, it imported: at the top level, the result has exactly
-      the domain of the judgment's. 
+Whatever a run files, it imports; hence at the top level the result has
+      exactly the domain of the judgment's state. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="grows" class="idref" href="#grows"><span class="id" title="definition">grows</span></a> (<a id="e3536565bb2aaedc3cb345289a5311cb" class="idref" href="#e3536565bb2aaedc3cb345289a5311cb"><span class="id" title="binder">Θ</span></a> <a id="8ad10c386fec1499084139f217554d7d" class="idref" href="#8ad10c386fec1499084139f217554d7d"><span class="id" title="binder">Θ'</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a>) (<a id="D':150" class="idref" href="#D':150"><span class="id" title="binder">D'</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -426,7 +442,7 @@ What a run filed, it imported: at the top level, the result has exactly
 </div>
 
 <div class="doc">
-<a id="lab269"></a><h2 class="section">Consequences of the Invariants</h2>
+<a id="lab300"></a><h2 class="section">Consequences of the Invariants</h2>
 
 </div>
 <div class="code">
@@ -531,7 +547,7 @@ What a run filed, it imported: at the top level, the result has exactly
 </div>
 
 <div class="doc">
-A unit's own frame: its path heads the chain, so nothing filed it. 
+A unit's own frame: its path heads the chain, so it is not filed. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="linv_push_unit" class="idref" href="#linv_push_unit"><span class="id" title="lemma">linv_push_unit</span></a> {<a id="fp:269" class="idref" href="#fp:269"><span class="id" title="binder">fp</span></a> <a id="ch:270" class="idref" href="#ch:270"><span class="id" title="binder">ch</span></a> <a id="9859ee95278a3be919bf4b91feceadde" class="idref" href="#9859ee95278a3be919bf4b91feceadde"><span class="id" title="binder">Θ</span></a> <a id="K:272" class="idref" href="#K:272"><span class="id" title="binder">K</span></a> <a id="D:273" class="idref" href="#D:273"><span class="id" title="binder">D</span></a> <a id="fe32414dbb5377dbd52d73ddcb64c1fc" class="idref" href="#fe32414dbb5377dbd52d73ddcb64c1fc"><span class="id" title="binder">ΘR</span></a> <a id="P:275" class="idref" href="#P:275"><span class="id" title="binder">P</span></a>} :<br/>
@@ -581,13 +597,13 @@ A unit's own frame: its path heads the chain, so nothing filed it.
 </div>
 
 <div class="doc">
-<a id="lab270"></a><h2 class="section">One Step per Rule</h2>
+<a id="lab301"></a><h2 class="section">One Step per Rule</h2>
 
 
 <div class="paragraph"> </div>
 
-      Each lemma is the <span class="inlinecode"><span class="id" title="var">post_</span>*</span> of one branch of the executable, from the
-      checks that branch made. 
+      Each lemma proves the <span class="inlinecode"><span class="id" title="var">post_</span>*</span> of one branch of the executable from the
+      checks that branch makes. 
 </div>
 <div class="code">
 
@@ -663,8 +679,9 @@ A unit's own frame: its path heads the chain, so nothing filed it.
 </div>
 
 <div class="doc">
-A filed unit the unit being run has not imported: the judgment loads it,
-      which the entry of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> justifies once the chain is changed. 
+Importing a filed unit that the unit being run has not imported yet:
+      the judgment loads it, which the entry of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> justifies once the chain
+      is changed. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="import_hit_ok" class="idref" href="#import_hit_ok"><span class="id" title="lemma">import_hit_ok</span></a> {<a id="ch:348" class="idref" href="#ch:348"><span class="id" title="binder">ch</span></a> <a id="b94740531fb54ddee003e1751e0c7bd5" class="idref" href="#b94740531fb54ddee003e1751e0c7bd5"><span class="id" title="binder">Θ</span></a> <a id="K:350" class="idref" href="#K:350"><span class="id" title="binder">K</span></a> <a id="D:351" class="idref" href="#D:351"><span class="id" title="binder">D</span></a> <a id="5c2cf05b616c5d627889d67a9eec4ad6" class="idref" href="#5c2cf05b616c5d627889d67a9eec4ad6"><span class="id" title="binder">Ξ</span></a> <a id="fp:353" class="idref" href="#fp:353"><span class="id" title="binder">fp</span></a> <a id="ip:354" class="idref" href="#ip:354"><span class="id" title="binder">ip</span></a> <a id="U:355" class="idref" href="#U:355"><span class="id" title="binder">U</span></a> <a id="Dfp:356" class="idref" href="#Dfp:356"><span class="id" title="binder">Dfp</span></a>} :<br/>
@@ -713,8 +730,8 @@ A filed unit the unit being run has not imported: the judgment loads it,
 </div>
 
 <div class="doc">
-A loaded unit is filed above the restriction to its closure, which is
-      where the judgment files it, above the state it ended in. 
+A loaded unit is filed above the restriction to its closure, matching
+      the judgment, which files it above the state its run ended in. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="load_state" class="idref" href="#load_state"><span class="id" title="definition">load_state</span></a> (<a id="fp:364" class="idref" href="#fp:364"><span class="id" title="binder">fp</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="D:365" class="idref" href="#D:365"><span class="id" title="binder">D</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) (<a id="f410c18b47a54634867daa465b7da11d" class="idref" href="#f410c18b47a54634867daa465b7da11d"><span class="id" title="binder">Ξ</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gstack"><span class="id" title="definition">gstack</span></a>) (<a id="r:367" class="idref" href="#r:367"><span class="id" title="binder">r</span></a> : <a class="idref" href="Mctt.Extraction.Command.html#ustate"><span class="id" title="record">ustate</span></a>) : <a class="idref" href="Mctt.Extraction.Command.html#cstate"><span class="id" title="record">cstate</span></a> :=<br/>
@@ -875,7 +892,7 @@ The imports of a later step include those of an earlier one.
 </div>
 
 <div class="doc">
-The imports ran on the empty stack, and left it empty. 
+The imports run on the empty stack and leave it empty. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Lemma</span> <a id="unit_imports" class="idref" href="#unit_imports"><span class="id" title="lemma">unit_imports</span></a> {<a id="ch:430" class="idref" href="#ch:430"><span class="id" title="binder">ch</span></a> <a id="3e77c21f8e1aa98ee2ba28892c187351" class="idref" href="#3e77c21f8e1aa98ee2ba28892c187351"><span class="id" title="binder">Θ</span></a> <a id="K:432" class="idref" href="#K:432"><span class="id" title="binder">K</span></a> <a id="imps:433" class="idref" href="#imps:433"><span class="id" title="binder">imps</span></a> <a id="r1:434" class="idref" href="#r1:434"><span class="id" title="binder">r1</span></a>} :<br/>
@@ -933,18 +950,17 @@ The imports ran on the empty stack, and left it empty.
 </div>
 
 <div class="doc">
-<a id="lab271"></a><h2 class="section">The Executable</h2>
+<a id="lab302"></a><h2 class="section">The Executable</h2>
 
 
 <div class="paragraph"> </div>
 
-      Commands are structural, and so are the lists of them nested in modules
-      (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#cmds_step"><span class="id" title="definition">cmds_step</span></a></span> takes the function for one command as a uniform parameter,
-      so the guard checker sees through it).  Only a load recurses on something
-      else: the chain grows by an unfiled path <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span> knows, which
-      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step"><span class="id" title="definition">load_step</span></a></span> makes well founded given finitely many files
-      (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step_wf"><span class="id" title="lemma">load_step_wf</span></a></span>); the executable takes the accessibility proof, and
-      never the files. 
+      Recursion on commands is structural, including on the command lists
+      nested in modules: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#cmds_step"><span class="id" title="definition">cmds_step</span></a></span> takes the function for one command as a
+      uniform parameter, so the guard checker sees through it.  Only a load
+      recurses on something else: the chain grows by an unfiled path that
+      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span> knows (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step"><span class="id" title="definition">load_step</span></a></span>).  The executable takes the
+      accessibility proof, never the list of files. 
 </div>
 <div class="code">
 
@@ -961,8 +977,8 @@ The imports ran on the empty stack, and left it empty.
 </div>
 
 <div class="doc">
-How a unit loaded under chain <span class="inlinecode"><span class="id" title="var">ch</span></span> is run; its log is the evals of the
-      unit itself, not of those it loaded. 
+How a unit loaded under chain <span class="inlinecode"><span class="id" title="var">ch</span></span> is run.  Its log holds the evals of
+      the unit itself, not of the units it loads. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="loader" class="idref" href="#loader"><span class="id" title="definition">loader</span></a> (<a id="ch:470" class="idref" href="#ch:470"><span class="id" title="binder">ch</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a>) : <span class="id" title="keyword">Type</span> :=<br/>
@@ -1130,9 +1146,9 @@ How a unit loaded under chain <span class="inlinecode"><span class="id" title="v
 </div>
 
 <div class="doc">
-The program given on the command line: run like an imported unit, with
-      itself as the whole chain, from nothing filed.  The log is of its own
-      evals; those of the units it loaded are checked, but not returned. 
+The program given on the command line is run like an imported unit,
+      with itself as the whole chain and nothing filed.  The log holds its
+      own evals; those of the units it loads are checked but not returned. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="prog_impl" class="idref" href="#prog_impl"><span class="id" title="definition">prog_impl</span></a> (<a id="prg:552" class="idref" href="#prg:552"><span class="id" title="binder">prg</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a>) (<a id="Hacc:553" class="idref" href="#Hacc:553"><span class="id" title="binder">Hacc</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Wf.html#Acc"><span class="id" title="inductive">Acc</span></a> <a class="idref" href="Mctt.Extraction.Command.html#load_step"><span class="id" title="definition">load_step</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Command.html#prog_path"><span class="id" title="definition">prog_path</span></a> <a class="idref" href="Mctt.Extraction.Command.html#prg:552"><span class="id" title="variable">prg</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>)) :<br/>
@@ -1150,13 +1166,13 @@ The program given on the command line: run like an imported unit, with
 </div>
 
 <div class="doc">
-<a id="lab272"></a><h2 class="section">Soundness</h2>
+<a id="lab303"></a><h2 class="section">Soundness</h2>
 
 
 <div class="paragraph"> </div>
 
       By construction: a result carries its <span class="inlinecode"><span class="id" title="var">post_</span>*</span>, whatever the loader and
-      whatever the accessibility proof. 
+      the accessibility proof. 
 </div>
 <div class="code">
 
@@ -1218,15 +1234,15 @@ The program given on the command line: run like an imported unit, with
 </div>
 
 <div class="doc">
-<a id="lab273"></a><h2 class="section">Completeness</h2>
+<a id="lab304"></a><h2 class="section">Completeness</h2>
 
 
 <div class="paragraph"> </div>
 
-      By induction on the derivation, for every accessibility proof: the
+      By induction on the derivation, for every accessibility proof.  The
       executable loads only where the derivation does (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_import_load"><span class="id" title="constructor">rc_import_load</span></a></span>), and
-      then under the same chain.  Where it shares a unit filed already, the
-      derivation loads it but the executable does not recurse. 
+      under the same chain.  For a unit filed already, the derivation loads it,
+      but the executable shares it without recursing. 
 </div>
 <div class="code">
 
@@ -1376,15 +1392,14 @@ The result is the judgment's, by determinism.
 </div>
 
 <div class="doc">
-<a id="lab274"></a><h2 class="section">The Program</h2>
+<a id="lab305"></a><h2 class="section">The Program</h2>
 
 
 <div class="paragraph"> </div>
 
-      Nothing is filed but what the program imported, so the whole of the
-      accumulated <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is equivalent to the judgment's.  Each entry of the log
-      is an eval of the program, typed in the restriction it was checked in,
-      and normalized there. 
+      Only what the program imports is filed, so the whole accumulated <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is
+      equivalent to the judgment's.  Each log entry is an eval of the program,
+      typed and normalized in the restriction it was checked in. 
 </div>
 <div class="code">
 
@@ -1431,14 +1446,14 @@ The result is the judgment's, by determinism.
 </div>
 
 <div class="doc">
-<a id="lab275"></a><h2 class="section">Finitely Many Files</h2>
+<a id="lab306"></a><h2 class="section">Finitely Many Files</h2>
 
 
 <div class="paragraph"> </div>
 
-    Only here is it assumed that <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span> knows finitely many files: each
-    load adds one of them to the chain, so loading terminates, whichever
-    order it happens in.  The executable never sees the list. 
+    Only here is <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span> assumed to know finitely many files.  Each load
+    adds one of them to the chain, so loading terminates, in whatever order
+    it happens.  The executable never sees the list. 
 </div>
 <div class="code">
 

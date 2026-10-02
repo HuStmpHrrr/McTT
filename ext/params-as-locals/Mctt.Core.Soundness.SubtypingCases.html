@@ -31,14 +31,14 @@
 </div>
 
 <div class="doc">
-<a id="lab139"></a><h1 class="section">Subtyping and Conversion</h1>
+<a id="lab166"></a><h1 class="section">Subtyping and Conversion</h1>
 
 
 <div class="paragraph"> </div>
 
-    Only the term rules survive: with the <span class="inlinecode">⊩<span class="id" title="var">s</span></span> judgment gone, so are
-    <span class="inlinecode"><span class="id" title="var">glu_rel_sub_subtyp</span></span> and <span class="inlinecode"><span class="id" title="var">glu_rel_sub_conv</span></span>, and context subtyping is now
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#ctx_sub"><span class="id" title="inductive">ctx_sub</span></a></span> rather than a judgment the gluing model has a rule for. 
+    The gluing model has subsumption and conversion rules for terms only: there
+    is no substitution judgment, and context subtyping is the syntactic
+    relation <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#ctx_sub"><span class="id" title="inductive">ctx_sub</span></a></span>. 
 </div>
 <div class="code">
 

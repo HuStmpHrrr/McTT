@@ -49,7 +49,7 @@ Rewrite hint databases live in their own namespace, so <span class="inlinecode">
 </div>
 
 <div class="doc">
-Transparency setting for generalized rewriting 
+Transparency setting for generalized rewriting. 
 </div>
 <div class="code">
 #[<span class="id" title="var">export</span>]<br/>
@@ -59,7 +59,7 @@ Transparency setting for generalized rewriting
 </div>
 
 <div class="doc">
-<a id="lab330"></a><h3 class="section">Generalization of Variables</h3>
+<a id="lab363"></a><h3 class="section">Generalization of Variables</h3>
 
 </div>
 <div class="code">
@@ -74,7 +74,7 @@ Transparency setting for generalized rewriting
 </div>
 
 <div class="doc">
-<a id="lab331"></a><h3 class="section">Marking-based Tactics</h3>
+<a id="lab364"></a><h3 class="section">Marking-based Tactics</h3>
 
 </div>
 <div class="code">
@@ -129,7 +129,7 @@ Transparency setting for generalized rewriting
 </div>
 
 <div class="doc">
-<a id="lab332"></a><h3 class="section">Simple helper</h3>
+<a id="lab365"></a><h3 class="section">Simple helper</h3>
 
 </div>
 <div class="code">
@@ -199,7 +199,7 @@ Transparency setting for generalized rewriting
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-We use dependent destruction as it is more general than inversion 
+We use dependent destruction, as it is more general than inversion. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="var">directed</span> <span class="id" title="tactic">dependent</span> <span class="id" title="tactic">destruction</span> <span class="id" title="var">H</span>.<br/>
@@ -289,7 +289,7 @@ We use dependent destruction as it is more general than inversion
 </div>
 
 <div class="doc">
-<a id="lab333"></a><h3 class="section">McTT automation</h3>
+<a id="lab366"></a><h3 class="section">McTT automation</h3>
 
 </div>
 <div class="code">
@@ -345,7 +345,7 @@ We use dependent destruction as it is more general than inversion
 </div>
 
 <div class="doc">
-Improve type class resolution for Equivalence and PER 
+Improve type class resolution for <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#Equivalence"><span class="id" title="class">Equivalence</span></a></span> and <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span>. 
 </div>
 <div class="code">
 
@@ -367,7 +367,7 @@ Improve type class resolution for Equivalence and PER
 </div>
 
 <div class="doc">
-Default setting for <span class="inlinecode"><span class="id" title="tactic">intuition</span></span> tactic 
+Default setting for the <span class="inlinecode"><span class="id" title="tactic">intuition</span></span> tactic. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">Tauto.intuition_solver</span> ::= <span class="id" title="tactic">auto</span> <span class="id" title="keyword">with</span> <span class="id" title="var">mctt</span> <span class="id" title="var">core</span> <span class="id" title="var">solve_subterm</span>.<br/>
@@ -392,7 +392,8 @@ Default setting for <span class="inlinecode"><span class="id" title="tactic">int
 </div>
 
 <div class="doc">
-this tactic traverses to the bottom of a lemma following universals and conjunctions to the bottom and apply a tactic 
+<span class="inlinecode"><span class="id" title="var">deepexec</span></span> <span class="inlinecode"><span class="id" title="var">lem</span></span> <span class="inlinecode"><span class="id" title="var">tac</span></span> follows the universals and conjunctions of <span class="inlinecode"><span class="id" title="var">lem</span></span> down
+    to its conclusions and applies <span class="inlinecode"><span class="id" title="var">tac</span></span> there. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">deepexec</span> <span class="id" title="var">lem</span> <span class="id" title="var">tac</span> :=<br/>
@@ -418,7 +419,8 @@ this tactic traverses to the bottom of a lemma following universals and conjunct
 </div>
 
 <div class="doc">
-this tactic is similar to above, but the traversal cuts off when it sees an assumption applicable to a cut-off argument C 
+<span class="inlinecode"><span class="id" title="var">cutexec</span></span> <span class="inlinecode"><span class="id" title="var">lem</span></span> <span class="inlinecode"><span class="id" title="var">C</span></span> <span class="inlinecode"><span class="id" title="var">tac</span></span> is like <span class="inlinecode"><span class="id" title="var">deepexec</span></span>, but stops at an assumption to
+    which the cut-off argument <span class="inlinecode"><span class="id" title="var">C</span></span> applies. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">cutexec</span> <span class="id" title="var">lem</span> <span class="id" title="var">C</span> <span class="id" title="var">tac</span> :=<br/>
@@ -521,6 +523,36 @@ this tactic is similar to above, but the traversal cuts off when it sees an assu
 <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
+</div>
+
+<div class="doc">
+Close <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode"><span class="id" title="var">a</span></span> <span class="inlinecode"><span class="id" title="var">c</span></span> from hypotheses relating <span class="inlinecode"><span class="id" title="var">a</span></span> and <span class="inlinecode"><span class="id" title="var">c</span></span> through a chain of
+    others, given <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> in the context.  Each step picks a hypothesis
+    leaving <span class="inlinecode"><span class="id" title="var">a</span></span>; <span class="inlinecode"><span class="id" title="keyword">match</span></span> backtracks over the choice. 
+</div>
+<div class="code">
+#[<span class="id" title="var">global</span>]<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">solve_per_n</span> <span class="id" title="var">n</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="var">n</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#O"><span class="id" title="constructor">O</span></a> =&gt; <span class="id" title="tactic">fail</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> ?<span class="id" title="var">n'</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">first</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">symmetry</span>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| |- ?<span class="id" title="var">R</span> ?<span class="id" title="var">a</span> ?<span class="id" title="var">c</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <span class="id" title="var">R</span> <span class="id" title="var">a</span> ?<span class="id" title="var">b</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">transitivity</span> <span class="id" title="var">b</span>; [ <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span> | <span class="id" title="var">solve_per_n</span> <span class="id" title="var">n'</span> ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <span class="id" title="var">R</span> ?<span class="id" title="var">b</span> <span class="id" title="var">a</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">transitivity</span> <span class="id" title="var">b</span>; [ <span class="id" title="tactic">symmetry</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span> | <span class="id" title="var">solve_per_n</span> <span class="id" title="var">n'</span> ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span> ]<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
+#[<span class="id" title="var">global</span>]<br/>
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">solve_per</span> := <span class="id" title="tactic">solve</span> [ <span class="id" title="var">solve_per_n</span> 5 ].<br/>
+
+<br/>
 #[<span class="id" title="var">global</span>]<br/>
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">saturate_refl</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
@@ -553,8 +585,8 @@ this tactic is similar to above, but the traversal cuts off when it sees an assu
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-Sometimes `reflexivity` does not work as (simple) unification fails for some unknown reason.
-      Thus, we try <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#Equivalence_Reflexive"><span class="id" title="method">Equivalence_Reflexive</span></a></span> as well. 
+<span class="inlinecode"><span class="id" title="tactic">reflexivity</span></span> sometimes fails because simple unification fails, so
+      <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#Equivalence_Reflexive"><span class="id" title="method">Equivalence_Reflexive</span></a></span> is tried as well. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">solve</span> [<span class="id" title="tactic">reflexivity</span> || <span class="id" title="tactic">apply</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#Equivalence_Reflexive"><span class="id" title="method">Equivalence_Reflexive</span></a>].<br/>
@@ -563,7 +595,7 @@ Sometimes `reflexivity` does not work as (simple) unification fails for some unk
 </div>
 
 <div class="doc">
-<a id="lab334"></a><h3 class="section">Helper Instances for Generalized Rewriting</h3>
+<a id="lab367"></a><h3 class="section">Helper Instances for Generalized Rewriting</h3>
 
 </div>
 <div class="code">
@@ -621,7 +653,8 @@ Sometimes `reflexivity` does not work as (simple) unification fails for some unk
 </div>
 
 <div class="doc">
-The following facility converts search of Proper from type class instances to the local context 
+The following facility turns a search for a <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span> instance into a
+    search of the local context. 
 </div>
 <div class="code">
 

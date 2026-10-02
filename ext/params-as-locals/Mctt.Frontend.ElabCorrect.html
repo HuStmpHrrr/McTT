@@ -43,7 +43,7 @@
 </div>
 
 <div class="doc">
-<a id="lab281"></a><h1 class="section">The Elaborator Meets Its Specification</h1>
+<a id="lab312"></a><h1 class="section">The Elaborator Meets Its Specification</h1>
 
 
 <div class="paragraph"> </div>
@@ -54,17 +54,14 @@
 
 <div class="paragraph"> </div>
 
-    The proof represents each piece of the specification's state in the
-    elaborator's data structures (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_mref"><span class="id" title="definition">to_mref</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_os"><span class="id" title="definition">to_os</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_of"><span class="id" title="definition">to_of</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_ls"><span class="id" title="definition">to_ls</span></a></span>): the
-    elaborator's state is always the image of a specification state.  The
-    one thing the elaborator keeps that the specification reads off the
-    emitted commands is a frame's member table; <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#emod_of"><span class="id" title="definition">emod_of</span></a></span> computes it from the
-    commands.  Every layer is then an <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#iff"><span class="id" title="definition">iff</span></a></span> between "the elaborator succeeds
-    on the image" and "the specification relates the preimage", by induction
-    on the syntax, which is what the specification's rules are directed by. 
+    Specification states are mapped to elaborator states by <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_mref"><span class="id" title="definition">to_mref</span></a></span>,
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_os"><span class="id" title="definition">to_os</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_of"><span class="id" title="definition">to_of</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_ls"><span class="id" title="definition">to_ls</span></a></span>; a frame's member table, which the
+    specification reads off the emitted commands, is <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#emod_of"><span class="id" title="definition">emod_of</span></a></span>.  Each layer is
+    an <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#iff"><span class="id" title="definition">iff</span></a></span> between the elaborator succeeding on the image and the
+    specification relating the preimage, by induction on the syntax. 
 <div class="paragraph"> </div>
 
-<a id="lab282"></a><h2 class="section">Representation</h2>
+<a id="lab313"></a><h2 class="section">Representation</h2>
 
 <div class="paragraph"> </div>
 
@@ -133,7 +130,6 @@
 <span class="id" title="keyword">Definition</span> <a id="to_lent" class="idref" href="#to_lent"><span class="id" title="definition">to_lent</span></a> (<a id="d:23" class="idref" href="#d:23"><span class="id" title="binder">d</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="b:24" class="idref" href="#b:24"><span class="id" title="binder">b</span></a> : <a class="idref" href="Mctt.Frontend.ElabSpec.html#lbind"><span class="id" title="inductive">lbind</span></a>) : <a class="idref" href="Mctt.Frontend.Resolve.html#lent"><span class="id" title="inductive">lent</span></a> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#b:24"><span class="id" title="variable">b</span></a> <span class="id" title="keyword">with</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Frontend.Resolve.html#le_term"><span class="id" title="constructor">le_term</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_var"><span class="id" title="constructor">a_var</span></a> 0) (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#d:23"><span class="id" title="variable">d</span></a>)<br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_let"><span class="id" title="constructor">lb_let</span></a> <span class="id" title="var">_</span> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Frontend.Resolve.html#le_term"><span class="id" title="constructor">le_term</span></a> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#d:23"><span class="id" title="variable">d</span></a><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_mod"><span class="id" title="constructor">lb_mod</span></a> <span class="id" title="var">_</span> <span class="id" title="var">R</span> =&gt; <a class="idref" href="Mctt.Frontend.Resolve.html#le_mod"><span class="id" title="constructor">le_mod</span></a> (<a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_mref"><span class="id" title="definition">to_mref</span></a> <span class="id" title="var">R</span>) <a class="idref" href="Mctt.Frontend.ElabCorrect.html#d:23"><span class="id" title="variable">d</span></a><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
@@ -148,8 +144,8 @@
 </div>
 
 <div class="doc">
-What a denotation becomes once applied to the arguments <span class="inlinecode"><span class="id" title="var">args</span></span> of the
-    spine it heads, in the elaborator's terms. 
+A denotation applied to the arguments <span class="inlinecode"><span class="id" title="var">args</span></span> of the spine it heads, in
+    the elaborator's terms. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="fin" class="idref" href="#fin"><span class="id" title="definition">fin</span></a> (<a id="r:29" class="idref" href="#r:29"><span class="id" title="binder">r</span></a> : <a class="idref" href="Mctt.Frontend.ElabSpec.html#sres"><span class="id" title="inductive">sres</span></a>) (<a id="args:30" class="idref" href="#args:30"><span class="id" title="binder">args</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#res"><span class="id" title="inductive">res</span></a> :=<br/>
@@ -163,7 +159,7 @@ What a denotation becomes once applied to the arguments <span class="inlinecode"
 </div>
 
 <div class="doc">
-<a id="lab283"></a><h2 class="section">Generalities</h2>
+<a id="lab314"></a><h2 class="section">Generalities</h2>
 
 </div>
 <div class="code">
@@ -283,7 +279,7 @@ Term and module positions.
 </div>
 
 <div class="doc">
-<a id="lab284"></a><h2 class="section">Members Read Off Commands</h2>
+<a id="lab315"></a><h2 class="section">Members Read Off Commands</h2>
 
 </div>
 <div class="code">
@@ -391,7 +387,7 @@ Term and module positions.
 </div>
 
 <div class="doc">
-<a id="lab285"></a><h2 class="section">Projections of the Representation</h2>
+<a id="lab316"></a><h2 class="section">Projections of the Representation</h2>
 
 </div>
 <div class="code">
@@ -429,7 +425,7 @@ Term and module positions.
 </div>
 
 <div class="doc">
-<a id="lab286"></a><h2 class="section">Aliases</h2>
+<a id="lab317"></a><h2 class="section">Aliases</h2>
 
 </div>
 <div class="code">
@@ -508,7 +504,7 @@ With one alias per name, an alias is the one found.
 </div>
 
 <div class="doc">
-<a id="lab287"></a><h2 class="section">Pre-application</h2>
+<a id="lab318"></a><h2 class="section">Pre-application</h2>
 
 </div>
 <div class="code">
@@ -548,8 +544,7 @@ With one alias per name, an alias is the one found.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#preapp"><span class="id" title="inductive">preapp</span></a></span> passes the variables of the frames' telescope suffix that starts
-    at the member's frame, outermost first: the elaborator's <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#param_vars"><span class="id" title="definition">param_vars</span></a></span>. 
+<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#preapp"><span class="id" title="inductive">preapp</span></a></span> gives the elaborator's <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#param_vars"><span class="id" title="definition">param_vars</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="preapp_iff" class="idref" href="#preapp_iff"><span class="id" title="lemma">preapp_iff</span></a> : <span class="id" title="keyword">forall</span> <a id="Fs:164" class="idref" href="#Fs:164"><span class="id" title="binder">Fs</span></a> <a id="off:165" class="idref" href="#off:165"><span class="id" title="binder">off</span></a> <a id="vs:166" class="idref" href="#vs:166"><span class="id" title="binder">vs</span></a>, <a class="idref" href="Mctt.Frontend.ElabSpec.html#preapp"><span class="id" title="inductive">preapp</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#off:165"><span class="id" title="variable">off</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#Fs:164"><span class="id" title="variable">Fs</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#vs:166"><span class="id" title="variable">vs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#::type_scope:x_'&lt;-&gt;'_x"><span class="id" title="notation">&lt;-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#vs:166"><span class="id" title="variable">vs</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#vars_desc"><span class="id" title="definition">vars_desc</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#off:165"><span class="id" title="variable">off</span></a> (<a class="idref" href="Mctt.Frontend.ElabCorrect.html#tele"><span class="id" title="definition">tele</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#Fs:164"><span class="id" title="variable">Fs</span></a>).<br/>
@@ -570,7 +565,7 @@ With one alias per name, an alias is the one found.
 </div>
 
 <div class="doc">
-<a id="lab288"></a><h2 class="section">Parameters</h2>
+<a id="lab319"></a><h2 class="section">Parameters</h2>
 
 </div>
 <div class="code">
@@ -644,7 +639,7 @@ With one alias per name, an alias is the one found.
 </div>
 
 <div class="doc">
-<a id="lab289"></a><h2 class="section">Local Bindings</h2>
+<a id="lab320"></a><h2 class="section">Local Bindings</h2>
 
 </div>
 <div class="code">
@@ -690,12 +685,9 @@ With one alias per name, an alias is the one found.
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#r:205"><span class="id" title="variable">r</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#::type_scope:x_'&lt;-&gt;'_x"><span class="id" title="notation">&lt;-&gt;</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#fin"><span class="id" title="definition">fin</span></a> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#ldenote"><span class="id" title="definition">ldenote</span></a> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#L1:201"><span class="id" title="variable">L1</span></a>) <a class="idref" href="Mctt.Frontend.ElabCorrect.html#b:202"><span class="id" title="variable">b</span></a>) <a class="idref" href="Mctt.Frontend.ElabCorrect.html#args:204"><span class="id" title="variable">args</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#r:205"><span class="id" title="variable">r</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>. <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#nbinders_app"><span class="id" title="lemma">nbinders_app</span></a>, <a class="idref" href="Mctt.Frontend.ElabCorrect.html#nbinders_cons"><span class="id" title="lemma">nbinders_cons</span></a>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">b</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">y</span> | <span class="id" title="var">y</span> <span class="id" title="var">M</span> | <span class="id" title="var">y</span> <span class="id" title="var">R</span>]; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_binders"><span class="id" title="definition">lb_binders</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_lent"><span class="id" title="definition">to_lent</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#ldenote"><span class="id" title="definition">ldenote</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#fin"><span class="id" title="definition">fin</span></a>].<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">b</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">y</span> | <span class="id" title="var">y</span> <span class="id" title="var">R</span>]; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_binders"><span class="id" title="definition">lb_binders</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#to_lent"><span class="id" title="definition">to_lent</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#ldenote"><span class="id" title="definition">ldenote</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#fin"><span class="id" title="definition">fin</span></a>].<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Frontend.Resolve.html#sc_shift"><span class="id" title="definition">sc_shift</span></a>. <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_shiftn"><span class="id" title="definition">wk_shiftn</span></a>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">replace</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">(</span></a>1 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'-'_x"><span class="id" title="notation">-</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span>)) <span class="id" title="keyword">with</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">lia</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
-&nbsp;&nbsp;- <span class="id" title="tactic">unfold</span> <a class="idref" href="Mctt.Frontend.Resolve.html#sc_shift"><span class="id" title="definition">sc_shift</span></a>, <a class="idref" href="Mctt.Frontend.ElabSpec.html#shift_by"><span class="id" title="definition">shift_by</span></a>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">replace</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">(</span></a>1 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'-'_x"><span class="id" title="notation">-</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span>) <span class="id" title="keyword">with</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span>)) <span class="id" title="tactic">by</span> <span class="id" title="var">lia</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">inversion</span> <span class="id" title="var">H</span>; <span class="id" title="tactic">reflexivity</span>.<br/>
 &nbsp;&nbsp;- <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#mr_weaken_to"><span class="id" title="lemma">mr_weaken_to</span></a>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">replace</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">(</span></a>0 <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">+</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#0dacc1786c5ba797d47dd85006231633"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'-'_x"><span class="id" title="notation">-</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L2</span>) <span class="id" title="keyword">with</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#nbinders"><span class="id" title="definition">nbinders</span></a> <span class="id" title="var">L1</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">lia</span>.<br/>
@@ -706,7 +698,7 @@ With one alias per name, an alias is the one found.
 </div>
 
 <div class="doc">
-<a id="lab290"></a><h2 class="section">Member Selection</h2>
+<a id="lab321"></a><h2 class="section">Member Selection</h2>
 
 </div>
 <div class="code">
@@ -767,7 +759,7 @@ The member <span class="inlinecode"><span class="id" title="var">c</span></span>
 </div>
 
 <div class="doc">
-<a id="lab291"></a><h2 class="section">Names in the Open Frames</h2>
+<a id="lab322"></a><h2 class="section">Names in the Open Frames</h2>
 
 </div>
 <div class="code">
@@ -784,7 +776,7 @@ The member <span class="inlinecode"><span class="id" title="var">c</span></span>
 </div>
 
 <div class="doc">
-<a id="lab292"></a><h2 class="section">One Binding per Name</h2>
+<a id="lab323"></a><h2 class="section">One Binding per Name</h2>
 
 </div>
 <div class="code">
@@ -946,7 +938,7 @@ In a well-formed frame a member is not also an alias …
 </div>
 
 <div class="doc">
-<a id="lab293"></a><h2 class="section">Objects</h2>
+<a id="lab324"></a><h2 class="section">Objects</h2>
 
 </div>
 <div class="code">
@@ -993,7 +985,7 @@ In a well-formed frame a member is not also an alias …
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="P_decl" class="idref" href="#P_decl"><span class="id" title="definition">P_decl</span></a> (<a id="d:275" class="idref" href="#d:275"><span class="id" title="binder">d</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.decl"><span class="id" title="inductive">Cst.decl</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#d:275"><span class="id" title="variable">d</span></a> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">Cst.d_def</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">oA</span> <span class="id" title="var">oM</span> =&gt; <a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_obj"><span class="id" title="definition">P_obj</span></a> <span class="id" title="var">oA</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_obj"><span class="id" title="definition">P_obj</span></a> <span class="id" title="var">oM</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">Cst.d_def</span></a> <span class="id" title="var">_</span> <span class="id" title="var">oA</span> <span class="id" title="var">oM</span> =&gt; <a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_obj"><span class="id" title="definition">P_obj</span></a> <span class="id" title="var">oA</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_obj"><span class="id" title="definition">P_obj</span></a> <span class="id" title="var">oM</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_mod"><span class="id" title="constructor">Cst.d_mod</span></a> <span class="id" title="var">_</span> <span class="id" title="var">oE</span> =&gt; <a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_obj"><span class="id" title="definition">P_obj</span></a> <span class="id" title="var">oE</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
 
@@ -1048,6 +1040,21 @@ In a well-formed frame a member is not also an alias …
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">H</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="var">bwd_term</span> <span class="id" title="var">H1</span> <span class="id" title="var">L</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">H2</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s0</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;true_ty&nbsp;*)</span> <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>; <span class="id" title="var">inv_eok</span>; <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">constructor</span> | <span class="id" title="tactic">reflexivity</span> ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>; <span class="id" title="tactic">reflexivity</span> ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;true_tm&nbsp;*)</span> <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>; <span class="id" title="var">inv_eok</span>; <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">constructor</span> | <span class="id" title="tactic">reflexivity</span> ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>; <span class="id" title="tactic">reflexivity</span> ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;false_ty&nbsp;*)</span> <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">intros</span> <span class="id" title="var">H</span>; <span class="id" title="var">inv_eok</span>; <span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">constructor</span> | <span class="id" title="tactic">reflexivity</span> ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>; <span class="id" title="tactic">reflexivity</span> ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;exfalso&nbsp;*)</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>]. <span class="id" title="tactic">split</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">H</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">constructor</span>; <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">reflexivity</span> ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">H</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="tactic">reflexivity</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;pi&nbsp;*)</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>]. <span class="id" title="tactic">split</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">H</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">s</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
@@ -1090,21 +1097,12 @@ In a well-formed frame a member is not also an alias …
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Frontend.ElabCorrect.html#sel_mod_iff"><span class="id" title="lemma">sel_mod_iff</span></a> <span class="id" title="var">_</span> <span class="id" title="var">H</span>); <span class="id" title="tactic">eauto</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#mr_member_iff"><span class="id" title="lemma">mr_member_iff</span></a>; <span class="id" title="tactic">eauto</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;- <span class="comment">(*&nbsp;letb&nbsp;*)</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">d</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">m</span> <span class="id" title="var">x</span> <span class="id" title="var">oA</span> <span class="id" title="var">oM</span> | <span class="id" title="var">x</span> <span class="id" title="var">oE</span>]; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_decl"><span class="id" title="definition">P_decl</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">d</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">x</span> <span class="id" title="var">oA</span> <span class="id" title="var">oM</span> | <span class="id" title="var">x</span> <span class="id" title="var">oE</span>]; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.ElabCorrect.html#P_decl"><span class="id" title="definition">P_decl</span></a>] <span class="id" title="tactic">in</span> <span class="id" title="var">H</span>; <span class="id" title="var">cbn</span> [<a class="idref" href="Mctt.Frontend.Elaborator.html#elab_res"><span class="id" title="definition">Elaborator.elab_res</span></a>].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">HA</span> <span class="id" title="var">HM</span>]. <span class="id" title="tactic">split</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">intros</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">HA</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">HM</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_abstract"><span class="id" title="projection">Cst.md_abstract</span></a> <span class="id" title="var">m</span>) <span class="id" title="var">eqn</span>:<span class="id" title="var">Ea</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- <span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">x</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sel_let_abs"><span class="id" title="constructor">sel_let_abs</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">reflexivity</span> ].<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- <span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_let"><span class="id" title="constructor">lb_let</span></a> <span class="id" title="var">x</span> <span class="id" title="var">M0</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sel_let"><span class="id" title="constructor">sel_let</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">reflexivity</span> ].<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">intros</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">HA</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">HM</span> <span class="id" title="var">L</span> <span class="id" title="var">Hr</span>. <span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">x</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eexists</span>; <span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Frontend.ElabSpec.html#sel_let"><span class="id" title="constructor">sel_let</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">reflexivity</span> ].<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">intros</span> (<span class="id" title="var">sr</span> &amp; <span class="id" title="var">Hs</span> &amp; <span class="id" title="var">Hf</span>); <span class="id" title="tactic">inversion</span> <span class="id" title="var">Hs</span>; <span class="id" title="tactic">subst</span>; <span class="id" title="var">cbn</span> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf</span>; <span class="id" title="var">inv_some</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- <span class="id" title="var">bwd_term</span> <span class="id" title="var">HA</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">HM</span> <span class="id" title="var">L</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Ea</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_abstract"><span class="id" title="projection">Cst.md_abstract</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Ea</span> <span class="id" title="keyword">end</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_let"><span class="id" title="constructor">lb_let</span></a> <span class="id" title="var">x</span> <span class="id" title="var">M</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="tactic">reflexivity</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-- <span class="id" title="var">bwd_term</span> <span class="id" title="var">HA</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">HM</span> <span class="id" title="var">L</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">Ea</span> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_abstract"><span class="id" title="projection">Cst.md_abstract</span></a> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">rewrite</span> <span class="id" title="var">Ea</span> <span class="id" title="keyword">end</span>.<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">x</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="tactic">reflexivity</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">bwd_term</span> <span class="id" title="var">HA</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">HM</span> <span class="id" title="var">L</span>. <span class="id" title="var">bwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_var"><span class="id" title="constructor">lb_var</span></a> <span class="id" title="var">x</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>). <span class="id" title="tactic">reflexivity</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">rewrite</span> <a class="idref" href="Mctt.Frontend.ElabCorrect.html#ebind_eok"><span class="id" title="lemma">ebind_eok</span></a>. <span class="id" title="tactic">split</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* <span class="id" title="tactic">intros</span> (<span class="id" title="var">mr</span> &amp; <span class="id" title="var">Hm</span> &amp; <span class="id" title="var">Hr</span>). <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Frontend.ElabCorrect.html#sel_mod_iff"><span class="id" title="lemma">sel_mod_iff</span></a> <span class="id" title="var">_</span> <span class="id" title="var">H</span>) <span class="id" title="tactic">in</span> <span class="id" title="var">Hm</span> <span class="id" title="keyword">as</span> (<span class="id" title="var">R</span> &amp; <span class="id" title="var">HR</span> &amp; -&gt;).<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">fwd_term</span> <span class="id" title="var">H0</span> (<a class="idref" href="Mctt.Frontend.ElabSpec.html#lb_mod"><span class="id" title="constructor">lb_mod</span></a> <span class="id" title="var">x</span> <span class="id" title="var">R</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">L</span>) <span class="id" title="var">Hr</span>. <span class="id" title="var">inv_eok</span>.<br/>
@@ -1155,7 +1153,7 @@ In a well-formed frame a member is not also an alias …
 </div>
 
 <div class="doc">
-<a id="lab294"></a><h2 class="section">Imports</h2>
+<a id="lab325"></a><h2 class="section">Imports</h2>
 
 </div>
 <div class="code">
@@ -1338,7 +1336,7 @@ What a frame's <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Ela
 </div>
 
 <div class="doc">
-<a id="lab295"></a><h2 class="section">Commands</h2>
+<a id="lab326"></a><h2 class="section">Commands</h2>
 
 </div>
 <div class="code">
@@ -1776,7 +1774,7 @@ The imports before the unit's declaration, outside all frames.
 </div>
 
 <div class="doc">
-<a id="lab296"></a><h2 class="section">The Theorems</h2>
+<a id="lab327"></a><h2 class="section">The Theorems</h2>
 
 </div>
 <div class="code">
@@ -1857,8 +1855,8 @@ The specification is functional.
 </div>
 
 <div class="doc">
-And the elaborator fails exactly on the programs the specification
-    relates to nothing. 
+The elaborator fails exactly on the programs the specification relates
+    to nothing. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="elaborate_core_fails" class="idref" href="#elaborate_core_fails"><span class="id" title="lemma">elaborate_core_fails</span></a> : <span class="id" title="keyword">forall</span> <a id="prg:575" class="idref" href="#prg:575"><span class="id" title="binder">prg</span></a>,<br/>

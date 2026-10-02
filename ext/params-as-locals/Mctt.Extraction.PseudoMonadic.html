@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-McTT Extraction Helpers in a (pseudo-)monadic style 
+Extraction helpers in a (pseudo-)monadic style. 
 </div>
 <div class="code">
 <span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="library">Extraction</span>.<br/>
@@ -40,10 +40,9 @@ McTT Extraction Helpers in a (pseudo-)monadic style
 </div>
 
 <div class="doc">
-We cannot use class based generalization for
-    the following definitions as Coq does not support
-    extractable polymorphism across <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> and <span class="inlinecode"><span class="id" title="keyword">Set</span></span>.
-    See <a href="https://github.com/coq/coq/issues/19452">this Coq issue</a> 
+These definitions cannot be generalized with type classes, as Rocq does
+    not support extractable polymorphism across <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> and <span class="inlinecode"><span class="id" title="keyword">Set</span></span>
+    (<a href="https://github.com/coq/coq/issues/19452">coq/coq19452&lt;/a&gt;). 
 </div>
 <div class="code">
 

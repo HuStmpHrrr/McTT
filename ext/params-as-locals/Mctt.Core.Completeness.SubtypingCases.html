@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab77"></a><h1 class="section">Subtyping</h1>
+<a id="lab89"></a><h1 class="section">Subtyping</h1>
 
 
 <div class="paragraph"> </div>
@@ -41,40 +41,31 @@
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> spells a subtyping judgment out as *three* facts at each
-    instantiation — the two commutation links <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> and
-    <span class="inlinecode">⟦<span class="id" title="var">A'</span>[σ']⟧ρ'</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span>, and <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> <span class="inlinecode"><span class="id" title="tactic">at</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> between the two
-    middles.  So it is a four-value pattern with its middle link replaced by a
-    subtyping: the two ends still have to be reconciled with the values the caller
-    names, and only the *comparison* in the middle is asymmetric.  Every proof
-    below has the same three-part shape as a result, and the interesting work is
-    always in the middle part.
+    At each instantiation, <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> states three facts: the two
+    commutation links <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]⟧ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> and <span class="inlinecode">⟦<span class="id" title="var">A'</span>[σ']⟧ρ'</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span>, and
+    <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> <span class="inlinecode"><span class="id" title="tactic">at</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> between the two middles.  It is a four-value
+    pattern whose middle link is a subtyping, so every proof below has three
+    parts, and the interesting one is the middle.
 
 <div class="paragraph"> </div>
 
-    Two consequences of that shape are worth recording, because both look like
-    omissions and are not:
+    Two consequences of this shape look like omissions but are not:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> the judgment never relates <span class="inlinecode"><span class="id" title="var">A'</span></span> at two *different* environments (both of its
+<li> the judgment never relates <span class="inlinecode"><span class="id" title="var">A'</span></span> at two different environments (both of its
       links stay within one column), so <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#rel_exp_eq_subtyp"><span class="id" title="lemma">rel_exp_eq_subtyp</span></a></span> cannot reconstruct
-      <span class="inlinecode"><span class="id" title="var">A'</span></span>'s own type chain and must be given it.  That is exactly why
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_subtyp"><span class="id" title="constructor">wf_exp_subtyp</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_subtyp"><span class="id" title="constructor">wf_exp_eq_subtyp</span></a></span> carry the extra premise
-      <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>;
-
-<div class="paragraph"> </div>
-
+      <span class="inlinecode"><span class="id" title="var">A'</span></span>'s type chain and must be given it.  This is why <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_subtyp"><span class="id" title="constructor">wf_exp_subtyp</span></a></span> and
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_subtyp"><span class="id" title="constructor">wf_exp_eq_subtyp</span></a></span> carry the extra premise <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>;
 
 </li>
-<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#subtyp_refl"><span class="id" title="lemma">subtyp_refl</span></a></span> needs only <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span> and not the companion
-      premise <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>, since the second link is the first
-      judgment's own third-to-fourth link read backwards.
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#subtyp_refl"><span class="id" title="lemma">subtyp_refl</span></a></span> needs only <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>, not also
+      <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>, since the second link is the first judgment's
+      third-to-fourth link read backwards. 
 
 </li>
 </ul>
- 
 </div>
 <div class="code">
 
@@ -94,16 +85,15 @@
 </div>
 
 <div class="doc">
-<a id="lab78"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Eq</span></span></h2>
+<a id="lab90"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Eq</span></span></h2>
 
 
 <div class="paragraph"> </div>
 
     A type equality is a subtyping, because <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_subtyp_refl1"><span class="id" title="lemma">per_subtyp_refl1</span></a></span> turns any related
-    pair of type values into a subtyping between them.  The four-value pattern of
-    the equality supplies all three parts at once: its outer two links *are* the
-    two commutation obligations, and its middle link is what
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_subtyp_refl1"><span class="id" title="lemma">per_subtyp_refl1</span></a></span> consumes. 
+    pair of type values into a subtyping.  The four-value pattern of the equality
+    supplies all three parts: its outer links are the two commutation obligations,
+    and its middle link is what <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_subtyp_refl1"><span class="id" title="lemma">per_subtyp_refl1</span></a></span> consumes. 
 </div>
 <div class="code">
 
@@ -128,9 +118,9 @@
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-The second obligation runs the other way round: what the chain has is
-        <span class="inlinecode"><span class="id" title="var">a3</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">a4</span></span> and what <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> asks for is <span class="inlinecode"><span class="id" title="var">a4</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">a3</span></span>.  A chain in a PER
-        relates every pair in either direction, so <span class="inlinecode"><span class="id" title="var">pairwise</span></span> serves both. 
+The second obligation runs the other way: the chain has <span class="inlinecode"><span class="id" title="var">a3</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">a4</span></span> and
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> asks for <span class="inlinecode"><span class="id" title="var">a4</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">a3</span></span>.  A chain in a PER relates every pair
+      in both directions, so <span class="inlinecode"><span class="id" title="var">pairwise</span></span> serves both. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">pairwise</span>.<br/>
@@ -146,19 +136,19 @@ The second obligation runs the other way round: what the chain has is
 </div>
 
 <div class="doc">
-<a id="lab79"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Trans</span></span></h2>
+<a id="lab91"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Trans</span></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    Transitivity is where the asymmetry of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> costs something.  The two
-    hypotheses instantiated at the *same* data do not chain: the first reports
-    <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> and the second <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A''</span>⟧ρ'σ'</span>, whose
-    middles are the values of <span class="inlinecode"><span class="id" title="var">A'</span></span> at *different* environments.  What does chain is
-    the second hypothesis taken a second time, at <span class="inlinecode"><span class="id" title="var">Id</span></span> and at the pair
-    <span class="inlinecode">(ρ'σ',</span> <span class="inlinecode">ρ'σ')</span> — legitimate because <span class="inlinecode">ρσ</span> <span class="inlinecode">≈</span> <span class="inlinecode">ρ'σ'</span> makes <span class="inlinecode">ρ'σ'</span> self-related —
-    which reports <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A''</span>⟧ρ'σ'</span> and so meets the first hypothesis on
-    the nose.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a></span> is that instance packaged. 
+    The asymmetry of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#subtyp_under_ctx"><span class="id" title="definition">subtyp_under_ctx</span></a></span> makes transitivity nontrivial.  The two
+    hypotheses at the same data do not chain: the first gives
+    <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> and the second <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρσ</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A''</span>⟧ρ'σ'</span>, whose middles
+    are values of <span class="inlinecode"><span class="id" title="var">A'</span></span> at different environments.  What does chain is the second
+    hypothesis taken again at <span class="inlinecode"><span class="id" title="var">Id</span></span> and at the pair <span class="inlinecode">(ρ'σ',</span> <span class="inlinecode">ρ'σ')</span>, which is allowed
+    because <span class="inlinecode">ρσ</span> <span class="inlinecode">≈</span> <span class="inlinecode">ρ'σ'</span> makes <span class="inlinecode">ρ'σ'</span> self-related.  It gives
+    <span class="inlinecode"><span class="id" title="var">Sub</span></span> <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span> <span class="inlinecode">&lt;:</span> <span class="inlinecode">⟦<span class="id" title="var">A''</span>⟧ρ'σ'</span>, which meets the first hypothesis exactly.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a></span> packages that instance. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="subtyp_trans" class="idref" href="#subtyp_trans"><span class="id" title="lemma">subtyp_trans</span></a> : <span class="id" title="keyword">forall</span> {<a id="6b23b3527a5ae82de0dbe08d52926f19" class="idref" href="#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="binder">Γ</span></a> <a id="A:7" class="idref" href="#A:7"><span class="id" title="binder">A</span></a> <a id="A':8" class="idref" href="#A':8"><span class="id" title="binder">A'</span></a> <a id="A'':9" class="idref" href="#A'':9"><span class="id" title="binder">A''</span></a>},<br/>
@@ -220,15 +210,15 @@ The three values of <span class="inlinecode"><span class="id" title="var">A'</sp
 </div>
 
 <div class="doc">
-<a id="lab80"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Univ</span></span></h2>
+<a id="lab92"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Univ</span></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">Type@i</span>[σ]</span> *is* <span class="inlinecode"><span class="id" title="var">Type@i</span></span>, so all four values of both columns are already
-    equal and the two commutation obligations are reflexivity.  Only the middle is
-    real, and it is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_univ"><span class="id" title="constructor">per_subtyp_univ</span></a></span>.  The ambient level has to be strictly above
-    <span class="inlinecode"><span class="id" title="var">j</span></span>, hence <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span>. 
+    <span class="inlinecode"><span class="id" title="var">Type@i</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">Type@i</span></span>, so all four values in both columns are equal and the
+    two commutation obligations are reflexivity.  Only the middle has content, and
+    it is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_univ"><span class="id" title="constructor">per_subtyp_univ</span></a></span>.  The ambient level must be strictly above <span class="inlinecode"><span class="id" title="var">j</span></span>, hence
+    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="subtyp_univ" class="idref" href="#subtyp_univ"><span class="id" title="lemma">subtyp_univ</span></a> : <span class="id" title="keyword">forall</span> {<a id="8a5fb5e1be55058be9aa6b31d1a8bfab" class="idref" href="#8a5fb5e1be55058be9aa6b31d1a8bfab"><span class="id" title="binder">Γ</span></a> <a id="i:12" class="idref" href="#i:12"><span class="id" title="binder">i</span></a> <a id="j:13" class="idref" href="#j:13"><span class="id" title="binder">j</span></a>},<br/>
@@ -254,30 +244,31 @@ The three values of <span class="inlinecode"><span class="id" title="var">A'</sp
 </div>
 
 <div class="doc">
-<a id="lab81"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Pi</span></span></h2>
+<a id="lab93"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Pi</span></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_pi"><span class="id" title="constructor">per_subtyp_pi</span></a></span> wants four things: the two Π-values self-related, a domain PER
-    relating them, and a codomain subtyping valid at every argument pair of that
-    PER.  The first three are <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_typ_of_pi"><span class="id" title="lemma">rel_typ_of_pi</span></a></span> read at the three type equalities
-    among the premises — the two self-equalities give the Π-values and the
-    heterogeneous one gives the domain PER — and the fourth is the codomain
-    premise, whose extended-context PER is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend"><span class="id" title="definition">per_env_extend</span></a></span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode"><span class="id" title="var">env_relΓ</span></span> because
-    the repo checks both codomains in <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> (see <span class="inlinecode"><span class="id" title="library">System</span>/<span class="id" title="var">Definitions.v</span></span>).
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_pi"><span class="id" title="constructor">per_subtyp_pi</span></a></span> needs the two Π-values self-related, a domain PER relating
+    them, and a codomain subtyping at every argument pair of that PER.  The first
+    three come from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_typ_of_pi"><span class="id" title="lemma">rel_typ_of_pi</span></a></span> at the three type equalities among the
+    premises (the two self-equalities give the Π-values, the heterogeneous one the
+    domain PER).  The fourth is the codomain premise, whose extended context PER is
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend"><span class="id" title="definition">per_env_extend</span></a></span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode"><span class="id" title="var">env_relΓ</span></span> because both codomains are checked in
+    <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> (see <span class="inlinecode"><span class="id" title="library">System</span>/<span class="id" title="var">Definitions.v</span></span>).
 
 <div class="paragraph"> </div>
 
-    Moving the quantified argument pair from the domain PER into that extended
-    context PER is the one step with content: the two PERs share their *right*
-    value <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span>, so <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_left_irrel"><span class="id" title="lemma">per_univ_elem_left_irrel</span></a></span> identifies them.
+    The one step with content moves the quantified argument pair from the domain
+    PER into that extended context PER: the two PERs share their right value
+    <span class="inlinecode">⟦<span class="id" title="var">A'</span>⟧ρ'σ'</span>, so <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_left_irrel"><span class="id" title="lemma">per_univ_elem_left_irrel</span></a></span> identifies them.
 
 <div class="paragraph"> </div>
 
-    Levels: the premises fix <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>, the codomain subtyping arrives at whatever level
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a></span> reports, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_pi"><span class="id" title="constructor">per_subtyp_pi</span></a></span> insists that all of its
-    premises and its conclusion agree.  So everything is raised to <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><span class="id" title="var">i0</span></span>. 
+    Levels: the premises fix <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>, the codomain subtyping comes at whatever level
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#subtyp_under_ctx_simple"><span class="id" title="lemma">subtyp_under_ctx_simple</span></a></span> reports, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_subtyp_pi"><span class="id" title="constructor">per_subtyp_pi</span></a></span> requires all its
+    premises and its conclusion to agree, so everything is raised to
+    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><span class="id" title="var">i0</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="subtyp_pi" class="idref" href="#subtyp_pi"><span class="id" title="lemma">subtyp_pi</span></a> : <span class="id" title="keyword">forall</span> {<a id="6f77cad99d2eda9ef19109858c066b07" class="idref" href="#6f77cad99d2eda9ef19109858c066b07"><span class="id" title="binder">Γ</span></a> <a id="A:15" class="idref" href="#A:15"><span class="id" title="binder">A</span></a> <a id="A':16" class="idref" href="#A':16"><span class="id" title="binder">A'</span></a> <a id="i:17" class="idref" href="#i:17"><span class="id" title="binder">i</span></a> <a id="B:18" class="idref" href="#B:18"><span class="id" title="binder">B</span></a> <a id="B':19" class="idref" href="#B':19"><span class="id" title="binder">B'</span></a>},<br/>
@@ -379,25 +370,23 @@ The two element PERs are named rather than left to <span class="inlinecode"><spa
 </div>
 
 <div class="doc">
-<a id="lab82"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Subsump</span></span></h2>
+<a id="lab94"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">Subsump</span></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    The term chain is already there; all that changes is the PER it is read in.
+    The term chain is unchanged; only the PER it is read in changes.
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_subtyping"><span class="id" title="lemma">per_elem_subtyping</span></a></span> moves a single pair up a subtyping, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_mono"><span class="id" title="lemma">rel_chain_mono</span></a></span>
-    lifts that to the whole chain — the chain's *shape* is untouched, which is the
-    point of stating the four-value pattern over a <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain"><span class="id" title="definition">rel_chain</span></a></span> in the first place.
+    lifts that to the whole chain without changing its shape.
 
 <div class="paragraph"> </div>
 
-    Two choices make the bookkeeping small.  The target PER is <span class="inlinecode"><span class="id" title="var">A'</span></span>'s canonical
-    head PER rather than an anonymous witness, so that
+    Two choices keep the bookkeeping small.  The target PER is the canonical head
+    PER of <span class="inlinecode"><span class="id" title="var">A'</span></span> rather than an anonymous witness, so that
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_at_head"><span class="id" title="lemma">per_univ_elem_at_head</span></a></span>/<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_chain_at_in"><span class="id" title="lemma">per_univ_chain_at_in</span></a></span> can pin <span class="inlinecode"><span class="id" title="var">A'</span></span>'s chain to it
-    instead of leaving an existential for <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_subtyping"><span class="id" title="lemma">per_elem_subtyping</span></a></span> to guess.  And the
-    common level is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span>)</span> <span class="inlinecode"><span class="id" title="var">k</span></span>, the three levels the three hypotheses
-    report, since <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_subtyping"><span class="id" title="lemma">per_elem_subtyping</span></a></span> needs its subtyping and both of its type
-    values at one level. 
+    instead of leaving an existential for <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_subtyping"><span class="id" title="lemma">per_elem_subtyping</span></a></span>.  And the common
+    level is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span>)</span> <span class="inlinecode"><span class="id" title="var">k</span></span>, the levels of the three hypotheses, since
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_elem_subtyping"><span class="id" title="lemma">per_elem_subtyping</span></a></span> needs its subtyping and both type values at one level. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_eq_subtyp" class="idref" href="#rel_exp_eq_subtyp"><span class="id" title="lemma">rel_exp_eq_subtyp</span></a> : <span class="id" title="keyword">forall</span> {<a id="5072e11836a76219245d89c98ca72259" class="idref" href="#5072e11836a76219245d89c98ca72259"><span class="id" title="binder">Γ</span></a> <a id="A:21" class="idref" href="#A:21"><span class="id" title="binder">A</span></a> <a id="A':22" class="idref" href="#A':22"><span class="id" title="binder">A'</span></a> <a id="i:23" class="idref" href="#i:23"><span class="id" title="binder">i</span></a> <a id="M:24" class="idref" href="#M:24"><span class="id" title="binder">M</span></a> <a id="M':25" class="idref" href="#M':25"><span class="id" title="binder">M'</span></a>},<br/>
@@ -430,9 +419,8 @@ The two element PERs are named rather than left to <span class="inlinecode"><spa
 </div>
 
 <div class="doc">
-Both self-relations have to be read off their own chain *before* the level
-      is raised: <span class="inlinecode"><span class="id" title="var">pairwise</span></span> cannot match a goal whose level is still a
-      metavariable. 
+Both self-relations are read off their chains before the level is raised:
+    <span class="inlinecode"><span class="id" title="var">pairwise</span></span> cannot match a goal whose level is still a metavariable. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HRA0</span> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#f0462c5741614b455748ddaf131f266c"><span class="id" title="notation">DF</span></a> <span class="id" title="var">s2</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#f0462c5741614b455748ddaf131f266c"><span class="id" title="notation">≈</span></a> <span class="id" title="var">s2</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#f0462c5741614b455748ddaf131f266c"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a> <span class="id" title="var">j</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#f0462c5741614b455748ddaf131f266c"><span class="id" title="notation">↘</span></a> <span class="id" title="var">RA</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">pairwise</span>.<br/>

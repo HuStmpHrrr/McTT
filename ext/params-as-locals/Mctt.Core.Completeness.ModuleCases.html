@@ -31,13 +31,13 @@
 </div>
 
 <div class="doc">
-<a id="lab23"></a><h1 class="section">The Global Rules: Validity along an Embedding</h1>
+<a id="lab33"></a><h1 class="section">The Global Rules: Validity along an Embedding</h1>
 
 
 <div class="paragraph"> </div>
 
     A judgment of the global context <span class="inlinecode"><span class="id" title="var">Θ1</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ1</span></span> is valid at every <span class="inlinecode"><span class="id" title="var">Θ2</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ2</span></span> it
-    *embeds* into, provided what resolves at <span class="inlinecode"><span class="id" title="var">Θ1</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ1</span></span> is valid at <span class="inlinecode"><span class="id" title="var">Θ2</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ2</span></span>
+    embeds into, provided what resolves at <span class="inlinecode"><span class="id" title="var">Θ1</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ1</span></span> is valid at <span class="inlinecode"><span class="id" title="var">Θ2</span></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ2</span></span>
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sem_emb"><span class="id" title="record">sem_emb</span></a></span>).  Entries are closed and paths absolute, so an embedding moves
     nothing: the fundamental theorem holds in this form for every rule
     (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#kripke_fundamental"><span class="id" title="lemma">kripke_fundamental</span></a></span>), each case being the fixed-context case lemma at the
@@ -53,8 +53,8 @@
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.System.html#"><span class="id" title="library">System</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Completeness</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#"><span class="id" title="library">ContextCases</span></a> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#"><span class="id" title="library">FunctionCases</span></a> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#"><span class="id" title="library">NatCases</span></a> <a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#"><span class="id" title="library">SubstitutionCases</span></a> <a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#"><span class="id" title="library">SubtypingCases</span></a><br/>
-&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#"><span class="id" title="library">UniverseCases</span></a> <a class="idref" href="Mctt.Core.Completeness.VariableCases.html#"><span class="id" title="library">VariableCases</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a>.<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.ContextCases.html#"><span class="id" title="library">ContextCases</span></a> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#"><span class="id" title="library">FunctionCases</span></a> <a class="idref" href="Mctt.Core.Completeness.LetCases.html#"><span class="id" title="library">LetCases</span></a> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#"><span class="id" title="library">NatCases</span></a> <a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#"><span class="id" title="library">SubstitutionCases</span></a> <a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#"><span class="id" title="library">SubtypingCases</span></a><br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#"><span class="id" title="library">TrueFalseCases</span></a> <a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#"><span class="id" title="library">UniverseCases</span></a> <a class="idref" href="Mctt.Core.Completeness.VariableCases.html#"><span class="id" title="library">VariableCases</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.html#"><span class="id" title="library">LogicalRelation</span></a>.<br/>
 <span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Realizability.html#"><span class="id" title="library">Realizability</span></a>.<br/>
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Wk_Notations"><span class="id" title="module">Wk_Notations</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GlobalCtx_Notations"><span class="id" title="module">GlobalCtx_Notations</span></a>.<br/>
 #[<span class="id" title="var">local</span>] <span class="id" title="keyword">Open</span> <span class="id" title="keyword">Scope</span> <span class="id" title="var">list_scope</span>.<br/>
@@ -63,7 +63,7 @@
 </div>
 
 <div class="doc">
-<a id="lab24"></a><h2 class="section">1. Sound embeddings</h2>
+<a id="lab34"></a><h2 class="section">1. Sound embeddings</h2>
 
 </div>
 <div class="code">
@@ -85,7 +85,7 @@
 </div>
 
 <div class="doc">
-<a id="lab25"></a><h2 class="section">2. The fundamental theorem along an embedding</h2>
+<a id="lab35"></a><h2 class="section">2. The fundamental theorem along an embedding</h2>
 
 </div>
 <div class="code">
@@ -115,15 +115,23 @@
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> <span class="id" title="var">IH</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>, <a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sem_emb"><span class="id" title="record">sem_emb</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">specialize</span> (<span class="id" title="var">IH</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="keyword">ltac</span>:(<span class="id" title="var">eassumption</span>)) <span class="id" title="keyword">end</span>;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">destruct_conjs</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">constructor</span> | <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend'"><span class="id" title="lemma">rel_ctx_extend'</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">constructor</span> | <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend'"><span class="id" title="lemma">rel_ctx_extend'</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.ContextCases.html#rel_ctx_extend_def'"><span class="id" title="lemma">rel_ctx_extend_def'</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> (<span class="id" title="tactic">split</span>; [ <span class="id" title="tactic">assumption</span> |]).<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#valid_exp_typ"><span class="id" title="lemma">valid_exp_typ</span></a>; <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#valid_exp_nat"><span class="id" title="lemma">valid_exp_nat</span></a>; <span class="id" title="tactic">assumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#valid_exp_zero"><span class="id" title="lemma">valid_exp_zero</span></a>; <span class="id" title="tactic">assumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_succ_cong"><span class="id" title="lemma">rel_exp_succ_cong</span></a>; <span class="id" title="tactic">assumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_natrec_cong"><span class="id" title="lemma">rel_exp_natrec_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#valid_exp_True"><span class="id" title="lemma">valid_exp_True</span></a>; <span class="id" title="tactic">assumption</span> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#valid_exp_False"><span class="id" title="lemma">valid_exp_False</span></a>; <span class="id" title="tactic">assumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#valid_exp_true"><span class="id" title="lemma">valid_exp_true</span></a>; <span class="id" title="tactic">assumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#rel_exp_exfalso_cong"><span class="id" title="lemma">rel_exp_exfalso_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#rel_exp_true_eta"><span class="id" title="lemma">rel_exp_true_eta</span></a>; <span class="id" title="tactic">assumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_pi_cong"><span class="id" title="lemma">rel_exp_pi_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_fn_cong"><span class="id" title="lemma">rel_exp_fn_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_app_cong"><span class="id" title="lemma">rel_exp_app_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LetCases.html#valid_exp_let"><span class="id" title="lemma">valid_exp_let</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LetCases.html#rel_exp_let_cong"><span class="id" title="lemma">rel_exp_let_cong</span></a>; <span class="id" title="var">eassumption</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.LetCases.html#rel_exp_let_zeta"><span class="id" title="lemma">rel_exp_let_zeta</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_pi_beta"><span class="id" title="lemma">rel_exp_pi_beta</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_nat_beta_zero"><span class="id" title="lemma">rel_exp_nat_beta_zero</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_nat_beta_succ"><span class="id" title="lemma">rel_exp_nat_beta_succ</span></a>; <span class="id" title="var">eassumption</span><br/>
@@ -134,7 +142,7 @@
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#subtyp_trans"><span class="id" title="lemma">subtyp_trans</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#subtyp_pi"><span class="id" title="lemma">subtyp_pi</span></a>; <span class="id" title="var">eassumption</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Completeness.SubtypingCases.html#subtyp_univ"><span class="id" title="lemma">subtyp_univ</span></a>; [<span class="id" title="tactic">assumption</span> | <span class="id" title="var">lia</span>] ].<br/>
-&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.VariableCases.html#valid_exp_var"><span class="id" title="lemma">valid_exp_var</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.VariableCases.html#valid_exp_var"><span class="id" title="lemma">valid_exp_var</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.VariableCases.html#rel_exp_var_delta"><span class="id" title="lemma">rel_exp_var_delta</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sme_unfold"><span class="id" title="projection">sme_unfold</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sme_glob"><span class="id" title="projection">sme_glob</span></a>; <span class="id" title="var">eassumption</span> ].<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_fn_eta"><span class="id" title="lemma">rel_exp_fn_eta</span></a>; <span class="id" title="var">eassumption</span>.<br/>
@@ -144,7 +152,7 @@
 </div>
 
 <div class="doc">
-<a id="lab26"></a><h2 class="section">3. Closed judgments</h2>
+<a id="lab36"></a><h2 class="section">3. Closed judgments</h2>
 
 <div class="paragraph"> </div>
 
@@ -171,16 +179,16 @@
 </div>
 
 <div class="doc">
-<a id="lab27"></a><h2 class="section">Globals from the validity of their types and bodies</h2>
+<a id="lab37"></a><h2 class="section">Globals from the validity of their types and bodies</h2>
 
 
 <div class="paragraph"> </div>
 
-    The δ-rule evaluates the generalized body in the *empty* environment, and a
+    The δ-rule evaluates the generalized body in the empty environment, and a
     global or parameter is a neutral annotated with its type evaluated there.
-    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> is reached by <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sb_zero"><span class="id" title="definition">sb_zero</span></a></span>, which evaluates to <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> in any environment
-    (a list environment reads <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>ᵈ</span> past its end); so instantiating a <span class="inlinecode">⋅</span>
-    judgment at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sb_zero"><span class="id" title="definition">sb_zero</span></a></span> relates the value at <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> to the value anywhere. 
+    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> is reached by <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sb_zero"><span class="id" title="definition">sb_zero</span></a></span>, which evaluates to <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> in any environment (a
+    list environment reads <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>ᵈ</span> past its end), so instantiating a <span class="inlinecode">⋅</span> judgment
+    at <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.ModuleCases.html#sb_zero"><span class="id" title="definition">sb_zero</span></a></span> relates the value at <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a></span> to the value anywhere. 
 </div>
 <div class="code">
 
@@ -280,7 +288,7 @@ A neutral: a closed <span class="inlinecode"><span class="id" title="var">G</spa
 </div>
 
 <div class="doc">
-<a id="lab28"></a><h2 class="section">4. The PER model's notion of a valid entry</h2>
+<a id="lab38"></a><h2 class="section">4. The PER model's notion of a valid entry</h2>
 
 </div>
 <div class="code">

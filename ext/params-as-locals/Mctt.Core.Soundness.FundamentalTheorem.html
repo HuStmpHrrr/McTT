@@ -31,16 +31,17 @@
 </div>
 
 <div class="doc">
-<a id="lab120"></a><h1 class="section">The Fundamental Theorem of the Gluing Model</h1>
+<a id="lab146"></a><h1 class="section">The Fundamental Theorem of the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
 
-    In two parts: contexts and terms.  The substitution conjunct is gone with
-    the <span class="inlinecode">⊩<span class="id" title="var">s</span></span> judgment, and the equality
-    judgments never had one — the gluing model relates a term to a value, not two
-    terms to each other.  It is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#kglu_fundamental"><span class="id" title="lemma">kglu_fundamental</span></a></span> at the identity, which is
-    sound because every well-formed global context glues (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#gctx_glu"><span class="id" title="lemma">gctx_glu</span></a></span>). 
+    The theorem has two parts, for contexts and for terms. There is no part for
+    substitutions, since the gluing model has no substitution judgment, and none
+    for equalities, since the model relates a term to a value rather than two
+    terms to each other. It is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#kglu_fundamental"><span class="id" title="lemma">kglu_fundamental</span></a></span> at the identity embedding,
+    which is sound because every well-formed global context glues
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.ModuleCases.html#gctx_glu"><span class="id" title="lemma">gctx_glu</span></a></span>). 
 </div>
 <div class="code">
 

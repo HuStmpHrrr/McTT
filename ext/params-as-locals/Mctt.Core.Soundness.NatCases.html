@@ -31,19 +31,18 @@
 </div>
 
 <div class="doc">
-<a id="lab128"></a><h1 class="section">ℕ and its Eliminator in the Gluing Model</h1>
+<a id="lab155"></a><h1 class="section">ℕ and its Eliminator in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
 
-    Substituting a <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.natrec"><span class="id" title="constructor">natrec</span></a></span> is definitional here, so every congruence step that
-    used to relate <span class="inlinecode">(<span class="id" title="keyword">rec</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">…)[σ]</span> to <span class="inlinecode"><span class="id" title="keyword">rec</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">…</span> is reflexivity, and <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span>
-    *is* <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>.  What the port has to pay for instead is that <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]⟧ρ</span>
-    is stuck: the two instantiated motives of the eliminator are not
-    values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at an extended environment, only related to them.
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#per_univ_zero_instance"><span class="id" title="lemma">per_univ_zero_instance</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#per_univ_nat_step_instance"><span class="id" title="lemma">per_univ_nat_step_instance</span></a></span> supply those two
-    relations, and <span class="inlinecode"><span class="id" title="var">saturate_glu_by_per</span></span> moves the gluing predicates along
-    them. 
+    Substitution into <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.natrec"><span class="id" title="constructor">natrec</span></a></span> is definitional, so congruence steps for
+    <span class="inlinecode">(<span class="id" title="keyword">rec</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">…)[σ]</span> are reflexivity, and <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>. The difficulty is
+    that <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]⟧ρ</span> is stuck: the two instantiated motives of the
+    eliminator are not values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at an extended environment, only related
+    to them. <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#per_univ_zero_instance"><span class="id" title="lemma">per_univ_zero_instance</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#per_univ_nat_step_instance"><span class="id" title="lemma">per_univ_nat_step_instance</span></a></span> supply
+    those two relations, and <span class="inlinecode"><span class="id" title="var">saturate_glu_by_per</span></span> moves the gluing predicates
+    along them. 
 </div>
 <div class="code">
 
@@ -185,7 +184,7 @@
 </div>
 
 <div class="doc">
-<a id="lab129"></a><h2 class="section">Instantiated Motives</h2>
+<a id="lab156"></a><h2 class="section">Instantiated Motives</h2>
 
 
 <div class="paragraph"> </div>
@@ -446,8 +445,8 @@ The successor branch's motive, at the environment its own gluing context
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so this is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#cons_glu_sub_pred_q_helper"><span class="id" title="lemma">cons_glu_sub_pred_q_helper</span></a></span> verbatim — but only
-    up to conversion, so the instance must be spelled out. 
+<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so this is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.NatCases.html#cons_glu_sub_pred_q_helper"><span class="id" title="lemma">cons_glu_sub_pred_q_helper</span></a></span>, but only up to
+    conversion, so the instance must be spelled out. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="cons_glu_sub_pred_q_nat_helper" class="idref" href="#cons_glu_sub_pred_q_nat_helper"><span class="id" title="lemma">cons_glu_sub_pred_q_nat_helper</span></a> : <span class="id" title="keyword">forall</span> {<a id="06710cf7ff350dd6f4d45fa84c1b2754" class="idref" href="#06710cf7ff350dd6f4d45fa84c1b2754"><span class="id" title="binder">Γ</span></a> <a id="c875a3f75b5b6f72994d997107e199b7" class="idref" href="#c875a3f75b5b6f72994d997107e199b7"><span class="id" title="binder">SbΓ</span></a> <a id="74bd379b0166d4d087baacf1d44b04c9" class="idref" href="#74bd379b0166d4d087baacf1d44b04c9"><span class="id" title="binder">Δ</span></a> <a id="cc6b043719e4d47de25e406f4c2e0c05" class="idref" href="#cc6b043719e4d47de25e406f4c2e0c05"><span class="id" title="binder">σ</span></a> <a id="1c04c3b2e037536356977b429c524e79" class="idref" href="#1c04c3b2e037536356977b429c524e79"><span class="id" title="binder">ρ</span></a> <a id="i:100" class="idref" href="#i:100"><span class="id" title="binder">i</span></a>},<br/>
@@ -561,8 +560,8 @@ Kripke-weakening the scrutinee's type collapses its two substitution steps
 &nbsp;&nbsp;- </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_bot_natrec_diag"><span class="id" title="lemma">per_bot_natrec_diag</span></a></span> replaces the hand-rolled readback-existence
-        argument: its zero obligation is <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s own semantic element. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_bot_natrec_diag"><span class="id" title="lemma">per_bot_natrec_diag</span></a></span> gives the readback; its zero obligation is
+        <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s own semantic element. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">exists</span></a> <a id="891b90edec5c4a987083f6c1d91df16c" class="idref" href="#891b90edec5c4a987083f6c1d91df16c"><span class="id" title="binder"><span id="ce731d1349646e3fc986d86c9b2b7bbf" class="id">env_relΓ</span></span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#a883bdd010993579f99d60b3775bcf54"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">EF</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">≈</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env"><span class="id" title="inductive">per_ctx_env</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.Soundness.NatCases.html#891b90edec5c4a987083f6c1d91df16c"><span class="id" title="variable">env_relΓ</span></a>) <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> <span class="id" title="var">HΓ</span>] <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>

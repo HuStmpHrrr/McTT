@@ -31,55 +31,38 @@
 </div>
 
 <div class="doc">
-<a id="lab44"></a><h1 class="section">Fundamental Theorem: Natural Numbers</h1>
+<a id="lab56"></a><h1 class="section">Fundamental Theorem: Natural Numbers</h1>
 
 
 <div class="paragraph"> </div>
 
-    Four of the old file's lemmas are gone.  <span class="inlinecode"><span class="id" title="var">rel_exp_nat_sub</span></span>,
-    <span class="inlinecode"><span class="id" title="var">rel_exp_zero_sub</span></span>, <span class="inlinecode"><span class="id" title="var">rel_exp_succ_sub</span></span> and <span class="inlinecode"><span class="id" title="var">rel_exp_natrec_sub</span></span> validated the
-    rules that pushed a substitution through <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> and the
-    eliminator; all four are now *equations* of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span> — indeed
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span> matches on the expression, so <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> literally *is* <span class="inlinecode"><span class="id" title="var">ℕ</span></span>,
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>[σ]</span> *is* <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, and
+    Substitution pushes through <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> and the eliminator by
+    computation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span>: <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>[σ]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, and
+<pre>
+(rec M return A | zero -&gt; MZ | succ -&gt; MS end)[σ]
+  ≡ rec M[σ] return A[q σ] | zero -&gt; MZ[σ] | succ -&gt; MS[q (q σ)] end
+</pre>
+    So what is validated here is the eliminator's congruence rule and its two
+    β-rules, together with the semantic recursion they share.
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode">(<span class="id" title="keyword">rec</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode"><span class="id" title="keyword">return</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><span class="id" title="var">MZ</span></span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><span class="id" title="var">MS</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span>)[σ]</span>
+    That recursion, <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>, is stated once over a family of element PERs
+    <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Relations.Relation_Definitions.html#relation"><span class="id" title="definition">relation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span> indexed by the pair of arguments.
+    It is a family because the zero branch lives in the PER of the motive at
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, the successor branch in the PER of the motive at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span></span>, and the goal
+    in the PER of the motive at the scrutinee; dependent elimination means these
+    differ.
 
 <div class="paragraph"> </div>
 
-    *is* <span class="inlinecode"><span class="id" title="keyword">rec</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode"><span class="id" title="keyword">return</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><span class="id" title="var">MZ</span>[σ]</span> <span class="inlinecode">|</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)]</span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>.
-
-<div class="paragraph"> </div>
-
-    What is left is the eliminator's congruence rule and its two β-rules, and the
-    semantic recursion the three of them share.  That recursion is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>, and it is stated here once, over an abstract *family* of
-    element PERs
-
-<div class="paragraph"> </div>
-
-      <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span> <span class="inlinecode">-&gt;</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Relations.Relation_Definitions.html#relation"><span class="id" title="definition">relation</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#domain"><span class="id" title="inductive">domain</span></a></span>
-
-<div class="paragraph"> </div>
-
-    indexed by the pair of arguments.  A family and not a single relation: the
-    zero branch lives in the PER of the motive at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, the successor branch in
-    the PER of the motive at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span></span>, and the goal in the PER of the motive at
-    the argument the eliminator was applied to.  Dependent elimination is exactly
-    the statement that those are different relations, so no single <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> can serve.
-
-<div class="paragraph"> </div>
-
-    Abstracting over the family is also what makes *one* helper do the work of two.
-    The "one-sided substituted" recursion — the eliminator with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span>, <span class="inlinecode"><span class="id" title="var">MZ</span>[σ]</span>,
-    <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)]</span> at <span class="inlinecode">ρ</span> on the left and the unsubstituted one at <span class="inlinecode">⟦σ'⟧ρ'</span> on the
-    right — has <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>'s premises with <span class="inlinecode">(<span class="id" title="var">Aa</span>,</span> <span class="inlinecode">ρ<span class="id" title="var">a</span>)</span> <span class="inlinecode">:=</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ],</span> <span class="inlinecode">ρ)</span> and its
-    family the head PER of that pair; nothing in the proof looks at the *shape* of
-    <span class="inlinecode"><span class="id" title="var">Aa</span></span>, so it is the same lemma at a different instance.  Hence three
-    instantiations of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> — one per link of the four-value pattern —
-    and no second induction. 
+    Abstracting over the family also lets one lemma cover the one-sided
+    substituted recursion, with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span>, <span class="inlinecode"><span class="id" title="var">MZ</span>[σ]</span>, <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)]</span> at <span class="inlinecode">ρ</span> on the left
+    and the unsubstituted eliminator at <span class="inlinecode">⟦σ'⟧ρ'</span> on the right.  This is
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> at <span class="inlinecode">(<span class="id" title="var">Aa</span>,</span> <span class="inlinecode">ρ<span class="id" title="var">a</span>)</span> <span class="inlinecode">:=</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ],</span> <span class="inlinecode">ρ)</span>, with the head PER of that pair
+    as the family, since the proof never inspects the shape of <span class="inlinecode"><span class="id" title="var">Aa</span></span>.  So there are
+    three instantiations of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>, one per link of the four-value
+    pattern, and only one induction. 
 </div>
 <div class="code">
 
@@ -100,10 +83,10 @@
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">ℕ</span></span>'s own <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span>, at the canonical element PER and at any level.
-    Every <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-obligation below is this lemma; naming it is what keeps the level
-    from being left as an unresolved existential, which is what
-    <span class="inlinecode"><span class="id" title="var">per_univ_elem_econstructor</span></span> under an <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> would do. 
+<span class="inlinecode"><span class="id" title="var">ℕ</span></span>'s <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span>, at the canonical element PER and at any level.
+    Every <span class="inlinecode"><span class="id" title="var">ℕ</span></span> obligation below uses this lemma; naming it keeps the level from
+    becoming an unresolved existential, as <span class="inlinecode"><span class="id" title="var">per_univ_elem_econstructor</span></span> under
+    <span class="inlinecode"><span class="id" title="tactic">eapply</span></span> would leave it. 
 </div>
 <div class="code">
 
@@ -125,17 +108,16 @@
 </div>
 
 <div class="doc">
-<a id="lab45"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as a Type</h2>
+<a id="lab57"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as a Type</h2>
 
 
 <div class="paragraph"> </div>
 
-    Stated from the context PER and not from <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>, because that is all the callers
-    have: inside the eliminator's congruence rule the only thing known about <span class="inlinecode"><span class="id" title="var">Γ</span></span> is
-    the PER its hypotheses' inversions produce, and <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> does not follow from it.
-    The level is arbitrary — <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> reads the domain and the codomain
-    of a dependent elimination at *one* level, and the codomain's is the motive's,
-    so <span class="inlinecode"><span class="id" title="var">ℕ</span></span>'s judgment has to be available there. 
+    Stated from the context PER rather than from <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>, because inside the
+    eliminator's congruence rule the only thing known about <span class="inlinecode"><span class="id" title="var">Γ</span></span> is the PER its
+    hypotheses' inversions produce, and <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> does not follow from it.  The level
+    is arbitrary because <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> reads the domain and codomain of a
+    dependent elimination at one level, the motive's. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_of_typ_nat" class="idref" href="#rel_exp_of_typ_nat"><span class="id" title="lemma">rel_exp_of_typ_nat</span></a> : <span class="id" title="keyword">forall</span> {<a id="55485d85e29df2faa6748490a2d4cd13" class="idref" href="#55485d85e29df2faa6748490a2d4cd13"><span class="id" title="binder">Γ</span></a> <a id="i:4" class="idref" href="#i:4"><span class="id" title="binder">i</span></a> <a id="4199a3442df9b5eca9b7cd7a82d661d2" class="idref" href="#4199a3442df9b5eca9b7cd7a82d661d2"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -150,7 +132,7 @@
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> *is* <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so all four values are handed over by the same rule. 
+<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so all four values come from the same rule. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">try</span> <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp_nat"><span class="id" title="constructor">eval_exp_nat</span></a>.<br/>
@@ -177,14 +159,14 @@
 </div>
 
 <div class="doc">
-<a id="lab46"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as the Type of a Term</h2>
+<a id="lab58"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">ℕ</span></span> as the Type of a Term</h2>
 
 
 <div class="paragraph"> </div>
 
-    The <span class="inlinecode"><span class="id" title="var">ℕ</span></span> analogue of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion"><span class="id" title="lemma">rel_exp_of_typ_inversion</span></a></span>: a judgment at type <span class="inlinecode"><span class="id" title="var">ℕ</span></span> is a
-    four-value pattern in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span> and nothing else, because the four values of
-    the type are all <span class="inlinecode"><span class="id" title="var">ℕ</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span>'s <span class="inlinecode"><span class="id" title="var">ℕ</span></span> case pins the element PER. 
+    The <span class="inlinecode"><span class="id" title="var">ℕ</span></span> analogue of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion"><span class="id" title="lemma">rel_exp_of_typ_inversion</span></a></span>: a judgment at type <span class="inlinecode"><span class="id" title="var">ℕ</span></span> is
+    exactly a four-value pattern in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, because the four values of the type
+    are all <span class="inlinecode"><span class="id" title="var">ℕ</span></span> and the <span class="inlinecode"><span class="id" title="var">ℕ</span></span> case of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> fixes the element PER. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_of_nat_inversion" class="idref" href="#rel_exp_of_nat_inversion"><span class="id" title="lemma">rel_exp_of_nat_inversion</span></a> : <span class="id" title="keyword">forall</span> {<a id="d5be501d00a8c9c4c28302f544699b7d" class="idref" href="#d5be501d00a8c9c4c28302f544699b7d"><span class="id" title="binder">Γ</span></a> <a id="M:9" class="idref" href="#M:9"><span class="id" title="binder">M</span></a> <a id="M':10" class="idref" href="#M':10"><span class="id" title="binder">M'</span></a> },<br/>
@@ -258,10 +240,10 @@
 </div>
 
 <div class="doc">
-The head PER of <span class="inlinecode"><span class="id" title="var">ℕ</span></span> *is* <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, in both directions.  Every context
-    extension by <span class="inlinecode"><span class="id" title="var">ℕ</span></span> goes through this, and so does every argument obligation of
-    the eliminator, since the argument PER a caller has is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span> while the
-    context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> speaks of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>. 
+The head PER of <span class="inlinecode"><span class="id" title="var">ℕ</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, in both directions.  Every context
+    extension by <span class="inlinecode"><span class="id" title="var">ℕ</span></span> uses this, as does every argument obligation of the
+    eliminator: callers have <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, while the context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> speaks of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_head_of_nat" class="idref" href="#per_head_of_nat"><span class="id" title="lemma">per_head_of_nat</span></a> : <span class="id" title="keyword">forall</span> {<a id="2ac343aedf3913c18cd669588c9853ef" class="idref" href="#2ac343aedf3913c18cd669588c9853ef"><span class="id" title="binder">ρ</span></a> <a id="a462d6642583da88a5832a67d965b28e" class="idref" href="#a462d6642583da88a5832a67d965b28e"><span class="id" title="binder">ρ'</span></a> <a id="m:35" class="idref" href="#m:35"><span class="id" title="binder">m</span></a> <a id="m':36" class="idref" href="#m':36"><span class="id" title="binder">m'</span></a>},<br/>
@@ -287,8 +269,8 @@ The head PER of <span class="inlinecode"><span class="id" title="var">ℕ</span>
 </div>
 
 <div class="doc">
-The context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> and its two rules.  <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so the
-    substituted form <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ_sub"><span class="id" title="lemma">per_ctx_env_of_typ_sub</span></a></span> would produce is this one. 
+The context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> and its two rules.  Since <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, this
+    is also the substituted form <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ_sub"><span class="id" title="lemma">per_ctx_env_of_typ_sub</span></a></span> would produce. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="per_ctx_env_nat" class="idref" href="#per_ctx_env_nat"><span class="id" title="lemma">per_ctx_env_nat</span></a> : <span class="id" title="keyword">forall</span> {<a id="2a787a075caaaff77edb51afaa922541" class="idref" href="#2a787a075caaaff77edb51afaa922541"><span class="id" title="binder">Γ</span></a> <a id="8059e9db137ead98d8001ede59cec4d4" class="idref" href="#8059e9db137ead98d8001ede59cec4d4"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -323,28 +305,27 @@ The context PER of <span class="inlinecode"><span class="id" title="var">Γ</spa
 </div>
 
 <div class="doc">
-<a id="lab47"></a><h2 class="section">The Semantic Recursor</h2>
+<a id="lab59"></a><h2 class="section">The Semantic Recursor</h2>
 
 
 <div class="paragraph"> </div>
 
-    The three obligations are the semantic contents of the eliminator's three
-    premises, each stated at the pair of arguments the *recursion* needs it at
-    rather than at the pair some judgment happened to be read at:
+    The three obligations are the semantic content of the eliminator's three
+    premises, each stated at the argument pair the recursion needs:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> <span class="inlinecode"><span class="id" title="var">Hmot</span></span> — the motive at an arbitrary pair of related arguments, reported as a
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> *at the family*, which is what pins <span class="inlinecode"><span class="id" title="var">Rel</span></span> down;
+<li> <span class="inlinecode"><span class="id" title="var">Hmot</span></span>: the motive at an arbitrary pair of related arguments, as a
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> at the family, which pins down <span class="inlinecode"><span class="id" title="var">Rel</span></span>;
 
 </li>
-<li> <span class="inlinecode"><span class="id" title="var">Hz</span></span> — the zero branch, in the family at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span>;
+<li> <span class="inlinecode"><span class="id" title="var">Hz</span></span>: the zero branch, in the family at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span>;
 
 </li>
-<li> <span class="inlinecode"><span class="id" title="var">Hsucc</span></span> — the successor branch, at an arbitrary argument pair and an
-      arbitrary pair of recursive results related in the family *there*, landing
-      in the family at the successors.
+<li> <span class="inlinecode"><span class="id" title="var">Hsucc</span></span>: the successor branch, at an arbitrary argument pair and a pair of
+      recursive results related in the family there, landing in the family at
+      the successors.
 
 </li>
 </ul>
@@ -356,11 +337,11 @@ The context PER of <span class="inlinecode"><span class="id" title="var">Γ</spa
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_bot_natrec"><span class="id" title="lemma">per_bot_natrec</span></a></span> is the neutral case, split off because it is where the
-    obligations are consumed at *three* fixed argument pairs — a fresh variable,
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, and the successor of that variable — the three <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ne_natrec"><span class="id" title="constructor">read_ne_natrec</span></a></span> reads
-    the motive at.  The recursive call's argument is <span class="inlinecode">⇑!</span> <span class="inlinecode"><span class="id" title="var">b</span></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span>)</span>, the variable at
-    the motive's own value, so <span class="inlinecode"><span class="id" title="var">Hsucc</span></span> is instantiated at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Realizability.html#var_per_elem"><span class="id" title="lemma">var_per_elem</span></a></span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_bot_natrec"><span class="id" title="lemma">per_bot_natrec</span></a></span> is the neutral case.  It uses the obligations at three fixed
+    argument pairs (a fresh variable, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, and the successor of that variable),
+    which are where <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ne_natrec"><span class="id" title="constructor">read_ne_natrec</span></a></span> reads the motive.  The recursive call's
+    argument is <span class="inlinecode">⇑!</span> <span class="inlinecode"><span class="id" title="var">b</span></span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">s</span>)</span>, the variable at the motive's value, so <span class="inlinecode"><span class="id" title="var">Hsucc</span></span> is
+    instantiated at <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Realizability.html#var_per_elem"><span class="id" title="lemma">var_per_elem</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_bot_natrec" class="idref" href="#per_bot_natrec"><span class="id" title="lemma">per_bot_natrec</span></a> : <span class="id" title="keyword">forall</span> {<a id="i:51" class="idref" href="#i:51"><span class="id" title="binder">i</span></a> <a id="Aa:52" class="idref" href="#Aa:52"><span class="id" title="binder">Aa</span></a> <a id="Ab:53" class="idref" href="#Ab:53"><span class="id" title="binder">Ab</span></a> <a id="MZa:54" class="idref" href="#MZa:54"><span class="id" title="binder">MZa</span></a> <a id="MZb:55" class="idref" href="#MZb:55"><span class="id" title="binder">MZb</span></a> <a id="MSa:56" class="idref" href="#MSa:56"><span class="id" title="binder">MSa</span></a> <a id="MSb:57" class="idref" href="#MSb:57"><span class="id" title="binder">MSb</span></a> <a id="2522d947a79cde14b89c20361fc103e8" class="idref" href="#2522d947a79cde14b89c20361fc103e8"><span class="id" title="binder">ρ</span></a><a id="2522d947a79cde14b89c20361fc103e8" class="idref" href="#2522d947a79cde14b89c20361fc103e8"><span class="id" title="binder">a</span></a> <a id="3a64ba20805fbbc899b673d668f2ec5c" class="idref" href="#3a64ba20805fbbc899b673d668f2ec5c"><span class="id" title="binder">ρ</span></a><a id="3a64ba20805fbbc899b673d668f2ec5c" class="idref" href="#3a64ba20805fbbc899b673d668f2ec5c"><span class="id" title="binder">b</span></a> <a id="za:60" class="idref" href="#za:60"><span class="id" title="binder">za</span></a> <a id="zb:61" class="idref" href="#zb:61"><span class="id" title="binder">zb</span></a> <a id="m:62" class="idref" href="#m:62"><span class="id" title="binder">m</span></a> <a id="m':63" class="idref" href="#m':63"><span class="id" title="binder">m'</span></a>}<br/>
@@ -451,15 +432,14 @@ The four common readbacks, one per premise of <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-<a id="lab48"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span></h2>
+<a id="lab60"></a><h2 class="section"><span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    Both rules are one-line four-value patterns.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>[σ]</span> *is* <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> and
-    <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>)[σ]</span> *is* <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ])</span>, so the two commutation links of the pattern
-    carry no content beyond the links they are built from, and every value is
-    handed over by the same evaluation rule on both sides of the substitution. 
+    Both rules are one-line four-value patterns.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>[σ]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> and
+    <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>)[σ]</span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ])</span>, so the two commutation links add nothing to the
+    links they are built from. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_zero" class="idref" href="#rel_exp_zero"><span class="id" title="lemma">rel_exp_zero</span></a> : <span class="id" title="keyword">forall</span> {<a id="34cd44dd39c6730766cf1b6ffd7a4239" class="idref" href="#34cd44dd39c6730766cf1b6ffd7a4239"><span class="id" title="binder">Γ</span></a> <a id="799f994c5c96f5cb7eb33d50e1c8cbab" class="idref" href="#799f994c5c96f5cb7eb33d50e1c8cbab"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -509,16 +489,16 @@ The four common readbacks, one per premise of <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-<a id="lab49"></a><h2 class="section">The Successor Branch's Substitution</h2>
+<a id="lab61"></a><h2 class="section">The Successor Branch's Substitution</h2>
 
 
 <div class="paragraph"> </div>
 
-    The type of the successor branch is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span> — the motive at the
-    successor of the number, in the context <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> where <span class="inlinecode">#1</span> is that number.
-    Validating that substitution needs <span class="inlinecode">#1</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> there, and *not* via
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.VariableCases.html#valid_exp_var"><span class="id" title="lemma">valid_exp_var</span></a></span>, whose premise <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> is strictly stronger than the
-    context PER a caller inside the eliminator's rules has. 
+    The successor branch has type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span>, the motive at the
+    successor of the number, in <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> where <span class="inlinecode">#1</span> is that number.  Validating
+    the substitution needs <span class="inlinecode">#1</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> there, but not via <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.VariableCases.html#valid_exp_var"><span class="id" title="lemma">valid_exp_var</span></a></span>, whose
+    premise <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> is stronger than the context PER available inside the
+    eliminator's rules. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_var1_nat" class="idref" href="#rel_exp_var1_nat"><span class="id" title="lemma">rel_exp_var1_nat</span></a> : <span class="id" title="keyword">forall</span> {<a id="367e0b75814c690d9518e83afce12d6f" class="idref" href="#367e0b75814c690d9518e83afce12d6f"><span class="id" title="binder">Γ</span></a> <a id="A:108" class="idref" href="#A:108"><span class="id" title="binder">A</span></a> <a id="i:109" class="idref" href="#i:109"><span class="id" title="binder">i</span></a> <a id="06de210b679e3b344b0388eb03eb5647" class="idref" href="#06de210b679e3b344b0388eb03eb5647"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -536,8 +516,8 @@ The four common readbacks, one per premise of <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-<span class="inlinecode">#1[σ]</span> *is* <span class="inlinecode">σ</span> <span class="inlinecode">1</span> and <span class="inlinecode">(ρσ</span> <span class="inlinecode">↯)</span> <span class="inlinecode">0</span> *is* <span class="inlinecode">ρσ</span> <span class="inlinecode">1</span>, so both commutation links are
-      the same value on both sides and the pattern collapses onto its middle. 
+<span class="inlinecode">#1[σ]</span> is <span class="inlinecode">σ</span> <span class="inlinecode">1</span> and <span class="inlinecode">(ρσ</span> <span class="inlinecode">↯)</span> <span class="inlinecode">0</span> is <span class="inlinecode">ρσ</span> <span class="inlinecode">1</span>, so both commutation links
+    relate a value to itself and the pattern collapses onto its middle. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#mk_rel_exp"><span class="id" title="constructor">mk_rel_exp</span></a> (ρσ 1) (ρσ 1) (ρ'σ' 1) (ρ'σ' 1));<br/>
@@ -549,9 +529,9 @@ The four common readbacks, one per premise of <span class="inlinecode"><a class=
 </div>
 
 <div class="doc">
-Its companion one context shorter, which is what the *scrutinee* of the
-    generic recursor is.  Same proof: <span class="inlinecode">#0[σ]</span> is <span class="inlinecode">σ</span> <span class="inlinecode">0</span> and <span class="inlinecode">ρσ</span> <span class="inlinecode">0</span> is the head of
-    <span class="inlinecode">ρσ</span>, so the four-value pattern collapses onto its middle. 
+The same one context shorter, which is the scrutinee of the generic
+    recursor.  <span class="inlinecode">#0[σ]</span> is <span class="inlinecode">σ</span> <span class="inlinecode">0</span> and <span class="inlinecode">ρσ</span> <span class="inlinecode">0</span> is the head of <span class="inlinecode">ρσ</span>, so again the
+    pattern collapses onto its middle. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_var0_nat" class="idref" href="#rel_exp_var0_nat"><span class="id" title="lemma">rel_exp_var0_nat</span></a> : <span class="id" title="keyword">forall</span> {<a id="5fed251aa58d6913e63540c17d3d6121" class="idref" href="#5fed251aa58d6913e63540c17d3d6121"><span class="id" title="binder">Γ</span></a> <a id="02a364b3ee80361643fa8bb0c2773213" class="idref" href="#02a364b3ee80361643fa8bb0c2773213"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -590,36 +570,30 @@ Its companion one context shorter, which is what the *scrutinee* of the
 </div>
 
 <div class="doc">
-<a id="lab50"></a><h2 class="section">The Motive at an Arbitrary Argument Pair</h2>
+<a id="lab62"></a><h2 class="section">The Motive at an Arbitrary Argument Pair</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>'s first obligation, delivered for all three links at *one*
-    family of element PERs,
+    The first obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>, for all three links, in one family of
+    element PERs, the head PER of the motive at the environments the goal names:
+<pre>
+Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)
+</pre>
+    It must be one family because a recursion cannot mix relations, while the
+    three links compare the motive at three different pairs of expressions and
+    environments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> at <span class="inlinecode">ρ</span> against <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at <span class="inlinecode">⟦σ⟧ρ</span>, and so on).
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode"><span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">z</span></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">(⟦σ⟧ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">w</span>)</span> <span class="inlinecode">(⟦σ'⟧ρ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>,
-
-<div class="paragraph"> </div>
-
-    the head PER of the motive at the environments the *goal* names.  That it can
-    be one family is the point: the three links compare values of the motive at
-    three different pairs of expressions and environments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> at <span class="inlinecode">ρ</span> against
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at <span class="inlinecode">⟦σ⟧ρ</span>, and so on), and a recursion cannot mix relations, so every one
-    of them has to be reported in this single <span class="inlinecode"><span class="id" title="var">Rel</span></span>.
-
-<div class="paragraph"> </div>
-
-    Doing so is one anchoring plus one chain.  The anchor is the motive's own
-    relatedness link at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>, read as a <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> *at* <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode"><span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">z</span></span> by
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_at_head"><span class="id" title="lemma">per_univ_elem_at_head</span></a></span>; the chain collects every value the three obligations
-    mention together with the anchor's two, so that refining it along the anchor
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_chain_at_in"><span class="id" title="lemma">per_univ_chain_at_in</span></a></span>) puts all of them in <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode"><span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">z</span></span> at once.  Four
-    instantiations of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_of_typ_under_ctx_q"><span class="id" title="lemma">rel_exp_of_typ_under_ctx_q</span></a></span> produce its links — the motive
-    at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span> both reflexively and as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span>, and reflexively at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">w</span>)</span> and
-    <span class="inlinecode">(<span class="id" title="var">z</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>, which are what bridge the two argument values. 
+    The proof is one anchor and one chain.  The anchor is the motive's relatedness
+    link at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>, read as a <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> at <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode"><span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">z</span></span> by
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_at_head"><span class="id" title="lemma">per_univ_elem_at_head</span></a></span>.  The chain collects every value the three obligations
+    mention together with the anchor's two, so refining it along the anchor
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_chain_at_in"><span class="id" title="lemma">per_univ_chain_at_in</span></a></span>) puts them all in <span class="inlinecode"><span class="id" title="var">Rel</span></span> <span class="inlinecode"><span class="id" title="var">w</span></span> <span class="inlinecode"><span class="id" title="var">z</span></span>.  Four instantiations of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_of_typ_under_ctx_q"><span class="id" title="lemma">rel_exp_of_typ_under_ctx_q</span></a></span> produce its links: the motive at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span> both
+    reflexively and as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">A'</span></span>, and reflexively at <span class="inlinecode">(<span class="id" title="var">w</span>,</span> <span class="inlinecode"><span class="id" title="var">w</span>)</span> and <span class="inlinecode">(<span class="id" title="var">z</span>,</span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>, which
+    bridge the two argument values. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_typ_of_nat_motive" class="idref" href="#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a> : <span class="id" title="keyword">forall</span> {<a id="3c083db6a8c230777a75fde30323a335" class="idref" href="#3c083db6a8c230777a75fde30323a335"><span class="id" title="binder">Γ</span></a> <a id="A:118" class="idref" href="#A:118"><span class="id" title="binder">A</span></a> <a id="A':119" class="idref" href="#A':119"><span class="id" title="binder">A'</span></a> <a id="i:120" class="idref" href="#i:120"><span class="id" title="binder">i</span></a> <a id="7ccf27765c919961b7f230436596db55" class="idref" href="#7ccf27765c919961b7f230436596db55"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -653,9 +627,9 @@ Its companion one context shorter, which is what the *scrutinee* of the
 </div>
 
 <div class="doc">
-The three pairs of arguments the four instantiations run at.  <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>,
-      so the extended context PER is the unsubstituted one and its introduction
-      rule is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_env_extend_nat_intro"><span class="id" title="lemma">per_env_extend_nat_intro</span></a></span>. 
+The three argument pairs the four instantiations run at.  <span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>,
+    so the extended context PER is the unsubstituted one, with introduction rule
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_env_extend_nat_intro"><span class="id" title="lemma">per_env_extend_nat_intro</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">H</span>ρρ : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">Dom</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">≈</span></a> ρ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">∈</span></a> <span class="id" title="var">env_rel'</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">transitivity</span> ρ'; [| <span class="id" title="tactic">symmetry</span>]; <span class="id" title="tactic">exact</span> <span class="id" title="var">H</span>ρ).<br/>
@@ -675,8 +649,8 @@ The three pairs of arguments the four instantiations run at.  <span class="inlin
 </div>
 
 <div class="doc">
-Naming the values the instantiations share, explicitly: which of two names
-      <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> keeps is what the merge below selects on. 
+The shared values are named explicitly, because the merge below depends on
+    which of two names <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> keeps. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">c2</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">c1</span>) <span class="id" title="keyword">as</span> -&gt; <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_exp"><span class="id" title="lemma">functional_eval_exp</span></a>; <span class="id" title="var">eassumption</span>).<br/>
@@ -726,26 +700,24 @@ The anchor, and the whole chain refined along it.
 </div>
 
 <div class="doc">
-<a id="lab51"></a><h2 class="section">The Type of the Successor Branch</h2>
+<a id="lab63"></a><h2 class="section">The Type of the Successor Branch</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><span class="id" title="var">MS</span></span>'s type is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span>, so every value the successor
-    obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> produces is related in *that* type's head PER,
-    while the obligation's goal is stated in the head PER of the motive <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> of the number.  The two are the two ends of a single instantiation of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s judgment along <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1</span>, and this lemma is that
-    instantiation: its outer values are the ones the premises come with, its inner
-    ones the ones the goal asks for, and its chain is what <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_bridge"><span class="id" title="lemma">per_head_bridge</span></a></span>
-    consumes to move between them.
+    <span class="inlinecode"><span class="id" title="var">MS</span></span> has type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span>, so the values the successor obligation
+    of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> produces are related in that type's head PER, while the
+    obligation's goal is in the head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> of the number.  These are
+    the two ends of one instantiation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s judgment along
+    <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1</span>, and this lemma is that instantiation: its outer values
+    are those of the premises, its inner values those of the goal, and
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_bridge"><span class="id" title="lemma">per_head_bridge</span></a></span> consumes its chain to move between them.
 
 <div class="paragraph"> </div>
 
-    That the substitution's evaluation can be *named* at all — <span class="inlinecode">ρ1</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">x1</span></span> on
-    the nose, rather than something merely related to it — is because neither of
-    its components hides a closure: the tail is a *pre*composition by a weakening,
-    which does compute (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub_shift_pre"><span class="id" title="lemma">eval_sub_shift_pre</span></a></span>), and the head is a variable under a
+    The substitution's evaluation can be named exactly, as <span class="inlinecode">ρ1</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">x1</span></span>, because
+    neither component hides a closure: the tail is a precomposition by a weakening,
+    which computes (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub_shift_pre"><span class="id" title="lemma">eval_sub_shift_pre</span></a></span>), and the head is a variable under
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span>. 
 </div>
 <div class="code">
@@ -803,36 +775,32 @@ The anchor, and the whole chain refined along it.
 </div>
 
 <div class="doc">
-<a id="lab52"></a><h2 class="section">The Successor Branch at an Arbitrary Argument Pair</h2>
+<a id="lab64"></a><h2 class="section">The Successor Branch at an Arbitrary Argument Pair</h2>
 
 
 <div class="paragraph"> </div>
 
-    The companion of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a></span> for the *term* obligation: the three
-    successor premises of the three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> instantiations, delivered —
-    as they must be — in the one family <span class="inlinecode"><span class="id" title="var">Rel</span></span> of the motive's head PERs, here at
-    <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>.
+    The term counterpart of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a></span>: the successor premises of the
+    three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> instantiations, in the one family <span class="inlinecode"><span class="id" title="var">Rel</span></span> of the motive's
+    head PERs, here at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span>)</span>.
 
 <div class="paragraph"> </div>
 
-    Two moves are needed for each of them, and both are forced by the operational
-    reading of substitution.  The values <span class="inlinecode"><span class="id" title="var">MS</span></span> takes are related in the head PER of
-    its *type*, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span>, at whichever pair of environments they
-    were read at; the goal asks for the head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at <span class="inlinecode">ρσ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span></span> and
-    <span class="inlinecode">ρ'σ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span></span>.  So each premise is moved along the environments
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#per_head_of_typ_resp"><span class="id" title="lemma">per_head_of_typ_resp</span></a></span>, through the chain below) and then along the
-    substitution (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_bridge"><span class="id" title="lemma">per_head_bridge</span></a></span>, through <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_step"><span class="id" title="lemma">rel_typ_of_nat_step</span></a></span>) — which is
-    what <span class="inlinecode"><span class="id" title="var">Hmv</span></span> does once for all six.
+    Each needs two moves.  The values of <span class="inlinecode"><span class="id" title="var">MS</span></span> are related in the head PER of its
+    type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Wk</span></span> <span class="inlinecode">⨟</span> <span class="inlinecode"><span class="id" title="var">Wk</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode">#1]</span> at the environments where they were read, while
+    the goal asks for the head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at <span class="inlinecode">ρσ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">w</span></span> and <span class="inlinecode">ρ'σ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> <span class="inlinecode"><span class="id" title="var">z</span></span>.  So
+    each premise is moved along the environments (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#per_head_of_typ_resp"><span class="id" title="lemma">per_head_of_typ_resp</span></a></span>, through
+    the chain below) and then along the substitution (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_bridge"><span class="id" title="lemma">per_head_bridge</span></a></span>, through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_step"><span class="id" title="lemma">rel_typ_of_nat_step</span></a></span>); <span class="inlinecode"><span class="id" title="var">Hmv</span></span> does this once for all six.
 
 <div class="paragraph"> </div>
 
-    The chain is over eight environments of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, and again not because any
-    one consumer wants eight: <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_under_ctx_q"><span class="id" title="lemma">rel_exp_under_ctx_q</span></a></span> reports its inner values at
-    the environments <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> *reaches*, and at a doubly extended context those are
-    two levels of <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">w</span></span> away from the ones the goal names.  Every value the six
-    premises mention is an extension of one of the four tails of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_q"><span class="id" title="lemma">rel_sub_under_ctx_q</span></a></span> by one
-    of the two heads <span class="inlinecode"><span class="id" title="var">r</span></span>, <span class="inlinecode"><span class="id" title="var">r'</span></span>, and the chain says they are all related. 
+    The chain is over eight environments of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_under_ctx_q"><span class="id" title="lemma">rel_exp_under_ctx_q</span></a></span>
+    reports its inner values at the environments <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> reaches, and in a doubly
+    extended context those are two levels of <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">w</span></span> away from the ones the goal
+    names.  Every value the six premises mention is an extension of one of the four
+    tails of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_q"><span class="id" title="lemma">rel_sub_under_ctx_q</span></a></span> by one of the two heads <span class="inlinecode"><span class="id" title="var">r</span></span>, <span class="inlinecode"><span class="id" title="var">r'</span></span>, and the chain
+    relates them all. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_of_nat_step" class="idref" href="#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a> : <span class="id" title="keyword">forall</span> {<a id="2ad36155a1dcd609408bc407f39872c1" class="idref" href="#2ad36155a1dcd609408bc407f39872c1"><span class="id" title="binder">Γ</span></a> <a id="A:165" class="idref" href="#A:165"><span class="id" title="binder">A</span></a> <a id="i:166" class="idref" href="#i:166"><span class="id" title="binder">i</span></a> <a id="MS:167" class="idref" href="#MS:167"><span class="id" title="binder">MS</span></a> <a id="MS':168" class="idref" href="#MS':168"><span class="id" title="binder">MS'</span></a> <a id="450f56290fc6be27ef3b77a2e8693e25" class="idref" href="#450f56290fc6be27ef3b77a2e8693e25"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -869,9 +837,9 @@ The anchor, and the whole chain refined along it.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so the context <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> is a substitution *into* is the
-      unsubstituted <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> — but only up to the reduction of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span>, which the
-      applications below would have to see through. 
+<span class="inlinecode"><span class="id" title="var">ℕ</span>[σ]</span> is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so the context <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> maps into is the unsubstituted
+    <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, but only up to the reduction of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a></span>, which the applications
+    below would have to see through. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_q"><span class="id" title="lemma">rel_sub_under_ctx_q</span></a> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">Hnat</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hq</span>σ<span class="id" title="var">j</span>.<br/>
@@ -987,9 +955,9 @@ The goal's own PER, anchored: this is what makes it a PER, hence what lets
 
 <div class="doc">
 The two substituted values, from the judgment along <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)</span>.  Only the
-      outer value of each outer obligation is wanted: their inner ones are read at
-      <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">w</span></span> and <span class="inlinecode"><span class="id" title="var">s'</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">z</span></span>, which the chain relates to the goal's environments but
-      does not equal. 
+    outer value of each outer obligation is used: the inner ones are read at
+    <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">w</span></span> and <span class="inlinecode"><span class="id" title="var">s'</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">z</span></span>, which the chain relates to the goal's environments but
+    does not equal. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a> <span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Hev</span> <span class="id" title="var">Hev'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Hwz</span>)<br/>
@@ -1033,16 +1001,16 @@ The three unsubstituted instances, at the three pairs of environments the
 </div>
 
 <div class="doc">
-<a id="lab53"></a><h2 class="section">The Diagonal, for the Gluing Model</h2>
+<a id="lab65"></a><h2 class="section">The Diagonal, for the Gluing Model</h2>
 
 
 <div class="paragraph"> </div>
 
     The gluing model needs <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_bot_natrec"><span class="id" title="lemma">per_bot_natrec</span></a></span> at one environment and no
-    substitution, with the
-    zero branch's value coming from a gluing predicate rather than from a semantic
-    judgment.  Instantiating the two obligations above at <span class="inlinecode"><span class="id" title="var">Id</span></span> — where <span class="inlinecode">⟦<span class="id" title="var">Id</span>⟧<span class="id" title="var">s</span></span> <span class="inlinecode">ρ</span>
-    *is* <span class="inlinecode">ρ</span> — makes their middle components exactly the two it asks for. 
+    substitution, with the zero branch's value coming from a gluing predicate
+    rather than a semantic judgment.  Instantiating the two obligations above at
+    <span class="inlinecode"><span class="id" title="var">Id</span></span>, where <span class="inlinecode">⟦<span class="id" title="var">Id</span>⟧<span class="id" title="var">s</span></span> <span class="inlinecode">ρ</span> is <span class="inlinecode">ρ</span>, gives exactly the two it asks for as their middle
+    components. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_bot_natrec_diag" class="idref" href="#per_bot_natrec_diag"><span class="id" title="lemma">per_bot_natrec_diag</span></a> : <span class="id" title="keyword">forall</span> {<a id="4528c44f6a9a8b29b3b50e8b6265970b" class="idref" href="#4528c44f6a9a8b29b3b50e8b6265970b"><span class="id" title="binder">Γ</span></a> <a id="A:205" class="idref" href="#A:205"><span class="id" title="binder">A</span></a> <a id="i:206" class="idref" href="#i:206"><span class="id" title="binder">i</span></a> <a id="MZ:207" class="idref" href="#MZ:207"><span class="id" title="binder">MZ</span></a> <a id="MS:208" class="idref" href="#MS:208"><span class="id" title="binder">MS</span></a> <a id="391741d4cf60bceb0a34f5715d4ce31a" class="idref" href="#391741d4cf60bceb0a34f5715d4ce31a"><span class="id" title="binder">env_relΓ</span></a> <a id="2dd62d1e1c7a301c7c7f4ceeb58699a8" class="idref" href="#2dd62d1e1c7a301c7c7f4ceeb58699a8"><span class="id" title="binder">ρ</span></a> <a id="mz:211" class="idref" href="#mz:211"><span class="id" title="binder">mz</span></a> <a id="m:212" class="idref" href="#m:212"><span class="id" title="binder">m</span></a>},<br/>
@@ -1073,26 +1041,25 @@ The three unsubstituted instances, at the three pairs of environments the
 </div>
 
 <div class="doc">
-<a id="lab54"></a><h2 class="section">The Eliminator's Congruence Rule</h2>
+<a id="lab66"></a><h2 class="section">The Eliminator's Congruence Rule</h2>
 
 
 <div class="paragraph"> </div>
 
     Three instantiations of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>, at the three links of the number's
-    chain and at *one* family of element PERs — the head PER of the motive at the
-    arguments the *type* names, which is what <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> reports and so
-    what the goal's type component fixes.  The motive obligation of each is one of
-    the three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a></span> produces, its successor obligation one of the
-    three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a></span> produces, and its zero obligation one link of
-    <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s own chain, whose element PER is identified with the family at
-    <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span> by reading the type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]</span> a second time through
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span>.
+    chain, in one family of element PERs: the head PER of the motive at the
+    arguments the type names, which <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> reports.  For each, the
+    motive obligation is one of the three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a></span> produces, the
+    successor obligation one of the three <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a></span> produces, and the
+    zero obligation one link of <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s chain, whose element PER is identified with
+    the family at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span> by reading the type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]</span> through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> a second time.
 
 <div class="paragraph"> </div>
 
-    Each link then arrives in the family at its own pair of arguments, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves it to the pair the type names — the same final step as
-    in <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_app_cong"><span class="id" title="lemma">rel_exp_app_cong</span></a></span>, for the same reason. 
+    Each link then lands in the family at its own argument pair, and
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves it to the pair the type names, as in
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_exp_app_cong"><span class="id" title="lemma">rel_exp_app_cong</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_natrec_cong" class="idref" href="#rel_exp_natrec_cong"><span class="id" title="lemma">rel_exp_natrec_cong</span></a> : <span class="id" title="keyword">forall</span> {<a id="90404e84950a6f59c1bcc9fdaea56cc0" class="idref" href="#90404e84950a6f59c1bcc9fdaea56cc0"><span class="id" title="binder">Γ</span></a> <a id="A:218" class="idref" href="#A:218"><span class="id" title="binder">A</span></a> <a id="A':219" class="idref" href="#A':219"><span class="id" title="binder">A'</span></a> <a id="i:220" class="idref" href="#i:220"><span class="id" title="binder">i</span></a> <a id="MZ:221" class="idref" href="#MZ:221"><span class="id" title="binder">MZ</span></a> <a id="MZ':222" class="idref" href="#MZ':222"><span class="id" title="binder">MZ'</span></a> <a id="MS:223" class="idref" href="#MS:223"><span class="id" title="binder">MS</span></a> <a id="MS':224" class="idref" href="#MS':224"><span class="id" title="binder">MS'</span></a> <a id="M:225" class="idref" href="#M:225"><span class="id" title="binder">M</span></a> <a id="M':226" class="idref" href="#M':226"><span class="id" title="binder">M'</span></a>},<br/>
@@ -1114,14 +1081,14 @@ The three unsubstituted instances, at the three pairs of environments the
 </div>
 
 <div class="doc">
-<a id="lab55"></a><h3 class="section">The Type</h3>
+<a id="lab67"></a><h3 class="section">The Type</h3>
 
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span> is an instance of the motive, so all of it — and the number's
-      four values, and the motive at an arbitrary related pair, which the moves
-      below need — comes from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span> is an instance of the motive, so the type, the number's four
+    values, and the motive at an arbitrary related pair (needed by the moves below)
+    all come from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a> <span class="id" title="var">Hnat</span> <span class="id" title="var">HAl</span> <span class="id" title="var">HMl</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Hev</span> <span class="id" title="var">Hev'</span>)<br/>
@@ -1130,9 +1097,9 @@ The three unsubstituted instances, at the three pairs of environments the
 </div>
 
 <div class="doc">
-The domain is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so the PER its values live in is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span> — which every
-      obligation below is stated at, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span> being what an argument pair of the
-      recursor is drawn from. 
+The domain is <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, so its values live in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, from which the
+    recursor's argument pairs are drawn and at which every obligation below is
+    stated. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">a2</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <a class="idref" href="Mctt.Core.Semantic.Domain.html#d8f274d7852a5eed6fa336253d12233d"><span class="id" title="notation">ℕ</span></a><a class="idref" href="Mctt.Core.Semantic.Domain.html#d8f274d7852a5eed6fa336253d12233d"><span class="id" title="notation">ᵈ</span></a>) <span class="id" title="keyword">as</span> -&gt;<br/>
@@ -1156,14 +1123,14 @@ The domain is <span class="inlinecode"><span class="id" title="var">ℕ</span></
 </div>
 
 <div class="doc">
-<a id="lab56"></a><h3 class="section">The Number</h3>
+<a id="lab68"></a><h3 class="section">The Number</h3>
 
 
 <div class="paragraph"> </div>
 
-      Its other judgment, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">M'</span></span>, whose two outer values are the type's two
-      first ones; the two chains therefore merge, and the six values of the merge
-      are every argument pair the three instantiations run at. 
+    Its other judgment, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">M'</span></span>, whose two outer values are the type's first two.
+    The two chains merge, and the six values of the merge are all the argument
+    pairs the three instantiations run at. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HMgen</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Hev</span> <span class="id" title="var">Hev'</span>)<br/>
@@ -1182,15 +1149,15 @@ The domain is <span class="inlinecode"><span class="id" title="var">ℕ</span></
 </div>
 
 <div class="doc">
-<a id="lab57"></a><h3 class="section">The Zero Branch</h3>
+<a id="lab69"></a><h3 class="section">The Zero Branch</h3>
 
 
 <div class="paragraph"> </div>
 
-      Its type is the motive at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, so reading that type through
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> a second time identifies the element PER <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s
-      judgment hands over with the family at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span> — the two agree on the
-      type's inner values, which is all irrelevance needs. 
+    Its type is the motive at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span>, so reading that type through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> again identifies the element PER of <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s judgment with
+    the family at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span>; the two agree on the type's inner values, which is
+    all irrelevance needs. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a> <span class="id" title="var">Hnat</span> <span class="id" title="var">HAl</span> (<a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_zero"><span class="id" title="lemma">rel_exp_zero</span></a> <span class="id" title="var">HΓ</span>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span><br/>
@@ -1220,15 +1187,14 @@ The domain is <span class="inlinecode"><span class="id" title="var">ℕ</span></
 </div>
 
 <div class="doc">
-<a id="lab58"></a><h3 class="section">The Three Recursions</h3>
+<a id="lab70"></a><h3 class="section">The Three Recursions</h3>
 
 
 <div class="paragraph"> </div>
 
-      The motive and the successor branch at an arbitrary argument pair, both
-      already in the one family; the family is supplied explicitly, since
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span> cannot read it off an obligation without solving for a
-      relation under two binders. 
+    The motive and the successor branch at an arbitrary argument pair, both already
+    in the one family.  The family is given explicitly, since <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#per_nat_natrec"><span class="id" title="lemma">per_nat_natrec</span></a></span>
+    cannot infer a relation under two binders from an obligation. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_typ_of_nat_motive"><span class="id" title="lemma">rel_typ_of_nat_motive</span></a> <span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Hev</span> <span class="id" title="var">Hev'</span>)<br/>
@@ -1282,24 +1248,23 @@ The middle value of each link is the first of the next, so the three are one
 </div>
 
 <div class="doc">
-<a id="lab59"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span></h2>
+<a id="lab71"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    The recursion at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> *is* the evaluation of the zero branch — that is
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_zero"><span class="id" title="constructor">eval_natrec_zero</span></a></span>, read from right to left — so the two sides of the rule have
-    literally the same two inner values and <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s own chain is the goal's.  All
-    that has to be done is to name the element PER the goal's type component fixes,
-    which is the head PER of the motive at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span>, and to identify it with
-    the one <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s judgment hands over.  Reading the type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]</span> through
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> does both, exactly as in the zero-branch step of
+    The recursion at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a></span> is the evaluation of the zero branch (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_zero"><span class="id" title="constructor">eval_natrec_zero</span></a></span>
+    read right to left), so both sides of the rule have the same two inner values
+    and <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s chain is the goal's.  What remains is to name the element PER fixed
+    by the goal's type, the head PER of the motive at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>)</span>, and to
+    identify it with the one from <span class="inlinecode"><span class="id" title="var">MZ</span></span>'s judgment.  Reading <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">zero</span></a>]</span> through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a></span> does both, as in the zero-branch step of
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_natrec_cong"><span class="id" title="lemma">rel_exp_natrec_cong</span></a></span>.
 
 <div class="paragraph"> </div>
 
-    The successor branch plays no part, so — unlike the syntactic rule, which
-    needs it to have a type at all — the premise about it can be dropped. 
+    The successor branch plays no part, so unlike the syntactic rule this one has no
+    premise about it. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_nat_beta_zero" class="idref" href="#rel_exp_nat_beta_zero"><span class="id" title="lemma">rel_exp_nat_beta_zero</span></a> : <span class="id" title="keyword">forall</span> {<a id="e991ebbaabb06c88d25b8e54c028289b" class="idref" href="#e991ebbaabb06c88d25b8e54c028289b"><span class="id" title="binder">Γ</span></a> <a id="A:302" class="idref" href="#A:302"><span class="id" title="binder">A</span></a> <a id="i:303" class="idref" href="#i:303"><span class="id" title="binder">i</span></a> <a id="MZ:304" class="idref" href="#MZ:304"><span class="id" title="binder">MZ</span></a> <a id="MS:305" class="idref" href="#MS:305"><span class="id" title="binder">MS</span></a>},<br/>
@@ -1356,26 +1321,25 @@ The left two values are the zero branch's, reached through the recursion;
 </div>
 
 <div class="doc">
-<a id="lab60"></a><h2 class="section">The Generic Recursor</h2>
+<a id="lab72"></a><h2 class="section">The Generic Recursor</h2>
 
 
 <div class="paragraph"> </div>
 
-    The eliminator of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_generic"><span class="id" title="lemma">exp_sub_natrec_generic</span></a></span>, validated semantically.  It is
-    needed because the <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-<span class="inlinecode"><span class="id" title="var">β</span></span> rule for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> mentions the recursive call <span class="inlinecode"><span class="id" title="var">E</span></span>
-    inside a *substitution* — <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span></span> — and the only way to
-    validate a substitution extension is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub_double"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub_double</span></a></span>,
-    whose last premise is a term of the context being extended.  <span class="inlinecode"><span class="id" title="var">E</span></span> is a term of
-    <span class="inlinecode"><span class="id" title="var">Γ</span></span>; what is asked for is a term of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span>.  Its generic form — scrutinee
-    <span class="inlinecode">#0</span>, everything else weakened past that binder — is that term, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_generic_self"><span class="id" title="lemma">exp_sub_natrec_generic_self</span></a></span> turns it back into <span class="inlinecode"><span class="id" title="var">E</span></span> under any extension whose
-    head is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>.
+    The eliminator of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_generic"><span class="id" title="lemma">exp_sub_natrec_generic</span></a></span>, validated semantically.  The <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-β
+    rule for <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span> mentions the recursive call <span class="inlinecode"><span class="id" title="var">E</span></span> inside the substitution
+    <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span></span>, and a substitution extension can only be validated by
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub_double"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub_double</span></a></span>, whose last premise is a term of the
+    context being extended.  <span class="inlinecode"><span class="id" title="var">E</span></span> is a term of <span class="inlinecode"><span class="id" title="var">Γ</span></span>, but a term of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><span class="id" title="var">ℕ</span></span> is
+    needed.  The generic form (scrutinee <span class="inlinecode">#0</span>, everything else weakened past that
+    binder) is such a term, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_generic_self"><span class="id" title="lemma">exp_sub_natrec_generic_self</span></a></span> turns it back into
+    <span class="inlinecode"><span class="id" title="var">E</span></span> under any extension whose head is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>.
 
 <div class="paragraph"> </div>
 
-    The proof is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_natrec_cong"><span class="id" title="lemma">rel_exp_natrec_cong</span></a></span> at the weakened premises, which is what
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_wk"><span class="id" title="lemma">rel_exp_under_ctx_wk</span></a></span> delivers; the two type rewrites are the syntactic
-    lemmas that say weakening commutes with the two instantiated motives. 
+    The proof is <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_natrec_cong"><span class="id" title="lemma">rel_exp_natrec_cong</span></a></span> at the weakened premises, which
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_wk"><span class="id" title="lemma">rel_exp_under_ctx_wk</span></a></span> provides; the two type rewrites are the syntactic lemmas
+    saying weakening commutes with the two instantiated motives. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_natrec_generic" class="idref" href="#rel_exp_natrec_generic"><span class="id" title="lemma">rel_exp_natrec_generic</span></a> : <span class="id" title="keyword">forall</span> {<a id="2e64a25ceddda6232798f9733e98907f" class="idref" href="#2e64a25ceddda6232798f9733e98907f"><span class="id" title="binder">Γ</span></a> <a id="A:307" class="idref" href="#A:307"><span class="id" title="binder">A</span></a> <a id="i:308" class="idref" href="#i:308"><span class="id" title="binder">i</span></a> <a id="MZ:309" class="idref" href="#MZ:309"><span class="id" title="binder">MZ</span></a> <a id="MS:310" class="idref" href="#MS:310"><span class="id" title="binder">MS</span></a> <a id="228aa5dcba450df7f48149211970019e" class="idref" href="#228aa5dcba450df7f48149211970019e"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -1399,9 +1363,9 @@ The left two values are the zero branch's, reached through the recursion;
 </div>
 
 <div class="doc">
-The conclusion type has to be produced as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span> <span class="inlinecode">↑]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode">#0]</span> and only
-      then collapsed: rewriting the *goal* by <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_q_shift_single"><span class="id" title="lemma">exp_wk_q_shift_single</span></a></span> backwards
-      would match the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span> <span class="inlinecode">↑]ʷ</span> inside the motive instead. 
+The conclusion type is produced as <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span> <span class="inlinecode">↑]ʷ[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode">#0]</span> and only then
+    collapsed: rewriting the goal backwards by <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_q_shift_single"><span class="id" title="lemma">exp_wk_q_shift_single</span></a></span> would match
+    the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span> <span class="inlinecode">↑]ʷ</span> inside the motive instead. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">HEg</span> : <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#f6a1684f00f8c1a384b6e80446b93f01"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">rec</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">return</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">|</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">zero</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="var">MZ</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">|</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="var">MS</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a>)<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f850bf698d120cedbc27c00fcdad65d0"><span class="id" title="notation">end</span></a><br/>
@@ -1418,48 +1382,46 @@ The conclusion type has to be produced as <span class="inlinecode"><a class="idr
 </div>
 
 <div class="doc">
-<a id="lab61"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span></h2>
+<a id="lab73"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">β</span></span> at <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">succ</span></a></span></h2>
 
 
 <div class="paragraph"> </div>
 
-    The rule the whole <span class="inlinecode"><span class="id" title="var">ℕ</span></span> section has been building towards.  Both sides run the
-    successor branch, so the two inner values are shared and the work is entirely
-    in the *outer* ones: the left side reaches <span class="inlinecode"><span class="id" title="var">MS</span></span> through
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_succ"><span class="id" title="constructor">eval_natrec_succ</span></a></span> under <span class="inlinecode">σ</span>, the right side reaches it through the
-    doubly-extended substitution <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]</span>, and nothing computes
-    <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>][σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">MS</span>[σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]]</span> semantically — no composition
-    law for evaluated substitutions exists (see the closing comment of
+    Both sides run the successor branch, so the two inner values are shared and the
+    work is in the outer ones.  The left side reaches <span class="inlinecode"><span class="id" title="var">MS</span></span> through
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_succ"><span class="id" title="constructor">eval_natrec_succ</span></a></span> under <span class="inlinecode">σ</span>; the right side through the doubly extended
+    substitution <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]</span>.  Nothing computes
+    <span class="inlinecode"><span class="id" title="var">MS</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>][σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">MS</span>[σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]]</span> semantically, since evaluated
+    substitutions have no composition law (see the closing comment of
     <span class="inlinecode"><span class="id" title="library">Core</span>/<span class="id" title="var">Semantic</span>/<span class="id" title="library">Evaluation</span>/<span class="id" title="var">Definitions.v</span></span>).
 
 <div class="paragraph"> </div>
 
-    What replaces it is two more instances of <span class="inlinecode"><span class="id" title="var">MS</span></span>'s own judgment, each a
-    four-value pattern of its own:
+    Instead, two more instances of <span class="inlinecode"><span class="id" title="var">MS</span></span>'s judgment are used, each a four-value
+    pattern:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> chain A at <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span></span>, whose *outer* environments are <span class="inlinecode">ρσ</span> and
-        <span class="inlinecode">ρ'σ'</span> and whose inner ones are the two the recursion produces.  Its
-        fourth value is the goal's third.
+<li> chain A, at <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span></span>, whose outer environments are <span class="inlinecode">ρσ</span> and
+      <span class="inlinecode">ρ'σ'</span> and whose inner ones are the two the recursion produces.  Its fourth
+      value is the goal's third.
 
 </li>
-<li> chain B at <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]</span>, whose outer environments are <span class="inlinecode">ρ</span> and
-        <span class="inlinecode">ρ'</span>.  Its fourth value is the goal's fourth, modulo
-        <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub2"><span class="id" title="lemma">exp_sub_extend_sub2</span></a></span>.
+<li> chain B, at <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">,,</span> <span class="inlinecode"><span class="id" title="var">E</span>[σ]</span>, whose outer environments are <span class="inlinecode">ρ</span> and
+      <span class="inlinecode">ρ'</span>.  Its fourth value is the goal's fourth, modulo
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub2"><span class="id" title="lemma">exp_sub_extend_sub2</span></a></span>.
 
 </li>
 </ul>
 
 <div class="paragraph"> </div>
 
-    Both are supplied by <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub_double"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub_double</span></a></span> applied to the
-    generic recursor, at <span class="inlinecode"><span class="id" title="var">Id</span></span> and at <span class="inlinecode">σ</span> respectively.  Their element PERs are
-    both identified with the goal's by irrelevance, because
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_step"><span class="id" title="lemma">exp_sub_natrec_step</span></a></span> makes their type components' outer values the *same*
-    evaluations as the goal type's — this is the one place the generalisation of
-    that lemma from <span class="inlinecode"><span class="id" title="var">Id</span></span> to an arbitrary <span class="inlinecode">σ</span> is used.
+    Both come from <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub_double"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub_double</span></a></span> applied to the generic
+    recursor, at <span class="inlinecode"><span class="id" title="var">Id</span></span> and at <span class="inlinecode">σ</span> respectively.  Their element PERs are identified
+    with the goal's by irrelevance, because <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_natrec_step"><span class="id" title="lemma">exp_sub_natrec_step</span></a></span> makes the outer
+    values of their types the same evaluations as the goal type's; this is the one
+    use of that lemma at an arbitrary <span class="inlinecode">σ</span> rather than at <span class="inlinecode"><span class="id" title="var">Id</span></span>.
 
 <div class="paragraph"> </div>
 
@@ -1468,15 +1430,15 @@ The conclusion type has to be produced as <span class="inlinecode"><a class="idr
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> <span class="inlinecode"><span class="id" title="var">v1</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v2</span></span> from the first obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a></span> at
-        <span class="inlinecode">(<span class="id" title="var">m1</span>,</span> <span class="inlinecode"><span class="id" title="var">m2</span>,</span> <span class="inlinecode"><span class="id" title="var">c1</span>,</span> <span class="inlinecode"><span class="id" title="var">c2</span>)</span>;
+<li> <span class="inlinecode"><span class="id" title="var">v1</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v2</span></span>, from the first obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a></span> at
+      <span class="inlinecode">(<span class="id" title="var">m1</span>,</span> <span class="inlinecode"><span class="id" title="var">m2</span>,</span> <span class="inlinecode"><span class="id" title="var">c1</span>,</span> <span class="inlinecode"><span class="id" title="var">c2</span>)</span>;
 
 </li>
-<li> <span class="inlinecode"><span class="id" title="var">v2</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v3</span></span> by <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain A;
+<li> <span class="inlinecode"><span class="id" title="var">v2</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v3</span></span>, by <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain A;
 
 </li>
-<li> <span class="inlinecode"><span class="id" title="var">v3</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v4</span></span> by <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain A, the *second* step obligation at
-        <span class="inlinecode">(<span class="id" title="var">m1</span>,</span> <span class="inlinecode"><span class="id" title="var">m3</span>,</span> <span class="inlinecode"><span class="id" title="var">c1</span>,</span> <span class="inlinecode"><span class="id" title="var">c3</span>)</span> read backwards, and <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain B.
+<li> <span class="inlinecode"><span class="id" title="var">v3</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">v4</span></span>, by <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain A, the second step obligation at
+      <span class="inlinecode">(<span class="id" title="var">m1</span>,</span> <span class="inlinecode"><span class="id" title="var">m3</span>,</span> <span class="inlinecode"><span class="id" title="var">c1</span>,</span> <span class="inlinecode"><span class="id" title="var">c3</span>)</span> read backwards, and <span class="inlinecode"><span class="id" title="var">pairwise</span></span> on chain B.
 
 </li>
 </ul>
@@ -1484,8 +1446,7 @@ The conclusion type has to be produced as <span class="inlinecode"><a class="idr
 <div class="paragraph"> </div>
 
     Each obligation lands in the motive's head PER at its own argument pair, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves it to the pair the goal type names — as everywhere
-    else in this file. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves it to the pair the goal type names. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_nat_beta_succ" class="idref" href="#rel_exp_nat_beta_succ"><span class="id" title="lemma">rel_exp_nat_beta_succ</span></a> : <span class="id" title="keyword">forall</span> {<a id="24edd37ed5edc3406d8669a430f91d56" class="idref" href="#24edd37ed5edc3406d8669a430f91d56"><span class="id" title="binder">Γ</span></a> <a id="A:313" class="idref" href="#A:313"><span class="id" title="binder">A</span></a> <a id="i:314" class="idref" href="#i:314"><span class="id" title="binder">i</span></a> <a id="MZ:315" class="idref" href="#MZ:315"><span class="id" title="binder">MZ</span></a> <a id="MS:316" class="idref" href="#MS:316"><span class="id" title="binder">MS</span></a> <a id="M:317" class="idref" href="#M:317"><span class="id" title="binder">M</span></a>},<br/>
@@ -1530,7 +1491,7 @@ and the outer one, <span class="inlinecode">σ</span> <span class="inlinecode">,
 </div>
 
 <div class="doc">
-<a id="lab62"></a><h3 class="section">The Number</h3>
+<a id="lab74"></a><h3 class="section">The Number</h3>
 
 </div>
 <div class="code">
@@ -1543,7 +1504,7 @@ and the outer one, <span class="inlinecode">σ</span> <span class="inlinecode">,
 </div>
 
 <div class="doc">
-<a id="lab63"></a><h3 class="section">The Type</h3>
+<a id="lab75"></a><h3 class="section">The Type</h3>
 
 
 <div class="paragraph"> </div>
@@ -1585,7 +1546,7 @@ and the outer one, <span class="inlinecode">σ</span> <span class="inlinecode">,
 </div>
 
 <div class="doc">
-<a id="lab64"></a><h3 class="section">The Recursive Call</h3>
+<a id="lab76"></a><h3 class="section">The Recursive Call</h3>
 
 
 <div class="paragraph"> </div>
@@ -1611,10 +1572,9 @@ and the outer one, <span class="inlinecode">σ</span> <span class="inlinecode">,
 </div>
 
 <div class="doc">
-The two recursions the goal's left-hand side runs *inside* its own
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_succ"><span class="id" title="constructor">eval_natrec_succ</span></a></span> are the ones <span class="inlinecode"><span class="id" title="var">E</span></span> already evaluates: invert <span class="inlinecode"><span class="id" title="var">E</span></span>'s two
-      evaluations rather than letting <span class="inlinecode"><span class="id" title="var">simplify_evals</span></span> loose on a context of eight
-      evaluations at six different environments. 
+The two recursions the left side runs inside its <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec_succ"><span class="id" title="constructor">eval_natrec_succ</span></a></span> are the
+    ones <span class="inlinecode"><span class="id" title="var">E</span></span> already evaluates.  Inverting <span class="inlinecode"><span class="id" title="var">E</span></span>'s two evaluations avoids running
+    <span class="inlinecode"><span class="id" title="var">simplify_evals</span></span> on a context of eight evaluations at six environments. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> <span class="id" title="var">Hc1</span> <span class="id" title="keyword">as</span> <span class="id" title="var">Hc1'</span>.<br/>
@@ -1626,13 +1586,13 @@ The two recursions the goal's left-hand side runs *inside* its own
 </div>
 
 <div class="doc">
-<a id="lab65"></a><h3 class="section">The Successor Branch</h3>
+<a id="lab77"></a><h3 class="section">The Successor Branch</h3>
 
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode"><span class="id" title="var">E</span></span>'s chain lives at <span class="inlinecode">(<span class="id" title="var">m2</span>,</span> <span class="inlinecode"><span class="id" title="var">m3</span>)</span>; each obligation of the step runs at the
-      pair of arguments *it* is about, so move the relevant link there first. 
+    <span class="inlinecode"><span class="id" title="var">E</span></span>'s chain lives at <span class="inlinecode">(<span class="id" title="var">m2</span>,</span> <span class="inlinecode"><span class="id" title="var">m3</span>)</span>, while each obligation of the step runs at the
+    argument pair it is about, so the relevant link is moved there first. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.NatCases.html#rel_exp_of_nat_step"><span class="id" title="lemma">rel_exp_of_nat_step</span></a> <span class="id" title="var">HΓ</span> <span class="id" title="var">HA</span> <span class="id" title="var">HMS</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Hev</span> <span class="id" title="var">Hev'</span>)<br/>
@@ -1659,7 +1619,7 @@ The two recursions the goal's left-hand side runs *inside* its own
 </div>
 
 <div class="doc">
-<a id="lab66"></a><h3 class="section">Chain A, at the inner substitution</h3>
+<a id="lab78"></a><h3 class="section">Chain A, at the inner substitution</h3>
 
 </div>
 <div class="code">
@@ -1676,7 +1636,7 @@ The two recursions the goal's left-hand side runs *inside* its own
 </div>
 
 <div class="doc">
-<a id="lab67"></a><h3 class="section">Chain B, at the outer substitution</h3>
+<a id="lab79"></a><h3 class="section">Chain B, at the outer substitution</h3>
 
 </div>
 <div class="code">

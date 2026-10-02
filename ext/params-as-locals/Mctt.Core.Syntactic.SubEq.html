@@ -31,23 +31,20 @@
 </div>
 
 <div class="doc">
-<a id="lab161"></a><h1 class="section">Equivalent Substitutions Preserve Judgments</h1>
+<a id="lab191"></a><h1 class="section">Equivalent Substitutions Preserve Judgments</h1>
 
 
 <div class="paragraph"> </div>
 
     The equality and subtyping halves, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.SubEq.html#sub_eq_preserves_exp_eq"><span class="id" title="lemma">sub_eq_preserves_exp_eq</span></a></span> and
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.SubEq.html#sub_eq_preserves_subtyp"><span class="id" title="lemma">sub_eq_preserves_subtyp</span></a></span>.  The typing half is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span> in
-    <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Lemmas</span></span>, where it has to be, because presupposition
-    needs it.
+    <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Lemmas</span></span>, because presupposition needs it.
 
 <div class="paragraph"> </div>
 
-    Proving all three by one mutual induction on the derivation, case by case, is
-    unavoidable if they come *before* presupposition.  In the order this
-    development uses — typing, then presupposition, then the rest — these two are
-    not inductions at all.  An equivalence <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> is both a pair of
-    substitutions and a relation between them, so it can always be used twice:
+    Since presupposition is available, these two are not inductions.  An
+    equivalence <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> is both a pair of substitutions and a relation between
+    them, so it can be used twice:
 
 <div class="paragraph"> </div>
 
@@ -56,7 +53,7 @@
 
 </li>
 <li> move its right-hand side from <span class="inlinecode">σ</span> to <span class="inlinecode">σ'</span>, by <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span>
-      applied to that right-hand side — which is a *typing* derivation, and is exactly what
+      applied to the typing derivation of that right-hand side, which
       presupposition provides;
 
 </li>
@@ -67,10 +64,7 @@
 
 <div class="paragraph"> </div>
 
-    Nothing about any particular rule enters, so the fifteen cases a direct
-    induction works through (β for <span class="inlinecode"><span class="id" title="var">Π</span></span>, both β rules for <span class="inlinecode"><span class="id" title="var">ℕ</span></span>, η, and the
-    congruences) all disappear.  This is the one place where having presupposition first pays for
-    the extra arguments <span class="inlinecode"><span class="id" title="library">Definitions</span></span> carries to get it. 
+    No particular rule enters the argument. 
 </div>
 <div class="code">
 
@@ -84,7 +78,7 @@
 </div>
 
 <div class="doc">
-<a id="lab162"></a><h2 class="section">The Equality Half</h2>
+<a id="lab192"></a><h2 class="section">The Equality Half</h2>
 
 </div>
 <div class="code">
@@ -110,7 +104,7 @@
 </div>
 
 <div class="doc">
-<a id="lab163"></a><h2 class="section">The Subtyping Half</h2>
+<a id="lab193"></a><h2 class="section">The Subtyping Half</h2>
 
 
 <div class="paragraph"> </div>
@@ -145,7 +139,7 @@
 </div>
 
 <div class="doc">
-<a id="lab164"></a><h2 class="section">Equal Arguments Give Equal Instances</h2>
+<a id="lab194"></a><h2 class="section">Equal Arguments Give Equal Instances</h2>
 
 
 <div class="paragraph"> </div>

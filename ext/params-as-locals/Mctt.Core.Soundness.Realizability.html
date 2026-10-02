@@ -49,11 +49,8 @@
 </div>
 
 <div class="doc">
-A Kripke weakening is <span class="inlinecode">⇑^<span class="id" title="var">n</span></span> on the nose (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_shiftn"><span class="id" title="lemma">kripke_shiftn</span></a></span>), so it acts on a
-    variable by index arithmetic alone.  This replaces the <span class="inlinecode"><span class="id" title="var">var_weaken_gen</span></span>
-    induction of the explicit-substitution development, which had to compute
-    <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#length"><span class="id" title="definition">length</span></a></span> <span class="inlinecode"><span class="id" title="var">Γ1</span>)[σ]</span> for an arbitrary weakening <span class="inlinecode">σ</span> by way of a context-lookup
-    analysis (<span class="inlinecode"><span class="id" title="var">wf_ctx_sub_ctx_lookup</span></span>) and a subtyping detour. 
+A Kripke weakening is <span class="inlinecode">⇑^<span class="id" title="var">n</span></span> on the nose (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_shiftn"><span class="id" title="lemma">kripke_shiftn</span></a></span>), so it acts on
+    a variable by index arithmetic alone. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="wk_var_kripke" class="idref" href="#wk_var_kripke"><span class="id" title="lemma">wk_var_kripke</span></a> : <span class="id" title="keyword">forall</span> <a id="da7a5918a812e0216f4a54d21f7406c4" class="idref" href="#da7a5918a812e0216f4a54d21f7406c4"><span class="id" title="binder">Γ</span></a> <a id="70086898232ea9f35274651a64a6780a" class="idref" href="#70086898232ea9f35274651a64a6780a"><span class="id" title="binder">Δ</span></a> <a id="6d99d4a7cb908e141b2f4c9b66be9fba" class="idref" href="#6d99d4a7cb908e141b2f4c9b66be9fba"><span class="id" title="binder">φ</span></a> <a id="x:5" class="idref" href="#x:5"><span class="id" title="binder">x</span></a>,<br/>
@@ -69,8 +66,8 @@ A Kripke weakening is <span class="inlinecode">⇑^<span class="id" title="var">
 
 <div class="doc">
 The instance the gluing model needs: the canonical variable of an extended
-    context is read back as the de Bruijn *index* counting down from the length
-    of wherever the weakening lands. 
+    context reads back as the de Bruijn index counting down from the length of
+    the context the weakening lands in. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Corollary</span> <a id="wk_var0_kripke" class="idref" href="#wk_var0_kripke"><span class="id" title="lemma">wk_var0_kripke</span></a> : <span class="id" title="keyword">forall</span> <a id="6b23b3527a5ae82de0dbe08d52926f19" class="idref" href="#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="binder">Γ</span></a> <a id="A:7" class="idref" href="#A:7"><span class="id" title="binder">A</span></a> <a id="be45bd3545ff15616ff7876dda6137a7" class="idref" href="#be45bd3545ff15616ff7876dda6137a7"><span class="id" title="binder">Δ</span></a> <a id="d0ef999d5cf1ae64cfccc412cd27a7cb" class="idref" href="#d0ef999d5cf1ae64cfccc412cd27a7cb"><span class="id" title="binder">φ</span></a>,<br/>
@@ -177,6 +174,37 @@ We repeat this to get the relation between <span class="inlinecode"><span class=
 &nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">saturate_kripke_escape</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#wf_exp_eq_conv'"><span class="id" title="lemma">wf_exp_eq_conv'</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_nat_readback"><span class="id" title="lemma">glu_nat_readback</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="var">mauto</span> 3 ].<br/>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;True&nbsp;*)</span><br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">eauto</span>; <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_inversion</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;- <span class="id" title="var">handle_functional_glu_univ_elem</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="var">invert_glu_univ_elem</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">apply_equiv_left</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">split</span>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">econstructor</span>; <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="var">apply_equiv_left</span>. <span class="id" title="tactic">trivial</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">saturate_kripke_escape</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_inversion</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#wf_exp_eq_conv'"><span class="id" title="lemma">wf_exp_eq_conv'</span></a>; [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_true_eta"><span class="id" title="constructor">wf_exp_eq_true_eta</span></a>; <span class="id" title="var">mauto</span> 3 | <span class="id" title="var">mauto</span> 3 ].<br/>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;False&nbsp;*)</span><br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">econstructor</span>; <span class="id" title="tactic">eauto</span>; <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">progressive_inversion</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;- <span class="id" title="var">handle_functional_glu_univ_elem</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#glu_univ_elem"><span class="id" title="definition">glu_univ_elem</span></a> <span class="id" title="var">invert_glu_univ_elem</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">apply_equiv_left</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">split</span>; <span class="id" title="tactic">eauto</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#wf_exp_eq_conv'"><span class="id" title="lemma">wf_exp_eq_conv'</span></a>; [ <span class="id" title="tactic">firstorder</span> | <span class="id" title="var">mauto</span> 3 ].<br/>
+&nbsp;&nbsp;- <span class="id" title="tactic">econstructor</span>; <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="var">bulky_rewrite</span>. <span class="id" title="var">mauto</span> 3.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="var">apply_equiv_left</span>. <span class="id" title="tactic">trivial</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;+ <span class="id" title="tactic">intros</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">saturate_kripke_escape</span>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.SystemOpt.html#wf_exp_eq_conv'"><span class="id" title="lemma">wf_exp_eq_conv'</span></a>; [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_False_readback"><span class="id" title="lemma">glu_False_readback</span></a>; <span class="id" title="var">eassumption</span> | <span class="id" title="var">mauto</span> 3 ].<br/>
 &nbsp;&nbsp;<span class="comment">(*&nbsp;pi&nbsp;*)</span><br/>
 &nbsp;&nbsp;- <span class="id" title="var">match_by_head</span> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#pi_glu_typ_pred"><span class="id" title="inductive">pi_glu_typ_pred</span></a> <span class="id" title="var">progressive_invert</span>.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">handle_per_univ_elem_irrel</span>.<br/>

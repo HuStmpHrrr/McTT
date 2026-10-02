@@ -47,16 +47,15 @@
 </div>
 
 <div class="doc">
-<a id="lab297"></a><h1 class="section">The Specification on Concrete Programs</h1>
+<a id="lab328"></a><h1 class="section">The Specification on Concrete Programs</h1>
 
 
 <div class="paragraph"> </div>
 
-    Surface programs written as <span class="inlinecode"><span class="id" title="var">Cst.prog</span></span> values by hand (the parser is
-    extracted, so it does not run here).  Positive examples state the core
-    unit, checked by <span class="inlinecode"><span class="id" title="keyword">vm_compute</span></span> and transported to <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a></span> by
-    soundness; negative ones show that the specification relates the program
-    to nothing, by <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#elaborate_core_fails"><span class="id" title="lemma">elaborate_core_fails</span></a></span>. 
+    Surface programs are written as <span class="inlinecode"><span class="id" title="var">Cst.prog</span></span> values, since the parser runs
+    only after extraction.  Positive examples give the core unit, checked by
+    <span class="inlinecode"><span class="id" title="keyword">vm_compute</span></span> and transferred to <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a></span> by soundness; negative ones
+    are related to nothing, by <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#elaborate_core_fails"><span class="id" title="lemma">elaborate_core_fails</span></a></span>. 
 </div>
 <div class="code">
 
@@ -68,28 +67,29 @@
 </div>
 
 <div class="doc">
-<a id="lab298"></a><h2 class="section">Pre-application</h2>
+<a id="lab329"></a><h2 class="section">Pre-application</h2>
 
 
 <div class="paragraph"> </div>
 
-    module U (A : Type@0) where
-      def a : Type@0 := A end
-      module M (B : Type@0) where
-        def b : Type@0 := B end
-        eval a
-        eval b
-        eval fun (x : Nat) -&gt; b
-      end
-      eval M.b Nat
-    end
+<pre>
+module U (A : Type@0) where
+  def a : Type@0 := A end
+  module M (B : Type@0) where
+    def b : Type@0 := B end
+    eval a
+    eval b
+    eval fun (x : Nat) -&gt; b
+  end
+  eval M.b Nat
+end
+</pre>
 
 <div class="paragraph"> </div>
 
-    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="var">B</span></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><span class="id" title="var">a</span></span> is a member of <span class="inlinecode"><span class="id" title="var">U</span></span>, so it is
-    pre-applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> only; <span class="inlinecode"><span class="id" title="var">b</span></span> is a member of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, so to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="var">B</span></span>; under
-    the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both move one binder out.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> is closed: <span class="inlinecode"><span class="id" title="var">M.b</span></span> is
-    pre-applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> (open) and gets <span class="inlinecode"><span class="id" title="var">B</span></span> from the user. 
+    Inside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="var">B</span></span> is <span class="inlinecode">#0</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> is <span class="inlinecode">#1</span>.  <span class="inlinecode"><span class="id" title="var">a</span></span> is applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, and <span class="inlinecode"><span class="id" title="var">b</span></span>
+    to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> and <span class="inlinecode"><span class="id" title="var">B</span></span>; under the <span class="inlinecode"><span class="id" title="keyword">fun</span></span> both shift by one.  Outside <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, <span class="inlinecode"><span class="id" title="var">M.b</span></span> is
+    applied to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> and gets <span class="inlinecode"><span class="id" title="var">B</span></span> from the user. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="nested" class="idref" href="#nested"><span class="id" title="definition">nested</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> :=<br/>
@@ -123,9 +123,8 @@
 </div>
 
 <div class="doc">
-The first <span class="inlinecode"><span class="id" title="tactic">eval</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, derived by hand from the rules: <span class="inlinecode"><span class="id" title="var">a</span></span> is not bound
-    in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>'s frame (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#fb_next"><span class="id" title="constructor">fb_next</span></a></span>), so it is the definition of <span class="inlinecode"><span class="id" title="var">U</span></span>'s frame,
-    pre-applied to <span class="inlinecode"><span class="id" title="var">U</span></span>'s telescope, which starts one binder in. 
+The first <span class="inlinecode"><span class="id" title="tactic">eval</span></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, derived from the rules: <span class="inlinecode"><span class="id" title="var">a</span></span> is not bound in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>
+    (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabSpec.html#fb_next"><span class="id" title="constructor">fb_next</span></a></span>), so it is <span class="inlinecode"><span class="id" title="var">U</span></span>'s member applied to <span class="inlinecode"><span class="id" title="var">U</span></span>'s parameter. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="U_frame" class="idref" href="#U_frame"><span class="id" title="definition">U_frame</span></a> : <a class="idref" href="Mctt.Frontend.ElabSpec.html#sframe"><span class="id" title="record">sframe</span></a> :=<br/>
@@ -151,7 +150,7 @@ The first <span class="inlinecode"><span class="id" title="tactic">eval</span></
 </div>
 
 <div class="doc">
-<a id="lab299"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">module_param.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
+<a id="lab330"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">module_param.mctt</span></span>: a parameterized module and <span class="inlinecode"><span class="id" title="keyword">let</span></span> <span class="inlinecode"><span class="id" title="var">module</span></span></h2>
 
 </div>
 <div class="code">
@@ -191,7 +190,7 @@ Inside <span class="inlinecode"><span class="id" title="var">Church</span></span
 </div>
 
 <div class="doc">
-<a id="lab300"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">import_use.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
+<a id="lab331"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">import_use.mctt</span></span>: privacy, <span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="keyword">as</span></span>, <span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode">…</span> <span class="inlinecode"><span class="id" title="var">use</span></span></h2>
 
 </div>
 <div class="code">
@@ -228,7 +227,7 @@ A private member is visible in its own frame, and imports of this unit
 </div>
 
 <div class="doc">
-<a id="lab301"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
+<a id="lab332"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">multi</span>/<span class="id" title="var">Main.mctt</span></span>: leading imports of other units</h2>
 
 </div>
 <div class="code">
@@ -266,7 +265,35 @@ Paths into other units are opaque and not pre-applied.
 </div>
 
 <div class="doc">
-<a id="lab302"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
+<a id="lab333"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">examples</span>/<span class="id" title="var">true_false.mctt</span></span>: the unit type and the empty type</h2>
+
+
+<div class="paragraph"> </div>
+
+    The motive of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.exfalso"><span class="id" title="constructor">exfalso</span></a></span> binds <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span>, so <span class="inlinecode"><span class="id" title="library">Nat</span></span> is elaborated under one more
+    binder. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="true_false" class="idref" href="#true_false"><span class="id" title="definition">true_false</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> :=<br/>
+&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a>"TrueFalse" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.true_tm"><span class="id" title="constructor">true_tm</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.fn"><span class="id" title="constructor">fn</span></a> "u" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.true_ty"><span class="id" title="constructor">true_ty</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "u")) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.fn"><span class="id" title="constructor">fn</span></a> "f" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.false_ty"><span class="id" title="constructor">false_ty</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.exfalso"><span class="id" title="constructor">exfalso</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "f") "x" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a>)) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">))</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Example</span> <a id="true_false_spec" class="idref" href="#true_false_spec"><span class="id" title="definition">true_false_spec</span></a> :<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a> <a class="idref" href="Mctt.Frontend.ElabExamples.html#true_false"><span class="id" title="definition">true_false</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#daf20aa49464f28034b2abf913ed85e7"><span class="id" title="notation">⋆</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">λ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#307ef6e61bb3897686a2486af5ce741b"><span class="id" title="notation">⊤</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">λ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ed5d5b76d1ba13862e0bdf92e1ee0807"><span class="id" title="notation">⊥</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'efq'_x_'return'_x"><span class="id" title="notation">efq</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'efq'_x_'return'_x"><span class="id" title="notation">return</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">)</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">elab_ok</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab334"></a><h2 class="section">Scoping Rules, Positive and Negative</h2>
 
 </div>
 <div class="code">
@@ -337,8 +364,7 @@ Redeclaring in the same frame is an error …
 </div>
 
 <div class="doc">
-… but shadowing an enclosing frame's member is allowed, and the inner
-    one wins inside. 
+… but shadowing an enclosing frame's member is allowed. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="shadow_parent" class="idref" href="#shadow_parent"><span class="id" title="definition">shadow_parent</span></a> :<br/>
@@ -382,8 +408,7 @@ A member of a closed parameterized module is a closed constant, so it is
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> without parameters holding <span class="inlinecode"><span class="id" title="var">B</span></span>; its members are named
-    by the dotted chain and pre-applied to nothing but <span class="inlinecode"><span class="id" title="var">B</span></span>'s parameters. 
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><span class="id" title="var">A.B</span></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, without parameters, holding <span class="inlinecode"><span class="id" title="var">B</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="dotted_module" class="idref" href="#dotted_module"><span class="id" title="definition">dotted_module</span></a> :<br/>
@@ -410,7 +435,7 @@ A unit is named by its full path only once imported.
 </div>
 
 <div class="doc">
-<a id="lab303"></a><h2 class="section">One Binding per Name per Frame</h2>
+<a id="lab335"></a><h2 class="section">One Binding per Name per Frame</h2>
 
 
 <div class="paragraph"> </div>
@@ -550,10 +575,9 @@ Leading imports: an alias is fresh against the earlier leading aliases.
 </div>
 
 <div class="doc">
-Shadowing across frames is still allowed: a parameter of a module may
-    reuse a member name of the enclosing frame, a member of a nested module
-    may reuse the enclosing frame's parameter name, and the innermost binding
-    wins. 
+Across frames, shadowing is allowed: a module's parameter may reuse a
+    member name of the enclosing frame, and a nested member may reuse the
+    enclosing frame's parameter name. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Example</span> <a id="shadow_param" class="idref" href="#shadow_param"><span class="id" title="definition">shadow_param</span></a> :<br/>
@@ -572,20 +596,111 @@ Shadowing across frames is still allowed: a parameter of a module may
 </div>
 
 <div class="doc">
-<a id="lab304"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
+<a id="lab336"></a><h2 class="section">Local Definitions</h2>
 
 
 <div class="paragraph"> </div>
 
-    module Main where
-      module M (A : Type@0) where
-        def id (x : A) : A := x end
-        module N (B : Type@0) where
-          def k (x : A) (y : B) : A := id x end
-        end
-      end
-      def j : forall (x : Nat) -&gt; Nat := M.id Nat end
-    end 
+    A <span class="inlinecode"><span class="id" title="keyword">let</span></span> elaborates to a core <span class="inlinecode"><span class="id" title="keyword">let</span></span>, and its name is a core variable like
+    a <span class="inlinecode"><span class="id" title="keyword">fun</span></span> binder.  The core typing rules, not the elaborator, unfold it. 
+<div class="paragraph"> </div>
+
+ A <span class="inlinecode"><span class="id" title="keyword">let</span></span> inside the definiens of another <span class="inlinecode"><span class="id" title="keyword">let</span></span>:
+
+<div class="paragraph"> </div>
+
+<pre>
+fun (a : Nat) -&gt; let x : Nat := let y : Nat := a in succ y end in succ x end
+</pre>
+
+</div>
+<div class="code">
+<span class="id" title="keyword">Example</span> <a id="let_nested" class="idref" href="#let_nested"><span class="id" title="definition">let_nested</span></a> :<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a> (<a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.fn"><span class="id" title="constructor">fn</span></a> "a" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "x" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "y" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "a")) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">Cst.succ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "y"))))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">Cst.succ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "x")))) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">λ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">)</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">elab_ok</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+Each binding sees the earlier ones, in its type and in its definiens:
+
+<div class="paragraph"> </div>
+
+<pre>
+let A : Type@0 := Nat; z : A := 0; f : forall (n : A) -&gt; A := fun (n : A) -&gt; succ z in f z end
+</pre>
+
+</div>
+<div class="code">
+<span class="id" title="keyword">Example</span> <a id="let_multi" class="idref" href="#let_multi"><span class="id" title="definition">let_multi</span></a> :<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a> (<a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "A" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.typ"><span class="id" title="constructor">typ</span></a> 0) <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "z" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "A") <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">Cst.zero</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "f" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.pi"><span class="id" title="constructor">pi</span></a> "n" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "A") (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "A")) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.fn"><span class="id" title="constructor">fn</span></a> "n" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "A") (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">Cst.succ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "z"))))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.app"><span class="id" title="constructor">app</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "f") (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "z"))))) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@0</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'zero'"><span class="id" title="notation">zero</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f68614554c24a868d22dade628101fb"><span class="id" title="notation">Π</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>2<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">λ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1047ecee8b0252d6a110169846663207"><span class="id" title="notation">$</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">elab_ok</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A <span class="inlinecode"><span class="id" title="keyword">let</span></span> may shadow a member of the frame.  The definiens still sees the
+    member, which is applied to the parameter <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>; in the body, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> lies one
+    binder further out.
+
+<div class="paragraph"> </div>
+
+<pre>
+module M (A : Type@0) where
+  def y : Nat := 0 end
+  eval let y : Nat := succ y in fun (a : A) -&gt; y end
+end
+</pre>
+
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="T_M_y" class="idref" href="#T_M_y"><span class="id" title="definition">T_M_y</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_glob"><span class="id" title="constructor">a_glob</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#p_abs"><span class="id" title="abbreviation">p_abs</span></a> ("T" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) ("M" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> "y" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>)).<br/>
+
+<br/>
+<span class="id" title="keyword">Example</span> <a id="let_shadow" class="idref" href="#let_shadow"><span class="id" title="definition">let_shadow</span></a> :<br/>
+&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.ElabSpec.html#elab_spec"><span class="id" title="inductive">elab_spec</span></a> (<a class="idref" href="Mctt.Frontend.ElabExamples.html#unit_of"><span class="id" title="definition">unit_of</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_mod"><span class="id" title="constructor">c_mod</span></a> ("M" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a>"A"<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.typ"><span class="id" title="constructor">typ</span></a> 0<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_def"><span class="id" title="constructor">c_def</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.md_pub"><span class="id" title="definition">md_pub</span></a> "y" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.zero"><span class="id" title="constructor">Cst.zero</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.c_eval"><span class="id" title="constructor">c_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.letb"><span class="id" title="constructor">letb</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.d_def"><span class="id" title="constructor">d_def</span></a> "y" <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succ"><span class="id" title="constructor">Cst.succ</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "y"))) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.fn"><span class="id" title="constructor">fn</span></a> "a" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "A") (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.var"><span class="id" title="constructor">var</span></a> "y"))) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>))<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_mod"><span class="id" title="constructor">cc_mod</span></a> "M" (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#bfc43caf185f3acb8e7b9c86b6fd5b79"><span class="id" title="notation">⋅</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@0</span></a>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_def"><span class="id" title="constructor">cc_def</span></a> "y" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#true"><span class="id" title="constructor">true</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'zero'"><span class="id" title="notation">zero</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_eval"><span class="id" title="constructor">cc_eval</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">ℓ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a0b00d546f42b6e7d3c9c1917784cf37"><span class="id" title="notation">ℕ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">(</span></a><a class="idref" href="Mctt.Frontend.ElabExamples.html#T_M_y"><span class="id" title="definition">T_M_y</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#1047ecee8b0252d6a110169846663207"><span class="id" title="notation">$</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>0<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'succ'_x"><span class="id" title="notation">)</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#24eddb5068715137802a59d93cba433e"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#974a77135bd2829868ec0d32f41e04d5"><span class="id" title="notation">λ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1 <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#f5dac0c233e0da6f3c2151c6e15f333d"><span class="id" title="notation">#</span></a>1) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">)</span></a>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="var">elab_ok</span>. <span class="id" title="keyword">Qed</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab337"></a><h2 class="section">The Running Example of <span class="inlinecode"><span class="id" title="library">ElabSpec</span></span></h2>
+
+
+<div class="paragraph"> </div>
+
+<pre>
+module Main where
+  module M (A : Type@0) where
+    def id (x : A) : A := x end
+    module N (B : Type@0) where
+      def k (x : A) (y : B) : A := id x end
+    end
+  end
+  def j : forall (x : Nat) -&gt; Nat := M.id Nat end
+end
+</pre>
+
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="running" class="idref" href="#running"><span class="id" title="definition">running</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a> := <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a>"Main" <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a><br/>

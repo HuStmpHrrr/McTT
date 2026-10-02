@@ -31,46 +31,43 @@
 </div>
 
 <div class="doc">
-<a id="lab68"></a><h1 class="section">Building Semantic Substitutions</h1>
+<a id="lab80"></a><h1 class="section">Building Semantic Substitutions</h1>
 
 
 <div class="paragraph"> </div>
 
-    None of these validates a typing rule — with substitution as an operation
-    there are no substitution rules left to validate.
-    They are the *tools* the case files need: every rule whose premise lives in an
-    extended context (Π, λ, ℕ-elim, …) is proved by instantiating that premise at
-    a substitution built here.
+    These lemmas validate no typing rule, since substitution is an operation and
+    has no rules of its own.  They are the tools the case files need: every rule
+    with a premise in an extended context (Π, λ, ℕ-elim, …) is proved by
+    instantiating that premise at a substitution built here.
 
 <div class="paragraph"> </div>
 
-    Each proof has the same two halves, because the target context is always an
-    extension and the extended context PER is always <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend"><span class="id" title="definition">per_env_extend</span></a></span>:
+    The target context is always an extension, whose context PER is
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend"><span class="id" title="definition">per_env_extend</span></a></span>, so each proof has two halves:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> **Tails** — the underlying substitution, which is one instantiation of the
-      hypothesis (6.43, 6.44) or two merged along a shared value (6.45, 6.47);
+<li> Tails: the underlying substitution, from one instantiation of the
+      hypothesis, or from two merged along a shared value.
 
 </li>
-<li> **Heads** — the extension term, whose four values must land in the head PER
-      of the target.  This is where the operational presentation costs something:
-      the head PER is the one <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> denotes at the *substituted* environments, while
-      the hypothesis about the term speaks of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at the outer ones, so the two
-      must be bridged.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> is defined impredicatively for exactly this
-      reason: bridging is then a saturation of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> irrelevance
-      biconditionals — <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span> — and nothing more.
+<li> Heads: the extension term, whose four values must land in the head PER of
+      the target.  That PER is the one <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> denotes at the substituted
+      environments, while the hypothesis about the term speaks of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at the
+      outer ones, so the two must be bridged.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> is impredicative for
+      this reason: bridging is then saturation of the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span>
+      irrelevance biconditionals by <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span>.
 
 </li>
 </ul>
 
 <div class="paragraph"> </div>
 
-    The type of an extended context is written <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> here and the extension term
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, following the rest of the development, and not only for uniformity: <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>
-    is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a></span>'s constructor, so <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a>[ψ]ʷ</span> inside a tactic argument is interned
-    as a *name* and rejected. 
+    The type of an extended context is written <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> and the extension term <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>,
+    also because <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.nat"><span class="id" title="constructor">nat</span></a></span>'s constructor, so <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a>[ψ]ʷ</span> in a tactic argument
+    would be read as a name and rejected. 
 </div>
 <div class="code">
 
@@ -90,10 +87,9 @@
 </div>
 
 <div class="doc">
-The extended context PER of <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, read off a semantic type judgment: this
-    is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a></span> fed by the <span class="inlinecode"><span class="id" title="var">Id</span></span> instance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span>,
-    and it is the
-    first step of every proof below. 
+The extended context PER of <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, read off a semantic type judgment:
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a></span> fed by the <span class="inlinecode"><span class="id" title="var">Id</span></span> instance of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span>.
+    This is the first step of every proof below. 
 </div>
 <div class="code">
 
@@ -117,20 +113,20 @@ The extended context PER of <span class="inlinecode"><span class="id" title="var
 </div>
 
 <div class="doc">
-The same for a *substituted* type, which is the context PER every rule with a
-    premise in an extended context needs: <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> goes from <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> to <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, and
-    a Π-, λ- or ℕ-elim-rule instantiates its premise there.
+The same for a substituted type.  Every rule with a premise in an extended
+    context needs this: <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> goes from <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> to <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, and a Π-, λ- or
+    ℕ-elim rule instantiates its premise there.
 
 <div class="paragraph"> </div>
 
     It is not an instance of the lemma above, because <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">≈</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Type@i</span></span>
-    is not available: obtaining it is a semantic substitution lemma for types,
-    which is what this development does not have (and does not need).  What is
-    available is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s own judgment instantiated along <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span>, whose *outer*
-    values are the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at the outer environments — the two the head
-    obligation asks for.  Hence the <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_simple"><span class="id" title="lemma">rel_sub_under_ctx_simple</span></a></span> form of the
-    substitution: only two evaluations of <span class="inlinecode">σ</span> at a related pair are wanted here,
-    not the four of a full four-value pattern. 
+    would need a semantic substitution lemma for types, which the development
+    neither has nor needs.  Instead, <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s own judgment is instantiated along
+    <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span>; its outer values are the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at the outer environments,
+    which is what the head obligation asks for.  Hence the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_simple"><span class="id" title="lemma">rel_sub_under_ctx_simple</span></a></span> form of the substitution: only two evaluations of
+    <span class="inlinecode">σ</span> at a related pair are needed, not the four of a full four-value
+    pattern. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_ctx_env_of_typ_sub" class="idref" href="#per_ctx_env_of_typ_sub"><span class="id" title="lemma">per_ctx_env_of_typ_sub</span></a> : <span class="id" title="keyword">forall</span> {<a id="6b23b3527a5ae82de0dbe08d52926f19" class="idref" href="#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="binder">Γ</span></a> <a id="3d409925eecfe9fac9d850edb88dd4e5" class="idref" href="#3d409925eecfe9fac9d850edb88dd4e5"><span class="id" title="binder">Δ</span></a> <a id="adf3bc8341a90edf65bb756c93872ed9" class="idref" href="#adf3bc8341a90edf65bb756c93872ed9"><span class="id" title="binder">σ</span></a> <a id="1e0dee48f90c1b54ec5984d800cf493d" class="idref" href="#1e0dee48f90c1b54ec5984d800cf493d"><span class="id" title="binder">σ'</span></a> <a id="A:10" class="idref" href="#A:10"><span class="id" title="binder">A</span></a> <a id="i:11" class="idref" href="#i:11"><span class="id" title="binder">i</span></a> <a id="6ab9675cac2dffbfb3a4233e560ca844" class="idref" href="#6ab9675cac2dffbfb3a4233e560ca844"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -158,13 +154,12 @@ The same for a *substituted* type, which is the context PER every rule with a
 </div>
 
 <div class="doc">
-A *member* of that PER, from an element of any PER the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>
-    inhabit.  Every rule with a premise in an extended context needs this and
-    needs it in this form: what it has to start from is a pair <span class="inlinecode"><span class="id" title="var">c</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">c'</span></span> drawn from
-    the domain PER of a Π-value, or from <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, and the level and the relation
-    that pair comes with are whatever the *other* hypothesis produced them at —
-    never the <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s own judgment.  Only <span class="inlinecode"><span class="id" title="var">a</span></span> is named, since irrelevance
-    needs one shared value and the left one is the one the caller has. 
+A member of that PER, from an element of any PER inhabited by the values
+    of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>.  Rules with a premise in an extended context need this form: they
+    start from a pair <span class="inlinecode"><span class="id" title="var">c</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">c'</span></span> drawn from the domain PER of a Π-value or from
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_nat"><span class="id" title="inductive">per_nat</span></a></span>, at whatever level and relation the other hypothesis produced, never
+    the <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s judgment.  Only <span class="inlinecode"><span class="id" title="var">a</span></span> is named, since irrelevance needs one
+    shared value and the caller has the left one. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="per_env_extend_sub_intro" class="idref" href="#per_env_extend_sub_intro"><span class="id" title="lemma">per_env_extend_sub_intro</span></a> : <span class="id" title="keyword">forall</span> {<a id="a57704a48aaf9a67d8a3df75d6eea365" class="idref" href="#a57704a48aaf9a67d8a3df75d6eea365"><span class="id" title="binder">Γ</span></a> <a id="999050b916fb0afebc4e4d4350b815fb" class="idref" href="#999050b916fb0afebc4e4d4350b815fb"><span class="id" title="binder">Δ</span></a> <a id="1a6277b3cb02065474aec3d40044f5ee" class="idref" href="#1a6277b3cb02065474aec3d40044f5ee"><span class="id" title="binder">σ</span></a> <a id="c32880201f64d62ed636f2e98da7cc15" class="idref" href="#c32880201f64d62ed636f2e98da7cc15"><span class="id" title="binder">σ'</span></a> <a id="A:17" class="idref" href="#A:17"><span class="id" title="binder">A</span></a> <a id="i:18" class="idref" href="#i:18"><span class="id" title="binder">i</span></a> <a id="f4c8c3625e5bf5450421050b8181e8db" class="idref" href="#f4c8c3625e5bf5450421050b8181e8db"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -201,8 +196,8 @@ A *member* of that PER, from an element of any PER the values of <span class="in
 
 <div class="doc">
 <span class="inlinecode"><span class="id" title="var">Hc</span></span> retyped: the chain and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.HR"><span class="id" title="variable">HR</span></a></span> both relate <span class="inlinecode"><span class="id" title="var">a</span></span> on the left, and
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> irrelevance is cross-level, so the caller's level <span class="inlinecode"><span class="id" title="var">j</span></span> never
-      has to match <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>. 
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> irrelevance is cross-level, so the caller's level <span class="inlinecode"><span class="id" title="var">j</span></span> need
+    not match <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="var">retype_rel_chain</span> <span class="id" title="var">Hchain</span> <span class="id" title="var">HR</span> <span class="id" title="var">Hc</span>; <span class="id" title="tactic">exact</span> <span class="id" title="var">Hc</span>.<br/>
@@ -212,18 +207,18 @@ A *member* of that PER, from an element of any PER the values of <span class="in
 </div>
 
 <div class="doc">
-A type judgment in <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> read at an *arbitrary* member of the canonical
-    extended context PER, rather than at one built by <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_env_extend_sub_intro"><span class="id" title="lemma">per_env_extend_sub_intro</span></a></span>
-    from a <span class="inlinecode"><span class="id" title="var">q</span></span>.  This is what an instantiated codomain needs: the pair of
-    environments it is evaluated at is <span class="inlinecode">ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">m</span></span> for some <span class="inlinecode"><span class="id" title="var">m</span></span> coming from the term
-    being applied, which no <span class="inlinecode"><span class="id" title="var">q</span></span>-shaped lemma produces.
+A type judgment in <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> read at an arbitrary member of the canonical
+    extended context PER, rather than at one built from a <span class="inlinecode"><span class="id" title="var">q</span></span> by
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_env_extend_sub_intro"><span class="id" title="lemma">per_env_extend_sub_intro</span></a></span>.  An instantiated codomain needs this: it is
+    evaluated at <span class="inlinecode">ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">m</span></span> for some <span class="inlinecode"><span class="id" title="var">m</span></span> coming from the term being applied, which no
+    <span class="inlinecode"><span class="id" title="var">q</span></span>-shaped lemma produces.
 
 <div class="paragraph"> </div>
 
-    Stated as its own lemma only so that <span class="inlinecode"><span class="id" title="var">handle_per_ctx_env_irrel</span></span> is confined
-    to a goal where the extended PER occurs on *both* sides — in the hypothesis
-    <span class="inlinecode"><span class="id" title="var">HBl</span></span> and in the argument <span class="inlinecode"><span class="id" title="var">H</span>ρ</span> — so whichever of the two names the tactic
-    keeps, the application still typechecks. 
+    It is a separate lemma so that <span class="inlinecode"><span class="id" title="var">handle_per_ctx_env_irrel</span></span> runs on a goal where
+    the extended PER occurs on both sides, in the hypothesis <span class="inlinecode"><span class="id" title="var">HBl</span></span> and in the
+    argument <span class="inlinecode"><span class="id" title="var">H</span>ρ</span>; whichever name the tactic keeps, the application still
+    typechecks. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_of_typ_extend_simple" class="idref" href="#rel_exp_of_typ_extend_simple"><span class="id" title="lemma">rel_exp_of_typ_extend_simple</span></a> : <span class="id" title="keyword">forall</span> {<a id="6e093fd9af49d42270cd626602782b21" class="idref" href="#6e093fd9af49d42270cd626602782b21"><span class="id" title="binder">Γ</span></a> <a id="A:29" class="idref" href="#A:29"><span class="id" title="binder">A</span></a> <a id="i:30" class="idref" href="#i:30"><span class="id" title="binder">i</span></a> <a id="B:31" class="idref" href="#B:31"><span class="id" title="binder">B</span></a> <a id="B':32" class="idref" href="#B':32"><span class="id" title="binder">B'</span></a> <a id="j:33" class="idref" href="#j:33"><span class="id" title="binder">j</span></a> <a id="efd0ef5c472dcd4b8d976e54fed4f69b" class="idref" href="#efd0ef5c472dcd4b8d976e54fed4f69b"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -246,12 +241,11 @@ A type judgment in <span class="inlinecode"><span class="id" title="var">Δ</spa
 </div>
 
 <div class="doc">
-The same for a *term* of <span class="inlinecode"><span class="id" title="var">Δ</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, with its element PER already replaced by the
-    canonical <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> of its type (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of"><span class="id" title="lemma">per_head_of</span></a></span>).  Reporting the canonical one
-    rather than the <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> the judgment happens to produce is what makes the result
-    composable: every consumer wants to put several such instances into one chain,
-    and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves between the head PERs at different arguments,
-    which no bare <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> admits. 
+The same for a term of <span class="inlinecode"><span class="id" title="var">Δ</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>, with its element PER replaced by the
+    canonical <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> of its type (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of"><span class="id" title="lemma">per_head_of</span></a></span>).  Reporting the canonical PER
+    rather than the judgment's own <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> makes results composable: consumers put
+    several such instances into one chain, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves between
+    head PERs at different arguments, which a bare <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> does not allow. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_under_ctx_extend_simple" class="idref" href="#rel_exp_under_ctx_extend_simple"><span class="id" title="lemma">rel_exp_under_ctx_extend_simple</span></a> : <span class="id" title="keyword">forall</span> {<a id="c2ce69567f90e13bb44c9a8e8f267036" class="idref" href="#c2ce69567f90e13bb44c9a8e8f267036"><span class="id" title="binder">Γ</span></a> <a id="A:40" class="idref" href="#A:40"><span class="id" title="binder">A</span></a> <a id="i:41" class="idref" href="#i:41"><span class="id" title="binder">i</span></a> <a id="B:42" class="idref" href="#B:42"><span class="id" title="binder">B</span></a> <a id="M:43" class="idref" href="#M:43"><span class="id" title="binder">M</span></a> <a id="M':44" class="idref" href="#M':44"><span class="id" title="binder">M'</span></a> <a id="fa38776d6011cd46d30ba3958a83063b" class="idref" href="#fa38776d6011cd46d30ba3958a83063b"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -278,22 +272,21 @@ The same for a *term* of <span class="inlinecode"><span class="id" title="var">�
 </div>
 
 <div class="doc">
-The <span class="inlinecode"><span class="id" title="var">Wk</span></span> instance of the same, which is the only way a *weakened* term ever
-    acquires a value: the equation <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[φ]ʷ⟧ρ</span> <span class="inlinecode">=</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧(⟪φ⟫</span> <span class="inlinecode">ρ)</span> fails outright — the
-    two sides of the λ-case are the closures <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">φ]ʷ)</span> and <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode">(⟪φ⟫</span> <span class="inlinecode">ρ)</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>,
-    which are different values and are not even related — so semantic weakening
-    exists only as the instance of a judgment along <span class="inlinecode"><span class="id" title="var">Wk</span></span>, and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[↑]ʷ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> is
-    reachable no other way.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_under_ctx_extend_simple"><span class="id" title="lemma">rel_exp_under_ctx_extend_simple</span></a></span> is the <span class="inlinecode"><span class="id" title="var">Id</span></span>
-    instance of the same idea, and this one the <span class="inlinecode"><span class="id" title="var">Wk</span></span> instance.
+The <span class="inlinecode"><span class="id" title="var">Wk</span></span> instance of the same, which is the only way a weakened term
+    acquires a value.  The equation <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[φ]ʷ⟧ρ</span> <span class="inlinecode">=</span> <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧(⟪φ⟫</span> <span class="inlinecode">ρ)</span> fails: in the λ case
+    the two sides are the closures <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[<span class="id" title="var">q</span></span> <span class="inlinecode">φ]ʷ)</span> and <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode">(⟪φ⟫</span> <span class="inlinecode">ρ)</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>, which are
+    different and not even related.  So semantic weakening exists only as the
+    instance of a judgment along <span class="inlinecode"><span class="id" title="var">Wk</span></span>, and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[↑]ʷ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> is reachable no other
+    way.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_exp_under_ctx_extend_simple"><span class="id" title="lemma">rel_exp_under_ctx_extend_simple</span></a></span> is the <span class="inlinecode"><span class="id" title="var">Id</span></span> instance of the same idea.
 
 <div class="paragraph"> </div>
 
-    Unlike there, the element PER is *not* replaced by a canonical <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span>:
-    <span class="inlinecode"><span class="id" title="var">B</span></span>'s own four values are reported instead, together with the PER at its outer
-    pair — which <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_iff"><span class="id" title="lemma">per_head_iff</span></a></span> turns into the head PER of <span class="inlinecode"><span class="id" title="var">B</span>[↑]ʷ</span> at the two
-    extended environments — and at its inner one — which <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi_iff"><span class="id" title="lemma">per_pi_iff</span></a></span> turns into
-    the function PER of <span class="inlinecode"><span class="id" title="var">B</span></span> at the two tails, when <span class="inlinecode"><span class="id" title="var">B</span></span> is a Π.  Which of the two a
-    caller wants depends on the shape of <span class="inlinecode"><span class="id" title="var">B</span></span>, so neither is chosen here. 
+    Unlike there, the element PER is not replaced by a canonical <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span>.
+    Instead <span class="inlinecode"><span class="id" title="var">B</span></span>'s four values are reported, with the PER at its outer pair (which
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_iff"><span class="id" title="lemma">per_head_iff</span></a></span> turns into the head PER of <span class="inlinecode"><span class="id" title="var">B</span>[↑]ʷ</span> at the two extended
+    environments) and at its inner pair (which <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi_iff"><span class="id" title="lemma">per_pi_iff</span></a></span> turns into the
+    function PER of <span class="inlinecode"><span class="id" title="var">B</span></span> at the two tails, when <span class="inlinecode"><span class="id" title="var">B</span></span> is a Π).  Which one a caller
+    wants depends on the shape of <span class="inlinecode"><span class="id" title="var">B</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_under_ctx_shift_at" class="idref" href="#rel_exp_under_ctx_shift_at"><span class="id" title="lemma">rel_exp_under_ctx_shift_at</span></a> : <span class="id" title="keyword">forall</span> {<a id="893aef7061fe05b037fc27cff76f1e6f" class="idref" href="#893aef7061fe05b037fc27cff76f1e6f"><span class="id" title="binder">Γ</span></a> <a id="A:51" class="idref" href="#A:51"><span class="id" title="binder">A</span></a> <a id="i:52" class="idref" href="#i:52"><span class="id" title="binder">i</span></a> <a id="B:53" class="idref" href="#B:53"><span class="id" title="binder">B</span></a> <a id="M:54" class="idref" href="#M:54"><span class="id" title="binder">M</span></a> <a id="M':55" class="idref" href="#M':55"><span class="id" title="binder">M'</span></a> <a id="962463745a6139e7d308c8f9215eb397" class="idref" href="#962463745a6139e7d308c8f9215eb397"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -323,11 +316,10 @@ The <span class="inlinecode"><span class="id" title="var">Wk</span></span> insta
 </div>
 
 <div class="doc">
-<span class="inlinecode">(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)↯</span> is <span class="inlinecode">ρ</span> up to conversion, so the two substituted environments the
-      universal form of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp_under_ctx"><span class="id" title="definition">rel_exp_under_ctx</span></a></span> asks to be named are the two tails
-      themselves —
-      which is what makes the *inner* pair of both chains a statement about <span class="inlinecode">ρ</span> and
-      <span class="inlinecode">ρ'</span> rather than about some environment reached through <span class="inlinecode">σ</span>. 
+<span class="inlinecode">(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)↯</span> is <span class="inlinecode">ρ</span> up to conversion, so the two substituted environments
+    that <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp_under_ctx"><span class="id" title="definition">rel_exp_under_ctx</span></a></span> asks to be named are the tails themselves.  This makes
+    the inner pair of both chains a statement about <span class="inlinecode">ρ</span> and <span class="inlinecode">ρ'</span> rather than about
+    environments reached through <span class="inlinecode">σ</span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">HMgen</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓA</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HWk</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ<br/>
@@ -348,15 +340,15 @@ The <span class="inlinecode"><span class="id" title="var">Wk</span></span> insta
 </div>
 
 <div class="doc">
-<a id="lab69"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">q</span></span> Preserves Semantic Weakening</h2>
+<a id="lab81"></a><h2 class="section"><span class="inlinecode"><span class="id" title="var">q</span></span> Preserves Semantic Weakening</h2>
 
 
 <div class="paragraph"> </div>
 
-    The only lemma here about weakenings, and the cheap one: both halves of
-    the extended context PER hold *by conversion* for <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">ψ</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_q_tail"><span class="id" title="lemma">eval_wk_q_tail</span></a></span>,
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_q_zero"><span class="id" title="lemma">eval_wk_q_zero</span></a></span>), so the tail obligation is the hypothesis itself and the
-    head obligation is a single bridging step. 
+    The only lemma here about weakenings, and a cheap one: both halves of the
+    extended context PER hold by conversion for <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">ψ</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_q_tail"><span class="id" title="lemma">eval_wk_q_tail</span></a></span>,
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_q_zero"><span class="id" title="lemma">eval_wk_q_zero</span></a></span>), so the tail obligation is the hypothesis and the head
+    obligation is one bridging step. 
 </div>
 <div class="code">
 
@@ -373,9 +365,9 @@ The <span class="inlinecode"><span class="id" title="var">Wk</span></span> insta
 </div>
 
 <div class="doc">
-The commutation obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> along <span class="inlinecode"><span class="id" title="var">ι</span></span> <span class="inlinecode">ψ</span>.  It serves twice — once to
-      build the context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[ψ]ʷ</span>, once to bridge the head PERs — so name
-      it, at an environment pair the caller will supply. 
+The commutation obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> along <span class="inlinecode"><span class="id" title="var">ι</span></span> <span class="inlinecode">ψ</span>.  It is used twice, to build
+    the context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[ψ]ʷ</span> and to bridge the head PERs, so it is named, at
+    an environment pair the caller supplies. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hcom</span> : <span class="id" title="keyword">forall</span> <a id="a284fba85b5a022eb72857092acb932e" class="idref" href="#a284fba85b5a022eb72857092acb932e"><span class="id" title="binder"><span id="013721c1bb2cc7c05d68fd35c85d66ad" class="id">ρ</span></span></a> <a id="4b630015163fe8596ea1be108d819144" class="idref" href="#4b630015163fe8596ea1be108d819144"><span class="id" title="binder"><span id="88b34b4c5521c91aaca425ea9cbdadea" class="id">ρ'</span></span></a>,<br/>
@@ -399,9 +391,8 @@ The commutation obligation of <span class="inlinecode"><a class="idref" href="Mc
 </div>
 
 <div class="doc">
-Both projections of <span class="inlinecode">⟪<span class="id" title="var">q</span></span> <span class="inlinecode">ψ⟫</span> <span class="inlinecode">ρ</span> are conversions, so nothing has to be
-      rewritten below: the goals are stated about <span class="inlinecode">⟪<span class="id" title="var">q</span></span> <span class="inlinecode">ψ⟫</span> <span class="inlinecode">ρ</span> and <span class="inlinecode"><span class="id" title="tactic">exact</span></span> sees
-      through to <span class="inlinecode">⟪ψ⟫</span> <span class="inlinecode">(ρ</span> <span class="inlinecode">↯)</span> and to <span class="inlinecode">ρ</span> <span class="inlinecode">0</span>. 
+Both projections of <span class="inlinecode">⟪<span class="id" title="var">q</span></span> <span class="inlinecode">ψ⟫</span> <span class="inlinecode">ρ</span> are conversions, so nothing is rewritten
+    below: <span class="inlinecode"><span class="id" title="tactic">exact</span></span> sees through <span class="inlinecode">⟪<span class="id" title="var">q</span></span> <span class="inlinecode">ψ⟫</span> <span class="inlinecode">ρ</span> to <span class="inlinecode">⟪ψ⟫</span> <span class="inlinecode">(ρ</span> <span class="inlinecode">↯)</span> and to <span class="inlinecode">ρ</span> <span class="inlinecode">0</span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">split</span>; [ <span class="id" title="var">typeclasses</span> <span class="id" title="tactic">eauto</span> |].<br/>
@@ -420,36 +411,33 @@ Both projections of <span class="inlinecode">⟪<span class="id" title="var">q</
 </div>
 
 <div class="doc">
-<a id="lab70"></a><h2 class="section">Extension is Semantic</h2>
+<a id="lab82"></a><h2 class="section">Extension is Semantic</h2>
 
 
 <div class="paragraph"> </div>
 
-    The first of the three extension lemmas, and the template for the other two.
-    Two things have to be produced at every Kripke stage <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊨<span class="id" title="var">w</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>: four
-    environments, and the chain relating them in the extended context PER of
-    <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.
+    The first of three extension lemmas, and the template for the other two.  At
+    every Kripke stage <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊨<span class="id" title="var">w</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> it produces four environments and the chain
+    relating them in the extended context PER of <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.
 
 <div class="paragraph"> </div>
 
-    The four environments are read off the *two* judgments about <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> — the
-    tails from the substitution judgment, the heads from the term judgment — and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_extend"><span class="id" title="lemma">sb_wk_extend</span></a></span> is what says the two halves recombine into the substitution the
-    goal asks about (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub_wk_extend"><span class="id" title="lemma">eval_sub_wk_extend</span></a></span> packages that).
+    The four environments come from the two judgments about <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: the tails
+    from the substitution judgment, the heads from the term judgment.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_extend"><span class="id" title="lemma">sb_wk_extend</span></a></span> says the two halves recombine into the substitution in the goal
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub_wk_extend"><span class="id" title="lemma">eval_sub_wk_extend</span></a></span> packages this).
 
 <div class="paragraph"> </div>
 
-    The chain then splits link by link into tails and heads.  The tails are
-    already related — they are the substitution judgment's own chain.  The heads
-    are related in the PER the term judgment produced, and the work of the proof
-    is to identify that PER with the head PER of <span class="inlinecode"><span class="id" title="var">Δ</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.  Doing so needs <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s
-    values at all four environments to be linked, which takes two further
-    instantiations of the type judgment: one along <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span>
-    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span>) for
-    the outer pair, one along <span class="inlinecode">σ</span> itself for the inner pair.  The type judgment's
-    own chain links those two instantiations to each other, and to the term
-    judgment's type chain, at which point <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span> closes
-    everything at once — <span class="inlinecode"><span class="id" title="var">solve_per_env_extend_chain</span></span>. 
+    The chain then splits link by link into tails and heads.  The tails are already
+    related by the substitution judgment's chain.  The heads are related in the PER
+    the term judgment produced, and the work is to identify that PER with the head
+    PER of <span class="inlinecode"><span class="id" title="var">Δ</span>,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>.  This needs <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s values at all four environments linked, which
+    takes two more instantiations of the type judgment: along <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span>
+    (<span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span>) for the outer pair, and along <span class="inlinecode">σ</span> for the inner pair.
+    The type judgment's own chain links these to each other and to the term
+    judgment's type chain, and <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span> then closes everything
+    (<span class="inlinecode"><span class="id" title="var">solve_per_env_extend_chain</span></span>). 
 </div>
 <div class="code">
 
@@ -490,9 +478,9 @@ Tails, and the heads that go with them.
 
 <div class="doc">
 The two instantiations of <span class="inlinecode"><span class="id" title="var">HA</span></span> that link <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s four values, and the term
-      judgment's own type chain, which links them to <span class="inlinecode"><span class="id" title="var">Rt</span></span>.  Rewriting the outer
-      types with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ][<span class="id" title="var">ι</span></span> <span class="inlinecode">φ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ]</span> is what makes the first
-      instantiation's values *the same* values rather than merely equal ones. 
+    judgment's type chain, which links them to <span class="inlinecode"><span class="id" title="var">Rt</span></span>.  Rewriting the outer types
+    with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ][<span class="id" title="var">ι</span></span> <span class="inlinecode">φ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ]</span> makes the first instantiation's values the
+    same values, not merely equal ones. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<span class="id" title="var">HAgen</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓ'</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">H</span>φ<span class="id" title="var">j</span>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ <span class="id" title="var">Ht1</span> <span class="id" title="var">Ht4</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Houter</span>.<br/>
@@ -512,36 +500,33 @@ The two instantiations of <span class="inlinecode"><span class="id" title="var">
 </div>
 
 <div class="doc">
-<a id="lab71"></a><h2 class="section">Extension by a Precomposed Term</h2>
+<a id="lab83"></a><h2 class="section">Extension by a Precomposed Term</h2>
 
 
 <div class="paragraph"> </div>
 
-    Same shape as 6.44, but the term judgment lives in <span class="inlinecode"><span class="id" title="var">Δ</span></span> rather than in <span class="inlinecode"><span class="id" title="var">Γ</span></span>, so
-    it is *it* that has to be instantiated more than once, and the type judgment
-    is needed only to build the context PER of <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span> (via
+    The same shape as <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend"><span class="id" title="lemma">rel_sub_under_ctx_extend</span></a></span>, but the term judgment lives in
+    <span class="inlinecode"><span class="id" title="var">Δ</span></span> rather than <span class="inlinecode"><span class="id" title="var">Γ</span></span>, so it is the one instantiated more than once; the type
+    judgment is only needed to build the context PER of <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span> (via
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#presup_rel_exp_under_ctx"><span class="id" title="lemma">presup_rel_exp_under_ctx</span></a></span>).
 
 <div class="paragraph"> </div>
 
-    Two instantiations are the obvious ones — along <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span> for the outer
-    environments, along <span class="inlinecode">σ</span> for the inner ones — and they are not enough: their
-    chains live in *different* PERs, one for each instantiation, and share no
-    value at all (<span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> against <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t2</span></span>).  A third instantiation bridges them.
-    It is the reflexive-left form of the hypothesis — <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span>, the same <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> on
-    both sides — taken at <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> and at the environment pair <span class="inlinecode"><span class="id" title="var">t1</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">t2</span></span> the
-    tails already provide.  After <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_id"><span class="id" title="lemma">exp_sub_id</span></a></span> its chain is <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> four times
-    over, or rather twice each side, which is exactly a link from the first
-    instantiation's world to the second's.  Unlike 6.44 no extra instantiation of
-    the *type* judgment is needed: each of the three term instantiations carries
-    its own type chain, and those three chains overlap the same way.
+    The two obvious instantiations, along <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span> for the outer environments
+    and along <span class="inlinecode">σ</span> for the inner ones, are not enough: their chains live in
+    different PERs and share no value (<span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> against <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t2</span></span>).  A third
+    instantiation bridges them: the reflexive-left hypothesis <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊨</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span> at
+    <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> and at the environment pair <span class="inlinecode"><span class="id" title="var">t1</span></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">t2</span></span> the tails provide.  After
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_id"><span class="id" title="lemma">exp_sub_id</span></a></span> its chain is <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> twice and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t2</span></span> twice, which links the
+    first instantiation to the second.  No extra instantiation of the type
+    judgment is needed: each of the three term instantiations carries its own type
+    chain, and those overlap the same way.
 
 <div class="paragraph"> </div>
 
-    So there are three chains to combine rather than one, and this is where the
-    merge lemma earns its place: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_merge"><span class="id" title="lemma">rel_chain_merge</span></a></span> joins two chains along a shared
-    value, and two applications of it turn the three into the single four-value
-    chain the goal asks about. 
+    So three chains are combined into the four-value chain of the goal, by two
+    applications of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_merge"><span class="id" title="lemma">rel_chain_merge</span></a></span>, which joins two chains along a shared
+    value. 
 </div>
 <div class="code">
 
@@ -587,9 +572,9 @@ The three instantiations: outer, inner, and the bridge.
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ][<span class="id" title="var">ι</span></span> <span class="inlinecode">φ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ][φ]ʷ</span> on the outer pair and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span>]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> on the bridge: both
-      rewrites are what make the values *the same* values, so that
-      <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> can identify them below. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ][<span class="id" title="var">ι</span></span> <span class="inlinecode">φ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ][φ]ʷ</span> on the outer pair and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[<span class="id" title="var">Id</span>]</span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> on the bridge:
+    both rewrites make the values the same, so that
+    <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> can identify them below. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">rewrite</span> &lt;- <a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_sub"><span class="id" title="lemma">exp_wk_sub</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">Hf1</span>, <span class="id" title="var">Hf4</span>.<br/>
@@ -618,9 +603,9 @@ The three type chains identify <span class="inlinecode"><span class="id" title="
 </div>
 
 <div class="doc">
-And then the three term chains become one.  Neither merge can be guessed:
-      the shared value is <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> for the first and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t2</span></span> for the second, and
-      the intermediate list has to mention both. 
+Then the three term chains become one.  Neither merge can be inferred: the
+    shared value is <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t1</span></span> for the first and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧<span class="id" title="var">t2</span></span> for the second, and the
+    intermediate list must mention both. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Hm1</span> : <a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain"><span class="id" title="definition">rel_chain</span></a> <span class="id" title="var">R1</span> (<span class="id" title="notation">[</span><span class="id" title="var">f1</span><span class="id" title="notation">;</span> <span class="id" title="var">f4</span><span class="id" title="notation">;</span> <span class="id" title="var">f2</span><span class="id" title="notation">;</span> <span class="id" title="var">g2</span><span class="id" title="notation">]</span>)) <span class="id" title="tactic">by</span> (<span class="id" title="var">merge_rel_chain</span> <span class="id" title="var">Hfchain</span> <span class="id" title="var">Hhchain</span> <span class="id" title="var">f2</span>).<br/>
@@ -633,16 +618,15 @@ And then the three term chains become one.  Neither merge can be guessed:
 </div>
 
 <div class="doc">
-<a id="lab72"></a><h2 class="section">Double Extension by Precomposed Terms</h2>
+<a id="lab84"></a><h2 class="section">Double Extension by Precomposed Terms</h2>
 
 
 <div class="paragraph"> </div>
 
     Two applications of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub</span></a></span>: the first builds
-    <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ,,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span>, and the second uses *that* as its substitution.  The
-    only thing to notice is that the outer extension term is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> precomposed with
-    the substitution the first application produced, which is why the statement
-    repeats <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span>. 
+    <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ,,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span>, and the second uses it as its substitution.  The outer
+    extension term is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> precomposed with the substitution the first application
+    produced, which is why the statement repeats <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]</span>. 
 </div>
 <div class="code">
 
@@ -662,51 +646,47 @@ And then the three term chains become one.  Neither merge can be guessed:
 </div>
 
 <div class="doc">
-<a id="lab73"></a><h2 class="section">Lifting is Semantic</h2>
+<a id="lab85"></a><h2 class="section">Lifting is Semantic</h2>
 
 
 <div class="paragraph"> </div>
 
-    The lemma the case files use most, and the one whose two halves are furthest
-    apart.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_q"><span class="id" title="lemma">sb_wk_q</span></a></span> is what makes it a four-value pattern at all: it says
-    <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)[ψ]ʷ</span> is again an extension, by <span class="inlinecode">σ</span> postcomposed with <span class="inlinecode">↑</span> <span class="inlinecode">⊙</span> <span class="inlinecode">ψ</span> and by the
-    variable <span class="inlinecode">ψ</span> <span class="inlinecode">0</span>.
+    The lemma the case files use most.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#sb_wk_q"><span class="id" title="lemma">sb_wk_q</span></a></span> makes it a four-value pattern:
+    it says <span class="inlinecode">(<span class="id" title="var">q</span></span> <span class="inlinecode">σ)[ψ]ʷ</span> is again an extension, by <span class="inlinecode">σ</span> postcomposed with <span class="inlinecode">↑</span> <span class="inlinecode">⊙</span> <span class="inlinecode">ψ</span>
+    and by the variable <span class="inlinecode">ψ</span> <span class="inlinecode">0</span>.
 
 <div class="paragraph"> </div>
 
-    Tails.  <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> extends <span class="inlinecode">σ[↑]ʷ</span>, so the tails of all four values are values of
-    <span class="inlinecode">σ[↑]ʷ</span> — and that is a semantic substitution <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ[↑]ʷ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> by
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span> applied to the weakening <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">⊨<span class="id" title="var">w</span></span> <span class="inlinecode">↑</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>.  One
-    instantiation of *it* therefore produces all four tails together with the chain
-    relating them, instead of two instantiations of the σ-judgment followed by a
-    merge — that merge is what the proof of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span> already did once
-    and for all.
+    Tails: <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> extends <span class="inlinecode">σ[↑]ʷ</span>, so all four tails are values of <span class="inlinecode">σ[↑]ʷ</span>, which is
+    a semantic substitution <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">⊨<span class="id" title="var">s</span></span> <span class="inlinecode">σ[↑]ʷ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> by <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span>
+    applied to the weakening <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode">⊨<span class="id" title="var">w</span></span> <span class="inlinecode">↑</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>.  One instantiation of it
+    produces all four tails and their chain; the merge this would otherwise need
+    is done once, in the proof of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_wk"><span class="id" title="lemma">rel_sub_under_ctx_wk</span></a></span>.
 
 <div class="paragraph"> </div>
 
-    Heads.  All four heads are the same two values, <span class="inlinecode">(⟪ψ⟫</span> <span class="inlinecode">ρ)</span> <span class="inlinecode">0</span> and
-    <span class="inlinecode">(⟪ψ⟫</span> <span class="inlinecode">ρ')</span> <span class="inlinecode">0</span>, because <span class="inlinecode">(#0)[ψ]ʷ</span> is <span class="inlinecode">#(ψ</span> <span class="inlinecode">0)</span> and <span class="inlinecode">#0</span> reads index <span class="inlinecode">0</span>.  The
-    Ctx-Ext biconditional for <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> hands them over related in the head PER of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at the *dropped* environments, and what remains is to bridge that to the
-    head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at the tails.  Three instantiations of the type judgment are
-    involved, and each is forced:
+    Heads: all four heads are the same two values, <span class="inlinecode">(⟪ψ⟫</span> <span class="inlinecode">ρ)</span> <span class="inlinecode">0</span> and <span class="inlinecode">(⟪ψ⟫</span> <span class="inlinecode">ρ')</span> <span class="inlinecode">0</span>,
+    because <span class="inlinecode">(#0)[ψ]ʷ</span> is <span class="inlinecode">#(ψ</span> <span class="inlinecode">0)</span> and <span class="inlinecode">#0</span> reads index <span class="inlinecode">0</span>.  The Ctx-Ext
+    biconditional for <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> gives them related in the head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at
+    the dropped environments, and this must be bridged to the head PER of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at
+    the tails.  Three instantiations of the type judgment are needed:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> along <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span> at the dropped pair, whose outer values are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>'s — the
+<li> along <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span> at the dropped pair, whose outer values are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>'s: the
       source of the bridge, and also what the context PER of <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">▹</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> is built
       from;
 
 </li>
 <li> along <span class="inlinecode">σ[↑]ʷ</span> at <span class="inlinecode">⟪ψ⟫</span> <span class="inlinecode">ρ</span> <span class="inlinecode">≈</span> <span class="inlinecode">⟪ψ⟫</span> <span class="inlinecode">ρ'</span>, whose inner values are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span>'s at the two
-      inner tails — the target;
+      inner tails: the target;
 
 </li>
-<li> along <span class="inlinecode"><span class="id" title="var">Id</span></span>, to link the two.  <span class="inlinecode">σ[↑]ʷ</span> and <span class="inlinecode">σ</span> evaluate at *different*
+<li> along <span class="inlinecode"><span class="id" title="var">Id</span></span>, linking the two.  <span class="inlinecode">σ[↑]ʷ</span> and <span class="inlinecode">σ</span> evaluate at different
       environments (postcomposition by a weakening does not commute with
-      evaluation), so nothing but a fresh instantiation at a related pair of
-      environments connects them, exactly as in 6.45. 
+      evaluation), so only a fresh instantiation at a related pair of
+      environments connects them, as in <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub</span></a></span>. 
 
 </li>
 </ul>
@@ -725,10 +705,10 @@ And then the three term chains become one.  Neither merge can be guessed:
 </div>
 
 <div class="doc">
-The simple form of the hypothesis, at <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span>: the first of the three type
-      instantiations below runs at a *σ-evaluated* pair of environments, and what
-      supplies those is this form — two evaluations of <span class="inlinecode">σ</span> at a related pair,
-      rather than the four of a full four-value pattern. 
+The simple form of the hypothesis, at <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ</span>.  The first of the three type
+    instantiations below runs at a pair of <span class="inlinecode">σ</span>-evaluated environments, which this
+    form supplies: two evaluations of <span class="inlinecode">σ</span> at a related pair, rather than the four
+    of a full four-value pattern. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_simple"><span class="id" title="lemma">rel_sub_under_ctx_simple</span></a> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_sub_under_ctx_refl_left"><span class="id" title="lemma">rel_sub_under_ctx_refl_left</span></a> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span>))<br/>
@@ -764,10 +744,9 @@ The Kripke stage lands in <span class="inlinecode"><span class="id" title="var">
 </div>
 
 <div class="doc">
-<span class="inlinecode">σ</span> itself along <span class="inlinecode">↑</span>, which is what puts <span class="inlinecode">⟦σ⟧((⟪ψ⟫</span> <span class="inlinecode">ρ)↯)</span> in the same PER
-      as the tails: its leftmost value is <span class="inlinecode">⟦σ[↑]ʷ⟧(⟪ψ⟫</span> <span class="inlinecode">ρ)</span> again, so
-      determinism of substitution evaluation (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span>, not <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a></span>) links the two
-      chains. 
+<span class="inlinecode">σ</span> itself along <span class="inlinecode">↑</span>, which puts <span class="inlinecode">⟦σ⟧((⟪ψ⟫</span> <span class="inlinecode">ρ)↯)</span> in the same PER as the
+    tails: its leftmost value is again <span class="inlinecode">⟦σ[↑]ʷ⟧(⟪ψ⟫</span> <span class="inlinecode">ρ)</span>, so determinism of
+    substitution evaluation (up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span>, not <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#eq"><span class="id" title="inductive">eq</span></a></span>) links the two chains. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">H</span>σ <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">HΓA'</span> <span class="id" title="var">_</span> <span class="id" title="var">Hshift</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<span class="id" title="var">H</span>ψ <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">H</span>ρ)) <span class="id" title="keyword">as</span> [<span class="id" title="var">z1</span> <span class="id" title="var">y2</span> <span class="id" title="var">y3</span> <span class="id" title="var">z4</span> <span class="id" title="var">Hz1</span> <span class="id" title="var">Hy2</span> <span class="id" title="var">Hy3</span> <span class="id" title="var">Hz4</span> <span class="id" title="var">Hbtails</span>].<br/>
@@ -778,10 +757,10 @@ The Kripke stage lands in <span class="inlinecode"><span class="id" title="var">
 
 <div class="doc">
 The three instantiations of the type judgment.  The first is the one the
-      head hypothesis speaks about — its outer values are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>'s at the dropped
-      environments — and it is instantiated at <span class="inlinecode"><span class="id" title="var">Hy2</span></span> and at the σ-evaluation the
-      simple form supplies, because those are the environments the *other* two
-      instantiations reach. 
+    head hypothesis speaks about (its outer values are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>'s at the dropped
+    environments); it is taken at <span class="inlinecode"><span class="id" title="var">Hy2</span></span> and at the <span class="inlinecode">σ</span>-evaluation from the simple
+    form, because those are the environments the other two instantiations
+    reach. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> (<span class="id" title="var">H</span>σ<span class="id" title="var">refl</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">Htail</span>) <span class="id" title="keyword">as</span> [<span class="id" title="var">u</span> [<span class="id" title="var">u'</span> [<span class="id" title="var">Hu</span> [<span class="id" title="var">Hu'</span> <span class="id" title="var">Huu'</span>]]]].<br/>
@@ -834,33 +813,31 @@ Weak functionality names <span class="inlinecode"><a class="idref" href="Mctt.Co
 </div>
 
 <div class="doc">
-<a id="lab74"></a><h2 class="section">Instantiating a Premise in an Extended Context</h2>
+<a id="lab86"></a><h2 class="section">Instantiating a Premise in an Extended Context</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_q"><span class="id" title="lemma">rel_sub_under_ctx_q</span></a></span> says <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> *is* a semantic substitution; what the rules with a
-    premise in an extended context need is one step more concrete — the two
-    environments <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> and <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span> actually evaluate to at a given pair, and how
-    they sit relative to the pair the *goal* speaks of.
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_q"><span class="id" title="lemma">rel_sub_under_ctx_q</span></a></span> says <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> is a semantic substitution.  Rules with a
+    premise in an extended context need something more concrete: the two
+    environments <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> and <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span> evaluate to at a given pair, and how they relate
+    to the pair the goal speaks of.
 
 <div class="paragraph"> </div>
 
-    That is the one place the operational presentation genuinely costs something.
     A rule like Π-congruence compares <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> at <span class="inlinecode">ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span> with <span class="inlinecode"><span class="id" title="var">B</span></span> at
-    <span class="inlinecode">(⟦σ⟧ρ)</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>, and <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> is *not* <span class="inlinecode">(⟦σ⟧ρ)</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span>: its tail is
+    <span class="inlinecode">(⟦σ⟧ρ)</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>, and <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> is not <span class="inlinecode">(⟦σ⟧ρ)</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span>: its tail is
     <span class="inlinecode">⟦σ[↑]ʷ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span>, and postcomposition by a weakening does not commute with
-    evaluation (a closure captures an environment).  So the two are related only
-    in the PER, and the relating is what this lemma packages.
+    evaluation (a closure captures an environment).  So the two are only related
+    in the PER, and this lemma packages that.
 
 <div class="paragraph"> </div>
 
-    The chain returned is over *all eight* extensions of the four tails by either
-    of the two heads, and not because any one caller wants eight: a <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain"><span class="id" title="definition">rel_chain</span></a></span>
-    is how this development says "these are pairwise related", and the callers
-    want different pairs from it — the mixed ones, <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span> against <span class="inlinecode">ρσ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>,
-    because <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi"><span class="id" title="definition">per_pi</span></a></span>'s codomain obligation is stated at a *related* pair of
-    arguments and not at a single one. 
+    The returned chain covers all eight extensions of the four tails by either
+    head.  A <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain"><span class="id" title="definition">rel_chain</span></a></span> states that its members are pairwise related, and callers
+    need different pairs from it, including mixed ones such as <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span> against
+    <span class="inlinecode">ρσ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>, because the codomain obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi"><span class="id" title="definition">per_pi</span></a></span> is stated at a related
+    pair of arguments. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_sub_under_ctx_q_at" class="idref" href="#rel_sub_under_ctx_q_at"><span class="id" title="lemma">rel_sub_under_ctx_q_at</span></a> : <span class="id" title="keyword">forall</span> {<a id="5fed251aa58d6913e63540c17d3d6121" class="idref" href="#5fed251aa58d6913e63540c17d3d6121"><span class="id" title="binder">Γ</span></a> <a id="338e053e379cb2319367c73cc15f4a92" class="idref" href="#338e053e379cb2319367c73cc15f4a92"><span class="id" title="binder">Δ</span></a> <a id="d84ce6ea74a93839e7086ccae997cc55" class="idref" href="#d84ce6ea74a93839e7086ccae997cc55"><span class="id" title="binder">σ</span></a> <a id="07d5315036abddb37d3d96ce0d606db6" class="idref" href="#07d5315036abddb37d3d96ce0d606db6"><span class="id" title="binder">σ'</span></a> <a id="A:115" class="idref" href="#A:115"><span class="id" title="binder">A</span></a> <a id="i:116" class="idref" href="#i:116"><span class="id" title="binder">i</span></a> <a id="52ab765343d4abd8507ac5c857046fec" class="idref" href="#52ab765343d4abd8507ac5c857046fec"><span class="id" title="binder">env_relΓ</span></a> <a id="320a6480bd439c76e1cb757fec6643b8" class="idref" href="#320a6480bd439c76e1cb757fec6643b8"><span class="id" title="binder">env_relΔA</span></a>},<br/>
@@ -892,18 +869,18 @@ Weak functionality names <span class="inlinecode"><a class="idref" href="Mctt.Co
 
 <div class="doc">
 <span class="inlinecode"><span class="id" title="var">handle_per_ctx_env_irrel</span></span> clears the hypotheses it identifies, so the
-      judgment of <span class="inlinecode"><span class="id" title="var">Γ</span></span> is now the one the substitution's own inversion left,
-      <span class="inlinecode"><span class="id" title="var">HΓ3</span></span>. 
+    judgment of <span class="inlinecode"><span class="id" title="var">Γ</span></span> that remains is <span class="inlinecode"><span class="id" title="var">HΓ3</span></span>, the one the substitution's inversion
+    left. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_ctx_env_of_typ_sub"><span class="id" title="lemma">per_ctx_env_of_typ_sub</span></a> <span class="id" title="var">HΓ3</span> <span class="id" title="var">H</span>σ<span class="id" title="var">j</span> <span class="id" title="var">HA</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">HΓA</span>.<br/>
 </div>
 
 <div class="doc">
-Tails.  <span class="inlinecode">σ</span> at the Kripke stage <span class="inlinecode">↑</span> and at the given pair: its two *inner*
-      values are the caller's own <span class="inlinecode">⟦σ⟧ρ</span> and <span class="inlinecode">⟦σ'⟧ρ'</span> (up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span>, which is
-      all determinism of substitution evaluation gives), and its two outer ones
-      are the tails of <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> and <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ'⟧(ρ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span>)</span>. 
+Tails: <span class="inlinecode">σ</span> at the Kripke stage <span class="inlinecode">↑</span> and at the given pair.  Its two inner
+    values are the caller's <span class="inlinecode">⟦σ⟧ρ</span> and <span class="inlinecode">⟦σ'⟧ρ'</span> (up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span>, which is all
+    determinism of substitution evaluation gives), and its two outer ones are the
+    tails of <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> and <span class="inlinecode">⟦<span class="id" title="var">q</span></span> <span class="inlinecode">σ'⟧(ρ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span>)</span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">pose</span> <span class="id" title="var">proof</span> (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_wk_shift"><span class="id" title="lemma">rel_wk_shift</span></a> <span class="id" title="var">HΓ3</span> <span class="id" title="var">HΓA</span>) <span class="id" title="keyword">as</span> <span class="id" title="var">Hshift</span>.<br/>
@@ -916,10 +893,10 @@ Tails.  <span class="inlinecode">σ</span> at the Kripke stage <span class="inli
 </div>
 
 <div class="doc">
-Heads.  The values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at all four tails, so that irrelevance identifies
-      every PER a head obligation quantifies over with the one the two heads are
-      related in; and the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at <span class="inlinecode">ρ</span> and <span class="inlinecode">ρ'</span>, which is what the head
-      hypothesis speaks of and what links it to them. 
+Heads: the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> at all four tails, so that irrelevance identifies
+    every PER a head obligation quantifies over with the one the two heads are
+    related in; and the values of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> at <span class="inlinecode">ρ</span> and <span class="inlinecode">ρ'</span>, which the head
+    hypothesis speaks of and which link it to them. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">H1</span> : <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">Dom</span></a> <span class="id" title="var">s</span> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">≈</span></a> ρσ <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#9234bdd99f17e87e437ea2e067f42b84"><span class="id" title="notation">∈</span></a> <span class="id" title="var">env_relΔ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">pairwise</span>.<br/>
@@ -969,19 +946,18 @@ Not <span class="inlinecode"><span class="id" title="tactic">repeat</span></span
 </div>
 
 <div class="doc">
-The same for a *type* in an extended context, in the three-obligation form
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_pi_canonical"><span class="id" title="lemma">per_univ_elem_pi_canonical</span></a></span> consumes.  The three are the links of the
-    four-value pattern of a Π-type: its two commutations and the relatedness
-    between them, each read at a related pair of arguments.
+The same for a type in an extended context, in the three-obligation form
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_univ_elem_pi_canonical"><span class="id" title="lemma">per_univ_elem_pi_canonical</span></a></span> consumes: the two commutations of a Π-type's
+    four-value pattern and the relatedness between them, each at a related pair of
+    arguments.
 
 <div class="paragraph"> </div>
 
-    The proof is one instantiation of the hypothesis along <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span> — which
-    reaches the values of <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> and <span class="inlinecode"><span class="id" title="var">B'</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ']</span> the goal's outer links need, at
-    the *wrong* inner environments — plus four instantiations of its reflexive
-    halves, which bridge those to the right ones.  All five chains live in
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span>, so merging them is <span class="inlinecode"><span class="id" title="var">merge_rel_chain</span></span> and selecting is
-    <span class="inlinecode"><span class="id" title="var">pairwise</span></span>. 
+    The proof instantiates the hypothesis once along <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span>, which reaches
+    the values of <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> and <span class="inlinecode"><span class="id" title="var">B'</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ']</span> the outer links need but at the wrong
+    inner environments, and four times reflexively to bridge those to the right
+    ones.  All five chains live in <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span>, so merging is <span class="inlinecode"><span class="id" title="var">merge_rel_chain</span></span>
+    and selecting is <span class="inlinecode"><span class="id" title="var">pairwise</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_of_typ_under_ctx_q" class="idref" href="#rel_exp_of_typ_under_ctx_q"><span class="id" title="lemma">rel_exp_of_typ_under_ctx_q</span></a> : <span class="id" title="keyword">forall</span> {<a id="6e782b379a22be72fd8811f565d97df0" class="idref" href="#6e782b379a22be72fd8811f565d97df0"><span class="id" title="binder">Γ</span></a> <a id="cab2d5cb4b25f0214b4aa66330ddc813" class="idref" href="#cab2d5cb4b25f0214b4aa66330ddc813"><span class="id" title="binder">Δ</span></a> <a id="be7d724cef42ede231da03c6b84e5996" class="idref" href="#be7d724cef42ede231da03c6b84e5996"><span class="id" title="binder">σ</span></a> <a id="cc372bcce1eae803d60d68c83c81970b" class="idref" href="#cc372bcce1eae803d60d68c83c81970b"><span class="id" title="binder">σ'</span></a> <a id="A:131" class="idref" href="#A:131"><span class="id" title="binder">A</span></a> <a id="i:132" class="idref" href="#i:132"><span class="id" title="binder">i</span></a> <a id="B:133" class="idref" href="#B:133"><span class="id" title="binder">B</span></a> <a id="B':134" class="idref" href="#B':134"><span class="id" title="binder">B'</span></a> <a id="j:135" class="idref" href="#j:135"><span class="id" title="binder">j</span></a> <a id="72d3003973970f697365b70dc58a6f15" class="idref" href="#72d3003973970f697365b70dc58a6f15"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -1033,9 +1009,9 @@ The four bridges, at four pairs the chain above relates.
 </div>
 
 <div class="doc">
-Each bridge shares one endpoint with the main chain, and it is named
-      explicitly rather than by <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> because which of
-      the two names survives that tactic is what the merges below select on. 
+Each bridge shares one endpoint with the main chain.  It is named
+    explicitly rather than by <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span>, because the merges
+    below depend on which of two names that tactic keeps. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">x1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">b2</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_exp"><span class="id" title="lemma">functional_eval_exp</span></a>; <span class="id" title="var">eassumption</span>).<br/>
@@ -1072,39 +1048,34 @@ Merging the five chains into one, along the two values the main
 </div>
 
 <div class="doc">
-And the same for a *term* in an extended context, which is what <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi"><span class="id" title="definition">per_pi</span></a></span>'s
-    codomain obligation is: three applications, at three pairs of arguments, all
-    landing in the *one* <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> the Π-value carries.
+The same for a term in an extended context, which is the codomain
+    obligation of <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_pi"><span class="id" title="definition">per_pi</span></a></span>: three applications, at three argument pairs, all in
+    the one <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> the Π-value carries.
 
 <div class="paragraph"> </div>
 
-    Two things make this harder than the type version.  The three obligations must
-    be met in one relation, since <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> quantifies over the PER of a single
-    pair of type values, <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(⟦σ⟧ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> and <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(⟦σ'⟧ρ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span>)</span> — whereas at the
-    universe the element PER is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span> on the nose and the five chains merge
-    with nothing to identify.  And those two type values occur in *none* of the
-    chains the main instantiation produces: it runs along <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span>, so its
-    inner environments are <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span> and <span class="inlinecode"><span class="id" title="var">s'</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>.
+    This is harder than the type version in two ways.  The three obligations must
+    hold in one relation, since <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head"><span class="id" title="definition">per_head</span></a></span> quantifies over the PER of a single pair
+    of type values, <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(⟦σ⟧ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span>)</span> and <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(⟦σ'⟧ρ'</span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span>)</span>; at the universe the
+    element PER is <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span> <span class="inlinecode"><span class="id" title="var">j</span></span> itself, so nothing needs identifying.  And these
+    two type values occur in none of the main instantiation's chains: it runs along
+    <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">σ'</span>, so its inner environments are <span class="inlinecode"><span class="id" title="var">s</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c</span></span> and <span class="inlinecode"><span class="id" title="var">s'</span></span> <span class="inlinecode">↦</span> <span class="inlinecode"><span class="id" title="var">c'</span></span>.
 
 <div class="paragraph"> </div>
 
-    So the bridges carry types as well as terms — which is why they are taken in
-    the <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span> form, the <span class="inlinecode"><span class="id" title="var">Id</span></span> instance that reports both — and
-    the relations are identified along the type values they share, explicitly and
-    not by <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span>, the representative of which is not
-    predictable.  Four bridges suffice, and the graph they close is
-
-<div class="paragraph"> </div>
-
-      mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s' ↦ c')— R
-                                  |
-                                  L2
-
-<div class="paragraph"> </div>
-
-    with <span class="inlinecode"><span class="id" title="var">L2</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> contributing the terms the two commutation obligations want,
-    <span class="inlinecode"><span class="id" title="var">mid</span></span> the relatedness obligation, and <span class="inlinecode"><span class="id" title="var">L1</span></span> nothing but the link that brings the
-    whole thing into the PER <span class="inlinecode"><span class="id" title="var">mid</span></span> is stated at. 
+    So the bridges carry types as well as terms, which is why they use the
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#rel_exp_under_ctx_simple"><span class="id" title="lemma">rel_exp_under_ctx_simple</span></a></span> form, the <span class="inlinecode"><span class="id" title="var">Id</span></span> instance that reports both.  The
+    relations are identified along the type values they share, explicitly rather
+    than by <span class="inlinecode"><span class="id" title="var">handle_per_univ_elem_irrel</span></span>, whose choice of representative is
+    unpredictable.  Four bridges suffice, closing the graph
+<pre>
+mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s' ↦ c')— R
+                    |
+                    L2
+</pre>
+    <span class="inlinecode"><span class="id" title="var">L2</span></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> contribute the terms of the two commutation obligations, <span class="inlinecode"><span class="id" title="var">mid</span></span>
+    the relatedness obligation, and <span class="inlinecode"><span class="id" title="var">L1</span></span> only the link that brings everything into
+    the PER <span class="inlinecode"><span class="id" title="var">mid</span></span> is stated at. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_exp_under_ctx_q" class="idref" href="#rel_exp_under_ctx_q"><span class="id" title="lemma">rel_exp_under_ctx_q</span></a> : <span class="id" title="keyword">forall</span> {<a id="440a89464125d1cfa811823a23fa22a3" class="idref" href="#440a89464125d1cfa811823a23fa22a3"><span class="id" title="binder">Γ</span></a> <a id="113fb6e1b7a04f514b210f5d11087a69" class="idref" href="#113fb6e1b7a04f514b210f5d11087a69"><span class="id" title="binder">Δ</span></a> <a id="b0d9d0fc02bdc0e438dae79bcde3dc87" class="idref" href="#b0d9d0fc02bdc0e438dae79bcde3dc87"><span class="id" title="binder">σ</span></a> <a id="6867b95e646896e671566bb05248eedd" class="idref" href="#6867b95e646896e671566bb05248eedd"><span class="id" title="binder">σ'</span></a> <a id="A:153" class="idref" href="#A:153"><span class="id" title="binder">A</span></a> <a id="i:154" class="idref" href="#i:154"><span class="id" title="binder">i</span></a> <a id="M:155" class="idref" href="#M:155"><span class="id" title="binder">M</span></a> <a id="M':156" class="idref" href="#M':156"><span class="id" title="binder">M'</span></a> <a id="B:157" class="idref" href="#B:157"><span class="id" title="binder">B</span></a> <a id="e1d33afeb8c9b5123f50d80f3616e30c" class="idref" href="#e1d33afeb8c9b5123f50d80f3616e30c"><span class="id" title="binder">env_relΓ</span></a>},<br/>
@@ -1166,9 +1137,9 @@ The four pairs the bridges are taken at, all related by the eight-value
 </div>
 
 <div class="doc">
-Naming the values each bridge shares with the main chain, or with the next
-      bridge along — explicitly, since which of two names
-      <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> keeps is what the merges select on. 
+The values each bridge shares with the main chain or with the next bridge,
+    named explicitly, since the merges depend on which of two names
+    <span class="inlinecode"><span class="id" title="var">functional_eval_rewrite_clear</span></span> keeps. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">x1</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#6cd0f7b28b6092304087c7049437bb1a"><span class="id" title="notation">=</span></a> <span class="id" title="var">b2</span>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_exp"><span class="id" title="lemma">functional_eval_exp</span></a>; <span class="id" title="var">eassumption</span>).<br/>
@@ -1233,35 +1204,31 @@ The four bridging term pairs, transported likewise and merged into the main
 </div>
 
 <div class="doc">
-<a id="lab75"></a><h2 class="section">The Type Judgment of an Instantiation</h2>
+<a id="lab87"></a><h2 class="section">The Type Judgment of an Instantiation</h2>
 
 
 <div class="paragraph"> </div>
 
-    The counterpart of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_typ_of_pi"><span class="id" title="lemma">rel_typ_of_pi</span></a></span> for the *other* shape a type takes in an
-    elimination rule: <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]</span>, the codomain of a Π at the argument being
-    applied, or the motive of a <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-eliminator at the number being eliminated.
-    Every such rule needs the same four values and the same element PER, and
-    getting them is the whole of the work the port added, so it is done once here.
+    The counterpart of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FunctionCases.html#rel_typ_of_pi"><span class="id" title="lemma">rel_typ_of_pi</span></a></span> for the other shape a type takes in an
+    elimination rule: <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]</span>, the codomain of a Π at the applied argument, or
+    the motive of a <span class="inlinecode"><span class="id" title="var">ℕ</span></span>-eliminator at the scrutinee.  Every such rule needs the
+    same four values and element PER, so they are computed once here.
 
 <div class="paragraph"> </div>
 
-    With explicit substitutions there would be nothing to do: <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]</span> would
-    evaluate by a rule that evaluates <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> first, so its value at <span class="inlinecode">ρ</span> would
-    *be* <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span> and the four values would come from one instantiation of
-    <span class="inlinecode"><span class="id" title="var">B</span></span>'s judgment.  Here they are not equal — they differ as soon as <span class="inlinecode"><span class="id" title="var">B</span></span> builds a
-    closure, which captures the environment it is evaluated in, and <span class="inlinecode"><span class="id" title="var">B</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode"><span class="id" title="var">C</span></span> <span class="inlinecode">#1</span>
-    already separates them — so the four values are reachable only through two
-    instantiations of the codomain judgment:
+    The value of <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]</span> at <span class="inlinecode">ρ</span> is not <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span>: the two differ as
+    soon as <span class="inlinecode"><span class="id" title="var">B</span></span> builds a closure, which captures the environment it is evaluated
+    in, and <span class="inlinecode"><span class="id" title="var">B</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">λ</span></span> <span class="inlinecode"><span class="id" title="var">C</span></span> <span class="inlinecode">#1</span> already separates them.  So the four values are reached
+    through two instantiations of the codomain judgment:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
 <li> along <span class="inlinecode">σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[σ]</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[σ']</span>, whose outer values are the goal's outer
-      ones, since <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>][σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">B</span>[σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[σ]]</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub"><span class="id" title="lemma">exp_sub_extend_sub</span></a></span>); and
+      ones, since <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>][σ]</span> <span class="inlinecode">=</span> <span class="inlinecode"><span class="id" title="var">B</span>[σ</span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>[σ]]</span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_extend_sub"><span class="id" title="lemma">exp_sub_extend_sub</span></a></span>);
 
 </li>
-<li> along <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> at the *substituted* pair of environments, whose
+<li> along <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> <span class="inlinecode">≈</span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span> at the substituted pair of environments, whose
       outer values are the goal's inner ones.
 
 </li>
@@ -1270,19 +1237,18 @@ The four bridging term pairs, transported likewise and merged into the main
 <div class="paragraph"> </div>
 
     The two share no value, so a third instance bridges them: the codomain at the
-    pair of arguments that crosses from the one to the other.  Two merges make the
-    chain the goal's four values are selected from.  This is the three-chain shape
+    pair of arguments crossing from one to the other.  Two merges give the chain
+    from which the goal's four values are selected; this is the three-chain shape
     of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#rel_sub_under_ctx_extend_sub"><span class="id" title="lemma">rel_sub_under_ctx_extend_sub</span></a></span>, for the same reason.
 
 <div class="paragraph"> </div>
 
-    The element PER is the canonical head PER of <span class="inlinecode"><span class="id" title="var">B</span></span> at the arguments the *type*
-    names, <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧(⟦σ⟧ρ)</span> and <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧(⟦σ'⟧ρ')</span>.  A consumer's own chains arrive at the
-    head PER of whatever arguments *they* were read at, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span>
-    moves them; what it needs to do so is the codomain at an arbitrary related
-    pair, which is therefore reported alongside.  <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>'s four values and the domain
-    PER they live in are reported too: no consumer can avoid needing them, since
-    they are what its own argument pairs are drawn from. 
+    The element PER is the head PER of <span class="inlinecode"><span class="id" title="var">B</span></span> at the arguments the type names,
+    <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧(⟦σ⟧ρ)</span> and <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧(⟦σ'⟧ρ')</span>.  A consumer's chains arrive in the head PER of
+    the arguments they were read at, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of_args"><span class="id" title="lemma">per_head_of_args</span></a></span> moves them.  For that
+    it needs the codomain at an arbitrary related pair, which is therefore
+    reported too, as are <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a></span>'s four values and their domain PER, from which every
+    consumer draws its argument pairs. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="rel_typ_of_instance" class="idref" href="#rel_typ_of_instance"><span class="id" title="lemma">rel_typ_of_instance</span></a> : <span class="id" title="keyword">forall</span> {<a id="cebcdde4cf278c2497d80b5952bddf81" class="idref" href="#cebcdde4cf278c2497d80b5952bddf81"><span class="id" title="binder">Γ</span></a> <a id="A:172" class="idref" href="#A:172"><span class="id" title="binder">A</span></a> <a id="i:173" class="idref" href="#i:173"><span class="id" title="binder">i</span></a> <a id="B:174" class="idref" href="#B:174"><span class="id" title="binder">B</span></a> <a id="N:175" class="idref" href="#N:175"><span class="id" title="binder">N</span></a>},<br/>
@@ -1413,16 +1379,15 @@ Anchored at the canonical head PER, which is the element PER of the
 </div>
 
 <div class="doc">
-<a id="lab76"></a><h2 class="section">The Diagonal of the Above</h2>
+<a id="lab88"></a><h2 class="section">The Diagonal of the Above</h2>
 
 
 <div class="paragraph"> </div>
 
-    What the *gluing* model needs of an instantiated type.  There is only one
-    environment there, so the four values collapse to two: <span class="inlinecode">⟦<span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]⟧ρ</span> and
-    <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span>, which are still not equal and are still related — they are
-    the first link of the chain above.  Relatedness is all the gluing model asks
-    for, because
+    What the gluing model needs of an instantiated type.  There is only one
+    environment there, so the four values collapse to two, <span class="inlinecode">⟦<span class="id" title="var">B</span>[<span class="id" title="var">Id</span></span> <span class="inlinecode">,,</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]⟧ρ</span> and
+    <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span>, which are not equal but are related: they form the first
+    link of the chain above.  Relatedness suffices because
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_resp_per_univ"><span class="id" title="lemma">glu_univ_elem_resp_per_univ</span></a></span> transports a gluing predicate along
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ"><span class="id" title="definition">per_univ</span></a></span>. 
 </div>

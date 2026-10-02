@@ -31,46 +31,44 @@
 </div>
 
 <div class="doc">
-<a id="lab141"></a><h1 class="section">Kripke Weakenings</h1>
+<a id="lab171"></a><h1 class="section">Kripke Weakenings</h1>
 
 
 <div class="paragraph"> </div>
 
-    The gluing model is stable only under a sub-class of the weakenings: those
-    built from <span class="inlinecode">↑</span> alone, with no lifting <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">φ</span> under a binder.  These are the
-    *Kripke* weakenings, written <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>.
+    The gluing model is stable only under a subclass of the weakenings: those
+    built from <span class="inlinecode">↑</span> alone, with no lifting <span class="inlinecode"><span class="id" title="var">q</span></span> <span class="inlinecode">φ</span> under a binder. These are the
+    Kripke weakenings, written <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>.
 
 <div class="paragraph"> </div>
 
-    Two deviations from the rules a Kripke presentation would give, both
-    inherited from the shape the gluing proofs need:
+    The rules differ from a standard Kripke presentation in two ways, both to
+    fit the gluing proofs:
 
 <div class="paragraph"> </div>
 
 <ul class="doclist">
-<li> The rules recurse on the *codomain*, so the domain <span class="inlinecode"><span class="id" title="var">Γ</span></span> is a parameter.
-      Composition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_compose"><span class="id" title="lemma">kripke_compose</span></a></span>) is then an induction on the *outer*
-      weakening; recursing on the domain instead would ask for a strengthening
-      lemma in that case, which the system does not have.
+<li> The rules recurse on the codomain, so the domain <span class="inlinecode"><span class="id" title="var">Γ</span></span> is a parameter.
+      Composition (<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_compose"><span class="id" title="lemma">kripke_compose</span></a></span>) is then an induction on the outer
+      weakening; recursing on the domain would need a strengthening lemma,
+      which the system does not have.
 
 </li>
-<li> Both rules may coarsen their codomain by a refinement <span class="inlinecode"><span class="id" title="var">Δ'</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>,
-      so the judgment is closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_ctxsub"><span class="id" title="lemma">kripke_ctxsub</span></a></span> — which the subtyping
-      cases need.  The price is that <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> no longer implies
-      <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">w</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_wk_lookup"><span class="id" title="projection">wf_wk_lookup</span></a></span> demands a variable *lookup* in <span class="inlinecode"><span class="id" title="var">Γ</span></span> at the
-      very type <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span>, and refinement only gives a subtype of it.  So the
-      escape lemma is <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_escape"><span class="id" title="lemma">kripke_escape</span></a></span>, landing in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a></span> via <span class="inlinecode"><span class="id" title="var">ι</span></span>; it
-      transports judgments just as well.
+<li> Both rules may coarsen their codomain by a refinement <span class="inlinecode"><span class="id" title="var">Δ'</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>, so the
+      judgment is closed under <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_ctxsub"><span class="id" title="lemma">kripke_ctxsub</span></a></span>, which the subtyping cases
+      need. As a consequence <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">k</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> does not imply <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">w</span></span> <span class="inlinecode">φ</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span>:
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_wk_lookup"><span class="id" title="projection">wf_wk_lookup</span></a></span> demands a variable lookup in <span class="inlinecode"><span class="id" title="var">Γ</span></span> at exactly <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[φ]ʷ</span>, and
+      refinement only gives a subtype of it. The escape lemma is therefore
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_escape"><span class="id" title="lemma">kripke_escape</span></a></span>, which lands in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a></span> via <span class="inlinecode"><span class="id" title="var">ι</span></span>.
 
 </li>
 </ul>
 
 <div class="paragraph"> </div>
 
-    The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a></span> premise is the slack the old explicit-substitution presentation
-    got from stating the rules up to <span class="inlinecode">≈</span>: it makes the judgment <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span>, so a
-    weakening may be presented in any form pointwise equal to the canonical one.
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_shiftn"><span class="id" title="lemma">kripke_shiftn</span></a></span> recovers that canonical form, <span class="inlinecode">⇑^<span class="id" title="var">n</span></span>. 
+    The <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_eq"><span class="id" title="definition">wk_eq</span></a></span> premise makes the judgment <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span>: a weakening may be
+    presented in any form pointwise equal to the canonical one, <span class="inlinecode">⇑^<span class="id" title="var">n</span></span>, which
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.Weakening.Lemmas.html#kripke_shiftn"><span class="id" title="lemma">kripke_shiftn</span></a></span> recovers. 
 </div>
 <div class="code">
 

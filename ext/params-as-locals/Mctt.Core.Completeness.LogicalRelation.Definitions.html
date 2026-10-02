@@ -31,31 +31,26 @@
 </div>
 
 <div class="doc">
-<a id="lab29"></a><h1 class="section">The Semantic Judgments</h1>
+<a id="lab39"></a><h1 class="section">The Semantic Judgments</h1>
 
 
 <div class="paragraph"> </div>
 
-    The judgments are defined in four layers — weakenings, substitutions, terms, subtyping — and then packaged
-    by an inductive <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>.
+    The judgments are defined in four layers (weakenings, substitutions, terms,
+    subtyping) and packaged by an inductive <span class="inlinecode">⊨</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>.
 
 <div class="paragraph"> </div>
 
-    Each of the middle two layers states its conclusion as a *four-value
-    pattern* (see <span class="inlinecode"><span class="id" title="library">Core</span>/<span class="id" title="var">Semantic</span>/<span class="id" title="library">PER</span>/<span class="id" title="var">Chain.v</span></span>):
-
-<div class="paragraph"> </div>
-
-      {⟦M<span class="inlinecode">σ</span>⟧(ρ), ⟦M⟧(⟦σ⟧(ρ)), ⟦M'⟧(⟦σ'⟧(ρ')), ⟦M'<span class="inlinecode">σ'</span>⟧(ρ')} ⊆ R
-
-<div class="paragraph"> </div>
-
-    whose three consecutive links are, in order, the *commutation* obligation on
-    the left, the *relatedness* obligation in the middle, and the commutation
-    obligation on the right.  With explicit substitutions the two commutations
-    are reflexivity, because <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]⟧(ρ)</span> and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧(⟦σ⟧(ρ))</span> are then the same
-    derivation; with substitution as an operation they are not even equal, and discharging them at every case of the fundamental theorem is the
-    price of the operational presentation. 
+    The substitution and term layers state their conclusion as a four-value
+    pattern (see <span class="inlinecode"><span class="id" title="library">Core</span>/<span class="id" title="var">Semantic</span>/<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a>/<span class="id" title="var">Chain.v</span></span>):
+<pre>
+{⟦M[σ]⟧(ρ), ⟦M⟧(⟦σ⟧(ρ)), ⟦M'⟧(⟦σ'⟧(ρ')), ⟦M'[σ']⟧(ρ')} ⊆ R
+</pre>
+    Its three consecutive links are the commutation obligation on the left, the
+    relatedness obligation in the middle, and the commutation obligation on the
+    right.  Substitution is an operation, so <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>[σ]⟧(ρ)</span> and <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>⟧(⟦σ⟧(ρ))</span> are in
+    general not equal, and every case of the fundamental theorem must discharge
+    both commutations. 
 </div>
 <div class="code">
 
@@ -81,18 +76,17 @@
 </div>
 
 <div class="doc">
-<a id="lab30"></a><h1 class="section">Semantic Weakening</h1>
+<a id="lab40"></a><h1 class="section">Semantic Weakening</h1>
 
 
 <div class="paragraph"> </div>
 
-    Because a weakening is an operation, related environments are not
-    automatically related after it is applied; the semantic judgment for
-    weakenings simply demands it.  Stripped of its two context witnesses this is
-    <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode">==&gt;</span> <span class="inlinecode"><span class="id" title="var">R'</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk"><span class="id" title="definition">eval_wk</span></a></span> <span class="inlinecode">φ)</span>, for a weakening that moves no variable
-    down: environments are lists, and that is what makes weakenings compose on
-    them (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_compose"><span class="id" title="lemma">eval_wk_compose</span></a></span>).  Every weakening the proofs instantiate this at is
-    built from <span class="inlinecode">↑</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span>, hence is one. 
+    A weakening is an operation, so related environments need not stay related
+    after it is applied; the semantic judgment for weakenings requires that they
+    do.  Without its two context witnesses it is <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.Morphisms.html#Proper"><span class="id" title="class">Proper</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> <span class="inlinecode">==&gt;</span> <span class="inlinecode"><span class="id" title="var">R'</span>)</span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk"><span class="id" title="definition">eval_wk</span></a></span> <span class="inlinecode">φ)</span>,
+    for a weakening that moves no variable down: environments are lists, which is
+    what makes weakenings compose on them (<span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#eval_wk_compose"><span class="id" title="lemma">eval_wk_compose</span></a></span>).  Every weakening
+    the proofs use is built from <span class="inlinecode">↑</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a></span>, hence is of this kind. 
 </div>
 <div class="code">
 
@@ -116,7 +110,7 @@
 </div>
 
 <div class="doc">
-<a id="lab31"></a><h1 class="section">Semantic Substitution Equality</h1>
+<a id="lab41"></a><h1 class="section">Semantic Substitution Equality</h1>
 
 
 <div class="paragraph"> </div>
@@ -161,16 +155,16 @@
 </div>
 
 <div class="doc">
-<a id="lab32"></a><h1 class="section">Semantic Judgment for Terms</h1>
+<a id="lab42"></a><h1 class="section">Semantic Judgment for Terms</h1>
 
 
 <div class="paragraph"> </div>
 
-    Terms are asked to be stable under semantic *substitutions* rather than
-    weakenings.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp"><span class="id" title="inductive">rel_exp</span></a></span> is the four-value pattern of one expression pair; the
-    two environments <span class="inlinecode">ρσ</span> and <span class="inlinecode">ρ'σ'</span> are parameters rather than existentials
-    because the type chain and the term chain must be read in the *same* pair of
-    environments — an environment carries into closures, so replacing it by a
+    Terms are required to be stable under semantic substitutions rather than
+    weakenings.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_exp"><span class="id" title="inductive">rel_exp</span></a></span> is the four-value pattern of one expression pair.  The
+    two environments <span class="inlinecode">ρσ</span> and <span class="inlinecode">ρ'σ'</span> are parameters rather than existentials,
+    because the type chain and the term chain must be read in the same pair of
+    environments: closures capture their environment, so replacing it by a
     pointwise-equal one changes the values. 
 </div>
 <div class="code">
@@ -191,9 +185,9 @@
 </div>
 
 <div class="doc">
-The same pattern one universe up: the four values of a *type* are related in
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span>, which additionally pins down the element PER <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> that
-    the term chain then lives in. 
+The same pattern one universe up: the four values of a type are related in
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_univ_elem"><span class="id" title="definition">per_univ_elem</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span>, which also fixes the element PER <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.R"><span class="id" title="variable">R</span></a></span> that the term chain
+    lives in. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="rel_typ" class="idref" href="#rel_typ"><span class="id" title="definition">rel_typ</span></a> <a id="i:56" class="idref" href="#i:56"><span class="id" title="binder">i</span></a> <a id="A:57" class="idref" href="#A:57"><span class="id" title="binder">A</span></a> <a id="4a70e451ab5af26934c040fea6e57d54" class="idref" href="#4a70e451ab5af26934c040fea6e57d54"><span class="id" title="binder">σ</span></a> <a id="e710be06c196c763dc9f3dc7ef83c846" class="idref" href="#e710be06c196c763dc9f3dc7ef83c846"><span class="id" title="binder">ρ</span></a> <a id="f65d0a01b7c0e364ff5bc3127af98ae3" class="idref" href="#f65d0a01b7c0e364ff5bc3127af98ae3"><span class="id" title="binder">ρσ</span></a> <a id="A':61" class="idref" href="#A':61"><span class="id" title="binder">A'</span></a> <a id="2ee3f9a3e8ce32a0dd30809f951d4eb5" class="idref" href="#2ee3f9a3e8ce32a0dd30809f951d4eb5"><span class="id" title="binder">σ'</span></a> <a id="d1df33144f6474d672691b7acf60dfc7" class="idref" href="#d1df33144f6474d672691b7acf60dfc7"><span class="id" title="binder">ρ'</span></a> <a id="240d7392ca9fe754744b546dfb9e020c" class="idref" href="#240d7392ca9fe754744b546dfb9e020c"><span class="id" title="binder">ρ'σ'</span></a> <a id="R:65" class="idref" href="#R:65"><span class="id" title="binder">R</span></a> :=<br/>
@@ -206,26 +200,23 @@ The same pattern one universe up: the four values of a *type* are related in
 </div>
 
 <div class="doc">
-The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <span class="inlinecode">σ</span> evaluates to suggests that
-    evaluation is a metafunction.  Here it is a relation, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_sub"><span class="id" title="lemma">functional_eval_sub</span></a></span> pins its result down only up to <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span> — which is
-    *not* enough to substitute one witness for another, since evaluation does not
-    respect <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span> (a closure captures its environment).  So the two
-    environments are quantified **universally**, over evaluation witnesses
-    supplied by the caller, rather than existentially: any two proofs that <span class="inlinecode">σ</span>
-    evaluates at <span class="inlinecode">ρ</span> are then interchangeable by construction.
+The notation <span class="inlinecode">⟦σ⟧(ρ)</span> suggests that evaluation of <span class="inlinecode">σ</span> is a function.  It is
+    a relation, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Evaluation.Lemmas.html#functional_eval_sub"><span class="id" title="lemma">functional_eval_sub</span></a></span> determines its result only up to
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span>.  That does not allow substituting one witness for another, since
+    evaluation does not respect <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.Domain.html#env_eq"><span class="id" title="definition">env_eq</span></a></span> (a closure captures its environment).  So
+    the two environments are quantified universally, over evaluation witnesses
+    supplied by the caller, rather than existentially; any two proofs that <span class="inlinecode">σ</span>
+    evaluates at <span class="inlinecode">ρ</span> are then interchangeable.
 
 <div class="paragraph"> </div>
 
-    Nothing is lost.  The judgment no longer *claims* that <span class="inlinecode">σ</span> evaluates at <span class="inlinecode">ρ</span>,
-    but that claim is already part of <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_sub_under_ctx"><span class="id" title="definition">rel_sub_under_ctx</span></a></span> <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">σ'</span>, which every
-    instantiation must supply anyway.  And nothing is gained for free: each case
-    of the fundamental theorem must now produce its values at whatever
-    environment the caller names.  That it can is exactly what makes the
-    inductive cases fit together — a premise's values arrive in the *same*
-    environment as the conclusion's, so two instantiations of one judgment
-    genuinely share values instead of merely being pointwise equal, and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_merge"><span class="id" title="lemma">rel_chain_merge</span></a></span> applies. 
+    The judgment does not itself claim that <span class="inlinecode">σ</span> evaluates at <span class="inlinecode">ρ</span>; that is part of
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_sub_under_ctx"><span class="id" title="definition">rel_sub_under_ctx</span></a></span> <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">σ'</span>, which every instantiation supplies.  In return,
+    each case of the fundamental theorem must produce its values at whatever
+    environment the caller names.  This is what makes the inductive cases fit: a
+    premise's values arrive in the same environment as the conclusion's, so two
+    instantiations of one judgment share values rather than being pointwise
+    equal, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#rel_chain_merge"><span class="id" title="lemma">rel_chain_merge</span></a></span> applies. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="rel_exp_under_ctx" class="idref" href="#rel_exp_under_ctx"><span class="id" title="definition">rel_exp_under_ctx</span></a> <a id="e3106d3337230bb284c35abdede1ac02" class="idref" href="#e3106d3337230bb284c35abdede1ac02"><span class="id" title="binder">Γ</span></a> <a id="A:67" class="idref" href="#A:67"><span class="id" title="binder">A</span></a> <a id="M:68" class="idref" href="#M:68"><span class="id" title="binder">M</span></a> <a id="M':69" class="idref" href="#M':69"><span class="id" title="binder">M'</span></a> : <span class="id" title="keyword">Prop</span> :=<br/>
@@ -250,7 +241,7 @@ The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <s
 </div>
 
 <div class="doc">
-<a id="lab33"></a><h1 class="section">Semantic Judgment for Subtyping</h1>
+<a id="lab43"></a><h1 class="section">Semantic Judgment for Subtyping</h1>
 
 
 <div class="paragraph"> </div>
@@ -291,15 +282,15 @@ The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <s
 </div>
 
 <div class="doc">
-<a id="lab34"></a><h1 class="section">Semantic Context Well-Formedness</h1>
+<a id="lab44"></a><h1 class="section">Semantic Context Well-Formedness</h1>
 
 
 <div class="paragraph"> </div>
 
-    Unlike <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#valid_ctx"><span class="id" title="definition">valid_ctx</span></a></span> (which is just <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx"><span class="id" title="definition">per_ctx</span></a></span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>), this is inductive, and each
-    extension step carries both the context PER witness and the semantic
-    well-formedness of the type — so <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a></span> reads the PER
-    straight off any derivation. 
+    An inductive judgment whose extension step carries both the context PER
+    witness and the semantic well-formedness of the type (and, for a
+    definition, of its body), so <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a></span> reads the PER off any
+    derivation. 
 </div>
 <div class="code">
 
@@ -311,6 +302,12 @@ The notation <span class="inlinecode">⟦σ⟧(ρ)</span> for the environment <s
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">EF</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#0e1bf0b524e757fdeece72811bdc1c94"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:104"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#0e1bf0b524e757fdeece72811bdc1c94"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:104"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env"><span class="id" title="inductive">per_ctx_env</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#env_rel:106"><span class="id" title="variable">env_rel</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#0e1bf0b524e757fdeece72811bdc1c94"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:104"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:104"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#85d81774f0dc3db1c7541bd9daa4adc2"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#0e1bf0b524e757fdeece72811bdc1c94"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:104"><span class="id" title="variable">A</span></a><br/>
+| <a id="sem_ctx_cons_def" class="idref" href="#sem_ctx_cons_def"><span class="id" title="constructor">sem_ctx_cons_def</span></a> : <span class="id" title="keyword">forall</span> <a id="367e0b75814c690d9518e83afce12d6f" class="idref" href="#367e0b75814c690d9518e83afce12d6f"><span class="id" title="binder">Γ</span></a> <a id="A:108" class="idref" href="#A:108"><span class="id" title="binder">A</span></a> <a id="M:109" class="idref" href="#M:109"><span class="id" title="binder">M</span></a> <a id="i:110" class="idref" href="#i:110"><span class="id" title="binder">i</span></a> <a id="env_rel:111" class="idref" href="#env_rel:111"><span class="id" title="binder">env_rel</span></a>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#85d81774f0dc3db1c7541bd9daa4adc2"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">EF</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">▸</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#M:109"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">▸</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#M:109"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">∈</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#per_ctx_env"><span class="id" title="inductive">per_ctx_env</span></a> <a class="idref" href="Mctt.Core.Semantic.PER.Definitions.html#36f15cc5732013ff4b6d30ad1eac601e"><span class="id" title="notation">↘</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#env_rel:111"><span class="id" title="variable">env_rel</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#M:109"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#M:109"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3d14f5d459a69539b929347870c765c4"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#85d81774f0dc3db1c7541bd9daa4adc2"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#367e0b75814c690d9518e83afce12d6f"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">▸</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#A:108"><span class="id" title="variable">A</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ff261c9e2fdb5ba767228f60c5749d50"><span class="id" title="notation">≔</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#M:109"><span class="id" title="variable">M</span></a><br/>
 <span class="id" title="keyword">where</span> <a id="85d81774f0dc3db1c7541bd9daa4adc2" class="idref" href="#85d81774f0dc3db1c7541bd9daa4adc2"><span class="id" title="notation">&quot;</span></a>⊨ Γ" := (<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#sem_ctx:102"><span class="id" title="inductive">sem_ctx</span></a> <span class="id" title="var">Γ</span>) : <span class="id" title="var">type_scope</span>.<br/>
 
 <br/>
@@ -362,7 +359,7 @@ A semantic weakening in scope says its weakening moves no variable
 <span class="id" title="keyword">Existing Class</span> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#rel_wk_under_ctx"><span class="id" title="definition">rel_wk_under_ctx</span></a>.<br/>
 
 <br/>
-#[<span class="id" title="var">export</span>] <span class="id" title="keyword">Instance</span> <a id="rel_wk_under_ctx_mono" class="idref" href="#rel_wk_under_ctx_mono"><span class="id" title="instance">rel_wk_under_ctx_mono</span></a> {<a id="GC:107" class="idref" href="#GC:107"><span class="id" title="binder">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>} {<a id="21b110d90ed5334f39e3c13b8af174d2" class="idref" href="#21b110d90ed5334f39e3c13b8af174d2"><span class="id" title="binder">Γ</span></a> <a id="4147f03088a8dd12b113e2c5031c9a7b" class="idref" href="#4147f03088a8dd12b113e2c5031c9a7b"><span class="id" title="binder">φ</span></a> <a id="e9c4b5cb3a4378c615c6d4bdb385a746" class="idref" href="#e9c4b5cb3a4378c615c6d4bdb385a746"><span class="id" title="binder">Δ</span></a>} (<a id="a0e5ee3f4c586a789b28569fc8366086" class="idref" href="#a0e5ee3f4c586a789b28569fc8366086"><span class="id" title="binder">H</span></a><a id="a0e5ee3f4c586a789b28569fc8366086" class="idref" href="#a0e5ee3f4c586a789b28569fc8366086"><span class="id" title="binder">φ</span></a> : <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#21b110d90ed5334f39e3c13b8af174d2"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">⊨</span></a><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">w</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#4147f03088a8dd12b113e2c5031c9a7b"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#e9c4b5cb3a4378c615c6d4bdb385a746"><span class="id" title="variable">Δ</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#WkMono"><span class="id" title="class">WkMono</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#4147f03088a8dd12b113e2c5031c9a7b"><span class="id" title="variable">φ</span></a>.<br/>
+#[<span class="id" title="var">export</span>] <span class="id" title="keyword">Instance</span> <a id="rel_wk_under_ctx_mono" class="idref" href="#rel_wk_under_ctx_mono"><span class="id" title="instance">rel_wk_under_ctx_mono</span></a> {<a id="GC:112" class="idref" href="#GC:112"><span class="id" title="binder">GC</span></a> : <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="class">GCtx</span></a>} {<a id="b753e80e0e5dfbb52eabc9cec0d12fc6" class="idref" href="#b753e80e0e5dfbb52eabc9cec0d12fc6"><span class="id" title="binder">Γ</span></a> <a id="3edc1d4cc89f1dc0dcbd5676df1a8d66" class="idref" href="#3edc1d4cc89f1dc0dcbd5676df1a8d66"><span class="id" title="binder">φ</span></a> <a id="b0a488e621cdda3663061c157ec625fe" class="idref" href="#b0a488e621cdda3663061c157ec625fe"><span class="id" title="binder">Δ</span></a>} (<a id="8d71f11e94c3fb1da0bfb42615930be7" class="idref" href="#8d71f11e94c3fb1da0bfb42615930be7"><span class="id" title="binder">H</span></a><a id="8d71f11e94c3fb1da0bfb42615930be7" class="idref" href="#8d71f11e94c3fb1da0bfb42615930be7"><span class="id" title="binder">φ</span></a> : <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#b753e80e0e5dfbb52eabc9cec0d12fc6"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">⊨</span></a><a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">w</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3edc1d4cc89f1dc0dcbd5676df1a8d66"><span class="id" title="variable">φ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#45a1207b17d6a69e2d4f1f34871c40de"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#b0a488e621cdda3663061c157ec625fe"><span class="id" title="variable">Δ</span></a>) : <a class="idref" href="Mctt.Core.Semantic.Domain.html#WkMono"><span class="id" title="class">WkMono</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3edc1d4cc89f1dc0dcbd5676df1a8d66"><span class="id" title="variable">φ</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span>φ <span class="id" title="keyword">as</span> [? [? [? [? []]]]]; <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>

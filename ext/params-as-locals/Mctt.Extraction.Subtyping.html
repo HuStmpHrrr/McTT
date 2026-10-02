@@ -65,9 +65,8 @@
 </div>
 
 <div class="doc">
-Pseudo-monadic syntax for the next catch-all branch
-    generates some unsolved obligations, so we directly match on
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_dec"><span class="id" title="lemma">nf_eq_dec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">B</span></span> here. 
+Pseudo-monadic syntax in this catch-all branch leaves obligations
+    unsolved, so it matches on <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_dec"><span class="id" title="lemma">nf_eq_dec</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">B</span></span> directly. 
 </div>
 <div class="code">
 | <a class="idref" href="Mctt.Extraction.Subtyping.html#A:16"><span class="id" title="variable">A</span></a>, <a class="idref" href="Mctt.Extraction.Subtyping.html#B:19"><span class="id" title="variable">B</span></a> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#nf_eq_dec"><span class="id" title="lemma">nf_eq_dec</span></a> <span class="id" title="var">A</span> <span class="id" title="var">B</span> =&gt; {<br/>
@@ -79,8 +78,8 @@ Pseudo-monadic syntax for the next catch-all branch
 </div>
 
 <div class="doc">
-The definitions of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Subtyping.html#subtyping_nf_impl"><span class="id" title="definition">subtyping_nf_impl</span></a></span> already come with soundness proofs,
-    as well as obvious completeness. 
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Subtyping.html#subtyping_nf_impl"><span class="id" title="definition">subtyping_nf_impl</span></a></span> is sound by construction, and its completeness is
+    straightforward. 
 </div>
 <div class="code">
 
@@ -145,7 +144,7 @@ The definitions of <span class="inlinecode"><a class="idref" href="Mctt.Extracti
 </div>
 
 <div class="doc">
-Similar for <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Subtyping.html#subtyping_impl"><span class="id" title="definition">subtyping_impl</span></a></span>. 
+The same holds for <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Subtyping.html#subtyping_impl"><span class="id" title="definition">subtyping_impl</span></a></span>. 
 </div>
 <div class="code">
 

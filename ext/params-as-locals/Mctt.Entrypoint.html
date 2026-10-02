@@ -47,18 +47,30 @@
 </div>
 
 <div class="doc">
-<a id="lab263"></a><h1 class="section">The Driver's Entry Point</h1>
+<a id="lab294"></a><h1 class="section">The Driver's Entry Point</h1>
 
 
 <div class="paragraph"> </div>
 
     The program on the command line is parsed, elaborated into core commands,
     and run by the verified interpreter of <span class="inlinecode"><span class="id" title="library">Extraction.Command</span></span>, which loads
-    every unit it imports.  Two things come from the driver: <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span>, the
-    file IO that finds a unit under the search root, and <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Impl.read"><span class="id" title="variable">read</span></a></span>, which lexes and
-    parses what it found — the lexer being OCaml.  The termination proof of the
-    loader is a <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> argument, erased by extraction: it holds when the search
-    root has finitely many units (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step_wf"><span class="id" title="lemma">load_step_wf</span></a></span>). 
+    every unit it imports.  The driver supplies two functions:
+
+<div class="paragraph"> </div>
+
+<ul class="doclist">
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Files.load_path"><span class="id" title="variable">load_path</span></a></span>, the file IO that finds a unit under the search root;
+
+</li>
+<li> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#Impl.read"><span class="id" title="variable">read</span></a></span>, which lexes (in OCaml) and parses what was found.
+
+</li>
+</ul>
+
+<div class="paragraph"> </div>
+
+    Termination of the loader is a <span class="inlinecode"><span class="id" title="keyword">Prop</span></span> argument, erased by extraction; it
+    holds when the search root has finitely many units (<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#load_step_wf"><span class="id" title="lemma">load_step_wf</span></a></span>). 
 </div>
 <div class="code">
 
@@ -81,8 +93,8 @@
 </div>
 
 <div class="doc">
-Elaborated once more only to report its message: the interpreter's
-      <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#to_core"><span class="id" title="definition">to_core</span></a></span> keeps the option. 
+The program is elaborated here only to report the error message, since
+      the interpreter's <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#to_core"><span class="id" title="definition">to_core</span></a></span> returns an option. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="main" class="idref" href="#main"><span class="id" title="definition">main</span></a> (<a id="log_fuel:9" class="idref" href="#log_fuel:9"><span class="id" title="binder">log_fuel</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="buf:10" class="idref" href="#buf:10"><span class="id" title="binder">buf</span></a> : <a class="idref" href="Mctt.Frontend.Parser.html#MenhirLibParser.Inter.buffer"><span class="id" title="record">buffer</span></a>) : <a class="idref" href="Mctt.Entrypoint.html#main_result"><span class="id" title="inductive">main_result</span></a> :=<br/>
@@ -104,10 +116,10 @@ Elaborated once more only to report its message: the interpreter's
 </div>
 
 <div class="doc">
-What <span class="inlinecode"><a class="idref" href="Mctt.Entrypoint.html#AllGood"><span class="id" title="constructor">AllGood</span></a></span> certifies: the program means a well-formed global
-      context, the one computed up to the order of units within a level, and
-      every reported <span class="inlinecode"><span class="id" title="tactic">eval</span></span> is well typed, in the context of the parameters of
-      the frames it stands in, with the normal form shown. 
+What <span class="inlinecode"><a class="idref" href="Mctt.Entrypoint.html#AllGood"><span class="id" title="constructor">AllGood</span></a></span> certifies: the program denotes a well-formed global
+      context, equal to the computed one up to the order of units within a
+      level, and every reported <span class="inlinecode"><span class="id" title="tactic">eval</span></span> is well typed, in the context of the
+      parameters of its enclosing frames, with the normal form shown. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="main_sound" class="idref" href="#main_sound"><span class="id" title="lemma">main_sound</span></a> : <span class="id" title="keyword">forall</span> <a id="log_fuel:11" class="idref" href="#log_fuel:11"><span class="id" title="binder">log_fuel</span></a> <a id="buf:12" class="idref" href="#buf:12"><span class="id" title="binder">buf</span></a> <a id="prg:13" class="idref" href="#prg:13"><span class="id" title="binder">prg</span></a> <a id="9401309586a3727db9b21d8c17b14653" class="idref" href="#9401309586a3727db9b21d8c17b14653"><span class="id" title="binder">Θ</span></a> <a id="U:15" class="idref" href="#U:15"><span class="id" title="binder">U</span></a> <a id="log:16" class="idref" href="#log:16"><span class="id" title="binder">log</span></a>,<br/>
@@ -133,7 +145,7 @@ What <span class="inlinecode"><a class="idref" href="Mctt.Entrypoint.html#AllGoo
 </div>
 
 <div class="doc">
-And a program that has a meaning is run to completion. 
+A program that has a meaning runs to completion. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Theorem</span> <a id="main_complete" class="idref" href="#main_complete"><span class="id" title="lemma">main_complete</span></a> : <span class="id" title="keyword">forall</span> <a id="log_fuel:19" class="idref" href="#log_fuel:19"><span class="id" title="binder">log_fuel</span></a> <a id="buf:20" class="idref" href="#buf:20"><span class="id" title="binder">buf</span></a> <a id="prg:21" class="idref" href="#prg:21"><span class="id" title="binder">prg</span></a> <a id="buf':22" class="idref" href="#buf':22"><span class="id" title="binder">buf'</span></a> <a id="ffad0901e5451163de532a26ed9f5b7c" class="idref" href="#ffad0901e5451163de532a26ed9f5b7c"><span class="id" title="binder">ΘR</span></a> <a id="U:24" class="idref" href="#U:24"><span class="id" title="binder">U</span></a>,<br/>

@@ -31,22 +31,21 @@
 </div>
 
 <div class="doc">
-<a id="lab119"></a><h1 class="section">Π-Types in the Gluing Model</h1>
+<a id="lab145"></a><h1 class="section">Π-Types in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
 
-    The two pi predicates quantify over Kripke weakenings, so a codomain
-    obligation arrives as <span class="inlinecode"><span class="id" title="var">OT</span>[(<span class="id" title="var">ι</span></span> <span class="inlinecode">φ),,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span> where it used to arrive as
-    <span class="inlinecode"><span class="id" title="var">OT</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">τ][<span class="id" title="var">Id</span>,,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span>.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend_wk"><span class="id" title="lemma">exp_sub_q_extend_wk</span></a></span> is what bridges the two, replacing
-    the deleted <span class="inlinecode"><span class="id" title="var">sub_decompose_q_typ</span></span>, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span> replaces <span class="inlinecode">σ</span> <span class="inlinecode">∘</span> <span class="inlinecode">τ</span>
-    throughout.
+    The Π gluing predicates quantify over Kripke weakenings, so a codomain
+    obligation has the form <span class="inlinecode"><span class="id" title="var">OT</span>[(<span class="id" title="var">ι</span></span> <span class="inlinecode">φ),,<a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a>]</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend_wk"><span class="id" title="lemma">exp_sub_q_extend_wk</span></a></span> relates it
+    to the <span class="inlinecode"><span class="id" title="var">q</span></span>-form, and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ</span> is a substitution followed by a Kripke
+    weakening.
 
 <div class="paragraph"> </div>
 
-    The extended context PER is built canonically with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a></span>, out
-    of exactly what <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion_simple"><span class="id" title="lemma">rel_exp_of_typ_inversion_simple</span></a></span> delivers, so the head
-    obligations are <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend_intro'"><span class="id" title="lemma">per_env_extend_intro'</span></a></span> followed by <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of"><span class="id" title="lemma">per_head_of</span></a></span>. 
+    The extended context PER is built with <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_ctx_env_extend"><span class="id" title="lemma">per_ctx_env_extend</span></a></span> from what
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.UniverseCases.html#rel_exp_of_typ_inversion_simple"><span class="id" title="lemma">rel_exp_of_typ_inversion_simple</span></a></span> delivers, so the head obligations follow
+    from <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_env_extend_intro'"><span class="id" title="lemma">per_env_extend_intro'</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Lemmas.html#per_head_of"><span class="id" title="lemma">per_head_of</span></a></span>. 
 </div>
 <div class="code">
 
@@ -67,9 +66,9 @@
 </div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#cons_glu_sub_pred_helper"><span class="id" title="lemma">cons_glu_sub_pred_helper</span></a></span> postcomposed by a Kripke weakening: <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ][φ]ʷ</span> and
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ)]</span> are the same expression, so the head premise needs only a
-    <span class="inlinecode"><span class="id" title="tactic">rewrite</span></span> rather than the old instance of <span class="inlinecode"><span class="id" title="var">Sub</span>-<span class="id" title="var">Comp</span></span>. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Lemmas.html#cons_glu_sub_pred_helper"><span class="id" title="lemma">cons_glu_sub_pred_helper</span></a></span> postcomposed by a Kripke weakening. Since
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ][φ]ʷ</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ)]</span> are the same expression, the head premise
+    needs only a <span class="inlinecode"><span class="id" title="tactic">rewrite</span></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
@@ -103,11 +102,11 @@
 </div>
 
 <div class="doc">
-β at a substitution followed by a Kripke weakening.  Both sides of the
-    equation the <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#pi_glu_exp_pred"><span class="id" title="inductive">pi_glu_exp_pred</span></a></span> app clause needs are instances of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_pi_beta"><span class="id" title="constructor">wf_exp_eq_pi_beta</span></a></span> at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ)</span> once <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_sub"><span class="id" title="lemma">exp_wk_sub</span></a></span> has collapsed the two
-    steps into one substitution and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend"><span class="id" title="lemma">exp_sub_q_extend</span></a></span> has put the two bodies
-    into <span class="inlinecode"><span class="id" title="var">q</span></span>-form. 
+β at a substitution followed by a Kripke weakening. Both sides of the
+    equation needed by the application clause of <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#pi_glu_exp_pred"><span class="id" title="inductive">pi_glu_exp_pred</span></a></span> are
+    instances of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_pi_beta"><span class="id" title="constructor">wf_exp_eq_pi_beta</span></a></span> at <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_wk"><span class="id" title="definition">sb_wk</span></a></span> <span class="inlinecode">σ</span> <span class="inlinecode">φ)</span>, once <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_wk_sub"><span class="id" title="lemma">exp_wk_sub</span></a></span> has
+    merged the two steps into one substitution and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_q_extend"><span class="id" title="lemma">exp_sub_q_extend</span></a></span> has put
+    both bodies into <span class="inlinecode"><span class="id" title="var">q</span></span>-form. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="exp_eq_fn_sub_wk_beta" class="idref" href="#exp_eq_fn_sub_wk_beta"><span class="id" title="lemma">exp_eq_fn_sub_wk_beta</span></a> : <span class="id" title="keyword">forall</span> {<a id="a2b47ff948e41f039782f954507c588d" class="idref" href="#a2b47ff948e41f039782f954507c588d"><span class="id" title="binder">Γ</span></a> <a id="88f5d5ae9c03ad1ebcc05ae4596c9df8" class="idref" href="#88f5d5ae9c03ad1ebcc05ae4596c9df8"><span class="id" title="binder">Δ</span></a> <a id="a3b36fa55bbd28976f5df3c703691d2e" class="idref" href="#a3b36fa55bbd28976f5df3c703691d2e"><span class="id" title="binder">Δ'</span></a> <a id="a1f2f8c42645ef2cdf56abf4643509eb" class="idref" href="#a1f2f8c42645ef2cdf56abf4643509eb"><span class="id" title="binder">σ</span></a> <a id="409487d9ba8c2c07cac621d64c242e1e" class="idref" href="#409487d9ba8c2c07cac621d64c242e1e"><span class="id" title="binder">φ</span></a> <a id="A:21" class="idref" href="#A:21"><span class="id" title="binder">A</span></a> <a id="B:22" class="idref" href="#B:22"><span class="id" title="binder">B</span></a> <a id="M:23" class="idref" href="#M:23"><span class="id" title="binder">M</span></a> <a id="N:24" class="idref" href="#N:24"><span class="id" title="binder">N</span></a> <a id="i:25" class="idref" href="#i:25"><span class="id" title="binder">i</span></a>},<br/>
@@ -187,8 +186,8 @@ The domain's own PER, read off its gluing predicate.
 </div>
 
 <div class="doc">
-<span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">B</span>)[σ]</span> *is* <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span>, so the first premise of
-      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_pi_glu_typ_pred"><span class="id" title="constructor">mk_pi_glu_typ_pred</span></a></span> is reflexivity and it is what pins <span class="inlinecode"><span class="id" title="var">IT</span></span> and <span class="inlinecode"><span class="id" title="var">OT</span></span>. 
+<span class="inlinecode">(<span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode"><span class="id" title="var">B</span>)[σ]</span> is <span class="inlinecode"><span class="id" title="var">Π</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> <span class="inlinecode"><span class="id" title="var">B</span>[<span class="id" title="var">q</span></span> <span class="inlinecode">σ]</span> by definition, so the first premise of
+      <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#mk_pi_glu_typ_pred"><span class="id" title="constructor">mk_pi_glu_typ_pred</span></a></span> is reflexivity; it determines <span class="inlinecode"><span class="id" title="var">IT</span></span> and <span class="inlinecode"><span class="id" title="var">OT</span></span>. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">[</span></a>σ<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">s</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations.::mctt_scope:'q'_x"><span class="id" title="notation">q</span></a> σ <a class="idref" href="Mctt.Core.Semantic.Fixed.html#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
@@ -207,8 +206,8 @@ The domain's own PER, read off its gluing predicate.
 </div>
 
 <div class="doc">
-The codomain families are the <span class="inlinecode"><span class="id" title="var">invert_glu_univ_elem</span></span> existentials, so pull
-        the obligation's own instance out of the family rather than by name. 
+The codomain families are existentials from <span class="inlinecode"><span class="id" title="var">invert_glu_univ_elem</span></span>, so
+        take the instance needed here from the family rather than by name. 
 </div>
 <div class="code">
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
@@ -377,9 +376,9 @@ The <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalR
 </div>
 
 <div class="doc">
-The type of an application is an *instantiated* codomain, which the gluing
+The type of an application is an instantiated codomain, which the gluing
       model cannot evaluate: <span class="inlinecode">⟦<span class="id" title="var">B</span>[<span class="id" title="var">Id</span>,,<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>]⟧ρ</span> is stuck, and it is not
-      <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span> either.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_univ_of_instance"><span class="id" title="lemma">per_univ_of_instance</span></a></span> relates the two and
+      <span class="inlinecode">⟦<span class="id" title="var">B</span>⟧(ρ</span> <span class="inlinecode">↦</span> <span class="inlinecode">⟦<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Numbers.BinNums.html#N"><span class="id" title="inductive">N</span></a>⟧ρ)</span>. <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.SubstitutionCases.html#per_univ_of_instance"><span class="id" title="lemma">per_univ_of_instance</span></a></span> relates the two, and
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.CoreLemmas.html#glu_univ_elem_resp_per_univ"><span class="id" title="lemma">glu_univ_elem_resp_per_univ</span></a></span> transports the predicate. 
 </div>
 <div class="code">

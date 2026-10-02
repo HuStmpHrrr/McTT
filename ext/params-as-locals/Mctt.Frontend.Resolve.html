@@ -41,34 +41,28 @@
 </div>
 
 <div class="doc">
-<a id="lab325"></a><h1 class="section">Names in Scope</h1>
+<a id="lab358"></a><h1 class="section">Names in Scope</h1>
 
 
 <div class="paragraph"> </div>
 
-    The elaborator emits core commands: a definition becomes a <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_def"><span class="id" title="constructor">cc_def</span></a></span>, a
-    nested module a <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_mod"><span class="id" title="constructor">cc_mod</span></a></span>, and a name an <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_glob"><span class="id" title="constructor">a_glob</span></a></span> — an absolute path,
-    applied to the parameters it is generalized over — or a λ-variable, which
-    includes the parameters of the open frames.  Commands do not record names
-    that are not members: a frame's parameters are a nameless <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a></span>.  So the
-    elaborator keeps, per open frame, its members with the types stripped and
-    its parameters named: an <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#eframe"><span class="id" title="record">eframe</span></a></span>.
+    Core commands do not name a frame's parameters, so for each open frame the
+    elaborator keeps an <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#eframe"><span class="id" title="record">eframe</span></a></span>: its members, without their types, and its
+    named parameters.
 
 <div class="paragraph"> </div>
 
-    Visibility: a private member can be named from the frame it is declared
-    in and from the frames nested inside it, i.e. when it is reached as a
-    member of a frame on the stack.  Through a module that is not open — a
-    sibling, a module nested in one — only public members are reachable.  An
-    imported unit is not known at all, only its path. 
+    A private member can be named from its own frame and the frames nested in
+    it.  Through a module that is not open, only public members are reachable.
+    Of an imported unit only the path is known. 
 <div class="paragraph"> </div>
 
-<a id="lab326"></a><h2 class="section">Frames</h2>
+<a id="lab359"></a><h2 class="section">Frames</h2>
 
 <div class="paragraph"> </div>
 
- A member, types stripped: whether a definition is private; how many
-    parameters a nested module has, and its members. 
+ A member without its type: whether a definition is private, or the
+    number of parameters and the members of a nested module. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Inductive</span> <a id="ename" class="idref" href="#ename"><span class="id" title="definition, inductive"><span id="ename_rect" class="id"><span id="ename_ind" class="id"><span id="ename_rec" class="id"><span id="ename_sind" class="id">ename</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
@@ -82,8 +76,8 @@
 </div>
 
 <div class="doc">
-An open frame: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#ef_params"><span class="id" title="projection">ef_params</span></a></span> names its parameters, innermost first, as the
-    λ-variables they are; <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#ef_mod"><span class="id" title="projection">ef_mod</span></a></span> its members so far. 
+An open frame: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#ef_params"><span class="id" title="projection">ef_params</span></a></span> names its parameters, innermost first, and
+    <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#ef_mod"><span class="id" title="projection">ef_mod</span></a></span> holds its members so far. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Record</span> <a id="eframe" class="idref" href="#eframe"><span class="id" title="record">eframe</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">ef_mk</span><br/>
@@ -108,17 +102,15 @@ An open frame: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Res
 </div>
 
 <div class="doc">
-<a id="lab327"></a><h2 class="section">What a Name Denotes</h2>
+<a id="lab360"></a><h2 class="section">What a Name Denotes</h2>
 
 
 <div class="paragraph"> </div>
 
-    A module reached by a dotted prefix: where it is (<span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#mr_unit"><span class="id" title="projection">mr_unit</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#mr_mems"><span class="id" title="projection">mr_mems</span></a></span>),
-    its members, whether only its public members may be named, and the
-    arguments given so far — for a module of an open frame, its parameter
-    variables to begin with.  Its members are <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> for a path into an
-    imported unit, which is *opaque*: whether it names a module or a
-    definition is left to typing, and <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#mr_public"><span class="id" title="projection">mr_public</span></a></span> means nothing. 
+    A module reached by a dotted prefix: its unit and member chain, its
+    members, whether only public members may be named, and the arguments
+    given so far.  The members are <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#None"><span class="id" title="constructor">None</span></a></span> for a path into an imported unit,
+    which is <i>opaque</i>: typing decides what it names. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Record</span> <a id="mref" class="idref" href="#mref"><span class="id" title="record">mref</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">mr_mk</span><br/>
@@ -143,13 +135,13 @@ What an alias names: a module, or a definition of one.
 </div>
 
 <div class="doc">
-<a id="lab328"></a><h2 class="section">The Local Scope</h2>
+<a id="lab361"></a><h2 class="section">The Local Scope</h2>
 
 
 <div class="paragraph"> </div>
 
-    Bindings made inside a term: a λ-variable, or a <span class="inlinecode"><span class="id" title="keyword">let</span></span>, each recorded with
-    the depth it was elaborated at and moved to the use site by weakening. 
+    Bindings made inside a term, each recorded with the depth it was
+    elaborated at and weakened to the use site. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Inductive</span> <a id="lent" class="idref" href="#lent"><span class="id" title="definition, inductive"><span id="lent_rect" class="id"><span id="lent_ind" class="id"><span id="lent_rec" class="id"><span id="lent_sind" class="id">lent</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
@@ -178,17 +170,15 @@ What an alias names: a module, or a definition of one.
 </div>
 
 <div class="doc">
-<a id="lab329"></a><h1 class="section">Import Depths</h1>
+<a id="lab362"></a><h1 class="section">Import Depths</h1>
 
 
 <div class="paragraph"> </div>
 
-    The rule of the design document — start at <span class="inlinecode">0</span> and replace the current
-    depth <span class="inlinecode"><span class="id" title="var">n</span></span> by <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a>(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">+</span> <span class="inlinecode">1)</span> for an import of depth <span class="inlinecode"><span class="id" title="var">m</span></span> — assigns each
-    module the length of the longest import chain below it.  Such an assignment
-    is a *ranking* of the import graph, and ranking and acyclicity are two views
-    of the same property: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depth_acyclic"><span class="id" title="lemma">depth_acyclic</span></a></span> is one direction, <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depths_ranks"><span class="id" title="lemma">depths_ranks</span></a></span> the
-    other. 
+    Starting at <span class="inlinecode">0</span> and replacing the depth <span class="inlinecode"><span class="id" title="var">n</span></span> by <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#max"><span class="id" title="abbreviation">max</span></a>(<span class="id" title="var">n</span>,</span> <span class="inlinecode"><span class="id" title="var">m</span></span> <span class="inlinecode">+</span> <span class="inlinecode">1)</span> for each
+    import of depth <span class="inlinecode"><span class="id" title="var">m</span></span> assigns every module the length of the longest import
+    chain below it.  Such a ranking exists exactly when the import graph is
+    acyclic: <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depth_acyclic"><span class="id" title="lemma">depth_acyclic</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Resolve.html#depths_ranks"><span class="id" title="lemma">depths_ranks</span></a></span> are the two directions. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Section</span> <a id="ImportDepth" class="idref" href="#ImportDepth"><span class="id" title="section">ImportDepth</span></a>.<br/>
@@ -238,9 +228,8 @@ A ranked graph has no import cycles.
 </div>
 
 <div class="doc">
-Conversely, depths always exist.  A unit can only import what it has
-      already declared, so its import graph comes in declaration order; this is
-      the general acyclic case up to a topological sort. 
+Conversely, depths exist for a graph in declaration order, which is
+      every acyclic graph up to a topological sort. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Definition</span> <a id="ordered" class="idref" href="#ordered"><span class="id" title="definition">ordered</span></a> (<a id="g:51" class="idref" href="#g:51"><span class="id" title="binder">g</span></a> : <a class="idref" href="Mctt.Frontend.Resolve.html#graph"><span class="id" title="definition">graph</span></a>) : <span class="id" title="keyword">Prop</span> := <span class="id" title="keyword">forall</span> <a id="i:52" class="idref" href="#i:52"><span class="id" title="binder">i</span></a> <a id="j:53" class="idref" href="#j:53"><span class="id" title="binder">j</span></a>, <a class="idref" href="Mctt.Frontend.Resolve.html#edge"><span class="id" title="definition">edge</span></a> <a class="idref" href="Mctt.Frontend.Resolve.html#g:51"><span class="id" title="variable">g</span></a> <a class="idref" href="Mctt.Frontend.Resolve.html#i:52"><span class="id" title="variable">i</span></a> <a class="idref" href="Mctt.Frontend.Resolve.html#j:53"><span class="id" title="variable">j</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Frontend.Resolve.html#j:53"><span class="id" title="variable">j</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Peano.html#::nat_scope:x_'&lt;'_x"><span class="id" title="notation">&lt;</span></a> <a class="idref" href="Mctt.Frontend.Resolve.html#i:52"><span class="id" title="variable">i</span></a>.<br/>
@@ -332,7 +321,7 @@ Conversely, depths always exist.  A unit can only import what it has
 </div>
 
 <div class="doc">
-So the depth rule really does rule out cycles. 
+The depth rule rules out cycles. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">Corollary</span> <a id="ordered_acyclic" class="idref" href="#ordered_acyclic"><span class="id" title="lemma">ordered_acyclic</span></a> : <span class="id" title="keyword">forall</span> <a id="g:90" class="idref" href="#g:90"><span class="id" title="binder">g</span></a>,<br/>

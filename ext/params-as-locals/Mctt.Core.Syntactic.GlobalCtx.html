@@ -43,34 +43,32 @@
 </div>
 
 <div class="doc">
-<a id="lab146"></a><h1 class="section">Global Contexts</h1>
+<a id="lab176"></a><h1 class="section">Global Contexts</h1>
 
 
 <div class="paragraph"> </div>
 
-    Two levels, spelled differently in the surface language and represented
-    differently here.  <span class="inlinecode"><span class="id" title="var">X</span>::<span class="id" title="var">Y</span>::<span class="id" title="var">Z</span></span> names a *unit*, and units are not declared
-    inside one another, so the <span class="inlinecode">::</span> level is flat.  <span class="inlinecode"><span class="id" title="var">X.W</span></span> names an internal
-    module of one unit, and internal modules nest inside that unit's
-    declarations, so the <span class="inlinecode">.</span> level is a module.
+    Names have two levels, spelled differently in the surface language and
+    represented differently here.  <span class="inlinecode"><span class="id" title="var">X</span>::<span class="id" title="var">Y</span>::<span class="id" title="var">Z</span></span> names a unit; units are not
+    declared inside one another, so the <span class="inlinecode">::</span> level is flat.  <span class="inlinecode"><span class="id" title="var">X.W</span></span> names an
+    internal module of one unit; internal modules nest, so the <span class="inlinecode">.</span> level is a
+    module.
 
 <div class="paragraph"> </div>
 
-    The <span class="inlinecode">::</span> level is a list of *dependency levels*, most recent first: a unit
-    is filed above exactly the levels it may depend on, and that structure is
-    what grants cycle freedom.
+    The <span class="inlinecode">::</span> level is a list of dependency levels, most recent first: a unit is
+    filed above exactly the levels it may depend on, which rules out cycles.
 
 <div class="paragraph"> </div>
 
-    A member is stored *closed*: its type and body are generalized over the
-    parameters of every module enclosing it, outermost first, by the rule that
-    checks it (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_def"><span class="id" title="constructor">wf_gentry_def</span></a></span>).  So nothing about a member depends on where it
-    is read from, and resolving a path is a lookup that hands the stored entry
-    back unchanged — which is what lets evaluation stay free of syntactic
+    A member is stored closed: <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_def"><span class="id" title="constructor">wf_gentry_def</span></a></span> generalizes its type and body
+    over the parameters of every enclosing module, outermost first.  Nothing
+    about a member depends on where it is read from, so resolving a path hands
+    the stored entry back unchanged, and evaluation needs no syntactic
     operations. 
 <div class="paragraph"> </div>
 
-<a id="lab147"></a><h2 class="section">Modules</h2>
+<a id="lab177"></a><h2 class="section">Modules</h2>
 
 
 <div class="paragraph"> </div>
@@ -131,7 +129,7 @@ The names <span class="inlinecode"><span class="id" title="var">Φ</span></span>
 </div>
 
 <div class="doc">
-<a id="lab148"></a><h2 class="section">Resolution in a Module</h2>
+<a id="lab178"></a><h2 class="section">Resolution in a Module</h2>
 
 
 <div class="paragraph"> </div>
@@ -216,7 +214,7 @@ An entry with a fresh name shadows nothing.
 </div>
 
 <div class="doc">
-<a id="lab149"></a><h2 class="section">Units</h2>
+<a id="lab179"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>
@@ -252,7 +250,7 @@ An entry with a fresh name shadows nothing.
 </div>
 
 <div class="doc">
-<a id="lab150"></a><h2 class="section">Dependency Levels</h2>
+<a id="lab180"></a><h2 class="section">Dependency Levels</h2>
 
 
 <div class="paragraph"> </div>
@@ -398,7 +396,7 @@ Filing a level whose units are fresh below it changes nothing below.
 </div>
 
 <div class="doc">
-<a id="lab151"></a><h2 class="section">The Definition Stack</h2>
+<a id="lab181"></a><h2 class="section">The Definition Stack</h2>
 
 
 <div class="paragraph"> </div>
@@ -422,7 +420,7 @@ Filing a level whose units are fresh below it changes nothing below.
 </div>
 
 <div class="doc">
-<a id="lab152"></a><h2 class="section">Resolution of a Path</h2>
+<a id="lab182"></a><h2 class="section">Resolution of a Path</h2>
 
 
 <div class="paragraph"> </div>
@@ -558,7 +556,7 @@ Where a resolved entry comes from: a frame of the stack or a filed unit.
 </div>
 
 <div class="doc">
-<a id="lab153"></a><h2 class="section">How Resolution Grows</h2>
+<a id="lab183"></a><h2 class="section">How Resolution Grows</h2>
 
 
 <div class="paragraph"> </div>
@@ -698,7 +696,7 @@ Filing more units under the same stack.
 </div>
 
 <div class="doc">
-<a id="lab154"></a><h2 class="section">Transparent Global Contexts</h2>
+<a id="lab184"></a><h2 class="section">Transparent Global Contexts</h2>
 
 
 <div class="paragraph"> </div>
@@ -755,7 +753,7 @@ Filing more units under the same stack.
 </div>
 
 <div class="doc">
-<a id="lab155"></a><h2 class="section">A Fixed Global Context</h2>
+<a id="lab185"></a><h2 class="section">A Fixed Global Context</h2>
 
 
 <div class="paragraph"> </div>

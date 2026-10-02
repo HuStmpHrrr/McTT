@@ -31,14 +31,14 @@
 </div>
 
 <div class="doc">
-<a id="lab142"></a><h1 class="section">Commands</h1>
+<a id="lab172"></a><h1 class="section">Commands</h1>
 
 
 <div class="paragraph"> </div>
 
-    The *core* commands a unit is elaborated into: names resolved, and <span class="inlinecode"><span class="id" title="var">use</span></span>
-    and <span class="inlinecode"><span class="id" title="keyword">as</span></span> gone, being the elaborator's business.  Their meaning, as moves of
-    the global state, is <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>. 
+    The core commands a unit is elaborated into: names are resolved, and <span class="inlinecode"><span class="id" title="var">use</span></span>
+    and <span class="inlinecode"><span class="id" title="keyword">as</span></span> have been handled by the elaborator.  Their meaning, as steps of
+    the global state, is given in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>. 
 </div>
 <div class="code">
 
@@ -65,8 +65,8 @@ A unit's absolute path, <span class="inlinecode"><span class="id" title="var">X<
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: transparency, privacy, type, body.  A <span class="inlinecode"><span class="id" title="var">def</span></span> always has
-    one; an <span class="inlinecode"><span class="id" title="tactic">abstract</span></span> one is opaque, not bodiless. 
+<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: transparency, privacy, type and body.  A <span class="inlinecode"><span class="id" title="var">def</span></span> always
+    has a body; an <span class="inlinecode"><span class="id" title="tactic">abstract</span></span> one is opaque, not bodiless. 
 </div>
 <div class="code">
 | <a id="cc_def" class="idref" href="#cc_def"><span class="id" title="constructor">cc_def</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
@@ -80,8 +80,8 @@ A unit's absolute path, <span class="inlinecode"><span class="id" title="var">X<
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><span class="id" title="var">X</span>::<span class="id" title="var">Y.M</span></span>, whatever the <span class="inlinecode"><span class="id" title="var">use</span></span>/<span class="inlinecode"><span class="id" title="keyword">as</span></span>: the unit and the member path to
-    the module imported, empty for the unit itself 
+<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><span class="id" title="var">X</span>::<span class="id" title="var">Y.M</span></span>, whatever its <span class="inlinecode"><span class="id" title="var">use</span></span>/<span class="inlinecode"><span class="id" title="keyword">as</span></span>: the unit, and the member path
+    of the imported module (empty for the unit itself). 
 </div>
 <div class="code">
 | <a id="cc_import" class="idref" href="#cc_import"><span class="id" title="constructor">cc_import</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
