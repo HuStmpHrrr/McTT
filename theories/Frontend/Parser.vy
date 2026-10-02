@@ -25,8 +25,6 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %type <string * Cst.obj> param
 %type <list (string * Cst.obj)> params params_opt
 %type <string -> Cst.obj -> Cst.obj -> Cst.obj> fnbinder
-%type <(string * Cst.obj) * Cst.obj> legacy_defn
-%type <list ((string * Cst.obj) * Cst.obj)> legacy_defns
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
@@ -115,11 +113,8 @@ let obj :=
     END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
   | SUCC; ~ = obj; { Cst.succ obj }
 
-  (* A let of parenthesised bindings, which desugars to an application of a
-     function. *)
-  | LET; ds = legacy_defns; IN; body = obj; { List.fold_left (fun acc arg => Cst.app acc (snd arg)) (List.rev ds) (List.fold_left (fun acc arg => Cst.fn (fst (fst arg)) (snd (fst arg)) acc) ds body) }
-
-  (* A let of declarations, each starting with DEF or MODULE, closed by END. *)
+  (* [let x : A := a; y : B := b in body end].  The bindings fold into nested
+     [letb]s, so each one sees the earlier ones. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
 
 
@@ -159,23 +154,14 @@ let params_opt :=
 let param :=
   | "("; x = VAR; ":"; ~ = obj; ")"; { (snd x, obj) }
 
-(* Reversed nonempty list of parenthesised definitions *)
-let legacy_defns :=
-  | ~ = legacy_defns; ~ = legacy_defn; { legacy_defn :: legacy_defns }
-  | ~ = legacy_defn; { [legacy_defn] }
-
-(* ((x : A) := t) *)
-let legacy_defn :=
-  | "("; ~ = param; ":="; ~ = obj; ")"; { (param, obj) }
-
-(* Reversed nonempty list of declarations *)
+(* Reversed nonempty list of [;]-separated bindings *)
 let let_defns :=
-  | ~ = let_defns; ~ = let_defn; { let_defn :: let_defns }
+  | ~ = let_defns; ";"; ~ = let_defn; { let_defn :: let_defns }
   | ~ = let_defn; { [let_defn] }
 
+(* [x : A := a], or [module X := E] *)
 let let_defn :=
-  | DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj;
-      { Cst.d_def Cst.md_pub (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
+  | x = VAR; ":"; a = obj; ":="; b = obj; { Cst.d_def (snd x) a b }
   | MODULE; x = VAR; ":="; ~ = obj; { Cst.d_mod (snd x) obj }
 %%
 

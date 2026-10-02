@@ -76,7 +76,7 @@ Expected the path of the module to declare.
 
 prog: IMPORT VAR DOT ZERO
 ##
-## Ends in an error in state: 96.
+## Ends in an error in state: 84.
 ##
 ## path -> path DOT . VAR [ WHERE USE PRIVATE MODULE LPAREN IMPORT EVAL END DOT DEF AS ABSTRACT ]
 ##
@@ -88,7 +88,7 @@ Expected a name after "." in the path.
 
 prog: MODULE VAR ZERO
 ##
-## Ends in an error in state: 88.
+## Ends in an error in state: 76.
 ##
 ## prog -> imports MODULE fpath params_opt . WHERE cmds END EOF [ # ]
 ##
@@ -106,7 +106,7 @@ Expected a parameter "(x : A)", or keyword "where".
 
 prog: IMPORT ZERO
 ##
-## Ends in an error in state: 101.
+## Ends in an error in state: 89.
 ##
 ## import_cmd -> IMPORT . qpath ispec [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -118,7 +118,7 @@ Expected the path of the module to import.
 
 prog: IMPORT VAR WHERE
 ##
-## Ends in an error in state: 102.
+## Ends in an error in state: 90.
 ##
 ## fpath -> VAR . [ COLONCOLON ]
 ## path -> VAR . [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
@@ -131,7 +131,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: IMPORT VAR USE ZERO
 ##
-## Ends in an error in state: 104.
+## Ends in an error in state: 92.
 ##
 ## ispec -> USE . LPAREN names RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -143,7 +143,7 @@ Expected "(" after "use".
 
 prog: IMPORT VAR USE LPAREN ZERO
 ##
-## Ends in an error in state: 105.
+## Ends in an error in state: 93.
 ##
 ## ispec -> USE LPAREN . names RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -155,7 +155,7 @@ Expected the name of a member to use.
 
 prog: IMPORT VAR USE LPAREN VAR ZERO
 ##
-## Ends in an error in state: 107.
+## Ends in an error in state: 95.
 ##
 ## ispec -> USE LPAREN names . RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## names -> names . SEMI VAR [ SEMI RPAREN ]
@@ -168,7 +168,7 @@ Expected ";" followed by another member name, or ")".
 
 prog: IMPORT VAR USE LPAREN VAR SEMI ZERO
 ##
-## Ends in an error in state: 108.
+## Ends in an error in state: 96.
 ##
 ## names -> names SEMI . VAR [ SEMI RPAREN ]
 ##
@@ -180,7 +180,7 @@ Expected the name of a member to use after ";".
 
 prog: IMPORT VAR AS ZERO
 ##
-## Ends in an error in state: 111.
+## Ends in an error in state: 99.
 ##
 ## ispec -> AS . VAR [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -197,7 +197,7 @@ Expected an alias name after "as".
 
 prog: MODULE VAR WHERE MODULE ZERO
 ##
-## Ends in an error in state: 93.
+## Ends in an error in state: 81.
 ##
 ## cmd -> MODULE . path params_opt WHERE cmds END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -211,7 +211,7 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN ZERO
 ##
 ## Ends in an error in state: 6.
 ##
-## param -> LPAREN . VAR COLON obj RPAREN [ WHERE LPAREN EQ COLON ARROW ]
+## param -> LPAREN . VAR COLON obj RPAREN [ WHERE LPAREN COLON ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN
@@ -223,7 +223,7 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR ZERO
 ##
 ## Ends in an error in state: 7.
 ##
-## param -> LPAREN VAR . COLON obj RPAREN [ WHERE LPAREN EQ COLON ARROW ]
+## param -> LPAREN VAR . COLON obj RPAREN [ WHERE LPAREN COLON ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN VAR
@@ -236,7 +236,7 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON WHERE
 ##
 ## Ends in an error in state: 8.
 ##
-## param -> LPAREN VAR COLON . obj RPAREN [ WHERE LPAREN EQ COLON ARROW ]
+## param -> LPAREN VAR COLON . obj RPAREN [ WHERE LPAREN COLON ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN VAR COLON
@@ -249,7 +249,7 @@ prog: MODULE VAR WHERE EVAL TYPE ZERO
 ##
 ## Ends in an error in state: 11.
 ##
-## atomic_obj -> TYPE . AT INT [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> TYPE . AT INT [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE
@@ -261,7 +261,7 @@ prog: MODULE VAR WHERE EVAL TYPE AT ZERO
 ##
 ## Ends in an error in state: 12.
 ##
-## atomic_obj -> TYPE AT . INT [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> TYPE AT . INT [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## TYPE AT
@@ -273,7 +273,7 @@ prog: MODULE VAR WHERE EVAL SUCC WHERE
 ##
 ## Ends in an error in state: 14.
 ##
-## obj -> SUCC . obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> SUCC . obj [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## SUCC
@@ -286,7 +286,7 @@ prog: MODULE VAR WHERE EVAL REC WHERE
 ##
 ## Ends in an error in state: 15.
 ##
-## obj -> REC . obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC . obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC
@@ -299,7 +299,7 @@ prog: MODULE VAR WHERE EVAL LPAREN WHERE
 ##
 ## Ends in an error in state: 18.
 ##
-## atomic_obj -> LPAREN . obj RPAREN [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> LPAREN . obj RPAREN [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN
@@ -312,20 +312,19 @@ prog: MODULE VAR WHERE EVAL LET ZERO
 ##
 ## Ends in an error in state: 19.
 ##
-## obj -> LET . legacy_defns IN obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
-## obj -> LET . let_defns IN obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> LET . let_defns IN obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET
 ##
 
-At least one variable binding is expected after a "let"
+Expected a binding "x : A := a" or "module X := E" after "let".
 
 prog: MODULE VAR WHERE EVAL LET MODULE ZERO
 ##
-## Ends in an error in state: 20.
+## Ends in an error in state: 41.
 ##
-## let_defn -> MODULE . VAR EQ obj [ MODULE IN DEF ]
+## let_defn -> MODULE . VAR EQ obj [ SEMI IN ]
 ##
 ## The known suffix of the stack is as follows:
 ## MODULE
@@ -335,9 +334,9 @@ Expected a name for the local module.
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR ZERO
 ##
-## Ends in an error in state: 21.
+## Ends in an error in state: 42.
 ##
-## let_defn -> MODULE VAR . EQ obj [ MODULE IN DEF ]
+## let_defn -> MODULE VAR . EQ obj [ SEMI IN ]
 ##
 ## The known suffix of the stack is as follows:
 ## MODULE VAR
@@ -347,9 +346,9 @@ Expected ":=" after the name of the local module.
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ WHERE
 ##
-## Ends in an error in state: 22.
+## Ends in an error in state: 43.
 ##
-## let_defn -> MODULE VAR EQ . obj [ MODULE IN DEF ]
+## let_defn -> MODULE VAR EQ . obj [ SEMI IN ]
 ##
 ## The known suffix of the stack is as follows:
 ## MODULE VAR EQ
@@ -359,9 +358,9 @@ Expected a module expression after ":=".
 
 prog: MODULE VAR WHERE EVAL LAMBDA ZERO
 ##
-## Ends in an error in state: 29.
+## Ends in an error in state: 30.
 ##
-## obj -> fnbinder . params ARROW obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> fnbinder . params ARROW obj [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## fnbinder
@@ -373,9 +372,9 @@ For example,
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON INT RPAREN ZERO
 ##
-## Ends in an error in state: 30.
+## Ends in an error in state: 31.
 ##
-## obj -> fnbinder params . ARROW obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> fnbinder params . ARROW obj [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ## params -> params . param [ LPAREN ARROW ]
 ##
 ## The known suffix of the stack is as follows:
@@ -386,9 +385,9 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON INT RPAREN ZERO
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON INT RPAREN ARROW WHERE
 ##
-## Ends in an error in state: 31.
+## Ends in an error in state: 32.
 ##
-## obj -> fnbinder params ARROW . obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> fnbinder params ARROW . obj [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## fnbinder params ARROW
@@ -399,9 +398,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL INT DOT ZERO
 ##
-## Ends in an error in state: 34.
+## Ends in an error in state: 35.
 ##
-## atomic_obj -> atomic_obj DOT . VAR [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> atomic_obj DOT . VAR [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## atomic_obj DOT
@@ -409,140 +408,21 @@ prog: MODULE VAR WHERE EVAL INT DOT ZERO
 
 Expected a member name after ".".
 
-prog: MODULE VAR WHERE EVAL LET LPAREN ZERO
-##
-## Ends in an error in state: 40.
-##
-## legacy_defn -> LPAREN . param EQ obj RPAREN [ LPAREN IN ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN
-##
 
-A variable "(x : ?A)" is expected after "let (", where "?A" is a type.
 
-prog: MODULE VAR WHERE EVAL LET LPAREN LPAREN VAR COLON INT RPAREN ZERO
-##
-## Ends in an error in state: 41.
-##
-## legacy_defn -> LPAREN param . EQ obj RPAREN [ LPAREN IN ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN param
-##
 
-Expected symbol ":=".
 
-prog: MODULE VAR WHERE EVAL LET LPAREN LPAREN VAR COLON INT RPAREN EQ WHERE
-##
-## Ends in an error in state: 42.
-##
-## legacy_defn -> LPAREN param EQ . obj RPAREN [ LPAREN IN ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN param EQ
-##
 
-Expected a value for the variable.
 
-prog: MODULE VAR WHERE EVAL LET LPAREN LPAREN VAR COLON INT RPAREN EQ INT WHERE
-##
-## Ends in an error in state: 43.
-##
-## legacy_defn -> LPAREN param EQ obj . RPAREN [ LPAREN IN ]
-##
-## The known suffix of the stack is as follows:
-## LPAREN param EQ obj
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
-##
 
-Expected ")".
 
-prog: MODULE VAR WHERE EVAL LET DEF ZERO
-##
-## Ends in an error in state: 45.
-##
-## let_defn -> DEF . VAR params_opt COLON obj EQ obj [ MODULE IN DEF ]
-##
-## The known suffix of the stack is as follows:
-## DEF
-##
-
-Expected a name for the local definition.
-
-prog: MODULE VAR WHERE EVAL LET DEF VAR ZERO
-##
-## Ends in an error in state: 47.
-##
-## let_defn -> DEF VAR params_opt . COLON obj EQ obj [ MODULE IN DEF ]
-##
-## The known suffix of the stack is as follows:
-## DEF VAR params_opt
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 46, spurious reduction of production params_opt ->
-##
-
-Expected a parameter "(x : A)", or ":" followed by the type of the local definition.
-
-prog: MODULE VAR WHERE EVAL LET DEF VAR COLON WHERE
-##
-## Ends in an error in state: 48.
-##
-## let_defn -> DEF VAR params_opt COLON . obj EQ obj [ MODULE IN DEF ]
-##
-## The known suffix of the stack is as follows:
-## DEF VAR params_opt COLON
-##
-
-Expected the type of the local definition.
-
-prog: MODULE VAR WHERE EVAL LET DEF VAR COLON INT WHERE
-##
-## Ends in an error in state: 49.
-##
-## let_defn -> DEF VAR params_opt COLON obj . EQ obj [ MODULE IN DEF ]
-##
-## The known suffix of the stack is as follows:
-## DEF VAR params_opt COLON obj
-##
-## WARNING: This example involves spurious reductions.
-## This implies that, although the LR(1) items shown above provide an
-## accurate view of the past (what has been recognized so far), they
-## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
-##
-
-Expected ":=" after the type of the local definition.
-
-prog: MODULE VAR WHERE EVAL LET DEF VAR COLON INT EQ WHERE
-##
-## Ends in an error in state: 50.
-##
-## let_defn -> DEF VAR params_opt COLON obj EQ . obj [ MODULE IN DEF ]
-##
-## The known suffix of the stack is as follows:
-## DEF VAR params_opt COLON obj EQ
-##
-
-Expected the body of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT WHERE
 ##
-## Ends in an error in state: 53.
+## Ends in an error in state: 45.
 ##
-## let_defns -> let_defns . let_defn [ MODULE IN DEF ]
-## obj -> LET let_defns . IN obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## let_defns -> let_defns . SEMI let_defn [ SEMI IN ]
+## obj -> LET let_defns . IN obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET let_defns
@@ -551,19 +431,19 @@ prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
-## In state 25, spurious reduction of production let_defn -> MODULE VAR EQ obj
-## In state 58, spurious reduction of production let_defns -> let_defn
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
+## In state 44, spurious reduction of production let_defn -> MODULE VAR EQ obj
+## In state 51, spurious reduction of production let_defns -> let_defn
 ##
 
-Expected another "def" or "module" binding, or keyword "in".
+Expected ";" and another binding, or keyword "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT IN WHERE
 ##
-## Ends in an error in state: 54.
+## Ends in an error in state: 48.
 ##
-## obj -> LET let_defns IN . obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> LET let_defns IN . obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET let_defns IN
@@ -573,9 +453,9 @@ Expected an expression after "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT IN INT WHERE
 ##
-## Ends in an error in state: 55.
+## Ends in an error in state: 49.
 ##
-## obj -> LET let_defns IN obj . END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> LET let_defns IN obj . END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LET let_defns IN obj
@@ -584,42 +464,19 @@ prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT IN INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Expected keyword "end" to close the "let".
 
-prog: MODULE VAR WHERE EVAL LET LPAREN LPAREN VAR COLON INT RPAREN EQ INT RPAREN ZERO
-##
-## Ends in an error in state: 59.
-##
-## legacy_defns -> legacy_defns . legacy_defn [ LPAREN IN ]
-## obj -> LET legacy_defns . IN obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
-##
-## The known suffix of the stack is as follows:
-## LET legacy_defns
-##
 
-Expected keyword "in".
-
-prog: MODULE VAR WHERE EVAL LET LPAREN LPAREN VAR COLON INT RPAREN EQ INT RPAREN IN WHERE
-##
-## Ends in an error in state: 60.
-##
-## obj -> LET legacy_defns IN . obj [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
-##
-## The known suffix of the stack is as follows:
-## LET legacy_defns IN
-##
-
-Expected expression after "in".
 
 prog: MODULE VAR WHERE EVAL LPAREN INT WHERE
 ##
-## Ends in an error in state: 64.
+## Ends in an error in state: 52.
 ##
-## atomic_obj -> LPAREN obj . RPAREN [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> LPAREN obj . RPAREN [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN obj
@@ -628,8 +485,8 @@ prog: MODULE VAR WHERE EVAL LPAREN INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or ")" is expected.
@@ -637,9 +494,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT WHERE
 ##
-## Ends in an error in state: 66.
+## Ends in an error in state: 54.
 ##
-## obj -> REC obj . RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj . RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj
@@ -648,8 +505,8 @@ prog: MODULE VAR WHERE EVAL REC INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or "return" keyword is expected.
@@ -657,9 +514,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN ZERO
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 55.
 ##
-## obj -> REC obj RETURN . VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN . VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN
@@ -669,9 +526,9 @@ A motif should start with a valid identifier.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR ZERO
 ##
-## Ends in an error in state: 68.
+## Ends in an error in state: 56.
 ##
-## obj -> REC obj RETURN VAR . DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR . DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR
@@ -681,9 +538,9 @@ A motif should have "." after the scrutinee name.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT WHERE
 ##
-## Ends in an error in state: 69.
+## Ends in an error in state: 57.
 ##
-## obj -> REC obj RETURN VAR DOT . obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT . obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT
@@ -694,9 +551,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT WHERE
 ##
-## Ends in an error in state: 70.
+## Ends in an error in state: 58.
 ##
-## obj -> REC obj RETURN VAR DOT obj . BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj . BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj
@@ -705,8 +562,8 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or "|" is expected.
@@ -714,9 +571,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR WHERE
 ##
-## Ends in an error in state: 71.
+## Ends in an error in state: 59.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR . ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR . ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR
@@ -726,9 +583,9 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR WHERE
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO ZERO
 ##
-## Ends in an error in state: 72.
+## Ends in an error in state: 60.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO . DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO . DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO
@@ -738,9 +595,9 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO ZERO
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW WHERE
 ##
-## Ends in an error in state: 73.
+## Ends in an error in state: 61.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW . obj BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW . obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW
@@ -751,9 +608,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT WHERE
 ##
-## Ends in an error in state: 74.
+## Ends in an error in state: 62.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj . BAR SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj . BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj
@@ -762,8 +619,8 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or "|" is expected.
@@ -771,9 +628,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR ZERO
 ##
-## Ends in an error in state: 75.
+## Ends in an error in state: 63.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR . SUCC VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR . SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR
@@ -783,9 +640,9 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR Z
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC ZERO
 ##
-## Ends in an error in state: 76.
+## Ends in an error in state: 64.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC . VAR COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC . VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC
@@ -795,9 +652,9 @@ An identifier for the predecessor of the scrutinee is expected.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC VAR ZERO
 ##
-## Ends in an error in state: 77.
+## Ends in an error in state: 65.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR . COMMA VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR . COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR
@@ -807,9 +664,9 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR S
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC VAR COMMA ZERO
 ##
-## Ends in an error in state: 78.
+## Ends in an error in state: 66.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA . VAR DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA . VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA
@@ -819,9 +676,9 @@ An identifier for the recursion result is expected.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC VAR COMMA VAR ZERO
 ##
-## Ends in an error in state: 79.
+## Ends in an error in state: 67.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR . DARROW obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR . DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR
@@ -831,9 +688,9 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR S
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC VAR COMMA VAR DARROW WHERE
 ##
-## Ends in an error in state: 80.
+## Ends in an error in state: 68.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW . obj END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW . obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW
@@ -844,9 +701,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR SUCC VAR COMMA VAR DARROW INT WHERE
 ##
-## Ends in an error in state: 81.
+## Ends in an error in state: 69.
 ##
-## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj . END [ RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
+## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj . END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
 ## The known suffix of the stack is as follows:
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj
@@ -855,8 +712,8 @@ prog: MODULE VAR WHERE EVAL REC INT RETURN VAR DOT INT BAR ZERO DARROW INT BAR S
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or "end" is expected.
@@ -864,9 +721,9 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON INT WHERE
 ##
-## Ends in an error in state: 84.
+## Ends in an error in state: 72.
 ##
-## param -> LPAREN VAR COLON obj . RPAREN [ WHERE LPAREN EQ COLON ARROW ]
+## param -> LPAREN VAR COLON obj . RPAREN [ WHERE LPAREN COLON ARROW ]
 ##
 ## The known suffix of the stack is as follows:
 ## LPAREN VAR COLON obj
@@ -875,8 +732,8 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Either an expression or ")" is expected.
@@ -884,7 +741,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE MODULE VAR ZERO
 ##
-## Ends in an error in state: 98.
+## Ends in an error in state: 86.
 ##
 ## cmd -> MODULE path params_opt . WHERE cmds END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -895,14 +752,14 @@ prog: MODULE VAR WHERE MODULE VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 95, spurious reduction of production params_opt ->
+## In state 83, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", a further "." in the path, or keyword "where".
 
 prog: MODULE VAR WHERE EVAL WHERE
 ##
-## Ends in an error in state: 120.
+## Ends in an error in state: 108.
 ##
 ## cmd -> EVAL . obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## cmd -> EVAL . obj COLON obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
@@ -915,7 +772,7 @@ This token is invalid for the beginning of a program.
 
 prog: MODULE VAR WHERE EVAL INT WHERE
 ##
-## Ends in an error in state: 121.
+## Ends in an error in state: 109.
 ##
 ## cmd -> EVAL obj . [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## cmd -> EVAL obj . COLON obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
@@ -927,15 +784,15 @@ prog: MODULE VAR WHERE EVAL INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Expected ":" followed by the type to check against, or the next command.
 
 prog: MODULE VAR WHERE EVAL INT COLON WHERE
 ##
-## Ends in an error in state: 122.
+## Ends in an error in state: 110.
 ##
 ## cmd -> EVAL obj COLON . obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -948,7 +805,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE ZERO
 ##
-## Ends in an error in state: 126.
+## Ends in an error in state: 114.
 ##
 ## cmd -> mods . DEF VAR params_opt COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -959,14 +816,14 @@ prog: MODULE VAR WHERE ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 90, spurious reduction of production mods ->
+## In state 78, spurious reduction of production mods ->
 ##
 
 Expected a command ("module", "def", "import" or "eval"), or keyword "end" to close the module.
 
 prog: MODULE VAR WHERE DEF ZERO
 ##
-## Ends in an error in state: 127.
+## Ends in an error in state: 115.
 ##
 ## cmd -> mods DEF . VAR params_opt COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -978,7 +835,7 @@ Expected a name for the definition.
 
 prog: MODULE VAR WHERE DEF VAR ZERO
 ##
-## Ends in an error in state: 129.
+## Ends in an error in state: 117.
 ##
 ## cmd -> mods DEF VAR params_opt . COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -989,14 +846,14 @@ prog: MODULE VAR WHERE DEF VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 128, spurious reduction of production params_opt ->
+## In state 116, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or ":" followed by the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON WHERE
 ##
-## Ends in an error in state: 130.
+## Ends in an error in state: 118.
 ##
 ## cmd -> mods DEF VAR params_opt COLON . obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -1008,7 +865,7 @@ Expected the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON INT WHERE
 ##
-## Ends in an error in state: 131.
+## Ends in an error in state: 119.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj . EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -1019,15 +876,15 @@ prog: MODULE VAR WHERE DEF VAR COLON INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Expected ":=" after the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON INT EQ WHERE
 ##
-## Ends in an error in state: 132.
+## Ends in an error in state: 120.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj EQ . obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -1039,7 +896,7 @@ Expected the body of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON INT EQ INT WHERE
 ##
-## Ends in an error in state: 133.
+## Ends in an error in state: 121.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj EQ obj . END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -1050,15 +907,15 @@ prog: MODULE VAR WHERE DEF VAR COLON INT EQ INT WHERE
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 33, spurious reduction of production app_obj -> atomic_obj
-## In state 36, spurious reduction of production obj -> app_obj
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
 ##
 
 Expected keyword "end" to close the definition.
 
 prog: MODULE VAR WHERE END ZERO
 ##
-## Ends in an error in state: 137.
+## Ends in an error in state: 126.
 ##
 ## prog -> imports MODULE fpath params_opt WHERE cmds END . EOF [ # ]
 ##
@@ -1072,7 +929,7 @@ prog: MODULE VAR WHERE EVAL VAR WHERE
 ##
 ## Ends in an error in state: 10.
 ##
-## atomic_obj -> VAR . [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> VAR . [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ## fpath -> VAR . [ COLONCOLON ]
 ##
 ## The known suffix of the stack is as follows:
@@ -1083,9 +940,9 @@ This token cannot follow a name; expected "::" to continue a unit path, "." to s
 
 prog: MODULE VAR WHERE EVAL VAR COLONCOLON ZERO
 ##
-## Ends in an error in state: 27.
+## Ends in an error in state: 28.
 ##
-## atomic_obj -> fpath COLONCOLON . VAR [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> fpath COLONCOLON . VAR [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
 ##
 ## The known suffix of the stack is as follows:
@@ -1096,9 +953,9 @@ Expected a name after "::" in the path.
 
 prog: MODULE VAR WHERE EVAL VAR COLONCOLON VAR WHERE
 ##
-## Ends in an error in state: 28.
+## Ends in an error in state: 29.
 ##
-## atomic_obj -> fpath COLONCOLON VAR . [ ZERO VAR TYPE RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
+## atomic_obj -> fpath COLONCOLON VAR . [ ZERO VAR TYPE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ## fpath -> fpath COLONCOLON VAR . [ COLONCOLON ]
 ##
 ## The known suffix of the stack is as follows:
@@ -1109,7 +966,7 @@ This token cannot follow a unit path; expected "::" to continue it, "." to selec
 
 prog: IMPORT VAR DOT VAR ZERO
 ##
-## Ends in an error in state: 114.
+## Ends in an error in state: 102.
 ##
 ## path -> path . DOT VAR [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
 ## qpath -> path . [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -1122,7 +979,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: IMPORT VAR COLONCOLON VAR ZERO
 ##
-## Ends in an error in state: 115.
+## Ends in an error in state: 103.
 ##
 ## fpath -> fpath . COLONCOLON VAR [ COLONCOLON ]
 ## qpath -> fpath . COLONCOLON VAR [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -1135,14 +992,14 @@ prog: IMPORT VAR COLONCOLON VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 117, spurious reduction of production fpath -> fpath COLONCOLON VAR
+## In state 105, spurious reduction of production fpath -> fpath COLONCOLON VAR
 ##
 
 Expected a further "::" or "." in the path, "as", "use", or the next command.
 
 prog: IMPORT VAR COLONCOLON ZERO
 ##
-## Ends in an error in state: 116.
+## Ends in an error in state: 104.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
 ## qpath -> fpath COLONCOLON . VAR [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -1156,7 +1013,7 @@ Expected a name after "::" in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT ZERO
 ##
-## Ends in an error in state: 118.
+## Ends in an error in state: 106.
 ##
 ## qpath -> fpath COLONCOLON VAR DOT . path [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
 ##
@@ -1168,7 +1025,7 @@ Expected a name after "." in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT VAR ZERO
 ##
-## Ends in an error in state: 119.
+## Ends in an error in state: 107.
 ##
 ## path -> path . DOT VAR [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
 ## qpath -> fpath COLONCOLON VAR DOT path . [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -1181,7 +1038,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: MODULE VAR COLONCOLON ZERO
 ##
-## Ends in an error in state: 86.
+## Ends in an error in state: 74.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ WHERE LPAREN COLONCOLON ]
 ##
@@ -1190,3 +1047,70 @@ prog: MODULE VAR COLONCOLON ZERO
 ##
 
 Expected a name after "::" in the path.
+
+prog: MODULE VAR WHERE EVAL LET VAR ZERO
+##
+## Ends in an error in state: 20.
+##
+## let_defn -> VAR . COLON obj EQ obj [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## VAR
+##
+
+Expected ":" followed by the type of the local definition.
+
+prog: MODULE VAR WHERE EVAL LET VAR COLON WHERE
+##
+## Ends in an error in state: 21.
+##
+## let_defn -> VAR COLON . obj EQ obj [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## VAR COLON
+##
+
+Expected the type of the local definition.
+
+prog: MODULE VAR WHERE EVAL LET VAR COLON INT WHERE
+##
+## Ends in an error in state: 24.
+##
+## let_defn -> VAR COLON obj . EQ obj [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## VAR COLON obj
+##
+## WARNING: This example involves spurious reductions.
+## This implies that, although the LR(1) items shown above provide an
+## accurate view of the past (what has been recognized so far), they
+## may provide an INCOMPLETE view of the future (what was expected next).
+## In state 34, spurious reduction of production app_obj -> atomic_obj
+## In state 37, spurious reduction of production obj -> app_obj
+##
+
+Expected ":=" after the type of the local definition.
+
+prog: MODULE VAR WHERE EVAL LET VAR COLON INT EQ WHERE
+##
+## Ends in an error in state: 25.
+##
+## let_defn -> VAR COLON obj EQ . obj [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## VAR COLON obj EQ
+##
+
+Expected the body of the local definition.
+
+prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ INT SEMI ZERO
+##
+## Ends in an error in state: 46.
+##
+## let_defns -> let_defns SEMI . let_defn [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## let_defns SEMI
+##
+
+Expected a binding "x : A := a" or "module X := E" after ";".
