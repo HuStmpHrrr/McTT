@@ -20,6 +20,9 @@ From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
 
+Lemma cons_neq_nil : forall {A : Type} (x : A) l, x :: l <> nil.
+Proof. discriminate. Qed.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -153,9 +156,9 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     (forall c w1 b, in_rel c c -> eval_appm gc_deps gc_stack w c w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b) ->
     mtyped w ch k (Πᵈ a ρB B)
 | mty_top : forall w a i R, msat w -> per_univ_elem i R a ⊤ᵈ -> mtyped w nil mk_mod a
-| mty_def : forall ρ Δ Φ args x Φ' b A M ρ1 a a0 i R,
+| mty_def : forall ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R,
     List.length args = List.length Δ ->
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b false A (Some M))) ->
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
     eval_benv gc_deps gc_stack (env_args ρ args) Φ' ρ1 ->
     ⟦ A ⟧ ρ1 ↘ a0 -> per_univ_elem i R a a0 ->
     mtyped (dm_local ρ (gu_body Δ Φ) args) (x :: nil) mk_term a
@@ -187,8 +190,9 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     (k = mk_term -> ch' <> nil) ->
     mtyped (dm_local nil U args) (ch ++ ch') k a ->
     mtyped (dm_global p args) (y :: ch') k a
-| mty_member : forall ρ U args ch0 ch k a,
-    List.length args < List.length (gu_params U) -> ch0 <> nil -> (k = mk_term -> ch <> nil) ->
+| mty_member : forall ρ U args ch0 ch k a a1,
+    List.length args < List.length (gu_params U) -> nextparam (dm_local ρ U args) a1 ->
+    ch0 <> nil -> (k = mk_term -> ch <> nil) ->
     mtyped (dm_local ρ U args) (ch0 ++ ch) k a -> mtyped (dm_member (dm_local ρ U args) ch0) ch k a.
 
 (** The types of the parameters of global modules are related at related
@@ -484,13 +488,13 @@ Proof.
   intros HGp HGc HGa.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
-                 | ρ Δ Φ args x Φ' b A M ρ1 a a0 i R Hl Hx Hb HA Ha
+                 | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hm Hty IH
                  | p args y U ch ch' k a Hm Hk Hty IH
-                 | ρ U args ch0 ch k a Hl Hch0 Hk Hty IH ];
+                 | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros w' i' E' Hw HE';
     assert (HPd : PER per_dmod) by typeclasses eauto.
   - (* still lacking an argument *)
@@ -661,6 +665,186 @@ Proof.
     + assert (Hne : ch0 ++ ch <> nil) by (destruct ch0; [ congruence | discriminate ]).
       rewrite (selmc_unsat _ _ _ _ _ Hl Hne Hv) in Hvv. rewrite (selmc_unsat _ _ _ _ _ Hl' Hne Hv') in Hvv.
       eexists; eexists; split; [ apply selmc_member_ex |]; split; [ apply selmc_member_ex | exact Hvv ].
+Qed.
+
+(** ** Selecting along a Typed Chain *)
+
+Lemma mtyped_selmc : forall w chain k a, mtyped w chain k a ->
+    forall pre ch, chain = pre ++ ch -> (k = mk_term -> ch <> nil) ->
+    forall w1, eval_selmc gc_deps gc_stack w pre w1 -> mtyped w1 ch k a.
+Proof.
+  induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
+                 | w a i R Hs Ha
+                 | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
+                 | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ E args h chain k a Hl HE Hm IH
+                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p args y T chain k a Hm Hty IH
+                 | p args y U ch0 ch' k a Hm Hk Hty IH
+                 | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
+    intros pre ch Heq Hch w1 Hw1.
+  - destruct pre as [| y pre]; cbn in Heq; subst.
+    + inversion Hw1; subst; econstructor; eassumption.
+    + destruct Hgl as [(ρ & U & args & -> & Hlt) | (p & args & -> & Hc & ->)]; [| discriminate ].
+      rewrite (selmc_unsat _ _ _ _ _ Hlt (cons_neq_nil _ _) Hw1).
+      eapply mty_member; [ exact Hlt | exact Hnp | discriminate | exact Hch |].
+      eapply mty_pi; [ left; do 3 eexists; split; [ reflexivity | exact Hlt ] | exact Hnp | exact Ha | exact Hty ].
+  - destruct pre; [| discriminate ]; cbn in Heq; subst.
+    inversion Hw1; subst; econstructor; eassumption.
+  - destruct pre as [| z pre]; cbn in Heq; subst.
+    + inversion Hw1; subst; econstructor; eassumption.
+    + injection Heq as -> Heq; destruct pre; [| discriminate ]; cbn in Heq; subst.
+      exfalso; apply Hch; reflexivity.
+  - destruct pre as [| z pre]; cbn in Heq.
+    + subst; inversion Hw1; subst; econstructor; eassumption.
+    + injection Heq as -> Heq.
+      inversion Hw1; subst.
+      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia.
+      match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod ?Uy')) |- _ =>
+        rewrite Hy in Hp; injection Hp as <- <- end.
+      match goal with Hb' : eval_benv _ _ _ Φ' ?ρ1' |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
+      eapply IH; [ reflexivity | exact Hch | eassumption ].
+  - destruct pre as [| z pre]; cbn in Heq.
+    + subst; inversion Hw1; subst; eapply mty_alias; eassumption.
+    + subst; apply (selmc_alias _ _ _ _ _ _ _ Hl (cons_neq_nil _ _) HE) in Hw1.
+      eapply (IH (_ :: _) ch); [ reflexivity | exact Hch | exact Hw1 ].
+  - destruct pre as [| z pre]; cbn in Heq; subst.
+    + inversion Hw1; subst; econstructor; eassumption.
+    + injection Heq as -> Heq; destruct pre; [| discriminate ]; cbn in Heq; subst.
+      exfalso; apply Hch; reflexivity.
+  - destruct pre as [| z pre]; cbn in Heq.
+    + subst; inversion Hw1; subst; econstructor; eassumption.
+    + injection Heq as -> Heq.
+      inversion Hw1; subst.
+      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end;
+        [| match goal with Hm' : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hm in Hm'; discriminate end ].
+      eapply IH; [ reflexivity | exact Hch | eassumption ].
+  - destruct pre as [| z pre]; cbn in Heq.
+    + subst; inversion Hw1; subst; econstructor; eassumption.
+    + injection Heq as -> Heq.
+      inversion Hw1; subst.
+      match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end;
+        [ match goal with Hm' : forall U r, gc_module _ _ _ <> Some (mr_alias U r) |- _ => exfalso; eapply Hm'; exact Hm end |].
+      match goal with Hm' : gc_module _ _ _ = Some (mr_alias ?U' ?ch1) |- _ => rewrite Hm in Hm'; injection Hm' as <- <- end.
+      eapply (IH (ch0 ++ pre) ch); [ rewrite app_assoc; reflexivity | exact Hch |].
+      apply eval_selmc_app; eexists; split; eassumption.
+  - destruct pre as [| z pre]; cbn in Heq; subst.
+    + inversion Hw1; subst; eapply mty_member; eassumption.
+    + rewrite (selmc_member _ _ _ _ Hw1).
+      eapply mty_member; [ exact Hl | exact Hnp1 | destruct ch0; [ congruence | discriminate ] | exact Hch |].
+      rewrite <- app_assoc; exact Hty.
+Qed.
+
+Lemma firstn_snoc : forall {A : Type} (l : list A) n x, nth_error l n = Some x -> firstn (S n) l = firstn n l ++ x :: nil.
+Proof.
+  induction l as [| y l IH]; intros [| n] x H; cbn in H |- *; try discriminate.
+  - injection H as ->; reflexivity.
+  - f_equal; exact (IH _ _ H).
+Qed.
+
+(** The parameters of a global alias start with those of the module it is
+    filed in. *)
+Definition galias_params_ok : Prop :=
+  forall p T y U ch,
+    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
+    exists Δ, gu_params U = Δ ++ T.
+
+(** ** Applying a Typed Module Value *)
+
+Lemma mtyped_app : gchild_ok -> galias_params_ok ->
+    forall w ch k a, mtyped w ch k a ->
+    forall a1 ρB B, a = Πᵈ a1 ρB B ->
+    (exists a0, nextparam w a0) \/ (exists h ch0, w = dm_member h ch0) ->
+    forall i' Ein c w1 b, per_univ_elem i' Ein a1 a1 -> Ein c c ->
+    eval_appm gc_deps gc_stack w c w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b.
+Proof.
+  intros HGc HGap.
+  induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
+                 | w a i R Hs Ha
+                 | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
+                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ E args h ch k a Hl HE Hm IH
+                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p args y T ch k a Hm Hty IH
+                 | p args y U ch ch' k a Hm Hk Hty IH
+                 | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
+    intros a1' ρB' B' Heq Hun i' Ein c w1 b' Hin Hc Hw1 Hb'.
+  - injection Heq as <- <- <-.
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin Ha) as EE.
+    eapply Hty; [ apply EE, Hc | exact Hw1 | exact Hb' ].
+  - subst; basic_invert_per_univ_elem Ha.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst; cbn in *;
+      match goal with Hn' : nth_error _ _ = Some _ |- _ =>
+        assert (Hn'' : nth_error (rev Δ) (List.length args) <> None) by congruence;
+        apply nth_error_Some in Hn''; rewrite length_rev in Hn''; lia end.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst; cbn in *;
+      match goal with Hn' : nth_error _ _ = Some _ |- _ =>
+        assert (Hn'' : nth_error (rev Δ) (List.length args) <> None) by congruence;
+        apply nth_error_Some in Hn''; rewrite length_rev in Hn''; lia end.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst; cbn in *.
+    + match goal with Hn' : nth_error _ _ = Some _ |- _ =>
+        assert (Hn'' : nth_error (rev Δ) (List.length args) <> None) by congruence;
+        apply nth_error_Some in Hn''; rewrite length_rev in Hn''; lia end.
+    + match goal with H1 : eval_modexp _ _ E _ ?h1 |- _ => pose proof (functional_eval_modexp _ _ _ _ HE H1) as <- end.
+      inversion Hw1; subst; try lia.
+      match goal with H1 : eval_modexp _ _ E _ ?h1 |- _ => pose proof (functional_eval_modexp _ _ _ _ HE H1) as <- end.
+      eapply IH; [ reflexivity | left; eexists; eassumption | exact Hin | exact Hc | eassumption | exact Hb' ].
+  - subst a.
+    destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst.
+    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T') |- _ => rewrite Hm in Hm'; injection Hm' as <- end.
+    match goal with Hn' : nth_error (rev T) _ = Some (ce_ass ?A1) |- _ => rename Hn' into HnT end.
+    inversion Hw1; subst.
+    assert (HlT : List.length args < List.length T)
+      by (assert (Hn'' : nth_error (rev T) (List.length args) <> None) by congruence;
+          apply nth_error_Some in Hn''; rewrite length_rev in Hn''; exact Hn'').
+    rewrite nth_error_rev in HnT.
+    replace (List.length args <? List.length T) with true in HnT by (symmetry; apply Nat.ltb_lt; exact HlT).
+    replace (List.length T - List.length args) with (S (List.length T - S (List.length args))) in Ha0 by lia.
+    rewrite (firstn_snoc _ _ _ HnT), ctx_pi_app in Ha0; cbn in Ha0.
+    inversion Ha0; subst.
+    destruct (per_univ_elem_pi_inv Ha) as (in' & out' & Hin' & Hout' & _).
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hin Hin') as EE.
+    destruct (Hout' _ _ (proj1 (EE _ _) Hc)) as [b1 b2 Hb1 Hb2 Hbb].
+    functional_eval_rewrite_clear.
+    eapply mty_gdef; [ exact Hm | rewrite length_app; cbn; lia | exact Hr | exact Hf | exact HaA | exact HE | exact Hff | | exact Hbb ].
+    rewrite length_app; cbn.
+    replace (List.length T - (List.length args + 1)) with (List.length T - S (List.length args)) by lia.
+    unfold env_args; rewrite fold_left_app; exact Hb2.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst.
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
+    destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
+    inversion Hw1; subst.
+    eapply mty_gsub; [ exact Hm |].
+    eapply IH; [ reflexivity | | exact Hin | exact Hc | constructor | exact Hb' ].
+    left; eexists; econstructor; [ exact Hm | rewrite rev_app_distr, nth_error_app1; [ eassumption |] | eassumption ].
+    apply nth_error_Some; match goal with Hn' : nth_error (rev _) _ = Some _ |- _ => rewrite Hn' end; discriminate.
+  - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
+    inversion Hn; subst.
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
+    destruct (HGap _ _ _ _ _ Hmp Hm) as [Δ HU].
+    inversion Hw1; subst.
+    match goal with Hn' : nth_error (rev _) _ = Some _ |- _ => rename Hn' into HnT end.
+    assert (HlT : List.length args < List.length (rev _))
+      by (apply nth_error_Some; rewrite HnT; discriminate).
+    rewrite length_rev in HlT.
+    assert (HlU : List.length args < List.length (gu_params U)) by (rewrite HU, length_app; lia).
+    assert (HnU : nth_error (rev (gu_params U)) (List.length args) = Some (ce_ass A))
+      by (rewrite HU, rev_app_distr, nth_error_app1; [ exact HnT | rewrite length_rev; exact HlT ]).
+    destruct U as [ΔU D]; cbn [gu_params] in HlU, HnU.
+    assert (HwU : eval_appm gc_deps gc_stack (dm_local nil (gu_mk ΔU D) args) c (dm_local nil (gu_mk ΔU D) (args ++ c :: nil)))
+      by (destruct D; [ apply eval_appm_body | apply eval_appm_alias_unsat ]; exact HlU).
+    eapply mty_galias; [ exact Hm | exact Hk |].
+    eapply IH; [ reflexivity | left; eexists; econstructor; eassumption | exact Hin | exact Hc | exact HwU | exact Hb' ].
+  - inversion Hw1; subst.
+    match goal with H1 : eval_appm _ _ (dm_local ρ U args) c ?h1, H4 : eval_selmc _ _ ?h1 ch0 w1 |- _ =>
+      exact (mtyped_selmc _ _ _ _
+               (IH _ _ _ eq_refl (or_introl (ex_intro _ _ Hnp1)) _ _ _ _ _ Hin Hc H1 Hb') ch0 ch eq_refl Hk _ H4) end.
 Qed.
 
 End Fixed_GCtx.
