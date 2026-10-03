@@ -12,6 +12,9 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
                        (ps : list (string * Cst.obj)) (body : Cst.obj) : Cst.obj :=
   List.fold_left (fun acc p => b (fst p) (snd p) acc) ps body.
 
+(** A dotted path as a list, in order. *)
+Definition path_list (p : string * list string) : list string := List.rev (fst p :: snd p).
+
 %}
 
 %token <loc*string> VAR
@@ -29,7 +32,8 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
-%type <list string> path fpath names
+%type <(string * list string)%type> path
+%type <list string> fpath names
 %type <(list string * list string)%type> qpath
 %type <Cst.ispec> ispec
 %type <Cst.cmd> cmd import_cmd
@@ -58,7 +62,7 @@ let cmds :=
   | ~ = cmds; ~ = cmd; { cmd :: cmds }
 
 let cmd :=
-  | MODULE; p = path; md = mdecl; { Cst.c_mod (List.rev p) (fst md) (snd md) }
+  | MODULE; p = path; md = mdecl; { Cst.c_mod_dotted (fst p) (snd p) (fst md) (snd md) }
   | m = mods; DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
       { Cst.c_def m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
   | ~ = import_cmd; <>
@@ -93,10 +97,11 @@ let names :=
   | x = VAR; { [snd x] }
   | ~ = names; ";"; x = VAR; { snd x :: names }
 
-(* Reversed nonempty dotted path: internal modules *)
+(* Nonempty dotted path: internal modules.  Its last segment, and the
+   segments before it reversed. *)
 let path :=
-  | x = VAR; { [snd x] }
-  | ~ = path; "."; x = VAR; { snd x :: path }
+  | x = VAR; { (snd x, @nil string) }
+  | ~ = path; "."; x = VAR; { (snd x, fst path :: snd path) }
 
 (* Reversed nonempty [::] path: a compilation unit *)
 let fpath :=
@@ -105,10 +110,10 @@ let fpath :=
 
 (* What an [import] names: an internal module, a unit, or a module of one *)
 let qpath :=
-  | ~ = path; { (@nil string, List.rev path) }
+  | ~ = path; { (@nil string, path_list path) }
   | ~ = fpath; "::"; x = VAR; { (List.rev (snd x :: fpath), @nil string) }
   | ~ = fpath; "::"; x = VAR; "."; ~ = path;
-      { (List.rev (snd x :: fpath), List.rev path) }
+      { (List.rev (snd x :: fpath), path_list path) }
 
 let fnbinder :=
   | PI; { Cst.pi }

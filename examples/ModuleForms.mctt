@@ -21,12 +21,11 @@ import Num.Ops as O
 
 eval O.add 1 1
 
-(* A local module with a body: each entry sees the earlier ones, and an
-   import inside it binds aliases only *)
+(* A local module with a body: each entry sees the earlier ones.  A local
+   body has no imports and no evals. *)
 eval let module L (n : Nat) where
        module Inner where def m : Nat := succ n end end
-       import Inner use (m)
-       def doubled : Nat := Num.Ops.add m m end
+       def doubled : Nat := Num.Ops.add Inner.m Inner.m end
      end in
        L.doubled 2
      end : Nat

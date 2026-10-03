@@ -184,7 +184,7 @@ and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : u
 and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
   let open Format in
   function
-  | Cst.Coq_c_mod (path, params, md) -> format_module f (String.concat "." path) params md
+  | Cst.Coq_c_mod (x, params, md) -> format_module f x params md
   | Cst.Coq_c_def (m, x, ea, eb) ->
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
@@ -360,7 +360,7 @@ let exp_to_obj =
              | None -> Cst.Coq_c_def (m, x, a', Cst.Coq_var "_"))
          | Coq_ge_mod u ->
             let params, md = impl_unit ctx' u in
-            Cst.Coq_c_mod ([x], params, md)
+            Cst.Coq_c_mod (x, params, md)
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_check (phi, bc) ->

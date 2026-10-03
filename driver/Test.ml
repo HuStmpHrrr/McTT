@@ -535,7 +535,6 @@ let%expect_test "ModuleForms.mctt works" =
                        succ x1
                      end
                    end
-                   import Inner use (m)
                    def doubled : Nat :=
                      Num.Ops.add Inner.m Inner.m
                    end
@@ -1371,27 +1370,13 @@ let%expect_test "a dotted module declaration" =
   let _ = main_of_body "module A.B (n : Nat) where def f : Nat := succ n end end eval A.B.f 1" in
   [%expect {| Evaluate A.B.f 1 --> 2 : Nat |}]
 
-let%expect_test "a local body with an import" =
+let%expect_test "a local body has no imports" =
   let _ =
     main_of_body
       "eval let module L where module N where def y : Nat := 5 end end \
        import N use (y) def z : Nat := succ y end end in L.z end"
   in
-  [%expect {|
-    Evaluate let module M1 where
-                   module N where
-                     def y : Nat :=
-                       5
-                     end
-                   end
-                   import N use (y)
-                   def z : Nat :=
-                     succ N.y
-                   end
-                 end
-             in M1.z
-             end --> 6 : Nat
-    |}]
+  [%expect {| Error: a local module has no imports |}]
 
 let%expect_test "an import of a local module alias" =
   let _ =
@@ -1446,11 +1431,7 @@ let%expect_test "an opaque definition is rejected in a local body" =
 
 let%expect_test "an eval is rejected in a local body" =
   let _ = main_of_body "eval let module X where eval 0 end in 0 end" in
-  [%expect {|
-    Error: let module M1 where
-                 eval 0
-               end in 0 end has no inferable type
-    |}]
+  [%expect {| Error: a local module has no evals |}]
 
 let%expect_test "a local module does not escape its let" =
   let _ = main_of_body "eval let module X where def f : Nat := 0 end end in X end" in
@@ -1502,7 +1483,6 @@ let%expect_test "lib/Polynomials.mctt" =
     Evaluate At.horner 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate At.naive 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate let module M1 (x1 : Coeffs) where
-                   import Prelude::Arith::MinMax use (max)
                    def value : forall (x2 : Nat) -> Nat :=
                      fun (x3 : Nat) -> At.horner x3 x1 4
                    end

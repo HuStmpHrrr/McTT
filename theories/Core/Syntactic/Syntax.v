@@ -84,11 +84,11 @@ with mdef : Set :=
 (** [:= E] *)
 | md_alias : obj -> mdef
 
-(** A module declaration carries the internal path it introduces ([module A.B]
-    nests two levels at once), its parameter telescope and its definition; a
-    unit's own name is declared by [prog] below, not here. *)
+(** A module declaration carries its name, its parameter telescope and its
+    definition; a unit's own name is declared by [prog] below, not here.  A
+    dotted declaration [module A.B] is parsed as nested ones ([c_mod_dotted]). *)
 with cmd : Set :=
-| c_mod : list string -> list (string * obj) -> mdef -> cmd
+| c_mod : string -> list (string * obj) -> mdef -> cmd
 | c_def : mods -> string -> obj -> obj -> cmd
 (** [c_import fp ip] imports the module at internal path [ip] of the unit at
     file path [fp].  An empty [fp] is this unit, so [import A.B] is
@@ -125,7 +125,7 @@ Section cst_mut_ind.
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
     (case_md_alias : forall o, Po o -> Pm (md_alias o))
-    (case_c_mod : forall p ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod p ps md))
+    (case_c_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod x ps md))
     (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
     (case_c_import : forall fp ip spec, Pc (c_import fp ip spec))
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA)).
@@ -174,8 +174,8 @@ Section cst_mut_ind.
     end
   with cmd_mut (c : cmd) : Pc c :=
     match c with
-    | c_mod p ps md =>
-        case_c_mod p ps md
+    | c_mod x ps md =>
+        case_c_mod x ps md
           ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
               match ps with
               | nil => List.Forall_nil _
@@ -195,6 +195,12 @@ Section cst_mut_ind.
   Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
   Proof. repeat split; [ exact obj_mut | exact decl_mut | exact mdef_mut | exact cmd_mut ]. Qed.
 End cst_mut_ind.
+
+(** [module A₁.….Aₙ.B (ps) md] is [module A₁ where … module Aₙ where module
+    B (ps) md end … end]: each [Aᵢ] has no parameters and the one member
+    [Aᵢ₊₁].  The grammar gives the path reversed, [B] first. *)
+Definition c_mod_dotted (x : string) (rev_pre : list string) (ps : list (string * obj)) (md : mdef) : cmd :=
+  List.fold_left (fun c y => c_mod y nil (md_where (c :: nil))) rev_pre (c_mod x ps md).
 
 (** A compilation unit: its imports, and the one module declaration everything
     else it contains lives in.  That declaration names the unit, so its path is a
