@@ -209,3 +209,17 @@ Each milestone is committed when the files up to it compile with no warning.
 * `wf_sub` keeps the frozen design's same-unit module field; pointwise
   equivalence lives in `Γ ⊢ U ≈ U'`, `Γ ⊢ H ≈ H'`, the congruence rules and the
   PER.
+* `wf_let_mod` and `wf_exp_eq_let_mod_zeta` premise that the body's type is a
+  type, and `wf_mem_app`/`wf_exp_eq_mem_app` that the member's type is one.
+  `sub_eq_preserves_exp` cannot use the congruence rules for these forms (unit
+  equivalence under equivalent substitutions needs presupposition), so it
+  reduces both sides by ζ or δ and meets them at that type.
+* `wf_sub_apply_mod` also gives the well-formedness of a literal image, as
+  `wf_sub_apply` gives the typing of a term image.
+* `wf_sub_eq` relates term images only; equivalent substitutions extended into
+  a slot by the literals of their own transported units are equivalent
+  (`wf_sub_eq_extend_mod`).
+* Commands: `cc_alias x Δ E` and `cc_import (option fpath) E ns` (the unit to
+  load, if any; the target; the `use`d names), checked by `import_ok`.
+  `rc_mod` and `ru_intro` require assumption-only parameters (`tele_ass`), as
+  `wf_gmod_nil` does.

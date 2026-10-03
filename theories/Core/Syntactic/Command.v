@@ -20,9 +20,12 @@ Inductive ccmd : Set :=
 | cc_def : string -> bool -> bool -> typ -> exp -> ccmd
 (** [module x (Δ) where cs end] *)
 | cc_mod : string -> ctx -> list ccmd -> ccmd
-(** [import X::Y.M], whatever its [use]/[as]: the unit, and the member path
-    of the imported module (empty for the unit itself). *)
-| cc_import : fpath -> list string -> ccmd
+(** [module x (Δ) := E]: an alias, under its own parameters. *)
+| cc_alias : string -> ctx -> modexp -> ccmd
+(** [import E], whatever its [use]/[as]: the unit to load first, if [E] is in
+    another unit; the imported module; and the names it [use]s, each of which
+    must be a public member or a submodule of [E]. *)
+| cc_import : option fpath -> modexp -> list string -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.
 

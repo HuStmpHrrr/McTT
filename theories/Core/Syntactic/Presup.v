@@ -24,11 +24,13 @@
     Both rely on extra premises that [Definitions] carries on those two rules
     for this purpose.
 
-    Seven of the twenty-one term-equality rules need an argument of their own, all
-    for the same reason: a congruence rule states its equation at the type
-    built from the left premises, so the right-hand side is typed by its own
-    rule, at its own type, and then moved to the type of the equation by
-    [wf_conv].  The remaining rules, including [η] (whose right-hand side is
+    A few of the term-equality rules need an argument of their own, all for
+    the same reason: a congruence rule states its equation at the type built
+    from the left premises, so the right-hand side is typed by its own rule,
+    at its own type, and then moved to the type of the equation by
+    [wf_conv].  The congruence rule for [let module] premises its right-hand
+    side instead, and only its left-hand side needs the body's type to be a
+    type.  The remaining rules, including [η] (whose right-hand side is
     [wf_fn_eta_expand]), are hints. *)
 
 From Mctt Require Import LibTactics.
@@ -122,6 +124,10 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Type@j) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Type@j) by mauto 3.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
+
+  (** [let module], left: the body's type is a type, by presupposition. *)
+  - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Type@j) as [j] by mauto 2 using presup_exp_typ.
+    eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
 
   (** [rec]-[succ], right.  The right-hand side is a double substitution, and
       the type it gets from [wf_exp] is the motive under the step

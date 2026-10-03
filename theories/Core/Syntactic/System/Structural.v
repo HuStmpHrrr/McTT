@@ -665,7 +665,7 @@ Proof.
   (** What is left are exactly the four rules for the [ℕ]-eliminator. *)
   all: try solve [ lift_wk_natrec; econstructor; mauto 2 ].
   (** The module rules. *)
-  all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod; eauto using wf_wk_q_mod ].
+  all: try solve [ rewrite ?exp_wk_sub_extend_mod; eapply wf_let_mod; eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left ].
   all: try solve [ rewrite !exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta; eauto using wf_wk_q_mod ].
   all: try solve [ rewrite exp_wk_sub_extend_mod; eapply wf_exp_eq_let_mod_cong;
                    [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
@@ -678,7 +678,7 @@ Proof.
   all: try solve [ rewrite ?apps_wk, ?member_ref_wk; first [ eapply wf_mem_app | eapply wf_exp_eq_mem_app ];
                    [ eauto | apply modexp_spine_wk; eassumption
                    | match goal with H : _ <> nil |- _ => destruct args; [ contradiction H; reflexivity | discriminate ] end
-                   | rewrite <- member_ref_wk, <- apps_wk; eauto ] ].
+                   | eauto | rewrite <- member_ref_wk, <- apps_wk; eauto ] ].
   all: try solve [ cbn [tele_wk]; first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
                    eauto 7 using wf_wk_ext, ext_eq_ctx_left, ext_eq_ctx_right, presup_exp_ctx, presup_exp_eq_ctx, presup_unit_eq_ctx ].
   all: try solve [ eapply wf_me_path; [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
@@ -1333,7 +1333,7 @@ Proof.
   all: try solve [ lift_sub_natrec; econstructor; mauto 2 ].
   (** The module rules.  A local module is lifted over by [q σ] at the
       transported unit. *)
-  all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod; eauto using wf_sub_q_mod ].
+  all: try solve [ rewrite ?exp_sub_sub_extend_mod; eapply wf_let_mod; eauto 6 using wf_sub_q_mod, wf_unit_eq_refl_left ].
   all: try solve [ rewrite !exp_sub_sub_extend_mod; eapply wf_exp_eq_let_mod_zeta; eauto using wf_sub_q_mod ].
   all: try solve [
     match goal with
@@ -1371,7 +1371,7 @@ Proof.
         rewrite ?apps_sub, ?member_ref_sub; first [ eapply wf_mem_app | eapply wf_exp_eq_mem_app ];
         [ eauto | eapply modexp_spine_sub; eassumption
         | match goal with H : _ <> nil |- _ => destruct args; [ contradiction H; reflexivity | discriminate ] end
-        | rewrite <- member_ref_sub, <- apps_sub; eauto ]
+        | eauto | rewrite <- member_ref_sub, <- apps_sub; eauto ]
     end ].
   (** Extensions. *)
   all: try solve [ cbn [tele_sub];

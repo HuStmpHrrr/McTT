@@ -115,7 +115,8 @@ Definition member_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (n : Str
 
 (** ** The Mutually Defined Judgments
 
-    Four about terms, seven about the global context.  All eleven are one
+    Four about terms, three about units, extensions and module expressions,
+    and seven about the global context.  All fourteen are one
     [Inductive … with …]: an entry's type and body are checked by the term
     judgments, so presupposition has to be proved for all of them at once. *)
 
@@ -192,9 +193,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M] )
-(** A local module occupies one index, a slot holding its unit. *)
+(** A local module occupies one index, a slot holding its unit.  The body's
+    type is premised to be a type, as the canonical type of [wf_mem] is:
+    equivalent substitutions are moved through the body by [ζ], and the two
+    sides then meet at that type. *)
 | wf_let_mod :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : C[Id ,,ₘ me_lit U] )
 (** A member of a module expression with no argument, at its canonical type.
@@ -213,6 +218,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      modexp_spine H = (R, args, pre) ->
      args <> nil ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 | wf_vlookup :
@@ -344,6 +350,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 (** [ζ] for local modules: the slot is replaced by the unit. *)
 | wf_exp_eq_let_mod_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+     Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U] )
 (** [δ] for members: a member is its δ-reduct. *)
@@ -360,6 +367,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
      modexp_spine H = (R, args, pre) ->
      args <> nil ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ apps (member_ref R (pre ++ x :: nil)) args : A )
 (** [δ] for local definitions: a defined variable is its body.  It is stated

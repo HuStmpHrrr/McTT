@@ -51,6 +51,12 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹ A
+(** A module slot refines a slot of the same unit. *)
+| ctx_sub_extend_mod : forall Δ Γ U,
+    Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U ->
+    Θ ⍮ Ξ ⊢ Δ ▹ₘ U ⊆ Γ ▹ₘ U
 where "Θ ⍮ Ξ ⊢ Δ ⊆ Γ" := (ctx_sub Θ Ξ Δ Γ) : type_scope.
 
 #[export]
@@ -75,7 +81,8 @@ Proof.
     [ apply wf_sub_id; mauto 2
     | eapply wf_sub_id_extend
     | eapply wf_sub_id_extend_def
-    | eapply wf_sub_id_forget ]; eassumption.
+    | eapply wf_sub_id_forget
+    | eapply wf_sub_id_extend_mod ]; eassumption.
 Qed.
 
 #[export]
@@ -93,10 +100,11 @@ Qed.
     [Γ]. *)
 Lemma ctx_sub_refl : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⊢ Γ ⊆ Γ.
 Proof.
-  intros Θ Ξ Γ; induction Γ as [| [A | A M] Γ IH]; intros HΓ; inversion_clear HΓ;
+  intros Θ Ξ Γ; induction Γ as [| [A | A M | U] Γ IH]; intros HΓ; inversion_clear HΓ;
     mauto 3 using presup_exp_ctx.
   - econstructor; mauto 3 using presup_exp_ctx.
   - eapply ctx_sub_extend_def; mauto 3 using presup_exp_ctx.
+  - eapply ctx_sub_extend_mod; mauto 3 using presup_unit_eq_ctx.
 Qed.
 
 #[export]
@@ -108,7 +116,7 @@ Lemma ctx_sub_trans : forall Θ Ξ Γ0 Γ1,
       Θ ⍮ Ξ ⊢ Γ1 ⊆ Γ2 ->
       Θ ⍮ Ξ ⊢ Γ0 ⊆ Γ2.
 Proof.
-  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | |].
+  induction 1; intros * HΓ2; dependent destruction HΓ2; [ now constructor | | | | |].
   (** The two steps ascribe unrelated levels to the middle type, so both have to
       be raised before the refinements can be composed. *)
   all: assert (Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ) by mauto 2.
@@ -131,6 +139,7 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Δ ⊢ A1 ⊆ A2) by mauto 2.
     eapply ctx_sub_forget with (i := max i i0);
       mauto 3 using lift_exp_max_left, lift_exp_max_right.
+  - eapply ctx_sub_extend_mod; eauto.
 Qed.
 
 #[export]
