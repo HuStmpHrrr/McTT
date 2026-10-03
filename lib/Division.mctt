@@ -2,8 +2,15 @@
    quotients and remainders, and closed instances of their theorems.  The
    theorems take [d] for the positive divisor [succ d], so [divModSpec 17 4]
    is the division equation for 17 by 5. *)
-import Prelude::Arith::Div use (div; mod; divSucc; modSucc; divZeroDivisor; modZeroDivisor; divZero; modZero; divModSpec; modLt; modSmall; divSmall; modSelf; modPlusDivisor; modOne; divOne)
-import Prelude::Arith::Divides use (Divides; zeroDivides; dividesRefl; dividesZero; oneDivides; dividesPlus; dividesMult; evenDividesTwo; dividesTwoEven)
+import Prelude::Arith::Div use (div; mod; divSucc; modSucc)
+import Prelude::Arith::Div.Zero use (divZeroDivisor; modZeroDivisor; divZero; modZero)
+import Prelude::Arith::Div.Bounds use (divModSpec; modLt; modSmall; divSmall)
+import Prelude::Arith::Div.Periodic use (modSelf; modPlusDivisor)
+import Prelude::Arith::Div.One use (modOne; divOne)
+import Prelude::Arith::Divides use (Divides)
+import Prelude::Arith::Divides.Basic use (zeroDivides; dividesRefl; dividesZero; oneDivides)
+import Prelude::Arith::Divides.Closure use (dividesPlus; dividesMult)
+import Prelude::Arith::Divides.Two use (evenDividesTwo; dividesTwoEven)
 
 module Division where
 

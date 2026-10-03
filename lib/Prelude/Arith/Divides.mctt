@@ -1,11 +1,22 @@
 (* Divisibility, decided by the remainder of [Prelude::Arith::Div], with its
    basic laws and its link to [Prelude::Arith::Parity]. *)
-import Prelude::Logic use (absurd; And; andIntro; andFst; andSnd; orElim)
+import Prelude::Logic use (absurd)
+import Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
+import Prelude::Logic.Disj use (orElim)
 import Prelude::Arith::Equality use (Eq; sym; trans; cong; transport)
-import Prelude::Arith::Plus use (plus; plusZero; plusEqZeroRight)
-import Prelude::Arith::Mult use (mult; multZero; multAssoc)
-import Prelude::Arith::Parity use (Even; Odd; evenOrOdd)
-import Prelude::Arith::Div use (wrap; div; mod; divModSpec; modZero; modSelf; modOne; modPlus; modPlusMult)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero)
+import Prelude::Arith::Plus.Cancel use (plusEqZeroRight)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Mult.Basic use (multZero)
+import Prelude::Arith::Mult.Algebra use (multAssoc)
+import Prelude::Arith::Parity use (Even; Odd)
+import Prelude::Arith::Parity.Laws use (evenOrOdd)
+import Prelude::Arith::Div use (wrap; div; mod)
+import Prelude::Arith::Div.Bounds use (divModSpec)
+import Prelude::Arith::Div.Zero use (modZero)
+import Prelude::Arith::Div.Periodic use (modSelf; modPlus; modPlusMult)
+import Prelude::Arith::Div.One use (modOne)
 import Prelude::Function::Combinators use (Generic)
 
 module Prelude::Arith::Divides where
@@ -15,12 +26,15 @@ module Prelude::Arith::Divides where
    computes, so a closed instance is [True] or [False]. *)
 def Divides (k : Nat) (n : Nat) : Type@0 := Eq (mod n k) 0 end
 
+(* Divisibility by and of zero and one, and reflexivity. *)
+module Basic where
+
 (* Zero divides only zero. *)
-def zeroDivides : forall (n : Nat) (h : Divides 0 n) -> Eq n 0 :=
+abstract def zeroDivides : forall (n : Nat) (h : Divides 0 n) -> Eq n 0 :=
   fun (n : Nat) (h : Eq n 0) -> h
 end
 
-def dividesRefl : forall (n : Nat) -> Divides n n :=
+abstract def dividesRefl : forall (n : Nat) -> Divides n n :=
   fun (n : Nat) ->
     rec n return x . Divides x x
     | zero => true
@@ -28,19 +42,26 @@ def dividesRefl : forall (n : Nat) -> Divides n n :=
     end
 end
 
-def dividesZero : forall (k : Nat) -> Divides k 0 :=
+abstract def dividesZero : forall (k : Nat) -> Divides k 0 :=
   fun (k : Nat) -> modZero k
 end
 
-def oneDivides : forall (n : Nat) -> Divides 1 n :=
+abstract def oneDivides : forall (n : Nat) -> Divides 1 n :=
   fun (n : Nat) -> modOne n
 end
+
+end
+
+import Basic use (dividesRefl; dividesZero)
+
+(* Divisibility is closed under sums, multiples and differences. *)
+module Closure where
 
 (* A divisor of two numbers divides their sum.  For a positive divisor, the
    remainder of [a + b] is [a] steps of [wrap] from the remainder of [b],
    which is [0] by [hb], so it is the remainder of [a], which is [0] by
    [ha]. *)
-def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+abstract def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
     Divides k (plus a b) :=
   fun (k : Nat) (a : Nat) (b : Nat) ->
     rec k return x . (forall (ha : Divides x a) (hb : Divides x b) -> Divides x (plus a b))
@@ -60,7 +81,7 @@ def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : 
 end
 
 (* Every multiple of [k] is divisible by [k]. *)
-def dividesMult : forall (k : Nat) (m : Nat) -> Divides k (mult m k) :=
+abstract def dividesMult : forall (k : Nat) (m : Nat) -> Divides k (mult m k) :=
   fun (k : Nat) (m : Nat) ->
     rec m return x . Divides k (mult x k)
     | zero => dividesZero k
@@ -70,7 +91,7 @@ end
 
 (* A number divisible by [succ d] is its quotient times [succ d]: the
    division equation with a zero remainder. *)
-def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
+abstract def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
     Eq (mult (div b (succ d)) (succ d)) b :=
   fun (d : Nat) (b : Nat) (h : Eq (mod b (succ d)) 0) ->
     let k : Nat := succ d;
@@ -83,7 +104,7 @@ def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
 end
 
 (* A divisor of [b] divides every multiple [mult m b]. *)
-def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
+abstract def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
     Divides k (mult m b) :=
   fun (k : Nat) (b : Nat) (m : Nat) ->
     rec k return x . (forall (h : Divides x b) -> Divides x (mult m b))
@@ -103,7 +124,7 @@ def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
 end
 
 (* A divisor of [x] and of [plus x y] divides [y]. *)
-def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
+abstract def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
     (hx : Divides k x) (hxy : Divides k (plus x y)) -> Divides k y :=
   fun (k : Nat) (x : Nat) (y : Nat) ->
     rec k return w . (forall (hx : Divides w x) (hxy : Divides w (plus x y)) -> Divides w y)
@@ -120,10 +141,15 @@ def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
     end
 end
 
+end
+
+(* Divisibility by two is evenness. *)
+module Two where
+
 (* The remainder by two is the parity flag: [0] for even numbers and [1] for
    odd ones.  Both halves are proved together, since the step exchanges
    them. *)
-def modTwoParity : forall (n : Nat) ->
+private def modTwoParity : forall (n : Nat) ->
     And (forall (h : Even n) -> Eq (mod n 2) 0) (forall (h : Odd n) -> Eq (mod n 2) 1) :=
   fun (n : Nat) ->
     rec n return x . And (forall (h : Even x) -> Eq (mod x 2) 0)
@@ -149,7 +175,7 @@ def modTwoParity : forall (n : Nat) ->
 end
 
 (* An even number is divisible by two. *)
-def evenDividesTwo : forall (n : Nat) (h : Even n) -> Divides 2 n :=
+abstract def evenDividesTwo : forall (n : Nat) (h : Even n) -> Divides 2 n :=
   fun (n : Nat) (h : Even n) ->
     andFst (forall (h : Even n) -> Eq (mod n 2) 0) (forall (h : Odd n) -> Eq (mod n 2) 1)
       (modTwoParity n) h
@@ -157,7 +183,7 @@ end
 
 (* A number divisible by two is even: were it odd, its remainder would be
    [1] rather than [0]. *)
-def dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
+abstract def dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
   fun (n : Nat) (h : Eq (mod n 2) 0) ->
     orElim (Even n) (Odd n) (Even n) (evenOrOdd n)
       (fun (e : Even n) -> e)
@@ -168,6 +194,8 @@ def dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
                  (andSnd (forall (h : Even n) -> Eq (mod n 2) 0) (forall (h : Odd n) -> Eq (mod n 2) 1)
                     (modTwoParity n) o))
               h))
+end
+
 end
 
 end

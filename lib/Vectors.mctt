@@ -7,7 +7,11 @@ import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Data::Vec as V
-import Prelude::Data::Vec::Properties use (sumVec; nthMap; nthReplicate; nthAppendLeft; nthAppendRight; sumReplicate; sumAppend; nthTabulate; nthZipWith; lastSnoc; nthReverse; takeAppend; dropAppend; appendTakeDrop; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate; allbSound; allbComplete; anybSound)
+import Prelude::Data::Vec::Properties use (sumVec)
+import Prelude::Data::Vec::Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
+import Prelude::Data::Vec::Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
+import Prelude::Data::Vec::Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
+import Prelude::Data::Vec::Properties.Tests use (allbSound; allbComplete; anybSound)
 
 module Vectors where
 

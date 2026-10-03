@@ -4,8 +4,12 @@
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Sub use (sub)
 import Prelude::Arith::MinMax use (min; max)
-import Prelude::Arith::Monotone use (lePlusMono; lePlusCancel; leMultMono; ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus; subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
-import Prelude::Arith::Lattice use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib; maxMinDistrib; minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight; minMono; maxMono)
+import Prelude::Arith::Monotone.Mono use (lePlusMono; lePlusCancel; leMultMono)
+import Prelude::Arith::Monotone.Strict use (ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus)
+import Prelude::Arith::Monotone.SubLaws use (subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
+import Prelude::Arith::Lattice.Algebra use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib; maxMinDistrib)
+import Prelude::Arith::Lattice.Bounds use (minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight)
+import Prelude::Arith::Lattice.Mono use (minMono; maxMono)
 
 module Lattice where
 

@@ -126,10 +126,11 @@ let%expect_test "LetTrueFalse.mctt works" =
 let%expect_test "lib/NatTheory.mctt" =
   let _ = main_of_lib "NatTheory.mctt" in
   [%expect {|
-    Evaluate Prelude::Arith::Plus.plusComm 2 3 --> true : True
+    Evaluate Prelude::Arith::Plus.Algebra.plusComm 2 3 --> true : True
     Evaluate Prelude::Arith::Equality.sym 4 4 (Prelude::Arith::Equality.refl 4)
       --> true : True
-    Evaluate Prelude::Arith::Equality.zeroNeSucc 5 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Equality.zeroNeSucc 5
+      --> fun (x1 : False) -> Prelude::Arith::Equality.zeroNeSucc 5 x1
       : forall (x1 : False) -> False
     Evaluate iterSucc 3 4 --> true : True
     Evaluate Prelude::Function::Iter.iter Nat
@@ -657,54 +658,58 @@ let%expect_test "lib/Arithmetic.mctt" =
     Evaluate Prelude::Arith::Mult.mult 6 7 --> 42 : Nat
     Evaluate Prelude::Arith::Plus.plus (Prelude::Arith::Mult.mult 3 4)
                (Prelude::Arith::Mult.mult 2 5) --> 22 : Nat
-    Evaluate Prelude::Arith::Plus.plusAssoc 1 2 3 --> true : True
-    Evaluate Prelude::Arith::Mult.multComm 3 4 --> true : True
-    Evaluate Prelude::Arith::Mult.multAssoc 2 3 4 --> true : True
-    Evaluate Prelude::Arith::Mult.multDistribLeft 2 3 4 --> true : True
-    Evaluate Prelude::Arith::Mult.multDistribRight 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Plus.Algebra.plusAssoc 1 2 3 --> true : True
+    Evaluate Prelude::Arith::Mult.Algebra.multComm 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.Algebra.multAssoc 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.Algebra.multDistribLeft 2 3 4 --> true : True
+    Evaluate Prelude::Arith::Mult.Algebra.multDistribRight 2 3 4 --> true : True
     Evaluate Prelude::Arith::Equality.cong
                (fun (x1 : Nat) -> Prelude::Arith::Mult.mult x1 x1)
                3
                3
                (Prelude::Arith::Equality.refl 3) --> true : True
-    Evaluate Prelude::Arith::Plus.plusCancelLeft 2 3 3 true --> true : True
-    Evaluate Prelude::Arith::Plus.plusCancelRight 4 4 1 true --> true : True
-    Evaluate Prelude::Arith::Plus.plusEqZero 0 0 true --> true : True
-    Evaluate Prelude::Arith::Mult.multEqZero 2 0 true (fun (x1 : False) -> x1)
-      --> true : True
+    Evaluate Prelude::Arith::Plus.Cancel.plusCancelLeft 2 3 3 true --> true
+      : True
+    Evaluate Prelude::Arith::Plus.Cancel.plusCancelRight 4 4 1 true --> true
+      : True
+    Evaluate Prelude::Arith::Plus.Cancel.plusEqZero 0 0 true --> true : True
+    Evaluate Prelude::Arith::Mult.Cancel.multEqZero 2 0 true
+               (fun (x1 : False) -> x1) --> true : True
     |}]
 
 let%expect_test "lib/OrderParity.mctt" =
   let _ = main_of_lib "OrderParity.mctt" in
   [%expect {|
-    Evaluate Prelude::Arith::Order.leTrans 1 2 5 true true --> true : True
-    Evaluate Prelude::Arith::Order.leAntisym 3 3 true true --> true : True
-    Evaluate Prelude::Arith::Order.leSucc 4 --> true : True
-    Evaluate Prelude::Arith::Order.lePlusRight 2 3 --> true : True
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Le 5 2)
+    Evaluate Prelude::Arith::Order.LeLaws.leTrans 1 2 5 true true --> true : True
+    Evaluate Prelude::Arith::Order.LeLaws.leAntisym 3 3 true true --> true : True
+    Evaluate Prelude::Arith::Order.LeLaws.leSucc 4 --> true : True
+    Evaluate Prelude::Arith::Order.LeLaws.lePlusRight 2 3 --> true : True
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Order.Le 5 2)
                (Prelude::Arith::Order.Le 2 5)
                Nat
-               (Prelude::Arith::Order.leTotal 5 2)
+               (Prelude::Arith::Order.LeLaws.leTotal 5 2)
                (fun (x1 : Prelude::Arith::Order.Le 5 2) -> 0)
                (fun (x2 : Prelude::Arith::Order.Le 2 5) -> 1) --> 1 : Nat
-    Evaluate Prelude::Arith::Order.ltIrrefl 3 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Order.LtLaws.ltIrrefl 3
+      --> fun (x1 : False) -> Prelude::Arith::Order.LtLaws.ltIrrefl 3 x1
       : forall (x1 : False) -> False
-    Evaluate Prelude::Arith::Order.notLtZero 2 --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Order.LtLaws.notLtZero 2
+      --> fun (x1 : False) -> Prelude::Arith::Order.LtLaws.notLtZero 2 x1
       : forall (x1 : False) -> False
     Evaluate Prelude::Arith::Order.leb 2 5 --> 1 : Nat
     Evaluate Prelude::Arith::Order.leb 5 2 --> 0 : Nat
-    Evaluate Prelude::Arith::Order.lebComplete 2 5 true --> true : True
-    Evaluate Prelude::Arith::Order.lebZero 5 2 true --> true : True
+    Evaluate Prelude::Arith::Order.LebLaws.lebComplete 2 5 true --> true : True
+    Evaluate Prelude::Arith::Order.LebLaws.lebZero 5 2 true --> true : True
     Evaluate Prelude::Arith::Parity.double 7 --> 14 : Nat
-    Evaluate Prelude::Arith::Parity.evenDouble 7 --> true : True
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Parity.Even 7)
+    Evaluate Prelude::Arith::Parity.Laws.evenDouble 7 --> true : True
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Parity.Even 7)
                (Prelude::Arith::Parity.Odd 7)
                Nat
-               (Prelude::Arith::Parity.evenOrOdd 7)
+               (Prelude::Arith::Parity.Laws.evenOrOdd 7)
                (fun (x1 : Prelude::Arith::Parity.Even 7) -> 0)
                (fun (x2 : Prelude::Arith::Parity.Odd 7) -> 1) --> 1 : Nat
-    Evaluate Prelude::Arith::Parity.evenSuccOdd 4 true --> true : True
-    Evaluate Prelude::Arith::Parity.evenPlus 4 6 true true --> true : True
+    Evaluate Prelude::Arith::Parity.Laws.evenSuccOdd 4 true --> true : True
+    Evaluate Prelude::Arith::Parity.Laws.evenPlus 4 6 true true --> true : True
     |}]
 
 let%expect_test "a missing input file is reported" =
@@ -733,20 +738,20 @@ let%expect_test "lib/Programs.mctt" =
     Evaluate Prelude::Arith::MinMax.max 4 9 --> 9 : Nat
     Evaluate Prelude::Arith::Ackermann.ack 2 3 --> 9 : Nat
     Evaluate Prelude::Arith::Ackermann.ack 3 3 --> 61 : Nat
-    Evaluate Prelude::Arith::Sub.plusSub 6 4 --> true : True
-    Evaluate Prelude::Arith::Sub.subSelf 7 --> true : True
-    Evaluate Prelude::Arith::Sub.subSuccRight 9 4 --> true : True
-    Evaluate Prelude::Arith::MinMax.plusMinMax 3 8 --> true : True
-    Evaluate Prelude::Arith::MinMax.minComm 2 5 --> true : True
-    Evaluate Prelude::Arith::MinMax.maxComm 6 1 --> true : True
-    Evaluate Prelude::Arith::Ackermann.ackZero 4 --> true : True
-    Evaluate Prelude::Arith::Ackermann.ackTwo 5 --> true : True
-    Evaluate Prelude::Function::Combinators.iteratePlus
+    Evaluate Prelude::Arith::Sub.PlusSub.plusSub 6 4 --> true : True
+    Evaluate Prelude::Arith::Sub.Laws.subSelf 7 --> true : True
+    Evaluate Prelude::Arith::Sub.Laws.subSuccRight 9 4 --> true : True
+    Evaluate Prelude::Arith::MinMax.Laws.plusMinMax 3 8 --> true : True
+    Evaluate Prelude::Arith::MinMax.Laws.minComm 2 5 --> true : True
+    Evaluate Prelude::Arith::MinMax.Laws.maxComm 6 1 --> true : True
+    Evaluate Prelude::Arith::Ackermann.Equations.ackZero 4 --> true : True
+    Evaluate Prelude::Arith::Ackermann.Rows.ackTwo 5 --> true : True
+    Evaluate Prelude::Function::Combinators.IterateLaws.iteratePlus
                (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 3)
                2
                3
                1 --> true : True
-    Evaluate Prelude::Function::Combinators.iterateComm
+    Evaluate Prelude::Function::Combinators.IterateLaws.iterateComm
                (fun (x1 : Nat) -> succ (succ x1))
                3
                4
@@ -784,58 +789,59 @@ let%expect_test "lib/Induction.mctt" =
     Evaluate Prelude::Arith::Induction.caseNat (fun (x1 : Nat) -> Nat) 0
                (fun (x2 : Nat) -> x2)
                9 --> 8 : Nat
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Equality.Eq 3 3)
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Equality.Eq 3 3)
                (Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 3))
                Nat
-               (Prelude::Arith::Decide.decEq 3 3)
+               (Prelude::Arith::Decide.Deciders.decEq 3 3)
                (fun (x1 : Prelude::Arith::Equality.Eq 3 3) -> 1)
                (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 3))
                  -> 0) --> 1 : Nat
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Equality.Eq 3 4)
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Equality.Eq 3 4)
                (Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 4))
                Nat
-               (Prelude::Arith::Decide.decEq 3 4)
+               (Prelude::Arith::Decide.Deciders.decEq 3 4)
                (fun (x1 : Prelude::Arith::Equality.Eq 3 4) -> 1)
                (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 3 4))
                  -> 0) --> 0 : Nat
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Le 2 5)
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Order.Le 2 5)
                (Prelude::Logic.Not (Prelude::Arith::Order.Le 2 5))
                Nat
-               (Prelude::Arith::Decide.decLe 2 5)
+               (Prelude::Arith::Decide.Deciders.decLe 2 5)
                (fun (x1 : Prelude::Arith::Order.Le 2 5) -> 1)
                (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Order.Le 2 5))
                  -> 0) --> 1 : Nat
-    Evaluate Prelude::Logic.orElim (Prelude::Arith::Order.Lt 5 5)
+    Evaluate Prelude::Logic.Disj.orElim (Prelude::Arith::Order.Lt 5 5)
                (Prelude::Logic.Not (Prelude::Arith::Order.Lt 5 5))
                Nat
-               (Prelude::Arith::Decide.decLt 5 5)
+               (Prelude::Arith::Decide.Deciders.decLt 5 5)
                (fun (x1 : Prelude::Arith::Order.Lt 5 5) -> 1)
                (fun (x2 : Prelude::Logic.Not (Prelude::Arith::Order.Lt 5 5))
                  -> 0) --> 0 : Nat
-    Evaluate Prelude::Logic.decStable (Prelude::Arith::Equality.Eq 4 4)
-               (Prelude::Arith::Decide.decEq 4 4)
+    Evaluate Prelude::Logic.Decidable.decStable (Prelude::Arith::Equality.Eq 4 4)
+               (Prelude::Arith::Decide.Deciders.decEq 4 4)
                (fun (x1 : Prelude::Logic.Not (Prelude::Arith::Equality.Eq 4 4))
                  -> x1 true) --> true : True
     Evaluate Prelude::Arith::Decide.eqb 6 6 --> 1 : Nat
     Evaluate Prelude::Arith::Decide.eqb 6 2 --> 0 : Nat
-    Evaluate Prelude::Logic.iffFwd
+    Evaluate Prelude::Logic.Equiv.iffFwd
                (Prelude::Arith::Equality.Eq (Prelude::Arith::Decide.eqb 5 5) 1)
                (Prelude::Arith::Equality.Eq 5 5)
-               (Prelude::Arith::Decide.eqbSpec 5 5)
+               (Prelude::Arith::Decide.EqbLaws.eqbSpec 5 5)
                true --> true : True
-    Evaluate Prelude::Logic.iffBwd
+    Evaluate Prelude::Logic.Equiv.iffBwd
                (Prelude::Arith::Equality.Eq (Prelude::Arith::Decide.eqb 5 5) 1)
                (Prelude::Arith::Equality.Eq 5 5)
-               (Prelude::Arith::Decide.eqbSpec 5 5)
+               (Prelude::Arith::Decide.EqbLaws.eqbSpec 5 5)
                true --> true : True
-    Evaluate Prelude::Arith::Decide.eqbZero 2 3 true --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Decide.EqbLaws.eqbZero 2 3 true
+      --> fun (x1 : False) -> Prelude::Arith::Decide.EqbLaws.eqbZero 2 3 true x1
       : forall (x1 : False) -> False
-    Evaluate Prelude::Logic.existsElim
+    Evaluate Prelude::Logic.Exist.existsElim
                (fun (x1 : Nat)
                  -> Prelude::Arith::Equality.Eq (Prelude::Arith::Plus.plus x1 x1)
                       6)
                Nat
-               (Prelude::Logic.existsIntro
+               (Prelude::Logic.Exist.existsIntro
                   (fun (x2 : Nat)
                     -> Prelude::Arith::Equality.Eq
                          (Prelude::Arith::Plus.plus x2 x2)
@@ -847,7 +853,7 @@ let%expect_test "lib/Induction.mctt" =
                             (Prelude::Arith::Plus.plus x3 x3)
                             6)
                  -> x3) --> 3 : Nat
-  |}]
+    |}]
 
 let%expect_test "lib/Lattice.mctt" =
   let _ = main_of_lib "Lattice.mctt" in
@@ -858,37 +864,47 @@ let%expect_test "lib/Lattice.mctt" =
                (Prelude::Arith::MinMax.min 6 8) --> 6 : Nat
     Evaluate Prelude::Arith::Plus.plus (Prelude::Arith::Sub.sub 9 4) 4 --> 9
       : Nat
-    Evaluate Prelude::Arith::Monotone.lePlusMono 1 2 3 4 true true --> true
+    Evaluate Prelude::Arith::Monotone.Mono.lePlusMono 1 2 3 4 true true --> true
       : True
-    Evaluate Prelude::Arith::Monotone.lePlusCancel 3 2 5 true --> true : True
-    Evaluate Prelude::Arith::Monotone.leMultMono 2 3 2 4 true true --> true
+    Evaluate Prelude::Arith::Monotone.Mono.lePlusCancel 3 2 5 true --> true
       : True
-    Evaluate Prelude::Arith::Monotone.ltTrans 1 2 4 true true --> true : True
-    Evaluate Prelude::Arith::Monotone.ltLeTrans 1 3 3 true true --> true : True
-    Evaluate Prelude::Arith::Monotone.leLtTrans 2 2 5 true true --> true : True
-    Evaluate Prelude::Arith::Monotone.ltSucc 6 --> true : True
-    Evaluate Prelude::Arith::Monotone.ltPlus 4 2 --> true : True
-    Evaluate Prelude::Arith::Monotone.subLe 7 3 --> true : True
-    Evaluate Prelude::Arith::Monotone.subMonoLeft 4 6 2 true --> true : True
-    Evaluate Prelude::Arith::Monotone.subMonoRight 8 2 5 true --> true : True
-    Evaluate Prelude::Arith::Monotone.plusSubCancel 9 4 true --> true : True
-    Evaluate Prelude::Arith::Monotone.subPlusCancel 9 4 true --> true : True
-    Evaluate Prelude::Arith::Monotone.subPos 5 2 true --> true : True
-    Evaluate Prelude::Arith::Lattice.minAssoc 4 2 7 --> true : True
-    Evaluate Prelude::Arith::Lattice.maxAssoc 4 2 7 --> true : True
-    Evaluate Prelude::Arith::Lattice.minMaxAbsorb 5 3 --> true : True
-    Evaluate Prelude::Arith::Lattice.maxMinAbsorb 3 5 --> true : True
-    Evaluate Prelude::Arith::Lattice.minMaxDistrib 4 2 6 --> true : True
-    Evaluate Prelude::Arith::Lattice.maxMinDistrib 4 2 6 --> true : True
-    Evaluate Prelude::Arith::Lattice.minLe 3 8 --> true : True
-    Evaluate Prelude::Arith::Lattice.leMax 8 3 --> true : True
-    Evaluate Prelude::Arith::Lattice.leMin 2 4 5 true true --> true : True
-    Evaluate Prelude::Arith::Lattice.maxLe 3 4 6 true true --> true : True
-    Evaluate Prelude::Arith::Lattice.minEqLeft 3 5 true --> true : True
-    Evaluate Prelude::Arith::Lattice.maxEqRight 3 5 true --> true : True
-    Evaluate Prelude::Arith::Lattice.minMono 2 3 4 6 true true --> true : True
-    Evaluate Prelude::Arith::Lattice.maxMono 2 3 6 7 true true --> true : True
-  |}]
+    Evaluate Prelude::Arith::Monotone.Mono.leMultMono 2 3 2 4 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.Strict.ltTrans 1 2 4 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.Strict.ltLeTrans 1 3 3 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.Strict.leLtTrans 2 2 5 true true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.Strict.ltSucc 6 --> true : True
+    Evaluate Prelude::Arith::Monotone.Strict.ltPlus 4 2 --> true : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.subLe 7 3 --> true : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.subMonoLeft 4 6 2 true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.subMonoRight 8 2 5 true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.plusSubCancel 9 4 true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.subPlusCancel 9 4 true --> true
+      : True
+    Evaluate Prelude::Arith::Monotone.SubLaws.subPos 5 2 true --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.minAssoc 4 2 7 --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.maxAssoc 4 2 7 --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.minMaxAbsorb 5 3 --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.maxMinAbsorb 3 5 --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.minMaxDistrib 4 2 6 --> true : True
+    Evaluate Prelude::Arith::Lattice.Algebra.maxMinDistrib 4 2 6 --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.minLe 3 8 --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.leMax 8 3 --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.leMin 2 4 5 true true --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.maxLe 3 4 6 true true --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.minEqLeft 3 5 true --> true : True
+    Evaluate Prelude::Arith::Lattice.Bounds.maxEqRight 3 5 true --> true : True
+    Evaluate Prelude::Arith::Lattice.Mono.minMono 2 3 4 6 true true --> true
+      : True
+    Evaluate Prelude::Arith::Lattice.Mono.maxMono 2 3 6 7 true true --> true
+      : True
+    |}]
 
 let%expect_test "lib/Division.mctt" =
   let _ = main_of_lib "Division.mctt" in
@@ -901,30 +917,31 @@ let%expect_test "lib/Division.mctt" =
     Evaluate Prelude::Arith::Div.mod 20 4 --> 0 : Nat
     Evaluate Prelude::Arith::Div.divSucc 17 3 --> 4 : Nat
     Evaluate Prelude::Arith::Div.modSucc 17 3 --> 1 : Nat
-    Evaluate Prelude::Arith::Div.divZeroDivisor 17 --> true : True
-    Evaluate Prelude::Arith::Div.modZeroDivisor 17 --> true : True
-    Evaluate Prelude::Arith::Div.divZero 4 --> true : True
-    Evaluate Prelude::Arith::Div.modZero 0 --> true : True
-    Evaluate Prelude::Arith::Div.divModSpec 17 4 --> true : True
-    Evaluate Prelude::Arith::Div.modLt 17 4 --> true : True
-    Evaluate Prelude::Arith::Div.modSmall 3 4 true --> true : True
-    Evaluate Prelude::Arith::Div.divSmall 3 4 true --> true : True
-    Evaluate Prelude::Arith::Div.modSelf 6 --> true : True
-    Evaluate Prelude::Arith::Div.modPlusDivisor 9 4 --> true : True
-    Evaluate Prelude::Arith::Div.modOne 7 --> true : True
-    Evaluate Prelude::Arith::Div.divOne 7 --> true : True
+    Evaluate Prelude::Arith::Div.Zero.divZeroDivisor 17 --> true : True
+    Evaluate Prelude::Arith::Div.Zero.modZeroDivisor 17 --> true : True
+    Evaluate Prelude::Arith::Div.Zero.divZero 4 --> true : True
+    Evaluate Prelude::Arith::Div.Zero.modZero 0 --> true : True
+    Evaluate Prelude::Arith::Div.Bounds.divModSpec 17 4 --> true : True
+    Evaluate Prelude::Arith::Div.Bounds.modLt 17 4 --> true : True
+    Evaluate Prelude::Arith::Div.Bounds.modSmall 3 4 true --> true : True
+    Evaluate Prelude::Arith::Div.Bounds.divSmall 3 4 true --> true : True
+    Evaluate Prelude::Arith::Div.Periodic.modSelf 6 --> true : True
+    Evaluate Prelude::Arith::Div.Periodic.modPlusDivisor 9 4 --> true : True
+    Evaluate Prelude::Arith::Div.One.modOne 7 --> true : True
+    Evaluate Prelude::Arith::Div.One.divOne 7 --> true : True
     Evaluate Prelude::Arith::Divides.Divides 3 12 --> True : Type@0
     Evaluate Prelude::Arith::Divides.Divides 3 13 --> False : Type@0
     Evaluate Prelude::Arith::Divides.Divides 0 0 --> True : Type@0
     Evaluate Prelude::Arith::Divides.Divides 0 5 --> False : Type@0
-    Evaluate Prelude::Arith::Divides.zeroDivides 0 true --> true : True
-    Evaluate Prelude::Arith::Divides.dividesRefl 5 --> true : True
-    Evaluate Prelude::Arith::Divides.dividesZero 4 --> true : True
-    Evaluate Prelude::Arith::Divides.oneDivides 9 --> true : True
-    Evaluate Prelude::Arith::Divides.dividesPlus 3 6 9 true true --> true : True
-    Evaluate Prelude::Arith::Divides.dividesMult 3 4 --> true : True
-    Evaluate Prelude::Arith::Divides.evenDividesTwo 8 true --> true : True
-    Evaluate Prelude::Arith::Divides.dividesTwoEven 10 true --> true : True
+    Evaluate Prelude::Arith::Divides.Basic.zeroDivides 0 true --> true : True
+    Evaluate Prelude::Arith::Divides.Basic.dividesRefl 5 --> true : True
+    Evaluate Prelude::Arith::Divides.Basic.dividesZero 4 --> true : True
+    Evaluate Prelude::Arith::Divides.Basic.oneDivides 9 --> true : True
+    Evaluate Prelude::Arith::Divides.Closure.dividesPlus 3 6 9 true true --> true
+      : True
+    Evaluate Prelude::Arith::Divides.Closure.dividesMult 3 4 --> true : True
+    Evaluate Prelude::Arith::Divides.Two.evenDividesTwo 8 true --> true : True
+    Evaluate Prelude::Arith::Divides.Two.dividesTwoEven 10 true --> true : True
     |}]
 
 let%expect_test "lib/Vectors.mctt" =
@@ -954,19 +971,19 @@ let%expect_test "lib/Vectors.mctt" =
                5
                (Prelude::Data::Vec.append Nat 3 2 oneTwoThree fourFive) --> 5
       : Nat
-    Evaluate Prelude::Data::Vec::Properties.sumReplicate 4 6 --> true : True
-    Evaluate Prelude::Data::Vec::Properties.sumAppend 3 2 oneTwoThree fourFive
-      --> true : True
-    Evaluate Prelude::Data::Vec::Properties.nthMap Nat square 3 oneTwoThree 1
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumReplicate 4 6 --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumAppend 3 2 oneTwoThree
+               fourFive --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthMap Nat square 3 oneTwoThree 1
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.nthReplicate 4 6 3 true --> true
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthReplicate 4 6 3 true --> true
       : True
-    Evaluate Prelude::Data::Vec::Properties.nthAppendLeft 3 2 oneTwoThree
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthAppendLeft 3 2 oneTwoThree
                fourFive
                1
                true
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.nthAppendRight 3 2 oneTwoThree
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthAppendRight 3 2 oneTwoThree
                fourFive
                1
                true --> true : True
@@ -1016,54 +1033,61 @@ let%expect_test "lib/Vectors.mctt" =
                  9) --> 1 : Nat
     Evaluate Prelude::Data::Vec.anyb Nat (fun (x1 : Nat) -> x1) 3
                (Prelude::Data::Vec.replicate Nat 3 0) --> 0 : Nat
-    Evaluate Prelude::Data::Vec::Properties.nthTabulate square 4 3 true --> true
-      : True
-    Evaluate Prelude::Data::Vec::Properties.nthZipWith Nat Nat
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthTabulate square 4 3 true
+      --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthZipWith Nat Nat
                Prelude::Arith::Mult.mult
                2
                (Prelude::Data::Vec.take Nat 2 1 oneTwoThree)
                fourFive
                1
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.nthReverse 5 oneToFive 1 true true
-      --> true : True
-    Evaluate Prelude::Data::Vec::Properties.takeAppend 3 2 oneTwoThree fourFive 2
+    Evaluate Prelude::Data::Vec::Properties.Nth.nthReverse 5 oneToFive 1 true
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.dropAppend 3 2 oneTwoThree fourFive 1
+    Evaluate Prelude::Data::Vec::Properties.Slices.takeAppend 3 2 oneTwoThree
+               fourFive
+               2
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.appendTakeDrop 3 2 oneToFive 4 true
+    Evaluate Prelude::Data::Vec::Properties.Slices.dropAppend 3 2 oneTwoThree
+               fourFive
+               1
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Slices.appendTakeDrop 3 2 oneToFive 4
+               true --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Nth.lastSnoc 3 oneTwoThree 7 --> true
+      : True
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumMapPlus 2 3 oneTwoThree
       --> true : True
-    Evaluate Prelude::Data::Vec::Properties.lastSnoc 3 oneTwoThree 7 --> true
-      : True
-    Evaluate Prelude::Data::Vec::Properties.sumMapPlus 2 3 oneTwoThree --> true
-      : True
-    Evaluate Prelude::Data::Vec::Properties.sumMapScale 3 3 oneTwoThree --> true
-      : True
-    Evaluate Prelude::Data::Vec::Properties.sumZipWithPlus 2 fourFive
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumMapScale 3 3 oneTwoThree
+      --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumZipWithPlus 2 fourFive
                (Prelude::Data::Vec.tail Nat 2 oneTwoThree) --> true : True
-    Evaluate Prelude::Data::Vec::Properties.foldlPlus 4 3 oneTwoThree --> true
+    Evaluate Prelude::Data::Vec::Properties.Sums.foldlPlus 4 3 oneTwoThree
+      --> true : True
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumSnoc 3 oneTwoThree 7 --> true
       : True
-    Evaluate Prelude::Data::Vec::Properties.sumSnoc 3 oneTwoThree 7 --> true
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumInitLast 4 oneToFive --> true
       : True
-    Evaluate Prelude::Data::Vec::Properties.sumInitLast 4 oneToFive --> true
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumReverse 5 oneToFive --> true
       : True
-    Evaluate Prelude::Data::Vec::Properties.sumReverse 5 oneToFive --> true
+    Evaluate Prelude::Data::Vec::Properties.Sums.sumTabulate square 4 --> true
       : True
-    Evaluate Prelude::Data::Vec::Properties.sumTabulate square 4 --> true : True
-    Evaluate Prelude::Data::Vec::Properties.allbSound Nat (fun (x1 : Nat) -> x1)
+    Evaluate Prelude::Data::Vec::Properties.Tests.allbSound Nat
+               (fun (x1 : Nat) -> x1)
                5
                oneToFive
                true
                2
                true --> true : True
-    Evaluate Prelude::Data::Vec::Properties.allbComplete Nat
+    Evaluate Prelude::Data::Vec::Properties.Tests.allbComplete Nat
                (fun (x1 : Nat) -> x1)
                4
                (Prelude::Data::Vec.replicate Nat 4 3)
                (fun (x2 : Nat)
                     (x3 : Prelude::Arith::Order.Lt x2 4)
                  -> true) --> true : True
-    Evaluate Prelude::Data::Vec::Properties.anybSound Nat (fun (x1 : Nat) -> x1)
+    Evaluate Prelude::Data::Vec::Properties.Tests.anybSound Nat
+               (fun (x1 : Nat) -> x1)
                3
                (Prelude::Data::Vec.snoc Nat 2
                   (Prelude::Data::Vec.replicate Nat 2 0)
@@ -1079,7 +1103,7 @@ let%expect_test "lib/Vectors.mctt" =
                                x2
                               x3))
                  -> x2) --> 2 : Nat
-  |}]
+    |}]
 
 let%expect_test "lib/Powers.mctt" =
   let _ = main_of_lib "Powers.mctt" in
@@ -1095,26 +1119,26 @@ let%expect_test "lib/Powers.mctt" =
                6 --> 55 : Nat
     Evaluate Prelude::Arith::Factorial.fact 5 --> 120 : Nat
     Evaluate Prelude::Arith::Factorial.fact 0 --> 1 : Nat
-    Evaluate Prelude::Arith::Pow.powZero 7 --> true : True
-    Evaluate Prelude::Arith::Pow.powOne 9 --> true : True
-    Evaluate Prelude::Arith::Pow.onePow 6 --> true : True
-    Evaluate Prelude::Arith::Pow.powPlus 2 1 3 --> true : True
-    Evaluate Prelude::Arith::Pow.powMult 2 2 2 --> true : True
-    Evaluate Prelude::Arith::Pow.powMultBase 2 2 2 --> true : True
-    Evaluate Prelude::Arith::Sum.sumToPlus
+    Evaluate Prelude::Arith::Pow.Basic.powZero 7 --> true : True
+    Evaluate Prelude::Arith::Pow.Basic.powOne 9 --> true : True
+    Evaluate Prelude::Arith::Pow.Basic.onePow 6 --> true : True
+    Evaluate Prelude::Arith::Pow.Exp.powPlus 2 1 3 --> true : True
+    Evaluate Prelude::Arith::Pow.Exp.powMult 2 2 2 --> true : True
+    Evaluate Prelude::Arith::Pow.Exp.powMultBase 2 2 2 --> true : True
+    Evaluate Prelude::Arith::Sum.Linear.sumToPlus
                (Prelude::Function::Combinators.Generic.id Nat)
                (fun (x1 : Nat) -> Prelude::Arith::Mult.mult x1 x1)
                4 --> true : True
-    Evaluate Prelude::Arith::Sum.sumToScale 3
+    Evaluate Prelude::Arith::Sum.Linear.sumToScale 3
                (Prelude::Function::Combinators.Generic.id Nat)
                4 --> true : True
-    Evaluate Prelude::Arith::Sum.sumToConst 4 5 --> true : True
-    Evaluate Prelude::Arith::Sum.gauss 4 --> true : True
-    Evaluate Prelude::Arith::Sum.sumOdd 4 --> true : True
-    Evaluate Prelude::Arith::Factorial.factSucc 3 --> true : True
-    Evaluate Prelude::Arith::Factorial.factPos 4 --> true : True
-    Evaluate Prelude::Arith::Factorial.factLeSucc 3 --> true : True
-    Evaluate Prelude::Arith::Factorial.lePowFact 3 --> true : True
+    Evaluate Prelude::Arith::Sum.Linear.sumToConst 4 5 --> true : True
+    Evaluate Prelude::Arith::Sum.Closed.gauss 4 --> true : True
+    Evaluate Prelude::Arith::Sum.Closed.sumOdd 4 --> true : True
+    Evaluate Prelude::Arith::Factorial.Laws.factSucc 3 --> true : True
+    Evaluate Prelude::Arith::Factorial.Bounds.factPos 4 --> true : True
+    Evaluate Prelude::Arith::Factorial.Bounds.factLeSucc 3 --> true : True
+    Evaluate Prelude::Arith::Factorial.Bounds.lePowFact 3 --> true : True
     |}]
 
 let%expect_test "lib/Streams.mctt" =
@@ -1156,40 +1180,43 @@ let%expect_test "lib/Streams.mctt" =
                    Prelude::Data::Stream::Properties.nats)) --> 0 : Nat
     Evaluate Prelude::Data::Stream.nth Nat (Prelude::Data::Stream.const Nat 3)
                100 --> 3 : Nat
-    Evaluate Prelude::Data::Stream::Properties.headCons 9
+    Evaluate Prelude::Data::Stream::Properties.Elements.headCons 9
                Prelude::Data::Stream::Properties.nats --> true : True
-    Evaluate Prelude::Data::Stream::Properties.tailCons 9 squares 3 --> true
+    Evaluate Prelude::Data::Stream::Properties.Elements.tailCons 9 squares 3
+      --> true : True
+    Evaluate Prelude::Data::Stream::Properties.Elements.nthConst 3 100 --> true
       : True
-    Evaluate Prelude::Data::Stream::Properties.nthConst 3 100 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthMap square
+    Evaluate Prelude::Data::Stream::Properties.Elements.nthMap square
                Prelude::Data::Stream::Properties.nats
                4 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthZipWith
+    Evaluate Prelude::Data::Stream::Properties.Elements.nthZipWith
                Prelude::Arith::Plus.plus
                evens
                odds
                3 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthIterate
+    Evaluate Prelude::Data::Stream::Properties.Elements.nthIterate
                (fun (x1 : Nat) -> succ (succ x1))
                1
                4 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.tailIterate
+    Evaluate Prelude::Data::Stream::Properties.Elements.tailIterate
                (fun (x1 : Nat) -> succ (succ x1))
                1
                4 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthNats 12 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthDrop 3 squares 1 --> true
-      : True
-    Evaluate Prelude::Data::Stream::Properties.nthTake 5 squares 3 true --> true
-      : True
-    Evaluate Prelude::Data::Stream::Properties.scanSum squares 4 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.scanSum fibs 6 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthInterleaveEven 3 evens odds
+    Evaluate Prelude::Data::Stream::Properties.Nats.nthNats 12 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.Slices.nthDrop 3 squares 1
       --> true : True
-    Evaluate Prelude::Data::Stream::Properties.nthInterleaveOdd 3 evens odds
+    Evaluate Prelude::Data::Stream::Properties.Slices.nthTake 5 squares 3 true
       --> true : True
-    Evaluate Prelude::Arith::Sum.sumToShift squares 3 --> true : True
-    Evaluate Prelude::Data::Stream::Properties.sumTake 5
+    Evaluate Prelude::Data::Stream::Properties.Slices.scanSum squares 4 --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.Slices.scanSum fibs 6 --> true
+      : True
+    Evaluate Prelude::Data::Stream::Properties.Slices.nthInterleaveEven 3 evens
+               odds --> true : True
+    Evaluate Prelude::Data::Stream::Properties.Slices.nthInterleaveOdd 3 evens
+               odds --> true : True
+    Evaluate Prelude::Arith::Sum.Basic.sumToShift squares 3 --> true : True
+    Evaluate Prelude::Data::Stream::Properties.Slices.sumTake 5
                Prelude::Data::Stream::Properties.nats --> true : True
     |}]
 
@@ -1232,23 +1259,33 @@ let%expect_test "lib/Combinatorics.mctt" =
     Evaluate Prelude::Arith::Fibonacci.fib 10 --> 55 : Nat
     Evaluate Prelude::Arith::Sum.sumTo Prelude::Arith::Fibonacci.fib 10 --> 88
       : Nat
-    Evaluate Prelude::Arith::Binomial::Properties.chooseZero 5 --> true : True
-    Evaluate Prelude::Arith::Binomial::Properties.chooseSelf 5 --> true : True
-    Evaluate Prelude::Arith::Binomial::Properties.chooseOne 5 --> true : True
-    Evaluate Prelude::Arith::Binomial::Properties.chooseOver 3 5 true --> true
+    Evaluate Prelude::Arith::Binomial::Properties.Basic.chooseZero 5 --> true
       : True
-    Evaluate Prelude::Arith::Binomial::Properties.pascal 4 2 --> true : True
-    Evaluate Prelude::Arith::Binomial::Properties.chooseSymm 2 3 --> true : True
-    Evaluate Prelude::Arith::Binomial::Properties.chooseSymmSub 5 2 true --> true
+    Evaluate Prelude::Arith::Binomial::Properties.Basic.chooseSelf 5 --> true
       : True
-    Evaluate Prelude::Arith::Binomial::Properties.rowSum 4 --> true : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibSucc 5 --> true : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibPos 5 --> true : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibMono 5 --> true : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibMonoPlus 2 4 --> true
+    Evaluate Prelude::Arith::Binomial::Properties.Basic.chooseOne 5 --> true
       : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibSum 5 --> true : True
-    Evaluate Prelude::Arith::Fibonacci::Properties.fibPlus 3 2 --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.Basic.chooseOver 3 5 true
+      --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.Basic.pascal 4 2 --> true
+      : True
+    Evaluate Prelude::Arith::Binomial::Properties.Symmetry.chooseSymm 2 3
+      --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.Symmetry.chooseSymmSub 5 2 true
+      --> true : True
+    Evaluate Prelude::Arith::Binomial::Properties.Row.rowSum 4 --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Basic.fibSucc 5 --> true
+      : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Growth.fibPos 5 --> true
+      : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Growth.fibMono 5 --> true
+      : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Growth.fibMonoPlus 2 4
+      --> true : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Identities.fibSum 5 --> true
+      : True
+    Evaluate Prelude::Arith::Fibonacci::Properties.Identities.fibPlus 3 2
+      --> true : True
     |}]
 
 let%expect_test "lib/NumberTheory.mctt" =
@@ -1280,25 +1317,31 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate Prelude::Arith::Prime.smallestDivisor 29 --> 29 : Nat
     Evaluate Prelude::Arith::Prime.Prime 29 --> True : Type@0
     Evaluate Prelude::Arith::Prime.Prime 27 --> False : Type@0
-    Evaluate Prelude::Arith::Gcd::Properties.gcdZeroLeft 5 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdZeroRight 5 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdSelf 7 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdOneRight 9 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdDividesLeft 6 9 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdDividesRight 6 9 --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdGreatest 2 8 12 true true
-      --> true : True
-    Evaluate Prelude::Arith::Gcd::Properties.gcdComm 6 9 --> true : True
-    Evaluate Prelude::Arith::Divides.dividesMultLeft 3 6 2 true --> true : True
-    Evaluate Prelude::Arith::Divides.dividesPlusCancel 3 6 9 true true --> true
+    Evaluate Prelude::Arith::Gcd::Properties.Values.gcdZeroLeft 5 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.Values.gcdZeroRight 5 --> true
       : True
-    Evaluate Prelude::Arith::Prime.twoPrime --> true : True
-    Evaluate Prelude::Arith::Prime.sevenPrime --> true : True
-    Evaluate Prelude::Arith::Prime.nineNotPrime --> fun (x1 : False) -> x1
+    Evaluate Prelude::Arith::Gcd::Properties.Values.gcdSelf 7 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.Values.gcdOneRight 9 --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.Divisor.gcdDividesLeft 6 9 --> true
+      : True
+    Evaluate Prelude::Arith::Gcd::Properties.Divisor.gcdDividesRight 6 9 --> true
+      : True
+    Evaluate Prelude::Arith::Gcd::Properties.Divisor.gcdGreatest 2 8 12 true true
+      --> true : True
+    Evaluate Prelude::Arith::Gcd::Properties.Values.gcdComm 6 9 --> true : True
+    Evaluate Prelude::Arith::Divides.Closure.dividesMultLeft 3 6 2 true --> true
+      : True
+    Evaluate Prelude::Arith::Divides.Closure.dividesPlusCancel 3 6 9 true true
+      --> true : True
+    Evaluate Prelude::Arith::Prime.Facts.twoPrime --> true : True
+    Evaluate Prelude::Arith::Prime.Facts.sevenPrime --> true : True
+    Evaluate Prelude::Arith::Prime.Facts.nineNotPrime
+      --> fun (x1 : False) -> Prelude::Arith::Prime.Facts.nineNotPrime x1
       : forall (x1 : False) -> False
-    Evaluate Prelude::Arith::Prime.smallestDivisorDivides 15 --> true : True
-    Evaluate Prelude::Arith::Prime.primeGeTwo 13 true --> true : True
-    Evaluate Prelude::Arith::Prime.primeSmallestDivisor 13 true --> true : True
+    Evaluate Prelude::Arith::Prime.Laws.smallestDivisorDivides 15 --> true : True
+    Evaluate Prelude::Arith::Prime.Laws.primeGeTwo 13 true --> true : True
+    Evaluate Prelude::Arith::Prime.Laws.primeSmallestDivisor 13 true --> true
+      : True
     |}]
 
 (** Module forms *)

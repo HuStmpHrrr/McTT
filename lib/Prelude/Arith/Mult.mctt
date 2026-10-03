@@ -2,7 +2,10 @@
    the laws of [Prelude::Arith::Plus]. *)
 import Prelude::Logic use (Not; absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusAssoc; plusLeftComm; plusEqZero)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero)
+import Prelude::Arith::Plus.Algebra use (plusAssoc; plusLeftComm)
+import Prelude::Arith::Plus.Cancel use (plusEqZero)
 
 module Prelude::Arith::Mult where
 
@@ -15,7 +18,10 @@ def mult (n : Nat) (m : Nat) : Nat :=
   end
 end
 
-def multZero : forall (n : Nat) -> Eq (mult n 0) 0 :=
+(* Multiplication by zero, successors and one. *)
+module Basic where
+
+abstract def multZero : forall (n : Nat) -> Eq (mult n 0) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (mult x 0) 0
     | zero => true
@@ -23,7 +29,7 @@ def multZero : forall (n : Nat) -> Eq (mult n 0) 0 :=
     end
 end
 
-def multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (mult n m)) :=
+abstract def multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (mult n m)) :=
   fun (n : Nat) (m : Nat) ->
     rec n return x . Eq (mult x (succ m)) (plus x (mult x m))
     | zero => true
@@ -40,7 +46,7 @@ def multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (mult 
     end
 end
 
-def multOne : forall (n : Nat) -> Eq (mult n 1) n :=
+abstract def multOne : forall (n : Nat) -> Eq (mult n 1) n :=
   fun (n : Nat) ->
     rec n return x . Eq (mult x 1) x
     | zero => true
@@ -48,11 +54,18 @@ def multOne : forall (n : Nat) -> Eq (mult n 1) n :=
     end
 end
 
-def oneMult : forall (n : Nat) -> Eq (mult 1 n) n :=
+abstract def oneMult : forall (n : Nat) -> Eq (mult 1 n) n :=
   fun (n : Nat) -> plusZero n
 end
 
-def multComm : forall (a : Nat) (b : Nat) -> Eq (mult a b) (mult b a) :=
+end
+
+import Basic use (multZero; multSucc)
+
+(* Commutativity, distributivity and associativity. *)
+module Algebra where
+
+abstract def multComm : forall (a : Nat) (b : Nat) -> Eq (mult a b) (mult b a) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Eq (mult x b) (mult b x)
     | zero => sym (mult b 0) 0 (multZero b)
@@ -66,7 +79,7 @@ def multComm : forall (a : Nat) (b : Nat) -> Eq (mult a b) (mult b a) :=
     end
 end
 
-def multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (mult (plus a b) c) (plus (mult a c) (mult b c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . Eq (mult (plus x b) c) (plus (mult x c) (mult b c))
@@ -84,7 +97,7 @@ def multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
-def multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
@@ -114,7 +127,7 @@ def multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
-def multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (mult (mult a b) c) (mult a (mult b c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . Eq (mult (mult x b) c) (mult x (mult b c))
@@ -131,7 +144,7 @@ def multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The first factor of a product can be moved past the second. *)
-def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (mult a (mult b c)) (mult b (mult a c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     let left : Eq (mult a (mult b c)) (mult (mult a b) c) :=
@@ -145,7 +158,7 @@ def multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The two middle factors of a product of products can be exchanged. *)
-def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+abstract def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     let lhs : Nat := mult (mult a b) (mult c d);
@@ -161,15 +174,22 @@ def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     end
 end
 
+end
+
+(* A product is zero only if a factor is. *)
+module Cancel where
+
 (* A product is zero only if a factor is: with a nonzero first factor, the
    second one is zero. *)
-def multEqZero : forall (a : Nat) (b : Nat) (h : Eq (mult a b) 0) (ha : Not (Eq a 0)) -> Eq b 0 :=
+abstract def multEqZero : forall (a : Nat) (b : Nat) (h : Eq (mult a b) 0) (ha : Not (Eq a 0)) -> Eq b 0 :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . (forall (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) -> Eq b 0)
     | zero => fun (h : True) (ha : Not True) -> absurd (Eq b 0) (ha true)
     | succ p, ih => fun (h : Eq (plus b (mult p b)) 0) (ha : Not False) ->
         plusEqZero b (mult p b) h
     end
+end
+
 end
 
 end

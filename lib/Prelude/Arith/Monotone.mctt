@@ -3,16 +3,21 @@
    interaction of [Prelude::Arith::Sub.sub] with the order. *)
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl; trans)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leSucc; leStep; lePlusLeft)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
 
 module Prelude::Arith::Monotone where
 
+(* Addition and multiplication are monotone, and addition cancels. *)
+module Mono where
+
 (* Addition is monotone in both arguments.  The induction is on [a] with [b]
    generalized; at [a = 0] the bound on [c] is weakened by [lePlusLeft]. *)
-def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+abstract def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (plus a c) (plus b d) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
@@ -31,20 +36,20 @@ def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
 end
 
 (* Addition is monotone in its first argument. *)
-def lePlusMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) ->
+abstract def lePlusMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) ->
     Le (plus a c) (plus b c) :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> lePlusMono a b c c h (leRefl c)
 end
 
 (* Addition is monotone in its second argument. *)
-def lePlusMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
+abstract def lePlusMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
     Le (plus a b) (plus a c) :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> lePlusMono a a b c (leRefl a) h
 end
 
 (* A common first summand cancels: [Le (plus (succ p) b) (plus (succ p) c)]
    computes to [Le (plus p b) (plus p c)]. *)
-def lePlusCancel : forall (a : Nat) (b : Nat) (c : Nat)
+abstract def lePlusCancel : forall (a : Nat) (b : Nat) (c : Nat)
     (h : Le (plus a b) (plus a c)) -> Le b c :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . (forall (h : Le (plus x b) (plus x c)) -> Le b c)
@@ -55,7 +60,7 @@ end
 
 (* Multiplication is monotone in both arguments: the step is [lePlusMono]
    applied to the bound on the factors and the induction hypothesis. *)
-def leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+abstract def leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (mult a c) (mult b d) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
@@ -72,8 +77,13 @@ def leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     end
 end
 
+end
+
+(* The strict order: transitivity, mixed with [Le], and sums. *)
+module Strict where
+
 (* A strict bound gives a non-strict one. *)
-def ltLe : forall (a : Nat) (b : Nat) (h : Lt a b) -> Le a b :=
+abstract def ltLe : forall (a : Nat) (b : Nat) (h : Lt a b) -> Le a b :=
   fun (a : Nat) (b : Nat) (h : Lt a b) -> leTrans a (succ a) b (leSucc a) h
 end
 
@@ -83,21 +93,21 @@ def ltLeTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Le b 
 end
 
 (* [Le (succ a) (succ b)] computes to [Le a b], so [hab] bounds [succ a]. *)
-def leLtTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) -> Lt a c :=
+abstract def leLtTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) -> Lt a c :=
   fun (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) ->
     leTrans (succ a) (succ b) c hab hbc
 end
 
-def ltTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) -> Lt a c :=
+abstract def ltTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) -> Lt a c :=
   fun (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) ->
     ltLeTrans a b c hab (ltLe b c hbc)
 end
 
-def ltSucc : forall (n : Nat) -> Lt n (succ n) :=
+abstract def ltSucc : forall (n : Nat) -> Lt n (succ n) :=
   fun (n : Nat) -> leRefl n
 end
 
-def ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
+abstract def ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Lt x (plus x (succ b))
     | zero => true
@@ -114,6 +124,11 @@ def ltPlusMonoRight : forall (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) -> Lt (p
     end
 end
 
+end
+
+(* Truncated subtraction: bounds, monotonicity and cancellation. *)
+module SubLaws where
+
 (* Truncated subtraction never exceeds its first argument. *)
 def subLe : forall (a : Nat) (b : Nat) -> Le (sub a b) a :=
   fun (a : Nat) (b : Nat) ->
@@ -128,7 +143,7 @@ def subLe : forall (a : Nat) (b : Nat) -> Le (sub a b) a :=
 end
 
 (* Subtraction is monotone in its first argument. *)
-def subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a c) (sub b c) :=
+abstract def subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a c) (sub b c) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     (rec c return w . (forall (x : Nat) (y : Nat) (h : Le x y) -> Le (sub x w) (sub y w))
      | zero => fun (x : Nat) (y : Nat) (h : Le x y) -> h
@@ -145,7 +160,7 @@ def subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a
 end
 
 (* Subtraction is antitone in its second argument. *)
-def subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub a c) (sub a b) :=
+abstract def subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub a c) (sub a b) :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (c : Nat) (h : Le y c) -> Le (sub x c) (sub x y))
      | zero => fun (x : Nat) (c : Nat) (h : True) -> subLe x c
@@ -162,7 +177,7 @@ def subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub 
 end
 
 (* Below [a], subtracting [b] and adding it back on the right gives [a]. *)
-def plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b) b) a :=
+abstract def plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b) b) a :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus (sub x y) y) x)
      | zero => fun (x : Nat) (h : True) -> plusZero x
@@ -177,7 +192,7 @@ def plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b
 end
 
 (* Below [a], adding [b] on the left of [sub a b] gives [a]. *)
-def subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a b)) a :=
+abstract def subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a b)) a :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus y (sub x y)) x)
      | zero => fun (x : Nat) (h : True) -> refl x
@@ -190,7 +205,7 @@ def subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a
 end
 
 (* A strict bound leaves a positive difference. *)
-def subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
+abstract def subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Lt y x) -> Lt 0 (sub x y))
      | zero => fun (x : Nat) (h : Lt 0 x) -> h
@@ -200,6 +215,8 @@ def subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
          | succ p, s => fun (h : Lt q p) -> ih p h
          end
      end) a
+end
+
 end
 
 end

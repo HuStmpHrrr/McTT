@@ -1,13 +1,20 @@
 (* A client of [Prelude::Arith::Induction] and [Prelude::Arith::Decide]:
    halving by strong and by two-step induction, decisions eliminated into
    [Nat] to show which branch they compute, and the equality test [eqb]. *)
-import Prelude::Logic use (Not; orElim; iffFwd; iffBwd; existsIntro; existsElim; decStable)
+import Prelude::Logic use (Not)
+import Prelude::Logic.Disj use (orElim)
+import Prelude::Logic.Equiv use (iffFwd; iffBwd)
+import Prelude::Logic.Exist use (existsIntro; existsElim)
+import Prelude::Logic.Decidable use (decStable)
 import Prelude::Arith::Equality use (Eq)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Order use (Le; Lt; leSucc)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leSucc)
 import Prelude::Arith::Parity use (Even; double)
 import Prelude::Arith::Induction use (caseNat; twoStepInd; strongInd)
-import Prelude::Arith::Decide use (decEq; decLe; decLt; eqb; eqbSpec; eqbZero)
+import Prelude::Arith::Decide use (eqb)
+import Prelude::Arith::Decide.Deciders use (decEq; decLe; decLt)
+import Prelude::Arith::Decide.EqbLaws use (eqbSpec; eqbZero)
 
 module Induction where
 

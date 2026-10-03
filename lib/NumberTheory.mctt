@@ -5,11 +5,14 @@
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Decide use (pick)
-import Prelude::Arith::Divides use (dividesMultLeft; dividesPlusCancel)
+import Prelude::Arith::Divides.Closure use (dividesMultLeft; dividesPlusCancel)
 import Prelude::Function::Combinators use (Generic)
 import Prelude::Arith::Gcd use (gcd)
-import Prelude::Arith::Gcd::Properties use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdDividesLeft; gcdDividesRight; gcdGreatest; gcdComm)
-import Prelude::Arith::Prime use (smallestDivisor; isPrime; Prime; smallestDivisorDivides; primeGeTwo; primeSmallestDivisor; twoPrime; sevenPrime; nineNotPrime)
+import Prelude::Arith::Gcd::Properties.Values use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
+import Prelude::Arith::Gcd::Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
+import Prelude::Arith::Prime use (smallestDivisor; isPrime; Prime)
+import Prelude::Arith::Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
+import Prelude::Arith::Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
 
 module NumberTheory where
 

@@ -8,6 +8,8 @@ def Not (A : Type@0) : Type@0 := forall (a : A) -> False end
 (* From a proof of [False], anything follows. *)
 def absurd (A : Type@0) (f : False) : A := exfalso f return x . A end
 
+(* Conjunction: its introduction, projections and symmetry. *)
+module Conj where
 
 (* Conjunction, Church-encoded: a proof of [And A B] eliminates into any
    proposition [C].  It quantifies over [Type@0], so it lives in [Type@1]. *)
@@ -31,6 +33,13 @@ def andSwap (A : Type@0) (B : Type@0) (h : And A B) : And B A :=
   fun (C : Type@0) (f : forall (b : B) (a : A) -> C) ->
     h C (fun (a : A) (b : B) -> f b a)
 end
+
+end
+
+import Conj use (And; andIntro; andFst; andSnd; andSwap)
+
+(* Disjunction: its injections, case analysis and symmetry. *)
+module Disj where
 
 (* Disjunction, Church-encoded like [And], and likewise in [Type@1]. *)
 def Or (A : Type@0) (B : Type@0) : Type@1 :=
@@ -56,6 +65,13 @@ end
 def orSwap (A : Type@0) (B : Type@0) (h : Or A B) : Or B A :=
   fun (C : Type@0) (f : forall (b : B) -> C) (g : forall (a : A) -> C) -> h C g f
 end
+
+end
+
+import Disj use (Or; orElim)
+
+(* Logical equivalence and its rules. *)
+module Equiv where
 
 (* Logical equivalence: implications both ways, as a conjunction.  Like
    [And], it lives in [Type@1]. *)
@@ -86,6 +102,11 @@ def iffSym (A : Type@0) (B : Type@0) (h : Iff A B) : Iff B A :=
   andSwap (forall (a : A) -> B) (forall (b : B) -> A) h
 end
 
+end
+
+(* Existence of a number, and its rules. *)
+module Exist where
+
 (* Existence of a number satisfying [P], Church-encoded: a proof eliminates
    into any proposition [C] that follows from some witness and its proof.
    It quantifies over [Type@0], so it lives in [Type@1]; hence [P] must be a
@@ -104,6 +125,11 @@ def existsElim (P : forall (n : Nat) -> Type@0) (C : Type@0) (h : Exists P)
   h C f
 end
 
+end
+
+(* Decidability, and the propositions it makes classical. *)
+module Decidable where
+
 (* A proposition is decidable when it holds or is refuted.  [Dec A] is a
    disjunction, so it lives in [Type@1], and is eliminated with [orElim]. *)
 def Dec (A : Type@0) : Type@1 := Or A (Not A) end
@@ -119,6 +145,8 @@ end
 def decNot (A : Type@0) (d : Dec A) : Dec (Not A) :=
   fun (C : Type@0) (f : forall (n : Not A) -> C) (g : forall (nn : Not (Not A)) -> C) ->
     d C (fun (a : A) -> g (fun (n : Not A) -> n a)) (fun (n : Not A) -> f n)
+end
+
 end
 
 end

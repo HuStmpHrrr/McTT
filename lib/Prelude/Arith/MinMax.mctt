@@ -1,7 +1,8 @@
 (* Minimum and maximum, by recursion on both arguments, with their laws
    stated with [Prelude::Arith::Equality]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
 
 module Prelude::Arith::MinMax where
 
@@ -27,7 +28,10 @@ def max (a : Nat) (b : Nat) : Nat :=
    end) b
 end
 
-def minComm : forall (a : Nat) (b : Nat) -> Eq (min a b) (min b a) :=
+(* Commutativity, idempotence, zero, and the sum of minimum and maximum. *)
+module Laws where
+
+abstract def minComm : forall (a : Nat) (b : Nat) -> Eq (min a b) (min b a) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (min x b) (min b x))
     | zero => fun (b : Nat) ->
@@ -43,7 +47,7 @@ def minComm : forall (a : Nat) (b : Nat) -> Eq (min a b) (min b a) :=
     end
 end
 
-def maxComm : forall (a : Nat) (b : Nat) -> Eq (max a b) (max b a) :=
+abstract def maxComm : forall (a : Nat) (b : Nat) -> Eq (max a b) (max b a) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (max x b) (max b x))
     | zero => fun (b : Nat) ->
@@ -59,7 +63,7 @@ def maxComm : forall (a : Nat) (b : Nat) -> Eq (max a b) (max b a) :=
     end
 end
 
-def minIdem : forall (n : Nat) -> Eq (min n n) n :=
+abstract def minIdem : forall (n : Nat) -> Eq (min n n) n :=
   fun (n : Nat) ->
     rec n return x . Eq (min x x) x
     | zero => true
@@ -67,7 +71,7 @@ def minIdem : forall (n : Nat) -> Eq (min n n) n :=
     end
 end
 
-def minZero : forall (n : Nat) -> Eq (min n 0) 0 :=
+abstract def minZero : forall (n : Nat) -> Eq (min n 0) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (min x 0) 0
     | zero => true
@@ -75,7 +79,7 @@ def minZero : forall (n : Nat) -> Eq (min n 0) 0 :=
     end
 end
 
-def maxIdem : forall (n : Nat) -> Eq (max n n) n :=
+abstract def maxIdem : forall (n : Nat) -> Eq (max n n) n :=
   fun (n : Nat) ->
     rec n return x . Eq (max x x) x
     | zero => true
@@ -83,7 +87,7 @@ def maxIdem : forall (n : Nat) -> Eq (max n n) n :=
     end
 end
 
-def maxZero : forall (n : Nat) -> Eq (max n 0) n :=
+abstract def maxZero : forall (n : Nat) -> Eq (max n 0) n :=
   fun (n : Nat) ->
     rec n return x . Eq (max x 0) x
     | zero => true
@@ -93,7 +97,7 @@ end
 
 (* The minimum and the maximum add up to the sum. In the successor case both
    sides are moved past [plusSucc] and meet at the induction hypothesis. *)
-def plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max a b)) (plus a b) :=
+abstract def plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max a b)) (plus a b) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (plus (min x b) (max x b)) (plus x b))
     | zero => fun (b : Nat) -> refl b
@@ -112,6 +116,8 @@ def plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max a b)) (pl
             end
         end
     end
+end
+
 end
 
 end

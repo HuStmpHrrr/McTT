@@ -1,7 +1,8 @@
 (* Predecessor and truncated subtraction, with their laws stated with
    [Prelude::Arith::Equality]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; transport)
-import Prelude::Arith::Plus use (plus; plusComm)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Algebra use (plusComm)
 
 module Prelude::Arith::Sub where
 
@@ -27,16 +28,18 @@ def sub (a : Nat) (b : Nat) : Nat :=
    end) a
 end
 
+(* Predecessor and subtraction at zero, successors and equal arguments. *)
+module Laws where
 
-def predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
+abstract def predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
   fun (n : Nat) -> refl n
 end
 
-def subZero : forall (n : Nat) -> Eq (sub n 0) n :=
+abstract def subZero : forall (n : Nat) -> Eq (sub n 0) n :=
   fun (n : Nat) -> refl n
 end
 
-def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
+abstract def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (sub 0 x) 0
     | zero => true
@@ -44,7 +47,7 @@ def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
     end
 end
 
-def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
+abstract def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (sub x x) 0
     | zero => true
@@ -53,12 +56,12 @@ def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
 end
 
 (* Subtracting successors is subtracting the numbers. *)
-def subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
+abstract def subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
   fun (a : Nat) (b : Nat) -> refl (sub a b)
 end
 
 (* Subtracting one more takes one more predecessor. *)
-def subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
+abstract def subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (sub x (succ b)) (pred (sub x b)))
     | zero => fun (b : Nat) ->
@@ -72,8 +75,13 @@ def subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub 
     end
 end
 
+end
+
+(* Subtraction undoes addition. *)
+module PlusSub where
+
 (* Adding [b] on the left and subtracting it again gives back [a]. *)
-def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
+abstract def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
   fun (b : Nat) (a : Nat) ->
     rec b return x . Eq (sub (plus x a) x) a
     | zero => refl a
@@ -81,10 +89,12 @@ def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
     end
 end
 
-def plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
+abstract def plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
   fun (a : Nat) (b : Nat) ->
     transport (fun (m : Nat) -> Eq (sub m b) a) (plus b a) (plus a b)
       (plusComm b a) (plusSubLeft b a)
+end
+
 end
 
 end

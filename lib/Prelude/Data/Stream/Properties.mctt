@@ -4,98 +4,116 @@
    interleaving at even and odd indices of [Prelude::Arith::Parity], and
    sums of taken prefixes. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusComm)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Arith::Parity use (double)
-import Prelude::Arith::Sum use (sumTo; sumToShift)
-import Prelude::Function::Combinators use (iterateSucc)
+import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Sum.Basic use (sumToShift)
+import Prelude::Function::Combinators.IterateLaws use (iterateSucc)
 import Prelude::Data::Vec as V
 import Prelude::Data::Vec::Properties use (sumVec)
-import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan)
+import Prelude::Data::Stream as St
 
 module Prelude::Data::Stream::Properties where
 
-def headCons : forall (a : Nat) (s : Stream Nat) -> Eq (head Nat (cons Nat a s)) a :=
-  fun (a : Nat) (s : Stream Nat) -> refl a
+(* Streams of numbers: every law below is about this one instance. *)
+module S := St Nat
+
+(* The elements of the operations. *)
+module Elements where
+
+abstract def headCons : forall (a : Nat) (s : S.Stream) -> Eq (S.head (S.cons a s)) a :=
+  fun (a : Nat) (s : S.Stream) -> refl a
 end
 
 (* The tail of [cons a s] is [s], pointwise. *)
-def tailCons : forall (a : Nat) (s : Stream Nat) (n : Nat) ->
-    Eq (nth Nat (tail Nat (cons Nat a s)) n) (nth Nat s n) :=
-  fun (a : Nat) (s : Stream Nat) (n : Nat) -> refl (s n)
+abstract def tailCons : forall (a : Nat) (s : S.Stream) (n : Nat) ->
+    Eq (S.nth (S.tail (S.cons a s)) n) (S.nth s n) :=
+  fun (a : Nat) (s : S.Stream) (n : Nat) -> refl (s n)
 end
 
-def nthConst : forall (c : Nat) (n : Nat) -> Eq (nth Nat (const Nat c) n) c :=
+abstract def nthConst : forall (c : Nat) (n : Nat) -> Eq (S.nth (S.const c) n) c :=
   fun (c : Nat) (n : Nat) -> refl c
 end
 
-def nthMap : forall (f : forall (x : Nat) -> Nat) (s : Stream Nat) (n : Nat) ->
-    Eq (nth Nat (map Nat Nat f s) n) (f (nth Nat s n)) :=
-  fun (f : forall (x : Nat) -> Nat) (s : Stream Nat) (n : Nat) -> refl (f (s n))
+abstract def nthMap : forall (f : forall (x : Nat) -> Nat) (s : S.Stream) (n : Nat) ->
+    Eq (S.nth (S.map Nat f s) n) (f (S.nth s n)) :=
+  fun (f : forall (x : Nat) -> Nat) (s : S.Stream) (n : Nat) -> refl (f (s n))
 end
 
-def nthZipWith : forall (f : forall (x : Nat) (y : Nat) -> Nat) (s : Stream Nat)
-    (t : Stream Nat) (n : Nat) ->
-    Eq (nth Nat (zipWith Nat Nat Nat f s t) n) (f (nth Nat s n) (nth Nat t n)) :=
-  fun (f : forall (x : Nat) (y : Nat) -> Nat) (s : Stream Nat) (t : Stream Nat) (n : Nat) ->
+abstract def nthZipWith : forall (f : forall (x : Nat) (y : Nat) -> Nat) (s : S.Stream)
+    (t : S.Stream) (n : Nat) ->
+    Eq (S.nth (S.zipWith Nat Nat f s t) n) (f (S.nth s n) (S.nth t n)) :=
+  fun (f : forall (x : Nat) (y : Nat) -> Nat) (s : S.Stream) (t : S.Stream) (n : Nat) ->
     refl (f (s n) (t n))
 end
 
 (* Each element of [iterate f a] is [f] applied to the previous one. *)
-def nthIterate : forall (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
-    Eq (nth Nat (iterate Nat f a) (succ n)) (f (nth Nat (iterate Nat f a) n)) :=
+abstract def nthIterate : forall (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
+    Eq (S.nth (S.iterate f a) (succ n)) (f (S.nth (S.iterate f a) n)) :=
   fun (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
-    refl (f (nth Nat (iterate Nat f a) n))
+    refl (f (S.nth (S.iterate f a) n))
 end
 
 (* The tail of [iterate f a] is [iterate f (f a)], pointwise, by
-   [Prelude::Function::Combinators.iterateSucc]. *)
-def tailIterate : forall (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
-    Eq (nth Nat (tail Nat (iterate Nat f a)) n) (nth Nat (iterate Nat f (f a)) n) :=
+   [Prelude::Function::Combinators.IterateLaws.iterateSucc]. *)
+abstract def tailIterate : forall (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) ->
+    Eq (S.nth (S.tail (S.iterate f a)) n) (S.nth (S.iterate f (f a)) n) :=
   fun (f : forall (x : Nat) -> Nat) (a : Nat) (n : Nat) -> iterateSucc f n a
 end
 
+end
+
 (* The natural numbers [0, 1, 2, ...], iterating the successor from [0]. *)
-def nats : Stream Nat := iterate Nat (fun (x : Nat) -> succ x) 0 end
+def nats : S.Stream := S.iterate (fun (x : Nat) -> succ x) 0 end
+
+(* The stream of all numbers. *)
+module Nats where
 
 (* Element [n] of [nats] is [n]. *)
-def nthNats : forall (n : Nat) -> Eq (nth Nat nats n) n :=
+abstract def nthNats : forall (n : Nat) -> Eq (S.nth nats n) n :=
   fun (n : Nat) ->
-    rec n return x . Eq (nth Nat nats x) x
+    rec n return x . Eq (S.nth nats x) x
     | zero => true
     | succ p, ih => ih
     end
 end
 
+end
+
+(* Dropping, taking, scanning and interleaving. *)
+module Slices where
+
 (* Element [n] after dropping [k] is element [plus k n].  The induction on
    [k] is generalized over the stream, since [drop (succ p) u] is
    [drop p (tail u)]. *)
-def nthDrop : forall (k : Nat) (s : Stream Nat) (n : Nat) ->
-    Eq (nth Nat (drop Nat k s) n) (nth Nat s (plus k n)) :=
-  fun (k : Nat) (s : Stream Nat) (n : Nat) ->
-    (rec k return x . (forall (u : Stream Nat) -> Eq (nth Nat (drop Nat x u) n) (nth Nat u (plus x n)))
-     | zero => fun (u : Stream Nat) -> refl (u n)
-     | succ p, ih => fun (u : Stream Nat) -> ih (tail Nat u)
+abstract def nthDrop : forall (k : Nat) (s : S.Stream) (n : Nat) ->
+    Eq (S.nth (S.drop k s) n) (S.nth s (plus k n)) :=
+  fun (k : Nat) (s : S.Stream) (n : Nat) ->
+    (rec k return x . (forall (u : S.Stream) -> Eq (S.nth (S.drop x u) n) (S.nth u (plus x n)))
+     | zero => fun (u : S.Stream) -> refl (u n)
+     | succ p, ih => fun (u : S.Stream) -> ih (S.tail u)
      end) s
 end
 
 (* Element [i] of [take n s] is element [i] of [s]. *)
-def nthTake : forall (n : Nat) (s : Stream Nat) (i : Nat) (h : Lt i n) ->
-    Eq (V.nth Nat n (take Nat n s) i h) (nth Nat s i) :=
-  fun (n : Nat) (s : Stream Nat) (i : Nat) (h : Lt i n) -> refl (s i)
+abstract def nthTake : forall (n : Nat) (s : S.Stream) (i : Nat) (h : Lt i n) ->
+    Eq (V.nth Nat n (S.take n s) i h) (S.nth s i) :=
+  fun (n : Nat) (s : S.Stream) (i : Nat) (h : Lt i n) -> refl (s i)
 end
 
 (* The scan by addition from [0] gives the prefix sums: element [n] is the
    sum of the first [n] elements.  The scan adds the new element on the
    right and [sumTo] on the left, so the step uses [plusComm]. *)
-def scanSum : forall (s : Stream Nat) (n : Nat) ->
-    Eq (nth Nat (scan Nat Nat plus 0 s) n) (sumTo (nth Nat s) n) :=
-  fun (s : Stream Nat) (n : Nat) ->
-    rec n return x . Eq (nth Nat (scan Nat Nat plus 0 s) x) (sumTo (nth Nat s) x)
+abstract def scanSum : forall (s : S.Stream) (n : Nat) ->
+    Eq (S.nth (S.scan Nat plus 0 s) n) (sumTo (S.nth s) n) :=
+  fun (s : S.Stream) (n : Nat) ->
+    rec n return x . Eq (S.nth (S.scan Nat plus 0 s) x) (sumTo (S.nth s) x)
     | zero => true
     | succ p, ih =>
-        let l : Nat := nth Nat (scan Nat Nat plus 0 s) p;
-            r : Nat := sumTo (nth Nat s) p;
+        let l : Nat := S.nth (S.scan Nat plus 0 s) p;
+            r : Nat := sumTo (S.nth s) p;
             a : Nat := s p
         in trans (plus l a) (plus a l) (plus a r) (plusComm l a)
              (cong (fun (y : Nat) -> plus a y) l r ih)
@@ -106,39 +124,41 @@ end
 (* Interleaving at an even index [double n] reads [s] at [n].  The
    induction is generalized over both streams: two steps of [interleave]
    take the tail of each. *)
-def nthInterleaveEven : forall (n : Nat) (s : Stream Nat) (t : Stream Nat) ->
-    Eq (nth Nat (interleave Nat s t) (double n)) (nth Nat s n) :=
-  fun (n : Nat) (s : Stream Nat) (t : Stream Nat) ->
-    (rec n return x . (forall (u : Stream Nat) (v : Stream Nat) ->
-                         Eq (nth Nat (interleave Nat u v) (double x)) (nth Nat u x))
-     | zero => fun (u : Stream Nat) (v : Stream Nat) -> refl (u 0)
-     | succ p, ih => fun (u : Stream Nat) (v : Stream Nat) -> ih (tail Nat u) (tail Nat v)
+abstract def nthInterleaveEven : forall (n : Nat) (s : S.Stream) (t : S.Stream) ->
+    Eq (S.nth (S.interleave s t) (double n)) (S.nth s n) :=
+  fun (n : Nat) (s : S.Stream) (t : S.Stream) ->
+    (rec n return x . (forall (u : S.Stream) (v : S.Stream) ->
+                         Eq (S.nth (S.interleave u v) (double x)) (S.nth u x))
+     | zero => fun (u : S.Stream) (v : S.Stream) -> refl (u 0)
+     | succ p, ih => fun (u : S.Stream) (v : S.Stream) -> ih (S.tail u) (S.tail v)
      end) s t
 end
 
 (* Interleaving at an odd index [succ (double n)] reads [t] at [n]: one
    step of [interleave] swaps the streams, and the even case concludes. *)
-def nthInterleaveOdd : forall (n : Nat) (s : Stream Nat) (t : Stream Nat) ->
-    Eq (nth Nat (interleave Nat s t) (succ (double n))) (nth Nat t n) :=
-  fun (n : Nat) (s : Stream Nat) (t : Stream Nat) -> nthInterleaveEven n t (tail Nat s)
+abstract def nthInterleaveOdd : forall (n : Nat) (s : S.Stream) (t : S.Stream) ->
+    Eq (S.nth (S.interleave s t) (succ (double n))) (S.nth t n) :=
+  fun (n : Nat) (s : S.Stream) (t : S.Stream) -> nthInterleaveEven n t (S.tail s)
 end
 
 (* The vector sum of the first [n] elements is their [sumTo].  The vector
    sum adds the first element first, so the step uses [sumToShift]; the tail
    of [take (succ p) u] is [take p (tail u)] by eta. *)
-def sumTake : forall (n : Nat) (s : Stream Nat) ->
-    Eq (sumVec n (take Nat n s)) (sumTo (nth Nat s) n) :=
-  fun (n : Nat) (s : Stream Nat) ->
-    (rec n return x . (forall (u : Stream Nat) -> Eq (sumVec x (take Nat x u)) (sumTo (nth Nat u) x))
-     | zero => fun (u : Stream Nat) -> true
-     | succ p, ih => fun (u : Stream Nat) ->
-         let vs : Nat := sumVec p (take Nat p (tail Nat u));
-             ts : Nat := sumTo (tail Nat u) p
+abstract def sumTake : forall (n : Nat) (s : S.Stream) ->
+    Eq (sumVec n (S.take n s)) (sumTo (S.nth s) n) :=
+  fun (n : Nat) (s : S.Stream) ->
+    (rec n return x . (forall (u : S.Stream) -> Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
+     | zero => fun (u : S.Stream) -> true
+     | succ p, ih => fun (u : S.Stream) ->
+         let vs : Nat := sumVec p (S.take p (S.tail u));
+             ts : Nat := sumTo (S.tail u) p
          in trans (plus (u 0) vs) (plus (u 0) ts) (sumTo u (succ p))
-              (cong (fun (y : Nat) -> plus (u 0) y) vs ts (ih (tail Nat u)))
+              (cong (fun (y : Nat) -> plus (u 0) y) vs ts (ih (S.tail u)))
               (sym (sumTo u (succ p)) (plus (u 0) ts) (sumToShift u p))
          end
      end) s
+end
+
 end
 
 end

@@ -1,8 +1,12 @@
 (* A client of [Prelude::Arith::Order] and [Prelude::Arith::Parity]: closed instances of
    their theorems normalize to [true], and [leb] decides the order. *)
-import Prelude::Logic use (orElim)
-import Prelude::Arith::Order use (Le; leTrans; leAntisym; leSucc; lePlusRight; leTotal; ltIrrefl; notLtZero; leb; lebComplete; lebZero)
-import Prelude::Arith::Parity use (Even; Odd; double; evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
+import Prelude::Logic.Disj use (orElim)
+import Prelude::Arith::Order use (Le; leb)
+import Prelude::Arith::Order.LeLaws use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
+import Prelude::Arith::Order.LtLaws use (ltIrrefl; notLtZero)
+import Prelude::Arith::Order.LebLaws use (lebComplete; lebZero)
+import Prelude::Arith::Parity use (Even; Odd; double)
+import Prelude::Arith::Parity.Laws use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
 
 module OrderParity where
 

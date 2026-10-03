@@ -1,13 +1,22 @@
 (* Laws of [Prelude::Arith::Gcd]: the values at [0], [1] and the diagonal,
    independence from the fuel, divisibility of both arguments, the greatest
    divisor property, and commutativity. *)
-import Prelude::Logic use (absurd; And; andIntro; andFst; andSnd; orElim)
+import Prelude::Logic use (absurd)
+import Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
+import Prelude::Logic.Disj use (orElim)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; leTotal; leCases)
-import Prelude::Arith::Div use (div; mod; divModSpec; modLt; modSmall; modSelf; modOne)
-import Prelude::Arith::Divides use (Divides; dividesRefl; dividesZero; dividesPlus; dividesMultLeft; dividesPlusCancel)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leTotal)
+import Prelude::Arith::Order.LtLaws use (leCases)
+import Prelude::Arith::Div use (div; mod)
+import Prelude::Arith::Div.Bounds use (divModSpec; modLt; modSmall)
+import Prelude::Arith::Div.Periodic use (modSelf)
+import Prelude::Arith::Div.One use (modOne)
+import Prelude::Arith::Divides use (Divides)
+import Prelude::Arith::Divides.Basic use (dividesRefl; dividesZero)
+import Prelude::Arith::Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
 import Prelude::Arith::Gcd use (gcdFuel; gcd)
 
 module Prelude::Arith::Gcd::Properties where
@@ -15,7 +24,7 @@ module Prelude::Arith::Gcd::Properties where
 (* Euclid's algorithm with fuel above [b] gives a common divisor.  Both
    halves are proved together: the step divides [a] because it divides
    [succ d] and the remainder [mod a (succ d)]. *)
-def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
+private def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
     And (Divides (gcdFuel f a b) a) (Divides (gcdFuel f a b) b) :=
   fun (f : Nat) ->
     rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x) ->
@@ -45,22 +54,10 @@ def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
     end
 end
 
-(* The gcd divides its first argument. *)
-def gcdDividesLeft : forall (a : Nat) (b : Nat) -> Divides (gcd a b) a :=
-  fun (a : Nat) (b : Nat) ->
-    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
-end
-
-(* The gcd divides its second argument. *)
-def gcdDividesRight : forall (a : Nat) (b : Nat) -> Divides (gcd a b) b :=
-  fun (a : Nat) (b : Nat) ->
-    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
-end
-
 (* With fuel above [b], every common divisor of [a] and [b] divides the
    result.  The step passes the divisor to [succ d] and to the remainder,
    which it divides by [dividesPlusCancel]. *)
-def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f)
+private abstract def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f)
     (ha : Divides k a) (hb : Divides k b) -> Divides k (gcdFuel f a b) :=
   fun (k : Nat) (f : Nat) ->
     rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x)
@@ -86,16 +83,34 @@ def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f
     end
 end
 
+(* The greatest common divisor divides both numbers, and every common divisor
+   divides it. *)
+module Divisor where
+
+(* The gcd divides its first argument. *)
+abstract def gcdDividesLeft : forall (a : Nat) (b : Nat) -> Divides (gcd a b) a :=
+  fun (a : Nat) (b : Nat) ->
+    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+end
+
+(* The gcd divides its second argument. *)
+abstract def gcdDividesRight : forall (a : Nat) (b : Nat) -> Divides (gcd a b) b :=
+  fun (a : Nat) (b : Nat) ->
+    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+end
+
 (* The gcd is the greatest common divisor: every common divisor divides
    it. *)
-def gcdGreatest : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+abstract def gcdGreatest : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
     Divides k (gcd a b) :=
   fun (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
     gcdFuelGreatest k (succ b) a b (leRefl b) ha hb
 end
 
+end
+
 (* Any two fuels above [b] give the same result. *)
-def gcdFuelEnough : forall (f : Nat) (g : Nat) (a : Nat) (b : Nat)
+abstract def gcdFuelEnough : forall (f : Nat) (g : Nat) (a : Nat) (b : Nat)
     (hf : Lt b f) (hg : Lt b g) -> Eq (gcdFuel f a b) (gcdFuel g a b) :=
   fun (f : Nat) ->
     rec f return x . (forall (g : Nat) (a : Nat) (b : Nat) (hf : Lt b x) (hg : Lt b g) ->
@@ -122,39 +137,9 @@ def gcdFuelEnough : forall (f : Nat) (g : Nat) (a : Nat) (b : Nat)
     end
 end
 
-(* The gcd with [0] on the left is the other number. *)
-def gcdZeroLeft : forall (b : Nat) -> Eq (gcd 0 b) b :=
-  fun (b : Nat) ->
-    rec b return x . Eq (gcd 0 x) x
-    | zero => true
-    | succ d, ih => refl (succ d)
-    end
-end
-
-def gcdZeroRight : forall (a : Nat) -> Eq (gcd a 0) a :=
-  fun (a : Nat) -> refl a
-end
-
-(* The gcd of a number with itself is the number: the first step leaves
-   [mod n n], which is [0]. *)
-def gcdSelf : forall (n : Nat) -> Eq (gcd n n) n :=
-  fun (n : Nat) ->
-    rec n return x . Eq (gcd x x) x
-    | zero => true
-    | succ d, ih =>
-        cong (fun (y : Nat) -> gcdFuel (succ d) (succ d) y) (mod (succ d) (succ d)) 0 (modSelf d)
-    end
-end
-
-(* The gcd with [1] is [1]: the first step leaves [mod a 1], which is
-   [0]. *)
-def gcdOneRight : forall (a : Nat) -> Eq (gcd a 1) 1 :=
-  fun (a : Nat) -> cong (fun (y : Nat) -> gcdFuel 1 1 y) (mod a 1) 0 (modOne a)
-end
-
 (* Below [b], the first step of Euclid's algorithm swaps the arguments:
    [mod a b] is [a]. *)
-def gcdSwapSmall : forall (a : Nat) (b : Nat) (h : Lt a b) -> Eq (gcd a b) (gcd b a) :=
+private abstract def gcdSwapSmall : forall (a : Nat) (b : Nat) (h : Lt a b) -> Eq (gcd a b) (gcd b a) :=
   fun (a : Nat) (b : Nat) ->
     rec b return x . (forall (h : Lt a x) -> Eq (gcd a x) (gcd x a))
     | zero => fun (h : Lt a 0) -> absurd (Eq (gcd a 0) (gcd 0 a)) h
@@ -168,9 +153,42 @@ def gcdSwapSmall : forall (a : Nat) (b : Nat) (h : Lt a b) -> Eq (gcd a b) (gcd 
     end
 end
 
+(* Values at zero, one and equal arguments, and commutativity. *)
+module Values where
+
+(* The gcd with [0] on the left is the other number. *)
+abstract def gcdZeroLeft : forall (b : Nat) -> Eq (gcd 0 b) b :=
+  fun (b : Nat) ->
+    rec b return x . Eq (gcd 0 x) x
+    | zero => true
+    | succ d, ih => refl (succ d)
+    end
+end
+
+abstract def gcdZeroRight : forall (a : Nat) -> Eq (gcd a 0) a :=
+  fun (a : Nat) -> refl a
+end
+
+(* The gcd of a number with itself is the number: the first step leaves
+   [mod n n], which is [0]. *)
+abstract def gcdSelf : forall (n : Nat) -> Eq (gcd n n) n :=
+  fun (n : Nat) ->
+    rec n return x . Eq (gcd x x) x
+    | zero => true
+    | succ d, ih =>
+        cong (fun (y : Nat) -> gcdFuel (succ d) (succ d) y) (mod (succ d) (succ d)) 0 (modSelf d)
+    end
+end
+
+(* The gcd with [1] is [1]: the first step leaves [mod a 1], which is
+   [0]. *)
+abstract def gcdOneRight : forall (a : Nat) -> Eq (gcd a 1) 1 :=
+  fun (a : Nat) -> cong (fun (y : Nat) -> gcdFuel 1 1 y) (mod a 1) 0 (modOne a)
+end
+
 (* The gcd is commutative: compare the arguments, and swap the smaller one
    to the right with [gcdSwapSmall]. *)
-def gcdComm : forall (a : Nat) (b : Nat) -> Eq (gcd a b) (gcd b a) :=
+abstract def gcdComm : forall (a : Nat) (b : Nat) -> Eq (gcd a b) (gcd b a) :=
   fun (a : Nat) (b : Nat) ->
     orElim (Le a b) (Le b a) (Eq (gcd a b) (gcd b a)) (leTotal a b)
       (fun (hab : Le a b) ->
@@ -183,6 +201,8 @@ def gcdComm : forall (a : Nat) (b : Nat) -> Eq (gcd a b) (gcd b a) :=
            (fun (lt : Lt b a) -> sym (gcd b a) (gcd a b) (gcdSwapSmall b a lt))
            (fun (e : Eq b a) ->
               transport (fun (y : Nat) -> Eq (gcd y b) (gcd b y)) b a e (refl (gcd b b))))
+end
+
 end
 
 end

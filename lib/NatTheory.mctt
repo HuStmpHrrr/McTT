@@ -1,7 +1,8 @@
 (* A client of the [Prelude] library: [Prelude::Arith::Equality], [Prelude::Arith::Plus] and
    [Prelude::Function::Iter] are separate units, loaded once each. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; zeroNeSucc)
-import Prelude::Arith::Plus use (plus; plusComm)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Function::Iter as Iter
 
 module NatTheory where

@@ -1,9 +1,13 @@
 (* Laws of [Prelude::Arith::Fibonacci]: the defining recurrence, positivity,
    monotonicity, the sum identity and the addition formula. *)
 import Prelude::Arith::Equality use (Eq; sym; trans; cong; transport)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusAssoc; plusRightComm)
-import Prelude::Arith::Mult use (mult; multDistribLeft; multDistribRight)
-import Prelude::Arith::Order use (Le; Lt; leRefl; leTrans; lePlusRight; lePlusLeft)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
+import Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusRightComm)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Mult.Algebra use (multDistribLeft; multDistribRight)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; lePlusRight; lePlusLeft)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Fibonacci use (fibFrom; fib)
 
@@ -12,7 +16,7 @@ module Prelude::Arith::Fibonacci::Properties where
 (* Every sequence computed by [fibFrom] satisfies the Fibonacci recurrence.
    In the step, [fibFrom (succ n) a b] computes to [fibFrom n b (plus a b)],
    so the hypothesis at [b] and [plus a b] is the goal. *)
-def fibFromSucc : forall (n : Nat) (a : Nat) (b : Nat) ->
+private abstract def fibFromSucc : forall (n : Nat) (a : Nat) (b : Nat) ->
     Eq (fibFrom (succ (succ n)) a b) (plus (fibFrom (succ n) a b) (fibFrom n a b)) :=
   fun (n : Nat) ->
     rec n return x . (forall (a : Nat) (b : Nat) ->
@@ -22,18 +26,25 @@ def fibFromSucc : forall (n : Nat) (a : Nat) (b : Nat) ->
     end
 end
 
-def fibZero : Eq (fib 0) 0 := true end
+(* The first values and the recurrence. *)
+module Basic where
 
-def fibOne : Eq (fib 1) 1 := true end
+abstract def fibZero : Eq (fib 0) 0 := true end
+
+abstract def fibOne : Eq (fib 1) 1 := true end
 
 (* The Fibonacci recurrence. *)
-def fibSucc : forall (n : Nat) -> Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) :=
+abstract def fibSucc : forall (n : Nat) -> Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) :=
   fun (n : Nat) -> fibFromSucc n 0 1
 end
 
+end
+
+import Basic use (fibSucc)
+
 (* A sequence whose second term is positive stays positive after its first
    term. *)
-def fibFromPos : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ n) a b) :=
+private abstract def fibFromPos : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ n) a b) :=
   fun (n : Nat) ->
     rec n return x . (forall (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ x) a b))
     | zero => fun (a : Nat) (b : Nat) (h : Lt 0 b) -> h
@@ -42,13 +53,16 @@ def fibFromPos : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibF
     end
 end
 
+(* Positivity and monotonicity. *)
+module Growth where
+
 (* Every Fibonacci number after [fib 0] is positive. *)
-def fibPos : forall (n : Nat) -> Lt 0 (fib (succ n)) :=
+abstract def fibPos : forall (n : Nat) -> Lt 0 (fib (succ n)) :=
   fun (n : Nat) -> fibFromPos n 0 1 true
 end
 
 (* The Fibonacci numbers do not decrease. *)
-def fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
+abstract def fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Le (fib x) (fib (succ x))
     | zero => true
@@ -61,7 +75,7 @@ def fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
 end
 
 (* Monotonicity over any distance [k]. *)
-def fibMonoPlus : forall (k : Nat) (m : Nat) -> Le (fib m) (fib (plus k m)) :=
+abstract def fibMonoPlus : forall (k : Nat) (m : Nat) -> Le (fib m) (fib (plus k m)) :=
   fun (k : Nat) (m : Nat) ->
     rec k return x . Le (fib m) (fib (plus x m))
     | zero => leRefl (fib m)
@@ -69,8 +83,13 @@ def fibMonoPlus : forall (k : Nat) (m : Nat) -> Le (fib m) (fib (plus k m)) :=
     end
 end
 
+end
+
+(* Identities on sums and on shifted indices. *)
+module Identities where
+
 (* The Fibonacci numbers below [n] sum to [fib (succ n)] minus one. *)
-def fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n)) :=
+abstract def fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Eq (plus (sumTo fib x) 1) (fib (succ x))
     | zero => true
@@ -97,7 +116,7 @@ end
    induction on [m] uses the hypothesis at [succ n], expands
    [fib (succ (succ n))] and [fib (succ (succ p))] by [fibSucc], and
    distributes. *)
-def fibPlus : forall (m : Nat) (n : Nat) ->
+abstract def fibPlus : forall (m : Nat) (n : Nat) ->
     Eq (fib (succ (plus m n))) (plus (mult (fib (succ m)) (fib (succ n))) (mult (fib m) (fib n))) :=
   fun (m : Nat) ->
     rec m return x . (forall (n : Nat) ->
@@ -147,6 +166,8 @@ def fibPlus : forall (m : Nat) (n : Nat) ->
                          (trans regroup collect rhs stepF stepG)))))
         end
     end
+end
+
 end
 
 end

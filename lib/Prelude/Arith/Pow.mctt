@@ -2,8 +2,11 @@
    [Prelude::Arith::Equality] and proved from those of
    [Prelude::Arith::Mult]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero)
-import Prelude::Arith::Mult use (mult; multOne; oneMult; multAssoc; multSwapMiddle)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Mult.Basic use (multOne; oneMult)
+import Prelude::Arith::Mult.Algebra use (multAssoc; multSwapMiddle)
 
 module Prelude::Arith::Pow where
 
@@ -16,20 +19,23 @@ def pow (a : Nat) (n : Nat) : Nat :=
   end
 end
 
-def powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
+(* Exponents zero, one and successor, and powers of one. *)
+module Basic where
+
+abstract def powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
   fun (a : Nat) -> true
 end
 
-def powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
+abstract def powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
   fun (a : Nat) (n : Nat) -> refl (mult a (pow a n))
 end
 
-def powOne : forall (a : Nat) -> Eq (pow a 1) a :=
+abstract def powOne : forall (a : Nat) -> Eq (pow a 1) a :=
   fun (a : Nat) -> multOne a
 end
 
 (* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
-def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
+abstract def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (pow 1 x) 1
     | zero => true
@@ -37,9 +43,16 @@ def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
     end
 end
 
+end
+
+import Basic use (onePow)
+
+(* The laws of exponents. *)
+module Exp where
+
 (* Powers turn sums of exponents into products.  The step multiplies the
    induction hypothesis by [a] and reassociates. *)
-def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
+abstract def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
     Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) :=
   fun (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
@@ -57,7 +70,7 @@ def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
 end
 
 (* A power of a product is the product of the powers. *)
-def powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
+abstract def powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
     Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) :=
   fun (a : Nat) (b : Nat) (n : Nat) ->
     rec n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
@@ -77,7 +90,7 @@ end
 (* A power of a power multiplies the exponents.  The step splits
    [pow a (plus n (mult p n))] by [powPlus] and recombines the bases by
    [powMultBase]. *)
-def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
+abstract def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
     Eq (pow a (mult m n)) (pow (pow a m) n) :=
   fun (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (mult x n)) (pow (pow a x) n)
@@ -94,6 +107,8 @@ def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
         in trans lhs split rhs (powPlus a n (mult p n)) (trans split mid rhs step back)
         end
     end
+end
+
 end
 
 end

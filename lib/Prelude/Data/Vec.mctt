@@ -16,8 +16,10 @@
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Lt; leRefl; leStep; lePlusRight)
-import Prelude::Arith::Monotone use (ltLeTrans; ltPlusMonoRight; subLe)
+import Prelude::Arith::Order use (Lt)
+import Prelude::Arith::Order.LeLaws use (leRefl; leStep; lePlusRight)
+import Prelude::Arith::Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
+import Prelude::Arith::Monotone.SubLaws use (subLe)
 
 module Prelude::Data::Vec (A : Type@0) where
 

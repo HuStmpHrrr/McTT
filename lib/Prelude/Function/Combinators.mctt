@@ -1,6 +1,7 @@
 (* Generic combinators over a type parameter, with their laws at [Nat]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusComm)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Function::Iter as Iter
 
 module Prelude::Function::Combinators where
@@ -26,20 +27,29 @@ end
 
 end
 
-def constApply : forall (c : Nat) (a : Nat) -> Eq (Generic.const Nat Nat c a) c :=
+(* Laws of [const] and [compose] at [Nat]. *)
+module GenericLaws where
+
+abstract def constApply : forall (c : Nat) (a : Nat) -> Eq (Generic.const Nat Nat c a) c :=
   fun (c : Nat) (a : Nat) -> refl c
 end
 
-def composeId : forall (f : forall (n : Nat) -> Nat) (a : Nat) ->
+abstract def composeId : forall (f : forall (n : Nat) -> Nat) (a : Nat) ->
     Eq (Generic.compose Nat Nat Nat f (Generic.id Nat) a) (f a) :=
   fun (f : forall (n : Nat) -> Nat) (a : Nat) -> refl (f a)
 end
 
+end
+
+(* Laws of iterating a fixed function [f] on numbers.  Each law takes [f]
+   first, as a module argument: [IterateLaws.iteratePlus f m n a]. *)
+module IterateLaws (f : forall (n : Nat) -> Nat) where
+
 (* Iterating [m + n] times is iterating [n] times, then [m] times. *)
-def iteratePlus : forall (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : Nat) ->
+abstract def iteratePlus : forall (m : Nat) (n : Nat) (a : Nat) ->
     Eq (Generic.iterate Nat f (plus m n) a)
        (Generic.iterate Nat f m (Generic.iterate Nat f n a)) :=
-  fun (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : Nat) ->
+  fun (m : Nat) (n : Nat) (a : Nat) ->
     rec m return x . Eq (Generic.iterate Nat f (plus x n) a)
                         (Generic.iterate Nat f x (Generic.iterate Nat f n a))
     | zero => refl (Generic.iterate Nat f n a)
@@ -50,9 +60,9 @@ def iteratePlus : forall (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : 
 end
 
 (* One more step may be taken first instead of last. *)
-def iterateSucc : forall (f : forall (n : Nat) -> Nat) (n : Nat) (a : Nat) ->
+abstract def iterateSucc : forall (n : Nat) (a : Nat) ->
     Eq (Generic.iterate Nat f (succ n) a) (Generic.iterate Nat f n (f a)) :=
-  fun (f : forall (n : Nat) -> Nat) (n : Nat) (a : Nat) ->
+  fun (n : Nat) (a : Nat) ->
     rec n return x . Eq (Generic.iterate Nat f (succ x) a) (Generic.iterate Nat f x (f a))
     | zero => refl (f a)
     | succ p, ih =>
@@ -61,22 +71,24 @@ def iterateSucc : forall (f : forall (n : Nat) -> Nat) (n : Nat) (a : Nat) ->
 end
 
 (* Iterations of the same function commute, by [iteratePlus] and [plusComm]. *)
-def iterateComm : forall (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : Nat) ->
+abstract def iterateComm : forall (m : Nat) (n : Nat) (a : Nat) ->
     Eq (Generic.iterate Nat f m (Generic.iterate Nat f n a))
        (Generic.iterate Nat f n (Generic.iterate Nat f m a)) :=
-  fun (f : forall (n : Nat) -> Nat) (m : Nat) (n : Nat) (a : Nat) ->
+  fun (m : Nat) (n : Nat) (a : Nat) ->
     let mn : Nat := Generic.iterate Nat f m (Generic.iterate Nat f n a);
         nm : Nat := Generic.iterate Nat f n (Generic.iterate Nat f m a);
         toPlus : Eq mn (Generic.iterate Nat f (plus m n) a) :=
-          sym (Generic.iterate Nat f (plus m n) a) mn (iteratePlus f m n a);
+          sym (Generic.iterate Nat f (plus m n) a) mn (iteratePlus m n a);
         swap : Eq (Generic.iterate Nat f (plus m n) a) (Generic.iterate Nat f (plus n m) a) :=
           cong (fun (k : Nat) -> Generic.iterate Nat f k a) (plus m n) (plus n m)
             (plusComm m n)
     in trans mn (Generic.iterate Nat f (plus n m) a) nm
          (trans mn (Generic.iterate Nat f (plus m n) a) (Generic.iterate Nat f (plus n m) a)
             toPlus swap)
-         (iteratePlus f n m a)
+         (iteratePlus n m a)
     end
+end
+
 end
 
 end

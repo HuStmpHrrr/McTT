@@ -14,7 +14,7 @@ def Eq : forall (n : Nat) (m : Nat) -> Type@0 :=
     end
 end
 
-def refl : forall (n : Nat) -> Eq n n :=
+abstract def refl : forall (n : Nat) -> Eq n n :=
   fun (n : Nat) ->
     rec n return x . Eq x x
     | zero => true
@@ -22,11 +22,11 @@ def refl : forall (n : Nat) -> Eq n n :=
     end
 end
 
-def zeroNeSucc : forall (n : Nat) -> Not (Eq 0 (succ n)) :=
+abstract def zeroNeSucc : forall (n : Nat) -> Not (Eq 0 (succ n)) :=
   fun (n : Nat) (h : Eq 0 (succ n)) -> h
 end
 
-def sym : forall (a : Nat) (b : Nat) (h : Eq a b) -> Eq b a :=
+abstract def sym : forall (a : Nat) (b : Nat) (h : Eq a b) -> Eq b a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Eq x b) -> Eq b x)
     | zero => fun (b : Nat) ->
@@ -42,7 +42,7 @@ def sym : forall (a : Nat) (b : Nat) (h : Eq a b) -> Eq b a :=
     end
 end
 
-def trans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Eq a b) (hbc : Eq b c) -> Eq a c :=
+abstract def trans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Eq a b) (hbc : Eq b c) -> Eq a c :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (hab : Eq x b) (hbc : Eq b c) -> Eq x c)
     | zero => fun (b : Nat) ->
@@ -67,7 +67,7 @@ end
 (* Every function on numbers respects equality. The proof is by induction on
    both numbers, with the function generalized so that the successor case can
    use the hypothesis at [fun y -> f (succ y)]. *)
-def cong : forall (f : forall (x : Nat) -> Nat) (a : Nat) (b : Nat) (h : Eq a b) -> Eq (f a) (f b) :=
+abstract def cong : forall (f : forall (x : Nat) -> Nat) (a : Nat) (b : Nat) (h : Eq a b) -> Eq (f a) (f b) :=
   fun (f : forall (x : Nat) -> Nat) (a : Nat) ->
     (rec a return x . (forall (g : forall (y : Nat) -> Nat) (b : Nat) (h : Eq x b) -> Eq (g x) (g b))
      | zero => fun (g : forall (y : Nat) -> Nat) (b : Nat) ->

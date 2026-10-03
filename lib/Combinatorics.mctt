@@ -2,9 +2,13 @@
    the first rows of Pascal's triangle and of the Fibonacci numbers, and
    closed instances of their laws, which normalize to [true]. *)
 import Prelude::Arith::Binomial use (choose)
-import Prelude::Arith::Binomial::Properties use (chooseZero; chooseSelf; chooseOne; chooseOver; pascal; chooseSymm; chooseSymmSub; rowSum)
+import Prelude::Arith::Binomial::Properties.Basic use (chooseZero; chooseSelf; chooseOne; chooseOver; pascal)
+import Prelude::Arith::Binomial::Properties.Symmetry use (chooseSymm; chooseSymmSub)
+import Prelude::Arith::Binomial::Properties.Row use (rowSum)
 import Prelude::Arith::Fibonacci use (fib)
-import Prelude::Arith::Fibonacci::Properties use (fibSucc; fibPos; fibMono; fibMonoPlus; fibSum; fibPlus)
+import Prelude::Arith::Fibonacci::Properties.Basic use (fibSucc)
+import Prelude::Arith::Fibonacci::Properties.Growth use (fibPos; fibMono; fibMonoPlus)
+import Prelude::Arith::Fibonacci::Properties.Identities use (fibSum; fibPlus)
 import Prelude::Arith::Sum use (sumTo)
 
 module Combinatorics where

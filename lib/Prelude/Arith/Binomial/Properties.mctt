@@ -2,17 +2,23 @@
    vanishing above the diagonal, Pascal's rule, symmetry, and the row sum
    [sumTo (choose n) (succ n) = pow 2 n]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus; plusZero; plusSucc; plusComm; plusSwapMiddle; plusCongBoth)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
+import Prelude::Arith::Plus.Algebra use (plusComm; plusSwapMiddle; plusCongBoth)
 import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Le; Lt; leRefl; leStep)
-import Prelude::Arith::Monotone use (plusSubCancel)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leRefl; leStep)
+import Prelude::Arith::Monotone.SubLaws use (plusSubCancel)
 import Prelude::Arith::Pow use (pow)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Binomial use (choose)
 
 module Prelude::Arith::Binomial::Properties where
 
-def chooseZero : forall (n : Nat) -> Eq (choose n 0) 1 :=
+(* Values at the edges, and Pascal's rule. *)
+module Basic where
+
+abstract def chooseZero : forall (n : Nat) -> Eq (choose n 0) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (choose x 0) 1
     | zero => true
@@ -21,7 +27,7 @@ def chooseZero : forall (n : Nat) -> Eq (choose n 0) 1 :=
 end
 
 (* Pascal's rule, which holds by computation. *)
-def pascal : forall (n : Nat) (k : Nat) ->
+abstract def pascal : forall (n : Nat) (k : Nat) ->
     Eq (choose (succ n) (succ k)) (plus (choose n k) (choose n (succ k))) :=
   fun (n : Nat) (k : Nat) -> refl (plus (choose n k) (choose n (succ k)))
 end
@@ -29,7 +35,7 @@ end
 (* Above the diagonal, the coefficients vanish.  In the step,
    [Lt (succ p) (succ q)] computes to [Lt p q], which bounds both summands
    of Pascal's rule. *)
-def chooseOver : forall (n : Nat) (k : Nat) (h : Lt n k) -> Eq (choose n k) 0 :=
+abstract def chooseOver : forall (n : Nat) (k : Nat) (h : Lt n k) -> Eq (choose n k) 0 :=
   fun (n : Nat) ->
     rec n return x . (forall (k : Nat) (h : Lt x k) -> Eq (choose x k) 0)
     | zero => fun (k : Nat) ->
@@ -48,7 +54,7 @@ def chooseOver : forall (n : Nat) (k : Nat) (h : Lt n k) -> Eq (choose n k) 0 :=
 end
 
 (* The diagonal: [choose n n] is [1], since [choose p (succ p)] vanishes. *)
-def chooseSelf : forall (n : Nat) -> Eq (choose n n) 1 :=
+abstract def chooseSelf : forall (n : Nat) -> Eq (choose n n) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (choose x x) 1
     | zero => true
@@ -58,7 +64,7 @@ def chooseSelf : forall (n : Nat) -> Eq (choose n n) 1 :=
     end
 end
 
-def chooseOne : forall (n : Nat) -> Eq (choose n 1) n :=
+abstract def chooseOne : forall (n : Nat) -> Eq (choose n 1) n :=
   fun (n : Nat) ->
     rec n return x . Eq (choose x 1) x
     | zero => true
@@ -67,15 +73,19 @@ def chooseOne : forall (n : Nat) -> Eq (choose n 1) n :=
     end
 end
 
+end
+
+import Basic use (chooseZero; chooseOver; chooseSelf)
+
 (* The coefficient [choose (plus a b) a], indexed by the sizes [a] of the
    chosen part and [b] of the rest. *)
-def split (a : Nat) (b : Nat) : Nat := choose (plus a b) a end
+private def split (a : Nat) (b : Nat) : Nat := choose (plus a b) a end
 
-def splitZeroLeft : forall (b : Nat) -> Eq (split 0 b) 1 :=
+private abstract def splitZeroLeft : forall (b : Nat) -> Eq (split 0 b) 1 :=
   fun (b : Nat) -> chooseZero b
 end
 
-def splitZeroRight : forall (a : Nat) -> Eq (split a 0) 1 :=
+private abstract def splitZeroRight : forall (a : Nat) -> Eq (split a 0) 1 :=
   fun (a : Nat) ->
     trans (choose (plus a 0) a) (choose a a) 1
       (cong (fun (y : Nat) -> choose y a) (plus a 0) a (plusZero a))
@@ -85,7 +95,7 @@ end
 (* Pascal's rule for [split]: [split (succ a) (succ b)] is
    [plus (split a (succ b)) (split (succ a) b)].  The second summand needs
    [plus a (succ b) = succ (plus a b)]. *)
-def splitSucc : forall (a : Nat) (b : Nat) ->
+private abstract def splitSucc : forall (a : Nat) (b : Nat) ->
     Eq (split (succ a) (succ b)) (plus (split a (succ b)) (split (succ a) b)) :=
   fun (a : Nat) (b : Nat) ->
     cong (fun (y : Nat) -> plus (split a (succ b)) y)
@@ -96,7 +106,7 @@ end
 
 (* [split] is symmetric.  The induction on [a] and then on [b] follows the
    rule [splitSucc], which is symmetric up to the order of the summands. *)
-def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
+private abstract def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (split x b) (split b x))
     | zero => fun (b : Nat) ->
@@ -125,8 +135,11 @@ def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
     end
 end
 
+(* Symmetry of the binomial coefficients. *)
+module Symmetry where
+
 (* Symmetry: choosing [a] of [plus a b] is choosing the [b] left out. *)
-def chooseSymm : forall (a : Nat) (b : Nat) ->
+abstract def chooseSymm : forall (a : Nat) (b : Nat) ->
     Eq (choose (plus a b) a) (choose (plus a b) b) :=
   fun (a : Nat) (b : Nat) ->
     trans (choose (plus a b) a) (choose (plus b a) b) (choose (plus a b) b)
@@ -135,7 +148,7 @@ def chooseSymm : forall (a : Nat) (b : Nat) ->
 end
 
 (* Symmetry with subtraction: below [n], [choose n k] is [choose n (n - k)]. *)
-def chooseSymmSub : forall (n : Nat) (k : Nat) (h : Le k n) ->
+abstract def chooseSymmSub : forall (n : Nat) (k : Nat) (h : Le k n) ->
     Eq (choose n k) (choose n (sub n k)) :=
   fun (n : Nat) (k : Nat) (h : Le k n) ->
     let m : Nat := sub n k;
@@ -149,9 +162,14 @@ def chooseSymmSub : forall (n : Nat) (k : Nat) (h : Le k n) ->
     end
 end
 
+end
+
+(* Sums of the rows of Pascal's triangle. *)
+module Row where
+
 (* A prefix of row [succ p] sums to the same prefix of row [p] plus the
    prefix of row [p] one shorter, by Pascal's rule on each entry. *)
-def rowPrefixSucc : forall (p : Nat) (m : Nat) ->
+private abstract def rowPrefixSucc : forall (p : Nat) (m : Nat) ->
     Eq (sumTo (choose (succ p)) (succ m))
        (plus (sumTo (choose p) (succ m)) (sumTo (choose p) m)) :=
   fun (p : Nat) (m : Nat) ->
@@ -184,7 +202,7 @@ end
 (* Row [n] of Pascal's triangle sums to [pow 2 n].  Row [succ p] sums to
    twice row [p] by [rowPrefixSucc], since [choose p (succ p)] vanishes; and
    [pow 2 (succ p)] computes to [plus P (plus P 0)]. *)
-def rowSum : forall (n : Nat) -> Eq (sumTo (choose n) (succ n)) (pow 2 n) :=
+abstract def rowSum : forall (n : Nat) -> Eq (sumTo (choose n) (succ n)) (pow 2 n) :=
   fun (n : Nat) ->
     rec n return x . Eq (sumTo (choose x) (succ x)) (pow 2 x)
     | zero => true
@@ -202,6 +220,8 @@ def rowSum : forall (n : Nat) -> Eq (sumTo (choose n) (succ n)) (pow 2 n) :=
              (plusCongBoth longer s P (plus P 0) first second)
         end
     end
+end
+
 end
 
 end

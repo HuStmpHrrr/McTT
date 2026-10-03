@@ -4,12 +4,17 @@
    [min] and [max] as greatest lower and least upper bounds. *)
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::MinMax use (min; max; minComm; minIdem)
-import Prelude::Arith::Order use (Le; leRefl; leTrans)
+import Prelude::Arith::MinMax use (min; max)
+import Prelude::Arith::MinMax.Laws use (minComm; minIdem)
+import Prelude::Arith::Order use (Le)
+import Prelude::Arith::Order.LeLaws use (leRefl; leTrans)
 
 module Prelude::Arith::Lattice where
 
-def minAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+(* Associativity, absorption and distributivity. *)
+module Algebra where
+
+abstract def minAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (min (min a b) c) (min a (min b c)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) -> Eq (min (min x b) c) (min x (min b c)))
@@ -26,7 +31,7 @@ def minAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
-def maxAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def maxAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (max (max a b) c) (max a (max b c)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) -> Eq (max (max x b) c) (max x (max b c)))
@@ -44,7 +49,7 @@ def maxAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* Absorption: the minimum of [a] and something above [a] is [a]. *)
-def minMaxAbsorb : forall (a : Nat) (b : Nat) -> Eq (min a (max a b)) a :=
+abstract def minMaxAbsorb : forall (a : Nat) (b : Nat) -> Eq (min a (max a b)) a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (min x (max x b)) x)
     | zero => fun (b : Nat) -> true
@@ -57,7 +62,7 @@ def minMaxAbsorb : forall (a : Nat) (b : Nat) -> Eq (min a (max a b)) a :=
 end
 
 (* Absorption, dually: the maximum of [a] and something below [a] is [a]. *)
-def maxMinAbsorb : forall (a : Nat) (b : Nat) -> Eq (max a (min a b)) a :=
+abstract def maxMinAbsorb : forall (a : Nat) (b : Nat) -> Eq (max a (min a b)) a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (max x (min x b)) x)
     | zero => fun (b : Nat) -> true
@@ -70,7 +75,7 @@ def maxMinAbsorb : forall (a : Nat) (b : Nat) -> Eq (max a (min a b)) a :=
 end
 
 (* The minimum distributes over the maximum. *)
-def minMaxDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def minMaxDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (min a (max b c)) (max (min a b) (min a c)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) -> Eq (min x (max b c)) (max (min x b) (min x c)))
@@ -91,7 +96,7 @@ end
 
 (* The maximum distributes over the minimum.  Two of the cases are instances
    of absorption, the second one up to [minComm]. *)
-def maxMinDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
+abstract def maxMinDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (max a (min b c)) (min (max a b) (max a c)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) -> Eq (max x (min b c)) (min (max x b) (max x c)))
@@ -115,8 +120,13 @@ def maxMinDistrib : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
+end
+
+(* [min] is the greatest lower bound and [max] the least upper bound. *)
+module Bounds where
+
 (* The minimum is a lower bound of its first argument. *)
-def minLe : forall (a : Nat) (b : Nat) -> Le (min a b) a :=
+abstract def minLe : forall (a : Nat) (b : Nat) -> Le (min a b) a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Le (min x b) x)
     | zero => fun (b : Nat) -> true
@@ -129,7 +139,7 @@ def minLe : forall (a : Nat) (b : Nat) -> Le (min a b) a :=
 end
 
 (* The minimum is a lower bound of its second argument. *)
-def minLeRight : forall (a : Nat) (b : Nat) -> Le (min a b) b :=
+abstract def minLeRight : forall (a : Nat) (b : Nat) -> Le (min a b) b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Le (min x b) b)
     | zero => fun (b : Nat) -> true
@@ -142,7 +152,7 @@ def minLeRight : forall (a : Nat) (b : Nat) -> Le (min a b) b :=
 end
 
 (* The maximum is an upper bound of its first argument. *)
-def leMax : forall (a : Nat) (b : Nat) -> Le a (max a b) :=
+abstract def leMax : forall (a : Nat) (b : Nat) -> Le a (max a b) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Le x (max x b))
     | zero => fun (b : Nat) -> true
@@ -155,7 +165,7 @@ def leMax : forall (a : Nat) (b : Nat) -> Le a (max a b) :=
 end
 
 (* The maximum is an upper bound of its second argument. *)
-def leMaxRight : forall (a : Nat) (b : Nat) -> Le b (max a b) :=
+abstract def leMaxRight : forall (a : Nat) (b : Nat) -> Le b (max a b) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Le b (max x b))
     | zero => fun (b : Nat) -> leRefl b
@@ -167,12 +177,12 @@ def leMaxRight : forall (a : Nat) (b : Nat) -> Le b (max a b) :=
     end
 end
 
-def minLeMax : forall (a : Nat) (b : Nat) -> Le (min a b) (max a b) :=
+abstract def minLeMax : forall (a : Nat) (b : Nat) -> Le (min a b) (max a b) :=
   fun (a : Nat) (b : Nat) -> leTrans (min a b) a (max a b) (minLe a b) (leMax a b)
 end
 
 (* The minimum is the greatest lower bound: a common lower bound is below it. *)
-def leMin : forall (c : Nat) (a : Nat) (b : Nat) (hca : Le c a) (hcb : Le c b) -> Le c (min a b) :=
+abstract def leMin : forall (c : Nat) (a : Nat) (b : Nat) (hca : Le c a) (hcb : Le c b) -> Le c (min a b) :=
   fun (c : Nat) ->
     rec c return w . (forall (a : Nat) (b : Nat) (hca : Le w a) (hcb : Le w b) -> Le w (min a b))
     | zero => fun (a : Nat) (b : Nat) (hca : True) (hcb : True) -> true
@@ -191,19 +201,19 @@ def leMin : forall (c : Nat) (a : Nat) (b : Nat) (hca : Le c a) (hcb : Le c b) -
 end
 
 (* The converse of [leMin], for the first argument. *)
-def leMinLeft : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c a :=
+abstract def leMinLeft : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c a :=
   fun (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) ->
     leTrans c (min a b) a h (minLe a b)
 end
 
 (* The converse of [leMin], for the second argument. *)
-def leMinRight : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c b :=
+abstract def leMinRight : forall (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) -> Le c b :=
   fun (c : Nat) (a : Nat) (b : Nat) (h : Le c (min a b)) ->
     leTrans c (min a b) b h (minLeRight a b)
 end
 
 (* The maximum is the least upper bound: a common upper bound is above it. *)
-def maxLe : forall (a : Nat) (b : Nat) (c : Nat) (hac : Le a c) (hbc : Le b c) -> Le (max a b) c :=
+abstract def maxLe : forall (a : Nat) (b : Nat) (c : Nat) (hac : Le a c) (hbc : Le b c) -> Le (max a b) c :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (hac : Le x c) (hbc : Le b c) -> Le (max x b) c)
     | zero => fun (b : Nat) (c : Nat) (hac : True) (hbc : Le b c) -> hbc
@@ -222,19 +232,19 @@ def maxLe : forall (a : Nat) (b : Nat) (c : Nat) (hac : Le a c) (hbc : Le b c) -
 end
 
 (* The converse of [maxLe], for the first argument. *)
-def maxLeLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le a c :=
+abstract def maxLeLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le a c :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) ->
     leTrans a (max a b) c (leMax a b) h
 end
 
 (* The converse of [maxLe], for the second argument. *)
-def maxLeRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le b c :=
+abstract def maxLeRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) -> Le b c :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le (max a b) c) ->
     leTrans b (max a b) c (leMaxRight a b) h
 end
 
 (* Below its second argument, the minimum is the first. *)
-def minEqLeft : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (min a b) a :=
+abstract def minEqLeft : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (min a b) a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (min x b) x)
     | zero => fun (b : Nat) (h : True) -> true
@@ -247,7 +257,7 @@ def minEqLeft : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (min a b) a :=
 end
 
 (* Below its second argument, the maximum is the second. *)
-def maxEqRight : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (max a b) b :=
+abstract def maxEqRight : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (max a b) b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (max x b) b)
     | zero => fun (b : Nat) (h : True) -> refl b
@@ -259,8 +269,15 @@ def maxEqRight : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (max a b) b :=
     end
 end
 
+end
+
+import Bounds use (minLe; minLeRight; leMax; leMaxRight; leMin; maxLe)
+
+(* [min] and [max] are monotone. *)
+module Mono where
+
 (* The minimum is monotone in both arguments. *)
-def minMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+abstract def minMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (min a c) (min b d) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hab : Le a b) (hcd : Le c d) ->
     leMin (min a c) b d
@@ -269,12 +286,14 @@ def minMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
 end
 
 (* The maximum is monotone in both arguments. *)
-def maxMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+abstract def maxMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (max a c) (max b d) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hab : Le a b) (hcd : Le c d) ->
     maxLe a c (max b d)
       (leTrans a b (max b d) hab (leMax b d))
       (leTrans c d (max b d) hcd (leMaxRight b d))
+end
+
 end
 
 end

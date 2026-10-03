@@ -1,7 +1,8 @@
 (* The order on natural numbers, computed by recursion on both sides like
    [Prelude::Arith::Equality.Eq], with its basic laws, case analysis, and a
    decision function. *)
-import Prelude::Logic use (Not; absurd; Or; orInl; orInr)
+import Prelude::Logic use (Not; absurd)
+import Prelude::Logic.Disj use (Or; orInl; orInr)
 import Prelude::Arith::Equality use (Eq; sym; transport)
 import Prelude::Arith::Plus use (plus)
 
@@ -20,6 +21,9 @@ end
 
 (* Strict order. *)
 def Lt (n : Nat) (m : Nat) : Type@0 := Le (succ n) m end
+
+(* [Le] is a total order, and its relation to successors and sums. *)
+module LeLaws where
 
 def leRefl : forall (n : Nat) -> Le n n :=
   fun (n : Nat) ->
@@ -45,7 +49,7 @@ def leTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Le b c)
     end
 end
 
-def leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a b :=
+abstract def leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (hab : Le x b) (hba : Le b x) -> Eq x b)
     | zero => fun (b : Nat) ->
@@ -62,12 +66,12 @@ def leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a
 end
 
 (* Zero is the least number. *)
-def leZero : forall (n : Nat) -> Le 0 n :=
+abstract def leZero : forall (n : Nat) -> Le 0 n :=
   fun (n : Nat) -> true
 end
 
 (* Only zero is below zero. *)
-def leZeroInv : forall (n : Nat) (h : Le n 0) -> Eq n 0 :=
+abstract def leZeroInv : forall (n : Nat) (h : Le n 0) -> Eq n 0 :=
   fun (n : Nat) ->
     rec n return x . (forall (h : Le x 0) -> Eq x 0)
     | zero => fun (h : True) -> h
@@ -96,7 +100,7 @@ def lePlusRight : forall (a : Nat) (b : Nat) -> Le a (plus a b) :=
     end
 end
 
-def lePlusLeft : forall (a : Nat) (b : Nat) -> Le b (plus a b) :=
+abstract def lePlusLeft : forall (a : Nat) (b : Nat) -> Le b (plus a b) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Le b (plus x b)
     | zero => leRefl b
@@ -118,7 +122,12 @@ def leTotal : forall (a : Nat) (b : Nat) -> Or (Le a b) (Le b a) :=
     end
 end
 
-def ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
+end
+
+(* [Lt] is irreflexive and has no element below zero. *)
+module LtLaws where
+
+abstract def ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
   fun (n : Nat) ->
     rec n return x . Not (Lt x x)
     | zero => fun (h : False) -> h
@@ -126,12 +135,12 @@ def ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
     end
 end
 
-def notLtZero : forall (n : Nat) -> Not (Lt n 0) :=
+abstract def notLtZero : forall (n : Nat) -> Not (Lt n 0) :=
   fun (n : Nat) (h : False) -> h
 end
 
 (* A number below another is different from it. *)
-def ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
+abstract def ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
   fun (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) ->
     ltIrrefl a (transport (fun (x : Nat) -> Lt a x) b a (sym a b e) h)
 end
@@ -156,6 +165,8 @@ def leCases : forall (m : Nat) (p : Nat) (h : Le m p) -> Or (Lt m p) (Eq m p) :=
     end
 end
 
+end
+
 (* Decision of [Le]: [leb a b] is 1 when [a] is at most [b], and 0
    otherwise. *)
 def leb : forall (n : Nat) (m : Nat) -> Nat :=
@@ -167,8 +178,11 @@ def leb : forall (n : Nat) (m : Nat) -> Nat :=
     end
 end
 
+(* The boolean test [leb] agrees with [Le]. *)
+module LebLaws where
+
 (* [leb] answers 1 exactly on [Le]: soundness. *)
-def lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
+abstract def lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Eq (leb x b) 1) -> Le x b)
     | zero => fun (b : Nat) (h : True) -> true
@@ -181,7 +195,7 @@ def lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
 end
 
 (* [leb] answers 1 exactly on [Le]: completeness. *)
-def lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
+abstract def lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (leb x b) 1)
     | zero => fun (b : Nat) (h : True) -> true
@@ -194,7 +208,7 @@ def lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
 end
 
 (* When [leb a b] answers 0, the order holds strictly the other way. *)
-def lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
+abstract def lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Eq (leb x b) 0) -> Lt b x)
     | zero => fun (b : Nat) (h : False) -> absurd (Lt b 0) h
@@ -204,6 +218,8 @@ def lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
         | succ q, s => fun (h : Eq (leb p q) 0) -> ih q h
         end
     end
+end
+
 end
 
 end

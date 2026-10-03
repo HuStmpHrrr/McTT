@@ -3,8 +3,9 @@
 import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Order use (Le; Lt; leTrans; lePlusRight)
-import Prelude::Arith::Monotone use (lePlusMono)
+import Prelude::Arith::Order use (Le; Lt)
+import Prelude::Arith::Order.LeLaws use (leTrans; lePlusRight)
+import Prelude::Arith::Monotone.Mono use (lePlusMono)
 import Prelude::Arith::Pow use (pow)
 
 module Prelude::Arith::Factorial where
@@ -17,15 +18,23 @@ def fact (n : Nat) : Nat :=
   end
 end
 
-def factZero : Eq (fact 0) 1 := true end
+(* The defining equations. *)
+module Laws where
 
-def factSucc : forall (n : Nat) -> Eq (fact (succ n)) (mult (succ n) (fact n)) :=
+abstract def factZero : Eq (fact 0) 1 := true end
+
+abstract def factSucc : forall (n : Nat) -> Eq (fact (succ n)) (mult (succ n) (fact n)) :=
   fun (n : Nat) -> refl (mult (succ n) (fact n))
 end
 
+end
+
+(* Lower bounds of the factorial. *)
+module Bounds where
+
 (* Every factorial is positive.  [fact (succ p)] computes to
    [plus (fact p) (mult p (fact p))], which is at least [fact p]. *)
-def factPos : forall (n : Nat) -> Lt 0 (fact n) :=
+abstract def factPos : forall (n : Nat) -> Lt 0 (fact n) :=
   fun (n : Nat) ->
     rec n return x . Lt 0 (fact x)
     | zero => true
@@ -35,7 +44,7 @@ def factPos : forall (n : Nat) -> Lt 0 (fact n) :=
 end
 
 (* The factorial does not decrease from [n] to [succ n]. *)
-def factLeSucc : forall (n : Nat) -> Le (fact n) (fact (succ n)) :=
+abstract def factLeSucc : forall (n : Nat) -> Le (fact n) (fact (succ n)) :=
   fun (n : Nat) -> lePlusRight (fact n) (mult n (fact n))
 end
 
@@ -43,7 +52,7 @@ end
    the step, [mult 2 P] computes to [plus P (plus P 0)] and
    [mult (succ (succ p)) F] to [plus F (plus F (mult p F))], so two uses of
    [lePlusMono] on the hypothesis [P <= F] conclude. *)
-def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
+abstract def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Le (pow 2 x) (fact (succ x))
     | zero => true
@@ -55,6 +64,8 @@ def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
         in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner
         end
     end
+end
+
 end
 
 end

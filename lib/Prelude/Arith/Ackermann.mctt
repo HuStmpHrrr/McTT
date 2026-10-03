@@ -1,7 +1,8 @@
 (* The Ackermann function, by higher-order primitive recursion, with its
    defining equations and closed forms for [ack 1] and [ack 2]. *)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::Plus use (plus; plusSucc)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusSucc)
 import Prelude::Function::Combinators use (Generic)
 
 module Prelude::Arith::Ackermann where
@@ -17,20 +18,28 @@ def ack (m : Nat) (n : Nat) : Nat :=
    end) n
 end
 
-def ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
+(* The defining equations, one per clause. *)
+module Equations where
+
+abstract def ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
   fun (n : Nat) -> refl n
 end
 
-def ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
+abstract def ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
   fun (m : Nat) -> refl (ack m 1)
 end
 
-def ackSuccSucc : forall (m : Nat) (n : Nat) ->
+abstract def ackSuccSucc : forall (m : Nat) (n : Nat) ->
     Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) :=
   fun (m : Nat) (n : Nat) -> refl (ack m (ack (succ m) n))
 end
 
-def ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
+end
+
+(* Closed forms of the first rows. *)
+module Rows where
+
+abstract def ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Eq (ack 1 x) (succ (succ x))
     | zero => true
@@ -40,7 +49,7 @@ end
 
 (* [ack 2 n] is [2 n + 3]: the step rewrites [ack 1] by [ackOne] and moves a
    successor past [plusSucc]. *)
-def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
+abstract def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
   fun (n : Nat) ->
     rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
     | zero => true
@@ -56,6 +65,8 @@ def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
              shift
         end
     end
+end
+
 end
 
 end

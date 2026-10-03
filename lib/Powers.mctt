@@ -2,9 +2,15 @@
    [Prelude::Arith::Factorial]: a few computations, and closed instances of
    their theorems, which normalize to [true]. *)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Pow use (pow; powZero; powOne; onePow; powPlus; powMult; powMultBase)
-import Prelude::Arith::Sum use (sumTo; sumToPlus; sumToScale; sumToConst; gauss; sumOdd)
-import Prelude::Arith::Factorial use (fact; factSucc; factPos; factLeSucc; lePowFact)
+import Prelude::Arith::Pow use (pow)
+import Prelude::Arith::Pow.Basic use (powZero; powOne; onePow)
+import Prelude::Arith::Pow.Exp use (powPlus; powMult; powMultBase)
+import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Sum.Linear use (sumToPlus; sumToScale; sumToConst)
+import Prelude::Arith::Sum.Closed use (gauss; sumOdd)
+import Prelude::Arith::Factorial use (fact)
+import Prelude::Arith::Factorial.Laws use (factSucc)
+import Prelude::Arith::Factorial.Bounds use (factPos; factLeSucc; lePowFact)
 import Prelude::Function::Combinators use (Generic)
 
 module Powers where
