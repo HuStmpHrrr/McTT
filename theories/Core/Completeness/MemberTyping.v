@@ -122,14 +122,6 @@ Lemma functional_eval_selc : forall h ch r1 r2,
     eval_selc gc_deps gc_stack h ch r1 -> eval_selc gc_deps gc_stack h ch r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
-Lemma per_univ_elem_trans_any : forall i R a b j R' c,
-    per_univ_elem i R a b -> per_univ_elem j R' b c -> exists R'', per_univ_elem i R'' a c /\ (R <~> R'').
-Proof.
-  intros * H1 H2.
-  destruct (per_univ_trans' i j a b c (ex_intro (fun R0 => per_univ_elem i R0 a b) R H1) (ex_intro (fun R0 => per_univ_elem j R0 b c) R' H2)) as [R'' H3].
-  exists R''; split; [ exact H3 | eapply per_univ_elem_right_irrel; eassumption ].
-Qed.
-
 (** ** Typing Is a Property of the Class of a Module Value *)
 
 Lemma mtyped_per : gparam_ok -> gchild_ok -> galias_ok ->

@@ -24,6 +24,14 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+Lemma per_univ_elem_trans_any : forall i R a b j R' c,
+    per_univ_elem i R a b -> per_univ_elem j R' b c -> exists R'', per_univ_elem i R'' a c /\ (R <~> R'').
+Proof.
+  intros * H1 H2.
+  destruct (per_univ_trans' i j a b c (ex_intro (fun R0 => per_univ_elem i R0 a b) R H1) (ex_intro (fun R0 => per_univ_elem j R0 b c) R' H2)) as [R'' H3].
+  exists R''; split; [ exact H3 | eapply per_univ_elem_right_irrel; eassumption ].
+Qed.
+
 Lemma rel_sub_under_ctx_sb_eq : forall {Γ Δ σ1 σ2 τ1 τ2},
     Γ ⊨s σ1 ≈ σ2 : Δ -> sb_eq σ1 τ1 -> sb_eq σ2 τ2 -> Γ ⊨s τ1 ≈ τ2 : Δ.
 Proof.
@@ -262,28 +270,144 @@ Proof.
   - intros e2 He2; apply L; rewrite Eq; exact He2.
 Qed.
 
+(** A composite of substitutions that each commute with further ones
+    commutes with further ones. *)
+Lemma sub_link_comp : forall {Γ0 Δ τ Γ σ0},
+    Γ0 ⊨s τ ≈ τ : Δ -> sub_link Γ0 Δ τ ->
+    Γ ⊨s σ0 ≈ σ0 : Γ0 -> sub_link Γ Γ0 σ0 ->
+    sub_link Γ Δ (τ ⨟ σ0).
+Proof.
+  intros * Hτj Hl Hσ0j Hl0 Γ' R' HΓ' σ σ' Hσ RΔ HΔ ρ ρσ Hρ Hev.
+  pose proof Hτj as [RΓ0 [HΓ0 [RΔ0 [HΔ0 _]]]].
+  pose proof Hσ0j as [RΓ [HΓ [RΓ0' [HΓ0' _]]]].
+  assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
+  assert (HPΓ0 : PER RΓ0) by (eapply per_env_PER; exact HΓ0).
+  pose proof (rel_sub_compose_of_link Hσ0j Hl0 _ _ _ Hσ) as Hσ1.
+  destruct (Hl0 _ _ HΓ' _ _ Hσ _ HΓ0 _ _ Hρ Hev) as [f1 [Hf1 Lf]].
+  destruct (Hl _ _ HΓ' _ _ Hσ1 _ HΔ _ _ Hρ Hf1) as [e1 [He1 L1]].
+  exists e1; split; [ rewrite sb_compose_assoc; exact He1 |].
+  intros e2 He2.
+  assert (Hρσ : RΓ ρσ ρσ)
+    by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓ); eassumption).
+  pose proof (rel_sub_under_ctx_simple Hσ0j) as [RΓ3 [HΓ3 [RΓ03 [HΓ03 Hσ0s]]]].
+  assert (E3 : RΓ <~> RΓ3) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hσ0s _ _ (proj1 (E3 _ _) Hρσ)) as [ρσ0 [_ [Hρσ0 [_ _]]]].
+  destruct (Hl _ _ HΓ _ _ Hσ0j _ HΔ _ _ Hρσ Hρσ0) as [g1 [Hg1 Lg]].
+  assert (Heq : env_eq e2 g1) by (eapply functional_eval_sub; eassumption).
+  rewrite Heq.
+  pose proof (Lf _ Hρσ0) as Hff.
+  assert (Hf11 : RΓ0 f1 f1) by (etransitivity; [ exact Hff | symmetry; exact Hff ]).
+  pose proof (rel_sub_under_ctx_simple Hτj) as [RΓ4 [HΓ4 [RΔ4 [HΔ4 Hτs]]]].
+  assert (E4 : RΓ0 <~> RΓ4) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (Hτs _ _ (proj1 (E4 _ _) Hff)) as [t1 [t2 [Ht1 [Ht2 _]]]].
+  pose proof (L1 _ Ht1) as H1. pose proof (Lg _ Ht2) as H2.
+  assert (H12 : RΔ t1 t2) by exact (rel_sub_under_ctx_at' Hτj HΓ0 HΔ _ _ _ _ Hff Ht1 Ht2).
+  etransitivity; [ exact H1 |]; etransitivity; [ exact H12 | symmetry; exact H2 ].
+Qed.
+
+(** A weakening commutes with any further substitution, on the nose. *)
+Lemma sub_link_wk : forall {Γ ψ Δ}, Γ ⊨w ψ : Δ -> sub_link Γ Δ (sb_of_wk ψ).
+Proof.
+  intros * Hψj Γ' R' HΓ' σ σ' Hσ RΔ HΔ ρ ρσ Hρ Hev.
+  pose proof Hψj as [RΓ [HΓ [RΔ0 [HΔ0 [Hψm Hψ]]]]].
+  exists (⟪ψ⟫ ρσ); split.
+  - intros x; cbn; rewrite (eval_wk_entry _ _ Hψm x); exact (Hev (ψ x)).
+  - intros e2 He2.
+    assert (Heq : env_eq e2 (⟪ψ⟫ ρσ)) by (eapply functional_eval_sub; [ exact He2 | exact (@eval_sub_of_wk _ _ ψ ρσ Hψm) ]).
+    rewrite Heq.
+    assert (Hρσ : RΓ ρσ ρσ)
+      by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓ); eassumption).
+    assert (E : RΔ0 <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
+    apply E, Hψ, Hρσ.
+Qed.
+
+(** A lifted substitution commutes with further ones: its tail as [τ] does
+    along the shift, and its head is the variable itself. *)
+Lemma sub_link_q : forall {Γ Δ τ B i},
+    Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ B : Type@i ->
+    sub_link (Γ ▹ B[τ]) (Δ ▹ B) (q τ).
+Proof.
+  intros * Hτj Hl HB Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
+  pose proof Hτj as [RΓ [HΓ [RΔ [HΔ _]]]].
+  assert (HPΔ : PER RΔ) by (eapply per_env_PER; exact HΔ).
+  assert (HPΓ : PER RΓ) by (eapply per_env_PER; exact HΓ).
+  pose proof (per_ctx_env_of_typ_sub HΓ Hτj HB) as HΓB.
+  pose proof (per_ctx_env_of_typ HΔ HB) as HΔB'.
+  assert (E : RΔB <~> per_env_extend B B RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
+  assert (Hwk : (Γ ▹ B[τ]) ⊨w wk_shift : Γ) by (eapply rel_wk_under_ctx_intro; [ exact HΓB | exact HΓ | eapply rel_wk_shift; eassumption ]).
+  pose proof (rel_sub_of_wk Hwk) as HWk.
+  pose proof (sub_link_wk Hwk) as HlW.
+  pose proof (rel_sub_compose_of_link HWk HlW _ _ _ Hσ) as Hσw.
+  assert (Hevw : ⟦ (sb_of_wk wk_shift) ⨟ σ ⟧s ρ ↘ ρσ↯) by (intros x; cbn; destruct ρσ; exact (Hev (S x))).
+  destruct (Hl _ _ HΓ' _ _ Hσw _ HΔ _ _ Hρ Hevw) as [e1 [He1 L1]].
+  assert (Hρσ : per_env_extend B[τ] B[τ] RΓ ρσ ρσ)
+    by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓB); eassumption).
+  exists (env_entry ρσ 0 :: e1); split.
+  - intros [| x]; cbn.
+    + exact (Hev 0).
+    + unfold sb_q, sb_extend, sb_wk; cbn; rewrite sentry_sub_wk; exact (He1 x).
+  - intros e2 He2.
+    assert (Hh : env_entry e2 0 = env_entry ρσ 0) by exact (He2 0).
+    assert (Ht2 : ⟦ τ ⨟ (sb_of_wk wk_shift) ⟧s ρσ ↘ e2↯)
+      by (intros x; pose proof (He2 (S x)) as H; unfold sb_q, sb_extend, sb_wk in H; cbn in H |- *; rewrite sentry_sub_of_wk; destruct e2; exact H).
+    destruct (Hl _ _ HΓB _ _ HWk _ HΔ _ _ Hρσ (@eval_sub_of_wk _ _ wk_shift ρσ wk_mono_shift)) as [g1 [Hg1 Lg]].
+    assert (Heq : env_eq e2↯ g1) by (eapply functional_eval_sub; eassumption).
+    rewrite eval_wk_shift in Lg.
+    destruct Hρσ as [Hρσt Hρσh].
+    pose proof (rel_sub_under_ctx_simple Hτj) as [RΓ3 [HΓ3 [RΔ3 [HΔ3 Hτs]]]].
+    assert (E3 : RΓ <~> RΓ3) by (eapply per_ctx_env_right_irrel; eassumption).
+    destruct (Hτs _ _ (proj1 (E3 _ _) Hρσt)) as [t [_ [Ht [_ _]]]].
+    pose proof (L1 _ Ht) as H1. pose proof (Lg _ Ht) as H2.
+    assert (H12 : RΔ e1 e2↯) by (rewrite Heq; etransitivity; [ exact H1 | symmetry; exact H2 ]).
+    apply E; split; [ exact H12 |].
+    cbn [drop_env List.tl]; unfold env_var at 1; cbn.
+    replace (env_var e2 0) with (env_var ρσ 0) by (unfold env_var; rewrite Hh; reflexivity).
+    pose proof (rel_exp_of_typ_inversion HB) as [R0 [HΔ0 HBgen]].
+    destruct (HBgen _ _ HΓ _ _ Hτj _ _ _ _ Hρσt Ht Ht) as [x1 c x3 x4 Hx1 Hc Hx3 Hx4 [[Rx Hxc] _]].
+    pose proof (rel_exp_of_typ_inversion_simple_at HΔ HB) as HS.
+    assert (Hte : RΔ t e2↯) by (etransitivity; [ symmetry; exact H1 | exact H12 ]).
+    destruct (HS _ _ H1) as [b1 [c1 [Hb1 [Hc1 [R1 HR1]]]]].
+    destruct (HS _ _ Hte) as [c2 [b2 [Hc2 [Hb2 [R2 HR2]]]]].
+    functional_eval_rewrite_clear.
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R12 & H12' & _).
+    eapply per_head_of; [ exact Hb1 | exact Hb2 | exact H12' |].
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ Hxc (proj1 (per_univ_elem_sym _ _ _ _ HR1))) as (Rx1 & Hx1b & _).
+    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ Hx1b H12') as (Rx2 & Hx2 & _).
+    assert (Hxx : per_univ_elem i Rx x1 x1) by (etransitivity; [ exact Hxc | symmetry; exact Hxc ]).
+    pose proof (Hρσh _ _ _ _ Hx1 Hx1 Hxx) as Hv.
+    pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hxx Hx2) as F1.
+    pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ H12' Hx2) as F2.
+    apply F2, F1, Hv.
+Qed.
+
 (** ** Substitutions Built from Valid Parts *)
 
-Inductive gsub (Γ : ctx) : sub -> ctx -> Prop :=
-| gsub_id : ⊨ Γ -> gsub Γ Id Γ
-| gsub_ass : forall τ Δ B i N,
+Inductive gsub : ctx -> sub -> ctx -> Prop :=
+| gsub_id : forall Γ, ⊨ Γ -> gsub Γ Id Γ
+| gsub_ass : forall Γ τ Δ B i N,
     gsub Γ τ Δ -> Δ ⊨ B : Type@i -> Γ ⊨ N : B[τ] -> gsub Γ (τ ,, N) (Δ ▹ B)
-| gsub_def : forall τ Δ B i M,
+| gsub_def : forall Γ τ Δ B i M,
     gsub Γ τ Δ -> Δ ⊨ B : Type@i -> Δ ⊨ M : B -> gsub Γ (τ ,, M[τ]) (Δ ▸ B ≔ M)
-| gsub_mod : forall τ Δ U,
+| gsub_mod : forall Γ τ Δ U,
     gsub Γ τ Δ -> Δ ⊨ᵘ U ≈ U -> gsub Γ (τ ,,ₘ me_lit U[τ]ᵘ) (Δ ▹ₘ U)
-| gsub_eq : forall τ τ' Δ, gsub Γ τ Δ -> sb_eq τ τ' -> gsub Γ τ' Δ.
+| gsub_eq : forall Γ τ τ' Δ, gsub Γ τ Δ -> sb_eq τ τ' -> gsub Γ τ' Δ
+| gsub_q : forall Γ τ Δ B i,
+    gsub Γ τ Δ -> Δ ⊨ B : Type@i -> gsub (Γ ▹ B[τ]) (q τ) (Δ ▹ B)
+| gsub_comp : forall Γ Γ0 τ σ Δ,
+    gsub Γ0 τ Δ -> ⊨ Γ -> Γ ⊨s σ ≈ σ : Γ0 -> sub_link Γ Γ0 σ -> gsub Γ (τ ⨟ σ) Δ.
 
 Lemma gsub_props : forall {Γ τ Δ}, gsub Γ τ Δ -> Γ ⊨s τ ≈ τ : Δ /\ sub_link Γ Δ τ.
 Proof.
-  induction 1 as [HΓ | ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? [IH1 IH2] HB HM
-                 | ? ? ? ? [IH1 IH2] HU | ? ? ? ? [IH1 IH2] Eq ].
+  induction 1 as [? HΓ | ? ? ? ? ? ? ? [IH1 IH2] HB HN | ? ? ? ? ? ? ? [IH1 IH2] HB HM
+                 | ? ? ? ? ? [IH1 IH2] HU | ? ? ? ? ? [IH1 IH2] Eq | ? ? ? ? ? ? [IH1 IH2] HB | ? ? ? ? ? ? [IH1 IH2] _ Hσ Hl ].
   - split; [ exact (rel_sub_id (sem_ctx_per_ctx_env HΓ)) | exact sub_link_id ].
   - split; [ eapply rel_sub_under_ctx_extend; eassumption | eapply sub_link_ass; eassumption ].
   - split; [ eapply rel_sub_under_ctx_extend_sub_def; eassumption | eapply sub_link_def; eassumption ].
   - destruct HU as (HU & _ & _).
     split; [ exact (rel_sub_under_ctx_extend_mod IH1 HU) | eapply sub_link_mod; eassumption ].
   - split; [ exact (rel_sub_under_ctx_sb_eq IH1 Eq Eq) | exact (sub_link_sb_eq Eq IH2) ].
+  - split; [ exact (rel_sub_under_ctx_q IH1 HB) | exact (sub_link_q IH1 IH2 HB) ].
+  - split; [ exact (rel_sub_compose_of_link IH1 IH2 _ _ _ Hσ) | exact (sub_link_comp IH1 IH2 Hσ Hl) ].
 Qed.
 
 Corollary gsub_valid : forall {Γ τ Δ}, gsub Γ τ Δ -> Γ ⊨s τ ≈ τ : Δ.
