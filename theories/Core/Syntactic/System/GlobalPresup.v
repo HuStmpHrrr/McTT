@@ -333,6 +333,22 @@ Lemma gc_module_frame_here : forall Θ mp U Ξ x ip,
     gc_module Θ ((mp, U) :: Ξ) (path_app mp (x :: ip)) = gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
 Proof. intros; unfold gc_module; cbn; rewrite path_strip_app; reflexivity. Qed.
 
+Lemma gc_body_frame : forall Θ mp U Ξ p r,
+    gc_body Θ ((mp, U) :: Ξ) p = Some r ->
+    (exists x ip, p = path_app mp (x :: ip) /\ gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
+    gc_body Θ Ξ p = Some r.
+Proof.
+  intros * H; unfold gc_body in *; cbn in H.
+  destruct (path_strip mp p) as [ip |] eqn:Hs.
+  - left; destruct ip as [| x ip]; [ discriminate |].
+    exists x, ip; split; [ apply path_strip_app_inv; assumption | exact H ].
+  - right; exact H.
+Qed.
+
+Lemma gc_body_frame_here : forall Θ mp U Ξ x ip,
+    gc_body Θ ((mp, U) :: Ξ) (path_app mp (x :: ip)) = gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
+Proof. intros; unfold gc_body; cbn; rewrite path_strip_app; reflexivity. Qed.
+
 (** The submodules an entry contributes, read below its own path, for an
     entry checked over the telescope [T]. *)
 Definition ge_submodule (T : ctx) (E : gentry) (x : String.string) (ip : list String.string) : option modres :=
@@ -349,6 +365,21 @@ Proof.
   destruct z; discriminate.
 Qed.
 
+(** The body modules an entry contributes, read below its own path. *)
+Definition ge_subbody (T : ctx) (E : gentry) (x : String.string) (ip : list String.string) : option (ctx * gmod) :=
+  match E with
+  | ge_def _ _ _ _ => None
+  | ge_mod U => gm_subbody (gu_params U ++ T) (gu_mod U) x ip
+  end.
+
+Lemma gm_subbody_ext_here : forall T Φ x E z ip r,
+    ge_subbody T E z ip = Some r -> gm_subbody T (Φ ⊳ x ↦ E) x (z :: ip) = Some r.
+Proof.
+  intros * H; cbn; rewrite String.eqb_refl.
+  destruct E as [| [Δ' [Φ' | E']]]; cbn in H; [ discriminate | exact H |].
+  destruct z; discriminate.
+Qed.
+
 (** Pushing a nested module's frame embeds into any context that has its
     entries and submodules where the frame says. *)
 Lemma Emb_nested : forall Θ Ξ mp Δ' Φ' Θ2 Ξ2,
@@ -356,13 +387,17 @@ Lemma Emb_nested : forall Θ Ξ mp Δ' Φ' Θ2 Ξ2,
     (forall ip E, gm_resolve Φ' ip = Some E -> gc_resolve Θ2 Ξ2 (path_app mp ip) = Some E) ->
     (forall x ip r, gm_submodule (Δ' ++ gs_tele Ξ) Φ' x ip = Some r ->
        gc_module Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+    (forall x ip r, gm_subbody (Δ' ++ gs_tele Ξ) Φ' x ip = Some r ->
+       gc_body Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
     Emb Θ ((mp, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
-  intros * [Hg Hs] Hin Hmod; constructor; [ assumption | split ].
+  intros * [Hg Hs] Hin Hmod Hbod; constructor; [ assumption | split; [| split ] ].
   - intros p E Hr; destruct (gc_resolve_frame _ _ _ _ _ _ Hr) as [(ip & -> & Hm) | Hr'];
       eauto using gc_sub_resolve.
   - intros p r Hr; destruct (gc_module_frame _ _ _ _ _ _ Hr) as [(x & ip & -> & Hm) | Hr'];
       eauto using gc_sub_module.
+  - intros p r Hr; destruct (gc_body_frame _ _ _ _ _ _ Hr) as [(x & ip & -> & Hm) | Hr'];
+      eauto using gc_sub_body.
 Qed.
 
 Lemma wf_gdep_fresh : forall Θ d,
@@ -433,6 +468,8 @@ Section Induction.
       (forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> gc_resolve Θ2 Ξ2 (path_app mp ip) = Some E0) ->
       (forall x (ip : list String.string) r, ge_submodule (gs_tele Ξ) E x ip = Some r ->
          gc_module Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+      (forall x (ip : list String.string) r, ge_subbody (gs_tele Ξ) E x ip = Some r ->
+         gc_body Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
       forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> V Θ2 Ξ2 E0.
 
   Definition GoodM (Θ : gdeps) (Ξ : gstack) (mp : path) (Δ : ctx) (Φ : gmod) : Prop :=
@@ -464,14 +501,14 @@ Section Induction.
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
     - (* an axiom *)
-      intros Θ2 Ξ2 He _ _ [| ? ?] E0 HE; cbn in HE; inversion HE; subst; eauto.
+      intros Θ2 Ξ2 He _ _ _ [| ? ?] E0 HE; cbn in HE; inversion HE; subst; eauto.
     - (* a definition *)
-      intros Θ2 Ξ2 He _ _ [| ? ?] E0 HE; cbn in HE; inversion HE; subst; eauto.
+      intros Θ2 Ξ2 He _ _ _ [| ? ?] E0 HE; cbn in HE; inversion HE; subst; eauto.
     - (* a nested module *)
-      intros Θ2 Ξ2 He Hin Hmod ip E0 HE.
-      eapply H0; [ eapply Emb_nested; [ exact He | exact Hin | exact Hmod ] | exact HE ].
+      intros Θ2 Ξ2 He Hin Hmod Hbod ip E0 HE.
+      eapply H0; [ eapply Emb_nested; [ exact He | exact Hin | exact Hmod | exact Hbod ] | exact HE ].
     - (* an alias: it contributes no entry *)
-      intros ? ? _ _ _ ip ? Hx; cbn in Hx; discriminate.
+      intros ? ? _ _ _ _ ip ? Hx; cbn in Hx; discriminate.
     - (* the empty module *)
       intros ? ? ? [| ? ?] ? Hx; discriminate.
     - (* extending a module *)
@@ -480,11 +517,13 @@ Section Induction.
       assert (He' : Emb Θ ((mp, gu_body Δ Φ) :: Ξ) Θ2 Ξ2)
         by (eapply Emb_pre; [ apply gc_sub_grow; eassumption | exact He ]).
       destruct (gm_resolve_ext_inv _ _ _ _ _ Hr) as [(ip' & -> & HE) | HΦ]; [| eauto ].
-      eapply IHE; [ exact He' | | | exact HE ].
+      eapply IHE; [ exact He' | | | | exact HE ].
       + intros ip0 E1 HE1; rewrite path_app_in; apply (gc_sub_resolve _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_resolve_frame_here; cbn [gu_mod]; rewrite gm_resolve_ext_here; exact HE1.
       + intros z ip0 r Hr0; rewrite path_app_in; apply (gc_sub_module _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_module_frame_here; cbn [gu_mod gu_params]; apply gm_submodule_ext_here; exact Hr0.
+      + intros z ip0 r Hr0; rewrite path_app_in; apply (gc_sub_body _ _ _ _ _ _ (em_res _ _ _ _ He)).
+        rewrite gc_body_frame_here; cbn [gu_mod gu_params]; apply gm_subbody_ext_here; exact Hr0.
     - (* the empty level *)
       intros ? ? [].
     - (* filing a unit at a level *)

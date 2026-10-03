@@ -187,6 +187,55 @@ Proof.
   destruct ip; cbn in Hr; assumption.
 Qed.
 
+(** The body module [x :: ip] of [Φ], with its full telescope. *)
+Fixpoint gm_subbody (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option (ctx * gmod) :=
+  match Φ with
+  | gm_nil => None
+  | gm_check Φ0 _ => gm_subbody T Φ0 x ip
+  | gm_ext Φ0 y E =>
+      if String.eqb x y then
+        match E with
+        | ge_mod (gu_mk Δ (md_body Φ')) =>
+            match ip with
+            | nil => Some (Δ ++ T, Φ')
+            | z :: ip' => gm_subbody (Δ ++ T) Φ' z ip'
+            end
+        | _ => None
+        end
+      else gm_subbody T Φ0 x ip
+  end.
+
+Definition gm_body (T : ctx) (Φ : gmod) (ip : list string) : option (ctx * gmod) :=
+  match ip with
+  | nil => Some (T, Φ)
+  | x :: ip' => gm_subbody T Φ x ip'
+  end.
+
+Lemma gm_subbody_head : forall Φ T x ip r, gm_subbody T Φ x ip = Some r -> List.In x (gm_names Φ).
+Proof.
+  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | exact (IH _ _ _ _ _ H) ].
+  destruct (String.eqb_spec x y) as [-> |]; [ cbn; auto |].
+  cbn; right; exact (IH _ _ _ _ _ H).
+Qed.
+
+Lemma gm_subbody_ext_fresh : forall Φ T x E y ip r,
+    gm_fresh x Φ ->
+    gm_subbody T Φ y ip = Some r ->
+    gm_subbody T (Φ ⊳ x ↦ E) y ip = Some r.
+Proof.
+  intros * Hf Hr; cbn.
+  pose proof (gm_subbody_head _ _ _ _ _ Hr).
+  destruct (String.eqb_spec y x) as [-> |]; [ contradiction | assumption ].
+Qed.
+
+Lemma gm_subbody_in : forall Φ T x Δ' Φ' ip r,
+    gm_body (Δ' ++ T) Φ' ip = Some r ->
+    gm_subbody T (Φ ⊳ x ↦ ge_body Δ' Φ') x ip = Some r.
+Proof.
+  intros * Hr; cbn; rewrite String.eqb_refl.
+  destruct ip; cbn in Hr; assumption.
+Qed.
+
 (** ** Units
 
     A unit is a parameterized module in full: the parameters it abstracts over,
@@ -427,6 +476,18 @@ Definition gc_module (Θ : gdeps) (Ξ : gstack) (p : path) : option modres :=
       end
   end.
 
+(** The body module at [p], with its full telescope. *)
+Definition gc_body (Θ : gdeps) (Ξ : gstack) (p : path) : option (ctx * gmod) :=
+  match gs_find_tele Ξ p with
+  | Some (U, nil, _) => None
+  | Some (U, x :: ip, T) => gm_subbody (gu_params U ++ T) (gu_mod U) x ip
+  | None =>
+      match gds_lookup Θ (p_unit p) with
+      | Some U => gm_body (gu_params U) (gu_mod U) (p_mems p)
+      | None => None
+      end
+  end.
+
 Lemma gs_find_unit : forall Ξ p U ip, gs_find Ξ p = Some (U, ip) ->
     exists mp, List.In (mp, U) Ξ /\ p_unit mp = p_unit p.
 Proof.
@@ -471,8 +532,12 @@ Definition gc_dsub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : P
 Definition gc_msub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   forall p r, gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
 
+(** Growth never adds to a closed module: a body module keeps its body. *)
+Definition gc_bsub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+  forall p r, gc_body Θ1 Ξ1 p = Some r -> gc_body Θ2 Ξ2 p = Some r.
+
 Definition gc_sub (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
-  gc_dsub Θ1 Ξ1 Θ2 Ξ2 /\ gc_msub Θ1 Ξ1 Θ2 Ξ2.
+  gc_dsub Θ1 Ξ1 Θ2 Ξ2 /\ gc_msub Θ1 Ξ1 Θ2 Ξ2 /\ gc_bsub Θ1 Ξ1 Θ2 Ξ2.
 
 Lemma gc_sub_resolve : forall Θ1 Ξ1 Θ2 Ξ2 p E,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_resolve Θ1 Ξ1 p = Some E -> gc_resolve Θ2 Ξ2 p = Some E.
@@ -480,14 +545,21 @@ Proof. intros * [H _]; apply H. Qed.
 
 Lemma gc_sub_module : forall Θ1 Ξ1 Θ2 Ξ2 p r,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_module Θ1 Ξ1 p = Some r -> gc_module Θ2 Ξ2 p = Some r.
-Proof. intros * [_ H]; apply H. Qed.
+Proof. intros * [_ [H _]]; apply H. Qed.
+
+Lemma gc_sub_body : forall Θ1 Ξ1 Θ2 Ξ2 p r,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_body Θ1 Ξ1 p = Some r -> gc_body Θ2 Ξ2 p = Some r.
+Proof. intros * [_ [_ H]]; apply H. Qed.
 
 Lemma gc_sub_refl : forall Θ Ξ, gc_sub Θ Ξ Θ Ξ.
-Proof. split; intros ? ? H; exact H. Qed.
+Proof. repeat split; intros ? ? H; exact H. Qed.
 
 Lemma gc_sub_trans : forall Θ1 Ξ1 Θ2 Ξ2 Θ3 Ξ3,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> gc_sub Θ2 Ξ2 Θ3 Ξ3 -> gc_sub Θ1 Ξ1 Θ3 Ξ3.
-Proof. intros * [H12 M12] [H23 M23]; split; intros ? ? H; [ apply H23, H12, H | apply M23, M12, H ]. Qed.
+Proof.
+  intros * [H12 [M12 B12]] [H23 [M23 B23]]; repeat split; intros ? ? H;
+    [ apply H23, H12, H | apply M23, M12, H | apply B23, B12, H ].
+Qed.
 
 (** A frame may be pushed when its module path is fresh where it is pushed: a
     unit not filed below, named by its root path, or a member not yet declared
@@ -503,7 +575,7 @@ Lemma gc_sub_push : forall Θ Ξ mp U,
     frame_fresh Θ Ξ mp ->
     gc_sub Θ Ξ Θ ((mp, U) :: Ξ).
 Proof.
-  intros * Hf; split.
+  intros * Hf; split; [| split ].
   - intros p E Hr; unfold gc_resolve in *; cbn.
     destruct (path_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
     exfalso; unfold path_strip in Hs.
@@ -528,18 +600,33 @@ Proof.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold path_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
       exact (Hx (gm_submodule_head _ _ _ _ _ Hr)).
+  - intros p r Hr; unfold gc_body in *; cbn.
+    destruct (path_strip mp p) as [ip |] eqn:Hs; [| exact Hr ].
+    exfalso; unfold path_strip in Hs.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| discriminate ].
+    apply path_beq_true in Hb.
+    destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
+    + destruct Hf as [Hf _].
+      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+    + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
+      pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
+      unfold path_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
+      exact (Hx (gm_subbody_head _ _ _ _ _ Hr)).
 Qed.
 
 Lemma gc_sub_grow : forall Θ Ξ mp Δ Φ x E,
     gm_fresh x Φ ->
     gc_sub Θ ((mp, gu_body Δ Φ) :: Ξ) Θ ((mp, gu_body Δ (Φ ⊳ x ↦ E)) :: Ξ).
 Proof.
-  intros * Hf; split.
+  intros * Hf; split; [| split ].
   - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
     destruct (path_strip mp p); [ cbn in *; apply gm_resolve_ext_fresh; assumption | exact Hr ].
   - intros p r Hr; unfold gc_module in *; cbn in *.
     destruct (path_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
     cbn in *; apply gm_submodule_ext_fresh; assumption.
+  - intros p r Hr; unfold gc_body in *; cbn in *.
+    destruct (path_strip mp p) as [[| y ip] |]; [ discriminate | | exact Hr ].
+    cbn in *; apply gm_subbody_ext_fresh; assumption.
 Qed.
 
 (** Closing a nested module into its parent: its members are read through the
@@ -549,7 +636,7 @@ Lemma gc_sub_close : forall Θ Ξ mp Δ Φ x Δ' Φ',
     gc_sub Θ ((path_in mp x, gu_body Δ' Φ') :: (mp, gu_body Δ Φ) :: Ξ)
            Θ ((mp, gu_body Δ (Φ ⊳ x ↦ ge_body Δ' Φ')) :: Ξ).
 Proof.
-  intros * Hf; split.
+  intros * Hf; split; [| split ].
   - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
     unfold path_strip in *; cbn in *.
     destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| exact Hr ].
@@ -574,6 +661,19 @@ Proof.
       destruct (String.eqb_spec z x) as [-> |].
       * rewrite (strip_prefix_snoc_none _ _ _ _ Hs') in Hs; discriminate.
       * destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
+  - intros p r Hr; unfold gc_body in *; cbn in *.
+    unfold path_strip in *; cbn in *.
+    destruct (path_beq (p_unit mp) (p_unit p)) eqn:Hb; [| exact Hr ].
+    destruct (strip_prefix (p_mems mp ++ x :: nil) (p_mems p)) as [ip |] eqn:Hs.
+    + rewrite (strip_prefix_snoc _ _ _ _ Hs).
+      destruct ip as [| z ip]; [ discriminate |].
+      apply gm_subbody_in; cbn; exact Hr.
+    + destruct (strip_prefix (p_mems mp) (p_mems p)) as [ip |] eqn:Hs'; [| exact Hr ].
+      destruct ip as [| z ip]; [ discriminate |].
+      cbn in *.
+      destruct (String.eqb_spec z x) as [-> |].
+      * rewrite (strip_prefix_snoc_none _ _ _ _ Hs') in Hs; discriminate.
+      * destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
 Qed.
 
 (** Filing a unit: what was read in its open frame is read in the level it is
@@ -583,7 +683,7 @@ Lemma gc_sub_file : forall Θ d fp U,
     (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
     gc_sub Θ ((p_abs fp nil, U) :: nil) (d :: Θ) nil.
 Proof.
-  intros * Hd Hfr; split.
+  intros * Hd Hfr; split; [| split ].
   - intros p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
     unfold path_strip in Hr; cbn [p_unit p_mems strip_prefix] in Hr.
     destruct (path_beq fp (p_unit p)) eqn:Hb.
@@ -600,13 +700,22 @@ Proof.
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
     + destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
       erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+  - intros p r Hr; unfold gc_body in *; cbn [gs_find_tele] in *.
+    unfold path_strip in Hr; cbn [p_unit p_mems strip_prefix] in Hr.
+    destruct (path_beq fp (p_unit p)) eqn:Hb.
+    + apply path_beq_true in Hb; subst.
+      destruct (p_mems p) as [| x ip] eqn:Hp; [ discriminate |].
+      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd).
+      cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
+    + destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; [| discriminate ].
+      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
 Qed.
 
 Lemma gc_sub_level : forall Θ d,
     (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
     gc_sub Θ nil (d :: Θ) nil.
 Proof.
-  intros * Hfr; split; intros p E0 Hr; unfold gc_resolve, gc_module in *; cbn [gs_find gs_find_tele] in *;
+  intros * Hfr; repeat split; intros p E0 Hr; unfold gc_resolve, gc_module, gc_body in *; cbn [gs_find gs_find_tele] in *;
     destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:Hl; try discriminate;
     rewrite (gds_lookup_level _ _ _ _ Hfr Hl); exact Hr.
 Qed.
@@ -614,12 +723,16 @@ Qed.
 (** Filing more units under the same stack. *)
 Lemma gc_sub_levels : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
 Proof.
-  intros * Hs; split.
+  intros * Hs; split; [| split ].
   - intros p E Hr; unfold gc_resolve in *.
     destruct (gs_find Ξ p) as [[U ip] |]; [ exact Hr |].
     destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
   - intros p r Hr; unfold gc_module in *.
+    destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; [ exact Hr |].
+    destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
+    rewrite (Hs _ _ E1); exact Hr.
+  - intros p r Hr; unfold gc_body in *.
     destruct (gs_find_tele Ξ p) as [[[U ip] T] |]; [ exact Hr |].
     destruct (gds_lookup Θ (p_unit p)) as [V |] eqn:E1; [| discriminate ].
     rewrite (Hs _ _ E1); exact Hr.
