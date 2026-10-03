@@ -369,9 +369,9 @@ Proof.
   - rewrite exp_wk_sub_extend; econstructor; [ eauto | apply pi_view_wk; eassumption ].
   - rewrite gunit_wk_mk, ctx_pi_wk; cbn; constructor.
   - rewrite gunit_wk_mk, ctx_pi_body_wk; eapply umt_def.
-    apply gm_prefix_upto_def_wk with (1 := e).
-  - rewrite gunit_wk_mk, ctx_pi_body_wk; eapply umt_mod.
-    + apply gm_prefix_upto_mod_wk with (1 := e).
+    match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_def_wk with (1 := Hp) end.
+  - rewrite gunit_wk_mk, ctx_pi_body_wk; eapply umt_mod; [ assumption | .. ].
+    + match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_mod_wk with (1 := Hp) end.
     + replace (body_ctx (gmod_wk Φ' (wk_qn (length Δ) φ)) ++ tele_wk Δ φ ++ Γ0)
         with (tele_wk (body_ctx Φ' ++ Δ) φ ++ Γ0)
         by (rewrite tele_wk_app, body_ctx_wk, <- List.app_assoc; reflexivity).
@@ -484,9 +484,9 @@ Proof.
   - rewrite exp_sub_extend_sub, <- exp_sub_q_extend; econstructor; [ eauto | apply pi_view_sub; eassumption ].
   - rewrite gunit_sub_mk, ctx_pi_sub; cbn; constructor.
   - rewrite gunit_sub_mk, ctx_pi_body_sub; eapply umt_def.
-    apply gm_prefix_upto_def_sub with (1 := e).
-  - rewrite gunit_sub_mk, ctx_pi_body_sub; eapply umt_mod.
-    + apply gm_prefix_upto_mod_sub with (1 := e).
+    match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_def_sub with (1 := Hp) end.
+  - rewrite gunit_sub_mk, ctx_pi_body_sub; eapply umt_mod; [ assumption | .. ].
+    + match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_mod_sub with (1 := Hp) end.
     + replace (body_ctx (gmod_sub Φ' (sb_qn (length Δ) σ)) ++ tele_sub Δ σ ++ Γ0)
         with (tele_sub (body_ctx Φ' ++ Δ) σ ++ Γ0)
         by (rewrite tele_sub_app, body_ctx_sub, <- List.app_assoc; reflexivity).

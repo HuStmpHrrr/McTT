@@ -160,6 +160,7 @@ Inductive member_type (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string 
     unit_member_type Θ Ξ Γ U ch k A ->
     member_type Θ Ξ Γ (me_lit U) ch k A
 | mt_mem : forall Γ H y ch k A,
+    (k = mk_term -> ch <> nil) ->
     member_type Θ Ξ Γ H (y :: ch) k A ->
     member_type Θ Ξ Γ (me_mem H y) ch k A
 | mt_app : forall Γ H N ch k A B C,
@@ -173,6 +174,7 @@ with unit_member_type (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -
     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b false A B)) ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (x :: nil) mk_term (ctx_pi (body_ctx Φ' ++ Δ) A)
 | umt_mod : forall Γ Δ Φ Φ' y Uy ch k A,
+    (k = mk_term -> ch <> nil) ->
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
     unit_member_type Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch k A ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (y :: ch) k (ctx_pi (body_ctx Φ' ++ Δ) A)
