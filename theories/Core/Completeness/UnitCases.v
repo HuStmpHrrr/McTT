@@ -13,7 +13,7 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution Members.
-From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases SubstitutionCases.
+From Mctt.Core.Completeness Require Import LogicalRelation ContextCases UniverseCases SubstitutionCases LetCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Fixed_Notations.
 #[local] Open Scope list_scope.
@@ -326,6 +326,529 @@ Proof.
   repeat split.
   all: try solve [ eapply (rel_chain_pairwise R); [ exact Htails | solve_in | solve_in ]
           | apply Hm, Hl; solve_in | apply Hm', Hr; solve_in ].
+Qed.
+
+(** ** Walking a Unit and its Substitute
+
+    A unit [U] of [Γ] and its substitute [U[σ]] of [Γ'] are walked together,
+    entry by entry: the substitute's entries are read in an environment [ρl]
+    of [Γ'] extended by its entries, the unit's in an environment [ρr] of [Γ]
+    extended by its own.  The invariant is that [σ], lifted over the entries
+    so far, takes [ρl] to an environment related to [ρr]. *)
+
+Definition hw_inv (Γ' Γ : ctx) (σ : sub) (Ψ : ctx) (ρl ρr : env) : Prop :=
+  exists Rl Rr (_ : EF tele_sub Ψ σ ++ Γ' ≈ tele_sub Ψ σ ++ Γ' ∈ per_ctx_env ↘ Rl)
+    (_ : EF Ψ ++ Γ ≈ Ψ ++ Γ ∈ per_ctx_env ↘ Rr),
+    (tele_sub Ψ σ ++ Γ') ⊨s sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ : Ψ ++ Γ /\
+    Rl ρl ρl /\ exists ρm, ⟦ sb_qn (List.length Ψ) σ ⟧s ρl ↘ ρm /\ Rr ρm ρr.
+
+Lemma hw_init : forall Γ' Γ σ σ' R' R ρ ρσ,
+    Γ' ⊨s σ ≈ σ' : Γ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R ->
+    R' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    hw_inv Γ' Γ σ nil ρ ρσ.
+Proof.
+  intros * Hσ HΓ' HΓ Hρ Hev.
+  pose proof (rel_sub_under_ctx_refl_left Hσ) as Hσσ.
+  exists R', R, HΓ', HΓ; cbn; split; [ exact Hσσ | split; [ exact Hρ |] ].
+  exists ρσ; split; [ exact Hev |].
+  assert (Hr : R ρσ ρσ) by (eapply (rel_sub_under_ctx_at' Hσσ HΓ' HΓ); eassumption).
+  exact Hr.
+Qed.
+
+(** The two values of an assumption's type are related, and so are the
+    extended environments, at any related pair of values. *)
+Lemma hw_ass : forall Γ' Γ σ Ψ A i ρl ρr,
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    Ψ ++ Γ ⊨ A : Type@i ->
+    exists R, PER.Definitions.rel_typ i A[sb_qn (List.length Ψ) σ] ρl A ρr R /\
+      forall c c', R c c' -> hw_inv Γ' Γ σ (Ψ ▹ A) (ρl ↦ c) (ρr ↦ c').
+Proof.
+  intros * (Rl & Rr & HΓl & HΓr & Hsub & Hl & ρm & Hm & Hmr) HA.
+  set (τ := sb_qn (List.length Ψ) σ) in *.
+  pose proof (rel_exp_of_typ_inversion HA) as [R0 [HΓ0 HAgen]].
+  assert (HPl : PER Rl) by (eapply per_env_PER; exact HΓl).
+  assert (HPr : PER Rr) by (eapply per_env_PER; exact HΓr).
+  destruct (HAgen _ _ HΓl _ _ Hsub _ _ _ _ Hl Hm Hm) as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hc1].
+  destruct (HAgen _ _ HΓr _ _ (rel_sub_id (ex_intro _ _ HΓr)) _ _ _ _ Hmr (eval_sub_id _) (eval_sub_id _))
+    as [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hc2].
+  rewrite exp_sub_id in Hb1, Hb4.
+  functional_eval_rewrite_clear.
+  assert (H14 : Dom a1 ≈ b3 ∈ per_univ i)
+    by (destruct Hc1 as [H12 _]; destruct Hc2 as [_ [H23 _]]; etransitivity; eassumption).
+  destruct H14 as [R HR].
+  destruct Hc2 as [_ [[R2 HR2] _]].
+  exists R; split; [ econstructor; eassumption |].
+  intros c c' Hcc'.
+  assert (HRP : PER R) by (eapply per_elem_PER; eassumption).
+  assert (Hcc : R c c) by (etransitivity; [ exact Hcc' | symmetry; exact Hcc' ]).
+  pose proof (per_ctx_env_of_typ_sub HΓl Hsub HA) as HΓl'.
+  pose proof (per_ctx_env_of_typ HΓr HA) as HΓr'.
+  assert (Hl' : per_env_extend A[τ] A[τ] Rl (ρl ↦ c) (ρl ↦ c))
+    by (eapply (per_env_extend_sub_intro HΓl Hsub HA); eassumption).
+  destruct (rel_sub_under_ctx_q_at HΓl HΓr' Hsub HA _ _ _ _ _ _ Hl' Hm Hm) as [s [s' [Hs [_ Hch]]]].
+  assert (Hmr' : per_env_extend A A Rr (ρm ↦ c) (ρr ↦ c')).
+  { apply per_env_extend_intro'; [ exact Hmr |].
+    eapply per_head_of; [ exact Ha2 | exact Hb3 | exact HR2 |].
+    eapply (per_univ_elem_left_irrel _ _ _ _ _ _ _ HR HR2); exact Hcc'. }
+  exists (per_env_extend A[τ] A[τ] Rl), (per_env_extend A A Rr), HΓl', HΓr'.
+  split; [ exact (rel_sub_under_ctx_q Hsub HA) |].
+  split; [ exact Hl' |].
+  exists (s ↦ c); split; [ exact Hs |].
+  assert (HPr' : PER (per_env_extend A A Rr)) by (eapply per_env_PER; exact HΓr').
+  etransitivity; [| exact Hmr' ].
+  destruct Hch as [_ [H1 _]]; exact H1.
+Qed.
+
+(** [q τ] at an environment of an extension: the head is kept, and the
+    tail is related to the value of [τ] at the environment's tail. *)
+Lemma rel_sub_q_entry : forall {Γ'' Δ τ τ' e Re RΔ},
+    EF (e :: Γ'') ≈ (e :: Γ'') ∈ per_ctx_env ↘ Re ->
+    EF Δ ≈ Δ ∈ per_ctx_env ↘ RΔ ->
+    Γ'' ⊨s τ ≈ τ' : Δ ->
+    forall x u, Re x x -> ⟦ τ ⟧s x↯ ↘ u ->
+      exists t, ⟦ q τ ⟧s x ↘ env_entry x 0 :: t /\ RΔ t u.
+Proof.
+  intros * He HΔ [R1 [H1 [R2 [H2 Hσ]]]] x u Hx Hu.
+  pose proof (rel_wk_shift H1 He) as Hsh.
+  destruct (Hσ _ _ He _ Hsh _ _ Hx) as [t v v' t' Ht Hv Hv' Ht' Hc].
+  rewrite eval_wk_shift in Hv, Hv'.
+  assert (Heq : env_eq v u) by (eapply functional_eval_sub; eassumption).
+  exists t; split; [ apply eval_sub_q; exact Ht |].
+  assert (E : R2 <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
+  apply E; rewrite <- Heq; destruct Hc as [Hc _]; exact Hc.
+Qed.
+
+(** A definition's types and values along the walk, and the extended
+    invariant at any values of its two sides. *)
+Lemma hw_def : forall Γ' Γ σ Ψ A i M ρl ρr,
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    Ψ ++ Γ ⊨ A : Type@i ->
+    Ψ ++ Γ ⊨ M : A ->
+    exists j R, PER.Definitions.rel_typ j A[sb_qn (List.length Ψ) σ] ρl A ρr R /\
+      PER.Definitions.rel_elem M[sb_qn (List.length Ψ) σ] ρl M ρr R /\
+      forall m m', ⟦ M[sb_qn (List.length Ψ) σ] ⟧ ρl ↘ m -> ⟦ M ⟧ ρr ↘ m' ->
+        hw_inv Γ' Γ σ (Ψ ▸ A ≔ M) (ρl ↦ m) (ρr ↦ m').
+Proof.
+  intros * (Rl & Rr & HΓl & HΓr & Hsub & Hl & ρm & Hm & Hmr) HA HM.
+  set (τ := sb_qn (List.length Ψ) σ) in *.
+  assert (HPl : PER Rl) by (eapply per_env_PER; exact HΓl).
+  assert (HPr : PER Rr) by (eapply per_env_PER; exact HΓr).
+  pose proof HM as [R0 [HΓ0 [j HMgen]]].
+  destruct (HMgen _ _ HΓl _ _ Hsub _ _ _ _ Hl Hm Hm)
+    as [R1 [[a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hac] [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmc]]].
+  destruct (HMgen _ _ HΓr _ _ (rel_sub_id (ex_intro _ _ HΓr)) _ _ _ _ Hmr (eval_sub_id _) (eval_sub_id _))
+    as [R2 [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbc] [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnc]]].
+  rewrite exp_sub_id in Hb1, Hb4, Hn1, Hn4.
+  functional_eval_rewrite_clear.
+  destruct Hac as [Ha12 _]; destruct Hbc as [_ [Hab3 _]].
+  destruct Hmc as [Hm12 _]; destruct Hnc as [_ [Hmn3 _]].
+  assert (Hu : Dom a1 ≈ b3 ∈ per_univ j) by (etransitivity; eexists; eassumption).
+  destruct Hu as [R HR].
+  pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR Ha12) as E1.
+  pose proof (per_univ_elem_left_irrel _ _ _ _ _ _ _ Hab3 HR) as E2.
+  assert (HRP : PER R) by (eapply per_elem_PER; eassumption).
+  assert (Hmn : R m1 n3) by (etransitivity; [ apply E1; exact Hm12 | apply E2; exact Hmn3 ]).
+  exists j, R; split; [ econstructor; eassumption |]; split; [ econstructor; eassumption |].
+  intros m m' Hm' Hm''.
+  functional_eval_rewrite_clear.
+  pose proof (per_ctx_env_of_def_sub HΓl Hsub HA HM) as HΓl'.
+  pose proof (per_ctx_env_of_def HΓr HA HM) as HΓr'.
+  pose proof (rel_exp_of_typ_sub_simple HΓl Hsub HA) as HSl.
+  pose proof (rel_exp_under_ctx_sub_simple HΓl Hsub HM) as HMl.
+  pose proof (rel_exp_of_typ_inversion_simple_at HΓr HA) as HSr.
+  pose proof (rel_exp_under_ctx_simple_at HΓr HM) as HMr.
+  assert (Ha11 : per_univ_elem j R a1 a1) by (etransitivity; [ exact HR | symmetry; exact HR ]).
+  assert (Hb33 : per_univ_elem j R b3 b3) by (etransitivity; [ symmetry; exact HR | exact HR ]).
+  assert (Hc : per_head A[τ] A[τ] ρl ρl m1 m1)
+    by (eapply per_head_of; [ exact Ha1 | exact Ha1 | exact Ha11 | etransitivity; [ exact Hmn | symmetry; exact Hmn ] ]).
+  assert (Hl' : per_env_extend_def A[τ] M[τ] Rl (ρl ↦ m1) (ρl ↦ m1))
+    by (eapply per_env_extend_def_intro; [ exact HPl | exact HSl | exact HMl | exact Hl | exact Hc | exact Hm1 | exact Hc ]).
+  destruct (rel_sub_q_entry HΓl' HΓr Hsub _ _ Hl' Hm) as [t [Hq Htm]].
+  assert (Htr : Rr t ρr) by (etransitivity; eassumption).
+  assert (Hh : per_head A A ρm ρr m1 n3)
+    by (eapply per_head_of; [ exact Ha2 | exact Hb3 | exact Hab3 | apply E2; exact Hmn ]).
+  assert (Hh' : per_head A A t ρr m1 n3).
+  { eapply (per_head_of_typ_resp HΓr HA); [| exact Hh ].
+    apply rel_chain_4; [ exact Htr | symmetry; exact Hmr | exact Hmr ]. }
+  assert (Hext : per_env_extend A A Rr (t ↦ m1) (ρr ↦ n3)) by (apply per_env_extend_intro'; assumption).
+  assert (Tr : def_tie A M (ρr ↦ n3)).
+  { exists n3; split; [ exact Hn3 |].
+    eapply per_head_of; [ exact Hb3 | exact Hb3 | exact Hb33 | etransitivity; [ symmetry; exact Hmn | exact Hmn ] ]. }
+  assert (HPe : PER (per_env_extend A A Rr)) by (eapply per_env_PER; eapply per_ctx_env_of_typ; eassumption).
+  assert (Tl : def_tie A M (t ↦ m1)) by (eapply (def_tie_resp HPr HSr HMr); [ symmetry; exact Hext | exact Tr ]).
+  exists (per_env_extend_def A[τ] M[τ] Rl), (per_env_extend_def A M Rr), HΓl', HΓr'.
+  split; [ exact (rel_sub_under_ctx_q_def Hsub HA HM) |].
+  split; [ exact Hl' |].
+  exists (t ↦ m1); split; [ exact Hq |].
+  split; [ exact Hext | split; assumption ].
+Qed.
+
+(** A nested unit along the walk: its two closures are related, and so are
+    the environments they extend. *)
+Lemma hw_mod : forall Γ' Γ σ Ψ U ρl ρr,
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    Ψ ++ Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    per_dmod (dm_local ρl U[sb_qn (List.length Ψ) σ]ᵘ nil) (dm_local ρr U nil) /\
+    hw_inv Γ' Γ σ (Ψ ▹ₘ U) (ρl ↦ᵐ dm_local ρl U[sb_qn (List.length Ψ) σ]ᵘ nil) (ρr ↦ᵐ dm_local ρr U nil).
+Proof.
+  intros * (Rl & Rr & HΓl & HΓr & Hsub & Hl & ρm & Hm & Hmr) HU.
+  set (τ := sb_qn (List.length Ψ) σ) in *.
+  assert (HPr : PER Rr) by (eapply per_env_PER; exact HΓr).
+  assert (HPd : PER per_dmod) by typeclasses eauto.
+  destruct (unit_chain HU) as [R0 [HΓ0 Hch]].
+  pose proof (Hch _ _ HΓl _ _ Hsub _ _ _ _ Hl Hm Hm) as [Hlm _].
+  pose proof (unit_chain_at HU HΓr _ _ Hmr) as Hmr'.
+  assert (Hlr : per_dmod (dm_local ρl U[τ]ᵘ nil) (dm_local ρr U nil)) by (etransitivity; eassumption).
+  split; [ exact Hlr |].
+  pose proof (per_ctx_env_of_mod_sub HΓl Hsub HU) as HΓl'.
+  pose proof (per_ctx_env_of_mod HΓr HU) as HΓr'.
+  assert (Hll : per_dmod (dm_local ρl U[τ]ᵘ nil) (dm_local ρl U[τ]ᵘ nil))
+    by (etransitivity; [ exact Hlm | symmetry; exact Hlm ]).
+  assert (Hl' : env_ext_mod U[τ]ᵘ U[τ]ᵘ Rl (ρl ↦ᵐ dm_local ρl U[τ]ᵘ nil) (ρl ↦ᵐ dm_local ρl U[τ]ᵘ nil))
+    by (unfold env_ext_mod; cbn; repeat split; assumption).
+  destruct (rel_sub_q_entry HΓl' HΓr Hsub _ _ Hl' Hm) as [t [Hq Htm]].
+  assert (Htr : Rr t ρr) by (etransitivity; eassumption).
+  pose proof (unit_chain_at HU HΓr _ _ (symmetry Htm)) as Hmt.
+  exists (env_ext_mod U[τ]ᵘ U[τ]ᵘ Rl), (env_ext_mod U U Rr), HΓl', HΓr'.
+  split; [ exact (rel_sub_under_ctx_q_mod Hsub HU) |].
+  split; [ exact Hl' |].
+  exists (env_entry (ρl ↦ᵐ dm_local ρl U[τ]ᵘ nil) 0 :: t); split; [ exact Hq |].
+  unfold env_ext_mod; cbn.
+  assert (Hrr : per_dmod (dm_local ρr U nil) (dm_local ρr U nil))
+    by (etransitivity; [ symmetry; exact Hlr | exact Hlr ]).
+  assert (Hlt : per_dmod (dm_local ρl U[τ]ᵘ nil) (dm_local t U nil)) by (etransitivity; [ exact Hlm | exact Hmt ]).
+  repeat split; assumption.
+Qed.
+
+(** An alias's targets along the walk are related. *)
+Lemma hw_alias : forall Γ' Γ σ Ψ E ρl ρr,
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    Ψ ++ Γ ⊨ᵐ E ≈ E ->
+    exists h h', eval_modexp gc_deps gc_stack E[sb_qn (List.length Ψ) σ]ᵐ ρl h /\
+      eval_modexp gc_deps gc_stack E ρr h' /\ per_dmod h h'.
+Proof.
+  intros * (Rl & Rr & HΓl & HΓr & Hsub & Hl & ρm & Hm & Hmr) [R0 [HΓ0 HE]].
+  destruct (HE _ _ HΓl _ _ Hsub _ _ _ _ Hl Hm Hm) as [h1 h2 h3 h4 H1 H2 H3 H4 [Hc _]].
+  destruct (HE _ _ HΓr _ _ (rel_sub_id (ex_intro _ _ HΓr)) _ _ _ _ Hmr (eval_sub_id _) (eval_sub_id _))
+    as [g1 g2 g3 g4 G1 G2 G3 G4 [_ [Hg _]]].
+  pose proof (functional_eval_modexp _ _ _ _ H2 G2) as <-.
+  exists h1, g3; split; [ exact H1 | split; [ exact G3 | eapply per_dmod_trans; eassumption ] ].
+Qed.
+
+Lemma sem_ctx_app_r : forall Ψ Γ, ⊨ Ψ ++ Γ -> ⊨ Γ.
+Proof. induction Ψ; intros * H; cbn in *; [ exact H | apply IHΨ; eapply sem_ctx_tail; exact H ]. Qed.
+
+(** The parameters, outermost first: [ts] is the rest of the telescope,
+    reversed. *)
+Lemma hw_params : forall Γ' Γ σ ts Ψ Dl D ρl ρr,
+    tele_ass ts ->
+    ⊨ rev ts ++ Ψ ++ Γ ->
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    (forall ρl' ρr', hw_inv Γ' Γ σ (rev ts ++ Ψ) ρl' ρr' -> per_mdef ρl' Dl ρr' D) ->
+    per_ltele (rev (tele_sub (rev ts) (sb_qn (List.length Ψ) σ))) ρl Dl ts ρr D nil nil.
+Proof.
+  induction ts as [| e ts IH]; intros * Hts HΨ Hinv HD; cbn [rev tele_sub app] in *.
+  - constructor; apply HD; exact Hinv.
+  - inversion Hts as [| ? ? [A ->] Hts0]; subst.
+    rewrite tele_sub_app, rev_app_distr; cbn [rev app tele_sub length sb_qn centry_sub].
+    rewrite <- !app_assoc in HΨ; cbn [app] in HΨ.
+    pose proof (sem_ctx_app_r _ _ HΨ) as HΨA.
+    inversion HΨA; subst.
+    destruct (hw_ass _ _ _ _ _ _ _ _ Hinv ltac:(eassumption)) as [R [HR Hc]].
+    eapply per_ltele_missing; [ exact HR |].
+    intros c c' Hcc.
+    apply (IH (Ψ ▹ A)); [ exact Hts0 | exact HΨ | apply Hc, Hcc |].
+    intros ρl' ρr' Hi; apply HD; rewrite <- app_assoc; exact Hi.
+Qed.
+
+(** A body, entry by entry. *)
+Lemma hw_body : forall Γ' Γ σ Φ Ψ ρl ρr,
+    body_shape Φ Φ ->
+    ⊨ body_ctx Φ ++ Ψ ++ Γ ->
+    hw_inv Γ' Γ σ Ψ ρl ρr ->
+    per_body ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) ρr Φ /\
+    exists ρl1 ρr1, eval_benv gc_deps gc_stack ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) ρl1 /\
+      eval_benv gc_deps gc_stack ρr Φ ρr1 /\ hw_inv Γ' Γ σ (body_ctx Φ ++ Ψ) ρl1 ρr1.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH c]; intros * Hs HΦ Hinv; cbn in Hs.
+  - split; [ constructor |]; exists ρl, ρr; repeat split; try constructor; exact Hinv.
+  - destruct Hs as (Hs & _ & HE).
+    assert (Hq : sb_eq (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)) (sb_qn (List.length (body_ctx Φ ++ Ψ)) σ))
+      by (rewrite sb_qn_add, length_app, length_body_ctx; reflexivity).
+    destruct E as [b pv A [M |] | Uy]; cbn in HE; try contradiction; cbn [gmod_sub gentry_sub body_ctx app] in *.
+    + inversion HΦ; subst.
+      match goal with H : ⊨ body_ctx Φ ++ Ψ ++ Γ |- _ => rename H into HΦ0 end.
+      destruct (IH _ _ _ Hs HΦ0 Hinv) as (Hb & ρl1 & ρr1 & Hb1 & Hb1' & Hi1).
+      rewrite app_assoc in *.
+      destruct (hw_def _ _ _ _ _ _ _ _ _ Hi1 ltac:(eassumption) ltac:(eassumption)) as (j & R & HR & HM & Hstep).
+      rewrite (exp_sub_sb_eq A _ _ Hq), (exp_sub_sb_eq M _ _ Hq).
+      destruct HM as [m m' Hm Hm' Hmm'].
+      split; [ eapply per_body_def; [ exact Hb | exact Hb1 | exact Hb1' | exact HR | econstructor; eassumption ] |].
+      exists (ρl1 ↦ m), (ρr1 ↦ m'); repeat split; [ econstructor; eassumption | econstructor; eassumption |].
+      apply Hstep; assumption.
+    + inversion HΦ; subst.
+      match goal with H : ⊨ body_ctx Φ ++ Ψ ++ Γ |- _ => rename H into HΦ0 end.
+      destruct (IH _ _ _ Hs HΦ0 Hinv) as (Hb & ρl1 & ρr1 & Hb1 & Hb1' & Hi1).
+      rewrite app_assoc in *.
+      destruct (hw_mod _ _ _ _ _ _ _ Hi1 ltac:(eassumption)) as (HU & Hstep).
+      rewrite (gunit_sub_sb_eq Uy _ _ Hq).
+      split; [ eapply per_body_mod; [ exact Hb | exact Hb1 | exact Hb1' | exact HU ] |].
+      eexists; eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption |].
+      exact Hstep.
+  - destruct Hs as (Hs & _); cbn [gmod_sub body_ctx] in *.
+    destruct (IH _ _ _ Hs HΦ Hinv) as (Hb & ρl1 & ρr1 & Hb1 & Hb1' & Hi1).
+    split; [ constructor; exact Hb |].
+    exists ρl1, ρr1; repeat split; [ constructor; exact Hb1 | constructor; exact Hb1' | exact Hi1 ].
+Qed.
+
+(** ** Closures Commute with Substitution
+
+    The closure of [U[σ]] over [ρ] is related to that of [U] over [⟦σ⟧ρ],
+    for any unit valid in its parts. *)
+Lemma unit_sub_link : forall Γ' Γ σ σ' U R' ρ ρσ,
+    sem_unit Γ U ->
+    Γ' ⊨s σ ≈ σ' : Γ ->
+    EF Γ' ≈ Γ' ∈ per_ctx_env ↘ R' ->
+    R' ρ ρ -> ⟦ σ ⟧s ρ ↘ ρσ ->
+    per_dmod (dm_local ρ U[σ]ᵘ nil) (dm_local ρσ U nil).
+Proof.
+  intros * HU Hσ HΓ' Hρ Hev.
+  inversion HU as [? Δ Φ HΔ Hs HΦ | ? Δ E HΔ HΔΓ HE]; subst;
+    rewrite gunit_sub_mk; constructor; cbn [gu_params gu_def moddef_sub].
+  - destruct (sem_ctx_per_ctx_env (sem_ctx_app_r _ _ (sem_ctx_app_r _ _ HΦ))) as [R HΓ].
+    pose proof (hw_init _ _ _ _ _ _ _ _ Hσ HΓ' HΓ Hρ Hev) as Hi.
+    pose proof (hw_params Γ' Γ σ (rev Δ) nil (md_body (gmod_sub Φ (sb_qn (List.length Δ) σ))) (md_body Φ) ρ ρσ
+                  ltac:(apply Forall_rev; exact HΔ)
+                  ltac:(rewrite rev_involutive, app_nil_l; exact (sem_ctx_app_r _ _ HΦ)) Hi)
+      as Hp.
+    rewrite rev_involutive in Hp; apply Hp.
+    intros ρl' ρr' Hi'; rewrite app_nil_r in Hi'.
+    constructor; exact (proj1 (hw_body _ _ _ _ _ _ _ Hs HΦ Hi')).
+  - destruct (sem_ctx_per_ctx_env (sem_ctx_app_r _ _ HΔΓ)) as [R HΓ].
+    pose proof (hw_init _ _ _ _ _ _ _ _ Hσ HΓ' HΓ Hρ Hev) as Hi.
+    pose proof (hw_params Γ' Γ σ (rev Δ) nil (md_alias E[sb_qn (List.length Δ) σ]ᵐ) (md_alias E) ρ ρσ
+                  ltac:(apply Forall_rev; exact HΔ) ltac:(rewrite rev_involutive, app_nil_l; exact HΔΓ) Hi)
+      as Hp.
+    rewrite rev_involutive in Hp; apply Hp.
+    intros ρl' ρr' Hi'; rewrite app_nil_r in Hi'.
+    destruct (hw_alias _ _ _ _ _ _ _ Hi' HE) as (h & h' & Hh & Hh' & Hhh).
+    econstructor; eassumption.
+Qed.
+
+(** ** Module Expressions: Symmetry and Transitivity *)
+
+Lemma rel_modexp_sym : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H' ≈ H.
+Proof.
+  intros * [R [HΓ HH]]; exists R, HΓ.
+  intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HP : PER R') by (eapply per_env_PER; exact HΓ').
+  destruct (HH _ _ HΓ' _ _ (rel_sub_under_ctx_sym Hσ) _ _ _ _ (symmetry Hρ) Hev' Hev) as [? ? ? ? ? ? ? ? Hc].
+  econstructor; try eassumption.
+  assert (PER per_dmod) by typeclasses eauto.
+  now apply rel_chain_4_sym.
+Qed.
+
+Lemma rel_modexp_trans : forall {Γ H1 H2 H3}, Γ ⊨ᵐ H1 ≈ H2 -> Γ ⊨ᵐ H2 ≈ H3 -> Γ ⊨ᵐ H1 ≈ H3.
+Proof.
+  intros * [R [HΓ H12]] [R2 [HΓ2 H23]].
+  exists R, HΓ.
+  intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HP : PER R') by (eapply per_env_PER; exact HΓ').
+  assert (Hρ' : R' ρ' ρ') by (etransitivity; [ symmetry |]; eassumption).
+  destruct (H12 _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [v1 v2 v3 v4 ? ? ? ? Hc1].
+  destruct (H23 _ _ HΓ' _ _ (rel_sub_under_ctx_refl_right Hσ) _ _ _ _ Hρ' Hev' Hev')
+    as [w1 w2 w3 w4 ? ? ? ? Hc2].
+  repeat match goal with
+         | H : eval_modexp _ _ ?E ?r ?a, H' : eval_modexp _ _ ?E ?r ?b |- _ =>
+             pose proof (functional_eval_modexp _ _ _ _ H H'); subst; clear H'
+         end.
+  econstructor; try eassumption.
+  assert (PER per_dmod) by typeclasses eauto.
+  match type of Hc1 with rel_chain _ (_ :: _ :: ?c :: _) => merge_rel_chain Hc1 Hc2 c end.
+Qed.
+
+Corollary rel_modexp_refl_left : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H.
+Proof. intros * HH; eapply rel_modexp_trans; [ exact HH | apply rel_modexp_sym, HH ]. Qed.
+
+Corollary rel_modexp_refl_right : forall {Γ H H'}, Γ ⊨ᵐ H ≈ H' -> Γ ⊨ᵐ H' ≈ H'.
+Proof. intros * HH; eapply rel_modexp_trans; [ apply rel_modexp_sym, HH | exact HH ]. Qed.
+
+(** ** Extensions *)
+
+(** Two definition entries with related types and bodies, over related
+    contexts. *)
+Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M' i R},
+    EF Δ ≈ Δ' ∈ per_ctx_env ↘ R ->
+    Δ ⊨ A ≈ A' : Type@i ->
+    Δ ⊨ M ≈ M' : A ->
+    exists R', EF Δ ▸ A ≔ M ≈ Δ' ▸ A' ≔ M' ∈ per_ctx_env ↘ R'.
+Proof.
+  intros * HR HA HM.
+  pose proof (rel_exp_of_typ_inversion_simple HA) as [RΔ [HΔ HAs]].
+  assert (E : R <~> RΔ) by (eapply per_ctx_env_right_irrel; eassumption).
+  pose proof (rel_exp_of_typ_inversion_simple_at HΔ (rel_exp_under_ctx_refl_left HA)) as HAl.
+  pose proof (rel_exp_under_ctx_simple_at HΔ HM) as HMs.
+  eexists.
+  eapply (@per_ctx_env_cons_def _ Δ Δ' i A A' M M' R (fun ρ ρ' (_ : Dom ρ ≈ ρ' ∈ R) => per_head A A' ρ ρ')
+            (fun ρ ρ' => exists (H : R ρ↯ ρ'↯),
+               per_head A A' ρ↯ ρ'↯ (ρ 0) (ρ' 0) /\
+               (exists m, ⟦ M ⟧ ρ↯ ↘ m /\ per_head A A' ρ↯ ρ'↯ m (ρ 0)) /\
+               (exists m, ⟦ M' ⟧ ρ↯ ↘ m /\ per_head A A' ρ↯ ρ'↯ m (ρ 0)) /\
+               (exists m', ⟦ M ⟧ ρ'↯ ↘ m' /\ per_head A A' ρ↯ ρ'↯ m' (ρ' 0)) /\
+               (exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ per_head A A' ρ↯ ρ'↯ m' (ρ' 0))));
+    [ exact HR | eapply per_env_PER; exact HR | | | reflexivity ].
+  - intros ρ ρ' Hρ.
+    destruct (HAs _ _ (proj1 (E _ _) Hρ)) as [a [a' [Ha [Ha' [R1 HR1]]]]].
+    econstructor; try eassumption.
+    eapply per_univ_elem_resp_iff; [ eassumption |].
+    eapply per_head_iff; eassumption.
+  - intros ρ ρ' Hρ.
+    destruct (HAs _ _ (proj1 (E _ _) Hρ)) as [a [a' [Ha [Ha' [R1 HR1]]]]].
+    destruct (HAl _ _ (proj1 (E _ _) Hρ)) as [a0 [b [Ha0 [Hb [R2 HR2]]]]].
+    destruct (HMs _ _ (proj1 (E _ _) Hρ)) as [m [m' [Hm [Hm' Hmm']]]].
+    functional_eval_rewrite_clear.
+    econstructor; try eassumption.
+    apply (per_head_iff Ha Ha' HR1).
+    apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR2 HR1).
+    apply (per_head_iff Ha Hb HR2); exact Hmm'.
+Qed.
+
+Lemma rel_ext_nil : forall {Γ}, ⊨ Γ -> Γ ⊨ˣ nil ≈ nil.
+Proof. intros * H; split; [| split ]; [ exact H | exact H | exact (sem_ctx_per_ctx H) ]. Qed.
+
+Lemma rel_ext_ass : forall {Γ Ψ Ψ' A A' i},
+    Γ ⊨ˣ Ψ ≈ Ψ' ->
+    Ψ ++ Γ ⊨ A : Type@i ->
+    Ψ ++ Γ ⊨ A ≈ A' : Type@i ->
+    Ψ' ++ Γ ⊨ A' : Type@i ->
+    Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A'.
+Proof.
+  intros * (H1 & H2 & H3) HA HAA' HA'.
+  split; [| split ]; cbn [app].
+  - exact (rel_ctx_extend' H1 HA).
+  - exact (rel_ctx_extend' H2 HA').
+  - exact (rel_ctx_extend H3 HAA').
+Qed.
+
+Lemma rel_ext_def : forall {Γ Ψ Ψ' A A' M M' i},
+    Γ ⊨ˣ Ψ ≈ Ψ' ->
+    Ψ ++ Γ ⊨ A : Type@i ->
+    Ψ ++ Γ ⊨ A ≈ A' : Type@i ->
+    Ψ ++ Γ ⊨ M : A ->
+    Ψ ++ Γ ⊨ M ≈ M' : A ->
+    Ψ' ++ Γ ⊨ A' : Type@i ->
+    Ψ' ++ Γ ⊨ M' : A' ->
+    Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M'.
+Proof.
+  intros * (H1 & H2 & [R HR]) HA HAA' HM HMM' HA' HM'.
+  split; [| split ]; cbn [app].
+  - exact (rel_ctx_extend_def' H1 HA HM).
+  - exact (rel_ctx_extend_def' H2 HA' HM').
+  - exact (per_ctx_env_extend_def_cross HR HAA' HMM').
+Qed.
+
+Lemma rel_ext_mod : forall {Γ Ψ Ψ' U U'},
+    Γ ⊨ˣ Ψ ≈ Ψ' ->
+    Ψ ++ Γ ⊨ᵘ U ≈ U' ->
+    Ψ' ++ Γ ⊨ᵘ U' ≈ U' ->
+    Γ ⊨ˣ Ψ ▹ₘ U ≈ Ψ' ▹ₘ U'.
+Proof.
+  intros * (H1 & H2 & [Rx HRx]) (HU & HsU & _) (HU' & HsU' & _).
+  destruct (sem_ctx_per_ctx_env H1) as [R HR].
+  destruct (sem_ctx_per_ctx_env H2) as [R' HR'].
+  pose proof (rel_modexp_refl_left HU) as HUU.
+  split; [| split ]; cbn [app].
+  - econstructor; [ exact H1 | exact (per_ctx_env_of_mod HR HUU) | exact HUU | exact HsU ].
+  - econstructor; [ exact H2 | exact (per_ctx_env_of_mod HR' HU') | exact HU' | exact HsU' ].
+  - assert (E : Rx <~> R) by (eapply per_ctx_env_right_irrel; eassumption).
+    exists (env_ext_mod U U' Rx).
+    eapply per_ctx_env_cons_mod; [ exact HRx | eapply per_env_PER; exact HRx | | reflexivity ].
+    intros ρ ρ' Hρ; eapply unit_chain_at; [ exact HU | exact HR | apply E, Hρ ].
+Qed.
+
+(** ** Units *)
+
+Lemma body_shape_refl : forall Φ Φ', body_shape Φ Φ' -> body_shape Φ Φ /\ body_shape Φ' Φ'.
+Proof.
+  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] Hs; cbn in *; try contradiction; auto.
+  - destruct Hs as (Hs & -> & HE); destruct (IH _ Hs).
+    destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; intuition (subst; auto).
+  - destruct Hs as (Hs & Hc); destruct (IH _ Hs).
+    destruct c, c'; cbn in *; intuition.
+Qed.
+
+(** Two units valid in their parts are equivalent when their closures over
+    related environments are related: the outer links of the chain are the
+    commutation of each closure with substitution. *)
+Lemma rel_unit_lit_intro : forall {Γ U U'},
+    ⊨ Γ ->
+    sem_unit Γ U -> sem_unit Γ U' ->
+    (forall R, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> forall ρ ρ', R ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
+    Γ ⊨ᵘ U ≈ U'.
+Proof.
+  intros * HΓ HsU HsU' HUU'.
+  destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
+  split; [| split; assumption ].
+  exists R, HR.
+  intros Γ'' R'' HΓ'' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HP : PER R'') by (eapply per_env_PER; exact HΓ'').
+  assert (PER per_dmod) by typeclasses eauto.
+  econstructor; cbn [modexp_sub]; try apply eval_me_lit.
+  apply rel_chain_4.
+  - eapply unit_sub_link; [ exact HsU | exact Hσ | exact HΓ'' | etransitivity; [ exact Hρ | symmetry; exact Hρ ] | exact Hev ].
+  - apply (HUU' _ HR); eapply (rel_sub_under_ctx_at' Hσ HΓ'' HR); eassumption.
+  - symmetry; eapply unit_sub_link;
+      [ exact HsU' | exact (rel_sub_under_ctx_refl_right Hσ) | exact HΓ''
+      | etransitivity; [ symmetry; exact Hρ | exact Hρ ] | exact Hev' ].
+Qed.
+
+Lemma rel_unit_body : forall {Γ Δ Δ' Φ Φ'},
+    Γ ⊨ˣ body_ctx Φ ++ Δ ≈ body_ctx Φ' ++ Δ' ->
+    tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
+    body_shape Φ Φ' ->
+    Γ ⊨ᵘ gu_body Δ Φ ≈ gu_body Δ' Φ'.
+Proof.
+  intros * (H1 & H2 & [Rx HRx]) HΔ HΔ' Hl Hs.
+  rewrite <- app_assoc in H1, H2, HRx; rewrite <- app_assoc in HRx.
+  destruct (body_shape_refl _ _ Hs) as [Hs1 Hs2].
+  apply rel_unit_lit_intro;
+    [ exact (sem_ctx_app_r _ _ (sem_ctx_app_r _ _ H1)) | constructor; assumption | constructor; assumption |].
+  intros R HR ρ ρ' Hρ.
+  eapply rel_closure_body; eassumption.
+Qed.
+
+Lemma rel_unit_alias : forall {Γ Δ Δ' E E'},
+    Γ ⊨ˣ Δ ≈ Δ' ->
+    tele_ass Δ -> tele_ass Δ' ->
+    Δ ++ Γ ⊨ᵐ E ≈ E' ->
+    Δ' ++ Γ ⊨ᵐ E' ≈ E' ->
+    Γ ⊨ᵘ gu_mk Δ (md_alias E) ≈ gu_mk Δ' (md_alias E').
+Proof.
+  intros * (H1 & H2 & [Rx HRx]) HΔ HΔ' HE HE'.
+  assert (Hl : List.length Δ = List.length Δ').
+  { pose proof (per_ctx_respects_length (ex_intro _ _ HRx)) as Hl; rewrite !length_app in Hl; lia. }
+  apply rel_unit_lit_intro;
+    [ exact (sem_ctx_app_r _ _ H1) | constructor; [ exact HΔ | exact H1 | exact (rel_modexp_refl_left HE) ]
+    | constructor; assumption |].
+  intros R HR ρ ρ' Hρ.
+  eapply rel_closure_alias; [ exact HΔ | exact HΔ' | exact Hl | exact HR | exact HRx | | exact Hρ ].
+  intros ρ1 ρ1' Hρ1.
+  destruct HE as [RE [HΓE HEg]].
+  assert (Ex : Rx <~> RE) by (eapply per_ctx_env_right_irrel; eassumption).
+  destruct (HEg _ _ HΓE _ _ (rel_sub_id (ex_intro _ _ HΓE)) _ _ _ _ (proj1 (Ex _ _) Hρ1) (eval_sub_id _) (eval_sub_id _))
+    as [h1 h2 h3 h4 _ Hh2 Hh3 _ [_ [Hh _]]].
+  exists h2, h3; repeat split; assumption.
+Qed.
+
+Lemma rel_unit_sym : forall {Γ U U'}, Γ ⊨ᵘ U ≈ U' -> Γ ⊨ᵘ U' ≈ U.
+Proof. intros * (H & H1 & H2); split; [ apply rel_modexp_sym, H | split; assumption ]. Qed.
+
+Lemma rel_unit_trans : forall {Γ U1 U2 U3}, Γ ⊨ᵘ U1 ≈ U2 -> Γ ⊨ᵘ U2 ≈ U3 -> Γ ⊨ᵘ U1 ≈ U3.
+Proof.
+  intros * (H12 & H1 & _) (H23 & _ & H3).
+  split; [ eapply rel_modexp_trans; eassumption | split; assumption ].
 Qed.
 
 End Fixed_GCtx.
