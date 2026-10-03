@@ -1104,6 +1104,29 @@ Proof.
   all: eapply wf_sub_eq_of_sb_eq; [ eassumption | apply sb_wk_shift_pre ].
 Qed.
 
+(** Extension by any entry whose term projection glues as the head. *)
+Lemma cons_glu_sub_pred_helper_gen : forall {Γ Sb Δ σ ρ A a i P El en c},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Δ ⊢s σ ® ρ ∈ Sb ->
+    Γ ⊢ A : Type@i ->
+    ⟦ A ⟧ ρ ↘ a ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    Δ ⊢ sentry_exp en : A[σ] ® c ∈ El ->
+    Δ ⊢s sb_extend σ en ® ρ ↦ c ∈ cons_glu_sub_pred i Γ A Sb.
+Proof.
+  intros.
+  assert (Δ ⊢s σ : Γ) by mauto 2.
+  assert (Δ ⊢ sentry_exp en : A[σ]) by mauto 2 using glu_univ_elem_trm_escape.
+  assert (⊢ Γ ▹ A) by mauto 3.
+  assert (Δ ⊢s sb_extend σ en : Γ ▹ A).
+  { apply wf_sub_extend_gen; [ assumption | assumption | | |].
+    - intros B Hlk; inversion Hlk; subst; rewrite exp_sub_shift_extend; assumption.
+    - intros B L Hlk; inversion Hlk.
+    - intros U Hlk; inversion Hlk. }
+  econstructor; mauto 3.
+  rewrite exp_sub_shift_extend; eassumption.
+Qed.
+
 Lemma cons_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a i P El M c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Δ ⊢s σ ® ρ ∈ Sb ->

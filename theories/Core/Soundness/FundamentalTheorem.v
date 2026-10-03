@@ -24,7 +24,7 @@ Section soundness_fundamental.
     (forall Γ, ⊢ Γ -> ⊩ Γ) /\
       (forall Γ A M, Γ ⊢ M : A -> Γ ⊩ M : A).
   Proof.
-    destruct kglu_fundamental as (Kc & Ke).
+    destruct kglu_fundamental as (Kc & Ke & _).
     split; intros * H;
       [ pose proof (Kc _ _ _ H _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ H))) as H'
       | pose proof (Ke _ _ _ _ _ H _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H' ];

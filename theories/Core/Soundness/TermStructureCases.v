@@ -57,7 +57,7 @@ Lemma glu_rel_exp_vlookup : forall {Γ x A},
     Γ ⊩ #x : A.
 Proof.
   intros * [Sb] Hx. gen Sb.
-  induction Hx; intros; [ | | destruct e as [B | B N] ];
+  induction Hx; intros; [ | | destruct e as [B | B N | U] ];
     match_by_head1 glu_ctx_env ltac:(fun H => invert_glu_ctx_env H).
   - eexists.
     split; [econstructor |]; try reflexivity; mauto.
@@ -141,6 +141,35 @@ Proof.
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].
     destruct_by_head cons_def_glu_sub_pred.
+    destruct_glu_rel_exp_with_sub.
+    simplify_evals.
+    assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]
+      by (eapply glu_univ_elem_cumu_max_right; eassumption).
+    assert (glu_univ_elem (max j k) P' El' a')
+      by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
+    econstructor; try eassumption.
+    1: mauto 3.
+    rewrite exp_sub_shift.
+    eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
+  - (** Past a module slot: as past a definition, without the tie. *)
+    assert (Γ ⊩ #n : A) as Hn by mauto.
+    assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; mauto 3).
+    invert_glu_rel_exp Hn.
+    rename x into k.
+    eexists.
+    split; [econstructor |]; try reflexivity; mauto.
+    eexists (max j k).
+    intros Δ σ ρ HSb.
+    assert (glu_ctx_env (cons_mod_glu_sub_pred Γ U TSb) (Γ ▹ₘ U))
+      by (econstructor; try reflexivity; eassumption).
+    assert (⊢ Γ ▹ₘ U) by mauto 3.
+    assert (exists R, EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
+    assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
+    assert (Γ ⊢ A : Type@(max j k)) by mauto 3 using lift_exp_max_left.
+    destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
+                ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
+      as [a' [a'' [? [? ?]]]].
+    destruct_by_head cons_mod_glu_sub_pred.
     destruct_glu_rel_exp_with_sub.
     simplify_evals.
     assert (exists P' El', glu_univ_elem (max j k) P' El' a'') as [P' [El' HP']]

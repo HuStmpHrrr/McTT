@@ -1061,6 +1061,33 @@ Corollary valid_exp_let_mod : forall {Γ U B C},
     Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U].
 Proof. intros * HU HB; exact (rel_exp_let_mod_cong HU HB). Qed.
 
+(** What the gluing model needs of an instance by a literal:
+    [⟦B[Id,,ₘ⌜U⌝]⟧ρ] and [⟦B⟧(ρ ↦ᵐ ⟦⌜U⌝⟧ρ)] are related. *)
+Lemma per_univ_of_instance_mod : forall {Γ U B k env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ᵘ U ≈ U ->
+    Γ ▹ₘ U ⊨ B : Type@k ->
+    forall ρ,
+      Dom ρ ≈ ρ ∈ env_relΓ ->
+      exists a b,
+        ⟦ B[Id ,,ₘ me_lit U] ⟧ ρ ↘ a /\ ⟦ B ⟧ (ρ ↦ᵐ dm_local ρ U nil) ↘ b /\
+          Dom a ≈ a ∈ per_univ k /\ Dom a ≈ b ∈ per_univ k.
+Proof.
+  intros * HΓ (HU & _ & _) HB * Hρ.
+  pose proof (rel_sub_under_ctx_extend_mod (rel_sub_id (ex_intro _ _ HΓ)) HU) as Hid.
+  rewrite gunit_sub_id in Hid.
+  pose proof (rel_exp_of_typ_inversion HB) as [env_relΓU [HΓU HBgen]].
+  destruct (HBgen _ _ HΓ _ _ Hid _ _ _ _ Hρ
+                  (eval_sub_single_mod _ _ _ (eval_me_lit _ _ _ _))
+                  (eval_sub_single_mod _ _ _ (eval_me_lit _ _ _ _)))
+    as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Hchain].
+  destruct Hchain as [Ht12 _].
+  exists t1, t2.
+  do 2 (split; [ eassumption |]).
+  split; [| eassumption ].
+  etransitivity; [ eassumption | symmetry; eassumption ].
+Qed.
+
 (** ** Members of Applied Modules
 
     A member of an applied module evaluates exactly as its root's member

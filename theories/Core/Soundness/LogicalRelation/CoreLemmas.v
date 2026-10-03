@@ -1104,3 +1104,72 @@ End Fixed_GCtx.
 #[export] Existing Instance simple_glu_ctx_env_morphism_iff_Proper.
 #[export]
 Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
+
+(** *** Gluing respects the element PER
+
+    A term glued to a value is glued to every value related to it: δ relates
+    a member to its expansion by the element PER only. *)
+
+Section Fixed_GCtx.
+  Context {GC : GCtx}.
+
+Lemma per_bot_read_left : forall d d' s M, Dom d ≈ d' ∈ per_bot -> Rne d' in s ↘ M -> Rne d in s ↘ M.
+Proof.
+  intros * Hd Hr; destruct (Hd s) as (L & HL & HL').
+  pose proof (functional_read_ne _ _ _ _ HL' Hr) as ->; exact HL.
+Qed.
+
+Lemma glu_nat_resp_per : forall Γ M m, glu_nat Γ M m -> forall m', Dom m ≈ m' ∈ per_nat -> glu_nat Γ M m'.
+Proof.
+  induction 1 as [| ? ? ? ? HM Hg IH | ? ? ? ? Hb Hrb ]; intros m'' Hm; inversion Hm; subst.
+  - constructor; assumption.
+  - econstructor; [ eassumption | eapply IH; eassumption ].
+  - constructor; [ etransitivity; [ symmetry |]; eassumption |].
+    intros * Hk Hr; eapply Hrb; [ eassumption | eapply per_bot_read_left; eassumption ].
+Qed.
+
+Lemma glu_False_resp_per : forall Γ M m, glu_False Γ M m -> forall m', Dom m ≈ m' ∈ per_ne -> glu_False Γ M m'.
+Proof.
+  intros * [? ? ? ? Hb Hrb] m'' Hm; inversion Hm; subst.
+  constructor; [ etransitivity; [ symmetry |]; eassumption |].
+  intros * Hk Hr; eapply Hrb; [ eassumption | eapply per_bot_read_left; eassumption ].
+Qed.
+
+Lemma glu_univ_elem_trm_resp_per_elem : forall i P El a,
+    DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+    forall R, DF a ≈ a ∈ per_univ_elem i ↘ R ->
+    forall Γ A M m m', Γ ⊢ M : A ® m ∈ El -> Dom m ≈ m' ∈ R -> Γ ⊢ M : A ® m' ∈ El.
+Proof.
+  simpl.
+  glu_univ_elem_induction1; intros.
+  5:{ handle_per_univ_elem_irrel.
+      apply_predicate_equivalence.
+      destruct_by_head pi_glu_exp_pred.
+      assert (PER elem_rel) by (eapply per_elem_PER; eassumption).
+      econstructor; try eassumption.
+      - etransitivity; [ symmetry |]; eassumption.
+      - intros Δ φ N n Hk HN equiv_n.
+        destruct (H11 _ _ _ _ Hk HN equiv_n) as (mn & Happ & HO).
+        pose proof H6 as H6'.
+        invert_per_univ_elem H6'.
+        handle_per_univ_elem_irrel.
+        destruct_rel_mod_eval.
+        destruct (H8 n n equiv_n) as [mn0 mn' Happ0 Happ' Hmn].
+        functional_eval_rewrite_clear.
+        exists mn'; split; [ exact Happ' |].
+        eapply H2; [ eassumption | eassumption | exact HO | exact Hmn ]. }
+  all: match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H);
+       apply_predicate_equivalence; simpl in *; destruct_conjs.
+  - repeat split; try assumption.
+    destruct (proj1 (H3 m m') H4) as [R' HR'].
+    exists H2, H5; split; [ eapply glu_univ_elem_resp_per_univ; [ exists R'; exact HR' | exact H6 ] | exact H7 ].
+  - split; [ assumption | eapply glu_nat_resp_per; [ eassumption | apply H1; eassumption ] ].
+  - split; assumption.
+  - split; [ assumption | eapply glu_False_resp_per; [ eassumption | apply H1; eassumption ] ].
+  - destruct_by_head neut_glu_exp_pred.
+    match goal with E : _ <~> per_ne, Hm : _ ?x ?y |- _ => apply E in Hm; inversion Hm; subst end.
+    econstructor; [ assumption | assumption | etransitivity; [ symmetry |]; eassumption |].
+    intros * Hk Hr; eauto using per_bot_read_left.
+Qed.
+
+End Fixed_GCtx.

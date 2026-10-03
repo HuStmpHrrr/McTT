@@ -355,9 +355,9 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 2.
   assert (⊢ Δ ▹ A[σ]) by mauto 3.
   assert (Δ ▹ A[σ] ⊢k ↑ : Δ) by mauto 3.
-  eapply cons_glu_sub_pred_helper; mauto 2.
+  unfold sb_q; eapply cons_glu_sub_pred_helper_gen; mauto 2.
   - eapply glu_ctx_env_sub_monotone; eassumption.
-  - rewrite <- exp_wk_sub.
+  - cbn [sentry_exp]; rewrite <- exp_wk_sub.
     eapply var0_glu_elem; eassumption.
 Qed.
 
