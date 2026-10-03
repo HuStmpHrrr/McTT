@@ -50,13 +50,22 @@ Qed.
 (** Past a definition entry, by forgetting the definition. *)
 Lemma kripke_shift_def : forall Γ A M, ⊢ Γ ▸ A ≔ M -> Γ ▸ A ≔ M ⊢k ↑ : Γ.
 Proof.
-  intros * H; eapply kwk_shift with (Δ' := Γ) (A := A);
-    [ eapply kwk_id; [ | reflexivity ] | mauto 3 | symmetry; apply wk_compose_id_right ].
-  inversion H; subst.
-  eapply ctx_sub_forget; mauto 3.
+  intros * H; eapply kwk_shift;
+    [ apply kripke_id; eassumption
+    | mauto 3
+    | symmetry; apply wk_compose_id_right ].
 Qed.
 
-Hint Resolve kripke_id kripke_shift kripke_shift_def : mctt.
+(** Past a module slot. *)
+Lemma kripke_shift_mod : forall Γ U, ⊢ Γ ▹ₘ U -> Γ ▹ₘ U ⊢k ↑ : Γ.
+Proof.
+  intros * H; eapply kwk_shift;
+    [ apply kripke_id; eassumption
+    | mauto 3
+    | symmetry; apply wk_compose_id_right ].
+Qed.
+
+Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod : mctt.
 
 (** The codomain may always be coarsened: this is the closure property the
     subtyping cases need, and the reason for the refinement premise. *)
@@ -298,6 +307,46 @@ Qed.
 
 Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
 
+(** Extending by the new variable as a term, rather than by the variable
+    entry of [q φ]: the two agree on every term, and a type of the extended
+    context mentions no slot at the new position. *)
+Corollary kripke_q_var_eq : forall Γ Δ A B M φ i,
+    Δ ▹ A ⊢ M : B ->
+    Δ ⊢ A : Type@i ->
+    Γ ⊢k φ : Δ ->
+    Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
+Proof.
+  intros * HM HA Hφ.
+  rewrite <- (exp_sub_of_wk M), <- (exp_sub_of_wk B).
+  apply wf_exp_eq_sym.
+  pose proof (kripke_q_escape _ _ _ _ _ HA Hφ) as Hq.
+  pose proof (wf_sub_dom _ _ _ _ _ Hq) as HC.
+  assert (Hk : Γ ▹ A[φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
+  pose proof (kripke_escape _ _ _ Hk) as Hs.
+  assert (Hs' : Γ ▹ A[φ]ʷ ⊢s ι (φ ⊙ ↑),,#0 : Δ ▹ A).
+  { eapply wf_sub_extend; [ exact Hs | exact HA |].
+    rewrite exp_sub_of_wk, <- exp_wk_wk; mauto 3. }
+  eapply sub_eq_preserves_exp; [ exact HM |].
+  constructor; [ exact Hq | exact Hs' |].
+  intros x C Hx.
+  replace (#x[ι (φ ⊙ ↑),,#0]) with (#x[ι wk_q φ]) by (destruct x; reflexivity).
+  apply wf_exp_eq_refl.
+  exact (wf_sub_apply _ _ _ _ _ Hq _ _ Hx).
+Qed.
+
+Corollary shift_var_eq : forall Δ A B M i,
+    Δ ▹ A ⊢ M : B ->
+    Δ ⊢ A : Type@i ->
+    Δ ▹ A ⊢ M[ι ↑,,#0] ≈ M : B.
+Proof.
+  intros * HM HA.
+  assert (Hk : Δ ⊢k wk_id : Δ) by (apply kripke_id; mauto 2).
+  pose proof (kripke_q_var_eq _ _ _ _ _ _ _ HM HA Hk) as H.
+  rewrite exp_wk_id, !(exp_wk_id_ext _ _ wk_q_id) in H.
+  replace (M[ι ↑,,#0]) with (M[ι (wk_id ⊙ ↑),,#0]); [ exact H |].
+  apply exp_sub_sb_eq; intros [| x]; reflexivity.
+Qed.
+
 (** Both presuppositions, as [saturate_sub] supplies them for [wf_sub]: not
     hints, or [eauto] would cycle against the context introduction rules. *)
 Corollary kripke_dom : forall Γ Δ φ, Γ ⊢k φ : Δ -> ⊢ Γ.
@@ -309,7 +358,7 @@ Proof. intros * ?%kripke_escape; eapply wf_sub_cod; eassumption. Qed.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve kripke_id kripke_shift kripke_shift_def : mctt.
+Hint Resolve kripke_id kripke_shift kripke_shift_def kripke_shift_mod : mctt.
 #[export]
 Hint Resolve kripke_ctxsub : mctt.
 #[export]

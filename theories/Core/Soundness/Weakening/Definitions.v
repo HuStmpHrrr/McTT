@@ -1,8 +1,8 @@
 (** * Kripke Weakenings
 
     The gluing model is stable only under a subclass of the weakenings: those
-    built from [↑] alone, with no lifting [q φ] under a binder. These are the
-    Kripke weakenings, written [Γ ⊢k φ : Δ].
+    built from [↑] alone, past entries of any kind, with no lifting [q φ]
+    under a binder. These are the Kripke weakenings, written [Γ ⊢k φ : Δ].
 
     The rules differ from a standard Kripke presentation in two ways, both to
     fit the gluing proofs:
@@ -42,7 +42,7 @@ Inductive wk_kripke : ctx -> ctx -> wk -> Prop :=
      wk_eq φ wk_id ->
      Γ ⊢k φ : Δ )
 | kwk_shift :
-  `( Γ ⊢k ψ : Δ' ▹ A ->
+  `( Γ ⊢k ψ : e :: Δ' ->
      Δ' ⊆ Δ ->
      wk_eq φ (↑ ⊙ ψ) ->
      Γ ⊢k φ : Δ )

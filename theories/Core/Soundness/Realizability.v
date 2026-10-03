@@ -173,9 +173,11 @@ Proof.
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
       assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
-      rewrite exp_sub_of_wk_q_extend in HOP.
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@i)
+        by (exact (kripke_q_var_eq _ _ _ (Type@i) _ _ _ H12 H17 H16)).
       specialize (H8 _ _ _ H27 HOP) as [].
-      rewrite <- (exp_wk_id OT[wk_q φ]ʷ).
+      eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact HOT |].
+      rewrite <- (exp_wk_id OT[ι (φ ⊙ ↑),,#0]).
       mauto 3.
   - handle_functional_glu_univ_elem.
     apply_equiv_left.
@@ -238,7 +240,6 @@ Proof.
         by mauto 3 using var_glu_elem_bot.
       rewrite exp_wk_wk in HEl.
       destruct (H14 _ _ _ _ Hk' HEl Hvar) as [mn [Happ HOEl]].
-      rewrite exp_sub_of_wk_q_extend in HOEl.
       rewrite exp_wk_wk.
       functional_eval_rewrite_clear.
       pose proof (H1 _ Hvar _ H20) as HG.
@@ -250,7 +251,9 @@ Proof.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
       specialize (Hrbtop (Δ ▹ IT[φ]ʷ) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
-      trivial.
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@i)
+        by (eapply (kripke_q_var_eq _ _ _ (Type@i)); eassumption).
+      eapply wf_exp_eq_conv'; [ exact Hrbtop | exact HOT ].
   (* neut *)
   - econstructor; eauto.
     intros.

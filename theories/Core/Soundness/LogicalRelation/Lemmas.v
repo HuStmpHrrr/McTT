@@ -2,7 +2,7 @@ From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relati
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases.
+From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases UnitCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Export Realizability.
 From Mctt.Core.Syntactic Require Import Substitution.
@@ -435,16 +435,19 @@ Proof.
     {
       assert (Γ ▹ IT ⊢ #0 : IT[↑]ʷ ® ⇑! a (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
       assert (⊢ Γ ▹ IT) by mauto 3.
+      assert (Γ ▹ IT ⊢ OT[ι ↑,,#0] ® OP ⇑! a (length Γ) equiv_len_len) by mauto 4.
       assert (Γ ▹ IT ⊢ OT ® OP ⇑! a (length Γ) equiv_len_len)
-        by (rewrite <- (exp_sub_of_shift_extend_zero OT); mauto 4).
+        by (eapply glu_univ_elem_typ_resp_exp_eq; [ eassumption | eassumption
+                                                  | eapply (shift_var_eq _ _ (Type@i)); eassumption ]).
       eapply glu_univ_elem_typ_resp_ctxsub; [ eassumption | eassumption | mauto 4 ].
     }
     assert (Γ ▹ IT' ⊢ OT' ® OP' ⇑! a' (length Γ) equiv_len'_len').
     {
       assert (Γ ▹ IT' ⊢ #0 : IT'[↑]ʷ ® ⇑! a' (length Γ) ∈ IEl) by (eapply var0_glu_elem; mauto 3).
       assert (⊢ Γ ▹ IT') by mauto 3.
-      rewrite <- (exp_sub_of_shift_extend_zero OT').
-      mauto 4.
+      assert (Γ ▹ IT' ⊢ OT'[ι ↑,,#0] ® OP' ⇑! a' (length Γ) equiv_len'_len') by mauto 4.
+      eapply glu_univ_elem_typ_resp_exp_eq; [ eassumption | eassumption
+                                            | eapply (shift_var_eq _ _ (Type@i)); eassumption ].
     }
     mauto 3.
 Qed.
@@ -657,8 +660,9 @@ Proof.
     apply_predicate_equivalence;
     simpl in *;
     mauto 4.
-  all: destruct_by_head cons_glu_sub_pred.
+  all: try destruct_by_head cons_glu_sub_pred.
   all: try destruct_by_head cons_def_glu_sub_pred.
+  all: try destruct_by_head cons_mod_glu_sub_pred.
   all: econstructor; mauto 4.
   all: eapply glu_univ_elem_trm_resp_ctxsub; eassumption.
 Qed.
@@ -698,6 +702,11 @@ Proof.
     assert (Δ ⊢ A[↑]ʷ[σ] ≈ A[↑]ʷ[σ'] : Type@i) as <- by mauto 3.
     assert (Δ ⊢ #0[σ] ≈ #0[σ'] : A[↑]ʷ[σ]) as <- by mauto 3.
     eassumption.
+  - (** A module slot: the tie does not mention [σ]. *)
+    destruct_by_head cons_mod_glu_sub_pred.
+    econstructor; [ exact Hσ' | eassumption |].
+    eapply IHglu_ctx_env;
+      [ eassumption | eapply wf_sub_eq_compose_right; [ | eassumption ]; eapply wf_sub_shift; mauto 3 ].
 Qed.
 
 Add Parametric Morphism Sb Γ (H : glu_ctx_env Sb Γ) Δ : (Sb Δ)
@@ -743,6 +752,13 @@ Proof.
   intros * Hglu Hper.
   gen ρ σ Δ env_rel.
   induction Hglu; intros.
+  4:{ (** A module slot: the tie is part of the gluing. *)
+    apply_predicate_equivalence.
+    destruct_by_head cons_mod_glu_sub_pred.
+    invert_per_ctx_env Hper.
+    apply_predicate_equivalence.
+    match goal with E : env_rel <~> _ |- _ => apply E end.
+    repeat split; try eassumption; eapply IHHglu; eassumption. }
   3:{ (** A definition entry, read against its canonical context PER: the
         tie is part of the gluing. *)
     apply_predicate_equivalence.
@@ -792,6 +808,7 @@ Proof.
     handle_functional_glu_univ_elem;
     try destruct_by_head cons_glu_sub_pred;
     try destruct_by_head cons_def_glu_sub_pred;
+    try destruct_by_head cons_mod_glu_sub_pred;
     eassumption.
 Qed.
 
@@ -825,6 +842,9 @@ Proof.
 
   (** An assumption entry and a definition entry alike: the tie does not
       depend on the level. *)
+  (** A module slot: the tie does not depend on the tail's derivation. *)
+  3:{ assert (HT : TSb -∙> TSb0) by intuition.
+      intros Δ' σ' ρ' []; econstructor; [ eassumption | eassumption | apply HT; eassumption ]. }
   all: rename i0 into j.
   all: rename TSb0 into TSb'.
   all: assert (TSb -∙> TSb') by intuition.
@@ -991,6 +1011,10 @@ Proof.
   (** [Δ] is the refining context and [A'] its type; [Γ] and [A] are the ones
       being refined.  The three cases share the head and the tail; only a
       refined definition has a tie to move. *)
+  (** A module slot keeps its unit: the tie is unchanged. *)
+  4:{ destruct_by_head cons_mod_glu_sub_pred.
+      econstructor; [ eapply ctxsub_sub_cod; [| eassumption ]; mauto 3 | eassumption |].
+      eapply IHHsubtyp; eassumption. }
   all: rename i0 into j.
   all: rename i1 into k.
   all: rename TSb0 into TSb'.
@@ -1058,6 +1082,13 @@ Proof.
     simpl in *;
     saturate_kripke_escape.
   1: (rewrite sb_wk_compose; mauto 3).
+  (** A module slot: [ρ] does not move, so the tie is unchanged. *)
+  3:{ destruct_by_head cons_mod_glu_sub_pred.
+      econstructor; [ rewrite sb_wk_compose; mauto 3 | eassumption |].
+      assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) ® ρ↯ ∈ TSb) by mauto 3.
+      assert (Δ' ⊢s (sb_wk (Wk ⨟ σ) φ) : Γ) by (rewrite sb_wk_compose; mauto 3).
+      eapply glu_ctx_env_sub_resp_sub_eq; [ eassumption | eassumption | ].
+      eapply wf_sub_eq_of_sb_eq; [ eassumption | apply sb_wk_shift_pre ]. }
 
   (** An assumption entry and a definition entry alike: [ρ] does not move, so
       the tie is unchanged.  Each leaves the substitution, the head and the
@@ -1104,7 +1135,7 @@ Proof.
   induction HΓ; intros * Hinit;
     dependent destruction Hinit;
     apply_predicate_equivalence;
-    try solve [econstructor; mauto].
+    try solve [econstructor; mauto | cbn; mauto 3].
 
   - assert (glu_rel_typ_with_sub i Γ A Id ρ) as [] by mauto.
     functional_eval_rewrite_clear.
@@ -1133,6 +1164,19 @@ Proof.
         destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [R HR];
         pose proof (glu_univ_elem_per_elem _ _ _ _ Hglu _ _ _ _ _ Hg HR) end.
       eapply per_head_of; [ eassumption | eassumption | exact HR | eassumption ].
+  - (** A module slot: its closure is related to itself, by the unit's
+        validity at the initial environment. *)
+    assert (⊢ Γ ▹ₘ U) by mauto 3.
+    assert (HId : Γ ⊢s Id ® ρ ∈ TSb) by (apply IHHΓ; assumption).
+    assert (HWk : Γ ▹ₘ U ⊢s Wk ® ρ ∈ TSb)
+      by (eapply (glu_ctx_env_sub_monotone _ _ H (Γ ▹ₘ U) wk_shift Γ Id ρ);
+          [ exact HId | apply kripke_shift_mod; assumption ]).
+    econstructor; [ mauto 3 | | exact HWk ].
+    destruct (glu_ctx_env_per_ctx_env H) as [R HR].
+    pose proof (glu_ctx_env_per_env H HR HId) as Hρ.
+    match goal with Hu : wf_unit_eq _ _ _ _ _ |- _ =>
+      destruct (proj1 (proj2 completeness_fundamental_modules) _ _ _ Hu) as (HU & _) end.
+    exact (unit_chain_at HU HR _ _ Hρ).
 Qed.
 
 (** *** Tactics for [glu_rel_*] *)

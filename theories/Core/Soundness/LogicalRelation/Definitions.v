@@ -382,6 +382,17 @@ Variant cons_def_glu_sub_pred i Γ A M (TSb : glu_sub_pred) : glu_sub_pred :=
         Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
         Δ ⊢s σ ® ρ ∈ cons_def_glu_sub_pred i Γ A M TSb }.
 
+(** A module slot glues by its syntactic typing and by the tie of its value
+    to the closure of its unit over the tail, which is the slot clause of the
+    environment PER.  Module values themselves are not glued: their members
+    are reached through δ, whose reducts are terms. *)
+Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
+| mk_cons_mod_glu_sub_pred :
+  `{ Δ ⊢s σ : Γ ▹ₘ U ->
+     per_dmod (env_mod ρ 0) (dm_local ρ↯ U nil) ->
+     Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
+     Δ ⊢s σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
+
 (** As with [wf_ctx_empty], the base case carries what the judgment is relative
     to: without it, [⊢ ⋅] would not follow ([glu_ctx_env_wf_ctx]). *)
 Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
@@ -411,7 +422,13 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
             Δ ⊢s σ ® ρ ∈ TSb ->
             glu_rel_exp_with_sub i Δ M A σ ρ) ->
         Sb <∙> cons_def_glu_sub_pred i Γ A M TSb ->
-        EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ Sb }.
+        EG Γ ▸ A ≔ M ∈ glu_ctx_env ↘ Sb }
+| glu_ctx_env_cons_mod :
+  `{ forall TSb Sb,
+        EG Γ ∈ glu_ctx_env ↘ TSb ->
+        wf_unit_eq gc_deps gc_stack Γ U U ->
+        Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
+        EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }.
 
 Definition glu_rel_ctx Γ : Prop := exists Sb, EG Γ ∈ glu_ctx_env ↘ Sb.
 #[global] Arguments glu_rel_ctx Γ/.
