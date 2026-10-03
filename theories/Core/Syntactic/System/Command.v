@@ -1010,6 +1010,31 @@ Section WellFormed.
       split; [ eapply wf_gctx_deps; eassumption | split; [ assumption | cbn; assumption ] ].
   Qed.
 
+  (** What a load files is well formed, whatever the import checks. *)
+  Lemma load_wf : forall ch Θ Ξ fp src prg u ΘU U,
+      ⊢g Θ ⍮ Ξ -> canon Θ -> stack_in ch Ξ -> gds_lookup Θ fp = None -> ~ In fp ch ->
+      load_path fp = Some src -> read src = Some prg -> to_core prg = Some u ->
+      run_unit (fp :: ch) u ΘU U ->
+      ⊢g gds_merge Θ (file fp U ΘU) ⍮ Ξ /\ canon (gds_merge Θ (file fp U ΘU)) /\ Θ ⊑ gds_merge Θ (file fp U ΘU).
+  Proof.
+    intros * HΞ Hc Hst Hn Hnin Hl Hr Ht Hu.
+    destruct (proj2 (proj2 run_wf) _ _ _ _ Hu) as (HΘU & HcU & HU); cbn [hd] in HU.
+    pose proof (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu fp ltac:(left; reflexivity)) as HfU.
+    assert (Hcf : canon (file fp U ΘU)) by (eapply canon_file; eassumption).
+    assert (Hag : gds_agree Θ (file fp U ΘU)) by (apply canon_agree; assumption).
+    assert (Hwf : wf_gdeps (gds_merge Θ (file fp U ΘU)))
+      by (apply merge_wf; [ eapply wf_gctx_deps; eassumption | apply wf_file; assumption | exact Hag ]).
+    split; [ eapply gstack_levels_grow; [ apply merge_left, Hag | exact HΞ | exact Hwf |] |].
+    + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
+      destruct (gds_lookup (gds_merge _ _) (p_unit mq)) eqn:E; [ exfalso | reflexivity ].
+      apply merge_inv in E as [E | E].
+      * rewrite (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) in E; discriminate.
+      * rewrite file_lookup in E; destruct (path_beq (p_unit mq) fp) eqn:Hb.
+        -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
+        -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
+    + split; [ apply canon_merge; assumption | apply merge_left, Hag ].
+  Qed.
+
   Corollary import_coherent : forall ch Θ Ξ fp E ns Θ',
       ⊢g Θ ⍮ Ξ -> canon Θ -> stack_in ch Ξ ->
       run_cmd ch Θ Ξ (cc_import (Some fp) E ns) Θ' Ξ ->
@@ -1244,6 +1269,25 @@ Lemma equiv_ctx : forall Θ Θ' Ξ Γ,
     gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ' ⍮ Ξ ⍮ Γ.
 Proof.
   intros * (H & _ & _) HΞ HΓ; apply (levels_grow _ _ _ H); [ constructor; exact HΞ | exact HΓ ].
+Qed.
+
+Lemma equiv_ext : forall Θ Θ' Ξ Γ Ψ,
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ -> Θ' ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ.
+Proof.
+  intros * (H & _ & _) HΞ HΨ; apply (levels_grow _ _ _ H); [ constructor; exact HΞ | exact HΨ ].
+Qed.
+
+Lemma equiv_modexp : forall Θ Θ' Ξ Γ E,
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E -> Θ' ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E.
+Proof.
+  intros * (H & _ & _) HΞ HE; apply (levels_grow _ _ _ H); [ constructor; exact HΞ | exact HE ].
+Qed.
+
+Lemma equiv_import_ok : forall Θ Θ' Ξ E ns,
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> import_ok Θ Ξ E ns -> import_ok Θ' Ξ E ns.
+Proof.
+  intros * Heq HΞ [HE Hns]; split; [ exact (equiv_modexp _ _ _ _ _ Heq HΞ HE) |].
+  intros n Hn; eapply member_ok_emb; [ apply gc_sub_levels, (proj1 Heq) | exact (Hns n Hn) ].
 Qed.
 
 (** ** The Restriction is Well Formed

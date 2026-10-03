@@ -210,6 +210,9 @@ Proof.
   intros; eapply (proj1 (proj2 alg_type_sound)); eassumption.
 Qed.
 
+Lemma alg_ext_sound : forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> wf_ext_eq gc_deps gc_stack Γ Ψ Ψ.
+Proof. intros; eapply (proj1 (proj2 (proj2 alg_type_sound))); eassumption. Qed.
+
 Lemma alg_unit_sound : forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> wf_unit_eq gc_deps gc_stack Γ U U.
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
 
@@ -531,6 +534,9 @@ Lemma alg_type_check_complete : forall {Γ A M},
 Proof.
   intros * Hue HM; exact (proj1 (proj2 alg_type_complete_all) _ _ _ _ _ HM eq_refl eq_refl Hue).
 Qed.
+
+Lemma alg_ext_complete : forall {Γ Ψ}, wf_ext_eq gc_deps gc_stack Γ Ψ Ψ -> Γ ⊢aˣ Ψ.
+Proof. intros * HΨ; exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 alg_type_complete_all)))) _ _ _ _ _ HΨ eq_refl eq_refl)). Qed.
 
 Lemma alg_unit_complete : forall {Γ U}, wf_unit_eq gc_deps gc_stack Γ U U -> Γ ⊢aᵘ U.
 Proof. intros * HU; exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 alg_type_complete_all))))) _ _ _ _ _ HU eq_refl eq_refl)). Qed.

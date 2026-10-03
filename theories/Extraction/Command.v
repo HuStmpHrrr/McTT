@@ -46,12 +46,18 @@ Definition list_case {A} (l : list A) : {x : A & {l' | l = x :: l'}} + {l = nil}
   | nil => inright eq_refl
   end.
 
-Equations gm_has_mod_dec (ip : list string) (Φ : gmod) :
-  {gm_has_mod Φ ip} + {~ gm_has_mod Φ ip} by struct ip :=
-| nil, Φ => left I
-| x :: ip', Φ with gm_find_mod Φ x => {
-  | Some Φx => gm_has_mod_dec ip' Φx
-  | None => right (fun H => H) }.
+(** An import is checked where it stands: its target, then the names it
+    [use]s. *)
+Definition check_import (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (E : modexp) (ns : list string) :
+    {import_ok Θ Ξ E ns} + {~ import_ok Θ Ξ E ns} :=
+  match check_modexp Θ Ξ (gs_tele Ξ) (wf_gs_tele _ _ HΞ) E with
+  | left HE =>
+      match @names_ok_dec (gc_mk Θ Ξ) HΞ (gs_tele Ξ) E HE ns with
+      | left Hn => left (conj HE Hn)
+      | right Hn => right (fun H => Hn (proj2 H))
+      end
+  | right HE => right (fun H => HE (proj1 H))
+  end.
 
 Definition gs_fresh_dec (x : string) (Ξ : gstack) : {gs_fresh x Ξ} + {~ gs_fresh x Ξ} :=
   match Ξ as Ξ0 return {gs_fresh x Ξ0} + {~ gs_fresh x Ξ0} with
@@ -326,28 +332,29 @@ Section Impl.
   Qed.
 
   Lemma linv_push {ch Θ K D ΘR Ξ x Δ} :
-    linv ch Θ K D ΘR Ξ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    linv ch Θ K D ΘR Ξ -> tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
     ⊢ ΘR ⍮ Ξ ⍮ Δ ++ gs_tele Ξ /\ linv ch Θ K D ΘR (gs_push (path_in (gs_path Ξ) x) Δ Ξ).
   Proof.
-    intros Hli Hfr HΔ.
+    intros Hli Htel Hfr HΔ.
     assert (HΔ' : ⊢ ΘR ⍮ Ξ ⍮ Δ ++ gs_tele Ξ)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HΔ).
     split; [ exact HΔ' |]; apply (linv_stack Hli); [| exact (stack_in_push _ _ _ _ (li_stack _ _ _ _ _ _ Hli) Hfr) ].
-    constructor; constructor; [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; exact HΔ' |].
+    constructor; constructor; [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; [ exact Htel | exact HΔ' ] |].
     destruct Ξ as [| [mp U] Ξ]; [ contradiction |]; cbn; exists x; split; [ reflexivity | exact Hfr ].
   Qed.
 
   (** A unit's own frame: its path heads the chain, so it is not filed. *)
   Lemma linv_push_unit {fp ch Θ K D ΘR P} :
-    linv (fp :: ch) Θ K D ΘR nil -> ⊢ gds_restrict D Θ ⍮ nil ⍮ P ->
+    linv (fp :: ch) Θ K D ΘR nil -> tele_ass P -> ⊢ gds_restrict D Θ ⍮ nil ⍮ P ->
     ⊢ ΘR ⍮ nil ⍮ P /\ linv (fp :: ch) Θ K D ΘR (gs_push (p_abs fp nil) P nil).
   Proof.
-    intros Hli HP.
+    intros Hli Htel HP.
     assert (HP' : ⊢ ΘR ⍮ nil ⍮ P)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HP).
     split; [ exact HP' |]; apply (linv_stack Hli); [| intros ? ? [[= <- <-] | []]; left; reflexivity ].
-    constructor; constructor; [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; cbn; rewrite app_nil_r; exact HP' |].
-    cbn; apply gds_fresh_iff.
+    constructor; constructor;
+      [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; [ exact Htel | cbn; rewrite app_nil_r; exact HP' ] |].
+    cbn; split; [ apply gds_fresh_iff | reflexivity ].
     exact (sub_none _ _ _ (li_sub _ _ _ _ _ _ Hli) (gi_chain _ _ _ (li_g _ _ _ _ _ _ Hli) _ (or_introl eq_refl))).
   Qed.
 
@@ -410,46 +417,72 @@ Section Impl.
   Qed.
 
   Lemma mod_pre {ch Θ K D Ξ x Δ} :
-    (exists ΘR, linv ch Θ K D ΘR Ξ) -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    (exists ΘR, linv ch Θ K D ΘR Ξ) -> tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
     exists ΘR, linv ch Θ K D ΘR (gs_push (path_in (gs_path Ξ) x) Δ Ξ).
-  Proof. intros [ΘR Hli] Hfr HΔ; exists ΘR; exact (proj2 (linv_push Hli Hfr HΔ)). Qed.
+  Proof. intros [ΘR Hli] Htel Hfr HΔ; exists ΘR; exact (proj2 (linv_push Hli Htel Hfr HΔ)). Qed.
 
   Lemma mod_ok {ch Θ K D Ξ x Δ cs r mp U Ξ2} :
-    gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+    tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
     post_cmds ch Θ K D (gs_push (path_in (gs_path Ξ) x) Δ Ξ) cs r -> cs_stack r = (mp, U) :: Ξ2 ->
-    post_cmd ch Θ K D Ξ (cc_mod x Δ cs) (cst (cs_deps r) (cs_k r) (cs_dom r) (gs_add x (ge_mod Δ (gu_mod U)) Ξ)).
+    post_cmd ch Θ K D Ξ (cc_mod x Δ cs) (cst (cs_deps r) (cs_k r) (cs_dom r) (gs_add x (ge_body Δ (gu_mod U)) Ξ)).
   Proof.
-    intros Hfr HΔ Hpost HΞ ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
-    destruct (linv_push Hli Hfr HΔ) as [HΔ' Hli'].
+    intros Htel Hfr HΔ Hpost HΞ ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    destruct (linv_push Hli Htel Hfr HΔ) as [HΔ' Hli'].
     destruct (Hpost _ Hli') as (ΘR' & Hrun & Hli2 & Hext & Hgr).
     rewrite HΞ in Hrun, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hrun) as [F HF]; injection HF as <- ->.
-    assert (Hr : run_cmd ch ΘR Ξ (cc_mod x Δ cs) ΘR' (gs_add x (ge_mod Δ (gu_mod U)) Ξ))
+    assert (Hr : run_cmd ch ΘR Ξ (cc_mod x Δ cs) ΘR' (gs_add x (ge_body Δ (gu_mod U)) Ξ))
       by (econstructor; eassumption).
     exists ΘR'; split; [ exact Hr | split; [| split; assumption ] ].
     apply (linv_stack Hli2); [ exact (proj1 (linv_run_wf Hli Hr)) | exact (linv_run_stack Hli Hr) ].
   Qed.
 
-  Lemma import_in_ok {ch Θ K D Ξ fp ip U} :
-    In fp D -> gds_lookup Θ fp = Some U -> gm_has_mod (gu_mod U) ip ->
-    post_cmd ch Θ K D Ξ (cc_import fp ip) (cst Θ K D Ξ).
+  Lemma alias_ok {ch Θ K D Ξ x Δ E} :
+    tele_ass Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
+    gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E -> gs_fresh x Ξ ->
+    post_cmd ch Θ K D Ξ (cc_alias x Δ E) (cst Θ K D (gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ)).
   Proof.
-    intros Hin HU Hm ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    intros Htel HΔ HE Hfr ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
+    assert (Hr : run_cmd ch ΘR Ξ (cc_alias x Δ E) ΘR (gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ))
+      by (constructor; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HΔ)
+                       | exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | exact Hfr ]).
+    exists ΘR; split; [ exact Hr | split; [ exact (linv_run_same Hli Hr) | split; [ apply ext_refl | apply grows_refl ] ] ].
+  Qed.
+
+  Lemma import_here_ok {ch Θ K D Ξ E ns} :
+    import_ok (gds_restrict D Θ) Ξ E ns -> post_cmd ch Θ K D Ξ (cc_import None E ns) (cst Θ K D Ξ).
+  Proof.
+    intros HI ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    assert (Hr : run_cmd ch ΘR Ξ (cc_import None E ns) ΘR Ξ)
+      by (constructor; exact (equiv_import_ok _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HI)).
+    exists ΘR; split; [ exact Hr | split; [ exact Hli | split; [ apply ext_refl | apply grows_refl ] ] ].
+  Qed.
+
+  Lemma import_in_ok {ch Θ K D Ξ fp E ns U} :
+    In fp D -> gds_lookup Θ fp = Some U -> import_ok (gds_restrict D Θ) Ξ E ns ->
+    post_cmd ch Θ K D Ξ (cc_import (Some fp) E ns) (cst Θ K D Ξ).
+  Proof.
+    intros Hin HU HI ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
     apply (li_dom _ _ _ _ _ _ Hli), gds_dom_lookup in Hin.
-    destruct (gds_lookup ΘR fp) as [V |] eqn:E; [| contradiction ].
-    rewrite (li_sub _ _ _ _ _ _ Hli _ _ E) in HU; injection HU as ->.
-    assert (Hr : run_cmd ch ΘR Ξ (cc_import fp ip) ΘR Ξ) by (eapply rc_import_filed; eassumption).
+    destruct (gds_lookup ΘR fp) as [V |] eqn:E'; [| contradiction ].
+    rewrite (li_sub _ _ _ _ _ _ Hli _ _ E') in HU; injection HU as ->.
+    assert (Hr : run_cmd ch ΘR Ξ (cc_import (Some fp) E ns) ΘR Ξ)
+      by (eapply rc_import_filed; [ eassumption
+                                  | exact (equiv_import_ok _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HI) ]).
     exists ΘR; split; [ exact Hr | split; [ exact Hli | split; [ apply ext_refl | apply grows_refl ] ] ].
   Qed.
 
   (** Importing a filed unit that the unit being run has not imported yet:
       the judgment loads it, which the entry of [Θ] justifies once the chain
       is changed. *)
-  Lemma import_hit_ok {ch Θ K D Ξ fp ip U Dfp} :
-    ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp -> gm_has_mod (gu_mod U) ip ->
-    post_cmd ch Θ K D Ξ (cc_import fp ip) (cst Θ K (p_union D (fp :: Dfp)) Ξ).
+  Lemma hit_linv {ch Θ K D Ξ fp U Dfp} :
+    ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp -> forall ΘR, linv ch Θ K D ΘR Ξ ->
+    exists src prg u ΘU, gds_lookup ΘR fp = None /\ ~ In fp ch /\ load_path fp = Some src /\
+      read src = Some prg /\ prog_path prg = fp /\ to_core prg = Some u /\ run_unit (fp :: ch) u ΘU U /\
+      linv ch Θ K (p_union D (fp :: Dfp)) (gds_merge ΘR (file fp U ΘU)) Ξ.
   Proof.
-    intros Hnin HU HK Hm ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    intros Hnin HU HK ΘR Hli.
     pose proof (li_g _ _ _ _ _ _ Hli) as G.
     destruct (gi_entry _ _ _ G _ _ HU)
       as (Dfp' & HK' & Hcl & src & prg & u & ch0 & ΘU & Hl & Hrd & Hp & Ht & Hu & _ & Hsub & Hdom).
@@ -462,11 +495,9 @@ Section Impl.
       intros x [<- | Hin].
       - exact (proj2 (proj2 (run_chain_fresh load_path read to_core)) _ _ _ _ Hu _ (or_introl eq_refl)).
       - exact (sub_none _ _ _ Hsub (gi_chain _ _ _ G _ Hin)). }
-    assert (Hr : run_cmd ch ΘR Ξ (cc_import fp ip) (gds_merge ΘR (file fp U ΘU)) Ξ)
-      by (eapply rc_import_load; eassumption).
-    destruct (linv_run_wf Hli Hr) as (Hwf' & Hc' & _).
-    exists (gds_merge ΘR (file fp U ΘU)); split; [ exact Hr |].
-    split; [| split; [ apply ext_refl | apply grows_refl ] ].
+    destruct (load_wf load_path read to_core _ _ _ _ _ _ _ _ _ (li_wf _ _ _ _ _ _ Hli) (li_canon _ _ _ _ _ _ Hli)
+                (li_stack _ _ _ _ _ _ Hli) Hn Hnch Hl Hrd Ht Hu') as (Hwf' & Hc' & _).
+    exists src, prg, u, ΘU; do 7 (split; [ assumption |]).
     constructor; [ exact G | | | | exact Hwf' | exact Hc' | exact (li_stack _ _ _ _ _ _ Hli) ].
     - intros y V HV; apply merge_inv in HV as [HV | HV]; [ exact (li_sub _ _ _ _ _ _ Hli _ _ HV) |].
       rewrite file_lookup in HV; destruct (path_beq y fp) eqn:Hb; [| exact (Hsub _ _ HV) ].
@@ -477,6 +508,27 @@ Section Impl.
       + left; exact (li_closed _ _ _ _ _ _ Hli _ _ Hy HKy _ Hz).
       + rewrite HK in HKy; injection HKy as <-; right; right; exact Hz.
       + right; right; exact (Hcl _ _ Hy HKy _ Hz).
+  Qed.
+
+  Lemma hit_pre {ch Θ K D Ξ fp U Dfp} :
+    (exists ΘR, linv ch Θ K D ΘR Ξ) -> ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp ->
+    exists ΘR', linv ch Θ K (p_union D (fp :: Dfp)) ΘR' Ξ.
+  Proof.
+    intros [ΘR Hli] Hnin HU HK.
+    destruct (hit_linv Hnin HU HK _ Hli) as (_ & _ & _ & ΘU & _ & _ & _ & _ & _ & _ & _ & Hli'); eauto.
+  Qed.
+
+  Lemma import_hit_ok {ch Θ K D Ξ fp E ns U Dfp} :
+    ~ In fp D -> gds_lookup Θ fp = Some U -> kfind K fp = Some Dfp ->
+    import_ok (gds_restrict (p_union D (fp :: Dfp)) Θ) Ξ E ns ->
+    post_cmd ch Θ K D Ξ (cc_import (Some fp) E ns) (cst Θ K (p_union D (fp :: Dfp)) Ξ).
+  Proof.
+    intros Hnin HU HK HI ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    destruct (hit_linv Hnin HU HK _ Hli) as (src & prg & u & ΘU & Hn & Hnch & Hl & Hrd & Hp & Ht & Hu & Hli').
+    assert (Hr : run_cmd ch ΘR Ξ (cc_import (Some fp) E ns) (gds_merge ΘR (file fp U ΘU)) Ξ)
+      by (eapply rc_import_load; [ eassumption .. |
+            exact (equiv_import_ok _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli')) (li_wf _ _ _ _ _ _ Hli') HI) ]).
+    exists (gds_merge ΘR (file fp U ΘU)); split; [ exact Hr | split; [ exact Hli' | split; [ apply ext_refl | apply grows_refl ] ] ].
   Qed.
 
   Lemma load_pre {ch Θ K D Ξ fp} :
@@ -492,13 +544,17 @@ Section Impl.
     cst (gds_merge (us_deps r) (file fp (us_unit r) (gds_restrict (us_dom r) (us_deps r))))
         ((fp, us_dom r) :: us_k r) (p_union D (fp :: us_dom r)) Ξ.
 
-  Lemma load_ok {ch Θ K D Ξ fp ip src prg u r} :
+  Lemma load_linv {ch Θ K D Ξ fp src prg u r} :
     gds_lookup Θ fp = None -> ~ In fp ch ->
     load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
-    post_unit (fp :: ch) Θ K u r -> gm_has_mod (gu_mod (us_unit r)) ip ->
-    post_cmd ch Θ K D Ξ (cc_import fp ip) (load_state fp D Ξ r).
+    post_unit (fp :: ch) Θ K u r -> forall ΘR, linv ch Θ K D ΘR Ξ ->
+    exists ΘU, gds_lookup ΘR fp = None /\ run_unit (fp :: ch) u ΘU (us_unit r) /\
+      linv ch (cs_deps (load_state fp D Ξ r)) (cs_k (load_state fp D Ξ r)) (cs_dom (load_state fp D Ξ r))
+        (gds_merge ΘR (file fp (us_unit r) ΘU)) Ξ /\
+      ext Θ K (cs_deps (load_state fp D Ξ r)) (cs_k (load_state fp D Ξ r)) /\
+      grows Θ (cs_deps (load_state fp D Ξ r)) (cs_dom (load_state fp D Ξ r)).
   Proof.
-    intros Hn Hnch Hl Hrd Hp Ht Hpost Hm ΘR Hli.
+    intros Hn Hnch Hl Hrd Hp Ht Hpost ΘR Hli.
     pose proof (li_g _ _ _ _ _ _ Hli) as G.
     assert (Gin : ginv (fp :: ch) Θ K) by (eapply load_pre; [ exists ΘR; exact Hli | assumption | assumption ]).
     destruct r as [Θ1 K1 Dfp U]; unfold load_state; cbn [us_deps us_k us_dom us_unit cs_deps cs_k cs_dom cs_stack] in *.
@@ -506,9 +562,8 @@ Section Impl.
     cbn [us_deps us_k us_dom us_unit] in *.
     destruct (proj2 (proj2 run_wf) _ _ _ _ Hu) as (HwU & HcU & HUu); cbn [hd] in HUu.
     assert (HnR : gds_lookup ΘR fp = None) by exact (sub_none _ _ _ (li_sub _ _ _ _ _ _ Hli) Hn).
-    assert (Hrun : run_cmd ch ΘR Ξ (cc_import fp ip) (gds_merge ΘR (file fp U ΘU)) Ξ)
-      by (eapply rc_import_load; eassumption).
-    destruct (linv_run_wf Hli Hrun) as (Hwf' & Hc' & _).
+    destruct (load_wf load_path read to_core _ _ _ _ _ _ _ _ _ (li_wf _ _ _ _ _ _ Hli) (li_canon _ _ _ _ _ _ Hli)
+                (li_stack _ _ _ _ _ _ Hli) HnR Hnch Hl Hrd Ht Hu) as (Hwf' & Hc' & _).
     set (R := gds_restrict Dfp Θ1).
     assert (Hn1 : gds_lookup Θ1 fp = None) by exact (gi_chain _ _ _ G1 _ (or_introl eq_refl)).
     assert (HnR1 : gds_lookup R fp = None)
@@ -567,7 +622,7 @@ Section Impl.
       - intros y Dy HKy; simp kfind in HKy; destruct (path_beq y fp) eqn:Hb.
         + apply path_beq_true in Hb as ->; rewrite HfpN; discriminate.
         + intros E; apply (gi_kdom _ _ _ G1 _ _ HKy), (sub_none _ _ _ Hsub1N), E. }
-    exists (gds_merge ΘR (file fp U ΘU)); cbn [cs_deps cs_k cs_dom cs_stack us_deps us_k us_dom us_unit]; split; [ exact Hrun |].
+    exists ΘU; cbn [cs_deps cs_k cs_dom cs_stack us_deps us_k us_dom us_unit]; split; [ exact HnR | split; [ exact Hu |] ].
     split; [| split ].
     - constructor; [ exact GN | | | | exact Hwf' | exact Hc' | exact (li_stack _ _ _ _ _ _ Hli) ].
       + intros y V HV; apply merge_inv in HV as [HV | HV].
@@ -594,6 +649,31 @@ Section Impl.
       + right; apply p_union_iff; right; apply dom_file in Hy as [-> | Hy]; [ left; reflexivity | right ].
         apply gds_dom_lookup in Hy; unfold R in Hy; rewrite gds_lookup_restrict in Hy.
         destruct (existsb (path_beq y) Dfp) eqn:Hb; [ apply existsb_path_beq, Hb | contradiction ].
+  Qed.
+
+  Lemma load_pre2 {ch Θ K D Ξ fp src prg u r} :
+    (exists ΘR, linv ch Θ K D ΘR Ξ) -> gds_lookup Θ fp = None -> ~ In fp ch ->
+    load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
+    post_unit (fp :: ch) Θ K u r ->
+    exists ΘR', linv ch (cs_deps (load_state fp D Ξ r)) (cs_k (load_state fp D Ξ r)) (cs_dom (load_state fp D Ξ r)) ΘR' Ξ.
+  Proof.
+    intros [ΘR Hli] Hn Hnch Hl Hrd Hp Ht Hpost.
+    destruct (load_linv Hn Hnch Hl Hrd Hp Ht Hpost _ Hli) as (ΘU & _ & _ & Hli' & _); eauto.
+  Qed.
+
+  Lemma load_ok {ch Θ K D Ξ fp E ns src prg u r} :
+    gds_lookup Θ fp = None -> ~ In fp ch ->
+    load_path fp = Some src -> read src = Some prg -> prog_path prg = fp -> to_core prg = Some u ->
+    post_unit (fp :: ch) Θ K u r ->
+    import_ok (gds_restrict (cs_dom (load_state fp D Ξ r)) (cs_deps (load_state fp D Ξ r))) Ξ E ns ->
+    post_cmd ch Θ K D Ξ (cc_import (Some fp) E ns) (load_state fp D Ξ r).
+  Proof.
+    intros Hn Hnch Hl Hrd Hp Ht Hpost HI ΘR Hli.
+    destruct (load_linv Hn Hnch Hl Hrd Hp Ht Hpost _ Hli) as (ΘU & HnR & Hu & Hli' & Hext & Hgr).
+    assert (Hr : run_cmd ch ΘR Ξ (cc_import (Some fp) E ns) (gds_merge ΘR (file fp (us_unit r) ΘU)) Ξ)
+      by (eapply rc_import_load; [ eassumption .. |
+            exact (equiv_import_ok _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli')) (li_wf _ _ _ _ _ _ Hli') HI) ]).
+    exists (gds_merge ΘR (file fp (us_unit r) ΘU)); split; [ exact Hr | split; [ exact Hli' | split; assumption ] ].
   Qed.
 
   Lemma nil_ok {ch Θ K D Ξ} : post_cmds ch Θ K D Ξ nil (cst Θ K D Ξ).
@@ -648,24 +728,25 @@ Section Impl.
   Proof. intros G Hp; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & Hli1 & _); exact (linv_restrict_gctx Hli1). Qed.
 
   Lemma unit_body_pre {fp ch Θ K imps r1 P} :
-    ginv (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil nil imps r1 ->
+    ginv (fp :: ch) Θ K -> post_cmds (fp :: ch) Θ K nil nil imps r1 -> tele_ass P ->
     ⊢ gds_restrict (cs_dom r1) (cs_deps r1) ⍮ nil ⍮ P ->
     exists ΘR, linv (fp :: ch) (cs_deps r1) (cs_k r1) (cs_dom r1) ΘR (gs_push (p_abs fp nil) P nil).
   Proof.
-    intros G Hp HP; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & Hli1 & _).
-    exists ΘR1; exact (proj2 (linv_push_unit Hli1 HP)).
+    intros G Hp Htel HP; destruct (unit_imports G Hp) as (ΘR1 & _ & _ & Hli1 & _).
+    exists ΘR1; exact (proj2 (linv_push_unit Hli1 Htel HP)).
   Qed.
 
   Lemma unit_ok {fp ch Θ K imps P cs r1 r2 mp U Ξ2} :
     post_cmds (fp :: ch) Θ K nil nil imps r1 ->
+    tele_ass P ->
     ⊢ gds_restrict (cs_dom r1) (cs_deps r1) ⍮ nil ⍮ P ->
     post_cmds (fp :: ch) (cs_deps r1) (cs_k r1) (cs_dom r1) (gs_push (p_abs fp nil) P nil) cs r2 ->
     cs_stack r2 = (mp, U) :: Ξ2 ->
     post_unit (fp :: ch) Θ K (imps, P, cs) (ust (cs_deps r2) (cs_k r2) (cs_dom r2) U).
   Proof.
-    intros Hp1 HP Hp2 HΞ G; cbn [us_deps us_k us_dom us_unit].
+    intros Hp1 Htel HP Hp2 HΞ G; cbn [us_deps us_k us_dom us_unit].
     destruct (unit_imports G Hp1) as (ΘR1 & Hr1 & _ & Hli1 & He1 & Hg1).
-    destruct (linv_push_unit Hli1 HP) as [HP' Hli1'].
+    destruct (linv_push_unit Hli1 Htel HP) as [HP' Hli1'].
     destruct (Hp2 _ Hli1') as (ΘR2 & Hr2 & Hli2 & He2 & Hg2).
     rewrite HΞ in Hr2, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF]; injection HF as <- ->.
@@ -726,25 +807,40 @@ Section Impl.
     | left Hfr with check_exp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A M => {
       | left HM => rok (exist _ _ (def_ok Hfr HM), log_nil)
       | right _ => rerr (re_def x Ξ A M) } }
-  | ch, L, Θ, K, D, Ξ, cc_mod x Δ cs, H with check_ctx (gds_restrict D Θ) Ξ (pre_gctx H) (Δ ++ gs_tele Ξ) => {
-    | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
-    | left HΔ with gs_fresh_dec x Ξ => {
-      | right _ => rerr (re_msg ("duplicate name " ++ x))
-      | left Hfr with cmds_step ch (run_cmd_impl ch L) Θ K D (gs_push (path_in (gs_path Ξ) x) Δ Ξ) cs
-                        (mod_pre H Hfr HΔ) => {
-        | rerr e => rerr e
-        | rok (exist _ r Hr, l) with list_case (cs_stack r) => {
-          | inleft (existT _ (mp, U) (exist _ _ HΞ)) => rok (exist _ _ (mod_ok Hfr HΔ Hr HΞ), l)
-          | inright _ => rerr (re_msg "internal error: a module body lost its frame") } } } }
-  | ch, L, Θ, K, D, Ξ, cc_import fp ip, H with opt_case (gds_lookup Θ fp) => {
+  | ch, L, Θ, K, D, Ξ, cc_mod x Δ cs, H with tele_ass_dec Δ => {
+    | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
+    | left Htel with check_ctx (gds_restrict D Θ) Ξ (pre_gctx H) (Δ ++ gs_tele Ξ) => {
+      | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
+      | left HΔ with gs_fresh_dec x Ξ => {
+        | right _ => rerr (re_msg ("duplicate name " ++ x))
+        | left Hfr with cmds_step ch (run_cmd_impl ch L) Θ K D (gs_push (path_in (gs_path Ξ) x) Δ Ξ) cs
+                          (mod_pre H Htel Hfr HΔ) => {
+          | rerr e => rerr e
+          | rok (exist _ r Hr, l) with list_case (cs_stack r) => {
+            | inleft (existT _ (mp, U) (exist _ _ HΞ)) => rok (exist _ _ (mod_ok Htel Hfr HΔ Hr HΞ), l)
+            | inright _ => rerr (re_msg "internal error: a module body lost its frame") } } } } }
+  | ch, L, Θ, K, D, Ξ, cc_alias x Δ E, H with tele_ass_dec Δ => {
+    | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
+    | left Htel with check_ext (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
+      | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
+      | left HΔ with check_modexp (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
+        | right _ => rerr (re_msg ("ill-formed module expression for module " ++ x))
+        | left HE with gs_fresh_dec x Ξ => {
+          | right _ => rerr (re_msg ("duplicate name " ++ x))
+          | left Hfr => rok (exist _ _ (alias_ok Htel HΔ HE Hfr), log_nil) } } } }
+  | ch, L, Θ, K, D, Ξ, cc_import None E ns, H with check_import (gds_restrict D Θ) Ξ (pre_gctx H) E ns => {
+    | left HI => rok (exist _ _ (import_here_ok HI), log_nil)
+    | right _ => rerr (re_msg "ill-formed import") }
+  | ch, L, Θ, K, D, Ξ, cc_import (Some fp) E ns, H with opt_case (gds_lookup Θ fp) => {
     | inleft (exist _ U HU) with in_dec path_eq_dec fp D => {
-      | left Hin with gm_has_mod_dec ip (gu_mod U) => {
-        | left Hm => rok (exist _ _ (import_in_ok Hin HU Hm), log_nil)
-        | right _ => rerr (re_msg ("no module to import in " ++ path_str fp)) }
+      | left Hin with check_import (gds_restrict D Θ) Ξ (pre_gctx H) E ns => {
+        | left HI => rok (exist _ _ (import_in_ok Hin HU HI), log_nil)
+        | right _ => rerr (re_msg ("ill-formed import from " ++ path_str fp)) }
       | right Hnin with opt_case (kfind K fp) => {
-        | inleft (exist _ Dfp HK) with gm_has_mod_dec ip (gu_mod U) => {
-          | left Hm => rok (exist _ _ (import_hit_ok Hnin HU HK Hm), log_nil)
-          | right _ => rerr (re_msg ("no module to import in " ++ path_str fp)) }
+        | inleft (exist _ Dfp HK)
+            with check_import (gds_restrict (p_union D (fp :: Dfp)) Θ) Ξ (pre_gctx (hit_pre H Hnin HU HK)) E ns => {
+          | left HI => rok (exist _ _ (import_hit_ok Hnin HU HK HI), log_nil)
+          | right _ => rerr (re_msg ("ill-formed import from " ++ path_str fp)) }
         | inright _ => rerr (re_msg "internal error: a filed unit has no closure") } }
     | inright Hn with in_dec path_eq_dec fp ch => {
       | left _ => rerr (re_cycle (cycle_chain fp ch))
@@ -758,9 +854,11 @@ Section Impl.
               | inright _ => rerr (re_unit fp "cannot elaborate unit")
               | inleft (exist _ u Hu) with L fp src Hnch Hsrc Θ K u (load_pre H Hn Hnch) => {
                 | rerr e => rerr e
-                | rok (exist _ r Hr, _) with gm_has_mod_dec ip (gu_mod (us_unit r)) => {
-                  | left Hm => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr Hm), log_nil)
-                  | right _ => rerr (re_msg ("no module to import in " ++ path_str fp)) } } } } } } } }
+                | rok (exist _ r Hr, _)
+                    with check_import (gds_restrict (cs_dom (load_state fp D Ξ r)) (cs_deps (load_state fp D Ξ r))) Ξ
+                           (pre_gctx (load_pre2 H Hn Hnch Hsrc Hprg Hp Hu Hr)) E ns => {
+                  | left HI => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr HI), log_nil)
+                  | right _ => rerr (re_msg ("ill-formed import from " ++ path_str fp)) } } } } } } } }
   | ch, L, Θ, K, D, Ξ, cc_eval M (Some A), H
       with check_exp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A M => {
     | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (pre_gctx H) M A HM)
@@ -782,18 +880,22 @@ Section Impl.
         match run_cmds_impl (fp :: ch0) L Θ K nil nil imps (unit_pre H) with
         | rerr e => rerr e
         | rok (exist _ r1 Hr1, l1) =>
+            match tele_ass_dec P with
+            | right _ => rerr (re_msg "unit parameters that are not assumptions")
+            | left Htel =>
             match check_ctx (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) P with
             | right _ => rerr (re_msg "ill-formed unit parameters")
             | left HP =>
                 match run_cmds_impl (fp :: ch0) L (cs_deps r1) (cs_k r1) (cs_dom r1) (gs_push (p_abs fp nil) P nil) cs
-                        (unit_body_pre H Hr1 HP) with
+                        (unit_body_pre H Hr1 Htel HP) with
                 | rerr e => rerr e
                 | rok (exist _ r2 Hr2, l2) =>
                     match list_case (cs_stack r2) with
-                    | inleft (existT _ (mp, U) (exist _ _ HΞ)) => rok (exist _ _ (unit_ok Hr1 HP Hr2 HΞ), log_app l1 l2)
+                    | inleft (existT _ (mp, U) (exist _ _ HΞ)) => rok (exist _ _ (unit_ok Hr1 Htel HP Hr2 HΞ), log_app l1 l2)
                     | inright _ => rerr (re_msg "internal error: a unit body lost its frame")
                     end
                 end
+            end
             end
         end
     end
@@ -904,26 +1006,45 @@ Section Impl.
         simp run_cmd_impl; [ eexists; reflexivity |].
       exfalso; apply HM'; exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM).
     - (* a module *)
-      intros ch ΘR Ξ x Δ cs ΘR' mp U HΔ Hfr Hr IH Hacc Θ K D H Hli; simp run_cmd_impl.
+      intros ch ΘR Ξ x Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli; simp run_cmd_impl.
+      destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp run_cmd_impl.
       match goal with |- context [check_ctx ?a ?b ?c ?d] => destruct (check_ctx a b c d) as [HΔ' | HΔ'] end;
         [| exfalso; apply HΔ'; exact (equiv_ctx _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
       simp run_cmd_impl.
       destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp run_cmd_impl.
-      destruct (linv_push Hli Hfr' HΔ') as [_ Hli'].
-      destruct (IH Hacc Θ K D (mod_pre H Hfr' HΔ') Hli') as [[[r Hp] l] E]; unfold run_cmds_impl in E; rewrite E.
+      destruct (linv_push Hli Htel' Hfr' HΔ') as [_ Hli'].
+      destruct (IH Hacc Θ K D (mod_pre H Htel' Hfr' HΔ') Hli') as [[[r Hp] l] E]; unfold run_cmds_impl in E; rewrite E.
       simp run_cmd_impl.
       destruct (Hp _ Hli') as (ΘR2 & Hr2 & _); destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF].
       destruct (list_case (cs_stack r)) as [[[mp' U'] [Ξ2 HΞ]] | HΞ]; simp run_cmd_impl; [ eexists; reflexivity | congruence ].
+    - (* an alias *)
+      intros ch ΘR Ξ x Δ E Htel HΔ HE Hfr Hacc Θ K D H Hli; simp run_cmd_impl.
+      destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp run_cmd_impl.
+      match goal with |- context [check_ext ?a ?b ?c ?d ?e] => destruct (check_ext a b c d e) as [HΔ' | HΔ'] end;
+        [| exfalso; apply HΔ'; exact (equiv_ext _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
+      simp run_cmd_impl.
+      match goal with |- context [check_modexp ?a ?b ?c ?d ?e] => destruct (check_modexp a b c d e) as [HE' | HE'] end;
+        [| exfalso; apply HE'; exact (equiv_modexp _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
+      simp run_cmd_impl.
+      destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp run_cmd_impl.
+      eexists; reflexivity.
+    - (* an import of what is filed or open already *)
+      intros ch ΘR Ξ E ns HI Hacc Θ K D H Hli; simp run_cmd_impl.
+      match goal with |- context [check_import ?a ?b ?c ?d ?e] => destruct (check_import a b c d e) as [HI' | HI'] end;
+        simp run_cmd_impl; [ eexists; reflexivity |].
+      exfalso; apply HI'; exact (equiv_import_ok _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HI).
     - (* an import of a unit the judgment has *)
-      intros ch ΘR Ξ fp ip U HU Hm Hacc Θ K D H Hli; simp run_cmd_impl.
+      intros ch ΘR Ξ fp E ns U HU HI Hacc Θ K D H Hli; simp run_cmd_impl.
       pose proof (li_sub _ _ _ _ _ _ Hli _ _ HU) as HUg.
       assert (Hin : In fp D) by (apply (li_dom _ _ _ _ _ _ Hli), gds_dom_lookup; rewrite HU; discriminate).
       destruct (opt_case (gds_lookup Θ fp)) as [[U' HU'] | HU']; [| congruence ].
       assert (U' = U) as -> by congruence; simp run_cmd_impl.
       destruct (in_dec path_eq_dec fp D) as [Hin' | Hin']; [| contradiction ]; simp run_cmd_impl.
-      destruct (gm_has_mod_dec ip (gu_mod U)) as [Hm' | Hm']; simp run_cmd_impl; [ eexists; reflexivity | contradiction ].
+      match goal with |- context [check_import ?a ?b ?c ?d ?e] => destruct (check_import a b c d e) as [HI' | HI'] end;
+        simp run_cmd_impl; [ eexists; reflexivity |].
+      exfalso; apply HI'; exact (equiv_import_ok _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HI).
     - (* a load: shared if some other unit filed it, run otherwise *)
-      intros ch ΘR Ξ fp ip src prg u ΘU U Hn Hnin Hl Hrd Hp Ht Hu IH Hm Hacc Θ K D H Hli; simp run_cmd_impl.
+      intros ch ΘR Ξ fp E ns src prg u ΘU U Hn Hnin Hl Hrd Hp Ht Hu IH HI Hacc Θ K D H Hli; simp run_cmd_impl.
       assert (HnD : ~ In fp D)
         by (intros Hin; apply (li_dom _ _ _ _ _ _ Hli), gds_dom_lookup in Hin; contradiction).
       destruct (opt_case (gds_lookup Θ fp)) as [[U' HU'] | Hng]; simp run_cmd_impl.
@@ -934,7 +1055,13 @@ Section Impl.
         rewrite Ht in Ht'; injection Ht' as <-.
         destruct (proj2 (proj2 run_functional) _ _ _ _ Hu (fp :: ch0) _ _ eq_refl Hu') as [_ <-].
         destruct (opt_case (kfind K fp)) as [[Dfp' HK'] | HK']; [| congruence ]; simp run_cmd_impl.
-        destruct (gm_has_mod_dec ip (gu_mod U)) as [Hm' | Hm']; simp run_cmd_impl; [ eexists; reflexivity | contradiction ].
+        match goal with |- context [check_import ?a ?b ?c ?d ?e] => destruct (check_import a b c d e) as [HI' | HI'] end;
+          simp run_cmd_impl; [ eexists; reflexivity | exfalso ].
+        destruct (hit_linv Hin HU' HK' _ Hli) as (src2 & prg2 & u2 & ΘU2 & _ & _ & Hl2 & Hr2 & _ & Ht2 & Hu2 & Hli2).
+        rewrite Hl in Hl2; injection Hl2 as <-; rewrite Hrd in Hr2; injection Hr2 as <-.
+        rewrite Ht in Ht2; injection Ht2 as <-.
+        destruct (proj2 (proj2 run_functional) _ _ _ _ Hu (fp :: ch) _ _ eq_refl Hu2) as [<- _].
+        apply HI'; exact (equiv_import_ok _ _ _ _ _ (linv_equiv Hli2) (linv_restrict_gctx Hli2) HI).
       + destruct (in_dec path_eq_dec fp ch) as [Hin | Hin]; [ contradiction |]; simp run_cmd_impl.
         destruct (opt_case (load_path fp)) as [[src' Hl'] | Hl']; [| congruence ].
         assert (src' = src) as -> by congruence; simp run_cmd_impl.
@@ -945,12 +1072,14 @@ Section Impl.
         assert (u' = u) as -> by congruence; simp run_cmd_impl.
         unfold loader_of.
         match goal with |- context [run_unit_impl (fp :: ch) ?a Θ K u ?b] =>
-          destruct (IH a Θ K b) as [[[r Hpost] l] E]; rewrite E; simp run_cmd_impl;
-          destruct (Hpost b) as (ΘU' & Hu' & _)
+          destruct (IH a Θ K b) as [[[r Hpost] l] E']; rewrite E'; simp run_cmd_impl
         end.
-        destruct (proj2 (proj2 run_functional) _ _ _ _ Hu (fp :: ch) _ _ eq_refl Hu') as [_ HU].
-        destruct (gm_has_mod_dec ip (gu_mod (us_unit r))) as [Hm' | Hm']; simp run_cmd_impl;
-          [ eexists; reflexivity | rewrite <- HU in Hm'; contradiction ].
+        match goal with |- context [check_import ?a ?b ?c ?d ?e] => destruct (check_import a b c d e) as [HI' | HI'] end;
+          simp run_cmd_impl; [ eexists; reflexivity | exfalso ].
+        destruct (load_linv Hng Hin Hl' Hr' Hp' Ht' Hpost _ Hli) as (ΘU2 & _ & Hu2 & Hli2 & _).
+        destruct (proj2 (proj2 run_functional) _ _ _ _ Hu (fp :: ch) _ _ eq_refl Hu2) as [<- HUr].
+        rewrite <- HUr in Hli2.
+        apply HI'; exact (equiv_import_ok _ _ _ _ _ (linv_equiv Hli2) (linv_restrict_gctx Hli2) HI).
     - (* an ascribed eval *)
       intros ch ΘR Ξ M A HM Hacc Θ K D H Hli; simp run_cmd_impl.
       match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
@@ -972,15 +1101,16 @@ Section Impl.
       destruct (IHcs Hacc _ _ _ (cons_pre H Hp1) Hli1) as [[[r2 Hp2] l2] E2]; unfold run_cmds_impl in E2; simp cmds_step in E2; rewrite E2.
       simp cmds_step; eexists; reflexivity.
     - (* a unit *)
-      intros fp ch imps P cs ΘR1 ΘR2 mp U Hi IHi HP Hb IHb Hacc Θ K H.
+      intros fp ch imps P cs ΘR1 ΘR2 mp U Hi IHi Htel HP Hb IHb Hacc Θ K H.
       rewrite run_unit_impl_unfold; cbn [run_unit_step].
       destruct (IHi Hacc Θ K nil (unit_pre H) (nil_linv H)) as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota.
       destruct (Hp1 _ (nil_linv H)) as (ΘR1' & Hr1 & Hli1 & _).
       destruct (proj1 (proj2 run_functional) _ _ _ _ _ _ Hi _ _ _ Hr1) as [<- HΞ]; rewrite <- HΞ in Hli1.
+      destruct (tele_ass_dec P) as [Htel' | Htel']; [| contradiction ]; cbv beta iota.
       match goal with |- context [check_ctx ?a ?b ?c ?d] => destruct (check_ctx a b c d) as [HP' | HP'] end;
         [| exfalso; apply HP'; exact (equiv_ctx _ _ _ _ (linv_equiv Hli1) (linv_restrict_gctx Hli1) HP) ].
-      destruct (linv_push_unit Hli1 HP') as [_ Hli1'].
-      destruct (IHb Hacc _ _ _ (unit_body_pre H Hp1 HP') Hli1') as [[[r2 Hp2] l2] E2]; rewrite E2; cbv beta iota.
+      destruct (linv_push_unit Hli1 Htel' HP') as [_ Hli1'].
+      destruct (IHb Hacc _ _ _ (unit_body_pre H Hp1 Htel' HP') Hli1') as [[[r2 Hp2] l2] E2]; rewrite E2; cbv beta iota.
       destruct (Hp2 _ Hli1') as (ΘR2' & Hr2 & _); destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF].
       destruct (list_case (cs_stack r2)) as [[[mp' U'] [Ξ2 HΞ2]] | HΞ2]; [ eexists; reflexivity | congruence ].
   Qed.

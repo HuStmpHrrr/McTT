@@ -111,6 +111,30 @@ Section Bridge.
     firstorder.
   Qed.
 
+  Lemma alg_ext_sound' : forall Θ Ξ Γ Ψ,
+      @alg_ext (gc_mk Θ Ξ) Γ Ψ -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ.
+  Proof. intros; eapply (alg_ext_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
+  Lemma alg_ext_complete' : forall Θ Ξ Γ Ψ,
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ -> @alg_ext (gc_mk Θ Ξ) Γ Ψ.
+  Proof. intros; eapply (alg_ext_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
+  Lemma alg_unit_sound' : forall Θ Ξ Γ U,
+      @alg_unit (gc_mk Θ Ξ) Γ U -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U.
+  Proof. intros; eapply (alg_unit_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
+  Lemma alg_unit_complete' : forall Θ Ξ Γ U,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U -> @alg_unit (gc_mk Θ Ξ) Γ U.
+  Proof. intros; eapply (alg_unit_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
+  Lemma alg_modexp_sound' : forall Θ Ξ Γ H,
+      @alg_modexp (gc_mk Θ Ξ) Γ H -> ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H.
+  Proof. intros; eapply (alg_modexp_sound (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
+  Lemma alg_modexp_complete' : forall Θ Ξ Γ H,
+      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H -> @alg_modexp (gc_mk Θ Ξ) Γ H.
+  Proof. intros; eapply (alg_modexp_complete (GC := gc_mk Θ Ξ)); eassumption. Qed.
+
 End Bridge.
 
 #[local]
@@ -178,13 +202,36 @@ Section check_exp.
       pureb _
   .
 
+  (** A unit and a module expression, through their algorithmic checks. *)
+  Definition check_unit Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
+      { Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U } :=
+    match @unit_check (gc_mk Θ Ξ) Γ HΓ U (unit_order_all U) with
+    | left H => left (alg_unit_sound' _ _ _ _ H HΓ)
+    | right H => right (fun H' => H (alg_unit_complete' _ _ _ _ H'))
+    end.
+
+  Definition check_ext Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) Ψ :
+      { Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ } :=
+    match @ext_check (gc_mk Θ Ξ) Γ HΓ Ψ (ext_order_all Ψ) with
+    | left H => left (alg_ext_sound' _ _ _ _ H HΓ)
+    | right H => right (fun H' => H (alg_ext_complete' _ _ _ _ H'))
+    end.
+
+  Definition check_modexp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) E :
+      { Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ᵐ E ≈ E } :=
+    match @modexp_check (gc_mk Θ Ξ) Γ HΓ E (modexp_order_all E) with
+    | left H => left (alg_modexp_sound' _ _ _ _ H HΓ)
+    | right H => right (fun H' => H (alg_modexp_complete' _ _ _ _ H'))
+    end.
+
 End check_exp.
 
 (** ** Local Contexts
 
     By structural recursion on [Γ]: the base case appeals to the
     well-formedness of the global context.  An assumption is one call of
-    [check_typ], and a definition is one call of [check_exp]. *)
+    [check_typ], a definition one call of [check_exp], and a module slot one
+    call of [check_unit]. *)
 
 Section check_ctx.
 
@@ -194,7 +241,10 @@ Section check_ctx.
     cbn beta in *;
     try eassumption;
     lazymatch goal with
+    | |- ~ ⊢ _ ⍮ _ ⍮ (_ ▹ₘ _) =>
+        let H := fresh "H" in intro H; destruct (ctx_decomp_mod H); contradiction
     | |- ~ ⊢ _ ⍮ _ ⍮ _ => intro; gen_presups; firstorder (mautosolve 3)
+    | |- ⊢ _ ⍮ _ ⍮ (_ ▹ₘ _) => apply wf_ctx_extend_mod; assumption
     | _ => mautosolve 3
     end.
 
@@ -209,6 +259,10 @@ Section check_ctx.
   | Θ, Ξ, HΞ, Γ ▸ A ≔ M =>
       let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
       let*b _ := check_exp Θ Ξ Γ HΓ A M while _ in
+      pureb _
+  | Θ, Ξ, HΞ, Γ ▹ₘ U =>
+      let*b HΓ := check_ctx Θ Ξ HΞ Γ while _ in
+      let*b _ := check_unit Θ Ξ Γ HΓ U while _ in
       pureb _
   .
 
