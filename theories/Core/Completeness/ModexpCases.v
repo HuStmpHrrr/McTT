@@ -125,6 +125,10 @@ Qed.
 
 (** ** Module Expressions *)
 
+Lemma functional_eval_sel : forall h x r1 r2,
+    eval_sel gc_deps gc_stack h x r1 -> eval_sel gc_deps gc_stack h x r2 -> r1 = r2.
+Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
+
 Lemma functional_eval_selm : forall h y r1 r2,
     eval_selm gc_deps gc_stack h y r1 -> eval_selm gc_deps gc_stack h y r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
@@ -258,6 +262,47 @@ Proof.
   pose proof (functional_eval_appm _ _ _ _ A2 A2') as <-.
   pose proof (functional_eval_appm _ _ _ _ A2 A2'') as <-.
   apply (mk_rel_mod w1 w w3 w4); [ econstructor; eassumption .. | exact (hub_chain _ _ _ _ W1 W3 W4) ].
+Qed.
+
+(** ** Members *)
+
+Lemma selc_one_inv : forall h x v, eval_selc gc_deps gc_stack h (x :: nil) v -> eval_sel gc_deps gc_stack h x v.
+Proof. intros * H; inversion H; subst; [ assumption | match goal with Hn : eval_selc _ _ _ nil _ |- _ => inversion Hn end ]. Qed.
+
+(** Members of equivalent module expressions are equal at the canonical type
+    of the left one. *)
+Lemma rel_exp_mem_gen : gmod_ok -> forall Γ H H' x A i,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Γ H -> member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
+    Γ ⊨ A : Type@i -> Γ ⊨ a_mem H x ≈ a_mem H' x : A.
+Proof.
+  intros Hok * [R [HR HH]] [S1 _] Hm HA.
+  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof (rel_exp_of_typ_inversion HA) as [RA [HRA HAgen]].
+  exists R, HR, i; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
+  assert (HP : PER R) by (eapply per_env_PER; exact HR).
+  assert (Hρσ' : R ρσ ρσ) by (etransitivity; [ exact Hρσ | symmetry; exact Hρσ ]).
+  destruct (rel_exp_implies_rel_typ (HAgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')) as [Rel HT].
+  exists Rel; split; [ exact HT |].
+  destruct HT as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 (T12 & T23 & T34)].
+  assert (HPR : PER Rel) by (eapply per_elem_PER; exact T23).
+  destruct (rel_mod_hub _ _ _ _ _ _ _ _ (HH _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev'))
+    as (h1 & h2 & h3 & h4 & E1 & E2 & E3 & E4 & D1 & D2 & D3 & D4).
+  destruct (proj2 (S1 _ _ _ Hm ltac:(discriminate)) _ _ HR Hρσ' _ E2) as (a & Ha & Hma).
+  pose proof (functional_eval_exp _ _ _ _ Ha Ha2) as ->.
+  assert (Haa : per_univ_elem i Rel a2 a2) by (etransitivity; [ exact T23 | symmetry; exact T23 ]).
+  assert (Sel : forall hk, per_dmod h2 hk -> exists v vk, eval_sel gc_deps gc_stack h2 x v /\
+                  eval_sel gc_deps gc_stack hk x vk /\ Rel v vk).
+  { intros hk Hk.
+    destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma _ _ _ Hk Haa) as (v & vk & Hs & Hsk & Hvv).
+    exists v, vk; split; [ exact (selc_one_inv _ _ _ Hs) | split; [ exact (selc_one_inv _ _ _ Hsk) | exact Hvv ] ]. }
+  destruct (Sel _ D1) as (v & v1 & S2 & S1' & V1).
+  destruct (Sel _ D3) as (v' & v3 & S2' & S3 & V3).
+  destruct (Sel _ D4) as (v'' & v4 & S2'' & S4 & V4).
+  pose proof (functional_eval_sel _ _ _ _ S2 S2') as <-.
+  pose proof (functional_eval_sel _ _ _ _ S2 S2'') as <-.
+  apply (mk_rel_exp v1 v v3 v4); [ eapply eval_mem_of_sel; eassumption .. |].
+  cbn; split; [ symmetry; exact V1 |]; split; [ exact V3 | etransitivity; [ symmetry; exact V3 | exact V4 ] ].
 Qed.
 
 End Fixed_GCtx.
