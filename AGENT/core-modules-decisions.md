@@ -22,8 +22,8 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
 - **Invariants that must hold throughout:**
   - NbE stays proved sound and complete;
   - evaluation and readback build no syntax;
-  - no new axioms (the baseline is funext and eq_rect_eq, plus `Parser.loc` for
-    `main_*`);
+  - no axioms (the baseline is none, plus `Parser.loc` for `main_*`; see
+    `AGENT/workflow.md`, "Axioms");
   - all wf judgments stay in one mutual block;
   - presupposition statements are never weakened;
   - zero build warnings at merge.

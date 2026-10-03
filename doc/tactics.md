@@ -83,12 +83,16 @@ enclosing `match`es varies by call site.
 
 ### `Equations` and `simp`
 
-`per_univ_elem`, `glu_univ_elem` and the extraction functions are defined with
-[Equations](https://github.com/mattam82/Coq-Equations). Two consequences:
+The extraction functions are defined with
+[Equations](https://github.com/mattam82/Coq-Equations); `per_univ_elem` and
+`glu_univ_elem` are plain definitions over the inductive `…_core` relations,
+with an `Equations`-style interface. Two consequences:
 
-- You cannot `constructor`/`inversion` such a relation directly. You must
-  first `simp <name>` to unfold one equation step, and afterwards
-  `rewrite <- <name>_equation_1` to fold the recursive occurrences back up.
+- You cannot `constructor`/`inversion` `per_univ_elem`/`glu_univ_elem`
+  directly. You must first `simp <name>` to unfold one step (to `…_core i
+  (…_below i)`), and afterwards `rewrite <- <name>_equation_1` to fold the
+  recursive occurrences back up; `rewrite_per_univ_below` /
+  `rewrite_glu_univ_below` restate the universes below the level.
   This is precisely the body of `basic_per_univ_elem_econstructor` and friends.
 - Obligations are discharged by the tactic named in the
   `#[tactic="..."]` attribute — that is what every `impl_obl_tac` and
@@ -139,6 +143,7 @@ visit every hypothesis exactly once and then terminate.
 | --- | --- | --- |
 | `mark H` / `unmark H` | 27, 30 | Wrap/unwrap `H`'s type at level 0. |
 | `mark_all` / `unmark_all` | 32, 36 | Mark every unmarked hypothesis; unfold all marks. |
+| `unmark_vars` | `LibTactics.v` | Unmark the variables (the hypotheses whose type is not a `Prop`), keeping the marks of the hypotheses. Run it before `dependent destruction`: a marked variable makes it simplify a `JMeq`, which needs uniqueness of identity proofs. |
 | `mark_with H n` / `mark_all_with n` | 38, 41 | Same, at a chosen level, so nested loops don't interfere. |
 | `unmark_all_with n` | 45 | Unmark hypotheses carrying level `n`, skipping marks at other levels. |
 | `on_all_marked_hyp tac` / `..._rev` | 50, 54, 58, 59 | Repeatedly pick a marked hypothesis, unmark it, run `tac H`. `_rev` walks the context in reverse. |
@@ -412,8 +417,8 @@ the tactics here:
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `basic_per_univ_elem_econstructor` | `PER/CoreTactics.v:54` | `simp per_univ_elem; econstructor; try rewrite <- per_univ_elem_equation_1 in *` — unfold one `Equations` step, apply a constructor, fold the recursive occurrences back. |
-| `basic_invert_per_univ_elem H` | `PER/CoreTactics.v:49` | The dual: `simp` in `H`, `dependent destruction`, fold back. |
+| `basic_per_univ_elem_econstructor` | `PER/CoreTactics.v:54` | `simp per_univ_elem; econstructor; rewrite_per_univ_below; try rewrite <- per_univ_elem_equation_1 in *` — unfold one step, apply a constructor, restate the universes below the level by `per_univ_below_spec`, fold the recursive occurrences back. |
+| `basic_invert_per_univ_elem H` | `PER/CoreTactics.v:49` | The dual: `simp` in `H`, `unmark_vars`, `dependent destruction`, `rewrite_per_univ_below`, fold back. `unmark_vars` keeps `dependent destruction` free of uniqueness of identity proofs (see `LibTactics.v`). |
 | `per_univ_elem_econstructor` | `PER/Lemmas.v:634` | Try the smart `Π` constructor `per_univ_elem_pi'` first (`repeat intro; hnf; eapply …`), else fall back to the basic one. |
 | `invert_per_univ_elem H` | `PER/Lemmas.v:675` | Try `per_univ_elem_pi_clean_inversion` — which yields the `out_rel` and the elem-relation equivalence directly, instead of the raw constructor equations — else `basic_invert_per_univ_elem`. |
 | `per_ctx_env_econstructor` | `PER/Lemmas.v:1097` | Same pattern for contexts: try `per_ctx_env_cons'`, else `econstructor`. |
@@ -554,8 +559,8 @@ machinery as the PER layer, with `<∙>` (predicate equivalence) in place of
 
 | Tactic | Location | Description |
 | --- | --- | --- |
-| `basic_glu_univ_elem_econstructor` | `CoreTactics.v:12` | `simp glu_univ_elem; econstructor;` fold back. |
-| `basic_invert_glu_univ_elem H` | `CoreTactics.v:7` | The dual. |
+| `basic_glu_univ_elem_econstructor` | `CoreTactics.v:12` | `simp glu_univ_elem; econstructor; rewrite_glu_univ_below;` fold back. |
+| `basic_invert_glu_univ_elem H` | `CoreTactics.v:7` | The dual, with `unmark_vars` before `dependent destruction`. |
 | `glu_univ_elem_econstructor` | `CoreLemmas.v:369` | Try `glu_univ_elem_core_univ'` first, else the basic constructor. |
 | `invert_glu_univ_elem H` | `CoreLemmas.v:632` | Three-way fallback: `glu_univ_elem_pi_clean_inversion2`, then `…1`, then `basic_invert_glu_univ_elem`. The clean inversions hand back `IP`/`IEl`/`OP`/`OEl` and the two predicate equivalences directly. |
 | `invert_glu_rel1` | `CoreTactics.v:17` | `progressive_invert` any `pi_glu_typ_pred` / `pi_glu_exp_pred` / `neut_glu_typ_pred` / `neut_glu_exp_pred` hypothesis. |

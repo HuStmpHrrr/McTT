@@ -43,6 +43,20 @@ Ltac mark_all_with n :=
   repeat match goal with [H: ?P |- _] =>
     try (match P with __mark__ _ _ => fail 2 end); mark_with H n
   end.
+(** Unmark the variables, keeping the marks of the hypotheses.  A marked
+    variable has a type [__mark__ _ T] that is not syntactically [T], so
+    [dependent destruction] sees the arguments of the inductive it eliminates
+    as heterogeneous, and simplifies their equations by [JMeq_eq], which needs
+    uniqueness of identity proofs. *)
+Ltac unmark_vars :=
+  repeat match goal with
+    | H : __mark__ _ ?T |- _ =>
+        lazymatch type of T with
+        | Prop => fail
+        | _ => unmark H
+        end
+    end.
+
 Ltac unmark_all_with n :=
   repeat match goal with [H: ?P |- _] =>
     match P with __mark__ ?n' _ => tryif unify n n' then unmark H else fail 1 end

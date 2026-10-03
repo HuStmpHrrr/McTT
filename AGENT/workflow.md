@@ -73,12 +73,18 @@ The **syntactic** layer is closed under the global context, and should stay that
 way; check with `Print Assumptions <lemma>.` It is why pointwise equality, not
 functional extensionality, is used for the function-valued `wk` and `sub`.
 
-From the PER model up this is no longer true and is not meant to be:
-`Print Assumptions completeness` reports `functional_extensionality_dep` (from
-the `pose proof (@relation_equivalence_pointwise env)` in `per_ctx_env_sym`) and
-`eq_rect_eq` (from `Equations`). Both predate the port — the footprint is exactly
-that of the explicit-substitution development. Treat a *new* axiom as a
-regression; treat these two as the baseline.
+The same holds from the PER model up: `completeness`, `soundness`,
+`consistency`, the canonical forms and `prog_impl_*` are closed under the
+global context, and `main_*` assume only `Parser.loc : Type`. Treat any axiom
+as a regression. The two usual sources, both removed:
+
+- `functional_extensionality_dep` comes with an `Equations … by wf` definition
+  (its unfolding equation). `per_univ_elem`/`glu_univ_elem` are structural
+  instead, through `per_univ_below`/`glu_univ_below`.
+- `eq_rect_eq` comes with `dependent destruction` when it generalizes an
+  argument heterogeneously and simplifies the `JMeq` by `simplification_heq`.
+  A marked variable (`__mark__`, e.g. inside `on_all_hyp:`) has a type that is
+  not syntactically its own, which is enough; `unmark_vars` first.
 
 ## Known non-problems
 

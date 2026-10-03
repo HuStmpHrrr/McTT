@@ -34,12 +34,8 @@ Two tiers matter: `sb_q σ (x+1)` must weaken (`(σ x)[↑]ʷ`), not substitute,
 written `σ ⨟ τ` (U+2A1F — *not* `∘`) and `φ ⊙ ψ`.
 
 The syntactic layer is axiom-free; check with `Print Assumptions` after each
-stage (`dependent induction` in `CoreInversions.v` is fine — verified). From the
-PER model on, `Print Assumptions completeness` reports
-`functional_extensionality_dep` and `eq_rect_eq`. Both are inherited, not
-introduced: the first comes from the `pose proof (@relation_equivalence_pointwise
-env)` in `per_ctx_env_sym`, which predates the port, and the second from
-`Equations`. The axiom footprint is exactly HEAD's.
+stage (`dependent induction` in `CoreInversions.v` is fine — verified). The
+semantic layers are axiom-free too: see [`workflow.md`](workflow.md).
 
 ## Order of the development
 

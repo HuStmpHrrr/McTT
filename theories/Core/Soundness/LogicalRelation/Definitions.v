@@ -1,4 +1,4 @@
-From Stdlib Require Import Relation_Definitions RelationClasses.
+From Stdlib Require Import Lia PeanoNat Relation_Definitions RelationClasses Wf_nat.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
@@ -10,6 +10,9 @@ From Mctt.Core.Soundness.Weakening Require Export Definitions.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Global Open Scope predicate_scope.
+
+(** The rewrite database of [simp glu_univ_elem]. *)
+Create Rewrite HintDb glu_univ_elem.
 
 Generalizable All Variables.
 
@@ -141,15 +144,17 @@ Transparent univ_glu_typ_pred.
 Section Gluing.
   Variable
     (i : nat)
-      (glu_univ_typ_rec : forall {j}, j < i -> domain -> glu_typ_pred).
+      (glu_univ_typ_rec : nat -> domain -> glu_typ_pred).
 
-  Definition univ_glu_exp_pred' {j} (lt_j_i : j < i) : glu_exp_pred :=
+  (** [univ_typ] is the entry [glu_univ_typ_rec j] of the family, passed
+      applied so that [glu_univ_below_spec] can restate it. *)
+  Definition univ_glu_exp_pred' j (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
     fun Γ A M m =>
       Γ ⊢ M : A /\
         Γ ⊢ A ≈ Type@j : Type@i /\
-        Γ ⊢ M ® glu_univ_typ_rec lt_j_i m.
+        Γ ⊢ M ® univ_typ m.
 
-#[global] Arguments univ_glu_exp_pred' {j} lt_j_i Γ A M m/.
+#[global] Arguments univ_glu_exp_pred' j univ_typ Γ A M m/.
 
   Inductive glu_univ_elem_core : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
   | glu_univ_elem_core_univ :
@@ -157,7 +162,7 @@ Section Gluing.
          el_rel
          (lt_j_i : j < i),
           typ_rel <∙> univ_glu_typ_pred j i ->
-          el_rel <∙> univ_glu_exp_pred' lt_j_i ->
+          el_rel <∙> univ_glu_exp_pred' j (glu_univ_typ_rec j) ->
           DG 𝕌@j ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_nat :
@@ -205,8 +210,37 @@ End Gluing.
 
 Hint Constructors glu_univ_elem_core : mctt.
 
-Equations glu_univ_elem (i : nat) : glu_typ_pred -> glu_exp_pred -> domain -> Prop by wf i :=
-| i => glu_univ_elem_core i (fun j lt_j_i a Γ A => exists P El, DG a ∈ glu_univ_elem j ↘ P ↘ El /\ Γ ⊢ A ® P).
+(** The universes below level [i], indexed by their level, as for
+    [per_univ_below]: the recursion is structural, so [glu_univ_elem] unfolds
+    by computation. *)
+Fixpoint glu_univ_below (i : nat) : nat -> domain -> glu_typ_pred :=
+  match i with
+  | 0 => fun _ _ _ _ => False
+  | S i' => fun j =>
+      if Nat.eqb j i'
+      then fun a Γ A => exists P El, DG a ∈ glu_univ_elem_core i' (glu_univ_below i') ↘ P ↘ El /\ Γ ⊢ A ® P
+      else glu_univ_below i' j
+  end.
+
+Definition glu_univ_elem (i : nat) : glu_typ_pred -> glu_exp_pred -> domain -> Prop :=
+  glu_univ_elem_core i (glu_univ_below i).
+#[global] Arguments glu_univ_elem : simpl never.
+
+Lemma glu_univ_elem_equation_1 : forall i,
+    glu_univ_elem i = glu_univ_elem_core i (glu_univ_below i).
+Proof. reflexivity. Qed.
+
+Hint Rewrite glu_univ_elem_equation_1 : glu_univ_elem.
+
+Lemma glu_univ_below_spec : forall i j,
+    j < i ->
+    glu_univ_below i j = fun a Γ A => exists P El, DG a ∈ glu_univ_elem j ↘ P ↘ El /\ Γ ⊢ A ® P.
+Proof.
+  induction i as [| i IHi]; intros j Hlt; [lia |].
+  simpl.
+  destruct (Nat.eqb_spec j i) as [-> | Hneq]; [reflexivity |].
+  apply IHi; lia.
+Qed.
 
 Definition glu_univ_typ (i : nat) (a : domain) : glu_typ_pred :=
   fun Γ A => exists P El, DG a ∈ glu_univ_elem i ↘ P ↘ El /\ Γ ⊢ A ® P.
@@ -277,31 +311,20 @@ Section GluingInduction.
           motive i P El ⇑ a b)
   .
 
-  #[local]
-  Ltac def_simp := simp glu_univ_elem in *; mauto 3.
-
-  #[derive(equations=no, eliminator=no), tactic="def_simp"]
-  Equations glu_univ_elem_ind i P El a
-    (H : glu_univ_elem i P El a) : motive i P El a by wf i :=
-  | i, P, El, a, H =>
-      glu_univ_elem_core_ind
-        i
-        (fun j lt_j_i a Γ A => glu_univ_typ j a Γ A)
-        (motive i)
-        (fun j P' El' lt_j_i HP' HEl' =>
-           case_univ i j P' El' lt_j_i
-             (fun P'' El'' A H => glu_univ_elem_ind j P'' El'' A H)
-             HP'
-             HEl')
-        (case_nat i)
-        (case_True i)
-        (case_False i)
-        _ (* (case_pi i) *)
-        (case_neut i)
-        P El a
-        _.
-  Next Obligation.
-    eapply (case_pi i); def_simp; eauto.
+  Lemma glu_univ_elem_ind i P El a
+    (H : glu_univ_elem i P El a) : motive i P El a.
+  Proof.
+    revert P El a H.
+    induction i as [i IHi] using lt_wf_ind.
+    intros P El a H.
+    induction H.
+    - rewrite glu_univ_below_spec in * by assumption.
+      eapply case_univ; eauto.
+    - eapply case_nat; eassumption.
+    - eapply case_True; eassumption.
+    - eapply case_False; eassumption.
+    - eapply case_pi; eassumption.
+    - eapply case_neut; eassumption.
   Qed.
 End GluingInduction.
 
@@ -453,6 +476,9 @@ Notation "⊩ Γ" := (glu_rel_ctx Γ) (at level 70, Γ at level 69).
 Notation "Γ ⊩ M : A" := (glu_rel_exp Γ M A) (at level 70, M at level 69, A at level 69).
 
 End Fixed_GCtx.
+
+#[export]
+Hint Rewrite @glu_univ_elem_equation_1 : glu_univ_elem.
 
 Notation "'glu_typ_pred_args'" := (Tcons ctx (Tcons typ Tnil)).
 Notation "'glu_typ_pred'" := (predicate glu_typ_pred_args).

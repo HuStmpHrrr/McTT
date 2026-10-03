@@ -1,10 +1,13 @@
-From Stdlib Require Import Lia PeanoNat Relation_Definitions RelationClasses.
+From Stdlib Require Import Lia PeanoNat Relation_Definitions RelationClasses Wf_nat.
 From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export Fixed.
 Import Domain_Notations Fixed_Notations.
+
+(** The rewrite database of [simp per_univ_elem]. *)
+Create Rewrite HintDb per_univ_elem.
 
 Reserved Notation "'Sub' a <: b 'at' i" (at level 70, a at level 69, b at level 69, i constr).
 Reserved Notation "'SubE' Γ <: Δ" (at level 70, Γ at level 69, Δ at level 69).
@@ -84,14 +87,14 @@ Hint Constructors per_ne : mctt.
 Section Per_univ_elem_core_def.
   Variable
     (i : nat)
-      (per_univ_rec : forall {j}, j < i -> relation domain).
+      (per_univ_rec : nat -> relation domain).
 
   Inductive per_univ_elem_core : relation domain -> domain -> domain -> Prop :=
   | per_univ_elem_core_univ :
     `{ forall (elem_rel : relation domain)
           (lt_j_i : j < i),
           j = j' ->
-          (elem_rel <~> per_univ_rec lt_j_i) ->
+          (elem_rel <~> per_univ_rec j) ->
           DF 𝕌@j ≈ 𝕌@j' ∈ per_univ_elem_core ↘ elem_rel }
   | per_univ_elem_core_nat :
     forall (elem_rel : relation domain),
@@ -128,7 +131,7 @@ Section Per_univ_elem_core_def.
     (motive : relation domain -> domain -> domain -> Prop)
       (case_U : forall {j j' elem_rel} (lt_j_i : j < i),
           j = j' ->
-          (elem_rel <~> per_univ_rec lt_j_i) ->
+          (elem_rel <~> per_univ_rec j) ->
           motive elem_rel 𝕌@j 𝕌@j')
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
@@ -174,8 +177,40 @@ End Per_univ_elem_core_def.
 
 Hint Constructors per_univ_elem_core : mctt.
 
-Equations per_univ_elem (i : nat) : relation domain -> domain -> domain -> Prop by wf i :=
-| i => per_univ_elem_core i (fun j lt_j_i a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R').
+(** The universes below level [i], indexed by their level: the entry at
+    [j < i] is the universe [𝕌@j], and the entries at [j >= i] are empty.  The
+    recursion is structural on [i], so [per_univ_elem] unfolds by computation,
+    and [per_univ_below_spec] states the entries without [per_univ_below].
+    (A well-founded definition of [per_univ_elem] would need functional
+    extensionality for its unfolding equation.) *)
+Fixpoint per_univ_below (i : nat) : nat -> relation domain :=
+  match i with
+  | 0 => fun _ _ _ => False
+  | S i' => fun j =>
+      if Nat.eqb j i'
+      then fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core i' (per_univ_below i') ↘ R'
+      else per_univ_below i' j
+  end.
+
+Definition per_univ_elem (i : nat) : relation domain -> domain -> domain -> Prop :=
+  per_univ_elem_core i (per_univ_below i).
+#[global] Arguments per_univ_elem : simpl never.
+
+Lemma per_univ_elem_equation_1 : forall i,
+    per_univ_elem i = per_univ_elem_core i (per_univ_below i).
+Proof. reflexivity. Qed.
+
+Hint Rewrite per_univ_elem_equation_1 : per_univ_elem.
+
+Lemma per_univ_below_spec : forall i j,
+    j < i ->
+    per_univ_below i j = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R'.
+Proof.
+  induction i as [| i IHi]; intros j Hlt; [lia |].
+  simpl.
+  destruct (Nat.eqb_spec j i) as [-> | Hneq]; [reflexivity |].
+  apply IHi; lia.
+Qed.
 
 Definition per_univ (i : nat) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
 #[global] Arguments per_univ _ _ _ /.
@@ -189,7 +224,9 @@ Lemma per_univ_elem_core_univ' : forall j i elem_rel,
 Proof.
   intros.
   simp per_univ_elem.
-  econstructor; mauto 3.
+  econstructor; [eassumption | reflexivity |].
+  rewrite per_univ_below_spec by assumption.
+  assumption.
 Qed.
 
 Hint Resolve per_univ_elem_core_univ' : mctt.
@@ -229,25 +266,20 @@ Section Per_univ_elem_ind_def.
           (elem_rel <~> per_ne) ->
           motive i elem_rel ⇑ a b ⇑ a' b').
 
-  #[local]
-  Ltac def_simp := simp per_univ_elem in *; mauto 3.
-
-  #[derive(equations=no, eliminator=no), tactic="def_simp"]
-  Equations per_univ_elem_ind' (i : nat) (R : relation domain) (a b : domain)
-    (H : DF a ≈ b ∈ per_univ_elem_core i (fun j lt_j_i a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R') ↘ R) : DF a ≈ b ∈ motive i ↘ R by wf i :=
-  | i, R, a, b, H =>
-      per_univ_elem_core_strong_ind i _ (motive i)
-        (fun _ _ _ j_lt_i eq HE => case_U i j_lt_i eq HE (fun A B R' H' => per_univ_elem_ind' _ R' A B _))
-        (fun _ => case_N i)
-        (fun _ => case_True i)
-        (fun _ => case_False i)
-        (fun _ _ _ _ _ _ _ out_rel _ _ IHA per _ => case_Pi i out_rel _ IHA per _)
-        (fun _ _ _ _ _ => case_ne i)
-        R a b H.
-
-  #[derive(equations=no, eliminator=no), tactic="def_simp"]
-  Equations per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R :=
-  | i, a, b, R, H := per_univ_elem_ind' i a b R _.
+  Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.
+  Proof.
+    revert a b R H.
+    induction i as [i IHi] using lt_wf_ind.
+    intros R a b H.
+    refine (per_univ_elem_core_strong_ind i _ (motive i) _
+              (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
+              _ (fun _ _ _ _ _ => case_ne i) R a b H).
+    - intros j j' elem_rel lt_j_i Heq HE.
+      rewrite per_univ_below_spec in HE by assumption.
+      eapply case_U; eauto.
+    - intros * Ha IHa Hper HT HE.
+      eapply case_Pi; eassumption.
+  Qed.
 End Per_univ_elem_ind_def.
 
 
@@ -534,6 +566,8 @@ Hint Constructors per_univ_elem_core : mctt.
 Hint Transparent per_univ : mctt.
 #[export]
 Hint Unfold per_univ : mctt.
+#[export]
+Hint Rewrite @per_univ_elem_equation_1 : per_univ_elem.
 #[export]
 Hint Resolve per_univ_elem_core_univ' : mctt.
 Notation "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.

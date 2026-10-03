@@ -240,10 +240,15 @@ non-mutual inductions.
   subtyping and type checking, extraction to OCaml, a Menhir parser and
   elaborator. Neither document mentions them; they are 1 746 code lines, and the
   port barely touched them (493 → 490, 1 055 → 1 030, 226 → 226).
-- **Two axioms**, both inherited and both from the standard library:
-  `functional_extensionality_dep` and `eq_rect_eq`. The substitution algebra
-  itself is stated with pointwise equality (`wk_eq`, `sb_eq`) precisely to avoid
-  needing the first.
+- **No axioms.** `completeness`, `soundness`, `consistency`, the canonical
+  forms and `prog_impl_*` are closed under the global context; `main_*` assume
+  only the parser's `Parser.loc : Type`. The substitution algebra is stated
+  with pointwise equality (`wk_eq`, `sb_eq`), so it needs no functional
+  extensionality. The universe hierarchies `per_univ_elem` and
+  `glu_univ_elem` are structurally recursive on the level, through the
+  families `per_univ_below` and `glu_univ_below`, so they unfold by
+  computation; a well-founded definition would need functional
+  extensionality for its unfolding equation.
 
 ---
 
@@ -463,7 +468,7 @@ Together those absorb the whole of the new 550-line algebra and more.
 
 **Certification.** All 76 files compile under Rocq 9.2.0 (`make -C theories`),
 `dune runtest` passes, `dune exec mctt examples/Nary.mctt` prints `6 : Nat`, and
-the axiom footprint is the two inherited standard-library axioms named in §4. So
+the development assumes no axioms (§4). So
 the certification half of the third question is discharged as well.
 
 ---
