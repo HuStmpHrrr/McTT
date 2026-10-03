@@ -88,6 +88,7 @@
 ./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/GlobalPresup.v
+./Core/Syntactic/System/GlobalModules.v
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/MemberLemmas.v
 ./Core/Syntactic/System/Scoping.v
