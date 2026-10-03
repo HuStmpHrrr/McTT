@@ -196,7 +196,7 @@ Lemma rel_me_mem : gmod_ok -> forall Γ H H' y A,
     Γ ⊨ᵐ me_mem H y ≈ me_mem H' y.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   destruct (S1 _ _ _ Hm ltac:(discriminate)) as [(n & b & Hr) Hv].
   destruct (rep_valid _ _ _ _ Hr) as [i HA].
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
@@ -212,7 +212,7 @@ Proof.
   assert (Sel : forall hk, per_dmod h2 hk -> exists v vk, eval_selm gc_deps gc_stack h2 y v /\
                   eval_selm gc_deps gc_stack hk y vk /\ per_dmod v vk).
   { intros hk Hk.
-    destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma _ _ _ Hk HRa') as (v & vk & Hs & Hsk & Hvv).
+    destruct (mtyped_rel HGc _ _ _ _ Hma _ _ _ Hk HRa') as (v & vk & Hs & Hsk & Hvv).
     inversion Hs; subst; inversion Hsk; subst.
     repeat match goal with Hn : eval_selmc _ _ _ nil _ |- _ => inversion Hn; subst; clear Hn end.
     eauto. }
@@ -230,7 +230,7 @@ Lemma rel_me_app : gmod_ok -> forall Γ H H' N N' A0 B C i,
     Γ ⊨ᵐ me_app H N ≈ me_app H' N'.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm0 HA0 HN.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
@@ -255,7 +255,7 @@ Proof.
   pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ T23 Hin) as ER.
   assert (Ap : forall hk nk, per_dmod h2 hk -> Rel n2 nk ->
              exists w wk, eval_appm gc_deps gc_stack h2 n2 w /\ eval_appm gc_deps gc_stack hk nk wk /\ per_dmod w wk)
-    by (intros hk nk Hk Hnk; exact (appm_rel_typed HGp HGc HGa HGap _ _ Hnd _ _ _ _ _ Hm' _ _ Hin HB _ Hk _ _ (proj1 (ER _ _) Hnk))).
+    by (intros hk nk Hk Hnk; exact (appm_rel_typed HGc HGap _ _ Hnd _ _ _ _ _ Hm' _ _ Hin HB _ Hk _ _ (proj1 (ER _ _) Hnk))).
   destruct (Ap _ _ D1 ltac:(symmetry; exact N12)) as (w & w1 & A2 & A1 & W1).
   destruct (Ap _ _ D3 N23) as (w' & w3 & A2' & A3 & W3).
   destruct (Ap _ _ D4 ltac:(etransitivity; [ exact N23 | exact N34 ])) as (w'' & w4 & A2'' & A4 & W4).
@@ -276,7 +276,7 @@ Lemma rel_exp_mem_gen : gmod_ok -> forall Γ H H' x A i,
     Γ ⊨ A : Type@i -> Γ ⊨ a_mem H x ≈ a_mem H' x : A.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm HA.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   pose proof (rel_exp_of_typ_inversion HA) as [RA [HRA HAgen]].
   exists R, HR, i; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
@@ -294,7 +294,7 @@ Proof.
   assert (Sel : forall hk, per_dmod h2 hk -> exists v vk, eval_sel gc_deps gc_stack h2 x v /\
                   eval_sel gc_deps gc_stack hk x vk /\ Rel v vk).
   { intros hk Hk.
-    destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma _ _ _ Hk Haa) as (v & vk & Hs & Hsk & Hvv).
+    destruct (mtyped_rel HGc _ _ _ _ Hma _ _ _ Hk Haa) as (v & vk & Hs & Hsk & Hvv).
     exists v, vk; split; [ exact (selc_one_inv _ _ _ Hs) | split; [ exact (selc_one_inv _ _ _ Hsk) | exact Hvv ] ]. }
   destruct (Sel _ D1) as (v & v1 & S2 & S1' & V1).
   destruct (Sel _ D3) as (v' & v3 & S2' & S3 & V3).
@@ -510,16 +510,16 @@ Qed.
 Lemma sem_unf_var : gmod_ok -> forall Γ x U, Γ ∋ #x ⇒ₘ U -> ⊨ Γ -> ctx_mt Γ -> sem_unf Γ (me_var x).
 Proof.
   intros Hok * Hl HC Hok' ch A M Hm HM R ρ HR Hρ h Hh * Ha HE Hd Hdd.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   inversion Hm; subst; inversion Hh; subst.
   match goal with Hl' : _ ∋ #x ⇒ₘ ?U' |- _ => pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hl') as <- end.
   cbn in HM; rewrite (ctx_find_mod_complete _ _ _ Hl) in HM.
   pose proof (slot_closure_tie _ _ _ Hl HC _ _ HR Hρ) as Ht.
-  destruct (proj1 (sem_mt_var HGp HGc HGa Hc _ _ _ Hl HC Hok') _ _ _ Hm ltac:(destruct ch; [ inversion Hd | discriminate ]))
+  destruct (proj1 (sem_mt_var HGc Hc _ _ _ Hl HC Hok') _ _ _ Hm ltac:(destruct ch; [ inversion Hd | discriminate ]))
     as [_ Hv].
   destruct (Hv _ _ HR Hρ _ ltac:(constructor)) as (a' & Ha' & Hma).
   pose proof (functional_eval_exp _ _ _ _ Ha Ha') as <-.
-  destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma _ _ _ Ht HE) as (v & v' & Hv1 & Hv2 & Hvv).
+  destruct (mtyped_rel HGc _ _ _ _ Hma _ _ _ Ht HE) as (v & v' & Hv1 & Hv2 & Hvv).
   pose proof (functional_eval_selc _ _ _ _ Hd Hv1) as <-.
   assert (HPE : PER E) by (eapply per_elem_PER; exact HE).
   assert (Hv'v' : E v' v') by (etransitivity; [ symmetry; exact Hvv | exact Hvv ]).
@@ -542,7 +542,7 @@ Lemma sem_unf_app : gmod_ok -> forall Γ H A0 B C N i,
     Γ ⊨ N : B -> sem_unf Γ (me_app H N).
 Proof.
   intros Hok * HS HU HH Hm0 HA0 HB HN ch A' M' Hm HM R ρ HR Hρ h' Hh' a i' E d Ha HE Hd Hdd.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   pose proof HS as [S1 S2].
   inversion Hm as [| | | | | | ? ? ? ? ? A1 B1 C1 Hm1 Hp ]; subst.
   cbn in HM; destruct (member_unfold_ch gc_deps gc_stack Γ H ch) as [M0 |] eqn:HM0; cbn in HM; [| discriminate ].
@@ -567,7 +567,7 @@ Proof.
   destruct (rel_modexp_simple_at HR HH _ _ Hρ) as (h0 & h0' & Hh0 & Hh0' & Hhh).
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh0) as <-.
   pose proof (functional_eval_modexp _ _ _ _ Hh Hh0') as <-.
-  destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma1 _ _ _ Hhh HE0) as (v & v' & Hv & Hv' & Hvv).
+  destruct (mtyped_rel HGc _ _ _ _ Hma1 _ _ _ Hhh HE0) as (v & v' & Hv & Hv' & Hvv).
   pose proof (functional_eval_selc _ _ _ _ Hf Hv) as <-.
   pose proof (functional_eval_selc _ _ _ _ Hf Hv') as <-.
   destruct (HU _ _ _ Hm1 HM0 _ _ HR Hρ _ Hh _ _ _ _ Ha1 HE0 Hf Hvv) as (m0 & Hm0' & Hm0f).
@@ -599,7 +599,7 @@ Lemma rel_exp_mem_delta : gmod_ok -> forall Γ H x A i M,
     Γ ⊨ a_mem H x ≈ M : A.
 Proof.
   intros Hok * HH HS HU Hm HA HM HMv.
-  pose proof Hok as (HGp & HGc & HGa & HGap & Hc).
+  pose proof Hok as (HGc & HGap & Hc).
   pose proof (rel_exp_mem_gen Hok _ _ _ _ _ _ HH HS Hm HA) as HV.
   pose proof HH as [R [HR _]].
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
@@ -612,7 +612,7 @@ Proof.
   destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HRaa (proj1 (per_univ_elem_sym _ _ _ _ HRaa))) as (E & HE & _).
   destruct (proj2 (proj1 HS _ _ _ Hm ltac:(discriminate)) _ _ HR Hρ _ Hh) as (a1 & Ha1 & Hma).
   pose proof (functional_eval_exp _ _ _ _ Ha Ha1) as <-.
-  destruct (mtyped_rel HGp HGc HGa _ _ _ _ Hma _ _ _ Hhh HE) as (v & v' & Hv & Hv' & Hvv).
+  destruct (mtyped_rel HGc _ _ _ _ Hma _ _ _ Hhh HE) as (v & v' & Hv & Hv' & Hvv).
   pose proof (functional_eval_selc _ _ _ _ Hv Hv') as <-.
   destruct (HU _ _ _ Hm HM _ _ HR Hρ _ Hh _ _ _ _ Ha HE Hv Hvv) as (m & Hm' & Hmv).
   destruct (rel_exp_under_ctx_simple_at HR HMv _ _ Hρρ') as (m1 & m2 & Hm1 & Hm2 & Hmm).

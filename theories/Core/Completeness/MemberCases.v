@@ -26,6 +26,27 @@ Proof. discriminate. Qed.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** ** Valid Global Modules
+
+    The types of the parameters of a global module are related at related
+    arguments, and a global alias's unit has related closures at related
+    arguments.  Global module values carry this evidence for their own
+    module. *)
+
+Definition gparam_at (p : path) : Prop :=
+  forall T args args' A,
+    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+    per_gargs (rev T) nil nil args args' ->
+    nth_error (rev T) (List.length args) = Some (ce_ass A) ->
+    exists i R, PER.Definitions.rel_typ i A (env_args nil args) A (env_args nil args') R.
+
+Definition galias_at (p : path) (y : String.string) : Prop :=
+  forall T U ch args args',
+    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
+    per_gargs (rev T) nil nil args args' ->
+    per_dmod (dm_local nil U args) (dm_local nil U args').
+
 (** ** The Next Argument of a Module Value *)
 
 Inductive nextparam : dmod -> domain -> Prop :=
@@ -39,6 +60,7 @@ Inductive nextparam : dmod -> domain -> Prop :=
     nextparam h a ->
     nextparam (dm_local ρ (gu_mk Δ (md_alias E)) args) a
 | np_global : forall p T args A a,
+    gparam_at p ->
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
     nth_error (rev T) (List.length args) = Some (ce_ass A) ->
     ⟦ A ⟧ env_args nil args ↘ a ->
@@ -182,10 +204,12 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     per_univ_elem i R a a0 ->
     mtyped (dm_global p args) (x :: nil) mk_term a
 | mty_gsub : forall p args y T ch k a,
+    gparam_at (path_app p (y :: nil)) ->
     gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_body T) ->
     mtyped (dm_global (path_app p (y :: nil)) args) ch k a ->
     mtyped (dm_global p args) (y :: ch) k a
 | mty_galias : forall p args y U ch ch' k a,
+    galias_at p y ->
     gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
     (k = mk_term -> ch' <> nil) ->
     mtyped (dm_local nil U args) (ch ++ ch') k a ->
@@ -195,14 +219,6 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     ch0 <> nil -> (k = mk_term -> ch <> nil) ->
     mtyped (dm_local ρ U args) (ch0 ++ ch) k a -> mtyped (dm_member (dm_local ρ U args) ch0) ch k a.
 
-(** The types of the parameters of global modules are related at related
-    arguments: the global telescopes are valid. *)
-Definition gparam_ok : Prop :=
-  forall p T args args' A,
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    per_gargs (rev T) nil nil args args' ->
-    nth_error (rev T) (List.length args) = Some (ce_ass A) ->
-    exists i R, PER.Definitions.rel_typ i A (env_args nil args) A (env_args nil args') R.
 
 Lemma per_gargs_lengths : forall ts ρ ρ' args args',
     per_gargs ts ρ ρ' args args' -> List.length args = List.length args' /\ List.length args <= List.length ts.
@@ -222,12 +238,12 @@ Qed.
 
 (** ** Applying Related Module Values *)
 
-Lemma appm_rel : gparam_ok -> forall w w' a, per_dmod w w' -> nextparam w a ->
+Lemma appm_rel : forall w w' a, per_dmod w w' -> nextparam w a ->
     forall i E b c c' r, per_univ_elem i E a b -> E c c' -> eval_appm gc_deps gc_stack w c r ->
     exists r', eval_appm gc_deps gc_stack w' c' r' /\ per_dmod r r'.
 Proof.
-  intros HGp * Hw Hnp; revert w' Hw;
-    induction Hnp as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hm Hn Ha];
+  intros * Hw Hnp; revert w' Hw;
+    induction Hnp as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha];
     intros w' Hw * HR Hcc Hr.
   - inversion Hw; subst.
     match goal with Hlt : per_ltele _ _ _ _ _ _ _ _ |- _ => rename Hlt into Hl end.
@@ -265,7 +281,7 @@ Proof.
     match goal with Hm' : gc_module _ _ p = Some (mr_body ?T') |- _ =>
       rewrite Hm in Hm'; injection Hm' as <- end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
-    destruct (HGp _ _ _ _ _ Hm Hg Hn) as (i0 & R0 & [a1 a2 Ha1 Ha2 HR0]).
+    destruct (Hgp _ _ _ _ Hm Hg Hn) as (i0 & R0 & [a1 a2 Ha1 Ha2 HR0]).
     pose proof (functional_eval_exp _ _ _ _ Ha Ha1) as <-.
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR HR0) as EE.
     eexists; split; [ constructor |].
@@ -448,16 +464,10 @@ Definition gchild_ok : Prop :=
     gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_body T') ->
     exists Δ, T' = Δ ++ T.
 
-Definition galias_ok : Prop :=
-  forall p T y U ch args args',
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
-    per_gargs (rev T) nil nil args args' ->
-    per_dmod (dm_local nil U args) (dm_local nil U args').
 
 Lemma appm_ex : forall w a, nextparam w a -> forall c, exists w1, eval_appm gc_deps gc_stack w c w1.
 Proof.
-  induction 1 as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hm Hn Ha]; intros c.
+  induction 1 as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha]; intros c.
   - assert (Hlt : List.length args < List.length (gu_params U))
       by (assert (Hn' : nth_error (rev (gu_params U)) (List.length args) <> None) by congruence;
           apply nth_error_Some in Hn'; rewrite length_rev in Hn'; exact Hn').
@@ -482,18 +492,18 @@ Definition mrel (k : mkind) (E : relation domain) (w : dmod) (ch : list String.s
   end.
 
 (** ** Related Module Values Have Related Members *)
-Lemma mtyped_rel : gparam_ok -> gchild_ok -> galias_ok ->
+Lemma mtyped_rel : gchild_ok ->
     forall w ch k a, mtyped w ch k a -> forall w' i E, per_dmod w w' -> per_univ_elem i E a a -> mrel k E w ch w'.
 Proof.
-  intros HGp HGc HGa.
+  intros HGc.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T ch k a Hm Hty IH
-                 | p args y U ch ch' k a Hm Hk Hty IH
+                 | p args y T ch k a Hgp Hm Hty IH
+                 | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros w' i' E' Hw HE';
     assert (HPd : PER per_dmod) by typeclasses eauto.
@@ -516,7 +526,7 @@ Proof.
         assert (Hww : per_dmod (dm_local ρ U args) (dm_local ρ U args))
           by (etransitivity; [ exact Hw | symmetry; exact Hw ]).
         assert (Hc0' : in_rel (⇑! a 0) (⇑! a 0)) by (apply Ein, Hc0).
-        destruct (appm_rel HGp _ _ _ Hww Hnp _ _ _ _ _ _ Ha' Hc0' Hw1) as (w1' & Hw1' & Hw11).
+        destruct (appm_rel _ _ _ Hww Hnp _ _ _ _ _ _ Ha' Hc0' Hw1) as (w1' & Hw1' & Hw11).
         assert (Hb00 : per_univ_elem i' (out' _ _ Hc0) b0 b0)
           by (etransitivity; [ exact Hbb0 | symmetry; exact Hbb0 ]).
         destruct (IH _ _ _ Hc0' Hw1 Hb0 _ _ _ Hw11 Hb00) as (v1 & v1' & Hv1 & _ & _).
@@ -528,7 +538,7 @@ Proof.
       assert (Hcc1 : in_rel c c') by (apply Ein, Hcc).
       assert (Hcc2 : in_rel c c) by (apply Ein, Hcc0).
       destruct (appm_ex _ _ Hnp c) as [w1 Hw1].
-      destruct (appm_rel HGp _ _ _ Hw Hnp _ _ _ _ _ _ Ha' Hcc1 Hw1) as (w1' & Hw1' & Hw11).
+      destruct (appm_rel _ _ _ Hw Hnp _ _ _ _ _ _ Ha' Hcc1 Hw1) as (w1' & Hw1' & Hw11).
       destruct (Hout' _ _ Hcc) as [b b' Hb Hb' Hbb'].
       destruct (Hout' _ _ Hcc0) as [b1 b1' Hb1 Hb1' Hbb1].
       functional_eval_rewrite_clear.
@@ -638,7 +648,7 @@ Proof.
     inversion Hw; subst.
     match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
-    pose proof (HGa _ _ _ _ _ _ _ Hmp Hm Hg) as Hw2.
+    pose proof (Hga _ _ _ _ _ Hmp Hm Hg) as Hw2.
     pose proof (IH _ _ _ Hw2 HE') as Hr.
     destruct k; cbn in Hr |- *; destruct Hr as (v & v' & Hv & Hv' & Hvv); exists v, v'.
     + specialize (Hk eq_refl).
@@ -679,8 +689,8 @@ Proof.
                  | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T chain k a Hm Hty IH
-                 | p args y U ch0 ch' k a Hm Hk Hty IH
+                 | p args y T chain k a Hgp Hm Hty IH
+                 | p args y U ch0 ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros pre ch Heq Hch w1 Hw1.
   - destruct pre as [| y pre]; cbn in Heq; subst.
@@ -766,8 +776,8 @@ Proof.
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T ch k a Hm Hty IH
-                 | p args y U ch ch' k a Hm Hk Hty IH
+                 | p args y T ch k a Hgp Hm Hty IH
+                 | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros a1' ρB' B' Heq Hun i' Ein c w1 b' Hin Hc Hw1 Hb'.
   - injection Heq as <- <- <-.
@@ -820,9 +830,9 @@ Proof.
     match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
     destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
     inversion Hw1; subst.
-    eapply mty_gsub; [ exact Hm |].
+    eapply mty_gsub; [ exact Hgp | exact Hm |].
     eapply IH; [ reflexivity | | exact Hin | exact Hc | constructor | exact Hb' ].
-    left; eexists; econstructor; [ exact Hm | rewrite rev_app_distr, nth_error_app1; [ eassumption |] | eassumption ].
+    left; eexists; econstructor; [ exact Hgp | exact Hm | rewrite rev_app_distr, nth_error_app1; [ eassumption |] | eassumption ].
     apply nth_error_Some; match goal with Hn' : nth_error (rev _) _ = Some _ |- _ => rewrite Hn' end; discriminate.
   - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
     inversion Hn; subst.
@@ -839,7 +849,7 @@ Proof.
     destruct U as [ΔU D]; cbn [gu_params] in HlU, HnU.
     assert (HwU : eval_appm gc_deps gc_stack (dm_local nil (gu_mk ΔU D) args) c (dm_local nil (gu_mk ΔU D) (args ++ c :: nil)))
       by (destruct D; [ apply eval_appm_body | apply eval_appm_alias_unsat ]; exact HlU).
-    eapply mty_galias; [ exact Hm | exact Hk |].
+    eapply mty_galias; [ exact Hga | exact Hm | exact Hk |].
     eapply IH; [ reflexivity | left; eexists; econstructor; eassumption | exact Hin | exact Hc | exact HwU | exact Hb' ].
   - inversion Hw1; subst.
     match goal with H1 : eval_appm _ _ (dm_local ρ U args) c ?h1, H4 : eval_selmc _ _ ?h1 ch0 w1 |- _ =>

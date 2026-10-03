@@ -1,20 +1,23 @@
 (** * The Global Rules: Validity along an Embedding
 
     A judgment of the global context [Θ1 ⍮ Ξ1] is valid at every [Θ2 ⍮ Ξ2] it
-    embeds into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2]
-    ([sem_emb]).  Entries are closed and paths absolute, so an embedding moves
-    nothing: the fundamental theorem holds in this form for every rule
-    ([kripke_fundamental]), each case being the fixed-context case lemma at the
-    target.  At the identity it is the fixed-context theorem. *)
+    embeds into, provided what resolves at [Θ1 ⍮ Ξ1] is valid at [Θ2 ⍮ Ξ2] and
+    the modules of [Θ2 ⍮ Ξ2] are semantically valid ([sem_emb]).  Entries are
+    closed and paths absolute, so an embedding moves nothing: the fundamental
+    theorem holds in this form for every rule ([kripke_fundamental]), each case
+    being the fixed-context case lemma at the target.  At the identity it is
+    the fixed-context theorem. *)
 
 From Stdlib Require Import Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
+From Mctt.Core.Syntactic.System Require Import MemberLemmas.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases LetCases NatCases SubstitutionCases SubtypingCases
-  TrueFalseCases UniverseCases VariableCases LogicalRelation.
+  TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
+  MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -31,63 +34,61 @@ Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 r = Some (ge_def true pv A (Some M)) ->
       @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
       @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A (a_glob r) M
+  ; sme_mods : @gsem_ok (gc_mk Θ2 Ξ2)
   }.
 
 (** ** 2. The fundamental theorem along an embedding *)
 
 Definition kctx Θ1 Ξ1 Γ : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ.
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
 
 Definition kexp_eq Θ1 Ξ1 Γ A M M' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 
 Definition ksubtyp Θ1 Ξ1 Γ A A' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
+
+Definition kext Θ1 Ξ1 Γ Ψ Ψ' : Prop :=
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+    @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ' /\
+    @ctx_mt (gc_mk Θ2 Ξ2) (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) (Ψ' ++ Γ) /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+
+Definition kunit Θ1 Ξ1 Γ U U' : Prop :=
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+    @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U' /\
+    @unit_mt (gc_mk Θ2 Ξ2) Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Γ U' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+
+Definition kmod Θ1 Ξ1 Γ H H' : Prop :=
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+    @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H' /\
+    @sem_mt (gc_mk Θ2 Ξ2) Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Γ H' /\
+    @sem_unf (gc_mk Θ2 Ξ2) Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Γ H' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+
+Ltac kcase :=
+  repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _, He : sem_emb _ _ _ _ |- _ =>
+    specialize (IH _ _ He) end;
+  destruct_conjs.
 
 Theorem kripke_fundamental :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> kctx Θ Ξ Γ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> kexp_eq Θ Ξ Γ A M M) /\
   (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> kexp_eq Θ Ξ Γ A M M') /\
-  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ksubtyp Θ Ξ Γ A A').
+  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> ksubtyp Θ Ξ Γ A A') /\
+  (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> kext Θ Ξ Γ Ψ Ψ') /\
+  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> kunit Θ Ξ Γ U U') /\
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> kmod Θ Ξ Γ H H').
 Proof.
-  apply syntactic_wf_mut_ind; unfold kctx, kexp_eq, ksubtyp; intros;
-    repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _ |- _ =>
-      specialize (IH _ _ ltac:(eassumption)) end;
-    destruct_conjs.
-  all: try solve [ constructor | eapply rel_ctx_extend'; eassumption
-    | eapply rel_ctx_extend_def'; eassumption ].
-  all: try (split; [ assumption |]).
-  all: try solve [ apply valid_exp_typ; assumption | apply valid_exp_nat; assumption
-    | apply valid_exp_zero; assumption
-    | apply rel_exp_succ_cong; assumption
-    | eapply rel_exp_natrec_cong; eassumption
-    | apply valid_exp_True; assumption | apply valid_exp_False; assumption
-    | apply valid_exp_true; assumption
-    | eapply rel_exp_exfalso_cong; eassumption
-    | apply rel_exp_true_eta; assumption
-    | eapply rel_exp_pi_cong; eassumption
-    | eapply rel_exp_fn_cong; eassumption
-    | eapply rel_exp_app_cong; eassumption
-    | eapply valid_exp_let; eassumption
-    | eapply rel_exp_let_cong; eassumption
-    | eapply rel_exp_let_zeta; eassumption
-    | eapply rel_exp_pi_beta; eassumption
-    | eapply rel_exp_nat_beta_zero; eassumption
-    | eapply rel_exp_nat_beta_succ; eassumption
-    | eapply rel_exp_eq_subtyp; eassumption
-    | apply rel_exp_under_ctx_sym; assumption
-    | eapply rel_exp_under_ctx_trans; eassumption
-    | eapply subtyp_refl; eassumption
-    | eapply subtyp_trans; eassumption
-    | eapply subtyp_pi; eassumption
-    | apply subtyp_univ; [assumption | lia] ].
-  all: try solve [ eapply valid_exp_var; eassumption | eapply rel_exp_var_delta; eassumption ].
-  all: try solve [ eapply sme_unfold; eassumption ].
-  all: try solve [ eapply sme_glob; eassumption ].
-  eapply rel_exp_fn_eta; eassumption.
-Qed.
+  apply syntactic_wf_mut_ind; unfold kctx, kexp_eq, ksubtyp, kext, kunit, kmod; intros;
+    pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hsub;
+    pose proof (sme_mods _ _ _ _ ltac:(eassumption)) as Hgs;
+    kcase.
+  all: idtac.
+Admitted.
 
 (** ** 3. Closed judgments *)
 
@@ -115,22 +116,6 @@ Qed.
     [nil] is reached by [sb_zero], which evaluates to [nil] in any environment (a
     list environment reads [zeroᵈ] past its end), so instantiating a [⋅] judgment
     at [sb_zero] relates the value at [nil] to the value anywhere. *)
-
-Definition sb_zero : sub := fun _ => a_zero.
-
-Lemma eval_sub_zero_nil : forall {Θ Ξ} ρ, eval_sub Θ Ξ sb_zero ρ nil.
-Proof. intros * x; rewrite env_var_ge by (cbn; lia); constructor. Qed.
-
-Lemma rel_sub_zero_nil : forall {GC : GCtx} Γ R, per_ctx_env R Γ Γ -> Γ ⊨s sb_zero ≈ sb_zero : ⋅.
-Proof.
-  intros * HR.
-  assert (H0 : per_ctx_env (fun _ _ => True) ⋅ ⋅) by (apply per_ctx_env_nil; reflexivity).
-  exists R, HR, (fun _ _ => True), H0.
-  intros * _ φ _ ρ ρ' _.
-  apply (mk_rel_sub nil nil nil nil); try apply eval_sub_zero_nil.
-  all: try (intros x; rewrite env_var_ge by (cbn; lia); constructor).
-  all: cbn; repeat split.
-Qed.
 
 (** δ: a closed term [G] that evaluates anywhere to what [N] evaluates to at
     [nil] is equal to [N]. *)

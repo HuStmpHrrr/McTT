@@ -76,17 +76,16 @@ Lemma eval_path_any : forall p ρ ρ' h,
     eval_modexp gc_deps gc_stack (me_path p) ρ h -> eval_modexp gc_deps gc_stack (me_path p) ρ' h.
 Proof. intros * H; inversion H; subst; [ apply eval_me_path | eapply eval_me_path_alias ]; eassumption. Qed.
 
-(** The semantic validity of the global context's modules. *)
-Definition gsem_ok : Prop :=
-  gmod_ok /\
-  (forall p, sem_mt ⋅ (me_path p) /\ sem_unf ⋅ (me_path p)) /\
-  (forall p A, member_type gc_deps gc_stack ⋅ (me_path p) nil mk_mod A ->
+(** A path is valid when its member types and δ-reducts are valid at [⋅],
+    and, if it names a module, its value is. *)
+Definition gpath_at (p : path) : Prop :=
+  sem_mt ⋅ (me_path p) /\ sem_unf ⋅ (me_path p) /\
+  (forall A, member_type gc_deps gc_stack ⋅ (me_path p) nil mk_mod A ->
      exists h, eval_modexp gc_deps gc_stack (me_path p) nil h /\ per_dmod h h).
 
-Lemma sem_mt_path : gsem_ok -> forall Γ p, ⊨ Γ -> sem_mt Γ (me_path p).
+Lemma sem_mt_path : gmod_ok -> forall Γ p, gpath_at p -> ⊨ Γ -> sem_mt Γ (me_path p).
 Proof.
-  intros ((HGp & HGc & HGa & HGap & Hc) & HP & _) * HΓ.
-  destruct (HP p) as [[S1 S2] _].
+  intros (HGc & HGap & Hc) * [[S1 S2] _] HΓ.
   assert (Hcl : forall ch k A, member_type gc_deps gc_stack ⋅ (me_path p) ch k A -> exp_scoped 0 A)
     by (intros * Hm; exact (proj1 (member_type_scoped _ _) _ _ _ _ _ Hm Hc I I)).
   split.
@@ -103,23 +102,29 @@ Proof.
       eapply rep_lift_nil; try eassumption; eapply Hcl, mt_path_ctx; eassumption.
 Qed.
 
-Lemma sem_unf_path : gsem_ok -> forall Γ p, sem_unf Γ (me_path p).
+Lemma sem_unf_path : forall Γ p, gpath_at p -> sem_unf Γ (me_path p).
 Proof.
-  intros (_ & HP & _) * ch A M Hm HM R ρ HR Hρ h Hh.
-  destruct (HP p) as [_ HU].
+  intros * (_ & HU & _) ch A M Hm HM R ρ HR Hρ h Hh.
   assert (H0 : per_ctx_env (fun _ _ => True) ⋅ ⋅) by (apply per_ctx_env_nil; reflexivity).
   exact (HU _ _ _ (mt_path_ctx _ ⋅ _ _ _ _ Hm) HM _ _ H0 I _ Hh).
 Qed.
 
-Lemma rel_me_path : gsem_ok -> forall Γ p A, ⊨ Γ ->
+Lemma rel_me_path : forall Γ p A, gpath_at p -> ⊨ Γ ->
     member_type gc_deps gc_stack Γ (me_path p) nil mk_mod A -> Γ ⊨ᵐ me_path p ≈ me_path p.
 Proof.
-  intros (_ & _ & HV) * HΓ Hm.
-  destruct (HV _ _ (mt_path_ctx _ ⋅ _ _ _ _ Hm)) as (h & Hh & Hhh).
+  intros * (_ & _ & HV) HΓ Hm.
+  destruct (HV _ (mt_path_ctx _ ⋅ _ _ _ _ Hm)) as (h & Hh & Hhh).
   destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   apply (mk_rel_mod h h h h); cbn [modexp_sub]; try (eapply eval_path_any; exact Hh).
   split; [ exact Hhh | split; exact Hhh ].
 Qed.
+
+Lemma path_app_nil : forall p, path_app p nil = p.
+Proof. intros [u m]; unfold path_app; cbn; rewrite app_nil_r; reflexivity. Qed.
+
+Lemma member_type_path_module : forall Θ Ξ Γ p A,
+    member_type Θ Ξ Γ (me_path p) nil mk_mod A -> exists r, gc_module Θ Ξ p = Some r.
+Proof. intros * H; inversion H; subst; rewrite path_app_nil in *; eauto. Qed.
 
 End Fixed_GCtx.
