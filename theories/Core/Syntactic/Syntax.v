@@ -18,24 +18,40 @@ Definition md_priv : mods := {| md_private := true; md_abstract := false |}.
 Definition md_abs : mods := {| md_private := false; md_abstract := true |}.
 Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
 
-(** ** Objects and Declarations
+(** ** Import Specifications
+
+    What an [import] brings into scope.  [i_open] makes the module reachable
+    under its full path, [i_as] additionally binds a short alias, and [i_use]
+    binds the listed members directly.  The names an [import] [use]s are
+    checked by the core: each must be a public definition or a submodule of
+    the imported module. *)
+Inductive ispec : Set :=
+| i_open : ispec
+| i_as : string -> ispec
+| i_use : list string -> ispec.
+
+(** ** Objects, Declarations and Commands
 
     The two levels of naming are spelled differently.  [::] separates the
     segments of a file path, the name of a compilation unit, which is what
     [glob] holds; [.] selects a member of whatever precedes it, be that an
-    internal module, a unit, or a local module binding.
+    internal module, a unit, or a local module.
 
     [proj] is that postfix dot: [X::Y::Z.W.foo] is a chain of [proj]s over
-    [glob ["X"; "Y"; "Z"]], and [A.foo] for an internal module [A] is one over
+    [glob ["X"; "Y"; "Z"]], and [A.foo] for a module [A] is one over
     [var "A"].  Module arguments arrive as ordinary [app] nodes, so
-    [(X::Y.Z a b).foo] needs no syntax of its own.  Whether a given [proj] or
-    [app] is a module operation or a term operation is decided by name
-    resolution, not by the parser; see [Frontend.Resolve].
+    [(X::Y.Z a b).foo] needs no syntax of its own.  Whether a [var], a [proj]
+    or an [app] is a module or a term is decided by its position: the head of
+    a [proj], the head of an application in such a head, an alias body and an
+    import target are modules, everything else is a term.
 
     [letb] binds one declaration at a time; the parser folds the bindings of
-    [let x : A := a; y : B := b in body end] into nested [letb]s.  Keeping the recursion out of a [list] is what lets [obj]
-    and [decl] stay an ordinary mutual pair, so [Functional Scheme] still
-    applies to functions defined over them. *)
+    [let x : A := a; y : B := b in body end] into nested [letb]s.
+
+    A module declaration has one shape at the top level and in a [let]: its
+    parameters, and its definition [mdef], a body [where cmds end] or an
+    alias [:= E].  The body of a local module is the same list of commands as
+    that of a global one. *)
 Inductive obj : Set :=
 | typ : nat -> obj
 | nat : obj
@@ -59,25 +75,20 @@ with decl : Set :=
 (** [x : A := M].  A local definition is always transparent and has no
     modifiers. *)
 | d_def : string -> obj -> obj -> decl
-(** [module M := E] *)
-| d_mod : string -> obj -> decl.
+(** [module X (ps) md] *)
+| d_mod : string -> list (string * obj) -> mdef -> decl
 
-(** ** Commands
-
-    What an [import] brings into scope.  [i_open] makes the module reachable
-    under its full path, [i_as] additionally binds a short alias, and [i_use]
-    binds the listed members directly.  All three are name-resolution
-    operations: none of them elaborates to anything. *)
-Inductive ispec : Set :=
-| i_open : ispec
-| i_as : string -> ispec
-| i_use : list string -> ispec.
+with mdef : Set :=
+(** [where cs end] *)
+| md_where : list cmd -> mdef
+(** [:= E] *)
+| md_alias : obj -> mdef
 
 (** A module declaration carries the internal path it introduces ([module A.B]
-    nests two levels at once) and its parameter telescope; a unit's own name is
-    declared by [prog] below, not here. *)
-Inductive cmd : Set :=
-| c_mod : list string -> list (string * obj) -> list cmd -> cmd
+    nests two levels at once), its parameter telescope and its definition; a
+    unit's own name is declared by [prog] below, not here. *)
+with cmd : Set :=
+| c_mod : list string -> list (string * obj) -> mdef -> cmd
 | c_def : mods -> string -> obj -> obj -> cmd
 (** [c_import fp ip] imports the module at internal path [ip] of the unit at
     file path [fp].  An empty [fp] is this unit, so [import A.B] is
@@ -86,6 +97,104 @@ Inductive cmd : Set :=
 (** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
     checks [M] against [A] rather than inferring its type. *)
 | c_eval : obj -> option obj -> cmd.
+
+(** The family is nested through [list], so its induction principle is written
+    by hand: a parameter list and a command list carry [Forall] of their
+    motives. *)
+Section cst_mut_ind.
+  Variables (Po : obj -> Prop) (Pd : decl -> Prop) (Pm : mdef -> Prop) (Pc : cmd -> Prop).
+
+  Hypotheses
+    (case_typ : forall n, Po (typ n))
+    (case_nat : Po nat)
+    (case_zero : Po zero)
+    (case_succ : forall o, Po o -> Po (succ o))
+    (case_natrec : forall o1 x o2 o3 y z o4, Po o1 -> Po o2 -> Po o3 -> Po o4 -> Po (natrec o1 x o2 o3 y z o4))
+    (case_true_ty : Po true_ty)
+    (case_true_tm : Po true_tm)
+    (case_false_ty : Po false_ty)
+    (case_exfalso : forall o1 x o2, Po o1 -> Po o2 -> Po (exfalso o1 x o2))
+    (case_pi : forall x o1 o2, Po o1 -> Po o2 -> Po (pi x o1 o2))
+    (case_fn : forall x o1 o2, Po o1 -> Po o2 -> Po (fn x o1 o2))
+    (case_app : forall o1 o2, Po o1 -> Po o2 -> Po (app o1 o2))
+    (case_var : forall x, Po (var x))
+    (case_glob : forall fp, Po (glob fp))
+    (case_proj : forall o x, Po o -> Po (proj o x))
+    (case_letb : forall d o, Pd d -> Po o -> Po (letb d o))
+    (case_d_def : forall x o1 o2, Po o1 -> Po o2 -> Pd (d_def x o1 o2))
+    (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
+    (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
+    (case_md_alias : forall o, Po o -> Pm (md_alias o))
+    (case_c_mod : forall p ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod p ps md))
+    (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
+    (case_c_import : forall fp ip spec, Pc (c_import fp ip spec))
+    (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA)).
+
+  Fixpoint obj_mut (o : obj) : Po o :=
+    match o with
+    | typ n => case_typ n
+    | nat => case_nat
+    | zero => case_zero
+    | succ o => case_succ o (obj_mut o)
+    | natrec o1 x o2 o3 y z o4 => case_natrec o1 x o2 o3 y z o4 (obj_mut o1) (obj_mut o2) (obj_mut o3) (obj_mut o4)
+    | true_ty => case_true_ty
+    | true_tm => case_true_tm
+    | false_ty => case_false_ty
+    | exfalso o1 x o2 => case_exfalso o1 x o2 (obj_mut o1) (obj_mut o2)
+    | pi x o1 o2 => case_pi x o1 o2 (obj_mut o1) (obj_mut o2)
+    | fn x o1 o2 => case_fn x o1 o2 (obj_mut o1) (obj_mut o2)
+    | app o1 o2 => case_app o1 o2 (obj_mut o1) (obj_mut o2)
+    | var x => case_var x
+    | glob fp => case_glob fp
+    | proj o x => case_proj o x (obj_mut o)
+    | letb d o => case_letb d o (decl_mut d) (obj_mut o)
+    end
+  with decl_mut (d : decl) : Pd d :=
+    match d with
+    | d_def x o1 o2 => case_d_def x o1 o2 (obj_mut o1) (obj_mut o2)
+    | d_mod x ps md =>
+        case_d_mod x ps md
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (mdef_mut md)
+    end
+  with mdef_mut (md : mdef) : Pm md :=
+    match md with
+    | md_where cs =>
+        case_md_where cs
+          ((fix go (cs : list cmd) : List.Forall Pc cs :=
+              match cs with
+              | nil => List.Forall_nil _
+              | c :: cs' => List.Forall_cons c (cmd_mut c) (go cs')
+              end) cs)
+    | md_alias o => case_md_alias o (obj_mut o)
+    end
+  with cmd_mut (c : cmd) : Pc c :=
+    match c with
+    | c_mod p ps md =>
+        case_c_mod p ps md
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (mdef_mut md)
+    | c_def m x o1 o2 => case_c_def m x o1 o2 (obj_mut o1) (obj_mut o2)
+    | c_import fp ip spec => case_c_import fp ip spec
+    | c_eval o oA =>
+        case_c_eval o oA (obj_mut o)
+          (match oA as oA0 return match oA0 with Some A => Po A | None => True end with
+           | Some A' => obj_mut A'
+           | None => I
+           end)
+    end.
+
+  Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
+  Proof. repeat split; [ exact obj_mut | exact decl_mut | exact mdef_mut | exact cmd_mut ]. Qed.
+End cst_mut_ind.
 
 (** A compilation unit: its imports, and the one module declaration everything
     else it contains lives in.  That declaration names the unit, so its path is a

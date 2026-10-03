@@ -52,6 +52,20 @@ let format_mods (f : Format.formatter) (m : Cst.mods) : unit =
   if m.Cst.md_private then Format.pp_print_string f "private ";
   if m.Cst.md_abstract then Format.pp_print_string f "abstract "
 
+let format_ispec (f : Format.formatter) : Cst.ispec -> unit =
+  let open Format in
+  function
+  | Cst.Coq_i_open -> ()
+  | Cst.Coq_i_as x -> fprintf f " as %s" x
+  | Cst.Coq_i_use ns -> fprintf f " use (%s)" (String.concat "; " ns)
+
+(* [::] joins a file path and [.] an internal one; either half may be empty. *)
+let string_of_qpath (fp : string list) (ip : string list) : string =
+  match (fp, ip) with
+  | [], _ -> String.concat "." ip
+  | _, [] -> String.concat "::" fp
+  | _, _ -> String.concat "::" fp ^ "." ^ String.concat "." ip
+
 let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
@@ -148,40 +162,29 @@ and format_decl (f : Format.formatter) : Cst.decl -> unit =
   function
   | Cst.Coq_d_def (x, ea, eb) ->
      fprintf f "@[<hov 2>%s : %a :=@ %a@]" x format_obj ea format_obj eb
-  | Cst.Coq_d_mod (x, e) -> fprintf f "@[<hov 2>module %s :=@ %a@]" x format_obj e
+  | Cst.Coq_d_mod (x, params, md) -> format_module f x params md
 
-and format_obj_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_obj ep
-and format_obj f = format_obj_prec 0 f
-
-(************************************************************)
-(* Formatting Cst.cmd and Cst.prog *)
-(************************************************************)
-
-let format_ispec (f : Format.formatter) : Cst.ispec -> unit =
+(* [module x (ps) where … end] or [module x (ps) := E]. *)
+and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : unit =
   let open Format in
-  function
-  | Cst.Coq_i_open -> ()
-  | Cst.Coq_i_as x -> fprintf f " as %s" x
-  | Cst.Coq_i_use ns -> fprintf f " use (%s)" (String.concat "; " ns)
-
-(* [::] joins a file path and [.] an internal one; either half may be empty. *)
-let string_of_qpath (fp : string list) (ip : string list) : string =
-  match (fp, ip) with
-  | [], _ -> String.concat "." ip
-  | _, [] -> String.concat "::" fp
-  | _, _ -> String.concat "::" fp ^ "." ^ String.concat "." ip
-
-let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
-  let open Format in
-  function
-  | Cst.Coq_c_mod (path, params, cs) ->
+  match md with
+  | Cst.Coq_md_where cs ->
      pp_open_vbox f 2;
-     fprintf f "module %s" (String.concat "." path);
+     fprintf f "module %s" x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
      pp_print_string f " where";
      List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
+  | Cst.Coq_md_alias e ->
+     fprintf f "@[<hov 2>module %s" x;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
+     fprintf f " :=@ %a@]" format_obj e
+
+and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
+  let open Format in
+  function
+  | Cst.Coq_c_mod (path, params, md) -> format_module f (String.concat "." path) params md
   | Cst.Coq_c_def (m, x, ea, eb) ->
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
@@ -194,6 +197,13 @@ let rec format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      | Some t ->
         fprintf f "@[<hov 2>eval %a@ : %a@]" format_obj e format_obj t
    end
+
+and format_obj_param f (px, ep) = Format.fprintf f "(%s : %a)" px format_obj ep
+and format_obj f = format_obj_prec 0 f
+
+(************************************************************)
+(* Formatting Cst.cmd and Cst.prog *)
+(************************************************************)
 
 let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) : unit =
   let open Format in
@@ -220,6 +230,13 @@ let exp_to_obj =
     ( (fun () ->
         incr suffix;
         "x" ^ string_of_int !suffix),
+      fun () -> suffix := 0 )
+  in
+  let new_mod, reset_mod_suffix =
+    let suffix = ref 0 in
+    ( (fun () ->
+        incr suffix;
+        "M" ^ string_of_int !suffix),
       fun () -> suffix := 0 )
   in
   let new_tyvar, reset_tyvar_suffix =
@@ -253,10 +270,7 @@ let exp_to_obj =
     | Coq_a_typ i -> Cst.Coq_typ i
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)
-    | Coq_a_var x ->
-       (match List.nth_opt ctx x with
-        | Some y -> Cst.Coq_var y
-        | None -> Cst.Coq_var ("$" ^ string_of_int (x - List.length ctx)))
+    | Coq_a_var x -> var_to_obj ctx x
     | Coq_a_fn (ep, ebody) ->
        let px = match ep with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
@@ -271,30 +285,99 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
-    | Coq_a_let (ea, em, ebody) ->
+    | Coq_a_let (Coq_b_def (ea, em), ebody) ->
        let px = match ea with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
        let ea' = impl ctx ea in
        let em' = impl ctx em in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_letb (Cst.Coq_d_def (px, ea', em'), ebody')
-    (* A path is absolute.  Into the unit being printed, the member chain is
-       what was written, its first member an ordinary name; into another unit,
-       the unit is a [glob] head.  Either way the remaining members are a
-       chain of [proj]s over the head. *)
-    | Coq_a_glob p ->
-       let head, ip =
-         if p.p_unit = !current_unit then
-           (match p.p_mems with
-            | x :: ip -> (Cst.Coq_var x, ip)
-            (* Unreachable: [path_valid] rules out an empty member chain. *)
-            | [] -> (Cst.Coq_var "_", []))
-         else (Cst.Coq_glob p.p_unit, p.p_mems)
+    | Coq_a_let (Coq_b_mod u, ebody) ->
+       let px = new_mod () in
+       let params, md = impl_unit ctx u in
+       let ebody' = impl (px :: ctx) ebody in
+       Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), ebody')
+    | Coq_a_glob p -> path_to_obj p
+    | Coq_a_mem (h, x) -> Cst.Coq_proj (impl_mod ctx h, x)
+  (* A path is absolute.  Into the unit being printed, the member chain is
+     what was written, its first member an ordinary name; into another unit,
+     the unit is a [glob] head.  Either way the remaining members are a chain
+     of [proj]s over the head. *)
+  and path_to_obj (p : path) : Cst.obj =
+    let head, ip =
+      if p.p_unit = !current_unit then
+        (match p.p_mems with
+         | x :: ip -> (Cst.Coq_var x, ip)
+         (* The unit itself, named from inside. *)
+         | [] -> (Cst.Coq_glob p.p_unit, []))
+      else (Cst.Coq_glob p.p_unit, p.p_mems)
+    in
+    List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
+  and var_to_obj (ctx : string list) (x : int) : Cst.obj =
+    match List.nth_opt ctx x with
+    | Some y -> Cst.Coq_var y
+    | None -> Cst.Coq_var ("$" ^ string_of_int (x - List.length ctx))
+  and impl_mod (ctx : string list) : modexp -> Cst.obj = function
+    | Coq_me_path p -> path_to_obj p
+    | Coq_me_var x -> var_to_obj ctx x
+    | Coq_me_mem (h, y) -> Cst.Coq_proj (impl_mod ctx h, y)
+    | Coq_me_app (h, e) -> Cst.Coq_app (impl_mod ctx h, impl ctx e)
+    (* A literal module, which only substitution produces, prints as a local
+       module naming itself. *)
+    | Coq_me_lit u ->
+       let px = new_mod () in
+       let params, md = impl_unit ctx u in
+       Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), Cst.Coq_var px)
+  and impl_unit (ctx : string list) (Coq_gu_mk (delta, md) : gunit)
+      : (string * Cst.obj) list * Cst.mdef =
+    (* The parameter context lists the innermost parameter first. *)
+    let ctx', params =
+      List.fold_left
+        (fun (ctx, ps) ce ->
+          let ty = match ce with
+            | Coq_ce_ass a | Coq_ce_def (a, _) -> impl ctx a
+            | Coq_ce_mod _ -> Cst.Coq_var "_" in
+          let px = match ce with
+            | Coq_ce_ass (Coq_a_typ _) | Coq_ce_def (Coq_a_typ _, _) -> new_tyvar ()
+            | _ -> new_var () in
+          (px :: ctx, (px, ty) :: ps))
+        (ctx, []) (List.rev delta)
+    in
+    let md' = match md with
+      | Coq_md_alias h -> Cst.Coq_md_alias (impl_mod ctx' h)
+      | Coq_md_body phi -> Cst.Coq_md_where (fst (impl_body ctx' phi))
+    in
+    (List.rev params, md')
+  and impl_body (ctx : string list) : gmod -> Cst.cmd list * string list = function
+    | Coq_gm_nil -> ([], ctx)
+    | Coq_gm_ext (phi, x, ge) ->
+       let cs, ctx' = impl_body ctx phi in
+       let c = match ge with
+         | Coq_ge_def (transp, priv, a, om) ->
+            let m = { Cst.md_private = priv; Cst.md_abstract = not transp } in
+            let a' = impl ctx' a in
+            (match om with
+             | Some e -> Cst.Coq_c_def (m, x, a', impl ctx' e)
+             | None -> Cst.Coq_c_def (m, x, a', Cst.Coq_var "_"))
+         | Coq_ge_mod u ->
+            let params, md = impl_unit ctx' u in
+            Cst.Coq_c_mod ([x], params, md)
        in
-       List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
+       (cs @ [c], x :: ctx')
+    | Coq_gm_check (phi, bc) ->
+       let cs, ctx' = impl_body ctx phi in
+       let c = match bc with
+         (* The target is a module expression, printed in place of a path. *)
+         | Coq_bc_import (h, ns) ->
+            let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
+            Cst.Coq_c_import ([], [target], (match ns with [] -> Cst.Coq_i_open | _ -> Cst.Coq_i_use ns))
+         | Coq_bc_eval (e, oa) -> Cst.Coq_c_eval (impl ctx' e, Option.map (impl ctx') oa)
+       in
+       (cs @ [c], ctx')
   in
   fun exp ->
     reset_var_suffix ();
     reset_tyvar_suffix ();
+    reset_mod_suffix ();
     impl [] exp
 
 let format_exp f exp = format_obj f (exp_to_obj exp)

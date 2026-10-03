@@ -1,0 +1,34 @@
+module ModuleForms where
+
+(* A parameterized module, and an alias of one of its instances *)
+module Iter (A : Type@0) where
+  def twice (f : forall (x : A) -> A) (x : A) : A := f (f x) end
+end
+
+module NatIter := Iter Nat
+
+eval NatIter.twice (fun (x : Nat) -> succ x) 0
+
+(* A dotted declaration: [Num] holds [Ops] *)
+module Num.Ops (k : Nat) where
+  def add (n : Nat) : Nat := rec n return y . Nat | zero => k | succ p, r => succ r end end
+end
+
+eval Num.Ops.add 2 3
+
+(* An import binds names in the frame that makes it *)
+import Num.Ops as O
+
+eval O.add 1 1
+
+(* A local module with a body: each entry sees the earlier ones, and an
+   import inside it binds aliases only *)
+eval let module L (n : Nat) where
+       module Inner where def m : Nat := succ n end end
+       import Inner use (m)
+       def doubled : Nat := Num.Ops.add m m end
+     end in
+       L.doubled 2
+     end : Nat
+
+end

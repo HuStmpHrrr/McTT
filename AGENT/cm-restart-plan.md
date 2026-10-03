@@ -255,3 +255,11 @@ Each milestone is committed when the files up to it compile with no warning.
   included.
 * A module slot glues by its syntactic typing and by the tie of its value to
   its unit's closure (`cons_mod_glu_sub_pred`); module values are not glued.
+* Front end: `Cst.d_mod x ps md` carries the parameters of a local module,
+  as `c_mod` does, so `let module` and top-level modules share `mdef`.  The
+  elaborator and the spec share their data structures (frames, scopes, local
+  bindings, denotations), so the correctness proof needs no representation
+  functions.  An import emits the `use`d names (`ispec_names`), not the
+  surface specification; `as` aliases are the elaborator's alone.  Member
+  existence, privacy and whether `M.x` is a term are checked by the core,
+  so the old elaborator errors for them are now typing errors.

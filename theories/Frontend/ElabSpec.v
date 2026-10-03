@@ -1,16 +1,17 @@
 From Stdlib Require Import List Permutation String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax Command.
+From Mctt.Core.Syntactic Require Import Syntax Members Command.
 
 Import Syntax_Notations.
 
 (** * A Declarative Specification of Elaboration
 
     [elab_spec prg u] holds when the surface unit [prg] elaborates to the core
-    unit [u].  It is stated without the elaborator's data structures;
-    [Frontend/ElabCorrect.v] proves that [elaborate_core] computes exactly this
-    relation.
+    unit [u].  [Frontend/ElabCorrect.v] proves that [elaborate_core] computes
+    exactly this relation.
+
+    Elaboration only resolves names; it never looks inside a module.
 
     - The members of a frame are the names declared by the core commands it
       has emitted so far, so there is no separate symbol table.
@@ -23,11 +24,11 @@ Import Syntax_Notations.
     - The parameters of the open frames are λ-variables.  A member of an open
       frame is its absolute path applied to the parameters of its own frame
       and of every enclosing frame.
-    - A module that is not open is reached through a module reference.  Only
-      its public definitions can be selected, and its arguments are written
-      explicitly.
-    - Other units are not read.  A path into an imported unit is accepted as
-      written, and type checking decides whether it is valid.
+    - Where an object stands decides what it is: the head of a projection,
+      the head of an application there, an alias body and an import target
+      are module expressions ([selm]), everything else is a term ([sel]).  A
+      projection is the core's member selection, so what [M.x] names, and
+      whether it may be named, is left to typing.
 
     The running example of this file is
 
@@ -44,28 +45,29 @@ end
 >>
 
     which elaborates to the core unit below ([ElabExamples.running_spec]).
-    [Main.M.id] abbreviates [a_glob (p_abs ["Main"] ["M"; "id"])], and the
-    flags of [cc_def] are omitted.
+    [Main.M.id] abbreviates [a_glob (p_abs ["Main"] ["M"; "id"])], [⟨Main.M⟩]
+    the module expression [me_path (p_abs ["Main"] ["M"])], and the flags of
+    [cc_def] are omitted.
 
 <<
 cc_mod "M" (⋅ ▹ Type@0)
   [ cc_def "id" (Π #0 #1) (λ #0 #0);
     cc_mod "N" (⋅ ▹ Type@0)
       [ cc_def "k" (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main.M.id $ #3 $ #1))) ] ];
-cc_def "j" (Π ℕ ℕ) (Main.M.id $ ℕ)
+cc_def "j" (Π ℕ ℕ) (⟨Main.M⟩.id $ ℕ)
 >>
 
     In the body of [k], [A] is [#3], so [id x] is [Main.M.id $ #3 $ #1].  In
-    [j], no parameter of [M] is open, so [A] is written: [M.id Nat]. *)
+    [j], [M] is closed, so [M.id] selects the member [id] of the module
+    [⟨Main.M⟩], and [A] is written: [M.id Nat]. *)
 
 (** ** Declarations Read Off Core Commands *)
 
-(** [cc_name c] is the name that the core command [c] declares, if any.
-    Definitions and modules declare a name; imports and evaluations do not. *)
+(** [cc_name c] is the name that the core command [c] declares, if any. *)
 Definition cc_name (c : ccmd) : option string :=
   match c with
-  | cc_def x _ _ _ _ | cc_mod x _ _ => Some x
-  | cc_import _ _ | cc_eval _ _ => None
+  | cc_def x _ _ _ _ | cc_mod x _ _ | cc_alias x _ _ => Some x
+  | cc_import _ _ _ | cc_eval _ _ => None
   end.
 
 (** [declares cs x] holds when some command in [cs] declares [x]. *)
@@ -76,128 +78,45 @@ Definition declares (cs : list ccmd) (x : string) : Prop :=
 Definition decl_names (cs : list ccmd) : list string :=
   flat_map (fun c => match cc_name c with Some x => x :: nil | None => nil end) cs.
 
-(** [cs_member cs x c] holds when [c] is the last command in [cs] that
-    declares [x].  It gives the meaning of [x] as a member of a module whose
-    commands are [cs].  A frame never declares a name twice, so [c] is in fact
-    the only such command. *)
-Definition cs_member (cs : list ccmd) (x : string) (c : ccmd) : Prop :=
-  exists cs1 cs2, cs = cs1 ++ c :: cs2 /\ cc_name c = Some x /\ ~ declares cs2 x.
-
 (** ** What a Name Denotes *)
 
-(** A module reference names a module that is not open at the use site.
-
-    - [sr_unit] is the path of the unit that contains the module.
-    - [sr_mems] is the chain of member names from the unit's root to the
-      module.
-    - [sr_sig] is the list of the module's commands.  It is [None] when the
-      module belongs to another unit; such a reference is _opaque_.
-    - [sr_args] lists the arguments supplied so far, outermost first.
-
-    In [j], [M] is the reference with unit [Main], chain [["M"]], the commands
-    of [M], and no arguments. *)
-Record sref : Set := sr_mk
-  { sr_unit : fpath
-  ; sr_mems : list string
-  ; sr_sig : option (list ccmd)
-  ; sr_args : list exp }.
-
-(** [sr_app R args] adds [args] to the arguments of [R]. *)
-Definition sr_app (R : sref) (args : list exp) : sref :=
-  sr_mk (sr_unit R) (sr_mems R) (sr_sig R) (sr_args R ++ args).
-
-(** An import alias names a module, or a definition of a module. *)
+(** An import alias: [as y] names the imported module, and [use (n)] its
+    member [n], whatever that is. *)
 Inductive starget : Set :=
-| st_mod : sref -> starget
-| st_def : sref -> string -> starget.
+| st_mod : modexp -> starget
+| st_mem : modexp -> string -> starget.
 
-(** An object denotes a term, a module, or the definition [x] of a module
-    [R].  The third form lets [M.f a] supply the argument [a] of [M] after the
-    projection.  In [j], [M.id] denotes [s_def R "id"] for the reference [R]
-    to [M], and [M.id Nat] denotes [s_def (sr_app R [ℕ]) "id"]. *)
-Inductive sres : Set :=
-| s_term : exp -> sres
-| s_mod : sref -> sres
-| s_def : sref -> string -> sres.
-
-(** [st_res t] is the denotation of the alias target [t]. *)
-Definition st_res (t : starget) : sres :=
-  match t with
-  | st_mod R => s_mod R
-  | st_def R x => s_def R x
-  end.
-
-(** [apps M args] applies [M] to each of [args] in turn. *)
-Definition apps (M : exp) (args : list exp) : exp := fold_left a_app args M.
-
-(** [sapp r N] applies the denotation [r] to [N].  For a term, this is
-    ordinary application.  For a module, or a definition of one, [N] becomes
-    one more module argument. *)
-Definition sapp (r : sres) (N : exp) : sres :=
-  match r with
-  | s_term M => s_term (M $ N)
-  | s_mod R => s_mod (sr_app R (N :: nil))
-  | s_def R x => s_def (sr_app R (N :: nil)) x
-  end.
-
-(** [as_term r M] holds when the denotation [r] is the term [M].
-
-    - A term is itself.
-    - The definition [x] of [R] is the absolute path of [x] applied to the
-      arguments of [R].  A member is a closed constant, so any number of
-      arguments is allowed; type checking decides whether they fit.
-    - An opaque reference with a nonempty member chain is the path it names,
-      applied to its arguments.
-    - A module of the current unit is never a term.
-
-    So [M.id Nat] is [Main.M.id $ ℕ], and [M.id] alone is [Main.M.id], of
-    type [Π (A : Type@0). Π A A]. *)
-Inductive as_term : sres -> exp -> Prop :=
-| at_term : forall M, as_term (s_term M) M
-| at_def : forall R x,
-    as_term (s_def R x) (apps (a_glob (p_abs (sr_unit R) (sr_mems R ++ x :: nil))) (sr_args R))
-| at_opaque : forall R,
-    sr_sig R = None ->
-    sr_mems R <> nil ->
-    as_term (s_mod R) (apps (a_glob (p_abs (sr_unit R) (sr_mems R))) (sr_args R)).
-
-(** *** Member Selection
-
-    [select R x t] holds when [R.x] denotes [t].
-
-    - If [R] is opaque, [R.x] is an opaque reference with [x] appended to its
-      chain.  REVISIT: privacy is not checked here.
-    - If [R] declares [x] as a public definition, [R.x] is that definition.
-      A private definition is visible only in its own frame and the frames
-      nested in it, where [fbind] finds it.
-    - If [R] declares [x] as a module, [R.x] is a reference to it with the
-      arguments of [R]. *)
-Inductive select : sref -> string -> starget -> Prop :=
-| sl_opaque : forall R x,
-    sr_sig R = None ->
-    select R x (st_mod (sr_mk (sr_unit R) (sr_mems R ++ x :: nil) None (sr_args R)))
-| sl_def : forall R x cs b A M,
-    sr_sig R = Some cs ->
-    cs_member cs x (cc_def x b false A M) ->
-    select R x (st_def R x)
-| sl_mod : forall R x cs Δ cs',
-    sr_sig R = Some cs ->
-    cs_member cs x (cc_mod x Δ cs') ->
-    select R x (st_mod (sr_mk (sr_unit R) (sr_mems R ++ x :: nil) (Some cs') (sr_args R))).
-
-(** *** Weakening
-
-    These functions shift a denotation by [k] binders. *)
-Definition shift_by (k : nat) (M : exp) : exp := M[wk_shiftn k]ʷ.
-
-Definition wk_sref (k : nat) (R : sref) : sref :=
-  sr_mk (sr_unit R) (sr_mems R) (sr_sig R) (map (shift_by k) (sr_args R)).
-
+(** [wk_starget k t] is [t] seen [k] binders further in. *)
 Definition wk_starget (k : nat) (t : starget) : starget :=
   match t with
-  | st_mod R => st_mod (wk_sref k R)
-  | st_def R x => st_def (wk_sref k R) x
+  | st_mod E => st_mod (modexp_wk E (wk_shiftn k))
+  | st_mem E n => st_mem (modexp_wk E (wk_shiftn k)) n
   end.
+
+(** A name denotes a member of an open frame, applied to its frames'
+    parameters; a variable; or an alias. *)
+Inductive sden : Set :=
+| sd_glob : path -> list exp -> sden
+| sd_var : nat -> sden
+| sd_alias : starget -> sden.
+
+(** [mapps H args] applies the module expression [H] to each of [args] in
+    turn. *)
+Definition mapps (H : modexp) (args : list exp) : modexp := fold_left me_app args H.
+
+(** What a denotation is as a term.  A module alias is not one. *)
+Inductive den_term : sden -> exp -> Prop :=
+| dt_glob : forall p vs, den_term (sd_glob p vs) (apps (a_glob p) vs)
+| dt_var : forall k, den_term (sd_var k) #k
+| dt_mem : forall E n, den_term (sd_alias (st_mem E n)) (a_mem E n).
+
+(** What a denotation is as a module expression.  A variable is a module slot;
+    the core rejects it if it is a term variable. *)
+Inductive den_mod : sden -> modexp -> Prop :=
+| dm_glob : forall p vs, den_mod (sd_glob p vs) (mapps (me_path p) vs)
+| dm_var : forall k, den_mod (sd_var k) (me_var k)
+| dm_alias : forall E, den_mod (sd_alias (st_mod E)) E
+| dm_mem : forall E n, den_mod (sd_alias (st_mem E n)) (me_mem E n).
 
 (** ** Scopes *)
 
@@ -270,7 +189,6 @@ Definition sf_emit (F : sframe) (c : ccmd) : sframe :=
     first. *)
 Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (snd p)) ps).
 
-
 (** [sf_taken F] lists the names that [F] binds as members or parameters. *)
 Definition sf_taken (F : sframe) : list string := decl_names (sf_cmds F) ++ map fst (sf_params F).
 
@@ -319,38 +237,31 @@ Inductive preapp : nat -> list sframe -> list exp -> Prop :=
     preapp (off + List.length (sf_params F)) Fs args ->
     preapp off (F :: Fs) (args ++ vars_desc off (List.length (sf_params F))).
 
-
 (** ** Name Resolution in the Open Frames *)
 
-(** [fr_binds fp off Fs F x r] holds when the open frame [F] binds [x] to
-    [r].  Here [fp] is the current unit, [Fs] are the frames enclosing [F],
+(** [fr_binds fp off Fs F x d] holds when the open frame [F] binds [x] to
+    [d].  Here [fp] is the current unit, [Fs] are the frames enclosing [F],
     and [off] binders lie between the use site and the last parameter of
     [F]. *)
-Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : string -> sres -> Prop :=
+Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : string -> sden -> Prop :=
 (** An alias was resolved outside these [off] binders. *)
 | fr_alias : forall x t,
     ss_binds (sf_scope F) x t ->
-    fr_binds fp off Fs F x (st_res (wk_starget off t))
-(** A member definition, public or private, is its absolute path applied to
-    the variables given by [preapp]. *)
-| fr_def : forall x b pv A M vs,
-    cs_member (sf_cmds F) x (cc_def x b pv A M) ->
+    fr_binds fp off Fs F x (sd_alias (wk_starget off t))
+(** A member, a definition or a module, is its absolute path applied to the
+    variables given by [preapp]. *)
+| fr_mem : forall x vs,
+    declares (sf_cmds F) x ->
     preapp off (F :: Fs) vs ->
-    fr_binds fp off Fs F x (s_term (apps (a_glob (p_abs fp (sf_path F ++ x :: nil))) vs))
-(** A member module is a reference with those variables as arguments. *)
-| fr_mod : forall x Δ cs vs,
-    cs_member (sf_cmds F) x (cc_mod x Δ cs) ->
-    preapp off (F :: Fs) vs ->
-    fr_binds fp off Fs F x
-      (s_mod (sr_mk fp (sf_path F ++ x :: nil) (Some cs) vs))
+    fr_binds fp off Fs F x (sd_glob (p_abs fp (sf_path F ++ x :: nil)) vs)
 (** A parameter lies [off] binders back, plus one for each later
     parameter. *)
 | fr_param : forall x ps1 A ps2,
     sf_params F = ps1 ++ (x, A) :: ps2 ->
-    fr_binds fp off Fs F x (s_term (a_var (off + List.length ps2))).
+    fr_binds fp off Fs F x (sd_var (off + List.length ps2)).
 
-(** [fbind fp O off Fs x r] holds when the name [x], which is not bound
-    locally, denotes [r].  Here [O] is the scope of the unit's leading
+(** [fbind fp O off Fs x d] holds when the name [x], which is not bound
+    locally, denotes [d].  Here [O] is the scope of the unit's leading
     imports, and [off] binders lie between the use site and the last parameter
     of the first frame in [Fs].  The innermost frame that binds [x] decides;
     if none does, the aliases of [O] are used.
@@ -358,35 +269,33 @@ Inductive fr_binds (fp : fpath) (off : nat) (Fs : list sframe) (F : sframe) : st
     In the body of [k], [N] does not bind [id], so the search moves to [M]
     with [off] increased from [2] to [3]; [M] binds [id], which denotes
     [Main.M.id $ #3]. *)
-Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sres -> Prop :=
-| fb_here : forall off F Fs x r,
-    fr_binds fp off Fs F x r ->
-    fbind fp O off (F :: Fs) x r
-| fb_next : forall off F Fs x r,
+Inductive fbind (fp : fpath) (O : sscope) : nat -> list sframe -> string -> sden -> Prop :=
+| fb_here : forall off F Fs x d,
+    fr_binds fp off Fs F x d ->
+    fbind fp O off (F :: Fs) x d
+| fb_next : forall off F Fs x d,
     ~ sf_binds F x ->
-    fbind fp O (off + List.length (sf_params F)) Fs x r ->
-    fbind fp O off (F :: Fs) x r
+    fbind fp O (off + List.length (sf_params F)) Fs x d ->
+    fbind fp O off (F :: Fs) x d
 | fb_outer : forall off x t,
     ss_binds O x t ->
-    fbind fp O off nil x (st_res (wk_starget off t)).
+    fbind fp O off nil x (sd_alias (wk_starget off t)).
 
-(** ** Local Binders *)
+(** ** Local Bindings *)
 
-(** A local binding is one of the following.
-
-    - [lb_var x] is a core variable, bound by a λ, a Π, a recursor or a
-      [let].
-    - [lb_mod x R] is a [let module] naming [R]; it has no core binder. *)
+(** A local binding is a core binder, introduced by a λ, a Π, a recursor, a
+    [let], a module parameter or an entry of a local body; or an alias, made
+    by an import inside a local body, which introduces none. *)
 Inductive lbind : Set :=
 | lb_var : string -> lbind
-| lb_mod : string -> sref -> lbind.
+| lb_alias : string -> starget -> lbind.
 
 Definition lb_name (b : lbind) : string :=
-  match b with lb_var x | lb_mod x _ => x end.
+  match b with lb_var x | lb_alias x _ => x end.
 
 (** [lb_binders b] is the number of core binders that [b] introduces. *)
 Definition lb_binders (b : lbind) : nat :=
-  match b with lb_var _ => 1 | lb_mod _ _ => 0 end.
+  match b with lb_var _ => 1 | lb_alias _ _ => 0 end.
 
 (** [nbinders L] is the number of core binders in [L], which is listed
     innermost first. *)
@@ -398,18 +307,37 @@ Definition lbound (L : list lbind) (x : string) (k : nat) (b : lbind) : Prop :=
   exists L1 L2, L = L1 ++ b :: L2 /\ lb_name b = x /\ ~ In x (map lb_name L1) /\ k = nbinders L1.
 
 (** [ldenote k b] is what [b] denotes [k] binders further in. *)
-Definition ldenote (k : nat) (b : lbind) : sres :=
+Definition ldenote (k : nat) (b : lbind) : sden :=
   match b with
-  | lb_var _ => s_term (a_var k)
-  | lb_mod _ R => s_mod (wk_sref k R)
+  | lb_var _ => sd_var k
+  | lb_alias _ t => sd_alias (wk_starget k t)
+  end.
+
+(** [lparams ps] are the binders of the parameters [ps], innermost first. *)
+Definition lparams (ps : list (string * Cst.obj)) : list lbind := rev (map (fun p => lb_var (fst p)) ps).
+
+(** The names an import [use]s, which the core checks. *)
+Definition ispec_names (spec : Cst.ispec) : list string :=
+  match spec with
+  | Cst.i_use ns => ns
+  | _ => nil
+  end.
+
+(** The unit an import loads first, if any. *)
+Definition ifile (fq : fpath) : option fpath :=
+  match fq with
+  | nil => None
+  | _ => Some fq
   end.
 
 (** ** Objects
 
-    [sel fp O Fs L o r] holds when the surface object [o] denotes [r].  Here
-    [fp] is the current unit, [O] is the scope of its leading imports, [Fs]
-    are the open frames, innermost first, and [L] are the local bindings.
-    [selt fp O Fs L o M] holds when [o] denotes the term [M].
+    [sel fp O Fs L o M] holds when the surface object [o] denotes the term
+    [M], and [selm fp O Fs L o H] when it denotes the module expression [H].
+    Here [fp] is the current unit, [O] is the scope of its leading imports,
+    [Fs] are the open frames, innermost first, and [L] are the local
+    bindings.  [sunit] gives the unit of a local module, [sdef] its
+    definition and [sbody] its body.
 
     The body of [k] is elaborated with [L = [lb_var "y"; lb_var "x"]], so [x]
     is [#1], [id] is resolved by [fbind] with [off = 2], and [id x] is
@@ -423,79 +351,156 @@ Definition unit_in (fp : fpath) (O : sscope) (Fs : list sframe) : Prop :=
 Section Objects.
   Variable (fp : fpath) (O : sscope) (Fs : list sframe).
 
-  Inductive sel : list lbind -> Cst.obj -> sres -> Prop :=
-  | sel_typ : forall L n, sel L (Cst.typ n) (s_term (Type@n))
-  | sel_nat : forall L, sel L Cst.nat (s_term ℕ)
-  | sel_zero : forall L, sel L Cst.zero (s_term zero)
-  | sel_succ : forall L o M, selt L o M -> sel L (Cst.succ o) (s_term (succ M))
+  (** What an import inside a local body names: a module of this unit,
+      reached by name, or the module of another unit at a member path. *)
+  Inductive ltarget : list lbind -> fpath -> list string -> modexp -> Prop :=
+  | lt_local : forall L x ip E,
+      selm L (fold_left Cst.proj ip (Cst.var x)) E ->
+      ltarget L nil (x :: ip) E
+  | lt_unit : forall L fq ip,
+      fq <> nil -> ltarget L fq ip (me_path (p_abs fq ip))
+
+  with sel : list lbind -> Cst.obj -> exp -> Prop :=
+  | sel_typ : forall L n, sel L (Cst.typ n) (Type@n)
+  | sel_nat : forall L, sel L Cst.nat ℕ
+  | sel_zero : forall L, sel L Cst.zero zero
+  | sel_succ : forall L o M, sel L o M -> sel L (Cst.succ o) (succ M)
   | sel_natrec : forall L on mx om oz sx sr os N A MZ MS,
-      selt L on N ->
-      selt (lb_var mx :: L) om A ->
-      selt L oz MZ ->
-      selt (lb_var sr :: lb_var sx :: L) os MS ->
-      sel L (Cst.natrec on mx om oz sx sr os) (s_term (rec N return A | zero -> MZ | succ -> MS end))
-  | sel_true_ty : forall L, sel L Cst.true_ty (s_term ⊤)
-  | sel_true_tm : forall L, sel L Cst.true_tm (s_term ⋆)
-  | sel_false_ty : forall L, sel L Cst.false_ty (s_term ⊥)
+      sel L on N ->
+      sel (lb_var mx :: L) om A ->
+      sel L oz MZ ->
+      sel (lb_var sr :: lb_var sx :: L) os MS ->
+      sel L (Cst.natrec on mx om oz sx sr os) (rec N return A | zero -> MZ | succ -> MS end)
+  | sel_true_ty : forall L, sel L Cst.true_ty ⊤
+  | sel_true_tm : forall L, sel L Cst.true_tm ⋆
+  | sel_false_ty : forall L, sel L Cst.false_ty ⊥
   | sel_exfalso : forall L om mx oA M A,
-      selt L om M ->
-      selt (lb_var mx :: L) oA A ->
-      sel L (Cst.exfalso om mx oA) (s_term (efq M return A))
+      sel L om M ->
+      sel (lb_var mx :: L) oA A ->
+      sel L (Cst.exfalso om mx oA) (efq M return A)
   | sel_pi : forall L x oA oB A B,
-      selt L oA A -> selt (lb_var x :: L) oB B -> sel L (Cst.pi x oA oB) (s_term (Π A B))
+      sel L oA A -> sel (lb_var x :: L) oB B -> sel L (Cst.pi x oA oB) (Π A B)
   | sel_fn : forall L x oA oM A M,
-      selt L oA A -> selt (lb_var x :: L) oM M -> sel L (Cst.fn x oA oM) (s_term (λ A M))
-  (** What the head denotes decides whether this is a term application or a
-      module argument ([sapp]). *)
-  | sel_app : forall L o1 o2 r N,
-      selt L o2 N -> sel L o1 r -> sel L (Cst.app o1 o2) (sapp r N)
-  | sel_local : forall L x k b,
-      lbound L x k b -> sel L (Cst.var x) (ldenote k b)
-  | sel_frame : forall L x r,
+      sel L oA A -> sel (lb_var x :: L) oM M -> sel L (Cst.fn x oA oM) (λ A M)
+  | sel_app : forall L o1 o2 M N,
+      sel L o1 M -> sel L o2 N -> sel L (Cst.app o1 o2) (M $ N)
+  | sel_local : forall L x k b M,
+      lbound L x k b -> den_term (ldenote k b) M -> sel L (Cst.var x) M
+  | sel_frame : forall L x d M,
       ~ In x (map lb_name L) ->
-      fbind fp O (nbinders L) Fs x r ->
-      sel L (Cst.var x) r
-  | sel_glob : forall L fq,
-      unit_in fq O Fs -> sel L (Cst.glob fq) (s_mod (sr_mk fq nil None nil))
-  | sel_proj : forall L o x R t,
-      sel L o (s_mod R) -> select R x t -> sel L (Cst.proj o x) (st_res t)
+      fbind fp O (nbinders L) Fs x d ->
+      den_term d M ->
+      sel L (Cst.var x) M
+  (** A projection selects a member of the module its head denotes. *)
+  | sel_proj : forall L o x H,
+      selm L o H -> sel L (Cst.proj o x) (a_mem H x)
   (** [let x : A := M in B end] elaborates to the core [ℓ A ≔ M in B].
       Inside [B], [x] is the variable of the [let], which the core binds to
       [M]. *)
   | sel_let : forall L x oA oM ob A M B,
-      selt L oA A -> selt L oM M -> selt (lb_var x :: L) ob B ->
-      sel L (Cst.letb (Cst.d_def x oA oM) ob) (s_term (ℓ A ≔ M in B))
-  (** [let module x := E in B] adds no core binder.  Inside [B], [x] names the
-      module that [E] denotes. *)
-  | sel_let_mod : forall L x oE ob R B,
-      sel L oE (s_mod R) -> selt (lb_mod x R :: L) ob B ->
-      sel L (Cst.letb (Cst.d_mod x oE) ob) (s_term B)
+      sel L oA A -> sel L oM M -> sel (lb_var x :: L) ob B ->
+      sel L (Cst.letb (Cst.d_def x oA oM) ob) (ℓ A ≔ M in B)
+  (** [let module x (ps) md in B end] binds the slot of a local module. *)
+  | sel_let_mod : forall L x ps md ob U B,
+      sunit L ps md U -> sel (lb_var x :: L) ob B ->
+      sel L (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
 
-  with selt : list lbind -> Cst.obj -> exp -> Prop :=
-  | selt_intro : forall L o r M, sel L o r -> as_term r M -> selt L o M.
+  with selm : list lbind -> Cst.obj -> modexp -> Prop :=
+  | selm_local : forall L x k b H,
+      lbound L x k b -> den_mod (ldenote k b) H -> selm L (Cst.var x) H
+  | selm_frame : forall L x d H,
+      ~ In x (map lb_name L) ->
+      fbind fp O (nbinders L) Fs x d ->
+      den_mod d H ->
+      selm L (Cst.var x) H
+  | selm_glob : forall L fq,
+      unit_in fq O Fs -> selm L (Cst.glob fq) (me_path (p_abs fq nil))
+  | selm_proj : forall L o y H,
+      selm L o H -> selm L (Cst.proj o y) (me_mem H y)
+  | selm_app : forall L o1 o2 H N,
+      selm L o1 H -> sel L o2 N -> selm L (Cst.app o1 o2) (me_app H N)
 
   (** [sparams] elaborates a parameter list.  Each type can refer to the
       earlier parameters as λ-variables. *)
-  Inductive sparams : list lbind -> list (string * Cst.obj) -> list (string * typ) -> Prop :=
+  with sparams : list lbind -> list (string * Cst.obj) -> list (string * typ) -> Prop :=
   | sp_nil : forall L, sparams L nil nil
   | sp_cons : forall L x oA ps A tys,
-      selt L oA A ->
+      sel L oA A ->
       sparams (lb_var x :: L) ps tys ->
-      sparams L ((x, oA) :: ps) ((x, A) :: tys).
+      sparams L ((x, oA) :: ps) ((x, A) :: tys)
+
+  (** A local module: its parameters, then its definition under them. *)
+  with sunit : list lbind -> list (string * Cst.obj) -> Cst.mdef -> gunit -> Prop :=
+  | su_intro : forall L ps md tys D,
+      NoDup (map fst ps) ->
+      sparams L ps tys ->
+      sdef (lparams ps ++ L) md D ->
+      sunit L ps md (gu_mk (ptele tys) D)
+
+  with sdef : list lbind -> Cst.mdef -> moddef -> Prop :=
+  | sdf_alias : forall L oE E,
+      selm L oE E -> sdef L (Cst.md_alias oE) (md_alias E)
+  | sdf_where : forall L cs Φ,
+      sbody L gm_nil cs Φ -> sdef L (Cst.md_where cs) (md_body Φ)
+
+  (** [sbody L Φ cs Φ']: the commands [cs] extend the body [Φ], seen with the
+      bindings [L], to [Φ'].  Each entry binds its name for the entries after
+      it.  An import is a check entry, which binds its aliases but no core
+      variable.  The core rejects what a local body may not contain, an
+      opaque definition and an [eval]. *)
+  with sbody : list lbind -> gmod -> list Cst.cmd -> gmod -> Prop :=
+  | sb_nil : forall L Φ, sbody L Φ nil Φ
+  | sb_def : forall L Φ m x oA oM A M cs Φ',
+      sel L oA A -> sel L oM M ->
+      sbody (lb_var x :: L) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs Φ' ->
+      sbody L Φ (Cst.c_def m x oA oM :: cs) Φ'
+  | sb_mod : forall L Φ x ps md U cs Φ',
+      sunit L ps md U ->
+      sbody (lb_var x :: L) (gm_ext Φ x (ge_mod U)) cs Φ' ->
+      sbody L Φ (Cst.c_mod (x :: nil) ps md :: cs) Φ'
+  (** [module x.p (ps) md] is a module [x] without parameters that contains
+      [module p (ps) md]. *)
+  | sb_mod_path : forall L Φ x p ps md U cs Φ',
+      p <> nil ->
+      sunit L nil (Cst.md_where (Cst.c_mod p ps md :: nil)) U ->
+      sbody (lb_var x :: L) (gm_ext Φ x (ge_mod U)) cs Φ' ->
+      sbody L Φ (Cst.c_mod (x :: p) ps md :: cs) Φ'
+  | sb_import : forall L Φ fq ip spec E L' cs Φ',
+      ltarget L fq ip E ->
+      libinds E spec L L' ->
+      sbody L' (gm_check Φ (bc_import E (ispec_names spec))) cs Φ' ->
+      sbody L Φ (Cst.c_import fq ip spec :: cs) Φ'
+  | sb_eval : forall L Φ oM M cs Φ',
+      sel L oM M ->
+      sbody L (gm_check Φ (bc_eval M None)) cs Φ' ->
+      sbody L Φ (Cst.c_eval oM None :: cs) Φ'
+  | sb_eval_typ : forall L Φ oM oA M A cs Φ',
+      sel L oM M -> sel L oA A ->
+      sbody L (gm_check Φ (bc_eval M (Some A))) cs Φ' ->
+      sbody L Φ (Cst.c_eval oM (Some oA) :: cs) Φ'
+
+  (** What an import binds in a local body: [as y] the module, [use (ns)]
+      each of its members [ns]. *)
+  with libinds : modexp -> Cst.ispec -> list lbind -> list lbind -> Prop :=
+  | lib_open : forall E L, libinds E Cst.i_open L L
+  | lib_as : forall E y L, libinds E (Cst.i_as y) L (lb_alias y (st_mod E) :: L)
+  | lib_use : forall E ns L,
+      libinds E (Cst.i_use ns) L (fold_left (fun L n => lb_alias n (st_mem E n) :: L) ns L).
 End Objects.
 
 (** ** Imports *)
 
-(** [itarget fp O Fs fq ip R] holds when [import fq.ip] refers to the module
-    [R].  If [fq] is [nil], the import names a module of the current unit, and
-    the dotted name [ip] is resolved as an object with no local binders.
-    Otherwise it names a module of another unit, and [R] is opaque. *)
-Inductive itarget (fp : fpath) (O : sscope) (Fs : list sframe) : fpath -> list string -> sref -> Prop :=
-| it_local : forall x ip R,
-    sel fp O Fs nil (fold_left Cst.proj ip (Cst.var x)) (s_mod R) ->
-    itarget fp O Fs nil (x :: ip) R
+(** [itarget fp O Fs fq ip E] holds when [import fq.ip] refers to the module
+    expression [E].  If [fq] is [nil], the import names a module of the
+    current unit, and the dotted name [ip] is resolved as a module expression
+    with no local binders.  Otherwise it names the module of another unit at
+    the member path [ip]. *)
+Inductive itarget (fp : fpath) (O : sscope) (Fs : list sframe) : fpath -> list string -> modexp -> Prop :=
+| it_local : forall x ip E,
+    selm fp O Fs nil (fold_left Cst.proj ip (Cst.var x)) E ->
+    itarget fp O Fs nil (x :: ip) E
 | it_unit : forall fq ip,
-    fq <> nil -> itarget fp O Fs fq ip (sr_mk fq ip None nil).
+    fq <> nil -> itarget fp O Fs fq ip (me_path (p_abs fq ip)).
 
 (** [alias_fresh taken sc y] holds when [y] is neither one of the frame's
     members and parameters [taken] nor an alias in [sc].  For the leading
@@ -503,44 +508,33 @@ Inductive itarget (fp : fpath) (O : sscope) (Fs : list sframe) : fpath -> list s
 Definition alias_fresh (taken : list string) (sc : sscope) (y : string) : Prop :=
   ~ In y taken /\ ss_free sc y.
 
-(** [use (n₁; …)] binds each [nᵢ] to the member [R.nᵢ], in order; each name
+(** [use (n₁; …)] binds each [nᵢ] to the member [E.nᵢ], in order; each name
     must be fresh, including against the earlier ones. *)
-Inductive use_binds (R : sref) (taken : list string) : list string -> sscope -> sscope -> Prop :=
-| ub_nil : forall sc, use_binds R taken nil sc sc
-| ub_cons : forall n ns t sc sc',
+Inductive use_binds (E : modexp) (taken : list string) : list string -> sscope -> sscope -> Prop :=
+| ub_nil : forall sc, use_binds E taken nil sc sc
+| ub_cons : forall n ns sc sc',
     alias_fresh taken sc n ->
-    select R n t ->
-    use_binds R taken ns (ss_add n t sc) sc' ->
-    use_binds R taken (n :: ns) sc sc'.
+    use_binds E taken ns (ss_add n (st_mem E n) sc) sc' ->
+    use_binds E taken (n :: ns) sc sc'.
 
-(** [ibinds R taken spec sc sc'] holds when importing the module [R] with the
+(** [ibinds E taken spec sc sc'] holds when importing the module [E] with the
     specification [spec] extends the scope [sc] to [sc'].  A plain import
-    binds nothing, [as y] binds [y] to [R], and [use] binds the listed
+    binds nothing, [as y] binds [y] to [E], and [use] binds the listed
     members. *)
-Inductive ibinds (R : sref) (taken : list string) : Cst.ispec -> sscope -> sscope -> Prop :=
-| ib_open : forall sc, ibinds R taken Cst.i_open sc sc
-| ib_as : forall y sc, alias_fresh taken sc y -> ibinds R taken (Cst.i_as y) sc (ss_add y (st_mod R) sc)
-| ib_use : forall ns sc sc', use_binds R taken ns sc sc' -> ibinds R taken (Cst.i_use ns) sc sc'.
+Inductive ibinds (E : modexp) (taken : list string) : Cst.ispec -> sscope -> sscope -> Prop :=
+| ib_open : forall sc, ibinds E taken Cst.i_open sc sc
+| ib_as : forall y sc, alias_fresh taken sc y -> ibinds E taken (Cst.i_as y) sc (ss_add y (st_mod E) sc)
+| ib_use : forall ns sc sc', use_binds E taken ns sc sc' -> ibinds E taken (Cst.i_use ns) sc sc'.
 
-(** Only an import of another unit produces a core command. *)
-Definition import_cmd (fq : fpath) (ip : list string) : option ccmd :=
-  match fq with
-  | nil => None
-  | _ => Some (cc_import fq ip)
-  end.
-
-Definition opt_list {A} (o : option A) : list A :=
-  match o with Some a => a :: nil | None => nil end.
-
-(** [simport fp O Fs taken sc c sc' oc]: the import [c], in a frame with
+(** [simport fp O Fs taken sc c sc' c']: the import [c], in a frame with
     scope [sc] and members and parameters [taken], changes the scope to [sc']
-    and emits at most one core command [oc]. *)
+    and emits the core command [c'], which the core checks. *)
 Inductive simport (fp : fpath) (O : sscope) (Fs : list sframe) (taken : list string)
-  : sscope -> Cst.cmd -> sscope -> option ccmd -> Prop :=
-| si_intro : forall sc fq ip spec R sc',
-    itarget fp O Fs fq ip R ->
-    ibinds R taken spec (ss_add_unit fq sc) sc' ->
-    simport fp O Fs taken sc (Cst.c_import fq ip spec) sc' (import_cmd fq ip).
+  : sscope -> Cst.cmd -> sscope -> ccmd -> Prop :=
+| si_intro : forall sc fq ip spec E sc',
+    itarget fp O Fs fq ip E ->
+    ibinds E taken spec (ss_add_unit fq sc) sc' ->
+    simport fp O Fs taken sc (Cst.c_import fq ip spec) sc' (cc_import (ifile fq) E (ispec_names spec)).
 
 (** ** Commands
 
@@ -551,20 +545,20 @@ Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> s
 (** A definition sees the members declared before it, but not itself. *)
 | sc_def : forall Fs F m x oA oM A M,
     sf_fresh F x ->
-    selt fp O (F :: Fs) nil oA A ->
-    selt fp O (F :: Fs) nil oM M ->
+    sel fp O (F :: Fs) nil oA A ->
+    sel fp O (F :: Fs) nil oM M ->
     scmd fp O Fs F (Cst.c_def m x oA oM)
       (sf_emit F (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M))
 | sc_eval : forall Fs F oM M,
-    selt fp O (F :: Fs) nil oM M ->
+    sel fp O (F :: Fs) nil oM M ->
     scmd fp O Fs F (Cst.c_eval oM None) (sf_emit F (cc_eval M None))
 | sc_eval_typ : forall Fs F oM oA M A,
-    selt fp O (F :: Fs) nil oM M ->
-    selt fp O (F :: Fs) nil oA A ->
+    sel fp O (F :: Fs) nil oM M ->
+    sel fp O (F :: Fs) nil oA A ->
     scmd fp O Fs F (Cst.c_eval oM (Some oA)) (sf_emit F (cc_eval M (Some A)))
-| sc_import : forall Fs F fq ip spec sc' oc,
-    simport fp O (F :: Fs) (sf_taken F) (sf_scope F) (Cst.c_import fq ip spec) sc' oc ->
-    scmd fp O Fs F (Cst.c_import fq ip spec) (sf_mk (sf_path F) (sf_params F) (sf_cmds F ++ opt_list oc) sc')
+| sc_import : forall Fs F fq ip spec sc' c,
+    simport fp O (F :: Fs) (sf_taken F) (sf_scope F) (Cst.c_import fq ip spec) sc' c ->
+    scmd fp O Fs F (Cst.c_import fq ip spec) (sf_mk (sf_path F) (sf_params F) (sf_cmds F ++ c :: nil) sc')
 (** The parameters of [module x (ps) where body end] are elaborated in [F],
     and its body in a new frame nested in [F]. *)
 | sc_mod : forall Fs F x ps body tys N,
@@ -572,14 +566,21 @@ Inductive scmd (fp : fpath) (O : sscope) : list sframe -> sframe -> Cst.cmd -> s
     NoDup (map fst ps) ->
     sparams fp O (F :: Fs) nil ps tys ->
     scmds fp O (F :: Fs) (sf_new (sf_path F ++ x :: nil) tys) body N ->
-    scmd fp O Fs F (Cst.c_mod (x :: nil) ps body) (sf_emit F (cc_mod x (ptele tys) (sf_cmds N)))
-(** [module x.p (ps) where … end] is a module [x] without parameters that
-    contains [module p (ps) where … end]. *)
-| sc_mod_path : forall Fs F x p ps body N,
+    scmd fp O Fs F (Cst.c_mod (x :: nil) ps (Cst.md_where body)) (sf_emit F (cc_mod x (ptele tys) (sf_cmds N)))
+(** [module x (ps) := E]: [E] is read under the parameters. *)
+| sc_alias : forall Fs F x ps oE tys E,
+    sf_fresh F x ->
+    NoDup (map fst ps) ->
+    sparams fp O (F :: Fs) nil ps tys ->
+    selm fp O (F :: Fs) (lparams ps) oE E ->
+    scmd fp O Fs F (Cst.c_mod (x :: nil) ps (Cst.md_alias oE)) (sf_emit F (cc_alias x (ptele tys) E))
+(** [module x.p (ps) md] is a module [x] without parameters that contains
+    [module p (ps) md]. *)
+| sc_mod_path : forall Fs F x p ps md N,
     p <> nil ->
     sf_fresh F x ->
-    scmd fp O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) (Cst.c_mod p ps body) N ->
-    scmd fp O Fs F (Cst.c_mod (x :: p) ps body) (sf_emit F (cc_mod x ⋅ (sf_cmds N)))
+    scmd fp O (F :: Fs) (sf_new (sf_path F ++ x :: nil) nil) (Cst.c_mod p ps md) N ->
+    scmd fp O Fs F (Cst.c_mod (x :: p) ps md) (sf_emit F (cc_mod x ⋅ (sf_cmds N)))
 
 with scmds (fp : fpath) (O : sscope) : list sframe -> sframe -> list Cst.cmd -> sframe -> Prop :=
 | scs_nil : forall Fs F, scmds fp O Fs F nil F
@@ -590,10 +591,10 @@ with scmds (fp : fpath) (O : sscope) : list sframe -> sframe -> list Cst.cmd -> 
     each in the scope built by the earlier ones. *)
 Inductive simports (fp : fpath) : sscope -> list Cst.cmd -> sscope -> list ccmd -> Prop :=
 | sis_nil : forall O, simports fp O nil O nil
-| sis_cons : forall O fq ip spec O1 oc cs O2 is,
-    simport fp O nil nil O (Cst.c_import fq ip spec) O1 oc ->
+| sis_cons : forall O fq ip spec O1 c cs O2 is,
+    simport fp O nil nil O (Cst.c_import fq ip spec) O1 c ->
     simports fp O1 cs O2 is ->
-    simports fp O (Cst.c_import fq ip spec :: cs) O2 (opt_list oc ++ is).
+    simports fp O (Cst.c_import fq ip spec :: cs) O2 (c :: is).
 
 (** ** Units
 
@@ -644,8 +645,8 @@ Proof.
   intros Hin; apply in_app_or in Hin as [|]; auto.
 Qed.
 
-Lemma ibinds_wf : forall R taken spec sc sc',
-    ibinds R taken spec sc sc' ->
+Lemma ibinds_wf : forall E taken spec sc sc',
+    ibinds E taken spec sc sc' ->
     NoDup (map fst (ss_alias sc) ++ taken) -> NoDup (map fst (ss_alias sc') ++ taken).
 Proof.
   induction 1 as [| | ns sc sc' Hu]; intros Hw; [ assumption | eapply alias_fresh_wf; eassumption |].
@@ -655,8 +656,8 @@ Qed.
 Lemma ss_alias_add_unit : forall fq sc, ss_alias (ss_add_unit fq sc) = ss_alias sc.
 Proof. intros [] ?; reflexivity. Qed.
 
-Lemma simport_wf : forall fp O Fs taken sc c sc' oc,
-    simport fp O Fs taken sc c sc' oc ->
+Lemma simport_wf : forall fp O Fs taken sc c sc' c',
+    simport fp O Fs taken sc c sc' c' ->
     NoDup (map fst (ss_alias sc) ++ taken) -> NoDup (map fst (ss_alias sc') ++ taken).
 Proof.
   intros * Hs Hw. inversion Hs; subst. eapply ibinds_wf; [ eassumption |].
@@ -680,9 +681,9 @@ Proof.
   - apply sf_wf_emit; [ assumption |]. discriminate.
   - unfold sf_wf, sf_names, sf_taken in *; cbn.
     rewrite decl_names_app.
-    replace (decl_names (opt_list oc)) with (@nil string)
-      by (inversion s; subst; destruct fq; reflexivity).
+    replace (decl_names (c :: nil)) with (@nil string) by (inversion s; subst; reflexivity).
     rewrite app_nil_r. eapply simport_wf; eassumption.
+  - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
   - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
   - apply sf_wf_emit; [ assumption |]. intros ? [=<-]; assumption.
 Qed.

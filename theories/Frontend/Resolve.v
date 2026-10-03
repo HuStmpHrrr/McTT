@@ -1,88 +1,16 @@
 From Stdlib Require Import Lia List PeanoNat Relation_Operators String.
 
-From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax.
-
-Import Syntax_Notations Wk_Notations.
 
 (** * Names in Scope
 
-    Core commands do not name a frame's parameters, so for each open frame the
-    elaborator keeps an [eframe]: its members, without their types, and its
-    named parameters.
-
-    A private member can be named from its own frame and the frames nested in
-    it.  Through a module that is not open, only public members are reachable.
-    Of an imported unit only the path is known. *)
-
-(** ** Frames *)
-
-(** A member without its type: whether a definition is private, or the
-    number of parameters and the members of a nested module. *)
-Inductive ename : Set :=
-| en_def : bool -> ename
-| en_mod : nat -> emod -> ename
-with emod : Set :=
-| em_nil : emod
-| em_ext : emod -> string -> ename -> emod.
-
-(** An open frame: [ef_params] names its parameters, innermost first, and
-    [ef_mod] holds its members so far. *)
-Record eframe : Set := ef_mk
-  { ef_params : list string
-  ; ef_mod : emod }.
-
-Fixpoint em_lookup (x : string) (Φ : emod) : option ename :=
-  match Φ with
-  | em_nil => None
-  | em_ext Φ' y E => if String.eqb x y then Some E else em_lookup x Φ'
-  end.
+    The elaborator resolves a name by its position in a list of names: a
+    parameter of an open frame is the variable of its index. *)
 
 Fixpoint index_of (x : string) (xs : list string) : option nat :=
   match xs with
   | nil => None
   | y :: xs' => if String.eqb x y then Some 0 else option_map S (index_of x xs')
   end.
-
-(** ** What a Name Denotes
-
-    A module reached by a dotted prefix: its unit and member chain, its
-    members, whether only public members may be named, and the arguments
-    given so far.  The members are [None] for a path into an imported unit,
-    which is _opaque_: typing decides what it names. *)
-Record mref : Set := mr_mk
-  { mr_unit : list string
-  ; mr_mems : list string
-  ; mr_mod : option emod
-  ; mr_public : bool
-  ; mr_args : list exp }.
-
-(** What an alias names: a module, or a definition of one. *)
-Inductive target : Set :=
-| tg_mod : mref -> target
-| tg_mem : mref -> string -> target.
-
-
-(** ** The Local Scope
-
-    Bindings made inside a term, each recorded with the depth it was
-    elaborated at and weakened to the use site. *)
-Inductive lent : Set :=
-| le_term : exp -> nat -> lent
-| le_mod : mref -> nat -> lent.
-
-Definition lscope : Set := list (string * lent).
-
-Definition ls_push (x : string) (d : nat) (ls : lscope) : lscope := (x, le_term #0 (S d)) :: ls.
-
-Definition sc_shift (d n : nat) (M : exp) : exp := M[wk_shiftn (d - n)]ʷ.
-
-Definition sc_apply (M : exp) (args : list exp) : exp := List.fold_left a_app args M.
-
-Definition mr_weaken (d n : nat) (mr : mref) : mref :=
-  {| mr_unit := mr_unit mr; mr_mems := mr_mems mr; mr_mod := mr_mod mr;
-     mr_public := mr_public mr;
-     mr_args := List.map (sc_shift d n) (mr_args mr) |}.
 
 (** * Import Depths
 

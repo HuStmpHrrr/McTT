@@ -136,14 +136,12 @@ let%expect_test "lib/NatTheory.mctt" =
                (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 x1)
                3
                1 --> 8 : Nat
-    Evaluate let x1 : Nat := 2;
-                 x2 : Prelude::Arith::Equality.Eq
-                        (Prelude::Function::Iter.iter Nat
-                           (fun (x3 : Nat) -> Prelude::Arith::Plus.plus x3 x3)
-                           x1
-                          1)
-                        4 := true
-             in x2
+    Evaluate let module M1 :=
+                   Prelude::Function::Iter Nat
+                     (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 x1);
+                 x2 : Nat := 2;
+                 x3 : Prelude::Arith::Equality.Eq (M1.iter x2 1) 4 := true
+             in x3
              end --> true : True
     |}]
 
@@ -329,7 +327,8 @@ let%expect_test "Nary.mctt works" =
   let _ = main_of_example "Nary.mctt" in
   [%expect {|
     Evaluate sum 3 1 2 3 --> 6 : Nat
-    Evaluate let x1 : Arity.Fn Nat 4 := sum 4 in x1 1 2 3 4 end --> 10 : Nat
+    Evaluate let module M1 := Arity Nat; x1 : M1.Fn 4 := sum 4 in x1 1 2 3 4 end
+      --> 10 : Nat
     |}]
 
 let%expect_test "SimpleLet.mctt works" =
@@ -517,7 +516,32 @@ let%expect_test "ModuleNested.mctt works" =
 
 let%expect_test "ModuleParam.mctt works" =
   let _ = main_of_example "ModuleParam.mctt" in
-  [%expect {| Evaluate Church.two Nat 0 (fun (x1 : Nat) -> succ x1) --> 2 : Nat |}]
+  [%expect {|
+    Evaluate let module M1 := Church Nat
+             in M1.two 0 (fun (x1 : Nat) -> succ x1)
+             end --> 2 : Nat
+    |}]
+
+let%expect_test "ModuleForms.mctt works" =
+  let _ = main_of_example "ModuleForms.mctt" in
+  [%expect {|
+    Evaluate NatIter.twice (fun (x1 : Nat) -> succ x1) 0 --> 2 : Nat
+    Evaluate Num.Ops.add 2 3 --> 5 : Nat
+    Evaluate Num.Ops.add 1 1 --> 2 : Nat
+    Evaluate let module M1 (x1 : Nat) where
+                   module Inner where
+                     def m : Nat :=
+                       succ x1
+                     end
+                   end
+                   import Inner use (m)
+                   def doubled : Nat :=
+                     Num.Ops.add Inner.m Inner.m
+                   end
+                 end
+             in M1.doubled 2
+             end --> 6 : Nat
+    |}]
 
 let%expect_test "ImportUse.mctt works" =
   let _ = main_of_example "ImportUse.mctt" in
@@ -1275,4 +1299,186 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate Prelude::Arith::Prime.smallestDivisorDivides 15 --> true : True
     Evaluate Prelude::Arith::Prime.primeGeTwo 13 true --> true : True
     Evaluate Prelude::Arith::Prime.primeSmallestDivisor 13 true --> true : True
+    |}]
+
+(** Module forms *)
+
+let%expect_test "a local module with parameters" =
+  let _ = main_of_body "eval let module X (n : Nat) where def f : Nat := n end end in X.f 3 end" in
+  [%expect {|
+    Evaluate let module M1 (x1 : Nat) where
+                   def f : Nat :=
+                     x1
+                   end
+                 end
+             in M1.f 3
+             end --> 3 : Nat
+    |}]
+
+let%expect_test "a local alias of a submodule" =
+  let _ =
+    main_of_body
+      "eval let module X (n : Nat) where module V where def f : Nat := n end end end in \
+       let module P := X.V in P.f 3 end end"
+  in
+  [%expect {|
+    Evaluate let module M1 (x1 : Nat) where
+                   module V where
+                     def f : Nat :=
+                       x1
+                     end
+                   end
+                 end;
+                 module M2 := M1.V
+             in M2.f 3
+             end --> 3 : Nat
+    |}]
+
+let%expect_test "beta substitutes into a local module" =
+  let _ = main_of_body "eval (fun (n : Nat) -> let module X where def f : Nat := n end end in X.f end) 3" in
+  [%expect {|
+    Evaluate (fun (x1 : Nat)
+               -> let module M1 where
+                        def f : Nat :=
+                          x1
+                        end
+                      end in M1.f end)
+               3 --> 3 : Nat
+    |}]
+
+let%expect_test "a nested parameterized module, selected through its parent" =
+  let _ =
+    main_of_body
+      "eval let module M (A : Type@0) where def x : Nat := zero end \
+       module N (B : Type@0) where def c (y : B) : B := y end end end in \
+       M.N.c Nat Nat 3 end"
+  in
+  [%expect {|
+    Evaluate let module M1 (A1 : Type@0) where
+                   def x : Nat :=
+                     0
+                   end
+                   module N (A2 : Type@0) where
+                     def c : forall (x1 : A2) -> A2 :=
+                       fun (x2 : A2) -> x2
+                     end
+                   end
+                 end
+             in M1.N.c Nat Nat 3
+             end --> 3 : Nat
+    |}]
+
+let%expect_test "a module alias with parameters" =
+  let _ =
+    main_of_body
+      "module M (A : Type@0) where def id (x : A) : A := x end end \
+       module P (B : Type@0) := M B \
+       eval P.id Nat 4"
+  in
+  [%expect {| Evaluate P.id Nat 4 --> 4 : Nat |}]
+
+let%expect_test "a dotted module declaration" =
+  let _ = main_of_body "module A.B (n : Nat) where def f : Nat := succ n end end eval A.B.f 1" in
+  [%expect {| Evaluate A.B.f 1 --> 2 : Nat |}]
+
+let%expect_test "a local body with an import" =
+  let _ =
+    main_of_body
+      "eval let module L where module N where def y : Nat := 5 end end \
+       import N use (y) def z : Nat := succ y end end in L.z end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   module N where
+                     def y : Nat :=
+                       5
+                     end
+                   end
+                   import N use (y)
+                   def z : Nat :=
+                     succ N.y
+                   end
+                 end
+             in M1.z
+             end --> 6 : Nat
+    |}]
+
+let%expect_test "an import of a local module alias" =
+  let _ =
+    main_of_body
+      "module M where def y : Nat := 7 end end module P := M import P as Q eval Q.y"
+  in
+  [%expect {| Evaluate P.y --> 7 : Nat |}]
+
+(** Module rejections *)
+
+let%expect_test "a private member is not selected from outside" =
+  let _ = main_of_body "module M where private def s : Nat := 0 end end eval M.s" in
+  [%expect {| Error: M.s has no inferable type |}]
+
+let%expect_test "a private member is not imported by use" =
+  let _ = main_of_body "module M where private def s : Nat := 0 end end import M use (s)" in
+  [%expect {| Error: ill-formed import |}]
+
+let%expect_test "a module alias of a term is rejected" =
+  let _ = main_of_body "module P := Nat" in
+  [%expect {| Error: not a module |}]
+
+let%expect_test "an alias of a module is not a term" =
+  let _ = main_of_body "module M where end import M as N eval N" in
+  [%expect {| Error: a module is not a term |}]
+
+let%expect_test "a module argument of the wrong type is rejected" =
+  let _ = main_of_body "module M (n : Nat) where def f : Nat := n end end eval (M Type@0).f" in
+  [%expect {| Error: (M Type@0).f has no inferable type |}]
+
+let%expect_test "a missing member is rejected" =
+  let _ = main_of_body "module M where end eval M.f" in
+  [%expect {| Error: M.f has no inferable type |}]
+
+let%expect_test "a module alias may not reuse a name" =
+  let _ = main_of_body "module M where end module M := M" in
+  [%expect {| Error: M is already declared |}]
+
+let%expect_test "a local module may not repeat a parameter" =
+  let _ = main_of_body "eval let module X (n : Nat) (n : Nat) where end in 0 end" in
+  [%expect {| Error: duplicate parameter n |}]
+
+let%expect_test "an opaque definition is rejected in a local body" =
+  let _ = main_of_body "eval let module X where abstract def f : Nat := 0 end end in X.f end" in
+  [%expect {|
+    Error: let module M1 where
+                 abstract def f : Nat :=
+                   0
+                 end
+               end in M1.f end has no inferable type
+    |}]
+
+let%expect_test "an eval is rejected in a local body" =
+  let _ = main_of_body "eval let module X where eval 0 end in 0 end" in
+  [%expect {|
+    Error: let module M1 where
+                 eval 0
+               end in 0 end has no inferable type
+    |}]
+
+let%expect_test "a local module does not escape its let" =
+  let _ = main_of_body "eval let module X where def f : Nat := 0 end end in X end" in
+  [%expect {|
+    Error: let module M1 where
+                 def f : Nat :=
+                   0
+                 end
+               end in M1 end has no inferable type
+    |}]
+
+let%expect_test "a use of a missing member is rejected" =
+  let _ = main_of_body "module M where end import M use (f)" in
+  [%expect {| Error: ill-formed import |}]
+
+let%expect_test "a module expression is expected after :=" =
+  let _ = main_of_body "module P := where" in
+  [%expect {|
+    Error: on "where" (at line 1, column 31 - line 1, column 36): Expected a
+      module expression after ":=".
     |}]

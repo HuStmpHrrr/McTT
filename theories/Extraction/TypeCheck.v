@@ -73,6 +73,16 @@ Section type_check.
     - right; intros Hf; inversion Hf as [| ? ? He _]; destruct He; discriminate.
   Defined.
 
+  (** [ListDec.NoDup_dec] is opaque, so extraction would bypass it. *)
+  Definition names_nodup_dec : forall l : list string, { NoDup l } + { ~ NoDup l }.
+  Proof.
+    induction l as [| x l IH].
+    - left; constructor.
+    - destruct (in_dec string_dec x l) as [Hin | Hn].
+      + right; intros Hnd; inversion Hnd; contradiction.
+      + destruct IH as [H | H]; [ left; constructor; assumption | right; intros Hnd; inversion Hnd; contradiction ].
+  Defined.
+
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
     intros [b pv A [M |] | U] [b' pv' A' [M' |] | U']; cbn; try (right; intros []; fail); try (left; exact I).
@@ -693,7 +703,7 @@ Section type_check.
       let*b _ := ext_check G HG (body_ctx Φ ++ Δ) _ while _ in
       let*b _ := tele_ass_dec Δ while _ in
       let*b _ := body_shape_dec Φ Φ while _ in
-      let*b _ := NoDup_dec string_dec (gm_names Φ) while _ in
+      let*b _ := names_nodup_dec (gm_names Φ) while _ in
       let*b _ := imports_check G Δ (gm_checks Φ) _ _ while _ in
       pureb _
   | G, HG, gu_mk Δ (md_alias E), H =>

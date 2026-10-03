@@ -33,6 +33,8 @@ Definition fold_params (b : string -> Cst.obj -> Cst.obj -> Cst.obj)
 %type <(list string * list string)%type> qpath
 %type <Cst.ispec> ispec
 %type <Cst.cmd> cmd import_cmd
+%type <(list (string * Cst.obj) * Cst.mdef)%type> mdecl
+%type <Cst.mdef> mdef
 %type <list Cst.cmd> cmds imports
 
 %on_error_reduce obj params params_opt app_obj atomic_obj cmds imports mods path fpath
@@ -56,13 +58,21 @@ let cmds :=
   | ~ = cmds; ~ = cmd; { cmd :: cmds }
 
 let cmd :=
-  | MODULE; p = path; ps = params_opt; WHERE; cs = cmds; END;
-      { Cst.c_mod (List.rev p) (List.rev ps) (List.rev cs) }
+  | MODULE; p = path; md = mdecl; { Cst.c_mod (List.rev p) (fst md) (snd md) }
   | m = mods; DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
       { Cst.c_def m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
   | ~ = import_cmd; <>
   | EVAL; ~ = obj; { Cst.c_eval obj None }
   | EVAL; e = obj; ":"; t = obj; { Cst.c_eval e (Some t) }
+
+(* A module declaration, at the top level or in a [let]: its parameters, and
+   a body or an alias. *)
+let mdecl :=
+  | ps = params_opt; d = mdef; { (List.rev ps, d) }
+
+let mdef :=
+  | WHERE; cs = cmds; END; { Cst.md_where (List.rev cs) }
+  | ":="; ~ = obj; { Cst.md_alias obj }
 
 let import_cmd :=
   | IMPORT; ~ = qpath; ~ = ispec; { Cst.c_import (fst qpath) (snd qpath) ispec }
@@ -167,10 +177,11 @@ let let_defns :=
   | ~ = let_defns; ";"; ~ = let_defn; { let_defn :: let_defns }
   | ~ = let_defn; { [let_defn] }
 
-(* [x : A := a], or [module X := E] *)
+(* [x : A := a], or a local module [module X (ps) where … end] or
+   [module X (ps) := E] *)
 let let_defn :=
   | x = VAR; ":"; a = obj; ":="; b = obj; { Cst.d_def (snd x) a b }
-  | MODULE; x = VAR; ":="; ~ = obj; { Cst.d_mod (snd x) obj }
+  | MODULE; x = VAR; md = mdecl; { Cst.d_mod (snd x) (fst md) (snd md) }
 %%
 
 Extract Constant loc => "Lexing.position * Lexing.position".
