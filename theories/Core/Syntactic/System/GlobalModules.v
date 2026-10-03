@@ -670,3 +670,43 @@ Proof.
     + injection Heq as <- _.
       rewrite (proj1 (gm_subbody_snoc _ _ _ _ _ _ Hb y)); exact Hy.
 Qed.
+
+(** ** A Name Is a Definition or a Module, Not Both *)
+
+Lemma gm_resolve_def_not_module : forall Φ T z b pv A B ip,
+    gm_resolve Φ (z :: nil) = Some (ge_def b pv A B) -> gm_submodule T Φ z ip = None.
+Proof.
+  induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H |- *; [ reflexivity | | eauto ].
+  destruct (String.eqb z y); [| eauto ].
+  destruct E as [? ? ? ? | U]; [ reflexivity | discriminate ].
+Qed.
+
+Lemma gm_submodule_alias_resolve : forall Φ T x ip U r,
+    gm_submodule T Φ x ip = Some (mr_alias U r) -> gm_resolve Φ (x :: ip) = None.
+Proof.
+  fix IH 1; intros [| Φ z E0 | Φ c] * H; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H) ].
+  destruct (String.eqb x z); [| exact (IH _ _ _ _ _ _ H) ].
+  destruct E0 as [? ? ? ? | [Δ [Φ0 | E1]]]; try discriminate.
+  - destruct ip as [| w ip]; [ discriminate | exact (IH _ _ _ _ _ _ H) ].
+  - destruct ip; reflexivity.
+Qed.
+
+Lemma gm_body_prefix : forall ch2 ch1 T Φ T2 Φ2,
+    gm_body T Φ (ch1 ++ ch2) = Some (T2, Φ2) -> exists T1 Φ1, gm_body T Φ ch1 = Some (T1, Φ1).
+Proof.
+  induction ch2 as [| y ch2 IH] using rev_ind; intros * H; [ rewrite app_nil_r in H; eauto |].
+  rewrite app_assoc in H.
+  destruct (gm_body_snoc_inv _ _ _ _ _ _ H) as (T1 & Φ1 & H1 & _).
+  exact (IH _ _ _ _ _ H1).
+Qed.
+
+Lemma gc_module_alias_resolve : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
+    gc_module Θ Ξ p = Some (mr_alias U r0) -> gc_resolve Θ Ξ p = None.
+Proof.
+  intros * Hg * H.
+  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  unfold gc_module, gc_resolve in *; rewrite gs_find_tele_find.
+  destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; cbn; [ discriminate | exact (gm_submodule_alias_resolve _ _ _ _ _ _ H) |].
+  destruct (gds_lookup Θ (p_unit p)) as [V |]; [| reflexivity ].
+  destruct (p_mems p) as [| x ip]; cbn in H; [ discriminate | exact (gm_submodule_alias_resolve _ _ _ _ _ _ H) ].
+Qed.
