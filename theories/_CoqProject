@@ -25,6 +25,7 @@
 ./Core/Completeness/SubstitutionCases.v
 ./Core/Completeness/SubtypingCases.v
 ./Core/Completeness/TrueFalseCases.v
+./Core/Completeness/UnitCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v

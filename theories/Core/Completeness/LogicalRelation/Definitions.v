@@ -237,9 +237,12 @@ Inductive sem_ctx : ctx -> Prop :=
     ⊨ Γ ▹ₘ U
 with sem_unit : ctx -> gunit -> Prop :=
 | sem_unit_body : forall Γ Δ Φ,
+    tele_ass Δ ->
+    body_shape Φ Φ ->
     ⊨ body_ctx Φ ++ Δ ++ Γ ->
     sem_unit Γ (gu_body Δ Φ)
 | sem_unit_alias : forall Γ Δ E,
+    tele_ass Δ ->
     ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ᵐ E ≈ E ->
     sem_unit Γ (gu_mk Δ (md_alias E))
