@@ -105,7 +105,7 @@ Lemma valid_exp_var_here : forall {Γ A},
 Proof.
   intros * HΓ.
   pose proof HΓ as HΓA.
-  inversion HΓ as [| ? ? i ? HΓ0 HΓAper HA |]; subst.
+  inversion HΓ as [| ? ? i ? HΓ0 HΓAper HA | |]; subst.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓper HAgen]].
   pose proof (rel_exp_of_typ_inversion (rel_exp_under_ctx_shift HΓAper HA))
     as [env_relΓA [HΓAper' HAwkgen]].
@@ -160,7 +160,7 @@ Proof.
   induction 1 as [A Γ | A M Γ | x A Γ e Hx IH]; intros HΓ.
   - apply valid_exp_var_here; assumption.
   - (** [Γ ▸ A ≔ M ∋ #0 : A[↑]ʷ] is the head of [Γ ▹ A], restricted. *)
-    inversion HΓ as [| | ? ? ? i ? HΓ0 HΓAper HA HM]; subst.
+    inversion HΓ as [| | ? ? ? i ? HΓ0 HΓAper HA HM |]; subst.
     pose proof (rel_ctx_extend' HΓ0 HA) as HΓA.
     pose proof (sem_ctx_per_ctx_env HΓA) as [env_relΓA HΓAper'].
     eapply rel_exp_under_ctx_restrict; [ exact HΓAper | exact HΓAper' | | ].
@@ -186,7 +186,7 @@ Lemma rel_exp_var_delta_here : forall {Γ A M},
 Proof.
   intros * HΓ.
   pose proof HΓ as HΓd.
-  inversion HΓd as [| | ? ? ? i ? HΓ0 HΓdper HA HM]; subst.
+  inversion HΓd as [| | ? ? ? i ? HΓ0 HΓdper HA HM |]; subst.
   pose proof (sem_ctx_per_ctx_env HΓ0) as [env_relΓ HΓper].
   pose proof (per_ctx_env_of_def HΓper HA HM) as HΓdc.
   eapply rel_exp_under_ctx_of_simple; [ exact HΓdc | | | ].

@@ -1122,13 +1122,13 @@ Proof.
   - constructor.
   - (* a definition *)
     match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 functional_eval)))))))))); eassumption); subst end.
+      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
     econstructor; eauto using rel_elem_trans.
   - (* a module *)
     match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 functional_eval)))))))))); eassumption); subst end.
+      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
     econstructor; eauto.
   - econstructor; eauto.
 Qed.

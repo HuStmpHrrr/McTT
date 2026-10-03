@@ -22,6 +22,7 @@ Import Domain_Notations.
           forall r2,
             $| m & n | Θ ⍮ Ξ ↘ r2 ->
             r1 = r2) /\
+      (forall Ms ρ ms1, eval_exps Θ Ξ Ms ρ ms1 -> forall ms2, eval_exps Θ Ξ Ms ρ ms2 -> ms1 = ms2) /\
       (forall m args r1, eval_apps Θ Ξ m args r1 -> forall r2, eval_apps Θ Ξ m args r2 -> r1 = r2) /\
       (forall H ρ h1, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 -> forall h2, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h2 -> h1 = h2) /\
       (forall h n r1, eval_appm Θ Ξ h n r1 -> forall r2, eval_appm Θ Ξ h n r2 -> r1 = r2) /\
@@ -46,6 +47,8 @@ Import Domain_Notations.
           H2 : forall U r, GlobalCtx.gc_module Θ Ξ ?p <> Some (GlobalCtx.mr_alias U r) |- _ =>
             exfalso; exact (H2 _ _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
             assert_fails (constr_eq a b); specialize (IH _ H); subst
@@ -86,6 +89,14 @@ Import Domain_Notations.
       h1 = h2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
+  Qed.
+
+  Corollary functional_eval_benv : forall {Θ Ξ} ρ Φ ρ1 ρ2,
+      eval_benv Θ Ξ ρ Φ ρ1 ->
+      eval_benv Θ Ξ ρ Φ ρ2 ->
+      ρ1 = ρ2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
   Corollary functional_eval_sub : forall {Θ Ξ} σ ρ ρσ1 ρσ2,

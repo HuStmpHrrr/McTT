@@ -96,6 +96,7 @@ Section Transparent.
     (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
        dclean m -> env_clean ρ -> dclean r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dclean m -> dclean n -> dclean r) /\
+    (forall Ms ρ ms, eval_exps Θ Ξ Ms ρ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
     (forall m args r, eval_apps Θ Ξ m args r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
     (forall h n r, eval_appm Θ Ξ h n r -> dmclean h -> dclean n -> dmclean r) /\
@@ -109,6 +110,7 @@ Section Transparent.
              (fun M ρ m _ => env_clean ρ -> dclean m)
              (fun A MZ MS m ρ r _ => dclean m -> env_clean ρ -> dclean r)
              (fun m n r _ => dclean m -> dclean n -> dclean r)
+             (fun Ms ρ ms _ => env_clean ρ -> forall a, In a ms -> dclean a)
              (fun m args r _ => dclean m -> (forall a, In a args -> dclean a) -> dclean r)
              (fun H ρ h _ => env_clean ρ -> dmclean h)
              (fun h n r _ => dmclean h -> dclean n -> dmclean r)
@@ -128,20 +130,28 @@ Section Transparent.
     all: try solve [ match goal with H : gc_resolve _ _ _ = Some (ge_def _ _ _ _), Ho : _ \/ _ |- _ =>
          destruct (gc_transparent_resolve _ _ _ _ _ _ _ Htr H) end; intuition congruence ].
     all: try solve [ eauto 6 with mctt ].
-    - (* the [⊥]-eliminator, whose scrutinee is clean *)
-      match goal with H : env_clean ?ρ -> dclean (⇑ _ _), Hρ : env_clean ?ρ |- _ =>
-        specialize (H Hρ); inversion_clear H end.
-      eauto 7 with mctt.
-    - (* the [ℕ]-eliminator on a neutral *)
-      match goal with IHA : env_clean (?ρ ↦ ⇑ ?b ?m) -> dclean ?a, IHZ : env_clean ?ρ -> dclean ?mz,
+    (* the [⊥]-eliminator, whose scrutinee is clean *)
+    all: try solve [ match goal with H : env_clean ?ρ -> dclean (⇑ _ _), Hρ : env_clean ?ρ |- _ =>
+        specialize (H Hρ); inversion_clear H end; eauto 7 with mctt ].
+    (* the [ℕ]-eliminator on a neutral *)
+    all: try solve [ match goal with IHA : env_clean (?ρ ↦ ⇑ ?b ?m) -> dclean ?a, IHZ : env_clean ?ρ -> dclean ?mz,
                       Hρ : env_clean ?ρ |- _ =>
-        apply dclean_neut; [ apply IHA; apply env_clean_extend; auto with mctt | constructor; auto with mctt ] end.
-    - (* arguments, one at a time *)
-      match goal with IH : dclean ?m1 -> _ -> dclean ?r, IH1 : dclean ?m -> dclean ?n -> dclean ?m1,
+        apply dclean_neut; [ apply IHA; apply env_clean_extend; auto with mctt | constructor; auto with mctt ] end ].
+    (* arguments, one at a time *)
+    all: try solve [ match goal with IH : dclean ?m1 -> _ -> dclean ?r, IH1 : dclean ?m -> dclean ?n -> dclean ?m1,
                       Ha : forall a, In a (cons ?n _) -> dclean a |- dclean ?r =>
-        apply IH; [ apply IH1; [ assumption | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ] end.
+        apply IH; [ apply IH1; [ assumption | apply Ha; left; reflexivity ] | intros; apply Ha; right; assumption ] end ].
+    (* a member: the root is clean, and so are the arguments *)
+    all: try solve [ match goal with
+      | IHa : dclean ?f -> (forall a, In a ?ns -> dclean a) -> dclean ?r,
+        IHs : dmclean ?h -> dclean ?f, IHh : env_clean ?ρ -> dmclean ?h,
+        IHe : env_clean ?ρ -> forall a, In a ?ns -> dclean a, Hρ : env_clean ?ρ |- dclean ?r =>
+          apply IHa; [ apply IHs, IHh, Hρ | apply IHe, Hρ ] end ].
+    (* a list of terms *)
+    all: try solve [ match goal with
+      | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
+    all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
-
 
   Lemma read_clean :
     (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> dclean_nf m -> nf_clean W) /\

@@ -686,6 +686,7 @@ Proof.
   all: try solve [ eapply wf_me_mem;
                    [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
                    | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
+  all: try solve [ eapply wf_exp_eq_mem_cong; [ apply me_noargs_wk; assumption | apply me_noargs_wk; assumption | eauto.. ] ].
   (** Extensions: the entry is moved by the weakening lifted over the
       extension before it. *)
   all: try solve [ cbn [tele_wk];
@@ -845,8 +846,11 @@ Lemma wf_exp_eq_refl : forall {Θ Ξ Γ A M}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ �
 Proof.
   induction 1; try mautosolve 3.
   all: first [ eapply wf_exp_eq_let_mod_cong; mauto 3
-             | eapply wf_exp_eq_mem_cong; [ eassumption | eapply wf_mem; eassumption | eapply wf_mem; eassumption ]
-             | eapply wf_exp_eq_mem_cong; [ eassumption | eapply wf_mem_app; eassumption | eapply wf_mem_app; eassumption ] ].
+             | eapply wf_exp_eq_mem_cong; [ eassumption | eassumption | eassumption
+                                          | eapply wf_mem; eassumption | eapply wf_mem; eassumption ]
+             | eapply wf_exp_eq_trans;
+               [ eapply wf_exp_eq_mem_app; eassumption
+               | eapply wf_exp_eq_sym, wf_exp_eq_mem_app; eassumption ] ].
 Qed.
 
 #[export]
@@ -1372,6 +1376,13 @@ Proof.
         [ eauto | eapply modexp_spine_sub; eassumption
         | match goal with H : _ <> nil |- _ => destruct args; [ contradiction H; reflexivity | discriminate ] end
         | eauto | rewrite <- member_ref_sub, <- apps_sub; eauto ]
+    end ].
+  all: try solve [
+    match goal with
+    | HH : wf_modexp_eq _ _ ?Γ ?H ?H', Hσ : wf_sub _ _ _ ?Γ ?σ |- wf_exp_eq _ _ _ _ (a_mem _ _) (a_mem _ _) =>
+        pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hcm;
+        pose proof (modexp_eq_slot_root _ _ _ _ _ HH) as [Hr Hr'];
+        eapply wf_exp_eq_mem_cong; [ eapply me_noargs_sub; eassumption | eapply me_noargs_sub; eassumption | eauto.. ]
     end ].
   (** Extensions. *)
   all: try solve [ cbn [tele_sub];

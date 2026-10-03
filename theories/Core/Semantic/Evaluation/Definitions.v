@@ -83,9 +83,15 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_let_mod :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ᵐ dm_local ρ U nil ↘ r ->
      ⟦ ℓₘ U in B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** A member is read off the root of its module expression, then applied to
+    the module's arguments: arguments commute with selection.  Without
+    arguments this is selection from the module's value. *)
 | eval_exp_mem :
-  `( ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     eval_sel Θ Ξ h x r ->
+  `( modexp_spine H = (R, args, pre) ->
+     ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
+     eval_selc Θ Ξ h (pre ++ x :: nil) f ->
+     eval_exps Θ Ξ args ρ ns ->
+     eval_apps Θ Ξ f ns r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** δ: a transparent definition evaluates to its body.  The body is stored
     closed, so it is evaluated in the empty environment. *)
@@ -126,6 +132,13 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      eval_selc Θ Ξ h' ch r ->
      $| d_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" := (eval_app Θ Ξ m n r)
+with eval_exps (Θ : gdeps) (Ξ : gstack) : list exp -> env -> list domain -> Prop :=
+| eval_exps_nil :
+  `( eval_exps Θ Ξ nil ρ nil )
+| eval_exps_cons :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     eval_exps Θ Ξ Ms ρ ms ->
+     eval_exps Θ Ξ (M :: Ms) ρ (m :: ms) )
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
 | eval_apps_nil :
   `( eval_apps Θ Ξ m nil m )
@@ -157,13 +170,14 @@ with eval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
      eval_appm Θ Ξ h n r ->
      ⟦ me_app H N ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_modexp Θ Ξ H ρ r)
-(** Applying a module value to one more argument.  A saturated alias is its
-    target. *)
+(** Applying a module value to one more argument, which it must still lack.
+    A saturated alias is its target. *)
 with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 | eval_appm_global :
   `( eval_appm Θ Ξ (dm_global p args) n (dm_global p (args ++ n :: nil)) )
 | eval_appm_body :
-  `( eval_appm Θ Ξ (dm_local ρ (gu_body Δ Φ) args) n (dm_local ρ (gu_body Δ Φ) (args ++ n :: nil)) )
+  `( List.length args < List.length Δ ->
+     eval_appm Θ Ξ (dm_local ρ (gu_body Δ Φ) args) n (dm_local ρ (gu_body Δ Φ) (args ++ n :: nil)) )
 | eval_appm_alias_unsat :
   `( List.length args < List.length Δ ->
      eval_appm Θ Ξ (dm_local ρ (gu_mk Δ (md_alias E)) args) n
@@ -259,6 +273,7 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
 with eval_natrec_mut_ind := Induction for eval_natrec Sort Prop
 with eval_app_mut_ind := Induction for eval_app Sort Prop
+with eval_exps_mut_ind := Induction for eval_exps Sort Prop
 with eval_apps_mut_ind := Induction for eval_apps Sort Prop
 with eval_modexp_mut_ind := Induction for eval_modexp Sort Prop
 with eval_appm_mut_ind := Induction for eval_appm Sort Prop
@@ -271,6 +286,7 @@ Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_natrec_mut_ind,
   eval_app_mut_ind,
+  eval_exps_mut_ind,
   eval_apps_mut_ind,
   eval_modexp_mut_ind,
   eval_appm_mut_ind,
@@ -281,7 +297,7 @@ Combined Scheme eval_mut_ind from
   eval_benv_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_natrec eval_app eval_apps eval_modexp eval_appm eval_sel eval_selm
+Hint Constructors eval_exp eval_natrec eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

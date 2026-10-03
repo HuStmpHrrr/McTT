@@ -175,12 +175,46 @@ Notation "Γ ⊨ M : A" := (valid_exp_under_ctx Γ A M) (at level 70, M at level
 Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level 70, σ at level 69, σ' at level 69, Δ at level 69).
 Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 
+(** * Semantic Judgments for Module Expressions and Units
+
+    A module expression is valid when its four values are related in the
+    module PER, as a term's are in its type's element PER.  A unit [U] is
+    represented by the literal [me_lit U], whose value is its closure.  A unit
+    is moreover valid in its parts: a body unit's extension of the context is
+    semantically well formed, and an alias's target is valid under its
+    parameters; this is what the members of its closure are read off. *)
+
+Inductive rel_mod (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : sub) (ρ' ρ'σ' : env) : Prop :=
+| mk_rel_mod : forall hσ h h' h'σ',
+    eval_modexp gc_deps gc_stack H[σ]ᵐ ρ hσ ->
+    eval_modexp gc_deps gc_stack H ρσ h ->
+    eval_modexp gc_deps gc_stack H' ρ'σ' h' ->
+    eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h'σ' ->
+    rel_chain per_dmod ([hσ; h; h'; h'σ']) ->
+    rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ'.
+#[global] Arguments mk_rel_mod {_ _ _ _ _ _ _ _}.
+Hint Constructors rel_mod : mctt.
+
+Definition rel_modexp_under_ctx Γ H H' : Prop :=
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+  forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+    rel_sub_under_ctx Γ' Γ σ σ' ->
+    forall ρ ρ' ρσ ρ'σ',
+      Dom ρ ≈ ρ' ∈ env_rel' ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ'.
+
+Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
+
 (** * Semantic Context Well-Formedness
 
     An inductive judgment whose extension step carries both the context PER
     witness and the semantic well-formedness of the type (and, for a
-    definition, of its body), so [sem_ctx_per_ctx_env] reads the PER off any
-    derivation. *)
+    definition, of its body; for a module slot, of its unit), so
+    [sem_ctx_per_ctx_env] reads the PER off any derivation.  The validity of a
+    unit's parts ([sem_unit]) is defined with it, since a body unit's parts
+    form a context. *)
 
 Inductive sem_ctx : ctx -> Prop :=
 | sem_ctx_nil : ⊨ ⋅
@@ -195,9 +229,35 @@ Inductive sem_ctx : ctx -> Prop :=
     Γ ⊨ A ≈ A : Type@i ->
     Γ ⊨ M ≈ M : A ->
     ⊨ Γ ▸ A ≔ M
+| sem_ctx_cons_mod : forall Γ U env_rel,
+    ⊨ Γ ->
+    EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ env_rel ->
+    Γ ⊨ᵐ me_lit U ≈ me_lit U ->
+    sem_unit Γ U ->
+    ⊨ Γ ▹ₘ U
+with sem_unit : ctx -> gunit -> Prop :=
+| sem_unit_body : forall Γ Δ Φ,
+    ⊨ body_ctx Φ ++ Δ ++ Γ ->
+    sem_unit Γ (gu_body Δ Φ)
+| sem_unit_alias : forall Γ Δ E,
+    ⊨ Δ ++ Γ ->
+    Δ ++ Γ ⊨ᵐ E ≈ E ->
+    sem_unit Γ (gu_mk Δ (md_alias E))
 where "⊨ Γ" := (sem_ctx Γ) : type_scope.
 
-Hint Constructors sem_ctx : mctt.
+Hint Constructors sem_ctx sem_unit : mctt.
+
+(** Two units are equivalent when their closures are related and each is valid
+    in its parts.  Two extensions of a context are equivalent when both
+    extended contexts are semantically well formed and related. *)
+Definition rel_unit_under_ctx Γ U U' : Prop :=
+  Γ ⊨ᵐ me_lit U ≈ me_lit U' /\ sem_unit Γ U /\ sem_unit Γ U'.
+
+Definition rel_ext_under_ctx Γ Ψ Ψ' : Prop :=
+  ⊨ Ψ ++ Γ /\ ⊨ Ψ' ++ Γ /\ ⊨ Ψ ++ Γ ≈ Ψ' ++ Γ.
+
+Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
+Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
 
 End Fixed_GCtx.
 
@@ -226,7 +286,10 @@ Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level
 Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 Notation "⊨ Γ" := (sem_ctx Γ) : type_scope.
 #[export]
-Hint Constructors sem_ctx : mctt.
+Hint Constructors sem_ctx sem_unit rel_mod : mctt.
+Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
+Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
+Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).
 
 (** A semantic weakening in scope says its weakening moves no variable
     down. *)
