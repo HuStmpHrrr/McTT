@@ -152,8 +152,8 @@ Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
     ne_clean W ->
     is_typ_constr A' ->
     (forall j, A' <> Type@j) ->
-    wf_subtyp Θ Ξ (⋅ ▹ Type@i) A A' ->
-    ~ wf_exp Θ Ξ (⋅ ▹ Type@i) A W.
+    Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ W : A).
 Proof.
   intros * Htr HWc HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
@@ -185,7 +185,7 @@ Qed.
     head would be a variable. *)
 Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
     ne_clean W ->
-    ~ wf_exp Θ Ξ ⋅ A W.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
 Proof.
   intros * HWc HW.
   dependent induction HW; try (destruct W; simpl in *; congruence);
@@ -313,24 +313,24 @@ Hint Resolve canonical_form_of_typ : mctt.
 (** The theorems above, with the global context explicit. *)
 Corollary canonical_form_of_nat_gctx : forall Θ Ξ M,
     gc_transparent Θ Ξ ->
-    wf_exp Θ Ξ ⋅ ℕ M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
     exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat W.
 Proof. intros * Htr HM; exact (@canonical_form_of_nat (gc_mk Θ Ξ) Htr M HM). Qed.
 
 Corollary canonical_form_of_typ_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
-    wf_exp Θ Ξ ⋅ Type@i M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
     exists W, nbe Θ Ξ ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
 Proof. intros * Htr HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr i M HM). Qed.
 
 Corollary consistency_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
-    ~ wf_exp Θ Ξ ⋅ (Π Type@i #0) M.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
 Proof. intros * Htr; exact (@consistency (gc_mk Θ Ξ) Htr i M). Qed.
 
 Corollary consistency_False_gctx : forall Θ Ξ M,
     gc_transparent Θ Ξ ->
-    ~ wf_exp Θ Ξ ⋅ ⊥ M.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 
 (** ** Opaque Definitions
@@ -369,7 +369,7 @@ Qed.
 (** In the empty context, a neutral is headed by a global. *)
 Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
     ne_head W = None ->
-    ~ wf_exp Θ Ξ ⋅ A W.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
 Proof.
   intros * HWc HW.
   dependent induction HW; try (destruct W; simpl in *; congruence);
@@ -380,7 +380,7 @@ Proof.
 Qed.
 
 Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},
-    wf_exp Θ Ξ ⋅ A W ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A ->
     exists p, ne_head W = Some p.
 Proof.
   intros * HW; destruct (ne_head W) as [p |] eqn:Hh; [ eauto |].
@@ -475,12 +475,12 @@ Qed.
 End Stuck_GCtx.
 
 Corollary canonical_form_of_nat_stuck_gctx : forall Θ Ξ M,
-    wf_exp Θ Ξ ⋅ ℕ M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
     exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat_stuck (gstuck Θ Ξ) W.
 Proof. intros * HM; exact (@canonical_form_of_nat_stuck (gc_mk Θ Ξ) M HM). Qed.
 
 Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ i M,
-    wf_exp Θ Ξ ⋅ Type@i M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
     exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gstuck Θ Ξ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) i M HM). Qed.
@@ -489,7 +489,7 @@ Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) i M HM). Q
 
 Theorem consistency_no_axioms : forall Θ Ξ i M,
     gc_no_axioms Θ Ξ ->
-    ~ wf_exp Θ Ξ ⋅ (Π Type@i #0) M.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
 Proof.
   intros * Hna HM.
   exact (consistency_gctx _ _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
@@ -497,7 +497,7 @@ Qed.
 
 Theorem consistency_False_no_axioms : forall Θ Ξ M,
     gc_no_axioms Θ Ξ ->
-    ~ wf_exp Θ Ξ ⋅ ⊥ M.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
 Proof.
   intros * Hna HM.
   exact (consistency_False_gctx _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
@@ -508,10 +508,10 @@ Qed.
     the sealed normal form once the definitions unfold. *)
 Theorem canonical_form_of_nat_no_axioms : forall Θ Ξ M,
     gc_no_axioms Θ Ξ ->
-    wf_exp Θ Ξ ⋅ ℕ M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
     exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat_stuck (gopaque Θ Ξ) W /\
       exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M ℕ V /\ canonical_nat V /\
-        wf_exp_eq (gds_unseal Θ) (gs_unseal Ξ) ⋅ ℕ W V.
+        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : ℕ.
 Proof.
   intros * Hna HM.
   pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
@@ -528,11 +528,11 @@ Qed.
 
 Theorem canonical_form_of_typ_no_axioms : forall Θ Ξ i M,
     gc_no_axioms Θ Ξ ->
-    wf_exp Θ Ξ ⋅ Type@i M ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
     exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gopaque Θ Ξ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
       exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Type@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
-        wf_exp_eq (gds_unseal Θ) (gs_unseal Ξ) ⋅ Type@i W V.
+        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Type@i.
 Proof.
   intros * Hna HM.
   pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
@@ -558,18 +558,18 @@ Section Programs.
 
 Corollary consistency_False_run : forall ch cs Θ Ξ M,
     Mctt.Core.Syntactic.System.Command.run_cmds load_path read to_core ch nil nil cs Θ Ξ ->
-    ~ wf_exp Θ Ξ ⋅ ⊥ M.
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Hr; apply consistency_False_no_axioms; eapply run_cmds_no_axioms; exact Hr. Qed.
 
 Corollary consistency_False_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
-    ~ wf_exp (Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ) nil ⋅ ⊥ M.
+    ~ (Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; exact Hp. Qed.
 
 Corollary canonical_form_of_nat_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
     let Θ' := Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ in
-    wf_exp Θ' nil ⋅ ℕ M ->
+    Θ' ⍮ nil ⍮ ⋅ ⊢ M : ℕ ->
     exists V, nbe (gds_unseal Θ') nil ⋅ M ℕ V /\ canonical_nat V.
 Proof.
   intros * Hp Θ' HM.

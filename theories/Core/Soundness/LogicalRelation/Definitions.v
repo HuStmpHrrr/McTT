@@ -422,7 +422,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_nil :
   `{ forall Sb,
         Sb <∙> nil_glu_sub_pred ->
-        wf_gctx gc_deps gc_stack ->
+        ⊢g gc_deps ⍮ gc_stack ->
         EG ⋅ ∈ glu_ctx_env ↘ Sb }
 | glu_ctx_env_cons :
   `{ forall i TSb Sb,
@@ -449,7 +449,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_cons_mod :
   `{ forall TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        wf_unit_eq gc_deps gc_stack Γ U U ->
+        gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
         Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
         EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }.
 

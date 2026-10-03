@@ -56,7 +56,7 @@ Proof. intros * [Sb H]; inversion H; subst; eexists; eassumption. Qed.
 
 Lemma glu_rel_ctx_extend_mod : forall {Γ U},
     ⊩ Γ ->
-    wf_unit_eq gc_deps gc_stack Γ U U ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
     ⊩ Γ ▹ₘ U.
 Proof.
   intros * [Sb HΓ] HU.
@@ -67,7 +67,7 @@ Qed.
 (** δ for a member. *)
 Lemma glu_rel_exp_mem : forall {Γ H x A i M},
     me_noargs H ->
-    wf_modexp_eq gc_deps gc_stack Γ H H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
     Γ ⊢ A : Type@i ->
     member_unfold gc_deps gc_stack Γ H x = Some M ->
@@ -81,7 +81,7 @@ Qed.
 
 (** A member of an applied module is its root's member applied. *)
 Lemma glu_rel_exp_mem_app : forall {Γ H R args pre i A x},
-    wf_modexp_eq gc_deps gc_stack Γ H H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     modexp_spine H = (R, args, pre) ->
     args <> nil ->
     Γ ⊢ A : Type@i ->
@@ -96,7 +96,7 @@ Qed.
 (** ζ for a module [let]: [σ,,ₘ⌜U[σ]⌝] glues with [ρ ↦ᵐ ⟦⌜U⌝⟧ρ] into
     [Γ ▹ₘ U], the tie being the unit's closure related to itself. *)
 Lemma glu_rel_exp_let_mod : forall {Γ U C B},
-    wf_unit_eq gc_deps gc_stack Γ U U ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
     Γ ▹ₘ U ⊢ B : C ->
     Γ ▹ₘ U ⊩ B : C ->
     Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U].

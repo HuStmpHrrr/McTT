@@ -77,7 +77,7 @@ Qed.
     weakened: equal substitutions agree on terms only, and the slot is not a
     term. *)
 Lemma mod_ctx_inst : forall Γ U X Y,
-    wf_unit_eq gc_deps gc_stack Γ U U -> Γ ▹ₘ U ⊢ X : Y ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> Γ ▹ₘ U ⊢ X : Y ->
     Γ ▹ₘ U ⊢ X ≈ X[Id ,,ₘ me_lit U][↑]ʷ : Y.
 Proof.
   intros * HU HX.
@@ -117,7 +117,7 @@ Qed.
 
 
 Lemma typ_let_mod_inv : forall Γ U T i, Γ ⊢ ℓₘ U in T : Type@i ->
-    wf_unit_eq gc_deps gc_stack Γ U U /\ Γ ▹ₘ U ⊢ T : Type@i.
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U /\ Γ ▹ₘ U ⊢ T : Type@i.
 Proof.
   intros * H.
   destruct (wf_let_mod_inversion H) as (C & HU & HT & Hsub).
@@ -185,7 +185,7 @@ Qed.
     argument is still missing at each of its members.  This is read off the
     PER model ([sem_mt]). *)
 
-Lemma wf_modexp_sem_mt : forall Γ H, wf_modexp_eq gc_deps gc_stack Γ H H ->
+Lemma wf_modexp_sem_mt : forall Γ H, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     sem_mt gc_deps gc_stack Γ H /\ Γ ⊨ᵐ H ≈ H.
 Proof.
   intros * HH.
@@ -225,7 +225,7 @@ Proof.
 Qed.
 
 Lemma app_arity_pi : forall Γ H A0 B C i,
-    wf_modexp_eq gc_deps gc_stack Γ H H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊢ A0 ≈ Π B C : Type@i ->
     forall ch k A, member_type gc_deps gc_stack Γ H ch k A -> (k = mk_term -> ch <> nil) ->
     exists B' C', pi_view A = Some (B', C').
@@ -246,7 +246,7 @@ Qed.
 
     Each prefix of a member chain of a well-formed module is a module. *)
 
-Lemma modexp_path_module : forall Γ qp, wf_modexp_eq gc_deps gc_stack Γ (me_path qp) (me_path qp) ->
+Lemma modexp_path_module : forall Γ qp, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_path qp ≈ me_path qp ->
     exists r0, gc_module gc_deps gc_stack qp = Some r0.
 Proof.
   intros * HH; destruct (modexp_parts_of_wf _ _ _ _ HH) as [A0 Hm0].
@@ -255,10 +255,10 @@ Qed.
 
 Theorem member_type_prefix :
   (forall Γ H ch k A, member_type gc_deps gc_stack Γ H ch k A ->
-     forall ch1 ch2, ch = ch1 ++ ch2 -> ch2 <> nil -> wf_modexp_eq gc_deps gc_stack Γ H H ->
+     forall ch1 ch2, ch = ch1 ++ ch2 -> ch2 <> nil -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
      exists A', member_type gc_deps gc_stack Γ H ch1 mk_mod A') /\
   (forall Γ U ch k A, unit_member_type gc_deps gc_stack Γ U ch k A ->
-     forall ch1 ch2, ch = ch1 ++ ch2 -> ch2 <> nil -> wf_unit_eq gc_deps gc_stack Γ U U ->
+     forall ch1 ch2, ch = ch1 ++ ch2 -> ch2 <> nil -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
      exists A', unit_member_type gc_deps gc_stack Γ U ch1 mk_mod A').
 Proof.
   apply member_type_both_ind.
@@ -313,8 +313,8 @@ Qed.
 
 
 Lemma me_mems_wf : forall pre Γ H ch k A,
-    wf_modexp_eq gc_deps gc_stack Γ H H -> member_type gc_deps gc_stack Γ H (pre ++ ch) k A -> ch <> nil ->
-    wf_modexp_eq gc_deps gc_stack Γ (me_mems H pre) (me_mems H pre).
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> member_type gc_deps gc_stack Γ H (pre ++ ch) k A -> ch <> nil ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ me_mems H pre ≈ me_mems H pre.
 Proof.
   induction pre as [| y pre IH]; intros * HH Hm Hne; cbn [me_mems app] in *; [ exact HH |].
   destruct (proj1 member_type_prefix _ _ _ _ _ Hm (y :: nil) (pre ++ ch) eq_refl
@@ -334,7 +334,7 @@ Qed.
 (** ** Member References *)
 
 Lemma member_ref_noargs_wf : forall Γ H ch A i M,
-    me_noargs H -> wf_modexp_eq gc_deps gc_stack Γ H H ->
+    me_noargs H -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H ch mk_term A -> ch <> nil ->
     Γ ⊢ A : Type@i -> member_unfold_ch gc_deps gc_stack Γ H ch = Some M -> Γ ⊢ M : A ->
     Γ ⊢ member_ref H ch : A.
@@ -352,7 +352,7 @@ Proof.
 Qed.
 
 Lemma member_ref_wf : forall Γ H ch A i,
-    wf_modexp_eq gc_deps gc_stack Γ H H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H ch mk_term A -> ch <> nil -> Γ ⊢ A : Type@i ->
     (forall R args p0, modexp_spine H = (R, args, p0) -> Γ ⊢ apps (member_ref R (p0 ++ ch)) args : A) ->
     (exists M, member_unfold_ch gc_deps gc_stack Γ H ch = Some M /\ Γ ⊢ M : A) ->
@@ -375,7 +375,7 @@ Qed.
 (** ** The Domain of a Member's Type *)
 
 Lemma dom_agree : forall Γ H A0 B0 C0 i ch k A1 B1 C1 j,
-    wf_modexp_eq gc_deps gc_stack Γ H H ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊢ A0 ≈ Π B0 C0 : Type@i -> Γ ⊢ B0 : Type@i ->
     member_type gc_deps gc_stack Γ H ch k A1 -> (k = mk_term -> ch <> nil) ->
     Γ ⊢ A1 ≈ Π B1 C1 : Type@j -> Γ ⊢ B1 : Type@j ->
@@ -396,13 +396,13 @@ Qed.
 
 Theorem member_wf :
   (forall Γ H ch k A, member_type gc_deps gc_stack Γ H ch k A ->
-     wf_modexp_eq gc_deps gc_stack Γ H H -> (k = mk_term -> ch <> nil) ->
+     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> (k = mk_term -> ch <> nil) ->
      (exists i, Γ ⊢ A : Type@i) /\
      (k = mk_term -> exists M, member_unfold_ch gc_deps gc_stack Γ H ch = Some M /\ Γ ⊢ M : A) /\
      (k = mk_term -> forall R args p0, modexp_spine H = (R, args, p0) ->
         Γ ⊢ apps (member_ref R (p0 ++ ch)) args : A)) /\
   (forall Γ U ch k A, unit_member_type gc_deps gc_stack Γ U ch k A ->
-     wf_unit_eq gc_deps gc_stack Γ U U -> (k = mk_term -> ch <> nil) ->
+     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> (k = mk_term -> ch <> nil) ->
      (exists i, Γ ⊢ A : Type@i) /\
      (k = mk_term -> exists M, member_expansion U ch = Some M /\ Γ ⊢ M : A)).
 Proof.

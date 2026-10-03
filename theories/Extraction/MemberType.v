@@ -489,7 +489,7 @@ Proof.
     exact (proj1 (gc_module_alias_app _ _ Hg2 _ _ _ (gc_sub_module _ _ _ _ _ _ Hs Hq) ch)).
 Qed.
 
-Lemma wf_path_module : forall Θ Ξ Γ pq, wf_modexp_eq Θ Ξ Γ (me_path pq) (me_path pq) ->
+Lemma wf_path_module : forall Θ Ξ Γ pq, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_path pq ≈ me_path pq ->
     exists r0, gc_module Θ Ξ pq = Some r0.
 Proof.
   intros * HH; destruct (modexp_parts_of_wf _ _ _ _ HH) as [A0 Hm0].
@@ -517,9 +517,9 @@ Proof. destruct U; rewrite usize_mk; lia. Qed.
 Theorem mt_order_exists : forall Θ1 Ξ1 Θ2 Ξ2, ⊢g Θ1 ⍮ Ξ1 -> ⊢g Θ2 ⍮ Ξ2 -> gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
     aliases_ordered Θ1 Ξ1 Θ2 Ξ2 ->
     forall n,
-      (forall Γ H, msize H + csize Γ <= n -> wf_modexp_eq Θ1 Ξ1 Γ H H ->
+      (forall Γ H, msize H + csize Γ <= n -> Θ1 ⍮ Ξ1 ⍮ Γ ⊢ᵐ H ≈ H ->
          forall ch k, mt_order Θ2 Ξ2 Γ H ch k) /\
-      (forall Γ U, usize U + csize Γ <= n -> wf_unit_eq Θ1 Ξ1 Γ U U ->
+      (forall Γ U, usize U + csize Γ <= n -> Θ1 ⍮ Ξ1 ⍮ Γ ⊢ᵘ U ≈ U ->
          forall ch k, umt_order Θ2 Ξ2 Γ U ch k).
 Proof.
   intros * Hg1 Hg2 Hs Ha.
@@ -589,7 +589,7 @@ Proof.
   destruct (good_alias _ _ _ _ _ _ _ _ _ HG (Emb_refl _ _ Hg) Hm) as [T HV]; exact (HV r' k).
 Qed.
 
-Corollary mt_order_of_wf : forall Θ Ξ Γ H, ⊢g Θ ⍮ Ξ -> wf_modexp_eq Θ Ξ Γ H H ->
+Corollary mt_order_of_wf : forall Θ Ξ Γ H, ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
     forall ch k, mt_order Θ Ξ Γ H ch k.
 Proof.
   intros * Hg HH.

@@ -109,7 +109,7 @@ Section type_check.
   (** ** Deciding Member Types *)
 
   Definition member_type_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch k
-      (HH : wf_modexp_eq gc_deps gc_stack Γ H H) :
+      (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
       { A | member_type gc_deps gc_stack Γ H ch k A } + { forall A, ~ member_type gc_deps gc_stack Γ H ch k A } :=
     member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H ch k (mt_order_of_wf _ _ _ _ Hg HH ch k).
 
@@ -120,7 +120,7 @@ Section type_check.
       (mt_order_path _ _ _ _ _ _ Hg).
 
   Definition member_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E n
-      (HE : wf_modexp_eq gc_deps gc_stack Γ E E) :
+      (HE : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E) :
       { member_ok gc_deps gc_stack Γ E n } + { ~ member_ok gc_deps gc_stack Γ E n }.
   Proof.
     destruct (member_type_dec Hg Γ E (n :: nil) mk_term HE) as [[A HA] | HN1]; [ left; left; eauto |].
@@ -129,7 +129,7 @@ Section type_check.
   Defined.
 
   Definition names_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E
-      (HE : wf_modexp_eq gc_deps gc_stack Γ E E) :
+      (HE : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E) :
       forall ns, { forall n, In n ns -> member_ok gc_deps gc_stack Γ E n } +
                  { ~ (forall n, In n ns -> member_ok gc_deps gc_stack Γ E n) }.
   Proof.
@@ -1124,7 +1124,7 @@ Section type_check_closed.
     mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order.
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations type_check_closed (Hg : wf_gctx gc_deps gc_stack) A (HA : user_exp A) M (HM : user_exp M) : { ⋅ ⊢ M : A } + { ~ ⋅ ⊢ M : A } :=
+  Equations type_check_closed (Hg : ⊢g gc_deps ⍮ gc_stack) A (HA : user_exp A) M (HM : user_exp M) : { ⋅ ⊢ M : A } + { ~ ⋅ ⊢ M : A } :=
   | Hg, A, HA, M, HM =>
       let*o->b (exist _ UA _) := type_infer ⋅ _ A _ while _ in
       let*o->b (exist _ i _) :=  get_level_of_type_nf UA while _ in
@@ -1157,7 +1157,7 @@ Section type_check_closed.
   Qed.
 End type_check_closed.
 
-Lemma type_check_closed_complete : forall (Hg : wf_gctx gc_deps gc_stack) A (HA : user_exp A) M (HM : user_exp M),
+Lemma type_check_closed_complete : forall (Hg : ⊢g gc_deps ⍮ gc_stack) A (HA : user_exp A) M (HM : user_exp M),
     ⋅ ⊢ M : A ->
     exists H', type_check_closed Hg A HA M HM = left H'.
 Proof. intros; dec_complete. Qed.
@@ -1175,7 +1175,7 @@ Section type_infer_closed.
           | firstorder ].
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
-  Equations type_infer_closed (Hg : wf_gctx gc_deps gc_stack) M (HM : user_exp M) : { A : nf | ⋅ ⊢ M : A } + { forall A, ~ ⋅ ⊢a M ⟹ A } :=
+  Equations type_infer_closed (Hg : ⊢g gc_deps ⍮ gc_stack) M (HM : user_exp M) : { A : nf | ⋅ ⊢ M : A } + { forall A, ~ ⋅ ⊢a M ⟹ A } :=
   | Hg, M, HM =>
       let*o (exist _ A _) := type_infer ⋅ _ M _ while _ in
       pureo (exist _ A _)

@@ -81,9 +81,9 @@ Section Fixed_GCtx.
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Type@i -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
-    (forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> wf_ext_eq gc_deps gc_stack Γ Ψ Ψ) /\
-    (forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> wf_unit_eq gc_deps gc_stack Γ U U) /\
-    (forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> wf_modexp_eq gc_deps gc_stack Γ H H).
+    (forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ) /\
+    (forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) /\
+    (forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H).
 Proof.
   apply alg_type_mut_ind; intros; try mautosolve 4.
   (** Module [let]s and members. *)
@@ -210,13 +210,13 @@ Proof.
   intros; eapply (proj1 (proj2 alg_type_sound)); eassumption.
 Qed.
 
-Lemma alg_ext_sound : forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> wf_ext_eq gc_deps gc_stack Γ Ψ Ψ.
+Lemma alg_ext_sound : forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ.
 Proof. intros; eapply (proj1 (proj2 (proj2 alg_type_sound))); eassumption. Qed.
 
-Lemma alg_unit_sound : forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> wf_unit_eq gc_deps gc_stack Γ U U.
+Lemma alg_unit_sound : forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U.
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
 
-Lemma alg_modexp_sound : forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> wf_modexp_eq gc_deps gc_stack Γ H H.
+Lemma alg_modexp_sound : forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H.
 Proof. intros; eapply (proj2 (proj2 (proj2 (proj2 alg_type_sound)))); eassumption. Qed.
 
 Lemma alg_type_infer_normal : forall {Γ A A' M},
@@ -379,12 +379,12 @@ Qed.
     [subtyp_spec]. *)
 Lemma alg_type_complete_all :
   (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
-  (forall Θ Ξ Γ A M, wf_exp Θ Ξ Γ A M -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M -> Γ ⊢a M ⟸ A) /\
-  (forall Θ Ξ Γ A M M', wf_exp_eq Θ Ξ Γ A M M' -> True) /\
-  (forall Θ Ξ Γ A A', wf_subtyp Θ Ξ Γ A A' -> True) /\
-  (forall Θ Ξ Γ Ψ Ψ', wf_ext_eq Θ Ξ Γ Ψ Ψ' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aˣ Ψ /\ Γ ⊢aˣ Ψ') /\
-  (forall Θ Ξ Γ U U', wf_unit_eq Θ Ξ Γ U U' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aᵘ U /\ Γ ⊢aᵘ U') /\
-  (forall Θ Ξ Γ H H', wf_modexp_eq Θ Ξ Γ H H' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aᵐ H /\ Γ ⊢aᵐ H').
+  (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M -> Γ ⊢a M ⟸ A) /\
+  (forall Θ Ξ Γ A M M', Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A -> True) /\
+  (forall Θ Ξ Γ A A', Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' -> True) /\
+  (forall Θ Ξ Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aˣ Ψ /\ Γ ⊢aˣ Ψ') /\
+  (forall Θ Ξ Γ U U', Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aᵘ U /\ Γ ⊢aᵘ U') /\
+  (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Θ = gc_deps -> Ξ = gc_stack -> Γ ⊢aᵐ H /\ Γ ⊢aᵐ H').
 Proof.
   apply syntactic_wf_mut_ind; intros; try exact I; subst;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
@@ -535,13 +535,13 @@ Proof.
   intros * Hue HM; exact (proj1 (proj2 alg_type_complete_all) _ _ _ _ _ HM eq_refl eq_refl Hue).
 Qed.
 
-Lemma alg_ext_complete : forall {Γ Ψ}, wf_ext_eq gc_deps gc_stack Γ Ψ Ψ -> Γ ⊢aˣ Ψ.
+Lemma alg_ext_complete : forall {Γ Ψ}, gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ -> Γ ⊢aˣ Ψ.
 Proof. intros * HΨ; exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 alg_type_complete_all)))) _ _ _ _ _ HΨ eq_refl eq_refl)). Qed.
 
-Lemma alg_unit_complete : forall {Γ U}, wf_unit_eq gc_deps gc_stack Γ U U -> Γ ⊢aᵘ U.
+Lemma alg_unit_complete : forall {Γ U}, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> Γ ⊢aᵘ U.
 Proof. intros * HU; exact (proj1 (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 alg_type_complete_all))))) _ _ _ _ _ HU eq_refl eq_refl)). Qed.
 
-Lemma alg_modexp_complete : forall {Γ H}, wf_modexp_eq gc_deps gc_stack Γ H H -> Γ ⊢aᵐ H.
+Lemma alg_modexp_complete : forall {Γ H}, gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> Γ ⊢aᵐ H.
 Proof. intros * HH; exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 alg_type_complete_all))))) _ _ _ _ _ HH eq_refl eq_refl)). Qed.
 
 

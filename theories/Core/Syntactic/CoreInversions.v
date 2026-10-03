@@ -157,7 +157,7 @@ Proof.
   intros * [j [? []]]%wf_pi_inversion.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
-  assert (wf_subtyp Θ Ξ (Γ ▹ A) (exp_wk Type@j ↑) (exp_wk Type@i ↑)) as H'
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Type@j ↑ ⊆ exp_wk Type@i ↑) as H'
       by (eapply wk_preserves_subtyp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ Type@j ⊆ Type@i) by exact H'.
   split; mauto 3.

@@ -434,7 +434,7 @@ Corollary sub_eq_preserves_typ : forall Θ Ξ Γ Δ A σ σ' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq Θ Ξ Γ (exp_sub (a_typ i) σ) (exp_sub A σ) (exp_sub A σ')) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A σ' : exp_sub (a_typ i) σ) by mauto 2.
   assumption.
 Qed.
 
@@ -585,7 +585,7 @@ Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
-  assert (wf_exp Θ Ξ (Γ ▹ A) (exp_wk (Π A B) ↑) (exp_wk M ↑)) as H'
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (Π A B) ↑) as H'
       by (eapply wk_preserves_exp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : Π A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; eassumption).

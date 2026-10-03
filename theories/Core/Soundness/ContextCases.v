@@ -8,7 +8,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** As [wf_ctx_empty], relative to a well-formed global context. *)
-Lemma glu_rel_ctx_empty : wf_gctx gc_deps gc_stack -> ⊩ ⋅.
+Lemma glu_rel_ctx_empty : ⊢g gc_deps ⍮ gc_stack -> ⊩ ⋅.
 Proof.
   intros; do 2 econstructor; [reflexivity | assumption].
 Qed.

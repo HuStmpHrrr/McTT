@@ -153,7 +153,7 @@ Corollary kripke_preserves_typ : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ : Type@i.
 Proof.
   intros.
-  assert (wf_exp _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -163,7 +163,7 @@ Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
     Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk A' φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -173,7 +173,7 @@ Corollary kripke_preserves_nat : forall Γ Δ M φ,
     Γ ⊢ M[φ]ʷ : ℕ.
 Proof.
   intros.
-  assert (wf_exp _ _ Γ (exp_wk a_nat φ) (exp_wk M φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ : exp_wk a_nat φ) by mauto 2.
   assumption.
 Qed.
 
@@ -183,7 +183,7 @@ Corollary kripke_preserves_nat_eq : forall Γ Δ M M' φ,
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ℕ.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk a_nat φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_nat φ) by mauto 2.
   assumption.
 Qed.
 
@@ -195,7 +195,7 @@ Corollary kripke_preserves_True : forall Γ Δ M φ,
     Γ ⊢ M[φ]ʷ : ⊤.
 Proof.
   intros.
-  assert (wf_exp _ _ Γ (exp_wk a_True φ) (exp_wk M φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ : exp_wk a_True φ) by mauto 2.
   assumption.
 Qed.
 
@@ -205,7 +205,7 @@ Corollary kripke_preserves_False : forall Γ Δ M φ,
     Γ ⊢ M[φ]ʷ : ⊥.
 Proof.
   intros.
-  assert (wf_exp _ _ Γ (exp_wk a_False φ) (exp_wk M φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ : exp_wk a_False φ) by mauto 2.
   assumption.
 Qed.
 
@@ -215,7 +215,7 @@ Corollary kripke_preserves_False_eq : forall Γ Δ M M' φ,
     Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : ⊥.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk a_False φ) (exp_wk M φ) (exp_wk M' φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_False φ) by mauto 2.
   assumption.
 Qed.
 
@@ -229,7 +229,7 @@ Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
     Γ ⊢ A[φ]ʷ ≈ Type@j : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk (a_typ j) φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_typ j) φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -239,7 +239,7 @@ Corollary kripke_preserves_typ_eq_nat : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ ≈ ℕ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_nat φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_nat φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -249,7 +249,7 @@ Corollary kripke_preserves_typ_eq_True : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ ≈ ⊤ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_True φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_True φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -259,7 +259,7 @@ Corollary kripke_preserves_typ_eq_False : forall Γ Δ A φ i,
     Γ ⊢ A[φ]ʷ ≈ ⊥ : Type@i.
 Proof.
   intros.
-  assert (wf_exp_eq _ _ Γ (exp_wk (a_typ i) φ) (exp_wk A φ) (exp_wk a_False φ)) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_False φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -300,7 +300,7 @@ Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
     Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Type@j.
 Proof.
   intros.
-  assert (wf_exp _ _ (Γ ▹ A[φ]ʷ) (exp_wk (a_typ j) (wk_q φ)) (exp_wk B (wk_q φ)))
+  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (a_typ j) (wk_q φ))
     by (eapply kripke_preserves_exp_q; eassumption).
   assumption.
 Qed.
