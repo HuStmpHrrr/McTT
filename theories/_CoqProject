@@ -31,6 +31,7 @@
 ./Core/Completeness/MemberTyping.v
 ./Core/Completeness/MemberReps.v
 ./Core/Completeness/MemberSem.v
+./Core/Completeness/ModexpCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v

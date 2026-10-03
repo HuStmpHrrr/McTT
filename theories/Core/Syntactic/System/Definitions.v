@@ -310,13 +310,15 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B ≈ B' : C ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U] )
-(** Members of equivalent module expressions without arguments.  A member of
-    an applied module is the member of its root, applied ([wf_exp_eq_mem_app]),
-    which is how equations about it are derived. *)
+(** Members of equivalent module expressions without arguments, at the
+    canonical type of the left one.  A member of an applied module is the
+    member of its root, applied ([wf_exp_eq_mem_app]), which is how equations
+    about it are derived. *)
 | wf_exp_eq_mem_cong :
   `( me_noargs H ->
      me_noargs H' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
+     member_type Θ Ξ Γ H (x :: nil) mk_term A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A )
