@@ -1487,6 +1487,14 @@ let%expect_test "a module argument is checked against the outermost parameter" =
   let _ = main_of_body "module F (A : Type@0) where def a : Type@0 := A end end module G := F 0" in
   [%expect {| Error: ill-formed module expression for module G |}]
 
+let%expect_test "the modifiers of a definition are written in either order" =
+  let _ = main_of_body "module M where abstract private def s : Nat := 1 end private abstract def u : Nat := 2 end def t : Nat := s end end eval M.t" in
+  [%expect {| Evaluate M.t --> M.s : Nat |}]
+
+let%expect_test "an abstract private definition is private" =
+  let _ = main_of_body "module M where abstract private def s : Nat := 1 end end eval M.s" in
+  [%expect {| Error: Test.M.s is private |}]
+
 let%expect_test "a module alias of a term is rejected" =
   let _ = main_of_body "module P := Nat" in
   [%expect {| Error: not a module |}]

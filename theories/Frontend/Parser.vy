@@ -86,6 +86,7 @@ let mods :=
   | PRIVATE; { Cst.md_priv }
   | ABSTRACT; { Cst.md_abs }
   | PRIVATE; ABSTRACT; { Cst.md_priv_abs }
+  | ABSTRACT; PRIVATE; { Cst.md_priv_abs }
 
 let ispec :=
   | { Cst.i_open }
