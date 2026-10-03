@@ -1,0 +1,140 @@
+(* Polynomials with natural coefficients, evaluated at a point.  A
+   polynomial of length [n] is a coefficient function [c] read at the
+   indices below [n], so [c i] is the coefficient of [x] to the [i].
+
+   The point [x] is fixed across an evaluation, so the evaluators live in a
+   module [At (x : Nat)].  Horner's scheme and the sum of monomials agree at
+   every point ([At.hornerNaive]); at the point 1 both give the sum of the
+   coefficients ([hornerAtOne]). *)
+import Prelude::Arith::Equality use (Eq; sym; trans; cong)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
+import Prelude::Arith::Mult.Basic use (multOne)
+import Prelude::Arith::Mult.Algebra use (multLeftComm)
+import Prelude::Arith::Pow use (pow)
+import Prelude::Arith::Pow.Basic use (onePow)
+import Prelude::Arith::Sum use (sumTo)
+import Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
+import Prelude::Arith::Sum.Linear use (sumToScale)
+(* Loaded for the import in the local body of [Table] below: an import in a
+   local body names a unit already loaded, and binds aliases only. *)
+import Prelude::Arith::MinMax as MinMax
+
+module Polynomials where
+
+def Coeffs : Type@0 := forall (i : Nat) -> Nat end
+
+(* The coefficients [a, b, c, d], then zeros. *)
+def cubic (a : Nat) (b : Nat) (c : Nat) (d : Nat) : Coeffs :=
+  fun (i : Nat) ->
+    rec i return y . Nat
+    | zero => a
+    | succ j, r =>
+        rec j return z . Nat
+        | zero => b
+        | succ k, s => rec k return w . Nat | zero => c | succ l, t => d end
+        end
+    end
+end
+
+(* Evaluation at the point [x]. *)
+module At (x : Nat) where
+
+(* The coefficients of [(c - c 0) / x]: the polynomial shifted down. *)
+private def shift (c : Coeffs) : Coeffs := fun (i : Nat) -> c (succ i) end
+
+(* The monomial of index [i]. *)
+private def term (c : Coeffs) (i : Nat) : Nat := mult (c i) (pow x i) end
+
+(* Horner's scheme, [c 0 + x * (c 1 + x * (...))], by recursion on the
+   length, generalized over the coefficients. *)
+private def hornerFrom (n : Nat) : forall (c : Coeffs) -> Nat :=
+  rec n return k . (forall (c : Coeffs) -> Nat)
+  | zero => fun (c : Coeffs) -> 0
+  | succ p, r => fun (c : Coeffs) -> plus (c 0) (mult x (r (shift c)))
+  end
+end
+
+def horner (c : Coeffs) (n : Nat) : Nat := hornerFrom n c end
+
+(* The sum of the monomials, each with its own power of [x]. *)
+def naive (c : Coeffs) (n : Nat) : Nat := sumTo (fun (i : Nat) -> mult (c i) (pow x i)) n end
+
+(* Horner's scheme computes the sum of the monomials.  In the step, the
+   factor [x] goes into the sum ([sumToScale]) and into each power
+   ([multLeftComm]), and the first monomial is split off ([sumToShift]). *)
+abstract def hornerNaive : forall (c : Coeffs) (n : Nat) -> Eq (horner c n) (naive c n) :=
+  fun (c : Coeffs) (n : Nat) ->
+    (rec n return k . (forall (d : Coeffs) -> Eq (hornerFrom k d) (sumTo (term d) k))
+     | zero => fun (d : Coeffs) -> true
+     | succ p, ih => fun (d : Coeffs) ->
+         let rest : Nat := hornerFrom p (shift d);
+             tail : Nat := sumTo (term (shift d)) p;
+             scaled : Nat := sumTo (fun (i : Nat) -> mult x (term (shift d) i)) p;
+             shifted : Nat := sumTo (fun (i : Nat) -> term d (succ i)) p;
+             whole : Nat := sumTo (term d) (succ p);
+             inner : Eq (mult x rest) (mult x tail) :=
+               cong (fun (y : Nat) -> mult x y) rest tail (ih (shift d));
+             scale : Eq (mult x tail) scaled :=
+               sym scaled (mult x tail) (sumToScale x (term (shift d)) p);
+             powers : Eq scaled shifted :=
+               sumToExt (fun (i : Nat) -> mult x (term (shift d) i))
+                 (fun (i : Nat) -> term d (succ i))
+                 (fun (i : Nat) -> multLeftComm x (d (succ i)) (pow x i)) p;
+             first : Eq (plus (d 0) shifted) whole :=
+               trans (plus (d 0) shifted) (plus (term d 0) shifted) whole
+                 (cong (fun (y : Nat) -> plus y shifted) (d 0) (term d 0)
+                    (sym (term d 0) (d 0) (multOne (d 0))))
+                 (sym whole (plus (term d 0) shifted) (sumToShift (term d) p))
+         in trans (plus (d 0) (mult x rest)) (plus (d 0) shifted) whole
+              (cong (fun (y : Nat) -> plus (d 0) y) (mult x rest) shifted
+                 (trans (mult x rest) (mult x tail) shifted inner
+                    (trans (mult x tail) scaled shifted scale powers)))
+              first
+         end
+     end) c
+end
+
+end
+
+(* At the point 1, a polynomial is the sum of its coefficients.  The proof
+   instantiates [At] locally, and uses [onePow] in every monomial. *)
+abstract def hornerAtOne : forall (c : Coeffs) (n : Nat) -> Eq (At.horner 1 c n) (sumTo c n) :=
+  fun (c : Coeffs) (n : Nat) ->
+    let module One := At 1 in
+      trans (One.horner c n) (One.naive c n) (sumTo c n) (One.hornerNaive c n)
+        (sumToExt (fun (i : Nat) -> mult (c i) (pow 1 i)) c
+           (fun (i : Nat) ->
+              trans (mult (c i) (pow 1 i)) (mult (c i) 1) (c i)
+                (cong (fun (y : Nat) -> mult (c i) y) (pow 1 i) 1 (onePow i))
+                (multOne (c i)))
+           n)
+    end
+end
+
+(* [1 + 2 x + 3 x^2 + 4 x^3] at 2, both ways: 1 + 4 + 12 + 32. *)
+eval At.horner 2 (cubic 1 2 3 4) 4
+
+eval At.naive 2 (cubic 1 2 3 4) 4
+
+(* An evaluator for a fixed polynomial, made locally: the values at the
+   points below [k], summed, and their maximum.  The maximum comes from an
+   import inside the local body. *)
+eval let module Table (c : Coeffs) where
+       import Prelude::Arith::MinMax use (max)
+       def value (x : Nat) : Nat := At.horner x c 4 end
+       def total (k : Nat) : Nat := sumTo value k end
+       def peak (k : Nat) : Nat :=
+         rec k return y . Nat | zero => 0 | succ p, r => max (value p) r end
+       end
+     end in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
+     end
+
+(* Closed instances of the theorems normalize to [true]. *)
+eval At.hornerNaive 2 (cubic 1 0 1 0) 4
+
+eval At.hornerNaive 3 (cubic 2 1 0 0) 4
+
+eval hornerAtOne (cubic 3 1 4 1) 4
+
+end

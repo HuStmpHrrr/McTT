@@ -1472,3 +1472,56 @@ let%expect_test "a module expression is expected after :=" =
     Error: on "where" (at line 1, column 31 - line 1, column 36): Expected a
       module expression after ":=".
     |}]
+
+let%expect_test "lib/Algebra.mctt" =
+  let _ = main_of_lib "Algebra.mctt" in
+  [%expect {|
+    Evaluate Prelude::Algebra::Instances.Additive.pow 3 4 --> 12 : Nat
+    Evaluate Prelude::Algebra::Instances.Multiplicative.pow 2 5 --> 32 : Nat
+    Evaluate Prelude::Algebra::Instances.Maximum.pow 7 3 --> 7 : Nat
+    Evaluate Prelude::Algebra::Instances.Composition.pow
+               (fun (x1 : Nat) -> succ (succ x1))
+               5
+               0 --> 10 : Nat
+    Evaluate Sums.pow 6 3 --> 18 : Nat
+    Evaluate Unfold.additivePow 3 4 --> true : True
+    Evaluate Scaling.multPlusRight 2 3 2 --> true : True
+    Evaluate Scaling.multAssocPow 2 3 2 --> true : True
+    Evaluate Scaling.multPlusLeft 2 3 4 --> true : True
+    Evaluate Exponents.powPlus 2 1 3 --> true : True
+    Evaluate Exponents.powMult 2 2 2 --> true : True
+    Evaluate Exponents.powOfProduct 2 2 2 --> true : True
+    Evaluate Exponents.fourthPower 2 --> true : True
+    Evaluate Iteration.iterPlus (fun (x1 : Nat) -> succ x1) 2 3 4 --> true : True
+    Evaluate maxPowSucc 5 3 --> true : True
+    |}]
+
+let%expect_test "lib/Polynomials.mctt" =
+  let _ = main_of_lib "Polynomials.mctt" in
+  [%expect {|
+    Evaluate At.horner 2 (cubic 1 2 3 4) 4 --> 49 : Nat
+    Evaluate At.naive 2 (cubic 1 2 3 4) 4 --> 49 : Nat
+    Evaluate let module M1 (x1 : Coeffs) where
+                   import Prelude::Arith::MinMax use (max)
+                   def value : forall (x2 : Nat) -> Nat :=
+                     fun (x3 : Nat) -> At.horner x3 x1 4
+                   end
+                   def total : forall (x4 : Nat) -> Nat :=
+                     fun (x5 : Nat) -> Prelude::Arith::Sum.sumTo value x5
+                   end
+                   def peak : forall (x6 : Nat) -> Nat :=
+                     fun (x7 : Nat)
+                       -> rec x7 return x8 . Nat
+                          | zero => 0
+                          | succ x9, x10 =>
+                            Prelude::Arith::MinMax.max (value x9) x10
+                          end
+                   end
+                 end
+             in Prelude::Arith::Plus.plus (M1.total (cubic 1 1 0 0) 4)
+                  (M1.peak (cubic 0 0 1 0) 5)
+             end --> 26 : Nat
+    Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4 --> true : True
+    Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --> true : True
+    Evaluate hornerAtOne (cubic 3 1 4 1) 4 --> true : True
+    |}]
