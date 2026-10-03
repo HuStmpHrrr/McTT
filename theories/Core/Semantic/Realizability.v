@@ -137,6 +137,18 @@ Proof.
     apply_relation_equivalence.
     exists Hρ.
     solve_def_heads.
+  - (** A slot holds the closure of its unit, which the premise relates to
+        the other unit's. *)
+    destruct IHper_ctx_env as [ρ [ρ' [? [? Hρ]]]].
+    assert (Dom ρ ≈ ρ ∈ tail_rel) by solve_per.
+    assert (Dom ρ' ≈ ρ' ∈ tail_rel) by solve_per.
+    match goal with HU : forall ρ ρ', tail_rel ρ ρ' -> per_dmod _ _ |- _ =>
+      destruct (mod_closure_move _ _ _ _ _ _ (ltac:(eassumption) : tail_rel ρ ρ) HU) as (M1 & M2 & M3 & M4);
+      destruct (mod_closure_move _ _ _ _ _ _ (ltac:(eassumption) : tail_rel ρ' ρ') HU) as (M1' & M2' & M3' & M4')
+    end.
+    do 2 eexists; repeat split; only 1-2: econstructor; eauto.
+    apply_relation_equivalence.
+    repeat split; assumption.
 Qed.
 
 Lemma var_per_elem : forall {a b i R} n,

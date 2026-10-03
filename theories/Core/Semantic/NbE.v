@@ -7,8 +7,9 @@ Import Domain_Notations.
 Generalizable All Variables.
 
 (** The initial environment of a context: each assumption in scope is a
-    neutral at its own de Bruijn level, and each definition is the value of its
-    body.  A definition's level is never given to a neutral. *)
+    neutral at its own de Bruijn level, each definition is the value of its
+    body, and each module slot is the closure of its unit.  The level of a
+    definition or a slot is never given to a neutral. *)
 Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_nil : initial_env Θ Ξ nil nil
 | initial_env_cons :
@@ -18,7 +19,10 @@ Inductive initial_env (Θ : gdeps) (Ξ : gstack) : ctx -> env -> Prop :=
 | initial_env_cons_def :
   `( initial_env Θ Ξ Γ ρ ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m)).
+     initial_env Θ Ξ (Γ ▸ A ≔ M) (ρ ↦ m))
+| initial_env_cons_mod :
+  `( initial_env Θ Ξ Γ ρ ->
+     initial_env Θ Ξ (Γ ▹ₘ U) (ρ ↦ᵐ dm_local ρ U nil)).
 
 #[export]
 Hint Constructors initial_env : mctt.
@@ -47,11 +51,9 @@ Lemma initial_env_spec : forall {Θ Ξ} x Γ ρ A,
 Proof.
   induction x; intros * Hinit Hlookup;
     dependent destruction Hinit; simpl in *; try discriminate.
-  - eexists; cbn; repeat f_equal; lia.
-  - destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a'.
-    cbn; unfold env_var in *; rewrite Ha'; repeat f_equal; lia.
-  - destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a'.
-    cbn; unfold env_var in *; rewrite Ha'; repeat f_equal; lia.
+  1: eexists; cbn; repeat f_equal; lia.
+  all: destruct (IHx _ _ _ Hinit Hlookup) as [a' Ha']; exists a';
+    rewrite env_var_cons_succ, Ha'; repeat f_equal; lia.
 Qed.
 
 #[export]

@@ -2,6 +2,7 @@ From Stdlib Require Import Lia PeanoNat Relations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
 
@@ -20,22 +21,38 @@ Import Domain_Notations.
           $| m & n | Θ ⍮ Ξ ↘ r1 ->
           forall r2,
             $| m & n | Θ ⍮ Ξ ↘ r2 ->
-            r1 = r2).
+            r1 = r2) /\
+      (forall m args r1, eval_apps Θ Ξ m args r1 -> forall r2, eval_apps Θ Ξ m args r2 -> r1 = r2) /\
+      (forall H ρ h1, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 -> forall h2, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h2 -> h1 = h2) /\
+      (forall h n r1, eval_appm Θ Ξ h n r1 -> forall r2, eval_appm Θ Ξ h n r2 -> r1 = r2) /\
+      (forall h x r1, eval_sel Θ Ξ h x r1 -> forall r2, eval_sel Θ Ξ h x r2 -> r1 = r2) /\
+      (forall h y r1, eval_selm Θ Ξ h y r1 -> forall r2, eval_selm Θ Ξ h y r2 -> r1 = r2) /\
+      (forall h ch r1, eval_selc Θ Ξ h ch r1 -> forall r2, eval_selc Θ Ξ h ch r2 -> r1 = r2) /\
+      (forall h ch r1, eval_selmc Θ Ξ h ch r1 -> forall r2, eval_selmc Θ Ξ h ch r2 -> r1 = r2) /\
+      (forall ρ Φ ρ1, eval_benv Θ Ξ ρ Φ ρ1 -> forall ρ2, eval_benv Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
-         two resolutions of a global agree, and two neutral scrutinees of [efq]
-         that are equal have equal parts; an induction hypothesis is never
-         spent on the premise it is about *)
+         two resolutions of a global or a module agree, and two neutral
+         scrutinees of [efq] that are equal have equal parts; an induction
+         hypothesis is never spent on the premise it is about *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
         | H1 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : GlobalCtx.gc_module Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_module Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
+        | H1 : GlobalCtx.gc_module Θ Ξ ?p = Some (GlobalCtx.mr_alias _ _),
+          H2 : forall U r, GlobalCtx.gc_module Θ Ξ ?p <> Some (GlobalCtx.mr_alias U r) |- _ =>
+            exfalso; exact (H2 _ _ H1)
+        | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | IH : forall r, ?P r -> ?a = r, H : ?P ?b |- _ =>
             assert_fails (constr_eq a b); specialize (IH _ H); subst
         | H : d_neut _ _ = d_neut _ _ |- _ => injection H; intros; subst; clear H
+        | H : eval_selc _ _ _ nil _ |- _ => inversion H
         end;
-      try congruence; intuition congruence.
+      cbn [gu_params] in *; try congruence; try lia; intuition (try congruence; try lia).
   Qed.
 
   Corollary functional_eval_exp : forall {Θ Ξ} M ρ m1 m2,
@@ -63,17 +80,28 @@ Import Domain_Notations.
   Qed.
 
   (** An evaluated substitution is determined pointwise. *)
+  Corollary functional_eval_modexp : forall {Θ Ξ} H ρ h1 h2,
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 ->
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h2 ->
+      h1 = h2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
+  Qed.
+
   Corollary functional_eval_sub : forall {Θ Ξ} σ ρ ρσ1 ρσ2,
       ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ1 ->
       ⟦ σ ⟧s Θ ⍮ Ξ ⍮ ρ ↘ ρσ2 ->
       env_eq ρσ1 ρσ2.
   Proof.
-    intros * H1 H2 x.
-    eapply functional_eval_exp; [ apply H1 | apply H2 ].
+    intros * H1 H2 x; specialize (H1 x); specialize (H2 x).
+    destruct (σ x); cbn in H1, H2.
+    - congruence.
+    - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_exp; eassumption.
+    - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_modexp; eassumption.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_app functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
 
 
 

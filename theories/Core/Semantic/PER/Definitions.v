@@ -293,6 +293,103 @@ Definition rel_elem M ρ M' ρ' (R : relation domain) := rel_mod_eval (fun R a a
 Hint Transparent rel_elem : mctt.
 Hint Unfold rel_elem : mctt.
 
+(** * Module PER
+
+    Module values are related closure-style, as [Π] relates [λ]-closures:
+    through what their parts evaluate to, never by comparing syntax or
+    environments.
+
+    - Two global modules are the same path with arguments related at the
+      types of its telescope.
+    - Two local units walk their parameters outermost first, each type
+      related: supplied arguments are related, and missing ones quantified
+      over related pairs.  Then their bodies are related entry by entry, with
+      the same names in the same order: a definition by its type and value,
+      a module by its closure; or their alias targets by their values.
+    - Member closures are related componentwise.
+
+    The relation is not indexed by a type: the types it relates members at are
+    those the units declare. *)
+
+Inductive per_dmod : dmod -> dmod -> Prop :=
+| per_dmod_global :
+  `{ gc_module gc_deps gc_stack p = Some (mr_body T) ->
+     per_gargs (List.rev T) nil nil args args' ->
+     per_dmod (dm_global p args) (dm_global p args') }
+| per_dmod_local :
+  `{ per_ltele (List.rev (gu_params U)) ρ (gu_def U) (List.rev (gu_params U')) ρ' (gu_def U') args args' ->
+     per_dmod (dm_local ρ U args) (dm_local ρ' U' args') }
+| per_dmod_member :
+  `{ per_dmod h h' ->
+     per_dmod (dm_member h ch) (dm_member h' ch) }
+(** Arguments of a global module, outermost first, against its telescope. *)
+with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop :=
+| per_gargs_nil :
+  `{ per_gargs ts ρ ρ' nil nil }
+| per_gargs_cons :
+  `{ forall R,
+       rel_typ i A ρ A ρ' R ->
+       R a a' ->
+       per_gargs ts (ρ ↦ a) (ρ' ↦ a') args args' ->
+       per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
+(** The parameters of two local units, outermost first, then their contents. *)
+with per_ltele : list centry -> env -> moddef -> list centry -> env -> moddef -> list domain -> list domain -> Prop :=
+| per_ltele_supplied :
+  `{ forall R,
+       rel_typ i A ρ A' ρ' R ->
+       R a a' ->
+       per_ltele ts (ρ ↦ a) D ts' (ρ' ↦ a') D' args args' ->
+       per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' (a :: args) (a' :: args') }
+| per_ltele_missing :
+  `{ forall R,
+       rel_typ i A ρ A' ρ' R ->
+       (forall c c', R c c' -> per_ltele ts (ρ ↦ c) D ts' (ρ' ↦ c') D' nil nil) ->
+       per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' nil nil }
+| per_ltele_done :
+  `{ per_mdef ρ D ρ' D' ->
+     per_ltele nil ρ D nil ρ' D' nil nil }
+with per_mdef : env -> moddef -> env -> moddef -> Prop :=
+| per_mdef_body :
+  `{ per_body ρ Φ ρ' Φ' ->
+     per_mdef ρ (md_body Φ) ρ' (md_body Φ') }
+| per_mdef_alias :
+  `{ eval_modexp gc_deps gc_stack E ρ h ->
+     eval_modexp gc_deps gc_stack E' ρ' h' ->
+     per_dmod h h' ->
+     per_mdef ρ (md_alias E) ρ' (md_alias E') }
+(** Two bodies, each entry seen in the environment its predecessors make. *)
+with per_body : env -> gmod -> env -> gmod -> Prop :=
+| per_body_nil :
+  `{ per_body ρ gm_nil ρ' gm_nil }
+| per_body_def :
+  `{ forall R,
+       per_body ρ Φ ρ' Φ' ->
+       eval_benv gc_deps gc_stack ρ Φ ρ1 ->
+       eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
+       rel_typ i A ρ1 A' ρ1' R ->
+       rel_elem M ρ1 M' ρ1' R ->
+       per_body ρ (gm_ext Φ y (ge_def b pv A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' A' (Some M'))) }
+| per_body_mod :
+  `{ per_body ρ Φ ρ' Φ' ->
+     eval_benv gc_deps gc_stack ρ Φ ρ1 ->
+     eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
+     per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil) ->
+     per_body ρ (gm_ext Φ y (ge_mod Uy)) ρ' (gm_ext Φ' y (ge_mod Uy')) }
+| per_body_check :
+  `{ per_body ρ Φ ρ' Φ' ->
+     per_body ρ (gm_check Φ c) ρ' (gm_check Φ' c') }
+.
+
+Scheme per_dmod_mut_ind := Induction for per_dmod Sort Prop
+with per_gargs_mut_ind := Induction for per_gargs Sort Prop
+with per_ltele_mut_ind := Induction for per_ltele Sort Prop
+with per_mdef_mut_ind := Induction for per_mdef Sort Prop
+with per_body_mut_ind := Induction for per_body Sort Prop.
+Combined Scheme per_dmod_mut_ind_all from
+  per_dmod_mut_ind, per_gargs_mut_ind, per_ltele_mut_ind, per_mdef_mut_ind, per_body_mut_ind.
+
+Hint Constructors per_dmod per_gargs per_ltele per_mdef per_body : mctt.
+
 (** * Context/Environment PER *)
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
@@ -334,6 +431,22 @@ Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
                (exists m', ⟦ M ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop) /\
                (exists m', ⟦ M' ⟧ ρ'↯ ↘ m' /\ Dom m' ≈ (ρ' 0) ∈ head_rel equiv_ρ_drop_ρ'_drop)) ->
         EF Γ ▸ A ≔ M ≈ Γ' ▸ A' ≔ M' ∈ per_ctx_env ↘ env_rel }
+(** A module slot: the two units' closures over related tails are related, and
+    each head of the environment is related to the closures of both units
+    over its own tail. *)
+| per_ctx_env_cons_mod :
+  `{ forall tail_rel env_rel
+        (equiv_Γ_Γ' : EF Γ ≈ Γ' ∈ per_ctx_env ↘ tail_rel),
+        PER tail_rel ->
+        (forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
+            per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
+        (env_rel <~> fun ρ ρ' =>
+             (Dom ρ↯ ≈ ρ'↯ ∈ tail_rel) /\
+             per_dmod (env_mod ρ 0) (dm_local ρ↯ U nil) /\
+             per_dmod (env_mod ρ 0) (dm_local ρ↯ U' nil) /\
+             per_dmod (env_mod ρ' 0) (dm_local ρ'↯ U nil) /\
+             per_dmod (env_mod ρ' 0) (dm_local ρ'↯ U' nil)) ->
+        EF Γ ▹ₘ U ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel }
 .
 Hint Constructors per_ctx_env : mctt.
 
@@ -370,6 +483,15 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
         EF (e :: Γ')%list ≈ (e :: Γ')%list ∈ per_ctx_env ↘ env_rel' ->
         (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_rel -> Dom ρ ≈ ρ' ∈ env_rel') ->
         SubE Γ ▸ A ≔ M <: (e :: Γ')%list }
+(** A slot refines a slot when its environments are environments of the
+    other. *)
+| per_ctx_subtyp_mod :
+  `{ forall env_rel env_rel',
+        SubE Γ <: Γ' ->
+        EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ env_rel ->
+        EF Γ' ▹ₘ U' ≈ Γ' ▹ₘ U' ∈ per_ctx_env ↘ env_rel' ->
+        (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_rel -> Dom ρ ≈ ρ' ∈ env_rel') ->
+        SubE Γ ▹ₘ U <: Γ' ▹ₘ U' }
 where "'SubE' Γ <: Δ" := (per_ctx_subtyp Γ Δ) : type_scope.
 
 Hint Constructors per_ctx_subtyp : mctt.
@@ -425,6 +547,8 @@ Hint Unfold rel_typ : mctt.
 Hint Transparent rel_elem : mctt.
 #[export]
 Hint Unfold rel_elem : mctt.
+#[export]
+Hint Constructors per_dmod per_gargs per_ltele per_mdef per_body : mctt.
 #[export]
 Hint Constructors per_ctx_env : mctt.
 #[export]
