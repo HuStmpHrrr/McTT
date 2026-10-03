@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab379"></a><h1 class="section">Properties of the Judgments, continued</h1>
+<a id="lab385"></a><h1 class="section">Properties of the Judgments, continued</h1>
 
 
 <div class="paragraph"> </div>
@@ -56,7 +56,7 @@
 </div>
 
 <div class="doc">
-<a id="lab380"></a><h2 class="section">Presupposition for Typing</h2>
+<a id="lab386"></a><h2 class="section">Presupposition for Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -77,7 +77,7 @@
 </div>
 
 <div class="doc">
-<a id="lab381"></a><h2 class="section">Context Conversion of Substitutions</h2>
+<a id="lab387"></a><h2 class="section">Context Conversion of Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -116,7 +116,7 @@
 </div>
 
 <div class="doc">
-<a id="lab382"></a><h1 class="section">Substitution Equivalence</h1>
+<a id="lab388"></a><h1 class="section">Substitution Equivalence</h1>
 
 
 <div class="paragraph"> </div>
@@ -424,7 +424,7 @@ Two sides reduced to equal terms, at types that are equal.
 </div>
 
 <div class="doc">
-<a id="lab383"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
+<a id="lab389"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -610,7 +610,7 @@ A member of an applied module: both sides commute the arguments out.
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#16975abea2e84b5db3703fc2d946c34c"><span class="id" title="variable">Θ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⍮</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#9484897353921401e18be775f1d7ea68"><span class="id" title="variable">Ξ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⍮</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#929198a4a9be43daf19acfa353561705"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#A:146"><span class="id" title="variable">A</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#06d41dcb34aba9ed41f4c6448cdbe741"><span class="id" title="variable">σ</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#A:146"><span class="id" title="variable">A</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#4dd2f41c76377856528da4060fd18ec2"><span class="id" title="variable">σ'</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#7239099d852f392794ba503d49553b47"><span class="id" title="notation">]</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq"><span class="id" title="inductive">wf_exp_eq</span></a> <span class="id" title="var">Θ</span> <span class="id" title="var">Ξ</span> <span class="id" title="var">Γ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">i</span>) σ) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <span class="id" title="var">A</span> σ) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <span class="id" title="var">A</span> σ')) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 2.<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <span class="id" title="var">A</span> σ <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">≈</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <span class="id" title="var">A</span> σ' <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#d2543b526653125775585ab544f92f2f"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">i</span>) σ) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 2.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assumption</span>.<br/>
 <span class="id" title="keyword">Qed</span>.<br/>
 
@@ -622,7 +622,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab384"></a><h2 class="section">Substitution Equivalence is a PER</h2>
+<a id="lab390"></a><h2 class="section">Substitution Equivalence is a PER</h2>
 
 
 <div class="paragraph"> </div>
@@ -702,7 +702,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab385"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
+<a id="lab391"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -757,7 +757,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab386"></a><h2 class="section">η-Expansion</h2>
+<a id="lab392"></a><h2 class="section">η-Expansion</h2>
 
 
 <div class="paragraph"> </div>
@@ -805,7 +805,7 @@ A member of an applied module: both sides commute the arguments out.
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#f1acd3378e9cf6ded903e00c6e6052d8"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#f1acd3378e9cf6ded903e00c6e6052d8"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#f1acd3378e9cf6ded903e00c6e6052d8"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 3.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#3b868a9d3388356876087a1601e80232"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#3b868a9d3388356876087a1601e80232"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#3b868a9d3388356876087a1601e80232"><span class="id" title="notation">⊢</span></a><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#3b868a9d3388356876087a1601e80232"><span class="id" title="notation">w</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#3b868a9d3388356876087a1601e80232"><span class="id" title="notation">:</span></a> <span class="id" title="var">Γ</span>) <span class="id" title="tactic">by</span> <span class="id" title="var">mauto</span> 2.<br/>
-&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <span class="id" title="var">Θ</span> <span class="id" title="var">Ξ</span> (<span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f68614554c24a868d22dade628101fb"><span class="id" title="notation">Π</span></a> <span class="id" title="var">A</span> <span class="id" title="var">B</span>) <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a>)) <span class="id" title="keyword">as</span> <span class="id" title="var">H'</span><br/>
+&nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⊢</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a> <span class="id" title="var">M</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_wk"><span class="id" title="definition">exp_wk</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f68614554c24a868d22dade628101fb"><span class="id" title="notation">Π</span></a> <span class="id" title="var">A</span> <span class="id" title="var">B</span>) <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a>) <span class="id" title="keyword">as</span> <span class="id" title="var">H'</span><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_exp"><span class="id" title="lemma">wk_preserves_exp</span></a>; <span class="id" title="var">eassumption</span>).<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">M</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f68614554c24a868d22dade628101fb"><span class="id" title="notation">Π</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <span class="id" title="var">B</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#wk_q"><span class="id" title="definition">wk_q</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a>) <span class="id" title="tactic">by</span> <span class="id" title="tactic">exact</span> <span class="id" title="var">H'</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">assert</span> (<span class="id" title="var">Θ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Ξ</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⍮</span></a> <span class="id" title="var">Γ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c1b219bd2fa6a9c1382478597331a8fa"><span class="id" title="notation">▹</span></a> <span class="id" title="var">A</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">⊢</span></a> <span class="id" title="var">A</span><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">[</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#124c1535e1c251930ed2c2ccc9d6e240"><span class="id" title="notation">↑</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#b43f430254166f56bbf55bd903de1ed3"><span class="id" title="notation">]ʷ</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#48ebec16e4504adee82de858b18fdd24"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#004be7912ba345828b5e0c7ad9cf8554"><span class="id" title="notation">Type@i</span></a>) <span class="id" title="tactic">by</span> (<span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wk_preserves_typ"><span class="id" title="lemma">wk_preserves_typ</span></a>; <span class="id" title="var">eassumption</span>).<br/>
@@ -830,7 +830,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab387"></a><h2 class="section">Closed Neutrals</h2>
+<a id="lab393"></a><h2 class="section">Closed Neutrals</h2>
 
 
 <div class="paragraph"> </div>
@@ -863,7 +863,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab388"></a><h2 class="section">Conversion</h2>
+<a id="lab394"></a><h2 class="section">Conversion</h2>
 
 
 <div class="paragraph"> </div>
@@ -903,7 +903,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab389"></a><h2 class="section">The Global Context</h2>
+<a id="lab395"></a><h2 class="section">The Global Context</h2>
 
 
 <div class="paragraph"> </div>

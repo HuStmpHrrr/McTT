@@ -31,7 +31,7 @@
 </div>
 
 <div class="doc">
-<a id="lab319"></a><h1 class="section">The Static Semantics of Commands</h1>
+<a id="lab325"></a><h1 class="section">The Static Semantics of Commands</h1>
 
 
 <div class="paragraph"> </div>
@@ -70,7 +70,7 @@
 </div>
 
 <div class="doc">
-<a id="lab320"></a><h2 class="section">The Stack</h2>
+<a id="lab326"></a><h2 class="section">The Stack</h2>
 
 
 <div class="paragraph"> </div>
@@ -130,7 +130,7 @@ Filing puts a unit on a new level above everything filed so far, hence
 </div>
 
 <div class="doc">
-<a id="lab321"></a><h2 class="section">Imports</h2>
+<a id="lab327"></a><h2 class="section">Imports</h2>
 
 
 <div class="paragraph"> </div>
@@ -148,7 +148,7 @@ Filing puts a unit on a new level above everything filed so far, hence
 </div>
 
 <div class="doc">
-<a id="lab322"></a><h2 class="section">Merging Filed Units</h2>
+<a id="lab328"></a><h2 class="section">Merging Filed Units</h2>
 
 
 <div class="paragraph"> </div>
@@ -209,7 +209,7 @@ The level a path is filed at, counted from the bottom.
 </div>
 
 <div class="doc">
-<a id="lab323"></a><h2 class="section">Privacy</h2>
+<a id="lab329"></a><h2 class="section">Privacy</h2>
 
 
 <div class="paragraph"> </div>
@@ -249,7 +249,7 @@ Elaboration into core commands, which needs no filed unit.
 </div>
 
 <div class="doc">
-<a id="lab324"></a><h2 class="section">Running</h2>
+<a id="lab330"></a><h2 class="section">Running</h2>
 
 
 <div class="paragraph"> </div>
@@ -355,10 +355,10 @@ An <span class="inlinecode"><span class="id" title="tactic">eval</span></span> c
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_unit"><span class="id" title="abbreviation">run_unit</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Frontend.Elaborator.html#Objects.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ch</span>)</span> <span class="inlinecode"><span class="id" title="var">u</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#Objects.fp"><span class="id" title="variable">fp</span></a></span>, at the head of the chain,
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_unit"><span class="id" title="abbreviation">run_unit</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ch</span>)</span> <span class="inlinecode"><span class="id" title="var">u</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>, at the head of the chain,
       runs from nothing filed.  Its leading imports run on the empty stack,
       then its parameters are checked against what they filed, then its body
-      runs in its own frame, named <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Elaborator.html#Objects.fp"><span class="id" title="variable">fp</span></a></span>; <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is what it filed, <span class="inlinecode"><span class="id" title="var">U</span></span> the unit. 
+      runs in its own frame, named <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>; <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is what it filed, <span class="inlinecode"><span class="id" title="var">U</span></span> the unit. 
 </div>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="keyword">with</span> <a id="run_unit" class="idref" href="#run_unit"><span class="id" title="definition, inductive"><span id="run_unit_ind" class="id"><span id="run_unit_sind" class="id">run_unit</span></span></span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fpath"><span class="id" title="abbreviation">fpath</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#cunit"><span class="id" title="definition">cunit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gdeps"><span class="id" title="definition">gdeps</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gunit"><span class="id" title="inductive">gunit</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="keyword">Prop</span> :=<br/>
@@ -385,7 +385,7 @@ The unit given on the command line: run like an imported one, with
 </div>
 
 <div class="doc">
-<a id="lab325"></a><h2 class="section">A Cycle Has No Meaning</h2>
+<a id="lab331"></a><h2 class="section">A Cycle Has No Meaning</h2>
 
 </div>
 <div class="code">
@@ -403,7 +403,7 @@ The unit given on the command line: run like an imported one, with
 </div>
 
 <div class="doc">
-<a id="lab326"></a><h2 class="section">Running is Deterministic</h2>
+<a id="lab332"></a><h2 class="section">Running is Deterministic</h2>
 
 
 <div class="paragraph"> </div>
@@ -485,7 +485,7 @@ A unit runs in a frame named by the head of its chain, so two runs of it
 </div>
 
 <div class="doc">
-<a id="lab327"></a><h2 class="section">Merging Keeps Both Sides</h2>
+<a id="lab333"></a><h2 class="section">Merging Keeps Both Sides</h2>
 
 
 <div class="paragraph"> </div>
@@ -610,7 +610,7 @@ A unit runs in a frame named by the head of its chain, so two runs of it
 </div>
 
 <div class="doc">
-<a id="lab328"></a><h2 class="section">Filing More Units Keeps an Open Stack Well Formed</h2>
+<a id="lab334"></a><h2 class="section">Filing More Units Keeps an Open Stack Well Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -879,7 +879,7 @@ A path's level in the merge is the lower of its two levels.
 </div>
 
 <div class="doc">
-<a id="lab329"></a><h2 class="section">Filing</h2>
+<a id="lab335"></a><h2 class="section">Filing</h2>
 
 </div>
 <div class="code">
@@ -917,7 +917,7 @@ A path's level in the merge is the lower of its two levels.
 </div>
 
 <div class="doc">
-<a id="lab330"></a><h2 class="section">Merging Keeps Well-formedness</h2>
+<a id="lab336"></a><h2 class="section">Merging Keeps Well-formedness</h2>
 
 </div>
 <div class="code">
@@ -1131,7 +1131,7 @@ A unit of the merge was checked against the levels below it on its own
 </div>
 
 <div class="doc">
-<a id="lab331"></a><h2 class="section">Running Keeps the State Well Formed</h2>
+<a id="lab337"></a><h2 class="section">Running Keeps the State Well Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -1437,7 +1437,7 @@ What a load files is well formed, whatever the import checks.
 </div>
 
 <div class="doc">
-<a id="lab332"></a><h2 class="section">Restricting to What a Unit Imported</h2>
+<a id="lab338"></a><h2 class="section">Restricting to What a Unit Imported</h2>
 
 
 <div class="paragraph"> </div>
@@ -1734,7 +1734,7 @@ Term judgments and <span class="inlinecode">⊢<span class="id" title="var">g</s
 </div>
 
 <div class="doc">
-<a id="lab333"></a><h2 class="section">The Restriction is Well Formed</h2>
+<a id="lab339"></a><h2 class="section">The Restriction is Well Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -1825,7 +1825,7 @@ Term judgments and <span class="inlinecode">⊢<span class="id" title="var">g</s
 </div>
 
 <div class="doc">
-<a id="lab334"></a><h2 class="section">Chains, Stacks and Heights of Runs</h2>
+<a id="lab340"></a><h2 class="section">Chains, Stacks and Heights of Runs</h2>
 
 </div>
 <div class="code">
