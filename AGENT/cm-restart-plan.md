@@ -223,3 +223,21 @@ Each milestone is committed when the files up to it compile with no warning.
   load, if any; the target; the `use`d names), checked by `import_ok`.
   `rc_mod` and `ru_intro` require assumption-only parameters (`tele_ass`), as
   `wf_gmod_nil` does.
+* Member-type chains of terms go on past submodules and global aliases:
+  `mt_mem`, `umt_mod` and `mt_path_alias` require a non-empty remainder for a
+  term member.  `wf_exp_eq_mem_cong` premises the canonical type
+  (`member_type … (x :: nil) mk_term A`), which its presupposition needs.
+* Semantic member typing (`mtyped`) carries the evidence it needs about
+  global modules in its own constructors (`gparam_at`, `galias_at`), which
+  avoids a circular global hypothesis.
+* In completeness, member types are read at the *target* of an embedding.
+  `sem_emb` asks every module of the source to be a valid path at the target
+  (`gpath_at`, proved by `gpath_ok` from the validity of bodies and aliases).
+* `gc_sub` has a third component, `gc_bsub`: growth keeps the body of every
+  closed module.  Every growth step satisfies it.  `gc_body`, `gm_subbody` and
+  `gm_body` now live in `GlobalCtx.v`.
+* `GlobalModules.global_valid` is a second induction over insertion.  It is
+  generic in the validity `V` of entries over their telescope and `F` of
+  module telescopes, and covers what a module contributes besides its
+  definitions (its telescope, its aliases).  Completeness instantiates it with
+  `sem_V`/`sem_F` (`ModuleCases.gctx_sem`).
