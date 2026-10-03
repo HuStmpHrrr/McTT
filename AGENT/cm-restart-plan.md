@@ -202,8 +202,15 @@ Each milestone is committed when the files up to it compile with no warning.
 * `wf_mem` carries the canonical type's typing and the δ-reduct's typing as
   premises, and members of applied module expressions are typed through the
   application of the root's member (`wf_mem_app`).  This replaces the lemmas
-  L2 (`member_type_wf`, `member_unfold_typed`) inside presupposition; the
-  checker checks the reduct.
+  L2 (`member_type_wf`, `member_unfold_typed`) inside presupposition.  The
+  checker cannot check either premise by recursion (neither is a subterm), so
+  L2 is proved after all, outside the system (`Semantic/MemberWf.member_wf`):
+  of a well-formed module expression, member types are types, δ-reducts exist
+  and inhabit them, and a member of an applied module is its root's member
+  applied.  `ati_mem` and `amod_app` then carry no typing premise on the
+  member type, the reduct or the arity.  The proof needs that an applied
+  module's member types have a syntactic Π (`app_arity_pi`), which is read
+  off the PER model (`sem_mt`, `rep`).
 * `module_params`/`params_after`/`wf_mod_args` are replaced by the arity type
   (`mk_mod` member types) and Π-checking of arguments.
 * `wf_sub` keeps the frozen design's same-unit module field; pointwise
@@ -241,3 +248,10 @@ Each milestone is committed when the files up to it compile with no warning.
   module telescopes, and covers what a module contributes besides its
   definitions (its telescope, its aliases).  Completeness instantiates it with
   `sem_V`/`sem_F` (`ModuleCases.gctx_sem`).
+* `wf_me_app` types the left argument `N : B` as well as the equation
+  `N ≈ N' : B`, as the parts of an extension are typed.  `member_wf` needs it
+  in its application case.
+* Kripke weakening shifts past any context entry (`kwk_shift`), module slots
+  included.
+* A module slot glues by its syntactic typing and by the tie of its value to
+  its unit's closure (`cons_mod_glu_sub_pred`); module values are not glued.

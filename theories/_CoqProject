@@ -103,6 +103,7 @@
 ./Extraction/Command.v
 ./Extraction/Evaluation.v
 ./Extraction/GlobalCheck.v
+./Extraction/MemberType.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v

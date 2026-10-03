@@ -21,7 +21,10 @@ Inductive initial_env_order (Θ : gdeps) (Ξ : gstack) : ctx -> Prop :=
   `( initial_env_order Θ Ξ Γ ->
      (forall p, initial_env Θ Ξ Γ p ->
            eval_exp_order Θ Ξ M p) ->
-     initial_env_order Θ Ξ (Γ ▸ A ≔ M)).
+     initial_env_order Θ Ξ (Γ ▸ A ≔ M))
+| ie_cons_mod :
+  `( initial_env_order Θ Ξ Γ ->
+     initial_env_order Θ Ξ (Γ ▹ₘ U)).
 
 #[local]
 Hint Constructors initial_env_order : mctt.
@@ -30,7 +33,8 @@ Lemma initial_env_order_sound : forall Θ Ξ Γ p,
     initial_env Θ Ξ Γ p ->
     initial_env_order Θ Ξ Γ.
 Proof.
-  induction 1; (econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; mauto).
+  induction 1; solve [ econstructor; intros; functional_initial_env_rewrite_clear; functional_eval_rewrite_clear; mauto
+                     | econstructor; eauto ].
 Qed.
 
 #[local]
@@ -58,7 +62,10 @@ Section InitialEnvImpl.
   | Θ, Ξ, cons (ce_def A M) G, H =>
       let (p, Hp) := initial_env_impl Θ Ξ G _ in
       let (m, Hm) := eval_exp_impl Θ Ξ M p _ in
-      exist _ (p ↦ m) _.
+      exist _ (p ↦ m) _
+  | Θ, Ξ, cons (ce_mod U) G, H =>
+      let (p, Hp) := initial_env_impl Θ Ξ G _ in
+      exist _ (p ↦ᵐ dm_local p U nil) _.
 
 End InitialEnvImpl.
 

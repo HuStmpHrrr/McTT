@@ -1,17 +1,19 @@
 From Equations Require Import Equations.
-From Stdlib Require Import List.
+From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import GlobalCtx.
+From Mctt.Core.Syntactic Require Import GlobalCtx Members.
 From Mctt.Core.Semantic Require Import Evaluation.
 Import Domain_Notations.
 
 Generalizable All Variables.
 
-(** The termination orders mirror [eval_exp], [eval_natrec] and [eval_app]
-    in the same global context.  A transparent global recurses into its
-    resolved body, which [eeo_glob_delta] records. *)
+(** The termination orders mirror the evaluation relations, one for each, in
+    the same global context.  A transparent global recurses into its resolved
+    body, which [eeo_glob_delta] records; an alias recurses into its target.
+    Each premise that uses a value is quantified over the values its earlier
+    premises evaluate to. *)
 
 Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_typ :
@@ -57,6 +59,17 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_exp_order Θ Ξ B (p ↦ m)) ->
      eval_exp_order Θ Ξ (ℓ A ≔ M in B) p )
+| eeo_let_mod :
+  `( eval_exp_order Θ Ξ B (p ↦ᵐ dm_local p U nil) ->
+     eval_exp_order Θ Ξ (ℓₘ U in B) p )
+| eeo_mem :
+  `( modexp_spine H = (R, args, pre) ->
+     eval_modexp_order Θ Ξ R p ->
+     (forall h, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc_order Θ Ξ h (pre ++ x :: nil)) ->
+     eval_exps_order Θ Ξ args p ->
+     (forall h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selc Θ Ξ h (pre ++ x :: nil) f ->
+        eval_exps Θ Ξ args p ns -> eval_apps_order Θ Ξ f ns) ->
+     eval_exp_order Θ Ξ (a_mem H x) p )
 | eeo_glob_delta :
   `( gc_resolve Θ Ξ pth = Some (ge_def true pv A (Some M)) ->
      eval_exp_order Θ Ξ M nil ->
@@ -86,41 +99,230 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      eval_app_order Θ Ξ λᵈ p M n )
 | eao_neut :
   `( eval_exp_order Θ Ξ B (p ↦ n) ->
-     eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n ).
+     eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
+| eao_member :
+  `( eval_appm_order Θ Ξ h n ->
+     (forall h', eval_appm Θ Ξ h n h' -> eval_selc_order Θ Ξ h' ch) ->
+     eval_app_order Θ Ξ (d_member h ch) n )
+
+with eval_exps_order (Θ : gdeps) (Ξ : gstack) : list exp -> env -> Prop :=
+| eso_nil :
+  `( eval_exps_order Θ Ξ nil p )
+| eso_cons :
+  `( eval_exp_order Θ Ξ M p ->
+     eval_exps_order Θ Ξ Ms p ->
+     eval_exps_order Θ Ξ (M :: Ms) p )
+
+with eval_apps_order (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> Prop :=
+| easo_nil :
+  `( eval_apps_order Θ Ξ m nil )
+| easo_cons :
+  `( eval_app_order Θ Ξ m n ->
+     (forall m1, $| m & n | Θ ⍮ Ξ ↘ m1 -> eval_apps_order Θ Ξ m1 args) ->
+     eval_apps_order Θ Ξ m (n :: args) )
+
+with eval_modexp_order (Θ : gdeps) (Ξ : gstack) : modexp -> env -> Prop :=
+| emo_var :
+  `( eval_modexp_order Θ Ξ (me_var x) p )
+| emo_path :
+  `( (forall U r, gc_module Θ Ξ pq <> Some (mr_alias U r)) ->
+     eval_modexp_order Θ Ξ (me_path pq) p )
+| emo_path_alias :
+  `( gc_module Θ Ξ pq = Some (mr_alias U ch) ->
+     eval_selmc_order Θ Ξ (dm_local nil U nil) ch ->
+     eval_modexp_order Θ Ξ (me_path pq) p )
+| emo_lit :
+  `( eval_modexp_order Θ Ξ (me_lit U) p )
+| emo_mem :
+  `( eval_modexp_order Θ Ξ H p ->
+     (forall h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_selm_order Θ Ξ h y) ->
+     eval_modexp_order Θ Ξ (me_mem H y) p )
+| emo_app :
+  `( eval_modexp_order Θ Ξ H p ->
+     eval_exp_order Θ Ξ N p ->
+     (forall h n, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> ⟦ N ⟧ Θ ⍮ Ξ ⍮ p ↘ n -> eval_appm_order Θ Ξ h n) ->
+     eval_modexp_order Θ Ξ (me_app H N) p )
+
+with eval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
+| eapo_global :
+  `( eval_appm_order Θ Ξ (dm_global pq args) n )
+| eapo_body :
+  `( List.length args < List.length Δ ->
+     eval_appm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) n )
+| eapo_alias_unsat :
+  `( List.length args < List.length Δ ->
+     eval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
+| eapo_alias :
+  `( List.length args = List.length Δ ->
+     eval_modexp_order Θ Ξ E (env_args p args) ->
+     (forall h, ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> eval_appm_order Θ Ξ h n) ->
+     eval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
+| eapo_member :
+  `( eval_appm_order Θ Ξ h n ->
+     (forall h', eval_appm Θ Ξ h n h' -> eval_selmc_order Θ Ξ h' ch) ->
+     eval_appm_order Θ Ξ (dm_member h ch) n )
+
+with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
+| eslo_global :
+  `( eval_exp_order Θ Ξ (a_glob (path_app pq (x :: nil))) nil ->
+     (forall f, ⟦ a_glob (path_app pq (x :: nil)) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f -> eval_apps_order Θ Ξ f args) ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
+| eslo_unsat :
+  `( List.length args < List.length (gu_params U) ->
+     eval_sel_order Θ Ξ (dm_local p U args) x )
+| eslo_body :
+  `( List.length args = List.length Δ ->
+     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
+     eval_benv_order Θ Ξ (env_args p args) Φ' ->
+     (forall p', eval_benv Θ Ξ (env_args p args) Φ' p' -> eval_exp_order Θ Ξ M p') ->
+     eval_sel_order Θ Ξ (dm_local p (gu_body Δ Φ) args) x )
+| eslo_alias :
+  `( List.length args = List.length Δ ->
+     eval_modexp_order Θ Ξ E (env_args p args) ->
+     (forall h, ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> eval_sel_order Θ Ξ h x) ->
+     eval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) x )
+| eslo_member :
+  `( eval_sel_order Θ Ξ (dm_member h ch) x )
+
+with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
+| esmo_global :
+  `( (forall U r, gc_module Θ Ξ (path_app pq (y :: nil)) <> Some (mr_alias U r)) ->
+     eval_selm_order Θ Ξ (dm_global pq args) y )
+| esmo_global_alias :
+  `( gc_module Θ Ξ (path_app pq (y :: nil)) = Some (mr_alias U ch) ->
+     eval_selmc_order Θ Ξ (dm_local nil U args) ch ->
+     eval_selm_order Θ Ξ (dm_global pq args) y )
+| esmo_unsat :
+  `( List.length args < List.length (gu_params U) ->
+     eval_selm_order Θ Ξ (dm_local p U args) y )
+| esmo_body :
+  `( List.length args = List.length Δ ->
+     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+     eval_benv_order Θ Ξ (env_args p args) Φ' ->
+     eval_selm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) y )
+| esmo_alias :
+  `( List.length args = List.length Δ ->
+     eval_modexp_order Θ Ξ E (env_args p args) ->
+     (forall h, ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args p args ↘ h -> eval_selm_order Θ Ξ h y) ->
+     eval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) y )
+| esmo_member :
+  `( eval_selm_order Θ Ξ (dm_member h ch) y )
+
+with eval_selc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
+| esco_one :
+  `( eval_sel_order Θ Ξ h x ->
+     eval_selc_order Θ Ξ h (x :: nil) )
+| esco_cons :
+  `( ch <> nil ->
+     eval_selm_order Θ Ξ h y ->
+     (forall h1, eval_selm Θ Ξ h y h1 -> eval_selc_order Θ Ξ h1 ch) ->
+     eval_selc_order Θ Ξ h (y :: ch) )
+
+with eval_selmc_order (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> Prop :=
+| esmco_nil :
+  `( eval_selmc_order Θ Ξ h nil )
+| esmco_cons :
+  `( eval_selm_order Θ Ξ h y ->
+     (forall h1, eval_selm Θ Ξ h y h1 -> eval_selmc_order Θ Ξ h1 ch) ->
+     eval_selmc_order Θ Ξ h (y :: ch) )
+
+with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
+| ebo_nil :
+  `( eval_benv_order Θ Ξ p gm_nil )
+| ebo_def :
+  `( eval_benv_order Θ Ξ p Φ ->
+     (forall p1, eval_benv Θ Ξ p Φ p1 -> eval_exp_order Θ Ξ M p1) ->
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
+| ebo_mod :
+  `( eval_benv_order Θ Ξ p Φ ->
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod Uy)) )
+| ebo_check :
+  `( eval_benv_order Θ Ξ p Φ ->
+     eval_benv_order Θ Ξ p (gm_check Φ c) ).
 
 #[local]
-Hint Constructors eval_exp_order eval_natrec_order eval_app_order : mctt.
+Hint Constructors eval_exp_order eval_natrec_order eval_app_order eval_exps_order eval_apps_order
+  eval_modexp_order eval_appm_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
+  eval_benv_order : mctt.
 
-Lemma eval_exp_order_sound : forall Θ Ξ m p a,
-    ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a ->
-    eval_exp_order Θ Ξ m p
-with eval_natrec_order_sound : forall Θ Ξ A MZ MS m p r,
-    ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
-    eval_natrec_order Θ Ξ A MZ MS m p
-with eval_app_order_sound: forall Θ Ξ m n r,
-  $| m & n | Θ ⍮ Ξ ↘ r ->
-  eval_app_order Θ Ξ m n.
+(** Determinism of every evaluation relation, as rewriting. *)
+Ltac functional_eval_all :=
+  repeat match goal with
+    | H1 : eval_exp ?T ?X ?M ?p ?m1, H2 : eval_exp ?T ?X ?M ?p ?m2 |- _ =>
+        assert_fails (constr_eq m1 m2);
+        pose proof (functional_eval_exp _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r1, H2 : eval_natrec ?T ?X ?A ?MZ ?MS ?m ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_natrec _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_app ?T ?X ?m ?n ?r1, H2 : eval_app ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_app _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_exps ?T ?X ?M ?p ?r1, H2 : eval_exps ?T ?X ?M ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (@functional_eval T X)))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_apps ?T ?X ?m ?n ?r1, H2 : eval_apps ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_modexp ?T ?X ?M ?p ?r1, H2 : eval_modexp ?T ?X ?M ?p ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_modexp _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_appm ?T ?X ?m ?n ?r1, H2 : eval_appm ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_sel ?T ?X ?m ?n ?r1, H2 : eval_sel ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_selm ?T ?X ?m ?n ?r1, H2 : eval_selm ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_selc ?T ?X ?m ?n ?r1, H2 : eval_selc ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X)))))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_selmc ?T ?X ?m ?n ?r1, H2 : eval_selmc ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (@functional_eval T X))))))))))) _ _ _ H1 _ H2); subst; clear H2
+    | H1 : eval_benv ?T ?X ?m ?n ?r1, H2 : eval_benv ?T ?X ?m ?n ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_benv _ _ _ _ H1 H2); subst; clear H2
+    | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
+    end.
+
+Lemma eval_order_sound : forall Θ Ξ,
+    (forall m p a, ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_exp_order Θ Ξ m p) /\
+    (forall A MZ MS m p r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
+       eval_natrec_order Θ Ξ A MZ MS m p) /\
+    (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n) /\
+    (forall Ms p ms, eval_exps Θ Ξ Ms p ms -> eval_exps_order Θ Ξ Ms p) /\
+    (forall m ns r, eval_apps Θ Ξ m ns r -> eval_apps_order Θ Ξ m ns) /\
+    (forall H p h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h -> eval_modexp_order Θ Ξ H p) /\
+    (forall h n r, eval_appm Θ Ξ h n r -> eval_appm_order Θ Ξ h n) /\
+    (forall h x r, eval_sel Θ Ξ h x r -> eval_sel_order Θ Ξ h x) /\
+    (forall h y r, eval_selm Θ Ξ h y r -> eval_selm_order Θ Ξ h y) /\
+    (forall h ch r, eval_selc Θ Ξ h ch r -> eval_selc_order Θ Ξ h ch) /\
+    (forall h ch r, eval_selmc Θ Ξ h ch r -> eval_selmc_order Θ Ξ h ch) /\
+    (forall p Φ p', eval_benv Θ Ξ p Φ p' -> eval_benv_order Θ Ξ p Φ).
 Proof.
-  - clear eval_exp_order_sound; induction 1;
-      solve [ eapply eeo_glob_neut; eauto
-            | econstructor; intros; functional_eval_rewrite_clear; eauto ].
-  - clear eval_natrec_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; eauto).
-  - clear eval_app_order_sound; induction 1; (econstructor; intros; functional_eval_rewrite_clear; eauto).
+  intros Θ Ξ; apply eval_mut_ind; intros;
+    try solve [ eapply eeo_glob_neut; eauto
+              | econstructor; try eassumption; intros; functional_eval_all; eauto ].
+  - (* a chain of one more selection is not empty *)
+    eapply esco_cons; [| eauto | intros; functional_eval_all; eauto ].
+    match goal with H : eval_selc _ _ _ ?c _ |- ?c <> nil => inversion H; discriminate end.
 Qed.
+
+Lemma eval_exp_order_sound : forall Θ Ξ m p a, ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ a -> eval_exp_order Θ Ξ m p.
+Proof. intros Θ Ξ; exact (proj1 (eval_order_sound Θ Ξ)). Qed.
+
+Lemma eval_natrec_order_sound : forall Θ Ξ A MZ MS m p r,
+    ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ r ->
+    eval_natrec_order Θ Ξ A MZ MS m p.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (eval_order_sound Θ Ξ))). Qed.
+
+Lemma eval_app_order_sound : forall Θ Ξ m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed.
 
 #[export]
 Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound : mctt.
-
-(** [eval_sub] is pointwise, so its order is the order of every component. *)
-Lemma eval_sub_order_sound : forall Θ Ξ σ p p' x,
-    ⟦ σ ⟧s Θ ⍮ Ξ ⍮ p ↘ p' ->
-    eval_exp_order Θ Ξ (σ x) p.
-Proof.
-  intros * H; eapply eval_exp_order_sound, eval_sub_index; eassumption.
-Qed.
-
-#[export]
-Hint Resolve eval_sub_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 
@@ -139,10 +341,19 @@ Section EvalImpl.
     | H : eval_exp_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_natrec_order _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : eval_app_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_exps_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_apps_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_modexp_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_appm_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_sel_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_selm_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_selc_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_selmc_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_benv_order _ _ _ _ |- _ => progressive_invert H
     end.
 
-  (** The global cases: the resolution recorded in the order is the one
-      computed, which either fixes the body or rules the case out. *)
+  (** The lookups recorded in the order are the ones computed, which either
+      fixes what is looked up or rules the case out. *)
   #[local]
   Ltac impl_obl_glob :=
     repeat match goal with
@@ -150,6 +361,19 @@ Section EvalImpl.
           rewrite H1 in H2; injection H2; clear H2; intros; subst
       | H1 : gc_resolve _ _ ?p = Some _, H2 : gc_resolve _ _ ?p = None |- _ =>
           rewrite H1 in H2; discriminate H2
+      | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : gc_module _ _ ?p = Some (mr_alias _ _), H2 : forall U r, gc_module _ _ ?p <> Some (mr_alias U r) |- _ =>
+          exfalso; exact (H2 _ _ H1)
+      | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : modexp_spine ?H = _, H2 : modexp_spine ?H = _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H : Nat.compare _ _ = Eq |- _ => apply Nat.compare_eq in H
+      | H : Nat.compare _ _ = Lt |- _ => apply Nat.compare_lt_iff in H
+      | H : Nat.compare _ _ = Gt |- _ => apply Nat.compare_gt_iff in H
       end.
 
   (** The [efq] case: the order says that the scrutinee evaluates to a
@@ -162,16 +386,43 @@ Section EvalImpl.
       end.
 
   #[local]
+  Ltac impl_obl_split :=
+    match goal with
+    | H : eval_exp_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_natrec_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_app_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_modexp_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_appm_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_sel_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_selm_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_selc_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_benv_order _ _ _ _ |- _ => dependent destruction H
+    end.
+
+  #[local]
+  Ltac impl_obl_finish :=
+    impl_obl_exfalso;
+    impl_obl_glob;
+    cbn [gu_params] in *;
+    try solve [ intuition discriminate ];
+    try solve [ exfalso; lia ];
+    try solve [ eapply eval_exp_glob_neut; eauto ];
+    try solve [ econstructor; [ intros ? ? Hc; congruence | .. ]; eauto ];
+    try solve [ eauto ];
+    try econstructor; eauto.
+
+  (** The order of a global is inverted, except when it is the goal. *)
+  #[local]
   Ltac impl_obl_tac :=
     intros; cbv beta in *;
     repeat impl_obl_tac1;
-    impl_obl_exfalso;
-    try match goal with H : eval_exp_order _ _ (a_glob _) _ |- _ => inversion H; subst; clear H end;
-    impl_obl_glob;
-    try solve [ intuition discriminate ];
-    try solve [ eapply eval_exp_glob_neut; eauto ];
-    try solve [ eauto ];
-    try econstructor; eauto.
+    lazymatch goal with
+    | |- eval_exp_order _ _ (a_glob _) _ => idtac
+    | _ => try match goal with H : eval_exp_order _ _ (a_glob _) _ |- _ => inversion H; subst; clear H end
+    end;
+    first [ solve [ impl_obl_finish ]
+          | solve [ impl_obl_split; impl_obl_finish ]
+          | impl_obl_finish ].
 
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations eval_exp_impl m p (H : eval_exp_order Θ Ξ m p) : { d | ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
@@ -207,6 +458,16 @@ Section EvalImpl.
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_exp_impl B (p ↦ m) _ in
       exist _ r _
+  | ℓₘ U in B, p, H =>
+      let (r, Hr) := eval_exp_impl B (p ↦ᵐ dm_local p U nil) _ in
+      exist _ r _
+  | a_mem M x, p, H with inspect (modexp_spine M) := {
+    | exist _ (R, args, pre) E =>
+        let (h, Hh) := eval_modexp_impl R p _ in
+        let (f, Hf) := eval_selc_impl h (pre ++ x :: nil) _ in
+        let (ns, Hns) := eval_exps_impl args p _ in
+        let (r, Hr) := eval_apps_impl f ns _ in
+        exist _ r _ }
   | a_glob pth, p, H with inspect (gc_resolve Θ Ξ pth) := {
     | exist _ (Some (ge_def true pv A (Some M))) E =>
         let (m, Hm) := eval_exp_impl M nil _ in
@@ -217,7 +478,7 @@ Section EvalImpl.
     | exist _ (Some (ge_def false _ A B)) E =>
         let (a, Ha) := eval_exp_impl A nil _ in
         exist _ (⇑ a (d_glob pth)) _
-    | exist _ (Some (ge_mod _ _)) E => False_rect _ _
+    | exist _ (Some (ge_mod _)) E => False_rect _ _
     | exist _ None E => False_rect _ _ }
 
   with eval_natrec_impl A MZ MS m p (H : eval_natrec_order Θ Ξ A MZ MS m p) : { d | ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
@@ -232,6 +493,7 @@ Section EvalImpl.
       let (mz, Hmz) := eval_exp_impl MZ p _ in
       let (mA, HmA) := eval_exp_impl A (p ↦ ⇑ a m) _ in
       exist _ ⇑ mA recᵈ m under p return A | zero -> mz | succ -> MS end _
+  | A, MZ, MS, _, p, H => False_rect _ _
 
   with eval_app_impl m n (H : eval_app_order Θ Ξ m n) : { d | $| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
@@ -239,12 +501,146 @@ Section EvalImpl.
       exist _ m _
   | ⇑ (Πᵈ a p B) m, n, H =>
       let (b, Hb) := eval_exp_impl B (p ↦ n) _ in
-      exist _ ⇑ b (m $ᵈ ⇓ a n) _.
+      exist _ ⇑ b (m $ᵈ ⇓ a n) _
+  | d_member h ch, n, H =>
+      let (h', Hh') := eval_appm_impl h n _ in
+      let (r, Hr) := eval_selc_impl h' ch _ in
+      exist _ r _
+  | _, n, H => False_rect _ _
+
+  with eval_exps_impl Ms p (H : eval_exps_order Θ Ξ Ms p) : { ms | eval_exps Θ Ξ Ms p ms } by struct H :=
+  | nil, p, H => exist _ nil _
+  | M :: Ms, p, H =>
+      let (m, Hm) := eval_exp_impl M p _ in
+      let (ms, Hms) := eval_exps_impl Ms p _ in
+      exist _ (m :: ms) _
+
+  with eval_apps_impl m ns (H : eval_apps_order Θ Ξ m ns) : { r | eval_apps Θ Ξ m ns r } by struct H :=
+  | m, nil, H => exist _ m _
+  | m, n :: ns, H =>
+      let (m1, Hm1) := eval_app_impl m n _ in
+      let (r, Hr) := eval_apps_impl m1 ns _ in
+      exist _ r _
+
+  with eval_modexp_impl M p (H : eval_modexp_order Θ Ξ M p) : { h | ⟦ M ⟧ᵐ Θ ⍮ Ξ ⍮ p ↘ h } by struct H :=
+  | me_var x, p, H => exist _ (env_mod p x) _
+  | me_path pq, p, H with inspect (gc_module Θ Ξ pq) := {
+    | exist _ (Some (mr_alias U ch)) E =>
+        let (h, Hh) := eval_selmc_impl (dm_local nil U nil) ch _ in
+        exist _ h _
+    | exist _ _ E => exist _ (dm_global pq nil) _ }
+  | me_lit U, p, H => exist _ (dm_local p U nil) _
+  | me_mem M y, p, H =>
+      let (h, Hh) := eval_modexp_impl M p _ in
+      let (r, Hr) := eval_selm_impl h y _ in
+      exist _ r _
+  | me_app M N, p, H =>
+      let (h, Hh) := eval_modexp_impl M p _ in
+      let (n, Hn) := eval_exp_impl N p _ in
+      let (r, Hr) := eval_appm_impl h n _ in
+      exist _ r _
+
+  with eval_appm_impl h n (H : eval_appm_order Θ Ξ h n) : { r | eval_appm Θ Ξ h n r } by struct H :=
+  | dm_global pq args, n, H => exist _ (dm_global pq (args ++ n :: nil)) _
+  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_body Δ Φ) (args ++ n :: nil)) _
+  | dm_local p (gu_mk Δ (md_alias E)) args, n, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
+    | exist _ Lt C => exist _ (dm_local p (gu_mk Δ (md_alias E)) (args ++ n :: nil)) _
+    | exist _ Eq C =>
+        let (h, Hh) := eval_modexp_impl E (env_args p args) _ in
+        let (r, Hr) := eval_appm_impl h n _ in
+        exist _ r _
+    | exist _ Gt C => False_rect _ _ }
+  | dm_member h ch, n, H =>
+      let (h', Hh') := eval_appm_impl h n _ in
+      let (r, Hr) := eval_selmc_impl h' ch _ in
+      exist _ r _
+
+  with eval_sel_impl h x (H : eval_sel_order Θ Ξ h x) : { r | eval_sel Θ Ξ h x r } by struct H :=
+  | dm_global pq args, x, H =>
+      let (f, Hf) := eval_exp_impl (a_glob (path_app pq (x :: nil))) nil _ in
+      let (r, Hr) := eval_apps_impl f args _ in
+      exist _ r _
+  | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
+    | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
+    | exist _ Eq C with D := {
+      | md_body Φ with inspect (gm_prefix_upto Φ x) := {
+        | exist _ (Some (gm_ext Φ' _ (ge_def b pv A (Some M)))) P =>
+            let (p', Hp') := eval_benv_impl (env_args p args) Φ' _ in
+            let (r, Hr) := eval_exp_impl M p' _ in
+            exist _ r _
+        | exist _ _ P => False_rect _ _ }
+      | md_alias E =>
+          let (h, Hh) := eval_modexp_impl E (env_args p args) _ in
+          let (r, Hr) := eval_sel_impl h x _ in
+          exist _ r _ }
+    | exist _ Gt C => False_rect _ _ }
+  | dm_member h ch, x, H => exist _ (d_member h (ch ++ x :: nil)) _
+
+  with eval_selm_impl h y (H : eval_selm_order Θ Ξ h y) : { r | eval_selm Θ Ξ h y r } by struct H :=
+  | dm_global pq args, y, H with inspect (gc_module Θ Ξ (path_app pq (y :: nil))) := {
+    | exist _ (Some (mr_alias U ch)) E =>
+        let (r, Hr) := eval_selmc_impl (dm_local nil U args) ch _ in
+        exist _ r _
+    | exist _ _ E => exist _ (dm_global (path_app pq (y :: nil)) args) _ }
+  | dm_local p (gu_mk Δ D) args, y, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
+    | exist _ Lt C => exist _ (dm_member (dm_local p (gu_mk Δ D) args) (y :: nil)) _
+    | exist _ Eq C with D := {
+      | md_body Φ with inspect (gm_prefix_upto Φ y) := {
+        | exist _ (Some (gm_ext Φ' _ (ge_mod Uy))) P =>
+            let (p', Hp') := eval_benv_impl (env_args p args) Φ' _ in
+            exist _ (dm_local p' Uy nil) _
+        | exist _ _ P => False_rect _ _ }
+      | md_alias E =>
+          let (h, Hh) := eval_modexp_impl E (env_args p args) _ in
+          let (r, Hr) := eval_selm_impl h y _ in
+          exist _ r _ }
+    | exist _ Gt C => False_rect _ _ }
+  | dm_member h ch, y, H => exist _ (dm_member h (ch ++ y :: nil)) _
+
+  with eval_selc_impl h ch (H : eval_selc_order Θ Ξ h ch) : { r | eval_selc Θ Ξ h ch r } by struct H :=
+  | h, x :: nil, H =>
+      let (r, Hr) := eval_sel_impl h x _ in
+      exist _ r _
+  | h, y :: ch, H =>
+      let (h1, Hh1) := eval_selm_impl h y _ in
+      let (r, Hr) := eval_selc_impl h1 ch _ in
+      exist _ r _
+  | h, nil, H => False_rect _ _
+
+  with eval_selmc_impl h ch (H : eval_selmc_order Θ Ξ h ch) : { r | eval_selmc Θ Ξ h ch r } by struct H :=
+  | h, nil, H => exist _ h _
+  | h, y :: ch, H =>
+      let (h1, Hh1) := eval_selm_impl h y _ in
+      let (r, Hr) := eval_selmc_impl h1 ch _ in
+      exist _ r _
+
+  with eval_benv_impl p Φ (H : eval_benv_order Θ Ξ p Φ) : { p' | eval_benv Θ Ξ p Φ p' } by struct H :=
+  | p, gm_nil, H => exist _ p _
+  | p, gm_ext Φ y (ge_def b pv A (Some M)), H =>
+      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      let (m, Hm) := eval_exp_impl M p1 _ in
+      exist _ (p1 ↦ m) _
+  | p, gm_ext Φ y (ge_def b pv A None), H => False_rect _ _
+  | p, gm_ext Φ y (ge_mod Uy), H =>
+      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
+  | p, gm_check Φ c, H =>
+      let (p1, Hp1) := eval_benv_impl p Φ _ in
+      exist _ p1 _.
 End EvalImpl.
 
 Extraction Inline eval_exp_impl_functional
   eval_natrec_impl_functional
-  eval_app_impl_functional.
+  eval_app_impl_functional
+  eval_exps_impl_functional
+  eval_apps_impl_functional
+  eval_modexp_impl_functional
+  eval_appm_impl_functional
+  eval_sel_impl_functional
+  eval_selm_impl_functional
+  eval_selc_impl_functional
+  eval_selmc_impl_functional
+  eval_benv_impl_functional.
 
 (** The [eval_*_impl] functions are sound by construction.  Completeness
     follows from the soundness of the evaluation orders and the functionality
