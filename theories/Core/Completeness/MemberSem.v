@@ -88,7 +88,7 @@ Proof.
     pose proof (gctx_closed_module _ _ _ _ Hc Hm') as HT; cbn in HT.
     eexists; split; [ eapply mt_path_mod; eassumption |].
     symmetry; apply exp_closed_wk; apply ctx_pi_scoped; [ assumption | exact I ].
-  - intros Γ qp ch U r k A Hm' Hu _ Δ Hm φ Heq Hφ.
+  - intros Γ qp ch U r k A Hkr Hm' Hu _ Δ Hm φ Heq Hφ.
     destruct Hm; cbn in Heq; try discriminate; injection Heq as <-.
     pose proof (gctx_closed_module _ _ _ _ Hc Hm') as HU; cbn in HU.
     exists A; split; [ eapply mt_path_alias; eassumption |].

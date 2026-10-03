@@ -149,6 +149,7 @@ Inductive member_type (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string 
     gc_module Θ Ξ (path_app qp ch) = Some (mr_body T) ->
     member_type Θ Ξ Γ (me_path qp) ch mk_mod (ctx_pi T a_True)
 | mt_path_alias : forall Γ qp ch U r k A,
+    (k = mk_term -> r <> nil) ->
     gc_module Θ Ξ (path_app qp ch) = Some (mr_alias U r) ->
     unit_member_type Θ Ξ nil U r k A ->
     member_type Θ Ξ Γ (me_path qp) ch k A
