@@ -28,6 +28,7 @@ Proof. intros * x; cbn; rewrite env_entry_ge by (cbn; lia); eexists; split; [ re
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
+  Variables (Θm : gdeps) (Ξm : gstack).
 
 Lemma rel_sub_zero_nil : forall Γ R, per_ctx_env R Γ Γ -> Γ ⊨s sb_zero ≈ sb_zero : ⋅.
 Proof.
@@ -67,7 +68,7 @@ Qed.
 (** ** Paths Do Not Depend on the Local Context *)
 
 Lemma mt_path_ctx : forall Γ Γ' p ch k A,
-    member_type gc_deps gc_stack Γ (me_path p) ch k A -> member_type gc_deps gc_stack Γ' (me_path p) ch k A.
+    member_type Θm Ξm Γ (me_path p) ch k A -> member_type Θm Ξm Γ' (me_path p) ch k A.
 Proof.
   intros * H; inversion H; subst; [ eapply mt_path_def | eapply mt_path_mod | eapply mt_path_alias ]; eassumption.
 Qed.
@@ -79,14 +80,14 @@ Proof. intros * H; inversion H; subst; [ apply eval_me_path | eapply eval_me_pat
 (** A path is valid when its member types and δ-reducts are valid at [⋅],
     and, if it names a module, its value is. *)
 Definition gpath_at (p : path) : Prop :=
-  sem_mt ⋅ (me_path p) /\ sem_unf ⋅ (me_path p) /\
-  (forall A, member_type gc_deps gc_stack ⋅ (me_path p) nil mk_mod A ->
+  sem_mt Θm Ξm ⋅ (me_path p) /\ sem_unf Θm Ξm ⋅ (me_path p) /\
+  (forall A, member_type Θm Ξm ⋅ (me_path p) nil mk_mod A ->
      exists h, eval_modexp gc_deps gc_stack (me_path p) nil h /\ per_dmod h h).
 
-Lemma sem_mt_path : gmod_ok -> forall Γ p, gpath_at p -> ⊨ Γ -> sem_mt Γ (me_path p).
+Lemma sem_mt_path : gmod_ok Θm Ξm -> forall Γ p, gpath_at p -> ⊨ Γ -> sem_mt Θm Ξm Γ (me_path p).
 Proof.
   intros (HGc & HGap & Hc) * [[S1 S2] _] HΓ.
-  assert (Hcl : forall ch k A, member_type gc_deps gc_stack ⋅ (me_path p) ch k A -> exp_scoped 0 A)
+  assert (Hcl : forall ch k A, member_type Θm Ξm ⋅ (me_path p) ch k A -> exp_scoped 0 A)
     by (intros * Hm; exact (proj1 (member_type_scoped _ _) _ _ _ _ _ Hm Hc I I)).
   split.
   - intros * Hm Hch.
@@ -102,7 +103,7 @@ Proof.
       eapply rep_lift_nil; try eassumption; eapply Hcl, mt_path_ctx; eassumption.
 Qed.
 
-Lemma sem_unf_path : forall Γ p, gpath_at p -> sem_unf Γ (me_path p).
+Lemma sem_unf_path : forall Γ p, gpath_at p -> sem_unf Θm Ξm Γ (me_path p).
 Proof.
   intros * (_ & HU & _) ch A M Hm HM R ρ HR Hρ h Hh.
   assert (H0 : per_ctx_env (fun _ _ => True) ⋅ ⋅) by (apply per_ctx_env_nil; reflexivity).
@@ -110,7 +111,7 @@ Proof.
 Qed.
 
 Lemma rel_me_path : forall Γ p A, gpath_at p -> ⊨ Γ ->
-    member_type gc_deps gc_stack Γ (me_path p) nil mk_mod A -> Γ ⊨ᵐ me_path p ≈ me_path p.
+    member_type Θm Ξm Γ (me_path p) nil mk_mod A -> Γ ⊨ᵐ me_path p ≈ me_path p.
 Proof.
   intros * (_ & _ & HV) HΓ Hm.
   destruct (HV _ (mt_path_ctx _ ⋅ _ _ _ _ Hm)) as (h & Hh & Hhh).
@@ -128,3 +129,8 @@ Lemma member_type_path_module : forall Θ Ξ Γ p A,
 Proof. intros * H; inversion H; subst; rewrite path_app_nil in *; eauto. Qed.
 
 End Fixed_GCtx.
+
+#[global] Arguments sem_mt_path {GC Θm Ξm}.
+#[global] Arguments sem_unf_path {GC Θm Ξm}.
+#[global] Arguments rel_me_path {GC Θm Ξm}.
+#[global] Arguments mt_path_ctx {Θm Ξm}.

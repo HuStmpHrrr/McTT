@@ -34,41 +34,41 @@ Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 r = Some (ge_def true pv A (Some M)) ->
       @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
       @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A (a_glob r) M
-  ; sme_gmod : @gmod_ok (gc_mk Θ2 Ξ2)
-  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) p
+  ; sme_gmod : @gmod_ok (gc_mk Θ2 Ξ2) Θ1 Ξ1
+  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ1 Ξ1 p
   }.
 
 (** ** 2. The fundamental theorem along an embedding *)
 
 Definition kctx Θ1 Ξ1 Γ : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
 
 Definition kexp_eq Θ1 Ξ1 Γ A M M' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 
 Definition ksubtyp Θ1 Ξ1 Γ A A' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
 
 Definition kext Θ1 Ξ1 Γ Ψ Ψ' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ' /\
-    @ctx_mt (gc_mk Θ2 Ξ2) (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) (Ψ' ++ Γ) /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+    @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 (Ψ' ++ Γ) /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
 
 Definition kunit Θ1 Ξ1 Γ U U' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U' /\
-    @unit_mt (gc_mk Θ2 Ξ2) Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Γ U' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+    @unit_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ U' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
 
 Definition kmod Θ1 Ξ1 Γ H H' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H' /\
-    @sem_mt (gc_mk Θ2 Ξ2) Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Γ H' /\
-    @sem_unf (gc_mk Θ2 Ξ2) Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Γ H' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Γ.
+    @sem_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H' /\
+    @sem_unf (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
 
 Ltac kcase :=
   repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _, He : sem_emb _ _ _ _ |- _ =>
@@ -128,16 +128,16 @@ Proof.
                  | eapply rel_exp_let_mod_zeta; eassumption ].
   (** Members. *)
   all: try solve [ eapply rel_exp_mem_gen; [ exact Hgm | eassumption | eassumption
-                 | eapply member_type_emb; eassumption | eassumption ] ].
+                 | eassumption | eassumption ] ].
   all: try solve [ eapply rel_exp_mem_delta; [ exact Hgm | eassumption | eassumption | eassumption
-                 | eapply member_type_emb; eassumption | eassumption
-                 | eapply member_unfold_emb; eassumption | eassumption ] ].
+                 | eassumption | eassumption
+                 | eassumption | eassumption ] ].
   all: try solve [ eapply valid_exp_mem_app; eassumption | eapply rel_exp_mem_app; eassumption ].
   all: try solve [
     match goal with HM : rel_exp_under_ctx _ _ (a_mem _ _) (a_mem _ _) |- _ =>
       destruct (presup_rel_exp_under_ctx HM) as [? ?];
       eapply rel_exp_mem_gen; [ exact Hgm | eassumption | eassumption
-                              | eapply member_type_emb; eassumption | eassumption ] end ].
+                              | eassumption | eassumption ] end ].
   (** Extensions. *)
   all: try solve [ split; [ apply rel_ext_nil; assumption | cbn [app]; repeat split; assumption ] ].
   all: try solve [ split; [ eapply rel_ext_ass; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
@@ -154,20 +154,20 @@ Proof.
   (** Module expressions. *)
   all: try solve [
     match goal with Hm : member_type _ _ _ (me_path ?p) nil mk_mod _, He : sem_emb _ _ _ _, HΓ : sem_ctx _ |- _ =>
-      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm) as Hm2;
+      pose proof Hm as Hm2;
       destruct (member_type_path_module _ _ _ _ _ Hm) as [r Hr];
       pose proof (sme_path _ _ _ _ He _ _ Hr) as Hp;
       split; [ exact (rel_me_path _ _ _ Hp HΓ Hm2) |];
       split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |]; split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |];
       split; [ exact (sem_unf_path _ _ Hp) |]; split; [ exact (sem_unf_path _ _ Hp) | split; assumption ] end ].
   all: try solve [
-    match goal with Hl : _ ∋ # _ ⇒ₘ _, HΓ : sem_ctx _, Hok : ctx_mt _ |- _ =>
+    match goal with Hl : _ ∋ # _ ⇒ₘ _, HΓ : sem_ctx _, Hok : ctx_mt _ _ _ |- _ =>
       pose proof Hgm as (HGc & HGap & Hc);
       split; [ exact (rel_me_var _ _ _ HΓ Hl) |];
       split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |];
       split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) | split; assumption ] end ].
   all: try solve [
-    match goal with HU : rel_unit_under_ctx _ ?U ?U', Hok : unit_mt _ ?U, Hok' : unit_mt _ ?U', HΓ : sem_ctx _ |- _ =>
+    match goal with HU : rel_unit_under_ctx _ ?U ?U', Hok : unit_mt _ _ _ ?U, Hok' : unit_mt _ _ _ ?U', HΓ : sem_ctx _ |- _ =>
       destruct HU as (HU & HsU & HsU');
       assert (Ht : tele_ass (gu_params U)) by (inversion HsU; subst; cbn; assumption);
       assert (Ht' : tele_ass (gu_params U')) by (inversion HsU'; subst; cbn; assumption);
@@ -175,23 +175,23 @@ Proof.
       split; [ exact (sem_mt_lit _ _ HΓ HsU Hok) |]; split; [ exact (sem_mt_lit _ _ HΓ HsU' Hok') |];
       split; [ exact (sem_unf_lit _ _ Ht) |]; split; [ exact (sem_unf_lit _ _ Ht') | split; assumption ] end ].
   all: try solve [
-    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ ?H, HS' : sem_mt _ ?H',
-                    HU : sem_unf _ ?H, HU' : sem_unf _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) mk_mod _
+    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ _ _ ?H, HS' : sem_mt _ _ _ ?H',
+                    HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) mk_mod _
                     |- rel_modexp_under_ctx _ (me_mem _ _) _ /\ _ =>
-      split; [ exact (rel_me_mem Hgm _ _ _ _ _ HH HS (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm)) |];
+      split; [ exact (rel_me_mem Hgm _ _ _ _ _ HH HS Hm) |];
       split; [ exact (sem_mt_mem _ _ _ HS) |]; split; [ exact (sem_mt_mem _ _ _ HS') |];
       split; [ exact (sem_unf_mem _ _ _ HU) |]; split; [ exact (sem_unf_mem _ _ _ HU') | split; assumption ] end ].
   all: try solve [
-    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ ?H, HS' : sem_mt _ ?H',
-                    HU : sem_unf _ ?H, HU' : sem_unf _ ?H',
+    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ _ _ ?H, HS' : sem_mt _ _ _ ?H',
+                    HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H',
                     Hm : member_type _ _ _ ?H nil mk_mod ?A0, HA : rel_exp_under_ctx _ _ ?A0 (a_pi ?B ?C),
                     HB : rel_exp_under_ctx _ _ ?B ?B,
                     Hm' : member_type _ _ _ ?H' nil mk_mod ?A0', HA' : rel_exp_under_ctx _ _ ?A0' (a_pi ?B' ?C'),
                     HB' : rel_exp_under_ctx _ _ ?B' ?B',
                     HN : rel_exp_under_ctx _ ?B ?N ?N', HN' : rel_exp_under_ctx _ ?B' ?N' ?N'
                     |- rel_modexp_under_ctx _ (me_app _ _) _ /\ _ =>
-      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm) as Hm2;
-      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm') as Hm2';
+      pose proof Hm as Hm2;
+      pose proof Hm' as Hm2';
       pose proof (rel_modexp_refl_left HH) as HHl; pose proof (rel_modexp_refl_right HH) as HHr;
       pose proof (rel_exp_under_ctx_refl_left HN) as HNl;
       split; [ exact (rel_me_app Hgm _ _ _ _ _ _ _ _ _ HH HS Hm2 HA HN) |];
@@ -340,8 +340,8 @@ End Raw.
 
 (** An embedding whose source entries are valid at the target is sound. *)
 Theorem sem_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
-    Emb Θ1 Ξ1 Θ2 Ξ2 -> GV sem_entry Θ1 Ξ1 Θ2 Ξ2 -> @gmod_ok (gc_mk Θ2 Ξ2) ->
-    (forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) p) ->
+    Emb Θ1 Ξ1 Θ2 Ξ2 -> GV sem_entry Θ1 Ξ1 Θ2 Ξ2 -> @gmod_ok (gc_mk Θ2 Ξ2) Θ1 Ξ1 ->
+    (forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ1 Ξ1 p) ->
     sem_emb Θ1 Ξ1 Θ2 Ξ2.
 Proof.
   intros * He HG Hgm Hpa; pose proof He as [Hg Hs].

@@ -155,6 +155,7 @@ Qed.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
+  Variables (Θm : gdeps) (Ξm : gstack).
 
 (** ** Bodies *)
 
@@ -214,18 +215,18 @@ Definition umt_val (Γ : ctx) (U : gunit) (ch : list String.string) (k : mkind) 
 
 (** A module expression is valid in its members. *)
 Definition sem_mt (Γ : ctx) (H : modexp) : Prop :=
-  (forall ch k A, member_type gc_deps gc_stack Γ H ch k A -> (k = mk_term -> ch <> nil) ->
+  (forall ch k A, member_type Θm Ξm Γ H ch k A -> (k = mk_term -> ch <> nil) ->
      (exists n b, rep Γ A n b) /\ mt_val Γ H ch k A) /\
-  (forall ch0 A0 ch k A, member_type gc_deps gc_stack Γ H ch0 mk_mod A0 ->
-     member_type gc_deps gc_stack Γ H (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
+  (forall ch0 A0 ch k A, member_type Θm Ξm Γ H ch0 mk_mod A0 ->
+     member_type Θm Ξm Γ H (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
      exists m n, rep Γ A0 m true /\ rep Γ A n false /\ m <= n).
 
 (** The closure of a unit is valid in its members. *)
 Definition sem_umt (Γ : ctx) (U : gunit) : Prop :=
-  (forall ch k A, unit_member_type gc_deps gc_stack Γ U ch k A -> (k = mk_term -> ch <> nil) ->
+  (forall ch k A, unit_member_type Θm Ξm Γ U ch k A -> (k = mk_term -> ch <> nil) ->
      (exists n b, rep Γ A n b) /\ umt_val Γ U ch k A) /\
-  (forall ch0 A0 ch k A, unit_member_type gc_deps gc_stack Γ U ch0 mk_mod A0 ->
-     unit_member_type gc_deps gc_stack Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
+  (forall ch0 A0 ch k A, unit_member_type Θm Ξm Γ U ch0 mk_mod A0 ->
+     unit_member_type Θm Ξm Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
      exists m n, rep Γ A0 m true /\ rep Γ A n false /\ m <= n).
 
 (** The module slots of a context, and the submodules and alias targets of
@@ -348,7 +349,7 @@ Proof.
   exists Ψ; split; [ exact HΨ | exact (proj1 Hs') ].
 Qed.
 
-Lemma closure_typed : forall Γ U ch k A, unit_member_type gc_deps gc_stack Γ U ch k A ->
+Lemma closure_typed : forall Γ U ch k A, unit_member_type Θm Ξm Γ U ch k A ->
     ⊨ Γ -> sem_unit Γ U -> unit_mt Γ U -> (k = mk_term -> ch <> nil) ->
     (exists n b, rep Γ A n b /\ List.length (gu_params U) <= n) /\ umt_val Γ U ch k A.
 Proof.
@@ -418,9 +419,9 @@ Proof.
       exists a; split; [ exact Ha | eapply mty_alias; eassumption ].
 Qed.
 
-Lemma closure_pairs : forall Γ U ch0 k0 A0, unit_member_type gc_deps gc_stack Γ U ch0 k0 A0 -> k0 = mk_mod ->
+Lemma closure_pairs : forall Γ U ch0 k0 A0, unit_member_type Θm Ξm Γ U ch0 k0 A0 -> k0 = mk_mod ->
     ⊨ Γ -> sem_unit Γ U -> unit_mt Γ U ->
-    forall ch k A, unit_member_type gc_deps gc_stack Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
+    forall ch k A, unit_member_type Θm Ξm Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
     exists m n, rep Γ A0 m true /\ rep Γ A n false /\ m <= n.
 Proof.
   induction 1 as [Γ Δ Φ | Γ Δ Φ Φ' x b A1 B Hx | Γ Δ Φ Φ' y Uy ch0 k0 A0 Hk0 Hy Hm IH | Γ Δ E ch0 k0 A0 Hm];
@@ -480,11 +481,11 @@ Qed.
 
 (** A unit's member types, typing the values [val ρ] at valid [ρ]. *)
 Definition unit_vals_ok (Γ : ctx) (U : gunit) (val : env -> dmod) : Prop :=
-  (forall ch k A, unit_member_type gc_deps gc_stack Γ U ch k A -> (k = mk_term -> ch <> nil) ->
+  (forall ch k A, unit_member_type Θm Ξm Γ U ch k A -> (k = mk_term -> ch <> nil) ->
      (exists n b, rep Γ A n b) /\
      forall R ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ -> exists a, ⟦ A ⟧ ρ ↘ a /\ mtyped (val ρ) ch k a) /\
-  (forall ch0 A0 ch k A, unit_member_type gc_deps gc_stack Γ U ch0 mk_mod A0 ->
-     unit_member_type gc_deps gc_stack Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
+  (forall ch0 A0 ch k A, unit_member_type Θm Ξm Γ U ch0 mk_mod A0 ->
+     unit_member_type Θm Ξm Γ U (ch0 ++ ch) k A -> (k = mk_term -> ch0 ++ ch <> nil) ->
      exists m n, rep Γ A0 m true /\ rep Γ A n false /\ m <= n).
 
 Lemma gsub_shift : forall {e Γ}, ⊨ e :: Γ -> gsub (e :: Γ) Wk Γ.
@@ -498,7 +499,7 @@ Qed.
 Lemma rep_wk_shift : forall {e Γ A n b}, ⊨ e :: Γ -> rep Γ A n b -> rep (e :: Γ) A[wk_shift]ʷ n b.
 Proof. intros * H Hr; rewrite <- exp_sub_of_shift; exact (rep_sub _ _ _ _ Hr _ _ (gsub_shift H)). Qed.
 
-Lemma unit_vals_ok_shift : gchild_ok -> gctx_closed gc_deps gc_stack ->
+Lemma unit_vals_ok_shift : gchild_ok -> gctx_closed Θm Ξm ->
     forall Γ U val e val', unit_vals_ok Γ U val -> ⊨ e :: Γ ->
     (forall R ρ, EF e :: Γ ≈ e :: Γ ∈ per_ctx_env ↘ R -> R ρ ρ -> val' ρ = val ρ↯ \/ per_dmod (val ρ↯) (val' ρ)) ->
     unit_vals_ok (e :: Γ) (gunit_wk U wk_shift) val'.
@@ -536,7 +537,7 @@ Qed.
 Lemma env_mod_S : forall ρ n, env_mod ρ (S n) = env_mod ρ↯ n.
 Proof. intros [| d ρ] n; reflexivity. Qed.
 
-Lemma slot_vals_ok : gchild_ok -> gctx_closed gc_deps gc_stack ->
+Lemma slot_vals_ok : gchild_ok -> gctx_closed Θm Ξm ->
     forall Γ x U, Γ ∋ #x ⇒ₘ U -> ⊨ Γ -> ctx_mt Γ -> unit_vals_ok Γ U (fun ρ => env_mod ρ x).
 Proof.
   intros HGc Hc.
@@ -557,7 +558,7 @@ Proof.
     intros; left; apply env_mod_S.
 Qed.
 
-Lemma sem_mt_var : gchild_ok -> gctx_closed gc_deps gc_stack ->
+Lemma sem_mt_var : gchild_ok -> gctx_closed Θm Ξm ->
     forall Γ x U, Γ ∋ #x ⇒ₘ U -> ⊨ Γ -> ctx_mt Γ -> sem_mt Γ (me_var x).
 Proof.
   intros HGc Hc * Hl HC Hok.
@@ -621,14 +622,14 @@ Qed.
 
 (** Hypotheses on the global context, discharged by its validity. *)
 Definition gmod_ok : Prop :=
-  gchild_ok /\ galias_params_ok /\ gctx_closed gc_deps gc_stack.
+  gchild_ok /\ galias_params_ok /\ gctx_closed Θm Ξm.
 
 (** The domain of a member type at a chain of a module that still takes an
     argument is the domain of its arity. *)
 Lemma app_domain : gmod_ok -> forall Γ H A0 B C i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
-    forall ch k A1 B1 C1 j, member_type gc_deps gc_stack Γ H ch k A1 -> (k = mk_term -> ch <> nil) ->
+    member_type Θm Ξm Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    forall ch k A1 B1 C1 j, member_type Θm Ξm Γ H ch k A1 -> (k = mk_term -> ch <> nil) ->
     Γ ⊨ A1 ≈ Π B1 C1 : Type@j -> Γ ⊨ B1 : Type@j ->
     Γ ⊨ B ≈ B1 : Type@(max i j).
 Proof.
@@ -663,9 +664,9 @@ Qed.
 
 Lemma app_shift : gmod_ok -> forall Γ H A0 B C N i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
     Γ ⊨ N : B ->
-    forall ch k A1 B1 C1 n b, member_type gc_deps gc_stack Γ H ch k A1 -> (k = mk_term -> ch <> nil) ->
+    forall ch k A1 B1 C1 n b, member_type Θm Ξm Γ H ch k A1 -> (k = mk_term -> ch <> nil) ->
     pi_view A1 = Some (B1, C1) -> rep Γ A1 (S n) b ->
     Γ ⊨ N : B1 /\ (exists l, Γ ⊨ B1 : Type@l /\ Γ ▹ B1 ⊨ C1 : Type@l /\ Γ ⊨ A1 ≈ Π B1 C1 : Type@l) /\
     rep Γ C1[Id,,N] n b.
@@ -696,7 +697,7 @@ Qed.
 
 Lemma sem_mt_app : gmod_ok -> forall Γ H A0 B C N i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
     Γ ⊨ N : B -> sem_mt Γ (me_app H N).
 Proof.
   intros Hok * HS HH Hm0 HA0 HB HN.
@@ -750,3 +751,17 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+#[global] Arguments closure_typed {GC Θm Ξm}.
+#[global] Arguments closure_pairs {GC Θm Ξm}.
+#[global] Arguments closure_sem {GC Θm Ξm}.
+#[global] Arguments sem_mt_lit {GC Θm Ξm}.
+#[global] Arguments unit_vals_ok_shift {GC Θm Ξm}.
+#[global] Arguments slot_vals_ok {GC Θm Ξm}.
+#[global] Arguments sem_mt_var {GC Θm Ξm}.
+#[global] Arguments sem_mt_mem {GC Θm Ξm}.
+#[global] Arguments app_domain {GC Θm Ξm}.
+#[global] Arguments app_shift {GC Θm Ξm}.
+#[global] Arguments sem_mt_app {GC Θm Ξm}.
+#[global] Arguments ctx_mt_app_r {GC Θm Ξm}.
+#[global] Arguments ctx_mt_mod_inv {GC Θm Ξm}.

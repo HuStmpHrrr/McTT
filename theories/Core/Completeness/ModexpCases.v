@@ -22,6 +22,7 @@ Import Domain_Notations Fixed_Notations Wk_Notations.
 
 Section Fixed_GCtx.
   Context {GC : GCtx}.
+  Variables (Θm : gdeps) (Ξm : gstack).
 
 (** ** Arguments Commute with Selection *)
 
@@ -191,8 +192,8 @@ Proof.
   split; [ exact Hd | exact (per_dmod_trans _ _ _ (per_dmod_sym _ _ Hd) Hd) ].
 Qed.
 
-Lemma rel_me_mem : gmod_ok -> forall Γ H H' y A,
-    Γ ⊨ᵐ H ≈ H' -> sem_mt Γ H -> member_type gc_deps gc_stack Γ H (y :: nil) mk_mod A ->
+Lemma rel_me_mem : gmod_ok Θm Ξm -> forall Γ H H' y A,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H (y :: nil) mk_mod A ->
     Γ ⊨ᵐ me_mem H y ≈ me_mem H' y.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm.
@@ -224,8 +225,8 @@ Proof.
   apply (mk_rel_mod v1 v v3 v4); [ econstructor; eassumption .. | exact (hub_chain _ _ _ _ V1 V3 V4) ].
 Qed.
 
-Lemma rel_me_app : gmod_ok -> forall Γ H H' N N' A0 B C i,
-    Γ ⊨ᵐ H ≈ H' -> sem_mt Γ H -> member_type gc_deps gc_stack Γ H nil mk_mod A0 ->
+Lemma rel_me_app : gmod_ok Θm Ξm -> forall Γ H H' N N' A0 B C i,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H nil mk_mod A0 ->
     Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ N ≈ N' : B ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N'.
 Proof.
@@ -271,8 +272,8 @@ Proof. intros * H; inversion H; subst; [ assumption | match goal with Hn : eval_
 
 (** Members of equivalent module expressions are equal at the canonical type
     of the left one. *)
-Lemma rel_exp_mem_gen : gmod_ok -> forall Γ H H' x A i,
-    Γ ⊨ᵐ H ≈ H' -> sem_mt Γ H -> member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
+Lemma rel_exp_mem_gen : gmod_ok Θm Ξm -> forall Γ H H' x A i,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H (x :: nil) mk_term A ->
     Γ ⊨ A : Type@i -> Γ ⊨ a_mem H x ≈ a_mem H' x : A.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm HA.
@@ -399,7 +400,7 @@ Proof.
   exact (member_ref_of_selc _ _ _ _ _ Hch HE (proj1 (selc_alias _ _ _ _ _ _ _ Hl HE) Hs)).
 Qed.
 
-Lemma unit_delta : forall Γ U ch k A M, unit_member_type gc_deps gc_stack Γ U ch k A -> k = mk_term ->
+Lemma unit_delta : forall Γ U ch k A M, unit_member_type Θm Ξm Γ U ch k A -> k = mk_term ->
     member_expansion U ch = Some M -> tele_ass (gu_params U) ->
     forall ρ a i E d, ⟦ A ⟧ ρ ↘ a -> per_univ_elem i E a a ->
       eval_selc gc_deps gc_stack (dm_local ρ U nil) ch d -> E d d -> exists m, ⟦ M ⟧ ρ ↘ m /\ E m d.
@@ -493,8 +494,8 @@ Qed.
 (** The δ-reducts of a module expression's members are related to the
     members selected from its values. *)
 Definition sem_unf (Γ : ctx) (H : modexp) : Prop :=
-  forall ch A M, member_type gc_deps gc_stack Γ H ch mk_term A ->
-    member_unfold_ch gc_deps gc_stack Γ H ch = Some M ->
+  forall ch A M, member_type Θm Ξm Γ H ch mk_term A ->
+    member_unfold_ch Θm Ξm Γ H ch = Some M ->
     forall R ρ, EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> R ρ ρ ->
     forall h, eval_modexp gc_deps gc_stack H ρ h ->
     forall a i E d, ⟦ A ⟧ ρ ↘ a -> per_univ_elem i E a a ->
@@ -507,7 +508,7 @@ Proof.
   eapply unit_delta; eauto.
 Qed.
 
-Lemma sem_unf_var : gmod_ok -> forall Γ x U, Γ ∋ #x ⇒ₘ U -> ⊨ Γ -> ctx_mt Γ -> sem_unf Γ (me_var x).
+Lemma sem_unf_var : gmod_ok Θm Ξm -> forall Γ x U, Γ ∋ #x ⇒ₘ U -> ⊨ Γ -> ctx_mt Θm Ξm Γ -> sem_unf Γ (me_var x).
 Proof.
   intros Hok * Hl HC Hok' ch A M Hm HM R ρ HR Hρ h Hh * Ha HE Hd Hdd.
   pose proof Hok as (HGc & HGap & Hc).
@@ -536,16 +537,16 @@ Proof.
     exact (HS _ _ _ Hm' HM _ _ HR Hρ _ He _ _ _ _ Ha HE ltac:(econstructor; eassumption) Hdd) end.
 Qed.
 
-Lemma sem_unf_app : gmod_ok -> forall Γ H A0 B C N i,
-    sem_mt Γ H -> sem_unf Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+Lemma sem_unf_app : gmod_ok Θm Ξm -> forall Γ H A0 B C N i,
+    sem_mt Θm Ξm Γ H -> sem_unf Γ H -> Γ ⊨ᵐ H ≈ H ->
+    member_type Θm Ξm Γ H nil mk_mod A0 -> Γ ⊨ A0 ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
     Γ ⊨ N : B -> sem_unf Γ (me_app H N).
 Proof.
   intros Hok * HS HU HH Hm0 HA0 HB HN ch A' M' Hm HM R ρ HR Hρ h' Hh' a i' E d Ha HE Hd Hdd.
   pose proof Hok as (HGc & HGap & Hc).
   pose proof HS as [S1 S2].
   inversion Hm as [| | | | | | ? ? ? ? ? A1 B1 C1 Hm1 Hp ]; subst.
-  cbn in HM; destruct (member_unfold_ch gc_deps gc_stack Γ H ch) as [M0 |] eqn:HM0; cbn in HM; [| discriminate ].
+  cbn in HM; destruct (member_unfold_ch Θm Ξm Γ H ch) as [M0 |] eqn:HM0; cbn in HM; [| discriminate ].
   injection HM as <-.
   assert (Hch : ch <> nil) by (intros ->; inversion Hd).
   assert (Hch' : mk_term = mk_term -> ch <> nil) by (intros; exact Hch).
@@ -593,9 +594,9 @@ Proof.
 Qed.
 
 (** δ: a member of a module expression without arguments is its δ-reduct. *)
-Lemma rel_exp_mem_delta : gmod_ok -> forall Γ H x A i M,
-    Γ ⊨ᵐ H ≈ H -> sem_mt Γ H -> sem_unf Γ H -> member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
-    Γ ⊨ A : Type@i -> member_unfold gc_deps gc_stack Γ H x = Some M -> Γ ⊨ M : A ->
+Lemma rel_exp_mem_delta : gmod_ok Θm Ξm -> forall Γ H x A i M,
+    Γ ⊨ᵐ H ≈ H -> sem_mt Θm Ξm Γ H -> sem_unf Γ H -> member_type Θm Ξm Γ H (x :: nil) mk_term A ->
+    Γ ⊨ A : Type@i -> member_unfold Θm Ξm Γ H x = Some M -> Γ ⊨ M : A ->
     Γ ⊨ a_mem H x ≈ M : A.
 Proof.
   intros Hok * HH HS HU Hm HA HM HMv.
@@ -625,3 +626,12 @@ Proof.
 Qed.
 
 End Fixed_GCtx.
+
+#[global] Arguments rel_me_mem {GC Θm Ξm}.
+#[global] Arguments rel_me_app {GC Θm Ξm}.
+#[global] Arguments rel_exp_mem_gen {GC Θm Ξm}.
+#[global] Arguments sem_unf_lit {GC Θm Ξm}.
+#[global] Arguments sem_unf_var {GC Θm Ξm}.
+#[global] Arguments sem_unf_mem {GC Θm Ξm}.
+#[global] Arguments sem_unf_app {GC Θm Ξm}.
+#[global] Arguments rel_exp_mem_delta {GC Θm Ξm}.
