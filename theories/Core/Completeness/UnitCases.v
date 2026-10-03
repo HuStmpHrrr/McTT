@@ -1061,4 +1061,44 @@ Corollary valid_exp_let_mod : forall {Γ U B C},
     Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U].
 Proof. intros * HU HB; exact (rel_exp_let_mod_cong HU HB). Qed.
 
+(** ** Members of Applied Modules
+
+    A member of an applied module evaluates exactly as its root's member
+    applied to the arguments, before and after any substitution. *)
+
+Lemma rel_exp_under_ctx_eval_iff_l : forall {Γ A M N N'},
+    (forall σ ρ r, ⟦ M[σ] ⟧ ρ ↘ r <-> ⟦ N[σ] ⟧ ρ ↘ r) ->
+    (forall ρ r, ⟦ M ⟧ ρ ↘ r <-> ⟦ N ⟧ ρ ↘ r) ->
+    Γ ⊨ N ≈ N' : A ->
+    Γ ⊨ M ≈ N' : A.
+Proof.
+  intros * Hs H0 [R [HΓ [i HN]]].
+  exists R, HΓ, i.
+  intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HN _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [E [HT [m1 m2 m3 m4 H1 H2 H3 H4 Hc]]].
+  exists E; split; [ exact HT |].
+  econstructor; [ apply Hs; exact H1 | apply H0; exact H2 | exact H3 | exact H4 | exact Hc ].
+Qed.
+
+Lemma rel_exp_mem_app : forall {Γ H x R args pre A N'},
+    modexp_spine H = (R, args, pre) ->
+    Γ ⊨ apps (member_ref R (pre ++ x :: nil)) args ≈ N' : A ->
+    Γ ⊨ a_mem H x ≈ N' : A.
+Proof.
+  intros * Hs HN.
+  eapply rel_exp_under_ctx_eval_iff_l; [ | | exact HN ].
+  - intros σ ρ r; exact (eval_mem_apps_sub _ _ _ _ _ σ ρ r Hs).
+  - intros ρ r; exact (eval_mem_apps _ _ _ _ _ _ _ _ _ Hs).
+Qed.
+
+Corollary valid_exp_mem_app : forall {Γ H x R args pre A},
+    modexp_spine H = (R, args, pre) ->
+    Γ ⊨ apps (member_ref R (pre ++ x :: nil)) args : A ->
+    Γ ⊨ a_mem H x : A.
+Proof.
+  intros * Hs HN.
+  pose proof (rel_exp_mem_app Hs HN) as H1.
+  eapply rel_exp_under_ctx_trans; [ exact H1 | apply rel_exp_under_ctx_sym, H1 ].
+Qed.
+
 End Fixed_GCtx.
