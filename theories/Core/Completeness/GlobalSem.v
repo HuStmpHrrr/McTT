@@ -561,3 +561,6 @@ Proof.
   - intros p T y T' H1 H2; destruct (wf_gc_child _ _ H _ _ _ _ H1 H2) as (Δ & -> & _); eauto.
   - intros p T y U ch H1 H2; destruct (wf_gc_alias_params _ _ H _ _ _ _ _ H1 H2) as (_ & Δ & HU & _); eauto.
 Qed.
+
+Lemma gmod_ok_self : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> @gmod_ok (gc_mk Θ Ξ) Θ Ξ.
+Proof. intros * H; apply gmod_ok_of_wf; [ exact H | eapply wf_gctx_closed; constructor; exact H ]. Qed.

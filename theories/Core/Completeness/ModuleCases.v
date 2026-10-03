@@ -13,11 +13,11 @@ From Stdlib Require Import Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
-From Mctt.Core.Syntactic.System Require Import MemberLemmas.
+From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases LetCases NatCases SubstitutionCases SubtypingCases
   TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
-  MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases.
+  MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases GlobalSem.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -34,41 +34,67 @@ Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 r = Some (ge_def true pv A (Some M)) ->
       @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
       @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A (a_glob r) M
-  ; sme_gmod : @gmod_ok (gc_mk Θ2 Ξ2) Θ1 Ξ1
-  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ1 Ξ1 p
+  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ2 Ξ2 p
   }.
 
 (** ** 2. The fundamental theorem along an embedding *)
 
 Definition kctx Θ1 Ξ1 Γ : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
+  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
 
 Definition kexp_eq Θ1 Ξ1 Γ A M M' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 
 Definition ksubtyp Θ1 Ξ1 Γ A A' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
 
 Definition kext Θ1 Ξ1 Γ Ψ Ψ' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ' /\
-    @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 (Ψ' ++ Γ) /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
+    @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (Ψ' ++ Γ) /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
 
 Definition kunit Θ1 Ξ1 Γ U U' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U' /\
-    @unit_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ U' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
+    @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ U' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
 
 Definition kmod Θ1 Ξ1 Γ H H' : Prop :=
   forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
     @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H' /\
-    @sem_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H' /\
-    @sem_unf (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ H' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ1 Ξ1 Γ.
+    @sem_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H' /\
+    @sem_unf (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
+
+(** The member types and δ-reducts of the source, at the target. *)
+Ltac to_target Hsub :=
+  match type of Hsub with gc_sub ?S1 ?S2 ?T1 ?T2 =>
+    repeat match goal with
+    | Hm : member_type S1 S2 ?G ?H ?c ?k ?A |- _ =>
+        lazymatch goal with
+        | _ : member_type T1 T2 G H c k A |- _ => fail
+        | _ => pose proof (proj1 (member_type_gc_sub _ _ _ _ Hsub) _ _ _ _ _ Hm)
+        end
+    | Hm : unit_member_type S1 S2 ?G ?U ?c ?k ?A |- _ =>
+        lazymatch goal with
+        | _ : unit_member_type T1 T2 G U c k A |- _ => fail
+        | _ => pose proof (proj2 (member_type_gc_sub _ _ _ _ Hsub) _ _ _ _ _ Hm)
+        end
+    | Hm : member_unfold S1 S2 ?G ?H ?x = ?M |- _ =>
+        lazymatch goal with
+        | _ : member_unfold T1 T2 G H x = M |- _ => fail
+        | _ => pose proof (member_unfold_emb _ _ _ _ _ _ _ _ Hsub Hm)
+        end
+    | Hm : member_unfold_ch S1 S2 ?G ?H ?c = ?M |- _ =>
+        lazymatch goal with
+        | _ : member_unfold_ch T1 T2 G H c = M |- _ => fail
+        | _ => pose proof (member_unfold_gc_sub _ _ _ _ Hsub _ _ _ _ Hm)
+        end
+    end
+  end.
 
 Ltac kcase :=
   repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _, He : sem_emb _ _ _ _ |- _ =>
@@ -86,8 +112,10 @@ Theorem kripke_fundamental :
 Proof.
   apply syntactic_wf_mut_ind; unfold kctx, kexp_eq, ksubtyp, kext, kunit, kmod; intros;
     pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hsub;
-    pose proof (sme_gmod _ _ _ _ ltac:(eassumption)) as Hgm;
-    kcase.
+    pose proof (em_wf _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hwf2;
+    pose proof (gmod_ok_self _ _ Hwf2) as Hgm;
+    kcase;
+    to_target Hsub.
   (** Contexts. *)
   all: try solve [ split; constructor ].
   all: try solve [ split; [ eapply rel_ctx_extend'; eassumption | constructor; assumption ] ].
@@ -153,8 +181,8 @@ Proof.
   all: try solve [ split; [ eapply rel_unit_trans; eassumption | repeat split; assumption ] ].
   (** Module expressions. *)
   all: try solve [
-    match goal with Hm : member_type _ _ _ (me_path ?p) nil mk_mod _, He : sem_emb _ _ _ _, HΓ : sem_ctx _ |- _ =>
-      pose proof Hm as Hm2;
+    match goal with He : sem_emb ?S1 ?S2 ?T1 ?T2, Hm : member_type ?S1 ?S2 _ (me_path ?p) nil mk_mod _,
+                    Hm2 : member_type ?T1 ?T2 _ (me_path ?p) nil mk_mod _, HΓ : sem_ctx _ |- _ =>
       destruct (member_type_path_module _ _ _ _ _ Hm) as [r Hr];
       pose proof (sme_path _ _ _ _ He _ _ Hr) as Hp;
       split; [ exact (rel_me_path _ _ _ Hp HΓ Hm2) |];
@@ -338,22 +366,132 @@ Section Raw.
   Qed.
 End Raw.
 
-(** An embedding whose source entries are valid at the target is sound. *)
-Theorem sem_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
-    Emb Θ1 Ξ1 Θ2 Ξ2 -> GV sem_entry Θ1 Ξ1 Θ2 Ξ2 -> @gmod_ok (gc_mk Θ2 Ξ2) Θ1 Ξ1 ->
-    (forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ1 Ξ1 p) ->
-    sem_emb Θ1 Ξ1 Θ2 Ξ2.
+(** ** 5. Valid global contexts *)
+
+(** What an entry other than a body module is worth at [Θ2 ⍮ Ξ2]: a
+    definition, checked over [T], is valid at [⋅] and its type over [T]; an
+    alias is a valid closed unit. *)
+Definition sem_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
+  match E with
+  | ge_def _ _ A B =>
+      (exists i, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Type@i) A A) /\
+      (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A M M) /\
+      (exists A0 i, A = ctx_pi T A0 /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) T (Type@i) A0 A0)
+  | ge_mod U =>
+      @sem_unit (gc_mk Θ2 Ξ2) ⋅ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 ⋅ U /\
+      @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (me_lit U) (me_lit U)
+  end.
+
+(** The telescope of a module. *)
+Definition sem_F (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop :=
+  @sem_ctx (gc_mk Θ2 Ξ2) T /\ tele_ass T.
+
+Lemma sgood_tele : forall Θ Ξ Θ2 Ξ2, GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
 Proof.
-  intros * He HG Hgm Hpa; pose proof He as [Hg Hs].
-  constructor; [ exact He | | | exact Hgm | exact Hpa ].
-  - intros * Hr HΓ.
-    pose proof (gc_sub_resolve _ _ _ _ _ _ Hs Hr) as Hr2.
-    eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
-    exact (proj1 (glob_sem_of_raw _ _ Hg _ _ _ _ _ Hr2 (HG _ _ Hr))).
-  - intros * Hr HΓ.
-    pose proof (gc_sub_resolve _ _ _ _ _ _ Hs Hr) as Hr2.
-    eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
-    exact (proj2 (glob_sem_of_raw _ _ Hg _ _ _ _ _ Hr2 (HG _ _ Hr)) _ eq_refl eq_refl).
+  intros * HG He; destruct (HG _ _ He) as [_ HΞ].
+  destruct Ξ as [| [mp U] Ξ]; [ constructor | exact (proj2 (proj1 HΞ)) ].
 Qed.
 
-(* GLOBAL: the global induction is rewritten below. *)
+(** A sound embedding, from the validity of what the source files and has
+    open. *)
+Theorem sem_emb_of : forall Θ Ξ Θ2 Ξ2,
+    ⊢g Θ ⍮ Ξ -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> sem_emb Θ Ξ Θ2 Ξ2.
+Proof.
+  intros * Hg HG He; pose proof He as [Hg2 Hs].
+  assert (Hglob : forall r b pv A B, gc_resolve Θ Ξ r = Some (ge_def b pv A B) ->
+             @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A (a_glob r) (a_glob r) /\
+             (forall M, b = true -> B = Some M -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A (a_glob r) M)).
+  { intros * Hr.
+    destruct (good_resolve _ _ _ _ _ _ _ _ HG He Hr) as (T & HA & HM & _).
+    exact (glob_sem_of_raw _ _ Hg2 _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (conj HA HM)). }
+  constructor; [ exact He | | |].
+  - intros * Hr HΓ.
+    eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
+    exact (proj1 (Hglob _ _ _ _ _ Hr)).
+  - intros * Hr HΓ.
+    eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
+    exact (proj2 (Hglob _ _ _ _ _ Hr) _ eq_refl eq_refl).
+  - intros p r Hr.
+    apply (@gpath_ok (gc_mk Θ2 Ξ2) Θ Ξ Θ2 Ξ2 Hg Hs Hg2 (gc_sub_refl _ _) (gmod_ok_self _ _ Hg2)) with (r := r);
+      [| | exact Hr ].
+    + intros qp T Φ Hb.
+      destruct (good_body _ _ _ _ _ _ _ _ _ HG He Hb) as [[HT HU] Hv].
+      split; [ exact HT |]; split; [ exact HU |].
+      intros * Hz.
+      destruct (gm_valid_def _ _ _ _ _ _ _ _ _ _ _ Hv Hz) as (_ & _ & HA0).
+      split; [ exact HA0 |].
+      assert (Hne : z :: nil <> nil) by discriminate.
+      refine (proj1 (Hglob _ b pv _ B _)).
+      rewrite (proj2 (proj2 (closed_read _ _ Hg _ _ _ Hb (z :: nil))) Hne); exact Hz.
+    + intros qp y U Hy.
+      destruct (good_alias _ _ _ _ _ _ _ _ _ HG He Hy) as (T & HV); exact HV.
+Qed.
+
+(** A judgment read at a target its source embeds soundly into. *)
+Lemma kread : forall Θ Ξ Θ2 Ξ2 Γ A M,
+    sem_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
+Proof.
+  intros * Hμ HM; destruct kripke_fundamental as (_ & Ke & _).
+  destruct (Ke _ _ _ _ _ HM _ _ Hμ) as (_ & _ & H); exact H.
+Qed.
+
+Lemma sem_V_def : forall Θ Ξ A M b pv Θ2 Ξ2,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M))).
+Proof.
+  intros * HM HG He.
+  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) HG He) as Hμ.
+  destruct (presup_exp_typ HM) as [i HA].
+  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
+  split; [ exists j; exact (kread _ _ _ _ _ _ _ Hμ HT) |].
+  split; [ intros ? [= <-]; exact (kread _ _ _ _ _ _ _ Hμ (ctx_fn_wf0 _ _ _ _ _ _ HA HM)) |].
+  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ Hμ HA) ].
+Qed.
+
+Lemma sem_V_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
+Proof.
+  intros * HA HG He.
+  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
+  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
+  split; [ exists j; exact (kread _ _ _ _ _ _ _ Hμ HT) |].
+  split; [ discriminate |].
+  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ Hμ HA) ].
+Qed.
+
+Lemma sem_V_alias : forall Θ Ξ Δ E Θ2 Ξ2,
+    tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+    GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
+Proof.
+  intros * HΔ _ HE HG He.
+  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HG He) as Hμ.
+  destruct kripke_fundamental as (_ & _ & _ & _ & _ & _ & Km).
+  destruct (Km _ _ _ _ _ HE _ _ Hμ) as (HEv & HS & _ & _ & _ & HC & _).
+  assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply Forall_app; split; [ exact HΔ | exact (sgood_tele _ _ _ _ HG He) ]).
+  rewrite <- (app_nil_r (Δ ++ gs_tele Ξ)) in HEv, HS, HC.
+  assert (Hx : @rel_ext_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Δ ++ gs_tele Ξ) (Δ ++ gs_tele Ξ))
+    by (split; [| split ]; [ exact HC | exact HC | exact (sem_ctx_per_ctx HC) ]).
+  destruct (rel_unit_alias Hx Ht Ht HEv HEv) as (HU & HsU & _).
+  split; [ exact HsU |]; split; [ constructor; exact HS | exact HU ].
+Qed.
+
+Lemma sem_F_nil : forall Θ Ξ Δ Θ2 Ξ2,
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    sem_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
+Proof.
+  intros * HΔ HC HG He.
+  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
+  destruct kripke_fundamental as (Kc & _).
+  split; [ exact (proj1 (Kc _ _ _ HC _ _ Hμ)) |].
+  apply Forall_app; split; [ exact HΔ | exact (sgood_tele _ _ _ _ HG He) ].
+Qed.
+
+(** Every well-formed global context is semantically sound: the identity is a
+    sound embedding. *)
+Theorem gctx_sem : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> sem_emb Θ Ξ Θ Ξ.
+Proof.
+  intros * Hg; apply sem_emb_of; [ exact Hg | | apply Emb_refl; exact Hg ].
+  exact (global_valid sem_V sem_F sem_V_def sem_V_ax sem_V_alias sem_F_nil _ _ Hg).
+Qed.
