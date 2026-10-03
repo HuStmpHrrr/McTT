@@ -36,18 +36,34 @@ Section FundamentalTheorem.
       (forall Γ A M M', Γ ⊢ M ≈ M' : A -> Γ ⊨ M ≈ M' : A) /\
       (forall Γ A A', Γ ⊢ A ⊆ A' -> Γ ⊨ A ⊆ A').
   Proof.
-    destruct kripke_fundamental as (Kc & Ke & Kq & Ks).
+    destruct kripke_fundamental as (Kc & Ke & Kq & Ks & _).
     repeat split; intros * H;
       [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid
       | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
       | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
       | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
-      [ pose proof (Kc _ _ _ H _ _ Hid) as H'
-      | destruct (Ke _ _ _ _ _ H _ _ Hid) as [_ H']
-      | destruct (Kq _ _ _ _ _ _ H _ _ Hid) as [_ H']
-      | destruct (Ks _ _ _ _ _ H _ _ Hid) as [_ H'] ];
-      idtac;
+      [ destruct (Kc _ _ _ H _ _ Hid) as [H' _]
+      | destruct (Ke _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
+      | destruct (Kq _ _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
+      | destruct (Ks _ _ _ _ _ H _ _ Hid) as (_ & _ & H') ];
       destruct GC; exact H'.
+  Qed.
+
+  (** The module judgments. *)
+  Theorem completeness_fundamental_modules :
+    (forall Γ Ψ Ψ', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Γ ⊨ˣ Ψ ≈ Ψ') /\
+      (forall Γ U U', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U' -> Γ ⊨ᵘ U ≈ U') /\
+      (forall Γ H H', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H').
+  Proof.
+    destruct kripke_fundamental as (_ & _ & _ & _ & Kx & Ku & Km).
+    split; [| split ]; intros * HJ;
+      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
+      [ destruct (Kx _ _ _ _ _ HJ _ _ Hid) as [HR _]
+      | destruct (Ku _ _ _ _ _ HJ _ _ Hid) as [HR _]
+      | destruct (Km _ _ _ _ _ HJ _ _ Hid) as [HR _] ];
+      destruct GC; exact HR.
   Qed.
 
   #[local]
