@@ -851,4 +851,214 @@ Proof.
   split; [ eapply rel_modexp_trans; eassumption | split; assumption ].
 Qed.
 
+(** ** Module Lets *)
+
+Lemma eval_sub_wk_extend_mod : forall σ H φ ρ ρσ h,
+    ⟦ sb_wk σ φ ⟧s ρ ↘ ρσ ->
+    eval_modexp gc_deps gc_stack (modexp_wk H φ) ρ h ->
+    ⟦ sb_wk (σ ,,ₘ H) φ ⟧s ρ ↘ ρσ ↦ᵐ h.
+Proof. intros * Hσ HH [| x]; [ exists h; split; [ reflexivity | assumption ] | apply Hσ ]. Qed.
+
+(** A substitution extended into a slot by the literals of equivalent units. *)
+Lemma rel_sub_under_ctx_extend_mod : forall {Γ' Γ σ σ' U U'},
+    Γ' ⊨s σ ≈ σ' : Γ ->
+    Γ ⊨ᵐ me_lit U ≈ me_lit U' ->
+    Γ' ⊨s σ ,,ₘ me_lit U[σ]ᵘ ≈ σ' ,,ₘ me_lit U'[σ']ᵘ : Γ ▹ₘ U.
+Proof.
+  intros * Hσj HU.
+  pose proof Hσj as [R' [HΓ' [R [HΓ Hσ]]]].
+  pose proof (rel_modexp_refl_left HU) as HUU.
+  destruct (unit_chain HU) as [R0 [HΓ0 Hch]].
+  destruct (unit_chain HUU) as [R1 [HΓ1 Hch1]].
+  assert (HPd : PER per_dmod) by typeclasses eauto.
+  exists R', HΓ', (env_ext_mod U U R), (per_ctx_env_of_mod HΓ HUU).
+  intros Γ'' R'' HΓ'' φ Hφ ρ ρ' Hρ.
+  assert (HP'' : PER R'') by (eapply per_env_PER; exact HΓ'').
+  pose proof (rel_sub_under_ctx_wk Hσj (rel_wk_under_ctx_intro HΓ'' HΓ' Hφ)) as Hσφ.
+  destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [x1 x2 x3 x4 Hx1 Hx2 Hx3 Hx4 Hc].
+  assert (Hρρ : R'' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  assert (Hρ'ρ' : R'' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
+  pose proof (rel_wk_app _ _ _ Hφ _ _ Hρρ) as Hφρ.
+  pose proof (rel_wk_app _ _ _ Hφ _ _ Hρ'ρ') as Hφρ'.
+  pose proof (Hch1 _ _ HΓ'' _ _ (rel_sub_under_ctx_refl_left Hσφ) _ _ _ _ Hρρ Hx1 Hx1) as [C1 _].
+  pose proof (Hch1 _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hφρ Hx2 Hx2) as [C2 _].
+  pose proof (Hch _ _ HΓ' _ _ (rel_sub_under_ctx_refl_right Hσj) _ _ _ _ Hφρ' Hx3 Hx3) as (C3a & C3b & C3c).
+  pose proof (Hch _ _ HΓ'' _ _ (rel_sub_under_ctx_refl_right Hσφ) _ _ _ _ Hρ'ρ' Hx4 Hx4) as (C4a & C4b & C4c).
+  cbn [rel_chain] in C3c, C4c.
+  assert (T3 : per_dmod (dm_local ⟪ φ ⟫ ρ' U'[σ']ᵘ nil) (dm_local x3 U nil))
+    by (etransitivity; [ symmetry; exact C3c | symmetry; exact C3b ]).
+  assert (T4 : per_dmod (dm_local ρ' U'[sb_wk σ' φ]ᵘ nil) (dm_local x4 U nil))
+    by (etransitivity; [ symmetry; exact C4c | symmetry; exact C4b ]).
+  apply (mk_rel_sub (x1 ↦ᵐ dm_local ρ U[sb_wk σ φ]ᵘ nil) (x2 ↦ᵐ dm_local ⟪ φ ⟫ ρ U[σ]ᵘ nil)
+                    (x3 ↦ᵐ dm_local ⟪ φ ⟫ ρ' U'[σ']ᵘ nil) (x4 ↦ᵐ dm_local ρ' U'[sb_wk σ' φ]ᵘ nil)).
+  - apply eval_sub_wk_extend_mod; [ exact Hx1 |]; cbn [modexp_wk]; rewrite gunit_wk_sub; constructor.
+  - apply eval_sub_extend_mod; [ exact Hx2 | constructor ].
+  - apply eval_sub_extend_mod; [ exact Hx3 | constructor ].
+  - apply eval_sub_wk_extend_mod; [ exact Hx4 |]; cbn [modexp_wk]; rewrite gunit_wk_sub; constructor.
+  - destruct Hc as (H12 & H23 & H34).
+    unfold env_ext_mod; cbn.
+    repeat split; assumption.
+Qed.
+
+(** The instance [B[Id,,ₘ⌜U⌝]] against a module [let] whose unit [U'] is
+    equivalent to [U] and whose body [B'] is related to [B].  The four values
+    are [⟦B[σ,,ₘ⌜U[σ]⌝]⟧ρ], [⟦B[Id,,ₘ⌜U⌝]⟧ρσ], [⟦B'⟧(ρ'σ' ↦ᵐ ⟦⌜U'⌝⟧ρ'σ')] and
+    [⟦B'[q σ']⟧(ρ' ↦ᵐ ⟦⌜U'[σ']⌝⟧ρ')]; as for definitions, the links come from
+    [B] along [σ,,ₘ⌜U[σ]⌝] and [Id,,ₘ⌜U⌝], from [B ≈ B'], and from [B'] along
+    [q σ'], bridged at the heads, which the slot PER relates through the
+    closures of the units. *)
+Lemma rel_exp_let_mod_gen : forall {Γ U U' B B' C},
+    Γ ⊨ᵘ U ≈ U' ->
+    Γ ▹ₘ U ⊨ B ≈ B' : C ->
+    Γ ⊨ B[Id ,,ₘ me_lit U] ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U].
+Proof.
+  intros * (HU & _ & _) HB.
+  pose proof (rel_modexp_refl_left HU) as HUl.
+  pose proof (rel_modexp_refl_right HU) as HUr.
+  pose proof HU as [R [HΓ _]].
+  assert (HPR : PER R) by (eapply per_env_PER; exact HΓ).
+  assert (HPd : PER per_dmod) by typeclasses eauto.
+  pose proof (per_ctx_env_of_mod HΓ HUl) as HΓU.
+  pose proof (per_ctx_env_of_mod HΓ HUr) as HΓU'.
+  pose proof (rel_exp_under_ctx_refl_left HB) as HBl.
+  pose proof (rel_exp_under_ctx_refl_right HB) as HBr.
+  (** [B'] in the context of the right-hand unit. *)
+  assert (HB'r : Γ ▹ₘ U' ⊨ B' ≈ B' : C).
+  { eapply rel_exp_under_ctx_restrict; [ exact HΓU' | exact HΓU | | exact HBr ].
+    intros ρ ρ' (Ht & T1 & _ & T3 & _).
+    assert (Htt : R ρ↯ ρ↯) by (etransitivity; [ exact Ht | symmetry; exact Ht ]).
+    assert (Ht't' : R ρ'↯ ρ'↯) by (etransitivity; [ symmetry; exact Ht | exact Ht ]).
+    pose proof (unit_chain_at HU HΓ _ _ Htt) as E1.
+    pose proof (unit_chain_at HU HΓ _ _ Ht't') as E2.
+    repeat split; try assumption; etransitivity; try eassumption; symmetry; assumption. }
+  destruct (rel_exp_under_ctx_simple_full_at HΓU HB) as [kX HX].
+  destruct (rel_exp_under_ctx_simple_full_at HΓU HBl) as [kY HY].
+  destruct (rel_exp_under_ctx_simple_full_at HΓU' HB'r) as [kZ HZ].
+  pose proof HBl as [? [? [k HBlgen]]].
+  pose proof HB'r as [? [? [k3 HB'gen]]].
+  exists R, HΓ, k.
+  intros Γ' R' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (HPR' : PER R') by (eapply per_env_PER; exact HΓ').
+  assert (Hρσ : R ρσ ρ'σ') by (eapply rel_sub_under_ctx_at'; eassumption).
+  pose proof (rel_sub_under_ctx_refl_right Hσj) as Hσ'σ'.
+  (** *** The Instances *)
+  pose proof (rel_sub_under_ctx_extend_mod Hσj HUl) as Hτ.
+  pose proof (rel_sub_under_ctx_extend_mod (rel_sub_id (ex_intro _ _ HΓ)) HUl) as Hid.
+  rewrite gunit_sub_id in Hid.
+  destruct (HBlgen _ _ HΓ' _ _ Hτ _ _ _ _ Hρ
+              (eval_sub_extend_mod _ _ _ _ _ Hev (eval_me_lit _ _ _ _))
+              (eval_sub_extend_mod _ _ _ _ _ Hev' (eval_me_lit _ _ _ _)))
+    as [R1 [[c1 cA2 cA3 c4 Hc1 HcA2 HcA3 Hc4 Hc1chain] [w1 bA2 bA3 w4x Hw1 HbA2 HbA3 Hw4 Hw1chain]]].
+  destruct (HBlgen _ _ HΓ _ _ Hid _ _ _ _ Hρσ
+              (eval_sub_single_mod _ _ _ (eval_me_lit _ _ _ _)) (eval_sub_single_mod _ _ _ (eval_me_lit _ _ _ _)))
+    as [R2 [[c2 cB2 cB3 c3 Hc2 HcB2 HcB3 Hc3 Hc2chain] [w2 bB2 bB3 w3x Hw2 HbB2 HbB3 Hw3 Hw2chain]]].
+  (** *** The Bridges at the Substituted Environments *)
+  destruct (unit_chain HUl) as [R5 [HΓ5 HchU]].
+  destruct (unit_chain HUr) as [R6 [HΓ6 HchU']].
+  assert (Hρρ : R' ρ ρ) by (etransitivity; [ exact Hρ | symmetry; exact Hρ ]).
+  assert (Hρ'ρ' : R' ρ' ρ') by (etransitivity; [ symmetry; exact Hρ | exact Hρ ]).
+  assert (Hσσ : R ρσ ρσ) by (etransitivity; [ exact Hρσ | symmetry; exact Hρσ ]).
+  assert (Hσ'σ'' : R ρ'σ' ρ'σ') by (etransitivity; [ symmetry; exact Hρσ | exact Hρσ ]).
+  pose proof (HchU _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hσj) _ _ _ _ Hρρ Hev Hev) as (Ty1 & Ty2 & _).
+  pose proof (HchU' _ _ HΓ' _ _ Hσ'σ' _ _ _ _ Hρ'ρ' Hev' Hev') as (Tz1 & Tz2 & _).
+  pose proof (unit_chain_at HU HΓ _ _ Hσ'σ'') as Tx.
+  assert (HY1 : env_ext_mod U U R (ρσ ↦ᵐ dm_local ρ U[σ]ᵘ nil) (ρσ ↦ᵐ dm_local ρσ U nil))
+    by (unfold env_ext_mod; cbn; repeat split; assumption).
+  assert (HX1 : env_ext_mod U U R (ρσ ↦ᵐ dm_local ρσ U nil) (ρ'σ' ↦ᵐ dm_local ρ'σ' U' nil)).
+  { unfold env_ext_mod; cbn; repeat split; try assumption; symmetry; exact Tx. }
+  destruct (HY _ _ HY1) as [cy1 [cy2 [RY [Hcy1 [Hcy2 [HRY [by1 [by2 [Hby1 [Hby2 Hby]]]]]]]]]].
+  destruct (HX _ _ HX1) as [cx1 [cx2 [RX [Hcx1 [Hcx2 [HRX [bx1 [bx2 [Hbx1 [Hbx2 Hbx]]]]]]]]]].
+  (** *** The Right Commutation *)
+  pose proof (per_ctx_env_of_mod_sub HΓ' Hσ'σ' HUr) as HΓ'U'.
+  assert (Hm44 : per_dmod (dm_local ρ' U'[σ']ᵘ nil) (dm_local ρ' U'[σ']ᵘ nil))
+    by (etransitivity; [ exact Tz1 | symmetry; exact Tz1 ]).
+  assert (Hpair : env_ext_mod U'[σ']ᵘ U'[σ']ᵘ R' (ρ' ↦ᵐ dm_local ρ' U'[σ']ᵘ nil) (ρ' ↦ᵐ dm_local ρ' U'[σ']ᵘ nil))
+    by (unfold env_ext_mod; cbn; repeat split; assumption).
+  destruct (rel_sub_q_entry HΓ'U' HΓ Hσ'σ' _ _ Hpair Hev') as [t [Hqt Htr]].
+  pose proof (rel_sub_under_ctx_q_mod Hσ'σ' HUr) as Hq.
+  destruct (HB'gen _ _ HΓ'U' _ _ Hq _ _ _ _ Hpair Hqt Hqt)
+    as [R3 [[e1 e2 e3 e4 He1 He2 He3 He4 He1chain] [v4 f2 f3 v4' Hv4 Hf2 Hf3 Hv4' Hv4chain]]].
+  pose proof (unit_chain_at HUr HΓ _ _ (symmetry Htr)) as Tt.
+  assert (HZ1 : env_ext_mod U' U' R (ρ'σ' ↦ᵐ dm_local ρ'σ' U' nil)
+                  (env_entry (ρ' ↦ᵐ dm_local ρ' U'[σ']ᵘ nil) 0 :: t)).
+  { assert (Tt' : per_dmod (dm_local ρ' U'[σ']ᵘ nil) (dm_local t U' nil)) by (etransitivity; [ exact Tz1 | exact Tt ]).
+    assert (Tr' : per_dmod (dm_local ρ'σ' U' nil) (dm_local ρ'σ' U' nil))
+      by (etransitivity; [ symmetry; exact Tz1 | exact Tz1 ]).
+    unfold env_ext_mod; cbn; repeat split; try assumption; symmetry; exact Htr. }
+  destruct (HZ _ _ HZ1) as [cz1 [cz2 [RZ [Hcz1 [Hcz2 [HRZ [bz1 [bz2 [Hbz1 [Hbz2 Hbz]]]]]]]]]].
+  functional_eval_rewrite_clear.
+  (** *** One Element PER *)
+  assert (Hp1 : DF c1 ≈ cA2 ∈ per_univ_elem k ↘ R1) by pairwise.
+  assert (Hp1' : DF cA2 ≈ cA3 ∈ per_univ_elem k ↘ R1) by pairwise.
+  assert (Hp14 : DF c1 ≈ c4 ∈ per_univ_elem k ↘ R1) by pairwise.
+  assert (Hp2 : DF cB2 ≈ c2 ∈ per_univ_elem k ↘ R2) by pairwise.
+  assert (Hp2' : DF cB2 ≈ cB3 ∈ per_univ_elem k ↘ R2) by pairwise.
+  assert (Hp23 : DF c2 ≈ c3 ∈ per_univ_elem k ↘ R2) by pairwise.
+  assert (Hp3 : DF e1 ≈ e2 ∈ per_univ_elem k3 ↘ R3) by pairwise.
+  assert (Ht1 : Dom w1 ≈ bA2 ∈ R1) by pairwise.
+  assert (Ht2 : Dom w2 ≈ bB2 ∈ R2) by pairwise.
+  assert (Ht3 : Dom f2 ≈ v4 ∈ R3) by pairwise.
+  assert (E1 : R1 <~> RY) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hp1' HRY).
+  assert (E2 : R2 <~> RY) by exact (per_univ_elem_cross_irrel _ _ _ _ _ _ _ Hp2' HRY).
+  assert (E3 : R2 <~> RX) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hp2' HRX).
+  assert (E4 : RZ <~> RX) by exact (per_univ_elem_cross_irrel _ _ _ _ _ _ _ HRZ HRX).
+  assert (E5 : R3 <~> RZ) by exact (per_univ_elem_left_irrel _ _ _ _ _ _ _ Hp3 HRZ).
+  assert (F1 : R1 <~> R2) by (rewrite E1, E2; reflexivity).
+  assert (FY : RY <~> R2) by (rewrite E2; reflexivity).
+  assert (FX : RX <~> R2) by (rewrite E3; reflexivity).
+  assert (FZ : RZ <~> R2) by (rewrite E4, E3; reflexivity).
+  assert (F3 : R3 <~> R2) by (rewrite E5, FZ; reflexivity).
+  apply (fun H => per_univ_elem_resp_iff H F1) in Hp1, Hp14.
+  apply F1 in Ht1.
+  apply (fun H => per_univ_elem_resp_iff H FY) in HRY.
+  apply FY in Hby.
+  apply FX in Hbx.
+  apply FZ in Hbz.
+  apply F3 in Ht3.
+  assert (PER R2) by (eapply per_elem_PER; exact Hp23).
+  exists R2; split.
+  - apply (mk_rel_exp c1 c2 c3 c4); try eassumption.
+    + rewrite exp_sub_extend_mod_sub; exact Hc1.
+    + rewrite exp_sub_extend_mod_sub; exact Hc4.
+    + assert (Hc12 : DF c1 ≈ c2 ∈ per_univ_elem k ↘ R2)
+        by (eapply per_univ_trans; [ eapply per_univ_trans; [ exact Hp1 | exact HRY ] | exact Hp2 ]).
+      apply rel_chain_4; [ exact Hc12 | exact Hp23 | solve_per ].
+  - apply (mk_rel_exp w1 w2 bx2 v4); try eassumption.
+    + rewrite exp_sub_extend_mod_sub; exact Hw1.
+    + apply eval_exp_let_mod; exact Hbx2.
+    + cbn [exp_sub bnd_sub]; apply eval_exp_let_mod; exact Hv4.
+    + apply rel_chain_4; solve_per.
+Qed.
+
+(** [ζ] for modules. *)
+Corollary rel_exp_let_mod_zeta : forall {Γ U B C},
+    Γ ⊨ᵘ U ≈ U ->
+    Γ ▹ₘ U ⊨ B : C ->
+    Γ ⊨ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : C[Id ,,ₘ me_lit U].
+Proof.
+  intros * HU HB.
+  apply rel_exp_under_ctx_sym.
+  exact (rel_exp_let_mod_gen HU HB).
+Qed.
+
+(** Congruence: both sides are related to the instance [B[Id,,ₘ⌜U⌝]]. *)
+Corollary rel_exp_let_mod_cong : forall {Γ U U' B B' C},
+    Γ ⊨ᵘ U ≈ U' ->
+    Γ ▹ₘ U ⊨ B ≈ B' : C ->
+    Γ ⊨ ℓₘ U in B ≈ ℓₘ U' in B' : C[Id ,,ₘ me_lit U].
+Proof.
+  intros * HU HB.
+  pose proof HU as (HU0 & HsU & _).
+  eapply rel_exp_under_ctx_trans; [| exact (rel_exp_let_mod_gen HU HB) ].
+  apply rel_exp_under_ctx_sym.
+  exact (rel_exp_let_mod_gen (U' := U) (conj (rel_modexp_refl_left HU0) (conj HsU HsU))
+           (rel_exp_under_ctx_refl_left HB)).
+Qed.
+
+Corollary valid_exp_let_mod : forall {Γ U B C},
+    Γ ⊨ᵘ U ≈ U ->
+    Γ ▹ₘ U ⊨ B : C ->
+    Γ ⊨ ℓₘ U in B : C[Id ,,ₘ me_lit U].
+Proof. intros * HU HB; exact (rel_exp_let_mod_cong HU HB). Qed.
+
 End Fixed_GCtx.
