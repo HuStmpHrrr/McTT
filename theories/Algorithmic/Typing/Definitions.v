@@ -5,6 +5,9 @@ Import Domain_Notations Fixed_Notations.
 
 Reserved Notation "Γ '⊢a' M ⟹ A" (at level 70, M at level 69, A at level 69).
 Reserved Notation "Γ '⊢a' M ⟸ A" (at level 70, M at level 69, A at level 69).
+Reserved Notation "Γ '⊢aˣ' Ψ" (at level 70, Ψ at level 69).
+Reserved Notation "Γ '⊢aᵘ' U" (at level 70, U at level 69).
+Reserved Notation "Γ '⊢aᵐ' H" (at level 70, H at level 69).
 
 Generalizable All Variables.
 
@@ -65,6 +68,27 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id,,M] D ->
      Γ ⊢a ℓ A ≔ M in B ⟹ D )
+| ati_let_mod :
+  `( Γ ⊢aᵘ U ->
+     Γ ▹ₘ U ⊢a B ⟹ C ->
+     nbe_ty_f Γ C[Id ,,ₘ me_lit U] D ->
+     Γ ⊢a ℓₘ U in B ⟹ D )
+(** A member infers the normal form of its canonical type.  Neither that
+    type nor the member's δ-reduct is checked: of a well-formed module, the
+    one is a type and the other inhabits it ([member_wf]). *)
+| ati_mem :
+  `( me_noargs H ->
+     Γ ⊢aᵐ H ->
+     member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
+     nbe_ty_f Γ A B ->
+     Γ ⊢a a_mem H x ⟹ B )
+(** A member of an applied module infers as its root's member applied. *)
+| ati_mem_app :
+  `( Γ ⊢aᵐ H ->
+     modexp_spine H = (R, args, pre) ->
+     args <> nil ->
+     Γ ⊢a apps (member_ref R (pre ++ x :: nil)) args ⟹ A ->
+     Γ ⊢a a_mem H x ⟹ A )
 | ati_vlookup :
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
@@ -75,23 +99,91 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( gc_resolve gc_deps gc_stack p = Some (ge_def b pv A B) ->
      nbe_ty_f Γ A C ->
      Γ ⊢a a_glob p ⟹ C )
-where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
+where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
+(** The well-formedness of extensions, units and module expressions, entry by
+    entry, part by part. *)
+with alg_ext : ctx -> ctx -> Prop :=
+| aext_nil :
+  `( Γ ⊢aˣ ⋅ )
+| aext_ass :
+  `( Γ ⊢aˣ Ψ ->
+     Ψ ++ Γ ⊢a A ⟹ Typeⁿ@i ->
+     Γ ⊢aˣ Ψ ▹ A )
+| aext_def :
+  `( Γ ⊢aˣ Ψ ->
+     Ψ ++ Γ ⊢a A ⟹ Typeⁿ@i ->
+     Ψ ++ Γ ⊢a M ⟸ A ->
+     Γ ⊢aˣ Ψ ▸ A ≔ M )
+| aext_mod :
+  `( Γ ⊢aˣ Ψ ->
+     Ψ ++ Γ ⊢aᵘ U ->
+     Γ ⊢aˣ Ψ ▹ₘ U )
+where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
+with alg_unit : ctx -> gunit -> Prop :=
+| aunit_body :
+  `( Γ ⊢aˣ body_ctx Φ ++ Δ ->
+     tele_ass Δ ->
+     body_shape Φ Φ ->
+     List.NoDup (gm_names Φ) ->
+     (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
+        body_ctx Φ0 ++ Δ ++ Γ ⊢aᵐ E) ->
+     (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
+        member_ok gc_deps gc_stack (body_ctx Φ0 ++ Δ ++ Γ) E n) ->
+     Γ ⊢aᵘ gu_body Δ Φ )
+| aunit_alias :
+  `( Γ ⊢aˣ Δ ->
+     tele_ass Δ ->
+     Δ ++ Γ ⊢aᵐ E ->
+     Γ ⊢aᵘ gu_mk Δ (md_alias E) )
+where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
+with alg_modexp : ctx -> modexp -> Prop :=
+| amod_path :
+  `( member_type gc_deps gc_stack Γ (me_path p) nil mk_mod A ->
+     Γ ⊢aᵐ me_path p )
+| amod_var :
+  `( Γ ∋ #x ⇒ₘ U ->
+     Γ ⊢aᵐ me_var x )
+| amod_lit :
+  `( Γ ⊢aᵘ U ->
+     Γ ⊢aᵐ me_lit U )
+| amod_mem :
+  `( Γ ⊢aᵐ H ->
+     member_type gc_deps gc_stack Γ H (y :: nil) mk_mod A ->
+     Γ ⊢aᵐ me_mem H y )
+(** An argument is checked against the domain of the normal form of the
+    arity type, which must be a [Π]. *)
+| amod_app :
+  `( Γ ⊢aᵐ H ->
+     member_type gc_deps gc_stack Γ H nil mk_mod A ->
+     nbe_ty_f Γ A (Πⁿ B C) ->
+     Γ ⊢a N ⟸ B ->
+     Γ ⊢aᵐ me_app H N )
+where "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
 
-Hint Constructors alg_type_check alg_type_infer : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_modexp : mctt.
 
 End Fixed_GCtx.
 
 Notation "Γ '⊢a' M ⟸ A" := (alg_type_check Γ A M) : type_scope.
 Notation "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope.
+Notation "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope.
+Notation "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope.
+Notation "Γ '⊢aᵐ' H" := (alg_modexp Γ H) : type_scope.
 
 #[export]
-Hint Constructors alg_type_check alg_type_infer : mctt.
+Hint Constructors alg_type_check alg_type_infer alg_ext alg_unit alg_modexp : mctt.
 
 Scheme alg_type_check_mut_ind := Induction for alg_type_check Sort Prop
-with alg_type_infer_mut_ind := Induction for alg_type_infer Sort Prop.
+with alg_type_infer_mut_ind := Induction for alg_type_infer Sort Prop
+with alg_ext_mut_ind := Induction for alg_ext Sort Prop
+with alg_unit_mut_ind := Induction for alg_unit Sort Prop
+with alg_modexp_mut_ind := Induction for alg_modexp Sort Prop.
 Combined Scheme alg_type_mut_ind from
   alg_type_check_mut_ind,
-  alg_type_infer_mut_ind.
+  alg_type_infer_mut_ind,
+  alg_ext_mut_ind,
+  alg_unit_mut_ind,
+  alg_modexp_mut_ind.
 
 (** ** User Expressions
 
@@ -142,7 +234,12 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp A ->
      user_exp M ->
      user_exp B ->
-     user_exp (a_let A M B) )
+     user_exp (ℓ A ≔ M in B) )
+| user_exp_let_mod :
+  `( user_exp B ->
+     user_exp (ℓₘ U in B) )
+| user_exp_mem :
+  `( user_exp (a_mem H x) )
 | user_exp_vlookup :
   `( user_exp (a_var x) )
 | user_exp_glob :
@@ -153,7 +250,11 @@ Hint Constructors user_exp : mctt.
 
 Lemma user_exp_all : forall M, user_exp M.
 Proof.
-  induction M; mauto 3.
+  eapply proj1, (syn_mut_ind user_exp (fun _ => True)
+    (fun b => match b with b_def A M => user_exp A /\ user_exp M | b_mod _ => True end)
+    (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
+    intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b; destruct_conjs end;
+    mauto 3.
 Qed.
 
 #[export]

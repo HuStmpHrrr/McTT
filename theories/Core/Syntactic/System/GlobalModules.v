@@ -904,3 +904,37 @@ Section ModInduction.
       destruct (p_mems p) as [| x ip]; [ discriminate |]; exact (gm_valid_alias _ _ _ _ _ _ _ _ Hv H).
   Qed.
 End ModInduction.
+
+(** ** Member Types Are Functional *)
+
+Lemma gc_resolve_module_alias_excl : forall Θ Ξ p E U r,
+    gc_resolve Θ Ξ p = Some E -> gc_module Θ Ξ p = Some (mr_alias U r) -> False.
+Proof.
+  intros * Hr Hm; unfold gc_resolve, gc_module in *.
+  rewrite gs_find_tele_find in Hr.
+  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |]; cbn in Hr; [ discriminate | |].
+  - rewrite (gm_submodule_alias_resolve _ _ _ _ _ _ Hm) in Hr; discriminate.
+  - destruct (gds_lookup Θ (p_unit p)) as [V |]; [| discriminate ].
+    destruct (p_mems p) as [| x ip]; [ discriminate |].
+    rewrite (gm_submodule_alias_resolve _ _ _ _ _ _ Hm) in Hr; discriminate.
+Qed.
+
+Lemma member_type_functional : forall Θ Ξ,
+    (forall Γ H ch k A, member_type Θ Ξ Γ H ch k A -> forall A', member_type Θ Ξ Γ H ch k A' -> A = A') /\
+    (forall Γ U ch k A, unit_member_type Θ Ξ Γ U ch k A -> forall A', unit_member_type Θ Ξ Γ U ch k A' -> A = A').
+Proof.
+  intros Θ Ξ; apply member_type_both_ind.
+  all: intros *; intros; match goal with H' : _ _ _ _ _ _ _ ?A' |- _ = ?A' => inversion H'; subst end;
+    try congruence;
+    try solve [ exfalso; eapply gc_resolve_module_alias_excl; eassumption ];
+    try solve [ match goal with Hl : _ ∋ # _ ⇒ₘ _, Hl' : _ ∋ # _ ⇒ₘ _ |- _ =>
+                  pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hl'); subst; eauto end ];
+    eauto.
+  - match goal with E1 : gc_module _ _ ?p = _, E2 : gc_module _ _ ?p = _ |- _ =>
+      rewrite E1 in E2; injection E2; intros; subst end; eauto.
+  - match goal with Hm : member_type _ _ _ H _ _ A0 |- _ => apply H0 in Hm; subst end; congruence.
+  - match goal with E1 : gm_prefix_upto _ _ = _, E2 : gm_prefix_upto _ _ = _ |- _ =>
+      rewrite E1 in E2; injection E2; intros; subst end.
+    f_equal; eauto.
+  - f_equal; eauto.
+Qed.

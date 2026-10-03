@@ -209,6 +209,21 @@ Qed.
 #[export]
 Hint Resolve wf_let_inversion : mctt.
 
+Lemma wf_let_mod_inversion : forall {Θ Ξ Γ U B T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : T ->
+    exists C, Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U /\
+         Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id ,,ₘ me_lit U] ⊆ T.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp1 _ _ eq_refl);
+    destruct_conjs; gen_core_presups;
+    eexists; repeat split; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_let_mod_inversion : mctt.
+
 Lemma wf_vlookup_inversion : forall {Θ Ξ Γ x A},
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : A ->
     exists A', Γ ∋ #x : A' /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' ⊆ A.

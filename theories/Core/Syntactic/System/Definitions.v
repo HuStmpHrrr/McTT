@@ -514,7 +514,8 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" := (wf_unit_eq Θ Ξ Γ U U') : type_sc
 
 (** Module expressions.  A path must name a module, and an argument is checked
     against the arity type, which must be a [Π]: a module is applied to at
-    most as many arguments as it has parameters. *)
+    most as many arguments as it has parameters.  Both arguments are typed,
+    as the parts of an extension are. *)
 with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
 | wf_me_path :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -538,6 +539,7 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ Π B C : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ B ⊢ C : Type@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
      member_type Θ Ξ Γ H' nil mk_mod A' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ Π B' C' : Type@j ->

@@ -764,7 +764,7 @@ Proof.
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         eapply wf_me_app;
         [ eauto
-        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto
+        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto | eauto
         | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto ]
     end ].
   all: try solve [
@@ -1466,7 +1466,7 @@ Proof.
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         eapply wf_me_app;
         [ eauto
-        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto
+        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto | eauto
         | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto ]
     end ].
 Qed.
