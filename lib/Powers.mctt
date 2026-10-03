@@ -15,6 +15,9 @@ import Prelude::Function::Combinators use (Generic)
 
 module Powers where
 
+(* The generic combinators at [Nat]. *)
+module NatFun := Generic Nat
+
 eval pow 2 10
 
 eval pow 3 4
@@ -22,7 +25,7 @@ eval pow 3 4
 eval pow 0 0
 
 (* [0 + 1 + ... + 10]. *)
-eval sumTo (Generic.id Nat) 11
+eval sumTo NatFun.id 11
 
 (* [0 + 1 + 4 + ... + 25]. *)
 eval sumTo (fun (i : Nat) -> mult i i) 6
@@ -46,9 +49,9 @@ eval powMult 2 2 2
 
 eval powMultBase 2 2 2
 
-eval sumToPlus (Generic.id Nat) (fun (i : Nat) -> mult i i) 4
+eval sumToPlus NatFun.id (fun (i : Nat) -> mult i i) 4
 
-eval sumToScale 3 (Generic.id Nat) 4
+eval sumToScale 3 NatFun.id 4
 
 eval sumToConst 4 5
 

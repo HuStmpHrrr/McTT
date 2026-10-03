@@ -24,9 +24,13 @@ eval gcd 0 9
 
 eval gcd 9 0
 
+(* Enumerating the primes.  The search for the next prime is a private
+   helper; only [nthPrime] is exported. *)
+module Primes where
+
 (* The least prime above [n], searched among the numbers from [n + 1] to
    [2 n + 2], which contain one by Bertrand's postulate. *)
-def nextPrime (n : Nat) : Nat :=
+private def nextPrime (n : Nat) : Nat :=
   (rec n return y . (forall (c : Nat) -> Nat)
    | zero => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> succ c) (fun (u : Nat) -> c)
    | succ p, r => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> r (succ c)) (fun (u : Nat) -> c)
@@ -35,6 +39,10 @@ end
 
 (* The [k]-th prime, counting from [0]. *)
 def nthPrime (k : Nat) : Nat := Generic.iterate Nat nextPrime (succ k) 0 end
+
+end
+
+import Primes use (nthPrime)
 
 (* The primes below 30 are the first ten primes; the eleventh is 31. *)
 eval nthPrime 0

@@ -8,7 +8,7 @@ import Prelude::Arith::Parity use (double)
 import Prelude::Arith::Sum.Basic use (sumToShift)
 import Prelude::Data::Vec as V
 import Prelude::Data::Vec::Properties use (sumVec)
-import Prelude::Data::Stream use (Stream; nth; head; tail; cons; const; map; zipWith; iterate; take; drop; interleave; scan)
+import Prelude::Data::Stream as St
 import Prelude::Data::Stream::Properties use (nats)
 import Prelude::Data::Stream::Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
 import Prelude::Data::Stream::Properties.Nats use (nthNats)
@@ -16,69 +16,80 @@ import Prelude::Data::Stream::Properties.Slices use (nthDrop; nthTake; scanSum; 
 
 module Streams where
 
+(* Streams of numbers. *)
+module S := St Nat
+
 def square (x : Nat) : Nat := mult x x end
 
 (* The even numbers [0, 2, 4, ...]. *)
-def evens : Stream Nat := map Nat Nat double nats end
+def evens : S.Stream := S.map Nat double nats end
 
 (* The odd numbers [1, 3, 5, ...], iterating [+ 2] from [1]. *)
-def odds : Stream Nat := iterate Nat (fun (x : Nat) -> succ (succ x)) 1 end
+def odds : S.Stream := S.iterate (fun (x : Nat) -> succ (succ x)) 1 end
 
-def squares : Stream Nat := map Nat Nat square nats end
+def squares : S.Stream := S.map Nat square nats end
+
+(* The Fibonacci-like stream from the seeds [a] and [b]: the first
+   components of the iterated Fibonacci step on pairs.  The pairs and the
+   step are private to the module. *)
+module FibLike (a : Nat) (b : Nat) where
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
-def Pair : Type@0 := forall (b : Nat) -> Nat end
+private def Pair : Type@0 := forall (i : Nat) -> Nat end
 
 (* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
-def fibStep (p : Pair) : Pair :=
-  fun (b : Nat) ->
-    rec b return y . Nat
+private def fibStep (p : Pair) : Pair :=
+  fun (i : Nat) ->
+    rec i return y . Nat
     | zero => p 1
     | succ q, r => plus (p 0) (p 1)
     end
 end
 
-(* The Fibonacci-like stream from the seeds [a] and [b]: the first
-   components of the iterated pairs. *)
-def fibLike (a : Nat) (b : Nat) : Stream Nat :=
-  map Pair Nat (fun (p : Pair) -> p 0)
-    (iterate Pair fibStep
-       (fun (i : Nat) -> rec i return y . Nat | zero => a | succ q, r => b end))
+(* The seeds, as a pair. *)
+private def seed : Pair :=
+  fun (i : Nat) -> rec i return y . Nat | zero => a | succ q, r => b end
 end
 
-def fibs : Stream Nat := fibLike 0 1 end
+def stream : S.Stream :=
+  St.map Pair Nat (fun (p : Pair) -> p 0) (St.iterate Pair fibStep seed)
+end
 
-def lucas : Stream Nat := fibLike 2 1 end
+end
+
+def fibs : S.Stream := FibLike.stream 0 1 end
+
+def lucas : S.Stream := FibLike.stream 2 1 end
 
 (* [0 + 1 + ... + 5]. *)
-eval sumVec 6 (take Nat 6 nats)
+eval sumVec 6 (S.take 6 nats)
 
-eval V.nth Nat 5 (take Nat 5 evens) 4 true
+eval V.nth Nat 5 (S.take 5 evens) 4 true
 
-eval nth Nat odds 6
+eval S.nth odds 6
 
 (* [0 + 1 + 4 + 9 + 16]. *)
-eval sumVec 5 (take Nat 5 squares)
+eval sumVec 5 (S.take 5 squares)
 
-eval nth Nat fibs 10
+eval S.nth fibs 10
 
-eval nth Nat lucas 8
+eval S.nth lucas 8
 
-eval sumVec 10 (take Nat 10 fibs)
+eval sumVec 10 (S.take 10 fibs)
 
 (* The prefix sums of the squares. *)
-eval nth Nat (scan Nat Nat plus 0 squares) 5
+eval S.nth (S.scan Nat plus 0 squares) 5
 
 (* Interleaving the evens and the odds gives back the natural numbers. *)
-eval nth Nat (interleave Nat evens odds) 7
+eval S.nth (S.interleave evens odds) 7
 
-eval nth Nat (drop Nat 4 squares) 3
+eval S.nth (S.drop 4 squares) 3
 
-eval nth Nat (zipWith Nat Nat Nat plus evens odds) 4
+eval S.nth (S.zipWith Nat Nat plus evens odds) 4
 
-eval head Nat (tail Nat (cons Nat 9 nats))
+eval S.head (S.tail (S.cons 9 nats))
 
-eval nth Nat (const Nat 3) 100
+eval S.nth (S.const 3) 100
 
 (* A proof of a closed equation normalizes to [true], of type [True]. *)
 eval headCons 9 nats

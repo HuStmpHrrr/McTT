@@ -18,6 +18,9 @@ import Prelude::Arith::Decide.EqbLaws use (eqbSpec; eqbZero)
 
 module Induction where
 
+(* Halving, by the two induction principles; [eval]s below compare them. *)
+module Halving where
+
 (* Halving by strong induction: [half (succ (succ q))] calls itself at [q],
    which is below [succ (succ q)] by [leSucc q].  The two case analyses
    give the result as a function of the hypothesis for all smaller numbers. *)
@@ -40,6 +43,10 @@ end
 def halfTwo (n : Nat) : Nat :=
   twoStepInd (fun (k : Nat) -> Nat) 0 0 (fun (k : Nat) (h : Nat) -> succ h) n
 end
+
+end
+
+import Halving use (half; halfTwo)
 
 eval half 7
 
