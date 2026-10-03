@@ -106,6 +106,26 @@ Transparency setting for generalized rewriting.
 &nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> [<span class="id" title="var">H</span>: ?<span class="id" title="var">P</span> |- <span class="id" title="var">_</span>] =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="tactic">try</span> (<span class="id" title="keyword">match</span> <span class="id" title="var">P</span> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.LibTactics.html#__mark__"><span class="id" title="definition">__mark__</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="tactic">fail</span> 2 <span class="id" title="keyword">end</span>); <span class="id" title="var">mark_with</span> <span class="id" title="var">H</span> <span class="id" title="var">n</span><br/>
 &nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+</div>
+
+<div class="doc">
+Unmark the variables, keeping the marks of the hypotheses.  A marked
+    variable has a type <span class="inlinecode"><a class="idref" href="Mctt.LibTactics.html#__mark__"><span class="id" title="definition">__mark__</span></a></span> <span class="inlinecode"><span class="id" title="var">_</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span> that is not syntactically <span class="inlinecode"><a class="idref" href="Mctt.Frontend.Parser.html#Gram.T"><span class="id" title="constructor">T</span></a></span>, so
+    <span class="inlinecode"><span class="id" title="tactic">dependent</span></span> <span class="inlinecode"><span class="id" title="tactic">destruction</span></span> sees the arguments of the inductive it eliminates
+    as heterogeneous, and simplifies their equations by <span class="inlinecode"><span class="id" title="var">JMeq_eq</span></span>, which needs
+    uniqueness of identity proofs. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">unmark_vars</span> :=<br/>
+&nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">H</span> : <a class="idref" href="Mctt.LibTactics.html#__mark__"><span class="id" title="definition">__mark__</span></a> <span class="id" title="var">_</span> ?<span class="id" title="var">T</span> |- <span class="id" title="var">_</span> =&gt;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">lazymatch</span> <span class="id" title="keyword">type</span> <span class="id" title="keyword">of</span> <span class="id" title="var">T</span> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="keyword">Prop</span> =&gt; <span class="id" title="tactic">fail</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">_</span> =&gt; <span class="id" title="var">unmark</span> <span class="id" title="var">H</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+
+<br/>
 <span class="id" title="keyword">Ltac</span> <span class="id" title="var">unmark_all_with</span> <span class="id" title="var">n</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">repeat</span> <span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span> [<span class="id" title="var">H</span>: ?<span class="id" title="var">P</span> |- <span class="id" title="var">_</span>] =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="var">P</span> <span class="id" title="keyword">with</span> <a class="idref" href="Mctt.LibTactics.html#__mark__"><span class="id" title="definition">__mark__</span></a> ?<span class="id" title="var">n'</span> <span class="id" title="var">_</span> =&gt; <span class="id" title="var">tryif</span> <span class="id" title="var">unify</span> <span class="id" title="var">n</span> <span class="id" title="var">n'</span> <span class="id" title="keyword">then</span> <span class="id" title="var">unmark</span> <span class="id" title="var">H</span> <span class="id" title="keyword">else</span> <span class="id" title="tactic">fail</span> 1 <span class="id" title="keyword">end</span><br/>
