@@ -28,6 +28,7 @@
 ./Core/Completeness/UnitCases.v
 ./Core/Completeness/InstanceCases.v
 ./Core/Completeness/MemberCases.v
+./Core/Completeness/MemberTyping.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v
