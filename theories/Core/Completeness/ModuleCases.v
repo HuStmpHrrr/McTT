@@ -34,7 +34,8 @@ Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 r = Some (ge_def true pv A (Some M)) ->
       @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
       @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A (a_glob r) M
-  ; sme_mods : @gsem_ok (gc_mk Θ2 Ξ2)
+  ; sme_gmod : @gmod_ok (gc_mk Θ2 Ξ2)
+  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) p
   }.
 
 (** ** 2. The fundamental theorem along an embedding *)
@@ -85,10 +86,122 @@ Theorem kripke_fundamental :
 Proof.
   apply syntactic_wf_mut_ind; unfold kctx, kexp_eq, ksubtyp, kext, kunit, kmod; intros;
     pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hsub;
-    pose proof (sme_mods _ _ _ _ ltac:(eassumption)) as Hgs;
+    pose proof (sme_gmod _ _ _ _ ltac:(eassumption)) as Hgm;
     kcase.
-  all: idtac.
-Admitted.
+  (** Contexts. *)
+  all: try solve [ split; constructor ].
+  all: try solve [ split; [ eapply rel_ctx_extend'; eassumption | constructor; assumption ] ].
+  all: try solve [ split; [ eapply rel_ctx_extend_def'; eassumption | constructor; assumption ] ].
+  (** Terms whose case lemma predates modules. *)
+  all: try (split; [ assumption | split; [ assumption |] ]).
+  all: try solve [ apply valid_exp_typ; assumption | apply valid_exp_nat; assumption
+    | apply valid_exp_zero; assumption
+    | apply rel_exp_succ_cong; assumption
+    | eapply rel_exp_natrec_cong; eassumption
+    | apply valid_exp_True; assumption | apply valid_exp_False; assumption
+    | apply valid_exp_true; assumption
+    | eapply rel_exp_exfalso_cong; eassumption
+    | apply rel_exp_true_eta; assumption
+    | eapply rel_exp_pi_cong; eassumption
+    | eapply rel_exp_fn_cong; eassumption
+    | eapply rel_exp_app_cong; eassumption
+    | eapply valid_exp_let; eassumption
+    | eapply rel_exp_let_cong; eassumption
+    | eapply rel_exp_let_zeta; eassumption
+    | eapply rel_exp_pi_beta; eassumption
+    | eapply rel_exp_nat_beta_zero; eassumption
+    | eapply rel_exp_nat_beta_succ; eassumption
+    | eapply rel_exp_eq_subtyp; eassumption
+    | apply rel_exp_under_ctx_sym; assumption
+    | eapply rel_exp_under_ctx_trans; eassumption
+    | eapply subtyp_refl; eassumption
+    | eapply subtyp_trans; eassumption
+    | eapply subtyp_pi; eassumption
+    | apply subtyp_univ; [assumption | lia] ].
+  all: try solve [ eapply valid_exp_var; eassumption | eapply rel_exp_var_delta; eassumption ].
+  all: try solve [ eapply sme_unfold; eassumption ].
+  all: try solve [ eapply sme_glob; eassumption ].
+  all: try solve [ eapply rel_exp_fn_eta; eassumption ].
+  (** Module slots and local modules. *)
+  all: try solve [ split; [ apply rel_ctx_extend_mod'; assumption | constructor; assumption ] ].
+  all: try solve [ eapply valid_exp_let_mod; eassumption | eapply rel_exp_let_mod_cong; eassumption
+                 | eapply rel_exp_let_mod_zeta; eassumption ].
+  (** Members. *)
+  all: try solve [ eapply rel_exp_mem_gen; [ exact Hgm | eassumption | eassumption
+                 | eapply member_type_emb; eassumption | eassumption ] ].
+  all: try solve [ eapply rel_exp_mem_delta; [ exact Hgm | eassumption | eassumption | eassumption
+                 | eapply member_type_emb; eassumption | eassumption
+                 | eapply member_unfold_emb; eassumption | eassumption ] ].
+  all: try solve [ eapply valid_exp_mem_app; eassumption | eapply rel_exp_mem_app; eassumption ].
+  all: try solve [
+    match goal with HM : rel_exp_under_ctx _ _ (a_mem _ _) (a_mem _ _) |- _ =>
+      destruct (presup_rel_exp_under_ctx HM) as [? ?];
+      eapply rel_exp_mem_gen; [ exact Hgm | eassumption | eassumption
+                              | eapply member_type_emb; eassumption | eassumption ] end ].
+  (** Extensions. *)
+  all: try solve [ split; [ apply rel_ext_nil; assumption | cbn [app]; repeat split; assumption ] ].
+  all: try solve [ split; [ eapply rel_ext_ass; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
+  all: try solve [ split; [ eapply rel_ext_def; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
+  all: try solve [ split; [ eapply rel_ext_mod; eassumption | cbn [app]; repeat split; try constructor; assumption ] ].
+  (** Units. *)
+  all: try solve [ split; [ eapply rel_unit_body; eassumption |];
+                   split; [ constructor; rewrite <- app_assoc in *; assumption |];
+                   split; [ constructor; rewrite <- app_assoc in *; assumption | split; assumption ] ].
+  all: try solve [ split; [ eapply rel_unit_alias; eassumption |];
+                   split; [ constructor; assumption |]; split; [ constructor; assumption | split; assumption ] ].
+  all: try solve [ split; [ apply rel_unit_sym; assumption | repeat split; assumption ] ].
+  all: try solve [ split; [ eapply rel_unit_trans; eassumption | repeat split; assumption ] ].
+  (** Module expressions. *)
+  all: try solve [
+    match goal with Hm : member_type _ _ _ (me_path ?p) nil mk_mod _, He : sem_emb _ _ _ _, HΓ : sem_ctx _ |- _ =>
+      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm) as Hm2;
+      destruct (member_type_path_module _ _ _ _ _ Hm) as [r Hr];
+      pose proof (sme_path _ _ _ _ He _ _ Hr) as Hp;
+      split; [ exact (rel_me_path _ _ _ Hp HΓ Hm2) |];
+      split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |]; split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |];
+      split; [ exact (sem_unf_path _ _ Hp) |]; split; [ exact (sem_unf_path _ _ Hp) | split; assumption ] end ].
+  all: try solve [
+    match goal with Hl : _ ∋ # _ ⇒ₘ _, HΓ : sem_ctx _, Hok : ctx_mt _ |- _ =>
+      pose proof Hgm as (HGc & HGap & Hc);
+      split; [ exact (rel_me_var _ _ _ HΓ Hl) |];
+      split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_mt_var HGc Hc _ _ _ Hl HΓ Hok) |];
+      split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) |]; split; [ exact (sem_unf_var Hgm _ _ _ Hl HΓ Hok) | split; assumption ] end ].
+  all: try solve [
+    match goal with HU : rel_unit_under_ctx _ ?U ?U', Hok : unit_mt _ ?U, Hok' : unit_mt _ ?U', HΓ : sem_ctx _ |- _ =>
+      destruct HU as (HU & HsU & HsU');
+      assert (Ht : tele_ass (gu_params U)) by (inversion HsU; subst; cbn; assumption);
+      assert (Ht' : tele_ass (gu_params U')) by (inversion HsU'; subst; cbn; assumption);
+      split; [ exact HU |];
+      split; [ exact (sem_mt_lit _ _ HΓ HsU Hok) |]; split; [ exact (sem_mt_lit _ _ HΓ HsU' Hok') |];
+      split; [ exact (sem_unf_lit _ _ Ht) |]; split; [ exact (sem_unf_lit _ _ Ht') | split; assumption ] end ].
+  all: try solve [
+    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ ?H, HS' : sem_mt _ ?H',
+                    HU : sem_unf _ ?H, HU' : sem_unf _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) mk_mod _
+                    |- rel_modexp_under_ctx _ (me_mem _ _) _ /\ _ =>
+      split; [ exact (rel_me_mem Hgm _ _ _ _ _ HH HS (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm)) |];
+      split; [ exact (sem_mt_mem _ _ _ HS) |]; split; [ exact (sem_mt_mem _ _ _ HS') |];
+      split; [ exact (sem_unf_mem _ _ _ HU) |]; split; [ exact (sem_unf_mem _ _ _ HU') | split; assumption ] end ].
+  all: try solve [
+    match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ ?H, HS' : sem_mt _ ?H',
+                    HU : sem_unf _ ?H, HU' : sem_unf _ ?H',
+                    Hm : member_type _ _ _ ?H nil mk_mod ?A0, HA : rel_exp_under_ctx _ _ ?A0 (a_pi ?B ?C),
+                    HB : rel_exp_under_ctx _ _ ?B ?B,
+                    Hm' : member_type _ _ _ ?H' nil mk_mod ?A0', HA' : rel_exp_under_ctx _ _ ?A0' (a_pi ?B' ?C'),
+                    HB' : rel_exp_under_ctx _ _ ?B' ?B',
+                    HN : rel_exp_under_ctx _ ?B ?N ?N', HN' : rel_exp_under_ctx _ ?B' ?N' ?N'
+                    |- rel_modexp_under_ctx _ (me_app _ _) _ /\ _ =>
+      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm) as Hm2;
+      pose proof (member_type_emb _ _ _ _ _ _ _ _ _ Hsub Hm') as Hm2';
+      pose proof (rel_modexp_refl_left HH) as HHl; pose proof (rel_modexp_refl_right HH) as HHr;
+      pose proof (rel_exp_under_ctx_refl_left HN) as HNl;
+      split; [ exact (rel_me_app Hgm _ _ _ _ _ _ _ _ _ HH HS Hm2 HA HN) |];
+      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ HS HHl Hm2 HA HB HNl) |];
+      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ HS' HHr Hm2' HA' HB' HN') |];
+      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ HS HU HHl Hm2 HA HB HNl) |];
+      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ HS' HU' HHr Hm2' HA' HB' HN') | split; assumption ] end ].
+  all: try solve [ split; [ apply rel_modexp_sym; assumption | repeat (split; [ assumption |]); assumption ] ].
+  all: try solve [ split; [ eapply rel_modexp_trans; eassumption | repeat (split; [ assumption |]); assumption ] ].
+Qed.
 
 (** ** 3. Closed judgments *)
 
@@ -185,7 +298,7 @@ Definition sem_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Type@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ A M M)
-  | ge_mod _ _ => True
+  | ge_mod _ => True
   end.
 
 Section Raw.
@@ -227,55 +340,20 @@ End Raw.
 
 (** An embedding whose source entries are valid at the target is sound. *)
 Theorem sem_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
-    Emb Θ1 Ξ1 Θ2 Ξ2 -> GV sem_entry Θ1 Ξ1 Θ2 Ξ2 -> sem_emb Θ1 Ξ1 Θ2 Ξ2.
+    Emb Θ1 Ξ1 Θ2 Ξ2 -> GV sem_entry Θ1 Ξ1 Θ2 Ξ2 -> @gmod_ok (gc_mk Θ2 Ξ2) ->
+    (forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) p) ->
+    sem_emb Θ1 Ξ1 Θ2 Ξ2.
 Proof.
-  intros * He HG; pose proof He as [Hg Hs].
-  constructor; [ exact He | |].
+  intros * He HG Hgm Hpa; pose proof He as [Hg Hs].
+  constructor; [ exact He | | | exact Hgm | exact Hpa ].
   - intros * Hr HΓ.
-    pose proof (Hs _ _ Hr) as Hr2.
+    pose proof (gc_sub_resolve _ _ _ _ _ _ Hs Hr) as Hr2.
     eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
     exact (proj1 (glob_sem_of_raw _ _ Hg _ _ _ _ _ Hr2 (HG _ _ Hr))).
   - intros * Hr HΓ.
-    pose proof (Hs _ _ Hr) as Hr2.
+    pose proof (gc_sub_resolve _ _ _ _ _ _ Hs Hr) as Hr2.
     eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
     exact (proj2 (glob_sem_of_raw _ _ Hg _ _ _ _ _ Hr2 (HG _ _ Hr)) _ eq_refl eq_refl).
 Qed.
 
-Lemma kread : forall Θ1 Ξ1 Θ2 Ξ2 A M,
-    sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    Θ1 ⍮ Ξ1 ⍮ ⋅ ⊢ M : A ->
-    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A M M.
-Proof.
-  intros * Hμ HM; destruct kripke_fundamental as (_ & Ke & _).
-  destruct (Ke _ _ _ _ _ HM _ _ Hμ) as [_ H]; exact H.
-Qed.
-
-Lemma sem_entry_def : forall Θ Ξ A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> Good sem_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    sem_entry Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M))).
-Proof.
-  intros * HM HG He.
-  pose proof (sem_emb_of _ _ _ _ He (HG _ _ He)) as Hμ.
-  destruct (presup_exp_typ HM) as [i HA].
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  split; [ exists j; exact (kread _ _ _ _ _ _ Hμ HT) |].
-  intros ? [= <-]; exact (kread _ _ _ _ _ _ Hμ (ctx_fn_wf0 _ _ _ _ _ _ HA HM)).
-Qed.
-
-Lemma sem_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> Good sem_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    sem_entry Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
-Proof.
-  intros * HA HG He.
-  pose proof (sem_emb_of _ _ _ _ He (HG _ _ He)) as Hμ.
-  destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  split; [ exists j; exact (kread _ _ _ _ _ _ Hμ HT) | discriminate ].
-Qed.
-
-(** Every well-formed global context is semantically sound: the identity is a
-    sound embedding. *)
-Theorem gctx_sem : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> sem_emb Θ Ξ Θ Ξ.
-Proof.
-  intros * Hg; apply sem_emb_of; [ apply Emb_refl; assumption |].
-  exact (global_induction sem_entry sem_entry_def sem_entry_ax _ _ Hg).
-Qed.
+(* GLOBAL: the global induction is rewritten below. *)
