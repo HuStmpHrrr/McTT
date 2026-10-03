@@ -55,6 +55,7 @@
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
+./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
 ./Core/Soundness.v
 ./Core/Soundness/ContextCases.v
@@ -99,6 +100,7 @@
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
 ./Core/Syntactic/SystemOpt.v
+./Core/Syntactic/Unseal.v
 ./Entrypoint.v
 ./Extraction/Command.v
 ./Extraction/Evaluation.v
