@@ -30,7 +30,7 @@ Import ListNotations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
-From Mctt.Core.Completeness Require Import LogicalRelation SubstitutionCases UniverseCases.
+From Mctt.Core.Completeness Require Import LogicalRelation SubstitutionCases UniverseCases SubtypingCases.
 From Mctt.Core.Semantic Require Import Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
@@ -367,7 +367,7 @@ Proof.
   (** [#1[σ]] is [σ 1] and [(ρσ ↯) 0] is [ρσ 1], so both commutation links
     relate a value to itself and the pattern collapses onto its middle. *)
   apply (mk_rel_exp (ρσ 1) (ρσ 1) (ρ'σ' 1) (ρ'σ' 1));
-    try apply eval_exp_var; try (apply eval_sub_index; eassumption).
+    try apply eval_exp_var; try (apply eval_sub_var; eassumption).
   apply rel_chain_4_of_2; first [ solve_chain_PER | eassumption ].
 Qed.
 
@@ -385,7 +385,7 @@ Proof.
   pose proof (rel_sub_under_ctx_at' Hσj HΓ' HΓN _ _ _ _ Hρ Hev Hev') as Hpair.
   apply per_env_extend_nat_elim in Hpair as [_ Hhead].
   apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
-    try apply eval_exp_var; try (apply eval_sub_index; eassumption).
+    try apply eval_exp_var; try (apply eval_sub_var; eassumption).
   apply rel_chain_4_of_2; first [ solve_chain_PER | eassumption ].
 Qed.
 
@@ -541,7 +541,8 @@ Proof.
   {
     intros ρ.
     apply eval_sub_intro; intros [| n]; simpl;
-      [ apply eval_exp_succ |]; apply eval_exp_var_eq; reflexivity.
+      [ eexists; split; [ reflexivity | apply eval_exp_succ; apply eval_exp_var_eq; reflexivity ]
+      | reflexivity ].
   }
   destruct (HAgen _ _ HΓNA _ _ Hstep _ _ _ _ Hpair (Hτ _) (Hτ _))
     as [p1 p2 p3 p4 Hp1 Hp2 Hp3 Hp4 Hpchain].
@@ -994,6 +995,107 @@ Hint Resolve rel_exp_nat_beta_zero : mctt.
     The proof is [rel_exp_natrec_cong] at the weakened premises, which
     [rel_exp_under_ctx_wk] provides; the two type rewrites are the syntactic lemmas
     saying weakening commutes with the two instantiated motives. *)
+(** ** The Head Variable as a Term
+
+    [B[wk_q ↑]ʷ[Id ,, #0]] is [B] up to the sort of the entry at index [0]:
+    [Id ,, #0] substitutes the term [#0] where [Id] has the variable [0].  On a
+    context whose head is a term the two denote the same, because the
+    environment relation reads only the head's term value and the tail. *)
+
+Definition sb_head_term (σ : sub) : sub := sb_extend (Wk ⨟ σ) (se_exp (sentry_exp (σ 0))).
+
+Definition env_head_term (ρ : env) : env := de_term (ρ 0) :: ρ↯.
+
+Lemma exp_sub_wk_q_var0 : forall B σ, B[wk_q ↑]ʷ[Id ,, #0][σ] = B[sb_head_term σ].
+Proof.
+  intros; rewrite exp_sub_sub, <- exp_sub_of_wk, exp_sub_sub.
+  apply exp_sub_sb_eq; intros [| x]; reflexivity.
+Qed.
+
+Lemma exp_wk_q_var0 : forall B, B[wk_q ↑]ʷ[Id ,, #0] = B[sb_head_term Id].
+Proof. intros; rewrite <- exp_sub_wk_q_var0, exp_sub_id; reflexivity. Qed.
+
+Lemma sb_wk_head_term : forall σ φ, sb_eq (sb_wk (sb_head_term σ) φ) (sb_head_term (sb_wk σ φ)).
+Proof.
+  intros σ φ [| x]; cbn; [ rewrite sentry_exp_wk; reflexivity | reflexivity ].
+Qed.
+
+Lemma eval_sub_head_term : forall σ ρ ρσ,
+    ⟦ σ ⟧s ρ ↘ ρσ -> ⟦ sb_head_term σ ⟧s ρ ↘ env_head_term ρσ.
+Proof.
+  intros * H [| x]; [| exact (H (S x)) ].
+  exists (ρσ 0); split; [ reflexivity | apply (eval_sub_var σ ρ ρσ 0 H) ].
+Qed.
+
+(** An environment relation of a context with a term at its head reads only the
+    head's value and the tail. *)
+Lemma per_ctx_env_head_term : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' <-> R (env_head_term ρ) (env_head_term ρ').
+Proof.
+  intros * H; inversion H; subst.
+  intros ρ ρ'; apply_relation_equivalence; reflexivity.
+Qed.
+
+Lemma per_ctx_env_head_term_l : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> R (env_head_term ρ) ρ'.
+Proof.
+  intros * H ρ ρ' Hρ; apply (per_ctx_env_head_term H); exact (proj1 (per_ctx_env_head_term H ρ ρ') Hρ).
+Qed.
+
+Lemma per_ctx_env_head_term_r : forall {Γ A Γ' A' R},
+    EF Γ ▹ A ≈ Γ' ▹ A' ∈ per_ctx_env ↘ R ->
+    forall ρ ρ', R ρ ρ' -> R ρ (env_head_term ρ').
+Proof.
+  intros * H ρ ρ' Hρ; apply (per_ctx_env_head_term H); exact (proj1 (per_ctx_env_head_term H ρ ρ') Hρ).
+Qed.
+
+Lemma rel_chain_head_term4 : forall {Γ A R a b c d},
+    EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R ->
+    rel_chain R ([a; b; c; d]) ->
+    rel_chain R ([env_head_term a; env_head_term b; c; d]).
+Proof.
+  intros * HΓ (Hab & Hbc & Hcd).
+  repeat split; [ | | exact Hcd ].
+  - apply (per_ctx_env_head_term_l HΓ), (per_ctx_env_head_term_r HΓ), Hab.
+  - apply (per_ctx_env_head_term_l HΓ), Hbc.
+Qed.
+
+Lemma rel_sub_under_ctx_head_term : forall {Γ' Γ A σ σ'},
+    Γ' ⊨s σ ≈ σ' : Γ ▹ A ->
+    Γ' ⊨s sb_head_term σ ≈ σ' : Γ ▹ A.
+Proof.
+  intros * [env_rel [HΓ' [env_relo [HΓA Hσ]]]].
+  exists env_rel, HΓ', env_relo, HΓA.
+  intros Γ'' env_rel' HΓ'' φ Hφ ρ ρ' Hρ.
+  destruct (Hσ _ _ HΓ'' _ Hφ _ _ Hρ) as [a b c d Ha Hb Hc Hd Hchain].
+  apply (mk_rel_sub (env_head_term a) (env_head_term b) c d);
+    [ rewrite sb_wk_head_term; apply eval_sub_head_term; exact Ha
+    | apply eval_sub_head_term; exact Hb | exact Hc | exact Hd |].
+  exact (rel_chain_head_term4 HΓA Hchain).
+Qed.
+
+Lemma rel_exp_typ_var0 : forall {Γ A B i},
+    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Type@i.
+Proof.
+  intros * HB.
+  pose proof (rel_exp_of_typ_inversion HB) as [env_rel [HΓA HBgen]].
+  apply rel_exp_of_typ; exists env_rel, HΓA.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HBgen _ _ HΓ' _ _ (rel_sub_under_ctx_head_term Hσ) _ _ _ _ Hρ
+              (eval_sub_head_term _ _ _ Hev) Hev') as [c1 c2 c3 c4 Hc1 Hc2 Hc3 Hc4 Hc].
+  assert (Hρσ : Dom ρσ ≈ ρ'σ' ∈ env_rel) by (eapply rel_sub_under_ctx_at'; eassumption).
+  assert (Hρσ' : Dom ρσ ≈ ρσ ∈ env_rel) by solve_per.
+  destruct (HBgen _ _ HΓA _ _ (rel_sub_under_ctx_head_term (rel_sub_id (ex_intro _ _ HΓA))) _ _ _ _ Hρσ'
+              (eval_sub_head_term _ _ _ (eval_sub_id ρσ)) (eval_sub_id ρσ)) as [d1 d2 d3 d4 Hd1 Hd2 Hd3 Hd4 Hd].
+  apply (mk_rel_exp c1 d1 c3 c4);
+    [ rewrite exp_sub_wk_q_var0; exact Hc1 | rewrite exp_wk_q_var0; exact Hd1 | exact Hc3 | exact Hc4 |].
+  functional_eval_rewrite_clear.
+  merge_rel_chain Hc Hd c2.
+Qed.
+
 Lemma rel_exp_natrec_generic : forall {Γ A i MZ MS env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
@@ -1012,17 +1114,16 @@ Proof.
   pose proof (rel_exp_under_ctx_wk Hupqq HMS) as HMSw.
   rewrite exp_wk_sub_extend in HMZw.
   rewrite exp_wk_sub_natrec in HMSw.
-  (** The conclusion type is produced as [A[wk_q ↑]ʷ[Id ,, #0]] and only then
-    collapsed: rewriting the goal backwards by [exp_wk_q_shift_single] would match
-    the [A[wk_q ↑]ʷ] inside the motive instead. *)
+  (** The conclusion type is produced as [A[wk_q ↑]ʷ[Id ,, #0]] and then
+    converted to [A] ([rel_exp_typ_var0]). *)
   assert (HEg : Γ ▹ ℕ ⊨ rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end
                         ≈ rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end
                         : A[wk_q ↑]ʷ[Id ,, #0])
     by (eapply rel_exp_natrec_cong;
         [ exact (rel_exp_under_ctx_wk Hupq HA) | exact HMZw | exact HMSw
         | apply (rel_exp_var0_nat HΓ) ]).
-  rewrite exp_wk_q_shift_single in HEg.
-  exact HEg.
+  eapply rel_exp_eq_subtyp; [ exact HEg | exact HA |].
+  eapply subtyp_refl; exact (rel_exp_typ_var0 HA).
 Qed.
 
 (** ** [β] at [succ]

@@ -148,7 +148,7 @@ Proof.
     apply rel_chain_4; eassumption.
   + (** [#0[σ]] is [σ 0], so the outer values are the heads too. *)
     apply (mk_rel_exp (ρσ 0) (ρσ 0) (ρ'σ' 0) (ρ'σ' 0));
-      try apply eval_exp_var; try (apply eval_sub_index; eassumption).
+      try apply eval_exp_var; try (apply eval_sub_var; eassumption).
     apply rel_chain_4_of_2; [ solve_chain_PER | eassumption ].
 Qed.
 

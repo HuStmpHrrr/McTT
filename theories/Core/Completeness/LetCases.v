@@ -185,8 +185,9 @@ Proof.
   eapply rel_sub_under_ctx_into_def; [ exact HΓ | exact HA | exact HMl | |].
   - exact (rel_sub_under_ctx_extend_sub Hσj HM).
   - intros ρ ρτ Hρ Hev.
-    assert (Hev1 : ⟦ σ ⟧s ρ ↘ ρτ↯) by (intros x; rewrite env_var_drop; exact (Hev (S x))).
-    pose proof (Hev 0) as Hev0; cbn in Hev0.
+    assert (Hev1 : ⟦ σ ⟧s ρ ↘ ρτ↯) by (intros x; exact (Hev (S x))).
+    assert (Hev0 : ⟦ M[σ] ⟧ ρ ↘ ρτ 0)
+      by (destruct (Hev 0) as (m0 & Hm0 & Hx); unfold env_var; rewrite Hm0; exact Hx).
     pose proof (rel_sub_under_ctx_refl_left Hσj) as Hσσ.
     destruct HMl as [env_relΔ [HΔ [j HMgen]]].
     destruct (HMgen _ _ HΓ _ _ Hσσ _ _ _ _ Hρ Hev1 Hev1) as [R [Htyp Hexp]].
@@ -249,10 +250,9 @@ Proof.
       | exact (rel_sub_under_ctx_q Hσj HA) ].
   - intros ρ ρq Hρ Hev.
     assert (Hev1 : ⟦ sb_wk σ ↑ ⟧s ρ ↘ ρq↯)
-      by (intros x; rewrite env_var_drop; pose proof (Hev (S x)) as Hx; rewrite sb_q_succ in Hx; exact Hx).
+      by (intros x; pose proof (Hev (S x)) as Hx; rewrite sb_q_succ in Hx; exact Hx).
     assert (Hev0 : ρq 0 = ρ 0)
-      by (pose proof (Hev 0) as Hx; rewrite sb_q_zero in Hx;
-          eapply functional_eval_exp; [ exact Hx | apply eval_exp_var ]).
+      by (pose proof (Hev 0) as Hx; rewrite sb_q_zero in Hx; cbn [eval_sentry] in Hx; unfold env_var; rewrite Hx; reflexivity).
     pose proof Hρ as [[Ht Hh] [[t [Ht0 Htie]] _]].
     (** [σ] at the Kripke stage [↑], which relates [⟦σ[↑]ʷ⟧ρ] to
         [⟦σ⟧(ρ↯)]. *)

@@ -374,13 +374,19 @@ Proof.
   cbn [wk_shift]; rewrite <- env_entry_drop; reflexivity.
 Qed.
 
-Lemma eval_wk_q_zero : forall φ ρ, env_entry (⟪wk_q φ⟫ ρ) 0 = env_entry ρ 0.
+Lemma eval_wk_q_zero_entry : forall φ ρ, env_entry (⟪wk_q φ⟫ ρ) 0 = env_entry ρ 0.
 Proof.
   intros φ [| d ρ]; [ reflexivity |].
   rewrite eval_wk_var; [ reflexivity |].
   unfold wk_len; cbn [List.length].
   pose proof (wk_count_le (wk_q φ) (S (List.length ρ)) 1 (S (List.length ρ)) ltac:(lia)); cbn in *; lia.
 Qed.
+
+Lemma eval_wk_q_zero : forall φ ρ, env_var (⟪wk_q φ⟫ ρ) 0 = env_var ρ 0.
+Proof. intros; unfold env_var; rewrite eval_wk_q_zero_entry; reflexivity. Qed.
+
+Lemma eval_wk_q_zero_mod : forall φ ρ, env_mod (⟪wk_q φ⟫ ρ) 0 = env_mod ρ 0.
+Proof. intros; unfold env_mod; rewrite eval_wk_q_zero_entry; reflexivity. Qed.
 
 Lemma eval_wk_q_tail : forall φ ρ `{Hφ : WkMono φ}, (⟪wk_q φ⟫ ρ)↯ = ⟪φ⟫ (ρ↯).
 Proof.

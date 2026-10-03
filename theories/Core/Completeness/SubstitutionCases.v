@@ -527,11 +527,11 @@ Proof.
     by (apply (Hhead i R c1 c4); first [ eassumption | pairwise ]).
   assert (Hheads : rel_chain R ([ρ (ψ 0); ρ (ψ 0); ρ' (ψ 0); ρ' (ψ 0)]))
     by (apply rel_chain_4_of_2; [ solve_chain_PER | rewrite <- !(eval_wk_app ψ); exact Hh ]).
-  apply (mk_rel_sub (x1 ↦ (ρ (ψ 0))) (y1 ↦ (ρ (ψ 0)))
-                    (y4 ↦ (ρ' (ψ 0))) (x4 ↦ (ρ' (ψ 0))));
+  apply (mk_rel_sub (env_entry ρ (ψ 0) :: x1) (env_entry ρ (ψ 0) :: y1)
+                    (env_entry ρ' (ψ 0) :: y4) (env_entry ρ' (ψ 0) :: x4));
     [ apply eval_sub_wk_q; eassumption
-    | rewrite <- (eval_wk_app ψ); apply eval_sub_q; eassumption
-    | rewrite <- (eval_wk_app ψ); apply eval_sub_q; eassumption
+    | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; eassumption
+    | rewrite <- (eval_wk_app_entry ψ); apply eval_sub_q; eassumption
     | apply eval_sub_wk_q; eassumption
     | ].
   (** [Hdchain] is the bridge: after [functional_eval_rewrite_clear] its values
