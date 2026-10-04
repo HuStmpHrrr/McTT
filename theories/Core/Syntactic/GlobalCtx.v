@@ -41,12 +41,15 @@ End GlobalCtx_Notations.
 
 Import GlobalCtx_Notations.
 
+(** The name an import item declares. *)
+Definition iitem_name (it : iitem) : string := let '(_, d, _) := it in d.
+
 (** The names [Φ] declares, outermost last, and a name not among them. *)
 Fixpoint gm_names (Φ : gmod) : list string :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' x _ => x :: gm_names Φ'
-  | gm_check Φ' _ => gm_names Φ'
+  | gm_import Φ' _ its => rev (map iitem_name its) ++ gm_names Φ'
   end.
 
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
@@ -79,7 +82,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_resolve Φ ip
       end
-  | gm_check Φ _ => gm_resolve Φ ip
+  | gm_import Φ _ _ => gm_resolve Φ ip
   end.
 
 Lemma gm_resolve_def : forall Φ ip E,
@@ -97,7 +100,8 @@ Qed.
 Lemma gm_resolve_head : forall Φ ip E,
     gm_resolve Φ ip = Some E -> exists x ip', ip = x :: ip' /\ List.In x (gm_names Φ).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] ip E0 H; cbn in H; [ discriminate | | exact (IH _ _ _ H) ].
+  fix IH 1; intros [| Φ y E | Φ c] ip E0 H; cbn in H; [ discriminate | |
+    destruct (IH _ _ _ H) as (z & ip'' & -> & Hin); exists z, ip''; split; [ reflexivity | cbn; apply List.in_or_app; right; exact Hin ] ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb_spec x y) as [-> |].
   - exists y, ip'; cbn; auto.
@@ -140,7 +144,7 @@ Inductive modres : Set :=
 Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option modres :=
   match Φ with
   | gm_nil => None
-  | gm_check Φ0 _ => gm_submodule T Φ0 x ip
+  | gm_import Φ0 _ _ => gm_submodule T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -164,7 +168,7 @@ Definition gm_module (T : ctx) (Φ : gmod) (ip : list string) : option modres :=
 Lemma gm_submodule_head : forall Φ T x ip r,
     gm_submodule T Φ x ip = Some r -> List.In x (gm_names Φ).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | exact (IH _ _ _ _ _ H) ].
+  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | cbn; apply List.in_or_app; right; exact (IH _ _ _ _ _ H) ].
   destruct (String.eqb_spec x y) as [-> |]; [ cbn; auto |].
   cbn; right; exact (IH _ _ _ _ _ H).
 Qed.
@@ -191,7 +195,7 @@ Qed.
 Fixpoint gm_subbody (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option (ctx * gmod) :=
   match Φ with
   | gm_nil => None
-  | gm_check Φ0 _ => gm_subbody T Φ0 x ip
+  | gm_import Φ0 _ _ => gm_subbody T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -213,7 +217,7 @@ Definition gm_body (T : ctx) (Φ : gmod) (ip : list string) : option (ctx * gmod
 
 Lemma gm_subbody_head : forall Φ T x ip r, gm_subbody T Φ x ip = Some r -> List.In x (gm_names Φ).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | exact (IH _ _ _ _ _ H) ].
+  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H; [ discriminate | | cbn; apply List.in_or_app; right; exact (IH _ _ _ _ _ H) ].
   destruct (String.eqb_spec x y) as [-> |]; [ cbn; auto |].
   cbn; right; exact (IH _ _ _ _ _ H).
 Qed.
@@ -757,7 +761,7 @@ with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_transparent Φ /\ ge_transparent E
-  | gm_check Φ _ => gm_transparent Φ
+  | gm_import Φ _ _ => gm_transparent Φ
   end.
 
 Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=

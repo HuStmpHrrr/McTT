@@ -132,10 +132,6 @@ with alg_unit : ctx -> gunit -> Prop :=
      tele_ass Δ ->
      body_shape Φ Φ ->
      List.NoDup (gm_names Φ) ->
-     (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
-        body_ctx Φ0 ++ Δ ++ Γ ⊢aᵐ E) ->
-     (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
-        member_ok gc_deps gc_stack (body_ctx Φ0 ++ Δ ++ Γ) E n) ->
      Γ ⊢aᵘ gu_body Δ Φ )
 | aunit_alias :
   `( Γ ⊢aˣ Δ ->
@@ -261,7 +257,7 @@ Lemma user_exp_all : forall M, user_exp M.
 Proof.
   eapply proj1, (syn_mut_ind user_exp (fun _ => True)
     (fun b => match b with b_def oA M => (forall A, oA = Some A -> user_exp A) /\ user_exp M | b_mod _ => True end)
-    (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
+    (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
     intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
     mauto 3.
 Qed.

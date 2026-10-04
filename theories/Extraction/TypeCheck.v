@@ -90,12 +90,6 @@ Section type_check.
     - exact (Bool.bool_dec pm pm').
   Defined.
 
-  Definition check_shape_dec : forall c c', { check_shape c c' } + { ~ check_shape c c' }.
-  Proof.
-    intros [E ns] [E' ns']; cbn.
-    apply list_eq_dec, string_dec.
-  Defined.
-
   Definition body_shape_dec : forall Φ Φ', { body_shape Φ Φ' } + { ~ body_shape Φ Φ' }.
   Proof.
     induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c']; cbn;
@@ -103,8 +97,6 @@ Section type_check.
     - destruct (IH Φ') as [H1 | H1]; [| right; intuition ].
       destruct (string_dec x x') as [H2 | H2]; [| right; intuition ].
       destruct (entry_shape_dec E E') as [H3 | H3]; [ left; auto | right; intuition ].
-    - destruct (IH Φ') as [H1 | H1]; [| right; intuition ].
-      destruct (check_shape_dec c c') as [H2 | H2]; [ left; auto | right; intuition ].
   Defined.
 
   (** ** Deciding Member Types *)
@@ -152,29 +144,6 @@ Section type_check.
   tele_view_dec T with inspect (tele_view T) := {
     | exist _ (Some (B, T1)) E => inleft (existT _ B (exist _ T1 E))
     | exist _ None E => inright E }.
-
-  Definition member_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E n
-      (HE : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E) :
-      { member_ok gc_deps gc_stack Γ E n } + { ~ member_ok gc_deps gc_stack Γ E n }.
-  Proof.
-    destruct (member_type_dec Hg Γ E (n :: nil) HE) as [[[A | T] HR] | HN]; [ left; left; eauto | left; right; eauto |].
-    right; intros [[A HA] | [A HA]]; eapply HN; eassumption.
-  Defined.
-
-  Definition names_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E
-      (HE : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E) :
-      forall ns, { forall n, In n ns -> member_ok gc_deps gc_stack Γ E n } +
-                 { ~ (forall n, In n ns -> member_ok gc_deps gc_stack Γ E n) }.
-  Proof.
-    induction ns as [| n ns IH]; [ left; intros ? [] |].
-    destruct (member_ok_dec Hg Γ E n HE) as [Hn | Hn]; [| right; intros Hall; apply Hn, Hall; left; reflexivity ].
-    destruct IH as [Hns | Hns]; [ left; intros ? [<- | Hin]; auto | right; intros Hall; apply Hns; intros; apply Hall; right; assumption ].
-  Defined.
-
-  Definition imports_ok (G Δ : ctx) (ls : list (gmod * bcheck)) : Prop :=
-    (forall Φ0 E ns, In (Φ0, bc_import E ns) ls -> body_ctx Φ0 ++ Δ ++ G ⊢aᵐ E) /\
-    (forall Φ0 E ns n, In (Φ0, bc_import E ns) ls -> In n ns ->
-       member_ok gc_deps gc_stack (body_ctx Φ0 ++ Δ ++ G) E n).
 
   Extraction Inline member_type_dec member_term_dec member_mod_dec member_chain_mod_dec mres_term_dec mres_mod_dec tele_view_dec.
 
@@ -276,11 +245,8 @@ Section type_check.
   | eo_def : forall {A M Ψ}, ext_order Ψ -> type_infer_order A -> type_check_order M -> ext_order (Ψ ▸ A ≔ M)
   | eo_mod : forall {U Ψ}, ext_order Ψ -> unit_order U -> ext_order (Ψ ▹ₘ U)
   with unit_order : gunit -> Prop :=
-  | uo_body : forall {Δ Φ}, ext_order (body_ctx Φ ++ Δ) -> imports_order (gm_checks Φ) -> unit_order (gu_body Δ Φ)
+  | uo_body : forall {Δ Φ}, ext_order (body_ctx Φ ++ Δ) -> unit_order (gu_body Δ Φ)
   | uo_alias : forall {Δ E}, ext_order Δ -> modexp_order E -> unit_order (gu_mk Δ (md_alias E))
-  with imports_order : list (gmod * bcheck) -> Prop :=
-  | io_nil : imports_order nil
-  | io_import : forall {Φ0 E ns ls}, modexp_order E -> imports_order ls -> imports_order ((Φ0, bc_import E ns) :: ls)
   with modexp_order : modexp -> Prop :=
   | mo_unit : forall {fp}, modexp_order (me_unit fp)
   | mo_var : forall {x}, modexp_order (me_var x)
@@ -290,7 +256,7 @@ Section type_check.
   .
 
   #[local]
-  Hint Constructors type_check_order type_infer_order ext_order unit_order imports_order modexp_order : mctt.
+  Hint Constructors type_check_order type_infer_order ext_order unit_order modexp_order : mctt.
 
   (** Every term has an order.  The order of a member of an applied module
       is built from the orders of its root and of its arguments. *)
@@ -345,11 +311,10 @@ Section type_check.
            end) /\
     (forall U, unit_order U) /\
     (forall D, match D with
-           | md_body Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)
+           | md_body Φ => List.Forall centry_order (body_ctx Φ)
            | md_alias E => modexp_order E
            end) /\
-    (forall Φ, List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)) /\
-    (forall c, match c with bc_import E _ => modexp_order E end) /\
+    (forall Φ, List.Forall centry_order (body_ctx Φ)) /\
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
@@ -365,11 +330,10 @@ Section type_check.
              end)
       unit_order
       (fun D => match D with
-             | md_body Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)
+             | md_body Φ => List.Forall centry_order (body_ctx Φ)
              | md_alias E => modexp_order E
              end)
-      (fun Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ))
-      (fun c => match c with bc_import E _ => modexp_order E end)
+      (fun Φ => List.Forall centry_order (body_ctx Φ))
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
@@ -397,8 +361,9 @@ Section type_check.
       split; [ assumption | apply Forall_app; split; [ assumption | constructor; [ constructor; assumption | constructor ] ] ].
     - split; [ constructor; assumption | intros * [= <- <- <-]; split; [ constructor; assumption | constructor ] ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall, ext_order_app.
-    - destruct E as [b pv A [M |] | pm U]; destruct_conjs; (split; [| assumption ]); constructor; cbn; eauto with mctt.
-    - split; [ assumption | destruct c; constructor; assumption ].
+    - destruct E as [b pv A [M |] | pm U]; destruct_conjs; constructor; cbn; eauto with mctt.
+    - apply Forall_app; split; [| assumption ].
+      induction (List.length its); cbn; constructor; [ constructor | assumption ].
   Qed.
 
   Lemma type_infer_order_all : forall M, type_infer_order M.
@@ -413,7 +378,7 @@ Section type_check.
   Lemma ext_order_all : forall Ψ, ext_order Ψ.
   Proof.
     intros; apply ext_order_of_forall, Forall_forall; intros.
-    destruct syn_orders_all as (_ & _ & _ & _ & _ & _ & _ & _ & Hc); apply Hc.
+    destruct syn_orders_all as (_ & _ & _ & _ & _ & _ & _ & Hc); apply Hc.
   Qed.
 
   Lemma user_exp_to_type_infer_order : forall M,
@@ -491,7 +456,6 @@ Section type_check.
       | H: type_infer_order _ |- _ => progressive_invert H
       | H: ext_order _ |- _ => progressive_invert H
       | H: unit_order _ |- _ => progressive_invert H
-      | H: imports_order _ |- _ => progressive_invert H
       | H: modexp_order _ |- _ => progressive_invert H
       end;
     destruct_conjs;
@@ -541,7 +505,6 @@ Section type_check.
     | |- type_check_order _ => eassumption; fail 1
     | |- ext_order _ => eassumption; fail 1
     | |- unit_order _ => eassumption; fail 1
-    | |- imports_order _ => eassumption; fail 1
     | |- modexp_order _ => eassumption; fail 1
     | |- subtyping_order ?G ?A ?B =>
         enough (exists i, G ⊢ A : Typeⁿ@i) as [? [? []]%soundness_ty];
@@ -563,25 +526,6 @@ Section type_check.
     end;
     functional_alg_type_infer_rewrite_clear;
     first [ match goal with H : forall i, ?X <> Typeⁿ@i |- _ => exact (H _ eq_refl) end | firstorder ].
-
-  #[local]
-  Ltac imp_neg :=
-    match goal with Hi : imports_ok _ _ _ |- False => destruct Hi end;
-    match goal with
-    | HN : ~ _ ⊢aᵐ _, Hi1 : forall Φ0 E ns, In _ _ -> _ |- _ => apply HN; eapply Hi1; left; reflexivity
-    | HN : ~ (forall n, In n _ -> _), Hi2 : forall Φ0 E ns n, In _ _ -> In n ns -> _ |- _ =>
-        apply HN; intros; eapply Hi2; [ left; reflexivity | eassumption ]
-    | HN : ~ imports_ok _ _ _, Hi1 : forall Φ0 E ns, In _ _ -> _, Hi2 : forall Φ0 E ns n, In _ _ -> In n ns -> _ |- _ =>
-        apply HN; split; intros; [ eapply Hi1; right; eassumption | eapply Hi2; [ right; eassumption | eassumption ] ]
-    end.
-
-  #[local]
-  Ltac imp_pos :=
-    match goal with Hr : imports_ok _ _ _ |- imports_ok _ _ _ => destruct Hr end;
-    split;
-    let Hin := fresh "Hin" in
-    let Heq := fresh "Heq" in
-    intros * Hin; destruct Hin as [Heq | Hin]; try (injection Heq; intros; subst); eauto; try discriminate.
 
   #[local]
   Ltac typ_sound :=
@@ -649,10 +593,7 @@ Section type_check.
                        | eapply level_of_nbe; eassumption ] ]
       | solve [ split; [ eapply ati_mem_app; [ eassumption | eassumption | discriminate | eassumption ] | eauto ] ]
       | solve [ negc ]
-      | solve [ imp_neg ]
-      | solve [ imp_pos ]
       | solve [ split; intros * [] ]
-      | solve [ match goal with Hi : imports_ok _ _ _ |- _ ⊢aᵘ _ => destruct Hi end; eapply aunit_body; eassumption ]
       | solve [ econstructor; eassumption ]
       | solve [ econstructor; eauto ]
       | solve [ typ_sound ]
@@ -663,15 +604,6 @@ Section type_check.
       | solve [ econstructor; apply ctx_find_mod_sound; eassumption ]
       | solve [ match goal with Hx : _ ⊢aᵐ me_var _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
                 match goal with Hl : ctx_lookup_mod _ _ _ |- _ => apply ctx_find_mod_complete in Hl end; congruence ]
-      | solve [ match goal with
-                | HG : ⊢ ?G, Hin : In (?Φ0, _) (gm_checks ?Φ), Ha : ?G ⊢aˣ body_ctx ?Φ ++ ?Δ |- _ =>
-                    let Ψ0 := fresh "Ψ0" in
-                    let HΨ0 := fresh "HΨ0" in
-                    let HC := fresh "HC" in
-                    destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ0 HΨ0];
-                    pose proof (ext_eq_ctx_left _ _ _ _ _ (alg_ext_sound Ha HG)) as HC;
-                    rewrite HΨ0, <- !app_assoc in HC; exact (ctx_app_wf_right _ _ _ _ HC)
-                end ]
       | solve [ match goal with Hx : _ ⊢aᵐ me_app _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
                 mt_unify;
                 repeat match goal with
@@ -811,20 +743,11 @@ Section type_check.
       let*b _ := tele_ass_dec Δ while _ in
       let*b _ := body_shape_dec Φ Φ while _ in
       let*b _ := names_nodup_dec (gm_names Φ) while _ in
-      let*b _ := imports_check G Δ (gm_checks Φ) _ _ while _ in
       pureb _
   | G, HG, gu_mk Δ (md_alias E), H =>
       let*b _ := ext_check G HG Δ _ while _ in
       let*b _ := tele_ass_dec Δ while _ in
       let*b _ := modexp_check (Δ ++ G) _ E _ while _ in
-      pureb _
-  with imports_check G Δ ls (Hls : forall Φ0 c, In (Φ0, c) ls -> ⊢ body_ctx Φ0 ++ Δ ++ G) (H : imports_order ls) :
-      { imports_ok G Δ ls } + { ~ imports_ok G Δ ls } by struct H :=
-  | G, Δ, nil, Hls, H => left _
-  | G, Δ, (Φ0, bc_import E ns) :: ls, Hls, H =>
-      let*b _ := modexp_check (body_ctx Φ0 ++ Δ ++ G) _ E _ while _ in
-      let*b _ := names_ok_dec _ (body_ctx Φ0 ++ Δ ++ G) E _ ns while _ in
-      let*b _ := imports_check G Δ ls _ _ while _ in
       pureb _
   with modexp_check G (HG : ⊢ G) M (H : modexp_order M) : { G ⊢aᵐ M } + { ~ G ⊢aᵐ M } by struct H :=
   | G, HG, me_unit fp, H =>
@@ -1131,20 +1054,9 @@ Section type_check.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
-  Next Obligation. mod_obl. Qed.
 
   Extraction Inline type_check_functional type_infer_functional ext_check_functional
-    unit_check_functional imports_check_functional modexp_check_functional.
+    unit_check_functional modexp_check_functional.
 
   Lemma type_infer_order_soundness : forall G M A,
       G ⊢a M ⟹ A ->

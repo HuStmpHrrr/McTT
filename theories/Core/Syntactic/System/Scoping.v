@@ -69,11 +69,7 @@ with gmod_scoped (n : nat) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gmod_scoped n Φ /\ gentry_scoped (gm_binders Φ + n) E
-  | gm_check Φ c => gmod_scoped n Φ /\ bcheck_scoped (gm_binders Φ + n) c
-  end
-with bcheck_scoped (n : nat) (c : bcheck) : Prop :=
-  match c with
-  | bc_import E _ => modexp_scoped n E
+  | gm_import Φ H _ => gmod_scoped n Φ /\ modexp_scoped (gm_binders Φ + n) H
   end
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
@@ -175,7 +171,6 @@ Lemma syn_scoped_mono :
   (forall U n m, n <= m -> gunit_scoped n U -> gunit_scoped m U) /\
   (forall D n m, n <= m -> moddef_scoped n D -> moddef_scoped m D) /\
   (forall Φ n m, n <= m -> gmod_scoped n Φ -> gmod_scoped m Φ) /\
-  (forall c n m, n <= m -> bcheck_scoped n c -> bcheck_scoped m c) /\
   (forall E n m, n <= m -> gentry_scoped n E -> gentry_scoped m E) /\
   (forall e n m, n <= m -> centry_scoped n e -> centry_scoped m e).
 Proof.
@@ -236,7 +231,6 @@ Lemma syn_scoped_wk :
   (forall U n m φ, gunit_scoped n U -> (forall x, x < n -> φ x < m) -> gunit_scoped m (gunit_wk U φ)) /\
   (forall D n m φ, moddef_scoped n D -> (forall x, x < n -> φ x < m) -> moddef_scoped m (moddef_wk D φ)) /\
   (forall Φ n m φ, gmod_scoped n Φ -> (forall x, x < n -> φ x < m) -> gmod_scoped m (gmod_wk Φ φ)) /\
-  (forall c n m φ, bcheck_scoped n c -> (forall x, x < n -> φ x < m) -> bcheck_scoped m (bcheck_wk c φ)) /\
   (forall E n m φ, gentry_scoped n E -> (forall x, x < n -> φ x < m) -> gentry_scoped m (gentry_wk E φ)) /\
   (forall e n m φ, centry_scoped n e -> (forall x, x < n -> φ x < m) -> centry_scoped m (centry_wk e φ)).
 Proof.
@@ -258,7 +252,7 @@ Proof. exact (proj1 (proj2 (proj2 (proj2 syn_scoped_wk)))). Qed.
 
 Lemma centry_scoped_wk : forall e n m φ,
     centry_scoped n e -> (forall x, x < n -> φ x < m) -> centry_scoped m (centry_wk e φ).
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))). Qed.
 
 Corollary exp_scoped_shift : forall M n, exp_scoped n M -> exp_scoped (S n) M[↑]ʷ.
 Proof. intros; eapply exp_scoped_wk; [ eassumption |]; cbn; lia. Qed.
@@ -299,7 +293,6 @@ Lemma syn_scoped_sub :
   (forall U n m σ, gunit_scoped n U -> (forall x, x < n -> sentry_scoped m (σ x)) -> gunit_scoped m U[σ]ᵘ) /\
   (forall D n m σ, moddef_scoped n D -> (forall x, x < n -> sentry_scoped m (σ x)) -> moddef_scoped m (moddef_sub D σ)) /\
   (forall Φ n m σ, gmod_scoped n Φ -> (forall x, x < n -> sentry_scoped m (σ x)) -> gmod_scoped m (gmod_sub Φ σ)) /\
-  (forall c n m σ, bcheck_scoped n c -> (forall x, x < n -> sentry_scoped m (σ x)) -> bcheck_scoped m (bcheck_sub c σ)) /\
   (forall E n m σ, gentry_scoped n E -> (forall x, x < n -> sentry_scoped m (σ x)) -> gentry_scoped m (gentry_sub E σ)) /\
   (forall e n m σ, centry_scoped n e -> (forall x, x < n -> sentry_scoped m (σ x)) -> centry_scoped m (centry_sub e σ)).
 Proof.
@@ -354,7 +347,6 @@ Lemma syn_scoped_wk_id :
   (forall U n φ, gunit_scoped n U -> (forall x, x < n -> φ x = x) -> gunit_wk U φ = U) /\
   (forall D n φ, moddef_scoped n D -> (forall x, x < n -> φ x = x) -> moddef_wk D φ = D) /\
   (forall Φ n φ, gmod_scoped n Φ -> (forall x, x < n -> φ x = x) -> gmod_wk Φ φ = Φ) /\
-  (forall c n φ, bcheck_scoped n c -> (forall x, x < n -> φ x = x) -> bcheck_wk c φ = c) /\
   (forall E n φ, gentry_scoped n E -> (forall x, x < n -> φ x = x) -> gentry_wk E φ = E) /\
   (forall e n φ, centry_scoped n e -> (forall x, x < n -> φ x = x) -> centry_wk e φ = e).
 Proof.
@@ -369,7 +361,6 @@ Lemma syn_scoped_sub_id :
   (forall U n σ, gunit_scoped n U -> (forall x, x < n -> σ x = se_var x) -> U[σ]ᵘ = U) /\
   (forall D n σ, moddef_scoped n D -> (forall x, x < n -> σ x = se_var x) -> moddef_sub D σ = D) /\
   (forall Φ n σ, gmod_scoped n Φ -> (forall x, x < n -> σ x = se_var x) -> gmod_sub Φ σ = Φ) /\
-  (forall c n σ, bcheck_scoped n c -> (forall x, x < n -> σ x = se_var x) -> bcheck_sub c σ = c) /\
   (forall E n σ, gentry_scoped n E -> (forall x, x < n -> σ x = se_var x) -> gentry_sub E σ = E) /\
   (forall e n σ, centry_scoped n e -> (forall x, x < n -> σ x = se_var x) -> centry_sub e σ = e).
 Proof.
@@ -403,14 +394,14 @@ Corollary tele_closed_wk : forall Δ φ, ctx_scoped 0 Δ -> tele_wk Δ φ = Δ.
 Proof.
   intros; eapply tele_wk_id_gen; [| eassumption | lia ].
   apply List.Forall_forall; intros e _ n ψ He Hψ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk_id))))))) _ _ _ He Hψ).
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk_id)))))) _ _ _ He Hψ).
 Qed.
 
 Corollary tele_closed_sub : forall Δ σ, ctx_scoped 0 Δ -> tele_sub Δ σ = Δ.
 Proof.
   intros; eapply tele_sub_id_gen; [| eassumption | lia ].
   apply List.Forall_forall; intros e _ n τ He Hτ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_id))))))) _ _ _ He Hτ).
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_id)))))) _ _ _ He Hτ).
 Qed.
 
 Lemma tele_wk_scoped : forall Δ n m φ,
@@ -418,7 +409,7 @@ Lemma tele_wk_scoped : forall Δ n m φ,
 Proof.
   intros; eapply tele_wk_scoped_gen; [| eassumption | assumption ].
   apply List.Forall_forall; intros e _ k l ψ He Hψ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))) _ _ _ _ He Hψ).
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk)))))) _ _ _ _ He Hψ).
 Qed.
 
 Lemma tele_sub_scoped : forall Δ n m σ,
@@ -426,7 +417,7 @@ Lemma tele_sub_scoped : forall Δ n m σ,
 Proof.
   intros; eapply tele_sub_scoped_gen; [| eassumption | assumption ].
   apply List.Forall_forall; intros e _ k l τ He Hτ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub))))))) _ _ _ _ He Hτ).
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub)))))) _ _ _ _ He Hτ).
 Qed.
 
 (** ** Telescopes *)
@@ -516,16 +507,20 @@ Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ⇒ₘ U -> x < length Γ
 Proof. induction 1; cbn; lia. Qed.
 
 Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
-Proof. induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; cbn; auto. Qed.
+Proof. induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
 
-(** A body is scoped when the context it binds is, and its check entries are. *)
-Lemma gmod_scoped_of_body_ctx : forall Φ n,
-    ctx_scoped n (body_ctx Φ) ->
-    (forall Φ0 c, List.In (Φ0, c) (gm_checks Φ) -> bcheck_scoped (gm_binders Φ0 + n) c) ->
-    gmod_scoped n Φ.
+(** A typed body, with no local import, is scoped when the context it binds
+    is. *)
+Lemma gmod_scoped_of_body_ctx : forall Φ Φ' n,
+    body_shape Φ Φ' ->
+    (ctx_scoped n (body_ctx Φ) -> gmod_scoped n Φ) /\ (ctx_scoped n (body_ctx Φ') -> gmod_scoped n Φ').
 Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros * HΦ Hc; cbn in *; destruct_all;
-    repeat split; auto; try (rewrite <- length_body_ctx; assumption).
+  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Hs; cbn in Hs; try contradiction.
+  - split; intros; exact I.
+  - destruct Hs as (Hs & -> & HE); destruct (IH _ n Hs) as [IH1 IH2].
+    destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in HE; try contradiction;
+      split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
+      first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
 Qed.
 
 (** ** Closed Entries
@@ -640,20 +635,6 @@ Proof.
   destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
 Qed.
 
-(** The check entries of a body of some shape are imports. *)
-Lemma body_shape_checks : forall Φ Φ',
-    body_shape Φ Φ' ->
-    (forall Φ0 c, List.In (Φ0, c) (gm_checks Φ) -> exists E ns, c = bc_import E ns) /\
-    (forall Φ0 c, List.In (Φ0, c) (gm_checks Φ') -> exists E ns, c = bc_import E ns).
-Proof.
-  induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] Hs; cbn in Hs; try contradiction.
-  - split; intros ? ? [].
-  - destruct Hs as [Hs _]; exact (IH _ Hs).
-  - destruct Hs as [Hs Hc]; destruct (IH _ Hs) as [IH1 IH2].
-    destruct c as [E ns], c' as [E' ns']; cbn in Hc.
-    split; intros Φ0 c0 [[= <- <-] | Hin]; eauto.
-Qed.
-
 (** ** Every Judgment is Well Scoped *)
 
 #[local] Arguments gctx_closed : simpl never.
@@ -719,16 +700,10 @@ Proof.
   all: try (rewrite gunit_scoped_mk, ?ctx_scoped_app_iff, ?length_app; repeat split; assumption).
   - (* a body unit, left *)
     rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |].
-    apply gmod_scoped_of_body_ctx; [ assumption |].
-    intros Φ0 c Hin; destruct (proj1 (body_shape_checks _ _ H4) _ _ Hin) as (E & ns & ->); cbn.
-    match goal with H : forall _ _ _, List.In _ (gm_checks Φ) -> _ /\ _ |- _ => destruct (H _ _ _ Hin) as (_ & HE & _) end.
-    rewrite !length_app, length_body_ctx in HE; exact HE.
+    apply (gmod_scoped_of_body_ctx _ _ _ H4); assumption.
   - (* a body unit, right *)
     rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |].
-    rewrite <- H3; apply gmod_scoped_of_body_ctx; [ rewrite H3; assumption |].
-    intros Φ0 c Hin; destruct (proj2 (body_shape_checks _ _ H4) _ _ Hin) as (E & ns & ->); cbn.
-    match goal with H : forall _ _ _, List.In _ (gm_checks Φ') -> _ /\ _ |- _ => destruct (H _ _ _ Hin) as (_ & HE & _) end.
-    rewrite !length_app, length_body_ctx, <- H3 in HE; exact HE.
+    rewrite <- H3; apply (gmod_scoped_of_body_ctx _ _ _ H4); rewrite H3; assumption.
   - (* a filed alias *)
     rewrite gunit_scoped_mk; cbn; rewrite ctx_scoped_app_iff, length_app, Nat.add_0_r; repeat split; assumption.
   - split; [ apply ctx_scoped_app_iff; split; assumption | apply mod_closed_nil ].

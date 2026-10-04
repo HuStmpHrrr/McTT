@@ -2,12 +2,14 @@
 
     Privacy is not a matter of typing: a public definition may unfold to a
     term naming a private one, and its type may name one, so typing and δ
-    read no privacy flag.  It is a check on the terms a command introduces, as
-    they are written: every member reference rooted at a unit is to a public
-    member, or to a member of a module that is an open frame or an ancestor of
-    one, that is, the reference is made inside the module declaring the
-    member.  Aliases are followed through the global context to the module
-    that declares the member. *)
+    read no privacy flag.  It is a check on the terms a command introduces,
+    as expanded ([Imports]): every member reference rooted at a unit is to a
+    public member, or to a member of a module that is an open frame or an
+    ancestor of one, that is, the reference is made inside the module
+    declaring the member.  Aliases are followed through the global context to
+    the module that declares the member.  A reference into a local body, read
+    off the syntax by module tables ([ptab]), is to a public entry: inside
+    the body, its entries are variables. *)
 
 From Stdlib Require Import List String.
 
@@ -37,7 +39,7 @@ Fixpoint gm_entry (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_entry Φ ip
       end
-  | gm_check Φ _ => gm_entry Φ ip
+  | gm_import Φ _ _ => gm_entry Φ ip
   end.
 
 Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry :=
@@ -151,71 +153,155 @@ Proof.
     eauto using gc_entry_dsub, gc_sub_module, gc_sub_levels.
 Qed.
 
-(** ** Member References *)
+(** ** Module Tables
 
-(** The member references a term is written with: every [a_mem H x], every
-    submodule [me_mem H y], and every name an import [use]s, as [(E, n)]. *)
-Fixpoint exp_refs (M : exp) : list (modexp * string)%type :=
-  match M with
-  | a_typ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
-  | a_succ M => exp_refs M
-  | a_natrec A MZ MS M => exp_refs A ++ exp_refs MZ ++ exp_refs MS ++ exp_refs M
-  | a_exfalso A M | a_pi A M | a_fn A M | a_app A M => exp_refs A ++ exp_refs M
-  | a_let b B => bnd_refs b ++ exp_refs B
-  | a_mem H x => (H, x) :: modexp_refs H
-  end
-with modexp_refs (H : modexp) : list (modexp * string)%type :=
-  match H with
-  | me_unit _ | me_var _ => nil
-  | me_mem H y => (H, y) :: modexp_refs H
-  | me_app H N => modexp_refs H ++ exp_refs N
-  | me_lit U => gunit_refs U
-  end
-with bnd_refs (b : bnd) : list (modexp * string)%type :=
-  match b with
-  | b_def oA M => match oA with Some A => exp_refs A | None => nil end ++ exp_refs M
-  | b_mod U => gunit_refs U
-  end
-with gunit_refs (U : gunit) : list (modexp * string)%type :=
-  match U with
-  | gu_mk Δ D =>
-      (fix tele_refs (Δ : list centry) : list (modexp * string)%type :=
-         match Δ with
-         | nil => nil
-         | e :: Δ' => centry_refs e ++ tele_refs Δ'
-         end) Δ ++ moddef_refs D
-  end
-with moddef_refs (D : moddef) : list (modexp * string)%type :=
-  match D with
-  | md_body Φ => gmod_refs Φ
-  | md_alias E => modexp_refs E
-  end
-with gmod_refs (Φ : gmod) : list (modexp * string)%type :=
-  match Φ with
-  | gm_nil => nil
-  | gm_ext Φ _ E => gmod_refs Φ ++ gentry_refs E
-  | gm_check Φ c => gmod_refs Φ ++ bcheck_refs c
-  end
-with bcheck_refs (c : bcheck) : list (modexp * string)%type :=
-  match c with
-  | bc_import E ns => modexp_refs E ++ map (fun n => (E, n)) ns
-  end
-with gentry_refs (E : gentry) : list (modexp * string)%type :=
-  match E with
-  | ge_def _ _ A B => exp_refs A ++ match B with Some M => exp_refs M | None => nil end
-  | ge_mod _ U => gunit_refs U
-  end
-with centry_refs (e : centry) : list (modexp * string)%type :=
-  match e with
-  | ce_ass A => exp_refs A
-  | ce_def A M => exp_refs A ++ exp_refs M
-  | ce_mod U => gunit_refs U
+    What a reference may know of the module it selects from: nothing, that
+    the module is reached from a unit (the global check below decides), or
+    the entries of a body, newest first, each with its privacy and its own
+    table.  [pt_body ch es] also records the chain [ch] of submodules
+    selected from the local module it was read from, which the checker
+    reports.  The tables are read off the syntax, in a scope [S] giving the
+    table of each index: binders hold [pt_none], a local module the table of
+    its unit. *)
+(** No induction principle: tables are only computed and read. *)
+Unset Elimination Schemes.
+Inductive ptab : Set :=
+(** Nothing is known: a term variable, a parameter, a definition *)
+| pt_none : ptab
+(** A chain from a unit, arguments dropped *)
+| pt_glob : modexp -> ptab
+(** The entries of a local body, newest first *)
+| pt_body : list string -> list (string * bool * ptab) -> ptab.
+Set Elimination Schemes.
+
+(** The newest entry [x] of a body's table. *)
+Fixpoint tab_find (x : string) (es : list (string * bool * ptab)) : option (bool * ptab) :=
+  match es with
+  | nil => None
+  | (y, pv, t) :: es' => if String.eqb x y then Some (pv, t) else tab_find x es'
   end.
 
-Fixpoint tele_refs (Δ : ctx) : list (modexp * string)%type :=
+(** The table of the submodule [y]. *)
+Definition tab_sel (t : ptab) (y : string) : ptab :=
+  match t with
+  | pt_none => pt_none
+  | pt_glob H => pt_glob (me_mem H y)
+  | pt_body ch es =>
+      match tab_find y es with
+      | Some (_, pt_body _ es') => pt_body (ch ++ y :: nil) es'
+      | Some (_, t') => t'
+      | None => pt_none
+      end
+  end.
+
+(** The tables a body's entries bind, newest first, as a scope. *)
+Definition tab_scope (es : list (string * bool * ptab)) : list ptab := map snd es.
+
+(** Whether an import item declares a private name. *)
+Definition iitem_private (it : iitem) : bool := let '(_, _, pv) := it in pv.
+
+Fixpoint mtab (S : list ptab) (H : modexp) : ptab :=
+  match H with
+  | me_unit fp => pt_glob (me_unit fp)
+  | me_var k => nth k S pt_none
+  | me_mem H y => tab_sel (mtab S H) y
+  | me_app H _ => mtab S H
+  | me_lit U => utab S U
+  end
+with utab (S : list ptab) (U : gunit) : ptab :=
+  match U with
+  | gu_mk Δ D => dtab (repeat pt_none (List.length Δ) ++ S) D
+  end
+with dtab (S : list ptab) (D : moddef) : ptab :=
+  match D with
+  | md_body Φ => pt_body nil (btab S Φ)
+  | md_alias E => mtab S E
+  end
+with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ x E => let es := btab S Φ in (x, ge_private E, etab (tab_scope es ++ S) E) :: es
+  | gm_import Φ _ its =>
+      rev (map (fun it => (iitem_name it, iitem_private it, pt_none)) its) ++ btab S Φ
+  end
+with etab (S : list ptab) (E : gentry) : ptab :=
+  match E with
+  | ge_def _ _ _ _ => pt_none
+  | ge_mod _ U => utab S U
+  end.
+
+(** The table a local binding gives its index. *)
+Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
+  match b with
+  | b_def _ _ => pt_none
+  | b_mod U => utab S U
+  end.
+
+(** ** Member References *)
+
+(** The member references a term is written with, each with the table of
+    the module it selects from: every [a_mem H x] and every submodule
+    [me_mem H y]. *)
+Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
+  match M with
+  | a_typ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
+  | a_succ M => exp_refs S M
+  | a_natrec A MZ MS M =>
+      exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
+  | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
+  | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (pt_none :: S) M
+  | a_app M N => exp_refs S M ++ exp_refs S N
+  | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
+  | a_mem H x => (mtab S H, x) :: modexp_refs S H
+  end
+with modexp_refs (S : list ptab) (H : modexp) : list (ptab * string)%type :=
+  match H with
+  | me_unit _ | me_var _ => nil
+  | me_mem H y => (mtab S H, y) :: modexp_refs S H
+  | me_app H N => modexp_refs S H ++ exp_refs S N
+  | me_lit U => gunit_refs S U
+  end
+with bnd_refs (S : list ptab) (b : bnd) : list (ptab * string)%type :=
+  match b with
+  | b_def oA M => match oA with Some A => exp_refs S A | None => nil end ++ exp_refs S M
+  | b_mod U => gunit_refs S U
+  end
+with gunit_refs (S : list ptab) (U : gunit) : list (ptab * string)%type :=
+  match U with
+  | gu_mk Δ D =>
+      (fix tele_refs (Δ : list centry) : list (ptab * string)%type :=
+         match Δ with
+         | nil => nil
+         | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs Δ'
+         end) Δ ++ moddef_refs (repeat pt_none (List.length Δ) ++ S) D
+  end
+with moddef_refs (S : list ptab) (D : moddef) : list (ptab * string)%type :=
+  match D with
+  | md_body Φ => gmod_refs S Φ
+  | md_alias E => modexp_refs S E
+  end
+with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (btab S Φ) ++ S) E
+  | gm_import Φ H _ => gmod_refs S Φ ++ modexp_refs (tab_scope (btab S Φ) ++ S) H
+  end
+with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
+  match E with
+  | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
+  | ge_mod _ U => gunit_refs S U
+  end
+with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
+  match e with
+  | ce_ass A => exp_refs S A
+  | ce_def A M => exp_refs S A ++ exp_refs S M
+  | ce_mod U => gunit_refs S U
+  end.
+
+Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
   match Δ with
   | nil => nil
-  | e :: Δ' => centry_refs e ++ tele_refs Δ'
+  | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
   end.
 
 (** ** Accessibility *)
@@ -225,17 +311,25 @@ Fixpoint tele_refs (Δ : ctx) : list (modexp * string)%type :=
 Definition open_anc (Ξ : gstack) (qd : qname) : Prop :=
   exists mp U suf, List.In (mp, U) Ξ /\ q_unit mp = q_unit qd /\ q_chain mp = q_chain qd ++ suf.
 
-(** A reference rooted at a unit is to a public member, or made inside the
-    module declaring it.  A reference rooted at a local module is not
-    checked: its members are local. *)
-Definition ref_ok (Θ : gdeps) (Ξ : gstack) (r : (modexp * string)%type) : Prop :=
-  match modexp_spine (fst r) with
+(** A reference to [x] in a module reached from a unit is to a public
+    member, or made inside the module declaring it. *)
+Definition glob_ok (Θ : gdeps) (Ξ : gstack) (H : modexp) (x : string) : Prop :=
+  match modexp_spine H with
   | (me_unit fp, _, pre) =>
-      forall qd, mdecl Θ Ξ (me_unit fp) (pre ++ snd r :: nil) qd true -> open_anc Ξ qd
+      forall qd, mdecl Θ Ξ (me_unit fp) (pre ++ x :: nil) qd true -> open_anc Ξ qd
   | _ => True
   end.
 
-Definition acc_ok (Θ : gdeps) (Ξ : gstack) (l : list (modexp * string)%type) : Prop :=
+(** A reference into a local body is to a public entry: inside the body,
+    its entries are variables, not references. *)
+Definition ref_ok (Θ : gdeps) (Ξ : gstack) (r : (ptab * string)%type) : Prop :=
+  match fst r with
+  | pt_glob H => glob_ok Θ Ξ H (snd r)
+  | pt_body _ es => option_map fst (tab_find (snd r) es) <> Some true
+  | pt_none => True
+  end.
+
+Definition acc_ok (Θ : gdeps) (Ξ : gstack) (l : list (ptab * string)%type) : Prop :=
   List.Forall (ref_ok Θ Ξ) l.
 
 (** Accessibility reads declarations, which equal lookups preserve. *)
@@ -243,7 +337,7 @@ Lemma acc_ok_dsub : forall Θ1 Θ2 Ξ, Θ2 ⊑ Θ1 ->
     forall l, acc_ok Θ1 Ξ l -> acc_ok Θ2 Ξ l.
 Proof.
   intros * Hs l Hl; eapply List.Forall_impl; [| exact Hl ].
-  intros [H x]; unfold ref_ok; cbn [fst snd].
+  intros [[| H |] x]; unfold ref_ok, glob_ok; cbn [fst snd]; auto.
   destruct (modexp_spine H) as [[[] args] pre]; auto.
   intros Hok qd Hd; apply Hok; eapply mdecl_dsub; eassumption.
 Qed.

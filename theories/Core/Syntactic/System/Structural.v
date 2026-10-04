@@ -538,8 +538,6 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
     destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; auto.
-  - destruct Hs as (Hs & Hc); split; auto.
-    destruct c, c'; cbn in *; auto.
 Qed.
 
 Lemma body_shape_sub : forall Φ Φ' σ σ', body_shape Φ Φ' -> body_shape (gmod_sub Φ σ) (gmod_sub Φ' σ').
@@ -547,8 +545,6 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] * Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); repeat split; auto.
     destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; auto.
-  - destruct Hs as (Hs & Hc); split; auto.
-    destruct c, c'; cbn in *; auto.
 Qed.
 
 Lemma exp_wk_sub_extend_mod : forall M H φ,
@@ -588,47 +584,6 @@ Lemma wf_wk_ext_of_ext : forall Θ Ξ Γ Ψ Ψ' Δ φ,
     Θ ⍮ Ξ ⍮ tele_wk Ψ' φ ++ Δ ⊢w wk_qn (length Ψ') φ : Ψ' ++ Γ.
 Proof.
   intros * Hφ HΨ HΨφ; split; apply wf_wk_ext; eauto using ext_eq_ctx_left, ext_eq_ctx_right.
-Qed.
-
-(** The import checks of a body, moved along a weakening of the unit. *)
-Lemma wk_body_checks : forall Θ Ξ Γ Δu Φ Δ φ,
-    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    ⊢ Θ ⍮ Ξ ⍮ (body_ctx Φ ++ Δu) ++ Γ ->
-    ⊢ Θ ⍮ Ξ ⍮ tele_wk (body_ctx Φ ++ Δu) φ ++ Δ ->
-    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
-       forall Δ1 φ0, Θ ⍮ Ξ ⍮ Δ1 ⊢w φ0 : body_ctx Φ0 ++ Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ1 ⊢ᵐ modexp_wk E φ0 ≈ modexp_wk E φ0) ->
-    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
-       member_ok Θ Ξ (body_ctx Φ0 ++ Δu ++ Γ) E n) ->
-    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks (gmod_wk Φ (wk_qn (length Δu) φ))) ->
-       Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ tele_wk Δu φ ++ Δ ⊢ᵐ E ≈ E) /\
-    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks (gmod_wk Φ (wk_qn (length Δu) φ))) -> List.In n ns ->
-       member_ok Θ Ξ (body_ctx Φ0 ++ tele_wk Δu φ ++ Δ) E n).
-Proof.
-  intros * Hφ HΨ HΨφ HE Hm.
-  assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt).
-  split.
-  - intros Φ0' E' ns Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
-    injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
-    destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
-    rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
-    assert (Hlift : Θ ⍮ Ξ ⍮ tele_wk (body_ctx Φ0 ++ Δu) φ ++ Δ ⊢w wk_qn (length (body_ctx Φ0 ++ Δu)) φ : (body_ctx Φ0 ++ Δu) ++ Γ).
-    { rewrite HΨ1, <- !List.app_assoc in HΨ, HΨφ; rewrite tele_wk_app, <- List.app_assoc in HΨφ.
-      apply wf_wk_ext; [ assumption | eapply ctx_app_wf_tail; eassumption | rewrite <- !List.app_assoc in HΨ |- *; exact (ctx_app_wf_tail _ _ Ψ1 _ HΨ) ]. }
-    assert (Heqw : wk_eq (wk_qn (gm_binders Φ0) (wk_qn (length Δu) φ)) (wk_qn (length (body_ctx Φ0 ++ Δu)) φ))
-      by (rewrite wk_qn_add, List.length_app, length_body_ctx; reflexivity).
-    rewrite (modexp_wk_wk_eq _ _ _ Heqw); rewrite <- List.app_assoc in Hlift; eauto.
-  - intros Φ0' E' ns n Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
-    injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
-    intros Hn.
-    rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
-    assert (Heqw : wk_eq (wk_qn (gm_binders Φ0) (wk_qn (length Δu) φ)) (wk_qn (length (body_ctx Φ0 ++ Δu)) φ))
-      by (rewrite wk_qn_add, List.length_app, length_body_ctx; reflexivity).
-    rewrite (modexp_wk_wk_eq _ _ _ Heqw).
-    destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
-      [ eapply (member_type_wk_term _ _ Hc) | eapply (member_type_wk_mod _ _ Hc) ]; try eassumption;
-      rewrite List.app_assoc; apply wk_mod_compat_ext; eauto with mctt.
 Qed.
 
 (** ** Weakening Preserves the Judgments ([wk_preserves_wf]) *)
@@ -719,23 +674,15 @@ Proof.
     match goal with
     | IHx : forall _ _, wf_wk _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_wk (body_ctx ?Φ ++ ?Δu) _) (tele_wk (body_ctx ?Φ' ++ ?Δu') _),
       Hx : wf_ext_eq _ _ ?Γ _ _,
-      HE : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> forall _ _, _,
-      Hm : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> _,
-      HE' : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> forall _ _, _,
-      Hm' : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> _,
       Hφ : wf_wk _ _ _ ?Γ _ |- _ =>
         let Hxφ := fresh "Hxφ" in
         pose proof (IHx _ _ Hφ) as Hxφ;
-        let Hc1 := fresh "Hc" in let Hc2 := fresh "Hc" in let Hc3 := fresh "Hc" in let Hc4 := fresh "Hc" in
-        destruct (wk_body_checks _ _ _ Δu Φ _ _ Hφ ltac:(eauto with mctt) ltac:(eauto with mctt) HE Hm) as [Hc1 Hc2];
-        destruct (wk_body_checks _ _ _ Δu' Φ' _ _ Hφ ltac:(eauto with mctt) ltac:(eauto with mctt) HE' Hm') as [Hc3 Hc4];
         eapply wf_unit_eq_body;
         [ rewrite !body_ctx_wk, <- !tele_wk_app; exact Hxφ
         | apply tele_ass_wk; assumption | apply tele_ass_wk; assumption
         | rewrite !length_tele_wk; assumption
         | apply body_shape_wk; assumption
-        | rewrite gm_names_wk; assumption
-        | exact Hc1 | exact Hc2 | exact Hc3 | exact Hc4 ]
+        | rewrite gm_names_wk; assumption ]
     end ].
   (** The remaining cases name their induction hypotheses by shape. *)
   all: try solve [ rewrite !gunit_wk_mk; cbn [moddef_wk];
@@ -1274,48 +1221,6 @@ Proof.
   intros * Hσ HΨ HΨσ; split; apply wf_sub_ext; eauto using ext_eq_ctx_left, ext_eq_ctx_right.
 Qed.
 
-(** The import checks of a body unit, moved by a substitution. *)
-Lemma sub_body_checks : forall Θ Ξ Γ Δu Φ Δ σ,
-    Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
-    ⊢ Θ ⍮ Ξ ⍮ (body_ctx Φ ++ Δu) ++ Γ ->
-    ⊢ Θ ⍮ Ξ ⍮ tele_sub (body_ctx Φ ++ Δu) σ ++ Δ ->
-    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
-       forall Δ1 σ0, Θ ⍮ Ξ ⍮ Δ1 ⊢s σ0 : body_ctx Φ0 ++ Δu ++ Γ -> Θ ⍮ Ξ ⍮ Δ1 ⊢ᵐ E[σ0]ᵐ ≈ E[σ0]ᵐ) ->
-    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
-       member_ok Θ Ξ (body_ctx Φ0 ++ Δu ++ Γ) E n) ->
-    (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks (gmod_sub Φ (sb_qn (length Δu) σ))) ->
-       Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ tele_sub Δu σ ++ Δ ⊢ᵐ E ≈ E) /\
-    (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks (gmod_sub Φ (sb_qn (length Δu) σ))) -> List.In n ns ->
-       member_ok Θ Ξ (body_ctx Φ0 ++ tele_sub Δu σ ++ Δ) E n).
-Proof.
-  intros * Hσ HΨ HΨσ HE Hm.
-  assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt).
-  split.
-  - intros Φ0' E' ns Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
-    injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
-    destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
-    rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
-    assert (Hlift : Θ ⍮ Ξ ⍮ tele_sub (body_ctx Φ0 ++ Δu) σ ++ Δ ⊢s sb_qn (length (body_ctx Φ0 ++ Δu)) σ : (body_ctx Φ0 ++ Δu) ++ Γ).
-    { rewrite HΨ1, <- !List.app_assoc in HΨ, HΨσ; rewrite tele_sub_app, <- List.app_assoc in HΨσ.
-      apply wf_sub_ext; [ assumption | eapply ctx_app_wf_tail; eassumption
-                        | rewrite <- !List.app_assoc in HΨ |- *; exact (ctx_app_wf_tail _ _ Ψ1 _ HΨ) ]. }
-    assert (Heqs : sb_eq (sb_qn (gm_binders Φ0) (sb_qn (length Δu) σ)) (sb_qn (length (body_ctx Φ0 ++ Δu)) σ))
-      by (rewrite sb_qn_add, List.length_app, length_body_ctx; reflexivity).
-    rewrite (modexp_sub_sb_eq _ _ _ Heqs); rewrite <- List.app_assoc in Hlift; eauto.
-  - intros Φ0' E' ns n Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
-    injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
-    intros Hn.
-    rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
-    assert (Heqs : sb_eq (sb_qn (gm_binders Φ0) (sb_qn (length Δu) σ)) (sb_qn (length (body_ctx Φ0 ++ Δu)) σ))
-      by (rewrite sb_qn_add, List.length_app, length_body_ctx; reflexivity).
-    rewrite (modexp_sub_sb_eq _ _ _ Heqs).
-    destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
-      [ eapply (member_type_sub_term _ _ Hc) | eapply (member_type_sub_mod _ _ Hc) ]; try eassumption;
-      rewrite List.app_assoc; apply sub_mod_compat_ext; eauto with mctt.
-Qed.
-
 (** ** Substitution Preserves the Judgments ([sub_preserves_wf]) *)
 
 Lemma sub_preserves_wf :
@@ -1426,23 +1331,15 @@ Proof.
     match goal with
     | IHx : forall _ _, wf_sub _ _ _ ?Γ _ -> wf_ext_eq _ _ _ (tele_sub (body_ctx ?Φ ++ ?Δu) _) (tele_sub (body_ctx ?Φ' ++ ?Δu') _),
       Hx : wf_ext_eq _ _ ?Γ _ _,
-      HE : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> forall _ _, _,
-      Hm : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ) -> _,
-      HE' : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> forall _ _, _,
-      Hm' : forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks ?Φ') -> _,
       Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
         let Hxσ := fresh "Hxσ" in
         pose proof (IHx _ _ Hσ) as Hxσ;
-        let Hc1 := fresh "Hc" in let Hc2 := fresh "Hc" in let Hc3 := fresh "Hc" in let Hc4 := fresh "Hc" in
-        destruct (sub_body_checks _ _ _ Δu Φ _ _ Hσ ltac:(eauto with mctt) ltac:(eauto with mctt) HE Hm) as [Hc1 Hc2];
-        destruct (sub_body_checks _ _ _ Δu' Φ' _ _ Hσ ltac:(eauto with mctt) ltac:(eauto with mctt) HE' Hm') as [Hc3 Hc4];
         eapply wf_unit_eq_body;
         [ rewrite !body_ctx_sub, <- !tele_sub_app; exact Hxσ
         | apply tele_ass_sub; assumption | apply tele_ass_sub; assumption
         | rewrite !length_tele_sub; assumption
         | apply body_shape_sub; assumption
-        | rewrite gm_names_sub; assumption
-        | exact Hc1 | exact Hc2 | exact Hc3 | exact Hc4 ]
+        | rewrite gm_names_sub; assumption ]
     end ].
   (** Module expressions. *)
   all: try solve [

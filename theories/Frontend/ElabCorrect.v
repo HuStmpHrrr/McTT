@@ -229,8 +229,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_import fq ip spec :: cs' =>
       let* _ := echeck (loaded_b S fq) "the unit is not imported" in
       let* E := elab_itarget S fq ip in
-      let* F := elab_ibinds E spec nil in
-      elab_body (F ++ S) (gm_check Φ (bc_import E (ispec_names spec))) cs'
+      elab_body (item_ents (ispec_items spec) ++ S) (gm_import Φ E (ispec_items spec)) cs'
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
   end.
 
@@ -369,11 +368,10 @@ Proof.
     + inversion Hg; subst. to_elab. reflexivity.
   - (* c_import *)
     intros fq ip spec cs Hcs S Φ Φ'; cbn [elab_body]. split; intros Hg.
-    + dest_eok. econstructor; [ apply loaded_b_iff | apply itarget_iff | apply ibinds_iff | apply Hcs ]; eassumption.
+    + dest_eok. econstructor; [ apply loaded_b_iff | apply itarget_iff | apply Hcs ]; eassumption.
     + inversion Hg; subst.
       rewrite (proj2 (loaded_b_iff _ _)) by assumption; cbn [echeck ebind].
       rewrite (proj2 (itarget_iff _ _ _ _)) by eassumption; cbn [ebind].
-      rewrite (proj2 (ibinds_iff _ _ _ _)) by eassumption; cbn [ebind].
       apply Hcs; assumption.
   - (* c_eval *)
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
@@ -392,8 +390,8 @@ Qed.
 
 (** ** Imports *)
 
-Lemma import_iff : forall O F fq ip spec F' c,
-    elab_import O F fq ip spec = eok (F', c) <-> simport O F (Cst.c_import fq ip spec) F' c.
+Lemma import_iff : forall O F fq ip spec F' ls c,
+    elab_import O F fq ip spec = eok (F', ls, c) <-> simport O F (Cst.c_import fq ip spec) F' ls c.
 Proof.
   intros; unfold elab_import. split.
   - intros H; dest_eok. constructor; [ apply itarget_iff | apply ibinds_iff ]; eassumption.
@@ -408,7 +406,7 @@ Section Commands.
   Variable fp : path.
 
   Definition Pcmd (c : Cst.cmd) : Prop :=
-    forall ch O F F' c', elab_cmd fp ch O F c = eok (F', c') <-> scmd fp ch O F c F' c'.
+    forall ch O F F' cs', elab_cmd fp ch O F c = eok (F', cs') <-> scmd fp ch O F c F' cs'.
   Definition Pcmds (cs : list Cst.cmd) : Prop :=
     forall ch O F ccs, elab_cmds fp ch O F cs = eok ccs <-> scmds fp ch O F cs ccs.
 
@@ -433,7 +431,7 @@ Section Commands.
       | H : elab_cmds_with (elab_cmd fp) _ _ _ ?cs = eok _, IH : Pcmds ?cs |- _ => apply IH in H
       | H : check_params _ = eok _ |- _ => apply check_params_ok in H
       | H : check_fresh _ _ = eok _ |- _ => apply check_fresh_ok in H
-      | H : elab_import _ _ _ _ _ = eok (_, _) |- _ => apply import_iff in H
+      | H : elab_import _ _ _ _ _ = eok (_, _, _) |- _ => apply import_iff in H
       end.
 
   Ltac cmd_elab :=
@@ -444,7 +442,7 @@ Section Commands.
       | H : scmds fp _ _ _ ?cs _, IH : Pcmds ?cs |- _ => apply IH in H
       | H : NoDup (map fst ?ps) |- _ => apply (check_params_ok ps tt) in H
       | H : fresh ?x ?F |- _ => apply (check_fresh_ok x F tt) in H
-      | H : simport _ _ (Cst.c_import _ _ _) _ _ |- _ => apply import_iff in H
+      | H : simport _ _ (Cst.c_import _ _ _) _ _ _ |- _ => apply import_iff in H
       end;
     unfold elab_cmds in *;
     repeat match goal with
@@ -463,8 +461,10 @@ Section Commands.
     - intros m x o1 o2 _ _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros fq ip spec ch O F F' c'; cbn [elab_cmd]. split.
-      + intros H; constructor; apply import_iff, H.
-      + intros H; inversion H; subst; apply import_iff; assumption.
+      + intros H; apply ebind_eok in H as ([[F1 ls] ci] & H & E); injection E as <- <-.
+        constructor; apply import_iff, H.
+      + intros H; inversion H; subst.
+        match goal with Hs : simport _ _ _ _ _ _ |- _ => apply import_iff in Hs; rewrite Hs end; reflexivity.
     - intros o [oA |] _ _ ch O F F' c'; cbn [elab_cmd].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
   Qed.
@@ -475,32 +475,33 @@ End Commands.
 
 (** ** Units *)
 
-Lemma imports_iff : forall cs O O' imps, elab_imports O cs = eok (O', imps) <-> simports O cs O' imps.
+Lemma imports_iff : forall cs O O' lds imps, elab_imports O cs = eok (O', lds, imps) <-> simports O cs O' lds imps.
 Proof.
-  induction cs as [| c cs IH]; intros O O' imps; cbn [elab_imports].
+  induction cs as [| c cs IH]; intros O O' lds imps; cbn [elab_imports].
   - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
   - destruct c as [| | fq ip spec |]; try (split; [ discriminate | intros H; inversion H ]).
     split.
-    + intros H; dest_eok. destruct x as [O1 c], x0 as [O2 is]; cbn [fst snd] in *. dest_eok.
+    + intros H; apply ebind_eok in H as ([[O1 ls] ci] & H1 & H); apply ebind_eok in H as ([[O2 lds'] is] & H2 & E).
+      injection E as <- <- <-.
       econstructor; [ apply import_iff | apply IH ]; eassumption.
     + intros H; inversion H; subst.
-      rewrite (proj2 (import_iff _ _ _ _ _ _ _)) by eassumption; cbn [ebind fst snd].
-      rewrite (proj2 (IH _ _ _)) by eassumption. reflexivity.
+      rewrite (proj2 (import_iff _ _ _ _ _ _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (IH _ _ _ _)) by eassumption. reflexivity.
 Qed.
 
 Theorem elaborate_core_iff : forall prg u, elaborate_core prg = eok u <-> elab_spec prg u.
 Proof.
   intros [imports [[fp ps] cs]] u. unfold elaborate_core. split.
-  - intros H; dest_eok. destruct x as [O imps]; cbn [fst snd] in *.
+  - intros H; apply ebind_eok in H as ([[O lds] imps] & Hi & H); dest_eok.
     repeat match goal with
-      | H : elab_imports _ _ = eok (_, _) |- _ => apply imports_iff in H
+      | H : elab_imports _ _ = eok (_, _, _) |- _ => apply imports_iff in H
       | H : check_params _ = eok _ |- _ => apply check_params_ok in H
       | H : elab_params _ _ = eok _ |- _ => apply elab_params_iff in H
       | H : elab_cmds _ _ _ _ _ = eok _ |- _ => apply elab_cmds_iff in H
       end.
     econstructor; eassumption.
   - intros Hs; inversion Hs; subst.
-    rewrite (proj2 (imports_iff _ _ _ _)) by eassumption; cbn [ebind fst snd].
+    rewrite (proj2 (imports_iff _ _ _ _ _)) by eassumption; cbn [ebind].
     rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
     rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
     rewrite (proj2 (elab_cmds_iff _ _ _ _ _ _)) by eassumption. reflexivity.

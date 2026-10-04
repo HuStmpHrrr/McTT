@@ -15,6 +15,13 @@ From Mctt.Extraction Require Import MemberType.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
+(** A private member out of reach: declared in the module of a unit, or
+    an entry of a local body, at the chain of submodules [ch] from the local
+    module. *)
+Inductive priv_err : Set :=
+| pe_global : qname -> string -> priv_err
+| pe_local : list string -> string -> priv_err.
+
 Section PrivacyImpl.
   Variables (Θ : gdeps) (Ξ : gstack).
 
@@ -100,12 +107,12 @@ Section PrivacyImpl.
 
   Hypothesis Hg : ⊢g Θ ⍮ Ξ.
 
-  (** A reference is checked where the member it names is declared; a
-      failure names that module and the member. *)
-  Definition ref_check (r : (modexp * string)%type) :
-      { qx : qname * string | ~ ref_ok Θ Ξ r } + { ref_ok Θ Ξ r }.
+  (** A reference to a member reached from a unit is checked where the
+      member is declared; a failure names that module and the member. *)
+  Definition glob_check (H : modexp) (x : string) :
+      { qx : qname * string | ~ glob_ok Θ Ξ H x } + { glob_ok Θ Ξ H x }.
   Proof.
-    destruct r as [H x]; unfold ref_ok; cbn [fst snd].
+    unfold glob_ok.
     destruct (modexp_spine H) as [[[fp | k | H0 y | H0 N | U] args] pre]; try (right; exact I).
     destruct (decl_impl nil (me_unit fp) (pre ++ x :: nil) (mt_order_unit _ _ _ _ _ Hg)) as [[[qd [|]] Hd] | HN];
       cbn [fst snd] in *.
@@ -118,11 +125,23 @@ Section PrivacyImpl.
     - right; intros qd' Hd'; exfalso; exact (HN _ _ Hd').
   Defined.
 
-  Definition refs_check : forall (l : list (modexp * string)%type),
-      { qx : qname * string | ~ acc_ok Θ Ξ l } + { acc_ok Θ Ξ l }.
+  Definition ref_check (r : (ptab * string)%type) :
+      { e : priv_err | ~ ref_ok Θ Ξ r } + { ref_ok Θ Ξ r }.
+  Proof.
+    destruct r as [[| H | ch es] x]; unfold ref_ok; cbn [fst snd].
+    - right; exact I.
+    - destruct (glob_check H x) as [[qx Hq] | Hok]; [ left; exists (pe_global (fst qx) (snd qx)); exact Hq | right; exact Hok ].
+    - destruct (option_map fst (tab_find x es)) as [[|] |] eqn:E.
+      + left; exists (pe_local ch x); intros Hn; apply Hn; reflexivity.
+      + right; discriminate.
+      + right; discriminate.
+  Defined.
+
+  Definition refs_check : forall (l : list (ptab * string)%type),
+      { e : priv_err | ~ acc_ok Θ Ξ l } + { acc_ok Θ Ξ l }.
   Proof.
     induction l as [| r l IH]; [ right; constructor |].
-    destruct (ref_check r) as [[qx Hr] | Hr]; [ left; exists qx; intros Hall; inversion Hall; contradiction |].
-    destruct IH as [[qx Hl] | Hl]; [ left; exists qx; intros Hall; inversion Hall; contradiction | right; constructor; assumption ].
+    destruct (ref_check r) as [[e Hr] | Hr]; [ left; exists e; intros Hall; inversion Hall; contradiction |].
+    destruct IH as [[e Hl] | Hl]; [ left; exists e; intros Hall; inversion Hall; contradiction | right; constructor; assumption ].
   Defined.
 End PrivacyImpl.

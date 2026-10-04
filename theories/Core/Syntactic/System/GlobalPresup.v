@@ -215,7 +215,7 @@ Lemma Emb_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
     gc_sub Θ1 Ξ1 Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> Emb Θ1 Ξ1 Θ2 Ξ2.
 Proof. intros * H [Hg He]; constructor; [ assumption | eapply gc_sub_trans; eassumption ]. Qed.
 
-(** Member types, δ-reducts and member checks grow with resolution. *)
+(** Member types and δ-reducts grow with resolution. *)
 Lemma member_type_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H ch R,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_type Θ1 Ξ1 Γ H ch R -> member_type Θ2 Ξ2 Γ H ch R.
 Proof. intros * Hs; exact (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _). Qed.
@@ -223,12 +223,6 @@ Proof. intros * Hs; exact (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _). Qed.
 Lemma member_unfold_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H x M,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_unfold Θ1 Ξ1 Γ H x = Some M -> member_unfold Θ2 Ξ2 Γ H x = Some M.
 Proof. intros * Hs; exact (member_unfold_gc_sub _ _ _ _ Hs _ _ _ _). Qed.
-
-Lemma member_ok_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H n,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_ok Θ1 Ξ1 Γ H n -> member_ok Θ2 Ξ2 Γ H n.
-Proof.
-  intros * Hs [(A & HA) | (A & HA)]; [ left | right ]; exists A; eapply member_type_emb; eassumption.
-Qed.
 
 (** A judgment moves along an embedding unchanged. *)
 Theorem emb_preserves_wf : forall Θ1 Ξ1 Θ2 Ξ2,
@@ -253,9 +247,7 @@ Proof.
   { apply syntactic_wf_mut_ind; intros; subst;
       repeat match goal with IH : ?x = ?x -> ?x' = ?x' -> _ |- _ => specialize (IH eq_refl eq_refl) end;
       try solve [ econstructor; eauto using gc_sub_resolve, member_type_emb, member_unfold_emb ].
-    (** The body unit's member checks are under binders. *)
-    all: econstructor; eauto; intros; eauto using member_ok_emb;
-      match goal with IH : forall _ _ _, _ -> forall _ _, _ |- _ => eapply IH; eauto end. }
+    all: econstructor; eauto. }
   destruct H as (Hc & He & Hq & Hst & Hx & Hu & Hm).
   repeat split; intros; eauto.
 Qed.

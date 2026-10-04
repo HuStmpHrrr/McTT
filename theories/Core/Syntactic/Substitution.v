@@ -199,8 +199,8 @@ Ltac syn_mut_ind :=
   lazymatch goal with
   | |- (forall M : exp, @?Pe M) /\ (forall H : modexp, @?Pm H) /\ (forall b : bnd, @?Pb b) /\
       (forall U : gunit, @?Pu U) /\ (forall D : moddef, @?Pd D) /\ (forall Φ : gmod, @?Pg Φ) /\
-      (forall c : bcheck, @?Pk c) /\ (forall E : gentry, @?Pn E) /\ (forall e : centry, @?Pc e) =>
-      apply (syn_mut_ind Pe Pm Pb Pu Pd Pg Pk Pn Pc)
+      (forall E : gentry, @?Pn E) /\ (forall e : centry, @?Pc e) =>
+      apply (syn_mut_ind Pe Pm Pb Pu Pd Pg Pn Pc)
   end.
 
 (** One case of the induction for a law in [_ext] form.  The variable cases
@@ -217,8 +217,8 @@ Ltac syn_ext_tele lift liftn :=
 
 Ltac syn_ext_case_with lift liftn vars :=
   intros; autorewrite with syn_ops; intros;
-  cbn [exp_wk modexp_wk bnd_wk moddef_wk gmod_wk bcheck_wk gentry_wk centry_wk
-       exp_sub modexp_sub bnd_sub moddef_sub gmod_sub bcheck_sub gentry_sub centry_sub];
+  cbn [exp_wk modexp_wk bnd_wk moddef_wk gmod_wk gentry_wk centry_wk
+       exp_sub modexp_sub bnd_sub moddef_sub gmod_sub gentry_sub centry_sub];
   autorewrite with syn_ops;
   repeat match goal with
          | B : option exp |- _ => destruct B; cbn iota
@@ -266,7 +266,6 @@ Lemma syn_wk_wk_eq :
   (forall U φ ψ, wk_eq φ ψ -> gunit_wk U φ = gunit_wk U ψ) /\
   (forall D φ ψ, wk_eq φ ψ -> moddef_wk D φ = moddef_wk D ψ) /\
   (forall Φ φ ψ, wk_eq φ ψ -> gmod_wk Φ φ = gmod_wk Φ ψ) /\
-  (forall c φ ψ, wk_eq φ ψ -> bcheck_wk c φ = bcheck_wk c ψ) /\
   (forall E φ ψ, wk_eq φ ψ -> gentry_wk E φ = gentry_wk E ψ) /\
   (forall e φ ψ, wk_eq φ ψ -> centry_wk e φ = centry_wk e ψ).
 Proof. syn_mut_ind; syn_ext_case wk_q_cong wk_qn_cong. Qed.
@@ -283,12 +282,10 @@ Corollary moddef_wk_wk_eq : forall D φ ψ, wk_eq φ ψ -> moddef_wk D φ = modd
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq))))). Qed.
 Corollary gmod_wk_wk_eq : forall Φ φ ψ, wk_eq φ ψ -> gmod_wk Φ φ = gmod_wk Φ ψ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq)))))). Qed.
-Corollary bcheck_wk_wk_eq : forall c φ ψ, wk_eq φ ψ -> bcheck_wk c φ = bcheck_wk c ψ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq))))))). Qed.
 Corollary gentry_wk_wk_eq : forall E φ ψ, wk_eq φ ψ -> gentry_wk E φ = gentry_wk E ψ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq))))))). Qed.
 Corollary centry_wk_wk_eq : forall e φ ψ, wk_eq φ ψ -> centry_wk e φ = centry_wk e ψ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_eq))))))). Qed.
 
 Lemma sentry_wk_wk_eq : forall e φ ψ, wk_eq φ ψ -> sentry_wk e φ = sentry_wk e ψ.
 Proof. intros [] * Heq; simpl; f_equal; auto using exp_wk_wk_eq, modexp_wk_wk_eq. Qed.
@@ -338,7 +335,6 @@ Lemma syn_wk_id_ext :
   (forall U φ, wk_eq φ wk_id -> gunit_wk U φ = U) /\
   (forall D φ, wk_eq φ wk_id -> moddef_wk D φ = D) /\
   (forall Φ φ, wk_eq φ wk_id -> gmod_wk Φ φ = Φ) /\
-  (forall c φ, wk_eq φ wk_id -> bcheck_wk c φ = c) /\
   (forall E φ, wk_eq φ wk_id -> gentry_wk E φ = E) /\
   (forall e φ, wk_eq φ wk_id -> centry_wk e φ = e).
 Proof. syn_mut_ind; syn_ext_case wk_q_id_ext wk_qn_id_ext. Qed.
@@ -355,12 +351,10 @@ Corollary moddef_wk_id_ext : forall D φ, wk_eq φ wk_id -> moddef_wk D φ = D.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext))))). Qed.
 Corollary gmod_wk_id_ext : forall Φ φ, wk_eq φ wk_id -> gmod_wk Φ φ = Φ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext)))))). Qed.
-Corollary bcheck_wk_id_ext : forall c φ, wk_eq φ wk_id -> bcheck_wk c φ = c.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext))))))). Qed.
 Corollary gentry_wk_id_ext : forall E φ, wk_eq φ wk_id -> gentry_wk E φ = E.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext))))))). Qed.
 Corollary centry_wk_id_ext : forall e φ, wk_eq φ wk_id -> centry_wk e φ = e.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_id_ext))))))). Qed.
 
 Corollary exp_wk_id : forall M, exp_wk M wk_id = M.
 Proof. intros; now apply exp_wk_id_ext. Qed.
@@ -374,8 +368,6 @@ Corollary moddef_wk_id : forall D, moddef_wk D wk_id = D.
 Proof. intros; now apply moddef_wk_id_ext. Qed.
 Corollary gmod_wk_id : forall Φ, gmod_wk Φ wk_id = Φ.
 Proof. intros; now apply gmod_wk_id_ext. Qed.
-Corollary bcheck_wk_id : forall c, bcheck_wk c wk_id = c.
-Proof. intros; now apply bcheck_wk_id_ext. Qed.
 Corollary gentry_wk_id : forall E, gentry_wk E wk_id = E.
 Proof. intros; now apply gentry_wk_id_ext. Qed.
 Corollary centry_wk_id : forall e, centry_wk e wk_id = e.
@@ -403,7 +395,6 @@ Lemma syn_wk_wk_ext :
   (forall U φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gunit_wk (gunit_wk U φ) ψ = gunit_wk U χ) /\
   (forall D φ ψ χ, wk_eq (φ ⊙ ψ) χ -> moddef_wk (moddef_wk D φ) ψ = moddef_wk D χ) /\
   (forall Φ φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gmod_wk (gmod_wk Φ φ) ψ = gmod_wk Φ χ) /\
-  (forall c φ ψ χ, wk_eq (φ ⊙ ψ) χ -> bcheck_wk (bcheck_wk c φ) ψ = bcheck_wk c χ) /\
   (forall E φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gentry_wk (gentry_wk E φ) ψ = gentry_wk E χ) /\
   (forall e φ ψ χ, wk_eq (φ ⊙ ψ) χ -> centry_wk (centry_wk e φ) ψ = centry_wk e χ).
 Proof. syn_mut_ind; syn_ext_case wk_q_compose_ext wk_qn_compose_ext. Qed.
@@ -420,12 +411,10 @@ Corollary moddef_wk_wk_ext : forall D φ ψ χ, wk_eq (φ ⊙ ψ) χ -> moddef_w
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext))))). Qed.
 Corollary gmod_wk_wk_ext : forall Φ φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gmod_wk (gmod_wk Φ φ) ψ = gmod_wk Φ χ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext)))))). Qed.
-Corollary bcheck_wk_wk_ext : forall c φ ψ χ, wk_eq (φ ⊙ ψ) χ -> bcheck_wk (bcheck_wk c φ) ψ = bcheck_wk c χ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext))))))). Qed.
 Corollary gentry_wk_wk_ext : forall E φ ψ χ, wk_eq (φ ⊙ ψ) χ -> gentry_wk (gentry_wk E φ) ψ = gentry_wk E χ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext))))))). Qed.
 Corollary centry_wk_wk_ext : forall e φ ψ χ, wk_eq (φ ⊙ ψ) χ -> centry_wk (centry_wk e φ) ψ = centry_wk e χ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_wk_ext))))))). Qed.
 
 Corollary exp_wk_wk : forall M φ ψ, exp_wk (exp_wk M φ) ψ = exp_wk M (φ ⊙ ψ).
 Proof. intros; now apply exp_wk_wk_ext. Qed.
@@ -439,8 +428,6 @@ Corollary moddef_wk_wk : forall D φ ψ, moddef_wk (moddef_wk D φ) ψ = moddef_
 Proof. intros; now apply moddef_wk_wk_ext. Qed.
 Corollary gmod_wk_wk : forall Φ φ ψ, gmod_wk (gmod_wk Φ φ) ψ = gmod_wk Φ (φ ⊙ ψ).
 Proof. intros; now apply gmod_wk_wk_ext. Qed.
-Corollary bcheck_wk_wk : forall c φ ψ, bcheck_wk (bcheck_wk c φ) ψ = bcheck_wk c (φ ⊙ ψ).
-Proof. intros; now apply bcheck_wk_wk_ext. Qed.
 Corollary gentry_wk_wk : forall E φ ψ, gentry_wk (gentry_wk E φ) ψ = gentry_wk E (φ ⊙ ψ).
 Proof. intros; now apply gentry_wk_wk_ext. Qed.
 Corollary centry_wk_wk : forall e φ ψ, centry_wk (centry_wk e φ) ψ = centry_wk e (φ ⊙ ψ).
@@ -512,7 +499,6 @@ Lemma syn_sub_sb_eq :
   (forall U σ τ, sb_eq σ τ -> gunit_sub U σ = gunit_sub U τ) /\
   (forall D σ τ, sb_eq σ τ -> moddef_sub D σ = moddef_sub D τ) /\
   (forall Φ σ τ, sb_eq σ τ -> gmod_sub Φ σ = gmod_sub Φ τ) /\
-  (forall c σ τ, sb_eq σ τ -> bcheck_sub c σ = bcheck_sub c τ) /\
   (forall E σ τ, sb_eq σ τ -> gentry_sub E σ = gentry_sub E τ) /\
   (forall e σ τ, sb_eq σ τ -> centry_sub e σ = centry_sub e τ).
 Proof. syn_mut_ind; syn_ext_case sb_q_cong sb_qn_cong. Qed.
@@ -529,12 +515,10 @@ Corollary moddef_sub_sb_eq : forall D σ τ, sb_eq σ τ -> moddef_sub D σ = mo
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq))))). Qed.
 Corollary gmod_sub_sb_eq : forall Φ σ τ, sb_eq σ τ -> gmod_sub Φ σ = gmod_sub Φ τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq)))))). Qed.
-Corollary bcheck_sub_sb_eq : forall c σ τ, sb_eq σ τ -> bcheck_sub c σ = bcheck_sub c τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq))))))). Qed.
 Corollary gentry_sub_sb_eq : forall E σ τ, sb_eq σ τ -> gentry_sub E σ = gentry_sub E τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq))))))). Qed.
 Corollary centry_sub_sb_eq : forall e σ τ, sb_eq σ τ -> centry_sub e σ = centry_sub e τ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sb_eq))))))). Qed.
 
 Lemma sentry_sub_sb_eq : forall e σ τ, sb_eq σ τ -> sentry_sub e σ = sentry_sub e τ.
 Proof. intros [] * Heq; simpl; f_equal; auto using exp_sub_sb_eq, modexp_sub_sb_eq. Qed.
@@ -612,7 +596,6 @@ Lemma syn_sub_of_wk_ext :
   (forall U φ σ, sb_eq (ι φ) σ -> gunit_sub U σ = gunit_wk U φ) /\
   (forall D φ σ, sb_eq (ι φ) σ -> moddef_sub D σ = moddef_wk D φ) /\
   (forall Φ φ σ, sb_eq (ι φ) σ -> gmod_sub Φ σ = gmod_wk Φ φ) /\
-  (forall c φ σ, sb_eq (ι φ) σ -> bcheck_sub c σ = bcheck_wk c φ) /\
   (forall E φ σ, sb_eq (ι φ) σ -> gentry_sub E σ = gentry_wk E φ) /\
   (forall e φ σ, sb_eq (ι φ) σ -> centry_sub e σ = centry_wk e φ).
 Proof. syn_mut_ind; syn_ext_case sb_q_of_wk_ext sb_qn_of_wk_ext. Qed.
@@ -629,12 +612,10 @@ Corollary moddef_sub_of_wk_ext : forall D φ σ, sb_eq (ι φ) σ -> moddef_sub 
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext))))). Qed.
 Corollary gmod_sub_of_wk_ext : forall Φ φ σ, sb_eq (ι φ) σ -> gmod_sub Φ σ = gmod_wk Φ φ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext)))))). Qed.
-Corollary bcheck_sub_of_wk_ext : forall c φ σ, sb_eq (ι φ) σ -> bcheck_sub c σ = bcheck_wk c φ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext))))))). Qed.
 Corollary gentry_sub_of_wk_ext : forall E φ σ, sb_eq (ι φ) σ -> gentry_sub E σ = gentry_wk E φ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext))))))). Qed.
 Corollary centry_sub_of_wk_ext : forall e φ σ, sb_eq (ι φ) σ -> centry_sub e σ = centry_wk e φ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_of_wk_ext))))))). Qed.
 
 Corollary exp_sub_of_wk : forall M φ, exp_sub M (ι φ) = exp_wk M φ.
 Proof. intros; now apply exp_sub_of_wk_ext. Qed.
@@ -648,8 +629,6 @@ Corollary moddef_sub_of_wk : forall D φ, moddef_sub D (ι φ) = moddef_wk D φ.
 Proof. intros; now apply moddef_sub_of_wk_ext. Qed.
 Corollary gmod_sub_of_wk : forall Φ φ, gmod_sub Φ (ι φ) = gmod_wk Φ φ.
 Proof. intros; now apply gmod_sub_of_wk_ext. Qed.
-Corollary bcheck_sub_of_wk : forall c φ, bcheck_sub c (ι φ) = bcheck_wk c φ.
-Proof. intros; now apply bcheck_sub_of_wk_ext. Qed.
 Corollary gentry_sub_of_wk : forall E φ, gentry_sub E (ι φ) = gentry_wk E φ.
 Proof. intros; now apply gentry_sub_of_wk_ext. Qed.
 Corollary centry_sub_of_wk : forall e φ, centry_sub e (ι φ) = centry_wk e φ.
@@ -686,7 +665,6 @@ Lemma syn_sub_id_ext :
   (forall U σ, sb_eq σ Id -> gunit_sub U σ = U) /\
   (forall D σ, sb_eq σ Id -> moddef_sub D σ = D) /\
   (forall Φ σ, sb_eq σ Id -> gmod_sub Φ σ = Φ) /\
-  (forall c σ, sb_eq σ Id -> bcheck_sub c σ = c) /\
   (forall E σ, sb_eq σ Id -> gentry_sub E σ = E) /\
   (forall e σ, sb_eq σ Id -> centry_sub e σ = e).
 Proof. syn_mut_ind; syn_ext_case sb_q_id_ext sb_qn_id_ext. Qed.
@@ -703,12 +681,10 @@ Corollary moddef_sub_id_ext : forall D σ, sb_eq σ Id -> moddef_sub D σ = D.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext))))). Qed.
 Corollary gmod_sub_id_ext : forall Φ σ, sb_eq σ Id -> gmod_sub Φ σ = Φ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext)))))). Qed.
-Corollary bcheck_sub_id_ext : forall c σ, sb_eq σ Id -> bcheck_sub c σ = c.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext))))))). Qed.
 Corollary gentry_sub_id_ext : forall E σ, sb_eq σ Id -> gentry_sub E σ = E.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext))))))). Qed.
 Corollary centry_sub_id_ext : forall e σ, sb_eq σ Id -> centry_sub e σ = e.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_id_ext))))))). Qed.
 
 Corollary exp_sub_id : forall M, exp_sub M Id = M.
 Proof. intros; now apply exp_sub_id_ext. Qed.
@@ -722,8 +698,6 @@ Corollary moddef_sub_id : forall D, moddef_sub D Id = D.
 Proof. intros; now apply moddef_sub_id_ext. Qed.
 Corollary gmod_sub_id : forall Φ, gmod_sub Φ Id = Φ.
 Proof. intros; now apply gmod_sub_id_ext. Qed.
-Corollary bcheck_sub_id : forall c, bcheck_sub c Id = c.
-Proof. intros; now apply bcheck_sub_id_ext. Qed.
 Corollary gentry_sub_id : forall E, gentry_sub E Id = E.
 Proof. intros; now apply gentry_sub_id_ext. Qed.
 Corollary centry_sub_id : forall e, centry_sub e Id = e.
@@ -762,7 +736,6 @@ Lemma syn_wk_sub_ext :
   (forall U σ φ τ, sb_eq (sb_wk σ φ) τ -> gunit_wk (gunit_sub U σ) φ = gunit_sub U τ) /\
   (forall D σ φ τ, sb_eq (sb_wk σ φ) τ -> moddef_wk (moddef_sub D σ) φ = moddef_sub D τ) /\
   (forall Φ σ φ τ, sb_eq (sb_wk σ φ) τ -> gmod_wk (gmod_sub Φ σ) φ = gmod_sub Φ τ) /\
-  (forall c σ φ τ, sb_eq (sb_wk σ φ) τ -> bcheck_wk (bcheck_sub c σ) φ = bcheck_sub c τ) /\
   (forall E σ φ τ, sb_eq (sb_wk σ φ) τ -> gentry_wk (gentry_sub E σ) φ = gentry_sub E τ) /\
   (forall e σ φ τ, sb_eq (sb_wk σ φ) τ -> centry_wk (centry_sub e σ) φ = centry_sub e τ).
 Proof. syn_mut_ind; syn_ext_case sb_q_wk_ext sb_qn_wk_ext. Qed.
@@ -779,12 +752,10 @@ Corollary moddef_wk_sub_ext : forall D σ φ τ, sb_eq (sb_wk σ φ) τ -> modde
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext))))). Qed.
 Corollary gmod_wk_sub_ext : forall Φ σ φ τ, sb_eq (sb_wk σ φ) τ -> gmod_wk (gmod_sub Φ σ) φ = gmod_sub Φ τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext)))))). Qed.
-Corollary bcheck_wk_sub_ext : forall c σ φ τ, sb_eq (sb_wk σ φ) τ -> bcheck_wk (bcheck_sub c σ) φ = bcheck_sub c τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext))))))). Qed.
 Corollary gentry_wk_sub_ext : forall E σ φ τ, sb_eq (sb_wk σ φ) τ -> gentry_wk (gentry_sub E σ) φ = gentry_sub E τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext))))))). Qed.
 Corollary centry_wk_sub_ext : forall e σ φ τ, sb_eq (sb_wk σ φ) τ -> centry_wk (centry_sub e σ) φ = centry_sub e τ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_ext))))))). Qed.
 
 Corollary exp_wk_sub : forall M σ φ, exp_wk (exp_sub M σ) φ = exp_sub M (sb_wk σ φ).
 Proof. intros; now apply exp_wk_sub_ext. Qed.
@@ -798,8 +769,6 @@ Corollary moddef_wk_sub : forall D σ φ, moddef_wk (moddef_sub D σ) φ = modde
 Proof. intros; now apply moddef_wk_sub_ext. Qed.
 Corollary gmod_wk_sub : forall Φ σ φ, gmod_wk (gmod_sub Φ σ) φ = gmod_sub Φ (sb_wk σ φ).
 Proof. intros; now apply gmod_wk_sub_ext. Qed.
-Corollary bcheck_wk_sub : forall c σ φ, bcheck_wk (bcheck_sub c σ) φ = bcheck_sub c (sb_wk σ φ).
-Proof. intros; now apply bcheck_wk_sub_ext. Qed.
 Corollary gentry_wk_sub : forall E σ φ, gentry_wk (gentry_sub E σ) φ = gentry_sub E (sb_wk σ φ).
 Proof. intros; now apply gentry_wk_sub_ext. Qed.
 Corollary centry_wk_sub : forall e σ φ, centry_wk (centry_sub e σ) φ = centry_sub e (sb_wk σ φ).
@@ -853,7 +822,6 @@ Lemma syn_sub_wk_ext :
   (forall U φ σ τ, (forall x, σ (φ x) = τ x) -> gunit_sub (gunit_wk U φ) σ = gunit_sub U τ) /\
   (forall D φ σ τ, (forall x, σ (φ x) = τ x) -> moddef_sub (moddef_wk D φ) σ = moddef_sub D τ) /\
   (forall Φ φ σ τ, (forall x, σ (φ x) = τ x) -> gmod_sub (gmod_wk Φ φ) σ = gmod_sub Φ τ) /\
-  (forall c φ σ τ, (forall x, σ (φ x) = τ x) -> bcheck_sub (bcheck_wk c φ) σ = bcheck_sub c τ) /\
   (forall E φ σ τ, (forall x, σ (φ x) = τ x) -> gentry_sub (gentry_wk E φ) σ = gentry_sub E τ) /\
   (forall e φ σ τ, (forall x, σ (φ x) = τ x) -> centry_sub (centry_wk e φ) σ = centry_sub e τ).
 Proof. syn_mut_ind; syn_ext_case sb_q_wk_pre_ext sb_qn_wk_pre_ext. Qed.
@@ -870,12 +838,10 @@ Corollary moddef_sub_wk_ext : forall D φ σ τ, (forall x, σ (φ x) = τ x) ->
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext))))). Qed.
 Corollary gmod_sub_wk_ext : forall Φ φ σ τ, (forall x, σ (φ x) = τ x) -> gmod_sub (gmod_wk Φ φ) σ = gmod_sub Φ τ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext)))))). Qed.
-Corollary bcheck_sub_wk_ext : forall c φ σ τ, (forall x, σ (φ x) = τ x) -> bcheck_sub (bcheck_wk c φ) σ = bcheck_sub c τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext))))))). Qed.
 Corollary gentry_sub_wk_ext : forall E φ σ τ, (forall x, σ (φ x) = τ x) -> gentry_sub (gentry_wk E φ) σ = gentry_sub E τ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext))))))). Qed.
 Corollary centry_sub_wk_ext : forall e φ σ τ, (forall x, σ (φ x) = τ x) -> centry_sub (centry_wk e φ) σ = centry_sub e τ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_wk_ext))))))). Qed.
 
 Corollary exp_sub_wk : forall M φ σ, exp_sub (exp_wk M φ) σ = exp_sub M ((ι φ) ⨟ σ).
 Proof. intros; apply exp_sub_wk_ext; intros; reflexivity. Qed.
@@ -889,8 +855,6 @@ Corollary moddef_sub_wk : forall D φ σ, moddef_sub (moddef_wk D φ) σ = modde
 Proof. intros; apply moddef_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gmod_sub_wk : forall Φ φ σ, gmod_sub (gmod_wk Φ φ) σ = gmod_sub Φ ((ι φ) ⨟ σ).
 Proof. intros; apply gmod_sub_wk_ext; intros; reflexivity. Qed.
-Corollary bcheck_sub_wk : forall c φ σ, bcheck_sub (bcheck_wk c φ) σ = bcheck_sub c ((ι φ) ⨟ σ).
-Proof. intros; apply bcheck_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gentry_sub_wk : forall E φ σ, gentry_sub (gentry_wk E φ) σ = gentry_sub E ((ι φ) ⨟ σ).
 Proof. intros; apply gentry_sub_wk_ext; intros; reflexivity. Qed.
 Corollary centry_sub_wk : forall e φ σ, centry_sub (centry_wk e φ) σ = centry_sub e ((ι φ) ⨟ σ).
@@ -975,7 +939,6 @@ Lemma syn_wk_sub_comm_ext :
   (forall U φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gunit_sub (gunit_wk U φ) σ = gunit_wk (gunit_sub U τ) ψ) /\
   (forall D φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> moddef_sub (moddef_wk D φ) σ = moddef_wk (moddef_sub D τ) ψ) /\
   (forall Φ φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gmod_sub (gmod_wk Φ φ) σ = gmod_wk (gmod_sub Φ τ) ψ) /\
-  (forall c φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> bcheck_sub (bcheck_wk c φ) σ = bcheck_wk (bcheck_sub c τ) ψ) /\
   (forall E φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gentry_sub (gentry_wk E φ) σ = gentry_wk (gentry_sub E τ) ψ) /\
   (forall e φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> centry_sub (centry_wk e φ) σ = centry_wk (centry_sub e τ) ψ).
 Proof. syn_mut_ind; syn_ext_case sb_q_comm_ext sb_qn_comm_ext. Qed.
@@ -992,12 +955,10 @@ Corollary moddef_wk_sub_comm_ext : forall D φ σ τ ψ, (forall x, σ (φ x) = 
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext))))). Qed.
 Corollary gmod_wk_sub_comm_ext : forall Φ φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gmod_sub (gmod_wk Φ φ) σ = gmod_wk (gmod_sub Φ τ) ψ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext)))))). Qed.
-Corollary bcheck_wk_sub_comm_ext : forall c φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> bcheck_sub (bcheck_wk c φ) σ = bcheck_wk (bcheck_sub c τ) ψ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext))))))). Qed.
 Corollary gentry_wk_sub_comm_ext : forall E φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> gentry_sub (gentry_wk E φ) σ = gentry_wk (gentry_sub E τ) ψ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext))))))). Qed.
 Corollary centry_wk_sub_comm_ext : forall e φ σ τ ψ, (forall x, σ (φ x) = sentry_wk (τ x) ψ) -> centry_sub (centry_wk e φ) σ = centry_wk (centry_sub e τ) ψ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_wk_sub_comm_ext))))))). Qed.
 
 (** The instances the rest of the development needs: the commutation above at
     [n = 0], once for a lifted substitution and once for a lifted weakening.  Together with
@@ -1017,8 +978,6 @@ Corollary moddef_wk_shift_sub_q : forall D σ, moddef_sub (moddef_wk D wk_shift)
 Proof. intros; apply moddef_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary gmod_wk_shift_sub_q : forall Φ σ, gmod_sub (gmod_wk Φ wk_shift) (q σ) = gmod_wk (gmod_sub Φ σ) wk_shift.
 Proof. intros; apply gmod_wk_sub_comm_ext; intros; reflexivity. Qed.
-Corollary bcheck_wk_shift_sub_q : forall c σ, bcheck_sub (bcheck_wk c wk_shift) (q σ) = bcheck_wk (bcheck_sub c σ) wk_shift.
-Proof. intros; apply bcheck_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary gentry_wk_shift_sub_q : forall E σ, gentry_sub (gentry_wk E wk_shift) (q σ) = gentry_wk (gentry_sub E σ) wk_shift.
 Proof. intros; apply gentry_wk_sub_comm_ext; intros; reflexivity. Qed.
 Corollary centry_wk_shift_sub_q : forall e σ, centry_sub (centry_wk e wk_shift) (q σ) = centry_wk (centry_sub e σ) wk_shift.
@@ -1070,12 +1029,6 @@ Proof.
   apply gmod_wk_wk_eq; pointwise_solve.
 Qed.
 
-Corollary bcheck_wk_shift_wk_q : forall c φ,
-    bcheck_wk (bcheck_wk c ↑) (wk_q φ) = bcheck_wk (bcheck_wk c φ) ↑.
-Proof.
-  intros; do 2 rewrite bcheck_wk_wk.
-  apply bcheck_wk_wk_eq; pointwise_solve.
-Qed.
 
 Corollary gentry_wk_shift_wk_q : forall E φ,
     gentry_wk (gentry_wk E ↑) (wk_q φ) = gentry_wk (gentry_wk E φ) ↑.
@@ -1105,8 +1058,6 @@ Corollary moddef_sub_shift_extend : forall D σ en, moddef_sub (moddef_wk D wk_s
 Proof. intros; apply moddef_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gmod_sub_shift_extend : forall Φ σ en, gmod_sub (gmod_wk Φ wk_shift) (sb_extend σ en) = gmod_sub Φ σ.
 Proof. intros; apply gmod_sub_wk_ext; intros; reflexivity. Qed.
-Corollary bcheck_sub_shift_extend : forall c σ en, bcheck_sub (bcheck_wk c wk_shift) (sb_extend σ en) = bcheck_sub c σ.
-Proof. intros; apply bcheck_sub_wk_ext; intros; reflexivity. Qed.
 Corollary gentry_sub_shift_extend : forall E σ en, gentry_sub (gentry_wk E wk_shift) (sb_extend σ en) = gentry_sub E σ.
 Proof. intros; apply gentry_sub_wk_ext; intros; reflexivity. Qed.
 Corollary centry_sub_shift_extend : forall e σ en, centry_sub (centry_wk e wk_shift) (sb_extend σ en) = centry_sub e σ.
@@ -1141,7 +1092,6 @@ Lemma syn_sub_sub_ext :
   (forall U σ τ δ, sb_eq (σ ⨟ τ) δ -> gunit_sub (gunit_sub U σ) τ = gunit_sub U δ) /\
   (forall D σ τ δ, sb_eq (σ ⨟ τ) δ -> moddef_sub (moddef_sub D σ) τ = moddef_sub D δ) /\
   (forall Φ σ τ δ, sb_eq (σ ⨟ τ) δ -> gmod_sub (gmod_sub Φ σ) τ = gmod_sub Φ δ) /\
-  (forall c σ τ δ, sb_eq (σ ⨟ τ) δ -> bcheck_sub (bcheck_sub c σ) τ = bcheck_sub c δ) /\
   (forall E σ τ δ, sb_eq (σ ⨟ τ) δ -> gentry_sub (gentry_sub E σ) τ = gentry_sub E δ) /\
   (forall e σ τ δ, sb_eq (σ ⨟ τ) δ -> centry_sub (centry_sub e σ) τ = centry_sub e δ).
 Proof. syn_mut_ind; syn_ext_case sb_q_compose_ext sb_qn_compose_ext. Qed.
@@ -1158,12 +1108,10 @@ Corollary moddef_sub_sub_ext : forall D σ τ δ, sb_eq (σ ⨟ τ) δ -> moddef
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext))))). Qed.
 Corollary gmod_sub_sub_ext : forall Φ σ τ δ, sb_eq (σ ⨟ τ) δ -> gmod_sub (gmod_sub Φ σ) τ = gmod_sub Φ δ.
 Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext)))))). Qed.
-Corollary bcheck_sub_sub_ext : forall c σ τ δ, sb_eq (σ ⨟ τ) δ -> bcheck_sub (bcheck_sub c σ) τ = bcheck_sub c δ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext))))))). Qed.
 Corollary gentry_sub_sub_ext : forall E σ τ δ, sb_eq (σ ⨟ τ) δ -> gentry_sub (gentry_sub E σ) τ = gentry_sub E δ.
-Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext)))))))). Qed.
+Proof. exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext))))))). Qed.
 Corollary centry_sub_sub_ext : forall e σ τ δ, sb_eq (σ ⨟ τ) δ -> centry_sub (centry_sub e σ) τ = centry_sub e δ.
-Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext)))))))). Qed.
+Proof. exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_sub_sub_ext))))))). Qed.
 
 Corollary exp_sub_sub : forall M σ τ, exp_sub (exp_sub M σ) τ = exp_sub M (σ ⨟ τ).
 Proof. intros; now apply exp_sub_sub_ext. Qed.
@@ -1177,8 +1125,6 @@ Corollary moddef_sub_sub : forall D σ τ, moddef_sub (moddef_sub D σ) τ = mod
 Proof. intros; now apply moddef_sub_sub_ext. Qed.
 Corollary gmod_sub_sub : forall Φ σ τ, gmod_sub (gmod_sub Φ σ) τ = gmod_sub Φ (σ ⨟ τ).
 Proof. intros; now apply gmod_sub_sub_ext. Qed.
-Corollary bcheck_sub_sub : forall c σ τ, bcheck_sub (bcheck_sub c σ) τ = bcheck_sub c (σ ⨟ τ).
-Proof. intros; now apply bcheck_sub_sub_ext. Qed.
 Corollary gentry_sub_sub : forall E σ τ, gentry_sub (gentry_sub E σ) τ = gentry_sub E (σ ⨟ τ).
 Proof. intros; now apply gentry_sub_sub_ext. Qed.
 Corollary centry_sub_sub : forall e σ τ, centry_sub (centry_sub e σ) τ = centry_sub e (σ ⨟ τ).

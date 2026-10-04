@@ -291,7 +291,7 @@ Section Members.
   Lemma eval_ctx_pi_body : forall Φ ρ ρ1 A a,
       ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
   Proof.
-    intros * Hb; revert A a; induction Hb; intros A0 a0 HA; cbn; [ assumption | | | eauto ].
+    intros * Hb; revert A a; induction Hb; intros A0 a0 HA; cbn; [ assumption | | ].
     - apply IHHb; econstructor; eassumption.
     - apply IHHb; econstructor; eassumption.
   Qed.
@@ -299,7 +299,7 @@ Section Members.
   Lemma eval_ctx_fn_body : forall Φ ρ ρ1 M m,
       ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
   Proof.
-    intros * Hb; revert M m; induction Hb; intros M0 m0 HM; cbn; [ assumption | | | eauto ].
+    intros * Hb; revert M m; induction Hb; intros M0 m0 HM; cbn; [ assumption | | ].
     - apply IHHb; econstructor; eassumption.
     - apply IHHb; econstructor; eassumption.
   Qed.

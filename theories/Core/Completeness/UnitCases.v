@@ -86,7 +86,6 @@ Lemma body_shape_binders : forall Φ Φ', body_shape Φ Φ' -> gm_binders Φ = g
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros [| Φ' y' E' | Φ' c'] Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & _ & _); f_equal; auto.
-  - destruct Hs as (Hs & _); auto.
 Qed.
 
 (** ** Walking a Body
@@ -143,9 +142,6 @@ Proof.
             destruct (mod_closure_move _ _ _ _ _ _ H1'1' HU) as (_ & _ & M3 & M4);
             apply HER; repeat split; cbn; assumption ]
       end.
-  - destruct Hs as (Hs & Hc).
-    destruct (IH _ _ _ _ _ Hs HΘ HR _ _ Hρ) as (Hb & ρ1 & ρ1' & Hb1 & Hb1' & H1).
-    split; [ constructor; exact Hb | exists ρ1, ρ1'; repeat split; try (constructor; assumption); exact H1 ].
 Qed.
 
 (** ** Related Closures *)
@@ -597,10 +593,7 @@ Proof.
       split; [ eapply per_body_mod; [ exact Hb | exact Hb1 | exact Hb1' | exact HU ] |].
       eexists; eexists; repeat split; [ econstructor; eassumption | econstructor; eassumption |].
       exact Hstep.
-  - destruct Hs as (Hs & _); cbn [gmod_sub body_ctx] in *.
-    destruct (IH _ _ _ Hs HΦ Hinv) as (Hb & ρl1 & ρr1 & Hb1 & Hb1' & Hi1).
-    split; [ constructor; exact Hb |].
-    exists ρl1, ρr1; repeat split; [ constructor; exact Hb1 | constructor; exact Hb1' | exact Hi1 ].
+  - destruct Hs.
 Qed.
 
 (** ** Closures Commute with Substitution
@@ -775,8 +768,6 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] Hs; cbn in *; try contradiction; auto.
   - destruct Hs as (Hs & -> & HE); destruct (IH _ Hs).
     destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in *; intuition (subst; auto).
-  - destruct Hs as (Hs & Hc); destruct (IH _ Hs).
-    destruct c, c'; cbn in *; intuition.
 Qed.
 
 (** Two units valid in their parts are equivalent when their closures over

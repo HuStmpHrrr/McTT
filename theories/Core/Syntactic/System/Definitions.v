@@ -84,8 +84,9 @@ where "Γ ∋ '#' x ≔ M : A" := (ctx_lookup_def x A M Γ) : type_scope.
 Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_ass A) Δ.
 
 (** Two bodies compared entry by entry: the same names and kinds in the same
-    order, the same privacy, transparent definitions with a body, and the same
-    names [use]d by each import. *)
+    order, the same privacy, and transparent definitions with a body.  A
+    local import is a pre-form the core expands before typing
+    ([Imports]), so a typed body has none. *)
 Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
   | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
@@ -93,28 +94,16 @@ Definition entry_shape (E E' : gentry) : Prop :=
   | _, _ => False
   end.
 
-Definition check_shape (c c' : bcheck) : Prop :=
-  match c, c' with
-  | bc_import _ ns, bc_import _ ns' => ns = ns'
-  end.
-
 Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   match Φ, Φ' with
   | gm_nil, gm_nil => True
   | gm_ext Φ x E, gm_ext Φ' x' E' => body_shape Φ Φ' /\ x = x' /\ entry_shape E E'
-  | gm_check Φ c, gm_check Φ' c' => body_shape Φ Φ' /\ check_shape c c'
   | _, _ => False
   end.
 
 (** The annotation of a local definition, if any, is the type it is checked
     at; without one, the type is any its body has. *)
 Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
-
-(** A name an import [use]s is a definition or a submodule; whether it may
-    be used there is a matter of privacy, checked by the command ([Command]). *)
-Definition member_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (n : String.string) : Prop :=
-  (exists A, member_type Θ Ξ Γ H (n :: nil) (mr_term A)) \/
-  (exists T, member_type Θ Ξ Γ H (n :: nil) (mr_mod T)).
 
 (** ** The Mutually Defined Judgments
 
@@ -490,8 +479,7 @@ with wf_ext_eq : gdeps -> gstack -> ctx -> ctx -> ctx -> Prop :=
 where "Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'" := (wf_ext_eq Θ Ξ Γ Ψ Ψ') : type_scope
 
 (** Units.  A body unit's parameters and body are compared as one extension of
-    [Γ].  Its imports are checked where they stand: the target is a module,
-    and every name it [use]s is a public definition or a submodule. *)
+    [Γ]. *)
 with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
 | wf_unit_eq_body :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ body_ctx Φ ++ Δ ≈ body_ctx Φ' ++ Δ' ->
@@ -500,14 +488,6 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      List.length Δ = List.length Δ' ->
      body_shape Φ Φ' ->
      List.NoDup (gm_names Φ) ->
-     (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
-        Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ᵐ E ≈ E) ->
-     (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ) -> List.In n ns ->
-        member_ok Θ Ξ (body_ctx Φ0 ++ Δ ++ Γ) E n) ->
-     (forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ') ->
-        Θ ⍮ Ξ ⍮ body_ctx Φ0 ++ Δ' ++ Γ ⊢ᵐ E ≈ E) ->
-     (forall Φ0 E ns n, List.In (Φ0, bc_import E ns) (gm_checks Φ') -> List.In n ns ->
-        member_ok Θ Ξ (body_ctx Φ0 ++ Δ' ++ Γ) E n) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ gu_body Δ Φ ≈ gu_body Δ' Φ' )
 | wf_unit_eq_alias :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ˣ Δ ≈ Δ' ->

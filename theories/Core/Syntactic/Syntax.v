@@ -296,9 +296,15 @@ Definition qname_in (mp : qname) (x : string) : qname :=
     - [gunit] is a unit: its parameter telescope, innermost first, and its
       definition, a body or an alias.  The definition is under the parameters.
     - [gmod] is a module body, newest entry last.  Each named entry binds one
-      index for the entries after it; a check entry ([gm_check]) binds none.
+      index for the entries after it; a local import ([gm_import]), a
+      pre-form the core expands before typing, binds one per item.
     - [centry] is a context entry: an assumption, a definition, or a module
       slot [ce_mod U], which binds one index to the unit [U]. *)
+(** An item of an import: [(Some n, d, pv)] declares [d] as the member [n] of
+    the imported module, [(None, d, pv)] declares [d] as the imported module
+    itself; private when [pv]. *)
+Definition iitem : Set := (option string * string * bool)%type.
+
 Inductive exp : Set :=
 (** Universe *)
 | a_typ : nat -> exp
@@ -366,12 +372,10 @@ with gmod : Set :=
 | gm_nil : gmod
 (** A named entry after the body before it *)
 | gm_ext : gmod -> string -> gentry -> gmod
-(** A check entry after the body before it; it binds nothing *)
-| gm_check : gmod -> bcheck -> gmod
-(** The check-only entries of a local body. *)
-with bcheck : Set :=
-(** An [import] of a module, with the names it [use]s *)
-| bc_import : modexp -> list string -> bcheck
+(** [gm_import Φ H items]: a local import, as the elaborator writes it.  It
+    binds one index per item.  The core expands it into [gm_ext] entries
+    before typing ([Imports]); no typing rule mentions it. *)
+| gm_import : gmod -> modexp -> list iitem -> gmod
 with gentry : Set :=
 (** [ge_def b pv A B]: [b] says whether the definition is transparent, [pv]
     whether it is private, and [B] is [None] for an axiom.  A filed definition
@@ -460,18 +464,18 @@ Fixpoint gm_binders (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ' _ _ => S (gm_binders Φ')
-  | gm_check Φ' _ => gm_binders Φ'
+  | gm_import Φ' _ its => List.length its + gm_binders Φ'
   end.
 
-(** A body as the context entries it binds, innermost first.  A check entry
-    binds nothing. *)
+(** A body as the context entries it binds, innermost first.  A local import
+    binds one placeholder per item: a pre-form is never typed. *)
 Fixpoint body_ctx (Φ : gmod) : ctx :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_check Φ' _ => body_ctx Φ'
+  | gm_import Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
   end.
 
 (** ** Telescopes
@@ -515,7 +519,7 @@ Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
 Section syn_mut_ind.
   Variables (Pe : exp -> Prop) (Pm : modexp -> Prop) (Pb : bnd -> Prop)
     (Pu : gunit -> Prop) (Pd : moddef -> Prop) (Pg : gmod -> Prop)
-    (Pk : bcheck -> Prop) (Pn : gentry -> Prop) (Pc : centry -> Prop).
+    (Pn : gentry -> Prop) (Pc : centry -> Prop).
 
   Hypotheses
     (case_typ : forall i, Pe (a_typ i))
@@ -545,8 +549,7 @@ Section syn_mut_ind.
     (case_md_alias : forall E, Pm E -> Pd (md_alias E))
     (case_gm_nil : Pg gm_nil)
     (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
-    (case_gm_check : forall Φ c, Pg Φ -> Pk c -> Pg (gm_check Φ c))
-    (case_bc_import : forall E ns, Pm E -> Pk (bc_import E ns))
+    (case_gm_import : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_import Φ H its))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
@@ -612,11 +615,7 @@ Section syn_mut_ind.
     match Φ with
     | gm_nil => case_gm_nil
     | gm_ext Φ x E => case_gm_ext Φ x E (gmod_mut Φ) (gentry_mut E)
-    | gm_check Φ c => case_gm_check Φ c (gmod_mut Φ) (bcheck_mut c)
-    end
-  with bcheck_mut (c : bcheck) : Pk c :=
-    match c with
-    | bc_import E ns => case_bc_import E ns (modexp_mut E)
+    | gm_import Φ H its => case_gm_import Φ H its (gmod_mut Φ) (modexp_mut H)
     end
   with gentry_mut (E : gentry) : Pn E :=
     match E with
@@ -639,11 +638,11 @@ Section syn_mut_ind.
 
   Theorem syn_mut_ind :
     (forall M, Pe M) /\ (forall H, Pm H) /\ (forall b, Pb b) /\ (forall U, Pu U) /\
-    (forall D, Pd D) /\ (forall Φ, Pg Φ) /\ (forall c, Pk c) /\ (forall E, Pn E) /\
+    (forall D, Pd D) /\ (forall Φ, Pg Φ) /\ (forall E, Pn E) /\
     (forall e, Pc e).
   Proof.
     repeat split; [ exact exp_mut | exact modexp_mut | exact bnd_mut | exact gunit_mut
-                  | exact moddef_mut | exact gmod_mut | exact bcheck_mut | exact gentry_mut
+                  | exact moddef_mut | exact gmod_mut | exact gentry_mut
                   | exact centry_mut ].
   Qed.
 End syn_mut_ind.
@@ -864,11 +863,7 @@ with gmod_wk (Φ : gmod) (φ : wk) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gmod_wk Φ φ) x (gentry_wk E (wk_qn (gm_binders Φ) φ))
-  | gm_check Φ c => gm_check (gmod_wk Φ φ) (bcheck_wk c (wk_qn (gm_binders Φ) φ))
-  end
-with bcheck_wk (c : bcheck) (φ : wk) : bcheck :=
-  match c with
-  | bc_import E ns => bc_import (modexp_wk E φ) ns
+  | gm_import Φ H its => gm_import (gmod_wk Φ φ) (modexp_wk H (wk_qn (gm_binders Φ) φ)) its
   end
 with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
@@ -1033,11 +1028,7 @@ with gmod_sub (Φ : gmod) (σ : sub) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gmod_sub Φ σ) x (gentry_sub E (sb_qn (gm_binders Φ) σ))
-  | gm_check Φ c => gm_check (gmod_sub Φ σ) (bcheck_sub c (sb_qn (gm_binders Φ) σ))
-  end
-with bcheck_sub (c : bcheck) (σ : sub) : bcheck :=
-  match c with
-  | bc_import E ns => bc_import (modexp_sub E σ) ns
+  | gm_import Φ H its => gm_import (gmod_sub Φ σ) (modexp_sub H (sb_qn (gm_binders Φ) σ)) its
   end
 with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with

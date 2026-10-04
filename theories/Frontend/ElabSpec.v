@@ -150,12 +150,19 @@ Inductive ibinds (E : modexp) : Cst.ispec -> list ent -> list ent -> Prop :=
 | ib_use_cons : forall n ns F F',
     fresh n F -> ibinds E (Cst.i_use ns) (en_use n E :: F) F' -> ibinds E (Cst.i_use (n :: ns)) F F'.
 
-(** The names an import [use]s, which the core checks. *)
-Definition ispec_names (spec : Cst.ispec) : list string :=
+(** The items an import declares, which the core generates
+    ([Core.Syntactic.Imports]): each name it [use]s, as a private
+    definition or alias of that member, or the private alias [as] names. *)
+Definition ispec_items (spec : Cst.ispec) : list iitem :=
   match spec with
-  | Cst.i_use ns => ns
-  | _ => nil
+  | Cst.i_use ns => map (fun n => (Some n, n, true)) ns
+  | Cst.i_as y => (None, y, true) :: nil
+  | Cst.i_open => nil
   end.
+
+(** In a local body, the items of an import are entries of the body, one
+    core binder each, newest first. *)
+Definition item_ents (its : list iitem) : list ent := rev (map (fun it => en_var (iitem_name it)) its).
 
 (** An import in a local body loads nothing, so the unit it names, if any,
     must be one the scope [S] may name already. *)
@@ -247,10 +254,10 @@ with sdef : list ent -> Cst.mdef -> moddef -> Prop :=
     sbody S gm_nil cs Φ -> sdef S (Cst.md_where cs) (md_body Φ)
 
 (** [sbody S Φ cs Φ']: the commands [cs] of a local body extend [Φ] to [Φ'].
-    Each entry is a core binder for the entries after it.  An import binds
-    its aliases for the entries after it, as a frame of its own, so a [use]
-    names each member once, and is kept as a check entry for the core.  A
-    local body has no [eval]s and nothing [private]. *)
+    Each entry is a core binder for the entries after it.  An import is a
+    pre-form the core expands ([gm_import]); each of its items is a core
+    binder, whose freshness the core checks.  A local body has no [eval]s
+    and nothing [private]. *)
 with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | sb_nil : forall S Φ, sbody S Φ nil Φ
 | sb_def : forall S Φ m x oA oM A M cs Φ',
@@ -262,11 +269,10 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
     sunit S ps md U ->
     sbody (en_var x :: S) (gm_ext Φ x (ge_mod false U)) cs Φ' ->
     sbody S Φ (Cst.c_mod false x ps md :: cs) Φ'
-| sb_import : forall S Φ fq ip spec E F cs Φ',
+| sb_import : forall S Φ fq ip spec E cs Φ',
     loaded S fq ->
     itarget S fq ip E ->
-    ibinds E spec nil F ->
-    sbody (F ++ S) (gm_check Φ (bc_import E (ispec_names spec))) cs Φ' ->
+    sbody (item_ents (ispec_items spec) ++ S) (gm_import Φ E (ispec_items spec)) cs Φ' ->
     sbody S Φ (Cst.c_import fq ip spec :: cs) Φ'
 
 (** [import fq.ip] names a module of this unit, by name, if [fq] is empty,
@@ -280,33 +286,35 @@ with itarget : list ent -> path -> list string -> modexp -> Prop :=
 (** ** Imports *)
 
 (** The unit an import loads first, if any. *)
-Definition ifile (fq : path) : option path :=
+Definition iloads (fq : path) : list ccmd :=
   match fq with
-  | nil => None
-  | _ => Some fq
+  | nil => nil
+  | _ => cc_load fq :: nil
   end.
 
-(** [simport O F c F' c']: the import [c] in the frame [F], inside the scope
-    [O], changes the frame to [F'] and emits the core command [c']. *)
-Inductive simport (O F : list ent) : Cst.cmd -> list ent -> ccmd -> Prop :=
+(** [simport O F c F' ls c']: the import [c] in the frame [F], inside the
+    scope [O], changes the frame to [F'], and emits the loads [ls] and the
+    core command [c'] declaring its items. *)
+Inductive simport (O F : list ent) : Cst.cmd -> list ent -> list ccmd -> ccmd -> Prop :=
 | si_intro : forall fq ip spec E F',
     itarget (F ++ O) fq ip E ->
     ibinds E spec (uents fq ++ F) F' ->
-    simport O F (Cst.c_import fq ip spec) F' (cc_import (ifile fq) E (ispec_names spec)).
+    simport O F (Cst.c_import fq ip spec) F' (iloads fq) (cc_import E (ispec_items spec)).
 
 (** ** Commands
 
     [scmd fp ch O F c F' c']: the command [c], in the open frame at member
     chain [ch] of the unit [fp], which binds [F] so far inside the scope
-    [O], binds [F'] after it and emits the core command [c'].  [scmds] runs
-    the commands of a body in order. *)
-Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> list ent -> ccmd -> Prop :=
+    [O], binds [F'] after it and emits the core commands [c'], one but for
+    an import, which also loads its unit.  [scmds] runs the commands of a
+    body in order. *)
+Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> list ent -> list ccmd -> Prop :=
 | sc_def : forall ch O F m x oA oM A M,
     fresh x F ->
     sel (F ++ O) oA A ->
     sel (F ++ O) oM M ->
     scmd fp ch O F (Cst.c_def m x oA oM) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M)
+      (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M :: nil)
 (** The parameters of [module x (ps) where body end] are read in [F], its
     body in a new frame inside. *)
 | sc_mod : forall ch O F pv x ps body tys bcs,
@@ -315,7 +323,7 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     sparams (F ++ O) ps tys ->
     scmds fp (ch ++ x :: nil) (F ++ O) (pents ps) body bcs ->
     scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_mod x pv (ptele tys) bcs)
+      (cc_mod x pv (ptele tys) bcs :: nil)
 (** [module x (ps) := E]: [E] is read under the parameters. *)
 | sc_alias : forall ch O F pv x ps oE tys E,
     fresh x F ->
@@ -323,42 +331,45 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     sparams (F ++ O) ps tys ->
     selm (pents ps ++ F ++ O) oE E ->
     scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_alias x pv (ptele tys) E)
-| sc_import : forall ch O F fq ip spec F' c,
-    simport O F (Cst.c_import fq ip spec) F' c ->
-    scmd fp ch O F (Cst.c_import fq ip spec) F' c
+      (cc_alias x pv (ptele tys) E :: nil)
+| sc_import : forall ch O F fq ip spec F' ls c,
+    simport O F (Cst.c_import fq ip spec) F' ls c ->
+    scmd fp ch O F (Cst.c_import fq ip spec) F' (ls ++ c :: nil)
 | sc_eval : forall ch O F oM M,
     sel (F ++ O) oM M ->
-    scmd fp ch O F (Cst.c_eval oM None) F (cc_eval M None)
+    scmd fp ch O F (Cst.c_eval oM None) F (cc_eval M None :: nil)
 | sc_eval_typ : forall ch O F oM oA M A,
     sel (F ++ O) oM M ->
     sel (F ++ O) oA A ->
-    scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A))
+    scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A) :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil
 | scs_cons : forall ch O F c F' c' cs cs',
     scmd fp ch O F c F' c' ->
     scmds fp ch O F' cs cs' ->
-    scmds fp ch O F (c :: cs) (c' :: cs').
+    scmds fp ch O F (c :: cs) (c' ++ cs').
 
-(** The imports before the unit's declaration form a frame of their own. *)
-Inductive simports : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
-| sis_nil : forall O, simports O nil O nil
-| sis_cons : forall O fq ip spec O1 c cs O2 is,
-    simport nil O (Cst.c_import fq ip spec) O1 c ->
-    simports O1 cs O2 is ->
-    simports O (Cst.c_import fq ip spec :: cs) O2 (c :: is).
+(** The imports before the unit's declaration form a frame of their own:
+    their loads run before the unit, their declarations first in its
+    body. *)
+Inductive simports : list ent -> list Cst.cmd -> list ent -> list ccmd -> list ccmd -> Prop :=
+| sis_nil : forall O, simports O nil O nil nil
+| sis_cons : forall O fq ip spec O1 ls c cs O2 lds is,
+    simport nil O (Cst.c_import fq ip spec) O1 ls c ->
+    simports O1 cs O2 lds is ->
+    simports O (Cst.c_import fq ip spec :: cs) O2 (ls ++ lds) (c :: is).
 
 (** ** Units
 
-    A unit [import …; module fp (ps) where cs end] elaborates to the commands
+    A unit [import …; module fp (ps) where cs end] elaborates to the loads
     of its leading imports, its parameter context, and the commands of its
-    own frame, whose member chain is [nil]. *)
+    own frame, whose member chain is [nil]: the declarations of its leading
+    imports, then its own. *)
 Inductive elab_spec : Cst.prog -> cunit -> Prop :=
-| es_intro : forall imports fp ps cs O imps tys ccs,
-    simports nil imports O imps ->
+| es_intro : forall imports fp ps cs O lds imps tys ccs,
+    simports nil imports O lds imps ->
     NoDup (map fst ps) ->
     sparams O ps tys ->
     scmds fp nil O (pents ps) cs ccs ->
-    elab_spec (imports, (fp, ps, cs)) (imps, ptele tys, ccs).
+    elab_spec (imports, (fp, ps, cs)) (lds, ptele tys, imps ++ ccs).

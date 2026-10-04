@@ -323,10 +323,6 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 | eval_benv_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
-(** A check entry adds nothing. *)
-| eval_benv_check :
-  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_check Φ c ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 )
 where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop

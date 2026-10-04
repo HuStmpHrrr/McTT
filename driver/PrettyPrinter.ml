@@ -378,15 +378,18 @@ let exp_to_obj =
             Cst.Coq_c_mod (priv, x, params, md)
        in
        (cs @ [c], x :: ctx')
-    | Coq_gm_check (phi, bc) ->
+    | Coq_gm_import (phi, h, its) ->
        let cs, ctx' = impl_body ctx phi in
-       let c = match bc with
-         (* The target is a module expression, printed in place of a path. *)
-         | Coq_bc_import (h, ns) ->
-            let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
-            Cst.Coq_c_import ([], [target], (match ns with [] -> Cst.Coq_i_open | _ -> Cst.Coq_i_use ns))
+       (* The target is a module expression, printed in place of a path;
+          each item binds its name. *)
+       let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
+       let names = List.map (fun ((_, d), _) -> d) its in
+       let spec = match its with
+         | [] -> Cst.Coq_i_open
+         | [((None, y), _)] -> Cst.Coq_i_as y
+         | _ -> Cst.Coq_i_use (List.map (fun ((n, d), _) -> match n with Some n -> n | None -> d) its)
        in
-       (cs @ [c], ctx')
+       (cs @ [Cst.Coq_c_import ([], [target], spec)], List.rev_append names ctx')
   in
   fun exp ->
     reset_var_suffix ();
@@ -424,12 +427,30 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
   | Coq_re_cycle ch ->
      fprintf f "@[<hov 2>Error: cyclic import:@ %s@]"
-       (String.concat " -> " (List.map Command1.path_str ch))
+       (String.concat " -> " (List.map (String.concat "::") ch))
   | Coq_re_unit (fp, msg) ->
-     fprintf f "@[<hov 2>Error: %s:@ %s@]" (Command1.path_str fp) msg
+     fprintf f "@[<hov 2>Error: %s:@ %s@]" ((String.concat "::") fp) msg
   (* A private member is named by the module declaring it, from its unit. *)
   | Coq_re_private (q, x) ->
      fprintf f "@[<hov 2>Error: %s is private@]" (string_of_qpath q.q_unit (q.q_chain @ [x]))
+  (* A private entry of a local body, from the local module. *)
+  | Coq_re_private_local (ch, x) ->
+     fprintf f "@[<hov 2>Error: %s is private@]" (String.concat "." (ch @ [x]))
+  | Coq_re_import e ->
+     let open McttExtracted.Imports in
+     (match e with
+      | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed import@]"
+      | Coq_xe_member (h, n) ->
+         (* A chain from a unit is printed as a privacy error names it. *)
+         let rec chain = function
+           | Coq_me_unit fp -> Some (fp, [])
+           | Coq_me_mem (h, y) -> Option.map (fun (fp, ch) -> (fp, ch @ [y])) (chain h)
+           | _ -> None in
+         (match chain h with
+          | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %s is not a member@]" (string_of_qpath fp (ch @ [n]))
+          | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
+      | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
+      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
 
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in

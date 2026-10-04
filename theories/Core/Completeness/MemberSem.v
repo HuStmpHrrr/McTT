@@ -175,7 +175,7 @@ Section Fixed_GCtx.
 
 Lemma body_shape_lets : forall Φ, body_shape Φ Φ -> lets_only (body_ctx Φ).
 Proof.
-  induction Φ as [| Φ IH y E | Φ IH c]; intros H; cbn in *; [ constructor | | exact (IH (proj1 H)) ].
+  induction Φ as [| Φ IH y E | Φ IH c]; intros H; cbn in *; [ constructor | | destruct H ].
   destruct H as (H1 & _ & H3).
   destruct E as [b pv A [M |] | pm U]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
 Qed.
@@ -184,7 +184,7 @@ Lemma body_shape_prefix : forall Φ x Φx, body_shape Φ Φ -> gm_prefix_upto Φ
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * Hs Hx; cbn in Hx; try discriminate.
   - destruct (String.eqb x y); [ injection Hx as <-; exact Hs | exact (IH _ _ (proj1 Hs) Hx) ].
-  - exact (IH _ _ (proj1 Hs) Hx).
+  - destruct Hs.
 Qed.
 
 (** The environment a valid body makes, from a valid one before it. *)
@@ -213,8 +213,7 @@ Proof.
       pose proof (unit_chain_at HU HR1 _ _ Hρ1) as Hd.
       exists (ρ1 ↦ᵐ dm_local ρ1 U nil), (env_ext_mod U U R1); split; [ econstructor; eassumption |]; split; [ exact HR2 |].
       unfold env_ext_mod; cbn; repeat split; assumption.
-  - destruct (IH _ _ _ HC (proj1 Hs) HD Hρ) as (ρ1 & R1 & Hb & HR1 & Hρ1).
-    exists ρ1, R1; split; [ econstructor; exact Hb | split; assumption ].
+  - destruct Hs.
 Qed.
 
 (** ** Semantic Member Types *)

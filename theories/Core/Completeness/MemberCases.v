@@ -128,7 +128,6 @@ Proof.
       do 9 eexists; split; [ reflexivity |]; eauto.
     + apply IHper_body; exact Hx.
   - destruct (String.eqb x y) eqn:Ey; [ discriminate |]; apply IHper_body; exact Hx.
-  - apply IHper_body; exact Hx.
 Qed.
 
 (** The submodule named [y] of two related bodies. *)
@@ -146,7 +145,6 @@ Proof.
     + apply String.eqb_eq in Ey; subst.
       do 5 eexists; split; [ reflexivity |]; eauto.
     + apply IHper_body; exact Hx.
-  - apply IHper_body; exact Hx.
 Qed.
 
 (** ** Saturated Module Values *)

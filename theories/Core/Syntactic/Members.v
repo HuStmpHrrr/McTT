@@ -65,15 +65,7 @@ Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
   match Φ with
   | gm_nil => None
   | gm_ext Φ' y _ => if String.eqb x y then Some Φ else gm_prefix_upto Φ' x
-  | gm_check Φ' _ => gm_prefix_upto Φ' x
-  end.
-
-(** The check entries of a body, each with the body before it. *)
-Fixpoint gm_checks (Φ : gmod) : list (gmod * bcheck) :=
-  match Φ with
-  | gm_nil => nil
-  | gm_ext Φ' _ _ => gm_checks Φ'
-  | gm_check Φ' c => (Φ', c) :: gm_checks Φ'
+  | gm_import Φ' _ _ => gm_prefix_upto Φ' x
   end.
 
 (** [M] applied to [args], outermost first. *)

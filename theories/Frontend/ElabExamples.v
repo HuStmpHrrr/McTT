@@ -125,15 +125,16 @@ Definition Impl_ : string -> exp := fun x => qname_term (q_abs ("ImportUse" :: n
 Definition Impl : modexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
 
 (** A private member is visible in its own frame.  An import is a command
-    the core checks; [I] and [exposed] name [Impl] and its member. *)
+    whose items the core declares; [I] and [exposed] name [Impl] and its
+    member. *)
 Example import_use_spec :
   elab_spec import_use
     (nil, ⋅,
      cc_mod "Impl" false ⋅
        (cc_def "secret" true true ℕ (succ (succ (succ zero))) ::
         cc_def "exposed" true false ℕ (succ (Impl_ "secret")) :: nil) ::
-     cc_import None Impl nil ::
-     cc_import None Impl ("exposed" :: nil) ::
+     cc_import Impl ((None, "I", true) :: nil) ::
+     cc_import Impl ((Some "exposed", "exposed", true) :: nil) ::
      cc_eval (a_mem Impl "exposed" $ (a_mem Impl "exposed")) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -148,18 +149,20 @@ Definition main_mctt : Cst.prog :=
     c_eval (app (var "pred") (app (proj (var "N") "double") (Cst.succ (Cst.succ (Cst.succ (Cst.succ (Cst.succ Cst.zero)))))))
       (Some nat) :: nil)).
 
-(** A leading import loads its unit and names the module at its member
-    path; the aliases select members of it. *)
+(** A leading import loads its unit before the unit runs, and declares its
+    items first in the unit's body; the aliases select members of the
+    module at its member path. *)
 Definition Arith : modexp := mpath ("Lib" :: "Arith" :: nil) nil.
 Definition Num : modexp := mpath ("Lib" :: "Num" :: nil) nil.
 Definition Ops : modexp := mpath ("Lib" :: "Num" :: nil) ("Ops" :: nil).
 
 Example main_spec :
   elab_spec main_mctt
-    (cc_import (Some ("Lib" :: "Arith" :: nil)) Arith ("quadruple" :: nil) ::
-     cc_import (Some ("Lib" :: "Num" :: nil)) Num nil ::
-     cc_import (Some ("Lib" :: "Num" :: nil)) Ops ("pred" :: nil) :: nil,
+    (cc_load ("Lib" :: "Arith" :: nil) :: cc_load ("Lib" :: "Num" :: nil) :: cc_load ("Lib" :: "Num" :: nil) :: nil,
      ⋅,
+     cc_import Arith ((Some "quadruple", "quadruple", true) :: nil) ::
+     cc_import Num ((None, "N", true) :: nil) ::
+     cc_import Ops ((Some "pred", "pred", true) :: nil) ::
      cc_eval (a_mem Arith "quadruple" $ succ (succ zero)) (Some ℕ) ::
      cc_eval (a_mem Num "double" $ succ (succ (succ zero))) None ::
      cc_eval (a_mem Ops "pred" $ (a_mem Num "double" $ succ (succ (succ (succ (succ zero)))))) (Some ℕ) :: nil).
@@ -474,8 +477,8 @@ Example local_body :
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
 
-(** An import in a local body is a check entry for the core, and binds its
-    aliases for the entries after it; it takes no binder.
+(** An import in a local body is a pre-form the core expands; each of its
+    items is a binder of the body.
 
 <<
 let module L where
@@ -487,7 +490,8 @@ let module L where
 in L.w end
 >>
 
-    [N] is [me_var 0] at both imports; under [z], [K] is [me_var 1]. *)
+    [N] is [me_var 0] at the first import and [me_var 1] at the second;
+    under [z], [y] is [#1], and under [w], [K] is [me_var 1]. *)
 Example local_import :
   elab_spec (unit_of
     (c_eval
@@ -505,12 +509,12 @@ Example local_import :
               (md_body
                  (gm_ext
                     (gm_ext
-                       (gm_check
-                          (gm_check
+                       (gm_import
+                          (gm_import
                              (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
-                             (bc_import (me_var 0) ("y" :: nil)))
-                          (bc_import (me_var 0) nil))
-                       "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))
+                             (me_var 0) ((Some "y", "y", true) :: nil))
+                          (me_var 1) ((None, "K", true) :: nil))
+                       "z" (ge_def true false ℕ (Some #1)))
                     "w" (ge_def true false ℕ (Some (a_mem (me_var 1) "y"))))))
         in a_mem (me_var 0) "w") None :: nil).
 Proof. elab_ok. Qed.
@@ -524,8 +528,9 @@ Definition local_unit_import (leading : list Cst.cmd) : Cst.prog :=
 
 Example local_unit_loaded :
   elab_spec (local_unit_import (c_import ("X" :: nil) nil i_open :: nil))
-    (cc_import (Some ("X" :: nil)) (mpath ("X" :: nil) nil) nil :: nil, ⋅,
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_check gm_nil (bc_import (mpath ("X" :: nil) nil) ("f" :: nil)))))
+    (cc_load ("X" :: nil) :: nil, ⋅,
+     cc_import (mpath ("X" :: nil) nil) nil ::
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_import gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
               in zero) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -555,16 +560,24 @@ Example local_private_mod :
   = eerr "private is not allowed in a local module".
 Proof. elab_err. Qed.
 
-(** A local import [use]s a name once. *)
+(** A local import that [use]s a name twice is the core's to reject: the
+    names of a local body are checked fresh by typing. *)
 Example local_use_dup :
-  elaborate_core (unit_of
+  elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
                 (md_where (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
                            c_import nil ("N" :: nil) (i_use ("y" :: "y" :: nil)) :: nil)))
           Cst.zero) None :: nil))
-  = eerr "y is already declared".
-Proof. elab_err. Qed.
+    (nil, ⋅,
+     cc_eval
+       (ℓₘ (gu_mk ⋅
+              (md_body
+                 (gm_import
+                    (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                    (me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
+        in zero) None :: nil).
+Proof. elab_ok. Qed.
 
 (** [module A.B] in a local body is [A], without parameters, holding [B]. *)
 Example local_path :

@@ -1,7 +1,7 @@
 (** * Commands
 
-    The core commands a unit is elaborated into: names are resolved, and [use]
-    and [as] have been handled by the elaborator.  Their meaning, as steps of
+    The core commands a unit is elaborated into: names are resolved, and an
+    import is a load and the declaration of its items.  Their meaning, as steps of
     the global state, is given in [Core.Syntactic.System.Command]. *)
 
 From Stdlib Require Import List String.
@@ -19,10 +19,11 @@ Inductive ccmd : Set :=
 | cc_mod : string -> bool -> ctx -> list ccmd -> ccmd
 (** [module x (Δ) := E]: an alias, under its own parameters, private or not. *)
 | cc_alias : string -> bool -> ctx -> modexp -> ccmd
-(** [import E], whatever its [use]/[as]: the unit to load first, if [E] is in
-    another unit; the imported module; and the names it [use]s, each of which
-    must be a member or a submodule of [E] that may be used here. *)
-| cc_import : option path -> modexp -> list string -> ccmd
+(** [cc_load fp]: load the unit [fp] if it is not filed yet. *)
+| cc_load : path -> ccmd
+(** [cc_import E items]: check that [E] is a module, and declare the items,
+    as definitions and aliases of this frame. *)
+| cc_import : modexp -> list iitem -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.
 

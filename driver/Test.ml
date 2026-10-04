@@ -570,9 +570,11 @@ let%expect_test "ModuleForms.mctt works" =
                        succ x1
                      end
                    end
-                   import Inner use (m)
+                   private def m : Nat :=
+                     Inner.m
+                   end
                    def doubled : Nat :=
-                     Num.Ops.add Inner.m Inner.m
+                     Num.Ops.add m m
                    end
                  end
              in M1.doubled 2
@@ -1419,9 +1421,11 @@ let%expect_test "a local body with an import" =
                        5
                      end
                    end
-                   import N use (y)
+                   private def y : Nat :=
+                     N.y
+                   end
                    def z : Nat :=
-                     succ N.y
+                     succ y
                    end
                  end
              in M1.z
@@ -1463,12 +1467,17 @@ let%expect_test "a local body with public definitions and an import" =
                        1
                      end
                    end
-                   import N use (y; w)
-                   def z : Nat :=
+                   private def y : Nat :=
                      N.y
                    end
-                   def v : Nat :=
+                   private def w : let x1 : Nat := 5 in Nat end :=
                      N.w
+                   end
+                   def z : Nat :=
+                     y
+                   end
+                   def v : Nat :=
+                     w
                    end
                  end
              in M1.v
@@ -1647,9 +1656,13 @@ let%expect_test "a local import of a unit imported at the top level" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   import Prelude::Arith::MinMax use (max)
+                   private def max : forall (x1 : Nat)
+                                            (x2 : Nat)
+                                       -> Nat :=
+                     Prelude::Arith::MinMax.max
+                   end
                    def m : Nat :=
-                     Prelude::Arith::MinMax.max 2 3
+                     max 2 3
                    end
                  end
              in M1.m
@@ -1672,7 +1685,7 @@ let%expect_test "a local module does not escape its let" =
 
 let%expect_test "a use of a missing member is rejected" =
   let _ = main_of_body "module M where end import M use (f)" in
-  [%expect {| Error: ill-formed import |}]
+  [%expect {| Error: Test.M.f is not a member |}]
 
 let%expect_test "a module expression is expected after :=" =
   let _ = main_of_body "module P := where" in
@@ -1710,19 +1723,22 @@ let%expect_test "lib/Polynomials.mctt" =
     Evaluate At.horner 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate At.naive 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate let module M1 (x1 : Coeffs) where
-                   import Prelude::Arith::MinMax use (max)
-                   def value : forall (x2 : Nat) -> Nat :=
-                     fun (x3 : Nat) -> At.horner x3 x1 4
+                   private def max : forall (x2 : Nat)
+                                            (x3 : Nat)
+                                       -> Nat :=
+                     Prelude::Arith::MinMax.max
                    end
-                   def total : forall (x4 : Nat) -> Nat :=
-                     fun (x5 : Nat) -> Prelude::Arith::Sum.sumTo value x5
+                   def value : forall (x4 : Nat) -> Nat :=
+                     fun (x5 : Nat) -> At.horner x5 x1 4
                    end
-                   def peak : forall (x6 : Nat) -> Nat :=
-                     fun (x7 : Nat)
-                       -> rec x7 return x8 . Nat
+                   def total : forall (x6 : Nat) -> Nat :=
+                     fun (x7 : Nat) -> Prelude::Arith::Sum.sumTo value x7
+                   end
+                   def peak : forall (x8 : Nat) -> Nat :=
+                     fun (x9 : Nat)
+                       -> rec x9 return x10 . Nat
                           | zero => 0
-                          | succ x9, x10 =>
-                            Prelude::Arith::MinMax.max (value x9) x10
+                          | succ x11, x12 => max (value x11) x12
                           end
                    end
                  end

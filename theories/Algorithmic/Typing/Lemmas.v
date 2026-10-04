@@ -139,15 +139,6 @@ Proof.
        eapply wf_ext_eq_mod; eauto. }
   10:{ match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
          pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end.
-       assert (Himp : forall Φ0 E ns, List.In (Φ0, bc_import E ns) (gm_checks Φ) ->
-                        gc_deps ⍮ gc_stack ⍮ body_ctx Φ0 ++ Δ ++ Γ ⊢ᵐ E ≈ E).
-       { intros * Hin; apply H0 with (ns := ns); [ exact Hin |].
-         destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ0 HΨ0].
-         rewrite HΨ0, <- !List.app_assoc in HΨ.
-         exact (ctx_app_wf_tail _ _ _ _ HΨ). }
-       eapply wf_unit_eq_body; eauto. }
-  10:{ match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
-         pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end.
        eapply wf_unit_eq_alias; eauto. }
   10:{ match goal with Hm : member_type _ _ _ _ nil (mr_mod _) |- _ => rename Hm into Hmt end.
        assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) by eauto.
@@ -447,11 +438,7 @@ with gmod_lets (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ E => gmod_lets Φ + gentry_lets E
-  | gm_check Φ c => gmod_lets Φ + bcheck_lets c
-  end
-with bcheck_lets (c : bcheck) : nat :=
-  match c with
-  | bc_import E _ => modexp_lets E
+  | gm_import Φ H _ => gmod_lets Φ + modexp_lets H
   end
 with gentry_lets (E : gentry) : nat :=
   match E with
@@ -479,14 +466,9 @@ Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c ]; cbn; lia.
-Qed.
-
-Lemma gm_checks_lets : forall Φ Φ0 E ns,
-    List.In (Φ0, bc_import E ns) (gm_checks Φ) -> modexp_lets E <= gmod_lets Φ.
-Proof.
-  induction Φ as [| Φ IH x e | Φ IH c ]; intros * Hin; cbn in *; [ contradiction | eauto with arith |].
-  destruct Hin as [[= -> ->] | Hin]; [ cbn; lia | specialize (IH _ _ _ Hin); lia ].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
+  enough (ctx_lets (List.repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
+  induction (List.length its); cbn; auto.
 Qed.
 
 Lemma exp_lets_apps : forall M args,
@@ -526,7 +508,7 @@ Ltac lets_bound :=
          end;
   repeat first
     [ progress rewrite ?gunit_lets_mk, ?ctx_lets_app in *
-    | progress cbn [exp_lets modexp_lets bnd_lets moddef_lets gmod_lets bcheck_lets
+    | progress cbn [exp_lets modexp_lets bnd_lets moddef_lets gmod_lets
                     gentry_lets centry_lets ctx_lets] in * ];
   repeat match goal with
          | Φ : gmod |- _ =>
@@ -716,16 +698,12 @@ Proof.
     econstructor; eauto.
   - destruct H0 as [Hl _]; destruct H2 as [HU _]; econstructor; eauto.
   - destruct H0 as [_ Hr]; destruct H4 as [HU' _]; econstructor; eauto.
-  (** Units.  An import target is bounded by the body it stands in. *)
+  (** Units. *)
   - destruct H0 as [Hl _]; destruct (body_shape_refl _ _ H4) as (Hs1 & Hs2 & Hn).
     eapply aunit_body; eauto.
-    intros * Hin; apply (proj1 (H7 _ _ _ Hin eq_refl eq_refl)).
-    pose proof (gm_checks_lets _ _ _ _ Hin); lets_bound.
   - destruct H0 as [_ Hr]; destruct (body_shape_refl _ _ H4) as (Hs1 & Hs2 & Hn).
     eapply aunit_body; eauto.
-    + rewrite <- Hn; assumption.
-    + intros * Hin; apply (proj1 (H10 _ _ _ Hin eq_refl eq_refl)).
-      pose proof (gm_checks_lets _ _ _ _ Hin); lets_bound.
+    rewrite <- Hn; assumption.
   - destruct H0 as [Hl _]; destruct H4 as [HE _]; econstructor; eauto.
   - destruct H0 as [_ Hr]; destruct H6 as [HE' _]; econstructor; eauto.
   - destruct H0; assumption.

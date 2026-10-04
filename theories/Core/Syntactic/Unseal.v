@@ -47,7 +47,7 @@ with gm_unseal (Φ : gmod) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gm_unseal Φ) x (ge_unseal E)
-  | gm_check Φ c => gm_check (gm_unseal Φ) c
+  | gm_import Φ H its => gm_import (gm_unseal Φ) H its
   end.
 
 (** An alias has no definition of its own, so it is unchanged. *)
@@ -237,13 +237,6 @@ Lemma member_unfold_unseal : forall Θ Ξ Γ H x,
     member_unfold (gds_unseal Θ) (gs_unseal Ξ) Γ H x = member_unfold Θ Ξ Γ H x.
 Proof. intros; apply member_unfold_ch_unseal. Qed.
 
-Lemma member_ok_unseal : forall Θ Ξ Γ H n,
-    member_ok Θ Ξ Γ H n -> member_ok (gds_unseal Θ) (gs_unseal Ξ) Γ H n.
-Proof.
-  unfold member_ok; intros * [[A HA] | [A HA]]; [ left | right ];
-    exists A; apply member_type_unseal'; assumption.
-Qed.
-
 (** ** Unsealing Preserves Every Judgment *)
 
 Theorem unseal_preserves_wf :
@@ -264,7 +257,7 @@ Proof.
   all: try rewrite <- (gs_tele_unseal Ξ).
   all: try solve [ econstructor; rewrite ?gs_tele_unseal;
                    eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent,
-                     member_ok_unseal, gm_fresh_unseal, gds_fresh_unseal, gd_fresh_unseal,
+                     gm_fresh_unseal, gds_fresh_unseal, gd_fresh_unseal,
                      frame_fresh_unseal, member_type_unseal';
                    rewrite ?member_unfold_unseal; eassumption ].
 Qed.
@@ -299,7 +292,7 @@ with gm_no_axioms (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_no_axioms Φ /\ ge_no_axioms E
-  | gm_check Φ _ => gm_no_axioms Φ
+  | gm_import Φ _ _ => gm_no_axioms Φ
   end.
 
 Definition gds_no_axioms (Θ : gdeps) : Prop :=

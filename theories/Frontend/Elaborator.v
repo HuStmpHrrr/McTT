@@ -245,8 +245,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_import fq ip spec :: cs' =>
                let* _ := echeck (loaded_b S fq) "the unit is not imported" in
                let* E := elab_itarget S fq ip in
-               let* F := elab_ibinds E spec nil in
-               go (F ++ S)%list (gm_check Φ (bc_import E (ispec_names spec))) cs'
+               go (item_ents (ispec_items spec) ++ S)%list (gm_import Φ E (ispec_items spec)) cs'
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body Φ)
@@ -256,21 +255,21 @@ Definition elab_params := elab_params_with elab.
 
 (** ** Imports in a Frame *)
 
-(** An import in the frame [F] inside [O]: the frame after it, and its core
-    command. *)
+(** An import in the frame [F] inside [O]: the frame after it, its loads
+    and the core command declaring its items. *)
 Definition elab_import (O F : list ent) (fq ip : list string) (spec : Cst.ispec)
-  : eres (list ent * ccmd)%type :=
+  : eres (list ent * list ccmd * ccmd)%type :=
   let* E := elab_itarget (F ++ O) fq ip in
   let* F' := elab_ibinds E spec (uents fq ++ F) in
-  eok (F', cc_import (ifile fq) E (ispec_names spec)).
+  eok (F', iloads fq, cc_import E (ispec_items spec)).
 
 (** ** Commands
 
     A module body is elaborated where it stands: the body of [module x …
     where body end] is elaborated by [elab_cmd] itself, so no stack of frames
-    is needed.  A command takes the frame's entries [F] to [F'] and emits one
-    core command. *)
-Definition elab_cmds_with (f : list string -> list ent -> list ent -> Cst.cmd -> eres (list ent * ccmd)%type)
+    is needed.  A command takes the frame's entries [F] to [F'] and emits its
+    core commands. *)
+Definition elab_cmds_with (f : list string -> list ent -> list ent -> Cst.cmd -> eres (list ent * list ccmd)%type)
   (ch : list string) (O : list ent) :=
   fix go (F : list ent) (cs : list Cst.cmd) : eres (list ccmd) :=
     match cs with
@@ -278,48 +277,55 @@ Definition elab_cmds_with (f : list string -> list ent -> list ent -> Cst.cmd ->
     | c :: cs' =>
         let* r := f ch O F c in
         let* ccs := go (fst r) cs' in
-        eok (snd r :: ccs)
+        eok (snd r ++ ccs)%list
     end.
 
 Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) {struct c}
-  : eres (list ent * ccmd)%type :=
+  : eres (list ent * list ccmd)%type :=
   match c with
   | Cst.c_def m x oA oM =>
       let* _ := check_fresh x F in
       let* A := elab (F ++ O) oA in
       let* M := elab (F ++ O) oM in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M)
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M :: nil)
   | Cst.c_mod pv x ps (Cst.md_where body) =>
       let* _ := check_fresh x F in
       let* _ := check_params ps in
       let* tys := elab_params (F ++ O) ps in
       let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (F ++ O) (pents ps) body in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_mod x pv (ptele tys) bcs)
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_mod x pv (ptele tys) bcs :: nil)
   | Cst.c_mod pv x ps (Cst.md_alias oE) =>
       let* _ := check_fresh x F in
       let* _ := check_params ps in
       let* tys := elab_params (F ++ O) ps in
       let* E := elab_mod (pents ps ++ F ++ O) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x pv (ptele tys) E)
-  | Cst.c_import fq ip spec => elab_import O F fq ip spec
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x pv (ptele tys) E :: nil)
+  | Cst.c_import fq ip spec =>
+      let* r := elab_import O F fq ip spec in
+      let '(F', ls, ci) := r in
+      eok (F', ls ++ ci :: nil)%list
   | Cst.c_eval oM None =>
       let* M := elab (F ++ O) oM in
-      eok (F, cc_eval M None)
+      eok (F, cc_eval M None :: nil)
   | Cst.c_eval oM (Some oA) =>
       let* M := elab (F ++ O) oM in
       let* A := elab (F ++ O) oA in
-      eok (F, cc_eval M (Some A))
+      eok (F, cc_eval M (Some A) :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).
 
-Fixpoint elab_imports (O : list ent) (cs : list Cst.cmd) : eres (list ent * list ccmd)%type :=
+(** The leading imports: the scope after them, their loads, and their
+    declarations, which run first in the unit's body. *)
+Fixpoint elab_imports (O : list ent) (cs : list Cst.cmd) : eres (list ent * list ccmd * list ccmd)%type :=
   match cs with
-  | nil => eok (O, nil)
+  | nil => eok (O, nil, nil)
   | Cst.c_import fq ip spec :: cs' =>
       let* r := elab_import nil O fq ip spec in
-      let* r' := elab_imports (fst r) cs' in
-      eok (fst r', snd r :: snd r')
+      let '(O1, ls, ci) := r in
+      let* r' := elab_imports O1 cs' in
+      let '(O2, lds, is) := r' in
+      eok (O2, ls ++ lds, ci :: is)%list
   | _ :: _ => eerr "outside of any module"
   end.
 
@@ -328,10 +334,11 @@ Fixpoint elab_imports (O : list ent) (cs : list Cst.cmd) : eres (list ent * list
 Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(imports, (fp, ps, cs)) := prg in
   let* r := elab_imports nil imports in
+  let '(O0, lds, is) := r in
   let* _ := check_params ps in
-  let* tys := elab_params (fst r) ps in
-  let* ccs := elab_cmds fp nil (fst r) (pents ps) cs in
-  eok (snd r, ptele tys, ccs).
+  let* tys := elab_params O0 ps in
+  let* ccs := elab_cmds fp nil O0 (pents ps) cs in
+  eok (lds, ptele tys, is ++ ccs)%list.
 
 Definition to_core (prg : Cst.prog) : option cunit :=
   match elaborate_core prg with

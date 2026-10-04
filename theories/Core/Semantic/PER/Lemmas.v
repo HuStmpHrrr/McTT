@@ -1130,7 +1130,6 @@ Proof.
     match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
       assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
     econstructor; eauto.
-  - econstructor; eauto.
 Qed.
 
 Corollary per_dmod_trans : forall m1 m2 m3, per_dmod m1 m2 -> per_dmod m2 m3 -> per_dmod m1 m3.

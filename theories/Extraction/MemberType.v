@@ -14,7 +14,7 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Imports.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules MemberWf.
 From Mctt.Core.Completeness Require Import MemberSem.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
@@ -51,7 +51,7 @@ with gsize (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ (ge_mod _ U) => gsize Φ + usize U
-  | gm_ext Φ _ _ | gm_check Φ _ => gsize Φ
+  | gm_ext Φ _ _ | gm_import Φ _ _ => gsize Φ
   end.
 
 Fixpoint csize (Γ : ctx) : nat :=
@@ -72,7 +72,9 @@ Proof. induction Ψ as [| [A | A M | U] Ψ IH]; intros; cbn; rewrite ?IH; lia. Q
 
 Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) = gsize Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c]; cbn; rewrite ?IH; lia.
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
+  enough (csize (repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
+  induction (List.length its); cbn; auto.
 Qed.
 
 Lemma gsize_prefix : forall Φ x Φx, gm_prefix_upto Φ x = Some Φx -> gsize Φx <= gsize Φ.
@@ -640,4 +642,54 @@ Proof.
   - exact (mt_order_unit _ _ _ _ _ Hg).
   - destruct (mod_qname H) as [mq0 |] eqn:Hp0; [| discriminate ].
     constructor; eapply IH; reflexivity.
+Qed.
+
+(** ** Every Module Expression Has an Order
+
+    The recursion of [member_type_impl] is on sizes: a slot is read in the
+    context after it, and a body module in the context of the entries before
+    it, both smaller; only a unit needs the global context, whose aliases
+    have an order ([mt_order_unit]).  So no well-formedness of [H] is
+    needed. *)
+Theorem mt_order_total_n : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall n,
+    (forall Γ H, msize H + csize Γ <= n -> forall ch, mt_order Θ Ξ Γ H ch) /\
+    (forall Γ U, usize U + csize Γ <= n -> forall ch, umt_order Θ Ξ Γ U ch).
+Proof.
+  intros * Hg; induction n as [| n [IHm IHu]].
+  { split; intros * Hn; [ pose proof (msize_pos H) | pose proof (usize_pos U) ]; lia. }
+  split.
+  - intros Γ H Hn ch; destruct H as [fp | x | H y | H N | U]; cbn [msize] in Hn.
+    + apply mt_order_unit, Hg.
+    + constructor; intros U0 Γ' Hf; pose proof (ctx_find_slot_size _ _ _ _ Hf); apply IHu; lia.
+    + constructor; apply IHm; lia.
+    + constructor; apply IHm; lia.
+    + constructor; apply IHu; lia.
+  - intros Γ U Hn ch; destruct U as [Δ [Φ | E]]; rewrite usize_mk in Hn; cbn [dsize] in Hn.
+    + destruct ch as [| y ch]; [ constructor |].
+      constructor; intros Φ' pm Uy Hp.
+      pose proof (gsize_prefix _ _ _ Hp) as Hsz; cbn in Hsz.
+      apply IHu; rewrite !csize_app, csize_body_ctx; lia.
+    + constructor; apply IHm; rewrite csize_app; lia.
+Qed.
+
+Corollary mt_order_total : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall Γ H ch, mt_order Θ Ξ Γ H ch.
+Proof. intros * Hg Γ H; exact (proj1 (mt_order_total_n _ _ Hg _) Γ H (le_n _)). Qed.
+
+(** ** The Oracle of a Well-Formed Global Context *)
+
+Definition mt_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : mt_oracle :=
+  fun Γ H ch =>
+    match member_type_impl Θ Ξ (gctx_closed_of_wf _ _ Hg) Γ H ch (mt_order_total _ _ Hg Γ H ch) with
+    | inleft (exist _ R _) => Some R
+    | inright _ => None
+    end.
+
+Lemma mt_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), mt_spec Θ Ξ (mt_of Θ Ξ Hg).
+Proof.
+  intros * Γ H ch R; unfold mt_of.
+  destruct (member_type_impl _ _ _ _ _ _ _) as [[R' HR'] | HN]; split; intros HR.
+  - injection HR as <-; exact HR'.
+  - f_equal; exact (proj1 (member_type_functional _ _) _ _ _ _ HR' _ HR).
+  - discriminate.
+  - exfalso; exact (HN _ HR).
 Qed.

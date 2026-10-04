@@ -145,8 +145,6 @@ Proof.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
     destruct E as [b pv A [M |] | pm U], E' as [b' pv' A' [M' |] | pm' U']; cbn in HE |- *; try contradiction;
       intuition congruence.
-  - destruct H as (HΦ & Hc); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct c as [E ns], c' as [E' ns']; cbn in Hc |- *; intuition congruence.
 Qed.
 
 Definition unit_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
@@ -177,7 +175,7 @@ Proof.
   - destruct (String.eqb x y); [ injection Hx; intros; subst; cbn in Hs |].
     + destruct B as [M |]; [ eauto | destruct Hs as (_ & _ & []) ].
     + exact (IH _ _ _ _ _ _ (proj1 Hs) Hx).
-  - exact (IH _ _ _ _ _ _ (proj1 Hs) Hx).
+  - destruct Hs.
 Qed.
 
 (** ** Prefixes of Global Paths

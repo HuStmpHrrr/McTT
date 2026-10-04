@@ -68,16 +68,24 @@ Qed.
 
 (** ** Bodies *)
 
+(** A local import's placeholders are closed. *)
+Lemma tele_wk_placeholders : forall n φ, tele_wk (repeat (ce_ass a_nat) n) φ = repeat (ce_ass a_nat) n.
+Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
+
 Lemma body_ctx_wk : forall Φ φ, body_ctx (gmod_wk Φ φ) = tele_wk (body_ctx Φ) φ.
 Proof.
   induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
-    rewrite IH, length_body_ctx; reflexivity.
+    rewrite ?tele_wk_app, ?tele_wk_placeholders, IH, ?length_body_ctx; reflexivity.
 Qed.
+
+(** A local import's placeholders are closed. *)
+Lemma tele_sub_placeholders : forall n σ, tele_sub (repeat (ce_ass a_nat) n) σ = repeat (ce_ass a_nat) n.
+Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
 
 Lemma body_ctx_sub : forall Φ σ, body_ctx (gmod_sub Φ σ) = tele_sub (body_ctx Φ) σ.
 Proof.
   induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
-    rewrite IH, length_body_ctx; reflexivity.
+    rewrite ?tele_sub_app, ?tele_sub_placeholders, IH, ?length_body_ctx; reflexivity.
 Qed.
 
 Lemma gm_names_wk : forall Φ φ, gm_names (gmod_wk Φ φ) = gm_names Φ.
@@ -100,16 +108,6 @@ Proof.
   destruct (String.eqb x s); auto.
 Qed.
 
-Lemma gm_checks_wk : forall Φ φ,
-    gm_checks (gmod_wk Φ φ) =
-    map (fun '(Φ0, c) => (gmod_wk Φ0 φ, bcheck_wk c (wk_qn (gm_binders Φ0) φ))) (gm_checks Φ).
-Proof. induction Φ; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
-
-Lemma gm_checks_sub : forall Φ σ,
-    gm_checks (gmod_sub Φ σ) =
-    map (fun '(Φ0, c) => (gmod_sub Φ0 σ, bcheck_sub c (sb_qn (gm_binders Φ0) σ))) (gm_checks Φ).
-Proof. induction Φ; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
-
 (** The prefix of a body up to an entry is a prefix of its context. *)
 Lemma gm_prefix_upto_body_ctx : forall Φ x Φx,
     gm_prefix_upto Φ x = Some Φx -> exists Ψ, body_ctx Φ = Ψ ++ body_ctx Φx.
@@ -118,16 +116,7 @@ Proof.
   - destruct (String.eqb x y); [ injection H as <-; exists nil; reflexivity |].
     destruct (IH _ _ H) as [Ψ HΨ]; cbn.
     destruct E as [? ? ? [] | ]; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
-  - exact (IH _ _ H).
-Qed.
-
-Lemma gm_checks_body_ctx : forall Φ Φ0 c,
-    In (Φ0, c) (gm_checks Φ) -> exists Ψ, body_ctx Φ = Ψ ++ body_ctx Φ0.
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH c0]; intros * H; cbn in H; try contradiction.
-  - destruct (IH _ _ H) as [Ψ HΨ]; cbn.
-    destruct E as [? ? ? [] | ]; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
-  - destruct H as [[= <- <-] | H]; [ exists nil; reflexivity | exact (IH _ _ H) ].
+  - destruct (IH _ _ H) as [Ψ HΨ]; cbn; rewrite HΨ, app_assoc; eexists; reflexivity.
 Qed.
 
 (** ** Module Expressions *)
@@ -285,9 +274,13 @@ Proof.
     eapply gunit_scoped_wk; eauto; cbn; lia.
 Qed.
 
+Lemma ctx_scoped_placeholders : forall k n, ctx_scoped n (repeat (ce_ass a_nat) k).
+Proof. induction k; intros; cbn; auto. Qed.
+
 Lemma gmod_scoped_body_ctx : forall Φ n, gmod_scoped n Φ -> ctx_scoped n (body_ctx Φ).
 Proof.
   induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros * HΦ; cbn in *; destruct_all;
+    try (apply ctx_scoped_app; split; [ apply ctx_scoped_placeholders | auto ]);
     repeat split; auto; rewrite length_body_ctx; assumption.
 Qed.
 

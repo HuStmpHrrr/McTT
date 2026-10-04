@@ -300,8 +300,8 @@ let module M (A : Type@0) where def x : Nat := zero end
   a local body is therefore an elaborator error (§10.3).
 
 ### 10.3 Local bodies
-- Imports stay allowed in local bodies (`bc_import`, `gm_check`, the import
-  premises of `wf_unit_eq_body`); their `use` names are privacy-checked.
+- Imports stay allowed in local bodies; since §10.7 they are the pre-form
+  `gm_import`, expanded into entries before typing.
 - `bc_eval` is gone: `eval` in a local body is an elaborator error,
   `eval is not allowed in a local module`.
 - A local import of a unit must name an imported unit (`loaded`):
@@ -309,8 +309,8 @@ let module M (A : Type@0) where def x : Nat := zero end
 - `private def` and `private module` in a local body are elaborator errors,
   `private is not allowed in a local module`; the core is unchanged, and the
   flags of local entries are `false`.
-- A local `use (n; n)` naming a member twice is an elaborator error,
-  `n is already declared`.
+- A local `use (n; n)` naming a member twice is rejected by the core
+  (`xe_fresh`, `n is already declared`) since §10.7.
 
 ### 10.4 Module arities are telescopes
 - `member_type … ch R` with `R : mres := mr_term typ | mr_mod ctx`.  A module's
@@ -361,3 +361,32 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
 - Frontend: `Cst.d_def : string -> option obj -> obj -> decl`; the parser
   accepts `x := a` in a `let`; the elaborator passes the option through
   (`sel_let_infer`).  `def` keeps its required type.
+
+### 10.7 Imports generate definitions (round `eq-imports`)
+- `import E items` is the command `cc_import E items` (`iitem := option
+  string * string * bool`: member or the module itself, declared name,
+  private).  `import_gen mt Γ E items` (`Core/Syntactic/Imports.v`) checks
+  `E` is a module and each item a member, rejects a member both used and
+  exported (`xe_both`) and a name declared twice (`xe_fresh`), and gives a
+  definition `d : A := E.n` (`A` its member type) or an alias per item.
+  `rc_import` runs them as `cc_def`/`cc_alias` commands, so their freshness
+  and privacy are the ordinary ones.  Loading is its own command, `cc_load`.
+- `mt : mt_oracle` stands for the member types; `mt_spec Θ Ξ mt` ties it to
+  `member_type`, and any two such oracles agree (`mt_spec_ext`), so
+  expansion is unique (`cmd_xp_ok_functional`).  The checker uses `mt_of`
+  (`Extraction/MemberType.v`), total by `mt_order_total`.
+- A local import is the pre-form `gm_import Φ E items`, one binder per item
+  (`body_ctx` gives placeholder `ce_ass ℕ` entries).  `rcs_cons` and
+  `ru_intro` expand every command/parameter telescope first (`cmd_xp`,
+  `tele_xp`), turning each `gm_import` into `gm_ext` entries.  No typing rule
+  mentions `gm_import`: `body_shape` is `False` on it, so typed units never
+  contain one, and `wf_unit_eq_body` lost its import premises.
+- Privacy of local bodies: references carry a module table (`ptab`) read off
+  the syntax in a scope; `pt_body ch es` checks the newest entry is public,
+  `pt_glob H` the global check.  `pt_body` carries the chain `ch` of
+  submodules from the local module, for `re_private_local`.
+- Known consequence: a generated definition's type is privacy-checked, so
+  importing a public member whose type names a private one is rejected
+  (`module Lib where private def P … def x : P … end import Lib use (x)` →
+  `Error: PT.Lib.P is private`).
+

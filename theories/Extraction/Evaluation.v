@@ -228,10 +228,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
 | ebo_mod :
   `( eval_benv_order Θ Ξ p Φ ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) )
-| ebo_check :
-  `( eval_benv_order Θ Ξ p Φ ->
-     eval_benv_order Θ Ξ p (gm_check Φ c) ).
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
 
 #[local]
 Hint Constructors eval_exp_order eval_natrec_order eval_app_order eval_exps_order eval_apps_order
@@ -608,9 +605,7 @@ Section EvalImpl.
   | p, gm_ext Φ y (ge_mod _ Uy), H =>
       let (p1, Hp1) := eval_benv_impl p Φ _ in
       exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
-  | p, gm_check Φ c, H =>
-      let (p1, Hp1) := eval_benv_impl p Φ _ in
-      exist _ p1 _.
+  | p, gm_import Φ _ _, H => False_rect _ _.
 End EvalImpl.
 
 Extraction Inline eval_exp_impl_functional
