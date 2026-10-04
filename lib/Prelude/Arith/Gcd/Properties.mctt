@@ -21,10 +21,14 @@ import Prelude::Arith::Gcd use (gcdFuel; gcd)
 
 module Prelude::Arith::Gcd::Properties where
 
+(* The invariants of Euclid's algorithm with enough fuel, from which
+   [Divisor] below reads the laws of [gcd]. *)
+private module Fuel where
+
 (* Euclid's algorithm with fuel above [b] gives a common divisor.  Both
    halves are proved together: the step divides [a] because it divides
    [succ d] and the remainder [mod a (succ d)]. *)
-private def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
+def divides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
     And (Divides (gcdFuel f a b) a) (Divides (gcdFuel f a b) b) :=
   fun (f : Nat) ->
     rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x) ->
@@ -57,7 +61,7 @@ end
 (* With fuel above [b], every common divisor of [a] and [b] divides the
    result.  The step passes the divisor to [succ d] and to the remainder,
    which it divides by [dividesPlusCancel]. *)
-private abstract def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f)
+abstract def greatest : forall (k : Nat) (f : Nat) (a : Nat) (b : Nat) (h : Lt b f)
     (ha : Divides k a) (hb : Divides k b) -> Divides k (gcdFuel f a b) :=
   fun (k : Nat) (f : Nat) ->
     rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x)
@@ -83,6 +87,8 @@ private abstract def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b :
     end
 end
 
+end
+
 (* The greatest common divisor divides both numbers, and every common divisor
    divides it. *)
 module Divisor where
@@ -90,13 +96,13 @@ module Divisor where
 (* The gcd divides its first argument. *)
 abstract def gcdDividesLeft : forall (a : Nat) (b : Nat) -> Divides (gcd a b) a :=
   fun (a : Nat) (b : Nat) ->
-    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (Fuel.divides (succ b) a b (leRefl b))
 end
 
 (* The gcd divides its second argument. *)
 abstract def gcdDividesRight : forall (a : Nat) (b : Nat) -> Divides (gcd a b) b :=
   fun (a : Nat) (b : Nat) ->
-    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (gcdFuelDivides (succ b) a b (leRefl b))
+    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (Fuel.divides (succ b) a b (leRefl b))
 end
 
 (* The gcd is the greatest common divisor: every common divisor divides
@@ -104,7 +110,7 @@ end
 abstract def gcdGreatest : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
     Divides k (gcd a b) :=
   fun (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
-    gcdFuelGreatest k (succ b) a b (leRefl b) ha hb
+    Fuel.greatest k (succ b) a b (leRefl b) ha hb
 end
 
 end

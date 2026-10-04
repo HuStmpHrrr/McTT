@@ -30,15 +30,18 @@ def odds : S.Stream := S.iterate (fun (x : Nat) -> succ (succ x)) 1 end
 def squares : S.Stream := S.map Nat square nats end
 
 (* The Fibonacci-like stream from the seeds [a] and [b]: the first
-   components of the iterated Fibonacci step on pairs.  The pairs and the
-   step are private to the module. *)
+   components of the iterated Fibonacci step on pairs. *)
 module FibLike (a : Nat) (b : Nat) where
 
+(* Pairs of numbers, the step on them, and the seeds: the implementation
+   of [stream], private to the module. *)
+private module Pairs where
+
 (* A pair of numbers, as a function from the index 0 or 1. *)
-private def Pair : Type@0 := forall (i : Nat) -> Nat end
+def Pair : Type@0 := forall (i : Nat) -> Nat end
 
 (* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
-private def fibStep (p : Pair) : Pair :=
+def fibStep (p : Pair) : Pair :=
   fun (i : Nat) ->
     rec i return y . Nat
     | zero => p 1
@@ -47,9 +50,13 @@ private def fibStep (p : Pair) : Pair :=
 end
 
 (* The seeds, as a pair. *)
-private def seed : Pair :=
+def seed : Pair :=
   fun (i : Nat) -> rec i return y . Nat | zero => a | succ q, r => b end
 end
+
+end
+
+import Pairs use (Pair; fibStep; seed)
 
 def stream : S.Stream :=
   St.map Pair Nat (fun (p : Pair) -> p 0) (St.iterate Pair fibStep seed)

@@ -7,15 +7,19 @@ import Prelude::Arith::Plus use (plus)
 
 module Prelude::Arith::Parity where
 
+(* Parity flags, and numbers having a given flag.  [Even] and [Odd] below
+   unfold to [HasParity]; the flags themselves stay private. *)
+private module Flag where
+
 (* Exchanges the parity flags 0 (even) and 1 (odd). *)
-private def flip (b : Nat) : Nat :=
+def flip (b : Nat) : Nat :=
   rec b return y . Nat | zero => 1 | succ q, s => 0 end
 end
 
 (* [HasParity n b] says that [n] has parity [b], where 0 is even and 1 is
    odd.  It recurses on [n] and flips [b] at each step, so by conversion
    [Even (succ n)] is [Odd n] and [Odd (succ n)] is [Even n]. *)
-private def HasParity : forall (n : Nat) (b : Nat) -> Type@0 :=
+def HasParity : forall (n : Nat) (b : Nat) -> Type@0 :=
   fun (n : Nat) ->
     rec n return y . (forall (b : Nat) -> Type@0)
     | zero => fun (b : Nat) ->
@@ -23,6 +27,10 @@ private def HasParity : forall (n : Nat) (b : Nat) -> Type@0 :=
     | succ p, r => fun (b : Nat) -> r (flip b)
     end
 end
+
+end
+
+import Flag use (HasParity)
 
 def Even (n : Nat) : Type@0 := HasParity n 0 end
 

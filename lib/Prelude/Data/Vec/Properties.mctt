@@ -452,10 +452,15 @@ end
 (* The tests [allb] and [anyb] are sound and complete. *)
 module Tests where
 
+(* One step of each test, taken apart and put together.  The proofs
+   below are by induction on the length, and use one of these at each
+   element. *)
+private module Step where
+
 (* One step of [allb]: [rec x | zero => 0 | succ => b] is 1 exactly when [x]
    is positive and [b] is 1.  These three lemmas take the step apart and put
    it together. *)
-private abstract def allbStepHead : forall (x : Nat) (b : Nat)
+abstract def allHead : forall (x : Nat) (b : Nat)
     (e : Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1) -> Lt 0 x :=
   fun (x : Nat) (b : Nat) ->
     rec x return z . (forall (e : Eq (rec z return y . Nat | zero => 0 | succ q, s => b end) 1) ->
@@ -465,7 +470,7 @@ private abstract def allbStepHead : forall (x : Nat) (b : Nat)
     end
 end
 
-private abstract def allbStepTail : forall (x : Nat) (b : Nat)
+abstract def allTail : forall (x : Nat) (b : Nat)
     (e : Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1) -> Eq b 1 :=
   fun (x : Nat) (b : Nat) ->
     rec x return z . (forall (e : Eq (rec z return y . Nat | zero => 0 | succ q, s => b end) 1) ->
@@ -475,7 +480,7 @@ private abstract def allbStepTail : forall (x : Nat) (b : Nat)
     end
 end
 
-private abstract def allbStepIntro : forall (x : Nat) (b : Nat) (hx : Lt 0 x) (hb : Eq b 1) ->
+abstract def allIntro : forall (x : Nat) (b : Nat) (hx : Lt 0 x) (hb : Eq b 1) ->
     Eq (rec x return y . Nat | zero => 0 | succ q, s => b end) 1 :=
   fun (x : Nat) (b : Nat) ->
     rec x return z . (forall (hx : Lt 0 z) (hb : Eq b 1) ->
@@ -484,6 +489,24 @@ private abstract def allbStepIntro : forall (x : Nat) (b : Nat) (hx : Lt 0 x) (h
     | succ r, t => fun (hx : True) (hb : Eq b 1) -> hb
     end
 end
+
+(* One step of [anyb]: when [rec x | zero => b | succ => 1] is 1, either [x]
+   is positive or [b] is 1.  The conclusion is eliminated into any [C]. *)
+def anyCases : forall (x : Nat) (b : Nat)
+    (e : Eq (rec x return y . Nat | zero => b | succ q, s => 1 end) 1)
+    (C : Type@0) (l : forall (hx : Lt 0 x) -> C) (r : forall (hb : Eq b 1) -> C) -> C :=
+  fun (x : Nat) (b : Nat) ->
+    rec x return z . (forall (e : Eq (rec z return y . Nat | zero => b | succ q, s => 1 end) 1)
+                        (C : Type@0) (l : forall (hx : Lt 0 z) -> C) (r : forall (hb : Eq b 1) -> C) -> C)
+    | zero => fun (e : Eq b 1) (C : Type@0) (l : forall (hx : False) -> C)
+                  (r : forall (hb : Eq b 1) -> C) -> r e
+    | succ q, t => fun (e : True) (C : Type@0) (l : forall (hx : True) -> C)
+                       (r : forall (hb : Eq b 1) -> C) -> l true
+    end
+end
+
+end
+
 
 (* [allb] answers 1 only when the test is positive on every element. *)
 def allbSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
@@ -497,8 +520,8 @@ def allbSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => 0 | succ q, s => b end) 1)
                (i : Nat) ->
              rec i return x . (forall (h : Lt x (succ m)) -> Lt 0 (p (w x h)))
-             | zero => fun (h : True) -> allbStepHead (p (w 0 true)) b e
-             | succ j, s => fun (h : Lt j m) -> ih (V.tail A m w) (allbStepTail (p (w 0 true)) b e) j h
+             | zero => fun (h : True) -> Step.allHead (p (w 0 true)) b e
+             | succ j, s => fun (h : Lt j m) -> ih (V.tail A m w) (Step.allTail (p (w 0 true)) b e) j h
              end
         end
     end
@@ -513,23 +536,8 @@ abstract def allbComplete : forall (A : Type@0) (p : forall (a : A) -> Nat) (n :
     | zero => fun (v : V.Vec A 0) (h : V.All A (fun (a : A) -> Lt 0 (p a)) 0 v) -> true
     | succ m, ih => fun (w : V.Vec A (succ m))
                         (h : V.All A (fun (a : A) -> Lt 0 (p a)) (succ m) w) ->
-        allbStepIntro (p (w 0 true)) (V.allb A p m (V.tail A m w)) (h 0 true)
+        Step.allIntro (p (w 0 true)) (V.allb A p m (V.tail A m w)) (h 0 true)
           (ih (V.tail A m w) (fun (i : Nat) (hi : Lt i m) -> h (succ i) hi))
-    end
-end
-
-(* One step of [anyb]: when [rec x | zero => b | succ => 1] is 1, either [x]
-   is positive or [b] is 1.  The conclusion is eliminated into any [C]. *)
-private def anybStepCases : forall (x : Nat) (b : Nat)
-    (e : Eq (rec x return y . Nat | zero => b | succ q, s => 1 end) 1)
-    (C : Type@0) (l : forall (hx : Lt 0 x) -> C) (r : forall (hb : Eq b 1) -> C) -> C :=
-  fun (x : Nat) (b : Nat) ->
-    rec x return z . (forall (e : Eq (rec z return y . Nat | zero => b | succ q, s => 1 end) 1)
-                        (C : Type@0) (l : forall (hx : Lt 0 z) -> C) (r : forall (hb : Eq b 1) -> C) -> C)
-    | zero => fun (e : Eq b 1) (C : Type@0) (l : forall (hx : False) -> C)
-                  (r : forall (hb : Eq b 1) -> C) -> r e
-    | succ q, t => fun (e : True) (C : Type@0) (l : forall (hx : True) -> C)
-                       (r : forall (hb : Eq b 1) -> C) -> l true
     end
 end
 
@@ -546,7 +554,7 @@ def anybSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => b | succ q, s => 1 end) 1)
                (C : Type@0)
                (k : forall (i : Nat) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) -> C) ->
-             anybStepCases (p (w 0 true)) b e C
+             Step.anyCases (p (w 0 true)) b e C
                (fun (hx : Lt 0 (p (w 0 true))) -> k 0 true hx)
                (fun (hb : Eq b 1) ->
                   ih (V.tail A m w) hb C

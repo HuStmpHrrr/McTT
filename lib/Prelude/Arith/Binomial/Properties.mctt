@@ -77,15 +77,19 @@ end
 
 import Basic use (chooseZero; chooseOver; chooseSelf)
 
+(* Choosing [a] out of [a + b], as a function of the two sizes, and its
+   symmetry.  Only [Symmetry] below uses it. *)
+private module Split where
+
 (* The coefficient [choose (plus a b) a], indexed by the sizes [a] of the
    chosen part and [b] of the rest. *)
-private def split (a : Nat) (b : Nat) : Nat := choose (plus a b) a end
+def split (a : Nat) (b : Nat) : Nat := choose (plus a b) a end
 
-private abstract def splitZeroLeft : forall (b : Nat) -> Eq (split 0 b) 1 :=
+abstract def zeroLeft : forall (b : Nat) -> Eq (split 0 b) 1 :=
   fun (b : Nat) -> chooseZero b
 end
 
-private abstract def splitZeroRight : forall (a : Nat) -> Eq (split a 0) 1 :=
+abstract def zeroRight : forall (a : Nat) -> Eq (split a 0) 1 :=
   fun (a : Nat) ->
     trans (choose (plus a 0) a) (choose a a) 1
       (cong (fun (y : Nat) -> choose y a) (plus a 0) a (plusZero a))
@@ -95,7 +99,7 @@ end
 (* Pascal's rule for [split]: [split (succ a) (succ b)] is
    [plus (split a (succ b)) (split (succ a) b)].  The second summand needs
    [plus a (succ b) = succ (plus a b)]. *)
-private abstract def splitSucc : forall (a : Nat) (b : Nat) ->
+abstract def succSucc : forall (a : Nat) (b : Nat) ->
     Eq (split (succ a) (succ b)) (plus (split a (succ b)) (split (succ a) b)) :=
   fun (a : Nat) (b : Nat) ->
     cong (fun (y : Nat) -> plus (split a (succ b)) y)
@@ -105,18 +109,18 @@ private abstract def splitSucc : forall (a : Nat) (b : Nat) ->
 end
 
 (* [split] is symmetric.  The induction on [a] and then on [b] follows the
-   rule [splitSucc], which is symmetric up to the order of the summands. *)
-private abstract def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
+   rule [succSucc], which is symmetric up to the order of the summands. *)
+abstract def symm : forall (a : Nat) (b : Nat) -> Eq (split a b) (split b a) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (split x b) (split b x))
     | zero => fun (b : Nat) ->
-        trans (split 0 b) 1 (split b 0) (splitZeroLeft b)
-          (sym (split b 0) 1 (splitZeroRight b))
+        trans (split 0 b) 1 (split b 0) (zeroLeft b)
+          (sym (split b 0) 1 (zeroRight b))
     | succ p, ih => fun (b : Nat) ->
         rec b return y . Eq (split (succ p) y) (split y (succ p))
         | zero =>
-            trans (split (succ p) 0) 1 (split 0 (succ p)) (splitZeroRight (succ p))
-              (sym (split 0 (succ p)) 1 (splitZeroLeft (succ p)))
+            trans (split (succ p) 0) 1 (split 0 (succ p)) (zeroRight (succ p))
+              (sym (split 0 (succ p)) 1 (zeroLeft (succ p)))
         | succ q, s =>
             let lhs := split (succ p) (succ q);
                 la := split p (succ q);
@@ -126,13 +130,15 @@ private abstract def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (s
                 rhs := split (succ q) (succ p);
                 mid : Eq (plus la lb) (plus rb ra) := plusCongBoth la lb rb ra (ih (succ q)) s;
                 swap : Eq (plus rb ra) (plus ra rb) := plusComm rb ra
-            in trans lhs (plus la lb) rhs (splitSucc p q)
+            in trans lhs (plus la lb) rhs (succSucc p q)
                  (trans (plus la lb) (plus rb ra) rhs mid
                     (trans (plus rb ra) (plus ra rb) rhs swap
-                       (sym rhs (plus ra rb) (splitSucc q p))))
+                       (sym rhs (plus ra rb) (succSucc q p))))
             end
         end
     end
+end
+
 end
 
 (* Symmetry of the binomial coefficients. *)
@@ -143,7 +149,7 @@ abstract def chooseSymm : forall (a : Nat) (b : Nat) ->
     Eq (choose (plus a b) a) (choose (plus a b) b) :=
   fun (a : Nat) (b : Nat) ->
     trans (choose (plus a b) a) (choose (plus b a) b) (choose (plus a b) b)
-      (splitSymm a b)
+      (Split.symm a b)
       (cong (fun (y : Nat) -> choose y b) (plus b a) (plus a b) (plusComm b a))
 end
 

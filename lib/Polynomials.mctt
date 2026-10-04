@@ -40,20 +40,29 @@ end
 (* Evaluation at the point [x]. *)
 module At (x : Nat) where
 
+(* The pieces of Horner's scheme, private to [At]: the shifted
+   coefficients, the monomials, and the scheme generalized over the
+   coefficients. *)
+private module Scheme where
+
 (* The coefficients of [(c - c 0) / x]: the polynomial shifted down. *)
-private def shift (c : Coeffs) : Coeffs := fun (i : Nat) -> c (succ i) end
+def shift (c : Coeffs) : Coeffs := fun (i : Nat) -> c (succ i) end
 
 (* The monomial of index [i]. *)
-private def term (c : Coeffs) (i : Nat) : Nat := mult (c i) (pow x i) end
+def term (c : Coeffs) (i : Nat) : Nat := mult (c i) (pow x i) end
 
 (* Horner's scheme, [c 0 + x * (c 1 + x * (...))], by recursion on the
    length, generalized over the coefficients. *)
-private def hornerFrom (n : Nat) : forall (c : Coeffs) -> Nat :=
+def hornerFrom (n : Nat) : forall (c : Coeffs) -> Nat :=
   rec n return k . (forall (c : Coeffs) -> Nat)
   | zero => fun (c : Coeffs) -> 0
   | succ p, r => fun (c : Coeffs) -> plus (c 0) (mult x (r (shift c)))
   end
 end
+
+end
+
+import Scheme use (shift; term; hornerFrom)
 
 def horner (c : Coeffs) (n : Nat) : Nat := hornerFrom n c end
 

@@ -18,16 +18,20 @@ import Prelude::Function::Combinators use (Generic)
 
 module Prelude::Arith::Prime where
 
+(* Trial division and the invariants of its search.  The definitions
+   below unfold to it, and clients see only them. *)
+private module TrialDivision where
+
 (* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
    exactly when [a] is at most [b].  It is kept apart from
    [Prelude::Arith::Sub.sub], whose evaluation takes exponential time. *)
-private def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
+def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
    candidates.  It answers [found d] for the first candidate [d] that
    divides [n], and [none] once [mult d d] exceeds [n] or the fuel runs
    out. *)
-private def trialDivision (n : Nat) (none : Nat) (found : forall (d : Nat) -> Nat) (fuel : Nat) :
+def trialDivision (n : Nat) (none : Nat) (found : forall (d : Nat) -> Nat) (fuel : Nat) :
     forall (d : Nat) -> Nat :=
   rec fuel return y . (forall (d : Nat) -> Nat)
   | zero => fun (d : Nat) -> none
@@ -39,26 +43,12 @@ private def trialDivision (n : Nat) (none : Nat) (found : forall (d : Nat) -> Na
   end
 end
 
-(* The smallest divisor of [n] from 2 on, found by trial division up to the
-   square root.  It is [n] when [n] is prime, and also when [n] is [0] or
-   [1]. *)
-def smallestDivisor (n : Nat) : Nat := trialDivision n n (fun (d : Nat) -> d) n 2 end
-
 (* [1] when trial division finds no divisor of [n], and [0] otherwise. *)
-private def noSmallDivisor (n : Nat) : Nat := trialDivision n 1 (fun (d : Nat) -> 0) n 2 end
+def noSmallDivisor (n : Nat) : Nat := trialDivision n 1 (fun (d : Nat) -> 0) n 2 end
 
-(* The primality test: [1] for primes, [0] otherwise. *)
-def isPrime (n : Nat) : Nat :=
-  pick (leb 2 n) (fun (u : Nat) -> 0) (fun (u : Nat) -> noSmallDivisor n)
-end
-
-(* [Prime n] says that [n] is prime.  It computes, so a closed instance is
-   [True] or [False]. *)
-def Prime (n : Nat) : Type@0 := Eq (isPrime n) 1 end
-
-(* Every answer of [smallestDivisor]'s search divides [n]: a candidate is
+(* Every answer of the search for a divisor divides [n]: a candidate is
    answered only when the remainder of [n] by it is [0]. *)
-private abstract def trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
+abstract def trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
     Divides (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
   fun (n : Nat) (fuel : Nat) ->
     rec fuel return x . (forall (d : Nat) -> Divides (trialDivision n n (fun (y : Nat) -> y) x d) n)
@@ -79,7 +69,7 @@ end
 
 (* When the search for a divisor fails, the smallest divisor is the number
    itself: both searches run through the same candidates. *)
-private abstract def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
+abstract def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
     (h : Eq (trialDivision n 1 (fun (x : Nat) -> 0) fuel d) 1) ->
     Eq (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
   fun (n : Nat) (fuel : Nat) ->
@@ -112,6 +102,24 @@ private abstract def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
         end
     end
 end
+
+end
+
+import TrialDivision use (trialDivision; noSmallDivisor; trialDivisionDivides; trialDivisionNone)
+
+(* The smallest divisor of [n] from 2 on, found by trial division up to the
+   square root.  It is [n] when [n] is prime, and also when [n] is [0] or
+   [1]. *)
+def smallestDivisor (n : Nat) : Nat := trialDivision n n (fun (d : Nat) -> d) n 2 end
+
+(* The primality test: [1] for primes, [0] otherwise. *)
+def isPrime (n : Nat) : Nat :=
+  pick (leb 2 n) (fun (u : Nat) -> 0) (fun (u : Nat) -> noSmallDivisor n)
+end
+
+(* [Prime n] says that [n] is prime.  It computes, so a closed instance is
+   [True] or [False]. *)
+def Prime (n : Nat) : Type@0 := Eq (isPrime n) 1 end
 
 (* The smallest divisor divides, primes are at least 2 and are their own
    smallest divisor. *)

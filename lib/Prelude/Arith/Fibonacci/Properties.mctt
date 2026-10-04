@@ -13,10 +13,14 @@ import Prelude::Arith::Fibonacci use (fibFrom; fib)
 
 module Prelude::Arith::Fibonacci::Properties where
 
+(* Sequences [fibFrom n a b] from any two starting terms: the recurrence,
+   and positivity.  [fib] is the one starting from [0] and [1]. *)
+private module FibFrom where
+
 (* Every sequence computed by [fibFrom] satisfies the Fibonacci recurrence.
    In the step, [fibFrom (succ n) a b] computes to [fibFrom n b (plus a b)],
    so the hypothesis at [b] and [plus a b] is the goal. *)
-private abstract def fibFromSucc : forall (n : Nat) (a : Nat) (b : Nat) ->
+abstract def recurrence : forall (n : Nat) (a : Nat) (b : Nat) ->
     Eq (fibFrom (succ (succ n)) a b) (plus (fibFrom (succ n) a b) (fibFrom n a b)) :=
   fun (n : Nat) ->
     rec n return x . (forall (a : Nat) (b : Nat) ->
@@ -24,6 +28,20 @@ private abstract def fibFromSucc : forall (n : Nat) (a : Nat) (b : Nat) ->
     | zero => fun (a : Nat) (b : Nat) -> plusComm a b
     | succ p, ih => fun (a : Nat) (b : Nat) -> ih b (plus a b)
     end
+end
+
+(* A sequence whose second term is positive stays positive after its first
+   term. *)
+abstract def positive : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) ->
+    Lt 0 (fibFrom (succ n) a b) :=
+  fun (n : Nat) ->
+    rec n return x . (forall (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ x) a b))
+    | zero => fun (a : Nat) (b : Nat) (h : Lt 0 b) -> h
+    | succ p, ih => fun (a : Nat) (b : Nat) (h : Lt 0 b) ->
+        ih b (plus a b) (leTrans 1 b (plus a b) h (lePlusLeft a b))
+    end
+end
+
 end
 
 (* The first values and the recurrence. *)
@@ -35,30 +53,19 @@ abstract def fibOne : Eq (fib 1) 1 := true end
 
 (* The Fibonacci recurrence. *)
 abstract def fibSucc : forall (n : Nat) -> Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) :=
-  fun (n : Nat) -> fibFromSucc n 0 1
+  fun (n : Nat) -> FibFrom.recurrence n 0 1
 end
 
 end
 
 import Basic use (fibSucc)
 
-(* A sequence whose second term is positive stays positive after its first
-   term. *)
-private abstract def fibFromPos : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ n) a b) :=
-  fun (n : Nat) ->
-    rec n return x . (forall (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ x) a b))
-    | zero => fun (a : Nat) (b : Nat) (h : Lt 0 b) -> h
-    | succ p, ih => fun (a : Nat) (b : Nat) (h : Lt 0 b) ->
-        ih b (plus a b) (leTrans 1 b (plus a b) h (lePlusLeft a b))
-    end
-end
-
 (* Positivity and monotonicity. *)
 module Growth where
 
 (* Every Fibonacci number after [fib 0] is positive. *)
 abstract def fibPos : forall (n : Nat) -> Lt 0 (fib (succ n)) :=
-  fun (n : Nat) -> fibFromPos n 0 1 true
+  fun (n : Nat) -> FibFrom.positive n 0 1 true
 end
 
 (* The Fibonacci numbers do not decrease. *)
