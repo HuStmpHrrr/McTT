@@ -13,6 +13,14 @@ Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at leve
 Reserved Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, Ms at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ms at level 69).
+Reserved Notation "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" (at level 70, Φ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρ' at level 69).
+Reserved Notation "'$*|' m '&' ns '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, ns at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'$ᵐ|' h '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, h at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "h '·ₜ' x Θ '⍮' Ξ '↘' r" (at level 70, x at level 0, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "h '·ₘ' y Θ '⍮' Ξ '↘' r" (at level 70, y at level 0, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "h '·ₜ*' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at level 0, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "h '·ₘ*' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at level 0, Θ at level 69, Ξ at level 69, r at level 69).
 
 Generalizable All Variables.
 
@@ -26,7 +34,8 @@ Generalizable All Variables.
     which does not change during NbE.  A global is resolved by lookup in
     [Θ ⍮ Ξ]: a transparent definition unfolds to its body, and any other global
     is a neutral at its type.  No rule applies a syntactic operation such as
-    substitution to a term, and none builds syntax.
+    substitution to a term, and none builds syntax: a global is looked up,
+    never rebuilt.
 
     A module value is saturated when it has as many arguments as its unit has
     parameters.  Selection on a saturated module is [δ]: it gives the bound
@@ -37,25 +46,34 @@ Generalizable All Variables.
     parameters, so selection applies the generalized member to the arguments
     there are. *)
 Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
+(** A universe is its own value. *)
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
+(** A variable is read off the environment. *)
 | eval_exp_var :
   `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )
+(** [ℕ] is a value. *)
 | eval_exp_nat :
   `( ⟦ ℕ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ℕᵈ )
+(** So is [zero]. *)
 | eval_exp_zero :
   `( ⟦ zero ⟧ Θ ⍮ Ξ ⍮ ρ ↘ zeroᵈ )
+(** [succ] of the value of its argument. *)
 | eval_exp_succ :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ succ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ succᵈ m )
+(** The eliminator evaluates its scrutinee, then recurses on the value. *)
 | eval_exp_natrec :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ rec M return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** [⊤] is a value. *)
 | eval_exp_True :
   `( ⟦ ⊤ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊤ᵈ )
+(** So is [⋆]. *)
 | eval_exp_true :
   `( ⟦ ⋆ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⋆ᵈ )
+(** [⊥] is a value. *)
 | eval_exp_False :
   `( ⟦ ⊥ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⊥ᵈ )
 (** [⊥] has no canonical values, so the eliminator only meets a neutral. *)
@@ -63,11 +81,14 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ b m ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦ efq M return A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (efqᵈ m under ρ return A) )
+(** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
      ⟦ Π A B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Πᵈ a ρ B )
+(** A function closes over its body. *)
 | eval_exp_fn :
   `( ⟦ λ A M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ λᵈ ρ M )
+(** An application applies the value of the function to that of the argument. *)
 | eval_exp_app :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
@@ -89,186 +110,224 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_mem :
   `( modexp_spine H = (R, args, pre) ->
      ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     eval_selc Θ Ξ h (pre ++ x :: nil) f ->
-     eval_exps Θ Ξ args ρ ns ->
-     eval_apps Θ Ξ f ns r ->
+     h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f ->
+     ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns ->
+     $*| f & ns | Θ ⍮ Ξ ↘ r ->
      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
-(** δ: a transparent definition evaluates to its body.  The body is stored
-    closed, so it is evaluated in the empty environment. *)
-| eval_exp_glob_delta :
-  `( gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) ->
-     ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ m ->
-     ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m )
-(** An opaque definition or an axiom stays a neutral at its (closed) type. *)
-| eval_exp_glob_neut :
-  `( gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
-     b = false \/ B = None ->
-     ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
-     ⟦ a_glob p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_glob p) )
 where "'⟦' e '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_exp Θ Ξ e ρ r)
 with eval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env -> domain -> Prop :=
+(** At [zero], the base case. *)
 | eval_natrec_zero :
   `( ⟦ MZ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
      ⟦rec zeroᵈ return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz )
+(** At a successor, the step case on the predecessor and the recursive result. *)
 | eval_natrec_succ :
   `( ⟦rec b return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
      ⟦ MS ⟧ Θ ⍮ Ξ ⍮ ρ ↦ b ↦ r ↘ ms ->
      ⟦rec succᵈ b return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ms )
+(** At a neutral, a neutral at the motive's instance. *)
 | eval_natrec_neut :
   `( ⟦ MZ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ mz ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦rec ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
 where "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_natrec Θ Ξ A MZ MS m ρ r)
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
+(** A function's body, at the argument. *)
 | eval_app_fn :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ m ->
      $| λᵈ ρ M & n | Θ ⍮ Ξ ↘ m )
+(** A neutral applied, at the codomain's instance. *)
 | eval_app_neut :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ b ->
      $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
-  `( eval_appm Θ Ξ h n h' ->
-     eval_selc Θ Ξ h' ch r ->
+  `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
+     h' ·ₜ* ch Θ ⍮ Ξ ↘ r ->
      $| d_member h ch & n | Θ ⍮ Ξ ↘ r )
 where "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" := (eval_app Θ Ξ m n r)
 with eval_exps (Θ : gdeps) (Ξ : gstack) : list exp -> env -> list domain -> Prop :=
+(** No terms. *)
 | eval_exps_nil :
-  `( eval_exps Θ Ξ nil ρ nil )
+  `( ⟦ nil ⟧* Θ ⍮ Ξ ⍮ ρ ↘ nil )
+(** A term, then the rest. *)
 | eval_exps_cons :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
-     eval_exps Θ Ξ Ms ρ ms ->
-     eval_exps Θ Ξ (M :: Ms) ρ (m :: ms) )
+     ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms ->
+     ⟦ M :: Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ m :: ms )
+where "'⟦' Ms '⟧*' Θ '⍮' Ξ '⍮' ρ '↘' ms" := (eval_exps Θ Ξ Ms ρ ms)
 with eval_apps (Θ : gdeps) (Ξ : gstack) : domain -> list domain -> domain -> Prop :=
+(** No arguments. *)
 | eval_apps_nil :
-  `( eval_apps Θ Ξ m nil m )
+  `( $*| m & nil | Θ ⍮ Ξ ↘ m )
+(** The first argument, then the rest. *)
 | eval_apps_cons :
   `( $| m & n | Θ ⍮ Ξ ↘ m1 ->
-     eval_apps Θ Ξ m1 args r ->
-     eval_apps Θ Ξ m (n :: args) r )
+     $*| m1 & args | Θ ⍮ Ξ ↘ r ->
+     $*| m & n :: args | Θ ⍮ Ξ ↘ r )
+where "'$*|' m '&' ns '|' Θ '⍮' Ξ '↘' r" := (eval_apps Θ Ξ m ns r)
 with eval_modexp (Θ : gdeps) (Ξ : gstack) : modexp -> env -> dmod -> Prop :=
+(** A module slot is read off the environment. *)
 | eval_me_var :
   `( ⟦ me_var x ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ env_mod ρ x )
-(** A path names a global body module, unless it reaches an alias, which is
-    the value of its target. *)
-| eval_me_path :
-  `( (forall U r, gc_module Θ Ξ p <> Some (mr_alias U r)) ->
-     ⟦ me_path p ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global p nil )
-| eval_me_path_alias :
-  `( gc_module Θ Ξ p = Some (mr_alias U ch) ->
-     eval_selmc Θ Ξ (dm_local nil U nil) ch h ->
-     ⟦ me_path p ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h )
+(** A unit is a global body module, with no argument yet.  Its submodules
+    are selected from it ([eval_selm_global]). *)
+| eval_me_unit :
+  `( ⟦ me_unit fp ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (q_abs fp nil) nil )
+(** A literal unit is its closure, with no argument yet. *)
 | eval_me_lit :
   `( ⟦ me_lit U ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_local ρ U nil )
+(** A submodule is selected from the module's value. *)
 | eval_me_mem :
   `( ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
-     eval_selm Θ Ξ h y r ->
+     h ·ₘ y Θ ⍮ Ξ ↘ r ->
      ⟦ me_mem H y ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ r )
+(** An application adds the argument's value to the module's. *)
 | eval_me_app :
   `( ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h ->
      ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
-     eval_appm Θ Ξ h n r ->
+     $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
      ⟦ me_app H N ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ r )
 where "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_modexp Θ Ξ H ρ r)
 (** Applying a module value to one more argument, which it must still lack.
     A saturated alias is its target. *)
 with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
+(** A global module records the argument. *)
 | eval_appm_global :
-  `( eval_appm Θ Ξ (dm_global p args) n (dm_global p (args ++ n :: nil)) )
+  `( $ᵐ| dm_global p args & n | Θ ⍮ Ξ ↘ dm_global p (args ++ n :: nil) )
+(** A body unit lacking arguments records it. *)
 | eval_appm_body :
   `( List.length args < List.length Δ ->
-     eval_appm Θ Ξ (dm_local ρ (gu_body Δ Φ) args) n (dm_local ρ (gu_body Δ Φ) (args ++ n :: nil)) )
+     $ᵐ| dm_local ρ (gu_body Δ Φ) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_body Δ Φ) (args ++ n :: nil) )
+(** So does an alias unit lacking arguments. *)
 | eval_appm_alias_unsat :
   `( List.length args < List.length Δ ->
-     eval_appm Θ Ξ (dm_local ρ (gu_mk Δ (md_alias E)) args) n
-       (dm_local ρ (gu_mk Δ (md_alias E)) (args ++ n :: nil)) )
+     $ᵐ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘
+       dm_local ρ (gu_mk Δ (md_alias E)) (args ++ n :: nil) )
+(** A saturated alias passes it to its target. *)
 | eval_appm_alias :
   `( List.length args = List.length Δ ->
      ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     eval_appm Θ Ξ h n r ->
-     eval_appm Θ Ξ (dm_local ρ (gu_mk Δ (md_alias E)) args) n r )
+     $ᵐ| h & n | Θ ⍮ Ξ ↘ r ->
+     $ᵐ| dm_local ρ (gu_mk Δ (md_alias E)) args & n | Θ ⍮ Ξ ↘ r )
+(** A submodule of an unsaturated module passes it to the module, then selects again. *)
 | eval_appm_member :
-  `( eval_appm Θ Ξ h n h' ->
-     eval_selmc Θ Ξ h' ch r ->
-     eval_appm Θ Ξ (dm_member h ch) n r )
-(** Selecting a term member. *)
+  `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
+     h' ·ₘ* ch Θ ⍮ Ξ ↘ r ->
+     $ᵐ| dm_member h ch & n | Θ ⍮ Ξ ↘ r )
+where "'$ᵐ|' h '&' n '|' Θ '⍮' Ξ '↘' r" := (eval_appm Θ Ξ h n r)
+(** Selecting a term member.  A member of a global module is stored closed,
+    over the module's parameters: δ evaluates a transparent one's body in the
+    empty environment, and an opaque one or an axiom is a neutral at its
+    (closed) type.  Either is then applied to the module's arguments. *)
 with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
+(** A transparent definition of a global module: its body, applied to the module's arguments. *)
 | eval_sel_global :
-  `( ⟦ a_glob (path_app p (x :: nil)) ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
-     eval_apps Θ Ξ f args r ->
-     eval_sel Θ Ξ (dm_global p args) x r )
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def true pv A (Some M)) ->
+     ⟦ M ⟧ Θ ⍮ Ξ ⍮ nil ↘ f ->
+     $*| f & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** An opaque definition or an axiom of a global module: a neutral, applied to the module's arguments. *)
+| eval_sel_global_neut :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = Some (ge_def b pv A B) ->
+     b = false \/ B = None ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
+     $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A member of an unsaturated module is a member closure. *)
 | eval_sel_unsat :
   `( List.length args < List.length (gu_params U) ->
-     eval_sel Θ Ξ (dm_local ρ U args) x (d_member (dm_local ρ U args) (x :: nil)) )
+     dm_local ρ U args ·ₜ x Θ ⍮ Ξ ↘ d_member (dm_local ρ U args) (x :: nil) )
+(** A definition of a saturated body: its body, in the environment of the body before it. *)
 | eval_sel_body :
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
-     eval_benv Θ Ξ (env_args ρ args) Φ' ρ' ->
+     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
-     eval_sel Θ Ξ (dm_local ρ (gu_body Δ Φ) args) x r )
+     dm_local ρ (gu_body Δ Φ) args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A member of a saturated alias is selected from its target. *)
 | eval_sel_alias :
   `( List.length args = List.length Δ ->
      ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     eval_sel Θ Ξ h x r ->
-     eval_sel Θ Ξ (dm_local ρ (gu_mk Δ (md_alias E)) args) x r )
+     h ·ₜ x Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** A member of a submodule closure extends the chain. *)
 | eval_sel_member :
-  `( eval_sel Θ Ξ (dm_member h ch) x (d_member h (ch ++ x :: nil)) )
+  `( dm_member h ch ·ₜ x Θ ⍮ Ξ ↘ d_member h (ch ++ x :: nil) )
+where "h '·ₜ' x Θ '⍮' Ξ '↘' r" := (eval_sel Θ Ξ h x r)
 (** Selecting a submodule. *)
 with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
+(** A body submodule of a global module is a global module, with the same arguments. *)
 | eval_selm_global :
-  `( (forall U r, gc_module Θ Ξ (path_app p (y :: nil)) <> Some (mr_alias U r)) ->
-     eval_selm Θ Ξ (dm_global p args) y (dm_global (path_app p (y :: nil)) args) )
+  `( (forall U r, gc_module Θ Ξ (qname_app p (y :: nil)) <> Some (mr_alias U r)) ->
+     dm_global p args ·ₘ y Θ ⍮ Ξ ↘ dm_global (qname_app p (y :: nil)) args )
+(** An alias submodule of a global module is selected from the alias's closure. *)
 | eval_selm_global_alias :
-  `( gc_module Θ Ξ (path_app p (y :: nil)) = Some (mr_alias U ch) ->
-     eval_selmc Θ Ξ (dm_local nil U args) ch r ->
-     eval_selm Θ Ξ (dm_global p args) y r )
+  `( gc_module Θ Ξ (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
+     dm_local nil U args ·ₘ* ch Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₘ y Θ ⍮ Ξ ↘ r )
+(** A submodule of an unsaturated module is a submodule closure. *)
 | eval_selm_unsat :
   `( List.length args < List.length (gu_params U) ->
-     eval_selm Θ Ξ (dm_local ρ U args) y (dm_member (dm_local ρ U args) (y :: nil)) )
+     dm_local ρ U args ·ₘ y Θ ⍮ Ξ ↘ dm_member (dm_local ρ U args) (y :: nil) )
+(** A submodule of a saturated body is its unit's closure, in the environment of the body before it. *)
 | eval_selm_body :
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
-     eval_benv Θ Ξ (env_args ρ args) Φ' ρ' ->
-     eval_selm Θ Ξ (dm_local ρ (gu_body Δ Φ) args) y (dm_local ρ' Uy nil) )
+     ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
+     dm_local ρ (gu_body Δ Φ) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
+(** A submodule of a saturated alias is selected from its target. *)
 | eval_selm_alias :
   `( List.length args = List.length Δ ->
      ⟦ E ⟧ᵐ Θ ⍮ Ξ ⍮ env_args ρ args ↘ h ->
-     eval_selm Θ Ξ h y r ->
-     eval_selm Θ Ξ (dm_local ρ (gu_mk Δ (md_alias E)) args) y r )
+     h ·ₘ y Θ ⍮ Ξ ↘ r ->
+     dm_local ρ (gu_mk Δ (md_alias E)) args ·ₘ y Θ ⍮ Ξ ↘ r )
+(** A submodule of a submodule closure extends the chain. *)
 | eval_selm_member :
-  `( eval_selm Θ Ξ (dm_member h ch) y (dm_member h (ch ++ y :: nil)) )
+  `( dm_member h ch ·ₘ y Θ ⍮ Ξ ↘ dm_member h (ch ++ y :: nil) )
+where "h '·ₘ' y Θ '⍮' Ξ '↘' r" := (eval_selm Θ Ξ h y r)
 (** Selecting along a chain: submodules, then a term member. *)
 with eval_selc (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> domain -> Prop :=
+(** The last selection is a term member. *)
 | eval_selc_one :
-  `( eval_sel Θ Ξ h x r ->
-     eval_selc Θ Ξ h (x :: nil) r )
+  `( h ·ₜ x Θ ⍮ Ξ ↘ r ->
+     h ·ₜ* (x :: nil) Θ ⍮ Ξ ↘ r )
+(** The ones before it are submodules. *)
 | eval_selc_cons :
-  `( eval_selm Θ Ξ h y h1 ->
-     eval_selc Θ Ξ h1 ch r ->
-     eval_selc Θ Ξ h (y :: ch) r )
+  `( h ·ₘ y Θ ⍮ Ξ ↘ h1 ->
+     h1 ·ₜ* ch Θ ⍮ Ξ ↘ r ->
+     h ·ₜ* (y :: ch) Θ ⍮ Ξ ↘ r )
+where "h '·ₜ*' ch Θ '⍮' Ξ '↘' r" := (eval_selc Θ Ξ h ch r)
 with eval_selmc (Θ : gdeps) (Ξ : gstack) : dmod -> list string -> dmod -> Prop :=
+(** The empty chain is the module itself. *)
 | eval_selmc_nil :
-  `( eval_selmc Θ Ξ h nil h )
+  `( h ·ₘ* nil Θ ⍮ Ξ ↘ h )
+(** A submodule, then the rest of the chain. *)
 | eval_selmc_cons :
-  `( eval_selm Θ Ξ h y h1 ->
-     eval_selmc Θ Ξ h1 ch r ->
-     eval_selmc Θ Ξ h (y :: ch) r )
+  `( h ·ₘ y Θ ⍮ Ξ ↘ h1 ->
+     h1 ·ₘ* ch Θ ⍮ Ξ ↘ r ->
+     h ·ₘ* (y :: ch) Θ ⍮ Ξ ↘ r )
+where "h '·ₘ*' ch Θ '⍮' Ξ '↘' r" := (eval_selmc Θ Ξ h ch r)
 (** The environment the members of a body see after its entries [Φ]: each
     definition adds its value and each module its closure. *)
 with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
+(** The empty body adds nothing. *)
 | eval_benv_nil :
-  `( eval_benv Θ Ξ ρ gm_nil ρ )
+  `( ⟦ gm_nil ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ )
+(** A definition adds its value. *)
 | eval_benv_def :
-  `( eval_benv Θ Ξ ρ Φ ρ1 ->
+  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m ->
-     eval_benv Θ Ξ ρ (gm_ext Φ y (ge_def b pv A (Some M))) (ρ1 ↦ m) )
+     ⟦ gm_ext Φ y (ge_def b pv A (Some M)) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ m )
+(** A submodule adds its unit's closure. *)
 | eval_benv_mod :
-  `( eval_benv Θ Ξ ρ Φ ρ1 ->
-     eval_benv Θ Ξ ρ (gm_ext Φ y (ge_mod Uy)) (ρ1 ↦ᵐ dm_local ρ1 Uy nil) )
+  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     ⟦ gm_ext Φ y (ge_mod Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
+(** A check entry adds nothing. *)
 | eval_benv_check :
-  `( eval_benv Θ Ξ ρ Φ ρ1 ->
-     eval_benv Θ Ξ ρ (gm_check Φ c) ρ1 )
-.
+  `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+     ⟦ gm_check Φ c ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 )
+where "'⟦' Φ '⟧ᵇ' Θ '⍮' Ξ '⍮' ρ '↘' ρ'" := (eval_benv Θ Ξ ρ Φ ρ').
 
 Scheme eval_exp_mut_ind := Induction for eval_exp Sort Prop
 with eval_natrec_mut_ind := Induction for eval_natrec Sort Prop
@@ -374,24 +433,6 @@ Proposition eval_sub_index : forall {Θ Ξ} σ (ρ ρσ : env),
     forall x, eval_sentry Θ Ξ (σ x) ρ (env_entry ρσ x).
 Proof. intros * H. exact H. Qed.
 
-(** The path [p_abs nil nil], the default of [sentry_modexp], is never an
-    alias, so it evaluates to the default module value. *)
-Lemma gs_find_tele_default : forall Ξ U ip T, gs_find_tele Ξ (p_abs nil nil) = Some (U, ip, T) -> ip = nil.
-Proof.
-  induction Ξ as [| [mp V] Ξ IH]; intros * H; cbn [gs_find_tele] in H; [ discriminate |].
-  unfold path_strip in H; destruct (path_beq _ _); [| eapply IH; exact H ].
-  destruct (p_mems mp) as [| z l]; cbn in H; [ injection H as _ <- _; reflexivity |].
-  eapply IH; exact H.
-Qed.
-
-Lemma gc_module_default : forall Θ Ξ U r, gc_module Θ Ξ (p_abs nil nil) <> Some (mr_alias U r).
-Proof.
-  intros * H; unfold gc_module in H.
-  destruct (gs_find_tele Ξ (p_abs nil nil)) as [[[V ip] T] |] eqn:E.
-  - rewrite (gs_find_tele_default _ _ _ _ E) in H; discriminate.
-  - destruct (gds_lookup Θ (p_unit (p_abs nil nil))); cbn in H; discriminate.
-Qed.
-
 (** The variables of a term and of a module expression read the entry their
     substitution denotes, at the right sort; at the wrong one both sides read
     the default. *)
@@ -413,7 +454,7 @@ Proof.
   intros * Hσ; specialize (Hσ x); cbn; unfold env_mod.
   destruct (σ x) as [y | M | H]; cbn in Hσ |- *.
   - rewrite Hσ; apply eval_me_var.
-  - destruct Hσ as (m & -> & _); apply eval_me_path, gc_module_default.
+  - destruct Hσ as (m & -> & _); apply eval_me_unit.
   - destruct Hσ as (h & -> & Hh); exact Hh.
 Qed.
 

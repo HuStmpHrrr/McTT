@@ -5,7 +5,7 @@
 | `theories/Frontend/ElabSpec.v` | The spec `elab_spec : Cst.prog -> cunit -> Prop`: the scope (`ent`, `bound`), objects (`sel`, `selm`, `sparams`, `sunit`, `sdef`, `sbody`), imports (`itarget`, `ibinds`, `simport`), commands (`scmd`, `scmds`, `simports`). |
 | `theories/Frontend/Elaborator.v` | `elaborate_core`, on the spec's own scope of entries. |
 | `theories/Frontend/ElabCorrect.v` | `elaborate_core_iff`, soundness, completeness, functionality, failure characterization. |
-| `theories/Frontend/ElabExamples.v` | Hand-written `Cst.prog`s with their core units: the running example, pre-application, every module form (`module … where`, `module x (ps) := E`, `module A.B`, `let module` with a body or an alias, the rejection of imports and evals in a local body) and every rejection of the one-binding rule, with its message. |
+| `theories/Frontend/ElabExamples.v` | Hand-written `Cst.prog`s with their core units: the running example, pre-application, every module form (`module … where`, `module x (ps) := E`, `module A.B`, `let module` with a body or an alias, imports in a local body and the rejection of an unloaded unit there, the rejection of evals in a local body) and every rejection of the one-binding rule, with its message. |
 
 ## Theorems (all closed under the global context)
 
@@ -23,16 +23,26 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
 
 * Everything in scope is one list of entries `ent`, innermost first: core
   binders (`en_var`: λ, Π, `let`, `let module`, parameters, local-body
-  entries), members of open frames (`en_mem`, by absolute path), import
+  entries), members of open frames (`en_mem`, by qualified name), import
   aliases (`en_as`, `en_use`) and imported units (`en_unit`).  A name denotes
   its innermost entry (`bound`), with `k` binders inside the entry and `n`
   outside.  A member is pre-applied to `vars_desc k n`: the binders outside
   it are exactly the parameters it is generalized over.
 * The position decides what an object is: the head of a projection, the head
   of an application there, an alias body and an import target are module
-  expressions (`selm`); everything else is a term (`sel`).
+  expressions (`selm`); everything else is a term (`sel`).  A projection is
+  the core's member selection (`a_mem`, `me_mem`).  So member existence,
+  module arity and whether `M.x` is a term are left to typing, and privacy
+  to the core's command judgment (`run_cmd`, `acc_ok`); the elaborator checks
+  none of them.
 * An import emits `cc_import (ifile fq) E (ispec_names spec)`; the core checks
-  it.  Local bodies have no imports and no `eval`s.
+  it.
+* An import in a local body emits the check entry `gm_check Φ (bc_import E
+  ns)` and binds its aliases (`en_as`/`en_use`, no binder) for the entries
+  after it, as a frame of its own (`ibinds E spec nil F`).  It loads no unit,
+  so a unit it names must be nameable already (`loaded S fq`, i.e. `In
+  (en_unit fq) S`), else `the unit is not imported`.  Local bodies have no
+  `eval`s (`eval is not allowed in a local module`).
 * A module body is elaborated where it stands (`elab_cmd` recurses into it),
   so there is no frame stack.  `module A.B` is desugared by the parser
   (`Cst.c_mod_dotted`).
@@ -47,9 +57,11 @@ the rule is a premise only, not an invariant.
 
 ## Running example
 
-`ElabExamples.running_spec` checks the elaboration below.  `Main.M.id` stands
-for `a_glob (p_abs ["Main"] ["M"; "id"])`, `⟨Main.M⟩` for `me_path (p_abs
-["Main"] ["M"])`, and the flags of `cc_def` are omitted.
+`ElabExamples.running_spec` checks the elaboration below.  A global is a chain
+of selections from its unit: `Main.M.id` stands for `qname_term (q_abs
+["Main"] ["M"; "id"])`, that is `a_mem (me_mem (me_unit ["Main"]) "M") "id"`,
+`⟨Main.M⟩` for `qname_mod (q_abs ["Main"] ["M"])`, that is `me_mem (me_unit
+["Main"]) "M"`, and the flags of `cc_def` are omitted.
 
 ```
 module Main where
@@ -78,6 +90,7 @@ Main.M.id $ #3`.  In `j`, `M` is closed, so `M` in module position is
 
 ## Proof structure
 
-One `iff` per function: `lookup_iff`, `objects_iff` (by `Cst.cst_mut_ind`),
-`import_iff`, `commands_iff` (by `Cst.cst_mut_ind`, motive `md = md_where body
+One `iff` per function: `lookup_iff`, `chain_iff` and `itarget_iff` (import
+targets, proved before the objects so that local imports can use them),
+`objects_iff` (by `Cst.cst_mut_ind`), `import_iff`, `commands_iff` (by `Cst.cst_mut_ind`, motive `md = md_where body
 -> Pcmds body`), `imports_iff`, `elaborate_core_iff`.

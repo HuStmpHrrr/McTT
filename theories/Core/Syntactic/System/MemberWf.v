@@ -49,22 +49,27 @@ Qed.
 
 Definition modexp_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) : Prop :=
   match H with
-  | me_path p => exists A, member_type Θ Ξ Γ (me_path p) nil mk_mod A
+  | me_unit fp => exists T, member_type Θ Ξ Γ (me_unit fp) nil (mr_mod T)
   | me_var x => exists U, Γ ∋ #x ⇒ₘ U
   | me_lit U => Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U
-  | me_mem H y => Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H /\ exists A, member_type Θ Ξ Γ H (y :: nil) mk_mod A
+  (** A chain from a unit may be a module whose prefix is an open frame. *)
+  | me_mem H y =>
+      (Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H /\ exists T, member_type Θ Ξ Γ H (y :: nil) (mr_mod T)) \/
+      (mod_qname (me_mem H y) <> None /\ exists T, member_type Θ Ξ Γ (me_mem H y) nil (mr_mod T))
   | me_app H N =>
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H /\
-      exists A B C i, member_type Θ Ξ Γ H nil mk_mod A /\ Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ Π B C : Type@i /\
-        Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ B ⊢ C : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : B
+      exists T B T1 i, member_type Θ Ξ Γ H nil (mr_mod T) /\ tele_view T = Some (B, T1) /\
+        Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : B
   end.
 
 Lemma modexp_eq_parts : forall Θ Ξ Γ H H',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> modexp_parts Θ Ξ Γ H /\ modexp_parts Θ Ξ Γ H'.
 Proof.
   induction 1; cbn; try solve [ intuition eauto ].
+  - destruct H; cbn in *; try discriminate; [ split; eauto |].
+    split; right; split; [ congruence | eauto | congruence | eauto ].
   - split; eauto using wf_unit_eq_refl_left, wf_unit_eq_refl_right.
-  - split; split; eauto using wf_modexp_eq_refl_left, wf_modexp_eq_refl_right.
+  - split; left; split; eauto using wf_modexp_eq_refl_left, wf_modexp_eq_refl_right.
   - split; (split; [ eauto using wf_modexp_eq_refl_left, wf_modexp_eq_refl_right |]); do 4 eexists; repeat split; eassumption.
 Qed.
 
@@ -141,7 +146,7 @@ Proof.
     destruct E as [b pv A [M |] | U], E' as [b' pv' A' [M' |] | U']; cbn in HE |- *; try contradiction;
       intuition congruence.
   - destruct H as (HΦ & Hc); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct c as [E ns | ? ?], c' as [E' ns' | ? ?]; cbn in Hc |- *; try contradiction; intuition congruence.
+    destruct c as [E ns], c' as [E' ns']; cbn in Hc |- *; intuition congruence.
 Qed.
 
 Definition unit_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (U : gunit) : Prop :=
@@ -230,8 +235,8 @@ Lemma member_ref_cons : forall H y ch, ch <> nil -> member_ref H (y :: ch) = mem
 Proof. intros * Hne; destruct ch; [ contradiction | reflexivity ]. Qed.
 
 Lemma path_prefix_resolve : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall qp r0 ch1 ch2 E,
-    gc_module Θ Ξ qp = Some r0 -> gc_resolve Θ Ξ (path_app qp (ch1 ++ ch2)) = Some E -> ch2 <> nil ->
-    exists T1, gc_module Θ Ξ (path_app qp ch1) = Some (mr_body T1).
+    gc_module Θ Ξ qp = Some r0 -> gc_resolve Θ Ξ (qname_app qp (ch1 ++ ch2)) = Some E -> ch2 <> nil ->
+    exists T1, gc_module Θ Ξ (qname_app qp ch1) = Some (mr_body T1).
 Proof.
   intros * Hg * Hq Hr Hne.
   assert (Hne' : ch1 ++ ch2 <> nil) by (destruct ch1, ch2; cbn; congruence).
@@ -245,9 +250,9 @@ Proof.
 Qed.
 
 Lemma path_prefix_module : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall qp r0 ch1 ch2 r,
-    gc_module Θ Ξ qp = Some r0 -> gc_module Θ Ξ (path_app qp (ch1 ++ ch2)) = Some r ->
-    (exists T1, gc_module Θ Ξ (path_app qp ch1) = Some (mr_body T1)) \/
-    (exists U r1, gc_module Θ Ξ (path_app qp ch1) = Some (mr_alias U r1) /\ r = mr_alias U (r1 ++ ch2)).
+    gc_module Θ Ξ qp = Some r0 -> gc_module Θ Ξ (qname_app qp (ch1 ++ ch2)) = Some r ->
+    (exists T1, gc_module Θ Ξ (qname_app qp ch1) = Some (mr_body T1)) \/
+    (exists U r1, gc_module Θ Ξ (qname_app qp ch1) = Some (mr_alias U r1) /\ r = mr_alias U (r1 ++ ch2)).
 Proof.
   intros * Hg * Hq Hr.
   destruct r0 as [T | U r0].
@@ -278,18 +283,14 @@ Proof.
   exact (proj2 (ctx_decomp_mod H)).
 Qed.
 
-(** [H.y1. … .yn]. *)
-Fixpoint me_mems (H : modexp) (pre : list String.string) : modexp :=
-  match pre with
-  | nil => H
-  | y :: pre' => me_mems (me_mem H y) pre'
-  end.
-
 Lemma member_ref_mems : forall pre H x, member_ref H (pre ++ x :: nil) = a_mem (me_mems H pre) x.
 Proof.
   induction pre as [| y pre IH]; intros; [ reflexivity |].
   cbn [app me_mems]; rewrite member_ref_cons by (destruct pre; discriminate); apply IH.
 Qed.
+
+Lemma qname_term_snoc : forall mp x, qname_term (qname_app mp (x :: nil)) = a_mem (qname_mod mp) x.
+Proof. intros [fp ms] x; unfold qname_term, qname_mod; cbn; apply member_ref_mems. Qed.
 
 Lemma me_mems_noargs : forall pre H, me_noargs H -> me_noargs (me_mems H pre).
 Proof. induction pre; intros; cbn; auto. Qed.
@@ -306,9 +307,33 @@ Lemma me_mems_unfold : forall Θ Ξ Γ pre H ch,
     member_unfold_ch Θ Ξ Γ (me_mems H pre) ch = member_unfold_ch Θ Ξ Γ H (pre ++ ch).
 Proof. induction pre as [| y pre IH]; intros; cbn [me_mems app]; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
-Lemma me_mems_member_type : forall Θ Ξ Γ pre H ch k A,
-    member_type Θ Ξ Γ H (pre ++ ch) k A -> (k = mk_term -> ch <> nil) ->
-    member_type Θ Ξ Γ (me_mems H pre) ch k A.
+Lemma me_mems_member_type_inv : forall Θ Ξ Γ pre H ch R,
+    member_type Θ Ξ Γ (me_mems H pre) ch R -> member_type Θ Ξ Γ H (pre ++ ch) R.
+Proof.
+  induction pre as [| y pre IH]; intros * Hm; cbn [me_mems app] in *; [ exact Hm |].
+  apply IH in Hm; inversion Hm; subst; assumption.
+Qed.
+
+Corollary mt_path_inv : forall Θ Ξ Γ p ch R,
+    member_type Θ Ξ Γ (qname_mod p) ch R -> member_type Θ Ξ Γ (me_unit (q_unit p)) (q_chain p ++ ch) R.
+Proof. intros *; apply me_mems_member_type_inv. Qed.
+
+(** A term member of a chain from a unit that resolves to a global has the
+    global's type. *)
+Lemma mt_glob_type : forall Θ Ξ Γ H mp x A b pv A' B,
+    mod_qname H = Some mp -> member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
+    gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A' B) -> A = A'.
+Proof.
+  intros * Hp Hm Hr.
+  rewrite (mod_qname_inv _ _ Hp) in Hm; apply mt_path_inv in Hm.
+  change (qname_app mp (x :: nil)) with (q_abs (q_unit mp) (q_chain mp ++ x :: nil)) in Hr.
+  inversion Hm; subst; [ congruence |].
+  match goal with Hx : gc_module _ _ _ = Some _ |- _ => rewrite (gc_module_resolve _ _ _ _ Hx) in Hr; discriminate end.
+Qed.
+
+Lemma me_mems_member_type : forall Θ Ξ Γ pre H ch R,
+    member_type Θ Ξ Γ H (pre ++ ch) R -> (mres_kind R = mk_term -> ch <> nil) ->
+    member_type Θ Ξ Γ (me_mems H pre) ch R.
 Proof.
   induction pre as [| y pre IH]; intros * Hm Hch; cbn [me_mems app] in *; [ exact Hm |].
   apply IH; [| exact Hch ].

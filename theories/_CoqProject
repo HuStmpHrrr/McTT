@@ -96,6 +96,7 @@
 ./Core/Syntactic/System/MemberWf.v
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/MemberLemmas.v
+./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v
 ./Core/Syntactic/System/Structural.v
 ./Core/Syntactic/System/Tactics.v
@@ -106,6 +107,7 @@
 ./Extraction/Evaluation.v
 ./Extraction/GlobalCheck.v
 ./Extraction/MemberType.v
+./Extraction/Privacy.v
 ./Extraction/NbE.v
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v

@@ -16,6 +16,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command.
 From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup.
+From Mctt.Core.Syntactic.System Require Export Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Reserved Notation "Θ ⍮ Ξ ⊢[ ch ] c ⇝ Θ' ⍮ Ξ'"
@@ -30,13 +31,13 @@ Reserved Notation "Θ ⍮ Ξ ⊢[ ch ] cs ⇝* Θ' ⍮ Ξ'"
     body are checked in the telescope of all the frames' parameters,
     [gs_tele], and stored generalized over it. *)
 
-Definition gs_path (Ξ : gstack) : path :=
+Definition gs_path (Ξ : gstack) : qname :=
   match Ξ with
   | (mp, _) :: _ => mp
-  | nil => p_abs nil nil
+  | nil => q_abs nil nil
   end.
 
-Definition gs_push (mp : path) (Δ : ctx) (Ξ : gstack) : gstack := (mp, gu_body Δ ⋄) :: Ξ.
+Definition gs_push (mp : qname) (Δ : ctx) (Ξ : gstack) : gstack := (mp, gu_body Δ ⋄) :: Ξ.
 
 Definition gs_add (x : string) (E : gentry) (Ξ : gstack) : gstack :=
   match Ξ with
@@ -56,7 +57,7 @@ Definition gs_def (b pv : bool) (Ξ : gstack) (A M : exp) : gentry :=
 
 (** Filing puts a unit on a new level above everything filed so far, hence
     above every unit it imported. *)
-Definition file (fp : fpath) (U : gunit) (Θ : gdeps) : gdeps := ((fp, U) :: nil) :: Θ.
+Definition file (fp : path) (U : gunit) (Θ : gdeps) : gdeps := ((fp, U) :: nil) :: Θ.
 
 (** ** Imports
 
@@ -64,7 +65,8 @@ Definition file (fp : fpath) (U : gunit) (Θ : gdeps) : gdeps := ((fp, U) :: nil
     name it [use]s is a public definition or a submodule of it. *)
 
 Definition import_ok (Θ : gdeps) (Ξ : gstack) (E : modexp) (ns : list string) : Prop :=
-  Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ forall n, In n ns -> member_ok Θ Ξ (gs_tele Ξ) E n.
+  Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E /\ (forall n, In n ns -> member_ok Θ Ξ (gs_tele Ξ) E n) /\
+  acc_ok Θ Ξ (modexp_refs E ++ map (fun n => (E, n)) ns).
 
 (** ** Merging Filed Units
 
@@ -73,7 +75,7 @@ Definition import_ok (Θ : gdeps) (Ξ : gstack) (E : modexp) (ns : list string) 
     path filed on both sides was loaded by two runs of the same file, so it is
     the same unit at the same level ([canon_agree]), and the left copy is kept. *)
 
-Definition gd_mem (fp : fpath) (d : gdep) : bool := existsb (fun e => path_beq fp (fst e)) d.
+Definition gd_mem (fp : path) (d : gdep) : bool := existsb (fun e => path_beq fp (fst e)) d.
 
 Definition gd_union (d d' : gdep) : gdep :=
   List.app d (filter (fun e => negb (gd_mem (fst e) d)) d').
@@ -89,13 +91,13 @@ Fixpoint merge_up (r r' : list gdep) : list gdep :=
 Definition gds_merge (Θ Θ' : gdeps) : gdeps := rev (merge_up (rev Θ) (rev Θ')).
 
 (** The level a path is filed at, counted from the bottom. *)
-Fixpoint gds_level_up (fp : fpath) (r : list gdep) (k : nat) : option nat :=
+Fixpoint gds_level_up (fp : path) (r : list gdep) (k : nat) : option nat :=
   match r with
   | nil => None
   | d :: r => if gd_mem fp d then Some k else gds_level_up fp r (S k)
   end.
 
-Definition gds_level (Θ : gdeps) (fp : fpath) : option nat := gds_level_up fp (rev Θ) 0.
+Definition gds_level (Θ : gdeps) (fp : path) : option nat := gds_level_up fp (rev Θ) 0.
 
 Definition gds_agree (Θ Θ' : gdeps) : Prop :=
   forall fp U U', gds_lookup Θ fp = Some U -> gds_lookup Θ' fp = Some U' ->
@@ -103,14 +105,12 @@ Definition gds_agree (Θ Θ' : gdeps) : Prop :=
 
 (** ** Privacy
 
-    A member reached through a module expression is public: [member_type]
-    reads only public definitions, so an import's [use] and a member of an
-    imported module are checked here.  REVISIT: a member named by its path
-    ([a_glob]) is checked for privacy by the elaborator only. *)
+    Every command checks the terms it introduces for access to private
+    members ([acc_ok], in [Privacy]); typing does not. *)
 
 Section Semantics.
   (** File IO: the contents of the unit at a path, if there is one. *)
-  Variable load_path : fpath -> option string.
+  Variable load_path : path -> option string.
   (** Lexing and parsing.  The lexer is OCaml, so this is a parameter too. *)
   Variable read : string -> option Cst.prog.
   (** Elaboration into core commands, which needs no filed unit. *)
@@ -123,9 +123,10 @@ Section Semantics.
       of [rc_def], [rc_mod] and [rc_alias] are those of [wf_gmod_ext],
       [wf_gmod_nil] and [wf_gentry_alias]. *)
 
-  Inductive run_cmd : list fpath -> gdeps -> gstack -> ccmd -> gdeps -> gstack -> Prop :=
+  Inductive run_cmd : list path -> gdeps -> gstack -> ccmd -> gdeps -> gstack -> Prop :=
   | rc_def : forall ch Θ Ξ x b pv A M,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+      acc_ok Θ Ξ (exp_refs A ++ exp_refs M) ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⊢[ch] cc_def x b pv A M ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ
   (** The body ends on the frame it opened, the stack below as it was; that
@@ -133,14 +134,16 @@ Section Semantics.
   | rc_mod : forall ch Θ Ξ x Δ cs Θ' mp U,
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
+      acc_ok Θ Ξ (tele_refs Δ) ->
       gs_fresh x Ξ ->
-      Θ ⍮ gs_push (path_in (gs_path Ξ) x) Δ Ξ ⊢[ch] cs ⇝* Θ' ⍮ (mp, U) :: Ξ ->
+      Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⊢[ch] cs ⇝* Θ' ⍮ (mp, U) :: Ξ ->
       Θ ⍮ Ξ ⊢[ch] cc_mod x Δ cs ⇝ Θ' ⍮ gs_add x (ge_body Δ (gu_mod U)) Ξ
   (** An alias is filed with the frames' parameters it is declared under. *)
   | rc_alias : forall ch Θ Ξ x Δ E,
       tele_ass Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
+      acc_ok Θ Ξ (tele_refs Δ ++ modexp_refs E) ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⊢[ch] cc_alias x Δ E ⇝ Θ ⍮ gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ
   (** An import of what is filed or open already: only checked. *)
@@ -169,13 +172,15 @@ Section Semantics.
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+      acc_ok Θ Ξ (exp_refs M ++ exp_refs A) ->
       Θ ⍮ Ξ ⊢[ch] cc_eval M (Some A) ⇝ Θ ⍮ Ξ
   | rc_eval_infer : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
+      acc_ok Θ Ξ (exp_refs M) ->
       Θ ⍮ Ξ ⊢[ch] cc_eval M None ⇝ Θ ⍮ Ξ
   where "Θ ⍮ Ξ ⊢[ ch ] c ⇝ Θ' ⍮ Ξ'" := (run_cmd ch Θ Ξ c Θ' Ξ')
 
-  with run_cmds : list fpath -> gdeps -> gstack -> list ccmd -> gdeps -> gstack -> Prop :=
+  with run_cmds : list path -> gdeps -> gstack -> list ccmd -> gdeps -> gstack -> Prop :=
   | rcs_nil : forall ch Θ Ξ, Θ ⍮ Ξ ⊢[ch] nil ⇝* Θ ⍮ Ξ
   | rcs_cons : forall ch Θ Ξ c cs Θ1 Ξ1 Θ2 Ξ2,
       Θ ⍮ Ξ ⊢[ch] c ⇝ Θ1 ⍮ Ξ1 ->
@@ -187,12 +192,13 @@ Section Semantics.
       runs from nothing filed.  Its leading imports run on the empty stack,
       then its parameters are checked against what they filed, then its body
       runs in its own frame, named [fp]; [Θ] is what it filed, [U] the unit. *)
-  with run_unit : list fpath -> cunit -> gdeps -> gunit -> Prop :=
+  with run_unit : list path -> cunit -> gdeps -> gunit -> Prop :=
   | ru_intro : forall fp ch imps P cs Θ1 Θ2 mp U,
       nil ⍮ nil ⊢[fp :: ch] imps ⇝* Θ1 ⍮ nil ->
       tele_ass P ->
       ⊢ Θ1 ⍮ nil ⍮ P ->
-      Θ1 ⍮ gs_push (p_abs fp nil) P nil ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ->
+      acc_ok Θ1 nil (tele_refs P) ->
+      Θ1 ⍮ gs_push (q_abs fp nil) P nil ⊢[fp :: ch] cs ⇝* Θ2 ⍮ (mp, U) :: nil ->
       run_unit (fp :: ch) (imps, P, cs) Θ2 U.
 
   (** The unit given on the command line: run like an imported one, with
@@ -225,7 +231,7 @@ with run_unit_mind := Minimality for run_unit Sort Prop.
 Combined Scheme run_mut_ind from run_cmd_mind, run_cmds_mind, run_unit_mind.
 
 Section Determinism.
-  Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
+  Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
@@ -401,7 +407,7 @@ Proof.
 Qed.
 
 Lemma frame_fresh_grow : forall Θ Θ' Ξ mp,
-    frame_fresh Θ Ξ mp -> gds_lookup Θ' (p_unit mp) = None -> frame_fresh Θ' Ξ mp.
+    frame_fresh Θ Ξ mp -> gds_lookup Θ' (q_unit mp) = None -> frame_fresh Θ' Ξ mp.
 Proof. intros * H Hn; destruct Ξ as [| [mq V] Ξ]; cbn in *; [ split; [ apply gds_fresh_iff; exact Hn | exact (proj2 H) ] | exact H ]. Qed.
 
 Section GrowLevels.
@@ -410,9 +416,9 @@ Section GrowLevels.
 
   Lemma global_levels_grow :
     (forall Θ0 Ξ mp E, Θ0 ⍮ Ξ ⍮ mp ⊢e E -> Θ0 = Θ -> ⊢g Θ' ⍮ Ξ ->
-       gds_lookup Θ' (p_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⊢e E) /\
+       gds_lookup Θ' (q_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⊢e E) /\
     (forall Θ0 Ξ mp Δ Φ, Θ0 ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> Θ0 = Θ -> ⊢g Θ' ⍮ Ξ ->
-       gds_lookup Θ' (p_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ).
+       gds_lookup Θ' (q_unit mp) = None -> Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ).
   Proof.
     apply global_wf_mut_ind; intros; subst.
     all: try assert (Hb : ⊢ Θ' ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
@@ -422,7 +428,7 @@ Section GrowLevels.
     - econstructor; auto.
     - econstructor; [ assumption | apply Hx; assumption | apply Hm; assumption ].
     - econstructor; [ assumption | apply Hc; assumption ].
-    - match goal with HE : Θ ⍮ _ ⍮ path_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
+    - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       inversion Hg0 as [? ? Hs0]; inversion Hs0 as [| ? ? ? ? ? ? Hff]; subst.
       assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ) by auto.
       econstructor; [ exact HΦ | | assumption ].
@@ -433,7 +439,7 @@ Section GrowLevels.
   Qed.
 
   Lemma gstack_levels_grow : forall Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ' ->
-      (forall mp U, In (mp, U) Ξ -> gds_lookup Θ' (p_unit mp) = None) -> ⊢g Θ' ⍮ Ξ.
+      (forall mp U, In (mp, U) Ξ -> gds_lookup Θ' (q_unit mp) = None) -> ⊢g Θ' ⍮ Ξ.
   Proof.
     induction Ξ as [| [mp U] Ξ IH]; intros HΞ HΘ' Hfr; [ constructor; constructor; exact HΘ' |].
     pose proof (wf_gctx_stack _ _ HΞ) as HΞs; inversion HΞs as [| ? ? ? ? HΞ0 HU Hff]; subst.
@@ -640,7 +646,7 @@ Proof. intros * H; unfold file; rewrite gds_level_cons, H; reflexivity. Qed.
 Lemma wf_gdep_iff : forall Θ d,
     wf_gdep Θ d <->
     wf_gdeps Θ /\ NoDup (map fst d) /\
-    (forall fp U, In (fp, U) d -> Θ ⍮ nil ⍮ p_abs fp nil ⊢u U /\ gds_fresh fp Θ).
+    (forall fp U, In (fp, U) d -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_fresh fp Θ).
 Proof.
   intros; split.
   - induction 1 as [| Θ d U fp Hd IH HU Hfr Hfr']; [ split; [ assumption | split; [ constructor | contradiction ] ] |].
@@ -652,7 +658,7 @@ Proof.
 Qed.
 
 Lemma wf_file : forall fp U Θ,
-    wf_gdeps Θ -> gds_lookup Θ fp = None -> Θ ⍮ nil ⍮ p_abs fp nil ⊢u U -> wf_gdeps (file fp U Θ).
+    wf_gdeps Θ -> gds_lookup Θ fp = None -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> wf_gdeps (file fp U Θ).
 Proof.
   intros * HΘ Hn HU; constructor; [ assumption |].
   constructor; [ constructor; assumption | assumption | apply gds_fresh_iff; assumption | ].
@@ -696,7 +702,7 @@ Proof. intros * Hwf Hag; apply gds_agree_sym, (agree_pop_l d); [| apply gds_agre
     named by its path: that path must stay unfiled below it. *)
 Lemma unit_levels_grow : forall Θ Θ' fp U,
     Θ ⊑ Θ' -> wf_gdeps Θ' -> gds_lookup Θ' fp = None ->
-    Θ ⍮ nil ⍮ p_abs fp nil ⊢u U -> Θ' ⍮ nil ⍮ p_abs fp nil ⊢u U.
+    Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> Θ' ⍮ nil ⍮ q_abs fp nil ⊢u U.
 Proof.
   intros * Hsub HΘ' Hn HU; inversion HU; subst; constructor.
   eapply (proj2 (global_levels_grow _ _ Hsub));
@@ -820,15 +826,15 @@ with run_unit_dind := Induction for run_unit Sort Prop.
 Combined Scheme run_mut_dind from run_cmd_dind, run_cmds_dind, run_unit_dind.
 
 (** What a run keeps of a stack: each frame's path and parameters. *)
-Definition gs_shape (Ξ : gstack) : list (path * ctx) := map (fun f => (fst f, gu_params (snd f))) Ξ.
+Definition gs_shape (Ξ : gstack) : list (qname * ctx) := map (fun f => (fst f, gu_params (snd f))) Ξ.
 
 Lemma gs_add_params : forall x E Ξ, gs_shape (gs_add x E Ξ) = gs_shape Ξ.
 Proof. intros ? ? [| [? ?] ?]; reflexivity. Qed.
 
 (** The frames of a stack belong to units on the chain: the ones being
     loaded, so none a load files. *)
-Definition stack_in (ch : list fpath) (Ξ : gstack) : Prop :=
-  forall mp U, In (mp, U) Ξ -> In (p_unit mp) ch.
+Definition stack_in (ch : list path) (Ξ : gstack) : Prop :=
+  forall mp U, In (mp, U) Ξ -> In (q_unit mp) ch.
 
 Lemma stack_in_add : forall ch x E Ξ, stack_in ch Ξ -> stack_in ch (gs_add x E Ξ).
 Proof.
@@ -837,14 +843,14 @@ Proof.
 Qed.
 
 Lemma stack_in_push : forall ch x Δ Ξ,
-    stack_in ch Ξ -> gs_fresh x Ξ -> stack_in ch (gs_push (path_in (gs_path Ξ) x) Δ Ξ).
+    stack_in ch Ξ -> gs_fresh x Ξ -> stack_in ch (gs_push (qname_in (gs_path Ξ) x) Δ Ξ).
 Proof.
   intros * H Hfr mp U [[= <- <-] | Hin]; [| eapply H; exact Hin ].
   destruct Ξ as [| [mq V] Ξ]; [ contradiction |]; cbn; eapply H; left; reflexivity.
 Qed.
 
 Section WellFormed.
-  Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
+  Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
@@ -932,11 +938,11 @@ Section WellFormed.
     (forall ch Θ Ξ cs Θ' Ξ', run_cmds ch Θ Ξ cs Θ' Ξ' ->
        ⊢g Θ ⍮ Ξ -> canon Θ -> stack_in ch Ξ -> ⊢g Θ' ⍮ Ξ' /\ canon Θ' /\ Θ ⊑ Θ') /\
     (forall ch u Θ U, run_unit ch u Θ U ->
-       wf_gdeps Θ /\ canon Θ /\ Θ ⍮ nil ⍮ p_abs (hd nil ch) nil ⊢u U).
+       wf_gdeps Θ /\ canon Θ /\ Θ ⍮ nil ⍮ q_abs (hd nil ch) nil ⊢u U).
   Proof.
     apply run_mut_dind.
     - (* a definition: the new member is checked against the frame so far *)
-      intros ch Θ Ξ x b pv A M HM Hfr HΞ Hc Hst.
+      intros ch Θ Ξ x b pv A M HM _ Hfr HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
       pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
@@ -944,9 +950,9 @@ Section WellFormed.
       constructor; constructor; [ exact Hs0 | | exact Hff ].
       constructor; cbn; econstructor; [ eassumption | unfold gs_def; constructor; exact HM | exact Hfr ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
-      intros ch Θ Ξ x Δ cs Θ' mp' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
+      intros ch Θ Ξ x Δ cs Θ' mp' U Htel HΔ _ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
-      assert (Hpush : ⊢g Θ ⍮ gs_push (path_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)).
+      assert (Hpush : ⊢g Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)).
       { constructor; constructor; [ apply wf_gctx_stack, HΞ | constructor; constructor; [ exact Htel | exact HΔ ] |].
         cbn; exists x; split; [ reflexivity | exact Hfr ]. }
       destruct (IH Hpush Hc (stack_in_push _ x Δ _ Hst Hfr)) as (HΞ' & Hc' & Hsub).
@@ -958,7 +964,7 @@ Section WellFormed.
       constructor; constructor; [ exact Hs0 | | exact Hff0 ].
       constructor; cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
-      intros ch Θ Ξ x Δ E Htel HΔ HE Hfr HΞ Hc Hst.
+      intros ch Θ Ξ x Δ E Htel HΔ HE _ Hfr HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
       pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
@@ -978,10 +984,10 @@ Section WellFormed.
         by (apply merge_wf; [ eapply wf_gctx_deps; eassumption | apply wf_file; assumption | exact Hag ]).
       split; [ eapply gstack_levels_grow; [ apply merge_left, Hag | exact HΞ | exact Hwf |] |].
       + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
-        destruct (gds_lookup (gds_merge _ _) (p_unit mq)) eqn:E; [ exfalso | reflexivity ].
+        destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
         apply merge_inv in E as [E | E].
         * rewrite (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) in E; discriminate.
-        * rewrite file_lookup in E; destruct (path_beq (p_unit mq) fp) eqn:Hb.
+        * rewrite file_lookup in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
           -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
           -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
       + split; [ apply canon_merge; assumption | apply merge_left, Hag ].
@@ -995,11 +1001,11 @@ Section WellFormed.
       split; [| split ]; eauto using gds_sub_trans.
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
-      intros fp ch imps P cs Θ1 Θ2 mp U Hi IHi Htel HP Hb IHb.
+      intros fp ch imps P cs Θ1 Θ2 mp U Hi IHi Htel HP _ Hb IHb.
       destruct (IHi ltac:(constructor; constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
-      assert (Hpush : ⊢g Θ1 ⍮ gs_push (p_abs fp nil) P nil).
+      assert (Hpush : ⊢g Θ1 ⍮ gs_push (q_abs fp nil) P nil).
       { constructor; constructor; [ apply wf_gctx_stack, H1 | constructor; constructor | ].
         - exact Htel.
         - cbn; rewrite app_nil_r; exact HP.
@@ -1026,10 +1032,10 @@ Section WellFormed.
       by (apply merge_wf; [ eapply wf_gctx_deps; eassumption | apply wf_file; assumption | exact Hag ]).
     split; [ eapply gstack_levels_grow; [ apply merge_left, Hag | exact HΞ | exact Hwf |] |].
     + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
-      destruct (gds_lookup (gds_merge _ _) (p_unit mq)) eqn:E; [ exfalso | reflexivity ].
+      destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
       apply merge_inv in E as [E | E].
       * rewrite (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) in E; discriminate.
-      * rewrite file_lookup in E; destruct (path_beq (p_unit mq) fp) eqn:Hb.
+      * rewrite file_lookup in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
         -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
         -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
     + split; [ apply canon_merge; assumption | apply merge_left, Hag ].
@@ -1054,7 +1060,7 @@ Section WellFormed.
 
   Corollary prog_sem_wf : forall prg Θ U,
       prog_sem load_path read to_core prg Θ U ->
-      wf_gdeps Θ /\ Θ ⍮ nil ⍮ p_abs (prog_path prg) nil ⊢u U.
+      wf_gdeps Θ /\ Θ ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢u U.
   Proof.
     intros * (u & _ & Hu); destruct (proj2 (proj2 run_wf) _ _ _ _ Hu) as (? & _ & ?); split; assumption.
   Qed.
@@ -1071,7 +1077,7 @@ End WellFormed.
     whole set would accept a unit mentioning a unit it never imported, filed by
     someone else. *)
 
-Definition gd_restrict (S : list fpath) (d : gdep) : gdep :=
+Definition gd_restrict (S : list path) (d : gdep) : gdep :=
   filter (fun e => existsb (path_beq (fst e)) S) d.
 
 (** Drop the empty levels on top, so a unit filed above a restriction lands at
@@ -1082,9 +1088,9 @@ Fixpoint trim_top (Θ : gdeps) : gdeps :=
   | _ => Θ
   end.
 
-Definition gds_restrict (S : list fpath) (Θ : gdeps) : gdeps := trim_top (map (gd_restrict S) Θ).
+Definition gds_restrict (S : list path) (Θ : gdeps) : gdeps := trim_top (map (gd_restrict S) Θ).
 
-Definition gds_dom (Θ : gdeps) : list fpath := map fst (List.concat Θ).
+Definition gds_dom (Θ : gdeps) : list path := map fst (List.concat Θ).
 
 Definition gds_equiv (Θ Θ' : gdeps) : Prop :=
   Θ ⊑ Θ' /\ Θ' ⊑ Θ /\ forall fp, gds_level Θ fp = gds_level Θ' fp.
@@ -1256,7 +1262,7 @@ Lemma equiv_gctx : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> wf_gdeps Θ' -> ⊢g Θ
 Proof.
   intros * (H & H' & _) HΘ' HΞ; apply (gstack_levels_grow _ _ H _ HΞ HΘ').
   intros mp U Hin; pose proof (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) as Hn.
-  destruct (gds_lookup Θ' (p_unit mp)) eqn:E; [ rewrite (H' _ _ E) in Hn; discriminate | reflexivity ].
+  destruct (gds_lookup Θ' (q_unit mp)) eqn:E; [ rewrite (H' _ _ E) in Hn; discriminate | reflexivity ].
 Qed.
 
 Lemma equiv_exp : forall Θ Θ' Ξ Γ M A,
@@ -1283,10 +1289,14 @@ Proof.
   intros * (H & _ & _) HΞ HE; apply (levels_grow _ _ _ H); [ constructor; exact HΞ | exact HE ].
 Qed.
 
+Lemma equiv_acc : forall Θ Θ' Ξ l, gds_equiv Θ Θ' -> acc_ok Θ Ξ l -> acc_ok Θ' Ξ l.
+Proof. intros * Heq Hl; eapply acc_ok_gc_sub; [ apply gc_sub_levels, (proj1 (proj2 Heq)) | exact Hl ]. Qed.
+
 Lemma equiv_import_ok : forall Θ Θ' Ξ E ns,
     gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> import_ok Θ Ξ E ns -> import_ok Θ' Ξ E ns.
 Proof.
-  intros * Heq HΞ [HE Hns]; split; [ exact (equiv_modexp _ _ _ _ _ Heq HΞ HE) |].
+  intros * Heq HΞ (HE & Hns & Hacc); split; [ exact (equiv_modexp _ _ _ _ _ Heq HΞ HE) |].
+  split; [| exact (equiv_acc _ _ _ _ Heq Hacc) ].
   intros n Hn; eapply member_ok_emb; [ apply gc_sub_levels, (proj1 Heq) | exact (Hns n Hn) ].
 Qed.
 
@@ -1298,9 +1308,9 @@ Qed.
 
 (** Everything a unit of [S] was checked against is in [S], filed as it is in
     [Θ], at its level in [Θ]. *)
-Definition closure_ok (S : list fpath) (Θ : gdeps) : Prop :=
+Definition closure_ok (S : list path) (Θ : gdeps) : Prop :=
   forall fp U, In fp S -> gds_lookup Θ fp = Some U ->
-    exists ΘU, ΘU ⍮ nil ⍮ p_abs fp nil ⊢u U /\ gds_level Θ fp = Some (List.length ΘU) /\
+    exists ΘU, ΘU ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_level Θ fp = Some (List.length ΘU) /\
       forall x V, gds_lookup ΘU x = Some V ->
         In x S /\ gds_lookup Θ x = Some V /\ gds_level Θ x = gds_level ΘU x.
 
@@ -1330,7 +1340,7 @@ Proof.
   split; [ exact HxS | split; [ exact HV' | rewrite HΘx, Hk; reflexivity ] ].
 Qed.
 
-Lemma nodup_keys_filter : forall (p : fpath * gunit -> bool) d,
+Lemma nodup_keys_filter : forall (p : path * gunit -> bool) d,
     NoDup (map fst d) -> NoDup (map fst (filter p d)).
 Proof.
   induction d as [| e d IH]; intros H; cbn [filter]; [ constructor |].
@@ -1369,7 +1379,7 @@ Proof. intros; apply wf_trim, restrict_map_wf; assumption. Qed.
 (** ** Chains, Stacks and Heights of Runs *)
 
 Section Runs.
-  Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
+  Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
   #[local] Abbreviation run_cmd := (run_cmd load_path read to_core).
   #[local] Abbreviation run_cmds := (run_cmds load_path read to_core).
@@ -1422,7 +1432,7 @@ Section Runs.
     - eapply rc_eval_infer; eassumption.
     - constructor.
     - econstructor; [ apply H; eapply Hpre; eassumption | auto ].
-    - cbn [hd] in *; econstructor; [ apply H; eapply Hpre; eassumption | assumption | assumption | auto ].
+    - cbn [hd] in *; econstructor; [ apply H; eapply Hpre; eassumption | assumption | assumption | assumption | auto ].
   Qed.
 
   Lemma run_tl :

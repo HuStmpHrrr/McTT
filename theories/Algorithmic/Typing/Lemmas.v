@@ -31,12 +31,20 @@ Proof.
     f_equiv;
     try reflexivity;
     intuition.
+  (** A global against another rule for members: a chain from a unit has no
+      argument, and a global's member type is its resolved type. *)
+  all: try solve [ exfalso; match goal with
+    | Hp : mod_qname ?H = Some _, Hs : modexp_spine ?H = (_, ?args, _), Ha : ?args = nil -> False |- _ =>
+        rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs; intros; subst; contradiction end ].
+  all: try solve [ match goal with
+    | Hp : mod_qname ?H = Some _, Hm : member_type _ _ _ ?H _ (mr_term ?A1), Hr : gc_resolve _ _ _ = Some (ge_def _ _ ?A2 _) |- _ =>
+        pose proof (mt_glob_type _ _ _ _ _ _ _ _ _ _ _ Hp Hm Hr); subst; functional_nbe_rewrite_clear; reflexivity end ].
   (** Module [let]s and members. *)
   4:{ assert (C = C0) as <- by eauto. functional_nbe_rewrite_clear. reflexivity. }
   4:{ match goal with
-      | H1 : member_type _ _ _ ?H ?c mk_term ?A1, H2 : member_type _ _ _ ?H ?c mk_term ?A2 |- _ =>
+      | H1 : member_type _ _ _ ?H ?c (mr_term ?A1), H2 : member_type _ _ _ ?H ?c (mr_term ?A2) |- _ =>
           tryif constr_eq A1 A2 then fail
-          else pose proof (proj1 (member_type_functional _ _) _ _ _ _ _ H1 _ H2) as E; subst A2
+          else pose proof (proj1 (member_type_functional _ _) _ _ _ _ H1 _ H2) as E; injection E as E; subst A2
       end.
       functional_nbe_rewrite_clear. reflexivity. }
   4,5: exfalso; match goal with Hn : me_noargs ?H, Hs : modexp_spine ?H = _, Ha : _ = nil -> False |- _ =>
@@ -94,9 +102,9 @@ Proof.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_mod _ _ _ _ HU)) as HCs.
       assert (Γ ⊢ C[Id ,,ₘ me_lit U] ≈ D : Type@j) as <- by mauto 3 using soundness_ty'.
       eapply wf_let_mod; eauto. }
-  8:{ match goal with Hm : member_type _ _ _ _ _ mk_term _ |- _ => rename Hm into Hmt end.
+  8:{ match goal with Hm : member_type _ _ _ _ _ (mr_term _) |- _ => rename Hm into Hmt end.
       assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) by eauto.
-      destruct (proj1 member_wf _ _ _ _ _ Hmt HH ltac:(intros; discriminate)) as ([i HA] & HMu & _).
+      destruct (proj1 member_wf _ _ _ _ Hmt HH ltac:(intros; discriminate)) as ([i HA] & HMu & _); cbn [mres_ty] in *.
       destruct (HMu eq_refl) as (M & HMe & HMt).
       assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 3 using soundness_ty'.
       eapply wf_mem; [ eassumption | exact HH | exact Hmt | exact HA | exact HMe | exact HMt ]. }
@@ -128,12 +136,10 @@ Proof.
   10:{ match goal with HΓ : ⊢ ?G, Hx : ⊢ ?G -> wf_ext_eq _ _ ?G ?P ?P |- _ =>
          pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end.
        eapply wf_unit_eq_alias; eauto. }
-  10:{ match goal with Hm : member_type _ _ _ _ nil mk_mod _ |- _ => rename Hm into Hmt end.
+  10:{ match goal with Hm : member_type _ _ _ _ nil (mr_mod _) |- _ => rename Hm into Hmt end.
        assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) by eauto.
-       destruct (proj1 member_wf _ _ _ _ _ Hmt HH ltac:(intros; discriminate)) as ([i HA] & _).
-       assert (HAΠ : Γ ⊢ A ≈ Πⁿ B C : Type@i) by mauto 3 using soundness_ty'.
-       assert (HΠ : Γ ⊢ Π B C : Type@i) by (gen_presups; eauto).
-       assert (Γ ⊢ B : Type@i /\ Γ ▹ (B : exp) ⊢ C : Type@i) as [HB HC] by mauto 3.
+       destruct (proj1 member_wf _ _ _ _ Hmt HH ltac:(intros; discriminate)) as ([i HA] & _); cbn [mres_ty] in HA.
+       match goal with Hv : tele_view _ = Some _ |- _ => destruct (tele_view_wf _ _ _ _ _ HA Hv) as (_ & HB & _) end.
        assert (Γ ⊢ N : B) by eauto.
        eapply wf_me_app; eauto using wf_exp_eq_refl. }
   - assert (Γ ⊢ M : A) by mauto 3.
@@ -186,10 +192,10 @@ Proof.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
     assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
-  (** The resolution premise of [wf_glob] is the same function call, so the
-      declarative rule applies directly; [soundness_ty'] relates the inferred
-      normal form to the declarative type. *)
-  - assert (Γ ⊢ a_glob p : A) by mauto 3.
+  (** The resolution premise of [wf_mem_glob] is the same function call, so
+      the declarative rule applies directly; [soundness_ty'] relates the
+      inferred normal form to the declarative type. *)
+  - assert (Γ ⊢ a_mem H x : A) by mauto 3.
     assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
     assert (Γ ⊢ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
@@ -271,9 +277,9 @@ Proof.
     assert (Γ ▹ₘ U ⊢ B : C) by mauto 3 using alg_type_infer_sound.
     assert (exists j, Γ ▹ₘ U ⊢ C : Type@j) as [j HCj] by (gen_presups; eauto 2).
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_mod _ _ _ _ HU)); (f_equiv; mautosolve 4).
-  - match goal with Hm : member_type _ _ _ _ _ mk_term _ |- _ => rename Hm into Hmt end.
-    destruct (proj1 member_wf _ _ _ _ _ Hmt ltac:(eapply alg_modexp_sound; eassumption) ltac:(intros; discriminate))
-      as ([i HA] & _).
+  - match goal with Hm : member_type _ _ _ _ _ (mr_term _) |- _ => rename Hm into Hmt end.
+    destruct (proj1 member_wf _ _ _ _ Hmt ltac:(eapply alg_modexp_sound; eassumption) ltac:(intros; discriminate))
+      as ([i HA] & _); cbn [mres_ty] in HA.
     (f_equiv; mautosolve 4).
   - eapply IHHinfer; [ assumption | mauto 3 using alg_type_infer_sound | assumption ].
   - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
@@ -506,22 +512,12 @@ Proof.
   - destruct H0; split; assumption.
   - destruct H0 as [H01 _]; destruct H2 as [_ H22]; split; assumption.
   (** Module expressions. *)
-  - split; econstructor; eauto.
-  - split; econstructor; eauto.
-  - match goal with IH : _ /\ _ |- _ => destruct IH end; split; econstructor; eauto.
-  - match goal with IH : _ /\ _ |- _ => destruct IH end; split; econstructor; eauto.
+  - split; solve [ econstructor; eauto ].
+  - split; solve [ econstructor; eauto ].
+  - match goal with IH : _ /\ _ |- _ => destruct IH end; split; solve [ econstructor; eauto ].
+  - match goal with IH : _ /\ _ |- _ => destruct IH end; split; solve [ econstructor; eauto ].
   - match goal with IH : _ ⊢aᵐ _ /\ _ ⊢aᵐ _ |- _ => destruct IH as [Hl Hr] end.
-    split.
-    + match goal with HE : _ ⊢ A ≈ Π B C : Type@i |- _ => rename HE into HAΠ end.
-      destruct (completeness_ty HAΠ) as [W [HW HWΠ]].
-      destruct (nbe_ty_pi_inv _ _ _ _ HWΠ) as (B0 & C0 & -> & HB0).
-      assert (Γ ⊢ B ≈ B0 : Type@i) by mauto 3 using soundness_ty'.
-      eapply amod_app; eauto using alg_type_check_conv.
-    + match goal with HE : _ ⊢ A' ≈ Π B' C' : Type@j |- _ => rename HE into HAΠ end.
-      destruct (completeness_ty HAΠ) as [W [HW HWΠ]].
-      destruct (nbe_ty_pi_inv _ _ _ _ HWΠ) as (B0 & C0 & -> & HB0).
-      assert (Γ ⊢ B' ≈ B0 : Type@j) by mauto 3 using soundness_ty'.
-      eapply amod_app; eauto using alg_type_check_conv.
+    split; eapply amod_app; eauto.
   - match goal with IH : _ /\ _ |- _ => destruct IH end; split; assumption.
   - match goal with IH1 : _ ⊢aᵐ ?a /\ _ ⊢aᵐ ?b, IH2 : _ ⊢aᵐ ?b /\ _ ⊢aᵐ ?c |- _ =>
       destruct IH1 as [? _]; destruct IH2 as [_ ?] end; split; assumption.

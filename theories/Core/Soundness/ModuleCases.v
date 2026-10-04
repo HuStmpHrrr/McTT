@@ -14,7 +14,9 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
-From Mctt.Core.Semantic Require Import Realizability.
+From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
+From Mctt.Core.Syntactic.System Require Import MemberWf GlobalModules.
+From Mctt.Core.Completeness Require Import ModexpCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
   SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
@@ -24,10 +26,11 @@ Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   { gme_emb : Emb Θ1 Ξ1 Θ2 Ξ2
-  ; gme_glob : forall r b pv A B Γ,
-      gc_resolve Θ1 Ξ1 r = Some (ge_def b pv A B) ->
+  ; gme_glob : forall H mp x b pv A B Γ,
+      mod_qname H = Some mp ->
+      gc_resolve Θ1 Ξ1 (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
       @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
-      @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_glob r) A
+      @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) A
   }.
 
 (** ** 2. Kripke gluing *)
@@ -234,37 +237,44 @@ Section Raw.
   Variables (Θ : gdeps) (Ξ : gstack).
   Hypothesis Hg : ⊢g Θ ⍮ Ξ.
 
-  Lemma glob_glu_of_raw : forall p b pv A B,
-      gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
+  Lemma glob_glu_of_raw : forall mp x b pv A B,
+      gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
       glu_entry Θ Ξ (ge_def b pv A B) ->
-      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_glob p) A.
+      @glu_rel_exp (gc_mk Θ Ξ) ⋅ (a_mem (qname_mod mp) x) A.
   Proof.
-    intros p b pv A B Hr [[i HT] HM].
+    intros mp x b pv A B Hr [[i HT] HM].
     assert (Hb : ⊢ Θ ⍮ Ξ ⍮ ⋅) by (constructor; assumption).
     destruct (wf_gc_resolve_closed _ _ _ _ _ _ _ _ Hb Hr) as [HsT HsB].
+    pose proof (qname_mod_qname mp) as Hpm.
+    assert (Hc : forall σ, (a_mem (qname_mod mp) x)[σ] = a_mem (qname_mod mp) x)
+      by (intros; cbn; rewrite (mod_qname_sub _ _ _ Hpm); reflexivity).
+    assert (Hcw : forall φ, (a_mem (qname_mod mp) x)[φ]ʷ = a_mem (qname_mod mp) x)
+      by (intros; cbn; rewrite (mod_qname_wk _ _ _ Hpm); reflexivity).
+    assert (Hp : forall ρ, eval_modexp Θ Ξ (qname_mod mp) ρ (dm_global mp nil))
+      by (intros; apply eval_path_mod, (gc_chain_no_alias _ _ Hg); right; right; eauto).
     destruct b; [ destruct B as [M |] |].
     - cbn in HsB.
-      eapply (@glu_delta_nil (gc_mk Θ Ξ)); [ apply HM; reflexivity | | | reflexivity | |].
+      eapply (@glu_delta_nil (gc_mk Θ Ξ)); [ apply HM; reflexivity | | | exact Hc | |].
       + intros; eapply exp_closed_sub; eassumption.
       + intros; eapply exp_closed_sub; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
-      + intros * Hev; econstructor; eassumption.
-    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob p);
-        [ exact HT | | reflexivity | | reflexivity | | | |].
-      + intros; eapply exp_closed_sub; eassumption.
-      + intros; eapply exp_closed_wk; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
-      + intros s; eexists; split; constructor.
-      + intros * Hrb; inversion Hrb; reflexivity.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | right; reflexivity | exact Hev ].
-    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob p);
-        [ exact HT | | reflexivity | | reflexivity | | | |].
+      + intros Δ' HΔ'; eapply wf_exp_eq_mem_glob_unfold; eassumption.
+      + intros * Hev; eapply eval_mem_of_sel; [ apply Hp | eapply eval_sel_global; [ exact Hr | exact Hev | constructor ] ].
+    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob (qname_app mp (x :: nil)));
+        [ exact HT | | exact Hc | | exact Hcw | | | |].
       + intros; eapply exp_closed_sub; eassumption.
       + intros; eapply exp_closed_wk; eassumption.
-      + intros Δ' HΔ'; econstructor; eassumption.
+      + intros Δ' HΔ'; eapply wf_mem_glob; eassumption.
       + intros s; eexists; split; constructor.
-      + intros * Hrb; inversion Hrb; reflexivity.
-      + intros * Hev; eapply eval_exp_glob_neut; [ exact Hr | left; reflexivity | exact Hev ].
+      + intros * Hrb; inversion Hrb; subst; cbn [ne_to_exp]; apply qname_term_snoc.
+      + intros * Hev; eapply eval_mem_of_sel; [ apply Hp | eapply eval_sel_global_neut; [ exact Hr | right; reflexivity | exact Hev | constructor ] ].
+    - eapply (@glu_neut_nil (gc_mk Θ Ξ)) with (d := d_glob (qname_app mp (x :: nil)));
+        [ exact HT | | exact Hc | | exact Hcw | | | |].
+      + intros; eapply exp_closed_sub; eassumption.
+      + intros; eapply exp_closed_wk; eassumption.
+      + intros Δ' HΔ'; eapply wf_mem_glob; eassumption.
+      + intros s; eexists; split; constructor.
+      + intros * Hrb; inversion Hrb; subst; cbn [ne_to_exp]; apply qname_term_snoc.
+      + intros * Hev; eapply eval_mem_of_sel; [ apply Hp | eapply eval_sel_global_neut; [ exact Hr | left; reflexivity | exact Hev | constructor ] ].
   Qed.
 End Raw.
 
@@ -273,9 +283,10 @@ Theorem glu_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
 Proof.
   intros * He HG; pose proof He as [Hg Hs].
   constructor; [ exact He |].
-  intros * Hr HΓs.
+  intros * Hpm Hr HΓs.
+  rewrite (mod_qname_inv _ _ Hpm).
   apply glu_rel_exp_nil_weaken; [ exact HΓs |].
-  exact (glob_glu_of_raw _ _ Hg _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (HG _ _ Hr)).
+  exact (glob_glu_of_raw _ _ Hg _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (HG _ _ Hr)).
 Qed.
 
 Lemma kglu_read : forall Θ1 Ξ1 Θ2 Ξ2 A M,

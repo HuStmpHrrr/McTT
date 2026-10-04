@@ -143,6 +143,72 @@ Proof.
   - intros Hin; eexists; split; [ eassumption | apply path_beq_refl ].
 Qed.
 
+(** ** Import Targets and Aliases *)
+
+(** A projection chain is a module expression's spine of [me_mem]s. *)
+Lemma selm_proj_chain : forall S ip o E,
+    selm S (fold_left Cst.proj ip o) E <-> exists H, selm S o H /\ E = fold_left me_mem ip H.
+Proof.
+  intros S; induction ip as [| y ip IH]; intros o E; cbn [fold_left].
+  - split; [ eauto | intros (H & HH & ->); assumption ].
+  - rewrite IH; split.
+    + intros (H' & Hs & ->); inversion Hs; subst; eauto.
+    + intros (H & Hs & ->); exists (me_mem H y); split; [ constructor; assumption | reflexivity ].
+Qed.
+
+(** A name in module position, as [elab_mod] reads it. *)
+Lemma name_mod_iff : forall S x H,
+    match lookup x S with
+    | Some (k, e, n) => den_to_mod k n e
+    | None => eerr ("unbound name " ++ x)
+    end = eok H <-> selm S (Cst.var x) H.
+Proof.
+  intros; case_eq (lookup x S); [ intros [[k e] n] El | intros El ]; split.
+  - intros Hd; econstructor; [ apply lookup_iff; eassumption | apply den_to_mod_iff; assumption ].
+  - intros Hs; inversion Hs; subst.
+    match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; rewrite Hb in El; inv_eok end.
+    apply den_to_mod_iff; assumption.
+  - discriminate.
+  - intros Hs; inversion Hs; subst.
+    match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
+Qed.
+
+Lemma chain_iff : forall S x ip E,
+    elab_chain S x ip = eok E <-> selm S (fold_left Cst.proj ip (Cst.var x)) E.
+Proof.
+  intros; unfold elab_chain; rewrite ebind_eok, selm_proj_chain; split.
+  - intros (H & Hd & HE); inv_eok. exists H; split; [ apply name_mod_iff; assumption | reflexivity ].
+  - intros (H & Hs & ->). exists H; split; [ apply name_mod_iff; assumption | reflexivity ].
+Qed.
+
+Lemma itarget_iff : forall S fq ip E, elab_itarget S fq ip = eok E <-> itarget S fq ip E.
+Proof.
+  intros. destruct fq as [| f fq]; [ destruct ip as [| x ip] |]; cbn; split.
+  - discriminate.
+  - intros H; inversion H; congruence.
+  - intros H; apply it_local, chain_iff, H.
+  - intros H; inversion H; subst; [ apply chain_iff; assumption | congruence ].
+  - intros H; inv_eok; constructor; discriminate.
+  - intros H; inversion H; subst; reflexivity.
+Qed.
+
+Lemma ibinds_iff : forall E spec F F', elab_ibinds E spec F = eok F' <-> ibinds E spec F F'.
+Proof.
+  intros E [| y | ns] F F'; cbn [elab_ibinds].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - rewrite ebind_eok; split.
+    + intros ([] & Hf & H); inv_eok; constructor; apply check_fresh_ok in Hf; assumption.
+    + intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | reflexivity ].
+  - revert F; induction ns as [| n ns IH]; intros F; cbn [use_binds].
+    + split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+    + rewrite ebind_eok; split.
+      * intros ([] & Hf & H); constructor; [ apply check_fresh_ok in Hf; assumption | apply IH; assumption ].
+      * intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | apply IH; assumption ].
+Qed.
+
+Lemma loaded_b_iff : forall S fq, loaded_b S fq = true <-> loaded S fq.
+Proof. intros S [| f fq]; cbn; [ tauto | apply unit_in_b_iff ]. Qed.
+
 (** ** Objects *)
 
 (** The loop of [elab_mdef], stated on its own. *)
@@ -158,8 +224,12 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (pents ps ++ S) md' in
       elab_body (en_var x :: S) (gm_ext Φ x (ge_mod (gu_mk (ptele tys) D))) cs'
-  | Cst.c_import _ _ _ :: _ => eerr "a local module has no imports"
-  | Cst.c_eval _ _ :: _ => eerr "a local module has no evals"
+  | Cst.c_import fq ip spec :: cs' =>
+      let* _ := echeck (loaded_b S fq) "the unit is not imported" in
+      let* E := elab_itarget S fq ip in
+      let* F := elab_ibinds E spec nil in
+      elab_body (F ++ S) (gm_check Φ (bc_import E (ispec_names spec))) cs'
+  | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
   end.
 
 Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in eok (md_body Φ).
@@ -291,7 +361,13 @@ Proof.
     + dest_eok. to_spec. econstructor; eassumption.
     + inversion Hg; subst. to_elab. reflexivity.
   - (* c_import *)
-    intros fq ip spec cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+    intros fq ip spec cs Hcs S Φ Φ'; cbn [elab_body]. split; intros Hg.
+    + dest_eok. econstructor; [ apply loaded_b_iff | apply itarget_iff | apply ibinds_iff | apply Hcs ]; eassumption.
+    + inversion Hg; subst.
+      rewrite (proj2 (loaded_b_iff _ _)) by assumption; cbn [echeck ebind].
+      rewrite (proj2 (itarget_iff _ _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (ibinds_iff _ _ _ _)) by eassumption; cbn [ebind].
+      apply Hcs; assumption.
   - (* c_eval *)
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
 Qed.
@@ -309,31 +385,6 @@ Qed.
 
 (** ** Imports *)
 
-Lemma itarget_iff : forall S fq ip E, elab_itarget S fq ip = eok E <-> itarget S fq ip E.
-Proof.
-  intros. destruct fq as [| f fq]; [ destruct ip as [| x ip] |]; cbn; split.
-  - discriminate.
-  - intros H; inversion H; congruence.
-  - intros H; apply it_local, elab_mod_iff, H.
-  - intros H; inversion H; subst; [ apply elab_mod_iff; assumption | congruence ].
-  - intros H; inv_eok; constructor; discriminate.
-  - intros H; inversion H; subst; reflexivity.
-Qed.
-
-Lemma ibinds_iff : forall E spec F F', elab_ibinds E spec F = eok F' <-> ibinds E spec F F'.
-Proof.
-  intros E [| y | ns] F F'; cbn [elab_ibinds].
-  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
-  - rewrite ebind_eok; split.
-    + intros ([] & Hf & H); inv_eok; constructor; apply check_fresh_ok in Hf; assumption.
-    + intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | reflexivity ].
-  - revert F; induction ns as [| n ns IH]; intros F; cbn [use_binds].
-    + split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
-    + rewrite ebind_eok; split.
-      * intros ([] & Hf & H); constructor; [ apply check_fresh_ok in Hf; assumption | apply IH; assumption ].
-      * intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | apply IH; assumption ].
-Qed.
-
 Lemma import_iff : forall O F fq ip spec F' c,
     elab_import O F fq ip spec = eok (F', c) <-> simport O F (Cst.c_import fq ip spec) F' c.
 Proof.
@@ -347,7 +398,7 @@ Qed.
 (** ** Commands *)
 
 Section Commands.
-  Variable fp : fpath.
+  Variable fp : path.
 
   Definition Pcmd (c : Cst.cmd) : Prop :=
     forall ch O F F' c', elab_cmd fp ch O F c = eok (F', c') <-> scmd fp ch O F c F' c'.

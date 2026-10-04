@@ -100,7 +100,7 @@ Lemma walk_body : forall Φ Φ' Θ Θ' RΘ R,
     EF body_ctx Φ ++ Θ ≈ body_ctx Φ' ++ Θ' ∈ per_ctx_env ↘ R ->
     forall ρ ρ', RΘ ρ ρ' ->
       per_body ρ Φ ρ' Φ' /\
-      exists ρ1 ρ1', eval_benv gc_deps gc_stack ρ Φ ρ1 /\ eval_benv gc_deps gc_stack ρ' Φ' ρ1' /\ R ρ1 ρ1'.
+      exists ρ1 ρ1', ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ ⟦ Φ' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' /\ R ρ1 ρ1'.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros [| Φ' y' E' | Φ' c'] * Hs HΘ HR ρ ρ' Hρ;
     cbn in Hs; try contradiction.
@@ -171,8 +171,8 @@ Lemma rel_closure_alias : forall Γ Γ' Δ Δ' E E' RΓ R,
     tele_ass Δ -> tele_ass Δ' -> List.length Δ = List.length Δ' ->
     EF Γ ≈ Γ' ∈ per_ctx_env ↘ RΓ ->
     EF Δ ++ Γ ≈ Δ' ++ Γ' ∈ per_ctx_env ↘ R ->
-    (forall ρ ρ', R ρ ρ' -> exists h h', eval_modexp gc_deps gc_stack E ρ h /\
-                                     eval_modexp gc_deps gc_stack E' ρ' h' /\ per_dmod h h') ->
+    (forall ρ ρ', R ρ ρ' -> exists h h', ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h /\
+                                     ⟦ E' ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ' ↘ h' /\ per_dmod h h') ->
     forall ρ ρ', RΓ ρ ρ' ->
       per_dmod (dm_local ρ (gu_mk Δ (md_alias E)) nil) (dm_local ρ' (gu_mk Δ' (md_alias E')) nil).
 Proof.
@@ -527,7 +527,7 @@ Lemma hw_alias : forall Γ' Γ σ Ψ E ρl ρr,
     hw_inv Γ' Γ σ Ψ ρl ρr ->
     Ψ ++ Γ ⊨ᵐ E ≈ E ->
     exists h h', eval_modexp gc_deps gc_stack E[sb_qn (List.length Ψ) σ]ᵐ ρl h /\
-      eval_modexp gc_deps gc_stack E ρr h' /\ per_dmod h h'.
+      ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρr ↘ h' /\ per_dmod h h'.
 Proof.
   intros * (Rl & Rr & HΓl & HΓr & Hsub & Hl & ρm & Hm & Hmr) [R0 [HΓ0 HE]].
   destruct (HE _ _ HΓl _ _ Hsub _ _ _ _ Hl Hm Hm) as [h1 h2 h3 h4 H1 H2 H3 H4 [Hc _]].
@@ -569,8 +569,8 @@ Lemma hw_body : forall Γ' Γ σ Φ Ψ ρl ρr,
     ⊨ body_ctx Φ ++ Ψ ++ Γ ->
     hw_inv Γ' Γ σ Ψ ρl ρr ->
     per_body ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) ρr Φ /\
-    exists ρl1 ρr1, eval_benv gc_deps gc_stack ρl (gmod_sub Φ (sb_qn (List.length Ψ) σ)) ρl1 /\
-      eval_benv gc_deps gc_stack ρr Φ ρr1 /\ hw_inv Γ' Γ σ (body_ctx Φ ++ Ψ) ρl1 ρr1.
+    exists ρl1 ρr1, ⟦ gmod_sub Φ (sb_qn (List.length Ψ) σ) ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρl ↘ ρl1 /\
+      ⟦ Φ ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρr ↘ ρr1 /\ hw_inv Γ' Γ σ (body_ctx Φ ++ Ψ) ρl1 ρr1.
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * Hs HΦ Hinv; cbn in Hs.
   - split; [ constructor |]; exists ρl, ρr; repeat split; try constructor; exact Hinv.
@@ -855,7 +855,7 @@ Qed.
 
 Lemma eval_sub_wk_extend_mod : forall σ H φ ρ ρσ h,
     ⟦ sb_wk σ φ ⟧s ρ ↘ ρσ ->
-    eval_modexp gc_deps gc_stack (modexp_wk H φ) ρ h ->
+    ⟦ modexp_wk H φ ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h ->
     ⟦ sb_wk (σ ,,ₘ H) φ ⟧s ρ ↘ ρσ ↦ᵐ h.
 Proof. intros * Hσ HH [| x]; [ exists h; split; [ reflexivity | assumption ] | apply Hσ ]. Qed.
 

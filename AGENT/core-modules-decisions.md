@@ -1,4 +1,4 @@
-# Core modules: decisions, paths taken, and the design as of 2026-10-02
+# Core modules: decisions, paths taken, and the design as of 2026-10-03
 
 This note records every decision made about local and global module bindings
 in the core, the alternatives that were rejected and why, and the current
@@ -50,8 +50,9 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
   them.
 - **Module expressions are their own sort**; `exp` is never reused:
   ```coq
-  modexp ::= me_path path | me_var nat | me_mem modexp string | me_app modexp exp | me_lit gunit
+  modexp ::= me_unit path | me_var nat | me_mem modexp string | me_app modexp exp | me_lit gunit
   ```
+  (`me_path` of a qualified name until 2026-10; see §10.1.)
   `me_lit` is produced only by the module-ζ rule.
 - **Substitution entries** are `sentry ::= se_var nat | se_exp exp | se_mod modexp`.
   - The name mirrors `centry`; the earlier name `simg` was unclear.
@@ -69,7 +70,8 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
   - `private`;
   - imports, as check-only entries (A = b).
 
-  `abstract` and `eval` are rejected in local bodies by the core (B = a).
+  `abstract` and `eval` are rejected in local bodies (B = a); since 2026-10
+  `eval` is rejected by the elaborator (§10.3).
 - **Alias arity** must be exact or partial; surplus arguments are an error
   (Q2 = c).
 - **Every import is a core command,** including imports of submodules of the
@@ -244,3 +246,79 @@ let module M (A : Type@0) where def x : Nat := zero end
    overturned a design point.
 5. **Keep expansions (`member_expansion`) out of the semantics.** They belong
    to typing and to the completeness bridge only.
+
+## 10. The refactor of 2026-10 (`wip/lm-refactor`)
+
+### 10.1 Paths name only units
+- `path` is a unit's name, `list string` (it replaces `fpath`).  The syntax
+  names only units: `me_unit : path -> modexp`.
+- `a_glob` is gone.  A global is a chain of selections from its unit,
+  `a_mem (me_mem … (me_unit fp) …) x`; `qname_term`/`qname_mod` build it and
+  `mod_qname` reads a chain back.
+- A qualified name is the record `qname` (`q_unit : path`, `q_chain`), the key
+  of resolution and the name a global value carries (`dm_global`, `d_glob`,
+  `ne_glob`).  It is not syntax.
+- A chain into an open frame is not a module expression of a closed module, so
+  it has its own typing rules (`wf_mem_glob`, `wf_me_glob`), keyed on
+  `mod_qname`.
+- Evaluation and readback build no syntax: `⟦ me_unit fp ⟧ᵐ ↘ dm_global …`,
+  selection from a global is a lookup (`eval_sel_global`), and an opaque
+  definition or an axiom is a neutral `d_glob` at its type
+  (`eval_sel_global_neut`).
+
+### 10.2 Privacy is a check of the command judgment
+- **One check, in `run_cmd`, outside typing** (`Core/Syntactic/System/Privacy.v`).
+  Typing and δ read no privacy flag; `member_type` returns private members.
+  Typing must stay monotone under `gc_sub` (closing and filing a module), and
+  stored bodies and types may name private members, so privacy cannot be a
+  typing premise.
+- `acc_ok Θ Ξ refs`: every member reference rooted at a unit, written in the
+  command, is to a public member or to one declared in an open frame or an
+  ancestor of one.  `mdecl` finds the declaring module, following aliases
+  through `gc_module`/`mr_alias`.
+- Scanned: `def` (type and body), `eval` (term and type), module parameters,
+  alias parameters, target and arguments, imports (target and `use` names),
+  unit parameters, and the imports of local bodies inside any of these.
+- The extracted checker decides it (`Extraction/Privacy.v`, `refs_check`);
+  `prog_impl_*`/`main_*` keep their statements.
+- The driver says `Error: Lib::Priv.s is private`, naming the member by the
+  module that declares it, after aliases (`q_unit`, then the chain).  This
+  choice was left to us: it is what the check computes, and it is the same
+  whichever alias the reference went through.
+- Not covered by the brief: a private member of a *local* module is no longer
+  rejected anywhere, since only unit-rooted references are checked and
+  typing is privacy-free.
+
+### 10.3 Local bodies
+- Imports stay allowed in local bodies (`bc_import`, `gm_check`, the import
+  premises of `wf_unit_eq_body`); their `use` names are privacy-checked.
+- `bc_eval` is gone: `eval` in a local body is an elaborator error,
+  `eval is not allowed in a local module`.
+- A local import of a unit must name an imported unit (`unit_reachable`):
+  `Error: the unit is not imported`.
+
+### 10.4 Module arities are telescopes
+- `member_type … ch R` with `R : mres := mr_term typ | mr_mod ctx`.  A module's
+  arity is the telescope of parameters it still takes, innermost first,
+  extended (`mres_gen`, `T ++ Δ`) by the bodies and parameters around it.
+- `tele_view T` is the outermost assumption and the rest, the definitions and
+  modules outside it substituted away; `tele_inst T N` instantiates it.  It is
+  computed on the reversed telescope, as `pi_view` is on a type.
+- `wf_me_app` checks the argument against `B` where `tele_view T = Some (B,
+  T1)`; an empty telescope rejects further arguments, and partial application
+  stays (`F ℕ` has arity `⋅ ▹ Π ℕ ℕ` for `F (A : Type@0) (f : A -> A)`).
+  `amod_app` checks against `B` directly, with no normalization.
+- The semantics reads member types through `mres_ty` (`ctx_pi T ⊤` for a
+  module), and `tele_view_pi` relates the two views; so the PER model,
+  completeness and soundness are unchanged in substance.  `arity_pi` derives
+  the `Π` of an arity from `sem_mt`, which replaced the rule's former
+  `A ≈ Π B C` premise.
+- `mkind` survives as `mres_kind`, the sort of a member; the termination order
+  `mt_order` and the extracted `member_type_impl` no longer take a kind
+  (member types are unique: `member_type_functional`).
+
+### 10.5 Notations
+`⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms`, `$*| f & ns | Θ ⍮ Ξ ↘ r`, `$ᵐ| h & n | Θ ⍮ Ξ ↘ h'`,
+`h ·ₜ x Θ ⍮ Ξ ↘ d`, `h ·ₘ y Θ ⍮ Ξ ↘ h'`, `h ·ₜ* ch Θ ⍮ Ξ ↘ d`,
+`h ·ₘ* ch Θ ⍮ Ξ ↘ h'`, `⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ'`, beside `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h`.
+The selected name and the chain are at level 0.

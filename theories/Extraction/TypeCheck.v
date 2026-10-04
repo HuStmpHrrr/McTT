@@ -91,7 +91,7 @@ Section type_check.
 
   Definition check_shape_dec : forall c c', { check_shape c c' } + { ~ check_shape c c' }.
   Proof.
-    intros [E ns | M A] [E' ns' | M' A']; cbn; try (right; intros []; fail).
+    intros [E ns] [E' ns']; cbn.
     apply list_eq_dec, string_dec.
   Defined.
 
@@ -108,24 +108,56 @@ Section type_check.
 
   (** ** Deciding Member Types *)
 
-  Definition member_type_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch k
+  Definition member_type_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch
       (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :
-      { A | member_type gc_deps gc_stack Γ H ch k A } + { forall A, ~ member_type gc_deps gc_stack Γ H ch k A } :=
-    member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H ch k (mt_order_of_wf _ _ _ _ Hg HH ch k).
+      { R | member_type gc_deps gc_stack Γ H ch R } + { forall R, ~ member_type gc_deps gc_stack Γ H ch R } :=
+    member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H ch (mt_order_of_wf _ _ _ _ Hg HH ch).
 
-  Definition member_type_path_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ pq :
-      { A | member_type gc_deps gc_stack Γ (me_path pq) nil mk_mod A } +
-      { forall A, ~ member_type gc_deps gc_stack Γ (me_path pq) nil mk_mod A } :=
-    member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ (me_path pq) nil mk_mod
-      (mt_order_path _ _ _ _ _ _ Hg).
+  (** A member type asked for as a definition's type, or as a module's
+      arity: member types are unique, so the other sort is none. *)
+  Definition mres_term_dec {Γ H ch}
+      (d : { R | member_type gc_deps gc_stack Γ H ch R } + { forall R, ~ member_type gc_deps gc_stack Γ H ch R }) :
+      { A | member_type gc_deps gc_stack Γ H ch (mr_term A) } +
+      { forall A, ~ member_type gc_deps gc_stack Γ H ch (mr_term A) }.
+  Proof.
+    destruct d as [[[A | T] HR] | HN]; [ left; exists A; exact HR | right | right; intros A HA; exact (HN _ HA) ].
+    intros A HA; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HA); discriminate.
+  Defined.
+
+  Definition mres_mod_dec {Γ H ch}
+      (d : { R | member_type gc_deps gc_stack Γ H ch R } + { forall R, ~ member_type gc_deps gc_stack Γ H ch R }) :
+      { T | member_type gc_deps gc_stack Γ H ch (mr_mod T) } +
+      { forall T, ~ member_type gc_deps gc_stack Γ H ch (mr_mod T) }.
+  Proof.
+    destruct d as [[[A | T] HR] | HN]; [ right | left; exists T; exact HR | right; intros T HT; exact (HN _ HT) ].
+    intros T HT; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HT); discriminate.
+  Defined.
+
+  Definition member_term_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :=
+    mres_term_dec (member_type_dec Hg Γ H ch HH).
+
+  Definition member_mod_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :=
+    mres_mod_dec (member_type_dec Hg Γ H ch HH).
+
+  (** A chain from a unit has an order whether or not it is a module. *)
+  Definition member_chain_mod_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H mq (Hp : mod_qname H = Some mq) :
+      { T | member_type gc_deps gc_stack Γ H nil (mr_mod T) } +
+      { forall T, ~ member_type gc_deps gc_stack Γ H nil (mr_mod T) } :=
+    mres_mod_dec (member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H nil
+                    (mt_order_chain_self _ _ _ _ _ Hg Hp nil)).
+
+  (** The outermost parameter of an arity, if any. *)
+  Equations tele_view_dec (T : ctx) : { B : typ & { T1 : ctx | tele_view T = Some (B, T1) } } + { tele_view T = None } :=
+  tele_view_dec T with inspect (tele_view T) := {
+    | exist _ (Some (B, T1)) E => inleft (existT _ B (exist _ T1 E))
+    | exist _ None E => inright E }.
 
   Definition member_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E n
       (HE : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ E ≈ E) :
       { member_ok gc_deps gc_stack Γ E n } + { ~ member_ok gc_deps gc_stack Γ E n }.
   Proof.
-    destruct (member_type_dec Hg Γ E (n :: nil) mk_term HE) as [[A HA] | HN1]; [ left; left; eauto |].
-    destruct (member_type_dec Hg Γ E (n :: nil) mk_mod HE) as [[A HA] | HN2]; [ left; right; eauto |].
-    right; intros [[A HA] | [A HA]]; [ exact (HN1 _ HA) | exact (HN2 _ HA) ].
+    destruct (member_type_dec Hg Γ E (n :: nil) HE) as [[[A | T] HR] | HN]; [ left; left; eauto | left; right; eauto |].
+    right; intros [[A HA] | [A HA]]; eapply HN; eassumption.
   Defined.
 
   Definition names_ok_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ E
@@ -143,7 +175,7 @@ Section type_check.
     (forall Φ0 E ns n, In (Φ0, bc_import E ns) ls -> In n ns ->
        member_ok gc_deps gc_stack (body_ctx Φ0 ++ Δ ++ G) E n).
 
-  Extraction Inline member_type_dec member_type_path_dec.
+  Extraction Inline member_type_dec member_term_dec member_mod_dec member_chain_mod_dec mres_term_dec mres_mod_dec tele_view_dec.
 
   (** ** Facts the Obligations Use *)
 
@@ -158,11 +190,11 @@ Section type_check.
     destruct (alg_type_infer_typ_complete (user_exp_nf D) ltac:(eassumption)) as [j [Hj _]]; eauto.
   Qed.
 
-  Lemma member_typ_of_alg : forall G M ch k A, ⊢ G -> G ⊢aᵐ M ->
-      member_type gc_deps gc_stack G M ch k A -> (k = mk_term -> ch <> nil) -> exists i, G ⊢ A : Type@i.
+  Lemma member_typ_of_alg : forall G M ch R, ⊢ G -> G ⊢aᵐ M ->
+      member_type gc_deps gc_stack G M ch R -> (mres_kind R = mk_term -> ch <> nil) -> exists i, G ⊢ mres_ty R : Type@i.
   Proof.
     intros * HG HM Hm Hch.
-    exact (proj1 (proj1 member_wf _ _ _ _ _ Hm (alg_modexp_sound HM HG) Hch)).
+    exact (proj1 (proj1 member_wf _ _ _ _ Hm (alg_modexp_sound HM HG) Hch)).
   Qed.
 
   Lemma let_mod_typ_of_alg : forall G U C i, ⊢ G -> G ⊢aᵘ U -> G ▹ₘ U ⊢a C ⟹ Typeⁿ@i ->
@@ -173,6 +205,43 @@ Section type_check.
     assert (⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU').
     assert (HCt : G ▹ₘ U ⊢ C : Typeⁿ@i) by (eapply alg_type_infer_sound; eassumption).
     exact (sub_preserves_exp _ _ _ _ _ _ _ HCt (wf_sub_single_mod _ _ _ _ HU')).
+  Qed.
+
+  (** A member of a chain from a unit, read off the global context: the type
+      of the global, if it is one. *)
+  Definition glob_lookup (R : modexp) (pre : list string) (x : string) : option typ :=
+    match R with
+    | me_unit fp =>
+        match gc_resolve gc_deps gc_stack (q_abs fp (pre ++ x :: nil)) with
+        | Some (ge_def _ _ A _) => Some A
+        | _ => None
+        end
+    | _ => None
+    end.
+
+  Lemma spine_unit_path : forall H fp pre, modexp_spine H = (me_unit fp, nil, pre) -> mod_qname H = Some (q_abs fp pre).
+  Proof.
+    induction H as [fp0 | x | H IH y | H IH N | U]; intros * Hs; cbn in Hs |- *; try discriminate.
+    - injection Hs as <- <-; reflexivity.
+    - destruct (modexp_spine H) as [[R0 a0] p0] eqn:E; injection Hs as -> -> <-.
+      rewrite (IH _ _ eq_refl); reflexivity.
+    - destruct (modexp_spine H) as [[R0 a0] p0] eqn:E; injection Hs as _ Ha _; destruct a0; discriminate.
+  Qed.
+
+  Lemma glob_lookup_some : forall H R pre x A, modexp_spine H = (R, nil, pre) -> glob_lookup R pre x = Some A ->
+      exists mq b pv B, mod_qname H = Some mq /\ gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B).
+  Proof.
+    intros * Hs Hg; destruct R; cbn in Hg; try discriminate.
+    destruct (gc_resolve _ _ _) as [[b pv A0 B | U] |] eqn:Er; try discriminate; injection Hg as ->.
+    exists (q_abs l pre), b, pv, B; split; [ exact (spine_unit_path _ _ _ Hs) | exact Er ].
+  Qed.
+
+  Lemma glob_lookup_none : forall H R args pre x mq b pv A B, modexp_spine H = (R, args, pre) -> glob_lookup R pre x = None ->
+      mod_qname H = Some mq -> gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B) -> False.
+  Proof.
+    intros * Hs Hg Hp Hr; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
+    cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Hr.
+    rewrite Hr in Hg; discriminate.
   Qed.
 
   Inductive type_check_order : exp -> Prop :=
@@ -199,10 +268,6 @@ Section type_check.
          type_infer_order (apps (member_ref R (pre ++ x :: nil)) args)) ->
       type_infer_order (a_mem H x)
   | ti_vlookup : forall {x}, type_infer_order #x
-  (** A global is read off the global context without recursion; the
-      obligations obtain the normal form of its resolved type from the
-      well-formedness of [G]. *)
-  | ti_glob : forall {pth}, type_infer_order (a_glob pth)
   with ext_order : ctx -> Prop :=
   | eo_nil : ext_order nil
   | eo_ass : forall {A Ψ}, ext_order Ψ -> type_infer_order A -> ext_order (Ψ ▹ A)
@@ -214,9 +279,8 @@ Section type_check.
   with imports_order : list (gmod * bcheck) -> Prop :=
   | io_nil : imports_order nil
   | io_import : forall {Φ0 E ns ls}, modexp_order E -> imports_order ls -> imports_order ((Φ0, bc_import E ns) :: ls)
-  | io_eval : forall {Φ0 M A ls}, imports_order ls -> imports_order ((Φ0, bc_eval M A) :: ls)
   with modexp_order : modexp -> Prop :=
-  | mo_path : forall {pq}, modexp_order (me_path pq)
+  | mo_unit : forall {fp}, modexp_order (me_unit fp)
   | mo_var : forall {x}, modexp_order (me_var x)
   | mo_lit : forall {U}, unit_order U -> modexp_order (me_lit U)
   | mo_mem : forall {H y}, modexp_order H -> modexp_order (me_mem H y)
@@ -280,7 +344,7 @@ Section type_check.
            | md_alias E => modexp_order E
            end) /\
     (forall Φ, List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)) /\
-    (forall c, match c with bc_import E _ => modexp_order E | bc_eval _ _ => True end) /\
+    (forall c, match c with bc_import E _ => modexp_order E end) /\
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod U => unit_order U
@@ -297,7 +361,7 @@ Section type_check.
              | md_alias E => modexp_order E
              end)
       (fun Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ))
-      (fun c => match c with bc_import E _ => modexp_order E | bc_eval _ _ => True end)
+      (fun c => match c with bc_import E _ => modexp_order E end)
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod U => unit_order U
@@ -437,6 +501,13 @@ Section type_check.
               rewrite H1 in H2; injection H2; intros; subst; clear H2
           end;
         first [ solve [ eapply HN; eassumption ]
+              | solve [ exfalso; match goal with
+                  | Hp : mod_qname ?M = Some _, Hr : gc_resolve _ _ _ = Some (ge_def _ _ _ _),
+                    Hs : modexp_spine ?M = _, Eg : glob_lookup _ _ _ = None |- _ =>
+                      eapply glob_lookup_none; [ exact Hs | exact Eg | exact Hp | exact Hr ] end ]
+              | solve [ exfalso; match goal with
+                  | Hp : mod_qname ?M = Some _, Hs : modexp_spine ?M = (_, _ :: _, _) |- _ =>
+                      rewrite (mod_qname_spine _ _ Hp) in Hs; discriminate end ]
               | match goal with Hn : me_noargs ?M, Hs : modexp_spine ?M = _ |- _ =>
                   pose proof (me_noargs_spine _ _ _ _ Hn Hs); discriminate end
               | congruence ]
@@ -476,8 +547,8 @@ Section type_check.
     match goal with
     | Hx : _ ⊢aˣ (_ :: _) |- False => inversion Hx; subst
     | Hx : _ ⊢aᵘ (gu_mk _ _) |- False => inversion Hx; subst
-    | Hx : _ ⊢aᵐ (_ _) |- False => inversion Hx; subst
-    | Hx : _ ⊢aᵐ (_ _ _) |- False => inversion Hx; subst
+    | Hx : _ ⊢aᵐ (_ _) |- False => inversion Hx; subst; try (cbn in *; congruence)
+    | Hx : _ ⊢aᵐ (_ _ _) |- False => inversion Hx; subst; try (cbn in *; congruence)
     end;
     functional_alg_type_infer_rewrite_clear;
     first [ match goal with H : forall i, ?X <> Typeⁿ@i |- _ => exact (H _ eq_refl) end | firstorder ].
@@ -522,26 +593,46 @@ Section type_check.
   #[local]
   Ltac mt_unify :=
     repeat match goal with
-      | H1 : member_type ?T ?X ?G ?M ?c ?k ?A1, H2 : member_type ?T ?X ?G ?M ?c ?k ?A2 |- _ =>
+      | H1 : member_type ?T ?X ?G ?M ?c ?A1, H2 : member_type ?T ?X ?G ?M ?c ?A2 |- _ =>
           assert_fails (constr_eq A1 A2);
-          pose proof (proj1 (member_type_functional _ _) _ _ _ _ _ H1 _ H2); subst; clear H2
+          let E := fresh "E" in
+          pose proof (proj1 (member_type_functional _ _) _ _ _ _ H1 _ H2) as E; try injection E as E; subst; clear H2
       end.
+
+  (** The obligations of a global: its type is a type at [G]. *)
+  #[local]
+  Ltac glob_mem_obl :=
+    match goal with
+    | Hs : modexp_spine ?M = (?R, nil, ?pre), Eg : glob_lookup ?R ?pre ?x = Some ?A, HG : ⊢ ?G |- _ =>
+        let mq := fresh "mq" in let Hp := fresh "Hp" in let Hr := fresh "Hr" in
+        let i := fresh "i" in let HA := fresh "HA" in
+        destruct (glob_lookup_some _ _ _ _ _ Hs Eg) as (mq & ? & ? & ? & Hp & Hr);
+        assert (exists i, G ⊢ A : Type@i) as [i HA] by (eapply wf_glob_typ; [ exact HG | exact Hr ]);
+        first [ solve [ eapply nbe_order_of_typ; exact HA ]
+              | split; [ eapply ati_mem_glob; eassumption | eapply level_of_nbe; eassumption ] ]
+    end.
 
   #[local]
   Ltac mod_obl :=
     clear_defs; destruct_conjs;
     first
-      [ solve [ eapply nbe_order_of_typ, let_mod_typ_of_alg; eassumption ]
+      [ solve [ glob_mem_obl ]
+      | solve [ eapply amod_glob; [ first [ reflexivity | eassumption ] | eassumption ] ]
+      | solve [ match goal with Hx : _ ⊢aᵐ me_mem _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
+                match goal with HN : forall T, ~ member_type _ _ _ (me_mem _ _) nil (mr_mod T) |- _ =>
+                  first [ eapply HN; eassumption | eapply HN; eapply mt_mem; [ discriminate | eassumption ] ] end ]
+      | solve [ match goal with Hx : _ ⊢aᵐ _ |- False => inversion Hx; subst end; congruence ]
+      | solve [ eapply nbe_order_of_typ, let_mod_typ_of_alg; eassumption ]
       | solve [ split; [ eapply ati_let_mod; eassumption
                        | eapply level_of_nbe; [ eapply let_mod_typ_of_alg; eassumption | eassumption ] ] ]
       | solve [ match goal with
-                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M _ _ ?A |- nbe_ty_order _ _ ?G ?A =>
-                    destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [? ?];
+                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M _ (mr_term ?A) |- nbe_ty_order _ _ ?G ?A =>
+                    destruct (member_typ_of_alg _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [? ?];
                     eapply nbe_order_of_typ; eassumption
                 end ]
       | solve [ match goal with
-                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M _ _ ?A, Hn : nbe_ty_f ?G ?A _ |- _ =>
-                    destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [? ?]
+                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M _ (mr_term ?A), Hn : nbe_ty_f ?G ?A _ |- _ =>
+                    destruct (member_typ_of_alg _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [? ?]
                 end;
                 split; [ eapply ati_mem; [ eapply spine_nil_noargs; eassumption | eassumption | eassumption | eassumption ]
                        | eapply level_of_nbe; eassumption ] ]
@@ -559,7 +650,7 @@ Section type_check.
       | solve [ eapply ctx_wf_gctx; ctxp ]
       | solve [ eapply alg_modexp_sound; [ eassumption | ctxp ] ]
       | solve [ econstructor; apply ctx_find_mod_sound; eassumption ]
-      | solve [ match goal with Hx : _ ⊢aᵐ me_var _ |- False => inversion Hx; subst end;
+      | solve [ match goal with Hx : _ ⊢aᵐ me_var _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
                 match goal with Hl : ctx_lookup_mod _ _ _ |- _ => apply ctx_find_mod_complete in Hl end; congruence ]
       | solve [ match goal with
                 | HG : ⊢ ?G, Hin : In (?Φ0, _) (gm_checks ?Φ), Ha : ?G ⊢aˣ body_ctx ?Φ ++ ?Δ |- _ =>
@@ -570,21 +661,22 @@ Section type_check.
                     pose proof (ext_eq_ctx_left _ _ _ _ _ (alg_ext_sound Ha HG)) as HC;
                     rewrite HΨ0, <- !app_assoc in HC; exact (ctx_app_wf_right _ _ _ _ HC)
                 end ]
-      | solve [ match goal with Hx : _ ⊢aᵐ me_app _ _ |- False => inversion Hx; subst end;
-                mt_unify; functional_nbe_rewrite_clear;
-                first [ match goal with H0 : forall B C, _ <> Πⁿ B C |- _ => eapply H0; reflexivity end
-                      | match goal with Heq : Πⁿ _ _ = Πⁿ _ _ |- _ => injection Heq; intros; subst end; eauto ] ]
+      | solve [ match goal with Hx : _ ⊢aᵐ me_app _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
+                mt_unify;
+                repeat match goal with
+                  | H1 : tele_view ?T = Some _, H2 : tele_view ?T = Some _ |- _ =>
+                      rewrite H1 in H2; injection H2; intros; subst; clear H2
+                  | H1 : tele_view ?T = Some _, H2 : tele_view ?T = None |- _ => rewrite H1 in H2; discriminate H2
+                  end;
+                first [ contradiction | eauto ] ]
       | solve [ match goal with
-                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M nil mk_mod ?A,
-                  Hn : nbe_ty_f ?G ?A (Πⁿ ?B ?s) |- exists i, ?G ⊢ _ : Type@i =>
+                | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M nil (mr_mod ?T),
+                  Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Type@i =>
                     let i := fresh "i" in
                     let HA := fresh "HA" in
-                    destruct (member_typ_of_alg _ _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [i HA];
-                    assert (G ⊢ A ≈ Πⁿ B s : Type@i) by (eapply soundness_ty'; eassumption);
-                    let HΠ := fresh "HΠ" in
-                    assert (HΠ : G ⊢ Π B s : Type@i) by (gen_presups; eassumption);
-                    let HB := fresh "HB" in
-                    destruct (wf_pi_inversion' HΠ) as [HB _]; eauto
+                    destruct (member_typ_of_alg _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [i HA];
+                    cbn [mres_ty] in HA;
+                    exists i; exact (proj1 (proj2 (tele_view_wf _ _ _ _ _ HA Hv)))
                 end ]
       | solve [ eapply amod_app; eassumption ] ].
 
@@ -658,12 +750,18 @@ Section type_check.
         let*o (exist _ C _) := type_infer (G ▹ₘ U) _ B' _ while _ in
         let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id ,,ₘ me_lit U] _ in
         pureo (exist _ D _)
+    (** A global infers the closed type that resolution returns for it,
+        normalized at [G]; any other member, through its module. *)
     | a_mem M' x with inspect (modexp_spine M') => {
-      | exist _ (R, nil, pre) Es =>
+      | exist _ (R, nil, pre) Es with inspect (glob_lookup R pre x) => {
+        | exist _ (Some A) Eg =>
+            let (C, _) := nbe_ty_impl gc_deps gc_stack G A _ in
+            pureo (exist _ C _)
+        | exist _ None Eg =>
           let*b->o HM := modexp_check G HG M' _ while _ in
-          let*o (exist _ A _) := member_type_dec _ G M' (x :: nil) mk_term _ while _ in
+          let*o (exist _ A _) := member_term_dec _ G M' (x :: nil) _ while _ in
           let (B, _) := nbe_ty_impl gc_deps gc_stack G A _ in
-          pureo (exist _ B _)
+          pureo (exist _ B _) }
       | exist _ (R, N :: args, pre) Es =>
           let*b->o HM := modexp_check G HG M' _ while _ in
           let*o (exist _ A _) := type_infer G HG (apps (member_ref R (pre ++ x :: nil)) (N :: args)) _ while _ in
@@ -672,14 +770,6 @@ Section type_check.
         let*o (exist _ A _) := lookup G _ x while _ in
         let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
         pureo (exist _ A' _)
-    (** A global infers the closed type that resolution returns for it,
-        normalized at [G]. *)
-    | a_glob pth with inspect (gc_resolve gc_deps gc_stack pth) => {
-      | exist _ (Some (ge_def b pv A B)) _ =>
-          let (C, _) := nbe_ty_impl gc_deps gc_stack G A _ in
-          pureo (exist _ C _)
-      | exist _ _ _ => inright _
-      }
     }
   with ext_check G (HG : ⊢ G) Ψ (H : ext_order Ψ) : { G ⊢aˣ Ψ } + { ~ G ⊢aˣ Ψ } by struct H :=
   | G, HG, nil, H => left _
@@ -719,12 +809,9 @@ Section type_check.
       let*b _ := names_ok_dec _ (body_ctx Φ0 ++ Δ ++ G) E _ ns while _ in
       let*b _ := imports_check G Δ ls _ _ while _ in
       pureb _
-  | G, Δ, (Φ0, bc_eval M A) :: ls, Hls, H =>
-      let*b _ := imports_check G Δ ls _ _ while _ in
-      pureb _
   with modexp_check G (HG : ⊢ G) M (H : modexp_order M) : { G ⊢aᵐ M } + { ~ G ⊢aᵐ M } by struct H :=
-  | G, HG, me_path pq, H =>
-      let*o->b (exist _ A _) := member_type_path_dec _ G pq while _ in
+  | G, HG, me_unit fp, H =>
+      let*o->b (exist _ T _) := member_chain_mod_dec _ G (me_unit fp) (q_abs fp nil) eq_refl while _ in
       pureb _
   | G, HG, me_var x, H with inspect (ctx_find_mod G x) := {
     | exist _ (Some U) E => left _
@@ -732,16 +819,19 @@ Section type_check.
   | G, HG, me_lit U, H =>
       let*b _ := unit_check G HG U _ while _ in
       pureb _
-  | G, HG, me_mem M y, H =>
-      let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ A _) := member_type_dec _ G M (y :: nil) mk_mod _ while _ in
-      pureb _
+  | G, HG, me_mem M y, H with inspect (mod_qname (me_mem M y)) := {
+    | exist _ (Some mq) Ep =>
+        let*o->b (exist _ T _) := member_chain_mod_dec _ G (me_mem M y) mq Ep while _ in
+        pureb _
+    | exist _ None Ep =>
+        let*b HM := modexp_check G HG M _ while _ in
+        let*o->b (exist _ T _) := member_mod_dec _ G M (y :: nil) _ while _ in
+        pureb _ }
   | G, HG, me_app M N, H =>
       let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ A _) := member_type_dec _ G M nil mk_mod _ while _ in
-      let (W, _) := nbe_ty_impl gc_deps gc_stack G A _ in
-      let*o->b (existT _ B (exist _ C _)) := get_subterms_of_pi_nf W while _ in
-      let*b _ := type_check G (B : nf) _ N _ while _ in
+      let*o->b (exist _ T _) := member_mod_dec _ G M nil _ while _ in
+      let*o->b (existT _ B (exist _ T1 _)) := tele_view_dec T while _ in
+      let*b _ := type_check G B _ N _ while _ in
       pureb _
   .
 
@@ -911,52 +1001,6 @@ Section type_check.
     assert (exists j, G ⊢a A' ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 4); firstorder mauto 3.
   Qed.
 
-  (** ** The Global Cases
-
-      The obligations of [a_glob] reduce to one fact, that the type
-      resolution returns is a type at [G], or, when nothing resolves, to an
-      inversion.  [glob_obl] does not depend on the order in which [Equations]
-      presents them. *)
-
-  #[local]
-  Ltac resolved_typ :=
-    match goal with
-    | Hr : gc_resolve _ _ _ = Some (ge_def _ _ _ _) |- _ =>
-        eapply wf_glob_typ; [ eassumption | exact Hr ]
-    end.
-
-  #[local]
-  Ltac glob_obl :=
-    clear_defs;
-    first
-      [ match goal with
-        | |- nbe_ty_order _ _ ?G ?X =>
-            enough (exists i, G ⊢ X : Type@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
-              by eauto 3 using nbe_ty_order_sound;
-            resolved_typ
-        end
-      | match goal with
-        | |- _ /\ _ =>
-            split; [ mauto 3 |];
-            match goal with
-            | _ : nbe_ty gc_deps gc_stack ?G ?X ?C |- _ =>
-                assert (exists i, G ⊢ X : Type@i) as [i HX] by resolved_typ;
-                assert (G ⊢ X ≈ C : Type@i) by (eapply soundness_ty'; mauto 3);
-                assert (user_exp C) by trivial using user_exp_nf;
-                assert (exists j, G ⊢a C ⟹ Typeⁿ@j /\ j <= i) as [? []] by (gen_presups; mauto 3);
-                firstorder
-            end
-        end
-      | (* nothing resolves, so nothing is inferred *)
-        repeat intro;
-        match goal with
-        | H : _ ⊢a a_glob _ ⟹ _ |- _ => inversion H; subst; congruence
-        end ].
-
-  Next Obligation. glob_obl. Qed.
-  Next Obligation. glob_obl. Qed.
-  Next Obligation. glob_obl. Qed.
-  Next Obligation. glob_obl. Qed.
 
   Next Obligation. (* exists i, G ⊢ A' : Type@i *)
     clear_defs.
@@ -997,7 +1041,6 @@ Section type_check.
   Qed.
 
   (** The obligations of the module cases. *)
-  Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.

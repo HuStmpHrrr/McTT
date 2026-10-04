@@ -406,7 +406,7 @@ Proof.
     { intros s Hs; pose proof (wf_sub_mod_compat _ _ _ _ _ Hs) as Hcm.
       eapply wf_exp_eq_mem_delta;
         [ eapply me_noargs_sub; eassumption | eapply sub_preserves_modexp; eassumption
-        | eapply (proj1 (member_type_sub _ _ Hc)); eassumption
+        | eapply (member_type_sub_term _ _ Hc); eassumption
         | eapply sub_preserves_typ; eassumption
         | unfold member_unfold in *; eapply member_unfold_sub; eassumption
         | eapply sub_preserves_exp; eassumption ]. }

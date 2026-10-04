@@ -28,7 +28,9 @@ Generalizable All Variables.
 
 (** *** Helper Bundles *)
 (** Related modulo evaluation. *)
-Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop := mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
+Inductive rel_mod_eval (R : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R' : Prop :=
+(** Both evaluate, to values related by [R] at [R']. *)
+| mk_rel_mod_eval : forall a a', ⟦ A ⟧ ρ ↘ a -> ⟦ A' ⟧ ρ' ↘ a' -> DF a ≈ a' ∈ R ↘ R' -> rel_mod_eval R A ρ A' ρ' R'.
 #[global] Arguments mk_rel_mod_eval {_ _ _ _ _ _}.
 Hint Constructors rel_mod_eval : mctt.
 (** [per_univ_elem_core] nests through [rel_mod_eval], so generating its
@@ -36,7 +38,9 @@ Hint Constructors rel_mod_eval : mctt.
 Scheme All for rel_mod_eval.
 
 (** Related modulo application. *)
-Inductive rel_mod_app f a f' a' (R : relation domain) : Prop := mk_rel_mod_app : forall fa f'a', $| f & a |↘ fa -> $| f' & a' |↘ f'a' -> Dom fa ≈ f'a' ∈ R -> rel_mod_app f a f' a' R.
+Inductive rel_mod_app f a f' a' (R : relation domain) : Prop :=
+(** Both applications evaluate, to values related by [R]. *)
+| mk_rel_mod_app : forall fa f'a', $| f & a |↘ fa -> $| f' & a' |↘ f'a' -> Dom fa ≈ f'a' ∈ R -> rel_mod_app f a f' a' R.
 #[global] Arguments mk_rel_mod_app {_ _ _ _ _}.
 Hint Constructors rel_mod_app : mctt.
 
@@ -58,10 +62,13 @@ Hint Transparent per_top_typ : mctt.
 Hint Unfold per_top_typ : mctt.
 
 Inductive per_nat : relation domain :=
+(** [zero] is related to itself. *)
 | per_nat_zero : Dom zeroᵈ ≈ zeroᵈ ∈ per_nat
+(** Successors of related numbers are related. *)
 | per_nat_succ :
   `{ Dom m ≈ n ∈ per_nat ->
      Dom succᵈ m ≈ succᵈ n ∈ per_nat }
+(** So are neutrals that read back equally. *)
 | per_nat_neut :
   `{ Dom m ≈ n ∈ per_bot ->
      Dom ⇑ a m ≈ ⇑ b n ∈ per_nat }
@@ -75,6 +82,7 @@ Hint Transparent per_True : mctt.
 Hint Unfold per_True : mctt.
 
 Inductive per_ne : relation domain :=
+(** Neutrals that read back equally, at any types. *)
 | per_ne_neut :
   `{ Dom m ≈ m' ∈ per_bot ->
      Dom ⇑ a m ≈ ⇑ a' m' ∈ per_ne }
@@ -90,16 +98,19 @@ Section Per_univ_elem_core_def.
       (per_univ_rec : nat -> relation domain).
 
   Inductive per_univ_elem_core : relation domain -> domain -> domain -> Prop :=
+  (** A smaller universe, its elements the types of the universe below. *)
   | per_univ_elem_core_univ :
     `{ forall (elem_rel : relation domain)
           (lt_j_i : j < i),
           j = j' ->
           (elem_rel <~> per_univ_rec j) ->
           DF 𝕌@j ≈ 𝕌@j' ∈ per_univ_elem_core ↘ elem_rel }
+  (** [ℕ], its elements related by [per_nat]. *)
   | per_univ_elem_core_nat :
     forall (elem_rel : relation domain),
       (elem_rel <~> per_nat) ->
       DF ℕᵈ ≈ ℕᵈ ∈ per_univ_elem_core ↘ elem_rel
+  (** [⊤], all of its elements related. *)
   | per_univ_elem_core_True :
     forall (elem_rel : relation domain),
       (elem_rel <~> per_True) ->
@@ -110,6 +121,7 @@ Section Per_univ_elem_core_def.
     forall (elem_rel : relation domain),
       (elem_rel <~> per_ne) ->
       DF ⊥ᵈ ≈ ⊥ᵈ ∈ per_univ_elem_core ↘ elem_rel
+  (** A [Π]: related domains, codomains related at related arguments, and functions related pointwise. *)
   | per_univ_elem_core_pi :
     `{ forall (in_rel : relation domain)
          (out_rel : forall {c c'} (equiv_c_c' : Dom c ≈ c' ∈ in_rel), relation domain)
@@ -120,6 +132,7 @@ Section Per_univ_elem_core_def.
               rel_mod_eval per_univ_elem_core B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
           (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
           DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
+  (** A neutral type, its elements neutrals. *)
   | per_univ_elem_core_neut :
     `{ forall (elem_rel : relation domain),
           Dom b ≈ b' ∈ per_bot ->
@@ -286,19 +299,25 @@ End Per_univ_elem_ind_def.
 (** * Universe Subtyping *)
 
 Inductive per_subtyp : nat -> domain -> domain -> Prop :=
+(** Equal neutral types. *)
 | per_subtyp_neut :
   `( Dom b ≈ b' ∈ per_bot ->
      Sub ⇑ a b <: ⇑ a' b' at i )
+(** [ℕ] below itself. *)
 | per_subtyp_nat :
   `( Sub ℕᵈ <: ℕᵈ at i )
+(** [⊤] below itself. *)
 | per_subtyp_True :
   `( Sub ⊤ᵈ <: ⊤ᵈ at i )
+(** [⊥] below itself. *)
 | per_subtyp_False :
   `( Sub ⊥ᵈ <: ⊥ᵈ at i )
+(** A universe below a larger one. *)
 | per_subtyp_univ :
   `( i <= j ->
      j < k ->
      Sub 𝕌@i <: 𝕌@j at k )
+(** A [Π] below another with an equal domain and a smaller codomain. *)
 | per_subtyp_pi :
   `( forall (in_rel : relation domain) elem_rel elem_rel',
         DF a ≈ a' ∈ per_univ_elem i ↘ in_rel ->
@@ -344,20 +363,25 @@ Hint Unfold rel_elem : mctt.
     those the units declare. *)
 
 Inductive per_dmod : dmod -> dmod -> Prop :=
+(** The same global module, its arguments related at its telescope. *)
 | per_dmod_global :
   `{ gc_module gc_deps gc_stack p = Some (mr_body T) ->
      per_gargs (List.rev T) nil nil args args' ->
      per_dmod (dm_global p args) (dm_global p args') }
+(** Two unit closures, related through their parameters and contents. *)
 | per_dmod_local :
   `{ per_ltele (List.rev (gu_params U)) ρ (gu_def U) (List.rev (gu_params U')) ρ' (gu_def U') args args' ->
      per_dmod (dm_local ρ U args) (dm_local ρ' U' args') }
+(** Submodule closures of related modules, at the same chain. *)
 | per_dmod_member :
   `{ per_dmod h h' ->
      per_dmod (dm_member h ch) (dm_member h' ch) }
 (** Arguments of a global module, outermost first, against its telescope. *)
 with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop :=
+(** No more arguments. *)
 | per_gargs_nil :
   `{ per_gargs ts ρ ρ' nil nil }
+(** An argument related at its parameter's type, then the rest. *)
 | per_gargs_cons :
   `{ forall R,
        rel_typ i A ρ A ρ' R ->
@@ -366,24 +390,29 @@ with per_gargs : list centry -> env -> env -> list domain -> list domain -> Prop
        per_gargs (ce_ass A :: ts) ρ ρ' (a :: args) (a' :: args') }
 (** The parameters of two local units, outermost first, then their contents. *)
 with per_ltele : list centry -> env -> moddef -> list centry -> env -> moddef -> list domain -> list domain -> Prop :=
+(** A parameter both have an argument for. *)
 | per_ltele_supplied :
   `{ forall R,
        rel_typ i A ρ A' ρ' R ->
        R a a' ->
        per_ltele ts (ρ ↦ a) D ts' (ρ' ↦ a') D' args args' ->
        per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' (a :: args) (a' :: args') }
+(** A parameter neither has an argument for: the rest related at every related pair. *)
 | per_ltele_missing :
   `{ forall R,
        rel_typ i A ρ A' ρ' R ->
        (forall c c', R c c' -> per_ltele ts (ρ ↦ c) D ts' (ρ' ↦ c') D' nil nil) ->
        per_ltele (ce_ass A :: ts) ρ D (ce_ass A' :: ts') ρ' D' nil nil }
+(** All parameters crossed: the contents. *)
 | per_ltele_done :
   `{ per_mdef ρ D ρ' D' ->
      per_ltele nil ρ D nil ρ' D' nil nil }
 with per_mdef : env -> moddef -> env -> moddef -> Prop :=
+(** Two bodies. *)
 | per_mdef_body :
   `{ per_body ρ Φ ρ' Φ' ->
      per_mdef ρ (md_body Φ) ρ' (md_body Φ') }
+(** Two aliases with related targets. *)
 | per_mdef_alias :
   `{ eval_modexp gc_deps gc_stack E ρ h ->
      eval_modexp gc_deps gc_stack E' ρ' h' ->
@@ -391,8 +420,10 @@ with per_mdef : env -> moddef -> env -> moddef -> Prop :=
      per_mdef ρ (md_alias E) ρ' (md_alias E') }
 (** Two bodies, each entry seen in the environment its predecessors make. *)
 with per_body : env -> gmod -> env -> gmod -> Prop :=
+(** Two empty bodies. *)
 | per_body_nil :
   `{ per_body ρ gm_nil ρ' gm_nil }
+(** A definition each, with related types and values. *)
 | per_body_def :
   `{ forall R,
        per_body ρ Φ ρ' Φ' ->
@@ -401,12 +432,14 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
        rel_typ i A ρ1 A' ρ1' R ->
        rel_elem M ρ1 M' ρ1' R ->
        per_body ρ (gm_ext Φ y (ge_def b pv A (Some M))) ρ' (gm_ext Φ' y (ge_def b' pv' A' (Some M'))) }
+(** A submodule each, with related closures. *)
 | per_body_mod :
   `{ per_body ρ Φ ρ' Φ' ->
      eval_benv gc_deps gc_stack ρ Φ ρ1 ->
      eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
      per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil) ->
      per_body ρ (gm_ext Φ y (ge_mod Uy)) ρ' (gm_ext Φ' y (ge_mod Uy')) }
+(** A check entry each. *)
 | per_body_check :
   `{ per_body ρ Φ ρ' Φ' ->
      per_body ρ (gm_check Φ c) ρ' (gm_check Φ' c') }
@@ -425,10 +458,12 @@ Hint Constructors per_dmod per_gargs per_ltele per_mdef per_body : mctt.
 (** * Context/Environment PER *)
 
 Inductive per_ctx_env : relation env -> ctx -> ctx -> Prop :=
+(** The empty context, all environments related. *)
 | per_ctx_env_nil :
   `{ forall env_rel,
         (env_rel <~> fun ρ ρ' => True) ->
         EF ⋅ ≈ ⋅ ∈ per_ctx_env ↘ env_rel }
+(** An assumption: related tails, and heads related at the type. *)
 | per_ctx_env_cons :
   `{ forall tail_rel
         (head_rel : forall {ρ ρ'} (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel), relation domain)
@@ -491,8 +526,10 @@ Hint Unfold valid_ctx : mctt.
 (** * Context Subtyping *)
 
 Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
+(** The empty context. *)
 | per_ctx_subtyp_nil :
   SubE ⋅ <: ⋅
+(** An assumption of a smaller type. *)
 | per_ctx_subtyp_cons :
   `{ forall tail_rel env_rel env_rel',
         SubE Γ <: Γ' ->

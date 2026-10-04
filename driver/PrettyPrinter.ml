@@ -296,20 +296,28 @@ let exp_to_obj =
        let params, md = impl_unit ctx u in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_letb (Cst.Coq_d_mod (px, params, md), ebody')
-    | Coq_a_glob p -> path_to_obj p
-    | Coq_a_mem (h, x) -> Cst.Coq_proj (impl_mod ctx h, x)
-  (* A path is absolute.  Into the unit being printed, the member chain is
-     what was written, its first member an ordinary name; into another unit,
-     the unit is a [glob] head.  Either way the remaining members are a chain
-     of [proj]s over the head. *)
-  and path_to_obj (p : path) : Cst.obj =
+    | Coq_a_mem (h, x) ->
+       (match chain_of h with
+        | Some (fp, ms) -> path_to_obj fp (ms @ [x])
+        | None -> Cst.Coq_proj (impl_mod ctx h, x))
+  (* A chain of selections from a unit, as the unit and the chain. *)
+  and chain_of : modexp -> (string list * string list) option = function
+    | Coq_me_unit fp -> Some (fp, [])
+    | Coq_me_mem (h, y) ->
+       (match chain_of h with Some (fp, ms) -> Some (fp, ms @ [y]) | None -> None)
+    | _ -> None
+  (* A chain from a unit is absolute.  Into the unit being printed, the
+     member chain is what was written, its first member an ordinary name;
+     into another unit, the unit is a [glob] head.  Either way the remaining
+     members are a chain of [proj]s over the head. *)
+  and path_to_obj (fp : string list) (ms : string list) : Cst.obj =
     let head, ip =
-      if p.p_unit = !current_unit then
-        (match p.p_mems with
+      if fp = !current_unit then
+        (match ms with
          | x :: ip -> (Cst.Coq_var x, ip)
          (* The unit itself, named from inside. *)
-         | [] -> (Cst.Coq_glob p.p_unit, []))
-      else (Cst.Coq_glob p.p_unit, p.p_mems)
+         | [] -> (Cst.Coq_glob fp, []))
+      else (Cst.Coq_glob fp, ms)
     in
     List.fold_left (fun e y -> Cst.Coq_proj (e, y)) head ip
   and var_to_obj (ctx : string list) (x : int) : Cst.obj =
@@ -317,9 +325,12 @@ let exp_to_obj =
     | Some y -> Cst.Coq_var y
     | None -> Cst.Coq_var ("$" ^ string_of_int (x - List.length ctx))
   and impl_mod (ctx : string list) : modexp -> Cst.obj = function
-    | Coq_me_path p -> path_to_obj p
+    | Coq_me_unit fp -> path_to_obj fp []
     | Coq_me_var x -> var_to_obj ctx x
-    | Coq_me_mem (h, y) -> Cst.Coq_proj (impl_mod ctx h, y)
+    | Coq_me_mem (h, y) ->
+       (match chain_of h with
+        | Some (fp, ms) -> path_to_obj fp (ms @ [y])
+        | None -> Cst.Coq_proj (impl_mod ctx h, y))
     | Coq_me_app (h, e) -> Cst.Coq_app (impl_mod ctx h, impl ctx e)
     (* A literal module, which only substitution produces, prints as a local
        module naming itself. *)
@@ -370,7 +381,6 @@ let exp_to_obj =
          | Coq_bc_import (h, ns) ->
             let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
             Cst.Coq_c_import ([], [target], (match ns with [] -> Cst.Coq_i_open | _ -> Cst.Coq_i_use ns))
-         | Coq_bc_eval (e, oa) -> Cst.Coq_c_eval (impl ctx' e, Option.map (impl ctx') oa)
        in
        (cs @ [c], ctx')
   in
@@ -413,6 +423,9 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
        (String.concat " -> " (List.map Command1.path_str ch))
   | Coq_re_unit (fp, msg) ->
      fprintf f "@[<hov 2>Error: %s:@ %s@]" (Command1.path_str fp) msg
+  (* A private member is named by the module declaring it, from its unit. *)
+  | Coq_re_private (q, x) ->
+     fprintf f "@[<hov 2>Error: %s is private@]" (string_of_qpath q.q_unit (q.q_chain @ [x]))
 
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in

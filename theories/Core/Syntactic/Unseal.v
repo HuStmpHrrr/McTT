@@ -3,12 +3,12 @@
     [abstract] only hides a body from conversion: an opaque definition still
     has one.  Unsealing a global context makes every definition with a body
     transparent, and leaves axioms and everything else as they are.  Making a
-    definition transparent only adds the δ-equation of [wf_exp_eq_glob_unfold],
+    definition transparent only adds the δ-equation of [wf_exp_eq_mem_glob_unfold],
     and no rule asks a filed definition to be opaque, so every judgment, the
     global ones included, survives unsealing ([unseal_preserves_wf]).
 
     The rules that read the transparency flag at all are:
-    - [wf_exp_eq_glob_unfold], which asks for [true]; unsealing keeps it;
+    - [wf_exp_eq_mem_glob_unfold], which asks for [true]; unsealing keeps it;
     - [entry_shape], which asks for [true] on both sides, but only ever of a
       local unit (a slot, a [let module] or a literal), which unsealing does
       not touch; the units it reaches, in [Θ] and [Ξ], are read through
@@ -129,7 +129,7 @@ Lemma gs_find_unseal : forall Ξ p,
     gs_find (gs_unseal Ξ) p = option_map (fun r => (gu_unseal (fst r), snd r)) (gs_find Ξ p).
 Proof.
   induction Ξ as [| [mp U] Ξ IH]; intros; cbn; [ reflexivity |].
-  destruct (path_strip mp p); [ reflexivity | apply IH ].
+  destruct (qname_strip mp p); [ reflexivity | apply IH ].
 Qed.
 
 Lemma gs_find_tele_unseal : forall Ξ p,
@@ -137,7 +137,7 @@ Lemma gs_find_tele_unseal : forall Ξ p,
       option_map (fun r => let '(U, ip, T) := r in (gu_unseal U, ip, T)) (gs_find_tele Ξ p).
 Proof.
   induction Ξ as [| [mp U] Ξ IH]; intros; cbn; [ reflexivity |].
-  destruct (path_strip mp p); [ rewrite gs_tele_unseal; reflexivity | apply IH ].
+  destruct (qname_strip mp p); [ rewrite gs_tele_unseal; reflexivity | apply IH ].
 Qed.
 
 Lemma gd_lookup_unseal : forall d fp,
@@ -163,7 +163,7 @@ Proof.
   intros; unfold gc_resolve; rewrite gs_find_unseal.
   destruct (gs_find Ξ p) as [[U ip] |]; cbn; [ rewrite gu_mod_unseal; apply gm_resolve_unseal |].
   rewrite gds_lookup_unseal.
-  destruct (gds_lookup Θ (p_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_resolve_unseal | reflexivity ].
+  destruct (gds_lookup Θ (q_unit p)); cbn; [ rewrite gu_mod_unseal; apply gm_resolve_unseal | reflexivity ].
 Qed.
 
 Lemma gc_resolve_unseal_def : forall Θ Ξ p b pv A B,
@@ -184,7 +184,7 @@ Proof.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |]; cbn; [ reflexivity | |].
   - rewrite gu_params_unseal, gu_mod_unseal; apply gm_submodule_unseal.
   - rewrite gds_lookup_unseal.
-    destruct (gds_lookup Θ (p_unit p)); cbn; [| reflexivity ].
+    destruct (gds_lookup Θ (q_unit p)); cbn; [| reflexivity ].
     rewrite gu_params_unseal, gu_mod_unseal; apply gm_module_unseal.
 Qed.
 
@@ -211,25 +211,25 @@ Qed.
 (** ** Members *)
 
 Lemma member_type_unseal : forall Θ Ξ,
-    (forall Γ H ch k A, member_type Θ Ξ Γ H ch k A ->
-       member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch k A) /\
-    (forall Γ U ch k A, unit_member_type Θ Ξ Γ U ch k A ->
-       unit_member_type (gds_unseal Θ) (gs_unseal Ξ) Γ U ch k A).
+    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
+       member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R) /\
+    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
+       unit_member_type (gds_unseal Θ) (gs_unseal Ξ) Γ U ch R).
 Proof.
   intros; apply member_type_both_ind; intros; econstructor;
     eauto using gc_resolve_unseal_def; rewrite gc_module_unseal; eassumption.
 Qed.
 
-Corollary member_type_unseal' : forall Θ Ξ Γ H ch k A,
-    member_type Θ Ξ Γ H ch k A -> member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch k A.
+Corollary member_type_unseal' : forall Θ Ξ Γ H ch R,
+    member_type Θ Ξ Γ H ch R -> member_type (gds_unseal Θ) (gs_unseal Ξ) Γ H ch R.
 Proof. intros Θ Ξ; apply (member_type_unseal Θ Ξ). Qed.
 
 Lemma member_unfold_ch_unseal : forall Θ Ξ Γ H ch,
     member_unfold_ch (gds_unseal Θ) (gs_unseal Ξ) Γ H ch = member_unfold_ch Θ Ξ Γ H ch.
 Proof.
-  intros; revert ch; induction H as [qp | x | H IH y | H IH N | U]; intros; cbn; auto.
+  intros; revert ch; induction H as [fp | x | H IH y | H IH N | U]; intros; cbn; auto.
   - rewrite gc_resolve_unseal, gc_module_unseal.
-    destruct (gc_resolve Θ Ξ (path_app qp ch)) as [[b [|] A B | [Δ [Φ | E]]] |]; reflexivity.
+    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | [Δ [Φ | E]]] |]; reflexivity.
   - rewrite IH; reflexivity.
 Qed.
 
@@ -446,7 +446,7 @@ Proof. intros * H mp U Hin; apply (H mp U); right; exact Hin. Qed.
   gs_no_axioms_push gs_no_axioms_add : mctt.
 
 Section Run.
-  Variables (load_path : fpath -> option string) (read : string -> option Cst.prog)
+  Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
 
   Theorem run_no_axioms :

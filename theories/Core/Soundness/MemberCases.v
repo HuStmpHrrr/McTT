@@ -68,7 +68,7 @@ Qed.
 Lemma glu_rel_exp_mem : forall {Γ H x A i M},
     me_noargs H ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H (x :: nil) mk_term A ->
+    member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
     Γ ⊢ A : Type@i ->
     member_unfold gc_deps gc_stack Γ H x = Some M ->
     Γ ⊢ M : A ->

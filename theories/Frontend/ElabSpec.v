@@ -61,14 +61,14 @@ Inductive ent : Set :=
 (** A core binder: a λ, a Π, a recursor, a [let], a parameter, an entry of a
     local body. *)
 | en_var : string -> ent
-(** A member of an open frame, named by its absolute path. *)
-| en_mem : string -> path -> ent
+(** A member of an open frame, named by its qualified name. *)
+| en_mem : string -> qname -> ent
 (** [import E as y]: [y] is the module [E]. *)
 | en_as : string -> modexp -> ent
 (** [import E use (n)]: [n] is the member [E.n], whatever it is. *)
 | en_use : string -> modexp -> ent
 (** [import X::Y]: the unit [X::Y] may be named by its path. *)
-| en_unit : fpath -> ent.
+| en_unit : path -> ent.
 
 Definition ent_name (e : ent) : option string :=
   match e with
@@ -101,7 +101,7 @@ Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).
 Definition pents (ps : list (string * Cst.obj)) : list ent := rev (map (fun p => en_var (fst p)) ps).
 
 (** What an import of the unit [fq] puts in scope: nothing for this unit. *)
-Definition uents (fq : fpath) : list ent :=
+Definition uents (fq : path) : list ent :=
   match fq with
   | nil => nil
   | _ => en_unit fq :: nil
@@ -128,16 +128,42 @@ Abbreviation mwk E k := (modexp_wk E (wk_shiftn k)).
 (** As a term.  A module alias is not one. *)
 Inductive den_term (k n : nat) : ent -> exp -> Prop :=
 | dt_var : forall x, den_term k n (en_var x) #k
-| dt_mem : forall x p, den_term k n (en_mem x p) (apps (a_glob p) (vars_desc k n))
+| dt_mem : forall x p, den_term k n (en_mem x p) (apps (qname_term p) (vars_desc k n))
 | dt_use : forall x E, den_term k n (en_use x E) (a_mem (mwk E k) x).
 
 (** As a module expression.  A variable is a module slot; the core rejects
     it if it is a term variable. *)
 Inductive den_mod (k n : nat) : ent -> modexp -> Prop :=
 | dm_var : forall x, den_mod k n (en_var x) (me_var k)
-| dm_mem : forall x p, den_mod k n (en_mem x p) (mapps (me_path p) (vars_desc k n))
+| dm_mem : forall x p, den_mod k n (en_mem x p) (mapps (qname_mod p) (vars_desc k n))
 | dm_as : forall x E, den_mod k n (en_as x E) (mwk E k)
 | dm_use : forall x E, den_mod k n (en_use x E) (me_mem (mwk E k) x).
+
+(** ** What an Import Binds
+
+    What an import binds in the frame [F]: nothing, [y] for the module, or
+    each [n] for its member, in order; each name fresh in [F]. *)
+Inductive ibinds (E : modexp) : Cst.ispec -> list ent -> list ent -> Prop :=
+| ib_open : forall F, ibinds E Cst.i_open F F
+| ib_as : forall y F, fresh y F -> ibinds E (Cst.i_as y) F (en_as y E :: F)
+| ib_use_nil : forall F, ibinds E (Cst.i_use nil) F F
+| ib_use_cons : forall n ns F F',
+    fresh n F -> ibinds E (Cst.i_use ns) (en_use n E :: F) F' -> ibinds E (Cst.i_use (n :: ns)) F F'.
+
+(** The names an import [use]s, which the core checks. *)
+Definition ispec_names (spec : Cst.ispec) : list string :=
+  match spec with
+  | Cst.i_use ns => ns
+  | _ => nil
+  end.
+
+(** An import in a local body loads nothing, so the unit it names, if any,
+    must be one the scope [S] may name already. *)
+Definition loaded (S : list ent) (fq : path) : Prop :=
+  match fq with
+  | nil => True
+  | _ => In (en_unit fq) S
+  end.
 
 (** ** Objects
 
@@ -188,7 +214,7 @@ with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
     bound S x k e n -> den_mod k n e H -> selm S (Cst.var x) H
 | selm_glob : forall S fq,
-    In (en_unit fq) S -> selm S (Cst.glob fq) (me_path (p_abs fq nil))
+    In (en_unit fq) S -> selm S (Cst.glob fq) (me_unit fq)
 | selm_proj : forall S o y H,
     selm S o H -> selm S (Cst.proj o y) (me_mem H y)
 | selm_app : forall S o1 o2 H N,
@@ -217,8 +243,9 @@ with sdef : list ent -> Cst.mdef -> moddef -> Prop :=
     sbody S gm_nil cs Φ -> sdef S (Cst.md_where cs) (md_body Φ)
 
 (** [sbody S Φ cs Φ']: the commands [cs] of a local body extend [Φ] to [Φ'].
-    Each entry is a core binder for the entries after it.  A local body has
-    no imports and no [eval]s. *)
+    Each entry is a core binder for the entries after it.  An import binds
+    its aliases for the entries after it, as a frame of its own, and is kept
+    as a check entry for the core; a local body has no [eval]s. *)
 with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | sb_nil : forall S Φ, sbody S Φ nil Φ
 | sb_def : forall S Φ m x oA oM A M cs Φ',
@@ -228,36 +255,26 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | sb_mod : forall S Φ x ps md U cs Φ',
     sunit S ps md U ->
     sbody (en_var x :: S) (gm_ext Φ x (ge_mod U)) cs Φ' ->
-    sbody S Φ (Cst.c_mod x ps md :: cs) Φ'.
+    sbody S Φ (Cst.c_mod x ps md :: cs) Φ'
+| sb_import : forall S Φ fq ip spec E F cs Φ',
+    loaded S fq ->
+    itarget S fq ip E ->
+    ibinds E spec nil F ->
+    sbody (F ++ S) (gm_check Φ (bc_import E (ispec_names spec))) cs Φ' ->
+    sbody S Φ (Cst.c_import fq ip spec :: cs) Φ'
 
-(** ** Imports
-
-    [import fq.ip] names a module of this unit, by name, if [fq] is empty,
+(** [import fq.ip] names a module of this unit, by name, if [fq] is empty,
     and otherwise the module of the unit [fq] at the member path [ip]. *)
-Inductive itarget (S : list ent) : fpath -> list string -> modexp -> Prop :=
-| it_local : forall x ip E,
+with itarget : list ent -> path -> list string -> modexp -> Prop :=
+| it_local : forall S x ip E,
     selm S (fold_left Cst.proj ip (Cst.var x)) E -> itarget S nil (x :: ip) E
-| it_unit : forall fq ip,
-    fq <> nil -> itarget S fq ip (me_path (p_abs fq ip)).
+| it_unit : forall S fq ip,
+    fq <> nil -> itarget S fq ip (qname_mod (q_abs fq ip)).
 
-(** What an import binds in the frame [F]: nothing, [y] for the module, or
-    each [n] for its member, in order; each name fresh in [F]. *)
-Inductive ibinds (E : modexp) : Cst.ispec -> list ent -> list ent -> Prop :=
-| ib_open : forall F, ibinds E Cst.i_open F F
-| ib_as : forall y F, fresh y F -> ibinds E (Cst.i_as y) F (en_as y E :: F)
-| ib_use_nil : forall F, ibinds E (Cst.i_use nil) F F
-| ib_use_cons : forall n ns F F',
-    fresh n F -> ibinds E (Cst.i_use ns) (en_use n E :: F) F' -> ibinds E (Cst.i_use (n :: ns)) F F'.
-
-(** The names an import [use]s, which the core checks. *)
-Definition ispec_names (spec : Cst.ispec) : list string :=
-  match spec with
-  | Cst.i_use ns => ns
-  | _ => nil
-  end.
+(** ** Imports *)
 
 (** The unit an import loads first, if any. *)
-Definition ifile (fq : fpath) : option fpath :=
+Definition ifile (fq : path) : option path :=
   match fq with
   | nil => None
   | _ => Some fq
@@ -277,12 +294,12 @@ Inductive simport (O F : list ent) : Cst.cmd -> list ent -> ccmd -> Prop :=
     chain [ch] of the unit [fp], which binds [F] so far inside the scope
     [O], binds [F'] after it and emits the core command [c'].  [scmds] runs
     the commands of a body in order. *)
-Inductive scmd (fp : fpath) : list string -> list ent -> list ent -> Cst.cmd -> list ent -> ccmd -> Prop :=
+Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> list ent -> ccmd -> Prop :=
 | sc_def : forall ch O F m x oA oM A M,
     fresh x F ->
     sel (F ++ O) oA A ->
     sel (F ++ O) oM M ->
-    scmd fp ch O F (Cst.c_def m x oA oM) (en_mem x (p_abs fp (ch ++ x :: nil)) :: F)
+    scmd fp ch O F (Cst.c_def m x oA oM) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M)
 (** The parameters of [module x (ps) where body end] are read in [F], its
     body in a new frame inside. *)
@@ -291,7 +308,7 @@ Inductive scmd (fp : fpath) : list string -> list ent -> list ent -> Cst.cmd -> 
     NoDup (map fst ps) ->
     sparams (F ++ O) ps tys ->
     scmds fp (ch ++ x :: nil) (F ++ O) (pents ps) body bcs ->
-    scmd fp ch O F (Cst.c_mod x ps (Cst.md_where body)) (en_mem x (p_abs fp (ch ++ x :: nil)) :: F)
+    scmd fp ch O F (Cst.c_mod x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_mod x (ptele tys) bcs)
 (** [module x (ps) := E]: [E] is read under the parameters. *)
 | sc_alias : forall ch O F x ps oE tys E,
@@ -299,7 +316,7 @@ Inductive scmd (fp : fpath) : list string -> list ent -> list ent -> Cst.cmd -> 
     NoDup (map fst ps) ->
     sparams (F ++ O) ps tys ->
     selm (pents ps ++ F ++ O) oE E ->
-    scmd fp ch O F (Cst.c_mod x ps (Cst.md_alias oE)) (en_mem x (p_abs fp (ch ++ x :: nil)) :: F)
+    scmd fp ch O F (Cst.c_mod x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_alias x (ptele tys) E)
 | sc_import : forall ch O F fq ip spec F' c,
     simport O F (Cst.c_import fq ip spec) F' c ->
@@ -312,7 +329,7 @@ Inductive scmd (fp : fpath) : list string -> list ent -> list ent -> Cst.cmd -> 
     sel (F ++ O) oA A ->
     scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A))
 
-with scmds (fp : fpath) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
+with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil
 | scs_cons : forall ch O F c F' c' cs cs',
     scmd fp ch O F c F' c' ->

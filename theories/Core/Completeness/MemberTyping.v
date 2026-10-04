@@ -111,15 +111,15 @@ Proof.
 Qed.
 
 Lemma functional_eval_appm : forall h n r1 r2,
-    eval_appm gc_deps gc_stack h n r1 -> eval_appm gc_deps gc_stack h n r2 -> r1 = r2.
+    $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ r1 -> $ᵐ| h & n | gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
 Lemma functional_eval_selmc : forall h ch r1 r2,
-    eval_selmc gc_deps gc_stack h ch r1 -> eval_selmc gc_deps gc_stack h ch r2 -> r1 = r2.
+    h ·ₘ* ch gc_deps ⍮ gc_stack ↘ r1 -> h ·ₘ* ch gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
 Lemma functional_eval_selc : forall h ch r1 r2,
-    eval_selc gc_deps gc_stack h ch r1 -> eval_selc gc_deps gc_stack h ch r2 -> r1 = r2.
+    h ·ₜ* ch gc_deps ⍮ gc_stack ↘ r1 -> h ·ₜ* ch gc_deps ⍮ gc_stack ↘ r2 -> r1 = r2.
 Proof. intros; pose proof (@functional_eval gc_deps gc_stack) as Hf; destruct_all; eauto. Qed.
 
 (** ** Typing Is a Property of the Class of a Module Value *)
@@ -133,7 +133,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -195,7 +195,7 @@ Proof.
     match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
     destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
-    assert (Hw2 : per_dmod (dm_global (path_app p (y :: nil)) args) (dm_global (path_app p (y :: nil)) args'))
+    assert (Hw2 : per_dmod (dm_global (qname_app p (y :: nil)) args) (dm_global (qname_app p (y :: nil)) args'))
       by (econstructor; [ exact Hm | rewrite rev_app_distr; apply per_gargs_app; exact Hg ]).
     eapply mty_gsub; [ exact Hgp | exact Hm | exact (IH _ Hw2) ].
   - inversion Hw; subst.
@@ -226,7 +226,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -261,8 +261,8 @@ Lemma mtyped_selmc_rel : gchild_ok ->
     forall w chain k a, mtyped w chain k a ->
     forall pre ch, chain = pre ++ ch -> (k = mk_term -> ch <> nil) ->
     forall w', per_dmod w w' ->
-    forall v, eval_selmc gc_deps gc_stack w pre v ->
-    exists v', eval_selmc gc_deps gc_stack w' pre v' /\ per_dmod v v'.
+    forall v, w ·ₘ* pre gc_deps ⍮ gc_stack ↘ v ->
+    exists v', w' ·ₘ* pre gc_deps ⍮ gc_stack ↘ v' /\ per_dmod v v'.
 Proof.
   intros HGc.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
@@ -270,7 +270,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
                  | p args y U ch0 ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -320,7 +320,7 @@ Proof.
     match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
     destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
-    assert (Hw2 : per_dmod (dm_global (path_app p (z :: nil)) args) (dm_global (path_app p (z :: nil)) args'))
+    assert (Hw2 : per_dmod (dm_global (qname_app p (z :: nil)) args) (dm_global (qname_app p (z :: nil)) args'))
       by (econstructor; [ exact Hm | rewrite rev_app_distr; apply per_gargs_app; exact Hg ]).
     match goal with Hr : eval_selmc _ _ (dm_global _ args) pre v |- _ =>
       destruct (IH _ _ eq_refl Hch _ Hw2 _ Hr) as (v' & Hv' & Hvv) end.
@@ -347,14 +347,14 @@ Qed.
 
 Lemma mtyped_selmc_ex : forall w chain k a, mtyped w chain k a ->
     forall pre ch, chain = pre ++ ch -> (k = mk_term -> ch <> nil) ->
-    exists v, eval_selmc gc_deps gc_stack w pre v.
+    exists v, w ·ₘ* pre gc_deps ⍮ gc_stack ↘ v.
 Proof.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
                  | p args y U ch0 ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -421,7 +421,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -491,7 +491,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -532,7 +532,7 @@ Qed.
 
 Lemma mtyped_alias_sat_inv : forall ρ Δ E args ch k a h,
     mtyped (dm_local ρ (gu_mk Δ (md_alias E)) args) ch k a ->
-    List.length args = List.length Δ -> eval_modexp gc_deps gc_stack E (env_args ρ args) h ->
+    List.length args = List.length Δ -> ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ h ->
     mtyped h ch k a.
 Proof.
   intros * H Hl HE; inversion H; subst.
@@ -549,7 +549,7 @@ Lemma mtyped_app_nd : gchild_ok -> galias_params_ok ->
     forall w a0, nextdom w a0 ->
     forall ch k a1 ρB B, mtyped w ch k (Πᵈ a1 ρB B) ->
     forall i' Ein c w1 b, per_univ_elem i' Ein a1 a1 -> Ein c c ->
-    eval_appm gc_deps gc_stack w c w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b.
+    $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b.
 Proof.
   intros HGc HGap; induction 1 as [w a Hn | h ch0 a Hn IH | ρ Δ E args h a Hl HE Hn IH];
     intros * Hm * Ha Hc Hw1 Hb.
@@ -569,7 +569,7 @@ Lemma appm_rel_typed : gchild_ok -> galias_params_ok ->
     forall i Ein, per_univ_elem i Ein a1 a1 ->
     (forall c, Ein c c -> exists b, ⟦ B ⟧ ρB ↦ c ↘ b) ->
     forall w', per_dmod w w' -> forall c c', Ein c c' ->
-    exists w1 w1', eval_appm gc_deps gc_stack w c w1 /\ eval_appm gc_deps gc_stack w' c' w1' /\ per_dmod w1 w1'.
+    exists w1 w1', $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ w1 /\ $ᵐ| w' & c' | gc_deps ⍮ gc_stack ↘ w1' /\ per_dmod w1 w1'.
 Proof.
   intros HGc HGap; induction 1 as [w a Hn | h ch0 a Hn IH | ρ Δ E args h a Hl HE Hn IH];
     intros * Hm * Ha HB w' Hw c c' Hc.

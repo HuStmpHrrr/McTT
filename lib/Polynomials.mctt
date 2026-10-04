@@ -16,7 +16,8 @@ import Prelude::Arith::Pow.Basic use (onePow)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
 import Prelude::Arith::Sum.Linear use (sumToScale)
-(* Used in the local body of [Table] below, which may not import. *)
+(* Loaded for the import in the local body of [Table] below: an import in a
+   local body names a unit already loaded, and binds aliases only. *)
 import Prelude::Arith::MinMax as MinMax
 
 module Polynomials where
@@ -117,13 +118,14 @@ eval At.horner 2 (cubic 1 2 3 4) 4
 eval At.naive 2 (cubic 1 2 3 4) 4
 
 (* An evaluator for a fixed polynomial, made locally: the values at the
-   points below [k], summed, and their maximum, by the [MinMax] imported at
-   the top: a local body has no imports. *)
+   points below [k], summed, and their maximum.  The maximum comes from an
+   import inside the local body. *)
 eval let module Table (c : Coeffs) where
+       import Prelude::Arith::MinMax use (max)
        def value (x : Nat) : Nat := At.horner x c 4 end
        def total (k : Nat) : Nat := sumTo value k end
        def peak (k : Nat) : Nat :=
-         rec k return y . Nat | zero => 0 | succ p, r => MinMax.max (value p) r end
+         rec k return y . Nat | zero => 0 | succ p, r => max (value p) r end
        end
      end in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
      end

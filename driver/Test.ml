@@ -12,6 +12,10 @@ let main_of_example s = main_of_filename ("../examples/" ^ s)
 let main_of_multi s =
   main_of_filename ~search_root:"../examples/multi" ("../examples/multi/" ^ s)
 
+(* An inline program importing units from [examples/multi]. *)
+let main_of_multi_string program =
+  main_of_program_string ~search_root:"../examples/multi" program
+
 (* The programs under [lib] use the [Prelude] library, looked up from there. *)
 let main_of_lib s = main_of_filename ~search_root:"../lib" ("../lib/" ^ s)
 
@@ -535,6 +539,7 @@ let%expect_test "ModuleForms.mctt works" =
                        succ x1
                      end
                    end
+                   import Inner use (m)
                    def doubled : Nat :=
                      Num.Ops.add Inner.m Inner.m
                    end
@@ -1370,13 +1375,27 @@ let%expect_test "a dotted module declaration" =
   let _ = main_of_body "module A.B (n : Nat) where def f : Nat := succ n end end eval A.B.f 1" in
   [%expect {| Evaluate A.B.f 1 --> 2 : Nat |}]
 
-let%expect_test "a local body has no imports" =
+let%expect_test "a local body with an import" =
   let _ =
     main_of_body
       "eval let module L where module N where def y : Nat := 5 end end \
        import N use (y) def z : Nat := succ y end end in L.z end"
   in
-  [%expect {| Error: a local module has no imports |}]
+  [%expect {|
+    Evaluate let module M1 where
+                   module N where
+                     def y : Nat :=
+                       5
+                     end
+                   end
+                   import N use (y)
+                   def z : Nat :=
+                     succ N.y
+                   end
+                 end
+             in M1.z
+             end --> 6 : Nat
+    |}]
 
 let%expect_test "an import of a local module alias" =
   let _ =
@@ -1389,11 +1408,84 @@ let%expect_test "an import of a local module alias" =
 
 let%expect_test "a private member is not selected from outside" =
   let _ = main_of_body "module M where private def s : Nat := 0 end end eval M.s" in
-  [%expect {| Error: M.s has no inferable type |}]
+  [%expect {| Error: Test.M.s is private |}]
 
 let%expect_test "a private member is not imported by use" =
   let _ = main_of_body "module M where private def s : Nat := 0 end end import M use (s)" in
-  [%expect {| Error: ill-formed import |}]
+  [%expect {| Error: Test.M.s is private |}]
+
+let%expect_test "a private member is used in its unit and in a nested module" =
+  let _ = main_of_body "module M where private def s : Nat := 0 end def p : Nat := s end module N where def t : Nat := s end end end eval M.p eval M.N.t" in
+  [%expect {|
+    Evaluate M.p --> 0 : Nat
+    Evaluate M.N.t --> 0 : Nat
+    |}]
+
+let%expect_test "a private member of another unit is not used in a def" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where def x : Nat := P.s end end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not evaluated" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.s end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not named by its path" =
+  let _ = main_of_multi_string "import Lib::Priv module X where eval Lib::Priv.s end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not used in a module body" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module M where def y : Nat := P.s end end end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not used in module parameters" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module M (x : P.T) where end end" in
+  [%expect {| Error: Lib::Priv.T is private |}]
+
+let%expect_test "a private member of another unit is not used in an alias" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module A := P.F P.s end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not imported by use" =
+  let _ = main_of_multi_string "import Lib::Priv use (s) module X where end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member of another unit is not imported by use in a local module" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module L where import P use (s) end end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a private member is not reached through an alias declared outside" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module Q := P.Sub eval Q.u end" in
+  [%expect {| Error: Lib::Priv.Sub.u is private |}]
+
+let%expect_test "a private member is not reached through an alias in its unit" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.A.u end" in
+  [%expect {| Error: Lib::Priv.Sub.u is private |}]
+
+let%expect_test "a public definition naming a private one is used from another unit" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.pub eval P.Sub.t end" in
+  [%expect {|
+    Evaluate Lib::Priv.pub --> 8 : Nat
+    Evaluate Lib::Priv.Sub.t --> 7 : Nat
+    |}]
+
+let%expect_test "a module is applied to its parameters one at a time" =
+  let _ = main_of_body "module F (A : Type@0) (f : forall (x : A) -> A) where def ap : forall (x : A) -> A := fun (x : A) -> f (f x) end end module G := F Nat module H := G (fun (x : Nat) -> succ x) eval H.ap 1 eval (F Nat (fun (x : Nat) -> succ x)).ap 3" in
+  [%expect {|
+    Evaluate H.ap 1 --> 3 : Nat
+    Evaluate (F Nat (fun (x1 : Nat) -> succ x1)).ap 3 --> 5 : Nat
+    |}]
+
+let%expect_test "a module is not applied to more arguments than it has parameters" =
+  let _ = main_of_body "module F (A : Type@0) where def a : Type@0 := A end end module G := F Nat Nat" in
+  [%expect {| Error: ill-formed module expression for module G |}]
+
+let%expect_test "a member of a module applied to too many arguments is rejected" =
+  let _ = main_of_body "module F (A : Type@0) where def a : Type@0 := A end end eval (F Nat Nat).a" in
+  [%expect {| Error: (F Nat Nat).a has no inferable type |}]
+
+let%expect_test "a module argument is checked against the outermost parameter" =
+  let _ = main_of_body "module F (A : Type@0) where def a : Type@0 := A end end module G := F 0" in
+  [%expect {| Error: ill-formed module expression for module G |}]
 
 let%expect_test "a module alias of a term is rejected" =
   let _ = main_of_body "module P := Nat" in
@@ -1429,9 +1521,34 @@ let%expect_test "an opaque definition is rejected in a local body" =
                end in M1.f end has no inferable type
     |}]
 
+let%expect_test "a local import of a unit that is not imported is rejected" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "module LocalImp where eval let module L where import Prelude::Arith::MinMax use (max) \
+       def m : Nat := max 2 3 end end in L.m end end"
+  in
+  [%expect {| Error: the unit is not imported |}]
+
+let%expect_test "a local import of a unit imported at the top level" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::MinMax module LocalImp where eval let module L where \
+       import Prelude::Arith::MinMax use (max) def m : Nat := max 2 3 end end in L.m end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   import Prelude::Arith::MinMax use (max)
+                   def m : Nat :=
+                     Prelude::Arith::MinMax.max 2 3
+                   end
+                 end
+             in M1.m
+             end --> 3 : Nat
+    |}]
+
 let%expect_test "an eval is rejected in a local body" =
   let _ = main_of_body "eval let module X where eval 0 end in 0 end" in
-  [%expect {| Error: a local module has no evals |}]
+  [%expect {| Error: eval is not allowed in a local module |}]
 
 let%expect_test "a local module does not escape its let" =
   let _ = main_of_body "eval let module X where def f : Nat := 0 end end in X end" in
@@ -1483,6 +1600,7 @@ let%expect_test "lib/Polynomials.mctt" =
     Evaluate At.horner 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate At.naive 2 (cubic 1 2 3 4) 4 --> 49 : Nat
     Evaluate let module M1 (x1 : Coeffs) where
+                   import Prelude::Arith::MinMax use (max)
                    def value : forall (x2 : Nat) -> Nat :=
                      fun (x3 : Nat) -> At.horner x3 x1 4
                    end

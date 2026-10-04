@@ -58,6 +58,15 @@ Judgment arguments are at **69** because a slot between two terminals otherwise
 defaults to level 200 and swallows Rocq's cast `x : T` (level 100) — `Γ ⊢ M : A`
 would read `M` as `M : A`.
 
+Evaluation carries the global context the same way, `⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m`,
+and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h` (module expressions),
+`$ᵐ| h & n | Θ ⍮ Ξ ↘ h'` (a module value applied), `h ·ₜ x Θ ⍮ Ξ ↘ d` and
+`h ·ₘ y Θ ⍮ Ξ ↘ h'` (selection of a term member, a submodule), `h ·ₜ* ch …` and
+`h ·ₘ* ch …` (along a chain), `⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms` (several terms),
+`$*| f & ns | Θ ⍮ Ξ ↘ r` (several arguments) and `⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ'` (the
+environment after a body).  The selected name and the chain are at level 0:
+`h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f`.
+
 ## Traps
 
 - **Application needs an explicit operator.** A `constr` notation must contain

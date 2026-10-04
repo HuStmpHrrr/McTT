@@ -15,14 +15,14 @@ Import Domain_Notations.
 
 (** ** Normal Forms Whose Global Heads Satisfy [G] *)
 
-Fixpoint nf_stuck (G : path -> Prop) (W : nf) : Prop :=
+Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
   | nf_typ _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
   | nf_succ W => nf_stuck G W
   | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
   | nf_neut M => ne_stuck G M
   end
-with ne_stuck (G : path -> Prop) (M : ne) : Prop :=
+with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
   | ne_natrec A MZ MS M => nf_stuck G A /\ nf_stuck G MZ /\ nf_stuck G MS /\ ne_stuck G M
   | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
@@ -32,7 +32,7 @@ with ne_stuck (G : path -> Prop) (M : ne) : Prop :=
   end.
 
 (** A global that does not unfold: an opaque definition or an axiom. *)
-Definition gstuck (Θ : gdeps) (Ξ : gstack) (p : path) : Prop :=
+Definition gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
   exists b pv A B, gc_resolve Θ Ξ p = Some (ge_def b pv A B) /\ (b = false \/ B = None).
 
 Section Stuck.

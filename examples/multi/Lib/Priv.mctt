@@ -1,0 +1,28 @@
+(* Private members, used where they are declared. *)
+module Lib::Priv where
+
+private def s : Nat := 7 end
+
+private def T : Type@0 := Nat end
+
+(* A public definition may unfold to a private one. *)
+def pub : Nat := succ s end
+
+module Sub where
+
+(* A nested module is inside the one declaring [s]. *)
+def t : T := s end
+
+private def u : Nat := 1 end
+
+end
+
+module F (n : Nat) where
+
+def g : Nat := n end
+
+end
+
+module A := Sub
+
+end

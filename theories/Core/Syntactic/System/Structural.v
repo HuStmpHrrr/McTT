@@ -401,6 +401,8 @@ Ltac saturate_closed :=
 Ltac push_closed :=
   saturate_closed;
   repeat match goal with
+  | Hp : mod_qname ?H = Some _ |- context [ modexp_wk ?H ?φ ] => rewrite (mod_qname_wk H _ φ Hp)
+  | Hp : mod_qname ?H = Some _ |- context [ modexp_sub ?H ?σ ] => rewrite (mod_qname_sub H _ σ Hp)
   | Hc : exp_scoped 0 ?X |- context [ exp_wk ?X ?φ ] => rewrite (exp_closed_wk X φ Hc)
   | Hc : exp_scoped 0 ?X |- context [ exp_sub ?X ?σ ] => rewrite (exp_closed_sub X σ Hc)
   end.
@@ -607,7 +609,7 @@ Proof.
   split.
   - intros Φ0' E' ns Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
     injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
     destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
     rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
     assert (Hlift : Θ ⍮ Ξ ⍮ tele_wk (body_ctx Φ0 ++ Δu) φ ++ Δ ⊢w wk_qn (length (body_ctx Φ0 ++ Δu)) φ : (body_ctx Φ0 ++ Δu) ++ Γ).
@@ -618,14 +620,14 @@ Proof.
     rewrite (modexp_wk_wk_eq _ _ _ Heqw); rewrite <- List.app_assoc in Hlift; eauto.
   - intros Φ0' E' ns n Hin. rewrite gm_checks_wk in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
     injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
     intros Hn.
     rewrite body_ctx_wk, List.app_assoc, <- tele_wk_app.
     assert (Heqw : wk_eq (wk_qn (gm_binders Φ0) (wk_qn (length Δu) φ)) (wk_qn (length (body_ctx Φ0 ++ Δu)) φ))
       by (rewrite wk_qn_add, List.length_app, length_body_ctx; reflexivity).
     rewrite (modexp_wk_wk_eq _ _ _ Heqw).
     destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
-      eapply (proj1 (member_type_wk _ _ Hc)); try eassumption;
+      [ eapply (member_type_wk_term _ _ Hc) | eapply (member_type_wk_mod _ _ Hc) ]; try eassumption;
       rewrite List.app_assoc; apply wk_mod_compat_ext; eauto with mctt.
 Qed.
 
@@ -652,7 +654,7 @@ Lemma wk_preserves_wf :
       forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk H φ ≈ modexp_wk H' φ).
 Proof.
   apply syntactic_wf_mut_ind'; intros; saturate_wk; push_wk; lift_wk.
-  (** The [a_glob] cases: the recorded type is closed, so the operation on it
+  (** The cases of globals: the recorded type is closed, so the operation on it
       disappears, and the rule applies at the type the induction hypothesis
       gives. *)
   all: try solve [ push_closed; mauto 3 ].
@@ -671,7 +673,7 @@ Proof.
                    [ eauto | eauto 6 using wf_wk_q_mod, wf_unit_eq_refl_left | rewrite <- exp_wk_sub_extend_mod; eauto ] ].
   all: try solve [ first [ eapply wf_mem | eapply wf_exp_eq_mem_delta ];
                    [ apply me_noargs_wk; assumption | eauto
-                   | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
+                   | eapply (member_type_wk_term _ _ ltac:(eauto using wf_gctx_closed)); eauto using wf_wk_mod_compat
                    | eauto
                    | unfold member_unfold in *; eapply member_unfold_wk; eauto using wf_gctx_closed, wf_wk_mod_compat
                    | eauto ] ].
@@ -681,13 +683,12 @@ Proof.
                    | eauto | rewrite <- member_ref_wk, <- apps_wk; eauto ] ].
   all: try solve [ cbn [tele_wk]; first [ eapply wf_ext_eq_ass | eapply wf_ext_eq_def | eapply wf_ext_eq_mod ];
                    eauto 7 using wf_wk_ext, ext_eq_ctx_left, ext_eq_ctx_right, presup_exp_ctx, presup_exp_eq_ctx, presup_unit_eq_ctx ].
-  all: try solve [ eapply wf_me_path; [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
   all: try solve [ eapply wf_me_var; [ eauto | eapply wf_wk_lookup_mod; eauto ] ].
   all: try solve [ eapply wf_me_mem;
-                   [ eauto | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
-                   | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat ] ].
+                   [ eauto | eapply (member_type_wk_mod _ _ ltac:(eauto using wf_gctx_closed)); eauto using wf_wk_mod_compat
+                   | eapply (member_type_wk_mod _ _ ltac:(eauto using wf_gctx_closed)); eauto using wf_wk_mod_compat ] ].
   all: try solve [ eapply wf_exp_eq_mem_cong; [ apply me_noargs_wk; assumption | apply me_noargs_wk; assumption | eauto
-                   | eapply (proj1 (member_type_wk _ _ ltac:(eauto using wf_gctx_closed))); eauto using wf_wk_mod_compat
+                   | eapply (member_type_wk_term _ _ ltac:(eauto using wf_gctx_closed)); eauto using wf_wk_mod_compat
                    | eauto.. ] ].
   (** Extensions: the entry is moved by the weakening lifted over the
       extension before it. *)
@@ -753,19 +754,24 @@ Proof.
     end ].
   all: try solve [
     match goal with
-    | Hm : member_type _ _ ?Γ (me_path ?p) nil mk_mod _, Hφ : wf_wk _ _ _ ?Γ _ |- _ =>
+    | Hp : mod_qname ?H = Some _, Hm : member_type _ _ ?Γ ?H nil (mr_mod _), Hφ : wf_wk _ _ _ ?Γ ?φ |- _ =>
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
-        eapply wf_me_path; [ eauto | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) ]
+        pose proof (member_type_wk_mod _ _ Hc _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) as Hm';
+        rewrite (mod_qname_wk _ _ φ Hp) in Hm' |- *;
+        eapply wf_me_glob; [ eauto | exact Hp | exact Hm' ]
     end ].
   all: try solve [
     match goal with
-    | Hm : member_type _ _ ?Γ ?H nil mk_mod _, Hm' : member_type _ _ ?Γ ?H' nil mk_mod _,
+    | Hm : member_type _ _ ?Γ ?H nil (mr_mod ?T), Hm' : member_type _ _ ?Γ ?H' nil (mr_mod ?T'),
+      Hv : tele_view ?T = Some _, Hv' : tele_view ?T' = Some _,
       Hφ : wf_wk _ _ _ ?Γ _ |- wf_modexp_eq _ _ _ (me_app (modexp_wk ?H _) _) (me_app (modexp_wk ?H' _) _) =>
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         eapply wf_me_app;
         [ eauto
-        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto | eauto
-        | exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ)) | eauto | eauto | eauto | eauto ]
+        | exact (member_type_wk_mod _ _ Hc _ _ _ _ Hm _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ))
+        | exact (tele_view_wk_some _ _ _ _ Hv) | eauto | eauto | eauto
+        | exact (member_type_wk_mod _ _ Hc _ _ _ _ Hm' _ _ (wf_wk_mod_compat _ _ _ _ _ Hφ))
+        | exact (tele_view_wk_some _ _ _ _ Hv') | eauto | eauto ]
     end ].
   all: try solve [
     match goal with
@@ -1255,7 +1261,7 @@ Ltac lift_sub_natrec :=
 Lemma modexp_eq_slot_root : forall Θ Ξ Γ H H',
     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> me_slot_root Γ H /\ me_slot_root Γ H'.
 Proof.
-  induction 1; cbn; destruct_all; eauto 6.
+  induction 1; cbn; destruct_all; eauto 6 using mod_qname_slot_root.
 Qed.
 
 Lemma wf_sub_ext_of_ext : forall Θ Ξ Γ Ψ Ψ' Δ σ,
@@ -1287,7 +1293,7 @@ Proof.
   split.
   - intros Φ0' E' ns Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
     injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
     destruct (gm_checks_body_ctx _ _ _ Hin) as [Ψ1 HΨ1].
     rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
     assert (Hlift : Θ ⍮ Ξ ⍮ tele_sub (body_ctx Φ0 ++ Δu) σ ++ Δ ⊢s sb_qn (length (body_ctx Φ0 ++ Δu)) σ : (body_ctx Φ0 ++ Δu) ++ Γ).
@@ -1299,14 +1305,14 @@ Proof.
     rewrite (modexp_sub_sb_eq _ _ _ Heqs); rewrite <- List.app_assoc in Hlift; eauto.
   - intros Φ0' E' ns n Hin. rewrite gm_checks_sub in Hin. apply List.in_map_iff in Hin as [[Φ0 c] [Heq Hin]].
     injection Heq as Heq1 Hc'. subst Φ0'.
-    destruct c as [E ns' | ? ?]; cbn in Hc'; [| discriminate ]. injection Hc' as Hc1 Hc2; subst E' ns'.
+    destruct c as [E ns']; cbn in Hc'. injection Hc' as Hc1 Hc2; subst E' ns'.
     intros Hn.
     rewrite body_ctx_sub, List.app_assoc, <- tele_sub_app.
     assert (Heqs : sb_eq (sb_qn (gm_binders Φ0) (sb_qn (length Δu) σ)) (sb_qn (length (body_ctx Φ0 ++ Δu)) σ))
       by (rewrite sb_qn_add, List.length_app, length_body_ctx; reflexivity).
     rewrite (modexp_sub_sb_eq _ _ _ Heqs).
     destruct (Hm _ _ _ _ Hin Hn) as [(A & HA) | (A & HA)]; [ left | right ]; eexists;
-      eapply (proj1 (member_type_sub _ _ Hc)); try eassumption;
+      [ eapply (member_type_sub_term _ _ Hc) | eapply (member_type_sub_mod _ _ Hc) ]; try eassumption;
       rewrite List.app_assoc; apply sub_mod_compat_ext; eauto with mctt.
 Qed.
 
@@ -1364,7 +1370,7 @@ Proof.
         pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)) as Hr;
         first [ eapply wf_mem | eapply wf_exp_eq_mem_delta ];
         [ eapply me_noargs_sub; eassumption | eauto
-        | eapply (proj1 (member_type_sub _ _ Hc)); eassumption
+        | eapply (member_type_sub_term _ _ Hc); eassumption
         | eauto
         | unfold member_unfold in *; eapply member_unfold_sub; eassumption
         | eauto ]
@@ -1386,7 +1392,7 @@ Proof.
         pose proof (modexp_eq_slot_root _ _ _ _ _ HH) as [Hr Hr'];
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         eapply wf_exp_eq_mem_cong; [ eapply me_noargs_sub; eassumption | eapply me_noargs_sub; eassumption | eauto
-                                   | eapply (proj1 (member_type_sub _ _ Hc)); eassumption | eauto.. ]
+                                   | eapply (member_type_sub_term _ _ Hc); eassumption | eauto.. ]
     end ].
   (** Extensions. *)
   all: try solve [ cbn [tele_sub];
@@ -1441,9 +1447,11 @@ Proof.
   (** Module expressions. *)
   all: try solve [
     match goal with
-    | Hm : member_type _ _ ?Γ (me_path ?p) nil mk_mod _, Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
+    | Hp : mod_qname ?H = Some _, Hm : member_type _ _ ?Γ ?H nil (mr_mod _), Hσ : wf_sub _ _ _ ?Γ ?σ |- _ =>
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
-        eapply wf_me_path; [ eauto | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) ]
+        pose proof (member_type_sub_mod _ _ Hc _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) as Hm';
+        rewrite (mod_qname_sub _ _ σ Hp) in Hm' |- *;
+        eapply wf_me_glob; [ eauto | exact Hp | exact Hm' ]
     end ].
   all: try solve [
     match goal with
@@ -1456,18 +1464,21 @@ Proof.
     | Hσ : wf_sub _ _ _ ?Γ _ |- _ =>
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         pose proof (wf_sub_mod_compat _ _ _ _ _ Hσ) as Hcm;
-        first [ eapply wf_me_mem | eapply wf_me_app ];
-        try (eapply (proj1 (member_type_sub _ _ Hc)); eassumption); eauto
+        eapply wf_me_mem;
+        try (eapply (member_type_sub_mod _ _ Hc); eassumption); eauto
     end ].
   all: try solve [
     match goal with
-    | Hm : member_type _ _ ?Γ ?H nil mk_mod _, Hm' : member_type _ _ ?Γ ?H' nil mk_mod _,
+    | Hm : member_type _ _ ?Γ ?H nil (mr_mod ?T), Hm' : member_type _ _ ?Γ ?H' nil (mr_mod ?T'),
+      Hv : tele_view ?T = Some _, Hv' : tele_view ?T' = Some _,
       Hσ : wf_sub _ _ _ ?Γ _ |- wf_modexp_eq _ _ _ (me_app ?H[_]ᵐ _) (me_app ?H'[_]ᵐ _) =>
         assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eauto with mctt);
         eapply wf_me_app;
         [ eauto
-        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto | eauto
-        | exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ _ Hm' _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ)) | eauto | eauto | eauto | eauto ]
+        | exact (member_type_sub_mod _ _ Hc _ _ _ _ Hm _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ))
+        | exact (tele_view_sub_some _ _ _ _ Hv) | eauto | eauto | eauto
+        | exact (member_type_sub_mod _ _ Hc _ _ _ _ Hm' _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ))
+        | exact (tele_view_sub_some _ _ _ _ Hv') | eauto | eauto ]
     end ].
 Qed.
 

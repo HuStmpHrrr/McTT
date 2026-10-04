@@ -160,15 +160,15 @@ Proof.
     try (destruct W; simpl in *; congruence).
   (* a global: not the head of a neutral at a transparent context *)
   all: try solve [ destruct W; simpl in *; try congruence; contradiction ].
-  - destruct W; simpl in *; autoinjections; destruct_all.
+  - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     eapply IHHW4; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
-  - destruct W; simpl in *; autoinjections; destruct_all.
+  - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     (** The scrutinee of [efq] is a neutral of type [⊥]. *)
     eapply (IHHW2 Htr W ltac:(eassumption) i eq_refl eq_refl ⊥);
       [ constructor | congruence | gen_presups; mauto 3 ].
-  - destruct W; simpl in *; autoinjections; destruct_all.
+  - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
-  - destruct W; simpl in *; autoinjections.
+  - destruct W; simpl in *; try contradiction; autoinjections.
     pose (GC := gc_mk Θ Ξ).
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
     assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
@@ -353,7 +353,7 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
       ([gc_no_axioms_unseal_transparent]). *)
 
 (** The global at the head of a neutral, if any. *)
-Fixpoint ne_head (W : ne) : option path :=
+Fixpoint ne_head (W : ne) : option qname :=
   match W with
   | ne_natrec _ _ _ W | ne_exfalso _ W | ne_app W _ => ne_head W
   | ne_var _ => None
@@ -389,7 +389,7 @@ Qed.
 
 (** A numeral, possibly around a neutral whose globals satisfy [G], headed by
     one. *)
-Inductive canonical_nat_stuck (G : path -> Prop) : nf -> Prop :=
+Inductive canonical_nat_stuck (G : qname -> Prop) : nf -> Prop :=
 | canonical_nat_stuck_zero : canonical_nat_stuck G zeroⁿ
 | canonical_nat_stuck_succ : forall W, canonical_nat_stuck G W -> canonical_nat_stuck G succⁿ W
 | canonical_nat_stuck_neut : forall W p,
@@ -402,7 +402,7 @@ Lemma canonical_nat_stuck_of_canonical_nat : forall G W, canonical_nat W -> cano
 Proof. induction 1; mauto. Qed.
 
 (** A global that is an opaque definition with a body. *)
-Definition gopaque (Θ : gdeps) (Ξ : gstack) (p : path) : Prop :=
+Definition gopaque (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
   exists pv A M, gc_resolve Θ Ξ p = Some (ge_def false pv A (Some M)).
 
 Lemma gstuck_gopaque : forall Θ Ξ p, gc_no_axioms Θ Ξ -> gstuck Θ Ξ p -> gopaque Θ Ξ p.
@@ -414,16 +414,16 @@ Proof.
   unfold gopaque; eauto.
 Qed.
 
-Lemma nf_stuck_mono : forall (G G' : path -> Prop), (forall p, G p -> G' p) ->
+Lemma nf_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall W, nf_stuck G W -> nf_stuck G' W
-with ne_stuck_mono : forall (G G' : path -> Prop), (forall p, G p -> G' p) ->
+with ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall W, ne_stuck G W -> ne_stuck G' W.
 Proof.
   all: intros G G' HG [] H; cbn in *; destruct_all;
     repeat split; eauto using nf_stuck_mono, ne_stuck_mono.
 Qed.
 
-Lemma canonical_nat_stuck_mono : forall (G G' : path -> Prop), (forall p, G p -> G' p) ->
+Lemma canonical_nat_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall W, canonical_nat_stuck G W -> canonical_nat_stuck G' W.
 Proof.
   intros * HG; induction 1; econstructor; eauto using ne_stuck_mono.
@@ -553,7 +553,7 @@ Qed.
     at every global context a run reaches, and at what a program files. *)
 
 Section Programs.
-  Variables (load_path : fpath -> option String.string) (read : String.string -> option Cst.prog)
+  Variables (load_path : path -> option String.string) (read : String.string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
 
 Corollary consistency_False_run : forall ch cs Θ Ξ M,

@@ -23,11 +23,14 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
     What an [import] brings into scope.  [i_open] makes the module reachable
     under its full path, [i_as] additionally binds a short alias, and [i_use]
     binds the listed members directly.  The names an [import] [use]s are
-    checked by the core: each must be a public definition or a submodule of
-    the imported module. *)
+    checked by the core: each must be a definition or a submodule of the
+    imported module, and one the importer may use (privacy, [Command]). *)
 Inductive ispec : Set :=
+(** [import P]: the module under its full path *)
 | i_open : ispec
+(** [import P as X]: also under the short name [X] *)
 | i_as : string -> ispec
+(** [import P use (x; y)]: the listed members, by their own names *)
 | i_use : list string -> ispec.
 
 (** ** Objects, Declarations and Commands
@@ -53,22 +56,37 @@ Inductive ispec : Set :=
     alias [:= E].  The body of a local module is the same list of commands as
     that of a global one. *)
 Inductive obj : Set :=
+(** [Type@i] *)
 | typ : nat -> obj
+(** [Nat] *)
 | nat : obj
+(** [zero], and the numerals *)
 | zero : obj
+(** [succ M] *)
 | succ : obj -> obj
+(** [rec M return x . A | zero => MZ | succ y, r => MS end] *)
 | natrec : obj -> string -> obj -> obj -> string -> string -> obj -> obj
+(** [True] *)
 | true_ty : obj
+(** [true] *)
 | true_tm : obj
+(** [False] *)
 | false_ty : obj
+(** [exfalso M return x . A] *)
 | exfalso : obj -> string -> obj -> obj
+(** [forall (x : A) -> B] *)
 | pi : string -> obj -> obj -> obj
+(** [fun (x : A) -> M] *)
 | fn : string -> obj -> obj -> obj
+(** [M N]: a function or a module applied *)
 | app : obj -> obj -> obj
+(** A name: a local variable, a module, or a member in scope *)
 | var : string -> obj
 (** A [::] path, hence at least two segments after a [var] *)
 | glob : list string -> obj
+(** [M.x]: a member of a module *)
 | proj : obj -> string -> obj
+(** [let d in M end], one declaration at a time *)
 | letb : decl -> obj -> obj
 
 with decl : Set :=
@@ -89,6 +107,7 @@ with mdef : Set :=
     dotted declaration [module A.B] is parsed as nested ones ([c_mod_dotted]). *)
 with cmd : Set :=
 | c_mod : string -> list (string * obj) -> mdef -> cmd
+(** [private abstract def x : A := M end], with its modifiers *)
 | c_def : mods -> string -> obj -> obj -> cmd
 (** [c_import fp ip] imports the module at internal path [ip] of the unit at
     file path [fp].  An empty [fp] is this unit, so [import A.B] is
@@ -220,43 +239,51 @@ End Cst.
     definitional equalities of the object theory.
  *)
 
-(** ** Qualified Names
+(** ** Paths and Qualified Names
 
-    A reference to a global is [X::Y::Z.a.b.c]: the unit it lives in, named
-    absolutely, then the chain of member selections inside it from the unit's
-    root.  Names are absolute, also inside the unit being elaborated: an open
-    module is named by the same path it will have once it is closed and its
-    unit filed, so what a path denotes never depends on where it is read, and
-    resolving it is a lookup with no re-expression.
+    A unit is named by its path, [X::Y::Z], the list ["X"; "Y"; "Z"]; units do
+    not nest, so a path is flat.  The syntax names only units ([me_unit]); a
+    member of a unit is spelled as a chain of selections from it, [me_mem]
+    and [a_mem]. *)
+Abbreviation path := (list string).
 
-    The same record names a module: [p_mems] is then the chain to it, empty
-    for the unit itself. *)
-Record path : Set := path_mk
-  { p_unit : list string
-  ; p_mems : list string }.
+(** A global is named by [X::Y::Z.a.b.c]: the unit it lives in, by its path,
+    then the chain of member selections inside it from the unit's root.
+    Names are absolute, also inside the unit being elaborated: an open
+    module is named by the same qualified name it will have once it is closed
+    and its unit filed, so what a name denotes never depends on where it is
+    read, and resolving it is a lookup with no re-expression.
 
-(** An abbreviation, not a definition: a rule keyed on [p_abs] then has a record
+    A qualified name is not syntax: it is the key the global context resolves
+    a chain of selections from a unit by, and the name a value of a global
+    carries ([dm_global], [d_glob], [ne_glob]).  [q_chain] is the chain,
+    empty for the unit itself. *)
+Record qname : Set := qname_mk
+  { q_unit : path
+  ; q_chain : list string }.
+
+(** An abbreviation, not a definition: a rule keyed on [q_abs] then has a record
     literal in its conclusion, so inverting it yields equations that
     [discriminate] and [injection] see through. *)
-Abbreviation p_abs fp ip := {| p_unit := fp; p_mems := ip |}.
+Abbreviation q_abs fp ip := {| q_unit := fp; q_chain := ip |}.
 
-(** A unit is named by a nonempty file path, and a path to a term by a nonempty
-    member chain: a module is not an [exp] and has no type. *)
-Definition path_valid (p : path) : Prop :=
-  p_unit p <> nil /\ p_mems p <> nil.
+(** A unit is named by a nonempty path, and a term by a nonempty member
+    chain: a module is not an [exp] and has no type. *)
+Definition qname_valid (p : qname) : Prop :=
+  q_unit p <> nil /\ q_chain p <> nil.
 
 (** The member [x] of the module [mp]. *)
-Definition path_in (mp : path) (x : string) : path :=
-  {| p_unit := p_unit mp ; p_mems := p_mems mp ++ x :: nil |}.
+Definition qname_in (mp : qname) (x : string) : qname :=
+  {| q_unit := q_unit mp ; q_chain := q_chain mp ++ x :: nil |}.
 
 (** The terms, and the module syntax nested in them.  The two are one
     mutual family: a term binds a local module ([a_let] with [b_mod]) and
     selects members of module expressions ([a_mem]), and a module body
     contains terms.
 
-    - [modexp] is a module expression: a global module [me_path], a local
-      module slot [me_var], a submodule [me_mem], an argument [me_app], or a
-      literal unit [me_lit].  A literal is produced only by substitution, when
+    - [modexp] is a module expression: a unit [me_unit], a local module slot
+      [me_var], a submodule [me_mem], an argument [me_app], or a literal unit
+      [me_lit].  A literal is produced only by substitution, when
       [ζ] replaces a module slot by its unit.
     - [gunit] is a unit: its parameter telescope, innermost first, and its
       definition, a body or an alias.  The definition is under the parameters.
@@ -269,69 +296,125 @@ Inductive exp : Set :=
 | a_typ : nat -> exp
 (** Natural numbers *)
 | a_nat : exp
+(** [zero] *)
 | a_zero : exp
+(** [succ M] *)
 | a_succ : exp -> exp
+(** [a_natrec A MZ MS M] eliminates [M] into the motive [A], which binds the
+    scrutinee; [MS] binds the predecessor and the recursive result. *)
 | a_natrec : exp -> exp -> exp -> exp -> exp
 (** The unit type, with η *)
 | a_True : exp
+(** Its element *)
 | a_true : exp
-(** The empty type.  [a_exfalso A M] eliminates [M] into the motive [A], which
-    binds the scrutinee. *)
+(** The empty type *)
 | a_False : exp
+(** [a_exfalso A M] eliminates [M] into the motive [A], which binds the
+    scrutinee. *)
 | a_exfalso : exp -> exp -> exp
-(** Functions *)
+(** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
+(** [a_fn A M], [M] binding the argument *)
 | a_fn : exp -> exp -> exp
+(** Application *)
 | a_app : exp -> exp -> exp
 (** Variable *)
 | a_var : nat -> exp
-(** Globals.  [X::Y::Z.W.bar] is [a_glob (p_abs ["X"; "Y"; "Z"] ["W"; "bar"])],
-    also when [X::Y::Z] is the unit being elaborated.  A global is closed: it
-    stands for the member generalized over the parameters of every module
-    enclosing it, outermost first, and is applied to them.  Inside its own
-    module those are the parameter variables in scope. *)
-| a_glob : path -> exp
 (** Local binding: [a_let b B] binds [#0] in [B] to the definition or the
     module [b]. *)
 | a_let : bnd -> exp -> exp
-(** The member [x] of the module [H]. *)
+(** The member [x] of the module [H].  A member of a global module is
+    closed: [X::Y::Z.W.bar] stands for [bar] generalized over the parameters
+    of every module enclosing it, outermost first, and is applied to them. *)
 | a_mem : modexp -> string -> exp
 with modexp : Set :=
-| me_path : path -> modexp
+(** A unit, by its path *)
+| me_unit : path -> modexp
+(** A local module slot *)
 | me_var : nat -> modexp
+(** A submodule *)
 | me_mem : modexp -> string -> modexp
+(** A module applied to one more argument *)
 | me_app : modexp -> exp -> modexp
+(** A unit given literally; only substitution produces one *)
 | me_lit : gunit -> modexp
 with bnd : Set :=
 (** [b_def A M]: a definition of type [A] *)
 | b_def : exp -> exp -> bnd
+(** [b_mod U]: a local module *)
 | b_mod : gunit -> bnd
 with gunit : Set :=
+(** [gu_mk Δ D]: the parameters, innermost first, and the definition under
+    them *)
 | gu_mk : list centry -> moddef -> gunit
 with moddef : Set :=
+(** A body *)
 | md_body : gmod -> moddef
+(** An alias of a module expression *)
 | md_alias : modexp -> moddef
 with gmod : Set :=
+(** The empty body *)
 | gm_nil : gmod
+(** A named entry after the body before it *)
 | gm_ext : gmod -> string -> gentry -> gmod
+(** A check entry after the body before it; it binds nothing *)
 | gm_check : gmod -> bcheck -> gmod
-(** The check-only entries of a local body: an [import] of a module, with the
-    names it [use]s, and an [eval], which no rule accepts. *)
+(** The check-only entries of a local body. *)
 with bcheck : Set :=
+(** An [import] of a module, with the names it [use]s *)
 | bc_import : modexp -> list string -> bcheck
-| bc_eval : exp -> option exp -> bcheck
+with gentry : Set :=
 (** [ge_def b pv A B]: [b] says whether the definition is transparent, [pv]
     whether it is private, and [B] is [None] for an axiom.  A filed definition
     is closed; a definition of a local body is read in the body's context. *)
-with gentry : Set :=
 | ge_def : bool -> bool -> exp -> option exp -> gentry
+(** A submodule *)
 | ge_mod : gunit -> gentry
 with centry : Set :=
+(** An assumption of a type *)
 | ce_ass : exp -> centry
+(** [ce_def A M]: a definition of type [A] *)
 | ce_def : exp -> exp -> centry
+(** A module slot, holding the unit *)
 | ce_mod : gunit -> centry.
 
 Abbreviation typ := exp.
+
+(** ** Chains of Selections *)
+
+(** [H.y1. … .yn], the submodules [pre] selected from [H] in order. *)
+Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
+  match pre with
+  | nil => H
+  | y :: pre' => me_mems (me_mem H y) pre'
+  end.
+
+(** [H.y1. … .yn.x] as a term: submodule selections, then a member. *)
+Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
+  match ch with
+  | nil => a_zero
+  | x :: nil => a_mem H x
+  | y :: ch' => member_ref (me_mem H y) ch'
+  end.
+
+(** The module named [X::Y.W.Z], [q_abs ["X"; "Y"] ["W"; "Z"]], and the global
+    named so, both as selections from the unit. *)
+Definition qname_mod (p : qname) : modexp := me_mems (me_unit (q_unit p)) (q_chain p).
+
+Definition qname_term (p : qname) : exp := member_ref (me_unit (q_unit p)) (q_chain p).
+
+(** The qualified name a chain of selections from a unit spells, and [None]
+    for any other module expression. *)
+Fixpoint mod_qname (H : modexp) : option qname :=
+  match H with
+  | me_unit fp => Some (q_abs fp nil)
+  | me_mem H y =>
+      match mod_qname H with
+      | Some p => Some {| q_unit := q_unit p; q_chain := q_chain p ++ y :: nil |}
+      | None => None
+      end
+  | _ => None
+  end.
 
 (** ** Contexts
 
@@ -439,10 +522,9 @@ Section syn_mut_ind.
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
     (case_var : forall x, Pe (a_var x))
-    (case_glob : forall p, Pe (a_glob p))
     (case_let : forall b B, Pb b -> Pe B -> Pe (a_let b B))
     (case_mem : forall H x, Pm H -> Pe (a_mem H x))
-    (case_me_path : forall p, Pm (me_path p))
+    (case_me_unit : forall fp, Pm (me_unit fp))
     (case_me_var : forall k, Pm (me_var k))
     (case_me_mem : forall H y, Pm H -> Pm (me_mem H y))
     (case_me_app : forall H N, Pm H -> Pe N -> Pm (me_app H N))
@@ -456,7 +538,6 @@ Section syn_mut_ind.
     (case_gm_ext : forall Φ x E, Pg Φ -> Pn E -> Pg (gm_ext Φ x E))
     (case_gm_check : forall Φ c, Pg Φ -> Pk c -> Pg (gm_check Φ c))
     (case_bc_import : forall E ns, Pm E -> Pk (bc_import E ns))
-    (case_bc_eval : forall M A, Pe M -> (forall A', A = Some A' -> Pe A') -> Pk (bc_eval M A))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall U, Pu U -> Pn (ge_mod U))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
@@ -478,13 +559,12 @@ Section syn_mut_ind.
     | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
     | a_app M N => case_app M N (exp_mut M) (exp_mut N)
     | a_var x => case_var x
-    | a_glob p => case_glob p
     | a_let b B => case_let b B (bnd_mut b) (exp_mut B)
     | a_mem H x => case_mem H x (modexp_mut H)
     end
   with modexp_mut (H : modexp) : Pm H :=
     match H with
-    | me_path p => case_me_path p
+    | me_unit fp => case_me_unit fp
     | me_var k => case_me_var k
     | me_mem H y => case_me_mem H y (modexp_mut H)
     | me_app H N => case_me_app H N (modexp_mut H) (exp_mut N)
@@ -520,14 +600,6 @@ Section syn_mut_ind.
   with bcheck_mut (c : bcheck) : Pk c :=
     match c with
     | bc_import E ns => case_bc_import E ns (modexp_mut E)
-    | bc_eval M A =>
-        case_bc_eval M A (exp_mut M)
-          (match A as o return (forall A', o = Some A' -> Pe A') with
-           | Some A0 => fun A' e => match e in _ = o' return match o' with Some A' => Pe A' | None => True end with
-                                   | eq_refl => exp_mut A0 end
-           | None => fun A' e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
-                                 | eq_refl => I end)
-           end)
     end
   with gentry_mut (E : gentry) : Pn E :=
     match E with
@@ -584,23 +656,37 @@ Definition exp_to_num e :=
 
 (** ** Syntactic Normal/Neutral Form *)
 Inductive nf : Set :=
+(** A universe *)
 | nf_typ : nat -> nf
+(** [ℕ] *)
 | nf_nat : nf
+(** [zero] *)
 | nf_zero : nf
+(** [succ] of a normal form *)
 | nf_succ : nf -> nf
+(** [⊤] *)
 | nf_True : nf
+(** Its element *)
 | nf_true : nf
+(** [⊥] *)
 | nf_False : nf
+(** A [Π] of normal forms *)
 | nf_pi : nf -> nf -> nf
+(** A function, its domain and body normal *)
 | nf_fn : nf -> nf -> nf
+(** A neutral *)
 | nf_neut : ne -> nf
 with ne : Set :=
+(** The [ℕ]-eliminator stuck on a neutral *)
 | ne_natrec : nf -> nf -> nf -> ne -> ne
+(** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
+(** A neutral applied *)
 | ne_app : ne -> nf -> ne
+(** A variable *)
 | ne_var : nat -> ne
 (** An opaque definition or an axiom: it does not unfold. *)
-| ne_glob : path -> ne
+| ne_glob : qname -> ne
 .
 
 Fixpoint nf_to_exp (M : nf) : exp :=
@@ -622,7 +708,7 @@ with ne_to_exp (M : ne) : exp :=
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
-  | ne_glob p => a_glob p
+  | ne_glob p => qname_term p
   end
 .
 
@@ -724,13 +810,12 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
   | a_var x => a_var (φ x)
-  | a_glob p => a_glob p
   | a_let b B => a_let (bnd_wk b φ) (exp_wk B (wk_q φ))
   | a_mem H x => a_mem (modexp_wk H φ) x
   end
 with modexp_wk (H : modexp) (φ : wk) : modexp :=
   match H with
-  | me_path p => me_path p
+  | me_unit fp => me_unit fp
   | me_var k => me_var (φ k)
   | me_mem H y => me_mem (modexp_wk H φ) y
   | me_app H N => me_app (modexp_wk H φ) (exp_wk N φ)
@@ -767,7 +852,6 @@ with gmod_wk (Φ : gmod) (φ : wk) : gmod :=
 with bcheck_wk (c : bcheck) (φ : wk) : bcheck :=
   match c with
   | bc_import E ns => bc_import (modexp_wk E φ) ns
-  | bc_eval M A => bc_eval (exp_wk M φ) (match A with Some A => Some (exp_wk A φ) | None => None end)
   end
 with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
@@ -798,18 +882,21 @@ Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
     on the expression.
 
     An entry of the wrong sort reads as a closed default, [a_zero] or the
-    module [me_path (p_abs nil nil)], which every operation fixes.  The
+    module [me_unit nil], which every operation fixes.  The
     defaults are the semantic projections of an entry of the other sort, so
     evaluation commutes with every substitution. *)
 Inductive sentry : Set :=
+(** A variable of either sort *)
 | se_var : nat -> sentry
+(** A term, for a term variable *)
 | se_exp : exp -> sentry
+(** A module expression, for a module slot *)
 | se_mod : modexp -> sentry.
 
 Definition sub : Set := nat -> sentry.
 
 Definition exp_junk : exp := a_zero.
-Definition modexp_junk : modexp := me_path {| p_unit := nil; p_mems := nil |}.
+Definition modexp_junk : modexp := me_unit nil.
 
 Definition sentry_exp (e : sentry) : exp :=
   match e with
@@ -894,13 +981,12 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
   | a_var x => sentry_exp (σ x)
-  | a_glob p => a_glob p
   | a_let b B => a_let (bnd_sub b σ) (exp_sub B (sb_q σ))
   | a_mem H x => a_mem (modexp_sub H σ) x
   end
 with modexp_sub (H : modexp) (σ : sub) : modexp :=
   match H with
-  | me_path p => me_path p
+  | me_unit fp => me_unit fp
   | me_var k => sentry_modexp (σ k)
   | me_mem H y => me_mem (modexp_sub H σ) y
   | me_app H N => me_app (modexp_sub H σ) (exp_sub N σ)
@@ -935,7 +1021,6 @@ with gmod_sub (Φ : gmod) (σ : sub) : gmod :=
 with bcheck_sub (c : bcheck) (σ : sub) : bcheck :=
   match c with
   | bc_import E ns => bc_import (modexp_sub E σ) ns
-  | bc_eval M A => bc_eval (exp_sub M σ) (match A with Some A => Some (exp_sub A σ) | None => None end)
   end
 with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with

@@ -96,15 +96,15 @@ Section Transparent.
     (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
        dclean m -> env_clean ρ -> dclean r) /\
     (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dclean m -> dclean n -> dclean r) /\
-    (forall Ms ρ ms, eval_exps Θ Ξ Ms ρ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
-    (forall m args r, eval_apps Θ Ξ m args r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
+    (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
+    (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
     (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
-    (forall h n r, eval_appm Θ Ξ h n r -> dmclean h -> dclean n -> dmclean r) /\
-    (forall h x r, eval_sel Θ Ξ h x r -> dmclean h -> dclean r) /\
-    (forall h y r, eval_selm Θ Ξ h y r -> dmclean h -> dmclean r) /\
-    (forall h ch r, eval_selc Θ Ξ h ch r -> dmclean h -> dclean r) /\
-    (forall h ch r, eval_selmc Θ Ξ h ch r -> dmclean h -> dmclean r) /\
-    (forall ρ Φ ρ', eval_benv Θ Ξ ρ Φ ρ' -> env_clean ρ -> env_clean ρ').
+    (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmclean h -> dclean n -> dmclean r) /\
+    (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
+    (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
+    (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
+    (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
+    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> env_clean ρ -> env_clean ρ').
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_clean ρ -> dclean m)

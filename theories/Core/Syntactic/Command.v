@@ -11,9 +11,6 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations.
 
-(** A unit's absolute path, [X::Y]. *)
-Abbreviation fpath := (list string).
-
 Inductive ccmd : Set :=
 (** [def x : A := M]: transparency, privacy, type and body.  A [def] always
     has a body; an [abstract] one is opaque, not bodiless. *)
@@ -25,12 +22,12 @@ Inductive ccmd : Set :=
 (** [import E], whatever its [use]/[as]: the unit to load first, if [E] is in
     another unit; the imported module; and the names it [use]s, each of which
     must be a public member or a submodule of [E]. *)
-| cc_import : option fpath -> modexp -> list string -> ccmd
+| cc_import : option path -> modexp -> list string -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.
 
-Definition prog_path (prg : Cst.prog) : fpath :=
+Definition prog_path (prg : Cst.prog) : path :=
   let '(_, (fp, _, _)) := prg in fp.

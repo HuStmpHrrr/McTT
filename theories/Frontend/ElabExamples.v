@@ -18,9 +18,9 @@ Import Cst.
     are related to nothing, by [elaborate_core_fails].
 
     [⟨U.M⟩] below abbreviates the module expression
-    [me_path (p_abs ["U"] ["M"])]. *)
+    [qname_mod (q_abs ["U"] ["M"])]. *)
 
-Definition mpath (fq ch : list string) : modexp := me_path (p_abs fq ch).
+Definition mpath (fq ch : list string) : modexp := qname_mod (q_abs fq ch).
 
 Ltac elab_ok := apply elaborate_core_sound; vm_compute; reflexivity.
 Ltac elab_fails := apply elaborate_core_fails; eexists; vm_compute; reflexivity.
@@ -54,8 +54,8 @@ Definition nested : Cst.prog :=
               c_eval (fn "x" nat (var "b")) None :: nil)) ::
          c_eval (app (proj (var "M") "b") nat) None :: nil)).
 
-Definition U_a : exp := a_glob (p_abs ("U" :: nil) ("a" :: nil)).
-Definition U_M_b : exp := a_glob (p_abs ("U" :: nil) ("M" :: "b" :: nil)).
+Definition U_a : exp := qname_term (q_abs ("U" :: nil) ("a" :: nil)).
+Definition U_M_b : exp := qname_term (q_abs ("U" :: nil) ("M" :: "b" :: nil)).
 
 Example nested_spec :
   elab_spec nested
@@ -73,9 +73,9 @@ Proof. elab_ok. Qed.
     scope [B, a ↦ U.a, A]: [a] lies under one binder ([B]) and over one
     ([A]), so it is [U.a] applied to [#1]. *)
 Example a_preapplied :
-  sel (en_var "B" :: en_mem "a" (p_abs ("U" :: nil) ("a" :: nil)) :: en_var "A" :: nil) (var "a") (U_a $ #1).
+  sel (en_var "B" :: en_mem "a" (q_abs ("U" :: nil) ("a" :: nil)) :: en_var "A" :: nil) (var "a") (U_a $ #1).
 Proof.
-  apply (sel_var _ _ 1 (en_mem "a" (p_abs ("U" :: nil) ("a" :: nil))) 1); [| apply dt_mem ].
+  apply (sel_var _ _ 1 (en_mem "a" (q_abs ("U" :: nil) ("a" :: nil))) 1); [| apply dt_mem ].
   exists (en_var "B" :: nil), (en_var "A" :: nil); cbn; repeat split.
   intros [H | []]; discriminate.
 Qed.
@@ -94,8 +94,8 @@ Definition church : Cst.prog :=
                    (app (app (proj (var "C") "two") Cst.zero) (fn "x" nat (Cst.succ (var "x")))))
            (Some nat) :: nil)).
 
-Definition Church_t : exp := a_glob (p_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
-Definition Church_two : exp := a_glob (p_abs ("ModuleParam" :: nil) ("Church" :: "two" :: nil)).
+Definition Church_t : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "t" :: nil)).
+Definition Church_two : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church" :: "two" :: nil)).
 
 (** Inside [Church], [t] is [Church.t A].  [let module C := Church Nat]
     binds a local module slot, so [C.two] selects [two] of [#0]. *)
@@ -120,7 +120,7 @@ Definition import_use : Cst.prog :=
          c_import nil ("Impl" :: nil) (i_use ("exposed" :: nil)) ::
          c_eval (app (proj (var "I") "exposed") (var "exposed")) None :: nil)).
 
-Definition Impl_ : string -> exp := fun x => a_glob (p_abs ("ImportUse" :: nil) ("Impl" :: x :: nil)).
+Definition Impl_ : string -> exp := fun x => qname_term (q_abs ("ImportUse" :: nil) ("Impl" :: x :: nil)).
 
 Definition Impl : modexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
 
@@ -224,7 +224,7 @@ Example shadow_parent :
     (nil, ⋅,
      cc_def "x" true false ℕ zero ::
      cc_mod "I" ⋅ (cc_def "x" true false ℕ (succ zero) ::
-                   cc_eval (a_glob (p_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
+                   cc_eval (qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** A definition does not see itself. *)
@@ -345,7 +345,7 @@ Example shadow_param :
      cc_def "y" true false ℕ zero ::
      cc_mod "M" (⋅ ▹ ℕ)
        (cc_def "x" true false ℕ #0 ::
-        cc_eval (a_glob (p_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
+        cc_eval (qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
 (** ** Local Definitions
@@ -394,7 +394,7 @@ module M (A : Type@0) where
 end
 >>
 *)
-Definition T_M_y : exp := a_glob (p_abs ("T" :: nil) ("M" :: "y" :: nil)).
+Definition T_M_y : exp := qname_term (q_abs ("T" :: nil) ("M" :: "y" :: nil)).
 
 Example let_shadow :
   elab_spec (unit_of
@@ -457,17 +457,70 @@ Example local_body :
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
 
-(** A local body has no imports and no [eval]s. *)
+(** An import in a local body is a check entry for the core, and binds its
+    aliases for the entries after it; it takes no binder.
+
+<<
+let module L where
+  module N where def y : Nat := 0 end end
+  import N use (y)
+  import N as K
+  def z : Nat := y end
+  def w : Nat := K.y end
+in L.w end
+>>
+
+    [N] is [me_var 0] at both imports; under [z], [K] is [me_var 1]. *)
 Example local_import :
-  elaborate_core (unit_of
-    (c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) nil i_open :: nil))) Cst.zero) None :: nil))
-  = eerr "a local module has no imports".
+  elab_spec (unit_of
+    (c_eval
+       (letb (d_mod "L" nil
+                (md_where
+                   (c_mod "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                    c_import nil ("N" :: nil) (i_use ("y" :: nil)) ::
+                    c_import nil ("N" :: nil) (i_as "K") ::
+                    c_def md_pub "z" nat (var "y") ::
+                    c_def md_pub "w" nat (proj (var "K") "y") :: nil)))
+          (proj (var "L") "w")) None :: nil))
+    (nil, ⋅,
+     cc_eval
+       (ℓₘ (gu_mk ⋅
+              (md_body
+                 (gm_ext
+                    (gm_ext
+                       (gm_check
+                          (gm_check
+                             (gm_ext gm_nil "N" (ge_mod (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                             (bc_import (me_var 0) ("y" :: nil)))
+                          (bc_import (me_var 0) nil))
+                       "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))
+                    "w" (ge_def true false ℕ (Some (a_mem (me_var 1) "y"))))))
+        in a_mem (me_var 0) "w") None :: nil).
+Proof. elab_ok. Qed.
+
+(** An import of a unit in a local body loads nothing: the unit must be
+    imported already, here by a leading import. *)
+Definition local_unit_import (leading : list Cst.cmd) : Cst.prog :=
+  (leading, ("T" :: nil, nil,
+    c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) nil (i_use ("f" :: nil)) :: nil))) Cst.zero)
+      None :: nil)).
+
+Example local_unit_loaded :
+  elab_spec (local_unit_import (c_import ("X" :: nil) nil i_open :: nil))
+    (cc_import (Some ("X" :: nil)) (mpath ("X" :: nil) nil) nil :: nil, ⋅,
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_check gm_nil (bc_import (mpath ("X" :: nil) nil) ("f" :: nil)))))
+              in zero) None :: nil).
+Proof. elab_ok. Qed.
+
+Example local_unit_not_loaded :
+  elaborate_core (local_unit_import nil) = eerr "the unit is not imported".
 Proof. vm_compute; reflexivity. Qed.
 
+(** A local body has no [eval]s. *)
 Example local_eval :
   elaborate_core (unit_of
     (c_eval (letb (d_mod "L" nil (md_where (c_eval Cst.zero None :: nil))) Cst.zero) None :: nil))
-  = eerr "a local module has no evals".
+  = eerr "eval is not allowed in a local module".
 Proof. vm_compute; reflexivity. Qed.
 
 (** [module A.B] in a local body is [A], without parameters, holding [B]. *)
@@ -540,7 +593,7 @@ Definition running : Cst.prog := (nil, ("Main" :: nil, nil,
               (fn "x" (var "A") (fn "y" (var "B") (app (var "id") (var "x")))) :: nil)) :: nil)) ::
   c_def md_pub "j" (pi "x" nat nat) (app (proj (var "M") "id") nat) :: nil)).
 
-Definition Main_M_id : exp := a_glob (p_abs ("Main" :: nil) ("M" :: "id" :: nil)).
+Definition Main_M_id : exp := qname_term (q_abs ("Main" :: nil) ("M" :: "id" :: nil)).
 
 Example running_spec :
   elab_spec running

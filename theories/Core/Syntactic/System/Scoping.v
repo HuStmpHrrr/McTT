@@ -4,7 +4,7 @@
     binders.  What this buys is closedness of globals: every entry of a
     well-formed global context is stored generalized over its telescope, so its
     type and body have no free λ-variable, and weakening and substitution leave
-    them alone.  The [a_glob] rules rely on exactly that instead of premising
+    them alone.  The rules for globals rely on exactly that instead of premising
     it.
 
     Scoping is proved for all eleven judgments at once: the term judgments need
@@ -26,7 +26,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_nat | a_zero | a_True | a_true | a_False | a_glob _ => True
+  | a_typ _ | a_nat | a_zero | a_True | a_true | a_False => True
   | a_succ M => exp_scoped n M
   | a_natrec A MZ MS M =>
       exp_scoped (S n) A /\ exp_scoped n MZ /\ exp_scoped (S (S n)) MS /\ exp_scoped n M
@@ -39,7 +39,7 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   end
 with modexp_scoped (n : nat) (H : modexp) : Prop :=
   match H with
-  | me_path _ => True
+  | me_unit _ => True
   | me_var x => x < n
   | me_mem H _ => modexp_scoped n H
   | me_app H N => modexp_scoped n H /\ exp_scoped n N
@@ -74,7 +74,6 @@ with gmod_scoped (n : nat) (Φ : gmod) : Prop :=
 with bcheck_scoped (n : nat) (c : bcheck) : Prop :=
   match c with
   | bc_import E _ => modexp_scoped n E
-  | bc_eval M A => exp_scoped n M /\ match A with Some A => exp_scoped n A | None => True end
   end
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
@@ -400,6 +399,36 @@ Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 syn_scoped_wk_id)))); [ eassum
 Corollary gunit_closed_sub : forall U σ, gunit_scoped 0 U -> U[σ]ᵘ = U.
 Proof. intros; eapply (proj1 (proj2 (proj2 (proj2 syn_scoped_sub_id)))); [ eassumption | lia ]. Qed.
 
+Corollary tele_closed_wk : forall Δ φ, ctx_scoped 0 Δ -> tele_wk Δ φ = Δ.
+Proof.
+  intros; eapply tele_wk_id_gen; [| eassumption | lia ].
+  apply List.Forall_forall; intros e _ n ψ He Hψ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk_id))))))) _ _ _ He Hψ).
+Qed.
+
+Corollary tele_closed_sub : forall Δ σ, ctx_scoped 0 Δ -> tele_sub Δ σ = Δ.
+Proof.
+  intros; eapply tele_sub_id_gen; [| eassumption | lia ].
+  apply List.Forall_forall; intros e _ n τ He Hτ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_id))))))) _ _ _ He Hτ).
+Qed.
+
+Lemma tele_wk_scoped : forall Δ n m φ,
+    ctx_scoped n Δ -> (forall x, x < n -> φ x < m) -> ctx_scoped m (tele_wk Δ φ).
+Proof.
+  intros; eapply tele_wk_scoped_gen; [| eassumption | assumption ].
+  apply List.Forall_forall; intros e _ k l ψ He Hψ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk))))))) _ _ _ _ He Hψ).
+Qed.
+
+Lemma tele_sub_scoped : forall Δ n m σ,
+    ctx_scoped n Δ -> (forall x, x < n -> sentry_scoped m (σ x)) -> ctx_scoped m (tele_sub Δ σ).
+Proof.
+  intros; eapply tele_sub_scoped_gen; [| eassumption | assumption ].
+  apply List.Forall_forall; intros e _ k l τ He Hτ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub))))))) _ _ _ _ He Hτ).
+Qed.
+
 (** ** Telescopes *)
 
 Lemma ctx_scoped_app : forall Γ Δ n,
@@ -548,7 +577,7 @@ Lemma stack_closed_find : forall Ξ p U ip T,
 Proof.
   induction Ξ as [| [mq V] Ξ IH]; intros * HΞ Hf; cbn in *; [ discriminate |].
   destruct HΞ as [HΞ HV].
-  destruct (path_strip mq p); [ injection Hf as <- <- <-; exact HV | eauto ].
+  destruct (qname_strip mq p); [ injection Hf as <- <- <-; exact HV | eauto ].
 Qed.
 
 Lemma gctx_closed_resolve : forall Θ Ξ p b pv A B,
@@ -571,9 +600,9 @@ Proof.
   intros * [HΘ HΞ] Hr; unfold gc_module in Hr.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |] eqn:Hf; [ discriminate | |].
   - destruct (stack_closed_find _ _ _ _ _ HΞ Hf) as (_ & _ & HU); exact (HU _ _ _ Hr).
-  - destruct (gds_lookup Θ (p_unit p)) as [U |] eqn:Hl; [| discriminate ].
+  - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
     destruct (HΘ _ _ Hl) as (HT & _ & HU).
-    destruct (p_mems p) as [| x ip]; cbn in Hr; [ injection Hr as <-; exact HT | exact (HU _ _ _ Hr) ].
+    destruct (q_chain p) as [| x ip]; cbn in Hr; [ injection Hr as <-; exact HT | exact (HU _ _ _ Hr) ].
 Qed.
 
 Lemma mod_closed_nil : forall T, mod_closed T ⋄.
@@ -604,6 +633,13 @@ Proof.
     + injection Hr as <-; exact HE.
 Qed.
 
+(** A chain from a unit has no variable. *)
+Lemma mod_qname_scoped : forall H p n, mod_qname H = Some p -> modexp_scoped n H.
+Proof.
+  induction H; intros * Hp; cbn in *; try discriminate; auto.
+  destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
+Qed.
+
 (** The check entries of a body of some shape are imports. *)
 Lemma body_shape_checks : forall Φ Φ',
     body_shape Φ Φ' ->
@@ -614,7 +650,7 @@ Proof.
   - split; intros ? ? [].
   - destruct Hs as [Hs _]; exact (IH _ Hs).
   - destruct Hs as [Hs Hc]; destruct (IH _ Hs) as [IH1 IH2].
-    destruct c as [E ns | M A], c' as [E' ns' | M' A']; cbn in Hc; try contradiction.
+    destruct c as [E ns], c' as [E' ns']; cbn in Hc.
     split; intros Φ0 c0 [[= <- <-] | Hin]; eauto.
 Qed.
 
@@ -657,7 +693,7 @@ Proof.
   apply wf_mut_ind_all; intros; unfold ctx_ok in *; cbn in *; destruct_all;
     rewrite ?length_app, ?ctx_scoped_app_iff in *; destruct_all.
   all: repeat match goal with |- _ /\ _ => split end; try assumption;
-    auto using exp_scoped_sub1, exp_scoped_sub2, exp_scoped_sub_succ, exp_scoped_shift, mod_closed_nil, exp_scoped_sub1_mod.
+    eauto using exp_scoped_sub1, exp_scoped_sub2, exp_scoped_sub_succ, exp_scoped_shift, mod_closed_nil, exp_scoped_sub1_mod, mod_qname_scoped.
   all: try match goal with
     | |- exp_scoped (length ?Γ + 0) _ => rewrite Nat.add_0_r; assumption
     | H : ?Γ ∋ # ?x : ?A |- ?x < _ => apply ctx_lookup_length in H; assumption

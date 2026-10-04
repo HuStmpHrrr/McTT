@@ -22,11 +22,11 @@ Section Members.
   (** ** Lists of Arguments *)
 
   Lemma eval_exps_app : forall Ms Ns ρ ms ns,
-      eval_exps Θ Ξ Ms ρ ms -> eval_exps Θ Ξ Ns ρ ns -> eval_exps Θ Ξ (Ms ++ Ns) ρ (ms ++ ns).
+      ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns -> ⟦ Ms ++ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms ++ ns.
   Proof. induction 1; intros; cbn; [ assumption | econstructor; eauto ]. Qed.
 
   Lemma eval_exps_app_inv : forall Ms Ns ρ ls,
-      eval_exps Θ Ξ (Ms ++ Ns) ρ ls -> exists ms ns, ls = ms ++ ns /\ eval_exps Θ Ξ Ms ρ ms /\ eval_exps Θ Ξ Ns ρ ns.
+      ⟦ Ms ++ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ls -> exists ms ns, ls = ms ++ ns /\ ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms /\ ⟦ Ns ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns.
   Proof.
     induction Ms; intros * H; cbn in H.
     - exists nil, ls; repeat split; [ constructor | assumption ].
@@ -35,7 +35,7 @@ Section Members.
   Qed.
 
   Lemma eval_apps_app : forall f ms ns r,
-      eval_apps Θ Ξ f (ms ++ ns) r <-> exists g, eval_apps Θ Ξ f ms g /\ eval_apps Θ Ξ g ns r.
+      $*| f & ms ++ ns | Θ ⍮ Ξ ↘ r <-> exists g, $*| f & ms | Θ ⍮ Ξ ↘ g /\ $*| g & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros f ms; revert f; induction ms; intros; cbn; split.
     - intros H; exists f; split; [ constructor | assumption ].
@@ -47,10 +47,78 @@ Section Members.
       apply IHms; eauto.
   Qed.
 
+  (** ** Members of Global Modules
+
+      A member of a global module applied to [args] is the member of the
+      module with no argument, applied to [args]. *)
+
+  Lemma eval_sel_global_apps : forall p x f args r,
+      dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f -> $*| f & args | Θ ⍮ Ξ ↘ r -> dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r.
+  Proof.
+    intros * Hf Ha; inversion Hf; subst;
+      match goal with Hn : eval_apps _ _ _ nil _ |- _ => inversion Hn; subst end;
+      [ eapply eval_sel_global | eapply eval_sel_global_neut ]; eassumption.
+  Qed.
+
+  Lemma eval_sel_global_inv : forall p x args r,
+      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r ->
+      exists f, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
+  Proof.
+    intros * H; inversion H; subst; eexists; split; try eassumption;
+      [ eapply eval_sel_global | eapply eval_sel_global_neut ]; eauto; constructor.
+  Qed.
+
+  (** A chain of submodules of a global module, none of them an alias, is the
+      global module at the path the chain extends it to. *)
+  Lemma eval_mems_global : forall mems H mq ρ,
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global mq nil ->
+      (forall m1 m2, mems = m1 ++ m2 -> m1 <> nil ->
+         forall U r, gc_module Θ Ξ (qname_app mq m1) <> Some (mr_alias U r)) ->
+      ⟦ me_mems H mems ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global (qname_app mq mems) nil.
+  Proof.
+    induction mems as [| y mems IH]; intros * HH Hna; cbn [me_mems].
+    - rewrite qname_app_nil; exact HH.
+    - replace (qname_app mq (y :: mems)) with (qname_app (qname_app mq (y :: nil)) mems)
+        by (unfold qname_app; cbn; rewrite <- app_assoc; reflexivity).
+      apply IH.
+      + econstructor; [ exact HH |]; apply eval_selm_global.
+        intros U r; apply (Hna (y :: nil) mems eq_refl ltac:(discriminate)).
+      + intros m1 m2 -> Hm1 U r.
+        replace (qname_app (qname_app mq (y :: nil)) m1) with (qname_app mq (y :: m1))
+          by (unfold qname_app; cbn; rewrite <- app_assoc; reflexivity).
+        apply (Hna (y :: m1) m2 eq_refl ltac:(discriminate)).
+  Qed.
+
+  Lemma eval_mems_inv : forall pre H ρ h,
+      ⟦ me_mems H pre ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> exists h0, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h0 /\ h0 ·ₘ* pre Θ ⍮ Ξ ↘ h.
+  Proof.
+    induction pre as [| y pre IH]; intros * Hh; cbn [me_mems] in Hh.
+    - exists h; split; [ exact Hh | constructor ].
+    - destruct (IH _ _ _ Hh) as (h1 & Hh1 & Hc); inversion Hh1; subst.
+      eexists; split; [ eassumption | econstructor; eassumption ].
+  Qed.
+
+  Lemma eval_mems_intro : forall pre H ρ h0 h,
+      ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h0 -> h0 ·ₘ* pre Θ ⍮ Ξ ↘ h -> ⟦ me_mems H pre ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h.
+  Proof.
+    induction pre as [| y pre IH]; intros * Hh Hc; cbn [me_mems]; inversion Hc; subst; [ exact Hh |].
+    eapply IH; [ econstructor; eassumption | eassumption ].
+  Qed.
+
+  Corollary eval_path_mod : forall p ρ,
+      (forall m1 m2, q_chain p = m1 ++ m2 -> m1 <> nil ->
+         forall U r, gc_module Θ Ξ (q_abs (q_unit p) m1) <> Some (mr_alias U r)) ->
+      ⟦ qname_mod p ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ dm_global p nil.
+  Proof.
+    intros [fp ms] ρ Hna; unfold qname_mod; cbn [q_unit q_chain] in *.
+    pose proof (eval_mems_global ms (me_unit fp) (q_abs fp nil) ρ ltac:(constructor) Hna) as H.
+    exact H.
+  Qed.
+
   (** [apps M args] evaluates by applying [M]'s value to the arguments'. *)
   Lemma eval_apps_exp : forall args M ρ r,
       ⟦ apps M args ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
-      exists f ns, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f /\ eval_exps Θ Ξ args ρ ns /\ eval_apps Θ Ξ f ns r.
+      exists f ns, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ f /\ ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     induction args as [| N args IH]; intros; cbn; split.
     - intros H; exists r, nil; repeat split; [ assumption | constructor | constructor ].
@@ -65,7 +133,7 @@ Section Members.
   (** ** Chains of Selections *)
 
   Lemma eval_selmc_app : forall pre ch h r,
-      eval_selmc Θ Ξ h (pre ++ ch) r <-> exists h1, eval_selmc Θ Ξ h pre h1 /\ eval_selmc Θ Ξ h1 ch r.
+      h ·ₘ* (pre ++ ch) Θ ⍮ Ξ ↘ r <-> exists h1, h ·ₘ* pre Θ ⍮ Ξ ↘ h1 /\ h1 ·ₘ* ch Θ ⍮ Ξ ↘ r.
   Proof.
     induction pre as [| y pre IH]; intros; cbn; split.
     - intros H; exists h; split; [ constructor | assumption ].
@@ -78,13 +146,13 @@ Section Members.
   Qed.
 
   Lemma eval_selmc_snoc : forall pre y h h0 r,
-      eval_selmc Θ Ξ h pre h0 -> eval_selm Θ Ξ h0 y r -> eval_selmc Θ Ξ h (pre ++ [y]) r.
+      h ·ₘ* pre Θ ⍮ Ξ ↘ h0 -> h0 ·ₘ y Θ ⍮ Ξ ↘ r -> h ·ₘ* (pre ++ [y]) Θ ⍮ Ξ ↘ r.
   Proof.
     intros; apply eval_selmc_app; exists h0; split; [ assumption | econstructor; [ eassumption | constructor ] ].
   Qed.
 
   Lemma eval_selmc_snoc_inv : forall pre y h r,
-      eval_selmc Θ Ξ h (pre ++ [y]) r -> exists h0, eval_selmc Θ Ξ h pre h0 /\ eval_selm Θ Ξ h0 y r.
+      h ·ₘ* (pre ++ [y]) Θ ⍮ Ξ ↘ r -> exists h0, h ·ₘ* pre Θ ⍮ Ξ ↘ h0 /\ h0 ·ₘ y Θ ⍮ Ξ ↘ r.
   Proof.
     intros * H; apply eval_selmc_app in H as (h0 & ? & Hy).
     inversion Hy; subst; match goal with H : eval_selmc _ _ _ nil _ |- _ => inversion H; subst end.
@@ -93,7 +161,7 @@ Section Members.
 
   Lemma eval_selc_app : forall pre h ch r,
       ch <> nil ->
-      eval_selc Θ Ξ h (pre ++ ch) r <-> exists h1, eval_selmc Θ Ξ h pre h1 /\ eval_selc Θ Ξ h1 ch r.
+      h ·ₜ* (pre ++ ch) Θ ⍮ Ξ ↘ r <-> exists h1, h ·ₘ* pre Θ ⍮ Ξ ↘ h1 /\ h1 ·ₜ* ch Θ ⍮ Ξ ↘ r.
   Proof.
     induction pre as [| y pre IH]; intros * Hch; cbn; split.
     - intros H; exists h; split; [ constructor | assumption ].
@@ -112,7 +180,7 @@ Section Members.
   Lemma eval_modexp_noargs : forall H ρ,
       me_noargs H ->
       forall R pre, modexp_spine H = (R, nil, pre) ->
-      forall h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h <-> exists hr, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ hr /\ eval_selmc Θ Ξ hr pre h.
+      forall h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h <-> exists hr, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ hr /\ hr ·ₘ* pre Θ ⍮ Ξ ↘ h.
   Proof.
     induction H as [qp | x | H IH y | H IH N | U]; intros ρ Hn R pre Hs h; cbn in Hs, Hn.
     1,2,5: injection Hs as <- <-; split;
@@ -137,8 +205,8 @@ Section Members.
       ch <> nil ->
       ⟦ member_ref H ch ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
       (let '(R, args, pre) := modexp_spine H in
-       exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ eval_selc Θ Ξ h (pre ++ ch) f /\
-                 eval_exps Θ Ξ args ρ ns /\ eval_apps Θ Ξ f ns r).
+       exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ ch) Θ ⍮ Ξ ↘ f /\
+                 ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r).
   Proof.
     induction ch as [| x ch IH]; intros * Hch; [ contradiction |].
     destruct ch as [| y ch].
@@ -163,8 +231,8 @@ Section Members.
   Lemma eval_mem_spine : forall H x R args pre ρ r,
       modexp_spine H = (R, args, pre) ->
       ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <->
-      exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ eval_selc Θ Ξ h (pre ++ [x]) f /\
-                eval_exps Θ Ξ args ρ ns /\ eval_apps Θ Ξ f ns r.
+      exists h f ns, ⟦ R ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ* (pre ++ [x]) Θ ⍮ Ξ ↘ f /\
+                ⟦ args ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ns /\ $*| f & ns | Θ ⍮ Ξ ↘ r.
   Proof.
     intros * Hs; split.
     - intros Hm; inversion Hm; subst.
@@ -194,7 +262,7 @@ Section Members.
   (** Without arguments, a member is selection from the module's value. *)
   Lemma eval_mem_noargs : forall H x ρ r,
       me_noargs H ->
-      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> exists h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ eval_sel Θ Ξ h x r.
+      ⟦ a_mem H x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> exists h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h /\ h ·ₜ x Θ ⍮ Ξ ↘ r.
   Proof.
     intros * Hn.
     destruct (modexp_spine H) as [[R args] pre] eqn:Hs.
@@ -221,7 +289,7 @@ Section Members.
       binders.  The [ℓ]-binders evaluate exactly as the body does. *)
 
   Lemma eval_ctx_pi_body : forall Φ ρ ρ1 A a,
-      eval_benv Θ Ξ ρ Φ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
+      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ a -> ⟦ ctx_pi (body_ctx Φ) A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a.
   Proof.
     intros * Hb; revert A a; induction Hb; intros A0 a0 HA; cbn; [ assumption | | | eauto ].
     - apply IHHb; econstructor; eassumption.
@@ -229,7 +297,7 @@ Section Members.
   Qed.
 
   Lemma eval_ctx_fn_body : forall Φ ρ ρ1 M m,
-      eval_benv Θ Ξ ρ Φ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
+      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ1 ↘ m -> ⟦ ctx_fn (body_ctx Φ) M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m.
   Proof.
     intros * Hb; revert M m; induction Hb; intros M0 m0 HM; cbn; [ assumption | | | eauto ].
     - apply IHHb; econstructor; eassumption.

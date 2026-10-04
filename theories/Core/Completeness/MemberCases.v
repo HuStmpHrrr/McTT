@@ -33,17 +33,17 @@ Section Fixed_GCtx.
     arguments.  Global module values carry this evidence for their own
     module. *)
 
-Definition gparam_at (p : path) : Prop :=
+Definition gparam_at (p : qname) : Prop :=
   forall T args args' A,
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
     per_gargs (rev T) nil nil args args' ->
     nth_error (rev T) (List.length args) = Some (ce_ass A) ->
     exists i R, PER.Definitions.rel_typ i A (env_args nil args) A (env_args nil args') R.
 
-Definition galias_at (p : path) (y : String.string) : Prop :=
+Definition galias_at (p : qname) (y : String.string) : Prop :=
   forall T U ch args args',
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
     per_gargs (rev T) nil nil args args' ->
     per_dmod (dm_local nil U args) (dm_local nil U args').
 
@@ -119,7 +119,7 @@ Lemma per_body_lookup_def : forall ρ Φ ρ' Φ' x Φ1 b pv A M,
     gm_prefix_upto Φ x = Some (gm_ext Φ1 x (ge_def b pv A (Some M))) ->
     exists Φ1' b' pv' A' M' ρ1 ρ1' i R,
       gm_prefix_upto Φ' x = Some (gm_ext Φ1' x (ge_def b' pv' A' (Some M'))) /\
-      eval_benv gc_deps gc_stack ρ Φ1 ρ1 /\ eval_benv gc_deps gc_stack ρ' Φ1' ρ1' /\
+      ⟦ Φ1 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ ⟦ Φ1' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' /\
       PER.Definitions.rel_typ i A ρ1 A' ρ1' R /\ PER.Definitions.rel_elem M ρ1 M' ρ1' R.
 Proof.
   intros * H; induction H; intros Hx; cbn in Hx |- *; try discriminate.
@@ -137,7 +137,7 @@ Lemma per_body_lookup_mod : forall ρ Φ ρ' Φ' y Φ1 Uy,
     gm_prefix_upto Φ y = Some (gm_ext Φ1 y (ge_mod Uy)) ->
     exists Φ1' Uy' ρ1 ρ1',
       gm_prefix_upto Φ' y = Some (gm_ext Φ1' y (ge_mod Uy')) /\
-      eval_benv gc_deps gc_stack ρ Φ1 ρ1 /\ eval_benv gc_deps gc_stack ρ' Φ1' ρ1' /\
+      ⟦ Φ1 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ ⟦ Φ1' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' /\
       per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil).
 Proof.
   intros * H; induction H; intros Hx; cbn in Hx |- *; try discriminate.
@@ -194,23 +194,23 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     List.length args = List.length Δ ->
     eval_modexp gc_deps gc_stack E (env_args ρ args) h -> mtyped h ch k a ->
     mtyped (dm_local ρ (gu_mk Δ (md_alias E)) args) ch k a
-| mty_gdef : forall p T args x b A0 B f aA j E a a0 i R,
+| mty_gdef : forall p T args x b pv A0 B f aA j E a a0 i R,
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
     List.length args <= List.length T ->
-    gc_resolve gc_deps gc_stack (path_app p (x :: nil)) = Some (ge_def b false (ctx_pi T A0) B) ->
-    ⟦ a_glob (path_app p (x :: nil)) ⟧ nil ↘ f ->
+    gc_resolve gc_deps gc_stack (qname_app p (x :: nil)) = Some (ge_def b pv (ctx_pi T A0) B) ->
+    eval_sel gc_deps gc_stack (dm_global p nil) x f ->
     ⟦ ctx_pi T A0 ⟧ nil ↘ aA -> per_univ_elem j E aA aA -> E f f ->
     ⟦ ctx_pi (firstn (List.length T - List.length args) T) A0 ⟧ env_args nil args ↘ a0 ->
     per_univ_elem i R a a0 ->
     mtyped (dm_global p args) (x :: nil) mk_term a
 | mty_gsub : forall p args y T ch k a,
-    gparam_at (path_app p (y :: nil)) ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_body T) ->
-    mtyped (dm_global (path_app p (y :: nil)) args) ch k a ->
+    gparam_at (qname_app p (y :: nil)) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T) ->
+    mtyped (dm_global (qname_app p (y :: nil)) args) ch k a ->
     mtyped (dm_global p args) (y :: ch) k a
 | mty_galias : forall p args y U ch ch' k a,
     galias_at p y ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
     (k = mk_term -> ch' <> nil) ->
     mtyped (dm_local nil U args) (ch ++ ch') k a ->
     mtyped (dm_global p args) (y :: ch') k a
@@ -239,8 +239,8 @@ Qed.
 (** ** Applying Related Module Values *)
 
 Lemma appm_rel : forall w w' a, per_dmod w w' -> nextparam w a ->
-    forall i E b c c' r, per_univ_elem i E a b -> E c c' -> eval_appm gc_deps gc_stack w c r ->
-    exists r', eval_appm gc_deps gc_stack w' c' r' /\ per_dmod r r'.
+    forall i E b c c' r, per_univ_elem i E a b -> E c c' -> $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ r ->
+    exists r', $ᵐ| w' & c' | gc_deps ⍮ gc_stack ↘ r' /\ per_dmod r r'.
 Proof.
   intros * Hw Hnp; revert w' Hw;
     induction Hnp as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha];
@@ -292,7 +292,7 @@ Qed.
 (** ** Selections from Module Values Still Lacking Arguments *)
 
 Lemma selmc_member : forall w ch0 ch v,
-    eval_selmc gc_deps gc_stack (dm_member w ch0) ch v -> v = dm_member w (ch0 ++ ch).
+    dm_member w ch0 ·ₘ* ch gc_deps ⍮ gc_stack ↘ v -> v = dm_member w (ch0 ++ ch).
 Proof.
   intros w ch0 ch; revert ch0; induction ch as [| y ch IH]; intros * H; inversion H; subst.
   - rewrite app_nil_r; reflexivity.
@@ -301,7 +301,7 @@ Proof.
 Qed.
 
 Lemma selc_member : forall w ch0 ch v,
-    eval_selc gc_deps gc_stack (dm_member w ch0) ch v -> v = d_member w (ch0 ++ ch).
+    dm_member w ch0 ·ₜ* ch gc_deps ⍮ gc_stack ↘ v -> v = d_member w (ch0 ++ ch).
 Proof.
   intros w ch0 ch; revert ch0; induction ch as [| y ch IH]; intros * H; inversion H; subst.
   - match goal with Hs : eval_sel _ _ _ _ _ |- _ => inversion Hs; subst end; reflexivity.
@@ -311,17 +311,17 @@ Qed.
 
 Lemma selm_unsat : forall ρ U args y h,
     List.length args < List.length (gu_params U) ->
-    eval_selm gc_deps gc_stack (dm_local ρ U args) y h -> h = dm_member (dm_local ρ U args) (y :: nil).
+    dm_local ρ U args ·ₘ y gc_deps ⍮ gc_stack ↘ h -> h = dm_member (dm_local ρ U args) (y :: nil).
 Proof. intros * Hl H; inversion H; subst; cbn in Hl; [ reflexivity | lia | lia ]. Qed.
 
 Lemma sel_unsat : forall ρ U args x v,
     List.length args < List.length (gu_params U) ->
-    eval_sel gc_deps gc_stack (dm_local ρ U args) x v -> v = d_member (dm_local ρ U args) (x :: nil).
+    dm_local ρ U args ·ₜ x gc_deps ⍮ gc_stack ↘ v -> v = d_member (dm_local ρ U args) (x :: nil).
 Proof. intros * Hl H; inversion H; subst; cbn in Hl; [ reflexivity | lia | lia ]. Qed.
 
 Lemma selc_unsat : forall ρ U args ch v,
     List.length args < List.length (gu_params U) ->
-    eval_selc gc_deps gc_stack (dm_local ρ U args) ch v -> v = d_member (dm_local ρ U args) ch.
+    dm_local ρ U args ·ₜ* ch gc_deps ⍮ gc_stack ↘ v -> v = d_member (dm_local ρ U args) ch.
 Proof.
   intros * Hl H; inversion H; subst.
   - eapply sel_unsat; eassumption.
@@ -331,7 +331,7 @@ Qed.
 
 Lemma selmc_unsat : forall ρ U args ch v,
     List.length args < List.length (gu_params U) -> ch <> nil ->
-    eval_selmc gc_deps gc_stack (dm_local ρ U args) ch v -> v = dm_member (dm_local ρ U args) ch.
+    dm_local ρ U args ·ₘ* ch gc_deps ⍮ gc_stack ↘ v -> v = dm_member (dm_local ρ U args) ch.
 Proof.
   intros * Hl Hch H; inversion H; subst; [ congruence |].
   match goal with Hs : eval_selm _ _ _ _ ?h1 |- _ => pose proof (selm_unsat _ _ _ _ _ Hl Hs); subst end.
@@ -357,7 +357,7 @@ Lemma apps_rel_gargs : forall ts ρ ρ' args args' A0 g g' j E a a',
     per_gargs ts ρ ρ' args args' ->
     ⟦ ctx_pi (rev ts) A0 ⟧ ρ ↘ a -> ⟦ ctx_pi (rev ts) A0 ⟧ ρ' ↘ a' -> per_univ_elem j E a a' -> E g g' ->
     exists v v' b b' R,
-      eval_apps gc_deps gc_stack g args v /\ eval_apps gc_deps gc_stack g' args' v' /\
+      $*| g & args | gc_deps ⍮ gc_stack ↘ v /\ $*| g' & args' | gc_deps ⍮ gc_stack ↘ v' /\
       ⟦ ctx_pi (rev (skipn (List.length args) ts)) A0 ⟧ env_args ρ args ↘ b /\
       ⟦ ctx_pi (rev (skipn (List.length args) ts)) A0 ⟧ env_args ρ' args' ↘ b' /\
       per_univ_elem j R b b' /\ R v v'.
@@ -385,8 +385,8 @@ Proof. intros * H; induction H; cbn; econstructor; eassumption. Qed.
 (** A saturated alias selects as its target. *)
 Lemma selc_alias : forall ρ Δ E args h ch v,
     List.length args = List.length Δ ->
-    eval_modexp gc_deps gc_stack E (env_args ρ args) h ->
-    eval_selc gc_deps gc_stack (dm_local ρ (gu_mk Δ (md_alias E)) args) ch v <-> eval_selc gc_deps gc_stack h ch v.
+    ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ h ->
+    dm_local ρ (gu_mk Δ (md_alias E)) args ·ₜ* ch gc_deps ⍮ gc_stack ↘ v <-> h ·ₜ* ch gc_deps ⍮ gc_stack ↘ v.
 Proof.
   intros * Hl HE; split; intros H.
   - inversion H; subst.
@@ -403,8 +403,8 @@ Qed.
 
 Lemma selmc_alias : forall ρ Δ E args h ch v,
     List.length args = List.length Δ -> ch <> nil ->
-    eval_modexp gc_deps gc_stack E (env_args ρ args) h ->
-    eval_selmc gc_deps gc_stack (dm_local ρ (gu_mk Δ (md_alias E)) args) ch v <-> eval_selmc gc_deps gc_stack h ch v.
+    ⟦ E ⟧ᵐ gc_deps ⍮ gc_stack ⍮ env_args ρ args ↘ h ->
+    dm_local ρ (gu_mk Δ (md_alias E)) args ·ₘ* ch gc_deps ⍮ gc_stack ↘ v <-> h ·ₘ* ch gc_deps ⍮ gc_stack ↘ v.
 Proof.
   intros * Hl Hch HE; split; intros H.
   - inversion H; subst; [ congruence |].
@@ -416,7 +416,7 @@ Proof.
 Qed.
 
 Lemma selc_member_ex : forall h ch0 ch, ch <> nil ->
-    eval_selc gc_deps gc_stack (dm_member h ch0) ch (d_member h (ch0 ++ ch)).
+    dm_member h ch0 ·ₜ* ch gc_deps ⍮ gc_stack ↘ d_member h (ch0 ++ ch).
 Proof.
   intros h ch0 ch; revert ch0; induction ch as [| y ch IH]; intros ch0 Hch; [ congruence |].
   destruct ch as [| z ch].
@@ -427,7 +427,7 @@ Proof.
 Qed.
 
 Lemma selmc_member_ex : forall h ch0 ch,
-    eval_selmc gc_deps gc_stack (dm_member h ch0) ch (dm_member h (ch0 ++ ch)).
+    dm_member h ch0 ·ₘ* ch gc_deps ⍮ gc_stack ↘ dm_member h (ch0 ++ ch).
 Proof.
   intros h ch0 ch; revert ch0; induction ch as [| y ch IH]; intros ch0.
   - rewrite app_nil_r; constructor.
@@ -438,7 +438,7 @@ Qed.
 
 Lemma selc_unsat_ex : forall ρ U args ch,
     List.length args < List.length (gu_params U) -> ch <> nil ->
-    eval_selc gc_deps gc_stack (dm_local ρ U args) ch (d_member (dm_local ρ U args) ch).
+    dm_local ρ U args ·ₜ* ch gc_deps ⍮ gc_stack ↘ d_member (dm_local ρ U args) ch.
 Proof.
   intros * Hl Hch; destruct ch as [| y ch]; [ congruence |].
   destruct ch as [| z ch].
@@ -449,7 +449,7 @@ Qed.
 
 Lemma selmc_unsat_ex : forall ρ U args ch,
     List.length args < List.length (gu_params U) -> ch <> nil ->
-    eval_selmc gc_deps gc_stack (dm_local ρ U args) ch (dm_member (dm_local ρ U args) ch).
+    dm_local ρ U args ·ₘ* ch gc_deps ⍮ gc_stack ↘ dm_member (dm_local ρ U args) ch.
 Proof.
   intros * Hl Hch; destruct ch as [| y ch]; [ congruence |].
   econstructor; [ apply eval_selm_unsat; exact Hl |].
@@ -461,11 +461,11 @@ Qed.
 Definition gchild_ok : Prop :=
   forall p T y T',
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_body T') ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T') ->
     exists Δ, T' = Δ ++ T.
 
 
-Lemma appm_ex : forall w a, nextparam w a -> forall c, exists w1, eval_appm gc_deps gc_stack w c w1.
+Lemma appm_ex : forall w a, nextparam w a -> forall c, exists w1, $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ w1.
 Proof.
   induction 1 as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha]; intros c.
   - assert (Hlt : List.length args < List.length (gu_params U))
@@ -501,7 +501,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -624,8 +624,8 @@ Proof.
       as (v & v' & b1 & b1' & R1 & Hv & Hv' & Hb1 & Hb1' & HR1 & Hvv).
     rewrite skipn_rev, rev_involutive in Hb1.
     functional_eval_rewrite_clear.
-    exists v, v'; split; [ constructor; econstructor; eassumption |].
-    split; [ constructor; econstructor; eassumption |].
+    exists v, v'; split; [ constructor; eapply eval_sel_global_apps; eassumption |].
+    split; [ constructor; eapply eval_sel_global_apps; eassumption |].
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HE' Ha) as E1.
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ (proj1 (per_univ_elem_sym _ _ _ _ Ha)) HR1) as E2.
     apply E1, E2, Hvv.
@@ -634,10 +634,10 @@ Proof.
     match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
     destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
-    assert (Hw2 : per_dmod (dm_global (path_app p (y :: nil)) args) (dm_global (path_app p (y :: nil)) args'))
+    assert (Hw2 : per_dmod (dm_global (qname_app p (y :: nil)) args) (dm_global (qname_app p (y :: nil)) args'))
       by (econstructor; [ exact Hm | rewrite rev_app_distr; apply per_gargs_app; exact Hg ]).
     pose proof (IH _ _ _ Hw2 HE') as Hr.
-    assert (Hna : forall U r, gc_module gc_deps gc_stack (path_app p (y :: nil)) <> Some (mr_alias U r))
+    assert (Hna : forall U r, gc_module gc_deps gc_stack (qname_app p (y :: nil)) <> Some (mr_alias U r))
       by (intros; rewrite Hm; discriminate).
     destruct k; cbn in Hr |- *; destruct Hr as (v & v' & Hv & Hv' & Hvv); exists v, v'.
     + repeat split; [ econstructor; [ apply eval_selm_global; exact Hna | exact Hv ]
@@ -681,14 +681,14 @@ Qed.
 
 Lemma mtyped_selmc : forall w chain k a, mtyped w chain k a ->
     forall pre ch, chain = pre ++ ch -> (k = mk_term -> ch <> nil) ->
-    forall w1, eval_selmc gc_deps gc_stack w pre w1 -> mtyped w1 ch k a.
+    forall w1, w ·ₘ* pre gc_deps ⍮ gc_stack ↘ w1 -> mtyped w1 ch k a.
 Proof.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
                  | p args y U ch0 ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
@@ -757,7 +757,7 @@ Qed.
 Definition galias_params_ok : Prop :=
   forall p T y U ch,
     gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    gc_module gc_deps gc_stack (path_app p (y :: nil)) = Some (mr_alias U ch) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
     exists Δ, gu_params U = Δ ++ T.
 
 (** ** Applying a Typed Module Value *)
@@ -767,7 +767,7 @@ Lemma mtyped_app : gchild_ok -> galias_params_ok ->
     forall a1 ρB B, a = Πᵈ a1 ρB B ->
     (exists a0, nextparam w a0) \/ (exists h ch0, w = dm_member h ch0) ->
     forall i' Ein c w1 b, per_univ_elem i' Ein a1 a1 -> Ein c c ->
-    eval_appm gc_deps gc_stack w c w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b.
+    $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ w1 -> ⟦ B ⟧ ρB ↦ c ↘ b -> mtyped w1 ch k b.
 Proof.
   intros HGc HGap.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
@@ -775,7 +775,7 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];

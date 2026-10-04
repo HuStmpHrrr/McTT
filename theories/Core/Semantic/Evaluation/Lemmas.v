@@ -22,15 +22,15 @@ Import Domain_Notations.
           forall r2,
             $| m & n | Θ ⍮ Ξ ↘ r2 ->
             r1 = r2) /\
-      (forall Ms ρ ms1, eval_exps Θ Ξ Ms ρ ms1 -> forall ms2, eval_exps Θ Ξ Ms ρ ms2 -> ms1 = ms2) /\
-      (forall m args r1, eval_apps Θ Ξ m args r1 -> forall r2, eval_apps Θ Ξ m args r2 -> r1 = r2) /\
+      (forall Ms ρ ms1, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms1 -> forall ms2, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms2 -> ms1 = ms2) /\
+      (forall m args r1, $*| m & args | Θ ⍮ Ξ ↘ r1 -> forall r2, $*| m & args | Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall H ρ h1, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 -> forall h2, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h2 -> h1 = h2) /\
-      (forall h n r1, eval_appm Θ Ξ h n r1 -> forall r2, eval_appm Θ Ξ h n r2 -> r1 = r2) /\
-      (forall h x r1, eval_sel Θ Ξ h x r1 -> forall r2, eval_sel Θ Ξ h x r2 -> r1 = r2) /\
-      (forall h y r1, eval_selm Θ Ξ h y r1 -> forall r2, eval_selm Θ Ξ h y r2 -> r1 = r2) /\
-      (forall h ch r1, eval_selc Θ Ξ h ch r1 -> forall r2, eval_selc Θ Ξ h ch r2 -> r1 = r2) /\
-      (forall h ch r1, eval_selmc Θ Ξ h ch r1 -> forall r2, eval_selmc Θ Ξ h ch r2 -> r1 = r2) /\
-      (forall ρ Φ ρ1, eval_benv Θ Ξ ρ Φ ρ1 -> forall ρ2, eval_benv Θ Ξ ρ Φ ρ2 -> ρ1 = ρ2).
+      (forall h n r1, $ᵐ| h & n | Θ ⍮ Ξ ↘ r1 -> forall r2, $ᵐ| h & n | Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall h x r1, h ·ₜ x Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ x Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall h y r1, h ·ₘ y Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ y Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall h ch r1, h ·ₜ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall h ch r1, h ·ₘ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
+      (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -92,8 +92,8 @@ Import Domain_Notations.
   Qed.
 
   Corollary functional_eval_benv : forall {Θ Ξ} ρ Φ ρ1 ρ2,
-      eval_benv Θ Ξ ρ Φ ρ1 ->
-      eval_benv Θ Ξ ρ Φ ρ2 ->
+      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
+      ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 ->
       ρ1 = ρ2.
   Proof.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.

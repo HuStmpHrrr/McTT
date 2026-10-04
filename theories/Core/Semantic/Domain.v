@@ -26,35 +26,55 @@ From Mctt.Core.Syntactic Require Export Syntax.
     parameters. *)
 
 Inductive domain : Set :=
+(** [ℕ] *)
 | d_nat : domain
+(** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
 | d_pi : domain -> list dentry -> exp -> domain
+(** A universe *)
 | d_univ : nat -> domain
+(** [zero] *)
 | d_zero : domain
+(** [succ] *)
 | d_succ : domain -> domain
+(** [⊤] *)
 | d_True : domain
+(** Its element *)
 | d_true : domain
+(** [⊥] *)
 | d_False : domain
+(** [d_fn ρ M]: a function, its body a closure in [ρ] *)
 | d_fn : list dentry -> exp -> domain
+(** [d_neut a m]: a neutral [m] at the type [a] *)
 | d_neut : domain -> domain_ne -> domain
+(** A term member of a module still lacking arguments (see above) *)
 | d_member : dmod -> list string -> domain
 with domain_ne : Set :=
 (** [x] is a de Bruijn level, not an index: it names a variable absolutely and
     does not change under binders. *)
 | d_var : forall (x : nat), domain_ne
+(** A neutral applied to a normal argument *)
 | d_app : domain_ne -> domain_nf -> domain_ne
+(** The [ℕ]-eliminator on a neutral, with its motive and successor case as
+    closures. *)
 | d_natrec : list dentry -> typ -> domain -> exp -> domain_ne -> domain_ne
 (** The [⊥]-eliminator on a neutral, with its motive as a closure. *)
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
-| d_glob : path -> domain_ne
+| d_glob : qname -> domain_ne
 with domain_nf : Set :=
+(** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf
 with dmod : Set :=
-| dm_global : path -> list domain -> dmod
+(** A global module and the arguments it has *)
+| dm_global : qname -> list domain -> dmod
+(** The closure of a unit and the arguments it has *)
 | dm_local : list dentry -> gunit -> list domain -> dmod
+(** A submodule of a module still lacking arguments *)
 | dm_member : dmod -> list string -> dmod
 with dentry : Set :=
+(** A term variable's value *)
 | de_term : domain -> dentry
+(** A module slot's value *)
 | de_mod : dmod -> dentry.
 
 Abbreviation env := (list dentry).
@@ -75,7 +95,7 @@ Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
     the defaults, which are the values of the defaults of [sentry_exp] and
     [sentry_modexp].  As a coercion, [env_var] lets an environment be applied
     as a function, [ρ x]. *)
-Definition dm_default : dmod := dm_global (p_abs nil nil) nil.
+Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
 
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with

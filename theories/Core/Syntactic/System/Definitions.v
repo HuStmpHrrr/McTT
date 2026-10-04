@@ -24,7 +24,7 @@
       two are interderivable given [Γ ⊢ A ≈ A' : Type@i] and context
       conversion, and [Γ ▹ A'] is what the soundness proof wants.
 
-    Every judgment reads the two global components [a_glob] resolves into: the
+    Every judgment reads the two global components a global resolves in: the
     dependency levels [Θ] and the definition stack [Ξ], as in
     [Θ ⍮ Ξ ⍮ Γ ⊢ M : A].  They are indices, not parameters: no rule about terms
     changes them, but a filed unit is checked against the levels below it and a
@@ -85,8 +85,7 @@ Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_
 
 (** Two bodies compared entry by entry: the same names and kinds in the same
     order, the same privacy, transparent definitions with a body, and the same
-    names [use]d by each import.  An [eval] has no counterpart, so a body with
-    one is rejected. *)
+    names [use]d by each import. *)
 Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
   | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
@@ -97,7 +96,6 @@ Definition entry_shape (E E' : gentry) : Prop :=
 Definition check_shape (c c' : bcheck) : Prop :=
   match c, c' with
   | bc_import _ ns, bc_import _ ns' => ns = ns'
-  | _, _ => False
   end.
 
 Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
@@ -108,10 +106,11 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   | _, _ => False
   end.
 
-(** A name an import [use]s is a public definition or a submodule. *)
+(** A name an import [use]s is a definition or a submodule; whether it may
+    be used there is a matter of privacy, checked by the command ([Command]). *)
 Definition member_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (n : String.string) : Prop :=
-  (exists A, member_type Θ Ξ Γ H (n :: nil) mk_term A) \/
-  (exists A, member_type Θ Ξ Γ H (n :: nil) mk_mod A).
+  (exists A, member_type Θ Ξ Γ H (n :: nil) (mr_term A)) \/
+  (exists T, member_type Θ Ξ Γ H (n :: nil) (mr_mod T)).
 
 (** ** The Mutually Defined Judgments
 
@@ -207,7 +206,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_mem :
   `( me_noargs H ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     member_type Θ Ξ Γ H (x :: nil) mk_term A ->
+     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      member_unfold Θ Ξ Γ H x = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -225,14 +224,17 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x : A )
-(** A global is used at the type resolution hands back, which is closed: it is
-    generalized over the parameters of every module enclosing the member, and
-    applying it to them is the user's business.  Nothing else is premised; that
-    it is a type is a presupposition. *)
-| wf_glob :
+(** A member of a chain from a unit, a global, is used at the type
+    resolution hands back, which is closed: it is generalized over the
+    parameters of every module enclosing the member, and applying it to them
+    is the user's business.  The chain need not be a module: it may end in an
+    open frame.  Nothing else is premised; that the type is a type is a
+    presupposition. *)
+| wf_mem_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p : A )
+     mod_qname H = Some mp ->
+     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A )
 | wf_exp_subtyp :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      (** This premise is needed for soundness.  It is asymmetric: only [A'] is
@@ -318,7 +320,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( me_noargs H ->
      me_noargs H' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H (x :: nil) mk_term A ->
+     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H' x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H' x : A )
@@ -326,10 +328,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ #x : A )
-| wf_exp_eq_glob :
+| wf_exp_eq_mem_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ a_glob p : A )
+     mod_qname H = Some mp ->
+     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_mem H x : A )
 (** *** Computation rules *)
 | wf_exp_eq_pi_beta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -364,7 +367,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_mem_delta :
   `( me_noargs H ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->
-     member_type Θ Ξ Γ H (x :: nil) mk_term A ->
+     member_type Θ Ξ Γ H (x :: nil) (mr_term A) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      member_unfold Θ Ξ Γ H x = Some M ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
@@ -383,12 +386,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x ≔ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ #x ≈ M : A )
-(** [δ]: a transparent definition unfolds.  An [abstract] one ([b = false]) and
+(** [δ]: a transparent global unfolds.  An [abstract] one ([b = false]) and
     an axiom ([B = None]) do not.  Both are stored closed. *)
-| wf_exp_eq_glob_unfold :
+| wf_exp_eq_mem_glob_unfold :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     gc_resolve Θ Ξ p = Some (ge_def true pv A (Some M)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_glob p ≈ M : A )
+     mod_qname H = Some mp ->
+     gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def true pv A (Some M)) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ M : A )
 (** *** Uniqueness rule *)
 | wf_exp_eq_fn_eta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
@@ -512,15 +516,17 @@ with wf_unit_eq : gdeps -> gstack -> ctx -> gunit -> gunit -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'' )
 where "Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U'" := (wf_unit_eq Θ Ξ Γ U U') : type_scope
 
-(** Module expressions.  A path must name a module, and an argument is checked
-    against the arity type, which must be a [Π]: a module is applied to at
-    most as many arguments as it has parameters.  Both arguments are typed,
-    as the parts of an extension are. *)
+(** Module expressions.  A chain from a unit must name a module, and an
+    argument is checked against the outermost parameter of the module's arity
+    ([tele_view]): a module is applied to at most as many arguments as it has
+    parameters.  Both arguments are typed, as the parts of an extension are,
+    and so is the parameter's type. *)
 with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
-| wf_me_path :
+| wf_me_glob :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     member_type Θ Ξ Γ (me_path p) nil mk_mod A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_path p ≈ me_path p )
+     mod_qname H = Some mp ->
+     member_type Θ Ξ Γ H nil (mr_mod T) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H )
 | wf_me_var :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Γ ∋ #x ⇒ₘ U ->
@@ -530,21 +536,19 @@ with wf_modexp_eq : gdeps -> gstack -> ctx -> modexp -> modexp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_lit U ≈ me_lit U' )
 | wf_me_mem :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H (y :: nil) mk_mod A ->
-     member_type Θ Ξ Γ H' (y :: nil) mk_mod A' ->
+     member_type Θ Ξ Γ H (y :: nil) (mr_mod T) ->
+     member_type Θ Ξ Γ H' (y :: nil) (mr_mod T') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_mem H y ≈ me_mem H' y )
 | wf_me_app :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
-     member_type Θ Ξ Γ H nil mk_mod A ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ Π B C : Type@i ->
+     member_type Θ Ξ Γ H nil (mr_mod T) ->
+     tele_view T = Some (B, T1) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i ->
-     Θ ⍮ Ξ ⍮ Γ ▹ B ⊢ C : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : B ->
-     member_type Θ Ξ Γ H' nil mk_mod A' ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ Π B' C' : Type@j ->
+     member_type Θ Ξ Γ H' nil (mr_mod T') ->
+     tele_view T' = Some (B', T1') ->
      Θ ⍮ Ξ ⍮ Γ ⊢ B' : Type@j ->
-     Θ ⍮ Ξ ⍮ Γ ▹ B' ⊢ C' : Type@j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N' : B' ->
      Θ ⍮ Ξ ⍮ Γ ⊢ᵐ me_app H N ≈ me_app H' N' )
 | wf_me_sym :
@@ -559,7 +563,7 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
 (** ** Well-formedness of the Global Context
 
     Part of the same mutual definition: an entry's type and body are checked by
-    the term judgments, and a use of [a_glob] appeals to [⊢g Θ ⍮ Ξ].
+    the term judgments, and a use of a global appeals to [⊢g Θ ⍮ Ξ].
 
     A level is checked against the levels below it, and a frame against the
     frames outside it, which is why both components are indices of the whole
@@ -584,7 +588,7 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
     closed, and nothing has to be done to it when it is read anywhere else.  [mp]
     is the entry's own module path, which a nested module's frame is named by. *)
 
-with wf_gentry : gdeps -> gstack -> path -> gentry -> Prop :=
+with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
 (** An axiom: only its type is checked, there being no body to carry it. *)
 | wf_gentry_axiom :
   `( Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i ->
@@ -610,7 +614,7 @@ where "Θ ⍮ Ξ ⍮ mp ⊢e E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], with own parameters [Δ], a telescope over the
     frames' parameters [gs_tele Ξ]. *)
-with wf_gmod : gdeps -> gstack -> path -> ctx -> gmod -> Prop :=
+with wf_gmod : gdeps -> gstack -> qname -> ctx -> gmod -> Prop :=
 | wf_gmod_nil :
   `( tele_ass Δ ->
      ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
@@ -619,12 +623,12 @@ with wf_gmod : gdeps -> gstack -> path -> ctx -> gmod -> Prop :=
     far is [gu_mk Δ Φ], pushed as the innermost frame under its own path. *)
 | wf_gmod_ext :
   `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
-     Θ ⍮ (mp, gu_body Δ Φ) :: Ξ ⍮ path_in mp x ⊢e E ->
+     Θ ⍮ (mp, gu_body Δ Φ) :: Ξ ⍮ qname_in mp x ⊢e E ->
      gm_fresh x Φ ->
      Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ⊳ x ↦ E )
 where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
 
-with wf_gunit : gdeps -> gstack -> path -> gunit -> Prop :=
+with wf_gunit : gdeps -> gstack -> qname -> gunit -> Prop :=
 | wf_gunit_intro :
   `( Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
      Θ ⍮ Ξ ⍮ mp ⊢u gu_body Δ Φ )
@@ -644,7 +648,7 @@ with wf_gdep : gdeps -> gdep -> Prop :=
      wf_gdep Θ nil )
 | wf_gdep_cons :
   `( wf_gdep Θ d ->
-     Θ ⍮ nil ⍮ p_abs fp nil ⊢u U ->
+     Θ ⍮ nil ⍮ q_abs fp nil ⊢u U ->
      gds_fresh fp Θ ->
      gd_fresh fp d ->
      wf_gdep Θ ((fp, U) :: d) )

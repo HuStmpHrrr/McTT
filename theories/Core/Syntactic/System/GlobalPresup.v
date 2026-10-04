@@ -214,9 +214,9 @@ Lemma Emb_pre : forall Θ1 Ξ1 Θ Ξ Θ2 Ξ2,
 Proof. intros * H [Hg He]; constructor; [ assumption | eapply gc_sub_trans; eassumption ]. Qed.
 
 (** Member types, δ-reducts and member checks grow with resolution. *)
-Lemma member_type_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H ch k A,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_type Θ1 Ξ1 Γ H ch k A -> member_type Θ2 Ξ2 Γ H ch k A.
-Proof. intros * Hs; exact (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _ _). Qed.
+Lemma member_type_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H ch R,
+    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_type Θ1 Ξ1 Γ H ch R -> member_type Θ2 Ξ2 Γ H ch R.
+Proof. intros * Hs; exact (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _). Qed.
 
 Lemma member_unfold_emb : forall Θ1 Ξ1 Θ2 Ξ2 Γ H x M,
     gc_sub Θ1 Ξ1 Θ2 Ξ2 -> member_unfold Θ1 Ξ1 Γ H x = Some M -> member_unfold Θ2 Ξ2 Γ H x = Some M.
@@ -285,69 +285,69 @@ Proof.
   - right; cbn in H; destruct (String.eqb_spec y x) as [Heq | ?]; [ contradiction | exact H ].
 Qed.
 
-Lemma path_strip_app : forall mp ip, path_strip mp (path_app mp ip) = Some ip.
+Lemma qname_strip_app : forall mp ip, qname_strip mp (qname_app mp ip) = Some ip.
 Proof.
-  intros; unfold path_strip, path_app; cbn; rewrite path_beq_refl; apply strip_prefix_app.
+  intros; unfold qname_strip, qname_app; cbn; rewrite path_beq_refl; apply strip_prefix_app.
 Qed.
 
-Lemma path_strip_app_inv : forall mp p ip, path_strip mp p = Some ip -> p = path_app mp ip.
+Lemma qname_strip_app_inv : forall mp p ip, qname_strip mp p = Some ip -> p = qname_app mp ip.
 Proof.
-  intros [fp ms] [fq ns] ip H; unfold path_strip, path_app in *; cbn in *.
+  intros [fp ms] [fq ns] ip H; unfold qname_strip, qname_app in *; cbn in *.
   destruct (path_beq fp fq) eqn:Hb; [| discriminate ].
   apply path_beq_true in Hb; subst.
   apply strip_prefix_spec in H; subst; reflexivity.
 Qed.
 
-Lemma path_app_in : forall mp x ip, path_app (path_in mp x) ip = path_app mp (x :: ip).
-Proof. intros; unfold path_app, path_in; cbn; rewrite <- List.app_assoc; reflexivity. Qed.
+Lemma qname_app_in : forall mp x ip, qname_app (qname_in mp x) ip = qname_app mp (x :: ip).
+Proof. intros; unfold qname_app, qname_in; cbn; rewrite <- List.app_assoc; reflexivity. Qed.
 
 (** Reading a frame: what is in it, or what is outside it. *)
 Lemma gc_resolve_frame : forall Θ mp U Ξ p E,
     gc_resolve Θ ((mp, U) :: Ξ) p = Some E ->
-    (exists ip, p = path_app mp ip /\ gm_resolve (gu_mod U) ip = Some E) \/
+    (exists ip, p = qname_app mp ip /\ gm_resolve (gu_mod U) ip = Some E) \/
     gc_resolve Θ Ξ p = Some E.
 Proof.
   intros * H; unfold gc_resolve in *; cbn in H.
-  destruct (path_strip mp p) as [ip |] eqn:Hs.
-  - left; exists ip; split; [ apply path_strip_app_inv; assumption | exact H ].
+  destruct (qname_strip mp p) as [ip |] eqn:Hs.
+  - left; exists ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
   - right; exact H.
 Qed.
 
 Lemma gc_resolve_frame_here : forall Θ mp U Ξ ip,
-    gc_resolve Θ ((mp, U) :: Ξ) (path_app mp ip) = gm_resolve (gu_mod U) ip.
-Proof. intros; unfold gc_resolve; cbn; rewrite path_strip_app; reflexivity. Qed.
+    gc_resolve Θ ((mp, U) :: Ξ) (qname_app mp ip) = gm_resolve (gu_mod U) ip.
+Proof. intros; unfold gc_resolve; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 Lemma gc_module_frame : forall Θ mp U Ξ p r,
     gc_module Θ ((mp, U) :: Ξ) p = Some r ->
-    (exists x ip, p = path_app mp (x :: ip) /\ gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
+    (exists x ip, p = qname_app mp (x :: ip) /\ gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
     gc_module Θ Ξ p = Some r.
 Proof.
   intros * H; unfold gc_module in *; cbn in H.
-  destruct (path_strip mp p) as [ip |] eqn:Hs.
+  destruct (qname_strip mp p) as [ip |] eqn:Hs.
   - left; destruct ip as [| x ip]; [ discriminate |].
-    exists x, ip; split; [ apply path_strip_app_inv; assumption | exact H ].
+    exists x, ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
   - right; exact H.
 Qed.
 
 Lemma gc_module_frame_here : forall Θ mp U Ξ x ip,
-    gc_module Θ ((mp, U) :: Ξ) (path_app mp (x :: ip)) = gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
-Proof. intros; unfold gc_module; cbn; rewrite path_strip_app; reflexivity. Qed.
+    gc_module Θ ((mp, U) :: Ξ) (qname_app mp (x :: ip)) = gm_submodule (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
+Proof. intros; unfold gc_module; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 Lemma gc_body_frame : forall Θ mp U Ξ p r,
     gc_body Θ ((mp, U) :: Ξ) p = Some r ->
-    (exists x ip, p = path_app mp (x :: ip) /\ gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
+    (exists x ip, p = qname_app mp (x :: ip) /\ gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip = Some r) \/
     gc_body Θ Ξ p = Some r.
 Proof.
   intros * H; unfold gc_body in *; cbn in H.
-  destruct (path_strip mp p) as [ip |] eqn:Hs.
+  destruct (qname_strip mp p) as [ip |] eqn:Hs.
   - left; destruct ip as [| x ip]; [ discriminate |].
-    exists x, ip; split; [ apply path_strip_app_inv; assumption | exact H ].
+    exists x, ip; split; [ apply qname_strip_app_inv; assumption | exact H ].
   - right; exact H.
 Qed.
 
 Lemma gc_body_frame_here : forall Θ mp U Ξ x ip,
-    gc_body Θ ((mp, U) :: Ξ) (path_app mp (x :: ip)) = gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
-Proof. intros; unfold gc_body; cbn; rewrite path_strip_app; reflexivity. Qed.
+    gc_body Θ ((mp, U) :: Ξ) (qname_app mp (x :: ip)) = gm_subbody (gu_params U ++ gs_tele Ξ) (gu_mod U) x ip.
+Proof. intros; unfold gc_body; cbn; rewrite qname_strip_app; reflexivity. Qed.
 
 (** The submodules an entry contributes, read below its own path, for an
     entry checked over the telescope [T]. *)
@@ -384,11 +384,11 @@ Qed.
     entries and submodules where the frame says. *)
 Lemma Emb_nested : forall Θ Ξ mp Δ' Φ' Θ2 Ξ2,
     Emb Θ Ξ Θ2 Ξ2 ->
-    (forall ip E, gm_resolve Φ' ip = Some E -> gc_resolve Θ2 Ξ2 (path_app mp ip) = Some E) ->
+    (forall ip E, gm_resolve Φ' ip = Some E -> gc_resolve Θ2 Ξ2 (qname_app mp ip) = Some E) ->
     (forall x ip r, gm_submodule (Δ' ++ gs_tele Ξ) Φ' x ip = Some r ->
-       gc_module Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+       gc_module Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r) ->
     (forall x ip r, gm_subbody (Δ' ++ gs_tele Ξ) Φ' x ip = Some r ->
-       gc_body Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+       gc_body Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r) ->
     Emb Θ ((mp, gu_body Δ' Φ') :: Ξ) Θ2 Ξ2.
 Proof.
   intros * [Hg Hs] Hin Hmod Hbod; constructor; [ assumption | split; [| split ] ].
@@ -434,7 +434,7 @@ Qed.
 
 (** Every frame of a well-formed stack belongs to a unit not filed. *)
 Lemma wf_gstack_frames : forall Θ Ξ, wf_gstack Θ Ξ ->
-    forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (p_unit mp) = None.
+    forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None.
 Proof.
   induction 1 as [| Θ Ξ mq V HΞ IH HV Hff]; intros mp U Hin; [ contradiction |].
   destruct Hin as [[= <- <-] | Hin]; [| eauto ].
@@ -463,25 +463,25 @@ Section Induction.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 
-  Definition GoodE (Θ : gdeps) (Ξ : gstack) (mp : path) (E : gentry) : Prop :=
+  Definition GoodE (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
     forall Θ2 Ξ2, Emb Θ Ξ Θ2 Ξ2 ->
-      (forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> gc_resolve Θ2 Ξ2 (path_app mp ip) = Some E0) ->
+      (forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> gc_resolve Θ2 Ξ2 (qname_app mp ip) = Some E0) ->
       (forall x (ip : list String.string) r, ge_submodule (gs_tele Ξ) E x ip = Some r ->
-         gc_module Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+         gc_module Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r) ->
       (forall x (ip : list String.string) r, ge_subbody (gs_tele Ξ) E x ip = Some r ->
-         gc_body Θ2 Ξ2 (path_app mp (x :: ip)) = Some r) ->
+         gc_body Θ2 Ξ2 (qname_app mp (x :: ip)) = Some r) ->
       forall (ip : list String.string) E0, ge_entries E ip = Some E0 -> V Θ2 Ξ2 E0.
 
-  Definition GoodM (Θ : gdeps) (Ξ : gstack) (mp : path) (Δ : ctx) (Φ : gmod) : Prop :=
+  Definition GoodM (Θ : gdeps) (Ξ : gstack) (mp : qname) (Δ : ctx) (Φ : gmod) : Prop :=
     forall Θ2 Ξ2, Emb Θ ((mp, gu_body Δ Φ) :: Ξ) Θ2 Ξ2 ->
       forall ip E0, gm_resolve Φ ip = Some E0 -> V Θ2 Ξ2 E0.
 
-  Definition GoodU (Θ : gdeps) (Ξ : gstack) (mp : path) (U : gunit) : Prop :=
+  Definition GoodU (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop :=
     forall Θ2 Ξ2, Emb Θ ((mp, U) :: Ξ) Θ2 Ξ2 ->
       forall ip E0, gm_resolve (gu_mod U) ip = Some E0 -> V Θ2 Ξ2 E0.
 
   Definition GoodD (Θ : gdeps) (d : gdep) : Prop :=
-    forall fp U, List.In (fp, U) d -> GoodU Θ nil (p_abs fp nil) U.
+    forall fp U, List.In (fp, U) d -> GoodU Θ nil (q_abs fp nil) U.
 
   Theorem global_induction_all :
     (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Good Θ Ξ) /\
@@ -518,11 +518,11 @@ Section Induction.
         by (eapply Emb_pre; [ apply gc_sub_grow; eassumption | exact He ]).
       destruct (gm_resolve_ext_inv _ _ _ _ _ Hr) as [(ip' & -> & HE) | HΦ]; [| eauto ].
       eapply IHE; [ exact He' | | | | exact HE ].
-      + intros ip0 E1 HE1; rewrite path_app_in; apply (gc_sub_resolve _ _ _ _ _ _ (em_res _ _ _ _ He)).
+      + intros ip0 E1 HE1; rewrite qname_app_in; apply (gc_sub_resolve _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_resolve_frame_here; cbn [gu_mod]; rewrite gm_resolve_ext_here; exact HE1.
-      + intros z ip0 r Hr0; rewrite path_app_in; apply (gc_sub_module _ _ _ _ _ _ (em_res _ _ _ _ He)).
+      + intros z ip0 r Hr0; rewrite qname_app_in; apply (gc_sub_module _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_module_frame_here; cbn [gu_mod gu_params]; apply gm_submodule_ext_here; exact Hr0.
-      + intros z ip0 r Hr0; rewrite path_app_in; apply (gc_sub_body _ _ _ _ _ _ (em_res _ _ _ _ He)).
+      + intros z ip0 r Hr0; rewrite qname_app_in; apply (gc_sub_body _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_body_frame_here; cbn [gu_mod gu_params]; apply gm_subbody_ext_here; exact Hr0.
     - (* the empty level *)
       intros ? ? [].
@@ -535,10 +535,10 @@ Section Induction.
       rename H0 into IHΘ, H2 into IHd.
       pose proof (wf_gdep_fresh _ _ H1) as Hfr.
       intros Θ2 Ξ2 He p E Hr; unfold gc_resolve in Hr; cbn [gs_find] in Hr.
-      destruct (gds_lookup (d :: Θ) (p_unit p)) as [U |] eqn:Hl; [| discriminate ].
+      destruct (gds_lookup (d :: Θ) (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
       unfold gds_lookup in Hl; cbn [List.concat] in Hl.
       apply gd_lookup_app_inv in Hl as [Hl | Hl].
-      + apply (IHd _ _ (gd_lookup_in _ _ _ Hl) Θ2 Ξ2) with (ip := p_mems p); [| exact Hr ].
+      + apply (IHd _ _ (gd_lookup_in _ _ _ Hl) Θ2 Ξ2) with (ip := q_chain p); [| exact Hr ].
         eapply Emb_pre; [ apply gc_sub_file; eassumption | exact He ].
       + apply (IHΘ Θ2 Ξ2) with (p := p).
         * eapply Emb_pre; [ apply gc_sub_level; eassumption | exact He ].
