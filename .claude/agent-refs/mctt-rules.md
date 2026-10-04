@@ -21,6 +21,11 @@ brief says so explicitly.
   fine.
 - **Stash.** The git stash is shared across worktrees: never use a bare
   `git stash` / `git stash pop`.
+- **Never spawn, resume or message other agents.** Only the main session
+  dispatches work. If your brief puts work in scope that another role
+  normally owns (e.g. front-end edits for a core agent), do it yourself,
+  following that role's rules in `.claude/agents/<role>.md`. If you think
+  the work needs another agent, stop and say so in your report.
 
 ## Rocq
 

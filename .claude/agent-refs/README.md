@@ -27,3 +27,7 @@ free pool, and its branch (`wip/<topic>`). Check with `git worktree list` and
 `git -C <pool> status` that the pool is free and clean.
 
 **Briefs and plans:** `.claude/plans/` (untracked).
+
+**Dispatch rule:** changes that touch the same core code go to one agent on
+one branch, in sequence. Run agents in parallel only for independent work:
+research, library programs, verification.
