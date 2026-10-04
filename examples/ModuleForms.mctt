@@ -22,7 +22,7 @@ import Num.Ops as O
 eval O.add 1 1
 
 (* A local module with a body: each entry sees the earlier ones, and an
-   import inside it binds aliases only *)
+   import inside it declares private definitions of the members it uses *)
 eval let module L (n : Nat) where
        module Inner where def m : Nat := succ n end end
        import Inner use (m)

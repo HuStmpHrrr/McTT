@@ -17,7 +17,8 @@ import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
 import Prelude::Arith::Sum.Linear use (sumToScale)
 (* Loaded for the import in the local body of [Table] below: an import in a
-   local body names a unit already loaded, and binds aliases only. *)
+   local body names a unit already loaded, and declares private definitions
+   of the members it uses. *)
 import Prelude::Arith::MinMax as MinMax
 
 module Polynomials where

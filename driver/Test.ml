@@ -1280,6 +1280,305 @@ let%expect_test "an import of a local module alias" =
   in
   [%expect {| Evaluate Q.y --> 7 : Nat |}]
 
+(** Imports declare definitions *)
+
+let%expect_test "use declares a private definition" =
+  let _ = main_of_multi_string "import Lib::Num use (double) module X where eval double 3 end" in
+  [%expect {| Evaluate double 3 --> 6 : Nat |}]
+
+let%expect_test "use as renames the definition" =
+  let _ = main_of_multi_string "import Lib::Num use (double as dbl) module X where eval dbl 3 end" in
+  [%expect {| Evaluate dbl 3 --> 6 : Nat |}]
+
+let%expect_test "export declares a public definition" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num export (double) end \
+       eval M.double 3 end"
+  in
+  [%expect {| Evaluate M.double 3 --> 6 : Nat |}]
+
+let%expect_test "export as renames the public definition" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num export (double as dbl) end \
+       eval M.dbl 3 end"
+  in
+  [%expect {| Evaluate M.dbl 3 --> 6 : Nat |}]
+
+let%expect_test "a used definition is private to its module" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num use (double) end \
+       eval M.double 3 end"
+  in
+  [%expect {| Error: X.M.double is private |}]
+
+let%expect_test "use of a submodule declares a private alias" =
+  let _ = main_of_multi_string "import Lib::Num use (Ops) module X where eval Ops.pred 3 end" in
+  [%expect {| Evaluate Ops.pred 3 --> 2 : Nat |}]
+
+let%expect_test "export of a submodule declares a public alias" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num export (Ops as P) end \
+       eval M.P.pred 3 end"
+  in
+  [%expect {| Evaluate M.P.pred 3 --> 2 : Nat |}]
+
+let%expect_test "import as declares a private alias" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num.Ops as O \
+       def z : Nat := O.pred 3 end end eval M.z end"
+  in
+  [%expect {| Evaluate M.z --> 2 : Nat |}]
+
+let%expect_test "an alias declared by import as is private" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where module M where import Lib::Num.Ops as O end \
+       eval M.O.pred 3 end"
+  in
+  [%expect {| Error: X.M.O is private |}]
+
+let%expect_test "an import with arguments and use" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Priv module X where module M where import Lib::Priv.F 4 use (g) \
+       def z : Nat := succ g end end eval M.z end"
+  in
+  [%expect {| Evaluate M.z --> 5 : Nat |}]
+
+let%expect_test "an import with arguments and export as" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Priv module X where module M where import Lib::Priv.F 4 export (g as h) end \
+       eval M.h end"
+  in
+  [%expect {| Evaluate M.h --> 4 : Nat |}]
+
+let%expect_test "a member used and exported under two names is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Priv module X where import Lib::Priv.F 4 use (g) export (g as h) end"
+  in
+  [%expect {| Error: g is used and exported |}]
+
+let%expect_test "an imported member may have a private type" =
+  let _ = main_of_multi_string "import Lib::Priv.Sub use (t) module X where eval t end" in
+  [%expect {| Evaluate t --> 7 : Nat |}]
+
+let%expect_test "a used name that is not a member is rejected" =
+  let _ = main_of_multi_string "import Lib::Num use (q) module X where end" in
+  [%expect {| Error: Lib::Num.q is not a member |}]
+
+let%expect_test "a member both used and exported is rejected" =
+  let _ = main_of_multi_string "import Lib::Num use (double) export (double) module X where end" in
+  [%expect {| Error: double is used and exported |}]
+
+let%expect_test "an import declaring a name twice is rejected" =
+  let _ = main_of_multi_string "import Lib::Num use (double; double) module X where end" in
+  [%expect {| Error: double is already declared |}]
+
+let%expect_test "a used name must be fresh in its frame" =
+  let _ =
+    main_of_multi_string "import Lib::Num use (double) module X where def double : Nat := 0 end end"
+  in
+  [%expect {| Error: double is already declared |}]
+
+let%expect_test "an import of a definition is rejected" =
+  let _ = main_of_multi_string "import Lib::Num.double use (x) module X where end" in
+  [%expect {| Error: ill-formed import |}]
+
+let%expect_test "a private member is not used through an import" =
+  let _ = main_of_multi_string "import Lib::Priv use (s) module X where end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a local use, use as and export" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (double as dbl) \
+       export (Ops) def t : Nat := dbl 2 end end in L.Ops.pred L.t end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   private def dbl : forall (x1 : Nat) -> Nat :=
+                     Lib::Num.double
+                   end
+                   module Ops := Lib::Num.Ops
+                   def t : Nat :=
+                     dbl 2
+                   end
+                 end
+             in M1.Ops.pred M1.t
+             end --> 3 : Nat
+    |}]
+
+let%expect_test "a local export as" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num export (double as dbl) \
+       end in L.dbl 2 end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   def dbl : forall (x1 : Nat) -> Nat :=
+                     Lib::Num.double
+                   end
+                 end
+             in M1.dbl 2
+             end --> 4 : Nat
+    |}]
+
+let%expect_test "a local submodule use" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (Ops) \
+       def t : Nat := Ops.pred 5 end end in L.t end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   private module Ops := Lib::Num.Ops
+                   def t : Nat :=
+                     Ops.pred 5
+                   end
+                 end
+             in M1.t
+             end --> 4 : Nat
+    |}]
+
+let%expect_test "a local import as" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num as W \
+       def t : Nat := W.double 1 end end in L.t end end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   private module W := Lib::Num
+                   def t : Nat :=
+                     W.double 1
+                   end
+                 end
+             in M1.t
+             end --> 2 : Nat
+    |}]
+
+let%expect_test "a local use is private" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (double) end \
+       in L.double 2 end end"
+  in
+  [%expect {| Error: double is private |}]
+
+let%expect_test "a local submodule use is private" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (Ops) end \
+       in L.Ops.pred 2 end end"
+  in
+  [%expect {| Error: Ops is private |}]
+
+let%expect_test "a local import as is private" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num as W end \
+       in L.W.double 2 end end"
+  in
+  [%expect {| Error: W is private |}]
+
+let%expect_test "a local use of a missing member is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (q) end in 0 end end"
+  in
+  [%expect {| Error: Lib::Num.q is not a member |}]
+
+let%expect_test "a local member both used and exported is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num use (double) \
+       export (double) end in 0 end end"
+  in
+  [%expect {| Error: double is used and exported |}]
+
+let%expect_test "a local import of a definition is rejected" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num.double use (x) end \
+       in 0 end end"
+  in
+  [%expect {| Error: ill-formed import |}]
+
+(** Privacy through local modules *)
+
+let%expect_test "a private local definition is used inside its body" =
+  let _ =
+    main_of_body
+      "eval let module L where private def s : Nat := 1 end def t : Nat := succ s end end in L.t end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   private def s : Nat :=
+                     1
+                   end
+                   def t : Nat :=
+                     succ s
+                   end
+                 end
+             in M1.t
+             end --> 2 : Nat
+    |}]
+
+let%expect_test "a private local definition is rejected outside its body" =
+  let _ =
+    main_of_body
+      "eval let module L where private def s : Nat := 1 end def t : Nat := succ s end end in L.s end"
+  in
+  [%expect {| Error: s is private |}]
+
+let%expect_test "a private member of a local submodule is used inside it" =
+  let _ =
+    main_of_body
+      "eval let module L where module N where private def u : Nat := 1 end def v : Nat := u end \
+       end end in L.N.v end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   module N where
+                     private def u : Nat :=
+                       1
+                     end
+                     def v : Nat :=
+                       u
+                     end
+                   end
+                 end
+             in M1.N.v
+             end --> 1 : Nat
+    |}]
+
+let%expect_test "a private member of a local submodule is rejected outside it" =
+  let _ =
+    main_of_body
+      "eval let module L where module N where private def u : Nat := 1 end end end in L.N.u end"
+  in
+  [%expect {| Error: N.u is private |}]
+
+let%expect_test "a private global member is rejected through a local alias" =
+  let _ = main_of_multi_string "import Lib::Priv module X where eval let module L := Lib::Priv in L.s end end" in
+  [%expect {| Error: Lib::Priv.s is private |}]
+
+let%expect_test "a public global member is used through a local alias" =
+  let _ = main_of_multi_string "import Lib::Priv module X where eval let module L := Lib::Priv in L.pub end end" in
+  [%expect {| Evaluate let module M1 := Lib::Priv in M1.pub end --> 8 : Nat |}]
+
+let%expect_test "a private member of a closed sibling is rejected" =
+  let _ = main_of_body "module A where private def s : Nat := 0 end end def t : Nat := A.s end" in
+  [%expect {| Error: Test.A.s is private |}]
+
 (** Module rejections *)
 
 let%expect_test "a private member is not selected from outside" =
