@@ -41,8 +41,11 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   ns)` and binds its aliases (`en_as`/`en_use`, no binder) for the entries
   after it, as a frame of its own (`ibinds E spec nil F`).  It loads no unit,
   so a unit it names must be nameable already (`loaded S fq`, i.e. `In
-  (en_unit fq) S`), else `the unit is not imported`.  Local bodies have no
-  `eval`s (`eval is not allowed in a local module`).
+  (en_unit fq) S`), else `the unit is not imported`.  Since the frame starts
+  empty, a `use` names each member once (`n is already declared`).  Local
+  bodies have no `eval`s (`eval is not allowed in a local module`) and
+  nothing `private` (`private is not allowed in a local module`), so every
+  flag in a local body is `false`.
 * `let x : A := M in B end` elaborates to `ℓ A ≔ M in B`, and `let x := M
   in B end` to `ℓ ≔ M in B`: the elaborator emits no type, the core infers it.
 * A module body is elaborated where it stands (`elab_cmd` recurses into it),

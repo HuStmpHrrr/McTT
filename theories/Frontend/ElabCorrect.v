@@ -216,14 +216,16 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   match cs with
   | nil => eok Φ
   | Cst.c_def m x oA oM :: cs' =>
+      let* _ := echeck (negb (Cst.md_private m)) "private is not allowed in a local module" in
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
+      elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) false A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
+      let* _ := echeck (negb pv) "private is not allowed in a local module" in
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (pents ps ++ S) md' in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod false (gu_mk (ptele tys) D))) cs'
   | Cst.c_import fq ip spec :: cs' =>
       let* _ := echeck (loaded_b S fq) "the unit is not imported" in
       let* E := elab_itarget S fq ip in
@@ -351,13 +353,18 @@ Proof.
     intros o [_ IHm] S D; cbn [elab_mdef]. iff_case.
   - (* c_mod *)
     intros pv x ps md Hps Hmd cs Hcs S Φ Φ'. apply Pterm_params in Hps.
-    pose proof (sunit_iff S ps md) as Hu. cbn [elab_body]; split; intros Hg.
+    pose proof (sunit_iff S ps md) as Hu. cbn [elab_body].
+    destruct pv; cbn [negb echeck ebind]; [ split; [ discriminate | intros Hg; inversion Hg ] |].
+    split; intros Hg.
     + dest_eok. econstructor; [ apply Hu; [ assumption | exact Hmd |] | apply Hcs; eassumption ].
       to_elab; reflexivity.
     + inversion Hg; subst. match goal with Hs : sunit _ _ _ _ |- _ => apply Hu in Hs; [| assumption | exact Hmd ] end.
       dest_eok. to_elab. reflexivity.
   - (* c_def *)
-    intros m x o1 o2 [IH1 _] [IH2 _] cs Hcs S Φ Φ'; cbn [elab_body]. split; intros Hg.
+    intros m x o1 o2 [IH1 _] [IH2 _] cs Hcs S Φ Φ'; cbn [elab_body].
+    destruct (Cst.md_private m) eqn:Hpv; cbn [negb echeck ebind];
+      [ split; [ discriminate | intros Hg; inversion Hg; congruence ] |].
+    split; intros Hg.
     + dest_eok. to_spec. econstructor; eassumption.
     + inversion Hg; subst. to_elab. reflexivity.
   - (* c_import *)

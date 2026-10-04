@@ -67,8 +67,9 @@ is still the reference for syntax and typing. Its semantics (§3–§4) is
 - **Local bodies** may contain:
   - definitions;
   - nested modules (Q1 = b);
-  - `private`;
   - imports, as check-only entries (A = b).
+
+  `private` was allowed until 2026-10; it is now an elaborator error (§10.3).
 
   `abstract` and `eval` are rejected in local bodies (B = a); since 2026-10
   `eval` is rejected by the elaborator (§10.3).
@@ -294,17 +295,22 @@ let module M (A : Type@0) where def x : Nat := zero end
   `private module A.B` makes only `B` private.  A chain *past* an alias is
   declared in the alias's target (`mdl_alias`, `r <> nil`); the alias itself
   is an entry like any other.
-- Not covered by the brief: a private member of a *local* module is no longer
-  rejected anywhere, since only unit-rooted references are checked and
-  typing is privacy-free.
+- Only unit-rooted references are checked, and typing is privacy-free, so a
+  private member of a *local* module would be rejected nowhere; `private` in
+  a local body is therefore an elaborator error (§10.3).
 
 ### 10.3 Local bodies
 - Imports stay allowed in local bodies (`bc_import`, `gm_check`, the import
   premises of `wf_unit_eq_body`); their `use` names are privacy-checked.
 - `bc_eval` is gone: `eval` in a local body is an elaborator error,
   `eval is not allowed in a local module`.
-- A local import of a unit must name an imported unit (`unit_reachable`):
+- A local import of a unit must name an imported unit (`loaded`):
   `Error: the unit is not imported`.
+- `private def` and `private module` in a local body are elaborator errors,
+  `private is not allowed in a local module`; the core is unchanged, and the
+  flags of local entries are `false`.
+- A local `use (n; n)` naming a member twice is an elaborator error,
+  `n is already declared`.
 
 ### 10.4 Module arities are telescopes
 - `member_type … ch R` with `R : mres := mr_term typ | mr_mod ctx`.  A module's

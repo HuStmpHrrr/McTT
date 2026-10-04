@@ -248,18 +248,20 @@ with sdef : list ent -> Cst.mdef -> moddef -> Prop :=
 
 (** [sbody S Φ cs Φ']: the commands [cs] of a local body extend [Φ] to [Φ'].
     Each entry is a core binder for the entries after it.  An import binds
-    its aliases for the entries after it, as a frame of its own, and is kept
-    as a check entry for the core; a local body has no [eval]s. *)
+    its aliases for the entries after it, as a frame of its own, so a [use]
+    names each member once, and is kept as a check entry for the core.  A
+    local body has no [eval]s and nothing [private]. *)
 with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | sb_nil : forall S Φ, sbody S Φ nil Φ
 | sb_def : forall S Φ m x oA oM A M cs Φ',
+    Cst.md_private m = false ->
     sel S oA A -> sel S oM M ->
-    sbody (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs Φ' ->
+    sbody (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) false A (Some M))) cs Φ' ->
     sbody S Φ (Cst.c_def m x oA oM :: cs) Φ'
-| sb_mod : forall S Φ pv x ps md U cs Φ',
+| sb_mod : forall S Φ x ps md U cs Φ',
     sunit S ps md U ->
-    sbody (en_var x :: S) (gm_ext Φ x (ge_mod pv U)) cs Φ' ->
-    sbody S Φ (Cst.c_mod pv x ps md :: cs) Φ'
+    sbody (en_var x :: S) (gm_ext Φ x (ge_mod false U)) cs Φ' ->
+    sbody S Φ (Cst.c_mod false x ps md :: cs) Φ'
 | sb_import : forall S Φ fq ip spec E F cs Φ',
     loaded S fq ->
     itarget S fq ip E ->

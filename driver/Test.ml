@@ -1428,6 +1428,53 @@ let%expect_test "a local body with an import" =
              end --> 6 : Nat
     |}]
 
+let%expect_test "a private definition in a local body" =
+  let _ = main_of_body "eval let module L where private def s : Nat := 0 end end in L.s end" in
+  [%expect {| Error: private is not allowed in a local module |}]
+
+let%expect_test "a private module in a local body" =
+  let _ =
+    main_of_body
+      "eval let module L where private module N where def y : Nat := 0 end end end in L.N.y end"
+  in
+  [%expect {| Error: private is not allowed in a local module |}]
+
+let%expect_test "a local import uses a name twice" =
+  let _ =
+    main_of_body
+      "eval let module L where module N where def y : Nat := 5 end end \
+       import N use (y; y) def z : Nat := y end end in L.z end"
+  in
+  [%expect {| Error: y is already declared |}]
+
+let%expect_test "a local body with public definitions and an import" =
+  let _ =
+    main_of_body
+      "eval let module L where module N where def y : Nat := 5 end def w : Nat := 1 end end \
+       import N use (y; w) def z : Nat := y end def v : Nat := w end end in L.v end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   module N where
+                     def y : Nat :=
+                       5
+                     end
+                     def w : Nat :=
+                       1
+                     end
+                   end
+                   import N use (y; w)
+                   def z : Nat :=
+                     N.y
+                   end
+                   def v : Nat :=
+                     N.w
+                   end
+                 end
+             in M1.v
+             end --> 1 : Nat
+    |}]
+
 let%expect_test "an import of a local module alias" =
   let _ =
     main_of_body

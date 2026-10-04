@@ -540,6 +540,32 @@ Example local_eval :
   = eerr "eval is not allowed in a local module".
 Proof. vm_compute; reflexivity. Qed.
 
+(** Nothing in a local body is [private]: neither a definition, *)
+Example local_private_def :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (c_def md_priv "s" nat Cst.zero :: nil))) Cst.zero) None :: nil))
+  = eerr "private is not allowed in a local module".
+Proof. elab_err. Qed.
+
+(** nor a module. *)
+Example local_private_mod :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (c_mod true "N" nil (md_where nil) :: nil))) Cst.zero)
+       None :: nil))
+  = eerr "private is not allowed in a local module".
+Proof. elab_err. Qed.
+
+(** A local import [use]s a name once. *)
+Example local_use_dup :
+  elaborate_core (unit_of
+    (c_eval
+       (letb (d_mod "L" nil
+                (md_where (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                           c_import nil ("N" :: nil) (i_use ("y" :: "y" :: nil)) :: nil)))
+          Cst.zero) None :: nil))
+  = eerr "y is already declared".
+Proof. elab_err. Qed.
+
 (** [module A.B] in a local body is [A], without parameters, holding [B]. *)
 Example local_path :
   elab_spec (unit_of

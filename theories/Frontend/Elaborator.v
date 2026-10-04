@@ -232,14 +232,16 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            match cs with
            | nil => eok Φ
            | Cst.c_def m x oA oM :: cs' =>
+               let* _ := echeck (negb (Cst.md_private m)) "private is not allowed in a local module" in
                let* A := elab S oA in
                let* M := elab S oM in
-               go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
+               go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) false A (Some M))) cs'
            | Cst.c_mod pv x ps md' :: cs' =>
+               let* _ := echeck (negb pv) "private is not allowed in a local module" in
                let* _ := check_params ps in
                let* tys := elab_params_with elab S ps in
                let* D := elab_mdef (pents ps ++ S) md' in
-               go (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+               go (en_var x :: S) (gm_ext Φ x (ge_mod false (gu_mk (ptele tys) D))) cs'
            | Cst.c_import fq ip spec :: cs' =>
                let* _ := echeck (loaded_b S fq) "the unit is not imported" in
                let* E := elab_itarget S fq ip in
