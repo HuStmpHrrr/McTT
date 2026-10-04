@@ -356,7 +356,7 @@ Section Impl.
     assert (HΔ' : ⊢ ΘR ⍮ Ξ ⍮ Δ ++ gs_tele Ξ)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HΔ).
     split; [ exact HΔ' |]; apply (linv_stack Hli); [| exact (stack_in_push _ _ _ _ (li_stack _ _ _ _ _ _ Hli) Hfr) ].
-    constructor; constructor; [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; [ exact Htel | exact HΔ' ] |].
+    apply wf_gstack_cons; [ apply (li_wf _ _ _ _ _ _ Hli) | constructor; [ exact Htel | exact HΔ' ] |].
     destruct Ξ as [| [mp U] Ξ]; [ contradiction |]; cbn; exists x; split; [ reflexivity | exact Hfr ].
   Qed.
 
@@ -369,8 +369,8 @@ Section Impl.
     assert (HP' : ⊢ ΘR ⍮ nil ⍮ P)
       by exact (equiv_ctx _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HP).
     split; [ exact HP' |]; apply (linv_stack Hli); [| intros ? ? [[= <- <-] | []]; left; reflexivity ].
-    constructor; constructor;
-      [ apply wf_gctx_stack, (li_wf _ _ _ _ _ _ Hli) | constructor; constructor; [ exact Htel | cbn; rewrite app_nil_r; exact HP' ] |].
+    apply wf_gstack_cons;
+      [ apply (li_wf _ _ _ _ _ _ Hli) | constructor; [ exact Htel | cbn; rewrite app_nil_r; exact HP' ] |].
     cbn; split; [ apply gds_fresh_iff | reflexivity ].
     exact (sub_none _ _ _ (li_sub _ _ _ _ _ _ Hli) (gi_chain _ _ _ (li_g _ _ _ _ _ _ Hli) _ (or_introl eq_refl))).
   Qed.

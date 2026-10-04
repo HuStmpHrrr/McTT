@@ -1,6 +1,6 @@
 (** * Presupposition
 
-    Presupposition is proved for all fourteen judgments at once.  A global is used
+    Presupposition is proved for all twelve judgments at once.  A global is used
     at its resolved type without premising that it is a type, and a definition's
     type is not checked separately from its body; that each is a type is what
     presupposition of the entry's own derivation gives, and that derivation is
@@ -415,9 +415,9 @@ Qed.
 Lemma wf_gs_tele : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢ Θ ⍮ Ξ ⍮ gs_tele Ξ.
 Proof.
   intros Θ [| [mp U] Ξ] Hg; [ constructor; exact Hg |].
-  pose proof (wf_gctx_stack _ _ Hg) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
+  destruct (wf_gstack_cons_inv _ _ _ _ Hg) as (Hs0 & HU & Hff).
   assert (HP : ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ)
-    by (inversion HU as [? ? ? ? ? HΦ]; subst; exact (wf_gmod_ctx _ _ _ _ _ HΦ)).
+    by exact (wf_gmod_ctx _ _ _ _ _ (wf_gunit_mod _ _ _ _ HU)).
   destruct (emb_preserves_wf Θ Ξ Θ ((mp, U) :: Ξ)) as (Hc & _).
   - constructor; [ exact Hg | apply gc_sub_push; exact Hff ].
   - exact (Hc _ HP).
@@ -426,7 +426,7 @@ Qed.
 Lemma wf_gdep_lookup : forall Θ d,
     wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gd_lookup d fp = Some U.
 Proof.
-  induction 1 as [| Θ d fp U Hd IH HU Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
+  induction 1 as [| Θ d fp Δ Φ Hd IH HU Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
   unfold gd_lookup, path_beq in *; cbn.
   destruct Hin as [[= <- <-] | Hin].
   - destruct (path_eq_dec fp fp); [ reflexivity | contradiction ].
@@ -438,7 +438,7 @@ Qed.
 Lemma wf_gstack_frames : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None.
 Proof.
-  induction 1 as [| Θ Ξ mq V HΞ IH HV Hff]; intros mp U Hin; [ contradiction |].
+  induction 1 as [| Θ Ξ mq Δ Φ HΞ IH HV Hff]; intros mp U Hin; [ contradiction |].
   destruct Hin as [[= <- <-] | Hin]; [| eauto ].
   destruct Ξ as [| [mr W] Ξ']; cbn in Hff.
   - apply gds_fresh_no_lookup; exact (proj1 Hff).
@@ -495,10 +495,8 @@ Section Induction.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good Θ Ξ) /\
     (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodE Θ Ξ mp E) /\
     (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodM Θ Ξ mp Δ Φ) /\
-    (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> GoodU Θ Ξ mp U) /\
     (forall Θ d, wf_gdep Θ d -> GoodD Θ d) /\
     (forall Θ, wf_gdeps Θ -> Good Θ nil) /\
-    (forall Θ Ξ, wf_gstack Θ Ξ -> Good Θ Ξ) /\
     (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> Good Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
@@ -556,7 +554,7 @@ Section Induction.
 
   Corollary global_induction : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GV Θ Ξ Θ Ξ.
   Proof.
-    intros * Hg; destruct global_induction_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H).
+    intros * Hg; destruct global_induction_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H).
     exact (H _ _ Hg _ _ (Emb_refl _ _ Hg)).
   Qed.
 End Induction.
@@ -625,10 +623,8 @@ Theorem presup_global :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good entry_typed Θ Ξ) /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodE entry_typed Θ Ξ mp E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodM entry_typed Θ Ξ mp Δ Φ) /\
-  (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> GoodU entry_typed Θ Ξ mp U) /\
   (forall Θ d, wf_gdep Θ d -> GoodD entry_typed Θ d) /\
   (forall Θ, wf_gdeps Θ -> Good entry_typed Θ nil) /\
-  (forall Θ Ξ, wf_gstack Θ Ξ -> Good entry_typed Θ Ξ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> Good entry_typed Θ Ξ).
 Proof. exact (global_induction_all entry_typed entry_typed_def entry_typed_ax). Qed.
 

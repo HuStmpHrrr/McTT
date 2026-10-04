@@ -2105,9 +2105,9 @@ Lemma wf_gctx_pop : forall Θ mp U Ξ,
     ⊢g Θ ⍮ (mp, U) :: Ξ ->
     ⊢g Θ ⍮ Ξ /\ ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ.
 Proof.
-  intros * Hg; inversion Hg as [? ? Hs]; inversion Hs; subst.
-  split; [ constructor; assumption |].
-  eapply wf_gmod_ctx, wf_gunit_mod; eassumption.
+  intros * Hg; inversion Hg; subst.
+  split; [ assumption |].
+  eapply wf_gmod_ctx; eassumption.
 Qed.
 
 Lemma ctx_wf_gctx : forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢g Θ ⍮ Ξ.

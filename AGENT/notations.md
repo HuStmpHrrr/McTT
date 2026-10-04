@@ -34,11 +34,10 @@ The syntactic judgments carry a global context, spelled with `⍮`:
 `⊢ Ψ ⍮ Δ ⊆ Γ` for context refinement.  `⍮` is a terminal of each of those
 notations, not an operator, so it has no level of its own.  The global context's
 own well-formedness uses a letter suffix in the same style as `⊢w`/`⊢s`:
-`⊢g Ψ` (a `gctx`), plus three that also carry the
+`⊢g Ψ` (the stack, notation of `wf_gstack`), plus three that also carry the
 ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢e E` (an
-entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit).  `wf_gdeps Ψ Θ` and
-`wf_gstack Ψ Ξ` have no notation — both are `Forall`s, only ever mentioned
-through `⊢g Ψ`.  `Γ ∋ #x : A` takes no `Ψ`.
+entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit; a definition over
+`⊢m`, not a judgment).  `wf_gdeps Θ` has no notation.  `Γ ∋ #x : A` takes no `Ψ`.
 
 Resolution has two notations, distinguished by a superscript because they have
 the same shape: `Φ ∋ ip ⇒ Δ ⍮ E` in a module, and `Ψ ∋ᵍ p ⇒ Δ ⍮ E` for a whole

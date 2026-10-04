@@ -256,10 +256,8 @@ Theorem unseal_preserves_wf :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵐ H ≈ H') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⊢e ge_unseal E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⍮ Δ ⊢m gm_unseal Φ) /\
-  (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⊢u gu_unseal U) /\
   (forall Θ d, wf_gdep Θ d -> wf_gdep (gds_unseal Θ) (gd_unseal d)) /\
   (forall Θ, wf_gdeps Θ -> wf_gdeps (gds_unseal Θ)) /\
-  (forall Θ Ξ, wf_gstack Θ Ξ -> wf_gstack (gds_unseal Θ) (gs_unseal Ξ)) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢g gds_unseal Θ ⍮ gs_unseal Ξ).
 Proof.
   apply wf_mut_ind_all; intros; cbn.

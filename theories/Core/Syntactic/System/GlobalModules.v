@@ -284,9 +284,8 @@ Qed.
 
 Lemma wf_gdep_coh : forall Θ d, wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gm_coh (gu_params U) (gu_mod U).
 Proof.
-  induction 1 as [| Θ d fp U Hd IH HU Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
+  induction 1 as [| Θ d fp Δ Φ Hd IH HΦ Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
   destruct Hin as [[= <- <-] | Hin]; [| eauto ].
-  inversion HU as [? ? ? Δ Φ HΦ]; subst.
   destruct (proj2 wf_gmod_coh _ _ _ _ _ HΦ) as [_ Hc]; cbn in Hc |- *; rewrite app_nil_r in Hc; exact Hc.
 Qed.
 
@@ -301,10 +300,9 @@ Qed.
 Lemma wf_gstack_coh : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall p U ip T, gs_find_tele Ξ p = Some (U, ip, T) -> gm_coh (gu_params U ++ T) (gu_mod U).
 Proof.
-  induction 1 as [| Θ Ξ mp V HΞ IH HV Hff]; intros * Hf; cbn in Hf; [ discriminate |].
+  induction 1 as [| Θ Ξ mp Δ Φ HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; [ discriminate |].
   destruct (qname_strip mp p); [| eauto ].
   injection Hf as <- <- <-.
-  inversion HV as [? ? ? Δ Φ HΦ]; subst.
   exact (proj2 (proj2 wf_gmod_coh _ _ _ _ _ HΦ)).
 Qed.
 
@@ -314,7 +312,7 @@ Proof. induction 1; assumption. Qed.
 Lemma gc_body_coh : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> gm_coh T Φ.
 Proof.
   intros * Hg * H.
-  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  pose proof Hg as Hs.
   unfold gc_body in H.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Ef; [ discriminate | |].
   - exact (proj1 (gm_coh_subbody _ _ _ _ _ _ (wf_gstack_coh _ _ Hs _ _ _ _ Ef) H)).
@@ -362,7 +360,7 @@ Lemma gs_find_tele_app : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall p U x ip T, gs_find_tele Ξ p = Some (U, x :: ip, T) -> List.In x (gm_names (gu_mod U)) ->
     forall ch, gs_find_tele Ξ (qname_app p ch) = Some (U, x :: ip ++ ch, T).
 Proof.
-  induction 1 as [| Θ Ξ mp V HΞ IH HV Hff]; intros * Hf Hin ch; cbn in Hf |- *; [ discriminate |].
+  induction 1 as [| Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin ch; cbn in Hf |- *; [ discriminate |].
   destruct (qname_strip mp p) as [r |] eqn:Hs.
   - injection Hf; intros; subst.
     apply qname_strip_app_inv in Hs; subst p.
@@ -409,7 +407,7 @@ Theorem closed_read : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p T Φ, gc_body Θ 
       (ch <> nil -> gc_resolve Θ Ξ (qname_app p ch) = gm_resolve Φ ch).
 Proof.
   intros * Hg * H ch.
-  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  pose proof Hg as Hs.
   pose proof H as H0; unfold gc_body in H0.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Ef; [ discriminate | |].
   - pose proof (gs_find_tele_app _ _ Hs _ _ _ _ _ Ef (gm_subbody_head _ _ _ _ _ H0) ch) as Ef'.
@@ -558,7 +556,7 @@ Lemma gs_find_tele_head : forall Θ Ξ, wf_gstack Θ Ξ ->
     exists Fp, p = qname_app Fp (x :: ip) /\
       forall ip', gs_find_tele Ξ (qname_app Fp (x :: ip')) = Some (U, x :: ip', T).
 Proof.
-  induction 1 as [| Θ Ξ mp V HΞ IH HV Hff]; intros * Hf Hin; cbn in Hf; [ discriminate |].
+  induction 1 as [| Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin; cbn in Hf; [ discriminate |].
   destruct (qname_strip mp p) as [r |] eqn:Hs.
   - injection Hf; intros; subst.
     exists mp; split; [ apply qname_strip_app_inv; exact Hs |].
@@ -583,7 +581,7 @@ Lemma gc_module_alias_app : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
       (ch <> nil -> gc_resolve Θ Ξ (qname_app p ch) = None).
 Proof.
   intros * Hg * H ch.
-  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  pose proof Hg as Hs.
   pose proof H as H0; unfold gc_module in H0.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; [ discriminate | |].
   - pose proof (gs_find_tele_app _ _ Hs _ _ _ _ _ Ef (gm_submodule_head _ _ _ _ _ H0) ch) as Ef'.
@@ -603,7 +601,7 @@ Lemma gc_module_alias_decomp : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
     exists qp y, p = qname_app qp (y :: r0) /\ gc_module Θ Ξ (qname_app qp (y :: nil)) = Some (mr_alias U nil).
 Proof.
   intros * Hg * H.
-  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  pose proof Hg as Hs.
   pose proof H as H0; unfold gc_module in H0.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; [ discriminate | |].
   - destruct (gs_find_tele_head _ _ Hs _ _ _ _ _ Ef (gm_submodule_head _ _ _ _ _ H0)) as (Fp & -> & HF).
@@ -702,7 +700,7 @@ Lemma gc_module_alias_resolve : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p U r0,
     gc_module Θ Ξ p = Some (mr_alias U r0) -> gc_resolve Θ Ξ p = None.
 Proof.
   intros * Hg * H.
-  pose proof (wf_gctx_stack _ _ Hg) as Hs.
+  pose proof Hg as Hs.
   unfold gc_module, gc_resolve in *; rewrite gs_find_tele_find.
   destruct (gs_find_tele Ξ p) as [[[Uf [| x ip]] Tf] |] eqn:Ef; cbn; [ discriminate | exact (gm_submodule_alias_resolve _ _ _ _ _ _ H) |].
   destruct (gds_lookup Θ (q_unit p)) as [V |]; [| reflexivity ].
@@ -798,10 +796,8 @@ Section ModInduction.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> GoodV Θ Ξ) /\
     (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodEV Θ Ξ mp E) /\
     (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodMV Θ Ξ mp Δ Φ) /\
-    (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> GoodUV Θ Ξ mp U) /\
     (forall Θ d, wf_gdep Θ d -> GoodDV Θ d) /\
     (forall Θ, wf_gdeps Θ -> GoodV Θ nil) /\
-    (forall Θ Ξ, wf_gstack Θ Ξ -> GoodV Θ Ξ) /\
     (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GoodV Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.

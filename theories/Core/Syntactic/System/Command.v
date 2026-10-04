@@ -429,25 +429,24 @@ Section GrowLevels.
     - econstructor; [ assumption | apply Hx; assumption | apply Hm; assumption ].
     - econstructor; [ assumption | apply Hc; assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
-      inversion Hg0 as [? ? Hs0]; inversion Hs0 as [| ? ? ? ? ? ? Hff]; subst.
+      inversion Hg0 as [| ? ? ? ? ? Hs0 HΦ0 Hff]; subst.
       assert (HΦ : Θ' ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ) by auto.
       econstructor; [ exact HΦ | | assumption ].
       match goal with IH : _ = _ -> ⊢g _ ⍮ (mp, gu_body Δ Φ) :: Ξ -> _ |- _ => apply IH end;
         [ reflexivity | | assumption ].
-      constructor; constructor; [ apply wf_gctx_stack; assumption | constructor; exact HΦ |].
-      eapply frame_fresh_grow; eassumption.
+      apply wf_gstack_cons; [ assumption | exact HΦ | eapply frame_fresh_grow; eassumption ].
   Qed.
 
   Lemma gstack_levels_grow : forall Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ' ->
       (forall mp U, In (mp, U) Ξ -> gds_lookup Θ' (q_unit mp) = None) -> ⊢g Θ' ⍮ Ξ.
   Proof.
-    induction Ξ as [| [mp U] Ξ IH]; intros HΞ HΘ' Hfr; [ constructor; constructor; exact HΘ' |].
-    pose proof (wf_gctx_stack _ _ HΞ) as HΞs; inversion HΞs as [| ? ? ? ? HΞ0 HU Hff]; subst.
-    assert (HΞ' : ⊢g Θ' ⍮ Ξ) by (apply IH; [ constructor; assumption | assumption | intros; eapply Hfr; right; eassumption ]).
+    induction Ξ as [| [mp U] Ξ IH]; intros HΞ HΘ' Hfr; [ constructor; exact HΘ' |].
+    destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (HΞ0 & HU & Hff).
+    assert (HΞ' : ⊢g Θ' ⍮ Ξ) by (apply IH; [ assumption | assumption | intros; eapply Hfr; right; eassumption ]).
     pose proof (Hfr mp U (or_introl eq_refl)) as Hn.
-    inversion HU; subst.
-    constructor; constructor; [ apply wf_gctx_stack; exact HΞ' | | eapply frame_fresh_grow; eassumption ].
-    constructor; eapply (proj2 global_levels_grow); eauto.
+    destruct HU as (Δ & Φ & -> & HΦ).
+    apply wf_gstack_cons; [ exact HΞ' | | eapply frame_fresh_grow; eassumption ].
+    eapply (proj2 global_levels_grow); eauto.
   Qed.
 End GrowLevels.
 
@@ -649,19 +648,20 @@ Lemma wf_gdep_iff : forall Θ d,
     (forall fp U, In (fp, U) d -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_fresh fp Θ).
 Proof.
   intros; split.
-  - induction 1 as [| Θ d U fp Hd IH HU Hfr Hfr']; [ split; [ assumption | split; [ constructor | contradiction ] ] |].
+  - induction 1 as [| Θ d fp Δ Φ Hd IH HΦ Hfr Hfr']; [ split; [ assumption | split; [ constructor | contradiction ] ] |].
     destruct IH as (HΘ & Hnd & Hu); split; [ assumption | split; [ constructor; assumption |] ].
-    intros fq V [[= <- <-] | Hin]; auto.
+    intros fq V [[= <- <-] | Hin]; auto using wf_gunit_intro.
   - induction d as [| [fp U] d IH]; intros (HΘ & Hnd & Hu); [ constructor; assumption |].
-    inversion Hnd; subst; constructor; [ apply IH; split; [ assumption | split; [ assumption | intros; apply Hu; right; assumption ] ]
-                                      | apply (Hu fp U); left; reflexivity | apply (Hu fp U); left; reflexivity | assumption ].
+    inversion Hnd; subst; apply wf_gdep_cons';
+      [ apply IH; split; [ assumption | split; [ assumption | intros; apply Hu; right; assumption ] ]
+      | apply (Hu fp U); left; reflexivity | apply (Hu fp U); left; reflexivity | assumption ].
 Qed.
 
 Lemma wf_file : forall fp U Θ,
     wf_gdeps Θ -> gds_lookup Θ fp = None -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> wf_gdeps (file fp U Θ).
 Proof.
   intros * HΘ Hn HU; constructor; [ assumption |].
-  constructor; [ constructor; assumption | assumption | apply gds_fresh_iff; assumption | ].
+  apply wf_gdep_cons'; [ constructor; assumption | assumption | apply gds_fresh_iff; assumption | ].
   unfold gd_fresh; cbn; tauto.
 Qed.
 
@@ -704,9 +704,9 @@ Lemma unit_levels_grow : forall Θ Θ' fp U,
     Θ ⊑ Θ' -> wf_gdeps Θ' -> gds_lookup Θ' fp = None ->
     Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> Θ' ⍮ nil ⍮ q_abs fp nil ⊢u U.
 Proof.
-  intros * Hsub HΘ' Hn HU; inversion HU; subst; constructor.
+  intros * Hsub HΘ' Hn (Δ & Φ & -> & HΦ); apply wf_gunit_intro.
   eapply (proj2 (global_levels_grow _ _ Hsub));
-    [ eassumption | reflexivity | constructor; constructor; exact HΘ' | exact Hn ].
+    [ eassumption | reflexivity | constructor; exact HΘ' | exact Hn ].
 Qed.
 
 Lemma gd_union_keys : forall d d',
@@ -945,32 +945,29 @@ Section WellFormed.
       intros ch Θ Ξ x b pv A M HM _ Hfr HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
-      pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
-      inversion HU; subst.
-      constructor; constructor; [ exact Hs0 | | exact Hff ].
-      constructor; cbn; econstructor; [ eassumption | unfold gs_def; constructor; exact HM | exact Hfr ].
+      inversion HΞ as [| ? ? ? ? ? Hs0 HΦ Hff]; subst.
+      apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+      cbn; econstructor; [ eassumption | unfold gs_def; constructor; exact HM | exact Hfr ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
       intros ch Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ _ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
       assert (Hpush : ⊢g Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)).
-      { constructor; constructor; [ apply wf_gctx_stack, HΞ | constructor; constructor; [ exact Htel | exact HΔ ] |].
+      { apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] |].
         cbn; exists x; split; [ reflexivity | exact Hfr ]. }
       destruct (IH Hpush Hc (stack_in_push _ x Δ _ Hst Hfr)) as (HΞ' & Hc' & Hsub).
       pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ Hr) as Hp; cbn in Hp; injection Hp as -> HP.
       split; [| split; assumption ].
-      pose proof (wf_gctx_stack _ _ HΞ') as Hs; inversion Hs as [| ? ? ? ? Hs1 HU Hff1]; subst.
-      inversion Hs1 as [| ? ? ? ? Hs0 HV Hff0]; subst.
-      inversion HU; inversion HV; subst.
-      constructor; constructor; [ exact Hs0 | | exact Hff0 ].
-      constructor; cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
+      inversion HΞ' as [| ? ? ? ? ? Hs1 HU Hff1]; subst.
+      inversion Hs1 as [| ? ? ? ? ? Hs0 HV Hff0]; subst.
+      apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
+      cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
       intros ch Θ Ξ x pv Δ E Htel HΔ HE _ Hfr HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
-      pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
-      inversion HU; subst.
-      constructor; constructor; [ exact Hs0 | | exact Hff ].
-      constructor; cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
+      inversion HΞ as [| ? ? ? ? ? Hs0 HΦ Hff]; subst.
+      apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+      cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
     - (* a load: the unit is filed on its own, then merged in; the frames are
@@ -981,12 +978,12 @@ Section WellFormed.
       assert (Hcf : canon (file fp U ΘU)) by (eapply canon_file; eassumption).
       assert (Hag : gds_agree Θ (file fp U ΘU)) by (apply canon_agree; assumption).
       assert (Hwf : wf_gdeps (gds_merge Θ (file fp U ΘU)))
-        by (apply merge_wf; [ eapply wf_gctx_deps; eassumption | apply wf_file; assumption | exact Hag ]).
+        by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_file; assumption | exact Hag ]).
       split; [ eapply gstack_levels_grow; [ apply merge_left, Hag | exact HΞ | exact Hwf |] |].
       + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
         destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
         apply merge_inv in E as [E | E].
-        * rewrite (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) in E; discriminate.
+        * rewrite (wf_gstack_frames _ _ HΞ _ _ Hin) in E; discriminate.
         * rewrite file_lookup in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
           -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
           -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
@@ -1002,18 +999,18 @@ Section WellFormed.
     - (* a unit: its imports from nothing, its parameters, then its body in
          the frame named by its path, which nothing it imported filed *)
       intros fp ch imps P cs Θ1 Θ2 mp U Hi IHi Htel HP _ Hb IHb.
-      destruct (IHi ltac:(constructor; constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
+      destruct (IHi ltac:(constructor; constructor) canon_nil ltac:(intros ? ? [])) as (H1 & Hc1 & _).
       assert (Hn1 : gds_lookup Θ1 fp = None)
         by exact (proj1 (proj2 run_chain_fresh) _ _ _ _ _ _ Hi fp (or_introl eq_refl) eq_refl).
       assert (Hpush : ⊢g Θ1 ⍮ gs_push (q_abs fp nil) P nil).
-      { constructor; constructor; [ apply wf_gctx_stack, H1 | constructor; constructor | ].
+      { apply wf_gstack_cons; [ exact H1 | constructor | ].
         - exact Htel.
         - cbn; rewrite app_nil_r; exact HP.
         - cbn; split; [ apply gds_fresh_iff; exact Hn1 | reflexivity ]. }
       destruct (IHb Hpush Hc1 ltac:(intros ? ? [[= <- <-] | []]; left; reflexivity)) as (H2 & Hc2 & _).
       pose proof (proj1 (proj2 run_params) _ _ _ _ _ _ Hb) as Hp; cbn in Hp; injection Hp as -> _.
-      pose proof (wf_gctx_stack _ _ H2) as Hs; inversion Hs; subst.
-      split; [ eapply wf_gctx_deps; eassumption | split; [ assumption | cbn; assumption ] ].
+      inversion H2; subst.
+      split; [ eapply wf_gstack_deps; eassumption | split; [ assumption | cbn; apply wf_gunit_intro; assumption ] ].
   Qed.
 
   (** What a load files is well formed, whatever the import checks. *)
@@ -1029,12 +1026,12 @@ Section WellFormed.
     assert (Hcf : canon (file fp U ΘU)) by (eapply canon_file; eassumption).
     assert (Hag : gds_agree Θ (file fp U ΘU)) by (apply canon_agree; assumption).
     assert (Hwf : wf_gdeps (gds_merge Θ (file fp U ΘU)))
-      by (apply merge_wf; [ eapply wf_gctx_deps; eassumption | apply wf_file; assumption | exact Hag ]).
+      by (apply merge_wf; [ eapply wf_gstack_deps; eassumption | apply wf_file; assumption | exact Hag ]).
     split; [ eapply gstack_levels_grow; [ apply merge_left, Hag | exact HΞ | exact Hwf |] |].
     + intros mq V Hin; pose proof (Hst _ _ Hin) as Hch.
       destruct (gds_lookup (gds_merge _ _) (q_unit mq)) eqn:E; [ exfalso | reflexivity ].
       apply merge_inv in E as [E | E].
-      * rewrite (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) in E; discriminate.
+      * rewrite (wf_gstack_frames _ _ HΞ _ _ Hin) in E; discriminate.
       * rewrite file_lookup in E; destruct (path_beq (q_unit mq) fp) eqn:Hb.
         -- apply path_beq_true in Hb; rewrite Hb in Hch; contradiction.
         -- rewrite (proj2 (proj2 run_chain_fresh) _ _ _ _ Hu _ (or_intror Hch)) in E; discriminate.
@@ -1047,7 +1044,7 @@ Section WellFormed.
       wf_gdeps Θ' /\ gds_lookup Θ' fp <> None.
   Proof.
     intros * HΞ Hc Hst Hr; destruct (proj1 run_wf _ _ _ _ _ _ Hr HΞ Hc Hst) as (H' & _ & _).
-    split; [ eapply wf_gctx_deps; eassumption |].
+    split; [ eapply wf_gstack_deps; eassumption |].
     inversion Hr; subst; [ congruence |].
     (* [fp] was loaded: it is on the top level of what it filed *)
     match goal with Hu : run_unit (?f :: _) _ ?ΘU ?U |- _ =>
@@ -1261,7 +1258,7 @@ Qed.
 Lemma equiv_gctx : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> wf_gdeps Θ' -> ⊢g Θ ⍮ Ξ -> ⊢g Θ' ⍮ Ξ.
 Proof.
   intros * (H & H' & _) HΘ' HΞ; apply (gstack_levels_grow _ _ H _ HΞ HΘ').
-  intros mp U Hin; pose proof (wf_gstack_frames _ _ (wf_gctx_stack _ _ HΞ) _ _ Hin) as Hn.
+  intros mp U Hin; pose proof (wf_gstack_frames _ _ HΞ _ _ Hin) as Hn.
   destruct (gds_lookup Θ' (q_unit mp)) eqn:E; [ rewrite (H' _ _ E) in Hn; discriminate | reflexivity ].
 Qed.
 

@@ -674,13 +674,8 @@ Proof.
   induction 1; assumption.
 Qed.
 
-Lemma wf_gctx_deps : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ.
-Proof.
-  eauto using wf_gctx_stack, wf_gstack_deps.
-Qed.
-
 #[export]
-Hint Resolve wf_gdep_deps wf_gstack_deps wf_gctx_deps : mctt.
+Hint Resolve wf_gdep_deps wf_gstack_deps : mctt.
 
 Lemma wf_gentry_gctx : forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> ⊢g Θ ⍮ Ξ.
 Proof.
@@ -709,11 +704,9 @@ Theorem presup_ambient :
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
   (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
   (forall Θ d, wf_gdep Θ d -> wf_gdeps Θ) /\
-  (forall Θ Ξ, wf_gstack Θ Ξ -> wf_gdeps Θ) /\
-  (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ /\ wf_gstack Θ Ξ).
+  (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ).
 Proof.
   refine (conj ctx_wf_gctx (conj _ (conj _ (conj _ (conj wf_gentry_gctx (conj wf_gmod_ctx
-    (conj wf_gunit_ctx (conj wf_gdep_deps (conj wf_gstack_deps _)))))))));
+    (conj wf_gunit_ctx (conj wf_gdep_deps wf_gstack_deps))))))));
     intros * H; eauto using presup_exp_ctx, presup_exp_eq_ctx, presup_subtyp_ctx.
-  exact (conj (wf_gctx_deps _ _ H) (wf_gctx_stack _ _ H)).
 Qed.

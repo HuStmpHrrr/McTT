@@ -683,11 +683,9 @@ Theorem wf_scoped :
       ctx_ok Θ Ξ Γ /\ modexp_scoped (length Γ) H /\ modexp_scoped (length Γ) H') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> entry_ok (gs_tele Ξ) E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> unit_closed (Δ ++ gs_tele Ξ) Φ) /\
-  (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> unit_closed (gu_params U ++ gs_tele Ξ) (gu_mod U)) /\
   (forall Θ d, wf_gdep Θ d -> units_closed Θ /\
       forall fp U, List.In (fp, U) d -> unit_closed (gu_params U) (gu_mod U)) /\
   (forall Θ, wf_gdeps Θ -> units_closed Θ) /\
-  (forall Θ Ξ, wf_gstack Θ Ξ -> gctx_closed Θ Ξ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> gctx_closed Θ Ξ).
 Proof.
   apply wf_mut_ind_all; intros;

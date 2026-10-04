@@ -261,7 +261,8 @@ unchanged.
       so what it hands back is closed in a well-formed context
       (`wf_gc_lookup_closed`, `System/Scoping.v`); weakening and substitution
       leave it alone (`push_closed`).
-    * `⊢g Θ ⍮ Ξ` has the single premise `wf_gstack Θ Ξ`. Units are checked at
+    * `⊢g Θ ⍮ Ξ` is the notation of `wf_gstack Θ Ξ`; `⊢u` is a definition
+      (`exists Δ Φ, U = gu_body Δ Φ /\ ⊢m …`), not a judgment. Units are checked at
       `⋅` with their parameters as the whole telescope; members are checked in
       the frame the module pushes, local context `⋅`. A frame's parameters
       are `$[n, k]` (`a_param`, rule `wf_param`), not local variables.

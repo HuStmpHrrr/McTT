@@ -19,14 +19,6 @@ Import Syntax_Notations GlobalCtx_Notations.
     therefore a parameter of everything below, and only [Ξ] and the local
     context are traversed. *)
 
-(** [wf_gctx] is the only judgment of its block whose constructor is not a
-    global hint, since nothing in the metatheory builds a [⊢g] forwards.  The
-    decision procedures below do, so it is a local hint here. *)
-#[local]
-Hint Constructors wf_gctx : mctt.
-#[local]
-Hint Resolve wf_gctx_stack : mctt.
-
 (** ** The Bridge to the Algorithmic Judgments
 
     The algorithmic judgments take their global context as an instance [GC]
