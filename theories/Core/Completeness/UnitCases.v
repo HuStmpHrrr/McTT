@@ -107,7 +107,7 @@ Proof.
   - assert (HRR : R <~> RΘ) by (eapply per_ctx_env_right_irrel; eassumption).
     split; [ constructor |]; exists ρ, ρ'; repeat split; try constructor; apply HRR, Hρ.
   - destruct Hs as (Hs & <- & HE).
-    destruct E as [b pv A [M |] | Uy], E' as [b' pv' A' [M' |] | Uy']; cbn in HE; try contradiction.
+    destruct E as [b pv A [M |] | pm Uy], E' as [b' pv' A' [M' |] | pm' Uy']; cbn in HE; try contradiction.
     + (* a definition *)
       cbn [body_ctx app] in HR.
       inversion HR; subst.
@@ -577,7 +577,7 @@ Proof.
   - destruct Hs as (Hs & _ & HE).
     assert (Hq : sb_eq (sb_qn (gm_binders Φ) (sb_qn (List.length Ψ) σ)) (sb_qn (List.length (body_ctx Φ ++ Ψ)) σ))
       by (rewrite sb_qn_add, length_app, length_body_ctx; reflexivity).
-    destruct E as [b pv A [M |] | Uy]; cbn in HE; try contradiction; cbn [gmod_sub gentry_sub body_ctx app] in *.
+    destruct E as [b pv A [M |] | pm Uy]; cbn in HE; try contradiction; cbn [gmod_sub gentry_sub body_ctx app] in *.
     + inversion HΦ; subst.
       match goal with H : ⊨ body_ctx Φ ++ Ψ ++ Γ |- _ => rename H into HΦ0 end.
       destruct (IH _ _ _ Hs HΦ0 Hinv) as (Hb & ρl1 & ρr1 & Hb1 & Hb1' & Hi1).

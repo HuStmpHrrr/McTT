@@ -106,7 +106,8 @@ with mdef : Set :=
     definition; a unit's own name is declared by [prog] below, not here.  A
     dotted declaration [module A.B] is parsed as nested ones ([c_mod_dotted]). *)
 with cmd : Set :=
-| c_mod : string -> list (string * obj) -> mdef -> cmd
+(** [private module x (ps) md], private when the flag is set *)
+| c_mod : bool -> string -> list (string * obj) -> mdef -> cmd
 (** [private abstract def x : A := M end], with its modifiers *)
 | c_def : mods -> string -> obj -> obj -> cmd
 (** [c_import fp ip] imports the module at internal path [ip] of the unit at
@@ -144,7 +145,7 @@ Section cst_mut_ind.
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
     (case_md_alias : forall o, Po o -> Pm (md_alias o))
-    (case_c_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod x ps md))
+    (case_c_mod : forall pv x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod pv x ps md))
     (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
     (case_c_import : forall fp ip spec, Pc (c_import fp ip spec))
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA)).
@@ -193,8 +194,8 @@ Section cst_mut_ind.
     end
   with cmd_mut (c : cmd) : Pc c :=
     match c with
-    | c_mod x ps md =>
-        case_c_mod x ps md
+    | c_mod pv x ps md =>
+        case_c_mod pv x ps md
           ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
               match ps with
               | nil => List.Forall_nil _
@@ -217,9 +218,10 @@ End cst_mut_ind.
 
 (** [module A₁.….Aₙ.B (ps) md] is [module A₁ where … module Aₙ where module
     B (ps) md end … end]: each [Aᵢ] has no parameters and the one member
-    [Aᵢ₊₁].  The grammar gives the path reversed, [B] first. *)
-Definition c_mod_dotted (x : string) (rev_pre : list string) (ps : list (string * obj)) (md : mdef) : cmd :=
-  List.fold_left (fun c y => c_mod y nil (md_where (c :: nil))) rev_pre (c_mod x ps md).
+    [Aᵢ₊₁].  The grammar gives the path reversed, [B] first.  Only [B], the
+    module declared, carries the privacy [pv]; the [Aᵢ] are public. *)
+Definition c_mod_dotted (pv : bool) (x : string) (rev_pre : list string) (ps : list (string * obj)) (md : mdef) : cmd :=
+  List.fold_left (fun c y => c_mod false y nil (md_where (c :: nil))) rev_pre (c_mod pv x ps md).
 
 (** A compilation unit: its imports, and the one module declaration everything
     else it contains lives in.  That declaration names the unit, so its path is a
@@ -368,8 +370,8 @@ with gentry : Set :=
     whether it is private, and [B] is [None] for an axiom.  A filed definition
     is closed; a definition of a local body is read in the body's context. *)
 | ge_def : bool -> bool -> exp -> option exp -> gentry
-(** A submodule *)
-| ge_mod : gunit -> gentry
+(** [ge_mod pv U]: a submodule, private when [pv] *)
+| ge_mod : bool -> gunit -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -433,7 +435,7 @@ Definition ce_typ (e : centry) : typ :=
 
     A body unit and a body entry, the forms every global module has. *)
 Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
-Abbreviation ge_body Δ Φ := (ge_mod (gu_body Δ Φ)).
+Abbreviation ge_body pv Δ Φ := (ge_mod pv (gu_body Δ Φ)).
 
 Definition gu_params (U : gunit) : ctx := match U with gu_mk Δ _ => Δ end.
 
@@ -461,7 +463,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_nil => nil
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_mod U) => cons (ce_mod U) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
   | gm_check Φ' _ => body_ctx Φ'
   end.
 
@@ -539,7 +541,7 @@ Section syn_mut_ind.
     (case_gm_check : forall Φ c, Pg Φ -> Pk c -> Pg (gm_check Φ c))
     (case_bc_import : forall E ns, Pm E -> Pk (bc_import E ns))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
-    (case_ge_mod : forall U, Pu U -> Pn (ge_mod U))
+    (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -611,7 +613,7 @@ Section syn_mut_ind.
            | None => fun M e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
                                 | eq_refl => I end)
            end)
-    | ge_mod U => case_ge_mod U (gunit_mut U)
+    | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -856,7 +858,7 @@ with bcheck_wk (c : bcheck) (φ : wk) : bcheck :=
 with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
-  | ge_mod U => ge_mod (gunit_wk U φ)
+  | ge_mod pv U => ge_mod pv (gunit_wk U φ)
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1025,7 +1027,7 @@ with bcheck_sub (c : bcheck) (σ : sub) : bcheck :=
 with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
-  | ge_mod U => ge_mod (gunit_sub U σ)
+  | ge_mod pv U => ge_mod pv (gunit_sub U σ)
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with

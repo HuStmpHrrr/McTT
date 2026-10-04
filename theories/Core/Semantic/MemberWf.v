@@ -318,8 +318,8 @@ Proof.
     unfold qname_app in *; cbn in *; rewrite <- app_assoc in Hq; exact Hq.
 Qed.
 
-Lemma umt_mod_mod : forall Θ Ξ Γ Δ Φ Φ' y Uy ch T,
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+Lemma umt_mod_mod : forall Θ Ξ Γ Δ Φ Φ' y pm Uy ch T,
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     unit_member_type Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch (mr_mod T) ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (y :: ch) (mr_mod (T ++ body_ctx Φ' ++ Δ)).
 Proof.
@@ -392,7 +392,7 @@ Proof.
     destruct ch1 as [| z ch1]; [ eexists; constructor |].
     injection Hc as -> ->.
     destruct (unit_parts_of_wf _ _ _ _ HU) as (HC & _ & _).
-    destruct (IH ch1 ch2 eq_refl Hne2 (body_prefix_mod_wf _ _ _ _ _ _ _ _ HC Hp)) as [T' HT'].
+    destruct (IH ch1 ch2 eq_refl Hne2 (body_prefix_mod_wf _ _ _ _ _ _ _ _ _ HC Hp)) as [T' HT'].
     eexists; eapply umt_mod_mod; [ exact Hp | exact HT' ].
   - intros * Hm IH ch1 ch2 -> Hne2 HU.
     destruct (unit_parts_of_wf _ _ _ _ HU) as (_ & _ & HE).
@@ -680,9 +680,9 @@ Proof.
     rewrite exp_sub_shift_extend, exp_sub_id in Hl.
     rewrite <- app_assoc; exact Hl.
   - (* a member of a submodule of a body *)
-    intros Γ Δ Φ Φ' y Uy ch R Hk Hp Hu IH HU Hch; rewrite mres_ty_gen, mres_kind_gen in *.
+    intros Γ Δ Φ Φ' y pm Uy ch R Hk Hp Hu IH HU Hch; rewrite mres_ty_gen, mres_kind_gen in *.
     destruct (unit_parts_of_wf _ _ _ _ HU) as (HC & _ & _).
-    pose proof (body_prefix_mod_wf _ _ _ _ _ _ _ _ HC Hp) as HUy.
+    pose proof (body_prefix_mod_wf _ _ _ _ _ _ _ _ _ HC Hp) as HUy.
     destruct (IH HUy Hk) as ([i HA] & HMu).
     pose proof (body_prefix_wf _ _ _ _ _ _ _ HC Hp) as Hx; cbn in Hx.
     pose proof (proj1 (ctx_decomp_mod Hx)) as HC'.
@@ -690,7 +690,7 @@ Proof.
     intros e; destruct (HMu e) as (M1 & HM1e & HM1t).
     pose proof (Hk e) as Hne.
     destruct R as [A | T]; [| discriminate e ]; cbn [mres_ty] in *.
-    eexists; split; [ exact (member_expansion_mod _ _ _ _ _ _ Hne Hp) |].
+    eexists; split; [ exact (member_expansion_mod _ _ _ _ _ _ _ Hne Hp) |].
     cbn [body_ctx app ctx_fn].
     eapply ctx_fn_wf; [ rewrite <- app_assoc; exact HC' | rewrite <- app_assoc; exact HA |].
     rewrite <- app_assoc.

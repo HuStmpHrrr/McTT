@@ -85,8 +85,9 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | U] [b' pv' A' [M' |] | U']; cbn; try (right; intros []; fail); try (left; exact I).
-    destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
+    intros [b pv A [M |] | pm U] [b' pv' A' [M' |] | pm' U']; cbn; try (right; intros []; fail); try (left; exact I).
+    - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
+    - exact (Bool.bool_dec pm pm').
   Defined.
 
   Definition check_shape_dec : forall c c', { check_shape c c' } + { ~ check_shape c c' }.
@@ -232,7 +233,7 @@ Section type_check.
       exists mq b pv B, mod_qname H = Some mq /\ gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B).
   Proof.
     intros * Hs Hg; destruct R; cbn in Hg; try discriminate.
-    destruct (gc_resolve _ _ _) as [[b pv A0 B | U] |] eqn:Er; try discriminate; injection Hg as ->.
+    destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U] |] eqn:Er; try discriminate; injection Hg as ->.
     exists (q_abs l pre), b, pv, B; split; [ exact (spine_unit_path _ _ _ Hs) | exact Er ].
   Qed.
 
@@ -347,7 +348,7 @@ Section type_check.
     (forall c, match c with bc_import E _ => modexp_order E end) /\
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
-           | ge_mod U => unit_order U
+           | ge_mod _ U => unit_order U
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -364,7 +365,7 @@ Section type_check.
       (fun c => match c with bc_import E _ => modexp_order E end)
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
-             | ge_mod U => unit_order U
+             | ge_mod _ U => unit_order U
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
     - (* a local binding *)
@@ -386,7 +387,7 @@ Section type_check.
       split; [ assumption | apply Forall_app; split; [ assumption | constructor; [ constructor; assumption | constructor ] ] ].
     - split; [ constructor; assumption | intros * [= <- <- <-]; split; [ constructor; assumption | constructor ] ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall, ext_order_app.
-    - destruct E as [b pv A [M |] | U]; destruct_conjs; (split; [| assumption ]); constructor; cbn; eauto with mctt.
+    - destruct E as [b pv A [M |] | pm U]; destruct_conjs; (split; [| assumption ]); constructor; cbn; eauto with mctt.
     - split; [ assumption | destruct c; constructor; assumption ].
   Qed.
 

@@ -616,9 +616,9 @@ Lemma gm_prefix_upto_ext_wk : forall Φ x Φ' E φ,
     gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (gentry_wk E (wk_qn (gm_binders Φ') φ))).
 Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
 
-Lemma gm_prefix_upto_mod_wk : forall Φ x Φ' U φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod U)) ->
-    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (ge_mod (gunit_wk U (wk_qn (gm_binders Φ') φ)))).
+Lemma gm_prefix_upto_mod_wk : forall Φ x Φ' pm U φ,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
+    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (ge_mod pm (gunit_wk U (wk_qn (gm_binders Φ') φ)))).
 Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
 
 Lemma gm_prefix_upto_def_wk : forall Φ x Φ' b pv A B φ,
@@ -747,9 +747,9 @@ Lemma sub_mod_compat_ext : forall Ψ σ Γ Δ,
     sub_mod_compat σ Γ Δ -> sub_mod_compat (sb_qn (length Ψ) σ) (tele_sub Ψ σ ++ Γ) (Ψ ++ Δ).
 Proof. induction Ψ; intros; cbn; auto using sub_mod_compat_q. Qed.
 
-Lemma gm_prefix_upto_mod_sub : forall Φ x Φ' U σ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod U)) ->
-    gm_prefix_upto (gmod_sub Φ σ) x = Some (gm_ext (gmod_sub Φ' σ) x (ge_mod U[sb_qn (gm_binders Φ') σ]ᵘ)).
+Lemma gm_prefix_upto_mod_sub : forall Φ x Φ' pm U σ,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
+    gm_prefix_upto (gmod_sub Φ σ) x = Some (gm_ext (gmod_sub Φ' σ) x (ge_mod pm U[sb_qn (gm_binders Φ') σ]ᵘ)).
 Proof. intros * H; rewrite gm_prefix_upto_sub, H; reflexivity. Qed.
 
 Lemma gm_prefix_upto_def_sub : forall Φ x Φ' b pv A B σ,
@@ -828,14 +828,14 @@ Lemma member_expansion_inv : forall U ch M,
     (exists Δ Φ x Φ' b pv A B, U = gu_body Δ Φ /\ ch = x :: nil /\
        gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) /\
        M = ctx_fn (body_ctx (gm_ext Φ' x (ge_def b pv A B)) ++ Δ) (a_var 0)) \/
-    (exists Δ Φ y ch' Φ' Uy, U = gu_body Δ Φ /\ ch = y :: ch' /\ ch' <> nil /\
-       gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) /\
-       M = ctx_fn (body_ctx (gm_ext Φ' y (ge_mod Uy)) ++ Δ) (member_ref (me_var 0) ch')).
+    (exists Δ Φ y ch' Φ' pm Uy, U = gu_body Δ Φ /\ ch = y :: ch' /\ ch' <> nil /\
+       gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) /\
+       M = ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch')).
 Proof.
   intros [Δ [Φ | E]] [| x ch'] M H; unfold member_expansion in H; try discriminate.
   - right.
     destruct (gm_prefix_upto Φ x) as [Φx |] eqn:Ex; [| discriminate ].
-    destruct Φx as [| Φ' y [b pv A B | Uy] | Φ' c]; try discriminate;
+    destruct Φx as [| Φ' y [b pv A B | pm Uy] | Φ' c]; try discriminate;
       destruct ch' as [| z ch'']; try discriminate; injection H as <-.
     + pose proof Ex as Ex'; unfold gm_prefix_upto in Ex'.
       assert (y = x) as ->.
@@ -845,7 +845,7 @@ Proof.
     + assert (y = x) as ->.
       { clear - Ex. induction Φ as [| Φ IH w E | Φ IH c]; cbn in Ex; try discriminate; auto.
         destruct (String.eqb_spec x w) as [-> |]; [ congruence | auto ]. }
-      right; do 6 eexists; repeat split; try eassumption; discriminate.
+      right; do 7 eexists; repeat split; try eassumption; discriminate.
   - left; injection H as <-; do 2 eexists; repeat split; discriminate.
 Qed.
 
@@ -859,11 +859,11 @@ Lemma member_expansion_def : forall Δ Φ x Φ' b pv A B,
     Some (ctx_fn (body_ctx (gm_ext Φ' x (ge_def b pv A B)) ++ Δ) (a_var 0)).
 Proof. intros * H; unfold member_expansion; rewrite H; reflexivity. Qed.
 
-Lemma member_expansion_mod : forall Δ Φ y ch' Φ' Uy,
+Lemma member_expansion_mod : forall Δ Φ y ch' Φ' pm Uy,
     ch' <> nil ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     member_expansion (gu_body Δ Φ) (y :: ch') =
-    Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod Uy)) ++ Δ) (member_ref (me_var 0) ch')).
+    Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch')).
 Proof. intros * Hch H; unfold member_expansion; rewrite H; destruct ch'; [ contradiction | reflexivity ]. Qed.
 
 Lemma member_expansion_wk : forall U ch M φ,
@@ -871,7 +871,7 @@ Lemma member_expansion_wk : forall U ch M φ,
     member_expansion (gunit_wk U φ) ch = Some M[φ]ʷ.
 Proof.
   intros * H; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_wk_mk; cbn [moddef_wk].
   - rewrite member_expansion_alias by assumption; rewrite ctx_fn_wk, member_ref_wk; reflexivity.
   - erewrite member_expansion_def by (apply gm_prefix_upto_def_wk; eassumption).
@@ -889,7 +889,7 @@ Lemma member_expansion_sub : forall U ch M σ,
     member_expansion U[σ]ᵘ ch = Some M[σ].
 Proof.
   intros * H; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_sub_mk; cbn [moddef_sub].
   - rewrite member_expansion_alias by assumption; rewrite ctx_fn_sub, member_ref_sub; reflexivity.
   - erewrite member_expansion_def by (apply gm_prefix_upto_def_sub; eassumption).
@@ -909,7 +909,7 @@ Lemma member_expansion_scoped : forall U ch M n,
     member_expansion U ch = Some M -> gunit_scoped n U -> exp_scoped n M.
 Proof.
   intros * H HU; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_scoped_mk in HU; destruct HU as [HΔ HD]; cbn in HD.
   - apply ctx_fn_scoped; [ assumption | apply member_ref_scoped; assumption ].
   - pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HD) as HΦ.
@@ -926,7 +926,7 @@ Lemma member_unfold_path_closed : forall Θ Ξ fp ch M,
     gctx_closed Θ Ξ -> member_unfold_ch Θ Ξ nil (me_unit fp) ch = Some M -> exp_scoped 0 M.
 Proof.
   intros * Hc H; cbn in H.
-  destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | U] |];
+  destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | pm U] |];
     try (injection H as <-; apply member_ref_scoped; exact I);
     destruct (gc_module Θ Ξ (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate;
     pose proof (gctx_closed_module _ _ _ _ Hc Em) as HU; cbn in HU;
@@ -983,7 +983,7 @@ Lemma gm_submodule_resolve : forall Φ T x ip r,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; try discriminate; [| eapply IH; exact H ].
   destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct E as [b pv A B | [Δ [Φ' | E']]]; try discriminate.
+  destruct E as [b pv A B | ? [Δ [Φ' | E']]]; try discriminate.
   - destruct ip as [| z ip']; [ reflexivity |].
     eapply IH; exact H.
   - destruct ip; reflexivity.
@@ -1011,7 +1011,7 @@ Lemma member_unfold_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2,
     forall H Γ ch M, member_unfold_ch Θ1 Ξ1 Γ H ch = Some M -> member_unfold_ch Θ2 Ξ2 Γ H ch = Some M.
 Proof.
   intros * Hs; induction H as [fp | x | H IH y | H IH N | U]; intros * HM; cbn in *; auto.
-  - destruct (gc_resolve Θ1 Ξ1 (q_abs fp ch)) as [[b pv A B | U] |] eqn:Er.
+  - destruct (gc_resolve Θ1 Ξ1 (q_abs fp ch)) as [[b pv A B | pm U] |] eqn:Er.
     + rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Er); exact HM.
     + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate.
       rewrite (gc_module_resolve _ _ _ _ Em) in Er; discriminate.

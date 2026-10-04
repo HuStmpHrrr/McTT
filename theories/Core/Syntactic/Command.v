@@ -15,13 +15,13 @@ Inductive ccmd : Set :=
 (** [def x : A := M]: transparency, privacy, type and body.  A [def] always
     has a body; an [abstract] one is opaque, not bodiless. *)
 | cc_def : string -> bool -> bool -> typ -> exp -> ccmd
-(** [module x (Δ) where cs end] *)
-| cc_mod : string -> ctx -> list ccmd -> ccmd
-(** [module x (Δ) := E]: an alias, under its own parameters. *)
-| cc_alias : string -> ctx -> modexp -> ccmd
+(** [module x (Δ) where cs end], private or not *)
+| cc_mod : string -> bool -> ctx -> list ccmd -> ccmd
+(** [module x (Δ) := E]: an alias, under its own parameters, private or not. *)
+| cc_alias : string -> bool -> ctx -> modexp -> ccmd
 (** [import E], whatever its [use]/[as]: the unit to load first, if [E] is in
     another unit; the imported module; and the names it [use]s, each of which
-    must be a public member or a submodule of [E]. *)
+    must be a member or a submodule of [E] that may be used here. *)
 | cc_import : option path -> modexp -> list string -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.

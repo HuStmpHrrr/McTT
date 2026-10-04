@@ -1495,6 +1495,30 @@ let%expect_test "an abstract private definition is private" =
   let _ = main_of_body "module M where abstract private def s : Nat := 1 end end eval M.s" in
   [%expect {| Error: Test.M.s is private |}]
 
+let%expect_test "a private module is used inside its unit" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.viaHidden end" in
+  [%expect {| Evaluate Lib::Priv.viaHidden --> 2 : Nat |}]
+
+let%expect_test "a member of a private module of another unit is rejected" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.Hidden.h end" in
+  [%expect {| Error: Lib::Priv.Hidden is private |}]
+
+let%expect_test "a private module of another unit is not aliased" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module Q := P.Hidden end" in
+  [%expect {| Error: Lib::Priv.Hidden is private |}]
+
+let%expect_test "a private module alias of another unit is rejected" =
+  let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.PA.t end" in
+  [%expect {| Error: Lib::Priv.PA is private |}]
+
+let%expect_test "a private module of another unit is not imported by use" =
+  let _ = main_of_multi_string "import Lib::Priv use (Hidden) module X where end" in
+  [%expect {| Error: Lib::Priv.Hidden is private |}]
+
+let%expect_test "private module M.N makes only N private, to M" =
+  let _ = main_of_body "private module M.N where def a : Nat := 1 end end module Q := M eval M.N.a" in
+  [%expect {| Error: Test.M.N is private |}]
+
 let%expect_test "a module alias of a term is rejected" =
   let _ = main_of_body "module P := Nat" in
   [%expect {| Error: not a module |}]

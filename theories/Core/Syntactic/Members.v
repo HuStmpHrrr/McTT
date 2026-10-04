@@ -285,9 +285,9 @@ with unit_member_type (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (x :: nil) (mr_term (ctx_pi (body_ctx Φ' ++ Δ) A))
 (** A chain through a module of the body, read in it, generalized over the
     parameters and the body before it. *)
-| umt_mod : forall Γ Δ Φ Φ' y Uy ch R,
+| umt_mod : forall Γ Δ Φ Φ' y pm Uy ch R,
     (mres_kind R = mk_term -> ch <> nil) ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     unit_member_type Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch R ->
     unit_member_type Θ Ξ Γ (gu_body Δ Φ) (y :: ch) (mres_gen (body_ctx Φ' ++ Δ) R)
 (** A chain of an alias, read in its target, generalized over the alias's
@@ -321,8 +321,8 @@ Definition member_expansion (U : gunit) (ch : list string) : option exp :=
       match gm_prefix_upto Φ x, ch' with
       | Some (gm_ext Φ' y (ge_def b pv A B)), nil =>
           Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_def b pv A B)) ++ Δ) (a_var 0))
-      | Some (gm_ext Φ' y (ge_mod Uy)), _ :: _ =>
-          Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod Uy)) ++ Δ) (member_ref (me_var 0) ch'))
+      | Some (gm_ext Φ' y (ge_mod pm Uy)), _ :: _ =>
+          Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch'))
       | _, _ => None
       end
   end.

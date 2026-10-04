@@ -438,7 +438,7 @@ with per_body : env -> gmod -> env -> gmod -> Prop :=
      eval_benv gc_deps gc_stack ρ Φ ρ1 ->
      eval_benv gc_deps gc_stack ρ' Φ' ρ1' ->
      per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil) ->
-     per_body ρ (gm_ext Φ y (ge_mod Uy)) ρ' (gm_ext Φ' y (ge_mod Uy')) }
+     per_body ρ (gm_ext Φ y (ge_mod pm Uy)) ρ' (gm_ext Φ' y (ge_mod pm' Uy')) }
 (** A check entry each. *)
 | per_body_check :
   `{ per_body ρ Φ ρ' Φ' ->

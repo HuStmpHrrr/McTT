@@ -89,7 +89,7 @@ Definition tele_ass (Δ : ctx) : Prop := List.Forall (fun e => exists A, e = ce_
 Definition entry_shape (E E' : gentry) : Prop :=
   match E, E' with
   | ge_def b pv _ (Some _), ge_def b' pv' _ (Some _) => b = true /\ b' = true /\ pv = pv'
-  | ge_mod _, ge_mod _ => True
+  | ge_mod pv _, ge_mod pv' _ => pv = pv'
   | _, _ => False
   end.
 
@@ -601,7 +601,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
 (** An internal module, under the parameters [Δ'] it declares. *)
 | wf_gentry_mod :
   `( Θ ⍮ Ξ ⍮ mp ⍮ Δ' ⊢m Φ ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_body Δ' Φ )
+     Θ ⍮ Ξ ⍮ mp ⊢e ge_body pv Δ' Φ )
 (** An alias, under the parameters [Δ] it declares.  It is filed with its
     full telescope, so that it is closed; its target is checked, and its
     arguments with it, where it is declared. *)
@@ -609,7 +609,7 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
   `( tele_ass Δ ->
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-     Θ ⍮ Ξ ⍮ mp ⊢e ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
+     Θ ⍮ Ξ ⍮ mp ⊢e ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
 where "Θ ⍮ Ξ ⍮ mp ⊢e E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], with own parameters [Δ], a telescope over the

@@ -285,6 +285,15 @@ let module M (A : Type@0) where def x : Nat := zero end
   module that declares it, after aliases (`q_unit`, then the chain).  This
   choice was left to us: it is what the check computes, and it is the same
   whichever alias the reference went through.
+- **Private modules** (`private module X …`, also for aliases).  The flag is
+  data on the entry, `ge_mod : bool -> gunit -> gentry`, and on the commands
+  `cc_mod`/`cc_alias`; typing ignores it, `body_shape` compares it, and the
+  command check enforces it: `gc_entry` reads the entry a path names, and
+  `mdecl` declares a submodule as it does a definition (`mdl_entry`, with
+  `ge_private`).  `me_mem H y` is a reference `(H, y)` like `a_mem H x`.
+  `private module A.B` makes only `B` private.  A chain *past* an alias is
+  declared in the alias's target (`mdl_alias`, `r <> nil`); the alias itself
+  is an entry like any other.
 - Not covered by the brief: a private member of a *local* module is no longer
   rejected anywhere, since only unit-rooted references are checked and
   typing is privacy-free.

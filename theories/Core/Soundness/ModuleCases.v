@@ -230,7 +230,7 @@ Definition glu_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Type@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A)
-  | ge_mod _ => True
+  | ge_mod _ _ => True
   end.
 
 Section Raw.

@@ -28,8 +28,8 @@ Generalizable All Variables.
 
     A module is a sequence of entries, in declaration order: definitions and
     nested modules (see [gentry] in [Syntax]).  A nested module of a filed
-    unit is a body [ge_body Δ Φ], with [Δ] the parameters it adds to the ones
-    it is already under, or an alias [ge_mod (gu_mk T (md_alias E))], with [T]
+    unit is a body [ge_body pv Δ Φ], with [Δ] the parameters it adds to the ones
+    it is already under, or an alias [ge_mod pv (gu_mk T (md_alias E))], with [T]
     its full telescope. *)
 
 Module GlobalCtx_Notations.
@@ -74,7 +74,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
           if String.eqb x y
           then match ip', E with
                | nil, ge_def _ _ _ _ => Some E
-               | _ :: _, ge_mod (gu_mk _ (md_body Φ')) => gm_resolve Φ' ip'
+               | _ :: _, ge_mod _ (gu_mk _ (md_body Φ')) => gm_resolve Φ' ip'
                | _, _ => None
                end
           else gm_resolve Φ ip
@@ -88,7 +88,7 @@ Proof.
   fix IH 1; intros [| Φ y E | Φ c] ip E0 H; cbn in H; [ discriminate | | eapply IH; exact H ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate.
   - injection H as <-; eauto.
   - eapply IH; exact H.
 Qed.
@@ -118,9 +118,9 @@ Qed.
 Lemma gm_resolve_nil : forall Φ, gm_resolve Φ nil = None.
 Proof. induction Φ; cbn; auto. Qed.
 
-Lemma gm_resolve_in : forall Φ x Δ' Φ' ip E0,
+Lemma gm_resolve_in : forall Φ x pv Δ' Φ' ip E0,
     gm_resolve Φ' ip = Some E0 ->
-    gm_resolve (Φ ⊳ x ↦ ge_body Δ' Φ') (x :: ip) = Some E0.
+    gm_resolve (Φ ⊳ x ↦ ge_body pv Δ' Φ') (x :: ip) = Some E0.
 Proof.
   intros * Hr; cbn; rewrite String.eqb_refl.
   destruct ip; [ rewrite gm_resolve_nil in Hr; discriminate | assumption ].
@@ -144,12 +144,12 @@ Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : op
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
-        | ge_mod (gu_mk Δ (md_body Φ')) =>
+        | ge_mod _ (gu_mk Δ (md_body Φ')) =>
             match ip with
             | nil => Some (mr_body (Δ ++ T))
             | z :: ip' => gm_submodule (Δ ++ T) Φ' z ip'
             end
-        | ge_mod (gu_mk Δ (md_alias E')) => Some (mr_alias (gu_mk Δ (md_alias E')) ip)
+        | ge_mod _ (gu_mk Δ (md_alias E')) => Some (mr_alias (gu_mk Δ (md_alias E')) ip)
         | ge_def _ _ _ _ => None
         end
       else gm_submodule T Φ0 x ip
@@ -179,9 +179,9 @@ Proof.
   destruct (String.eqb_spec y x) as [-> |]; [ contradiction | assumption ].
 Qed.
 
-Lemma gm_submodule_in : forall Φ T x Δ' Φ' ip r,
+Lemma gm_submodule_in : forall Φ T x pv Δ' Φ' ip r,
     gm_module (Δ' ++ T) Φ' ip = Some r ->
-    gm_submodule T (Φ ⊳ x ↦ ge_body Δ' Φ') x ip = Some r.
+    gm_submodule T (Φ ⊳ x ↦ ge_body pv Δ' Φ') x ip = Some r.
 Proof.
   intros * Hr; cbn; rewrite String.eqb_refl.
   destruct ip; cbn in Hr; assumption.
@@ -195,7 +195,7 @@ Fixpoint gm_subbody (T : ctx) (Φ : gmod) (x : string) (ip : list string) : opti
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
-        | ge_mod (gu_mk Δ (md_body Φ')) =>
+        | ge_mod _ (gu_mk Δ (md_body Φ')) =>
             match ip with
             | nil => Some (Δ ++ T, Φ')
             | z :: ip' => gm_subbody (Δ ++ T) Φ' z ip'
@@ -228,9 +228,9 @@ Proof.
   destruct (String.eqb_spec y x) as [-> |]; [ contradiction | assumption ].
 Qed.
 
-Lemma gm_subbody_in : forall Φ T x Δ' Φ' ip r,
+Lemma gm_subbody_in : forall Φ T x pv Δ' Φ' ip r,
     gm_body (Δ' ++ T) Φ' ip = Some r ->
-    gm_subbody T (Φ ⊳ x ↦ ge_body Δ' Φ') x ip = Some r.
+    gm_subbody T (Φ ⊳ x ↦ ge_body pv Δ' Φ') x ip = Some r.
 Proof.
   intros * Hr; cbn; rewrite String.eqb_refl.
   destruct ip; cbn in Hr; assumption.
@@ -634,10 +634,10 @@ Qed.
 
 (** Closing a nested module into its parent: its members are read through the
     parent exactly as they were read in the frame. *)
-Lemma gc_sub_close : forall Θ Ξ mp Δ Φ x Δ' Φ',
+Lemma gc_sub_close : forall Θ Ξ mp Δ Φ x pv Δ' Φ',
     gm_fresh x Φ ->
     gc_sub Θ ((qname_in mp x, gu_body Δ' Φ') :: (mp, gu_body Δ Φ) :: Ξ)
-           Θ ((mp, gu_body Δ (Φ ⊳ x ↦ ge_body Δ' Φ')) :: Ξ).
+           Θ ((mp, gu_body Δ (Φ ⊳ x ↦ ge_body pv Δ' Φ')) :: Ξ).
 Proof.
   intros * Hf; split; [| split ].
   - intros p E0 Hr; unfold gc_resolve in *; cbn in *.
@@ -645,7 +645,7 @@ Proof.
     destruct (path_beq (q_unit mp) (q_unit p)) eqn:Hb; [| exact Hr ].
     destruct (strip_prefix (q_chain mp ++ x :: nil) (q_chain p)) as [ip |] eqn:Hs.
     + rewrite (strip_prefix_snoc _ _ _ _ Hs).
-      exact (gm_resolve_in Φ x Δ' Φ' ip E0 Hr).
+      exact (gm_resolve_in Φ x pv Δ' Φ' ip E0 Hr).
     + destruct (strip_prefix (q_chain mp) (q_chain p)) as [ip |] eqn:Hs'; [| exact Hr ].
       cbn in *; destruct (gm_resolve_head _ _ _ Hr) as (z & ip' & -> & Hin).
       destruct (String.eqb_spec z x) as [-> |].
@@ -750,8 +750,8 @@ Qed.
 Fixpoint ge_transparent (E : gentry) : Prop :=
   match E with
   | ge_def b _ _ B => b = true /\ B <> None
-  | ge_mod (gu_mk _ (md_body Φ)) => gm_transparent Φ
-  | ge_mod (gu_mk _ (md_alias _)) => True
+  | ge_mod _ (gu_mk _ (md_body Φ)) => gm_transparent Φ
+  | ge_mod _ (gu_mk _ (md_alias _)) => True
   end
 with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
@@ -771,7 +771,7 @@ Proof.
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate.
   - injection H as <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
 Qed.

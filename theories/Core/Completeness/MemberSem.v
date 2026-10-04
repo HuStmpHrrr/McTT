@@ -135,17 +135,17 @@ Proof.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hx) as (Φx & Hx0 & EΦ).
     destruct Φx as [| Φ0' y E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ey EE; subst y.
-    destruct E0 as [b0 pv0 A0 B0 | U0]; cbn in EE; try discriminate.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0]; cbn in EE; try discriminate.
     injection EE as -> <- -> ->.
     eexists; split; [ eapply umt_def; exact Hx0 | cbn; rewrite ctx_pi_body_wk; reflexivity ].
-  - intros Γ Δ Φ Φ' y Uy ch R Hk Hy _ IH Δ' U φ Heq Hφ.
+  - intros Γ Δ Φ Φ' y pm Uy ch R Hk Hy _ IH Δ' U φ Heq Hφ.
     destruct U as [Δ0 [Φ0 | E0]]; rewrite gunit_wk_mk in Heq; cbn in Heq; try discriminate.
     injection Heq as -> ->.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hy) as (Φx & Hy0 & EΦ).
     destruct Φx as [| Φ0' z E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ez EE; subst z.
-    destruct E0 as [b0 pv0 A0 B0 | U0]; cbn in EE; try discriminate.
-    injection EE as ->.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0]; cbn in EE; try discriminate.
+    injection EE as -> ->.
     assert (EC : body_ctx (gmod_wk Φ0' (wk_qn (List.length Δ0) φ)) ++ tele_wk Δ0 φ ++ Γ
                  = tele_wk (body_ctx Φ0' ++ Δ0) φ ++ Γ)
       by (rewrite tele_wk_app, body_ctx_wk, <- List.app_assoc; reflexivity).
@@ -177,7 +177,7 @@ Lemma body_shape_lets : forall Φ, body_shape Φ Φ -> lets_only (body_ctx Φ).
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros H; cbn in *; [ constructor | | exact (IH (proj1 H)) ].
   destruct H as (H1 & _ & H3).
-  destruct E as [b pv A [M |] | U]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
+  destruct E as [b pv A [M |] | pm U]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
 Qed.
 
 Lemma body_shape_prefix : forall Φ x Φx, body_shape Φ Φ -> gm_prefix_upto Φ x = Some Φx -> body_shape Φx Φx.
@@ -196,7 +196,7 @@ Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * HC Hs HD Hρ; cbn in HC, Hs |- *.
   - exists ρ, R; split; [ constructor | split; assumption ].
   - destruct Hs as (Hs & _ & HE).
-    destruct E as [b pv A [M |] | U]; cbn in HE, HC; try contradiction.
+    destruct E as [b pv A [M |] | pm U]; cbn in HE, HC; try contradiction.
     + destruct (IH _ _ _ (sem_ctx_tail HC) Hs HD Hρ) as (ρ1 & R1 & Hb & HR1 & Hρ1).
       destruct (sem_ctx_def_inv HC) as [[i HA] HM].
       pose proof (per_ctx_env_of_def HR1 HA HM) as HR2.
@@ -353,8 +353,8 @@ Proof.
   exists M, Ψ; auto.
 Qed.
 
-Lemma body_entry_mod : forall Φ y Φ' Uy,
-    body_shape Φ Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+Lemma body_entry_mod : forall Φ y Φ' pm Uy,
+    body_shape Φ Φ -> gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     exists Ψ, body_ctx Φ = Ψ ++ ce_mod Uy :: body_ctx Φ' /\ body_shape Φ' Φ'.
 Proof.
   intros * Hs Hx.
@@ -367,7 +367,7 @@ Lemma closure_typed : forall Γ U ch R, unit_member_type Θm Ξm Γ U ch R ->
     ⊨ Γ -> sem_unit Γ U -> unit_mt Γ U -> (mres_kind R = mk_term -> ch <> nil) ->
     (exists n b, rep Γ (mres_ty R) n b /\ List.length (gu_params U) <= n) /\ umt_val Γ U ch (mres_kind R) (mres_ty R).
 Proof.
-  induction 1 as [Γ Δ Φ | Γ Δ Φ Φ' x b pv A B Hx | Γ Δ Φ Φ' y Uy ch R Hk Hy Hm IH | Γ Δ E ch R Hm];
+  induction 1 as [Γ Δ Φ | Γ Δ Φ Φ' x b pv A B Hx | Γ Δ Φ Φ' y pm Uy ch R Hk Hy Hm IH | Γ Δ E ch R Hm];
     intros HΓ Hs Hok Hch; inversion Hs as [? ? ? HΔ Hsh HC | ? ? ? HΔ HC HE]; subst; cbn [gu_params];
     rewrite ?mres_ty_gen, ?mres_kind_gen in *; cbn [mres_ty mres_kind] in *.
   - pose proof (sem_ctx_app_r _ _ HC) as HC0.
@@ -399,7 +399,7 @@ Proof.
       exists a0; split; [ eapply eval_ctx_pi_body; eassumption |].
       eapply mty_def; [ exact Hl | exact Hx | exact Hb | exact Ha0 |].
       etransitivity; [ exact HRa | symmetry; exact HRa ].
-  - destruct (body_entry_mod _ _ _ _ Hsh Hy) as (Ψ0 & EC & Hsh').
+  - destruct (body_entry_mod _ _ _ _ _ Hsh Hy) as (Ψ0 & EC & Hsh').
     pose proof HC as HCb.
     rewrite EC, <- app_assoc in HC; cbn [app] in HC.
     pose proof (sem_ctx_app_r _ _ HC) as HCm.
@@ -439,7 +439,7 @@ Lemma closure_pairs : forall Γ U ch0 R0, unit_member_type Θm Ξm Γ U ch0 R0 -
     forall ch R, unit_member_type Θm Ξm Γ U (ch0 ++ ch) R -> (mres_kind R = mk_term -> ch0 ++ ch <> nil) ->
     exists m n, rep Γ (mres_ty R0) m true /\ rep Γ (mres_ty R) n false /\ m <= n.
 Proof.
-  induction 1 as [Γ Δ Φ | Γ Δ Φ Φ' x b A1 B Hx | Γ Δ Φ Φ' y Uy ch0 R0 Hk0 Hy Hm IH | Γ Δ E ch0 R0 Hm];
+  induction 1 as [Γ Δ Φ | Γ Δ Φ Φ' x b A1 B Hx | Γ Δ Φ Φ' y pm Uy ch0 R0 Hk0 Hy Hm IH | Γ Δ E ch0 R0 Hm];
     intros Ek HΓ Hs Hok ch R H2 Hch; rewrite ?mres_kind_gen in Ek; try discriminate;
     inversion Hs as [? ? ? HΔ Hsh HC | ? ? ? HΔ HC HE]; subst; rewrite ?mres_ty_gen; cbn [mres_ty].
   - pose proof (sem_ctx_app_r _ _ HC) as HC0.
@@ -447,7 +447,7 @@ Proof.
     exists (List.length Δ + 0), n; split; [| split; [ exact (rep_forget _ _ _ _ Hr) | lia ] ].
     apply (rep_lift Γ nil Δ a_True 0 true HΓ (Forall_nil _) HΔ HC0).
     eapply rep_leaf; [ exact HC0 | exact (valid_exp_True (i := 0) HC0) | reflexivity ].
-  - destruct (body_entry_mod _ _ _ _ Hsh Hy) as (Ψ0 & EC & Hsh').
+  - destruct (body_entry_mod _ _ _ _ _ Hsh Hy) as (Ψ0 & EC & Hsh').
     pose proof HC as HCb.
     rewrite EC, <- app_assoc in HC; cbn [app] in HC.
     pose proof (sem_ctx_app_r _ _ HC) as HCm.
@@ -458,8 +458,8 @@ Proof.
     pose proof (ctx_mt_mod_inv _ _ (ctx_mt_app_r _ _ Hok')) as HokU.
     inversion H2; subst.
     + match goal with Hx : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_def _ _ _ _)) |- _ => rewrite Hy in Hx; discriminate end.
-    + match goal with Hy' : gm_prefix_upto Φ y = Some (gm_ext _ _ (ge_mod _)) |- _ =>
-        rewrite Hy in Hy'; injection Hy' as <- <- end.
+    + match goal with Hy' : gm_prefix_upto Φ y = Some (gm_ext _ _ (ge_mod _ _)) |- _ =>
+        rewrite Hy in Hy'; injection Hy' as <- <- <- end.
       rewrite mres_kind_gen in Hch; rewrite mres_ty_gen.
       match goal with Hm2 : unit_member_type _ _ _ Uy (ch0 ++ ch) ?R2, Hk2 : mres_kind ?R2 = mk_term -> ch0 ++ ch <> nil |- _ =>
         destruct (IH Ek HC1 HsU HokU _ _ Hm2 Hk2) as (m & n & Hr0 & Hr & Hmn) end.

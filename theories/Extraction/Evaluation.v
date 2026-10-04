@@ -190,7 +190,7 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      eval_selm_order Θ Ξ (dm_local p U args) y )
 | esmo_body :
   `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      eval_benv_order Θ Ξ (env_args p args) Φ' ->
      eval_selm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) y )
 | esmo_alias :
@@ -228,7 +228,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_def b pv A (Some M))) )
 | ebo_mod :
   `( eval_benv_order Θ Ξ p Φ ->
-     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod Uy)) )
+     eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) )
 | ebo_check :
   `( eval_benv_order Θ Ξ p Φ ->
      eval_benv_order Θ Ξ p (gm_check Φ c) ).
@@ -542,7 +542,7 @@ Section EvalImpl.
         let (a, Ha) := eval_exp_impl A nil _ in
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
-    | exist _ (Some (ge_mod _)) E => False_rect _ _
+    | exist _ (Some (ge_mod _ _)) E => False_rect _ _
     | exist _ None E => False_rect _ _ }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
@@ -570,7 +570,7 @@ Section EvalImpl.
     | exist _ Lt C => exist _ (dm_member (dm_local p (gu_mk Δ D) args) (y :: nil)) _
     | exist _ Eq C with D := {
       | md_body Φ with inspect (gm_prefix_upto Φ y) := {
-        | exist _ (Some (gm_ext Φ' _ (ge_mod Uy))) P =>
+        | exist _ (Some (gm_ext Φ' _ (ge_mod _ Uy))) P =>
             let (p', Hp') := eval_benv_impl (env_args p args) Φ' _ in
             exist _ (dm_local p' Uy nil) _
         | exist _ _ P => False_rect _ _ }
@@ -605,7 +605,7 @@ Section EvalImpl.
       let (m, Hm) := eval_exp_impl M p1 _ in
       exist _ (p1 ↦ m) _
   | p, gm_ext Φ y (ge_def b pv A None), H => False_rect _ _
-  | p, gm_ext Φ y (ge_mod Uy), H =>
+  | p, gm_ext Φ y (ge_mod _ Uy), H =>
       let (p1, Hp1) := eval_benv_impl p Φ _ in
       exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
   | p, gm_check Φ c, H =>

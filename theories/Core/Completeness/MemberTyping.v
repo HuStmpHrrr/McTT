@@ -131,7 +131,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
@@ -169,7 +169,7 @@ Proof.
     pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
     inversion Hd; subst.
     match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
-    destruct (per_body_lookup_mod _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
+    destruct (per_body_lookup_mod _ _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & pm' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
     pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
     eapply mty_sub; [ lia | exact Hy' | exact Hb1' | exact (IH _ HU) ].
   - destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
@@ -224,7 +224,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
@@ -268,7 +268,7 @@ Proof.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
@@ -287,15 +287,15 @@ Proof.
   - injection Heq as -> Heq.
     inversion Hv; subst.
     match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia.
-    match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod ?Uy')) |- _ =>
-      rewrite Hy in Hp; injection Hp as <- <- end.
+    match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod _ ?Uy')) |- _ =>
+      rewrite Hy in Hp; injection Hp as <- <- <- end.
     match goal with Hb' : eval_benv _ _ _ Φ' ?ρ1' |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
     destruct (per_dmod_local_inv _ _ _ _ Hw) as (ρ' & [Δ' D'] & args' & -> & Hlt & L1 & L2).
     cbn [gu_params gu_def] in *.
     pose proof (per_ltele_full _ _ _ _ _ _ _ _ Hlt ltac:(rewrite length_rev; exact Hl)) as Hd.
     inversion Hd; subst.
     match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
-    destruct (per_body_lookup_mod _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
+    destruct (per_body_lookup_mod _ _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & pm' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
     pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
     match goal with Hr : eval_selmc _ _ (dm_local ρ1 Uy nil) pre v |- _ =>
       destruct (IH _ _ eq_refl Hch _ HU _ Hr) as (v' & Hv' & Hvv) end.
@@ -352,7 +352,7 @@ Proof.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
@@ -419,7 +419,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
@@ -489,7 +489,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH

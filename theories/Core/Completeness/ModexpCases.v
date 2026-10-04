@@ -406,7 +406,7 @@ Lemma unit_delta : forall Γ U ch R M, unit_member_type Θm Ξm Γ U ch R -> mre
       dm_local ρ U nil ·ₜ* ch gc_deps ⍮ gc_stack ↘ d -> E d d -> exists m, ⟦ M ⟧ ρ ↘ m /\ E m d.
 Proof.
   intros * Hm Hk HM HU * Ha HE Hd Hdd.
-  inversion Hm as [ | ? Δ Φ Φ' x b pv A0 B Hx | ? Δ Φ Φ' y Uy ch' R0 Hk' Hy Hm' | ? Δ E0 ch' R0 Hm' ];
+  inversion Hm as [ | ? Δ Φ Φ' x b pv A0 B Hx | ? Δ Φ Φ' y pm Uy ch' R0 Hk' Hy Hm' | ? Δ E0 ch' R0 Hm' ];
     subst; rewrite ?mres_kind_gen in Hk; rewrite ?mres_ty_gen in Ha; cbn [mres_ty] in Ha;
     try discriminate; unfold member_expansion in HM.
   - rewrite Hx in HM; injection HM as <-.

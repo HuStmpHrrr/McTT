@@ -264,14 +264,14 @@ Qed.
 Definition ge_entries (E : gentry) (ip : list String.string) : option gentry :=
   match E with
   | ge_def _ _ _ _ => match ip with nil => Some E | _ => None end
-  | ge_mod U => gm_resolve (gu_mod U) ip
+  | ge_mod _ U => gm_resolve (gu_mod U) ip
   end.
 
 Lemma gm_resolve_ext_here : forall Φ x E ip,
     gm_resolve (Φ ⊳ x ↦ E) (x :: ip) = ge_entries E ip.
 Proof.
   intros; cbn; rewrite String.eqb_refl.
-  destruct ip, E as [| [Δ' [Φ' | E']]]; cbn; rewrite ?gm_resolve_nil; reflexivity.
+  destruct ip, E as [| ? [Δ' [Φ' | E']]]; cbn; rewrite ?gm_resolve_nil; reflexivity.
 Qed.
 
 Lemma gm_resolve_ext_inv : forall Φ x E ip E0,
@@ -354,14 +354,14 @@ Proof. intros; unfold gc_body; cbn; rewrite qname_strip_app; reflexivity. Qed.
 Definition ge_submodule (T : ctx) (E : gentry) (x : String.string) (ip : list String.string) : option modres :=
   match E with
   | ge_def _ _ _ _ => None
-  | ge_mod U => gm_submodule (gu_params U ++ T) (gu_mod U) x ip
+  | ge_mod _ U => gm_submodule (gu_params U ++ T) (gu_mod U) x ip
   end.
 
 Lemma gm_submodule_ext_here : forall T Φ x E z ip r,
     ge_submodule T E z ip = Some r -> gm_submodule T (Φ ⊳ x ↦ E) x (z :: ip) = Some r.
 Proof.
   intros * H; cbn; rewrite String.eqb_refl.
-  destruct E as [| [Δ' [Φ' | E']]]; cbn in H; [ discriminate | exact H |].
+  destruct E as [| ? [Δ' [Φ' | E']]]; cbn in H; [ discriminate | exact H |].
   destruct z; discriminate.
 Qed.
 
@@ -369,14 +369,14 @@ Qed.
 Definition ge_subbody (T : ctx) (E : gentry) (x : String.string) (ip : list String.string) : option (ctx * gmod) :=
   match E with
   | ge_def _ _ _ _ => None
-  | ge_mod U => gm_subbody (gu_params U ++ T) (gu_mod U) x ip
+  | ge_mod _ U => gm_subbody (gu_params U ++ T) (gu_mod U) x ip
   end.
 
 Lemma gm_subbody_ext_here : forall T Φ x E z ip r,
     ge_subbody T E z ip = Some r -> gm_subbody T (Φ ⊳ x ↦ E) x (z :: ip) = Some r.
 Proof.
   intros * H; cbn; rewrite String.eqb_refl.
-  destruct E as [| [Δ' [Φ' | E']]]; cbn in H; [ discriminate | exact H |].
+  destruct E as [| ? [Δ' [Φ' | E']]]; cbn in H; [ discriminate | exact H |].
   destruct z; discriminate.
 Qed.
 
@@ -565,7 +565,7 @@ Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
       (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Type@i) /\ (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A)
-  | ge_mod _ => True
+  | ge_mod _ _ => True
   end.
 
 Definition rwf (Θ : gdeps) (Ξ : gstack) : Prop := GV entry_typed Θ Ξ Θ Ξ.

@@ -443,11 +443,11 @@ Section Impl.
     exists ΘR, linv ch Θ K D ΘR (gs_push (qname_in (gs_path Ξ) x) Δ Ξ).
   Proof. intros [ΘR Hli] Htel Hfr HΔ; exists ΘR; exact (proj2 (linv_push Hli Htel Hfr HΔ)). Qed.
 
-  Lemma mod_ok {ch Θ K D Ξ x Δ cs r mp U Ξ2} :
+  Lemma mod_ok {ch Θ K D Ξ x pv Δ cs r mp U Ξ2} :
     tele_ass Δ -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
     acc_ok (gds_restrict D Θ) Ξ (tele_refs Δ) ->
     post_cmds ch Θ K D (gs_push (qname_in (gs_path Ξ) x) Δ Ξ) cs r -> cs_stack r = (mp, U) :: Ξ2 ->
-    post_cmd ch Θ K D Ξ (cc_mod x Δ cs) (cst (cs_deps r) (cs_k r) (cs_dom r) (gs_add x (ge_body Δ (gu_mod U)) Ξ)).
+    post_cmd ch Θ K D Ξ (cc_mod x pv Δ cs) (cst (cs_deps r) (cs_k r) (cs_dom r) (gs_add x (ge_body pv Δ (gu_mod U)) Ξ)).
   Proof.
     intros Htel Hfr HΔ Hac Hpost HΞ ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
     pose proof (equiv_acc _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) Hac) as Hac'.
@@ -455,21 +455,21 @@ Section Impl.
     destruct (Hpost _ Hli') as (ΘR' & Hrun & Hli2 & Hext & Hgr).
     rewrite HΞ in Hrun, Hli2.
     destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hrun) as [F HF]; injection HF as <- ->.
-    assert (Hr : run_cmd ch ΘR Ξ (cc_mod x Δ cs) ΘR' (gs_add x (ge_body Δ (gu_mod U)) Ξ))
+    assert (Hr : run_cmd ch ΘR Ξ (cc_mod x pv Δ cs) ΘR' (gs_add x (ge_body pv Δ (gu_mod U)) Ξ))
       by (econstructor; eassumption).
     exists ΘR'; split; [ exact Hr | split; [| split; assumption ] ].
     apply (linv_stack Hli2); [ exact (proj1 (linv_run_wf Hli Hr)) | exact (linv_run_stack Hli Hr) ].
   Qed.
 
-  Lemma alias_ok {ch Θ K D Ξ x Δ E} :
+  Lemma alias_ok {ch Θ K D Ξ x pv Δ E} :
     tele_ass Δ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
     gds_restrict D Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     acc_ok (gds_restrict D Θ) Ξ (tele_refs Δ ++ modexp_refs E) -> gs_fresh x Ξ ->
-    post_cmd ch Θ K D Ξ (cc_alias x Δ E) (cst Θ K D (gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ)).
+    post_cmd ch Θ K D Ξ (cc_alias x pv Δ E) (cst Θ K D (gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ)).
   Proof.
     intros Htel HΔ HE Hac Hfr ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
-    assert (Hr : run_cmd ch ΘR Ξ (cc_alias x Δ E) ΘR (gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ))
+    assert (Hr : run_cmd ch ΘR Ξ (cc_alias x pv Δ E) ΘR (gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ))
       by (constructor; [ exact Htel | exact (equiv_ext _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HΔ)
                        | exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE)
                        | exact (equiv_acc _ _ _ _ Heq Hac) | exact Hfr ]).
@@ -837,7 +837,7 @@ Section Impl.
         | inleft (exist _ qx _) => rerr (re_private (fst qx) (snd qx))
         | inright Hac => rok (exist _ _ (def_ok Hfr HM Hac), log_nil) }
       | right _ => rerr (re_def x Ξ A M) } }
-  | ch, L, Θ, K, D, Ξ, cc_mod x Δ cs, H with tele_ass_dec Δ => {
+  | ch, L, Θ, K, D, Ξ, cc_mod x pv Δ cs, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ctx (gds_restrict D Θ) Ξ (pre_gctx H) (Δ ++ gs_tele Ξ) => {
       | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
@@ -851,7 +851,7 @@ Section Impl.
           | rok (exist _ r Hr, l) with list_case (cs_stack r) => {
             | inleft (existT _ (mp, U) (exist _ _ HΞ)) => rok (exist _ _ (mod_ok Htel Hfr HΔ Hac Hr HΞ), l)
             | inright _ => rerr (re_msg "internal error: a module body lost its frame") } } } } } }
-  | ch, L, Θ, K, D, Ξ, cc_alias x Δ E, H with tele_ass_dec Δ => {
+  | ch, L, Θ, K, D, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
       | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
@@ -1055,7 +1055,7 @@ Section Impl.
         eexists; reflexivity. }
       exfalso; apply HM'; exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM).
     - (* a module *)
-      intros ch ΘR Ξ x Δ cs ΘR' mp U Htel HΔ Hac Hfr Hr IH Hacc Θ K D H Hli; simp run_cmd_impl.
+      intros ch ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hac Hfr Hr IH Hacc Θ K D H Hli; simp run_cmd_impl.
       destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp run_cmd_impl.
       match goal with |- context [check_ctx ?a ?b ?c ?d] => destruct (check_ctx a b c d) as [HΔ' | HΔ'] end;
         [| exfalso; apply HΔ'; exact (equiv_ctx _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
@@ -1069,7 +1069,7 @@ Section Impl.
       destruct (Hp _ Hli') as (ΘR2 & Hr2 & _); destruct (run_cmds_tail _ _ _ _ _ _ _ _ _ _ Hr2) as [F HF].
       destruct (list_case (cs_stack r)) as [[[mp' U'] [Ξ2 HΞ]] | HΞ]; simp run_cmd_impl; [ eexists; reflexivity | congruence ].
     - (* an alias *)
-      intros ch ΘR Ξ x Δ E Htel HΔ HE Hac Hfr Hacc Θ K D H Hli; simp run_cmd_impl.
+      intros ch ΘR Ξ x pv Δ E Htel HΔ HE Hac Hfr Hacc Θ K D H Hli; simp run_cmd_impl.
       destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp run_cmd_impl.
       match goal with |- context [check_ext ?a ?b ?c ?d ?e] => destruct (check_ext a b c d e) as [HΔ' | HΔ'] end;
         [| exfalso; apply HΔ'; exact (equiv_ext _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].

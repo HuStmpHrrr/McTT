@@ -78,7 +78,7 @@ with bcheck_scoped (n : nat) (c : bcheck) : Prop :=
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped n A /\ match B with Some M => exp_scoped n M | None => True end
-  | ge_mod U => gunit_scoped n U
+  | ge_mod _ U => gunit_scoped n U
   end
 with centry_scoped (n : nat) (e : centry) : Prop :=
   match e with
@@ -536,7 +536,7 @@ Qed.
 Definition entry_closed (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
-  | ge_mod _ => True
+  | ge_mod _ _ => True
   end.
 
 Definition modres_closed (r : modres) : Prop :=
@@ -612,8 +612,8 @@ Proof. split; intros; discriminate. Qed.
 Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ _ _ => entry_closed E
-  | ge_mod (gu_mk Δ (md_body Φ)) => unit_closed (Δ ++ T) Φ
-  | ge_mod U => gunit_scoped 0 U
+  | ge_mod _ (gu_mk Δ (md_body Φ)) => unit_closed (Δ ++ T) Φ
+  | ge_mod _ U => gunit_scoped 0 U
   end.
 
 Lemma mod_closed_ext : forall T Φ x E, mod_closed T Φ -> entry_ok T E -> mod_closed T (Φ ⊳ x ↦ E).
@@ -622,12 +622,12 @@ Proof.
   - intros ip E0 Hr; cbn in Hr.
     destruct ip as [| y ip']; [ discriminate |].
     destruct (String.eqb y x); [| eapply HΦ; eassumption ].
-    destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
+    destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
     + injection Hr as <-; exact HE.
     + destruct HE as (_ & HE & _); eapply HE; eassumption.
   - intros y ip r Hr; cbn in Hr.
     destruct (String.eqb y x); [| eapply HΦm; eassumption ].
-    destruct E as [b pv A B | [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
+    destruct E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
     + destruct ip as [| z ip']; [ injection Hr as <-; apply HE |].
       destruct HE as (_ & _ & HE); eapply HE; eassumption.
     + injection Hr as <-; exact HE.

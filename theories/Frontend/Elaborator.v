@@ -231,11 +231,11 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
                let* A := elab S oA in
                let* M := elab S oM in
                go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
-           | Cst.c_mod x ps md' :: cs' =>
+           | Cst.c_mod pv x ps md' :: cs' =>
                let* _ := check_params ps in
                let* tys := elab_params_with elab S ps in
                let* D := elab_mdef (pents ps ++ S) md' in
-               go (en_var x :: S) (gm_ext Φ x (ge_mod (gu_mk (ptele tys) D))) cs'
+               go (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
            | Cst.c_import fq ip spec :: cs' =>
                let* _ := echeck (loaded_b S fq) "the unit is not imported" in
                let* E := elab_itarget S fq ip in
@@ -283,18 +283,18 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* A := elab (F ++ O) oA in
       let* M := elab (F ++ O) oM in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M)
-  | Cst.c_mod x ps (Cst.md_where body) =>
+  | Cst.c_mod pv x ps (Cst.md_where body) =>
       let* _ := check_fresh x F in
       let* _ := check_params ps in
       let* tys := elab_params (F ++ O) ps in
       let* bcs := elab_cmds_with (elab_cmd fp) (ch ++ x :: nil) (F ++ O) (pents ps) body in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_mod x (ptele tys) bcs)
-  | Cst.c_mod x ps (Cst.md_alias oE) =>
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_mod x pv (ptele tys) bcs)
+  | Cst.c_mod pv x ps (Cst.md_alias oE) =>
       let* _ := check_fresh x F in
       let* _ := check_params ps in
       let* tys := elab_params (F ++ O) ps in
       let* E := elab_mod (pents ps ++ F ++ O) oE in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x (ptele tys) E)
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x pv (ptele tys) E)
   | Cst.c_import fq ip spec => elab_import O F fq ip spec
   | Cst.c_eval oM None =>
       let* M := elab (F ++ O) oM in

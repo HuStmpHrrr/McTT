@@ -40,8 +40,8 @@ Definition flag_unseal (b : bool) (B : option exp) : bool :=
 Fixpoint ge_unseal (E : gentry) : gentry :=
   match E with
   | ge_def b pv A B => ge_def (flag_unseal b B) pv A B
-  | ge_mod (gu_mk Δ (md_body Φ)) => ge_mod (gu_mk Δ (md_body (gm_unseal Φ)))
-  | ge_mod U => ge_mod U
+  | ge_mod pv (gu_mk Δ (md_body Φ)) => ge_mod pv (gu_mk Δ (md_body (gm_unseal Φ)))
+  | ge_mod pv U => ge_mod pv U
   end
 with gm_unseal (Φ : gmod) : gmod :=
   match Φ with
@@ -78,8 +78,8 @@ Fixpoint gs_unseal (Ξ : gstack) : gstack :=
 Lemma gd_unseal_app : forall d d', gd_unseal (d ++ d') = gd_unseal d ++ gd_unseal d'.
 Proof. induction d as [| [fp U] d IH]; intros; cbn; congruence. Qed.
 
-Lemma ge_unseal_mod : forall U, ge_unseal (ge_mod U) = ge_mod (gu_unseal U).
-Proof. intros [Δ [Φ | E]]; reflexivity. Qed.
+Lemma ge_unseal_mod : forall pv U, ge_unseal (ge_mod pv U) = ge_mod pv (gu_unseal U).
+Proof. intros pv [Δ [Φ | E]]; reflexivity. Qed.
 
 Lemma gu_params_unseal : forall U, gu_params (gu_unseal U) = gu_params U.
 Proof. intros [Δ [Φ | E]]; reflexivity. Qed.
@@ -108,7 +108,7 @@ Proof.
   fix IH 1; intros [| Φ y E | Φ c] ip; cbn; [ reflexivity | | apply IH ].
   destruct ip as [| x ip']; [ reflexivity |].
   destruct (String.eqb x y); [| apply IH ].
-  destruct ip' as [| z ip''], E as [b pv A B | [Δ' [Φ' | E']]]; cbn; try reflexivity.
+  destruct ip' as [| z ip''], E as [b pv A B | ? [Δ' [Φ' | E']]]; cbn; try reflexivity.
   apply IH.
 Qed.
 
@@ -117,7 +117,7 @@ Lemma gm_submodule_unseal : forall Φ T x ip,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] T x ip; cbn; [ reflexivity | | apply IH ].
   destruct (String.eqb x y); [| apply IH ].
-  destruct E as [b pv A B | [Δ' [Φ' | E']]]; cbn; try reflexivity.
+  destruct E as [b pv A B | ? [Δ' [Φ' | E']]]; cbn; try reflexivity.
   destruct ip; [ reflexivity | apply IH ].
 Qed.
 
@@ -229,7 +229,7 @@ Lemma member_unfold_ch_unseal : forall Θ Ξ Γ H ch,
 Proof.
   intros; revert ch; induction H as [fp | x | H IH y | H IH N | U]; intros; cbn; auto.
   - rewrite gc_resolve_unseal, gc_module_unseal.
-    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | [Δ [Φ | E]]] |]; reflexivity.
+    destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | ? [Δ [Φ | E]]] |]; reflexivity.
   - rewrite IH; reflexivity.
 Qed.
 
@@ -294,8 +294,8 @@ Proof. apply unseal_preserves_wf. Qed.
 Fixpoint ge_no_axioms (E : gentry) : Prop :=
   match E with
   | ge_def _ _ _ B => B <> None
-  | ge_mod (gu_mk _ (md_body Φ)) => gm_no_axioms Φ
-  | ge_mod (gu_mk _ (md_alias _)) => True
+  | ge_mod _ (gu_mk _ (md_body Φ)) => gm_no_axioms Φ
+  | ge_mod _ (gu_mk _ (md_alias _)) => True
   end
 with gm_no_axioms (Φ : gmod) : Prop :=
   match Φ with
@@ -316,7 +316,7 @@ Lemma gm_transparent_no_axioms : forall Φ, gm_transparent Φ -> gm_no_axioms Φ
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
   destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
-  destruct E as [b pv A B | [Δ' [Φ' | E']]]; cbn in *; [ apply HE | exact (IH _ HE) | exact I ].
+  destruct E as [b pv A B | ? [Δ' [Φ' | E']]]; cbn in *; [ apply HE | exact (IH _ HE) | exact I ].
 Qed.
 
 (** A transparent global context has no axioms. *)
@@ -330,7 +330,7 @@ Lemma gm_no_axioms_unseal_transparent : forall Φ, gm_no_axioms Φ -> gm_transpa
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] HΦ; cbn in *; [ exact I | | exact (IH _ HΦ) ].
   destruct HΦ as [HΦ HE]; split; [ exact (IH _ HΦ) |].
-  destruct E as [b pv A [M |] | [Δ' [Φ' | E']]]; cbn in *;
+  destruct E as [b pv A [M |] | ? [Δ' [Φ' | E']]]; cbn in *;
     [ split; congruence | contradiction | exact (IH _ HE) | exact I ].
 Qed.
 
@@ -370,7 +370,7 @@ Proof.
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b' pv' A B | [Δ' [Φ' | E']]]; try discriminate.
+  destruct ip' as [| z ip''], E as [b' pv' A B | ? [Δ' [Φ' | E']]]; try discriminate.
   - injection H as <- <- <- <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
 Qed.

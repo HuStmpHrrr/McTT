@@ -184,7 +184,9 @@ and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : u
 and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
   let open Format in
   function
-  | Cst.Coq_c_mod (x, params, md) -> format_module f x params md
+  | Cst.Coq_c_mod (priv, x, params, md) ->
+     if priv then Format.pp_print_string f "private ";
+     format_module f x params md
   | Cst.Coq_c_def (m, x, ea, eb) ->
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
@@ -369,9 +371,9 @@ let exp_to_obj =
             (match om with
              | Some e -> Cst.Coq_c_def (m, x, a', impl ctx' e)
              | None -> Cst.Coq_c_def (m, x, a', Cst.Coq_var "_"))
-         | Coq_ge_mod u ->
+         | Coq_ge_mod (priv, u) ->
             let params, md = impl_unit ctx' u in
-            Cst.Coq_c_mod (x, params, md)
+            Cst.Coq_c_mod (priv, x, params, md)
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_check (phi, bc) ->

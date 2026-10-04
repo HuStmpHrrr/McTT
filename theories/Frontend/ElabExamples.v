@@ -46,7 +46,7 @@ end
 Definition nested : Cst.prog :=
   (nil, ("U" :: nil, ("A", typ 0) :: nil,
          c_def md_pub "a" (typ 0) (var "A") ::
-         c_mod "M" (("B", typ 0) :: nil)
+         c_mod false "M" (("B", typ 0) :: nil)
            (md_where
              (c_def md_pub "b" (typ 0) (var "B") ::
               c_eval (var "a") None ::
@@ -61,7 +61,7 @@ Example nested_spec :
   elab_spec nested
     (nil, ⋅ ▹ Type@0,
      cc_def "a" true false Type@0 #0 ::
-     cc_mod "M" (⋅ ▹ Type@0)
+     cc_mod "M" false (⋅ ▹ Type@0)
        (cc_def "b" true false Type@0 #0 ::
         cc_eval (U_a $ #1) None ::
         cc_eval (U_M_b $ #1 $ #0) None ::
@@ -83,7 +83,7 @@ Qed.
 (** ** [examples/ModuleParam.mctt]: a parameterized module and [let module] *)
 Definition church : Cst.prog :=
   (nil, ("ModuleParam" :: nil, nil,
-         c_mod "Church" (("A", typ 0) :: nil)
+         c_mod false "Church" (("A", typ 0) :: nil)
            (md_where
              (c_def md_pub "t" (typ 0)
                 (pi "z" (var "A") (pi "s" (pi "x" (var "A") (var "A")) (var "A"))) ::
@@ -102,7 +102,7 @@ Definition Church_two : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church
 Example church_spec :
   elab_spec church
     (nil, ⋅,
-     cc_mod "Church" (⋅ ▹ Type@0)
+     cc_mod "Church" false (⋅ ▹ Type@0)
        (cc_def "t" true false Type@0 (Π #0 (Π (Π #1 #2) #2)) ::
         cc_def "two" true false (Church_t $ #0) (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1)))) :: nil) ::
      cc_eval (ℓₘ (gu_mk ⋅ (Syntax.md_alias (me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
@@ -112,7 +112,7 @@ Proof. elab_ok. Qed.
 (** ** [examples/ImportUse.mctt]: privacy, [import … as], [import … use] *)
 Definition import_use : Cst.prog :=
   (nil, ("ImportUse" :: nil, nil,
-         c_mod "Impl" nil
+         c_mod false "Impl" nil
            (md_where
              (c_def md_priv "secret" nat (Cst.succ (Cst.succ (Cst.succ Cst.zero))) ::
               c_def md_pub "exposed" nat (Cst.succ (var "secret")) :: nil)) ::
@@ -129,7 +129,7 @@ Definition Impl : modexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
 Example import_use_spec :
   elab_spec import_use
     (nil, ⋅,
-     cc_mod "Impl" ⋅
+     cc_mod "Impl" false ⋅
        (cc_def "secret" true true ℕ (succ (succ (succ zero))) ::
         cc_def "exposed" true false ℕ (succ (Impl_ "secret")) :: nil) ::
      cc_import None Impl nil ::
@@ -191,17 +191,17 @@ Definition unit_of (cs : list Cst.cmd) : Cst.prog := (nil, ("T" :: nil, nil, cs)
     [I], and the core rejects the selection of a private member. *)
 Example private_sibling :
   elab_spec (unit_of
-    (c_mod "I" nil (md_where (c_def md_priv "s" nat Cst.zero :: nil)) ::
+    (c_mod false "I" nil (md_where (c_def md_priv "s" nat Cst.zero :: nil)) ::
      c_eval (proj (var "I") "s") None :: nil))
     (nil, ⋅,
-     cc_mod "I" ⋅ (cc_def "s" true true ℕ zero :: nil) ::
+     cc_mod "I" false ⋅ (cc_def "s" true true ℕ zero :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("I" :: nil)) "s") None :: nil).
 Proof. elab_ok. Qed.
 
 (** A frame nested in a member's own frame names it directly. *)
 Example private_nested : exists u, elab_spec (unit_of
   (c_def md_priv "s" nat Cst.zero ::
-   c_mod "I" nil (md_where (c_eval (var "s") None :: nil)) :: nil)) u.
+   c_mod false "I" nil (md_where (c_eval (var "s") None :: nil)) :: nil)) u.
 Proof. eexists; elab_ok. Qed.
 
 (** Redeclaring in the same frame is an error … *)
@@ -211,7 +211,7 @@ Proof. elab_fails. Qed.
 
 (** … also over an alias … *)
 Example redeclare_alias : forall u, ~ elab_spec (unit_of
-  (c_mod "I" nil (md_where nil) :: c_import nil ("I" :: nil) (i_as "x") ::
+  (c_mod false "I" nil (md_where nil) :: c_import nil ("I" :: nil) (i_as "x") ::
    c_def md_pub "x" nat Cst.zero :: nil)) u.
 Proof. elab_fails. Qed.
 
@@ -219,11 +219,11 @@ Proof. elab_fails. Qed.
 Example shadow_parent :
   elab_spec (unit_of
     (c_def md_pub "x" nat Cst.zero ::
-     c_mod "I" nil
+     c_mod false "I" nil
        (md_where (c_def md_pub "x" nat (Cst.succ Cst.zero) :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅,
      cc_def "x" true false ℕ zero ::
-     cc_mod "I" ⋅ (cc_def "x" true false ℕ (succ zero) ::
+     cc_mod "I" false ⋅ (cc_def "x" true false ℕ (succ zero) ::
                    cc_eval (qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -235,20 +235,20 @@ Proof. elab_fails. Qed.
     expression; whether [M] still expects its parameter is left to typing. *)
 Example partial_args :
   elab_spec (unit_of
-    (c_mod "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
+    (c_mod false "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
      c_eval (proj (var "M") "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
+     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("M" :: nil)) "f") None :: nil).
 Proof. elab_ok. Qed.
 
 (** [module A.B] is [A], without parameters, holding [B]. *)
 Example dotted_module :
   elab_spec (unit_of
-    (c_mod_dotted "B" ("A" :: nil) (("X", typ 0) :: nil) (md_where (c_def md_abs "y" (typ 0) (var "X") :: nil)) ::
+    (c_mod_dotted false "B" ("A" :: nil) (("X", typ 0) :: nil) (md_where (c_def md_abs "y" (typ 0) (var "X") :: nil)) ::
      c_eval (app (proj (proj (var "A") "B") "y") nat) None :: nil))
     (nil, ⋅,
-     cc_mod "A" ⋅ (cc_mod "B" (⋅ ▹ Type@0) (cc_def "y" false false Type@0 #0 :: nil) :: nil) ::
+     cc_mod "A" false ⋅ (cc_mod "B" false (⋅ ▹ Type@0) (cc_def "y" false false Type@0 #0 :: nil) :: nil) ::
      cc_eval (a_mem (me_mem (mpath ("T" :: nil) ("A" :: nil)) "B") "y" $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -266,7 +266,7 @@ Ltac elab_err := vm_compute; reflexivity.
 
 (** [def x … ; import M as x]: an alias may not take a member's name. *)
 Definition alias_after_member : Cst.prog := unit_of
-  (c_mod "M" nil (md_where nil) :: c_def md_pub "x" nat Cst.zero ::
+  (c_mod false "M" nil (md_where nil) :: c_def md_pub "x" nat Cst.zero ::
    c_import nil ("M" :: nil) (i_as "x") :: nil).
 Example alias_after_member_err : elaborate_core alias_after_member = eerr "x is already declared".
 Proof. elab_err. Qed.
@@ -275,14 +275,14 @@ Proof. elab_fails. Qed.
 
 (** [import M as x ; def x …]: a member may not take an alias's name. *)
 Definition member_after_alias : Cst.prog := unit_of
-  (c_mod "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "x") ::
+  (c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "x") ::
    c_def md_pub "x" nat Cst.zero :: nil).
 Example member_after_alias_err : elaborate_core member_after_alias = eerr "x is already declared".
 Proof. elab_err. Qed.
 
 (** [def exposed … ; import Impl use (exposed)]: nor may a [use]d name. *)
 Definition use_after_member : Cst.prog := unit_of
-  (c_mod "Impl" nil (md_where (c_def md_pub "exposed" nat Cst.zero :: nil)) ::
+  (c_mod false "Impl" nil (md_where (c_def md_pub "exposed" nat Cst.zero :: nil)) ::
    c_def md_pub "exposed" nat Cst.zero ::
    c_import nil ("Impl" :: nil) (i_use ("exposed" :: nil)) :: nil).
 Example use_after_member_err : elaborate_core use_after_member = eerr "exposed is already declared".
@@ -291,7 +291,7 @@ Proof. elab_err. Qed.
 (** [module M (x : Nat) where def x … end]: a member may not take a
     parameter's name … *)
 Definition member_param : Cst.prog := unit_of
-  (c_mod "M" (("x", nat) :: nil) (md_where (c_def md_pub "x" nat Cst.zero :: nil)) :: nil).
+  (c_mod false "M" (("x", nat) :: nil) (md_where (c_def md_pub "x" nat Cst.zero :: nil)) :: nil).
 Example member_param_err : elaborate_core member_param = eerr "x is already declared".
 Proof. elab_err. Qed.
 Example member_param_spec : forall u, ~ elab_spec member_param u.
@@ -300,14 +300,14 @@ Proof. elab_fails. Qed.
 (** … nor may a module, here the first segment of [module x.y] in the
     unit's own frame. *)
 Definition module_param : Cst.prog :=
-  (nil, ("T" :: nil, ("x", nat) :: nil, c_mod_dotted "y" ("x" :: nil) nil (md_where nil) :: nil)).
+  (nil, ("T" :: nil, ("x", nat) :: nil, c_mod_dotted false "y" ("x" :: nil) nil (md_where nil) :: nil)).
 Example module_param_err : elaborate_core module_param = eerr "x is already declared".
 Proof. elab_err. Qed.
 
 (** An alias may not take a parameter's name (here the unit's). *)
 Definition alias_param : Cst.prog :=
   (nil, ("T" :: nil, ("x", nat) :: nil,
-         c_mod "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "x") :: nil)).
+         c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "x") :: nil)).
 Example alias_param_err : elaborate_core alias_param = eerr "x is already declared".
 Proof. elab_err. Qed.
 Example alias_param_spec : forall u, ~ elab_spec alias_param u.
@@ -315,7 +315,7 @@ Proof. elab_fails. Qed.
 
 (** [module M (x : Nat) (x : Nat)]: a telescope may not repeat a name … *)
 Definition dup_params : Cst.prog := unit_of
-  (c_mod "M" (("x", nat) :: ("x", nat) :: nil) (md_where nil) :: nil).
+  (c_mod false "M" (("x", nat) :: ("x", nat) :: nil) (md_where nil) :: nil).
 Example dup_params_err : elaborate_core dup_params = eerr "duplicate parameter x".
 Proof. elab_err. Qed.
 Example dup_params_spec : forall u, ~ elab_spec dup_params u.
@@ -339,11 +339,11 @@ Proof. elab_err. Qed.
 Example shadow_param :
   elab_spec (nil, ("T" :: nil, ("x", nat) :: nil,
                    c_def md_pub "y" nat Cst.zero ::
-                   c_mod "M" (("y", nat) :: nil)
+                   c_mod false "M" (("y", nat) :: nil)
                      (md_where (c_def md_pub "x" nat (var "y") :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅ ▹ ℕ,
      cc_def "y" true false ℕ zero ::
-     cc_mod "M" (⋅ ▹ ℕ)
+     cc_mod "M" false (⋅ ▹ ℕ)
        (cc_def "x" true false ℕ #0 ::
         cc_eval (qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
@@ -398,12 +398,12 @@ Definition T_M_y : exp := qname_term (q_abs ("T" :: nil) ("M" :: "y" :: nil)).
 
 Example let_shadow :
   elab_spec (unit_of
-    (c_mod "M" (("A", typ 0) :: nil)
+    (c_mod false "M" (("A", typ 0) :: nil)
        (md_where
          (c_def md_pub "y" nat Cst.zero ::
           c_eval (letb (d_def "y" nat (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
     (nil, ⋅,
-     cc_mod "M" (⋅ ▹ Type@0)
+     cc_mod "M" false (⋅ ▹ Type@0)
        (cc_def "y" true false ℕ zero ::
         cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
 Proof. elab_ok. Qed.
@@ -416,12 +416,12 @@ Definition T_ (ch : list string) : modexp := mpath ("T" :: nil) ch.
     parameters. *)
 Example alias_module :
   elab_spec (unit_of
-    (c_mod "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
-     c_mod "P" (("A", typ 0) :: nil) (md_alias (app (var "M") (var "A"))) ::
+    (c_mod false "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
+     c_mod false "P" (("A", typ 0) :: nil) (md_alias (app (var "M") (var "A"))) ::
      c_eval (proj (app (var "P") nat) "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
-     cc_alias "P" (⋅ ▹ Type@0) (me_app (T_ ("M" :: nil)) #0) ::
+     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
+     cc_alias "P" false (⋅ ▹ Type@0) (me_app (T_ ("M" :: nil)) #0) ::
      cc_eval (a_mem (me_app (T_ ("P" :: nil)) ℕ) "f") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -442,7 +442,7 @@ Example local_body :
        (letb (d_mod "L" (("A", typ 0) :: nil)
                 (md_where
                    (c_def md_pub "x" (pi "a" (var "A") (var "A")) (fn "a" (var "A") (var "a")) ::
-                    c_mod "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                    c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
                     c_def md_pub "z" nat (proj (var "N") "y") :: nil)))
           (proj (var "L") "x")) None :: nil))
     (nil, ⋅,
@@ -452,7 +452,7 @@ Example local_body :
                  (gm_ext
                     (gm_ext
                        (gm_ext gm_nil "x" (ge_def true false (Π #0 #1) (Some (λ #0 #0))))
-                       "N" (ge_mod (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                       "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
                     "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))))
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
@@ -476,7 +476,7 @@ Example local_import :
     (c_eval
        (letb (d_mod "L" nil
                 (md_where
-                   (c_mod "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
+                   (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
                     c_import nil ("N" :: nil) (i_use ("y" :: nil)) ::
                     c_import nil ("N" :: nil) (i_as "K") ::
                     c_def md_pub "z" nat (var "y") ::
@@ -490,7 +490,7 @@ Example local_import :
                     (gm_ext
                        (gm_check
                           (gm_check
-                             (gm_ext gm_nil "N" (ge_mod (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
+                             (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
                              (bc_import (me_var 0) ("y" :: nil)))
                           (bc_import (me_var 0) nil))
                        "z" (ge_def true false ℕ (Some (a_mem (me_var 0) "y"))))
@@ -528,32 +528,32 @@ Example local_path :
   elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
-                (md_where (c_mod_dotted "B" ("A" :: nil) nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) :: nil)))
+                (md_where (c_mod_dotted false "B" ("A" :: nil) nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) :: nil)))
           (proj (proj (proj (var "L") "A") "B") "y")) None :: nil))
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "A"
-               (ge_mod (gu_mk ⋅ (md_body (gm_ext gm_nil "B"
-                  (ge_mod (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))))))))
+               (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "B"
+                  (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))))))))
         in a_mem (me_mem (me_mem (me_var 0) "A") "B") "y") None :: nil).
 Proof. elab_ok. Qed.
 
 (** An import [as] alias names a module, not a term. *)
 Example alias_not_term :
   elaborate_core (unit_of
-    (c_mod "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "N") ::
+    (c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) (i_as "N") ::
      c_eval (var "N") None :: nil)) = eerr "a module is not a term".
 Proof. elab_err. Qed.
 
 (** A term is not a module. *)
 Example term_not_module :
-  elaborate_core (unit_of (c_mod "P" nil (md_alias nat) :: nil)) = eerr "not a module".
+  elaborate_core (unit_of (c_mod false "P" nil (md_alias nat) :: nil)) = eerr "not a module".
 Proof. elab_err. Qed.
 
 (** An alias is a member: its name must be fresh. *)
 Example alias_redeclared :
   elaborate_core (unit_of
-    (c_mod "M" nil (md_where nil) :: c_mod "M" nil (md_alias (var "M")) :: nil))
+    (c_mod false "M" nil (md_where nil) :: c_mod false "M" nil (md_alias (var "M")) :: nil))
   = eerr "M is already declared".
 Proof. elab_err. Qed.
 
@@ -584,10 +584,10 @@ end
 >>
 *)
 Definition running : Cst.prog := (nil, ("Main" :: nil, nil,
-  c_mod "M" (("A", typ 0) :: nil)
+  c_mod false "M" (("A", typ 0) :: nil)
     (md_where
       (c_def md_pub "id" (pi "x" (var "A") (var "A")) (fn "x" (var "A") (var "x")) ::
-       c_mod "N" (("B", typ 0) :: nil)
+       c_mod false "N" (("B", typ 0) :: nil)
          (md_where
            (c_def md_pub "k" (pi "x" (var "A") (pi "y" (var "B") (var "A")))
               (fn "x" (var "A") (fn "y" (var "B") (app (var "id") (var "x")))) :: nil)) :: nil)) ::
@@ -598,9 +598,9 @@ Definition Main_M_id : exp := qname_term (q_abs ("Main" :: nil) ("M" :: "id" :: 
 Example running_spec :
   elab_spec running
     (nil, ⋅,
-     cc_mod "M" (⋅ ▹ Type@0)
+     cc_mod "M" false (⋅ ▹ Type@0)
        (cc_def "id" true false (Π #0 #1) (λ #0 #0) ::
-        cc_mod "N" (⋅ ▹ Type@0)
+        cc_mod "N" false (⋅ ▹ Type@0)
           (cc_def "k" true false (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main_M_id $ #3 $ #1)))
              :: nil) :: nil) ::
      cc_def "j" true false (Π ℕ ℕ) (a_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ) :: nil).

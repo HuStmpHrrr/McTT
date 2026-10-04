@@ -330,7 +330,7 @@ Definition sem_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Type@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ A M M)
-  | ge_mod _ => True
+  | ge_mod _ _ => True
   end.
 
 Section Raw.
@@ -385,7 +385,7 @@ Definition sem_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
       (exists i, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Type@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A M M) /\
       (exists A0 i, A = ctx_pi T A0 /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) T (Type@i) A0 A0)
-  | ge_mod U =>
+  | ge_mod _ U =>
       @sem_unit (gc_mk Θ2 Ξ2) ⋅ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 ⋅ U /\
       @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (me_lit U) (me_lit U)
   end.
@@ -434,7 +434,7 @@ Proof.
       refine (proj1 (Hglob _ _ b pv _ B _)).
       rewrite (proj2 (proj2 (closed_read _ _ Hg _ _ _ Hb (z :: nil))) Hne); exact Hz.
     + intros qp y U Hy.
-      destruct (good_alias _ _ _ _ _ _ _ _ _ HG He Hy) as (T & HV); exact HV.
+      destruct (good_alias _ _ _ _ _ _ _ _ _ HG He Hy) as (T & pvT & HV); exact HV.
 Qed.
 
 (** A judgment read at a target its source embeds soundly into. *)
@@ -470,10 +470,10 @@ Proof.
   exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ Hμ HA) ].
 Qed.
 
-Lemma sem_V_alias : forall Θ Ξ Δ E Θ2 Ξ2,
+Lemma sem_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
+    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HΔ _ HE HG He.
   pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HG He) as Hμ.

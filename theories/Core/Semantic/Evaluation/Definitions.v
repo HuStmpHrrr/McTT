@@ -273,7 +273,7 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
 (** A submodule of a saturated body is its unit's closure, in the environment of the body before it. *)
 | eval_selm_body :
   `( List.length args = List.length Δ ->
-     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      dm_local ρ (gu_body Δ Φ) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
 (** A submodule of a saturated alias is selected from its target. *)
@@ -322,7 +322,7 @@ with eval_benv (Θ : gdeps) (Ξ : gstack) : env -> gmod -> env -> Prop :=
 (** A submodule adds its unit's closure. *)
 | eval_benv_mod :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
-     ⟦ gm_ext Φ y (ge_mod Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
+     ⟦ gm_ext Φ y (ge_mod pm Uy) ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ↦ᵐ dm_local ρ1 Uy nil )
 (** A check entry adds nothing. *)
 | eval_benv_check :
   `( ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->

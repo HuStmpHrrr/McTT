@@ -252,10 +252,10 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
     sel S oA A -> sel S oM M ->
     sbody (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs Φ' ->
     sbody S Φ (Cst.c_def m x oA oM :: cs) Φ'
-| sb_mod : forall S Φ x ps md U cs Φ',
+| sb_mod : forall S Φ pv x ps md U cs Φ',
     sunit S ps md U ->
-    sbody (en_var x :: S) (gm_ext Φ x (ge_mod U)) cs Φ' ->
-    sbody S Φ (Cst.c_mod x ps md :: cs) Φ'
+    sbody (en_var x :: S) (gm_ext Φ x (ge_mod pv U)) cs Φ' ->
+    sbody S Φ (Cst.c_mod pv x ps md :: cs) Φ'
 | sb_import : forall S Φ fq ip spec E F cs Φ',
     loaded S fq ->
     itarget S fq ip E ->
@@ -303,21 +303,21 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
       (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M)
 (** The parameters of [module x (ps) where body end] are read in [F], its
     body in a new frame inside. *)
-| sc_mod : forall ch O F x ps body tys bcs,
+| sc_mod : forall ch O F pv x ps body tys bcs,
     fresh x F ->
     NoDup (map fst ps) ->
     sparams (F ++ O) ps tys ->
     scmds fp (ch ++ x :: nil) (F ++ O) (pents ps) body bcs ->
-    scmd fp ch O F (Cst.c_mod x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_mod x (ptele tys) bcs)
+    scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_where body)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_mod x pv (ptele tys) bcs)
 (** [module x (ps) := E]: [E] is read under the parameters. *)
-| sc_alias : forall ch O F x ps oE tys E,
+| sc_alias : forall ch O F pv x ps oE tys E,
     fresh x F ->
     NoDup (map fst ps) ->
     sparams (F ++ O) ps tys ->
     selm (pents ps ++ F ++ O) oE E ->
-    scmd fp ch O F (Cst.c_mod x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_alias x (ptele tys) E)
+    scmd fp ch O F (Cst.c_mod pv x ps (Cst.md_alias oE)) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_alias x pv (ptele tys) E)
 | sc_import : forall ch O F fq ip spec F' c,
     simport O F (Cst.c_import fq ip spec) F' c ->
     scmd fp ch O F (Cst.c_import fq ip spec) F' c

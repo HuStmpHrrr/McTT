@@ -219,11 +219,11 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
       let* A := elab S oA in
       let* M := elab S oM in
       elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
-  | Cst.c_mod x ps md' :: cs' =>
+  | Cst.c_mod pv x ps md' :: cs' =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (pents ps ++ S) md' in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod (gu_mk (ptele tys) D))) cs'
+      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
   | Cst.c_import fq ip spec :: cs' =>
       let* _ := echeck (loaded_b S fq) "the unit is not imported" in
       let* E := elab_itarget S fq ip in
@@ -350,7 +350,7 @@ Proof.
   - (* md_alias *)
     intros o [_ IHm] S D; cbn [elab_mdef]. iff_case.
   - (* c_mod *)
-    intros x ps md Hps Hmd cs Hcs S Φ Φ'. apply Pterm_params in Hps.
+    intros pv x ps md Hps Hmd cs Hcs S Φ Φ'. apply Pterm_params in Hps.
     pose proof (sunit_iff S ps md) as Hu. cbn [elab_body]; split; intros Hg.
     + dest_eok. econstructor; [ apply Hu; [ assumption | exact Hmd |] | apply Hcs; eassumption ].
       to_elab; reflexivity.
@@ -451,7 +451,7 @@ Section Commands.
              proj2 (proj2 (proj2 H))).
     apply Cst.cst_mut_ind; try easy.
     - intros cs Hcs body [=<-]. apply cmds_iff, Hcs.
-    - intros x ps [body | oE] _ Hmd ch O F F' c'; cbn [elab_cmd]; [ specialize (Hmd body eq_refl) |].
+    - intros pv x ps [body | oE] _ Hmd ch O F F' c'; cbn [elab_cmd]; [ specialize (Hmd body eq_refl) |].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros m x o1 o2 _ _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].

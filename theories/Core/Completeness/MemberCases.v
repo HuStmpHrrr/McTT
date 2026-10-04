@@ -132,11 +132,11 @@ Proof.
 Qed.
 
 (** The submodule named [y] of two related bodies. *)
-Lemma per_body_lookup_mod : forall ρ Φ ρ' Φ' y Φ1 Uy,
+Lemma per_body_lookup_mod : forall ρ Φ ρ' Φ' y Φ1 pm Uy,
     per_body ρ Φ ρ' Φ' ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ1 y (ge_mod Uy)) ->
-    exists Φ1' Uy' ρ1 ρ1',
-      gm_prefix_upto Φ' y = Some (gm_ext Φ1' y (ge_mod Uy')) /\
+    gm_prefix_upto Φ y = Some (gm_ext Φ1 y (ge_mod pm Uy)) ->
+    exists Φ1' pm' Uy' ρ1 ρ1',
+      gm_prefix_upto Φ' y = Some (gm_ext Φ1' y (ge_mod pm' Uy')) /\
       ⟦ Φ1 ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ ↘ ρ1 /\ ⟦ Φ1' ⟧ᵇ gc_deps ⍮ gc_stack ⍮ ρ' ↘ ρ1' /\
       per_dmod (dm_local ρ1 Uy nil) (dm_local ρ1' Uy' nil).
 Proof.
@@ -144,7 +144,7 @@ Proof.
   - destruct (String.eqb y y0) eqn:Ey; [ discriminate |]; apply IHper_body; exact Hx.
   - destruct (String.eqb y y0) eqn:Ey; [ injection Hx as -> -> |].
     + apply String.eqb_eq in Ey; subst.
-      do 4 eexists; split; [ reflexivity |]; eauto.
+      do 5 eexists; split; [ reflexivity |]; eauto.
     + apply IHper_body; exact Hx.
   - apply IHper_body; exact Hx.
 Qed.
@@ -184,9 +184,9 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     eval_benv gc_deps gc_stack (env_args ρ args) Φ' ρ1 ->
     ⟦ A ⟧ ρ1 ↘ a0 -> per_univ_elem i R a a0 ->
     mtyped (dm_local ρ (gu_body Δ Φ) args) (x :: nil) mk_term a
-| mty_sub : forall ρ Δ Φ args y Φ' Uy ρ1 ch k a,
+| mty_sub : forall ρ Δ Φ args y Φ' pm Uy ρ1 ch k a,
     List.length args = List.length Δ ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod Uy)) ->
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     eval_benv gc_deps gc_stack (env_args ρ args) Φ' ρ1 ->
     mtyped (dm_local ρ1 Uy nil) ch k a ->
     mtyped (dm_local ρ (gu_body Δ Φ) args) (y :: ch) k a
@@ -499,7 +499,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH
@@ -581,7 +581,7 @@ Proof.
     destruct U' as [Δ' D']; cbn [gu_params gu_def] in *.
     inversion Hd; subst.
     match goal with Hb0 : per_body _ _ _ _ |- _ => rename Hb0 into Hbd end.
-    destruct (per_body_lookup_mod _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
+    destruct (per_body_lookup_mod _ _ _ _ _ _ _ _ Hbd Hy) as (Φ1' & pm' & Uy' & ρ1x & ρ1' & Hy' & Hb1 & Hb1' & HU).
     pose proof (functional_eval_benv _ _ _ _ Hb Hb1) as <-.
     pose proof (IH _ _ _ HU HE') as Hr.
     destruct k; cbn in Hr |- *; destruct Hr as (v & v' & Hv & Hv' & Hvv); exists v, v'.
@@ -686,7 +686,7 @@ Proof.
   induction 1 as [ w chain k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 chain k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T chain k a Hgp Hm Hty IH
@@ -710,8 +710,8 @@ Proof.
     + injection Heq as -> Heq.
       inversion Hw1; subst.
       match goal with Hs : eval_selm _ _ _ _ _ |- _ => inversion Hs; subst end; cbn in *; try lia.
-      match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod ?Uy')) |- _ =>
-        rewrite Hy in Hp; injection Hp as <- <- end.
+      match goal with Hp : gm_prefix_upto Φ _ = Some (gm_ext _ _ (ge_mod _ ?Uy')) |- _ =>
+        rewrite Hy in Hp; injection Hp as <- <- <- end.
       match goal with Hb' : eval_benv _ _ _ Φ' ?ρ1' |- _ => pose proof (functional_eval_benv _ _ _ _ Hb Hb') as <- end.
       eapply IH; [ reflexivity | exact Hch | eassumption ].
   - destruct pre as [| z pre]; cbn in Heq.
@@ -773,7 +773,7 @@ Proof.
   induction 1 as [ w ch k a0 a ρB B i in_rel Hgl Hnp Ha Hty IH
                  | w a i R Hs Ha
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
-                 | ρ Δ Φ args y Φ' Uy ρ1 ch k a Hl Hy Hb Hm IH
+                 | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
                  | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
                  | p args y T ch k a Hgp Hm Hty IH

@@ -62,7 +62,8 @@ let cmds :=
   | ~ = cmds; ~ = cmd; { cmd :: cmds }
 
 let cmd :=
-  | MODULE; p = path; md = mdecl; { Cst.c_mod_dotted (fst p) (snd p) (fst md) (snd md) }
+  | MODULE; p = path; md = mdecl; { Cst.c_mod_dotted false (fst p) (snd p) (fst md) (snd md) }
+  | PRIVATE; MODULE; p = path; md = mdecl; { Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md) }
   | m = mods; DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
       { Cst.c_def m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
   | ~ = import_cmd; <>

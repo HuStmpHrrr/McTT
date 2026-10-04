@@ -131,21 +131,21 @@ Section Semantics.
       Θ ⍮ Ξ ⊢[ch] cc_def x b pv A M ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ
   (** The body ends on the frame it opened, the stack below as it was; that
       frame becomes the member [x] of the one below, as it is. *)
-  | rc_mod : forall ch Θ Ξ x Δ cs Θ' mp U,
+  | rc_mod : forall ch Θ Ξ x pv Δ cs Θ' mp U,
       tele_ass Δ ->
       ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ->
       acc_ok Θ Ξ (tele_refs Δ) ->
       gs_fresh x Ξ ->
       Θ ⍮ gs_push (qname_in (gs_path Ξ) x) Δ Ξ ⊢[ch] cs ⇝* Θ' ⍮ (mp, U) :: Ξ ->
-      Θ ⍮ Ξ ⊢[ch] cc_mod x Δ cs ⇝ Θ' ⍮ gs_add x (ge_body Δ (gu_mod U)) Ξ
+      Θ ⍮ Ξ ⊢[ch] cc_mod x pv Δ cs ⇝ Θ' ⍮ gs_add x (ge_body pv Δ (gu_mod U)) Ξ
   (** An alias is filed with the frames' parameters it is declared under. *)
-  | rc_alias : forall ch Θ Ξ x Δ E,
+  | rc_alias : forall ch Θ Ξ x pv Δ E,
       tele_ass Δ ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
       Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
       acc_ok Θ Ξ (tele_refs Δ ++ modexp_refs E) ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⊢[ch] cc_alias x Δ E ⇝ Θ ⍮ gs_add x (ge_mod (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ
+      Θ ⍮ Ξ ⊢[ch] cc_alias x pv Δ E ⇝ Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ
   (** An import of what is filed or open already: only checked. *)
   | rc_import_here : forall ch Θ Ξ E ns,
       import_ok Θ Ξ E ns ->
@@ -950,7 +950,7 @@ Section WellFormed.
       constructor; constructor; [ exact Hs0 | | exact Hff ].
       constructor; cbn; econstructor; [ eassumption | unfold gs_def; constructor; exact HM | exact Hfr ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
-      intros ch Θ Ξ x Δ cs Θ' mp' U Htel HΔ _ Hfr Hr IH HΞ Hc Hst.
+      intros ch Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ _ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
       assert (Hpush : ⊢g Θ ⍮ gs_push (qname_in mp x) Δ ((mp, gu_mk P Φ) :: Ξ0)).
       { constructor; constructor; [ apply wf_gctx_stack, HΞ | constructor; constructor; [ exact Htel | exact HΔ ] |].
@@ -964,7 +964,7 @@ Section WellFormed.
       constructor; constructor; [ exact Hs0 | | exact Hff0 ].
       constructor; cbn; econstructor; [ eassumption | constructor; eassumption | exact Hfr ].
     - (* an alias: checked against the frame so far, as a definition is *)
-      intros ch Θ Ξ x Δ E Htel HΔ HE _ Hfr HΞ Hc Hst.
+      intros ch Θ Ξ x pv Δ E Htel HΔ HE _ Hfr HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
       split; [| split; [ exact Hc | apply gds_sub_refl ] ].
       pose proof (wf_gctx_stack _ _ HΞ) as Hs; inversion Hs as [| ? ? ? ? Hs0 HU Hff]; subst.
@@ -1290,7 +1290,7 @@ Proof.
 Qed.
 
 Lemma equiv_acc : forall Θ Θ' Ξ l, gds_equiv Θ Θ' -> acc_ok Θ Ξ l -> acc_ok Θ' Ξ l.
-Proof. intros * Heq Hl; eapply acc_ok_gc_sub; [ apply gc_sub_levels, (proj1 (proj2 Heq)) | exact Hl ]. Qed.
+Proof. intros * Heq Hl; eapply acc_ok_dsub; [ exact (proj1 (proj2 Heq)) | exact Hl ]. Qed.
 
 Lemma equiv_import_ok : forall Θ Θ' Ξ E ns,
     gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> import_ok Θ Ξ E ns -> import_ok Θ' Ξ E ns.

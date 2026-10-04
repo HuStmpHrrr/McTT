@@ -25,4 +25,15 @@ end
 
 module A := Sub
 
+(* A private module, used inside its unit. *)
+private module Hidden where
+
+def h : Nat := 2 end
+
+end
+
+def viaHidden : Nat := Hidden.h end
+
+private module PA := Sub
+
 end

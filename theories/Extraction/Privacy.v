@@ -29,7 +29,9 @@ Section PrivacyImpl.
     try solve [ eauto ];
     first
       [ solve [ match goal with Hd : exists T E, _ = _ /\ _ |- _ =>
-                  destruct Hd as (? & ? & -> & ?); eapply mdl_alias; eassumption end ]
+                  destruct Hd as (? & ? & -> & ?); eapply mdl_alias; [ | eassumption | eassumption ]; discriminate end ]
+      | solve [ eapply mdl_entry; [ eassumption | reflexivity ] ]
+      | solve [ eapply mdl_alias; [ | eassumption | eassumption ]; discriminate ]
       | solve [ do 2 eexists; split; [ reflexivity | eassumption ] ]
       | solve [ econstructor; eassumption ]
       | solve [ eapply mdl_alias; eassumption ]
@@ -54,10 +56,10 @@ Section PrivacyImpl.
   Equations decl_impl Γ H ch (Ho : mt_order Θ Ξ Γ H ch) :
       { d : qname * bool | mdecl Θ Ξ H ch (fst d) (snd d) } + { forall qd pv, ~ mdecl Θ Ξ H ch qd pv }
       by struct Ho :=
-  | Γ, me_unit fp, ch, Ho with inspect (gc_resolve Θ Ξ (q_abs fp ch)) := {
-    | exist _ (Some (ge_def b pv A B)) Er => inleft (exist _ (q_abs fp (removelast ch), pv) _)
-    | exist _ _ Er with inspect (gc_module Θ Ξ (q_abs fp ch)) := {
-      | exist _ (Some (mr_alias U r)) Em with decl_unit_impl nil U r _ := {
+  | Γ, me_unit fp, ch, Ho with inspect (gc_entry Θ Ξ (q_abs fp ch)) := {
+    | exist _ (Some E) Er => inleft (exist _ (q_abs fp (removelast ch), ge_private E) _)
+    | exist _ None Er with inspect (gc_module Θ Ξ (q_abs fp ch)) := {
+      | exist _ (Some (mr_alias U (y :: r))) Em with decl_unit_impl nil U (y :: r) _ := {
         | inleft (exist _ d Hd) => inleft (exist _ d _)
         | inright HN => inright _ }
       | exist _ _ Em => inright _ } }
