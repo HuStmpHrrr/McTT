@@ -376,7 +376,7 @@ Lemma sub_eq_preserves_exp : forall Θ Ξ Δ A M,
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
     forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ].
 Proof.
-  induction 1; intros; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
+  induction 1; intros; destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
     saturate_sub_typ; saturate_sub_eq_IH; reduce_sub_natrec.
   (** In the [a_glob] case the recorded type reaches [Γ] only through
       [saturate_sub_typ], i.e. after [push_sub] has run. *)

@@ -330,7 +330,7 @@ Lemma ctx_pi_rev_cons : forall e R A,
     ctx_pi (rev (e :: R)) A =
     match e with
     | ce_ass B => a_pi B (ctx_pi (rev R) A)
-    | ce_def B N => a_let (b_def B N) (ctx_pi (rev R) A)
+    | ce_def B N => a_let (b_def (Some B) N) (ctx_pi (rev R) A)
     | ce_mod U => a_let (b_mod U) (ctx_pi (rev R) A)
     end.
 Proof. intros; cbn [rev]; rewrite ctx_pi_app; destruct e; reflexivity. Qed.

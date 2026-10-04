@@ -68,7 +68,7 @@ Proof.
     apply (rel_exp_pi_cong (i := max i k)); eapply rel_exp_cumu_ge; [| exact HB | | exact HX ]; lia.
   - destruct (sem_ctx_def_inv HΨ) as [[k HB] HM].
     eapply IH; [ exact (sem_ctx_tail HΨ) |].
-    pose proof (valid_exp_let HB HM HX) as H; cbn in H; exact H.
+    pose proof (valid_exp_let (oA := Some B) HB HM HX) as H; cbn in H; exact H.
   - pose proof (sem_ctx_mod_inv HΨ) as HU.
     eapply IH; [ exact (sem_ctx_tail HΨ) |].
     pose proof (valid_exp_let_mod HU HX) as H; cbn in H; exact H.
@@ -117,7 +117,7 @@ Lemma let_step_def : forall {Γ τ G D1 k M1 X i},
     (forall B C, pi_view (ℓ D1 ≔ M1 in X)[τ] = Some (B, C) -> pi_view X[τ ,, M1[τ]] = Some (B, C)).
 Proof.
   intros * Hg HD HM HX; split.
-  - pose proof (rel_exp_let_zeta HD HM HX) as H.
+  - pose proof (rel_exp_let_zeta (oA := Some D1) HD HM HX) as H.
     pose proof (rel_exp_under_ctx_gsub Hg H) as H'.
     rewrite !exp_sub_extend_sub in H'.
     change (Type@i[τ ,, M1[τ]]) with (Type@i : typ) in H'; exact H'.
@@ -154,7 +154,7 @@ Proof.
     pose proof (sem_ctx_tail HC) as HC'.
     destruct e as [B0 | B0 M0 | U0]; [ exfalso; exact (He _ eq_refl) | |].
     + destruct (sem_ctx_def_inv HC) as [[k HB0] HM0].
-      pose proof (valid_exp_let HB0 HM0 HX) as HX'.
+      pose proof (valid_exp_let (oA := Some B0) HB0 HM0 HX) as HX'.
       destruct (IH _ _ _ _ _ HL' HC' HX' Hg) as (τ1 & j1 & Hg1 & HJ1 & Hp1).
       destruct (let_step_def Hg1 HB0 HM0 HX) as [HJ2 Hp2].
       exists (τ1 ,, M0[τ1]), (max j1 i); split; [ eapply gsub_def; eassumption |]; split.

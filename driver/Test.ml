@@ -144,7 +144,7 @@ let%expect_test "lib/NatTheory.mctt" =
     Evaluate let module M1 :=
                    Prelude::Function::Iter Nat
                      (fun (x1 : Nat) -> Prelude::Arith::Plus.plus x1 x1);
-                 x2 : Nat := 2;
+                 x2 := 2;
                  x3 : Prelude::Arith::Equality.Eq (M1.iter x2 1) 4 := true
              in x3
              end --> true : True
@@ -339,6 +339,37 @@ let%expect_test "Nary.mctt works" =
 let%expect_test "SimpleLet.mctt works" =
   let _ = main_of_example "SimpleLet.mctt" in
   [%expect {| Evaluate let x1 : Nat := 0 in succ x1 end --> 1 : Nat |}]
+
+let%expect_test "an unannotated let infers the type of its definiens" =
+  let _ = main_of_body "eval let x := 0 in succ x end" in
+  [%expect {| Evaluate let x1 := 0 in succ x1 end --> 1 : Nat |}]
+
+let%expect_test "annotated and unannotated bindings mix in one let" =
+  let _ = main_of_body
+    "eval let A : Type@0 := Nat; z := 0; f := fun (n : A) -> succ z in f z end" in
+  [%expect {|
+    Evaluate let A1 : Type@0 := Nat; x1 := 0; x2 := fun (x3 : A1) -> succ x1
+             in x2 x1
+             end --> 1 : Nat
+    |}]
+
+let%expect_test "an unannotated let's body may need its delta-equation" =
+  let _ = main_of_body "eval let A := Nat in fun (a : A) -> succ a end" in
+  [%expect {|
+    Evaluate let x1 := Nat in fun (x2 : x1) -> succ x2 end
+      --> fun (x1 : Nat) -> succ x1 : forall (x1 : Nat) -> Nat
+    |}]
+
+let%expect_test "an unannotated let with an ill-typed body is rejected" =
+  let _ = main_of_body "eval let A := Nat in succ A end" in
+  [%expect {| Error: let x1 := Nat in succ x1 end has no inferable type |}]
+
+let%expect_test "an unannotated local definition needs its body" =
+  let _ = main_of_body "eval let x := in x end" in
+  [%expect {|
+    Error: on "in" (at line 1, column 33 - line 1, column 35): Expected the body
+      of the local definition.
+    |}]
 
 let%expect_test "LetTwoVars.mctt works" =
   let _ = main_of_example "LetTwoVars.mctt" in

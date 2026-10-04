@@ -105,9 +105,9 @@ abstract def divModSpec : forall (n : Nat) (d : Nat) ->
     rec n return x . Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
     | zero => true
     | succ p, ih =>
-        let r : Nat := mod p (succ d);
-            q : Nat := div p (succ d);
-            m : Nat := mult q (succ d)
+        let r := mod p (succ d);
+            q := div p (succ d);
+            m := mult q (succ d)
         in eqbCases r d
              (fun (b : Nat) ->
                 Eq (plus (mult (pick b (fun (u : Nat) -> q) (fun (u : Nat) -> succ q)) (succ d))
@@ -135,7 +135,7 @@ abstract def modLt : forall (n : Nat) (d : Nat) -> Lt (mod n (succ d)) (succ d) 
     rec n return x . Lt (mod x (succ d)) (succ d)
     | zero => true
     | succ p, ih =>
-        let r : Nat := mod p (succ d)
+        let r := mod p (succ d)
         in eqbCases r d (fun (b : Nat) -> Le (pick b (fun (u : Nat) -> succ r) (fun (u : Nat) -> 0)) d)
              (fun (h : Eq (eqb r d) 0) -> leEqbZero r d ih h)
              (fun (h : Eq r d) -> true)

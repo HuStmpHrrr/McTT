@@ -98,12 +98,13 @@ Qed.
 
 (** ** Local Bindings at the Level of Types *)
 
-Lemma typ_let_inv : forall Γ D N T i, Γ ⊢ ℓ D ≔ N in T : Type@i ->
-    (exists k, Γ ⊢ D : Type@k) /\ Γ ⊢ N : D /\ Γ ▸ D ≔ N ⊢ T : Type@i.
+Lemma typ_let_inv : forall Γ oD N T i, Γ ⊢ a_let (b_def oD N) T : Type@i ->
+    exists D, let_ann oD D /\ (exists k, Γ ⊢ D : Type@k) /\ Γ ⊢ N : D /\ Γ ▸ D ≔ N ⊢ T : Type@i.
 Proof.
   intros * H.
-  destruct (wf_let_inversion H) as (k & C & HD & HN & HT & Hsub).
+  destruct (wf_let_inversion H) as (D & k & C & Hann & HD & HN & HT & Hsub).
   destruct (subtyp_univ_inv _ _ _ Hsub) as (j & k' & Hle & HCj).
+  exists D; split; [ exact Hann |].
   split; [ eauto | split; [ exact HN |] ].
   assert (exists l, Γ ▸ D ≔ N ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
   pose proof (def_ctx_inst _ _ _ _ _ _ HD HN HCt) as HCi.
@@ -142,14 +143,14 @@ Proof.
   - injection Hp as <- <-.
     destruct (wf_pi_inversion' HA) as [HB HC].
     split; [ mauto 3 | split; assumption ].
-  - destruct b as [D N | U];
+  - destruct b as [oD N | U];
       (destruct (pi_view A) as [[B' C'] |] eqn:E; [| discriminate ]; injection Hp as <- <-).
-    + destruct (typ_let_inv _ _ _ _ _ HA) as ([k HD] & HN & HT).
+    + destruct (typ_let_inv _ _ _ _ _ HA) as (D & Hann & [k HD] & HN & HT).
       destruct (IHA _ _ _ _ HT eq_refl) as (HTe & HB' & HC').
       pose proof (wf_sub_single_def _ _ _ _ _ _ HD HN) as Hσ.
       pose proof (sub_preserves_typ_eq _ _ _ _ _ _ _ _ HTe Hσ) as HTs; cbn in HTs.
       split; [| split ].
-      * eapply wf_exp_eq_trans; [ eapply wf_exp_eq_let_zeta_typ; eassumption | exact HTs ].
+      * eapply wf_exp_eq_trans; [ eapply wf_exp_eq_let_zeta_typ; cycle 3; [ solve_let_ann | eassumption .. ] | exact HTs ].
       * eapply sub_preserves_typ; eassumption.
       * eapply sub_preserves_typ; [ exact HC' | eapply wf_sub_q'; eassumption ].
     + destruct (typ_let_mod_inv _ _ _ _ HA) as (HU & HT).
@@ -676,7 +677,7 @@ Proof.
     cbn [body_ctx app ctx_fn].
     eapply ctx_fn_wf; [ rewrite <- app_assoc; exact HC' | rewrite <- app_assoc; exact HA |].
     assert (Hl : body_ctx Φ' ++ Δ ++ Γ ⊢ ℓ A ≔ M0 in #0 : A[↑]ʷ[Id,,M0])
-      by (eapply wf_let; [ exact HA | exact HM0 | eapply wf_vlookup; [ exact Hx | constructor ] ]).
+      by (eapply wf_let; [ exact HA | exact HM0 | eapply wf_vlookup; [ exact Hx | constructor ] | solve_let_ann ]).
     rewrite exp_sub_shift_extend, exp_sub_id in Hl.
     rewrite <- app_assoc; exact Hl.
   - (* a member of a submodule of a body *)

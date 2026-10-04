@@ -119,7 +119,7 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢s Id : Γ ▸ A ≔ M) by mauto 3.
     assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by mauto 2 using presup_exp_typ.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A' ≔ M' in B' : C[Id,,M']) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA' M') B' : C[Id,,M']) by (eapply wf_let; cycle 3; [ eassumption | eassumption .. ]).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Type@j) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Type@j) by mauto 3.

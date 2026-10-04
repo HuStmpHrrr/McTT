@@ -194,16 +194,25 @@ Qed.
 #[export]
 Hint Resolve wf_app_inversion : mctt.
 
-Lemma wf_let_inversion : forall {Θ Ξ Γ A M B T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : T ->
-    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
+Lemma wf_let_inversion : forall {Θ Ξ Γ oA M B T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : T ->
+    exists A i C, let_ann oA A /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
            Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
 Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ _ eq_refl);
     destruct_conjs; gen_core_presups;
-    do 2 eexists; repeat split; mautosolve 4.
+    do 3 eexists; repeat split; first [ solve [ eassumption ] | mautosolve 4 ].
+Qed.
+
+(** For an annotated definition, the type is the annotation. *)
+Corollary wf_let_ann_inversion : forall {Θ Ξ Γ A M B T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : T ->
+    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
+           Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
+Proof.
+  intros * H; destruct (wf_let_inversion H) as (A' & i & C & [[=] | [= <-]] & ?); eauto.
 Qed.
 
 #[export]

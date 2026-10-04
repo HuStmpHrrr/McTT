@@ -106,6 +106,10 @@ Fixpoint body_shape (Φ Φ' : gmod) : Prop :=
   | _, _ => False
   end.
 
+(** The annotation of a local definition, if any, is the type it is checked
+    at; without one, the type is any its body has. *)
+Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some A.
+
 (** A name an import [use]s is a definition or a submodule; whether it may
     be used there is a matter of privacy, checked by the command ([Command]). *)
 Definition member_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (n : String.string) : Prop :=
@@ -187,11 +191,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
      Θ ⍮ Ξ ⍮ Γ ⊢ N : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M $ N : B[Id,,N] )
+(** A local definition, of its annotated type or of a type its body has. *)
 | wf_let :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : C[Id,,M] )
+     let_ann oA A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : C[Id,,M] )
 (** A local module occupies one index, a slot holding its unit.  The body's
     type is premised to be a type, as the canonical type of [wf_mem] is:
     equivalent substitutions are moved through the body by [ζ], and the two
@@ -304,7 +310,9 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M] )
+     let_ann oA A ->
+     let_ann oA' A' ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M] )
 (** The right-hand side is typed in its own context, which differs from the
     left's by the unit. *)
 | wf_exp_eq_let_mod_cong :
@@ -356,7 +364,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
      Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M] )
+     let_ann oA A ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M] )
 (** [ζ] for local modules: the slot is replaced by the unit. *)
 | wf_exp_eq_let_mod_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
@@ -802,6 +811,21 @@ Proof. now inversion 1. Qed.
 
 #[export]
 Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup ctx_lookup_def : mctt.
+
+Lemma let_ann_none : forall A, let_ann None A.
+Proof. intros; left; reflexivity. Qed.
+
+Lemma let_ann_some : forall A, let_ann (Some A) A.
+Proof. intros; right; reflexivity. Qed.
+
+#[export]
+Hint Resolve let_ann_none let_ann_some : mctt.
+
+Ltac solve_let_ann := first [ apply let_ann_some | eassumption | apply let_ann_none ].
+
+(** The annotations of the local definitions in context, as the two cases. *)
+Ltac destruct_let_ann :=
+  repeat match goal with H : let_ann _ _ |- _ => destruct H as [-> | ->] end; cbv beta iota in *.
 
 #[export]
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.

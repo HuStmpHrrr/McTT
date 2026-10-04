@@ -47,7 +47,7 @@ with modexp_scoped (n : nat) (H : modexp) : Prop :=
   end
 with bnd_scoped (n : nat) (b : bnd) : Prop :=
   match b with
-  | b_def A M => exp_scoped n A /\ exp_scoped n M
+  | b_def oA M => match oA with Some A => exp_scoped n A | None => True end /\ exp_scoped n M
   | b_mod U => gunit_scoped n U
   end
 with gunit_scoped (n : nat) (U : gunit) : Prop :=
@@ -690,7 +690,9 @@ Theorem wf_scoped :
   (forall Θ Ξ, wf_gstack Θ Ξ -> gctx_closed Θ Ξ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> gctx_closed Θ Ξ).
 Proof.
-  apply wf_mut_ind_all; intros; unfold ctx_ok in *; cbn in *; destruct_all;
+  apply wf_mut_ind_all; intros;
+    repeat match goal with H : let_ann _ _ |- _ => destruct H as [-> | ->] end;
+    unfold ctx_ok in *; cbn in *; destruct_all;
     rewrite ?length_app, ?ctx_scoped_app_iff in *; destruct_all.
   all: repeat match goal with |- _ /\ _ => split end; try assumption;
     eauto using exp_scoped_sub1, exp_scoped_sub2, exp_scoped_sub_succ, exp_scoped_shift, mod_closed_nil, exp_scoped_sub1_mod, mod_qname_scoped.

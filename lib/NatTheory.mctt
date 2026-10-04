@@ -32,7 +32,7 @@ eval Iter.iter Nat (fun (x : Nat) -> plus x x) 3 1
 (* A let-bound number is known in the body, so [true] proves the equation;
    [Doubling] names an instance of [Prelude::Function::Iter]. *)
 eval let module Doubling := Iter Nat (fun (x : Nat) -> plus x x);
-         n : Nat := 2;
+         n := 2;
          p : Eq (Doubling.iter n 1) 4 := true
      in p
      end

@@ -43,14 +43,15 @@ Proof.
     eapply glu_univ_elem_per_elem; eassumption.
 Qed.
 
-Lemma glu_rel_exp_let_helper : forall {Γ A i M B C k},
+Lemma glu_rel_exp_let_helper : forall {Γ oA A i M B C k},
     Γ ⊩ A : Type@i ->
     Γ ⊩ M : A ->
     Γ ▸ A ≔ M ⊩ C : Type@k ->
     Γ ▸ A ≔ M ⊩ B : C ->
-    Γ ⊩ ℓ A ≔ M in B : C[Id,,M].
+    let_ann oA A ->
+    Γ ⊩ a_let (b_def oA M) B : C[Id,,M].
 Proof.
-  intros * HA HM HC HB.
+  intros * HA HM HC HB Hann.
   assert (⊩ Γ) as [SbΓ] by mauto 3.
   assert (Γ ⊢ A : Type@i) by mauto 3.
   assert (Γ ⊢ M : A) by mauto 3.
@@ -87,21 +88,22 @@ Proof.
     by (eapply glu_univ_elem_resp_per_univ; [ symmetry |]; eassumption).
   econstructor; [ exact Hc' | eapply eval_exp_let; eassumption | eassumption |].
   (** [ζ] along [σ], with both instances in the form [_[σ,,M[σ]]]. *)
-  assert (Hζ : Δ ⊢ (ℓ A ≔ M in B)[σ] ≈ B[Id,,M][σ] : C[Id,,M][σ])
-    by (eapply sub_preserves_exp_eq; [ eapply wf_exp_eq_let_zeta; eassumption | eassumption ]).
+  assert (Hζ : Δ ⊢ (a_let (b_def oA M) B)[σ] ≈ B[Id,,M][σ] : C[Id,,M][σ])
+    by (eapply sub_preserves_exp_eq; [ eapply wf_exp_eq_let_zeta; cycle 3; [ solve_let_ann | eassumption .. ] | eassumption ]).
   repeat rewrite exp_sub_extend_sub in Hζ.
   repeat rewrite exp_sub_extend_sub.
   eapply glu_univ_elem_trm_resp_exp_eq; [ eassumption | exact HBσ |].
   apply wf_exp_eq_sym; exact Hζ.
 Qed.
 
-Lemma glu_rel_exp_let : forall {Γ A i M B C},
+Lemma glu_rel_exp_let : forall {Γ oA A i M B C},
     Γ ⊩ A : Type@i ->
     Γ ⊩ M : A ->
     Γ ▸ A ≔ M ⊩ B : C ->
-    Γ ⊩ ℓ A ≔ M in B : C[Id,,M].
+    let_ann oA A ->
+    Γ ⊩ a_let (b_def oA M) B : C[Id,,M].
 Proof.
-  intros * HA HM HB.
+  intros * HA HM HB Hann.
   destruct (presup_typ_glu_rel_exp HB) as [k HC].
   eapply glu_rel_exp_let_helper; eassumption.
 Qed.

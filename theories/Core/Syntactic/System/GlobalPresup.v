@@ -71,26 +71,28 @@ Proof.
 Qed.
 
 (** [wf_let] at a universe, which [Type@j[Id,,M]] is by computation only. *)
-Lemma wf_let_typ : forall Θ Ξ Γ A M B i j,
+Lemma wf_let_typ : forall Θ Ξ Γ oA A M B i j,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Type@j.
+    let_ann oA A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Type@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : Type@j[Id,,M]) as Hl by (eapply wf_let; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Type@j[Id,,M]) as Hl by (eapply wf_let; cycle 3; [ solve_let_ann | eassumption .. ]).
   exact Hl.
 Qed.
 
-Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ A M B i j,
+Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ oA A M B i j,
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Type@j.
+    let_ann oA A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Type@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ B[Id,,M] : Type@j[Id,,M]) as Hl
-      by (eapply wf_exp_eq_let_zeta; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Type@j[Id,,M]) as Hl
+      by (eapply wf_exp_eq_let_zeta; cycle 3; [ solve_let_ann | eassumption .. ]).
   exact Hl.
 Qed.
 
@@ -133,7 +135,7 @@ Proof.
   - (** A definition is generalized as a [let], which is a type at the type's
         own level. *)
     eapply IH; [ eauto using presup_exp_ctx |].
-    eapply wf_let_typ; eassumption.
+    eapply wf_let_typ; cycle 3; [ solve_let_ann | eassumption .. ].
   - (** So is a module slot, as a [let module]. *)
     eapply IH; [ eauto using presup_unit_eq_ctx |].
     eapply wf_let_mod_typ; eassumption.
@@ -154,11 +156,11 @@ Proof.
     end.
   - (** The body's [let] has the type [A[Id,,N]], which is the type's [let] by
         ζ. *)
-    assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : Type@i) by (eapply wf_let_typ; eassumption).
+    assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : Type@i) by (eapply wf_let_typ; cycle 3; [ solve_let_ann | eassumption .. ]).
     eapply IH with (i := i); [ eauto using presup_exp_ctx | eassumption |].
-    eapply wf_exp_subtyp'; [ eapply wf_let; eassumption |].
+    eapply wf_exp_subtyp'; [ eapply wf_let; cycle 3; [ solve_let_ann | eassumption .. ] |].
     eapply wf_subtyp_refl; [ eassumption |].
-    eapply wf_exp_eq_sym, wf_exp_eq_let_zeta_typ; eassumption.
+    eapply wf_exp_eq_sym, wf_exp_eq_let_zeta_typ; cycle 3; [ solve_let_ann | eassumption .. ].
   - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : Type@i) by (eapply wf_let_mod_typ; eassumption).
     eapply IH with (i := i); [ eauto using presup_unit_eq_ctx | eassumption |].
     eapply wf_exp_subtyp'; [ eapply wf_let_mod; eassumption |].

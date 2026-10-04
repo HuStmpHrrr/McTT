@@ -134,7 +134,7 @@ let obj :=
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
-  (* [let x : A := a; y : B := b in body end].  The bindings fold into nested
+  (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
 
@@ -184,10 +184,11 @@ let let_defns :=
   | ~ = let_defns; ";"; ~ = let_defn; { let_defn :: let_defns }
   | ~ = let_defn; { [let_defn] }
 
-(* [x : A := a], or a local module [module X (ps) where … end] or
+(* [x : A := a] or [x := a], or a local module [module X (ps) where … end] or
    [module X (ps) := E] *)
 let let_defn :=
-  | x = VAR; ":"; a = obj; ":="; b = obj; { Cst.d_def (snd x) a b }
+  | x = VAR; ":"; a = obj; ":="; b = obj; { Cst.d_def (snd x) (Some a) b }
+  | x = VAR; ":="; b = obj; { Cst.d_def (snd x) None b }
   | MODULE; x = VAR; md = mdecl; { Cst.d_mod (snd x) (fst md) (snd md) }
 %%
 

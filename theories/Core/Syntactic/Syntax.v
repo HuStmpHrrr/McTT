@@ -90,9 +90,9 @@ Inductive obj : Set :=
 | letb : decl -> obj -> obj
 
 with decl : Set :=
-(** [x : A := M].  A local definition is always transparent and has no
-    modifiers. *)
-| d_def : string -> obj -> obj -> decl
+(** [x : A := M], or [x := M] without the type.  A local definition is
+    always transparent and has no modifiers. *)
+| d_def : string -> option obj -> obj -> decl
 (** [module X (ps) md] *)
 | d_mod : string -> list (string * obj) -> mdef -> decl
 
@@ -141,7 +141,7 @@ Section cst_mut_ind.
     (case_glob : forall fp, Po (glob fp))
     (case_proj : forall o x, Po o -> Po (proj o x))
     (case_letb : forall d o, Pd d -> Po o -> Po (letb d o))
-    (case_d_def : forall x o1 o2, Po o1 -> Po o2 -> Pd (d_def x o1 o2))
+    (case_d_def : forall x oA o2, match oA with Some A => Po A | None => True end -> Po o2 -> Pd (d_def x oA o2))
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
     (case_md_alias : forall o, Po o -> Pm (md_alias o))
@@ -171,7 +171,13 @@ Section cst_mut_ind.
     end
   with decl_mut (d : decl) : Pd d :=
     match d with
-    | d_def x o1 o2 => case_d_def x o1 o2 (obj_mut o1) (obj_mut o2)
+    | d_def x oA o2 =>
+        case_d_def x oA o2
+          (match oA as oA0 return match oA0 with Some A => Po A | None => True end with
+           | Some A' => obj_mut A'
+           | None => I
+           end)
+          (obj_mut o2)
     | d_mod x ps md =>
         case_d_mod x ps md
           ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
@@ -341,8 +347,9 @@ with modexp : Set :=
 (** A unit given literally; only substitution produces one *)
 | me_lit : gunit -> modexp
 with bnd : Set :=
-(** [b_def A M]: a definition of type [A] *)
-| b_def : exp -> exp -> bnd
+(** [b_def oA M]: a definition, of the type [A] when [oA = Some A], and of
+    a type it infers when [oA = None] *)
+| b_def : option exp -> exp -> bnd
 (** [b_mod U]: a local module *)
 | b_mod : gunit -> bnd
 with gunit : Set :=
@@ -487,7 +494,7 @@ Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
   match Δ with
   | nil => A
   | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
-  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def B N) A)
+  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def (Some B) N) A)
   | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
   end.
 
@@ -495,7 +502,7 @@ Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
   match Δ with
   | nil => M
   | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
-  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def B N) M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
   | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
   end.
 
@@ -531,7 +538,7 @@ Section syn_mut_ind.
     (case_me_mem : forall H y, Pm H -> Pm (me_mem H y))
     (case_me_app : forall H N, Pm H -> Pe N -> Pm (me_app H N))
     (case_me_lit : forall U, Pu U -> Pm (me_lit U))
-    (case_b_def : forall A M, Pe A -> Pe M -> Pb (b_def A M))
+    (case_b_def : forall oA M, (forall A, oA = Some A -> Pe A) -> Pe M -> Pb (b_def oA M))
     (case_b_mod : forall U, Pu U -> Pb (b_mod U))
     (case_gu_mk : forall Δ D, List.Forall Pc Δ -> Pd D -> Pu (gu_mk Δ D))
     (case_md_body : forall Φ, Pg Φ -> Pd (md_body Φ))
@@ -574,7 +581,15 @@ Section syn_mut_ind.
     end
   with bnd_mut (b : bnd) : Pb b :=
     match b with
-    | b_def A M => case_b_def A M (exp_mut A) (exp_mut M)
+    | b_def oA M =>
+        case_b_def oA M
+          (match oA as o return (forall A, o = Some A -> Pe A) with
+           | Some A0 => fun A e => match e in _ = o' return match o' with Some A => Pe A | None => True end with
+                                  | eq_refl => exp_mut A0 end
+           | None => fun A e => False_ind _ (match e in _ = o' return match o' with Some _ => False | None => True end with
+                                | eq_refl => I end)
+           end)
+          (exp_mut M)
     | b_mod U => case_b_mod U (gunit_mut U)
     end
   with gunit_mut (U : gunit) : Pu U :=
@@ -825,7 +840,7 @@ with modexp_wk (H : modexp) (φ : wk) : modexp :=
   end
 with bnd_wk (b : bnd) (φ : wk) : bnd :=
   match b with
-  | b_def A M => b_def (exp_wk A φ) (exp_wk M φ)
+  | b_def oA M => b_def (match oA with Some A => Some (exp_wk A φ) | None => None end) (exp_wk M φ)
   | b_mod U => b_mod (gunit_wk U φ)
   end
 (** The entry of a telescope at position [i] from the outermost is under [i]
@@ -996,7 +1011,7 @@ with modexp_sub (H : modexp) (σ : sub) : modexp :=
   end
 with bnd_sub (b : bnd) (σ : sub) : bnd :=
   match b with
-  | b_def A M => b_def (exp_sub A σ) (exp_sub M σ)
+  | b_def oA M => b_def (match oA with Some A => Some (exp_sub A σ) | None => None end) (exp_sub M σ)
   | b_mod U => b_mod (gunit_sub U σ)
   end
 with gunit_sub (U : gunit) (σ : sub) : gunit :=
@@ -1105,7 +1120,8 @@ Module Syntax_Notations.
   Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
   Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def A M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def (Some A) M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓ' ≔ M 'in' B" := (a_let (b_def None M) B) (at level 2, M at level 60, B at level 60) : mctt_scope.
   Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
   Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
   Notation "'⊤'" := a_True : mctt_scope.

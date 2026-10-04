@@ -204,7 +204,11 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
     selm S o H -> sel S (Cst.proj o x) (a_mem H x)
 | sel_let : forall S x oA oM ob A M B,
     sel S oA A -> sel S oM M -> sel (en_var x :: S) ob B ->
-    sel S (Cst.letb (Cst.d_def x oA oM) ob) (ℓ A ≔ M in B)
+    sel S (Cst.letb (Cst.d_def x (Some oA) oM) ob) (ℓ A ≔ M in B)
+(** Without an annotation, none is emitted: the core infers it. *)
+| sel_let_infer : forall S x oM ob M B,
+    sel S oM M -> sel (en_var x :: S) ob B ->
+    sel S (Cst.letb (Cst.d_def x None oM) ob) (ℓ ≔ M in B)
 (** [let module x (ps) md in B end]: [x] is the slot of the local module. *)
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->

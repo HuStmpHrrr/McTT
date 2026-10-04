@@ -160,8 +160,10 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
 and format_decl (f : Format.formatter) : Cst.decl -> unit =
   let open Format in
   function
-  | Cst.Coq_d_def (x, ea, eb) ->
+  | Cst.Coq_d_def (x, Some ea, eb) ->
      fprintf f "@[<hov 2>%s : %a :=@ %a@]" x format_obj ea format_obj eb
+  | Cst.Coq_d_def (x, None, eb) ->
+     fprintf f "@[<hov 2>%s :=@ %a@]" x format_obj eb
   | Cst.Coq_d_mod (x, params, md) -> format_module f x params md
 
 (* [module x (ps) where … end] or [module x (ps) := E]. *)
@@ -287,9 +289,9 @@ let exp_to_obj =
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
-    | Coq_a_let (Coq_b_def (ea, em), ebody) ->
-       let px = match ea with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
-       let ea' = impl ctx ea in
+    | Coq_a_let (Coq_b_def (oa, em), ebody) ->
+       let px = match oa with Some (Coq_a_typ _) -> new_tyvar () | _ -> new_var () in
+       let ea' = Option.map (impl ctx) oa in
        let em' = impl ctx em in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_letb (Cst.Coq_d_def (px, ea', em'), ebody')

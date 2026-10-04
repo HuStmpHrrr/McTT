@@ -653,7 +653,7 @@ Lemma wk_preserves_wf :
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' ->
       forall Δ φ, Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ -> Θ ⍮ Ξ ⍮ Δ ⊢ᵐ modexp_wk H φ ≈ modexp_wk H' φ).
 Proof.
-  apply syntactic_wf_mut_ind'; intros; saturate_wk; push_wk; lift_wk.
+  apply syntactic_wf_mut_ind'; intros; destruct_let_ann; saturate_wk; push_wk; lift_wk.
   (** The cases of globals: the recorded type is closed, so the operation on it
       disappears, and the rule applies at the type the induction hypothesis
       gives. *)
@@ -1338,7 +1338,7 @@ Lemma sub_preserves_wf :
       Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' ->
       forall Γ σ, Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H[σ]ᵐ ≈ H'[σ]ᵐ).
 Proof.
-  apply syntactic_wf_mut_ind'; intros; saturate_sub; push_sub; lift_sub.
+  apply syntactic_wf_mut_ind'; intros; destruct_let_ann; saturate_sub; push_sub; lift_sub.
   all: try solve [ push_closed; mauto 3 ].
   all: try solve [ mauto 4 ].
   all: try solve [ econstructor; mauto 3 ].

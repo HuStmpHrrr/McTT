@@ -330,7 +330,7 @@ Proof.
     intros d o IHd [IH _]; split; [ apply IHd, IH |].
     intros S M; destruct d; cbn [elab_mod]; split; intros H; try discriminate; inversion H.
   - (* d_def *)
-    intros x o1 o2 [IH1 _] [IH2 _] ob IHb S M; cbn [elab]. iff_case.
+    intros x [o1 |] o2 HA [IH2 _] ob IHb S M; [ destruct HA as [IH1 _] |]; cbn [elab]; iff_case.
   - (* d_mod *)
     intros x ps md Hps Hmd ob IHb S M. apply Pterm_params in Hps.
     pose proof (sunit_iff S ps md) as Hu. cbn [elab]; split; intros Hg.

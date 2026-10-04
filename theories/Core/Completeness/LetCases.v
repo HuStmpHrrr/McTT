@@ -297,11 +297,11 @@ Qed.
     - The middle link is [B ≈ B'] at the substituted environments.
     - The last link comes from [B'] along [q σ'], bridged by [B'] at the tail
       [⟦q σ'⟧(ρ' ↦ ⟦M'[σ']⟧ρ')]. *)
-Lemma rel_exp_let_gen : forall {Γ A i M M' B B' C A'},
+Lemma rel_exp_let_gen : forall {Γ A i M M' B B' C oA'},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
-    Γ ⊨ B[Id,,M] ≈ ℓ A' ≔ M' in B' : C[Id,,M].
+    Γ ⊨ B[Id,,M] ≈ a_let (b_def oA' M') B' : C[Id,,M].
 Proof.
   intros * HA HM HB.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMl.
@@ -476,11 +476,11 @@ Proof.
 Qed.
 
 (** [ζ]. *)
-Corollary rel_exp_let_zeta : forall {Γ A i M B C},
+Corollary rel_exp_let_zeta : forall {Γ oA A i M B C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
-    Γ ⊨ ℓ A ≔ M in B ≈ B[Id,,M] : C[Id,,M].
+    Γ ⊨ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M].
 Proof.
   intros * HA HM HB.
   apply rel_exp_under_ctx_sym.
@@ -490,25 +490,25 @@ Qed.
 Hint Resolve rel_exp_let_zeta : mctt.
 
 (** Congruence: both sides are related to the instance [B[Id,,M]]. *)
-Corollary rel_exp_let_cong : forall {Γ A A' i M M' B B' C},
+Corollary rel_exp_let_cong : forall {Γ oA oA' A i M M' B B' C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
-    Γ ⊨ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M].
+    Γ ⊨ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M].
 Proof.
   intros * HA HM HB.
-  eapply rel_exp_under_ctx_trans; [| exact (rel_exp_let_gen (A' := A') HA HM HB) ].
+  eapply rel_exp_under_ctx_trans; [| exact (rel_exp_let_gen (oA' := oA') HA HM HB) ].
   apply rel_exp_under_ctx_sym.
   exact (rel_exp_let_gen HA (rel_exp_under_ctx_refl_left HM) (rel_exp_under_ctx_refl_left HB)).
 Qed.
 
 Hint Resolve rel_exp_let_cong : mctt.
 
-Corollary valid_exp_let : forall {Γ A i M B C},
+Corollary valid_exp_let : forall {Γ oA A i M B C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
-    Γ ⊨ ℓ A ≔ M in B : C[Id,,M].
+    Γ ⊨ a_let (b_def oA M) B : C[Id,,M].
 Proof.
   intros * HA HM HB.
   exact (rel_exp_let_cong HA HM HB).

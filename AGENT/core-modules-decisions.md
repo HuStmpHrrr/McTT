@@ -331,3 +331,27 @@ let module M (A : Type@0) where def x : Nat := zero end
 `h ·ₜ x Θ ⍮ Ξ ↘ d`, `h ·ₘ y Θ ⍮ Ξ ↘ h'`, `h ·ₜ* ch Θ ⍮ Ξ ↘ d`,
 `h ·ₘ* ch Θ ⍮ Ξ ↘ h'`, `⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ'`, beside `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h`.
 The selected name and the chain are at level 0.
+
+### 10.6 Optional `let` annotations
+`b_def : option exp -> exp -> bnd`; `ℓ A ≔ M in B` is `b_def (Some A)`,
+`ℓ ≔ M in B` is `b_def None`.  Context entries stay `ce_def A M`, and
+telescopes (`ctx_pi`) still generalize definitions with their type.
+- **One rule per judgment, not a second family.**  `wf_let`,
+  `wf_exp_eq_let_cong` (on both sides) and `wf_exp_eq_let_zeta` premise
+  `let_ann oA A := oA = None \/ oA = Some A`, with `A` still a premise of the
+  rule.  This is the brief's separate unannotated rule
+  (`Γ ⊢ M : A -> Γ ▸ A ≔ M ⊢ B : C -> Γ ⊢ ℓ ≔ M in B : C[Id,,M]`, with
+  equality, congruence and ζ) packaged as a disjunct: the meta-theory gets one
+  case per rule instead of two, and `destruct_let_ann` splits it where the
+  annotation matters.  Applying a rule: `solve_let_ann` for the `let_ann`
+  premise, solved first (`cycle`) since conclusions do not mention `A`.
+- Evaluation ignores the annotation (one rule for both forms).
+- The algorithmic checker infers the definiens's type (`ati_let_infer`).  Its
+  completeness is by an outer induction on the number of unannotated `let`s
+  (`exp_lets`, `alg_type_complete_lets`): the body's derivation is moved to
+  `Γ ▸ A' ≔ M`, `A'` the inferred type, by refinement
+  (`wf_sub_id_extend_def`), which is no subderivation but has fewer
+  unannotated `let`s.
+- Frontend: `Cst.d_def : string -> option obj -> obj -> decl`; the parser
+  accepts `x := a` in a `let`; the elaborator passes the option through
+  (`sel_let_infer`).  `def` keeps its required type.

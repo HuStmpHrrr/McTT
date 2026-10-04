@@ -261,6 +261,7 @@ Section type_check.
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, type_infer_order M -> type_check_order N -> type_infer_order (M $ N)
   | ti_let : forall {A M B}, type_infer_order A -> type_check_order M -> type_infer_order B -> type_infer_order (ℓ A ≔ M in B)
+  | ti_let_infer : forall {M B}, type_infer_order M -> type_infer_order B -> type_infer_order (ℓ ≔ M in B)
   | ti_let_mod : forall {U B}, unit_order U -> type_infer_order B -> type_infer_order (ℓₘ U in B)
   (** A member of an applied module recurses into its root's member applied,
       which is not a subterm. *)
@@ -338,7 +339,10 @@ Section type_check.
     (forall M, type_infer_order M) /\
     (forall H, modexp_order H /\
        forall R args pre, modexp_spine H = (R, args, pre) -> modexp_order R /\ List.Forall type_check_order args) /\
-    (forall b, match b with b_def A M => type_infer_order A /\ type_infer_order M | b_mod U => unit_order U end) /\
+    (forall b, match b with
+           | b_def oA M => (forall A, oA = Some A -> type_infer_order A) /\ type_infer_order M
+           | b_mod U => unit_order U
+           end) /\
     (forall U, unit_order U) /\
     (forall D, match D with
            | md_body Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)
@@ -355,7 +359,10 @@ Section type_check.
     apply (syn_mut_ind type_infer_order
       (fun H => modexp_order H /\
          forall R args pre, modexp_spine H = (R, args, pre) -> modexp_order R /\ List.Forall type_check_order args)
-      (fun b => match b with b_def A M => type_infer_order A /\ type_infer_order M | b_mod U => unit_order U end)
+      (fun b => match b with
+             | b_def oA M => (forall A, oA = Some A -> type_infer_order A) /\ type_infer_order M
+             | b_mod U => unit_order U
+             end)
       unit_order
       (fun D => match D with
              | md_body Φ => List.Forall centry_order (body_ctx Φ) /\ imports_order (gm_checks Φ)
@@ -369,7 +376,10 @@ Section type_check.
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
     - (* a local binding *)
-      destruct b; destruct_conjs; [ apply ti_let; [| constructor |]; assumption | apply ti_let_mod; assumption ].
+      destruct b as [[A |] M | U]; destruct_conjs;
+        [ apply ti_let; [ eauto | constructor; assumption | assumption ]
+        | apply ti_let_infer; assumption
+        | apply ti_let_mod; assumption ].
     - (* a member *)
       constructor; [ assumption |].
       intros R args pre Hs Hne.
@@ -746,6 +756,12 @@ Section type_check.
         let*o (exist _ C _) := type_infer (G ▸ A' ≔ M') _ B' _ while _ in
         let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id,,M'] _ in
         pureo (exist _ D _)
+    (** Without an annotation, the definiens's type is inferred. *)
+    | ℓ ≔ M' in B' =>
+        let*o (exist _ A _) := type_infer G _ M' _ while _ in
+        let*o (exist _ C _) := type_infer (G ▸ (A : nf) ≔ M') _ B' _ while _ in
+        let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id,,M'] _ in
+        pureo (exist _ D _)
     | ℓₘ U in B' =>
         let*b->o _ := unit_check G HG U _ while _ in
         let*o (exist _ C _) := type_infer (G ▹ₘ U) _ B' _ while _ in
@@ -1034,6 +1050,40 @@ Section type_check.
     assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
     assert (⊢ G ▸ A' ≔ M') by mauto 3.
     assert (exists j, G ▸ A' ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢ C[Id,,M'] : Type@j) by mauto 3.
+    assert (G ⊢ C[Id,,M'] ≈ D : Type@j) by (eapply soundness_ty'; mauto 3).
+    assert (user_exp D) by trivial using user_exp_nf.
+    assert (exists k, G ⊢a D ⟹ Typeⁿ@k /\ k <= j) as [? []] by (gen_presups; mauto 3).
+    firstorder.
+  Qed.
+
+  Next Obligation. (* ⊢ G ▸ A ≔ M' *)
+    clear_defs.
+    assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
+    mauto 3.
+  Qed.
+
+  Next Obligation. (* nbe_ty_order gc_deps gc_stack G C[Id,,M'] *)
+    clear_defs.
+    destruct_conjs.
+    assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
+    assert (exists i, G ⊢ A : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (⊢ G ▸ A ≔ M') by mauto 3.
+    assert (exists j, G ▸ A ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢s Id,,M' : G ▸ A ≔ M') by (eapply wf_sub_single_def; eassumption).
+    assert (G ⊢ C[Id,,M'] : Type@j) as [? []]%soundness_ty by mauto 3.
+    mauto 3 using nbe_ty_order_sound.
+  Qed.
+
+  Next Obligation. (* G ⊢a ℓ ≔ M' in B' ⟹ D /\ (exists i, G ⊢a D ⟹ Typeⁿ@i) *)
+    clear_defs.
+    split; [mauto 3 |].
+    destruct_conjs.
+    assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
+    assert (exists i, G ⊢ A : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (⊢ G ▸ A ≔ M') by mauto 3.
+    assert (exists j, G ▸ A ≔ M' ⊢ C : Type@j) as [j] by (eexists; mauto 4 using alg_type_infer_sound).
+    assert (G ⊢s Id,,M' : G ▸ A ≔ M') by (eapply wf_sub_single_def; eassumption).
     assert (G ⊢ C[Id,,M'] : Type@j) by mauto 3.
     assert (G ⊢ C[Id,,M'] ≈ D : Type@j) by (eapply soundness_ty'; mauto 3).
     assert (user_exp D) by trivial using user_exp_nf.

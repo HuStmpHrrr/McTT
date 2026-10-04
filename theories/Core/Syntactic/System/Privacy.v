@@ -173,7 +173,7 @@ with modexp_refs (H : modexp) : list (modexp * string)%type :=
   end
 with bnd_refs (b : bnd) : list (modexp * string)%type :=
   match b with
-  | b_def A M => exp_refs A ++ exp_refs M
+  | b_def oA M => match oA with Some A => exp_refs A | None => nil end ++ exp_refs M
   | b_mod U => gunit_refs U
   end
 with gunit_refs (U : gunit) : list (modexp * string)%type :=

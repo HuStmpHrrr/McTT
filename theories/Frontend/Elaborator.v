@@ -184,11 +184,15 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.proj o x =>
       let* H := elab_mod S o in
       eok (a_mem H x)
-  | Cst.letb (Cst.d_def x oA oM) ob =>
+  | Cst.letb (Cst.d_def x (Some oA) oM) ob =>
       let* A := elab S oA in
       let* M := elab S oM in
       let* B := elab (en_var x :: S) ob in
       eok (ℓ A ≔ M in B)
+  | Cst.letb (Cst.d_def x None oM) ob =>
+      let* M := elab S oM in
+      let* B := elab (en_var x :: S) ob in
+      eok (ℓ ≔ M in B)
   | Cst.letb (Cst.d_mod x ps md) ob =>
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in

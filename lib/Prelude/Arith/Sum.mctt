@@ -40,7 +40,7 @@ abstract def sumToExt : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Na
     rec n return x . Eq (sumTo f x) (sumTo g x)
     | zero => true
     | succ p, ih =>
-        let sf : Nat := sumTo f p;
+        let sf := sumTo f p;
             sg : Nat := sumTo g p
         in trans (plus (f p) sf) (plus (g p) sf) (plus (g p) sg)
              (cong (fun (y : Nat) -> plus y sf) (f p) (g p) (h p))
@@ -80,7 +80,7 @@ abstract def sumToPlus : forall (f : forall (i : Nat) -> Nat) (g : forall (i : N
                         (plus (sumTo f x) (sumTo g x))
     | zero => true
     | succ p, ih =>
-        let fg : Nat := plus (f p) (g p);
+        let fg := plus (f p) (g p);
             sfg : Nat := sumTo (fun (i : Nat) -> plus (f i) (g i)) p;
             sf : Nat := sumTo f p;
             sg : Nat := sumTo g p;

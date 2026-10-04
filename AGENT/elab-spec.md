@@ -43,6 +43,8 @@ design and its history are in [`elab-simplify.md`](elab-simplify.md).
   so a unit it names must be nameable already (`loaded S fq`, i.e. `In
   (en_unit fq) S`), else `the unit is not imported`.  Local bodies have no
   `eval`s (`eval is not allowed in a local module`).
+* `let x : A := M in B end` elaborates to `ℓ A ≔ M in B`, and `let x := M
+  in B end` to `ℓ ≔ M in B`: the elaborator emits no type, the core infers it.
 * A module body is elaborated where it stands (`elab_cmd` recurses into it),
   so there is no frame stack.  `module A.B` is desugared by the parser
   (`Cst.c_mod_dotted`).

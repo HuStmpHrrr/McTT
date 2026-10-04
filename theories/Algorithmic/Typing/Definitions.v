@@ -68,6 +68,12 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id,,M] D ->
      Γ ⊢a ℓ A ≔ M in B ⟹ D )
+(** An unannotated definition is of the type its body infers. *)
+| ati_let_infer :
+  `( Γ ⊢a M ⟹ A ->
+     Γ ▸ (A : exp) ≔ M ⊢a B ⟹ C ->
+     nbe_ty_f Γ C[Id,,M] D ->
+     Γ ⊢a ℓ ≔ M in B ⟹ D )
 | ati_let_mod :
   `( Γ ⊢aᵘ U ->
      Γ ▹ₘ U ⊢a B ⟹ C ->
@@ -236,6 +242,10 @@ Inductive user_exp : exp -> Prop :=
      user_exp M ->
      user_exp B ->
      user_exp (ℓ A ≔ M in B) )
+| user_exp_let_infer :
+  `( user_exp M ->
+     user_exp B ->
+     user_exp (ℓ ≔ M in B) )
 | user_exp_let_mod :
   `( user_exp B ->
      user_exp (ℓₘ U in B) )
@@ -250,9 +260,9 @@ Hint Constructors user_exp : mctt.
 Lemma user_exp_all : forall M, user_exp M.
 Proof.
   eapply proj1, (syn_mut_ind user_exp (fun _ => True)
-    (fun b => match b with b_def A M => user_exp A /\ user_exp M | b_mod _ => True end)
+    (fun b => match b with b_def oA M => (forall A, oA = Some A -> user_exp A) /\ user_exp M | b_mod _ => True end)
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
-    intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b; destruct_conjs end;
+    intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
     mauto 3.
 Qed.
 

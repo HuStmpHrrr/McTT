@@ -147,23 +147,24 @@ prog: MODULE VAR WHERE EVAL LET ZERO
 ## LET
 ##
 
-Expected a binding "x : A := a" or "module X := E" after "let".
+Expected a binding "x : A := a", "x := a" or "module X := E" after "let".
 
 prog: MODULE VAR WHERE EVAL LET VAR ZERO
 ##
 ## Ends in an error in state: 22.
 ##
 ## let_defn -> VAR . COLON obj EQ obj [ SEMI IN ]
+## let_defn -> VAR . EQ obj [ SEMI IN ]
 ##
 ## The known suffix of the stack is as follows:
 ## VAR
 ##
 
-Expected ":" followed by the type of the local definition.
+Expected ":" followed by the type of the local definition, or ":=" followed by its body.
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON WHERE
 ##
-## Ends in an error in state: 23.
+## Ends in an error in state: 48.
 ##
 ## let_defn -> VAR COLON . obj EQ obj [ SEMI IN ]
 ##
@@ -323,7 +324,7 @@ Expected a member name after ".".
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 47.
+## Ends in an error in state: 49.
 ##
 ## let_defn -> VAR COLON obj . EQ obj [ SEMI IN ]
 ##
@@ -342,7 +343,7 @@ Expected ":=" after the type of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY EQ WHERE
 ##
-## Ends in an error in state: 48.
+## Ends in an error in state: 50.
 ##
 ## let_defn -> VAR COLON obj EQ . obj [ SEMI IN ]
 ##
@@ -354,7 +355,7 @@ Expected the body of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET MODULE ZERO
 ##
-## Ends in an error in state: 50.
+## Ends in an error in state: 52.
 ##
 ## let_defn -> MODULE . VAR mdecl [ SEMI IN ]
 ##
@@ -366,7 +367,7 @@ Expected a name for the local module.
 
 prog: MODULE VAR WHERE MODULE VAR ZERO
 ##
-## Ends in an error in state: 52.
+## Ends in an error in state: 54.
 ##
 ## mdecl -> params_opt . mdef [ SEMI PRIVATE MODULE IN IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -377,7 +378,7 @@ prog: MODULE VAR WHERE MODULE VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 65, spurious reduction of production params_opt ->
+## In state 67, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", ":=" or keyword "where",
@@ -385,7 +386,7 @@ or a further "." in the path of a module command.
 
 prog: MODULE VAR WHERE MODULE ZERO
 ##
-## Ends in an error in state: 64.
+## Ends in an error in state: 66.
 ##
 ## cmd -> MODULE . path mdecl [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -397,7 +398,7 @@ Expected the path of the module to declare.
 
 prog: IMPORT VAR DOT ZERO
 ##
-## Ends in an error in state: 59.
+## Ends in an error in state: 61.
 ##
 ## path -> path DOT . VAR [ WHERE USE PRIVATE MODULE LPAREN IMPORT EVAL EQ END DOT DEF AS ABSTRACT ]
 ##
@@ -409,7 +410,7 @@ Expected a name after "." in the path.
 
 prog: IMPORT ZERO
 ##
-## Ends in an error in state: 67.
+## Ends in an error in state: 69.
 ##
 ## import_cmd -> IMPORT . qpath ispec [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -421,7 +422,7 @@ Expected the path of the module to import.
 
 prog: IMPORT VAR ZERO
 ##
-## Ends in an error in state: 68.
+## Ends in an error in state: 70.
 ##
 ## fpath -> VAR . [ COLONCOLON ]
 ## path -> VAR . [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
@@ -434,7 +435,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: IMPORT VAR USE ZERO
 ##
-## Ends in an error in state: 70.
+## Ends in an error in state: 72.
 ##
 ## ispec -> USE . LPAREN names RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -446,7 +447,7 @@ Expected "(" after "use".
 
 prog: IMPORT VAR USE LPAREN ZERO
 ##
-## Ends in an error in state: 71.
+## Ends in an error in state: 73.
 ##
 ## ispec -> USE LPAREN . names RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -458,7 +459,7 @@ Expected the name of a member to use.
 
 prog: IMPORT VAR USE LPAREN VAR ZERO
 ##
-## Ends in an error in state: 73.
+## Ends in an error in state: 75.
 ##
 ## ispec -> USE LPAREN names . RPAREN [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## names -> names . SEMI VAR [ SEMI RPAREN ]
@@ -471,7 +472,7 @@ Expected ";" followed by another member name, or ")".
 
 prog: IMPORT VAR USE LPAREN VAR SEMI ZERO
 ##
-## Ends in an error in state: 74.
+## Ends in an error in state: 76.
 ##
 ## names -> names SEMI . VAR [ SEMI RPAREN ]
 ##
@@ -483,7 +484,7 @@ Expected the name of a member to use after ";".
 
 prog: IMPORT VAR AS ZERO
 ##
-## Ends in an error in state: 77.
+## Ends in an error in state: 79.
 ##
 ## ispec -> AS . VAR [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -495,7 +496,7 @@ Expected an alias name after "as".
 
 prog: IMPORT VAR DOT VAR ZERO
 ##
-## Ends in an error in state: 80.
+## Ends in an error in state: 82.
 ##
 ## path -> path . DOT VAR [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
 ## qpath -> path . [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -508,7 +509,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: IMPORT VAR COLONCOLON VAR ZERO
 ##
-## Ends in an error in state: 81.
+## Ends in an error in state: 83.
 ##
 ## fpath -> fpath . COLONCOLON VAR [ COLONCOLON ]
 ## qpath -> fpath . COLONCOLON VAR [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -521,14 +522,14 @@ prog: IMPORT VAR COLONCOLON VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 83, spurious reduction of production fpath -> fpath COLONCOLON VAR
+## In state 85, spurious reduction of production fpath -> fpath COLONCOLON VAR
 ##
 
 Expected a further "::" or "." in the path, "as", "use", or the next command.
 
 prog: IMPORT VAR COLONCOLON ZERO
 ##
-## Ends in an error in state: 82.
+## Ends in an error in state: 84.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ COLONCOLON ]
 ## qpath -> fpath COLONCOLON . VAR [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -542,7 +543,7 @@ Expected a name after "::" in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT ZERO
 ##
-## Ends in an error in state: 84.
+## Ends in an error in state: 86.
 ##
 ## qpath -> fpath COLONCOLON VAR DOT . path [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
 ##
@@ -554,7 +555,7 @@ Expected a name after "." in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT VAR ZERO
 ##
-## Ends in an error in state: 85.
+## Ends in an error in state: 87.
 ##
 ## path -> path . DOT VAR [ USE PRIVATE MODULE IMPORT EVAL END DOT DEF AS ABSTRACT ]
 ## qpath -> fpath COLONCOLON VAR DOT path . [ USE PRIVATE MODULE IMPORT EVAL END DEF AS ABSTRACT ]
@@ -567,7 +568,7 @@ Expected "as", "use", a further "." in the path, or the next command.
 
 prog: MODULE VAR WHERE EVAL WHERE
 ##
-## Ends in an error in state: 86.
+## Ends in an error in state: 88.
 ##
 ## cmd -> EVAL . obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## cmd -> EVAL . obj COLON obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
@@ -580,7 +581,7 @@ This token is invalid for the beginning of a program.
 
 prog: MODULE VAR WHERE EVAL FALSE_TY WHERE
 ##
-## Ends in an error in state: 87.
+## Ends in an error in state: 89.
 ##
 ## cmd -> EVAL obj . [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ## cmd -> EVAL obj . COLON obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
@@ -600,7 +601,7 @@ Expected ":" followed by the type to check against, or the next command.
 
 prog: MODULE VAR WHERE EVAL FALSE_TY COLON WHERE
 ##
-## Ends in an error in state: 88.
+## Ends in an error in state: 90.
 ##
 ## cmd -> EVAL obj COLON . obj [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -613,7 +614,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE ZERO
 ##
-## Ends in an error in state: 93.
+## Ends in an error in state: 95.
 ##
 ## cmd -> mods . DEF VAR params_opt COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -624,14 +625,14 @@ prog: MODULE VAR WHERE ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 141, spurious reduction of production mods ->
+## In state 143, spurious reduction of production mods ->
 ##
 
 Expected a command ("module", "def", "import" or "eval"), or keyword "end" to close the module.
 
 prog: MODULE VAR WHERE DEF ZERO
 ##
-## Ends in an error in state: 94.
+## Ends in an error in state: 96.
 ##
 ## cmd -> mods DEF . VAR params_opt COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -643,7 +644,7 @@ Expected a name for the definition.
 
 prog: MODULE VAR WHERE DEF VAR ZERO
 ##
-## Ends in an error in state: 96.
+## Ends in an error in state: 98.
 ##
 ## cmd -> mods DEF VAR params_opt . COLON obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -654,14 +655,14 @@ prog: MODULE VAR WHERE DEF VAR ZERO
 ## This implies that, although the LR(1) items shown above provide an
 ## accurate view of the past (what has been recognized so far), they
 ## may provide an INCOMPLETE view of the future (what was expected next).
-## In state 95, spurious reduction of production params_opt ->
+## In state 97, spurious reduction of production params_opt ->
 ##
 
 Expected a parameter "(x : A)", or ":" followed by the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON WHERE
 ##
-## Ends in an error in state: 97.
+## Ends in an error in state: 99.
 ##
 ## cmd -> mods DEF VAR params_opt COLON . obj EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -673,7 +674,7 @@ Expected the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 98.
+## Ends in an error in state: 100.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj . EQ obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -692,7 +693,7 @@ Expected ":=" after the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ WHERE
 ##
-## Ends in an error in state: 99.
+## Ends in an error in state: 101.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj EQ . obj END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -704,7 +705,7 @@ Expected the body of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ FALSE_TY WHERE
 ##
-## Ends in an error in state: 100.
+## Ends in an error in state: 102.
 ##
 ## cmd -> mods DEF VAR params_opt COLON obj EQ obj . END [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -723,7 +724,7 @@ Expected keyword "end" to close the definition.
 
 prog: MODULE VAR WHERE MODULE VAR EQ WHERE
 ##
-## Ends in an error in state: 104.
+## Ends in an error in state: 106.
 ##
 ## mdef -> EQ . obj [ SEMI PRIVATE MODULE IN IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -735,7 +736,7 @@ Expected a module expression after ":=".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR WHERE END ZERO
 ##
-## Ends in an error in state: 108.
+## Ends in an error in state: 110.
 ##
 ## let_defns -> let_defns . SEMI let_defn [ SEMI IN ]
 ## obj -> LET let_defns . IN obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
@@ -748,7 +749,7 @@ Expected ";" and another binding, or keyword "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY SEMI ZERO
 ##
-## Ends in an error in state: 109.
+## Ends in an error in state: 111.
 ##
 ## let_defns -> let_defns SEMI . let_defn [ SEMI IN ]
 ##
@@ -760,7 +761,7 @@ Expected a binding "x : A := a" or "module X := E" after ";".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN WHERE
 ##
-## Ends in an error in state: 111.
+## Ends in an error in state: 113.
 ##
 ## obj -> LET let_defns IN . obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -772,7 +773,7 @@ Expected an expression after "in".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN FALSE_TY WHERE
 ##
-## Ends in an error in state: 112.
+## Ends in an error in state: 114.
 ##
 ## obj -> LET let_defns IN obj . END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -791,7 +792,7 @@ Expected keyword "end" to close the "let".
 
 prog: MODULE VAR WHERE EVAL LPAREN FALSE_TY WHERE
 ##
-## Ends in an error in state: 115.
+## Ends in an error in state: 117.
 ##
 ## atomic_obj -> LPAREN obj . RPAREN [ ZERO VAR TYPE TRUE_TY TRUE SEMI RPAREN RETURN PRIVATE NAT MODULE LPAREN INT IN IMPORT FALSE_TY EVAL EQ END DOT DEF COLON BAR ABSTRACT ]
 ##
@@ -811,7 +812,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY WHERE
 ##
-## Ends in an error in state: 117.
+## Ends in an error in state: 119.
 ##
 ## obj -> REC obj . RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -831,7 +832,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN ZERO
 ##
-## Ends in an error in state: 118.
+## Ends in an error in state: 120.
 ##
 ## obj -> REC obj RETURN . VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -843,7 +844,7 @@ A motif should start with a valid identifier.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR ZERO
 ##
-## Ends in an error in state: 119.
+## Ends in an error in state: 121.
 ##
 ## obj -> REC obj RETURN VAR . DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -855,7 +856,7 @@ A motif should have "." after the scrutinee name.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT WHERE
 ##
-## Ends in an error in state: 120.
+## Ends in an error in state: 122.
 ##
 ## obj -> REC obj RETURN VAR DOT . obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -868,7 +869,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY WHERE
 ##
-## Ends in an error in state: 121.
+## Ends in an error in state: 123.
 ##
 ## obj -> REC obj RETURN VAR DOT obj . BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -888,7 +889,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR WHERE
 ##
-## Ends in an error in state: 122.
+## Ends in an error in state: 124.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR . ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -900,7 +901,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR WHERE
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO ZERO
 ##
-## Ends in an error in state: 123.
+## Ends in an error in state: 125.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO . DARROW obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -912,7 +913,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO ZERO
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW WHERE
 ##
-## Ends in an error in state: 124.
+## Ends in an error in state: 126.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW . obj BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -925,7 +926,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY WHERE
 ##
-## Ends in an error in state: 125.
+## Ends in an error in state: 127.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj . BAR SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -945,7 +946,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR ZERO
 ##
-## Ends in an error in state: 126.
+## Ends in an error in state: 128.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR . SUCC VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -957,7 +958,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC ZERO
 ##
-## Ends in an error in state: 127.
+## Ends in an error in state: 129.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC . VAR COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -969,7 +970,7 @@ An identifier for the predecessor of the scrutinee is expected.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR ZERO
 ##
-## Ends in an error in state: 128.
+## Ends in an error in state: 130.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR . COMMA VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -981,7 +982,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR COMMA ZERO
 ##
-## Ends in an error in state: 129.
+## Ends in an error in state: 131.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA . VAR DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -993,7 +994,7 @@ An identifier for the recursion result is expected.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR COMMA VAR ZERO
 ##
-## Ends in an error in state: 130.
+## Ends in an error in state: 132.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR . DARROW obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -1005,7 +1006,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR COMMA VAR DARROW WHERE
 ##
-## Ends in an error in state: 131.
+## Ends in an error in state: 133.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW . obj END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -1018,7 +1019,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR COMMA VAR DARROW FALSE_TY WHERE
 ##
-## Ends in an error in state: 132.
+## Ends in an error in state: 134.
 ##
 ## obj -> REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR DARROW obj . END [ SEMI RPAREN RETURN PRIVATE MODULE IN IMPORT EVAL EQ END DEF COLON BAR ABSTRACT ]
 ##
@@ -1038,7 +1039,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR LPAREN VAR COLON FALSE_TY WHERE
 ##
-## Ends in an error in state: 135.
+## Ends in an error in state: 137.
 ##
 ## param -> LPAREN VAR COLON obj . RPAREN [ WHERE LPAREN EQ COLON ARROW ]
 ##
@@ -1058,7 +1059,7 @@ This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR COLONCOLON ZERO
 ##
-## Ends in an error in state: 137.
+## Ends in an error in state: 139.
 ##
 ## fpath -> fpath COLONCOLON . VAR [ WHERE LPAREN COLONCOLON ]
 ##
@@ -1070,7 +1071,7 @@ Expected a name after "::" in the path.
 
 prog: MODULE VAR ZERO
 ##
-## Ends in an error in state: 139.
+## Ends in an error in state: 141.
 ##
 ## prog -> imports MODULE fpath params_opt . WHERE cmds END EOF [ # ]
 ##
@@ -1088,7 +1089,7 @@ Expected a parameter "(x : A)", or keyword "where".
 
 prog: MODULE VAR WHERE END ZERO
 ##
-## Ends in an error in state: 142.
+## Ends in an error in state: 144.
 ##
 ## prog -> imports MODULE fpath params_opt WHERE cmds END . EOF [ # ]
 ##
@@ -1100,7 +1101,7 @@ Expected the end of the file after the module declaration.
 
 prog: MODULE VAR WHERE PRIVATE MODULE ZERO
 ##
-## Ends in an error in state: 56.
+## Ends in an error in state: 58.
 ##
 ## cmd -> PRIVATE MODULE . path mdecl [ PRIVATE MODULE IMPORT EVAL END DEF ABSTRACT ]
 ##
@@ -1109,3 +1110,15 @@ prog: MODULE VAR WHERE PRIVATE MODULE ZERO
 ##
 
 Expected the path of the module to declare.
+
+prog: MODULE VAR WHERE EVAL LET VAR EQ WHERE
+##
+## Ends in an error in state: 23.
+##
+## let_defn -> VAR EQ . obj [ SEMI IN ]
+##
+## The known suffix of the stack is as follows:
+## VAR EQ
+##
+
+Expected the body of the local definition.
