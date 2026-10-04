@@ -1733,3 +1733,25 @@ let%expect_test "lib/Polynomials.mctt" =
     Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --> true : True
     Evaluate hornerAtOne (cubic 3 1 4 1) 4 --> true : True
     |}]
+
+let%expect_test "lib/Binary.mctt" =
+  let _ = main_of_lib "Binary.mctt" in
+  [%expect {|
+    Evaluate Prelude::Arith::Binary.half 13 --> 6 : Nat
+    Evaluate Prelude::Arith::Binary.bit 13 --> 1 : Nat
+    Evaluate Prelude::Arith::Binary.bits 13 0 --> 1 : Nat
+    Evaluate Prelude::Arith::Binary.bits 13 1 --> 0 : Nat
+    Evaluate Prelude::Arith::Binary.bits 13 2 --> 1 : Nat
+    Evaluate Prelude::Arith::Binary.bits 13 3 --> 1 : Nat
+    Evaluate Prelude::Arith::Binary.fromBits (Prelude::Arith::Binary.bits 13) 4
+      --> 13 : Nat
+    Evaluate Prelude::Arith::Binary.bitCount 13 --> 3 : Nat
+    Evaluate Prelude::Arith::Binary.bitCount 255 --> 8 : Nat
+    Evaluate Prelude::Arith::Binary.bitCount 256 --> 1 : Nat
+    Evaluate Prelude::Arith::Binary.fromBits oneZeroOneOne 4 --> 13 : Nat
+    Evaluate Prelude::Arith::Binary.powFast 3 5 --> 243 : Nat
+    Evaluate Prelude::Arith::Binary.powFast 2 10 --> 1024 : Nat
+    Evaluate fromBitsDouble 6 3 --> true : True
+    Evaluate powFastDouble 2 2 --> true : True
+    Evaluate powFastDouble 3 1 --> true : True
+    |}]
