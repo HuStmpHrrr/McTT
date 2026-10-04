@@ -37,10 +37,10 @@ private def gcdFuelDivides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) -
         | zero => fun (h : True) ->
             andIntro (Divides a a) (Divides a 0) (dividesRefl a) (dividesZero a)
         | succ d, s => fun (h : Le (succ d) p) ->
-            let e : Nat := succ d;
-                r : Nat := mod a e;
-                q : Nat := div a e;
-                g : Nat := gcdFuel p e r;
+            let e := succ d;
+                r := mod a e;
+                q := div a e;
+                g := gcdFuel p e r;
                 both : And (Divides g e) (Divides g r) :=
                   ih e r (leTrans (succ r) e p (modLt a d) h);
                 ge : Divides g e := andFst (Divides g e) (Divides g r) both;
@@ -69,9 +69,9 @@ private abstract def gcdFuelGreatest : forall (k : Nat) (f : Nat) (a : Nat) (b :
                             Divides k (gcdFuel (succ p) a z))
         | zero => fun (h : True) (ha : Divides k a) (hb : Divides k 0) -> ha
         | succ d, s => fun (h : Le (succ d) p) (ha : Divides k a) (hb : Divides k (succ d)) ->
-            let e : Nat := succ d;
-                r : Nat := mod a e;
-                q : Nat := div a e;
+            let e := succ d;
+                r := mod a e;
+                q := div a e;
                 hsum : Divides k (plus (mult q e) r) :=
                   transport (fun (y : Nat) -> Divides k y) a (plus (mult q e) r)
                     (sym (plus (mult q e) r) a (divModSpec a d)) ha;
@@ -127,8 +127,8 @@ abstract def gcdFuelEnough : forall (f : Nat) (g : Nat) (a : Nat) (b : Nat)
                                 Eq (gcdFuel (succ p) a z) (gcdFuel (succ q) a z))
             | zero => fun (hf : True) (hg : True) -> refl a
             | succ d, s => fun (hf : Le (succ d) p) (hg : Le (succ d) q) ->
-                let e : Nat := succ d;
-                    r : Nat := mod a e;
+                let e := succ d;
+                    r := mod a e;
                     hr : Le (succ r) e := modLt a d
                 in ih q e r (leTrans (succ r) e p hr hf) (leTrans (succ r) e q hr hg)
                 end
@@ -144,7 +144,7 @@ private abstract def gcdSwapSmall : forall (a : Nat) (b : Nat) (h : Lt a b) -> E
     rec b return x . (forall (h : Lt a x) -> Eq (gcd a x) (gcd x a))
     | zero => fun (h : Lt a 0) -> absurd (Eq (gcd a 0) (gcd 0 a)) h
     | succ d, ih => fun (h : Lt a (succ d)) ->
-        let e : Nat := succ d;
+        let e := succ d;
             swap : Eq (gcdFuel e e (mod a e)) (gcdFuel e e a) :=
               cong (fun (y : Nat) -> gcdFuel e e y) (mod a e) a (modSmall a d h)
         in trans (gcdFuel e e (mod a e)) (gcdFuel e e a) (gcdFuel (succ a) e a) swap

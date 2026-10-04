@@ -118,12 +118,12 @@ private abstract def splitSymm : forall (a : Nat) (b : Nat) -> Eq (split a b) (s
             trans (split (succ p) 0) 1 (split 0 (succ p)) (splitZeroRight (succ p))
               (sym (split 0 (succ p)) 1 (splitZeroLeft (succ p)))
         | succ q, s =>
-            let lhs : Nat := split (succ p) (succ q);
-                la : Nat := split p (succ q);
-                lb : Nat := split (succ p) q;
-                ra : Nat := split q (succ p);
-                rb : Nat := split (succ q) p;
-                rhs : Nat := split (succ q) (succ p);
+            let lhs := split (succ p) (succ q);
+                la := split p (succ q);
+                lb := split (succ p) q;
+                ra := split q (succ p);
+                rb := split (succ q) p;
+                rhs := split (succ q) (succ p);
                 mid : Eq (plus la lb) (plus rb ra) := plusCongBoth la lb rb ra (ih (succ q)) s;
                 swap : Eq (plus rb ra) (plus ra rb) := plusComm rb ra
             in trans lhs (plus la lb) rhs (splitSucc p q)
@@ -151,7 +151,7 @@ end
 abstract def chooseSymmSub : forall (n : Nat) (k : Nat) (h : Le k n) ->
     Eq (choose n k) (choose n (sub n k)) :=
   fun (n : Nat) (k : Nat) (h : Le k n) ->
-    let m : Nat := sub n k;
+    let m := sub n k;
         back : Eq (plus m k) n := plusSubCancel n k h;
         forth : Eq n (plus m k) := sym (plus m k) n back
     in trans (choose n k) (choose (plus m k) k) (choose n m)
@@ -182,11 +182,11 @@ private abstract def rowPrefixSucc : forall (p : Nat) (m : Nat) ->
              (plusZero (plus (choose p 0) 0))
              (trans (plus (choose p 0) 0) (choose p 0) 1 (plusZero (choose p 0)) (chooseZero p)))
     | succ q, ih =>
-        let a : Nat := choose p q;
-            b : Nat := choose p (succ q);
-            c : Nat := sumTo (choose p) (succ q);
-            d : Nat := sumTo (choose p) q;
-            lhs : Nat := plus (plus a b) (sumTo (choose (succ p)) (succ q));
+        let a := choose p q;
+            b := choose p (succ q);
+            c := sumTo (choose p) (succ q);
+            d := sumTo (choose p) q;
+            lhs := plus (plus a b) (sumTo (choose (succ p)) (succ q));
             step : Eq lhs (plus (plus a b) (plus c d)) :=
               cong (fun (y : Nat) -> plus (plus a b) y)
                 (sumTo (choose (succ p)) (succ q)) (plus c d) ih;
@@ -207,9 +207,9 @@ abstract def rowSum : forall (n : Nat) -> Eq (sumTo (choose n) (succ n)) (pow 2 
     rec n return x . Eq (sumTo (choose x) (succ x)) (pow 2 x)
     | zero => true
     | succ p, ih =>
-        let s : Nat := sumTo (choose p) (succ p);
-            P : Nat := pow 2 p;
-            longer : Nat := sumTo (choose p) (succ (succ p));
+        let s := sumTo (choose p) (succ p);
+            P := pow 2 p;
+            longer := sumTo (choose p) (succ (succ p));
             dropTop : Eq longer s :=
               cong (fun (y : Nat) -> plus y s) (choose p (succ p)) 0
                 (chooseOver p (succ p) (leRefl p));

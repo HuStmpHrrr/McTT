@@ -54,9 +54,9 @@ abstract def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n
     rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
     | zero => true
     | succ p, ih =>
-        let prev : Nat := ack 2 p;
+        let prev := ack 2 p;
             step : Eq (ack 1 prev) (succ (succ prev)) := ackOne prev;
-            target : Nat := succ (succ (succ (plus (succ p) (succ p))));
+            target := succ (succ (succ (plus (succ p) (succ p))));
             shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target :=
               sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p)
         in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p)))))) target

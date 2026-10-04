@@ -41,7 +41,7 @@ abstract def sumToExt : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Na
     | zero => true
     | succ p, ih =>
         let sf := sumTo f p;
-            sg : Nat := sumTo g p
+            sg := sumTo g p
         in trans (plus (f p) sf) (plus (g p) sf) (plus (g p) sg)
              (cong (fun (y : Nat) -> plus y sf) (f p) (g p) (h p))
              (cong (fun (y : Nat) -> plus (g p) y) sf sg ih)
@@ -57,9 +57,9 @@ abstract def sumToShift : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
     rec n return x . Eq (sumTo f (succ x)) (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) x))
     | zero => refl (plus (f 0) 0)
     | succ p, ih =>
-        let b : Nat := f (succ p);
-            l : Nat := sumTo f (succ p);
-            r : Nat := sumTo (fun (i : Nat) -> f (succ i)) p
+        let b := f (succ p);
+            l := sumTo f (succ p);
+            r := sumTo (fun (i : Nat) -> f (succ i)) p
         in trans (plus b l) (plus b (plus (f 0) r)) (plus (f 0) (plus b r))
              (cong (fun (y : Nat) -> plus b y) l (plus (f 0) r) ih)
              (plusLeftComm b (f 0) r)
@@ -81,9 +81,9 @@ abstract def sumToPlus : forall (f : forall (i : Nat) -> Nat) (g : forall (i : N
     | zero => true
     | succ p, ih =>
         let fg := plus (f p) (g p);
-            sfg : Nat := sumTo (fun (i : Nat) -> plus (f i) (g i)) p;
-            sf : Nat := sumTo f p;
-            sg : Nat := sumTo g p;
+            sfg := sumTo (fun (i : Nat) -> plus (f i) (g i)) p;
+            sf := sumTo f p;
+            sg := sumTo g p;
             step : Eq (plus fg sfg) (plus fg (plus sf sg)) :=
               cong (fun (y : Nat) -> plus fg y) sfg (plus sf sg) ih
         in trans (plus fg sfg) (plus fg (plus sf sg)) (plus (plus (f p) sf) (plus (g p) sg))
@@ -99,9 +99,9 @@ abstract def sumToScale : forall (c : Nat) (f : forall (i : Nat) -> Nat) (n : Na
     rec n return x . Eq (sumTo (fun (i : Nat) -> mult c (f i)) x) (mult c (sumTo f x))
     | zero => sym (mult c 0) 0 (multZero c)
     | succ p, ih =>
-        let cf : Nat := mult c (f p);
-            scf : Nat := sumTo (fun (i : Nat) -> mult c (f i)) p;
-            sf : Nat := sumTo f p;
+        let cf := mult c (f p);
+            scf := sumTo (fun (i : Nat) -> mult c (f i)) p;
+            sf := sumTo f p;
             step : Eq (plus cf scf) (plus cf (mult c sf)) :=
               cong (fun (y : Nat) -> plus cf y) scf (mult c sf) ih
         in trans (plus cf scf) (plus cf (mult c sf)) (mult c (plus (f p) sf))
@@ -135,13 +135,13 @@ abstract def gauss : forall (n : Nat) ->
     rec n return x . Eq (mult 2 (sumTo (Generic.id Nat) (succ x))) (mult x (succ x))
     | zero => true
     | succ p, ih =>
-        let s : Nat := sumTo (Generic.id Nat) (succ p);
-            q : Nat := succ p;
-            lhs : Nat := mult 2 (plus q s);
-            dist : Nat := plus (mult 2 q) (mult 2 s);
-            mid : Nat := plus (mult 2 q) (mult p q);
-            coll : Nat := mult (succ q) q;
-            rhs : Nat := mult q (succ q);
+        let s := sumTo (Generic.id Nat) (succ p);
+            q := succ p;
+            lhs := mult 2 (plus q s);
+            dist := plus (mult 2 q) (mult 2 s);
+            mid := plus (mult 2 q) (mult p q);
+            coll := mult (succ q) q;
+            rhs := mult q (succ q);
             stepA : Eq lhs dist := multDistribLeft 2 q s;
             stepB : Eq dist mid := cong (fun (y : Nat) -> plus (mult 2 q) y) (mult 2 s) (mult p q) ih;
             stepC : Eq mid coll := sym coll mid (multDistribRight 2 p q);
@@ -161,13 +161,13 @@ abstract def sumOdd : forall (n : Nat) ->
     rec n return x . Eq (sumTo (fun (i : Nat) -> succ (mult 2 i)) x) (mult x x)
     | zero => true
     | succ p, ih =>
-        let s : Nat := sumTo (fun (i : Nat) -> succ (mult 2 i)) p;
-            pp : Nat := mult p p;
-            lhs : Nat := plus (mult 2 p) s;
-            a : Nat := plus (mult 2 p) pp;
-            b : Nat := plus p (plus (plus p 0) pp);
-            c : Nat := plus p (plus p pp);
-            rhs : Nat := plus p (mult p (succ p));
+        let s := sumTo (fun (i : Nat) -> succ (mult 2 i)) p;
+            pp := mult p p;
+            lhs := plus (mult 2 p) s;
+            a := plus (mult 2 p) pp;
+            b := plus p (plus (plus p 0) pp);
+            c := plus p (plus p pp);
+            rhs := plus p (mult p (succ p));
             stepA : Eq lhs a := cong (fun (y : Nat) -> plus (mult 2 p) y) s pp ih;
             stepB : Eq a b := plusAssoc p (plus p 0) pp;
             stepC : Eq b c :=

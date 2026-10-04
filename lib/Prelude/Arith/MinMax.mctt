@@ -105,8 +105,8 @@ abstract def plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max 
         rec b return y . Eq (plus (min (succ p) y) (max (succ p) y)) (plus (succ p) y)
         | zero => sym (plus p 0) p (plusZero p)
         | succ q, s =>
-            let m : Nat := min p q;
-                M : Nat := max p q;
+            let m := min p q;
+                M := max p q;
                 left : Eq (plus m (succ M)) (succ (plus m M)) := plusSucc m M;
                 right : Eq (succ (plus p q)) (plus p (succ q)) :=
                   sym (plus p (succ q)) (succ (plus p q)) (plusSucc p q)

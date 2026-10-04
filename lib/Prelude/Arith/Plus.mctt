@@ -97,10 +97,10 @@ end
 abstract def plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs : Nat := plus (plus a b) (plus c d);
-        mid : Nat := plus a (plus b (plus c d));
-        inner : Nat := plus a (plus c (plus b d));
-        rhs : Nat := plus (plus a c) (plus b d);
+    let lhs := plus (plus a b) (plus c d);
+        mid := plus a (plus b (plus c d));
+        inner := plus a (plus c (plus b d));
+        rhs := plus (plus a c) (plus b d);
         swap : Eq mid inner :=
           cong (fun (y : Nat) -> plus a y) (plus b (plus c d)) (plus c (plus b d))
             (plusLeftComm b c d);

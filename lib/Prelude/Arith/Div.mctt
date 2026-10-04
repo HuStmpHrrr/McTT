@@ -222,8 +222,8 @@ abstract def modPlusDivisor : forall (n : Nat) (d : Nat) ->
   fun (n : Nat) (d : Nat) ->
     let module Wrap := IterateLaws (fun (r : Nat) -> wrap r d);
         module Steps := Generic Nat;
-        w : forall (r : Nat) -> Nat := fun (r : Nat) -> wrap r d;
-        k : Nat := succ d;
+        w := fun (r : Nat) -> wrap r d;
+        k := succ d;
         split : Eq (mod (plus k n) k) (Steps.iterate w k (mod n k)) := modPlus k n d;
         comm : Eq (Steps.iterate w k (mod n k)) (Steps.iterate w n (mod k k)) :=
           Wrap.iterateComm k n 0;
@@ -244,8 +244,8 @@ abstract def modPlusMult : forall (d : Nat) (t : Nat) (y : Nat) ->
     rec t return x . Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
     | zero => refl (mod y (succ d))
     | succ p, ih =>
-        let k : Nat := succ d;
-            m : Nat := mult p k;
+        let k := succ d;
+            m := mult p k;
             assoc : Eq (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) :=
               cong (fun (z : Nat) -> mod z k) (plus (plus k m) y) (plus k (plus m y))
                 (plusAssoc k m y)
@@ -275,7 +275,7 @@ end
    [modOne]. *)
 abstract def divOne : forall (n : Nat) -> Eq (div n 1) n :=
   fun (n : Nat) ->
-    let q : Nat := div n 1;
+    let q := div n 1;
         spec : Eq (plus (mult q 1) (mod n 1)) n := divModSpec n 0;
         dropMod : Eq (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) :=
           cong (fun (y : Nat) -> plus (mult q 1) y) 0 (mod n 1) (sym (mod n 1) 0 (modOne n));

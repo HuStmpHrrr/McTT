@@ -75,8 +75,8 @@ abstract def iterateComm : forall (m : Nat) (n : Nat) (a : Nat) ->
     Eq (Generic.iterate Nat f m (Generic.iterate Nat f n a))
        (Generic.iterate Nat f n (Generic.iterate Nat f m a)) :=
   fun (m : Nat) (n : Nat) (a : Nat) ->
-    let mn : Nat := Generic.iterate Nat f m (Generic.iterate Nat f n a);
-        nm : Nat := Generic.iterate Nat f n (Generic.iterate Nat f m a);
+    let mn := Generic.iterate Nat f m (Generic.iterate Nat f n a);
+        nm := Generic.iterate Nat f n (Generic.iterate Nat f m a);
         toPlus : Eq mn (Generic.iterate Nat f (plus m n) a) :=
           sym (Generic.iterate Nat f (plus m n) a) mn (iteratePlus m n a);
         swap : Eq (Generic.iterate Nat f (plus m n) a) (Generic.iterate Nat f (plus n m) a) :=

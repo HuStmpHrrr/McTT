@@ -68,8 +68,8 @@ abstract def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k 
     | zero => fun (ha : Eq a 0) (hb : Eq b 0) ->
         transport (fun (y : Nat) -> Eq (plus y b) 0) 0 a (sym a 0 ha) hb
     | succ d, ih => fun (ha : Eq (mod a (succ d)) 0) (hb : Eq (mod b (succ d)) 0) ->
-        let e : Nat := succ d;
-            w : forall (r : Nat) -> Nat := fun (r : Nat) -> wrap r d;
+        let e := succ d;
+            w := fun (r : Nat) -> wrap r d;
             split : Eq (mod (plus a b) e) (Generic.iterate Nat w a (mod b e)) := modPlus a b d;
             atZero : Eq (Generic.iterate Nat w a (mod b e)) (mod a e) :=
               cong (fun (y : Nat) -> Generic.iterate Nat w a y) (mod b e) 0 hb
@@ -94,8 +94,8 @@ end
 abstract def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
     Eq (mult (div b (succ d)) (succ d)) b :=
   fun (d : Nat) (b : Nat) (h : Eq (mod b (succ d)) 0) ->
-    let k : Nat := succ d;
-        m : Nat := mult (div b k) k;
+    let k := succ d;
+        m := mult (div b k) k;
         dropZero : Eq m (plus m 0) := sym (plus m 0) m (plusZero m);
         toRem : Eq (plus m 0) (plus m (mod b k)) :=
           cong (fun (y : Nat) -> plus m y) 0 (mod b k) (sym (mod b k) 0 h)
@@ -111,8 +111,8 @@ abstract def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides
     | zero => fun (h : Eq b 0) ->
         transport (fun (y : Nat) -> Eq (mult m y) 0) 0 b (sym b 0 h) (multZero m)
     | succ d, ih => fun (h : Divides (succ d) b) ->
-        let e : Nat := succ d;
-            q : Nat := div b e;
+        let e := succ d;
+            q := div b e;
             toB : Eq (mult (mult m q) e) (mult m b) :=
               trans (mult (mult m q) e) (mult m (mult q e)) (mult m b)
                 (multAssoc m q e)
@@ -130,8 +130,8 @@ abstract def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
     rec k return w . (forall (hx : Divides w x) (hxy : Divides w (plus x y)) -> Divides w y)
     | zero => fun (hx : Eq x 0) (hxy : Eq (plus x y) 0) -> plusEqZeroRight x y hxy
     | succ d, ih => fun (hx : Divides (succ d) x) (hxy : Eq (mod (plus x y) (succ d)) 0) ->
-        let e : Nat := succ d;
-            m : Nat := mult (div x e) e;
+        let e := succ d;
+            m := mult (div x e) e;
             atM : Eq (mod (plus m y) e) 0 :=
               transport (fun (z : Nat) -> Eq (mod (plus z y) e) 0) x m
                 (sym m x (dividesQuot d x hx)) hxy
@@ -157,7 +157,7 @@ private def modTwoParity : forall (n : Nat) ->
     | zero => andIntro (forall (h : True) -> True) (forall (h : False) -> False)
                 (fun (h : True) -> true) (fun (h : False) -> h)
     | succ p, ih =>
-        let r : Nat := mod p 2;
+        let r := mod p 2;
             fromOdd : forall (h : Odd p) -> Eq (wrap r 1) 0 :=
               fun (h : Odd p) ->
                 transport (fun (y : Nat) -> Eq (wrap y 1) 0) 1 r

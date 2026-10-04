@@ -105,9 +105,9 @@ abstract def multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
     | succ p, ih =>
         (* [plus (plus b c) (mult p (plus b c))] is rearranged, through
            [plus b (plus c (plus X Y))], into [plus (plus b X) (plus c Y)]. *)
-        let bc : Nat := plus b c;
-            x : Nat := mult p b;
-            y : Nat := mult p c;
+        let bc := plus b c;
+            x := mult p b;
+            y := mult p c;
             step : Eq (plus bc (mult p bc)) (plus bc (plus x y)) :=
               cong (fun (z : Nat) -> plus bc z) (mult p bc) (plus x y) ih;
             assoc : Eq (plus bc (plus x y)) (plus b (plus c (plus x y))) :=
@@ -161,10 +161,10 @@ end
 abstract def multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs : Nat := mult (mult a b) (mult c d);
-        mid : Nat := mult a (mult b (mult c d));
-        inner : Nat := mult a (mult c (mult b d));
-        rhs : Nat := mult (mult a c) (mult b d);
+    let lhs := mult (mult a b) (mult c d);
+        mid := mult a (mult b (mult c d));
+        inner := mult a (mult c (mult b d));
+        rhs := mult (mult a c) (mult b d);
         assoc : Eq lhs mid := multAssoc a b (mult c d);
         swap : Eq mid inner :=
           cong (fun (y : Nat) -> mult a y) (mult b (mult c d)) (mult c (mult b d))

@@ -58,9 +58,9 @@ abstract def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
     | zero => sym (mult 1 (pow a n)) (pow a n) (oneMult (pow a n))
     | succ p, ih =>
-        let lhs : Nat := mult a (pow a (plus p n));
-            mid : Nat := mult a (mult (pow a p) (pow a n));
-            rhs : Nat := mult (mult a (pow a p)) (pow a n);
+        let lhs := mult a (pow a (plus p n));
+            mid := mult a (mult (pow a p) (pow a n));
+            rhs := mult (mult a (pow a p)) (pow a n);
             step : Eq lhs mid :=
               cong (fun (y : Nat) -> mult a y) (pow a (plus p n))
                 (mult (pow a p) (pow a n)) ih
@@ -76,9 +76,9 @@ abstract def powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
     rec n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
     | zero => true
     | succ p, ih =>
-        let lhs : Nat := mult (mult a b) (pow (mult a b) p);
-            mid : Nat := mult (mult a b) (mult (pow a p) (pow b p));
-            rhs : Nat := mult (mult a (pow a p)) (mult b (pow b p));
+        let lhs := mult (mult a b) (pow (mult a b) p);
+            mid := mult (mult a b) (mult (pow a p) (pow b p));
+            rhs := mult (mult a (pow a p)) (mult b (pow b p));
             step : Eq lhs mid :=
               cong (fun (y : Nat) -> mult (mult a b) y) (pow (mult a b) p)
                 (mult (pow a p) (pow b p)) ih
@@ -96,10 +96,10 @@ abstract def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (mult x n)) (pow (pow a x) n)
     | zero => sym (pow 1 n) 1 (onePow n)
     | succ p, ih =>
-        let lhs : Nat := pow a (plus n (mult p n));
-            split : Nat := mult (pow a n) (pow a (mult p n));
-            mid : Nat := mult (pow a n) (pow (pow a p) n);
-            rhs : Nat := pow (mult a (pow a p)) n;
+        let lhs := pow a (plus n (mult p n));
+            split := mult (pow a n) (pow a (mult p n));
+            mid := mult (pow a n) (pow (pow a p) n);
+            rhs := pow (mult a (pow a p)) n;
             step : Eq split mid :=
               cong (fun (y : Nat) -> mult (pow a n) y) (pow a (mult p n))
                 (pow (pow a p) n) ih;

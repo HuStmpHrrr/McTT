@@ -68,11 +68,11 @@ abstract def hornerNaive : forall (c : Coeffs) (n : Nat) -> Eq (horner c n) (nai
     (rec n return k . (forall (d : Coeffs) -> Eq (hornerFrom k d) (sumTo (term d) k))
      | zero => fun (d : Coeffs) -> true
      | succ p, ih => fun (d : Coeffs) ->
-         let rest : Nat := hornerFrom p (shift d);
-             tail : Nat := sumTo (term (shift d)) p;
-             scaled : Nat := sumTo (fun (i : Nat) -> mult x (term (shift d) i)) p;
-             shifted : Nat := sumTo (fun (i : Nat) -> term d (succ i)) p;
-             whole : Nat := sumTo (term d) (succ p);
+         let rest := hornerFrom p (shift d);
+             tail := sumTo (term (shift d)) p;
+             scaled := sumTo (fun (i : Nat) -> mult x (term (shift d) i)) p;
+             shifted := sumTo (fun (i : Nat) -> term d (succ i)) p;
+             whole := sumTo (term d) (succ p);
              inner : Eq (mult x rest) (mult x tail) :=
                cong (fun (y : Nat) -> mult x y) rest tail (ih (shift d));
              scale : Eq (mult x tail) scaled :=

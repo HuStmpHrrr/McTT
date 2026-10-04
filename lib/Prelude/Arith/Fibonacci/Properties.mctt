@@ -94,11 +94,11 @@ abstract def fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n
     rec n return x . Eq (plus (sumTo fib x) 1) (fib (succ x))
     | zero => true
     | succ p, ih =>
-        let f : Nat := fib p;
-            g : Nat := fib (succ p);
-            s : Nat := sumTo fib p;
-            lhs : Nat := plus (plus f s) 1;
-            rhs : Nat := fib (succ (succ p));
+        let f := fib p;
+            g := fib (succ p);
+            s := sumTo fib p;
+            lhs := plus (plus f s) 1;
+            rhs := fib (succ (succ p));
             assoc : Eq lhs (plus f (plus s 1)) := plusAssoc f s 1;
             step : Eq (plus f (plus s 1)) (plus f g) :=
               cong (fun (y : Nat) -> plus f y) (plus s 1) g ih;
@@ -123,23 +123,23 @@ abstract def fibPlus : forall (m : Nat) (n : Nat) ->
         Eq (fib (succ (plus x n))) (plus (mult (fib (succ x)) (fib (succ n))) (mult (fib x) (fib n))))
     | zero => fun (n : Nat) ->
         (* The right-hand side computes to [plus (plus (fib (succ n)) 0) 0]. *)
-        let g : Nat := fib (succ n)
+        let g := fib (succ n)
         in sym (plus (plus g 0) 0) g
              (trans (plus (plus g 0) 0) (plus g 0) g (plusZero (plus g 0)) (plusZero g))
         end
     | succ p, ih => fun (n : Nat) ->
-        let a : Nat := fib (succ p);
-            b : Nat := fib p;
-            x : Nat := fib (succ n);
-            y : Nat := fib n;
-            lhs : Nat := fib (succ (succ (plus p n)));
-            shifted : Nat := fib (succ (plus p (succ n)));
-            hyp : Nat := plus (mult a (fib (succ (succ n)))) (mult b x);
-            expanded : Nat := plus (mult a (plus x y)) (mult b x);
-            dist : Nat := plus (plus (mult a x) (mult a y)) (mult b x);
-            regroup : Nat := plus (plus (mult a x) (mult b x)) (mult a y);
-            collect : Nat := plus (mult (plus a b) x) (mult a y);
-            rhs : Nat := plus (mult (fib (succ (succ p))) x) (mult a y);
+        let a := fib (succ p);
+            b := fib p;
+            x := fib (succ n);
+            y := fib n;
+            lhs := fib (succ (succ (plus p n)));
+            shifted := fib (succ (plus p (succ n)));
+            hyp := plus (mult a (fib (succ (succ n)))) (mult b x);
+            expanded := plus (mult a (plus x y)) (mult b x);
+            dist := plus (plus (mult a x) (mult a y)) (mult b x);
+            regroup := plus (plus (mult a x) (mult b x)) (mult a y);
+            collect := plus (mult (plus a b) x) (mult a y);
+            rhs := plus (mult (fib (succ (succ p))) x) (mult a y);
             stepA : Eq lhs shifted :=
               cong (fun (z : Nat) -> fib (succ z)) (succ (plus p n)) (plus p (succ n))
                 (sym (plus p (succ n)) (succ (plus p n)) (plusSucc p n));

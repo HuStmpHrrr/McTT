@@ -169,9 +169,9 @@ abstract def sumAppend : forall (m : Nat) (n : Nat) (u : NV.Vec m) (v : NV.Vec n
                             (plus (sumVec k w) (sumVec n v)))
      | zero => fun (w : NV.Vec 0) -> refl (sumVec n v)
      | succ p, ih => fun (w : NV.Vec (succ p)) ->
-         let a : Nat := NV.head p w;
-             t : NV.Vec p := NV.tail p w;
-             rest : Nat := sumVec (plus p n) (NV.append p n t v);
+         let a := NV.head p w;
+             t := NV.tail p w;
+             rest := sumVec (plus p n) (NV.append p n t v);
              step : Eq (plus a rest) (plus a (plus (sumVec p t) (sumVec n v))) :=
                cong (fun (y : Nat) -> plus a y) rest (plus (sumVec p t) (sumVec n v)) (ih t);
              assoc : Eq (plus a (plus (sumVec p t) (sumVec n v)))
@@ -196,10 +196,10 @@ abstract def sumExt : forall (n : Nat) (u : NV.Vec n) (v : NV.Vec n)
                   (e : forall (i : Nat) (h : Lt i 0) -> Eq (u i h) (v i h)) -> true
     | succ p, ih => fun (u : NV.Vec (succ p)) (v : NV.Vec (succ p))
                         (e : forall (i : Nat) (h : Lt i (succ p)) -> Eq (u i h) (v i h)) ->
-        let a : Nat := u 0 true;
-            b : Nat := v 0 true;
-            su : Nat := sumVec p (NV.tail p u);
-            sv : Nat := sumVec p (NV.tail p v)
+        let a := u 0 true;
+            b := v 0 true;
+            su := sumVec p (NV.tail p u);
+            sv := sumVec p (NV.tail p v)
         in trans (plus a su) (plus b su) (plus b sv)
              (cong (fun (y : Nat) -> plus y su) a b (e 0 true))
              (cong (fun (y : Nat) -> plus b y) su sv
@@ -217,11 +217,11 @@ abstract def sumMapPlus : forall (c : Nat) (n : Nat) (v : NV.Vec n) ->
                          Eq (sumVec k (NV.map Nat (plus c) k w)) (plus (sumVec k w) (mult k c)))
      | zero => fun (w : NV.Vec 0) -> true
      | succ p, ih => fun (w : NV.Vec (succ p)) ->
-         let a : Nat := w 0 true;
-             t : NV.Vec p := NV.tail p w;
-             sm : Nat := sumVec p (NV.map Nat (plus c) p t);
-             s : Nat := sumVec p t;
-             m : Nat := mult p c;
+         let a := w 0 true;
+             t := NV.tail p w;
+             sm := sumVec p (NV.map Nat (plus c) p t);
+             s := sumVec p t;
+             m := mult p c;
              step : Eq (plus (plus c a) sm) (plus (plus c a) (plus s m)) :=
                cong (fun (y : Nat) -> plus (plus c a) y) sm (plus s m) (ih t);
              swap : Eq (plus (plus c a) (plus s m)) (plus (plus a c) (plus s m)) :=
@@ -242,10 +242,10 @@ abstract def sumMapScale : forall (c : Nat) (n : Nat) (v : NV.Vec n) ->
                          Eq (sumVec k (NV.map Nat (mult c) k w)) (mult c (sumVec k w)))
      | zero => fun (w : NV.Vec 0) -> sym (mult c 0) 0 (multZero c)
      | succ p, ih => fun (w : NV.Vec (succ p)) ->
-         let a : Nat := w 0 true;
-             t : NV.Vec p := NV.tail p w;
-             sm : Nat := sumVec p (NV.map Nat (mult c) p t);
-             s : Nat := sumVec p t
+         let a := w 0 true;
+             t := NV.tail p w;
+             sm := sumVec p (NV.map Nat (mult c) p t);
+             s := sumVec p t
          in trans (plus (mult c a) sm) (plus (mult c a) (mult c s)) (mult c (plus a s))
               (cong (fun (y : Nat) -> plus (mult c a) y) sm (mult c s) (ih t))
               (sym (mult c (plus a s)) (plus (mult c a) (mult c s)) (multDistribLeft c a s))
@@ -262,13 +262,13 @@ abstract def sumZipWithPlus : forall (n : Nat) (u : NV.Vec n) (v : NV.Vec n) ->
                            (plus (sumVec k u) (sumVec k v)))
     | zero => fun (u : NV.Vec 0) (v : NV.Vec 0) -> true
     | succ p, ih => fun (u : NV.Vec (succ p)) (v : NV.Vec (succ p)) ->
-        let a : Nat := u 0 true;
-            b : Nat := v 0 true;
-            tu : NV.Vec p := NV.tail p u;
-            tv : NV.Vec p := NV.tail p v;
-            sz : Nat := sumVec p (NV.zipWith Nat Nat plus p tu tv);
-            su : Nat := sumVec p tu;
-            sv : Nat := sumVec p tv
+        let a := u 0 true;
+            b := v 0 true;
+            tu := NV.tail p u;
+            tv := NV.tail p v;
+            sz := sumVec p (NV.zipWith Nat Nat plus p tu tv);
+            su := sumVec p tu;
+            sv := sumVec p tv
         in trans (plus (plus a b) sz) (plus (plus a b) (plus su sv)) (plus (plus a su) (plus b sv))
              (cong (fun (y : Nat) -> plus (plus a b) y) sz (plus su sv) (ih tu tv))
              (plusSwapMiddle a b su sv)
@@ -284,8 +284,8 @@ abstract def foldlPlus : forall (a : Nat) (n : Nat) (v : NV.Vec n) ->
                          Eq (NV.foldl Nat plus acc k w) (plus acc (sumVec k w)))
      | zero => fun (w : NV.Vec 0) (acc : Nat) -> sym (plus acc 0) acc (plusZero acc)
      | succ p, ih => fun (w : NV.Vec (succ p)) (acc : Nat) ->
-         let b : Nat := w 0 true;
-             s : Nat := sumVec p (NV.tail p w)
+         let b := w 0 true;
+             s := sumVec p (NV.tail p w)
          in trans (NV.foldl Nat plus (plus acc b) p (NV.tail p w)) (plus (plus acc b) s)
               (plus acc (plus b s))
               (ih (NV.tail p w) (plus acc b)) (plusAssoc acc b s)
@@ -301,10 +301,10 @@ abstract def sumSnoc : forall (n : Nat) (v : NV.Vec n) (a : Nat) ->
                          Eq (sumVec (succ k) (NV.snoc k w a)) (plus (sumVec k w) a))
      | zero => fun (w : NV.Vec 0) -> plusZero a
      | succ p, ih => fun (w : NV.Vec (succ p)) ->
-         let b : Nat := w 0 true;
-             t : NV.Vec p := NV.tail p w;
-             r : Nat := sumVec (succ p) (NV.snoc p t a);
-             s : Nat := sumVec p t
+         let b := w 0 true;
+             t := NV.tail p w;
+             r := sumVec (succ p) (NV.snoc p t a);
+             s := sumVec p t
          in trans (plus b r) (plus b (plus s a)) (plus (plus b s) a)
               (cong (fun (y : Nat) -> plus b y) r (plus s a) (ih t))
               (sym (plus (plus b s) a) (plus b (plus s a)) (plusAssoc b s a))
@@ -321,11 +321,11 @@ abstract def sumInitLast : forall (n : Nat) (v : NV.Vec (succ n)) ->
                         Eq (sumVec (succ k) v) (plus (sumVec k (NV.init k v)) (NV.last k v)))
     | zero => fun (v : NV.Vec 1) -> plusZero (v 0 true)
     | succ p, ih => fun (w : NV.Vec (succ (succ p))) ->
-        let a : Nat := w 0 true;
-            t : NV.Vec (succ p) := NV.tail (succ p) w;
-            l : Nat := NV.last (succ p) w;
-            sa : Nat := sumVec p (NV.init p t);
-            sb : Nat := sumVec p (NV.tail p (NV.init (succ p) w));
+        let a := w 0 true;
+            t := NV.tail (succ p) w;
+            l := NV.last (succ p) w;
+            sa := sumVec p (NV.init p t);
+            sb := sumVec p (NV.tail p (NV.init (succ p) w));
             step : Eq (plus a (sumVec (succ p) t)) (plus a (plus sa l)) :=
               cong (fun (y : Nat) -> plus a y) (sumVec (succ p) t) (plus sa l) (ih t);
             assoc : Eq (plus a (plus sa l)) (plus (plus a sa) l) :=
@@ -366,12 +366,12 @@ abstract def sumReverse : forall (n : Nat) (v : NV.Vec n) ->
     rec n return k . (forall (v : NV.Vec k) -> Eq (sumVec k (NV.reverse k v)) (sumVec k v))
     | zero => fun (v : NV.Vec 0) -> true
     | succ p, ih => fun (w : NV.Vec (succ p)) ->
-        let l : Nat := NV.last p w;
-            iw : NV.Vec p := NV.init p w;
-            t : NV.Vec p := NV.tail p (NV.reverse (succ p) w);
-            st : Nat := sumVec p t;
-            si : Nat := sumVec p iw;
-            sr : Nat := sumVec p (NV.reverse p iw);
+        let l := NV.last p w;
+            iw := NV.init p w;
+            t := NV.tail p (NV.reverse (succ p) w);
+            st := sumVec p t;
+            si := sumVec p iw;
+            sr := sumVec p (NV.reverse p iw);
             toInit : Eq st si :=
               trans st sr si (sumExt p t (NV.reverse p iw) (tailReverse p w)) (ih iw);
             step : Eq (plus l st) (plus l si) := cong (fun (y : Nat) -> plus l y) st si toInit;
@@ -391,8 +391,8 @@ abstract def sumTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
                          Eq (sumVec k (NV.tabulate g k)) (sumTo g k))
      | zero => fun (g : forall (i : Nat) -> Nat) -> true
      | succ p, ih => fun (g : forall (i : Nat) -> Nat) ->
-         let s : Nat := sumVec p (NV.tabulate (fun (i : Nat) -> g (succ i)) p);
-             t : Nat := sumTo (fun (i : Nat) -> g (succ i)) p
+         let s := sumVec p (NV.tabulate (fun (i : Nat) -> g (succ i)) p);
+             t := sumTo (fun (i : Nat) -> g (succ i)) p
          in trans (plus (g 0) s) (plus (g 0) t) (sumTo g (succ p))
               (cong (fun (y : Nat) -> plus (g 0) y) s t (ih (fun (i : Nat) -> g (succ i))))
               (sym (sumTo g (succ p)) (plus (g 0) t) (sumToShift g p))
@@ -493,7 +493,7 @@ def allbSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V
                         V.All A (fun (a : A) -> Lt 0 (p a)) k v)
     | zero => fun (v : V.Vec A 0) (e : True) (i : Nat) (h : Lt i 0) -> absurd (Lt 0 (p (v i h))) h
     | succ m, ih => fun (w : V.Vec A (succ m)) ->
-        let b : Nat := V.allb A p m (V.tail A m w)
+        let b := V.allb A p m (V.tail A m w)
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => 0 | succ q, s => b end) 1)
                (i : Nat) ->
              rec i return x . (forall (h : Lt x (succ m)) -> Lt 0 (p (w x h)))
@@ -542,7 +542,7 @@ def anybSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V
     | zero => fun (v : V.Vec A 0) (e : False) ->
         exfalso e return z . V.Any A (fun (a : A) -> Lt 0 (p a)) 0 v
     | succ m, ih => fun (w : V.Vec A (succ m)) ->
-        let b : Nat := V.anyb A p m (V.tail A m w)
+        let b := V.anyb A p m (V.tail A m w)
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => b | succ q, s => 1 end) 1)
                (C : Type@0)
                (k : forall (i : Nat) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) -> C) ->

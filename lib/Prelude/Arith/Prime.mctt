@@ -64,9 +64,8 @@ private abstract def trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : N
     rec fuel return x . (forall (d : Nat) -> Divides (trialDivision n n (fun (y : Nat) -> y) x d) n)
     | zero => fun (d : Nat) -> dividesRefl n
     | succ f, ih => fun (d : Nat) ->
-        let next : Nat := trialDivision n n (fun (y : Nat) -> y) f (succ d);
-            inner : Nat :=
-              pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d)
+        let next := trialDivision n n (fun (y : Nat) -> y) f (succ d);
+            inner := pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d)
         in caseNat (fun (b : Nat) -> Divides (pick b (fun (u : Nat) -> inner) (fun (u : Nat) -> n)) n)
              (eqbCases (mod n d) 0
                 (fun (b : Nat) -> Divides (pick b (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
@@ -88,8 +87,8 @@ private abstract def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
                            Eq (trialDivision n n (fun (y : Nat) -> y) x d) n)
     | zero => fun (d : Nat) (h : True) -> refl n
     | succ f, ih => fun (d : Nat) ->
-        let flagNext : Nat := trialDivision n 1 (fun (y : Nat) -> 0) f (succ d);
-            next : Nat := trialDivision n n (fun (y : Nat) -> y) f (succ d)
+        let flagNext := trialDivision n 1 (fun (y : Nat) -> 0) f (succ d);
+            next := trialDivision n n (fun (y : Nat) -> y) f (succ d)
         in caseNat
              (fun (b : Nat) ->
                 forall (h : Eq (pick b

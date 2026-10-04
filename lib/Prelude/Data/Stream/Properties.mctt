@@ -112,9 +112,9 @@ abstract def scanSum : forall (s : S.Stream) (n : Nat) ->
     rec n return x . Eq (S.nth (S.scan Nat plus 0 s) x) (sumTo (S.nth s) x)
     | zero => true
     | succ p, ih =>
-        let l : Nat := S.nth (S.scan Nat plus 0 s) p;
-            r : Nat := sumTo (S.nth s) p;
-            a : Nat := s p
+        let l := S.nth (S.scan Nat plus 0 s) p;
+            r := sumTo (S.nth s) p;
+            a := s p
         in trans (plus l a) (plus a l) (plus a r) (plusComm l a)
              (cong (fun (y : Nat) -> plus a y) l r ih)
         end
@@ -150,8 +150,8 @@ abstract def sumTake : forall (n : Nat) (s : S.Stream) ->
     (rec n return x . (forall (u : S.Stream) -> Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
      | zero => fun (u : S.Stream) -> true
      | succ p, ih => fun (u : S.Stream) ->
-         let vs : Nat := sumVec p (S.take p (S.tail u));
-             ts : Nat := sumTo (S.tail u) p
+         let vs := sumVec p (S.take p (S.tail u));
+             ts := sumTo (S.tail u) p
          in trans (plus (u 0) vs) (plus (u 0) ts) (sumTo u (succ p))
               (cong (fun (y : Nat) -> plus (u 0) y) vs ts (ih (S.tail u)))
               (sym (sumTo u (succ p)) (plus (u 0) ts) (sumToShift u p))

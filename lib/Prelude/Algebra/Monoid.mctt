@@ -136,12 +136,12 @@ abstract def powComm : forall (x : M) (m : Nat) (n : Nat) ->
         rTrans (op e (pow x n)) (pow x n) (op (pow x n) e)
           (leftId (pow x n)) (rSym (op (pow x n) e) (pow x n) (rightId (pow x n)))
     | succ p, ih =>
-        let a : M := op (op x (pow x p)) (pow x n);
-            b : M := op x (op (pow x p) (pow x n));
-            c : M := op x (op (pow x n) (pow x p));
-            d : M := op (op x (pow x n)) (pow x p);
-            f : M := op (op (pow x n) x) (pow x p);
-            g : M := op (pow x n) (op x (pow x p));
+        let a := op (op x (pow x p)) (pow x n);
+            b := op x (op (pow x p) (pow x n));
+            c := op x (op (pow x n) (pow x p));
+            d := op (op x (pow x n)) (pow x p);
+            f := op (op (pow x n) x) (pow x p);
+            g := op (pow x n) (op x (pow x p));
             ab : R a b := assoc x (pow x p) (pow x n);
             bc : R b c := congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
             cd : R c d := assocBack x (pow x n) (pow x p);

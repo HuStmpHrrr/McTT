@@ -57,8 +57,8 @@ abstract def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
     rec n return x . Le (pow 2 x) (fact (succ x))
     | zero => true
     | succ p, ih =>
-        let P : Nat := pow 2 p;
-            F : Nat := fact (succ p);
+        let P := pow 2 p;
+            F := fact (succ p);
             inner : Le (plus P 0) (plus F (mult p F)) :=
               lePlusMono P F 0 (mult p F) ih true
         in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner
