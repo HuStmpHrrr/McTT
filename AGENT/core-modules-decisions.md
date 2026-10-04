@@ -295,9 +295,9 @@ let module M (A : Type@0) where def x : Nat := zero end
   `private module A.B` makes only `B` private.  A chain *past* an alias is
   declared in the alias's target (`mdl_alias`, `r <> nil`); the alias itself
   is an entry like any other.
-- Only unit-rooted references are checked, and typing is privacy-free, so a
-  private member of a *local* module would be rejected nowhere; `private` in
-  a local body is therefore an elaborator error (§10.3).
+- Only unit-rooted references were checked at first, so `private` in a local
+  body was an elaborator error; since §10.7 the check also resolves
+  references through local modules, and local bodies may be `private`.
 
 ### 10.3 Local bodies
 - Imports stay allowed in local bodies; since §10.7 they are the pre-form
@@ -306,9 +306,11 @@ let module M (A : Type@0) where def x : Nat := zero end
   `eval is not allowed in a local module`.
 - A local import of a unit must name an imported unit (`loaded`):
   `Error: the unit is not imported`.
-- `private def` and `private module` in a local body are elaborator errors,
-  `private is not allowed in a local module`; the core is unchanged, and the
-  flags of local entries are `false`.
+- `private def` and `private module` are allowed in a local body (they were
+  elaborator errors before §10.7): `let module L where private def s : Nat
+  := 1 end def t : Nat := succ s end end in L.t end` gives `2`, and `… in
+  L.s end` gives `Error: s is private`.  The message names the member from
+  the local module, which has no name in the core.
 - A local `use (n; n)` naming a member twice is rejected by the core
   (`xe_fresh`, `n is already declared`) since §10.7.
 
@@ -362,15 +364,15 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   accepts `x := a` in a `let`; the elaborator passes the option through
   (`sel_let_infer`).  `def` keeps its required type.
 
-### 10.7 Imports generate definitions (round `eq-imports`)
+### 10.7 Imports generate definitions
 - `import E items` is the command `cc_import E items` (`iitem := option
   string * string * bool`: member or the module itself, declared name,
   private).  `import_gen mt Γ E items` (`Core/Syntactic/Imports.v`) checks
   `E` is a module and each item a member, rejects a member both used and
   exported (`xe_both`) and a name declared twice (`xe_fresh`), and gives a
   definition `d : A := E.n` (`A` its member type) or an alias per item.
-  `rc_import` runs them as `cc_def`/`cc_alias` commands, so their freshness
-  and privacy are the ordinary ones.  Loading is its own command, `cc_load`.
+  `rc_import` declares them with the premises of `rc_def`/`rc_alias`, so their freshness
+  is the ordinary one.  Loading is its own command, `cc_load`.
 - `mt : mt_oracle` stands for the member types; `mt_spec Θ Ξ mt` ties it to
   `member_type`, and any two such oracles agree (`mt_spec_ext`), so
   expansion is unique (`cmd_xp_ok_functional`).  The checker uses `mt_of`
@@ -385,8 +387,19 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   the syntax in a scope; `pt_body ch es` checks the newest entry is public,
   `pt_glob H` the global check.  `pt_body` carries the chain `ch` of
   submodules from the local module, for `re_private_local`.
-- Known consequence: a generated definition's type is privacy-checked, so
-  importing a public member whose type names a private one is rejected
-  (`module Lib where private def P … def x : P … end import Lib use (x)` →
-  `Error: PT.Lib.P is private`).
-
+- Privacy checks what is written: `rcs_cons` checks
+  `acc_ok Θ Ξ (cmd_refs c)` on the command before expansion, `ru_intro` the
+  written parameters; no `run_cmd` rule checks privacy.  `rc_import` declares
+  its generated entries by `gens_run` (outside the mutual block, the
+  premises of `rc_def`/`rc_alias` without privacy), so a generated type is
+  never checked.  An import's refs are its target and each member it names;
+  in a local body, `btab` gives each item the table of what it names.
+- Typing is untouched: no rule mentions an import.  A generated definition
+  `d := E.n` is checked by `gr_def`'s premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_mem E n : A`
+  through the ordinary member rules, a generated local entry by
+  `wf_unit_eq_body` like a written one.
+- A unit's leading imports are commands of its own frame, after its
+  parameters, so a parameter type cannot name what they declare:
+  `import Prelude::Arith::Equality use (Eq) module M (p : Eq 1 1) where … end`
+  gives `unbound name Eq` (it was accepted while `use` bound elaborator
+  aliases); the qualified name `Prelude::Arith::Equality.Eq` still works.

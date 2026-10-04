@@ -20,18 +20,22 @@ Definition md_priv_abs : mods := {| md_private := true; md_abstract := true |}.
 
 (** ** Import Specifications
 
-    What an [import] brings into scope.  [i_open] makes the module reachable
-    under its full path, [i_as] additionally binds a short alias, and [i_use]
-    binds the listed members directly.  The names an [import] [use]s are
-    checked by the core: each must be a definition or a submodule of the
-    imported module, and one the importer may use (privacy, [Command]). *)
+    What an [import] declares.  [i_open] declares nothing (the module is
+    named under its full path), [i_as W] declares [W] as the module, and
+    [i_items us es] declares each item of [us] privately ([use]) and each of
+    [es] publicly ([export]).  An item [(n, d)] declares [d] as the member
+    [n] of the module: [use (c)] is [("c", "c")], [use (c as d)] is
+    [("c", "d")].  The core generates the declarations and checks them
+    ([Core.Syntactic.Imports]): each [n] must be a member, the names [d]
+    distinct, and no member both used and exported. *)
 Inductive ispec : Set :=
 (** [import P]: the module under its full path *)
 | i_open : ispec
-(** [import P as X]: also under the short name [X] *)
+(** [import P as W]: also under the short name [W] *)
 | i_as : string -> ispec
-(** [import P use (x; y)]: the listed members, by their own names *)
-| i_use : list string -> ispec.
+(** [import P use (items) export (items)]: the listed members, privately
+    then publicly *)
+| i_items : list (string * string) -> list (string * string) -> ispec.
 
 (** ** Objects, Declarations and Commands
 
@@ -110,10 +114,11 @@ with cmd : Set :=
 | c_mod : bool -> string -> list (string * obj) -> mdef -> cmd
 (** [private abstract def x : A := M end], with its modifiers *)
 | c_def : mods -> string -> obj -> obj -> cmd
-(** [c_import fp ip] imports the module at internal path [ip] of the unit at
-    file path [fp].  An empty [fp] is this unit, so [import A.B] is
-    [c_import nil ["A"; "B"]] and [import X::Y] is [c_import ["X"; "Y"] nil]. *)
-| c_import : list string -> list string -> ispec -> cmd
+(** [c_import fp ip args spec] imports the module at internal path [ip] of
+    the unit at file path [fp], applied to [args].  An empty [fp] is this
+    unit, so [import A.B] is [c_import nil ["A"; "B"] nil i_open] and
+    [import X::Y Nat as W] is [c_import ["X"; "Y"] nil [nat] (i_as "W")]. *)
+| c_import : list string -> list string -> list obj -> ispec -> cmd
 (** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
     checks [M] against [A] rather than inferring its type. *)
 | c_eval : obj -> option obj -> cmd.
@@ -147,7 +152,7 @@ Section cst_mut_ind.
     (case_md_alias : forall o, Po o -> Pm (md_alias o))
     (case_c_mod : forall pv x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod pv x ps md))
     (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
-    (case_c_import : forall fp ip spec, Pc (c_import fp ip spec))
+    (case_c_import : forall fp ip args spec, List.Forall Po args -> Pc (c_import fp ip args spec))
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA)).
 
   Fixpoint obj_mut (o : obj) : Po o :=
@@ -209,7 +214,13 @@ Section cst_mut_ind.
               end) ps)
           (mdef_mut md)
     | c_def m x o1 o2 => case_c_def m x o1 o2 (obj_mut o1) (obj_mut o2)
-    | c_import fp ip spec => case_c_import fp ip spec
+    | c_import fp ip args spec =>
+        case_c_import fp ip args spec
+          ((fix go (os : list obj) : List.Forall Po os :=
+              match os with
+              | nil => List.Forall_nil _
+              | o :: os' => List.Forall_cons o (obj_mut o) (go os')
+              end) args)
     | c_eval o oA =>
         case_c_eval o oA (obj_mut o)
           (match oA as oA0 return match oA0 with Some A => Po A | None => True end with

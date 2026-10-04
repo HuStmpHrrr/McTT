@@ -2,7 +2,10 @@
 
 Status: prototype done and proved against the **current core**, with no core
 change beyond the surface syntax `Cst`. Everything below "Options" is a
-proposal with its cost, not implemented.
+proposal with its cost, not implemented.  Since imports generate core
+definitions (`core-modules-decisions.md` §10.7), `en_as` and `en_use` are
+gone: an import's names are ordinary `en_mem`/`en_var` entries
+(`elab-spec.md`).
 
 ## 1. The idea
 

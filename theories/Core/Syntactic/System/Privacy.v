@@ -15,6 +15,7 @@ From Stdlib Require Import List String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import Command.
 From Mctt.Core.Syntactic.System Require Export MemberLemmas.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
@@ -200,6 +201,21 @@ Definition tab_scope (es : list (string * bool * ptab)) : list ptab := map snd e
 (** Whether an import item declares a private name. *)
 Definition iitem_private (it : iitem) : bool := let '(_, _, pv) := it in pv.
 
+(** What an import item names, in the table [t] of the imported module:
+    the module itself, or its member. *)
+Definition item_tab (t : ptab) (it : iitem) : ptab :=
+  match it with
+  | (None, _, _) => t
+  | (Some n, _, _) => tab_sel t n
+  end.
+
+(** The references an import's items make: each member it names. *)
+Definition item_refs (t : ptab) (its : list iitem) : list (ptab * string)%type :=
+  flat_map (fun it => match it with
+                      | (Some n, _, _) => (t, n) :: nil
+                      | (None, _, _) => nil
+                      end) its.
+
 Fixpoint mtab (S : list ptab) (H : modexp) : ptab :=
   match H with
   | me_unit fp => pt_glob (me_unit fp)
@@ -221,8 +237,10 @@ with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ x E => let es := btab S Φ in (x, ge_private E, etab (tab_scope es ++ S) E) :: es
-  | gm_import Φ _ its =>
-      rev (map (fun it => (iitem_name it, iitem_private it, pt_none)) its) ++ btab S Φ
+  | gm_import Φ H its =>
+      let es := btab S Φ in
+      let t := mtab (tab_scope es ++ S) H in
+      rev (map (fun it => (iitem_name it, iitem_private it, item_tab t it)) its) ++ es
   end
 with etab (S : list ptab) (E : gentry) : ptab :=
   match E with
@@ -284,7 +302,9 @@ with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (btab S Φ) ++ S) E
-  | gm_import Φ H _ => gmod_refs S Φ ++ modexp_refs (tab_scope (btab S Φ) ++ S) H
+  | gm_import Φ H its =>
+      gmod_refs S Φ ++ modexp_refs (tab_scope (btab S Φ) ++ S) H ++
+        item_refs (mtab (tab_scope (btab S Φ) ++ S) H) its
   end
 with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
@@ -302,6 +322,19 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
   match Δ with
   | nil => nil
   | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
+  end.
+
+(** The references a command makes, as written: its own terms, and for an
+    import, its target and each member its items name.  A module's nested
+    commands are checked when they run. *)
+Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
+  match c with
+  | cc_def _ _ _ A M => exp_refs nil A ++ exp_refs nil M
+  | cc_mod _ _ Δ _ => tele_refs nil Δ
+  | cc_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
+  | cc_load _ => nil
+  | cc_import E its => modexp_refs nil E ++ item_refs (mtab nil E) its
+  | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
   end.
 
 (** ** Accessibility *)

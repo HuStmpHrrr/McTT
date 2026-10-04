@@ -436,6 +436,9 @@ Proof. intros * H mp U Hin; apply (H mp U); right; exact Hin. Qed.
 #[local] Hint Resolve gs_no_axioms_head gs_no_axioms_tail gds_no_axioms_merge gds_no_axioms_file gs_no_axioms_nil gds_no_axioms_nil
   gs_no_axioms_push gs_no_axioms_add : mctt.
 
+Lemma gens_run_no_axioms : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
+Proof. induction 1; intros HΞ; auto; apply IHgens_run, gs_no_axioms_add; cbn; auto; congruence. Qed.
+
 Section Run.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -452,6 +455,9 @@ Section Run.
       (* the runs inside start where the hypotheses hold, the unit's frame empty *)
       repeat match goal with IH : _ /\ _ -> _ /\ _ |- _ =>
         specialize (IH ltac:(split; auto with mctt)); destruct IH end;
+      (* an import declares what it generates *)
+      try match goal with Hg : gens_run _ _ _ _ |- _ =>
+        solve [ split; [ assumption | eapply gens_run_no_axioms; eassumption ] ] end;
       split; eauto with mctt.
     (* a definition has a body, and a module's body is the frame its commands
        ended on *)

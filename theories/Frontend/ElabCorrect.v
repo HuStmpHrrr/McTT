@@ -121,6 +121,14 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma check_fresh_all_ok : forall xs F u, check_fresh_all xs F = eok u <-> Forall (fun d => fresh d F) xs.
+Proof.
+  induction xs as [| x xs IH]; intros F []; cbn [check_fresh_all].
+  - split; constructor.
+  - rewrite ebind_eok, Forall_cons_iff, <- (IH F tt), <- (check_fresh_ok x F tt).
+    split; [ intros ([] & ? & ?); auto | intros []; eauto ].
+Qed.
+
 Lemma first_dup_none : forall xs, first_dup xs = None <-> NoDup xs.
 Proof.
   induction xs as [| x xs IH]; cbn; [ split; constructor |].
@@ -143,7 +151,7 @@ Proof.
   - intros Hin; eexists; split; [ eassumption | apply path_beq_refl ].
 Qed.
 
-(** ** Import Targets and Aliases *)
+(** ** Import Targets *)
 
 (** A projection chain is a module expression's spine of [me_mem]s. *)
 Lemma selm_proj_chain : forall S ip o E,
@@ -154,6 +162,20 @@ Proof.
   - rewrite IH; split.
     + intros (H' & Hs & ->); inversion Hs; subst; eauto.
     + intros (H & Hs & ->); exists (me_mem H y); split; [ constructor; assumption | reflexivity ].
+Qed.
+
+(** And the arguments of a module are its spine of [me_app]s. *)
+Lemma selm_app_chain : forall S args o E,
+    selm S (fold_left Cst.app args o) E <->
+    exists H Ns, selm S o H /\ Forall2 (sel S) args Ns /\ E = mapps H Ns.
+Proof.
+  intros S; induction args as [| a args IH]; intros o E; cbn [fold_left].
+  - split; [ intros; exists E, nil; auto | intros (H & Ns & HH & HN & ->); inversion HN; subst; assumption ].
+  - rewrite IH; split.
+    + intros (H' & Ns & Hs & HN & ->); inversion Hs; subst.
+      do 2 eexists; split; [ eassumption | split; [ constructor; eassumption | reflexivity ] ].
+    + intros (H & Ns & Hs & HN & ->); inversion HN; subst.
+      exists (me_app H y), l'; split; [ constructor; assumption | split; [ assumption | reflexivity ] ].
 Qed.
 
 (** A name in module position, as [elab_mod] reads it. *)
@@ -173,41 +195,22 @@ Proof.
     match goal with Hb : bound _ _ _ _ _ |- _ => apply lookup_iff in Hb; congruence end.
 Qed.
 
-Lemma chain_iff : forall S x ip E,
-    elab_chain S x ip = eok E <-> selm S (fold_left Cst.proj ip (Cst.var x)) E.
+Lemma ihead_iff : forall S fq ip H,
+    elab_ihead S fq ip = eok H <-> exists o, ihead fq ip = Some o /\ selm S o H.
 Proof.
-  intros; unfold elab_chain; rewrite ebind_eok, selm_proj_chain; split.
-  - intros (H & Hd & HE); inv_eok. exists H; split; [ apply name_mod_iff; assumption | reflexivity ].
-  - intros (H & Hs & ->). exists H; split; [ apply name_mod_iff; assumption | reflexivity ].
-Qed.
-
-Lemma itarget_iff : forall S fq ip E, elab_itarget S fq ip = eok E <-> itarget S fq ip E.
-Proof.
-  intros. destruct fq as [| f fq]; [ destruct ip as [| x ip] |]; cbn; split.
-  - discriminate.
-  - intros H; inversion H; congruence.
-  - intros H; apply it_local, chain_iff, H.
-  - intros H; inversion H; subst; [ apply chain_iff; assumption | congruence ].
-  - intros H; inv_eok; constructor; discriminate.
-  - intros H; inversion H; subst; reflexivity.
-Qed.
-
-Lemma ibinds_iff : forall E spec F F', elab_ibinds E spec F = eok F' <-> ibinds E spec F F'.
-Proof.
-  intros E [| y | ns] F F'; cbn [elab_ibinds].
-  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  intros. destruct fq as [| f fq]; [ destruct ip as [| x ip] |]; cbn [elab_ihead ihead].
+  - split; [ discriminate | intros (? & [=] & _) ].
   - rewrite ebind_eok; split.
-    + intros ([] & Hf & H); inv_eok; constructor; apply check_fresh_ok in Hf; assumption.
-    + intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | reflexivity ].
-  - revert F; induction ns as [| n ns IH]; intros F; cbn [use_binds].
-    + split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
-    + rewrite ebind_eok; split.
-      * intros ([] & Hf & H); constructor; [ apply check_fresh_ok in Hf; assumption | apply IH; assumption ].
-      * intros H; inversion H; subst. exists tt; split; [ apply check_fresh_ok; assumption | apply IH; assumption ].
+    + intros (H' & Hx & [=<-]). eexists; split; [ reflexivity |].
+      apply selm_proj_chain; exists H'; split; [ apply name_mod_iff; assumption | reflexivity ].
+    + intros (o & [=<-] & Hs). apply selm_proj_chain in Hs as (H' & Hs & ->).
+      exists H'; split; [ apply name_mod_iff; assumption | reflexivity ].
+  - rewrite ebind_eok; split.
+    + intros ([] & Hu & [=<-]); apply echeck_eok, unit_in_b_iff in Hu.
+      eexists; split; [ reflexivity |]. apply selm_proj_chain; eexists; split; [ constructor; eassumption | reflexivity ].
+    + intros (o & [=<-] & Hs). apply selm_proj_chain in Hs as (H' & Hs & ->). inversion Hs; subst.
+      exists tt; split; [ apply echeck_eok, unit_in_b_iff; assumption | reflexivity ].
 Qed.
-
-Lemma loaded_b_iff : forall S fq, loaded_b S fq = true <-> loaded S fq.
-Proof. intros S [| f fq]; cbn; [ tauto | apply unit_in_b_iff ]. Qed.
 
 (** ** Objects *)
 
@@ -216,19 +219,16 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   match cs with
   | nil => eok Φ
   | Cst.c_def m x oA oM :: cs' =>
-      let* _ := echeck (negb (Cst.md_private m)) "private is not allowed in a local module" in
       let* A := elab S oA in
       let* M := elab S oM in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) false A (Some M))) cs'
+      elab_body (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
   | Cst.c_mod pv x ps md' :: cs' =>
-      let* _ := echeck (negb pv) "private is not allowed in a local module" in
       let* _ := check_params ps in
       let* tys := elab_params_with elab S ps in
       let* D := elab_mdef (pents ps ++ S) md' in
-      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod false (gu_mk (ptele tys) D))) cs'
-  | Cst.c_import fq ip spec :: cs' =>
-      let* _ := echeck (loaded_b S fq) "the unit is not imported" in
-      let* E := elab_itarget S fq ip in
+      elab_body (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+  | Cst.c_import fq ip args spec :: cs' =>
+      let* E := elab_target_with elab S fq ip args in
       elab_body (item_ents (ispec_items spec) ++ S) (gm_import Φ E (ispec_items spec)) cs'
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
   end.
@@ -282,6 +282,33 @@ Proof.
   induction 1 as [| [x oA] ps HA Hps IH]; intros S tys; cbn [elab_params_with].
   - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
   - unfold Pterm in HA; cbn [snd] in HA. iff_case.
+Qed.
+
+Lemma args_iff : forall args, Forall Pterm args ->
+    forall S Ns, elab_args_with elab S args = eok Ns <-> Forall2 (sel S) args Ns.
+Proof.
+  induction 1 as [| o args Ho Hargs IH]; intros S Ns; cbn [elab_args_with].
+  - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
+  - unfold Pterm in Ho. rewrite ebind_eok; split.
+    + intros (N & HN & H); apply ebind_eok in H as (Ns' & HNs & [=<-]).
+      constructor; [ apply Ho | apply IH ]; assumption.
+    + intros H; inversion H; subst. eexists; split; [ apply Ho; eassumption |].
+      rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
+Qed.
+
+(** The target of an import, as [elab_mod] would read it. *)
+Lemma target_iff : forall S fq ip args E, Forall Pterm args ->
+    elab_target_with elab S fq ip args = eok E <-> exists o, itarget fq ip args = Some o /\ selm S o E.
+Proof.
+  intros * Hargs. unfold elab_target_with, itarget. rewrite ebind_eok. split.
+  - intros (H & Hh & HE); apply ebind_eok in HE as (Ns & HNs & [=<-]).
+    apply ihead_iff in Hh as (o & Ho & Hs). rewrite Ho; cbn [option_map].
+    eexists; split; [ reflexivity |]. apply selm_app_chain; exists H, Ns; repeat split; try assumption.
+    apply (args_iff _ Hargs); assumption.
+  - intros (o' & Ho' & Hs). destruct (ihead fq ip) as [o |] eqn:Ho; [| discriminate ]. injection Ho' as <-.
+    apply selm_app_chain in Hs as (H & Ns & Hs & HNs & ->).
+    exists H; split; [ apply ihead_iff; eauto |].
+    rewrite (proj2 (args_iff _ Hargs _ _)) by eassumption. reflexivity.
 Qed.
 
 Lemma Pterm_params : forall ps : list (string * Cst.obj),
@@ -353,7 +380,6 @@ Proof.
   - (* c_mod *)
     intros pv x ps md Hps Hmd cs Hcs S Φ Φ'. apply Pterm_params in Hps.
     pose proof (sunit_iff S ps md) as Hu. cbn [elab_body].
-    destruct pv; cbn [negb echeck ebind]; [ split; [ discriminate | intros Hg; inversion Hg ] |].
     split; intros Hg.
     + dest_eok. econstructor; [ apply Hu; [ assumption | exact Hmd |] | apply Hcs; eassumption ].
       to_elab; reflexivity.
@@ -361,17 +387,17 @@ Proof.
       dest_eok. to_elab. reflexivity.
   - (* c_def *)
     intros m x o1 o2 [IH1 _] [IH2 _] cs Hcs S Φ Φ'; cbn [elab_body].
-    destruct (Cst.md_private m) eqn:Hpv; cbn [negb echeck ebind];
-      [ split; [ discriminate | intros Hg; inversion Hg; congruence ] |].
     split; intros Hg.
     + dest_eok. to_spec. econstructor; eassumption.
     + inversion Hg; subst. to_elab. reflexivity.
   - (* c_import *)
-    intros fq ip spec cs Hcs S Φ Φ'; cbn [elab_body]. split; intros Hg.
-    + dest_eok. econstructor; [ apply loaded_b_iff | apply itarget_iff | apply Hcs ]; eassumption.
+    intros fq ip args spec Hargs cs Hcs S Φ Φ'; cbn [elab_body].
+    assert (Ha : Forall Pterm args) by (eapply Forall_impl; [| exact Hargs ]; intros ? []; assumption).
+    split; intros Hg.
+    + apply ebind_eok in Hg as (E & HE & Hg). apply (target_iff _ _ _ _ _ Ha) in HE as (o & Ho & Hs).
+      econstructor; [ eassumption | eassumption | apply Hcs; eassumption ].
     + inversion Hg; subst.
-      rewrite (proj2 (loaded_b_iff _ _)) by assumption; cbn [echeck ebind].
-      rewrite (proj2 (itarget_iff _ _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (target_iff _ _ _ _ _ Ha)) by eauto; cbn [ebind].
       apply Hcs; assumption.
   - (* c_eval *)
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
@@ -390,14 +416,23 @@ Qed.
 
 (** ** Imports *)
 
-Lemma import_iff : forall O F fq ip spec F' ls c,
-    elab_import O F fq ip spec = eok (F', ls, c) <-> simport O F (Cst.c_import fq ip spec) F' ls c.
+Lemma elab_target_iff : forall S fq ip args E,
+    elab_target_with elab S fq ip args = eok E <-> exists o, itarget fq ip args = Some o /\ selm S o E.
+Proof.
+  intros; apply target_iff, Forall_forall; intros ? _ ? ?; apply elab_iff.
+Qed.
+
+Lemma import_iff : forall fp ch O F fq ip args spec F' ls c,
+    elab_import fp ch O F fq ip args spec = eok (F', ls, c) <->
+    simport fp ch O F (Cst.c_import fq ip args spec) F' ls c.
 Proof.
   intros; unfold elab_import. split.
-  - intros H; dest_eok. constructor; [ apply itarget_iff | apply ibinds_iff ]; eassumption.
+  - intros H; apply ebind_eok in H as (E & HE & H); apply ebind_eok in H as ([] & Hf & H); inv_eok.
+    apply elab_target_iff in HE as (o & Ho & Hs).
+    econstructor; [ eassumption | eassumption | apply (check_fresh_all_ok _ _ tt); assumption ].
   - intros H; inversion H; subst.
-    rewrite (proj2 (itarget_iff _ _ _ _)) by eassumption; cbn [ebind].
-    rewrite (proj2 (ibinds_iff _ _ _ _)) by eassumption. reflexivity.
+    rewrite (proj2 (elab_target_iff _ _ _ _ _)) by eauto; cbn [ebind].
+    rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption. reflexivity.
 Qed.
 
 (** ** Commands *)
@@ -431,7 +466,7 @@ Section Commands.
       | H : elab_cmds_with (elab_cmd fp) _ _ _ ?cs = eok _, IH : Pcmds ?cs |- _ => apply IH in H
       | H : check_params _ = eok _ |- _ => apply check_params_ok in H
       | H : check_fresh _ _ = eok _ |- _ => apply check_fresh_ok in H
-      | H : elab_import _ _ _ _ _ = eok (_, _, _) |- _ => apply import_iff in H
+      | H : elab_import _ _ _ _ _ _ _ _ = eok (_, _, _) |- _ => apply import_iff in H
       end.
 
   Ltac cmd_elab :=
@@ -442,7 +477,7 @@ Section Commands.
       | H : scmds fp _ _ _ ?cs _, IH : Pcmds ?cs |- _ => apply IH in H
       | H : NoDup (map fst ?ps) |- _ => apply (check_params_ok ps tt) in H
       | H : fresh ?x ?F |- _ => apply (check_fresh_ok x F tt) in H
-      | H : simport _ _ (Cst.c_import _ _ _) _ _ _ |- _ => apply import_iff in H
+      | H : simport _ _ _ _ (Cst.c_import _ _ _ _) _ _ _ |- _ => apply import_iff in H
       end;
     unfold elab_cmds in *;
     repeat match goal with
@@ -460,11 +495,11 @@ Section Commands.
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros m x o1 o2 _ _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
-    - intros fq ip spec ch O F F' c'; cbn [elab_cmd]. split.
+    - intros fq ip args spec _ ch O F F' c'; cbn [elab_cmd]. split.
       + intros H; apply ebind_eok in H as ([[F1 ls] ci] & H & E); injection E as <- <-.
         constructor; apply import_iff, H.
       + intros H; inversion H; subst.
-        match goal with Hs : simport _ _ _ _ _ _ |- _ => apply import_iff in Hs; rewrite Hs end; reflexivity.
+        match goal with Hs : simport _ _ _ _ _ _ _ _ |- _ => apply import_iff in Hs; rewrite Hs end; reflexivity.
     - intros o [oA |] _ _ ch O F F' c'; cbn [elab_cmd].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
   Qed.
@@ -475,35 +510,32 @@ End Commands.
 
 (** ** Units *)
 
-Lemma imports_iff : forall cs O O' lds imps, elab_imports O cs = eok (O', lds, imps) <-> simports O cs O' lds imps.
+Lemma imports_iff : forall fp O cs F F' lds imps,
+    elab_imports fp O F cs = eok (F', lds, imps) <-> simports fp O F cs F' lds imps.
 Proof.
-  induction cs as [| c cs IH]; intros O O' lds imps; cbn [elab_imports].
+  intros fp O; induction cs as [| c cs IH]; intros F F' lds imps; cbn [elab_imports].
   - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
-  - destruct c as [| | fq ip spec |]; try (split; [ discriminate | intros H; inversion H ]).
+  - destruct c as [| | fq ip args spec |]; try (split; [ discriminate | intros H; inversion H ]).
     split.
-    + intros H; apply ebind_eok in H as ([[O1 ls] ci] & H1 & H); apply ebind_eok in H as ([[O2 lds'] is] & H2 & E).
+    + intros H; apply ebind_eok in H as ([[F1 ls] ci] & H1 & H); apply ebind_eok in H as ([[F2 lds'] is] & H2 & E).
       injection E as <- <- <-.
       econstructor; [ apply import_iff | apply IH ]; eassumption.
     + intros H; inversion H; subst.
-      rewrite (proj2 (import_iff _ _ _ _ _ _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (import_iff _ _ _ _ _ _ _ _ _ _ _)) by eassumption; cbn [ebind].
       rewrite (proj2 (IH _ _ _ _)) by eassumption. reflexivity.
 Qed.
 
 Theorem elaborate_core_iff : forall prg u, elaborate_core prg = eok u <-> elab_spec prg u.
 Proof.
   intros [imports [[fp ps] cs]] u. unfold elaborate_core. split.
-  - intros H; apply ebind_eok in H as ([[O lds] imps] & Hi & H); dest_eok.
-    repeat match goal with
-      | H : elab_imports _ _ = eok (_, _, _) |- _ => apply imports_iff in H
-      | H : check_params _ = eok _ |- _ => apply check_params_ok in H
-      | H : elab_params _ _ = eok _ |- _ => apply elab_params_iff in H
-      | H : elab_cmds _ _ _ _ _ = eok _ |- _ => apply elab_cmds_iff in H
-      end.
+  - intros H; apply ebind_eok in H as ([] & Hp & H); apply ebind_eok in H as (tys & Ht & H).
+    apply ebind_eok in H as ([[F lds] imps] & Hi & H); apply ebind_eok in H as (ccs & Hc & H); inv_eok.
+    apply check_params_ok in Hp. apply elab_params_iff in Ht. apply imports_iff in Hi. apply elab_cmds_iff in Hc.
     econstructor; eassumption.
   - intros Hs; inversion Hs; subst.
-    rewrite (proj2 (imports_iff _ _ _ _ _)) by eassumption; cbn [ebind].
     rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
     rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
+    rewrite (proj2 (imports_iff _ _ _ _ _ _ _)) by eassumption; cbn [ebind].
     rewrite (proj2 (elab_cmds_iff _ _ _ _ _ _)) by eassumption. reflexivity.
 Qed.
 

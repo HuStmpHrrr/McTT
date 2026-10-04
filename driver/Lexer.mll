@@ -58,6 +58,7 @@
     | IMPORT _ -> "import"
     | AS _ -> "as"
     | USE _ -> "use"
+    | EXPORT _ -> "export"
     | PRIVATE _ -> "private"
     | ABSTRACT _ -> "abstract"
     | EVAL _ -> "eval"
@@ -99,6 +100,7 @@
     | IMPORT r
     | AS r
     | USE r
+    | EXPORT r
     | PRIVATE r
     | ABSTRACT r
     | EVAL r
@@ -155,6 +157,7 @@ rule read =
   | "import" { IMPORT (get_range lexbuf) }
   | "as" { AS (get_range lexbuf) }
   | "use" { USE (get_range lexbuf) }
+  | "export" { EXPORT (get_range lexbuf) }
   | "private" { PRIVATE (get_range lexbuf) }
   | "abstract" { ABSTRACT (get_range lexbuf) }
   | "eval" { EVAL (get_range lexbuf) }

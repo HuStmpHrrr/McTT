@@ -21,7 +21,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc*nat> INT
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
-%token <loc> MODULE WHERE DEF IMPORT AS USE PRIVATE ABSTRACT EVAL (* module keywords *)
+%token <loc> MODULE WHERE DEF IMPORT AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
@@ -33,7 +33,10 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
 %type <(string * list string)%type> path
-%type <list string> fpath names
+%type <list string> fpath
+%type <string * string> item
+%type <list (string * string)> items
+%type <list Cst.obj> iargs
 %type <(list string * list string)%type> qpath
 %type <Cst.ispec> ispec
 %type <Cst.cmd> cmd import_cmd
@@ -79,8 +82,17 @@ let mdef :=
   | WHERE; cs = cmds; END; { Cst.md_where (List.rev cs) }
   | ":="; ~ = obj; { Cst.md_alias obj }
 
+(* [import P], or [import P a1 .. ak] with an alias or items: the arguments
+   are atomic objects. *)
 let import_cmd :=
-  | IMPORT; ~ = qpath; ~ = ispec; { Cst.c_import (fst qpath) (snd qpath) ispec }
+  | IMPORT; ~ = qpath; { Cst.c_import (fst qpath) (snd qpath) nil Cst.i_open }
+  | IMPORT; ~ = qpath; ~ = iargs; ~ = ispec;
+      { Cst.c_import (fst qpath) (snd qpath) (List.rev iargs) ispec }
+
+(* Reversed list of the arguments of an import, possibly empty *)
+let iargs :=
+  | { @nil Cst.obj }
+  | ~ = iargs; ~ = atomic_obj; { atomic_obj :: iargs }
 
 let mods :=
   | { Cst.md_pub }
@@ -90,14 +102,20 @@ let mods :=
   | ABSTRACT; PRIVATE; { Cst.md_priv_abs }
 
 let ispec :=
-  | { Cst.i_open }
   | AS; x = VAR; { Cst.i_as (snd x) }
-  | USE; "("; ns = names; ")"; { Cst.i_use (List.rev ns) }
+  | USE; "("; us = items; ")"; { Cst.i_items (List.rev us) nil }
+  | USE; "("; us = items; ")"; EXPORT; "("; es = items; ")";
+      { Cst.i_items (List.rev us) (List.rev es) }
+  | EXPORT; "("; es = items; ")"; { Cst.i_items nil (List.rev es) }
 
-(* Reversed nonempty list of member names *)
-let names :=
-  | x = VAR; { [snd x] }
-  | ~ = names; ";"; x = VAR; { snd x :: names }
+(* Reversed nonempty list of items: a member, and the name it is declared as *)
+let items :=
+  | ~ = item; { [item] }
+  | ~ = items; ";"; ~ = item; { item :: items }
+
+let item :=
+  | x = VAR; { (snd x, snd x) }
+  | x = VAR; AS; y = VAR; { (snd x, snd y) }
 
 (* Nonempty dotted path: internal modules.  Its last segment, and the
    segments before it reversed. *)

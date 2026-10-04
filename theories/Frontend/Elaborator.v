@@ -58,21 +58,26 @@ Definition den_to_term (k n : nat) (e : ent) : eres exp :=
   match e with
   | en_var _ => eok #k
   | en_mem _ p => eok (apps (qname_term p) (vars_desc k n))
-  | en_use x E => eok (a_mem (mwk E k) x)
-  | _ => eerr "a module is not a term"
+  | en_unit _ => eerr "a unit is not a term"
   end.
 
 Definition den_to_mod (k n : nat) (e : ent) : eres modexp :=
   match e with
   | en_var _ => eok (me_var k)
   | en_mem _ p => eok (mapps (qname_mod p) (vars_desc k n))
-  | en_as _ E => eok (mwk E k)
-  | en_use x E => eok (me_mem (mwk E k) x)
   | en_unit _ => eerr "not a module"
   end.
 
 Definition check_fresh (x : string) (F : list ent) : eres unit :=
   echeck (negb (mem_b x (names F))) (x ++ " is already declared").
+
+Fixpoint check_fresh_all (xs : list string) (F : list ent) : eres unit :=
+  match xs with
+  | nil => eok tt
+  | x :: xs' =>
+      let* _ := check_fresh x F in
+      check_fresh_all xs' F
+  end.
 
 (** A name repeated in a parameter telescope. *)
 Fixpoint first_dup (xs : list string) : option string :=
@@ -90,45 +95,41 @@ Definition check_params (ps : list (string * Cst.obj)) : eres unit :=
 Definition unit_in_b (fq : path) (S : list ent) : bool :=
   List.existsb (fun e => match e with en_unit fq' => path_beq fq fq' | _ => false end) S.
 
-(** ** Import Targets and Aliases *)
+(** ** Import Targets
 
-(** The module [x.ip], by [elab_mod]'s rules for names and projections. *)
-Definition elab_chain (S : list ent) (x : string) (ip : list string) : eres modexp :=
-  let* H := match lookup x S with
-            | Some (k, e, n) => den_to_mod k n e
-            | None => eerr ("unbound name " ++ x)
-            end in
-  eok (fold_left me_mem ip H).
+    [elab_mod] on [itarget fq ip args], computed without building the
+    object, so that a local body may use it: the head of the target, then
+    its arguments by [f]. *)
 
-Definition elab_itarget (S : list ent) (fq ip : list string) : eres modexp :=
+Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
   match fq, ip with
-  | nil, x :: ip' => elab_chain S x ip'
+  | nil, x :: ip' =>
+      let* H := match lookup x S with
+                | Some (k, e, n) => den_to_mod k n e
+                | None => eerr ("unbound name " ++ x)
+                end in
+      eok (fold_left me_mem ip' H)
   | nil, nil => eerr "nothing to import"
-  | _, _ => eok (qname_mod (q_abs fq ip))
+  | _, _ =>
+      let* _ := echeck (unit_in_b fq S) "the unit is not imported" in
+      eok (fold_left me_mem ip (me_unit fq))
   end.
 
-Fixpoint use_binds (E : modexp) (ns : list string) (F : list ent) : eres (list ent) :=
-  match ns with
-  | nil => eok F
-  | n :: ns' =>
-      let* _ := check_fresh n F in
-      use_binds E ns' (en_use n E :: F)
-  end.
+Definition elab_args_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
+  fix go (os : list Cst.obj) : eres (list exp) :=
+    match os with
+    | nil => eok nil
+    | o :: os' =>
+        let* N := f S o in
+        let* Ns := go os' in
+        eok (N :: Ns)
+    end.
 
-Definition elab_ibinds (E : modexp) (spec : Cst.ispec) (F : list ent) : eres (list ent) :=
-  match spec with
-  | Cst.i_open => eok F
-  | Cst.i_as y =>
-      let* _ := check_fresh y F in
-      eok (en_as y E :: F)
-  | Cst.i_use ns => use_binds E ns F
-  end.
-
-Definition loaded_b (S : list ent) (fq : path) : bool :=
-  match fq with
-  | nil => true
-  | _ => unit_in_b fq S
-  end.
+Definition elab_target_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) (fq ip : list string)
+  (args : list Cst.obj) : eres modexp :=
+  let* H := elab_ihead S fq ip in
+  let* Ns := elab_args_with f S args in
+  eok (mapps H Ns).
 
 (** ** Objects *)
 
@@ -232,19 +233,16 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            match cs with
            | nil => eok Φ
            | Cst.c_def m x oA oM :: cs' =>
-               let* _ := echeck (negb (Cst.md_private m)) "private is not allowed in a local module" in
                let* A := elab S oA in
                let* M := elab S oM in
-               go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) false A (Some M))) cs'
+               go (en_var x :: S) (gm_ext Φ x (ge_def (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M))) cs'
            | Cst.c_mod pv x ps md' :: cs' =>
-               let* _ := echeck (negb pv) "private is not allowed in a local module" in
                let* _ := check_params ps in
                let* tys := elab_params_with elab S ps in
                let* D := elab_mdef (pents ps ++ S) md' in
-               go (en_var x :: S) (gm_ext Φ x (ge_mod false (gu_mk (ptele tys) D))) cs'
-           | Cst.c_import fq ip spec :: cs' =>
-               let* _ := echeck (loaded_b S fq) "the unit is not imported" in
-               let* E := elab_itarget S fq ip in
+               go (en_var x :: S) (gm_ext Φ x (ge_mod pv (gu_mk (ptele tys) D))) cs'
+           | Cst.c_import fq ip args spec :: cs' =>
+               let* E := elab_target_with elab S fq ip args in
                go (item_ents (ispec_items spec) ++ S)%list (gm_import Φ E (ispec_items spec)) cs'
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
            end) S gm_nil cs in
@@ -255,13 +253,14 @@ Definition elab_params := elab_params_with elab.
 
 (** ** Imports in a Frame *)
 
-(** An import in the frame [F] inside [O]: the frame after it, its loads
-    and the core command declaring its items. *)
-Definition elab_import (O F : list ent) (fq ip : list string) (spec : Cst.ispec)
-  : eres (list ent * list ccmd * ccmd)%type :=
-  let* E := elab_itarget (F ++ O) fq ip in
-  let* F' := elab_ibinds E spec (uents fq ++ F) in
-  eok (F', iloads fq, cc_import E (ispec_items spec)).
+(** An import in the frame [F] at [ch] inside [O]: the frame after it, its
+    loads and the core command declaring its items. *)
+Definition elab_import (fp : path) (ch : list string) (O F : list ent) (fq ip : list string)
+  (args : list Cst.obj) (spec : Cst.ispec) : eres (list ent * list ccmd * ccmd)%type :=
+  let its := ispec_items spec in
+  let* E := elab_target_with elab (uents fq ++ F ++ O) fq ip args in
+  let* _ := check_fresh_all (map iitem_name its) F in
+  eok (item_mems fp ch its ++ uents fq ++ F, iloads fq, cc_import E its)%list.
 
 (** ** Commands
 
@@ -300,8 +299,8 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* tys := elab_params (F ++ O) ps in
       let* E := elab_mod (pents ps ++ F ++ O) oE in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_alias x pv (ptele tys) E :: nil)
-  | Cst.c_import fq ip spec =>
-      let* r := elab_import O F fq ip spec in
+  | Cst.c_import fq ip args spec =>
+      let* r := elab_import fp ch O F fq ip args spec in
       let '(F', ls, ci) := r in
       eok (F', ls ++ ci :: nil)%list
   | Cst.c_eval oM None =>
@@ -315,17 +314,19 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).
 
-(** The leading imports: the scope after them, their loads, and their
-    declarations, which run first in the unit's body. *)
-Fixpoint elab_imports (O : list ent) (cs : list Cst.cmd) : eres (list ent * list ccmd * list ccmd)%type :=
+(** The leading imports, in the unit's frame [F] inside [O]: the frame after
+    them, their loads, and their declarations, which run first in the
+    unit's body. *)
+Fixpoint elab_imports (fp : path) (O F : list ent) (cs : list Cst.cmd)
+  : eres (list ent * list ccmd * list ccmd)%type :=
   match cs with
-  | nil => eok (O, nil, nil)
-  | Cst.c_import fq ip spec :: cs' =>
-      let* r := elab_import nil O fq ip spec in
-      let '(O1, ls, ci) := r in
-      let* r' := elab_imports O1 cs' in
-      let '(O2, lds, is) := r' in
-      eok (O2, ls ++ lds, ci :: is)%list
+  | nil => eok (F, nil, nil)
+  | Cst.c_import fq ip args spec :: cs' =>
+      let* r := elab_import fp nil O F fq ip args spec in
+      let '(F1, ls, ci) := r in
+      let* r' := elab_imports fp O F1 cs' in
+      let '(F2, lds, is) := r' in
+      eok (F2, ls ++ lds, ci :: is)%list
   | _ :: _ => eerr "outside of any module"
   end.
 
@@ -333,11 +334,12 @@ Fixpoint elab_imports (O : list ent) (cs : list Cst.cmd) : eres (list ent * list
 
 Definition elaborate_core (prg : Cst.prog) : eres cunit :=
   let '(imports, (fp, ps, cs)) := prg in
-  let* r := elab_imports nil imports in
-  let '(O0, lds, is) := r in
+  let O := lunits imports in
   let* _ := check_params ps in
-  let* tys := elab_params O0 ps in
-  let* ccs := elab_cmds fp nil O0 (pents ps) cs in
+  let* tys := elab_params O ps in
+  let* r := elab_imports fp O (pents ps) imports in
+  let '(F, lds, is) := r in
+  let* ccs := elab_cmds fp nil O F cs in
   eok (lds, ptele tys, is ++ ccs)%list.
 
 Definition to_core (prg : Cst.prog) : option cunit :=
