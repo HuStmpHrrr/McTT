@@ -1755,3 +1755,40 @@ let%expect_test "lib/Binary.mctt" =
     Evaluate powFastDouble 2 2 --> true : True
     Evaluate powFastDouble 3 1 --> true : True
     |}]
+
+let%expect_test "lib/Groups.mctt" =
+  let _ = main_of_lib "Groups.mctt" in
+  [%expect {|
+    Evaluate Prelude::Algebra::Integers.negative minusThree --> 1 : Nat
+    Evaluate Prelude::Algebra::Integers.magnitude minusThree --> 3 : Nat
+    Evaluate Prelude::Algebra::Integers.negative
+               (Prelude::Algebra::Integers.Additive.Base.pow minusThree 4) --> 1
+      : Nat
+    Evaluate Prelude::Algebra::Integers.magnitude
+               (Prelude::Algebra::Integers.Additive.Base.pow minusThree 4) --> 12
+      : Nat
+    Evaluate Prelude::Algebra::Integers.negative
+               (Prelude::Algebra::Integers.minus
+                  (Prelude::Algebra::Integers.ofNat 4)
+                 (Prelude::Algebra::Integers.ofNat 9)) --> 1 : Nat
+    Evaluate Prelude::Algebra::Integers.magnitude
+               (Prelude::Algebra::Integers.minus
+                  (Prelude::Algebra::Integers.ofNat 4)
+                 (Prelude::Algebra::Integers.ofNat 9)) --> 5 : Nat
+    Evaluate solve (Prelude::Algebra::Integers.ofNat 2)
+               (Prelude::Algebra::Integers.ofNat 5)
+               (Prelude::Algebra::Integers.ofNat 3)
+               true --> true : True
+    Evaluate solve minusThree (Prelude::Algebra::Integers.ofNat 1)
+               (Prelude::Algebra::Integers.pair 4 0)
+               true --> true : True
+    Evaluate negateMinus (Prelude::Algebra::Integers.ofNat 3) minusThree --> true
+      : True
+    Evaluate Multiples.multipleNegate minusThree 3 --> true : True
+    Evaluate Multiples.multipleAdd minusThree
+               (Prelude::Algebra::Integers.ofNat 5)
+               2 --> true : True
+    Evaluate Prelude::Algebra::Integers.Additive.Laws.invOp
+               (Prelude::Algebra::Integers.ofNat 1)
+               minusThree --> true : True
+    |}]

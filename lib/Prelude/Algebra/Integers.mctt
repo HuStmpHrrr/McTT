@@ -1,0 +1,181 @@
+(* The integers, as differences of numbers.  An integer is a pair [(a, b)]
+   of numbers that stands for [a - b], and two pairs are the same integer,
+   [Same x y], when they stand for the same difference: [a + d = c + b] for
+   [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
+   pair.  With [ofNat 0] as zero they form a commutative group, [Additive],
+   an instance of [Prelude::Algebra::Group]; its powers are the multiples
+   of an integer.
+
+   [Same] computes, so a closed instance is [True] or [False].  [magnitude]
+   and [negative] read a pair back as a sign and a number. *)
+import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Plus.Basic use (plusZero)
+import Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
+import Prelude::Arith::Plus.Cancel use (plusCancelRight)
+import Prelude::Arith::Sub use (pred)
+import Prelude::Arith::Decide use (pick)
+import Prelude::Function::Combinators use (Generic)
+import Prelude::Algebra::Group as Group
+
+module Prelude::Algebra::Integers where
+
+(* A pair of numbers, as a function from the index 0 or 1. *)
+def Int : Type@0 := forall (i : Nat) -> Nat end
+
+def pair (a : Nat) (b : Nat) : Int :=
+  fun (i : Nat) -> rec i return y . Nat | zero => a | succ j, r => b end
+end
+
+(* [x] and [y] stand for the same difference. *)
+def Same (x : Int) (y : Int) : Type@0 := Eq (plus (x 0) (y 1)) (plus (y 0) (x 1)) end
+
+(* The number [n] as the integer [n - 0]. *)
+def ofNat (n : Nat) : Int := pair n 0 end
+
+def add (x : Int) (y : Int) : Int := pair (plus (x 0) (y 0)) (plus (x 1) (y 1)) end
+
+def negate (x : Int) : Int := pair (x 1) (x 0) end
+
+(* [x - y]. *)
+def minus (x : Int) (y : Int) : Int := add x (negate y) end
+
+(* Truncated subtraction, which reads a difference back. *)
+private def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
+
+(* The absolute value of the difference. *)
+def magnitude (x : Int) : Nat := plus (monus (x 0) (x 1)) (monus (x 1) (x 0)) end
+
+(* [1] when the difference is negative, and [0] otherwise. *)
+def negative (x : Int) : Nat := pick (monus (x 1) (x 0)) (fun (u : Nat) -> 0) (fun (u : Nat) -> 1) end
+
+(* [Same] is an equivalence. *)
+module Setoid where
+
+abstract def sameRefl : forall (x : Int) -> Same x x :=
+  fun (x : Int) -> refl (plus (x 0) (x 1))
+end
+
+abstract def sameSym : forall (x : Int) (y : Int) (h : Same x y) -> Same y x :=
+  fun (x : Int) (y : Int) (h : Same x y) -> sym (plus (x 0) (y 1)) (plus (y 0) (x 1)) h
+end
+
+(* Adding [y 1] to both sides of the goal, the two hypotheses rewrite it
+   into an equation that holds by rearranging; [y 1] then cancels. *)
+abstract def sameTrans : forall (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) ->
+    Same x z :=
+  fun (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) ->
+    let a := x 0;
+        b := x 1;
+        c := y 0;
+        d := y 1;
+        f := z 0;
+        g := z 1;
+        start : Eq (plus (plus a g) d) (plus (plus a d) g) := plusRightComm a g d;
+        first : Eq (plus (plus a d) g) (plus (plus c b) g) :=
+          cong (fun (w : Nat) -> plus w g) (plus a d) (plus c b) hxy;
+        middle : Eq (plus (plus c b) g) (plus (plus c g) b) := plusRightComm c b g;
+        second : Eq (plus (plus c g) b) (plus (plus f d) b) :=
+          cong (fun (w : Nat) -> plus w b) (plus c g) (plus f d) hyz;
+        finish : Eq (plus (plus f d) b) (plus (plus f b) d) := plusRightComm f d b
+    in plusCancelRight (plus a g) (plus f b) d
+         (trans (plus (plus a g) d) (plus (plus a d) g) (plus (plus f b) d) start
+            (trans (plus (plus a d) g) (plus (plus c b) g) (plus (plus f b) d) first
+               (trans (plus (plus c b) g) (plus (plus c g) b) (plus (plus f b) d) middle
+                  (trans (plus (plus c g) b) (plus (plus f d) b) (plus (plus f b) d) second finish))))
+    end
+end
+
+end
+
+import Setoid use (sameRefl; sameSym; sameTrans)
+
+(* Addition and negation respect [Same], and satisfy the group laws. *)
+module Addition where
+
+abstract def addCong : forall (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) ->
+    Same (add a b) (add c d) :=
+  fun (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) ->
+    let lhs := plus (plus (a 0) (b 0)) (plus (c 1) (d 1));
+        rhs := plus (plus (c 0) (d 0)) (plus (a 1) (b 1))
+    in trans lhs (plus (plus (a 0) (c 1)) (plus (b 0) (d 1))) rhs
+         (plusSwapMiddle (a 0) (b 0) (c 1) (d 1))
+         (trans (plus (plus (a 0) (c 1)) (plus (b 0) (d 1))) (plus (plus (c 0) (a 1)) (plus (d 0) (b 1))) rhs
+            (plusCongBoth (plus (a 0) (c 1)) (plus (b 0) (d 1)) (plus (c 0) (a 1)) (plus (d 0) (b 1)) hac hbd)
+            (plusSwapMiddle (c 0) (a 1) (d 0) (b 1)))
+    end
+end
+
+abstract def addAssoc : forall (x : Int) (y : Int) (z : Int) -> Same (add (add x y) z) (add x (add y z)) :=
+  fun (x : Int) (y : Int) (z : Int) ->
+    plusCongBoth (plus (plus (x 0) (y 0)) (z 0)) (plus (x 1) (plus (y 1) (z 1)))
+      (plus (x 0) (plus (y 0) (z 0))) (plus (plus (x 1) (y 1)) (z 1))
+      (plusAssoc (x 0) (y 0) (z 0))
+      (sym (plus (plus (x 1) (y 1)) (z 1)) (plus (x 1) (plus (y 1) (z 1))) (plusAssoc (x 1) (y 1) (z 1)))
+end
+
+(* Zero on the left holds by conversion: [plus 0 n] is [n]. *)
+abstract def zeroAdd : forall (x : Int) -> Same (add (ofNat 0) x) x :=
+  fun (x : Int) -> refl (plus (x 0) (x 1))
+end
+
+abstract def addZero : forall (x : Int) -> Same (add x (ofNat 0)) x :=
+  fun (x : Int) ->
+    plusCongBoth (plus (x 0) 0) (x 1) (x 0) (plus (x 1) 0) (plusZero (x 0))
+      (sym (plus (x 1) 0) (x 1) (plusZero (x 1)))
+end
+
+abstract def addComm : forall (x : Int) (y : Int) -> Same (add x y) (add y x) :=
+  fun (x : Int) (y : Int) ->
+    plusCongBoth (plus (x 0) (y 0)) (plus (y 1) (x 1)) (plus (y 0) (x 0)) (plus (x 1) (y 1))
+      (plusComm (x 0) (y 0)) (plusComm (y 1) (x 1))
+end
+
+abstract def negateCong : forall (a : Int) (b : Int) (h : Same a b) -> Same (negate a) (negate b) :=
+  fun (a : Int) (b : Int) (h : Same a b) ->
+    trans (plus (a 1) (b 0)) (plus (b 0) (a 1)) (plus (b 1) (a 0)) (plusComm (a 1) (b 0))
+      (trans (plus (b 0) (a 1)) (plus (a 0) (b 1)) (plus (b 1) (a 0))
+         (sym (plus (a 0) (b 1)) (plus (b 0) (a 1)) h) (plusComm (a 0) (b 1)))
+end
+
+(* [(-x) + x] stands for [(x 1 + x 0) - (x 0 + x 1)], which is zero. *)
+abstract def negateLeft : forall (x : Int) -> Same (add (negate x) x) (ofNat 0) :=
+  fun (x : Int) ->
+    trans (plus (plus (x 1) (x 0)) 0) (plus (x 1) (x 0)) (plus (x 0) (x 1))
+      (plusZero (plus (x 1) (x 0))) (plusComm (x 1) (x 0))
+end
+
+abstract def negateRight : forall (x : Int) -> Same (add x (negate x)) (ofNat 0) :=
+  fun (x : Int) ->
+    trans (plus (plus (x 0) (x 1)) 0) (plus (x 0) (x 1)) (plus (x 1) (x 0))
+      (plusZero (plus (x 0) (x 1))) (plusComm (x 0) (x 1))
+end
+
+end
+
+import Addition use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft; negateRight)
+
+(* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
+module Additive :=
+  Group Int Same sameRefl sameSym sameTrans add addCong (ofNat 0) addAssoc zeroAdd addZero
+    negate negateCong negateLeft negateRight
+
+module AdditiveComm := Additive.Base.Commutative addComm
+
+(* The numbers embed into the integers. *)
+module Embedding where
+
+abstract def ofNatAdd : forall (m : Nat) (n : Nat) -> Same (ofNat (plus m n)) (add (ofNat m) (ofNat n)) :=
+  fun (m : Nat) (n : Nat) -> refl (plus (plus m n) 0)
+end
+
+(* Different numbers are different integers. *)
+abstract def ofNatInj : forall (m : Nat) (n : Nat) (h : Same (ofNat m) (ofNat n)) -> Eq m n :=
+  fun (m : Nat) (n : Nat) (h : Same (ofNat m) (ofNat n)) ->
+    trans m (plus m 0) n (sym (plus m 0) m (plusZero m))
+      (trans (plus m 0) (plus n 0) n h (plusZero n))
+end
+
+end
+
+end
