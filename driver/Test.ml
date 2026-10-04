@@ -1223,14 +1223,14 @@ let%expect_test "a local body with an import" =
 
 let%expect_test "a private definition in a local body" =
   let _ = main_of_body "eval let module L where private def s : Nat := 0 end end in L.s end" in
-  [%expect {| Error: s is private |}]
+  [%expect {| Error: s is private in a local module, but it is used outside it |}]
 
 let%expect_test "a private module in a local body" =
   let _ =
     main_of_body
       "eval let module L where private module N where def y : Nat := 0 end end end in L.N.y end"
   in
-  [%expect {| Error: N is private |}]
+  [%expect {| Error: N is private in a local module, but it is used outside it |}]
 
 let%expect_test "a local import uses a name twice" =
   let _ =
@@ -1471,7 +1471,7 @@ let%expect_test "a local use is private" =
       "import Lib::Num module X where eval let module L where import Lib::Num use (double) end \
        in L.double 2 end end"
   in
-  [%expect {| Error: double is private |}]
+  [%expect {| Error: double is private in a local module, but it is used outside it |}]
 
 let%expect_test "a local submodule use is private" =
   let _ =
@@ -1479,7 +1479,7 @@ let%expect_test "a local submodule use is private" =
       "import Lib::Num module X where eval let module L where import Lib::Num use (Ops) end \
        in L.Ops.pred 2 end end"
   in
-  [%expect {| Error: Ops is private |}]
+  [%expect {| Error: Ops is private in a local module, but it is used outside it |}]
 
 let%expect_test "a local import as is private" =
   let _ =
@@ -1487,7 +1487,7 @@ let%expect_test "a local import as is private" =
       "import Lib::Num module X where eval let module L where import Lib::Num as W end \
        in L.W.double 2 end end"
   in
-  [%expect {| Error: W is private |}]
+  [%expect {| Error: W is private in a local module, but it is used outside it |}]
 
 let%expect_test "a local use of a missing member is rejected" =
   let _ =
@@ -1537,7 +1537,7 @@ let%expect_test "a private local definition is rejected outside its body" =
     main_of_body
       "eval let module L where private def s : Nat := 1 end def t : Nat := succ s end end in L.s end"
   in
-  [%expect {| Error: s is private |}]
+  [%expect {| Error: s is private in a local module, but it is used outside it |}]
 
 let%expect_test "a private member of a local submodule is used inside it" =
   let _ =
@@ -1565,7 +1565,7 @@ let%expect_test "a private member of a local submodule is rejected outside it" =
     main_of_body
       "eval let module L where module N where private def u : Nat := 1 end end end in L.N.u end"
   in
-  [%expect {| Error: N.u is private |}]
+  [%expect {| Error: N.u is private in a local module, but it is used outside it |}]
 
 let%expect_test "a private global member is rejected through a local alias" =
   let _ = main_of_multi_string "import Lib::Priv module X where eval let module L := Lib::Priv in L.s end end" in

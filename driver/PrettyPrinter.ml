@@ -445,7 +445,7 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
      fprintf f "@[<hov 2>Error: %s is private@]" (string_of_qpath q.q_unit (q.q_chain @ [x]))
   (* A private entry of a local body, from the local module. *)
   | Coq_re_private_local (ch, x) ->
-     fprintf f "@[<hov 2>Error: %s is private@]" (String.concat "." (ch @ [x]))
+     fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
   | Coq_re_import e ->
      let open McttExtracted.Imports in
      (match e with
