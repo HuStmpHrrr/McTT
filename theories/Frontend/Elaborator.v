@@ -321,6 +321,7 @@ Fixpoint elab_lead (L : list ent) (cs : list Cst.cmd) : eres (list ent * list cc
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab L fq ip args in
       elab_lead (open_ents E its ++ L)%list cs'
+  | Cst.c_error e :: _ => eerr e
   | _ :: _ => eerr "outside of any module"
   end.
 

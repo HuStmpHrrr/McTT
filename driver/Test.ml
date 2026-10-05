@@ -1374,7 +1374,7 @@ let%expect_test "a used name that is not a member is rejected" =
   [%expect {| Error: Lib::Num.q is not a member |}]
 
 let%expect_test "a member both used and exported is rejected" =
-  let _ = main_of_multi_string "import Lib::Num use (double) export (double) module X where end" in
+  let _ = main_of_multi_string "module X where import Lib::Num use (double) export (double) end" in
   [%expect {| Error: double is used and exported |}]
 
 let%expect_test "an import declaring a name twice is rejected" =
@@ -2155,3 +2155,22 @@ let%expect_test "a leading open of a unit that is not imported is rejected" =
       "open Prelude::Arith::Equality use (Eq) module ScratchP (p : Eq 1 1) where end"
   in
   [%expect {| Error: the unit is not imported |}]
+
+let%expect_test "a leading open may not export" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) export (refl) \
+       module ScratchP where end"
+  in
+  [%expect {| Error: export is not allowed before the module header |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Equality as E export (refl) module ScratchP where end"
+  in
+  [%expect {| Error: export is not allowed before the module header |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Equality module ScratchP where \
+       open Prelude::Arith::Equality export (refl) end"
+  in
+  [%expect {| |}]

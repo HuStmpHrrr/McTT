@@ -302,6 +302,16 @@ Definition import_cmds (fq ip : list string) (args : list obj) (oW : option stri
     | _, _, _, _ => open_cmds fq ip args oW its
     end.
 
+(** A leading import or open, before the unit's header, may not [export]:
+    the commands, or their rejection. *)
+Definition lead_cmds (cs : list cmd) : list cmd :=
+  if List.existsb (fun c => match c with
+                            | c_open _ _ _ its => List.existsb (fun it => negb (snd it)) its
+                            | _ => false
+                            end) cs
+  then c_error "export is not allowed before the module header" :: nil
+  else cs.
+
 (** A compilation unit: its leading imports and opens, and the one module
     declaration everything else it contains lives in.  That declaration
     names the unit, so its path is a [::] one, and carries the unit's

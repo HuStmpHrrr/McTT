@@ -62,9 +62,11 @@ let leads :=
   | { @nil Cst.cmd }
   | ~ = leads; ~ = lead_cmd; { List.rev_append lead_cmd leads }
 
+(* Before the header, a list may only [use]: [Cst.lead_cmds] rejects an
+   [export]. *)
 let lead_cmd :=
-  | ~ = import_cmd; <>
-  | ~ = open_cmd; <>
+  | ~ = import_cmd; { Cst.lead_cmds import_cmd }
+  | ~ = open_cmd; { Cst.lead_cmds open_cmd }
 
 (* Reversed list of commands, possibly empty.  A command may stand for
    several: the long form of [import] is an [import] and an [open]. *)

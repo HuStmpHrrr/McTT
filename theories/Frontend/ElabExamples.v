@@ -851,6 +851,37 @@ Example leading_open_unloaded :
   = eerr "the unit is not imported".
 Proof. elab_err. Qed.
 
+(** Before the header, an open may [use] but not [export] ([Cst.lead_cmds]),
+    in either form:
+
+<<
+import P::E
+open P::E use (Eq) export (refl)
+module T where end
+>>
+*)
+Example leading_export :
+  elaborate_core (c_import ("P" :: "E" :: nil) ::
+                  lead_cmds (open_cmds ("P" :: "E" :: nil) nil nil None
+                               (i_items (("Eq", "Eq") :: nil) (("refl", "refl") :: nil))),
+                  ("T" :: nil, nil, nil))
+  = eerr "export is not allowed before the module header".
+Proof. elab_err. Qed.
+
+Example leading_long_export :
+  elaborate_core (lead_cmds (import_cmds ("P" :: "E" :: nil) nil nil (Some "W") (i_items nil (("refl", "refl") :: nil))),
+                  ("T" :: nil, nil, nil))
+  = eerr "export is not allowed before the module header".
+Proof. elab_err. Qed.
+
+(** Elsewhere it may. *)
+Example frame_export :
+  elab_spec (c_import ("P" :: "E" :: nil) :: nil,
+             ("T" :: nil, nil, c_open ("P" :: "E" :: nil) nil nil (i_items nil (("refl", "refl") :: nil)) :: nil))
+    (cc_load ("P" :: "E" :: nil) :: nil, ⋅,
+     cc_load ("P" :: "E" :: nil) :: cc_open PE ((Some "refl", "refl", false) :: nil) :: nil).
+Proof. elab_ok. Qed.
+
 (** A bare import only loads, and importing a unit twice is two loads, the
     second of which the core does nothing for. *)
 Example import_twice :

@@ -120,6 +120,10 @@ Inductive slead : list ent -> list Cst.cmd -> list ent -> list ccmd -> Prop :=
   whose `en_open` entries are always shadowed by those members.
 * So a leading open's arguments may not name the parameters (`unbound name
   n`): they precede the header.
+* A leading open (or long-form import) may `use` and `as`, but not
+  `export`: the parser's `Cst.lead_cmds` replaces such a command by
+  `c_error "export is not allowed before the module header"`, which
+  `elab_lead` reports (no `slead` rule relates it).
 
 ```
 import Prelude::Arith::Equality

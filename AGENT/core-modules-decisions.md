@@ -424,7 +424,9 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   Prelude::Arith::Equality use (Eq) module M (p : Eq 1 1) where … end` is
   accepted, the parameter type being `a_mem ⟨Equality⟩ Eq $ 1 $ 1`; in the
   frame they are the generated members, as before.  Their arguments may no
-  longer name the unit's parameters (`unbound name n`).
+  longer name the unit's parameters (`unbound name n`).  They may not `export`
+  (user decision): `Error: export is not allowed before the module header`,
+  from the parser (`Cst.lead_cmds`, a `c_error`); only `use` and `as`.
 - Definition keywords `theorem`/`lemma` (`abstract def`), `fact`/`remark`
   (`abstract private def`), `let`/`given` (`private def`), with `def`'s
   syntax; a modifier the keyword implies is rejected by the parser through
