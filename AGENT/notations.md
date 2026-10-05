@@ -37,21 +37,29 @@ own well-formedness uses a letter suffix in the same style as `⊢w`/`⊢s`:
 `⊢g Ψ` (the stack, notation of `wf_gstack`), plus three that also carry the
 ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢e E` (an
 entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit; a definition over
-`⊢m`, not a judgment).  `wf_gdeps Θ` has no notation.  `Γ ∋ #x : A` takes no `Ψ`.
+`⊢m`, not a judgment).  The filed units alone are well formed when
+`⊢g Θ ⍮ nil` (no frame open).  `Γ ∋ #x : A` takes no `Ψ`.
 
 Resolution has two notations, distinguished by a superscript because they have
 the same shape: `Φ ∋ ip ⇒ Δ ⍮ E` in a module, and `Ψ ∋ᵍ p ⇒ Δ ⍮ E` for a whole
 `path`.  A bare `∋` would collide with the other, which is why only the innermost
-one is unadorned.  Resolution across the dependency levels (`gds_lookup`) is a
+one is unadorned.  Lookup in the filed units (`gds_lookup`) is a
 *function*, so it needs no notation.
 The `Δ` is the telescope crossed on the way in, accumulated innermost-first, so
 that a use site can generalize what it found with `ctx_pi`/`ctx_fn`.
 
 `M[σ]` and `M[φ]ʷ` share the prefix `M [ _` at the same levels, so Rocq factors
 them and only the closing token (`]` vs `]ʷ`) decides; `M[p]ᵖ`, reserved for
-path opening, must follow the same pattern (`p at level 60`).  They are declared
-first so that level 1 is created *left* associative; `ρ↯` likewise in `Domain_Notations`. Level 40 is already left
-associative in `constr`, which is why `⨟` sits at 45.
+path opening, must follow the same pattern (`p at level 60`).  Level 1 is
+predefined *left* associative in `constr`, so the order of the level-1
+notations does not matter; level 40 is left associative too, which is why `⨟`
+sits at 45.
+
+`Syntax.v` keeps each topic's notations in a module after its definitions:
+`Exp_Notations` (terms), `GlobalCtx_Notations` (module bodies, `⋄` and `⊳`),
+`Ctx_Notations`, `Nf_Notations`, `Sub_Notations`, `Wk_Notations`.
+`Syntax_Notations` exports `Exp_`, `Ctx_`, `Nf_` and `Sub_Notations`; the other
+two are imported separately, as before.
 
 Judgment arguments are at **69** because a slot between two terminals otherwise
 defaults to level 200 and swallows Rocq's cast `x : T` (level 100) — `Γ ⊢ M : A`

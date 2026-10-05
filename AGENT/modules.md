@@ -50,34 +50,22 @@ by changing what the name resolves to inside the nest:
 | `theories/Frontend/Elaborator.v` | `elab_res`/`elab` for objects; `ustate`, `elab_def`/`elab_eval`/`elab_import`/`elab_cmd`/`elab_cmds`, `elaborate_prog`; the closedness development. |
 | `theories/Frontend/Parser.vy`, `driver/Lexer.mll` | Surface syntax; `parserMessages.messages` holds the 81 error sentences. |
 | `theories/Core/Syntactic/Syntax.v` | `Cst.cmd`, `Cst.mods`, `Cst.ispec`, `Cst.prog`, `Cst.decl` (the `let` forms); `Cst.glob`; `qual`/`path`/`path_valid` and `a_glob`. |
-| `theories/Core/Syntactic/GlobalCtx.v` | The two-level global context: `gmod`/`gentry` for the `.` level, `gdeps` (the dependency levels) for the `::` level, `gunit`, the `gstack` of open modules, `gctx`, canonicity, resolution. |
-| `theories/Core/Syntactic/System/Definitions.v` | One mutual block of all eleven `wf_*` judgments: the four term ones with `Ψ` threaded through, plus `⊢g Ψ`, `Ψ ⍮ Δ ⊢e E`, `Ψ ⍮ Δ ⊢m Φ`, `Ψ ⍮ Δ ⊢u U`, `wf_gdep`/`wf_gdeps`, `wf_gstack`. Also `exp_closed`, the `a_glob` rules, and the `Scheme`s cut from the block. |
+| `theories/Core/Syntactic/Syntax.v` (end), `Members.v` (start) | The global context: `gmod`/`gentry` for the `.` level, `gdeps` (the filed units, a flat list newest first) for the `::` level, `gunit`, the `gstack` of open modules, `GCtx`; resolution (`gc_resolve`, `gc_module`, `gc_body`) and its growth (`gc_sub`) in `Members.v`. |
+| `theories/Core/Syntactic/System/Definitions.v` | One mutual block of all ten `wf_*` judgments: the four term ones, the three for units, extensions and module expressions, and `⊢e`, `⊢m`, `⊢g` (`wf_gstack`, which also files units). Also `exp_closed`, the `a_glob` rules, and the `Scheme`s cut from the block. |
 | `theories/Entrypoint.v`, `driver/` | One `run_eval` per `eval`; `PrettyPrinter`; exit codes. |
 | `examples/*.mctt`, `driver/Test.ml` | 14 examples, 27 expect-tests. |
 
-## Dependency levels
+## Filed units
 
-`gctx` is `{ gc_deps : gdeps ; gc_stack : gstack }`.  The `gstack` is the unit
-being elaborated (`qu_rel` paths); `gdeps` is everything already compiled
-(`qu_abs` paths), and it is *not* one flat table but a list of levels, lowest
-first, so that **a unit's level is its index**:
+`gdeps := list (path * gunit)`: the filed units, newest first, each checked
+against the ones after it (`wf_gstack_file`, which closes the only open frame,
+named by the unit's path).  Cycles are ruled out by the chain of units being
+loaded (`rc_load`), not by the shape of `gdeps`.  A loaded unit runs from
+nothing; its result is merged by filter-and-append (`gds_merge`), and shared
+units agree because they come from runs of the same file (`canon_agree`).
 
-```
-gdep  := list (list string * gunit)     (* one level, keyed by absolute path *)
-gdeps := list gdep                      (* levels, lowest first *)
-```
-
-A unit's level is `1 + max` of the levels of the units it imports, `0` when it
-imports nothing.  That equation is **not encoded**: the levels are a structure,
-and a unit that sits at the level its imports force can only mention units
-strictly earlier in the list, so cycle freedom is granted by where a unit is
-filed rather than by a proposition about it.  `⊢g Ψ` therefore says nothing about
-levels, and *filing* a unit at the right level is the command layer's job.
-
-`gds_lookup` is a **function** returning `option gunit` — it searches the levels
-in order and hands back the unit and nothing else, because that is all a use site
-of `a_glob` reads.  So resolution is deterministic whatever the data looks like,
-and no level arithmetic appears in `GlobalCtx.v` at all.
+`gds_lookup` is a **function** returning `option gunit`, so resolution is
+deterministic whatever the data looks like.
 
 The consequence to keep in mind: `⊢g Ψ` alone does not rule out a δ-loop
 (`wf_exp_eq_glob_unfold` unfolding a global forever).  Two units filed at levels

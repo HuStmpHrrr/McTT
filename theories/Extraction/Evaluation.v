@@ -3,7 +3,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import GlobalCtx Members.
+From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Core.Semantic Require Import Evaluation.
 Import Domain_Notations.
 

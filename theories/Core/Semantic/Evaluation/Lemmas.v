@@ -39,12 +39,12 @@ Import Domain_Notations.
          hypothesis is never spent on the premise it is about *)
       match goal with |- _ = ?r2 => match goal with H : context [r2] |- _ => inversion H; subst; clear H end end;
       repeat match goal with
-        | H1 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_resolve Θ Ξ ?p = Some _ |- _ =>
+        | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
-        | H1 : GlobalCtx.gc_module Θ Ξ ?p = Some _, H2 : GlobalCtx.gc_module Θ Ξ ?p = Some _ |- _ =>
+        | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
-        | H1 : GlobalCtx.gc_module Θ Ξ ?p = Some (GlobalCtx.mr_alias _ _),
-          H2 : forall U r, GlobalCtx.gc_module Θ Ξ ?p <> Some (GlobalCtx.mr_alias U r) |- _ =>
+        | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _ _),
+          H2 : forall U r, Members.gc_module Θ Ξ ?p <> Some (Members.mr_alias U r) |- _ =>
             exfalso; exact (H2 _ _ H1)
         | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2

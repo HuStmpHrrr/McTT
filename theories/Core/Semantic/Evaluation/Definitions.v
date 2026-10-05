@@ -1,7 +1,7 @@
 From Stdlib Require Import Lia List Morphisms String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution GlobalCtx Members.
+From Mctt.Core.Syntactic Require Import Substitution Members.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
 Import Wk_Notations GlobalCtx_Notations.

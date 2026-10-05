@@ -433,3 +433,30 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `Cst.c_error` (`theorem is already abstract`, `fact takes no modifiers`,
   `let is already private`).  `fact` is now a keyword, so
   `Prelude::Arith::Factorial.fact` is renamed `factorial`.
+
+### 10.9 The flat global context
+- `gdeps := list (path * gunit)`, newest first; the dependency levels are
+  gone (`gdep`, `gds_level`, `merge_up`, `trim_top`, `top_ne`, `wf_top`,
+  `wf_below`, `gd_*`, `gds_fresh`).  Cycles are ruled out by the load
+  chain `ch`, not by the shape of `gdeps`.
+- `wf_gdep` and `wf_gdeps` are folded into `wf_gstack`: `⊢g Θ ⍮ nil` says
+  the filed units are well formed.  `wf_gstack_nil : ⊢g nil ⍮ nil`, and
+  `wf_gstack_file : ⊢g Θ ⍮ (q_abs fp nil, U) :: nil -> ⊢g (fp, U) :: Θ ⍮ nil`
+  files a unit by closing the only open frame, so the unit is checked
+  against the units after it and its path is fresh there (`frame_fresh`).
+  The mutual block has ten judgments.
+- Loading (model S2): a loaded unit runs from nothing; `rc_load` gives
+  `gds_merge Θ ((fp, U) :: ΘU)`, which adds the units of `(fp, U) :: ΘU`
+  not in `Θ`, in their order, on top (`filter … ++ Θ`).  Shared units
+  agree (`canon_agree`, from `run_functional`); `merge_left` needs no
+  agreement, `merge_right` does.
+- The executable files a loaded unit on top of its own state,
+  `(fp, U) :: Θ`, and keeps the restriction `gds_restrict D Θ` (a
+  `filter`).  Its invariant records, for each filed unit, the state its
+  run ended in below it in `Θ` (`entries_ok`), which is what makes the
+  restriction well formed (`closure_ok`, `restrict_wf`).
+- `GlobalCtx.v` is gone: the global context's syntax (`gdeps`,
+  `gds_lookup`, `⊑`, `gstack`, `gs_tele`, `GCtx`), paths and qualified
+  names are in `Syntax.v`; resolution and its growth (`gm_resolve`,
+  `gc_resolve`, `gc_module`, `gc_body`, `gc_sub`, `frame_fresh`) and
+  transparency are in `Members.v`.

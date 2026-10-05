@@ -36,7 +36,7 @@ From Stdlib Require Import List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Substitution GlobalCtx Members.
+From Mctt.Core.Syntactic Require Export Substitution Members.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at level 69, Ξ at level 69, Γ at level 69).

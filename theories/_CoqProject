@@ -82,7 +82,6 @@
 ./Core/Syntactic/CoreInversions.v
 ./Core/Syntactic/Corollaries.v
 ./Core/Syntactic/CtxSub.v
-./Core/Syntactic/GlobalCtx.v
 ./Core/Syntactic/Members.v
 ./Core/Syntactic/Imports.v
 ./Core/Syntactic/Presup.v

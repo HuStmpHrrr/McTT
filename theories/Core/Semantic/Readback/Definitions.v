@@ -2,7 +2,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
-From Mctt.Core.Syntactic Require Import GlobalCtx.
+From Mctt.Core.Syntactic Require Import Members.
 
 Reserved Notation "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).

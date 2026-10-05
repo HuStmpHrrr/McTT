@@ -2,7 +2,7 @@ From Stdlib Require Import Bool Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax Members GlobalCtx Command.
+From Mctt.Core.Syntactic Require Import Syntax Members Command.
 From Mctt.Frontend Require Import Elaborator ElabSpec.
 
 Import Syntax_Notations.

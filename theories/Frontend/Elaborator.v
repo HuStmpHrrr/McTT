@@ -1,7 +1,7 @@
 From Stdlib Require Import List String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Syntax Members GlobalCtx Command.
+From Mctt.Core.Syntactic Require Import Syntax Members Command.
 From Mctt.Frontend Require Import ElabSpec.
 
 Import Syntax_Notations.

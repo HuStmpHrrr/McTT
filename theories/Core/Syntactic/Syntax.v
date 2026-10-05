@@ -321,22 +321,53 @@ Definition prog : Set := (list cmd * (list string * list (string * obj) * list c
 
 End Cst.
 
-(** * Abstract Syntax Tree
-
-    Unlike a calculus of explicit substitutions, there is no constructor for
-    substitution application and no syntactic category of substitutions.  Weakenings and substitutions are meta-level operations
-    (recursive functions on [exp]) defined further down in this file, and their
-    algebraic laws are theorems (in [Core.Syntactic.Substitution]) rather than
-    definitional equalities of the object theory.
- *)
-
-(** ** Paths and Qualified Names
+(** * Names and Paths
 
     A unit is named by its path, [X::Y::Z], the list ["X"; "Y"; "Z"]; units do
     not nest, so a path is flat.  The syntax names only units ([me_unit]); a
     member of a unit is spelled as a chain of selections from it, [me_mem]
     and [a_mem]. *)
 Abbreviation path := (list string).
+
+Definition path_eq_dec := List.list_eq_dec String.string_dec.
+
+Definition path_beq (fp fq : list string) : bool :=
+  if path_eq_dec fp fq then true else false.
+
+Lemma path_beq_refl : forall fp, path_beq fp fp = true.
+Proof. intros; unfold path_beq; destruct (path_eq_dec fp fp); congruence. Qed.
+
+Lemma path_beq_true : forall fp fq, path_beq fp fq = true -> fp = fq.
+Proof. intros * H; unfold path_beq in H; destruct (path_eq_dec fp fq); congruence. Qed.
+
+Lemma path_beq_false : forall fp fq, fp <> fq -> path_beq fp fq = false.
+Proof. intros * H; unfold path_beq; destruct (path_eq_dec fp fq); congruence. Qed.
+
+(** [strip_prefix l m] is [m] with the prefix [l] removed, if it is one. *)
+Fixpoint strip_prefix (l m : list string) : option (list string) :=
+  match l, m with
+  | nil, _ => Some m
+  | x :: l', y :: m' => if String.eqb x y then strip_prefix l' m' else None
+  | _ :: _, nil => None
+  end.
+
+Lemma strip_prefix_app : forall l r, strip_prefix l (l ++ r) = Some r.
+Proof. induction l; intros; cbn; [ reflexivity | rewrite String.eqb_refl; auto ]. Qed.
+
+Lemma strip_prefix_spec : forall l m r, strip_prefix l m = Some r -> m = l ++ r.
+Proof.
+  induction l as [| x l IH]; intros [| y m] r H; cbn in H; try discriminate;
+    [ injection H as <-; reflexivity | injection H as <-; reflexivity |].
+  destruct (String.eqb_spec x y) as [-> |]; [| discriminate ].
+  cbn; f_equal; auto.
+Qed.
+
+Lemma strip_prefix_snoc : forall l x m r,
+    strip_prefix (l ++ x :: nil) m = Some r -> strip_prefix l m = Some (x :: r).
+Proof.
+  intros * H; apply strip_prefix_spec in H; subst.
+  rewrite <- List.app_assoc; apply strip_prefix_app.
+Qed.
 
 (** A global is named by [X::Y::Z.a.b.c]: the unit it lives in, by its path,
     then the chain of member selections inside it from the unit's root.
@@ -366,6 +397,26 @@ Definition qname_valid (p : qname) : Prop :=
 (** The member [x] of the module [mp]. *)
 Definition qname_in (mp : qname) (x : string) : qname :=
   {| q_unit := q_unit mp ; q_chain := q_chain mp ++ x :: nil |}.
+
+(** The member chain [ip] of the module [mp]. *)
+Definition qname_app (mp : qname) (ip : list string) : qname :=
+  {| q_unit := q_unit mp ; q_chain := q_chain mp ++ ip |}.
+
+Lemma qname_app_nil : forall p, qname_app p nil = p.
+Proof. intros [u m]; unfold qname_app; cbn; rewrite List.app_nil_r; reflexivity. Qed.
+
+(** The members of [p] inside the module [mp], if [p] is in it. *)
+Definition qname_strip (mp p : qname) : option (list string) :=
+  if path_beq (q_unit mp) (q_unit p) then strip_prefix (q_chain mp) (q_chain p) else None.
+
+(** * Terms, Module Expressions and Units
+
+    Unlike a calculus of explicit substitutions, there is no constructor for
+    substitution application and no syntactic category of substitutions.
+    Weakenings and substitutions are meta-level operations (recursive
+    functions on [exp]) defined further down in this file, and their
+    algebraic laws are theorems (in [Core.Syntactic.Substitution]) rather
+    than definitional equalities of the object theory. *)
 
 (** The terms, and the module syntax nested in them.  The two are one
     mutual family: a term binds a local module ([a_let] with [b_mod]) and
@@ -470,123 +521,6 @@ with centry : Set :=
 | ce_mod : gunit -> centry.
 
 Abbreviation typ := exp.
-
-(** ** Chains of Selections *)
-
-(** [H.y1. … .yn], the submodules [pre] selected from [H] in order. *)
-Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
-  match pre with
-  | nil => H
-  | y :: pre' => me_mems (me_mem H y) pre'
-  end.
-
-(** [H.y1. … .yn.x] as a term: submodule selections, then a member. *)
-Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
-  match ch with
-  | nil => a_zero
-  | x :: nil => a_mem H x
-  | y :: ch' => member_ref (me_mem H y) ch'
-  end.
-
-(** The module named [X::Y.W.Z], [q_abs ["X"; "Y"] ["W"; "Z"]], and the global
-    named so, both as selections from the unit. *)
-Definition qname_mod (p : qname) : modexp := me_mems (me_unit (q_unit p)) (q_chain p).
-
-Definition qname_term (p : qname) : exp := member_ref (me_unit (q_unit p)) (q_chain p).
-
-(** The qualified name a chain of selections from a unit spells, and [None]
-    for any other module expression. *)
-Fixpoint mod_qname (H : modexp) : option qname :=
-  match H with
-  | me_unit fp => Some (q_abs fp nil)
-  | me_mem H y =>
-      match mod_qname H with
-      | Some p => Some {| q_unit := q_unit p; q_chain := q_chain p ++ y :: nil |}
-      | None => None
-      end
-  | _ => None
-  end.
-
-(** ** Contexts
-
-    A context entry occupies one de Bruijn index, whether it is an
-    assumption, a definition or a module slot. *)
-Abbreviation ctx := (list centry).
-
-(** The type of an entry; a module slot has none, and reads as [⊤]. *)
-Definition ce_typ (e : centry) : typ :=
-  match e with
-  | ce_ass A | ce_def A _ => A
-  | ce_mod _ => a_True
-  end.
-
-(** ** Units
-
-    A body unit and a body entry, the forms every global module has. *)
-Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
-Abbreviation ge_body pv Δ Φ := (ge_mod pv (gu_body Δ Φ)).
-
-Definition gu_params (U : gunit) : ctx := match U with gu_mk Δ _ => Δ end.
-
-Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
-
-(** The body of a body unit, and the empty body for an alias. *)
-Definition gu_mod (U : gunit) : gmod :=
-  match U with
-  | gu_mk _ (md_body Φ) => Φ
-  | gu_mk _ (md_alias _) => gm_nil
-  end.
-
-(** The number of indices a body binds. *)
-Fixpoint gm_binders (Φ : gmod) : nat :=
-  match Φ with
-  | gm_nil => 0
-  | gm_ext Φ' _ _ => S (gm_binders Φ')
-  | gm_open Φ' _ its => List.length its + gm_binders Φ'
-  end.
-
-(** A body as the context entries it binds, innermost first.  A local open
-    binds one placeholder per item: a pre-form is never typed. *)
-Fixpoint body_ctx (Φ : gmod) : ctx :=
-  match Φ with
-  | gm_nil => nil
-  | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
-  end.
-
-(** ** Telescopes
-
-    A member of a parameterized module is checked in the telescope of
-    parameters it lives under, and stored generalized over it by these two
-    folds.  They are the [exp]-level counterparts of the
-    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
-    appear in a judgment.
-
-    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last
-    and must become the innermost binder: the recursion wraps the head first
-    and works outward.  Folding the other way reverses the telescope, and the
-    result is still a well-formed [exp], so nothing catches it early.
-
-    A local definition in a telescope is generalized as a [let], as a section
-    does with [Let], and a module slot as a local module.  The elaborator only
-    builds parameter telescopes of assumptions. *)
-Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
-  match Δ with
-  | nil => A
-  | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
-  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def (Some B) N) A)
-  | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
-  end.
-
-Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
-  match Δ with
-  | nil => M
-  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
-  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
-  | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
-  end.
 
 (** ** Induction
 
@@ -725,6 +659,83 @@ Section syn_mut_ind.
   Qed.
 End syn_mut_ind.
 
+(** ** Chains of Selections *)
+
+(** [H.y1. … .yn], the submodules [pre] selected from [H] in order. *)
+Fixpoint me_mems (H : modexp) (pre : list string) : modexp :=
+  match pre with
+  | nil => H
+  | y :: pre' => me_mems (me_mem H y) pre'
+  end.
+
+(** [H.y1. … .yn.x] as a term: submodule selections, then a member. *)
+Fixpoint member_ref (H : modexp) (ch : list string) : exp :=
+  match ch with
+  | nil => a_zero
+  | x :: nil => a_mem H x
+  | y :: ch' => member_ref (me_mem H y) ch'
+  end.
+
+(** The module named [X::Y.W.Z], [q_abs ["X"; "Y"] ["W"; "Z"]], and the global
+    named so, both as selections from the unit. *)
+Definition qname_mod (p : qname) : modexp := me_mems (me_unit (q_unit p)) (q_chain p).
+
+Definition qname_term (p : qname) : exp := member_ref (me_unit (q_unit p)) (q_chain p).
+
+(** The qualified name a chain of selections from a unit spells, and [None]
+    for any other module expression. *)
+Fixpoint mod_qname (H : modexp) : option qname :=
+  match H with
+  | me_unit fp => Some (q_abs fp nil)
+  | me_mem H y =>
+      match mod_qname H with
+      | Some p => Some {| q_unit := q_unit p; q_chain := q_chain p ++ y :: nil |}
+      | None => None
+      end
+  | _ => None
+  end.
+
+(** ** Units
+
+    A body unit and a body entry, the forms every global module has. *)
+Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
+Abbreviation ge_body pv Δ Φ := (ge_mod pv (gu_body Δ Φ)).
+
+Definition gu_params (U : gunit) : list centry := match U with gu_mk Δ _ => Δ end.
+
+Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
+
+(** The body of a body unit, and the empty body for an alias. *)
+Definition gu_mod (U : gunit) : gmod :=
+  match U with
+  | gu_mk _ (md_body Φ) => Φ
+  | gu_mk _ (md_alias _) => gm_nil
+  end.
+
+(** The number of indices a body binds. *)
+Fixpoint gm_binders (Φ : gmod) : nat :=
+  match Φ with
+  | gm_nil => 0
+  | gm_ext Φ' _ _ => S (gm_binders Φ')
+  | gm_open Φ' _ its => List.length its + gm_binders Φ'
+  end.
+
+(** The name an import item declares. *)
+Definition iitem_name (it : iitem) : string := let '(_, d, _) := it in d.
+
+(** The names [Φ] declares, outermost last, and a name not among them. *)
+Fixpoint gm_names (Φ : gmod) : list string :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ' x _ => x :: gm_names Φ'
+  | gm_open Φ' _ its => rev (map iitem_name its) ++ gm_names Φ'
+  end.
+
+Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
+  ~ List.In x (gm_names Φ).
+
+(** ** Numerals *)
+
 Fixpoint nat_to_exp n : exp :=
   match n with
   | 0 => a_zero
@@ -748,7 +759,118 @@ Definition exp_to_num e :=
   | None => None
   end.
 
-(** ** Syntactic Normal/Neutral Form *)
+(** ** Notations
+
+    Every notation of the syntax lives in ordinary [constr], in [mctt_scope]:
+    there is no custom entry and hence no delimiter to write.  The price is
+    that a spelling can denote only one sort, so the normal forms, which
+    mirror the expressions constructor for constructor, carry a superscript
+    [ⁿ].  Values carry a superscript [ᵈ]; see [Domain_Notations].  The
+    notations of each topic are in their own module, after its definitions;
+    [Syntax_Notations], at the end, exports all of them but those of module
+    bodies ([GlobalCtx_Notations]) and of weakenings ([Wk_Notations]).
+
+    Everything that reads as an atom is at level 0, the postfix forms at
+    level 1, and the constructor forms with a recursive last argument at
+    level 2. *)
+Module Exp_Notations.
+  Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
+  Notation "'ℕ'" := a_nat : mctt_scope.
+  Notation "'zero'" := a_zero : mctt_scope.
+  Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
+  Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def (Some A) M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓ' ≔ M 'in' B" := (a_let (b_def None M) B) (at level 2, M at level 60, B at level 60) : mctt_scope.
+  Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
+  Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
+  Notation "'⊤'" := a_True : mctt_scope.
+  Notation "'⋆'" := a_true : mctt_scope.
+  Notation "'⊥'" := a_False : mctt_scope.
+  Notation "'efq' M 'return' A" := (a_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
+  (** Application needs an explicit operator: a [constr] notation may not be
+      pure juxtaposition, which is Rocq's own application. *)
+  Notation "M $ N" := (a_app M N) (at level 10, left associativity) : mctt_scope.
+End Exp_Notations.
+
+(** A module body: [⋄] is empty, and [Φ ⊳ x ↦ E] adds the entry [E] named
+    [x]. *)
+Module GlobalCtx_Notations.
+  Notation "⋄" := gm_nil.
+  Notation "Φ ⊳ x ↦ E" := (gm_ext Φ x E) (at level 50, x at level 0).
+End GlobalCtx_Notations.
+
+(** * Contexts
+
+    A context entry occupies one de Bruijn index, whether it is an
+    assumption, a definition or a module slot. *)
+Abbreviation ctx := (list centry).
+
+(** The type of an entry; a module slot has none, and reads as [⊤]. *)
+Definition ce_typ (e : centry) : typ :=
+  match e with
+  | ce_ass A | ce_def A _ => A
+  | ce_mod _ => a_True
+  end.
+
+(** A body as the context entries it binds, innermost first.  A local open
+    binds one placeholder per item: a pre-form is never typed. *)
+Fixpoint body_ctx (Φ : gmod) : ctx :=
+  match Φ with
+  | gm_nil => nil
+  | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
+  | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
+  end.
+
+(** ** Telescopes
+
+    A member of a parameterized module is checked in the telescope of
+    parameters it lives under, and stored generalized over it by these two
+    folds.  They are the [exp]-level counterparts of the
+    elaborator's [tele_pi]/[tele_fn], which work on [Cst.obj] and so cannot
+    appear in a judgment.
+
+    A [ctx] is innermost-first, so the head of [Δ] is the parameter bound last
+    and must become the innermost binder: the recursion wraps the head first
+    and works outward.  Folding the other way reverses the telescope, and the
+    result is still a well-formed [exp], so nothing catches it early.
+
+    A local definition in a telescope is generalized as a [let], as a section
+    does with [Let], and a module slot as a local module.  The elaborator only
+    builds parameter telescopes of assumptions. *)
+Fixpoint ctx_pi (Δ : ctx) (A : typ) : typ :=
+  match Δ with
+  | nil => A
+  | cons (ce_ass B) Δ' => ctx_pi Δ' (a_pi B A)
+  | cons (ce_def B N) Δ' => ctx_pi Δ' (a_let (b_def (Some B) N) A)
+  | cons (ce_mod U) Δ' => ctx_pi Δ' (a_let (b_mod U) A)
+  end.
+
+Fixpoint ctx_fn (Δ : ctx) (M : exp) : exp :=
+  match Δ with
+  | nil => M
+  | cons (ce_ass B) Δ' => ctx_fn Δ' (a_fn B M)
+  | cons (ce_def B N) Δ' => ctx_fn Δ' (a_let (b_def (Some B) N) M)
+  | cons (ce_mod U) Δ' => ctx_fn Δ' (a_let (b_mod U) M)
+  end.
+
+(** ** Notations *)
+Module Ctx_Notations.
+  (** Extension is [▹] rather than the paper's comma: a parsing [,] in [constr]
+      would steal Rocq's pair notation.  Both are restricted to [centry] so
+      that an unrelated [list] does not print as a context.  A definition
+      entry is [Γ ▸ A ≔ M]; it has its own first token because [Γ ▹ A] would
+      otherwise be a proper prefix of it. *)
+  Notation "⋅" := (@nil centry) : mctt_scope.
+  Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
+  Notation "Γ '▹ₘ' U" := (@cons centry (ce_mod U) Γ) (at level 50, left associativity) : mctt_scope.
+End Ctx_Notations.
+
+(** * Normal and Neutral Forms *)
 Inductive nf : Set :=
 (** A universe *)
 | nf_typ : nat -> nf
@@ -836,7 +958,27 @@ Proof.
     repeat (apply PeanoNat.Nat.eq_dec || decide equality || apply String.string_dec).
 Defined.
 
-(** * Weakenings
+(** ** Notations *)
+Module Nf_Notations.
+  Notation "'ℕⁿ'" := nf_nat : mctt_scope.
+  Notation "'zeroⁿ'" := nf_zero : mctt_scope.
+  Notation "'succⁿ' M" := (nf_succ M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'⊤ⁿ'" := nf_True : mctt_scope.
+  Notation "'⋆ⁿ'" := nf_true : mctt_scope.
+  Notation "'⊥ⁿ'" := nf_False : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
+  Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
+  Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
+  Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
+  Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
+  Notation "'recⁿ' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
+  Notation "'efqⁿ' M 'return' A" := (ne_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
+End Nf_Notations.
+
+(** * Weakenings and Substitutions *)
+
+(** ** Weakenings
 
     Weakenings are meta-level functions on de Bruijn indices.  They form the
     first of the two tiers of the substitution machinery: lifting a
@@ -963,7 +1105,7 @@ Fixpoint tele_wk (Δ : ctx) (φ : wk) : ctx :=
   | cons e Δ' => cons (centry_wk e (wk_qn (List.length Δ') φ)) (tele_wk Δ' φ)
   end.
 
-(** * Substitutions
+(** ** Substitutions
 
     A substitution maps each de Bruijn index to an entry, [sentry]: a
     variable, which is a variable of either sort, a term for a term variable,
@@ -1158,93 +1300,28 @@ Instance wk_eq_Equivalence : Equivalence wk_eq := _.
 #[export]
 Instance sb_eq_Equivalence : Equivalence sb_eq := _.
 
-#[global] Bind Scope mctt_scope with exp.
-#[global] Bind Scope mctt_scope with modexp.
-#[global] Bind Scope mctt_scope with gunit.
-#[global] Bind Scope mctt_scope with sub.
-#[global] Bind Scope mctt_scope with nf.
-#[global] Bind Scope mctt_scope with ne.
-Open Scope mctt_scope.
+(** ** Notations
 
-(** ** Syntactic Notations
-
-    Every notation below lives in ordinary [constr]: there is no custom entry
-    and hence no delimiter to write.  The price is that a spelling can denote
-    only one sort, so the normal forms — which mirror the expressions
-    constructor for constructor — carry a superscript [ⁿ].  Values carry a
-    superscript [ᵈ]; see [Domain_Notations]. *)
-Module Syntax_Notations.
-  (** Substitution and weakening application come first, so that level 1 is
-      created left associative; everything else that reads as an atom is at
-      level 0, and the constructor forms with a recursive last argument are at
-      level 2. *)
+    Weakening and substitution application are postfix, at level 1;
+    [M[σ]] and [M[φ]ʷ] share the prefix [M [ _] and differ only in the
+    closing token.  [σ ⨟ τ] is diagrammatic composition: [σ] first, then
+    [τ]. *)
+Module Sub_Notations.
   Notation "M [ σ ]" := (exp_sub M σ) (at level 1, left associativity, σ at level 60, format "M [ σ ]") : mctt_scope.
   Notation "M [ φ ]ʷ" := (exp_wk M φ) (at level 1, left associativity, φ at level 60, format "M [ φ ]ʷ") : mctt_scope.
   Notation "H [ σ ]ᵐ" := (modexp_sub H σ) (at level 1, left associativity, σ at level 60, format "H [ σ ]ᵐ") : mctt_scope.
   Notation "U [ σ ]ᵘ" := (gunit_sub U σ) (at level 1, left associativity, σ at level 60, format "U [ σ ]ᵘ") : mctt_scope.
-  Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
-  Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
-  Notation "'ℕ'" := a_nat : mctt_scope.
-  Notation "'zero'" := a_zero : mctt_scope.
-  Notation "'succ' M" := (a_succ M) (at level 2, M at level 1) : mctt_scope.
-  Notation "'λ' A M" := (a_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
-  Notation "'Π' A B" := (a_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'ℓ' A ≔ M 'in' B" := (a_let (b_def (Some A) M) B) (at level 2, A at level 1, M at level 60, B at level 60) : mctt_scope.
-  Notation "'ℓ' ≔ M 'in' B" := (a_let (b_def None M) B) (at level 2, M at level 60, B at level 60) : mctt_scope.
-  Notation "'ℓₘ' U 'in' B" := (a_let (b_mod U) B) (at level 2, U at level 1, B at level 60) : mctt_scope.
-  Notation "'rec' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (a_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
-  Notation "'⊤'" := a_True : mctt_scope.
-  Notation "'⋆'" := a_true : mctt_scope.
-  Notation "'⊥'" := a_False : mctt_scope.
-  Notation "'efq' M 'return' A" := (a_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
-  (** Application needs an explicit operator: a [constr] notation may not be
-      pure juxtaposition, which is Rocq's own application. *)
-  Notation "M $ N" := (a_app M N) (at level 10, left associativity) : mctt_scope.
-
-  (** *** Substitutions
-
-      [σ ⨟ τ] is diagrammatic composition: [σ] first, then [τ]. *)
   Notation "'Id'" := sb_id : mctt_scope.
   Notation "'Wk'" := sb_shift : mctt_scope.
   Notation "σ ⨟ τ" := (sb_compose σ τ) (at level 45, right associativity, format "σ ⨟ τ") : mctt_scope.
   Notation "σ ,, M" := (sb_extend σ (se_exp M)) (at level 50, left associativity, format "σ ,, M") : mctt_scope.
   Notation "σ ',,ₘ' H" := (sb_extend σ (se_mod H)) (at level 50, left associativity, format "σ  ,,ₘ  H") : mctt_scope.
   Notation "'q' σ" := (sb_q σ) (at level 30, σ at level 2) : mctt_scope.
+End Sub_Notations.
 
-  (** *** Contexts
-
-      Extension is [▹] rather than the paper's comma: a parsing [,] in [constr]
-      would steal Rocq's pair notation.  Both are restricted to [centry] so
-      that an unrelated [list] does not print as a context.  A definition
-      entry is [Γ ▸ A ≔ M]; it has its own first token because [Γ ▹ A] would
-      otherwise be a proper prefix of it. *)
-  Notation "⋅" := (@nil centry) : mctt_scope.
-  Notation "Γ ▹ A" := (@cons centry (ce_ass A) Γ) (at level 50, left associativity) : mctt_scope.
-  Notation "Γ ▸ A ≔ M" := (@cons centry (ce_def A M) Γ) (at level 50, left associativity) : mctt_scope.
-  Notation "Γ '▹ₘ' U" := (@cons centry (ce_mod U) Γ) (at level 50, left associativity) : mctt_scope.
-
-  (** *** Normal and Neutral Forms *)
-  Notation "'ℕⁿ'" := nf_nat : mctt_scope.
-  Notation "'zeroⁿ'" := nf_zero : mctt_scope.
-  Notation "'succⁿ' M" := (nf_succ M) (at level 2, M at level 1) : mctt_scope.
-  Notation "'⊤ⁿ'" := nf_True : mctt_scope.
-  Notation "'⋆ⁿ'" := nf_true : mctt_scope.
-  Notation "'⊥ⁿ'" := nf_False : mctt_scope.
-  Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
-  Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
-  Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
-  Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
-  Notation "'#ⁿ' n" := (ne_var n) (at level 1, n at level 0, format "'#ⁿ' n") : mctt_scope.
-  Notation "M '$ⁿ' N" := (ne_app M N) (at level 10, left associativity, format "M  $ⁿ  N") : mctt_scope.
-  Notation "'recⁿ' M 'return' A | 'zero' -> MZ | 'succ' -> MS 'end'" := (ne_natrec A MZ MS M) (at level 0, M at level 60, A at level 60, MZ at level 60, MS at level 60) : mctt_scope.
-  Notation "'efqⁿ' M 'return' A" := (ne_exfalso A M) (at level 2, M at level 60, A at level 60) : mctt_scope.
-End Syntax_Notations.
-
-(** ** Notations for Weakenings
-
-    Weakenings are their own sort, in their own module: after [Substitution.v]
-    establishes that the embedding [ι] is faithful the development speaks almost
-    exclusively of substitutions. *)
+(** Weakenings have their own notation module, outside [Syntax_Notations]:
+    after [Substitution.v] establishes that the embedding [ι] is faithful the
+    development speaks almost exclusively of substitutions. *)
 Module Wk_Notations.
   (** [↑] is the paper's [⇑] as a weakening.  The glyph differs because [⇑] is
       already the neutral-value embedding of [Domain_Notations], and because the
@@ -1254,3 +1331,101 @@ Module Wk_Notations.
   Notation "φ ⊙ ψ" := (wk_compose φ ψ) (at level 40, left associativity) : mctt_scope.
   Notation "'ι' φ" := (sb_of_wk φ) (at level 30) : mctt_scope.
 End Wk_Notations.
+
+(** * The Global Context
+
+    Names have two levels, spelled differently in the surface language and
+    represented differently here.  [X::Y::Z] names a unit; units are not
+    declared inside one another, so the [::] level is flat.  [X.W] names an
+    internal module of one unit; internal modules nest, so the [.] level is a
+    module.
+
+    The global context is the units filed so far, [Θ], and the stack [Ξ] of
+    the modules open around the point being checked.
+
+    A member is stored closed: [wf_gentry_def] generalizes its type and body
+    over the parameters of every enclosing module, outermost first.  Nothing
+    about a member depends on where it is read from, so resolving a path hands
+    the stored entry back unchanged, and evaluation needs no syntactic
+    operations. *)
+
+(** ** Filed Units
+
+    The units filed so far, newest first, keyed by absolute path; each is
+    checked against the ones after it. *)
+Definition gdeps : Set := list (path * gunit).
+
+Fixpoint gds_lookup (Θ : gdeps) (fp : path) : option gunit :=
+  match Θ with
+  | nil => None
+  | (fq, U) :: Θ' => if path_beq fp fq then Some U else gds_lookup Θ' fp
+  end.
+
+(** One [gdeps] is below another when everything filed in it is filed, the
+    same, in the other: what filing more units, or merging, preserves. *)
+Definition gds_sub (Θ Θ' : gdeps) : Prop :=
+  forall fp U, gds_lookup Θ fp = Some U -> gds_lookup Θ' fp = Some U.
+
+Notation "Θ ⊑ Θ'" := (gds_sub Θ Θ') (at level 70) : type_scope.
+
+Lemma gds_sub_refl : forall Θ, gds_sub Θ Θ.
+Proof. intros ? ? ? H; exact H. Qed.
+
+Lemma gds_sub_trans : forall Θ1 Θ2 Θ3, gds_sub Θ1 Θ2 -> gds_sub Θ2 Θ3 -> gds_sub Θ1 Θ3.
+Proof. intros * H12 H23 ? ? H; apply H23, H12, H. Qed.
+
+Lemma gds_lookup_in : forall Θ fp U,
+    gds_lookup Θ fp = Some U ->
+    List.In (fp, U) Θ.
+Proof.
+  induction Θ as [| [fq V] Θ IH]; cbn; intros * Heq; [ discriminate |].
+  destruct (path_beq fp fq) eqn:Hb; [| right; auto ].
+  apply path_beq_true in Hb as ->; injection Heq as ->; left; reflexivity.
+Qed.
+
+(** Filing a unit whose path is fresh changes nothing below it. *)
+Lemma gds_sub_cons : forall Θ fp U,
+    gds_lookup Θ fp = None ->
+    Θ ⊑ (fp, U) :: Θ.
+Proof.
+  intros * Hn fq V H; cbn.
+  destruct (path_beq fq fp) eqn:Hb; [ apply path_beq_true in Hb; subst; congruence | exact H ].
+Qed.
+
+(** ** The Definition Stack
+
+    The modules open around the point being checked, innermost first, each
+    recorded with its own (absolute) module path.  Their parameters are the
+    local context members are checked in, [gs_tele]: the innermost frame's
+    parameters are bound last, so they come first. *)
+Definition gstack : Set := list (qname * gunit).
+
+Fixpoint gs_tele (Ξ : gstack) : ctx :=
+  match Ξ with
+  | nil => nil
+  | (_, U) :: Ξ' => gu_params U ++ gs_tele Ξ'
+  end.
+
+(** ** A Fixed Global Context
+
+    The semantic model and the two metatheorems about NbE are stated for one
+    global context at a time.  Found by instance resolution, it keeps their
+    judgments in the short forms of [Core.Semantic.Fixed]. *)
+Class GCtx : Set := gc_mk
+  { gc_deps : gdeps
+  ; gc_stack : gstack }.
+
+(** * Scope and Notations *)
+
+#[global] Bind Scope mctt_scope with exp.
+#[global] Bind Scope mctt_scope with modexp.
+#[global] Bind Scope mctt_scope with gunit.
+#[global] Bind Scope mctt_scope with sub.
+#[global] Bind Scope mctt_scope with nf.
+#[global] Bind Scope mctt_scope with ne.
+Open Scope mctt_scope.
+
+(** The notations of terms, contexts, normal forms and substitutions. *)
+Module Syntax_Notations.
+  Export Exp_Notations Ctx_Notations Nf_Notations Sub_Notations.
+End Syntax_Notations.

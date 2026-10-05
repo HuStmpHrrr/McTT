@@ -3,7 +3,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Readback Evaluation.
-From Mctt.Core.Syntactic Require Import GlobalCtx.
+From Mctt.Core.Syntactic Require Import Members.
 From Mctt.Extraction Require Import Evaluation.
 Import Domain_Notations.
 
