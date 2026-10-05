@@ -154,6 +154,60 @@ Proof.
     eauto using gc_entry_dsub, gc_sub_module, gc_sub_deps.
 Qed.
 
+(** What follows an alias on a module path is the rest of that path. *)
+Lemma gm_submodule_alias_suffix : forall Φ T x ip U r,
+    gm_submodule T Φ x ip = Some (mr_alias U r) -> exists pre, ip = pre ++ r.
+Proof.
+  fix IH 1; intros [| Φ y E0 | Φ c] * H; cbn in H; try discriminate; [| exact (IH _ _ _ _ _ _ H) ].
+  destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
+  destruct E0 as [b pv A B | pm [Δ [Φ' | E']]]; try discriminate.
+  - destruct ip as [| z ip']; [ discriminate |].
+    destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
+  - injection H as _ <-; exists nil; reflexivity.
+Qed.
+
+Lemma gs_find_tele_suffix : forall Ξ p U ip T,
+    gs_find_tele Ξ p = Some (U, ip, T) -> exists pre, q_chain p = pre ++ ip.
+Proof.
+  induction Ξ as [| [mp V] Ξ IH]; intros * H; cbn in H; [ discriminate |].
+  unfold qname_strip in H.
+  destruct (path_beq (q_unit mp) (q_unit p)); [| exact (IH _ _ _ _ H) ].
+  destruct (strip_prefix (q_chain mp) (q_chain p)) eqn:E; [| exact (IH _ _ _ _ H) ].
+  injection H as _ <- _; exists (q_chain mp); exact (strip_prefix_spec _ _ _ E).
+Qed.
+
+Lemma gc_module_alias_suffix : forall Θ Ξ p U r,
+    gc_module Θ Ξ p = Some (mr_alias U r) -> exists pre, q_chain p = pre ++ r.
+Proof.
+  intros * H; unfold gc_module in H.
+  destruct (gs_find_tele Ξ p) as [[[V [| x ip]] T] |] eqn:Ef; [ discriminate | |].
+  - destruct (gs_find_tele_suffix _ _ _ _ _ Ef) as (pre & ->).
+    destruct (gm_submodule_alias_suffix _ _ _ _ _ _ H) as (pre' & ->).
+    exists (pre ++ x :: pre'); rewrite <- List.app_assoc; reflexivity.
+  - destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
+    destruct (q_chain p) as [| x ip]; cbn in H; [ discriminate |].
+    destruct (gm_submodule_alias_suffix _ _ _ _ _ _ H) as (pre & ->).
+    exists (x :: pre); reflexivity.
+Qed.
+
+(** The module [mdecl] finds declares the member: the last name of the
+    chain names an entry of it, with the privacy found. *)
+Lemma mdecl_entry : forall Θ Ξ H ch qd pv, mdecl Θ Ξ H ch qd pv -> ch <> nil ->
+    forall d, exists E, gc_entry Θ Ξ (qname_in qd (List.last ch d)) = Some E /\ ge_private E = pv.
+Proof.
+  induction 1 as [fp ch E pv HE <- | fp ch T E r qd pv Hr Hm _ IH | H y ch qd pv _ IH | H N ch qd pv _ IH ];
+    intros Hch d.
+  - exists E; split; [| reflexivity ].
+    unfold qname_in; cbn; rewrite <- (List.app_removelast_last _ Hch); exact HE.
+  - destruct (gc_module_alias_suffix _ _ _ _ _ Hm) as (pre & Ep); cbn in Ep; subst ch.
+    rewrite (List.app_removelast_last d Hr), List.app_assoc, !List.last_last.
+    exact (IH Hr d).
+  - destruct ch as [| z ch]; [ contradiction |].
+    destruct (IH ltac:(discriminate) d) as (E & HE & Hp); exists E; split; [| exact Hp ].
+    cbn [List.last] in HE; exact HE.
+  - exact (IH Hch d).
+Qed.
+
 (** ** Module Tables
 
     What a reference may know of the module it selects from: nothing, that
