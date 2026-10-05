@@ -754,6 +754,17 @@ let%expect_test "an unterminated comment is reported" =
   let _ = main_of_body "eval 0 (* open" in
   [%expect {| Error: unterminated comment |}]
 
+let%expect_test "a multi-line comment counts its lines" =
+  let _ = main_of_program_string "module Test where\n(* one\n   two *)\n\neval 0 $ 1 end" in
+  [%expect {| Error: unexpected character '$' at line 5, column 8 |}]
+
+let%expect_test "a parse error after a multi-line comment is on its own line" =
+  let _ = main_of_program_string "module Test where\n(* one\n   two *)\n\ndef end" in
+  [%expect {|
+    Error: on "end" (at line 5, column 5 - line 5, column 8): Expected a name for
+      the definition.
+    |}]
+
 let%expect_test "lib/Programs.mctt" =
   let _ = main_of_lib "Programs.mctt" in
   [%expect {|
