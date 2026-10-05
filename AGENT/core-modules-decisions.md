@@ -553,6 +553,25 @@ units: 72, 550, 5326, 53086, 530686 nodes, for a normal form of 1 node).
   (`rwk_n_shiftn`), not one shift at a time.  `gens_impl` computes the
   normal form with `member_nf_dec` and types the member by
   `member_typed_any` and `soundness_ty'`.
+- **Arguments against the next parameter's normal form (A).**
+  `modexp_check (me_app H N)` no longer builds `H`'s arity (which holds
+  the bodies before `H` literally): `next_param_dec` evaluates `H` in the
+  initial environment, takes the type value of its next argument
+  (`nextdom`, `Core/Completeness/MemberTyping.v`, computed by
+  `nextdom_impl`, `Extraction/MemberType.v`) and reads it back to `C`;
+  `N` is checked against `C`.  `nextdom_nbe_wf`
+  (`Core/Semantic/MemberNf.v`) shows that `C` is the normal form of the
+  arity's outermost parameter `B` (`tele_view T = Some (B, T1)`), and that
+  a value with a next argument has an arity with a parameter
+  (`tele_view_none_top`, `mtyped_nextdom_pi`); `nextdom_of_arity` the
+  converse.  `next_param_check` relates the checks against `B` and `C`, so
+  `amod_app` is unchanged.  The existing `nextdom`/`nextparam` were
+  reused; nothing new was needed in the PER model.
 - Statements of `prog_impl_sound`/`_complete`, `main_*`, consistency and
   canonicity are unchanged; the accepted programs and their outputs are
-  those of `ext/local-modules`.  `lib` and Prelude: 19.4 s.
+  those of `ext/local-modules`.  `lib` and Prelude: 19.5 s after N/O/F/K/W,
+  563 s before (21.2 s on `ext/local-modules`); A takes `Algebra` from
+  0.22 s to 0.15 s and `Prelude/Algebra/Instances` from 0.15 s to 0.08 s.
+  The evaluation-heavy files move by up to 17% with the code layout of
+  the executable alone (§11.5); a padded control build gives the commit-1
+  times.

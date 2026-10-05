@@ -7,7 +7,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System Require Import MemberWf.
 From Mctt.Core.Semantic Require Import MemberWf MemberNf.
-From Mctt.Core.Completeness Require Import MemberSem.
+From Mctt.Core.Completeness Require Import MemberTyping MemberSem.
 From Mctt.Extraction Require Import Evaluation Readback NbE PseudoMonadic Subtyping MemberType SynEq.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -98,8 +98,8 @@ Section type_check.
       { R | member_type gc_ctx Γ H ch R } + { forall R, ~ member_type gc_ctx Γ H ch R } :=
     member_type_impl gc_ctx (gctx_closed_of_wf _ Hg) Γ H ch (mt_order_of_wf _ _ _ Hg HH ch).
 
-  (** A member type asked for as a definition's type, or as a module's
-      arity: member types are unique, so the other sort is none. *)
+  (** A member type asked for as a definition's type: member types are
+      unique, so a module's arity is none. *)
   Definition mres_term_dec {Γ H ch}
       (d : { R | member_type gc_ctx Γ H ch R } + { forall R, ~ member_type gc_ctx Γ H ch R }) :
       { A | member_type gc_ctx Γ H ch (mr_term A) } +
@@ -109,28 +109,10 @@ Section type_check.
     intros A HA; pose proof (proj1 (member_type_functional _) _ _ _ _ HR _ HA); discriminate.
   Defined.
 
-  Definition mres_mod_dec {Γ H ch}
-      (d : { R | member_type gc_ctx Γ H ch R } + { forall R, ~ member_type gc_ctx Γ H ch R }) :
-      { T | member_type gc_ctx Γ H ch (mr_mod T) } +
-      { forall T, ~ member_type gc_ctx Γ H ch (mr_mod T) }.
-  Proof.
-    destruct d as [[[A | T] HR] | HN]; [ right | left; exists T; exact HR | right; intros T HT; exact (HN _ HT) ].
-    intros T HT; pose proof (proj1 (member_type_functional _) _ _ _ _ HR _ HT); discriminate.
-  Defined.
-
   Definition member_term_dec (Hg : ⊢g gc_ctx) Γ H ch (HH : gc_ctx ⍮ Γ ⊢ᵐ H ≈ H) :=
     mres_term_dec (member_type_dec Hg Γ H ch HH).
 
-  Definition member_mod_dec (Hg : ⊢g gc_ctx) Γ H ch (HH : gc_ctx ⍮ Γ ⊢ᵐ H ≈ H) :=
-    mres_mod_dec (member_type_dec Hg Γ H ch HH).
-
-  (** The outermost parameter of an arity, if any. *)
-  Equations tele_view_dec (T : ctx) : { B : typ & { T1 : ctx | tele_view T = Some (B, T1) } } + { tele_view T = None } :=
-  tele_view_dec T with inspect (tele_view T) := {
-    | exist _ (Some (B, T1)) E => inleft (existT _ B (exist _ T1 E))
-    | exist _ None E => inright E }.
-
-  Extraction Inline member_type_dec member_term_dec member_mod_dec mres_term_dec mres_mod_dec tele_view_dec.
+  Extraction Inline member_type_dec member_term_dec mres_term_dec.
 
   (** ** Facts the Obligations Use *)
 
@@ -283,6 +265,190 @@ Section type_check.
         inright (member_kind_not_term _ _ _ _ Hg
                    (fun k' Hk' => proj1 (member_kind_functional _) _ _ _ _ Hk' _ Hk) ltac:(discriminate))
     | inright HN => inright (fun A HA => HN _ (member_kind_complete _ Hg _ _ _ _ HA)) }.
+
+  (** ** Normal Forms of Next Parameters by Evaluation
+
+      The argument of [me_app H N] is checked against the normal form of
+      [H]'s next parameter, read back from the value of [H] ([nextdom]),
+      without building [H]'s arity ([nextdom_nbe_wf]). *)
+
+  Lemma mod_value_orders : forall G M ρ, ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M -> initial_env_f G ρ ->
+      eval_modexp_order gc_ctx M ρ /\
+      forall T h, member_type gc_ctx G M nil (mr_mod T) -> ⟦ M ⟧ᵐ gc_ctx ⍮ ρ ↘ h -> nextdom_order h.
+  Proof.
+    intros * HG HM Hρ.
+    destruct (wf_modexp_sem_mt _ _ HM) as [[S1 _] HMs].
+    destruct (sem_ctx_per_ctx_env (completeness_fundamental_ctx _ HG)) as [R HR].
+    destruct (per_ctx_then_per_env_initial_env HR) as (ρ1 & ρ2 & Hρ1 & Hρ2 & Hr).
+    assert (ρ1 = ρ) as -> by (eapply functional_initial_env; eassumption).
+    assert (ρ2 = ρ) as -> by (eapply functional_initial_env; eassumption).
+    destruct (rel_modexp_simple_at HR HMs _ _ Hr) as (h0 & _ & Hh0 & _ & _).
+    split; [ eapply eval_modexp_order_sound; eassumption |].
+    intros T h Hm Hh.
+    destruct (proj2 (S1 _ _ Hm ltac:(discriminate)) _ _ HR Hr _ Hh) as (a0 & _ & Hma0); cbn in Hma0.
+    eapply nextdom_order_of_mtyped; eassumption.
+  Qed.
+
+  Lemma member_kind_mod : forall G M, ⊢g gc_ctx -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      member_kind gc_ctx G M nil mk_mod -> exists T, member_type gc_ctx G M nil (mr_mod T).
+  Proof.
+    intros * Hg HM Hk.
+    destruct (proj1 (member_kind_sound Hg) _ _ _ _ Hk HM) as ([A | T] & HR & Ek); [ discriminate | eauto ].
+  Qed.
+
+  Lemma nextdom_read : forall G M T h a ρ, ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      member_type gc_ctx G M nil (mr_mod T) -> initial_env_f G ρ -> ⟦ M ⟧ᵐ gc_ctx ⍮ ρ ↘ h -> nextdom h a ->
+      read_typ_order gc_ctx (List.length G) a.
+  Proof.
+    intros * HG HM Hm Hρ Hh Hn.
+    destruct (nextdom_nbe_wf _ _ _ _ _ _ HG HM Hm Hρ Hh Hn) as (B & T1 & C & _ & HC & _).
+    eapply read_typ_order_sound; eassumption.
+  Qed.
+
+  Lemma nextdom_nbe_read : forall G M T h a ρ C, ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      member_type gc_ctx G M nil (mr_mod T) -> initial_env_f G ρ -> ⟦ M ⟧ᵐ gc_ctx ⍮ ρ ↘ h -> nextdom h a ->
+      Rtyp a in List.length G ↘ C ->
+      exists T B T1, member_type gc_ctx G M nil (mr_mod T) /\ tele_view T = Some (B, T1) /\ nbe_ty_f G B C.
+  Proof.
+    intros * HG HM Hm Hρ Hh Hn HC.
+    destruct (nextdom_nbe_wf _ _ _ _ _ _ HG HM Hm Hρ Hh Hn) as (B & T1 & C' & Hv & HC' & HB).
+    pose proof (functional_read_typ _ _ _ _ HC HC') as <-.
+    exists T, B, T1; split; [ exact Hm | split; assumption ].
+  Qed.
+
+  Lemma no_nextdom_no_param : forall G M h ρ, ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      initial_env_f G ρ -> ⟦ M ⟧ᵐ gc_ctx ⍮ ρ ↘ h -> (forall a, ~ nextdom h a) ->
+      forall T B T1, member_type gc_ctx G M nil (mr_mod T) -> tele_view T <> Some (B, T1).
+  Proof.
+    intros * HG HM Hρ Hh HN * Hm Hv.
+    destruct (nextdom_of_arity _ _ _ _ _ _ _ HG HM Hm Hv Hρ Hh) as [a Ha]; exact (HN _ Ha).
+  Qed.
+
+  Lemma not_mod_no_param : forall G M k, ⊢g gc_ctx ->
+      (forall k', member_kind gc_ctx G M nil k' -> k' = k) -> k <> mk_mod ->
+      forall T B T1, member_type gc_ctx G M nil (mr_mod T) -> tele_view T <> Some (B, T1).
+  Proof.
+    intros * Hg Hk Hne * Hm _; exact (Hne (eq_sym (Hk _ (member_kind_complete _ Hg _ _ _ _ Hm)))).
+  Qed.
+
+  Lemma mk_term_no_mod : forall G M T, ⊢g gc_ctx -> member_kind gc_ctx G M nil mk_term ->
+      member_type gc_ctx G M nil (mr_mod T) -> False.
+  Proof.
+    intros * Hg Hk Hm.
+    pose proof (proj1 (member_kind_functional _) _ _ _ _ (member_kind_complete _ Hg _ _ _ _ Hm) _ Hk); discriminate.
+  Qed.
+
+  #[local]
+  Ltac np_kind :=
+    match goal with
+    | Hk : member_kind _ ?G ?M nil mk_mod, HM : wf_modexp_eq _ ?G ?M ?M, Hg : wf_gctx _ |- _ =>
+        let T := fresh "T" in let Hm := fresh "Hm" in
+        destruct (member_kind_mod _ _ Hg HM Hk) as [T Hm]
+    end.
+
+  #[local]
+  Ltac np_obl :=
+    intros; cbv beta in *;
+    first
+      [ solve [ eapply initial_env_order_of_ctx; eassumption ]
+      | solve [ match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hρ : initial_env _ ?G ?ρ
+                  |- eval_modexp_order _ ?M ?ρ => exact (proj1 (mod_value_orders _ _ _ HG HM Hρ)) end ]
+      | solve [ np_kind;
+                match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hρ : initial_env _ ?G ?ρ,
+                  Hm : member_type _ ?G ?M nil (mr_mod _), Hh : eval_modexp _ ?M ?ρ ?h |- nextdom_order ?h =>
+                  exact (proj2 (mod_value_orders _ _ _ HG HM Hρ) _ _ Hm Hh) end ]
+      | solve [ np_kind;
+                match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hρ : initial_env _ ?G ?ρ,
+                  Hm : member_type _ ?G ?M nil (mr_mod _), Hh : eval_modexp _ ?M ?ρ ?h, Ha : nextdom ?h ?a
+                  |- read_typ_order _ _ ?a => exact (nextdom_read _ _ _ _ _ _ HG HM Hm Hρ Hh Ha) end ]
+      | solve [ np_kind;
+                match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hρ : initial_env _ ?G ?ρ,
+                  Hm : member_type _ ?G ?M nil (mr_mod _), Hh : eval_modexp _ ?M ?ρ ?h, Ha : nextdom ?h ?a,
+                  HC : read_typ _ _ ?a ?C |- exists _ _ _, _ => exact (nextdom_nbe_read _ _ _ _ _ _ _ HG HM Hm Hρ Hh Ha HC) end ]
+      | solve [ match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hρ : initial_env _ ?G ?ρ,
+                  Hh : eval_modexp _ ?M ?ρ ?h, HN : forall a, ~ nextdom ?h a,
+                  Hm : member_type _ ?G ?M nil (mr_mod _), Hv : tele_view _ = Some _ |- False =>
+                  exact (no_nextdom_no_param _ _ _ _ HG HM Hρ Hh HN _ _ _ Hm Hv) end ]
+      | solve [ eapply mk_term_no_mod; eassumption ]
+      | solve [ match goal with Hg : wf_gctx _, HN : forall k, ~ member_kind _ _ _ _ k,
+                  Hm : member_type _ _ _ _ (mr_mod _) |- False =>
+                  exact (HN _ (member_kind_complete _ Hg _ _ _ _ Hm)) end ] ].
+
+  #[local]
+  Ltac np_obl_auto := try np_obl.
+
+  #[tactic="np_obl_auto",derive(equations=no,eliminator=no)]
+  Equations next_param_dec (Hg : ⊢g gc_ctx) G (HG : ⊢ G) M (HM : gc_ctx ⍮ G ⊢ᵐ M ≈ M) :
+      { C : nf | exists T B T1, member_type gc_ctx G M nil (mr_mod T) /\ tele_view T = Some (B, T1) /\ nbe_ty_f G B C } +
+      { forall T B T1, member_type gc_ctx G M nil (mr_mod T) -> tele_view T <> Some (B, T1) } :=
+  next_param_dec Hg G HG M HM with member_kind_dec Hg G M nil := {
+    | inleft (exist _ mk_mod Hk) =>
+        let (ρ, Hρ) := initial_env_impl gc_ctx G _ in
+        let (h, Hh) := eval_modexp_impl gc_ctx M ρ _ in
+        match nextdom_impl h _ with
+        | inleft (exist _ a Ha) =>
+            let (C, HC) := read_typ_impl gc_ctx (List.length G) a _ in
+            inleft (exist _ C _)
+        | inright HN => inright _
+        end
+    | inleft (exist _ mk_term Hk) => inright _
+    | inright HN => inright _ }.
+
+  (** The three negative cases, which the automatic run leaves. *)
+  Next Obligation. np_obl. Qed.
+  Next Obligation. np_obl. Qed.
+  Next Obligation. np_obl. Qed.
+
+  (** The check of an argument against the next parameter, at its normal form. *)
+  Lemma next_param_check : forall G M T B T1 C N, ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      member_type gc_ctx G M nil (mr_mod T) -> tele_view T = Some (B, T1) -> nbe_ty_f G B C ->
+      (exists i, G ⊢ C : Type@i) /\ (G ⊢a N ⟸ C <-> G ⊢a N ⟸ B).
+  Proof.
+    intros * HG HM Hm Hv HC.
+    destruct (proj1 (proj1 member_wf _ _ _ _ Hm HM ltac:(intros; discriminate))) as [i HA]; cbn [mres_ty] in HA.
+    destruct (tele_view_wf _ _ _ _ _ HA Hv) as (_ & HB & _).
+    pose proof (soundness_ty' HB HC) as Heq.
+    assert (HC' : G ⊢ C : Type@i) by (gen_presups; eassumption).
+    split; [ eauto |]; split; intros Hck; apply alg_type_check_complete; try apply user_exp_all.
+    - eapply wf_conv; [ eapply alg_type_check_sound; eassumption | exact HB | apply wf_exp_eq_sym; exact Heq ].
+    - eapply wf_conv; [ eapply alg_type_check_sound; eassumption | exact HC' | exact Heq ].
+  Qed.
+
+  (** The premises come normal form first, so that [eassumption] fixes
+      the parameter before the arity. *)
+  Lemma next_param_typ : forall G M C B T T1, ⊢ G -> G ⊢aᵐ M ->
+      nbe_ty_f G B C -> tele_view T = Some (B, T1) -> member_type gc_ctx G M nil (mr_mod T) ->
+      exists i, G ⊢ C : Type@i.
+  Proof.
+    intros * HG HM HC Hv Hm.
+    exact (proj1 (next_param_check _ _ _ _ _ _ a_zero HG (alg_modexp_sound HM HG) Hm Hv HC)).
+  Qed.
+
+  Lemma me_app_ok : forall G M N C B T T1, ⊢ G -> G ⊢aᵐ M ->
+      nbe_ty_f G B C -> tele_view T = Some (B, T1) -> member_type gc_ctx G M nil (mr_mod T) ->
+      G ⊢a N ⟸ C -> G ⊢aᵐ me_app M N.
+  Proof.
+    intros * HG HM HC Hv Hm HN.
+    eapply amod_app; [ exact HM | exact Hm | exact Hv |].
+    exact (proj1 (proj2 (next_param_check _ _ _ _ _ _ N HG (alg_modexp_sound HM HG) Hm Hv HC)) HN).
+  Qed.
+
+  Lemma me_app_no : forall G M N C B T T1, ⊢ G -> G ⊢aᵐ M ->
+      nbe_ty_f G B C -> tele_view T = Some (B, T1) -> member_type gc_ctx G M nil (mr_mod T) ->
+      ~ G ⊢a N ⟸ C -> ~ G ⊢aᵐ me_app M N.
+  Proof.
+    intros * HG HM HC Hv Hm HN Ha; inversion Ha; subst.
+    match goal with Hm' : member_type _ _ _ _ (mr_mod ?T') |- _ =>
+      assert_fails (constr_eq T T');
+      pose proof (proj1 (member_type_functional _) _ _ _ _ Hm _ Hm') as E; injection E as <- end.
+    match goal with Hv' : tele_view T = Some _ |- _ => rewrite Hv in Hv'; injection Hv' as <- <- end.
+    exact (HN (proj2 (proj2 (next_param_check _ _ _ _ _ _ N HG (alg_modexp_sound HM HG) Hm Hv HC)) ltac:(eassumption))).
+  Qed.
+
+  Lemma me_app_no_param : forall G M N,
+      (forall T B T1, member_type gc_ctx G M nil (mr_mod T) -> tele_view T <> Some (B, T1)) ->
+      ~ G ⊢aᵐ me_app M N.
+  Proof. intros * HN Ha; inversion Ha; subst; eapply HN; eassumption. Qed.
 
   (** A submodule, decided on kinds only, without building its arity. *)
   Definition member_mod_kind_dec (Hg : ⊢g gc_ctx) G M y (HM : gc_ctx ⍮ G ⊢ᵐ M ≈ M) :
@@ -694,7 +860,18 @@ Section type_check.
 
   #[local]
   Ltac mod_obl :=
-    clear_defs; destruct_conjs;
+    clear_defs;
+    (* an application, against the next parameter's normal form *)
+    first
+      [ solve [ match goal with |- exists i, _ ⊢ _ : Type@i => eapply next_param_typ; eassumption end ]
+      | solve [ match goal with |- _ ⊢aᵐ me_app _ _ => eapply me_app_ok; eassumption end ]
+      | solve [ intros;
+                match goal with
+                | Ha : _ ⊢aᵐ me_app _ _ |- False => revert Ha; first [ eapply me_app_no | eapply me_app_no_param ]; eassumption
+                | |- ~ _ ⊢aᵐ me_app _ _ => first [ eapply me_app_no | eapply me_app_no_param ]; eassumption
+                end ]
+      | idtac ];
+    destruct_conjs;
     first
       [ solve [ match goal with HG : ⊢ ?G, Ec : gc_const _ _ = Some _ |- _ =>
                   destruct (wf_const_typ _ _ _ _ _ _ HG Ec) as [? ?];
@@ -930,11 +1107,12 @@ Section type_check.
       let*b HM := modexp_check G HG M _ while _ in
       let*b _ := member_mod_kind_dec _ G M y _ while _ in
       pureb _
+  (** An argument, against the normal form of the next parameter
+      ([next_param_dec]). *)
   | G, HG, me_app M N, H =>
       let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ T _) := member_mod_dec _ G M nil _ while _ in
-      let*o->b (existT _ B (exist _ T1 _)) := tele_view_dec T while _ in
-      let*b _ := type_check G B _ N _ while _ in
+      let*o->b (exist _ C HC) := next_param_dec _ G HG M _ while _ in
+      let*b _ := type_check G C _ N _ while _ in
       pureb _
   .
 

@@ -16,7 +16,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Members Imports.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalPresup MemberWf.
-From Mctt.Core.Completeness Require Import MemberCases MemberSem.
+From Mctt.Core.Completeness Require Import MemberCases MemberTyping MemberSem.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Extraction Require Import Evaluation.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations Domain_Notations.
@@ -933,3 +933,127 @@ Section Fixed_GCtx.
     - constructor.
   Qed.
 End Fixed_GCtx.
+
+(** * The Next Parameter of a Module Value, Computed
+
+    [nextdom_impl] computes the type value [a] at which a module value
+    takes its next argument ([nextdom]), by recursion on [nextdom_order]:
+    a body or an alias still lacking an argument evaluates the next
+    parameter's type; a saturated alias recurses into its target's value,
+    a submodule closure into its module's. *)
+
+Section NextDomImpl.
+  Context {GC : GCtx}.
+
+  Inductive nextdom_order : dmod -> Prop :=
+  | ndo_body : forall ρ Δ Φ args,
+      (forall A, nth_error (rev Δ) (List.length args) = Some (ce_ass A) ->
+         eval_exp_order gc_ctx A (env_args ρ args)) ->
+      nextdom_order (dm_body ρ Δ Φ args)
+  | ndo_alias : forall ρ Δ E args,
+      (forall A, nth_error (rev Δ) (List.length args) = Some (ce_ass A) ->
+         eval_exp_order gc_ctx A (env_args ρ args)) ->
+      (List.length args = List.length Δ -> eval_modexp_order gc_ctx E (env_args ρ args)) ->
+      (forall h, List.length args = List.length Δ -> ⟦ E ⟧ᵐ gc_ctx ⍮ env_args ρ args ↘ h -> nextdom_order h) ->
+      nextdom_order (dm_alias ρ Δ E args)
+  | ndo_member : forall h ch, nextdom_order h -> nextdom_order (dm_member h ch).
+
+  Lemma nextdom_order_of_nextparam : forall w a, nextparam w a -> nextdom_order w.
+  Proof.
+    induction 1 as [ρ Δ Φ args A a Hn Ha | ρ Δ E args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH].
+    - constructor; intros A' Hn'; rewrite Hn in Hn'; injection Hn' as <-; eapply eval_exp_order_sound; eassumption.
+    - pose proof (nth_error_rev_lt _ _ _ Hn).
+      constructor; [ intros A' Hn'; rewrite Hn in Hn'; injection Hn' as <-; eapply eval_exp_order_sound; eassumption
+                   | intros; lia | intros; lia ].
+    - constructor.
+      + intros A' Hn'; pose proof (nth_error_rev_lt _ _ _ Hn'); lia.
+      + intros _; eapply eval_modexp_order_sound; eassumption.
+      + intros h' _ Hh'; pose proof (functional_eval_modexp _ _ _ _ HE Hh') as <-; exact IH.
+  Qed.
+
+  Lemma nextdom_order_of_nextdom : forall w a, nextdom w a -> nextdom_order w.
+  Proof.
+    induction 1 as [w a Hn | h ch a Hn IH | ρ Δ E args h a Hl HE Hn IH].
+    - eapply nextdom_order_of_nextparam; eassumption.
+    - constructor; exact IH.
+    - constructor.
+      + intros A' Hn'; pose proof (nth_error_rev_lt _ _ _ Hn'); lia.
+      + intros _; eapply eval_modexp_order_sound; eassumption.
+      + intros h' _ Hh'; pose proof (functional_eval_modexp _ _ _ _ HE Hh') as <-; exact IH.
+  Qed.
+
+  Lemma nextdom_order_of_msat : forall w, msat w -> nextdom_order w.
+  Proof.
+    induction 1 as [ρ Δ Φ args Hl | ρ Δ E args h Hl HE Hs IH].
+    - constructor; intros A' Hn'; pose proof (nth_error_rev_lt _ _ _ Hn'); lia.
+    - constructor.
+      + intros A' Hn'; pose proof (nth_error_rev_lt _ _ _ Hn'); lia.
+      + intros _; eapply eval_modexp_order_sound; eassumption.
+      + intros h' _ Hh'; pose proof (functional_eval_modexp _ _ _ _ HE Hh') as <-; exact IH.
+  Qed.
+
+  (** A value typed at an arity has the order. *)
+  Lemma nextdom_order_of_mtyped : forall w a, mtyped w nil mk_mod a -> nextdom_order w.
+  Proof.
+    intros * Hm.
+    destruct (mtyped_nil_mod _ _ _ _ Hm eq_refl eq_refl) as [[Hs _] | [a0 Hn]];
+      [ apply nextdom_order_of_msat; exact Hs | eapply nextdom_order_of_nextdom; eassumption ].
+  Qed.
+
+  #[local]
+  Ltac nd_neg :=
+    repeat intro;
+    repeat match goal with
+      | H : nextdom ?w _ |- False => assert_fails (is_var w); inversion H; subst; clear H
+      | H : nextparam ?w _ |- False => assert_fails (is_var w); inversion H; subst; clear H
+      end;
+    repeat match goal with
+      | H1 : ?x = Some ?b, H2 : ?x = Some ?c |- _ =>
+          assert_fails (constr_eq b c); rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ?x = Some _, H2 : ?x = None |- _ => rewrite H1 in H2; discriminate H2
+      | H1 : eval_modexp _ ?E ?r ?h1, H2 : eval_modexp _ ?E ?r ?h2 |- _ =>
+          assert_fails (constr_eq h1 h2); pose proof (functional_eval_modexp _ _ _ _ H1 H2); subst; clear H2
+      | H : nth_error (rev _) _ = Some _ |- _ => pose proof (nth_error_rev_lt _ _ _ H); clear H
+      end;
+    first [ discriminate | lia | congruence
+          | match goal with HN : forall a, ~ _ |- _ => eapply HN; first [ eassumption | apply nd_param; eassumption ] end ].
+
+  #[local]
+  Ltac nd_obl_tac :=
+    intros; cbv beta in *;
+    repeat match goal with H : nextdom_order _ |- _ => progressive_invert H end;
+    repeat match goal with
+      | H : Nat.eqb _ _ = true |- _ => apply Nat.eqb_eq in H
+      | H : Nat.eqb _ _ = false |- _ => apply Nat.eqb_neq in H
+      end;
+    solve [ eauto
+          | econstructor; eauto
+          | apply nd_param; econstructor; eauto
+          | econstructor; [ eassumption | eassumption | apply nd_param; eassumption ]
+          | nd_neg ].
+
+  #[local]
+  Ltac nd_obl_tac_auto := try nd_obl_tac.
+
+  #[tactic="nd_obl_tac_auto",derive(equations=no,eliminator=no)]
+  Equations nextdom_impl h (Hd : nextdom_order h) :
+      { a | nextdom h a } + { forall a, ~ nextdom h a } by struct Hd :=
+  | dm_body ρ Δ Φ args, Hd with inspect (nth_error (rev Δ) (List.length args)) := {
+    | exist _ (Some (ce_ass A)) En =>
+        let (a, Ha) := eval_exp_impl gc_ctx A (env_args ρ args) _ in inleft (exist _ a _)
+    | exist _ _ En => inright _ }
+  | dm_alias ρ Δ E args, Hd with inspect (nth_error (rev Δ) (List.length args)) := {
+    | exist _ (Some (ce_ass A)) En =>
+        let (a, Ha) := eval_exp_impl gc_ctx A (env_args ρ args) _ in inleft (exist _ a _)
+    | exist _ _ En with inspect (Nat.eqb (List.length args) (List.length Δ)) := {
+      | exist _ true El =>
+          let (h, Hh) := eval_modexp_impl gc_ctx E (env_args ρ args) _ in
+          match nextdom_impl h _ with
+          | inleft (exist _ a Ha) => inleft (exist _ a _)
+          | inright HN => inright _
+          end
+      | exist _ false El => inright _ } }
+  | dm_member h ch, Hd with nextdom_impl h _ := {
+    | inleft (exist _ a Ha) => inleft (exist _ a _)
+    | inright HN => inright _ }.
+End NextDomImpl.
