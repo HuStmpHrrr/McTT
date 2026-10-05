@@ -91,16 +91,6 @@ Qed.
 
 (** ** Slots, Read after Themselves *)
 
-Fixpoint ctx_find_slot (Γ : ctx) (x : nat) : option (gunit * ctx) :=
-  match Γ with
-  | nil => None
-  | e :: Γ' =>
-      match x with
-      | 0 => match e with ce_mod U => Some (U, Γ') | _ => None end
-      | S y => ctx_find_slot Γ' y
-      end
-  end.
-
 Fixpoint uwk_n (n : nat) (U : gunit) : gunit :=
   match n with
   | 0 => U
@@ -115,6 +105,29 @@ Fixpoint rwk_n (n : nat) (R : mres) : mres :=
 
 Arguments uwk_n : simpl never.
 Arguments rwk_n : simpl never.
+
+(** [rwk_n] is one weakening, which the checker applies at once rather than
+    one shift at a time. *)
+Lemma tele_wk_wk_ext : forall Δ φ ψ χ, wk_eq (φ ⊙ ψ) χ -> tele_wk (tele_wk Δ φ) ψ = tele_wk Δ χ.
+Proof.
+  induction Δ as [| e Δ IH]; intros * Heq; cbn [tele_wk]; [ reflexivity |].
+  rewrite length_tele_wk, (IH _ _ _ Heq), (centry_wk_wk_ext _ _ _ (wk_qn (List.length Δ) χ)); [ reflexivity |].
+  apply wk_qn_compose_ext, Heq.
+Qed.
+
+Lemma mres_wk_wk_ext : forall R φ ψ χ, wk_eq (φ ⊙ ψ) χ -> mres_wk (mres_wk R φ) ψ = mres_wk R χ.
+Proof.
+  intros [A | T] * Heq; cbn [mres_wk]; f_equal; [ apply exp_wk_wk_ext | apply tele_wk_wk_ext ]; exact Heq.
+Qed.
+
+Lemma rwk_n_shiftn : forall n R, rwk_n (S n) R = mres_wk R (wk_shiftn (S n)).
+Proof.
+  induction n as [| n IH]; intros R.
+  - change (rwk_n 1 R) with (mres_wk R wk_shift).
+    destruct R; cbn [mres_wk]; f_equal; [ apply exp_wk_wk_eq | apply tele_wk_wk_eq ]; intros x; cbn; lia.
+  - change (rwk_n (S (S n)) R) with (mres_wk (rwk_n (S n) R) wk_shift); rewrite IH.
+    apply mres_wk_wk_ext, wk_shiftn_succ.
+Qed.
 
 Lemma ctx_find_slot_mod : forall Γ x U0 Γ', ctx_find_slot Γ x = Some (U0, Γ') ->
     ctx_find_mod Γ x = Some (uwk_n (S x) U0).
@@ -276,7 +289,7 @@ Section MemberTypeImpl.
     first [ eapply mt_unit; solve [ eauto ]
           | eapply mt_lit; solve [ eauto ]
           | match goal with Hf : ctx_find_slot ?G ?x = Some (?U0, ?G') |- member_type _ ?G (me_var ?x) _ _ =>
-              eapply mt_var with (U := uwk_n (S x) U0);
+              rewrite <- ?rwk_n_shiftn; eapply mt_var with (U := uwk_n (S x) U0);
                 [ apply ctx_find_mod_sound, (ctx_find_slot_mod _ _ _ _ Hf) | eapply ctx_find_slot_wk; eassumption ] end
           | eapply mt_mem; cycle 1; [ solve [ eauto ] | solve [ eauto ] ]
           | eapply mt_app; solve [ eauto ]
@@ -353,7 +366,7 @@ Section MemberTypeImpl.
     | exist _ None Er => inright _ }
   | Γ, me_var x, ch, Ho with inspect (ctx_find_slot Γ x) := {
     | exist _ (Some (U0, Γ')) Ef with unit_member_type_impl Γ' U0 ch _ := {
-      | inleft (exist _ R0 HR0) => inleft (exist _ (rwk_n (S x) R0) _)
+      | inleft (exist _ R0 HR0) => inleft (exist _ (mres_wk R0 (wk_shiftn (S x))) _)
       | inright HN => inright _ }
     | exist _ None Ef => inright _ }
   | Γ, me_lit U, ch, Ho with unit_member_type_impl Γ U ch _ := {
@@ -552,75 +565,10 @@ Qed.
 
 (** * Kinds of Members, without Their Types
 
-    Whether a chain of a module expression is a member, and of which kind,
-    is decided without building its member type: [member_kind] walks as
-    [member_type] does, but reads a slot in the context after it rather
-    than weakened, and has no type to instantiate at an application.  For a
-    well-formed module expression the two agree ([member_kind_complete],
+    [member_kind] ([Core.Syntactic.Members]) agrees with [member_type] for
+    a well-formed module expression ([member_kind_complete],
     [member_kind_sound]): an applied module takes an argument at each of its
     members, so the instantiation [member_type] makes always exists. *)
-
-Inductive member_kind (Θ : gctx) : ctx -> modexp -> list string -> mkind -> Prop :=
-(** A chain of a unit, read in the unit. *)
-| mk_unit : forall Γ fp U ch k,
-    gc_unit Θ fp = Some U ->
-    unit_member_kind Θ nil U ch k ->
-    member_kind Θ Γ (me_unit fp) ch k
-(** A chain of a module slot, read in its unit, in the context after it. *)
-| mk_var : forall Γ x U0 Γ' ch k,
-    ctx_find_slot Γ x = Some (U0, Γ') ->
-    unit_member_kind Θ Γ' U0 ch k ->
-    member_kind Θ Γ (me_var x) ch k
-(** A chain of a literal module. *)
-| mk_lit : forall Γ U ch k,
-    unit_member_kind Θ Γ U ch k ->
-    member_kind Θ Γ (me_lit U) ch k
-(** A selection is read as a longer chain; a definition is not a module. *)
-| mk_mem : forall Γ H y ch k,
-    (k = mk_term -> ch <> nil) ->
-    member_kind Θ Γ H (y :: ch) k ->
-    member_kind Θ Γ (me_mem H y) ch k
-(** An application has the members of its module. *)
-| mk_app : forall Γ H N ch k,
-    member_kind Θ Γ H ch k ->
-    member_kind Θ Γ (me_app H N) ch k
-with unit_member_kind (Θ : gctx) : ctx -> gunit -> list string -> mkind -> Prop :=
-(** A body unit itself is a module. *)
-| umk_self : forall Γ Δ Φ,
-    unit_member_kind Θ Γ (gu_body Δ Φ) nil mk_mod
-(** A definition of the body. *)
-| umk_def : forall Γ Δ Φ Φ' x pv A oM,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A oM)) ->
-    unit_member_kind Θ Γ (gu_body Δ Φ) (x :: nil) mk_term
-(** A chain through a module of the body, read under its self slot. *)
-| umk_mod : forall Γ Δ Φ Φ' y pm Uy ch k,
-    (k = mk_term -> ch <> nil) ->
-    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-    unit_member_kind Θ (self_ent Φ' :: Δ ++ Γ) Uy ch k ->
-    unit_member_kind Θ Γ (gu_body Δ Φ) (y :: ch) k
-(** A chain of an alias, read in its target. *)
-| umk_alias : forall Γ Δ E ch k,
-    member_kind Θ (Δ ++ Γ) E ch k ->
-    unit_member_kind Θ Γ (gu_mk Δ (md_alias E)) ch k.
-
-Scheme member_kind_mut_ind := Induction for member_kind Sort Prop
-with unit_member_kind_mut_ind := Induction for unit_member_kind Sort Prop.
-Combined Scheme member_kind_both_ind from member_kind_mut_ind, unit_member_kind_mut_ind.
-
-#[export]
-Hint Constructors member_kind unit_member_kind : mctt.
-
-Lemma member_kind_functional : forall Θ,
-    (forall Γ H ch k, member_kind Θ Γ H ch k -> forall k', member_kind Θ Γ H ch k' -> k = k') /\
-    (forall Γ U ch k, unit_member_kind Θ Γ U ch k -> forall k', unit_member_kind Θ Γ U ch k' -> k = k').
-Proof.
-  intros Θ; apply member_kind_both_ind; intros;
-    match goal with Hk : _ _ _ _ _ ?k' |- _ = ?k' => inversion Hk; subst end;
-    repeat match goal with
-      | H1 : ?a = Some _, H2 : ?a = Some _ |- _ => rewrite H1 in H2; injection H2; clear H2; intros; subst
-      end;
-    eauto; congruence.
-Qed.
 
 (** A member type at no chain is a module's. *)
 Lemma member_type_side : forall Θ,
@@ -804,6 +752,24 @@ Section MemberKindImpl.
   Next Obligation. kind_obl_tac. Qed.
   Next Obligation. kind_obl_tac. Qed.
 End MemberKindImpl.
+
+(** The kind oracle of a well-formed global context. *)
+Definition mk_of (Θ : gctx) (Hg : ⊢g Θ) : mk_oracle :=
+  fun Γ H ch =>
+    match member_kind_impl Θ Γ H ch (mt_order_total _ Hg Γ H ch) with
+    | inleft (exist _ k _) => Some k
+    | inright _ => None
+    end.
+
+Lemma mk_of_spec : forall Θ (Hg : ⊢g Θ), mk_spec Θ (mk_of Θ Hg).
+Proof.
+  intros * Γ H ch k; unfold mk_of.
+  destruct (member_kind_impl _ _ _ _ _) as [[k' Hk'] | HN]; split; intros Hk.
+  - injection Hk as <-; exact Hk'.
+  - f_equal; exact (proj1 (member_kind_functional _) _ _ _ _ Hk' _ Hk).
+  - discriminate.
+  - exfalso; exact (HN _ Hk).
+Qed.
 
 (** ** Kinds Have Member Types
 

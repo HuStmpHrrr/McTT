@@ -156,7 +156,7 @@ Proof. induction 1; intros f0 F0 Ef; [ subst; eauto | injection Ef as <- <-; eau
 Lemma gens_run_grows : forall Θ Γimp F gs F', gens_run Θ Γimp F gs F' ->
     forall f F0, F = f :: F0 -> exists f', F' = f' :: F0 /\ fr_grows f f'.
 Proof.
-  induction 1 as [| f F d pv A M gs F' _ _ _ IH | f F d pv E gs F' _ _ _ IH]; intros f0 F0 Ef.
+  induction 1 as [| f F d pv H n A B gs F' _ _ _ _ _ IH | f F d pv E gs F' _ _ _ IH]; intros f0 F0 Ef.
   - subst; eexists; split; [ reflexivity | apply fr_grows_refl ].
   - injection Ef as <- <-; destruct (IH _ _ eq_refl) as (f' & -> & Hg).
     eexists; split; [ reflexivity | eapply fr_grows_trans; [ apply fr_grows_add | exact Hg ] ].
@@ -450,8 +450,8 @@ Section Impl.
   Proof. intros E; exists (mt_of Θ Hg); split; [ apply mt_of_spec | exact E ]. Qed.
 
   Lemma open_ok {Θ Γ E oz Γs src its gs} (Hg : ⊢g Θ) :
-    open_gen (mt_of Θ Hg) Γ E oz Γs src its = xok gs -> open_gen_ok Θ Γ E oz Γs src its gs.
-  Proof. intros Eg; exists (mt_of Θ Hg); split; [ apply mt_of_spec | exact Eg ]. Qed.
+    open_gen (mk_of Θ Hg) Γ E oz Γs src its = xok gs -> open_gen_ok Θ Γ E oz Γs src its gs.
+  Proof. intros Eg; exists (mk_of Θ Hg); split; [ apply mk_of_spec | exact Eg ]. Qed.
 
   (** ** Loading *)
 
@@ -519,6 +519,26 @@ Section Impl.
     ⊢ Θ ⍮ fctx Γimp (fr_add d (ge_def pv A (Some M)) f :: F).
   Proof. intros; apply fctx_add_wf; [ assumption | assumption | apply entry_ok_def; assumption ]. Qed.
 
+  (** A member is of the normal form of its member type. *)
+  Lemma gens_typed {Θ Γ H n B} :
+    ⊢ Θ ⍮ Γ -> Θ ⍮ Γ ⊢ᵐ H ≈ H ->
+    (exists A, member_type Θ Γ H (n :: nil) (mr_term A) /\ nbe_ty Θ Γ A B) ->
+    Θ ⍮ Γ ⊢ a_mem H n : B.
+  Proof.
+    intros HΓ HH (A & Hm & HB).
+    pose proof (@member_typed_any (gc_mk Θ) _ _ _ _ HH Hm) as HM.
+    destruct (presup_exp_typ HM) as [i HA].
+    pose proof (@soundness_ty' (gc_mk Θ) _ _ _ _ HA HB) as Heq.
+    eapply wf_conv; [ exact HM | | exact Heq ]; gen_presups; eassumption.
+  Qed.
+
+  Lemma gens_def_intro {Θ Γimp f F d pv H n B gs F'} :
+    (exists A, member_type Θ (fctx Γimp (f :: F)) H (n :: nil) (mr_term A) /\ nbe_ty Θ (fctx Γimp (f :: F)) A B) ->
+    Θ ⍮ fctx Γimp (f :: F) ⊢ a_mem H n : B -> gm_fresh d (fr_body f) ->
+    gens_run Θ Γimp (fr_add d (ge_def pv B (Some (a_mem H n))) f :: F) gs F' ->
+    gens_run Θ Γimp (f :: F) (ig_def d pv H n :: gs) F'.
+  Proof. intros (A & Hm & HB) HM Hfr Hg; eapply gr_def; eassumption. Qed.
+
   Lemma gens_alias_wf {Θ Γimp f F d pv E} :
     ⊢ Θ ⍮ fctx Γimp (f :: F) -> gm_fresh d (fr_body f) -> Θ ⍮ fctx Γimp (f :: F) ⊢ᵐ E ≈ E ->
     ⊢ Θ ⍮ fctx Γimp (fr_add d (ge_mod pv (gu_mk nil (md_alias E))) f :: F).
@@ -530,16 +550,22 @@ Section Impl.
     (gs : list igen) {struct gs} : rres {F' | gens_run Θ Γimp (f :: F) gs F'} :=
     match gs as gs0 return rres {F' | gens_run Θ Γimp (f :: F) gs0 F'} with
     | nil => rok (exist _ (f :: F) (gr_nil _ _ _))
-    | ig_def d pv A M :: gs' =>
+    (** A definition, at the normal form of its member type ([member_nf_dec]). *)
+    | ig_def d pv H n :: gs' =>
         match check_gm_fresh d (fr_body f) with
         | right _ => rerr (re_msg ("duplicate name " ++ d))
         | left Hfr =>
-            match check_exp_fast Θ (fctx Γimp (f :: F)) HF A M with
-            | right _ => rerr (re_def d (fctx Γimp (f :: F)) A M)
-            | left HM =>
-                match gens_impl Θ Γimp (fr_add d (ge_def pv A (Some M)) f) F (gens_def_wf HF Hfr HM) gs' with
-                | rerr e => rerr e
-                | rok (exist _ F' Hg) => rok (exist _ F' (gr_def _ _ _ _ _ _ _ _ _ _ HM Hfr Hg))
+            match check_modexp Θ (fctx Γimp (f :: F)) HF H with
+            | right _ => rerr (re_import (fctx Γimp (f :: F)) (xe_member H n))
+            | left HH =>
+                match @member_nf_dec (gc_mk Θ) (ctx_wf_gctx _ _ HF) (fctx Γimp (f :: F)) HF H n HH with
+                | inright _ => rerr (re_import (fctx Γimp (f :: F)) (xe_member H n))
+                | inleft (exist _ B HB) =>
+                    let HM := gens_typed HF HH HB in
+                    match gens_impl Θ Γimp (fr_add d (ge_def pv B (Some (a_mem H n))) f) F (gens_def_wf HF Hfr HM) gs' with
+                    | rerr e => rerr e
+                    | rok (exist _ F' Hg) => rok (exist _ F' (gens_def_intro HB HM Hfr Hg))
+                    end
                 end
             end
         end
@@ -575,7 +601,7 @@ Section Impl.
             match check_modexp Θ Γ (linv_ctx H) E with
             | right _ => rerr (re_import Γ (xe_target E))
             | left HE =>
-                match inspect (open_gen (mt_of Θ (linv_gctx H)) Γ E oz (lead_slot E :: Γ) (me_var 0) its) with
+                match inspect (open_gen (mk_of Θ (linv_gctx H)) Γ E oz (lead_slot E :: Γ) (me_var 0) its) with
                 | exist _ (xfail e) _ => rerr (re_import Γ e)
                 | exist _ (xok gs) Eg =>
                     rok (exist _ (lr Θ (lead_slot E :: Γ) C)
@@ -675,7 +701,7 @@ Section Impl.
     match check_modexp Θ (fctx Γimp (f :: F)) HF E with
     | right _ => rerr (re_import (fctx Γimp (f :: F)) (xe_target E))
     | left HE =>
-        match inspect (open_gen (mt_of Θ (ctx_wf_gctx _ _ HF)) (fctx Γimp (f :: F)) E oz
+        match inspect (open_gen (mk_of Θ (ctx_wf_gctx _ _ HF)) (fctx Γimp (f :: F)) E oz
                          (fctx Γimp (fr_set (open_alias (fr_body f) E oz) f :: F)) (open_src E oz) its) with
         | exist _ (xfail e) _ => rerr (re_import (fctx Γimp (f :: F)) e)
         | exist _ (xok gs) Eg =>
@@ -1029,13 +1055,27 @@ Section Impl.
     | |- context [opt_case ?o] => destruct (opt_case o) as [[? ?] | Hn]; [ exfalso; congruence |]
     end; cbv beta iota.
 
+  (** A member's module is well formed. *)
+  Lemma wf_mem_modexp : forall Θ Γ H x A, Θ ⍮ Γ ⊢ a_mem H x : A -> Θ ⍮ Γ ⊢ᵐ H ≈ H.
+  Proof.
+    intros * HM; remember (a_mem H x) as M eqn:EM; revert H x EM.
+    induction HM; intros; try discriminate; try (injection EM as -> ->); eauto.
+  Qed.
+
   Lemma gens_complete : forall Θ Γimp F gs F', gens_run Θ Γimp F gs F' ->
       forall f F0 (E : F = f :: F0) HF, exists r, gens_impl Θ Γimp f F0 HF gs = rok r.
   Proof.
-    induction 1 as [F | f F d pv A M gs F' HM Hfr Hg IH | f F d pv E gs F' HE Hfr Hg IH];
+    induction 1 as [F | f F d pv H n A B gs F' Hm Hn HM Hfr Hg IH | f F d pv E gs F' HE Hfr Hg IH];
       intros f0 F0 Ef HF; cbn [gens_impl]; [ eexists; reflexivity | |];
       injection Ef as <- <-; dec_ok Hfr.
-    - dec_ok HM.
+    - (* a definition: its module is well formed, and the normal form is the rule's *)
+      pose proof (wf_mem_modexp _ _ _ _ _ HM) as HH.
+      dec_ok HH.
+      match goal with |- context [@member_nf_dec ?g ?a ?b ?c ?d ?e ?h] =>
+        destruct (@member_nf_dec g a b c d e h) as [[B' (A' & Hm' & HB')] | HN] end;
+        [| exfalso; exact (HN _ Hm) ].
+      pose proof (proj1 (member_type_functional _) _ _ _ _ Hm _ Hm') as E; injection E as <-.
+      pose proof (functional_nbe_ty _ _ _ _ Hn HB') as <-.
       match goal with |- context [gens_impl ?a ?b ?c ?d ?e gs] => destruct (IH _ _ eq_refl e) as [[F1 Hp] E1]; rewrite E1 end.
       eexists; reflexivity.
     - dec_ok HE.
@@ -1118,7 +1158,7 @@ Section Impl.
       intros ch fp Γimp Θ f F E oz its gs F' HE Hgen Hgs Hacc C HC H c Hx.
       refine (nonmod_complete _ Hx _); [ cbn; discriminate |]; cbn [simple_step frame_step]; unfold open_step.
       dec_ok HE.
-      pose proof (open_gen_ok_spec _ (mt_of _ (ctx_wf_gctx _ _ (cinv_ctx H))) _ _ _ _ _ _ _ (mt_of_spec _ _) Hgen) as Eg.
+      pose proof (open_gen_ok_spec _ (mk_of _ (ctx_wf_gctx _ _ (cinv_ctx H))) _ _ _ _ _ _ _ (mk_of_spec _ _) Hgen) as Eg.
       destruct (inspect _) as [[gs1 | ?] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       cbv beta iota.
       destruct (gens_complete _ _ _ _ _ Hgs _ _ eq_refl (cinv_ctx H)) as [[F1 Hp1] E1]; rewrite E1.
@@ -1184,7 +1224,7 @@ Section Impl.
     - (* a leading open *)
       intros ch Θ Γ E oz its gs Hits HE Hgen Hacc fp C HC H; cbn [lead_step].
       dec_ok Hits; dec_ok HE.
-      pose proof (open_gen_ok_spec _ (mt_of _ (linv_gctx H)) _ _ _ _ _ _ _ (mt_of_spec _ _) Hgen) as Eg.
+      pose proof (open_gen_ok_spec _ (mk_of _ (linv_gctx H)) _ _ _ _ _ _ _ (mk_of_spec _ _) Hgen) as Eg.
       destruct (inspect _) as [[gs1 | ?] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       eexists; reflexivity.
     - intros; cbn; eexists; reflexivity.

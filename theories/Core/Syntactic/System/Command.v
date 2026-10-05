@@ -30,8 +30,9 @@ From Stdlib Require Import List String PeanoNat Bool Lia.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command Imports.
-From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup MemberWf.
+From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup MemberLemmas MemberWf.
 From Mctt.Core.Syntactic.System Require Export Privacy.
+From Mctt.Core.Semantic Require Import NbE.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 (** ** Frames *)
@@ -59,14 +60,20 @@ Definition abs_name (fp : path) (ch : list string) (x : string) : qname := q_abs
     The definitions and aliases an open generates, declared in the frame in
     order, with the premises of [rc_def] and [rc_alias]: what the open
     references is checked once, as written ([rcs_cons]), and a generated type
-    is not written, so nothing here checks privacy. *)
+    is not written, so nothing here checks privacy.  A definition [d := H.n]
+    is filed at the normal form [B] of [n]'s member type [A], not at [A]:
+    [A] holds the bodies before [n] literally, and so would every member
+    type that reads [d] in turn. *)
 
 Inductive gens_run (Θ : gctx) (Γimp : ctx) : list frame -> list igen -> list frame -> Prop :=
 | gr_nil : forall F, gens_run Θ Γimp F nil F
-| gr_def : forall f F d pv A M gs F',
-    Θ ⍮ fctx Γimp (f :: F) ⊢ M : A -> gm_fresh d (fr_body f) ->
-    gens_run Θ Γimp (fr_add d (ge_def pv A (Some M)) f :: F) gs F' ->
-    gens_run Θ Γimp (f :: F) (ig_def d pv A M :: gs) F'
+| gr_def : forall f F d pv H n A B gs F',
+    member_type Θ (fctx Γimp (f :: F)) H (n :: nil) (mr_term A) ->
+    nbe_ty Θ (fctx Γimp (f :: F)) A B ->
+    Θ ⍮ fctx Γimp (f :: F) ⊢ a_mem H n : B ->
+    gm_fresh d (fr_body f) ->
+    gens_run Θ Γimp (fr_add d (ge_def pv B (Some (a_mem H n))) f :: F) gs F' ->
+    gens_run Θ Γimp (f :: F) (ig_def d pv H n :: gs) F'
 | gr_alias : forall f F d pv E gs F',
     Θ ⍮ fctx Γimp (f :: F) ⊢ᵐ E ≈ E -> gm_fresh d (fr_body f) ->
     gens_run Θ Γimp (fr_add d (ge_mod pv (gu_mk nil (md_alias E))) f :: F) gs F' ->
@@ -591,7 +598,15 @@ Section WellFormed.
   Lemma gens_run_functional : forall Θ Γimp F gs F1, gens_run Θ Γimp F gs F1 ->
       forall F2, gens_run Θ Γimp F gs F2 -> F1 = F2.
   Proof.
-    induction 1; intros F2 H2; inversion H2; subst; [ reflexivity | auto | auto ].
+    induction 1; intros F2 Hr2; inversion Hr2; subst; [ reflexivity | | auto ].
+    (* a definition: its member type and that type's normal form are unique *)
+    match goal with
+    | Hm1 : member_type _ _ _ _ (mr_term ?A1), Hm2 : member_type _ _ _ _ (mr_term ?A2) |- _ =>
+        pose proof (proj1 (member_type_functional _) _ _ _ _ Hm1 _ Hm2) as E; injection E as <-
+    end.
+    match goal with
+    | Hn1 : nbe_ty _ _ _ ?B1, Hn2 : nbe_ty _ _ _ ?B2 |- _ => pose proof (functional_nbe_ty _ _ _ _ Hn1 Hn2); subst B2
+    end; auto.
   Qed.
 
   Theorem run_functional :

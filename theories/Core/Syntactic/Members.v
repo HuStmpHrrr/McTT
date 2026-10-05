@@ -277,6 +277,86 @@ Combined Scheme member_type_both_ind from member_type_mut_ind, unit_member_type_
 #[export]
 Hint Constructors member_type unit_member_type : mctt.
 
+(** ** Kinds of Members
+
+    Whether a chain of a module expression is a member, and of which kind,
+    without building its member type: [member_kind] walks as [member_type]
+    does, but reads a slot in the context after it ([ctx_find_slot]) rather
+    than weakened, and has no type to instantiate at an application. *)
+
+(** The unit of a slot and the context after it. *)
+Fixpoint ctx_find_slot (Γ : ctx) (x : nat) : option (gunit * ctx) :=
+  match Γ with
+  | nil => None
+  | e :: Γ' =>
+      match x with
+      | 0 => match e with ce_mod U => Some (U, Γ') | _ => None end
+      | S y => ctx_find_slot Γ' y
+      end
+  end.
+
+Inductive member_kind (Θ : gctx) : ctx -> modexp -> list string -> mkind -> Prop :=
+(** A chain of a unit, read in the unit. *)
+| mk_unit : forall Γ fp U ch k,
+    gc_unit Θ fp = Some U ->
+    unit_member_kind Θ nil U ch k ->
+    member_kind Θ Γ (me_unit fp) ch k
+(** A chain of a module slot, read in its unit, in the context after it. *)
+| mk_var : forall Γ x U0 Γ' ch k,
+    ctx_find_slot Γ x = Some (U0, Γ') ->
+    unit_member_kind Θ Γ' U0 ch k ->
+    member_kind Θ Γ (me_var x) ch k
+(** A chain of a literal module. *)
+| mk_lit : forall Γ U ch k,
+    unit_member_kind Θ Γ U ch k ->
+    member_kind Θ Γ (me_lit U) ch k
+(** A selection is read as a longer chain; a definition is not a module. *)
+| mk_mem : forall Γ H y ch k,
+    (k = mk_term -> ch <> nil) ->
+    member_kind Θ Γ H (y :: ch) k ->
+    member_kind Θ Γ (me_mem H y) ch k
+(** An application has the members of its module. *)
+| mk_app : forall Γ H N ch k,
+    member_kind Θ Γ H ch k ->
+    member_kind Θ Γ (me_app H N) ch k
+with unit_member_kind (Θ : gctx) : ctx -> gunit -> list string -> mkind -> Prop :=
+(** A body unit itself is a module. *)
+| umk_self : forall Γ Δ Φ,
+    unit_member_kind Θ Γ (gu_body Δ Φ) nil mk_mod
+(** A definition of the body. *)
+| umk_def : forall Γ Δ Φ Φ' x pv A oM,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A oM)) ->
+    unit_member_kind Θ Γ (gu_body Δ Φ) (x :: nil) mk_term
+(** A chain through a module of the body, read under its self slot. *)
+| umk_mod : forall Γ Δ Φ Φ' y pm Uy ch k,
+    (k = mk_term -> ch <> nil) ->
+    gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
+    unit_member_kind Θ (self_ent Φ' :: Δ ++ Γ) Uy ch k ->
+    unit_member_kind Θ Γ (gu_body Δ Φ) (y :: ch) k
+(** A chain of an alias, read in its target. *)
+| umk_alias : forall Γ Δ E ch k,
+    member_kind Θ (Δ ++ Γ) E ch k ->
+    unit_member_kind Θ Γ (gu_mk Δ (md_alias E)) ch k.
+
+Scheme member_kind_mut_ind := Induction for member_kind Sort Prop
+with unit_member_kind_mut_ind := Induction for unit_member_kind Sort Prop.
+Combined Scheme member_kind_both_ind from member_kind_mut_ind, unit_member_kind_mut_ind.
+
+#[export]
+Hint Constructors member_kind unit_member_kind : mctt.
+
+Lemma member_kind_functional : forall Θ,
+    (forall Γ H ch k, member_kind Θ Γ H ch k -> forall k', member_kind Θ Γ H ch k' -> k = k') /\
+    (forall Γ U ch k, unit_member_kind Θ Γ U ch k -> forall k', unit_member_kind Θ Γ U ch k' -> k = k').
+Proof.
+  intros Θ; apply member_kind_both_ind; intros;
+    match goal with Hk : _ _ _ _ _ ?k' |- _ = ?k' => inversion Hk; subst end;
+    repeat match goal with
+      | H1 : ?a = Some _, H2 : ?a = Some _ |- _ => rewrite H1 in H2; injection H2; clear H2; intros; subst
+      end;
+    eauto; congruence.
+Qed.
+
 (** ** Expansions and the δ-Reduct
 
     The expansion of a member of a unit is a term of the unit's context: a

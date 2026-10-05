@@ -8,7 +8,7 @@ From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System Require Import MemberWf.
 From Mctt.Core.Semantic Require Import MemberWf MemberNf.
 From Mctt.Core.Completeness Require Import MemberSem.
-From Mctt.Extraction Require Import Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Extraction Require Import Evaluation Readback NbE PseudoMonadic Subtyping MemberType SynEq.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -284,6 +284,65 @@ Section type_check.
                    (fun k' Hk' => proj1 (member_kind_functional _) _ _ _ _ Hk' _ Hk) ltac:(discriminate))
     | inright HN => inright (fun A HA => HN _ (member_kind_complete _ Hg _ _ _ _ HA)) }.
 
+  (** A submodule, decided on kinds only, without building its arity. *)
+  Definition member_mod_kind_dec (Hg : ⊢g gc_ctx) G M y (HM : gc_ctx ⍮ G ⊢ᵐ M ≈ M) :
+      { exists T, member_type gc_ctx G M (y :: nil) (mr_mod T) } +
+      { forall T, ~ member_type gc_ctx G M (y :: nil) (mr_mod T) }.
+  Proof.
+    destruct (member_kind_dec Hg G M (y :: nil)) as [[[|] Hk] | HN].
+    - right; intros T HT.
+      pose proof (proj1 (member_kind_functional _) _ _ _ _ (member_kind_complete _ Hg _ _ _ _ HT) _ Hk); discriminate.
+    - left; destruct (proj1 (member_kind_sound Hg) _ _ _ _ Hk HM) as ([A | T] & HR & Ek); [ discriminate | eauto ].
+    - right; intros T HT; exact (HN _ (member_kind_complete _ Hg _ _ _ _ HT)).
+  Defined.
+
+  (** ** Members at Their Own Types
+
+      A term member of a well-formed module expression has its member type,
+      which is a type ([member_wf]).  So a definition [d := H.n] at the
+      member type of [H.n], as a local open generates, needs no check. *)
+
+  Lemma member_typed_any : forall G H x A,
+      gc_ctx ⍮ G ⊢ᵐ H ≈ H -> member_type gc_ctx G H (x :: nil) (mr_term A) -> G ⊢ a_mem H x : A.
+  Proof.
+    intros * HH Hm.
+    destruct (proj1 member_wf _ _ _ _ Hm HH ltac:(intros; discriminate)) as ([i HA] & HMu & Happ); cbn [mres_ty] in *.
+    destruct (modexp_spine H) as [[R args] pre] eqn:Es; destruct args as [| N args].
+    - destruct (HMu eq_refl) as (M & HMe & HMt).
+      eapply wf_mem; [ eapply spine_nil_noargs; eassumption | eassumption .. ].
+    - eapply wf_mem_app; [ eassumption | eassumption | discriminate | eassumption | exact (Happ eq_refl _ _ _ eq_refl) ].
+  Qed.
+
+  Lemma known_def_ok : forall G H x A, ⊢ G ->
+      gc_ctx ⍮ G ⊢ᵐ H ≈ H -> member_type gc_ctx G H (x :: nil) (mr_term A) ->
+      (exists i, G ⊢a A ⟹ Typeⁿ@i) /\ G ⊢a a_mem H x ⟸ A.
+  Proof.
+    intros * HG HH Hm.
+    destruct (proj1 (proj1 member_wf _ _ _ _ Hm HH ltac:(intros; discriminate))) as [i HA]; cbn [mres_ty] in HA.
+    destruct (alg_type_infer_typ_complete (user_exp_all A) HA) as (j & Hj & _).
+    split; [ eauto | apply alg_type_check_complete; [ apply user_exp_all | apply member_typed_any; assumption ] ].
+  Qed.
+
+  Lemma alg_mem_modexp : forall G H x B, ⊢ G -> G ⊢a a_mem H x ⟹ B -> gc_ctx ⍮ G ⊢ᵐ H ≈ H.
+  Proof. intros * HG HB; inversion HB; subst; eapply alg_modexp_sound; eassumption. Qed.
+
+  (** Whether a definition is a member at its own member type, as written. *)
+  Definition known_def_dec (Hg : ⊢g gc_ctx) G (HG : ⊢ G) A M B (HB : G ⊢a M ⟹ B) :
+      { (exists i, G ⊢a A ⟹ Typeⁿ@i) /\ G ⊢a M ⟸ A } + { True } :=
+    match M as M0 return G ⊢a M0 ⟹ B -> { (exists i, G ⊢a A ⟹ Typeⁿ@i) /\ G ⊢a M0 ⟸ A } + { True } with
+    | a_mem H x => fun HB =>
+        let HH := alg_mem_modexp _ _ _ _ HG HB in
+        match member_term_dec Hg G H (x :: nil) HH with
+        | inleft (exist _ A' HA') =>
+            match exp_eq_test A' A with
+            | left E => left (known_def_ok _ _ _ _ HG HH (eq_rect A' (fun C => member_type gc_ctx G H (x :: nil) (mr_term C)) HA' A E))
+            | right _ => right I
+            end
+        | inright _ => right I
+        end
+    | _ => fun _ => right I
+    end HB.
+
   Inductive type_check_order : exp -> Prop :=
   | tc_ti : forall {A}, type_infer_order A -> type_check_order A
   with type_infer_order : exp -> Prop :=
@@ -540,6 +599,9 @@ Section type_check.
       | H: ext_order _ |- _ => progressive_invert H
       | H: unit_order _ |- _ => progressive_invert H
       | H: modexp_order _ |- _ => progressive_invert H
+      (* the order of a definition's body, from its body's order *)
+      | H: forall M0, Some ?M = Some M0 -> type_check_order M0 |- type_infer_order ?M =>
+          let Hc := fresh "Hc" in pose proof (H _ eq_refl) as Hc; clear H; progressive_invert Hc
       end;
     destruct_conjs;
     match goal with
@@ -659,6 +721,20 @@ Section type_check.
                        | eapply level_of_nbe; eassumption ] ]
       | solve [ split; [ eapply ati_mem_app; [ eassumption | eassumption | discriminate | eassumption ] | eauto ] ]
       | solve [ negc ]
+      (* the subtyping of a definition's inferred type under its declared one *)
+      | solve [ match goal with |- subtyping_order ?G ?A ?B =>
+                  assert (⊢ G) by ctx_wf_tac;
+                  enough (exists i, G ⊢ A : Typeⁿ@i) as [? [? []]%soundness_ty];
+                  only 1: enough (exists j, G ⊢ B : Typeⁿ@j) as [? [? []]%soundness_ty];
+                  only 1: solve [ econstructor; eauto 3 using nbe_ty_order_sound ];
+                  solve [ mauto 4 using alg_type_infer_sound ] end ]
+      (* a definition, known or checked *)
+      | solve [ eapply aunit_def; [ eassumption | eassumption | eassumption | first [ eassumption | econstructor; eassumption ] ] ]
+      (* a definition whose body fails to infer, or infers a type not below [A] *)
+      | solve [ match goal with Hx : _ ⊢aᵘ (gu_mk _ _) |- False => inversion Hx; subst end;
+                match goal with Hc : _ ⊢a _ ⟸ _ |- _ => inversion Hc; subst end;
+                functional_alg_type_infer_rewrite_clear;
+                first [ contradiction | match goal with HN : forall A, ~ _ |- _ => eapply HN; eassumption end ] ]
       | solve [ split; intros * [] ]
       | solve [ econstructor; eassumption ]
       | solve [ econstructor; eauto ]
@@ -811,13 +887,18 @@ Section type_check.
       let*b _ := ext_check G HG Δ _ while _ in
       let*b _ := tele_ass_dec Δ while _ in
       pureb _
-  (** An entry, in the self context of the body before it. *)
+  (** An entry, in the self context of the body before it.  A member at
+      its own member type, as a local open generates it, is not checked
+      again ([known_def_dec]); otherwise [A] is checked to be a type, and
+      [M] against it, as [type_check] does. *)
   | G, HG, gu_mk Δ (md_body (gm_ext Φ x (ge_def pv A (Some M)))), H =>
       let*b HΦ := unit_check G HG (gu_body Δ Φ) _ while _ in
       let*b _ := gm_fresh_dec x Φ while _ in
+      let*o->b (exist _ B HB) := type_infer (self_ent Φ :: Δ ++ G) _ M _ while _ in
+      let*k HK := known_def_dec _ (self_ent Φ :: Δ ++ G) _ A M B (proj1 HB) then _ else
       let*o->b (exist _ UA _) := type_infer (self_ent Φ :: Δ ++ G) _ A _ while _ in
       let*o->b (exist _ i _) := get_level_of_type_nf UA while _ in
-      let*b _ := type_check (self_ent Φ :: Δ ++ G) A _ M _ while _ in
+      let*b _ := subtyping_impl (self_ent Φ :: Δ ++ G) (B : nf) A _ while _ in
       pureb _
   (** A local body has no axioms. *)
   | G, HG, gu_mk Δ (md_body (gm_ext Φ x (ge_def pv A None))), H => right _
@@ -844,9 +925,10 @@ Section type_check.
   | G, HG, me_lit U, H =>
       let*b _ := unit_check G HG U _ while _ in
       pureb _
+  (** A submodule, decided on kinds ([member_mod_kind_dec]). *)
   | G, HG, me_mem M y, H =>
       let*b HM := modexp_check G HG M _ while _ in
-      let*o->b (exist _ T _) := member_mod_dec _ G M (y :: nil) _ while _ in
+      let*b _ := member_mod_kind_dec _ G M y _ while _ in
       pureb _
   | G, HG, me_app M N, H =>
       let*b HM := modexp_check G HG M _ while _ in
@@ -1096,6 +1178,7 @@ Section type_check.
   Qed.
 
   (** The obligations of the module cases. *)
+  Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.

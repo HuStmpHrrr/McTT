@@ -515,3 +515,44 @@ what was built, and the decisions taken on the way.
   `Groups`) vary by up to 25% with the code layout of the executable alone
   (where `ocamlopt` happens to place `Evaluation`); compare such files
   across builds only with a padded control.
+
+### 11.6 Imports inside module bodies (`wip/flat-opens`, 2026-10-05)
+
+With imports moved into the module bodies, a body `open`/`import … use (x)`
+filed `x : A := E.x` with `A` the literal member type of `E.x`, which holds
+the bodies before `x`, including `E`'s own imported items, whose types held
+their sources' bodies in turn: exponential in import depth (a chain of 10
+units: 72, 550, 5326, 53086, 530686 nodes, for a normal form of 1 node).
+`lib` and Prelude took 563 s (21 s before the move).
+- **Generated definitions are filed at normal forms (N).**  `gens_run`'s
+  `gr_def` (`Core/Syntactic/System/Command.v`) premises the member type `A`
+  of `H.n`, its normal form `nbe_ty Θ Γ A B`, and the typing
+  `Θ ⍮ Γ ⊢ a_mem H n : B`, and files `ge_def pv B (Some (a_mem H n))`.
+  `System/Command.v` imports `Core.Semantic.NbE` (no cycle: NbE does not
+  depend on commands).  `gens_run_functional` uses `member_type_functional`
+  and `functional_nbe_ty`; `gens_run_wf` is unchanged (the typing premise).
+- **Generation decides on kinds only (O).**  `igen` is type-free,
+  `ig_def d pv H n`; `open_gen` takes a kind oracle (`mk_oracle`,
+  `mk_spec Θ mk := mk Γ H ch = Some k <-> member_kind Θ Γ H ch k`;
+  `member_kind` moved to `Core/Syntactic/Members.v`), and `open_gen_ok`
+  quantifies over such oracles.  The checker's oracle is `mk_of`
+  (`member_kind_impl`).  The checks shared by both kinds of open are
+  `open_with`.
+- **Local opens are unchanged in meaning:** they are expanded before typing
+  (`open_local`, `item_entry`), each definition at its literal member type,
+  read by the `mt` oracle on the skeleton.  Normal forms there were
+  rejected (option L): `cmd_xp` runs on `skel_ctx`, where NbE has no
+  meaning (`.claude/plans/flat-opens/scratch/SkelNbe.v`).
+- **Checker (F, K, W).**  `unit_check` infers a definition's body first
+  and, when it is a member at its own literal member type
+  (`known_def_dec`), concludes without checking the type or subtyping
+  (`known_def_ok`, by `member_typed_any` and algorithmic completeness);
+  otherwise it checks the type and the subtyping, as `type_check` does.
+  `modexp_check (me_mem H y)` decides on kinds (`member_mod_kind_dec`).
+  `member_type_impl` weakens a slot's member type by one `wk_shiftn`
+  (`rwk_n_shiftn`), not one shift at a time.  `gens_impl` computes the
+  normal form with `member_nf_dec` and types the member by
+  `member_typed_any` and `soundness_ty'`.
+- Statements of `prog_impl_sound`/`_complete`, `main_*`, consistency and
+  canonicity are unchanged; the accepted programs and their outputs are
+  those of `ext/local-modules`.  `lib` and Prelude: 19.4 s.

@@ -47,4 +47,17 @@ Arguments sumor_sumbool_failable_bind /.
 
 Notation "'let*o->b' a ':=' ab 'while' fail 'in' next" := (sumor_sumbool_failable_bind ab fail (fun a => next)) (at level 200, a pattern, next at level 200, right associativity, only parsing).
 
-Extraction Inline sumbool_failable_bind sumor_failable_bind sumbool_sumor_failable_bind sumor_sumbool_failable_bind.
+(** A shortcut: when [k] holds, [hit] concludes at once; otherwise [miss]
+    decides. *)
+Definition sumbool_shortcut {A : Prop} (k : {A} + {True}) {C D : Prop} (hit : A -> C) (miss : True -> {C} + {D}) :=
+  match k with
+  | left a => left (hit a)
+  | right t => miss t
+  end.
+Transparent sumbool_shortcut.
+Arguments sumbool_shortcut /.
+
+Notation "'let*k' a ':=' k 'then' hit 'else' miss" := (sumbool_shortcut k (fun a => hit) (fun _ => miss)) (at level 200, a pattern, miss at level 200, right associativity, only parsing).
+
+Extraction Inline sumbool_failable_bind sumor_failable_bind sumbool_sumor_failable_bind sumor_sumbool_failable_bind
+  sumbool_shortcut.
