@@ -1,18 +1,18 @@
-(** * Imports: Generation and Expansion
+(** * Opens: Generation and Expansion
 
-    An import declares names for the members of a module: [import E use (n)]
-    makes [n] a private definition equal to [E.n], [import E as y] makes [y]
+    An open declares names for the members of a module: [open E use (n)]
+    makes [n] a private definition equal to [E.n], [open E as y] makes [y]
     a private alias of [E].  What an item declares is computed from the
     member's type ([import_gen]), so it needs the member types of the global
     context, given here as an oracle ([mt_oracle]) that [mt_spec] ties to
     [member_type].
 
-    At the global level an import is a command, [cc_import], which runs the
+    At the global level an open is a command, [cc_open], which runs the
     definitions and aliases it generates as commands ([Command]).  In a local
-    body it is a pre-form, [gm_import], that the core expands into ordinary
+    body it is a pre-form, [gm_open], that the core expands into ordinary
     entries before typing: [cmd_xp] is the identity on every former but
-    [gm_import], which it replaces by the generated entries.  No typing rule
-    mentions [gm_import]. *)
+    [gm_open], which it replaces by the generated entries.  No typing rule
+    mentions [gm_open]. *)
 
 From Stdlib Require Import List String Bool.
 
@@ -182,7 +182,7 @@ Fixpoint body_skel (Φ : gmod) : skel :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ _ E => entry_skel E :: body_skel Φ
-  | gm_import Φ _ its => repeat None (List.length its) ++ body_skel Φ
+  | gm_open Φ _ its => repeat None (List.length its) ++ body_skel Φ
   end.
 
 (** A generated item as a body entry. *)
@@ -284,7 +284,7 @@ Section Expansion.
         let+ Φ' := gmod_xp S Φ in
         let+ E' := gentry_xp (body_skel Φ' ++ S) E in
         xok (gm_ext Φ' x E')
-    | gm_import Φ H its =>
+    | gm_open Φ H its =>
         let+ Φ' := gmod_xp S Φ in
         let+ H' := modexp_xp (body_skel Φ' ++ S) H in
         let+ gs := import_gen mt (skel_ctx (body_skel Φ' ++ S)) H' its in
@@ -337,9 +337,9 @@ Section Expansion.
         let+ E' := modexp_xp (map centry_skel Δ' ++ S) E in
         xok (cc_alias x pv Δ' E')
     | cc_load fp => xok (cc_load fp)
-    | cc_import E its =>
+    | cc_open E its =>
         let+ E' := modexp_xp S E in
-        xok (cc_import E' its)
+        xok (cc_open E' its)
     | cc_eval M oA =>
         let+ M' := exp_xp S M in
         let+ oA' := match oA with
@@ -489,7 +489,7 @@ Definition ccmd_head (c : ccmd) : nat :=
   | cc_mod _ _ _ _ => 1
   | cc_alias _ _ _ _ => 2
   | cc_load _ => 3
-  | cc_import _ _ => 4
+  | cc_open _ _ => 4
   | cc_eval _ _ => 5
   end.
 

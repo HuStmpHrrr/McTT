@@ -16,7 +16,7 @@ import Prelude::Arith::Pow.Basic use (onePow)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
 import Prelude::Arith::Sum.Linear use (sumToScale)
-(* Loaded for the import in the local body of [Table] below: an import in a
+(* Loaded for the open in the local body of [Table] below: an open in a
    local body names a unit already loaded, and declares private definitions
    of the members it uses. *)
 import Prelude::Arith::MinMax as MinMax
@@ -63,7 +63,7 @@ end
 
 end
 
-import Scheme use (shift; term; hornerFrom)
+open Scheme use (shift; term; hornerFrom)
 
 def horner (c : Coeffs) (n : Nat) : Nat := hornerFrom n c end
 
@@ -129,9 +129,9 @@ eval At.naive 2 (cubic 1 2 3 4) 4
 
 (* An evaluator for a fixed polynomial, made locally: the values at the
    points below [k], summed, and their maximum.  The maximum comes from an
-   import inside the local body. *)
+   open inside the local body. *)
 eval let module Table (c : Coeffs) where
-       import Prelude::Arith::MinMax use (max)
+       open Prelude::Arith::MinMax use (max)
        def value (x : Nat) : Nat := At.horner x c 4 end
        def total (k : Nat) : Nat := sumTo value k end
        def peak (k : Nat) : Nat :=

@@ -52,17 +52,23 @@ let format_mods (f : Format.formatter) (m : Cst.mods) : unit =
   if m.Cst.md_private then Format.pp_print_string f "private ";
   if m.Cst.md_abstract then Format.pp_print_string f "abstract "
 
-let format_ispec (f : Format.formatter) : Cst.ispec -> unit =
+(* The items of an open: [as W] first, then the member items, consecutive
+   ones of the same privacy sharing a [use] or [export] list; [c] is the item
+   [(c, c)], [c as d] is [(c, d)]. *)
+let format_items (f : Format.formatter) (its : ((string option * string) * bool) list) : unit =
   let open Format in
-  function
-  | Cst.Coq_i_open -> ()
-  | Cst.Coq_i_as x -> fprintf f " as %s" x
-  | Cst.Coq_i_items (us, es) ->
-     (* [c] is the item [(c, c)], [c as d] is [(c, d)]. *)
-     let items l =
-       String.concat "; " (List.map (fun (n, d) -> if n = d then n else n ^ " as " ^ d) l) in
-     if us <> [] then fprintf f " use (%s)" (items us);
-     if es <> [] then fprintf f " export (%s)" (items es)
+  List.iter (function ((None, w), _) -> fprintf f " as %s" w | _ -> ()) its;
+  let item (n, d) = if n = d then n else n ^ " as " ^ d in
+  let rec groups = function
+    | [] -> []
+    | ((Some n, d), pv) :: rest ->
+       (match groups rest with
+        | (pv', l) :: gs when pv' = pv -> (pv, item (n, d) :: l) :: gs
+        | gs -> (pv, [item (n, d)]) :: gs)
+    | ((None, _), _) :: rest -> groups rest in
+  List.iter
+    (fun (pv, l) -> fprintf f " %s (%s)" (if pv then "use" else "export") (String.concat "; " l))
+    (groups its)
 
 (* [::] joins a file path and [.] an internal one; either half may be empty. *)
 let string_of_qpath (fp : string list) (ip : string list) : string =
@@ -198,10 +204,12 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
      pp_close_box f ()
-  | Cst.Coq_c_import (fp, ip, args, spec) ->
-     fprintf f "@[<hov 2>import %s" (string_of_qpath fp ip);
+  | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %s@]" (String.concat "::" fp)
+  | Cst.Coq_c_open (fp, ip, args, its) ->
+     fprintf f "@[<hov 2>open %s" (string_of_qpath fp ip);
      List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
-     fprintf f "%a@]" format_ispec spec
+     fprintf f "%a@]" format_items its
+  | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -385,21 +393,13 @@ let exp_to_obj =
             Cst.Coq_c_mod (priv, x, params, md)
        in
        (cs @ [c], x :: ctx')
-    | Coq_gm_import (phi, h, its) ->
+    | Coq_gm_open (phi, h, its) ->
        let cs, ctx' = impl_body ctx phi in
        (* The target is a module expression, printed in place of a path;
           each item binds its name. *)
        let target = Format.asprintf "%a" format_obj (impl_mod ctx' h) in
        let names = List.map (fun ((_, d), _) -> d) its in
-       let item ((n, d), _) = ((match n with Some n -> n | None -> d), d) in
-       let spec = match its with
-         | [] -> Cst.Coq_i_open
-         | [((None, y), _)] -> Cst.Coq_i_as y
-         | _ ->
-            let us, es = List.partition (fun (_, pv) -> pv) its in
-            Cst.Coq_i_items (List.map item us, List.map item es)
-       in
-       (cs @ [Cst.Coq_c_import ([], [target], [], spec)], List.rev_append names ctx')
+       (cs @ [Cst.Coq_c_open ([], [target], [], its)], List.rev_append names ctx')
   in
   fun exp ->
     reset_var_suffix ();
@@ -449,7 +449,7 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_import e ->
      let open McttExtracted.Imports in
      (match e with
-      | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed import@]"
+      | Coq_xe_target _ -> fprintf f "@[<hov 2>Error: ill-formed open@]"
       | Coq_xe_member (h, n) ->
          (* A chain from a unit is printed as a privacy error names it. *)
          let rec chain = function

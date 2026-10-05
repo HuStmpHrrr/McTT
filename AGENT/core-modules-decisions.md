@@ -403,3 +403,31 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `import Prelude::Arith::Equality use (Eq) module M (p : Eq 1 1) where … end`
   gives `unbound name Eq` (it was accepted while `use` bound elaborator
   aliases); the qualified name `Prelude::Arith::Equality.Eq` still works.
+
+### 10.8 Import loads, open declares; definition keywords
+- `import X::Y` only loads (`cc_load`; a repeated one is `rc_load_filed`, a
+  no-op).  It names a unit: `import M` for a module in scope is a syntax
+  error.  Declaring is `open E [as W] (use (…) | export (…))*`: the core
+  command `cc_import` is renamed `cc_open` (`rc_open`, `gm_open` for the
+  local pre-form), otherwise unchanged (`import_gen`, `gens_run`).
+- The parser splits the compound forms (`Cst.open_cmds`,
+  `Cst.import_cmds`): `open E as W items` is `open E as W` then `open W
+  items`, so generated definitions refer to the alias (`W.n`, and a missing
+  member is reported as `T.W.n is not a member`); the long form `import X::Y
+  ip args as W items` is `import X::Y` then `open X::Y ip args as W items`.
+- `import` in a local body is an elaborator error, `import is not allowed in
+  a local module; use open`.
+- The surface items are core `iitem`s, now defined before `Cst`.
+- Leading imports and opens are read twice by the elaborator (§10.7's
+  restriction is lifted): before the header, the names they declare denote
+  the members they name, so `import Prelude::Arith::Equality open
+  Prelude::Arith::Equality use (Eq) module M (p : Eq 1 1) where … end` is
+  accepted, the parameter type being `a_mem ⟨Equality⟩ Eq $ 1 $ 1`; in the
+  frame they are the generated members, as before.  Their arguments may no
+  longer name the unit's parameters (`unbound name n`).
+- Definition keywords `theorem`/`lemma` (`abstract def`), `fact`/`remark`
+  (`abstract private def`), `let`/`given` (`private def`), with `def`'s
+  syntax; a modifier the keyword implies is rejected by the parser through
+  `Cst.c_error` (`theorem is already abstract`, `fact takes no modifiers`,
+  `let is already private`).  `fact` is now a keyword, so
+  `Prelude::Arith::Factorial.fact` is renamed `factorial`.

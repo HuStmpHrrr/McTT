@@ -31,9 +31,9 @@ module Prelude::Algebra::Group
 (* The underlying monoid. *)
 module Base := Monoid M R rRefl rSym rTrans op opCong e assoc leftId rightId
 
-import Base use (pow)
-import Base.Cong use (congLeft; congRight; assocBack)
-import Base.Power use (powSuccRight)
+open Base use (pow)
+open Base.Cong use (congLeft; congRight; assocBack)
+open Base.Power use (powSuccRight)
 
 (* Solving [op a x ~ b] and [op x a ~ b] for [x], by multiplying with the
    inverse of [a] on the same side. *)

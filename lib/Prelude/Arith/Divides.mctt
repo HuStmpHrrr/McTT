@@ -52,7 +52,7 @@ end
 
 end
 
-import Basic use (dividesRefl; dividesZero)
+open Basic use (dividesRefl; dividesZero)
 
 (* Divisibility is closed under sums, multiples and differences. *)
 module Closure where

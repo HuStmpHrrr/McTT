@@ -45,7 +45,7 @@ end
 
 end
 
-import Basic use (onePow)
+open Basic use (onePow)
 
 (* The laws of exponents. *)
 module Exp where

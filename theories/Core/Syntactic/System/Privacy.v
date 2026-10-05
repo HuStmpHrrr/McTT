@@ -40,7 +40,7 @@ Fixpoint gm_entry (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_entry Φ ip
       end
-  | gm_import Φ _ _ => gm_entry Φ ip
+  | gm_open Φ _ _ => gm_entry Φ ip
   end.
 
 Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry :=
@@ -237,7 +237,7 @@ with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ x E => let es := btab S Φ in (x, ge_private E, etab (tab_scope es ++ S) E) :: es
-  | gm_import Φ H its =>
+  | gm_open Φ H its =>
       let es := btab S Φ in
       let t := mtab (tab_scope es ++ S) H in
       rev (map (fun it => (iitem_name it, iitem_private it, item_tab t it)) its) ++ es
@@ -302,7 +302,7 @@ with gmod_refs (S : list ptab) (Φ : gmod) : list (ptab * string)%type :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ _ E => gmod_refs S Φ ++ gentry_refs (tab_scope (btab S Φ) ++ S) E
-  | gm_import Φ H its =>
+  | gm_open Φ H its =>
       gmod_refs S Φ ++ modexp_refs (tab_scope (btab S Φ) ++ S) H ++
         item_refs (mtab (tab_scope (btab S Φ) ++ S) H) its
   end
@@ -333,7 +333,7 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_mod _ _ Δ _ => tele_refs nil Δ
   | cc_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
   | cc_load _ => nil
-  | cc_import E its => modexp_refs nil E ++ item_refs (mtab nil E) its
+  | cc_open E its => modexp_refs nil E ++ item_refs (mtab nil E) its
   | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
   end.
 

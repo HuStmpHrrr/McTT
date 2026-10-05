@@ -75,7 +75,7 @@ end
 
 end
 
-import Basic use (chooseZero; chooseOver; chooseSelf)
+open Basic use (chooseZero; chooseOver; chooseSelf)
 
 (* Choosing [a] out of [a + b], as a function of the two sizes, and its
    symmetry.  Only [Symmetry] below uses it. *)

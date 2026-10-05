@@ -147,7 +147,7 @@ Qed.
 Fixpoint gm_coh (T : ctx) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
-  | gm_import Φ0 _ _ => gm_coh T Φ0
+  | gm_open Φ0 _ _ => gm_coh T Φ0
   | gm_ext Φ0 _ (ge_def _ _ A _) => gm_coh T Φ0 /\ exists A0, A = ctx_pi T A0
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body Φ'))) => gm_coh T Φ0 /\ tele_ass Δ /\ gm_coh (Δ ++ T) Φ'
   | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_alias _))) => gm_coh T Φ0 /\ exists Δ0, Δ = Δ0 ++ T /\ tele_ass Δ0
@@ -524,7 +524,7 @@ Proof.
   - destruct (IH _ _ _ _ _ _ H) as (pre & y & T' & Φ' & Heq & Hb & Hs).
     destruct pre as [| v pre]; cbn in Heq, Hb.
     + injection Heq as <- <-; injection Hb as <- <-.
-      exists nil, x, T, (gm_import Φ c its); split; [ reflexivity |]; split; [ reflexivity | exact Hs ].
+      exists nil, x, T, (gm_open Φ c its); split; [ reflexivity |]; split; [ reflexivity | exact Hs ].
     + exists (v :: pre), y, T', Φ'; split; [ exact Heq |]; split; [ exact Hb | exact Hs ].
 Qed.
 
@@ -721,7 +721,7 @@ Section ModInduction.
   Fixpoint gm_valid (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (Φ : gmod) : Prop :=
     match Φ with
     | gm_nil => True
-    | gm_import Φ0 _ _ => gm_valid Θ2 Ξ2 T Φ0
+    | gm_open Φ0 _ _ => gm_valid Θ2 Ξ2 T Φ0
     | gm_ext Φ0 _ (ge_mod _ (gu_mk Δ (md_body Φ'))) =>
         gm_valid Θ2 Ξ2 T Φ0 /\ F Θ2 Ξ2 (Δ ++ T) /\ gm_valid Θ2 Ξ2 (Δ ++ T) Φ'
     | gm_ext Φ0 _ E => gm_valid Θ2 Ξ2 T Φ0 /\ V Θ2 Ξ2 T E

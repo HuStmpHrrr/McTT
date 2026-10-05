@@ -74,13 +74,13 @@ abstract def fromBitsDouble : forall (n : Nat) (k : Nat) ->
 end
 
 (* At an even exponent, [powFast] computes a square.  The proof is a local
-   module that imports the laws it needs from the units loaded above. *)
+   module that opens the laws it needs from the units loaded above. *)
 abstract def powFastDouble : forall (x : Nat) (n : Nat) ->
     Eq (powFast x (double n)) (mult (pow x n) (pow x n)) :=
   fun (x : Nat) (n : Nat) ->
     let module Proof where
-      import Prelude::Arith::Binary.Laws use (powFastPow)
-      import Prelude::Arith::Binary.Halving use (doublePlus)
+      open Prelude::Arith::Binary.Laws use (powFastPow)
+      open Prelude::Arith::Binary.Halving use (doublePlus)
       def fast : Eq (powFast x (double n)) (pow x (double n)) := powFastPow x (double n) end
       def sum : Eq (pow x (double n)) (pow x (plus n n)) :=
         cong (fun (m : Nat) -> pow x m) (double n) (plus n n) (doublePlus n)

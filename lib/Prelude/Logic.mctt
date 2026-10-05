@@ -36,7 +36,7 @@ end
 
 end
 
-import Conj use (And; andIntro; andFst; andSnd; andSwap)
+open Conj use (And; andIntro; andFst; andSnd; andSwap)
 
 (* Disjunction: its injections, case analysis and symmetry. *)
 module Disj where
@@ -68,7 +68,7 @@ end
 
 end
 
-import Disj use (Or; orElim)
+open Disj use (Or; orElim)
 
 (* Logical equivalence and its rules. *)
 module Equiv where

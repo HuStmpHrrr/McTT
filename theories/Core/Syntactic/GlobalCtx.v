@@ -49,7 +49,7 @@ Fixpoint gm_names (Φ : gmod) : list string :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' x _ => x :: gm_names Φ'
-  | gm_import Φ' _ its => rev (map iitem_name its) ++ gm_names Φ'
+  | gm_open Φ' _ its => rev (map iitem_name its) ++ gm_names Φ'
   end.
 
 Definition gm_fresh (x : string) (Φ : gmod) : Prop :=
@@ -82,7 +82,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
                end
           else gm_resolve Φ ip
       end
-  | gm_import Φ _ _ => gm_resolve Φ ip
+  | gm_open Φ _ _ => gm_resolve Φ ip
   end.
 
 Lemma gm_resolve_def : forall Φ ip E,
@@ -144,7 +144,7 @@ Inductive modres : Set :=
 Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option modres :=
   match Φ with
   | gm_nil => None
-  | gm_import Φ0 _ _ => gm_submodule T Φ0 x ip
+  | gm_open Φ0 _ _ => gm_submodule T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -195,7 +195,7 @@ Qed.
 Fixpoint gm_subbody (T : ctx) (Φ : gmod) (x : string) (ip : list string) : option (ctx * gmod) :=
   match Φ with
   | gm_nil => None
-  | gm_import Φ0 _ _ => gm_subbody T Φ0 x ip
+  | gm_open Φ0 _ _ => gm_subbody T Φ0 x ip
   | gm_ext Φ0 y E =>
       if String.eqb x y then
         match E with
@@ -761,7 +761,7 @@ with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_transparent Φ /\ ge_transparent E
-  | gm_import Φ _ _ => gm_transparent Φ
+  | gm_open Φ _ _ => gm_transparent Φ
   end.
 
 Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=

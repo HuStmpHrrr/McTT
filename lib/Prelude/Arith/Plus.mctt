@@ -32,7 +32,7 @@ end
 
 end
 
-import Basic use (plusZero; plusSucc)
+open Basic use (plusZero; plusSucc)
 
 (* Commutativity and associativity, and their consequences. *)
 module Algebra where
@@ -111,7 +111,7 @@ end
 
 end
 
-import Algebra use (plusComm)
+open Algebra use (plusComm)
 
 (* Injectivity of the successor, cancellation, and zero sums. *)
 module Cancel where

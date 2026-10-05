@@ -4,9 +4,9 @@
     open frames.  [cc_load] loads the unit it names, if it is not filed yet,
     by running that unit's own commands from nothing, and merges the units
     that run filed into [Θ]; the chain of units whose loading is in progress
-    is what rules a cycle out.  [cc_import] declares the names its items
+    is what rules a cycle out.  [cc_open] declares the names its items
     generate ([Imports]) as definitions and aliases of the frame.  Every
-    command is expanded before it runs, which turns the local imports of the
+    command is expanded before it runs, which turns the local opens of the
     bodies it contains into entries.
 
     Resolution is lexical — a unit is named by its full path, and an import
@@ -174,13 +174,13 @@ Section Semantics.
       to_core prg = Some u ->
       run_unit (fp :: ch) u ΘU U ->
       Θ ⍮ Ξ ⊢[ch] cc_load fp ⇝ gds_merge Θ (file fp U ΘU) ⍮ Ξ
-  (** An import checks that its target is a module, and declares the
+  (** An open checks that its target is a module, and declares the
       definitions and aliases its items generate in this frame. *)
-  | rc_import : forall ch Θ Ξ E its gs Ξ',
+  | rc_open : forall ch Θ Ξ E its gs Ξ',
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
       import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
-      Θ ⍮ Ξ ⊢[ch] cc_import E its ⇝ Θ ⍮ Ξ'
+      Θ ⍮ Ξ ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ'
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->

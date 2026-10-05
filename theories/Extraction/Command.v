@@ -747,13 +747,13 @@ Section Impl.
     gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ᵐ E ≈ E ->
     import_gen (mt_of _ _ Hg) (gs_tele Ξ) E its = xok gs ->
     post_gens ch Θ K D Ξ gs Ξ' ->
-    post_cmd ch Θ K D Ξ (cc_import E its) (cst Θ K D Ξ').
+    post_cmd ch Θ K D Ξ (cc_open E its) (cst Θ K D Ξ').
   Proof.
     intros HE Hgen Hgs ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
     destruct (Hgs _ Hli) as [Hr Hli'].
     pose proof (gds_equiv_sym _ _ (linv_equiv Hli)) as Heq.
     exists ΘR; split; [| split; [ exact Hli' | split; [ apply ext_refl | apply grows_refl ] ] ].
-    eapply rc_import; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
+    eapply rc_open; [ exact (equiv_modexp _ _ _ _ _ Heq (li_wf _ _ _ _ _ _ Hli) HE) | | exact Hr ].
     exists (mt_of _ _ Hg); split; [ exact (linv_mt_spec Hli Hg) | exact Hgen ].
   Qed.
 
@@ -980,7 +980,7 @@ Section Impl.
               | inleft (exist _ u Hu) with L fp src Hnch Hsrc Θ K u (load_pre H Hn Hnch) => {
                 | rerr e => rerr e
                 | rok (exist _ r Hr, _) => rok (exist _ _ (load_ok Hn Hnch Hsrc Hprg Hp Hu Hr), log_nil) } } } } } } }
-  | ch, L, Θ, K, D, Ξ, cc_import E its, H with check_modexp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) E => {
+  | ch, L, Θ, K, D, Ξ, cc_open E its, H with check_modexp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) E => {
     | right _ => rerr (re_import (xe_target E))
     | left HE with inspect (import_gen (mt_of _ _ (pre_gctx H)) (gs_tele Ξ) E its) => {
       | exist _ (xfail e) _ => rerr (re_import e)
@@ -1029,7 +1029,7 @@ Section Impl.
   | ch, L, Θ, K, D, Ξ, cc_def x b pv A M, H => xp_simple ch L Θ K D Ξ (cc_def x b pv A M) H
   | ch, L, Θ, K, D, Ξ, cc_alias x pv Δ E, H => xp_simple ch L Θ K D Ξ (cc_alias x pv Δ E) H
   | ch, L, Θ, K, D, Ξ, cc_load fp, H => xp_simple ch L Θ K D Ξ (cc_load fp) H
-  | ch, L, Θ, K, D, Ξ, cc_import E its, H => xp_simple ch L Θ K D Ξ (cc_import E its) H
+  | ch, L, Θ, K, D, Ξ, cc_open E its, H => xp_simple ch L Θ K D Ξ (cc_open E its) H
   | ch, L, Θ, K, D, Ξ, cc_eval M oA, H => xp_simple ch L Θ K D Ξ (cc_eval M oA) H.
 
   Definition run_cmds_impl (ch : list path) (L : loader ch) := cmds_step ch (run_cmd_impl ch L).

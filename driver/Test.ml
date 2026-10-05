@@ -967,8 +967,8 @@ let%expect_test "lib/Powers.mctt" =
     Evaluate pow 0 0 --> 1 : Nat
     Evaluate sumTo NatFun.id 11 --> 55 : Nat
     Evaluate sumTo (fun (x1 : Nat) -> mult x1 x1) 6 --> 55 : Nat
-    Evaluate fact 5 --> 120 : Nat
-    Evaluate fact 0 --> 1 : Nat
+    Evaluate factorial 5 --> 120 : Nat
+    Evaluate factorial 0 --> 1 : Nat
     Evaluate powZero 7 --> true : True
     Evaluate powOne 9 --> true : True
     Evaluate onePow 6 --> true : True
@@ -1201,7 +1201,7 @@ let%expect_test "a local body with an import" =
   let _ =
     main_of_body
       "eval let module L where module N where def y : Nat := 5 end end \
-       import N use (y) def z : Nat := succ y end end in L.z end"
+       open N use (y) def z : Nat := succ y end end in L.z end"
   in
   [%expect {|
     Evaluate let module M1 where
@@ -1236,7 +1236,7 @@ let%expect_test "a local import uses a name twice" =
   let _ =
     main_of_body
       "eval let module L where module N where def y : Nat := 5 end end \
-       import N use (y; y) def z : Nat := y end end in L.z end"
+       open N use (y; y) def z : Nat := y end end in L.z end"
   in
   [%expect {| Error: y is already declared |}]
 
@@ -1244,7 +1244,7 @@ let%expect_test "a local body with public definitions and an import" =
   let _ =
     main_of_body
       "eval let module L where module N where def y : Nat := 5 end def w : Nat := 1 end end \
-       import N use (y; w) def z : Nat := y end def v : Nat := w end end in L.v end"
+       open N use (y; w) def z : Nat := y end def v : Nat := w end end in L.v end"
   in
   [%expect {|
     Evaluate let module M1 where
@@ -1276,7 +1276,7 @@ let%expect_test "a local body with public definitions and an import" =
 let%expect_test "an import of a local module alias" =
   let _ =
     main_of_body
-      "module M where def y : Nat := 7 end end module P := M import P as Q eval Q.y"
+      "module M where def y : Nat := 7 end end module P := M open P as Q eval Q.y"
   in
   [%expect {| Evaluate Q.y --> 7 : Nat |}]
 
@@ -1389,7 +1389,7 @@ let%expect_test "a used name must be fresh in its frame" =
 
 let%expect_test "an import of a definition is rejected" =
   let _ = main_of_multi_string "import Lib::Num.double use (x) module X where end" in
-  [%expect {| Error: ill-formed import |}]
+  [%expect {| Error: ill-formed open |}]
 
 let%expect_test "a private member is not used through an import" =
   let _ = main_of_multi_string "import Lib::Priv use (s) module X where end" in
@@ -1398,7 +1398,7 @@ let%expect_test "a private member is not used through an import" =
 let%expect_test "a local use, use as and export" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (double as dbl) \
+      "import Lib::Num module X where eval let module L where open Lib::Num use (double as dbl) \
        export (Ops) def t : Nat := dbl 2 end end in L.Ops.pred L.t end end"
   in
   [%expect {|
@@ -1418,7 +1418,7 @@ let%expect_test "a local use, use as and export" =
 let%expect_test "a local export as" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num export (double as dbl) \
+      "import Lib::Num module X where eval let module L where open Lib::Num export (double as dbl) \
        end in L.dbl 2 end end"
   in
   [%expect {|
@@ -1434,7 +1434,7 @@ let%expect_test "a local export as" =
 let%expect_test "a local submodule use" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (Ops) \
+      "import Lib::Num module X where eval let module L where open Lib::Num use (Ops) \
        def t : Nat := Ops.pred 5 end end in L.t end end"
   in
   [%expect {|
@@ -1451,7 +1451,7 @@ let%expect_test "a local submodule use" =
 let%expect_test "a local import as" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num as W \
+      "import Lib::Num module X where eval let module L where open Lib::Num as W \
        def t : Nat := W.double 1 end end in L.t end end"
   in
   [%expect {|
@@ -1468,7 +1468,7 @@ let%expect_test "a local import as" =
 let%expect_test "a local use is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (double) end \
+      "import Lib::Num module X where eval let module L where open Lib::Num use (double) end \
        in L.double 2 end end"
   in
   [%expect {| Error: double is private in a local module, but it is used outside it |}]
@@ -1476,7 +1476,7 @@ let%expect_test "a local use is private" =
 let%expect_test "a local submodule use is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (Ops) end \
+      "import Lib::Num module X where eval let module L where open Lib::Num use (Ops) end \
        in L.Ops.pred 2 end end"
   in
   [%expect {| Error: Ops is private in a local module, but it is used outside it |}]
@@ -1484,7 +1484,7 @@ let%expect_test "a local submodule use is private" =
 let%expect_test "a local import as is private" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num as W end \
+      "import Lib::Num module X where eval let module L where open Lib::Num as W end \
        in L.W.double 2 end end"
   in
   [%expect {| Error: W is private in a local module, but it is used outside it |}]
@@ -1492,14 +1492,14 @@ let%expect_test "a local import as is private" =
 let%expect_test "a local use of a missing member is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (q) end in 0 end end"
+      "import Lib::Num module X where eval let module L where open Lib::Num use (q) end in 0 end end"
   in
   [%expect {| Error: Lib::Num.q is not a member |}]
 
 let%expect_test "a local member both used and exported is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num use (double) \
+      "import Lib::Num module X where eval let module L where open Lib::Num use (double) \
        export (double) end in 0 end end"
   in
   [%expect {| Error: double is used and exported |}]
@@ -1507,10 +1507,10 @@ let%expect_test "a local member both used and exported is rejected" =
 let%expect_test "a local import of a definition is rejected" =
   let _ =
     main_of_multi_string
-      "import Lib::Num module X where eval let module L where import Lib::Num.double use (x) end \
+      "import Lib::Num module X where eval let module L where open Lib::Num.double use (x) end \
        in 0 end end"
   in
-  [%expect {| Error: ill-formed import |}]
+  [%expect {| Error: ill-formed open |}]
 
 (** Privacy through local modules *)
 
@@ -1586,7 +1586,7 @@ let%expect_test "a private member is not selected from outside" =
   [%expect {| Error: Test.M.s is private |}]
 
 let%expect_test "a private member is not imported by use" =
-  let _ = main_of_body "module M where private def s : Nat := 0 end end import M use (s)" in
+  let _ = main_of_body "module M where private def s : Nat := 0 end end open M use (s)" in
   [%expect {| Error: Test.M.s is private |}]
 
 let%expect_test "a private member is used in its unit and in a nested module" =
@@ -1625,7 +1625,7 @@ let%expect_test "a private member of another unit is not imported by use" =
   [%expect {| Error: Lib::Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not imported by use in a local module" =
-  let _ = main_of_multi_string "import Lib::Priv as P module X where module L where import P use (s) end end" in
+  let _ = main_of_multi_string "import Lib::Priv as P module X where module L where open P use (s) end end" in
   [%expect {| Error: Lib::Priv.s is private |}]
 
 let%expect_test "a private member is not reached through an alias declared outside" =
@@ -1699,7 +1699,7 @@ let%expect_test "a module alias of a term is rejected" =
   [%expect {| Error: not a module |}]
 
 let%expect_test "an alias of a module is not a term" =
-  let _ = main_of_body "module M where end import M as N eval N" in
+  let _ = main_of_body "module M where end open M as N eval N" in
   [%expect {| Error: N has no inferable type |}]
 
 let%expect_test "a module argument of the wrong type is rejected" =
@@ -1731,7 +1731,7 @@ let%expect_test "an opaque definition is rejected in a local body" =
 let%expect_test "a local import of a unit that is not imported is rejected" =
   let _ =
     main_of_program_string ~search_root:"../lib"
-      "module LocalImp where eval let module L where import Prelude::Arith::MinMax use (max) \
+      "module LocalImp where eval let module L where open Prelude::Arith::MinMax use (max) \
        def m : Nat := max 2 3 end end in L.m end end"
   in
   [%expect {| Error: the unit is not imported |}]
@@ -1740,7 +1740,7 @@ let%expect_test "a local import of a unit imported at the top level" =
   let _ =
     main_of_program_string ~search_root:"../lib"
       "import Prelude::Arith::MinMax module LocalImp where eval let module L where \
-       import Prelude::Arith::MinMax use (max) def m : Nat := max 2 3 end end in L.m end end"
+       open Prelude::Arith::MinMax use (max) def m : Nat := max 2 3 end end in L.m end end"
   in
   [%expect {|
     Evaluate let module M1 where
@@ -1772,7 +1772,7 @@ let%expect_test "a local module does not escape its let" =
     |}]
 
 let%expect_test "a use of a missing member is rejected" =
-  let _ = main_of_body "module M where end import M use (f)" in
+  let _ = main_of_body "module M where end open M use (f)" in
   [%expect {| Error: Test.M.f is not a member |}]
 
 let%expect_test "a module expression is expected after :=" =
@@ -1871,3 +1871,287 @@ let%expect_test "lib/Groups.mctt" =
     Evaluate Multiples.multipleAdd minusThree (ofNat 5) 2 --> true : True
     Evaluate Additive.Laws.invOp (ofNat 1) minusThree --> true : True
     |}]
+
+(** Definition keywords *)
+
+let%expect_test "every definition keyword, with parameters" =
+  let _ =
+    main_of_body
+      "module M where \
+       def a (n : Nat) : Nat := succ n end \
+       theorem b (n : Nat) : Nat := n end \
+       lemma c (n : Nat) : Nat := n end \
+       fact d (n : Nat) : Nat := n end \
+       remark e (n : Nat) : Nat := n end \
+       let f (n : Nat) : Nat := succ n end \
+       given g (n : Nat) : Nat := succ n end \
+       def h : Nat := a (b (c (d (e (f (g 0)))))) end end \
+       eval M.a 1 eval M.b 1 eval M.c 1 eval M.h"
+  in
+  [%expect {|
+    Evaluate M.a 1 --> 2 : Nat
+    Evaluate M.b 1 --> M.b 1 : Nat
+    Evaluate M.c 1 --> M.c 1 : Nat
+    Evaluate M.h --> succ (M.b (M.c (M.d (M.e 2)))) : Nat
+    |}]
+
+let%expect_test "let and given are private" =
+  let _ = main_of_body "module M where let f : Nat := 1 end end eval M.f" in
+  [%expect {| Error: Test.M.f is private |}];
+  let _ = main_of_body "module M where given f : Nat := 1 end end eval M.f" in
+  [%expect {| Error: Test.M.f is private |}]
+
+let%expect_test "fact and remark are private" =
+  let _ = main_of_body "module M where fact f : Nat := 1 end end eval M.f" in
+  [%expect {| Error: Test.M.f is private |}];
+  let _ = main_of_body "module M where remark f : Nat := 1 end end eval M.f" in
+  [%expect {| Error: Test.M.f is private |}]
+
+let%expect_test "the modifiers a keyword takes" =
+  let _ =
+    main_of_body
+      "module M where private lemma b : Nat := 2 end abstract given d : Nat := 4 end \
+       private abstract def e : Nat := 5 end abstract private def f : Nat := 6 end \
+       def t : Nat := b end def u : Nat := d end def v : Nat := e end def w : Nat := f end end \
+       eval M.t eval M.u eval M.v eval M.w"
+  in
+  [%expect {|
+    Evaluate M.t --> M.b : Nat
+    Evaluate M.u --> M.d : Nat
+    Evaluate M.v --> M.e : Nat
+    Evaluate M.w --> M.f : Nat
+    |}];
+  let _ =
+    main_of_body
+      "module M where private theorem a : Nat := 1 end abstract let c : Nat := 3 end \
+       def t : Nat := succ (succ a) end def u : Nat := c end end eval M.t eval M.u"
+  in
+  [%expect {|
+    Evaluate M.t --> succ (succ M.a) : Nat
+    Evaluate M.u --> M.c : Nat
+    |}]
+
+let%expect_test "a modifier a keyword implies is rejected" =
+  let _ = main_of_body "abstract theorem a : Nat := 1 end" in
+  [%expect {| Error: theorem is already abstract |}];
+  let _ = main_of_body "abstract private lemma a : Nat := 1 end" in
+  [%expect {| Error: lemma is already abstract |}];
+  let _ = main_of_body "private fact a : Nat := 1 end" in
+  [%expect {| Error: fact takes no modifiers |}];
+  let _ = main_of_body "abstract remark a : Nat := 1 end" in
+  [%expect {| Error: remark takes no modifiers |}];
+  let _ = main_of_body "private let a : Nat := 1 end" in
+  [%expect {| Error: let is already private |}];
+  let _ = main_of_body "private abstract given a : Nat := 1 end" in
+  [%expect {| Error: given is already private |}]
+
+let%expect_test "a command let needs a type" =
+  let _ = main_of_body "let x := 1 end" in
+  [%expect {|
+    Error: on ":=" (at line 1, column 25 - line 1, column 27): Expected a
+      parameter "(x : A)", or ":" followed by the type of the definition.
+    |}]
+
+let%expect_test "a command let and a term let" =
+  let _ = main_of_body "let x : Nat := 1 end eval let y := succ x in y end let z : Nat := x end eval z" in
+  [%expect {|
+    Evaluate let x1 := succ x in x1 end --> 2 : Nat
+    Evaluate z --> 1 : Nat
+    |}]
+
+let%expect_test "keywords in a local body" =
+  let _ =
+    main_of_body
+      "eval let module L where let a (n : Nat) : Nat := succ n end given b : Nat := a 1 end \
+       def c : Nat := b end end in L.c end"
+  in
+  [%expect {|
+    Evaluate let module M1 where
+                   private def a : forall (x1 : Nat) -> Nat :=
+                     fun (x2 : Nat) -> succ x2
+                   end
+                   private def b : Nat :=
+                     a 1
+                   end
+                   def c : Nat :=
+                     b
+                   end
+                 end
+             in M1.c
+             end --> 2 : Nat
+    |}];
+  let _ = main_of_body "eval let module L where let a : Nat := 1 end end in L.a end" in
+  [%expect {| Error: a is private in a local module, but it is used outside it |}]
+
+let%expect_test "an abstract keyword is rejected in a local body" =
+  let _ = main_of_body "eval let module L where theorem a : Nat := 1 end end in 0 end" in
+  [%expect {|
+    Error: let module M1 where
+                 abstract def a : Nat :=
+                   1
+                 end
+               end in 0 end has no inferable type
+    |}];
+  let _ = main_of_body "eval let module L where fact a : Nat := 1 end end in 0 end" in
+  [%expect {|
+    Error: let module M1 where
+                 private abstract def a : Nat :=
+                   1
+                 end
+               end in 0 end has no inferable type
+    |}];
+  let _ = main_of_body "eval let module L where abstract let a : Nat := 1 end end in 0 end" in
+  [%expect {|
+    Error: let module M1 where
+                 private abstract def a : Nat :=
+                   1
+                 end
+               end in 0 end has no inferable type
+    |}]
+
+let%expect_test "a rejected modifier in a local body" =
+  let _ = main_of_body "eval let module L where private let a : Nat := 1 end end in 0 end" in
+  [%expect {| Error: let is already private |}]
+
+(** Open *)
+
+let%expect_test "open with as and several lists in any order" =
+  let _ =
+    main_of_body
+      "module M where def a : Nat := 1 end def b : Nat := 2 end def c : Nat := 3 end \
+       module S where def s : Nat := 4 end end end \
+       module N where open M as Z export (a) use (b; S) export (c as d) \
+       def t : Nat := succ (succ (succ b)) end def u : Nat := S.s end def v : Nat := Z.c end end \
+       eval N.a eval N.d eval N.t eval N.u eval N.v"
+  in
+  [%expect {|
+    Evaluate N.a --> 1 : Nat
+    Evaluate N.d --> 3 : Nat
+    Evaluate N.t --> 5 : Nat
+    Evaluate N.u --> 4 : Nat
+    Evaluate N.v --> 3 : Nat
+    |}]
+
+let%expect_test "an open as is private" =
+  let _ = main_of_body "module M where def a : Nat := 1 end end module N where open M as Z end eval N.Z.a" in
+  [%expect {| Error: Test.N.Z is private |}]
+
+let%expect_test "an open use is private" =
+  let _ = main_of_body "module M where def a : Nat := 1 end end module N where open M use (a) end eval N.a" in
+  [%expect {| Error: Test.N.a is private |}]
+
+let%expect_test "an open of a missing member is rejected" =
+  let _ = main_of_body "module M where end open M use (f)" in
+  [%expect {| Error: Test.M.f is not a member |}];
+  let _ = main_of_body "module M where end open M as Z use (f)" in
+  [%expect {| Error: Test.Z.f is not a member |}]
+
+let%expect_test "an open uses and exports one member" =
+  let _ = main_of_body "module M where def a : Nat := 1 end end open M use (a) export (a as b)" in
+  [%expect {| Error: a is used and exported |}]
+
+let%expect_test "an open names one member twice" =
+  let _ = main_of_body "module M where def a : Nat := 1 end end open M use (a) use (a)" in
+  [%expect {| Error: a is already declared |}]
+
+let%expect_test "an open declares one name twice" =
+  let _ = main_of_body "module M where def a : Nat := 1 end def b : Nat := 2 end end open M use (a; b as a)" in
+  [%expect {| Error: a is already declared |}];
+  let _ = main_of_body "module M where def a : Nat := 1 end end open M as a use (a)" in
+  [%expect {| Error: a is already declared |}]
+
+let%expect_test "an open declares a name already declared" =
+  let _ = main_of_body "module M where def a : Nat := 1 end end def a : Nat := 0 end open M use (a)" in
+  [%expect {| Error: a is already declared |}]
+
+let%expect_test "an open of a term is rejected" =
+  let _ = main_of_body "def a : Nat := 1 end open a use (b)" in
+  [%expect {| Error: ill-formed open |}]
+
+let%expect_test "an open of a unit that is not imported is rejected" =
+  let _ = main_of_multi_string "module X where open Lib::Num use (double) end" in
+  [%expect {| Error: the unit is not imported |}]
+
+let%expect_test "an open of a unit loaded by import" =
+  let _ = main_of_multi_string "import Lib::Num module X where open Lib::Num use (double) open Lib::Num.Ops as O eval O.pred (double 2) end" in
+  [%expect {| Evaluate O.pred (double 2) --> 3 : Nat |}]
+
+let%expect_test "an open needs a target" =
+  let _ = main_of_body "open use (a)" in
+  [%expect {|
+    Error: on "use" (at line 1, column 24 - line 1, column 27): Expected the
+      module to open: a module in scope, a unit, or a module of a unit.
+    |}]
+
+let%expect_test "import names a unit" =
+  let _ = main_of_body "module M where end import M" in
+  [%expect {|
+    Error: on "end" (at line 1, column 47 - line 1, column 50): Expected a
+      further "::" or "." in the path, the arguments of the module, "as", "use",
+      "export", or the next command.
+      "import" names a unit, as in "import X::Y"; a module in scope is opened
+      with "open".
+    |}]
+
+(** Import only loads *)
+
+let%expect_test "an import declares nothing" =
+  let _ = main_of_multi_string "import Lib::Num module X where eval double 1 end" in
+  [%expect {| Error: unbound name double |}];
+  let _ = main_of_multi_string "import Lib::Num module X where eval Lib::Num.double 1 end" in
+  [%expect {| Evaluate Lib::Num.double 1 --> 2 : Nat |}]
+
+let%expect_test "a repeated import does nothing" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num import Lib::Num module X where import Lib::Num module M where import Lib::Num end \
+       eval Lib::Num.double 2 end"
+  in
+  [%expect {| Evaluate Lib::Num.double 2 --> 4 : Nat |}]
+
+let%expect_test "the long form of import is an import and an open" =
+  let _ =
+    main_of_multi_string
+      "module X where import Lib::Num as N use (double) export (Ops) eval N.double 3 eval double 3 eval Ops.pred 3 end"
+  in
+  [%expect {|
+    Evaluate N.double 3 --> 6 : Nat
+    Evaluate double 3 --> 6 : Nat
+    Evaluate Ops.pred 3 --> 2 : Nat
+    |}];
+  let _ = main_of_multi_string "module X where import Lib::Num as N use (nope) end" in
+  [%expect {| Error: X.N.nope is not a member |}]
+
+let%expect_test "an import is rejected in a local body" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Num module X where eval let module L where import Lib::Num end in 0 end end"
+  in
+  [%expect {| Error: import is not allowed in a local module; use open |}]
+
+(** Leading imports and opens *)
+
+let%expect_test "a leading open in a parameter type" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Equality open Prelude::Arith::Equality use (Eq) \
+       module ScratchP (p : Eq 1 1) where def q : Eq 1 1 := p end eval q end"
+  in
+  [%expect {| Evaluate q $0 --> true : True |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Equality as E use (Eq) \
+       module ScratchP (p : Eq 1 1) (q : E.Eq 2 2) where def r : Eq 2 2 := q end eval r end"
+  in
+  [%expect {| Evaluate r $1 $0 --> true : True |}]
+
+let%expect_test "a leading open sees no parameter" =
+  let _ = main_of_multi_string "import Lib::Priv open Lib::Priv.F n as G module X (n : Nat) where end" in
+  [%expect {| Error: unbound name n |}]
+
+let%expect_test "a leading open of a unit that is not imported is rejected" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "open Prelude::Arith::Equality use (Eq) module ScratchP (p : Eq 1 1) where end"
+  in
+  [%expect {| Error: the unit is not imported |}]

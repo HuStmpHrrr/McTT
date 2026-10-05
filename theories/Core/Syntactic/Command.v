@@ -21,9 +21,9 @@ Inductive ccmd : Set :=
 | cc_alias : string -> bool -> ctx -> modexp -> ccmd
 (** [cc_load fp]: load the unit [fp] if it is not filed yet. *)
 | cc_load : path -> ccmd
-(** [cc_import E items]: check that [E] is a module, and declare the items,
+(** [cc_open E items]: check that [E] is a module, and declare the items,
     as definitions and aliases of this frame. *)
-| cc_import : modexp -> list iitem -> ccmd
+| cc_open : modexp -> list iitem -> ccmd
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd.
 

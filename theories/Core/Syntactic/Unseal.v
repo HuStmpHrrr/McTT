@@ -47,7 +47,7 @@ with gm_unseal (Φ : gmod) : gmod :=
   match Φ with
   | gm_nil => gm_nil
   | gm_ext Φ x E => gm_ext (gm_unseal Φ) x (ge_unseal E)
-  | gm_import Φ H its => gm_import (gm_unseal Φ) H its
+  | gm_open Φ H its => gm_open (gm_unseal Φ) H its
   end.
 
 (** An alias has no definition of its own, so it is unchanged. *)
@@ -292,7 +292,7 @@ with gm_no_axioms (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gm_no_axioms Φ /\ ge_no_axioms E
-  | gm_import Φ _ _ => gm_no_axioms Φ
+  | gm_open Φ _ _ => gm_no_axioms Φ
   end.
 
 Definition gds_no_axioms (Θ : gdeps) : Prop :=

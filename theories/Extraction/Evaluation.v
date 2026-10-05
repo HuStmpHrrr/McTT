@@ -605,7 +605,7 @@ Section EvalImpl.
   | p, gm_ext Φ y (ge_mod _ Uy), H =>
       let (p1, Hp1) := eval_benv_impl p Φ _ in
       exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
-  | p, gm_import Φ _ _, H => False_rect _ _.
+  | p, gm_open Φ _ _, H => False_rect _ _.
 End EvalImpl.
 
 Extraction Inline eval_exp_impl_functional

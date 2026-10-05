@@ -185,7 +185,7 @@ end
 
 end
 
-import Bounds use (divModSpec; modSmall)
+open Bounds use (divModSpec; modSmall)
 
 (* The remainder is periodic in the divisor. *)
 module Periodic where

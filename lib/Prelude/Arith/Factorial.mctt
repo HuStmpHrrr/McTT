@@ -1,5 +1,5 @@
 (* The factorial, with its defining equations, positivity, monotonicity in
-   one step, and the bound [pow 2 n <= fact (succ n)]. *)
+   one step, and the bound [pow 2 n <= factorial (succ n)]. *)
 import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
@@ -10,8 +10,8 @@ import Prelude::Arith::Pow use (pow)
 
 module Prelude::Arith::Factorial where
 
-(* [fact 0] is [1] and [fact (succ p)] is [mult (succ p) (fact p)]. *)
-def fact (n : Nat) : Nat :=
+(* [factorial 0] is [1] and [factorial (succ p)] is [mult (succ p) (factorial p)]. *)
+def factorial (n : Nat) : Nat :=
   rec n return y . Nat
   | zero => 1
   | succ p, r => mult (succ p) r
@@ -21,10 +21,10 @@ end
 (* The defining equations. *)
 module Laws where
 
-abstract def factZero : Eq (fact 0) 1 := true end
+abstract def factZero : Eq (factorial 0) 1 := true end
 
-abstract def factSucc : forall (n : Nat) -> Eq (fact (succ n)) (mult (succ n) (fact n)) :=
-  fun (n : Nat) -> refl (mult (succ n) (fact n))
+abstract def factSucc : forall (n : Nat) -> Eq (factorial (succ n)) (mult (succ n) (factorial n)) :=
+  fun (n : Nat) -> refl (mult (succ n) (factorial n))
 end
 
 end
@@ -32,33 +32,33 @@ end
 (* Lower bounds of the factorial. *)
 module Bounds where
 
-(* Every factorial is positive.  [fact (succ p)] computes to
-   [plus (fact p) (mult p (fact p))], which is at least [fact p]. *)
-abstract def factPos : forall (n : Nat) -> Lt 0 (fact n) :=
+(* Every factorial is positive.  [factorial (succ p)] computes to
+   [plus (factorial p) (mult p (factorial p))], which is at least [factorial p]. *)
+abstract def factPos : forall (n : Nat) -> Lt 0 (factorial n) :=
   fun (n : Nat) ->
-    rec n return x . Lt 0 (fact x)
+    rec n return x . Lt 0 (factorial x)
     | zero => true
     | succ p, ih =>
-        leTrans 1 (fact p) (fact (succ p)) ih (lePlusRight (fact p) (mult p (fact p)))
+        leTrans 1 (factorial p) (factorial (succ p)) ih (lePlusRight (factorial p) (mult p (factorial p)))
     end
 end
 
 (* The factorial does not decrease from [n] to [succ n]. *)
-abstract def factLeSucc : forall (n : Nat) -> Le (fact n) (fact (succ n)) :=
-  fun (n : Nat) -> lePlusRight (fact n) (mult n (fact n))
+abstract def factLeSucc : forall (n : Nat) -> Le (factorial n) (factorial (succ n)) :=
+  fun (n : Nat) -> lePlusRight (factorial n) (mult n (factorial n))
 end
 
-(* Powers of two are bounded by factorials: [pow 2 n <= fact (succ n)].  In
+(* Powers of two are bounded by factorials: [pow 2 n <= factorial (succ n)].  In
    the step, [mult 2 P] computes to [plus P (plus P 0)] and
    [mult (succ (succ p)) F] to [plus F (plus F (mult p F))], so two uses of
    [lePlusMono] on the hypothesis [P <= F] conclude. *)
-abstract def lePowFact : forall (n : Nat) -> Le (pow 2 n) (fact (succ n)) :=
+abstract def lePowFact : forall (n : Nat) -> Le (pow 2 n) (factorial (succ n)) :=
   fun (n : Nat) ->
-    rec n return x . Le (pow 2 x) (fact (succ x))
+    rec n return x . Le (pow 2 x) (factorial (succ x))
     | zero => true
     | succ p, ih =>
         let P := pow 2 p;
-            F := fact (succ p);
+            F := factorial (succ p);
             inner : Le (plus P 0) (plus F (mult p F)) :=
               lePlusMono P F 0 (mult p F) ih true
         in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner

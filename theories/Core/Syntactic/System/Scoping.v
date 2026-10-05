@@ -69,7 +69,7 @@ with gmod_scoped (n : nat) (Φ : gmod) : Prop :=
   match Φ with
   | gm_nil => True
   | gm_ext Φ _ E => gmod_scoped n Φ /\ gentry_scoped (gm_binders Φ + n) E
-  | gm_import Φ H _ => gmod_scoped n Φ /\ modexp_scoped (gm_binders Φ + n) H
+  | gm_open Φ H _ => gmod_scoped n Φ /\ modexp_scoped (gm_binders Φ + n) H
   end
 with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with

@@ -119,7 +119,7 @@ eval Sums.pow 6 3
 
 (* In the maximum monoid every positive power of [x] is [x]: the first is
    [max x 0], and each further factor is absorbed by [maxIdem].  The step
-   names its rewriting under [max x] in a local module, which imports the
+   names its rewriting under [max x] in a local module, which opens the
    congruence laws of the instance. *)
 abstract def maxPowSucc : forall (x : Nat) (n : Nat) -> Eq (Maximum.pow x (succ n)) x :=
   fun (x : Nat) (n : Nat) ->
@@ -128,7 +128,7 @@ abstract def maxPowSucc : forall (x : Nat) (n : Nat) -> Eq (Maximum.pow x (succ 
     | succ p, ih =>
         let power := Maximum.pow x (succ p);
             module L where
-              import Maximum.Cong use (congRight)
+              open Maximum.Cong use (congRight)
               (* One more factor [x] in front of a power that is already [x]. *)
               def front : Eq (max x power) (max x x) := congRight x power x ih end
             end

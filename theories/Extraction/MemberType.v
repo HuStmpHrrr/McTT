@@ -51,7 +51,7 @@ with gsize (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ (ge_mod _ U) => gsize Φ + usize U
-  | gm_ext Φ _ _ | gm_import Φ _ _ => gsize Φ
+  | gm_ext Φ _ _ | gm_open Φ _ _ => gsize Φ
   end.
 
 Fixpoint csize (Γ : ctx) : nat :=

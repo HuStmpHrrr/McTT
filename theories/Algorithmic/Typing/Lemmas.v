@@ -438,7 +438,7 @@ with gmod_lets (Φ : gmod) : nat :=
   match Φ with
   | gm_nil => 0
   | gm_ext Φ _ E => gmod_lets Φ + gentry_lets E
-  | gm_import Φ H _ => gmod_lets Φ + modexp_lets H
+  | gm_open Φ H _ => gmod_lets Φ + modexp_lets H
   end
 with gentry_lets (E : gentry) : nat :=
   match E with

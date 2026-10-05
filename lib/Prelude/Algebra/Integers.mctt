@@ -88,7 +88,7 @@ end
 
 end
 
-import Setoid use (sameRefl; sameSym; sameTrans)
+open Setoid use (sameRefl; sameSym; sameTrans)
 
 (* Addition and negation respect [Same], and satisfy the group laws. *)
 module Addition where
@@ -153,7 +153,7 @@ end
 
 end
 
-import Addition use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft; negateRight)
+open Addition use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft; negateRight)
 
 (* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
 module Additive :=

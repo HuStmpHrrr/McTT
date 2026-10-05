@@ -8,7 +8,7 @@ import Prelude::Arith::Pow.Exp use (powPlus; powMult; powMultBase)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Sum.Linear use (sumToPlus; sumToScale; sumToConst)
 import Prelude::Arith::Sum.Closed use (gauss; sumOdd)
-import Prelude::Arith::Factorial use (fact)
+import Prelude::Arith::Factorial use (factorial)
 import Prelude::Arith::Factorial.Laws use (factSucc)
 import Prelude::Arith::Factorial.Bounds use (factPos; factLeSucc; lePowFact)
 import Prelude::Function::Combinators use (Generic)
@@ -30,9 +30,9 @@ eval sumTo NatFun.id 11
 (* [0 + 1 + 4 + ... + 25]. *)
 eval sumTo (fun (i : Nat) -> mult i i) 6
 
-eval fact 5
+eval factorial 5
 
-eval fact 0
+eval factorial 0
 
 (* A proof of a closed equation normalizes to [true], of type [True].  The
    numbers stay at most about 20: checking [Eq n n] takes time exponential

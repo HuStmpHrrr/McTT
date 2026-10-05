@@ -60,7 +60,7 @@ end
 
 end
 
-import Basic use (multZero; multSucc)
+open Basic use (multZero; multSucc)
 
 (* Commutativity, distributivity and associativity. *)
 module Algebra where

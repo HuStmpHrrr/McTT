@@ -58,7 +58,7 @@ end
 
 end
 
-import Basic use (fibSucc)
+open Basic use (fibSucc)
 
 (* Positivity and monotonicity. *)
 module Growth where

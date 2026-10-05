@@ -52,7 +52,7 @@ end
 
 end
 
-import Cong use (congLeft; congRight; assocBack)
+open Cong use (congLeft; congRight; assocBack)
 
 (* The neutral element is unique. *)
 module Neutral where

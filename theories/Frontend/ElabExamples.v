@@ -23,6 +23,11 @@ Import Cst.
 Definition mpath (fq ch : list string) : modexp := qname_mod (q_abs fq ch).
 
 Ltac elab_ok := apply elaborate_core_sound; vm_compute; reflexivity.
+
+(** Items as the parser writes them: [as W], and [use (us) export (es)]. *)
+Definition i_as (W : string) : list iitem := (None, W, true) :: nil.
+Definition i_items (us es : list (string * string)) : list iitem :=
+  map (fun p => (Some (fst p), snd p, true)) us ++ map (fun p => (Some (fst p), snd p, false)) es.
 Ltac elab_fails := apply elaborate_core_fails; eexists; vm_compute; reflexivity.
 
 (** ** Pre-application
@@ -109,22 +114,22 @@ Example church_spec :
               in (a_mem (me_var 0) "two" $ zero $ λ ℕ (succ #0))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
 
-(** ** [examples/ImportUse.mctt]: privacy, [import … as], [import … use] *)
+(** ** [examples/ImportUse.mctt]: privacy, [open … as], [open … use] *)
 Definition import_use : Cst.prog :=
   (nil, ("ImportUse" :: nil, nil,
          c_mod false "Impl" nil
            (md_where
              (c_def md_priv "secret" nat (Cst.succ (Cst.succ (Cst.succ Cst.zero))) ::
               c_def md_pub "exposed" nat (Cst.succ (var "secret")) :: nil)) ::
-         c_import nil ("Impl" :: nil) nil (i_as "I") ::
-         c_import nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) ::
+         c_open nil ("Impl" :: nil) nil (i_as "I") ::
+         c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) ::
          c_eval (app (proj (var "I") "exposed") (var "exposed")) None :: nil)).
 
 Definition Impl_ : string -> exp := fun x => qname_term (q_abs ("ImportUse" :: nil) ("Impl" :: x :: nil)).
 
 Definition Impl : modexp := mpath ("ImportUse" :: nil) ("Impl" :: nil).
 
-(** A private member is visible in its own frame.  An import is a command
+(** A private member is visible in its own frame.  An open is a command
     whose items the core declares as members of the frame: [I] and
     [exposed] are the members [ImportUse.I] and [ImportUse.exposed], which
     the core defines as [Impl] and its member. *)
@@ -136,25 +141,30 @@ Example import_use_spec :
      cc_mod "Impl" false ⋅
        (cc_def "secret" true true ℕ (succ (succ (succ zero))) ::
         cc_def "exposed" true false ℕ (succ (Impl_ "secret")) :: nil) ::
-     cc_import Impl ((None, "I", true) :: nil) ::
-     cc_import Impl ((Some "exposed", "exposed", true) :: nil) ::
+     cc_open Impl ((None, "I", true) :: nil) ::
+     cc_open Impl ((Some "exposed", "exposed", true) :: nil) ::
      cc_eval (a_mem (qname_mod (ImportUse_ ("I" :: nil))) "exposed" $ (qname_term (ImportUse_ ("exposed" :: nil))))
        None :: nil).
 Proof. elab_ok. Qed.
 
-(** ** [examples/multi/Main.mctt]: leading imports of other units *)
+(** ** [examples/multi/Main.mctt]: leading imports of other units
+
+    Each is the long form, [import X::Y] then [open X::Y …]
+    ([Cst.import_cmds]). *)
 Definition main_mctt : Cst.prog :=
-  (c_import ("Lib" :: "Arith" :: nil) nil nil (i_items (("quadruple", "quadruple") :: nil) nil) ::
-   c_import ("Lib" :: "Num" :: nil) nil nil (i_as "N") ::
-   c_import ("Lib" :: "Num" :: nil) ("Ops" :: nil) nil (i_items (("pred", "pred") :: nil) nil) :: nil,
+  (import_cmds ("Lib" :: "Arith" :: nil) nil nil None (i_items (("quadruple", "quadruple") :: nil) nil) ++
+   import_cmds ("Lib" :: "Num" :: nil) nil nil (Some "N") nil ++
+   import_cmds ("Lib" :: "Num" :: nil) ("Ops" :: nil) nil None (i_items (("pred", "pred") :: nil) nil),
    ("Main" :: nil, nil,
     c_eval (app (var "quadruple") (Cst.succ (Cst.succ Cst.zero))) (Some nat) ::
     c_eval (app (proj (var "N") "double") (Cst.succ (Cst.succ (Cst.succ Cst.zero)))) None ::
     c_eval (app (var "pred") (app (proj (var "N") "double") (Cst.succ (Cst.succ (Cst.succ (Cst.succ (Cst.succ Cst.zero)))))))
       (Some nat) :: nil)).
 
-(** A leading import loads its unit before the unit runs, and declares its
-    items first in the unit's body, as members of the unit. *)
+(** A leading import loads its unit before the unit runs, and is read again
+    as the first commands of the unit's body, where loading an already
+    loaded unit does nothing; a leading open declares its items there, as
+    members of the unit. *)
 Definition Arith : modexp := mpath ("Lib" :: "Arith" :: nil) nil.
 Definition Num : modexp := mpath ("Lib" :: "Num" :: nil) nil.
 Definition Ops : modexp := mpath ("Lib" :: "Num" :: nil) ("Ops" :: nil).
@@ -164,9 +174,9 @@ Example main_spec :
   elab_spec main_mctt
     (cc_load ("Lib" :: "Arith" :: nil) :: cc_load ("Lib" :: "Num" :: nil) :: cc_load ("Lib" :: "Num" :: nil) :: nil,
      ⋅,
-     cc_import Arith ((Some "quadruple", "quadruple", true) :: nil) ::
-     cc_import Num ((None, "N", true) :: nil) ::
-     cc_import Ops ((Some "pred", "pred", true) :: nil) ::
+     cc_load ("Lib" :: "Arith" :: nil) :: cc_open Arith ((Some "quadruple", "quadruple", true) :: nil) ::
+     cc_load ("Lib" :: "Num" :: nil) :: cc_open Num ((None, "N", true) :: nil) ::
+     cc_load ("Lib" :: "Num" :: nil) :: cc_open Ops ((Some "pred", "pred", true) :: nil) ::
      cc_eval (Main_ "quadruple" $ succ (succ zero)) (Some ℕ) ::
      cc_eval (a_mem (mpath ("Main" :: nil) ("N" :: nil)) "double" $ succ (succ (succ zero))) None ::
      cc_eval (Main_ "pred" $ (a_mem (mpath ("Main" :: nil) ("N" :: nil)) "double"
@@ -219,7 +229,7 @@ Proof. elab_fails. Qed.
 
 (** … also over an alias … *)
 Example redeclare_alias : forall u, ~ elab_spec (unit_of
-  (c_mod false "I" nil (md_where nil) :: c_import nil ("I" :: nil) nil (i_as "x") ::
+  (c_mod false "I" nil (md_where nil) :: c_open nil ("I" :: nil) nil (i_as "x") ::
    c_def md_pub "x" nat Cst.zero :: nil)) u.
 Proof. elab_fails. Qed.
 
@@ -265,6 +275,62 @@ Example unit_not_imported : forall u, ~ elab_spec (unit_of
   (c_eval (proj (glob ("L" :: "M" :: nil)) "f") None :: nil)) u.
 Proof. elab_fails. Qed.
 
+(** ** Definition Keywords
+
+    Each keyword is [def] with the modifiers it implies, and takes [def]'s
+    parameters ([Cst.def_cmd]); a modifier it implies already is rejected,
+    with the message shown.  [theorem foo (n : Nat) : Nat := n end] is: *)
+Example kw_theorem :
+  elab_spec (unit_of (def_cmd dk_theorem md_pub "foo" (pi "n" nat nat) (fn "n" nat (var "n")) :: nil))
+    (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (λ ℕ #0) :: nil).
+Proof. elab_ok. Qed.
+
+(** [private lemma], [fact], [remark], [let], [abstract given]: *)
+Example kw_others :
+  elab_spec (unit_of
+    (def_cmd dk_lemma md_priv "a" nat Cst.zero :: def_cmd dk_fact md_pub "b" nat Cst.zero ::
+     def_cmd dk_remark md_pub "c" nat Cst.zero :: def_cmd dk_let md_pub "d" nat Cst.zero ::
+     def_cmd dk_given md_abs "e" nat Cst.zero :: def_cmd dk_def md_priv_abs "f" nat Cst.zero :: nil))
+    (nil, ⋅,
+     cc_def "a" false true ℕ zero :: cc_def "b" false true ℕ zero :: cc_def "c" false true ℕ zero ::
+     cc_def "d" true true ℕ zero :: cc_def "e" false true ℕ zero :: cc_def "f" false true ℕ zero :: nil).
+Proof. elab_ok. Qed.
+
+Example kw_theorem_abstract :
+  elaborate_core (unit_of (def_cmd dk_theorem md_abs "a" nat Cst.zero :: nil)) = eerr "theorem is already abstract".
+Proof. vm_compute; reflexivity. Qed.
+Example kw_lemma_abstract :
+  elaborate_core (unit_of (def_cmd dk_lemma md_priv_abs "a" nat Cst.zero :: nil)) = eerr "lemma is already abstract".
+Proof. vm_compute; reflexivity. Qed.
+Example kw_fact_private :
+  elaborate_core (unit_of (def_cmd dk_fact md_priv "a" nat Cst.zero :: nil)) = eerr "fact takes no modifiers".
+Proof. vm_compute; reflexivity. Qed.
+Example kw_remark_abstract :
+  elaborate_core (unit_of (def_cmd dk_remark md_abs "a" nat Cst.zero :: nil)) = eerr "remark takes no modifiers".
+Proof. vm_compute; reflexivity. Qed.
+Example kw_let_private :
+  elaborate_core (unit_of (def_cmd dk_let md_priv "a" nat Cst.zero :: nil)) = eerr "let is already private".
+Proof. vm_compute; reflexivity. Qed.
+Example kw_given_private :
+  elaborate_core (unit_of (def_cmd dk_given md_priv_abs "a" nat Cst.zero :: nil)) = eerr "given is already private".
+Proof. vm_compute; reflexivity. Qed.
+
+(** A rejected keyword is rejected in a local body too. *)
+Example kw_local_rejected :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_fact md_abs "a" nat Cst.zero :: nil))) Cst.zero) None :: nil))
+  = eerr "fact takes no modifiers".
+Proof. vm_compute; reflexivity. Qed.
+
+(** In a local body, a keyword that means [abstract] gives an opaque entry,
+    which the core rejects, as it does [abstract def]. *)
+Example kw_local_theorem :
+  elab_spec (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (def_cmd dk_theorem md_pub "a" nat Cst.zero :: nil))) Cst.zero) None :: nil))
+    (nil, ⋅,
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_ext gm_nil "a" (ge_def false false ℕ (Some zero))))) in zero) None :: nil).
+Proof. elab_ok. Qed.
+
 (** ** One Binding per Name per Frame
 
     Each program below is rejected by the elaborator with the message shown,
@@ -272,27 +338,27 @@ Proof. elab_fails. Qed.
 
 Ltac elab_err := vm_compute; reflexivity.
 
-(** [def x … ; import M as x]: an alias may not take a member's name. *)
+(** [def x … ; open M as x]: an alias may not take a member's name. *)
 Definition alias_after_member : Cst.prog := unit_of
   (c_mod false "M" nil (md_where nil) :: c_def md_pub "x" nat Cst.zero ::
-   c_import nil ("M" :: nil) nil (i_as "x") :: nil).
+   c_open nil ("M" :: nil) nil (i_as "x") :: nil).
 Example alias_after_member_err : elaborate_core alias_after_member = eerr "x is already declared".
 Proof. elab_err. Qed.
 Example alias_after_member_spec : forall u, ~ elab_spec alias_after_member u.
 Proof. elab_fails. Qed.
 
-(** [import M as x ; def x …]: a member may not take an alias's name. *)
+(** [open M as x ; def x …]: a member may not take an alias's name. *)
 Definition member_after_alias : Cst.prog := unit_of
-  (c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) nil (i_as "x") ::
+  (c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "x") ::
    c_def md_pub "x" nat Cst.zero :: nil).
 Example member_after_alias_err : elaborate_core member_after_alias = eerr "x is already declared".
 Proof. elab_err. Qed.
 
-(** [def exposed … ; import Impl use (exposed)]: nor may a [use]d name. *)
+(** [def exposed … ; open Impl use (exposed)]: nor may a [use]d name. *)
 Definition use_after_member : Cst.prog := unit_of
   (c_mod false "Impl" nil (md_where (c_def md_pub "exposed" nat Cst.zero :: nil)) ::
    c_def md_pub "exposed" nat Cst.zero ::
-   c_import nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) :: nil).
+   c_open nil ("Impl" :: nil) nil (i_items (("exposed", "exposed") :: nil) nil) :: nil).
 Example use_after_member_err : elaborate_core use_after_member = eerr "exposed is already declared".
 Proof. elab_err. Qed.
 
@@ -315,7 +381,7 @@ Proof. elab_err. Qed.
 (** An alias may not take a parameter's name (here the unit's). *)
 Definition alias_param : Cst.prog :=
   (nil, ("T" :: nil, ("x", nat) :: nil,
-         c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) nil (i_as "x") :: nil)).
+         c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "x") :: nil)).
 Example alias_param_err : elaborate_core alias_param = eerr "x is already declared".
 Proof. elab_err. Qed.
 Example alias_param_spec : forall u, ~ elab_spec alias_param u.
@@ -336,7 +402,7 @@ Proof. elab_err. Qed.
 
 (** Leading imports: an alias is fresh against the earlier leading aliases. *)
 Definition dup_leading : Cst.prog :=
-  (c_import ("L" :: "A" :: nil) nil nil (i_as "N") :: c_import ("L" :: "B" :: nil) nil nil (i_as "N") :: nil,
+  (import_cmds ("L" :: "A" :: nil) nil nil (Some "N") nil ++ import_cmds ("L" :: "B" :: nil) nil nil (Some "N") nil,
    ("T" :: nil, nil, nil)).
 Example dup_leading_err : elaborate_core dup_leading = eerr "N is already declared".
 Proof. elab_err. Qed.
@@ -482,29 +548,29 @@ Example local_body :
         in a_mem (me_var 0) "x") None :: nil).
 Proof. elab_ok. Qed.
 
-(** An import in a local body is a pre-form the core expands; each of its
+(** An open in a local body is a pre-form the core expands; each of its
     items is a binder of the body.
 
 <<
 let module L where
   module N where def y : Nat := 0 end end
-  import N use (y)
-  import N as K
+  open N use (y)
+  open N as K
   def z : Nat := y end
   def w : Nat := K.y end
 in L.w end
 >>
 
-    [N] is [me_var 0] at the first import and [me_var 1] at the second;
+    [N] is [me_var 0] at the first open and [me_var 1] at the second;
     under [z], [y] is [#1], and under [w], [K] is [me_var 1]. *)
-Example local_import :
+Example local_open :
   elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
                 (md_where
                    (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
-                    c_import nil ("N" :: nil) nil (i_items (("y", "y") :: nil) nil) ::
-                    c_import nil ("N" :: nil) nil (i_as "K") ::
+                    c_open nil ("N" :: nil) nil (i_items (("y", "y") :: nil) nil) ::
+                    c_open nil ("N" :: nil) nil (i_as "K") ::
                     c_def md_pub "z" nat (var "y") ::
                     c_def md_pub "w" nat (proj (var "K") "y") :: nil)))
           (proj (var "L") "w")) None :: nil))
@@ -514,8 +580,8 @@ Example local_import :
               (md_body
                  (gm_ext
                     (gm_ext
-                       (gm_import
-                          (gm_import
+                       (gm_open
+                          (gm_open
                              (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
                              (me_var 0) ((Some "y", "y", true) :: nil))
                           (me_var 1) ((None, "K", true) :: nil))
@@ -524,23 +590,39 @@ Example local_import :
         in a_mem (me_var 0) "w") None :: nil).
 Proof. elab_ok. Qed.
 
-(** An import of a unit in a local body loads nothing: the unit must be
+(** An open of a unit in a local body loads nothing: the unit must be
     imported already, here by a leading import. *)
 Definition local_unit_import (leading : list Cst.cmd) : Cst.prog :=
   (leading, ("T" :: nil, nil,
-    c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) nil nil (i_items (("f", "f") :: nil) nil) :: nil))) Cst.zero)
+    c_eval (letb (d_mod "L" nil (md_where (c_open ("X" :: nil) nil nil (i_items (("f", "f") :: nil) nil) :: nil))) Cst.zero)
       None :: nil)).
 
 Example local_unit_loaded :
-  elab_spec (local_unit_import (c_import ("X" :: nil) nil nil i_open :: nil))
+  elab_spec (local_unit_import (c_import ("X" :: nil) :: nil))
     (cc_load ("X" :: nil) :: nil, ⋅,
-     cc_import (mpath ("X" :: nil) nil) nil ::
-     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_import gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
+     cc_load ("X" :: nil) ::
+     cc_eval (ℓₘ (gu_mk ⋅ (md_body (gm_open gm_nil (mpath ("X" :: nil) nil) ((Some "f", "f", true) :: nil))))
               in zero) None :: nil).
 Proof. elab_ok. Qed.
 
 Example local_unit_not_loaded :
   elaborate_core (local_unit_import nil) = eerr "the unit is not imported".
+Proof. vm_compute; reflexivity. Qed.
+
+(** A local body has no [import]s: it opens what is loaded already. *)
+Example local_import_rejected :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (c_import ("X" :: nil) :: nil))) Cst.zero) None :: nil))
+  = eerr "import is not allowed in a local module; use open".
+Proof. vm_compute; reflexivity. Qed.
+
+(** The long form [import X::Y use (f)] in a local body is an [import]
+    first, so it is rejected the same way. *)
+Example local_long_import_rejected :
+  elaborate_core (c_import ("X" :: nil) :: nil, ("T" :: nil, nil,
+    c_eval (letb (d_mod "L" nil (md_where (import_cmds ("X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil))))
+              Cst.zero) None :: nil))
+  = eerr "import is not allowed in a local module; use open".
 Proof. vm_compute; reflexivity. Qed.
 
 (** A local body has no [eval]s. *)
@@ -567,20 +649,20 @@ Example local_private :
               in a_mem (me_var 0) "t") None :: nil).
 Proof. elab_ok. Qed.
 
-(** A local import that [use]s a name twice is the core's to reject: the
+(** A local open that [use]s a name twice is the core's to reject: the
     names of a local body are checked fresh by typing. *)
 Example local_use_dup :
   elab_spec (unit_of
     (c_eval
        (letb (d_mod "L" nil
                 (md_where (c_mod false "N" nil (md_where (c_def md_pub "y" nat Cst.zero :: nil)) ::
-                           c_import nil ("N" :: nil) nil (i_items (("y", "y") :: ("y", "y") :: nil) nil) :: nil)))
+                           c_open nil ("N" :: nil) nil (i_items (("y", "y") :: ("y", "y") :: nil) nil) :: nil)))
           Cst.zero) None :: nil))
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
               (md_body
-                 (gm_import
+                 (gm_open
                     (gm_ext gm_nil "N" (ge_mod false (gu_mk ⋅ (md_body (gm_ext gm_nil "y" (ge_def true false ℕ (Some zero)))))))
                     (me_var 0) ((Some "y", "y", true) :: (Some "y", "y", true) :: nil))))
         in zero) None :: nil).
@@ -601,14 +683,14 @@ Example local_path :
         in a_mem (me_mem (me_mem (me_var 0) "A") "B") "y") None :: nil).
 Proof. elab_ok. Qed.
 
-(** An import [as] alias is a member like any other: whether it is a term
+(** An open [as] alias is a member like any other: whether it is a term
     is for typing to decide. *)
 Example alias_term :
   elab_spec (unit_of
-    (c_mod false "M" nil (md_where nil) :: c_import nil ("M" :: nil) nil (i_as "N") ::
+    (c_mod false "M" nil (md_where nil) :: c_open nil ("M" :: nil) nil (i_as "N") ::
      c_eval (var "N") None :: nil))
     (nil, ⋅,
-     cc_mod "M" false ⋅ nil :: cc_import (T_ ("M" :: nil)) ((None, "N", true) :: nil) ::
+     cc_mod "M" false ⋅ nil :: cc_open (T_ ("M" :: nil)) ((None, "N", true) :: nil) ::
      cc_eval (qname_term (q_abs ("T" :: nil) ("N" :: nil))) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -631,21 +713,21 @@ Example local_dup_params :
   = eerr "duplicate parameter x".
 Proof. elab_err. Qed.
 
-(** [import] needs a target. *)
-Example import_nothing :
-  elaborate_core (unit_of (c_import nil nil nil i_open :: nil)) = eerr "nothing to import".
+(** [open] needs a target. *)
+Example open_nothing :
+  elaborate_core (unit_of (c_open nil nil nil nil :: nil)) = eerr "nothing to open".
 Proof. elab_err. Qed.
 
-(** ** Imports Declare Names
+(** ** Opens Declare Names
 
     [use] items are private declarations of the frame, [export] items public
     ones; [c as d] declares [d].  The target may be applied to arguments,
-    read as terms where the import stands.
+    read as terms where the open stands.
 
 <<
 module T (A : Type@0) where
   module M (B : Type@0) where def c : Type@0 := B end def e : Type@0 := B end end
-  import M A use (c as d) export (e)
+  open M A use (c as d) export (e)
   eval d
   eval e
 end
@@ -657,84 +739,154 @@ Example import_items :
   elab_spec (nil, ("T" :: nil, ("A", typ 0) :: nil,
     c_mod false "M" (("B", typ 0) :: nil)
       (md_where (c_def md_pub "c" (typ 0) (var "B") :: c_def md_pub "e" (typ 0) (var "B") :: nil)) ::
-    c_import nil ("M" :: nil) (var "A" :: nil) (i_items (("c", "d") :: nil) (("e", "e") :: nil)) ::
+    c_open nil ("M" :: nil) (var "A" :: nil) (i_items (("c", "d") :: nil) (("e", "e") :: nil)) ::
     c_eval (var "d") None :: c_eval (var "e") None :: nil))
     (nil, ⋅ ▹ Type@0,
      cc_mod "M" false (⋅ ▹ Type@0) (cc_def "c" true false Type@0 #0 :: cc_def "e" true false Type@0 #0 :: nil) ::
-     cc_import (me_app (me_app (T_ ("M" :: nil)) #0) #0)
+     cc_open (me_app (me_app (T_ ("M" :: nil)) #0) #0)
        ((Some "c", "d", true) :: (Some "e", "e", false) :: nil) ::
      cc_eval (qname_term (q_abs ("T" :: nil) ("d" :: nil)) $ #0) None ::
      cc_eval (qname_term (q_abs ("T" :: nil) ("e" :: nil)) $ #0) None :: nil).
 Proof. elab_ok. Qed.
 
-(** An item's name must be fresh in the frame before the import, *)
+(** An item's name must be fresh in the frame before the open, *)
 Example import_item_fresh :
   elaborate_core (unit_of
     (c_mod false "M" nil (md_where (c_def md_pub "c" nat Cst.zero :: nil)) ::
      c_def md_pub "d" nat Cst.zero ::
-     c_import nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil))
+     c_open nil ("M" :: nil) nil (i_items nil (("c", "d") :: nil)) :: nil))
   = eerr "d is already declared".
 Proof. elab_err. Qed.
 
-(** but whether an import declares a name twice, or uses and exports one
+(** but whether an open declares a name twice, or uses and exports one
     member, is the core's to check ([xe_fresh], [xe_both]). *)
 Example import_items_dup :
   elab_spec (unit_of
     (c_mod false "M" nil (md_where (c_def md_pub "c" nat Cst.zero :: nil)) ::
-     c_import nil ("M" :: nil) nil (i_items (("c", "c") :: nil) (("c", "c") :: nil)) :: nil))
+     c_open nil ("M" :: nil) nil (i_items (("c", "c") :: nil) (("c", "c") :: nil)) :: nil))
     (nil, ⋅,
      cc_mod "M" false ⋅ (cc_def "c" true false ℕ zero :: nil) ::
-     cc_import (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
+     cc_open (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
-(** The arguments of an import are read where it stands. *)
+(** The arguments of an open are read where it stands. *)
 Example import_arg_unbound :
   elaborate_core (unit_of
     (c_mod false "M" (("B", typ 0) :: nil) (md_where nil) ::
-     c_import nil ("M" :: nil) (var "B" :: nil) (i_as "W") :: nil))
+     c_open nil ("M" :: nil) (var "B" :: nil) (i_as "W") :: nil))
   = eerr "unbound name B".
 Proof. elab_err. Qed.
 
-(** Leading imports are commands of the unit's own frame, after its
-    parameters: their arguments may name the parameters, and their names
-    are members of the unit, applied to its parameters.
+(** Leading imports and opens are read before the unit's header, where no
+    parameter is in scope: their arguments may not name the parameters.
 
 <<
 import L::X A as W
-module T (A : Type@0) where
-  eval W.f
-end
+module T (A : Type@0) where end
 >>
 *)
 Example leading_args :
-  elab_spec (c_import ("L" :: "X" :: nil) nil (var "A" :: nil) (i_as "W") :: nil,
-             ("T" :: nil, ("A", typ 0) :: nil, c_eval (proj (var "W") "f") None :: nil))
-    (cc_load ("L" :: "X" :: nil) :: nil, ⋅ ▹ Type@0,
-     cc_import (me_app (mpath ("L" :: "X" :: nil) nil) #0) ((None, "W", true) :: nil) ::
-     cc_eval (a_mem (me_app (T_ ("W" :: nil)) #0) "f") None :: nil).
-Proof. elab_ok. Qed.
+  elaborate_core (import_cmds ("L" :: "X" :: nil) nil (var "A" :: nil) (Some "W") nil,
+                  ("T" :: nil, ("A", typ 0) :: nil, nil))
+  = eerr "unbound name A".
+Proof. elab_err. Qed.
 
-(** Their names are fresh against the parameters, *)
+(** Read again in the unit's own frame, after its parameters, their names
+    are members of the unit, applied to its parameters; they are fresh
+    against the parameters, *)
 Example leading_param :
-  elaborate_core (c_import ("L" :: "X" :: nil) nil nil (i_as "A") :: nil,
+  elaborate_core (import_cmds ("L" :: "X" :: nil) nil nil (Some "A") nil,
                   ("T" :: nil, ("A", typ 0) :: nil, nil))
   = eerr "A is already declared".
 Proof. elab_err. Qed.
 
 (** and the unit's members against them. *)
 Example leading_member :
-  elaborate_core (c_import ("L" :: "X" :: nil) nil nil (i_items (("f", "f") :: nil) nil) :: nil,
+  elaborate_core (import_cmds ("L" :: "X" :: nil) nil nil None (i_items (("f", "f") :: nil) nil),
                   ("T" :: nil, nil, c_def md_pub "f" nat Cst.zero :: nil))
   = eerr "f is already declared".
 Proof. elab_err. Qed.
 
-(** In a local body, an import's items are binders of the body, [use]d or
+(** In the parameter types, a name a leading open declares denotes what it
+    names: [Eq] is the member [Eq] of the unit, and [W] the unit.  In the
+    body, they are the members [T.Eq] and [T.W], applied to the unit's
+    parameter [p].
+
+<<
+import P::E
+open P::E as W use (Eq)
+module T (p : Eq 1 1) where
+  eval W.refl
+end
+>>
+
+    The [open … as W use (Eq)] is [open P::E as W] then [open W use (Eq)]
+    ([Cst.open_cmds]): the item refers to the alias. *)
+Definition PE : modexp := mpath ("P" :: "E" :: nil) nil.
+
+Example leading_scope :
+  elab_spec (c_import ("P" :: "E" :: nil) ::
+             open_cmds ("P" :: "E" :: nil) nil nil (Some "W") (i_items (("Eq", "Eq") :: nil) nil),
+             ("T" :: nil, ("p", app (app (var "Eq") (Cst.succ Cst.zero)) (Cst.succ Cst.zero)) :: nil,
+              c_eval (proj (var "W") "refl") None :: nil))
+    (cc_load ("P" :: "E" :: nil) :: nil,
+     ⋅ ▹ (a_mem PE "Eq" $ succ zero $ succ zero),
+     cc_load ("P" :: "E" :: nil) ::
+     cc_open PE ((None, "W", true) :: nil) ::
+     cc_open (me_app (T_ ("W" :: nil)) #0) ((Some "Eq", "Eq", true) :: nil) ::
+     cc_eval (a_mem (me_app (T_ ("W" :: nil)) #0) "refl") None :: nil).
+Proof. elab_ok. Qed.
+
+(** A name a leading open declares as a module is not a term. *)
+Example leading_alias_term :
+  elaborate_core (c_import ("P" :: "E" :: nil) :: open_cmds ("P" :: "E" :: nil) nil nil (Some "W") nil,
+                  ("T" :: nil, ("p", var "W") :: nil, nil))
+  = eerr "a module is not a term".
+Proof. elab_err. Qed.
+
+(** A leading open of a unit that is not imported is rejected, as anywhere. *)
+Example leading_open_unloaded :
+  elaborate_core (open_cmds ("P" :: "E" :: nil) nil nil None (i_items (("Eq", "Eq") :: nil) nil),
+                  ("T" :: nil, nil, nil))
+  = eerr "the unit is not imported".
+Proof. elab_err. Qed.
+
+(** A bare import only loads, and importing a unit twice is two loads, the
+    second of which the core does nothing for. *)
+Example import_twice :
+  elab_spec (c_import ("P" :: "E" :: nil) :: nil,
+             ("T" :: nil, nil, c_import ("P" :: "E" :: nil) :: nil))
+    (cc_load ("P" :: "E" :: nil) :: nil, ⋅,
+     cc_load ("P" :: "E" :: nil) :: cc_load ("P" :: "E" :: nil) :: nil).
+Proof. elab_ok. Qed.
+
+(** [use] and [export] lists come in any order and any number, as one list
+    of items in the order written; the core checks them together.
+
+<<
+module M where def a : Nat := 0 end def b : Nat := 1 end def c : Nat := 2 end end
+open M export (a) use (b) export (c as d)
+>>
+*)
+Example open_lists :
+  elab_spec (unit_of
+    (c_mod false "M" nil (md_where (c_def md_pub "a" nat Cst.zero :: c_def md_pub "b" nat (Cst.succ Cst.zero) ::
+                                    c_def md_pub "c" nat (Cst.succ (Cst.succ Cst.zero)) :: nil)) ::
+     c_open nil ("M" :: nil) nil ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) ::
+     nil))
+    (nil, ⋅,
+     cc_mod "M" false ⋅ (cc_def "a" true false ℕ zero :: cc_def "b" true false ℕ (succ zero) ::
+                         cc_def "c" true false ℕ (succ (succ zero)) :: nil) ::
+     cc_open (T_ ("M" :: nil)) ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) :: nil).
+Proof. elab_ok. Qed.
+
+(** In a local body, an open's items are binders of the body, [use]d or
     [export]ed alike; privacy is the core's.
 
 <<
 let module L where
   module N (A : Type@0) where def y : Type@0 := A end end
-  import N Nat use (y as u) export (y)
+  open N Nat use (y as u) export (y)
 in L.y end
 >>
 *)
@@ -744,13 +896,13 @@ Example local_items :
        (letb (d_mod "L" nil
                 (md_where
                    (c_mod false "N" (("A", typ 0) :: nil) (md_where (c_def md_pub "y" (typ 0) (var "A") :: nil)) ::
-                    c_import nil ("N" :: nil) (nat :: nil) (i_items (("y", "u") :: nil) (("y", "y") :: nil)) :: nil)))
+                    c_open nil ("N" :: nil) (nat :: nil) (i_items (("y", "u") :: nil) (("y", "y") :: nil)) :: nil)))
           (proj (var "L") "y")) None :: nil))
     (nil, ⋅,
      cc_eval
        (ℓₘ (gu_mk ⋅
               (md_body
-                 (gm_import
+                 (gm_open
                     (gm_ext gm_nil "N" (ge_mod false (gu_mk (⋅ ▹ Type@0)
                                          (md_body (gm_ext gm_nil "y" (ge_def true false Type@0 (Some #0)))))))
                     (me_app (me_var 0) ℕ) ((Some "y", "u", true) :: (Some "y", "y", false) :: nil))))

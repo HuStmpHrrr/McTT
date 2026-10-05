@@ -271,7 +271,7 @@ end
 
 end
 
-import Bounds use (minLe; minLeRight; leMax; leMaxRight; leMin; maxLe)
+open Bounds use (minLe; minLeRight; leMax; leMaxRight; leMin; maxLe)
 
 (* [min] and [max] are monotone. *)
 module Mono where
