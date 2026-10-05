@@ -460,3 +460,24 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   names are in `Syntax.v`; resolution and its growth (`gm_resolve`,
   `gc_resolve`, `gc_module`, `gc_body`, `gc_sub`, `frame_fresh`) and
   transparency are in `Members.v`.
+
+### 10.10 Axioms
+- `axiom x (ps) : A` (no terminator, like `eval`) is `Cst.c_axiom x A`,
+  the parameters folded into `A` as for `def` (`Cst.axiom_cmd`).  It takes
+  no modifiers: `private`/`abstract axiom` is `Error: axiom takes no
+  modifiers`.  Before the header it is a parse error; in a local body,
+  `Error: axioms are not allowed in a local module` (elaborator).
+- Core: `cc_def : string -> bool -> bool -> typ -> option exp -> ccmd`.
+  `rc_def` runs `cc_def … (Some M)`; `rc_axiom` runs `cc_def … None`
+  with premise `Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i` and files
+  `gs_axiom b pv Ξ A = ge_def b pv (ctx_pi (gs_tele Ξ) A) None`, as
+  `wf_gentry_axiom`.  The elaborator emits `b = false` (opaque); readback
+  shows the stuck name, as for an abstract `def`.
+- The executable checks the type with `check_typ` (`Error: the type of
+  axiom x is not a type`).
+- `run_no_axioms` and the program-level consistency and canonicity
+  corollaries take a hypothesis: the commands run declare no axiom
+  (`cmds_no_axioms`), and every unit `to_core` gives declares none
+  (`Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u`).
+  `axiom bad : False  def oops : False := bad end` violates it, and is
+  accepted (driver test).  The `_no_axioms`/`_gctx` theorems are unchanged.

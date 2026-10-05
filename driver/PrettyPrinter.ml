@@ -204,6 +204,8 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
        format_obj ea format_obj eb;
      pp_close_box f ()
+  | Cst.Coq_c_axiom (x, ea) ->
+     fprintf f "@[<hov 2>axiom %s :@ %a@]" x format_obj ea
   | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %s@]" (String.concat "::" fp)
   | Cst.Coq_c_open (fp, ip, args, its) ->
      fprintf f "@[<hov 2>open %s" (string_of_qpath fp ip);
@@ -387,7 +389,7 @@ let exp_to_obj =
             let a' = impl ctx' a in
             (match om with
              | Some e -> Cst.Coq_c_def (m, x, a', impl ctx' e)
-             | None -> Cst.Coq_c_def (m, x, a', Cst.Coq_var "_"))
+             | None -> Cst.Coq_c_axiom (x, a'))
          | Coq_ge_mod (priv, u) ->
             let params, md = impl_unit ctx' u in
             Cst.Coq_c_mod (priv, x, params, md)

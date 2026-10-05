@@ -54,9 +54,13 @@ Definition gs_fresh (x : string) (Ξ : gstack) : Prop :=
   | nil => False
   end.
 
-(** A definition as it is filed: closed over the frames' parameters. *)
+(** A definition and an axiom as they are filed: closed over the frames'
+    parameters. *)
 Definition gs_def (b pv : bool) (Ξ : gstack) (A M : exp) : gentry :=
   ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M)).
+
+Definition gs_axiom (b pv : bool) (Ξ : gstack) (A : exp) : gentry :=
+  ge_def b pv (ctx_pi (gs_tele Ξ) A) None.
 
 (** ** Imports
 
@@ -109,15 +113,21 @@ Section Semantics.
 
       [Θ ⍮ Ξ ⊢[ch] c ⇝ Θ' ⍮ Ξ']: [ch] is the chain of units being loaded, the
       one running [c] first.  Only [rc_load] changes [Θ]; the premises
-      of [rc_def], [rc_mod] and [rc_alias] are those of [wf_gmod_ext],
-      [wf_gmod_nil] and [wf_gentry_alias].  Privacy is checked by
+      of [rc_def], [rc_axiom], [rc_mod] and [rc_alias] are those of
+      [wf_gentry_def], [wf_gentry_axiom], [wf_gmod_nil] and
+      [wf_gentry_alias], with the freshness of [wf_gmod_ext].  Privacy is checked by
       [rcs_cons], on the command as written. *)
 
   Inductive run_cmd : list path -> gdeps -> gstack -> ccmd -> gdeps -> gstack -> Prop :=
   | rc_def : forall ch Θ Ξ x b pv A M,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
       gs_fresh x Ξ ->
-      Θ ⍮ Ξ ⊢[ch] cc_def x b pv A M ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ
+      Θ ⍮ Ξ ⊢[ch] cc_def x b pv A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ
+  (** An axiom: only its type is checked. *)
+  | rc_axiom : forall ch Θ Ξ x b pv A i,
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i ->
+      gs_fresh x Ξ ->
+      Θ ⍮ Ξ ⊢[ch] cc_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ
   (** The body ends on the frame it opened, the stack below as it was; that
       frame becomes the member [x] of the one below, as it is. *)
   | rc_mod : forall ch Θ Ξ x pv Δ cs Θ' mp U,
@@ -478,6 +488,16 @@ Proof.
   cbn; econstructor; [ eassumption | unfold gs_def; constructor; exact HM | exact Hfr ].
 Qed.
 
+Lemma add_axiom_wf : forall Θ Ξ x b pv A i,
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> gs_fresh x Ξ -> ⊢g Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ.
+Proof.
+  intros * HΞ HA Hfr.
+  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.
+  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+  cbn; econstructor; [ eassumption | unfold gs_axiom; econstructor; exact HA | exact Hfr ].
+Qed.
+
 Lemma add_alias_wf : forall Θ Ξ x pv Δ E,
     ⊢g Θ ⍮ Ξ -> tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
     gs_fresh x Ξ -> ⊢g Θ ⍮ gs_add x (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))) Ξ.
@@ -591,6 +611,9 @@ Section WellFormed.
     - (* a definition: the new member is checked against the frame so far *)
       intros ch Θ Ξ x b pv A M HM Hfr HΞ Hc Hst.
       split; [ apply add_def_wf; assumption | split; [ exact Hc | apply gds_sub_refl ] ].
+    - (* an axiom: its type is checked against the frame so far *)
+      intros ch Θ Ξ x b pv A i HA Hfr HΞ Hc Hst.
+      split; [ eapply add_axiom_wf; eassumption | split; [ exact Hc | apply gds_sub_refl ] ].
     - (* a module: its body ends on a frame with the path and parameters it opened with *)
       intros ch Θ Ξ x pv Δ cs Θ' mp' U Htel HΔ Hfr Hr IH HΞ Hc Hst.
       destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; cbn [gs_fresh gs_path] in Hfr, Hr, IH |- *.
@@ -890,6 +913,7 @@ Section Runs.
       eapply (proj1 (proj2 run_dom_mono)); [ exact Hr | rewrite Ef; discriminate | apply Hch, Hx ]. }
     apply run_mut_dind; intros.
     - constructor; assumption.
+    - eapply rc_axiom; eassumption.
     - econstructor; eauto.
     - eapply rc_alias; eassumption.
     - eapply rc_load_filed; eassumption.

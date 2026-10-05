@@ -22,7 +22,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
-%token <loc> THEOREM LEMMA FACT REMARK GIVEN (* definition keywords; [let] is [LET] *)
+%token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
@@ -81,6 +81,9 @@ let cmd :=
      parameters, type and body; the keyword decides which modifiers it takes. *)
   | m = mods; k = dkw; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
       { [Cst.def_cmd k m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b)] }
+  (* An axiom has [def]'s parameters and type, and no body. *)
+  | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = obj;
+      { [Cst.axiom_cmd m (snd x) (fold_params Cst.pi ps a)] }
   | ~ = import_cmd; <>
   | ~ = open_cmd; <>
   | EVAL; ~ = obj; { [Cst.c_eval obj None] }

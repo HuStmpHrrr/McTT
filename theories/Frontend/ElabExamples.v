@@ -65,9 +65,9 @@ Definition U_M_b : exp := qname_term (q_abs ("U" :: nil) ("M" :: "b" :: nil)).
 Example nested_spec :
   elab_spec nested
     (nil, ⋅ ▹ Type@0,
-     cc_def "a" true false Type@0 #0 ::
+     cc_def "a" true false Type@0 (Some #0) ::
      cc_mod "M" false (⋅ ▹ Type@0)
-       (cc_def "b" true false Type@0 #0 ::
+       (cc_def "b" true false Type@0 (Some #0) ::
         cc_eval (U_a $ #1) None ::
         cc_eval (U_M_b $ #1 $ #0) None ::
         cc_eval (λ ℕ (U_M_b $ #2 $ #1)) None :: nil) ::
@@ -108,8 +108,8 @@ Example church_spec :
   elab_spec church
     (nil, ⋅,
      cc_mod "Church" false (⋅ ▹ Type@0)
-       (cc_def "t" true false Type@0 (Π #0 (Π (Π #1 #2) #2)) ::
-        cc_def "two" true false (Church_t $ #0) (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1)))) :: nil) ::
+       (cc_def "t" true false Type@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
+        cc_def "two" true false (Church_t $ #0) (Some (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1))))) :: nil) ::
      cc_eval (ℓₘ (gu_mk ⋅ (Syntax.md_alias (me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
               in (a_mem (me_var 0) "two" $ zero $ λ ℕ (succ #0))) (Some ℕ) :: nil).
 Proof. elab_ok. Qed.
@@ -139,8 +139,8 @@ Example import_use_spec :
   elab_spec import_use
     (nil, ⋅,
      cc_mod "Impl" false ⋅
-       (cc_def "secret" true true ℕ (succ (succ (succ zero))) ::
-        cc_def "exposed" true false ℕ (succ (Impl_ "secret")) :: nil) ::
+       (cc_def "secret" true true ℕ (Some (succ (succ (succ zero)))) ::
+        cc_def "exposed" true false ℕ (Some (succ (Impl_ "secret"))) :: nil) ::
      cc_open Impl ((None, "I", true) :: nil) ::
      cc_open Impl ((Some "exposed", "exposed", true) :: nil) ::
      cc_eval (a_mem (qname_mod (ImportUse_ ("I" :: nil))) "exposed" $ (qname_term (ImportUse_ ("exposed" :: nil))))
@@ -212,7 +212,7 @@ Example private_sibling :
     (c_mod false "I" nil (md_where (c_def md_priv "s" nat Cst.zero :: nil)) ::
      c_eval (proj (var "I") "s") None :: nil))
     (nil, ⋅,
-     cc_mod "I" false ⋅ (cc_def "s" true true ℕ zero :: nil) ::
+     cc_mod "I" false ⋅ (cc_def "s" true true ℕ (Some zero) :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("I" :: nil)) "s") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -240,8 +240,8 @@ Example shadow_parent :
      c_mod false "I" nil
        (md_where (c_def md_pub "x" nat (Cst.succ Cst.zero) :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅,
-     cc_def "x" true false ℕ zero ::
-     cc_mod "I" false ⋅ (cc_def "x" true false ℕ (succ zero) ::
+     cc_def "x" true false ℕ (Some zero) ::
+     cc_mod "I" false ⋅ (cc_def "x" true false ℕ (Some (succ zero)) ::
                    cc_eval (qname_term (q_abs ("T" :: nil) ("I" :: "x" :: nil))) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -256,7 +256,7 @@ Example partial_args :
     (c_mod false "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
      c_eval (proj (var "M") "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
+     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 (Some #0) :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("M" :: nil)) "f") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -266,7 +266,7 @@ Example dotted_module :
     (c_mod_dotted false "B" ("A" :: nil) (("X", typ 0) :: nil) (md_where (c_def md_abs "y" (typ 0) (var "X") :: nil)) ::
      c_eval (app (proj (proj (var "A") "B") "y") nat) None :: nil))
     (nil, ⋅,
-     cc_mod "A" false ⋅ (cc_mod "B" false (⋅ ▹ Type@0) (cc_def "y" false false Type@0 #0 :: nil) :: nil) ::
+     cc_mod "A" false ⋅ (cc_mod "B" false (⋅ ▹ Type@0) (cc_def "y" false false Type@0 (Some #0) :: nil) :: nil) ::
      cc_eval (a_mem (me_mem (mpath ("T" :: nil) ("A" :: nil)) "B") "y" $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -282,7 +282,7 @@ Proof. elab_fails. Qed.
     with the message shown.  [theorem foo (n : Nat) : Nat := n end] is: *)
 Example kw_theorem :
   elab_spec (unit_of (def_cmd dk_theorem md_pub "foo" (pi "n" nat nat) (fn "n" nat (var "n")) :: nil))
-    (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (λ ℕ #0) :: nil).
+    (nil, ⋅, cc_def "foo" false false (Π ℕ ℕ) (Some (λ ℕ #0)) :: nil).
 Proof. elab_ok. Qed.
 
 (** [private lemma], [fact], [remark], [let], [abstract given]: *)
@@ -292,8 +292,8 @@ Example kw_others :
      def_cmd dk_remark md_pub "c" nat Cst.zero :: def_cmd dk_let md_pub "d" nat Cst.zero ::
      def_cmd dk_given md_abs "e" nat Cst.zero :: def_cmd dk_def md_priv_abs "f" nat Cst.zero :: nil))
     (nil, ⋅,
-     cc_def "a" false true ℕ zero :: cc_def "b" false true ℕ zero :: cc_def "c" false true ℕ zero ::
-     cc_def "d" true true ℕ zero :: cc_def "e" false true ℕ zero :: cc_def "f" false true ℕ zero :: nil).
+     cc_def "a" false true ℕ (Some zero) :: cc_def "b" false true ℕ (Some zero) :: cc_def "c" false true ℕ (Some zero) ::
+     cc_def "d" true true ℕ (Some zero) :: cc_def "e" false true ℕ (Some zero) :: cc_def "f" false true ℕ (Some zero) :: nil).
 Proof. elab_ok. Qed.
 
 Example kw_theorem_abstract :
@@ -313,6 +313,32 @@ Example kw_let_private :
 Proof. vm_compute; reflexivity. Qed.
 Example kw_given_private :
   elaborate_core (unit_of (def_cmd dk_given md_priv_abs "a" nat Cst.zero :: nil)) = eerr "given is already private".
+Proof. vm_compute; reflexivity. Qed.
+
+(** ** Axioms
+
+    [axiom x (ps) : A] takes [def]'s parameters and type and has no body
+    ([Cst.axiom_cmd]); it is opaque, and takes no modifiers.
+    [axiom f (n : Nat) : Nat  def g : Nat := f 0 end] is: *)
+Example axiom_member :
+  elab_spec (unit_of (axiom_cmd md_pub "f" (pi "n" nat nat) ::
+                      def_cmd dk_def md_pub "g" nat (app (var "f") Cst.zero) :: nil))
+    (nil, ⋅, cc_def "f" false false (Π ℕ ℕ) None ::
+             cc_def "g" true false ℕ (Some (a_mem (mpath ("T" :: nil) nil) "f" $ zero)) :: nil).
+Proof. elab_ok. Qed.
+
+Example axiom_private :
+  elaborate_core (unit_of (axiom_cmd md_priv "a" nat :: nil)) = eerr "axiom takes no modifiers".
+Proof. vm_compute; reflexivity. Qed.
+Example axiom_abstract :
+  elaborate_core (unit_of (axiom_cmd md_abs "a" nat :: nil)) = eerr "axiom takes no modifiers".
+Proof. vm_compute; reflexivity. Qed.
+
+(** A local body has no axioms. *)
+Example axiom_local :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "L" nil (md_where (axiom_cmd md_pub "a" nat :: nil))) Cst.zero) None :: nil))
+  = eerr "axioms are not allowed in a local module".
 Proof. vm_compute; reflexivity. Qed.
 
 (** A rejected keyword is rejected in a local body too. *)
@@ -416,9 +442,9 @@ Example shadow_param :
                    c_mod false "M" (("y", nat) :: nil)
                      (md_where (c_def md_pub "x" nat (var "y") :: c_eval (var "x") None :: nil)) :: nil))
     (nil, ⋅ ▹ ℕ,
-     cc_def "y" true false ℕ zero ::
+     cc_def "y" true false ℕ (Some zero) ::
      cc_mod "M" false (⋅ ▹ ℕ)
-       (cc_def "x" true false ℕ #0 ::
+       (cc_def "x" true false ℕ (Some #0) ::
         cc_eval (qname_term (q_abs ("T" :: nil) ("M" :: "x" :: nil)) $ #1 $ #0) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -495,7 +521,7 @@ Example let_shadow :
           c_eval (letb (d_def "y" (Some nat) (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
     (nil, ⋅,
      cc_mod "M" false (⋅ ▹ Type@0)
-       (cc_def "y" true false ℕ zero ::
+       (cc_def "y" true false ℕ (Some zero) ::
         cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -511,7 +537,7 @@ Example alias_module :
      c_mod false "P" (("A", typ 0) :: nil) (md_alias (app (var "M") (var "A"))) ::
      c_eval (proj (app (var "P") nat) "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 #0 :: nil) ::
+     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 (Some #0) :: nil) ::
      cc_alias "P" false (⋅ ▹ Type@0) (me_app (T_ ("M" :: nil)) #0) ::
      cc_eval (a_mem (me_app (T_ ("P" :: nil)) ℕ) "f") None :: nil).
 Proof. elab_ok. Qed.
@@ -742,7 +768,7 @@ Example import_items :
     c_open nil ("M" :: nil) (var "A" :: nil) (i_items (("c", "d") :: nil) (("e", "e") :: nil)) ::
     c_eval (var "d") None :: c_eval (var "e") None :: nil))
     (nil, ⋅ ▹ Type@0,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "c" true false Type@0 #0 :: cc_def "e" true false Type@0 #0 :: nil) ::
+     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "c" true false Type@0 (Some #0) :: cc_def "e" true false Type@0 (Some #0) :: nil) ::
      cc_open (me_app (me_app (T_ ("M" :: nil)) #0) #0)
        ((Some "c", "d", true) :: (Some "e", "e", false) :: nil) ::
      cc_eval (qname_term (q_abs ("T" :: nil) ("d" :: nil)) $ #0) None ::
@@ -765,7 +791,7 @@ Example import_items_dup :
     (c_mod false "M" nil (md_where (c_def md_pub "c" nat Cst.zero :: nil)) ::
      c_open nil ("M" :: nil) nil (i_items (("c", "c") :: nil) (("c", "c") :: nil)) :: nil))
     (nil, ⋅,
-     cc_mod "M" false ⋅ (cc_def "c" true false ℕ zero :: nil) ::
+     cc_mod "M" false ⋅ (cc_def "c" true false ℕ (Some zero) :: nil) ::
      cc_open (T_ ("M" :: nil)) ((Some "c", "c", true) :: (Some "c", "c", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -906,8 +932,8 @@ Example open_lists :
      c_open nil ("M" :: nil) nil ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) ::
      nil))
     (nil, ⋅,
-     cc_mod "M" false ⋅ (cc_def "a" true false ℕ zero :: cc_def "b" true false ℕ (succ zero) ::
-                         cc_def "c" true false ℕ (succ (succ zero)) :: nil) ::
+     cc_mod "M" false ⋅ (cc_def "a" true false ℕ (Some zero) :: cc_def "b" true false ℕ (Some (succ zero)) ::
+                         cc_def "c" true false ℕ (Some (succ (succ zero))) :: nil) ::
      cc_open (T_ ("M" :: nil)) ((Some "a", "a", false) :: (Some "b", "b", true) :: (Some "c", "d", false) :: nil) :: nil).
 Proof. elab_ok. Qed.
 
@@ -970,9 +996,9 @@ Example running_spec :
   elab_spec running
     (nil, ⋅,
      cc_mod "M" false (⋅ ▹ Type@0)
-       (cc_def "id" true false (Π #0 #1) (λ #0 #0) ::
+       (cc_def "id" true false (Π #0 #1) (Some (λ #0 #0)) ::
         cc_mod "N" false (⋅ ▹ Type@0)
-          (cc_def "k" true false (Π #1 (Π #1 #3)) (λ #1 (λ #1 (Main_M_id $ #3 $ #1)))
+          (cc_def "k" true false (Π #1 (Π #1 #3)) (Some (λ #1 (λ #1 (Main_M_id $ #3 $ #1))))
              :: nil) :: nil) ::
-     cc_def "j" true false (Π ℕ ℕ) (a_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ) :: nil).
+     cc_def "j" true false (Π ℕ ℕ) (Some (a_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ)) :: nil).
 Proof. elab_ok. Qed.

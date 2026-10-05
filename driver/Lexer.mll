@@ -62,6 +62,7 @@
     | FACT _ -> "fact"
     | REMARK _ -> "remark"
     | GIVEN _ -> "given"
+    | AXIOM _ -> "axiom"
     | AS _ -> "as"
     | USE _ -> "use"
     | EXPORT _ -> "export"
@@ -110,6 +111,7 @@
     | FACT r
     | REMARK r
     | GIVEN r
+    | AXIOM r
     | AS r
     | USE r
     | EXPORT r
@@ -173,6 +175,7 @@ rule read =
   | "fact" { FACT (get_range lexbuf) }
   | "remark" { REMARK (get_range lexbuf) }
   | "given" { GIVEN (get_range lexbuf) }
+  | "axiom" { AXIOM (get_range lexbuf) }
   | "as" { AS (get_range lexbuf) }
   | "use" { USE (get_range lexbuf) }
   | "export" { EXPORT (get_range lexbuf) }

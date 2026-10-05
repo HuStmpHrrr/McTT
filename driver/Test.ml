@@ -2185,3 +2185,57 @@ let%expect_test "a leading open may not export" =
        open Prelude::Arith::Equality export (refl) end"
   in
   [%expect {| |}]
+
+let%expect_test "an axiom is a member with no body" =
+  let _ =
+    main_of_body
+      "axiom P (n : Nat) : Type@0 axiom p : P 0 def q : P 0 := p end eval q eval p : P 0 \
+       module N where axiom k : Nat eval succ k end"
+  in
+  [%expect {|
+    Evaluate q --> p : P 0
+    Evaluate p --> p : P 0
+    Evaluate succ N.k --> succ N.k : Nat
+    |}]
+
+let%expect_test "an axiom of another unit" =
+  let _ =
+    main_of_multi_string
+      "import Lib::Axioms module X where def d : Nat := succ Lib::Axioms.c end eval d \
+       eval fun (x : Lib::Axioms.Inner.P 0) -> x end"
+  in
+  [%expect {|
+    Evaluate d --> succ Lib::Axioms.c : Nat
+    Evaluate fun (x1 : Lib::Axioms.Inner.P 0) -> x1
+      --> fun (x1 : Lib::Axioms.Inner.P 0) -> x1
+      : forall (x1 : Lib::Axioms.Inner.P 0) -> Lib::Axioms.Inner.P 0
+    |}]
+
+let%expect_test "an axiom of False makes False inhabited" =
+  let _ = main_of_body "axiom bad : False def oops : False := bad end eval oops" in
+  [%expect {| Evaluate oops --> bad : False |}]
+
+let%expect_test "an axiom takes no modifiers" =
+  let _ = main_of_body "private axiom x : Nat" in
+  [%expect {| Error: axiom takes no modifiers |}];
+  let _ = main_of_body "abstract axiom x : Nat" in
+  [%expect {| Error: axiom takes no modifiers |}];
+  let _ = main_of_body "private abstract axiom x : Nat" in
+  [%expect {| Error: axiom takes no modifiers |}]
+
+let%expect_test "an axiom is rejected in a local body" =
+  let _ = main_of_body "eval let module L where axiom x : Nat end in 0 end" in
+  [%expect {| Error: axioms are not allowed in a local module |}]
+
+let%expect_test "an axiom is rejected before the module header" =
+  let _ = main_of_program_string "axiom x : Nat module T where end" in
+  [%expect {|
+    Error: on "axiom" (at line 1, column 1 - line 1, column 6): This token is
+      invalid for the beginning of a program.
+    |}]
+
+let%expect_test "the type of an axiom is a type" =
+  let _ = main_of_body "axiom x : 0" in
+  [%expect {| Error: the type of axiom x is not a type |}];
+  let _ = main_of_body "axiom x : Nat axiom x : Nat" in
+  [%expect {| Error: x is already declared |}]

@@ -497,6 +497,18 @@ prog: MODULE VAR WHERE ZERO
 
 Expected a command ("module", "def", "theorem", "let", "import", "open", "eval", ...), or keyword "end" to close the module.
 
+prog: MODULE VAR WHERE AXIOM ZERO
+
+Expected a name for the axiom.
+
+prog: MODULE VAR WHERE AXIOM VAR ZERO
+
+Expected a parameter "(x : A)", or ":" followed by the type of the axiom.
+
+prog: MODULE VAR WHERE AXIOM VAR COLON WHERE
+
+Expected the type of the axiom.
+
 prog: MODULE VAR WHERE DEF ZERO
 ##
 ## Ends in an error in state: 120.

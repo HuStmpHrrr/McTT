@@ -12,9 +12,10 @@ From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations.
 
 Inductive ccmd : Set :=
-(** [def x : A := M]: transparency, privacy, type and body.  A [def] always
-    has a body; an [abstract] one is opaque, not bodiless. *)
-| cc_def : string -> bool -> bool -> typ -> exp -> ccmd
+(** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
+    body.  An axiom has no body; an [abstract] [def] is opaque, not
+    bodiless. *)
+| cc_def : string -> bool -> bool -> typ -> option exp -> ccmd
 (** [module x (Δ) where cs end], private or not *)
 | cc_mod : string -> bool -> ctx -> list ccmd -> ccmd
 (** [module x (Δ) := E]: an alias, under its own parameters, private or not. *)

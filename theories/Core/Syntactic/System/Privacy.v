@@ -329,7 +329,7 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
     commands are checked when they run. *)
 Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   match c with
-  | cc_def _ _ _ A M => exp_refs nil A ++ exp_refs nil M
+  | cc_def _ _ _ A oM => exp_refs nil A ++ match oM with Some M => exp_refs nil M | None => nil end
   | cc_mod _ _ Δ _ => tele_refs nil Δ
   | cc_alias _ _ Δ E => tele_refs nil Δ ++ modexp_refs nil E
   | cc_load _ => nil

@@ -247,6 +247,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_open fq ip args its :: cs' =>
                let* E := elab_target_with elab S fq ip args in
                go (item_ents its ++ S)%list (gm_open Φ E its) cs'
+           | Cst.c_axiom _ _ :: _ => eerr "axioms are not allowed in a local module"
            | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
            | Cst.c_error e :: _ => eerr e
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
@@ -280,7 +281,12 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* _ := check_fresh x F in
       let* A := elab (F ++ O) oA in
       let* M := elab (F ++ O) oM in
-      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M :: nil)
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
+  (** An axiom is opaque: it has no body to unfold. *)
+  | Cst.c_axiom x oA =>
+      let* _ := check_fresh x F in
+      let* A := elab (F ++ O) oA in
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_def x false false A None :: nil)
   | Cst.c_mod pv x ps (Cst.md_where body) =>
       let* _ := check_fresh x F in
       let* _ := check_params ps in

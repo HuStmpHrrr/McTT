@@ -549,22 +549,25 @@ Qed.
 
 (** *** Every Program
 
-    No command files an axiom ([run_no_axioms]), so the theorems above hold
-    at every global context a run reaches, and at what a program files. *)
+    A run of commands that declare no axiom, loading units that declare
+    none, files no axiom ([run_no_axioms]), so the theorems above hold at
+    every global context it reaches, and at what such a program files. *)
 
 Section Programs.
   Variables (load_path : path -> option String.string) (read : String.string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
+  Hypothesis Hload : forall prg u, to_core prg = Some u -> unit_no_axioms u.
 
 Corollary consistency_False_run : forall ch cs Θ Ξ M,
     Mctt.Core.Syntactic.System.Command.run_cmds load_path read to_core ch nil nil cs Θ Ξ ->
+    cmds_no_axioms cs ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
-Proof. intros * Hr; apply consistency_False_no_axioms; eapply run_cmds_no_axioms; exact Hr. Qed.
+Proof. intros * Hr Hc; apply consistency_False_no_axioms; eapply run_cmds_no_axioms; [ exact Hload | exact Hr | exact Hc ]. Qed.
 
 Corollary consistency_False_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
     ~ (((prog_path prg, U) :: Θ) ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
-Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; exact Hp. Qed.
+Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; [ exact Hload | exact Hp ]. Qed.
 
 Corollary canonical_form_of_nat_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
@@ -573,7 +576,7 @@ Corollary canonical_form_of_nat_prog : forall prg Θ U M,
     exists V, nbe (gds_unseal Θ') nil ⋅ M ℕ V /\ canonical_nat V.
 Proof.
   intros * Hp Θ' HM.
-  pose proof (prog_sem_no_axioms _ _ _ _ _ _ Hp) as Hna.
+  pose proof (prog_sem_no_axioms _ _ _ Hload _ _ _ Hp) as Hna.
   destruct (canonical_form_of_nat_no_axioms _ _ _ Hna HM) as (_ & _ & _ & V & HV & HcV & _).
   eauto.
 Qed.

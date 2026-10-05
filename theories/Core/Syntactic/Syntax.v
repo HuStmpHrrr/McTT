@@ -131,6 +131,8 @@ with cmd : Set :=
 | c_mod : bool -> string -> list (string * obj) -> mdef -> cmd
 (** [private abstract def x : A := M end], with its modifiers *)
 | c_def : mods -> string -> obj -> obj -> cmd
+(** [axiom x : A], a definition with no body; it takes no modifiers. *)
+| c_axiom : string -> obj -> cmd
 (** [import X::Y] loads the unit [X::Y], so that it may be named.  It
     declares nothing. *)
 | c_import : list string -> cmd
@@ -178,6 +180,7 @@ Section cst_mut_ind.
     (case_md_alias : forall o, Po o -> Pm (md_alias o))
     (case_c_mod : forall pv x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pc (c_mod pv x ps md))
     (case_c_def : forall m x o1 o2, Po o1 -> Po o2 -> Pc (c_def m x o1 o2))
+    (case_c_axiom : forall x o, Po o -> Pc (c_axiom x o))
     (case_c_import : forall fq, Pc (c_import fq))
     (case_c_open : forall fq ip args its, List.Forall Po args -> Pc (c_open fq ip args its))
     (case_c_error : forall e, Pc (c_error e))
@@ -242,6 +245,7 @@ Section cst_mut_ind.
               end) ps)
           (mdef_mut md)
     | c_def m x o1 o2 => case_c_def m x o1 o2 (obj_mut o1) (obj_mut o2)
+    | c_axiom x o => case_c_axiom x o (obj_mut o)
     | c_import fq => case_c_import fq
     | c_open fq ip args its =>
         case_c_open fq ip args its
@@ -277,6 +281,11 @@ Definition def_cmd (k : dkw) (m : mods) (x : string) (A M : obj) : cmd :=
   | inl m' => c_def m' x A M
   | inr e => c_error e
   end.
+
+(** [axiom x : A] with the modifiers [m]: the axiom, or the rejection of
+    [m]. *)
+Definition axiom_cmd (m : mods) (x : string) (A : obj) : cmd :=
+  if orb (md_private m) (md_abstract m) then c_error "axiom takes no modifiers" else c_axiom x A.
 
 (** [open E as W its] is [open E as W] then [open W its]: the items refer
     to the alias, and an open declares either the module or its members. *)

@@ -232,6 +232,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_open fq ip args its :: cs' =>
       let* E := elab_target_with elab S fq ip args in
       elab_body (item_ents its ++ S) (gm_open Φ E its) cs'
+  | Cst.c_axiom _ _ :: _ => eerr "axioms are not allowed in a local module"
   | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
   | Cst.c_error e :: _ => eerr e
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
@@ -394,6 +395,8 @@ Proof.
     split; intros Hg.
     + dest_eok. to_spec. econstructor; eassumption.
     + inversion Hg; subst. to_elab. reflexivity.
+  - (* c_axiom *)
+    intros x o _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_import *)
     intros fq cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_open *)
@@ -485,6 +488,8 @@ Section Commands.
     - intros pv x ps [body | oE] _ Hmd ch O F F' c'; cbn [elab_cmd]; [ specialize (Hmd body eq_refl) |].
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros m x o1 o2 _ _ ch O F F' c'; cbn [elab_cmd].
+      split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
+    - intros x o _ ch O F F' c'; cbn [elab_cmd].
       split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros fq ch O F F' c'; cbn [elab_cmd].
       split; [ intros H; inv_eok; constructor | intros H; inversion H; subst; reflexivity ].

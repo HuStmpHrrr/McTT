@@ -258,7 +258,7 @@ with sdef : list ent -> Cst.mdef -> moddef -> Prop :=
     Each entry is a core binder for the entries after it.  An open is a
     pre-form the core expands ([gm_open]); each of its items is a core
     binder.  The names of a body are checked fresh by the core.  A local
-    body has no [import]s and no [eval]s. *)
+    body has no [import]s, no [eval]s and no axioms. *)
 with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 | sb_nil : forall S Φ, sbody S Φ nil Φ
 | sb_def : forall S Φ m x oA oM A M cs Φ',
@@ -289,7 +289,13 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     sel (F ++ O) oA A ->
     sel (F ++ O) oM M ->
     scmd fp ch O F (Cst.c_def m x oA oM) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
-      (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A M :: nil)
+      (cc_def x (negb (Cst.md_abstract m)) (Cst.md_private m) A (Some M) :: nil)
+(** An axiom is opaque, and has no body. *)
+| sc_axiom : forall ch O F x oA A,
+    fresh x F ->
+    sel (F ++ O) oA A ->
+    scmd fp ch O F (Cst.c_axiom x oA) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
+      (cc_def x false false A None :: nil)
 (** The parameters of [module x (ps) where body end] are read in [F], its
     body in a new frame inside. *)
 | sc_mod : forall ch O F pv x ps body tys bcs,

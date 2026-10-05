@@ -462,12 +462,23 @@ Section Impl.
 
   Lemma def_ok {ch Θ K D Ξ x b pv A M} :
     gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
-    post_cmd ch Θ K D Ξ (cc_def x b pv A M) (cst Θ K D (gs_add x (gs_def b pv Ξ A M) Ξ)).
+    post_cmd ch Θ K D Ξ (cc_def x b pv A (Some M)) (cst Θ K D (gs_add x (gs_def b pv Ξ A M) Ξ)).
   Proof.
     intros Hfr HM ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
-    assert (Hr : run_cmd ch ΘR Ξ (cc_def x b pv A M) ΘR (gs_add x (gs_def b pv Ξ A M) Ξ)).
+    assert (Hr : run_cmd ch ΘR Ξ (cc_def x b pv A (Some M)) ΘR (gs_add x (gs_def b pv Ξ A M) Ξ)).
     { constructor; [| exact Hfr ].
       exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HM). }
+    exists ΘR; split; [ exact Hr | split; [ exact (linv_run_same Hli Hr) | split; [ apply ext_refl | apply grows_refl ] ] ].
+  Qed.
+
+  Lemma axiom_ok {ch Θ K D Ξ x b pv A i} :
+    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i ->
+    post_cmd ch Θ K D Ξ (cc_def x b pv A None) (cst Θ K D (gs_add x (gs_axiom b pv Ξ A) Ξ)).
+  Proof.
+    intros Hfr HA ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    assert (Hr : run_cmd ch ΘR Ξ (cc_def x b pv A None) ΘR (gs_add x (gs_axiom b pv Ξ A) Ξ)).
+    { econstructor; [| exact Hfr ].
+      exact (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HA). }
     exists ΘR; split; [ exact Hr | split; [ exact (linv_run_same Hli Hr) | split; [ apply ext_refl | apply grows_refl ] ] ].
   Qed.
 
@@ -693,7 +704,7 @@ Section Impl.
     intros Hli Hfr HM.
     pose proof (equiv_exp _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HM) as HM'.
     split; [ exact HM' |].
-    assert (Hr : run_cmd ch ΘR Ξ (cc_def d true pv A M) ΘR (gs_add d (gs_def true pv Ξ A M) Ξ))
+    assert (Hr : run_cmd ch ΘR Ξ (cc_def d true pv A (Some M)) ΘR (gs_add d (gs_def true pv Ξ A M) Ξ))
       by (constructor; assumption).
     exact (linv_run_same Hli Hr).
   Qed.
@@ -893,11 +904,16 @@ Section Impl.
       generates. *)
   Equations defalias_step (ch : list path) (Θ : gdeps) (K : kmap) (D : list path) (Ξ : gstack)
     (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres {Ξ' | post_cmd ch Θ K D Ξ c (cst Θ K D Ξ')} :=
-  | ch, Θ, K, D, Ξ, cc_def x b pv A M, H with gs_fresh_dec x Ξ => {
+  | ch, Θ, K, D, Ξ, cc_def x b pv A (Some M), H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_exp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A M => {
       | left HM => rok (da_ok (def_ok Hfr HM))
       | right _ => rerr (re_def x Ξ A M) } }
+  | ch, Θ, K, D, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
+    | right _ => rerr (re_msg ("duplicate name " ++ x))
+    | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
+      | inleft (exist _ i HA) => rok (da_ok (axiom_ok Hfr HA))
+      | inright _ => rerr (re_msg ("the type of axiom " ++ x ++ " is not a type")) } }
   | ch, Θ, K, D, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
@@ -1150,23 +1166,28 @@ Section Impl.
       it, but the executable shares it without recursing.  Both expand a
       command with an oracle meeting the specification, hence identically. *)
 
-  Lemma def_complete : forall ch ΘR Ξ x b pv A M ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
-      linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_def x b pv A M) ΘR' Ξ' ->
-      exists r, defalias_step ch Θ K D Ξ (cc_def x b pv A M) H = rok r.
+  Lemma def_complete : forall ch ΘR Ξ x b pv A oM ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
+      linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_def x b pv A oM) ΘR' Ξ' ->
+      exists r, defalias_step ch Θ K D Ξ (cc_def x b pv A oM) H = rok r.
   Proof.
-    intros * Hli Hr; inversion Hr; subst; simp defalias_step.
-    destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp defalias_step.
-    match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
-      simp defalias_step; [ eexists; reflexivity |].
-    exfalso; apply HM'.
-      match goal with HM : _ ⍮ _ ⍮ _ ⊢ M : A |- _ => exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) end.
+    intros * Hli Hr; inversion Hr; subst; simp defalias_step;
+      (destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp defalias_step).
+    - match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
+        simp defalias_step; [ eexists; reflexivity |].
+      exfalso; apply HM'.
+      match goal with HM : _ ⍮ _ ⍮ _ ⊢ _ : A |- _ => exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) end.
+    - (* an axiom: its type is a type *)
+      match goal with |- context [check_typ ?a ?b ?c ?d ?e] => destruct (check_typ a b c d e) as [[j HA'] | HA'] end;
+        simp defalias_step; [ eexists; reflexivity |].
+      exfalso; eapply HA'.
+      match goal with HA : _ ⍮ _ ⍮ _ ⊢ A : _ |- _ => exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HA) end.
   Qed.
 
   Lemma alias_complete : forall ch ΘR Ξ x pv Δ E ΘR' Ξ' Θ K D (H : exists ΘR0, linv ch Θ K D ΘR0 Ξ),
       linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_alias x pv Δ E) ΘR' Ξ' ->
       exists r, defalias_step ch Θ K D Ξ (cc_alias x pv Δ E) H = rok r.
   Proof.
-    intros * Hli Hr; inversion Hr as [| | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | |]; subst; simp defalias_step.
+    intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | |]; subst; simp defalias_step.
     destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp defalias_step.
     match goal with |- context [check_ext ?a ?b ?c ?d ?e] => destruct (check_ext a b c d e) as [HΔ' | HΔ'] end;
       [| exfalso; apply HΔ'; exact (equiv_ext _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
@@ -1232,7 +1253,12 @@ Section Impl.
     - (* a definition *)
       intros ch ΘR Ξ x b pv A M HM Hfr Hacc Θ K D H Hli c Hx.
       refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
-      destruct (def_complete ch ΘR Ξ x b pv A M _ _ Θ K D H Hli ltac:(constructor; assumption)) as [[Ξ1 Hp] Er].
+      destruct (def_complete ch ΘR Ξ x b pv A (Some M) _ _ Θ K D H Hli ltac:(constructor; assumption)) as [[Ξ1 Hp] Er].
+      rewrite Er; simp simple_step; eexists; reflexivity.
+    - (* an axiom *)
+      intros ch ΘR Ξ x b pv A i HA Hfr Hacc Θ K D H Hli c Hx.
+      refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
+      destruct (def_complete ch ΘR Ξ x b pv A None _ _ Θ K D H Hli ltac:(econstructor; eassumption)) as [[Ξ1 Hp] Er].
       rewrite Er; simp simple_step; eexists; reflexivity.
     - (* a module *)
       intros ch ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli c Hx.

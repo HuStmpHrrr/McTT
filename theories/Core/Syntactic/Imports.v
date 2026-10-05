@@ -325,10 +325,13 @@ Section Expansion.
       when they run. *)
   Definition cmd_xp (S : skel) (c : ccmd) : xres ccmd :=
     match c with
-    | cc_def x b pv A M =>
+    | cc_def x b pv A (Some M) =>
         let+ A' := exp_xp S A in
         let+ M' := exp_xp S M in
-        xok (cc_def x b pv A' M')
+        xok (cc_def x b pv A' (Some M'))
+    | cc_def x b pv A None =>
+        let+ A' := exp_xp S A in
+        xok (cc_def x b pv A' None)
     | cc_mod x pv Δ cs =>
         let+ Δ' := tele_xp S Δ in
         xok (cc_mod x pv Δ' cs)
@@ -422,7 +425,7 @@ Section Ext.
   Lemma cmd_xp_ext : forall c S, cmd_xp mt S c = cmd_xp mt' S c.
   Proof.
     destruct xp_ext_all as (He & Hm & _).
-    intros [x b pv A M | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] S; cbn [cmd_xp];
+    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] S; cbn [cmd_xp];
       rewrite ?He, ?Hm, ?tele_xp_ext; try reflexivity.
     all: repeat (cbn [xbind]; first
                   [ match goal with
@@ -495,18 +498,21 @@ Definition ccmd_head (c : ccmd) : nat :=
 
 Lemma cmd_xp_head : forall mt S c c', cmd_xp mt S c = xok c' -> ccmd_head c' = ccmd_head c.
 Proof.
-  intros mt S [x b pv A M | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] c' Ex; cbn in Ex;
+  intros mt S [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] c' Ex; cbn in Ex;
     repeat match goal with
            | Ex : xbind ?m _ = xok _ |- _ => destruct m; cbn in Ex; [| discriminate ]
            end;
     injection Ex as <-; reflexivity.
 Qed.
 
-Lemma cmd_xp_def_inv : forall mt S x b pv A M c', cmd_xp mt S (cc_def x b pv A M) = xok c' ->
-    exists A' M', c' = cc_def x b pv A' M'.
+(** An axiom stays an axiom, and a definition a definition. *)
+Lemma cmd_xp_def_inv : forall mt S x b pv A oM c', cmd_xp mt S (cc_def x b pv A oM) = xok c' ->
+    exists A' oM', c' = cc_def x b pv A' oM' /\ (oM = None <-> oM' = None).
 Proof.
-  intros * Ex; cbn in Ex; destruct (exp_xp mt S A); cbn in Ex; [| discriminate ].
-  destruct (exp_xp mt S M); cbn in Ex; [| discriminate ]; injection Ex as <-; eauto.
+  intros * Ex; destruct oM as [M |]; cbn in Ex; destruct (exp_xp mt S A); cbn in Ex; try discriminate.
+  - destruct (exp_xp mt S M); cbn in Ex; [| discriminate ]; injection Ex as <-.
+    do 2 eexists; split; [ reflexivity | split; discriminate ].
+  - injection Ex as <-; do 2 eexists; split; [ reflexivity | tauto ].
 Qed.
 
 Lemma cmd_xp_alias_inv : forall mt S x pv Δ E c', cmd_xp mt S (cc_alias x pv Δ E) = xok c' ->
