@@ -2303,22 +2303,5 @@ let%expect_test "lib/Tutorial.mctt" =
                  module M2 := M1 1
              in M2.sum
              end --> 5 : Nat
-    Evaluate let module M1 where
-                   private def add : forall (x1 : Nat) -> Nat :=
-                     (Adder 5).add
-                   end
-                   def addIter : forall (x2 : Nat)
-                                   -> Eq (Adder.add 5 x2)
-                                        (Iter.iter Nat
-                                           (fun (x3 : Nat) -> succ x3)
-                                           x2
-                                          5) :=
-                     (Adder 5).addIter
-                   end
-                   def eight : Nat :=
-                     add 3
-                   end
-                 end
-             in M1.addIter M1.eight
-             end --> true : True
+    Evaluate addIterEight --> true : True
     |}]

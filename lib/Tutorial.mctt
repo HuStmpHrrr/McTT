@@ -262,11 +262,17 @@ module Adder (m : Nat) where
   end
 end
 
-eval let module Five where
-         open Adder 5 use (add) export (addIter)
-         def eight : Nat := add 3 end
-       end
-     in Five.addIter Five.eight
-     end
+(* A definition is not printed; eval prints only its value and type. *)
+theorem addIterEight :
+    Eq (Adder.add 5 8) (Iter.iter Nat (fun (x : Nat) -> succ x) 8 5) :=
+  let module Five where
+      open Adder 5 use (add) export (addIter)
+      def eight : Nat := add 3 end
+    end
+  in Five.addIter Five.eight
+  end
+end
+
+eval addIterEight
 
 end
