@@ -8,3 +8,4 @@ val read : Lexing.lexbuf -> McttExtracted.Parser.token
 
 val lexbuf_to_token_buffer :
   Lexing.lexbuf -> McttExtracted.Parser.MenhirLibParser.Inter.buffer
+val get_range_of_token : McttExtracted.Parser.token -> Lexing.position * Lexing.position

@@ -42,6 +42,18 @@ Other targets: `make pretty-timed`, `make coqdoc`, `make depgraphdoc`,
 `theories/CoqMakefile.mk` (gitignored — `CoqMakefile.mk.local` and
 `.local-late` are the hand-written hooks, and are checked in).
 
+## Library pages
+
+`dune exec mctt-doc -- lib OUT` writes one HTML page per unit of `lib/` to
+`OUT` (CI: `html/lib/`); `mctt-doc --check lib` only reports, and
+`mctt-doc --links lib X::Y name` prints where each occurrence of `name`
+links to. It runs the checker on every unit (about 17 s for `lib/`), and
+exits 1 if a name does not line up with its token or a use does not
+resolve. Names are resolved by the extracted `Elaborator.lookup`/`elab_cmd`
+and the core's `def_site` (`Extraction/Privacy.v`), never by rules of its
+own (`driver/Doc.ml`). Extraction exports `def_site` explicitly
+(`CoqMakefile.mk.local-late`).
+
 ## Verifying a partial build
 
 If `_CoqProject` is ever trimmed to a prefix of the development again (the port

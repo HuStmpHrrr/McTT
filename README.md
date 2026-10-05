@@ -11,6 +11,9 @@ elementary) and serves as a basis for future extensions.
 ## Online Documentation
 
 We have generated a [Coqdoc](https://hustmphrrr.github.io/McTT/dep.html) for browsing our Coq proof.
+The [library](https://hustmphrrr.github.io/McTT/lib/index.html) written in McTT
+itself (`lib/`) is browsable too: highlighted, with every name linked to its
+definition.
 
 ## Architecture
 

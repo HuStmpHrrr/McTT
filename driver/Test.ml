@@ -2335,3 +2335,66 @@ let%expect_test "lib/Tutorial.mctt" =
              in M1.addIter M1.eight
              end --> true : True
     |}]
+
+(** The documentation generator ([Doc]) *)
+
+let doc_lib = lazy (Doc.load "../lib")
+
+let%expect_test "mctt-doc: every name of lib lines up, and every use resolves" =
+  List.iter print_endline (Doc.problems (Lazy.force doc_lib));
+  [%expect {||}]
+
+let%expect_test "mctt-doc: every name of examples lines up" =
+  List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples"));
+  List.iter print_endline (Doc.problems ~resolve:false (Doc.load ~check:false "../examples/multi"));
+  [%expect {||}]
+
+let%expect_test "mctt-doc: the units the checker rejects are reported" =
+  List.iter print_endline (Doc.problems (Doc.load "../examples/multi"));
+  [%expect {|
+    BadDep: not checked
+    Cyc::A: not checked
+    Cyc::B: not checked
+    Cycle: not checked
+    Lib::Bad: not checked
+    Misnamed: not checked
+    Missing: not checked
+    Transitive: not checked
+    |}]
+
+let%expect_test "mctt-doc: links" =
+  let lib = Lazy.force doc_lib in
+  let show u x ns = List.iter (fun n -> print_endline (x ^ " " ^ Doc.link_of lib u x n)) ns in
+  (* The two [pow]s of one line: a monoid's, through the alias
+     [Multiplicative], and the one [use]d from Prelude::Arith::Pow. *)
+  show [ "Algebra" ] "pow" [ 7; 8 ];
+  (* A member of an alias, [Additive.pow], is the functor's [pow]. *)
+  show [ "Algebra" ] "Additive" [ 2 ];
+  show [ "Algebra" ] "pow" [ 2 ];
+  (* A local alias of a module, [P := Multiplicative.Power]. *)
+  show [ "Algebra" ] "powPlus" [ 3 ];
+  (* A name [use]d inside a module body: its item and a use go to the
+     source unit; the alias [P] is declared by the open. *)
+  show [ "Tutorial" ] "plus" [ 2; 3 ];
+  show [ "Tutorial" ] "add" [ 1; 2 ];
+  show [ "Tutorial" ] "P" [ 1; 2 ];
+  (* An item of an open in a local body. *)
+  show [ "Tutorial" ] "addIter" [ 3 ];
+  (* A local binder. *)
+  show [ "Tutorial" ] "x" [ 1; 2 ];
+  [%expect {|
+    pow line 35: Prelude::Algebra::Monoid#pow
+    pow line 35: Prelude::Arith::Pow#pow
+    Additive line 19: Prelude::Algebra::Instances#Additive
+    pow line 19: Prelude::Algebra::Monoid#pow
+    powPlus line 72: Prelude::Algebra::Monoid#Power.powPlus
+    plus line 197: Prelude::Arith::Plus#plus
+    plus line 198: Prelude::Arith::Plus#plus
+    add line 197: declares #Adding.add
+    add line 198: Prelude::Arith::Plus#plus
+    P line 197: declares #Adding.P
+    P line 198: Tutorial#Adding.P
+    addIter line 269: Tutorial#Adder.addIter
+    x line 34: declares #l11
+    x line 34: Tutorial#l11
+    |}]

@@ -3,7 +3,7 @@
 (library
  (name McttLib)
  (public_name mctt.driver)
- (modules Main Lexer PrettyPrinter Test)
+ (modules Main Lexer PrettyPrinter Doc Test)
  (libraries McttExtracted)
  (inline_tests
   (deps
@@ -17,6 +17,12 @@
  (public_name mctt)
  (modules Mctt)
  (libraries McttLib))
+
+(executable
+ (name McttDoc)
+ (public_name mctt-doc)
+ (modules McttDoc)
+ (libraries McttLib unix))
 
 (env
  (dev
