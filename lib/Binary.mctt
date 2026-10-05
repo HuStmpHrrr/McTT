@@ -3,17 +3,17 @@
    by squaring.  Two theorems are proved here from the public laws: the
    digits of [double n] write twice the number, and [powFast] squares at
    even exponents. *)
+module Binary where
+
 import Prelude::Arith::Equality use (Eq; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Basic use (plusZero)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Pow use (pow)
-import Prelude::Arith::Pow.Exp use (powPlus)
+open Prelude::Arith::Pow.Exp use (powPlus)
 import Prelude::Arith::Parity use (double)
 import Prelude::Arith::Binary use (half; bit; Bits; bits; fromBits; bitCount; powFast)
-import Prelude::Arith::Binary.Halving use (halfDouble; bitDouble)
-
-module Binary where
+open Prelude::Arith::Binary.Halving use (halfDouble; bitDouble)
 
 (* 13 is [1101] in binary: its half, its low bit and its digits. *)
 eval half 13

@@ -3,20 +3,20 @@
    first one that divides [n], or [n] itself when none does.  [isPrime n] is
    1 when [n] is at least 2 and has no such divisor, and 0 otherwise;
    [Prime n] is the computed proposition [Eq (isPrime n) 1]. *)
+module Prelude::Arith::Prime where
+
 import Prelude::Logic use (Not; absurd)
 import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sub use (pred)
 import Prelude::Arith::Order use (Le; leb)
 import Prelude::Arith::Decide use (pick; eqb)
-import Prelude::Arith::Decide.EqbLaws use (eqbCases)
+open Prelude::Arith::Decide.EqbLaws use (eqbCases)
 import Prelude::Arith::Div use (mod)
 import Prelude::Arith::Divides use (Divides)
-import Prelude::Arith::Divides.Basic use (dividesRefl)
+open Prelude::Arith::Divides.Basic use (dividesRefl)
 import Prelude::Arith::Induction use (caseNat)
 import Prelude::Function::Combinators use (Generic)
-
-module Prelude::Arith::Prime where
 
 (* Trial division and the invariants of its search.  The definitions
    below unfold to it, and clients see only them. *)

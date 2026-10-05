@@ -1,14 +1,14 @@
 (* Exponentiation by recursion on the exponent, with its laws stated with
    [Prelude::Arith::Equality] and proved from those of
    [Prelude::Arith::Mult]. *)
+module Prelude::Arith::Pow where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Basic use (plusZero)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Basic use (multOne; oneMult)
-import Prelude::Arith::Mult.Algebra use (multAssoc; multSwapMiddle)
-
-module Prelude::Arith::Pow where
+open Prelude::Arith::Mult.Basic use (multOne; oneMult)
+open Prelude::Arith::Mult.Algebra use (multAssoc; multSwapMiddle)
 
 (* [pow a n] is [a] to the power [n]: [pow a 0] is [1] and
    [pow a (succ p)] is [mult a (pow a p)]. *)

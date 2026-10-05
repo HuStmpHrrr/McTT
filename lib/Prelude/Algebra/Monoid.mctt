@@ -9,9 +9,6 @@
    Laws are stated up to [R] rather than up to [Prelude::Arith::Equality],
    so a carrier that is not [Nat] (functions, compared pointwise) is an
    instance as well. *)
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Mult use (mult)
-
 module Prelude::Algebra::Monoid
     (M : Type@0)
     (R : forall (x : M) (y : M) -> Type@0)
@@ -25,6 +22,9 @@ module Prelude::Algebra::Monoid
     (assoc : forall (x : M) (y : M) (z : M) -> R (op (op x y) z) (op x (op y z)))
     (leftId : forall (x : M) -> R (op e x) x)
     (rightId : forall (x : M) -> R (op x e) x) where
+
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::Mult use (mult)
 
 (* [pow x n] is [x] combined with itself [n] times: [op x (op x ... e)]. *)
 def pow (x : M) (n : Nat) : M :=

@@ -6,22 +6,18 @@
    module [At (x : Nat)].  Horner's scheme and the sum of monomials agree at
    every point ([At.hornerNaive]); at the point 1 both give the sum of the
    coefficients ([hornerAtOne]). *)
+module Polynomials where
+
 import Prelude::Arith::Equality use (Eq; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Basic use (multOne)
-import Prelude::Arith::Mult.Algebra use (multLeftComm)
+open Prelude::Arith::Mult.Basic use (multOne)
+open Prelude::Arith::Mult.Algebra use (multLeftComm)
 import Prelude::Arith::Pow use (pow)
-import Prelude::Arith::Pow.Basic use (onePow)
+open Prelude::Arith::Pow.Basic use (onePow)
 import Prelude::Arith::Sum use (sumTo)
-import Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
-import Prelude::Arith::Sum.Linear use (sumToScale)
-(* Loaded for the open in the local body of [Table] below: an open in a
-   local body names a unit already loaded, and declares private definitions
-   of the members it uses. *)
-import Prelude::Arith::MinMax as MinMax
-
-module Polynomials where
+open Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
+open Prelude::Arith::Sum.Linear use (sumToScale)
 
 def Coeffs : Type@0 := forall (i : Nat) -> Nat end
 
@@ -129,7 +125,10 @@ eval At.naive 2 (cubic 1 2 3 4) 4
 
 (* An evaluator for a fixed polynomial, made locally: the values at the
    points below [k], summed, and their maximum.  The maximum comes from an
-   open inside the local body. *)
+   open inside the local body.  A local body may not import, so the unit is
+   loaded just before. *)
+import Prelude::Arith::MinMax
+
 eval let module Table (c : Coeffs) where
        open Prelude::Arith::MinMax use (max)
        def value (x : Nat) : Nat := At.horner x c 4 end

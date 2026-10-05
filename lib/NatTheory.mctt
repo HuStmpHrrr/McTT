@@ -1,11 +1,11 @@
 (* A client of the [Prelude] library: [Prelude::Arith::Equality], [Prelude::Arith::Plus] and
    [Prelude::Function::Iter] are separate units, loaded once each. *)
+module NatTheory where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; zeroNeSucc)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Algebra use (plusComm)
+open Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Function::Iter as Iter
-
-module NatTheory where
 
 (* [Prelude::Function::Iter] instantiated with [succ]: iterating it is addition. *)
 def iterSucc : forall (n : Nat) (m : Nat) ->

@@ -2,18 +2,18 @@
    powers are proved once, for every monoid; read in the additive, the
    multiplicative and the composition monoid, they become laws of
    multiplication, of exponentiation and of iteration. *)
+module Algebra where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Plus.Algebra use (plusAssoc; plusCongBoth)
+open Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Algebra use (plusAssoc; plusCongBoth)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Pow use (pow)
 import Prelude::Arith::MinMax use (max)
-import Prelude::Arith::MinMax.Laws use (maxIdem; maxZero)
+open Prelude::Arith::MinMax.Laws use (maxIdem; maxZero)
 import Prelude::Algebra::Monoid as Monoid
 import Prelude::Algebra::Instances use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum; Composition; Endo; Pointwise; compose)
-
-module Algebra where
 
 (* Powers in each monoid. *)
 eval Additive.pow 3 4

@@ -2,6 +2,8 @@
    the even and odd numbers, the squares and two Fibonacci-like streams are
    read with [nth] and summed through [take], and closed instances of the
    laws normalize to [true]. *)
+module Streams where
+
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Parity use (double)
@@ -10,11 +12,9 @@ import Prelude::Data::Vec as V
 import Prelude::Data::Vec::Properties use (sumVec)
 import Prelude::Data::Stream as St
 import Prelude::Data::Stream::Properties use (nats)
-import Prelude::Data::Stream::Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
-import Prelude::Data::Stream::Properties.Nats use (nthNats)
-import Prelude::Data::Stream::Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
-
-module Streams where
+open Prelude::Data::Stream::Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
+open Prelude::Data::Stream::Properties.Nats use (nthNats)
+open Prelude::Data::Stream::Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
 
 (* Streams of numbers. *)
 module S := St Nat

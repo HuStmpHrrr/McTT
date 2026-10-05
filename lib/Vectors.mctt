@@ -3,17 +3,17 @@
    folded, read and summed, and
    closed instances of the laws normalize to [true].  Index bounds on closed
    numbers compute to [True], so [true] proves them. *)
+module Vectors where
+
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Data::Vec as V
 import Prelude::Data::Vec::Properties use (sumVec)
-import Prelude::Data::Vec::Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
-import Prelude::Data::Vec::Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
-import Prelude::Data::Vec::Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
-import Prelude::Data::Vec::Properties.Tests use (allbSound; allbComplete; anybSound)
-
-module Vectors where
+open Prelude::Data::Vec::Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
+open Prelude::Data::Vec::Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
+open Prelude::Data::Vec::Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
+open Prelude::Data::Vec::Properties.Tests use (allbSound; allbComplete; anybSound)
 
 (* Vectors of numbers. *)
 module NV := V Nat

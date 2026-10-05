@@ -5,20 +5,20 @@
    recursive in the dividend: the remainder counts up and wraps to [0] on
    reaching the divisor, and the quotient grows by one at each wrap.  The
    theorems are stated for a positive divisor [succ d]. *)
+module Prelude::Arith::Div where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
-import Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc)
+open Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
+open Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Basic use (multOne)
+open Prelude::Arith::Mult.Basic use (multOne)
 import Prelude::Arith::Order use (Le; Lt)
-import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc)
-import Prelude::Arith::Order.LtLaws use (ltNotEq)
+open Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc)
+open Prelude::Arith::Order.LtLaws use (ltNotEq)
 import Prelude::Arith::Decide use (pick; eqb)
-import Prelude::Arith::Decide.EqbLaws use (eqbRefl; eqbCases; leEqbZero)
+open Prelude::Arith::Decide.EqbLaws use (eqbRefl; eqbCases; leEqbZero)
 import Prelude::Function::Combinators use (Generic; IterateLaws)
-
-module Prelude::Arith::Div where
 
 (* One step of the remainder modulo [succ d]: [succ r], or [0] when [r] has
    reached [d]. *)

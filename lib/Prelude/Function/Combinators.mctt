@@ -1,10 +1,10 @@
 (* Generic combinators over a type parameter, with their laws at [Nat]. *)
+module Prelude::Function::Combinators where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Algebra use (plusComm)
+open Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Function::Iter as Iter
-
-module Prelude::Function::Combinators where
 
 (* Combinators over an arbitrary type [A]. *)
 module Generic (A : Type@0) where

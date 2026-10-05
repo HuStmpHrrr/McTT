@@ -1,11 +1,11 @@
 (* Parity of natural numbers: [Even] and [Odd] computed by recursion, with
    doubling and the basic laws. *)
-import Prelude::Logic use (absurd)
-import Prelude::Logic.Conj use (And; andIntro; andSwap)
-import Prelude::Logic.Disj use (Or; orInl; orSwap)
-import Prelude::Arith::Plus use (plus)
-
 module Prelude::Arith::Parity where
+
+import Prelude::Logic use (absurd)
+open Prelude::Logic.Conj use (And; andIntro; andSwap)
+open Prelude::Logic.Disj use (Or; orInl; orSwap)
+import Prelude::Arith::Plus use (plus)
 
 (* Parity flags, and numbers having a given flag.  [Even] and [Odd] below
    unfold to [HasParity]; the flags themselves stay private. *)

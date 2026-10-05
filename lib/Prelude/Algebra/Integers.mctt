@@ -8,17 +8,17 @@
 
    [Same] computes, so a closed instance is [True] or [False].  [magnitude]
    and [negative] read a pair back as a sign and a number. *)
+module Prelude::Algebra::Integers where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
-import Prelude::Arith::Plus.Cancel use (plusCancelRight)
+open Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
+open Prelude::Arith::Plus.Cancel use (plusCancelRight)
 import Prelude::Arith::Sub use (pred)
 import Prelude::Arith::Decide use (pick)
 import Prelude::Function::Combinators use (Generic)
 import Prelude::Algebra::Group as Group
-
-module Prelude::Algebra::Integers where
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
 def Int : Type@0 := forall (i : Nat) -> Nat end

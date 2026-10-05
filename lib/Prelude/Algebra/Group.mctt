@@ -8,8 +8,6 @@
 
    The proofs share two private lemma modules: [Solve] solves one-sided
    equations, and [Product] computes the products that cancel. *)
-import Prelude::Algebra::Monoid as Monoid
-
 module Prelude::Algebra::Group
     (M : Type@0)
     (R : forall (x : M) (y : M) -> Type@0)
@@ -27,6 +25,8 @@ module Prelude::Algebra::Group
     (invCong : forall (a : M) (b : M) (h : R a b) -> R (inv a) (inv b))
     (leftInv : forall (x : M) -> R (op (inv x) x) e)
     (rightInv : forall (x : M) -> R (op x (inv x)) e) where
+
+import Prelude::Algebra::Monoid as Monoid
 
 (* The underlying monoid. *)
 module Base := Monoid M R rRefl rSym rTrans op opCong e assoc leftId rightId

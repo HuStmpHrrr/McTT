@@ -1,14 +1,14 @@
 (* The factorial, with its defining equations, positivity, monotonicity in
    one step, and the bound [pow 2 n <= factorial (succ n)]. *)
+module Prelude::Arith::Factorial where
+
 import Prelude::Arith::Equality use (Eq; refl)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Le; Lt)
-import Prelude::Arith::Order.LeLaws use (leTrans; lePlusRight)
+open Prelude::Arith::Order.LeLaws use (leTrans; lePlusRight)
 import Prelude::Arith::Monotone.Mono use (lePlusMono)
 import Prelude::Arith::Pow use (pow)
-
-module Prelude::Arith::Factorial where
 
 (* [factorial 0] is [1] and [factorial (succ p)] is [mult (succ p) (factorial p)]. *)
 def factorial (n : Nat) : Nat :=
