@@ -1,7 +1,7 @@
 (* Binomial coefficients [choose n k], computed by Pascal's recursion. *)
-import Prelude::Arith::Plus use (plus)
-
 module Prelude::Arith::Binomial where
+
+import Prelude::Arith::Plus use (plus)
 
 (* [choose n k] is the number of [k]-element subsets of an [n]-element set.
    Row [0] is [1] at [k = 0] and [0] elsewhere; in row [succ n], [choose

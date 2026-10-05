@@ -3,11 +3,11 @@
    magnitude.  The laws proved once for every group solve equations,
    negate differences and multiples, and closed instances normalize to
    [true]. *)
-import Prelude::Algebra::Integers use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative; Additive; AdditiveComm)
-import Prelude::Algebra::Integers.Setoid use (sameSym; sameTrans)
-import Prelude::Algebra::Integers.Addition use (zeroAdd; negateRight)
-
 module Groups where
+
+import Prelude::Algebra::Integers use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative; Additive; AdditiveComm)
+open Prelude::Algebra::Integers.Setoid use (sameSym; sameTrans)
+open Prelude::Algebra::Integers.Addition use (zeroAdd; negateRight)
 
 (* [-3], as [2 - 5]. *)
 def minusThree : Int := pair 2 5 end

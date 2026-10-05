@@ -3,24 +3,24 @@
    numbers, and the answers of the tests [allb] and [anyb].  Bound proofs are
    irrelevant to the elements read ([nthIrrel]), which, with [sumExt], lets
    laws relate vectors that agree only up to those proofs. *)
+module Prelude::Data::Vec::Properties where
+
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusSwapMiddle)
+open Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Algebra use (plusComm; plusAssoc; plusSwapMiddle)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Basic use (multZero)
-import Prelude::Arith::Mult.Algebra use (multDistribLeft)
+open Prelude::Arith::Mult.Basic use (multZero)
+open Prelude::Arith::Mult.Algebra use (multDistribLeft)
 import Prelude::Arith::Sub use (sub)
 import Prelude::Arith::Order use (Lt)
-import Prelude::Arith::Order.LeLaws use (leStep; lePlusRight)
+open Prelude::Arith::Order.LeLaws use (leStep; lePlusRight)
 import Prelude::Arith::Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
-import Prelude::Arith::Monotone.SubLaws use (subLe)
+open Prelude::Arith::Monotone.SubLaws use (subLe)
 import Prelude::Arith::Sum use (sumTo)
-import Prelude::Arith::Sum.Basic use (sumToShift)
+open Prelude::Arith::Sum.Basic use (sumToShift)
 import Prelude::Data::Vec as V
-
-module Prelude::Data::Vec::Properties where
 
 (* Vectors of numbers, the instance most laws below are about. *)
 module NV := V Nat

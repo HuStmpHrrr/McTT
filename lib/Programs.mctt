@@ -1,19 +1,19 @@
 (* A client of the programs in the [Prelude] library: subtraction, minimum and
    maximum, generic combinators, and the Ackermann function, run on closed
    instances. *)
-import Prelude::Arith::Sub use (pred; sub)
-import Prelude::Arith::Sub.Laws use (subSelf; subSuccRight)
-import Prelude::Arith::Sub.PlusSub use (plusSub)
-import Prelude::Arith::MinMax use (min; max)
-import Prelude::Arith::MinMax.Laws use (minComm; maxComm; plusMinMax)
-import Prelude::Function::Combinators use (Generic)
-import Prelude::Function::Combinators.IterateLaws use (iteratePlus; iterateComm)
-import Prelude::Arith::Ackermann use (ack)
-import Prelude::Arith::Ackermann.Equations use (ackZero)
-import Prelude::Arith::Ackermann.Rows use (ackTwo)
-import Prelude::Arith::Plus use (plus)
-
 module Programs where
+
+import Prelude::Arith::Sub use (pred; sub)
+open Prelude::Arith::Sub.Laws use (subSelf; subSuccRight)
+open Prelude::Arith::Sub.PlusSub use (plusSub)
+import Prelude::Arith::MinMax use (min; max)
+open Prelude::Arith::MinMax.Laws use (minComm; maxComm; plusMinMax)
+import Prelude::Function::Combinators use (Generic)
+open Prelude::Function::Combinators.IterateLaws use (iteratePlus; iterateComm)
+import Prelude::Arith::Ackermann use (ack)
+open Prelude::Arith::Ackermann.Equations use (ackZero)
+open Prelude::Arith::Ackermann.Rows use (ackTwo)
+import Prelude::Arith::Plus use (plus)
 
 eval pred 5
 

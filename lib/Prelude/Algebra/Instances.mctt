@@ -7,19 +7,19 @@
    alias, and so is each commutative one: [Additive.Commutative plusComm]
    selects the submodule of the instance and applies it to the proof of
    commutativity. *)
+module Prelude::Algebra::Instances where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Plus.Algebra use (plusAssoc; plusComm)
+open Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Algebra use (plusAssoc; plusComm)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Basic use (multOne; oneMult)
-import Prelude::Arith::Mult.Algebra use (multAssoc; multComm)
+open Prelude::Arith::Mult.Basic use (multOne; oneMult)
+open Prelude::Arith::Mult.Algebra use (multAssoc; multComm)
 import Prelude::Arith::MinMax use (max)
-import Prelude::Arith::MinMax.Laws use (maxZero; maxComm)
+open Prelude::Arith::MinMax.Laws use (maxZero; maxComm)
 import Prelude::Arith::Lattice.Algebra use (maxAssoc)
 import Prelude::Algebra::Monoid as Monoid
-
-module Prelude::Algebra::Instances where
 
 (* Every binary operation on numbers respects equality on both sides: the
    congruence each instance on numbers needs, proved once. *)

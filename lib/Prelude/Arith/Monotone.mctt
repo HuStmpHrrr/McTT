@@ -1,16 +1,16 @@
 (* Monotonicity of addition, multiplication and subtraction with respect to
    [Prelude::Arith::Order.Le], transitivity laws for the strict order, and the
    interaction of [Prelude::Arith::Sub.sub] with the order. *)
+module Prelude::Arith::Monotone where
+
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Equality use (Eq; refl; trans)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
+open Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sub use (sub)
 import Prelude::Arith::Order use (Le; Lt)
-import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
-
-module Prelude::Arith::Monotone where
+open Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
 
 (* Addition and multiplication are monotone, and addition cancels. *)
 module Mono where

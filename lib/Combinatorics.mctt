@@ -1,17 +1,17 @@
 (* A client of [Prelude::Arith::Binomial] and [Prelude::Arith::Fibonacci]:
    the first rows of Pascal's triangle and of the Fibonacci numbers, and
    closed instances of their laws, which normalize to [true]. *)
+module Combinatorics where
+
 import Prelude::Arith::Binomial use (choose)
 import Prelude::Arith::Binomial::Properties.Basic use (chooseZero; chooseSelf; chooseOne; chooseOver; pascal)
-import Prelude::Arith::Binomial::Properties.Symmetry use (chooseSymm; chooseSymmSub)
-import Prelude::Arith::Binomial::Properties.Row use (rowSum)
+open Prelude::Arith::Binomial::Properties.Symmetry use (chooseSymm; chooseSymmSub)
+open Prelude::Arith::Binomial::Properties.Row use (rowSum)
 import Prelude::Arith::Fibonacci use (fib)
 import Prelude::Arith::Fibonacci::Properties.Basic use (fibSucc)
-import Prelude::Arith::Fibonacci::Properties.Growth use (fibPos; fibMono; fibMonoPlus)
-import Prelude::Arith::Fibonacci::Properties.Identities use (fibSum; fibPlus)
+open Prelude::Arith::Fibonacci::Properties.Growth use (fibPos; fibMono; fibMonoPlus)
+open Prelude::Arith::Fibonacci::Properties.Identities use (fibSum; fibPlus)
 import Prelude::Arith::Sum use (sumTo)
-
-module Combinatorics where
 
 (* Rows 0 to 6 of Pascal's triangle, entry by entry. *)
 eval choose 0 0

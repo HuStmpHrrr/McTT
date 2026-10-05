@@ -1,14 +1,14 @@
 (* A client of the arithmetic in [Prelude]: closed instances of the laws of
    addition and multiplication, and a few computations. *)
+module Arithmetic where
+
 import Prelude::Arith::Equality use (refl; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Algebra use (plusAssoc)
-import Prelude::Arith::Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
+open Prelude::Arith::Plus.Algebra use (plusAssoc)
+open Prelude::Arith::Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
 import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
-import Prelude::Arith::Mult.Cancel use (multEqZero)
-
-module Arithmetic where
+open Prelude::Arith::Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
+open Prelude::Arith::Mult.Cancel use (multEqZero)
 
 eval mult 6 7
 

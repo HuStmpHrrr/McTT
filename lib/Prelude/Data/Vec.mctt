@@ -13,15 +13,15 @@
    Operations that move indices ([init], [reverse], [take], [drop]) read
    [v] at a shifted index, with a bound proof built from the order laws;
    those that change the length by one ([append], [snoc]) recurse on it. *)
+module Prelude::Data::Vec (A : Type@0) where
+
 import Prelude::Logic use (absurd)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Sub use (sub)
 import Prelude::Arith::Order use (Lt)
-import Prelude::Arith::Order.LeLaws use (leRefl; leStep; lePlusRight)
+open Prelude::Arith::Order.LeLaws use (leRefl; leStep; lePlusRight)
 import Prelude::Arith::Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
-import Prelude::Arith::Monotone.SubLaws use (subLe)
-
-module Prelude::Data::Vec (A : Type@0) where
+open Prelude::Arith::Monotone.SubLaws use (subLe)
 
 def Vec (n : Nat) : Type@0 := forall (i : Nat) (h : Lt i n) -> A end
 

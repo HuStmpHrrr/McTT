@@ -1,14 +1,14 @@
 (* Decidability of equality and order on natural numbers, a boolean-style
    equality test [eqb] with its specification and case analysis, and the
    conditional [pick] on such tests. *)
+module Prelude::Arith::Decide where
+
 import Prelude::Logic use (Not)
-import Prelude::Logic.Disj use (orInl; orInr)
-import Prelude::Logic.Equiv use (Iff; iffIntro)
-import Prelude::Logic.Decidable use (Dec)
+open Prelude::Logic.Disj use (orInl; orInr)
+open Prelude::Logic.Equiv use (Iff; iffIntro)
+open Prelude::Logic.Decidable use (Dec)
 import Prelude::Arith::Equality use (Eq)
 import Prelude::Arith::Order use (Le; Lt)
-
-module Prelude::Arith::Decide where
 
 (* Decision procedures for equality and order. *)
 module Deciders where

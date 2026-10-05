@@ -2,11 +2,11 @@
    [Stream] is [forall (n : Nat) -> A].  Reading an element is application,
    so most laws hold by conversion pointwise.  Operations into streams over
    other types take those types as arguments. *)
+module Prelude::Data::Stream (A : Type@0) where
+
 import Prelude::Arith::Order use (Lt)
 import Prelude::Function::Iter as Iter
 import Prelude::Data::Vec as V
-
-module Prelude::Data::Stream (A : Type@0) where
 
 def Stream : Type@0 := forall (n : Nat) -> A end
 

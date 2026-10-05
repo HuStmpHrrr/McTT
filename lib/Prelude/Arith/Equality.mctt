@@ -1,8 +1,8 @@
 (* Equality of natural numbers, computed by recursion on both sides, with its
    basic laws. *)
-import Prelude::Logic use (Not; absurd)
-
 module Prelude::Arith::Equality where
+
+import Prelude::Logic use (Not; absurd)
 
 def Eq : forall (n : Nat) (m : Nat) -> Type@0 :=
   fun (n : Nat) ->

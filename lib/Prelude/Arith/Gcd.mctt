@@ -4,9 +4,9 @@
    the second number.  Fuel is preferred to strong induction, whose
    recursive calls are transported along order proofs and compute slowly.
    [gcd a 0] is [a], so [gcd 0 0] is [0]. *)
-import Prelude::Arith::Div use (mod)
-
 module Prelude::Arith::Gcd where
+
+import Prelude::Arith::Div use (mod)
 
 (* Euclid's algorithm with [fuel] steps: [gcdFuel (succ f) a (succ d)] is
    [gcdFuel f (succ d) (mod a (succ d))], and [gcdFuel f a 0] is [a] for

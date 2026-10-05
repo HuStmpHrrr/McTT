@@ -1,25 +1,25 @@
 (* Laws of [Prelude::Arith::Gcd]: the values at [0], [1] and the diagonal,
    independence from the fuel, divisibility of both arguments, the greatest
    divisor property, and commutativity. *)
+module Prelude::Arith::Gcd::Properties where
+
 import Prelude::Logic use (absurd)
-import Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
-import Prelude::Logic.Disj use (orElim)
+open Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
+open Prelude::Logic.Disj use (orElim)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Order use (Le; Lt)
-import Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leTotal)
-import Prelude::Arith::Order.LtLaws use (leCases)
+open Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leTotal)
+open Prelude::Arith::Order.LtLaws use (leCases)
 import Prelude::Arith::Div use (div; mod)
-import Prelude::Arith::Div.Bounds use (divModSpec; modLt; modSmall)
-import Prelude::Arith::Div.Periodic use (modSelf)
-import Prelude::Arith::Div.One use (modOne)
+open Prelude::Arith::Div.Bounds use (divModSpec; modLt; modSmall)
+open Prelude::Arith::Div.Periodic use (modSelf)
+open Prelude::Arith::Div.One use (modOne)
 import Prelude::Arith::Divides use (Divides)
-import Prelude::Arith::Divides.Basic use (dividesRefl; dividesZero)
-import Prelude::Arith::Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
+open Prelude::Arith::Divides.Basic use (dividesRefl; dividesZero)
+open Prelude::Arith::Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
 import Prelude::Arith::Gcd use (gcdFuel; gcd)
-
-module Prelude::Arith::Gcd::Properties where
 
 (* The invariants of Euclid's algorithm with enough fuel, from which
    [Divisor] below reads the laws of [gcd]. *)

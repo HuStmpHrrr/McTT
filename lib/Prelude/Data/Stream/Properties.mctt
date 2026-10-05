@@ -3,19 +3,19 @@
    operations, the scan by addition as prefix sums of [Prelude::Arith::Sum],
    interleaving at even and odd indices of [Prelude::Arith::Parity], and
    sums of taken prefixes. *)
+module Prelude::Data::Stream::Properties where
+
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Algebra use (plusComm)
+open Prelude::Arith::Plus.Algebra use (plusComm)
 import Prelude::Arith::Order use (Lt)
 import Prelude::Arith::Parity use (double)
 import Prelude::Arith::Sum use (sumTo)
-import Prelude::Arith::Sum.Basic use (sumToShift)
+open Prelude::Arith::Sum.Basic use (sumToShift)
 import Prelude::Function::Combinators.IterateLaws use (iterateSucc)
 import Prelude::Data::Vec as V
 import Prelude::Data::Vec::Properties use (sumVec)
 import Prelude::Data::Stream as St
-
-module Prelude::Data::Stream::Properties where
 
 (* Streams of numbers: every law below is about this one instance. *)
 module S := St Nat

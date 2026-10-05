@@ -1,13 +1,13 @@
 (* Derived induction principles on natural numbers: case analysis, two-step
    induction and strong (course-of-values) induction, all from [rec]. *)
+module Prelude::Arith::Induction where
+
 import Prelude::Logic use (absurd)
-import Prelude::Logic.Disj use (orElim)
-import Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
+open Prelude::Logic.Disj use (orElim)
+open Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
 import Prelude::Arith::Equality use (Eq; sym; transport)
 import Prelude::Arith::Order use (Le; Lt)
-import Prelude::Arith::Order.LtLaws use (leCases)
-
-module Prelude::Arith::Induction where
+open Prelude::Arith::Order.LtLaws use (leCases)
 
 (* Case analysis: a property of [0] and of every successor holds of every
    number.  It is [rec] without the induction hypothesis. *)

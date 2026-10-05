@@ -2,6 +2,8 @@
    greatest common divisors, the primes below 30, and closed instances of
    the theorems, which normalize to [true].  The numbers in the proofs stay
    small, since they compute with remainders and equalities of numbers. *)
+module NumberTheory where
+
 import Prelude::Arith::Mult use (mult)
 import Prelude::Arith::Sum use (sumTo)
 import Prelude::Arith::Decide use (pick)
@@ -9,12 +11,10 @@ import Prelude::Arith::Divides.Closure use (dividesMultLeft; dividesPlusCancel)
 import Prelude::Function::Combinators use (Generic)
 import Prelude::Arith::Gcd use (gcd)
 import Prelude::Arith::Gcd::Properties.Values use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
-import Prelude::Arith::Gcd::Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
+open Prelude::Arith::Gcd::Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
 import Prelude::Arith::Prime use (smallestDivisor; isPrime; Prime)
-import Prelude::Arith::Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
-import Prelude::Arith::Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
-
-module NumberTheory where
+open Prelude::Arith::Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
+open Prelude::Arith::Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
 
 eval gcd 12 18
 

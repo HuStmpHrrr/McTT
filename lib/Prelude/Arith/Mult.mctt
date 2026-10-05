@@ -1,13 +1,13 @@
 (* Multiplication and its laws, stated with [Prelude::Arith::Equality] and proved from
    the laws of [Prelude::Arith::Plus]. *)
+module Prelude::Arith::Mult where
+
 import Prelude::Logic use (Not; absurd)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Plus.Algebra use (plusAssoc; plusLeftComm)
-import Prelude::Arith::Plus.Cancel use (plusEqZero)
-
-module Prelude::Arith::Mult where
+open Prelude::Arith::Plus.Basic use (plusZero)
+open Prelude::Arith::Plus.Algebra use (plusAssoc; plusLeftComm)
+open Prelude::Arith::Plus.Cancel use (plusEqZero)
 
 (* Multiplication by recursion on the first factor:
    [mult (succ p) m] is [plus m (mult p m)]. *)
