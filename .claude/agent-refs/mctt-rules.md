@@ -57,8 +57,10 @@ brief says so explicitly.
   block.
 - **No fuel,** anywhere (Bove–Capretta / Equations / well-founded orders
   instead).
-- **NbE builds no new syntax.** Evaluation and readback may look things up
-  and build names, but never construct terms.
+- **NbE performs no term transformations.** Evaluation and readback never
+  weaken, substitute, shift, instantiate or otherwise rewrite terms, nor any
+  new operation of that kind, and never construct terms. They may look
+  things up, extend environments and build names.
 - **Notations in statements:** write judgments with their notations
   (`Θ ⍮ Ξ ⍮ Γ ⊢ M : A`), never raw `wf_exp …`. Raw forms are only for
   partial applications, scheme motives and tactic patterns.
