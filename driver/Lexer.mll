@@ -185,6 +185,7 @@ and comment =
   parse
   | "*)" { read lexbuf }
   | eof { raise (Error "unterminated comment") }
+  | ['\n'] { new_line lexbuf; comment lexbuf }
   | _ { comment lexbuf }
 
 {
