@@ -502,6 +502,16 @@ what was built, and the decisions taken on the way.
   weakening its unit.  `Groups.mctt` now takes 2.5 s (2.9 s in the design
   before S+K), `AdditiveComm.powOp` 0.14 s (6.3 s), lib and Prelude 20.0 s
   (32.4 s; 22.9 s before S+K).
-- Remaining cost: the privacy tables (`Privacy.mtab`, `fctx_tabs`) dominate
-  the files that are still slower than before S+K
-  (`Prelude/Arith/Gcd/Properties.mctt` 1.5×).
+- The scope of a command's privacy check, `fctx_tabs`, rebuilt the self
+  table of every open frame from the whole body before each command
+  (quadratic in a module's length).  `cmds_step` now keeps it: a command only
+  adds entries to the innermost frame (`run_cmd_grows`, `fr_grows`), and
+  `next_tabs`/`btab_from` put the new entries' tables on top of the kept
+  ones, as `btab` itself does; a module's frame is pushed with `tabs_push`.
+  The invariant `S = fctx_tabs fp Γimp F` is an argument of `cmds_step` and
+  `run_cmd_impl`.  `Prelude/Arith/Gcd/Properties.mctt` 0.30 s → 0.19 s
+  (0.20 s before S+K).
+- Measuring: the evaluation-heavy files (`Arithmetic`, `Powers`, `Vectors`,
+  `Groups`) vary by up to 25% with the code layout of the executable alone
+  (where `ocamlopt` happens to place `Evaluation`); compare such files
+  across builds only with a padded control.

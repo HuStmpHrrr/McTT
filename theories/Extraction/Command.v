@@ -153,6 +153,17 @@ Lemma gens_run_tail : forall Θ Γimp F gs F', gens_run Θ Γimp F gs F' ->
     forall f F0, F = f :: F0 -> exists f', F' = f' :: F0.
 Proof. induction 1; intros f0 F0 Ef; [ subst; eauto | injection Ef as <- <-; eauto .. ]. Qed.
 
+Lemma gens_run_grows : forall Θ Γimp F gs F', gens_run Θ Γimp F gs F' ->
+    forall f F0, F = f :: F0 -> exists f', F' = f' :: F0 /\ fr_grows f f'.
+Proof.
+  induction 1 as [| f F d pv A M gs F' _ _ _ IH | f F d pv E gs F' _ _ _ IH]; intros f0 F0 Ef.
+  - subst; eexists; split; [ reflexivity | apply fr_grows_refl ].
+  - injection Ef as <- <-; destruct (IH _ _ eq_refl) as (f' & -> & Hg).
+    eexists; split; [ reflexivity | eapply fr_grows_trans; [ apply fr_grows_add | exact Hg ] ].
+  - injection Ef as <- <-; destruct (IH _ _ eq_refl) as (f' & -> & Hg).
+    eexists; split; [ reflexivity | eapply fr_grows_trans; [ apply fr_grows_add | exact Hg ] ].
+Qed.
+
 Section Chains.
   Variables (load_path : path -> option string) (read : string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
@@ -182,6 +193,17 @@ Section Chains.
     - match goal with IH1 : forall f F0, ?F = f :: F0 -> exists f', ?F1 = _, E : ?F = _ :: _ |- _ =>
         destruct (IH1 _ _ E) as [f1 E1] end.
       match goal with IH2 : forall f F0, ?F1 = f :: F0 -> _, E1 : ?F1 = _ :: _ |- _ => exact (IH2 _ _ E1) end.
+  Qed.
+
+  (** A command adds entries to the innermost frame's body, and changes
+      nothing else of the frames. *)
+  Lemma run_cmd_grows : forall ch fp Γimp Θ F c Θ' F', run_cmd ch fp Γimp Θ F c Θ' F' ->
+      forall f F0, F = f :: F0 -> exists f', F' = f' :: F0 /\ fr_grows f f'.
+  Proof.
+    intros * Hr; destruct Hr; intros f0 F0 Ef;
+      try (injection Ef as <- <-; eexists; split; [ reflexivity | apply fr_grows_add ]);
+      try (subst; eexists; split; [ reflexivity | apply fr_grows_refl ]).
+    injection Ef as <- <-; eapply gens_run_grows; [ eassumption | reflexivity ].
   Qed.
 
   Lemma run_unit_mono :
@@ -394,11 +416,29 @@ Section Impl.
     cinv ch fp Γimp Θ F -> post_xcmd ch fp Γimp Θ F c r -> cinv ch fp Γimp (cr_gctx r) (cr_frames r).
   Proof. intros H (c' & _ & Hr & _); exact (cinv_step H Hr). Qed.
 
-  Lemma cons_ok {ch fp Γimp Θ F c cs r1 r2} :
-    acc_ok Θ (cmd_refs (fctx_tabs fp Γimp F) c) -> post_xcmd ch fp Γimp Θ F c r1 ->
+  Lemma cons_ok {ch fp Γimp Θ F S c cs r1 r2} :
+    S = fctx_tabs fp Γimp F -> acc_ok Θ (cmd_refs S c) -> post_xcmd ch fp Γimp Θ F c r1 ->
     post_cmds ch fp Γimp (cr_gctx r1) (cr_frames r1) cs r2 -> post_cmds ch fp Γimp Θ F (c :: cs) r2.
   Proof.
-    intros Hac (c' & Hx & Hr1 & _) [Hr2 HC]; split; [ econstructor; eassumption | exact HC ].
+    intros -> Hac (c' & Hx & Hr1 & _) [Hr2 HC]; split; [ econstructor; eassumption | exact HC ].
+  Qed.
+
+  (** The tables of the frames after a command, from those before it
+      ([tabs_next]): the command added entries to the innermost frame. *)
+  Definition next_tabs (F F' : list frame) (S : list ptab) : list ptab :=
+    match F, F' with
+    | f :: _, f' :: _ => tabs_next f f' S
+    | _, _ => S
+    end.
+
+  Lemma next_tabs_ok {ch fp Γimp Θ F c r S} :
+    cinv ch fp Γimp Θ F -> post_xcmd ch fp Γimp Θ F c r -> S = fctx_tabs fp Γimp F ->
+    next_tabs F (cr_frames r) S = fctx_tabs fp Γimp (cr_frames r).
+  Proof.
+    intros H (c' & _ & Hr & _) HS.
+    destruct F as [| f F0]; [ exfalso; exact (proj1 H eq_refl) |].
+    destruct (run_cmd_grows load_path read to_core _ _ _ _ _ _ _ _ Hr _ _ eq_refl) as (f' & E & Hg).
+    rewrite E; exact (tabs_next_ok _ _ _ _ _ _ HS Hg).
   Qed.
 
   Lemma lcons_ok {ch Θ Γ c c' cs r1 r2} :
@@ -711,45 +751,51 @@ Section Impl.
         end
     end.
 
+  (** [S] is the scope of the frames, [fctx_tabs], kept by [cmds_step]. *)
   Definition cmd_fun (ch : list path) (fp : path) (Γimp : ctx) : Type :=
-    forall Θ F C (HC : cache_ok C) (H : cinv ch fp Γimp Θ F) (c : ccmd),
+    forall Θ F C (HC : cache_ok C) (H : cinv ch fp Γimp Θ F) (S : list ptab) (HS : S = fctx_tabs fp Γimp F)
+      (c : ccmd),
       rres ({r | post_xcmd ch fp Γimp Θ F c r} * elog)%type.
 
   (** Recursion on commands is structural, including on the command lists
       nested in modules: [cmds_step] takes the function for one command as a
-      uniform parameter, so the guard checker sees through it. *)
+      uniform parameter, so the guard checker sees through it.  It keeps
+      the scope [S] of the frames from one command to the next
+      ([next_tabs]), rather than building it for each command. *)
   Definition cmds_step (ch : list path) (fp : path) (Γimp : ctx) (rc : cmd_fun ch fp Γimp) :=
-    fix go (Θ : gctx) (F : list frame) (C : cache) (HC : cache_ok C) (H : cinv ch fp Γimp Θ F) (cs : list ccmd)
+    fix go (Θ : gctx) (F : list frame) (C : cache) (HC : cache_ok C) (H : cinv ch fp Γimp Θ F)
+      (S : list ptab) (HS : S = fctx_tabs fp Γimp F) (cs : list ccmd)
       {struct cs} : rres ({r | post_cmds ch fp Γimp Θ F cs r} * elog)%type :=
       match cs as cs0 return rres ({r | post_cmds ch fp Γimp Θ F cs0 r} * elog)%type with
       | nil => rok (exist _ (cr Θ F C) (conj (rcs_nil _ _ _ _ _ _ _ _) HC), log_nil)
       | c :: cs' =>
-          match refs_check Θ (cmd_refs (fctx_tabs fp Γimp F) c) with
+          match refs_check Θ (cmd_refs S c) with
           | inleft (exist _ e _) => rerr (priv_error e)
           | inright Hac =>
-              match rc Θ F C HC H c with
+              match rc Θ F C HC H S HS c with
               | rerr e => rerr e
               | rok (exist _ r1 Hr1, l1) =>
-                  match go (cr_gctx r1) (cr_frames r1) (cr_cache r1) (xcache_ok Hr1) (cinv_xstep H Hr1) cs' with
+                  match go (cr_gctx r1) (cr_frames r1) (cr_cache r1) (xcache_ok Hr1) (cinv_xstep H Hr1)
+                          (next_tabs F (cr_frames r1) S) (next_tabs_ok H Hr1 HS) cs' with
                   | rerr e => rerr e
-                  | rok (exist _ r2 Hr2, l2) => rok (exist _ r2 (cons_ok Hac Hr1 Hr2), log_app l1 l2)
+                  | rok (exist _ r2 Hr2, l2) => rok (exist _ r2 (cons_ok HS Hac Hr1 Hr2), log_app l1 l2)
                   end
               end
           end
       end.
 
-  Lemma cmds_step_cons : forall ch fp Γimp rc Θ F C HC H c cs,
-      cmds_step ch fp Γimp rc Θ F C HC H (c :: cs) =
-      match refs_check Θ (cmd_refs (fctx_tabs fp Γimp F) c) with
+  Lemma cmds_step_cons : forall ch fp Γimp rc Θ F C HC H S HS c cs,
+      cmds_step ch fp Γimp rc Θ F C HC H S HS (c :: cs) =
+      match refs_check Θ (cmd_refs S c) with
       | inleft (exist _ e _) => rerr (priv_error e)
       | inright Hac =>
-          match rc Θ F C HC H c with
+          match rc Θ F C HC H S HS c with
           | rerr e => rerr e
           | rok (exist _ r1 Hr1, l1) =>
               match cmds_step ch fp Γimp rc (cr_gctx r1) (cr_frames r1) (cr_cache r1) (xcache_ok Hr1)
-                      (cinv_xstep H Hr1) cs with
+                      (cinv_xstep H Hr1) (next_tabs F (cr_frames r1) S) (next_tabs_ok H Hr1 HS) cs with
               | rerr e => rerr e
-              | rok (exist _ r2 Hr2, l2) => rok (exist _ r2 (cons_ok Hac Hr1 Hr2), log_app l1 l2)
+              | rok (exist _ r2 Hr2, l2) => rok (exist _ r2 (cons_ok HS Hac Hr1 Hr2), log_app l1 l2)
               end
           end
       end.
@@ -784,13 +830,15 @@ Section Impl.
   Qed.
 
   Fixpoint run_cmd_impl (ch : list path) (L : loader ch) (fp : path) (Γimp : ctx) (Θ : gctx) (F : list frame)
-    (C : cache) (HC : cache_ok C) (H : cinv ch fp Γimp Θ F) (c : ccmd) {struct c} :
+    (C : cache) (HC : cache_ok C) (H : cinv ch fp Γimp Θ F) (S : list ptab) (HS : S = fctx_tabs fp Γimp F)
+    (c : ccmd) {struct c} :
     rres ({r | post_xcmd ch fp Γimp Θ F c r} * elog)%type :=
     match c as c0 return rres ({r | post_xcmd ch fp Γimp Θ F c0 r} * elog)%type with
     | cc_mod x pv Δ0 cs =>
-        match F as F0 return cinv ch fp Γimp Θ F0 -> rres ({r | post_xcmd ch fp Γimp Θ F0 (cc_mod x pv Δ0 cs) r} * elog)%type with
-        | nil => fun H => False_rect _ (proj1 H eq_refl)
-        | f :: F0 => fun H =>
+        match F as F0 return cinv ch fp Γimp Θ F0 -> S = fctx_tabs fp Γimp F0 ->
+                             rres ({r | post_xcmd ch fp Γimp Θ F0 (cc_mod x pv Δ0 cs) r} * elog)%type with
+        | nil => fun H _ => False_rect _ (proj1 H eq_refl)
+        | f :: F0 => fun H HS =>
             match inspect (tele_xp (mt_of Θ (cinv_gctx H)) (ctx_skel (fctx Γimp (f :: F0))) Δ0) with
             | exist _ (xfail e) _ => rerr (re_import (fctx Γimp (f :: F0)) e)
             | exist _ (xok Δ) EΔ =>
@@ -805,7 +853,8 @@ Section Impl.
                         | right _ => rerr (re_msg ("duplicate name " ++ x))
                         | left Hfr =>
                             match cmds_step ch fp Γimp (run_cmd_impl ch L fp Γimp) Θ
-                                    (fr_mk (fr_chain f ++ x :: nil) Δ ⋄ :: f :: F0) C HC (mod_inv H HΔ) cs with
+                                    (fr_mk (fr_chain f ++ x :: nil) Δ ⋄ :: f :: F0) C HC (mod_inv H HΔ)
+                                    (tabs_push fp (fr_mk (fr_chain f ++ x :: nil) Δ ⋄) S) (tabs_push_ok _ _ _ _ _ HS) cs with
                             | rerr e => rerr e
                             | rok (exist _ r Hr, l) =>
                                 let (g, Eg) := head_frame (proj1 Hr) in
@@ -815,7 +864,7 @@ Section Impl.
                     end
                 end
             end
-        end H
+        end H HS
     | c0 => xp_simple ch L fp Γimp Θ F C HC H c0
     end.
 
@@ -886,7 +935,8 @@ Section Impl.
             | left HPx =>
                 let HF := unit_frame_wf (ext_eq_ctx_left _ _ _ _ HPx) in
                 match cmds_step (fp :: ch0) fp (lr_ctx r1) (run_cmd_impl (fp :: ch0) L fp (lr_ctx r1)) (lr_gctx r1)
-                        (fr_mk nil P' gm_nil :: nil) (lr_cache r1) (proj2 Hr1) (unit_cinv Hr1 HF) cs with
+                        (fr_mk nil P' gm_nil :: nil) (lr_cache r1) (proj2 Hr1) (unit_cinv Hr1 HF)
+                        (fctx_tabs fp (lr_ctx r1) (fr_mk nil P' gm_nil :: nil)) eq_refl cs with
                 | rerr e => rerr e
                 | rok (exist _ r2 Hr2, l2) =>
                     let (f, Ef) := last_frame (proj1 Hr2) in
@@ -997,9 +1047,9 @@ Section Impl.
   Lemma nonmod_complete {ch L fp Γimp Θ F C HC H c c'} :
     ccmd_head c' <> 1 -> cmd_xp_ok Θ (fctx Γimp F) c c' ->
     (exists r, simple_step ch L fp Γimp Θ F C HC H c' = rok r) ->
-    exists r, run_cmd_impl ch L fp Γimp Θ F C HC H c = rok r.
+    forall S HS, exists r, run_cmd_impl ch L fp Γimp Θ F C HC H S HS c = rok r.
   Proof.
-    intros Hh Hx [r Er].
+    intros Hh Hx [r Er] S HS.
     assert (Hc : ccmd_head c <> 1) by (destruct Hx as (mt & _ & Ex); rewrite <- (cmd_xp_head _ _ _ _ Ex); exact Hh).
     pose proof (cmd_xp_ok_spec _ _ (mt_of _ (cinv_gctx H)) _ _ (mt_of_spec _ _) Hx) as E.
     destruct c; try (exfalso; apply Hc; reflexivity); cbn [run_cmd_impl]; unfold xp_simple;
@@ -1013,9 +1063,10 @@ Section Impl.
   Theorem run_impl_complete :
     (forall ch fp Γimp Θ F c' Θ' F', run_cmd ch fp Γimp Θ F c' Θ' F' ->
        forall Hacc C HC H c, cmd_xp_ok Θ (fctx Γimp F) c c' ->
-         exists r, run_cmd_impl ch (loader_of ch Hacc) fp Γimp Θ F C HC H c = rok r) /\
+         forall S HS, exists r, run_cmd_impl ch (loader_of ch Hacc) fp Γimp Θ F C HC H S HS c = rok r) /\
     (forall ch fp Γimp Θ F cs Θ' F', run_cmds ch fp Γimp Θ F cs Θ' F' ->
-       forall Hacc C HC H, exists r, cmds_step ch fp Γimp (run_cmd_impl ch (loader_of ch Hacc) fp Γimp) Θ F C HC H cs = rok r) /\
+       forall Hacc C HC H S HS,
+         exists r, cmds_step ch fp Γimp (run_cmd_impl ch (loader_of ch Hacc) fp Γimp) Θ F C HC H S HS cs = rok r) /\
     (forall ch Θ fq Θ', run_load ch Θ fq Θ' ->
        forall Hacc C HC, exists r, load_impl ch (loader_of ch Hacc) Θ C HC fq = rok r) /\
     (forall ch Θ Γ c' Θ' Γ', run_lead ch Θ Γ c' Θ' Γ' ->
@@ -1039,7 +1090,7 @@ Section Impl.
       refine (nonmod_complete _ Hx _); [ cbn; discriminate |]; cbn [simple_step frame_step]; unfold def_step.
       dec_ok Hfr; dec_ok HA; dec_ok Hn; eexists; reflexivity.
     - (* a module *)
-      intros ch fp Γimp Θ f F x pv Δ cs Θ' g Htel HΔ Hfr Hr IH Hacc C HC H c Hx.
+      intros ch fp Γimp Θ f F x pv Δ cs Θ' g Htel HΔ Hfr Hr IH Hacc C HC H c Hx S HS.
       pose proof (cmd_xp_ok_spec _ _ (mt_of _ (cinv_gctx H)) _ _ (mt_of_spec _ _) Hx) as Ex.
       assert (Hc : ccmd_head c = 1) by (rewrite <- (cmd_xp_head _ _ _ _ Ex); reflexivity).
       destruct c as [| x0 pv0 Δ0 cs0 | | | |]; try discriminate.
@@ -1050,8 +1101,8 @@ Section Impl.
       dec_ok Htel.
       pose proof (ext_of_ctx _ _ _ HΔ) as HΔx; dec_ok HΔx; cbv zeta.
       dec_ok Hfr.
-      match goal with |- context [cmds_step ?a ?b ?c ?d ?e ?f ?g ?h ?i cs] =>
-        destruct (IH Hacc g h i) as [[[r Hp] l] E]; rewrite E end.
+      match goal with |- context [cmds_step ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k cs] =>
+        destruct (IH Hacc g h i j k) as [[[r Hp] l] E]; rewrite E end.
       cbv beta iota zeta.
       destruct (head_frame _) as [g' Eg]; eexists; reflexivity.
     - (* an alias *)
@@ -1088,13 +1139,15 @@ Section Impl.
       exact (Hno B HB).
     - intros; cbn; eexists; reflexivity.
     - (* a sequence: the head's result is the judgment's, by determinism *)
-      intros ch fp Γimp Θ F c c' cs Θ1 F1 Θ2 F2 Hac Hx Hc IHc Hcs IHcs Hacc C HC H; rewrite cmds_step_cons.
+      intros ch fp Γimp Θ F c c' cs Θ1 F1 Θ2 F2 Hac Hx Hc IHc Hcs IHcs Hacc C HC H S HS; subst S.
+      rewrite cmds_step_cons.
       dec_ok Hac.
-      destruct (IHc Hacc C HC H c Hx) as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota.
+      destruct (IHc Hacc C HC H c Hx _ eq_refl) as [[[r1 Hp1] l1] E1]; rewrite E1; cbv beta iota.
       pose proof Hp1 as (c'' & Hx' & Hr1 & _).
       rewrite (cmd_xp_ok_functional _ _ _ _ _ Hx' Hx) in Hr1.
       destruct (proj1 run_functional _ _ _ _ _ _ _ _ Hc _ _ _ Hr1) as [E2 E3]; subst Θ1 F1.
-      destruct (IHcs Hacc _ (xcache_ok Hp1) (cinv_xstep H Hp1)) as [[[r2 Hp2] l2] E2]; rewrite E2.
+      destruct (IHcs Hacc _ (xcache_ok Hp1) (cinv_xstep H Hp1) _ (next_tabs_ok H Hp1 eq_refl)) as [[[r2 Hp2] l2] E2].
+      rewrite E2.
       eexists; reflexivity.
     - (* a unit filed already *)
       intros ch Θ fq U HU Hacc C HC; simp load_impl.
@@ -1162,8 +1215,8 @@ Section Impl.
       { apply ext_of_ctx; rewrite fctx_cons in HF; cbn [fr_body fr_params fctx] in HF.
         exact (proj1 (ctx_decomp_mod HF)). }
       dec_ok HPe; cbv zeta.
-      match goal with |- context [cmds_step ?a ?b ?c ?d ?e ?f ?g ?h ?i cs] =>
-        destruct (IHr Hacc g h i) as [[[r2 Hp2] l2] E2]; rewrite E2 end.
+      match goal with |- context [cmds_step ?a ?b ?c ?d ?e ?f ?g ?h ?i ?j ?k cs] =>
+        destruct (IHr Hacc g h i j k) as [[[r2 Hp2] l2] E2]; rewrite E2 end.
       cbv beta iota zeta.
       destruct (last_frame _) as [f' Ef]; eexists; reflexivity.
   Qed.
