@@ -14,7 +14,7 @@ end
 (* Addition of zero and of a successor on the right. *)
 module Basic where
 
-abstract def plusZero : forall (n : Nat) -> Eq (plus n 0) n :=
+theorem plusZero : forall (n : Nat) -> Eq (plus n 0) n :=
   fun (n : Nat) ->
     rec n return x . Eq (plus x 0) x
     | zero => true
@@ -22,7 +22,7 @@ abstract def plusZero : forall (n : Nat) -> Eq (plus n 0) n :=
     end
 end
 
-abstract def plusSucc : forall (n : Nat) (m : Nat) -> Eq (plus n (succ m)) (succ (plus n m)) :=
+theorem plusSucc : forall (n : Nat) (m : Nat) -> Eq (plus n (succ m)) (succ (plus n m)) :=
   fun (n : Nat) (m : Nat) ->
     rec n return x . Eq (plus x (succ m)) (succ (plus x m))
     | zero => refl m
@@ -37,7 +37,7 @@ open Basic use (plusZero; plusSucc)
 (* Commutativity and associativity, and their consequences. *)
 module Algebra where
 
-abstract def plusComm : forall (a : Nat) (b : Nat) -> Eq (plus a b) (plus b a) :=
+theorem plusComm : forall (a : Nat) (b : Nat) -> Eq (plus a b) (plus b a) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Eq (plus x b) (plus b x)
     | zero => sym (plus b 0) b (plusZero b)
@@ -49,7 +49,7 @@ abstract def plusComm : forall (a : Nat) (b : Nat) -> Eq (plus a b) (plus b a) :
     end
 end
 
-abstract def plusAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (plus (plus a b) c) (plus a (plus b c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . Eq (plus (plus x b) c) (plus x (plus b c))
@@ -59,7 +59,7 @@ abstract def plusAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The first summand can be moved past the second. *)
-abstract def plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (plus a (plus b c)) (plus b (plus a c)) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . Eq (plus x (plus b c)) (plus b (plus x c))
@@ -74,7 +74,7 @@ abstract def plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The last two summands of a sum can be exchanged. *)
-abstract def plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
     Eq (plus (plus a b) c) (plus (plus a c) b) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     trans (plus (plus a b) c) (plus a (plus b c)) (plus (plus a c) b)
@@ -85,7 +85,7 @@ abstract def plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* Equal summands have equal sums. *)
-abstract def plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+theorem plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hac : Eq a c) (hbd : Eq b d) -> Eq (plus a b) (plus c d) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) ->
     trans (plus a b) (plus c b) (plus c d)
@@ -94,7 +94,7 @@ abstract def plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
 end
 
 (* The two middle summands of a sum of sums can be exchanged. *)
-abstract def plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
+theorem plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=
   fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
     let lhs := plus (plus a b) (plus c d);
@@ -118,11 +118,11 @@ module Cancel where
 
 (* The successor is injective; since [Eq (succ a) (succ b)] computes to
    [Eq a b], the proof is the hypothesis itself. *)
-abstract def succInj : forall (a : Nat) (b : Nat) (h : Eq (succ a) (succ b)) -> Eq a b :=
+theorem succInj : forall (a : Nat) (b : Nat) (h : Eq (succ a) (succ b)) -> Eq a b :=
   fun (a : Nat) (b : Nat) (h : Eq (succ a) (succ b)) -> h
 end
 
-abstract def plusCancelLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a b) (plus a c)) -> Eq b c :=
+theorem plusCancelLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a b) (plus a c)) -> Eq b c :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . (forall (h : Eq (plus x b) (plus x c)) -> Eq b c)
     | zero => fun (h : Eq b c) -> h
@@ -131,7 +131,7 @@ abstract def plusCancelLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus
 end
 
 (* Right cancellation, reduced to left cancellation by commutativity. *)
-abstract def plusCancelRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a c) (plus b c)) -> Eq a b :=
+theorem plusCancelRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a c) (plus b c)) -> Eq a b :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a c) (plus b c)) ->
     let hb : Eq (plus a c) (plus c b) :=
           trans (plus a c) (plus b c) (plus c b) h (plusComm b c);
@@ -142,7 +142,7 @@ abstract def plusCancelRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plu
 end
 
 (* If a sum is zero, so is its first summand. *)
-abstract def plusEqZero : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq a 0 :=
+theorem plusEqZero : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq a 0 :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . (forall (h : Eq (plus x b) 0) -> Eq x 0)
     | zero => fun (h : Eq b 0) -> true
@@ -151,7 +151,7 @@ abstract def plusEqZero : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq
 end
 
 (* If a sum is zero, so is its second summand. *)
-abstract def plusEqZeroRight : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq b 0 :=
+theorem plusEqZeroRight : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq b 0 :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . (forall (h : Eq (plus x b) 0) -> Eq b 0)
     | zero => fun (h : Eq b 0) -> h

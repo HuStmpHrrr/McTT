@@ -37,16 +37,16 @@ end
 (* Rewriting one side of the operation. *)
 module Cong where
 
-abstract def congLeft : forall (a : M) (b : M) (c : M) (h : R a b) -> R (op a c) (op b c) :=
+theorem congLeft : forall (a : M) (b : M) (c : M) (h : R a b) -> R (op a c) (op b c) :=
   fun (a : M) (b : M) (c : M) (h : R a b) -> opCong a c b c h (rRefl c)
 end
 
-abstract def congRight : forall (a : M) (b : M) (c : M) (h : R b c) -> R (op a b) (op a c) :=
+theorem congRight : forall (a : M) (b : M) (c : M) (h : R b c) -> R (op a b) (op a c) :=
   fun (a : M) (b : M) (c : M) (h : R b c) -> opCong a b a c (rRefl a) h
 end
 
 (* Associativity read from right to left. *)
-abstract def assocBack : forall (x : M) (y : M) (z : M) -> R (op x (op y z)) (op (op x y) z) :=
+theorem assocBack : forall (x : M) (y : M) (z : M) -> R (op x (op y z)) (op (op x y) z) :=
   fun (x : M) (y : M) (z : M) -> rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
 end
 
@@ -58,13 +58,13 @@ open Cong use (congLeft; congRight; assocBack)
 module Neutral where
 
 (* An element that is neutral on the left is [e]: both are [op u e]. *)
-abstract def leftIdUnique : forall (u : M) (h : forall (x : M) -> R (op u x) x) -> R u e :=
+theorem leftIdUnique : forall (u : M) (h : forall (x : M) -> R (op u x) x) -> R u e :=
   fun (u : M) (h : forall (x : M) -> R (op u x) x) ->
     rTrans u (op u e) e (rSym (op u e) u (rightId u)) (h e)
 end
 
 (* An element that is neutral on the right is [e]: both are [op e u]. *)
-abstract def rightIdUnique : forall (u : M) (h : forall (x : M) -> R (op x u) x) -> R u e :=
+theorem rightIdUnique : forall (u : M) (h : forall (x : M) -> R (op x u) x) -> R u e :=
   fun (u : M) (h : forall (x : M) -> R (op x u) x) ->
     rTrans u (op e u) e (rSym (op e u) u (leftId u)) (h e)
 end
@@ -74,12 +74,12 @@ end
 (* Laws of powers. *)
 module Power where
 
-abstract def powOne : forall (x : M) -> R (pow x 1) x :=
+theorem powOne : forall (x : M) -> R (pow x 1) x :=
   fun (x : M) -> rightId x
 end
 
 (* Powers respect [R]. *)
-abstract def powCong : forall (x : M) (y : M) (h : R x y) (n : Nat) -> R (pow x n) (pow y n) :=
+theorem powCong : forall (x : M) (y : M) (h : R x y) (n : Nat) -> R (pow x n) (pow y n) :=
   fun (x : M) (y : M) (h : R x y) (n : Nat) ->
     rec n return k . R (pow x k) (pow y k)
     | zero => rRefl e
@@ -88,7 +88,7 @@ abstract def powCong : forall (x : M) (y : M) (h : R x y) (n : Nat) -> R (pow x 
 end
 
 (* The last factor may be split off on the right as well as on the left. *)
-abstract def powSuccRight : forall (x : M) (n : Nat) -> R (pow x (succ n)) (op (pow x n) x) :=
+theorem powSuccRight : forall (x : M) (n : Nat) -> R (pow x (succ n)) (op (pow x n) x) :=
   fun (x : M) (n : Nat) ->
     rec n return k . R (pow x (succ k)) (op (pow x k) x)
     | zero => rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
@@ -100,7 +100,7 @@ abstract def powSuccRight : forall (x : M) (n : Nat) -> R (pow x (succ n)) (op (
 end
 
 (* A power of a sum of exponents is the product of the powers. *)
-abstract def powPlus : forall (x : M) (m : Nat) (n : Nat) ->
+theorem powPlus : forall (x : M) (m : Nat) (n : Nat) ->
     R (pow x (plus m n)) (op (pow x m) (pow x n)) :=
   fun (x : M) (m : Nat) (n : Nat) ->
     rec m return k . R (pow x (plus k n)) (op (pow x k) (pow x n))
@@ -114,7 +114,7 @@ abstract def powPlus : forall (x : M) (m : Nat) (n : Nat) ->
 end
 
 (* A power of a product of exponents is a power of a power. *)
-abstract def powMult : forall (x : M) (m : Nat) (n : Nat) ->
+theorem powMult : forall (x : M) (m : Nat) (n : Nat) ->
     R (pow x (mult m n)) (pow (pow x n) m) :=
   fun (x : M) (m : Nat) (n : Nat) ->
     rec m return k . R (pow x (mult k n)) (pow (pow x n) k)
@@ -128,7 +128,7 @@ abstract def powMult : forall (x : M) (m : Nat) (n : Nat) ->
 end
 
 (* Powers of the same element commute. *)
-abstract def powComm : forall (x : M) (m : Nat) (n : Nat) ->
+theorem powComm : forall (x : M) (m : Nat) (n : Nat) ->
     R (op (pow x m) (pow x n)) (op (pow x n) (pow x m)) :=
   fun (x : M) (m : Nat) (n : Nat) ->
     rec m return k . R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
@@ -158,7 +158,7 @@ end
 module Commutative (comm : forall (x : M) (y : M) -> R (op x y) (op y x)) where
 
 (* The first factor may be moved past the second. *)
-abstract def leftComm : forall (a : M) (b : M) (c : M) -> R (op a (op b c)) (op b (op a c)) :=
+theorem leftComm : forall (a : M) (b : M) (c : M) -> R (op a (op b c)) (op b (op a c)) :=
   fun (a : M) (b : M) (c : M) ->
     rTrans (op a (op b c)) (op (op a b) c) (op b (op a c))
       (assocBack a b c)
@@ -168,7 +168,7 @@ abstract def leftComm : forall (a : M) (b : M) (c : M) -> R (op a (op b c)) (op 
 end
 
 (* The two middle factors of a product of products can be exchanged. *)
-abstract def swapMiddle : forall (a : M) (b : M) (c : M) (d : M) ->
+theorem swapMiddle : forall (a : M) (b : M) (c : M) (d : M) ->
     R (op (op a b) (op c d)) (op (op a c) (op b d)) :=
   fun (a : M) (b : M) (c : M) (d : M) ->
     rTrans (op (op a b) (op c d)) (op a (op b (op c d))) (op (op a c) (op b d))
@@ -179,7 +179,7 @@ abstract def swapMiddle : forall (a : M) (b : M) (c : M) (d : M) ->
 end
 
 (* A power of a product is the product of the powers. *)
-abstract def powOp : forall (x : M) (y : M) (n : Nat) ->
+theorem powOp : forall (x : M) (y : M) (n : Nat) ->
     R (pow (op x y) n) (op (pow x n) (pow y n)) :=
   fun (x : M) (y : M) (n : Nat) ->
     rec n return k . R (pow (op x y) k) (op (pow x k) (pow y k))

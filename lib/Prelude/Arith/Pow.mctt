@@ -22,20 +22,20 @@ end
 (* Exponents zero, one and successor, and powers of one. *)
 module Basic where
 
-abstract def powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
+theorem powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
   fun (a : Nat) -> true
 end
 
-abstract def powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
+theorem powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
   fun (a : Nat) (n : Nat) -> refl (mult a (pow a n))
 end
 
-abstract def powOne : forall (a : Nat) -> Eq (pow a 1) a :=
+theorem powOne : forall (a : Nat) -> Eq (pow a 1) a :=
   fun (a : Nat) -> multOne a
 end
 
 (* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
-abstract def onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
+theorem onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (pow 1 x) 1
     | zero => true
@@ -52,7 +52,7 @@ module Exp where
 
 (* Powers turn sums of exponents into products.  The step multiplies the
    induction hypothesis by [a] and reassociates. *)
-abstract def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
+theorem powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
     Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) :=
   fun (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
@@ -70,7 +70,7 @@ abstract def powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
 end
 
 (* A power of a product is the product of the powers. *)
-abstract def powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
+theorem powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
     Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) :=
   fun (a : Nat) (b : Nat) (n : Nat) ->
     rec n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
@@ -90,7 +90,7 @@ end
 (* A power of a power multiplies the exponents.  The step splits
    [pow a (plus n (mult p n))] by [powPlus] and recombines the bases by
    [powMultBase]. *)
-abstract def powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
+theorem powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
     Eq (pow a (mult m n)) (pow (pow a m) n) :=
   fun (a : Nat) (m : Nat) (n : Nat) ->
     rec m return x . Eq (pow a (mult x n)) (pow (pow a x) n)

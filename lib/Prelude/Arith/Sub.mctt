@@ -31,15 +31,15 @@ end
 (* Predecessor and subtraction at zero, successors and equal arguments. *)
 module Laws where
 
-abstract def predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
+theorem predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
   fun (n : Nat) -> refl n
 end
 
-abstract def subZero : forall (n : Nat) -> Eq (sub n 0) n :=
+theorem subZero : forall (n : Nat) -> Eq (sub n 0) n :=
   fun (n : Nat) -> refl n
 end
 
-abstract def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
+theorem zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (sub 0 x) 0
     | zero => true
@@ -47,7 +47,7 @@ abstract def zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
     end
 end
 
-abstract def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
+theorem subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (sub x x) 0
     | zero => true
@@ -56,12 +56,12 @@ abstract def subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
 end
 
 (* Subtracting successors is subtracting the numbers. *)
-abstract def subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
+theorem subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
   fun (a : Nat) (b : Nat) -> refl (sub a b)
 end
 
 (* Subtracting one more takes one more predecessor. *)
-abstract def subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
+theorem subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) -> Eq (sub x (succ b)) (pred (sub x b)))
     | zero => fun (b : Nat) ->
@@ -81,7 +81,7 @@ end
 module PlusSub where
 
 (* Adding [b] on the left and subtracting it again gives back [a]. *)
-abstract def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
+theorem plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
   fun (b : Nat) (a : Nat) ->
     rec b return x . Eq (sub (plus x a) x) a
     | zero => refl a
@@ -89,7 +89,7 @@ abstract def plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a
     end
 end
 
-abstract def plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
+theorem plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
   fun (a : Nat) (b : Nat) ->
     transport (fun (m : Nat) -> Eq (sub m b) a) (plus b a) (plus a b)
       (plusComm b a) (plusSubLeft b a)

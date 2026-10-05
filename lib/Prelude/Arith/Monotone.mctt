@@ -17,7 +17,7 @@ module Mono where
 
 (* Addition is monotone in both arguments.  The induction is on [a] with [b]
    generalized; at [a = 0] the bound on [c] is weakened by [lePlusLeft]. *)
-abstract def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+theorem lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (plus a c) (plus b d) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
@@ -36,20 +36,20 @@ abstract def lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
 end
 
 (* Addition is monotone in its first argument. *)
-abstract def lePlusMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) ->
+theorem lePlusMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) ->
     Le (plus a c) (plus b c) :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> lePlusMono a b c c h (leRefl c)
 end
 
 (* Addition is monotone in its second argument. *)
-abstract def lePlusMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
+theorem lePlusMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
     Le (plus a b) (plus a c) :=
   fun (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> lePlusMono a a b c (leRefl a) h
 end
 
 (* A common first summand cancels: [Le (plus (succ p) b) (plus (succ p) c)]
    computes to [Le (plus p b) (plus p c)]. *)
-abstract def lePlusCancel : forall (a : Nat) (b : Nat) (c : Nat)
+theorem lePlusCancel : forall (a : Nat) (b : Nat) (c : Nat)
     (h : Le (plus a b) (plus a c)) -> Le b c :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     rec a return x . (forall (h : Le (plus x b) (plus x c)) -> Le b c)
@@ -60,7 +60,7 @@ end
 
 (* Multiplication is monotone in both arguments: the step is [lePlusMono]
    applied to the bound on the factors and the induction hypothesis. *)
-abstract def leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
+theorem leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
     (hab : Le a b) (hcd : Le c d) -> Le (mult a c) (mult b d) :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
@@ -83,7 +83,7 @@ end
 module Strict where
 
 (* A strict bound gives a non-strict one. *)
-abstract def ltLe : forall (a : Nat) (b : Nat) (h : Lt a b) -> Le a b :=
+theorem ltLe : forall (a : Nat) (b : Nat) (h : Lt a b) -> Le a b :=
   fun (a : Nat) (b : Nat) (h : Lt a b) -> leTrans a (succ a) b (leSucc a) h
 end
 
@@ -93,21 +93,21 @@ def ltLeTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Le b 
 end
 
 (* [Le (succ a) (succ b)] computes to [Le a b], so [hab] bounds [succ a]. *)
-abstract def leLtTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) -> Lt a c :=
+theorem leLtTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) -> Lt a c :=
   fun (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) ->
     leTrans (succ a) (succ b) c hab hbc
 end
 
-abstract def ltTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) -> Lt a c :=
+theorem ltTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) -> Lt a c :=
   fun (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) ->
     ltLeTrans a b c hab (ltLe b c hbc)
 end
 
-abstract def ltSucc : forall (n : Nat) -> Lt n (succ n) :=
+theorem ltSucc : forall (n : Nat) -> Lt n (succ n) :=
   fun (n : Nat) -> leRefl n
 end
 
-abstract def ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
+theorem ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Lt x (plus x (succ b))
     | zero => true
@@ -143,7 +143,7 @@ def subLe : forall (a : Nat) (b : Nat) -> Le (sub a b) a :=
 end
 
 (* Subtraction is monotone in its first argument. *)
-abstract def subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a c) (sub b c) :=
+theorem subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a c) (sub b c) :=
   fun (a : Nat) (b : Nat) (c : Nat) ->
     (rec c return w . (forall (x : Nat) (y : Nat) (h : Le x y) -> Le (sub x w) (sub y w))
      | zero => fun (x : Nat) (y : Nat) (h : Le x y) -> h
@@ -160,7 +160,7 @@ abstract def subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> 
 end
 
 (* Subtraction is antitone in its second argument. *)
-abstract def subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub a c) (sub a b) :=
+theorem subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub a c) (sub a b) :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (c : Nat) (h : Le y c) -> Le (sub x c) (sub x y))
      | zero => fun (x : Nat) (c : Nat) (h : True) -> subLe x c
@@ -177,7 +177,7 @@ abstract def subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
 end
 
 (* Below [a], subtracting [b] and adding it back on the right gives [a]. *)
-abstract def plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b) b) a :=
+theorem plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b) b) a :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus (sub x y) y) x)
      | zero => fun (x : Nat) (h : True) -> plusZero x
@@ -192,7 +192,7 @@ abstract def plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus
 end
 
 (* Below [a], adding [b] on the left of [sub a b] gives [a]. *)
-abstract def subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a b)) a :=
+theorem subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a b)) a :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus y (sub x y)) x)
      | zero => fun (x : Nat) (h : True) -> refl x
@@ -205,7 +205,7 @@ abstract def subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus
 end
 
 (* A strict bound leaves a positive difference. *)
-abstract def subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
+theorem subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
   fun (a : Nat) (b : Nat) ->
     (rec b return y . (forall (x : Nat) (h : Lt y x) -> Lt 0 (sub x y))
      | zero => fun (x : Nat) (h : Lt 0 x) -> h

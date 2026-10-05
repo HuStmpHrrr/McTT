@@ -7,6 +7,8 @@
    alias, and so is each commutative one: [Additive.Commutative plusComm]
    selects the submodule of the instance and applies it to the proof of
    commutativity. *)
+(* Written with the long forms ([abstract def], [private def], ...) rather
+   than [theorem], [fact] and [let], for comparison. *)
 module Prelude::Algebra::Instances where
 
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
@@ -23,7 +25,7 @@ import Prelude::Algebra::Monoid as Monoid
 
 (* Every binary operation on numbers respects equality on both sides: the
    congruence each instance on numbers needs, proved once. *)
-private abstract def congBoth : forall (f : forall (x : Nat) (y : Nat) -> Nat)
+abstract private def congBoth : forall (f : forall (x : Nat) (y : Nat) -> Nat)
     (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) -> Eq (f a b) (f c d) :=
   fun (f : forall (x : Nat) (y : Nat) -> Nat) (a : Nat) (b : Nat) (c : Nat) (d : Nat)
       (hac : Eq a c) (hbd : Eq b d) ->

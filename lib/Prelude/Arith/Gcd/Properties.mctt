@@ -1,6 +1,8 @@
 (* Laws of [Prelude::Arith::Gcd]: the values at [0], [1] and the diagonal,
    independence from the fuel, divisibility of both arguments, the greatest
    divisor property, and commutativity. *)
+(* Written with the long forms ([abstract def], [private def], ...) rather
+   than [theorem], [fact] and [let], for comparison. *)
 module Prelude::Arith::Gcd::Properties where
 
 import Prelude::Logic use (absurd)

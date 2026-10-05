@@ -5,6 +5,8 @@
    recursive in the dividend: the remainder counts up and wraps to [0] on
    reaching the divisor, and the quotient grows by one at each wrap.  The
    theorems are stated for a positive divisor [succ d]. *)
+(* Written with the long forms ([abstract def], [private def], ...) rather
+   than [theorem], [fact] and [let], for comparison. *)
 module Prelude::Arith::Div where
 
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)

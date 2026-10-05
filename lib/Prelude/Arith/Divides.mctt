@@ -30,11 +30,11 @@ def Divides (k : Nat) (n : Nat) : Type@0 := Eq (mod n k) 0 end
 module Basic where
 
 (* Zero divides only zero. *)
-abstract def zeroDivides : forall (n : Nat) (h : Divides 0 n) -> Eq n 0 :=
+theorem zeroDivides : forall (n : Nat) (h : Divides 0 n) -> Eq n 0 :=
   fun (n : Nat) (h : Eq n 0) -> h
 end
 
-abstract def dividesRefl : forall (n : Nat) -> Divides n n :=
+theorem dividesRefl : forall (n : Nat) -> Divides n n :=
   fun (n : Nat) ->
     rec n return x . Divides x x
     | zero => true
@@ -42,11 +42,11 @@ abstract def dividesRefl : forall (n : Nat) -> Divides n n :=
     end
 end
 
-abstract def dividesZero : forall (k : Nat) -> Divides k 0 :=
+theorem dividesZero : forall (k : Nat) -> Divides k 0 :=
   fun (k : Nat) -> modZero k
 end
 
-abstract def oneDivides : forall (n : Nat) -> Divides 1 n :=
+theorem oneDivides : forall (n : Nat) -> Divides 1 n :=
   fun (n : Nat) -> modOne n
 end
 
@@ -61,7 +61,7 @@ module Closure where
    remainder of [a + b] is [a] steps of [wrap] from the remainder of [b],
    which is [0] by [hb], so it is the remainder of [a], which is [0] by
    [ha]. *)
-abstract def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
+theorem dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k a) (hb : Divides k b) ->
     Divides k (plus a b) :=
   fun (k : Nat) (a : Nat) (b : Nat) ->
     rec k return x . (forall (ha : Divides x a) (hb : Divides x b) -> Divides x (plus a b))
@@ -81,7 +81,7 @@ abstract def dividesPlus : forall (k : Nat) (a : Nat) (b : Nat) (ha : Divides k 
 end
 
 (* Every multiple of [k] is divisible by [k]. *)
-abstract def dividesMult : forall (k : Nat) (m : Nat) -> Divides k (mult m k) :=
+theorem dividesMult : forall (k : Nat) (m : Nat) -> Divides k (mult m k) :=
   fun (k : Nat) (m : Nat) ->
     rec m return x . Divides k (mult x k)
     | zero => dividesZero k
@@ -91,7 +91,7 @@ end
 
 (* A number divisible by [succ d] is its quotient times [succ d]: the
    division equation with a zero remainder. *)
-abstract def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
+theorem dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) ->
     Eq (mult (div b (succ d)) (succ d)) b :=
   fun (d : Nat) (b : Nat) (h : Eq (mod b (succ d)) 0) ->
     let k := succ d;
@@ -104,7 +104,7 @@ abstract def dividesQuot : forall (d : Nat) (b : Nat) (h : Divides (succ d) b) -
 end
 
 (* A divisor of [b] divides every multiple [mult m b]. *)
-abstract def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
+theorem dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides k b) ->
     Divides k (mult m b) :=
   fun (k : Nat) (b : Nat) (m : Nat) ->
     rec k return x . (forall (h : Divides x b) -> Divides x (mult m b))
@@ -124,7 +124,7 @@ abstract def dividesMultLeft : forall (k : Nat) (b : Nat) (m : Nat) (h : Divides
 end
 
 (* A divisor of [x] and of [plus x y] divides [y]. *)
-abstract def dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
+theorem dividesPlusCancel : forall (k : Nat) (x : Nat) (y : Nat)
     (hx : Divides k x) (hxy : Divides k (plus x y)) -> Divides k y :=
   fun (k : Nat) (x : Nat) (y : Nat) ->
     rec k return w . (forall (hx : Divides w x) (hxy : Divides w (plus x y)) -> Divides w y)
@@ -149,7 +149,7 @@ module Two where
 (* The remainder by two is the parity flag: [0] for even numbers and [1] for
    odd ones.  Both halves are proved together, since the step exchanges
    them. *)
-private def modTwoParity : forall (n : Nat) ->
+let modTwoParity : forall (n : Nat) ->
     And (forall (h : Even n) -> Eq (mod n 2) 0) (forall (h : Odd n) -> Eq (mod n 2) 1) :=
   fun (n : Nat) ->
     rec n return x . And (forall (h : Even x) -> Eq (mod x 2) 0)
@@ -175,7 +175,7 @@ private def modTwoParity : forall (n : Nat) ->
 end
 
 (* An even number is divisible by two. *)
-abstract def evenDividesTwo : forall (n : Nat) (h : Even n) -> Divides 2 n :=
+theorem evenDividesTwo : forall (n : Nat) (h : Even n) -> Divides 2 n :=
   fun (n : Nat) (h : Even n) ->
     andFst (forall (h : Even n) -> Eq (mod n 2) 0) (forall (h : Odd n) -> Eq (mod n 2) 1)
       (modTwoParity n) h
@@ -183,7 +183,7 @@ end
 
 (* A number divisible by two is even: were it odd, its remainder would be
    [1] rather than [0]. *)
-abstract def dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
+theorem dividesTwoEven : forall (n : Nat) (h : Divides 2 n) -> Even n :=
   fun (n : Nat) (h : Eq (mod n 2) 0) ->
     orElim (Even n) (Odd n) (Even n) (evenOrOdd n)
       (fun (e : Even n) -> e)
