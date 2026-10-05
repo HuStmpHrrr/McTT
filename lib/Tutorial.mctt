@@ -1,11 +1,12 @@
 (* A tour of the McTT surface language, one feature at a time. Run it from
    lib/ with ../_build/default/driver/mctt.exe Tutorial.mctt. *)
 
-(* A file is one unit: leading imports (section 11), then one module. *)
-import Prelude::Arith::Equality use (Eq; refl)
-import Prelude::Function::Iter as Iter
+(* A file is one unit: one module. Its imports go inside it (section 11). *)
 
 module Tutorial where
+
+import Prelude::Arith::Equality use (Eq; refl)
+import Prelude::Function::Iter as Iter
 
 (* 1. Lexical matters.
    This text is a comment; comments do not nest. Identifiers are letters
@@ -214,9 +215,10 @@ end
 
 eval Counting.seven
 
-(* Imports and opens may also precede the unit's header, as at the top of
-   this file; there they may [use] and [as] but not [export]. Their names
-   are in scope in the unit's parameter types:
+(* Imports and opens may also precede the unit's header, but only for what
+   the unit's parameter types need; everything else is imported inside the
+   module, as at the top of this file. Leading ones may [use] and [as] but
+   not [export]:
      import Prelude::Arith::Equality use (Eq)
      module Proofs (h : Eq 1 1) where … end *)
 
