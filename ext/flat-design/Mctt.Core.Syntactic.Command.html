@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Syntactic.Command</h1>
+
+<div class="code">
+</div>
+
+<div class="doc">
+<a id="lab263"></a><h1 class="section">Commands</h1>
+
+
+<div class="paragraph"> </div>
+
+    The core commands a unit is elaborated into: names are resolved, an
+    import is a load, and an open the declaration of its items.  Their meaning, as steps of
+    the global state, is given in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>. 
+</div>
+<div class="code">
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Stdlib</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <span class="id" title="library">List</span> <span class="id" title="library">String</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.LibTactics.html#"><span class="id" title="library">LibTactics</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#"><span class="id" title="library">Syntax</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Syntax_Notations"><span class="id" title="module">Syntax_Notations</span></a>.<br/>
+
+<br/>
+<span class="id" title="keyword">Inductive</span> <a id="ccmd" class="idref" href="#ccmd"><span class="id" title="definition, inductive"><span id="ccmd_rect" class="id"><span id="ccmd_ind" class="id"><span id="ccmd_rec" class="id"><span id="ccmd_sind" class="id">ccmd</span></span></span></span></span></a> : <span class="id" title="keyword">Set</span> :=<br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">def</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> <span class="inlinecode">:=</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>: transparency, privacy, type and body.  An <span class="inlinecode"><span class="id" title="tactic">abstract</span></span>
+    one (<span class="inlinecode"><span class="id" title="var">b</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#false"><span class="id" title="constructor">false</span></a></span>) is filed as a constant, and the member is defined as
+    that constant; so is one without a body, an axiom. 
+</div>
+<div class="code">
+| <a id="cc_def" class="idref" href="#cc_def"><span class="id" title="constructor">cc_def</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<span class="id" title="var">Δ</span>)</span> <span class="inlinecode"><span class="id" title="keyword">where</span></span> <span class="inlinecode"><span class="id" title="var">cs</span></span> <span class="inlinecode"><span class="id" title="keyword">end</span></span>, private or not 
+</div>
+<div class="code">
+| <a id="cc_mod" class="idref" href="#cc_mod"><span class="id" title="constructor">cc_mod</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="var">module</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.x"><span class="id" title="variable">x</span></a></span> <span class="inlinecode">(<span class="id" title="var">Δ</span>)</span> <span class="inlinecode">:=</span> <span class="inlinecode"><span class="id" title="var">E</span></span>: an alias, under its own parameters, private or not. 
+</div>
+<div class="code">
+| <a id="cc_alias" class="idref" href="#cc_alias"><span class="id" title="constructor">cc_alias</span></a> : <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bool"><span class="id" title="inductive">bool</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_load"><span class="id" title="constructor">cc_load</span></a></span> <span class="inlinecode"><span class="id" title="var">fp</span></span>: load the unit <span class="inlinecode"><span class="id" title="var">fp</span></span> if it is not filed yet. 
+</div>
+<div class="code">
+| <a id="cc_load" class="idref" href="#cc_load"><span class="id" title="constructor">cc_load</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_open"><span class="id" title="constructor">cc_open</span></a></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="var">oZ</span></span> <span class="inlinecode"><span class="id" title="var">items</span></span>: check that <span class="inlinecode"><span class="id" title="var">E</span></span> is a module, and declare the private
+    alias <span class="inlinecode"><span class="id" title="var">Z</span></span> of it when <span class="inlinecode"><span class="id" title="var">oZ</span></span> <span class="inlinecode">=</span> <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#Some"><span class="id" title="constructor">Some</span></a></span> <span class="inlinecode"><span class="id" title="var">Z</span></span>, then the items, as definitions and
+    aliases of this frame. 
+</div>
+<div class="code">
+| <a id="cc_open" class="idref" href="#cc_open"><span class="id" title="constructor">cc_open</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#iitem"><span class="id" title="definition">iitem</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span>, or <span class="inlinecode"><span class="id" title="tactic">eval</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#computation.M"><span class="id" title="variable">M</span></a></span> <span class="inlinecode">:</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a></span> 
+</div>
+<div class="code">
+| <a id="cc_eval" class="idref" href="#cc_eval"><span class="id" title="constructor">cc_eval</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#typ"><span class="id" title="abbreviation">typ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+A unit: its leading loads and opens, its parameters, its body. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Definition</span> <a id="cunit" class="idref" href="#cunit"><span class="id" title="definition">cunit</span></a> : <span class="id" title="keyword">Set</span> := (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd"><span class="id" title="inductive">ccmd</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd"><span class="id" title="inductive">ccmd</span></a>)%<span class="id" title="keyword">type</span>.<br/>
+
+<br/>
+<span class="id" title="keyword">Definition</span> <a id="prog_path" class="idref" href="#prog_path"><span class="id" title="definition">prog_path</span></a> (<a id="prg:3" class="idref" href="#prg:3"><span class="id" title="binder">prg</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.prog"><span class="id" title="definition">Cst.prog</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">let</span> '<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><span class="id" title="var">_</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">(</span></a><span class="id" title="var">fp</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <span class="id" title="var">_</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">,</span></a> <span class="id" title="var">_</span><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#e6756e10c36f149b18b4a8741ed83079"><span class="id" title="notation">))</span></a> := <a class="idref" href="Mctt.Core.Syntactic.Command.html#prg:3"><span class="id" title="variable">prg</span></a> <span class="id" title="tactic">in</span> <span class="id" title="var">fp</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab264"></a><h2 class="section">Frames</h2>
+
+
+<div class="paragraph"> </div>
+
+    While a unit is checked, the modules open around the command being
+    checked are its frames, innermost first: the chain of the module from
+    the unit's root, its parameters, and its body so far.  A command is
+    checked in <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#fctx"><span class="id" title="definition">fctx</span></a></span> <span class="inlinecode"><span class="id" title="var">Γimp</span></span> <span class="inlinecode"><span class="id" title="var">F</span></span>: each frame contributes its self slot, holding
+    its body so far, over its parameters, and the unit's leading opens <span class="inlinecode"><span class="id" title="var">Γimp</span></span>
+    are outermost. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Record</span> <a id="frame" class="idref" href="#frame"><span class="id" title="record">frame</span></a> : <span class="id" title="keyword">Set</span> := <span class="id" title="var">fr_mk</span><br/>
+&nbsp;&nbsp;{ <a id="fr_chain" class="idref" href="#fr_chain"><span class="id" title="projection">fr_chain</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span><br/>
+&nbsp;&nbsp;; <a id="fr_params" class="idref" href="#fr_params"><span class="id" title="projection">fr_params</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a><br/>
+&nbsp;&nbsp;; <a id="fr_body" class="idref" href="#fr_body"><span class="id" title="projection">fr_body</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#gmod"><span class="id" title="inductive">gmod</span></a> }.<br/>
+
+<br/>
+<span class="id" title="keyword">Fixpoint</span> <a id="fctx" class="idref" href="#fctx"><span class="id" title="definition">fctx</span></a> (<a id="ca1bda571a93df1dadd93b8ab3552c91" class="idref" href="#ca1bda571a93df1dadd93b8ab3552c91"><span class="id" title="binder">Γimp</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a>) (<a id="F:10" class="idref" href="#F:10"><span class="id" title="binder">F</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#frame"><span class="id" title="record">frame</span></a>) : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> :=<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Command.html#F:10"><span class="id" title="variable">F</span></a> <span class="id" title="keyword">with</span><br/>
+&nbsp;&nbsp;| <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Command.html#ca1bda571a93df1dadd93b8ab3552c91"><span class="id" title="variable">Γimp</span></a><br/>
+&nbsp;&nbsp;| <span class="id" title="var">f</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <span class="id" title="var">F'</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#self_ent"><span class="id" title="definition">self_ent</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Command.html#fr_body"><span class="id" title="projection">fr_body</span></a> <span class="id" title="var">f</span>) <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fr_params"><span class="id" title="projection">fr_params</span></a> <span class="id" title="var">f</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#fctx:11"><span class="id" title="definition">fctx</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ca1bda571a93df1dadd93b8ab3552c91"><span class="id" title="variable">Γimp</span></a> <span class="id" title="var">F'</span><br/>
+&nbsp;&nbsp;<span class="id" title="keyword">end</span>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>

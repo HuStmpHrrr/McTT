@@ -1,0 +1,123 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="resources/coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="resources/coqdocjs.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="resources/config.js"></script>
+<script type="text/javascript" src="resources/coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./">Project Page</a>
+      <a href="./indexpage.html"> Index </a>
+      <a href="./dep.html"> Table of Contents </a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<h1 class="libtitle">Mctt.Core.Semantic.Fixed</h1>
+
+<div class="code">
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Base.html#"><span class="id" title="library">Base</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Syntactic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Syntactic.System.html#"><span class="id" title="library">System</span></a> <a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#"><span class="id" title="library">CtxSub</span></a>.<br/>
+<span class="id" title="keyword">From</span> <span class="id" title="var">Mctt.Core.Semantic</span> <span class="id" title="keyword">Require</span> <span class="id" title="keyword">Export</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#"><span class="id" title="library">Domain</span></a> <a class="idref" href="Mctt.Core.Semantic.Evaluation.html#"><span class="id" title="library">Evaluation</span></a> <a class="idref" href="Mctt.Core.Semantic.Readback.html#"><span class="id" title="library">Readback</span></a> <a class="idref" href="Mctt.Core.Semantic.NbE.html#"><span class="id" title="library">NbE</span></a>.<br/>
+<span class="id" title="keyword">Import</span> <a class="idref" href="Mctt.Core.Semantic.Domain.html#Domain_Notations"><span class="id" title="module">Domain_Notations</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab202"></a><h1 class="section">The Short Forms, for a Fixed Global Context</h1>
+
+
+<div class="paragraph"> </div>
+
+    The semantic development fixes the global context once per section, with
+    <span class="inlinecode"><span class="id" title="keyword">Context</span></span> <span class="inlinecode">`{<a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#GCtx"><span class="id" title="record">GCtx</span></a>}</span>.  These notations write judgments, evaluation and
+    readback without <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ</span></span>, relative to that fixed context.  Where two
+    global contexts meet, the long forms are used. 
+<div class="paragraph"> </div>
+
+ The short and long forms do not parse together (<span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> against
+    <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>), so the short forms are a separate module.  Files that
+    import it refer to a judgment at another global context by its constant. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Module</span> <a id="Fixed_Notations" class="idref" href="#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab203"></a><h2 class="section">Judgments</h2>
+
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="f478f7ff183196729a187ddd7c2a86f5" class="idref" href="#f478f7ff183196729a187ddd7c2a86f5"><span class="id" title="notation">&quot;</span></a>⊢ Γ" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_ctx"><span class="id" title="inductive">wf_ctx</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">Γ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="c1e2bbcf3e0c9cb868f9058ad6f7a62b" class="idref" href="#c1e2bbcf3e0c9cb868f9058ad6f7a62b"><span class="id" title="notation">&quot;</span></a>Γ ⊢ M : A" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">A</span> <span class="id" title="var">M</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="bdcc82f89347a6b5859b8b80abd26627" class="idref" href="#bdcc82f89347a6b5859b8b80abd26627"><span class="id" title="notation">&quot;</span></a>Γ ⊢ M ≈ M' : A" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq"><span class="id" title="inductive">wf_exp_eq</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">A</span> <span class="id" title="var">M</span> <span class="id" title="var">M'</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">M'</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">A</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="a378667de6da5f8acc3b38b7ba0cf6df" class="idref" href="#a378667de6da5f8acc3b38b7ba0cf6df"><span class="id" title="notation">&quot;</span></a>Γ ⊢ A ⊆ A'" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp"><span class="id" title="inductive">wf_subtyp</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">A</span> <span class="id" title="var">A'</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">A</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">A'</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="737349a89d2b4ff71efaec0996a9ea76" class="idref" href="#737349a89d2b4ff71efaec0996a9ea76"><span class="id" title="notation">&quot;</span></a>Γ ⊢w φ : Δ" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_wk"><span class="id" title="record">wf_wk</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">Δ</span> φ) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, φ <span class="id" title="keyword">constr</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 60, <span class="id" title="var">Δ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="3384efc8bb96e797eb52e9525469fd1b" class="idref" href="#3384efc8bb96e797eb52e9525469fd1b"><span class="id" title="notation">&quot;</span></a>Γ ⊢s σ : Δ" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">Δ</span> σ) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, σ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">Δ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="10b71bf2b264be939679b643f8f61538" class="idref" href="#10b71bf2b264be939679b643f8f61538"><span class="id" title="notation">&quot;</span></a>Γ ⊢s σ ≈ σ' : Δ" := (<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Γ</span> <span class="id" title="var">Δ</span> σ σ')<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, σ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, σ' <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">Δ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+</div>
+
+<div class="doc">
+Not <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> <span class="inlinecode">⊆</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>, which would not parse alongside <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and the long forms. 
+</div>
+<div class="code">
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="2032d6683fa1cc2bc9a6db4369f5ac84" class="idref" href="#2032d6683fa1cc2bc9a6db4369f5ac84"><span class="id" title="notation">&quot;</span></a>Δ ⊆ Γ" := (<a class="idref" href="Mctt.Core.Syntactic.CtxSub.html#ctx_sub"><span class="id" title="inductive">ctx_sub</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">Δ</span> <span class="id" title="var">Γ</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">Γ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">type_scope</span>.<br/>
+
+<br/>
+</div>
+
+<div class="doc">
+<a id="lab204"></a><h2 class="section">Evaluation and Readback</h2>
+
+</div>
+<div class="code">
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="6cc9ce08f51ac97860b6993336aafa18" class="idref" href="#6cc9ce08f51ac97860b6993336aafa18"><span class="id" title="notation">&quot;</span></a>'⟦' M '⟧' ρ '↘' r" := (<a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_exp"><span class="id" title="inductive">eval_exp</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">M</span> ρ <span class="id" title="var">r</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">r</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="da3fb148670192bbf878fbacfe36f98e" class="idref" href="#da3fb148670192bbf878fbacfe36f98e"><span class="id" title="notation">&quot;</span></a>'⟦rec' m 'return' A | 'zero' -&gt; MZ | 'succ' -&gt; MS 'end' '⟧' ρ '↘' r" :=<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_natrec"><span class="id" title="inductive">eval_natrec</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">A</span> <span class="id" title="var">MZ</span> <span class="id" title="var">MS</span> <span class="id" title="var">m</span> ρ <span class="id" title="var">r</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">A</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">MZ</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">MS</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">r</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="b10b0cac345a8d79771cb4012b085e20" class="idref" href="#b10b0cac345a8d79771cb4012b085e20"><span class="id" title="notation">&quot;</span></a>'$|' m '&amp;' n '|↘' r" := (<a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_app"><span class="id" title="inductive">eval_app</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">m</span> <span class="id" title="var">n</span> <span class="id" title="var">r</span>)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">n</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">r</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="ed22e42ec826b12c383728d0817ba65c" class="idref" href="#ed22e42ec826b12c383728d0817ba65c"><span class="id" title="notation">&quot;</span></a>'⟦' σ '⟧s' ρ '↘' ρσ" := (<a class="idref" href="Mctt.Core.Semantic.Evaluation.Definitions.html#eval_sub"><span class="id" title="definition">eval_sub</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> σ ρ ρσ)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, σ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, ρ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, ρσ <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69) : <span class="id" title="var">mctt_scope</span>.<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="2042df9e489a61e220aa6d5708640f1b" class="idref" href="#2042df9e489a61e220aa6d5708640f1b"><span class="id" title="notation">&quot;</span></a>'Rnf' m 'in' s ↘ M" := (<a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_nf"><span class="id" title="inductive">read_nf</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">s</span> <span class="id" title="var">m</span> <span class="id" title="var">M</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">s</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="a7ea4d31c3fe6f1fd247a4fa36d45102" class="idref" href="#a7ea4d31c3fe6f1fd247a4fa36d45102"><span class="id" title="notation">&quot;</span></a>'Rne' m 'in' s ↘ M" := (<a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_ne"><span class="id" title="inductive">read_ne</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">s</span> <span class="id" title="var">m</span> <span class="id" title="var">M</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">s</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+&nbsp;&nbsp;<span class="id" title="keyword">Notation</span> <a id="8db8cb48b875109ab2eecb5d80f4f9f9" class="idref" href="#8db8cb48b875109ab2eecb5d80f4f9f9"><span class="id" title="notation">&quot;</span></a>'Rtyp' m 'in' s ↘ M" := (<a class="idref" href="Mctt.Core.Semantic.Readback.Definitions.html#read_typ"><span class="id" title="inductive">read_typ</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a> <span class="id" title="var">s</span> <span class="id" title="var">m</span> <span class="id" title="var">M</span>) (<span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 70, <span class="id" title="var">m</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">s</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69, <span class="id" title="var">M</span> <span class="id" title="tactic">at</span> <span class="id" title="keyword">level</span> 69).<br/>
+
+<br/>
+&nbsp;&nbsp;<span class="id" title="var">Abbreviation</span> <a id="Fixed_Notations.initial_env_f" class="idref" href="#Fixed_Notations.initial_env_f"><span class="id" title="abbreviation">initial_env_f</span></a> := (<a class="idref" href="Mctt.Core.Semantic.NbE.html#initial_env"><span class="id" title="inductive">initial_env</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a>).<br/>
+&nbsp;&nbsp;<span class="id" title="var">Abbreviation</span> <a id="Fixed_Notations.nbe_f" class="idref" href="#Fixed_Notations.nbe_f"><span class="id" title="abbreviation">nbe_f</span></a> := (<a class="idref" href="Mctt.Core.Semantic.NbE.html#nbe"><span class="id" title="inductive">nbe</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a>).<br/>
+&nbsp;&nbsp;<span class="id" title="var">Abbreviation</span> <a id="Fixed_Notations.nbe_ty_f" class="idref" href="#Fixed_Notations.nbe_ty_f"><span class="id" title="abbreviation">nbe_ty_f</span></a> := (<a class="idref" href="Mctt.Core.Semantic.NbE.html#nbe_ty"><span class="id" title="inductive">nbe_ty</span></a> <a class="idref" href="Mctt.Core.Syntactic.GlobalCtx.html#gc_ctx"><span class="id" title="method">gc_ctx</span></a>).<br/>
+
+<br/>
+<span class="id" title="keyword">End</span> <a class="idref" href="Mctt.Core.Semantic.Fixed.html#Fixed_Notations"><span class="id" title="module">Fixed_Notations</span></a>.<br/>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr/">coqdoc</a> and improved with <a href="https://github.com/coq-community/coqdocjs">CoqdocJS</a>
+</div>
+</div>
+</body>
+
+</html>
