@@ -67,6 +67,11 @@ brief says so explicitly.
 - **Core over elaborator:** put feature logic in the core (typing, the command
   judgment, semantics). Never add work to the elaborator; move work out of it
   where you can.
+- **Never remove a language capability or weaken a theorem's generality**
+  without the user's explicit approval. If your design would drop one, stop
+  and report it. This includes definition bodies being optional: `None` is an
+  axiom, and axioms are planned. It also includes the no-axioms hypotheses of
+  consistency and canonicity.
 - **Privacy** is checked once per command, by the command judgment, outside
   typing. Typing and δ ignore privacy.
 - **Shared tactics:** prefer improving them (`mauto`, the inversion and
