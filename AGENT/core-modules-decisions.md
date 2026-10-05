@@ -477,5 +477,31 @@ what was built, and the decisions taken on the way.
 - The checker types a generated item `d := H.x` at a type it recomputes as
   `H.x`'s member type without checking the type (`check_exp_fast`, by
   `member_wf`); checking it would check the literal prefix it holds.
-- Remaining cost: member types weaken and substitute their literal prefixes
-  (`mres_wk`, `gunit_sub`); `lib/Groups.mctt` takes 12 s against 2.8 s.
+- Member types hold their prefixes literally, and `pi_view`/`tele_open`
+  copy them into every sibling an alias or submodule instantiates, so they
+  grow multiplicatively with nesting: `AdditiveComm.powOp` (`lib/Groups.mctt`)
+  had a 15,742,436-node member type with a 283-node normal form, and
+  `Groups.mctt` took 12 s.  The checker no longer builds the member type of
+  `a_mem H x` when `H` has no argument (`member_nf_dec`,
+  `Extraction/TypeCheck.v`):
+  - whether `x` is a definition is decided on kinds only (`member_kind`,
+    `member_kind_impl`, `Extraction/MemberType.v`), which reads a slot in
+    the context after it instead of weakening it; it agrees with
+    `member_type` (`member_kind_complete`; `member_kind_sound` for a
+    well-formed `H`, where an application always instantiates, by
+    `app_arity_pi`);
+  - the normal form is read back from the value: `H` is evaluated in the
+    initial environment, `h ⦂ₜ x ↘ a` (`sel_ty`) evaluates `x`'s declared
+    type under its self slot, and `a` is read back.  `sel_ty_nbe_wf`
+    (`Core/Semantic/MemberNf.v`) shows this is the normal form of the member
+    type, through the PER model (`wf_modexp_sem_mt`, `mtyped_sel_ty`);
+  - a module value still lacking an argument has no `sel_ty`; then the
+    member type is built and normalized as before.
+  `ati_mem`, `member_type` and every theorem statement are unchanged.  The
+  `me_var` case of `modexp_check` tests the slot with `ctx_find_slot`, without
+  weakening its unit.  `Groups.mctt` now takes 2.5 s (2.9 s in the design
+  before S+K), `AdditiveComm.powOp` 0.14 s (6.3 s), lib and Prelude 20.0 s
+  (32.4 s; 22.9 s before S+K).
+- Remaining cost: the privacy tables (`Privacy.mtab`, `fctx_tabs`) dominate
+  the files that are still slower than before S+K
+  (`Prelude/Arith/Gcd/Properties.mctt` 1.5×).

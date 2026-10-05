@@ -284,7 +284,7 @@ complaint instead of a silent no-op.
 
 | Tactic | Location | Judgments covered |
 | --- | --- | --- |
-| `functional_eval_rewrite_clear1` / `…_clear` | `Core/Semantic/Evaluation/Lemmas.v:73, 86` | `⟦M⟧ρ ↘ m`, `$\|m & n\|↘ r`, `rec … end`, `⟦σ⟧s ρ ↘ ρσ` |
+| `functional_eval_rewrite_clear1` / `…_clear` | `Core/Semantic/Evaluation/Lemmas.v:73, 86` | `⟦M⟧ρ ↘ m`, `$\|m & n\|↘ r`, `rec … end`, `h ⦂ₜ x ↘ a`, `⟦σ⟧s ρ ↘ ρσ` |
 | `functional_read_rewrite_clear1` / `…_clear` | `Core/Semantic/Readback/Lemmas.v:58, 68` | `Rnf`, `Rne`, `Rtyp` |
 | `functional_initial_env_rewrite_clear1` / `…_clear` | `Core/Semantic/NbE.v:51, 57` | `initial_env` |
 | `functional_nbe_rewrite_clear1` / `…_clear` | `Core/Semantic/NbE.v:171, 181` | `nbe`, `nbe_ty` (including the case where the two derivations use different universe levels) |

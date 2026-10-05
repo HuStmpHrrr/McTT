@@ -6,8 +6,9 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System Require Import MemberWf.
-From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Core.Semantic Require Import MemberWf MemberNf.
+From Mctt.Core.Completeness Require Import MemberSem.
+From Mctt.Extraction Require Import Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -168,6 +169,120 @@ Section type_check.
     destruct (unit_parts_of_wf _ _ _ (alg_unit_sound HU HG)) as (HC & _ & Hb).
     exact (self_ctx_wf _ _ _ HC Hb).
   Qed.
+
+  (** ** Normal Forms of Member Types by Evaluation
+
+      The type of a term member [x] of a module expression [H] with no
+      argument is read back from the value of [H] ([sel_ty]), without
+      building the member type, which holds the bodies before [x] and
+      before every member an alias or a submodule instantiates.  Whether
+      [x] is a definition at all is decided on kinds only
+      ([member_kind_impl]).  Only a module value still lacking an argument
+      has no [sel_ty]; its member type is built, as before. *)
+
+  Definition member_kind_dec (Hg : ⊢g gc_ctx) Γ H ch :=
+    member_kind_impl gc_ctx Γ H ch (mt_order_total _ Hg Γ H ch).
+
+  Lemma initial_env_order_of_ctx : forall G, ⊢ G -> initial_env_order gc_ctx G.
+  Proof.
+    intros * HG.
+    destruct (sem_ctx_per_ctx_env (completeness_fundamental_ctx _ HG)) as [R HR].
+    destruct (per_ctx_then_per_env_initial_env HR) as (ρ & _ & Hρ & _).
+    eapply initial_env_order_sound; eassumption.
+  Qed.
+
+  (** The orders the evaluation of a member's type needs, for a term member
+      of a well-formed module expression. *)
+  Lemma member_sem_orders : forall G M x A ρ,
+      ⊢ G -> gc_ctx ⍮ G ⊢ᵐ M ≈ M -> member_type gc_ctx G M (x :: nil) (mr_term A) -> initial_env_f G ρ ->
+      eval_modexp_order gc_ctx M ρ /\
+      (forall h, ⟦ M ⟧ᵐ gc_ctx ⍮ ρ ↘ h -> sel_ty_order gc_ctx h x /\
+         forall a, h ⦂ₜ x gc_ctx ↘ a -> read_typ_order gc_ctx (List.length G) a).
+  Proof.
+    intros * HG HM Hm Hρ.
+    destruct (wf_modexp_sem_mt _ _ HM) as [[S1 _] HMs].
+    destruct (sem_ctx_per_ctx_env (completeness_fundamental_ctx _ HG)) as [R HR].
+    destruct (per_ctx_then_per_env_initial_env HR) as (ρ1 & ρ2 & Hρ1 & Hρ2 & Hr).
+    assert (ρ1 = ρ) as -> by (eapply functional_initial_env; eassumption).
+    assert (ρ2 = ρ) as -> by (eapply functional_initial_env; eassumption).
+    destruct (rel_modexp_simple_at HR HMs _ _ Hr) as (h0 & _ & Hh0 & _ & _).
+    split; [ eapply eval_modexp_order_sound; eassumption |].
+    intros h Hh.
+    destruct (proj2 (S1 _ _ Hm ltac:(discriminate)) _ _ HR Hr _ Hh) as (a' & _ & Hma'); cbn in Hma'.
+    split; [ eapply mtyped_sel_ty_order; eassumption |].
+    intros a Ha.
+    destruct (mtyped_sel_ty _ _ _ Ha _ Hma') as (i & E & HE).
+    destruct (per_univ_then_per_top_typ HE (List.length G)) as (C & HC1 & HC2).
+    eapply read_typ_order_sound; eassumption.
+  Qed.
+
+  Lemma member_kind_term : forall G M x, ⊢g gc_ctx -> gc_ctx ⍮ G ⊢ᵐ M ≈ M ->
+      member_kind gc_ctx G M (x :: nil) mk_term -> exists A, member_type gc_ctx G M (x :: nil) (mr_term A).
+  Proof.
+    intros * Hg HM Hk.
+    destruct (proj1 (member_kind_sound Hg) _ _ _ _ Hk HM) as ([A | T] & HR & Ek); [ eauto | discriminate ].
+  Qed.
+
+  Lemma member_kind_not_term : forall G M x k, ⊢g gc_ctx ->
+      (forall k', member_kind gc_ctx G M (x :: nil) k' -> k' = k) -> k <> mk_term ->
+      forall A, ~ member_type gc_ctx G M (x :: nil) (mr_term A).
+  Proof.
+    intros * Hg Hk Hne A HA.
+    exact (Hne (eq_sym (Hk _ (member_kind_complete _ Hg _ _ _ _ HA)))).
+  Qed.
+
+  #[local]
+  Ltac nf_obl :=
+    intros; cbv beta in *; clear_dups;
+    repeat match goal with
+      | Hk : member_kind _ ?G ?M (?x :: nil) mk_term, HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M |- _ =>
+          lazymatch goal with
+          | Hm : member_type _ G M (x :: nil) (mr_term _) |- _ => fail
+          | _ => let A := fresh "A" in let Hm := fresh "Hm" in
+                 destruct (member_kind_term _ _ _ ltac:(assumption) HM Hk) as [A Hm]
+          end
+      end;
+    first
+      [ solve [ eapply initial_env_order_of_ctx; eassumption ]
+      | solve [ eapply member_sem_orders; eassumption ]
+      | solve [ eapply (proj1 (proj2 (member_sem_orders _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)
+                  ltac:(eassumption) ltac:(eassumption)) _ ltac:(eassumption))); eassumption ]
+      | solve [ eapply (proj2 (proj2 (member_sem_orders _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)
+                  ltac:(eassumption) ltac:(eassumption)) _ ltac:(eassumption))); eassumption ]
+      | solve [ eexists; split; [ eassumption | eapply sel_ty_nbe_wf; eassumption ] ]
+      | solve [ eexists; split; eassumption ]
+      | solve [ match goal with HG : ⊢ ?G, HM : wf_modexp_eq _ ?G ?M ?M, Hm : member_type _ ?G ?M _ (mr_term ?A) |- _ =>
+                  destruct (proj1 (proj1 member_wf _ _ _ _ Hm HM ltac:(intros; discriminate))) as [? ?] end;
+                eapply nbe_order_of_typ; eassumption ]
+      ].
+
+  #[local]
+  Ltac nf_obl_auto := try nf_obl.
+
+  #[tactic="nf_obl_auto",derive(equations=no,eliminator=no)]
+  Equations member_nf_dec (Hg : ⊢g gc_ctx) G (HG : ⊢ G) M x (HM : gc_ctx ⍮ G ⊢ᵐ M ≈ M) :
+      { B : nf | exists A, member_type gc_ctx G M (x :: nil) (mr_term A) /\ nbe_ty_f G A B } +
+      { forall A, ~ member_type gc_ctx G M (x :: nil) (mr_term A) } :=
+  member_nf_dec Hg G HG M x HM with member_kind_dec Hg G M (x :: nil) := {
+    | inleft (exist _ mk_term Hk) =>
+        let (ρ, Hρ) := initial_env_impl gc_ctx G _ in
+        let (h, Hh) := eval_modexp_impl gc_ctx M ρ _ in
+        match sel_ty_impl gc_ctx h x _ with
+        | inleft (exist _ a Ha) =>
+            let (B, HB) := read_typ_impl gc_ctx (List.length G) a _ in
+            inleft (exist _ B _)
+        | inright _ =>
+            match member_term_dec Hg G M (x :: nil) HM with
+            | inleft (exist _ A HA) =>
+                let (B, HB) := nbe_ty_impl gc_ctx G A _ in
+                inleft (exist _ B _)
+            | inright HN => inright HN
+            end
+        end
+    | inleft (exist _ mk_mod Hk) =>
+        inright (member_kind_not_term _ _ _ _ Hg
+                   (fun k' Hk' => proj1 (member_kind_functional _) _ _ _ _ Hk' _ Hk) ltac:(discriminate))
+    | inright HN => inright (fun A HA => HN _ (member_kind_complete _ Hg _ _ _ _ HA)) }.
 
   Inductive type_check_order : exp -> Prop :=
   | tc_ti : forall {A}, type_infer_order A -> type_check_order A
@@ -552,8 +667,11 @@ Section type_check.
       | solve [ intros; match goal with Hls : forall Φ c, _ \/ _ -> _ |- _ => eapply Hls; right; eassumption end ]
       | solve [ eapply ctx_wf_gctx; ctxp ]
       | solve [ eapply alg_modexp_sound; [ eassumption | ctxp ] ]
-      | solve [ econstructor; apply ctx_find_mod_sound; eassumption ]
+      | solve [ cbv beta in *; match goal with Hf : ctx_find_slot _ _ = Some _ |- _ =>
+                  econstructor; apply ctx_find_mod_sound, (ctx_find_slot_mod _ _ _ _ Hf) end ]
       | solve [ match goal with Hx : _ ⊢aᵐ me_var _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
+                cbv beta in *;
+                match goal with Hf : ctx_find_slot _ _ = None |- _ => apply ctx_find_slot_none in Hf end;
                 match goal with Hl : ctx_lookup_mod _ _ _ |- _ => apply ctx_find_mod_complete in Hl end; congruence ]
       | solve [ match goal with Hx : _ ⊢aᵐ me_app _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
                 mt_unify;
@@ -654,8 +772,7 @@ Section type_check.
     | a_mem M' x with inspect (modexp_spine M') => {
       | exist _ (R, nil, pre) Es =>
           let*b->o HM := modexp_check G HG M' _ while _ in
-          let*o (exist _ A _) := member_term_dec _ G M' (x :: nil) _ while _ in
-          let (B, _) := nbe_ty_impl gc_ctx G A _ in
+          let*o (exist _ B _) := member_nf_dec _ G HG M' x _ while _ in
           pureo (exist _ B _)
       | exist _ (R, N :: args, pre) Es =>
           let*b->o HM := modexp_check G HG M' _ while _ in
@@ -720,8 +837,9 @@ Section type_check.
   | G, HG, me_unit fp, H with inspect (gc_unit gc_ctx fp) := {
     | exist _ (Some U) E => left _
     | exist _ None E => right _ }
-  | G, HG, me_var x, H with inspect (ctx_find_mod G x) := {
-    | exist _ (Some U) E => left _
+  (** Whether the slot exists, without weakening its unit. *)
+  | G, HG, me_var x, H with inspect (ctx_find_slot G x) := {
+    | exist _ (Some (U, G')) E => left _
     | exist _ None E => right _ }
   | G, HG, me_lit U, H =>
       let*b _ := unit_check G HG U _ while _ in
@@ -978,7 +1096,6 @@ Section type_check.
   Qed.
 
   (** The obligations of the module cases. *)
-  Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.
   Next Obligation. mod_obl. Qed.

@@ -99,8 +99,21 @@ Import Domain_Notations.
     - destruct H1 as (m1 & -> & H1), H2 as (m2 & -> & H2); f_equal; eapply functional_eval_modexp; eassumption.
   Qed.
 
+(** The type of a selected member is determined. *)
+Lemma functional_sel_ty : forall {Θ} h x a1 a2,
+    h ⦂ₜ x Θ ↘ a1 ->
+    h ⦂ₜ x Θ ↘ a2 ->
+    a1 = a2.
+Proof.
+  intros * H1; revert a2; induction H1; intros a2 H2; inversion H2; subst.
+  - match goal with Hp : gm_prefix_upto _ _ = _ |- _ => rewrite H0 in Hp; inversion Hp; subst end.
+    eapply functional_eval_exp; eassumption.
+  - match goal with He : eval_modexp _ _ _ _ |- _ => pose proof (functional_eval_modexp _ _ _ _ H0 He); subst end.
+    eauto.
+Qed.
+
 #[export]
-Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_app functional_eval_modexp functional_eval_sub functional_sel_ty : mctt.
 
 
 
@@ -113,6 +126,8 @@ Ltac functional_eval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?ρ ↘ ?r1), H2 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (?h ⦂ₜ ?x ?T ↘ ?a1), H2 : (?h ⦂ₜ ?x ?T ↘ ?a2) |- _ =>
+      clean replace a2 with a1 by first [solve [mauto 2] | tactic_error a2 a1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
     equality, so there is nothing to [replace]. *)

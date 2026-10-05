@@ -284,8 +284,11 @@ Proof. intros Θ; exact (proj1 (proj2 (eval_order_sound Θ))). Qed.
 Lemma eval_app_order_sound : forall Θ m n r, $| m & n | Θ ↘ r -> eval_app_order Θ m n.
 Proof. intros Θ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ)))). Qed.
 
+Lemma eval_modexp_order_sound : forall Θ H p h, ⟦ H ⟧ᵐ Θ ⍮ p ↘ h -> eval_modexp_order Θ H p.
+Proof. intros Θ; exact (proj1 (proj2 (proj2 (proj2 (proj2 (proj2 (eval_order_sound Θ))))))). Qed.
+
 #[export]
-Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound : mctt.
+Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound eval_modexp_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 

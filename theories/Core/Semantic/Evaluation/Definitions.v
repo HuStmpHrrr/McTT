@@ -20,6 +20,7 @@ Reserved Notation "h '·ₜ' x Θ '↘' r" (at level 70, x at level 0, Θ at lev
 Reserved Notation "h '·ₘ' y Θ '↘' r" (at level 70, y at level 0, Θ at level 69, r at level 69).
 Reserved Notation "h '·ₜ*' ch Θ '↘' r" (at level 70, ch at level 0, Θ at level 69, r at level 69).
 Reserved Notation "h '·ₘ*' ch Θ '↘' r" (at level 70, ch at level 0, Θ at level 69, r at level 69).
+Reserved Notation "h '⦂ₜ' x Θ '↘' a" (at level 70, x at level 0, Θ at level 69, a at level 69).
 
 Generalizable All Variables.
 
@@ -328,6 +329,34 @@ Combined Scheme eval_mut_ind from
 #[export]
 Hint Constructors eval_exp eval_natrec eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
   eval_selc eval_selmc : mctt.
+
+(** * The Type of a Selected Member
+
+    [h ⦂ₜ x Θ ↘ a]: the term member [x] of the saturated module value [h]
+    has the type value [a], its declared type evaluated under its self slot,
+    the closure of the body before it, over the arguments; a saturated
+    alias's member has the type its target's has.  It mirrors [eval_sel] on
+    the type instead of the body, and like it only looks things up and
+    extends environments.  It is outside the mutual block: no evaluation
+    rule uses it.  The checker reads a member type back from it instead of
+    building the member type, whose literal prefixes can be large. *)
+Inductive sel_ty (Θ : gctx) : dmod -> string -> domain -> Prop :=
+(** A definition of a saturated body: its type, under its self slot. *)
+| sel_ty_body :
+  `( List.length args = List.length Δ ->
+     gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A (Some M))) ->
+     ⟦ A ⟧ Θ ⍮ env_args ρ args ↦ᵐ dm_body (env_args ρ args) nil Φ' nil ↘ a ->
+     dm_body ρ Δ Φ args ⦂ₜ x Θ ↘ a )
+(** A member of a saturated alias: the type of its target's member. *)
+| sel_ty_alias :
+  `( List.length args = List.length Δ ->
+     ⟦ E ⟧ᵐ Θ ⍮ env_args ρ args ↘ h ->
+     h ⦂ₜ x Θ ↘ a ->
+     dm_alias ρ Δ E args ⦂ₜ x Θ ↘ a )
+where "h '⦂ₜ' x Θ '↘' a" := (sel_ty Θ h x a).
+
+#[export]
+Hint Constructors sel_ty : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
     application, so unifying against it directly can pick the wrong [ρ] and

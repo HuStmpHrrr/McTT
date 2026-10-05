@@ -54,7 +54,9 @@ and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ ρ ↘ h` (module expressio
 `h ·ₘ y Θ ↘ h'` (selection of a term member, a submodule), `h ·ₜ* ch …` and
 `h ·ₘ* ch …` (along a chain), `⟦ Ms ⟧* Θ ⍮ ρ ↘ ms` (several terms) and
 `$*| f & ns | Θ ↘ r` (several arguments).  The selected name and the chain
-are at level 0: `h ·ₜ* (pre ++ x :: nil) Θ ↘ f`.
+are at level 0: `h ·ₜ* (pre ++ x :: nil) Θ ↘ f`.  `h ⦂ₜ x Θ ↘ a` (`sel_ty`,
+outside the evaluation block) is the type value of the term member `x` of a
+saturated module value; `x` is at level 0 there too.
 
 ## Traps
 
