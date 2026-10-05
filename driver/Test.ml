@@ -2239,3 +2239,99 @@ let%expect_test "the type of an axiom is a type" =
   [%expect {| Error: the type of axiom x is not a type |}];
   let _ = main_of_body "axiom x : Nat axiom x : Nat" in
   [%expect {| Error: x is already declared |}]
+
+let%expect_test "lib/Tutorial.mctt" =
+  let _ = main_of_lib "Tutorial.mctt" in
+  [%expect {|
+    Evaluate 3 --> 3 : Nat
+    Evaluate 3 --> 3 : Nat
+    Evaluate Nat --> Nat : Type@0
+    Evaluate Type@0 --> Type@0 : Type@1
+    Evaluate (fun (A1 : Type@0)
+                  (x1 : A1)
+               -> x1) Nat 4 --> 4 : Nat
+    Evaluate fun (A1 : Type@0)
+                 (x1 : A1)
+               -> x1 --> fun (A1 : Type@0)
+                             (x1 : A1)
+                           -> x1 : forall (A1 : Type@0)
+                                          (x1 : A1)
+                                     -> A1
+    Evaluate rec 3 return x1 . Nat
+             | zero => 0
+             | succ x2, x3 => succ (succ x3)
+             end --> 6 : Nat
+    Evaluate rec 2 return x1 . Type@0
+             | zero => Nat
+             | succ x2, A1 => forall (x3 : Nat) -> A1
+             end --> forall (x1 : Nat)
+                            (x2 : Nat)
+                       -> Nat : Type@0
+    Evaluate true --> true : True
+    Evaluate fun (x1 : False) -> exfalso x1 return x2 . Nat
+      --> fun (x1 : False) -> exfalso x1 return x2 . Nat
+      : forall (x1 : False) -> Nat
+    Evaluate let x1 : Nat := 2;
+                 x2 := fun (x3 : Nat) -> succ x3;
+                 x4 : Eq (x2 x1) 3 := true
+             in x2 (x2 x1)
+             end --> 4 : Nat
+    Evaluate double 3 --> 6 : Nat
+    Evaluate double four
+      --> rec four return x1 . Nat
+          | zero => 0
+          | succ x2, x3 => succ (succ x3)
+          end : Nat
+    Evaluate succ helper --> 2 : Nat
+    Evaluate double two --> 4 : Nat
+    Evaluate double (succ k)
+      --> succ
+            (succ
+              (rec k return x1 . Nat
+               | zero => 0
+               | succ x2, x3 => succ (succ x3)
+               end)) : Nat
+    Evaluate Outer.Inner.next --> 11 : Nat
+    Evaluate Twice.twice Nat double 1 --> 4 : Nat
+    Evaluate (Twice Nat double).twice 1 --> 4 : Nat
+    Evaluate Quadruple.twice 1 --> 4 : Nat
+    Evaluate Shapes.Square.side --> 2 : Nat
+    Evaluate Vault.reveal --> 8 : Nat
+    Evaluate Vault.Inside.peek --> 7 : Nat
+    Evaluate Prelude::Arith::Plus.plus 2 3 --> 5 : Nat
+    Evaluate Adding.five --> 5 : Nat
+    Evaluate Adding.Algebra.plusComm 1 2 --> true : True
+    Evaluate Counting.seven --> 7 : Nat
+    Evaluate let module M1 (x1 : Nat) where
+                   private def twice : forall (x2 : Nat) -> Nat :=
+                     (Twice Nat double).twice
+                   end
+                   private def base : Nat :=
+                     twice x1
+                   end
+                   def sum : Nat :=
+                     succ base
+                   end
+                 end;
+                 module M2 := M1 1
+             in M2.sum
+             end --> 5 : Nat
+    Evaluate let module M1 where
+                   private def add : forall (x1 : Nat) -> Nat :=
+                     (Adder 5).add
+                   end
+                   def addIter : forall (x2 : Nat)
+                                   -> Eq (Adder.add 5 x2)
+                                        (Iter.iter Nat
+                                           (fun (x3 : Nat) -> succ x3)
+                                           x2
+                                          5) :=
+                     (Adder 5).addIter
+                   end
+                   def eight : Nat :=
+                     add 3
+                   end
+                 end
+             in M1.addIter M1.eight
+             end --> true : True
+    |}]
