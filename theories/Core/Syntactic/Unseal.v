@@ -57,16 +57,10 @@ Definition gu_unseal (U : gunit) : gunit :=
   | _ => U
   end.
 
-Fixpoint gd_unseal (d : gdep) : gdep :=
-  match d with
-  | nil => nil
-  | (fp, U) :: d => (fp, gu_unseal U) :: gd_unseal d
-  end.
-
 Fixpoint gds_unseal (Θ : gdeps) : gdeps :=
   match Θ with
   | nil => nil
-  | d :: Θ => gd_unseal d :: gds_unseal Θ
+  | (fp, U) :: Θ => (fp, gu_unseal U) :: gds_unseal Θ
   end.
 
 Fixpoint gs_unseal (Ξ : gstack) : gstack :=
@@ -74,9 +68,6 @@ Fixpoint gs_unseal (Ξ : gstack) : gstack :=
   | nil => nil
   | (mp, U) :: Ξ => (mp, gu_unseal U) :: gs_unseal Ξ
   end.
-
-Lemma gd_unseal_app : forall d d', gd_unseal (d ++ d') = gd_unseal d ++ gd_unseal d'.
-Proof. induction d as [| [fp U] d IH]; intros; cbn; congruence. Qed.
 
 Lemma ge_unseal_mod : forall pv U, ge_unseal (ge_mod pv U) = ge_mod pv (gu_unseal U).
 Proof. intros pv [Δ [Φ | E]]; reflexivity. Qed.
@@ -140,22 +131,12 @@ Proof.
   destruct (qname_strip mp p); [ rewrite gs_tele_unseal; reflexivity | apply IH ].
 Qed.
 
-Lemma gd_lookup_unseal : forall d fp,
-    gd_lookup (gd_unseal d) fp = option_map gu_unseal (gd_lookup d fp).
-Proof.
-  unfold gd_lookup; induction d as [| [fq U] d IH]; intros; cbn; [ reflexivity |].
-  destruct (path_beq fp fq); [ reflexivity | apply IH ].
-Qed.
-
-Lemma concat_unseal : forall Θ, List.concat (gds_unseal Θ) = gd_unseal (List.concat Θ).
-Proof.
-  induction Θ as [| d Θ IH]; cbn; [ reflexivity |].
-  rewrite IH, gd_unseal_app; reflexivity.
-Qed.
-
 Lemma gds_lookup_unseal : forall Θ fp,
     gds_lookup (gds_unseal Θ) fp = option_map gu_unseal (gds_lookup Θ fp).
-Proof. intros; unfold gds_lookup; rewrite concat_unseal; apply gd_lookup_unseal. Qed.
+Proof.
+  induction Θ as [| [fq U] Θ IH]; intros; cbn; [ reflexivity |].
+  destruct (path_beq fp fq); [ reflexivity | apply IH ].
+Qed.
 
 Lemma gc_resolve_unseal : forall Θ Ξ p,
     gc_resolve (gds_unseal Θ) (gs_unseal Ξ) p = option_map ge_unseal (gc_resolve Θ Ξ p).
@@ -190,20 +171,11 @@ Qed.
 
 (** ** Freshness *)
 
-Lemma gd_names_unseal : forall d, List.map fst (gd_unseal d) = List.map fst d.
-Proof. induction d as [| [fp U] d IH]; cbn; congruence. Qed.
-
-Lemma gd_fresh_unseal : forall fp d, gd_fresh fp d -> gd_fresh fp (gd_unseal d).
-Proof. unfold gd_fresh; intros; rewrite gd_names_unseal; assumption. Qed.
-
-Lemma gds_fresh_unseal : forall fp Θ, gds_fresh fp Θ -> gds_fresh fp (gds_unseal Θ).
-Proof. unfold gds_fresh; intros; rewrite concat_unseal; apply gd_fresh_unseal; assumption. Qed.
-
 Lemma frame_fresh_unseal : forall Θ Ξ mp,
     frame_fresh Θ Ξ mp -> frame_fresh (gds_unseal Θ) (gs_unseal Ξ) mp.
 Proof.
   intros * H; destruct Ξ as [| [mq U] Ξ]; cbn in *.
-  - destruct H; split; [ apply gds_fresh_unseal |]; assumption.
+  - destruct H as [Hn Hc]; split; [ rewrite gds_lookup_unseal, Hn; reflexivity | assumption ].
   - destruct H as (x & -> & Hx); exists x; split; [ reflexivity |].
     rewrite gu_mod_unseal; apply gm_fresh_unseal; assumption.
 Qed.
@@ -249,15 +221,13 @@ Theorem unseal_preserves_wf :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ Γ ⊢ᵐ H ≈ H') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⊢e ge_unseal E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> gds_unseal Θ ⍮ gs_unseal Ξ ⍮ mp ⍮ Δ ⊢m gm_unseal Φ) /\
-  (forall Θ d, wf_gdep Θ d -> wf_gdep (gds_unseal Θ) (gd_unseal d)) /\
-  (forall Θ, wf_gdeps Θ -> wf_gdeps (gds_unseal Θ)) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢g gds_unseal Θ ⍮ gs_unseal Ξ).
 Proof.
   apply wf_mut_ind_all; intros; cbn.
   all: try rewrite <- (gs_tele_unseal Ξ).
   all: try solve [ econstructor; rewrite ?gs_tele_unseal;
                    eauto using gc_resolve_unseal_def, gc_resolve_unseal_transparent,
-                     gm_fresh_unseal, gds_fresh_unseal, gd_fresh_unseal,
+                     gm_fresh_unseal,
                      frame_fresh_unseal, member_type_unseal';
                    rewrite ?member_unfold_unseal; eassumption ].
 Qed.
@@ -296,7 +266,7 @@ with gm_no_axioms (Φ : gmod) : Prop :=
   end.
 
 Definition gds_no_axioms (Θ : gdeps) : Prop :=
-  forall fp U, List.In (fp, U) (List.concat Θ) -> gm_no_axioms (gu_mod U).
+  forall fp U, List.In (fp, U) Θ -> gm_no_axioms (gu_mod U).
 
 Definition gs_no_axioms (Ξ : gstack) : Prop :=
   forall mp U, List.In (mp, U) Ξ -> gm_no_axioms (gu_mod U).
@@ -325,10 +295,10 @@ Proof.
     [ split; congruence | contradiction | exact (IH _ HE) | exact I ].
 Qed.
 
-Lemma gd_unseal_in : forall d fp U',
-    List.In (fp, U') (gd_unseal d) -> exists U, U' = gu_unseal U /\ List.In (fp, U) d.
+Lemma gds_unseal_in : forall Θ fp U',
+    List.In (fp, U') (gds_unseal Θ) -> exists U, U' = gu_unseal U /\ List.In (fp, U) Θ.
 Proof.
-  induction d as [| [fq U] d IH]; intros * Hin; cbn in Hin; [ contradiction |].
+  induction Θ as [| [fq U] Θ IH]; intros * Hin; cbn in Hin; [ contradiction |].
   destruct Hin as [[= <- <-] | Hin]; [ exists U; cbn; auto |].
   destruct (IH _ _ Hin) as (U0 & -> & ?); exists U0; cbn; auto.
 Qed.
@@ -346,7 +316,7 @@ Theorem gc_no_axioms_unseal_transparent : forall Θ Ξ,
     gc_no_axioms Θ Ξ -> gc_transparent (gds_unseal Θ) (gs_unseal Ξ).
 Proof.
   intros * [HΘ HΞ]; split; intros ? ? Hin.
-  - rewrite concat_unseal in Hin; destruct (gd_unseal_in _ _ _ Hin) as (U0 & -> & Hin0).
+  - destruct (gds_unseal_in _ _ _ Hin) as (U0 & -> & Hin0).
     rewrite gu_mod_unseal; apply gm_no_axioms_unseal_transparent, (HΘ _ _ Hin0).
   - destruct (gs_unseal_in _ _ _ Hin) as (U0 & -> & Hin0).
     rewrite gu_mod_unseal; apply gm_no_axioms_unseal_transparent, (HΞ _ _ Hin0).
@@ -374,7 +344,7 @@ Proof.
   intros * [HΘ HΞ] Hr.
   destruct (gc_resolve_inv _ _ _ _ Hr) as [(mp & U & ip & Hin & Hm) | (fp & U & Hl & Hm)].
   - exact (gm_no_axioms_resolve _ _ _ _ _ _ (HΞ _ _ Hin) Hm).
-  - exact (gm_no_axioms_resolve _ _ _ _ _ _ (HΘ _ _ (gd_lookup_in _ _ _ Hl)) Hm).
+  - exact (gm_no_axioms_resolve _ _ _ _ _ _ (HΘ _ _ (gds_lookup_in _ _ _ Hl)) Hm).
 Qed.
 
 (** ** Running Commands Files No Axiom
@@ -383,31 +353,18 @@ Qed.
     every global context a run reaches has none: the consistency and
     canonicity theorems at [gc_no_axioms] hold of every program. *)
 
-Lemma in_concat_gds_merge : forall Θ Θ' x,
-    List.In x (List.concat (gds_merge Θ Θ')) -> List.In x (List.concat Θ) \/ List.In x (List.concat Θ').
+Lemma in_gds_merge : forall Θ Θ' x,
+    List.In x (gds_merge Θ Θ') -> List.In x Θ \/ List.In x Θ'.
 Proof.
-  apply (gds_merge_ind (fun Θ Θ' => forall x,
-    List.In x (List.concat (gds_merge Θ Θ')) -> List.In x (List.concat Θ) \/ List.In x (List.concat Θ'))).
-  - intros x Hx; left; exact Hx.
-  - intros * Hl IH x; rewrite gds_merge_l by exact Hl; cbn.
-    intros [Hx | Hx]%List.in_app_or; [ left; apply List.in_or_app; auto |].
-    destruct (IH _ Hx); [ left; apply List.in_or_app |]; auto.
-  - intros * Hl IH x; rewrite gds_merge_r by exact Hl; cbn.
-    intros [Hx | Hx]%List.in_app_or; [ right; apply List.in_or_app; auto |].
-    destruct (IH _ Hx); [| right; apply List.in_or_app ]; auto.
-  - intros * Hl IH x; rewrite gds_merge_both by exact Hl; cbn.
-    intros [Hx | Hx]%List.in_app_or.
-    + unfold gd_union in Hx; apply List.in_app_or in Hx as [Hx | Hx%List.filter_In];
-        [ left | right ]; apply List.in_or_app; left; [ exact Hx | exact (proj1 Hx) ].
-    + destruct (IH _ Hx); [ left | right ]; apply List.in_or_app; auto.
+  unfold gds_merge; intros * [Hx | Hx]%List.in_app_or; [ right; exact (proj1 (proj1 (List.filter_In _ _ _) Hx)) | left; exact Hx ].
 Qed.
 
 Lemma gds_no_axioms_merge : forall Θ Θ',
     gds_no_axioms Θ -> gds_no_axioms Θ' -> gds_no_axioms (gds_merge Θ Θ').
-Proof. intros * H H' fp U [Hin | Hin]%in_concat_gds_merge; eauto. Qed.
+Proof. intros * H H' fp U [Hin | Hin]%in_gds_merge; eauto. Qed.
 
-Lemma gds_no_axioms_file : forall fp U Θ,
-    gm_no_axioms (gu_mod U) -> gds_no_axioms Θ -> gds_no_axioms (file fp U Θ).
+Lemma gds_no_axioms_cons : forall fp U Θ,
+    gm_no_axioms (gu_mod U) -> gds_no_axioms Θ -> gds_no_axioms ((fp, U) :: Θ).
 Proof. intros * HU HΘ fq V [[= <- <-] | Hin]; eauto. Qed.
 
 Lemma gs_no_axioms_nil : gs_no_axioms nil.
@@ -433,7 +390,7 @@ Proof. intros * H; apply (H mp U); left; reflexivity. Qed.
 Lemma gs_no_axioms_tail : forall f Ξ, gs_no_axioms (f :: Ξ) -> gs_no_axioms Ξ.
 Proof. intros * H mp U Hin; apply (H mp U); right; exact Hin. Qed.
 
-#[local] Hint Resolve gs_no_axioms_head gs_no_axioms_tail gds_no_axioms_merge gds_no_axioms_file gs_no_axioms_nil gds_no_axioms_nil
+#[local] Hint Resolve gs_no_axioms_head gs_no_axioms_tail gds_no_axioms_merge gds_no_axioms_cons gs_no_axioms_nil gds_no_axioms_nil
   gs_no_axioms_push gs_no_axioms_add : mctt.
 
 Lemma gens_run_no_axioms : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> gs_no_axioms Ξ -> gs_no_axioms Ξ'.
@@ -475,7 +432,7 @@ Section Run.
 
   (** What a program files, filed with it. *)
   Corollary prog_sem_no_axioms : forall prg Θ U,
-      prog_sem load_path read to_core prg Θ U -> gc_no_axioms (file (prog_path prg) U Θ) nil.
+      prog_sem load_path read to_core prg Θ U -> gc_no_axioms ((prog_path prg, U) :: Θ) nil.
   Proof.
     intros * (u & _ & Hu); destruct (run_unit_no_axioms _ _ _ _ Hu).
     split; auto with mctt.

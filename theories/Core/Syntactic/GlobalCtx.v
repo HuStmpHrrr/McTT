@@ -259,19 +259,17 @@ Proof. intros * H; unfold path_beq in H; destruct (path_eq_dec fp fq); congruenc
 Lemma path_beq_false : forall fp fq, fp <> fq -> path_beq fp fq = false.
 Proof. intros * H; unfold path_beq; destruct (path_eq_dec fp fq); congruence. Qed.
 
-(** ** Dependency Levels
+(** ** Filed Units
 
-    One [gdep] is the units of a single level, keyed by absolute path; [gdeps] is
-    the levels, highest first. *)
-Definition gdep : Set := list (list string * gunit).
-Definition gdeps : Set := list gdep.
+    The units filed so far, newest first, keyed by absolute path; each is
+    checked against the ones after it. *)
+Definition gdeps : Set := list (path * gunit).
 
-Definition gd_lookup (d : gdep) (fp : list string) : option gunit :=
-  option_map snd (List.find (fun fU => path_beq fp (fst fU)) d).
-
-(** Searching the levels in order is searching their concatenation. *)
-Definition gds_lookup (Θ : gdeps) (fp : list string) : option gunit :=
-  gd_lookup (List.concat Θ) fp.
+Fixpoint gds_lookup (Θ : gdeps) (fp : path) : option gunit :=
+  match Θ with
+  | nil => None
+  | (fq, U) :: Θ' => if path_beq fp fq then Some U else gds_lookup Θ' fp
+  end.
 
 (** One [gdeps] is below another when everything filed in it is filed, the
     same, in the other: what filing more units, or merging, preserves. *)
@@ -286,83 +284,22 @@ Proof. intros ? ? ? H; exact H. Qed.
 Lemma gds_sub_trans : forall Θ1 Θ2 Θ3, gds_sub Θ1 Θ2 -> gds_sub Θ2 Θ3 -> gds_sub Θ1 Θ3.
 Proof. intros * H12 H23 ? ? H; apply H23, H12, H. Qed.
 
-Definition gd_fresh (fp : list string) (d : gdep) : Prop :=
-  ~ List.In fp (List.map fst d).
-
-Definition gds_fresh (fp : list string) (Θ : gdeps) : Prop :=
-  gd_fresh fp (List.concat Θ).
-
-Lemma gd_lookup_in : forall d fp U,
-    gd_lookup d fp = Some U ->
-    List.In (fp, U) d.
-Proof.
-  unfold gd_lookup, path_beq; intros * Heq.
-  destruct (List.find _ d) as [[fq V] |] eqn:Hf; [| discriminate ].
-  injection Heq as <-; apply List.find_some in Hf as [Hin Hb]; simpl in Hb.
-  destruct (path_eq_dec fp fq) as [<- |]; [ assumption | discriminate ].
-Qed.
-
 Lemma gds_lookup_in : forall Θ fp U,
     gds_lookup Θ fp = Some U ->
-    exists d, List.In d Θ /\ List.In (fp, U) d.
+    List.In (fp, U) Θ.
 Proof.
-  unfold gds_lookup; intros * Heq.
-  apply (proj1 (List.in_concat _ _)), gd_lookup_in, Heq.
+  induction Θ as [| [fq V] Θ IH]; cbn; intros * Heq; [ discriminate |].
+  destruct (path_beq fp fq) eqn:Hb; [| right; auto ].
+  apply path_beq_true in Hb as ->; injection Heq as ->; left; reflexivity.
 Qed.
 
-Lemma gd_lookup_app_inv : forall d d' fp U,
-    gd_lookup (d ++ d') fp = Some U ->
-    gd_lookup d fp = Some U \/ gd_lookup d' fp = Some U.
+(** Filing a unit whose path is fresh changes nothing below it. *)
+Lemma gds_sub_cons : forall Θ fp U,
+    gds_lookup Θ fp = None ->
+    Θ ⊑ (fp, U) :: Θ.
 Proof.
-  unfold gd_lookup; induction d as [| fV d IH]; simpl; intros * Heq;
-    [ now right |].
-  destruct (path_beq fp (fst fV)); [ now left | now apply IH ].
-Qed.
-
-Lemma gd_lookup_app_l : forall d d' fp U,
-    gd_lookup d fp = Some U ->
-    gd_lookup (d ++ d') fp = Some U.
-Proof.
-  unfold gd_lookup; induction d as [| fV d IH]; simpl; intros * Heq; [ discriminate |].
-  destruct (path_beq fp (fst fV)); [ assumption | now apply IH ].
-Qed.
-
-Lemma gd_lookup_app_none : forall d d' fp,
-    gd_lookup d fp = None ->
-    gd_lookup (d ++ d') fp = gd_lookup d' fp.
-Proof.
-  unfold gd_lookup; induction d as [| fV d IH]; cbn; intros * H; [ reflexivity |].
-  destruct (path_beq fp (fst fV)); [ discriminate | auto ].
-Qed.
-
-Lemma gd_fresh_no_lookup : forall fp d,
-    gd_fresh fp d ->
-    gd_lookup d fp = None.
-Proof.
-  unfold gd_fresh, gd_lookup, path_beq; intros * Hfresh.
-  destruct (List.find _ d) as [[fq V] |] eqn:Hf; [| reflexivity ].
-  exfalso; apply List.find_some in Hf as [Hin Hb]; simpl in Hb.
-  destruct (path_eq_dec fp fq) as [<- |]; [| discriminate ].
-  exact (Hfresh (List.in_map fst _ _ Hin)).
-Qed.
-
-Corollary gds_fresh_no_lookup : forall fp Θ,
-    gds_fresh fp Θ ->
-    gds_lookup Θ fp = None.
-Proof.
-  unfold gds_fresh, gds_lookup; auto using gd_fresh_no_lookup.
-Qed.
-
-(** Filing a level whose units are fresh below it changes nothing below. *)
-Lemma gds_lookup_level : forall Θ d fp U,
-    (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
-    gds_lookup Θ fp = Some U ->
-    gds_lookup (d :: Θ) fp = Some U.
-Proof.
-  unfold gds_lookup; intros * Hfr Hl; cbn [List.concat].
-  destruct (gd_lookup d fp) as [V |] eqn:Hd.
-  - apply gd_lookup_in, Hfr, gds_fresh_no_lookup in Hd; unfold gds_lookup in Hd; congruence.
-  - rewrite gd_lookup_app_none; assumption.
+  intros * Hn fq V H; cbn.
+  destruct (path_beq fq fp) eqn:Hb; [ apply path_beq_true in Hb; subst; congruence | exact H ].
 Qed.
 
 (** ** The Definition Stack
@@ -574,7 +511,7 @@ Qed.
     that resolves resolve as well. *)
 Definition frame_fresh (Θ : gdeps) (Ξ : gstack) (mp : qname) : Prop :=
   match Ξ with
-  | nil => gds_fresh (q_unit mp) Θ /\ q_chain mp = nil
+  | nil => gds_lookup Θ (q_unit mp) = None /\ q_chain mp = nil
   | (mq, U) :: _ => exists x, mp = qname_in mq x /\ gm_fresh x (gu_mod U)
   end.
 
@@ -590,7 +527,7 @@ Proof.
     apply path_beq_true in Hb.
     destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
     + destruct Hf as [Hf _].
-      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+      rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
@@ -602,7 +539,7 @@ Proof.
     apply path_beq_true in Hb.
     destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
     + destruct Hf as [Hf _].
-      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+      rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
@@ -614,7 +551,7 @@ Proof.
     apply path_beq_true in Hb.
     destruct Ξ as [| [mq V] Ξ']; cbn in Hf, Hr.
     + destruct Hf as [Hf _].
-      rewrite <- Hb in Hr; rewrite (gds_fresh_no_lookup _ _ Hf) in Hr; discriminate.
+      rewrite <- Hb, Hf in Hr; discriminate.
     + destruct Hf as (x & -> & Hx); cbn in Hs, Hb.
       pose proof (strip_prefix_snoc _ _ _ _ Hs) as Hs'.
       unfold qname_strip in Hr; rewrite Hb, path_beq_refl, Hs' in Hr.
@@ -683,52 +620,47 @@ Proof.
       * destruct (String.eqb_spec z x); [ contradiction | exact Hr ].
 Qed.
 
-(** Filing a unit: what was read in its open frame is read in the level it is
-    filed in. *)
-Lemma gc_sub_file : forall Θ d fp U,
-    gd_lookup d fp = Some U ->
-    (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
-    gc_sub Θ ((q_abs fp nil, U) :: nil) (d :: Θ) nil.
+(** Filing a unit: what was read in its open frame is read in the filed
+    unit. *)
+Lemma gc_sub_file : forall Θ fp U,
+    gds_lookup Θ fp = None ->
+    gc_sub Θ ((q_abs fp nil, U) :: nil) ((fp, U) :: Θ) nil.
 Proof.
-  intros * Hd Hfr; split; [| split ].
+  intros * Hn; split; [| split ].
   - intros p E0 Hr; unfold gc_resolve in *; cbn [gs_find] in *.
-    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr.
+    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
-    + apply path_beq_true in Hb; subst.
-      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd); exact Hr.
-    + destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:Hl; [| discriminate ].
-      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+    + apply path_beq_true in Hb; subst; rewrite path_beq_refl; exact Hr.
+    + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
   - intros p r Hr; unfold gc_module in *; cbn [gs_find_tele] in *.
-    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr.
+    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
-    + apply path_beq_true in Hb; subst.
+    + apply path_beq_true in Hb; subst; rewrite path_beq_refl.
       destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
-      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd).
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
-    + destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:Hl; [| discriminate ].
-      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+    + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
   - intros p r Hr; unfold gc_body in *; cbn [gs_find_tele] in *.
-    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr.
+    unfold qname_strip in Hr; cbn [q_unit q_chain strip_prefix] in Hr; cbn [gds_lookup].
     destruct (path_beq fp (q_unit p)) eqn:Hb.
-    + apply path_beq_true in Hb; subst.
+    + apply path_beq_true in Hb; subst; rewrite path_beq_refl.
       destruct (q_chain p) as [| x ip] eqn:Hp; [ discriminate |].
-      unfold gds_lookup; cbn [List.concat]; rewrite (gd_lookup_app_l _ _ _ _ Hd).
       cbn in *; rewrite List.app_nil_r in Hr; exact Hr.
-    + destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:Hl; [| discriminate ].
-      erewrite gds_lookup_level; [ exact Hr | exact Hfr | exact Hl ].
+    + destruct (path_beq (q_unit p) fp) eqn:Hb'; [ apply path_beq_true in Hb'; subst; rewrite path_beq_refl in Hb; discriminate | exact Hr ].
 Qed.
 
-Lemma gc_sub_level : forall Θ d,
-    (forall fq V, List.In (fq, V) d -> gds_fresh fq Θ) ->
-    gc_sub Θ nil (d :: Θ) nil.
+(** A filed unit resolves as its closed frame did. *)
+Lemma gc_resolve_file : forall Θ fp U p,
+    gc_resolve ((fp, U) :: Θ) nil p = gc_resolve Θ ((q_abs fp nil, U) :: nil) p.
 Proof.
-  intros * Hfr; repeat split; intros p E0 Hr; unfold gc_resolve, gc_module, gc_body in *; cbn [gs_find gs_find_tele] in *;
-    destruct (gds_lookup Θ (q_unit p)) as [V |] eqn:Hl; try discriminate;
-    rewrite (gds_lookup_level _ _ _ _ Hfr Hl); exact Hr.
+  intros; unfold gc_resolve; cbn [gs_find gds_lookup]; unfold qname_strip; cbn [q_unit q_chain strip_prefix].
+  destruct (path_beq fp (q_unit p)) eqn:Hb.
+  - apply path_beq_true in Hb as ->; rewrite path_beq_refl; reflexivity.
+  - destruct (path_beq (q_unit p) fp) eqn:Hb'; [| reflexivity ].
+    apply path_beq_true in Hb'; rewrite Hb', path_beq_refl in Hb; discriminate.
 Qed.
 
 (** Filing more units under the same stack. *)
-Lemma gc_sub_levels : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
+Lemma gc_sub_deps : forall Θ Θ' Ξ, Θ ⊑ Θ' -> gc_sub Θ Ξ Θ' Ξ.
 Proof.
   intros * Hs; split; [| split ].
   - intros p E Hr; unfold gc_resolve in *.
@@ -765,7 +697,7 @@ with gm_transparent (Φ : gmod) : Prop :=
   end.
 
 Definition gc_transparent (Θ : gdeps) (Ξ : gstack) : Prop :=
-  (forall fp U, List.In (fp, U) (List.concat Θ) -> gm_transparent (gu_mod U)) /\
+  (forall fp U, List.In (fp, U) Θ -> gm_transparent (gu_mod U)) /\
   (forall mp U, List.In (mp, U) Ξ -> gm_transparent (gu_mod U)).
 
 Lemma gm_transparent_resolve : forall Φ ip E,
@@ -788,7 +720,7 @@ Proof.
   intros * [HΘ HΞ] Hr.
   destruct (gc_resolve_inv _ _ _ _ Hr) as [(mp & U & ip & Hin & Hm) | (fp & U & Hl & Hm)].
   - exact (gm_transparent_resolve _ _ _ (HΞ _ _ Hin) Hm).
-  - exact (gm_transparent_resolve _ _ _ (HΘ _ _ (gd_lookup_in _ _ _ Hl)) Hm).
+  - exact (gm_transparent_resolve _ _ _ (HΘ _ _ (gds_lookup_in _ _ _ Hl)) Hm).
 Qed.
 
 (** ** A Fixed Global Context

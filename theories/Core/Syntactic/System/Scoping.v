@@ -664,9 +664,6 @@ Theorem wf_scoped :
       ctx_ok Θ Ξ Γ /\ modexp_scoped (length Γ) H /\ modexp_scoped (length Γ) H') /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> entry_ok (gs_tele Ξ) E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> unit_closed (Δ ++ gs_tele Ξ) Φ) /\
-  (forall Θ d, wf_gdep Θ d -> units_closed Θ /\
-      forall fp U, List.In (fp, U) d -> unit_closed (gu_params U) (gu_mod U)) /\
-  (forall Θ, wf_gdeps Θ -> units_closed Θ) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> gctx_closed Θ Ξ).
 Proof.
   apply wf_mut_ind_all; intros;
@@ -709,15 +706,14 @@ Proof.
   - split; [ apply ctx_scoped_app_iff; split; assumption | apply mod_closed_nil ].
   - match goal with H : unit_closed _ Φ |- _ => destruct H end.
     split; [ assumption | apply mod_closed_ext; assumption ].
-  - (* a unit filed at the level *)
-    intros fq0 V0 [[= <- <-] | Hin]; [ rewrite List.app_nil_r in *; assumption | eauto ].
-  - intros fq0 V0 Hl; discriminate.
-  - (* a level filed on top: its own units, or the ones below *)
-    intros fq0 V0 Hl; unfold gds_lookup in Hl; cbn in Hl.
-    apply gd_lookup_app_inv in Hl as [Hl | Hl];
-      [ match goal with H : forall _ _, List.In _ _ -> _ |- _ => eapply H, gd_lookup_in, Hl end
-      | match goal with H : units_closed _ |- _ => eapply H, Hl end ].
-  - split; [ assumption | exact I ].
+  - split; [ intros ? ? Hl; discriminate | exact I ].
+  - (* a filed unit: its closed frame, or the units before it *)
+    match goal with
+    | H : gctx_closed _ _ |- gctx_closed ((?f, _) :: _) nil =>
+        destruct H as [HΘ [_ HU]]; split; [| exact I ];
+        intros fq0 V0 Hl; cbn in Hl; destruct (path_beq fq0 f);
+        [ injection Hl as <-; rewrite List.app_nil_r in HU; exact HU | exact (HΘ _ _ Hl) ]
+    end.
   - (* a frame *)
     match goal with H : gctx_closed _ _ |- _ => destruct H as [HΘ HΞ] end.
     split; [ assumption | cbn; split; assumption ].

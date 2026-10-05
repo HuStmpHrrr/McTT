@@ -9,7 +9,8 @@
       in [Core.Syntactic.Substitution] and used by [rewrite];
     - the four judgments about terms (context well-formedness, typing, term
       equality and subtyping) mention no substitution judgment, and are
-      mutually defined with the seven that make up global well-formedness;
+      mutually defined with the six about units, extensions, module
+      expressions and the global context;
     - weakening and substitution typing are derived judgments: statements that
       an operation maps every binding of one context to something of the right
       type in the other.  Their closure properties (identity, extension,
@@ -25,9 +26,9 @@
       conversion, and [Γ ▹ A'] is what the soundness proof wants.
 
     Every judgment reads the two global components a global resolves in: the
-    dependency levels [Θ] and the definition stack [Ξ], as in
+    filed units [Θ] and the definition stack [Ξ], as in
     [Θ ⍮ Ξ ⍮ Γ ⊢ M : A].  They are indices, not parameters: no rule about terms
-    changes them, but a filed unit is checked against the levels below it and a
+    changes them, but a filed unit is checked against the units before it and a
     stack frame against the frames outside it, so [⊢g Θ ⍮ Ξ] is an induction
     that varies them, as [⊢ Γ] varies [Γ]. *)
 
@@ -108,7 +109,7 @@ Definition let_ann (oA : option typ) (A : typ) : Prop := oA = None \/ oA = Some 
 (** ** The Mutually Defined Judgments
 
     Four about terms, three about units, extensions and module expressions,
-    and five about the global context.  All twelve are one
+    and three about the global context.  All ten are one
     [Inductive … with …]: an entry's type and body are checked by the term
     judgments, so presupposition has to be proved for all of them at once. *)
 
@@ -554,10 +555,9 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
     Part of the same mutual definition: an entry's type and body are checked by
     the term judgments, and a use of a global appeals to [⊢g Θ ⍮ Ξ].
 
-    A level is checked against the levels below it, and a frame against the
-    frames outside it, which is why both components are indices of the whole
-    block.  [wf_gdep] and [wf_gdeps] mention only [Θ], and [wf_gstack] only [Θ]
-    and [Ξ], so each says exactly what it is relative to.
+    A unit is checked against the units filed before it, and a frame against
+    the frames outside it, which is why both components are indices of the whole
+    block.
 
     A member of a parameterized module is checked in the telescope of
     parameters it lives under, and stored generalized over it ([ctx_pi],
@@ -565,9 +565,8 @@ where "Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H'" := (wf_modexp_eq Θ Ξ Γ H H') : type_
     a [gunit] records all of it, which is why a unit is checked at [⋅].
 
     Canonicity is part of well-formedness: [wf_gmod_ext] asks for freshness, so a
-    well-formed context resolves deterministically without a separate condition,
-    and the [gm_canon]/[gs_canon]/[gds_mods_canon] predicates follow
-    ([wf_gmod_canon], [wf_gstack_canon], [wf_gdeps_canon] in [Lemmas]). *)
+    well-formed context resolves deterministically without a separate
+    condition. *)
 
 (** An entry is checked against the current module, which is the head of [Ξ]:
     that frame is what [wf_gmod_ext] pushed, and it carries the parameters and the
@@ -617,47 +616,18 @@ with wf_gmod : gdeps -> gstack -> qname -> ctx -> gmod -> Prop :=
      Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ⊳ x ↦ E )
 where "Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ" := (wf_gmod Θ Ξ mp Δ Φ) : type_scope
 
-(** One dependency level, checked against the levels [Θ] below it: a filed unit
-    is a finished compilation unit, so it sees no stack, and not its own level
-    either.  Its path is fresh both in [Θ] and in the part of this level already
-    filed, so a path is filed exactly once in the whole of [gdeps].  No ambient
-    global context appears — [Θ] is all a level is relative to. *)
-
-with wf_gdep : gdeps -> gdep -> Prop :=
-(** As with [wf_gmod_nil], the base case is what makes the judgment presuppose
-    what it is relative to. *)
-| wf_gdep_nil :
-  `( wf_gdeps Θ ->
-     wf_gdep Θ nil )
-| wf_gdep_cons :
-  `( wf_gdep Θ d ->
-     Θ ⍮ nil ⍮ q_abs fp nil ⍮ Δ ⊢m Φ ->
-     gds_fresh fp Θ ->
-     gd_fresh fp d ->
-     wf_gdep Θ ((fp, gu_body Δ Φ) :: d) )
-
-(** The levels, accumulated one at a time, each checked against those already
-    piled up — so the newest level is at the front, as the newest frame is in a
-    [gstack].  A unit can therefore only mention units at strictly lower levels,
-    so cycle freedom comes from the shape of this judgment, not from a
-    proposition about the levels. *)
-
-with wf_gdeps : gdeps -> Prop :=
-| wf_gdeps_nil : wf_gdeps nil
-| wf_gdeps_cons :
-  `( wf_gdeps Θ ->
-     wf_gdep Θ d ->
-     wf_gdeps (d :: Θ) )
-
-(** The definition stack, innermost frame first, relative to the levels.  Read
-    exactly like [wf_gdep_cons], and for the same reason: a frame is checked
-    against the frames outside it, so it cannot see itself, and a [qu_rel] index
-    occurring inside it counts outward from there. *)
+(** The filed units [Θ] and the stack [Ξ] of open frames, innermost first.
+    A frame is checked against the frames outside it, and a unit is filed by
+    closing the only open frame, named by its path, after which it is checked
+    against the units filed before it.  So a unit sees no stack and not
+    itself, and a [qu_rel] index inside a frame counts outward from there.
+    Freshness ([frame_fresh]) makes a path filed at most once. *)
 
 with wf_gstack : gdeps -> gstack -> Prop :=
-| wf_gstack_nil :
-  `( wf_gdeps Θ ->
-     wf_gstack Θ nil )
+| wf_gstack_nil : ⊢g nil ⍮ nil
+| wf_gstack_file :
+  `( ⊢g Θ ⍮ (q_abs fp nil, U) :: nil ->
+     ⊢g (fp, U) :: Θ ⍮ nil )
 | wf_gstack_cons :
   `( ⊢g Θ ⍮ Ξ ->
      Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ ->
@@ -744,8 +714,6 @@ with wf_unit_eq_mut_ind_all := Minimality for wf_unit_eq Sort Prop
 with wf_modexp_eq_mut_ind_all := Minimality for wf_modexp_eq Sort Prop
 with wf_gentry_mut_ind_all := Minimality for wf_gentry Sort Prop
 with wf_gmod_mut_ind_all := Minimality for wf_gmod Sort Prop
-with wf_gdep_mut_ind_all := Minimality for wf_gdep Sort Prop
-with wf_gdeps_mut_ind_all := Minimality for wf_gdeps Sort Prop
 with wf_gstack_mut_ind_all := Minimality for wf_gstack Sort Prop.
 Combined Scheme wf_mut_ind_all from
   wf_ctx_mut_ind_all,
@@ -757,17 +725,15 @@ Combined Scheme wf_mut_ind_all from
   wf_modexp_eq_mut_ind_all,
   wf_gentry_mut_ind_all,
   wf_gmod_mut_ind_all,
-  wf_gdep_mut_ind_all,
-  wf_gdeps_mut_ind_all,
   wf_gstack_mut_ind_all.
 
 (** ** Units
 
     A unit filed at a level, or a frame of the stack, is a body checked by
     [⊢m]: [⊢u] is not a judgment of its own, but this definition, which the
-    block states inline ([wf_gdep_cons], [wf_gstack_cons]).  Two further
+    block states inline ([wf_gstack_cons]).  Two further
     projections are presuppositions, in [Presup]: [⊢ Θ ⍮ Ξ ⍮ gu_params U] of
-    [⊢m], hence of [⊢u], and [wf_gdeps Θ] of [⊢g]. *)
+    [⊢m], hence of [⊢u], and [⊢g Θ ⍮ nil] of [⊢g Θ ⍮ Ξ]. *)
 
 Definition wf_gunit (Θ : gdeps) (Ξ : gstack) (mp : qname) (U : gunit) : Prop :=
   exists Δ Φ, U = gu_body Δ Φ /\ Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ.
@@ -783,10 +749,6 @@ Lemma wf_gunit_body : forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> exists Δ Φ
 Proof. intros * (Δ & Φ & -> & _); eauto. Qed.
 
 (** The unit form of the two constructors that file one. *)
-Lemma wf_gdep_cons' : forall Θ d fp U,
-    wf_gdep Θ d -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> gds_fresh fp Θ -> gd_fresh fp d ->
-    wf_gdep Θ ((fp, U) :: d).
-Proof. intros * ? (Δ & Φ & -> & ?) ? ?; apply wf_gdep_cons; assumption. Qed.
 
 Lemma wf_gstack_cons' : forall Θ Ξ mp U,
     ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢u U -> frame_fresh Θ Ξ mp -> ⊢g Θ ⍮ (mp, U) :: Ξ.
@@ -796,9 +758,17 @@ Lemma wf_gstack_cons_inv : forall Θ Ξ mp U,
     ⊢g Θ ⍮ (mp, U) :: Ξ -> ⊢g Θ ⍮ Ξ /\ Θ ⍮ Ξ ⍮ mp ⊢u U /\ frame_fresh Θ Ξ mp.
 Proof. inversion 1; subst; eauto using wf_gunit_intro. Qed.
 
-Lemma wf_gdep_cons_inv : forall Θ d fp U,
-    wf_gdep Θ ((fp, U) :: d) -> wf_gdep Θ d /\ Θ ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_fresh fp Θ /\ gd_fresh fp d.
-Proof. inversion 1; subst; eauto 6 using wf_gunit_intro. Qed.
+(** Filing, from the premises of the frame it closes. *)
+Lemma wf_gstack_file' : forall Θ fp U,
+    ⊢g Θ ⍮ nil -> Θ ⍮ nil ⍮ q_abs fp nil ⊢u U -> gds_lookup Θ fp = None -> ⊢g (fp, U) :: Θ ⍮ nil.
+Proof. intros * ? ? ?; apply wf_gstack_file, wf_gstack_cons'; [ assumption | assumption | split; [ assumption | reflexivity ] ]. Qed.
+
+Lemma wf_gstack_file_inv : forall Θ fp U,
+    ⊢g (fp, U) :: Θ ⍮ nil -> ⊢g Θ ⍮ nil /\ Θ ⍮ nil ⍮ q_abs fp nil ⊢u U /\ gds_lookup Θ fp = None.
+Proof.
+  inversion 1; subst.
+  match goal with H : ⊢g _ ⍮ _ :: nil |- _ => destruct (wf_gstack_cons_inv _ _ _ _ H) as (? & ? & [? _]) end; auto.
+Qed.
 
 #[export]
 Hint Constructors wf_ctx wf_exp wf_exp_eq wf_subtyp ctx_lookup ctx_lookup_def : mctt.
@@ -822,7 +792,7 @@ Ltac destruct_let_ann :=
 Hint Constructors wf_ext_eq wf_unit_eq wf_modexp_eq : mctt.
 
 #[export]
-Hint Constructors wf_gentry wf_gmod wf_gdep wf_gdeps wf_gstack : mctt.
+Hint Constructors wf_gentry wf_gmod wf_gstack : mctt.
 #[export]
 Hint Resolve wf_gunit_intro : mctt.
 

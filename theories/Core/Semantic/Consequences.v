@@ -563,12 +563,12 @@ Proof. intros * Hr; apply consistency_False_no_axioms; eapply run_cmds_no_axioms
 
 Corollary consistency_False_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
-    ~ (Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
+    ~ (((prog_path prg, U) :: Θ) ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
 Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; exact Hp. Qed.
 
 Corollary canonical_form_of_nat_prog : forall prg Θ U M,
     Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
-    let Θ' := Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ in
+    let Θ' := ((prog_path prg, U) :: Θ) in
     Θ' ⍮ nil ⍮ ⋅ ⊢ M : ℕ ->
     exists V, nbe (gds_unseal Θ') nil ⋅ M ℕ V /\ canonical_nat V.
 Proof.

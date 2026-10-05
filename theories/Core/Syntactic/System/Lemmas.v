@@ -661,21 +661,16 @@ Hint Resolve wf_conv wf_exp_eq_conv : mctt.
     resolution's determinism is stated with.  That resolution lands in a
     well-typed entry is [presup_global]. *)
 
-(** The presuppositions of the two outer judgments.  Both are immediate from the
-    base case and need nothing from [Presup]. *)
+(** The stack presupposes the filed units with no frame open.  This needs
+    nothing from [Presup]. *)
 
-Lemma wf_gdep_deps : forall Θ d, wf_gdep Θ d -> wf_gdeps Θ.
+Lemma wf_gstack_deps : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ nil.
 Proof.
-  induction 1; assumption.
-Qed.
-
-Lemma wf_gstack_deps : forall Θ Ξ, wf_gstack Θ Ξ -> wf_gdeps Θ.
-Proof.
-  induction 1; assumption.
+  induction 1; [ constructor | apply wf_gstack_file; assumption | assumption ].
 Qed.
 
 #[export]
-Hint Resolve wf_gdep_deps wf_gstack_deps : mctt.
+Hint Resolve wf_gstack_deps : mctt.
 
 Lemma wf_gentry_gctx : forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> ⊢g Θ ⍮ Ξ.
 Proof.
@@ -693,8 +688,8 @@ Proof. eauto using ctx_wf_gctx, wf_gmod_ctx. Qed.
 
 (** Each judgment presupposes what it is relative to: a term judgment its
     context, a context the global context, an entry or a unit the global
-    context it is checked against, a module its telescope, a level or the stack
-    the levels below.  [wf_gdeps] is the bottom and presupposes nothing. *)
+    context it is checked against, a module its telescope, the stack the filed
+    units with no frame open. *)
 Theorem presup_ambient :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢g Θ ⍮ Ξ) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> ⊢ Θ ⍮ Ξ ⍮ Γ) /\
@@ -703,10 +698,9 @@ Theorem presup_ambient :
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> ⊢g Θ ⍮ Ξ) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ) /\
   (forall Θ Ξ mp U, Θ ⍮ Ξ ⍮ mp ⊢u U -> ⊢ Θ ⍮ Ξ ⍮ gu_params U ++ gs_tele Ξ) /\
-  (forall Θ d, wf_gdep Θ d -> wf_gdeps Θ) /\
-  (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> wf_gdeps Θ).
+  (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ nil).
 Proof.
   refine (conj ctx_wf_gctx (conj _ (conj _ (conj _ (conj wf_gentry_gctx (conj wf_gmod_ctx
-    (conj wf_gunit_ctx (conj wf_gdep_deps wf_gstack_deps))))))));
+    (conj wf_gunit_ctx wf_gstack_deps)))))));
     intros * H; eauto using presup_exp_ctx, presup_exp_eq_ctx, presup_subtyp_ctx.
 Qed.

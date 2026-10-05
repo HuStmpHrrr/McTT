@@ -151,7 +151,7 @@ Lemma mdecl_dsub : forall Θ1 Θ2 Ξ, Θ1 ⊑ Θ2 ->
     forall H ch qd pv, mdecl Θ1 Ξ H ch qd pv -> mdecl Θ2 Ξ H ch qd pv.
 Proof.
   intros * Hs; induction 1; [ eapply mdl_entry | eapply mdl_alias | eapply mdl_mem | eapply mdl_app ];
-    eauto using gc_entry_dsub, gc_sub_module, gc_sub_levels.
+    eauto using gc_entry_dsub, gc_sub_module, gc_sub_deps.
 Qed.
 
 (** ** Module Tables

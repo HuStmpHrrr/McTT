@@ -14,8 +14,8 @@ Import Syntax_Notations GlobalCtx_Notations.
     [Extraction.TypeCheck]: well-formedness of local contexts [⊢ Θ ⍮ Ξ ⍮ Γ],
     of types and of terms.
 
-    [wf_gdep] and [wf_gdeps] are not decided here: the levels are what a unit
-    is compiled against, and they are given already checked.  [Θ] is
+    [⊢g Θ ⍮ nil] is not decided here: the filed units are what a unit is
+    compiled against, and they are given already checked.  [Θ] is
     therefore a parameter of everything below, and only [Ξ] and the local
     context are traversed. *)
 

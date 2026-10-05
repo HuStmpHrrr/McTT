@@ -394,13 +394,6 @@ Proof.
       eauto using gc_sub_body.
 Qed.
 
-Lemma wf_gdep_fresh : forall Θ d,
-    wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gds_fresh fp Θ.
-Proof.
-  induction 1; intros * Hin; cbn in Hin; [ contradiction |].
-  destruct Hin as [[= <- <-] |]; eauto.
-Qed.
-
 (** The telescope of the frames' parameters is a well-formed context: the
     innermost frame's module was checked over it, one frame out, and pushing
     the frame is an embedding. *)
@@ -415,25 +408,14 @@ Proof.
   - exact (Hc _ HP).
 Qed.
 
-Lemma wf_gdep_lookup : forall Θ d,
-    wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gd_lookup d fp = Some U.
-Proof.
-  induction 1 as [| Θ d fp Δ Φ Hd IH HU Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
-  unfold gd_lookup, path_beq in *; cbn.
-  destruct Hin as [[= <- <-] | Hin].
-  - destruct (path_eq_dec fp fp); [ reflexivity | contradiction ].
-  - destruct (path_eq_dec fq fp) as [-> |]; [| eauto ].
-    exfalso; apply (Hfr' (List.in_map fst _ _ Hin)).
-Qed.
-
 (** Every frame of a well-formed stack belongs to a unit not filed. *)
 Lemma wf_gstack_frames : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall mp U, List.In (mp, U) Ξ -> gds_lookup Θ (q_unit mp) = None.
 Proof.
-  induction 1 as [| Θ Ξ mq Δ Φ HΞ IH HV Hff]; intros mp U Hin; [ contradiction |].
+  induction 1 as [| | Θ Ξ mq Δ Φ HΞ IH HV Hff]; intros mp V0 Hin; try (cbn in Hin; contradiction).
   destruct Hin as [[= <- <-] | Hin]; [| eauto ].
   destruct Ξ as [| [mr W] Ξ']; cbn in Hff.
-  - apply gds_fresh_no_lookup; exact (proj1 Hff).
+  - exact (proj1 Hff).
   - destruct Hff as (x & -> & _); cbn; apply (IH mr W); left; reflexivity.
 Qed.
 
@@ -474,9 +456,6 @@ Section Induction.
     forall Θ2 Ξ2, Emb Θ ((mp, U) :: Ξ) Θ2 Ξ2 ->
       forall ip E0, gm_resolve (gu_mod U) ip = Some E0 -> V Θ2 Ξ2 E0.
 
-  Definition GoodD (Θ : gdeps) (d : gdep) : Prop :=
-    forall fp U, List.In (fp, U) d -> GoodU Θ nil (q_abs fp nil) U.
-
   Theorem global_induction_all :
     (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> Good Θ Ξ) /\
     (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Good Θ Ξ) /\
@@ -487,8 +466,6 @@ Section Induction.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good Θ Ξ) /\
     (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodE Θ Ξ mp E) /\
     (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodM Θ Ξ mp Δ Φ) /\
-    (forall Θ d, wf_gdep Θ d -> GoodD Θ d) /\
-    (forall Θ, wf_gdeps Θ -> Good Θ nil) /\
     (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> Good Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
@@ -516,25 +493,13 @@ Section Induction.
         rewrite gc_module_frame_here; cbn [gu_mod gu_params]; apply gm_submodule_ext_here; exact Hr0.
       + intros z ip0 r Hr0; rewrite qname_app_in; apply (gc_sub_body _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_body_frame_here; cbn [gu_mod gu_params]; apply gm_subbody_ext_here; exact Hr0.
-    - (* the empty level *)
-      intros ? ? [].
-    - (* filing a unit at a level *)
-      intros fq V' [[= <- <-] | Hin]; eauto.
-    - (* no levels *)
-      intros ? ? _ p E Hr; unfold gc_resolve in Hr; cbn in Hr.
-      unfold gds_lookup, gd_lookup in Hr; cbn in Hr; discriminate.
-    - (* a level on top *)
-      rename H0 into IHΘ, H2 into IHd.
-      pose proof (wf_gdep_fresh _ _ H1) as Hfr.
-      intros Θ2 Ξ2 He p E Hr; unfold gc_resolve in Hr; cbn [gs_find] in Hr.
-      destruct (gds_lookup (d :: Θ) (q_unit p)) as [U |] eqn:Hl; [| discriminate ].
-      unfold gds_lookup in Hl; cbn [List.concat] in Hl.
-      apply gd_lookup_app_inv in Hl as [Hl | Hl].
-      + apply (IHd _ _ (gd_lookup_in _ _ _ Hl) Θ2 Ξ2) with (ip := q_chain p); [| exact Hr ].
-        eapply Emb_pre; [ apply gc_sub_file; eassumption | exact He ].
-      + apply (IHΘ Θ2 Ξ2) with (p := p).
-        * eapply Emb_pre; [ apply gc_sub_level; eassumption | exact He ].
-        * unfold gc_resolve; cbn [gs_find]; unfold gds_lookup; rewrite Hl; exact Hr.
+    - (* nothing filed *)
+      intros ? ? _ p E Hr; unfold gc_resolve in Hr; cbn in Hr; discriminate.
+    - (* a filed unit: it resolves as its closed frame did *)
+      rename H into Hg, H0 into IHU.
+      intros Θ2 Ξ2 He p E Hr; rewrite gc_resolve_file in Hr.
+      destruct (wf_gstack_cons_inv _ _ _ _ Hg) as (_ & _ & [Hn _]).
+      eapply IHU; [ eapply Emb_pre; [ apply gc_sub_file; exact Hn | exact He ] | exact Hr ].
     - (* a frame *)
       rename H0 into IHΞ, H2 into IHU.
       intros Θ2 Ξ2 He p E Hr.
@@ -546,7 +511,7 @@ Section Induction.
 
   Corollary global_induction : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GV Θ Ξ Θ Ξ.
   Proof.
-    intros * Hg; destruct global_induction_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H).
+    intros * Hg; destruct global_induction_all as (_ & _ & _ & _ & _ & _ & _ & _ & _ & H).
     exact (H _ _ Hg _ _ (Emb_refl _ _ Hg)).
   Qed.
 End Induction.
@@ -615,8 +580,6 @@ Theorem presup_global :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> Good entry_typed Θ Ξ) /\
   (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodE entry_typed Θ Ξ mp E) /\
   (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodM entry_typed Θ Ξ mp Δ Φ) /\
-  (forall Θ d, wf_gdep Θ d -> GoodD entry_typed Θ d) /\
-  (forall Θ, wf_gdeps Θ -> Good entry_typed Θ nil) /\
   (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> Good entry_typed Θ Ξ).
 Proof. exact (global_induction_all entry_typed entry_typed_def entry_typed_ax). Qed.
 

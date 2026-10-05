@@ -282,32 +282,22 @@ Qed.
 
 (** ** Coherence of What a Well-Formed Context Reads *)
 
-Lemma wf_gdep_coh : forall Θ d, wf_gdep Θ d -> forall fp U, List.In (fp, U) d -> gm_coh (gu_params U) (gu_mod U).
-Proof.
-  induction 1 as [| Θ d fp Δ Φ Hd IH HΦ Hfr Hfr']; intros fq V Hin; cbn in Hin; [ contradiction |].
-  destruct Hin as [[= <- <-] | Hin]; [| eauto ].
-  destruct (proj2 wf_gmod_coh _ _ _ _ _ HΦ) as [_ Hc]; cbn in Hc |- *; rewrite app_nil_r in Hc; exact Hc.
-Qed.
-
-Lemma wf_gdeps_coh : forall Θ, wf_gdeps Θ -> forall fp U, gds_lookup Θ fp = Some U -> gm_coh (gu_params U) (gu_mod U).
-Proof.
-  induction 1 as [| Θ d HΘ IH Hd]; intros fp U Hl; unfold gds_lookup in Hl; cbn in Hl; [ discriminate |].
-  apply gd_lookup_app_inv in Hl as [Hl | Hl].
-  - exact (wf_gdep_coh _ _ Hd _ _ (gd_lookup_in _ _ _ Hl)).
-  - exact (IH _ _ Hl).
-Qed.
-
 Lemma wf_gstack_coh : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall p U ip T, gs_find_tele Ξ p = Some (U, ip, T) -> gm_coh (gu_params U ++ T) (gu_mod U).
 Proof.
-  induction 1 as [| Θ Ξ mp Δ Φ HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; [ discriminate |].
+  induction 1 as [| | Θ Ξ mp Δ Φ HΞ IH HΦ Hff]; intros * Hf; cbn in Hf; try discriminate.
   destruct (qname_strip mp p); [| eauto ].
   injection Hf as <- <- <-.
   exact (proj2 (proj2 wf_gmod_coh _ _ _ _ _ HΦ)).
 Qed.
 
-Lemma wf_gstack_deps : forall Θ Ξ, wf_gstack Θ Ξ -> wf_gdeps Θ.
-Proof. induction 1; assumption. Qed.
+Lemma wf_gdeps_coh : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall fp U, gds_lookup Θ fp = Some U -> gm_coh (gu_params U) (gu_mod U).
+Proof.
+  induction 1 as [| Θ fq V Hg IH | Θ Ξ mp Δ Φ HΞ IH HΦ Hff]; intros fp U Hl; cbn in Hl; [ discriminate | | eauto ].
+  destruct (path_beq fp fq); [ injection Hl as -> | eauto ].
+  pose proof (wf_gstack_coh _ _ Hg (q_abs fq nil) U nil nil) as Hc; rewrite app_nil_r in Hc; apply Hc.
+  cbn; unfold qname_strip; cbn; rewrite path_beq_refl; reflexivity.
+Qed.
 
 Lemma gc_body_coh : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall p T Φ, gc_body Θ Ξ p = Some (T, Φ) -> gm_coh T Φ.
 Proof.
@@ -317,7 +307,7 @@ Proof.
   destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T0] |] eqn:Ef; [ discriminate | |].
   - exact (proj1 (gm_coh_subbody _ _ _ _ _ _ (wf_gstack_coh _ _ Hs _ _ _ _ Ef) H)).
   - destruct (gds_lookup Θ (q_unit p)) as [U |] eqn:El; [| discriminate ].
-    pose proof (wf_gdeps_coh _ (wf_gstack_deps _ _ Hs) _ _ El) as Hc.
+    pose proof (wf_gdeps_coh _ _ Hs _ _ El) as Hc.
     destruct (q_chain p) as [| x ip]; cbn in H; [ injection H as <- <-; exact Hc |].
     exact (proj1 (gm_coh_subbody _ _ _ _ _ _ Hc H)).
 Qed.
@@ -360,7 +350,7 @@ Lemma gs_find_tele_app : forall Θ Ξ, wf_gstack Θ Ξ ->
     forall p U x ip T, gs_find_tele Ξ p = Some (U, x :: ip, T) -> List.In x (gm_names (gu_mod U)) ->
     forall ch, gs_find_tele Ξ (qname_app p ch) = Some (U, x :: ip ++ ch, T).
 Proof.
-  induction 1 as [| Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin ch; cbn in Hf |- *; [ discriminate |].
+  induction 1 as [| | Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin ch; cbn in Hf |- *; [ discriminate | discriminate |].
   destruct (qname_strip mp p) as [r |] eqn:Hs.
   - injection Hf; intros; subst.
     apply qname_strip_app_inv in Hs; subst p.
@@ -556,7 +546,7 @@ Lemma gs_find_tele_head : forall Θ Ξ, wf_gstack Θ Ξ ->
     exists Fp, p = qname_app Fp (x :: ip) /\
       forall ip', gs_find_tele Ξ (qname_app Fp (x :: ip')) = Some (U, x :: ip', T).
 Proof.
-  induction 1 as [| Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin; cbn in Hf; [ discriminate |].
+  induction 1 as [| | Θ Ξ mp Vp VΦ HΞ IH HV Hff]; intros * Hf Hin; cbn in Hf; [ discriminate | discriminate |].
   destruct (qname_strip mp p) as [r |] eqn:Hs.
   - injection Hf; intros; subst.
     exists mp; split; [ apply qname_strip_app_inv; exact Hs |].
@@ -783,9 +773,6 @@ Section ModInduction.
     forall Θ2 Ξ2, Emb Θ ((mp, U) :: Ξ) Θ2 Ξ2 -> Emb Θ Ξ Θ2 Ξ2 ->
       F Θ2 Ξ2 (gu_params U ++ gs_tele Ξ) /\ gm_valid Θ2 Ξ2 (gu_params U ++ gs_tele Ξ) (gu_mod U).
 
-  Definition GoodDV (Θ : gdeps) (d : gdep) : Prop :=
-    forall fp U, List.In (fp, U) d -> GoodUV Θ nil (q_abs fp nil) U.
-
   Theorem global_valid_all :
     (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> GoodV Θ Ξ) /\
     (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> GoodV Θ Ξ) /\
@@ -796,8 +783,6 @@ Section ModInduction.
     (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> GoodV Θ Ξ) /\
     (forall Θ Ξ mp E, Θ ⍮ Ξ ⍮ mp ⊢e E -> GoodEV Θ Ξ mp E) /\
     (forall Θ Ξ mp Δ Φ, Θ ⍮ Ξ ⍮ mp ⍮ Δ ⊢m Φ -> GoodMV Θ Ξ mp Δ Φ) /\
-    (forall Θ d, wf_gdep Θ d -> GoodDV Θ d) /\
-    (forall Θ, wf_gdeps Θ -> GoodV Θ nil) /\
     (forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GoodV Θ Ξ).
   Proof.
     apply wf_mut_ind_all; intros; try assumption.
@@ -820,19 +805,15 @@ Section ModInduction.
         rewrite gc_module_frame_here; cbn [gu_mod gu_params]; apply gm_submodule_ext_here; exact Hr0.
       + intros z ip0 r Hr0; rewrite qname_app_in; apply (gc_sub_body _ _ _ _ _ _ (em_res _ _ _ _ He)).
         rewrite gc_body_frame_here; cbn [gu_mod gu_params]; apply gm_subbody_ext_here; exact Hr0.
-    - intros ? ? [].
-    - intros fq V' [[= <- <-] | Hin]; eauto.
-    - intros Θ2 Ξ2 _; split; [ intros fp U Hl; unfold gds_lookup, gd_lookup in Hl; cbn in Hl; discriminate | exact I ].
-    - rename H0 into IHΘ, H2 into IHd.
-      pose proof (wf_gdep_fresh _ _ H1) as Hfr.
+    - intros Θ2 Ξ2 _; split; [ intros fp U Hl; discriminate | exact I ].
+    - (* a filed unit: valid as its closed frame was *)
+      rename H into Hg, H0 into IHU.
+      match goal with |- GoodV ((?f, _) :: _) nil => rename f into fp0 end.
       intros Θ2 Ξ2 He; split; [| exact I ].
-      intros fp U Hl; unfold gds_lookup in Hl; cbn [List.concat] in Hl.
-      apply gd_lookup_app_inv in Hl as [Hl | Hl].
-      + destruct (IHd _ _ (gd_lookup_in _ _ _ Hl) Θ2 Ξ2) as [HF HV].
-        * eapply Emb_pre; [ apply gc_sub_file; eassumption | exact He ].
-        * eapply Emb_pre; [ apply gc_sub_level; eassumption | exact He ].
-        * cbn [gs_tele] in HF, HV; rewrite app_nil_r in HF, HV; split; assumption.
-      + exact (proj1 (IHΘ Θ2 Ξ2 ltac:(eapply Emb_pre; [ apply gc_sub_level; eassumption | exact He ])) fp U Hl).
+      destruct (wf_gstack_cons_inv _ _ _ _ Hg) as (_ & _ & [Hn _]).
+      destruct (IHU Θ2 Ξ2 ltac:(eapply Emb_pre; [ apply gc_sub_file; exact Hn | exact He ])) as [HΘ HΞ].
+      intros fq W Hl; cbn in Hl; destruct (path_beq fq fp0);
+        [ injection Hl as <-; cbn [gs_valid gs_tele] in HΞ; rewrite app_nil_r in HΞ; tauto | exact (HΘ _ _ Hl) ].
     - rename H0 into IHΞ, H2 into IHU.
       intros Θ2 Ξ2 He.
       assert (He0 : Emb Θ Ξ Θ2 Ξ2) by (eapply Emb_pre; [ apply gc_sub_push; eassumption | exact He ]).
