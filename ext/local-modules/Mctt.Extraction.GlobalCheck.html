@@ -43,7 +43,7 @@
 </div>
 
 <div class="doc">
-<a id="lab470"></a><h1 class="section">Deciding the Global-Context Judgments</h1>
+<a id="lab482"></a><h1 class="section">Deciding the Global-Context Judgments</h1>
 
 
 <div class="paragraph"> </div>
@@ -60,21 +60,7 @@
     context are traversed. 
 <div class="paragraph"> </div>
 
- <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gctx"><span class="id" title="inductive">wf_gctx</span></a></span> is the only judgment of its block whose constructor is not a
-    global hint, since nothing in the metatheory builds a <span class="inlinecode">⊢<span class="id" title="var">g</span></span> forwards.  The
-    decision procedures below do, so it is a local hint here. 
-</div>
-<div class="code">
-#[<span class="id" title="var">local</span>]<br/>
-<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Constructors</span> <a class="idref" href="Mctt.Extraction.GlobalCheck.html#wf_gctx"><span class="id" title="inductive">wf_gctx</span></a> : <span class="id" title="var">mctt</span>.<br/>
-#[<span class="id" title="var">local</span>]<br/>
-<span class="id" title="keyword">Hint</span> <span class="id" title="keyword">Resolve</span> <span class="id" title="var">wf_gctx_stack</span> : <span class="id" title="var">mctt</span>.<br/>
-
-<br/>
-</div>
-
-<div class="doc">
-<a id="lab471"></a><h2 class="section">The Bridge to the Algorithmic Judgments</h2>
+<a id="lab483"></a><h2 class="section">The Bridge to the Algorithmic Judgments</h2>
 
 
 <div class="paragraph"> </div>
@@ -228,7 +214,7 @@ The two ways "is <span class="inlinecode"><a class="idref" href="Mctt.Core.Seman
 </div>
 
 <div class="doc">
-<a id="lab472"></a><h2 class="section">Types and Terms at an Explicit Global Context</h2>
+<a id="lab484"></a><h2 class="section">Types and Terms at an Explicit Global Context</h2>
 
 <div class="paragraph"> </div>
 
@@ -345,7 +331,7 @@ A unit and a module expression, through their algorithmic checks.
 </div>
 
 <div class="doc">
-<a id="lab473"></a><h2 class="section">Local Contexts</h2>
+<a id="lab485"></a><h2 class="section">Local Contexts</h2>
 
 
 <div class="paragraph"> </div>

@@ -36,8 +36,8 @@
 
 <div class="paragraph"> </div>
 
-    The core commands a unit is elaborated into: names are resolved, and <span class="inlinecode"><span class="id" title="var">use</span></span>
-    and <span class="inlinecode"><span class="id" title="keyword">as</span></span> have been handled by the elaborator.  Their meaning, as steps of
+    The core commands a unit is elaborated into: names are resolved, and an
+    import is a load and the declaration of its items.  Their meaning, as steps of
     the global state, is given in <span class="inlinecode"><span class="id" title="library">Core.Syntactic.System.Command</span></span>. 
 </div>
 <div class="code">
@@ -78,12 +78,18 @@
 </div>
 
 <div class="doc">
-<span class="inlinecode"><span class="id" title="var">import</span></span> <span class="inlinecode"><span class="id" title="var">E</span></span>, whatever its <span class="inlinecode"><span class="id" title="var">use</span></span>/<span class="inlinecode"><span class="id" title="keyword">as</span></span>: the unit to load first, if <span class="inlinecode"><span class="id" title="var">E</span></span> is in
-    another unit; the imported module; and the names it <span class="inlinecode"><span class="id" title="var">use</span></span>s, each of which
-    must be a member or a submodule of <span class="inlinecode"><span class="id" title="var">E</span></span> that may be used here. 
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_load"><span class="id" title="constructor">cc_load</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>: load the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span> if it is not filed yet. 
 </div>
 <div class="code">
-| <a id="cc_import" class="idref" href="#cc_import"><span class="id" title="constructor">cc_import</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+| <a id="cc_load" class="idref" href="#cc_load"><span class="id" title="constructor">cc_load</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#path"><span class="id" title="abbreviation">path</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
+</div>
+
+<div class="doc">
+<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_open"><span class="id" title="constructor">cc_open</span></a></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="var">items</span></span>: check that <span class="inlinecode"><span class="id" title="var">E</span></span> is a module, and declare the items,
+    as definitions and aliases of this frame. 
+</div>
+<div class="code">
+| <a id="cc_open" class="idref" href="#cc_open"><span class="id" title="constructor">cc_open</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#iitem"><span class="id" title="definition">iitem</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Command.html#ccmd:1"><span class="id" title="inductive">ccmd</span></a><br/>
 </div>
 
 <div class="doc">
