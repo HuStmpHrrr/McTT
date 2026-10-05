@@ -28,13 +28,13 @@ eval magnitude (minus (ofNat 4) (ofNat 9))
 
 (* [a + x = b] has the solution [x = -a + b], and only that one: [a]
    cancels on the left once [b] is written as [a + (-a + b)].  The proof is
-   a local module that imports the laws of the group and its monoid. *)
+   a local module that opens the laws of the group and its monoid. *)
 abstract def solve : forall (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
     Same x (add (negate a) b) :=
   fun (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
     let module Proof where
-      import Additive.Laws use (leftCancel)
-      import Additive.Base.Cong use (congLeft; assocBack)
+      open Additive.Laws use (leftCancel)
+      open Additive.Base.Cong use (congLeft; assocBack)
       (* [a + (-a + b)] is [(a + -a) + b], which is [0 + b]. *)
       def back : Same (add a (add (negate a) b)) b :=
         sameTrans (add a (add (negate a) b)) (add (add a (negate a)) b) b

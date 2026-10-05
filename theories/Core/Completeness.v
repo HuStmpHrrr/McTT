@@ -83,7 +83,7 @@ End Fixed_GCtx.
 
 
 (** Completeness at a global context named explicitly. *)
-Theorem completeness_gctx : forall Θ Ξ Γ M M' A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    exists W, nbe Θ Ξ Γ M A W /\ nbe Θ Ξ Γ M' A W.
-Proof. intros * H; exact (@completeness (gc_mk Θ Ξ) _ _ _ _ H). Qed.
+Theorem completeness_gctx : forall Θ Γ M M' A,
+    Θ ⍮ Γ ⊢ M ≈ M' : A ->
+    exists W, nbe Θ Γ M A W /\ nbe Θ Γ M' A W.
+Proof. intros * H; exact (@completeness (gc_mk Θ) _ _ _ _ H). Qed.

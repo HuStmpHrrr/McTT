@@ -6,7 +6,7 @@ From Mctt.Core.Syntactic Require Export Syntax.
 (** * The Semantic Domain
 
     An environment is the list of the values of the variables in scope,
-    indexed by de Bruijn index; for [Θ ⍮ Ξ ⍮ Γ] these are the variables of
+    indexed by de Bruijn index; for [Θ ⍮ Γ] these are the variables of
     [Γ].  A term variable holds a term value and a module slot a module value
     ([dentry]).  The global context does not change during NbE, so it is not
     part of the environment; evaluation takes it as a separate argument.
@@ -14,10 +14,9 @@ From Mctt.Core.Syntactic Require Export Syntax.
 
     Module values are their own sort ([dmod]), closures like [λ]:
 
-    - [dm_global p args]: the global body module at [p], applied to [args],
-      outermost first;
-    - [dm_local ρ U args]: the unit [U] over the environment [ρ], applied to
-      [args];
+    - [dm_body ρ Δ Φ args]: the body unit with parameters [Δ] and body [Φ],
+      over the environment [ρ], applied to [args], outermost first;
+    - [dm_alias ρ Δ E args]: the alias unit of [E], likewise;
     - [dm_member m ch]: the submodule at the chain [ch] of a module [m] still
       lacking arguments.
 
@@ -59,16 +58,16 @@ with domain_ne : Set :=
 | d_natrec : list dentry -> typ -> domain -> exp -> domain_ne -> domain_ne
 (** The [⊥]-eliminator on a neutral, with its motive as a closure. *)
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
-(** An opaque definition or an axiom. *)
+(** A sealed constant. *)
 | d_glob : qname -> domain_ne
 with domain_nf : Set :=
 (** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf
 with dmod : Set :=
-(** A global module and the arguments it has *)
-| dm_global : qname -> list domain -> dmod
-(** The closure of a unit and the arguments it has *)
-| dm_local : list dentry -> gunit -> list domain -> dmod
+(** The closure of a body unit and the arguments it has *)
+| dm_body : list dentry -> ctx -> gmod -> list domain -> dmod
+(** The closure of an alias unit and the arguments it has *)
+| dm_alias : list dentry -> ctx -> modexp -> list domain -> dmod
 (** A submodule of a module still lacking arguments *)
 | dm_member : dmod -> list string -> dmod
 with dentry : Set :=
@@ -95,7 +94,15 @@ Fixpoint env_entry (ρ : env) (x : nat) : dentry :=
     the defaults, which are the values of the defaults of [sentry_exp] and
     [sentry_modexp].  As a coercion, [env_var] lets an environment be applied
     as a function, [ρ x]. *)
-Definition dm_default : dmod := dm_global (q_abs nil nil) nil.
+Definition dm_default : dmod := dm_body nil nil gm_nil nil.
+
+(** The closure of a unit over an environment, with no argument yet: it
+    takes the unit apart, and builds no syntax. *)
+Definition dm_of (ρ : env) (U : gunit) : dmod :=
+  match U with
+  | gu_mk Δ (md_body Φ) => dm_body ρ Δ Φ nil
+  | gu_mk Δ (md_alias E) => dm_alias ρ Δ E nil
+  end.
 
 Definition env_var (ρ : env) (x : nat) : domain :=
   match env_entry ρ x with

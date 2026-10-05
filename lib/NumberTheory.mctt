@@ -42,7 +42,7 @@ def nthPrime (k : Nat) : Nat := Generic.iterate Nat nextPrime (succ k) 0 end
 
 end
 
-import Primes use (nthPrime)
+open Primes use (nthPrime)
 
 (* The primes below 30 are the first ten primes; the eleventh is 31. *)
 eval nthPrime 0

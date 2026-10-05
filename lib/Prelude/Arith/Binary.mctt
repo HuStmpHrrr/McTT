@@ -124,7 +124,7 @@ end
 
 end
 
-import Halving use (bitLe; halfSpec; halfLe; halfDouble; bitPlusHalves)
+open Halving use (bitLe; halfSpec; halfLe; halfDouble; bitPlusHalves)
 
 (* A sequence of binary digits, least significant first. *)
 def Bits : Type@0 := forall (i : Nat) -> Nat end

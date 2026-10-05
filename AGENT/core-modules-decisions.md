@@ -403,3 +403,79 @@ telescopes (`ctx_pi`) still generalize definitions with their type.
   `import Prelude::Arith::Equality use (Eq) module M (p : Eq 1 1) where … end`
   gives `unbound name Eq` (it was accepted while `use` bound elaborator
   aliases); the qualified name `Prelude::Arith::Equality.Eq` still works.
+
+## 11. S+K (`wip/sk`, 2026-10-05)
+
+One module representation (self-style units) and abstract definitions as
+global constants.  The design source is the S+K proposal; what follows is
+what was built, and the decisions taken on the way.
+
+### 11.1 Definitions
+- `exp` gains `a_const : qname -> exp`.  `gentry := ge_def pv A (oM : option
+  exp) | ge_mod pv U` (no transparency flag; `None` is an axiom, filed only as
+  a constant).  `gm_open Φ H oz its` is the local open (`iitem := string *
+  string * bool`, member, declared name, private; `oz` the alias).
+- `gdecl := gd_unit fp U | gd_const q A oM b`, `gctx := list gdecl`, newest
+  first; `gc_unit`/`gc_const` read the first match.  No `gstack`, no levels,
+  and `Ξ` is gone from every judgment: `Θ ⍮ Γ ⊢ M : A`.
+- Self style: each entry of `gu_body Δ Φ` is checked in `self_ent Φ' :: Δ ++ Γ`
+  (`self_ent Φ' := ce_mod (gu_body nil Φ')`, `Φ'` the entries before it), a
+  sibling `y` is `a_mem (me_var k) y`.  Member types are
+  `ctx_pi (self_ent Φ' :: Δ) A`: they hold the prefix literally.
+- Evaluation: `me_unit fp ↘ dm_of nil U`; a constant with a body and `b =
+  true` unfolds, any other is the neutral `d_glob q`; selection evaluates the
+  member under a closure of its prefix (lazy, no `eval_benv`).
+
+### 11.2 Commands
+- Frames `fr_mk chain params body`; a command is checked in `fctx Γimp F =
+  self_ent (fr_body f) :: fr_params f ++ … ++ Γimp`.
+- `abstract def` (`rc_abs`) files `gd_const q (ctx_pi Γ A) (Some (ctx_fn Γ M))
+  false` and the entry `x := apps (a_const q) (ctx_args Γ)`; `axiom`
+  (`rc_ax`) the same without a body.  Neither is allowed in a local body
+  (elaborator errors).
+- Leading imports and opens run before the parameters (`run_leads`).  A
+  leading open adds one slot to `Γimp`, `lead_slot E := ce_mod (gu_mk nil
+  (md_alias E))`; the names it declares are read from that slot, as members
+  from a self slot (the elaborator's `en_mem d c`).  Its items are checked by
+  `open_gen_ok` against the slot, and must be private (`lead_items_ok`;
+  `Cst.lead_cmds` rejects `export` first, with the same message).  The unit
+  is filed as `(gu_body P' Φ)[imp_sub Γimp]`.
+  *Why slots and not one definition per item:* `initial_env` evaluates every
+  definition of the context at every NbE call, so per-item definitions made
+  `Prelude::Arith::Gcd::Properties` run in 32 s (slots: 0.34 s).
+- Loading (S2): `rl_run` runs the unit from `nil` and merges what it filed
+  with `gc_merge Θ ΘL := filter (not in Θ) ΘL ++ Θ`.  Shared declarations
+  agree (`coh`, `fresh`, `loaded_functional`, by `run_functional`), so the
+  merge is well formed (`gc_merge_wf`, `run_wf`).  A loaded unit sees only
+  what its own imports load: `Frontend/ElabExamples.v` `seeB_rejected`.
+- The executable runs each unit once and keeps what it filed in a cache;
+  a hit is used under the current chain by `run_chain_irrel`, after checking
+  that no unit of the chain is in it (`chain_free`), which `run_chain_fresh`
+  shows always holds when the judgment holds.  `run_impl_complete`,
+  `prog_impl_sound`/`_complete` are exact (no equivalence up to order).
+
+### 11.3 Axioms and consistency
+- `gc_no_axioms Θ` stays the hypothesis of consistency and canonicity;
+  unsealing (`gc_unseal`) flips only the flag, so an axiom stays stuck.
+- `run_no_axioms`, `prog_sem_no_axioms` and the per-program corollaries
+  (`consistency_False_prog`, `canonical_form_of_nat_prog`) assume the
+  commands and every loadable unit are axiom-free (`cmds_no_axioms`,
+  `unit_no_axioms`).
+
+### 11.4 Elaborator
+- `ent := en_var x | en_self | en_mem x c | en_unit fp`; `en_mem x c` denotes
+  `a_mem (me_var k) c`, `k` the nearest self slot outside it.  No
+  pre-application, no qualified names, one path for global and local bodies.
+- A frame reserves its parameters' names (and, for the unit, the leading
+  names): a member may not take them (`x is already declared`).
+- A unit may be named (`Cst.glob`) or opened only once imported; the core
+  rejects it as well when it is not loaded.
+
+### 11.5 Performance notes
+- `imp_sub` computes the substitution of the tail once (a `let`): the two
+  recursive calls made it exponential in the leading context.
+- The checker types a generated item `d := H.x` at a type it recomputes as
+  `H.x`'s member type without checking the type (`check_exp_fast`, by
+  `member_wf`); checking it would check the literal prefix it holds.
+- Remaining cost: member types weaken and substitute their literal prefixes
+  (`mres_wk`, `gunit_sub`); `lib/Groups.mctt` takes 12 s against 2.8 s.

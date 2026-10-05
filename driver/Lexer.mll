@@ -56,6 +56,13 @@
     | WHERE _ -> "where"
     | DEF _ -> "def"
     | IMPORT _ -> "import"
+    | OPEN _ -> "open"
+    | THEOREM _ -> "theorem"
+    | LEMMA _ -> "lemma"
+    | FACT _ -> "fact"
+    | REMARK _ -> "remark"
+    | GIVEN _ -> "given"
+    | AXIOM _ -> "axiom"
     | AS _ -> "as"
     | USE _ -> "use"
     | EXPORT _ -> "export"
@@ -98,6 +105,13 @@
     | WHERE r
     | DEF r
     | IMPORT r
+    | OPEN r
+    | THEOREM r
+    | LEMMA r
+    | FACT r
+    | REMARK r
+    | GIVEN r
+    | AXIOM r
     | AS r
     | USE r
     | EXPORT r
@@ -155,6 +169,13 @@ rule read =
   | "where" { WHERE (get_range lexbuf) }
   | "def" { DEF (get_range lexbuf) }
   | "import" { IMPORT (get_range lexbuf) }
+  | "open" { OPEN (get_range lexbuf) }
+  | "theorem" { THEOREM (get_range lexbuf) }
+  | "lemma" { LEMMA (get_range lexbuf) }
+  | "fact" { FACT (get_range lexbuf) }
+  | "remark" { REMARK (get_range lexbuf) }
+  | "given" { GIVEN (get_range lexbuf) }
+  | "axiom" { AXIOM (get_range lexbuf) }
   | "as" { AS (get_range lexbuf) }
   | "use" { USE (get_range lexbuf) }
   | "export" { EXPORT (get_range lexbuf) }

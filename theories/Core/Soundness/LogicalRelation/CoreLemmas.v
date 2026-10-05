@@ -74,7 +74,7 @@ Qed.
 Hint Resolve glu_nat_resp_exp_eq : mctt.
 
 Add Parametric Morphism Γ : (glu_nat Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ ℕ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
+    with signature wf_exp_eq gc_ctx Γ ℕ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
 Proof.
   split; mauto using glu_nat_resp_exp_eq.
 Qed.
@@ -215,7 +215,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (P Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> iff as glu_univ_elem_typ_morphism_iff1.
+    with signature wf_exp_eq gc_ctx Γ Type@i ==> iff as glu_univ_elem_typ_morphism_iff1.
 Proof.
   split; intros; eapply glu_univ_elem_typ_resp_exp_eq; mauto 2.
 Qed.
@@ -236,7 +236,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (El Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
+    with signature wf_exp_eq gc_ctx Γ Type@i ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_typ_exp_eq;
@@ -447,7 +447,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ T : (El Γ T)
-    with signature wf_exp_eq gc_deps gc_stack Γ T ==> eq ==> iff as glu_univ_elem_trm_morphism_iff3.
+    with signature wf_exp_eq gc_ctx Γ T ==> eq ==> iff as glu_univ_elem_trm_morphism_iff3.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_exp_eq;
@@ -1026,7 +1026,7 @@ Qed.
 Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Add Parametric Morphism i a Γ : (glu_elem_bot i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
+    with signature wf_exp_eq gc_ctx Γ Type@i ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
@@ -1038,7 +1038,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ A : (glu_elem_bot i a Γ A)
-    with signature wf_exp_eq gc_deps gc_stack Γ A ==> eq ==> iff as glu_elem_bot_morphism_iff3.
+    with signature wf_exp_eq gc_ctx Γ A ==> eq ==> iff as glu_elem_bot_morphism_iff3.
 Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
@@ -1049,7 +1049,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_elem_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
+    with signature wf_exp_eq gc_ctx Γ Type@i ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
@@ -1061,7 +1061,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ A : (glu_elem_top i a Γ A)
-    with signature wf_exp_eq gc_deps gc_stack Γ A ==> eq ==> iff as glu_elem_top_morphism_iff3.
+    with signature wf_exp_eq gc_ctx Γ A ==> eq ==> iff as glu_elem_top_morphism_iff3.
 Proof.
   intros M M' HMM' *.
   split; intros []; econstructor; mauto 3; try (gen_presup HMM'; eassumption);
@@ -1072,7 +1072,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_typ_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ Type@i ==> iff as glu_typ_top_morphism_iff2.
+    with signature wf_exp_eq gc_ctx Γ Type@i ==> iff as glu_typ_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3;

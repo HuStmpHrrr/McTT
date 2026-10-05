@@ -106,7 +106,7 @@ Lemma kripke_shiftn : forall Γ Δ φ,
     length Δ <= length Γ /\ wk_eq φ (wk_shiftn (length Γ - length Δ)).
 Proof.
   intros * H; induction H as [ | ? ? ? ? ? ? ? [Hle Hψ] ];
-    match goal with H : ctx_sub _ _ _ _ |- _ => pose proof (ctx_sub_length _ _ _ _ H) end;
+    match goal with H : ctx_sub _ _ _ |- _ => pose proof (ctx_sub_length _ _ _ H) end;
     match goal with H : wk_eq _ _ |- _ => rewrite H end;
     unfold_ops; simpl in *;
     (split; [ lia | intro x ]).
@@ -320,7 +320,7 @@ Proof.
   rewrite <- (exp_sub_of_wk M), <- (exp_sub_of_wk B).
   apply wf_exp_eq_sym.
   pose proof (kripke_q_escape _ _ _ _ _ HA Hφ) as Hq.
-  pose proof (wf_sub_dom _ _ _ _ _ Hq) as HC.
+  pose proof (wf_sub_dom _ _ _ _ Hq) as HC.
   assert (Hk : Γ ▹ A[φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
   pose proof (kripke_escape _ _ _ Hk) as Hs.
   assert (Hs' : Γ ▹ A[φ]ʷ ⊢s ι (φ ⊙ ↑),,#0 : Δ ▹ A).
@@ -331,7 +331,7 @@ Proof.
   intros x C Hx.
   replace (#x[ι (φ ⊙ ↑),,#0]) with (#x[ι wk_q φ]) by (destruct x; reflexivity).
   apply wf_exp_eq_refl.
-  exact (wf_sub_apply _ _ _ _ _ Hq _ _ Hx).
+  exact (wf_sub_apply _ _ _ _ Hq _ _ Hx).
 Qed.
 
 Corollary shift_var_eq : forall Δ A B M i,

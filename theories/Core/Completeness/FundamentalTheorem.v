@@ -27,8 +27,8 @@ Section FundamentalTheorem.
   Context {GC : GCtx}.
 
   (** The identity is sound at a well-formed global context. *)
-  Lemma sem_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> sem_emb gc_deps gc_stack gc_deps gc_stack.
-  Proof. exact (gctx_sem _ _). Qed.
+  Lemma sem_msub_id_gc : ⊢g gc_ctx -> sem_emb gc_ctx gc_ctx.
+  Proof. exact (gctx_sem _). Qed.
 
   Theorem completeness_fundamental :
     (forall Γ, ⊢ Γ -> ⊨ Γ) /\
@@ -38,31 +38,31 @@ Section FundamentalTheorem.
   Proof.
     destruct kripke_fundamental as (Kc & Ke & Kq & Ks & _).
     repeat split; intros * H;
-      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ H)) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_eq_ctx H))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_subtyp_ctx H))) as Hid ];
-      [ destruct (Kc _ _ _ H _ _ Hid) as [H' _]
-      | destruct (Ke _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
-      | destruct (Kq _ _ _ _ _ _ H _ _ Hid) as (_ & _ & H')
-      | destruct (Ks _ _ _ _ _ H _ _ Hid) as (_ & _ & H') ];
+      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ H)) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_exp_ctx H))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_exp_eq_ctx H))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_subtyp_ctx H))) as Hid ];
+      [ destruct (Kc _ _ H _ Hid) as [H' _]
+      | destruct (Ke _ _ _ _ H _ Hid) as (_ & _ & H')
+      | destruct (Kq _ _ _ _ _ H _ Hid) as (_ & _ & H')
+      | destruct (Ks _ _ _ _ H _ Hid) as (_ & _ & H') ];
       destruct GC; exact H'.
   Qed.
 
   (** The module judgments. *)
   Theorem completeness_fundamental_modules :
-    (forall Γ Ψ Ψ', gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Γ ⊨ˣ Ψ ≈ Ψ') /\
-      (forall Γ U U', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U' -> Γ ⊨ᵘ U ≈ U') /\
-      (forall Γ H H', gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H').
+    (forall Γ Ψ Ψ', gc_ctx ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> Γ ⊨ˣ Ψ ≈ Ψ') /\
+      (forall Γ U U', gc_ctx ⍮ Γ ⊢ᵘ U ≈ U' -> Γ ⊨ᵘ U ≈ U') /\
+      (forall Γ H H', gc_ctx ⍮ Γ ⊢ᵐ H ≈ H' -> Γ ⊨ᵐ H ≈ H').
   Proof.
     destruct kripke_fundamental as (_ & _ & _ & _ & Kx & Ku & Km).
     split; [| split ]; intros * HJ;
-      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_ext_eq_ctx HJ))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_unit_eq_ctx HJ))) as Hid
-      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
-      [ destruct (Kx _ _ _ _ _ HJ _ _ Hid) as [HR _]
-      | destruct (Ku _ _ _ _ _ HJ _ _ Hid) as [HR _]
-      | destruct (Km _ _ _ _ _ HJ _ _ Hid) as [HR _] ];
+      [ pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_ext_eq_ctx HJ))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_unit_eq_ctx HJ))) as Hid
+      | pose proof (sem_msub_id_gc (ctx_wf_gctx _ _ (presup_modexp_eq_ctx HJ))) as Hid ];
+      [ destruct (Kx _ _ _ _ HJ _ Hid) as [HR _]
+      | destruct (Ku _ _ _ _ HJ _ Hid) as [HR _]
+      | destruct (Km _ _ _ _ HJ _ Hid) as [HR _] ];
       destruct GC; exact HR.
   Qed.
 

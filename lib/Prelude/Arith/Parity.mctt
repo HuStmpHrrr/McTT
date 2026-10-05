@@ -30,7 +30,7 @@ end
 
 end
 
-import Flag use (HasParity)
+open Flag use (HasParity)
 
 def Even (n : Nat) : Type@0 := HasParity n 0 end
 

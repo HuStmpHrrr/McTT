@@ -1,0 +1,6 @@
+(* A unit that imports [Lib::SeeC]. *)
+import Lib::SeeC
+
+module Lib::SeeA where
+  def a : Nat := succ Lib::SeeC.c end
+end

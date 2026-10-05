@@ -21,7 +21,8 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc*nat> INT
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
-%token <loc> MODULE WHERE DEF IMPORT AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
+%token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
+%token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
@@ -32,46 +33,61 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <Cst.decl> let_defn
 %type <list Cst.decl> let_defns
 %type <Cst.mods> mods
+%type <Cst.dkw> dkw
 %type <(string * list string)%type> path
-%type <list string> fpath
+%type <list string> fpath upath mpath_opt
 %type <string * string> item
 %type <list (string * string)> items
 %type <list Cst.obj> iargs
 %type <(list string * list string)%type> qpath
-%type <Cst.ispec> ispec
-%type <Cst.cmd> cmd import_cmd
+%type <option string> as_opt
+%type <list Cst.iitem> ilists ilist
+%type <list Cst.cmd> cmd lead_cmd import_cmd open_cmd
 %type <(list (string * Cst.obj) * Cst.mdef)%type> mdecl
 %type <Cst.mdef> mdef
-%type <list Cst.cmd> cmds imports
+%type <list Cst.cmd> cmds leads
 
-%on_error_reduce obj params params_opt app_obj atomic_obj cmds imports mods path fpath
+%on_error_reduce obj params params_opt app_obj atomic_obj cmds leads mods path fpath
 
 %%
 
-(* A unit is its imports and its module declaration, so definitions cannot
-   appear at the top level. *)
+(* A unit is its leading imports and opens and its module declaration, so
+   definitions cannot appear at the top level. *)
 let prog :=
-  is = imports; MODULE; p = fpath; ps = params_opt; WHERE; cs = cmds; END; EOF;
+  is = leads; MODULE; p = fpath; ps = params_opt; WHERE; cs = cmds; END; EOF;
     { (List.rev is, (List.rev p, List.rev ps, List.rev cs)) }
 
-(* Reversed list of imports, possibly empty *)
-let imports :=
+(* Reversed list of leading imports and opens, possibly empty *)
+let leads :=
   | { @nil Cst.cmd }
-  | ~ = imports; ~ = import_cmd; { import_cmd :: imports }
+  | ~ = leads; ~ = lead_cmd; { List.rev_append lead_cmd leads }
 
-(* Reversed list of commands, possibly empty *)
+(* Before the header, a list may only [use]: [Cst.lead_cmds] rejects an
+   [export]. *)
+let lead_cmd :=
+  | ~ = import_cmd; { Cst.lead_cmds import_cmd }
+  | ~ = open_cmd; { Cst.lead_cmds open_cmd }
+
+(* Reversed list of commands, possibly empty.  A command may stand for
+   several: the long form of [import] is an [import] and an [open]. *)
 let cmds :=
   | { @nil Cst.cmd }
-  | ~ = cmds; ~ = cmd; { cmd :: cmds }
+  | ~ = cmds; ~ = cmd; { List.rev_append cmd cmds }
 
 let cmd :=
-  | MODULE; p = path; md = mdecl; { Cst.c_mod_dotted false (fst p) (snd p) (fst md) (snd md) }
-  | PRIVATE; MODULE; p = path; md = mdecl; { Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md) }
-  | m = mods; DEF; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
-      { Cst.c_def m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b) }
+  | MODULE; p = path; md = mdecl; { [Cst.c_mod_dotted false (fst p) (snd p) (fst md) (snd md)] }
+  | PRIVATE; MODULE; p = path; md = mdecl; { [Cst.c_mod_dotted true (fst p) (snd p) (fst md) (snd md)] }
+  (* [def] and its shorthands share one production, so they take the same
+     parameters, type and body; the keyword decides which modifiers it takes. *)
+  | m = mods; k = dkw; x = VAR; ps = params_opt; ":"; a = obj; ":="; b = obj; END;
+      { [Cst.def_cmd k m (snd x) (fold_params Cst.pi ps a) (fold_params Cst.fn ps b)] }
+  (* An axiom has [def]'s parameters and type, and no body. *)
+  | m = mods; AXIOM; x = VAR; ps = params_opt; ":"; a = obj;
+      { [Cst.axiom_cmd m (snd x) (fold_params Cst.pi ps a)] }
   | ~ = import_cmd; <>
-  | EVAL; ~ = obj; { Cst.c_eval obj None }
-  | EVAL; e = obj; ":"; t = obj; { Cst.c_eval e (Some t) }
+  | ~ = open_cmd; <>
+  | EVAL; ~ = obj; { [Cst.c_eval obj None] }
+  | EVAL; e = obj; ":"; t = obj; { [Cst.c_eval e (Some t)] }
 
 (* A module declaration, at the top level or in a [let]: its parameters, and
    a body or an alias. *)
@@ -82,14 +98,30 @@ let mdef :=
   | WHERE; cs = cmds; END; { Cst.md_where (List.rev cs) }
   | ":="; ~ = obj; { Cst.md_alias obj }
 
-(* [import P], or [import P a1 .. ak] with an alias or items: the arguments
-   are atomic objects. *)
-let import_cmd :=
-  | IMPORT; ~ = qpath; { Cst.c_import (fst qpath) (snd qpath) nil Cst.i_open }
-  | IMPORT; ~ = qpath; ~ = iargs; ~ = ispec;
-      { Cst.c_import (fst qpath) (snd qpath) (List.rev iargs) ispec }
+(* The definition keywords.  At command level, [let] is one of them. *)
+let dkw :=
+  | DEF; { Cst.dk_def }
+  | THEOREM; { Cst.dk_theorem }
+  | LEMMA; { Cst.dk_lemma }
+  | FACT; { Cst.dk_fact }
+  | REMARK; { Cst.dk_remark }
+  | LET; { Cst.dk_let }
+  | GIVEN; { Cst.dk_given }
 
-(* Reversed list of the arguments of an import, possibly empty *)
+(* [import X::Y] loads a unit.  Anything after the unit's path makes it the
+   long form, [import X::Y] then [open X::Y.ip a1 .. ak as W items]. *)
+let import_cmd :=
+  | IMPORT; u = upath; m = mpath_opt; xs = iargs; w = as_opt; ls = ilists;
+      { Cst.import_cmds u m (List.rev xs) w (List.rev ls) }
+
+(* [open E as W items]: a module in scope or of an imported unit, applied to
+   atomic arguments, then an alias and any number of item lists, all
+   optional. *)
+let open_cmd :=
+  | OPEN; q = qpath; xs = iargs; w = as_opt; ls = ilists;
+      { Cst.open_cmds (fst q) (snd q) (List.rev xs) w (List.rev ls) }
+
+(* Reversed list of the arguments of an import or open, possibly empty *)
 let iargs :=
   | { @nil Cst.obj }
   | ~ = iargs; ~ = atomic_obj; { atomic_obj :: iargs }
@@ -101,12 +133,20 @@ let mods :=
   | PRIVATE; ABSTRACT; { Cst.md_priv_abs }
   | ABSTRACT; PRIVATE; { Cst.md_priv_abs }
 
-let ispec :=
-  | AS; x = VAR; { Cst.i_as (snd x) }
-  | USE; "("; us = items; ")"; { Cst.i_items (List.rev us) nil }
-  | USE; "("; us = items; ")"; EXPORT; "("; es = items; ")";
-      { Cst.i_items (List.rev us) (List.rev es) }
-  | EXPORT; "("; es = items; ")"; { Cst.i_items nil (List.rev es) }
+let as_opt :=
+  | { None }
+  | AS; x = VAR; { Some (snd x) }
+
+(* Reversed list of the items of the [use] and [export] lists so far, in any
+   order *)
+let ilists :=
+  | { @nil Cst.iitem }
+  | ls = ilists; l = ilist; { l ++ ls }
+
+(* One list, its items reversed: private for [use], public for [export] *)
+let ilist :=
+  | USE; "("; us = items; ")"; { List.map (fun p => (Some (fst p), snd p, true)) us }
+  | EXPORT; "("; es = items; ")"; { List.map (fun p => (Some (fst p), snd p, false)) es }
 
 (* Reversed nonempty list of items: a member, and the name it is declared as *)
 let items :=
@@ -128,12 +168,19 @@ let fpath :=
   | x = VAR; { [snd x] }
   | ~ = fpath; "::"; x = VAR; { snd x :: fpath }
 
-(* What an [import] names: an internal module, a unit, or a module of one *)
+(* The unit an [import] names, in order *)
+let upath :=
+  | ~ = fpath; "::"; x = VAR; { List.rev (snd x :: fpath) }
+
+(* The member path after it, possibly empty, in order *)
+let mpath_opt :=
+  | { @nil string }
+  | "."; ~ = path; { path_list path }
+
+(* What an [open] names: a module in scope, a unit, or a module of one *)
 let qpath :=
   | ~ = path; { (@nil string, path_list path) }
-  | ~ = fpath; "::"; x = VAR; { (List.rev (snd x :: fpath), @nil string) }
-  | ~ = fpath; "::"; x = VAR; "."; ~ = path;
-      { (List.rev (snd x :: fpath), path_list path) }
+  | ~ = upath; ~ = mpath_opt; { (upath, mpath_opt) }
 
 let fnbinder :=
   | PI; { Cst.pi }

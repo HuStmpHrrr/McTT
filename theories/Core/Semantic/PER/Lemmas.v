@@ -1061,13 +1061,11 @@ Qed.
 
 Lemma per_dmod_sym_all :
   (forall m m', per_dmod m m' -> per_dmod m' m) /\
-  (forall ts ρ ρ' args args', per_gargs ts ρ ρ' args args' -> per_gargs ts ρ' ρ args' args) /\
   (forall ts ρ D ts' ρ' D' args args', per_ltele ts ρ D ts' ρ' D' args args' -> per_ltele ts' ρ' D' ts ρ D args' args) /\
   (forall ρ D ρ' D', per_mdef ρ D ρ' D' -> per_mdef ρ' D' ρ D) /\
   (forall ρ Φ ρ' Φ', per_body ρ Φ ρ' Φ' -> per_body ρ' Φ' ρ Φ).
 Proof.
   apply per_dmod_mut_ind_all; intros; try solve [ econstructor; eauto ].
-  - destruct (rel_typ_sym r) as [? Hs]; econstructor; eauto.
   - destruct (rel_typ_sym r) as [? Hs]; econstructor; eauto.
   - destruct (rel_typ_sym r) as [? Hs]; econstructor; [ eassumption |].
     intros c c' Hc; apply H, Hs, Hc.
@@ -1081,8 +1079,6 @@ Proof. exact (proj1 per_dmod_sym_all). Qed.
 
 Lemma per_dmod_trans_all :
   (forall m1 m2, per_dmod m1 m2 -> forall m3, per_dmod m2 m3 -> per_dmod m1 m3) /\
-  (forall ts ρ1 ρ2 a1 a2, per_gargs ts ρ1 ρ2 a1 a2 ->
-     forall ρ3 a3, per_gargs ts ρ2 ρ3 a2 a3 -> per_gargs ts ρ1 ρ3 a1 a3) /\
   (forall ts1 ρ1 D1 ts2 ρ2 D2 a1 a2, per_ltele ts1 ρ1 D1 ts2 ρ2 D2 a1 a2 ->
      forall ts3 ρ3 D3 a3, per_ltele ts2 ρ2 D2 ts3 ρ3 D3 a2 a3 -> per_ltele ts1 ρ1 D1 ts3 ρ3 D3 a1 a3) /\
   (forall ρ1 D1 ρ2 D2, per_mdef ρ1 D1 ρ2 D2 -> forall ρ3 D3, per_mdef ρ2 D2 ρ3 D3 -> per_mdef ρ1 D1 ρ3 D3) /\
@@ -1090,17 +1086,9 @@ Lemma per_dmod_trans_all :
 Proof.
   apply per_dmod_mut_ind_all; intros;
     match goal with H : _ |- _ => inversion H; subst; clear H end.
-  - (* global *)
-    match goal with H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
-      rewrite H1 in H2; injection H2 as <- end.
-    econstructor; eauto.
   - econstructor; eauto.
   - econstructor; eauto.
-  - constructor.
-  - (* global arguments *)
-    match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
-      destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
-    econstructor; [ exact HT | eapply Ht; [ eassumption | apply HRR; eassumption ] | eauto ].
+  - econstructor; eauto.
   - (* a supplied parameter *)
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
@@ -1116,19 +1104,15 @@ Proof.
   - econstructor; eauto.
   - (* an alias: the middle target is one value *)
     functional_eval_rewrite_clear.
-    match goal with H1 : eval_modexp _ _ ?E ?ρ ?h1, H2 : eval_modexp _ _ ?E ?ρ ?h2 |- _ =>
+    match goal with H1 : eval_modexp _ ?E ?ρ ?h1, H2 : eval_modexp _ ?E ?ρ ?h2 |- _ =>
       assert (h1 = h2) by (eapply functional_eval_modexp; eassumption); subst end.
     econstructor; eauto.
   - constructor.
   - (* a definition *)
-    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
     match goal with H1 : rel_typ _ _ _ _ _ _, H2 : rel_typ _ _ _ _ _ _ |- _ =>
       destruct (rel_typ_trans H1 H2) as (HRR & HT & Ht) end.
     econstructor; eauto using rel_elem_trans.
   - (* a module *)
-    match goal with H1 : eval_benv _ _ ?ρ ?Φ ?r1, H2 : eval_benv _ _ ?ρ ?Φ ?r2 |- _ =>
-      assert (r1 = r2) by (eapply functional_eval_benv; eassumption); subst end.
     econstructor; eauto.
 Qed.
 
@@ -1160,14 +1144,14 @@ Qed.
     unit related to it over the same tails. *)
 Lemma mod_tie_move : forall (T : relation env) U U' ρ m,
     T ρ ρ ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod m (dm_local ρ U nil) -> per_dmod m (dm_local ρ U' nil).
+    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_of ρ U) (dm_of ρ' U')) ->
+    per_dmod m (dm_of ρ U) -> per_dmod m (dm_of ρ U').
 Proof. intros * Hρ HU Hm; eapply per_dmod_trans; [ exact Hm | apply HU, Hρ ]. Qed.
 
 Lemma mod_tie_move_sym : forall (T : relation env) U U' ρ m,
     PER T -> T ρ ρ ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod m (dm_local ρ U' nil) -> per_dmod m (dm_local ρ U nil).
+    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_of ρ U) (dm_of ρ' U')) ->
+    per_dmod m (dm_of ρ U') -> per_dmod m (dm_of ρ U).
 Proof.
   intros * HT Hρ HU Hm; eapply per_dmod_trans; [ exact Hm |].
   apply per_dmod_sym, HU, Hρ.
@@ -1473,8 +1457,8 @@ Proof with solve [eauto using per_univ_trans].
         last through the middle unit. *)
     destruct IHper_ctx_env as [IHctx IHenv].
     match goal with
-    | HU1 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_local ρ ?U1 nil) (dm_local ρ' ?U2 nil),
-      HU2 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_local ρ ?U2 nil) (dm_local ρ' ?U3 nil),
+    | HU1 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_of ρ ?U1) (dm_of ρ' ?U2),
+      HU2 : forall ρ ρ', ?T ρ ρ' -> per_dmod (dm_of ρ ?U2) (dm_of ρ' ?U3),
       HE : _ <~> _, HT : PER ?T, Hc : per_ctx_env ?T ?Γ2 ?Γ3 |- per_ctx_env _ (?Γ1 ▹ₘ ?U1) (?Γ3 ▹ₘ ?U3) =>
         eapply per_ctx_env_cons_mod with (tail_rel := T);
         [ apply IHctx; exact Hc | exact HT
@@ -2299,17 +2283,17 @@ Qed.
     related tails in either combination. *)
 Lemma mod_closure_move : forall (T : relation env) U U' ρ1 ρ2,
     PER T -> T ρ1 ρ2 ->
-    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_local ρ U nil) (dm_local ρ' U' nil)) ->
-    per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U nil) /\
-    per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U' nil) /\
-    per_dmod (dm_local ρ1 U' nil) (dm_local ρ2 U nil) /\
-    per_dmod (dm_local ρ1 U' nil) (dm_local ρ2 U' nil).
+    (forall ρ ρ', T ρ ρ' -> per_dmod (dm_of ρ U) (dm_of ρ' U')) ->
+    per_dmod (dm_of ρ1 U) (dm_of ρ2 U) /\
+    per_dmod (dm_of ρ1 U) (dm_of ρ2 U') /\
+    per_dmod (dm_of ρ1 U') (dm_of ρ2 U) /\
+    per_dmod (dm_of ρ1 U') (dm_of ρ2 U').
 Proof.
   intros * HT H12 HP.
   assert (H11 : T ρ1 ρ1) by (etransitivity; [ exact H12 | symmetry; exact H12 ]).
   assert (H22 : T ρ2 ρ2) by (etransitivity; [ symmetry; exact H12 | exact H12 ]).
   pose proof (HP _ _ H12) as A; pose proof (HP _ _ H11) as B; pose proof (HP _ _ H22) as C.
-  assert (D1 : per_dmod (dm_local ρ1 U nil) (dm_local ρ2 U nil)) by (eapply per_dmod_trans; [ exact A | apply per_dmod_sym; exact C ]).
+  assert (D1 : per_dmod (dm_of ρ1 U) (dm_of ρ2 U)) by (eapply per_dmod_trans; [ exact A | apply per_dmod_sym; exact C ]).
   split; [ exact D1 | split; [ exact A | split ] ].
   - eapply per_dmod_trans; [ apply per_dmod_sym; exact B | exact D1 ].
   - eapply per_dmod_trans; [ apply per_dmod_sym; exact B | exact A ].

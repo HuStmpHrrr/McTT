@@ -186,10 +186,10 @@ Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at
 
 Inductive rel_mod (H : modexp) (σ : sub) (ρ ρσ : env) (H' : modexp) (σ' : sub) (ρ' ρ'σ' : env) : Prop :=
 | mk_rel_mod : forall hσ h h' h'σ',
-    eval_modexp gc_deps gc_stack H[σ]ᵐ ρ hσ ->
-    eval_modexp gc_deps gc_stack H ρσ h ->
-    eval_modexp gc_deps gc_stack H' ρ'σ' h' ->
-    eval_modexp gc_deps gc_stack H'[σ']ᵐ ρ' h'σ' ->
+    eval_modexp gc_ctx H[σ]ᵐ ρ hσ ->
+    eval_modexp gc_ctx H ρσ h ->
+    eval_modexp gc_ctx H' ρ'σ' h' ->
+    eval_modexp gc_ctx H'[σ']ᵐ ρ' h'σ' ->
     rel_chain per_dmod ([hσ; h; h'; h'σ']) ->
     rel_mod H σ ρ ρσ H' σ' ρ' ρ'σ'.
 #[global] Arguments mk_rel_mod {_ _ _ _ _ _ _ _}.
@@ -238,17 +238,32 @@ Inductive sem_ctx : ctx -> Prop :=
 with sem_unit : ctx -> gunit -> Prop :=
 | sem_unit_body : forall Γ Δ Φ,
     tele_ass Δ ->
-    body_shape Φ Φ ->
-    ⊨ body_ctx Φ ++ Δ ++ Γ ->
+    ⊨ Δ ++ Γ ->
+    sem_body (Δ ++ Γ) Φ ->
     sem_unit Γ (gu_body Δ Φ)
 | sem_unit_alias : forall Γ Δ E,
     tele_ass Δ ->
     ⊨ Δ ++ Γ ->
     Δ ++ Γ ⊨ᵐ E ≈ E ->
     sem_unit Γ (gu_mk Δ (md_alias E))
+(** The entries of a body over [Γ0], each valid under its self slot. *)
+with sem_body : ctx -> gmod -> Prop :=
+| sem_body_nil : forall Γ0, sem_body Γ0 gm_nil
+| sem_body_def : forall Γ0 Φ x pv A M i,
+    sem_body Γ0 Φ ->
+    ⊨ self_ent Φ :: Γ0 ->
+    self_ent Φ :: Γ0 ⊨ A ≈ A : Type@i ->
+    self_ent Φ :: Γ0 ⊨ M ≈ M : A ->
+    sem_body Γ0 (gm_ext Φ x (ge_def pv A (Some M)))
+| sem_body_mod : forall Γ0 Φ x pv U,
+    sem_body Γ0 Φ ->
+    ⊨ self_ent Φ :: Γ0 ->
+    self_ent Φ :: Γ0 ⊨ᵐ me_lit U ≈ me_lit U ->
+    sem_unit (self_ent Φ :: Γ0) U ->
+    sem_body Γ0 (gm_ext Φ x (ge_mod pv U))
 where "⊨ Γ" := (sem_ctx Γ) : type_scope.
 
-Hint Constructors sem_ctx sem_unit : mctt.
+Hint Constructors sem_ctx sem_unit sem_body : mctt.
 
 (** Two units are equivalent when their closures are related and each is valid
     in its parts.  Two extensions of a context are equivalent when both
@@ -289,7 +304,7 @@ Notation "Γ ⊨s σ ≈ σ' : Δ" := (rel_sub_under_ctx Γ Δ σ σ') (at level
 Notation "Γ ⊨s σ : Δ" := (valid_sub_under_ctx Γ Δ σ) (at level 70, σ at level 69, Δ at level 69).
 Notation "⊨ Γ" := (sem_ctx Γ) : type_scope.
 #[export]
-Hint Constructors sem_ctx sem_unit rel_mod : mctt.
+Hint Constructors sem_ctx sem_unit sem_body rel_mod : mctt.
 Notation "Γ ⊨ᵐ H ≈ H'" := (rel_modexp_under_ctx Γ H H') (at level 70, H at level 69, H' at level 69).
 Notation "Γ ⊨ᵘ U ≈ U'" := (rel_unit_under_ctx Γ U U') (at level 70, U at level 69, U' at level 69).
 Notation "Γ ⊨ˣ Ψ ≈ Ψ'" := (rel_ext_under_ctx Γ Ψ Ψ') (at level 70, Ψ at level 69, Ψ' at level 69).

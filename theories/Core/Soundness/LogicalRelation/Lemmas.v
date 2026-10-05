@@ -679,7 +679,7 @@ Proof.
   induction 1; intros * HSb Hsubeq;
     apply_predicate_equivalence;
     simpl in *;
-    (pose proof (wf_sub_eq_left _ _ _ _ _ _ Hsubeq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ _ Hsubeq) as Hσ');
+    (pose proof (wf_sub_eq_left _ _ _ _ _ Hsubeq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ Hsubeq) as Hσ');
     try eassumption.
   - destruct_by_head cons_glu_sub_pred.
     econstructor; mauto 4.
@@ -710,7 +710,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism Sb Γ (H : glu_ctx_env Sb Γ) Δ : (Sb Δ)
-    with signature wf_sub_eq gc_deps gc_stack Δ Γ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
+    with signature wf_sub_eq gc_ctx Δ Γ ==> eq ==> iff as glu_ctx_env_sub_morphism_iff2.
 Proof.
   split; intros; eapply glu_ctx_env_sub_resp_sub_eq; mauto 2 using wf_sub_eq_sym.
 Qed.
@@ -724,7 +724,7 @@ Lemma cons_glu_sub_pred_resp_wf_sub_eq : forall {i Γ A Sb Δ σ σ' ρ},
 Proof.
   intros * Hglu HA Heq Hσ.
   dependent destruction Hσ.
-  (pose proof (wf_sub_eq_left _ _ _ _ _ _ Heq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ _ Heq) as Hσ').
+  (pose proof (wf_sub_eq_left _ _ _ _ _ Heq) as Hσ; pose proof (wf_sub_eq_right _ _ _ _ _ Heq) as Hσ').
   assert (⊢ Γ ▹ A) by mauto 3.
   assert (Γ ▹ A ⊢s Wk : Γ) by mauto 3.
   assert (Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; mauto 3).
@@ -738,7 +738,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i Γ A Sb Δ (Hglu : EG Γ ∈ glu_ctx_env ↘ Sb) (HA : Γ ⊢ A : Type@i) : (cons_glu_sub_pred i Γ A Sb Δ)
-    with signature wf_sub_eq gc_deps gc_stack Δ (Γ ▹ A) ==> eq ==> iff as cons_glu_sub_pred_morphism_iff.
+    with signature wf_sub_eq gc_ctx Δ (Γ ▹ A) ==> eq ==> iff as cons_glu_sub_pred_morphism_iff.
 Proof.
   split; mauto using cons_glu_sub_pred_resp_wf_sub_eq, wf_sub_eq_sym.
 Qed.
@@ -1197,7 +1197,7 @@ Proof.
     econstructor; [ mauto 3 | | exact HWk ].
     destruct (glu_ctx_env_per_ctx_env H) as [R HR].
     pose proof (glu_ctx_env_per_env H HR HId) as Hρ.
-    match goal with Hu : wf_unit_eq _ _ _ _ _ |- _ =>
+    match goal with Hu : wf_unit_eq _ _ _ _ |- _ =>
       destruct (proj1 (proj2 completeness_fundamental_modules) _ _ _ Hu) as (HU & _) end.
     exact (unit_chain_at HU HR _ _ Hρ).
 Qed.

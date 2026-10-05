@@ -60,14 +60,6 @@ Proof. intros * H H'; apply ctx_find_mod_spec in H, H'; congruence. Qed.
 
 (** ** Syntactic Helpers *)
 
-(** The body up to and including the entry named [x]. *)
-Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
-  match Φ with
-  | gm_nil => None
-  | gm_ext Φ' y _ => if String.eqb x y then Some Φ else gm_prefix_upto Φ' x
-  | gm_import Φ' _ _ => gm_prefix_upto Φ' x
-  end.
-
 (** [M] applied to [args], outermost first. *)
 Fixpoint apps (M : exp) (args : list exp) : exp :=
   match args with
@@ -157,18 +149,19 @@ Proof. reflexivity. Qed.
 
 (** ** Member Types
 
-    [member_type Θ Ξ Γ H ch R] says that the chain [ch] of the module [H] is
+    [member_type Θ Γ H ch R] says that the chain [ch] of the module [H] is
     a definition of canonical type [A] ([R = mr_term A]), or a module that
     still takes the parameters [T] ([R = mr_mod T]).  A module is applied to
     an argument of the type of its outermost parameter, [tele_view]: it may be
     applied to fewer arguments than it has parameters, but not to more.
 
     A body member's type is its declared type, generalized over the unit's
-    parameters and over the body before it, which become [ℓ]/[ℓₘ] binders; a
+    parameters and over its self slot, which become [Π]/[ℓₘ] binders; a
     module's arity is extended by them.  An alias member's type is its target
     member's type, instantiated with the alias's arguments and generalized over
-    its parameters.  A chain from a unit is read off the global context;
-    privacy is not a matter of typing (see [Command]). *)
+    its parameters.  A chain from a unit is read in the unit the global
+    context files under its path; privacy is not a matter of typing (see
+    [Command]). *)
 
 (** The sort of a member. *)
 Inductive mkind : Set :=
@@ -229,64 +222,53 @@ Definition mres_sub (R : mres) (σ : sub) : mres :=
   | mr_mod T => mr_mod (tele_sub T σ)
   end.
 
-Inductive member_type (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string -> mres -> Prop :=
-(** A definition reached from a unit, of its declared type. *)
-| mt_unit_def : forall Γ fp ch b pv A B,
-    ch <> nil ->
-    gc_resolve Θ Ξ (q_abs fp ch) = Some (ge_def b pv A B) ->
-    member_type Θ Ξ Γ (me_unit fp) ch (mr_term A)
-(** A body module reached from a unit, taking the parameters it is filed
-    with. *)
-| mt_unit_mod : forall Γ fp ch T,
-    gc_module Θ Ξ (q_abs fp ch) = Some (mr_body T) ->
-    member_type Θ Ξ Γ (me_unit fp) ch (mr_mod T)
-(** A chain through an alias reached from a unit, read in the alias, past it. *)
-| mt_unit_alias : forall Γ fp ch U r R,
-    (mres_kind R = mk_term -> r <> nil) ->
-    gc_module Θ Ξ (q_abs fp ch) = Some (mr_alias U r) ->
-    unit_member_type Θ Ξ nil U r R ->
-    member_type Θ Ξ Γ (me_unit fp) ch R
+Inductive member_type (Θ : gctx) : ctx -> modexp -> list string -> mres -> Prop :=
+(** A chain of a unit, read in the unit, which is closed. *)
+| mt_unit : forall Γ fp U ch R,
+    gc_unit Θ fp = Some U ->
+    unit_member_type Θ nil U ch R ->
+    member_type Θ Γ (me_unit fp) ch R
 (** A chain of a module slot, read in the unit it holds. *)
 | mt_var : forall Γ x U ch R,
     Γ ∋ #x ⇒ₘ U ->
-    unit_member_type Θ Ξ Γ U ch R ->
-    member_type Θ Ξ Γ (me_var x) ch R
+    unit_member_type Θ Γ U ch R ->
+    member_type Θ Γ (me_var x) ch R
 (** A chain of a literal module. *)
 | mt_lit : forall Γ U ch R,
-    unit_member_type Θ Ξ Γ U ch R ->
-    member_type Θ Ξ Γ (me_lit U) ch R
+    unit_member_type Θ Γ U ch R ->
+    member_type Θ Γ (me_lit U) ch R
 (** A selection is read as a longer chain; a definition is not a module. *)
 | mt_mem : forall Γ H y ch R,
     (mres_kind R = mk_term -> ch <> nil) ->
-    member_type Θ Ξ Γ H (y :: ch) R ->
-    member_type Θ Ξ Γ (me_mem H y) ch R
+    member_type Θ Γ H (y :: ch) R ->
+    member_type Θ Γ (me_mem H y) ch R
 (** A member of an application: the member of the module, its outermost
     parameter instantiated with the argument. *)
 | mt_app : forall Γ H N ch R R',
-    member_type Θ Ξ Γ H ch R ->
+    member_type Θ Γ H ch R ->
     mres_app R N = Some R' ->
-    member_type Θ Ξ Γ (me_app H N) ch R'
-with unit_member_type (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -> mres -> Prop :=
+    member_type Θ Γ (me_app H N) ch R'
+with unit_member_type (Θ : gctx) : ctx -> gunit -> list string -> mres -> Prop :=
 (** A body unit itself takes its parameters. *)
 | umt_self : forall Γ Δ Φ,
-    unit_member_type Θ Ξ Γ (gu_body Δ Φ) nil (mr_mod Δ)
-(** A definition of the body, generalized over the parameters and the body
-    before it. *)
-| umt_def : forall Γ Δ Φ Φ' x b pv A B,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    unit_member_type Θ Ξ Γ (gu_body Δ Φ) (x :: nil) (mr_term (ctx_pi (body_ctx Φ' ++ Δ) A))
+    unit_member_type Θ Γ (gu_body Δ Φ) nil (mr_mod Δ)
+(** A definition of the body, generalized over the parameters and its self
+    slot, which holds the body before it. *)
+| umt_def : forall Γ Δ Φ Φ' x pv A oM,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A oM)) ->
+    unit_member_type Θ Γ (gu_body Δ Φ) (x :: nil) (mr_term (ctx_pi (self_ent Φ' :: Δ) A))
 (** A chain through a module of the body, read in it, generalized over the
-    parameters and the body before it. *)
+    parameters and its self slot. *)
 | umt_mod : forall Γ Δ Φ Φ' y pm Uy ch R,
     (mres_kind R = mk_term -> ch <> nil) ->
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
-    unit_member_type Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch R ->
-    unit_member_type Θ Ξ Γ (gu_body Δ Φ) (y :: ch) (mres_gen (body_ctx Φ' ++ Δ) R)
+    unit_member_type Θ (self_ent Φ' :: Δ ++ Γ) Uy ch R ->
+    unit_member_type Θ Γ (gu_body Δ Φ) (y :: ch) (mres_gen (self_ent Φ' :: Δ) R)
 (** A chain of an alias, read in its target, generalized over the alias's
     parameters. *)
 | umt_alias : forall Γ Δ E ch R,
-    member_type Θ Ξ (Δ ++ Γ) E ch R ->
-    unit_member_type Θ Ξ Γ (gu_mk Δ (md_alias E)) ch (mres_gen Δ R).
+    member_type Θ (Δ ++ Γ) E ch R ->
+    unit_member_type Θ Γ (gu_mk Δ (md_alias E)) ch (mres_gen Δ R).
 
 Scheme member_type_mut_ind := Induction for member_type Sort Prop
 with unit_member_type_mut_ind := Induction for unit_member_type Sort Prop.
@@ -298,12 +280,12 @@ Hint Constructors member_type unit_member_type : mctt.
 (** ** Expansions and the δ-Reduct
 
     The expansion of a member of a unit is a term of the unit's context: a
-    body member is its body under the unit's parameters and the body before
-    it; an alias member is its target member under the alias's parameters.
-    The δ-reduct of [H.x] makes one lookup: a definition reached from a unit
-    is its own reduct, the global, which unfolds by its own rule; otherwise it
-    is the expansion of a member of an alias, or of a member of a slot or a
-    literal.  It never follows an alias chain. *)
+    body member is its body under the unit's parameters and its self slot; a
+    member of a submodule is the member of its literal, under the same; an
+    alias member is its target member under the alias's parameters.  The
+    δ-reduct of [H.x] is the expansion of the member of the unit [H] is read
+    in: a unit's, a slot's or a literal's.  It never follows an alias
+    chain. *)
 
 Definition member_expansion (U : gunit) (ch : list string) : option exp :=
   match U, ch with
@@ -311,24 +293,20 @@ Definition member_expansion (U : gunit) (ch : list string) : option exp :=
   | gu_mk Δ (md_alias E), _ => Some (ctx_fn Δ (member_ref E ch))
   | gu_mk Δ (md_body Φ), x :: ch' =>
       match gm_prefix_upto Φ x, ch' with
-      | Some (gm_ext Φ' y (ge_def b pv A B)), nil =>
-          Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_def b pv A B)) ++ Δ) (a_var 0))
-      | Some (gm_ext Φ' y (ge_mod pm Uy)), _ :: _ =>
-          Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch'))
+      | Some (gm_ext Φ' _ (ge_def _ _ (Some M))), nil =>
+          Some (ctx_fn (self_ent Φ' :: Δ) M)
+      | Some (gm_ext Φ' _ (ge_mod _ Uy)), _ :: _ =>
+          Some (ctx_fn (self_ent Φ' :: Δ) (member_ref (me_lit Uy) ch'))
       | _, _ => None
       end
   end.
 
-Fixpoint member_unfold_ch (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (ch : list string) : option exp :=
+Fixpoint member_unfold_ch (Θ : gctx) (Γ : ctx) (H : modexp) (ch : list string) : option exp :=
   match H with
   | me_unit fp =>
-      match gc_resolve Θ Ξ (q_abs fp ch) with
-      | Some (ge_def _ _ _ _) => Some (member_ref (me_unit fp) ch)
-      | _ =>
-          match gc_module Θ Ξ (q_abs fp ch) with
-          | Some (mr_alias U r) => member_expansion U r
-          | _ => None
-          end
+      match gc_unit Θ fp with
+      | Some U => member_expansion U ch
+      | None => None
       end
   | me_var x =>
       match ctx_find_mod Γ x with
@@ -336,9 +314,9 @@ Fixpoint member_unfold_ch (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (ch
       | None => None
       end
   | me_lit U => member_expansion U ch
-  | me_mem H y => member_unfold_ch Θ Ξ Γ H (y :: ch)
-  | me_app H N => option_map (fun M => a_app M N) (member_unfold_ch Θ Ξ Γ H ch)
+  | me_mem H y => member_unfold_ch Θ Γ H (y :: ch)
+  | me_app H N => option_map (fun M => a_app M N) (member_unfold_ch Θ Γ H ch)
   end.
 
-Definition member_unfold (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (x : string) : option exp :=
-  member_unfold_ch Θ Ξ Γ H (x :: nil).
+Definition member_unfold (Θ : gctx) (Γ : ctx) (H : modexp) (x : string) : option exp :=
+  member_unfold_ch Θ Γ H (x :: nil).

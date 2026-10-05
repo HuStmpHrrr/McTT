@@ -108,7 +108,7 @@ Proof.
 Qed.
 
 Lemma eval_sub_extend_inv : forall σ e ρ ρσ,
-    ⟦ sb_extend σ e ⟧s ρ ↘ ρσ -> ⟦ σ ⟧s ρ ↘ ρσ↯ /\ eval_sentry gc_deps gc_stack e ρ (env_entry ρσ 0).
+    ⟦ sb_extend σ e ⟧s ρ ↘ ρσ -> ⟦ σ ⟧s ρ ↘ ρσ↯ /\ eval_sentry gc_ctx e ρ (env_entry ρσ 0).
 Proof.
   intros * H; split; [| exact (H 0) ].
   intros x; specialize (H (S x)); cbn in H.
@@ -244,7 +244,7 @@ Proof.
   pose proof (rel_sub_compose_of_link Hτj Hl _ _ _ Hσ) as Hτσ.
   destruct (Hl _ _ HΓ' _ _ Hσ _ HΔ _ _ Hρ Hev) as [e1 [He1 L]].
   destruct (unit_chain HU) as [R0 [HΔ0 Hch]].
-  exists (e1 ↦ᵐ dm_local ρ U[τ ⨟ σ]ᵘ nil); split.
+  exists (e1 ↦ᵐ dm_of ρ U[τ ⨟ σ]ᵘ); split.
   - rewrite sb_extend_compose_gen; apply eval_sub_extend_mod; [ exact He1 |].
     cbn [sentry_sub modexp_sub]; rewrite gunit_sub_sub; constructor.
   - intros e2 He2.
@@ -252,7 +252,7 @@ Proof.
     inversion Hh2; subst.
     apply E.
     pose proof (L _ Ht2) as Ht.
-    assert (Heq : env_eq e2 (e2↯ ↦ᵐ dm_local ρσ U[τ]ᵘ nil))
+    assert (Heq : env_eq e2 (e2↯ ↦ᵐ dm_of ρσ U[τ]ᵘ))
       by (intros [| x]; [ exact Hh2e | destruct e2; reflexivity ]).
     rewrite Heq.
     pose proof (Hch _ _ HΓ' _ _ (rel_sub_under_ctx_refl_left Hτσ) _ _ _ _ Hρ He1 He1) as [C1 _].
@@ -313,7 +313,7 @@ Proof.
   exists (⟪ψ⟫ ρσ); split.
   - intros x; cbn; rewrite (eval_wk_entry _ _ Hψm x); exact (Hev (ψ x)).
   - intros e2 He2.
-    assert (Heq : env_eq e2 (⟪ψ⟫ ρσ)) by (eapply functional_eval_sub; [ exact He2 | exact (@eval_sub_of_wk _ _ ψ ρσ Hψm) ]).
+    assert (Heq : env_eq e2 (⟪ψ⟫ ρσ)) by (eapply functional_eval_sub; [ exact He2 | exact (@eval_sub_of_wk _ ψ ρσ Hψm) ]).
     rewrite Heq.
     assert (Hρσ : RΓ ρσ ρσ)
       by (eapply (rel_sub_under_ctx_at' (rel_sub_under_ctx_refl_left Hσ) HΓ' HΓ); eassumption).
@@ -350,7 +350,7 @@ Proof.
     assert (Hh : env_entry e2 0 = env_entry ρσ 0) by exact (He2 0).
     assert (Ht2 : ⟦ τ ⨟ (sb_of_wk wk_shift) ⟧s ρσ ↘ e2↯)
       by (intros x; pose proof (He2 (S x)) as H; unfold sb_q, sb_extend, sb_wk in H; cbn in H |- *; rewrite sentry_sub_of_wk; destruct e2; exact H).
-    destruct (Hl _ _ HΓB _ _ HWk _ HΔ _ _ Hρσ (@eval_sub_of_wk _ _ wk_shift ρσ wk_mono_shift)) as [g1 [Hg1 Lg]].
+    destruct (Hl _ _ HΓB _ _ HWk _ HΔ _ _ Hρσ (@eval_sub_of_wk _ wk_shift ρσ wk_mono_shift)) as [g1 [Hg1 Lg]].
     assert (Heq : env_eq e2↯ g1) by (eapply functional_eval_sub; eassumption).
     rewrite eval_wk_shift in Lg.
     destruct Hρσ as [Hρσt Hρσh].

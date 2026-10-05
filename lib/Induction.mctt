@@ -46,7 +46,7 @@ end
 
 end
 
-import Halving use (half; halfTwo)
+open Halving use (half; halfTwo)
 
 eval half 7
 

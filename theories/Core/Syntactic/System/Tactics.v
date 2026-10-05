@@ -21,26 +21,26 @@ Import Syntax_Notations Wk_Notations.
 #[local]
 Ltac invert_wf_ctx1 H :=
   match type of H with
-  | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▹ ?A =>
+  | ⊢ ?Θ ⍮ ?Γ ▹ ?A =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
           destruct HAi as [i HA]
       end
-  | ⊢ ?Θ ⍮ ?Ξ ⍮ ?Γ ▸ ?A ≔ ?M =>
+  | ⊢ ?Θ ⍮ ?Γ ▸ ?A ≔ ?M =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       let HM := fresh "HM" in
       pose proof ctx_decomp_def H as [HΓ [HAi HM]];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -58,13 +58,13 @@ Ltac invert_wf_ctx :=
     which [gen_core_presups] calls. *)
 Ltac gen_core_presup H :=
   match type of H with
-  | ?Θ ⍮ ?Ξ ⍮ ?Γ ⊢ ?M : ?A =>
+  | ?Θ ⍮ ?Γ ⊢ ?M : ?A =>
       let HΓ := fresh "HΓ" in
       let HAi := fresh "HAi" in
       pose proof presup_exp H as [HΓ HAi];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: __mark__ _ Θ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -76,20 +76,20 @@ Ltac gen_lookup_presup H :=
   match type of H with
   | ?Γ ∋ #?x : ?A =>
       match goal with
-      | _: _ ⍮ _ ⍮ Γ ⊢ A : Type@_ |- _ => fail
-      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => fail
+      | _: _ ⍮ Γ ⊢ A : Type@_ |- _ => fail
+      | _: _ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => fail
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
-          pose proof (ctx_lookup_wf _ _ _ _ _ ltac:(eassumption) H) as [i HA]
+          pose proof (ctx_lookup_wf _ _ _ _ ltac:(eassumption) H) as [i HA]
       end
   | ?Γ ∋ #?x ≔ ?M : ?A =>
       match goal with
-      | _: _ ⍮ _ ⍮ Γ ⊢ M : A |- _ => fail
-      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ M : A |- _ => fail
+      | _: _ ⍮ Γ ⊢ M : A |- _ => fail
+      | _: _ ⍮ __mark__ _ Γ ⊢ M : A |- _ => fail
       | _ =>
           let HM := fresh "HM" in
-          pose proof (ctx_lookup_def_wf _ _ _ _ _ _ ltac:(eassumption) H) as HM
+          pose proof (ctx_lookup_def_wf _ _ _ _ _ ltac:(eassumption) H) as HM
       end
   end.
 

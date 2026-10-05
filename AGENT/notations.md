@@ -29,23 +29,14 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 | 70 | every judgment, with its arguments at 69 |
 
 The syntactic judgments carry a global context, spelled with `⍮`:
-`⊢ Ψ ⍮ Γ`, `Ψ ⍮ Γ ⊢ M : A`, `Ψ ⍮ Γ ⊢ M ≈ M' : A`, `Ψ ⍮ Γ ⊢ A ⊆ A'`,
-`Ψ ⍮ Γ ⊢w φ : Δ`, `Ψ ⍮ Γ ⊢s σ : Δ`, `Ψ ⍮ Γ ⊢s σ ≈ σ' : Δ`, and
-`⊢ Ψ ⍮ Δ ⊆ Γ` for context refinement.  `⍮` is a terminal of each of those
-notations, not an operator, so it has no level of its own.  The global context's
-own well-formedness uses a letter suffix in the same style as `⊢w`/`⊢s`:
-`⊢g Ψ` (the stack, notation of `wf_gstack`), plus three that also carry the
-ambient telescope the thing is checked in, again with `⍮`: `Ψ ⍮ Δ ⊢e E` (an
-entry), `Ψ ⍮ Δ ⊢m Φ` (a module), `Ψ ⍮ Δ ⊢u U` (a unit; a definition over
-`⊢m`, not a judgment).  `wf_gdeps Θ` has no notation.  `Γ ∋ #x : A` takes no `Ψ`.
-
-Resolution has two notations, distinguished by a superscript because they have
-the same shape: `Φ ∋ ip ⇒ Δ ⍮ E` in a module, and `Ψ ∋ᵍ p ⇒ Δ ⍮ E` for a whole
-`path`.  A bare `∋` would collide with the other, which is why only the innermost
-one is unadorned.  Resolution across the dependency levels (`gds_lookup`) is a
-*function*, so it needs no notation.
-The `Δ` is the telescope crossed on the way in, accumulated innermost-first, so
-that a use site can generalize what it found with `ctx_pi`/`ctx_fn`.
+`⊢ Θ ⍮ Γ`, `Θ ⍮ Γ ⊢ M : A`, `Θ ⍮ Γ ⊢ M ≈ M' : A`, `Θ ⍮ Γ ⊢ A ⊆ A'`,
+`Θ ⍮ Γ ⊢ˣ Ψ ≈ Ψ'`, `Θ ⍮ Γ ⊢ᵘ U ≈ U'`, `Θ ⍮ Γ ⊢ᵐ H ≈ H'`,
+`Θ ⍮ Γ ⊢w φ : Δ`, `Θ ⍮ Γ ⊢s σ : Δ`, `Θ ⍮ Γ ⊢s σ ≈ σ' : Δ`, and
+`⊢ Θ ⍮ Δ ⊆ Γ` for context refinement.  `⍮` is a terminal of each of those
+notations, not an operator, so it has no level of its own.  The global
+context's own well-formedness uses a letter suffix in the same style as
+`⊢w`/`⊢s`: `⊢g Θ` (`wf_gctx`).  `Γ ∋ #x : A` takes no `Θ`.  Lookups in the
+global context (`gc_unit`, `gc_const`) are functions, with no notation.
 
 `M[σ]` and `M[φ]ʷ` share the prefix `M [ _` at the same levels, so Rocq factors
 them and only the closing token (`]` vs `]ʷ`) decides; `M[p]ᵖ`, reserved for
@@ -57,14 +48,13 @@ Judgment arguments are at **69** because a slot between two terminals otherwise
 defaults to level 200 and swallows Rocq's cast `x : T` (level 100) — `Γ ⊢ M : A`
 would read `M` as `M : A`.
 
-Evaluation carries the global context the same way, `⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m`,
-and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h` (module expressions),
-`$ᵐ| h & n | Θ ⍮ Ξ ↘ h'` (a module value applied), `h ·ₜ x Θ ⍮ Ξ ↘ d` and
-`h ·ₘ y Θ ⍮ Ξ ↘ h'` (selection of a term member, a submodule), `h ·ₜ* ch …` and
-`h ·ₘ* ch …` (along a chain), `⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms` (several terms),
-`$*| f & ns | Θ ⍮ Ξ ↘ r` (several arguments) and `⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ'` (the
-environment after a body).  The selected name and the chain are at level 0:
-`h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f`.
+Evaluation carries the global context the same way, `⟦ M ⟧ Θ ⍮ ρ ↘ m`,
+and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ ρ ↘ h` (module expressions),
+`$ᵐ| h & n | Θ ↘ h'` (a module value applied), `h ·ₜ x Θ ↘ d` and
+`h ·ₘ y Θ ↘ h'` (selection of a term member, a submodule), `h ·ₜ* ch …` and
+`h ·ₘ* ch …` (along a chain), `⟦ Ms ⟧* Θ ⍮ ρ ↘ ms` (several terms) and
+`$*| f & ns | Θ ↘ r` (several arguments).  The selected name and the chain
+are at level 0: `h ·ₜ* (pre ++ x :: nil) Θ ↘ f`.
 
 ## Traps
 

@@ -49,8 +49,8 @@ Qed.
 
 Inductive subtyping_order {GC : GCtx} G A B :=
 | subtyping_order_run :
-  nbe_ty_order gc_deps gc_stack G A ->
-  nbe_ty_order gc_deps gc_stack G B ->
+  nbe_ty_order gc_ctx G A ->
+  nbe_ty_order gc_ctx G B ->
   subtyping_order G A B.
 Arguments subtyping_order {GC} G A B.
 Arguments subtyping_order_run {GC G A B}.
@@ -70,7 +70,7 @@ Qed.
 Ltac subtyping_impl_tac1 :=
   match goal with
   | H : subtyping_order _ _ _ |- _ => progressive_invert H
-  | H : nbe_ty_order _ _ _ _ |- _ => progressive_invert H
+  | H : nbe_ty_order _ _ _ |- _ => progressive_invert H
   end.
 
 #[local]
@@ -81,8 +81,8 @@ Ltac subtyping_impl_tac :=
 Equations subtyping_impl {GC : GCtx} G A B (H : subtyping_order G A B) :
   { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, A, B, H =>
-    let (a, Ha) := nbe_ty_impl gc_deps gc_stack G A _ in
-    let (b, Hb) := nbe_ty_impl gc_deps gc_stack G B _ in
+    let (a, Ha) := nbe_ty_impl gc_ctx G A _ in
+    let (b, Hb) := nbe_ty_impl gc_ctx G B _ in
     let*b _ := subtyping_nf_impl a b while _ in
     pureb _.
 Next Obligation.

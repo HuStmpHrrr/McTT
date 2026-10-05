@@ -8,9 +8,9 @@ def exposed : Nat := succ secret end
 
 end
 
-import Impl as I
+open Impl as I
 
-import Impl use (exposed)
+open Impl use (exposed)
 
 def sum : forall (x : Nat) (y : Nat) -> Nat :=
   fun (x : Nat) (y : Nat) ->

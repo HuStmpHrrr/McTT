@@ -27,10 +27,10 @@ Proof.
     constructor; apply IHΔ; reflexivity.
 Qed.
 
-Lemma app_ctx_vlookup : forall Θ Ξ Δ T Γ n,
-    ⊢ Θ ⍮ Ξ ⍮ (Δ ++ ce_ass T :: Γ) ->
+Lemma app_ctx_vlookup : forall Θ Δ T Γ n,
+    ⊢ Θ ⍮ (Δ ++ ce_ass T :: Γ) ->
     length Δ = n ->
-    Θ ⍮ Ξ ⍮ (Δ ++ ce_ass T :: Γ) ⊢ #n : T[wk_shiftn (S n)]ʷ.
+    Θ ⍮ (Δ ++ ce_ass T :: Γ) ⊢ #n : T[wk_shiftn (S n)]ʷ.
 Proof.
   intros; econstructor; [ assumption | apply app_ctx_lookup; assumption ].
 Qed.

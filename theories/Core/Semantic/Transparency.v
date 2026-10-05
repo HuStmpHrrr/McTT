@@ -1,8 +1,8 @@
 (** * NbE at a Transparent Global Context
 
-    At a transparent global context ([gc_transparent]) no global evaluates to
-    a neutral, so no global reaches a normal form and the only neutrals are
-    variables.  Module parameters are λ-variables, so they need no special
+    At a transparent global context ([gc_transparent]) no constant evaluates
+    to a neutral, so no constant reaches a normal form and the only neutrals
+    are variables.  Module parameters are λ-variables, so they need no special
     treatment. *)
 
 From Stdlib Require Import List.
@@ -37,9 +37,10 @@ with dclean_ne : domain_ne -> Prop :=
 with dclean_nf : domain_nf -> Prop :=
 | dclean_dom : forall a m, dclean a -> dclean m -> dclean_nf (⇓ a m)
 with dmclean : dmod -> Prop :=
-| dmclean_global : forall p args, (forall a, In a args -> dclean a) -> dmclean (dm_global p args)
-| dmclean_local : forall (ρ : env) U args,
-    (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_local ρ U args)
+| dmclean_body : forall (ρ : env) Δ Φ args,
+    (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_body ρ Δ Φ args)
+| dmclean_alias : forall (ρ : env) Δ E args,
+    (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_alias ρ Δ E args)
 | dmclean_member : forall h ch, dmclean h -> dmclean (dm_member h ch)
 with declean : dentry -> Prop :=
 | declean_term : forall d, dclean d -> declean (de_term d)
@@ -63,7 +64,7 @@ Lemma env_clean_var : forall ρ x, env_clean ρ -> dclean (ρ x).
 Proof. intros * H; unfold env_var; destruct (H x); auto with mctt. Qed.
 
 Lemma env_clean_mod : forall ρ x, env_clean ρ -> dmclean (env_mod ρ x).
-Proof. intros * H; unfold env_mod; destruct (H x); auto with mctt; constructor; intros ? []. Qed.
+Proof. intros * H; unfold env_mod; destruct (H x); auto with mctt; constructor; [ intros; apply env_clean_nil | intros ? [] ]. Qed.
 
 Lemma env_clean_args : forall args ρ, env_clean ρ -> (forall a, In a args -> dclean a) -> env_clean (env_args ρ args).
 Proof.
@@ -78,35 +79,34 @@ Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
 Lemma env_clean_entry : forall ρ x, env_clean ρ -> declean (env_entry ρ x).
 Proof. intros * H; exact (H x). Qed.
 
-Lemma dmclean_local_nil : forall ρ U, env_clean ρ -> dmclean (dm_local ρ U nil).
-Proof. intros; constructor; [ assumption | intros ? [] ]. Qed.
+Lemma dmclean_of : forall ρ U, env_clean ρ -> dmclean (dm_of ρ U).
+Proof. intros ? [? []] ?; constructor; [ assumption | intros ? [] | assumption | intros ? [] ]. Qed.
 
-Lemma dmclean_global_nil : forall p, dmclean (dm_global p nil).
-Proof. intros; constructor; intros ? []. Qed.
+Lemma env_clean_self : forall ρ Φ, env_clean ρ -> env_clean (ρ ↦ᵐ dm_body ρ nil Φ nil).
+Proof. intros; apply env_clean_extend_mod; [ assumption | constructor; [ assumption | intros ? [] ] ]. Qed.
 
 #[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_var env_clean_mod
-  env_clean_args clean_app_snoc dmclean_local_nil dmclean_global_nil env_clean_entry : mctt.
+  env_clean_args clean_app_snoc dmclean_of env_clean_self env_clean_entry : mctt.
 
 Section Transparent.
-  Variables (Θ : gdeps) (Ξ : gstack).
-  Hypothesis Htr : gc_transparent Θ Ξ.
+  Variables (Θ : gctx).
+  Hypothesis Htr : gc_transparent Θ.
 
   Lemma eval_clean :
-    (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_clean ρ -> dclean m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+    (forall M ρ m, ⟦ M ⟧ Θ ⍮ ρ ↘ m -> env_clean ρ -> dclean m) /\
+    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ ρ ↘ r ->
        dclean m -> env_clean ρ -> dclean r) /\
-    (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dclean m -> dclean n -> dclean r) /\
-    (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
-    (forall m args r, $*| m & args | Θ ⍮ Ξ ↘ r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
-    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
-    (forall h n r, $ᵐ| h & n | Θ ⍮ Ξ ↘ r -> dmclean h -> dclean n -> dmclean r) /\
-    (forall h x r, h ·ₜ x Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
-    (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
-    (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dclean r) /\
-    (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmclean h -> dmclean r) /\
-    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> env_clean ρ -> env_clean ρ').
+    (forall m n r, $| m & n | Θ ↘ r -> dclean m -> dclean n -> dclean r) /\
+    (forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ ρ ↘ ms -> env_clean ρ -> forall a, In a ms -> dclean a) /\
+    (forall m args r, $*| m & args | Θ ↘ r -> dclean m -> (forall a, In a args -> dclean a) -> dclean r) /\
+    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ ρ ↘ h -> env_clean ρ -> dmclean h) /\
+    (forall h n r, $ᵐ| h & n | Θ ↘ r -> dmclean h -> dclean n -> dmclean r) /\
+    (forall h x r, h ·ₜ x Θ ↘ r -> dmclean h -> dclean r) /\
+    (forall h y r, h ·ₘ y Θ ↘ r -> dmclean h -> dmclean r) /\
+    (forall h ch r, h ·ₜ* ch Θ ↘ r -> dmclean h -> dclean r) /\
+    (forall h ch r, h ·ₘ* ch Θ ↘ r -> dmclean h -> dmclean r).
   Proof.
-    apply (eval_mut_ind Θ Ξ
+    apply (eval_mut_ind Θ
              (fun M ρ m _ => env_clean ρ -> dclean m)
              (fun A MZ MS m ρ r _ => dclean m -> env_clean ρ -> dclean r)
              (fun m n r _ => dclean m -> dclean n -> dclean r)
@@ -117,8 +117,7 @@ Section Transparent.
              (fun h x r _ => dmclean h -> dclean r)
              (fun h y r _ => dmclean h -> dmclean r)
              (fun h ch r _ => dmclean h -> dclean r)
-             (fun h ch r _ => dmclean h -> dmclean r)
-             (fun ρ Φ ρ' _ => env_clean ρ -> env_clean ρ'));
+             (fun h ch r _ => dmclean h -> dmclean r));
       intros.
     all: repeat match goal with
            | H : dclean (_ _) |- _ => inversion_clear H
@@ -126,9 +125,9 @@ Section Transparent.
            | H : dmclean (_ _ _ _) |- _ => inversion_clear H
            end.
     all: try solve [ eauto 4 with mctt ].
-    (* an opaque definition or an axiom *)
-    all: try solve [ match goal with H : gc_resolve _ _ _ = Some (ge_def _ _ _ _), Ho : _ \/ _ |- _ =>
-         destruct (gc_transparent_resolve _ _ _ _ _ _ _ Htr H) end; intuition congruence ].
+    (* a sealed constant, or an axiom *)
+    all: try solve [ match goal with H : gc_const _ _ = Some _, Ho : _ \/ _ |- _ =>
+         destruct (Htr _ _ _ _ H); intuition congruence end ].
     all: try solve [ eauto 6 with mctt ].
     (* the [⊥]-eliminator, whose scrutinee is clean *)
     all: try solve [ match goal with H : env_clean ?ρ -> dclean (⇑ _ _), Hρ : env_clean ?ρ |- _ =>
@@ -154,12 +153,12 @@ Section Transparent.
   Qed.
 
   Lemma read_clean :
-    (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> dclean_nf m -> nf_clean W) /\
-    (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M -> dclean_ne m -> ne_clean M) /\
-    (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dclean a -> nf_clean A).
+    (forall s m W, Rnf m in Θ ⍮ s ↘ W -> dclean_nf m -> nf_clean W) /\
+    (forall s m M, Rne m in Θ ⍮ s ↘ M -> dclean_ne m -> ne_clean M) /\
+    (forall s a A, Rtyp a in Θ ⍮ s ↘ A -> dclean a -> nf_clean A).
   Proof.
     destruct eval_clean as (He & _ & Ha & _).
-    apply (read_mut_ind Θ Ξ
+    apply (read_mut_ind Θ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)
              (fun s a A _ => dclean a -> nf_clean A));
@@ -183,17 +182,17 @@ Section Transparent.
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] ].
   Qed.
 
-  Lemma initial_env_clean : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_clean ρ.
+  Lemma initial_env_clean : forall Γ ρ, initial_env Θ Γ ρ -> env_clean ρ.
   Proof.
     destruct eval_clean as (He & _).
     induction 1; eauto with mctt.
   Qed.
 
-  Theorem nbe_clean : forall Γ M A W, nbe Θ Ξ Γ M A W -> nf_clean W.
+  Theorem nbe_clean : forall Γ M A W, nbe Θ Γ M A W -> nf_clean W.
   Proof.
     destruct eval_clean as (He & _); destruct read_clean as (Hr & _).
     intros * Hn; inversion Hn; subst.
-    match goal with Hρ : initial_env _ _ _ _ |- _ => pose proof (initial_env_clean _ _ Hρ) end.
+    match goal with Hρ : initial_env _ _ _ |- _ => pose proof (initial_env_clean _ _ Hρ) end.
     eapply Hr; eauto with mctt.
   Qed.
 End Transparent.

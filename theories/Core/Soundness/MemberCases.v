@@ -56,7 +56,7 @@ Proof. intros * [Sb H]; inversion H; subst; eexists; eassumption. Qed.
 
 Lemma glu_rel_ctx_extend_mod : forall {Γ U},
     ⊩ Γ ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    gc_ctx ⍮ Γ ⊢ᵘ U ≈ U ->
     ⊩ Γ ▹ₘ U.
 Proof.
   intros * [Sb HΓ] HU.
@@ -67,10 +67,10 @@ Qed.
 (** δ for a member. *)
 Lemma glu_rel_exp_mem : forall {Γ H x A i M},
     me_noargs H ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
+    gc_ctx ⍮ Γ ⊢ᵐ H ≈ H ->
+    member_type gc_ctx Γ H (x :: nil) (mr_term A) ->
     Γ ⊢ A : Type@i ->
-    member_unfold gc_deps gc_stack Γ H x = Some M ->
+    member_unfold gc_ctx Γ H x = Some M ->
     Γ ⊢ M : A ->
     Γ ⊩ M : A ->
     Γ ⊩ a_mem H x : A.
@@ -81,7 +81,7 @@ Qed.
 
 (** A member of an applied module is its root's member applied. *)
 Lemma glu_rel_exp_mem_app : forall {Γ H R args pre i A x},
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
+    gc_ctx ⍮ Γ ⊢ᵐ H ≈ H ->
     modexp_spine H = (R, args, pre) ->
     args <> nil ->
     Γ ⊢ A : Type@i ->
@@ -96,7 +96,7 @@ Qed.
 (** ζ for a module [let]: [σ,,ₘ⌜U[σ]⌝] glues with [ρ ↦ᵐ ⟦⌜U⌝⟧ρ] into
     [Γ ▹ₘ U], the tie being the unit's closure related to itself. *)
 Lemma glu_rel_exp_let_mod : forall {Γ U C B},
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+    gc_ctx ⍮ Γ ⊢ᵘ U ≈ U ->
     Γ ▹ₘ U ⊢ B : C ->
     Γ ▹ₘ U ⊩ B : C ->
     Γ ⊩ ℓₘ U in B : C[Id ,,ₘ me_lit U].
@@ -114,7 +114,7 @@ Proof.
   intros Δ σ ρ Hσ.
   assert (Hσs : Δ ⊢s σ : Γ) by (eapply glu_ctx_env_sub_escape; eassumption).
   pose proof (glu_ctx_env_per_env HΓ HR Hσ) as Hρ.
-  assert (Hσ' : Δ ⊢s σ ,,ₘ me_lit U[σ]ᵘ ® ρ ↦ᵐ dm_local ρ U nil ∈ SbU).
+  assert (Hσ' : Δ ⊢s σ ,,ₘ me_lit U[σ]ᵘ ® ρ ↦ᵐ dm_of ρ U ∈ SbU).
   { apply HSbU; econstructor.
     - apply wf_sub_extend_mod; [ exact Hσs | exact HU | eapply sub_preserves_unit; eassumption ].
     - exact (unit_chain_at (proj1 HUc) HR _ _ Hρ).

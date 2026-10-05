@@ -412,7 +412,7 @@ Variant cons_def_glu_sub_pred i Γ A M (TSb : glu_sub_pred) : glu_sub_pred :=
 Variant cons_mod_glu_sub_pred Γ U (TSb : glu_sub_pred) : glu_sub_pred :=
 | mk_cons_mod_glu_sub_pred :
   `{ Δ ⊢s σ : Γ ▹ₘ U ->
-     per_dmod (env_mod ρ 0) (dm_local ρ↯ U nil) ->
+     per_dmod (env_mod ρ 0) (dm_of ρ↯ U) ->
      Δ ⊢s Wk ⨟ σ ® ρ↯ ∈ TSb ->
      Δ ⊢s σ ® ρ ∈ cons_mod_glu_sub_pred Γ U TSb }.
 
@@ -422,7 +422,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_nil :
   `{ forall Sb,
         Sb <∙> nil_glu_sub_pred ->
-        ⊢g gc_deps ⍮ gc_stack ->
+        ⊢g gc_ctx ->
         EG ⋅ ∈ glu_ctx_env ↘ Sb }
 | glu_ctx_env_cons :
   `{ forall i TSb Sb,
@@ -449,7 +449,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_cons_mod :
   `{ forall TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U ->
+        gc_ctx ⍮ Γ ⊢ᵘ U ≈ U ->
         Sb <∙> cons_mod_glu_sub_pred Γ U TSb ->
         EG Γ ▹ₘ U ∈ glu_ctx_env ↘ Sb }.
 

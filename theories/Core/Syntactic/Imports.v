@@ -1,37 +1,40 @@
-(** * Imports: Generation and Expansion
+(** * Opens: Generation and Expansion
 
-    An import declares names for the members of a module: [import E use (n)]
-    makes [n] a private definition equal to [E.n], [import E as y] makes [y]
-    a private alias of [E].  What an item declares is computed from the
-    member's type ([import_gen]), so it needs the member types of the global
-    context, given here as an oracle ([mt_oracle]) that [mt_spec] ties to
-    [member_type].
+    An open declares names for the members of a module: [open E use (n)]
+    makes [n] a private definition equal to [E.n], [open E as Z] makes [Z]
+    a private alias of [E], and the items of [open E as Z use (n)] select
+    from [Z].  What an item declares is computed from the member's type
+    ([open_gen]), so it needs the member types of the global context, given
+    here as an oracle ([mt_oracle]) that [mt_spec] ties to [member_type].
 
-    At the global level an import is a command, [cc_import], which runs the
-    definitions and aliases it generates as commands ([Command]).  In a local
-    body it is a pre-form, [gm_import], that the core expands into ordinary
-    entries before typing: [cmd_xp] is the identity on every former but
-    [gm_import], which it replaces by the generated entries.  No typing rule
-    mentions [gm_import]. *)
+    In a frame an open is a command, [cc_open], which runs the definitions
+    and aliases it generates as commands ([Command]).  In a local body it is
+    a pre-form, [gm_open], that the core expands into ordinary entries before
+    typing: [cmd_xp] is the identity on every former but [gm_open], which it
+    replaces by the generated entries.  No typing rule mentions [gm_open].
+
+    Entries are self-style, so every entry of a body is read in a context of
+    the same shape, its self slot over the context of the body: what an open
+    generates needs no weakening to be appended. *)
 
 From Stdlib Require Import List String Bool.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Members Command.
-Import Syntax_Notations.
+Import Syntax_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
 (** ** Oracles *)
 
-(** A member-type oracle, and what makes it the member types of [Θ ⍮ Ξ]. *)
+(** A member-type oracle, and what makes it the member types of [Θ]. *)
 Definition mt_oracle : Type := ctx -> modexp -> list string -> option mres.
 
-Definition mt_spec (Θ : gdeps) (Ξ : gstack) (mt : mt_oracle) : Prop :=
-  forall Γ H ch R, mt Γ H ch = Some R <-> member_type Θ Ξ Γ H ch R.
+Definition mt_spec (Θ : gctx) (mt : mt_oracle) : Prop :=
+  forall Γ H ch R, mt Γ H ch = Some R <-> member_type Θ Γ H ch R.
 
 (** Two oracles meeting the specification agree everywhere. *)
-Lemma mt_spec_ext : forall Θ Ξ mt mt', mt_spec Θ Ξ mt -> mt_spec Θ Ξ mt' ->
+Lemma mt_spec_ext : forall Θ mt mt', mt_spec Θ mt -> mt_spec Θ mt' ->
     forall Γ H ch, mt Γ H ch = mt' Γ H ch.
 Proof.
   intros * Hs Hs' Γ H ch.
@@ -43,15 +46,15 @@ Qed.
 
 (** ** Results *)
 
-(** Why an import fails. *)
+(** Why an open fails. *)
 Inductive xerr : Set :=
-(** The import target is not a module *)
+(** The open target is not a module *)
 | xe_target : modexp -> xerr
 (** Not a member of the target *)
 | xe_member : modexp -> string -> xerr
 (** A member both used and exported *)
 | xe_both : string -> xerr
-(** A name the import declares twice *)
+(** A name the open declares twice *)
 | xe_fresh : string -> xerr.
 
 Inductive xres (A : Type) : Type :=
@@ -78,40 +81,32 @@ Fixpoint xmap {A B} (f : A -> xres B) (l : list A) : xres (list B) :=
 
 (** ** Generation *)
 
-(** What an item declares, read in the context of the import. *)
+(** What an item declares. *)
 Inductive igen : Set :=
 (** [ig_def d pv A M]: the definition [d] of type [A] equal to [M] *)
 | ig_def : string -> bool -> typ -> exp -> igen
 (** [ig_alias d pv E]: the alias [d] of [E] *)
 | ig_alias : string -> bool -> modexp -> igen.
 
-(** The item [it] of an import of [H]: a member's definition or alias, or
-    the alias of [H] itself. *)
-Definition item_gen (mt : mt_oracle) (Γ : ctx) (H : modexp) (it : iitem) : xres igen :=
-  match it with
-  | (None, d, pv) => xok (ig_alias d pv H)
-  | (Some n, d, pv) =>
-      match mt Γ H (n :: nil) with
-      | Some (mr_term A) => xok (ig_def d pv A (a_mem H n))
-      | Some (mr_mod _) => xok (ig_alias d pv (me_mem H n))
-      | None => xfail (xe_member H n)
-      end
+(** The item [it], selecting from [src] in [Γ]: a member's definition, or
+    the alias of a submodule.  A missing member is reported against the
+    target [E] of the open. *)
+Definition item_gen (mt : mt_oracle) (Γ : ctx) (src E : modexp) (it : iitem) : xres igen :=
+  let '(n, d, pv) := it in
+  match mt Γ src (n :: nil) with
+  | Some (mr_term A) => xok (ig_def d pv A (a_mem src n))
+  | Some (mr_mod _) => xok (ig_alias d pv (me_mem src n))
+  | None => xfail (xe_member E n)
   end.
 
 (** The first member named both by a private and by a public item. *)
 Definition src_has (n : string) (pv : bool) (its : list iitem) : bool :=
-  existsb (fun it => match it with
-                     | (Some m, _, pv') => String.eqb n m && Bool.eqb pv pv'
-                     | _ => false
-                     end) its.
+  existsb (fun it => let '(m, _, pv') := it in String.eqb n m && Bool.eqb pv pv') its.
 
 Definition both_dup (its : list iitem) : option string :=
-  match find (fun it => match it with
-                        | (Some n, _, pv) => src_has n (negb pv) its
-                        | _ => false
-                        end) its with
-  | Some (Some n, _, _) => Some n
-  | _ => None
+  match find (fun it => let '(n, _, pv) := it in src_has n (negb pv) its) its with
+  | Some (n, _, _) => Some n
+  | None => None
   end.
 
 (** The first name a list repeats. *)
@@ -121,31 +116,66 @@ Fixpoint name_dup (xs : list string) : option string :=
   | x :: xs' => if existsb (String.eqb x) xs' then Some x else name_dup xs'
   end.
 
-(** [import_gen mt Γ H its]: [H] is a module, each item names a member of
-    it, no member is both used and exported, and the names declared are
-    distinct; then each item's declaration, all in [Γ]. *)
-Definition import_gen (mt : mt_oracle) (Γ : ctx) (H : modexp) (its : list iitem) : xres (list igen) :=
-  match mt Γ H nil with
+(** [open_gen mt Γ E oZ Γs src its]: [E] is a module in [Γ], each item names
+    a member of it, read from [src] in [Γs], no member is both used and
+    exported, and the names declared, the alias [Z] included, are distinct;
+    then each item's declaration.  [src] is [E] in [Γ], or the alias [Z] in
+    the context after it. *)
+Definition open_gen (mt : mt_oracle) (Γ : ctx) (E : modexp) (oz : option string)
+  (Γs : ctx) (src : modexp) (its : list iitem) : xres (list igen) :=
+  match mt Γ E nil with
   | Some (mr_mod _) =>
-      let+ gs := xmap (item_gen mt Γ H) its in
+      let+ gs := xmap (item_gen mt Γs src E) its in
       match both_dup its with
       | Some n => xfail (xe_both n)
       | None =>
-          match name_dup (map iitem_name its) with
+          match name_dup (open_names oz its) with
           | Some d => xfail (xe_fresh d)
           | None => xok gs
           end
       end
-  | _ => xfail (xe_target H)
+  | _ => xfail (xe_target E)
   end.
 
-Lemma import_gen_ext : forall mt mt', (forall Γ H ch, mt Γ H ch = mt' Γ H ch) ->
-    forall Γ H its, import_gen mt Γ H its = import_gen mt' Γ H its.
+Lemma open_gen_ext : forall mt mt', (forall Γ H ch, mt Γ H ch = mt' Γ H ch) ->
+    forall Γ E oz Γs src its, open_gen mt Γ E oz Γs src its = open_gen mt' Γ E oz Γs src its.
 Proof.
-  intros * Hext Γ H its; unfold import_gen; rewrite Hext.
-  replace (xmap (item_gen mt Γ H) its) with (xmap (item_gen mt' Γ H) its); [ reflexivity |].
-  induction its as [| [[[n |] d] pv] its IH]; cbn; [ reflexivity | | ]; rewrite ?Hext, IH; reflexivity.
+  intros * Hext Γ E oz Γs src its; unfold open_gen; rewrite Hext.
+  replace (xmap (item_gen mt Γs src E) its) with (xmap (item_gen mt' Γs src E) its); [ reflexivity |].
+  induction its as [| [[n d] pv] its IH]; cbn; [ reflexivity | ]; rewrite ?Hext, IH; reflexivity.
 Qed.
+
+(** ** Opens in a Body
+
+    In a body, an open is read in the self context of its position: the
+    alias, if any, is an entry of the body, and its items select from the
+    alias through the self slot. *)
+
+Definition open_alias (Φ : gmod) (E : modexp) (oz : option string) : gmod :=
+  match oz with
+  | Some z => Φ ⊳ z ↦ ge_mod true (gu_mk nil (md_alias E))
+  | None => Φ
+  end.
+
+Definition open_src (E : modexp) (oz : option string) : modexp :=
+  match oz with
+  | Some z => me_mem (me_var 0) z
+  | None => E
+  end.
+
+(** A generated item as a body entry. *)
+Definition ig_entry (g : igen) : (string * gentry)%type :=
+  match g with
+  | ig_def d pv A M => (d, ge_def pv A (Some M))
+  | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
+  end.
+
+(** The generated entries appended to [Φ], in order. *)
+Fixpoint gens_append (Φ : gmod) (gs : list igen) : gmod :=
+  match gs with
+  | nil => Φ
+  | g :: gs' => let '(d, E) := ig_entry g in gens_append (gm_ext Φ d E) gs'
+  end.
 
 (** ** Expansion
 
@@ -165,49 +195,21 @@ Definition centry_skel (e : centry) : option gunit :=
   | _ => None
   end.
 
-Definition entry_skel (E : gentry) : option gunit :=
-  match E with
-  | ge_mod _ U => Some U
-  | _ => None
-  end.
-
 Definition bnd_skel (b : bnd) : option gunit :=
   match b with
   | b_mod U => Some U
   | _ => None
   end.
 
-(** The skeleton of the indices a body binds, newest first. *)
-Fixpoint body_skel (Φ : gmod) : skel :=
-  match Φ with
-  | gm_nil => nil
-  | gm_ext Φ _ E => entry_skel E :: body_skel Φ
-  | gm_import Φ _ its => repeat None (List.length its) ++ body_skel Φ
-  end.
-
-(** A generated item as a body entry. *)
-Definition ig_entry (g : igen) : (string * gentry)%type :=
-  match g with
-  | ig_def d pv A M => (d, ge_def true pv A (Some M))
-  | ig_alias d pv E => (d, ge_mod pv (gu_mk nil (md_alias E)))
-  end.
-
-(** The generated entries appended to [Φ], in order.  All are read in the
-    context of the import, so the [k]-th is weakened by the [k] before it. *)
-Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list igen) : gmod :=
-  match gs with
-  | nil => Φ
-  | g :: gs' =>
-      let '(d, E) := ig_entry g in
-      gens_append (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k) gs'
-  end.
+(** The skeleton of a context. *)
+Definition ctx_skel (Γ : ctx) : skel := map centry_skel Γ.
 
 Section Expansion.
   Variable mt : mt_oracle.
 
   Fixpoint exp_xp (S : skel) (M : exp) {struct M} : xres exp :=
     match M with
-    | a_typ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => xok M
+    | a_typ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ | a_const _ => xok M
     | a_succ M => let+ M' := exp_xp S M in xok (a_succ M')
     | a_natrec A MZ MS M =>
         let+ A' := exp_xp (None :: S) A in
@@ -282,23 +284,24 @@ Section Expansion.
     | gm_nil => xok gm_nil
     | gm_ext Φ x E =>
         let+ Φ' := gmod_xp S Φ in
-        let+ E' := gentry_xp (body_skel Φ' ++ S) E in
+        let+ E' := gentry_xp (Some (gu_body nil Φ') :: S) E in
         xok (gm_ext Φ' x E')
-    | gm_import Φ H its =>
+    | gm_open Φ H oz its =>
         let+ Φ' := gmod_xp S Φ in
-        let+ H' := modexp_xp (body_skel Φ' ++ S) H in
-        let+ gs := import_gen mt (skel_ctx (body_skel Φ' ++ S)) H' its in
-        xok (gens_append Φ' 0 gs)
+        let+ H' := modexp_xp (Some (gu_body nil Φ') :: S) H in
+        let+ gs := open_gen mt (skel_ctx (Some (gu_body nil Φ') :: S)) H' oz
+                     (skel_ctx (Some (gu_body nil (open_alias Φ' H' oz)) :: S)) (open_src H' oz) its in
+        xok (gens_append (open_alias Φ' H' oz) gs)
     end
   with gentry_xp (S : skel) (E : gentry) {struct E} : xres gentry :=
     match E with
-    | ge_def b pv A B =>
+    | ge_def pv A oM =>
         let+ A' := exp_xp S A in
-        let+ B' := match B with
-                   | Some M => let+ M' := exp_xp S M in xok (Some M')
-                   | None => xok None
-                   end in
-        xok (ge_def b pv A' B')
+        let+ oM' := match oM with
+                    | Some M => let+ M' := exp_xp S M in xok (Some M')
+                    | None => xok None
+                    end in
+        xok (ge_def pv A' oM')
     | ge_mod pv U => let+ U' := gunit_xp S U in xok (ge_mod pv U')
     end
   with centry_xp (S : skel) (e : centry) {struct e} : xres centry :=
@@ -325,10 +328,13 @@ Section Expansion.
       when they run. *)
   Definition cmd_xp (S : skel) (c : ccmd) : xres ccmd :=
     match c with
-    | cc_def x b pv A M =>
+    | cc_def x b pv A oM =>
         let+ A' := exp_xp S A in
-        let+ M' := exp_xp S M in
-        xok (cc_def x b pv A' M')
+        let+ oM' := match oM with
+                    | Some M => let+ M' := exp_xp S M in xok (Some M')
+                    | None => xok None
+                    end in
+        xok (cc_def x b pv A' oM')
     | cc_mod x pv Δ cs =>
         let+ Δ' := tele_xp S Δ in
         xok (cc_mod x pv Δ' cs)
@@ -337,9 +343,9 @@ Section Expansion.
         let+ E' := modexp_xp (map centry_skel Δ' ++ S) E in
         xok (cc_alias x pv Δ' E')
     | cc_load fp => xok (cc_load fp)
-    | cc_import E its =>
+    | cc_open E oz its =>
         let+ E' := modexp_xp S E in
-        xok (cc_import E' its)
+        xok (cc_open E' oz its)
     | cc_eval M oA =>
         let+ M' := exp_xp S M in
         let+ oA' := match oA with
@@ -350,23 +356,22 @@ Section Expansion.
     end.
 End Expansion.
 
-(** The skeleton of a frame: its parameters are assumptions. *)
-Definition frame_skel (Ξ : gstack) : skel := map (fun _ => None) (gs_tele Ξ).
-
 (** ** The Declarative Wrappers
 
     Expansion and generation with any oracle meeting the specification.  Any
     two such oracles agree ([mt_spec_ext]), so the results are unique
-    ([xp_ext]). *)
+    ([xp_ext]).  A command is expanded in the skeleton of the context it is
+    checked in. *)
 
-Definition cmd_xp_ok (Θ : gdeps) (Ξ : gstack) (c c' : ccmd) : Prop :=
-  exists mt, mt_spec Θ Ξ mt /\ cmd_xp mt (frame_skel Ξ) c = xok c'.
+Definition cmd_xp_ok (Θ : gctx) (Γ : ctx) (c c' : ccmd) : Prop :=
+  exists mt, mt_spec Θ mt /\ cmd_xp mt (ctx_skel Γ) c = xok c'.
 
-Definition tele_xp_ok (Θ : gdeps) (Ξ : gstack) (S : skel) (Δ Δ' : ctx) : Prop :=
-  exists mt, mt_spec Θ Ξ mt /\ tele_xp mt S Δ = xok Δ'.
+Definition tele_xp_ok (Θ : gctx) (S : skel) (Δ Δ' : ctx) : Prop :=
+  exists mt, mt_spec Θ mt /\ tele_xp mt S Δ = xok Δ'.
 
-Definition import_gen_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
-  exists mt, mt_spec Θ Ξ mt /\ import_gen mt Γ H its = xok gs.
+Definition open_gen_ok (Θ : gctx) (Γ : ctx) (E : modexp) (oz : option string)
+  (Γs : ctx) (src : modexp) (its : list iitem) (gs : list igen) : Prop :=
+  exists mt, mt_spec Θ mt /\ open_gen mt Γ E oz Γs src its = xok gs.
 
 (** ** Expansion Reads the Oracle Only *)
 
@@ -381,10 +386,10 @@ Section Ext.
               [ match goal with
                 | IH : forall S, ?f mt S ?x = ?f mt' S ?x |- context [?f mt ?S' ?x] => rewrite (IH S')
                 end
-              | rewrite (import_gen_ext _ _ Hext)
+              | rewrite (open_gen_ext _ _ Hext)
               | match goal with
                 | |- context [xbind (?f mt' ?S ?x) _] => destruct (f mt' S x)
-                | |- context [xbind (import_gen mt' ?G ?H ?its) _] => destruct (import_gen mt' G H its)
+                | |- context [xbind (open_gen mt' ?G ?H ?oz ?Gs ?src ?its) _] => destruct (open_gen mt' G H oz Gs src its)
                 | |- context [match ?o with Some _ => _ | None => _ end] => is_var o; destruct o
                 end ]);
     try reflexivity.
@@ -408,8 +413,8 @@ Section Ext.
       { clear H0; induction H as [| e Δ He HF IH]; [ reflexivity |]; cbn [xbind]; rewrite IH.
         match goal with |- xbind ?t _ = _ => destruct t end; cbn [xbind]; [ rewrite He |]; reflexivity. }
       rewrite Ht; match goal with |- xbind ?t _ = _ => destruct t end; cbn [xbind]; [ rewrite H0 |]; reflexivity.
-    - (* an entry: its type, then its body *)
-      destruct B as [M |]; [ rewrite (H0 M eq_refl) |]; xp_step.
+    - (* a definition entry, with or without a body *)
+      destruct oM as [M |]; [ rewrite (H0 M eq_refl) |]; xp_step.
   Qed.
 
   Lemma tele_xp_ext : forall Δ S, tele_xp mt S Δ = tele_xp mt' S Δ.
@@ -422,7 +427,7 @@ Section Ext.
   Lemma cmd_xp_ext : forall c S, cmd_xp mt S c = cmd_xp mt' S c.
   Proof.
     destruct xp_ext_all as (He & Hm & _).
-    intros [x b pv A M | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] S; cbn [cmd_xp];
+    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E oz its | M [A |]] S; cbn [cmd_xp];
       rewrite ?He, ?Hm, ?tele_xp_ext; try reflexivity.
     all: repeat (cbn [xbind]; first
                   [ match goal with
@@ -435,47 +440,47 @@ Section Ext.
   Qed.
 End Ext.
 
-Lemma cmd_xp_ok_functional : forall Θ Ξ c c1 c2, cmd_xp_ok Θ Ξ c c1 -> cmd_xp_ok Θ Ξ c c2 -> c1 = c2.
+Lemma cmd_xp_ok_functional : forall Θ Γ c c1 c2, cmd_xp_ok Θ Γ c c1 -> cmd_xp_ok Θ Γ c c2 -> c1 = c2.
 Proof.
   intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
-  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
+  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ Hs1 Hs2)) in E1; congruence.
 Qed.
 
-Lemma tele_xp_ok_functional : forall Θ Ξ S Δ Δ1 Δ2, tele_xp_ok Θ Ξ S Δ Δ1 -> tele_xp_ok Θ Ξ S Δ Δ2 -> Δ1 = Δ2.
+Lemma tele_xp_ok_functional : forall Θ S Δ Δ1 Δ2, tele_xp_ok Θ S Δ Δ1 -> tele_xp_ok Θ S Δ Δ2 -> Δ1 = Δ2.
 Proof.
   intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
-  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
+  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ Hs1 Hs2)) in E1; congruence.
 Qed.
 
-Lemma import_gen_ok_functional : forall Θ Ξ Γ H its gs1 gs2,
-    import_gen_ok Θ Ξ Γ H its gs1 -> import_gen_ok Θ Ξ Γ H its gs2 -> gs1 = gs2.
+Lemma open_gen_ok_functional : forall Θ Γ E oz Γs src its gs1 gs2,
+    open_gen_ok Θ Γ E oz Γs src its gs1 -> open_gen_ok Θ Γ E oz Γs src its gs2 -> gs1 = gs2.
 Proof.
   intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
-  rewrite (import_gen_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
+  rewrite (open_gen_ext _ _ (mt_spec_ext _ _ _ Hs1 Hs2)) in E1; congruence.
 Qed.
 
 (** Any oracle meeting the specification computes the wrapped results. *)
-Lemma cmd_xp_ok_spec : forall Θ Ξ mt c c', mt_spec Θ Ξ mt -> cmd_xp_ok Θ Ξ c c' -> cmd_xp mt (frame_skel Ξ) c = xok c'.
+Lemma cmd_xp_ok_spec : forall Θ Γ mt c c', mt_spec Θ mt -> cmd_xp_ok Θ Γ c c' -> cmd_xp mt (ctx_skel Γ) c = xok c'.
 Proof.
-  intros * Hs (mt1 & Hs1 & E1); rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
+  intros * Hs (mt1 & Hs1 & E1); rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ Hs Hs1)); exact E1.
 Qed.
 
-Lemma tele_xp_ok_spec : forall Θ Ξ mt S Δ Δ', mt_spec Θ Ξ mt -> tele_xp_ok Θ Ξ S Δ Δ' -> tele_xp mt S Δ = xok Δ'.
+Lemma tele_xp_ok_spec : forall Θ mt S Δ Δ', mt_spec Θ mt -> tele_xp_ok Θ S Δ Δ' -> tele_xp mt S Δ = xok Δ'.
 Proof.
-  intros * Hs (mt1 & Hs1 & E1); rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
+  intros * Hs (mt1 & Hs1 & E1); rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ Hs Hs1)); exact E1.
 Qed.
 
-Lemma import_gen_ok_spec : forall Θ Ξ mt Γ H its gs, mt_spec Θ Ξ mt ->
-    import_gen_ok Θ Ξ Γ H its gs -> import_gen mt Γ H its = xok gs.
+Lemma open_gen_ok_spec : forall Θ mt Γ E oz Γs src its gs, mt_spec Θ mt ->
+    open_gen_ok Θ Γ E oz Γs src its gs -> open_gen mt Γ E oz Γs src its = xok gs.
 Proof.
-  intros * Hs (mt1 & Hs1 & E1); rewrite (import_gen_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
+  intros * Hs (mt1 & Hs1 & E1); rewrite (open_gen_ext _ _ (mt_spec_ext _ _ _ Hs Hs1)); exact E1.
 Qed.
 
 (** The specification depends on member types only, so an oracle meeting it
     for one global context meets it for any with the same member types. *)
-Lemma mt_spec_transfer : forall Θ Ξ Θ' Ξ' mt,
-    (forall Γ H ch R, member_type Θ Ξ Γ H ch R <-> member_type Θ' Ξ' Γ H ch R) ->
-    mt_spec Θ Ξ mt -> mt_spec Θ' Ξ' mt.
+Lemma mt_spec_transfer : forall Θ Θ' mt,
+    (forall Γ H ch R, member_type Θ Γ H ch R <-> member_type Θ' Γ H ch R) ->
+    mt_spec Θ mt -> mt_spec Θ' mt.
 Proof. intros * Heq Hs Γ H ch R; rewrite <- Heq; apply Hs. Qed.
 
 (** ** Expansion Keeps the Command
@@ -489,24 +494,27 @@ Definition ccmd_head (c : ccmd) : nat :=
   | cc_mod _ _ _ _ => 1
   | cc_alias _ _ _ _ => 2
   | cc_load _ => 3
-  | cc_import _ _ => 4
+  | cc_open _ _ _ => 4
   | cc_eval _ _ => 5
   end.
 
 Lemma cmd_xp_head : forall mt S c c', cmd_xp mt S c = xok c' -> ccmd_head c' = ccmd_head c.
 Proof.
-  intros mt S [x b pv A M | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] c' Ex; cbn in Ex;
+  intros mt S [x b pv A M | x pv Δ cs | x pv Δ E | fp | E oz its | M [A |]] c' Ex; cbn in Ex;
     repeat match goal with
            | Ex : xbind ?m _ = xok _ |- _ => destruct m; cbn in Ex; [| discriminate ]
            end;
     injection Ex as <-; reflexivity.
 Qed.
 
-Lemma cmd_xp_def_inv : forall mt S x b pv A M c', cmd_xp mt S (cc_def x b pv A M) = xok c' ->
-    exists A' M', c' = cc_def x b pv A' M'.
+Lemma cmd_xp_def_inv : forall mt S x b pv A oM c', cmd_xp mt S (cc_def x b pv A oM) = xok c' ->
+    exists A' oM', c' = cc_def x b pv A' oM' /\ (oM = None <-> oM' = None).
 Proof.
   intros * Ex; cbn in Ex; destruct (exp_xp mt S A); cbn in Ex; [| discriminate ].
-  destruct (exp_xp mt S M); cbn in Ex; [| discriminate ]; injection Ex as <-; eauto.
+  destruct oM as [M |]; cbn in Ex.
+  - destruct (exp_xp mt S M); cbn in Ex; [| discriminate ].
+    injection Ex as <-; do 2 eexists; split; [ reflexivity | split; congruence ].
+  - injection Ex as <-; do 2 eexists; split; [ reflexivity | split; congruence ].
 Qed.
 
 Lemma cmd_xp_alias_inv : forall mt S x pv Δ E c', cmd_xp mt S (cc_alias x pv Δ E) = xok c' ->

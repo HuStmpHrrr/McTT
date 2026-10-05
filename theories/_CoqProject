@@ -32,8 +32,6 @@
 ./Core/Completeness/MemberReps.v
 ./Core/Completeness/MemberSem.v
 ./Core/Completeness/ModexpCases.v
-./Core/Completeness/PathCases.v
-./Core/Completeness/GlobalSem.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v
@@ -93,7 +91,6 @@
 ./Core/Syntactic/System/Command.v
 ./Core/Syntactic/System/Definitions.v
 ./Core/Syntactic/System/GlobalPresup.v
-./Core/Syntactic/System/GlobalModules.v
 ./Core/Syntactic/System/MemberWf.v
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/MemberLemmas.v
@@ -113,6 +110,7 @@
 ./Extraction/PseudoMonadic.v
 ./Extraction/Readback.v
 ./Extraction/Subtyping.v
+./Extraction/SynEq.v
 ./Extraction/TypeCheck.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v

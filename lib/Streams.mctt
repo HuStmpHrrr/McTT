@@ -56,7 +56,7 @@ end
 
 end
 
-import Pairs use (Pair; fibStep; seed)
+open Pairs use (Pair; fibStep; seed)
 
 def stream : S.Stream :=
   St.map Pair Nat (fun (p : Pair) -> p 0) (St.iterate Pair fibStep seed)

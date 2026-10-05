@@ -1,0 +1,5 @@
+(* A unit that names [Lib::SeeC] without importing it: it sees only what its
+   own imports load, whatever its importer loaded before it. *)
+module Lib::SeeB where
+  def b : Nat := Lib::SeeC.c end
+end

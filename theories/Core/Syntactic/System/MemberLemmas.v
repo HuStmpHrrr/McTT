@@ -68,26 +68,6 @@ Qed.
 
 (** ** Bodies *)
 
-(** A local import's placeholders are closed. *)
-Lemma tele_wk_placeholders : forall n φ, tele_wk (repeat (ce_ass a_nat) n) φ = repeat (ce_ass a_nat) n.
-Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
-
-Lemma body_ctx_wk : forall Φ φ, body_ctx (gmod_wk Φ φ) = tele_wk (body_ctx Φ) φ.
-Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
-    rewrite ?tele_wk_app, ?tele_wk_placeholders, IH, ?length_body_ctx; reflexivity.
-Qed.
-
-(** A local import's placeholders are closed. *)
-Lemma tele_sub_placeholders : forall n σ, tele_sub (repeat (ce_ass a_nat) n) σ = repeat (ce_ass a_nat) n.
-Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
-
-Lemma body_ctx_sub : forall Φ σ, body_ctx (gmod_sub Φ σ) = tele_sub (body_ctx Φ) σ.
-Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
-    rewrite ?tele_sub_app, ?tele_sub_placeholders, IH, ?length_body_ctx; reflexivity.
-Qed.
-
 Lemma gm_names_wk : forall Φ φ, gm_names (gmod_wk Φ φ) = gm_names Φ.
 Proof. induction Φ; intros; cbn; rewrite ?IHΦ; reflexivity. Qed.
 
@@ -108,16 +88,13 @@ Proof.
   destruct (String.eqb x s); auto.
 Qed.
 
-(** The prefix of a body up to an entry is a prefix of its context. *)
-Lemma gm_prefix_upto_body_ctx : forall Φ x Φx,
-    gm_prefix_upto Φ x = Some Φx -> exists Ψ, body_ctx Φ = Ψ ++ body_ctx Φx.
-Proof.
-  induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H; try discriminate.
-  - destruct (String.eqb x y); [ injection H as <-; exists nil; reflexivity |].
-    destruct (IH _ _ H) as [Ψ HΨ]; cbn.
-    destruct E as [? ? ? [] | ]; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
-  - destruct (IH _ _ H) as [Ψ HΨ]; cbn; rewrite HΨ, app_assoc; eexists; reflexivity.
-Qed.
+(** A self slot under the operations: the body it holds is moved, under
+    no binder of its own. *)
+Lemma self_ent_wk : forall Φ φ, centry_wk (self_ent Φ) φ = self_ent (gmod_wk Φ φ).
+Proof. reflexivity. Qed.
+
+Lemma self_ent_sub : forall Φ σ, centry_sub (self_ent Φ) σ = self_ent (gmod_sub Φ σ).
+Proof. reflexivity. Qed.
 
 (** ** Module Expressions *)
 
@@ -134,61 +111,6 @@ Proof. induction args; intros; cbn; auto; apply IHargs. Qed.
 
 Lemma apps_sub : forall args M σ, (apps M args)[σ] = apps M[σ] (map (fun N => N[σ]) args).
 Proof. induction args; intros; cbn; auto; apply IHargs. Qed.
-
-(** ** Chains from a Unit *)
-
-Lemma mod_qname_wk : forall H p φ, mod_qname H = Some p -> modexp_wk H φ = H.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
-  destruct (mod_qname H) eqn:E; [ erewrite IHH; eauto | discriminate ].
-Qed.
-
-Lemma mod_qname_sub : forall H p σ, mod_qname H = Some p -> H[σ]ᵐ = H.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
-  destruct (mod_qname H) eqn:E; [ erewrite IHH; eauto | discriminate ].
-Qed.
-
-Lemma mod_qname_spine : forall H p, mod_qname H = Some p -> modexp_spine H = (me_unit (q_unit p), nil, q_chain p).
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate.
-  - injection Hp as <-; reflexivity.
-  - destruct (mod_qname H) as [p0 |] eqn:E; [| discriminate ]; injection Hp as <-.
-    rewrite (IHH _ eq_refl); reflexivity.
-Qed.
-
-Lemma mod_qname_noargs : forall H p, mod_qname H = Some p -> me_noargs H.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
-  destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
-Qed.
-
-Lemma me_mems_app : forall pre1 pre2 H, me_mems H (pre1 ++ pre2) = me_mems (me_mems H pre1) pre2.
-Proof. induction pre1; intros; cbn; auto. Qed.
-
-Lemma mod_qname_mems : forall pre H p, mod_qname H = Some p ->
-    mod_qname (me_mems H pre) = Some (q_abs (q_unit p) (q_chain p ++ pre)).
-Proof.
-  induction pre as [| y pre IH]; intros * Hp; cbn [me_mems].
-  - rewrite Hp, app_nil_r; destruct p; reflexivity.
-  - rewrite (IH _ (q_abs (q_unit p) (q_chain p ++ y :: nil))) by (cbn; rewrite Hp; reflexivity).
-    cbn [q_unit q_chain]; rewrite <- app_assoc; reflexivity.
-Qed.
-
-Lemma qname_mod_qname : forall p, mod_qname (qname_mod p) = Some p.
-Proof.
-  intros [fp ch]; unfold qname_mod; cbn [q_unit q_chain].
-  rewrite (mod_qname_mems ch (me_unit fp) (q_abs fp nil) eq_refl); reflexivity.
-Qed.
-
-Lemma mod_qname_inv : forall H p, mod_qname H = Some p -> H = qname_mod p.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate.
-  - injection Hp as <-; reflexivity.
-  - destruct (mod_qname H) as [p0 |] eqn:E; [| discriminate ]; injection Hp as <-.
-    rewrite (IHH _ eq_refl); unfold qname_mod; cbn [q_unit q_chain].
-    rewrite me_mems_app; reflexivity.
-Qed.
 
 (** A root that a weakening or a same-unit substitution sends to a root. *)
 Definition me_root (H : modexp) : Prop :=
@@ -216,6 +138,9 @@ Qed.
 
 Lemma me_noargs_wk : forall H φ, me_noargs H -> me_noargs (modexp_wk H φ).
 Proof. induction H; intros; cbn in *; auto. Qed.
+
+Lemma me_mems_app : forall pre1 pre2 H, me_mems H (pre1 ++ pre2) = me_mems (me_mems H pre1) pre2.
+Proof. induction pre1; intros; cbn; auto. Qed.
 
 
 
@@ -274,15 +199,8 @@ Proof.
     eapply gunit_scoped_wk; eauto; cbn; lia.
 Qed.
 
-Lemma ctx_scoped_placeholders : forall k n, ctx_scoped n (repeat (ce_ass a_nat) k).
-Proof. induction k; intros; cbn; auto. Qed.
-
-Lemma gmod_scoped_body_ctx : forall Φ n, gmod_scoped n Φ -> ctx_scoped n (body_ctx Φ).
-Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros * HΦ; cbn in *; destruct_all;
-    try (apply ctx_scoped_app; split; [ apply ctx_scoped_placeholders | auto ]);
-    repeat split; auto; rewrite length_body_ctx; assumption.
-Qed.
+Lemma self_ent_scoped : forall Φ n, gmod_scoped n Φ -> ce_scoped n (self_ent Φ).
+Proof. intros; cbn; rewrite gunit_scoped_mk; cbn; auto. Qed.
 
 Lemma gm_prefix_upto_scoped : forall Φ x Φx n,
     gm_prefix_upto Φ x = Some Φx -> gmod_scoped n Φ -> gmod_scoped n Φx.
@@ -546,44 +464,38 @@ Proof.
   intros [A | T] n H; cbn in *; [ eapply exp_scoped_mono; [| exact H ]; lia | apply ctx_scoped_closed; exact H ].
 Qed.
 
-Lemma member_type_scoped : forall Θ Ξ,
-    (forall Γ H ch R, member_type Θ Ξ Γ H ch R ->
-       gctx_closed Θ Ξ -> ctx_scoped 0 Γ -> modexp_scoped (length Γ) H -> mres_scoped (length Γ) R) /\
-    (forall Γ U ch R, unit_member_type Θ Ξ Γ U ch R ->
-       gctx_closed Θ Ξ -> ctx_scoped 0 Γ -> gunit_scoped (length Γ) U -> mres_scoped (length Γ) R).
+
+Lemma member_type_scoped : forall Θ,
+    gctx_closed Θ ->
+    (forall Γ H ch R, member_type Θ Γ H ch R ->
+       ctx_scoped 0 Γ -> modexp_scoped (length Γ) H -> mres_scoped (length Γ) R) /\
+    (forall Γ U ch R, unit_member_type Θ Γ U ch R ->
+       ctx_scoped 0 Γ -> gunit_scoped (length Γ) U -> mres_scoped (length Γ) R).
 Proof.
-  intros Θ Ξ; apply member_type_both_ind; intros; cbn [mres_scoped] in *; cbn in *; destruct_all.
-  - match goal with Hc : gctx_closed _ _, Hr : gc_resolve _ _ _ = _ |- _ => destruct (gctx_closed_resolve _ _ _ _ _ _ _ Hc Hr) as [HA _] end.
-    eapply exp_scoped_mono; [| eassumption ]; lia.
-  - match goal with Hc : gctx_closed _ _, Hr : gc_module _ _ _ = _ |- _ => pose proof (gctx_closed_module _ _ _ _ Hc Hr) as HT end; cbn in HT.
-    apply ctx_scoped_closed; assumption.
-  - match goal with Hc : gctx_closed _ _, Hr : gc_module _ _ _ = _ |- _ => pose proof (gctx_closed_module _ _ _ _ Hc Hr) as HU end; cbn in HU.
-    match goal with IH : _ -> _ -> _ -> mres_scoped 0 ?R |- mres_scoped _ ?R => apply mres_scoped_closed, IH; [ assumption | exact I | exact HU ] end.
-  - match goal with IH : _ -> _ -> gunit_scoped _ ?U -> _, Hl : _ ∋ # _ ⇒ₘ ?U, HΓ : ctx_scoped 0 _ |- _ =>
-      apply IH; [ assumption | assumption |]; pose proof (ctx_scoped_lookup_mod _ _ _ _ HΓ Hl) as HU; rewrite Nat.add_0_r in HU; exact HU end.
+  intros Θ Hc; apply member_type_both_ind; intros; cbn [mres_scoped modexp_scoped length] in *.
+  - apply mres_scoped_closed; match goal with IH : _ -> _ -> mres_scoped 0 _ |- _ => apply IH end;
+      [ exact I | eapply gctx_closed_unit_lookup; eassumption ].
+  - match goal with IH : _ -> gunit_scoped _ ?U -> _, Hl : _ ∋ # _ ⇒ₘ ?U, HΓ : ctx_scoped 0 _ |- _ =>
+      apply IH; [ assumption |]; pose proof (ctx_scoped_lookup_mod _ _ _ _ HΓ Hl) as HU; rewrite Nat.add_0_r in HU; exact HU end.
   - auto.
-  - match goal with IH : _ -> _ -> _ -> _ |- _ => apply IH; assumption end.
-  - eapply mres_app_scoped; [ eassumption | | assumption ].
-    match goal with IH : _ -> _ -> _ -> _ |- _ => apply IH; assumption end.
+  - match goal with IH : _ -> _ -> _ |- _ => apply IH; assumption end.
+  - cbn in *; destruct_all; eapply mres_app_scoped; [ eassumption | | assumption ].
+    match goal with IH : _ -> _ -> _ |- _ => apply IH; assumption end.
   - rewrite gunit_scoped_mk in *; destruct_all; assumption.
   - rewrite gunit_scoped_mk in *; destruct_all; cbn in *.
     match goal with Hp : gm_prefix_upto _ _ = _, HΦ : gmod_scoped _ ?Φ |- _ => pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HΦ) as HΦ' end; cbn in HΦ'; destruct_all.
-    apply ctx_pi_scoped; [ apply ctx_scoped_app; split; [ apply gmod_scoped_body_ctx; assumption | assumption ] |].
-    rewrite length_app, length_body_ctx, <- Nat.add_assoc; assumption.
+    apply ctx_pi_scoped; [ assumption | cbn; split; [ exact (self_ent_scoped _ _ H2) | assumption ] ].
   - rewrite gunit_scoped_mk in *; destruct_all; cbn in *.
     match goal with Hp : gm_prefix_upto _ _ = _, HΦ : gmod_scoped _ ?Φ |- _ => pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HΦ) as HΦ' end; cbn in HΦ'; destruct_all.
-    apply mres_gen_scoped; [ apply ctx_scoped_app; split; [ apply gmod_scoped_body_ctx; assumption | assumption ] |].
-    rewrite length_app, length_body_ctx, <- Nat.add_assoc.
-    match goal with IH : _ -> _ -> _ -> mres_scoped _ ?R |- mres_scoped _ ?R =>
-      replace (gm_binders Φ' + (length Δ + length Γ)) with (length (body_ctx Φ' ++ Δ ++ Γ)) by (rewrite !length_app, length_body_ctx; lia); apply IH end.
-    + assumption.
-    + apply ctx_scoped_app_iff; split; [| apply ctx_scoped_app_iff; split; assumption ].
-      rewrite length_app; apply gmod_scoped_body_ctx; assumption.
-    + rewrite !length_app, length_body_ctx; assumption.
+    apply mres_gen_scoped; [ cbn; split; [ apply self_ent_scoped; assumption | assumption ] |].
+    cbn [length]; replace (S (length Δ) + length Γ) with (length (self_ent Φ' :: Δ ++ Γ)) by (cbn; rewrite length_app; lia).
+    match goal with IH : _ -> _ -> mres_scoped _ ?R |- mres_scoped _ ?R => apply IH end.
+    + cbn; split; [ rewrite length_app, Nat.add_0_r; apply self_ent_scoped; assumption | apply ctx_scoped_app_iff; split; assumption ].
+    + cbn; rewrite length_app; assumption.
   - rewrite gunit_scoped_mk in *; destruct_all; cbn in *.
     apply mres_gen_scoped; [ assumption |].
-    rewrite <- length_app; match goal with IH : _ -> _ -> _ -> mres_scoped _ ?R |- mres_scoped _ ?R => apply IH end;
-      [ assumption | apply ctx_scoped_app_iff; split; assumption | rewrite length_app; assumption ].
+    rewrite <- length_app; match goal with IH : _ -> _ -> mres_scoped _ ?R |- mres_scoped _ ?R => apply IH end;
+      [ apply ctx_scoped_app_iff; split; assumption | rewrite length_app; assumption ].
 Qed.
 
 (** ** Member Types under a Weakening *)
@@ -606,75 +518,49 @@ Proof. induction Ψ; intros; cbn; auto using wk_mod_compat_q. Qed.
 
 Lemma gm_prefix_upto_ext_wk : forall Φ x Φ' E φ,
     gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
-    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (gentry_wk E (wk_qn (gm_binders Φ') φ))).
+    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (gentry_wk E (wk_q φ))).
 Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
 
-Lemma gm_prefix_upto_mod_wk : forall Φ x Φ' pm U φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
-    gm_prefix_upto (gmod_wk Φ φ) x = Some (gm_ext (gmod_wk Φ' φ) x (ge_mod pm (gunit_wk U (wk_qn (gm_binders Φ') φ)))).
-Proof. intros * H; rewrite gm_prefix_upto_wk, H; reflexivity. Qed.
+(** The self telescope of an entry after a weakening of its unit. *)
+Lemma tele_wk_self : forall Φ' Δ φ,
+    tele_wk (self_ent Φ' :: Δ) φ = self_ent (gmod_wk Φ' (wk_qn (length Δ) φ)) :: tele_wk Δ φ.
+Proof. reflexivity. Qed.
 
-Lemma gm_prefix_upto_def_wk : forall Φ x Φ' b pv A B φ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    gm_prefix_upto (gmod_wk Φ φ) x =
-    Some (gm_ext (gmod_wk Φ' φ) x (ge_def b pv A[wk_qn (gm_binders Φ') φ]ʷ
-                                        (option_map (fun M => M[wk_qn (gm_binders Φ') φ]ʷ) B))).
-Proof. intros * H; rewrite gm_prefix_upto_wk, H; cbn; destruct B; reflexivity. Qed.
-
-(** The type of a body member after a weakening of its unit. *)
-Lemma ctx_pi_body_wk : forall Φ' Δ A φ,
-    (ctx_pi (body_ctx Φ' ++ Δ) A)[φ]ʷ =
-    ctx_pi (body_ctx (gmod_wk Φ' (wk_qn (length Δ) φ)) ++ tele_wk Δ φ)
-      A[wk_qn (gm_binders Φ') (wk_qn (length Δ) φ)]ʷ.
+Lemma member_type_wk : forall Θ,
+    gctx_closed Θ ->
+    (forall Δ H ch R, member_type Θ Δ H ch R ->
+       forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Γ (modexp_wk H φ) ch (mres_wk R φ)) /\
+    (forall Δ U ch R, unit_member_type Θ Δ U ch R ->
+       forall Γ φ, wk_mod_compat φ Γ Δ -> unit_member_type Θ Γ (gunit_wk U φ) ch (mres_wk R φ)).
 Proof.
-  intros; rewrite ctx_pi_wk, tele_wk_app, body_ctx_wk; f_equal.
-  apply exp_wk_wk_eq; rewrite wk_qn_add, length_app, length_body_ctx; reflexivity.
-Qed.
-
-Lemma member_type_wk : forall Θ Ξ,
-    gctx_closed Θ Ξ ->
-    (forall Δ H ch R, member_type Θ Ξ Δ H ch R ->
-       forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Ξ Γ (modexp_wk H φ) ch (mres_wk R φ)) /\
-    (forall Δ U ch R, unit_member_type Θ Ξ Δ U ch R ->
-       forall Γ φ, wk_mod_compat φ Γ Δ -> unit_member_type Θ Ξ Γ (gunit_wk U φ) ch (mres_wk R φ)).
-Proof.
-  intros Θ Ξ Hc; apply member_type_both_ind; intros; cbn [modexp_wk].
-  - destruct (gctx_closed_resolve _ _ _ _ _ _ _ Hc e) as [HA _].
-    cbn [mres_wk]; rewrite exp_closed_wk by assumption; eapply mt_unit_def; eassumption.
-  - pose proof (gctx_closed_module _ _ _ _ Hc e) as HT; cbn in HT.
-    cbn [mres_wk]; rewrite tele_closed_wk by assumption; eapply mt_unit_mod; eassumption.
-  - pose proof (gctx_closed_module _ _ _ _ Hc e) as HU; cbn in HU.
-    rewrite mres_closed_wk; [ eapply mt_unit_alias; eassumption |].
-    exact (proj2 (member_type_scoped Θ Ξ) nil U r R u Hc I HU).
+  intros Θ Hc; apply member_type_both_ind; intros; cbn [modexp_wk].
+  - pose proof (gctx_closed_unit_lookup _ _ _ Hc e) as HU.
+    rewrite mres_closed_wk; [ eapply mt_unit; eassumption |].
+    exact (proj2 (member_type_scoped Θ Hc) nil U ch R u I HU).
   - econstructor; eauto.
   - econstructor; eauto.
   - econstructor; [ rewrite mres_kind_wk; assumption | eauto ].
   - econstructor; [ eauto | apply mres_app_wk; eassumption ].
   - rewrite gunit_wk_mk; cbn; constructor.
-  - rewrite gunit_wk_mk; cbn [mres_wk]; rewrite ctx_pi_body_wk; eapply umt_def.
-    match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_def_wk with (1 := Hp) end.
-  - rewrite gunit_wk_mk, mres_gen_wk, tele_wk_app, <- body_ctx_wk; eapply umt_mod; [ rewrite mres_kind_wk; assumption | .. ].
-    + match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_mod_wk with (1 := Hp) end.
-    + replace (body_ctx (gmod_wk Φ' (wk_qn (length Δ) φ)) ++ tele_wk Δ φ ++ Γ0)
-        with (tele_wk (body_ctx Φ' ++ Δ) φ ++ Γ0)
-        by (rewrite tele_wk_app, body_ctx_wk, <- List.app_assoc; reflexivity).
-      replace (gunit_wk Uy (wk_qn (gm_binders Φ') (wk_qn (length Δ) φ)))
-        with (gunit_wk Uy (wk_qn (length (body_ctx Φ' ++ Δ)) φ))
-        by (apply gunit_wk_wk_eq; rewrite wk_qn_add, length_app, length_body_ctx; reflexivity).
-      apply H; rewrite List.app_assoc; apply wk_mod_compat_ext; assumption.
+  - rewrite gunit_wk_mk; cbn [mres_wk moddef_wk]; rewrite ctx_pi_wk, tele_wk_self; cbn [length wk_qn].
+    eapply umt_def; rewrite (gm_prefix_upto_ext_wk _ _ _ _ _ e); reflexivity.
+  - rewrite gunit_wk_mk, mres_gen_wk, tele_wk_self; cbn [moddef_wk length wk_qn].
+    eapply umt_mod; [ rewrite mres_kind_wk; assumption | rewrite (gm_prefix_upto_ext_wk _ _ _ _ _ e); reflexivity |].
+    match goal with IH : forall _ _, _ -> _ |- _ => apply IH end.
+    apply (wk_mod_compat_q _ _ _ (self_ent Φ')), wk_mod_compat_ext; assumption.
   - rewrite gunit_wk_mk, mres_gen_wk; cbn; constructor.
-    apply H; apply wk_mod_compat_ext; assumption.
+    match goal with IH : forall _ _, _ -> _ |- _ => apply IH end; apply wk_mod_compat_ext; assumption.
 Qed.
 
-Corollary member_type_wk_term : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch A, member_type Θ Ξ Δ H ch (mr_term A) ->
-    forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Ξ Γ (modexp_wk H φ) ch (mr_term A[φ]ʷ).
-Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
+Corollary member_type_wk_term : forall Θ, gctx_closed Θ ->
+    forall Δ H ch A, member_type Θ Δ H ch (mr_term A) ->
+    forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Γ (modexp_wk H φ) ch (mr_term A[φ]ʷ).
+Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
 
-Corollary member_type_wk_mod : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch T, member_type Θ Ξ Δ H ch (mr_mod T) ->
-    forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Ξ Γ (modexp_wk H φ) ch (mr_mod (tele_wk T φ)).
-Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
+Corollary member_type_wk_mod : forall Θ, gctx_closed Θ ->
+    forall Δ H ch T, member_type Θ Δ H ch (mr_mod T) ->
+    forall Γ φ, wk_mod_compat φ Γ Δ -> member_type Θ Γ (modexp_wk H φ) ch (mr_mod (tele_wk T φ)).
+Proof. intros * Hc * Hm * Hφ; exact (proj1 (member_type_wk _ Hc) _ _ _ _ Hm _ _ Hφ). Qed.
 
 Corollary tele_view_wk_some : forall T B T1 φ, tele_view T = Some (B, T1) ->
     tele_view (tele_wk T φ) = Some (B[φ]ʷ, tele_wk T1 (wk_q φ)).
@@ -696,12 +582,6 @@ Fixpoint me_slot_root (Γ : ctx) (H : modexp) : Prop :=
   | me_var x => exists U, Γ ∋ #x ⇒ₘ U
   | _ => True
   end.
-
-Lemma mod_qname_slot_root : forall Γ H p, mod_qname H = Some p -> me_slot_root Γ H.
-Proof.
-  induction H as [fp | x | H IHH y | H IHH N | U]; intros * Hp; cbn in *; try discriminate; auto.
-  destruct (mod_qname H) eqn:E; [ eauto | discriminate ].
-Qed.
 
 Lemma modexp_spine_sub : forall H R args pre σ Γ Δ,
     sub_mod_compat σ Γ Δ ->
@@ -740,42 +620,26 @@ Lemma sub_mod_compat_ext : forall Ψ σ Γ Δ,
     sub_mod_compat σ Γ Δ -> sub_mod_compat (sb_qn (length Ψ) σ) (tele_sub Ψ σ ++ Γ) (Ψ ++ Δ).
 Proof. induction Ψ; intros; cbn; auto using sub_mod_compat_q. Qed.
 
-Lemma gm_prefix_upto_mod_sub : forall Φ x Φ' pm U σ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_mod pm U)) ->
-    gm_prefix_upto (gmod_sub Φ σ) x = Some (gm_ext (gmod_sub Φ' σ) x (ge_mod pm U[sb_qn (gm_binders Φ') σ]ᵘ)).
+Lemma gm_prefix_upto_ext_sub : forall Φ x Φ' E σ,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x E) ->
+    gm_prefix_upto (gmod_sub Φ σ) x = Some (gm_ext (gmod_sub Φ' σ) x (gentry_sub E (q σ))).
 Proof. intros * H; rewrite gm_prefix_upto_sub, H; reflexivity. Qed.
 
-Lemma gm_prefix_upto_def_sub : forall Φ x Φ' b pv A B σ,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    gm_prefix_upto (gmod_sub Φ σ) x =
-    Some (gm_ext (gmod_sub Φ' σ) x (ge_def b pv A[sb_qn (gm_binders Φ') σ]
-                                        (option_map (fun M => M[sb_qn (gm_binders Φ') σ]) B))).
-Proof. intros * H; rewrite gm_prefix_upto_sub, H; cbn; destruct B; reflexivity. Qed.
+Lemma tele_sub_self : forall Φ' Δ σ,
+    tele_sub (self_ent Φ' :: Δ) σ = self_ent (gmod_sub Φ' (sb_qn (length Δ) σ)) :: tele_sub Δ σ.
+Proof. reflexivity. Qed.
 
-Lemma ctx_pi_body_sub : forall Φ' Δ A σ,
-    (ctx_pi (body_ctx Φ' ++ Δ) A)[σ] =
-    ctx_pi (body_ctx (gmod_sub Φ' (sb_qn (length Δ) σ)) ++ tele_sub Δ σ)
-      A[sb_qn (gm_binders Φ') (sb_qn (length Δ) σ)].
+Lemma member_type_sub : forall Θ,
+    gctx_closed Θ ->
+    (forall Δ H ch R, member_type Θ Δ H ch R ->
+       forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Γ H[σ]ᵐ ch (mres_sub R σ)) /\
+    (forall Δ U ch R, unit_member_type Θ Δ U ch R ->
+       forall Γ σ, sub_mod_compat σ Γ Δ -> unit_member_type Θ Γ U[σ]ᵘ ch (mres_sub R σ)).
 Proof.
-  intros; rewrite ctx_pi_sub, tele_sub_app, body_ctx_sub; f_equal.
-  apply exp_sub_sb_eq; rewrite sb_qn_add, length_app, length_body_ctx; reflexivity.
-Qed.
-
-Lemma member_type_sub : forall Θ Ξ,
-    gctx_closed Θ Ξ ->
-    (forall Δ H ch R, member_type Θ Ξ Δ H ch R ->
-       forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Ξ Γ H[σ]ᵐ ch (mres_sub R σ)) /\
-    (forall Δ U ch R, unit_member_type Θ Ξ Δ U ch R ->
-       forall Γ σ, sub_mod_compat σ Γ Δ -> unit_member_type Θ Ξ Γ U[σ]ᵘ ch (mres_sub R σ)).
-Proof.
-  intros Θ Ξ Hc; apply member_type_both_ind; intros; cbn [modexp_sub].
-  - destruct (gctx_closed_resolve _ _ _ _ _ _ _ Hc e) as [HA _].
-    cbn [mres_sub]; rewrite exp_closed_sub by assumption; eapply mt_unit_def; eassumption.
-  - pose proof (gctx_closed_module _ _ _ _ Hc e) as HT; cbn in HT.
-    cbn [mres_sub]; rewrite tele_closed_sub by assumption; eapply mt_unit_mod; eassumption.
-  - pose proof (gctx_closed_module _ _ _ _ Hc e) as HU; cbn in HU.
-    rewrite mres_closed_sub; [ eapply mt_unit_alias; eassumption |].
-    exact (proj2 (member_type_scoped Θ Ξ) nil U r R u Hc I HU).
+  intros Θ Hc; apply member_type_both_ind; intros; cbn [modexp_sub].
+  - pose proof (gctx_closed_unit_lookup _ _ _ Hc e) as HU.
+    rewrite mres_closed_sub; [ eapply mt_unit; eassumption |].
+    exact (proj2 (member_type_scoped Θ Hc) nil U ch R u I HU).
   - destruct (H0 _ _ c) as [-> | (y & -> & Hy)]; cbn [sentry_modexp].
     + eapply mt_lit; eauto.
     + eapply mt_var; eauto.
@@ -783,30 +647,25 @@ Proof.
   - econstructor; [ rewrite mres_kind_sub; assumption | eauto ].
   - econstructor; [ eauto | apply mres_app_sub; eassumption ].
   - rewrite gunit_sub_mk; cbn; constructor.
-  - rewrite gunit_sub_mk; cbn [mres_sub]; rewrite ctx_pi_body_sub; eapply umt_def.
-    match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_def_sub with (1 := Hp) end.
-  - rewrite gunit_sub_mk, mres_gen_sub, tele_sub_app, <- body_ctx_sub; eapply umt_mod; [ rewrite mres_kind_sub; assumption | .. ].
-    + match goal with Hp : gm_prefix_upto _ _ = _ |- _ => apply gm_prefix_upto_mod_sub with (1 := Hp) end.
-    + replace (body_ctx (gmod_sub Φ' (sb_qn (length Δ) σ)) ++ tele_sub Δ σ ++ Γ0)
-        with (tele_sub (body_ctx Φ' ++ Δ) σ ++ Γ0)
-        by (rewrite tele_sub_app, body_ctx_sub, <- List.app_assoc; reflexivity).
-      replace (Uy[sb_qn (gm_binders Φ') (sb_qn (length Δ) σ)]ᵘ)
-        with (Uy[sb_qn (length (body_ctx Φ' ++ Δ)) σ]ᵘ)
-        by (apply gunit_sub_sb_eq; rewrite sb_qn_add, length_app, length_body_ctx; reflexivity).
-      apply H; rewrite List.app_assoc; apply sub_mod_compat_ext; assumption.
+  - rewrite gunit_sub_mk; cbn [mres_sub moddef_sub]; rewrite ctx_pi_sub, tele_sub_self; cbn [length sb_qn].
+    eapply umt_def; rewrite (gm_prefix_upto_ext_sub _ _ _ _ _ e); reflexivity.
+  - rewrite gunit_sub_mk, mres_gen_sub, tele_sub_self; cbn [moddef_sub length sb_qn].
+    eapply umt_mod; [ rewrite mres_kind_sub; assumption | rewrite (gm_prefix_upto_ext_sub _ _ _ _ _ e); reflexivity |].
+    match goal with IH : forall _ _, _ -> _ |- _ => apply IH end.
+    apply (sub_mod_compat_q _ _ _ (self_ent Φ')), sub_mod_compat_ext; assumption.
   - rewrite gunit_sub_mk, mres_gen_sub; cbn; constructor.
-    apply H; apply sub_mod_compat_ext; assumption.
+    match goal with IH : forall _ _, _ -> _ |- _ => apply IH end; apply sub_mod_compat_ext; assumption.
 Qed.
 
-Corollary member_type_sub_term : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch A, member_type Θ Ξ Δ H ch (mr_term A) ->
-    forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Ξ Γ H[σ]ᵐ ch (mr_term A[σ]).
-Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
+Corollary member_type_sub_term : forall Θ, gctx_closed Θ ->
+    forall Δ H ch A, member_type Θ Δ H ch (mr_term A) ->
+    forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Γ H[σ]ᵐ ch (mr_term A[σ]).
+Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
 
-Corollary member_type_sub_mod : forall Θ Ξ, gctx_closed Θ Ξ ->
-    forall Δ H ch T, member_type Θ Ξ Δ H ch (mr_mod T) ->
-    forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Ξ Γ H[σ]ᵐ ch (mr_mod (tele_sub T σ)).
-Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
+Corollary member_type_sub_mod : forall Θ, gctx_closed Θ ->
+    forall Δ H ch T, member_type Θ Δ H ch (mr_mod T) ->
+    forall Γ σ, sub_mod_compat σ Γ Δ -> member_type Θ Γ H[σ]ᵐ ch (mr_mod (tele_sub T σ)).
+Proof. intros * Hc * Hm * Hσ; exact (proj1 (member_type_sub _ Hc) _ _ _ _ Hm _ _ Hσ). Qed.
 
 Corollary tele_view_sub_some : forall T B T1 σ, tele_view T = Some (B, T1) ->
     tele_view (tele_sub T σ) = Some (B[σ], tele_sub T1 (q σ)).
@@ -818,27 +677,20 @@ Proof. intros * Hv; rewrite tele_view_sub, Hv; reflexivity. Qed.
 Lemma member_expansion_inv : forall U ch M,
     member_expansion U ch = Some M ->
     (exists Δ E, U = gu_mk Δ (md_alias E) /\ ch <> nil /\ M = ctx_fn Δ (member_ref E ch)) \/
-    (exists Δ Φ x Φ' b pv A B, U = gu_body Δ Φ /\ ch = x :: nil /\
-       gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) /\
-       M = ctx_fn (body_ctx (gm_ext Φ' x (ge_def b pv A B)) ++ Δ) (a_var 0)) \/
+    (exists Δ Φ x Φ' pv A M0, U = gu_body Δ Φ /\ ch = x :: nil /\
+       gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A (Some M0))) /\
+       M = ctx_fn (self_ent Φ' :: Δ) M0) \/
     (exists Δ Φ y ch' Φ' pm Uy, U = gu_body Δ Φ /\ ch = y :: ch' /\ ch' <> nil /\
        gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) /\
-       M = ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch')).
+       M = ctx_fn (self_ent Φ' :: Δ) (member_ref (me_lit Uy) ch')).
 Proof.
   intros [Δ [Φ | E]] [| x ch'] M H; unfold member_expansion in H; try discriminate.
   - right.
     destruct (gm_prefix_upto Φ x) as [Φx |] eqn:Ex; [| discriminate ].
-    destruct Φx as [| Φ' y [b pv A B | pm Uy] | Φ' c]; try discriminate;
-      destruct ch' as [| z ch'']; try discriminate; injection H as <-.
-    + pose proof Ex as Ex'; unfold gm_prefix_upto in Ex'.
-      assert (y = x) as ->.
-      { clear - Ex. induction Φ as [| Φ IH w E | Φ IH c]; cbn in Ex; try discriminate; auto.
-        destruct (String.eqb_spec x w) as [-> |]; [ congruence | auto ]. }
-      left; do 8 eexists; repeat split; eassumption.
-    + assert (y = x) as ->.
-      { clear - Ex. induction Φ as [| Φ IH w E | Φ IH c]; cbn in Ex; try discriminate; auto.
-        destruct (String.eqb_spec x w) as [-> |]; [ congruence | auto ]. }
-      right; do 7 eexists; repeat split; try eassumption; discriminate.
+    destruct (gm_prefix_upto_ext _ _ _ Ex) as (Φ' & E & ->).
+    destruct E as [pv A [M0 |] | pm Uy]; destruct ch' as [| z ch'']; try discriminate; injection H as <-.
+    + left; do 7 eexists; repeat split; eassumption.
+    + right; do 7 eexists; repeat split; try eassumption; discriminate.
   - left; injection H as <-; do 2 eexists; repeat split; discriminate.
 Qed.
 
@@ -846,17 +698,16 @@ Lemma member_expansion_alias : forall Δ E ch,
     ch <> nil -> member_expansion (gu_mk Δ (md_alias E)) ch = Some (ctx_fn Δ (member_ref E ch)).
 Proof. intros * Hch; destruct ch; [ contradiction | reflexivity ]. Qed.
 
-Lemma member_expansion_def : forall Δ Φ x Φ' b pv A B,
-    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A B)) ->
-    member_expansion (gu_body Δ Φ) (x :: nil) =
-    Some (ctx_fn (body_ctx (gm_ext Φ' x (ge_def b pv A B)) ++ Δ) (a_var 0)).
+Lemma member_expansion_def : forall Δ Φ x Φ' pv A M,
+    gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def pv A (Some M))) ->
+    member_expansion (gu_body Δ Φ) (x :: nil) = Some (ctx_fn (self_ent Φ' :: Δ) M).
 Proof. intros * H; unfold member_expansion; rewrite H; reflexivity. Qed.
 
 Lemma member_expansion_mod : forall Δ Φ y ch' Φ' pm Uy,
     ch' <> nil ->
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
     member_expansion (gu_body Δ Φ) (y :: ch') =
-    Some (ctx_fn (body_ctx (gm_ext Φ' y (ge_mod pm Uy)) ++ Δ) (member_ref (me_var 0) ch')).
+    Some (ctx_fn (self_ent Φ' :: Δ) (member_ref (me_lit Uy) ch')).
 Proof. intros * Hch H; unfold member_expansion; rewrite H; destruct ch'; [ contradiction | reflexivity ]. Qed.
 
 Lemma member_expansion_wk : forall U ch M φ,
@@ -864,17 +715,15 @@ Lemma member_expansion_wk : forall U ch M φ,
     member_expansion (gunit_wk U φ) ch = Some M[φ]ʷ.
 Proof.
   intros * H; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & pv & A & M0 & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_wk_mk; cbn [moddef_wk].
   - rewrite member_expansion_alias by assumption; rewrite ctx_fn_wk, member_ref_wk; reflexivity.
-  - erewrite member_expansion_def by (apply gm_prefix_upto_def_wk; eassumption).
-    rewrite ctx_fn_wk, tele_wk_app; destruct B; cbn [body_ctx tele_wk option_map centry_wk];
-      rewrite body_ctx_wk, length_body_ctx; cbn; reflexivity.
-  - erewrite member_expansion_mod by first [ assumption | apply gm_prefix_upto_mod_wk; eassumption ].
-    rewrite ctx_fn_wk, tele_wk_app; cbn [body_ctx tele_wk centry_wk]; rewrite body_ctx_wk, length_body_ctx;
-      f_equal; f_equal; cbn [exp_wk bnd_wk length].
-    rewrite member_ref_wk; f_equal; f_equal; rewrite ?length_app, ?length_body_ctx;
-      apply gunit_wk_wk_eq; rewrite wk_qn_add; reflexivity.
+  - pose proof (gm_prefix_upto_ext_wk _ _ _ _ (wk_qn (length Δ) φ) Hp) as Hp'; cbn [gentry_wk] in Hp'.
+    erewrite member_expansion_def by exact Hp'.
+    rewrite ctx_fn_wk; reflexivity.
+  - pose proof (gm_prefix_upto_ext_wk _ _ _ _ (wk_qn (length Δ) φ) Hp) as Hp'; cbn [gentry_wk] in Hp'.
+    erewrite member_expansion_mod by first [ assumption | exact Hp' ].
+    rewrite ctx_fn_wk, member_ref_wk; reflexivity.
 Qed.
 
 Lemma member_expansion_sub : forall U ch M σ,
@@ -882,17 +731,15 @@ Lemma member_expansion_sub : forall U ch M σ,
     member_expansion U[σ]ᵘ ch = Some M[σ].
 Proof.
   intros * H; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & pv & A & M0 & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_sub_mk; cbn [moddef_sub].
   - rewrite member_expansion_alias by assumption; rewrite ctx_fn_sub, member_ref_sub; reflexivity.
-  - erewrite member_expansion_def by (apply gm_prefix_upto_def_sub; eassumption).
-    rewrite ctx_fn_sub, tele_sub_app; destruct B; cbn [body_ctx tele_sub option_map centry_sub];
-      rewrite body_ctx_sub, length_body_ctx; cbn; reflexivity.
-  - erewrite member_expansion_mod by first [ assumption | apply gm_prefix_upto_mod_sub; eassumption ].
-    rewrite ctx_fn_sub, tele_sub_app; cbn [body_ctx tele_sub centry_sub]; rewrite body_ctx_sub, length_body_ctx;
-      f_equal; f_equal; cbn [exp_sub bnd_sub length].
-    rewrite member_ref_sub; f_equal; f_equal; rewrite ?length_app, ?length_body_ctx;
-      apply gunit_sub_sb_eq; rewrite sb_qn_add; reflexivity.
+  - pose proof (gm_prefix_upto_ext_sub _ _ _ _ (sb_qn (length Δ) σ) Hp) as Hp'; cbn [gentry_sub] in Hp'.
+    erewrite member_expansion_def by exact Hp'.
+    rewrite ctx_fn_sub; reflexivity.
+  - pose proof (gm_prefix_upto_ext_sub _ _ _ _ (sb_qn (length Δ) σ) Hp) as Hp'; cbn [gentry_sub] in Hp'.
+    erewrite member_expansion_mod by first [ assumption | exact Hp' ].
+    rewrite ctx_fn_sub, member_ref_sub; reflexivity.
 Qed.
 
 Lemma member_ref_scoped : forall ch H n, modexp_scoped n H -> exp_scoped n (member_ref H ch).
@@ -902,115 +749,105 @@ Lemma member_expansion_scoped : forall U ch M n,
     member_expansion U ch = Some M -> gunit_scoped n U -> exp_scoped n M.
 Proof.
   intros * H HU; apply member_expansion_inv in H as
-    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & b & pv & A & B & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
+    [(Δ & E & -> & Hch & ->) | [(Δ & Φ & x & Φ' & pv & A & M0 & -> & -> & Hp & ->) | (Δ & Φ & y & ch' & Φ' & pm & Uy & -> & -> & Hch & Hp & ->)]];
     rewrite gunit_scoped_mk in HU; destruct HU as [HΔ HD]; cbn in HD.
   - apply ctx_fn_scoped; [ assumption | apply member_ref_scoped; assumption ].
-  - pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HD) as HΦ.
-    apply ctx_fn_scoped; [ apply ctx_scoped_app; split; [ apply gmod_scoped_body_ctx; assumption | assumption ] |].
-    rewrite length_app; destruct B; cbn; lia.
-  - pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HD) as HΦ.
-    apply ctx_fn_scoped; [ apply ctx_scoped_app; split; [ apply gmod_scoped_body_ctx; assumption | assumption ] |].
-    apply member_ref_scoped; cbn; rewrite length_app; cbn; lia.
+  - pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HD) as HΦ; cbn in HΦ; destruct_all.
+    apply ctx_fn_scoped; cbn; [ split; [ apply self_ent_scoped |]; assumption | assumption ].
+  - pose proof (gm_prefix_upto_scoped _ _ _ _ Hp HD) as HΦ; cbn in HΦ; destruct_all.
+    apply ctx_fn_scoped; cbn; [ split; [ apply self_ent_scoped |]; assumption |].
+    apply member_ref_scoped; cbn; assumption.
 Qed.
 
-(** What the δ-reduct of a chain from a unit is: the global itself, or the
-    expansion of a member of a closed alias. *)
-Lemma member_unfold_path_closed : forall Θ Ξ fp ch M,
-    gctx_closed Θ Ξ -> member_unfold_ch Θ Ξ nil (me_unit fp) ch = Some M -> exp_scoped 0 M.
+(** The δ-reduct of a chain from a unit is closed: the unit is. *)
+Lemma member_unfold_unit_closed : forall Θ Γ fp ch M,
+    gctx_closed Θ -> member_unfold_ch Θ Γ (me_unit fp) ch = Some M -> exp_scoped 0 M.
 Proof.
   intros * Hc H; cbn in H.
-  destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | pm U] |];
-    try (injection H as <-; apply member_ref_scoped; exact I);
-    destruct (gc_module Θ Ξ (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate;
-    pose proof (gctx_closed_module _ _ _ _ Hc Em) as HU; cbn in HU;
-    eapply member_expansion_scoped; eassumption.
+  destruct (gc_unit Θ fp) as [U |] eqn:EU; [| discriminate ].
+  eapply member_expansion_scoped; [ eassumption | eapply gctx_closed_unit_lookup; eassumption ].
 Qed.
 
-Lemma member_unfold_wk : forall Θ Ξ,
-    gctx_closed Θ Ξ ->
+Lemma member_unfold_wk : forall Θ,
+    gctx_closed Θ ->
     forall H Δ ch M Γ φ,
       wk_mod_compat φ Γ Δ ->
-      member_unfold_ch Θ Ξ Δ H ch = Some M ->
-      member_unfold_ch Θ Ξ Γ (modexp_wk H φ) ch = Some M[φ]ʷ.
+      member_unfold_ch Θ Δ H ch = Some M ->
+      member_unfold_ch Θ Γ (modexp_wk H φ) ch = Some M[φ]ʷ.
 Proof.
-  intros Θ Ξ Hc; induction H as [fp | x | H IH y | H IH N | U]; intros * Hφ HM.
-  - rewrite exp_closed_wk; [ exact HM |].
-    eapply member_unfold_path_closed; [ eassumption |]; cbn in HM |- *; exact HM.
+  intros Θ Hc; induction H as [fp | x | H IH y | H IH N | U]; intros * Hφ HM.
+  - rewrite exp_closed_wk; [ cbn in *; exact HM |].
+    eapply member_unfold_unit_closed; eassumption.
   - cbn in HM |- *.
     destruct (ctx_find_mod Δ x) as [U |] eqn:EU; [| discriminate ].
     apply ctx_find_mod_spec, Hφ, ctx_find_mod_spec in EU; rewrite EU.
     apply member_expansion_wk; assumption.
   - cbn in *; eauto.
-  - cbn in *; destruct (member_unfold_ch Θ Ξ Δ H ch) as [M0 |] eqn:E0; [| discriminate ].
+  - cbn in *; destruct (member_unfold_ch Θ Δ H ch) as [M0 |] eqn:E0; [| discriminate ].
     injection HM as <-; erewrite IH by eassumption; reflexivity.
   - cbn in *; apply member_expansion_wk; assumption.
 Qed.
 
-Lemma member_unfold_sub : forall Θ Ξ,
-    gctx_closed Θ Ξ ->
+Lemma member_unfold_sub : forall Θ,
+    gctx_closed Θ ->
     forall H Δ ch M Γ σ,
       sub_mod_compat σ Γ Δ ->
-      member_unfold_ch Θ Ξ Δ H ch = Some M ->
-      member_unfold_ch Θ Ξ Γ H[σ]ᵐ ch = Some M[σ].
+      member_unfold_ch Θ Δ H ch = Some M ->
+      member_unfold_ch Θ Γ H[σ]ᵐ ch = Some M[σ].
 Proof.
-  intros Θ Ξ Hc; induction H as [fp | x | H IH y | H IH N | U]; intros * Hσ HM.
-  - rewrite exp_closed_sub; [ exact HM |].
-    eapply member_unfold_path_closed; [ eassumption |]; cbn in HM |- *; exact HM.
+  intros Θ Hc; induction H as [fp | x | H IH y | H IH N | U]; intros * Hσ HM.
+  - rewrite exp_closed_sub; [ cbn in *; exact HM |].
+    eapply member_unfold_unit_closed; eassumption.
   - cbn in HM |- *.
     destruct (ctx_find_mod Δ x) as [U |] eqn:EU; [| discriminate ].
     apply ctx_find_mod_spec in EU; destruct (Hσ _ _ EU) as [-> | (y & -> & Hy)]; cbn.
     + apply member_expansion_sub; assumption.
     + apply ctx_find_mod_spec in Hy; rewrite Hy; apply member_expansion_sub; assumption.
   - cbn in *; eauto.
-  - cbn in *; destruct (member_unfold_ch Θ Ξ Δ H ch) as [M0 |] eqn:E0; [| discriminate ].
+  - cbn in *; destruct (member_unfold_ch Θ Δ H ch) as [M0 |] eqn:E0; [| discriminate ].
     injection HM as <-; erewrite IH by eassumption; reflexivity.
   - cbn in *; apply member_expansion_sub; assumption.
 Qed.
 
 (** ** Member Types as the Global Context Grows *)
 
-(** A path through an alias names no definition, and a path naming a module
-    names no definition. *)
-Lemma gm_submodule_resolve : forall Φ T x ip r,
-    gm_submodule T Φ x ip = Some r -> gm_resolve Φ (x :: ip) = None.
+Lemma member_type_gc_sub : forall Θ1 Θ2,
+    Θ1 ⊑ Θ2 ->
+    (forall Γ H ch R, member_type Θ1 Γ H ch R -> member_type Θ2 Γ H ch R) /\
+    (forall Γ U ch R, unit_member_type Θ1 Γ U ch R -> unit_member_type Θ2 Γ U ch R).
 Proof.
-  fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; try discriminate; [| eapply IH; exact H ].
-  destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct E as [b pv A B | ? [Δ [Φ' | E']]]; try discriminate.
-  - destruct ip as [| z ip']; [ reflexivity |].
-    eapply IH; exact H.
-  - destruct ip; reflexivity.
+  intros * Hs; apply member_type_both_ind; intros; econstructor; eauto using gc_sub_unit.
 Qed.
 
-Lemma gc_module_resolve : forall Θ Ξ p r,
-    gc_module Θ Ξ p = Some r -> gc_resolve Θ Ξ p = None.
-Proof.
-  intros * H; unfold gc_module, gc_resolve in *; rewrite gs_find_tele_find.
-  destruct (gs_find_tele Ξ p) as [[[U [| x ip]] T] |]; cbn; [ discriminate | eapply gm_submodule_resolve; exact H |].
-  destruct (gds_lookup Θ (q_unit p)); [| discriminate ].
-  destruct (q_chain p) as [| x ip]; cbn in *; [ destruct (gu_mod g); reflexivity || apply gm_resolve_nil | eapply gm_submodule_resolve; exact H ].
-Qed.
-
-Lemma member_type_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
-    (forall Γ H ch R, member_type Θ1 Ξ1 Γ H ch R -> member_type Θ2 Ξ2 Γ H ch R) /\
-    (forall Γ U ch R, unit_member_type Θ1 Ξ1 Γ U ch R -> unit_member_type Θ2 Ξ2 Γ U ch R).
-Proof.
-  intros * Hs; apply member_type_both_ind; intros; econstructor; eauto using gc_sub_resolve, gc_sub_module.
-Qed.
-
-Lemma member_unfold_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 ->
-    forall H Γ ch M, member_unfold_ch Θ1 Ξ1 Γ H ch = Some M -> member_unfold_ch Θ2 Ξ2 Γ H ch = Some M.
+Lemma member_unfold_gc_sub : forall Θ1 Θ2,
+    Θ1 ⊑ Θ2 ->
+    forall H Γ ch M, member_unfold_ch Θ1 Γ H ch = Some M -> member_unfold_ch Θ2 Γ H ch = Some M.
 Proof.
   intros * Hs; induction H as [fp | x | H IH y | H IH N | U]; intros * HM; cbn in *; auto.
-  - destruct (gc_resolve Θ1 Ξ1 (q_abs fp ch)) as [[b pv A B | pm U] |] eqn:Er.
-    + rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Er); exact HM.
-    + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate.
-      rewrite (gc_module_resolve _ _ _ _ Em) in Er; discriminate.
-    + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U r] |] eqn:Em; try discriminate.
-      pose proof (gc_sub_module _ _ _ _ _ _ Hs Em) as Em2.
-      rewrite (gc_module_resolve _ _ _ _ Em2), Em2; exact HM.
-  - destruct (member_unfold_ch Θ1 Ξ1 Γ H ch) eqn:E; [| discriminate ].
+  - destruct (gc_unit Θ1 fp) as [U |] eqn:Er; [| discriminate ].
+    rewrite (gc_sub_unit _ _ _ _ Hs Er); exact HM.
+  - destruct (member_unfold_ch Θ1 Γ H ch) eqn:E; [| discriminate ].
     rewrite (IH _ _ _ E); exact HM.
+Qed.
+
+(** ** Member Types Are Functional *)
+
+Lemma member_type_functional : forall Θ,
+    (forall Γ H ch R, member_type Θ Γ H ch R -> forall R', member_type Θ Γ H ch R' -> R = R') /\
+    (forall Γ U ch R, unit_member_type Θ Γ U ch R -> forall R', unit_member_type Θ Γ U ch R' -> R = R').
+Proof.
+  intros Θ; apply member_type_both_ind.
+  all: intros *; intros; match goal with H' : _ _ _ _ _ ?A' |- _ = ?A' => inversion H'; subst end;
+    try congruence;
+    try solve [ match goal with Hl : _ ∋ # _ ⇒ₘ _, Hl' : _ ∋ # _ ⇒ₘ _ |- _ =>
+                  pose proof (ctx_lookup_mod_functional _ _ _ _ Hl Hl'); subst; eauto end ];
+    eauto.
+  - match goal with E1 : gc_unit _ ?p = _, E2 : gc_unit _ ?p = _ |- _ =>
+      rewrite E1 in E2; injection E2; intros; subst end; eauto.
+  - match goal with IH : forall R', member_type _ _ ?H _ R' -> _ = R', Hm : member_type _ _ ?H _ _ |- _ =>
+      apply IH in Hm; subst end; congruence.
+  - match goal with E1 : gm_prefix_upto _ _ = _, E2 : gm_prefix_upto _ _ = _ |- _ =>
+      rewrite E1 in E2; injection E2; intros; subst end.
+    f_equal; eauto.
+  - f_equal; eauto.
 Qed.

@@ -105,7 +105,7 @@ end
 
 end
 
-import TrialDivision use (trialDivision; noSmallDivisor; trialDivisionDivides; trialDivisionNone)
+open TrialDivision use (trialDivision; noSmallDivisor; trialDivisionDivides; trialDivisionNone)
 
 (* The smallest divisor of [n] from 2 on, found by trial division up to the
    square root.  It is [n] when [n] is prime, and also when [n] is [0] or

@@ -83,11 +83,11 @@ Proof.
   (** The global context is an index of [wf_subtyp], so it is fixed for the
       induction, as in [subtyp_spec]. *)
   intros * H.
-  remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
+  remember gc_ctx as Θ0 eqn:HΘ.
   induction H; subst;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
     mauto.
-  - match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H as [W [? ?]]).
+  - match_by_head1 (wf_exp_eq gc_ctx) ltac:(fun H => apply completeness in H as [W [? ?]]).
     econstructor; mauto.
   - assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
     assert (Γ ⊢ Type@j : Type@(S j)) by mauto.
@@ -105,7 +105,7 @@ Proof.
         needed below. *)
     assert (exists W, nbe_f (Γ ▹ A) B Type@i W /\ nbe_f (Γ ▹ A') B Type@i W)
       by mauto 3 using ctxeq_nbe_eq.
-    match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H).
+    match_by_head1 (wf_exp_eq gc_ctx) ltac:(fun H => apply completeness in H).
     assert (Γ ⊢ Π A B : Type@i) as ?%soundness by mauto.
     assert (Γ ⊢ Π A' B' : Type@i) as ?%soundness by mauto.
     destruct_all.

@@ -4,7 +4,7 @@ From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
 From Mctt.Core.Semantic Require Export Transparency Stuck.
 From Mctt.Core.Syntactic Require Export Unseal.
-Require Import Mctt.Core.Syntactic.Command.
+From Mctt.Core.Syntactic.System Require Import Command.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
@@ -96,7 +96,7 @@ Lemma subtyp_spec : forall {Γ A B},
 Proof.
   (** The global context is an index of [wf_subtyp], so fix it for the induction. *)
   intros * H.
-  remember gc_deps as Θ0 eqn:HΘ; remember gc_stack as Ξ0 eqn:HΞ.
+  remember gc_ctx as Θ0 eqn:HΘ.
   induction H; subst;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
     mauto 3.
@@ -145,15 +145,15 @@ Hint Resolve canonical_form_of_pi : mctt.
 #[export]
 Hint Resolve subtyp_spec : mctt.
 
-(** Stated at explicit [Θ Ξ] so that the induction need not generalize the
+(** Stated at explicit [Θ] so that the induction need not generalize the
     instance. *)
-Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
-    gc_transparent Θ Ξ ->
+Lemma consistency_ne_helper : forall {Θ i A A'} {W : ne},
+    gc_transparent Θ ->
     ne_clean W ->
     is_typ_constr A' ->
     (forall j, A' <> Type@j) ->
-    Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ W : A).
+    Θ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
+    ~ (Θ ⍮ ⋅ ▹ Type@i ⊢ W : A).
 Proof.
   intros * Htr HWc HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
@@ -169,7 +169,7 @@ Proof.
   - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
   - destruct W; simpl in *; try contradiction; autoinjections.
-    pose (GC := gc_mk Θ Ξ).
+    pose (GC := gc_mk Θ).
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
     assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
     assert (rigid_typ (⋅ ▹ Type@i) A').
@@ -183,9 +183,9 @@ Qed.
 
 (** In the empty context, a neutral without a global head has no type: its
     head would be a variable. *)
-Lemma no_closed_neutral : forall {Θ Ξ A} {W : ne},
+Lemma no_closed_neutral : forall {Θ A} {W : ne},
     ne_clean W ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
+    ~ (Θ ⍮ ⋅ ⊢ W : A).
 Proof.
   intros * HWc HW.
   dependent induction HW; try (destruct W; simpl in *; congruence);
@@ -212,7 +212,7 @@ Hint Constructors canonical_nat : mctt.
 
 Section Transparent_GCtx.
   Context {GC : GCtx}.
-  Hypothesis Htr : gc_transparent gc_deps gc_stack.
+  Hypothesis Htr : gc_transparent gc_ctx.
 
 Theorem canonical_form_of_nat : forall {M},
     ⋅ ⊢ M : ℕ ->
@@ -220,7 +220,7 @@ Theorem canonical_form_of_nat : forall {M},
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
-  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ _ Htr _ _ _ _ H) as Hc).
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ Htr _ _ _ _ H) as Hc).
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head1 eval_exp ltac:(fun H => clear H).
@@ -229,7 +229,7 @@ Proof.
     intros; cbn in *; destruct_all; mauto 3;
     gen_presups.
   - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
-  - match_by_head1 (wf_exp gc_deps gc_stack ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
+  - match_by_head1 (wf_exp gc_ctx ⋅ ℕ) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 Hint Resolve canonical_form_of_nat : mctt.
 
@@ -239,7 +239,7 @@ Theorem canonical_form_of_typ : forall {i M},
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
-  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ _ Htr _ _ _ _ H) as Hc).
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_clean _ Htr _ _ _ _ H) as Hc).
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head1 eval_exp ltac:(fun H => clear H).
@@ -248,7 +248,7 @@ Proof.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
     intros; cbn in *; destruct_all; split; intros; mauto 3; try congruence;
     gen_presups;
-    match_by_head1 (wf_exp gc_deps gc_stack ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
+    match_by_head1 (wf_exp gc_ctx ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 Hint Resolve canonical_form_of_typ : mctt.
 
@@ -260,7 +260,7 @@ Proof.
   assert (exists W, nbe_f ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
   gen_presups.
   functional_nbe_rewrite_clear.
-  pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc; cbn in Hc; destruct_all.
+  pose proof (nbe_clean _ Htr _ _ _ _ Hnbe) as Hc; cbn in Hc; destruct_all.
   dependent destruction Hnbe.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
@@ -294,7 +294,7 @@ Theorem consistency_False : forall M,
     ~ ⋅ ⊢ M : ⊥.
 Proof.
   intros * [W [Hnbe HMW]]%soundness.
-  pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc.
+  pose proof (nbe_clean _ Htr _ _ _ _ Hnbe) as Hc.
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
@@ -311,46 +311,46 @@ Hint Resolve canonical_form_of_nat : mctt.
 Hint Resolve canonical_form_of_typ : mctt.
 
 (** The theorems above, with the global context explicit. *)
-Corollary canonical_form_of_nat_gctx : forall Θ Ξ M,
-    gc_transparent Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
-    exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat W.
-Proof. intros * Htr HM; exact (@canonical_form_of_nat (gc_mk Θ Ξ) Htr M HM). Qed.
+Corollary canonical_form_of_nat_gctx : forall Θ M,
+    gc_transparent Θ ->
+    Θ ⍮ ⋅ ⊢ M : ℕ ->
+    exists W, nbe Θ ⋅ M ℕ W /\ canonical_nat W.
+Proof. intros * Htr HM; exact (@canonical_form_of_nat (gc_mk Θ) Htr M HM). Qed.
 
-Corollary canonical_form_of_typ_gctx : forall Θ Ξ i M,
-    gc_transparent Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
-Proof. intros * Htr HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr i M HM). Qed.
+Corollary canonical_form_of_typ_gctx : forall Θ i M,
+    gc_transparent Θ ->
+    Θ ⍮ ⋅ ⊢ M : Type@i ->
+    exists W, nbe Θ ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+Proof. intros * Htr HM; exact (@canonical_form_of_typ (gc_mk Θ) Htr i M HM). Qed.
 
-Corollary consistency_gctx : forall Θ Ξ i M,
-    gc_transparent Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
-Proof. intros * Htr; exact (@consistency (gc_mk Θ Ξ) Htr i M). Qed.
+Corollary consistency_gctx : forall Θ i M,
+    gc_transparent Θ ->
+    ~ (Θ ⍮ ⋅ ⊢ M : Π Type@i #0).
+Proof. intros * Htr; exact (@consistency (gc_mk Θ) Htr i M). Qed.
 
-Corollary consistency_False_gctx : forall Θ Ξ M,
-    gc_transparent Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
-Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
+Corollary consistency_False_gctx : forall Θ M,
+    gc_transparent Θ ->
+    ~ (Θ ⍮ ⋅ ⊢ M : ⊥).
+Proof. intros * Htr; exact (@consistency_False (gc_mk Θ) Htr M). Qed.
 
-(** ** Opaque Definitions
+(** ** Sealed Constants and Axioms
 
-    With [abstract] definitions allowed, a closed normal form of type [ℕ] can
-    be stuck: an opaque global applied to arguments, as [c] is in
-    [abstract c : ℕ := 3].  What survives is:
+    With [abstract] definitions and axioms, a closed normal form of type [ℕ]
+    can be stuck: a sealed constant or an axiom applied to arguments, as [c]
+    is in [abstract c : ℕ := 3].  What survives is:
 
     - at the global context itself, every closed normal form of type [ℕ] is a
-      numeral or a numeral wrapped around a neutral headed by a global that
+      numeral or a numeral wrapped around a neutral headed by a constant that
       does not unfold ([canonical_form_of_nat_stuck]), with no hypothesis at
       all;
-    - without axioms that global is an opaque definition with a body, and
-      after unsealing every definition the term computes to a numeral, equal
-      in the unsealed context to the sealed normal form
+    - without axioms that constant is sealed and has a body, and after
+      unsealing every constant the term computes to a numeral, equal in the
+      unsealed context to the sealed normal form
       ([canonical_form_of_nat_no_axioms]);
     - without axioms there is no closed proof of [⊥]
       ([consistency_False_no_axioms]): unsealing preserves typing
       ([unseal_exp]) and produces a transparent context
-      ([gc_no_axioms_unseal_transparent]). *)
+      ([gc_unseal_transparent]). *)
 
 (** The global at the head of a neutral, if any. *)
 Fixpoint ne_head (W : ne) : option qname :=
@@ -367,9 +367,9 @@ Proof.
 Qed.
 
 (** In the empty context, a neutral is headed by a global. *)
-Lemma no_closed_neutral_head : forall {Θ Ξ A} {W : ne},
+Lemma no_closed_neutral_head : forall {Θ A} {W : ne},
     ne_head W = None ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A).
+    ~ (Θ ⍮ ⋅ ⊢ W : A).
 Proof.
   intros * HWc HW.
   dependent induction HW; try (destruct W; simpl in *; congruence);
@@ -379,8 +379,8 @@ Proof.
   match_by_head ctx_lookup ltac:(fun H => inversion H).
 Qed.
 
-Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ W : A ->
+Lemma closed_neutral_head : forall {Θ A} {W : ne},
+    Θ ⍮ ⋅ ⊢ W : A ->
     exists p, ne_head W = Some p.
 Proof.
   intros * HW; destruct (ne_head W) as [p |] eqn:Hh; [ eauto |].
@@ -401,15 +401,15 @@ Hint Constructors canonical_nat_stuck : mctt.
 Lemma canonical_nat_stuck_of_canonical_nat : forall G W, canonical_nat W -> canonical_nat_stuck G W.
 Proof. induction 1; mauto. Qed.
 
-(** A global that is an opaque definition with a body. *)
-Definition gopaque (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
-  exists pv A M, gc_resolve Θ Ξ p = Some (ge_def false pv A (Some M)).
+(** A constant that is sealed and has a body. *)
+Definition gopaque (Θ : gctx) (p : qname) : Prop :=
+  exists A M, gc_const Θ p = Some (A, Some M, false).
 
-Lemma gstuck_gopaque : forall Θ Ξ p, gc_no_axioms Θ Ξ -> gstuck Θ Ξ p -> gopaque Θ Ξ p.
+Lemma gstuck_gopaque : forall Θ p, gc_no_axioms Θ -> gstuck Θ p -> gopaque Θ p.
 Proof.
-  intros * Hna (b & pv & A & B & Hr & Hb).
-  pose proof (gc_no_axioms_resolve _ _ _ _ _ _ _ Hna Hr) as HB.
-  destruct B as [M |]; [| congruence ].
+  intros * Hna (A & oM & b & Hr & Hb).
+  pose proof (Hna _ _ _ _ Hr) as HB.
+  destruct oM as [M |]; [| congruence ].
   destruct Hb as [-> | ?]; [| discriminate ].
   unfold gopaque; eauto.
 Qed.
@@ -434,11 +434,11 @@ Section Stuck_GCtx.
 
 Theorem canonical_form_of_nat_stuck : forall {M},
     ⋅ ⊢ M : ℕ ->
-    exists W, nbe_f ⋅ M ℕ W /\ canonical_nat_stuck (gstuck gc_deps gc_stack) W.
+    exists W, nbe_f ⋅ M ℕ W /\ canonical_nat_stuck (gstuck gc_ctx) W.
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
-  match_by_head1 nbe ltac:(fun H => pose proof (nbe_stuck _ _ _ _ _ _ H) as Hc).
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_stuck _ _ _ _ _ H) as Hc).
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
   match_by_head1 eval_exp ltac:(fun H => clear H).
@@ -447,18 +447,18 @@ Proof.
     intros; cbn in *; destruct_all; mauto 3;
     gen_presups.
   - eassert (⋅ ⊢ _ : ℕ /\ ⋅ ⊢ ℕ ⊆ ℕ) as [? _]; mautosolve 4.
-  - match_by_head1 (wf_exp gc_deps gc_stack ⋅ ℕ) ltac:(fun H => destruct (closed_neutral_head H)).
+  - match_by_head1 (wf_exp gc_ctx ⋅ ℕ) ltac:(fun H => destruct (closed_neutral_head H)).
     mauto 3.
 Qed.
 
 Theorem canonical_form_of_typ_stuck : forall {i M},
     ⋅ ⊢ M : Type@i ->
-    exists W, nbe_f ⋅ M Type@i W /\ nf_stuck (gstuck gc_deps gc_stack) W /\
+    exists W, nbe_f ⋅ M Type@i W /\ nf_stuck (gstuck gc_ctx) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
-  match_by_head1 nbe ltac:(fun H => pose proof (nbe_stuck _ _ _ _ _ _ H) as Hc).
+  match_by_head1 nbe ltac:(fun H => pose proof (nbe_stuck _ _ _ _ _ H) as Hc).
   split; [ exact Hc |].
   dir_inversion_clear_by_head nbe.
   invert_rel_typ_body.
@@ -468,113 +468,122 @@ Proof.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
     intros; cbn in *; destruct_all; try (left; split; intros; mauto 3; congruence);
     gen_presups.
-  match goal with H : wf_exp _ _ ⋅ _ (ne_to_exp _) |- _ => destruct (closed_neutral_head H) end.
+  match goal with H : wf_exp _ ⋅ _ (ne_to_exp _) |- _ => destruct (closed_neutral_head H) end.
   right; eauto.
 Qed.
 
 End Stuck_GCtx.
 
-Corollary canonical_form_of_nat_stuck_gctx : forall Θ Ξ M,
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
-    exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat_stuck (gstuck Θ Ξ) W.
-Proof. intros * HM; exact (@canonical_form_of_nat_stuck (gc_mk Θ Ξ) M HM). Qed.
+Corollary canonical_form_of_nat_stuck_gctx : forall Θ M,
+    Θ ⍮ ⋅ ⊢ M : ℕ ->
+    exists W, nbe Θ ⋅ M ℕ W /\ canonical_nat_stuck (gstuck Θ) W.
+Proof. intros * HM; exact (@canonical_form_of_nat_stuck (gc_mk Θ) M HM). Qed.
 
-Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ i M,
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gstuck Θ Ξ) W /\
+Corollary canonical_form_of_typ_stuck_gctx : forall Θ i M,
+    Θ ⍮ ⋅ ⊢ M : Type@i ->
+    exists W, nbe Θ ⋅ M Type@i W /\ nf_stuck (gstuck Θ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
-Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) i M HM). Qed.
+Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ) i M HM). Qed.
 
 (** *** Without Axioms *)
 
-Theorem consistency_no_axioms : forall Θ Ξ i M,
-    gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
+Theorem consistency_no_axioms : forall Θ i M,
+    gc_no_axioms Θ ->
+    ~ (Θ ⍮ ⋅ ⊢ M : Π Type@i #0).
 Proof.
   intros * Hna HM.
-  exact (consistency_gctx _ _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
+  exact (consistency_gctx _ _ _ (gc_unseal_transparent _ Hna) (unseal_exp _ _ _ _ HM)).
 Qed.
 
-Theorem consistency_False_no_axioms : forall Θ Ξ M,
-    gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
+Theorem consistency_False_no_axioms : forall Θ M,
+    gc_no_axioms Θ ->
+    ~ (Θ ⍮ ⋅ ⊢ M : ⊥).
 Proof.
   intros * Hna HM.
-  exact (consistency_False_gctx _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
+  exact (consistency_False_gctx _ _ (gc_unseal_transparent _ Hna) (unseal_exp _ _ _ _ HM)).
 Qed.
 
-(** The sealed normal form is a numeral around a neutral headed by an opaque
-    definition; unsealed, the term computes to a numeral, which is equal to
-    the sealed normal form once the definitions unfold. *)
-Theorem canonical_form_of_nat_no_axioms : forall Θ Ξ M,
-    gc_no_axioms Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ℕ ->
-    exists W, nbe Θ Ξ ⋅ M ℕ W /\ canonical_nat_stuck (gopaque Θ Ξ) W /\
-      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M ℕ V /\ canonical_nat V /\
-        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : ℕ.
+(** The sealed normal form is a numeral around a neutral headed by a sealed
+    constant with a body; unsealed, the term computes to a numeral, which is
+    equal to the sealed normal form once the constants unfold. *)
+Theorem canonical_form_of_nat_no_axioms : forall Θ M,
+    gc_no_axioms Θ ->
+    Θ ⍮ ⋅ ⊢ M : ℕ ->
+    exists W, nbe Θ ⋅ M ℕ W /\ canonical_nat_stuck (gopaque Θ) W /\
+      exists V, nbe (gc_unseal Θ) ⋅ M ℕ V /\ canonical_nat V /\
+        gc_unseal Θ ⍮ ⋅ ⊢ W ≈ V : ℕ.
 Proof.
   intros * Hna HM.
-  pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
-  pose proof (unseal_exp _ _ _ _ _ HM) as HM'.
-  destruct (canonical_form_of_nat_stuck_gctx _ _ _ HM) as (W & HW & Hc).
-  destruct (canonical_form_of_nat_gctx _ _ _ Htr HM') as (V & HV & HcV).
+  pose proof (gc_unseal_transparent _ Hna) as Htr.
+  pose proof (unseal_exp _ _ _ _ HM) as HM'.
+  destruct (canonical_form_of_nat_stuck_gctx _ _ HM) as (W & HW & Hc).
+  destruct (canonical_form_of_nat_gctx _ _ Htr HM') as (V & HV & HcV).
   exists W; split; [ exact HW | split ].
   - eapply canonical_nat_stuck_mono; [| exact Hc ]; intros; apply gstuck_gopaque; assumption.
   - exists V; repeat split; [ exact HV | exact HcV |].
-    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness_gctx' _ _ _ _ _ _ HM HW)).
-    pose proof (soundness_gctx' _ _ _ _ _ _ HM' HV).
+    pose proof (unseal_exp_eq _ _ _ _ _ (soundness_gctx' _ _ _ _ _ HM HW)).
+    pose proof (soundness_gctx' _ _ _ _ _ HM' HV).
     etransitivity; [ symmetry |]; eassumption.
 Qed.
 
-Theorem canonical_form_of_typ_no_axioms : forall Θ Ξ i M,
-    gc_no_axioms Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gopaque Θ Ξ) W /\
+Theorem canonical_form_of_typ_no_axioms : forall Θ i M,
+    gc_no_axioms Θ ->
+    Θ ⍮ ⋅ ⊢ M : Type@i ->
+    exists W, nbe Θ ⋅ M Type@i W /\ nf_stuck (gopaque Θ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
-      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Type@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
-        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Type@i.
+      exists V, nbe (gc_unseal Θ) ⋅ M Type@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
+        gc_unseal Θ ⍮ ⋅ ⊢ W ≈ V : Type@i.
 Proof.
   intros * Hna HM.
-  pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.
-  pose proof (unseal_exp _ _ _ _ _ HM) as HM'.
-  destruct (canonical_form_of_typ_stuck_gctx _ _ _ _ HM) as (W & HW & Hs & Hc).
-  destruct (canonical_form_of_typ_gctx _ _ _ _ Htr HM') as (V & HV & HcV & HnV).
+  pose proof (gc_unseal_transparent _ Hna) as Htr.
+  pose proof (unseal_exp _ _ _ _ HM) as HM'.
+  destruct (canonical_form_of_typ_stuck_gctx _ _ _ HM) as (W & HW & Hs & Hc).
+  destruct (canonical_form_of_typ_gctx _ _ _ Htr HM') as (V & HV & HcV & HnV).
   exists W; split; [ exact HW | split; [| split; [ exact Hc |] ] ].
-  - apply (nf_stuck_mono (gstuck Θ Ξ)); [ intros; apply gstuck_gopaque; assumption | exact Hs ].
+  - apply (nf_stuck_mono (gstuck Θ)); [ intros; apply gstuck_gopaque; assumption | exact Hs ].
   - exists V; repeat split; [ exact HV | exact HcV | exact HnV |].
-    pose proof (unseal_exp_eq _ _ _ _ _ _ (soundness_gctx' _ _ _ _ _ _ HM HW)).
-    pose proof (soundness_gctx' _ _ _ _ _ _ HM' HV).
+    pose proof (unseal_exp_eq _ _ _ _ _ (soundness_gctx' _ _ _ _ _ HM HW)).
+    pose proof (soundness_gctx' _ _ _ _ _ HM' HV).
     etransitivity; [ symmetry |]; eassumption.
 Qed.
 
-(** *** Every Program
+(** *** Every Program Without Axioms
 
-    No command files an axiom ([run_no_axioms]), so the theorems above hold
-    at every global context a run reaches, and at what a program files. *)
+    A run of commands without a body-less definition, in units without one,
+    files no axiom ([run_no_axioms]), so the theorems above hold at every
+    global context such a run reaches, and at what such a program files. *)
 
 Section Programs.
   Variables (load_path : path -> option String.string) (read : String.string -> option Cst.prog)
             (to_core : Cst.prog -> option cunit).
+  Hypothesis Hall : forall fq src prg u,
+      load_path fq = Some src -> read src = Some prg -> to_core prg = Some u -> unit_no_axioms u.
 
-Corollary consistency_False_run : forall ch cs Θ Ξ M,
-    Mctt.Core.Syntactic.System.Command.run_cmds load_path read to_core ch nil nil cs Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : ⊥).
-Proof. intros * Hr; apply consistency_False_no_axioms; eapply run_cmds_no_axioms; exact Hr. Qed.
+Corollary consistency_False_run : forall ch fp Γimp F cs Θ F' M,
+    run_cmds load_path read to_core ch fp Γimp nil F cs Θ F' ->
+    cmds_no_axioms cs ->
+    ~ (Θ ⍮ ⋅ ⊢ M : ⊥).
+Proof.
+  intros * Hr Hc; apply consistency_False_no_axioms.
+  exact (run_cmds_no_axioms _ _ _ Hall _ _ _ _ _ _ _ _ Hr Hc gc_no_axioms_nil).
+Qed.
 
 Corollary consistency_False_prog : forall prg Θ U M,
-    Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
-    ~ (Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ ⍮ nil ⍮ ⋅ ⊢ M : ⊥).
-Proof. intros * Hp; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; exact Hp. Qed.
+    (forall u, to_core prg = Some u -> unit_no_axioms u) ->
+    prog_sem load_path read to_core prg Θ U ->
+    ~ (gd_unit (prog_path prg) U :: Θ ⍮ ⋅ ⊢ M : ⊥).
+Proof. intros * Hp Hs; apply consistency_False_no_axioms; eapply prog_sem_no_axioms; eassumption. Qed.
 
 Corollary canonical_form_of_nat_prog : forall prg Θ U M,
-    Mctt.Core.Syntactic.System.Command.prog_sem load_path read to_core prg Θ U ->
-    let Θ' := Mctt.Core.Syntactic.System.Command.file (prog_path prg) U Θ in
-    Θ' ⍮ nil ⍮ ⋅ ⊢ M : ℕ ->
-    exists V, nbe (gds_unseal Θ') nil ⋅ M ℕ V /\ canonical_nat V.
+    (forall u, to_core prg = Some u -> unit_no_axioms u) ->
+    prog_sem load_path read to_core prg Θ U ->
+    let Θ' := gd_unit (prog_path prg) U :: Θ in
+    Θ' ⍮ ⋅ ⊢ M : ℕ ->
+    exists V, nbe (gc_unseal Θ') ⋅ M ℕ V /\ canonical_nat V.
 Proof.
-  intros * Hp Θ' HM.
-  pose proof (prog_sem_no_axioms _ _ _ _ _ _ Hp) as Hna.
-  destruct (canonical_form_of_nat_no_axioms _ _ _ Hna HM) as (_ & _ & _ & V & HV & HcV & _).
+  intros * Hp Hs Θ' HM.
+  pose proof (prog_sem_no_axioms _ _ _ Hall _ _ _ Hp Hs) as Hna.
+  destruct (canonical_form_of_nat_no_axioms _ _ Hna HM) as (_ & _ & _ & V & HV & HcV & _).
   eauto.
 Qed.
 

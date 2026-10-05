@@ -1,11 +1,10 @@
 (** * Stuck Globals in Normal Forms
 
-    At any global context, a global reaches a normal form only as the head of
-    a neutral, and only when it does not unfold: it resolves to an opaque
-    definition or to an axiom ([gstuck]).  This is the invariant of
-    [Core.Semantic.Transparency] with the stuck globals allowed instead of
-    ruled out; at a transparent context there are none, which is
-    [nbe_clean]. *)
+    At any global context, a constant reaches a normal form only as the head
+    of a neutral, and only when it does not unfold: it is sealed, or an axiom
+    ([gstuck]).  This is the invariant of [Core.Semantic.Transparency] with
+    the stuck constants allowed instead of ruled out; at a transparent
+    context there are none, which is [nbe_clean]. *)
 
 From Stdlib Require Import List.
 From Mctt Require Import LibTactics.
@@ -31,16 +30,15 @@ with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   | ne_glob p => G p
   end.
 
-(** A global that does not unfold: an opaque definition or an axiom. *)
-Definition gstuck (Θ : gdeps) (Ξ : gstack) (p : qname) : Prop :=
-  exists b pv A B, gc_resolve Θ Ξ p = Some (ge_def b pv A B) /\ (b = false \/ B = None).
+(** A constant that does not unfold: a sealed one, or an axiom. *)
+Definition gstuck (Θ : gctx) (p : qname) : Prop :=
+  exists A oM b, gc_const Θ p = Some (A, oM, b) /\ (b = false \/ oM = None).
 
 Section Stuck.
-  Variables (Θ : gdeps) (Ξ : gstack).
+  Variables (Θ : gctx).
 
-  Lemma gstuck_intro : forall p b pv A B,
-      gc_resolve Θ Ξ p = Some (ge_def b pv A B) -> b = false \/ B = None -> gstuck Θ Ξ p.
-  Proof. unfold gstuck; eauto 7. Qed.
+  Lemma gstuck_intro : forall p A oM b, gc_const Θ p = Some (A, oM, b) -> b = false \/ oM = None -> gstuck Θ p.
+  Proof. unfold gstuck; eauto 6. Qed.
   #[local] Hint Resolve gstuck_intro : mctt.
 
 (** ** Values Whose Global Neutrals Are Stuck *)
@@ -59,7 +57,7 @@ Inductive dstuck : domain -> Prop :=
 | dstuck_member : forall h ch, dmstuck h -> dstuck (d_member h ch)
 with dstuck_ne : domain_ne -> Prop :=
 | dstuck_var : forall x, dstuck_ne (#ᵈ x)
-| dstuck_glob : forall p, gstuck Θ Ξ p -> dstuck_ne (d_glob p)
+| dstuck_glob : forall p, gstuck Θ p -> dstuck_ne (d_glob p)
 | dstuck_app : forall m n, dstuck_ne m -> dstuck_nf n -> dstuck_ne (m $ᵈ n)
 | dstuck_natrec : forall (ρ : env) A mz MS m,
     (forall x, destuck (env_entry ρ x)) -> dstuck mz -> dstuck_ne m ->
@@ -70,9 +68,10 @@ with dstuck_ne : domain_ne -> Prop :=
 with dstuck_nf : domain_nf -> Prop :=
 | dstuck_dom : forall a m, dstuck a -> dstuck m -> dstuck_nf (⇓ a m)
 with dmstuck : dmod -> Prop :=
-| dmstuck_global : forall p args, (forall a, In a args -> dstuck a) -> dmstuck (dm_global p args)
-| dmstuck_local : forall (ρ : env) U args,
-    (forall x, destuck (env_entry ρ x)) -> (forall a, In a args -> dstuck a) -> dmstuck (dm_local ρ U args)
+| dmstuck_body : forall (ρ : env) Δ Φ args,
+    (forall x, destuck (env_entry ρ x)) -> (forall a, In a args -> dstuck a) -> dmstuck (dm_body ρ Δ Φ args)
+| dmstuck_alias : forall (ρ : env) Δ E args,
+    (forall x, destuck (env_entry ρ x)) -> (forall a, In a args -> dstuck a) -> dmstuck (dm_alias ρ Δ E args)
 | dmstuck_member : forall h ch, dmstuck h -> dmstuck (dm_member h ch)
 with destuck : dentry -> Prop :=
 | destuck_term : forall d, dstuck d -> destuck (de_term d)
@@ -96,7 +95,7 @@ Lemma env_stuck_var : forall ρ x, env_stuck ρ -> dstuck (ρ x).
 Proof. intros * H; unfold env_var; destruct (H x); auto with mctt. Qed.
 
 Lemma env_stuck_mod : forall ρ x, env_stuck ρ -> dmstuck (env_mod ρ x).
-Proof. intros * H; unfold env_mod; destruct (H x); auto with mctt; constructor; intros ? []. Qed.
+Proof. intros * H; unfold env_mod; destruct (H x); auto with mctt; constructor; [ intros; apply env_stuck_nil | intros ? [] ]. Qed.
 
 Lemma env_stuck_args : forall args ρ, env_stuck ρ -> (forall a, In a args -> dstuck a) -> env_stuck (env_args ρ args).
 Proof.
@@ -111,32 +110,31 @@ Proof. intros * H Hn a Ha; apply in_app_or in Ha as [Ha | [<- | []]]; auto. Qed.
 Lemma env_stuck_entry : forall ρ x, env_stuck ρ -> destuck (env_entry ρ x).
 Proof. intros * H; exact (H x). Qed.
 
-Lemma dmstuck_local_nil : forall ρ U, env_stuck ρ -> dmstuck (dm_local ρ U nil).
-Proof. intros; constructor; [ assumption | intros ? [] ]. Qed.
+Lemma dmstuck_of : forall ρ U, env_stuck ρ -> dmstuck (dm_of ρ U).
+Proof. intros ? [? []] ?; constructor; [ assumption | intros ? [] | assumption | intros ? [] ]. Qed.
 
-Lemma dmstuck_global_nil : forall p, dmstuck (dm_global p nil).
-Proof. intros; constructor; intros ? []. Qed.
+Lemma env_stuck_self : forall ρ Φ, env_stuck ρ -> env_stuck (ρ ↦ᵐ dm_body ρ nil Φ nil).
+Proof. intros; apply env_stuck_extend_mod; [ assumption | constructor; [ assumption | intros ? [] ] ]. Qed.
 
 #[local] Hint Resolve env_stuck_nil env_stuck_extend env_stuck_extend_mod env_stuck_var env_stuck_mod
-  env_stuck_args stuck_app_snoc dmstuck_local_nil dmstuck_global_nil env_stuck_entry : mctt.
+  env_stuck_args stuck_app_snoc dmstuck_of env_stuck_self env_stuck_entry : mctt.
 
 
   Lemma eval_stuck :
-    (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> env_stuck ρ -> dstuck m) /\
-    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+    (forall M ρ m, ⟦ M ⟧ Θ ⍮ ρ ↘ m -> env_stuck ρ -> dstuck m) /\
+    (forall A MZ MS m ρ r, ⟦rec m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ ρ ↘ r ->
        dstuck m -> env_stuck ρ -> dstuck r) /\
-    (forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> dstuck m -> dstuck n -> dstuck r) /\
-    (forall Ms ρ ms, eval_exps Θ Ξ Ms ρ ms -> env_stuck ρ -> forall a, In a ms -> dstuck a) /\
-    (forall m args r, eval_apps Θ Ξ m args r -> dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r) /\
-    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h -> env_stuck ρ -> dmstuck h) /\
-    (forall h n r, eval_appm Θ Ξ h n r -> dmstuck h -> dstuck n -> dmstuck r) /\
-    (forall h x r, eval_sel Θ Ξ h x r -> dmstuck h -> dstuck r) /\
-    (forall h y r, eval_selm Θ Ξ h y r -> dmstuck h -> dmstuck r) /\
-    (forall h ch r, eval_selc Θ Ξ h ch r -> dmstuck h -> dstuck r) /\
-    (forall h ch r, eval_selmc Θ Ξ h ch r -> dmstuck h -> dmstuck r) /\
-    (forall ρ Φ ρ', eval_benv Θ Ξ ρ Φ ρ' -> env_stuck ρ -> env_stuck ρ').
+    (forall m n r, $| m & n | Θ ↘ r -> dstuck m -> dstuck n -> dstuck r) /\
+    (forall Ms ρ ms, eval_exps Θ Ms ρ ms -> env_stuck ρ -> forall a, In a ms -> dstuck a) /\
+    (forall m args r, eval_apps Θ m args r -> dstuck m -> (forall a, In a args -> dstuck a) -> dstuck r) /\
+    (forall H ρ h, ⟦ H ⟧ᵐ Θ ⍮ ρ ↘ h -> env_stuck ρ -> dmstuck h) /\
+    (forall h n r, eval_appm Θ h n r -> dmstuck h -> dstuck n -> dmstuck r) /\
+    (forall h x r, eval_sel Θ h x r -> dmstuck h -> dstuck r) /\
+    (forall h y r, eval_selm Θ h y r -> dmstuck h -> dmstuck r) /\
+    (forall h ch r, eval_selc Θ h ch r -> dmstuck h -> dstuck r) /\
+    (forall h ch r, eval_selmc Θ h ch r -> dmstuck h -> dmstuck r).
   Proof.
-    apply (eval_mut_ind Θ Ξ
+    apply (eval_mut_ind Θ
              (fun M ρ m _ => env_stuck ρ -> dstuck m)
              (fun A MZ MS m ρ r _ => dstuck m -> env_stuck ρ -> dstuck r)
              (fun m n r _ => dstuck m -> dstuck n -> dstuck r)
@@ -147,8 +145,7 @@ Proof. intros; constructor; intros ? []. Qed.
              (fun h x r _ => dmstuck h -> dstuck r)
              (fun h y r _ => dmstuck h -> dmstuck r)
              (fun h ch r _ => dmstuck h -> dstuck r)
-             (fun h ch r _ => dmstuck h -> dmstuck r)
-             (fun ρ Φ ρ' _ => env_stuck ρ -> env_stuck ρ'));
+             (fun h ch r _ => dmstuck h -> dmstuck r));
       intros.
     all: repeat match goal with
            | H : dstuck (_ _) |- _ => inversion_clear H
@@ -181,15 +178,15 @@ Proof. intros; constructor; intros ? []. Qed.
   Qed.
 
   Lemma read_stuck :
-    (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W) /\
-    (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M -> dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M) /\
-    (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dstuck a -> nf_stuck (gstuck Θ Ξ) A).
+    (forall s m W, Rnf m in Θ ⍮ s ↘ W -> dstuck_nf m -> nf_stuck (gstuck Θ) W) /\
+    (forall s m M, Rne m in Θ ⍮ s ↘ M -> dstuck_ne m -> ne_stuck (gstuck Θ) M) /\
+    (forall s a A, Rtyp a in Θ ⍮ s ↘ A -> dstuck a -> nf_stuck (gstuck Θ) A).
   Proof.
     destruct eval_stuck as (He & _ & Ha & _).
-    apply (read_mut_ind Θ Ξ
-             (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W)
-             (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M)
-             (fun s a A _ => dstuck a -> nf_stuck (gstuck Θ Ξ) A));
+    apply (read_mut_ind Θ
+             (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ) W)
+             (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ) M)
+             (fun s a A _ => dstuck a -> nf_stuck (gstuck Θ) A));
       intros; cbn;
       repeat match goal with
         | H : dstuck (_ _) |- _ => inversion_clear H
@@ -203,24 +200,24 @@ Proof. intros; constructor; intros ? []. Qed.
       repeat split; auto.
     (* each component is read back from a value built of stuck ones *)
     all: match goal with
-         | IH : _ -> nf_stuck (gstuck Θ Ξ) ?W |- nf_stuck (gstuck Θ Ξ) ?W => apply IH
-         | IH : _ -> ne_stuck (gstuck Θ Ξ) ?W |- ne_stuck (gstuck Θ Ξ) ?W => apply IH
+         | IH : _ -> nf_stuck (gstuck Θ) ?W |- nf_stuck (gstuck Θ) ?W => apply IH
+         | IH : _ -> ne_stuck (gstuck Θ) ?W |- ne_stuck (gstuck Θ) ?W => apply IH
          end.
     all: repeat first [ eassumption | constructor | apply env_stuck_extend
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] ].
   Qed.
 
-  Lemma initial_env_stuck : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_stuck ρ.
+  Lemma initial_env_stuck : forall Γ ρ, initial_env Θ Γ ρ -> env_stuck ρ.
   Proof.
     destruct eval_stuck as (He & _).
     induction 1; eauto with mctt.
   Qed.
 
-  Theorem nbe_stuck : forall Γ M A W, nbe Θ Ξ Γ M A W -> nf_stuck (gstuck Θ Ξ) W.
+  Theorem nbe_stuck : forall Γ M A W, nbe Θ Γ M A W -> nf_stuck (gstuck Θ) W.
   Proof.
     destruct eval_stuck as (He & _); destruct read_stuck as (Hr & _).
     intros * Hn; inversion Hn; subst.
-    match goal with Hρ : initial_env _ _ _ _ |- _ => pose proof (initial_env_stuck _ _ Hρ) end.
+    match goal with Hρ : initial_env _ _ _ |- _ => pose proof (initial_env_stuck _ _ Hρ) end.
     eapply Hr; eauto with mctt.
   Qed.
 End Stuck.

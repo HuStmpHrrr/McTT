@@ -74,13 +74,13 @@ End Fixed_GCtx.
 
 
 (** Soundness at a global context named explicitly. *)
-Theorem soundness_gctx : forall Θ Ξ Γ M A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    exists W, nbe Θ Ξ Γ M A W /\ Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
-Proof. intros * H; exact (@soundness (gc_mk Θ Ξ) _ _ _ H). Qed.
+Theorem soundness_gctx : forall Θ Γ M A,
+    Θ ⍮ Γ ⊢ M : A ->
+    exists W, nbe Θ Γ M A W /\ Θ ⍮ Γ ⊢ M ≈ W : A.
+Proof. intros * H; exact (@soundness (gc_mk Θ) _ _ _ H). Qed.
 
-Theorem soundness_gctx' : forall Θ Ξ Γ M A W,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    nbe Θ Ξ Γ M A W ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ W : A.
-Proof. intros * H; exact (@soundness' (gc_mk Θ Ξ) _ _ _ _ H). Qed.
+Theorem soundness_gctx' : forall Θ Γ M A W,
+    Θ ⍮ Γ ⊢ M : A ->
+    nbe Θ Γ M A W ->
+    Θ ⍮ Γ ⊢ M ≈ W : A.
+Proof. intros * H; exact (@soundness' (gc_mk Θ) _ _ _ _ H). Qed.

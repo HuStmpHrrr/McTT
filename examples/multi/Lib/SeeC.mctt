@@ -1,0 +1,4 @@
+(* A unit that only another unit imports. *)
+module Lib::SeeC where
+  def c : Nat := 3 end
+end

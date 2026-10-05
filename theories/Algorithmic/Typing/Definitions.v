@@ -85,7 +85,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 | ati_mem :
   `( me_noargs H ->
      Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
+     member_type gc_ctx Γ H (x :: nil) (mr_term A) ->
      nbe_ty_f Γ A B ->
      Γ ⊢a a_mem H x ⟹ B )
 (** A member of an applied module infers as its root's member applied. *)
@@ -99,13 +99,11 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
   `( Γ ∋ #x : A ->
      nbe_ty_f Γ A B ->
      Γ ⊢a #x ⟹ B )
-(** A member of a chain from a unit, a global, infers the normal form of the
-    closed type that resolution returns for it. *)
-| ati_mem_glob :
-  `( mod_qname H = Some mp ->
-     gc_resolve gc_deps gc_stack (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
+(** A constant infers the normal form of its closed type. *)
+| ati_const :
+  `( gc_const gc_ctx c = Some (A, M, b) ->
      nbe_ty_f Γ A C ->
-     Γ ⊢a a_mem H x ⟹ C )
+     Γ ⊢a a_const c ⟹ C )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by
     entry, part by part. *)
@@ -127,12 +125,22 @@ with alg_ext : ctx -> ctx -> Prop :=
      Γ ⊢aˣ Ψ ▹ₘ U )
 where "Γ '⊢aˣ' Ψ" := (alg_ext Γ Ψ) : type_scope
 with alg_unit : ctx -> gunit -> Prop :=
-| aunit_body :
-  `( Γ ⊢aˣ body_ctx Φ ++ Δ ->
+(** A body: its parameters, then each entry in its self context. *)
+| aunit_nil :
+  `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
-     body_shape Φ Φ ->
-     List.NoDup (gm_names Φ) ->
-     Γ ⊢aᵘ gu_body Δ Φ )
+     Γ ⊢aᵘ gu_body Δ gm_nil )
+| aunit_def :
+  `( Γ ⊢aᵘ gu_body Δ Φ ->
+     gm_fresh x Φ ->
+     self_ent Φ :: Δ ++ Γ ⊢a A ⟹ Typeⁿ@i ->
+     self_ent Φ :: Δ ++ Γ ⊢a M ⟸ A ->
+     Γ ⊢aᵘ gu_body Δ (gm_ext Φ x (ge_def pv A (Some M))) )
+| aunit_mod :
+  `( Γ ⊢aᵘ gu_body Δ Φ ->
+     gm_fresh x Φ ->
+     self_ent Φ :: Δ ++ Γ ⊢aᵘ U ->
+     Γ ⊢aᵘ gu_body Δ (gm_ext Φ x (ge_mod pv U)) )
 | aunit_alias :
   `( Γ ⊢aˣ Δ ->
      tele_ass Δ ->
@@ -140,10 +148,9 @@ with alg_unit : ctx -> gunit -> Prop :=
      Γ ⊢aᵘ gu_mk Δ (md_alias E) )
 where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
-| amod_glob :
-  `( mod_qname H = Some mp ->
-     member_type gc_deps gc_stack Γ H nil (mr_mod T) ->
-     Γ ⊢aᵐ H )
+| amod_unit :
+  `( gc_unit gc_ctx fp = Some U ->
+     Γ ⊢aᵐ me_unit fp )
 | amod_var :
   `( Γ ∋ #x ⇒ₘ U ->
      Γ ⊢aᵐ me_var x )
@@ -152,12 +159,12 @@ with alg_modexp : ctx -> modexp -> Prop :=
      Γ ⊢aᵐ me_lit U )
 | amod_mem :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H (y :: nil) (mr_mod T) ->
+     member_type gc_ctx Γ H (y :: nil) (mr_mod T) ->
      Γ ⊢aᵐ me_mem H y )
 (** An argument is checked against the outermost parameter of the arity. *)
 | amod_app :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H nil (mr_mod T) ->
+     member_type gc_ctx Γ H nil (mr_mod T) ->
      tele_view T = Some (B, T1) ->
      Γ ⊢a N ⟸ B ->
      Γ ⊢aᵐ me_app H N )
@@ -248,7 +255,9 @@ Inductive user_exp : exp -> Prop :=
 | user_exp_mem :
   `( user_exp (a_mem H x) )
 | user_exp_vlookup :
-  `( user_exp (a_var x) ).
+  `( user_exp (a_var x) )
+| user_exp_const :
+  `( user_exp (a_const c) ).
 
 #[export]
 Hint Constructors user_exp : mctt.

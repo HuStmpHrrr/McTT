@@ -17,8 +17,8 @@ Section soundness_fundamental.
   Context {GC : GCtx}.
 
   (** The identity is sound at a well-formed global context. *)
-  Lemma glu_msub_id_gc : ⊢g gc_deps ⍮ gc_stack -> glu_emb gc_deps gc_stack gc_deps gc_stack.
-  Proof. exact (gctx_glu _ _). Qed.
+  Lemma glu_msub_id_gc : ⊢g gc_ctx -> glu_emb gc_ctx gc_ctx.
+  Proof. exact (gctx_glu _). Qed.
 
   Theorem soundness_fundamental :
     (forall Γ, ⊢ Γ -> ⊩ Γ) /\
@@ -26,8 +26,8 @@ Section soundness_fundamental.
   Proof.
     destruct kglu_fundamental as (Kc & Ke & _).
     split; intros * H;
-      [ pose proof (Kc _ _ _ H _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ H))) as H'
-      | pose proof (Ke _ _ _ _ _ H _ _ (glu_msub_id_gc (ctx_wf_gctx _ _ _ (presup_exp_ctx H)))) as H' ];
+      [ pose proof (Kc _ _ H _ (glu_msub_id_gc (ctx_wf_gctx _ _ H))) as H'
+      | pose proof (Ke _ _ _ _ H _ (glu_msub_id_gc (ctx_wf_gctx _ _ (presup_exp_ctx H)))) as H' ];
       destruct GC; exact H'.
   Qed.
 

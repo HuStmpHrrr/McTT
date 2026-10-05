@@ -142,7 +142,7 @@ end
 
 end
 
-import Nth use (nthAppendLeft; nthAppendRight; nthIrrel)
+open Nth use (nthAppendLeft; nthAppendRight; nthIrrel)
 
 (* Sums of the operations. *)
 module Sums where

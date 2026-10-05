@@ -112,14 +112,8 @@ Proof. induction Δ; simpl; auto. Qed.
 Lemma length_tele_sub : forall Δ σ, List.length (tele_sub Δ σ) = List.length Δ.
 Proof. induction Δ; simpl; auto. Qed.
 
-Lemma gm_binders_wk : forall Φ φ, gm_binders (gmod_wk Φ φ) = gm_binders Φ.
-Proof. induction Φ; simpl; auto. Qed.
-
-Lemma gm_binders_sub : forall Φ σ, gm_binders (gmod_sub Φ σ) = gm_binders Φ.
-Proof. induction Φ; simpl; auto. Qed.
-
 #[export]
-Hint Rewrite -> gunit_wk_mk gunit_sub_mk length_tele_wk length_tele_sub gm_binders_wk gm_binders_sub : syn_ops.
+Hint Rewrite -> gunit_wk_mk gunit_sub_mk length_tele_wk length_tele_sub : syn_ops.
 
 (** The heads an operation passes through without meeting a binder.  [Π], [λ],
     application and the eliminator are deliberately absent: pushing an operation

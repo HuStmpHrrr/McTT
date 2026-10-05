@@ -25,7 +25,7 @@ Import Syntax_Notations GlobalCtx_Notations.
     holds when the search root has finitely many units ([load_step_wf]). *)
 
 Variant main_result :=
-  | AllGood : Cst.prog -> gdeps -> gunit -> list eval_entry -> main_result
+  | AllGood : Cst.prog -> gctx -> gunit -> list eval_entry -> main_result
   | ElaborationFailure : Cst.prog -> string -> main_result
   | RunFailure : Cst.prog -> run_error -> main_result
   | ParserFailure : Aut.state -> Aut.Gram.token -> main_result
@@ -54,39 +54,38 @@ Section Main.
     | Timeout_pr => ParserTimeout log_fuel
     end.
 
-  (** What [AllGood] certifies: the program denotes a well-formed global
-      context, equal to the computed one up to the order of units within a
-      level, and every reported [eval] is well typed, in the context of the
-      parameters of its enclosing frames, with the normal form shown. *)
+  (** What [AllGood] certifies: the program denotes the computed global
+      context and unit, which are well formed, and every reported [eval] is
+      well typed, in the context of its enclosing frames, with the normal
+      form shown. *)
   Theorem main_sound : forall log_fuel buf prg Θ U log,
       main log_fuel buf = AllGood prg Θ U log ->
-      (exists ΘR, prog_sem load_path read to_core prg ΘR U /\ gds_equiv ΘR Θ /\
-                  wf_gdeps ΘR /\ ΘR ⍮ nil ⍮ q_abs (prog_path prg) nil ⊢u U) /\
+      (prog_sem load_path read to_core prg Θ U /\ ⊢g Θ /\ Θ ⍮ ⋅ ⊢ᵘ U ≈ U) /\
       (forall e, In e log ->
-         ⊢g ev_deps e ⍮ ev_stack e /\ ev_deps e ⍮ ev_stack e ⍮ gs_tele (ev_stack e) ⊢ ev_exp e : ev_typ e /\
-         nbe (ev_deps e) (ev_stack e) (gs_tele (ev_stack e)) (ev_exp e) (ev_typ e) (ev_nf e)).
+         ⊢ ev_gctx e ⍮ ev_ctx e /\ ev_gctx e ⍮ ev_ctx e ⊢ ev_exp e : ev_typ e /\
+         nbe (ev_gctx e) (ev_ctx e) (ev_exp e) (ev_typ e) (ev_nf e)).
   Proof.
     intros * H; unfold main in H.
     destruct (Parser.prog log_fuel buf); try discriminate.
     destruct (elaborate_core _); try discriminate.
     destruct (prog_impl load_path read to_core _ _) as [[[Θ' U'] log'] |] eqn:Hr; try discriminate.
     injection H as <- <- <- <-.
-    destruct (prog_impl_sound _ _ _ _ _ _ _ _ Hr) as [(ΘR & Hsem & Heq) Hlog].
+    destruct (prog_impl_sound _ _ _ _ _ _ _ _ Hr) as [Hsem Hlog].
     split; [| exact Hlog ].
     destruct (prog_sem_wf _ _ _ _ _ _ Hsem) as [HΘ HU].
-    exists ΘR; tauto.
+    tauto.
   Qed.
 
-  (** A program that has a meaning runs to completion. *)
-  Theorem main_complete : forall log_fuel buf prg buf' ΘR U,
+  (** A program that has a meaning runs to completion, with that meaning. *)
+  Theorem main_complete : forall log_fuel buf prg buf' Θ U,
       Parser.prog log_fuel buf = Parsed_pr prg buf' ->
-      prog_sem load_path read to_core prg ΘR U ->
+      prog_sem load_path read to_core prg Θ U ->
       (forall msg, elaborate_core prg <> eerr msg) ->
-      exists Θ log, main log_fuel buf = AllGood prg Θ U log /\ gds_equiv ΘR Θ.
+      exists log, main log_fuel buf = AllGood prg Θ U log.
   Proof.
     intros * Hp Hsem Hel; unfold main; rewrite Hp.
     destruct (elaborate_core prg) eqn:He; [| exfalso; eapply Hel; reflexivity ].
-    destruct (prog_impl_complete _ _ _ _ _ _ Hsem (Hwf _)) as (Θ & log & Hr & Heq).
+    destruct (prog_impl_complete _ _ _ _ _ _ Hsem (Hwf _)) as (log & Hr).
     rewrite Hr; eauto.
   Qed.
 End Main.
