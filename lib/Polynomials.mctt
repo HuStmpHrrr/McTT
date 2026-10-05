@@ -69,7 +69,7 @@ def naive (c : Coeffs) (n : Nat) : Nat := sumTo (fun (i : Nat) -> mult (c i) (po
 (* Horner's scheme computes the sum of the monomials.  In the step, the
    factor [x] goes into the sum ([sumToScale]) and into each power
    ([multLeftComm]), and the first monomial is split off ([sumToShift]). *)
-abstract def hornerNaive : forall (c : Coeffs) (n : Nat) -> Eq (horner c n) (naive c n) :=
+theorem hornerNaive : forall (c : Coeffs) (n : Nat) -> Eq (horner c n) (naive c n) :=
   fun (c : Coeffs) (n : Nat) ->
     (rec n return k . (forall (d : Coeffs) -> Eq (hornerFrom k d) (sumTo (term d) k))
      | zero => fun (d : Coeffs) -> true
@@ -105,7 +105,7 @@ end
 
 (* At the point 1, a polynomial is the sum of its coefficients.  The proof
    instantiates [At] locally, and uses [onePow] in every monomial. *)
-abstract def hornerAtOne : forall (c : Coeffs) (n : Nat) -> Eq (At.horner 1 c n) (sumTo c n) :=
+theorem hornerAtOne : forall (c : Coeffs) (n : Nat) -> Eq (At.horner 1 c n) (sumTo c n) :=
   fun (c : Coeffs) (n : Nat) ->
     let module One := At 1 in
       trans (One.horner c n) (One.naive c n) (sumTo c n) (One.hornerNaive c n)

@@ -21,9 +21,9 @@ end
 (* The defining equations. *)
 module Laws where
 
-abstract def factZero : Eq (factorial 0) 1 := true end
+theorem factZero : Eq (factorial 0) 1 := true end
 
-abstract def factSucc : forall (n : Nat) -> Eq (factorial (succ n)) (mult (succ n) (factorial n)) :=
+theorem factSucc : forall (n : Nat) -> Eq (factorial (succ n)) (mult (succ n) (factorial n)) :=
   fun (n : Nat) -> refl (mult (succ n) (factorial n))
 end
 
@@ -34,7 +34,7 @@ module Bounds where
 
 (* Every factorial is positive.  [factorial (succ p)] computes to
    [plus (factorial p) (mult p (factorial p))], which is at least [factorial p]. *)
-abstract def factPos : forall (n : Nat) -> Lt 0 (factorial n) :=
+theorem factPos : forall (n : Nat) -> Lt 0 (factorial n) :=
   fun (n : Nat) ->
     rec n return x . Lt 0 (factorial x)
     | zero => true
@@ -44,7 +44,7 @@ abstract def factPos : forall (n : Nat) -> Lt 0 (factorial n) :=
 end
 
 (* The factorial does not decrease from [n] to [succ n]. *)
-abstract def factLeSucc : forall (n : Nat) -> Le (factorial n) (factorial (succ n)) :=
+theorem factLeSucc : forall (n : Nat) -> Le (factorial n) (factorial (succ n)) :=
   fun (n : Nat) -> lePlusRight (factorial n) (mult n (factorial n))
 end
 
@@ -52,7 +52,7 @@ end
    the step, [mult 2 P] computes to [plus P (plus P 0)] and
    [mult (succ (succ p)) F] to [plus F (plus F (mult p F))], so two uses of
    [lePlusMono] on the hypothesis [P <= F] conclude. *)
-abstract def lePowFact : forall (n : Nat) -> Le (pow 2 n) (factorial (succ n)) :=
+theorem lePowFact : forall (n : Nat) -> Le (pow 2 n) (factorial (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Le (pow 2 x) (factorial (succ x))
     | zero => true

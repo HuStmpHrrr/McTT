@@ -41,7 +41,7 @@ def negate (x : Int) : Int := pair (x 1) (x 0) end
 def minus (x : Int) (y : Int) : Int := add x (negate y) end
 
 (* Truncated subtraction, which reads a difference back. *)
-private def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
+let monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
 
 (* The absolute value of the difference. *)
 def magnitude (x : Int) : Nat := plus (monus (x 0) (x 1)) (monus (x 1) (x 0)) end
@@ -52,17 +52,17 @@ def negative (x : Int) : Nat := pick (monus (x 1) (x 0)) (fun (u : Nat) -> 0) (f
 (* [Same] is an equivalence. *)
 module Setoid where
 
-abstract def sameRefl : forall (x : Int) -> Same x x :=
+theorem sameRefl : forall (x : Int) -> Same x x :=
   fun (x : Int) -> refl (plus (x 0) (x 1))
 end
 
-abstract def sameSym : forall (x : Int) (y : Int) (h : Same x y) -> Same y x :=
+theorem sameSym : forall (x : Int) (y : Int) (h : Same x y) -> Same y x :=
   fun (x : Int) (y : Int) (h : Same x y) -> sym (plus (x 0) (y 1)) (plus (y 0) (x 1)) h
 end
 
 (* Adding [y 1] to both sides of the goal, the two hypotheses rewrite it
    into an equation that holds by rearranging; [y 1] then cancels. *)
-abstract def sameTrans : forall (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) ->
+theorem sameTrans : forall (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) ->
     Same x z :=
   fun (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) ->
     let a := x 0;
@@ -93,7 +93,7 @@ open Setoid use (sameRefl; sameSym; sameTrans)
 (* Addition and negation respect [Same], and satisfy the group laws. *)
 module Addition where
 
-abstract def addCong : forall (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) ->
+theorem addCong : forall (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) ->
     Same (add a b) (add c d) :=
   fun (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) ->
     let lhs := plus (plus (a 0) (b 0)) (plus (c 1) (d 1));
@@ -106,7 +106,7 @@ abstract def addCong : forall (a : Int) (b : Int) (c : Int) (d : Int) (hac : Sam
     end
 end
 
-abstract def addAssoc : forall (x : Int) (y : Int) (z : Int) -> Same (add (add x y) z) (add x (add y z)) :=
+theorem addAssoc : forall (x : Int) (y : Int) (z : Int) -> Same (add (add x y) z) (add x (add y z)) :=
   fun (x : Int) (y : Int) (z : Int) ->
     plusCongBoth (plus (plus (x 0) (y 0)) (z 0)) (plus (x 1) (plus (y 1) (z 1)))
       (plus (x 0) (plus (y 0) (z 0))) (plus (plus (x 1) (y 1)) (z 1))
@@ -115,23 +115,23 @@ abstract def addAssoc : forall (x : Int) (y : Int) (z : Int) -> Same (add (add x
 end
 
 (* Zero on the left holds by conversion: [plus 0 n] is [n]. *)
-abstract def zeroAdd : forall (x : Int) -> Same (add (ofNat 0) x) x :=
+theorem zeroAdd : forall (x : Int) -> Same (add (ofNat 0) x) x :=
   fun (x : Int) -> refl (plus (x 0) (x 1))
 end
 
-abstract def addZero : forall (x : Int) -> Same (add x (ofNat 0)) x :=
+theorem addZero : forall (x : Int) -> Same (add x (ofNat 0)) x :=
   fun (x : Int) ->
     plusCongBoth (plus (x 0) 0) (x 1) (x 0) (plus (x 1) 0) (plusZero (x 0))
       (sym (plus (x 1) 0) (x 1) (plusZero (x 1)))
 end
 
-abstract def addComm : forall (x : Int) (y : Int) -> Same (add x y) (add y x) :=
+theorem addComm : forall (x : Int) (y : Int) -> Same (add x y) (add y x) :=
   fun (x : Int) (y : Int) ->
     plusCongBoth (plus (x 0) (y 0)) (plus (y 1) (x 1)) (plus (y 0) (x 0)) (plus (x 1) (y 1))
       (plusComm (x 0) (y 0)) (plusComm (y 1) (x 1))
 end
 
-abstract def negateCong : forall (a : Int) (b : Int) (h : Same a b) -> Same (negate a) (negate b) :=
+theorem negateCong : forall (a : Int) (b : Int) (h : Same a b) -> Same (negate a) (negate b) :=
   fun (a : Int) (b : Int) (h : Same a b) ->
     trans (plus (a 1) (b 0)) (plus (b 0) (a 1)) (plus (b 1) (a 0)) (plusComm (a 1) (b 0))
       (trans (plus (b 0) (a 1)) (plus (a 0) (b 1)) (plus (b 1) (a 0))
@@ -139,13 +139,13 @@ abstract def negateCong : forall (a : Int) (b : Int) (h : Same a b) -> Same (neg
 end
 
 (* [(-x) + x] stands for [(x 1 + x 0) - (x 0 + x 1)], which is zero. *)
-abstract def negateLeft : forall (x : Int) -> Same (add (negate x) x) (ofNat 0) :=
+theorem negateLeft : forall (x : Int) -> Same (add (negate x) x) (ofNat 0) :=
   fun (x : Int) ->
     trans (plus (plus (x 1) (x 0)) 0) (plus (x 1) (x 0)) (plus (x 0) (x 1))
       (plusZero (plus (x 1) (x 0))) (plusComm (x 1) (x 0))
 end
 
-abstract def negateRight : forall (x : Int) -> Same (add x (negate x)) (ofNat 0) :=
+theorem negateRight : forall (x : Int) -> Same (add x (negate x)) (ofNat 0) :=
   fun (x : Int) ->
     trans (plus (plus (x 0) (x 1)) 0) (plus (x 0) (x 1)) (plus (x 1) (x 0))
       (plusZero (plus (x 0) (x 1))) (plusComm (x 0) (x 1))
@@ -165,12 +165,12 @@ module AdditiveComm := Additive.Base.Commutative addComm
 (* The numbers embed into the integers. *)
 module Embedding where
 
-abstract def ofNatAdd : forall (m : Nat) (n : Nat) -> Same (ofNat (plus m n)) (add (ofNat m) (ofNat n)) :=
+theorem ofNatAdd : forall (m : Nat) (n : Nat) -> Same (ofNat (plus m n)) (add (ofNat m) (ofNat n)) :=
   fun (m : Nat) (n : Nat) -> refl (plus (plus m n) 0)
 end
 
 (* Different numbers are different integers. *)
-abstract def ofNatInj : forall (m : Nat) (n : Nat) (h : Same (ofNat m) (ofNat n)) -> Eq m n :=
+theorem ofNatInj : forall (m : Nat) (n : Nat) (h : Same (ofNat m) (ofNat n)) -> Eq m n :=
   fun (m : Nat) (n : Nat) (h : Same (ofNat m) (ofNat n)) ->
     trans m (plus m 0) n (sym (plus m 0) m (plusZero m))
       (trans (plus m 0) (plus n 0) n h (plusZero n))

@@ -75,7 +75,7 @@ end
 module EqbLaws where
 
 (* [eqb] answers 1 only on equal numbers. *)
-abstract def eqbSound : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 1) -> Eq n m :=
+theorem eqbSound : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 1) -> Eq n m :=
   fun (n : Nat) ->
     rec n return x . (forall (m : Nat) (h : Eq (eqb x m) 1) -> Eq x m)
     | zero => fun (m : Nat) ->
@@ -92,7 +92,7 @@ abstract def eqbSound : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 1) -> Eq n 
 end
 
 (* [eqb] answers 1 on all equal numbers. *)
-abstract def eqbComplete : forall (n : Nat) (m : Nat) (h : Eq n m) -> Eq (eqb n m) 1 :=
+theorem eqbComplete : forall (n : Nat) (m : Nat) (h : Eq n m) -> Eq (eqb n m) 1 :=
   fun (n : Nat) ->
     rec n return x . (forall (m : Nat) (h : Eq x m) -> Eq (eqb x m) 1)
     | zero => fun (m : Nat) ->
@@ -114,7 +114,7 @@ def eqbSpec (n : Nat) (m : Nat) : Iff (Eq (eqb n m) 1) (Eq n m) :=
 end
 
 (* When [eqb] answers 0, the numbers differ. *)
-abstract def eqbZero : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 0) -> Not (Eq n m) :=
+theorem eqbZero : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 0) -> Not (Eq n m) :=
   fun (n : Nat) ->
     rec n return x . (forall (m : Nat) (h : Eq (eqb x m) 0) -> Not (Eq x m))
     | zero => fun (m : Nat) ->
@@ -130,7 +130,7 @@ abstract def eqbZero : forall (n : Nat) (m : Nat) (h : Eq (eqb n m) 0) -> Not (E
     end
 end
 
-abstract def eqbRefl : forall (n : Nat) -> Eq (eqb n n) 1 :=
+theorem eqbRefl : forall (n : Nat) -> Eq (eqb n n) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (eqb x x) 1
     | zero => true
@@ -171,7 +171,7 @@ def eqbCases : forall (a : Nat) (b : Nat) (P : forall (m : Nat) -> Type@0)
 end
 
 (* A number at most [b] for which [eqb] answers 0 is strictly below [b]. *)
-abstract def leEqbZero : forall (a : Nat) (b : Nat) (h : Le a b) (e : Eq (eqb a b) 0) -> Lt a b :=
+theorem leEqbZero : forall (a : Nat) (b : Nat) (h : Le a b) (e : Eq (eqb a b) 0) -> Lt a b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Le x b) (e : Eq (eqb x b) 0) -> Lt x b)
     | zero => fun (b : Nat) ->

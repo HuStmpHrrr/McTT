@@ -30,7 +30,7 @@ module Primes where
 
 (* The least prime above [n], searched among the numbers from [n + 1] to
    [2 n + 2], which contain one by Bertrand's postulate. *)
-private def nextPrime (n : Nat) : Nat :=
+let nextPrime (n : Nat) : Nat :=
   (rec n return y . (forall (c : Nat) -> Nat)
    | zero => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> succ c) (fun (u : Nat) -> c)
    | succ p, r => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> r (succ c)) (fun (u : Nat) -> c)

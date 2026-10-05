@@ -28,11 +28,11 @@ eval Composition.pow (fun (x : Nat) -> succ (succ x)) 5 0
    and exponentiation, by conversion. *)
 module Unfold where
 
-abstract def additivePow : forall (x : Nat) (n : Nat) -> Eq (Additive.pow x n) (mult n x) :=
+theorem additivePow : forall (x : Nat) (n : Nat) -> Eq (Additive.pow x n) (mult n x) :=
   fun (x : Nat) (n : Nat) -> refl (mult n x)
 end
 
-abstract def multiplicativePow : forall (x : Nat) (n : Nat) -> Eq (Multiplicative.pow x n) (pow x n) :=
+theorem multiplicativePow : forall (x : Nat) (n : Nat) -> Eq (Multiplicative.pow x n) (pow x n) :=
   fun (x : Nat) (n : Nat) -> refl (pow x n)
 end
 
@@ -42,20 +42,20 @@ end
 module Scaling where
 
 (* Right distributivity is [powPlus]. *)
-abstract def multPlusRight : forall (m : Nat) (n : Nat) (x : Nat) ->
+theorem multPlusRight : forall (m : Nat) (n : Nat) (x : Nat) ->
     Eq (mult (plus m n) x) (plus (mult m x) (mult n x)) :=
   fun (m : Nat) (n : Nat) (x : Nat) -> Additive.Power.powPlus x m n
 end
 
 (* Associativity is [powMult]. *)
-abstract def multAssocPow : forall (m : Nat) (n : Nat) (x : Nat) ->
+theorem multAssocPow : forall (m : Nat) (n : Nat) (x : Nat) ->
     Eq (mult (mult m n) x) (mult m (mult n x)) :=
   fun (m : Nat) (n : Nat) (x : Nat) -> Additive.Power.powMult x m n
 end
 
 (* Left distributivity needs commutativity of addition: it is [powOp] in
    the commutative instance. *)
-abstract def multPlusLeft : forall (n : Nat) (x : Nat) (y : Nat) ->
+theorem multPlusLeft : forall (n : Nat) (x : Nat) (y : Nat) ->
     Eq (mult n (plus x y)) (plus (mult n x) (mult n y)) :=
   fun (n : Nat) (x : Nat) (y : Nat) -> AdditiveComm.powOp x y n
 end
@@ -66,26 +66,26 @@ end
    proof names the submodule of laws it uses with a local module. *)
 module Exponents where
 
-abstract def powPlus : forall (x : Nat) (m : Nat) (n : Nat) ->
+theorem powPlus : forall (x : Nat) (m : Nat) (n : Nat) ->
     Eq (pow x (plus m n)) (mult (pow x m) (pow x n)) :=
   fun (x : Nat) (m : Nat) (n : Nat) ->
     let module P := Multiplicative.Power in P.powPlus x m n end
 end
 
-abstract def powMult : forall (x : Nat) (m : Nat) (n : Nat) ->
+theorem powMult : forall (x : Nat) (m : Nat) (n : Nat) ->
     Eq (pow x (mult m n)) (pow (pow x n) m) :=
   fun (x : Nat) (m : Nat) (n : Nat) ->
     let module P := Multiplicative.Power in P.powMult x m n end
 end
 
-abstract def powOfProduct : forall (x : Nat) (y : Nat) (n : Nat) ->
+theorem powOfProduct : forall (x : Nat) (y : Nat) (n : Nat) ->
     Eq (pow (mult x y) n) (mult (pow x n) (pow y n)) :=
   fun (x : Nat) (y : Nat) (n : Nat) -> MultiplicativeComm.powOp x y n
 end
 
 (* [x] to the fourth is the square of its square: [mult 2 2] computes to
    [4]. *)
-abstract def fourthPower : forall (x : Nat) -> Eq (pow x 4) (pow (pow x 2) 2) :=
+theorem fourthPower : forall (x : Nat) -> Eq (pow x 4) (pow (pow x 2) 2) :=
   fun (x : Nat) -> let module P := Multiplicative.Power in P.powMult x 2 2 end
 end
 
@@ -95,13 +95,13 @@ end
 module Iteration where
 
 (* Iterating [m + n] times is iterating [n] times, then [m] times. *)
-abstract def iterPlus : forall (f : Endo) (m : Nat) (n : Nat) ->
+theorem iterPlus : forall (f : Endo) (m : Nat) (n : Nat) ->
     Pointwise (Composition.pow f (plus m n)) (compose (Composition.pow f m) (Composition.pow f n)) :=
   fun (f : Endo) (m : Nat) (n : Nat) -> Composition.Power.powPlus f m n
 end
 
 (* Iterating [m * n] times is iterating [n] times, [m] times over. *)
-abstract def iterMult : forall (f : Endo) (m : Nat) (n : Nat) ->
+theorem iterMult : forall (f : Endo) (m : Nat) (n : Nat) ->
     Pointwise (Composition.pow f (mult m n)) (Composition.pow (Composition.pow f n) m) :=
   fun (f : Endo) (m : Nat) (n : Nat) -> Composition.Power.powMult f m n
 end
@@ -121,7 +121,7 @@ eval Sums.pow 6 3
    [max x 0], and each further factor is absorbed by [maxIdem].  The step
    names its rewriting under [max x] in a local module, which opens the
    congruence laws of the instance. *)
-abstract def maxPowSucc : forall (x : Nat) (n : Nat) -> Eq (Maximum.pow x (succ n)) x :=
+theorem maxPowSucc : forall (x : Nat) (n : Nat) -> Eq (Maximum.pow x (succ n)) x :=
   fun (x : Nat) (n : Nat) ->
     rec n return k . Eq (Maximum.pow x (succ k)) x
     | zero => maxZero x

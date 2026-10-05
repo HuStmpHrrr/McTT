@@ -58,7 +58,7 @@ eval powFast 2 10
    first [k + 1] digits of [double n] write twice the number written by the
    first [k] digits of [n].  The digits after the lowest are those of
    [half (double n)], which is [n]. *)
-abstract def fromBitsDouble : forall (n : Nat) (k : Nat) ->
+theorem fromBitsDouble : forall (n : Nat) (k : Nat) ->
     Eq (fromBits (bits (double n)) (succ k)) (double (fromBits (bits n) k)) :=
   fun (n : Nat) (k : Nat) ->
     let upper := fromBits (bits (half (double n))) k;
@@ -75,7 +75,7 @@ end
 
 (* At an even exponent, [powFast] computes a square.  The proof is a local
    module that opens the laws it needs from the units loaded above. *)
-abstract def powFastDouble : forall (x : Nat) (n : Nat) ->
+theorem powFastDouble : forall (x : Nat) (n : Nat) ->
     Eq (powFast x (double n)) (mult (pow x n) (pow x n)) :=
   fun (x : Nat) (n : Nat) ->
     let module Proof where

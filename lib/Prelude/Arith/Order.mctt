@@ -49,7 +49,7 @@ def leTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Le b c)
     end
 end
 
-abstract def leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a b :=
+theorem leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (hab : Le x b) (hba : Le b x) -> Eq x b)
     | zero => fun (b : Nat) ->
@@ -66,12 +66,12 @@ abstract def leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a
 end
 
 (* Zero is the least number. *)
-abstract def leZero : forall (n : Nat) -> Le 0 n :=
+theorem leZero : forall (n : Nat) -> Le 0 n :=
   fun (n : Nat) -> true
 end
 
 (* Only zero is below zero. *)
-abstract def leZeroInv : forall (n : Nat) (h : Le n 0) -> Eq n 0 :=
+theorem leZeroInv : forall (n : Nat) (h : Le n 0) -> Eq n 0 :=
   fun (n : Nat) ->
     rec n return x . (forall (h : Le x 0) -> Eq x 0)
     | zero => fun (h : True) -> h
@@ -100,7 +100,7 @@ def lePlusRight : forall (a : Nat) (b : Nat) -> Le a (plus a b) :=
     end
 end
 
-abstract def lePlusLeft : forall (a : Nat) (b : Nat) -> Le b (plus a b) :=
+theorem lePlusLeft : forall (a : Nat) (b : Nat) -> Le b (plus a b) :=
   fun (a : Nat) (b : Nat) ->
     rec a return x . Le b (plus x b)
     | zero => leRefl b
@@ -127,7 +127,7 @@ end
 (* [Lt] is irreflexive and has no element below zero. *)
 module LtLaws where
 
-abstract def ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
+theorem ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
   fun (n : Nat) ->
     rec n return x . Not (Lt x x)
     | zero => fun (h : False) -> h
@@ -135,12 +135,12 @@ abstract def ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
     end
 end
 
-abstract def notLtZero : forall (n : Nat) -> Not (Lt n 0) :=
+theorem notLtZero : forall (n : Nat) -> Not (Lt n 0) :=
   fun (n : Nat) (h : False) -> h
 end
 
 (* A number below another is different from it. *)
-abstract def ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
+theorem ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
   fun (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) ->
     ltIrrefl a (transport (fun (x : Nat) -> Lt a x) b a (sym a b e) h)
 end
@@ -182,7 +182,7 @@ end
 module LebLaws where
 
 (* [leb] answers 1 exactly on [Le]: soundness. *)
-abstract def lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
+theorem lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Eq (leb x b) 1) -> Le x b)
     | zero => fun (b : Nat) (h : True) -> true
@@ -195,7 +195,7 @@ abstract def lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a 
 end
 
 (* [leb] answers 1 exactly on [Le]: completeness. *)
-abstract def lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
+theorem lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (leb x b) 1)
     | zero => fun (b : Nat) (h : True) -> true
@@ -208,7 +208,7 @@ abstract def lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a 
 end
 
 (* When [leb a b] answers 0, the order holds strictly the other way. *)
-abstract def lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
+theorem lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
   fun (a : Nat) ->
     rec a return x . (forall (b : Nat) (h : Eq (leb x b) 0) -> Lt b x)
     | zero => fun (b : Nat) (h : False) -> absurd (Lt b 0) h

@@ -50,24 +50,24 @@ end
 (* Halving and the low bit. *)
 module Halving where
 
-abstract def bitLe : forall (n : Nat) -> Le (bit n) 1 :=
+theorem bitLe : forall (n : Nat) -> Le (bit n) 1 :=
   twoStepInd (fun (n : Nat) -> Le (bit n) 1) true true (fun (n : Nat) (h : Le (bit n) 1) -> h)
 end
 
 (* Division by 2: [n] is twice its half, plus its low bit.  Both sides of
    the step are [succ (succ ...)] of the hypothesis. *)
-abstract def halfSpec : forall (n : Nat) -> Eq (plus (double (half n)) (bit n)) n :=
+theorem halfSpec : forall (n : Nat) -> Eq (plus (double (half n)) (bit n)) n :=
   twoStepInd (fun (n : Nat) -> Eq (plus (double (half n)) (bit n)) n) true true
     (fun (n : Nat) (h : Eq (plus (double (half n)) (bit n)) n) -> h)
 end
 
 (* Halving a positive number makes it smaller. *)
-abstract def halfLe : forall (n : Nat) -> Le (half (succ n)) n :=
+theorem halfLe : forall (n : Nat) -> Le (half (succ n)) n :=
   twoStepInd (fun (n : Nat) -> Le (half (succ n)) n) true true
     (fun (n : Nat) (h : Le (half (succ n)) n) -> leStep (half (succ n)) n h)
 end
 
-abstract def halfDouble : forall (n : Nat) -> Eq (half (double n)) n :=
+theorem halfDouble : forall (n : Nat) -> Eq (half (double n)) n :=
   fun (n : Nat) ->
     rec n return x . Eq (half (double x)) x
     | zero => true
@@ -75,7 +75,7 @@ abstract def halfDouble : forall (n : Nat) -> Eq (half (double n)) n :=
     end
 end
 
-abstract def bitDouble : forall (n : Nat) -> Eq (bit (double n)) 0 :=
+theorem bitDouble : forall (n : Nat) -> Eq (bit (double n)) 0 :=
   fun (n : Nat) ->
     rec n return x . Eq (bit (double x)) 0
     | zero => true
@@ -83,7 +83,7 @@ abstract def bitDouble : forall (n : Nat) -> Eq (bit (double n)) 0 :=
     end
 end
 
-abstract def halfSuccDouble : forall (n : Nat) -> Eq (half (succ (double n))) n :=
+theorem halfSuccDouble : forall (n : Nat) -> Eq (half (succ (double n))) n :=
   fun (n : Nat) ->
     rec n return x . Eq (half (succ (double x))) x
     | zero => true
@@ -91,7 +91,7 @@ abstract def halfSuccDouble : forall (n : Nat) -> Eq (half (succ (double n))) n 
     end
 end
 
-abstract def bitSuccDouble : forall (n : Nat) -> Eq (bit (succ (double n))) 1 :=
+theorem bitSuccDouble : forall (n : Nat) -> Eq (bit (succ (double n))) 1 :=
   fun (n : Nat) ->
     rec n return x . Eq (bit (succ (double x))) 1
     | zero => true
@@ -100,7 +100,7 @@ abstract def bitSuccDouble : forall (n : Nat) -> Eq (bit (succ (double n))) 1 :=
 end
 
 (* [double n] is [n + n]. *)
-abstract def doublePlus : forall (n : Nat) -> Eq (double n) (plus n n) :=
+theorem doublePlus : forall (n : Nat) -> Eq (double n) (plus n n) :=
   fun (n : Nat) ->
     rec n return x . Eq (double x) (plus x x)
     | zero => true
@@ -111,7 +111,7 @@ abstract def doublePlus : forall (n : Nat) -> Eq (double n) (plus n n) :=
 end
 
 (* [halfSpec] with the low bit first and the double spelled as a sum. *)
-abstract def bitPlusHalves : forall (n : Nat) -> Eq (plus (bit n) (plus (half n) (half n))) n :=
+theorem bitPlusHalves : forall (n : Nat) -> Eq (plus (bit n) (plus (half n) (half n))) n :=
   fun (n : Nat) ->
     let b := bit n;
         h := half n
@@ -166,7 +166,7 @@ def powFrom (f : Nat) : forall (x : Nat) (n : Nat) -> Nat :=
 end
 
 (* Fuel [succ p] is enough for [n], so fuel [p] is enough for its half. *)
-abstract def halfFuel : forall (n : Nat) (p : Nat) (h : Le n (succ p)) -> Le (half n) p :=
+lemma halfFuel : forall (n : Nat) (p : Nat) (h : Le n (succ p)) -> Le (half n) p :=
   fun (n : Nat) (p : Nat) ->
     rec n return x . (forall (h : Le x (succ p)) -> Le (half x) p)
     | zero => fun (h : True) -> true
@@ -174,7 +174,7 @@ abstract def halfFuel : forall (n : Nat) (p : Nat) (h : Le n (succ p)) -> Le (ha
     end
 end
 
-abstract def digitLe : forall (i : Nat) (n : Nat) -> Le (digitAt i n) 1 :=
+lemma digitLe : forall (i : Nat) (n : Nat) -> Le (digitAt i n) 1 :=
   fun (i : Nat) ->
     rec i return x . (forall (n : Nat) -> Le (digitAt x n) 1)
     | zero => fun (n : Nat) -> bitLe n
@@ -184,7 +184,7 @@ end
 
 (* With [k] digits or more, the digits of [n] write [n].  The digits after
    the first are those of [half n], by conversion. *)
-abstract def readDigits : forall (k : Nat) (n : Nat) (h : Le n k) ->
+lemma readDigits : forall (k : Nat) (n : Nat) (h : Le n k) ->
     Eq (readFrom k (fun (i : Nat) -> digitAt i n)) n :=
   fun (k : Nat) ->
     rec k return x . (forall (n : Nat) (h : Le n x) -> Eq (readFrom x (fun (i : Nat) -> digitAt i n)) n)
@@ -204,7 +204,7 @@ abstract def readDigits : forall (k : Nat) (n : Nat) (h : Le n k) ->
 end
 
 (* At most [k] of the first [k] digits are ones. *)
-abstract def countLe : forall (n : Nat) (k : Nat) -> Le (sumTo (fun (i : Nat) -> digitAt i n) k) k :=
+lemma countLe : forall (n : Nat) (k : Nat) -> Le (sumTo (fun (i : Nat) -> digitAt i n) k) k :=
   fun (n : Nat) (k : Nat) ->
     rec k return x . Le (sumTo (fun (i : Nat) -> digitAt i n) x) x
     | zero => true
@@ -214,7 +214,7 @@ abstract def countLe : forall (n : Nat) (k : Nat) -> Le (sumTo (fun (i : Nat) ->
 end
 
 (* [times b x y] is [pow x b] times [y], for a flag [b]. *)
-abstract def timesPow : forall (b : Nat) (h : Le b 1) (x : Nat) (y : Nat) ->
+lemma timesPow : forall (b : Nat) (h : Le b 1) (x : Nat) (y : Nat) ->
     Eq (times b x y) (mult (pow x b) y) :=
   fun (b : Nat) ->
     rec b return k . (forall (h : Le k 1) (x : Nat) (y : Nat) -> Eq (times k x y) (mult (pow x k) y))
@@ -233,7 +233,7 @@ end
 (* With fuel [f] at least [n], squaring computes the power.  In the step,
    [times] contributes [pow x (bit n)], the square [pow x (half n + half n)],
    and the exponents add up to [n] by [bitPlusHalves]. *)
-abstract def powFromPow : forall (x : Nat) (f : Nat) (n : Nat) (h : Le n f) ->
+lemma powFromPow : forall (x : Nat) (f : Nat) (n : Nat) (h : Le n f) ->
     Eq (powFrom f x n) (pow x n) :=
   fun (x : Nat) (f : Nat) ->
     rec f return g . (forall (n : Nat) (h : Le n g) -> Eq (powFrom g x n) (pow x n))
@@ -295,31 +295,31 @@ def powFast (x : Nat) (n : Nat) : Nat := Digits.powFrom n x n end
 module Laws where
 
 (* The first [k] digits of [n] write [n], when [k] is at least [n]. *)
-abstract def fromBitsBits : forall (n : Nat) (k : Nat) (h : Le n k) -> Eq (fromBits (bits n) k) n :=
+theorem fromBitsBits : forall (n : Nat) (k : Nat) (h : Le n k) -> Eq (fromBits (bits n) k) n :=
   fun (n : Nat) (k : Nat) (h : Le n k) -> Digits.readDigits k n h
 end
 
 (* [n] digits are enough for [n]. *)
-abstract def fromBitsSelf : forall (n : Nat) -> Eq (fromBits (bits n) n) n :=
+theorem fromBitsSelf : forall (n : Nat) -> Eq (fromBits (bits n) n) n :=
   fun (n : Nat) -> fromBitsBits n n (leRefl n)
 end
 
 (* Doubling writes a [0] as the lowest digit and shifts the others up. *)
-abstract def bitsDoubleZero : forall (n : Nat) -> Eq (bits (double n) 0) 0 :=
+theorem bitsDoubleZero : forall (n : Nat) -> Eq (bits (double n) 0) 0 :=
   fun (n : Nat) -> Halving.bitDouble n
 end
 
-abstract def bitsDoubleSucc : forall (n : Nat) (i : Nat) -> Eq (bits (double n) (succ i)) (bits n i) :=
+theorem bitsDoubleSucc : forall (n : Nat) (i : Nat) -> Eq (bits (double n) (succ i)) (bits n i) :=
   fun (n : Nat) (i : Nat) -> cong (fun (m : Nat) -> bits m i) (half (double n)) n (halfDouble n)
 end
 
 (* Every digit is a 0 or a 1, so there are at most [n] ones. *)
-abstract def bitCountLe : forall (n : Nat) -> Le (bitCount n) n :=
+theorem bitCountLe : forall (n : Nat) -> Le (bitCount n) n :=
   fun (n : Nat) -> Digits.countLe n n
 end
 
 (* Repeated squaring computes the power. *)
-abstract def powFastPow : forall (x : Nat) (n : Nat) -> Eq (powFast x n) (pow x n) :=
+theorem powFastPow : forall (x : Nat) (n : Nat) -> Eq (powFast x n) (pow x n) :=
   fun (x : Nat) (n : Nat) -> Digits.powFromPow x n n (leRefl n)
 end
 

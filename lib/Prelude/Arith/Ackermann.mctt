@@ -21,15 +21,15 @@ end
 (* The defining equations, one per clause. *)
 module Equations where
 
-abstract def ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
+theorem ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
   fun (n : Nat) -> refl n
 end
 
-abstract def ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
+theorem ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
   fun (m : Nat) -> refl (ack m 1)
 end
 
-abstract def ackSuccSucc : forall (m : Nat) (n : Nat) ->
+theorem ackSuccSucc : forall (m : Nat) (n : Nat) ->
     Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) :=
   fun (m : Nat) (n : Nat) -> refl (ack m (ack (succ m) n))
 end
@@ -39,7 +39,7 @@ end
 (* Closed forms of the first rows. *)
 module Rows where
 
-abstract def ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
+theorem ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Eq (ack 1 x) (succ (succ x))
     | zero => true
@@ -49,7 +49,7 @@ end
 
 (* [ack 2 n] is [2 n + 3]: the step rewrites [ack 1] by [ackOne] and moves a
    successor past [plusSucc]. *)
-abstract def ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
+theorem ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
   fun (n : Nat) ->
     rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
     | zero => true

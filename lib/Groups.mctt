@@ -29,7 +29,7 @@ eval magnitude (minus (ofNat 4) (ofNat 9))
 (* [a + x = b] has the solution [x = -a + b], and only that one: [a]
    cancels on the left once [b] is written as [a + (-a + b)].  The proof is
    a local module that opens the laws of the group and its monoid. *)
-abstract def solve : forall (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
+theorem solve : forall (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
     Same x (add (negate a) b) :=
   fun (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
     let module Proof where
@@ -54,7 +54,7 @@ end
 
 (* [-(a - b)] is [b - a]: the inverse of a sum is the sum of the inverses
    in the other order, and [-(-b)] is [b]. *)
-abstract def negateMinus : forall (a : Int) (b : Int) -> Same (negate (minus a b)) (minus b a) :=
+theorem negateMinus : forall (a : Int) (b : Int) -> Same (negate (minus a b)) (minus b a) :=
   fun (a : Int) (b : Int) ->
     let nb := negate b;
         na := negate a;
@@ -69,12 +69,12 @@ end
    sum are sums of multiples, the second since addition commutes. *)
 module Multiples where
 
-abstract def multipleNegate : forall (x : Int) (n : Nat) ->
+theorem multipleNegate : forall (x : Int) (n : Nat) ->
     Same (Additive.Base.pow (negate x) n) (negate (Additive.Base.pow x n)) :=
   fun (x : Int) (n : Nat) -> Additive.Laws.powInv x n
 end
 
-abstract def multipleAdd : forall (x : Int) (y : Int) (n : Nat) ->
+theorem multipleAdd : forall (x : Int) (y : Int) (n : Nat) ->
     Same (Additive.Base.pow (add x y) n) (add (Additive.Base.pow x n) (Additive.Base.pow y n)) :=
   fun (x : Int) (y : Int) (n : Nat) -> AdditiveComm.powOp x y n
 end

@@ -20,7 +20,7 @@ private module FibFrom where
 (* Every sequence computed by [fibFrom] satisfies the Fibonacci recurrence.
    In the step, [fibFrom (succ n) a b] computes to [fibFrom n b (plus a b)],
    so the hypothesis at [b] and [plus a b] is the goal. *)
-abstract def recurrence : forall (n : Nat) (a : Nat) (b : Nat) ->
+lemma recurrence : forall (n : Nat) (a : Nat) (b : Nat) ->
     Eq (fibFrom (succ (succ n)) a b) (plus (fibFrom (succ n) a b) (fibFrom n a b)) :=
   fun (n : Nat) ->
     rec n return x . (forall (a : Nat) (b : Nat) ->
@@ -32,7 +32,7 @@ end
 
 (* A sequence whose second term is positive stays positive after its first
    term. *)
-abstract def positive : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) ->
+lemma positive : forall (n : Nat) (a : Nat) (b : Nat) (h : Lt 0 b) ->
     Lt 0 (fibFrom (succ n) a b) :=
   fun (n : Nat) ->
     rec n return x . (forall (a : Nat) (b : Nat) (h : Lt 0 b) -> Lt 0 (fibFrom (succ x) a b))
@@ -47,12 +47,12 @@ end
 (* The first values and the recurrence. *)
 module Basic where
 
-abstract def fibZero : Eq (fib 0) 0 := true end
+theorem fibZero : Eq (fib 0) 0 := true end
 
-abstract def fibOne : Eq (fib 1) 1 := true end
+theorem fibOne : Eq (fib 1) 1 := true end
 
 (* The Fibonacci recurrence. *)
-abstract def fibSucc : forall (n : Nat) -> Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) :=
+theorem fibSucc : forall (n : Nat) -> Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) :=
   fun (n : Nat) -> FibFrom.recurrence n 0 1
 end
 
@@ -64,12 +64,12 @@ open Basic use (fibSucc)
 module Growth where
 
 (* Every Fibonacci number after [fib 0] is positive. *)
-abstract def fibPos : forall (n : Nat) -> Lt 0 (fib (succ n)) :=
+theorem fibPos : forall (n : Nat) -> Lt 0 (fib (succ n)) :=
   fun (n : Nat) -> FibFrom.positive n 0 1 true
 end
 
 (* The Fibonacci numbers do not decrease. *)
-abstract def fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
+theorem fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Le (fib x) (fib (succ x))
     | zero => true
@@ -82,7 +82,7 @@ abstract def fibMono : forall (n : Nat) -> Le (fib n) (fib (succ n)) :=
 end
 
 (* Monotonicity over any distance [k]. *)
-abstract def fibMonoPlus : forall (k : Nat) (m : Nat) -> Le (fib m) (fib (plus k m)) :=
+theorem fibMonoPlus : forall (k : Nat) (m : Nat) -> Le (fib m) (fib (plus k m)) :=
   fun (k : Nat) (m : Nat) ->
     rec k return x . Le (fib m) (fib (plus x m))
     | zero => leRefl (fib m)
@@ -96,7 +96,7 @@ end
 module Identities where
 
 (* The Fibonacci numbers below [n] sum to [fib (succ n)] minus one. *)
-abstract def fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n)) :=
+theorem fibSum : forall (n : Nat) -> Eq (plus (sumTo fib n) 1) (fib (succ n)) :=
   fun (n : Nat) ->
     rec n return x . Eq (plus (sumTo fib x) 1) (fib (succ x))
     | zero => true
@@ -123,7 +123,7 @@ end
    induction on [m] uses the hypothesis at [succ n], expands
    [fib (succ (succ n))] and [fib (succ (succ p))] by [fibSucc], and
    distributes. *)
-abstract def fibPlus : forall (m : Nat) (n : Nat) ->
+theorem fibPlus : forall (m : Nat) (n : Nat) ->
     Eq (fib (succ (plus m n))) (plus (mult (fib (succ m)) (fib (succ n))) (mult (fib m) (fib n))) :=
   fun (m : Nat) ->
     rec m return x . (forall (n : Nat) ->

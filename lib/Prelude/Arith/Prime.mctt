@@ -48,7 +48,7 @@ def noSmallDivisor (n : Nat) : Nat := trialDivision n 1 (fun (d : Nat) -> 0) n 2
 
 (* Every answer of the search for a divisor divides [n]: a candidate is
    answered only when the remainder of [n] by it is [0]. *)
-abstract def trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
+lemma trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
     Divides (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
   fun (n : Nat) (fuel : Nat) ->
     rec fuel return x . (forall (d : Nat) -> Divides (trialDivision n n (fun (y : Nat) -> y) x d) n)
@@ -69,7 +69,7 @@ end
 
 (* When the search for a divisor fails, the smallest divisor is the number
    itself: both searches run through the same candidates. *)
-abstract def trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
+lemma trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
     (h : Eq (trialDivision n 1 (fun (x : Nat) -> 0) fuel d) 1) ->
     Eq (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
   fun (n : Nat) (fuel : Nat) ->
@@ -126,12 +126,12 @@ def Prime (n : Nat) : Type@0 := Eq (isPrime n) 1 end
 module Laws where
 
 (* The smallest divisor divides the number. *)
-abstract def smallestDivisorDivides : forall (n : Nat) -> Divides (smallestDivisor n) n :=
+theorem smallestDivisorDivides : forall (n : Nat) -> Divides (smallestDivisor n) n :=
   fun (n : Nat) -> trialDivisionDivides n n 2
 end
 
 (* Every prime is at least 2: below 2, [isPrime] answers 0. *)
-abstract def primeGeTwo : forall (n : Nat) (h : Prime n) -> Le 2 n :=
+theorem primeGeTwo : forall (n : Nat) (h : Prime n) -> Le 2 n :=
   fun (n : Nat) ->
     rec n return x . (forall (h : Prime x) -> Le 2 x)
     | zero => fun (h : False) -> h
@@ -144,7 +144,7 @@ abstract def primeGeTwo : forall (n : Nat) (h : Prime n) -> Le 2 n :=
 end
 
 (* A prime is its own smallest divisor. *)
-abstract def primeSmallestDivisor : forall (n : Nat) (h : Prime n) -> Eq (smallestDivisor n) n :=
+theorem primeSmallestDivisor : forall (n : Nat) (h : Prime n) -> Eq (smallestDivisor n) n :=
   fun (n : Nat) ->
     rec n return x . (forall (h : Prime x) -> Eq (smallestDivisor x) x)
     | zero => fun (h : False) -> absurd (Eq (smallestDivisor 0) 0) h
@@ -163,19 +163,19 @@ end
    the identity refutes it otherwise. *)
 module Facts where
 
-abstract def twoPrime : Prime 2 := true end
+theorem twoPrime : Prime 2 := true end
 
-abstract def threePrime : Prime 3 := true end
+theorem threePrime : Prime 3 := true end
 
-abstract def sevenPrime : Prime 7 := true end
+theorem sevenPrime : Prime 7 := true end
 
-abstract def zeroNotPrime : Not (Prime 0) := fun (h : Prime 0) -> h end
+theorem zeroNotPrime : Not (Prime 0) := fun (h : Prime 0) -> h end
 
-abstract def oneNotPrime : Not (Prime 1) := fun (h : Prime 1) -> h end
+theorem oneNotPrime : Not (Prime 1) := fun (h : Prime 1) -> h end
 
-abstract def fourNotPrime : Not (Prime 4) := fun (h : Prime 4) -> h end
+theorem fourNotPrime : Not (Prime 4) := fun (h : Prime 4) -> h end
 
-abstract def nineNotPrime : Not (Prime 9) := fun (h : Prime 9) -> h end
+theorem nineNotPrime : Not (Prime 9) := fun (h : Prime 9) -> h end
 
 end
 
