@@ -14,63 +14,89 @@
 </pre>
 <div class="doc"><p>1. Lexical matters. This text is a comment; comments do not nest. Identifiers are letters only, so names are camelCase. A numeral is unary: 3 is succ (succ (succ zero)).</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <span class="kw">zero</span><span class="sym">)</span><span class="sym">)</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <span class="kw">zero</span><span class="sym">)</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : Nat</pre></details>
 <div class="doc"><p>2. Evaluation. <code>eval M</code> normalizes M and infers its type; <code>eval M : T</code> checks M against T first.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="num">3</span> <span class="sym">:</span> <span class="ty">Nat</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="num">3</span> <span class="sym">:</span> <span class="ty">Nat</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate 3 --&gt; 3 : Nat</pre></details>
 <div class="doc"><p>3. Universes and types. Type@i is the universe of level i, with Type@i : Type@(i+1). Nat is in Type@0, with zero and succ.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="ty">Nat</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span>
-
-<span class="kw">eval</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">1</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="ty">Nat</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Nat --&gt; Nat : Type@0</pre></details>
+<pre class="code"><span class="kw">eval</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Type@0 --&gt; Type@0 : Type@1</pre></details>
 <div class="doc"><p>A function is <code>fun (x : A) -&gt; M</code>; its type is <code>forall (x : A) -&gt; B</code>, where B may mention x. Application is juxtaposition. Several binders abbreviate nested ones.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l10">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l11">x</span> <span class="sym">:</span> <a class="var" href="#l10">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l11">x</a><span class="sym">)</span> <span class="ty">Nat</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l14">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l15">x</span> <span class="sym">:</span> <a class="var" href="#l14">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l15">x</a>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l10">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l11">x</span> <span class="sym">:</span> <a class="var" href="#l10">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l11">x</a><span class="sym">)</span> <span class="ty">Nat</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (fun (A1 : Type@0)
+              (x1 : A1)
+           -&gt; x1) Nat 4 --&gt; 4 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l14">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l15">x</span> <span class="sym">:</span> <a class="var" href="#l14">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l15">x</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fun (A1 : Type@0)
+             (x1 : A1)
+           -&gt; x1 --&gt; fun (A1 : Type@0)
+                         (x1 : A1)
+                       -&gt; x1 : forall (A1 : Type@0)
+                                      (x1 : A1)
+                                 -&gt; A1</pre></details>
 <div class="doc"><p>4. Recursion. <code>rec n return y . T | zero =&gt; z | succ p, r =&gt; s end</code> is primitive recursion on n: T is the motive, p the predecessor and r the result for p.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="kw">rec</span> <span class="num">3</span> <span class="kw">return</span> <span class="var bind" id="l18">y</span> <span class="sym">.</span> <span class="ty">Nat</span> <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="num">0</span> <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l19">p</span><span class="sym">,</span> <span class="var bind" id="l20">r</span> <span class="sym">=&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l20">r</a><span class="sym">)</span> <span class="kw">end</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="kw">rec</span> <span class="num">3</span> <span class="kw">return</span> <span class="var bind" id="l18">y</span> <span class="sym">.</span> <span class="ty">Nat</span> <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="num">0</span> <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l19">p</span><span class="sym">,</span> <span class="var bind" id="l20">r</span> <span class="sym">=&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l20">r</a><span class="sym">)</span> <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate rec 3 return x1 . Nat
+         | zero =&gt; 0
+         | succ x2, x3 =&gt; succ (succ x3)
+         end --&gt; 6 : Nat</pre></details>
 <div class="doc"><p>The motive may compute a type: here, the type of n-ary functions on Nat.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">rec</span> <span class="num">2</span> <span class="kw">return</span> <span class="var bind" id="l22">y</span> <span class="sym">.</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span>
      <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="ty">Nat</span>
      <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l23">p</span><span class="sym">,</span> <span class="var bind" id="l24">r</span> <span class="sym">=&gt;</span> <span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l25">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l24">r</a>
-     <span class="kw">end</span>
-</pre>
+     <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate rec 2 return x1 . Type@0
+         | zero =&gt; Nat
+         | succ x2, A1 =&gt; forall (x3 : Nat) -&gt; A1
+         end --&gt; forall (x1 : Nat)
+                        (x2 : Nat)
+                   -&gt; Nat : Type@0</pre></details>
 <div class="doc"><p>5. Unit and empty types. True has the one element true; False has none. <code>exfalso h return x . P</code> eliminates h : False into any type P.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <span class="kw">true</span> <span class="sym">:</span> <span class="ty">True</span>
-
-<span class="kw">eval</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l27">h</span> <span class="sym">:</span> <span class="ty">False</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">exfalso</span> <a class="var" href="#l27">h</a> <span class="kw">return</span> <span class="var bind" id="l29">x</span> <span class="sym">.</span> <span class="ty">Nat</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <span class="kw">true</span> <span class="sym">:</span> <span class="ty">True</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l27">h</span> <span class="sym">:</span> <span class="ty">False</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">exfalso</span> <a class="var" href="#l27">h</a> <span class="kw">return</span> <span class="var bind" id="l29">x</span> <span class="sym">.</span> <span class="ty">Nat</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fun (x1 : False) -&gt; exfalso x1 return x2 . Nat
+  --&gt; fun (x1 : False) -&gt; exfalso x1 return x2 . Nat
+  : forall (x1 : False) -&gt; Nat</pre></details>
 <div class="doc"><p>6. Local definitions. <code>let x : A := a; y := b in M end</code> binds each name in the later bindings and in M. A binding is transparent, so its value is known while checking the rest; an unannotated one has its type inferred. <code>Eq n m</code>, imported above, computes to True exactly when n and m are equal, so <code>true</code> proves <code>Eq 3 3</code>.</p>
 </div>
 <pre class="code"><span class="kw">eval</span> <span class="kw">let</span> <span class="var bind" id="l30">n</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">2</span><span class="sym">;</span>
          <span class="var bind" id="l31">f</span> <span class="sym">:=</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l32">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <a class="var" href="#l32">x</a><span class="sym">;</span>
          <span class="var bind" id="l34">p</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="var" href="#l31">f</a> <a class="var" href="#l30">n</a><span class="sym">)</span> <span class="num">3</span> <span class="sym">:=</span> <span class="kw">true</span>
      <span class="kw">in</span> <a class="var" href="#l31">f</a> <span class="sym">(</span><a class="var" href="#l31">f</a> <a class="var" href="#l30">n</a><span class="sym">)</span>
-     <span class="kw">end</span>
-</pre>
+     <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let x1 : Nat := 2;
+             x2 := fun (x3 : Nat) -&gt; succ x3;
+             x4 : Eq (x2 x1) 3 := true
+         in x2 (x2 x1)
+         end --&gt; 4 : Nat</pre></details>
 <div class="doc"><p>7. Definitions. <code>def f (x : A) : T := M end</code> is <code>def f : forall (x : A) -&gt; T := fun (x : A) -&gt; M end</code>. A definition is transparent: it unfolds wherever it is used.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="double">double</span> <span class="sym">(</span><span class="var bind" id="l42">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span>
   <span class="kw">rec</span> <a class="var" href="#l42">n</a> <span class="kw">return</span> <span class="var bind" id="l44">y</span> <span class="sym">.</span> <span class="ty">Nat</span> <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="num">0</span> <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l45">p</span><span class="sym">,</span> <span class="var bind" id="l46">r</span> <span class="sym">=&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l46">r</a><span class="sym">)</span> <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="num">3</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double 3 --&gt; 6 : Nat</pre></details>
 <div class="doc"><p>An <code>abstract</code> definition is opaque: it is checked, but never unfolds, so its uses are stuck.</p>
 </div>
 <pre class="code"><span class="kw">abstract</span> <span class="kw">def</span> <span class="def bind" id="four">four</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">4</span> <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#four">four</a>
-</pre>
+<span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#four">four</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double four
+  --&gt; rec four return x1 . Nat
+      | zero =&gt; 0
+      | succ x2, x3 =&gt; succ (succ x3)
+      end : Nat</pre></details>
 <div class="doc"><p>A <code>private</code> definition is usable only inside its module (section 10). Both modifiers combine, in either order.</p>
 </div>
 <pre class="code"><span class="kw">private</span> <span class="kw">def</span> <span class="def bind" id="helper">helper</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">1</span> <span class="kw">end</span>
@@ -79,8 +105,8 @@
 
 <span class="kw">abstract</span> <span class="kw">private</span> <span class="kw">def</span> <span class="def bind" id="hiddenSix">hiddenSix</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">6</span> <span class="kw">end</span>
 
-<span class="kw">eval</span> <span class="kw">succ</span> <a class="def" href="#helper">helper</a>
-</pre>
+<span class="kw">eval</span> <span class="kw">succ</span> <a class="def" href="#helper">helper</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate succ helper --&gt; 2 : Nat</pre></details>
 <div class="doc"><p>8. Definition keywords. Each is <code>def</code> with modifiers implied: theorem, lemma = abstract; fact, remark = abstract private; let, given = private. <code>refl n</code> proves <code>Eq n n</code>.</p>
 </div>
 <pre class="code"><span class="kw">theorem</span> <span class="def bind" id="doubleTwo">doubleTwo</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="def" href="#double">double</a> <span class="num">2</span><span class="sym">)</span> <span class="num">4</span> <span class="sym">:=</span> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <span class="num">4</span> <span class="kw">end</span>
@@ -95,8 +121,8 @@
 
 <span class="kw">given</span> <span class="def bind" id="two">two</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">2</span> <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#two">two</a>
-</pre>
+<span class="kw">eval</span> <a class="def" href="#double">double</a> <a class="def" href="#two">two</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double two --&gt; 4 : Nat</pre></details>
 <div class="doc"><p>A keyword takes only the modifiers it does not imply: <code>private theorem</code> and <code>abstract let</code> are allowed; fact and remark take none.</p>
 </div>
 <pre class="code"><span class="kw">private</span> <span class="kw">theorem</span> <span class="def bind" id="privateThm">privateThm</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="num">1</span> <span class="num">1</span> <span class="sym">:=</span> <span class="kw">true</span> <span class="kw">end</span>
@@ -109,8 +135,14 @@
 </div>
 <pre class="code"><span class="kw">axiom</span> <span class="def bind" id="k">k</span> <span class="sym">:</span> <span class="ty">Nat</span>
 
-<span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="sym">(</span><span class="kw">succ</span> <a class="def" href="#k">k</a><span class="sym">)</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="#double">double</a> <span class="sym">(</span><span class="kw">succ</span> <a class="def" href="#k">k</a><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double (succ k)
+  --&gt; succ
+        (succ
+          (rec k return x1 . Nat
+           | zero =&gt; 0
+           | succ x2, x3 =&gt; succ (succ x3)
+           end)) : Nat</pre></details>
 <div class="doc"><p>9. Modules. <code>module X where … end</code> groups members; <code>X.f</code> selects one, through any chain of nested modules.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Outer">Outer</span> <span class="kw">where</span>
@@ -120,34 +152,34 @@
   <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Outer">Outer</a><span class="sym">.</span><a class="mod" href="#Outer.Inner">Inner</a><span class="sym">.</span><a class="def" href="#Outer.Inner.next">next</a>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Outer">Outer</a><span class="sym">.</span><a class="mod" href="#Outer.Inner">Inner</a><span class="sym">.</span><a class="def" href="#Outer.Inner.next">next</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Outer.Inner.next --&gt; 11 : Nat</pre></details>
 <div class="doc"><p>A module with parameters abstracts every member over them. Its arguments follow the selection, or apply the module in parentheses.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Twice">Twice</span> <span class="sym">(</span><span class="var bind" id="l85">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l86">f</span> <span class="sym">:</span> <span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l87">a</span> <span class="sym">:</span> <a class="var" href="#l85">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l85">A</a><span class="sym">)</span> <span class="kw">where</span>
   <span class="kw">def</span> <span class="def bind" id="Twice.twice">twice</span> <span class="sym">(</span><span class="var bind" id="l91">a</span> <span class="sym">:</span> <a class="var" href="#l85">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l85">A</a> <span class="sym">:=</span> <a class="var" href="#l86">f</a> <span class="sym">(</span><a class="var" href="#l86">f</a> <a class="var" href="#l91">a</a><span class="sym">)</span> <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Twice">Twice</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="ty">Nat</span> <a class="def" href="#double">double</a> <span class="num">1</span>
-
-<span class="kw">eval</span> <span class="sym">(</span><a class="mod" href="#Twice">Twice</a> <span class="ty">Nat</span> <a class="def" href="#double">double</a><span class="sym">)</span><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Twice">Twice</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="ty">Nat</span> <a class="def" href="#double">double</a> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Twice.twice Nat double 1 --&gt; 4 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <span class="sym">(</span><a class="mod" href="#Twice">Twice</a> <span class="ty">Nat</span> <a class="def" href="#double">double</a><span class="sym">)</span><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate (Twice Nat double).twice 1 --&gt; 4 : Nat</pre></details>
 <div class="doc"><p><code>module Y := E</code> declares an alias. Applying a module to some of its parameters is partial application.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatTwice">NatTwice</span> <span class="sym">:=</span> <a class="mod" href="#Twice">Twice</a> <span class="ty">Nat</span>
 
 <span class="kw">module</span> <span class="mod bind" id="Quadruple">Quadruple</span> <span class="sym">:=</span> <a class="mod" href="#NatTwice">NatTwice</a> <a class="def" href="#double">double</a>
 
-<span class="kw">eval</span> <a class="mod" href="#Quadruple">Quadruple</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Quadruple">Quadruple</a><span class="sym">.</span><a class="def" href="#Twice.twice">twice</a> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Quadruple.twice 1 --&gt; 4 : Nat</pre></details>
 <div class="doc"><p><code>module A.B where … end</code> declares B inside A.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Shapes">Shapes</span><span class="sym">.</span><span class="mod bind" id="Shapes.Square">Square</span> <span class="kw">where</span>
   <span class="kw">def</span> <span class="def bind" id="Shapes.Square.side">side</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <span class="num">2</span> <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Shapes">Shapes</a><span class="sym">.</span><a class="mod" href="#Shapes.Square">Square</a><span class="sym">.</span><a class="def" href="#Shapes.Square.side">side</a>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Shapes">Shapes</a><span class="sym">.</span><a class="mod" href="#Shapes.Square">Square</a><span class="sym">.</span><a class="def" href="#Shapes.Square.side">side</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Shapes.Square.side --&gt; 2 : Nat</pre></details>
 <div class="doc"><p>10. Privacy. A private member is usable inside the module that declares it, including its nested modules, and nowhere else.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Vault">Vault</span> <span class="kw">where</span>
@@ -158,18 +190,18 @@
   <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="def" href="#Vault.reveal">reveal</a>
-
-<span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="mod" href="#Vault.Inside">Inside</a><span class="sym">.</span><a class="def" href="#Vault.Inside.peek">peek</a>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="def" href="#Vault.reveal">reveal</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.reveal --&gt; 8 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Vault">Vault</a><span class="sym">.</span><a class="mod" href="#Vault.Inside">Inside</a><span class="sym">.</span><a class="def" href="#Vault.Inside.peek">peek</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Vault.Inside.peek --&gt; 7 : Nat</pre></details>
 <div class="doc"><p>Rejected: eval Vault.secret   Error: Tutorial.Vault.secret is private</p>
 </div>
 <div class="doc"><p>11. Imports and opens. <code>import X::Y</code> only loads the unit X::Y: its members are reached by their full name.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a>
 
-<span class="kw">eval</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">2</span> <span class="num">3</span>
-</pre>
+<span class="kw">eval</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">2</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Prelude::Arith::Plus.plus 2 3 --&gt; 5 : Nat</pre></details>
 <div class="doc"><p><code>open E as Z use (a; c as d) export (e)</code> declares, in this module, a private alias <code>module Z := E</code>, private definitions <code>a := Z.a</code> and <code>d := Z.c</code>, and a public definition <code>e := Z.e</code>. Items naming a submodule declare aliases instead.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Adding">Adding</span> <span class="kw">where</span>
@@ -177,10 +209,10 @@
   <span class="kw">def</span> <span class="def bind" id="Adding.five">five</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="def" href="Prelude.Arith.Plus.html#plus">add</a> <span class="num">2</span> <span class="sym">(</span><a class="mod" href="#Adding.P">P</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">1</span> <span class="num">2</span><span class="sym">)</span> <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="def" href="#Adding.five">five</a>
-
-<span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Plus.html#Algebra">Algebra</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#Algebra.plusComm">plusComm</a> <span class="num">1</span> <span class="num">2</span>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="def" href="#Adding.five">five</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.five --&gt; 5 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Adding">Adding</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Plus.html#Algebra">Algebra</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#Algebra.plusComm">plusComm</a> <span class="num">1</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Adding.Algebra.plusComm 1 2 --&gt; true : True</pre></details>
 <div class="doc"><p>Rejected: eval Adding.add   Error: Tutorial.Adding.add is private</p>
 </div>
 <div class="doc"><p>The long form <code>import X::Y as Z use (…)</code> is <code>import X::Y</code> then <code>open X::Y as Z use (…)</code>. Prelude::Arith::Plus is loaded already, and a repeated import does nothing, so this one only opens it.</p>
@@ -190,8 +222,8 @@
   <span class="kw">def</span> <span class="def bind" id="Counting.seven">seven</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">3</span> <span class="sym">(</span><a class="mod" href="#Counting.Q">Q</a><span class="sym">.</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">2</span> <span class="num">2</span><span class="sym">)</span> <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="mod" href="#Counting">Counting</a><span class="sym">.</span><a class="def" href="#Counting.seven">seven</a>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Counting">Counting</a><span class="sym">.</span><a class="def" href="#Counting.seven">seven</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Counting.seven --&gt; 7 : Nat</pre></details>
 <div class="doc"><p>Imports and opens may also precede the unit's header, but only for what the unit's parameter types need; everything else is imported inside the module, as at the top of this file. Leading ones may <code>use</code> and <code>as</code> but not <code>export</code>: import Prelude::Arith::Equality use (Eq) module Proofs (h : Eq 1 1) where … end</p>
 </div>
 <div class="doc"><p>12. Local modules. <code>let module X (ps) where … end in M end</code> declares a module inside a term, and <code>let module X := E in M end</code> an alias. The body may <code>open</code> modules and declare private members, which M cannot use.</p>
@@ -203,8 +235,21 @@
        <span class="kw">end</span><span class="sym">;</span>
        <span class="kw">module</span> <span class="var bind" id="l174">DoublerOne</span> <span class="sym">:=</span> <a class="var" href="#l164">Doubler</a> <span class="num">1</span>
      <span class="kw">in</span> <a class="var" href="#l174">DoublerOne</a><span class="sym">.</span><a class="var" href="#l172">sum</a>
-     <span class="kw">end</span>
-</pre>
+     <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : Nat) where
+               private def twice : forall (x2 : Nat) -&gt; Nat :=
+                 (Twice Nat double).twice
+               end
+               private def base : Nat :=
+                 twice x1
+               end
+               def sum : Nat :=
+                 succ base
+               end
+             end;
+             module M2 := M1 1
+         in M2.sum
+         end --&gt; 5 : Nat</pre></details>
 <div class="doc"><p>Rejected in a local module body: import X::Y    Error: import is not allowed in a local module; use open eval M         Error: eval is not allowed in a local module axiom x : T    Error: axioms are not allowed in a local module An abstract member, or an abstract keyword, makes the whole let ill-typed: &quot;Error: let module M1 where … end in 0 end has no inferable type&quot;. Using <code>Doubler.base</code> in the let's body gives &quot;Error: base is private in a local module, but it is used outside it&quot;.</p>
 </div>
 <div class="doc"><p>13. Putting it together: a parameterized module with a theorem proved by induction, opened in a local module and instantiated.</p>
@@ -229,7 +274,24 @@
          <span class="kw">def</span> <span class="var bind" id="l219">eight</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="def" href="#Adder.add">add</a> <span class="num">3</span> <span class="kw">end</span>
        <span class="kw">end</span>
      <span class="kw">in</span> <a class="var" href="#l215">Five</a><span class="sym">.</span><a class="def" href="#Adder.addIter">addIter</a> <a class="var" href="#l215">Five</a><span class="sym">.</span><a class="var" href="#l219">eight</a>
-     <span class="kw">end</span>
-
-<span class="kw">end</span></pre>
+     <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 where
+               private def add : forall (x1 : Nat) -&gt; Nat :=
+                 (Adder 5).add
+               end
+               def addIter : forall (x2 : Nat)
+                               -&gt; Eq (Adder.add 5 x2)
+                                    (Iter.iter Nat
+                                       (fun (x3 : Nat) -&gt; succ x3)
+                                       x2
+                                      5) :=
+                 (Adder 5).addIter
+               end
+               def eight : Nat :=
+                 add 3
+               end
+             end
+         in M1.addIter M1.eight
+         end --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

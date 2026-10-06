@@ -19,30 +19,30 @@
 </pre>
 <div class="doc"><p>13 is <code>1101</code> in binary: its half, its low bit and its digits.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#half">half</a> <span class="num">13</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bit">bit</a> <span class="num">13</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">0</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">1</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">3</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#half">half</a> <span class="num">13</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate half 13 --&gt; 6 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bit">bit</a> <span class="num">13</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bit 13 --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bits 13 0 --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bits 13 1 --&gt; 0 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bits 13 2 --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bits 13 3 --&gt; 1 : Nat</pre></details>
 <div class="doc"><p>The first four digits write 13 back, and three of them are ones.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#fromBits">fromBits</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">13</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#fromBits">fromBits</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Binary.html#bits">bits</a> <span class="num">13</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fromBits (bits 13) 4 --&gt; 13 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">13</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bitCount 13 --&gt; 3 : Nat</pre></details>
 <div class="doc"><p><code>255</code> is eight ones, and <code>256</code> a single one.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">255</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">256</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">255</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bitCount 255 --&gt; 8 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#bitCount">bitCount</a> <span class="num">256</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate bitCount 256 --&gt; 1 : Nat</pre></details>
 <div class="doc"><p>Digits given by hand: <code>1, 0, 1, 1</code>, then zeros, write <code>1 + 4 + 8</code>.</p>
 </div>
 <pre class="code"><span class="kw">def</span> <span class="def bind" id="oneZeroOneOne">oneZeroOneOne</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Binary.html#Bits">Bits</a> <span class="sym">:=</span>
@@ -53,14 +53,14 @@
     <span class="kw">end</span>
 <span class="kw">end</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#fromBits">fromBits</a> <a class="def" href="#oneZeroOneOne">oneZeroOneOne</a> <span class="num">4</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#fromBits">fromBits</a> <a class="def" href="#oneZeroOneOne">oneZeroOneOne</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fromBits oneZeroOneOne 4 --&gt; 13 : Nat</pre></details>
 <div class="doc"><p>Exponentiation by squaring.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#powFast">powFast</a> <span class="num">3</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#powFast">powFast</a> <span class="num">2</span> <span class="num">10</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#powFast">powFast</a> <span class="num">3</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powFast 3 5 --&gt; 243 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binary.html#powFast">powFast</a> <span class="num">2</span> <span class="num">10</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powFast 2 10 --&gt; 1024 : Nat</pre></details>
 <div class="doc"><p>Doubling a number shifts its digits up and writes a <code>0</code> below, so the first <code>k + 1</code> digits of <code>double n</code> write twice the number written by the first <code>k</code> digits of <code>n</code>.  The digits after the lowest are those of <code>half (double n)</code>, which is <code>n</code>.</p>
 </div>
 <pre class="code"><span class="kw">theorem</span> <span class="def bind" id="fromBitsDouble">fromBitsDouble</span> <span class="sym">:</span> <span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l76">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l77">k</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span>
@@ -100,11 +100,11 @@
 </pre>
 <div class="doc"><p>Closed instances normalize to <code>true</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="#fromBitsDouble">fromBitsDouble</a> <span class="num">6</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="#powFastDouble">powFastDouble</a> <span class="num">2</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="#powFastDouble">powFastDouble</a> <span class="num">3</span> <span class="num">1</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#fromBitsDouble">fromBitsDouble</a> <span class="num">6</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate fromBitsDouble 6 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#powFastDouble">powFastDouble</a> <span class="num">2</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powFastDouble 2 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#powFastDouble">powFastDouble</a> <span class="num">3</span> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powFastDouble 3 1 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

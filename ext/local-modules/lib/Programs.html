@@ -19,51 +19,52 @@
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Ackermann.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Ackermann</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Ackermann.html#Rows">Rows</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="ackTwo" href="Prelude.Arith.Ackermann.html#Rows.ackTwo">ackTwo</a><span class="sym">)</span>
 <span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#pred">pred</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">10</span> <span class="num">3</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#pred">pred</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate pred 5 --&gt; 4 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">10</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sub 10 3 --&gt; 7 : Nat</pre></details>
 <div class="doc"><p>Subtraction is truncated at <code>0</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">3</span> <span class="num">10</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">4</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">4</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">2</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">3</span> <span class="num">3</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">3</span> <span class="num">10</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sub 3 10 --&gt; 0 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">4</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate min 4 9 --&gt; 4 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">4</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate max 4 9 --&gt; 9 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">2</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ack 2 3 --&gt; 9 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">3</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ack 3 3 --&gt; 61 : Nat</pre></details>
 <div class="doc"><p>A proof of a closed equation normalizes to <code>true</code>, of type <code>True</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#PlusSub.plusSub">plusSub</a> <span class="num">6</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSelf">subSelf</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSuccRight">subSuccRight</a> <span class="num">9</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.plusMinMax">plusMinMax</a> <span class="num">3</span> <span class="num">8</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.minComm">minComm</a> <span class="num">2</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.maxComm">maxComm</a> <span class="num">6</span> <span class="num">1</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Equations.ackZero">ackZero</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Rows.ackTwo">ackTwo</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iteratePlus">iteratePlus</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l73">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l73">x</a> <span class="num">3</span><span class="sym">)</span> <span class="num">2</span> <span class="num">3</span> <span class="num">1</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iterateComm">iterateComm</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l77">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l77">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">3</span> <span class="num">4</span> <span class="num">0</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#PlusSub.plusSub">plusSub</a> <span class="num">6</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate plusSub 6 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSelf">subSelf</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subSelf 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSuccRight">subSuccRight</a> <span class="num">9</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subSuccRight 9 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.plusMinMax">plusMinMax</a> <span class="num">3</span> <span class="num">8</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate plusMinMax 3 8 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.minComm">minComm</a> <span class="num">2</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minComm 2 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.maxComm">maxComm</a> <span class="num">6</span> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxComm 6 1 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Equations.ackZero">ackZero</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ackZero 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Rows.ackTwo">ackTwo</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ackTwo 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iteratePlus">iteratePlus</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l73">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l73">x</a> <span class="num">3</span><span class="sym">)</span> <span class="num">2</span> <span class="num">3</span> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate iteratePlus (fun (x1 : Nat) -&gt; plus x1 3) 2 3 1 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iterateComm">iterateComm</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l77">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l77">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">3</span> <span class="num">4</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate iterateComm (fun (x1 : Nat) -&gt; succ (succ x1)) 3 4 0 --&gt; true : True</pre></details>
 <div class="doc"><p>The generic combinators, instantiated at <code>Nat</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.compose">compose</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">20</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l82">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <a class="var" href="#l82">x</a> <span class="num">5</span><span class="sym">)</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.const">const</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="num">7</span> <span class="num">100</span>
-
-<span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">1</span><span class="sym">)</span> <span class="num">3</span> <span class="num">0</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.compose">compose</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">20</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l82">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <a class="var" href="#l82">x</a> <span class="num">5</span><span class="sym">)</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Generic.compose Nat Nat Nat (sub 20) (fun (x1 : Nat) -&gt; max x1 5) 2
+  --&gt; 15 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.const">const</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="num">7</span> <span class="num">100</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Generic.const Nat Nat 7 100 --&gt; 7 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">1</span><span class="sym">)</span> <span class="num">3</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Generic.iterate Nat (ack 1) 3 0 --&gt; 6 : Nat</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

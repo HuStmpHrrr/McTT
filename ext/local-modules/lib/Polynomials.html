@@ -123,10 +123,10 @@
 </pre>
 <div class="doc"><p><code>1 + 2 x + 3 x^2 + 4 x^3</code> at 2, both ways: 1 + 4 + 12 + 32.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.horner">horner</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.naive">naive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.horner">horner</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.horner 2 (cubic 1 2 3 4) 4 --&gt; 49 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.naive">naive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.naive 2 (cubic 1 2 3 4) 4 --&gt; 49 : Nat</pre></details>
 <div class="doc"><p>An evaluator for a fixed polynomial, made locally: the values at the points below <code>k</code>, summed, and their maximum.  The maximum comes from an open inside the local body.  A local body may not import, so the unit is loaded just before.</p>
 </div>
 <pre class="code"><span class="kw">import</span> <a class="unit" href="Prelude.Arith.MinMax.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">MinMax</a>
@@ -139,15 +139,36 @@
          <span class="kw">rec</span> <a class="var" href="#l437">k</a> <span class="kw">return</span> <span class="var bind" id="l439">y</span> <span class="sym">.</span> <span class="ty">Nat</span> <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="num">0</span> <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l440">p</span><span class="sym">,</span> <span class="var bind" id="l441">r</span> <span class="sym">=&gt;</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="sym">(</span><a class="var" href="#l425">value</a> <a class="var" href="#l440">p</a><span class="sym">)</span> <a class="var" href="#l441">r</a> <span class="kw">end</span>
        <span class="kw">end</span>
      <span class="kw">end</span> <span class="kw">in</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="sym">(</span><a class="var" href="#l418">Table</a><span class="sym">.</span><a class="var" href="#l431">total</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">1</span> <span class="num">0</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span><span class="sym">)</span> <span class="sym">(</span><a class="var" href="#l418">Table</a><span class="sym">.</span><a class="var" href="#l436">peak</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">0</span> <span class="num">0</span> <span class="num">1</span> <span class="num">0</span><span class="sym">)</span> <span class="num">5</span><span class="sym">)</span>
-     <span class="kw">end</span>
-</pre>
+     <span class="kw">end</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate let module M1 (x1 : Coeffs) where
+               private def max : forall (x2 : Nat)
+                                        (x3 : Nat)
+                                   -&gt; Nat :=
+                 Prelude::Arith::MinMax.max
+               end
+               def value : forall (x4 : Nat) -&gt; Nat :=
+                 fun (x5 : Nat) -&gt; At.horner x5 x1 4
+               end
+               def total : forall (x6 : Nat) -&gt; Nat :=
+                 fun (x7 : Nat) -&gt; sumTo value x7
+               end
+               def peak : forall (x8 : Nat) -&gt; Nat :=
+                 fun (x9 : Nat)
+                   -&gt; rec x9 return x10 . Nat
+                      | zero =&gt; 0
+                      | succ x11, x12 =&gt; max (value x11) x12
+                      end
+               end
+             end
+         in plus (M1.total (cubic 1 1 0 0) 4) (M1.peak (cubic 0 0 1 0) 5)
+         end --&gt; 26 : Nat</pre></details>
 <div class="doc"><p>Closed instances of the theorems normalize to <code>true</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">0</span> <span class="num">1</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">3</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">2</span> <span class="num">1</span> <span class="num">0</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="#hornerAtOne">hornerAtOne</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">3</span> <span class="num">1</span> <span class="num">4</span> <span class="num">1</span><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">2</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">1</span> <span class="num">0</span> <span class="num">1</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 2 (cubic 1 0 1 0) 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#At">At</a><span class="sym">.</span><a class="def" href="#At.hornerNaive">hornerNaive</a> <span class="num">3</span> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">2</span> <span class="num">1</span> <span class="num">0</span> <span class="num">0</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate At.hornerNaive 3 (cubic 2 1 0 0) 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#hornerAtOne">hornerAtOne</a> <span class="sym">(</span><a class="def" href="#cubic">cubic</a> <span class="num">3</span> <span class="num">1</span> <span class="num">4</span> <span class="num">1</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate hornerAtOne (cubic 3 1 4 1) 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

@@ -19,14 +19,14 @@
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Prime.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Prime</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Prime.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="smallestDivisorDivides" href="Prelude.Arith.Prime.html#Laws.smallestDivisorDivides">smallestDivisorDivides</a><span class="sym">;</span> <a class="def bind" id="primeGeTwo" href="Prelude.Arith.Prime.html#Laws.primeGeTwo">primeGeTwo</a><span class="sym">;</span> <a class="def bind" id="primeSmallestDivisor" href="Prelude.Arith.Prime.html#Laws.primeSmallestDivisor">primeSmallestDivisor</a><span class="sym">)</span>
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Prime.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Prime</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Prime.html#Facts">Facts</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="twoPrime" href="Prelude.Arith.Prime.html#Facts.twoPrime">twoPrime</a><span class="sym">;</span> <a class="def bind" id="sevenPrime" href="Prelude.Arith.Prime.html#Facts.sevenPrime">sevenPrime</a><span class="sym">;</span> <a class="def bind" id="nineNotPrime" href="Prelude.Arith.Prime.html#Facts.nineNotPrime">nineNotPrime</a><span class="sym">)</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">12</span> <span class="num">18</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">17</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">0</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">9</span> <span class="num">0</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">12</span> <span class="num">18</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcd 12 18 --&gt; 6 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">17</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcd 17 5 --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">0</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcd 0 9 --&gt; 9 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">9</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcd 9 0 --&gt; 9 : Nat</pre></details>
 <div class="doc"><p>Enumerating the primes.  The search for the next prime is a private helper; only <code>nthPrime</code> is exported.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Primes">Primes</span> <span class="kw">where</span>
@@ -50,77 +50,79 @@
 </pre>
 <div class="doc"><p>The primes below 30 are the first ten primes; the eleventh is 31.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">0</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">1</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">8</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">10</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 0 --&gt; 2 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 1 --&gt; 3 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 2 --&gt; 5 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 3 --&gt; 7 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 4 --&gt; 11 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 5 --&gt; 13 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 6 --&gt; 17 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 7 --&gt; 19 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">8</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 8 --&gt; 23 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 9 --&gt; 29 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">10</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthPrime 10 --&gt; 31 : Nat</pre></details>
 <div class="doc"><p>There are ten primes below 30, and they add up to 129.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <span class="num">30</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l117">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l117">i</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <a class="var" href="#l117">i</a><span class="sym">)</span><span class="sym">)</span> <span class="num">30</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">91</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">29</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <span class="num">30</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumTo isPrime 30 --&gt; 10 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l117">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l117">i</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <a class="var" href="#l117">i</a><span class="sym">)</span><span class="sym">)</span> <span class="num">30</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumTo (fun (x1 : Nat) -&gt; mult x1 (isPrime x1)) 30 --&gt; 129 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">91</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate smallestDivisor 91 --&gt; 7 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">29</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate smallestDivisor 29 --&gt; 29 : Nat</pre></details>
 <div class="doc"><p>Primality computes to <code>True</code> or <code>False</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">29</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">27</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">29</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Prime 29 --&gt; True : Type@0</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">27</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Prime 27 --&gt; False : Type@0</pre></details>
 <div class="doc"><p>A proof of a closed proposition normalizes to <code>true</code>, of type <code>True</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroLeft">gcdZeroLeft</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroRight">gcdZeroRight</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdSelf">gcdSelf</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdOneRight">gcdOneRight</a> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesLeft">gcdDividesLeft</a> <span class="num">6</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesRight">gcdDividesRight</a> <span class="num">6</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdGreatest">gcdGreatest</a> <span class="num">2</span> <span class="num">8</span> <span class="num">12</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdComm">gcdComm</a> <span class="num">6</span> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesMultLeft">dividesMultLeft</a> <span class="num">3</span> <span class="num">6</span> <span class="num">2</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesPlusCancel">dividesPlusCancel</a> <span class="num">3</span> <span class="num">6</span> <span class="num">9</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.twoPrime">twoPrime</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.sevenPrime">sevenPrime</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.nineNotPrime">nineNotPrime</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.smallestDivisorDivides">smallestDivisorDivides</a> <span class="num">15</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeGeTwo">primeGeTwo</a> <span class="num">13</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeSmallestDivisor">primeSmallestDivisor</a> <span class="num">13</span> <span class="kw">true</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroLeft">gcdZeroLeft</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdZeroLeft 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroRight">gcdZeroRight</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdZeroRight 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdSelf">gcdSelf</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdSelf 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdOneRight">gcdOneRight</a> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdOneRight 9 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesLeft">gcdDividesLeft</a> <span class="num">6</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdDividesLeft 6 9 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesRight">gcdDividesRight</a> <span class="num">6</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdDividesRight 6 9 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdGreatest">gcdGreatest</a> <span class="num">2</span> <span class="num">8</span> <span class="num">12</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdGreatest 2 8 12 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdComm">gcdComm</a> <span class="num">6</span> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gcdComm 6 9 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesMultLeft">dividesMultLeft</a> <span class="num">3</span> <span class="num">6</span> <span class="num">2</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate dividesMultLeft 3 6 2 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesPlusCancel">dividesPlusCancel</a> <span class="num">3</span> <span class="num">6</span> <span class="num">9</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate dividesPlusCancel 3 6 9 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.twoPrime">twoPrime</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate twoPrime --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.sevenPrime">sevenPrime</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sevenPrime --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.nineNotPrime">nineNotPrime</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nineNotPrime
+  --&gt; fun (x1 : False) -&gt; Prelude::Arith::Prime.Facts.nineNotPrime x1
+  : forall (x1 : False) -&gt; False</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.smallestDivisorDivides">smallestDivisorDivides</a> <span class="num">15</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate smallestDivisorDivides 15 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeGeTwo">primeGeTwo</a> <span class="num">13</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate primeGeTwo 13 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeSmallestDivisor">primeSmallestDivisor</a> <span class="num">13</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate primeSmallestDivisor 13 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

@@ -17,69 +17,69 @@
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Lattice.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Lattice.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Lattice.html">Lattice</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Lattice.html#Bounds">Bounds</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="minLe" href="Prelude.Arith.Lattice.html#Bounds.minLe">minLe</a><span class="sym">;</span> <a class="def bind" id="leMax" href="Prelude.Arith.Lattice.html#Bounds.leMax">leMax</a><span class="sym">;</span> <a class="def bind" id="leMin" href="Prelude.Arith.Lattice.html#Bounds.leMin">leMin</a><span class="sym">;</span> <a class="def bind" id="maxLe" href="Prelude.Arith.Lattice.html#Bounds.maxLe">maxLe</a><span class="sym">;</span> <a class="def bind" id="minEqLeft" href="Prelude.Arith.Lattice.html#Bounds.minEqLeft">minEqLeft</a><span class="sym">;</span> <a class="def bind" id="maxEqRight" href="Prelude.Arith.Lattice.html#Bounds.maxEqRight">maxEqRight</a><span class="sym">)</span>
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Lattice.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Lattice.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Lattice.html">Lattice</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Lattice.html#Mono">Mono</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="minMono" href="Prelude.Arith.Lattice.html#Mono.minMono">minMono</a><span class="sym">;</span> <a class="def bind" id="maxMono" href="Prelude.Arith.Lattice.html#Mono.maxMono">maxMono</a><span class="sym">)</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">2</span> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">5</span> <span class="num">3</span><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">9</span> <span class="num">4</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">6</span> <span class="num">8</span><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">9</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">2</span> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">5</span> <span class="num">3</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate min (max 2 7) (max 5 3) --&gt; 5 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">9</span> <span class="num">4</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">6</span> <span class="num">8</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate max (min 9 4) (min 6 8) --&gt; 6 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">9</span> <span class="num">4</span><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate plus (sub 9 4) 4 --&gt; 9 : Nat</pre></details>
 <div class="doc"><p>A proof of a closed proposition normalizes to <code>true</code>, of type <code>True</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.lePlusMono">lePlusMono</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.lePlusCancel">lePlusCancel</a> <span class="num">3</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.leMultMono">leMultMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltTrans">ltTrans</a> <span class="num">1</span> <span class="num">2</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltLeTrans">ltLeTrans</a> <span class="num">1</span> <span class="num">3</span> <span class="num">3</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.leLtTrans">leLtTrans</a> <span class="num">2</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltSucc">ltSucc</a> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltPlus">ltPlus</a> <span class="num">4</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subLe">subLe</a> <span class="num">7</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subMonoLeft">subMonoLeft</a> <span class="num">4</span> <span class="num">6</span> <span class="num">2</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subMonoRight">subMonoRight</a> <span class="num">8</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.plusSubCancel">plusSubCancel</a> <span class="num">9</span> <span class="num">4</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subPlusCancel">subPlusCancel</a> <span class="num">9</span> <span class="num">4</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subPos">subPos</a> <span class="num">5</span> <span class="num">2</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minAssoc">minAssoc</a> <span class="num">4</span> <span class="num">2</span> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxAssoc">maxAssoc</a> <span class="num">4</span> <span class="num">2</span> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minMaxAbsorb">minMaxAbsorb</a> <span class="num">5</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxMinAbsorb">maxMinAbsorb</a> <span class="num">3</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minMaxDistrib">minMaxDistrib</a> <span class="num">4</span> <span class="num">2</span> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxMinDistrib">maxMinDistrib</a> <span class="num">4</span> <span class="num">2</span> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.minLe">minLe</a> <span class="num">3</span> <span class="num">8</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.leMax">leMax</a> <span class="num">8</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.leMin">leMin</a> <span class="num">2</span> <span class="num">4</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.maxLe">maxLe</a> <span class="num">3</span> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.minEqLeft">minEqLeft</a> <span class="num">3</span> <span class="num">5</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.maxEqRight">maxEqRight</a> <span class="num">3</span> <span class="num">5</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Mono.minMono">minMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Mono.maxMono">maxMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">6</span> <span class="num">7</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.lePlusMono">lePlusMono</a> <span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lePlusMono 1 2 3 4 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.lePlusCancel">lePlusCancel</a> <span class="num">3</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lePlusCancel 3 2 5 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Mono.leMultMono">leMultMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leMultMono 2 3 2 4 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltTrans">ltTrans</a> <span class="num">1</span> <span class="num">2</span> <span class="num">4</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ltTrans 1 2 4 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltLeTrans">ltLeTrans</a> <span class="num">1</span> <span class="num">3</span> <span class="num">3</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ltLeTrans 1 3 3 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.leLtTrans">leLtTrans</a> <span class="num">2</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leLtTrans 2 2 5 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltSucc">ltSucc</a> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ltSucc 6 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#Strict.ltPlus">ltPlus</a> <span class="num">4</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ltPlus 4 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subLe">subLe</a> <span class="num">7</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subLe 7 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subMonoLeft">subMonoLeft</a> <span class="num">4</span> <span class="num">6</span> <span class="num">2</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subMonoLeft 4 6 2 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subMonoRight">subMonoRight</a> <span class="num">8</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subMonoRight 8 2 5 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.plusSubCancel">plusSubCancel</a> <span class="num">9</span> <span class="num">4</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate plusSubCancel 9 4 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subPlusCancel">subPlusCancel</a> <span class="num">9</span> <span class="num">4</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subPlusCancel 9 4 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Monotone.html#SubLaws.subPos">subPos</a> <span class="num">5</span> <span class="num">2</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate subPos 5 2 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minAssoc">minAssoc</a> <span class="num">4</span> <span class="num">2</span> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minAssoc 4 2 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxAssoc">maxAssoc</a> <span class="num">4</span> <span class="num">2</span> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxAssoc 4 2 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minMaxAbsorb">minMaxAbsorb</a> <span class="num">5</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minMaxAbsorb 5 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxMinAbsorb">maxMinAbsorb</a> <span class="num">3</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxMinAbsorb 3 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.minMaxDistrib">minMaxDistrib</a> <span class="num">4</span> <span class="num">2</span> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minMaxDistrib 4 2 6 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Algebra.maxMinDistrib">maxMinDistrib</a> <span class="num">4</span> <span class="num">2</span> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxMinDistrib 4 2 6 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.minLe">minLe</a> <span class="num">3</span> <span class="num">8</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minLe 3 8 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.leMax">leMax</a> <span class="num">8</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leMax 8 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.leMin">leMin</a> <span class="num">2</span> <span class="num">4</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leMin 2 4 5 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.maxLe">maxLe</a> <span class="num">3</span> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxLe 3 4 6 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.minEqLeft">minEqLeft</a> <span class="num">3</span> <span class="num">5</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minEqLeft 3 5 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Bounds.maxEqRight">maxEqRight</a> <span class="num">3</span> <span class="num">5</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxEqRight 3 5 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Mono.minMono">minMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate minMono 2 3 4 6 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Lattice.html#Mono.maxMono">maxMono</a> <span class="num">2</span> <span class="num">3</span> <span class="num">6</span> <span class="num">7</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxMono 2 3 6 7 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

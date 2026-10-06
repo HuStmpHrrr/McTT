@@ -20,14 +20,14 @@
 </pre>
 <div class="doc"><p>Powers in each monoid.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Additive">Additive</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Multiplicative">Multiplicative</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">2</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Maximum">Maximum</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">7</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Composition">Composition</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l65">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l65">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">5</span> <span class="num">0</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Additive">Additive</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Additive.pow 3 4 --&gt; 12 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Multiplicative">Multiplicative</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">2</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Multiplicative.pow 2 5 --&gt; 32 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Maximum">Maximum</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">7</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Maximum.pow 7 3 --&gt; 7 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Algebra.Instances.html#Composition">Composition</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l65">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l65">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">5</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Composition.pow (fun (x1 : Nat) -&gt; succ (succ x1)) 5 0 --&gt; 10 : Nat</pre></details>
 <div class="doc"><p>The powers of the additive and multiplicative monoids are multiplication and exponentiation, by conversion.</p>
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="Unfold">Unfold</span> <span class="kw">where</span>
@@ -124,8 +124,8 @@
 
 <span class="kw">module</span> <span class="mod bind" id="Sums">Sums</span> <span class="sym">:=</span> <a class="mod" href="#NatMonoid">NatMonoid</a> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="Prelude.Arith.Plus.html#Algebra.plusCongBoth">plusCongBoth</a> <span class="num">0</span> <a class="def" href="Prelude.Arith.Plus.html#Algebra.plusAssoc">plusAssoc</a> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <a class="def" href="Prelude.Arith.Plus.html#Basic.plusZero">plusZero</a>
 
-<span class="kw">eval</span> <a class="mod" href="#Sums">Sums</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">6</span> <span class="num">3</span>
-</pre>
+<span class="kw">eval</span> <a class="mod" href="#Sums">Sums</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <span class="num">6</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Sums.pow 6 3 --&gt; 18 : Nat</pre></details>
 <div class="doc"><p>In the maximum monoid every positive power of <code>x</code> is <code>x</code>: the first is <code>max x 0</code>, and each further factor is absorbed by <code>maxIdem</code>.  The step names its rewriting under <code>max x</code> in a local module, which opens the congruence laws of the instance.</p>
 </div>
 <pre class="code"><span class="kw">theorem</span> <span class="def bind" id="maxPowSucc">maxPowSucc</span> <span class="sym">:</span> <span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l350">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l351">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <span class="sym">(</span><a class="mod" href="Prelude.Algebra.Instances.html#Maximum">Maximum</a><span class="sym">.</span><a class="def" href="Prelude.Algebra.Monoid.html#pow">pow</a> <a class="var" href="#l350">x</a> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l351">n</a><span class="sym">)</span><span class="sym">)</span> <a class="var" href="#l350">x</a> <span class="sym">:=</span>
@@ -146,25 +146,25 @@
 </pre>
 <div class="doc"><p>Closed instances normalize to <code>true</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Unfold">Unfold</a><span class="sym">.</span><a class="def" href="#Unfold.additivePow">additivePow</a> <span class="num">3</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multPlusRight">multPlusRight</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multAssocPow">multAssocPow</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multPlusLeft">multPlusLeft</a> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powMult">powMult</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powOfProduct">powOfProduct</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.fourthPower">fourthPower</a> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="mod" href="#Iteration">Iteration</a><span class="sym">.</span><a class="def" href="#Iteration.iterPlus">iterPlus</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l424">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <a class="var" href="#l424">x</a><span class="sym">)</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="#maxPowSucc">maxPowSucc</a> <span class="num">5</span> <span class="num">3</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Unfold">Unfold</a><span class="sym">.</span><a class="def" href="#Unfold.additivePow">additivePow</a> <span class="num">3</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Unfold.additivePow 3 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multPlusRight">multPlusRight</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Scaling.multPlusRight 2 3 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multAssocPow">multAssocPow</a> <span class="num">2</span> <span class="num">3</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Scaling.multAssocPow 2 3 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Scaling">Scaling</a><span class="sym">.</span><a class="def" href="#Scaling.multPlusLeft">multPlusLeft</a> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Scaling.multPlusLeft 2 3 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Exponents.powPlus 2 1 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powMult">powMult</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Exponents.powMult 2 2 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.powOfProduct">powOfProduct</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Exponents.powOfProduct 2 2 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Exponents">Exponents</a><span class="sym">.</span><a class="def" href="#Exponents.fourthPower">fourthPower</a> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Exponents.fourthPower 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#Iteration">Iteration</a><span class="sym">.</span><a class="def" href="#Iteration.iterPlus">iterPlus</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l424">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <a class="var" href="#l424">x</a><span class="sym">)</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate Iteration.iterPlus (fun (x1 : Nat) -&gt; succ x1) 2 3 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#maxPowSucc">maxPowSucc</a> <span class="num">5</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate maxPowSucc 5 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

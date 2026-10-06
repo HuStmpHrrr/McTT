@@ -11,4 +11,7 @@ a.def,a.mod,a.unit,a.var{text-decoration:none}a:hover{text-decoration:underline}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}
 details.toc{font-size:.9em;margin-bottom:1em}details.toc ul{columns:3;list-style:none;padding-left:1em}
+details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
+details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
+details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}
 ul.units{list-style:none;padding-left:0}ul.units li{margin:.5em 0}ul.units p{display:inline;margin:0;color:#555}

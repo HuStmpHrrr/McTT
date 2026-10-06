@@ -79,71 +79,71 @@
 </pre>
 <div class="doc"><p><code>0 + 1 + ... + 5</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">6</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">6</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="mod" href="#V">V</a><span class="sym">.</span><a class="def" href="Prelude.Data.Vec.html#nth">nth</a> <span class="ty">Nat</span> <span class="num">5</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">5</span> <a class="def" href="#evens">evens</a><span class="sym">)</span> <span class="num">4</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#odds">odds</a> <span class="num">6</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">6</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">6</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumVec 6 (S.take 6 nats) --&gt; 15 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#V">V</a><span class="sym">.</span><a class="def" href="Prelude.Data.Vec.html#nth">nth</a> <span class="ty">Nat</span> <span class="num">5</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">5</span> <a class="def" href="#evens">evens</a><span class="sym">)</span> <span class="num">4</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate V.nth Nat 5 (S.take 5 evens) 4 true --&gt; 8 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#odds">odds</a> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth odds 6 --&gt; 13 : Nat</pre></details>
 <div class="doc"><p><code>0 + 1 + 4 + 9 + 16</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">5</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">5</span> <a class="def" href="#squares">squares</a><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#fibs">fibs</a> <span class="num">10</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#lucas">lucas</a> <span class="num">8</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">10</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">10</span> <a class="def" href="#fibs">fibs</a><span class="sym">)</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">5</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">5</span> <a class="def" href="#squares">squares</a><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumVec 5 (S.take 5 squares) --&gt; 30 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#fibs">fibs</a> <span class="num">10</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth fibs 10 --&gt; 55 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <a class="def" href="#lucas">lucas</a> <span class="num">8</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth lucas 8 --&gt; 47 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Vec.Properties.html#sumVec">sumVec</a> <span class="num">10</span> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#take">take</a> <span class="num">10</span> <a class="def" href="#fibs">fibs</a><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumVec 10 (S.take 10 fibs) --&gt; 88 : Nat</pre></details>
 <div class="doc"><p>The prefix sums of the squares.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#scan">scan</a> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">0</span> <a class="def" href="#squares">squares</a><span class="sym">)</span> <span class="num">5</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#scan">scan</a> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <span class="num">0</span> <a class="def" href="#squares">squares</a><span class="sym">)</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth (S.scan Nat plus 0 squares) 5 --&gt; 30 : Nat</pre></details>
 <div class="doc"><p>Interleaving the evens and the odds gives back the natural numbers.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#interleave">interleave</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a><span class="sym">)</span> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#drop">drop</a> <span class="num">4</span> <a class="def" href="#squares">squares</a><span class="sym">)</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#zipWith">zipWith</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#head">head</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#tail">tail</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#cons">cons</a> <span class="num">9</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a><span class="sym">)</span><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#const">const</a> <span class="num">3</span><span class="sym">)</span> <span class="num">100</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#interleave">interleave</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a><span class="sym">)</span> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth (S.interleave evens odds) 7 --&gt; 7 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#drop">drop</a> <span class="num">4</span> <a class="def" href="#squares">squares</a><span class="sym">)</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth (S.drop 4 squares) 3 --&gt; 49 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#zipWith">zipWith</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth (S.zipWith Nat Nat plus evens odds) 4 --&gt; 17 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#head">head</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#tail">tail</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#cons">cons</a> <span class="num">9</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a><span class="sym">)</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.head (S.tail (S.cons 9 nats)) --&gt; 0 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#nth">nth</a> <span class="sym">(</span><a class="mod" href="#S">S</a><span class="sym">.</span><a class="def" href="Prelude.Data.Stream.html#const">const</a> <span class="num">3</span><span class="sym">)</span> <span class="num">100</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate S.nth (S.const 3) 100 --&gt; 3 : Nat</pre></details>
 <div class="doc"><p>A proof of a closed equation normalizes to <code>true</code>, of type <code>True</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.headCons">headCons</a> <span class="num">9</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.tailCons">tailCons</a> <span class="num">9</span> <a class="def" href="#squares">squares</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthConst">nthConst</a> <span class="num">3</span> <span class="num">100</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthMap">nthMap</a> <a class="def" href="#square">square</a> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthZipWith">nthZipWith</a> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthIterate">nthIterate</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l223">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l223">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">1</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.tailIterate">tailIterate</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l226">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l226">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">1</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Nats.nthNats">nthNats</a> <span class="num">12</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthDrop">nthDrop</a> <span class="num">3</span> <a class="def" href="#squares">squares</a> <span class="num">1</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthTake">nthTake</a> <span class="num">5</span> <a class="def" href="#squares">squares</a> <span class="num">3</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.scanSum">scanSum</a> <a class="def" href="#squares">squares</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.scanSum">scanSum</a> <a class="def" href="#fibs">fibs</a> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthInterleaveEven">nthInterleaveEven</a> <span class="num">3</span> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthInterleaveOdd">nthInterleaveOdd</a> <span class="num">3</span> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Basic.sumToShift">sumToShift</a> <a class="def" href="#squares">squares</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.sumTake">sumTake</a> <span class="num">5</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.headCons">headCons</a> <span class="num">9</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate headCons 9 nats --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.tailCons">tailCons</a> <span class="num">9</span> <a class="def" href="#squares">squares</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate tailCons 9 squares 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthConst">nthConst</a> <span class="num">3</span> <span class="num">100</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthConst 3 100 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthMap">nthMap</a> <a class="def" href="#square">square</a> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthMap square nats 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthZipWith">nthZipWith</a> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthZipWith plus evens odds 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.nthIterate">nthIterate</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l223">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l223">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">1</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthIterate (fun (x1 : Nat) -&gt; succ (succ x1)) 1 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Elements.tailIterate">tailIterate</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l226">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l226">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">1</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate tailIterate (fun (x1 : Nat) -&gt; succ (succ x1)) 1 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Nats.nthNats">nthNats</a> <span class="num">12</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthNats 12 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthDrop">nthDrop</a> <span class="num">3</span> <a class="def" href="#squares">squares</a> <span class="num">1</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthDrop 3 squares 1 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthTake">nthTake</a> <span class="num">5</span> <a class="def" href="#squares">squares</a> <span class="num">3</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthTake 5 squares 3 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.scanSum">scanSum</a> <a class="def" href="#squares">squares</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate scanSum squares 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.scanSum">scanSum</a> <a class="def" href="#fibs">fibs</a> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate scanSum fibs 6 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthInterleaveEven">nthInterleaveEven</a> <span class="num">3</span> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthInterleaveEven 3 evens odds --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.nthInterleaveOdd">nthInterleaveOdd</a> <span class="num">3</span> <a class="def" href="#evens">evens</a> <a class="def" href="#odds">odds</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate nthInterleaveOdd 3 evens odds --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Basic.sumToShift">sumToShift</a> <a class="def" href="#squares">squares</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumToShift squares 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Data.Stream.Properties.html#Slices.sumTake">sumTake</a> <span class="num">5</span> <a class="def" href="Prelude.Data.Stream.Properties.html#nats">nats</a></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumTake 5 nats --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

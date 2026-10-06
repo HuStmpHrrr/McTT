@@ -15,39 +15,45 @@
 <span class="kw">import</span> <a class="unit" href="Prelude.Arith.Parity.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Parity.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Parity.html">Parity</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Even" href="Prelude.Arith.Parity.html#Even">Even</a><span class="sym">;</span> <a class="def bind" id="Odd" href="Prelude.Arith.Parity.html#Odd">Odd</a><span class="sym">;</span> <a class="def bind" id="double" href="Prelude.Arith.Parity.html#double">double</a><span class="sym">)</span>
 <span class="kw">open</span> <a class="unit" href="Prelude.Arith.Parity.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Parity.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Parity.html">Parity</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Parity.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="evenDouble" href="Prelude.Arith.Parity.html#Laws.evenDouble">evenDouble</a><span class="sym">;</span> <a class="def bind" id="evenOrOdd" href="Prelude.Arith.Parity.html#Laws.evenOrOdd">evenOrOdd</a><span class="sym">;</span> <a class="def bind" id="evenSuccOdd" href="Prelude.Arith.Parity.html#Laws.evenSuccOdd">evenSuccOdd</a><span class="sym">;</span> <a class="def bind" id="evenPlus" href="Prelude.Arith.Parity.html#Laws.evenPlus">evenPlus</a><span class="sym">)</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leTrans">leTrans</a> <span class="num">1</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leAntisym">leAntisym</a> <span class="num">3</span> <span class="num">3</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leSucc">leSucc</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.lePlusRight">lePlusRight</a> <span class="num">2</span> <span class="num">3</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leTrans">leTrans</a> <span class="num">1</span> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leTrans 1 2 5 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leAntisym">leAntisym</a> <span class="num">3</span> <span class="num">3</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leAntisym 3 3 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.leSucc">leSucc</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leSucc 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LeLaws.lePlusRight">lePlusRight</a> <span class="num">2</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lePlusRight 2 3 --&gt; true : True</pre></details>
 <div class="doc"><p><code>leTotal</code> at closed numbers, eliminated into <code>Nat</code>: 0 for the left side, 1 for the right.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Logic.html#Disj.orElim">orElim</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">2</span> <span class="num">5</span><span class="sym">)</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#LeLaws.leTotal">leTotal</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l53">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l55">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">2</span> <span class="num">5</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">1</span><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LtLaws.ltIrrefl">ltIrrefl</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LtLaws.notLtZero">notLtZero</a> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#leb">leb</a> <span class="num">2</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#leb">leb</a> <span class="num">5</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LebLaws.lebComplete">lebComplete</a> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LebLaws.lebZero">lebZero</a> <span class="num">5</span> <span class="num">2</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#double">double</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenDouble">evenDouble</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Logic.html#Disj.orElim">orElim</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Even">Even</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Odd">Odd</a> <span class="num">7</span><span class="sym">)</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Laws.evenOrOdd">evenOrOdd</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l69">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Parity.html#Even">Even</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l71">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Parity.html#Odd">Odd</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">1</span><span class="sym">)</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenSuccOdd">evenSuccOdd</a> <span class="num">4</span> <span class="kw">true</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenPlus">evenPlus</a> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Logic.html#Disj.orElim">orElim</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">2</span> <span class="num">5</span><span class="sym">)</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Order.html#LeLaws.leTotal">leTotal</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l53">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">5</span> <span class="num">2</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l55">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Order.html#Le">Le</a> <span class="num">2</span> <span class="num">5</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">1</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate orElim (Le 5 2) (Le 2 5) Nat (leTotal 5 2) (fun (x1 : Le 5 2) -&gt; 0)
+           (fun (x2 : Le 2 5) -&gt; 1) --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LtLaws.ltIrrefl">ltIrrefl</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate ltIrrefl 3
+  --&gt; fun (x1 : False) -&gt; Prelude::Arith::Order.LtLaws.ltIrrefl 3 x1
+  : forall (x1 : False) -&gt; False</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LtLaws.notLtZero">notLtZero</a> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate notLtZero 2
+  --&gt; fun (x1 : False) -&gt; Prelude::Arith::Order.LtLaws.notLtZero 2 x1
+  : forall (x1 : False) -&gt; False</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#leb">leb</a> <span class="num">2</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leb 2 5 --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#leb">leb</a> <span class="num">5</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate leb 5 2 --&gt; 0 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LebLaws.lebComplete">lebComplete</a> <span class="num">2</span> <span class="num">5</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lebComplete 2 5 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Order.html#LebLaws.lebZero">lebZero</a> <span class="num">5</span> <span class="num">2</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lebZero 5 2 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#double">double</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate double 7 --&gt; 14 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenDouble">evenDouble</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate evenDouble 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Logic.html#Disj.orElim">orElim</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Even">Even</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Odd">Odd</a> <span class="num">7</span><span class="sym">)</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Parity.html#Laws.evenOrOdd">evenOrOdd</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l69">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Parity.html#Even">Even</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l71">h</span> <span class="sym">:</span> <a class="def" href="Prelude.Arith.Parity.html#Odd">Odd</a> <span class="num">7</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="num">1</span><span class="sym">)</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate orElim (Even 7) (Odd 7) Nat (evenOrOdd 7) (fun (x1 : Even 7) -&gt; 0)
+           (fun (x2 : Odd 7) -&gt; 1) --&gt; 1 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenSuccOdd">evenSuccOdd</a> <span class="num">4</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate evenSuccOdd 4 true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Parity.html#Laws.evenPlus">evenPlus</a> <span class="num">4</span> <span class="num">6</span> <span class="kw">true</span> <span class="kw">true</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate evenPlus 4 6 true true --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>

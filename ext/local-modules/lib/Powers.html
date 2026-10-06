@@ -23,55 +23,55 @@
 </div>
 <pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatFun">NatFun</span> <span class="sym">:=</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a> <span class="ty">Nat</span>
 
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">2</span> <span class="num">10</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">0</span> <span class="num">0</span>
-</pre>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">2</span> <span class="num">10</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate pow 2 10 --&gt; 1024 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate pow 3 4 --&gt; 81 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">0</span> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate pow 0 0 --&gt; 1 : Nat</pre></details>
 <div class="doc"><p><code>0 + 1 + ... + 10</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">11</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">11</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumTo NatFun.id 11 --&gt; 55 : Nat</pre></details>
 <div class="doc"><p><code>0 + 1 + 4 + ... + 25</code>.</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l69">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l69">i</a> <a class="var" href="#l69">i</a><span class="sym">)</span> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">0</span>
-</pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l69">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l69">i</a> <a class="var" href="#l69">i</a><span class="sym">)</span> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumTo (fun (x1 : Nat) -&gt; mult x1 x1) 6 --&gt; 55 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate factorial 5 --&gt; 120 : Nat</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">0</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate factorial 0 --&gt; 1 : Nat</pre></details>
 <div class="doc"><p>A proof of a closed equation normalizes to <code>true</code>, of type <code>True</code>.  The numbers stay at most about 20: checking <code>Eq n n</code> takes time exponential in <code>n</code> (about 6s at <code>n = 27</code>).</p>
 </div>
-<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powZero">powZero</a> <span class="num">7</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powOne">powOne</a> <span class="num">9</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.onePow">onePow</a> <span class="num">6</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMult">powMult</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMultBase">powMultBase</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToPlus">sumToPlus</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l84">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l84">i</a> <a class="var" href="#l84">i</a><span class="sym">)</span> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToScale">sumToScale</a> <span class="num">3</span> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToConst">sumToConst</a> <span class="num">4</span> <span class="num">5</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.gauss">gauss</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.sumOdd">sumOdd</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Laws.factSucc">factSucc</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factPos">factPos</a> <span class="num">4</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factLeSucc">factLeSucc</a> <span class="num">3</span>
-
-<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.lePowFact">lePowFact</a> <span class="num">3</span>
-
-<span class="kw">end</span></pre>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powZero">powZero</a> <span class="num">7</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powZero 7 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powOne">powOne</a> <span class="num">9</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powOne 9 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.onePow">onePow</a> <span class="num">6</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate onePow 6 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powPlus 2 1 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMult">powMult</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powMult 2 2 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMultBase">powMultBase</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate powMultBase 2 2 2 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToPlus">sumToPlus</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l84">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l84">i</a> <a class="var" href="#l84">i</a><span class="sym">)</span> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumToPlus NatFun.id (fun (x1 : Nat) -&gt; mult x1 x1) 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToScale">sumToScale</a> <span class="num">3</span> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumToScale 3 NatFun.id 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToConst">sumToConst</a> <span class="num">4</span> <span class="num">5</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumToConst 4 5 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.gauss">gauss</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate gauss 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.sumOdd">sumOdd</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate sumOdd 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Laws.factSucc">factSucc</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate factSucc 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factPos">factPos</a> <span class="num">4</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate factPos 4 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factLeSucc">factLeSucc</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate factLeSucc 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.lePowFact">lePowFact</a> <span class="num">3</span></pre>
+<details class="eval" style="margin-left:0ch"><summary>output</summary><pre class="out" onclick="this.parentElement.open=false">Evaluate lePowFact 3 --&gt; true : True</pre></details>
+<pre class="code"><span class="kw">end</span></pre>
 </body></html>
