@@ -54,6 +54,11 @@ and the core's `def_site` (`Extraction/Privacy.v`), never by rules of its
 own (`driver/Doc.ml`). Extraction exports `def_site` explicitly
 (`CoqMakefile.mk.local-late`).
 
+`make homepage` builds the whole deployed site in `html/`: it builds
+anything not yet built, then copies in the coqdoc pages, the dependency
+graph, the library pages and the README as `index.html` (needs `pandoc` and
+Graphviz; `PANDOC=…` overrides the former). CI runs only this target.
+
 ## Verifying a partial build
 
 If `_CoqProject` is ever trimmed to a prefix of the development again (the port

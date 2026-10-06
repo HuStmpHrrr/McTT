@@ -30,3 +30,4 @@ dep.html
 
 ## rocq-mcp scratch buffers
 theories/rocq_mcp_cache_*.v
+/html/
