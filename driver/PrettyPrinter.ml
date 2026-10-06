@@ -464,6 +464,16 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
 
+(* What [format_main_result] prints for each entry of a successful run's
+   log, one string per eval, in order: each entry starts a line of its own,
+   at column 0 and with the default margin, so formatting it alone gives
+   the same text. *)
+let eval_outputs : main_result -> string list option = function
+  | AllGood ((_, ((path, _), _)), _, _, log) ->
+     current_unit := path;
+     Some (List.map (Format.asprintf "%a" format_eval) log)
+  | _ -> None
+
 let format_main_result (f : Format.formatter) : main_result -> unit =
   let open Format in
   function

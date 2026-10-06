@@ -2362,6 +2362,78 @@ let%expect_test "mctt-doc: the units the checker rejects are reported" =
     Transitive: not checked
     |}]
 
+(* The output boxes of a page, unescaped, in order. *)
+let doc_find sub s i =
+  let n = String.length sub in
+  let rec go i = if i + n > String.length s then None
+    else if String.sub s i n = sub then Some i else go (i + 1) in
+  go i
+
+let doc_boxes page =
+  let opening = "<pre class=\"out\" onclick=\"this.parentElement.open=false\">" in
+  let unesc s =
+    let b = Buffer.create (String.length s) in
+    let rec go i =
+      if i < String.length s then
+        match List.find_opt (fun (e, _) -> doc_find e s i = Some i)
+                [ ("&lt;", '<'); ("&gt;", '>'); ("&quot;", '"'); ("&amp;", '&') ] with
+        | Some (e, c) -> Buffer.add_char b c; go (i + String.length e)
+        | None -> Buffer.add_char b s.[i]; go (i + 1) in
+    go 0; Buffer.contents b in
+  let rec go i acc =
+    match doc_find opening page i with
+    | Some k ->
+        let a = k + String.length opening in
+        let e = Option.get (doc_find "</pre>" page a) in
+        go e (unesc (String.sub page a (e - a)) :: acc)
+    | None -> List.rev acc
+  in
+  go 0 []
+
+let doc_count sub s =
+  let rec go i n = match doc_find sub s i with Some k -> go (k + 1) (n + 1) | None -> n in
+  go 0 0
+
+let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's output" =
+  let lib = Lazy.force doc_lib in
+  let kinds = Doc.anchor_kinds lib in
+  let evals = ref 0 and boxes = ref 0 and equal = ref 0 in
+  List.iter (fun u ->
+      let page = Doc.render_unit lib kinds u in
+      let bs = doc_boxes page in
+      let n = Array.fold_left (fun n t -> match t.Doc.t with McttExtracted.Parser.EVAL _ -> n + 1 | _ -> n) 0 u.Doc.u_toks in
+      (* A unit with no eval prints nothing; only the others are run. *)
+      let out = if n = 0 then "\n" else (ignore (main_of_lib (String.concat "/" u.Doc.u_file ^ ".mctt")); [%expect.output]) in
+      let details = doc_count "<details class=\"eval\"" page in
+      evals := !evals + n; boxes := !boxes + List.length bs;
+      if details <> List.length bs || n <> List.length bs then
+        Printf.printf "%s: %d evals, %d boxes, %d details\n" (Doc.unit_name u.Doc.u_path) n (List.length bs) details
+      else if String.concat "\n" bs ^ "\n" = out then
+        equal := !equal + n
+      else Printf.printf "%s: the boxes differ from mctt's output\n" (Doc.unit_name u.Doc.u_path))
+    lib.Doc.units;
+  Printf.printf "%d evals, %d boxes, %d equal to mctt's output\n" !evals !boxes !equal;
+  (* A spot check: the box of [eval Adding.five] in Tutorial. *)
+  let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
+  List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
+    (doc_boxes (Doc.render_unit lib kinds tut));
+  [%expect {|
+    396 evals, 396 boxes, 396 equal to mctt's output
+    Evaluate Adding.five --> 5 : Nat
+    |}]
+
+let%expect_test "mctt-doc: a unit whose log is out of step with its evals is reported, unboxed" =
+  let lib = Lazy.force doc_lib in
+  let lib = { lib with Doc.outputs = Hashtbl.copy lib.Doc.outputs } in
+  Hashtbl.replace lib.Doc.outputs [ "Tutorial" ] [ "Evaluate x --> 0 : Nat" ];
+  List.iter print_endline (Doc.problems lib);
+  let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
+  Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
+  [%expect {|
+    Tutorial: 29 evals, 1 outputs
+    0 boxes
+    |}]
+
 let%expect_test "mctt-doc: links" =
   let lib = Lazy.force doc_lib in
   let show u x ns = List.iter (fun n -> print_endline (x ^ " " ^ Doc.link_of lib u x n)) ns in

@@ -47,9 +47,14 @@ Other targets: `make pretty-timed`, `make coqdoc`, `make depgraphdoc`,
 `dune exec mctt-doc -- lib OUT` writes one HTML page per unit of `lib/` to
 `OUT` (CI: `html/lib/`); `mctt-doc --check lib` only reports, and
 `mctt-doc --links lib X::Y name` prints where each occurrence of `name`
-links to. It runs the checker on every unit (about 17 s for `lib/`), and
-exits 1 if a name does not line up with its token or a use does not
-resolve. Names are resolved by the extracted `Elaborator.lookup`/`elab_cmd`
+links to. It runs the checker on every unit, each as its own program
+(about 21 s for `lib/`), and exits 1 if a name does not line up with its
+token, a use does not resolve, or a unit's evals and its log differ in
+number. Below each `eval`, a folded `<details>` box holds that eval's
+output: the checker's log entry for it, printed by `PrettyPrinter`
+(`eval_outputs`), so the text is exactly what `mctt` prints; a click on the
+open output folds it again. An eval's extent is the span from its `eval`
+token that the parser reads back as the same command (`Doc.eval_spans`). Names are resolved by the extracted `Elaborator.lookup`/`elab_cmd`
 and the core's `def_site` (`Extraction/Privacy.v`), never by rules of its
 own (`driver/Doc.ml`). Extraction exports `def_site` explicitly
 (`CoqMakefile.mk.local-late`).

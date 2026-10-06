@@ -18,7 +18,11 @@
    [def]'s parameters occur twice in the [Cst], in its type and in its body
    ([fold_params] in Parser.vy), and the long forms of [import] and [open]
    repeat the module they name ([Cst.import_cmds], [Cst.open_cmds]); the
-   walk reads both cases off the tokens. *)
+   walk reads both cases off the tokens.
+
+   Below each [eval] goes its output: the checker's log entry for it,
+   printed as [mctt] prints it ([PrettyPrinter.eval_outputs]), from a run
+   of the unit as its own program. *)
 
 module C = McttExtracted.Syntax.Cst
 module S = McttExtracted.Syntax
@@ -109,8 +113,8 @@ type st = {
   mutable cur : int;           (* the next VAR to pair *)
   items : (string list * string list, link) Hashtbl.t;  (* open items, see [items] below *)
   decls : (string * kind) list ref;                     (* the unit's top-level declarations *)
-  mutable imports : string list list;
   mutable notes : string list;
+  mutable evals : (C.obj * C.obj option) list;  (* the evals walked, last first *)
 }
 
 let next st x =
@@ -356,13 +360,13 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
         | C.Coq_md_where body ->
             ignore (cmds st fp (ch @ [ x ]) (f @ o, fv @ ov) (E.pents ps, List.rev vbs) body)
         | C.Coq_md_alias e -> ignore (modv st env' e))
-   | C.Coq_c_import fq -> st.imports <- fq :: st.imports; unit_path st fq
+   | C.Coq_c_import fq -> unit_path st fq
    | C.Coq_c_open (fq, ip, args, its) ->
        let m = target st env fq ip args in
        List.iter (fun (d, i, _, l) ->
            declare st i (anchor_of ch d) (if l = None then Mod else Def);
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
-   | C.Coq_c_eval (e, t) -> term st env e; Option.iter (term st env) t
+   | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e)));
   next_frame st fp ch o f c
 
@@ -394,11 +398,44 @@ type unit_info = {
   u_vars : int array;
   u_occ : occ array;
   u_decls : (string * kind) list;
-  u_imports : string list list;
   u_notes : string list;
+  u_evals : (int * int) list;  (* each eval's first and last token, in order *)
 }
 
 let read_file p = In_channel.with_open_bin p In_channel.input_all
+
+(* Where each eval of a unit ends.  The [i]-th EVAL token starts the [i]-th
+   eval walked (the walk is in source order, and EVAL starts only an eval);
+   the command ends before one of the tokens that may follow a command.  The
+   first such token for which the tokens from EVAL on parse, as the body of
+   a module, to exactly the walked eval is its end: the span is read off the
+   parser, never guessed. *)
+let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int * int) list =
+  let dummy = (Lexing.dummy_pos, Lexing.dummy_pos) in
+  let follows = function
+    | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
+    | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _
+    | P.END _ | P.EOF _ -> true
+    | _ -> false in
+  let parses i j (e, t) =
+    let body = Array.to_list (Array.map (fun k -> k.t) (Array.sub toks i (j - i))) in
+    let ts = Array.of_list ([ P.MODULE dummy; P.VAR (dummy, "T"); P.WHERE dummy ] @ body
+                            @ [ P.END dummy; P.EOF dummy ]) in
+    let rec buf k = lazy (P.MenhirLibParser.Inter.Buf_cons (ts.(min k (Array.length ts - 1)), buf (k + 1))) in
+    match P.prog Main.parser_log_fuel (buf 0) with
+    | P.MenhirLibParser.Inter.Parsed_pr ((_, (_, [ C.Coq_c_eval (e', t') ])), _) -> e' = e && t' = t
+    | _ -> false
+  in
+  let starts = List.filter_map Fun.id
+      (List.mapi (fun i t -> match t.t with P.EVAL _ -> Some i | _ -> None) (Array.to_list toks)) in
+  if List.length starts <> List.length evals then
+    raise (Misaligned (Printf.sprintf "%d eval tokens, %d evals" (List.length starts) (List.length evals)));
+  List.map2 (fun i ev ->
+      let rec go j =
+        if j >= Array.length toks then raise (Misaligned (Printf.sprintf "the eval at byte %d" toks.(i).s))
+        else if follows toks.(j).t && parses i j ev then (i, j - 1)
+        else go (j + 1) in
+      go (i + 2)) starts evals
 
 let walk (file : string list) (src : string) (items : (string list * string list, link) Hashtbl.t) : unit_info =
   let toks = lex src in
@@ -410,7 +447,7 @@ let walk (file : string list) (src : string) (items : (string list * string list
   let vars = Array.of_list (List.filter_map Fun.id
       (List.mapi (fun i t -> match t.t with P.VAR _ -> Some i | _ -> None) (Array.to_list toks))) in
   let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None }) in
-  let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; imports = []; notes = [] } in
+  let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; notes = []; evals = [] } in
   let l = List.fold_left (lead st fp) [] leads in
   List.iter (fun x -> let i = next st x in declare st i "" Unit) fp;
   let env, vbs = params st { sc = l; vs = [] } ps in
@@ -421,7 +458,8 @@ let walk (file : string list) (src : string) (items : (string list * string list
   if st.cur <> Array.length vars then
     raise (Misaligned (Printf.sprintf "%d of %d names paired" st.cur (Array.length vars)));
   { u_file = file; u_path = fp; u_src = src; u_toks = toks; u_comments = comments src toks;
-    u_vars = vars; u_occ = occ; u_decls = !(st.decls); u_imports = st.imports; u_notes = List.rev st.notes }
+    u_vars = vars; u_occ = occ; u_decls = !(st.decls); u_notes = List.rev st.notes;
+    u_evals = eval_spans toks (List.rev st.evals) }
 
 let rec find_units root dir acc =
   let a = Sys.readdir (Filename.concat root dir) in
@@ -438,22 +476,22 @@ type lib = {
   units : unit_info list;                       (* in file order *)
   failed : (string list * string) list;         (* files that do not line up *)
   thetas : (string list, S.gdeps) Hashtbl.t;    (* each checked unit's global context *)
+  outputs : (string list, string list) Hashtbl.t;  (* each checked unit's evals, as [mctt] prints them *)
   items : (string list * string list, link) Hashtbl.t;
 }
 
-(* The global context of every unit, from the checker: each unit that no
-   other imports runs, filing what it loads, then any unit left over. *)
-let check_units root (us : unit_info list) thetas =
-  let imported = List.concat_map (fun u -> u.u_imports) us in
-  let roots, rest = List.partition (fun u -> not (List.mem u.u_path imported)) us in
+(* The global context of every unit and the output of its evals, from the
+   checker: each unit runs as its own program, as [mctt] runs it.  The log
+   of a run holds only the evals of the program run, so a unit another one
+   imports needs a run of its own. *)
+let check_units root (us : unit_info list) thetas outputs =
   List.iter (fun u ->
-      if not (Hashtbl.mem thetas u.u_path) then
-        match Ep.main (Main.load_path root) Main.read_unit Main.parser_log_fuel
-                (buf_of u.u_toks 0) with
-        | Ep.AllGood (_, th, gu, _) ->
-            let th = (u.u_path, gu) :: th in
-            List.iter (fun (fq, _) -> if not (Hashtbl.mem thetas fq) then Hashtbl.replace thetas fq th) th
-        | _ -> ()) (roots @ rest)
+      let r = Ep.main (Main.load_path root) Main.read_unit Main.parser_log_fuel (buf_of u.u_toks 0) in
+      match r, PrettyPrinter.eval_outputs r with
+      | Ep.AllGood (_, th, gu, _), Some out ->
+          Hashtbl.replace thetas u.u_path ((u.u_path, gu) :: th);
+          Hashtbl.replace outputs u.u_path out
+      | _ -> ()) us
 
 let load ?(check = true) root : lib =
   let items = Hashtbl.create 64 in
@@ -468,9 +506,9 @@ let load ?(check = true) root : lib =
         | exception Lexer.Error m -> (us, (file, m) :: fs)) ([], []) files
   in
   let units = List.rev units and failed = List.rev failed in
-  let thetas = Hashtbl.create 64 in
-  if check then check_units root units thetas;
-  { root; units; failed; thetas; items }
+  let thetas = Hashtbl.create 64 and outputs = Hashtbl.create 64 in
+  if check then check_units root units thetas outputs;
+  { root; units; failed; thetas; outputs; items }
 
 (* ------------------------------------------------------------------ *)
 (* Resolution *)
@@ -529,6 +567,11 @@ let problems ?(resolve = true) (lib : lib) : string list =
                          else Some (Printf.sprintf "%s: not checked" (unit_name u.u_path))) lib.units
        @ List.concat_map (fun u -> if Hashtbl.mem lib.thetas u.u_path
                            then List.map (fun n -> Printf.sprintf "%s: %s" (unit_name u.u_path) n) u.u_notes else []) lib.units
+       @ List.filter_map (fun u -> match Hashtbl.find_opt lib.outputs u.u_path with
+           | Some out when List.length out <> List.length u.u_evals ->
+               Some (Printf.sprintf "%s: %d evals, %d outputs" (unit_name u.u_path)
+                       (List.length u.u_evals) (List.length out))
+           | _ -> None) lib.units
        @ List.map (fun (u, x, l) -> Printf.sprintf "%s: %s, line %d, not resolved" (unit_name u) x l) s.unresolved
        @ List.map (fun (u, x, t) -> Printf.sprintf "%s: %s links to a missing anchor %s#%s" (unit_name u) x
                       (unit_name t.s_unit) t.s_anchor) s.dangling)
@@ -637,6 +680,12 @@ let anchor_kinds lib =
       | _ -> ()) u.u_occ) lib.units;
   t
 
+(* An eval's output, folded: [<details>] opens and closes it without
+   scripts, and a click on the open output closes it too. *)
+let eval_box (c : int) (out : string) : string =
+  Printf.sprintf "<details class=\"eval\" style=\"margin-left:%dch\"><summary>output</summary>\
+                  <pre class=\"out\" onclick=\"this.parentElement.open=false\">%s</pre></details>\n" c (esc out)
+
 let render_unit lib kinds (u : unit_info) : string =
   let src = u.u_src in
   let b = Buffer.create (4 * String.length src) in
@@ -654,7 +703,27 @@ let render_unit lib kinds (u : unit_info) : string =
     if !in_code then Buffer.add_string b (esc (String.sub src !pos (upto - !pos)));
     pos := upto
   in
+  (* The output boxes: by the last token of their eval, the box's column and
+     text.  None if the unit's outputs are missing or out of step. *)
+  let boxes = Hashtbl.create 16 in
+  (match Hashtbl.find_opt lib.outputs u.u_path with
+   | Some out when List.length out = List.length u.u_evals ->
+       List.iter2 (fun (i, j) o -> Hashtbl.add boxes j (col src u.u_toks.(i).s, o)) u.u_evals out
+   | _ -> ());
+  let pending = ref [] in
+  (* The boxes of the evals ended so far go below the line they end on:
+     the code block closes at the first line break before [upto]. *)
+  let flush upto =
+    if !pending <> [] then
+      match String.index_from_opt src !pos '\n' with
+      | Some k when k < upto ->
+          gap k; pos := k + 1; close_code ();
+          List.iter (fun (c, o) -> Buffer.add_string b (eval_box c o)) (List.rev !pending);
+          pending := []
+      | _ -> ()
+  in
   List.iter (fun (p, ev) ->
+      flush p;
       match ev with
       | `C (a, e) when line_start src a && col src a = 0 ->
           (* a comment at the start of a line is prose between code blocks *)
@@ -697,7 +766,9 @@ let render_unit lib kinds (u : unit_info) : string =
            | tk when is_type_kw tk -> Printf.bprintf b "<span class=\"ty\">%s</span>" txt
            | tk when is_keyword tk -> Printf.bprintf b "<span class=\"kw\">%s</span>" txt
            | _ -> Printf.bprintf b "<span class=\"sym\">%s</span>" txt);
-          pos := t.e) evs;
+          pos := t.e;
+          pending := List.rev_append (Hashtbl.find_all boxes i) !pending) evs;
+  flush (String.length src + 1);
   if !in_code then begin
     Buffer.add_string b (esc (String.trim (String.sub src !pos (String.length src - !pos)))); close_code ()
   end;
@@ -734,6 +805,9 @@ a.def,a.mod,a.unit,a.var{text-decoration:none}a:hover{text-decoration:underline}
 .bind.def,.bind.mod{font-weight:700}
 :target{background:#fff3b0}
 details.toc{font-size:.9em;margin-bottom:1em}details.toc ul{columns:3;list-style:none;padding-left:1em}
+details.eval{font-family:"JetBrains Mono",Menlo,Consolas,monospace;font-size:.88em;margin-top:-.6em;margin-bottom:.6em;padding-left:1em}
+details.eval summary{cursor:pointer;color:#6a737d;font-size:.9em;width:max-content}
+details.eval pre.out{cursor:pointer;margin:.2em 0;padding:.3em .8em;border:1px solid #dde3ea;border-radius:3px;background:#fbfcfd;white-space:pre-wrap;line-height:1.4}
 ul.units{list-style:none;padding-left:0}ul.units li{margin:.5em 0}ul.units p{display:inline;margin:0;color:#555}
 |}
 

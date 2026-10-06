@@ -4,3 +4,7 @@ val format_nf : Format.formatter -> McttExtracted.Syntax.nf -> unit
 
 val format_main_result :
   Format.formatter -> McttExtracted.Entrypoint.main_result -> unit
+
+(* The text [format_main_result] prints for each eval of a successful run,
+   in order; [None] for any other result. *)
+val eval_outputs : McttExtracted.Entrypoint.main_result -> string list option
