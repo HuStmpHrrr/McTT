@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Programs</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Programs</h1>
+<details class="toc"><summary>Contents</summary><ul></ul></details>
+<div class="doc"><p>A client of the programs in the <code>Prelude</code> library: subtraction, minimum and maximum, generic combinators, and the Ackermann function, run on closed instances.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Programs</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Sub.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Sub</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="pred" href="Prelude.Arith.Sub.html#pred">pred</a><span class="sym">;</span> <a class="def bind" id="sub" href="Prelude.Arith.Sub.html#sub">sub</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Sub.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Sub</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Sub.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="subSelf" href="Prelude.Arith.Sub.html#Laws.subSelf">subSelf</a><span class="sym">;</span> <a class="def bind" id="subSuccRight" href="Prelude.Arith.Sub.html#Laws.subSuccRight">subSuccRight</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Sub.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sub.html">Sub</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Sub.html#PlusSub">PlusSub</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plusSub" href="Prelude.Arith.Sub.html#PlusSub.plusSub">plusSub</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.MinMax.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">MinMax</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="min" href="Prelude.Arith.MinMax.html#min">min</a><span class="sym">;</span> <a class="def bind" id="max" href="Prelude.Arith.MinMax.html#max">max</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.MinMax.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.MinMax.html">MinMax</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.MinMax.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="minComm" href="Prelude.Arith.MinMax.html#Laws.minComm">minComm</a><span class="sym">;</span> <a class="def bind" id="maxComm" href="Prelude.Arith.MinMax.html#Laws.maxComm">maxComm</a><span class="sym">;</span> <a class="def bind" id="plusMinMax" href="Prelude.Arith.MinMax.html#Laws.plusMinMax">plusMinMax</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Function.Combinators.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Function</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Combinators</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Generic" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Function.Combinators.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Function</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Combinators</a><span class="sym">.</span><a class="mod" href="Prelude.Function.Combinators.html#IterateLaws">IterateLaws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="iteratePlus" href="Prelude.Function.Combinators.html#IterateLaws.iteratePlus">iteratePlus</a><span class="sym">;</span> <a class="def bind" id="iterateComm" href="Prelude.Function.Combinators.html#IterateLaws.iterateComm">iterateComm</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Ackermann.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Ackermann</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="ack" href="Prelude.Arith.Ackermann.html#ack">ack</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Ackermann.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Ackermann</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Ackermann.html#Equations">Equations</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="ackZero" href="Prelude.Arith.Ackermann.html#Equations.ackZero">ackZero</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Ackermann.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Ackermann.html">Ackermann</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Ackermann.html#Rows">Rows</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="ackTwo" href="Prelude.Arith.Ackermann.html#Rows.ackTwo">ackTwo</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#pred">pred</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">10</span> <span class="num">3</span>
+</pre>
+<div class="doc"><p>Subtraction is truncated at <code>0</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">3</span> <span class="num">10</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#min">min</a> <span class="num">4</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <span class="num">4</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">2</span> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">3</span> <span class="num">3</span>
+</pre>
+<div class="doc"><p>A proof of a closed equation normalizes to <code>true</code>, of type <code>True</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#PlusSub.plusSub">plusSub</a> <span class="num">6</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSelf">subSelf</a> <span class="num">7</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sub.html#Laws.subSuccRight">subSuccRight</a> <span class="num">9</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.plusMinMax">plusMinMax</a> <span class="num">3</span> <span class="num">8</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.minComm">minComm</a> <span class="num">2</span> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.MinMax.html#Laws.maxComm">maxComm</a> <span class="num">6</span> <span class="num">1</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Equations.ackZero">ackZero</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Ackermann.html#Rows.ackTwo">ackTwo</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iteratePlus">iteratePlus</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l73">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l73">x</a> <span class="num">3</span><span class="sym">)</span> <span class="num">2</span> <span class="num">3</span> <span class="num">1</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Function.Combinators.html#IterateLaws.iterateComm">iterateComm</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l77">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l77">x</a><span class="sym">)</span><span class="sym">)</span> <span class="num">3</span> <span class="num">4</span> <span class="num">0</span>
+</pre>
+<div class="doc"><p>The generic combinators, instantiated at <code>Nat</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.compose">compose</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Sub.html#sub">sub</a> <span class="num">20</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l82">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.MinMax.html#max">max</a> <a class="var" href="#l82">x</a> <span class="num">5</span><span class="sym">)</span> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.const">const</a> <span class="ty">Nat</span> <span class="ty">Nat</span> <span class="num">7</span> <span class="num">100</span>
+
+<span class="kw">eval</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="ty">Nat</span> <span class="sym">(</span><a class="def" href="Prelude.Arith.Ackermann.html#ack">ack</a> <span class="num">1</span><span class="sym">)</span> <span class="num">3</span> <span class="num">0</span>
+
+<span class="kw">end</span></pre>
+</body></html>

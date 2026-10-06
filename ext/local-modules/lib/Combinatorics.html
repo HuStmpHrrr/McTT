@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Combinatorics</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Combinatorics</h1>
+<details class="toc"><summary>Contents</summary><ul></ul></details>
+<div class="doc"><p>A client of <code>Prelude::Arith::Binomial</code> and <code>Prelude::Arith::Fibonacci</code>: the first rows of Pascal's triangle and of the Fibonacci numbers, and closed instances of their laws, which normalize to <code>true</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Combinatorics</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Binomial.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.html">Binomial</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="choose" href="Prelude.Arith.Binomial.html#choose">choose</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Binomial.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Binomial</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Binomial.Properties.html#Basic">Basic</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="chooseZero" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseZero">chooseZero</a><span class="sym">;</span> <a class="def bind" id="chooseSelf" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseSelf">chooseSelf</a><span class="sym">;</span> <a class="def bind" id="chooseOne" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseOne">chooseOne</a><span class="sym">;</span> <a class="def bind" id="chooseOver" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseOver">chooseOver</a><span class="sym">;</span> <a class="def bind" id="pascal" href="Prelude.Arith.Binomial.Properties.html#Basic.pascal">pascal</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Binomial.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Binomial</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Binomial.Properties.html#Symmetry">Symmetry</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="chooseSymm" href="Prelude.Arith.Binomial.Properties.html#Symmetry.chooseSymm">chooseSymm</a><span class="sym">;</span> <a class="def bind" id="chooseSymmSub" href="Prelude.Arith.Binomial.Properties.html#Symmetry.chooseSymmSub">chooseSymmSub</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Binomial.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Binomial</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Binomial.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Binomial.Properties.html#Row">Row</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="rowSum" href="Prelude.Arith.Binomial.Properties.html#Row.rowSum">rowSum</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Fibonacci.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.html">Fibonacci</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="fib" href="Prelude.Arith.Fibonacci.html#fib">fib</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Fibonacci</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Fibonacci.Properties.html#Basic">Basic</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="fibSucc" href="Prelude.Arith.Fibonacci.Properties.html#Basic.fibSucc">fibSucc</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Fibonacci</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Fibonacci.Properties.html#Growth">Growth</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="fibPos" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibPos">fibPos</a><span class="sym">;</span> <a class="def bind" id="fibMono" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibMono">fibMono</a><span class="sym">;</span> <a class="def bind" id="fibMonoPlus" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibMonoPlus">fibMonoPlus</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Fibonacci</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Fibonacci.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Fibonacci.Properties.html#Identities">Identities</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="fibSum" href="Prelude.Arith.Fibonacci.Properties.html#Identities.fibSum">fibSum</a><span class="sym">;</span> <a class="def bind" id="fibPlus" href="Prelude.Arith.Fibonacci.Properties.html#Identities.fibPlus">fibPlus</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Sum.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Sum</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="sumTo" href="Prelude.Arith.Sum.html#sumTo">sumTo</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p>Rows 0 to 6 of Pascal's triangle, entry by entry.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">0</span> <span class="num">0</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">1</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">1</span> <span class="num">1</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">2</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">2</span> <span class="num">1</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">2</span> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">3</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">3</span> <span class="num">1</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">3</span> <span class="num">2</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">3</span> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">4</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">4</span> <span class="num">1</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">4</span> <span class="num">2</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">4</span> <span class="num">3</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">4</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">1</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">2</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">3</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">4</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">5</span> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">0</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">1</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">2</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">3</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">4</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">5</span>
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span> <span class="num">6</span>
+</pre>
+<div class="doc"><p>Above the diagonal, the coefficients vanish.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">3</span> <span class="num">5</span>
+</pre>
+<div class="doc"><p>Row 6 sums to <code>pow 2 6</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Binomial.html#choose">choose</a> <span class="num">6</span><span class="sym">)</span> <span class="num">7</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.html#fib">fib</a> <span class="num">0</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.html#fib">fib</a> <span class="num">1</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.html#fib">fib</a> <span class="num">10</span>
+</pre>
+<div class="doc"><p><code>fib 0 + ... + fib 9</code>, which is <code>fib 11</code> minus one.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="def" href="Prelude.Arith.Fibonacci.html#fib">fib</a> <span class="num">10</span>
+</pre>
+<div class="doc"><p>A proof of a closed proposition normalizes to <code>true</code>, of type <code>True</code>. The numbers stay small: checking <code>Eq n n</code> takes time exponential in <code>n</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseZero">chooseZero</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseSelf">chooseSelf</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseOne">chooseOne</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Basic.chooseOver">chooseOver</a> <span class="num">3</span> <span class="num">5</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Basic.pascal">pascal</a> <span class="num">4</span> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Symmetry.chooseSymm">chooseSymm</a> <span class="num">2</span> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Symmetry.chooseSymmSub">chooseSymmSub</a> <span class="num">5</span> <span class="num">2</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Binomial.Properties.html#Row.rowSum">rowSum</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Basic.fibSucc">fibSucc</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibPos">fibPos</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibMono">fibMono</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Growth.fibMonoPlus">fibMonoPlus</a> <span class="num">2</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Identities.fibSum">fibSum</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Fibonacci.Properties.html#Identities.fibPlus">fibPlus</a> <span class="num">3</span> <span class="num">2</span>
+
+<span class="kw">end</span></pre>
+</body></html>

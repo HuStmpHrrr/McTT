@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Powers</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Powers</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#NatFun">NatFun</a></li></ul></details>
+<div class="doc"><p>A client of <code>Prelude::Arith::Pow</code>, <code>Prelude::Arith::Sum</code> and <code>Prelude::Arith::Factorial</code>: a few computations, and closed instances of their theorems, which normalize to <code>true</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Powers</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Mult.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Mult.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Mult.html">Mult</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="mult" href="Prelude.Arith.Mult.html#mult">mult</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Pow.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Pow</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="pow" href="Prelude.Arith.Pow.html#pow">pow</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Pow.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Pow</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Pow.html#Basic">Basic</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="powZero" href="Prelude.Arith.Pow.html#Basic.powZero">powZero</a><span class="sym">;</span> <a class="def bind" id="powOne" href="Prelude.Arith.Pow.html#Basic.powOne">powOne</a><span class="sym">;</span> <a class="def bind" id="onePow" href="Prelude.Arith.Pow.html#Basic.onePow">onePow</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Pow.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Pow.html">Pow</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Pow.html#Exp">Exp</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="powPlus" href="Prelude.Arith.Pow.html#Exp.powPlus">powPlus</a><span class="sym">;</span> <a class="def bind" id="powMult" href="Prelude.Arith.Pow.html#Exp.powMult">powMult</a><span class="sym">;</span> <a class="def bind" id="powMultBase" href="Prelude.Arith.Pow.html#Exp.powMultBase">powMultBase</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Sum.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Sum</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="sumTo" href="Prelude.Arith.Sum.html#sumTo">sumTo</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Sum.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Sum</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Sum.html#Linear">Linear</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="sumToPlus" href="Prelude.Arith.Sum.html#Linear.sumToPlus">sumToPlus</a><span class="sym">;</span> <a class="def bind" id="sumToScale" href="Prelude.Arith.Sum.html#Linear.sumToScale">sumToScale</a><span class="sym">;</span> <a class="def bind" id="sumToConst" href="Prelude.Arith.Sum.html#Linear.sumToConst">sumToConst</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Sum.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Sum</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Sum.html#Closed">Closed</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="gauss" href="Prelude.Arith.Sum.html#Closed.gauss">gauss</a><span class="sym">;</span> <a class="def bind" id="sumOdd" href="Prelude.Arith.Sum.html#Closed.sumOdd">sumOdd</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Factorial.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Factorial</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="factorial" href="Prelude.Arith.Factorial.html#factorial">factorial</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Factorial.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Factorial</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Factorial.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="factSucc" href="Prelude.Arith.Factorial.html#Laws.factSucc">factSucc</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Factorial.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Factorial.html">Factorial</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Factorial.html#Bounds">Bounds</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="factPos" href="Prelude.Arith.Factorial.html#Bounds.factPos">factPos</a><span class="sym">;</span> <a class="def bind" id="factLeSucc" href="Prelude.Arith.Factorial.html#Bounds.factLeSucc">factLeSucc</a><span class="sym">;</span> <a class="def bind" id="lePowFact" href="Prelude.Arith.Factorial.html#Bounds.lePowFact">lePowFact</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Function.Combinators.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Function</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Combinators</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Generic" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p>The generic combinators at <code>Nat</code>.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatFun">NatFun</span> <span class="sym">:=</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a> <span class="ty">Nat</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">2</span> <span class="num">10</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">3</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#pow">pow</a> <span class="num">0</span> <span class="num">0</span>
+</pre>
+<div class="doc"><p><code>0 + 1 + ... + 10</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">11</span>
+</pre>
+<div class="doc"><p><code>0 + 1 + 4 + ... + 25</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l69">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l69">i</a> <a class="var" href="#l69">i</a><span class="sym">)</span> <span class="num">6</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#factorial">factorial</a> <span class="num">0</span>
+</pre>
+<div class="doc"><p>A proof of a closed equation normalizes to <code>true</code>, of type <code>True</code>.  The numbers stay at most about 20: checking <code>Eq n n</code> takes time exponential in <code>n</code> (about 6s at <code>n = 27</code>).</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powZero">powZero</a> <span class="num">7</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.powOne">powOne</a> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Basic.onePow">onePow</a> <span class="num">6</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powPlus">powPlus</a> <span class="num">2</span> <span class="num">1</span> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMult">powMult</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Pow.html#Exp.powMultBase">powMultBase</a> <span class="num">2</span> <span class="num">2</span> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToPlus">sumToPlus</a> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l84">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l84">i</a> <a class="var" href="#l84">i</a><span class="sym">)</span> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToScale">sumToScale</a> <span class="num">3</span> <a class="mod" href="#NatFun">NatFun</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.id">id</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Linear.sumToConst">sumToConst</a> <span class="num">4</span> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.gauss">gauss</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#Closed.sumOdd">sumOdd</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Laws.factSucc">factSucc</a> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factPos">factPos</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.factLeSucc">factLeSucc</a> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Factorial.html#Bounds.lePowFact">lePowFact</a> <span class="num">3</span>
+
+<span class="kw">end</span></pre>
+</body></html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude::Function::Iter</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude::Function::Iter</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">def</span> <a href="#iter">iter</a></li></ul></details>
+<div class="doc"><p>Iteration of an arbitrary function: a unit parameterized by the type and the function, so each client instantiates it as it needs.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">::</span><span class="unit bind">Function</span><span class="sym">::</span><span class="unit bind">Iter</span> <span class="sym">(</span><span class="var bind" id="l3">A</span> <span class="sym">:</span> <span class="ty">Type</span><span class="sym">@</span><span class="num">0</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l4">f</span> <span class="sym">:</span> <span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l5">a</span> <span class="sym">:</span> <a class="var" href="#l3">A</a><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l3">A</a><span class="sym">)</span> <span class="kw">where</span>
+
+<span class="kw">def</span> <span class="def bind" id="iter">iter</span> <span class="sym">(</span><span class="var bind" id="l9">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l10">a</span> <span class="sym">:</span> <a class="var" href="#l3">A</a><span class="sym">)</span> <span class="sym">:</span> <a class="var" href="#l3">A</a> <span class="sym">:=</span>
+  <span class="kw">rec</span> <a class="var" href="#l9">n</a> <span class="kw">return</span> <span class="var bind" id="l14">y</span> <span class="sym">.</span> <a class="var" href="#l3">A</a>
+  <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <a class="var" href="#l10">a</a>
+  <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l17">p</span><span class="sym">,</span> <span class="var bind" id="l18">r</span> <span class="sym">=&gt;</span> <a class="var" href="#l4">f</a> <a class="var" href="#l18">r</a>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

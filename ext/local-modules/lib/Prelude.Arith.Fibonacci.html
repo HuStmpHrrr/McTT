@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Prelude::Arith::Fibonacci</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>Prelude::Arith::Fibonacci</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">def</span> <a href="#fibFrom">fibFrom</a></li><li><span class="kw">def</span> <a href="#fib">fib</a></li></ul></details>
+<div class="doc"><p>The Fibonacci numbers, computed in linear time by iterating on a pair of consecutive values.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">Prelude</span><span class="sym">::</span><span class="unit bind">Arith</span><span class="sym">::</span><span class="unit bind">Fibonacci</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Plus.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Plus.html">Plus</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="plus" href="Prelude.Arith.Plus.html#plus">plus</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p><code>fibFrom n a b</code> is the <code>n</code>-th term of the Fibonacci-like sequence that starts with <code>a</code> and <code>b</code>: <code>fibFrom 0 a b</code> is <code>a</code>, and <code>fibFrom (succ n) a b</code> is <code>fibFrom n b (plus a b)</code>.  The pair <code>a</code>, <code>b</code> holds two consecutive terms.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="fibFrom">fibFrom</span> <span class="sym">(</span><span class="var bind" id="l8">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l9">a</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l10">b</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span>
+  <span class="sym">(</span><span class="kw">rec</span> <a class="var" href="#l8">n</a> <span class="kw">return</span> <span class="var bind" id="l12">y</span> <span class="sym">.</span> <span class="sym">(</span><span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l13">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l14">z</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="ty">Nat</span><span class="sym">)</span>
+   <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l15">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l16">z</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l15">x</a>
+   <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l18">p</span><span class="sym">,</span> <span class="var bind" id="l19">r</span> <span class="sym">=&gt;</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l20">x</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">(</span><span class="var bind" id="l21">z</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l19">r</a> <a class="var" href="#l21">z</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="var" href="#l20">x</a> <a class="var" href="#l21">z</a><span class="sym">)</span>
+   <span class="kw">end</span><span class="sym">)</span> <a class="var" href="#l9">a</a> <a class="var" href="#l10">b</a>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The Fibonacci numbers <code>0, 1, 1, 2, 3, 5, ...</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="fib">fib</span> <span class="sym">(</span><span class="var bind" id="l30">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="def" href="#fibFrom">fibFrom</a> <a class="var" href="#l30">n</a> <span class="num">0</span> <span class="num">1</span> <span class="kw">end</span>
+
+<span class="kw">end</span></pre>
+</body></html>

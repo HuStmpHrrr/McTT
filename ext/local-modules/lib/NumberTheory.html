@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>NumberTheory</title><link rel="stylesheet" href="mctt.css"></head><body>
+<nav><a href="index.html">McTT library</a> &middot; <a href="../index.html">McTT</a> &middot; <a href="../toc.html">Rocq development</a></nav>
+<h1>NumberTheory</h1>
+<details class="toc"><summary>Contents</summary><ul><li><span class="kw">module</span> <a href="#Primes">Primes</a></li></ul></details>
+<div class="doc"><p>A client of <code>Prelude::Arith::Gcd</code>, its laws, and <code>Prelude::Arith::Prime</code>: greatest common divisors, the primes below 30, and closed instances of the theorems, which normalize to <code>true</code>.  The numbers in the proofs stay small, since they compute with remainders and equalities of numbers.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="unit bind">NumberTheory</span> <span class="kw">where</span>
+
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Mult.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Mult.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Mult.html">Mult</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="mult" href="Prelude.Arith.Mult.html#mult">mult</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Sum.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Sum.html">Sum</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="sumTo" href="Prelude.Arith.Sum.html#sumTo">sumTo</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Decide.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Decide.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Decide.html">Decide</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="pick" href="Prelude.Arith.Decide.html#pick">pick</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Divides.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Divides.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Divides.html">Divides</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Divides.html#Closure">Closure</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="dividesMultLeft" href="Prelude.Arith.Divides.html#Closure.dividesMultLeft">dividesMultLeft</a><span class="sym">;</span> <a class="def bind" id="dividesPlusCancel" href="Prelude.Arith.Divides.html#Closure.dividesPlusCancel">dividesPlusCancel</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Function.Combinators.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Function</a><span class="sym">::</span><a class="unit" href="Prelude.Function.Combinators.html">Combinators</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="Generic" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Gcd.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.html">Gcd</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="gcd" href="Prelude.Arith.Gcd.html#gcd">gcd</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Gcd.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Gcd</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Gcd.Properties.html#Values">Values</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="gcdZeroLeft" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroLeft">gcdZeroLeft</a><span class="sym">;</span> <a class="def bind" id="gcdZeroRight" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroRight">gcdZeroRight</a><span class="sym">;</span> <a class="def bind" id="gcdSelf" href="Prelude.Arith.Gcd.Properties.html#Values.gcdSelf">gcdSelf</a><span class="sym">;</span> <a class="def bind" id="gcdOneRight" href="Prelude.Arith.Gcd.Properties.html#Values.gcdOneRight">gcdOneRight</a><span class="sym">;</span> <a class="def bind" id="gcdComm" href="Prelude.Arith.Gcd.Properties.html#Values.gcdComm">gcdComm</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Gcd.Properties.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Gcd</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Gcd.Properties.html">Properties</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Gcd.Properties.html#Divisor">Divisor</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="gcdDividesLeft" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesLeft">gcdDividesLeft</a><span class="sym">;</span> <a class="def bind" id="gcdDividesRight" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesRight">gcdDividesRight</a><span class="sym">;</span> <a class="def bind" id="gcdGreatest" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdGreatest">gcdGreatest</a><span class="sym">)</span>
+<span class="kw">import</span> <a class="unit" href="Prelude.Arith.Prime.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Prime</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="smallestDivisor" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a><span class="sym">;</span> <a class="def bind" id="isPrime" href="Prelude.Arith.Prime.html#isPrime">isPrime</a><span class="sym">;</span> <a class="def bind" id="Prime" href="Prelude.Arith.Prime.html#Prime">Prime</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Prime.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Prime</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Prime.html#Laws">Laws</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="smallestDivisorDivides" href="Prelude.Arith.Prime.html#Laws.smallestDivisorDivides">smallestDivisorDivides</a><span class="sym">;</span> <a class="def bind" id="primeGeTwo" href="Prelude.Arith.Prime.html#Laws.primeGeTwo">primeGeTwo</a><span class="sym">;</span> <a class="def bind" id="primeSmallestDivisor" href="Prelude.Arith.Prime.html#Laws.primeSmallestDivisor">primeSmallestDivisor</a><span class="sym">)</span>
+<span class="kw">open</span> <a class="unit" href="Prelude.Arith.Prime.html">Prelude</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Arith</a><span class="sym">::</span><a class="unit" href="Prelude.Arith.Prime.html">Prime</a><span class="sym">.</span><a class="mod" href="Prelude.Arith.Prime.html#Facts">Facts</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="twoPrime" href="Prelude.Arith.Prime.html#Facts.twoPrime">twoPrime</a><span class="sym">;</span> <a class="def bind" id="sevenPrime" href="Prelude.Arith.Prime.html#Facts.sevenPrime">sevenPrime</a><span class="sym">;</span> <a class="def bind" id="nineNotPrime" href="Prelude.Arith.Prime.html#Facts.nineNotPrime">nineNotPrime</a><span class="sym">)</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">12</span> <span class="num">18</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">17</span> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">0</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.html#gcd">gcd</a> <span class="num">9</span> <span class="num">0</span>
+</pre>
+<div class="doc"><p>Enumerating the primes.  The search for the next prime is a private helper; only <code>nthPrime</code> is exported.</p>
+</div>
+<pre class="code"><span class="kw">module</span> <span class="mod bind" id="Primes">Primes</span> <span class="kw">where</span>
+</pre>
+<div class="doc"><p>The least prime above <code>n</code>, searched among the numbers from <code>n + 1</code> to <code>2 n + 2</code>, which contain one by Bertrand's postulate.</p>
+</div>
+<pre class="code"><span class="kw">let</span> <span class="def bind" id="Primes.nextPrime">nextPrime</span> <span class="sym">(</span><span class="var bind" id="l71">n</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span>
+  <span class="sym">(</span><span class="kw">rec</span> <a class="var" href="#l71">n</a> <span class="kw">return</span> <span class="var bind" id="l73">y</span> <span class="sym">.</span> <span class="sym">(</span><span class="kw">forall</span> <span class="sym">(</span><span class="var bind" id="l74">c</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="ty">Nat</span><span class="sym">)</span>
+   <span class="sym">|</span> <span class="kw">zero</span> <span class="sym">=&gt;</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l75">c</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Decide.html#pick">pick</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <a class="var" href="#l75">c</a><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l79">u</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <span class="kw">succ</span> <a class="var" href="#l75">c</a><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l81">u</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l75">c</a><span class="sym">)</span>
+   <span class="sym">|</span> <span class="kw">succ</span> <span class="var bind" id="l83">p</span><span class="sym">,</span> <span class="var bind" id="l84">r</span> <span class="sym">=&gt;</span> <span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l85">c</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Decide.html#pick">pick</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <a class="var" href="#l85">c</a><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l89">u</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l84">r</a> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l85">c</a><span class="sym">)</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l92">u</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="var" href="#l85">c</a><span class="sym">)</span>
+   <span class="kw">end</span><span class="sym">)</span> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l71">n</a><span class="sym">)</span>
+<span class="kw">end</span>
+</pre>
+<div class="doc"><p>The <code>k</code>-th prime, counting from <code>0</code>.</p>
+</div>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Primes.nthPrime">nthPrime</span> <span class="sym">(</span><span class="var bind" id="l96">k</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="ty">Nat</span> <a class="def" href="#Primes.nextPrime">nextPrime</a> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l96">k</a><span class="sym">)</span> <span class="num">0</span> <span class="kw">end</span>
+
+<span class="kw">end</span>
+
+<span class="kw">open</span> <a class="mod" href="#Primes">Primes</a> <span class="kw">use</span> <span class="sym">(</span><a class="def bind" id="nthPrime" href="#Primes.nthPrime">nthPrime</a><span class="sym">)</span>
+</pre>
+<div class="doc"><p>The primes below 30 are the first ten primes; the eleventh is 31.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">0</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">1</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">2</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">3</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">4</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">6</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">7</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">8</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="#Primes.nthPrime">nthPrime</a> <span class="num">10</span>
+</pre>
+<div class="doc"><p>There are ten primes below 30, and they add up to 129.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <span class="num">30</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Sum.html#sumTo">sumTo</a> <span class="sym">(</span><span class="kw">fun</span> <span class="sym">(</span><span class="var bind" id="l117">i</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">-&gt;</span> <a class="def" href="Prelude.Arith.Mult.html#mult">mult</a> <a class="var" href="#l117">i</a> <span class="sym">(</span><a class="def" href="Prelude.Arith.Prime.html#isPrime">isPrime</a> <a class="var" href="#l117">i</a><span class="sym">)</span><span class="sym">)</span> <span class="num">30</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">91</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#smallestDivisor">smallestDivisor</a> <span class="num">29</span>
+</pre>
+<div class="doc"><p>Primality computes to <code>True</code> or <code>False</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">29</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Prime">Prime</a> <span class="num">27</span>
+</pre>
+<div class="doc"><p>A proof of a closed proposition normalizes to <code>true</code>, of type <code>True</code>.</p>
+</div>
+<pre class="code"><span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroLeft">gcdZeroLeft</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdZeroRight">gcdZeroRight</a> <span class="num">5</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdSelf">gcdSelf</a> <span class="num">7</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdOneRight">gcdOneRight</a> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesLeft">gcdDividesLeft</a> <span class="num">6</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdDividesRight">gcdDividesRight</a> <span class="num">6</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Divisor.gcdGreatest">gcdGreatest</a> <span class="num">2</span> <span class="num">8</span> <span class="num">12</span> <span class="kw">true</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Gcd.Properties.html#Values.gcdComm">gcdComm</a> <span class="num">6</span> <span class="num">9</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesMultLeft">dividesMultLeft</a> <span class="num">3</span> <span class="num">6</span> <span class="num">2</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Divides.html#Closure.dividesPlusCancel">dividesPlusCancel</a> <span class="num">3</span> <span class="num">6</span> <span class="num">9</span> <span class="kw">true</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.twoPrime">twoPrime</a>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.sevenPrime">sevenPrime</a>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Facts.nineNotPrime">nineNotPrime</a>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.smallestDivisorDivides">smallestDivisorDivides</a> <span class="num">15</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeGeTwo">primeGeTwo</a> <span class="num">13</span> <span class="kw">true</span>
+
+<span class="kw">eval</span> <a class="def" href="Prelude.Arith.Prime.html#Laws.primeSmallestDivisor">primeSmallestDivisor</a> <span class="num">13</span> <span class="kw">true</span>
+
+<span class="kw">end</span></pre>
+</body></html>
