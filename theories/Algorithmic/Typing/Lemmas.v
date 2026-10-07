@@ -758,6 +758,26 @@ Proof.
   exists (univⁿ c xs), (uns (c, xs)); split; [ exact Hinfer | split; [ constructor | assumption ] ].
 Qed.
 
+(** The same at a level term: the inferred universe is small, at a canonical
+    level below the one [Type⟨t⟩] normalizes to. *)
+Lemma alg_type_check_suniv_tm_implies_alg_type_infer_univ : forall {Γ A t},
+    ⊢ Γ ->
+    Γ ⊢a A ⟸ Type⟨t⟩ ->
+    exists L L', Γ ⊢a A ⟹ nf_univ_of L /\ nbe_ty_f Γ Type⟨t⟩ (nf_univ_of L') /\ lvl_le L L'.
+Proof.
+  intros * ? Hcheck.
+  inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
+  inversion Hsub as [? ? ? A'' B' Hnbe1 Hnbe2 Hnfsub]; subst.
+  replace A' with A'' in * by (symmetry; mauto 3).
+  pose proof Hnbe2 as Hn.
+  inversion Hn; subst.
+  dir_inversion_by_head eval_exp; subst.
+  dir_inversion_by_head read_typ; subst.
+  destruct L as [d ys]; unfold nf_univ_of in *; cbn [fst snd] in *.
+  inversion Hnfsub; subst; [ contradiction |].
+  exists (c, xs), (d, ys); split; [ exact Hinfer | split; [ exact Hnbe2 | assumption ] ].
+Qed.
+
 (** Completeness, for terms and for the module judgments at once, since a
     unit's body holds terms and a term may hold a unit.  The global context is
     an index of the judgments, so it is fixed for the induction, as in
@@ -1079,7 +1099,7 @@ Qed.
 
 Hint Resolve alg_type_infer_complete : mctt.
 
-Corollary alg_type_infer_typ_complete : forall {Γ i A},
+Corollary alg_type_infer_large_typ_complete : forall {Γ i A},
     user_exp A ->
     Γ ⊢ A : Typeω@i ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
@@ -1087,17 +1107,41 @@ Proof.
   mauto 4 using alg_type_check_complete.
 Qed.
 
-Hint Resolve alg_type_infer_typ_complete : mctt.
+Hint Resolve alg_type_infer_large_typ_complete : mctt.
 
-Corollary alg_type_infer_pi_complete : forall {Γ i A},
+(** Completeness at a small universe, with the old precise shape: the
+    inferred universe is a small universe at a literal level below [n] (an
+    atom is never below a literal, [lvl_le_lit_closed]).  The large tier's
+    statement is [alg_type_infer_large_typ_complete]. *)
+Corollary alg_type_infer_typ_complete : forall {Γ n A},
     user_exp A ->
-    Γ ⊢ A : Typeω@i ->
-    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
+    Γ ⊢ A : Type@n ->
+    exists m, Γ ⊢a A ⟹ Typeⁿ@m /\ m <= n.
 Proof.
-  mauto 4 using alg_type_check_complete.
+  intros * HA HAn.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  destruct (alg_type_check_suniv_implies_alg_type_infer_univ ltac:(eassumption)
+              (alg_type_check_complete HA HAn)) as (UA & u & Hinf & Hu & Hle).
+  destruct u as [[c xs] | i]; cbn in Hle; [| contradiction].
+  inversion Hu; subst.
+  pose proof (lvl_le_lit_closed _ _ Hle) as Hxs; cbn in Hxs; subst xs.
+  exists c; split; [ exact Hinf |].
+  rewrite lvl_le_correct in Hle; specialize (Hle (fun _ => 0)); unfold lvl_ev, lvl_lit in Hle; cbn in Hle; lia.
 Qed.
 
-Hint Resolve alg_type_infer_pi_complete : mctt.
+(** The same at a level term [t]: the inferred universe is small, at a
+    canonical level below the normal form of [t]. *)
+Corollary alg_type_infer_typ_complete_tm : forall {Γ t A},
+    user_exp A ->
+    Γ ⊢ A : Type⟨t⟩ ->
+    exists L L', Γ ⊢a A ⟹ nf_univ_of L /\ nbe_f Γ t Level (nf_lvl_of L') /\ lvl_le L L'.
+Proof.
+  intros * HA HAt.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  destruct (alg_type_check_suniv_tm_implies_alg_type_infer_univ ltac:(eassumption)
+              (alg_type_check_complete HA HAt)) as (L & L' & Hinf & Hn & Hle).
+  exists L, L'; split; [ exact Hinf | split; [ exact (nbe_ty_univ_level Hn) | exact Hle ] ].
+Qed.
 
 End Fixed_GCtx.
 
@@ -1116,6 +1160,4 @@ Hint Resolve alg_type_check_complete : mctt.
 #[export]
 Hint Resolve alg_type_infer_complete : mctt.
 #[export]
-Hint Resolve alg_type_infer_typ_complete : mctt.
-#[export]
-Hint Resolve alg_type_infer_pi_complete : mctt.
+Hint Resolve alg_type_infer_large_typ_complete : mctt.

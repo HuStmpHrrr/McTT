@@ -37,7 +37,7 @@ Section Bridge.
     intros; eapply (alg_type_infer_sound (GC := gc_mk Θ Ξ)); eassumption.
   Qed.
 
-  Lemma alg_type_infer_typ_sound' : forall Θ Ξ Γ i A,
+  Lemma alg_type_infer_large_typ_sound' : forall Θ Ξ Γ i A,
       @alg_type_infer (gc_mk Θ Ξ) Γ Typeωⁿ@i A ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
@@ -45,6 +45,19 @@ Section Bridge.
     (** [exact] rather than [eapply]: [nf_to_exp Typeωⁿ@i] and [Typeω@i] are
         convertible, but the unifier cannot unify them in this direction. *)
     intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeωⁿ@i _ H HΓ).
+  Qed.
+
+  (** Soundness at the inferred universe, precisely: a type that infers the
+      universe [u] is a type of [unf_tm u], at either tier. *)
+  Lemma alg_type_infer_typ_sound' : forall Θ Ξ Γ UA u A,
+      @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
+      is_univ_nf UA u ->
+      ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : unf_tm u.
+  Proof.
+    intros * H Hu HΓ.
+    rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu).
+    exact (alg_type_infer_sound' _ _ _ UA _ H HΓ).
   Qed.
 
   (** The same at an index of either tier: a type of [unf_tm u] is one of the
@@ -81,17 +94,26 @@ Section Bridge.
       [ apply user_exp_all | eassumption ].
   Qed.
 
-  (** A type infers a universe, at either tier. *)
-  Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ i A,
+  (** A type of a large universe infers a universe, at either tier. *)
+  Lemma alg_type_infer_large_typ_complete' : forall Θ Ξ Γ i A,
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
       exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u.
   Proof.
     intros * H.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]]
-        by (eapply (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ));
+        by (eapply (alg_type_infer_large_typ_complete (GC := gc_mk Θ Ξ));
             [ apply user_exp_all | eassumption ]).
     eauto.
+  Qed.
+
+  (** A small type infers a small universe at a literal level below its own. *)
+  Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ n A,
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
+      exists m, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@m A /\ m <= n.
+  Proof.
+    intros * H.
+    exact (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ) (user_exp_all _) H).
   Qed.
 
   (** The two ways "is [A] a type?" can fail: nothing is inferred for [A], or
@@ -103,7 +125,7 @@ Section Bridge.
   Proof.
     intros * Hno * H.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u []]]
-        by eauto using alg_type_infer_typ_complete'.
+        by eauto using alg_type_infer_large_typ_complete'.
     firstorder.
   Qed.
 
@@ -114,7 +136,7 @@ Section Bridge.
   Proof.
     intros * HB Hne * H.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u [HA Hu]]]
-        by eauto using alg_type_infer_typ_complete'.
+        by eauto using alg_type_infer_large_typ_complete'.
     assert (B = UA)
       by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); eassumption).
     subst; exact (Hne _ Hu).
@@ -147,7 +169,7 @@ Section Bridge.
 End Bridge.
 
 #[local]
-Hint Resolve alg_type_infer_typ_sound' alg_type_infer_univ_sound' alg_type_check_sound'
+Hint Resolve alg_type_infer_large_typ_sound' alg_type_infer_univ_sound' alg_type_check_sound'
   alg_type_check_complete' not_wf_typ_of_no_infer not_wf_typ_of_infer_not_typ : mctt.
 
 (** ** Types and Terms at an Explicit Global Context *)

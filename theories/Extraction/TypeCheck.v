@@ -169,7 +169,7 @@ Section type_check.
     intros * HX HD.
     assert (G ⊢ X ≈ D : Typeω@i) by (eapply soundness_ty'; eassumption).
     assert (G ⊢ D : Typeω@i) by (gen_presups; eassumption).
-    destruct (alg_type_infer_typ_complete (user_exp_nf D) ltac:(eassumption)) as [UD [u [? []]]].
+    destruct (alg_type_infer_large_typ_complete (user_exp_nf D) ltac:(eassumption)) as [UD [u [? []]]].
     split; [ exists UD, u; split; assumption | exists i; assumption ].
   Qed.
 
@@ -500,7 +500,7 @@ Section type_check.
     let Hj := fresh "Hj" in
     destruct (wf_unf_max_tm _ u v ltac:(eassumption)) as [j Hj];
     rewrite nf_to_exp_univ_nf; split;
-      [ destruct (alg_type_infer_typ_complete (user_exp_all _) Hj) as [? [? [? [? _]]]];
+      [ destruct (alg_type_infer_large_typ_complete (user_exp_all _) Hj) as [? [? [? [? _]]]];
         do 2 eexists; split; eassumption
       | eexists; exact Hj ].
 
@@ -807,7 +807,7 @@ Section type_check.
       let HT := fresh "HT" in
       assert (HT : G ⊢ Type@0 : Typeω@0) by (apply wf_univ_large; exact HG);
       split; [ mauto 3 | ];
-      destruct (alg_type_infer_typ_complete (user_exp_all _) HT) as (? & ? & ? & ? & _);
+      destruct (alg_type_infer_large_typ_complete (user_exp_all _) HT) as (? & ? & ? & ? & _);
       split; [ do 2 eexists; split; eassumption | eexists; exact HT ]
     end.
 
@@ -1182,8 +1182,8 @@ Section type_check.
     assert (⊢ G ▹ (A'' : exp)) by mauto 2.
     assert (exists l, G ▹ (A'' : exp) ⊢ B' : Typeω@l) as [l HB'] by (eexists; mauto 4).
     split; [ mauto 3 | split ].
-    - destruct (alg_type_infer_typ_complete (user_exp_nf A'') ltac:(eassumption)) as [UA'' [w [? []]]].
-      destruct (alg_type_infer_typ_complete (user_exp_nf B') HB') as [UB' [w' [? []]]].
+    - destruct (alg_type_infer_large_typ_complete (user_exp_nf A'') ltac:(eassumption)) as [UA'' [w [? []]]].
+      destruct (alg_type_infer_large_typ_complete (user_exp_nf B') HB') as [UB' [w' [? []]]].
       do 2 eexists; split;
         [ eapply ati_pi; [ eassumption | eassumption | eassumption | eassumption
                          | apply is_univ_nf_univ_nf ]
