@@ -90,7 +90,17 @@ a list of level atoms with offsets), with `Typeˢⁿ@n := univⁿ n la_nil`.
 `domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃@n` (a literal), `succl M` and
 `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values and
 `nf_lvl_of L` on normal forms.  The surface syntax is `0l`, `1l`, …, `succl`,
-`maxl` and `Type@{t}`, with `Typeω` for `Type@0`.
+`maxl`.  A universe's surface size is small or large: `Type@n` (short for
+`Type@{nl}`), `Type@nl` and `Type@{t}` are small; `Type@ω`, `Type@omega`,
+their braced forms, `Type@{ω+n}` and the shorthand `Type@nL` are large (`nL`
+is a size only, never a term of `Level`).  Only a braced size takes a `+`.
+The printer picks the shortest spelling: `Type@n`, `Type@{t}`, `Type@ω`,
+`Type@nL`.
+
+**The surface `Type@n` and the Rocq notation `Type@n` are different
+universes.**  In Rocq, `Type@n` is `a_typ n`, the large universe Typeω+n; in
+a `.mctt` program it is the small universe at level `n`, i.e. `a_univ (𝕃@n)`.
+The surface spelling of `a_typ n` is `Type@nL`, and `Type@ω` for `a_typ 0`.
 
 ## Traps
 

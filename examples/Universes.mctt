@@ -4,14 +4,15 @@
    the operations [succl] and [maxl], and whatever a term of type [Level]
    computes to.  [Type@{t}] is the small universe at the level [t], so a
    level-polymorphic definition is an ordinary function of a [Level], and a
-   level-polymorphic module an ordinary parametrized module.  [Type@n] is the
-   large universe above all of them, with [Typeω] for [Type@0]. *)
+   level-polymorphic module an ordinary parametrized module.  Above every
+   small universe sit the large ones, [Type@ω] and [Type@{ω+n}], with the
+   shorthand [Type@nL]. *)
 module Universes where
 
 (* The identity, polymorphic in the level of its type. *)
 def id (u : Level) (A : Type@{u}) (a : A) : A := a end
 
-eval id 1l Type@{0l} Nat
+eval id 1l Type@0 Nat
 
 (* A small universe is in the next one up, and cumulativity lifts it to any
    larger level — here to the join with the successor. *)
@@ -47,6 +48,25 @@ def depth (n : Nat) : Level := rec n return x . Level | zero => 0l | succ y, r =
 eval Type@{depth 3}
 
 (* Both tiers: the large universe holds every small one. *)
-def small (u : Level) : Typeω := Type@{u} end
+def small (u : Level) : Type@ω := Type@{u} end
+
+(* Every spelling of a universe size.  Small: a bare numeral, the level
+   literal [<n>l], or any level term in braces.  Large: [ω] or [omega], bare
+   or braced, [ω+n] braced, and the shorthand [<n>L]. *)
+eval Type@2
+
+eval Type@2l
+
+eval Type@{2l}
+
+eval Type@ω
+
+eval Type@omega
+
+eval Type@{omega}
+
+eval Type@{ω+2}
+
+eval Type@2L
 
 end

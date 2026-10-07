@@ -615,11 +615,12 @@ let href (from : string list) (s : site) =
 let is_keyword = function
   | P.VAR _ | P.INT _ | P.EOF _ -> false
   | P.ARROW _ | P.AT _ | P.BAR _ | P.COLON _ | P.COLONCOLON _ | P.COMMA _ | P.DARROW _
-  | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.DOT _ | P.EQ _ | P.SEMI _ -> false
+  | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.PLUS _
+  | P.DOT _ | P.EQ _ | P.SEMI _ -> false
   | _ -> true
 
 let is_type_kw = function
-  | P.NAT _ | P.TYPE _ | P.TYPEW _ | P.LEVEL _ | P.TRUE_TY _ | P.FALSE_TY _ -> true
+  | P.NAT _ | P.TYPE _ | P.LEVEL _ | P.TRUE_TY _ | P.FALSE_TY _ -> true
   | _ -> false
 
 let kind_class = function Local -> "var" | Def -> "def" | Mod -> "mod" | Unit -> "unit"

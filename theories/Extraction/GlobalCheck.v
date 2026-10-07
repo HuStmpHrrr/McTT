@@ -163,23 +163,9 @@ Ltac invert_nf_typ_eq :=
 
 Section check_exp.
 
-  #[local]
-  Ltac check_typ_tac :=
-    intros;
-    cbn beta in *;
-    destruct_conjs;
-    invert_nf_typ_eq;
-    try eassumption;
-    lazymatch goal with
-    | |- type_infer_order _ => apply user_exp_to_type_infer_order, user_exp_all
-    (** The inferred universe gives the typing at its own large level. *)
-    | |- _ ⍮ _ ⍮ _ ⊢ _ : Type@(unf_large _) => eapply alg_type_infer_univ_sound'; eassumption
-    | _ => mautosolve 3
-    end.
-
   (** "Is [A] a type?", decided as in the Π case of [type_check]: infer a type
       for [A], then require it to be a universe. *)
-  #[tactic="check_typ_tac",derive(equations=no,eliminator=no)]
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_typ Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } :=
   | Θ, Ξ, Γ, HΓ, A =>
@@ -187,24 +173,26 @@ Section check_exp.
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureo (exist _ (unf_large u) _)
   .
-
-  #[local]
-  Ltac check_exp_tac :=
-    intros;
-    cbn beta in *;
-    destruct_conjs;
-    invert_nf_typ_eq;
-    try eassumption;
-    lazymatch goal with
-    | |- type_check_order _ => apply tc_ti, user_exp_to_type_infer_order, user_exp_all
-    | |- exists _, _ => eexists; eassumption
-    (** The type of a well-typed term is a type, so if [A] is not one, the
-        judgment cannot hold. *)
-    | |- ~ _ ⍮ _ ⍮ _ ⊢ _ : _ => intro; gen_presups; firstorder (mautosolve 3)
-    | _ => mautosolve 3
+  Obligation 1. Qed.
+  (** Every user term has an inference order. *)
+  Obligation 2. (* type_infer_order A *)
+    apply user_exp_to_type_infer_order, user_exp_all.
+  Defined.
+  Obligation 3. (* nothing is inferred for [A] *)
+    eapply not_wf_typ_of_no_infer; eassumption.
+  Qed.
+  Obligation 4. (* what is inferred for [A] is not a universe *)
+    match goal with
+    | Ha : _ ⊢a _ ⟹ ?UA, Hn : forall u, ~ is_univ_nf ?UA u |- False =>
+        eapply not_wf_typ_of_infer_not_typ; [ exact Ha | exact Hn | eassumption ]
     end.
+  Qed.
+  (** The inferred universe gives the typing at its own large level. *)
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(unf_large u) *)
+    eapply alg_type_infer_univ_sound'; eassumption.
+  Qed.
 
-  #[tactic="check_exp_tac",derive(equations=no,eliminator=no)]
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_exp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
   | Θ, Ξ, Γ, HΓ, A, M =>
@@ -212,6 +200,23 @@ Section check_exp.
       let*b _ := @type_check (gc_mk Θ Ξ) Γ A _ M _ while _ in
       pureb _
   .
+  (** The type of a well-typed term is a type, so if [A] is not one, the
+      judgment cannot hold. *)
+  Obligation 1. (* [A] is no type *)
+    gen_presups; eapply H; eassumption.
+  Qed.
+  Obligation 2. (* exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i *)
+    eexists; eassumption.
+  Defined.
+  Obligation 3. (* type_check_order M *)
+    apply tc_ti, user_exp_to_type_infer_order, user_exp_all.
+  Defined.
+  Obligation 4. (* the algorithmic check fails *)
+    eapply H, alg_type_check_complete'; eassumption.
+  Qed.
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
+    eapply alg_type_check_sound'; eassumption.
+  Qed.
 
   (** A unit and a module expression, through their algorithmic checks. *)
   Definition check_unit Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :
@@ -246,20 +251,7 @@ End check_exp.
 
 Section check_ctx.
 
-  #[local]
-  Ltac check_ctx_tac :=
-    intros;
-    cbn beta in *;
-    try eassumption;
-    lazymatch goal with
-    | |- ~ ⊢ _ ⍮ _ ⍮ (_ ▹ₘ _) =>
-        let H := fresh "H" in intro H; destruct (ctx_decomp_mod H); contradiction
-    | |- ~ ⊢ _ ⍮ _ ⍮ _ => intro; gen_presups; firstorder (mautosolve 3)
-    | |- ⊢ _ ⍮ _ ⍮ (_ ▹ₘ _) => apply wf_ctx_extend_mod; assumption
-    | _ => mautosolve 3
-    end.
-
-  #[tactic="check_ctx_tac",derive(equations=no,eliminator=no)]
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_ctx Θ Ξ (HΞ : ⊢g Θ ⍮ Ξ) Γ :
     { ⊢ Θ ⍮ Ξ ⍮ Γ } + { ~ ⊢ Θ ⍮ Ξ ⍮ Γ } :=
   | Θ, Ξ, HΞ, ⋅ => pureb _
@@ -276,6 +268,39 @@ Section check_ctx.
       let*b _ := check_unit Θ Ξ Γ HΓ U while _ in
       pureb _
   .
+  (** The empty context is well formed by the global context's. *)
+  Obligation 1. (* ⊢ Θ ⍮ Ξ ⍮ ⋅ *)
+    mauto 2.
+  Qed.
+  (** Each extension fails in two ways: the prefix, or the new entry.  Both
+      contradict a decomposition of the extended context. *)
+  Obligation 2. (* the prefix of an assumption is no context *)
+    eapply H; mauto 2.
+  Qed.
+  Obligation 3. (* the assumption is no type *)
+    destruct (ctx_decomp H0) as [? [? ?]]; eapply H; eassumption.
+  Qed.
+  Obligation 4. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A *)
+    mauto 2.
+  Qed.
+  Obligation 5. (* the prefix of a definition is no context *)
+    eapply H; mauto 2.
+  Qed.
+  Obligation 6. (* the definiens is not of the declared type *)
+    inversion H0; subst; eapply H; eassumption.
+  Qed.
+  Obligation 7. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M *)
+    mauto 2.
+  Qed.
+  Obligation 8. (* the prefix of a module slot is no context *)
+    destruct (ctx_decomp_mod H0); contradiction.
+  Qed.
+  Obligation 9. (* the unit of a module slot is not well formed *)
+    destruct (ctx_decomp_mod H0); contradiction.
+  Qed.
+  Obligation 10. (* ⊢ Θ ⍮ Ξ ⍮ Γ ▹ₘ U *)
+    apply wf_ctx_extend_mod; assumption.
+  Qed.
 
 End check_ctx.
 

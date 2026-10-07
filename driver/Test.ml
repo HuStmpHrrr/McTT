@@ -555,7 +555,7 @@ let%expect_test "ModuleParam.mctt works" =
 let%expect_test "Universes.mctt works" =
   let _ = main_of_example "Universes.mctt" in
   [%expect {|
-    Evaluate id 1l Type@{0l} Nat --> Nat : Type@{0l}
+    Evaluate id 1l Type@0 Nat --> Nat : Type@0
     Evaluate atoms --> fun (x1 : Level)
                            (x2 : Level)
                          -> Type@{maxl (maxl 1l x2) x1}
@@ -563,8 +563,16 @@ let%expect_test "Universes.mctt works" =
                (x2 : Level)
           -> Type@{maxl (maxl 2l (succl x2)) (succl x1)}
     Evaluate self 3 --> 3 : Nat
-    Evaluate Dom --> Nat : Type@{0l}
-    Evaluate Type@{depth 3} --> Type@{3l} : Type@{4l}
+    Evaluate Dom --> Nat : Type@0
+    Evaluate Type@{depth 3} --> Type@3 : Type@4
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@2L --> Type@2L : Type@3L
+    Evaluate Type@2L --> Type@2L : Type@3L
     |}]
 
 (* Levels are first class: a level literal is a term of [Level], [succl] and
@@ -574,18 +582,52 @@ let%expect_test "a level literal is a term of Level" =
   [%expect {| Evaluate maxl 2l (succl 0l) --> 2l : Level |}]
 
 let%expect_test "a small universe at a literal level" =
-  let _ = main_of_body "eval Type@{succl 1l} : Type@{3l}" in
-  [%expect {| Evaluate Type@{succl 1l} --> Type@{2l} : Type@{3l} |}]
+  let _ = main_of_body "eval Type@{succl 1l} : Type@3" in
+  [%expect {| Evaluate Type@{succl 1l} --> Type@2 : Type@3 |}]
 
-(* [Typeω] is the first large universe, above every small one. *)
-let%expect_test "Typeω holds a small universe" =
-  let _ = main_of_body "eval Type@{5l} : Typeω" in
-  [%expect {| Evaluate Type@{5l} --> Type@{5l} : Type@0 |}]
+(* [Type@ω] is the first large universe, above every small one; it has three
+   other spellings, and the higher ones are [Type@{ω+n}] or [Type@nL]. *)
+let%expect_test "the large universe holds a small one" =
+  let _ = main_of_body "eval Type@5 : Type@ω" in
+  [%expect {| Evaluate Type@5 --> Type@5 : Type@ω |}]
+
+let%expect_test "every spelling of a large universe size" =
+  let _ = main_of_body "eval Type@omega : Type@{ω+1}" in
+  [%expect {| Evaluate Type@ω --> Type@ω : Type@1L |}]
+
+let%expect_test "the shorthand for a large universe size" =
+  let _ = main_of_body "eval Type@{omega} : Type@1L" in
+  [%expect {| Evaluate Type@ω --> Type@ω : Type@1L |}]
+
+let%expect_test "a large universe above the first" =
+  let _ = main_of_body "eval Type@{ω+2}" in
+  [%expect {| Evaluate Type@2L --> Type@2L : Type@3L |}]
+
+(* A bare numeral is a small size, so a large universe is not below it. *)
+let%expect_test "a large universe is not in a small one" =
+  let _ = main_of_body "eval Type@ω : Type@3" in
+  [%expect {| Error: Type@ω is not of type Type@3 |}]
+
+(* A large size is a size only: it is not a term of [Level]. *)
+let%expect_test "a large size is not a level" =
+  let _ = main_of_body "eval 1L : Level" in
+  [%expect {|
+    Error: on "1L" (at line 1, column 24 - line 1, column 26): This token is
+      invalid for the beginning of a program.
+    |}]
+
+(* An unbraced [+] is rejected. *)
+let%expect_test "an unbraced omega offset is a syntax error" =
+  let _ = main_of_body "eval Type@ω+1" in
+  [%expect {|
+    Error: on "+" (at line 1, column 31 - line 1, column 32): Expected ":"
+      followed by the type to check against, or the next command.
+    |}]
 
 (* A universe is not in itself. *)
 let%expect_test "a small universe is not in itself" =
-  let _ = main_of_body "eval Type@{1l} : Type@{1l}" in
-  [%expect {| Error: Type@{1l} is not of type Type@{1l} |}]
+  let _ = main_of_body "eval Type@1 : Type@1" in
+  [%expect {| Error: Type@1 is not of type Type@1 |}]
 
 (* A level is not a type, and a type is not a level. *)
 let%expect_test "a level is not a type" =

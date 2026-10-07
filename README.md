@@ -155,12 +155,20 @@ term = 'forall' , {parameter} , '->' , term
      (* natural number eliminator *)
      | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end';
 
-            (* large universe n, above every small one *)
+            (* small universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
-            (* the first large universe, Type@0 *)
-            | 'Typeω'
+            (* the same, written with the level literal *)
+            | 'Type', '@' , nat , 'l'
             (* small universe at the level denoted by a term *)
             | 'Type' , '@' , '{' , term , '}'
+            (* the first large universe, above every small one *)
+            | 'Type' , '@' , ( 'ω' | 'omega' )
+            | 'Type' , '@' , '{' , ( 'ω' | 'omega' ) , '}'
+            (* the large universe ω+nat; only the braced form takes a '+' *)
+            | 'Type' , '@' , '{' , ( 'ω' | 'omega' ) , '+' , nat , '}'
+            (* its shorthand: a large universe size, never a level *)
+            | 'Type' , '@' , nat , 'L'
+            | 'Type' , '@' , '{' , nat , 'L' , '}'
             (* the type of universe levels *)
             | 'Level'
             (* a universe level literal *)

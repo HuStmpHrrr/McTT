@@ -80,8 +80,12 @@ let string_of_qpath (fp : string list) (ip : string list) : string =
 let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
-  | Cst.Coq_typ i -> fprintf f "Type@%d" i
-  (* A small universe, at any level term: its surface syntax [Type@{t}]. *)
+  (* A universe prints at its shortest spelling: a large one as [Type@ω] or
+     [Type@<n>L], a small one at a literal level as [Type@<n>] and at any
+     other level as [Type@{t}]. *)
+  | Cst.Coq_typ 0 -> fprintf f "Type@@ω"
+  | Cst.Coq_typ i -> fprintf f "Type@@%dL" i
+  | Cst.Coq_suniv (Cst.Coq_llit n) -> fprintf f "Type@@%d" n
   | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_obj_prec 0) e
   | Cst.Coq_level -> fprintf f "Level"
   | Cst.Coq_llit n -> fprintf f "%dl" n

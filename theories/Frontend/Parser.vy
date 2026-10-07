@@ -19,13 +19,15 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 
 %token <loc*string> VAR
 %token <loc*nat> INT
-%token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE TYPEW ZERO LET IN (* keywords; [TYPEW] is [Typeω] *)
+%token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> LEVEL SUCCL MAXL (* universe levels *)
 %token <loc*nat> LLIT (* a level literal, [<n>l] *)
+%token <loc*nat> LLITL (* a large universe size, [<n>L] *)
+%token <loc> OMEGA (* the size ω, written [ω] or [omega] *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
-%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
+%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
 %type <Cst.obj> obj app_obj atomic_obj
@@ -216,11 +218,18 @@ let app_obj :=
   | ~ = atomic_obj; <>
 
 let atomic_obj :=
-  (* [Type@n] is the large universe [Typeω+n], and [Typeω] is [Type@0];
-     [Type@{M}] is the small universe at the level [M]. *)
-  | TYPE; "@"; n = INT; { Cst.typ (snd n) }
-  | TYPEW; { Cst.typ 0 }
+  (* A universe is written [Type@] its size.  A small size is a level: the
+     literal [<n>l], a bare numeral [n] for it, or any level term in braces.
+     A large size is [ω] (also spelled [omega]), [ω+n] in braces, or its
+     shorthand [<n>L].  Only the braced forms admit a [+]. *)
+  | TYPE; "@"; n = INT; { Cst.suniv (Cst.llit (snd n)) }
+  | TYPE; "@"; n = LLIT; { Cst.suniv (Cst.llit (snd n)) }
   | TYPE; "@"; "{"; m = obj; "}"; { Cst.suniv m }
+  | TYPE; "@"; n = LLITL; { Cst.typ (snd n) }
+  | TYPE; "@"; "{"; n = LLITL; "}"; { Cst.typ (snd n) }
+  | TYPE; "@"; OMEGA; { Cst.typ 0 }
+  | TYPE; "@"; "{"; OMEGA; "}"; { Cst.typ 0 }
+  | TYPE; "@"; "{"; OMEGA; "+"; n = INT; "}"; { Cst.typ (snd n) }
 
   | LEVEL; { Cst.level }
   | n = LLIT; { Cst.llit (snd n) }
