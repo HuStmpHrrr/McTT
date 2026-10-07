@@ -96,6 +96,114 @@ Proof.
   - mauto 4.
 Qed.
 
+(** The same lemmas for [glu_lvl], which is the readback clause of a neutral at
+    [Level]. *)
+Lemma glu_lvl_escape : forall Γ M a,
+    Dom a ≈ a ∈ per_lvl ->
+    glu_lvl Γ M a ->
+    ⊢ Γ ->
+    Γ ⊢ M : Level.
+Proof.
+  intros * Hper H HΓ.
+  assert (Γ ⊢k wk_id : Γ) by mauto 2.
+  apply per_lvl_then_per_top in Hper; specialize (Hper (length Γ)) as [M' []].
+  clear_dups.
+  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : Level) as HM by mauto.
+  rewrite exp_wk_id in HM.
+  gen_presups.
+  mauto.
+Qed.
+
+Hint Resolve glu_lvl_escape : mctt.
+
+Lemma glu_lvl_resp_ctxsub : forall Γ M a Δ,
+    glu_lvl Γ M a ->
+    Δ ⊆ Γ ->
+    glu_lvl Δ M a.
+Proof.
+  intros * H ? Δ' φ L **; mauto 4.
+Qed.
+
+Hint Resolve glu_lvl_resp_ctxsub : mctt.
+
+Lemma glu_lvl_resp_exp_eq : forall Γ M a,
+    glu_lvl Γ M a ->
+    forall M',
+    Γ ⊢ M ≈ M' : Level ->
+    glu_lvl Γ M' a.
+Proof.
+  intros * H * ? Δ φ L **.
+  transitivity M[φ]ʷ; mauto 4.
+Qed.
+
+#[local]
+Hint Resolve glu_lvl_resp_exp_eq : mctt.
+
+(** ** Cumulativity of an Element of a Small Universe
+
+    An element of a small universe is a type of that universe [Typeˢ⟨t⟩], and
+    its type-level gluing is at the ambient large universe.  These two lemmas
+    are where the gluing relies on cumulativity ([wf_subtyp_small_large]):
+    they move the element's typing and its equations from [Typeˢ⟨t⟩] to every
+    large universe. *)
+Lemma suniv_elem_large : forall Γ M A t j k,
+    Γ ⊢ M : A ->
+    Γ ⊢ A ≈ Typeˢ⟨t⟩ : Type@j ->
+    Γ ⊢ M : Type@k.
+Proof.
+  intros * HM HA.
+  assert (Γ ⊢ Typeˢ⟨t⟩ : Type@j) by (gen_presups; eassumption).
+  assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption).
+  eapply wf_exp_subtyp'; [ eapply wf_conv'; eassumption | apply wf_subtyp_small_large; mauto 3 ].
+Qed.
+
+Lemma suniv_elem_eq_large : forall Γ M M' A t j k,
+    Γ ⊢ M ≈ M' : A ->
+    Γ ⊢ A ≈ Typeˢ⟨t⟩ : Type@j ->
+    Γ ⊢ M ≈ M' : Type@k.
+Proof.
+  intros * HM HA.
+  assert (Γ ⊢ Typeˢ⟨t⟩ : Type@j) by (gen_presups; eassumption).
+  assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption).
+  eapply wf_exp_eq_subtyp';
+    [ eapply wf_exp_eq_conv'; eassumption | apply wf_subtyp_small_large; mauto 3 ].
+Qed.
+
+(** A glued small universe is the universe at a level term glued to the level
+    value.  As an introduction lemma this is what every proof that moves such
+    a type needs: the term is kept and the equation composed, and it is a hint
+    so that the shared scripts of the gluing lemmas reach it. *)
+Lemma suniv_glu_typ_pred_intro : forall l U Γ A t,
+    glu_lvl Γ t l ->
+    Γ ⊢ A ≈ Typeˢ⟨t⟩ : U ->
+    suniv_glu_typ_pred l U Γ A.
+Proof. intros; eexists; split; eassumption. Qed.
+
+(** It is deliberately not a hint: its conclusion is an existential whose
+    witness the search cannot guess, and as a hint it also fires on the goals
+    of the other universe clauses, whose predicate is an evar. *)
+
+Lemma glu_lvl_readback : forall Γ M a,
+    glu_lvl Γ M a ->
+    forall Δ φ M',
+      Δ ⊢k φ : Γ ->
+      Rnf ⇓ Levelᵈ a in length Δ ↘ M' ->
+      Δ ⊢ M[φ]ʷ ≈ M' : Level.
+Proof.
+  intros * H; exact H.
+Qed.
+
+(** A literal level is glued to its value: its readback is itself. *)
+Lemma glu_lvl_lit : forall Γ n,
+    ⊢ Γ ->
+    glu_lvl Γ 𝕃@n (dlvl_lit n).
+Proof.
+  intros * HΓ Δ φ L Hφ Hr.
+  assert (⊢ Δ) by (eapply kripke_dom; eassumption).
+  assert (L = nf_lvl_of (lvl_lit n)) as -> by (eapply functional_read_nf; [ exact Hr | apply read_nf_dlvl_lit ]).
+  cbn; mauto 3.
+Qed.
+
 (** The same lemmas for [glu_False], which is the neutral case of
     [glu_nat] at [⊥]. *)
 Lemma glu_False_per_ne : forall Γ M a,
@@ -166,6 +274,13 @@ Qed.
 End Fixed_GCtx.
 
 #[export]
+Hint Resolve glu_lvl_escape glu_lvl_resp_ctxsub : mctt.
+(** Unlike [glu_nat], [glu_lvl] has one constructor, so [split] breaks a goal
+    [glu_lvl Γ M m] into its premises; the readback clause is then
+    [glu_lvl_readback], and it is a hint so that the shared scripts reach it. *)
+#[local]
+Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback : mctt.
+#[export]
 Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
 #[local]
 Hint Resolve glu_False_per_ne glu_False_resp_exp_eq : mctt.
@@ -195,7 +310,7 @@ Lemma glu_univ_elem_univ_lvl_gen : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
       Γ ⊢ A ® P ->
-      Γ ⊢ A : univ_tm i.
+      Γ ⊢ A : Type@(ulvl i).
 Proof.
   simpl.
   glu_univ_elem_induction1; intros;
@@ -203,7 +318,7 @@ Proof.
 Qed.
 
 Lemma glu_univ_elem_univ_lvl : forall i U P El a,
-    univ_tm i = U ->
+    Type@(ulvl i) = U ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
       Γ ⊢ A ® P ->
@@ -214,12 +329,16 @@ Lemma glu_univ_elem_typ_resp_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A A',
       Γ ⊢ A ® P ->
-      Γ ⊢ A ≈ A' : univ_tm i ->
+      Γ ⊢ A ≈ A' : Type@(ulvl i) ->
       Γ ⊢ A' ® P.
 Proof.
   simpl.
-  glu_univ_elem_induction1; intros;
-    simpl_glu_rel; mauto 4.
+  glu_univ_elem_induction1; intros; simpl_glu_rel;
+    (** A small universe keeps the level term it is indexed by, and composes
+        the equation with the one of the two types. *)
+    try solve [ destruct_conjs; eexists; split;
+                [ eassumption | transitivity A; mauto 4 ] ];
+    mauto 4.
 
   split; [trivial |].
   intros.
@@ -227,7 +346,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (P Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (univ_tm i) ==> iff as glu_univ_elem_typ_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> iff as glu_univ_elem_typ_morphism_iff1.
 Proof.
   split; intros; eapply glu_univ_elem_typ_resp_exp_eq; mauto 2.
 Qed.
@@ -236,27 +355,30 @@ Lemma glu_univ_elem_trm_resp_typ_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ M A m A',
       Γ ⊢ M : A ® m ∈ El ->
-      Γ ⊢ A ≈ A' : univ_tm i ->
+      Γ ⊢ A ≈ A' : Type@(ulvl i) ->
       Γ ⊢ M : A' ® m ∈ El.
 Proof.
   simpl.
   glu_univ_elem_induction1; intros;
-    simpl_glu_rel; repeat split; intros; mauto 3.
+    simpl_glu_rel; repeat split; intros;
+    (** A small universe keeps the level term it is indexed by, and composes
+        the equation with the one of the two types. *)
+    try solve [ eexists; split; [ eassumption | transitivity A; mauto 4 ] ];
+    mauto 3.
   all: try solve [ firstorder ].
   all: try solve [ do 2 eexists; split; eassumption ].
-  all: try solve [ eapply wf_conv_univ; eassumption ].
+  all: try solve [ eapply wf_conv'; eassumption ].
   all: try solve [ transitivity A[φ]ʷ; mauto 4 ].
-  all: try solve [ assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm i) by mauto 3;
-                   eapply wf_exp_eq_conv_univ; eassumption ].
-  (** The [Π] case and the readback of a neutral both move the type by
-      conversion in the ambient universe. *)
-  1:{ econstructor; mauto 3; eapply wf_conv_univ; eassumption. }
-  1:{ assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm i) by mauto 2.
-      eapply wf_exp_eq_conv_univ; [ eauto | eassumption ]. }
+  (** The readback clauses of a neutral and of an element of a small universe
+      move their type by conversion in the ambient universe. *)
+  all: try solve [ assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) by mauto 3;
+                   eapply wf_exp_eq_conv'; [ eauto | eassumption ] ].
+  (** The [Π] case moves the type the same way. *)
+  econstructor; mauto 3; eapply wf_conv'; eassumption.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (El Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (univ_tm i) ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_typ_exp_eq;
@@ -272,9 +394,14 @@ Lemma glu_univ_elem_typ_resp_ctxsub : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros;
-    simpl_glu_rel; mauto 3.
+    simpl_glu_rel;
+    (** A small universe: its level term and its equation both move to the
+        refined context. *)
+    try solve [ eexists; split;
+                [ eapply glu_lvl_resp_ctxsub; eassumption | mauto 3 ] ];
+    mauto 3.
 
-  - assert (Δ ⊢ IT : univ_tm i) by mauto 3.
+  - assert (Δ ⊢ IT : Type@(ulvl i)) by mauto 3.
     assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_univ).
     econstructor; mauto 3; intros; mauto 4.
 
@@ -291,12 +418,20 @@ Proof.
   simpl.
   glu_univ_elem_induction1; intros;
     simpl_glu_rel.
+  (** An element of a small universe: its type's level term moves to the
+      refined context too. *)
+  all: try solve [ repeat apply conj;
+                   [ mauto 3
+                   | eexists; split; [ eapply glu_lvl_resp_ctxsub; eassumption | mauto 3 ]
+                   | do 2 eexists; split;
+                     [ eassumption | eapply glu_univ_elem_typ_resp_ctxsub; eassumption ]
+                   | intros; mauto 4 ] ].
   all: try solve [ repeat apply conj; [ mauto 3 | mauto 3 | ];
                    do 2 eexists; split; [ eassumption | eapply glu_univ_elem_typ_resp_ctxsub; eassumption ] ].
   all: try solve [ split; mauto 3 ].
   (** A [Π]: the context refinement extends over the domain.  A neutral: its
       readback clause is transported along it. *)
-  1:{ assert (Δ ⊢ IT : univ_tm i) by mauto 3.
+  1:{ assert (Δ ⊢ IT : Type@(ulvl i)) by mauto 3.
       assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_univ).
       econstructor; mauto 3; intros; mauto 4. }
   1:{ econstructor; [ split | | | ]; mauto 3; intros; mauto 4. }
@@ -333,6 +468,20 @@ Proof.
 Qed.
 
 Hint Resolve glu_nat_resp_wk : mctt.
+
+Lemma glu_lvl_resp_wk : forall Γ M a,
+    glu_lvl Γ M a ->
+    forall Δ φ,
+      Δ ⊢k φ : Γ ->
+      glu_lvl Δ M[φ]ʷ a.
+Proof.
+  intros * H * ? Δ' ψ M' **.
+  rewrite exp_wk_wk.
+  assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
+  mauto 4.
+Qed.
+
+Hint Resolve glu_lvl_resp_wk : mctt.
 
 Lemma glu_False_resp_wk : forall Γ M a,
     glu_False Γ M a ->
@@ -390,7 +539,7 @@ Proof.
   glu_univ_elem_induction1; intros;
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H);
     simpl_glu_rel;
-    try fold (per_univ j m m); try fold (per_univ (us j) m m);
+    try fold (per_univ j m m); try fold (per_univ (us (dlvl_real l)) m m);
     mauto 4.
 
   intros.
@@ -421,7 +570,7 @@ Proof.
 Qed.
 
 Lemma glu_univ_elem_trm_univ_lvl : forall i U P El a,
-    univ_tm i = U ->
+    Type@(ulvl i) = U ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ M A m,
       Γ ⊢ M : A ® m ∈ El ->
@@ -442,11 +591,24 @@ Proof.
     simpl_glu_rel;
     repeat split; mauto 3.
 
-  - repeat eexists; try split; eauto.
-    eapply glu_univ_elem_typ_resp_exp_eq; mauto.
+  (** The type of the element is unchanged, so a small universe's level term
+      and its equation carry over. *)
+  all: try solve [ apply suniv_glu_typ_pred_intro; eassumption ].
 
   - repeat eexists; try split; eauto.
-    eapply glu_univ_elem_typ_resp_exp_eq; mauto.
+    eapply glu_univ_elem_typ_resp_exp_eq;
+      [ eassumption | eassumption | eapply wf_exp_eq_conv'; [ eassumption |] ].
+    eassumption.
+
+  - (** An element of a small universe: its type-level gluing moves along
+        the equation lifted to the ambient [Type@0] by cumulativity, and its
+        readback clause by transitivity. *)
+    repeat eexists; try split; eauto.
+    eapply glu_univ_elem_typ_resp_exp_eq;
+      [ eassumption | eassumption | eapply suniv_elem_eq_large; eassumption ].
+
+  - intros; transitivity M[φ]ʷ; [| eauto ].
+    symmetry; mauto 3.
 
   - econstructor; eauto.
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
@@ -476,8 +638,8 @@ Qed.
 
 Lemma glu_univ_elem_core_univ' : forall j i typ_rel el_rel,
     uidx_lt (ul j) i ->
-    (typ_rel <∙> univ_glu_typ_pred j (univ_tm i)) ->
-    (el_rel <∙> univ_glu_exp_pred j (univ_tm i)) ->
+    (typ_rel <∙> univ_glu_typ_pred j (Type@(ulvl i))) ->
+    (el_rel <∙> univ_glu_exp_pred j (Type@(ulvl i))) ->
     DG 𝕌@j ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
 Proof.
   intros.
@@ -486,11 +648,12 @@ Qed.
 
 Hint Resolve glu_univ_elem_core_univ' : mctt.
 
-Lemma glu_univ_elem_core_suniv' : forall j i typ_rel el_rel,
-    uidx_lt (us j) i ->
-    (typ_rel <∙> suniv_glu_typ_pred j (univ_tm i)) ->
-    (el_rel <∙> suniv_glu_exp_pred j (univ_tm i)) ->
-    DG 𝕌ˢ@j ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
+Lemma glu_univ_elem_core_suniv' : forall l i typ_rel el_rel,
+    Dom l ≈ l ∈ per_lvl ->
+    uidx_lt (us (dlvl_real l)) i ->
+    (typ_rel <∙> suniv_glu_typ_pred l (Type@(ulvl i))) ->
+    (el_rel <∙> suniv_glu_exp_pred l (Type@(ulvl i))) ->
+    DG 𝕌ˢ@l ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
 Proof.
   intros.
   unshelve basic_glu_univ_elem_econstructor; mautosolve.
@@ -501,11 +664,12 @@ Hint Resolve glu_univ_elem_core_suniv' : mctt.
 (** The gluing of a universe at either tier, in one statement. *)
 Lemma glu_univ_elem_univ_at : forall {u i},
     uidx_lt u i ->
-    DG univ_val u ∈ glu_univ_elem i ↘ univ_glu_typ_pred_at u (univ_tm i) ↘ univ_glu_exp_pred_at u (univ_tm i).
+    DG ulvl_val u ∈ glu_univ_elem i ↘ univ_glu_typ_pred_at u (Type@(ulvl i)) ↘ univ_glu_exp_pred_at u (Type@(ulvl i)).
 Proof.
-  intros [n | j] * Hlt;
-    [ apply glu_univ_elem_core_suniv' | apply glu_univ_elem_core_univ' ];
-    [ exact Hlt | reflexivity | reflexivity | exact Hlt | reflexivity | reflexivity ].
+  intros [n | j] * Hlt; cbn [ulvl_val univ_glu_typ_pred_at univ_glu_exp_pred_at].
+  - apply glu_univ_elem_core_suniv';
+      [ apply per_lvl_lit | exact Hlt | reflexivity | reflexivity ].
+  - apply glu_univ_elem_core_univ'; [ exact Hlt | reflexivity | reflexivity ].
 Qed.
 
 End Fixed_GCtx.
@@ -513,7 +677,7 @@ End Fixed_GCtx.
 #[export] Existing Instance glu_univ_elem_typ_morphism_iff1_Proper.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff1_Proper.
 #[export]
-Hint Resolve glu_nat_resp_wk glu_False_resp_wk : mctt.
+Hint Resolve glu_nat_resp_wk glu_lvl_resp_wk glu_False_resp_wk : mctt.
 #[export]
 Hint Resolve glu_univ_elem_per_univ : mctt.
 #[export] Existing Instance glu_univ_elem_trm_morphism_iff3_Proper.
@@ -724,8 +888,8 @@ Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a ρ B in_rel P El},
             ⟦ B ⟧ ρ ↦ c ↘ b ->
             DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
         DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
-        (P <∙> pi_glu_typ_pred (univ_tm i) in_rel IP IEl OP) /\
-        (El <∙> pi_glu_exp_pred (univ_tm i) in_rel IP IEl elem_rel OEl).
+        (P <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP) /\
+        (El <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl).
 Proof.
   intros *.
   simpl.
@@ -794,8 +958,8 @@ Lemma glu_univ_elem_pi_clean_inversion2 : forall {i a ρ B in_rel IP IEl P El},
         ⟦ B ⟧ ρ ↦ c ↘ b ->
         DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
       DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
-      (P <∙> pi_glu_typ_pred (univ_tm i) in_rel IP IEl OP) /\
-      (El <∙> pi_glu_exp_pred (univ_tm i) in_rel IP IEl elem_rel OEl).
+      (P <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP) /\
+      (El <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl).
 Proof.
   intros *.
   simpl.
@@ -821,6 +985,39 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
+Lemma per_lvl_read_left : forall d d' s L, Dom d ≈ d' ∈ per_lvl -> Rnf ⇓ Levelᵈ d' in s ↘ L -> Rnf ⇓ Levelᵈ d in s ↘ L.
+Proof.
+  intros * Hd%per_lvl_then_per_top Hr; destruct (Hd s) as (L' & HL & HL').
+  pose proof (functional_read_nf _ _ _ _ HL' Hr) as ->; exact HL.
+Qed.
+
+Lemma glu_lvl_resp_per : forall Γ M m, glu_lvl Γ M m -> forall m', Dom m ≈ m' ∈ per_lvl -> glu_lvl Γ M m'.
+Proof.
+  intros * H * Hm Δ φ L **.
+  eapply H; [ eassumption | eapply per_lvl_read_left; eassumption ].
+Qed.
+
+(** Related levels give equivalent small-universe predicates: a level term
+    glued to one is glued to the other, and the two have the same realiser,
+    which indexes the elements. *)
+Lemma suniv_glu_typ_pred_resp_per : forall l l' U,
+    Dom l ≈ l' ∈ per_lvl ->
+    suniv_glu_typ_pred l U <∙> suniv_glu_typ_pred l' U.
+Proof.
+  intros * Hl Γ A; cbn; split; intros [t [Ht Heq]]; exists t; split; try assumption;
+    eapply glu_lvl_resp_per; [ eassumption | assumption | eassumption | symmetry; assumption ].
+Qed.
+
+Lemma suniv_glu_exp_pred_resp_per : forall l l' U,
+    Dom l ≈ l' ∈ per_lvl ->
+    suniv_glu_exp_pred l U <∙> suniv_glu_exp_pred l' U.
+Proof.
+  intros * Hl Γ A M m; cbn.
+  rewrite (per_lvl_real _ _ Hl).
+  pose proof (suniv_glu_typ_pred_resp_per l l' U Hl Γ A) as Ht; cbn in Ht.
+  split; intros (? & HA & ? & ?); repeat split; try assumption; apply Ht; assumption.
+Qed.
+
 Lemma glu_univ_elem_resp_per_univ : forall i a a' P El,
     Dom a ≈ a' ∈ per_univ i ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -835,6 +1032,16 @@ Proof.
     invert_glu_univ_elem Horig; glu_univ_elem_econstructor; try eassumption; mauto;
     handle_per_univ_elem_irrel;
     handle_functional_glu_univ_elem.
+  (** A small universe at a related level: the same realiser, and equivalent
+      predicates. *)
+  all: try match goal with
+         | H : per_lvl ?l ?l' |- uidx_lt (us (dlvl_real ?l')) _ =>
+             rewrite <- (per_lvl_real _ _ H); assumption
+         | H : per_lvl ?l ?l' |- suniv_glu_typ_pred ?l _ <∙> suniv_glu_typ_pred ?l' _ =>
+             apply suniv_glu_typ_pred_resp_per; exact H
+         | H : per_lvl ?l ?l' |- _ <∙> suniv_glu_exp_pred ?l' _ =>
+             exact (suniv_glu_exp_pred_resp_per _ _ _ H)
+         end.
   - intros.
     match_by_head per_univ_elem ltac:(fun H => directed invert_per_univ_elem H).
     destruct_rel_mod_eval.
@@ -901,6 +1108,15 @@ Proof.
   clear Hper; intros a0 Hper.
   per_univ_elem_induction Hper; intros;
     try solve [do 2 eexists; unshelve (glu_univ_elem_econstructor; try reflexivity; subst; trivial)].
+  (** A small universe at the right-hand level, which has the realiser of the
+      left-hand one. *)
+  all: try match goal with
+         | H : per_lvl ?l ?l' |- exists _ _, glu_univ_elem _ _ _ 𝕌ˢ@?l' =>
+             do 2 eexists; apply glu_univ_elem_core_suniv';
+               [ etransitivity; [ symmetry |]; exact H
+               | rewrite <- (per_lvl_real _ _ H); assumption
+               | reflexivity | reflexivity ]
+         end.
 
   - destruct_conjs.
     do 2 eexists.
@@ -963,6 +1179,23 @@ Ltac saturate_glu_info :=
   clear_dups;
   repeat saturate_glu_info1.
 
+(** The type-level gluing of a small universe along a weakening [φ]: its level
+    term is weakened with the type. *)
+Ltac suniv_glu_typ_pred_wk :=
+  match goal with
+  | H : exists t, glu_lvl ?Γ t ?l /\ _,
+      Hφ : ?Δ ⊢k ?φ : ?Γ
+    |- exists t, glu_lvl ?Δ t ?l /\ _ =>
+      let t := fresh "t" in
+      let Heq := fresh "Heq" in
+      destruct H as [t [? Heq]]; exists t[φ]ʷ; split;
+      [ eapply glu_lvl_resp_wk; eassumption
+      | match type of Heq with
+        | wf_exp_eq ?T ?X _ ?U ?A _ =>
+            assert (wf_exp_eq T X Δ U A[φ]ʷ (Typeˢ⟨t⟩)[φ]ʷ) by mauto 2; eassumption
+        end ]
+  end.
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
@@ -984,8 +1217,10 @@ Proof.
     handle_functional_glu_univ_elem;
     simpl in *;
     try solve [mauto 2].
+  (** A small universe: the level term weakens with the type. *)
+  all: try solve [ suniv_glu_typ_pred_wk ].
   - simpl_glu_rel.
-    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : univ_tm i) as HAeq by mauto 2.
+    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Type@(ulvl i)) as HAeq by mauto 2.
     rewrite exp_wk_pi in HAeq.
     econstructor; [ eassumption | mauto 2 | mauto 2 | | ]; intros.
     + rewrite exp_wk_wk; mauto 4.
@@ -1013,9 +1248,17 @@ Proof.
     simpl in *;
     destruct_all.
   all: try solve [ repeat eexists; mauto 2; eapply glu_univ_elem_typ_monotone; eauto ].
-  all: try solve [ split; mauto 2 ].
+  (** An element of a small universe: its type's level term weakens with it,
+      and its readback clause composes the two weakenings. *)
+  all: try solve [ repeat apply conj;
+                   [ mauto 2
+                   | eexists; split; [ eapply glu_lvl_resp_wk; eassumption | mauto 2 ]
+                   | do 2 eexists; split;
+                     [ eassumption | eapply glu_univ_elem_typ_monotone; eassumption ]
+                   | intros; rewrite !exp_wk_wk; mauto 3 ] ].
+  all: try solve [ repeat split; mauto 2 ].
   - simpl_glu_rel.
-    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : univ_tm i) as HAeq by mauto 2.
+    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Type@(ulvl i)) as HAeq by mauto 2.
     rewrite exp_wk_pi in HAeq.
     econstructor; [ mauto 2 | eassumption | eassumption | mauto 2 | mauto 2 | | ]; intros.
     + rewrite exp_wk_wk; mauto 4.
@@ -1064,13 +1307,13 @@ Qed.
 Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Add Parametric Morphism i a Γ : (glu_elem_bot i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (univ_tm i) ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm i) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
@@ -1087,13 +1330,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_elem_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (univ_tm i) ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm i) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
@@ -1110,13 +1353,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_typ_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (univ_tm i) ==> iff as glu_typ_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> iff as glu_typ_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3;
     try (gen_presup HAA'; eassumption);
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm i) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
@@ -1157,6 +1400,7 @@ Proof.
   pose proof (functional_read_ne _ _ _ _ HL' Hr) as ->; exact HL.
 Qed.
 
+(** The same for levels, whose readback is at the type [Level]. *)
 (** The same for types: related types read back equally, so a readback of the
     right one is one of the left. *)
 Lemma per_top_typ_read_left : forall d d' s W, Dom d ≈ d' ∈ per_top_typ -> Rtyp d' in s ↘ W -> Rtyp d in s ↘ W.
@@ -1188,7 +1432,7 @@ Lemma glu_univ_elem_trm_resp_per_elem : forall i P El a,
 Proof.
   simpl.
   glu_univ_elem_induction1; intros.
-  6:{ handle_per_univ_elem_irrel.
+  7:{ handle_per_univ_elem_irrel.
       apply_predicate_equivalence.
       destruct_by_head pi_glu_exp_pred.
       assert (PER elem_rel) by (eapply per_elem_PER; eassumption).
@@ -1209,10 +1453,25 @@ Proof.
   - repeat split; try assumption.
     destruct (proj1 (H3 m m') H4) as [R' HR'].
     exists H2, H5; split; [ eapply glu_univ_elem_resp_per_univ; [ exists R'; exact HR' | exact H6 ] | exact H7 ].
-  (** A small universe: as the large one. *)
-  - repeat split; try assumption.
-    destruct (proj1 (H3 m m') H4) as [R' HR'].
-    exists H2, H5; split; [ eapply glu_univ_elem_resp_per_univ; [ exists R'; exact HR' | exact H6 ] | exact H7 ].
+  (** A small universe: as the large one, and the readback clause moves along
+      the two types, which read back equally. *)
+  - match goal with E : elem_rel <~> _, Hm : elem_rel m m' |- _ =>
+      destruct (proj1 (E m m') Hm) as [R' HR'] end.
+    repeat split; try assumption.
+    + eexists; split; eassumption.
+    + do 2 eexists; split;
+        [ eapply glu_univ_elem_resp_per_univ; [ exists R'; exact HR' | eassumption ] | eassumption ].
+    + intros * Hk Hr.
+      match goal with Hrb : forall _ _ _, _ -> Rtyp m in _ ↘ _ -> _ |- _ => apply Hrb; [ exact Hk |] end.
+      eapply per_top_typ_read_left; [ eapply per_univ_then_per_top_typ; exact HR' | exact Hr ].
+  (** [Level]: the readback moves along the level PER. *)
+  - assert (Dom m ≈ m' ∈ per_lvl) as Hmm'
+      by (match goal with E : _ <~> per_lvl |- _ => apply E; eassumption end).
+    repeat split;
+      [ assumption
+      | eapply per_lvl_trans; [ eapply per_lvl_sym; exact Hmm' | exact Hmm' ]
+      | eapply glu_lvl_resp_per; eassumption ].
+  (** [ℕ] *)
   - split; [ assumption | eapply glu_nat_resp_per; [ eassumption | apply H1; eassumption ] ].
   - split; assumption.
   - split; [ assumption | eapply glu_False_resp_per; [ eassumption | apply H1; eassumption ] ].

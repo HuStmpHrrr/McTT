@@ -7,6 +7,7 @@ From Mctt.Core.Syntactic Require Import Members.
 Reserved Notation "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
+Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 
 Generalizable All Variables.
 
@@ -19,6 +20,17 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_stype :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ 𝕌ˢ@n a in Θ ⍮ Ξ ⍮ s ↘ A )
+(** A level reads back canonically: its atoms are read, then sorted and
+    merged, and a dominated constant is dropped ([lvl_canon]).  Evaluation
+    flattens only, so this is where levels equal by the level equations become
+    the same normal form.  A neutral level is the single atom at offset [0],
+    which is already canonical. *)
+| read_nf_lvl :
+  `( Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
+     Rnf ⇓ Levelᵈ (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
+| read_nf_lvl_neut :
+  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rnf ⇓ Levelᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ 0 (la_cons 0 M la_nil) )
 | read_nf_zero :
   `( Rnf ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
 | read_nf_succ :
@@ -86,8 +98,15 @@ where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_s
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
   `( Rtyp 𝕌@i in Θ ⍮ Ξ ⍮ s ↘ Typeⁿ@i )
+(** A small universe reads back as the universe at the canonical form its
+    level reads back as: that readback is always of the shape [nf_lvl_of L]
+    (see [Core.Semantic.Levels.dlvl_canon_of_read]), and the universe takes
+    the same canonical level. *)
 | read_typ_suniv :
-  `( Rtyp 𝕌ˢ@n in Θ ⍮ Ξ ⍮ s ↘ Typeˢⁿ@n )
+  `( Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of L ->
+     Rtyp 𝕌ˢ@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
+| read_typ_level :
+  `( Rtyp Levelᵈ in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ )
 | read_typ_nat :
   `( Rtyp ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
 | read_typ_True :
@@ -107,15 +126,26 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
   `( Rne b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
+(** The atoms of a level, read one by one. *)
+with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * domain_ne) -> lvl_atoms -> Prop :=
+| read_la_nil :
+  `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ la_nil )
+| read_la_cons :
+  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
+     Rla (k, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k M ys )
+where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : type_scope
 .
 
 Scheme read_nf_mut_ind := Induction for read_nf Sort Prop
 with read_ne_mut_ind := Induction for read_ne Sort Prop
-with read_typ_mut_ind := Induction for read_typ Sort Prop.
+with read_typ_mut_ind := Induction for read_typ Sort Prop
+with read_la_mut_ind := Induction for read_la Sort Prop.
 Combined Scheme read_mut_ind from
   read_nf_mut_ind,
   read_ne_mut_ind,
-  read_typ_mut_ind.
+  read_typ_mut_ind,
+  read_la_mut_ind.
 
 #[export]
-Hint Constructors read_nf read_ne read_typ : mctt.
+Hint Constructors read_nf read_ne read_typ read_la : mctt.

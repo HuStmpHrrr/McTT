@@ -29,7 +29,7 @@ Section Fixed_GCtx.
 
 
 Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
-    Γ ⊨ A ≈ A' : univ_tm u ->
+    Γ ⊨ A ≈ A' : ulvl_tm u ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨s σ ≈ σ' : Γ ->
@@ -45,11 +45,11 @@ Proof.
   destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
   destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
   simpl in Hchain; destruct Hchain as [? [? ?]].
-  destruct u; cbn [univ_tm] in *; invert_rel_typ_body; eassumption.
+  destruct u; cbn [ulvl_tm] in *; invert_rel_typ_body; eassumption.
 Qed.
 
 Corollary rel_exp_of_univ_inversion_simple : forall {Γ A A' u},
-    Γ ⊨ A ≈ A' : univ_tm u ->
+    Γ ⊨ A ≈ A' : ulvl_tm u ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_rel ->
@@ -79,15 +79,15 @@ Lemma rel_exp_of_univ : forall {Γ A A' u},
           ⟦ σ ⟧s ρ ↘ ρσ ->
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
           rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u)) ->
-    Γ ⊨ A ≈ A' : univ_tm u.
+    Γ ⊨ A ≈ A' : ulvl_tm u.
 Proof.
   intros * [env_relΓ [HΓ H]].
-  eexists_rel_exp_with (univ_above u).
+  eexists_rel_exp_with (ulvl_above u).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists (per_univ u).
   split; [| eapply H; eassumption].
-  pose proof (per_univ_elem_univ_val u _ (uidx_lt_univ_above u)) as Hu.
-  destruct u; econstructor; try apply (eval_univ_tm _ _ (us _)); try apply (eval_univ_tm _ _ (ul _));
+  pose proof (per_univ_elem_ulvl_val u _ (uidx_lt_ulvl_above u)) as Hu.
+  destruct u; econstructor; try apply (eval_ulvl_tm _ _ (us _)); try apply (eval_ulvl_tm _ _ (ul _));
     apply rel_chain_4; assumption.
 Qed.
 
@@ -95,8 +95,8 @@ Qed.
     every large one. *)
 Lemma rel_exp_univ_cumu : forall {Γ A A' u v},
     uidx_le u v ->
-    Γ ⊨ A ≈ A' : univ_tm u ->
-    Γ ⊨ A ≈ A' : univ_tm v.
+    Γ ⊨ A ≈ A' : ulvl_tm u ->
+    Γ ⊨ A ≈ A' : ulvl_tm v.
 Proof.
   intros * Huv H%rel_exp_of_univ_inversion.
   destruct H as [env_relΓ [HΓ HA]].
@@ -130,9 +130,10 @@ Proof.
   apply (rel_exp_of_univ (u := us (S n))).
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_univ (us (S n)) 𝕌ˢ@n 𝕌ˢ@n)
-    by (eexists; apply per_univ_elem_core_suniv'; [ cbn; lia | reflexivity ]).
-  econstructor; try apply eval_exp_univ.
+  assert (Hu : per_univ (us (S n)) 𝕌ˢ@(dlvl_lit n) 𝕌ˢ@(dlvl_lit n))
+    by (eexists; apply per_univ_elem_core_suniv';
+        [ apply per_lvl_lit | cbn; lia | reflexivity ]).
+  econstructor; try (apply eval_exp_univ, eval_exp_llit).
   apply rel_chain_4; assumption.
 Qed.
 

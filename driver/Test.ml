@@ -552,6 +552,66 @@ let%expect_test "ModuleParam.mctt works" =
              end --> 2 : Nat
     |}]
 
+let%expect_test "Universes.mctt works" =
+  let _ = main_of_example "Universes.mctt" in
+  [%expect {|
+    Evaluate id 1l Type@{0l} Nat --> Nat : Type@{0l}
+    Evaluate atoms --> fun (x1 : Level)
+                           (x2 : Level)
+                         -> Type@{maxl (maxl 1l x2) x1}
+      : forall (x1 : Level)
+               (x2 : Level)
+          -> Type@{maxl (maxl 2l (succl x2)) (succl x1)}
+    Evaluate self 3 --> 3 : Nat
+    Evaluate Dom --> Nat : Type@{0l}
+    Evaluate Type@{depth 3} --> Type@{3l} : Type@{4l}
+    |}]
+
+(* Levels are first class: a level literal is a term of [Level], [succl] and
+   [maxl] compute on it, and a small universe accepts any level term. *)
+let%expect_test "a level literal is a term of Level" =
+  let _ = main_of_body "eval maxl 2l (succl 0l) : Level" in
+  [%expect {| Evaluate maxl 2l (succl 0l) --> 2l : Level |}]
+
+let%expect_test "a small universe at a literal level" =
+  let _ = main_of_body "eval Type@{succl 1l} : Type@{3l}" in
+  [%expect {| Evaluate Type@{succl 1l} --> Type@{2l} : Type@{3l} |}]
+
+(* [Typeω] is the first large universe, above every small one. *)
+let%expect_test "Typeω holds a small universe" =
+  let _ = main_of_body "eval Type@{5l} : Typeω" in
+  [%expect {| Evaluate Type@{5l} --> Type@{5l} : Type@0 |}]
+
+(* A universe is not in itself. *)
+let%expect_test "a small universe is not in itself" =
+  let _ = main_of_body "eval Type@{1l} : Type@{1l}" in
+  [%expect {| Error: Type@{1l} is not of type Type@{1l} |}]
+
+(* A level is not a type, and a type is not a level. *)
+let%expect_test "a level is not a type" =
+  let _ = main_of_body "eval zero : 0l" in
+  [%expect {| Error: 0 is not of type 0l |}]
+
+let%expect_test "Nat is not a level" =
+  let _ = main_of_body "eval Nat : Level" in
+  [%expect {| Error: Nat is not of type Level |}]
+
+(* The level of a small universe may be any term of [Level], including an
+   open one, so the normal form of a level has atoms. *)
+let%expect_test "an open level normalizes with atoms" =
+  let _ = main_of_body "eval fun (u : Level) (v : Level) -> Type@{maxl v (maxl 1l u)}" in
+  [%expect {|
+    Evaluate fun (x1 : Level)
+                 (x2 : Level)
+               -> Type@{maxl x2 (maxl 1l x1)}
+      --> fun (x1 : Level)
+              (x2 : Level)
+            -> Type@{maxl (maxl 1l x2) x1}
+      : forall (x1 : Level)
+               (x2 : Level)
+          -> Type@{maxl (maxl 2l (succl x2)) (succl x1)}
+    |}]
+
 let%expect_test "ModuleForms.mctt works" =
   let _ = main_of_example "ModuleForms.mctt" in
   [%expect {|

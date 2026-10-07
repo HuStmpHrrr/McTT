@@ -1,0 +1,52 @@
+(* Universe polymorphism with first-class levels.
+
+   [Level] is an ordinary type: its elements are the literals [0l], [1l], …,
+   the operations [succl] and [maxl], and whatever a term of type [Level]
+   computes to.  [Type@{t}] is the small universe at the level [t], so a
+   level-polymorphic definition is an ordinary function of a [Level], and a
+   level-polymorphic module an ordinary parametrized module.  [Type@n] is the
+   large universe above all of them, with [Typeω] for [Type@0]. *)
+module Universes where
+
+(* The identity, polymorphic in the level of its type. *)
+def id (u : Level) (A : Type@{u}) (a : A) : A := a end
+
+eval id 1l Type@{0l} Nat
+
+(* A small universe is in the next one up, and cumulativity lifts it to any
+   larger level — here to the join with the successor. *)
+def lift (u : Level) (v : Level) : Type@{maxl (succl u) v} := Type@{u} end
+
+(* Levels normalize: a level is a constant and a set of atoms with offsets,
+   so [maxl v (maxl 1l u)] and [maxl (maxl 1l v) u] are the same level. *)
+def atoms (u : Level) (v : Level) : Type@{succl (maxl (maxl 1l v) u)} :=
+  Type@{maxl v (maxl 1l u)}
+end
+
+eval atoms
+
+(* A module may take a level parameter like any other. *)
+module Poly (u : Level) (A : Type@{u}) where
+
+def self (a : A) : A := a end
+
+def Dom : Type@{u} := A end
+
+end
+
+open Poly 0l Nat use (self; Dom)
+
+eval self 3
+
+eval Dom
+
+(* A function into [Level] may be used in a universe: levels are computed by
+   the same evaluator as everything else. *)
+def depth (n : Nat) : Level := rec n return x . Level | zero => 0l | succ y, r => succl r end end
+
+eval Type@{depth 3}
+
+(* Both tiers: the large universe holds every small one. *)
+def small (u : Level) : Typeω := Type@{u} end
+
+end

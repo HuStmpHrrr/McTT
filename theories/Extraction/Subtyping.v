@@ -26,11 +26,12 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
 | Typeⁿ@i, Typeⁿ@j =>
     let*b _ := Compare_dec.le_lt_dec i j while _ in
     pureb _
-| Typeˢⁿ@n, Typeˢⁿ@m =>
-    let*b _ := Compare_dec.le_lt_dec n m while _ in
+(** Two small universes, by the decidable order on canonical levels. *)
+| univⁿ c xs, univⁿ d ys =>
+    let*b _ := lvl_le_dec (c, xs) (d, ys) while _ in
     pureb _
 (** A small universe is below every large one. *)
-| Typeˢⁿ@n, Typeⁿ@i => left _
+| univⁿ c xs, Typeⁿ@i => left _
 | Πⁿ A B, Πⁿ A' B' =>
     let*b _ := nf_eq_dec A A' while _ in
     let*b _ := subtyping_nf_impl B B' while _ in

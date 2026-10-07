@@ -79,9 +79,16 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
 Inductive obj : Set :=
 (** [Type@i], a large universe *)
 | typ : nat -> obj
-(** A small universe at a literal level.  The surface syntax for it arrives
-    with level terms; until then it is only printed. *)
-| suniv : nat -> obj
+(** [Type@{M}], the small universe at the level [M] *)
+| suniv : obj -> obj
+(** [Level], the type of universe levels *)
+| level : obj
+(** A level literal, written [<n>l] *)
+| llit : nat -> obj
+(** [succl M] *)
+| succl : obj -> obj
+(** [maxl M N] *)
+| maxl : obj -> obj -> obj
 (** [Nat] *)
 | nat : obj
 (** [zero], and the numerals *)
@@ -162,7 +169,11 @@ Section cst_mut_ind.
 
   Hypotheses
     (case_typ : forall n, Po (typ n))
-    (case_suniv : forall n, Po (suniv n))
+    (case_suniv : forall o, Po o -> Po (suniv o))
+    (case_level : Po level)
+    (case_llit : forall n, Po (llit n))
+    (case_succl : forall o, Po o -> Po (succl o))
+    (case_maxl : forall o1 o2, Po o1 -> Po o2 -> Po (maxl o1 o2))
     (case_nat : Po nat)
     (case_zero : Po zero)
     (case_succ : forall o, Po o -> Po (succ o))
@@ -193,7 +204,11 @@ Section cst_mut_ind.
   Fixpoint obj_mut (o : obj) : Po o :=
     match o with
     | typ n => case_typ n
-    | suniv n => case_suniv n
+    | suniv o => case_suniv o (obj_mut o)
+    | level => case_level
+    | llit n => case_llit n
+    | succl o => case_succl o (obj_mut o)
+    | maxl o1 o2 => case_maxl o1 o2 (obj_mut o1) (obj_mut o2)
     | nat => case_nat
     | zero => case_zero
     | succ o => case_succ o (obj_mut o)
@@ -452,8 +467,20 @@ Inductive exp : Set :=
 (** A large universe: [a_typ n] is [Typeω+n].  It contains every small
     universe, and the large universes below it. *)
 | a_typ : nat -> exp
-(** A small universe, at a literal level: [a_univ n] is [Type@{n}]. *)
-| a_univ : nat -> exp
+(** A small universe, at a level: [a_univ t] is [Type@{t}].  The level is an
+    arbitrary term of type [Level], so a universe may be indexed by a
+    variable, which is what makes universe polymorphism plain [Π]. *)
+| a_univ : exp -> exp
+(** The type of universe levels.  Levels are ordinary terms: a function may
+    take and return them, so universe polymorphism is plain [Π]. *)
+| a_level : exp
+(** A level literal: [a_llit n] is the [n]-th level, written [<n>l] in the
+    surface syntax. *)
+| a_llit : nat -> exp
+(** The successor of a level *)
+| a_succl : exp -> exp
+(** The join of two levels *)
+| a_maxl : exp -> exp -> exp
 (** Natural numbers *)
 | a_nat : exp
 (** [zero] *)
@@ -552,7 +579,11 @@ Section syn_mut_ind.
 
   Hypotheses
     (case_typ : forall i, Pe (a_typ i))
-    (case_univ : forall n, Pe (a_univ n))
+    (case_univ : forall t, Pe t -> Pe (a_univ t))
+    (case_level : Pe a_level)
+    (case_llit : forall n, Pe (a_llit n))
+    (case_succl : forall M, Pe M -> Pe (a_succl M))
+    (case_maxl : forall M N, Pe M -> Pe N -> Pe (a_maxl M N))
     (case_nat : Pe a_nat)
     (case_zero : Pe a_zero)
     (case_succ : forall M, Pe M -> Pe (a_succ M))
@@ -589,7 +620,11 @@ Section syn_mut_ind.
   Fixpoint exp_mut (M : exp) : Pe M :=
     match M with
     | a_typ i => case_typ i
-    | a_univ n => case_univ n
+    | a_univ t => case_univ t (exp_mut t)
+    | a_level => case_level
+    | a_llit n => case_llit n
+    | a_succl M => case_succl M (exp_mut M)
+    | a_maxl M N => case_maxl M N (exp_mut M) (exp_mut N)
     | a_nat => case_nat
     | a_zero => case_zero
     | a_succ M => case_succ M (exp_mut M)
@@ -794,7 +829,16 @@ Definition exp_to_num e :=
     level 2. *)
 Module Exp_Notations.
   Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
-  Notation "'Typeˢ' @ n" := (a_univ n) (at level 1, n at level 0, format "'Typeˢ' @ n") : mctt_scope.
+  (** A small universe at an arbitrary level term, and — for a literal level —
+      the short form the stage-1 rules are written with. *)
+  Notation "'Typeˢ' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Typeˢ' ⟨ t ⟩") : mctt_scope.
+  Notation "'Typeˢ' @ n" := (a_univ (a_llit n)) (at level 1, n at level 0, format "'Typeˢ' @ n") : mctt_scope.
+  Notation "'Level'" := a_level : mctt_scope.
+  (** The level literals: [𝕃@n] is the surface syntax's [<n>l].  The token is
+      not a word: [lv] would make every identifier of that name a keyword. *)
+  Notation "'𝕃' @ n" := (a_llit n) (at level 1, n at level 0, format "'𝕃' @ n") : mctt_scope.
+  Notation "'succl' M" := (a_succl M) (at level 2, M at level 1) : mctt_scope.
+  Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
   Notation "'ℕ'" := a_nat : mctt_scope.
   Notation "'zero'" := a_zero : mctt_scope.
@@ -950,21 +994,21 @@ Qed.
 
     A judgment in a universe is the four-value pattern of its two sides in the
     universe's element PER, whichever tier the universe is in.  The lemmas
-    are stated at an index [u], through the universe's term [univ_tm u] and
-    value [univ_val u]; the large forms below are their instances at [ul i],
+    are stated at an index [u], through the universe's term [ulvl_tm u] and
+    value [ulvl_val u]; the large forms below are their instances at [ul i],
     which is [Type@i] by computation. *)
-Definition univ_tm (u : uidx) : exp :=
-  match u with us n => a_univ n | ul n => a_typ n end.
+Definition ulvl_tm (u : uidx) : exp :=
+  match u with us n => a_univ (a_llit n) | ul n => a_typ n end.
 
 (** A large level whose universe contains the universe at [u]. *)
-Definition univ_above (u : uidx) : nat :=
+Definition ulvl_above (u : uidx) : nat :=
   match u with us _ => 0 | ul n => S n end.
 
 (** The large level a type at [u] is also a type of. *)
 Definition ulvl (u : uidx) : nat :=
   match u with us _ => 0 | ul n => n end.
 
-Lemma uidx_lt_univ_above : forall u, uidx_lt u (univ_above u).
+Lemma uidx_lt_ulvl_above : forall u, uidx_lt u (ulvl_above u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
 Lemma uidx_le_ulvl : forall u, uidx_le u (ulvl u).
@@ -1004,12 +1048,47 @@ Ltac solve_uidx :=
                   cbn [uidx_lt uidx_le] in *; first [ contradiction | exact I | lia ] ] ].
 
 
+(** * Levels as Expressions
+
+    A flat level [max (c, k₁ + a₁, …, kₙ + aₙ)] is written as an expression by
+    folding [maxl] to the left over the atoms, each under its own offset of
+    [succl]s.  The constant is written only when it is not [0]: with atoms
+    present, [𝕃@0] is the neutral element of [maxl] and would not be a normal
+    form.  This is the spelling of a canonical level normal form
+    ([nf_lvl] below), so it is also how a level is printed. *)
+Fixpoint succl_n (k : nat) (M : exp) : exp :=
+  match k with
+  | 0 => M
+  | S k' => a_succl (succl_n k' M)
+  end.
+
+Fixpoint lvl_fold (hd : exp) (xs : list (nat * exp)) : exp :=
+  match xs with
+  | nil => hd
+  | (k, a) :: r => lvl_fold (a_maxl hd (succl_n k a)) r
+  end.
+
+Definition lvl_exp_of (c : nat) (xs : list (nat * exp)) : exp :=
+  match xs, c with
+  | nil, _ => a_llit c
+  | (k, a) :: r, 0 => lvl_fold (succl_n k a) r
+  | (k, a) :: r, S _ => lvl_fold (a_maxl (a_llit c) (succl_n k a)) r
+  end.
+
 (** * Normal and Neutral Forms *)
 Inductive nf : Set :=
 (** A large universe *)
 | nf_typ : nat -> nf
-(** A small universe *)
-| nf_univ : nat -> nf
+(** A small universe at a canonical level [max (c, k₁ + a₁, …)], in the shape
+    of [nf_lvl] below *)
+| nf_univ : nat -> lvl_atoms -> nf
+(** The type [Level] *)
+| nf_level : nf
+(** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
+    [ne_cmp] (see [Core.Syntactic.Levels]) with no repetition, and the
+    constant [c] is [0] unless it exceeds every offset.  [nf_lvl_of] builds
+    the normal form of a canonical level [lvl]. *)
+| nf_lvl : nat -> lvl_atoms -> nf
 (** [ℕ] *)
 | nf_nat : nf
 (** [zero] *)
@@ -1039,12 +1118,20 @@ with ne : Set :=
 | ne_var : nat -> ne
 (** An opaque definition or an axiom: it does not unfold. *)
 | ne_glob : qname -> ne
+(** The atoms of a canonical level, each with its offset.  They are their own
+    sort rather than a [list (nat * ne)] so that the family stays mutual and
+    [Scheme] generates the induction principle. *)
+with lvl_atoms : Set :=
+| la_nil : lvl_atoms
+| la_cons : nat -> ne -> lvl_atoms -> lvl_atoms
 .
 
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
-  | nf_univ n => a_univ n
+  | nf_univ c xs => a_univ (lvl_exp_of c (la_to_list xs))
+  | nf_level => a_level
+  | nf_lvl c xs => lvl_exp_of c (la_to_list xs)
   | nf_nat => a_nat
   | nf_zero => a_zero
   | nf_succ M => a_succ (nf_to_exp M)
@@ -1063,31 +1150,82 @@ with ne_to_exp (M : ne) : exp :=
   | ne_var x => a_var x
   | ne_glob p => qname_term p
   end
+with la_to_list (xs : lvl_atoms) : list (nat * exp) :=
+  match xs with
+  | la_nil => nil
+  | la_cons k M r => (k, ne_to_exp M) :: la_to_list r
+  end
 .
 
 Coercion nf_to_exp : nf >-> exp.
 Coercion ne_to_exp : ne >-> exp.
 
-(** The universe at an index, as a normal form: it is the normal form of
-    [univ_tm u]. *)
-Definition univ_nf (u : uidx) : nf :=
-  match u with us n => nf_univ n | ul n => nf_typ n end.
+(** * Canonical Levels
 
-Lemma nf_to_exp_univ_nf : forall u, nf_to_exp (univ_nf u) = univ_tm u.
-Proof. intros []; reflexivity. Qed.
+    A canonical level is its constant and its atoms.  The operations on
+    canonical levels, and their order, are [Core.Syntactic.Levels]; the type
+    is here because the universe normal forms below are indexed by it. *)
+Definition lvl : Set := (nat * lvl_atoms)%type.
 
-(** That a normal form is the universe at an index.  This is the side
-    condition of every algorithmic rule that asks for a type.  It is a
-    relation and not the equation [univ_nf_idx W = Some u] of the deciding
-    function below: the left-hand side of that equation is a [match] stuck on
-    [W], and [progressive_inversion] does not terminate on such a
-    hypothesis — it inverts it to an equation of the same shape, for ever. *)
-Variant is_univ_nf : nf -> uidx -> Prop :=
-| isu_typ : forall i, is_univ_nf (nf_typ i) (ul i)
-| isu_univ : forall n, is_univ_nf (nf_univ n) (us n).
+Definition nf_lvl_of (l : lvl) : nf := nf_lvl (fst l) (snd l).
+
+Definition nf_univ_of (l : lvl) : nf := nf_univ (fst l) (snd l).
+
+Lemma nf_lvl_of_inj : forall l l', nf_lvl_of l = nf_lvl_of l' -> l = l'.
+Proof.
+  intros [c xs] [d ys] H; unfold nf_lvl_of in H; cbn in H.
+  inversion H; reflexivity.
+Qed.
+
+Lemma nf_univ_of_cong : forall l l', nf_lvl_of l = nf_lvl_of l' -> nf_univ_of l = nf_univ_of l'.
+Proof. intros ? ? H; apply nf_lvl_of_inj in H as ->; reflexivity. Qed.
+
+Lemma nf_univ_of_inj : forall l l', nf_univ_of l = nf_univ_of l' -> l = l'.
+Proof.
+  intros [c xs] [d ys] H; unfold nf_univ_of in H; cbn in H.
+  inversion H; reflexivity.
+Qed.
+
+(** * Universe Normal Forms
+
+    The universe a type is inferred at, as the algorithmic layer sees it: a
+    small universe at a canonical level, or a large one.  It is not the
+    semantic index [uidx]: a small universe's semantic index is the realiser
+    of its level, a natural number, while the checker compares the canonical
+    levels themselves (see [Core.Syntactic.Levels]: [unf_le], [unf_max]). *)
+Inductive unf : Set :=
+(** A small universe at a canonical level *)
+| uns : lvl -> unf
+(** The large universe [Typeω+n] *)
+| unl : nat -> unf.
+
+Coercion unl : nat >-> unf.
+
+(** The universe normal form itself, and the term it embeds to. *)
+Definition univ_nf (u : unf) : nf :=
+  match u with uns L => nf_univ_of L | unl n => nf_typ n end.
+
+Definition unf_tm (u : unf) : exp :=
+  match u with
+  | uns L => a_univ (lvl_exp_of (fst L) (la_to_list (snd L)))
+  | unl n => a_typ n
+  end.
+
+Lemma nf_to_exp_univ_nf : forall u, nf_to_exp (univ_nf u) = unf_tm u.
+Proof. intros [[] |]; reflexivity. Qed.
+
+(** That a normal form is a universe.  This is the side condition of every
+    algorithmic rule that asks for a type.  It is a relation and not the
+    equation [univ_nf_idx W = Some u] of the deciding function below: the
+    left-hand side of that equation is a [match] stuck on [W], and
+    [progressive_inversion] does not terminate on such a hypothesis — it
+    inverts it to an equation of the same shape, for ever. *)
+Variant is_univ_nf : nf -> unf -> Prop :=
+| isu_typ : forall i, is_univ_nf (nf_typ i) (unl i)
+| isu_univ : forall c xs, is_univ_nf (nf_univ c xs) (uns (c, xs)).
 
 Lemma is_univ_nf_univ_nf : forall u, is_univ_nf (univ_nf u) u.
-Proof. intros []; constructor. Qed.
+Proof. intros [[] |]; constructor. Qed.
 
 Lemma is_univ_nf_eq : forall W u, is_univ_nf W u -> W = univ_nf u.
 Proof. intros ? ? H; destruct H; reflexivity. Qed.
@@ -1095,10 +1233,11 @@ Proof. intros ? ? H; destruct H; reflexivity. Qed.
 Lemma is_univ_nf_functional : forall W u v, is_univ_nf W u -> is_univ_nf W v -> u = v.
 Proof. intros ? ? ? H H'; destruct H; inversion H'; reflexivity. Qed.
 
-(** The index itself, as the deciding function the checker runs.  It is used
-    in the checker's code, never as an index or a side condition of a rule. *)
-Definition univ_nf_idx (W : nf) : option uidx :=
-  match W with nf_typ i => Some (ul i) | nf_univ n => Some (us n) | _ => None end.
+(** The universe itself, as the deciding function the checker runs.  It is
+    used in the checker's code, never as an index or a side condition of a
+    rule. *)
+Definition univ_nf_idx (W : nf) : option unf :=
+  match W with nf_typ i => Some (unl i) | nf_univ c xs => Some (uns (c, xs)) | _ => None end.
 
 Lemma univ_nf_idx_is_univ_nf : forall W u, univ_nf_idx W = Some u -> is_univ_nf W u.
 Proof. intros [] ? H; cbn in H; inversion H; constructor. Qed.
@@ -1110,7 +1249,8 @@ Proof. intros [] ? H Hu; cbn in H; try discriminate; inversion Hu. Qed.
 
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_univ _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_univ _ xs | nf_lvl _ xs => la_clean xs
   | nf_succ W => nf_clean W
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
   | nf_neut M => ne_clean M
@@ -1122,12 +1262,19 @@ with ne_clean (M : ne) : Prop :=
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
+  end
+with la_clean (xs : lvl_atoms) : Prop :=
+  match xs with
+  | la_nil => True
+  | la_cons _ M r => ne_clean M /\ la_clean r
   end.
 
 Fact nf_eq_dec : forall (M M' : nf),
     ({M = M'} + {M <> M'})%type
 with ne_eq_dec : forall (M M' : ne),
-    ({M = M'} + {M <> M'})%type.
+    ({M = M'} + {M <> M'})%type
+with la_eq_dec : forall (xs xs' : lvl_atoms),
+    ({xs = xs'} + {xs <> xs'})%type.
 Proof.
   all: intros; decide equality;
     repeat (apply PeanoNat.Nat.eq_dec || decide equality || apply String.string_dec).
@@ -1142,7 +1289,10 @@ Module Nf_Notations.
   Notation "'⋆ⁿ'" := nf_true : mctt_scope.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
-  Notation "'Typeˢⁿ' @ n" := (nf_univ n) (at level 1, n at level 0, format "'Typeˢⁿ' @ n") : mctt_scope.
+  Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
+  Notation "'Typeˢⁿ' @ n" := (nf_univ n la_nil) (at level 1, n at level 0, format "'Typeˢⁿ' @ n") : mctt_scope.
+  Notation "'Levelⁿ'" := nf_level : mctt_scope.
+  Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
   Notation "'⇑ⁿ' M" := (nf_neut M) (at level 2, M at level 1, format "'⇑ⁿ'  M") : mctt_scope.
@@ -1206,7 +1356,11 @@ Arguments wk_shiftn _ _ /.
 Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   match M with
   | a_typ i => a_typ i
-  | a_univ n => a_univ n
+  | a_univ t => a_univ (exp_wk t φ)
+  | a_level => a_level
+  | a_llit n => a_llit n
+  | a_succl M => a_succl (exp_wk M φ)
+  | a_maxl M N => a_maxl (exp_wk M φ) (exp_wk N φ)
   | a_nat => a_nat
   | a_zero => a_zero
   | a_succ M => a_succ (exp_wk M φ)
@@ -1374,7 +1528,11 @@ Fixpoint sb_qn (n : nat) (σ : sub) : sub :=
 Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   match M with
   | a_typ i => a_typ i
-  | a_univ n => a_univ n
+  | a_univ t => a_univ (exp_sub t σ)
+  | a_level => a_level
+  | a_llit n => a_llit n
+  | a_succl M => a_succl (exp_sub M σ)
+  | a_maxl M N => a_maxl (exp_sub M σ) (exp_sub N σ)
   | a_nat => a_nat
   | a_zero => a_zero
   | a_succ M => a_succ (exp_sub M σ)

@@ -5,7 +5,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import ContextCases FundamentalTheorem UniverseCases UnitCases.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness Require Export Realizability.
-From Mctt.Core.Syntactic Require Import Substitution.
+From Mctt.Core.Syntactic Require Import LevelEq Substitution.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -49,16 +49,12 @@ Proof.
   match_by_head per_top_typ ltac:(fun H => destruct (H (length Γ)) as [V []]).
   clear_dups.
   functional_read_rewrite_clear.
-  (** Both are types of the large level each index lives at, and both are
-      equal to the common readback there. *)
-  assert (Γ ⊢ A : Type@(ulvl i)) by (eapply (lift_exp_uidx _ _ _ _ i (ulvl i)); [ apply uidx_le_ulvl | eassumption ]).
-  assert (Γ ⊢ A' : Type@(ulvl j)) by (eapply (lift_exp_uidx _ _ _ _ j (ulvl j)); [ apply uidx_le_ulvl | eassumption ]).
+  (** Both are types of the large universe of their index's tier, and both
+      are equal to the common readback there. *)
   assert (Γ ⊢ A : Type@(max (ulvl i) (ulvl j))) by mauto 4 using lift_exp_max_left.
   assert (Γ ⊢ A' : Type@(max (ulvl i) (ulvl j))) by mauto 4 using lift_exp_max_right.
-  assert (Γ ⊢ A ≈ V : univ_tm i) as HAV by (rewrite <- (exp_wk_id A); mauto 4).
-  assert (Γ ⊢ A' ≈ V : univ_tm j) as HA'V by (rewrite <- (exp_wk_id A'); mauto 4).
-  assert (Γ ⊢ A ≈ V : Type@(ulvl i)) by (eapply (lift_exp_eq_uidx _ _ _ _ _ i (ulvl i)); [ apply uidx_le_ulvl | exact HAV ]).
-  assert (Γ ⊢ A' ≈ V : Type@(ulvl j)) by (eapply (lift_exp_eq_uidx _ _ _ _ _ j (ulvl j)); [ apply uidx_le_ulvl | exact HA'V ]).
+  assert (Γ ⊢ A ≈ V : Type@(ulvl i)) as HAV by (rewrite <- (exp_wk_id A); mauto 4).
+  assert (Γ ⊢ A' ≈ V : Type@(ulvl j)) as HA'V by (rewrite <- (exp_wk_id A'); mauto 4).
   assert (Γ ⊢ A ≈ V : Type@(max (ulvl i) (ulvl j))) by mauto 4 using lift_exp_eq_max_left.
   assert (Γ ⊢ A' ≈ V : Type@(max (ulvl i) (ulvl j))) by mauto 4 using lift_exp_eq_max_right; mautosolve 4.
 Qed.
@@ -83,7 +79,7 @@ Lemma glu_univ_elem_typ_unique_upto_exp_eq' : forall {i : uidx} {a P El Γ A A'}
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Γ ⊢ A' ® P ->
-    Γ ⊢ A ≈ A' : univ_tm i.
+    Γ ⊢ A ≈ A' : Type@(ulvl i).
 Proof.
   intros * Hglu HA HA'.
   assert (Γ ⊢ A ® glu_typ_top i a) as [] by mauto 3.
@@ -91,8 +87,8 @@ Proof.
   match_by_head per_top_typ ltac:(fun H => destruct (H (length Γ)) as [V []]).
   clear_dups.
   functional_read_rewrite_clear.
-  assert (Γ ⊢ A ≈ V : univ_tm i) by (rewrite <- (exp_wk_id A); mauto 4).
-  assert (Γ ⊢ A' ≈ V : univ_tm i) by (rewrite <- (exp_wk_id A'); mauto 4).
+  assert (Γ ⊢ A ≈ V : Type@(ulvl i)) by (rewrite <- (exp_wk_id A); mauto 4).
+  assert (Γ ⊢ A' ≈ V : Type@(ulvl i)) by (rewrite <- (exp_wk_id A'); mauto 4).
   etransitivity; [ eassumption | symmetry; eassumption ].
 Qed.
 
@@ -104,7 +100,7 @@ Lemma glu_univ_elem_per_univ_elem_typ_escape : forall {i : uidx} {a a' elem_rel 
     DG a' ∈ glu_univ_elem i ↘ P' ↘ El' ->
     Γ ⊢ A ® P ->
     Γ ⊢ A' ® P' ->
-    Γ ⊢ A ≈ A' : univ_tm i.
+    Γ ⊢ A ≈ A' : Type@(ulvl i).
 Proof.
   simpl in *.
   intros * Hper Hglu Hglu' HA HA'.
@@ -120,7 +116,7 @@ Lemma glu_univ_elem_per_univ_typ_escape : forall {i : uidx} {a a' P P' El El' Γ
     DG a' ∈ glu_univ_elem i ↘ P' ↘ El' ->
     Γ ⊢ A ® P ->
     Γ ⊢ A' ® P' ->
-    Γ ⊢ A ≈ A' : univ_tm i.
+    Γ ⊢ A ≈ A' : Type@(ulvl i).
 Proof.
   intros * [] **.
   mauto 4.
@@ -201,20 +197,37 @@ Section glu_univ_elem_cumulativity.
       invert_glu_univ_elem Hglu';
       handle_functional_glu_univ_elem;
       simpl in *;
-      (** The equations of the gluing predicates are at the index's large
-          level, so each is lifted along [uidx_le_ulvl_le]. *)
       (** Every equation of a glued type is in the ambient universe of its
-          index, so each is lifted along [lift_exp_eq_uidx]. *)
+          index, the large universe [Type@(ulvl u)], so each is lifted along
+          the order on large levels ([uidx_le_ulvl_le]). *)
       try match goal with Hge : uidx_le ?u ?v |- _ =>
-        repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A ≈ ?B : univ_tm u |- _ =>
-          let T := constr:(wf_exp_eq gc_deps gc_stack _ (univ_tm v) A B) in
+        let Hl := fresh "Hl" in
+        pose proof (uidx_le_ulvl_le _ _ Hge) as Hl;
+        repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A ≈ ?B : Type@(ulvl u) |- _ =>
+          let T := constr:(wf_exp_eq gc_deps gc_stack _ (Type@(ulvl v)) A B) in
           assert_fails (assert T by assumption);
-          pose proof (lift_exp_eq_uidx _ _ _ _ _ u v Hge H) end;
-        repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A : univ_tm u |- _ =>
-          let T := constr:(wf_exp gc_deps gc_stack _ (univ_tm v) A) in
+          pose proof (lift_exp_eq_ge _ _ _ _ _ _ _ Hl H) end;
+        repeat match goal with H : _ ⍮ _ ⍮ _ ⊢ ?A : Type@(ulvl u) |- _ =>
+          let T := constr:(wf_exp gc_deps gc_stack _ (Type@(ulvl v)) A) in
           assert_fails (assert T by assumption);
-          pose proof (lift_exp_uidx _ _ _ _ u v Hge H) end end;
+          pose proof (lift_exp_ge _ _ _ _ _ _ Hl H) end end;
       try solve [repeat split; intros; destruct_conjs; mauto 2 | intuition mauto 3].
+    (** A small universe: only the ambient universe of its type-level gluing
+        changes between the two indices; the level term, the element's gluing
+        at the realiser of the level and its readback clause carry over. *)
+    all: try solve
+      [ match goal with
+        | H : exists t, glu_lvl _ t _ /\ _ |- exists t, glu_lvl _ t _ /\ _ =>
+            destruct H as (t & Ht & Heq); exists t; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ]
+        | H : _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ |- _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ =>
+            destruct H as (HM & (t & Ht & Heq) & HP & Hr);
+            repeat apply conj;
+            [ exact HM | exists t; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ] | exact HP | exact Hr ]
+        | H : _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _,
+            H' : exists t, glu_lvl _ t _ /\ _ |- _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ =>
+            destruct H as (HM & _ & HP & Hr);
+            repeat apply conj; [ exact HM | exact H' | exact HP | exact Hr ]
+        end ].
 
     - rename x into IP'.
       rename x0 into IEl'.
@@ -278,19 +291,19 @@ Section glu_univ_elem_cumulativity.
       assert (Δ ⊢ N : IT[φ]ʷ ® n ∈ IEl') by (eapply IHHglu; mauto 3).
       assert (Δ ⊢ IT[φ]ʷ ® IP') by (eapply glu_univ_elem_trm_typ; mauto 2).
       assert (Δ ⊢ IT0[φ]ʷ ® IP') by mauto 2.
-      assert (Δ ⊢ IT[φ]ʷ ≈ IT0[φ]ʷ : univ_tm j) as HITeq by mauto 2.
+      assert (Δ ⊢ IT[φ]ʷ ≈ IT0[φ]ʷ : Type@(ulvl j)) as HITeq by mauto 2.
       assert (Δ ⊢ N : IT0[φ]ʷ ® n ∈ IEl') by (rewrite <- HITeq; mauto 3).
       assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[φ]ʷ $ N : OT0[(ι φ),,N] ® mn ∈ OEl' n equiv_n) by mauto 3.
       destruct_conjs.
       functional_eval_rewrite_clear.
       assert (DG b ∈ glu_univ_elem j ↘ OP' n equiv_n ↘ OEl' n equiv_n) as Hbj by mauto 3.
       assert (Δ ⊢ OT0[(ι φ),,N] ® OP' n equiv_n) by (eapply glu_univ_elem_trm_typ; mauto 3).
-      (** Both codomains are glued at [j], so they are equal in [univ_tm j];
+      (** Both codomains are glued at [j], so they are equal in [Type@(ulvl j)];
           the one at [i] is moved up by the induction hypothesis. *)
       match goal with HOT : _ ⊢ OT[(ι φ),,N] ® OP ?n0 ?eq0, Hev : ⟦ B ⟧ _ ↦ _ ↘ b |- _ =>
         assert (Δ ⊢ OT[(ι φ),,N] ® OP' n0 eq0)
           by (eapply (proj1 (H2 n0 eq0 b Hev j Hge (OP' n0 eq0) (OEl' n0 eq0) Hbj)); exact HOT) end.
-      assert (Δ ⊢ OT[(ι φ),,N] ≈ OT0[(ι φ),,N] : univ_tm j) as Heq
+      assert (Δ ⊢ OT[(ι φ),,N] ≈ OT0[(ι φ),,N] : Type@(ulvl j)) as Heq
         by (eapply (glu_univ_elem_typ_unique_upto_exp_eq' (i := j)); [ exact Hbj | eassumption | eassumption ]).
       rewrite Heq; eassumption.
     - destruct_by_head neut_glu_exp_pred.
@@ -457,6 +470,39 @@ Proof.
   eapply glu_univ_elem_exp_lower_max_left; mauto.
 Qed.
 
+(** ** The Order on Levels, Syntactically
+
+    Two level terms glued to levels in the canonical order ([per_sublvl]) are
+    in the syntactic order [maxl t t' ≈ t'].  Each is equal to its readback,
+    and the readbacks are canonical levels in [lvl_le], which the level
+    equations turn into the equation ([lvl_exp_of_le]).  This is the
+    syntactic content of a semantic subtyping between small universes. *)
+Lemma glu_lvl_sublvl_eq : forall {Γ t t' l l'},
+    ⊢ Γ ->
+    Dom l ≈ l ∈ per_lvl ->
+    Dom l' ≈ l' ∈ per_lvl ->
+    per_sublvl l l' ->
+    glu_lvl Γ t l ->
+    glu_lvl Γ t' l' ->
+    Γ ⊢ maxl t t' ≈ t' : Level.
+Proof.
+  intros * HΓ Hl Hl' Hle Ht Ht'.
+  destruct (Hle (length Γ)) as [[c xs] [[d ys] [HL [HL' HLL']]]].
+  assert (Γ ⊢ t ≈ nf_lvl_of (c, xs) : Level) as Htc
+    by (rewrite <- (exp_wk_id t); eapply glu_lvl_readback; mauto 3).
+  assert (Γ ⊢ t' ≈ nf_lvl_of (d, ys) : Level) as Htd
+    by (rewrite <- (exp_wk_id t'); eapply glu_lvl_readback; mauto 3).
+  assert (Γ ⊢ nf_lvl_of (c, xs) : Level) as Hc by (gen_presups; eassumption).
+  assert (Γ ⊢ nf_lvl_of (d, ys) : Level) as Hd by (gen_presups; eassumption).
+  unfold nf_lvl_of in *; cbn [nf_to_exp fst snd] in *.
+  assert (la_wf Γ xs) by (eapply lvl_exp_of_la_wf; exact Hc).
+  assert (la_wf Γ ys) by (eapply lvl_exp_of_la_wf; exact Hd).
+  transitivity (maxl (lvl_exp_of c (la_to_list xs)) (lvl_exp_of d (la_to_list ys)));
+    [ apply wf_exp_eq_maxl_cong; assumption |].
+  transitivity (lvl_exp_of d (la_to_list ys));
+    [ apply lvl_exp_of_le; assumption | symmetry; assumption ].
+Qed.
+
 Lemma glu_univ_elem_per_subtyp_typ_escape : forall {i : uidx} {a a' P P' El El' Γ A A'},
     Sub a <: a' at i ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
@@ -480,26 +526,45 @@ Proof.
   - match_by_head (per_bot b b') ltac:(fun H => specialize (H (length Γ)) as [V []]).
     simpl in *.
     destruct_conjs.
-    assert (Γ ⊢ A ≈ V : univ_tm i) as HAV by (rewrite <- (exp_wk_id A); mauto 4).
-    assert (Γ ⊢ A' ≈ V : univ_tm i) as HA'V by (rewrite <- (exp_wk_id A'); mauto 4).
+    assert (Γ ⊢ A ≈ V : Type@(ulvl i)) as HAV by (rewrite <- (exp_wk_id A); mauto 4).
+    assert (Γ ⊢ A' ≈ V : Type@(ulvl i)) as HA'V by (rewrite <- (exp_wk_id A'); mauto 4).
     rewrite HAV, HA'V.
     (** Both read back to the same neutral, so the goal is reflexivity at the
-        large level of the index. *)
-    assert (HAVl : Γ ⊢ A ≈ V : Type@(ulvl i))
-      by (eapply (lift_exp_eq_uidx _ _ _ _ _ i (ulvl i)); [ apply uidx_le_ulvl | exact HAV ]).
+        large universe of the index. *)
     gen_presups.
     eapply wf_subtyp_refl_typ; eassumption.
-  (** [ℕ], [⊤] and [⊥]: both sides are equal to the same closed type in the
-      ambient universe, so the goal is reflexivity, at the large level the
-      index lives at. *)
+  (** [Level], [ℕ], [⊤] and [⊥]: both sides are equal to the same closed type
+      in the ambient universe, so the goal is reflexivity, at the large level
+      the index lives at. *)
+  - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   - simpl in *; gen_presups; bulky_rewrite; eapply (wf_subtyp_refl_typ _ _ _ _ 0); mauto 3.
   (** A universe below a larger one, in either tier, and a small one below a
-      large one. *)
+      large one.  Two small universes are below each other by the syntactic
+      order on their glued level terms ([glu_lvl_sublvl_eq]); a small one is
+      below a large one because its level term is a level. *)
   - simpl in *; bulky_rewrite; mauto 3.
-  - simpl in *; bulky_rewrite; mauto 3.
-  - simpl in *; bulky_rewrite; mauto 3.
+  - simpl in *; destruct_conjs; gen_presups.
+    match goal with
+    | Hle : per_sublvl ?l ?l', Hl : per_lvl ?l ?l, Hl' : per_lvl ?l' ?l',
+        Ht : glu_lvl _ ?t ?l, Ht' : glu_lvl _ ?t' ?l',
+        Heq : _ ⊢ A ≈ Typeˢ⟨?t⟩ : _, Heq' : _ ⊢ A' ≈ Typeˢ⟨?t'⟩ : _ |- _ =>
+        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption);
+        assert (Γ ⊢ t' : Level) by (eapply wf_univ_lvl_inversion; eassumption);
+        rewrite Heq, Heq';
+        apply wf_subtyp_suniv; [ assumption | assumption | assumption |];
+        let HΓ := fresh "HΓ" in
+        assert (HΓ : ⊢ Γ) by (gen_presups; assumption);
+        exact (glu_lvl_sublvl_eq HΓ Hl Hl' Hle Ht Ht')
+    end.
+  - simpl in *; destruct_conjs; gen_presups.
+    match goal with
+    | Ht : glu_lvl _ ?t ?l, Heq : _ ⊢ A ≈ Typeˢ⟨?t⟩ : _ |- _ =>
+        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption);
+        rewrite Heq
+    end.
+    bulky_rewrite; mauto 3.
   - destruct_by_head pi_glu_typ_pred.
     rename x into IP. rename x0 into IEl. rename x1 into OP. rename x2 into OEl.
     rename A0 into A'. rename IT0 into IT'. rename OT0 into OT'.
@@ -507,11 +572,7 @@ Proof.
     assert (Γ ⊢ IT ® IP) by (rewrite <- (exp_wk_id IT); mauto 4).
     assert (Γ ⊢ IT' ® IP) by (rewrite <- (exp_wk_id IT'); mauto 4).
     do 2 bulky_rewrite1.
-    assert (Γ ⊢ IT ≈ IT' : univ_tm i) as HITeq by mauto 4.
-    (** The context refinement and the syntactic rules below are at the large
-        level the index lives at. *)
-    assert (Γ ⊢ IT ≈ IT' : Type@(ulvl i))
-      by (eapply (lift_exp_eq_uidx _ _ _ _ _ i (ulvl i)); [ apply uidx_le_ulvl | exact HITeq ]).
+    assert (Γ ⊢ IT ≈ IT' : Type@(ulvl i)) as HITeq by mauto 4.
     enough (Γ ▹ IT' ⊢ OT ⊆ OT') by mauto 3.
     assert (Dom ⇑! a (length Γ) ≈ ⇑! a' (length Γ) ∈ in_rel) as equiv_len_len' by (eapply per_bot_then_per_elem; mauto 4).
     assert (Dom ⇑! a (length Γ) ≈ ⇑! a (length Γ) ∈ in_rel) as equiv_len_len by (eapply per_bot_then_per_elem; mauto 4).
@@ -536,7 +597,7 @@ Proof.
       assert (Γ ▹ IT ⊢ OT[ι ↑,,#0] ® OP ⇑! a (length Γ) equiv_len_len) by mauto 4.
       assert (Γ ▹ IT ⊢ OT ® OP ⇑! a (length Γ) equiv_len_len)
         by (eapply glu_univ_elem_typ_resp_exp_eq; [ eassumption | eassumption
-                                                  | eapply (shift_var_eq _ _ (univ_tm i)); eassumption ]).
+                                                  | eapply (shift_var_eq _ _ (Type@(ulvl i)) _ (ul (ulvl i))); eassumption ]).
       eapply glu_univ_elem_typ_resp_ctxsub; [ eassumption | eassumption | mauto 4 ].
     }
     assert (Γ ▹ IT' ⊢ OT' ® OP' ⇑! a' (length Γ) equiv_len'_len').
@@ -545,7 +606,7 @@ Proof.
       assert (⊢ Γ ▹ IT') by mauto 3.
       assert (Γ ▹ IT' ⊢ OT'[ι ↑,,#0] ® OP' ⇑! a' (length Γ) equiv_len'_len') by mauto 4.
       eapply glu_univ_elem_typ_resp_exp_eq; [ eassumption | eassumption
-                                            | eapply (shift_var_eq _ _ (univ_tm i)); eassumption ].
+                                            | eapply (shift_var_eq _ _ (Type@(ulvl i)) _ (ul (ulvl i))); eassumption ].
     }
     mauto 3.
 Qed.
@@ -590,27 +651,34 @@ Proof.
     do 2 eexists; split; mauto 3.
     eapply glu_univ_elem_typ_cumu_ge; revgoals; mautosolve 3.
   (** Small universe below small universe: the element is glued at the larger
-      small index by cumulativity, and its readback moves by subsumption. *)
+      realiser by cumulativity (the order on levels bounds the realisers), and
+      its readback moves by subsumption along [A ⊆ A']. *)
   - simpl in *; destruct_conjs.
-    match goal with Hg : glu_univ_elem (us ?n) _ _ m, Hp : _ Γ M |- _ =>
-      rename Hg into Hgm; rename Hp into HPm; rename n into n0 end.
-    assert (exists P El, DG m ∈ glu_univ_elem (us j) ↘ P ↘ El) as [Pj [Elj Hj]]
-      by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n0)); [ cbn; lia | exact Hgm ]).
-    repeat split; [ mauto 3 | assumption |].
-    do 2 eexists; split; [ exact Hj |].
-    eapply (glu_univ_elem_typ_cumu_ge_uidx (i := us n0) (j := us j));
-      [ cbn; lia | exact Hgm | exact Hj | exact HPm ].
+    match goal with
+    | Hg : glu_univ_elem (us (dlvl_real ?l)) ?P0 _ m, Hp : ?P0 Γ M, Hle : per_sublvl ?l ?l' |- _ =>
+        assert (exists P El, DG m ∈ glu_univ_elem (us (dlvl_real l')) ↘ P ↘ El) as [Pj [Elj Hj]]
+          by (eapply (glu_univ_elem_cumu_ge_uidx (i := us (dlvl_real l)));
+              [ cbn; apply per_sublvl_real; exact Hle | exact Hg ]);
+        repeat apply conj;
+        [ mauto 3
+        | eexists; split; eassumption
+        | do 2 eexists; split;
+          [ exact Hj
+          | eapply (glu_univ_elem_typ_cumu_ge_uidx (i := us (dlvl_real l)) (j := us (dlvl_real l')));
+            [ cbn; apply per_sublvl_real; exact Hle | exact Hg | exact Hj | exact Hp ] ]
+        | intros Δ φ W Hφ Hr; eapply wf_exp_eq_subtyp'; [ eauto | mauto 3 ] ]
+    end.
   (** Small universe below a large one: the element is glued at the large
-      index. *)
+      index, by cumulativity across the tiers. *)
   - simpl in *; destruct_conjs.
-    match goal with Hg : glu_univ_elem (us ?n) _ _ m, Hp : _ Γ M |- _ =>
-      rename Hg into Hgm; rename Hp into HPm; rename n into n0 end.
-    assert (exists P El, DG m ∈ glu_univ_elem (ul j) ↘ P ↘ El) as [Pj [Elj Hj]]
-      by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n0)); [ exact I | exact Hgm ]).
-    repeat split; [ mauto 3 | assumption | ].
-    do 2 eexists; split; [ exact Hj |].
-    eapply (glu_univ_elem_typ_cumu_ge_uidx (i := us n0) (j := ul j));
-      [ exact I | exact Hgm | exact Hj | exact HPm ].
+    match goal with Hg : glu_univ_elem (us ?n) ?P0 _ m, Hp : ?P0 Γ M |- _ =>
+      assert (exists P El, DG m ∈ glu_univ_elem (ul j) ↘ P ↘ El) as [Pj [Elj Hj]]
+        by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n)); [ exact I | exact Hg ]);
+      repeat split; [ mauto 3 | assumption |];
+      do 2 eexists; split; [ exact Hj |];
+      eapply (glu_univ_elem_typ_cumu_ge_uidx (i := us n) (j := ul j));
+        [ exact I | exact Hg | exact Hj | exact Hp ]
+    end.
   - rename A0 into A'.
     rename IT0 into IT'. rename OT0 into OT'.
     rename x into IP. rename x0 into IEl.
@@ -623,7 +691,7 @@ Proof.
     + intros.
       assert (Γ ⊢ IT ® IP) by (rewrite <- (exp_wk_id IT); mauto 4).
       assert (Γ ⊢ IT' ® IP) by (rewrite <- (exp_wk_id IT'); mauto 4).
-      assert (Δ ⊢ IT'[φ]ʷ ≈ IT[φ]ʷ : univ_tm i) by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
+      assert (Δ ⊢ IT'[φ]ʷ ≈ IT[φ]ʷ : Type@(ulvl i)) by (symmetry; mauto 4 using glu_univ_elem_per_univ_typ_escape).
       assert (Δ ⊢ N : IT'[φ]ʷ ® n ∈ IEl) by (simpl; bulky_rewrite1; eassumption).
       assert (exists mn : domain, $| m & n |↘ mn /\ Δ ⊢ M[φ]ʷ $ N : OT'[(ι φ),,N] ® mn ∈ OEl n equiv_n) by mauto 3.
       destruct_conjs.

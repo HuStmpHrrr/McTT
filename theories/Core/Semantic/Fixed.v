@@ -43,6 +43,7 @@ Module Fixed_Notations.
   Notation "'Rnf' m 'in' s ↘ M" := (read_nf gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
   Notation "'Rne' m 'in' s ↘ M" := (read_ne gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
   Notation "'Rtyp' m 'in' s ↘ M" := (read_typ gc_deps gc_stack s m M) (at level 70, m at level 69, s at level 69, M at level 69).
+  Notation "'Rla' xs 'in' s ↘ ys" := (read_la gc_deps gc_stack s xs ys) (at level 70, xs at level 69, s at level 69, ys at level 69).
   
   Abbreviation initial_env_f := (initial_env gc_deps gc_stack).
   Abbreviation nbe_f := (nbe gc_deps gc_stack).

@@ -15,7 +15,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules.
 From Mctt.Core.Completeness Require Import
-  ContextCases FunctionCases LetCases NatCases SubstitutionCases SubtypingCases
+  ContextCases FunctionCases LetCases LevelCases NatCases SubstitutionCases SubtypingCases
   TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
   MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases GlobalSem.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
@@ -151,6 +151,19 @@ Proof.
     | apply valid_exp_univ; assumption
     | apply valid_exp_nat_small; assumption
     | apply valid_exp_True_small; assumption | apply valid_exp_False_small; assumption
+    (** Levels: the type, the literals, the two operations, and the level
+        equations. *)
+    | apply valid_exp_level; assumption | apply valid_exp_level_small; assumption
+    | apply valid_exp_llit; assumption
+    | apply rel_exp_succl_cong; assumption
+    | apply rel_exp_maxl_cong; assumption
+    | apply valid_exp_llit_succl; assumption
+    | eapply rel_exp_maxl_zero; eassumption
+    | eapply rel_exp_maxl_assoc; eassumption
+    | eapply rel_exp_maxl_comm; eassumption
+    | eapply rel_exp_maxl_idem; eassumption
+    | eapply rel_exp_succl_maxl; eassumption
+    | eapply rel_exp_maxl_succl; eassumption
     | eapply rel_exp_pi_cong_small; eassumption
     | apply subtyp_suniv; [assumption | lia]
     | apply subtyp_small_large; assumption ].
@@ -239,6 +252,10 @@ Proof.
       split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ HS' HU' HHr Hm2' HA' HB' HN') | split; assumption ] end ].
   all: try solve [ split; [ apply rel_modexp_sym; assumption | repeat (split; [ assumption |]); assumption ] ].
   all: try solve [ split; [ eapply rel_modexp_trans; eassumption | repeat (split; [ assumption |]); assumption ] ].
+  (** The small universes at a level term, and their subtyping: the cases of
+      [Completeness.LevelCases], whose premises are the induction
+      hypotheses. *)
+  all: solve [ mauto 2 ].
 Qed.
 
 (** ** 3. Closed judgments *)

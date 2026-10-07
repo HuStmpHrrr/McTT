@@ -53,8 +53,8 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Lemma rel_typ_of_pi_univ : forall {Γ A A' u B B'},
-    Γ ⊨ A ≈ A' : univ_tm u ->
-    Γ ▹ A ⊨ B ≈ B' : univ_tm u ->
+    Γ ⊨ A ≈ A' : ulvl_tm u ->
+    Γ ▹ A ⊨ B ≈ B' : ulvl_tm u ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',

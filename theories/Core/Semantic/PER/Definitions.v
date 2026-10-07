@@ -75,6 +75,30 @@ Inductive per_nat : relation domain :=
 .
 Hint Constructors per_nat : mctt.
 
+(** Two level values are related when they read back to the same canonical
+    level at every length.  Evaluation of [succl] and [maxl] only flattens, so
+    this is where the level equations are quotiented: readback canonicalises,
+    and [lvl_canon_iff] says that two levels have the same canonical form
+    exactly when they agree under every assignment to their atoms.
+
+    It is [per_top] at [Level].  Unlike [per_bot] and [per_top] it is not
+    declared transparent to the automation: a goal [R <~> per_lvl] is closed by
+    the hypothesis of that shape, which unfolding would hide, and the shared
+    scripts of the gluing lemmas [split] every goal they can, which an
+    unfolding to a one-constructor inductive would expose. *)
+Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ m' ∈ per_top.
+
+(** [l] is below [l'] when at every length their canonical forms are ordered
+    by the decidable order on canonical levels.  It is the semantic
+    counterpart of [maxl M M' ≈ M'], and the order the algorithmic subtyping
+    of two small universes decides.  The order on realisers would be coarser:
+    [max u 3] and [3] have the same realiser and are not comparable. *)
+Definition per_sublvl (l l' : domain) : Prop :=
+  forall s, exists L L',
+    Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of L /\
+    Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of L' /\
+    lvl_le L L'.
+
 (** Every pair of values is related at [⊤]: its elements are equal by η. *)
 Definition per_True : relation domain := fun _ _ => True.
 #[global] Arguments per_True /.
@@ -105,13 +129,21 @@ Section Per_univ_elem_core_def.
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
           DF 𝕌@j ≈ 𝕌@j' ∈ per_univ_elem_core ↘ elem_rel }
-  (** A smaller small universe, its elements the types of that universe. *)
+  (** A smaller small universe, its elements the types of that universe.  Two
+      small universes are the same when their levels are related ([per_lvl]),
+      and the index of their elements is the realiser of the level — the only
+      natural number a level determines independently of a length. *)
   | per_univ_elem_core_suniv :
     `{ forall (elem_rel : relation domain)
-          (lt_j_i : uidx_lt (us j) i),
-          j = j' ->
-          (elem_rel <~> per_univ_rec (us j)) ->
-          DF 𝕌ˢ@j ≈ 𝕌ˢ@j' ∈ per_univ_elem_core ↘ elem_rel }
+          (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+          Dom l ≈ l' ∈ per_lvl ->
+          (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
+          DF 𝕌ˢ@l ≈ 𝕌ˢ@l' ∈ per_univ_elem_core ↘ elem_rel }
+  (** [Level], its elements related by [per_lvl]. *)
+  | per_univ_elem_core_level :
+    forall (elem_rel : relation domain),
+      (elem_rel <~> per_lvl) ->
+      DF Levelᵈ ≈ Levelᵈ ∈ per_univ_elem_core ↘ elem_rel
   (** [ℕ], its elements related by [per_nat]. *)
   | per_univ_elem_core_nat :
     forall (elem_rel : relation domain),
@@ -153,10 +185,13 @@ Section Per_univ_elem_core_def.
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
           motive elem_rel 𝕌@j 𝕌@j')
-      (case_SU : forall {j j' elem_rel} (lt_j_i : uidx_lt (us j) i),
-          j = j' ->
-          (elem_rel <~> per_univ_rec (us j)) ->
-          motive elem_rel 𝕌ˢ@j 𝕌ˢ@j')
+      (case_SU : forall {l l' elem_rel} (lt_j_i : uidx_lt (us (dlvl_real l)) i),
+          Dom l ≈ l' ∈ per_lvl ->
+          (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
+          motive elem_rel 𝕌ˢ@l 𝕌ˢ@l')
+      (case_level : forall {elem_rel},
+          (elem_rel <~> per_lvl) ->
+          motive elem_rel Levelᵈ Levelᵈ)
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
           motive elem_rel ℕᵈ ℕᵈ)
@@ -186,6 +221,7 @@ Section Per_univ_elem_core_def.
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
   | R, a, b, (per_univ_elem_core_univ _ lt_j_i HE eq)                 => case_U lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_suniv _ lt_j_i HE eq)                => case_SU lt_j_i HE eq;
+  | R, a, b, (per_univ_elem_core_level _ HE)                          => case_level HE;
   | R, a, b, (per_univ_elem_core_nat _ HE)                            => case_nat HE;
   | R, a, b, (per_univ_elem_core_True _ HE)                           => case_True HE;
   | R, a, b, (per_univ_elem_core_False _ HE)                          => case_False HE;
@@ -292,14 +328,15 @@ Proof.
   assumption.
 Qed.
 
-Lemma per_univ_elem_core_suniv' : forall j i elem_rel,
-    uidx_lt (us j) i ->
-    (elem_rel <~> per_univ (us j)) ->
-    DF 𝕌ˢ@j ≈ 𝕌ˢ@j ∈ per_univ_elem i ↘ elem_rel.
+Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
+    Dom l ≈ l' ∈ per_lvl ->
+    uidx_lt (us (dlvl_real l)) i ->
+    (elem_rel <~> per_univ (us (dlvl_real l))) ->
+    DF 𝕌ˢ@l ≈ 𝕌ˢ@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
   simp per_univ_elem.
-  eapply per_univ_elem_core_suniv; [eassumption | reflexivity |].
+  eapply per_univ_elem_core_suniv; [eassumption | eassumption |].
   rewrite per_univ_below_spec by assumption.
   assumption.
 Qed.
@@ -316,11 +353,16 @@ Section Per_univ_elem_ind_def.
           (elem_rel <~> per_univ j) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌@j 𝕌@j')
-      (case_SU : forall i {j j' elem_rel},
-          uidx_lt (us j) i -> j = j' ->
-          (elem_rel <~> per_univ (us j)) ->
-          (forall A B R, DF A ≈ B ∈ per_univ_elem (us j) ↘ R -> motive (us j) R A B) ->
-          motive i elem_rel 𝕌ˢ@j 𝕌ˢ@j')
+      (case_SU : forall i {l l' elem_rel},
+          uidx_lt (us (dlvl_real l)) i ->
+          Dom l ≈ l' ∈ per_lvl ->
+          (elem_rel <~> per_univ (us (dlvl_real l))) ->
+          (forall A B R, DF A ≈ B ∈ per_univ_elem (us (dlvl_real l)) ↘ R ->
+                         motive (us (dlvl_real l)) R A B) ->
+          motive i elem_rel 𝕌ˢ@l 𝕌ˢ@l')
+      (case_L : forall i {elem_rel},
+          (elem_rel <~> per_lvl) ->
+          motive i elem_rel Levelᵈ Levelᵈ)
       (case_N : forall i {elem_rel},
           (elem_rel <~> per_nat) ->
           motive i elem_rel ℕᵈ ℕᵈ)
@@ -352,12 +394,12 @@ Section Per_univ_elem_ind_def.
     induction i as [i IHi] using (well_founded_ind uidx_wf).
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
-              (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
+              (fun _ => case_L i) (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
               _ (fun _ _ _ _ _ => case_ne i) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_U; eauto.
-    - intros j j' elem_rel lt_j_i Heq HE.
+    - intros l l' elem_rel lt_j_i Hper HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_SU; eauto.
     - intros * Ha IHa Hper HT HE.
@@ -373,6 +415,9 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 | per_subtyp_neut :
   `( Dom b ≈ b' ∈ per_bot ->
      Sub ⇑ a b <: ⇑ a' b' at i )
+(** [Level] below itself. *)
+| per_subtyp_level :
+  `( Sub Levelᵈ <: Levelᵈ at i )
 (** [ℕ] below itself. *)
 | per_subtyp_nat :
   `( Sub ℕᵈ <: ℕᵈ at i )
@@ -387,15 +432,17 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
   `( i <= j ->
      uidx_lt (ul j) k ->
      Sub 𝕌@i <: 𝕌@j at k )
-(** A small universe below a larger one. *)
+(** A small universe below a larger one: the canonical order on their levels
+    ([per_sublvl]), never the order on realisers. *)
 | per_subtyp_suniv :
-  `( i <= j ->
-     uidx_lt (us j) k ->
-     Sub 𝕌ˢ@i <: 𝕌ˢ@j at k )
+  `( per_sublvl l l' ->
+     uidx_lt (us (dlvl_real l')) k ->
+     Sub 𝕌ˢ@l <: 𝕌ˢ@l' at k )
 (** A small universe below a large one. *)
 | per_subtyp_small_large :
-  `( uidx_lt (ul j) k ->
-     Sub 𝕌ˢ@i <: 𝕌@j at k )
+  `( Dom l ≈ l ∈ per_lvl ->
+     uidx_lt (ul j) k ->
+     Sub 𝕌ˢ@l <: 𝕌@j at k )
 (** A [Π] below another with an equal domain and a smaller codomain. *)
 | per_subtyp_pi :
   `( forall (in_rel : relation domain) elem_rel elem_rel',
@@ -722,8 +769,8 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _);
-      [ do 8 intro | do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _);
+      [ do 8 intro | do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

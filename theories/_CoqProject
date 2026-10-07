@@ -16,6 +16,7 @@
 ./Core/Completeness/FunctionCases.v
 ./Core/Completeness/FundamentalTheorem.v
 ./Core/Completeness/LetCases.v
+./Core/Completeness/LevelCases.v
 ./Core/Completeness/LogicalRelation.v
 ./Core/Completeness/ModuleCases.v
 ./Core/Completeness/LogicalRelation/Definitions.v
@@ -46,6 +47,7 @@
 ./Core/Semantic/Evaluation/Tactics.v
 ./Core/Semantic/NbE.v
 ./Core/Semantic/Fixed.v
+./Core/Semantic/Levels.v
 ./Core/Semantic/PER.v
 ./Core/Semantic/PER/Chain.v
 ./Core/Semantic/PER/CoreTactics.v
@@ -62,6 +64,7 @@
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness/LetCases.v
+./Core/Soundness/LevelCases.v
 ./Core/Soundness/LogicalRelation.v
 ./Core/Soundness/MemberCases.v
 ./Core/Soundness/ModuleCases.v
@@ -87,6 +90,8 @@
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v
+./Core/Syntactic/Levels.v
+./Core/Syntactic/LevelEq.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
 ./Core/Syntactic/System/Command.v

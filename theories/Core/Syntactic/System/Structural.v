@@ -132,11 +132,11 @@ Hint Resolve presup_subtyp_ctx : mctt.
 (** A small type is a type of every large universe. *)
 Lemma wf_exp_small_large : forall {Θ Ξ Γ A n i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
-Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 2 ]. Qed.
+Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 Lemma wf_exp_eq_small_large : forall {Θ Ξ Γ A A' n i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeˢ@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i.
-Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 2 ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 Lemma ctx_decomp : forall {Θ Ξ Γ A},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A ->
@@ -1840,7 +1840,7 @@ Corollary wk_preserves_styp : forall Θ Ξ Γ Δ A φ n,
     Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeˢ@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (a_univ n) φ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (Typeˢ@n) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -1850,7 +1850,7 @@ Corollary wk_preserves_styp_eq : forall Θ Ξ Γ Δ A A' φ n,
     Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeˢ@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_univ n) φ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (Typeˢ@n) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -1860,7 +1860,7 @@ Corollary sub_preserves_styp : forall Θ Ξ Γ Δ A σ n,
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeˢ@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (a_univ n) σ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (Typeˢ@n) σ) by mauto 2.
   assumption.
 Qed.
 
@@ -1870,7 +1870,7 @@ Corollary sub_preserves_styp_eq : forall Θ Ξ Γ Δ A A' σ n,
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Typeˢ@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (a_univ n) σ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (Typeˢ@n) σ) by mauto 2.
   assumption.
 Qed.
 
@@ -1965,15 +1965,15 @@ Qed.
 Hint Resolve lift_exp_ge lift_exp_eq_ge : mctt.
 
 (** The same along the order of universe indices, where a universe is written
-    as the term [univ_tm u]: inside a tier it is the order on levels, and from
+    as the term [ulvl_tm u]: inside a tier it is the order on levels, and from
     the small tier to the large one it is [wf_subtyp_small_large]. *)
 Lemma lift_exp_uidx : forall Θ Ξ Γ A u v,
     uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : univ_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : univ_tm v.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm v.
 Proof.
   intros * Hle HA; destruct u as [n | n], v as [m | m]; cbn in Hle, HA |- *;
-    [ eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_suniv; mauto 2 ]
+    [ eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_suniv_le; mauto 2 ]
     | eapply wf_exp_small_large; eassumption
     | contradiction
     | eapply lift_exp_ge; eassumption ].
@@ -1981,11 +1981,11 @@ Qed.
 
 Lemma lift_exp_eq_uidx : forall Θ Ξ Γ A A' u v,
     uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : univ_tm u ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : univ_tm v.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm u ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : ulvl_tm v.
 Proof.
   intros * Hle HA; destruct u as [n | n], v as [m | m]; cbn in Hle, HA |- *;
-    [ eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_suniv; mauto 2 ]
+    [ eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_suniv_le; mauto 2 ]
     | eapply wf_exp_eq_small_large; eassumption
     | contradiction
     | eapply lift_exp_eq_ge; eassumption ].
@@ -1996,22 +1996,28 @@ Hint Resolve lift_exp_uidx lift_exp_eq_uidx : mctt.
 
 (** The closed small types are types of every universe, small or large: their
     rules give them [Typeˢ@0], which [uidx_le_least] lifts anywhere. *)
-Lemma wf_nat_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : univ_tm u.
+Lemma wf_nat_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_nat; assumption ]. Qed.
 
-Lemma wf_True_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : univ_tm u.
+Lemma wf_level_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level : ulvl_tm u.
+Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_level; assumption ]. Qed.
+
+Lemma wf_True_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_True; assumption ]. Qed.
 
-Lemma wf_False_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : univ_tm u.
+Lemma wf_False_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_False; assumption ]. Qed.
 
-Lemma wf_exp_eq_nat_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : univ_tm u.
+Lemma wf_exp_eq_nat_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
-Lemma wf_exp_eq_True_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : univ_tm u.
+Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : ulvl_tm u.
+Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.
+
+Lemma wf_exp_eq_True_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_exp_eq_True_cong; assumption ]. Qed.
 
-Lemma wf_exp_eq_False_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : univ_tm u.
+Lemma wf_exp_eq_False_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_exp_eq_False_cong; assumption ]. Qed.
 
 (** Not hints: they would fire on a goal whose type is still an evar and
@@ -2021,17 +2027,17 @@ Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0)); [ apply uidx_le_least
 Lemma wf_subtyp_uidx : forall {Θ Ξ Γ} {u v : uidx},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     uidx_le u v ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ univ_tm u ⊆ univ_tm v.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u ⊆ ulvl_tm v.
 Proof.
   intros * HΓ Hle; destruct u as [n | n], v as [m | m]; cbn in Hle |- *;
-    [ apply wf_subtyp_suniv; assumption
-    | apply wf_subtyp_small_large; assumption
+    [ apply wf_subtyp_suniv_le; assumption
+    | apply wf_subtyp_small_large; mauto 3
     | contradiction
     | apply wf_subtyp_ge; assumption ].
 Qed.
 
 (** The same from a type of any universe, large or small. *)
-Lemma wf_subtyp_refl_univ : forall Θ Ξ Γ A u, Θ ⍮ Ξ ⍮ Γ ⊢ A : univ_tm u -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
+Lemma wf_subtyp_refl_univ : forall Θ Ξ Γ A u, Θ ⍮ Ξ ⍮ Γ ⊢ A : ulvl_tm u -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
 Proof.
   intros * HA; eapply wf_subtyp_refl_typ, (lift_exp_uidx _ _ _ _ u (ulvl u));
     [ apply uidx_le_ulvl | exact HA ].

@@ -1,7 +1,8 @@
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Subtyping Require Import Definitions.
 From Mctt.Core Require Import Base Soundness.
-From Mctt.Core.Syntactic Require Import SystemOpt.
+From Mctt.Core.Syntactic Require Import CoreInversions LevelEq SystemOpt.
+From Mctt.Core.Semantic Require Import Levels.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 Import Syntax_Notations Fixed_Notations.
 
@@ -26,9 +27,20 @@ Proof.
   induction 1; intros; subst; simpl in *.
   - eapply wf_subtyp_refl'; mauto.
   - assert (i < j \/ i = j) as [] by lia; mauto 3.
-  (** The two small-universe rules are the syntactic rules themselves. *)
-  - apply wf_subtyp_suniv; [ gen_presups; assumption | assumption ].
-  - apply wf_subtyp_small_large; gen_presups; assumption.
+  (** The two small-universe rules are the syntactic rules themselves; the
+      order on canonical levels is the level equation [lvl_exp_of_le]. *)
+  - gen_presups.
+    match goal with
+    | HA : _ ⊢ a_univ ?t : _, HB : _ ⊢ a_univ ?t' : _ |- _ =>
+        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; exact HA);
+        assert (Γ ⊢ t' : Level) by (eapply wf_univ_lvl_inversion; exact HB)
+    end.
+    apply wf_subtyp_suniv; [ assumption | assumption | assumption |].
+    apply lvl_exp_of_le; [ assumption | eapply lvl_exp_of_la_wf; eassumption
+                         | eapply lvl_exp_of_la_wf; eassumption | assumption ].
+  - gen_presups.
+    apply wf_subtyp_small_large; [ assumption |].
+    eapply wf_univ_lvl_inversion; eassumption.
   - on_all_hyp: fun H => apply wf_pi_inversion' in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
@@ -51,14 +63,14 @@ Proof.
     try contradiction;
     mauto 3.
 
-  all: constructor; lia.
+  all: constructor; first [ lia | eapply lvl_le_trans; eassumption ].
 Qed.
 
 Lemma alg_subtyping_nf_refl : forall A,
     ⊢anf A ⊆ A.
 Proof.
   induction A;
-    solve [constructor; simpl; trivial | apply asnf_suniv; lia].
+    solve [constructor; simpl; trivial | apply asnf_suniv, lvl_le_refl].
 Qed.
 
 #[local]
@@ -99,14 +111,19 @@ Proof.
     mauto.
   (** The two small-universe rules: a small universe is its own normal
       form, read back by [read_typ_suniv]. *)
-  - assert (Γ ⊢ Typeˢ@n : Type@0) by (apply wf_univ_large; assumption).
-    assert (Γ ⊢ Typeˢ@m : Type@0) by (apply wf_univ_large; assumption).
-    on_all_hyp: fun H => apply soundness in H.
-    destruct_all.
+  - (** The order on the two canonical levels is read off the normal form of
+        the premise [maxl M M' ≈ M'] ([read_max_lvl_le]). *)
+    match goal with H : wf_exp_eq _ _ _ _ (maxl _ _) _ |- _ =>
+      apply completeness in H as [W [Hn1 Hn2]] end.
+    assert (Γ ⊢ Typeˢ⟨M⟩ : Type@0) as HA%soundness by (apply wf_univ_large_tm; assumption).
+    assert (Γ ⊢ Typeˢ⟨M'⟩ : Type@0) as HB%soundness by (apply wf_univ_large_tm; assumption).
+    destruct HA as [WA [HA _]]; destruct HB as [WB [HB _]].
     econstructor; mauto 2.
     progressive_inversion.
-    apply asnf_suniv; assumption.
-  - assert (Γ ⊢ Typeˢ@n : Type@0) by (apply wf_univ_large; assumption).
+    functional_initial_env_rewrite_clear.
+    simplify_evals.
+    apply asnf_suniv; eapply read_max_lvl_le; eassumption.
+  - assert (Γ ⊢ Typeˢ⟨M⟩ : Type@0) by (apply wf_univ_large_tm; assumption).
     assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
     on_all_hyp: fun H => apply soundness in H.
     destruct_all.

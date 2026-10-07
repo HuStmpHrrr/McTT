@@ -31,16 +31,26 @@ Qed.
 #[export]
 Hint Resolve wf_typ_inversion : mctt.
 
-Lemma wf_univ_inversion : forall {Θ Ξ Γ n A},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@(S n) ⊆ A.
+Lemma wf_univ_inversion : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨succl M⟩ ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve.
+Qed.
+
+(** The level of a universe that is a type is a level: the only rule that
+    gives a universe a type asks for it. *)
+Lemma wf_univ_lvl_inversion : forall {Θ Ξ Γ M A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level.
 Proof.
   intros * H.
   dependent induction H; mautosolve.
 Qed.
 
 #[export]
-Hint Resolve wf_univ_inversion : mctt.
+Hint Resolve wf_univ_inversion wf_univ_lvl_inversion : mctt.
 
 Lemma wf_nat_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : A ->
@@ -77,6 +87,57 @@ Qed.
 
 #[export]
 Hint Resolve wf_succ_inversion : mctt.
+
+(** The level forms.  A level is of type [Level] up to subtyping, and so is
+    every argument of [succl] and [maxl]. *)
+Lemma wf_level_inversion : forall Θ Ξ Γ A,
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_level_inversion : mctt.
+
+Corollary wf_llit_inversion : forall Θ Ξ Γ A n,
+    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp eq_refl); mautosolve 4.
+Qed.
+
+#[export]
+Hint Resolve wf_llit_inversion : mctt.
+
+Corollary wf_succl_inversion : forall Θ Ξ Γ A M,
+    Θ ⍮ Ξ ⍮ Γ ⊢ succl M : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp1 _ eq_refl);
+    destruct_conjs; mautosolve.
+Qed.
+
+#[export]
+Hint Resolve wf_succl_inversion : mctt.
+
+Corollary wf_maxl_inversion : forall Θ Ξ Γ A M N,
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    try specialize (IHwf_exp1 _ _ eq_refl);
+    destruct_conjs; mautosolve.
+Qed.
+
+#[export]
+Hint Resolve wf_maxl_inversion : mctt.
 
 Lemma wf_natrec_inversion : forall Θ Ξ Γ A M A' MZ MS,
     Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A' | zero -> MZ | succ -> MS end : A ->

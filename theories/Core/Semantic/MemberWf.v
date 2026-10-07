@@ -35,22 +35,6 @@ Proof.
   congruence.
 Qed.
 
-(** A type below a large universe is a universe at an index below it: with
-    small universes that index is not always a large one, so it is given as a
-    [uidx]. *)
-Lemma subtyp_univ_inv : forall Γ X i,
-    Γ ⊢ X ⊆ Type@i ->
-    exists (u : uidx) k, uidx_le u (ul i) /\ Γ ⊢ X ≈ univ_tm u : Type@k.
-Proof.
-  intros * H.
-  destruct (subtyp_spec H) as [[k Hk] | [(u & v & [k Hk] & [k' Hk'] & Hle) | (A1 & A2 & B1 & B2 & _ & [k Hk] & _)]].
-  - exists (ul i), k; split; [ apply uidx_le_refl | exact Hk ].
-  - assert (v = ul i) as -> by (eapply (exp_eq_univ_tm_implies_eq (u := v) (v := ul i)); exact Hk').
-    exists u, k; split; [ exact Hle | exact Hk ].
-  - exfalso; eapply pi_typ_absurd; exact Hk.
-Qed.
-
-
 (** ** A Binding's Value, Read Back Through the Binding *)
 
 (** Under [Γ ▸ D ≔ N], a term is equal to its instance at [N], weakened: the
@@ -108,19 +92,19 @@ Lemma typ_let_inv : forall Γ oD N T i, Γ ⊢ a_let (b_def oD N) T : Type@i ->
 Proof.
   intros * H.
   destruct (wf_let_inversion H) as (D & k & C & Hann & HD & HN & HT & Hsub).
-  destruct (subtyp_univ_inv _ _ _ Hsub) as (j & k' & Hle & HCj).
   exists D; split; [ exact Hann |].
   split; [ eauto | split; [ exact HN |] ].
   assert (exists l, Γ ▸ D ≔ N ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
   pose proof (def_ctx_inst _ _ _ _ _ _ HD HN HCt) as HCi.
   assert (⊢ Γ ▸ D ≔ N) by mauto 3.
-  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ≈ (univ_tm j)[↑]ʷ : Type@k'[↑]ʷ)
-    by (eapply wk_preserves_exp_eq; [ exact HCj | mauto 3 ]).
-  rewrite exp_wk_univ_tm in HCw; cbn in HCw.
-  assert (Γ ▸ D ≔ N ⊢ C ≈ univ_tm j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
-  (** The index need not be a large one, so the body is moved up by
-      [lift_exp_uidx] rather than [lift_exp_ge]. *)
-  eapply (lift_exp_uidx _ _ _ _ j (ul i)); [ exact Hle |]; mauto 3.
+  (** The body's type is below [Type@i] once instantiated; it is equal to that
+      instance weakened, and weakening preserves the subtyping, so the body
+      is a type of [Type@i] by subsumption. *)
+  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ⊆ Type@i[↑]ʷ)
+    by (eapply wk_preserves_subtyp; [ exact Hsub | mauto 3 ]).
+  cbn in HCw.
+  eapply wf_exp_subtyp'; [ exact HT |].
+  etransitivity; [ eapply wf_subtyp_refl'; exact HCi | exact HCw ].
 Qed.
 
 
@@ -129,16 +113,15 @@ Lemma typ_let_mod_inv : forall Γ U T i, Γ ⊢ ℓₘ U in T : Type@i ->
 Proof.
   intros * H.
   destruct (wf_let_mod_inversion H) as (C & HU & HT & Hsub).
-  destruct (subtyp_univ_inv _ _ _ Hsub) as (j & k' & Hle & HCj).
   split; [ exact HU |].
   assert (exists l, Γ ▹ₘ U ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
   pose proof (mod_ctx_inst _ _ _ _ HU HCt) as HCi.
   assert (⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU).
-  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ≈ (univ_tm j)[↑]ʷ : Type@k'[↑]ʷ)
-    by (eapply wk_preserves_exp_eq; [ exact HCj | mauto 3 ]).
-  rewrite exp_wk_univ_tm in HCw; cbn in HCw.
-  assert (Γ ▹ₘ U ⊢ C ≈ univ_tm j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
-  eapply (lift_exp_uidx _ _ _ _ j (ul i)); [ exact Hle |]; mauto 3.
+  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ⊆ Type@i[↑]ʷ)
+    by (eapply wk_preserves_subtyp; [ exact Hsub | mauto 3 ]).
+  cbn in HCw.
+  eapply wf_exp_subtyp'; [ exact HT |].
+  etransitivity; [ eapply wf_subtyp_refl'; exact HCi | exact HCw ].
 Qed.
 
 (** ** The [Π] a Type Is *)

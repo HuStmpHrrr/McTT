@@ -149,8 +149,8 @@ Proof.
 Qed.
 
 (** The universe at an index evaluates to its value, at either tier. *)
-Lemma eval_univ_tm : forall Θ Ξ u ρ, ⟦ univ_tm u ⟧ Θ ⍮ Ξ ⍮ ρ ↘ univ_val u.
-Proof. intros ? ? [] ?; cbn; econstructor. Qed.
+Lemma eval_ulvl_tm : forall Θ Ξ u ρ, ⟦ ulvl_tm u ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ulvl_val u.
+Proof. intros ? ? [] ?; cbn; repeat econstructor. Qed.
 
 #[export]
-Hint Resolve eval_univ_tm : mctt.
+Hint Resolve eval_ulvl_tm : mctt.

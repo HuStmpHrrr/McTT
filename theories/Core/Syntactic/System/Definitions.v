@@ -32,7 +32,7 @@
     stack frame against the frames outside it, so [⊢g Θ ⍮ Ξ] is an induction
     that varies them, as [⊢ Γ] varies [Γ]. *)
 
-From Stdlib Require Import List Classes.RelationClasses Setoid Morphisms.
+From Stdlib Require Import Lia List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
@@ -139,10 +139,27 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_typ :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i : Type@(S i) )
-(** A small universe is in the next one. *)
+(** A small universe at a level is in the small universe at the next one.
+    The level is an arbitrary term, so a universe may be indexed by a
+    variable. *)
 | wf_univ :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : Typeˢ⟨succl M⟩ )
+(** The type of universe levels is small, at the least level. *)
+| wf_level :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Typeˢ@(S n) )
+     Θ ⍮ Ξ ⍮ Γ ⊢ Level : Typeˢ@0 )
+(** A level is a literal, a successor, or a join. *)
+| wf_llit :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n : Level )
+| wf_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ succl M : Level )
+| wf_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : Level )
 | wf_nat :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeˢ@0 )
@@ -258,8 +275,53 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ≈ Type@i : Type@(S i) )
 | wf_exp_eq_univ_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ ≈ Typeˢ⟨M'⟩ : Typeˢ⟨succl M⟩ )
+| wf_exp_eq_level_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Typeˢ@(S n) )
+     Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Typeˢ@0 )
+| wf_exp_eq_llit_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n ≈ 𝕃@n : Level )
+| wf_exp_eq_succl_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ succl M ≈ succl M' : Level )
+| wf_exp_eq_maxl_cong :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N ≈ maxl M' N' : Level )
+(** *** The Level Equations
+
+    Levels are a join semilattice with a least element and an inflationary
+    successor that distributes over the join; the literals are its iterated
+    successors.  These are the equations of Danielsson–Favier–Kubánek Fig. 2,
+    and they are complete for the canonical forms of [Core.Syntactic.Levels]:
+    two levels are equal exactly when they have the same canonical form. *)
+| wf_exp_eq_llit_succl :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@(S n) ≈ succl (𝕃@n) : Level )
+| wf_exp_eq_maxl_zero :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃@0) M ≈ M : Level )
+| wf_exp_eq_maxl_assoc :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ P : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (maxl M N) P ≈ maxl M (maxl N P) : Level )
+| wf_exp_eq_maxl_comm :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N ≈ maxl N M : Level )
+| wf_exp_eq_maxl_idem :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M M ≈ M : Level )
+| wf_exp_eq_succl_maxl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ succl (maxl M N) ≈ maxl (succl M) (succl N) : Level )
+| wf_exp_eq_maxl_succl :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M (succl M) ≈ succl M : Level )
 | wf_exp_eq_nat_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeˢ@0 )
@@ -450,15 +512,22 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      i < j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ Type@j )
-(** A small universe below one at a larger level. *)
+(** A small universe below one at a larger level.  The order on levels is
+    [maxl M M' ≈ M'], which is decidable on canonical forms
+    ([Core.Syntactic.Levels.lvl_le]) and never the order on realisers. *)
 | wf_subtyp_suniv :
+  (** The two typings let the presupposition lemmas be proved independently,
+      as in [wf_subtyp_refl]. *)
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     n <= m ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Typeˢ@m )
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M M' ≈ M' : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ ⊆ Typeˢ⟨M'⟩ )
 (** A small universe below every large one. *)
 | wf_subtyp_small_large :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Type@i )
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ ⊆ Type@i )
 | wf_subtyp_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
@@ -922,48 +991,195 @@ Qed.
 (** ** Immediate & Independent Presuppositions *)
 
 (** A small universe is a type of every large universe. *)
+Lemma wf_univ_large_tm : forall {Θ Ξ Γ M i},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : Type@i.
+Proof.
+  intros * HΓ HM; eapply wf_exp_subtyp;
+    [ apply wf_univ, HM | apply wf_typ, HΓ | apply wf_subtyp_small_large; [ exact HΓ | apply wf_succl, HM ] ].
+Qed.
+
 Lemma wf_univ_large : forall {Θ Ξ Γ n i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Type@i.
-Proof.
-  intros; eapply wf_exp_subtyp; [ apply wf_univ | apply wf_typ | apply wf_subtyp_small_large ]; eassumption.
-Qed.
+Proof. intros; apply wf_univ_large_tm; [| apply wf_llit ]; assumption. Qed.
 
 (** The base types are types of every large universe. *)
 Lemma wf_nat_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_nat | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_nat | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
 
 Lemma wf_True_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_True | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_True | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
 
 Lemma wf_False_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@i.
-Proof. intros; eapply wf_exp_subtyp; [ apply wf_False | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_False | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
+
+Lemma wf_level_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_level | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
+
+Lemma wf_exp_eq_level_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_level_cong | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
 
 Lemma wf_exp_eq_nat_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_nat_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_nat_cong | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
 
 Lemma wf_exp_eq_True_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_True_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_True_cong | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
 
 Lemma wf_exp_eq_False_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_False_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_False_cong | apply wf_typ | apply wf_subtyp_small_large ]; first [ eassumption | apply wf_llit; eassumption ]. Qed.
+
+Lemma wf_exp_eq_univ_cong_large_tm : forall {Θ Ξ Γ M M' i},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ ≈ Typeˢ⟨M'⟩ : Type@i.
+Proof.
+  intros * HΓ HMt HM; eapply wf_exp_eq_subtyp;
+    [ apply wf_exp_eq_univ_cong, HM | apply wf_typ, HΓ
+    | apply wf_subtyp_small_large; [ exact HΓ | apply wf_succl, HMt ] ].
+Qed.
 
 Lemma wf_exp_eq_univ_cong_large : forall {Θ Ξ Γ n i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Type@i.
-Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_univ_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+Proof. intros; apply wf_exp_eq_univ_cong_large_tm; [| apply wf_llit | apply wf_exp_eq_llit_cong ]; assumption. Qed.
+
+(** ** Literal Levels
+
+    The literal form of the universe rules, which the closed types and the
+    stage-1 statements are written with: [succl 𝕃@n] is [𝕃@(S n)] and the
+    order on literals is the order on their indices, so the general rules give
+    them back. *)
+(** ** The Universe Congruence, Right-Hand Side
+
+    [Typeˢ⟨M⟩ ≈ Typeˢ⟨M'⟩] is stated at [Typeˢ⟨succl M⟩], so presupposition
+    for the right-hand side has to move [Typeˢ⟨M'⟩] from [Typeˢ⟨succl M'⟩]
+    there.  That is a subtyping, by the level equation [maxl M' M ≈ M], which
+    needs reflexivity at [M] only — and [M ≈ M] is [M ≈ M'] composed with its
+    symmetry, so no induction over typing is needed here. *)
+Lemma wf_exp_eq_maxl_right : forall {Θ Ξ Γ M M'},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl M' M ≈ M : Level.
+Proof.
+  intros * HM H.
+  assert (HMM : Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M : Level)
+    by (eapply wf_exp_eq_trans; [ exact H | apply wf_exp_eq_sym, H ]).
+  eapply wf_exp_eq_trans;
+    [ apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_sym, H | exact HMM ]
+    | apply wf_exp_eq_maxl_idem, HM ].
+Qed.
+
+Lemma wf_subtyp_suniv_succl_eq : forall {Θ Ξ Γ M M'},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨succl M'⟩ ⊆ Typeˢ⟨succl M⟩.
+Proof.
+  intros * HΓ HM HM' H; apply wf_subtyp_suniv;
+    [ exact HΓ | apply wf_succl, HM' | apply wf_succl, HM |].
+  eapply wf_exp_eq_trans;
+    [ apply wf_exp_eq_sym, wf_exp_eq_succl_maxl; [ exact HM' | exact HM ]
+    | apply wf_exp_eq_succl_cong, wf_exp_eq_maxl_right; [ exact HM | exact H ] ].
+Qed.
+
+Lemma wf_univ_cong_right : forall {Θ Ξ Γ M M'},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M'⟩ : Typeˢ⟨succl M⟩.
+Proof.
+  intros * HΓ HM HM' H.
+  assert (HT : Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨succl M⟩ : Type@0)
+    by (apply wf_univ_large_tm; [ exact HΓ | apply wf_succl, HM ]).
+  eapply wf_exp_subtyp;
+    [ apply wf_univ, HM' | exact HT
+    | apply wf_subtyp_suniv_succl_eq; [ exact HΓ | exact HM | exact HM' | exact H ] ].
+Qed.
+
+Lemma wf_exp_eq_maxl_llit_le : forall {Θ Ξ Γ} n m,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    n <= m ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl 𝕃@n 𝕃@m ≈ 𝕃@m : Level.
+Proof.
+  intros Θ Ξ Γ n; induction n as [| n IH]; intros m HΓ Hle.
+  - apply wf_exp_eq_maxl_zero, wf_llit; assumption.
+  - destruct m as [| m]; [ lia |].
+    eapply wf_exp_eq_trans;
+      [ apply wf_exp_eq_maxl_cong; apply wf_exp_eq_llit_succl; assumption |].
+    eapply wf_exp_eq_trans;
+      [ apply wf_exp_eq_sym, wf_exp_eq_succl_maxl; apply wf_llit; assumption |].
+    eapply wf_exp_eq_trans;
+      [ apply wf_exp_eq_succl_cong, IH; [ assumption | lia ] |].
+    apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption.
+Qed.
+
+Lemma wf_subtyp_small_large_lit : forall {Θ Ξ Γ n i},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Type@i.
+Proof. intros; apply wf_subtyp_small_large; [| apply wf_llit ]; assumption. Qed.
+
+Lemma wf_subtyp_suniv_le : forall {Θ Ξ Γ n m},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    n <= m ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Typeˢ@m.
+Proof.
+  intros; apply wf_subtyp_suniv;
+    [ | apply wf_llit | apply wf_llit | apply wf_exp_eq_maxl_llit_le ]; assumption.
+Qed.
+
+Lemma wf_subtyp_suniv_succl : forall {Θ Ξ Γ n},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨succl 𝕃@n⟩ ⊆ Typeˢ@(S n).
+Proof.
+  intros; apply wf_subtyp_suniv;
+    [ assumption | apply wf_succl, wf_llit; assumption | apply wf_llit; assumption |].
+  eapply wf_exp_eq_trans;
+    [ apply wf_exp_eq_maxl_cong;
+      [ apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption
+      | apply wf_exp_eq_llit_cong; assumption ]
+    | apply wf_exp_eq_maxl_idem, wf_llit; assumption ].
+Qed.
+
+Lemma wf_univ_lit : forall {Θ Ξ Γ n},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Typeˢ@(S n).
+Proof.
+  intros * HΓ.
+  assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Typeˢ⟨succl 𝕃@n⟩) by (apply wf_univ, wf_llit; exact HΓ).
+  assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@(S n) : Type@0) by (apply wf_univ_large; exact HΓ).
+  eapply wf_exp_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
+Qed.
+
+Lemma wf_exp_eq_univ_cong_lit : forall {Θ Ξ Γ n},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Typeˢ@(S n).
+Proof.
+  intros * HΓ.
+  assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Typeˢ⟨succl 𝕃@n⟩)
+    by (apply wf_exp_eq_univ_cong, wf_exp_eq_llit_cong; exact HΓ).
+  assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@(S n) : Type@0) by (apply wf_univ_large; exact HΓ).
+  eapply wf_exp_eq_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
+Qed.
+
+#[export]
+Hint Resolve wf_univ_lit wf_exp_eq_univ_cong_lit : mctt.
 
 (** The universe at an index [u], as a term of the large universe just above
     it: [Type@j] is in [Type@(S j)], and every small universe is in
     [Type@0]. *)
-Lemma wf_univ_tm : forall {Θ Ξ Γ} {u : uidx},
-    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ univ_tm u : Type@(univ_above u).
+Lemma wf_ulvl_tm : forall {Θ Ξ Γ} {u : uidx},
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u : Type@(ulvl_above u).
 Proof. intros ? ? ? []; [ apply wf_univ_large | apply wf_typ ]. Qed.
 
-Lemma wf_exp_eq_univ_tm_cong : forall {Θ Ξ Γ} {u : uidx},
-    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ univ_tm u ≈ univ_tm u : Type@(univ_above u).
+Lemma wf_exp_eq_ulvl_tm_cong : forall {Θ Ξ Γ} {u : uidx},
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ulvl_tm u ≈ ulvl_tm u : Type@(ulvl_above u).
 Proof. intros ? ? ? []; [ apply wf_exp_eq_univ_cong_large | apply wf_exp_eq_typ_cong ]. Qed.
 
 (** A universe is closed, so no substitution reaches it. *)
-Lemma exp_sub_univ_tm : forall u σ, (univ_tm u)[σ] = univ_tm u.
+Lemma exp_sub_ulvl_tm : forall u σ, (ulvl_tm u)[σ] = ulvl_tm u.
 Proof. intros [] ?; reflexivity. Qed.
 
 
@@ -977,12 +1193,22 @@ Ltac fix_open_level i := first [ is_evar i; unify i 0 | idtac ].
 #[export]
 Remove Hints wf_subtyp_small_large : mctt.
 #[export]
-Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ⊆ Type@?i) => fix_open_level i; apply wf_subtyp_small_large : mctt.
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ⟨_⟩ ⊆ Type@?i) => fix_open_level i; apply wf_subtyp_small_large : mctt.
+(** The literal form of the two hints above keeps the depth of a search that
+    only meets small universes at literal levels. *)
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ⊆ Type@?i) => fix_open_level i; apply wf_subtyp_small_large_lit : mctt.
 
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ⟨_⟩ : Type@?i) => fix_open_level i; apply wf_univ_large_tm : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ : Type@?i) => fix_open_level i; apply wf_univ_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type@?i) => fix_open_level i; apply wf_nat_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type@?i) => fix_open_level i; apply wf_level_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type@?i) => fix_open_level i; apply wf_exp_eq_level_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Type@?i) => fix_open_level i; apply wf_True_large : mctt.
 #[export]
@@ -993,6 +1219,8 @@ Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type@?i) => fix_open_level i; app
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type@?i) => fix_open_level i; apply wf_exp_eq_True_cong_large : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type@?i) => fix_open_level i; apply wf_exp_eq_False_cong_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ⟨_⟩ ≈ Typeˢ⟨_⟩ : Type@?i) => fix_open_level i; apply wf_exp_eq_univ_cong_large_tm : mctt.
 #[export]
 Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ≈ Typeˢ@_ : Type@?i) => fix_open_level i; apply wf_exp_eq_univ_cong_large : mctt.
 

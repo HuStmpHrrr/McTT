@@ -207,8 +207,14 @@ Section Expansion.
 
   Fixpoint exp_xp (S : skel) (M : exp) {struct M} : xres exp :=
     match M with
-    | a_typ _ | a_univ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => xok M
+    | a_typ _ | a_level | a_llit _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => xok M
+    | a_univ M => let+ M' := exp_xp S M in xok (a_univ M')
     | a_succ M => let+ M' := exp_xp S M in xok (a_succ M')
+    | a_succl M => let+ M' := exp_xp S M in xok (a_succl M')
+    | a_maxl M N =>
+        let+ M' := exp_xp S M in
+        let+ N' := exp_xp S N in
+        xok (a_maxl M' N')
     | a_natrec A MZ MS M =>
         let+ A' := exp_xp (None :: S) A in
         let+ MZ' := exp_xp S MZ in

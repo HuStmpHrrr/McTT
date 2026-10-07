@@ -47,19 +47,19 @@ Section Bridge.
     intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeⁿ@i _ H HΓ).
   Qed.
 
-  (** The same at an index of either tier: a type of [univ_tm u] is one of the
-      large universe [Type@(ulvl u)] the index lives at. *)
+  (** The same at an index of either tier: a type of [unf_tm u] is one of the
+      large universe [Type@(unf_large u)] the index lives at. *)
   Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
       @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
       is_univ_nf UA u ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(ulvl u).
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(unf_large u).
   Proof.
     intros * H Hu HΓ.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : univ_tm u)
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : unf_tm u)
       by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
           exact (alg_type_infer_sound' _ _ _ UA _ H HΓ)).
-    eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ].
+    exact (wf_exp_unf_large (GC := gc_mk Θ Ξ) ltac:(eassumption)).
   Qed.
 
   Lemma alg_type_check_sound' : forall Θ Ξ Γ i A M,
@@ -87,7 +87,7 @@ Section Bridge.
       exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u.
   Proof.
     intros * H.
-    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ uidx_le u (ul i))
+    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]]
         by (eapply (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ));
             [ apply user_exp_all | eassumption ]).
@@ -173,7 +173,7 @@ Section check_exp.
     lazymatch goal with
     | |- type_infer_order _ => apply user_exp_to_type_infer_order, user_exp_all
     (** The inferred universe gives the typing at its own large level. *)
-    | |- _ ⍮ _ ⍮ _ ⊢ _ : Type@(ulvl _) => eapply alg_type_infer_univ_sound'; eassumption
+    | |- _ ⍮ _ ⍮ _ ⊢ _ : Type@(unf_large _) => eapply alg_type_infer_univ_sound'; eassumption
     | _ => mautosolve 3
     end.
 
@@ -185,7 +185,7 @@ Section check_exp.
   | Θ, Ξ, Γ, HΓ, A =>
       let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
-      pureo (exist _ (ulvl u) _)
+      pureo (exist _ (unf_large u) _)
   .
 
   #[local]

@@ -26,7 +26,7 @@ Section Fixed_GCtx.
 
 Lemma glu_rel_exp_True_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ⊤ : univ_tm u.
+    Γ ⊩ ⊤ : ulvl_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -35,12 +35,12 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_True_univ; assumption |].
-  eexists; repeat split; mauto 3.
+  eexists; repeat split; mauto 3; [| closed_typ_readback ].
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold True_glu_typ_pred.
-  simplify_subs; apply wf_exp_eq_True_cong_univ; assumption.
+  simplify_subs; apply wf_exp_eq_True_cong_large; assumption.
 Qed.
 
 Lemma glu_rel_exp_True : forall {Γ} {i : nat},
@@ -57,7 +57,7 @@ Hint Resolve glu_rel_exp_True : mctt.
 
 Lemma glu_rel_exp_False_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ⊥ : univ_tm u.
+    Γ ⊩ ⊥ : ulvl_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -66,12 +66,12 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_False_univ; assumption |].
-  eexists; repeat split; mauto 3.
+  eexists; repeat split; mauto 3; [| closed_typ_readback ].
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold False_glu_typ_pred.
-  simplify_subs; apply wf_exp_eq_False_cong_univ; assumption.
+  simplify_subs; apply wf_exp_eq_False_cong_large; assumption.
 Qed.
 
 Lemma glu_rel_exp_False : forall {Γ} {i : nat},
@@ -113,7 +113,7 @@ Proof.
   intros * ? HM ?.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (univ_tm i) ↘ False_glu_exp_pred (univ_tm i))
+  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (ulvl_tm i) ↘ False_glu_exp_pred (ulvl_tm i))
     by (glu_univ_elem_econstructor; reflexivity).
   eapply cons_glu_sub_pred_helper; mauto 3.
   econstructor; [unfold False_glu_typ_pred |]; simplify_subs; mauto 3.

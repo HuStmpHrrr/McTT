@@ -1,7 +1,7 @@
 From Equations Require Import Equations.
 From Stdlib Require Import Lia List PeanoNat String Morphisms Relation_Definitions RelationClasses.
 
-From Mctt.Core.Syntactic Require Export Syntax.
+From Mctt.Core.Syntactic Require Export Levels Syntax.
 
 (** * The Semantic Domain
 
@@ -32,8 +32,16 @@ Inductive domain : Set :=
 | d_pi : domain -> list dentry -> exp -> domain
 (** A large universe *)
 | d_univ : nat -> domain
-(** A small universe *)
-| d_suniv : nat -> domain
+(** A small universe at a level value.  The level is a value of type [Level],
+    so a small universe may be indexed by a neutral. *)
+| d_suniv : domain -> domain
+(** The type [Level] *)
+| d_level : domain
+(** A flat level [max (c, k₁ + a₁, …)]: evaluation of [succl] and [maxl] only
+    flattens, so the same level has many values; readback canonicalises.  A
+    neutral level is not of this shape — it is [⇑ Levelᵈ m] — so the level
+    operations take the flat view ([dlvl_view]) of their arguments. *)
+| d_lvl : nat -> list (nat * domain_ne) -> domain
 (** [zero] *)
 | d_zero : domain
 (** [succ] *)
@@ -148,7 +156,9 @@ Module Domain_Notations.
       [Syntax_Notations]. *)
   Notation "ρ '↯'" := (drop_env ρ) (at level 1, left associativity) : mctt_scope.
   Notation "'𝕌' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌' @ n") : mctt_scope.
-  Notation "'𝕌ˢ' @ n" := (d_suniv n) (at level 1, n at level 0, format "'𝕌ˢ' @ n") : mctt_scope.
+  Notation "'𝕌ˢ' @ l" := (d_suniv l) (at level 1, l at level 0, format "'𝕌ˢ' @ l") : mctt_scope.
+  Notation "'Levelᵈ'" := d_level : mctt_scope.
+  Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'ℕᵈ'" := d_nat : mctt_scope.
   Notation "'zeroᵈ'" := d_zero : mctt_scope.
@@ -170,8 +180,83 @@ Module Domain_Notations.
 End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)
-Definition univ_val (u : uidx) : domain :=
-  match u with us n => d_suniv n | ul n => d_univ n end.
+Definition ulvl_val (u : uidx) : domain :=
+  match u with us n => d_suniv (d_lvl n nil) | ul n => d_univ n end.
+
+(** ** Level Values
+
+    The flat view of a value of type [Level]: a flat level is its own view, and
+    a neutral is the single atom [(0, m)].  No other value has type [Level], so
+    the default is never used. *)
+Definition dlvl_view (d : domain) : nat * list (nat * domain_ne) :=
+  match d with
+  | d_lvl c xs => (c, xs)
+  | d_neut _ m => (0, (0, m) :: nil)
+  | _ => (0, nil)
+  end.
+
+Definition dlvl_cst (d : domain) : nat := fst (dlvl_view d).
+Definition dlvl_atoms (d : domain) : list (nat * domain_ne) := snd (dlvl_view d).
+
+(** The successor and the join of levels: both only flatten. *)
+Definition dlvl_suc (d : domain) : domain :=
+  d_lvl (S (dlvl_cst d)) (List.map (fun ka => (S (fst ka), snd ka)) (dlvl_atoms d)).
+
+Definition dlvl_max (d e : domain) : domain :=
+  d_lvl (Nat.max (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
+
+Definition dlvl_lit (n : nat) : domain := d_lvl n nil.
+
+(** ** The Realiser of a Level Value
+
+    The value of a level when every atom is [0].  It is the index of a small
+    universe in the PER and gluing models: those are indexed by naturals, and
+    a level's canonical form depends on the length of the context, so no finer
+    index would be stable.  See [Core.Syntactic.Levels.lvl_real]. *)
+(** The maximum of the offsets of the atoms and the constant.  The constant is
+    the base of the fold rather than a [Nat.max] on top of it, so that the
+    realiser of a literal level is that literal by computation. *)
+Fixpoint dla_max (c : nat) (xs : list (nat * domain_ne)) : nat :=
+  match xs with
+  | nil => c
+  | ka :: r => Nat.max (fst ka) (dla_max c r)
+  end.
+
+Definition dlvl_real (d : domain) : nat := dla_max (dlvl_cst d) (dlvl_atoms d).
+
+Fact dlvl_real_lit : forall n, dlvl_real (dlvl_lit n) = n.
+Proof. reflexivity. Qed.
+
+Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = 0.
+Proof. reflexivity. Qed.
+
+Fact dla_max_app : forall c c' xs ys,
+    dla_max (Nat.max c c') (xs ++ ys) = Nat.max (dla_max c xs) (dla_max c' ys).
+Proof.
+  intros c c' xs ys; induction xs as [| ka xs IH]; cbn [dla_max List.app].
+  - induction ys as [| ka ys IH]; cbn [dla_max]; [ reflexivity | lia ].
+  - rewrite IH; lia.
+Qed.
+
+Fact dla_max_suc : forall c xs,
+    dla_max (S c) (List.map (fun ka => (S (fst ka), snd ka)) xs) = S (dla_max c xs).
+Proof.
+  intros c xs; induction xs as [| ka xs IH]; cbn [dla_max List.map fst snd];
+    [ reflexivity | rewrite IH; lia ].
+Qed.
+
+Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = S (dlvl_real l).
+Proof.
+  intros; unfold dlvl_real, dlvl_suc, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
+  apply dla_max_suc.
+Qed.
+
+Fact dlvl_real_max : forall l l',
+    dlvl_real (dlvl_max l l') = Nat.max (dlvl_real l) (dlvl_real l').
+Proof.
+  intros; unfold dlvl_real, dlvl_max, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
+  apply dla_max_app.
+Qed.
 
 
 Import Domain_Notations.

@@ -223,7 +223,10 @@ let unit_path st fq =
 
 let rec term st env (o : C.obj) : unit =
   match o with
-  | C.Coq_typ _ | C.Coq_suniv _ | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
+  | C.Coq_typ _ | C.Coq_level | C.Coq_llit _
+  | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
+  | C.Coq_suniv o | C.Coq_succl o -> term st env o
+  | C.Coq_maxl (o1, o2) -> term st env o1; term st env o2
   | C.Coq_succ o -> term st env o
   | C.Coq_natrec (n, mx, m, z, sx, sr, s) ->
       term st env n;
@@ -612,10 +615,12 @@ let href (from : string list) (s : site) =
 let is_keyword = function
   | P.VAR _ | P.INT _ | P.EOF _ -> false
   | P.ARROW _ | P.AT _ | P.BAR _ | P.COLON _ | P.COLONCOLON _ | P.COMMA _ | P.DARROW _
-  | P.LPAREN _ | P.RPAREN _ | P.DOT _ | P.EQ _ | P.SEMI _ -> false
+  | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.DOT _ | P.EQ _ | P.SEMI _ -> false
   | _ -> true
 
-let is_type_kw = function P.NAT _ | P.TYPE _ | P.TRUE_TY _ | P.FALSE_TY _ -> true | _ -> false
+let is_type_kw = function
+  | P.NAT _ | P.TYPE _ | P.TYPEW _ | P.LEVEL _ | P.TRUE_TY _ | P.FALSE_TY _ -> true
+  | _ -> false
 
 let kind_class = function Local -> "var" | Def -> "def" | Mod -> "mod" | Unit -> "unit"
 

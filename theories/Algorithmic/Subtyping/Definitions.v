@@ -8,7 +8,7 @@ Reserved Notation "⊢anf A ⊆ A'" (at level 70, A at level 69, A' at level 69)
 
 Definition not_univ_pi (A : nf) : Prop :=
   match A with
-  | nf_typ _ | nf_univ _ | nf_pi _ _ => False
+  | nf_typ _ | nf_univ _ _ | nf_pi _ _ => False
   | _ => True
   end.
 
@@ -22,13 +22,15 @@ Inductive alg_subtyping_nf : nf -> nf -> Prop :=
 | asnf_univ : forall i j,
     i <= j ->
     ⊢anf Typeⁿ@i ⊆ Typeⁿ@j
-(** A small universe below one at a larger level. *)
-| asnf_suniv : forall n m,
-    n <= m ->
-    ⊢anf Typeˢⁿ@n ⊆ Typeˢⁿ@m
+(** A small universe below one at a larger level: the decidable order on
+    canonical levels ([Core.Syntactic.Levels.lvl_le]), which is the order on
+    every assignment to the atoms, never the order on realisers. *)
+| asnf_suniv : forall c xs d ys,
+    lvl_le (c, xs) (d, ys) ->
+    ⊢anf univⁿ c xs ⊆ univⁿ d ys
 (** A small universe below every large one. *)
-| asnf_small_large : forall n i,
-    ⊢anf Typeˢⁿ@n ⊆ Typeⁿ@i
+| asnf_small_large : forall c xs i,
+    ⊢anf univⁿ c xs ⊆ Typeⁿ@i
 | asnf_pi : forall A B A' B',
     A = A' ->
     ⊢anf B ⊆ B' ->

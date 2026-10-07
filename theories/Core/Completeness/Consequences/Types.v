@@ -56,18 +56,22 @@ Hint Resolve exp_eq_typ_implies_eq_level : mctt.
 
 (** The same at either tier, and across them: the universes at two different
     indices are never equal, since their values are not related. *)
-Lemma exp_eq_univ_tm_implies_eq : forall {Γ} {u v : uidx} {k},
-    Γ ⊢ univ_tm u ≈ univ_tm v : Type@k ->
+Lemma exp_eq_ulvl_tm_implies_eq : forall {Γ} {u v : uidx} {k},
+    Γ ⊢ ulvl_tm u ≈ ulvl_tm v : Type@k ->
     u = v.
 Proof.
   intros * H%completeness_fundamental_exp_eq.
   destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a = univ_val u) as ->
-      by (eapply functional_eval_exp; [ exact Ha | apply eval_univ_tm ]).
-  assert (a' = univ_val v) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_univ_tm ]).
+  assert (a = ulvl_val u) as ->
+      by (eapply functional_eval_exp; [ exact Ha | apply eval_ulvl_tm ]).
+  assert (a' = ulvl_val v) as ->
+      by (eapply functional_eval_exp; [ exact Ha' | apply eval_ulvl_tm ]).
   destruct u as [n | n], v as [m | m]; cbn in HR;
-    invert_per_univ_elem HR; congruence.
+    invert_per_univ_elem HR; try congruence.
+  (** Two small universes at literal levels: their levels are related, so
+      they have the same realiser, which is the literal. *)
+  match goal with H : per_lvl _ _ |- _ => apply per_lvl_real in H; cbn in H end.
+  congruence.
 Qed.
 
 Corollary exp_eq_univ_implies_eq_level : forall {Γ} {n m k},
@@ -75,7 +79,7 @@ Corollary exp_eq_univ_implies_eq_level : forall {Γ} {n m k},
     n = m.
 Proof.
   intros * H.
-  assert (us n = us m) as Heq by (eapply (exp_eq_univ_tm_implies_eq (u := us n) (v := us m)); exact H).
+  assert (us n = us m) as Heq by (eapply (exp_eq_ulvl_tm_implies_eq (u := us n) (v := us m)); exact H).
   injection Heq; trivial.
 Qed.
 
@@ -83,7 +87,10 @@ Hint Resolve exp_eq_univ_implies_eq_level : mctt.
 
 Inductive is_typ_constr : typ -> Prop :=
 | typ_is_typ_constr : forall i, is_typ_constr Type@i
-| univ_is_typ_constr : forall n, is_typ_constr Typeˢ@n
+(** A small universe at any level term: in a context with an axiom of type
+    [Level] a closed type may be the universe at that axiom. *)
+| univ_is_typ_constr : forall t, is_typ_constr Typeˢ⟨t⟩
+| level_is_typ_constr : is_typ_constr Level
 | nat_is_typ_constr : is_typ_constr ℕ
 | True_is_typ_constr : is_typ_constr ⊤
 | False_is_typ_constr : is_typ_constr ⊥
@@ -98,6 +105,7 @@ Hint Constructors is_typ_constr : mctt.
 Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | typ_is_rigid : forall i, rigid_typ Γ Type@i
 | univ_is_rigid : forall n, rigid_typ Γ Typeˢ@n
+| level_is_rigid : rigid_typ Γ Level
 | nat_is_rigid : rigid_typ Γ ℕ
 | True_is_rigid : rigid_typ Γ ⊤
 | False_is_rigid : rigid_typ Γ ⊥
@@ -106,16 +114,24 @@ Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 .
 Hint Constructors rigid_typ : mctt.
 
+(** A universe as a term: a large one, or a small one at any level term. *)
+Inductive univ_term : exp -> Prop :=
+| univ_term_typ : forall i, univ_term Type@i
+| univ_term_suniv : forall t, univ_term Typeˢ⟨t⟩.
+Hint Constructors univ_term : mctt.
+
 (** A well-formed type constructor is rigid in a context whose variables are
-    all bound by assumptions. *)
+    all bound by assumptions, unless it is a universe: a small universe at a
+    level term is not rigid, its level being a term. *)
 Lemma rigid_typ_of_is_typ_constr : forall Γ A i,
     (forall x B, Γ ∋ #x : B -> ctx_ass Γ x) ->
     is_typ_constr A ->
     Γ ⊢ A : Type@i ->
-    rigid_typ Γ A.
+    rigid_typ Γ A \/ univ_term A.
 Proof.
   intros * HΓ HA HAi.
-  destruct HA; mauto 2.
+  destruct HA; try solve [ left; mauto 2 | right; constructor ].
+  left.
   destruct (wf_vlookup_inversion HAi) as [B [Hlookup _]].
   constructor; eapply HΓ; eassumption.
 Qed.
@@ -148,8 +164,10 @@ Proof.
   destruct Histyp;
     [ assert (a = 𝕌@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌ˢ@n) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ ])
+    | assert (a = 𝕌ˢ@(dlvl_lit n)) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
+    | assert (a = Levelᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -188,8 +206,10 @@ Proof.
   destruct Histyp;
     [ assert (a = 𝕌@i0) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌ˢ@n) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ ])
+    | assert (a = 𝕌ˢ@(dlvl_lit n)) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
+    | assert (a = Levelᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -216,13 +236,15 @@ Proof.
   pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
   destruct (rel_typ_under_ctx_at_initial_env Hsem)
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
-  assert (a' = 𝕌ˢ@n) as ->
-      by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_univ ]).
+  assert (a' = 𝕌ˢ@(dlvl_lit n)) as ->
+      by (eapply functional_eval_exp; [ exact Ha' | apply eval_exp_univ, eval_exp_llit ]).
   destruct Histyp;
     [ assert (a = 𝕌@i) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌ˢ@n0) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ ])
+    | assert (a = 𝕌ˢ@(dlvl_lit n0)) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
+    | assert (a = Levelᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -233,7 +255,10 @@ Proof.
     | match goal with Hc : ctx_ass _ _ |- _ =>
         destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end ];
     invert_per_univ_elem HR.
-  - congruence.
+  - (** The two levels are related, so the two literals are the same
+        realiser. *)
+    match goal with H : per_lvl _ _ |- _ => apply per_lvl_real in H; cbn in H end.
+    congruence.
   - match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
 Qed.
 
@@ -254,8 +279,10 @@ Proof.
   destruct Histyp;
     [ assert (a = 𝕌@i) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
-    | assert (a = 𝕌ˢ@n) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ ])
+    | assert (a = 𝕌ˢ@(dlvl_lit n)) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
+    | assert (a = Levelᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
     | reflexivity
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
@@ -270,21 +297,100 @@ Qed.
 
 Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.
 
-(** A rigid type equal to a universe is that universe, at either tier. *)
-Corollary rigid_typ_eq_univ_tm : forall Γ A (u : uidx) k,
+(** ** Universe Terms
+
+    A universe as a term: a large one, or a small one at any level term.  The
+    small ones at a level term are not [rigid_typ] — their level is a term —
+    so these lemmas state what a judgment with a universe term on one side
+    says about the other. *)
+
+Lemma univ_term_ulvl_tm : forall u, univ_term (ulvl_tm u).
+Proof. intros []; constructor. Qed.
+Hint Resolve univ_term_ulvl_tm : mctt.
+
+Lemma var_not_univ_term : forall x, ~ univ_term #x.
+Proof. intros x H; inversion H. Qed.
+
+Lemma pi_not_univ_term : forall A B, ~ univ_term (Π A B).
+Proof. intros * H; inversion H. Qed.
+
+(** A rigid type equal to a small universe at a level term is a universe: its
+    value is related to a small universe's, and only a small universe's is. *)
+Theorem is_typ_constr_and_exp_eq_suniv_tm : forall Γ A t j,
     rigid_typ Γ A ->
-    Γ ⊢ A ≈ univ_tm u : Type@k ->
-    A = univ_tm u.
+    Γ ⊢ A ≈ Typeˢ⟨t⟩ : Type@j ->
+    univ_term A.
+Proof.
+  intros * Histyp H.
+  assert (Γ ⊢ A : Type@j) by mauto 2.
+  pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
+  destruct (rel_typ_under_ctx_at_initial_env Hsem)
+    as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  inversion Ha'; subst.
+  destruct Histyp; try solve [ constructor ];
+    [ assert (a = Levelᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    | assert (a = ℕᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
+    | assert (a = ⊤ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
+    | assert (a = ⊥ᵈ) as ->
+        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_False ])
+    | idtac
+    | match goal with Hc : ctx_ass _ _ |- _ =>
+        destruct (eval_var_at_initial_env Hc Hρ Ha ltac:(eassumption)) as [? [? ->]] end ];
+    invert_per_univ_elem HR.
+  match_by_head eval_exp ltac:(fun H => directed dependent destruction H).
+Qed.
+
+Corollary rigid_typ_eq_univ_term : forall Γ A U k,
+    rigid_typ Γ A ->
+    univ_term U ->
+    Γ ⊢ A ≈ U : Type@k ->
+    univ_term A.
+Proof.
+  intros * HA HU H; destruct HU.
+  - assert (A = Type@i) as -> by mauto 3; constructor.
+  - eapply is_typ_constr_and_exp_eq_suniv_tm; eassumption.
+Qed.
+
+(** A [Π] is never a universe term. *)
+Corollary pi_univ_term_absurd : forall Γ A B U k,
+    univ_term U ->
+    Γ ⊢ Π A B ≈ U : Type@k ->
+    False.
+Proof.
+  intros * HU H.
+  eapply pi_not_univ_term, rigid_typ_eq_univ_term; [ constructor | exact HU | exact H ].
+Qed.
+
+(** The two tiers are distinct: a large universe is never a small one. *)
+Lemma exp_eq_typ_suniv_absurd : forall Γ i t k,
+    Γ ⊢ Type@i ≈ Typeˢ⟨t⟩ : Type@k ->
+    False.
+Proof.
+  intros * H%completeness_fundamental_exp_eq.
+  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  assert (a = 𝕌@i) as -> by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ]).
+  inversion Ha'; subst.
+  invert_per_univ_elem HR.
+Qed.
+
+(** A rigid type equal to a universe is that universe, at either tier. *)
+Corollary rigid_typ_eq_ulvl_tm : forall Γ A (u : uidx) k,
+    rigid_typ Γ A ->
+    Γ ⊢ A ≈ ulvl_tm u : Type@k ->
+    A = ulvl_tm u.
 Proof. intros * ? H; destruct u as [n | i]; cbn in H |- *; mauto 3. Qed.
 
 (** A type constructor other than a universe is never a universe: the goal is
     closed by inspecting the two tiers. *)
-Lemma var_neq_univ_tm : forall x (u : uidx), #x <> univ_tm u.
+Lemma var_neq_ulvl_tm : forall x (u : uidx), #x <> ulvl_tm u.
 Proof. intros ? []; discriminate. Qed.
 
 (** A [Π] is never a universe, at either tier. *)
-Corollary pi_univ_tm_absurd : forall Γ A B (u : uidx) k,
-    Γ ⊢ Π A B ≈ univ_tm u : Type@k ->
+Corollary pi_ulvl_tm_absurd : forall Γ A B (u : uidx) k,
+    Γ ⊢ Π A B ≈ ulvl_tm u : Type@k ->
     False.
 Proof.
   intros * H; destruct u as [n | i]; cbn in H;
@@ -307,6 +413,13 @@ Hint Resolve is_typ_constr_and_exp_eq_univ_implies_eq_univ : mctt.
 #[export]
 Hint Resolve is_typ_constr_and_exp_eq_nat_implies_eq_nat : mctt.
 #[export]
-Hint Resolve pi_univ_tm_absurd rigid_typ_eq_univ_tm var_neq_univ_tm : mctt.
-#[export] Hint Extern 1 (forall _ : uidx, _ <> univ_tm _) => (intros []; discriminate) : mctt.
-#[export] Hint Extern 1 (_ <> univ_tm _) => (destruct_all uidx; discriminate) : mctt.
+Hint Resolve pi_ulvl_tm_absurd rigid_typ_eq_ulvl_tm var_neq_ulvl_tm : mctt.
+#[export]
+Hint Constructors univ_term : mctt.
+#[export]
+Hint Resolve univ_term_ulvl_tm : mctt.
+(** A concrete type that is not a universe is not a universe term. *)
+#[export] Hint Extern 1 (~ univ_term _) =>
+  (let Hu := fresh "Hu" in intro Hu; inversion Hu; fail) : mctt.
+#[export] Hint Extern 1 (forall _ : uidx, _ <> ulvl_tm _) => (intros []; discriminate) : mctt.
+#[export] Hint Extern 1 (_ <> ulvl_tm _) => (destruct_all uidx; discriminate) : mctt.

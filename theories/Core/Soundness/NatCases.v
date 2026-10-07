@@ -30,7 +30,7 @@ Section Fixed_GCtx.
     [Typeˢ@0], and the large forms are instances. *)
 Lemma glu_rel_exp_nat_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ℕ : univ_tm u.
+    Γ ⊩ ℕ : ulvl_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -39,12 +39,12 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
   split; [ simplify_subs; apply wf_nat_univ; assumption |].
-  eexists; repeat split; mauto 3.
+  eexists; repeat split; mauto 3; [| closed_typ_readback ].
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold nat_glu_typ_pred.
-  simplify_subs; apply wf_exp_eq_nat_cong_univ; assumption.
+  simplify_subs; apply wf_exp_eq_nat_cong_large; assumption.
 Qed.
 
 Lemma glu_rel_exp_nat : forall {Γ} {i : nat},
@@ -204,7 +204,7 @@ Proof.
   intros * ? HM ?.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  assert (DG ℕᵈ ∈ glu_univ_elem i ↘ nat_glu_typ_pred (univ_tm i) ↘ nat_glu_exp_pred (univ_tm i)) by (glu_univ_elem_econstructor; reflexivity).
+  assert (DG ℕᵈ ∈ glu_univ_elem i ↘ nat_glu_typ_pred (ulvl_tm i) ↘ nat_glu_exp_pred (ulvl_tm i)) by (glu_univ_elem_econstructor; reflexivity).
   eapply cons_glu_sub_pred_helper; mauto 3.
   econstructor; [unfold nat_glu_typ_pred |]; simplify_subs; mauto 3.
 Qed.

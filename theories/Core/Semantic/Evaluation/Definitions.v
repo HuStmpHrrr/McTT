@@ -49,9 +49,25 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A universe is its own value. *)
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
-(** So is a small one. *)
+(** A small universe evaluates its level. *)
 | eval_exp_univ :
-  `( ⟦ Typeˢ@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ˢ@n )
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ l ->
+     ⟦ Typeˢ⟨M⟩ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ˢ@l )
+(** [Level] is a value. *)
+| eval_exp_level :
+  `( ⟦ Level ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ )
+(** A level literal is the flat level with that constant and no atom. *)
+| eval_exp_llit :
+  `( ⟦ 𝕃@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_lit n )
+(** The level operations only flatten: they add to the offsets, or join the
+    constants and concatenate the atoms.  Canonicalisation is readback's. *)
+| eval_exp_succl :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ succl M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_suc m )
+| eval_exp_maxl :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦ N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ n ->
+     ⟦ maxl M N ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_max m n )
 (** A variable is read off the environment. *)
 | eval_exp_var :
   `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )

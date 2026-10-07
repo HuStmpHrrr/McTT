@@ -96,6 +96,152 @@ Proof.
   - eauto using per_top_trans.
 Qed.
 
+(** [per_lvl] is [per_top] at [Level], so it is a PER for the same reason. *)
+Lemma per_lvl_then_per_top : forall m n,
+    Dom m ≈ n ∈ per_lvl ->
+    Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ n ∈ per_top.
+Proof. intros * H; exact H. Qed.
+
+Hint Resolve per_lvl_then_per_top : mctt.
+
+(** A literal level reads back as itself, so it is related to itself and the
+    literals are ordered by their indices.  These are the only levels the
+    universes at a [uidx] use. *)
+Lemma read_nf_dlvl_lit : forall n s,
+    Rnf ⇓ Levelᵈ (dlvl_lit n) in s ↘ nf_lvl_of (lvl_lit n).
+Proof.
+  intros n s; rewrite <- (lvl_canon_lit n); apply read_nf_lvl; constructor.
+Qed.
+
+Hint Resolve read_nf_dlvl_lit : mctt.
+
+Lemma per_lvl_lit : forall n, Dom dlvl_lit n ≈ dlvl_lit n ∈ per_lvl.
+Proof.
+  intros n s; eexists; split; apply read_nf_dlvl_lit.
+Qed.
+
+Hint Resolve per_lvl_lit : mctt.
+
+Lemma per_sublvl_lit : forall n m,
+    n <= m ->
+    per_sublvl (dlvl_lit n) (dlvl_lit m).
+Proof.
+  intros n m Hle s; exists (lvl_lit n), (lvl_lit m);
+    repeat split; [ apply read_nf_dlvl_lit | apply read_nf_dlvl_lit |].
+  apply lvl_le_lit; assumption.
+Qed.
+
+Hint Resolve per_sublvl_lit : mctt.
+
+(** Related levels have the same realiser: readback preserves the offsets, so
+    the realiser is the one of the canonical form both read back as. *)
+Lemma per_lvl_real : forall m n,
+    Dom m ≈ n ∈ per_lvl ->
+    dlvl_real m = dlvl_real n.
+Proof.
+  intros * H; destruct (H 0) as [W [HW HW']].
+  apply read_nf_level_real in HW as [L [-> HL]].
+  apply read_nf_level_real in HW' as [L' [Heq HL']].
+  apply nf_lvl_of_inj in Heq as <-; congruence.
+Qed.
+
+Hint Resolve per_lvl_real : mctt.
+
+(** ** The Order on Levels
+
+    [per_sublvl] relates two readable levels whose canonical forms are
+    ordered.  It is reflexive on related levels, transitive, and refines the
+    order on realisers — which is what makes a subtyping between two small
+    universes hold at the index of the smaller one. *)
+Lemma per_sublvl_left : forall l l',
+    per_sublvl l l' ->
+    Dom l ≈ l ∈ per_lvl.
+Proof.
+  intros * H s; destruct (H s) as [L [L' [HL [HL' _]]]]; eauto.
+Qed.
+
+Lemma per_sublvl_right : forall l l',
+    per_sublvl l l' ->
+    Dom l' ≈ l' ∈ per_lvl.
+Proof.
+  intros * H s; destruct (H s) as [L [L' [HL [HL' _]]]]; eauto.
+Qed.
+
+Hint Resolve per_sublvl_left per_sublvl_right : mctt.
+
+Lemma per_sublvl_real : forall l l',
+    per_sublvl l l' ->
+    dlvl_real l <= dlvl_real l'.
+Proof.
+  intros * H; destruct (H 0) as [L [L' [HL [HL' Hle]]]].
+  apply read_nf_level_real in HL as [L1 [HL1 <-]].
+  apply read_nf_level_real in HL' as [L1' [HL1' <-]].
+  apply nf_lvl_of_inj in HL1 as <-; apply nf_lvl_of_inj in HL1' as <-.
+  apply lvl_le_real; assumption.
+Qed.
+
+Lemma per_sublvl_of_per_lvl : forall l l',
+    Dom l ≈ l' ∈ per_lvl ->
+    per_sublvl l l'.
+Proof.
+  intros * H s; destruct (H s) as [W [HW HW']].
+  destruct (read_nf_level_real _ _ _ HW) as [L [-> _]].
+  exists L, L; repeat split; [ assumption | assumption | apply lvl_le_refl ].
+Qed.
+
+Hint Resolve per_sublvl_of_per_lvl : mctt.
+
+Lemma per_sublvl_trans : forall l l' l'',
+    per_sublvl l l' ->
+    per_sublvl l' l'' ->
+    per_sublvl l l''.
+Proof.
+  intros * H H' s.
+  destruct (H s) as [L [L1 [HL [HL1 Hle]]]].
+  destruct (H' s) as [L1' [L2 [HL1' [HL2 Hle']]]].
+  assert (L1 = L1') as <-
+      by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
+  exists L, L2; repeat split;
+    [ assumption | assumption | eapply lvl_le_trans; eassumption ].
+Qed.
+
+Hint Resolve per_sublvl_trans : mctt.
+
+Lemma per_lvl_sym : forall m n,
+    Dom m ≈ n ∈ per_lvl ->
+    Dom n ≈ m ∈ per_lvl.
+Proof. intros * H; apply per_top_sym; exact H. Qed.
+
+Hint Resolve per_lvl_sym : mctt.
+
+Lemma per_lvl_trans : forall m n l,
+    Dom m ≈ n ∈ per_lvl ->
+    Dom n ≈ l ∈ per_lvl ->
+    Dom m ≈ l ∈ per_lvl.
+Proof. intros * H H'; eapply per_top_trans; [ exact H | exact H' ]. Qed.
+
+Hint Resolve per_lvl_trans : mctt.
+
+#[local] Instance per_lvl_PER : PER per_lvl.
+Proof.
+  split.
+  - eauto using per_lvl_sym.
+  - eauto using per_lvl_trans.
+Qed.
+
+(** A neutral of type [Level] is a level: it reads back as the single atom at
+    offset [0], which is canonical. *)
+Lemma per_bot_then_per_lvl : forall m m' a a',
+    Dom m ≈ m' ∈ per_bot ->
+    Dom ⇑ a m ≈ ⇑ a' m' ∈ per_lvl.
+Proof.
+  intros * H s.
+  destruct (H s) as [M [Hl Hr]].
+  exists (lvⁿ 0 (la_cons 0 M la_nil)); split; econstructor; eassumption.
+Qed.
+
+Hint Resolve per_bot_then_per_lvl : mctt.
+
 Lemma per_bot_then_per_top : forall m m' a a' b b' c c',
     Dom m ≈ m' ∈ per_bot ->
     Dom ⇓ (⇑ a b) (⇑ c m) ≈ ⇓ (⇑ a' b') (⇑ c' m') ∈ per_top.
@@ -275,6 +421,21 @@ Hint Resolve per_top_typ_sym : mctt.
 Hint Resolve per_top_typ_trans : mctt.
 #[export] Existing Instance per_top_typ_PER.
 #[export]
+Hint Resolve read_nf_dlvl_lit per_lvl_lit per_sublvl_lit : mctt.
+#[export]
+Hint Resolve per_lvl_real : mctt.
+#[export]
+Hint Resolve per_sublvl_left per_sublvl_right per_sublvl_of_per_lvl per_sublvl_trans : mctt.
+#[export]
+Hint Resolve per_lvl_then_per_top : mctt.
+#[export]
+Hint Resolve per_lvl_sym : mctt.
+#[export]
+Hint Resolve per_lvl_trans : mctt.
+#[export] Existing Instance per_lvl_PER.
+#[export]
+Hint Resolve per_bot_then_per_lvl : mctt.
+#[export]
 Hint Resolve per_nat_sym : mctt.
 #[export]
 Hint Resolve per_nat_trans : mctt.
@@ -413,13 +574,18 @@ Proof.
       destruct_by_head per_univ.
       eexists.
       eapply proj1; mautosolve.
-  - split.
-    + apply per_univ_elem_core_suniv'; firstorder.
+  - (** The two levels are related, hence have the same realiser, so the
+        index of the elements is the same on both sides. *)
+    assert (Heq : dlvl_real l = dlvl_real l') by (apply per_lvl_real; assumption).
+    split.
+    + apply per_univ_elem_core_suniv';
+        [ apply per_lvl_sym; assumption | rewrite <- Heq | rewrite <- Heq ]; assumption.
     + intros.
       rewrite H1 in *.
       destruct_by_head per_univ.
       eexists.
       eapply proj1; mautosolve.
+  - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
@@ -558,14 +724,20 @@ Proof.
     eexists.
     specialize (H2 _ _ _ H0) as [].
     intuition.
-  - (** The small univ case. *)
-    subst.
+  - (** The small univ case.  Unlike the large one there is no equation
+        between the two levels to substitute, so the transitivity of the
+        elements is taken from the first of the two derivations. *)
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
     handle_per_univ_elem_irrel.
     eexists.
-    specialize (H2 _ _ _ H0) as [].
+    match goal with
+    | HA : per_univ_elem _ ?R ?a ?b, HB : per_univ_elem _ ?R ?b ?c |- per_univ_elem _ _ ?a ?c =>
+        specialize (H2 _ _ _ HA) as []
+    end.
     intuition.
+  - (** The [Level] case. *)
+    idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The nat case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
   - (** The [⊤] case. *)
@@ -905,6 +1077,9 @@ Proof.
   destruct 1; do 2 eexists; mauto;
     split; per_univ_elem_econstructor; mauto;
     try apply Equivalence_Reflexive.
+  (** A small universe below another is a universe at the index of its own
+      realiser, which the order on levels bounds. *)
+  all: try (match goal with H : per_sublvl _ _ |- _ => pose proof (per_sublvl_real _ _ H) end).
   all: solve_uidx.
 Qed.
 
@@ -925,8 +1100,18 @@ Proof.
     clear_refl_eqs;
     trivial.
   - firstorder mauto.
-  - destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
-  - destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; exact I ].
+  (** The three universe cases cumulate the elements of the smaller universe
+      to the larger: inside the large tier along the order on levels, inside
+      the small one along the order on the realisers, which [per_sublvl]
+      bounds, and across the tiers immediately. *)
+  -
+    destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx;
+      [ eassumption
+      | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
+  -
+    destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx;
+      [ eassumption
+      | cbn; first [ apply per_sublvl_real; assumption | exact I | lia ] ].
   - intros.
     handle_per_univ_elem_irrel.
     destruct_rel_mod_eval.
@@ -954,6 +1139,14 @@ Lemma per_subtyp_refl1 : forall a b i R,
 Proof.
   simpl; per_univ_elem_induction1;
     subst;
+    (** A small universe is below another with a related level, at the index
+        of the realiser both levels share. *)
+    try (match goal with
+         | H : per_lvl ?l ?l' |- per_subtyp ?i 𝕌ˢ@?l 𝕌ˢ@?l' =>
+             apply per_subtyp_suniv;
+               [ apply per_sublvl_of_per_lvl; exact H
+               | rewrite <- (per_lvl_real _ _ H); assumption ]
+         end);
     mauto;
     destruct_all.
   assert (DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
@@ -986,9 +1179,15 @@ Lemma per_subtyp_trans : forall a1 a2 i,
       Sub a1 <: a3 at i.
 Proof.
   induction 1; intros ? Hsub; simpl in *.
-  1-7: progressive_inversion; mauto.
+  1-8: progressive_inversion; mauto.
   all: try solve [ econstructor; solve [ lia | solve_uidx ] ].
-  - inversion Hsub; subst; econstructor; solve [ lia | solve_uidx ].
+  - (** A small universe below a small one, which is in turn below either a
+        small or a large one: the first composes by the transitivity of the
+        order on levels, the second needs only that the left level is
+        readable. *)
+    inversion Hsub; subst;
+      [ eapply per_subtyp_suniv; [ eapply per_sublvl_trans; eassumption | eassumption ]
+      | eapply per_subtyp_small_large; [ eapply per_sublvl_left; eassumption | eassumption ] ].
   - dependent destruction Hsub.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
@@ -2422,12 +2621,17 @@ Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_uidx; eassumption. Q
 
 (** The universe at an index is in every universe above it, at either tier,
     with its own elements as the relation. *)
-Lemma per_univ_elem_univ_val : forall u i,
+Lemma per_univ_elem_ulvl_val : forall u i,
     uidx_lt u i ->
-    DF univ_val u ≈ univ_val u ∈ per_univ_elem i ↘ per_univ u.
+    DF ulvl_val u ≈ ulvl_val u ∈ per_univ_elem i ↘ per_univ u.
 Proof.
-  intros [n | n] * Hlt; cbn;
-    [ apply per_univ_elem_core_suniv' | apply per_univ_elem_core_univ' ]; solve [ assumption | reflexivity ].
+  intros [n | n] * Hlt; cbn.
+  - (** The small universe at [n] is the one at the literal level [n], whose
+        realiser is [n]. *)
+    assert (Hr : dlvl_real (d_lvl n nil) = n) by apply dlvl_real_lit.
+    apply per_univ_elem_core_suniv'; rewrite ?Hr;
+      [ apply per_lvl_lit | assumption | reflexivity ].
+  - apply per_univ_elem_core_univ'; solve [ assumption | reflexivity ].
 Qed.
 
 End Fixed_GCtx.
@@ -2438,4 +2642,4 @@ Hint Resolve per_ctx_subtyp_trans : mctt.
 #[export] Existing Instance per_ctx_env_Proper.
 
 #[export]
-Hint Resolve per_univ_elem_univ_val : mctt.
+Hint Resolve per_univ_elem_ulvl_val : mctt.

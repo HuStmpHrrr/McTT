@@ -103,7 +103,7 @@ Hint Resolve valid_exp_False : mctt.
 (** [⊤] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_True : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊤ ≈ ⊤ : univ_tm u.
+    Γ ⊨ ⊤ ≈ ⊤ : ulvl_tm u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.
@@ -129,7 +129,7 @@ Hint Resolve valid_exp_True_small : mctt.
 (** [⊥] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_False : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊥ ≈ ⊥ : univ_tm u.
+    Γ ⊨ ⊥ ≈ ⊥ : ulvl_tm u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.

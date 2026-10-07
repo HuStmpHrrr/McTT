@@ -148,11 +148,23 @@ term = 'forall' , {parameter} , '->' , term
      | 'let' , let definition , {';' , let definition} , 'in' , term , 'end'
      (* successor of a natural number *)
      | 'succ' , term
+     (* successor of a universe level *)
+     | 'succl' , atomic term
+     (* join of two universe levels *)
+     | 'maxl' , atomic term , atomic term
      (* natural number eliminator *)
      | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end';
 
-            (* universe of level n *)
+            (* large universe n, above every small one *)
 atomic term = 'Type', '@' , nat
+            (* the first large universe, Type@0 *)
+            | 'Typeω'
+            (* small universe at the level denoted by a term *)
+            | 'Type' , '@' , '{' , term , '}'
+            (* the type of universe levels *)
+            | 'Level'
+            (* a universe level literal *)
+            | nat , 'l'
             (* natural number type *)
             | 'Nat'
             (* natural number zero *)

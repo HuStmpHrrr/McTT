@@ -153,11 +153,11 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌ˢ@n, 𝕌ˢ@n, 𝕌ˢ@m, 𝕌ˢ@m.
-  repeat apply conj; try apply eval_exp_univ.
-  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
-  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_suniv; solve [ lia | solve_uidx ].
+  exists 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit m), 𝕌ˢ@(dlvl_lit m).
+  repeat apply conj; try (apply eval_exp_univ, eval_exp_llit).
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
+  - apply per_subtyp_suniv; [ apply per_sublvl_lit; assumption | solve_uidx ].
 Qed.
 
 Lemma subtyp_small_large : forall {Γ n} {i : nat},
@@ -168,11 +168,11 @@ Proof.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌ˢ@n, 𝕌ˢ@n, 𝕌@i, 𝕌@i.
-  repeat apply conj; try apply eval_exp_univ; try apply eval_exp_typ.
-  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
+  exists 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit n), 𝕌@i, 𝕌@i.
+  repeat apply conj; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
+  - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
-  - apply per_subtyp_small_large; solve [ lia | solve_uidx ].
+  - apply per_subtyp_small_large; [ apply per_lvl_lit | solve_uidx ].
 Qed.
 
 Hint Resolve subtyp_suniv subtyp_small_large : mctt.

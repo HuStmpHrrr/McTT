@@ -18,8 +18,8 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 | level | forms |
 | --- | --- |
 | 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
-| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n` |
-| 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, and the `ᵈ`/`ⁿ` counterparts |
+| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `𝕃@n`, `𝕌ˢ@l`, `Typeˢ@n`, `Typeˢⁿ@n` |
+| 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, `succl`, `maxl`, `univⁿ`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
 | 20, left | `ρ ↦ m` |
 | 30 | `q σ`, `ι φ` |
@@ -73,6 +73,24 @@ and so do the module relations: `⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h` (module ex
 `$*| f & ns | Θ ⍮ Ξ ↘ r` (several arguments) and `⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ'` (the
 environment after a body).  The selected name and the chain are at level 0:
 `h ·ₜ* (pre ++ x :: nil) Θ ⍮ Ξ ↘ f`.
+
+## Universes and levels
+
+The two tiers of universes have separate spellings in every sort.  The large
+tier is the old one: `Type@n` in `exp` (read as Typeω+n), `𝕌@n` in `domain`,
+`Typeⁿ@n` in `nf`.  The small tier is indexed by a *level term*, so its
+notation takes a `constr` argument in angle brackets: `Typeˢ⟨M⟩` is
+`a_univ M`, with `Typeˢ@n := Typeˢ⟨𝕃@n⟩` for a literal level.  Braces are
+impossible here — `Type@{` is Rocq's own universe annotation — and `{ }` in
+`constr` would collide with `sig`.  In `domain` the small universe is
+`𝕌ˢ@l`, indexed by a level *value*; in `nf` it is `univⁿ c xs` (a constant and
+a list of level atoms with offsets), with `Typeˢⁿ@n := univⁿ n la_nil`.
+
+`Level` is an ordinary type at each layer: `Level` in `exp`, `Levelᵈ` in
+`domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃@n` (a literal), `succl M` and
+`maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values and
+`nf_lvl_of L` on normal forms.  The surface syntax is `0l`, `1l`, …, `succl`,
+`maxl` and `Type@{t}`, with `Typeω` for `Type@0`.
 
 ## Traps
 

@@ -32,6 +32,8 @@
     | DARROW _ -> "=>"
     | LPAREN _ -> "("
     | RPAREN _ -> ")"
+    | LBRACE _ -> "{"
+    | RBRACE _ -> "}"
     | ZERO _ -> "zero"
     | SUCC _ -> "succ"
     | REC _ -> "rec"
@@ -39,6 +41,10 @@
     | END _ -> "end"
     | LAMBDA _ -> "fun"
     | PI _ -> "forall"
+    | LEVEL _ -> "Level"
+    | SUCCL _ -> "succl"
+    | MAXL _ -> "maxl"
+    | LLIT (_, n) -> string_of_int n ^ "l"
     | NAT _ -> "Nat"
     | TRUE_TY _ -> "True"
     | TRUE _ -> "true"
@@ -46,6 +52,7 @@
     | EXFALSO _ -> "exfalso"
     | INT (_, i) -> string_of_int i
     | TYPE _ -> "Type"
+    | TYPEW _ -> "Typeω"
     | VAR (_, s) -> s
     | EOF _ -> "<EOF>"
     | DOT _ -> "."
@@ -82,6 +89,8 @@
     | DARROW r
     | LPAREN r
     | RPAREN r
+    | LBRACE r
+    | RBRACE r
     | ZERO r
     | SUCC r
     | REC r
@@ -90,11 +99,16 @@
     | LAMBDA r
     | PI r
     | NAT r
+    | LEVEL r
+    | SUCCL r
+    | MAXL r
+    | LLIT (r, _)
     | TRUE_TY r
     | TRUE r
     | FALSE_TY r
     | EXFALSO r
     | TYPE r
+    | TYPEW r
     | EOF r
     | INT (r, _)
     | DOT r
@@ -143,6 +157,8 @@ rule read =
   | "(*" { comment lexbuf }
   | '(' { LPAREN (get_range lexbuf) }
   | ')' { RPAREN (get_range lexbuf) }
+  | '{' { LBRACE (get_range lexbuf) }
+  | '}' { RBRACE (get_range lexbuf) }
   | "zero" { ZERO (get_range lexbuf) }
   | "succ" { SUCC (get_range lexbuf) }
   | "rec" { REC (get_range lexbuf) }
@@ -152,12 +168,18 @@ rule read =
   | "forall" { PI (get_range lexbuf) }
   | [' ' '\t'] { read lexbuf }
   | ['\n'] { new_line lexbuf; read lexbuf }
+  | "Level" { LEVEL (get_range lexbuf) }
+  | "succl" { SUCCL (get_range lexbuf) }
+  | "maxl" { MAXL (get_range lexbuf) }
+  | ['0'-'9']+ 'l' as lxm
+    { LLIT (get_range lexbuf, int_of_string (String.sub lxm 0 (String.length lxm - 1))) }
   | "Nat" { NAT (get_range lexbuf) }
   | "True" { TRUE_TY (get_range lexbuf) }
   | "true" { TRUE (get_range lexbuf) }
   | "False" { FALSE_TY (get_range lexbuf) }
   | "exfalso" { EXFALSO (get_range lexbuf) }
   | ['0'-'9']+ as lxm { INT (get_range lexbuf, int_of_string lxm) }
+  | "Typeω" { TYPEW (get_range lexbuf) }
   | "Type" { TYPE (get_range lexbuf) }
   | eof { EOF (get_range lexbuf) }
   | "." { DOT (get_range lexbuf) }

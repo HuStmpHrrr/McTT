@@ -134,6 +134,14 @@ Fact exp_sub_typ : forall σ i, Type@i[σ] = Type@i.      Proof. reflexivity. Qe
 Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
 Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
 Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.
+Fact exp_wk_level : forall φ, Level[φ]ʷ = Level.          Proof. reflexivity. Qed.
+Fact exp_wk_llit : forall φ n, (𝕃@n)[φ]ʷ = 𝕃@n.         Proof. reflexivity. Qed.
+Fact exp_wk_succl : forall φ M, (succl M)[φ]ʷ = succl M[φ]ʷ. Proof. reflexivity. Qed.
+Fact exp_wk_maxl : forall φ M N, (maxl M N)[φ]ʷ = maxl M[φ]ʷ N[φ]ʷ. Proof. reflexivity. Qed.
+Fact exp_sub_level : forall σ, Level[σ] = Level.         Proof. reflexivity. Qed.
+Fact exp_sub_llit : forall σ n, (𝕃@n)[σ] = 𝕃@n.        Proof. reflexivity. Qed.
+Fact exp_sub_succl : forall σ M, (succl M)[σ] = succl M[σ]. Proof. reflexivity. Qed.
+Fact exp_sub_maxl : forall σ M N, (maxl M N)[σ] = maxl M[σ] N[σ]. Proof. reflexivity. Qed.
 Fact exp_wk_True : forall φ, ⊤[φ]ʷ = ⊤.                  Proof. reflexivity. Qed.
 Fact exp_wk_true : forall φ, ⋆[φ]ʷ = ⋆.                  Proof. reflexivity. Qed.
 Fact exp_wk_False : forall φ, ⊥[φ]ʷ = ⊥.                 Proof. reflexivity. Qed.
@@ -1511,6 +1519,8 @@ Hint Rewrite -> wk_id_var wk_shift_var wk_q_zero wk_q_succ
                 exp_sub_typ exp_sub_nat exp_sub_zero
                 exp_wk_True exp_wk_true exp_wk_False
                 exp_sub_True exp_sub_true exp_sub_False
+                exp_wk_level exp_wk_llit exp_wk_succl exp_wk_maxl
+                exp_sub_level exp_sub_llit exp_sub_succl exp_sub_maxl
                 exp_wk_id exp_sub_id exp_wk_wk exp_sub_sub
                 exp_wk_sub exp_sub_of_wk
                 exp_sub_shift_extend

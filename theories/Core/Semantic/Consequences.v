@@ -4,6 +4,7 @@ From Mctt.Core Require Export Soundness.
 From Mctt.Core.Completeness.Consequences Require Export Types.
 From Mctt.Core.Semantic Require Export Transparency Stuck.
 From Mctt.Core.Syntactic Require Export Unseal.
+From Mctt.Core.Syntactic Require Import CoreInversions LevelEq.
 Require Import Mctt.Core.Syntactic.Command.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
@@ -88,13 +89,91 @@ Theorem canonical_form_of_pi : forall {M A B},
 Proof. mauto 3. Qed.
 Hint Resolve canonical_form_of_pi : mctt.
 
-(** The three universe rules are one disjunct, at an index: inside a tier it
-    is the order on levels, and from the small tier to the large one it is
-    [wf_subtyp_small_large]. *)
+(** ** Small Universes Are Injective
+
+    Two small universes are equal only at equal levels: their values are
+    related, so their levels are ([per_univ_elem_core_suniv]), so the two
+    level terms have the same normal form, and soundness turns that into an
+    equation. *)
+Lemma exp_eq_suniv_tm_inj : forall {Γ t t' k},
+    Γ ⊢ Typeˢ⟨t⟩ ≈ Typeˢ⟨t'⟩ : Type@k ->
+    Γ ⊢ t ≈ t' : Level.
+Proof.
+  intros * H.
+  assert (Γ ⊢ t : Level) by (gen_presups; eapply wf_univ_lvl_inversion; eassumption).
+  assert (Γ ⊢ t' : Level) by (gen_presups; eapply wf_univ_lvl_inversion; eassumption).
+  pose proof (completeness_fundamental_exp_eq _ _ _ _ H) as Hsem.
+  destruct (rel_typ_under_ctx_at_initial_env Hsem) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  inversion Ha; subst; inversion Ha'; subst.
+  invert_per_univ_elem HR.
+  match goal with Hl : per_lvl ?l ?l' |- _ => destruct (Hl (length Γ)) as [W [HW HW']] end.
+  assert (Γ ⊢ t ≈ W : Level) by (eapply soundness'; [ eassumption | econstructor; mauto 3 ]).
+  assert (Γ ⊢ t' ≈ W : Level) by (eapply soundness'; [ eassumption | econstructor; mauto 3 ]).
+  etransitivity; [ eassumption | symmetry; eassumption ].
+Qed.
+
+(** ** Subtyping of Universe Terms
+
+    The three universe rules, as a relation on universe terms: large below
+    large by the order on levels, small below small by the order on level
+    terms, and small below large. *)
+Inductive univ_sub (Γ : ctx) : exp -> exp -> Prop :=
+| usub_large : forall i j, i <= j -> univ_sub Γ Type@i Type@j
+| usub_small : forall t t',
+    Γ ⊢ t : Level ->
+    Γ ⊢ t' : Level ->
+    Γ ⊢ maxl t t' ≈ t' : Level ->
+    univ_sub Γ Typeˢ⟨t⟩ Typeˢ⟨t'⟩
+| usub_small_large : forall t j,
+    Γ ⊢ t : Level ->
+    univ_sub Γ Typeˢ⟨t⟩ Type@j.
+Hint Constructors univ_sub : mctt.
+
+Lemma univ_sub_univ_term : forall {Γ U V},
+    univ_sub Γ U V -> univ_term U /\ univ_term V.
+Proof. intros * []; split; constructor. Qed.
+
+(** Two universe subtypings compose through an equation between the middle
+    universes: the two tiers are distinct, the large one is injective on
+    levels and the small one on level terms. *)
+Lemma univ_sub_trans_eq : forall {Γ U V U' W k},
+    univ_sub Γ U V ->
+    Γ ⊢ V ≈ U' : Type@k ->
+    univ_sub Γ U' W ->
+    univ_sub Γ U W.
+Proof.
+  intros * H1 Heq H2.
+  destruct H1 as [i j Hij | t1 t2 Ht1 Ht2 H12 | t1 j Ht1],
+           H2 as [i' j' Hij' | t3 t4 Ht3 Ht4 H34 | t3 j' Ht3].
+  - assert (j = i') as -> by mauto 3; constructor; lia.
+  - exfalso; eapply exp_eq_typ_suniv_absurd; exact Heq.
+  - exfalso; eapply exp_eq_typ_suniv_absurd; exact Heq.
+  - exfalso; eapply exp_eq_typ_suniv_absurd; symmetry; exact Heq.
+  - (** The order on level terms through the equation of the middle ones:
+        [t1 ≤ t2 ≈ t3 ≤ t4]. *)
+    assert (Heqt : Γ ⊢ t2 ≈ t3 : Level) by (eapply exp_eq_suniv_tm_inj; exact Heq).
+    assert (H23 : @lvl_sub gc_deps gc_stack Γ t2 t3).
+    { unfold lvl_sub.
+      transitivity (maxl t3 t3);
+        [ apply wf_exp_eq_maxl_cong; [ exact Heqt | apply wf_exp_eq_refl; exact Ht3 ]
+        | apply wf_exp_eq_maxl_idem; exact Ht3 ]. }
+    constructor; [ assumption | assumption |].
+    change (@lvl_sub gc_deps gc_stack Γ t1 t4).
+    eapply (lvl_sub_trans Ht1 Ht3 Ht4); [| exact H34 ].
+    eapply (lvl_sub_trans Ht1 Ht2 Ht3); [ exact H12 | exact H23 ].
+  - constructor; assumption.
+  - constructor; assumption.
+  - exfalso; eapply exp_eq_typ_suniv_absurd; exact Heq.
+  - exfalso; eapply exp_eq_typ_suniv_absurd; exact Heq.
+Qed.
+
+(** The three universe rules are one disjunct, on universe terms: inside a
+    tier it is the order on levels or on level terms, and from the small tier
+    to the large one it is [wf_subtyp_small_large]. *)
 Lemma subtyp_spec : forall {Γ A B},
     Γ ⊢ A ⊆ B ->
     (exists k, Γ ⊢ A ≈ B : Type@k) \/
-      (exists (u v : uidx), (exists k, Γ ⊢ A ≈ univ_tm u : Type@k) /\ (exists k, Γ ⊢ univ_tm v ≈ B : Type@k) /\ uidx_le u v) \/
+      (exists U V, (exists k, Γ ⊢ A ≈ U : Type@k) /\ (exists k, Γ ⊢ V ≈ B : Type@k) /\ univ_sub Γ U V) \/
       (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
   (** The global context is an index of [wf_subtyp], so fix it for the induction. *)
@@ -106,7 +185,9 @@ Proof.
   - (** Transitivity: nine combinations of the two cases, of which the mixed
         universe/[Π] ones are impossible. *)
     destruct IHwf_subtyp1 as [[? Heq1] | [[u [v [[? Hu] [[? Hv] Huv]]]] | (A1 & A2 & B1 & B2 & [? Ha1] & [? Hb1] & [? Hab1] & Hsub1)]],
-             IHwf_subtyp2 as [[? Heq2] | [[u' [v' [[? Hu'] [[? Hv'] Hu'v']]]] | (C1 & C2 & D1 & D2 & [? Hc2] & [? Hd2] & [? Hcd2] & Hsub2)]].
+             IHwf_subtyp2 as [[? Heq2] | [[u' [v' [[? Hu'] [[? Hv'] Hu'v']]]] | (C1 & C2 & D1 & D2 & [? Hc2] & [? Hd2] & [? Hcd2] & Hsub2)]];
+      try pose proof (univ_sub_univ_term Huv) as [Hut Hvt];
+      try pose proof (univ_sub_univ_term Hu'v') as [Hu't Hv't].
     (** [≈] then [≈]. *)
     + left; eexists; eapply exp_eq_trans_typ_max; eassumption.
     (** [≈] then a universe, and a universe then [≈]. *)
@@ -118,17 +199,17 @@ Proof.
     + right; left; exists u, v; repeat split; [| | exact Huv ];
         eexists; [ eassumption | eapply exp_eq_trans_typ_max; eassumption ].
     (** A universe then a universe: the two middle universes are equal, so
-        their indices are. *)
-    + assert (Γ ⊢ univ_tm v ≈ univ_tm u' : Type@(max _ _))
+        the two subtypings compose. *)
+    + assert (Γ ⊢ v ≈ u' : Type@(max _ _))
         by (eapply exp_eq_trans_typ_max; [ exact Hv | exact Hu' ]).
-      assert (v = u') as -> by mauto 3 using exp_eq_univ_tm_implies_eq.
       right; left; exists u, v'; repeat split;
-        [ eexists; eassumption | eexists; eassumption | eapply uidx_le_trans; eassumption ].
+        [ eexists; eassumption | eexists; eassumption | eapply univ_sub_trans_eq; eassumption ].
     (** A universe then a [Π], and a [Π] then a universe: impossible. *)
-    + exfalso; eapply pi_univ_tm_absurd, exp_eq_trans_typ_max; [ symmetry; exact Hc2 | symmetry; exact Hv ].
+    + exfalso; eapply (pi_univ_term_absurd _ _ _ _ _ Hvt), exp_eq_trans_typ_max;
+        [ symmetry; exact Hc2 | symmetry; exact Hv ].
     + right; right; exists A1, A2, B1, B2; repeat split; [| | | exact Hsub1 ];
         eexists; [ eassumption | eapply exp_eq_trans_typ_max; eassumption | eassumption ].
-    + exfalso; eapply pi_univ_tm_absurd, exp_eq_trans_typ_max; [ exact Hb1 | exact Hu' ].
+    + exfalso; eapply (pi_univ_term_absurd _ _ _ _ _ Hu't), exp_eq_trans_typ_max; [ exact Hb1 | exact Hu' ].
     (** A [Π] then a [Π]: the two middle [Π]s are equal, so the development
         continues with the domain and codomain of the one we keep. *)
     + assert (Γ ⊢ Π B1 B2 ≈ Π C1 C2 : Type@(max _ _))
@@ -144,13 +225,13 @@ Proof.
         etransitivity; [| exact Hsub2 ].
         etransitivity; eapply ctxsub_subtyp; [| exact Hsub1 | | mauto 3 ]; [| mauto 3 ].
         all: eapply wf_sub_id_extend_eq'; eapply exp_eq_trans_typ_max; [ eassumption | exact Hcd2 ].
-  (** The three universe rules, at their own indices. *)
-  - right; left; exists (ul i), (ul j); cbn [univ_tm];
-      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | cbn; lia ].
-  - right; left; exists (us n), (us m); cbn [univ_tm];
-      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | cbn; lia ].
-  - right; left; exists (us n), (ul i); cbn [univ_tm];
-      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | exact I ].
+  (** The three universe rules, at their own universe terms. *)
+  - right; left; exists Type@i, Type@j;
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; lia ].
+  - right; left; exists Typeˢ⟨M⟩, Typeˢ⟨M'⟩;
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; assumption ].
+  - right; left; exists Typeˢ⟨M⟩, Type@i;
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; assumption ].
   - right; right.
     do 4 eexists; (congruence + firstorder (mautosolve 4 + lia)).
 Qed.
@@ -174,7 +255,7 @@ Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
     gc_transparent Θ Ξ ->
     ne_clean W ->
     is_typ_constr A' ->
-    (forall (u : uidx), A' <> univ_tm u) ->
+    ~ univ_term A' ->
     Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ W : A).
 Proof.
@@ -188,7 +269,7 @@ Proof.
   - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     (** The scrutinee of [efq] is a neutral of type [⊥]. *)
     eapply (IHHW2 Htr W ltac:(eassumption) i eq_refl eq_refl ⊥);
-      [ apply False_is_typ_constr | intros []; discriminate | gen_presups; mauto 3 ].
+      [ apply False_is_typ_constr | let Hu := fresh "Hu" in intro Hu; inversion Hu | gen_presups; mauto 3 ].
   - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
   - destruct W; simpl in *; try contradiction; autoinjections.
@@ -197,13 +278,16 @@ Proof.
     assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
     assert (rigid_typ (⋅ ▹ Type@i) A').
     { assert (exists k, ⋅ ▹ Type@i ⊢ A' : Type@k) as [k ?] by (gen_presups; eauto).
-      eapply rigid_typ_of_is_typ_constr; [ eapply ctx_ass_of_lookup_typ | eassumption | eassumption ]. }
+      edestruct rigid_typ_of_is_typ_constr as [| Hu];
+        [ eapply ctx_ass_of_lookup_typ | eassumption | eassumption | assumption | contradiction ]. }
     eapply (@subtyp_spec GC) in Heq as [| []]; destruct_conjs;
-      (** [A'] is rigid, so an equation with a universe makes it that
-          universe, which [HA'eq] excludes. *)
-      try (eapply (HA'eq (ul i)); eapply rigid_typ_eq_univ_tm;
-           [ eassumption | cbn [univ_tm]; symmetry; eassumption ]);
-      try (eapply HA'eq, rigid_typ_eq_univ_tm; [ eassumption | symmetry; mautosolve 3 ]).
+      (** [A'] is rigid, so an equation with a universe term makes it a
+          universe term, which [HA'eq] excludes. *)
+      try (apply HA'eq; eapply rigid_typ_eq_univ_term;
+           [ eassumption | constructor | symmetry; eassumption ]);
+      try (match goal with Hs : univ_sub _ _ ?V, Hv : _ ⊢ ?V ≈ A' : _ |- _ =>
+             apply HA'eq; eapply rigid_typ_eq_univ_term;
+               [ eassumption | eapply (proj2 (univ_sub_univ_term Hs)) | symmetry; exact Hv ] end).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
     assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
 Qed.
@@ -273,8 +357,11 @@ Proof.
   gen M; revert Hc.
   dir_inversion_clear_by_head read_nf.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
-    intros; cbn in *; destruct_all; split; intros; mauto 3; try congruence;
-    gen_presups;
+    intros; cbn in *; destruct_all; split; intros; mauto 3; try congruence.
+  (** A small universe, at whatever level its readback has, is a type
+      constructor. *)
+  all: try solve [ unfold nf_univ_of; discriminate | constructor ].
+  all: gen_presups;
     match_by_head1 (wf_exp gc_deps gc_stack ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 Hint Resolve canonical_form_of_typ : mctt.
@@ -298,11 +385,12 @@ Proof.
   assert (exists B, ⋅ ▹ Type@i ⊢ M0 : B /\ ⋅ ⊢ Π Type@i B ⊆ Π Type@i #0) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
     destruct_conjs;
     (** A [Π] is never a universe, so the universe case is impossible. *)
-    try (exfalso; eapply pi_univ_tm_absurd; eassumption);
+    try (match goal with Hs : univ_sub _ ?U _, HU : _ ⊢ Π _ _ ≈ ?U : _ |- _ =>
+           exfalso; eapply (pi_univ_term_absurd _ _ _ _ _ (proj1 (univ_sub_univ_term Hs))); exact HU end);
     try assert (Π _ _ = Type@_) by mauto 3;
     try congruence.
   - assert (_ /\ _ ⊢ B ≈ #0 : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
-    eapply consistency_ne_helper; (apply var_neq_univ_tm + congruence + mautosolve 3).
+    eapply consistency_ne_helper; (apply var_not_univ_term + congruence + mautosolve 3).
   - assert (_ /\ _ ⊢ B ≈ _ : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     assert (_ /\ _ ⊢ _ ≈ #0 : _) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
@@ -314,7 +402,7 @@ Proof.
          [eapply ctxsub_subtyp; [| exact Hs] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]]
        end;
        mauto 3).
-    eapply consistency_ne_helper; (apply var_neq_univ_tm + congruence + mautosolve 3).
+    eapply consistency_ne_helper; (apply var_not_univ_term + congruence + mautosolve 3).
 Qed.
 
 (** There is no closed proof of [⊥]: its normal form would be a closed
@@ -446,10 +534,12 @@ Qed.
 Lemma nf_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall W, nf_stuck G W -> nf_stuck G' W
 with ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall W, ne_stuck G W -> ne_stuck G' W.
+    forall W, ne_stuck G W -> ne_stuck G' W
+with la_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    forall xs, la_stuck G xs -> la_stuck G' xs.
 Proof.
   all: intros G G' HG [] H; cbn in *; destruct_all;
-    repeat split; eauto using nf_stuck_mono, ne_stuck_mono.
+    repeat split; eauto using nf_stuck_mono, ne_stuck_mono, la_stuck_mono.
 Qed.
 
 Lemma canonical_nat_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
@@ -495,7 +585,9 @@ Proof.
   gen M; revert Hc.
   dir_inversion_clear_by_head read_nf.
   match_by_head1 read_typ ltac:(fun H => dependent induction H);
-    intros; cbn in *; destruct_all; try (left; split; intros; mauto 3; congruence);
+    intros; cbn in *; destruct_all;
+    try (left; split; [ constructor | intros; unfold nf_univ_of; discriminate ]);
+    try (left; split; intros; mauto 3; congruence);
     gen_presups.
   match goal with H : wf_exp _ _ ⋅ _ (ne_to_exp _) |- _ => destruct (closed_neutral_head H) end.
   right; eauto.

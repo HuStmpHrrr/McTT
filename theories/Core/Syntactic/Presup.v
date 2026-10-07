@@ -46,6 +46,15 @@ Lemma presup_exp_eq_sides : forall {Θ Ξ Γ M M' A},
 Proof.
   induction 1; assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2; destruct_conjs; split; mauto 3.
 
+  (** The universe congruence is stated at [Typeˢ⟨succl M⟩], so its
+      right-hand side has to be moved there from [Typeˢ⟨succl M'⟩].  Its goal
+      is the only one of that shape. *)
+  all: try solve [ apply wf_univ_cong_right; mauto 2 ].
+
+  (** The right-hand side of the distributivity equation of levels is one
+      level operation deeper than [mauto 3] reaches. *)
+  - mauto 4.
+
   (** [rec], right.  The motive varies, so the eliminator has to be built at
       [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by
       [sub_eq_preserves_exp], and along [A' ≈ A] by [sub_preserves_wf]. *)

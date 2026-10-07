@@ -17,6 +17,7 @@ From Mctt.Core.Completeness Require Import FundamentalTheorem UniverseCases.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 From Mctt.Core.Syntactic.System Require Import MemberWf GlobalModules.
 From Mctt.Core.Completeness Require Import ModexpCases.
+From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
   SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
@@ -58,7 +59,14 @@ Proof.
     repeat match goal with IH : forall _ _, glu_emb _ _ _ _ -> _ |- _ =>
       specialize (IH _ _ ltac:(eassumption)) end.
   all: try solve [ apply (@glu_rel_ctx_empty (gc_mk Θ2 Ξ2)); eapply em_wf, gme_emb; eassumption ].
-  all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_suniv; assumption
+  all: try solve [ apply glu_rel_exp_typ; assumption
+    (** A small universe at a level term. *)
+    | eapply glu_rel_exp_univ_lvl; eassumption
+    (** Levels: the type, the literals and the two operations. *)
+    | apply glu_rel_exp_level; assumption | apply glu_rel_exp_level_small; assumption
+    | apply glu_rel_exp_llit; assumption
+    | eapply glu_rel_exp_succl; eassumption
+    | eapply glu_rel_exp_maxl; eassumption
     | apply glu_rel_exp_nat_small; assumption
     | apply glu_rel_exp_True_small; assumption | apply glu_rel_exp_False_small; assumption
     | eapply glu_rel_exp_pi_small; eassumption

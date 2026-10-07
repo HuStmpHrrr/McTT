@@ -5,7 +5,7 @@ From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
 From Mctt.Core.Semantic Require Import Consequences.
-From Mctt.Core.Syntactic Require Import Corollaries.
+From Mctt.Core.Syntactic Require Import CoreInversions Corollaries.
 From Mctt.Core.Syntactic.System Require Import GlobalModules MemberWf.
 From Mctt.Core.Semantic Require Import MemberWf.
 Import Domain_Notations Fixed_Notations.
@@ -95,18 +95,110 @@ Ltac functional_alg_type_infer_rewrite_clear := repeat functional_alg_type_infer
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** ** Universe Normal Forms as Types
+
+    The universe a type infers is a universe normal form [u]; as a term it is
+    [unf_tm u], which is a small universe at a level term or a large one.
+    The declarative rules ask for a large universe, which a small one is below
+    ([wf_subtyp_small_large]): this is the cumulativity the algorithmic layer
+    relies on. *)
+Lemma wf_exp_unf_large : forall {Γ A} {u : unf},
+    Γ ⊢ A : unf_tm u ->
+    Γ ⊢ A : Type@(unf_large u).
+Proof.
+  intros * HA; destruct u as [L | n]; cbn in *; [| exact HA ].
+  assert (exists k, Γ ⊢ Typeˢ⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Type@k) as [k Hk]
+    by (gen_presups; eauto 2).
+  assert (⊢ Γ) by (gen_presups; assumption).
+  eapply wf_exp_subtyp'; [ exact HA | apply wf_subtyp_small_large; [ assumption |] ].
+  eapply wf_univ_lvl_inversion; exact Hk.
+Qed.
+
+Lemma wf_exp_unf_large_ge : forall {Γ A} {u : unf} {i : nat},
+    unf_le u (unl i) ->
+    Γ ⊢ A : unf_tm u ->
+    Γ ⊢ A : Type@i.
+Proof.
+  intros * Hle HA; apply wf_exp_unf_large in HA.
+  destruct u; cbn in *; (eapply lift_exp_ge; [| exact HA ]); lia.
+Qed.
+
+(** The universe of a [Π]: two closed small levels join in the small tier,
+    and with an open one the [Π] falls back to the least large universe. *)
+Lemma wf_pi_unf_max : forall {Γ A B} {u v : unf},
+    Γ ⊢ A : unf_tm u ->
+    Γ ▹ A ⊢ B : unf_tm v ->
+    Γ ⊢ Π A B : unf_tm (unf_max u v).
+Proof.
+  intros * HA HB.
+  assert (⊢ Γ) by (gen_presups; assumption).
+  assert (HAl : Γ ⊢ A : Type@(unf_large u)) by (apply wf_exp_unf_large; exact HA).
+  assert (HBl : Γ ▹ A ⊢ B : Type@(unf_large v)) by (apply wf_exp_unf_large; exact HB).
+  assert (⊢ Γ ▹ A) by mauto 2.
+  destruct u as [[c xs] | i], v as [[d ys] | j];
+    [ destruct xs, ys | destruct xs | destruct ys |]; cbn [unf_max unf_tm unf_large fst snd] in *.
+  - (** Two literal levels: the small [Π] at their maximum. *)
+    cbn [la_to_list lvl_exp_of lvl_lit fst snd] in *.
+    apply wf_pi_small.
+    + eapply wf_exp_subtyp'; [ exact HA | apply wf_subtyp_suniv_le; [ assumption | lia ] ].
+    + eapply wf_exp_subtyp'; [ exact HB | apply wf_subtyp_suniv_le; [ assumption | lia ] ].
+  - apply wf_pi; assumption.
+  - apply wf_pi; assumption.
+  - apply wf_pi; assumption.
+  - apply wf_pi; [ eapply lift_exp_ge; [| exact HAl ]; lia | assumption ].
+  - apply wf_pi; [ eapply lift_exp_ge; [| exact HAl ]; lia | assumption ].
+  - apply wf_pi; [ assumption | eapply lift_exp_ge; [| exact HBl ]; lia ].
+  - apply wf_pi; [ assumption | eapply lift_exp_ge; [| exact HBl ]; lia ].
+  - apply wf_pi; [ eapply lift_exp_ge; [| exact HAl ]; lia | eapply lift_exp_ge; [| exact HBl ]; lia ].
+Qed.
+
+(** A small universe at a literal level reads back as itself. *)
+Lemma nbe_ty_suniv_lit : forall {Γ n W},
+    nbe_ty_f Γ Typeˢ@n W ->
+    W = Typeˢⁿ@n.
+Proof.
+  intros * Hn.
+  dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
+  match goal with H : eval_exp _ _ (a_llit _) _ _ |- _ => inversion H; subst end.
+  dir_inversion_by_head read_typ; subst.
+  match goal with H : Rnf ⇓ Levelᵈ (dlvl_lit n) in _ ↘ _ |- _ =>
+    pose proof (read_nf_dlvl_lit n (length Γ)) as Hk;
+    assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption) end.
+  reflexivity.
+Qed.
+
+(** The join of two universe normal forms reads back as itself: it is a large
+    universe or a small one at a literal level. *)
+Lemma nbe_ty_unf_max : forall {Γ} {u v : unf} {W},
+    nbe_ty_f Γ (unf_tm (unf_max u v)) W ->
+    W = univ_nf (unf_max u v).
+Proof.
+  intros * Hn.
+  destruct u as [[c xs] | i], v as [[d ys] | j];
+    [ destruct xs, ys | destruct xs | destruct ys |]; cbn [unf_max unf_tm univ_nf fst snd] in *;
+    dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst;
+    dir_inversion_by_head read_typ; subst; try reflexivity.
+  (** The small universe at a literal level reads back as itself. *)
+  cbn [la_to_list lvl_exp_of] in *.
+  match goal with H : eval_exp _ _ (a_llit _) _ _ |- _ => inversion H; subst end.
+  match goal with H : Rnf ⇓ Levelᵈ (dlvl_lit ?k) in _ ↘ _ |- _ =>
+    pose proof (read_nf_dlvl_lit k (length Γ)) as Hk;
+    assert (L = lvl_lit k) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption) end.
+  reflexivity.
+Qed.
+
 (** A premise [⟹ UA] with [is_univ_nf UA u] is sound as a typing at
-    [univ_tm u], while the declarative rules ask for a large universe: such a
-    hypothesis is lifted to [Type@(ulvl u)], the large level the index lives
-    at.  [is_univ_nf_eq] turns the side condition into the shape of [UA]. *)
+    [unf_tm u], while the declarative rules ask for a large universe: such a
+    hypothesis is lifted to [Type@(unf_large u)] ([wf_exp_unf_large]).
+    [is_univ_nf_eq] turns the side condition into the shape of [UA]. *)
 #[local] Tactic Notation "lift_univ_at" constr(Δ) constr(A) constr(u) :=
   repeat match goal with Hi : is_univ_nf ?UA u |- _ =>
     assert_fails (constr_eq UA (univ_nf u));
     rewrite (is_univ_nf_eq _ _ Hi) in * end;
-  assert (wf_exp gc_deps gc_stack Δ (univ_tm u) A)
+  assert (wf_exp gc_deps gc_stack Δ (unf_tm u) A)
     by (rewrite <- nf_to_exp_univ_nf; mauto 2);
-  assert (wf_exp gc_deps gc_stack Δ (a_typ (ulvl u)) A)
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ]).
+  assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
+    by (apply wf_exp_unf_large; eassumption).
 
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Type@i -> Γ ⊢ M : A) /\
@@ -116,9 +208,9 @@ Lemma alg_type_sound :
     (forall {Γ H}, Γ ⊢aᵐ H -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H).
 Proof.
   (** Every premise that asks for a type is [⟹ univ_nf u], so its soundness
-      is a typing at [univ_tm u]. *)
+      is a typing at [unf_tm u]. *)
   apply alg_type_mut_ind; intros; simpl_univ_nf;
-    cbn [univ_tm] in *; try mautosolve 4.
+    cbn [unf_tm] in *; try mautosolve 4.
   (** The cases below are dispatched on the shape of the goal rather than by
       position: a new rule would silently renumber positional selectors. *)
   all: lazymatch goal with
@@ -188,6 +280,18 @@ Proof.
       eapply wf_me_app; eauto using wf_exp_eq_refl
   | _ => idtac
   end.
+  (** The join of two levels is one application deeper than [mautosolve 4]
+      reaches: both arguments are checked against [Level]. *)
+  all: try solve [ apply wf_maxl; mauto 4 ].
+  (** A small universe: its level is a level, and the universe above is the
+      normal form of [Typeˢ⟨succl M⟩]. *)
+  all: try match goal with
+    | Hn : nbe_ty_f _ (a_univ (succl ?M)) ?W |- _ ⊢ a_univ ?M : _ =>
+        assert (Γ ⊢ M : Level) by mauto 3;
+        assert (Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3);
+        assert (Γ ⊢ Typeˢ⟨succl M⟩ ≈ W : Type@0) as <- by mauto 3 using soundness_ty';
+        apply wf_univ; assumption
+    end.
   - assert (Γ ⊢ M : A) by mauto 3.
     assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; eauto 2).
     assert (Γ ⊢ A : Type@(max i j)) by mauto 3 using lift_exp_max_right.
@@ -199,33 +303,33 @@ Proof.
     lift_univ_at (Γ ▹ ℕ) A u.
     assert (⊢ Γ ▹ ℕ ▹ A) by mauto 3.
     assert (Γ ⊢ M : ℕ) by mauto 2.
-    assert (Γ ⊢ A[Id,,zero] : Type@(ulvl u)) by mauto 3.
-    assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Type@(ulvl u)) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(ulvl u)) as <- by mauto 4 using soundness_ty'.
+    assert (Γ ⊢ A[Id,,zero] : Type@(unf_large u)) by mauto 3.
+    assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Type@(unf_large u)) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(unf_large u)) as <- by mauto 4 using soundness_ty'.
     mauto 4.
   - assert (Γ ⊢ ⊥ : Type@0) by mauto 2.
     assert (⊢ Γ ▹ ⊥) by mauto 2.
     lift_univ_at (Γ ▹ ⊥) A u.
     assert (Γ ⊢ M : ⊥) by mauto 2.
-    assert (Γ ⊢ A[Id,,M] : Type@(ulvl u)) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(ulvl u)) as <- by mauto 4 using soundness_ty'.
+    assert (Γ ⊢ A[Id,,M] : Type@(unf_large u)) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(unf_large u)) as <- by mauto 4 using soundness_ty'.
     mauto 4.
   (** A [Π] is at the join of the universes of its parts. *)
-  - match goal with HW : is_univ_nf ?W (umax ?u ?v) |- _ =>
+  - match goal with HW : is_univ_nf ?W (unf_max ?u ?v) |- _ =>
       rewrite (is_univ_nf_eq _ _ HW) end.
     lift_univ_at Γ A u.
     assert (⊢ Γ ▹ A) by mauto 3.
     match goal with HB : is_univ_nf ?UB v |- _ => rewrite (is_univ_nf_eq _ _ HB) in * end.
     rewrite nf_to_exp_univ_nf.
-    apply wf_pi_umax; rewrite <- nf_to_exp_univ_nf; mauto 2.
+    apply wf_pi_unf_max; rewrite <- nf_to_exp_univ_nf; mauto 2.
   (** [λ]: the annotation is a type, so the function is of the [Π] of its
       normal form and the body's type. *)
   - lift_univ_at Γ A u.
     assert (⊢ Γ ▹ A) by mauto 3.
-    assert (Γ ⊢ A ≈ C : Type@(ulvl u)) by mauto 2 using soundness_ty'.
+    assert (Γ ⊢ A ≈ C : Type@(unf_large u)) by mauto 2 using soundness_ty'.
     assert (Γ ▹ A ⊢ M : B) by mauto 2.
     assert (exists j, Γ ▹ A ⊢ B : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ Π A B ≈ Π C B : Type@(max (ulvl u) j)) as <- by mauto 3.
+    assert (Γ ⊢ Π A B ≈ Π C B : Type@(max (unf_large u) j)) as <- by mauto 3.
     mauto 3.
   - assert (Γ ⊢ M : Π A B) by mauto 2.
     assert (exists i, Γ ⊢ Π A B : Type@i) as [i] by (gen_presups; eauto 2).
@@ -284,10 +388,10 @@ Proof. intros; eapply (proj2 (proj2 (proj2 (proj2 alg_type_sound)))); eassumptio
   repeat match goal with Hi : is_univ_nf ?UA u |- _ =>
     assert_fails (constr_eq UA (univ_nf u));
     rewrite (is_univ_nf_eq _ _ Hi) in * end;
-  assert (wf_exp gc_deps gc_stack Δ (univ_tm u) A)
+  assert (wf_exp gc_deps gc_stack Δ (unf_tm u) A)
     by (rewrite <- nf_to_exp_univ_nf; mauto 3 using alg_type_infer_sound);
-  assert (wf_exp gc_deps gc_stack Δ (a_typ (ulvl u)) A)
-    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ]).
+  assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
+    by (apply wf_exp_unf_large; eassumption).
 
 Lemma alg_type_infer_normal : forall {Γ A A' M},
     ⊢ Γ ->
@@ -298,10 +402,16 @@ Proof.
   intros * ? Hinfer Hnbe. gen A'.
   assert (Γ ⊢ M : A) by mauto 3 using alg_type_infer_sound.
   induction Hinfer; intros;
+    try (symmetry; eapply nbe_ty_suniv_lit; eassumption);
     try (dir_inversion_clear_by_head nbe_ty;
          dir_inversion_by_head eval_exp; subst;
          dir_inversion_by_head read_typ; subst;
          reflexivity).
+  (** A small universe infers the normal form of [Typeˢ⟨succl M⟩], which
+      normalises to itself. *)
+  - assert (Γ ⊢ M : Level) by (eapply alg_type_check_sound; mauto 3).
+    assert (Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3).
+    eapply idempotent_nbe_ty; eassumption.
   - assert (Γ ⊢ ℕ : Type@0) by mauto 3.
     assert (Γ ⊢ M : ℕ) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▹ ℕ) by mauto 3.
@@ -313,13 +423,12 @@ Proof.
     lift_univ_sound (Γ ▹ ⊥) A u.
     f_equiv; mautosolve 4.
   (** [Π]: the universe it infers is its own normal form. *)
-  - match goal with HW : is_univ_nf ?W (umax ?u ?v) |- _ =>
-      rewrite (is_univ_nf_eq _ _ HW) in *; destruct (umax u v) as [n | i] end;
-    cbn [univ_tm univ_nf nf_to_exp] in *;
-      dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst;
-      dir_inversion_by_head read_typ; subst; reflexivity.
+  - match goal with HW : is_univ_nf ?W (unf_max ?u ?v) |- _ =>
+      rewrite (is_univ_nf_eq _ _ HW) in *;
+      rewrite nf_to_exp_univ_nf in Hnbe;
+      symmetry; exact (nbe_ty_unf_max Hnbe) end.
   - lift_univ_sound Γ A u.
-    assert (Γ ⊢ A ≈ C : Type@(ulvl u)) by mauto 3 using soundness_ty'.
+    assert (Γ ⊢ A ≈ C : Type@(unf_large u)) by mauto 3 using soundness_ty'.
     assert (Γ ▹ A ⊢ M : B) by mauto 3 using alg_type_infer_sound.
     assert (exists j, Γ ▹ A ⊢ B : Type@j) as [j] by (gen_presups; eauto 2).
     assert (⊨ Γ ▹ (C : exp) ≈ Γ ▹ A) by mauto 3.
@@ -374,7 +483,7 @@ Hint Resolve alg_type_infer_normal : mctt.
 Lemma alg_type_check_typ_implies_alg_type_infer_typ : forall {Γ A i},
     ⊢ Γ ->
     Γ ⊢a A ⟸ Type@i ->
-    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i).
+    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
@@ -384,8 +493,8 @@ Proof.
   dir_inversion_by_head eval_exp; subst.
   dir_inversion_by_head read_typ; subst.
   inversion Hnfsub; subst; [ contradiction | |].
-  - exists Typeⁿ@i0, (ul i0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
-  - exists Typeˢⁿ@n, (us n); split; [ exact Hinfer | split; [ constructor | exact I ] ].
+  - exists Typeⁿ@i0, (unl i0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
+  - exists (univⁿ c xs), (uns (c, xs)); split; [ exact Hinfer | split; [ constructor | exact I ] ].
 Qed.
 
 Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
@@ -468,7 +577,8 @@ Qed.
     is not a subderivation, but whose subject has fewer of them. *)
 Fixpoint exp_lets (M : exp) : nat :=
   match M with
-  | a_succ M => exp_lets M
+  | a_succ M | a_succl M | a_univ M => exp_lets M
+  | a_maxl M N => exp_lets M + exp_lets N
   | a_natrec A MZ MS M => exp_lets A + exp_lets MZ + exp_lets MS + exp_lets M
   | a_exfalso A M => exp_lets A + exp_lets M
   | a_pi A B => exp_lets A + exp_lets B
@@ -591,58 +701,62 @@ Ltac lets_bound :=
   lia.
 
 (** A term that infers a universe checks against every universe above it: the
-    algorithmic counterpart of [wf_subtyp_uidx]. *)
-Lemma alg_type_check_of_univ : forall Γ A UA (u v : uidx),
+    algorithmic counterpart of the universe subtyping rules, against a large
+    universe and against a small one at a literal level. *)
+Lemma alg_type_check_typ_of : forall Γ A UA (u : unf) i,
     ⊢ Γ ->
     Γ ⊢a A ⟹ UA ->
     is_univ_nf UA u ->
-    uidx_le u v ->
-    Γ ⊢a A ⟸ univ_tm v.
+    unf_le u (unl i) ->
+    Γ ⊢a A ⟸ Type@i.
 Proof.
   intros * HΓ Hi Hu Hle.
+  assert (HA : Γ ⊢ A : UA) by (eapply alg_type_infer_sound; eassumption).
   econstructor; [ exact Hi |].
-  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf.
-  apply alg_subtyping_complete, wf_subtyp_uidx; assumption.
+  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in *.
+  apply alg_subtyping_complete.
+  destruct u as [L | j]; cbn [unf_tm unf_le] in *.
+  - apply wf_subtyp_small_large; [ assumption |].
+    assert (exists k, Γ ⊢ Typeˢ⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Type@k) as [k Hk]
+      by (gen_presups; eauto 2).
+    eapply wf_univ_lvl_inversion; exact Hk.
+  - apply wf_subtyp_ge; [ assumption | lia ].
 Qed.
 
-(** A type checked against a small universe infers a universe below it. *)
+Lemma alg_type_check_suniv : forall Γ A UA (u : unf) m,
+    ⊢ Γ ->
+    Γ ⊢a A ⟹ UA ->
+    is_univ_nf UA u ->
+    unf_le u (unf_lit m) ->
+    Γ ⊢a A ⟸ Typeˢ@m.
+Proof.
+  intros * HΓ Hi Hu Hle.
+  destruct u as [[c xs] | j]; cbn [unf_le unf_lit] in Hle; [| contradiction ].
+  (** A level below a literal has no atom. *)
+  assert (xs = la_nil) as -> by exact (lvl_le_lit_closed (c, xs) m Hle).
+  assert (c <= m) by (apply lvl_le_real in Hle; exact Hle).
+  econstructor; [ exact Hi |].
+  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf.
+  apply alg_subtyping_complete.
+  cbn [unf_tm fst snd la_to_list lvl_exp_of].
+  apply wf_subtyp_suniv_le; [ assumption | lia ].
+Qed.
+
+(** A type checked against a small universe at a literal level infers a
+    universe below it. *)
 Lemma alg_type_check_suniv_implies_alg_type_infer_univ : forall {Γ A n},
     ⊢ Γ ->
     Γ ⊢a A ⟸ Typeˢ@n ->
-    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (us n).
+    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unf_lit n).
 Proof.
   intros * ? Hcheck.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
   inversion Hsub as [? ? ? A'' ? Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
-  inversion Hnbe2; subst.
-  dir_inversion_by_head eval_exp; subst.
-  dir_inversion_by_head read_typ; subst.
+  apply nbe_ty_suniv_lit in Hnbe2 as ->.
   inversion Hnfsub; subst; [ contradiction |].
-  exists Typeˢⁿ@n0, (us n0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
+  exists (univⁿ c xs), (uns (c, xs)); split; [ exact Hinfer | split; [ constructor | assumption ] ].
 Qed.
-
-(** The two tiers' instances, whose conclusions are in the concrete form a
-    goal has: the index of [univ_tm] is a [match], which [eapply] does not see
-    through. *)
-Corollary alg_type_check_suniv : forall Γ A UA n m,
-    ⊢ Γ ->
-    Γ ⊢a A ⟹ UA ->
-    is_univ_nf UA (us n) ->
-    n <= m ->
-    Γ ⊢a A ⟸ Typeˢ@m.
-Proof.
-  intros; eapply (alg_type_check_of_univ _ _ _ (us n) (us m));
-    [ assumption | eassumption | eassumption | cbn; lia ].
-Qed.
-
-Corollary alg_type_check_typ_of : forall Γ A UA (u : uidx) i,
-    ⊢ Γ ->
-    Γ ⊢a A ⟹ UA ->
-    is_univ_nf UA u ->
-    uidx_le u (ul i) ->
-    Γ ⊢a A ⟸ Type@i.
-Proof. intros; eapply (alg_type_check_of_univ _ _ _ u (ul i)); eassumption. Qed.
 
 (** Completeness, for terms and for the module judgments at once, since a
     unit's body holds terms and a term may hold a unit.  The global context is
@@ -683,17 +797,25 @@ Proof.
   all: match goal with |- _ ⊢a _ ⟸ _ =>
          gen_presups;
          (** A universe, [ℕ], [⊤] and [⊥] infer their own universe. *)
-         try solve [ eapply alg_type_check_suniv; [ assumption | mauto 3 | reflexivity | lia ]
-                   | eapply (alg_type_check_typ_of _ _ _ (ul _));
-                     [ assumption | mauto 3 | reflexivity | solve_uidx ]
-                   | eapply (alg_type_check_typ_of _ _ _ (us _));
-                     [ assumption | mauto 3 | reflexivity | solve_uidx ] ];
+         try solve [ eapply alg_type_check_suniv;
+                     [ assumption | mauto 3 | constructor | cbn; apply lvl_le_lit; lia ]
+                   | eapply alg_type_check_typ_of;
+                     [ assumption | mauto 3 | constructor | cbn; first [ exact I | lia ] ] ];
+         (** A small universe at a level term infers the normal form of the
+             universe above it. *)
+         try match goal with
+           | |- _ ⊢a a_univ ?M ⟸ a_univ (succl ?M) =>
+               assert (HSU : Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3);
+               destruct (soundness_ty HSU) as [W [HW HWe]];
+               econstructor; [ eapply ati_suniv; eassumption |];
+               apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe
+           end;
          mauto 4 using alg_subtyping_complete, alg_type_check_subtyp | _ => idtac end.
   (** An unannotated [let].  The definiens infers [A'], a subtype of the [A]
       of the derivation, so the body's derivation is moved to [Γ ▸ A' ≔ M] by
       refinement.  That derivation is no subderivation, but its subject has
       fewer unannotated [let]s, which is what the outer induction is for. *)
-  10:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
+  13:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
       assert (Γ ⊢ M : A') by mauto 3 using alg_type_infer_sound.
       assert (exists k, Γ ⊢ A' : Type@k) as [k HA'] by (gen_presups; eauto 2).
       assert (Γ ⊢ A' : Type@(max i k)) by mauto 3 using lift_exp_max_right.
@@ -721,7 +843,7 @@ Proof.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
       econstructor; [ eapply ati_let_infer; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A module [let], through its body. *)
-  11:{ destruct H0 as [HUa _].
+  14:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
        assert (Γ ▹ₘ U ⊢ B : C') by mauto 3 using alg_type_infer_sound.
        assert (exists k, Γ ▹ₘ U ⊢ C' : Type@k) as [k HCk] by (gen_presups; eauto 2).
@@ -734,53 +856,62 @@ Proof.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
        econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member, at the normal form of its canonical type. *)
-  11:{ destruct H2 as [Hm _].
+  14:{ destruct H2 as [Hm _].
        destruct (soundness_ty H4) as [W [HW HWe]].
        econstructor; [ eapply ati_mem; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member of an applied module, as its root's member applied. *)
-  11:{ destruct H1 as [Hm _].
+  14:{ destruct H1 as [Hm _].
        inversion H7 as [? A' ? ? Hi Hs]; subst.
        econstructor; [ eapply ati_mem_app; eauto | exact Hs ]. }
+  (** The level forms: each infers [Level], which is its own normal form. *)
+  - econstructor; mauto 3.
+    unshelve solve [mauto using alg_subtyping_complete]; constructor.
+  - econstructor; mauto 3.
+    unshelve solve [mauto using alg_subtyping_complete]; constructor.
+  - econstructor; mauto 3.
+    unshelve solve [mauto using alg_subtyping_complete]; constructor.
   - econstructor; mauto 3.
     unshelve solve [mauto using alg_subtyping_complete]; constructor.
   - econstructor; mauto 3.
     mauto using alg_subtyping_complete.
-  - assert (exists UA u, Γ ▹ ℕ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i))
+  - assert (exists UA u, Γ ▹ ℕ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
     assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
     assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
   - econstructor; mauto 3.
     mauto using alg_subtyping_complete.
-  - assert (exists UA u, Γ ▹ ⊥ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i))
+  - assert (exists UA u, Γ ▹ ⊥ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
     assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
     assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
   (** [Π], at either tier: the join of the two indices is below the universe
       of the rule's conclusion. *)
-  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i))
+  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
     assert (⊢ Γ ▹ A) by mauto 3.
-    assert (exists UB v, Γ ▹ A ⊢a B ⟹ UB /\ is_univ_nf UB v /\ uidx_le v (ul i))
+    assert (exists UB v, Γ ▹ A ⊢a B ⟹ UB /\ is_univ_nf UB v /\ unf_le v (unl i))
         as [UB [v [? []]]] by mauto 3.
-    eapply (alg_type_check_typ_of _ _ _ (umax u v));
+    eapply (alg_type_check_typ_of _ _ _ (unf_max u v));
       [ assumption
       | eapply ati_pi; [ eassumption | eassumption | eassumption | eassumption | apply is_univ_nf_univ_nf ]
       | apply is_univ_nf_univ_nf
-      | apply umax_lub; assumption ].
+      | apply unf_max_lub; [ exact I | assumption | assumption ] ].
   (** The small [Π]. *)
   - match goal with Hc : _ ⊢a _ ⟸ Typeˢ@?m |- _ => rename m into n0 end.
-    assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (us n0))
+    assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unf_lit n0))
         as [UA [u [? []]]] by (eapply alg_type_check_suniv_implies_alg_type_infer_univ; eassumption).
-    assert (exists UB v, Γ ▹ A ⊢a B ⟹ UB /\ is_univ_nf UB v /\ uidx_le v (us n0))
+    assert (exists UB v, Γ ▹ A ⊢a B ⟹ UB /\ is_univ_nf UB v /\ unf_le v (unf_lit n0))
         as [UB [v [? []]]] by (eapply alg_type_check_suniv_implies_alg_type_infer_univ; eassumption).
-    eapply (alg_type_check_of_univ _ _ _ (umax u v) (us n0));
+    (** Below a literal level both universes are closed, so their join is the
+        small universe at the maximum. *)
+    eapply (alg_type_check_suniv _ _ _ (unf_max u v) n0);
       [ assumption
       | eapply ati_pi; [ eassumption | eassumption | eassumption | eassumption | apply is_univ_nf_univ_nf ]
       | apply is_univ_nf_univ_nf
-      | apply umax_lub; assumption ].
-  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i))
+      | apply unf_max_lub; [ apply unf_closed_lit | assumption | assumption ] ].
+  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
     assert (Γ ▹ A ⊢a M ⟸ B) by mauto 3.
     assert (exists B', Γ ▹ A ⊢a M ⟹ B' /\ Γ ▹ A ⊢a B' ⊆ B) as [B' []] by (inversion_clear_by_head alg_type_check; firstorder).
@@ -806,7 +937,7 @@ Proof.
     assert (Γ ⊢ B'[Id,,N] ⊆ B[Id,,N]) by mauto 3.
     assert (Γ ⊢ W ⊆ B[Id,,N]) by (transitivity B'[Id,,N]; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
-  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i))
+  - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
     assert (⊢ Γ ▸ A ≔ M) by mauto 2.
     assert (Γ ▸ A ≔ M ⊢a B ⟸ C) by mauto 2.
@@ -951,7 +1082,7 @@ Hint Resolve alg_type_infer_complete : mctt.
 Corollary alg_type_infer_typ_complete : forall {Γ i A},
     user_exp A ->
     Γ ⊢ A : Type@i ->
-    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i).
+    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   mauto 4 using alg_type_check_complete.
 Qed.
@@ -961,7 +1092,7 @@ Hint Resolve alg_type_infer_typ_complete : mctt.
 Corollary alg_type_infer_pi_complete : forall {Γ i A},
     user_exp A ->
     Γ ⊢ A : Type@i ->
-    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ uidx_le u (ul i).
+    exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   mauto 4 using alg_type_check_complete.
 Qed.

@@ -19,11 +19,13 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 
 %token <loc*string> VAR
 %token <loc*nat> INT
-%token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
+%token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE TYPEW ZERO LET IN (* keywords; [TYPEW] is [Typeω] *)
+%token <loc> LEVEL SUCCL MAXL (* universe levels *)
+%token <loc*nat> LLIT (* a level literal, [<n>l] *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
-%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
+%token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
 %start <Cst.prog> prog
 %type <Cst.obj> obj app_obj atomic_obj
@@ -196,6 +198,11 @@ let obj :=
     END; { Cst.natrec escr (snd mx) em ez (snd sx) (snd sr) ms }
   | SUCC; ~ = obj; { Cst.succ obj }
 
+  (* The level operations take atomic arguments, so that [maxl u v] is their
+     join and not [maxl (u v)]. *)
+  | SUCCL; m = atomic_obj; { Cst.succl m }
+  | MAXL; m = atomic_obj; n = atomic_obj; { Cst.maxl m n }
+
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
@@ -209,7 +216,14 @@ let app_obj :=
   | ~ = atomic_obj; <>
 
 let atomic_obj :=
+  (* [Type@n] is the large universe [Typeω+n], and [Typeω] is [Type@0];
+     [Type@{M}] is the small universe at the level [M]. *)
   | TYPE; "@"; n = INT; { Cst.typ (snd n) }
+  | TYPEW; { Cst.typ 0 }
+  | TYPE; "@"; "{"; m = obj; "}"; { Cst.suniv m }
+
+  | LEVEL; { Cst.level }
+  | n = LLIT; { Cst.llit (snd n) }
 
   | NAT; { Cst.nat }
   | ZERO; { Cst.zero }

@@ -316,8 +316,9 @@ Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
     [me_mem H y]. *)
 Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   match M with
-  | a_typ _ | a_univ _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
-  | a_succ M => exp_refs S M
+  | a_typ _ | a_level | a_llit _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
+  | a_succ M | a_succl M | a_univ M => exp_refs S M
+  | a_maxl M N => exp_refs S M ++ exp_refs S N
   | a_natrec A MZ MS M =>
       exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M

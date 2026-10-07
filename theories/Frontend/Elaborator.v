@@ -149,7 +149,18 @@ Definition elab_params_with (f : list ent -> Cst.obj -> eres exp) :=
 Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   match o with
   | Cst.typ n => eok (Type@n)
-  | Cst.suniv n => eok (Typeˢ@n)
+  | Cst.suniv o =>
+      let* M := elab S o in
+      eok (Typeˢ⟨M⟩)
+  | Cst.level => eok Level
+  | Cst.llit n => eok (𝕃@n)
+  | Cst.succl o =>
+      let* M := elab S o in
+      eok (succl M)
+  | Cst.maxl o1 o2 =>
+      let* M := elab S o1 in
+      let* N := elab S o2 in
+      eok (maxl M N)
   | Cst.nat => eok ℕ
   | Cst.zero => eok zero
   | Cst.succ o =>

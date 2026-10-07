@@ -81,10 +81,22 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
   | Cst.Coq_typ i -> fprintf f "Type@%d" i
-  (* A small universe.  Level terms, and with them the surface syntax
-     [Type@{t}], arrive with universe polymorphism; until then the printer
-     spells the small universe the way the development does. *)
-  | Cst.Coq_suniv n -> fprintf f "Typeˢ@%d" n
+  (* A small universe, at any level term: its surface syntax [Type@{t}]. *)
+  | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_obj_prec 0) e
+  | Cst.Coq_level -> fprintf f "Level"
+  | Cst.Coq_llit n -> fprintf f "%dl" n
+  | Cst.Coq_succl e ->
+     let impl f () = fprintf f "succl@ %a" (format_obj_prec 2) e in
+     pp_open_hovbox f 2;
+     pp_print_paren_if (p >= 2) impl f ();
+     pp_close_box f ()
+  | Cst.Coq_maxl (e1, e2) ->
+     let impl f () =
+       fprintf f "maxl@ %a@ %a" (format_obj_prec 2) e1 (format_obj_prec 2) e2
+     in
+     pp_open_hovbox f 2;
+     pp_print_paren_if (p >= 2) impl f ();
+     pp_close_box f ()
   | Cst.Coq_nat -> fprintf f "Nat"
   | Cst.Coq_zero -> fprintf f "0"
   | Cst.Coq_succ e -> begin
@@ -277,12 +289,16 @@ let exp_to_obj =
     | Coq_a_natrec (em, ez, es, escr) ->
        let mx = new_var () in
        let sx = new_var () in
-       let sr = match em with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
+       let sr = match em with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let escr' = impl ctx escr in
        let em' = impl (mx :: ctx) em in
        let ez' = impl ctx ez in
        let es' = impl (sr :: sx :: ctx) es in
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
+    | Coq_a_level -> Cst.Coq_level
+    | Coq_a_llit n -> Cst.Coq_llit n
+    | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
+    | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
     | Coq_a_nat -> Cst.Coq_nat
     | Coq_a_True -> Cst.Coq_true_ty
     | Coq_a_true -> Cst.Coq_true_tm
@@ -293,12 +309,12 @@ let exp_to_obj =
        let em' = impl (mx :: ctx) em in
        Cst.Coq_exfalso (escr', mx, em')
     | Coq_a_typ i -> Cst.Coq_typ i
-    | Coq_a_univ n -> Cst.Coq_suniv n
+    | Coq_a_univ e -> Cst.Coq_suniv (impl ctx e)
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)
     | Coq_a_var x -> var_to_obj ctx x
     | Coq_a_fn (ep, ebody) ->
-       let px = match ep with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
+       let px = match ep with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
        let ebody' = impl (px :: ctx) ebody in
        Cst.Coq_fn (px, ep', ebody')
@@ -307,12 +323,12 @@ let exp_to_obj =
        let ea' = impl ctx ea in
        Cst.Coq_app (ef', ea')
     | Coq_a_pi (ep, eret) ->
-       let px = match ep with Coq_a_typ _ -> new_tyvar () | _ -> new_var () in
+       let px = match ep with Coq_a_typ _ | Coq_a_univ _ -> new_tyvar () | _ -> new_var () in
        let ep' = impl ctx ep in
        let eret' = impl (px :: ctx) eret in
        Cst.Coq_pi (px, ep', eret')
     | Coq_a_let (Coq_b_def (oa, em), ebody) ->
-       let px = match oa with Some (Coq_a_typ _) -> new_tyvar () | _ -> new_var () in
+       let px = match oa with Some (Coq_a_typ _ | Coq_a_univ _) -> new_tyvar () | _ -> new_var () in
        let ea' = Option.map (impl ctx) oa in
        let em' = impl ctx em in
        let ebody' = impl (px :: ctx) ebody in
@@ -374,7 +390,7 @@ let exp_to_obj =
             | Coq_ce_ass a | Coq_ce_def (a, _) -> impl ctx a
             | Coq_ce_mod _ -> Cst.Coq_var "_" in
           let px = match ce with
-            | Coq_ce_ass (Coq_a_typ _) | Coq_ce_def (Coq_a_typ _, _) -> new_tyvar ()
+            | Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
             | _ -> new_var () in
           (px :: ctx, (px, ty) :: ps))
         (ctx, []) (List.rev delta)

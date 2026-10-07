@@ -40,16 +40,22 @@ Proof.
     destruct_conjs.
     intro s.
     specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
-  - subst; repeat econstructor.
-  - subst.
-    eexists.
+  (** The small universes.  They read back as the universe at the canonical
+      form their level reads back as, which the two related levels share; the
+      other two components are as in the large tier, with the elements at the
+      index of the realiser. *)
+  - intro s.
+    destruct (H0 s) as [W [HW HW']].
+    destruct (read_nf_level_real _ _ _ HW) as [L [-> _]].
+    exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
+  - eexists.
     per_univ_elem_econstructor; (solve [try (try (eexists; split); econstructor); mauto]).
-  - subst.
-    destruct_by_head per_univ.
-    specialize (H2 _ _ _ H0).
+  - destruct_by_head per_univ.
+    match goal with H : per_univ_elem _ _ _ _ |- _ => specialize (H2 _ _ _ H) end.
     destruct_conjs.
     intro s.
-    specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
+    match goal with H : per_top_typ _ _ |- _ => specialize (H s) as [? []] end;
+      (solve [try (try (eexists; split); econstructor); mauto]).
   - intro s.
     inversion_clear_by_head per_ne.
     (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).

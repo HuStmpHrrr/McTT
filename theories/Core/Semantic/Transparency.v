@@ -17,7 +17,9 @@ Inductive dclean : domain -> Prop :=
 | dclean_nat : dclean ℕᵈ
 | dclean_pi : forall a (ρ : env) B, dclean a -> (forall x, declean (env_entry ρ x)) -> dclean (Πᵈ a ρ B)
 | dclean_univ : forall i, dclean 𝕌@i
-| dclean_suniv : forall n, dclean 𝕌ˢ@n
+| dclean_suniv : forall l, dclean l -> dclean 𝕌ˢ@l
+| dclean_level : dclean Levelᵈ
+| dclean_lvl : forall c xs, dclean_la xs -> dclean (lvᵈ c xs)
 | dclean_zero : dclean zeroᵈ
 | dclean_succ : forall m, dclean m -> dclean (succᵈ m)
 | dclean_True : dclean ⊤ᵈ
@@ -42,13 +44,21 @@ with dmclean : dmod -> Prop :=
 | dmclean_local : forall (ρ : env) U args,
     (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_local ρ U args)
 | dmclean_member : forall h ch, dmclean h -> dmclean (dm_member h ch)
+with dclean_la : list (nat * domain_ne) -> Prop :=
+| dclean_la_nil : dclean_la nil
+| dclean_la_cons : forall k m xs, dclean_ne m -> dclean_la xs -> dclean_la ((k, m) :: xs)
 with declean : dentry -> Prop :=
 | declean_term : forall d, dclean d -> declean (de_term d)
 | declean_mod : forall h, dmclean h -> declean (de_mod h).
 
 Definition env_clean (ρ : env) : Prop := forall x, declean (env_entry ρ x).
 
-#[local] Hint Constructors dclean dclean_ne dclean_nf dmclean declean : mctt.
+#[local] Hint Constructors dclean dclean_ne dclean_nf dclean_la dmclean declean : mctt.
+
+(** [dclean_lvl] is not a hint: its premise is a quantified statement about the
+    atoms, which the search would try to prove of an unknown level.  The
+    level operations are reached through the three lemmas below instead. *)
+#[local] Remove Hints dclean_lvl : mctt.
 #[local] Hint Unfold env_clean : mctt.
 
 Lemma env_clean_nil : env_clean nil.
@@ -85,8 +95,35 @@ Proof. intros; constructor; [ assumption | intros ? [] ]. Qed.
 Lemma dmclean_global_nil : forall p, dmclean (dm_global p nil).
 Proof. intros; constructor; intros ? []. Qed.
 
+(** The atoms a level value is built of.  The flat view of a neutral is the
+    single atom [(0, m)], so the level operations preserve the property. *)
+Lemma dclean_la_view : forall d, dclean d -> dclean_la (dlvl_atoms d).
+Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
+
+Lemma dclean_la_suc : forall xs, dclean_la xs -> dclean_la (List.map (fun ka => (S (fst ka), snd ka)) xs).
+Proof. induction 1; cbn; repeat constructor; assumption. Qed.
+
+Lemma dclean_la_app : forall xs ys, dclean_la xs -> dclean_la ys -> dclean_la (xs ++ ys).
+Proof. induction 1; cbn; intros; [ assumption | constructor; auto ]. Qed.
+
+Lemma dclean_lvl_lit : forall n, dclean (dlvl_lit n).
+Proof. intros; repeat constructor. Qed.
+
+Lemma dclean_lvl_suc : forall d, dclean d -> dclean (dlvl_suc d).
+Proof. intros; unfold dlvl_suc; constructor; apply dclean_la_suc, dclean_la_view; assumption. Qed.
+
+Lemma dclean_lvl_max : forall d e, dclean d -> dclean e -> dclean (dlvl_max d e).
+Proof. intros; unfold dlvl_max; constructor; apply dclean_la_app; apply dclean_la_view; assumption. Qed.
+
 #[local] Hint Resolve env_clean_nil env_clean_extend env_clean_extend_mod env_clean_var env_clean_mod
   env_clean_args clean_app_snoc dmclean_local_nil dmclean_global_nil env_clean_entry : mctt.
+
+(** The level lemmas are [Hint Extern], keyed on the operation in the goal: as
+    [Hint Resolve] their conclusions would match a goal about an unknown
+    value, since [dlvl_suc] and [dlvl_max] unfold to a flat level. *)
+#[local] Hint Extern 1 (dclean (dlvl_lit _)) => apply dclean_lvl_lit : mctt.
+#[local] Hint Extern 1 (dclean (dlvl_suc _)) => apply dclean_lvl_suc : mctt.
+#[local] Hint Extern 1 (dclean (dlvl_max _ _)) => apply dclean_lvl_max : mctt.
 
 Section Transparent.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -157,28 +194,43 @@ Section Transparent.
   Lemma read_clean :
     (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> dclean_nf m -> nf_clean W) /\
     (forall s m M, Rne m in Θ ⍮ Ξ ⍮ s ↘ M -> dclean_ne m -> ne_clean M) /\
-    (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dclean a -> nf_clean A).
+    (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A -> dclean a -> nf_clean A) /\
+    (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
+       dclean_la xs -> la_clean ys).
   Proof.
     destruct eval_clean as (He & _ & Ha & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dclean_nf m -> nf_clean W)
              (fun s m M _ => dclean_ne m -> ne_clean M)
-             (fun s a A _ => dclean a -> nf_clean A));
+             (fun s a A _ => dclean a -> nf_clean A)
+             (fun s xs ys _ => dclean_la xs -> la_clean ys));
       intros; cbn;
       repeat match goal with
         | H : dclean (_ _) |- _ => inversion_clear H
         | H : dclean (_ _ _) |- _ => inversion_clear H
         | H : dclean (_ _ _ _) |- _ => inversion_clear H
         | H : dclean_nf (_ _ _) |- _ => inversion_clear H
+        | H : dclean_la (_ :: _) |- _ => inversion_clear H
         | H : dclean_ne (_ _) |- _ => inversion_clear H
         | H : dclean_ne (_ _ _) |- _ => inversion_clear H
         | H : dclean_ne (_ _ _ _ _ _) |- _ => inversion_clear H
         end;
       repeat split; auto.
+    (** A level reads back canonically, so its atoms are sorted and merged;
+        [la_clean_sort] moves the property of all the atoms across. *)
+    all: try solve [ apply la_clean_sort; eauto 3 with mctt ].
+    (** A small universe reads back at the canonical level its level reads
+        back as, and the two normal forms have the same atoms, so this case
+        is the level's. *)
+    all: try match goal with
+         | IH : _ -> nf_clean (nf_lvl_of _) |- la_clean _ =>
+             apply IH; repeat constructor; assumption
+         end.
     (* each component is read back from a value built of clean ones *)
     all: match goal with
          | IH : _ -> nf_clean ?W |- nf_clean ?W => apply IH
          | IH : _ -> ne_clean ?W |- ne_clean ?W => apply IH
+         | IH : _ -> la_clean ?W |- la_clean ?W => apply IH
          end.
     all: repeat first [ eassumption | constructor | apply env_clean_extend
                       | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] ].

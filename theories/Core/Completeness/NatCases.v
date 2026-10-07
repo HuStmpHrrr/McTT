@@ -88,7 +88,7 @@ Hint Resolve valid_exp_nat : mctt.
 (** [ℕ] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_nat : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ℕ ≈ ℕ : univ_tm u.
+    Γ ⊨ ℕ ≈ ℕ : ulvl_tm u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.

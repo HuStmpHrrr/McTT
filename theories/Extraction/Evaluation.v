@@ -18,11 +18,24 @@ Generalizable All Variables.
 Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_typ :
   `( eval_exp_order Θ Ξ Type@i p )
+(** A small universe evaluates its level. *)
 | eeo_univ :
-  `( eval_exp_order Θ Ξ Typeˢ@n p )
+  `( eval_exp_order Θ Ξ M p ->
+     eval_exp_order Θ Ξ Typeˢ⟨M⟩ p )
 (** An environment is total, so a variable always terminates. *)
 | eeo_var :
   `( eval_exp_order Θ Ξ #x p )
+| eeo_level :
+  `( eval_exp_order Θ Ξ Level p )
+| eeo_llit :
+  `( eval_exp_order Θ Ξ (𝕃@n) p )
+| eeo_succl :
+  `( eval_exp_order Θ Ξ M p ->
+     eval_exp_order Θ Ξ (succl M) p )
+| eeo_maxl :
+  `( eval_exp_order Θ Ξ M p ->
+     eval_exp_order Θ Ξ N p ->
+     eval_exp_order Θ Ξ (maxl M N) p )
 | eeo_nat :
   `( eval_exp_order Θ Ξ ℕ p )
 | eeo_zero :
@@ -415,8 +428,19 @@ Section EvalImpl.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations eval_exp_impl m p (H : eval_exp_order Θ Ξ m p) : { d | ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
   | Type@i, p, H => exist _ 𝕌@i _
-  | Typeˢ@n, p, H => exist _ 𝕌ˢ@n _
+  | Typeˢ⟨M⟩, p, H =>
+      let (m , Hm) := eval_exp_impl M p _ in
+      exist _ 𝕌ˢ@m _
   | #x    , p, H => eval_var_impl x p H
+  | Level , p, H => exist _ Levelᵈ _
+  | 𝕃@n  , p, H => exist _ (dlvl_lit n) _
+  | succl M, p, H =>
+      let (m , Hm) := eval_exp_impl M p _ in
+      exist _ (dlvl_suc m) _
+  | maxl M N, p, H =>
+      let (m , Hm) := eval_exp_impl M p _ in
+      let (n , Hn) := eval_exp_impl N p _ in
+      exist _ (dlvl_max m n) _
   | ℕ     , p, H => exist _ ℕᵈ _
   | zero  , p, H => exist _ zeroᵈ _
   | succ m, p, H =>
