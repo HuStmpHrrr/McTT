@@ -15,7 +15,7 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma glu_rel_exp_subtyp : forall {Γ M A A' i},
+Lemma glu_rel_exp_subtyp : forall {Γ M A A'} {i : nat},
     Γ ⊩ M : A ->
     Γ ⊩ A' : Type@i ->
     Γ ⊢ A ⊆ A' ->
@@ -45,7 +45,7 @@ Qed.
 
 Hint Resolve glu_rel_exp_subtyp : mctt.
 
-Lemma glu_rel_exp_conv : forall {Γ M A A' i},
+Lemma glu_rel_exp_conv : forall {Γ M A A'} {i : nat},
     Γ ⊩ M : A ->
     Γ ⊩ A' : Type@i ->
     Γ ⊢ A ≈ A' : Type@i ->

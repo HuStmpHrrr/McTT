@@ -21,39 +21,55 @@ Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
      Γ ⊢a M ⟸ B )
 where "Γ '⊢a' M ⟸ A" := (alg_type_check Γ A M) : type_scope
 with alg_type_infer : ctx -> nf -> exp -> Prop :=
+(** The universes of both tiers infer the universe above. *)
 | ati_typ :
   `( Γ ⊢a Type@i ⟹ Typeⁿ@(S i) )
+| ati_suniv :
+  `( Γ ⊢a Typeˢ@n ⟹ Typeˢⁿ@(S n) )
+(** The closed small types infer the least universe. *)
 | ati_nat :
-  `( Γ ⊢a ℕ ⟹ Typeⁿ@0 )
+  `( Γ ⊢a ℕ ⟹ Typeˢⁿ@0 )
 | ati_zero :
   `( Γ ⊢a zero ⟹ ℕⁿ )
 | ati_succ :
   `( Γ ⊢a M ⟸ ℕ ->
      Γ ⊢a succ M ⟹ ℕⁿ )
 | ati_natrec :
-  `( Γ ▹ ℕ ⊢a A ⟹ Typeⁿ@i ->
+  `( Γ ▹ ℕ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Γ ⊢a MZ ⟸ A[Id,,zero] ->
      Γ ▹ ℕ ▹ A ⊢a MS ⟸ A[Wk ⨟ Wk,,succ #1] ->
      Γ ⊢a M ⟸ ℕ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B )
 | ati_True :
-  `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
+  `( Γ ⊢a ⊤ ⟹ Typeˢⁿ@0 )
 | ati_true :
   `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
 | ati_False :
-  `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
+  `( Γ ⊢a ⊥ ⟹ Typeˢⁿ@0 )
 | ati_exfalso :
-  `( Γ ▹ ⊥ ⊢a A ⟹ Typeⁿ@i ->
+  `( Γ ▹ ⊥ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Γ ⊢a M ⟸ ⊥ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a efq M return A ⟹ B )
+(** A [Π] is at the join of the universes of its parts: a large universe
+    absorbs a small one, and inside a tier the join is on levels.  The join is
+    a side condition rather than the conclusion's index: an index computed
+    from the premises makes the judgment's inversion non-terminating.  The
+    side conditions are [is_univ_nf] rather than equations on [univ_nf_idx],
+    for the reason given there. *)
 | ati_pi :
-  `( Γ ⊢a A ⟹ Typeⁿ@i ->
-     Γ ▹ A ⊢a B ⟹ Typeⁿ@j ->
-     Γ ⊢a Π A B ⟹ Typeⁿ@(max i j) )
+  `( Γ ⊢a A ⟹ UA ->
+     Γ ▹ A ⊢a B ⟹ UB ->
+     is_univ_nf UA u ->
+     is_univ_nf UB v ->
+     is_univ_nf W (umax u v) ->
+     Γ ⊢a Π A B ⟹ W )
 | ati_fn :
-  `( Γ ⊢a A ⟹ Typeⁿ@i ->
+  `( Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Γ ▹ A ⊢a M ⟹ B ->
      nbe_ty_f Γ A C ->
      Γ ⊢a λ A M ⟹ Πⁿ C B )
@@ -63,7 +79,8 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_f Γ B[Id,,N] C ->
      Γ ⊢a M $ N ⟹ C )
 | ati_let :
-  `( Γ ⊢a A ⟹ Typeⁿ@i ->
+  `( Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Γ ⊢a M ⟸ A ->
      Γ ▸ A ≔ M ⊢a B ⟹ C ->
      nbe_ty_f Γ C[Id,,M] D ->
@@ -114,11 +131,13 @@ with alg_ext : ctx -> ctx -> Prop :=
   `( Γ ⊢aˣ ⋅ )
 | aext_ass :
   `( Γ ⊢aˣ Ψ ->
-     Ψ ++ Γ ⊢a A ⟹ Typeⁿ@i ->
+     Ψ ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Γ ⊢aˣ Ψ ▹ A )
 | aext_def :
   `( Γ ⊢aˣ Ψ ->
-     Ψ ++ Γ ⊢a A ⟹ Typeⁿ@i ->
+     Ψ ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
      Ψ ++ Γ ⊢a M ⟸ A ->
      Γ ⊢aˣ Ψ ▸ A ≔ M )
 | aext_mod :
@@ -198,6 +217,8 @@ Generalizable All Variables.
 Inductive user_exp : exp -> Prop :=
 | user_exp_typ :
   `( user_exp (a_typ i) )
+| user_exp_univ :
+  `( user_exp (a_univ n) )
 | user_exp_nat :
   `( user_exp a_nat )
 | user_exp_zero :
@@ -271,3 +292,20 @@ Proof.
   - clear user_exp_nf; induction M; mauto 3.
   - clear user_exp_ne; induction M; mauto 3.
 Qed.
+
+#[export]
+Hint Constructors is_univ_nf : mctt.
+#[export]
+Hint Resolve is_univ_nf_univ_nf : mctt.
+
+(** The universes as normal forms, for the rewriting the universe cases need:
+    the coercion [nf_to_exp] does not unfold by [rewrite] on its own. *)
+Lemma nf_to_exp_typ : forall i, nf_to_exp Typeⁿ@i = Type@i.
+Proof. reflexivity. Qed.
+
+Lemma nf_to_exp_univ : forall n, nf_to_exp Typeˢⁿ@n = Typeˢ@n.
+Proof. reflexivity. Qed.
+
+(** Normalises the universes a derivation reads back, whichever of the three
+    spellings they are in. *)
+Ltac simpl_univ_nf := rewrite ?nf_to_exp_univ_nf, ?nf_to_exp_typ, ?nf_to_exp_univ in *.

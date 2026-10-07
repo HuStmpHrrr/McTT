@@ -139,9 +139,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_typ :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i : Type@(S i) )
+(** A small universe is in the next one. *)
+| wf_univ :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Typeˢ@(S n) )
 | wf_nat :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeˢ@0 )
 | wf_zero :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ zero : ℕ )
@@ -156,13 +160,13 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M] )
 | wf_True :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeˢ@0 )
 | wf_true :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ : ⊤ )
 | wf_False :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Typeˢ@0 )
 | wf_exfalso :
   `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
@@ -171,6 +175,11 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@i )
+(** A [Π] of small types at a level is small at that level. *)
+| wf_pi_small :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeˢ@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeˢ@n )
 | wf_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
@@ -248,9 +257,12 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 | wf_exp_eq_typ_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ≈ Type@i : Type@(S i) )
+| wf_exp_eq_univ_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Typeˢ@(S n) )
 | wf_exp_eq_nat_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeˢ@0 )
 | wf_exp_eq_zero_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ zero ≈ zero : ℕ )
@@ -266,13 +278,13 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ rec M return A | zero -> MZ | succ -> MS end ≈ rec M' return A' | zero -> MZ' | succ -> MS' end : A[Id,,M] )
 | wf_exp_eq_True_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Typeˢ@0 )
 | wf_exp_eq_true_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ ⋆ ≈ ⋆ : ⊤ )
 | wf_exp_eq_False_cong :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@0 )
+     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Typeˢ@0 )
 | wf_exp_eq_exfalso_cong :
   `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Type@i ->
@@ -283,6 +295,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@i )
+| wf_exp_eq_pi_cong_small :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeˢ@n ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeˢ@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeˢ@n )
 | wf_exp_eq_fn_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
@@ -433,6 +450,15 @@ with wf_subtyp : gdeps -> gstack -> ctx -> typ -> typ -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      i < j ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ Type@j )
+(** A small universe below one at a larger level. *)
+| wf_subtyp_suniv :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     n <= m ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Typeˢ@m )
+(** A small universe below every large one. *)
+| wf_subtyp_small_large :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ Type@i )
 | wf_subtyp_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
@@ -894,6 +920,81 @@ Proof.
 Qed.
 
 (** ** Immediate & Independent Presuppositions *)
+
+(** A small universe is a type of every large universe. *)
+Lemma wf_univ_large : forall {Θ Ξ Γ n i},
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Type@i.
+Proof.
+  intros; eapply wf_exp_subtyp; [ apply wf_univ | apply wf_typ | apply wf_subtyp_small_large ]; eassumption.
+Qed.
+
+(** The base types are types of every large universe. *)
+Lemma wf_nat_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_nat | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_True_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_True | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_False_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@i.
+Proof. intros; eapply wf_exp_subtyp; [ apply wf_False | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_exp_eq_nat_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_nat_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_exp_eq_True_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_True_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_exp_eq_False_cong_large : forall {Θ Ξ Γ i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_False_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+Lemma wf_exp_eq_univ_cong_large : forall {Θ Ξ Γ n i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Type@i.
+Proof. intros; eapply wf_exp_eq_subtyp; [ apply wf_exp_eq_univ_cong | apply wf_typ | apply wf_subtyp_small_large ]; eassumption. Qed.
+
+(** The universe at an index [u], as a term of the large universe just above
+    it: [Type@j] is in [Type@(S j)], and every small universe is in
+    [Type@0]. *)
+Lemma wf_univ_tm : forall {Θ Ξ Γ} {u : uidx},
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ univ_tm u : Type@(univ_above u).
+Proof. intros ? ? ? []; [ apply wf_univ_large | apply wf_typ ]. Qed.
+
+Lemma wf_exp_eq_univ_tm_cong : forall {Θ Ξ Γ} {u : uidx},
+    ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ univ_tm u ≈ univ_tm u : Type@(univ_above u).
+Proof. intros ? ? ? []; [ apply wf_exp_eq_univ_cong_large | apply wf_exp_eq_typ_cong ]. Qed.
+
+(** A universe is closed, so no substitution reaches it. *)
+Lemma exp_sub_univ_tm : forall u σ, (univ_tm u)[σ] = univ_tm u.
+Proof. intros [] ?; reflexivity. Qed.
+
+
+(** As hints, these fix a large universe the goal leaves open to [Type@0], so
+    that a search never ends with an uninstantiated level. *)
+Ltac fix_open_level i := first [ is_evar i; unify i 0 | idtac ].
+
+(** [wf_subtyp_small_large] constrains nothing about the small level, so as a
+    constructor hint it would leave it open whenever the left-hand side is;
+    it applies only to a known small universe. *)
+#[export]
+Remove Hints wf_subtyp_small_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ⊆ Type@?i) => fix_open_level i; apply wf_subtyp_small_large : mctt.
+
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ : Type@?i) => fix_open_level i; apply wf_univ_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type@?i) => fix_open_level i; apply wf_nat_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Type@?i) => fix_open_level i; apply wf_True_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Type@?i) => fix_open_level i; apply wf_False_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type@?i) => fix_open_level i; apply wf_exp_eq_nat_cong_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type@?i) => fix_open_level i; apply wf_exp_eq_True_cong_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type@?i) => fix_open_level i; apply wf_exp_eq_False_cong_large : mctt.
+#[export]
+Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ≈ Typeˢ@_ : Type@?i) => fix_open_level i; apply wf_exp_eq_univ_cong_large : mctt.
 
 Lemma presup_subtyp_right : forall {Θ Ξ Γ A B}, Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ B -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i.
 Proof.

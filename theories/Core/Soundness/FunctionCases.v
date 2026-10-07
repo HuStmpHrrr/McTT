@@ -29,7 +29,7 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a i P El Γ'' φ M c},
+Lemma cons_glu_sub_pred_pi_helper : forall {Γ Sb Γ' σ ρ A a} {i : nat} {P El Γ'' φ M c},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ' ⊢s σ ® ρ ∈ Sb ->
     Γ ⊢ A : Type@i ->
@@ -53,7 +53,7 @@ Hint Resolve cons_glu_sub_pred_pi_helper : mctt.
     instances of [wf_exp_eq_pi_beta] at [(sb_wk σ φ)], once [exp_wk_sub] has
     merged the two steps into one substitution and [exp_sub_q_extend] has put
     both bodies into [q]-form. *)
-Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N i},
+Lemma exp_eq_fn_sub_wk_beta : forall {Γ Δ Δ' σ φ A B M N} {i : nat},
     Δ ⊢s σ : Γ ->
     Γ ⊢ A : Type@i ->
     Γ ▹ A ⊢ B : Type@i ->
@@ -74,39 +74,47 @@ Proof.
   mauto 3.
 Qed.
 
-Lemma glu_rel_exp_pi : forall {Γ A B i},
-    Γ ⊩ A : Type@i ->
-    Γ ▹ A ⊩ B : Type@i ->
-    Γ ⊩ Π A B : Type@i.
+(** [Π] at either tier: the rule keeps both sides in the same universe, so
+    the proof is one, at an index [u]. *)
+Lemma glu_rel_exp_pi_univ : forall {Γ A B} {u : uidx},
+    Γ ⊩ A : univ_tm u ->
+    Γ ▹ A ⊩ B : univ_tm u ->
+    Γ ⊩ Π A B : univ_tm u.
 Proof.
   intros * HA HB.
   assert (⊩ Γ) as [SbΓ] by mauto.
-  assert (Γ ⊢ A : Type@i) by mauto.
-  invert_glu_rel_exp HA.
-  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred i Γ A SbΓ) by (econstructor; mauto; reflexivity).
-  assert (Γ ▹ A ⊢ B : Type@i) by mauto.
-  invert_glu_rel_exp HB.
-  assert (Γ ⊨ A : Type@i) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_typ_inversion_simple
+  assert (Γ ⊢ A : univ_tm u) by mauto 3 using glu_rel_exp_to_wf_exp.
+  assert (Γ ⊢ A : Type@(ulvl u))
+    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ]).
+  pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HA) as HAg.
+  assert (EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred (ulvl u) Γ A SbΓ)
+    by (eapply glu_ctx_env_cons; [ eassumption | eassumption
+                                 | intros Δ σ ρ HΔ; apply glu_rel_typ_with_sub_uidx;
+                                   destruct (HAg _ _ _ HΔ); eassumption
+                                 | reflexivity ]).
+  assert (Γ ▹ A ⊢ B : univ_tm u) by mauto 3 using glu_rel_exp_to_wf_exp.
+  pose proof (glu_rel_exp_of_univ_inversion ltac:(eassumption) HB) as HBg.
+  assert (Γ ⊨ A : univ_tm u) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_univ_inversion_simple
       by mauto 3 using completeness_fundamental_exp.
-  pose proof (per_ctx_env_extend HΓ HAsimple) as HΓA.
-  assert (Γ ▹ A ⊨ B : Type@i) as [env_relΓA [HΓA' HBsimple]]%rel_exp_of_typ_inversion_simple
+  assert (forall ρ ρ', Dom ρ ≈ ρ' ∈ env_relΓ ->
+            exists a a', ⟦ A ⟧ ρ ↘ a /\ ⟦ A ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ (ulvl u)) as HAlarge
+      by (intros ρ ρ' Hρ; destruct (HAsimple _ _ Hρ) as [a [a' [? [? ?]]]];
+          exists a, a'; repeat split; try eassumption;
+          eapply (per_univ_cumu_uidx (u := u)); [ apply uidx_le_ulvl | eassumption ]).
+  pose proof (per_ctx_env_extend HΓ HAlarge) as HΓA.
+  assert (Γ ▹ A ⊨ B : univ_tm u) as [env_relΓA [HΓA' HBsimple]]%rel_exp_of_univ_inversion_simple
       by mauto 3 using completeness_fundamental_exp.
   handle_per_ctx_env_irrel.
-  eapply glu_rel_exp_of_typ; mauto 3.
+  eapply glu_rel_exp_of_univ; [ eassumption |].
   intros Δ σ ρ HSb.
   assert (Δ ⊢s σ : Γ) by mauto 4.
-  split; mauto 3.
+  destruct (HAg _ _ _ HSb) as [HAσ [a [Hae [[in_rel Hin] HaP]]]].
+  assert (Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
+  assert (Δ ▹ A[σ] ⊢ B[q σ] : univ_tm u)
+    by (rewrite <- (exp_sub_univ_tm u (q σ)); mauto 3).
+  split; [ cbn; apply wf_pi_univ; assumption |].
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  destruct_glu_rel_exp_with_sub.
-  simplify_evals.
-  match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-  handle_functional_glu_univ_elem.
-  unfold univ_glu_exp_pred' in *.
-  destruct_conjs.
-  rename m into a.
-  (** The domain's own PER, read off its gluing predicate. *)
-  assert (Dom a ≈ a ∈ per_univ i) as [in_rel Hin] by mauto 3.
-  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ i) as [elem_rel Helem].
+  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ u) as [elem_rel Helem].
   {
     eexists.
     eapply per_univ_elem_pi_canonical; [ eassumption |].
@@ -123,32 +131,48 @@ Proof.
   handle_functional_glu_univ_elem.
   (** [(Π A B)[σ]] is [Π A[σ] B[q σ]] by definition, so the first premise of
       [mk_pi_glu_typ_pred] is reflexivity; it determines [IT] and [OT]. *)
-  assert (Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
-  assert (Δ ▹ A[σ] ⊢ B[q σ] : Type@i) by mauto 3.
-  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Type@i) as HPieq by mauto 3.
+  assert (Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : univ_tm u) as HPieq by mauto 3.
   econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
-  - eapply glu_univ_elem_typ_monotone; eassumption.
+  - (** The domain's gluing predicate is an existential from
+        [invert_glu_univ_elem], so take it from the context. *)
+    match goal with Hx : glu_univ_elem u ?P ?El a |- _ =>
+      assert (Δ ⊢ A[σ] ® P) by exact (HaP P El Hx) end.
+    eapply glu_univ_elem_typ_monotone; eassumption.
   - rewrite exp_sub_q_extend_wk.
-    assert (Δ' ⊢s (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred i Γ A SbΓ) as Hcons by mauto 2.
-    (on_all_hyp: fun H => destruct (H _ _ _ Hcons)).
+    (** The entry of the glued context is at the large level [ulvl u], so the
+        element of the domain moves up by cumulativity. *)
+    match goal with Hx : glu_univ_elem u ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
+      assert (exists P' El', DG a ∈ glu_univ_elem (ulvl u) ↘ P' ↘ El') as [P' [El' Hl]]
+        by (eapply (glu_univ_elem_cumu_ge_uidx (i := u)); [ apply uidx_le_ulvl | exact Hx ]);
+      assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
+        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := u) (j := ulvl u));
+            [ apply uidx_le_ulvl | exact Hx | exact Hl | exact HM ]) end.
+    assert (Δ' ⊢s (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred (ulvl u) Γ A SbΓ) as Hcons by mauto 2.
+    destruct (HBg _ _ _ Hcons) as [? [b [Hbe [? HbP]]]].
     simplify_evals.
-    match_by_head glu_univ_elem ltac:(fun H => directed invert_glu_univ_elem H).
-    apply_predicate_equivalence.
-    unfold univ_glu_exp_pred' in *.
-    destruct_conjs.
     (** The codomain families are existentials from [invert_glu_univ_elem], so
         take the instance needed here from the family rather than by name. *)
     match goal with
-    | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem i _ _ b |- _ =>
-        pose proof (H m equiv_m _ ltac:(eassumption))
+    | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem _ _ _ b |- _ =>
+        exact (HbP _ _ (H m equiv_m _ ltac:(eassumption)))
     end.
-    handle_functional_glu_univ_elem.
-    eassumption.
 Qed.
+
+Lemma glu_rel_exp_pi : forall {Γ A B} {i : nat},
+    Γ ⊩ A : Type@i ->
+    Γ ▹ A ⊩ B : Type@i ->
+    Γ ⊩ Π A B : Type@i.
+Proof. intros; apply (glu_rel_exp_pi_univ (u := ul i)); assumption. Qed.
+
+Lemma glu_rel_exp_pi_small : forall {Γ A B} {n : nat},
+    Γ ⊩ A : Typeˢ@n ->
+    Γ ▹ A ⊩ B : Typeˢ@n ->
+    Γ ⊩ Π A B : Typeˢ@n.
+Proof. intros; apply (glu_rel_exp_pi_univ (u := us n)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_pi : mctt.
 
-Lemma glu_rel_exp_of_pi : forall {Γ M A B i Sb},
+Lemma glu_rel_exp_of_pi : forall {Γ M A B} {i : nat} {Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Γ ⊨ Π A B : Type@i ->
     (forall Δ σ ρ,
@@ -170,7 +194,7 @@ Proof.
   mauto 4.
 Qed.
 
-Lemma glu_rel_exp_fn_helper : forall {Γ M A B i},
+Lemma glu_rel_exp_fn_helper : forall {Γ M A B} {i : nat},
     Γ ⊩ A : Type@i ->
     Γ ▹ A ⊩ B : Type@i ->
     Γ ▹ A ⊩ M : B ->
@@ -249,7 +273,7 @@ Proof.
     eassumption.
 Qed.
 
-Lemma glu_rel_exp_fn : forall {Γ M A B i},
+Lemma glu_rel_exp_fn : forall {Γ M A B} {i : nat},
     Γ ⊩ A : Type@i ->
     Γ ▹ A ⊩ M : B ->
     Γ ⊩ λ A M : Π A B.
@@ -269,7 +293,7 @@ Qed.
 
 Hint Resolve glu_rel_exp_fn : mctt.
 
-Lemma glu_rel_exp_app_helper : forall {Γ M N A B i},
+Lemma glu_rel_exp_app_helper : forall {Γ M N A B} {i : nat},
     Γ ⊩ A : Type@i ->
     Γ ▹ A ⊩ B : Type@i ->
     Γ ⊩ M : Π A B ->
@@ -335,8 +359,9 @@ Proof.
   assert (Δ ⊢k wk_id : Δ) by mauto 3.
   assert (Δ ⊢ IT[wk_id]ʷ ® IP) as HIT by mauto 2.
   rewrite exp_wk_id in HIT.
-  assert (Δ ⊢ IT : Type@i) by (eapply glu_univ_elem_univ_lvl; revgoals; eassumption).
-  assert (Δ ⊢ IT ≈ A[σ] : Type@i) as HAeq by (eapply glu_univ_elem_typ_unique_upto_exp_eq'; revgoals; eassumption).
+  assert (Δ ⊢ IT : Type@i) by (eapply (glu_univ_elem_univ_lvl (ul i)); revgoals; [ eassumption | eassumption | reflexivity ]).
+  assert (Δ ⊢ IT ≈ A[σ] : Type@i) as HAeq
+      by (eapply (glu_univ_elem_typ_unique_upto_exp_eq' (i := ul i)); revgoals; eassumption).
   assert (Δ ⊢ N[σ] : IT[wk_id]ʷ ® n ∈ IEl) by (rewrite exp_wk_id, HAeq; eassumption).
   assert (exists mn, $| m & n |↘ mn /\ Δ ⊢ M[σ][wk_id]ʷ $ N[σ] : OT[(ι wk_id),,N[σ]] ® mn ∈ OEl n equiv_n) as [] by mauto 2.
   destruct_conjs.
@@ -356,11 +381,11 @@ Proof.
   rewrite exp_sub_extend_sub.
   assert (Δ ⊢ OT[(ι wk_id),,N[σ]] ® OP n equiv_n) by (eapply glu_univ_elem_trm_typ; eassumption).
   assert (Δ ⊢ B[σ,,N[σ]] ≈ OT[(ι wk_id),,N[σ]] : Type@i) as ->
-      by (eapply glu_univ_elem_typ_unique_upto_exp_eq'; revgoals; eassumption).
+      by (eapply (glu_univ_elem_typ_unique_upto_exp_eq' (i := ul _)); revgoals; eassumption).
   eassumption.
 Qed.
 
-Lemma glu_rel_exp_app : forall {Γ M N A B i},
+Lemma glu_rel_exp_app : forall {Γ M N A B} {i : nat},
     Γ ▹ A ⊩ B : Type@i ->
     Γ ⊩ M : Π A B ->
     Γ ⊩ N : A ->

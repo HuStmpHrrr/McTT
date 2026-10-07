@@ -17,7 +17,7 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Corollary per_ctx_of_exp_eq : forall {Γ A A' i},
+Corollary per_ctx_of_exp_eq : forall {Γ A A'} {i : nat},
     Γ ⊢ A ≈ A' : Type@i ->
     ⊨ Γ ▹ A ≈ Γ ▹ A'.
 Proof.

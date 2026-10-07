@@ -36,6 +36,10 @@ Lemma var_glu_elem_bot : forall a i P El Γ A,
     Γ ▹ A ⊢ #0 : A[↑]ʷ ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
 Proof.
   intros. saturate_glu_info.
+  (** The ambient universe of the index is a universe term, so the type is
+      moved to a large level before the syntactic rules apply. *)
+  assert (Γ ⊢ A : Type@(ulvl i))
+    by (eapply (lift_exp_uidx _ _ _ _ i (ulvl i)); [ apply uidx_le_ulvl | eassumption ]).
   econstructor; mauto 4.
   - eapply glu_univ_elem_typ_monotone; eauto.
     mauto 4.
@@ -73,33 +77,62 @@ Proof.
     try match_by_head1 per_univ_elem ltac:(fun H => pose proof (per_univ_then_per_top_typ H));
     match_by_head glu_elem_bot ltac:(fun H => destruct H as []);
     destruct_all.
-  (* univ *)
-  - econstructor; eauto; intros.
-    progressive_inversion.
-    mauto 3.
-  - handle_functional_glu_univ_elem.
-    match_by_head glu_univ_elem invert_glu_univ_elem.
-    clear_dups.
-    apply_equiv_left.
-    repeat split; eauto.
-    repeat eexists.
-    + glu_univ_elem_econstructor; eauto; reflexivity.
-    + simpl. repeat split.
-      * rewrite <- H5. trivial.
-      * intros. saturate_kripke_escape.
-        eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
-  - deepexec glu_univ_elem_per_univ ltac:(fun H => pose proof H).
-    firstorder.
-    specialize (H _ _ _ H10) as [? []].
-    econstructor; mauto 3.
-    + apply_equiv_left. trivial.
-    + intros.
-      saturate_kripke_escape.
-      deepexec H ltac:(fun H => destruct H).
-      progressive_invert H16.
-      deepexec H20 ltac:(fun H => pose proof H).
-      functional_read_rewrite_clear.
-      eapply wf_exp_eq_conv'; [ eassumption | mauto 3 ].
+  (** The two universe clauses, large and small.  They are identical up to
+      the universe the equations are stated in, which is [univ_tm i] in both
+      tiers; the conversions therefore go through [wf_*_conv_univ]. *)
+  (* univ, then small univ *)
+  1:{ econstructor; eauto; intros.
+      progressive_inversion.
+      mauto 3. }
+  1:{ handle_functional_glu_univ_elem.
+      match_by_head glu_univ_elem invert_glu_univ_elem.
+      clear_dups.
+      apply_equiv_left.
+      repeat split; eauto.
+      repeat eexists.
+      + glu_univ_elem_econstructor; eauto; reflexivity.
+      + simpl. repeat split.
+        * eapply wf_conv_univ; eassumption.
+        * intros. saturate_kripke_escape.
+          eapply wf_exp_eq_conv_univ; [ firstorder | mauto 3 ]. }
+  1:{ deepexec glu_univ_elem_per_univ ltac:(fun H => pose proof H).
+      firstorder.
+      specialize (H _ _ _ H10) as [? []].
+      econstructor; mauto 3.
+      + apply_equiv_left. trivial.
+      + intros.
+        saturate_kripke_escape.
+        deepexec H ltac:(fun H => destruct H).
+        progressive_invert H16.
+        deepexec H20 ltac:(fun H => pose proof H).
+        functional_read_rewrite_clear.
+        eapply wf_exp_eq_conv_univ; [ eassumption | mauto 3 ]. }
+  1:{ econstructor; eauto; intros.
+      progressive_inversion.
+      mauto 3. }
+  1:{ handle_functional_glu_univ_elem.
+      match_by_head glu_univ_elem invert_glu_univ_elem.
+      clear_dups.
+      apply_equiv_left.
+      repeat split; eauto.
+      repeat eexists.
+      + glu_univ_elem_econstructor; eauto; reflexivity.
+      + simpl. repeat split.
+        * eapply wf_conv_univ; eassumption.
+        * intros. saturate_kripke_escape.
+          eapply wf_exp_eq_conv_univ; [ firstorder | mauto 3 ]. }
+  1:{ deepexec glu_univ_elem_per_univ ltac:(fun H => pose proof H).
+      firstorder.
+      specialize (H _ _ _ H10) as [? []].
+      econstructor; mauto 3.
+      + apply_equiv_left. trivial.
+      + intros.
+        saturate_kripke_escape.
+        deepexec H ltac:(fun H => destruct H).
+        progressive_invert H16.
+        deepexec H20 ltac:(fun H => pose proof H).
+        functional_read_rewrite_clear.
+        eapply wf_exp_eq_conv_univ; [ eassumption | mauto 3 ]. }
   (* nat *)
   - econstructor; eauto; intros.
     progressive_inversion.
@@ -110,13 +143,13 @@ Proof.
     repeat split; eauto.
     econstructor; trivial.
     intros.
-    eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
+    eapply wf_exp_eq_conv_univ; [ firstorder | mauto 3 ].
   - econstructor; mauto 3.
     + bulky_rewrite. mauto 3.
     + apply_equiv_left. trivial.
     + intros.
       saturate_kripke_escape.
-      eapply wf_exp_eq_conv'; [ eapply glu_nat_readback; eassumption | mauto 3 ].
+      eapply wf_exp_eq_conv_univ; [ eapply glu_nat_readback; eassumption | mauto 3 ].
   (* True *)
   - econstructor; eauto; intros.
     progressive_inversion.
@@ -131,7 +164,7 @@ Proof.
     + intros.
       saturate_kripke_escape.
       progressive_inversion.
-      eapply wf_exp_eq_conv'; [ apply wf_exp_eq_true_eta; mauto 3 | mauto 3 ].
+      eapply wf_exp_eq_conv_univ; [ apply wf_exp_eq_true_eta; mauto 3 | mauto 3 ].
   (* False *)
   - econstructor; eauto; intros.
     progressive_inversion.
@@ -141,13 +174,13 @@ Proof.
     apply_equiv_left.
     repeat split; eauto.
     intros.
-    eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
+    eapply wf_exp_eq_conv_univ; [ firstorder | mauto 3 ].
   - econstructor; mauto 3.
     + bulky_rewrite. mauto 3.
     + apply_equiv_left. trivial.
     + intros.
       saturate_kripke_escape.
-      eapply wf_exp_eq_conv'; [ eapply glu_False_readback; eassumption | mauto 3 ].
+      eapply wf_exp_eq_conv_univ; [ eapply glu_False_readback; eassumption | mauto 3 ].
   (* pi *)
   - match_by_head pi_glu_typ_pred progressive_invert.
     handle_per_univ_elem_irrel.
@@ -159,9 +192,9 @@ Proof.
       rewrite exp_wk_id in HIT.
       dir_inversion_clear_by_head read_typ.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [] by mauto 3.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HA' by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : univ_tm i) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
-      simpl. apply wf_exp_eq_pi_cong'; [ firstorder | ].
+      simpl. apply wf_exp_eq_pi_cong_univ; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
       destruct_rel_mod_eval.
       simplify_evals.
@@ -173,8 +206,9 @@ Proof.
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
       assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@i)
-        by (exact (kripke_q_var_eq _ _ _ (Type@i) _ _ _ H12 H17 H16)).
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : univ_tm i)
+        by (assert (Hqv := kripke_q_var_eq_univ _ _ _ (univ_tm i) _ _ i H12 H17 H16);
+            rewrite exp_wk_univ_tm in Hqv; exact Hqv).
       specialize (H8 _ _ _ H27 HOP) as [].
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact HOT |].
       rewrite <- (exp_wk_id OT[ι (φ ⊙ ↑),,#0]).
@@ -191,7 +225,7 @@ Proof.
     simplify_evals.
     eexists; repeat split; mauto 3.
     eapply H2; eauto.
-    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : univ_tm i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
     assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
     assert (Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N]) as HMN
       by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; eassumption).
@@ -204,11 +238,11 @@ Proof.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
       assert (Δ0 ⊢k φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
-      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Type@i) as HAeq'
+      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : univ_tm i) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
-      * eapply wf_exp_eq_conv'; [ eapply H12; eassumption | eassumption ].
+      * eapply wf_exp_eq_conv_univ; [ eapply H12; eassumption | eassumption ].
       * rewrite <- exp_wk_wk. eapply HNrb; eassumption.
   - handle_functional_glu_univ_elem.
     handle_per_univ_elem_irrel.
@@ -226,13 +260,13 @@ Proof.
       pose proof (H10 Γ wk_id ltac:(mauto 3)) as HITId.
       rewrite exp_wk_id in HITId.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [? ? HITrb] by mauto 3.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : univ_tm i) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
       assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
-      eapply wf_exp_eq_conv'; [ | symmetry; eapply HAeq ].
+      eapply wf_exp_eq_conv_univ; [ | symmetry; eapply HAeq ].
       (** Read back a function by η-expanding it and recursing into the body. *)
       etransitivity; [ eapply wf_exp_eq_fn_eta'; eassumption | ].
       cbn [nf_to_exp].
-      eapply wf_exp_eq_fn_cong'; [ eapply HITrb; eassumption | ].
+      eapply wf_exp_eq_fn_cong_univ; [ eapply HITrb; eassumption | ].
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
       assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk' by mauto 3.
       pose proof (var_per_elem (length Δ) H0) as Hvar.
@@ -251,9 +285,10 @@ Proof.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
       specialize (Hrbtop (Δ ▹ IT[φ]ʷ) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@i)
-        by (eapply (kripke_q_var_eq _ _ _ (Type@i)); eassumption).
-      eapply wf_exp_eq_conv'; [ exact Hrbtop | exact HOT ].
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : univ_tm i)
+        by (assert (Hqv := kripke_q_var_eq_univ Δ Γ IT (univ_tm i) OT φ i ltac:(eassumption) ltac:(eassumption) ltac:(eassumption));
+            rewrite exp_wk_univ_tm in Hqv; exact Hqv).
+      eapply wf_exp_eq_conv_univ; [ exact Hrbtop | exact HOT ].
   (* neut *)
   - econstructor; eauto.
     intros.
@@ -312,7 +347,7 @@ Qed.
 
 Hint Resolve realize_glu_typ_top realize_glu_elem_top : mctt.
 
-Corollary var0_glu_elem : forall {i a P El Γ A},
+Corollary var0_glu_elem : forall {i : uidx} {a P El Γ A},
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     Γ ⊢ A ® P ->
     Γ ▹ A ⊢ #0 : A[↑]ʷ ® ⇑! a (length Γ) ∈ El.

@@ -58,7 +58,7 @@ Hint Resolve per_univ_elem_nat : mctt.
     hypotheses' inversions produce, and [⊨ Γ] does not follow from it.  The level
     is arbitrary because [rel_typ_of_instance] reads the domain and codomain of a
     dependent elimination at one level, the motive's. *)
-Lemma rel_exp_of_typ_nat : forall {Γ i env_relΓ},
+Lemma rel_exp_of_typ_nat : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ ℕ ≈ ℕ : Type@i.
 Proof.
@@ -74,7 +74,7 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_nat : mctt.
 
-Corollary valid_exp_nat : forall {Γ i},
+Corollary valid_exp_nat : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ ℕ : Type@i.
 Proof.
@@ -84,6 +84,32 @@ Proof.
 Qed.
 
 Hint Resolve valid_exp_nat : mctt.
+
+(** [ℕ] in a universe at any index, in particular in the small ones. *)
+Lemma rel_exp_of_univ_nat : forall {Γ u env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ ℕ ≈ ℕ : univ_tm u.
+Proof.
+  intros * HΓ.
+  apply rel_exp_of_univ.
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hn : Dom ℕᵈ ≈ ℕᵈ ∈ per_univ u)
+    by (eexists; per_univ_elem_econstructor; reflexivity).
+  econstructor; try apply eval_exp_nat.
+  apply rel_chain_4; assumption.
+Qed.
+
+Corollary valid_exp_nat_small : forall {Γ n},
+    ⊨ Γ ->
+    Γ ⊨ ℕ : Typeˢ@n.
+Proof.
+  intros * H%sem_ctx_per_ctx_env.
+  destruct H as [env_relΓ HΓ].
+  exact (rel_exp_of_univ_nat (u := us n) HΓ).
+Qed.
+
+Hint Resolve valid_exp_nat_small : mctt.
 
 (** ** [ℕ] as the Type of a Term
 
@@ -141,7 +167,7 @@ Hint Resolve per_univ_elem_nat : mctt.
 #[export]
 Hint Resolve rel_exp_of_typ_nat : mctt.
 #[export]
-Hint Resolve valid_exp_nat : mctt.
+Hint Resolve valid_exp_nat valid_exp_nat_small : mctt.
 #[export]
 Hint Resolve rel_exp_of_nat : mctt.
 Ltac eexists_rel_exp_of_nat :=
@@ -223,7 +249,7 @@ Qed.
     which are where [read_ne_natrec] reads the motive.  The recursive call's
     argument is [⇑! b (S s)], the variable at the motive's value, so [Hsucc] is
     instantiated at [var_per_elem]. *)
-Lemma per_bot_natrec : forall {i Aa Ab MZa MZb MSa MSb ρa ρb za zb m m'}
+Lemma per_bot_natrec : forall {i : nat} {Aa Ab MZa MZb MSa MSb ρa ρb za zb m m'}
                               {Rel : domain -> domain -> relation domain},
     (forall w z,
         Dom w ≈ z ∈ per_nat ->
@@ -259,7 +285,7 @@ Proof.
   eexists; split; econstructor; eassumption.
 Qed.
 
-Lemma per_nat_natrec : forall {i Aa Ab MZa MZb MSa MSb ρa ρb za zb}
+Lemma per_nat_natrec : forall {i : nat} {Aa Ab MZa MZb MSa MSb ρa ρb za zb}
                               {Rel : domain -> domain -> relation domain},
     (forall w z,
         Dom w ≈ z ∈ per_nat ->
@@ -352,7 +378,7 @@ Hint Resolve rel_exp_succ_cong : mctt.
     the substitution needs [#1 : ℕ] there, but not via [valid_exp_var], whose
     premise [⊨ Γ ▹ ℕ ▹ A] is stronger than the context PER available inside the
     eliminator's rules. *)
-Lemma rel_exp_var1_nat : forall {Γ A i env_relΓ},
+Lemma rel_exp_var1_nat : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ▹ ℕ ▹ A ⊨ #1 ≈ #1 : ℕ.
@@ -389,7 +415,7 @@ Proof.
   apply rel_chain_4_of_2; first [ solve_chain_PER | eassumption ].
 Qed.
 
-Lemma rel_sub_nat_step : forall {Γ A i env_relΓ},
+Lemma rel_sub_nat_step : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ▹ ℕ ▹ A ⊨s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ.
@@ -424,7 +450,7 @@ Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)
     [rel_exp_of_typ_under_ctx_q] produce its links: the motive at [(w, z)] both
     reflexively and as [A ≈ A'], and reflexively at [(w, w)] and [(z, z)], which
     bridge the two argument values. *)
-Lemma rel_typ_of_nat_motive : forall {Γ A A' i env_relΓ},
+Lemma rel_typ_of_nat_motive : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
     forall Γ' env_rel',
@@ -518,7 +544,7 @@ Qed.
     neither component hides a closure: the tail is a precomposition by a weakening,
     which computes ([eval_sub_shift_pre]), and the head is a variable under
     [succ]. *)
-Lemma rel_typ_of_nat_step_gen : forall {Γ A i env_relΓ},
+Lemma rel_typ_of_nat_step_gen : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     forall ρ1 ρ2,
@@ -551,7 +577,7 @@ Proof.
   exact Hpchain.
 Qed.
 
-Corollary rel_typ_of_nat_step : forall {Γ A i env_relΓ},
+Corollary rel_typ_of_nat_step : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     forall ρ1 ρ2 x1 x2 y1 y2,
@@ -587,7 +613,7 @@ Qed.
     names.  Every value the six premises mention is an extension of one of the four
     tails of [rel_sub_under_ctx_q] by one of the two heads [r], [r'], and the chain
     relates them all. *)
-Lemma rel_exp_of_nat_step : forall {Γ A i MS MS' env_relΓ},
+Lemma rel_exp_of_nat_step : forall {Γ A} {i : nat} {MS MS' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS' : A[Wk ⨟ Wk ,, succ #1] ->
@@ -748,7 +774,7 @@ Qed.
     rather than a semantic judgment.  Instantiating the two obligations above at
     [Id], where [⟦Id⟧s ρ] is [ρ], gives exactly the two it asks for as their middle
     components. *)
-Lemma per_bot_natrec_diag : forall {Γ A i MZ MS env_relΓ ρ mz m},
+Lemma per_bot_natrec_diag : forall {Γ A} {i : nat} {MZ MS env_relΓ ρ mz m},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->
@@ -786,7 +812,7 @@ Qed.
     Each link then lands in the family at its own argument pair, and
     [per_head_of_args] moves it to the pair the type names, as in
     [rel_exp_app_cong]. *)
-Lemma rel_exp_natrec_cong : forall {Γ A A' i MZ MZ' MS MS' M M'},
+Lemma rel_exp_natrec_cong : forall {Γ A A'} {i : nat} {MZ MZ' MS MS' M M'},
     Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ MZ ≈ MZ' : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS' : A[Wk ⨟ Wk ,, succ #1] ->
@@ -937,7 +963,7 @@ Hint Resolve rel_exp_natrec_cong : mctt.
 
     The successor branch plays no part, so unlike the syntactic rule this one has no
     premise about it. *)
-Lemma rel_exp_nat_beta_zero : forall {Γ A i MZ MS},
+Lemma rel_exp_nat_beta_zero : forall {Γ A} {i : nat} {MZ MS},
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ⊨ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id ,, zero].
@@ -1076,7 +1102,7 @@ Proof.
   exact (rel_chain_head_term4 HΓA Hchain).
 Qed.
 
-Lemma rel_exp_typ_var0 : forall {Γ A B i},
+Lemma rel_exp_typ_var0 : forall {Γ A B} {i : nat},
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Type@i.
 Proof.
@@ -1096,7 +1122,7 @@ Proof.
   merge_rel_chain Hc Hd c2.
 Qed.
 
-Lemma rel_exp_natrec_generic : forall {Γ A i MZ MS env_relΓ},
+Lemma rel_exp_natrec_generic : forall {Γ A} {i : nat} {MZ MS env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
@@ -1162,7 +1188,7 @@ Qed.
 
     Each obligation lands in the motive's head PER at its own argument pair, and
     [per_head_of_args] moves it to the pair the goal type names. *)
-Lemma rel_exp_nat_beta_succ : forall {Γ A i MZ MS M},
+Lemma rel_exp_nat_beta_succ : forall {Γ A} {i : nat} {MZ MS M},
     Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->

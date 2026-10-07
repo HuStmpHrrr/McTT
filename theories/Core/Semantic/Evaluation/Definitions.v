@@ -49,6 +49,9 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A universe is its own value. *)
 | eval_exp_typ :
   `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
+(** So is a small one. *)
+| eval_exp_univ :
+  `( ⟦ Typeˢ@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ˢ@n )
 (** A variable is read off the environment. *)
 | eval_exp_var :
   `( ⟦ #x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ρ x )

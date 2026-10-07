@@ -47,6 +47,21 @@ Section Bridge.
     intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeⁿ@i _ H HΓ).
   Qed.
 
+  (** The same at an index of either tier: a type of [univ_tm u] is one of the
+      large universe [Type@(ulvl u)] the index lives at. *)
+  Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
+      @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
+      is_univ_nf UA u ->
+      ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(ulvl u).
+  Proof.
+    intros * H Hu HΓ.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : univ_tm u)
+      by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
+          exact (alg_type_infer_sound' _ _ _ UA _ H HΓ)).
+    eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | eassumption ].
+  Qed.
+
   Lemma alg_type_check_sound' : forall Θ Ξ Γ i A M,
       @alg_type_check (gc_mk Θ Ξ) Γ A M ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -66,12 +81,14 @@ Section Bridge.
       [ apply user_exp_all | eassumption ].
   Qed.
 
+  (** A type infers a universe, at either tier. *)
   Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ i A,
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-      exists j, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@j A.
+      exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u.
   Proof.
     intros * H.
-    assert (exists j, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@j A /\ j <= i) as [j []]
+    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u /\ uidx_le u (ul i))
+        as [UA [u [? []]]]
         by (eapply (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ));
             [ apply user_exp_all | eassumption ]).
     eauto.
@@ -85,22 +102,22 @@ Section Bridge.
       forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
   Proof.
     intros * Hno * H.
-    assert (exists j, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@j A) as [j]
+    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u []]]
         by eauto using alg_type_infer_typ_complete'.
     firstorder.
   Qed.
 
   Lemma not_wf_typ_of_infer_not_typ : forall Θ Ξ Γ A (B : nf),
       @alg_type_infer (gc_mk Θ Ξ) Γ B A ->
-      (forall i, B <> Typeⁿ@i) ->
+      (forall u, ~ is_univ_nf B u) ->
       forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
   Proof.
     intros * HB Hne * H.
-    assert (exists j, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@j A) as [j HA]
+    assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u [HA Hu]]]
         by eauto using alg_type_infer_typ_complete'.
-    assert (B = Typeⁿ@j)
+    assert (B = UA)
       by (eapply (functional_alg_type_infer (GC := gc_mk Θ Ξ)); eassumption).
-    firstorder.
+    subst; exact (Hne _ Hu).
   Qed.
 
   Lemma alg_ext_sound' : forall Θ Ξ Γ Ψ,
@@ -130,13 +147,13 @@ Section Bridge.
 End Bridge.
 
 #[local]
-Hint Resolve alg_type_infer_typ_sound' alg_type_check_sound'
+Hint Resolve alg_type_infer_typ_sound' alg_type_infer_univ_sound' alg_type_check_sound'
   alg_type_check_complete' not_wf_typ_of_no_infer not_wf_typ_of_infer_not_typ : mctt.
 
 (** ** Types and Terms at an Explicit Global Context *)
 
-(** [get_level_of_type_nf] returns its witness as an equation between two
-    [nf]s; the obligations that use it need the levels instead. *)
+(** [univ_nf_idx_dec] returns the index of the universe it found as a
+    [is_univ_nf] fact; the obligations that use it need the large level. *)
 #[local]
 Ltac invert_nf_typ_eq :=
   subst;
@@ -155,6 +172,8 @@ Section check_exp.
     try eassumption;
     lazymatch goal with
     | |- type_infer_order _ => apply user_exp_to_type_infer_order, user_exp_all
+    (** The inferred universe gives the typing at its own large level. *)
+    | |- _ ⍮ _ ⍮ _ ⊢ _ : Type@(ulvl _) => eapply alg_type_infer_univ_sound'; eassumption
     | _ => mautosolve 3
     end.
 
@@ -165,8 +184,8 @@ Section check_exp.
     { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } :=
   | Θ, Ξ, Γ, HΓ, A =>
       let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) Γ _ A _ while _ in
-      let*o (exist _ i _) := get_level_of_type_nf UA while _ in
-      pureo (exist _ i _)
+      let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
+      pureo (exist _ (ulvl u) _)
   .
 
   #[local]

@@ -40,6 +40,16 @@ Proof.
     destruct_conjs.
     intro s.
     specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
+  - subst; repeat econstructor.
+  - subst.
+    eexists.
+    per_univ_elem_econstructor; (solve [try (try (eexists; split); econstructor); mauto]).
+  - subst.
+    destruct_by_head per_univ.
+    specialize (H2 _ _ _ H0).
+    destruct_conjs.
+    intro s.
+    specialize (H1 s) as [? []]; (solve [try (try (eexists; split); econstructor); mauto]).
   - intro s.
     inversion_clear_by_head per_ne.
     (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).

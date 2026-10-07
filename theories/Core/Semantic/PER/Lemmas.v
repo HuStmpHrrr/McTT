@@ -413,6 +413,13 @@ Proof.
       destruct_by_head per_univ.
       eexists.
       eapply proj1; mautosolve.
+  - split.
+    + apply per_univ_elem_core_suniv'; firstorder.
+    + intros.
+      rewrite H1 in *.
+      destruct_by_head per_univ.
+      eexists.
+      eapply proj1; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
   - split; [basic_per_univ_elem_econstructor | intros; apply_relation_equivalence]; mautosolve.
@@ -544,6 +551,14 @@ Proof.
      [ intros * HT2; basic_invert_per_univ_elem HT2
      | intros * HTR1 HTR2; apply_relation_equivalence ] ..]; mauto.
   - (** The univ case. *)
+    subst.
+    destruct HTR1, HTR2.
+    functional_eval_rewrite_clear.
+    handle_per_univ_elem_irrel.
+    eexists.
+    specialize (H2 _ _ _ H0) as [].
+    intuition.
+  - (** The small univ case. *)
     subst.
     destruct HTR1, HTR2.
     functional_eval_rewrite_clear.
@@ -791,7 +806,7 @@ Proof.
   split.
   - instantiate (1 := fun c c' (equiv_c_c' : in_rel c c') m m' =>
                         forall R,
-                          rel_typ j B (ρ ↦ c) B' (ρ' ↦ c') R ->
+                          rel_mod_eval (per_univ_elem j) B (ρ ↦ c) B' (ρ' ↦ c') R ->
                           R m m').
     intros.
     assert (in_rel0 c c') by intuition.
@@ -799,14 +814,14 @@ Proof.
     econstructor; eauto.
     apply -> per_univ_elem_morphism_iff; eauto.
     split; intuition.
-    destruct_by_head rel_typ.
+    destruct_by_head rel_mod_eval.
     handle_per_univ_elem_irrel.
     intuition.
   - split; intros;
       [assert (in_rel0 c c') by intuition; (on_all_hyp: destruct_rel_by_assumption in_rel0)
       | assert (in_rel c c') by intuition; (on_all_hyp: destruct_rel_by_assumption in_rel)];
       econstructor; intuition.
-    destruct_by_head rel_typ.
+    destruct_by_head rel_mod_eval.
     handle_per_univ_elem_irrel.
     intuition.
 Qed.
@@ -823,31 +838,49 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-Lemma per_univ_elem_cumu : forall i a0 a1 R,
+(** Cumulativity, along the order of universe indices: in particular, a
+    small universe is in every large one. *)
+Lemma per_univ_elem_cumu_uidx : forall i a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
-    DF a0 ≈ a1 ∈ per_univ_elem (S i) ↘ R.
+    forall i', uidx_le i i' ->
+    DF a0 ≈ a1 ∈ per_univ_elem i' ↘ R.
 Proof.
   simpl.
-  per_univ_elem_induction1; subst;
-    per_univ_elem_econstructor; eauto.
+  per_univ_elem_induction1; intros; subst;
+    per_univ_elem_econstructor; eauto; try solve_uidx.
   intros.
   destruct_rel_mod_eval.
   econstructor; solve [eauto].
 Qed.
 
+Lemma per_univ_elem_cumu : forall (i : nat) a0 a1 R,
+    DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
+    DF a0 ≈ a1 ∈ per_univ_elem (S i) ↘ R.
+Proof.
+  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
+Qed.
+
 Hint Resolve per_univ_elem_cumu : mctt.
 
-Lemma per_univ_elem_cumu_ge : forall i i' a0 a1 R,
+Lemma per_univ_elem_cumu_ge : forall (i i' : nat) a0 a1 R,
     i <= i' ->
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem i' ↘ R.
 Proof.
-  induction 1; mautosolve.
+  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
+Qed.
+
+(** A small type is a type of every large universe. *)
+Lemma per_univ_elem_small_large : forall j (i : nat) a0 a1 R,
+    DF a0 ≈ a1 ∈ per_univ_elem (us j) ↘ R ->
+    DF a0 ≈ a1 ∈ per_univ_elem i ↘ R.
+Proof.
+  intros; eapply per_univ_elem_cumu_uidx; [ eassumption | exact I ].
 Qed.
 
 Hint Resolve per_univ_elem_cumu_ge : mctt.
 
-Lemma per_univ_elem_cumu_max_left : forall i j a0 a1 R,
+Lemma per_univ_elem_cumu_max_left : forall (i j : nat) a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem i ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem (max i j) ↘ R.
 Proof.
@@ -855,7 +888,7 @@ Proof.
   assert (i <= max i j) by lia; mautosolve.
 Qed.
 
-Lemma per_univ_elem_cumu_max_right : forall i j a0 a1 R,
+Lemma per_univ_elem_cumu_max_right : forall (i j : nat) a0 a1 R,
     DF a0 ≈ a1 ∈ per_univ_elem j ↘ R ->
     DF a0 ≈ a1 ∈ per_univ_elem (max i j) ↘ R.
 Proof.
@@ -872,7 +905,7 @@ Proof.
   destruct 1; do 2 eexists; mauto;
     split; per_univ_elem_econstructor; mauto;
     try apply Equivalence_Reflexive.
-  lia.
+  all: solve_uidx.
 Qed.
 
 
@@ -892,6 +925,8 @@ Proof.
     clear_refl_eqs;
     trivial.
   - firstorder mauto.
+  - destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; lia ].
+  - destruct_conjs; eexists; eapply per_univ_elem_cumu_uidx; [ eassumption | cbn; exact I ].
   - intros.
     handle_per_univ_elem_irrel.
     destruct_rel_mod_eval.
@@ -951,8 +986,9 @@ Lemma per_subtyp_trans : forall a1 a2 i,
       Sub a1 <: a3 at i.
 Proof.
   induction 1; intros ? Hsub; simpl in *.
-  1-5: progressive_inversion; mauto.
-  - econstructor; lia.
+  1-7: progressive_inversion; mauto.
+  all: try solve [ econstructor; solve [ lia | solve_uidx ] ].
+  - inversion Hsub; subst; econstructor; solve [ lia | solve_uidx ].
   - dependent destruction Hsub.
     handle_per_univ_elem_irrel.
     econstructor; eauto.
@@ -981,19 +1017,27 @@ Proof.
   mauto using per_subtyp_refl1, per_subtyp_refl2.
 Qed.
 
-Lemma per_subtyp_cumu : forall a1 a2 i,
+Lemma per_subtyp_cumu_uidx : forall a1 a2 i,
     Sub a1 <: a2 at i ->
     forall j,
+      uidx_le i j ->
+      Sub a1 <: a2 at j.
+Proof.
+  induction 1; intros; econstructor; eauto using per_univ_elem_cumu_uidx; solve_uidx.
+Qed.
+
+Lemma per_subtyp_cumu : forall a1 a2 (i : nat),
+    Sub a1 <: a2 at i ->
+    forall (j : nat),
       i <= j ->
       Sub a1 <: a2 at j.
 Proof.
-  induction 1; intros; econstructor; mauto.
-  lia.
+  intros; eapply per_subtyp_cumu_uidx; [ eassumption | cbn; lia ].
 Qed.
 
 Hint Resolve per_subtyp_cumu : mctt.
 
-Lemma per_subtyp_cumu_left : forall a1 a2 i j,
+Lemma per_subtyp_cumu_left : forall a1 a2 (i j : nat),
     Sub a1 <: a2 at i ->
     Sub a1 <: a2 at max i j.
 Proof.
@@ -1001,7 +1045,7 @@ Proof.
   lia.
 Qed.
 
-Lemma per_subtyp_cumu_right : forall a1 a2 i j,
+Lemma per_subtyp_cumu_right : forall a1 a2 (i j : nat),
     Sub a1 <: a2 at i ->
     Sub a1 <: a2 at max j i.
 Proof.
@@ -1759,7 +1803,7 @@ Qed.
 (** The premise of [per_ctx_env_cons], at the canonical head relation.  Its
     own premise has the shape that [rel_exp_of_typ_inversion_simple]
     provides. *)
-Lemma per_ctx_env_extend : forall {Δ Δ' S S' env_relΔ i},
+Lemma per_ctx_env_extend : forall {Δ Δ' S S' env_relΔ} {i : nat},
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ env_relΔ ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
@@ -1842,7 +1886,7 @@ Proof.
 Qed.
 
 (** The premise [per_ctx_env_cons_def] asks for, at the canonical relation. *)
-Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ i},
+Lemma per_ctx_env_extend_def : forall {Δ S M env_relΔ} {i : nat},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ env_relΔ ->
@@ -2369,9 +2413,29 @@ Proof.
     try eassumption; symmetry; eassumption.
 Qed.
 
+(** Cumulativity on [per_univ], along the order of indices. *)
+Corollary per_univ_cumu_uidx : forall {u v a a'},
+    uidx_le u v ->
+    Dom a ≈ a' ∈ per_univ u ->
+    Dom a ≈ a' ∈ per_univ v.
+Proof. intros * ? [R ?]; eexists; eapply per_univ_elem_cumu_uidx; eassumption. Qed.
+
+(** The universe at an index is in every universe above it, at either tier,
+    with its own elements as the relation. *)
+Lemma per_univ_elem_univ_val : forall u i,
+    uidx_lt u i ->
+    DF univ_val u ≈ univ_val u ∈ per_univ_elem i ↘ per_univ u.
+Proof.
+  intros [n | n] * Hlt; cbn;
+    [ apply per_univ_elem_core_suniv' | apply per_univ_elem_core_univ' ]; solve [ assumption | reflexivity ].
+Qed.
+
 End Fixed_GCtx.
 
 #[export]
 Hint Resolve per_ctx_subtyp_trans : mctt.
 #[export] Existing Instance per_ctx_subtyp_trans_ins.
 #[export] Existing Instance per_ctx_env_Proper.
+
+#[export]
+Hint Resolve per_univ_elem_univ_val : mctt.

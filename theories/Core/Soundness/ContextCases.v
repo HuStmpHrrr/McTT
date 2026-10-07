@@ -15,7 +15,7 @@ Qed.
 
 Hint Resolve glu_rel_ctx_empty : mctt.
 
-Lemma glu_rel_ctx_extend : forall {Γ A i},
+Lemma glu_rel_ctx_extend : forall {Γ A} {i : nat},
     ⊩ Γ ->
     Γ ⊩ A : Type@i ->
     ⊩ Γ ▹ A.
@@ -29,7 +29,7 @@ Qed.
 
 Hint Resolve glu_rel_ctx_extend : mctt.
 
-Lemma glu_rel_ctx_extend_def : forall {Γ A M i},
+Lemma glu_rel_ctx_extend_def : forall {Γ A M} {i : nat},
     ⊩ Γ ->
     Γ ⊩ A : Type@i ->
     Γ ⊩ M : A ->

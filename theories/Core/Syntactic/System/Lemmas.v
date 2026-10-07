@@ -326,6 +326,12 @@ Ltac lift_sub_eq_step :=
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_eq_q; [ exact Hσ | | exact (IH _ _ _ Hσ) ]; mauto 2)
+  | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
+    IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
+      let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
+      assert_fails (assert T by assumption);
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ 0); [ exact Hσ | | exact (wf_exp_eq_small_large (IH _ _ _ Hσ)) ];
+                   eapply wf_exp_small_large; eassumption)
   end.
 
 Ltac lift_sub_eq_def :=
@@ -355,6 +361,10 @@ Ltac saturate_sub_typ :=
       let T := constr:(wf_exp Θ Ξ Γ (a_typ i) (exp_sub A σ)) in
       assert_fails (assert T by assumption);
       assert T by (eapply sub_preserves_typ; eassumption)
+  | H : wf_exp ?Θ ?Ξ ?Δ (a_univ ?i) ?A, Hσ : wf_sub ?Θ ?Ξ ?Γ ?Δ ?σ |- _ =>
+      let T := constr:(wf_exp Θ Ξ Γ (a_univ i) (exp_sub A σ)) in
+      assert_fails (assert T by assumption);
+      assert T by (eapply sub_preserves_styp; eassumption)
   end.
 
 Ltac saturate_sub_eq_IH :=

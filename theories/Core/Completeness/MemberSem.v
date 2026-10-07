@@ -610,7 +610,7 @@ Proof.
     exact (H2 (y :: ch0) _ ch R Hm0' Hk0 Hm' ltac:(discriminate)).
 Qed.
 
-Lemma rel_typ_of_pointwise : forall {Γ B B' i R},
+Lemma rel_typ_of_pointwise : forall {Γ B B'} {i : nat} {R},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Γ ⊨ B : Type@i -> Γ ⊨ B' : Type@i ->
     (forall ρ ρ', R ρ ρ' -> exists b b', ⟦ B ⟧ ρ ↘ b /\ ⟦ B' ⟧ ρ' ↘ b' /\ per_univ i b b') ->
     Γ ⊨ B ≈ B' : Type@i.
@@ -620,10 +620,10 @@ Proof.
   intros ρ ρ' Hρ; destruct (Hpt _ _ Hρ) as (b & b' & Hb & Hb' & Hbb).
   exists b, b'; split; [ exact Hb |]; split; [ exact Hb' |].
   eapply per_head_of; [ apply eval_exp_typ | apply eval_exp_typ | | exact Hbb ].
-  apply (per_univ_elem_core_univ' i (S i)); [ lia | reflexivity ].
+  apply (per_univ_elem_core_univ' i (S i)); [ solve_uidx | reflexivity ].
 Qed.
 
-Lemma typ_top_pi_absurd : forall {Γ A B C i j},
+Lemma typ_top_pi_absurd : forall {Γ A B C} {i : nat} {j},
     Γ ⊨ A ≈ ⊤ : Type@i -> Γ ⊨ A ≈ Π B C : Type@j -> False.
 Proof.
   intros * H1 H2.

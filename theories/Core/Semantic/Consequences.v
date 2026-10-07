@@ -88,10 +88,13 @@ Theorem canonical_form_of_pi : forall {M A B},
 Proof. mauto 3. Qed.
 Hint Resolve canonical_form_of_pi : mctt.
 
+(** The three universe rules are one disjunct, at an index: inside a tier it
+    is the order on levels, and from the small tier to the large one it is
+    [wf_subtyp_small_large]. *)
 Lemma subtyp_spec : forall {Γ A B},
     Γ ⊢ A ⊆ B ->
     (exists k, Γ ⊢ A ≈ B : Type@k) \/
-      (exists i j, (exists k, Γ ⊢ A ≈ Type@i : Type@k) /\ (exists k, Γ ⊢ Type@j ≈ B : Type@k) /\ i <= j) \/
+      (exists (u v : uidx), (exists k, Γ ⊢ A ≈ univ_tm u : Type@k) /\ (exists k, Γ ⊢ univ_tm v ≈ B : Type@k) /\ uidx_le u v) \/
       (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
   (** The global context is an index of [wf_subtyp], so fix it for the induction. *)
@@ -100,34 +103,54 @@ Proof.
   induction H; subst;
     repeat match goal with IH : ?x = ?x -> _ |- _ => specialize (IH eq_refl) end;
     mauto 3.
-  - destruct_all; firstorder (mauto 3);
-      try (right; right; do 4 eexists; firstorder mautosolve 3).
-    + match goal with
-      | _: (Γ ⊢ M' ≈ Type@?i : Type@_),
-          _: Γ ⊢ Type@?j ≈ M' : Type@_ |- _ =>
-          assert (Γ ⊢ Type@j ≈ Type@i : Type@_) by mauto 3;
-          assert (j = i) as -> by mauto 3
-      end; (congruence + firstorder (mautosolve 4 + lia)).
-    + assert (Γ ⊢ Π _ _ ≈ Type@_ : Type@_) by mauto 3.
-      assert (Π _ _ = Type@_) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
-    + assert (Γ ⊢ Π _ _ ≈ Type@_ : Type@_) by mauto 3.
-      assert (Π _ _ = Type@_) by mauto 3; (congruence + firstorder (mautosolve 4 + lia)).
-    + match goal with
-      | _: (Γ ⊢ M' ≈ Π ?A1 ?A2 : Type@_),
-          _: Γ ⊢ Π ?B1 ?B2 ≈ M' : Type@_ |- _ =>
-          assert (Γ ⊢ Π A1 A2 ≈ Π B1 B2 : Type@_) by mauto 3;
-          assert (Γ ⊢ A1 ≈ B1 : Type@_ /\ Γ ▹ A1 ⊢ A2 ≈ B2 : Type@_) as [] by mauto 3 using exp_eq_pi_inversion
-      end.
+  - (** Transitivity: nine combinations of the two cases, of which the mixed
+        universe/[Π] ones are impossible. *)
+    destruct IHwf_subtyp1 as [[? Heq1] | [[u [v [[? Hu] [[? Hv] Huv]]]] | (A1 & A2 & B1 & B2 & [? Ha1] & [? Hb1] & [? Hab1] & Hsub1)]],
+             IHwf_subtyp2 as [[? Heq2] | [[u' [v' [[? Hu'] [[? Hv'] Hu'v']]]] | (C1 & C2 & D1 & D2 & [? Hc2] & [? Hd2] & [? Hcd2] & Hsub2)]].
+    (** [≈] then [≈]. *)
+    + left; eexists; eapply exp_eq_trans_typ_max; eassumption.
+    (** [≈] then a universe, and a universe then [≈]. *)
+    + right; left; exists u', v'; repeat split; [| | exact Hu'v' ];
+        eexists; [ eapply exp_eq_trans_typ_max; eassumption | eassumption ].
+    (** [≈] then a [Π]. *)
+    + right; right; exists C1, C2, D1, D2; repeat split; [| | | exact Hsub2 ];
+        eexists; [ eapply exp_eq_trans_typ_max; eassumption | eassumption | eassumption ].
+    + right; left; exists u, v; repeat split; [| | exact Huv ];
+        eexists; [ eassumption | eapply exp_eq_trans_typ_max; eassumption ].
+    (** A universe then a universe: the two middle universes are equal, so
+        their indices are. *)
+    + assert (Γ ⊢ univ_tm v ≈ univ_tm u' : Type@(max _ _))
+        by (eapply exp_eq_trans_typ_max; [ exact Hv | exact Hu' ]).
+      assert (v = u') as -> by mauto 3 using exp_eq_univ_tm_implies_eq.
+      right; left; exists u, v'; repeat split;
+        [ eexists; eassumption | eexists; eassumption | eapply uidx_le_trans; eassumption ].
+    (** A universe then a [Π], and a [Π] then a universe: impossible. *)
+    + exfalso; eapply pi_univ_tm_absurd, exp_eq_trans_typ_max; [ symmetry; exact Hc2 | symmetry; exact Hv ].
+    + right; right; exists A1, A2, B1, B2; repeat split; [| | | exact Hsub1 ];
+        eexists; [ eassumption | eapply exp_eq_trans_typ_max; eassumption | eassumption ].
+    + exfalso; eapply pi_univ_tm_absurd, exp_eq_trans_typ_max; [ exact Hb1 | exact Hu' ].
+    (** A [Π] then a [Π]: the two middle [Π]s are equal, so the development
+        continues with the domain and codomain of the one we keep. *)
+    + assert (Γ ⊢ Π B1 B2 ≈ Π C1 C2 : Type@(max _ _))
+        by (eapply exp_eq_trans_typ_max; [ exact Hb1 | exact Hc2 ]).
+      assert (Γ ⊢ B1 ≈ C1 : Type@_ /\ Γ ▹ B1 ⊢ B2 ≈ C2 : Type@_) as []
+          by mauto 3 using exp_eq_pi_inversion.
       right; right.
-      do 4 eexists; repeat split; mauto 3.
-      * eexists; eapply exp_eq_trans_typ_max; (congruence + firstorder (mautosolve 4 + lia)).
+      exists A1, A2, D1, D2; repeat split; [ eexists; eassumption | eexists; eassumption | |].
+      * eexists; eapply exp_eq_trans_typ_max; [ exact Hab1 |].
+        eapply exp_eq_trans_typ_max; [ eassumption | exact Hcd2 ].
       * (** The two codomain refinements live in contexts extended by the three
             equal domains, so [ctxsub_subtyp] moves both into the one we chose. *)
-        etransitivity; [| eassumption].
-        etransitivity; eapply ctxsub_subtyp; [| eassumption | | mauto 3]; [| mauto 3].
-        eapply wf_sub_id_extend_eq', exp_eq_trans_typ_max; [symmetry |]; eassumption.
-  - right; left.
-    do 2 eexists; (congruence + firstorder (mautosolve 4 + lia)).
+        etransitivity; [| exact Hsub2 ].
+        etransitivity; eapply ctxsub_subtyp; [| exact Hsub1 | | mauto 3 ]; [| mauto 3 ].
+        all: eapply wf_sub_id_extend_eq'; eapply exp_eq_trans_typ_max; [ eassumption | exact Hcd2 ].
+  (** The three universe rules, at their own indices. *)
+  - right; left; exists (ul i), (ul j); cbn [univ_tm];
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | cbn; lia ].
+  - right; left; exists (us n), (us m); cbn [univ_tm];
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | cbn; lia ].
+  - right; left; exists (us n), (ul i); cbn [univ_tm];
+      split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | exact I ].
   - right; right.
     do 4 eexists; (congruence + firstorder (mautosolve 4 + lia)).
 Qed.
@@ -151,7 +174,7 @@ Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
     gc_transparent Θ Ξ ->
     ne_clean W ->
     is_typ_constr A' ->
-    (forall j, A' <> Type@j) ->
+    (forall (u : uidx), A' <> univ_tm u) ->
     Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
     ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ W : A).
 Proof.
@@ -165,7 +188,7 @@ Proof.
   - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     (** The scrutinee of [efq] is a neutral of type [⊥]. *)
     eapply (IHHW2 Htr W ltac:(eassumption) i eq_refl eq_refl ⊥);
-      [ constructor | congruence | gen_presups; mauto 3 ].
+      [ apply False_is_typ_constr | intros []; discriminate | gen_presups; mauto 3 ].
   - destruct W; simpl in *; try contradiction; autoinjections; destruct_all.
     eapply IHHW3; [ eassumption | idtac .. | mauto 4 ]; (congruence + mautosolve 3).
   - destruct W; simpl in *; try contradiction; autoinjections.
@@ -176,7 +199,11 @@ Proof.
     { assert (exists k, ⋅ ▹ Type@i ⊢ A' : Type@k) as [k ?] by (gen_presups; eauto).
       eapply rigid_typ_of_is_typ_constr; [ eapply ctx_ass_of_lookup_typ | eassumption | eassumption ]. }
     eapply (@subtyp_spec GC) in Heq as [| []]; destruct_conjs;
-      try (eapply HA'eq; mautosolve 4).
+      (** [A'] is rigid, so an equation with a universe makes it that
+          universe, which [HA'eq] excludes. *)
+      try (eapply (HA'eq (ul i)); eapply rigid_typ_eq_univ_tm;
+           [ eassumption | cbn [univ_tm]; symmetry; eassumption ]);
+      try (eapply HA'eq, rigid_typ_eq_univ_tm; [ eassumption | symmetry; mautosolve 3 ]).
     assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
     assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
 Qed.
@@ -270,10 +297,12 @@ Proof.
   simpl in *.
   assert (exists B, ⋅ ▹ Type@i ⊢ M0 : B /\ ⋅ ⊢ Π Type@i B ⊆ Π Type@i #0) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
     destruct_conjs;
+    (** A [Π] is never a universe, so the universe case is impossible. *)
+    try (exfalso; eapply pi_univ_tm_absurd; eassumption);
     try assert (Π _ _ = Type@_) by mauto 3;
     try congruence.
   - assert (_ /\ _ ⊢ B ≈ #0 : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
-    eapply consistency_ne_helper; (congruence + mautosolve 3).
+    eapply consistency_ne_helper; (apply var_neq_univ_tm + congruence + mautosolve 3).
   - assert (_ /\ _ ⊢ B ≈ _ : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     assert (_ /\ _ ⊢ _ ≈ #0 : _) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
@@ -285,7 +314,7 @@ Proof.
          [eapply ctxsub_subtyp; [| exact Hs] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]]
        end;
        mauto 3).
-    eapply consistency_ne_helper; (congruence + mautosolve 3).
+    eapply consistency_ne_helper; (apply var_neq_univ_tm + congruence + mautosolve 3).
 Qed.
 
 (** There is no closed proof of [⊥]: its normal form would be a closed

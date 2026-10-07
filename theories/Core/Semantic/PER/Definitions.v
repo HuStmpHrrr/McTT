@@ -94,17 +94,24 @@ Hint Constructors per_ne : mctt.
 
 Section Per_univ_elem_core_def.
   Variable
-    (i : nat)
-      (per_univ_rec : nat -> relation domain).
+    (i : uidx)
+      (per_univ_rec : uidx -> relation domain).
 
   Inductive per_univ_elem_core : relation domain -> domain -> domain -> Prop :=
-  (** A smaller universe, its elements the types of the universe below. *)
+  (** A smaller large universe, its elements the types of that universe. *)
   | per_univ_elem_core_univ :
     `{ forall (elem_rel : relation domain)
-          (lt_j_i : j < i),
+          (lt_j_i : uidx_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_univ_rec j) ->
+          (elem_rel <~> per_univ_rec (ul j)) ->
           DF 𝕌@j ≈ 𝕌@j' ∈ per_univ_elem_core ↘ elem_rel }
+  (** A smaller small universe, its elements the types of that universe. *)
+  | per_univ_elem_core_suniv :
+    `{ forall (elem_rel : relation domain)
+          (lt_j_i : uidx_lt (us j) i),
+          j = j' ->
+          (elem_rel <~> per_univ_rec (us j)) ->
+          DF 𝕌ˢ@j ≈ 𝕌ˢ@j' ∈ per_univ_elem_core ↘ elem_rel }
   (** [ℕ], its elements related by [per_nat]. *)
   | per_univ_elem_core_nat :
     forall (elem_rel : relation domain),
@@ -142,10 +149,14 @@ Section Per_univ_elem_core_def.
 
   Hypothesis
     (motive : relation domain -> domain -> domain -> Prop)
-      (case_U : forall {j j' elem_rel} (lt_j_i : j < i),
+      (case_U : forall {j j' elem_rel} (lt_j_i : uidx_lt (ul j) i),
           j = j' ->
-          (elem_rel <~> per_univ_rec j) ->
+          (elem_rel <~> per_univ_rec (ul j)) ->
           motive elem_rel 𝕌@j 𝕌@j')
+      (case_SU : forall {j j' elem_rel} (lt_j_i : uidx_lt (us j) i),
+          j = j' ->
+          (elem_rel <~> per_univ_rec (us j)) ->
+          motive elem_rel 𝕌ˢ@j 𝕌ˢ@j')
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
           motive elem_rel ℕᵈ ℕᵈ)
@@ -174,6 +185,7 @@ Section Per_univ_elem_core_def.
   #[derive(equations=no, eliminator=no)]
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
   | R, a, b, (per_univ_elem_core_univ _ lt_j_i HE eq)                 => case_U lt_j_i HE eq;
+  | R, a, b, (per_univ_elem_core_suniv _ lt_j_i HE eq)                => case_SU lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_nat _ HE)                            => case_nat HE;
   | R, a, b, (per_univ_elem_core_True _ HE)                           => case_True HE;
   | R, a, b, (per_univ_elem_core_False _ HE)                          => case_False HE;
@@ -190,22 +202,50 @@ End Per_univ_elem_core_def.
 
 Hint Constructors per_univ_elem_core : mctt.
 
-(** The universes below level [i], indexed by their level: the entry at
-    [j < i] is the universe [𝕌@j], and the entries at [j >= i] are empty.  The
-    recursion is structural on [i], so [per_univ_elem] unfolds by computation,
-    and [per_univ_below_spec] states the entries without [per_univ_below].
-    (A well-founded definition of [per_univ_elem] would need functional
+(** The universes below an index, indexed by theirs: the entry at [v] below
+    [u] is the universe at [v], and the other entries are empty.  The
+    recursion is structural (on the level of each tier, the small tier
+    first), so [per_univ_elem] unfolds by computation, and
+    [per_univ_below_spec] states the entries without [per_univ_below].  (A
+    well-founded definition of [per_univ_elem] would need functional
     extensionality for its unfolding equation.) *)
-Fixpoint per_univ_below (i : nat) : nat -> relation domain :=
-  match i with
-  | 0 => fun _ _ _ => False
-  | S i' => fun j =>
-      if Nat.eqb j i'
-      then fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core i' (per_univ_below i') ↘ R'
-      else per_univ_below i' j
+Definition empty_rel : relation domain := fun _ _ => False.
+
+Fixpoint per_univ_below_s (j : nat) : nat -> relation domain :=
+  match j with
+  | 0 => fun _ => empty_rel
+  | S j' => fun m =>
+      if Nat.eqb m j'
+      then fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core (us j')
+                                  (fun v => match v with us k => per_univ_below_s j' k | ul _ => empty_rel end) ↘ R'
+      else per_univ_below_s j' m
   end.
 
-Definition per_univ_elem (i : nat) : relation domain -> domain -> domain -> Prop :=
+(** The small universes below the small index [j]. *)
+Definition per_univ_rec_s (j : nat) : uidx -> relation domain :=
+  fun v => match v with us k => per_univ_below_s j k | ul _ => empty_rel end.
+
+(** The small universe at [m], the entry of every large index. *)
+Definition per_suniv (m : nat) : relation domain :=
+  fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core (us m) (per_univ_rec_s m) ↘ R'.
+
+Fixpoint per_univ_below_l (n : nat) : nat -> relation domain :=
+  match n with
+  | 0 => fun _ => empty_rel
+  | S n' => fun m =>
+      if Nat.eqb m n'
+      then fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core (ul n')
+                                  (fun v => match v with us k => per_suniv k | ul k => per_univ_below_l n' k end) ↘ R'
+      else per_univ_below_l n' m
+  end.
+
+Definition per_univ_below (u : uidx) : uidx -> relation domain :=
+  match u with
+  | us j => per_univ_rec_s j
+  | ul n => fun v => match v with us k => per_suniv k | ul k => per_univ_below_l n k end
+  end.
+
+Definition per_univ_elem (i : uidx) : relation domain -> domain -> domain -> Prop :=
   per_univ_elem_core i (per_univ_below i).
 #[global] Arguments per_univ_elem : simpl never.
 
@@ -216,22 +256,32 @@ Proof. reflexivity. Qed.
 Hint Rewrite per_univ_elem_equation_1 : per_univ_elem.
 
 Lemma per_univ_below_spec : forall i j,
-    j < i ->
+    uidx_lt j i ->
     per_univ_below i j = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R'.
 Proof.
-  induction i as [| i IHi]; intros j Hlt; [lia |].
-  simpl.
-  destruct (Nat.eqb_spec j i) as [-> | Hneq]; [reflexivity |].
-  apply IHi; lia.
+  assert (Hs : forall j m, m < j -> per_univ_below_s j m = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem (us m) ↘ R').
+  { induction j as [| j IHj]; intros m Hlt; [lia |].
+    simpl.
+    destruct (Nat.eqb_spec m j) as [-> | Hneq]; [reflexivity |].
+    apply IHj; lia. }
+  assert (Hl : forall n m, m < n -> per_univ_below_l n m = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem (ul m) ↘ R').
+  { induction n as [| n IHn]; intros m Hlt; [lia |].
+    simpl.
+    destruct (Nat.eqb_spec m n) as [-> | Hneq]; [reflexivity |].
+    apply IHn; lia. }
+  intros [j | n] [m | m] Hlt; cbn in Hlt; try contradiction.
+  - apply Hs; assumption.
+  - reflexivity.
+  - apply Hl; assumption.
 Qed.
 
-Definition per_univ (i : nat) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
+Definition per_univ (i : uidx) : relation domain := fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem i ↘ R'.
 #[global] Arguments per_univ _ _ _ /.
 Hint Transparent per_univ : mctt.
 Hint Unfold per_univ : mctt.
 
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
-    j < i ->
+    uidx_lt (ul j) i ->
     (elem_rel <~> per_univ j) ->
     DF 𝕌@j ≈ 𝕌@j ∈ per_univ_elem i ↘ elem_rel.
 Proof.
@@ -242,18 +292,35 @@ Proof.
   assumption.
 Qed.
 
-Hint Resolve per_univ_elem_core_univ' : mctt.
+Lemma per_univ_elem_core_suniv' : forall j i elem_rel,
+    uidx_lt (us j) i ->
+    (elem_rel <~> per_univ (us j)) ->
+    DF 𝕌ˢ@j ≈ 𝕌ˢ@j ∈ per_univ_elem i ↘ elem_rel.
+Proof.
+  intros.
+  simp per_univ_elem.
+  eapply per_univ_elem_core_suniv; [eassumption | reflexivity |].
+  rewrite per_univ_below_spec by assumption.
+  assumption.
+Qed.
+
+Hint Resolve per_univ_elem_core_univ' per_univ_elem_core_suniv' : mctt.
 
 (** ** Universe/Element PER Induction Principle *)
 
 Section Per_univ_elem_ind_def.
   Hypothesis
-    (motive : nat -> relation domain -> domain -> domain -> Prop)
+    (motive : uidx -> relation domain -> domain -> domain -> Prop)
       (case_U : forall i {j j' elem_rel},
-          j < i -> j = j' ->
+          uidx_lt (ul j) i -> j = j' ->
           (elem_rel <~> per_univ j) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
           motive i elem_rel 𝕌@j 𝕌@j')
+      (case_SU : forall i {j j' elem_rel},
+          uidx_lt (us j) i -> j = j' ->
+          (elem_rel <~> per_univ (us j)) ->
+          (forall A B R, DF A ≈ B ∈ per_univ_elem (us j) ↘ R -> motive (us j) R A B) ->
+          motive i elem_rel 𝕌ˢ@j 𝕌ˢ@j')
       (case_N : forall i {elem_rel},
           (elem_rel <~> per_nat) ->
           motive i elem_rel ℕᵈ ℕᵈ)
@@ -282,14 +349,17 @@ Section Per_univ_elem_ind_def.
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.
   Proof.
     revert a b R H.
-    induction i as [i IHi] using lt_wf_ind.
+    induction i as [i IHi] using (well_founded_ind uidx_wf).
     intros R a b H.
-    refine (per_univ_elem_core_strong_ind i _ (motive i) _
+    refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
               (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
               _ (fun _ _ _ _ _ => case_ne i) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_U; eauto.
+    - intros j j' elem_rel lt_j_i Heq HE.
+      rewrite per_univ_below_spec in HE by assumption.
+      eapply case_SU; eauto.
     - intros * Ha IHa Hper HT HE.
       eapply case_Pi; eassumption.
   Qed.
@@ -298,7 +368,7 @@ End Per_univ_elem_ind_def.
 
 (** * Universe Subtyping *)
 
-Inductive per_subtyp : nat -> domain -> domain -> Prop :=
+Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 (** Equal neutral types. *)
 | per_subtyp_neut :
   `( Dom b ≈ b' ∈ per_bot ->
@@ -315,8 +385,17 @@ Inductive per_subtyp : nat -> domain -> domain -> Prop :=
 (** A universe below a larger one. *)
 | per_subtyp_univ :
   `( i <= j ->
-     j < k ->
+     uidx_lt (ul j) k ->
      Sub 𝕌@i <: 𝕌@j at k )
+(** A small universe below a larger one. *)
+| per_subtyp_suniv :
+  `( i <= j ->
+     uidx_lt (us j) k ->
+     Sub 𝕌ˢ@i <: 𝕌ˢ@j at k )
+(** A small universe below a large one. *)
+| per_subtyp_small_large :
+  `( uidx_lt (ul j) k ->
+     Sub 𝕌ˢ@i <: 𝕌@j at k )
 (** A [Π] below another with an equal domain and a smaller codomain. *)
 | per_subtyp_pi :
   `( forall (in_rel : relation domain) elem_rel elem_rel',
@@ -333,7 +412,7 @@ where "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 
  Hint Constructors per_subtyp : mctt.
 
-Definition rel_typ i A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) A ρ A' ρ' R'.
+Definition rel_typ (i : nat) A ρ A' ρ' R' := rel_mod_eval (per_univ_elem i) A ρ A' ρ' R'.
 #[global] Arguments rel_typ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
 Hint Unfold rel_typ : mctt.
@@ -534,7 +613,7 @@ Inductive per_ctx_subtyp : ctx -> ctx -> Prop :=
            (equiv_ρ_ρ' : Dom ρ ≈ ρ' ∈ tail_rel),
             ⟦ A ⟧ ρ ↘ a ->
             ⟦ A' ⟧ ρ' ↘ a' ->
-            Sub a <: a' at i) ->
+            Sub a <: a' at (ul i)) ->
         EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
         EF Γ' ▹ A' ≈ Γ' ▹ A' ∈ per_ctx_env ↘ env_rel' ->
         SubE Γ ▹ A <: Γ' ▹ A' }
@@ -602,7 +681,7 @@ Hint Unfold per_univ : mctt.
 #[export]
 Hint Rewrite @per_univ_elem_equation_1 : per_univ_elem.
 #[export]
-Hint Resolve per_univ_elem_core_univ' : mctt.
+Hint Resolve per_univ_elem_core_univ' per_univ_elem_core_suniv' : mctt.
 Notation "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 #[export]
 Hint Constructors per_subtyp : mctt.
@@ -643,8 +722,8 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _);
-      [ do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _);
+      [ do 8 intro | do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

@@ -127,7 +127,7 @@ Qed.
 
 (** Extension by a term of the domain: its head commutes with [σ] since the
     term is valid, at a type that [τ] relates to the entry's own. *)
-Lemma sub_link_ass : forall {Γ Δ τ B i N},
+Lemma sub_link_ass : forall {Γ Δ τ B} {i : nat} {N},
     Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ ->
     Δ ⊨ B : Type@i -> Γ ⊨ N : B[τ] ->
     sub_link Γ (Δ ▹ B) (τ ,, N).
@@ -184,7 +184,7 @@ Proof.
 Qed.
 
 (** Extension by a definition of the codomain, read along [τ]. *)
-Lemma sub_link_def : forall {Γ Δ τ B i M},
+Lemma sub_link_def : forall {Γ Δ τ B} {i : nat} {M},
     Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ ->
     Δ ⊨ B : Type@i -> Δ ⊨ M : B ->
     sub_link Γ (Δ ▸ B ≔ M) (τ ,, M[τ]).
@@ -323,7 +323,7 @@ Qed.
 
 (** A lifted substitution commutes with further ones: its tail as [τ] does
     along the shift, and its head is the variable itself. *)
-Lemma sub_link_q : forall {Γ Δ τ B i},
+Lemma sub_link_q : forall {Γ Δ τ B} {i : nat},
     Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ B : Type@i ->
     sub_link (Γ ▹ B[τ]) (Δ ▹ B) (q τ).
 Proof.

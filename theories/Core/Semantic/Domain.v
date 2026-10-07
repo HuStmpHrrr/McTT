@@ -30,8 +30,10 @@ Inductive domain : Set :=
 | d_nat : domain
 (** [d_pi a ρ B]: a [Π] with domain [a], its codomain [B] a closure in [ρ] *)
 | d_pi : domain -> list dentry -> exp -> domain
-(** A universe *)
+(** A large universe *)
 | d_univ : nat -> domain
+(** A small universe *)
+| d_suniv : nat -> domain
 (** [zero] *)
 | d_zero : domain
 (** [succ] *)
@@ -146,6 +148,7 @@ Module Domain_Notations.
       [Syntax_Notations]. *)
   Notation "ρ '↯'" := (drop_env ρ) (at level 1, left associativity) : mctt_scope.
   Notation "'𝕌' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌' @ n") : mctt_scope.
+  Notation "'𝕌ˢ' @ n" := (d_suniv n) (at level 1, n at level 0, format "'𝕌ˢ' @ n") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'ℕᵈ'" := d_nat : mctt_scope.
   Notation "'zeroᵈ'" := d_zero : mctt_scope.
@@ -165,6 +168,11 @@ Module Domain_Notations.
   Notation "ρ ↦ m" := (extend_env ρ m) (at level 20, left associativity) : mctt_scope.
   Notation "ρ '↦ᵐ' m" := (extend_env_mod ρ m) (at level 20, left associativity) : mctt_scope.
 End Domain_Notations.
+
+(** The value of the universe at an index, at either tier. *)
+Definition univ_val (u : uidx) : domain :=
+  match u with us n => d_suniv n | ul n => d_univ n end.
+
 
 Import Domain_Notations.
 

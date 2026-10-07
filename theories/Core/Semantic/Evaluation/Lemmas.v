@@ -147,3 +147,10 @@ Proof.
   dependent destruction H.
   eexists; split; eassumption.
 Qed.
+
+(** The universe at an index evaluates to its value, at either tier. *)
+Lemma eval_univ_tm : forall Θ Ξ u ρ, ⟦ univ_tm u ⟧ Θ ⍮ Ξ ⍮ ρ ↘ univ_val u.
+Proof. intros ? ? [] ?; cbn; econstructor. Qed.
+
+#[export]
+Hint Resolve eval_univ_tm : mctt.

@@ -104,7 +104,7 @@ Qed.
     and [⟦A⟧(ρ↯)] are not equal; this relatedness replaces the equation, and
     moving [P] and [El] along it with [glu_univ_elem_resp_per_univ] is all
     soundness does with it. *)
-Corollary completeness_fundamental_typ_shift : forall {Γ e A i env_rel ρ},
+Corollary completeness_fundamental_typ_shift : forall {Γ e A} {i : nat} {env_rel ρ},
     ⊢ (e :: Γ)%list ->
     Γ ⊢ A : Type@i ->
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ env_rel ->

@@ -20,7 +20,7 @@ Section Fixed_GCtx.
 
 (** [σ,,M[σ]] into a definition entry, as [cons_glu_sub_pred_helper] for an
     assumption entry. *)
-Lemma cons_def_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a i P El M m},
+Lemma cons_def_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a} {i : nat} {P El M m},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Δ ⊢s σ ® ρ ∈ Sb ->
     Γ ⊢ A : Type@i ->
@@ -43,7 +43,7 @@ Proof.
     eapply glu_univ_elem_per_elem; eassumption.
 Qed.
 
-Lemma glu_rel_exp_let_helper : forall {Γ oA A i M B C k},
+Lemma glu_rel_exp_let_helper : forall {Γ oA A} {i : nat} {M B C k},
     Γ ⊩ A : Type@i ->
     Γ ⊩ M : A ->
     Γ ▸ A ≔ M ⊩ C : Type@k ->
@@ -96,7 +96,7 @@ Proof.
   apply wf_exp_eq_sym; exact Hζ.
 Qed.
 
-Lemma glu_rel_exp_let : forall {Γ oA A i M B C},
+Lemma glu_rel_exp_let : forall {Γ oA A} {i : nat} {M B C},
     Γ ⊩ A : Type@i ->
     Γ ⊩ M : A ->
     Γ ▸ A ≔ M ⊩ B : C ->

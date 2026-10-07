@@ -41,8 +41,10 @@ Proof.
   functional_eval_rewrite_clear.
   econstructor; [ exact Ha | exact Hm | exact Hglu |].
   destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [Ri HRi].
-  pose proof (per_univ_elem_cumu_max_left _ j _ _ _ HRi) as HRi'.
-  pose proof (per_univ_elem_cumu_max_right i _ _ _ _ HR1) as HR1'.
+  (** The two element PERs are of the same value at two indices; irrelevance
+      identifies them without lifting either. *)
+  pose proof HRi as HRi'.
+  pose proof HR1 as HR1'.
   assert (E : Ri <~> R1) by exact (per_univ_elem_right_irrel _ _ _ _ _ _ _ HRi' HR1').
   assert (HP1 : PER R1) by (eapply per_elem_PER; exact HR1).
   eapply (glu_univ_elem_trm_resp_per_elem _ _ _ _ Hglu _ HRi); [| apply E; symmetry; exact Hmn ].
@@ -65,7 +67,7 @@ Proof.
 Qed.
 
 (** δ for a member. *)
-Lemma glu_rel_exp_mem : forall {Γ H x A i M},
+Lemma glu_rel_exp_mem : forall {Γ H x A} {i : nat} {M},
     me_noargs H ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
@@ -80,7 +82,7 @@ Proof.
 Qed.
 
 (** A member of an applied module is its root's member applied. *)
-Lemma glu_rel_exp_mem_app : forall {Γ H R args pre i A x},
+Lemma glu_rel_exp_mem_app : forall {Γ H R args pre} {i : nat} {A x},
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     modexp_spine H = (R, args, pre) ->
     args <> nil ->

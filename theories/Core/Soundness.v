@@ -50,7 +50,7 @@ Proof.
   eassumption.
 Qed.
 
-Lemma soundness_ty : forall {Γ i A},
+Lemma soundness_ty : forall {Γ} {i : nat} {A},
     Γ ⊢ A : Type@i ->
     exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i.
 Proof.
@@ -59,7 +59,7 @@ Proof.
   firstorder.
 Qed.
 
-Lemma soundness_ty' : forall {Γ i A B},
+Lemma soundness_ty' : forall {Γ} {i : nat} {A B},
     Γ ⊢ A : Type@i ->
     nbe_ty_f Γ A B ->
     Γ ⊢ A ≈ B : Type@i.

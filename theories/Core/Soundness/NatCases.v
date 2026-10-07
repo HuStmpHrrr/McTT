@@ -26,24 +26,36 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma glu_rel_exp_nat : forall {Γ i},
+(** [ℕ] is a type at every index: the rule gives it the small universe
+    [Typeˢ@0], and the large forms are instances. *)
+Lemma glu_rel_exp_nat_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ℕ : Type@i.
+    Γ ⊩ ℕ : univ_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
-  eapply glu_rel_exp_of_typ; mauto 3.
+  eapply glu_rel_exp_of_univ; mauto 3.
   intros.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  split; mauto 3.
+  split; [ simplify_subs; apply wf_nat_univ; assumption |].
   eexists; repeat split; mauto 3.
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold nat_glu_typ_pred.
-  simplify_subs; mauto 3.
+  simplify_subs; apply wf_exp_eq_nat_cong_univ; assumption.
 Qed.
+
+Lemma glu_rel_exp_nat : forall {Γ} {i : nat},
+    ⊩ Γ ->
+    Γ ⊩ ℕ : Type@i.
+Proof. intros; apply (glu_rel_exp_nat_univ (u := ul i)); assumption. Qed.
+
+Lemma glu_rel_exp_nat_small : forall {Γ},
+    ⊩ Γ ->
+    Γ ⊩ ℕ : Typeˢ@0.
+Proof. intros; apply (glu_rel_exp_nat_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_nat : mctt.
 
@@ -134,7 +146,7 @@ Hint Resolve glu_rel_exp_succ : mctt.
     [eval_exp] has no clause for [exp_sub], so [⟦A[Id,,zero]⟧ρ] is a stuck
     evaluation rather than [⟦A⟧(ρ ↦ zero)].  The two are nonetheless related in
     [per_univ i], which is all a gluing predicate needs to move between them. *)
-Lemma per_univ_zero_instance : forall {i Γ SbΓ A Δ σ ρ az am},
+Lemma per_univ_zero_instance : forall {i : nat} {Γ SbΓ A Δ σ ρ az am},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊢ A : Type@i ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
@@ -158,7 +170,7 @@ Qed.
     supplies.  [rel_typ_of_nat_step_gen] delivers the four-value pattern whose
     outer two values are exactly the stuck value and the one the eliminator
     wants; [pairwise] reads off the pair. *)
-Lemma per_univ_nat_step_instance : forall {i Γ SbΓ A Sb Δ σ ρ p am},
+Lemma per_univ_nat_step_instance : forall {i : nat} {Γ SbΓ A Sb Δ σ ρ p am},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊢ A : Type@i ->
     EG Γ ▹ ℕ ▹ A ∈ glu_ctx_env ↘ Sb ->
@@ -183,7 +195,7 @@ Proof.
   pairwise.
 Qed.
 
-Lemma cons_glu_sub_pred_nat_helper : forall {Γ SbΓ Δ σ ρ i M m},
+Lemma cons_glu_sub_pred_nat_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {M m},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     glu_nat Δ M m ->
@@ -192,7 +204,7 @@ Proof.
   intros * ? HM ?.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  assert (DG ℕᵈ ∈ glu_univ_elem i ↘ nat_glu_typ_pred i ↘ nat_glu_exp_pred i) by (glu_univ_elem_econstructor; reflexivity).
+  assert (DG ℕᵈ ∈ glu_univ_elem i ↘ nat_glu_typ_pred (univ_tm i) ↘ nat_glu_exp_pred (univ_tm i)) by (glu_univ_elem_econstructor; reflexivity).
   eapply cons_glu_sub_pred_helper; mauto 3.
   econstructor; [unfold nat_glu_typ_pred |]; simplify_subs; mauto 3.
 Qed.
@@ -200,7 +212,7 @@ Qed.
 #[local]
 Hint Resolve cons_glu_sub_pred_nat_helper : mctt.
 
-Lemma glu_rel_exp_natrec_zero_helper : forall {i Γ SbΓ A MZ MS Δ M σ ρ am P El},
+Lemma glu_rel_exp_natrec_zero_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊢ A : Type@i ->
     Γ ⊩ A[Id,,zero] : Type@i ->
@@ -246,7 +258,7 @@ Proof.
   - eapply wf_exp_eq_nat_beta_zero'; mauto 3.
 Qed.
 
-Lemma glu_rel_exp_natrec_succ_helper : forall {i Γ SbΓ A MZ MS Δ M M' m' σ ρ am P El},
+Lemma glu_rel_exp_natrec_succ_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M M' m' σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊩ A : Type@i ->
     Γ ⊢ MZ : A[Id,,zero] ->
@@ -287,7 +299,7 @@ Proof.
   unfold univ_glu_exp_pred' in *.
   destruct_conjs.
   match goal with
-  | _: (⟦ A ⟧ ρ ↦ m' ↘ ?m), _: (DG ?m ∈ glu_univ_elem i ↘ ?P ↘ ?El) |- _ =>
+  | _: (⟦ A ⟧ ρ ↦ m' ↘ ?m), _: (DG ?m ∈ glu_univ_elem ?idx ↘ ?P ↘ ?El) |- _ =>
       rename m into am';
       rename P into P';
       rename El into El'
@@ -336,7 +348,7 @@ Proof.
   - eapply wf_exp_eq_nat_beta_succ'; mauto 3.
 Qed.
 
-Lemma cons_glu_sub_pred_q_helper : forall {Γ SbΓ Δ σ ρ i A a},
+Lemma cons_glu_sub_pred_q_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {A a},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     Γ ⊩ A : Type@i ->
@@ -366,7 +378,7 @@ Hint Resolve cons_glu_sub_pred_q_helper : mctt.
 
 (** [ℕ[σ]] is [ℕ], so this is [cons_glu_sub_pred_q_helper], but only up to
     conversion, so the instance must be spelled out. *)
-Lemma cons_glu_sub_pred_q_nat_helper : forall {Γ SbΓ Δ σ ρ i},
+Lemma cons_glu_sub_pred_q_nat_helper : forall {Γ SbΓ Δ σ ρ} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     Δ ▹ ℕ ⊢s q σ ® ρ ↦ ⇑! ℕᵈ (length Δ) ∈ cons_glu_sub_pred i Γ ℕ SbΓ.
@@ -390,7 +402,7 @@ Proof.
   intros; rewrite exp_sub_q_extend; apply exp_wk_sub_extend_head.
 Qed.
 
-Lemma glu_rel_exp_natrec_neut_helper : forall {i Γ SbΓ A MZ MS Δ M a m σ ρ am P El},
+Lemma glu_rel_exp_natrec_neut_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M a m σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊩ A : Type@i ->
     Γ ⊩ A[Id,,zero] : Type@i ->
@@ -533,7 +545,7 @@ Proof.
     + mauto 3.
 Qed.
 
-Lemma glu_rel_exp_natrec_helper : forall {i Γ SbΓ A MZ MS},
+Lemma glu_rel_exp_natrec_helper : forall {i : nat} {Γ SbΓ A MZ MS},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Γ ▹ ℕ ⊩ A : Type@i ->
     Γ ⊩ A[Id,,zero] : Type@i ->
@@ -563,7 +575,7 @@ Proof.
     mauto 3 using glu_rel_exp_natrec_neut_helper.
 Qed.
 
-Lemma glu_rel_exp_natrec_intro : forall {Γ i A MZ MS M},
+Lemma glu_rel_exp_natrec_intro : forall {Γ} {i : nat} {A MZ MS M},
     Γ ▹ ℕ ⊩ A : Type@i ->
     Γ ⊩ A[Id,,zero] : Type@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
@@ -603,7 +615,7 @@ Proof.
   match_by_head nat_glu_typ_pred ltac:(fun H => clear H).
   match goal with
   | _: (⟦ A ⟧ ρ ↦ m ↘ ?a'),
-      _: DG ?a' ∈ glu_univ_elem i ↘ ?P' ↘ ?El' |- _ =>
+      _: DG ?a' ∈ glu_univ_elem ?idx ↘ ?P' ↘ ?El' |- _ =>
       rename a' into a;
       rename P' into P;
       rename El' into El
@@ -631,7 +643,7 @@ Proof.
   eassumption.
 Qed.
 
-Lemma glu_rel_exp_natrec : forall {Γ i A MZ MS M},
+Lemma glu_rel_exp_natrec : forall {Γ} {i : nat} {A MZ MS M},
     Γ ▹ ℕ ⊩ A : Type@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->

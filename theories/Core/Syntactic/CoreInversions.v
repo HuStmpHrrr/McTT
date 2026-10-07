@@ -31,9 +31,20 @@ Qed.
 #[export]
 Hint Resolve wf_typ_inversion : mctt.
 
+Lemma wf_univ_inversion : forall {Θ Ξ Γ n A},
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@(S n) ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H; mautosolve.
+Qed.
+
+#[export]
+Hint Resolve wf_univ_inversion : mctt.
+
 Lemma wf_nat_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -85,7 +96,7 @@ Hint Resolve wf_natrec_inversion : mctt.
 
 Lemma wf_True_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -108,7 +119,7 @@ Hint Resolve wf_true_inversion : mctt.
 
 Lemma wf_False_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -132,14 +143,17 @@ Qed.
 #[export]
 Hint Resolve wf_exfalso_inversion : mctt.
 
+(** A [Π] is in a large universe, or in a small one at a level. *)
 Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ C.
+    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ C) \/
+    (exists n, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeˢ@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ C).
 Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
-    destruct_conjs; gen_core_presups; eexists; mautosolve 4.
+    try destruct IHwf_exp1;
+    destruct_conjs; gen_core_presups; [ left | right | left | right ]; eexists; mautosolve 4.
 Qed.
 
 #[export]
@@ -154,7 +168,9 @@ Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i.
 Proof.
-  intros * [j [? []]]%wf_pi_inversion.
+  intros * [[j [? []]] | [n [? []]]]%wf_pi_inversion.
+  2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
+      split; eapply wf_exp_small_large; eassumption. }
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Type@j ↑ ⊆ exp_wk Type@i ↑) as H'

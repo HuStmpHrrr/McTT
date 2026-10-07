@@ -44,7 +44,7 @@ Proof.
 Qed.
 
 (** The same at a type equality, where the element relation is [per_univ i]. *)
-Lemma rel_typ_under_ctx_at_initial_env : forall {Γ A A' i},
+Lemma rel_typ_under_ctx_at_initial_env : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Type@i ->
     exists ρ a a',
       initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
@@ -71,7 +71,7 @@ Proof.
   split; econstructor; eassumption.
 Qed.
 
-Corollary completeness_ty : forall {Γ i A A'},
+Corollary completeness_ty : forall {Γ} {i : nat} {A A'},
     Γ ⊢ A ≈ A' : Type@i ->
     exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W.
 Proof.

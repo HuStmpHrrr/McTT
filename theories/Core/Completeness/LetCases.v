@@ -30,7 +30,7 @@ Section Fixed_GCtx.
     The outer values of a judgment instantiated along [σ ≈ σ], at an
     arbitrary related pair of environments. *)
 
-Lemma rel_exp_of_typ_sub_simple : forall {Γ Δ σ σ' A A' i env_relΓ},
+Lemma rel_exp_of_typ_sub_simple : forall {Γ Δ σ σ' A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A' : Type@i ->
@@ -93,7 +93,7 @@ Proof.
 Qed.
 
 (** The canonical context PER of a substituted definition entry. *)
-Lemma per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A i M env_relΓ},
+Lemma per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A : Type@i ->
@@ -110,7 +110,7 @@ Qed.
 (** A member of the canonical context PER of a definition entry, from a
     member of that of the assumption entry and the tie at the left
     environment. *)
-Lemma per_env_extend_def_intro : forall {S M R i ρ ρ' c c' m},
+Lemma per_env_extend_def_intro : forall {S M R} {i : nat} {ρ ρ' c c' m},
     PER R ->
     (forall ρ ρ',
         Dom ρ ≈ ρ' ∈ R ->
@@ -136,7 +136,7 @@ Qed.
 
 (** ** Substitutions into a Definition Entry *)
 
-Lemma rel_sub_under_ctx_into_def : forall {Γ Δ A i M σ σ' env_relΓ},
+Lemma rel_sub_under_ctx_into_def : forall {Γ Δ A} {i : nat} {M σ σ' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Δ ⊨ A : Type@i ->
     Δ ⊨ M : A ->
@@ -173,7 +173,7 @@ Qed.
 
 (** [σ,,M[σ]] into [Δ ▸ A ≔ M]: the tie is the left commutation of [M]
     along [σ]. *)
-Lemma rel_sub_under_ctx_extend_sub_def : forall {Γ Δ σ σ' A i M M'},
+Lemma rel_sub_under_ctx_extend_sub_def : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A : Type@i ->
     Δ ⊨ M ≈ M' : A ->
@@ -202,7 +202,7 @@ Qed.
 (** What the gluing model needs of an instantiated type in a definition
     context, as [per_univ_of_instance] for an assumption: [⟦B[Id,,M]⟧ρ] and
     [⟦B⟧(ρ ↦ ⟦M⟧ρ)] are related. *)
-Lemma per_univ_of_instance_def : forall {Γ A i M B k env_relΓ},
+Lemma per_univ_of_instance_def : forall {Γ A} {i : nat} {M B k env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
@@ -232,7 +232,7 @@ Qed.
 (** [q σ] from [Γ ▸ A[σ] ≔ M[σ]] into [Δ ▸ A ≔ M].  The tie at [⟦q σ⟧ρ]
     is the tie at [ρ] moved along the left commutation of [M] at [σ], read at
     the tail [ρ↯]. *)
-Lemma rel_sub_under_ctx_q_def : forall {Γ Δ σ σ' A i M},
+Lemma rel_sub_under_ctx_q_def : forall {Γ Δ σ σ' A} {i : nat} {M},
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A : Type@i ->
     Δ ⊨ M : A ->
@@ -297,7 +297,7 @@ Qed.
     - The middle link is [B ≈ B'] at the substituted environments.
     - The last link comes from [B'] along [q σ'], bridged by [B'] at the tail
       [⟦q σ'⟧(ρ' ↦ ⟦M'[σ']⟧ρ')]. *)
-Lemma rel_exp_let_gen : forall {Γ A i M M' B B' C oA'},
+Lemma rel_exp_let_gen : forall {Γ A} {i : nat} {M M' B B' C oA'},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
@@ -476,7 +476,7 @@ Proof.
 Qed.
 
 (** [ζ]. *)
-Corollary rel_exp_let_zeta : forall {Γ oA A i M B C},
+Corollary rel_exp_let_zeta : forall {Γ oA A} {i : nat} {M B C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
@@ -490,7 +490,7 @@ Qed.
 Hint Resolve rel_exp_let_zeta : mctt.
 
 (** Congruence: both sides are related to the instance [B[Id,,M]]. *)
-Corollary rel_exp_let_cong : forall {Γ oA oA' A i M M' B B' C},
+Corollary rel_exp_let_cong : forall {Γ oA oA' A} {i : nat} {M M' B B' C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
@@ -504,7 +504,7 @@ Qed.
 
 Hint Resolve rel_exp_let_cong : mctt.
 
-Corollary valid_exp_let : forall {Γ oA A i M B C},
+Corollary valid_exp_let : forall {Γ oA A} {i : nat} {M B C},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->

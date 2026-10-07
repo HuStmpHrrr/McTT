@@ -147,7 +147,13 @@ Proof.
     | eapply subtyp_refl; eassumption
     | eapply subtyp_trans; eassumption
     | eapply subtyp_pi; eassumption
-    | apply subtyp_univ; [assumption | lia] ].
+    | apply subtyp_univ; [assumption | lia]
+    | apply valid_exp_univ; assumption
+    | apply valid_exp_nat_small; assumption
+    | apply valid_exp_True_small; assumption | apply valid_exp_False_small; assumption
+    | eapply rel_exp_pi_cong_small; eassumption
+    | apply subtyp_suniv; [assumption | lia]
+    | apply subtyp_small_large; assumption ].
   all: try solve [ eapply valid_exp_var; eassumption | eapply rel_exp_var_delta; eassumption ].
   all: try solve [ eapply sme_unfold; eassumption ].
   all: try solve [ eapply sme_glob; eassumption ].

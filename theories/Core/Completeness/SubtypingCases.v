@@ -39,7 +39,7 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma subtyp_refl : forall {Γ A A' i},
+Lemma subtyp_refl : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ A ⊆ A'.
 Proof.
@@ -122,7 +122,7 @@ Qed.
     two commutation obligations are reflexivity.  Only the middle has content, and
     it is [per_subtyp_univ].  The ambient level must be strictly above [j], hence
     [S j]. *)
-Lemma subtyp_univ : forall {Γ i j},
+Lemma subtyp_univ : forall {Γ} {i : nat} {j},
     ⊨ Γ ->
     i <= j ->
     Γ ⊨ Type@i ⊆ Type@j.
@@ -133,12 +133,49 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   exists 𝕌@i, 𝕌@i, 𝕌@j, 𝕌@j.
   repeat apply conj; try apply eval_exp_typ.
-  - eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ].
-  - eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ].
-  - apply per_subtyp_univ; lia.
+  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
+  - apply per_subtyp_univ; solve [ lia | solve_uidx ].
 Qed.
 
 Hint Resolve subtyp_univ : mctt.
+
+(** ** Small Universes
+
+    As [subtyp_univ], at the small level, and from a small universe to a large
+    one; any ambient level relates small universes. *)
+Lemma subtyp_suniv : forall {Γ n m},
+    ⊨ Γ ->
+    n <= m ->
+    Γ ⊨ Typeˢ@n ⊆ Typeˢ@m.
+Proof.
+  intros * HΓsem Hnm.
+  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  eexists_subtyp_with 0.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  exists 𝕌ˢ@n, 𝕌ˢ@n, 𝕌ˢ@m, 𝕌ˢ@m.
+  repeat apply conj; try apply eval_exp_univ.
+  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
+  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
+  - apply per_subtyp_suniv; solve [ lia | solve_uidx ].
+Qed.
+
+Lemma subtyp_small_large : forall {Γ n} {i : nat},
+    ⊨ Γ ->
+    Γ ⊨ Typeˢ@n ⊆ Type@i.
+Proof.
+  intros * HΓsem.
+  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  eexists_subtyp_with (S i).
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  exists 𝕌ˢ@n, 𝕌ˢ@n, 𝕌@i, 𝕌@i.
+  repeat apply conj; try apply eval_exp_univ; try apply eval_exp_typ.
+  - eexists; apply per_univ_elem_core_suniv'; [ solve_uidx | reflexivity ].
+  - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
+  - apply per_subtyp_small_large; solve [ lia | solve_uidx ].
+Qed.
+
+Hint Resolve subtyp_suniv subtyp_small_large : mctt.
 
 (** ** [Sub-Pi]
 
@@ -158,7 +195,7 @@ Hint Resolve subtyp_univ : mctt.
     [subtyp_under_ctx_simple] reports, and [per_subtyp_pi] requires all its
     premises and its conclusion to agree, so everything is raised to
     [max i i0]. *)
-Lemma subtyp_pi : forall {Γ A A' i B B'},
+Lemma subtyp_pi : forall {Γ A A'} {i : nat} {B B'},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ⊨ A' ≈ A' : Type@i ->
     Γ ⊨ A ≈ A' : Type@i ->
@@ -239,7 +276,7 @@ Hint Resolve subtyp_pi : mctt.
     instead of leaving an existential for [per_elem_subtyping].  And the common
     level is [max (max i j) k], the levels of the three hypotheses, since
     [per_elem_subtyping] needs its subtyping and both type values at one level. *)
-Lemma rel_exp_eq_subtyp : forall {Γ A A' i M M'},
+Lemma rel_exp_eq_subtyp : forall {Γ A A'} {i : nat} {M M'},
     Γ ⊨ M ≈ M' : A ->
     Γ ⊨ A' ≈ A' : Type@i ->
     Γ ⊨ A ⊆ A' ->
@@ -295,7 +332,7 @@ Hint Resolve subtyp_refl : mctt.
 Hint Resolve subtyp_trans : mctt.
 #[export] Existing Instance subtyp_Transitive.
 #[export]
-Hint Resolve subtyp_univ : mctt.
+Hint Resolve subtyp_univ subtyp_suniv subtyp_small_large : mctt.
 #[export]
 Hint Resolve subtyp_pi : mctt.
 #[export]

@@ -52,7 +52,54 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma rel_typ_of_pi : forall {Γ A A' i B B'},
+Lemma rel_typ_of_pi_univ : forall {Γ A A' u B B'},
+    Γ ⊨ A ≈ A' : univ_tm u ->
+    Γ ▹ A ⊨ B ≈ B' : univ_tm u ->
+    forall Γ' env_rel',
+      EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
+      forall σ σ' ρ ρ' ρσ ρ'σ',
+        Γ' ⊨s σ ≈ σ' : Γ ->
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        exists in_rel a1 a2 a3 a4,
+          ⟦ A[σ] ⟧ ρ ↘ a1 /\
+          ⟦ A ⟧ ρσ ↘ a2 /\
+          ⟦ A' ⟧ ρ'σ' ↘ a3 /\
+          ⟦ A'[σ'] ⟧ ρ' ↘ a4 /\
+          DF a1 ≈ a4 ∈ per_univ_elem u ↘ in_rel /\
+          DF a2 ≈ a3 ∈ per_univ_elem u ↘ in_rel /\
+          rel_exp (Π A B) σ ρ ρσ (Π A' B') σ' ρ' ρ'σ'
+            (per_univ_elem u (per_pi in_rel B ρσ B' ρ'σ')).
+Proof.
+  intros * HA HB * HΓ' * Hσj Hρ Hev Hev'.
+  pose proof (rel_exp_univ_cumu (uidx_le_ulvl u) (rel_exp_under_ctx_refl_left HA)) as HAself.
+  pose proof (rel_exp_of_univ_inversion HA) as [env_relΓ [HΓ HAgen]].
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
+    as [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain].
+  (** The domain PER, named by weak functionality: the outer pair the caller is
+    owed and the inner pair it needs are links of the same chain, with no
+    refinement step in between. *)
+  functionalize_per_univ_chain Hachain in_rel.
+  exists in_rel, a1, a2, a3, a4.
+  do 4 (split; [ eassumption |]).
+  do 2 (split; [ pairwise |]).
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
+                    Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
+    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
+    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
+  (** The three codomain obligations are, in order, the three [q]-obligations of
+      [B] at an argument pair drawn from the domain PER. *)
+  eapply per_univ_elem_pi_chain; [ exact Hachain | | |];
+    intros c c' Hc;
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1
+                  ltac:(pairwise) Hc) as Hpair;
+    destruct (rel_exp_of_univ_under_ctx_q HΓ' Hσj HAself HB _ _ _ _ _ _ Hpair Hev Hev')
+      as [O1 [O2 O3]];
+    eassumption.
+Qed.
+
+Lemma rel_typ_of_pi : forall {Γ A A'} {i : nat} {B B'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ▹ A ⊨ B ≈ B' : Type@i ->
     forall Γ' env_rel',
@@ -99,9 +146,33 @@ Proof.
     eassumption.
 Qed.
 
+(** ** Small Π-Congruence
+
+    The same type judgment, read in the small universe: the four Π-values are
+    related at the small index, whose element PER [per_univ (us n)] is the
+    goal's. *)
+Lemma rel_exp_pi_cong_small : forall {Γ A A' n B B'},
+    Γ ⊨ A ≈ A' : Typeˢ@n ->
+    Γ ▹ A ⊨ B ≈ B' : Typeˢ@n ->
+    Γ ⊨ Π A B ≈ Π A' B' : Typeˢ@n.
+Proof.
+  intros * HA HB.
+  pose proof (rel_exp_of_univ_inversion (u := us n) HA) as [env_relΓ [HΓ _]].
+  apply (rel_exp_of_univ (u := us n)).
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (rel_typ_of_pi_univ (u := us n) HA HB _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
+    as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid [? ? ? ? ? ? ? ? Hchain]]]]]]]]]]]].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| eassumption].
+  intros ? ? HR; eexists; exact HR.
+Qed.
+
+Hint Resolve rel_exp_pi_cong_small : mctt.
+
 (** ** Π-Congruence *)
 
-Lemma rel_exp_pi_cong : forall {Γ A A' i B B'},
+Lemma rel_exp_pi_cong : forall {Γ A A'} {i : nat} {B B'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ▹ A ⊨ B ≈ B' : Type@i ->
     Γ ⊨ Π A B ≈ Π A' B' : Type@i.
@@ -126,7 +197,7 @@ Hint Resolve rel_exp_pi_cong : mctt.
     which [eval_app_fn] turns into evaluating the two bodies in the two extended
     environments.  These are the three obligations of [rel_exp_under_ctx_q], and
     they land in the [per_head] that [per_pi] asks for. *)
-Lemma rel_exp_fn_cong : forall {Γ A A' i B M M'},
+Lemma rel_exp_fn_cong : forall {Γ A A'} {i : nat} {B M M'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
     Γ ⊨ λ A M ≈ λ A' M' : Π A B.
@@ -169,7 +240,7 @@ Hint Resolve rel_exp_fn_cong : mctt.
     The element PER is the head PER of [B] at the arguments the type names,
     [⟦N⟧ρσ] and [⟦N⟧ρ'σ'].  Each link of [M]'s chain arrives in the head PER of its
     own pair of arguments, and [per_head_of_args] moves it. *)
-Lemma rel_exp_app_cong : forall {Γ A i B M M' N N'},
+Lemma rel_exp_app_cong : forall {Γ A} {i : nat} {B M M' N N'},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ⊨ M ≈ M' : Π A B ->
@@ -281,7 +352,7 @@ Hint Resolve rel_exp_app_cong : mctt.
     at the substituted environments for the inner one) and the same bridge, which
     here is [M] at the crossing pair of arguments.  Three merges then select the
     goal's four values, all in the canonical head PER. *)
-Lemma rel_exp_pi_beta : forall {Γ A i B M N},
+Lemma rel_exp_pi_beta : forall {Γ A} {i : nat} {B M N},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ▹ A ⊨ M ≈ M : B ->
@@ -412,7 +483,7 @@ Hint Resolve rel_exp_pi_beta : mctt.
     So both nontrivial links come from one application of
     [rel_exp_under_ctx_shift_at]: the second from its chain, the third from its
     type PER. *)
-Lemma rel_exp_fn_eta : forall {Γ A i B M},
+Lemma rel_exp_fn_eta : forall {Γ A} {i : nat} {B M},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ⊨ M ≈ M : Π A B ->

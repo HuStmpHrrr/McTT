@@ -38,7 +38,7 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma per_ctx_env_of_typ : forall {Δ A i env_relΔ},
+Lemma per_ctx_env_of_typ : forall {Δ A} {i : nat} {env_relΔ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
     Δ ⊨ A ≈ A : Type@i ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ).
@@ -61,7 +61,7 @@ Qed.
     [rel_sub_under_ctx_simple] form of the substitution: only two evaluations of
     [σ] at a related pair are needed, not the four of a full four-value
     pattern. *)
-Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A i env_relΓ},
+Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
@@ -88,7 +88,7 @@ Qed.
     [per_nat], at whatever level and relation the other hypothesis produced, never
     the [i] of [A]'s judgment.  Only [a] is named, since irrelevance needs one
     shared value and the caller has the left one. *)
-Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A i env_relΓ},
+Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
@@ -129,7 +129,7 @@ Qed.
     the extended PER occurs on both sides, in the hypothesis [HBl] and in the
     argument [Hρ]; whichever name the tactic keeps, the application still
     typechecks. *)
-Lemma rel_exp_of_typ_extend_simple : forall {Γ A i B B' j env_relΓ},
+Lemma rel_exp_of_typ_extend_simple : forall {Γ A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B' : Type@j ->
@@ -150,7 +150,7 @@ Qed.
     rather than the judgment's own [R] makes results composable: consumers put
     several such instances into one chain, and [per_head_of_args] moves between
     head PERs at different arguments, which a bare [R] does not allow. *)
-Lemma rel_exp_under_ctx_extend_simple : forall {Γ A i B M M' env_relΓ},
+Lemma rel_exp_under_ctx_extend_simple : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
@@ -183,7 +183,7 @@ Qed.
     environments) and at its inner pair (which [per_pi_iff] turns into the
     function PER of [B] at the two tails, when [B] is a Π).  Which one a caller
     wants depends on the shape of [B]. *)
-Lemma rel_exp_under_ctx_shift_at : forall {Γ A i B M M' env_relΓ},
+Lemma rel_exp_under_ctx_shift_at : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A : Type@i ->
     Γ ⊨ M ≈ M' : B ->
@@ -232,7 +232,7 @@ Qed.
     [eval_wk_q_zero]), so the tail obligation is the hypothesis and the head
     obligation is one bridging step. *)
 
-Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A i},
+Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
     Γ ⊨w ψ : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
     Γ ▹ A[ψ]ʷ ⊨w (wk_q ψ) : Δ ▹ A.
@@ -297,7 +297,7 @@ Qed.
     judgment's type chain, and [handle_per_univ_elem_irrel] then closes everything
     ([solve_per_env_extend_chain]). *)
 
-Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A i M M'},
+Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
     Γ ⊨ M ≈ M' : A[σ] ->
@@ -466,7 +466,7 @@ Qed.
       evaluation), so only a fresh instantiation at a related pair of
       environments connects them, as in [rel_sub_under_ctx_extend_sub]. *)
 
-Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A i},
+Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat},
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
     Γ ▹ A[σ] ⊨s q σ ≈ q σ' : Δ ▹ A.
@@ -564,7 +564,7 @@ Qed.
     need different pairs from it, including mixed ones such as [s ↦ c] against
     [ρσ ↦ c'], because the codomain obligation of [per_pi] is stated at a related
     pair of arguments. *)
-Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A i env_relΓ env_relΔA},
+Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_relΔA},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
     Γ ⊨s σ ≈ σ' : Δ ->
@@ -646,11 +646,11 @@ Qed.
     inner environments, and four times reflexively to bridge those to the right
     ones.  All five chains live in [per_univ j], so merging is [merge_rel_chain]
     and selecting is [pairwise]. *)
-Lemma rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A i B B' j env_relΓ},
+Lemma rel_exp_of_univ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
-    Δ ▹ A ⊨ B ≈ B' : Type@j ->
+    Δ ▹ A ⊨ B ≈ B' : univ_tm j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
       ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -668,10 +668,10 @@ Proof.
   intros * HΓ Hσj HA HB * Hpair Hev Hev'.
   pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
   pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
-  pose proof (rel_exp_of_typ_inversion HB) as [env_relΔA [HΔA HBgen]].
-  pose proof (rel_exp_of_typ_inversion_simple (rel_exp_under_ctx_refl_left HB))
+  pose proof (rel_exp_of_univ_inversion HB) as [env_relΔA [HΔA HBgen]].
+  pose proof (rel_exp_of_univ_inversion_simple (rel_exp_under_ctx_refl_left HB))
     as [env_relΔA2 [HΔA2 HBl]].
-  pose proof (rel_exp_of_typ_inversion_simple (rel_exp_under_ctx_refl_right HB))
+  pose proof (rel_exp_of_univ_inversion_simple (rel_exp_under_ctx_refl_right HB))
     as [env_relΔA3 [HΔA3 HBr]].
   handle_per_ctx_env_irrel.
   destruct (rel_sub_under_ctx_q_at HΓ HΔA3 Hσj HA _ _ _ _ _ _ Hpair Hev Hev')
@@ -715,6 +715,29 @@ Proof.
     pairwise.
 Qed.
 
+Corollary rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B'} {j : nat} {env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Type@i ->
+    Δ ▹ A ⊨ B ≈ B' : Type@j ->
+    forall ρ ρ' ρσ ρ'σ' c c',
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      (exists b b',
+          ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j) /\
+      (exists b b',
+          ⟦ B ⟧ ρσ ↦ c ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j) /\
+      (exists b b',
+          ⟦ B' ⟧ ρ'σ' ↦ c ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ j).
+Proof.
+  intros * HΓ Hσj HA HB.
+  exact (rel_exp_of_univ_under_ctx_q (j := ul j) HΓ Hσj HA HB).
+Qed.
+
 (** The same for a term in an extended context, which is the codomain
     obligation of [per_pi]: three applications, at three argument pairs, all in
     the one [per_head] the Π-value carries.
@@ -739,7 +762,7 @@ mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s'
     [L2] and [R] contribute the terms of the two commutation obligations, [mid]
     the relatedness obligation, and [L1] only the link that brings everything into
     the PER [mid] is stated at. *)
-Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A i M M' B env_relΓ},
+Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {M M' B env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Type@i ->
@@ -859,7 +882,7 @@ Qed.
     it needs the codomain at an arbitrary related pair, which is therefore
     reported too, as are [N]'s four values and their domain PER, from which every
     consumer draws its argument pairs. *)
-Lemma rel_typ_of_instance : forall {Γ A i B N},
+Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
     Γ ⊨ A ≈ A : Type@i ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ⊨ N ≈ N : A ->
@@ -966,7 +989,7 @@ Qed.
     link of the chain above.  Relatedness suffices because
     [glu_univ_elem_resp_per_univ] transports a gluing predicate along
     [per_univ]. *)
-Lemma per_univ_of_instance : forall {Γ A i B N env_relΓ},
+Lemma per_univ_of_instance : forall {Γ A} {i : nat} {B N env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ A ⊨ B ≈ B : Type@i ->
     Γ ⊨ N ≈ N : A ->

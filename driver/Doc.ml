@@ -223,7 +223,7 @@ let unit_path st fq =
 
 let rec term st env (o : C.obj) : unit =
   match o with
-  | C.Coq_typ _ | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
+  | C.Coq_typ _ | C.Coq_suniv _ | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
   | C.Coq_succ o -> term st env o
   | C.Coq_natrec (n, mx, m, z, sx, sr, s) ->
       term st env n;

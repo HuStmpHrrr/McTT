@@ -672,7 +672,7 @@ Proof. intros * HH; eapply rel_modexp_trans; [ apply rel_modexp_sym, HH | exact 
 
 (** Two definition entries with related types and bodies, over related
     contexts. *)
-Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M' i R},
+Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M'} {i : nat} {R},
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ R ->
     Δ ⊨ A ≈ A' : Type@i ->
     Δ ⊨ M ≈ M' : A ->
@@ -711,7 +711,7 @@ Qed.
 Lemma rel_ext_nil : forall {Γ}, ⊨ Γ -> Γ ⊨ˣ nil ≈ nil.
 Proof. intros * H; split; [| split ]; [ exact H | exact H | exact (sem_ctx_per_ctx H) ]. Qed.
 
-Lemma rel_ext_ass : forall {Γ Ψ Ψ' A A' i},
+Lemma rel_ext_ass : forall {Γ Ψ Ψ' A A'} {i : nat},
     Γ ⊨ˣ Ψ ≈ Ψ' ->
     Ψ ++ Γ ⊨ A : Type@i ->
     Ψ ++ Γ ⊨ A ≈ A' : Type@i ->
@@ -725,7 +725,7 @@ Proof.
   - exact (rel_ctx_extend H3 HAA').
 Qed.
 
-Lemma rel_ext_def : forall {Γ Ψ Ψ' A A' M M' i},
+Lemma rel_ext_def : forall {Γ Ψ Ψ' A A' M M'} {i : nat},
     Γ ⊨ˣ Ψ ≈ Ψ' ->
     Ψ ++ Γ ⊨ A : Type@i ->
     Ψ ++ Γ ⊨ A ≈ A' : Type@i ->

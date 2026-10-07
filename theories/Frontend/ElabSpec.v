@@ -185,6 +185,7 @@ Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (
 
 Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_typ : forall S n, sel S (Cst.typ n) (Type@n)
+| sel_suniv : forall S n, sel S (Cst.suniv n) (Typeˢ@n)
 | sel_nat : forall S, sel S Cst.nat ℕ
 | sel_zero : forall S, sel S Cst.zero zero
 | sel_succ : forall S o M, sel S o M -> sel S (Cst.succ o) (succ M)

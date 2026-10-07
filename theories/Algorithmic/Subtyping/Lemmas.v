@@ -26,14 +26,15 @@ Proof.
   induction 1; intros; subst; simpl in *.
   - eapply wf_subtyp_refl'; mauto.
   - assert (i < j \/ i = j) as [] by lia; mauto 3.
-  - on_all_hyp: fun H => apply wf_pi_inversion in H; destruct H as [? ?].
+  (** The two small-universe rules are the syntactic rules themselves. *)
+  - apply wf_subtyp_suniv; [ gen_presups; assumption | assumption ].
+  - apply wf_subtyp_small_large; gen_presups; assumption.
+  - on_all_hyp: fun H => apply wf_pi_inversion' in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
     (** [Type@i[↑]ʷ] is [Type@i], so [wf_subtyp_ge] derives [Type@i ⊆ Type@j]
         in the extended context from [⊢ Γ ▹ A] alone. *)
     apply_subtyping.
-    assert (Γ ▹ (nf_to_exp A') ⊢ B : Type@(max x x0)) by mauto using lift_exp_max_right.
-    assert (Γ ▹ (nf_to_exp A') ⊢ B' : Type@(max x x0)) by mauto using lift_exp_max_left.
     deepexec IHalg_subtyping_nf ltac:(fun H => pose proof H).
     mauto 3.
 Qed.
@@ -50,14 +51,14 @@ Proof.
     try contradiction;
     mauto 3.
 
-  constructor; lia.
+  all: constructor; lia.
 Qed.
 
 Lemma alg_subtyping_nf_refl : forall A,
     ⊢anf A ⊆ A.
 Proof.
   induction A;
-    solve [constructor; simpl; trivial].
+    solve [constructor; simpl; trivial | apply asnf_suniv; lia].
 Qed.
 
 #[local]
@@ -96,6 +97,22 @@ Proof.
     econstructor; mauto 2.
     progressive_inversion.
     mauto.
+  (** The two small-universe rules: a small universe is its own normal
+      form, read back by [read_typ_suniv]. *)
+  - assert (Γ ⊢ Typeˢ@n : Type@0) by (apply wf_univ_large; assumption).
+    assert (Γ ⊢ Typeˢ@m : Type@0) by (apply wf_univ_large; assumption).
+    on_all_hyp: fun H => apply soundness in H.
+    destruct_all.
+    econstructor; mauto 2.
+    progressive_inversion.
+    apply asnf_suniv; assumption.
+  - assert (Γ ⊢ Typeˢ@n : Type@0) by (apply wf_univ_large; assumption).
+    assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
+    on_all_hyp: fun H => apply soundness in H.
+    destruct_all.
+    econstructor; mauto 2.
+    progressive_inversion.
+    apply asnf_small_large.
   - (** [ctxeq_nbe_eq] takes a semantic context equality, which
         [per_ctx_of_exp_eq] builds from the domains. *)
     assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.

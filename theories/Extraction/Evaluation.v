@@ -18,6 +18,8 @@ Generalizable All Variables.
 Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_typ :
   `( eval_exp_order Θ Ξ Type@i p )
+| eeo_univ :
+  `( eval_exp_order Θ Ξ Typeˢ@n p )
 (** An environment is total, so a variable always terminates. *)
 | eeo_var :
   `( eval_exp_order Θ Ξ #x p )
@@ -413,6 +415,7 @@ Section EvalImpl.
   #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
   Equations eval_exp_impl m p (H : eval_exp_order Θ Ξ m p) : { d | ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
   | Type@i, p, H => exist _ 𝕌@i _
+  | Typeˢ@n, p, H => exist _ 𝕌ˢ@n _
   | #x    , p, H => eval_var_impl x p H
   | ℕ     , p, H => exist _ ℕᵈ _
   | zero  , p, H => exist _ zeroᵈ _

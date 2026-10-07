@@ -17,6 +17,7 @@ Inductive dclean : domain -> Prop :=
 | dclean_nat : dclean ℕᵈ
 | dclean_pi : forall a (ρ : env) B, dclean a -> (forall x, declean (env_entry ρ x)) -> dclean (Πᵈ a ρ B)
 | dclean_univ : forall i, dclean 𝕌@i
+| dclean_suniv : forall n, dclean 𝕌ˢ@n
 | dclean_zero : dclean zeroᵈ
 | dclean_succ : forall m, dclean m -> dclean (succᵈ m)
 | dclean_True : dclean ⊤ᵈ

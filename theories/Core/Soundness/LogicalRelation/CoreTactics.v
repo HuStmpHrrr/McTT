@@ -6,13 +6,13 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Soundness.LogicalRelation Require Import Definitions.
 
 (** State the universes below a level, [glu_univ_below i j], by
-    [glu_univ_below_spec], wherever [j < i] is known. *)
+    [glu_univ_below_spec], wherever [uidx_lt j i] is known. *)
 Ltac rewrite_glu_univ_below :=
   repeat match goal with
     | H : context [glu_univ_below ?i ?j] |- _ =>
-        rewrite (glu_univ_below_spec i j) in H by lia
+        rewrite (glu_univ_below_spec i j) in H by solve_uidx
     | |- context [glu_univ_below ?i ?j] =>
-        rewrite (glu_univ_below_spec i j) by lia
+        rewrite (glu_univ_below_spec i j) by solve_uidx
     end.
 
 Ltac basic_invert_glu_univ_elem H :=

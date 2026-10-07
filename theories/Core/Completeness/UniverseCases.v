@@ -27,7 +27,116 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma rel_exp_of_typ_inversion : forall {Γ A A' i},
+
+Lemma rel_exp_of_univ_inversion : forall {Γ A A' u},
+    Γ ⊨ A ≈ A' : univ_tm u ->
+    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+    forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      Γ' ⊨s σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u).
+Proof.
+  intros * [env_relΓ [HΓ [j HA]]].
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
+  destruct Htyp as [? ? ? ? ? ? ? ? Hchain].
+  simpl in Hchain; destruct Hchain as [? [? ?]].
+  destruct u; cbn [univ_tm] in *; invert_rel_typ_body; eassumption.
+Qed.
+
+Corollary rel_exp_of_univ_inversion_simple : forall {Γ A A' u},
+    Γ ⊨ A ≈ A' : univ_tm u ->
+    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_rel ->
+      exists a a',
+        ⟦ A ⟧ ρ ↘ a /\
+        ⟦ A' ⟧ ρ' ↘ a' /\
+        Dom a ≈ a' ∈ per_univ u.
+Proof.
+  intros * H%rel_exp_of_univ_inversion.
+  destruct H as [env_relΓ [HΓ HA]].
+  eexists; eexists; [eassumption |].
+  intros ρ ρ' Hρ.
+  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+    as [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain].
+  rewrite exp_sub_id in HaσI, Ha'σ'I.
+  exists a, a'.
+  repeat split; try eassumption.
+  pairwise.
+Qed.
+
+Lemma rel_exp_of_univ : forall {Γ A A' u},
+    (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+      forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+        Γ' ⊨s σ ≈ σ' : Γ ->
+        forall ρ ρ' ρσ ρ'σ',
+          Dom ρ ≈ ρ' ∈ env_rel' ->
+          ⟦ σ ⟧s ρ ↘ ρσ ->
+          ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+          rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ u)) ->
+    Γ ⊨ A ≈ A' : univ_tm u.
+Proof.
+  intros * [env_relΓ [HΓ H]].
+  eexists_rel_exp_with (univ_above u).
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  exists (per_univ u).
+  split; [| eapply H; eassumption].
+  pose proof (per_univ_elem_univ_val u _ (uidx_lt_univ_above u)) as Hu.
+  destruct u; econstructor; try apply (eval_univ_tm _ _ (us _)); try apply (eval_univ_tm _ _ (ul _));
+    apply rel_chain_4; assumption.
+Qed.
+
+(** Cumulativity across the tiers, in particular from a small universe to
+    every large one. *)
+Lemma rel_exp_univ_cumu : forall {Γ A A' u v},
+    uidx_le u v ->
+    Γ ⊨ A ≈ A' : univ_tm u ->
+    Γ ⊨ A ≈ A' : univ_tm v.
+Proof.
+  intros * Huv H%rel_exp_of_univ_inversion.
+  destruct H as [env_relΓ [HΓ HA]].
+  apply rel_exp_of_univ.
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
+    as [? ? ? ? ? ? ? ? Hchain].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| eassumption].
+  intros ? ? [R HR]; exists R; eapply per_univ_elem_cumu_uidx; eassumption.
+Qed.
+
+Corollary rel_exp_small_large : forall {Γ A A' n} {i : nat},
+    Γ ⊨ A ≈ A' : Typeˢ@n ->
+    Γ ⊨ A ≈ A' : Type@i.
+Proof. intros * H; exact (rel_exp_univ_cumu (u := us n) (v := ul i) I H). Qed.
+
+Corollary rel_exp_suniv_cumu_ge : forall {Γ A A' n m},
+    n <= m ->
+    Γ ⊨ A ≈ A' : Typeˢ@n ->
+    Γ ⊨ A ≈ A' : Typeˢ@m.
+Proof. intros * Hle H; exact (rel_exp_univ_cumu (u := us n) (v := us m) Hle H). Qed.
+
+Lemma valid_exp_univ : forall {n Γ},
+    ⊨ Γ ->
+    Γ ⊨ Typeˢ@n : Typeˢ@(S n).
+Proof.
+  intros * H.
+  pose proof (sem_ctx_per_ctx_env H) as [env_relΓ HΓ].
+  apply (rel_exp_of_univ (u := us (S n))).
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hu : per_univ (us (S n)) 𝕌ˢ@n 𝕌ˢ@n)
+    by (eexists; apply per_univ_elem_core_suniv'; [ cbn; lia | reflexivity ]).
+  econstructor; try apply eval_exp_univ.
+  apply rel_chain_4; assumption.
+Qed.
+
+Lemma rel_exp_of_typ_inversion : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Type@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
@@ -55,7 +164,7 @@ Qed.
     themselves, and at [Id] these coincide with the substituted ones, since [Id]
     evaluates to the environment itself and [A[Id]] is [A].  The chain collapses
     onto its middle link. *)
-Corollary rel_exp_of_typ_inversion_simple : forall {Γ A A' i},
+Corollary rel_exp_of_typ_inversion_simple : forall {Γ A A'} {i : nat},
     Γ ⊨ A ≈ A' : Type@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall ρ ρ',
@@ -78,7 +187,7 @@ Proof.
 Qed.
 
 (** The same at any context PER of [Γ]. *)
-Corollary rel_exp_of_typ_inversion_simple_at : forall {Γ A A' i env_relΓ},
+Corollary rel_exp_of_typ_inversion_simple_at : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A' : Type@i ->
     forall ρ ρ',
@@ -96,7 +205,7 @@ Qed.
     it reads a type's value at [ρ] after [[φ]ʷ], while the context relation
     supplies the value at [⟪φ⟫ ρ].  The two values are not equal; [per_univ i]
     relates them. *)
-Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A' i},
+Corollary rel_exp_of_typ_inversion_wk : forall {Γ Δ φ A A'} {i : nat},
     Γ ⊨w φ : Δ ->
     Δ ⊨ A ≈ A' : Type@i ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
@@ -131,7 +240,7 @@ Qed.
     goal names, so a head PER read at the former must be moved to the latter.  It
     is stated over an arbitrary context PER because the move happens at each level
     of a nested [q]. *)
-Lemma per_head_of_typ_resp : forall {Γ A A' i env_relΓ},
+Lemma per_head_of_typ_resp : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A' : Type@i ->
     forall ρ1 ρ2 ρ3 ρ4,
@@ -161,7 +270,7 @@ Qed.
     Every eliminator's premises are in this position, because their head pair
     comes from a domain PER or from [per_nat] and is stated at the environments
     the rule's [q] reached. *)
-Corollary per_env_extend_move : forall {Γ A i env_relΓ},
+Corollary per_env_extend_move : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A ≈ A : Type@i ->
     forall ρ1 ρ2 ρ3 ρ4 c c',
@@ -174,7 +283,7 @@ Proof.
   apply (per_head_of_typ_resp HΓ HA _ _ _ _ Hchain); exact Hc.
 Qed.
 
-Lemma rel_exp_of_typ : forall {Γ A A' i},
+Lemma rel_exp_of_typ : forall {Γ A A'} {i : nat},
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
         Γ' ⊨s σ ≈ σ' : Γ ->
@@ -191,7 +300,7 @@ Proof.
   exists (per_univ i).
   split; [| eapply H; eassumption].
   assert (Hu : per_univ_elem (S i) (per_univ i) 𝕌@i 𝕌@i)
-    by (apply per_univ_elem_core_univ'; [ lia | reflexivity ]).
+    by (apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
 Qed.
@@ -229,7 +338,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 
-Lemma valid_exp_typ : forall {i Γ},
+Lemma valid_exp_typ : forall {i : nat} {Γ},
     ⊨ Γ ->
     Γ ⊨ Type@i : Type@(S i).
 Proof.
@@ -240,16 +349,16 @@ Proof.
     named by the caller are unused. *)
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   assert (Hu : per_univ (S i) 𝕌@i 𝕌@i)
-    by (eexists; apply per_univ_elem_core_univ'; [ lia | reflexivity ]).
+    by (eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ]).
   econstructor; try apply eval_exp_typ.
   apply rel_chain_4; assumption.
 Qed.
 
-Hint Resolve valid_exp_typ : mctt.
+Hint Resolve valid_exp_typ valid_exp_univ rel_exp_small_large : mctt.
 
 (** Cumulativity acts on the chain member by member: [rel_chain_mono] at
     [per_univ_elem_cumu]. *)
-Lemma rel_exp_cumu : forall {i Γ A A'},
+Lemma rel_exp_cumu : forall {i : nat} {Γ A A'},
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ A ≈ A' : Type@(S i).
 Proof.
@@ -269,7 +378,7 @@ Hint Resolve rel_exp_cumu : mctt.
 (** Iterated cumulativity.  This is how a Π-type reconciles the levels of its
     domain and codomain: [per_univ_elem_pi_canonical] requires them to agree,
     while the syntax allows [A] and [B] at unrelated levels. *)
-Corollary rel_exp_cumu_ge : forall {i j Γ A A'},
+Corollary rel_exp_cumu_ge : forall {i : nat} {j Γ A A'},
     i <= j ->
     Γ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ A ≈ A' : Type@j.
@@ -282,7 +391,7 @@ Hint Resolve rel_exp_cumu_ge : mctt.
 End Fixed_GCtx.
 
 #[export]
-Hint Resolve valid_exp_typ : mctt.
+Hint Resolve valid_exp_typ valid_exp_univ rel_exp_small_large : mctt.
 #[export]
 Hint Resolve rel_exp_cumu : mctt.
 #[export]

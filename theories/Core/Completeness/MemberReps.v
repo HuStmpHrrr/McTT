@@ -111,7 +111,7 @@ Qed.
 
 (** ** Local Definitions and Modules before a Type *)
 
-Lemma let_step_def : forall {Γ τ G D1 k M1 X i},
+Lemma let_step_def : forall {Γ τ G D1 k M1 X} {i : nat},
     gsub Γ τ G -> G ⊨ D1 : Type@k -> G ⊨ M1 : D1 -> G ▸ D1 ≔ M1 ⊨ X : Type@i ->
     Γ ⊨ (ℓ D1 ≔ M1 in X)[τ] ≈ X[τ ,, M1[τ]] : Type@i /\
     (forall B C, pi_view (ℓ D1 ≔ M1 in X)[τ] = Some (B, C) -> pi_view X[τ ,, M1[τ]] = Some (B, C)).
@@ -127,7 +127,7 @@ Proof.
     rewrite <- exp_sub_q_extend, (pi_view_sub _ _ _ _ E); reflexivity.
 Qed.
 
-Lemma let_step_mod : forall {Γ τ G U X i},
+Lemma let_step_mod : forall {Γ τ G U X} {i : nat},
     gsub Γ τ G -> G ⊨ᵘ U ≈ U -> G ▹ₘ U ⊨ X : Type@i ->
     Γ ⊨ (ℓₘ U in X)[τ] ≈ X[τ ,,ₘ me_lit U[τ]ᵘ] : Type@i /\
     (forall B C, pi_view (ℓₘ U in X)[τ] = Some (B, C) -> pi_view X[τ ,,ₘ me_lit U[τ]ᵘ] = Some (B, C)).

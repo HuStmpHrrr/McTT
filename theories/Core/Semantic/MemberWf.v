@@ -35,13 +35,18 @@ Proof.
   congruence.
 Qed.
 
-Lemma subtyp_univ_inv : forall Γ X i, Γ ⊢ X ⊆ Type@i -> exists j k, j <= i /\ Γ ⊢ X ≈ Type@j : Type@k.
+(** A type below a large universe is a universe at an index below it: with
+    small universes that index is not always a large one, so it is given as a
+    [uidx]. *)
+Lemma subtyp_univ_inv : forall Γ X i,
+    Γ ⊢ X ⊆ Type@i ->
+    exists (u : uidx) k, uidx_le u (ul i) /\ Γ ⊢ X ≈ univ_tm u : Type@k.
 Proof.
   intros * H.
-  destruct (subtyp_spec H) as [[k Hk] | [(j & j' & [k Hk] & [k' Hk'] & Hle) | (A1 & A2 & B1 & B2 & _ & [k Hk] & _)]].
-  - exists i, k; split; [ lia | exact Hk ].
-  - pose proof (exp_eq_typ_implies_eq_level Hk') as ->.
-    exists j, k; split; [ exact Hle | exact Hk ].
+  destruct (subtyp_spec H) as [[k Hk] | [(u & v & [k Hk] & [k' Hk'] & Hle) | (A1 & A2 & B1 & B2 & _ & [k Hk] & _)]].
+  - exists (ul i), k; split; [ apply uidx_le_refl | exact Hk ].
+  - assert (v = ul i) as -> by (eapply (exp_eq_univ_tm_implies_eq (u := v) (v := ul i)); exact Hk').
+    exists u, k; split; [ exact Hle | exact Hk ].
   - exfalso; eapply pi_typ_absurd; exact Hk.
 Qed.
 
@@ -109,11 +114,13 @@ Proof.
   assert (exists l, Γ ▸ D ≔ N ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
   pose proof (def_ctx_inst _ _ _ _ _ _ HD HN HCt) as HCi.
   assert (⊢ Γ ▸ D ≔ N) by mauto 3.
-  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ≈ Type@j[↑]ʷ : Type@k'[↑]ʷ)
+  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ≈ (univ_tm j)[↑]ʷ : Type@k'[↑]ʷ)
     by (eapply wk_preserves_exp_eq; [ exact HCj | mauto 3 ]).
-  cbn in HCw.
-  assert (Γ ▸ D ≔ N ⊢ C ≈ Type@j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
-  eapply lift_exp_ge; [ exact Hle |]; mauto 3.
+  rewrite exp_wk_univ_tm in HCw; cbn in HCw.
+  assert (Γ ▸ D ≔ N ⊢ C ≈ univ_tm j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
+  (** The index need not be a large one, so the body is moved up by
+      [lift_exp_uidx] rather than [lift_exp_ge]. *)
+  eapply (lift_exp_uidx _ _ _ _ j (ul i)); [ exact Hle |]; mauto 3.
 Qed.
 
 
@@ -127,11 +134,11 @@ Proof.
   assert (exists l, Γ ▹ₘ U ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
   pose proof (mod_ctx_inst _ _ _ _ HU HCt) as HCi.
   assert (⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU).
-  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ≈ Type@j[↑]ʷ : Type@k'[↑]ʷ)
+  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ≈ (univ_tm j)[↑]ʷ : Type@k'[↑]ʷ)
     by (eapply wk_preserves_exp_eq; [ exact HCj | mauto 3 ]).
-  cbn in HCw.
-  assert (Γ ▹ₘ U ⊢ C ≈ Type@j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
-  eapply lift_exp_ge; [ exact Hle |]; mauto 3.
+  rewrite exp_wk_univ_tm in HCw; cbn in HCw.
+  assert (Γ ▹ₘ U ⊢ C ≈ univ_tm j : Type@(max l k')) by mauto 4 using lift_exp_eq_max_left, lift_exp_eq_max_right.
+  eapply (lift_exp_uidx _ _ _ _ j (ul i)); [ exact Hle |]; mauto 3.
 Qed.
 
 (** ** The [Π] a Type Is *)
@@ -557,7 +564,7 @@ Proof.
     pose proof (wf_gctx_closed _ _ _ HΓ) as Hc.
     destruct (gc_module_body _ _ _ _ Hm) as [Φ HΦ].
     destruct (gc_body_tele_wf _ _ Hg _ _ _ HΦ) as [HT _].
-    assert (HTt : T ⊢ ⊤ : Type@0) by (econstructor; exact HT).
+    assert (HTt : T ⊢ ⊤ : Type@0) by (apply wf_True_large; exact HT).
     destruct (ctx_pi_wf0 _ _ _ _ _ HTt) as [j Hj].
     assert (Hm0 : member_type gc_deps gc_stack nil (me_unit fp) ch (mr_mod T)) by (eapply mt_unit_mod; exact Hm).
     pose proof (mres_ty_scoped _ _ (proj1 (member_type_scoped _ _) _ _ _ _ Hm0 Hc I I)) as Hs; cbn in Hs.
@@ -664,7 +671,7 @@ Proof.
     split; [| discriminate ].
     destruct (unit_parts_of_wf _ _ _ _ HU) as (HC & _ & _).
     pose proof (ctx_app_wf_right _ _ _ _ HC) as HΔ.
-    assert (Δ ++ Γ ⊢ ⊤ : Type@0) by (econstructor; exact HΔ).
+    assert (Δ ++ Γ ⊢ ⊤ : Type@0) by (apply wf_True_large; exact HΔ).
     eapply ctx_pi_wf; eassumption.
   - (* a definition of a body *)
     intros Γ Δ Φ Φ' x b pv A B Hp HU _; cbn [mres_ty mres_kind].

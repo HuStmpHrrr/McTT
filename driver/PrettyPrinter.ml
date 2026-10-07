@@ -81,6 +81,10 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
   | Cst.Coq_typ i -> fprintf f "Type@%d" i
+  (* A small universe.  Level terms, and with them the surface syntax
+     [Type@{t}], arrive with universe polymorphism; until then the printer
+     spells the small universe the way the development does. *)
+  | Cst.Coq_suniv n -> fprintf f "Typeˢ@%d" n
   | Cst.Coq_nat -> fprintf f "Nat"
   | Cst.Coq_zero -> fprintf f "0"
   | Cst.Coq_succ e -> begin
@@ -289,6 +293,7 @@ let exp_to_obj =
        let em' = impl (mx :: ctx) em in
        Cst.Coq_exfalso (escr', mx, em')
     | Coq_a_typ i -> Cst.Coq_typ i
+    | Coq_a_univ n -> Cst.Coq_suniv n
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)
     | Coq_a_var x -> var_to_obj ctx x

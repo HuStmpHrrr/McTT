@@ -17,7 +17,7 @@ Import Domain_Notations.
 
 Fixpoint nf_stuck (G : qname -> Prop) (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_univ _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
   | nf_succ W => nf_stuck G W
   | nf_pi A B | nf_fn A B => nf_stuck G A /\ nf_stuck G B
   | nf_neut M => ne_stuck G M
@@ -49,6 +49,7 @@ Inductive dstuck : domain -> Prop :=
 | dstuck_nat : dstuck ℕᵈ
 | dstuck_pi : forall a (ρ : env) B, dstuck a -> (forall x, destuck (env_entry ρ x)) -> dstuck (Πᵈ a ρ B)
 | dstuck_univ : forall i, dstuck 𝕌@i
+| dstuck_suniv : forall n, dstuck 𝕌ˢ@n
 | dstuck_zero : dstuck zeroᵈ
 | dstuck_succ : forall m, dstuck m -> dstuck (succᵈ m)
 | dstuck_True : dstuck ⊤ᵈ

@@ -107,7 +107,7 @@ Hint Constructors rel_exp : mctt.
 (** The same pattern one universe up: the four values of a type are related in
     [per_univ_elem i R], which also fixes the element PER [R] that the term chain
     lives in. *)
-Definition rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R :=
+Definition rel_typ (i : nat) A σ ρ ρσ A' σ' ρ' ρ'σ' R :=
   rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ_elem i R).
 #[global] Arguments rel_typ _ _ _ _ _ _ _ _ _ _ /.
 Hint Transparent rel_typ : mctt.
@@ -152,7 +152,7 @@ Hint Unfold valid_exp_under_ctx : mctt.
     relates the two inner values only. *)
 
 Definition subtyp_under_ctx Γ A A' : Prop :=
-  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) i,
+  exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel) (i : nat),
   forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
     rel_sub_under_ctx Γ' Γ σ σ' ->
     forall ρ ρ' ρσ ρ'σ',

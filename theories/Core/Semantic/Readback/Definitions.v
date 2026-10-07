@@ -16,6 +16,9 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_type :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
      Rnf ⇓ 𝕌@i a in Θ ⍮ Ξ ⍮ s ↘ A )
+| read_nf_stype :
+  `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
+     Rnf ⇓ 𝕌ˢ@n a in Θ ⍮ Ξ ⍮ s ↘ A )
 | read_nf_zero :
   `( Rnf ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
 | read_nf_succ :
@@ -83,6 +86,8 @@ where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_s
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
   `( Rtyp 𝕌@i in Θ ⍮ Ξ ⍮ s ↘ Typeⁿ@i )
+| read_typ_suniv :
+  `( Rtyp 𝕌ˢ@n in Θ ⍮ Ξ ⍮ s ↘ Typeˢⁿ@n )
 | read_typ_nat :
   `( Rtyp ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
 | read_typ_True :

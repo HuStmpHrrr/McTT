@@ -58,7 +58,11 @@ Proof.
     repeat match goal with IH : forall _ _, glu_emb _ _ _ _ -> _ |- _ =>
       specialize (IH _ _ ltac:(eassumption)) end.
   all: try solve [ apply (@glu_rel_ctx_empty (gc_mk Θ2 Ξ2)); eapply em_wf, gme_emb; eassumption ].
-  all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_nat; assumption
+  all: try solve [ apply glu_rel_exp_typ; assumption | apply glu_rel_exp_suniv; assumption
+    | apply glu_rel_exp_nat_small; assumption
+    | apply glu_rel_exp_True_small; assumption | apply glu_rel_exp_False_small; assumption
+    | eapply glu_rel_exp_pi_small; eassumption
+    | apply glu_rel_exp_nat; assumption
     | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
     | eapply glu_rel_exp_natrec; eassumption
     | apply glu_rel_exp_True; assumption | apply glu_rel_exp_False; assumption

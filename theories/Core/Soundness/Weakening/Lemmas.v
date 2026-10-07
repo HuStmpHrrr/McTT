@@ -219,6 +219,80 @@ Proof.
   assumption.
 Qed.
 
+(** A universe, as the term [univ_tm u], is closed, so it is its own
+    transport: the gluing predicates state every equation in it. *)
+Fact exp_wk_univ_tm : forall u φ, (univ_tm u)[φ]ʷ = univ_tm u.
+Proof. intros [] ?; reflexivity. Qed.
+
+Corollary kripke_preserves_exp_univ : forall Γ Δ A φ u,
+    Δ ⊢ A : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ : univ_tm u.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ : exp_wk (univ_tm u) φ) by mauto 2.
+  rewrite exp_wk_univ_tm in *; assumption.
+Qed.
+
+Corollary kripke_preserves_exp_eq_univ : forall Γ Δ A A' φ u,
+    Δ ⊢ A ≈ A' : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : univ_tm u.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (univ_tm u) φ) by mauto 2.
+  rewrite exp_wk_univ_tm in *; assumption.
+Qed.
+
+Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ : mctt.
+
+(** The shapes the gluing predicates state a type in, each in the ambient
+    universe of its index: the right-hand sides are closed, so they are their
+    own transports — again invisible to [eauto]. *)
+Corollary kripke_preserves_univ_eq_nat : forall Γ Δ A φ u,
+    Δ ⊢ A ≈ ℕ : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ ℕ : univ_tm u.
+Proof.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (ℕ : exp)[φ]ʷ : univ_tm u) by mauto 2; assumption.
+Qed.
+
+Corollary kripke_preserves_univ_eq_True : forall Γ Δ A φ u,
+    Δ ⊢ A ≈ ⊤ : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ ⊤ : univ_tm u.
+Proof.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊤ : exp)[φ]ʷ : univ_tm u) by mauto 2; assumption.
+Qed.
+
+Corollary kripke_preserves_univ_eq_False : forall Γ Δ A φ u,
+    Δ ⊢ A ≈ ⊥ : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ ⊥ : univ_tm u.
+Proof.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (⊥ : exp)[φ]ʷ : univ_tm u) by mauto 2; assumption.
+Qed.
+
+Corollary kripke_preserves_univ_eq_typ : forall Γ Δ A φ u j,
+    Δ ⊢ A ≈ Type@j : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ Type@j : univ_tm u.
+Proof.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type@j)[φ]ʷ : univ_tm u) by mauto 2; assumption.
+Qed.
+
+Corollary kripke_preserves_univ_eq_suniv : forall Γ Δ A φ u j,
+    Δ ⊢ A ≈ Typeˢ@j : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ Typeˢ@j : univ_tm u.
+Proof.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeˢ@j)[φ]ʷ : univ_tm u) by mauto 2; assumption.
+Qed.
+
+Hint Resolve kripke_preserves_univ_eq_nat kripke_preserves_univ_eq_True
+             kripke_preserves_univ_eq_False kripke_preserves_univ_eq_typ
+             kripke_preserves_univ_eq_suniv : mctt.
+
 (** The two shapes the gluing predicates state a type in: [A ≈ Type@j] for the
     universe and [A ≈ ℕ] for [ℕ].  Both right-hand sides are closed, so they are
     their own transports — again invisible to [eauto]. *)
@@ -230,6 +304,28 @@ Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_typ j) φ : exp_wk (a_typ i) φ) by mauto 2.
+  assumption.
+Qed.
+
+Corollary kripke_preserves_typ_eq_suniv : forall Γ Δ A φ i n,
+    Δ ⊢ A ≈ Typeˢ@n : Type@i ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ Typeˢ@n : Type@i.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_univ n) φ : exp_wk (a_typ i) φ) by mauto 2.
+  assumption.
+Qed.
+
+(** The readback clause of a type in a small universe, whose equation is at the
+    small universe itself. *)
+Corollary kripke_preserves_exp_eq_suniv : forall Γ Δ A A' φ n,
+    Δ ⊢ A ≈ A' : Typeˢ@n ->
+    Γ ⊢k φ : Δ ->
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeˢ@n.
+Proof.
+  intros.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_univ n) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -267,6 +363,7 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
              kripke_preserves_nat kripke_preserves_nat_eq
              kripke_preserves_True kripke_preserves_False kripke_preserves_False_eq
              kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat
+             kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv
              kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False : mctt.
 
 (** [q φ] is not a Kripke weakening, since it is not a shift. It is still a
@@ -305,7 +402,23 @@ Proof.
   assumption.
 Qed.
 
-Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
+(** The same in any universe: the codomain of a glued [Π] is typed in the
+    ambient universe of the index. *)
+Corollary kripke_preserves_univ_q : forall Γ Δ A B φ u v,
+    Δ ▹ A ⊢ B : univ_tm v ->
+    Δ ⊢ A : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : univ_tm v.
+Proof.
+  intros * HB HA Hφ.
+  assert (Δ ⊢ A : Type@(ulvl u))
+    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
+  assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (univ_tm v) (wk_q φ))
+    by (eapply kripke_preserves_exp_q; eassumption).
+  rewrite exp_wk_univ_tm in *; assumption.
+Qed.
+
+Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
 
 (** Extending by the new variable as a term, rather than by the variable
     entry of [q φ]: the two agree on every term, and a type of the extended
@@ -334,14 +447,27 @@ Proof.
   exact (wf_sub_apply _ _ _ _ _ Hq _ _ Hx).
 Qed.
 
-Corollary shift_var_eq : forall Δ A B M i,
+(** The same with the domain in any universe. *)
+Corollary kripke_q_var_eq_univ : forall Γ Δ A B M φ u,
     Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : Type@i ->
+    Δ ⊢ A : univ_tm u ->
+    Γ ⊢k φ : Δ ->
+    Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
+Proof.
+  intros * HM HA Hφ.
+  assert (Δ ⊢ A : Type@(ulvl u))
+    by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
+  eapply kripke_q_var_eq; eassumption.
+Qed.
+
+Corollary shift_var_eq : forall Δ A B M u,
+    Δ ▹ A ⊢ M : B ->
+    Δ ⊢ A : univ_tm u ->
     Δ ▹ A ⊢ M[ι ↑,,#0] ≈ M : B.
 Proof.
   intros * HM HA.
   assert (Hk : Δ ⊢k wk_id : Δ) by (apply kripke_id; mauto 2).
-  pose proof (kripke_q_var_eq _ _ _ _ _ _ _ HM HA Hk) as H.
+  pose proof (kripke_q_var_eq_univ _ _ _ _ _ _ _ HM HA Hk) as H.
   rewrite exp_wk_id, !(exp_wk_id_ext _ _ wk_q_id) in H.
   replace (M[ι ↑,,#0]) with (M[ι (wk_id ⊙ ↑),,#0]); [ exact H |].
   apply exp_sub_sb_eq; intros [| x]; reflexivity.
@@ -368,12 +494,18 @@ Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subty
 #[export]
 Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
 kripke_preserves_nat kripke_preserves_nat_eq
-kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat : mctt.
+kripke_preserves_typ_eq_typ kripke_preserves_typ_eq_nat
+kripke_preserves_typ_eq_suniv kripke_preserves_exp_eq_suniv : mctt.
+#[export]
+Hint Resolve kripke_preserves_exp_univ kripke_preserves_exp_eq_univ
+kripke_preserves_univ_eq_nat kripke_preserves_univ_eq_True
+kripke_preserves_univ_eq_False kripke_preserves_univ_eq_typ
+kripke_preserves_univ_eq_suniv : mctt.
 #[export]
 Hint Resolve kripke_preserves_True kripke_preserves_False kripke_preserves_False_eq
 kripke_preserves_typ_eq_True kripke_preserves_typ_eq_False : mctt.
 #[export]
-Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q : mctt.
+Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ_q : mctt.
 Ltac saturate_kripke :=
   match_by_head wk_kripke ltac:(fun H => pose proof (kripke_dom _ _ _ H);
                                          pose proof (kripke_cod _ _ _ H));

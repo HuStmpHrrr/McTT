@@ -42,7 +42,7 @@ Qed.
 (** The four values of a type chain in [per_univ i] each come with their own
     element PER; irrelevance identifies them, giving a single [R] for the term
     chain to live in. *)
-Lemma rel_exp_implies_rel_typ : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ'},
+Lemma rel_exp_implies_rel_typ : forall {i : nat} {A σ ρ ρσ A' σ' ρ' ρ'σ'},
     rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i) ->
     exists R, rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R.
 Proof.
@@ -57,7 +57,7 @@ Qed.
 
 Hint Resolve rel_exp_implies_rel_typ : mctt.
 
-Lemma rel_typ_implies_rel_exp : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ' R},
+Lemma rel_typ_implies_rel_exp : forall {i : nat} {A σ ρ ρσ A' σ' ρ' ρ'σ' R},
     rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R ->
     rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ i).
 Proof.
@@ -72,7 +72,7 @@ Hint Resolve rel_typ_implies_rel_exp : mctt.
 
 (** The element PER of a type chain is a PER, which is the precondition of every
     [rel_chain] lemma applied to the term chain. *)
-Lemma rel_typ_elem_PER : forall {i A σ ρ ρσ A' σ' ρ' ρ'σ' R},
+Lemma rel_typ_elem_PER : forall {i : nat} {A σ ρ ρσ A' σ' ρ' ρ'σ' R},
     rel_typ i A σ ρ ρσ A' σ' ρ' ρ'σ' R ->
     PER R.
 Proof.
@@ -327,7 +327,7 @@ Qed.
 
 Lemma rel_exp_under_ctx_simple : forall {Γ A M M'},
     Γ ⊨ M ≈ M' : A ->
-    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) i,
+    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) (i : nat),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists a a' R,
@@ -375,7 +375,7 @@ Qed.
 
 Lemma subtyp_under_ctx_simple : forall {Γ A A'},
     Γ ⊨ A ⊆ A' ->
-    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) i,
+    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) (i : nat),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists a a',
@@ -531,7 +531,7 @@ Qed.
 Lemma rel_exp_under_ctx_wk_simple : forall {Γ Δ φ A M M'},
     Γ ⊨w φ : Δ ->
     Δ ⊨ M ≈ M' : A ->
-    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) i,
+    exists env_relΓ (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) (i : nat),
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists a a' R,

@@ -48,7 +48,7 @@ Hint Resolve per_univ_elem_False : mctt.
 (** ** [⊤] and [⊥] as Types
 
     Stated from the context PER, as [rel_exp_of_typ_nat] is. *)
-Lemma rel_exp_of_typ_True : forall {Γ i env_relΓ},
+Lemma rel_exp_of_typ_True : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ ⊤ ≈ ⊤ : Type@i.
 Proof.
@@ -63,7 +63,7 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_True : mctt.
 
-Corollary valid_exp_True : forall {Γ i},
+Corollary valid_exp_True : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ ⊤ : Type@i.
 Proof.
@@ -74,7 +74,7 @@ Qed.
 
 Hint Resolve valid_exp_True : mctt.
 
-Lemma rel_exp_of_typ_False : forall {Γ i env_relΓ},
+Lemma rel_exp_of_typ_False : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ ⊥ ≈ ⊥ : Type@i.
 Proof.
@@ -89,7 +89,7 @@ Qed.
 
 Hint Resolve rel_exp_of_typ_False : mctt.
 
-Corollary valid_exp_False : forall {Γ i},
+Corollary valid_exp_False : forall {Γ} {i : nat},
     ⊨ Γ ->
     Γ ⊨ ⊥ : Type@i.
 Proof.
@@ -99,6 +99,58 @@ Proof.
 Qed.
 
 Hint Resolve valid_exp_False : mctt.
+
+(** [⊤] in a universe at any index, in particular in the small ones. *)
+Lemma rel_exp_of_univ_True : forall {Γ u env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ ⊤ ≈ ⊤ : univ_tm u.
+Proof.
+  intros * HΓ.
+  apply rel_exp_of_univ.
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hn : Dom ⊤ᵈ ≈ ⊤ᵈ ∈ per_univ u)
+    by (eexists; per_univ_elem_econstructor; reflexivity).
+  econstructor; try apply eval_exp_True.
+  apply rel_chain_4; assumption.
+Qed.
+
+Corollary valid_exp_True_small : forall {Γ n},
+    ⊨ Γ ->
+    Γ ⊨ ⊤ : Typeˢ@n.
+Proof.
+  intros * H%sem_ctx_per_ctx_env.
+  destruct H as [env_relΓ HΓ].
+  exact (rel_exp_of_univ_True (u := us n) HΓ).
+Qed.
+
+Hint Resolve valid_exp_True_small : mctt.
+
+(** [⊥] in a universe at any index, in particular in the small ones. *)
+Lemma rel_exp_of_univ_False : forall {Γ u env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ ⊥ ≈ ⊥ : univ_tm u.
+Proof.
+  intros * HΓ.
+  apply rel_exp_of_univ.
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  assert (Hn : Dom ⊥ᵈ ≈ ⊥ᵈ ∈ per_univ u)
+    by (eexists; per_univ_elem_econstructor; reflexivity).
+  econstructor; try apply eval_exp_False.
+  apply rel_chain_4; assumption.
+Qed.
+
+Corollary valid_exp_False_small : forall {Γ n},
+    ⊨ Γ ->
+    Γ ⊨ ⊥ : Typeˢ@n.
+Proof.
+  intros * H%sem_ctx_per_ctx_env.
+  destruct H as [env_relΓ HΓ].
+  exact (rel_exp_of_univ_False (u := us n) HΓ).
+Qed.
+
+Hint Resolve valid_exp_False_small : mctt.
 
 (** ** [⊤] and [⊥] as the Types of Terms
 
@@ -174,9 +226,9 @@ End Fixed_GCtx.
 #[export]
 Hint Resolve per_univ_elem_True per_univ_elem_False : mctt.
 #[export]
-Hint Resolve rel_exp_of_typ_True valid_exp_True : mctt.
+Hint Resolve rel_exp_of_typ_True valid_exp_True valid_exp_True_small : mctt.
 #[export]
-Hint Resolve rel_exp_of_typ_False valid_exp_False : mctt.
+Hint Resolve rel_exp_of_typ_False valid_exp_False valid_exp_False_small : mctt.
 #[export]
 Hint Resolve rel_exp_of_True : mctt.
 Ltac eexists_rel_exp_of_True :=
@@ -274,7 +326,7 @@ Qed.
     arguments, as a [per_univ_elem] at a family [Rel] of element PERs indexed by
     the pair, as in [per_nat_natrec].  The readback of the neutral eliminator
     uses it at a fresh variable. *)
-Lemma per_bot_exfalso : forall {i Aa Ab ρa ρb m m'}
+Lemma per_bot_exfalso : forall {i : nat} {Aa Ab ρa ρb m m'}
                                {Rel : domain -> domain -> relation domain},
     (forall w z,
         Dom w ≈ z ∈ per_ne ->
@@ -293,7 +345,7 @@ Proof.
   eexists; split; econstructor; eassumption.
 Qed.
 
-Lemma per_ne_exfalso : forall {i Aa Ab ρa ρb}
+Lemma per_ne_exfalso : forall {i : nat} {Aa Ab ρa ρb}
                               {Rel : domain -> domain -> relation domain},
     (forall w z,
         Dom w ≈ z ∈ per_ne ->
@@ -324,7 +376,7 @@ Qed.
     The obligation of [per_ne_exfalso] for all three links, in the one family
     [Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)].  The proof is that of
     [rel_typ_of_nat_motive] with [⊥] for [ℕ]. *)
-Lemma rel_typ_of_False_motive : forall {Γ A A' i env_relΓ},
+Lemma rel_typ_of_False_motive : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ⊥ ⊨ A ≈ A' : Type@i ->
     forall Γ' env_rel',
@@ -398,7 +450,7 @@ Qed.
 (** ** The Diagonal, for the Gluing Model
 
     [per_bot_exfalso] at one environment and no substitution. *)
-Lemma per_bot_exfalso_diag : forall {Γ A i env_relΓ ρ m},
+Lemma per_bot_exfalso_diag : forall {Γ A} {i : nat} {env_relΓ ρ m},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ▹ ⊥ ⊨ A ≈ A : Type@i ->
     Dom ρ ≈ ρ ∈ env_relΓ ->
@@ -419,7 +471,7 @@ Qed.
     scrutinee's chain, in the family of head PERs of the motive that
     [rel_typ_of_instance] reports; [per_head_of_args] then moves each link to
     the argument pair the type names, as in [rel_exp_natrec_cong]. *)
-Lemma rel_exp_exfalso_cong : forall {Γ A A' i M M'},
+Lemma rel_exp_exfalso_cong : forall {Γ A A'} {i : nat} {M M'},
     Γ ▹ ⊥ ⊨ A ≈ A' : Type@i ->
     Γ ⊨ M ≈ M' : ⊥ ->
     Γ ⊨ efq M return A ≈ efq M' return A' : A[Id ,, M].

@@ -24,45 +24,65 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma glu_rel_exp_True : forall {Γ i},
+Lemma glu_rel_exp_True_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ⊤ : Type@i.
+    Γ ⊩ ⊤ : univ_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
-  eapply glu_rel_exp_of_typ; mauto 3.
+  eapply glu_rel_exp_of_univ; mauto 3.
   intros.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  split; mauto 3.
+  split; [ simplify_subs; apply wf_True_univ; assumption |].
   eexists; repeat split; mauto 3.
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold True_glu_typ_pred.
-  simplify_subs; mauto 3.
+  simplify_subs; apply wf_exp_eq_True_cong_univ; assumption.
 Qed.
+
+Lemma glu_rel_exp_True : forall {Γ} {i : nat},
+    ⊩ Γ ->
+    Γ ⊩ ⊤ : Type@i.
+Proof. intros; apply (glu_rel_exp_True_univ (u := ul i)); assumption. Qed.
+
+Lemma glu_rel_exp_True_small : forall {Γ},
+    ⊩ Γ ->
+    Γ ⊩ ⊤ : Typeˢ@0.
+Proof. intros; apply (glu_rel_exp_True_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_True : mctt.
 
-Lemma glu_rel_exp_False : forall {Γ i},
+Lemma glu_rel_exp_False_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ⊥ : Type@i.
+    Γ ⊩ ⊥ : univ_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
-  eapply glu_rel_exp_of_typ; mauto 3.
+  eapply glu_rel_exp_of_univ; mauto 3.
   intros.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  split; mauto 3.
+  split; [ simplify_subs; apply wf_False_univ; assumption |].
   eexists; repeat split; mauto 3.
   intros.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   unfold False_glu_typ_pred.
-  simplify_subs; mauto 3.
+  simplify_subs; apply wf_exp_eq_False_cong_univ; assumption.
 Qed.
+
+Lemma glu_rel_exp_False : forall {Γ} {i : nat},
+    ⊩ Γ ->
+    Γ ⊩ ⊥ : Type@i.
+Proof. intros; apply (glu_rel_exp_False_univ (u := ul i)); assumption. Qed.
+
+Lemma glu_rel_exp_False_small : forall {Γ},
+    ⊩ Γ ->
+    Γ ⊩ ⊥ : Typeˢ@0.
+Proof. intros; apply (glu_rel_exp_False_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_False : mctt.
 
@@ -84,7 +104,7 @@ Qed.
 Hint Resolve glu_rel_exp_true : mctt.
 
 (** ** Extension by [⊥] *)
-Lemma cons_glu_sub_pred_False_helper : forall {Γ SbΓ Δ σ ρ i M m},
+Lemma cons_glu_sub_pred_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {M m},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     glu_False Δ M m ->
@@ -93,7 +113,7 @@ Proof.
   intros * ? HM ?.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred i ↘ False_glu_exp_pred i)
+  assert (DG ⊥ᵈ ∈ glu_univ_elem i ↘ False_glu_typ_pred (univ_tm i) ↘ False_glu_exp_pred (univ_tm i))
     by (glu_univ_elem_econstructor; reflexivity).
   eapply cons_glu_sub_pred_helper; mauto 3.
   econstructor; [unfold False_glu_typ_pred |]; simplify_subs; mauto 3.
@@ -104,7 +124,7 @@ Hint Resolve cons_glu_sub_pred_False_helper : mctt.
 
 (** [⊥[σ]] is [⊥], so this is [cons_glu_sub_pred_q_helper] up to
     conversion. *)
-Lemma cons_glu_sub_pred_q_False_helper : forall {Γ SbΓ Δ σ ρ i},
+Lemma cons_glu_sub_pred_q_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     Δ ▹ ⊥ ⊢s q σ ® ρ ↦ ⇑! ⊥ᵈ (length Δ) ∈ cons_glu_sub_pred i Γ ⊥ SbΓ.
@@ -126,7 +146,7 @@ Hint Resolve cons_glu_sub_pred_q_False_helper : mctt.
     glued by [realize_glu_elem_bot]; its readback is related by
     [per_bot_exfalso_diag], and the motive is read back by
     [realize_glu_typ_top] at a fresh variable. *)
-Lemma glu_rel_exp_exfalso : forall {Γ i A M},
+Lemma glu_rel_exp_exfalso : forall {Γ} {i : nat} {A M},
     Γ ▹ ⊥ ⊩ A : Type@i ->
     Γ ⊩ M : ⊥ ->
     Γ ⊩ efq M return A : A[Id,,M].
@@ -166,7 +186,7 @@ Proof.
   destruct_conjs.
   clear_dups.
   match goal with
-  | _: (⟦ A ⟧ ρ ↦ ⇑ a m0 ↘ ?a'), _: DG ?a' ∈ glu_univ_elem i ↘ ?P' ↘ ?El' |- _ =>
+  | _: (⟦ A ⟧ ρ ↦ ⇑ a m0 ↘ ?a'), _: DG ?a' ∈ glu_univ_elem ?idx ↘ ?P' ↘ ?El' |- _ =>
       rename a' into am; rename P' into P; rename El' into El
   end.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.

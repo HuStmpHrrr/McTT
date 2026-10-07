@@ -21,7 +21,7 @@ Import Domain_Notations Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-Lemma rel_ctx_extend : forall {Γ Γ' A A' i},
+Lemma rel_ctx_extend : forall {Γ Γ' A A'} {i : nat},
     ⊨ Γ ≈ Γ' ->
     Γ ⊨ A ≈ A' : Type@i ->
     ⊨ Γ ▹ A ≈ Γ' ▹ A'.
@@ -39,7 +39,7 @@ Proof.
   now apply HA.
 Qed.
 
-Lemma rel_ctx_extend' : forall {Γ A i},
+Lemma rel_ctx_extend' : forall {Γ A} {i : nat},
     ⊨ Γ ->
     Γ ⊨ A : Type@i ->
     ⊨ Γ ▹ A.
@@ -55,7 +55,7 @@ Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
 
     The canonical context PER of [Γ ▸ A ≔ M] is [per_env_extend_def], fed by
     the [Id] instances of the judgments of [A] and [M]. *)
-Lemma per_ctx_env_of_def : forall {Γ A i M env_relΓ},
+Lemma per_ctx_env_of_def : forall {Γ A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
@@ -67,7 +67,7 @@ Proof.
   - exact (rel_exp_under_ctx_simple_at HΓ HM).
 Qed.
 
-Lemma rel_ctx_extend_def' : forall {Γ A i M},
+Lemma rel_ctx_extend_def' : forall {Γ A} {i : nat} {M},
     ⊨ Γ ->
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
@@ -81,7 +81,7 @@ Qed.
 Hint Resolve rel_ctx_extend_def' : mctt.
 
 (** A definition entry refines an assumption entry of the same type. *)
-Lemma per_ctx_env_def_forget : forall {Γ A i M R R'},
+Lemma per_ctx_env_def_forget : forall {Γ A} {i : nat} {M R R'},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
@@ -99,7 +99,7 @@ Proof.
 Qed.
 
 (** Definition entries with related bodies relate the same environments. *)
-Lemma per_ctx_env_def_conv : forall {Γ A i M M' R R'},
+Lemma per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
     Γ ⊨ A : Type@i ->
     Γ ⊨ M ≈ M' : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
@@ -130,7 +130,7 @@ Lemma rel_ctx_sub_empty :
   SubE ⋅ <: ⋅.
 Proof. mauto. Qed.
 
-Lemma rel_ctx_sub_extend : forall {Γ Δ i A A'},
+Lemma rel_ctx_sub_extend : forall {Γ Δ} {i : nat} {A A'},
   SubE Γ <: Δ ->
   ⊨ Γ ->
   ⊨ Δ ->

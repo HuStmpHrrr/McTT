@@ -13,6 +13,9 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
 | rnf_type :
   `( read_typ_order Θ Ξ s a ->
     read_nf_order Θ Ξ s ⇓ 𝕌@i a )
+| rnf_stype :
+  `( read_typ_order Θ Ξ s a ->
+    read_nf_order Θ Ξ s ⇓ 𝕌ˢ@n a )
 | rnf_zero :
   `( read_nf_order Θ Ξ s ⇓ ℕᵈ zeroᵈ )
 | rnf_succ :
@@ -79,6 +82,8 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | rtyp_univ :
   `( read_typ_order Θ Ξ s 𝕌@i )
+| rtyp_suniv :
+  `( read_typ_order Θ Ξ s 𝕌ˢ@n )
 | rtyp_nat :
   `( read_typ_order Θ Ξ s ℕᵈ )
 | rtyp_True :
@@ -137,6 +142,9 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ 𝕌@i a      , H =>
     let (A, HA) := read_typ_impl s a _ in
     exist _ A _
+| s, ⇓ 𝕌ˢ@n a     , H =>
+    let (A, HA) := read_typ_impl s a _ in
+    exist _ A _
 | s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
 | s, ⇓ ℕᵈ (succᵈ m) , H =>
     let (M, HM) := read_nf_impl s ⇓ ℕᵈ m _ in
@@ -183,6 +191,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 
       with read_typ_impl s d (H : read_typ_order Θ Ξ s d) : { m | Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, 𝕌@i, H => exist _ Typeⁿ@i _
+| s, 𝕌ˢ@n, H => exist _ Typeˢⁿ@n _
 | s, ℕᵈ, H => exist _ ℕⁿ _
 | s, ⊤ᵈ, H => exist _ ⊤ⁿ _
 | s, ⊥ᵈ, H => exist _ ⊥ⁿ _
