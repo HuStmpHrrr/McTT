@@ -60,6 +60,7 @@
 ./Core/Semantic/Realizability.v
 ./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
+./Core/Semantic/Avoid.v
 ./Core/Soundness.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
