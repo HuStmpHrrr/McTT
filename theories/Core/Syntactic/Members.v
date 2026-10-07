@@ -604,9 +604,9 @@ Definition tele_inst (T : ctx) (N : exp) : option ctx :=
   | None => None
   end.
 
-(** A module [F (A : Type@0) (f : forall (x : A) -> A)] takes [⋅ ▹ Type@0 ▹
+(** A module [F (A : Typeω@0) (f : forall (x : A) -> A)] takes [⋅ ▹ Typeω@0 ▹
     Π #0 #1]; applied to [ℕ], it takes [⋅ ▹ Π ℕ ℕ]. *)
-Example tele_inst_example : tele_inst (⋅ ▹ Type@0 ▹ Π #0 #1) ℕ = Some (⋅ ▹ Π ℕ ℕ).
+Example tele_inst_example : tele_inst (⋅ ▹ Typeω@0 ▹ Π #0 #1) ℕ = Some (⋅ ▹ Π ℕ ℕ).
 Proof. reflexivity. Qed.
 
 (** ** Member Types

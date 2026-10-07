@@ -51,21 +51,21 @@ Proof.
 Qed.
 
 Lemma soundness_ty : forall {Γ} {i : nat} {A},
-    Γ ⊢ A : Type@i ->
-    exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i.
+    Γ ⊢ A : Typeω@i ->
+    exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i.
 Proof.
   intros.
-  assert (exists W', nbe_f Γ A Type@i W' /\ Γ ⊢ A ≈ W' : Type@i) as [? [?%nbe_type_to_nbe_ty Heq]] by mauto using soundness.
+  assert (exists W', nbe_f Γ A Typeω@i W' /\ Γ ⊢ A ≈ W' : Typeω@i) as [? [?%nbe_type_to_nbe_ty Heq]] by mauto using soundness.
   firstorder.
 Qed.
 
 Lemma soundness_ty' : forall {Γ} {i : nat} {A B},
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     nbe_ty_f Γ A B ->
-    Γ ⊢ A ≈ B : Type@i.
+    Γ ⊢ A ≈ B : Typeω@i.
 Proof.
   intros.
-  assert (exists B', nbe_ty_f Γ A B' /\ Γ ⊢ A ≈ B' : Type@i) as [? [? Heq]] by mauto using soundness_ty.
+  assert (exists B', nbe_ty_f Γ A B' /\ Γ ⊢ A ≈ B' : Typeω@i) as [? [? Heq]] by mauto using soundness_ty.
   functional_nbe_rewrite_clear.
   eassumption.
 Qed.

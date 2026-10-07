@@ -131,16 +131,16 @@ Hint Resolve presup_subtyp_ctx : mctt.
 
 (** A small type is a type of every large universe. *)
 Lemma wf_exp_small_large : forall {Θ Ξ Γ A n i},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 Lemma wf_exp_eq_small_large : forall {Θ Ξ Γ A A' n i},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeˢ@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 Lemma ctx_decomp : forall {Θ Ξ Γ A},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   inversion 1; eauto using presup_exp_ctx.
 Qed.
@@ -153,7 +153,7 @@ Proof.
   intros * ?%ctx_decomp; easy.
 Qed.
 
-Corollary ctx_decomp_right : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+Corollary ctx_decomp_right : forall {Θ Ξ Γ A}, ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * ?%ctx_decomp; easy.
 Qed.
@@ -163,7 +163,7 @@ Hint Resolve ctx_decomp_left ctx_decomp_right : mctt.
 
 Lemma ctx_decomp_def : forall {Θ Ξ Γ A M},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
 Proof.
   inversion 1; eauto using presup_exp_ctx.
 Qed.
@@ -174,7 +174,7 @@ Proof.
 Qed.
 
 Corollary ctx_decomp_def_typ : forall {Θ Ξ Γ A M},
-    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M -> exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * ?%ctx_decomp_def; easy.
 Qed.
@@ -249,14 +249,14 @@ Proof.
     eapply wf_wk_lookup_mod; eassumption.
 Qed.
 
-(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ], it is
+(** The extra premise [Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeω@i] is needed for [⊢ Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ], it is
     exactly what the induction hypothesis of [wk_preserves_wf] supplies at every
     binder, and [wf_sub_q] states the corresponding premise for substitutions
     explicitly. *)
 Lemma wf_wk_q : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros * Hφ ? ?; apply (wf_wk_q_gen _ _ _ _ _ (ce_ass A)); mauto 2.
@@ -265,9 +265,9 @@ Qed.
 (** The same over a definition: the body is weakened along with its type. *)
 Lemma wf_wk_q_def : forall Θ Ξ Γ Δ φ A M i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M[φ]ʷ : A[φ]ʷ ->
     Θ ⍮ Ξ ⍮ Δ ▸ A[φ]ʷ ≔ M[φ]ʷ ⊢w wk_q φ : Γ ▸ A ≔ M.
 Proof.
@@ -452,9 +452,9 @@ Ltac push_wk :=
     [lift_wk_nat] seeds the [ℕ]-eliminator cases, whose first binder is over the
     closed type [ℕ]: [lift_wk_step] cannot start there, because the domain of
     that binder has no induction hypothesis of its own.  It is guarded by the
-    presence of a motive [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Type@i] so that it fires only in those
+    presence of a motive [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i] so that it fires only in those
     four cases.  Its second branch does the same for the motive
-    [Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Type@i] of the [⊥]-eliminator. *)
+    [Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i] of the [⊥]-eliminator. *)
 
 Ltac lift_wk_nat :=
   match goal with
@@ -840,7 +840,7 @@ Qed.
     how every inversion lemma's introduction case ends.  [Core.Syntactic.SystemOpt]
     drops the typing premise of [wf_subtyp_refl], but going through that costs
     a level of search that [mauto] cannot always spare. *)
-Lemma wf_subtyp_refl_typ : forall Θ Ξ Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
+Lemma wf_subtyp_refl_typ : forall Θ Ξ Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
 Proof.
   intros; eapply wf_subtyp_refl; mauto 2.
 Qed.
@@ -912,7 +912,7 @@ Qed.
 (** [wf_sub_extend] *)
 Lemma wf_sub_extend : forall Θ Ξ Γ Δ σ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ,,M : Δ ▹ A.
 Proof.
@@ -925,7 +925,7 @@ Qed.
     body. *)
 Lemma wf_sub_extend_def : forall Θ Ξ Γ Δ σ A M N i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ M[σ] : A[σ] ->
@@ -950,7 +950,7 @@ Qed.
 
 (** [wf_sub_single] *)
 Corollary wf_sub_single : forall Θ Ξ Γ A M i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ A.
 Proof.
@@ -959,7 +959,7 @@ Proof.
 Qed.
 
 Corollary wf_sub_single_def : forall Θ Ξ Γ A M i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▸ A ≔ M.
 Proof.
@@ -1022,15 +1022,15 @@ Qed.
 
 (** [wf_sub_q].
 
-    As in [wf_wk_q], the premise [Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i] is taken explicitly.  It
+    As in [wf_wk_q], the premise [Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i] is taken explicitly.  It
     could be dropped once [sub_preserves_wf] is available; we keep it, because
     it is exactly what the induction hypothesis of [sub_preserves_wf] supplies
     at each binder, and dropping it would make [wf_sub_q] depend on
     [sub_preserves_wf], which depends on [wf_sub_q]. *)
 Lemma wf_sub_q : forall Θ Ξ Γ Δ σ A i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢s q σ : Δ ▹ A.
 Proof.
   intros * Hσ ? ?; apply (wf_sub_q_gen _ _ _ _ _ (ce_ass A)); mauto 2.
@@ -1040,9 +1040,9 @@ Qed.
     body by δ. *)
 Lemma wf_sub_q_def : forall Θ Ξ Γ Δ σ A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢s q σ : Δ ▸ A ≔ M.
 Proof.
@@ -1482,7 +1482,7 @@ Corollary exp_sub_single : forall Θ Ξ Γ A B M N,
     Θ ⍮ Ξ ⍮ Γ ⊢ M[Id,,N] : B[Id,,N].
 Proof.
   intros.
-  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i) as [i ?] by mauto 3.
+  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) as [i ?] by mauto 3.
   eapply sub_preserves_exp; [ eassumption | eapply wf_sub_single; eassumption ].
 Qed.
 
@@ -1492,7 +1492,7 @@ Corollary exp_eq_sub_single : forall Θ Ξ Γ A B M M' N,
     Θ ⍮ Ξ ⍮ Γ ⊢ M[Id,,N] ≈ M'[Id,,N] : B[Id,,N].
 Proof.
   intros.
-  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i) as [i ?] by mauto 3.
+  assert (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) as [i ?] by mauto 3.
   eapply sub_preserves_exp_eq; [ eassumption | eapply wf_sub_single; eassumption ].
 Qed.
 
@@ -1514,7 +1514,7 @@ Corollary wf_sub_nat_single : forall Θ Ξ Γ M,
     Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ℕ.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@0) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@0) by mauto 3.
   eapply wf_sub_single; eassumption.
 Qed.
 
@@ -1534,7 +1534,7 @@ Proof.
   exact H.
 Qed.
 
-(** The premise is context well-formedness rather than [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Type@i]
+(** The premise is context well-formedness rather than [Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A : Typeω@i]
     so that this applies at the motive of either side of a congruence. *)
 Corollary wf_sub_natrec_step : forall Θ Ξ Γ A,
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ->
@@ -1547,7 +1547,7 @@ Proof.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ succ #1 : ℕ)
     by (econstructor; eapply wf_vlookup; [ assumption | apply ctx_lookup_nat_1 ]).
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@0) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@0) by mauto 3.
   eapply wf_sub_extend; [ eassumption | eassumption | assumption ].
 Qed.
 
@@ -1560,7 +1560,7 @@ Corollary wf_sub_False_single : forall Θ Ξ Γ M,
     Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M : Γ ▹ ⊥.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@0) by mauto 3.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Typeω@0) by mauto 3.
   eapply wf_sub_single; eassumption.
 Qed.
 
@@ -1593,7 +1593,7 @@ Qed.
     [#(S x)] has to be recognised as [#x[↑]ʷ] before [wk_preserves_exp]
     applies. *)
 Corollary wk_preserves_vlookup_shift : forall Θ Ξ Γ A B x i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ #x : B ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #(S x) : B[↑]ʷ.
 Proof.
@@ -1652,8 +1652,8 @@ Qed.
 
 Lemma wf_sub_id_extend : forall Θ Ξ Γ Δ A A' i,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ▹ A' ⊢s Id : Γ ▹ A.
 Proof.
@@ -1671,8 +1671,8 @@ Qed.
 (** A definition refines a definition of a supertype with an equal body. *)
 Lemma wf_sub_id_extend_def : forall Θ Ξ Γ Δ A A' M M' i,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
@@ -1695,8 +1695,8 @@ Qed.
 (** A definition refines an assumption of a supertype. *)
 Lemma wf_sub_id_forget : forall Θ Ξ Γ Δ A A' M' i,
     Θ ⍮ Ξ ⍮ Δ ⊢s Id : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Δ ▸ A' ≔ M' ⊢s Id : Γ ▹ A.
@@ -1725,9 +1725,9 @@ Qed.
 (** Equal types give refinements in both directions; this is the instance
     [wf_sub_eq] and the presupposition lemma need. *)
 Corollary wf_sub_id_extend_eq : forall Θ Ξ Γ A A' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A.
 Proof.
   intros.
@@ -1736,9 +1736,9 @@ Qed.
 
 (** The same for definitions, with equal bodies. *)
 Corollary wf_sub_id_extend_def_eq : forall Θ Ξ Γ A A' M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -1787,15 +1787,15 @@ Hint Resolve ctxsub_exp ctxsub_exp_eq ctxsub_subtyp : mctt.
 
 (** ** Transporting a Type
 
-    [Type@i] is closed, so [Type@i[φ]ʷ] and [Type@i[σ]] are [Type@i] — but only
+    [Typeω@i] is closed, so [Typeω@i[φ]ʷ] and [Typeω@i[σ]] are [Typeω@i] — but only
     up to conversion, and [eauto]'s [simple apply] does not reduce.  These four
     spell it out; every "and the type is still a type" step below goes through
     one of them. *)
 
 Corollary wk_preserves_typ : forall Θ Ξ Γ Δ A φ i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeω@i.
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -1803,9 +1803,9 @@ Proof.
 Qed.
 
 Corollary wk_preserves_typ_eq : forall Θ Ξ Γ Δ A A' φ i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@i.
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -1813,9 +1813,9 @@ Proof.
 Qed.
 
 Corollary sub_preserves_typ : forall Θ Ξ Γ Δ A σ i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i.
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (a_typ i) σ) by mauto 2.
@@ -1823,54 +1823,54 @@ Proof.
 Qed.
 
 Corollary sub_preserves_typ_eq : forall Θ Ξ Γ Δ A A' σ i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Typeω@i.
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (a_typ i) σ) by mauto 2.
   assumption.
 Qed.
 
-(** The same four for a small universe [Typeˢ@n], also closed. *)
+(** The same four for a small universe [Type@n], also closed. *)
 
 Corollary wk_preserves_styp : forall Θ Ξ Γ Δ A φ n,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ : Type@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (Typeˢ@n) φ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ : exp_wk (Type@n) φ) by mauto 2.
   assumption.
 Qed.
 
 Corollary wk_preserves_styp_eq : forall Θ Ξ Γ Δ A A' φ n,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeˢ@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@n ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (Typeˢ@n) φ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Δ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (Type@n) φ) by mauto 2.
   assumption.
 Qed.
 
 Corollary sub_preserves_styp : forall Θ Ξ Γ Δ A σ n,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeˢ@n ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@n ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (Typeˢ@n) σ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ : exp_sub (Type@n) σ) by mauto 2.
   assumption.
 Qed.
 
 Corollary sub_preserves_styp_eq : forall Θ Ξ Γ Δ A A' σ n,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Typeˢ@n ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A ≈ A' : Type@n ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A'[σ] : Type@n.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (Typeˢ@n) σ) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A' σ : exp_sub (Type@n) σ) by mauto 2.
   assumption.
 Qed.
 
@@ -1891,7 +1891,7 @@ Hint Resolve wk_preserves_styp wk_preserves_styp_eq
 
 Corollary wf_wk_q' : forall Θ Ξ Γ Δ φ A i,
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ▹ A[φ]ʷ ⊢w wk_q φ : Γ ▹ A.
 Proof.
   intros; eapply wf_wk_q; mauto 2.
@@ -1899,7 +1899,7 @@ Qed.
 
 Corollary wf_sub_q' : forall Θ Ξ Γ Δ σ A i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢s q σ : Δ ▹ A.
 Proof.
   intros; eapply wf_sub_q; mauto 2.
@@ -1916,16 +1916,16 @@ Remove Hints wf_wk_q wf_sub_q : mctt.
     needs it to put two types at a common universe. *)
 
 Lemma wf_cumu : forall Θ Ξ Γ A i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(S i).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(S i).
 Proof.
   intros; eapply wf_exp_subtyp'; [ eassumption | ].
   apply wf_subtyp_univ; [ mauto 2 | lia ].
 Qed.
 
 Lemma wf_exp_eq_cumu : forall Θ Ξ Γ A A' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(S i).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(S i).
 Proof.
   intros; eapply wf_exp_eq_subtyp'; [ eassumption | ].
   apply wf_subtyp_univ; [ mauto 2 | lia ].
@@ -1937,7 +1937,7 @@ Hint Resolve wf_cumu wf_exp_eq_cumu : mctt.
 Lemma wf_subtyp_ge : forall {Θ Ξ Γ i j},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     i <= j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ Type@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ Typeω@j.
 Proof.
   induction 2; mauto 4.
 Qed.
@@ -1947,16 +1947,16 @@ Hint Resolve wf_subtyp_ge : mctt.
 
 Lemma lift_exp_ge : forall Θ Ξ Γ A i j,
     i <= j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j.
 Proof.
   induction 1; intros; mauto 3.
 Qed.
 
 Lemma lift_exp_eq_ge : forall Θ Ξ Γ A A' i j,
     i <= j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@j.
 Proof.
   induction 1; intros; mauto 3.
 Qed.
@@ -1995,7 +1995,7 @@ Qed.
 Hint Resolve lift_exp_uidx lift_exp_eq_uidx : mctt.
 
 (** The closed small types are types of every universe, small or large: their
-    rules give them [Typeˢ@0], which [uidx_le_least] lifts anywhere. *)
+    rules give them [Type@0], which [uidx_le_least] lifts anywhere. *)
 Lemma wf_nat_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0)); [ apply uidx_le_least | apply wf_nat; assumption ]. Qed.
 
@@ -2049,42 +2049,42 @@ Hint Resolve wf_subtyp_refl_univ : mctt.
 
 
 Corollary lift_exp_max_left : forall Θ Ξ Γ A i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(max i j).
 Proof.
   intros; eapply lift_exp_ge; [ | eassumption ]; lia.
 Qed.
 
 Corollary lift_exp_max_right : forall Θ Ξ Γ A i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(max i j).
 Proof.
   intros; eapply lift_exp_ge; [ | eassumption ]; lia.
 Qed.
 
 Corollary lift_exp_eq_max_left : forall Θ Ξ Γ A A' i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(max i j).
 Proof.
   intros; eapply lift_exp_eq_ge; [ | eassumption ]; lia.
 Qed.
 
 Corollary lift_exp_eq_max_right : forall Θ Ξ Γ A A' i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(max i j).
 Proof.
   intros; eapply lift_exp_eq_ge; [ | eassumption ]; lia.
 Qed.
 
 (** Transitivity across two different levels. *)
 Lemma exp_eq_trans_typ_max : forall {Θ Ξ Γ i i' A A' A''},
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A'' : Type@i' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A'' : Type@(max i i').
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A'' : Typeω@i' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A'' : Typeω@(max i i').
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(max i i')) by eauto using lift_exp_eq_max_left.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A'' : Type@(max i i')) by eauto using lift_exp_eq_max_right; mautosolve 4.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(max i i')) by eauto using lift_exp_eq_max_left.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A'' : Typeω@(max i i')) by eauto using lift_exp_eq_max_right; mautosolve 4.
 Qed.
 
 #[export]
@@ -2096,9 +2096,9 @@ Hint Resolve exp_eq_trans_typ_max : mctt.
     unification, which is the only way to use cumulativity in a case whose level
     variables the induction named for us. *)
 Corollary lift_exp_common : forall Θ Ξ Γ A A' i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@j ->
-    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@k /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@k.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@j ->
+    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@k /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@k.
 Proof.
   intros.
   exists (max i j); split; mauto 3 using lift_exp_max_left, lift_exp_max_right.
@@ -2111,9 +2111,9 @@ Qed.
     so it only fires where the level of the [Π]-type is still open — which is
     exactly where the strict [wf_pi] cannot fire at all. *)
 Corollary wf_pi_max : forall Θ Ξ Γ A B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@(max i j).
 Proof.
   intros.
   eapply wf_pi; [ eapply lift_exp_max_left | eapply lift_exp_max_right ]; eassumption.
@@ -2127,9 +2127,9 @@ Hint Resolve wf_pi_max : mctt.
     mentions a [Π]-type checks both components at one level, and this is what
     supplies that level when they arrive at two. *)
 Corollary lift_exp_pi_common : forall Θ Ξ Γ A B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j ->
-    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@k /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@k.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j ->
+    exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@k /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@k.
 Proof.
   intros.
   exists (max i j); split; mauto 3 using lift_exp_max_left, lift_exp_max_right.
@@ -2171,14 +2171,14 @@ Hint Resolve ctx_wf_gctx : mctt.
 Lemma ctx_lookup_wf : forall Ξ Θ Γ x A,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Γ ∋ #x : A ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * HΓ Hlk; gen HΓ; induction Hlk; intros HΓ;
     assert (Θ ⍮ Ξ ⍮ _ ⊢w ↑ : Γ) by (eapply wf_wk_shift; exact HΓ);
     [ destruct (ctx_decomp_right HΓ) as [k ?]
     | destruct (ctx_decomp_def_typ HΓ) as [k ?]
     | destruct IHHlk as [k ?]; [ mauto 2 |] ];
-    exists k; change (Type@k) with (Type@k[↑]ʷ); mauto 2.
+    exists k; change (Typeω@k) with (Typeω@k[↑]ʷ); mauto 2.
 Qed.
 
 (** The body of a definition entry is typed at its type, both weakened. *)

@@ -20,8 +20,8 @@ Section Fixed_GCtx.
 Lemma alg_subtyping_nf_sound : forall A B,
     ⊢anf A ⊆ B ->
     forall Γ i,
-      Γ ⊢ A : Type@i ->
-      Γ ⊢ B : Type@i ->
+      Γ ⊢ A : Typeω@i ->
+      Γ ⊢ B : Typeω@i ->
       Γ ⊢ A ⊆ B.
 Proof.
   induction 1; intros; subst; simpl in *.
@@ -44,7 +44,7 @@ Proof.
   - on_all_hyp: fun H => apply wf_pi_inversion' in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
-    (** [Type@i[↑]ʷ] is [Type@i], so [wf_subtyp_ge] derives [Type@i ⊆ Type@j]
+    (** [Typeω@i[↑]ʷ] is [Typeω@i], so [wf_subtyp_ge] derives [Typeω@i ⊆ Typeω@j]
         in the extended context from [⊢ Γ ▹ A] alone. *)
     apply_subtyping.
     deepexec IHalg_subtyping_nf ltac:(fun H => pose proof H).
@@ -102,8 +102,8 @@ Proof.
     mauto.
   - match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H as [W [? ?]]).
     econstructor; mauto.
-  - assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
-    assert (Γ ⊢ Type@j : Type@(S j)) by mauto.
+  - assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
+    assert (Γ ⊢ Typeω@j : Typeω@(S j)) by mauto.
     on_all_hyp: fun H => apply soundness in H.
     destruct_all.
     econstructor; mauto 2.
@@ -115,16 +115,16 @@ Proof.
         the premise [maxl M M' ≈ M'] ([read_max_lvl_le]). *)
     match goal with H : wf_exp_eq _ _ _ _ (maxl _ _) _ |- _ =>
       apply completeness in H as [W [Hn1 Hn2]] end.
-    assert (Γ ⊢ Typeˢ⟨M⟩ : Type@0) as HA%soundness by (apply wf_univ_large_tm; assumption).
-    assert (Γ ⊢ Typeˢ⟨M'⟩ : Type@0) as HB%soundness by (apply wf_univ_large_tm; assumption).
+    assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as HA%soundness by (apply wf_univ_large_tm; assumption).
+    assert (Γ ⊢ Type⟨M'⟩ : Typeω@0) as HB%soundness by (apply wf_univ_large_tm; assumption).
     destruct HA as [WA [HA _]]; destruct HB as [WB [HB _]].
     econstructor; mauto 2.
     progressive_inversion.
     functional_initial_env_rewrite_clear.
     simplify_evals.
     apply asnf_suniv; eapply read_max_lvl_le; eassumption.
-  - assert (Γ ⊢ Typeˢ⟨M⟩ : Type@0) by (apply wf_univ_large_tm; assumption).
-    assert (Γ ⊢ Type@i : Type@(S i)) by mauto.
+  - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) by (apply wf_univ_large_tm; assumption).
+    assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
     on_all_hyp: fun H => apply soundness in H.
     destruct_all.
     econstructor; mauto 2.
@@ -135,13 +135,13 @@ Proof.
     assert (⊨ Γ ▹ A ≈ Γ ▹ A') by mauto.
     (** The codomain's normal form is read back in [Γ ▹ A], but the induction
         hypothesis gives it in [Γ ▹ A'], so it is transported.  This is added
-        as a fact rather than a rewrite because [Γ ▹ A ⊢ B : Type@i] is still
+        as a fact rather than a rewrite because [Γ ▹ A ⊢ B : Typeω@i] is still
         needed below. *)
-    assert (exists W, nbe_f (Γ ▹ A) B Type@i W /\ nbe_f (Γ ▹ A') B Type@i W)
+    assert (exists W, nbe_f (Γ ▹ A) B Typeω@i W /\ nbe_f (Γ ▹ A') B Typeω@i W)
       by mauto 3 using ctxeq_nbe_eq.
     match_by_head1 (wf_exp_eq gc_deps gc_stack) ltac:(fun H => apply completeness in H).
-    assert (Γ ⊢ Π A B : Type@i) as ?%soundness by mauto.
-    assert (Γ ⊢ Π A' B' : Type@i) as ?%soundness by mauto.
+    assert (Γ ⊢ Π A B : Typeω@i) as ?%soundness by mauto.
+    assert (Γ ⊢ Π A' B' : Typeω@i) as ?%soundness by mauto.
     destruct_all.
     econstructor; mauto 2.
     progressive_inversion.
@@ -153,8 +153,8 @@ Qed.
 
 Lemma alg_subtyping_sound : forall Γ A B i,
     Γ ⊢a A ⊆ B ->
-    Γ ⊢ A : Type@i ->
-    Γ ⊢ B : Type@i ->
+    Γ ⊢ A : Typeω@i ->
+    Γ ⊢ B : Typeω@i ->
     Γ ⊢ A ⊆ B.
 Proof.
   intros. destruct H.

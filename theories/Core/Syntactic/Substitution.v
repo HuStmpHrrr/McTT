@@ -126,11 +126,11 @@ Hint Rewrite -> gunit_wk_mk gunit_sub_mk length_tele_wk length_tele_sub gm_binde
     through those introduces a [q], which is not a simplification.  These are
     stated outside the section above only to fix the argument order. *)
 
-Fact exp_wk_typ : forall φ i, Type@i[φ]ʷ = Type@i.       Proof. reflexivity. Qed.
+Fact exp_wk_typ : forall φ i, Typeω@i[φ]ʷ = Typeω@i.       Proof. reflexivity. Qed.
 Fact exp_wk_nat : forall φ, ℕ[φ]ʷ = ℕ.                   Proof. reflexivity. Qed.
 Fact exp_wk_zero : forall φ, zero[φ]ʷ = zero.            Proof. reflexivity. Qed.
 Fact exp_wk_succ : forall φ M, (succ M)[φ]ʷ = succ M[φ]ʷ. Proof. reflexivity. Qed.
-Fact exp_sub_typ : forall σ i, Type@i[σ] = Type@i.      Proof. reflexivity. Qed.
+Fact exp_sub_typ : forall σ i, Typeω@i[σ] = Typeω@i.      Proof. reflexivity. Qed.
 Fact exp_sub_nat : forall σ, ℕ[σ] = ℕ.                  Proof. reflexivity. Qed.
 Fact exp_sub_zero : forall σ, zero[σ] = zero.           Proof. reflexivity. Qed.
 Fact exp_sub_succ : forall σ M, (succ M)[σ] = succ M[σ]. Proof. reflexivity. Qed.

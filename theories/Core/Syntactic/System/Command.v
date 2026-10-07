@@ -125,7 +125,7 @@ Section Semantics.
       Θ ⍮ Ξ ⊢[ch] cc_def x b pv A (Some M) ⇝ Θ ⍮ gs_add x (gs_def b pv Ξ A M) Ξ
   (** An axiom: only its type is checked. *)
   | rc_axiom : forall ch Θ Ξ x b pv A i,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
       gs_fresh x Ξ ->
       Θ ⍮ Ξ ⊢[ch] cc_def x b pv A None ⇝ Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ
   (** The body ends on the frame it opened, the stack below as it was; that
@@ -489,7 +489,7 @@ Proof.
 Qed.
 
 Lemma add_axiom_wf : forall Θ Ξ x b pv A i,
-    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> gs_fresh x Ξ -> ⊢g Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ.
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> gs_fresh x Ξ -> ⊢g Θ ⍮ gs_add x (gs_axiom b pv Ξ A) Ξ.
 Proof.
   intros * HΞ HA Hfr.
   destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr |- *.

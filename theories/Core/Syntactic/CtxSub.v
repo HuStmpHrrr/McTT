@@ -29,15 +29,15 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
     Θ ⍮ Ξ ⊢ ⋅ ⊆ ⋅
 | ctx_sub_extend : forall Δ Γ A A' i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⊢ Δ ▹ A' ⊆ Γ ▹ A
 (** A definition refines a definition of a supertype with an equal body. *)
 | ctx_sub_extend_def : forall Δ Γ A A' M M' i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
@@ -46,8 +46,8 @@ Inductive ctx_sub (Θ : gdeps) (Ξ : gstack) : ctx -> ctx -> Prop :=
 (** Knowing a definition refines knowing only its type. *)
 | ctx_sub_forget : forall Δ Γ A A' M' i,
     Θ ⍮ Ξ ⊢ Δ ⊆ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ A' ⊆ A ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M' : A' ->
     Θ ⍮ Ξ ⊢ Δ ▸ A' ≔ M' ⊆ Γ ▹ A
@@ -150,9 +150,9 @@ Instance ctx_sub_Transitive Θ Ξ : Transitive (ctx_sub Θ Ξ).
 Proof. intros ? ? ?; eauto using ctx_sub_trans. Qed.
 
 Corollary ctx_sub_extend_eq : forall Θ Ξ Γ A A' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⊢ Γ ▹ A' ⊆ Γ ▹ A.
 Proof. intros; eapply ctx_sub_extend; mauto 3. Qed.
 

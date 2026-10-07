@@ -153,7 +153,7 @@ Section Cook.
   Import Fixed_Notations.
 
   Lemma typ_nil_rel : forall T i ρ ρ',
-      ⋅ ⊢ T : Type@i ->
+      ⋅ ⊢ T : Typeω@i ->
       exists a a', ⟦ T ⟧ ρ ↘ a /\ ⟦ T ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i.
   Proof.
     intros * HT%completeness_fundamental_exp.
@@ -174,7 +174,7 @@ Section Cook.
   (** A neutral: a closed [G] that evaluates anywhere to [⇑ a d], [a] the value
       of its type at [nil], and reads back to itself. *)
   Lemma glu_neut_nil : forall T G i d,
-      ⋅ ⊩ T : Type@i ->
+      ⋅ ⊩ T : Typeω@i ->
       (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
       (forall φ, T[φ]ʷ = T) -> (forall φ, G[φ]ʷ = G) ->
       (forall Δ, ⊢ Δ -> Δ ⊢ G : T) ->
@@ -240,7 +240,7 @@ End Cook.
 Definition glu_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
-      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Type@i)) /\
+      (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Typeω@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A)
   | ge_mod _ _ => True
   end.
@@ -320,7 +320,7 @@ Proof.
 Qed.
 
 Lemma glu_entry_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> Good glu_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Good glu_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
     glu_entry Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He.

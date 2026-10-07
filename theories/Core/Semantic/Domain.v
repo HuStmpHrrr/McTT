@@ -148,15 +148,15 @@ Arguments drop_env _ /.
     Value notations share [constr] with expression notations, so the
     spellings the two would otherwise share ([ℕ], [zero], [succ], [⊤], [⋆],
     [⊥], [Π] and the closure's [λ]) carry a superscript [ᵈ].  Notations specific to values
-    ([↦], [↯], [𝕌@n], [⇑], [⇓], [⇑!], [#ᵈ n]) follow the paper. *)
+    ([↦], [↯], [𝕌ω@n], [⇑], [⇓], [⇑!], [#ᵈ n]) follow the paper. *)
 Module Domain_Notations.
   Export Syntax_Notations.
 
   (** Declared first so that level 1 is left associative, as for [M[σ]] in
       [Syntax_Notations]. *)
   Notation "ρ '↯'" := (drop_env ρ) (at level 1, left associativity) : mctt_scope.
-  Notation "'𝕌' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌' @ n") : mctt_scope.
-  Notation "'𝕌ˢ' @ l" := (d_suniv l) (at level 1, l at level 0, format "'𝕌ˢ' @ l") : mctt_scope.
+  Notation "'𝕌ω' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌ω' @ n") : mctt_scope.
+  Notation "'𝕌' @ l" := (d_suniv l) (at level 1, l at level 0, format "'𝕌' @ l") : mctt_scope.
   Notation "'Levelᵈ'" := d_level : mctt_scope.
   Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.

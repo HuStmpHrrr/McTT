@@ -14,23 +14,23 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Lemma idempotent_nbe_ty : forall {Γ i A B C},
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     nbe_ty_f Γ A B ->
     nbe_ty_f Γ B C ->
     B = C.
 Proof.
   intros.
-  assert (Γ ⊢ A ≈ B : Type@i) as [? []]%completeness_ty by mauto 2 using soundness_ty'.
+  assert (Γ ⊢ A ≈ B : Typeω@i) as [? []]%completeness_ty by mauto 2 using soundness_ty'.
   functional_nbe_rewrite_clear.
   reflexivity.
 Qed.
 Hint Resolve idempotent_nbe_ty : mctt.
 
 Lemma adjust_exp_eq_level : forall {Γ A A' i j},
-    Γ ⊢ A ≈ A' : Type@i ->
-    Γ ⊢ A : Type@j ->
-    Γ ⊢ A' : Type@j ->
-    Γ ⊢ A ≈ A' : Type@j.
+    Γ ⊢ A ≈ A' : Typeω@i ->
+    Γ ⊢ A : Typeω@j ->
+    Γ ⊢ A' : Typeω@j ->
+    Γ ⊢ A ≈ A' : Typeω@j.
 Proof.
   intros * ?%completeness_ty ?%soundness ?%soundness.
   destruct_conjs.
@@ -44,8 +44,8 @@ Proof.
 Qed.
 
 Lemma exp_eq_pi_inversion : forall {Γ A B A' B' i},
-    Γ ⊢ Π A B ≈ Π A' B' : Type@i ->
-    Γ ⊢ A ≈ A' : Type@i /\ Γ ▹ A ⊢ B ≈ B' : Type@i.
+    Γ ⊢ Π A B ≈ Π A' B' : Typeω@i ->
+    Γ ⊢ A ≈ A' : Typeω@i /\ Γ ▹ A ⊢ B ≈ B' : Typeω@i.
 Proof.
   intros * H.
   gen_presups.
@@ -63,7 +63,7 @@ Proof.
   functional_eval_rewrite_clear.
   functional_read_rewrite_clear.
   autoinjections.
-  assert (Γ ⊢ A' ≈ A : Type@i) by mauto 3.
+  assert (Γ ⊢ A' ≈ A : Typeω@i) by mauto 3.
   (** [Γ ▹ A] refines [Γ ▹ A'] because the two heads are equal, and
       [ctxsub_exp_eq] moves the codomain's normal form across. *)
   assert (Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
@@ -96,7 +96,7 @@ Hint Resolve canonical_form_of_pi : mctt.
     level terms have the same normal form, and soundness turns that into an
     equation. *)
 Lemma exp_eq_suniv_tm_inj : forall {Γ t t' k},
-    Γ ⊢ Typeˢ⟨t⟩ ≈ Typeˢ⟨t'⟩ : Type@k ->
+    Γ ⊢ Type⟨t⟩ ≈ Type⟨t'⟩ : Typeω@k ->
     Γ ⊢ t ≈ t' : Level.
 Proof.
   intros * H.
@@ -118,15 +118,15 @@ Qed.
     large by the order on levels, small below small by the order on level
     terms, and small below large. *)
 Inductive univ_sub (Γ : ctx) : exp -> exp -> Prop :=
-| usub_large : forall i j, i <= j -> univ_sub Γ Type@i Type@j
+| usub_large : forall i j, i <= j -> univ_sub Γ Typeω@i Typeω@j
 | usub_small : forall t t',
     Γ ⊢ t : Level ->
     Γ ⊢ t' : Level ->
     Γ ⊢ maxl t t' ≈ t' : Level ->
-    univ_sub Γ Typeˢ⟨t⟩ Typeˢ⟨t'⟩
+    univ_sub Γ Type⟨t⟩ Type⟨t'⟩
 | usub_small_large : forall t j,
     Γ ⊢ t : Level ->
-    univ_sub Γ Typeˢ⟨t⟩ Type@j.
+    univ_sub Γ Type⟨t⟩ Typeω@j.
 Hint Constructors univ_sub : mctt.
 
 Lemma univ_sub_univ_term : forall {Γ U V},
@@ -138,7 +138,7 @@ Proof. intros * []; split; constructor. Qed.
     levels and the small one on level terms. *)
 Lemma univ_sub_trans_eq : forall {Γ U V U' W k},
     univ_sub Γ U V ->
-    Γ ⊢ V ≈ U' : Type@k ->
+    Γ ⊢ V ≈ U' : Typeω@k ->
     univ_sub Γ U' W ->
     univ_sub Γ U W.
 Proof.
@@ -172,9 +172,9 @@ Qed.
     to the large one it is [wf_subtyp_small_large]. *)
 Lemma subtyp_spec : forall {Γ A B},
     Γ ⊢ A ⊆ B ->
-    (exists k, Γ ⊢ A ≈ B : Type@k) \/
-      (exists U V, (exists k, Γ ⊢ A ≈ U : Type@k) /\ (exists k, Γ ⊢ V ≈ B : Type@k) /\ univ_sub Γ U V) \/
-      (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Type@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Type@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Type@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
+    (exists k, Γ ⊢ A ≈ B : Typeω@k) \/
+      (exists U V, (exists k, Γ ⊢ A ≈ U : Typeω@k) /\ (exists k, Γ ⊢ V ≈ B : Typeω@k) /\ univ_sub Γ U V) \/
+      (exists A1 A2 B1 B2, (exists k, Γ ⊢ A ≈ Π A1 A2 : Typeω@k) /\ (exists k, Γ ⊢ Π B1 B2 ≈ B : Typeω@k) /\ (exists k, Γ ⊢ A1 ≈ B1 : Typeω@k) /\ Γ ▹ B1 ⊢ A2 ⊆ B2).
 Proof.
   (** The global context is an index of [wf_subtyp], so fix it for the induction. *)
   intros * H.
@@ -200,7 +200,7 @@ Proof.
         eexists; [ eassumption | eapply exp_eq_trans_typ_max; eassumption ].
     (** A universe then a universe: the two middle universes are equal, so
         the two subtypings compose. *)
-    + assert (Γ ⊢ v ≈ u' : Type@(max _ _))
+    + assert (Γ ⊢ v ≈ u' : Typeω@(max _ _))
         by (eapply exp_eq_trans_typ_max; [ exact Hv | exact Hu' ]).
       right; left; exists u, v'; repeat split;
         [ eexists; eassumption | eexists; eassumption | eapply univ_sub_trans_eq; eassumption ].
@@ -212,9 +212,9 @@ Proof.
     + exfalso; eapply (pi_univ_term_absurd _ _ _ _ _ Hu't), exp_eq_trans_typ_max; [ exact Hb1 | exact Hu' ].
     (** A [Π] then a [Π]: the two middle [Π]s are equal, so the development
         continues with the domain and codomain of the one we keep. *)
-    + assert (Γ ⊢ Π B1 B2 ≈ Π C1 C2 : Type@(max _ _))
+    + assert (Γ ⊢ Π B1 B2 ≈ Π C1 C2 : Typeω@(max _ _))
         by (eapply exp_eq_trans_typ_max; [ exact Hb1 | exact Hc2 ]).
-      assert (Γ ⊢ B1 ≈ C1 : Type@_ /\ Γ ▹ B1 ⊢ B2 ≈ C2 : Type@_) as []
+      assert (Γ ⊢ B1 ≈ C1 : Typeω@_ /\ Γ ▹ B1 ⊢ B2 ≈ C2 : Typeω@_) as []
           by mauto 3 using exp_eq_pi_inversion.
       right; right.
       exists A1, A2, D1, D2; repeat split; [ eexists; eassumption | eexists; eassumption | |].
@@ -226,11 +226,11 @@ Proof.
         etransitivity; eapply ctxsub_subtyp; [| exact Hsub1 | | mauto 3 ]; [| mauto 3 ].
         all: eapply wf_sub_id_extend_eq'; eapply exp_eq_trans_typ_max; [ eassumption | exact Hcd2 ].
   (** The three universe rules, at their own universe terms. *)
-  - right; left; exists Type@i, Type@j;
+  - right; left; exists Typeω@i, Typeω@j;
       split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; lia ].
-  - right; left; exists Typeˢ⟨M⟩, Typeˢ⟨M'⟩;
+  - right; left; exists Type⟨M⟩, Type⟨M'⟩;
       split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; assumption ].
-  - right; left; exists Typeˢ⟨M⟩, Type@i;
+  - right; left; exists Type⟨M⟩, Typeω@i;
       split; [| split ]; [ eexists; mauto 3 | eexists; mauto 3 | constructor; assumption ].
   - right; right.
     do 4 eexists; (congruence + firstorder (mautosolve 4 + lia)).
@@ -256,8 +256,8 @@ Lemma consistency_ne_helper : forall {Θ Ξ i A A'} {W : ne},
     ne_clean W ->
     is_typ_constr A' ->
     ~ univ_term A' ->
-    Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ A ⊆ A' ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Type@i ⊢ W : A).
+    Θ ⍮ Ξ ⍮ ⋅ ▹ Typeω@i ⊢ A ⊆ A' ->
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ▹ Typeω@i ⊢ W : A).
 Proof.
   intros * Htr HWc HA' HA'eq Heq HW. gen A'.
   dependent induction HW; intros; mauto 3; try directed dependent destruction HA';
@@ -275,9 +275,9 @@ Proof.
   - destruct W; simpl in *; try contradiction; autoinjections.
     pose (GC := gc_mk Θ Ξ).
     do 2 match_by_head ctx_lookup ltac:(fun H => dependent destruction H).
-    assert (⋅ ▹ Type@i ⊢ Type@i[↑]ʷ ≈ Type@i : Type@(S i)) by mauto 3.
-    assert (rigid_typ (⋅ ▹ Type@i) A').
-    { assert (exists k, ⋅ ▹ Type@i ⊢ A' : Type@k) as [k ?] by (gen_presups; eauto).
+    assert (⋅ ▹ Typeω@i ⊢ Typeω@i[↑]ʷ ≈ Typeω@i : Typeω@(S i)) by mauto 3.
+    assert (rigid_typ (⋅ ▹ Typeω@i) A').
+    { assert (exists k, ⋅ ▹ Typeω@i ⊢ A' : Typeω@k) as [k ?] by (gen_presups; eauto).
       edestruct rigid_typ_of_is_typ_constr as [| Hu];
         [ eapply ctx_ass_of_lookup_typ | eassumption | eassumption | assumption | contradiction ]. }
     eapply (@subtyp_spec GC) in Heq as [| []]; destruct_conjs;
@@ -288,8 +288,8 @@ Proof.
       try (match goal with Hs : univ_sub _ _ ?V, Hv : _ ⊢ ?V ≈ A' : _ |- _ =>
              apply HA'eq; eapply rigid_typ_eq_univ_term;
                [ eassumption | eapply (proj2 (univ_sub_univ_term Hs)) | symmetry; exact Hv ] end).
-    assert (⋅ ▹ Type@i ⊢ Type@i ≈ Π _ _ : Type@_) by mauto 3.
-    assert (Π _ _ = Type@i) by mauto 3; (congruence + mautosolve 3).
+    assert (⋅ ▹ Typeω@i ⊢ Typeω@i ≈ Π _ _ : Typeω@_) by mauto 3.
+    assert (Π _ _ = Typeω@i) by mauto 3; (congruence + mautosolve 3).
 Qed.
 
 (** In the empty context, a neutral without a global head has no type: its
@@ -309,7 +309,7 @@ Qed.
 (** ** Canonical Forms and Consistency
 
     These hold only at a transparent global context: otherwise an axiom
-    [c : ℕ] is a closed neutral, and an axiom of type [Π Type@i #0] refutes
+    [c : ℕ] is a closed neutral, and an axiom of type [Π Typeω@i #0] refutes
     consistency.  At a transparent context a normal form has no global head
     ([nbe_clean]), and a neutral without one has no head in the empty local
     context ([no_closed_neutral]). *)
@@ -345,8 +345,8 @@ Qed.
 Hint Resolve canonical_form_of_nat : mctt.
 
 Theorem canonical_form_of_typ : forall {i M},
-    ⋅ ⊢ M : Type@i ->
-    exists W, nbe_f ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+    ⋅ ⊢ M : Typeω@i ->
+    exists W, nbe_f ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
 Proof.
   intros * [? []]%soundness.
   eexists; split; [eassumption |].
@@ -362,16 +362,16 @@ Proof.
       constructor. *)
   all: try solve [ unfold nf_univ_of; discriminate | constructor ].
   all: gen_presups;
-    match_by_head1 (wf_exp gc_deps gc_stack ⋅ Type@i) ltac:(fun H => contradict H); mautosolve 4.
+    match_by_head1 (wf_exp gc_deps gc_stack ⋅ Typeω@i) ltac:(fun H => contradict H); mautosolve 4.
 Qed.
 Hint Resolve canonical_form_of_typ : mctt.
 
 Theorem consistency : forall {i} M,
-    ~ ⋅ ⊢ M : Π Type@i #0.
+    ~ ⋅ ⊢ M : Π Typeω@i #0.
 Proof.
   intros * HW.
-  assert (exists W1 W2, nbe_f ⋅ M (Π Type@i #0) λⁿ W1 W2) as [W1 [W2 Hnbe]] by mauto 3.
-  assert (exists W, nbe_f ⋅ M (Π Type@i #0) W /\ ⋅ ⊢ M ≈ W : Π Type@i #0) as [? []] by mauto 3 using soundness.
+  assert (exists W1 W2, nbe_f ⋅ M (Π Typeω@i #0) λⁿ W1 W2) as [W1 [W2 Hnbe]] by mauto 3.
+  assert (exists W, nbe_f ⋅ M (Π Typeω@i #0) W /\ ⋅ ⊢ M ≈ W : Π Typeω@i #0) as [? []] by mauto 3 using soundness.
   gen_presups.
   functional_nbe_rewrite_clear.
   pose proof (nbe_clean _ _ Htr _ _ _ _ Hnbe) as Hc; cbn in Hc; destruct_all.
@@ -382,12 +382,12 @@ Proof.
   invert_rel_typ_body.
   match_by_head read_nf ltac:(fun H => directed dependent destruction H).
   simpl in *.
-  assert (exists B, ⋅ ▹ Type@i ⊢ M0 : B /\ ⋅ ⊢ Π Type@i B ⊆ Π Type@i #0) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
+  assert (exists B, ⋅ ▹ Typeω@i ⊢ M0 : B /\ ⋅ ⊢ Π Typeω@i B ⊆ Π Typeω@i #0) as [B [? [| [|]]%subtyp_spec]] by mauto 3;
     destruct_conjs;
     (** A [Π] is never a universe, so the universe case is impossible. *)
     try (match goal with Hs : univ_sub _ ?U _, HU : _ ⊢ Π _ _ ≈ ?U : _ |- _ =>
            exfalso; eapply (pi_univ_term_absurd _ _ _ _ _ (proj1 (univ_sub_univ_term Hs))); exact HU end);
-    try assert (Π _ _ = Type@_) by mauto 3;
+    try assert (Π _ _ = Typeω@_) by mauto 3;
     try congruence.
   - assert (_ /\ _ ⊢ B ≈ #0 : _) as [_ ?] by mauto 3 using exp_eq_pi_inversion.
     eapply consistency_ne_helper; (apply var_not_univ_term + congruence + mautosolve 3).
@@ -395,8 +395,8 @@ Proof.
     assert (_ /\ _ ⊢ _ ≈ #0 : _) as [? ?] by mauto 3 using exp_eq_pi_inversion.
     (** The middle refinement and the right-hand equation live in the context
         extended by the other domain, so both move across the refinement
-        [⋅ ▹ Type@i ⊢s Id : ⋅ ▹ _] given by the domain equation. *)
-    assert (⋅ ▹ Type@i ⊢ B ⊆ #0) by
+        [⋅ ▹ Typeω@i ⊢s Id : ⋅ ▹ _] given by the domain equation. *)
+    assert (⋅ ▹ Typeω@i ⊢ B ⊆ #0) by
       (match goal with Hs : _ ▹ _ ⊢ ?X ⊆ ?Y |- _ =>
          transitivity X; [mauto 3 |]; transitivity Y;
          [eapply ctxsub_subtyp; [| exact Hs] | eapply wf_subtyp_refl', ctxsub_exp_eq; [| eassumption]]
@@ -436,13 +436,13 @@ Proof. intros * Htr HM; exact (@canonical_form_of_nat (gc_mk Θ Ξ) Htr M HM). Q
 
 Corollary canonical_form_of_typ_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
+    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ is_typ_constr W /\ (forall V, W <> ⇑ⁿ V).
 Proof. intros * Htr HM; exact (@canonical_form_of_typ (gc_mk Θ Ξ) Htr i M HM). Qed.
 
 Corollary consistency_gctx : forall Θ Ξ i M,
     gc_transparent Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Typeω@i #0).
 Proof. intros * Htr; exact (@consistency (gc_mk Θ Ξ) Htr i M). Qed.
 
 Corollary consistency_False_gctx : forall Θ Ξ M,
@@ -571,8 +571,8 @@ Proof.
 Qed.
 
 Theorem canonical_form_of_typ_stuck : forall {i M},
-    ⋅ ⊢ M : Type@i ->
-    exists W, nbe_f ⋅ M Type@i W /\ nf_stuck (gstuck gc_deps gc_stack) W /\
+    ⋅ ⊢ M : Typeω@i ->
+    exists W, nbe_f ⋅ M Typeω@i W /\ nf_stuck (gstuck gc_deps gc_stack) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof.
   intros * [? []]%soundness.
@@ -601,8 +601,8 @@ Corollary canonical_form_of_nat_stuck_gctx : forall Θ Ξ M,
 Proof. intros * HM; exact (@canonical_form_of_nat_stuck (gc_mk Θ Ξ) M HM). Qed.
 
 Corollary canonical_form_of_typ_stuck_gctx : forall Θ Ξ i M,
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gstuck Θ Ξ) W /\
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
+    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ nf_stuck (gstuck Θ Ξ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)).
 Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) i M HM). Qed.
 
@@ -610,7 +610,7 @@ Proof. intros * HM; exact (@canonical_form_of_typ_stuck (gc_mk Θ Ξ) i M HM). Q
 
 Theorem consistency_no_axioms : forall Θ Ξ i M,
     gc_no_axioms Θ Ξ ->
-    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Type@i #0).
+    ~ (Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Π Typeω@i #0).
 Proof.
   intros * Hna HM.
   exact (consistency_gctx _ _ _ _ (gc_no_axioms_unseal_transparent _ _ Hna) (unseal_exp _ _ _ _ _ HM)).
@@ -649,11 +649,11 @@ Qed.
 
 Theorem canonical_form_of_typ_no_axioms : forall Θ Ξ i M,
     gc_no_axioms Θ Ξ ->
-    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Type@i ->
-    exists W, nbe Θ Ξ ⋅ M Type@i W /\ nf_stuck (gopaque Θ Ξ) W /\
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : Typeω@i ->
+    exists W, nbe Θ Ξ ⋅ M Typeω@i W /\ nf_stuck (gopaque Θ Ξ) W /\
       ((is_typ_constr W /\ (forall V, W <> ⇑ⁿ V)) \/ (exists V p, W = ⇑ⁿ V /\ ne_head V = Some p)) /\
-      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Type@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
-        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Type@i.
+      exists V, nbe (gds_unseal Θ) (gs_unseal Ξ) ⋅ M Typeω@i V /\ is_typ_constr V /\ (forall V', V <> ⇑ⁿ V') /\
+        gds_unseal Θ ⍮ gs_unseal Ξ ⍮ ⋅ ⊢ W ≈ V : Typeω@i.
 Proof.
   intros * Hna HM.
   pose proof (gc_no_axioms_unseal_transparent _ _ Hna) as Htr.

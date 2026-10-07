@@ -25,7 +25,7 @@ Section Fixed_GCtx.
 
 (** ** Types Below a Universe *)
 
-Lemma pi_typ_absurd : forall Γ A B i k, Γ ⊢ Π A B ≈ Type@i : Type@k -> False.
+Lemma pi_typ_absurd : forall Γ A B i k, Γ ⊢ Π A B ≈ Typeω@i : Typeω@k -> False.
 Proof.
   intros * H.
   destruct (completeness_ty H) as [W [HW1 HW2]].
@@ -40,7 +40,7 @@ Qed.
 (** Under [Γ ▸ D ≔ N], a term is equal to its instance at [N], weakened: the
     variable is equal to [N[↑]ʷ] by δ. *)
 Lemma def_ctx_inst : forall Γ D N k X Y,
-    Γ ⊢ D : Type@k -> Γ ⊢ N : D -> Γ ▸ D ≔ N ⊢ X : Y ->
+    Γ ⊢ D : Typeω@k -> Γ ⊢ N : D -> Γ ▸ D ≔ N ⊢ X : Y ->
     Γ ▸ D ≔ N ⊢ X ≈ X[Id,,N][↑]ʷ : Y.
 Proof.
   intros * HD HN HX.
@@ -87,20 +87,20 @@ Qed.
 
 (** ** Local Bindings at the Level of Types *)
 
-Lemma typ_let_inv : forall Γ oD N T i, Γ ⊢ a_let (b_def oD N) T : Type@i ->
-    exists D, let_ann oD D /\ (exists k, Γ ⊢ D : Type@k) /\ Γ ⊢ N : D /\ Γ ▸ D ≔ N ⊢ T : Type@i.
+Lemma typ_let_inv : forall Γ oD N T i, Γ ⊢ a_let (b_def oD N) T : Typeω@i ->
+    exists D, let_ann oD D /\ (exists k, Γ ⊢ D : Typeω@k) /\ Γ ⊢ N : D /\ Γ ▸ D ≔ N ⊢ T : Typeω@i.
 Proof.
   intros * H.
   destruct (wf_let_inversion H) as (D & k & C & Hann & HD & HN & HT & Hsub).
   exists D; split; [ exact Hann |].
   split; [ eauto | split; [ exact HN |] ].
-  assert (exists l, Γ ▸ D ≔ N ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
+  assert (exists l, Γ ▸ D ≔ N ⊢ C : Typeω@l) as [l HCt] by (gen_presups; eauto).
   pose proof (def_ctx_inst _ _ _ _ _ _ HD HN HCt) as HCi.
   assert (⊢ Γ ▸ D ≔ N) by mauto 3.
-  (** The body's type is below [Type@i] once instantiated; it is equal to that
+  (** The body's type is below [Typeω@i] once instantiated; it is equal to that
       instance weakened, and weakening preserves the subtyping, so the body
-      is a type of [Type@i] by subsumption. *)
-  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ⊆ Type@i[↑]ʷ)
+      is a type of [Typeω@i] by subsumption. *)
+  assert (HCw : Γ ▸ D ≔ N ⊢ C[Id,,N][↑]ʷ ⊆ Typeω@i[↑]ʷ)
     by (eapply wk_preserves_subtyp; [ exact Hsub | mauto 3 ]).
   cbn in HCw.
   eapply wf_exp_subtyp'; [ exact HT |].
@@ -108,16 +108,16 @@ Proof.
 Qed.
 
 
-Lemma typ_let_mod_inv : forall Γ U T i, Γ ⊢ ℓₘ U in T : Type@i ->
-    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U /\ Γ ▹ₘ U ⊢ T : Type@i.
+Lemma typ_let_mod_inv : forall Γ U T i, Γ ⊢ ℓₘ U in T : Typeω@i ->
+    gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U /\ Γ ▹ₘ U ⊢ T : Typeω@i.
 Proof.
   intros * H.
   destruct (wf_let_mod_inversion H) as (C & HU & HT & Hsub).
   split; [ exact HU |].
-  assert (exists l, Γ ▹ₘ U ⊢ C : Type@l) as [l HCt] by (gen_presups; eauto).
+  assert (exists l, Γ ▹ₘ U ⊢ C : Typeω@l) as [l HCt] by (gen_presups; eauto).
   pose proof (mod_ctx_inst _ _ _ _ HU HCt) as HCi.
   assert (⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU).
-  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ⊆ Type@i[↑]ʷ)
+  assert (HCw : Γ ▹ₘ U ⊢ C[Id ,,ₘ me_lit U][↑]ʷ ⊆ Typeω@i[↑]ʷ)
     by (eapply wk_preserves_subtyp; [ exact Hsub | mauto 3 ]).
   cbn in HCw.
   eapply wf_exp_subtyp'; [ exact HT |].
@@ -126,8 +126,8 @@ Qed.
 
 (** ** The [Π] a Type Is *)
 
-Lemma pi_view_wf : forall A Γ i B C, Γ ⊢ A : Type@i -> pi_view A = Some (B, C) ->
-    Γ ⊢ A ≈ Π B C : Type@i /\ Γ ⊢ B : Type@i /\ Γ ▹ B ⊢ C : Type@i.
+Lemma pi_view_wf : forall A Γ i B C, Γ ⊢ A : Typeω@i -> pi_view A = Some (B, C) ->
+    Γ ⊢ A ≈ Π B C : Typeω@i /\ Γ ⊢ B : Typeω@i /\ Γ ▹ B ⊢ C : Typeω@i.
 Proof.
   induction A; intros * HA Hp; cbn in Hp; try discriminate.
   - injection Hp as <- <-.
@@ -158,14 +158,14 @@ Qed.
     An arity is typed by its arity type: its outermost parameter is a type,
     and instantiating it with an argument of that type leaves an arity. *)
 
-Lemma tele_view_wf : forall Γ T i B T1, Γ ⊢ ctx_pi T ⊤ : Type@i -> tele_view T = Some (B, T1) ->
-    Γ ⊢ ctx_pi T ⊤ ≈ Π B (ctx_pi T1 ⊤) : Type@i /\ Γ ⊢ B : Type@i /\ Γ ▹ B ⊢ ctx_pi T1 ⊤ : Type@i.
+Lemma tele_view_wf : forall Γ T i B T1, Γ ⊢ ctx_pi T ⊤ : Typeω@i -> tele_view T = Some (B, T1) ->
+    Γ ⊢ ctx_pi T ⊤ ≈ Π B (ctx_pi T1 ⊤) : Typeω@i /\ Γ ⊢ B : Typeω@i /\ Γ ▹ B ⊢ ctx_pi T1 ⊤ : Typeω@i.
 Proof.
   intros * HT Hv; apply pi_view_wf; [ exact HT | rewrite tele_view_pi, Hv; reflexivity ].
 Qed.
 
-Lemma tele_inst_wf : forall Γ T i N T', Γ ⊢ ctx_pi T ⊤ : Type@i -> tele_inst T N = Some T' ->
-    (forall B T1, tele_view T = Some (B, T1) -> Γ ⊢ N : B) -> Γ ⊢ ctx_pi T' ⊤ : Type@i.
+Lemma tele_inst_wf : forall Γ T i N T', Γ ⊢ ctx_pi T ⊤ : Typeω@i -> tele_inst T N = Some T' ->
+    (forall B T1, tele_view T = Some (B, T1) -> Γ ⊢ N : B) -> Γ ⊢ ctx_pi T' ⊤ : Typeω@i.
 Proof.
   intros * HT Hi HN; unfold tele_inst in Hi.
   destruct (tele_view T) as [[B T1] |] eqn:Hv; [| discriminate ]; injection Hi as <-.
@@ -177,14 +177,14 @@ Qed.
 (** ** Semantic Equality of Types, Read Back *)
 
 Lemma sem_typ_eq_syn : forall Γ A A' i,
-    Γ ⊢ A : Type@i -> Γ ⊢ A' : Type@i -> Γ ⊨ A ≈ A' : Type@i -> Γ ⊢ A ≈ A' : Type@i.
+    Γ ⊢ A : Typeω@i -> Γ ⊢ A' : Typeω@i -> Γ ⊨ A ≈ A' : Typeω@i -> Γ ⊢ A ≈ A' : Typeω@i.
 Proof.
   intros * HA HA' H.
   destruct (rel_exp_under_ctx_at_initial_env H)
     as [ρ [j [elem_rel [a [m [m' [Hρ [Ha [Hm [Hm' [Htyp Hrel]]]]]]]]]]].
   destruct (per_elem_then_per_top Htyp Hrel (length Γ)) as [W [HW HW']].
-  assert (H1 : nbe_f Γ A Type@i W) by (econstructor; eassumption).
-  assert (H2 : nbe_f Γ A' Type@i W) by (econstructor; eassumption).
+  assert (H1 : nbe_f Γ A Typeω@i W) by (econstructor; eassumption).
+  assert (H2 : nbe_f Γ A' Typeω@i W) by (econstructor; eassumption).
   pose proof (soundness' HA H1); pose proof (soundness' HA' H2).
   eapply wf_exp_eq_trans; [ eassumption | eapply wf_exp_eq_sym; eassumption ].
 Qed.
@@ -427,7 +427,7 @@ Qed.
 Lemma member_ref_noargs_wf : forall Γ H ch A i M,
     me_noargs H -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H ch (mr_term A) -> ch <> nil ->
-    Γ ⊢ A : Type@i -> member_unfold_ch gc_deps gc_stack Γ H ch = Some M -> Γ ⊢ M : A ->
+    Γ ⊢ A : Typeω@i -> member_unfold_ch gc_deps gc_stack Γ H ch = Some M -> Γ ⊢ M : A ->
     Γ ⊢ member_ref H ch : A.
 Proof.
   intros * Hn HH Hm Hne HA HMe HMt.
@@ -444,7 +444,7 @@ Qed.
 
 Lemma member_ref_wf : forall Γ H ch A i,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H ch (mr_term A) -> ch <> nil -> Γ ⊢ A : Type@i ->
+    member_type gc_deps gc_stack Γ H ch (mr_term A) -> ch <> nil -> Γ ⊢ A : Typeω@i ->
     (forall R args p0, modexp_spine H = (R, args, p0) -> Γ ⊢ apps (member_ref R (p0 ++ ch)) args : A) ->
     (exists M, member_unfold_ch gc_deps gc_stack Γ H ch = Some M /\ Γ ⊢ M : A) ->
     Γ ⊢ member_ref H ch : A.
@@ -467,10 +467,10 @@ Qed.
 
 Lemma dom_agree : forall Γ H T0 B0 T1 i ch R1 B1 C1 j,
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
-    member_type gc_deps gc_stack Γ H nil (mr_mod T0) -> tele_view T0 = Some (B0, T1) -> Γ ⊢ B0 : Type@i ->
+    member_type gc_deps gc_stack Γ H nil (mr_mod T0) -> tele_view T0 = Some (B0, T1) -> Γ ⊢ B0 : Typeω@i ->
     member_type gc_deps gc_stack Γ H ch R1 -> (mres_kind R1 = mk_term -> ch <> nil) ->
-    Γ ⊢ mres_ty R1 ≈ Π B1 C1 : Type@j -> Γ ⊢ B1 : Type@j ->
-    exists k, Γ ⊢ B0 ≈ B1 : Type@k.
+    Γ ⊢ mres_ty R1 ≈ Π B1 C1 : Typeω@j -> Γ ⊢ B1 : Typeω@j ->
+    exists k, Γ ⊢ B0 ≈ B1 : Typeω@k.
 Proof.
   intros * HH Hm0 Hv HB0 Hm Hch HA1 HB1.
   destruct (wf_modexp_sem_mt _ _ HH) as [HS HHs].
@@ -520,13 +520,13 @@ Qed.
 Theorem member_wf_gen :
   (forall Γ H ch R, member_type gc_deps gc_stack Γ H ch R ->
      mod_wf Γ H -> (mres_kind R = mk_term -> ch <> nil) ->
-     (exists i, Γ ⊢ mres_ty R : Type@i) /\
+     (exists i, Γ ⊢ mres_ty R : Typeω@i) /\
      (mres_kind R = mk_term -> exists M, member_unfold_ch gc_deps gc_stack Γ H ch = Some M /\ Γ ⊢ M : mres_ty R) /\
      (mres_kind R = mk_term -> forall Q args p0, modexp_spine H = (Q, args, p0) ->
         Γ ⊢ apps (member_ref Q (p0 ++ ch)) args : mres_ty R)) /\
   (forall Γ U ch R, unit_member_type gc_deps gc_stack Γ U ch R ->
      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> (mres_kind R = mk_term -> ch <> nil) ->
-     (exists i, Γ ⊢ mres_ty R : Type@i) /\
+     (exists i, Γ ⊢ mres_ty R : Typeω@i) /\
      (mres_kind R = mk_term -> exists M, member_expansion U ch = Some M /\ Γ ⊢ M : mres_ty R)).
 Proof.
   apply member_type_both_ind.
@@ -547,7 +547,7 @@ Proof.
     pose proof (wf_gctx_closed _ _ _ HΓ) as Hc.
     destruct (gc_module_body _ _ _ _ Hm) as [Φ HΦ].
     destruct (gc_body_tele_wf _ _ Hg _ _ _ HΦ) as [HT _].
-    assert (HTt : T ⊢ ⊤ : Type@0) by (apply wf_True_large; exact HT).
+    assert (HTt : T ⊢ ⊤ : Typeω@0) by (apply wf_True_large; exact HT).
     destruct (ctx_pi_wf0 _ _ _ _ _ HTt) as [j Hj].
     assert (Hm0 : member_type gc_deps gc_stack nil (me_unit fp) ch (mr_mod T)) by (eapply mt_unit_mod; exact Hm).
     pose proof (mres_ty_scoped _ _ (proj1 (member_type_scoped _ _) _ _ _ _ Hm0 Hc I I)) as Hs; cbn in Hs.
@@ -560,7 +560,7 @@ Proof.
     destruct (IH (gc_alias_unit_wf _ _ Hg _ _ _ Hm) Hk) as ([i HA] & HMu).
     pose proof (gctx_closed_module _ _ _ _ Hc Hm) as HUs; cbn in HUs.
     pose proof (mres_ty_scoped _ _ (proj2 (member_type_scoped _ _) _ _ _ _ Hu Hc I HUs)) as HAs; cbn in HAs.
-    assert (HAΓ : Γ ⊢ mres_ty R : Type@i) by (eapply closed_weaken_exp; [ exact HΓ | exact HA | exact HAs | exact I ]).
+    assert (HAΓ : Γ ⊢ mres_ty R : Typeω@i) by (eapply closed_weaken_exp; [ exact HΓ | exact HA | exact HAs | exact I ]).
     assert (HMΓ : mres_kind R = mk_term -> exists M, member_unfold_ch gc_deps gc_stack Γ (me_unit fp) ch = Some M /\ Γ ⊢ M : mres_ty R).
     { intros e; destruct (HMu e) as (M & HMe & HMt).
       exists M; split.
@@ -654,7 +654,7 @@ Proof.
     split; [| discriminate ].
     destruct (unit_parts_of_wf _ _ _ _ HU) as (HC & _ & _).
     pose proof (ctx_app_wf_right _ _ _ _ HC) as HΔ.
-    assert (Δ ++ Γ ⊢ ⊤ : Type@0) by (apply wf_True_large; exact HΔ).
+    assert (Δ ++ Γ ⊢ ⊤ : Typeω@0) by (apply wf_True_large; exact HΔ).
     eapply ctx_pi_wf; eassumption.
   - (* a definition of a body *)
     intros Γ Δ Φ Φ' x b pv A B Hp HU _; cbn [mres_ty mres_kind].
@@ -715,13 +715,13 @@ Qed.
 Corollary member_wf :
   (forall Γ H ch R, member_type gc_deps gc_stack Γ H ch R ->
      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H -> (mres_kind R = mk_term -> ch <> nil) ->
-     (exists i, Γ ⊢ mres_ty R : Type@i) /\
+     (exists i, Γ ⊢ mres_ty R : Typeω@i) /\
      (mres_kind R = mk_term -> exists M, member_unfold_ch gc_deps gc_stack Γ H ch = Some M /\ Γ ⊢ M : mres_ty R) /\
      (mres_kind R = mk_term -> forall Q args p0, modexp_spine H = (Q, args, p0) ->
         Γ ⊢ apps (member_ref Q (p0 ++ ch)) args : mres_ty R)) /\
   (forall Γ U ch R, unit_member_type gc_deps gc_stack Γ U ch R ->
      gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U -> (mres_kind R = mk_term -> ch <> nil) ->
-     (exists i, Γ ⊢ mres_ty R : Type@i) /\
+     (exists i, Γ ⊢ mres_ty R : Typeω@i) /\
      (mres_kind R = mk_term -> exists M, member_expansion U ch = Some M /\ Γ ⊢ M : mres_ty R)).
 Proof.
   split; [ intros * Hm HH; exact (proj1 member_wf_gen _ _ _ _ Hm (or_introl HH)) | exact (proj2 member_wf_gen) ].

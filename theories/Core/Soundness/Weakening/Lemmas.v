@@ -143,14 +143,14 @@ Qed.
 
 Hint Resolve kripke_preserves_exp kripke_preserves_exp_eq kripke_preserves_subtyp : mctt.
 
-(** [Type@i] and [ℕ] are closed, so transporting them is the identity, but
+(** [Typeω@i] and [ℕ] are closed, so transporting them is the identity, but
     only up to reduction, which the [simple apply] of [eauto] does not
     perform. Compare [wk_preserves_typ] in [System.Lemmas]. *)
 
 Corollary kripke_preserves_typ : forall Γ Δ A φ i,
-    Δ ⊢ A : Type@i ->
+    Δ ⊢ A : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ : Type@i.
+    Γ ⊢ A[φ]ʷ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -158,9 +158,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq : forall Γ Δ A A' φ i,
-    Δ ⊢ A ≈ A' : Type@i ->
+    Δ ⊢ A ≈ A' : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -297,19 +297,19 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_univ_eq_typ : forall Γ Δ A φ u j,
-    Δ ⊢ A ≈ Type@j : ulvl_tm u ->
+    Δ ⊢ A ≈ Typeω@j : ulvl_tm u ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Type@j : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ Typeω@j : ulvl_tm u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type@j)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeω@j)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_suniv : forall Γ Δ A φ u t,
-    Δ ⊢ A ≈ Typeˢ⟨t⟩ : ulvl_tm u ->
+    Δ ⊢ A ≈ Type⟨t⟩ : ulvl_tm u ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Typeˢ⟨t[φ]ʷ⟩ : ulvl_tm u.
+    Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : ulvl_tm u.
 Proof.
-  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Typeˢ⟨t⟩)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
+  intros; assert (Γ ⊢ A[φ]ʷ ≈ (Type⟨t⟩)[φ]ʷ : ulvl_tm u) by mauto 2; assumption.
 Qed.
 
 Corollary kripke_preserves_univ_eq_level : forall Γ Δ A φ u,
@@ -324,14 +324,14 @@ Hint Resolve kripke_preserves_univ_eq_nat kripke_preserves_univ_eq_True
              kripke_preserves_univ_eq_False kripke_preserves_univ_eq_typ
              kripke_preserves_univ_eq_suniv kripke_preserves_univ_eq_level : mctt.
 
-(** The two shapes the gluing predicates state a type in: [A ≈ Type@j] for the
+(** The two shapes the gluing predicates state a type in: [A ≈ Typeω@j] for the
     universe and [A ≈ ℕ] for [ℕ].  Both right-hand sides are closed, so they are
     their own transports — again invisible to [eauto]. *)
 
 Corollary kripke_preserves_typ_eq_typ : forall Γ Δ A φ i j,
-    Δ ⊢ A ≈ Type@j : Type@i ->
+    Δ ⊢ A ≈ Typeω@j : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Type@j : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ Typeω@j : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_typ j) φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -339,9 +339,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq_suniv : forall Γ Δ A φ i t,
-    Δ ⊢ A ≈ Typeˢ⟨t⟩ : Type@i ->
+    Δ ⊢ A ≈ Type⟨t⟩ : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Typeˢ⟨t[φ]ʷ⟩ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ Type⟨t[φ]ʷ⟩ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_univ t) φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -351,9 +351,9 @@ Qed.
 (** The readback clause of a type in a small universe, whose equation is at the
     small universe itself. *)
 Corollary kripke_preserves_exp_eq_suniv : forall Γ Δ A A' φ t,
-    Δ ⊢ A ≈ A' : Typeˢ⟨t⟩ ->
+    Δ ⊢ A ≈ A' : Type⟨t⟩ ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeˢ⟨t[φ]ʷ⟩.
+    Γ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type⟨t[φ]ʷ⟩.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk A' φ : exp_wk (a_univ t) φ) by mauto 2.
@@ -361,9 +361,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq_nat : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ ℕ : Type@i ->
+    Δ ⊢ A ≈ ℕ : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ℕ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ ℕ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_nat φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -371,9 +371,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq_level : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ Level : Type@i ->
+    Δ ⊢ A ≈ Level : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Level : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ Level : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_level φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -381,9 +381,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq_True : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ ⊤ : Type@i ->
+    Δ ⊢ A ≈ ⊤ : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ⊤ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ ⊤ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_True φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -391,9 +391,9 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_eq_False : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ ⊥ : Type@i ->
+    Δ ⊢ A ≈ ⊥ : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ ⊥ : Type@i.
+    Γ ⊢ A[φ]ʷ ≈ ⊥ : Typeω@i.
 Proof.
   intros.
   assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_False φ : exp_wk (a_typ i) φ) by mauto 2.
@@ -414,7 +414,7 @@ Hint Resolve kripke_preserves_typ kripke_preserves_typ_eq
     a codomain in the extended context. *)
 
 Corollary kripke_q_escape : forall Γ Δ A φ i,
-    Δ ⊢ A : Type@i ->
+    Δ ⊢ A : Typeω@i ->
     Γ ⊢k φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢s (ι (wk_q φ)) : Δ ▹ A.
 Proof.
@@ -424,7 +424,7 @@ Qed.
 
 Corollary kripke_preserves_exp_q : forall Γ Δ A B M φ i,
     Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : Type@i ->
+    Δ ⊢ A : Typeω@i ->
     Γ ⊢k φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
@@ -434,10 +434,10 @@ Proof.
 Qed.
 
 Corollary kripke_preserves_typ_q : forall Γ Δ A B φ i j,
-    Δ ▹ A ⊢ B : Type@j ->
-    Δ ⊢ A : Type@i ->
+    Δ ▹ A ⊢ B : Typeω@j ->
+    Δ ⊢ A : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Type@j.
+    Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : Typeω@j.
 Proof.
   intros.
   assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (a_typ j) (wk_q φ))
@@ -454,7 +454,7 @@ Corollary kripke_preserves_univ_q : forall Γ Δ A B φ u v,
     Γ ▹ A[φ]ʷ ⊢ B[wk_q φ]ʷ : ulvl_tm v.
 Proof.
   intros * HB HA Hφ.
-  assert (Δ ⊢ A : Type@(ulvl u))
+  assert (Δ ⊢ A : Typeω@(ulvl u))
     by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
   assert (Γ ▹ A[φ]ʷ ⊢ exp_wk B (wk_q φ) : exp_wk (ulvl_tm v) (wk_q φ))
     by (eapply kripke_preserves_exp_q; eassumption).
@@ -468,7 +468,7 @@ Hint Resolve kripke_preserves_exp_q kripke_preserves_typ_q kripke_preserves_univ
     context mentions no slot at the new position. *)
 Corollary kripke_q_var_eq : forall Γ Δ A B M φ i,
     Δ ▹ A ⊢ M : B ->
-    Δ ⊢ A : Type@i ->
+    Δ ⊢ A : Typeω@i ->
     Γ ⊢k φ : Δ ->
     Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
@@ -498,7 +498,7 @@ Corollary kripke_q_var_eq_univ : forall Γ Δ A B M φ u,
     Γ ▹ A[φ]ʷ ⊢ M[ι (φ ⊙ ↑),,#0] ≈ M[wk_q φ]ʷ : B[wk_q φ]ʷ.
 Proof.
   intros * HM HA Hφ.
-  assert (Δ ⊢ A : Type@(ulvl u))
+  assert (Δ ⊢ A : Typeω@(ulvl u))
     by (eapply (lift_exp_uidx _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
   eapply kripke_q_var_eq; eassumption.
 Qed.

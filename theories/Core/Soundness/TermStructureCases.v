@@ -17,7 +17,7 @@ Section Fixed_GCtx.
 
 Lemma presup_glu_rel_exp : forall {Γ M A},
     Γ ⊩ M : A ->
-    ⊩ Γ /\ (exists i, Γ ⊩ A : Type@i).
+    ⊩ Γ /\ (exists i, Γ ⊩ A : Typeω@i).
 Proof.
   intros * [? [? []]].
   split; [eexists; eassumption |].
@@ -37,7 +37,7 @@ Hint Resolve presup_ctx_glu_rel_exp : mctt.
 
 Lemma presup_typ_glu_rel_exp : forall {Γ M A},
     Γ ⊩ M : A ->
-    exists i, Γ ⊩ A : Type@i.
+    exists i, Γ ⊩ A : Typeω@i.
 Proof.
   intros * []%presup_glu_rel_exp.
   eassumption.
@@ -96,7 +96,7 @@ Proof.
       by (eapply glu_univ_elem_resp_per_univ; [symmetry |]; eassumption).
     econstructor; mauto 3.
   - assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; mauto 3).
+    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
     eexists.
@@ -108,7 +108,7 @@ Proof.
     assert (⊢ Γ ▹ B) by mauto 3.
     assert (exists R, EF Γ ▹ B ≈ Γ ▹ B ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
     assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Type@(max j k)) by mauto 3 using lift_exp_max_left.
+    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
     destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].
@@ -124,7 +124,7 @@ Proof.
     rewrite exp_sub_shift.
     eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
   - assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; mauto 3).
+    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
     eexists.
@@ -136,7 +136,7 @@ Proof.
     assert (⊢ Γ ▸ B ≔ N) by mauto 3.
     assert (exists R, EF Γ ▸ B ≔ N ≈ Γ ▸ B ≔ N ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
     assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Type@(max j k)) by mauto 3 using lift_exp_max_left.
+    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
     destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].
@@ -153,7 +153,7 @@ Proof.
     eapply glu_univ_elem_exp_cumu_max_right; [| exact HP' |]; eassumption.
   - (** Past a module slot: as past a definition, without the tie. *)
     assert (Γ ⊩ #n : A) as Hn by mauto.
-    assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; mauto 3).
+    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; mauto 3).
     invert_glu_rel_exp Hn.
     rename x into k.
     eexists.
@@ -165,7 +165,7 @@ Proof.
     assert (⊢ Γ ▹ₘ U) by mauto 3.
     assert (exists R, EF Γ ▹ₘ U ≈ Γ ▹ₘ U ∈ per_ctx_env ↘ R) as [env_relΓB] by mauto 3.
     assert (Dom ρ ≈ ρ ∈ env_relΓB) by (eapply glu_ctx_env_per_env; eassumption).
-    assert (Γ ⊢ A : Type@(max j k)) by mauto 3 using lift_exp_max_left.
+    assert (Γ ⊢ A : Typeω@(max j k)) by mauto 3 using lift_exp_max_left.
     destruct (completeness_fundamental_typ_shift (A := A) (i := max j k)
                 ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption))
       as [a' [a'' [? [? ?]]]].

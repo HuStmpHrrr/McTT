@@ -319,7 +319,7 @@ Qed.
 (** A neutral: a closed [G] that evaluates anywhere to [⇑ a d], [a] the type at
     [nil]. *)
 Lemma rel_exp_neut_nil : forall {GC : GCtx} T G i d,
-    ⋅ ⊨ T : Type@i ->
+    ⋅ ⊨ T : Typeω@i ->
     (forall σ, T[σ] = T) -> (forall σ, G[σ] = G) ->
     per_bot d d ->
     (forall ρ a, eval_exp gc_deps gc_stack T nil a -> eval_exp gc_deps gc_stack G ρ (⇑ a d)) ->
@@ -351,7 +351,7 @@ Qed.
 Definition sem_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
-      (exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Type@i) A A) /\
+      (exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Typeω@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ A M M)
   | ge_mod _ _ => True
   end.
@@ -405,9 +405,9 @@ End Raw.
 Definition sem_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
-      (exists i, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Type@i) A A) /\
+      (exists i, @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Typeω@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A M M) /\
-      (exists A0 i, A = ctx_pi T A0 /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) T (Type@i) A0 A0)
+      (exists A0 i, A = ctx_pi T A0 /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) T (Typeω@i) A0 A0)
   | ge_mod _ U =>
       @sem_unit (gc_mk Θ2 Ξ2) ⋅ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 ⋅ U /\
       @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (me_lit U) (me_lit U)
@@ -482,7 +482,7 @@ Proof.
 Qed.
 
 Lemma sem_V_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
     sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He.

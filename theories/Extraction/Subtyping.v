@@ -23,7 +23,7 @@ Ltac subtyping_tac :=
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
 Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
-| Typeⁿ@i, Typeⁿ@j =>
+| Typeωⁿ@i, Typeωⁿ@j =>
     let*b _ := Compare_dec.le_lt_dec i j while _ in
     pureb _
 (** Two small universes, by the decidable order on canonical levels. *)
@@ -31,7 +31,7 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
     let*b _ := lvl_le_dec (c, xs) (d, ys) while _ in
     pureb _
 (** A small universe is below every large one. *)
-| univⁿ c xs, Typeⁿ@i => left _
+| univⁿ c xs, Typeωⁿ@i => left _
 | Πⁿ A B, Πⁿ A' B' =>
     let*b _ := nf_eq_dec A A' while _ in
     let*b _ := subtyping_nf_impl B B' while _ in
@@ -58,14 +58,14 @@ Ltac st_neg :=
 Ltac st_pos :=
   subst;
   lazymatch goal with
-  | |- ⊢anf Typeⁿ@_ ⊆ Typeⁿ@_ => apply asnf_univ; assumption
+  | |- ⊢anf Typeωⁿ@_ ⊆ Typeωⁿ@_ => apply asnf_univ; assumption
   (** The decided level order arrives destructed into its two components
       (the constant and the sorted atoms), so the pair is rebuilt here. *)
   | |- ⊢anf univⁿ _ _ ⊆ univⁿ _ _ =>
       apply asnf_suniv;
       first [ assumption
             | unfold lvl_le, lvl_canon; cbn; f_equal; assumption ]
-  | |- ⊢anf univⁿ _ _ ⊆ Typeⁿ@_ => apply asnf_small_large
+  | |- ⊢anf univⁿ _ _ ⊆ Typeωⁿ@_ => apply asnf_small_large
   | |- ⊢anf Πⁿ _ _ ⊆ Πⁿ _ _ => apply asnf_pi; [ first [ assumption | reflexivity ] | assumption ]
   (** Every other normal form is below itself only, by [asnf_refl], whose
       side condition holds by computation. *)

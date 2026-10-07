@@ -611,9 +611,9 @@ Proof.
 Qed.
 
 Lemma rel_typ_of_pointwise : forall {Γ B B'} {i : nat} {R},
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Γ ⊨ B : Type@i -> Γ ⊨ B' : Type@i ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ R -> Γ ⊨ B : Typeω@i -> Γ ⊨ B' : Typeω@i ->
     (forall ρ ρ', R ρ ρ' -> exists b b', ⟦ B ⟧ ρ ↘ b /\ ⟦ B' ⟧ ρ' ↘ b' /\ per_univ i b b') ->
-    Γ ⊨ B ≈ B' : Type@i.
+    Γ ⊨ B ≈ B' : Typeω@i.
 Proof.
   intros * HR HB HB' Hpt.
   eapply rel_exp_under_ctx_of_simple; [ exact HR | exact HB | exact HB' |].
@@ -624,7 +624,7 @@ Proof.
 Qed.
 
 Lemma typ_top_pi_absurd : forall {Γ A B C} {i : nat} {j},
-    Γ ⊨ A ≈ ⊤ : Type@i -> Γ ⊨ A ≈ Π B C : Type@j -> False.
+    Γ ⊨ A ≈ ⊤ : Typeω@i -> Γ ⊨ A ≈ Π B C : Typeω@j -> False.
 Proof.
   intros * H1 H2.
   destruct (rel_exp_under_ctx_simple H1) as [R [HR _]].
@@ -647,10 +647,10 @@ Definition gmod_ok : Prop :=
     argument is the domain of its arity. *)
 Lemma app_domain : gmod_ok -> forall Γ H T0 B C i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
     forall ch R1 B1 C1 j, member_type Θm Ξm Γ H ch R1 -> (mres_kind R1 = mk_term -> ch <> nil) ->
-    Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Type@j -> Γ ⊨ B1 : Type@j ->
-    Γ ⊨ B ≈ B1 : Type@(max i j).
+    Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Typeω@j -> Γ ⊨ B1 : Typeω@j ->
+    Γ ⊨ B ≈ B1 : Typeω@(max i j).
 Proof.
   intros (HGc & HGap & Hc) * [S1 _] HH Hm0 HA0 HB * Hm Hch HA1 HB1.
   destruct (rel_exp_under_ctx_simple HA0) as [R [HR _]].
@@ -683,11 +683,11 @@ Qed.
 
 Lemma app_shift : gmod_ok -> forall Γ H T0 B C N i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
     Γ ⊨ N : B ->
     forall ch R1 B1 C1 n b, member_type Θm Ξm Γ H ch R1 -> (mres_kind R1 = mk_term -> ch <> nil) ->
     pi_view (mres_ty R1) = Some (B1, C1) -> rep Γ (mres_ty R1) (S n) b ->
-    Γ ⊨ N : B1 /\ (exists l, Γ ⊨ B1 : Type@l /\ Γ ▹ B1 ⊨ C1 : Type@l /\ Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Type@l) /\
+    Γ ⊨ N : B1 /\ (exists l, Γ ⊨ B1 : Typeω@l /\ Γ ▹ B1 ⊨ C1 : Typeω@l /\ Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Typeω@l) /\
     rep Γ C1[Id,,N] n b.
 Proof.
   intros Hok * HS HH Hm0 HA0 HB HN * Hm Hch Hp Hr.
@@ -697,9 +697,9 @@ Proof.
     as ((l1 & HB1) & (l2 & HC1) & (l3 & HA1) & HN').
   rewrite exp_sub_id in HA1.
   set (l := max l1 (max l2 l3)).
-  assert (HB1' : Γ ⊨ B1 : Type@l) by (eapply rel_exp_cumu_ge; [| exact HB1 ]; lia).
-  assert (HC1' : Γ ▹ B1 ⊨ C1 : Type@l) by (eapply rel_exp_cumu_ge; [| exact HC1 ]; lia).
-  assert (HA1' : Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Type@l) by (eapply rel_exp_cumu_ge; [| exact HA1 ]; lia).
+  assert (HB1' : Γ ⊨ B1 : Typeω@l) by (eapply rel_exp_cumu_ge; [| exact HB1 ]; lia).
+  assert (HC1' : Γ ▹ B1 ⊨ C1 : Typeω@l) by (eapply rel_exp_cumu_ge; [| exact HC1 ]; lia).
+  assert (HA1' : Γ ⊨ mres_ty R1 ≈ Π B1 C1 : Typeω@l) by (eapply rel_exp_cumu_ge; [| exact HA1 ]; lia).
   pose proof (app_domain Hok _ _ _ _ _ _ HS HH Hm0 HA0 HB _ _ _ _ _ Hm Hch HA1' HB1') as HBB.
   assert (HN1 : Γ ⊨ N : B1).
   { eapply rel_exp_eq_subtyp; [ exact HN | exact HB1' |].
@@ -718,7 +718,7 @@ Qed.
     parameter makes. *)
 Lemma arity_pi : forall Γ H T B T1, sem_mt Γ H ->
     member_type Θm Ξm Γ H nil (mr_mod T) -> tele_view T = Some (B, T1) ->
-    exists l, Γ ⊨ B : Type@l /\ Γ ▹ B ⊨ ctx_pi T1 ⊤ : Type@l /\ Γ ⊨ ctx_pi T ⊤ ≈ Π B (ctx_pi T1 ⊤) : Type@l.
+    exists l, Γ ⊨ B : Typeω@l /\ Γ ▹ B ⊨ ctx_pi T1 ⊤ : Typeω@l /\ Γ ⊨ ctx_pi T ⊤ ≈ Π B (ctx_pi T1 ⊤) : Typeω@l.
 Proof.
   intros * [_ S2] Hm Hv.
   destruct (S2 nil (mr_mod T) nil (mr_mod T) Hm eq_refl Hm ltac:(discriminate)) as (m & n & Hr0 & _ & _).
@@ -735,7 +735,7 @@ Qed.
 
 Lemma sem_mt_app : gmod_ok -> forall Γ H T0 B C N i,
     sem_mt Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
     Γ ⊨ N : B -> sem_mt Γ (me_app H N).
 Proof.
   intros Hok * HS HH Hm0 HA0 HB HN.

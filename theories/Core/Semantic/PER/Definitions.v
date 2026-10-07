@@ -128,7 +128,7 @@ Section Per_univ_elem_core_def.
           (lt_j_i : uidx_lt (ul j) i),
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
-          DF 𝕌@j ≈ 𝕌@j' ∈ per_univ_elem_core ↘ elem_rel }
+          DF 𝕌ω@j ≈ 𝕌ω@j' ∈ per_univ_elem_core ↘ elem_rel }
   (** A smaller small universe, its elements the types of that universe.  Two
       small universes are the same when their levels are related ([per_lvl]),
       and the index of their elements is the realiser of the level — the only
@@ -138,7 +138,7 @@ Section Per_univ_elem_core_def.
           (lt_j_i : uidx_lt (us (dlvl_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
-          DF 𝕌ˢ@l ≈ 𝕌ˢ@l' ∈ per_univ_elem_core ↘ elem_rel }
+          DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
   (** [Level], its elements related by [per_lvl]. *)
   | per_univ_elem_core_level :
     forall (elem_rel : relation domain),
@@ -184,11 +184,11 @@ Section Per_univ_elem_core_def.
       (case_U : forall {j j' elem_rel} (lt_j_i : uidx_lt (ul j) i),
           j = j' ->
           (elem_rel <~> per_univ_rec (ul j)) ->
-          motive elem_rel 𝕌@j 𝕌@j')
+          motive elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall {l l' elem_rel} (lt_j_i : uidx_lt (us (dlvl_real l)) i),
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
-          motive elem_rel 𝕌ˢ@l 𝕌ˢ@l')
+          motive elem_rel 𝕌@l 𝕌@l')
       (case_level : forall {elem_rel},
           (elem_rel <~> per_lvl) ->
           motive elem_rel Levelᵈ Levelᵈ)
@@ -319,7 +319,7 @@ Hint Unfold per_univ : mctt.
 Lemma per_univ_elem_core_univ' : forall j i elem_rel,
     uidx_lt (ul j) i ->
     (elem_rel <~> per_univ j) ->
-    DF 𝕌@j ≈ 𝕌@j ∈ per_univ_elem i ↘ elem_rel.
+    DF 𝕌ω@j ≈ 𝕌ω@j ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
   simp per_univ_elem.
@@ -332,7 +332,7 @@ Lemma per_univ_elem_core_suniv' : forall l l' i elem_rel,
     Dom l ≈ l' ∈ per_lvl ->
     uidx_lt (us (dlvl_real l)) i ->
     (elem_rel <~> per_univ (us (dlvl_real l))) ->
-    DF 𝕌ˢ@l ≈ 𝕌ˢ@l' ∈ per_univ_elem i ↘ elem_rel.
+    DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem i ↘ elem_rel.
 Proof.
   intros.
   simp per_univ_elem.
@@ -352,14 +352,14 @@ Section Per_univ_elem_ind_def.
           uidx_lt (ul j) i -> j = j' ->
           (elem_rel <~> per_univ j) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem j ↘ R -> motive j R A B) ->
-          motive i elem_rel 𝕌@j 𝕌@j')
+          motive i elem_rel 𝕌ω@j 𝕌ω@j')
       (case_SU : forall i {l l' elem_rel},
           uidx_lt (us (dlvl_real l)) i ->
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ (us (dlvl_real l))) ->
           (forall A B R, DF A ≈ B ∈ per_univ_elem (us (dlvl_real l)) ↘ R ->
                          motive (us (dlvl_real l)) R A B) ->
-          motive i elem_rel 𝕌ˢ@l 𝕌ˢ@l')
+          motive i elem_rel 𝕌@l 𝕌@l')
       (case_L : forall i {elem_rel},
           (elem_rel <~> per_lvl) ->
           motive i elem_rel Levelᵈ Levelᵈ)
@@ -431,18 +431,18 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 | per_subtyp_univ :
   `( i <= j ->
      uidx_lt (ul j) k ->
-     Sub 𝕌@i <: 𝕌@j at k )
+     Sub 𝕌ω@i <: 𝕌ω@j at k )
 (** A small universe below a larger one: the canonical order on their levels
     ([per_sublvl]), never the order on realisers. *)
 | per_subtyp_suniv :
   `( per_sublvl l l' ->
      uidx_lt (us (dlvl_real l')) k ->
-     Sub 𝕌ˢ@l <: 𝕌ˢ@l' at k )
+     Sub 𝕌@l <: 𝕌@l' at k )
 (** A small universe below a large one. *)
 | per_subtyp_small_large :
   `( Dom l ≈ l ∈ per_lvl ->
      uidx_lt (ul j) k ->
-     Sub 𝕌ˢ@l <: 𝕌@j at k )
+     Sub 𝕌@l <: 𝕌ω@j at k )
 (** A [Π] below another with an equal domain and a smaller codomain. *)
 | per_subtyp_pi :
   `( forall (in_rel : relation domain) elem_rel elem_rel',

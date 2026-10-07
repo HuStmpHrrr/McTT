@@ -746,7 +746,7 @@ Section ModInduction.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> GoodV Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M))).
   Hypothesis Hax : forall Θ Ξ A i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> GoodV Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
   Hypothesis Halias : forall Θ Ξ pv Δ E Θ2 Ξ2,
       tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->

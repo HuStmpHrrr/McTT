@@ -70,28 +70,28 @@ Proof.
   apply IH; eapply ctx_decomp_tail; eassumption.
 Qed.
 
-(** [wf_let] at a universe, which [Type@j[Id,,M]] is by computation only. *)
+(** [wf_let] at a universe, which [Typeω@j[Id,,M]] is by computation only. *)
 Lemma wf_let_typ : forall Θ Ξ Γ oA A M B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
     let_ann oA A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Type@j[Id,,M]) as Hl by (eapply wf_let; cycle 3; [ solve_let_ann | eassumption .. ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : Typeω@j[Id,,M]) as Hl by (eapply wf_let; cycle 3; [ solve_let_ann | eassumption .. ]).
   exact Hl.
 Qed.
 
 Lemma wf_exp_eq_let_zeta_typ : forall Θ Ξ Γ oA A M B i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Type@j ->
+    Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : Typeω@j ->
     let_ann oA A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Type@j[Id,,M]) as Hl
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B ≈ B[Id,,M] : Typeω@j[Id,,M]) as Hl
       by (eapply wf_exp_eq_let_zeta; cycle 3; [ solve_let_ann | eassumption .. ]).
   exact Hl.
 Qed.
@@ -99,21 +99,21 @@ Qed.
 (** The same for a local module. *)
 Lemma wf_let_mod_typ : forall Θ Ξ Γ U B j,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Type@j[Id ,,ₘ me_lit U]) as Hl by (eapply wf_let_mod; [ eassumption | econstructor; eauto using presup_exp_ctx | eassumption ]).
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B : Typeω@j[Id ,,ₘ me_lit U]) as Hl by (eapply wf_let_mod; [ eassumption | econstructor; eauto using presup_exp_ctx | eassumption ]).
   exact Hl.
 Qed.
 
 Lemma wf_exp_eq_let_mod_zeta_typ : forall Θ Ξ Γ U B j,
     Θ ⍮ Ξ ⍮ Γ ⊢ᵘ U ≈ U ->
-    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Type@j.
+    Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ B : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Typeω@j.
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Type@j[Id ,,ₘ me_lit U]) as Hl
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ ℓₘ U in B ≈ B[Id ,,ₘ me_lit U] : Typeω@j[Id ,,ₘ me_lit U]) as Hl
       by (eapply wf_exp_eq_let_mod_zeta; [ eassumption | econstructor; eauto using presup_exp_ctx | eassumption ]).
   exact Hl.
 Qed.
@@ -123,12 +123,12 @@ Hint Resolve wf_let_typ wf_exp_eq_let_zeta_typ wf_let_mod_typ wf_exp_eq_let_mod_
 
 Lemma ctx_pi_wf : forall Θ Ξ Δ Γ A i,
     ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
-    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Type@i ->
-    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Type@j.
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i ->
+    exists j, Θ ⍮ Ξ ⍮ Γ ⊢ ctx_pi Δ A : Typeω@j.
 Proof.
   induction Δ as [| [B | B N | U] Δ IH]; intros * HΔ HA; cbn in *; [ eauto | | |];
     inversion HΔ; subst.
-  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
+  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Typeω@?k |- _ =>
       eapply IH; [ eauto using presup_exp_ctx |];
       econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
     end.
@@ -143,25 +143,25 @@ Qed.
 
 Lemma ctx_fn_wf : forall Θ Ξ Δ Γ A M i,
     ⊢ Θ ⍮ Ξ ⍮ Δ ++ Γ ->
-    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ctx_fn Δ M : ctx_pi Δ A.
 Proof.
   induction Δ as [| [B | B N | U] Δ IH]; intros * HΔ HA HM; cbn in *; [ assumption | | |];
     inversion HΔ; subst.
-  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Type@?k |- _ =>
+  - match goal with HB : _ ⍮ _ ⍮ _ ⊢ B : Typeω@?k |- _ =>
       eapply IH with (i := max k i); [ eauto using presup_exp_ctx | |];
       [ econstructor; [ eapply lift_exp_max_left; exact HB | eapply lift_exp_max_right; exact HA ]
       | econstructor; eassumption ]
     end.
   - (** The body's [let] has the type [A[Id,,N]], which is the type's [let] by
         ζ. *)
-    assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : Type@i) by (eapply wf_let_typ; cycle 3; [ solve_let_ann | eassumption .. ]).
+    assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓ B ≔ N in A : Typeω@i) by (eapply wf_let_typ; cycle 3; [ solve_let_ann | eassumption .. ]).
     eapply IH with (i := i); [ eauto using presup_exp_ctx | eassumption |].
     eapply wf_exp_subtyp'; [ eapply wf_let; cycle 3; [ solve_let_ann | eassumption .. ] |].
     eapply wf_subtyp_refl; [ eassumption |].
     eapply wf_exp_eq_sym, wf_exp_eq_let_zeta_typ; cycle 3; [ solve_let_ann | eassumption .. ].
-  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : Type@i) by (eapply wf_let_mod_typ; eassumption).
+  - assert (Θ ⍮ Ξ ⍮ Δ ++ Γ ⊢ ℓₘ U in A : Typeω@i) by (eapply wf_let_mod_typ; eassumption).
     eapply IH with (i := i); [ eauto using presup_unit_eq_ctx | eassumption |].
     eapply wf_exp_subtyp'; [ eapply wf_let_mod; eassumption |].
     eapply wf_subtyp_refl; [ eassumption |].
@@ -169,14 +169,14 @@ Proof.
 Qed.
 
 Corollary ctx_pi_wf0 : forall Θ Ξ Δ A i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
-    exists j, Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_pi Δ A : Type@j.
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    exists j, Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_pi Δ A : Typeω@j.
 Proof.
   intros; eapply ctx_pi_wf; rewrite List.app_nil_r; [ eauto using presup_exp_ctx | eassumption ].
 Qed.
 
 Corollary ctx_fn_wf0 : forall Θ Ξ Δ A M i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ ctx_fn Δ M : ctx_pi Δ A.
 Proof.
@@ -436,7 +436,7 @@ Section Induction.
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M))).
   Hypothesis Hax : forall Θ Ξ A i b pv Θ2 Ξ2,
-      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Good Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
       V Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 
   Definition GoodE (Θ : gdeps) (Ξ : gstack) (mp : qname) (E : gentry) : Prop :=
@@ -521,7 +521,7 @@ End Induction.
 Definition entry_typed (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
-      (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Type@i) /\ (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A)
+      (exists i, Θ ⍮ Ξ ⍮ ⋅ ⊢ A : Typeω@i) /\ (forall M, B = Some M -> Θ ⍮ Ξ ⍮ ⋅ ⊢ M : A)
   | ge_mod _ _ => True
   end.
 
@@ -530,7 +530,7 @@ Definition rwf (Θ : gdeps) (Ξ : gstack) : Prop := GV entry_typed Θ Ξ Θ Ξ.
 Lemma presup_exp_typ_rwf : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     rwf Θ Ξ ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   induction 1; intros HR;
     repeat match goal with IH : rwf _ _ -> _ |- _ => specialize (IH HR) end;
@@ -559,7 +559,7 @@ Proof.
 Qed.
 
 Lemma entry_typed_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i -> Good entry_typed Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> Good entry_typed Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
     entry_typed Θ2 Ξ2 (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He.
@@ -591,7 +591,7 @@ Proof. exact (global_induction entry_typed entry_typed_def entry_typed_ax). Qed.
 Corollary wf_glob_typ : forall Θ Ξ Γ p b pv A B,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     gc_resolve Θ Ξ p = Some (ge_def b pv A B) ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * HΓ Hl; destruct (gctx_rwf _ _ (ctx_wf_gctx _ _ _ HΓ) _ _ Hl) as [[i HA] _].
   exists i; eapply closed_weaken_exp;
@@ -612,7 +612,7 @@ Qed.
 
 Theorem presup_exp_typ : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * H; eapply (presup_exp_typ_rwf H), gctx_rwf, ctx_wf_gctx, presup_exp_ctx, H.
 Qed.

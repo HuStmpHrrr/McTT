@@ -22,7 +22,7 @@ Proof. inversion 1; subst; reflexivity. Qed.
 
 Lemma read_typ_suniv_of_nf : forall Θ Ξ s l W,
     Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
-    Rtyp 𝕌ˢ@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of (lvl_of_nf W).
+    Rtyp 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of (lvl_of_nf W).
 Proof.
   intros * H; apply read_typ_suniv.
   rewrite <- (read_nf_level_lvl_of_nf _ _ _ _ _ H); exact H.
@@ -31,10 +31,10 @@ Qed.
 Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
 | rnf_type :
   `( read_typ_order Θ Ξ s a ->
-    read_nf_order Θ Ξ s ⇓ 𝕌@i a )
+    read_nf_order Θ Ξ s ⇓ 𝕌ω@i a )
 | rnf_stype :
   `( read_typ_order Θ Ξ s a ->
-    read_nf_order Θ Ξ s ⇓ 𝕌ˢ@n a )
+    read_nf_order Θ Ξ s ⇓ 𝕌@n a )
 | rnf_lvl :
   `( read_la_order Θ Ξ s xs ->
      read_nf_order Θ Ξ s ⇓ Levelᵈ (lvᵈ c xs) )
@@ -106,11 +106,11 @@ with read_ne_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> Prop :=
 
 with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | rtyp_univ :
-  `( read_typ_order Θ Ξ s 𝕌@i )
+  `( read_typ_order Θ Ξ s 𝕌ω@i )
 (** A small universe reads its level back. *)
 | rtyp_suniv :
   `( read_nf_order Θ Ξ s ⇓ Levelᵈ l ->
-     read_typ_order Θ Ξ s 𝕌ˢ@l )
+     read_typ_order Θ Ξ s 𝕌@l )
 | rtyp_level :
   `( read_typ_order Θ Ξ s Levelᵈ )
 | rtyp_nat :
@@ -181,10 +181,10 @@ Variables (Θ : gdeps) (Ξ : gstack).
 
 #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
 Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
-| s, ⇓ 𝕌@i a      , H =>
+| s, ⇓ 𝕌ω@i a      , H =>
     let (A, HA) := read_typ_impl s a _ in
     exist _ A _
-| s, ⇓ 𝕌ˢ@n a     , H =>
+| s, ⇓ 𝕌@n a     , H =>
     let (A, HA) := read_typ_impl s a _ in
     exist _ A _
 | s, ⇓ Levelᵈ (lvᵈ c xs), H =>
@@ -238,8 +238,8 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     exist _ (efqⁿ M return B') _
 
       with read_typ_impl s d (H : read_typ_order Θ Ξ s d) : { m | Rtyp d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
-| s, 𝕌@i, H => exist _ Typeⁿ@i _
-| s, 𝕌ˢ@l, H =>
+| s, 𝕌ω@i, H => exist _ Typeωⁿ@i _
+| s, 𝕌@l, H =>
     let (W, HW) := read_nf_impl s ⇓ Levelᵈ l _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
 | s, Levelᵈ, H => exist _ Levelⁿ _

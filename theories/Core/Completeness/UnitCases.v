@@ -357,7 +357,7 @@ Qed.
     extended environments, at any related pair of values. *)
 Lemma hw_ass : forall Γ' Γ σ Ψ A i ρl ρr,
     hw_inv Γ' Γ σ Ψ ρl ρr ->
-    Ψ ++ Γ ⊨ A : Type@i ->
+    Ψ ++ Γ ⊨ A : Typeω@i ->
     exists R, PER.Definitions.rel_typ i A[sb_qn (List.length Ψ) σ] ρl A ρr R /\
       forall c c', R c c' -> hw_inv Γ' Γ σ (Ψ ▹ A) (ρl ↦ c) (ρr ↦ c').
 Proof.
@@ -420,7 +420,7 @@ Qed.
     invariant at any values of its two sides. *)
 Lemma hw_def : forall Γ' Γ σ Ψ A i M ρl ρr,
     hw_inv Γ' Γ σ Ψ ρl ρr ->
-    Ψ ++ Γ ⊨ A : Type@i ->
+    Ψ ++ Γ ⊨ A : Typeω@i ->
     Ψ ++ Γ ⊨ M : A ->
     exists j R, PER.Definitions.rel_typ j A[sb_qn (List.length Ψ) σ] ρl A ρr R /\
       PER.Definitions.rel_elem M[sb_qn (List.length Ψ) σ] ρl M ρr R /\
@@ -674,7 +674,7 @@ Proof. intros * HH; eapply rel_modexp_trans; [ apply rel_modexp_sym, HH | exact 
     contexts. *)
 Lemma per_ctx_env_extend_def_cross : forall {Δ Δ' A A' M M'} {i : nat} {R},
     EF Δ ≈ Δ' ∈ per_ctx_env ↘ R ->
-    Δ ⊨ A ≈ A' : Type@i ->
+    Δ ⊨ A ≈ A' : Typeω@i ->
     Δ ⊨ M ≈ M' : A ->
     exists R', EF Δ ▸ A ≔ M ≈ Δ' ▸ A' ≔ M' ∈ per_ctx_env ↘ R'.
 Proof.
@@ -713,9 +713,9 @@ Proof. intros * H; split; [| split ]; [ exact H | exact H | exact (sem_ctx_per_c
 
 Lemma rel_ext_ass : forall {Γ Ψ Ψ' A A'} {i : nat},
     Γ ⊨ˣ Ψ ≈ Ψ' ->
-    Ψ ++ Γ ⊨ A : Type@i ->
-    Ψ ++ Γ ⊨ A ≈ A' : Type@i ->
-    Ψ' ++ Γ ⊨ A' : Type@i ->
+    Ψ ++ Γ ⊨ A : Typeω@i ->
+    Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
+    Ψ' ++ Γ ⊨ A' : Typeω@i ->
     Γ ⊨ˣ Ψ ▹ A ≈ Ψ' ▹ A'.
 Proof.
   intros * (H1 & H2 & H3) HA HAA' HA'.
@@ -727,11 +727,11 @@ Qed.
 
 Lemma rel_ext_def : forall {Γ Ψ Ψ' A A' M M'} {i : nat},
     Γ ⊨ˣ Ψ ≈ Ψ' ->
-    Ψ ++ Γ ⊨ A : Type@i ->
-    Ψ ++ Γ ⊨ A ≈ A' : Type@i ->
+    Ψ ++ Γ ⊨ A : Typeω@i ->
+    Ψ ++ Γ ⊨ A ≈ A' : Typeω@i ->
     Ψ ++ Γ ⊨ M : A ->
     Ψ ++ Γ ⊨ M ≈ M' : A ->
-    Ψ' ++ Γ ⊨ A' : Type@i ->
+    Ψ' ++ Γ ⊨ A' : Typeω@i ->
     Ψ' ++ Γ ⊨ M' : A' ->
     Γ ⊨ˣ Ψ ▸ A ≔ M ≈ Ψ' ▸ A' ≔ M'.
 Proof.
@@ -1057,7 +1057,7 @@ Proof. intros * HU HB; exact (rel_exp_let_mod_cong HU HB). Qed.
 Lemma per_univ_of_instance_mod : forall {Γ U B k env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ᵘ U ≈ U ->
-    Γ ▹ₘ U ⊨ B : Type@k ->
+    Γ ▹ₘ U ⊨ B : Typeω@k ->
     forall ρ,
       Dom ρ ≈ ρ ∈ env_relΓ ->
       exists a b,

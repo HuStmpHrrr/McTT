@@ -54,19 +54,19 @@ Inductive glu_nat : ctx -> exp -> domain -> Prop :=
 Hint Constructors glu_nat : mctt.
 
 (** The gluing predicates take the ambient universe as a *term* [U].  It is
-    the large universe of the tier, [Type@(ulvl i)]: [Type@i] in the large
-    tier, and [Type@0] at every small index.  A small universe's index is the
+    the large universe of the tier, [Typeω@(ulvl i)]: [Typeω@i] in the large
+    tier, and [Typeω@0] at every small index.  A small universe's index is the
     realiser of its level, a natural number, while the universe a small type
-    is in is [Typeˢ⟨t⟩] for a level *term* [t]; no term is determined by the
+    is in is [Type⟨t⟩] for a level *term* [t]; no term is determined by the
     index, so the only ambient that every small type at that index shares is
     the large universe they are all below ([wf_subtyp_small_large]).
 
     Smallness is recorded where the level term is known: in the element
     predicate of a small universe ([suniv_glu_exp_pred']), which says that the
-    element's type is [Typeˢ⟨t⟩] for a [t] glued to the level value, and that
+    element's type is [Type⟨t⟩] for a [t] glued to the level value, and that
     the element is equal to its readback at that type.  The latter is what the
     soundness theorem, and the algorithmic layer through it, needs of a small
-    type's normal form; it cannot be recovered from the equation at [Type@0],
+    type's normal form; it cannot be recovered from the equation at [Typeω@0],
     since no rule moves an equation down a universe. *)
 Definition level_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Level : U.
 #[global] Arguments level_glu_typ_pred U Γ A/.
@@ -171,7 +171,7 @@ Variant pi_glu_exp_pred (U : typ)
 
 Hint Constructors neut_glu_exp_pred pi_glu_typ_pred pi_glu_exp_pred : mctt.
 
-Definition univ_glu_typ_pred j (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Type@j : U.
+Definition univ_glu_typ_pred j (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Typeω@j : U.
 #[global] Arguments univ_glu_typ_pred j U Γ A/.
 Transparent univ_glu_typ_pred.
 
@@ -182,12 +182,12 @@ Transparent univ_glu_typ_pred.
     terms are equal levels ([glu_lvl_escape]), so the universes they index are
     the same type. *)
 Definition suniv_glu_typ_pred (l : domain) (U : typ) : glu_typ_pred :=
-  fun Γ A => exists t, glu_lvl Γ t l /\ Γ ⊢ A ≈ Typeˢ⟨t⟩ : U.
+  fun Γ A => exists t, glu_lvl Γ t l /\ Γ ⊢ A ≈ Type⟨t⟩ : U.
 #[global] Arguments suniv_glu_typ_pred l U Γ A/.
 Transparent suniv_glu_typ_pred.
 
 (** The gluing of a type of a small universe quotes the large universe
-    [Type@0] (any small type is in it), so it does not say that the type is
+    [Typeω@0] (any small type is in it), so it does not say that the type is
     in the small universe; the element predicate of a small universe
     ([suniv_glu_exp_pred']) does: by its typing at its own type, and by its
     readback clause at that type. *)
@@ -201,7 +201,7 @@ Section Gluing.
   Definition univ_glu_exp_pred' j (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
     fun Γ A M m =>
       Γ ⊢ M : A /\
-        Γ ⊢ A ≈ Type@j : Type@(ulvl i) /\
+        Γ ⊢ A ≈ Typeω@j : Typeω@(ulvl i) /\
         Γ ⊢ M ® univ_typ m.
 
 #[global] Arguments univ_glu_exp_pred' j univ_typ Γ A M m/.
@@ -209,7 +209,7 @@ Section Gluing.
   Definition suniv_glu_exp_pred' (l : domain) (univ_typ : domain -> glu_typ_pred) : glu_exp_pred :=
     fun Γ A M m =>
       Γ ⊢ M : A /\
-        Γ ⊢ A ® suniv_glu_typ_pred l (Type@(ulvl i)) /\
+        Γ ⊢ A ® suniv_glu_typ_pred l (Typeω@(ulvl i)) /\
         Γ ⊢ M ® univ_typ m /\
         (forall Δ φ W, Δ ⊢k φ : Γ -> Rtyp m in length Δ ↘ W -> Δ ⊢ M[φ]ʷ ≈ W : A[φ]ʷ).
 
@@ -220,41 +220,41 @@ Section Gluing.
     `{ forall typ_rel
          el_rel
          (lt_j_i : uidx_lt (ul j) i),
-          typ_rel <∙> univ_glu_typ_pred j (Type@(ulvl i)) ->
+          typ_rel <∙> univ_glu_typ_pred j (Typeω@(ulvl i)) ->
           el_rel <∙> univ_glu_exp_pred' j (glu_univ_typ_rec (ul j)) ->
-          DG 𝕌@j ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+          DG 𝕌ω@j ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_suniv :
     `{ forall typ_rel
          el_rel
          (lt_j_i : uidx_lt (us (dlvl_real l)) i),
           Dom l ≈ l ∈ per_lvl ->
-          typ_rel <∙> suniv_glu_typ_pred l (Type@(ulvl i)) ->
+          typ_rel <∙> suniv_glu_typ_pred l (Typeω@(ulvl i)) ->
           el_rel <∙> suniv_glu_exp_pred' l (glu_univ_typ_rec (us (dlvl_real l))) ->
-          DG 𝕌ˢ@l ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+          DG 𝕌@l ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_level :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> level_glu_typ_pred (Type@(ulvl i)) ->
-          el_rel <∙> level_glu_exp_pred (Type@(ulvl i)) ->
+          typ_rel <∙> level_glu_typ_pred (Typeω@(ulvl i)) ->
+          el_rel <∙> level_glu_exp_pred (Typeω@(ulvl i)) ->
           DG Levelᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_nat :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> nat_glu_typ_pred (Type@(ulvl i)) ->
-          el_rel <∙> nat_glu_exp_pred (Type@(ulvl i)) ->
+          typ_rel <∙> nat_glu_typ_pred (Typeω@(ulvl i)) ->
+          el_rel <∙> nat_glu_exp_pred (Typeω@(ulvl i)) ->
           DG ℕᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_True :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> True_glu_typ_pred (Type@(ulvl i)) ->
-          el_rel <∙> True_glu_exp_pred (Type@(ulvl i)) ->
+          typ_rel <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
+          el_rel <∙> True_glu_exp_pred (Typeω@(ulvl i)) ->
           DG ⊤ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_False :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> False_glu_typ_pred (Type@(ulvl i)) ->
-          el_rel <∙> False_glu_exp_pred (Type@(ulvl i)) ->
+          typ_rel <∙> False_glu_typ_pred (Typeω@(ulvl i)) ->
+          el_rel <∙> False_glu_exp_pred (Typeω@(ulvl i)) ->
           DG ⊥ᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_pi :
@@ -270,15 +270,15 @@ Section Gluing.
               ⟦ B ⟧ ρ ↦ c ↘ b ->
               DG b ∈ glu_univ_elem_core ↘ OP _ equiv_c ↘ OEl _ equiv_c) ->
           DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-          typ_rel <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP ->
-          el_rel <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl ->
+          typ_rel <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP ->
+          el_rel <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl ->
           DG Πᵈ a ρ B ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_neut :
     `{ forall typ_rel el_rel,
           Dom b ≈ b ∈ per_bot ->
-          typ_rel <∙> neut_glu_typ_pred (Type@(ulvl i)) b ->
-          el_rel <∙> neut_glu_exp_pred (Type@(ulvl i)) b ->
+          typ_rel <∙> neut_glu_typ_pred (Typeω@(ulvl i)) b ->
+          el_rel <∙> neut_glu_exp_pred (Typeω@(ulvl i)) b ->
           DG ⇑ a b ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
 End Gluing.
 
@@ -357,7 +357,7 @@ Definition glu_univ_typ (i : uidx) (a : domain) : glu_typ_pred :=
 
 Definition univ_glu_exp_pred j (U : typ) : glu_exp_pred :=
     fun Γ A M m =>
-      Γ ⊢ M : A /\ Γ ⊢ A ≈ Type@j : U /\
+      Γ ⊢ M : A /\ Γ ⊢ A ≈ Typeω@j : U /\
         Γ ⊢ M ® glu_univ_typ j m.
 #[global] Arguments univ_glu_exp_pred j U Γ A M m/.
 
@@ -369,7 +369,7 @@ Definition suniv_glu_exp_pred (l : domain) (U : typ) : glu_exp_pred :=
 #[global] Arguments suniv_glu_exp_pred l U Γ A M m/.
 
 (** The two tiers' universe predicates, at an index: the predicates of the
-    universe [ulvl_val u], which is [𝕌@j] in the large tier and the small
+    universe [ulvl_val u], which is [𝕌ω@j] in the large tier and the small
     universe at the literal level [n] in the small one.  Stating them by cases
     lets the gluing of the universe at an index be stated once for both
     tiers ([glu_univ_elem_univ_at]). *)
@@ -393,9 +393,9 @@ Section GluingInduction.
         forall i j
           (P : glu_typ_pred) (El : glu_exp_pred) (lt_j_i : uidx_lt (ul j) i),
           (forall P' El' a, DG a ∈ glu_univ_elem j ↘ P' ↘ El' -> motive j P' El' a) ->
-          P <∙> univ_glu_typ_pred j (Type@(ulvl i)) ->
-          El <∙> univ_glu_exp_pred j (Type@(ulvl i)) ->
-          motive i P El 𝕌@j)
+          P <∙> univ_glu_typ_pred j (Typeω@(ulvl i)) ->
+          El <∙> univ_glu_exp_pred j (Typeω@(ulvl i)) ->
+          motive i P El 𝕌ω@j)
 
       (case_suniv :
         forall i l
@@ -403,32 +403,32 @@ Section GluingInduction.
           Dom l ≈ l ∈ per_lvl ->
           (forall P' El' a, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P' ↘ El' ->
                             motive (us (dlvl_real l)) P' El' a) ->
-          P <∙> suniv_glu_typ_pred l (Type@(ulvl i)) ->
-          El <∙> suniv_glu_exp_pred l (Type@(ulvl i)) ->
-          motive i P El 𝕌ˢ@l)
+          P <∙> suniv_glu_typ_pred l (Typeω@(ulvl i)) ->
+          El <∙> suniv_glu_exp_pred l (Typeω@(ulvl i)) ->
+          motive i P El 𝕌@l)
 
       (case_level :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> level_glu_typ_pred (Type@(ulvl i)) ->
-          El <∙> level_glu_exp_pred (Type@(ulvl i)) ->
+          P <∙> level_glu_typ_pred (Typeω@(ulvl i)) ->
+          El <∙> level_glu_exp_pred (Typeω@(ulvl i)) ->
           motive i P El Levelᵈ)
 
       (case_nat :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> nat_glu_typ_pred (Type@(ulvl i)) ->
-          El <∙> nat_glu_exp_pred (Type@(ulvl i)) ->
+          P <∙> nat_glu_typ_pred (Typeω@(ulvl i)) ->
+          El <∙> nat_glu_exp_pred (Typeω@(ulvl i)) ->
           motive i P El ℕᵈ)
 
       (case_True :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> True_glu_typ_pred (Type@(ulvl i)) ->
-          El <∙> True_glu_exp_pred (Type@(ulvl i)) ->
+          P <∙> True_glu_typ_pred (Typeω@(ulvl i)) ->
+          El <∙> True_glu_exp_pred (Typeω@(ulvl i)) ->
           motive i P El ⊤ᵈ)
 
       (case_False :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> False_glu_typ_pred (Type@(ulvl i)) ->
-          El <∙> False_glu_exp_pred (Type@(ulvl i)) ->
+          P <∙> False_glu_typ_pred (Typeω@(ulvl i)) ->
+          El <∙> False_glu_exp_pred (Typeω@(ulvl i)) ->
           motive i P El ⊥ᵈ)
 
       (case_pi :
@@ -446,8 +446,8 @@ Section GluingInduction.
               ⟦ B ⟧ ρ ↦ c ↘ b ->
               motive i (OP c equiv_c) (OEl c equiv_c) b) ->
           DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
-          P <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP ->
-          El <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl ->
+          P <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP ->
+          El <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl ->
           motive i P El Πᵈ a ρ B)
 
       (case_neut :
@@ -455,8 +455,8 @@ Section GluingInduction.
           (P : glu_typ_pred)
           (El : glu_exp_pred),
           Dom b ≈ b ∈ per_bot ->
-          P <∙> neut_glu_typ_pred (Type@(ulvl i)) b ->
-          El <∙> neut_glu_exp_pred (Type@(ulvl i)) b ->
+          P <∙> neut_glu_typ_pred (Typeω@(ulvl i)) b ->
+          El <∙> neut_glu_exp_pred (Typeω@(ulvl i)) b ->
           motive i P El ⇑ a b)
   .
 
@@ -502,9 +502,9 @@ Hint Constructors glu_elem_top : mctt.
 
 Variant glu_typ_top (i : uidx) a Γ A : Prop :=
 | glu_typ_top_make :
-    Γ ⊢ A : Type@(ulvl i) ->
+    Γ ⊢ A : Typeω@(ulvl i) ->
     Dom a ≈ a ∈ per_top_typ ->
-    (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Type@(ulvl i)) ->
+    (forall Δ φ A', Δ ⊢k φ : Γ -> Rtyp a in length Δ ↘ A' -> Δ ⊢ A[φ]ʷ ≈ A' : Typeω@(ulvl i)) ->
     Γ ⊢ A ® glu_typ_top i a.
 Hint Constructors glu_typ_top : mctt.
 
@@ -579,7 +579,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_cons :
   `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        Γ ⊢ A : Type@i ->
+        Γ ⊢ A : Typeω@i ->
         (forall Δ σ ρ,
             Δ ⊢s σ ® ρ ∈ TSb ->
             glu_rel_typ_with_sub i Δ A σ ρ) ->
@@ -588,7 +588,7 @@ Inductive glu_ctx_env : glu_sub_pred -> ctx -> Prop :=
 | glu_ctx_env_cons_def :
   `{ forall i TSb Sb,
         EG Γ ∈ glu_ctx_env ↘ TSb ->
-        Γ ⊢ A : Type@i ->
+        Γ ⊢ A : Typeω@i ->
         Γ ⊢ M : A ->
         (forall Δ σ ρ,
             Δ ⊢s σ ® ρ ∈ TSb ->

@@ -100,8 +100,8 @@ Proof.
 Qed.
 
 Lemma rel_typ_of_pi : forall {Γ A A'} {i : nat} {B B'},
-    Γ ⊨ A ≈ A' : Type@i ->
-    Γ ▹ A ⊨ B ≈ B' : Type@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B' : Typeω@i ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
@@ -152,9 +152,9 @@ Qed.
     related at the small index, whose element PER [per_univ (us n)] is the
     goal's. *)
 Lemma rel_exp_pi_cong_small : forall {Γ A A' n B B'},
-    Γ ⊨ A ≈ A' : Typeˢ@n ->
-    Γ ▹ A ⊨ B ≈ B' : Typeˢ@n ->
-    Γ ⊨ Π A B ≈ Π A' B' : Typeˢ@n.
+    Γ ⊨ A ≈ A' : Type@n ->
+    Γ ▹ A ⊨ B ≈ B' : Type@n ->
+    Γ ⊨ Π A B ≈ Π A' B' : Type@n.
 Proof.
   intros * HA HB.
   pose proof (rel_exp_of_univ_inversion (u := us n) HA) as [env_relΓ [HΓ _]].
@@ -173,9 +173,9 @@ Hint Resolve rel_exp_pi_cong_small : mctt.
 (** ** Π-Congruence *)
 
 Lemma rel_exp_pi_cong : forall {Γ A A'} {i : nat} {B B'},
-    Γ ⊨ A ≈ A' : Type@i ->
-    Γ ▹ A ⊨ B ≈ B' : Type@i ->
-    Γ ⊨ Π A B ≈ Π A' B' : Type@i.
+    Γ ⊨ A ≈ A' : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B' : Typeω@i ->
+    Γ ⊨ Π A B ≈ Π A' B' : Typeω@i.
 Proof.
   intros * HA HB.
   pose proof (rel_exp_of_typ_inversion HA) as [env_relΓ [HΓ _]].
@@ -198,7 +198,7 @@ Hint Resolve rel_exp_pi_cong : mctt.
     environments.  These are the three obligations of [rel_exp_under_ctx_q], and
     they land in the [per_head] that [per_pi] asks for. *)
 Lemma rel_exp_fn_cong : forall {Γ A A'} {i : nat} {B M M'},
-    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
     Γ ⊨ λ A M ≈ λ A' M' : Π A B.
 Proof.
@@ -241,8 +241,8 @@ Hint Resolve rel_exp_fn_cong : mctt.
     [⟦N⟧ρσ] and [⟦N⟧ρ'σ'].  Each link of [M]'s chain arrives in the head PER of its
     own pair of arguments, and [per_head_of_args] moves it. *)
 Lemma rel_exp_app_cong : forall {Γ A} {i : nat} {B M M' N N'},
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ M ≈ M' : Π A B ->
     Γ ⊨ N ≈ N' : A ->
     Γ ⊨ M $ N ≈ M' $ N' : B[Id ,, N].
@@ -353,8 +353,8 @@ Hint Resolve rel_exp_app_cong : mctt.
     here is [M] at the crossing pair of arguments.  Three merges then select the
     goal's four values, all in the canonical head PER. *)
 Lemma rel_exp_pi_beta : forall {Γ A} {i : nat} {B M N},
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ▹ A ⊨ M ≈ M : B ->
     Γ ⊨ N ≈ N : A ->
     Γ ⊨ (λ A M) $ N ≈ M[Id,,N] : B[Id ,, N].
@@ -484,8 +484,8 @@ Hint Resolve rel_exp_pi_beta : mctt.
     [rel_exp_under_ctx_shift_at]: the second from its chain, the third from its
     type PER. *)
 Lemma rel_exp_fn_eta : forall {Γ A} {i : nat} {B M},
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ M ≈ M : Π A B ->
     Γ ⊨ M ≈ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.

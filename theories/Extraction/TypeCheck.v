@@ -156,25 +156,25 @@ Section type_check.
   (** ** Facts the Obligations Use *)
 
 
-  Lemma nbe_order_of_typ : forall G X i, G ⊢ X : Type@i -> nbe_ty_order gc_deps gc_stack G X.
+  Lemma nbe_order_of_typ : forall G X i, G ⊢ X : Typeω@i -> nbe_ty_order gc_deps gc_stack G X.
   Proof. intros * HX; destruct (soundness_ty HX) as [W [HW _]]; eauto using nbe_ty_order_sound. Qed.
 
   (** The normal form of a type is a type, both algorithmically and
       declaratively: the two halves of [type_infer]'s postcondition. *)
   Lemma level_of_nbe : forall G X i D,
-      G ⊢ X : Type@i ->
+      G ⊢ X : Typeω@i ->
       nbe_ty_f G X D ->
-      (exists UD u, G ⊢a D ⟹ UD /\ is_univ_nf UD u) /\ (exists j, G ⊢ D : Type@j).
+      (exists UD u, G ⊢a D ⟹ UD /\ is_univ_nf UD u) /\ (exists j, G ⊢ D : Typeω@j).
   Proof.
     intros * HX HD.
-    assert (G ⊢ X ≈ D : Type@i) by (eapply soundness_ty'; eassumption).
-    assert (G ⊢ D : Type@i) by (gen_presups; eassumption).
+    assert (G ⊢ X ≈ D : Typeω@i) by (eapply soundness_ty'; eassumption).
+    assert (G ⊢ D : Typeω@i) by (gen_presups; eassumption).
     destruct (alg_type_infer_typ_complete (user_exp_nf D) ltac:(eassumption)) as [UD [u [? []]]].
     split; [ exists UD, u; split; assumption | exists i; assumption ].
   Qed.
 
   Lemma member_typ_of_alg : forall G M ch R, ⊢ G -> G ⊢aᵐ M ->
-      member_type gc_deps gc_stack G M ch R -> (mres_kind R = mk_term -> ch <> nil) -> exists i, G ⊢ mres_ty R : Type@i.
+      member_type gc_deps gc_stack G M ch R -> (mres_kind R = mk_term -> ch <> nil) -> exists i, G ⊢ mres_ty R : Typeω@i.
   Proof.
     intros * HG HM Hm Hch.
     exact (proj1 (proj1 member_wf _ _ _ _ Hm (alg_modexp_sound HM HG) Hch)).
@@ -183,7 +183,7 @@ Section type_check.
   (** The universe is lifted to the large one of its tier before the
       substitution: a small universe's level may mention the module. *)
   Lemma let_mod_typ_of_alg : forall G U C (u : unf), ⊢ G -> G ⊢aᵘ U -> G ▹ₘ U ⊢a C ⟹ univ_nf u ->
-      G ⊢ C[Id ,,ₘ me_lit U] : Type@(unf_large u).
+      G ⊢ C[Id ,,ₘ me_lit U] : Typeω@(unf_large u).
   Proof.
     intros * HG HU HC.
     pose proof (alg_unit_sound HU HG) as HU'.
@@ -234,8 +234,8 @@ Section type_check.
   Inductive type_check_order : exp -> Prop :=
   | tc_ti : forall {A}, type_infer_order A -> type_check_order A
   with type_infer_order : exp -> Prop :=
-  | ti_typ : forall {i}, type_infer_order Type@i
-  | ti_suniv : forall {M}, type_check_order M -> type_infer_order Typeˢ⟨M⟩
+  | ti_typ : forall {i}, type_infer_order Typeω@i
+  | ti_suniv : forall {M}, type_check_order M -> type_infer_order Type⟨M⟩
   | ti_level : type_infer_order Level
   | ti_llit : forall {n}, type_infer_order 𝕃@n
   | ti_succl : forall {M}, type_check_order M -> type_infer_order (succl M)
@@ -412,7 +412,7 @@ Section type_check.
   Ltac clear_defs :=
     repeat lazymatch goal with
       | H: (forall (G : ctx) (A : typ),
-               (exists i : nat, G ⊢ A : Type@i) ->
+               (exists i : nat, G ⊢ A : Typeω@i) ->
                forall M : typ,
                  type_check_order M ->
                  ({ G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A }))
@@ -420,7 +420,7 @@ Section type_check.
           clear H
       | H: (let H := fixproto in
             forall (G : ctx) (A : typ),
-              (exists i : nat, G ⊢ A : Type@i) -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
+              (exists i : nat, G ⊢ A : Typeω@i) -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
         |- _ =>
           clear H
       | H: (let H := fixproto in
@@ -430,7 +430,7 @@ Section type_check.
                 type_infer_order M ->
                 ({ B : nf | G ⊢a M ⟹ B /\
                     (exists UA u, G ⊢a (nf_to_exp B) ⟹ UA /\ is_univ_nf UA u) /\
-                    (exists i : nat, G ⊢ (nf_to_exp B) : Type@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
+                    (exists i : nat, G ⊢ (nf_to_exp B) : Typeω@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
         |- _ =>
           clear H
       | H: (forall G : ctx,
@@ -439,7 +439,7 @@ Section type_check.
                  type_infer_order M ->
                  ({ B : nf | G ⊢a M ⟹ B /\
                      (exists UA u, G ⊢a (nf_to_exp B) ⟹ UA /\ is_univ_nf UA u) /\
-                     (exists i : nat, G ⊢ (nf_to_exp B) : Type@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
+                     (exists i : nat, G ⊢ (nf_to_exp B) : Typeω@i) } + { forall C : nf, ~ G ⊢a M ⟹ C }))
         |- _ =>
           clear H
     end.
@@ -455,7 +455,7 @@ Section type_check.
           assert (G ⊢ A : unf_tm u)
             by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
                 eapply alg_type_infer_sound; eassumption);
-          assert (G ⊢ A : Type@(unf_large u))
+          assert (G ⊢ A : Typeω@(unf_large u))
             by (apply wf_exp_unf_large; eassumption);
           mauto 2 end
     | |- ⊢ ?G ▸ ?A ≔ ?M =>
@@ -463,7 +463,7 @@ Section type_check.
           assert (G ⊢ A : unf_tm u)
             by (rewrite <- nf_to_exp_univ_nf, <- (is_univ_nf_eq _ _ Hu);
                 eapply alg_type_infer_sound; eassumption);
-          assert (G ⊢ A : Type@(unf_large u))
+          assert (G ⊢ A : Typeω@(unf_large u))
             by (apply wf_exp_unf_large; eassumption);
           assert (G ⊢ M : A) by (eapply alg_type_check_sound; eassumption); mauto 2 end
     | |- ⊢ ?G ▹ₘ ?U =>
@@ -485,7 +485,7 @@ Section type_check.
       a literal level. *)
   Lemma wf_unf_max_tm : forall G (u v : unf),
       ⊢ G ->
-      exists j, G ⊢ unf_tm (unf_max u v) : Type@j.
+      exists j, G ⊢ unf_tm (unf_max u v) : Typeω@j.
   Proof.
     intros * HG.
     destruct u as [[c []] | i], v as [[d []] | j]; cbn [unf_max unf_tm fst snd lvl_lit la_to_list lvl_exp_of];
@@ -521,7 +521,7 @@ Section type_check.
       end.
 
   (** A type whose inferred universe is [univ_nf u] is a type of [unf_tm u],
-      and so of the large universe [Type@(unf_large u)] the index lives at. *)
+      and so of the large universe [Typeω@(unf_large u)] the index lives at. *)
   #[local]
   Ltac typ_of_infer := saturate_infer_univ.
 
@@ -541,7 +541,7 @@ Section type_check.
   #[local]
   Ltac typ_sound :=
     match goal with
-    | |- exists i, ?G ⊢ ?A : Type@i =>
+    | |- exists i, ?G ⊢ ?A : Typeω@i =>
         saturate_infer_univ;
         match goal with H : wf_exp gc_deps gc_stack G (a_typ ?k) A |- _ => exists k; exact H end
     end.
@@ -569,7 +569,7 @@ Section type_check.
         let mq := fresh "mq" in let Hp := fresh "Hp" in let Hr := fresh "Hr" in
         let i := fresh "i" in let HA := fresh "HA" in
         destruct (glob_lookup_some _ _ _ _ _ Hs Eg) as (mq & ? & ? & ? & Hp & Hr);
-        assert (exists i, G ⊢ A : Type@i) as [i HA] by (eapply wf_glob_typ; [ exact HG | exact Hr ]);
+        assert (exists i, G ⊢ A : Typeω@i) as [i HA] by (eapply wf_glob_typ; [ exact HG | exact Hr ]);
         first [ solve [ eapply nbe_order_of_typ; exact HA ]
               | split; [ eapply ati_mem_glob; eassumption | eapply level_of_nbe; eassumption ] ]
     end.
@@ -709,7 +709,7 @@ Section type_check.
     clear_defs; destruct_conjs;
     solve [ match goal with
                 | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M nil (mr_mod ?T),
-                  Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Type@i =>
+                  Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Typeω@i =>
                     let i := fresh "i" in
                     let HA := fresh "HA" in
                     destruct (member_typ_of_alg _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [i HA];
@@ -798,14 +798,14 @@ Section type_check.
           | match goal with Hn : me_noargs ?M, Hs : modexp_spine ?M = _ |- _ =>
               pose proof (me_noargs_spine _ _ _ _ Hn Hs); discriminate end ].
 
-  (** The postcondition of a closed small type: it infers [Typeˢⁿ@0], and
-      [Typeˢ@0] is a type, so it infers a universe. *)
+  (** The postcondition of a closed small type: it infers [Typeⁿ@0], and
+      [Type@0] is a type, so it infers a universe. *)
   #[local]
   Ltac ob_post_suniv0 :=
     clear_defs;
     match goal with HG : ⊢ ?G |- _ =>
       let HT := fresh "HT" in
-      assert (HT : G ⊢ Typeˢ@0 : Type@0) by (apply wf_univ_large; exact HG);
+      assert (HT : G ⊢ Type@0 : Typeω@0) by (apply wf_univ_large; exact HG);
       split; [ mauto 3 | ];
       destruct (alg_type_infer_typ_complete (user_exp_all _) HT) as (? & ? & ? & ? & _);
       split; [ do 2 eexists; split; eassumption | eexists; exact HT ]
@@ -826,8 +826,8 @@ Section type_check.
     clear_defs; destruct_conjs;
     match goal with
     | |- subtyping_order ?G ?A ?B =>
-        enough (exists i, G ⊢ A : Type@i) as [? [? []]%soundness_ty];
-        only 1: enough (exists j, G ⊢ B : Type@j) as [? [? []]%soundness_ty];
+        enough (exists i, G ⊢ A : Typeω@i) as [? [? []]%soundness_ty];
+        only 1: enough (exists j, G ⊢ B : Typeω@j) as [? [? []]%soundness_ty];
         only 1: solve [econstructor; eauto 3 using nbe_ty_order_sound];
         solve [ typ_of_infer | mauto 4 using alg_type_infer_sound ]
     end.
@@ -843,7 +843,7 @@ Section type_check.
     match goal with HM : ?G ⊢a ?M ⟸ Level, HG : ⊢ ?G |- _ =>
       assert (G ⊢ M : Level)
         by (eapply alg_type_check_sound; [ exact HM | exact HG | exact (wf_level_large (i := 0) HG) ]);
-      assert (G ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3)
+      assert (G ⊢ Type⟨succl M⟩ : Typeω@0) by (apply wf_univ_large_tm; mauto 3)
     end.
 
   #[local]
@@ -855,21 +855,21 @@ Section type_check.
     split; [ eapply ati_suniv; eassumption | eapply level_of_nbe; eassumption ].
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations type_check G A (HA : (exists i, G ⊢ A : Type@i)) M (H : type_check_order M) : { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
+  Equations type_check G A (HA : (exists i, G ⊢ A : Typeω@i)) M (H : type_check_order M) : { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
   | G, A, HA, M, H =>
       let*o->b (exist _ B _) := type_infer G _ M _ while _ in
       let*b _ := subtyping_impl G (B : nf) A _ while _ in
       pureb _
-  with type_infer G (HG : ⊢ G) M (H : type_infer_order M) : { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Type@i) } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
+  with type_infer G (HG : ⊢ G) M (H : type_infer_order M) : { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
   | G, HG, M, H with M => {
-    | Type@j =>
-        pureo (exist _ Typeⁿ@(S j) _)
-    | Typeˢ⟨M'⟩ =>
+    | Typeω@j =>
+        pureo (exist _ Typeωⁿ@(S j) _)
+    | Type⟨M'⟩ =>
         let*b->o _ := type_check G Level _ M' _ while _ in
-        let (W, _) := nbe_ty_impl gc_deps gc_stack G Typeˢ⟨succl M'⟩ _ in
+        let (W, _) := nbe_ty_impl gc_deps gc_stack G Type⟨succl M'⟩ _ in
         pureo (exist _ W _)
     | Level =>
-        pureo (exist _ Typeˢⁿ@0 _)
+        pureo (exist _ Typeⁿ@0 _)
     | 𝕃@m =>
         pureo (exist _ Levelⁿ _)
     | succl M' =>
@@ -880,7 +880,7 @@ Section type_check.
         let*b->o _ := type_check G Level _ N' _ while _ in
         pureo (exist _ Levelⁿ _)
     | ℕ =>
-        pureo (exist _ Typeˢⁿ@0 _)
+        pureo (exist _ Typeⁿ@0 _)
     | zero =>
         pureo (exist _ ℕⁿ _)
     | succ M' =>
@@ -895,11 +895,11 @@ Section type_check.
         let (A'', _) := nbe_ty_impl gc_deps gc_stack G A'[Id,,M'] _ in
         pureo (exist _ A'' _)
     | ⊤ =>
-        pureo (exist _ Typeˢⁿ@0 _)
+        pureo (exist _ Typeⁿ@0 _)
     | ⋆ =>
         pureo (exist _ ⊤ⁿ _)
     | ⊥ =>
-        pureo (exist _ Typeˢⁿ@0 _)
+        pureo (exist _ Typeⁿ@0 _)
     | efq M' return A' =>
         let*b->o _ := type_check G ⊥ _ M' _ while _ in
         let*o (exist _ UA' _) := type_infer (G ▹ ⊥) _ A' _ while _ in
@@ -1026,93 +1026,93 @@ Section type_check.
   Obligation 4. (* subtyping_order G B A *) ob_subord. Qed.
   Obligation 5. (* False *) ob_neg. Qed.
   Obligation 6. (* G ⊢a M ⟸ A *) ob_check. Qed.
-  Obligation 7. (* G ⊢a Type@j ⟹ Typeⁿ@(S j) /\ (exists (UA : nf) (u : unf),... *) ob_post. Qed.
-  Obligation 8. (* exists i : nat, G ⊢ Level : Type@i *) ob_typ_closed. Qed.
+  Obligation 7. (* G ⊢a Typeω@j ⟹ Typeωⁿ@(S j) /\ (exists (UA : nf) (u : unf),... *) ob_post. Qed.
+  Obligation 8. (* exists i : nat, G ⊢ Level : Typeω@i *) ob_typ_closed. Qed.
   Obligation 9. (* type_check_order M' *) ob_ord. Defined.
   Obligation 10. (* False *) ob_neg. Qed.
-  Obligation 11. (* nbe_ty_order gc_deps gc_stack G Typeˢ⟨succl M'⟩ *) ob_suniv_nbe. Qed.
-  Obligation 12. (* G ⊢a Typeˢ⟨M'⟩ ⟹ W /\ (exists (UA : nf) (u : unf), G ⊢a W... *) ob_suniv_post. Qed.
-  Obligation 13. (* G ⊢a Level ⟹ Typeˢⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢... *) ob_post_suniv0. Qed.
+  Obligation 11. (* nbe_ty_order gc_deps gc_stack G Type⟨succl M'⟩ *) ob_suniv_nbe. Qed.
+  Obligation 12. (* G ⊢a Type⟨M'⟩ ⟹ W /\ (exists (UA : nf) (u : unf), G ⊢a W... *) ob_suniv_post. Qed.
+  Obligation 13. (* G ⊢a Level ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢... *) ob_post_suniv0. Qed.
   Obligation 14. (* G ⊢a 𝕃@m ⟹ Levelⁿ /\ (exists (UA : nf) (u : unf), G ⊢a Le... *) ob_post. Qed.
-  Obligation 15. (* exists i : nat, G ⊢ Level : Type@i *) ob_typ_closed. Qed.
+  Obligation 15. (* exists i : nat, G ⊢ Level : Typeω@i *) ob_typ_closed. Qed.
   Obligation 16. (* type_check_order M' *) ob_ord. Defined.
   Obligation 17. (* False *) ob_neg. Qed.
   Obligation 18. (* G ⊢a succl M' ⟹ Levelⁿ /\ (exists (UA : nf) (u : unf), G ... *) ob_post. Qed.
-  Obligation 19. (* exists i : nat, G ⊢ Level : Type@i *) ob_typ_closed. Qed.
+  Obligation 19. (* exists i : nat, G ⊢ Level : Typeω@i *) ob_typ_closed. Qed.
   Obligation 20. (* type_check_order M' *) ob_ord. Defined.
   Obligation 21. (* False *) ob_neg. Qed.
-  Obligation 22. (* exists i : nat, G ⊢ Level : Type@i *) ob_typ_closed. Qed.
+  Obligation 22. (* exists i : nat, G ⊢ Level : Typeω@i *) ob_typ_closed. Qed.
   Obligation 23. (* type_check_order N' *) ob_ord. Defined.
   Obligation 24. (* False *) ob_neg. Qed.
   Obligation 25. (* G ⊢a maxl M' N' ⟹ Levelⁿ /\ (exists (UA : nf) (u : unf), ... *) ob_post. Qed.
-  Obligation 26. (* G ⊢a ℕ ⟹ Typeˢⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
+  Obligation 26. (* G ⊢a ℕ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
   Obligation 27. (* G ⊢a zero ⟹ ℕⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ℕ ⟹ U... *) ob_post. Qed.
-  Obligation 28. (* exists i : nat, G ⊢ ℕ : Type@i *) ob_typ_closed. Qed.
+  Obligation 28. (* exists i : nat, G ⊢ ℕ : Typeω@i *) ob_typ_closed. Qed.
   Obligation 29. (* type_check_order M' *) ob_ord. Defined.
   Obligation 30. (* False *) ob_neg. Qed.
   Obligation 31. (* G ⊢a succ M' ⟹ ℕⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ℕ ... *) ob_post. Qed.
-  Obligation 32. (* exists i : nat, G ⊢ ℕ : Type@i *) ob_typ_closed. Qed.
+  Obligation 32. (* exists i : nat, G ⊢ ℕ : Typeω@i *) ob_typ_closed. Qed.
   Obligation 33. (* type_check_order M' *) ob_ord. Defined.
   Obligation 34. (* False *) ob_neg. Qed.
   Obligation 35. (* ⊢ G ▹ ℕ *) ob_ctx_ext. Qed.
   Obligation 36. (* type_infer_order A' *) ob_ord. Defined.
   Obligation 37. (* False *) ob_neg. Qed.
   Obligation 38. (* False *) ob_neg. Qed.
-  Obligation 39. (* exists j, G ⊢ A'[Id,,zero] : Type@j *)
+  Obligation 39. (* exists j, G ⊢ A'[Id,,zero] : Typeω@j *)
     clear_defs.
-    assert (G ⊢ ℕ : Type@0) by mauto 2.
+    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ℕ) by mauto 2.
     saturate_infer_univ.
     assert (G ⊢s Id,,zero : G ▹ ℕ) as Hσ by mauto 3.
     (** [sub_preserves_exp] is applied by hand: unifying its conclusion would
-        require solving [?A[?σ] ≟ Type@i], which [eapply] cannot do. *)
-    match goal with HA' : G ▹ ℕ ⊢ A' : Type@?k |- _ =>
+        require solving [?A[?σ] ≟ Typeω@i], which [eapply] cannot do. *)
+    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
       exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
   Qed.
   Obligation 40. (* type_check_order MZ *) ob_ord. Defined.
   Obligation 41. (* False *) ob_neg. Qed.
-  Obligation 42. (* exists j, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Type@j *)
+  Obligation 42. (* exists j, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Typeω@j *)
     clear_defs.
-    assert (G ⊢ ℕ : Type@0) by mauto 2.
+    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ℕ) by mauto 2.
     saturate_infer_univ.
     assert (⊢ G ▹ ℕ ▹ A') by mauto 2.
     assert (G ▹ ℕ ▹ A' ⊢s Wk ⨟ Wk,,succ #1 : G ▹ ℕ) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ℕ ⊢ A' : Type@?k |- _ =>
+    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
       exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
   Qed.
   Obligation 43. (* type_check_order MS *) ob_ord. Defined.
   Obligation 44. (* False *) ob_neg. Qed.
   Obligation 45. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
     clear_defs.
-    enough (exists i, G ⊢ A'[Id,,M'] : Type@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
+    enough (exists i, G ⊢ A'[Id,,M'] : Typeω@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
         by eauto 3 using nbe_ty_order_sound.
-    assert (G ⊢ ℕ : Type@0) by mauto 2.
+    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ℕ) by mauto 2.
     saturate_infer_univ.
     assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ℕ ⊢ A' : Type@?k |- _ =>
+    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
       exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
   Qed.
   Obligation 46. (* G ⊢a rec M' … end ⟹ A'', and [A''] is a type *)
     clear_defs.
     split; [ mauto 3 |].
-    assert (G ⊢ ℕ : Type@0) by mauto 2.
+    assert (G ⊢ ℕ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ℕ) by mauto 2.
     saturate_infer_univ.
     assert (G ⊢ M' : ℕ) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ℕ) as Hσ by mauto 3.
     (** The motive at the scrutinee is a type, so its normal form is one too,
         and [level_of_nbe] gives both halves at once. *)
-    match goal with HA' : G ▹ ℕ ⊢ A' : Type@?k |- _ =>
-      assert (G ⊢ A'[Id,,M'] : Type@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
+    match goal with HA' : G ▹ ℕ ⊢ A' : Typeω@?k |- _ =>
+      assert (G ⊢ A'[Id,,M'] : Typeω@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
     eapply level_of_nbe; eassumption.
   Qed.
-  Obligation 47. (* G ⊢a ⊤ ⟹ Typeˢⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
+  Obligation 47. (* G ⊢a ⊤ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
   Obligation 48. (* G ⊢a ⋆ ⟹ ⊤ⁿ /\ (exists (UA : nf) (u : unf), G ⊢a ⊤ ⟹ UA /... *) ob_post. Qed.
-  Obligation 49. (* G ⊢a ⊥ ⟹ Typeˢⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
-  Obligation 50. (* exists i : nat, G ⊢ ⊥ : Type@i *) ob_typ_closed. Qed.
+  Obligation 49. (* G ⊢a ⊥ ⟹ Typeⁿ@0 /\ (exists (UA : nf) (u : unf), G ⊢a Ty... *) ob_post_suniv0. Qed.
+  Obligation 50. (* exists i : nat, G ⊢ ⊥ : Typeω@i *) ob_typ_closed. Qed.
   Obligation 51. (* type_check_order M' *) ob_ord. Defined.
   Obligation 52. (* False *) ob_neg. Qed.
   Obligation 53. (* ⊢ G ▹ ⊥ *) ob_ctx_ext. Qed.
@@ -1121,26 +1121,26 @@ Section type_check.
   Obligation 56. (* False *) ob_neg. Qed.
   Obligation 57. (* nbe_ty_order gc_deps gc_stack G A'[Id,,M'] *)
     clear_defs.
-    enough (exists i, G ⊢ A'[Id,,M'] : Type@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
+    enough (exists i, G ⊢ A'[Id,,M'] : Typeω@i) as [? [? []]%wf_exp_eq_refl%completeness_ty]
         by eauto 3 using nbe_ty_order_sound.
-    assert (G ⊢ ⊥ : Type@0) by mauto 2.
+    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ⊥) by mauto 2.
     saturate_infer_univ.
     assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ⊥ ⊢ A' : Type@?k |- _ =>
+    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
       exists k; exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
   Qed.
   Obligation 58. (* G ⊢a efq M' return A' ⟹ A'', and [A''] is a type *)
     clear_defs.
     split; [ mauto 3 |].
-    assert (G ⊢ ⊥ : Type@0) by mauto 2.
+    assert (G ⊢ ⊥ : Typeω@0) by mauto 2.
     assert (⊢ G ▹ ⊥) by mauto 2.
     saturate_infer_univ.
     assert (G ⊢ M' : ⊥) by mauto 3 using alg_type_check_sound.
     assert (G ⊢s Id,,M' : G ▹ ⊥) as Hσ by mauto 3.
-    match goal with HA' : G ▹ ⊥ ⊢ A' : Type@?k |- _ =>
-      assert (G ⊢ A'[Id,,M'] : Type@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
+    match goal with HA' : G ▹ ⊥ ⊢ A' : Typeω@?k |- _ =>
+      assert (G ⊢ A'[Id,,M'] : Typeω@k) by exact (sub_preserves_exp _ _ _ _ _ _ _ HA' Hσ) end.
     eapply level_of_nbe; eassumption.
   Qed.
   Obligation 59. Qed.
@@ -1167,8 +1167,8 @@ Section type_check.
   Obligation 75. (* nbe_ty_order gc_deps gc_stack G A' *)
     clear_defs.
     saturate_infer_univ.
-    match goal with H : G ⊢ A' : Type@?k |- _ =>
-      assert (G ⊢ A' : Type@k) as [? []]%soundness_ty by exact H end.
+    match goal with H : G ⊢ A' : Typeω@?k |- _ =>
+      assert (G ⊢ A' : Typeω@k) as [? []]%soundness_ty by exact H end.
     mauto 3 using nbe_ty_order_sound.
   Qed.
   Obligation 76. (* G ⊢a λ A' M' ⟹ Πⁿ A'' B', and [Π A'' B'] is a type *)
@@ -1177,10 +1177,10 @@ Section type_check.
     (** The annotation's normal form is a type at the same level, and the
         body's type is one in the context of that normal form. *)
     assert (⊢ G ▹ A') by mauto 2.
-    assert (G ⊢ A' ≈ A'' : Type@(unf_large u)) by (eapply soundness_ty'; mauto 4 using alg_type_check_sound).
-    assert (G ⊢ A'' : Type@(unf_large u)) by (gen_presups; mauto 2).
+    assert (G ⊢ A' ≈ A'' : Typeω@(unf_large u)) by (eapply soundness_ty'; mauto 4 using alg_type_check_sound).
+    assert (G ⊢ A'' : Typeω@(unf_large u)) by (gen_presups; mauto 2).
     assert (⊢ G ▹ (A'' : exp)) by mauto 2.
-    assert (exists l, G ▹ (A'' : exp) ⊢ B' : Type@l) as [l HB'] by (eexists; mauto 4).
+    assert (exists l, G ▹ (A'' : exp) ⊢ B' : Typeω@l) as [l HB'] by (eexists; mauto 4).
     split; [ mauto 3 | split ].
     - destruct (alg_type_infer_typ_complete (user_exp_nf A'') ltac:(eassumption)) as [UA'' [w [? []]]].
       destruct (alg_type_infer_typ_complete (user_exp_nf B') HB') as [UB' [w' [? []]]].
@@ -1195,7 +1195,7 @@ Section type_check.
   Obligation 78. (* type_infer_order M' *) ob_ord. Defined.
   Obligation 79. (* False *) ob_neg. Qed.
   Obligation 80. (* False *) ob_neg. Qed.
-  Obligation 81. (* exists i : nat, G ⊢ A : Type@i *)
+  Obligation 81. (* exists i : nat, G ⊢ A : Typeω@i *)
     clear_defs.
     functional_alg_type_infer_rewrite_clear.
     progressive_inversion.
@@ -1211,7 +1211,7 @@ Section type_check.
     assert (G ⊢ N' : A) by mauto 3 using alg_type_check_sound.
     (** The codomain is a type at the large level of the index [ati_pi]'s side
         condition gives it. *)
-    assert (G ⊢ s[Id,,N'] : Type@(unf_large v)) as [? []]%soundness_ty by mauto 3.
+    assert (G ⊢ s[Id,,N'] : Typeω@(unf_large v)) as [? []]%soundness_ty by mauto 3.
     mauto 3 using nbe_ty_order_sound.
   Qed.
   Obligation 85. (* G ⊢a M' $ N' ⟹ B' /\ (B' is a type) *)
@@ -1221,19 +1221,19 @@ Section type_check.
     split; [mauto 3 |].
     saturate_infer_univ.
     assert (G ⊢ N' : A) by mauto 3 using alg_type_check_sound.
-    assert (G ⊢ s[Id,,N'] : Type@(unf_large v)) by mauto 3.
+    assert (G ⊢ s[Id,,N'] : Typeω@(unf_large v)) by mauto 3.
     eapply level_of_nbe; eassumption.
   Qed.
   Obligation 86. Qed.
   Obligation 87. (* False *) ob_neg. Qed.
   Obligation 88. (* nbe_ty_order gc_deps gc_stack G A *)
     clear_defs.
-    assert (exists i, G ⊢ A : Type@i) as [? [? []]%soundness_ty] by mauto 3.
+    assert (exists i, G ⊢ A : Typeω@i) as [? [? []]%soundness_ty] by mauto 3.
     mauto 3 using nbe_ty_order_sound.
   Qed.
   Obligation 89. (* G ⊢a #x ⟹ A', and [A'] is a type *)
     clear_defs.
-    assert (exists i, G ⊢ A : Type@i) as [i] by mauto 3.
+    assert (exists i, G ⊢ A : Typeω@i) as [i] by mauto 3.
     split; [ mauto 3 |].
     eapply level_of_nbe; eassumption.
   Qed.
@@ -1241,7 +1241,7 @@ Section type_check.
   Obligation 91. (* type_infer_order A' *) ob_ord. Defined.
   Obligation 92. (* False *) ob_neg. Qed.
   Obligation 93. (* False *) ob_neg. Qed.
-  Obligation 94. (* exists i, G ⊢ A' : Type@i *)
+  Obligation 94. (* exists i, G ⊢ A' : Typeω@i *)
     clear_defs.
     eexists; saturate_infer_univ; eassumption.
   Qed.
@@ -1257,7 +1257,7 @@ Section type_check.
     assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
     assert (⊢ G ▸ A' ≔ M') by mauto 3.
     assert (G ⊢s Id,,M' : G ▸ A' ≔ M') by (eapply wf_sub_single_def; eassumption).
-    assert (exists k, G ⊢ C[Id,,M'] : Type@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
+    assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
   Obligation 101. (* G ⊢a ℓ A' ≔ M' in B' ⟹ D /\ (D is a type) *)
@@ -1268,7 +1268,7 @@ Section type_check.
     assert (G ⊢ M' : A') by mauto 3 using alg_type_check_sound.
     assert (⊢ G ▸ A' ≔ M') by mauto 3.
     assert (G ⊢s Id,,M' : G ▸ A' ≔ M') by (eapply wf_sub_single_def; eassumption).
-    assert (exists k, G ⊢ C[Id,,M'] : Type@k) as [? ?] by (eexists; mauto 3).
+    assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
   Obligation 102. Qed.
@@ -1288,7 +1288,7 @@ Section type_check.
     assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
     assert (⊢ G ▸ A ≔ M') by mauto 3.
     assert (G ⊢s Id,,M' : G ▸ A ≔ M') by (eapply wf_sub_single_def; eassumption).
-    assert (exists k, G ⊢ C[Id,,M'] : Type@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
+    assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? [? []]%soundness_ty] by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
   Obligation 109. (* G ⊢a ℓ ≔ M' in B' ⟹ D /\ (D is a type) *)
@@ -1298,7 +1298,7 @@ Section type_check.
     assert (G ⊢ M' : A) by mauto 3 using alg_type_infer_sound.
     assert (⊢ G ▸ A ≔ M') by mauto 3.
     assert (G ⊢s Id,,M' : G ▸ A ≔ M') by (eapply wf_sub_single_def; eassumption).
-    assert (exists k, G ⊢ C[Id,,M'] : Type@k) as [? ?] by (eexists; mauto 3).
+    assert (exists k, G ⊢ C[Id,,M'] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
   Obligation 110. (* unit_order U *) ob_ord. Defined.
@@ -1311,7 +1311,7 @@ Section type_check.
     assert (gc_deps ⍮ gc_stack ⍮ G ⊢ᵘ U ≈ U) by (eapply alg_unit_sound; eassumption).
     assert (⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; eassumption).
     assert (G ⊢s Id ,,ₘ me_lit U : G ▹ₘ U) by (eapply wf_sub_single_mod; eassumption).
-    assert (exists k, G ⊢ C[Id ,,ₘ me_lit U] : Type@k) as [? [? []]%soundness_ty]
+    assert (exists k, G ⊢ C[Id ,,ₘ me_lit U] : Typeω@k) as [? [? []]%soundness_ty]
         by (eexists; mauto 3).
     mauto 3 using nbe_ty_order_sound.
   Qed.
@@ -1321,7 +1321,7 @@ Section type_check.
     assert (gc_deps ⍮ gc_stack ⍮ G ⊢ᵘ U ≈ U) by (eapply alg_unit_sound; eassumption).
     assert (⊢ G ▹ₘ U) by (apply wf_ctx_extend_mod; eassumption).
     assert (G ⊢s Id ,,ₘ me_lit U : G ▹ₘ U) by (eapply wf_sub_single_mod; eassumption).
-    assert (exists k, G ⊢ C[Id ,,ₘ me_lit U] : Type@k) as [? ?] by (eexists; mauto 3).
+    assert (exists k, G ⊢ C[Id ,,ₘ me_lit U] : Typeω@k) as [? ?] by (eexists; mauto 3).
     eapply level_of_nbe; eassumption.
   Qed.
   Obligation 117. (* nbe_ty_order gc_deps gc_stack G A *) mo_1. Qed.
@@ -1352,7 +1352,7 @@ Section type_check.
   Obligation 142. (* type_infer_order A *) ob_ord. Defined.
   Obligation 143. (* False *) mo_10. Qed.
   Obligation 144. (* False *) mo_10. Qed.
-  Obligation 145. (* exists i0 : nat, Ψ ++ G ⊢ A : Type@i0 *) mo_14. Qed.
+  Obligation 145. (* exists i0 : nat, Ψ ++ G ⊢ A : Typeω@i0 *) mo_14. Qed.
   Obligation 146. (* type_check_order M *) ob_ord. Defined.
   Obligation 147. (* False *) mo_10. Qed.
   Obligation 148. (* G ⊢aˣ Ψ ▸ A ≔ M *) ob_check. Qed.
@@ -1395,7 +1395,7 @@ Section type_check.
   Obligation 185. (* gc_deps ⍮ gc_stack ⍮ G ⊢ᵐ M ≈ M *) mo_18. Qed.
   Obligation 186. (* False *) mo_10. Qed.
   Obligation 187. (* False *) mo_21. Qed.
-  Obligation 188. (* exists i : nat, G ⊢ B : Type@i *) mo_22. Qed.
+  Obligation 188. (* exists i : nat, G ⊢ B : Typeω@i *) mo_22. Qed.
   Obligation 189. (* type_check_order N *) ob_ord. Defined.
   Obligation 190. (* False *) mo_21. Qed.
   Obligation 191. (* G ⊢aᵐ me_app M N *) ob_check. Qed.
@@ -1421,7 +1421,7 @@ End type_check.
 #[local]
 Hint Resolve type_check_order_soundness type_infer_order_soundness : mctt.
 
-Lemma type_check_complete' : forall G M A (HA : exists i, G ⊢ A : Type@i),
+Lemma type_check_complete' : forall G M A (HA : exists i, G ⊢ A : Typeω@i),
     G ⊢a M ⟸ A ->
     exists H H', type_check G A HA M H = left H'.
 Proof.
@@ -1488,13 +1488,13 @@ Section type_check_closed.
   .
   Next Obligation. (* False *)
     assert (⊢ ⋅) by mauto 2.
-    assert (exists i, ⋅ ⊢ A : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (exists i, ⋅ ⊢ A : Typeω@i) as [i] by (gen_presups; eauto 2).
     assert (exists UA' w, ⋅ ⊢a A ⟹ UA' /\ is_univ_nf UA' w /\ unf_le w (unl i)) as [UA' [w [? []]]]
         by mauto 3.
     firstorder.
   Qed.
   Next Obligation. (* False *)
-    assert (exists i, ⋅ ⊢ A : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (exists i, ⋅ ⊢ A : Typeω@i) as [i] by (gen_presups; eauto 2).
     assert (exists UA' w, ⋅ ⊢a A ⟹ UA' /\ is_univ_nf UA' w /\ unf_le w (unl i)) as [UA' [w [? []]]]
         by mauto 3.
     functional_alg_type_infer_rewrite_clear.
@@ -1502,7 +1502,7 @@ Section type_check_closed.
     | HN : forall u : unf, ~ is_univ_nf ?UA u, Hu : is_univ_nf ?UA ?w |- _ => exact (HN w Hu)
     end.
   Qed.
-  Next Obligation. (* exists i, ⋅ ⊢ A : Type@i *)
+  Next Obligation. (* exists i, ⋅ ⊢ A : Typeω@i *)
     assert (⊢ ⋅) by mauto 2.
     match goal with Hu : is_univ_nf ?UA u |- _ => rewrite (is_univ_nf_eq _ _ Hu) in * end.
     assert (⋅ ⊢ A : (univ_nf u : exp)) by mauto 2 using alg_type_infer_sound.
@@ -1514,7 +1514,7 @@ Section type_check_closed.
     match goal with Hu : is_univ_nf ?UA u |- _ => rewrite (is_univ_nf_eq _ _ Hu) in * end.
     assert (⋅ ⊢ A : (univ_nf u : exp)) by mauto 3 using alg_type_infer_sound.
     rewrite nf_to_exp_univ_nf in *.
-    assert (⋅ ⊢ A : Type@(unf_large u))
+    assert (⋅ ⊢ A : Typeω@(unf_large u))
       by (apply wf_exp_unf_large; eassumption).
     mauto 3 using alg_type_check_sound.
   Qed.

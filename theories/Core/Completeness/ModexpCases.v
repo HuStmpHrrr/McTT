@@ -227,7 +227,7 @@ Qed.
 
 Lemma rel_me_app : gmod_ok Θm Ξm -> forall Γ H H' N N' T0 B C i,
     Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H nil (mr_mod T0) ->
-    Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Type@i -> Γ ⊨ N ≈ N' : B ->
+    Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ N ≈ N' : B ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N'.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm0 HA0 HN.
@@ -274,7 +274,7 @@ Proof. intros * H; inversion H; subst; [ assumption | match goal with Hn : eval_
     of the left one. *)
 Lemma rel_exp_mem_gen : gmod_ok Θm Ξm -> forall Γ H H' x A i,
     Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H (x :: nil) (mr_term A) ->
-    Γ ⊨ A : Type@i -> Γ ⊨ a_mem H x ≈ a_mem H' x : A.
+    Γ ⊨ A : Typeω@i -> Γ ⊨ a_mem H x ≈ a_mem H' x : A.
 Proof.
   intros Hok * [R [HR HH]] [S1 _] Hm HA.
   pose proof Hok as (HGc & HGap & Hc).
@@ -540,7 +540,7 @@ Qed.
 
 Lemma sem_unf_app : gmod_ok Θm Ξm -> forall Γ H T0 B C N i,
     sem_mt Θm Ξm Γ H -> sem_unf Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Type@i -> Γ ⊨ B : Type@i ->
+    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
     Γ ⊨ N : B -> sem_unf Γ (me_app H N).
 Proof.
   intros Hok * HS HU HH Hm0 HA0 HB HN ch A' M' Hm HM R ρ HR Hρ h' Hh' a i' E d Ha HE Hd Hdd.
@@ -599,7 +599,7 @@ Qed.
 (** δ: a member of a module expression without arguments is its δ-reduct. *)
 Lemma rel_exp_mem_delta : gmod_ok Θm Ξm -> forall Γ H x A i M,
     Γ ⊨ᵐ H ≈ H -> sem_mt Θm Ξm Γ H -> sem_unf Γ H -> member_type Θm Ξm Γ H (x :: nil) (mr_term A) ->
-    Γ ⊨ A : Type@i -> member_unfold Θm Ξm Γ H x = Some M -> Γ ⊨ M : A ->
+    Γ ⊨ A : Typeω@i -> member_unfold Θm Ξm Γ H x = Some M -> Γ ⊨ M : A ->
     Γ ⊨ a_mem H x ≈ M : A.
 Proof.
   intros Hok * HH HS HU Hm HA HM HMv.

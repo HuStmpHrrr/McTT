@@ -71,7 +71,7 @@ Lemma glu_rel_exp_mem : forall {Γ H x A} {i : nat} {M},
     me_noargs H ->
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     member_type gc_deps gc_stack Γ H (x :: nil) (mr_term A) ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     member_unfold gc_deps gc_stack Γ H x = Some M ->
     Γ ⊢ M : A ->
     Γ ⊩ M : A ->
@@ -86,7 +86,7 @@ Lemma glu_rel_exp_mem_app : forall {Γ H R args pre} {i : nat} {A x},
     gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H ->
     modexp_spine H = (R, args, pre) ->
     args <> nil ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A ->
     Γ ⊩ apps (member_ref R (pre ++ x :: nil)) args : A ->
     Γ ⊩ a_mem H x : A.

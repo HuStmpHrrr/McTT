@@ -218,7 +218,7 @@ let app_obj :=
   | ~ = atomic_obj; <>
 
 let atomic_obj :=
-  (* A universe is written [Type@] its size.  A small size is a level: the
+  (* A universe is written [Typeω@] its size.  A small size is a level: the
      literal [<n>l], a bare numeral [n] for it, or any level term in braces.
      A large size is [ω] (also spelled [omega]), [ω+n] in braces, or its
      shorthand [<n>L].  Only the braced forms admit a [+]. *)

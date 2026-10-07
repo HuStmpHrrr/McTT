@@ -27,7 +27,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** [Level] is a type at every index: the rule gives it the small universe
-    [Typeˢ@0], and the other forms are instances. *)
+    [Type@0], and the other forms are instances. *)
 Lemma glu_rel_exp_level_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
     Γ ⊩ Level : ulvl_tm u.
@@ -49,12 +49,12 @@ Qed.
 
 Lemma glu_rel_exp_level : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ Level : Type@i.
+    Γ ⊩ Level : Typeω@i.
 Proof. intros; apply (glu_rel_exp_level_univ (u := ul i)); assumption. Qed.
 
 Lemma glu_rel_exp_level_small : forall {Γ},
     ⊩ Γ ->
-    Γ ⊩ Level : Typeˢ@0.
+    Γ ⊩ Level : Type@0.
 Proof. intros; apply (glu_rel_exp_level_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_level : mctt.
@@ -85,7 +85,7 @@ Lemma glu_rel_exp_clean_inversion_level : forall {Γ Sb M},
     glu_rel_exp_clean_inversion2_result 0 Sb M Level.
 Proof.
   intros * ? HM.
-  assert (Γ ⊩ Level : Type@0) by mauto 3.
+  assert (Γ ⊩ Level : Typeω@0) by mauto 3.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 
@@ -234,14 +234,14 @@ Hint Resolve glu_rel_exp_maxl : mctt.
 
 (** ** The Small Universe at a Level Term
 
-    [Typeˢ⟨M⟩] is an element of [Typeˢ⟨succl M⟩], glued at the large index [0].
+    [Type⟨M⟩] is an element of [Type⟨succl M⟩], glued at the large index [0].
     Its type-level gluing takes the level term [succl M], and its element
     gluing the level term [M], both glued to their values by the level case
     above; its readback is the universe at the readback of [M], which the
     congruence rule of universes equates with it. *)
 Lemma glu_rel_exp_univ_lvl : forall {Γ M},
     Γ ⊩ M : Level ->
-    Γ ⊩ Typeˢ⟨M⟩ : Typeˢ⟨succl M⟩.
+    Γ ⊩ Type⟨M⟩ : Type⟨succl M⟩.
 Proof.
   intros * HM.
   assert (⊩ Γ) as [Sb HSb] by mauto 3.

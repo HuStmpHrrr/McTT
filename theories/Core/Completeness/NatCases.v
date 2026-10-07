@@ -60,7 +60,7 @@ Hint Resolve per_univ_elem_nat : mctt.
     dependent elimination at one level, the motive's. *)
 Lemma rel_exp_of_typ_nat : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ℕ ≈ ℕ : Type@i.
+    Γ ⊨ ℕ ≈ ℕ : Typeω@i.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
@@ -76,7 +76,7 @@ Hint Resolve rel_exp_of_typ_nat : mctt.
 
 Corollary valid_exp_nat : forall {Γ} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ ℕ : Type@i.
+    Γ ⊨ ℕ : Typeω@i.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -102,7 +102,7 @@ Qed.
 
 Corollary valid_exp_nat_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ℕ : Typeˢ@n.
+    Γ ⊨ ℕ : Type@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -380,7 +380,7 @@ Hint Resolve rel_exp_succ_cong : mctt.
     eliminator's rules. *)
 Lemma rel_exp_var1_nat : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊨ #1 ≈ #1 : ℕ.
 Proof.
   intros * HΓ HA.
@@ -417,7 +417,7 @@ Qed.
 
 Lemma rel_sub_nat_step : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊨s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ.
 Proof.
   intros * HΓ HA.
@@ -452,7 +452,7 @@ Rel w z := per_head A A (⟦σ⟧ρ ↦ w) (⟦σ'⟧ρ' ↦ z)
     bridge the two argument values. *)
 Lemma rel_typ_of_nat_motive : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A' : Typeω@i ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
@@ -546,7 +546,7 @@ Qed.
     [succ]. *)
 Lemma rel_typ_of_nat_step_gen : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     forall ρ1 ρ2,
       Dom ρ1 ≈ ρ2 ∈ per_env_extend A A (per_env_extend ℕ ℕ env_relΓ) ->
       exists p1 p2 p3 p4,
@@ -579,7 +579,7 @@ Qed.
 
 Corollary rel_typ_of_nat_step : forall {Γ A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     forall ρ1 ρ2 x1 x2 y1 y2,
       Dom ρ1 ↦ x1 ↦ y1 ≈ ρ2 ↦ x2 ↦ y2
            ∈ per_env_extend A A (per_env_extend ℕ ℕ env_relΓ) ->
@@ -615,7 +615,7 @@ Qed.
     relates them all. *)
 Lemma rel_exp_of_nat_step : forall {Γ A} {i : nat} {MS MS' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS' : A[Wk ⨟ Wk ,, succ #1] ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
@@ -776,7 +776,7 @@ Qed.
     components. *)
 Lemma per_bot_natrec_diag : forall {Γ A} {i : nat} {MZ MS env_relΓ ρ mz m},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->
     Dom ρ ≈ ρ ∈ env_relΓ ->
     ⟦ MZ ⟧ ρ ↘ mz ->
@@ -813,7 +813,7 @@ Qed.
     [per_head_of_args] moves it to the pair the type names, as in
     [rel_exp_app_cong]. *)
 Lemma rel_exp_natrec_cong : forall {Γ A A'} {i : nat} {MZ MZ' MS MS' M M'},
-    Γ ▹ ℕ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A' : Typeω@i ->
     Γ ⊨ MZ ≈ MZ' : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS' : A[Wk ⨟ Wk ,, succ #1] ->
     Γ ⊨ M ≈ M' : ℕ ->
@@ -964,7 +964,7 @@ Hint Resolve rel_exp_natrec_cong : mctt.
     The successor branch plays no part, so unlike the syntactic rule this one has no
     premise about it. *)
 Lemma rel_exp_nat_beta_zero : forall {Γ A} {i : nat} {MZ MS},
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ⊨ rec zero return A | zero -> MZ | succ -> MS end ≈ MZ : A[Id ,, zero].
 Proof.
@@ -1103,8 +1103,8 @@ Proof.
 Qed.
 
 Lemma rel_exp_typ_var0 : forall {Γ A B} {i : nat},
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
-    Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Type@i.
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
+    Γ ▹ A ⊨ B[wk_q ↑]ʷ[Id ,, #0] ≈ B : Typeω@i.
 Proof.
   intros * HB.
   pose proof (rel_exp_of_typ_inversion HB) as [env_rel [HΓA HBgen]].
@@ -1124,7 +1124,7 @@ Qed.
 
 Lemma rel_exp_natrec_generic : forall {Γ A} {i : nat} {MZ MS env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->
     Γ ▹ ℕ ⊨ rec #0 return A[wk_q ↑]ʷ | zero -> MZ[↑]ʷ | succ -> MS[wk_q (wk_q ↑)]ʷ end
@@ -1189,7 +1189,7 @@ Qed.
     Each obligation lands in the motive's head PER at its own argument pair, and
     [per_head_of_args] moves it to the pair the goal type names. *)
 Lemma rel_exp_nat_beta_succ : forall {Γ A} {i : nat} {MZ MS M},
-    Γ ▹ ℕ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ℕ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ MZ ≈ MZ : A[Id ,, zero] ->
     Γ ▹ ℕ ▹ A ⊨ MS ≈ MS : A[Wk ⨟ Wk ,, succ #1] ->
     Γ ⊨ M ≈ M : ℕ ->

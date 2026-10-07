@@ -50,7 +50,7 @@ Hint Resolve per_univ_elem_False : mctt.
     Stated from the context PER, as [rel_exp_of_typ_nat] is. *)
 Lemma rel_exp_of_typ_True : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊤ ≈ ⊤ : Type@i.
+    Γ ⊨ ⊤ ≈ ⊤ : Typeω@i.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
@@ -65,7 +65,7 @@ Hint Resolve rel_exp_of_typ_True : mctt.
 
 Corollary valid_exp_True : forall {Γ} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ ⊤ : Type@i.
+    Γ ⊨ ⊤ : Typeω@i.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -76,7 +76,7 @@ Hint Resolve valid_exp_True : mctt.
 
 Lemma rel_exp_of_typ_False : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ ⊥ ≈ ⊥ : Type@i.
+    Γ ⊨ ⊥ ≈ ⊥ : Typeω@i.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
@@ -91,7 +91,7 @@ Hint Resolve rel_exp_of_typ_False : mctt.
 
 Corollary valid_exp_False : forall {Γ} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ ⊥ : Type@i.
+    Γ ⊨ ⊥ : Typeω@i.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -117,7 +117,7 @@ Qed.
 
 Corollary valid_exp_True_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ⊤ : Typeˢ@n.
+    Γ ⊨ ⊤ : Type@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -143,7 +143,7 @@ Qed.
 
 Corollary valid_exp_False_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ⊥ : Typeˢ@n.
+    Γ ⊨ ⊥ : Type@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -378,7 +378,7 @@ Qed.
     [rel_typ_of_nat_motive] with [⊥] for [ℕ]. *)
 Lemma rel_typ_of_False_motive : forall {Γ A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ⊥ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ ⊥ ⊨ A ≈ A' : Typeω@i ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
       forall σ σ' ρ ρ' ρσ ρ'σ',
@@ -452,7 +452,7 @@ Qed.
     [per_bot_exfalso] at one environment and no substitution. *)
 Lemma per_bot_exfalso_diag : forall {Γ A} {i : nat} {env_relΓ ρ m},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ ⊥ ⊨ A ≈ A : Type@i ->
+    Γ ▹ ⊥ ⊨ A ≈ A : Typeω@i ->
     Dom ρ ≈ ρ ∈ env_relΓ ->
     Dom m ≈ m ∈ per_bot ->
     Dom efqᵈ m under ρ return A ≈ efqᵈ m under ρ return A ∈ per_bot.
@@ -472,7 +472,7 @@ Qed.
     [rel_typ_of_instance] reports; [per_head_of_args] then moves each link to
     the argument pair the type names, as in [rel_exp_natrec_cong]. *)
 Lemma rel_exp_exfalso_cong : forall {Γ A A'} {i : nat} {M M'},
-    Γ ▹ ⊥ ⊨ A ≈ A' : Type@i ->
+    Γ ▹ ⊥ ⊨ A ≈ A' : Typeω@i ->
     Γ ⊨ M ≈ M' : ⊥ ->
     Γ ⊨ efq M return A ≈ efq M' return A' : A[Id ,, M].
 Proof.

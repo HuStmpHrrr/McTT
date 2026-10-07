@@ -66,11 +66,11 @@ Proof.
     + exists P, El; split; [ exact HPEl | exact (H3 P El HPEl) ].
 Qed.
 
-(** The universe at [u] is itself a term of [Type@(ulvl_above u)]: the
+(** The universe at [u] is itself a term of [Typeω@(ulvl_above u)]: the
     ambient universe the inversion below is stated at. *)
 Lemma glu_rel_exp_univ_tm : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ ulvl_tm u : Type@(ulvl_above u).
+    Γ ⊩ ulvl_tm u : Typeω@(ulvl_above u).
 Proof.
   intros * [Sb HΓ].
   assert (⊢ Γ) by mauto 2.
@@ -115,7 +115,7 @@ Lemma glu_rel_exp_of_univ_inversion : forall {Γ Sb A} {u : uidx},
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : ulvl_tm u).
 Proof.
   intros * HΓ HA * HΔ.
-  assert (Γ ⊩ ulvl_tm u : Type@(ulvl_above u)) by (eapply glu_rel_exp_univ_tm; eexists; eassumption).
+  assert (Γ ⊩ ulvl_tm u : Typeω@(ulvl_above u)) by (eapply glu_rel_exp_univ_tm; eexists; eassumption).
   eapply glu_rel_exp_clean_inversion2 in HA; [| eassumption | eassumption ].
   destruct (HA _ _ _ HΔ).
   pose proof (eval_ulvl_tm gc_deps gc_stack u ρ).
@@ -183,7 +183,7 @@ Qed.
 
 Corollary glu_rel_exp_ulvl : forall {Γ A} {u : uidx},
     Γ ⊩ A : ulvl_tm u ->
-    Γ ⊩ A : Type@(ulvl u).
+    Γ ⊩ A : Typeω@(ulvl u).
 Proof.
   intros * HA.
   exact (glu_rel_exp_lift_uidx (u := u) (v := ulvl u) (uidx_le_ulvl u) HA).
@@ -193,12 +193,12 @@ Lemma glu_rel_exp_of_typ : forall {Γ Sb A} {i : nat},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
         Δ ⊢s σ ® ρ ∈ Sb ->
-        Δ ⊢ A[σ] : Type@i /\
+        Δ ⊢ A[σ] : Typeω@i /\
           exists a,
             ⟦ A ⟧ ρ ↘ a /\
               Dom a ≈ a ∈ per_univ i /\
               forall P El, DG a ∈ glu_univ_elem i ↘ P ↘ El -> Δ ⊢ A[σ] ® P) ->
-    Γ ⊩ A : Type@i.
+    Γ ⊩ A : Typeω@i.
 Proof.
   intros * ? Hbody.
   eexists; split; mauto.
@@ -210,7 +210,7 @@ Qed.
 (** The small universe as a term of the next small universe. *)
 Lemma glu_rel_exp_suniv : forall {Γ} {n : nat},
     ⊩ Γ ->
-    Γ ⊩ Typeˢ@n : Typeˢ@(S n).
+    Γ ⊩ Type@n : Type@(S n).
 Proof.
   intros * [Sb HΓ].
   assert (⊢ Γ) by mauto 2.
@@ -220,7 +220,7 @@ Proof.
   saturate_sub.
   cbn.
   split; [ apply wf_univ_lit; assumption |].
-  exists 𝕌ˢ@(dlvl_lit n).
+  exists 𝕌@(dlvl_lit n).
   split; [ apply eval_exp_univ, eval_exp_llit |].
   split; [ eexists; apply (per_univ_elem_ulvl_val (us n) (us (S n))); cbn; lia |].
   split.
@@ -241,7 +241,7 @@ Hint Resolve glu_rel_exp_suniv : mctt.
 
 Lemma glu_rel_exp_typ : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ Type@i : Type@(S i).
+    Γ ⊩ Typeω@i : Typeω@(S i).
 Proof.
   intros * [].
   eapply glu_rel_exp_of_typ; mauto 3.
@@ -254,7 +254,7 @@ Proof.
   apply_predicate_equivalence.
   cbn.
   mauto 4.
-  (** [Type@i[σ]] is [Type@i], so the equation is reflexivity, which needs
+  (** [Typeω@i[σ]] is [Typeω@i], so the equation is reflexivity, which needs
       [⊢ Δ] from a presupposition. *)
   gen_presups; mauto 3.
 Qed.
@@ -263,11 +263,11 @@ Hint Resolve glu_rel_exp_typ : mctt.
 
 Lemma glu_rel_exp_clean_inversion2' : forall {i : nat} {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ M : Type@i ->
-    glu_rel_exp_clean_inversion2_result (S i) Sb M Type@i.
+    Γ ⊩ M : Typeω@i ->
+    glu_rel_exp_clean_inversion2_result (S i) Sb M Typeω@i.
 Proof.
   intros * ? HM.
-  assert (Γ ⊩ Type@i : Type@(S i)) by mauto 3.
+  assert (Γ ⊩ Typeω@i : Typeω@(S i)) by mauto 3.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 

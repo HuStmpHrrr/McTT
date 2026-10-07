@@ -26,8 +26,8 @@ Ltac invert_wf_ctx1 H :=
       let HAi := fresh "HAi" in
       pose proof ctx_decomp H as [HΓ HAi];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -39,8 +39,8 @@ Ltac invert_wf_ctx1 H :=
       let HM := fresh "HM" in
       pose proof ctx_decomp_def H as [HΓ [HAi HM]];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -63,8 +63,8 @@ Ltac gen_core_presup H :=
       let HAi := fresh "HAi" in
       pose proof presup_exp H as [HΓ HAi];
       match goal with
-      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
-      | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@_ |- _ => clear HAi
+      | _: Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
+      | _: __mark__ _ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@_ |- _ => clear HAi
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in
@@ -76,8 +76,8 @@ Ltac gen_lookup_presup H :=
   match type of H with
   | ?Γ ∋ #?x : ?A =>
       match goal with
-      | _: _ ⍮ _ ⍮ Γ ⊢ A : Type@_ |- _ => fail
-      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : Type@_ |- _ => fail
+      | _: _ ⍮ _ ⍮ Γ ⊢ A : Typeω@_ |- _ => fail
+      | _: _ ⍮ _ ⍮ __mark__ _ Γ ⊢ A : Typeω@_ |- _ => fail
       | _ =>
           let i := fresh "i" in
           let HA := fresh "HA" in

@@ -40,7 +40,7 @@ Hint Resolve sub_eq_preserves_exp_eq : mctt.
 
 (** ** The Subtyping Half
 
-    The subtyping judgment has no symmetry and no [Type@i] to hang an equation
+    The subtyping judgment has no symmetry and no [Typeω@i] to hang an equation
     on, so the second step goes through [wf_subtyp_refl]: [sub_eq_preserves_exp]
     gives the equation between the two instances of the right-hand side, and
     reflexivity of refinement turns it into a refinement. *)
@@ -51,10 +51,10 @@ Lemma sub_eq_preserves_subtyp : forall Θ Ξ Γ Δ A A' σ σ',
     Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ'].
 Proof.
   intros * ? H; saturate_sub_eq.
-  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A' : Type@i) as [i ?] by mauto 2.
+  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A' : Typeω@i) as [i ?] by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ⊆ A'[σ]) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ'] : Type@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ≈ A'[σ'] : Type@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ'] : Typeω@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ≈ A'[σ'] : Typeω@i) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[σ] ⊆ A'[σ']) by mauto 2.
   etransitivity; eassumption.
 Qed.
@@ -69,13 +69,13 @@ Hint Resolve sub_eq_preserves_subtyp : mctt.
     transports the type along it. *)
 
 Corollary exp_eq_sub_eq_head : forall Θ Ξ Γ Δ A B M M' σ i,
-    Θ ⍮ Ξ ⍮ Δ ▹ A ⊢ B : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ▹ A ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ : Δ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ B[σ,,M] ≈ B[σ,,M'] : Typeω@i.
 Proof.
   intros.
-  assert (exists j, Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@j) as [j ?] by mauto 3.
+  assert (exists j, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@j) as [j ?] by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ : Δ) by mauto 2.
@@ -86,9 +86,9 @@ Qed.
 (** The instance at a single substitution, which is how the [ℕ]- and
     [Π]-eliminators state their types. *)
 Corollary exp_eq_sub_eq_single : forall Θ Ξ Γ A B M M' i,
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,M] ≈ B[Id,,M'] : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,M] ≈ B[Id,,M'] : Typeω@i.
 Proof.
   intros.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 3.

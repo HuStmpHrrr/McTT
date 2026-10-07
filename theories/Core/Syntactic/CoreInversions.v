@@ -21,8 +21,8 @@ From Mctt.Core.Syntactic Require Export SubEq.
 Import Syntax_Notations Wk_Notations.
 
 Lemma wf_typ_inversion : forall {Θ Ξ Γ i A},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@i : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@(S i) ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@(S i) ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve.
@@ -32,8 +32,8 @@ Qed.
 Hint Resolve wf_typ_inversion : mctt.
 
 Lemma wf_univ_inversion : forall {Θ Ξ Γ M A},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨succl M⟩ ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨succl M⟩ ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve.
@@ -42,7 +42,7 @@ Qed.
 (** The level of a universe that is a type is a level: the only rule that
     gives a universe a type asks for it. *)
 Lemma wf_univ_lvl_inversion : forall {Θ Ξ Γ M A},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ⟨M⟩ : A ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level.
 Proof.
   intros * H.
@@ -54,7 +54,7 @@ Hint Resolve wf_univ_inversion wf_univ_lvl_inversion : mctt.
 
 Lemma wf_nat_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -92,7 +92,7 @@ Hint Resolve wf_succ_inversion : mctt.
     every argument of [succl] and [maxl]. *)
 Lemma wf_level_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ Level : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -157,7 +157,7 @@ Hint Resolve wf_natrec_inversion : mctt.
 
 Lemma wf_True_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -180,7 +180,7 @@ Hint Resolve wf_true_inversion : mctt.
 
 Lemma wf_False_inversion : forall Θ Ξ Γ A,
     Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@0 ⊆ A.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
   dependent induction H; mautosolve 4.
@@ -191,7 +191,7 @@ Hint Resolve wf_False_inversion : mctt.
 
 Lemma wf_exfalso_inversion : forall Θ Ξ Γ A M A',
     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A' : A ->
-    (exists i, Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A' : Type@i) /\
+    (exists i, Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A' : Typeω@i) /\
     Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ /\
     Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ⊆ A.
 Proof.
@@ -207,8 +207,8 @@ Hint Resolve wf_exfalso_inversion : mctt.
 (** A [Π] is in a large universe, or in a small one at a level. *)
 Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
-    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@i ⊆ C) \/
-    (exists n, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeˢ@n /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeˢ@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ⊆ C).
+    (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ C) \/
+    (exists n, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@n ⊆ C).
 Proof.
   intros * H.
   dependent induction H;
@@ -221,22 +221,22 @@ Qed.
 Hint Resolve wf_pi_inversion : mctt.
 
 (** The level the domain and the codomain are checked at can always be taken to
-    be the level of the [Π]-type itself.  Moving the refinement [Type@j ⊆ Type@i]
+    be the level of the [Π]-type itself.  Moving the refinement [Typeω@j ⊆ Typeω@i]
     from [Γ] into [Γ ▹ A] is a weakening, and it is the only step that needs any
-    work: both sides are unchanged by it ([Type@j[↑]ʷ] is [Type@j]), but only by
+    work: both sides are unchanged by it ([Typeω@j[↑]ʷ] is [Typeω@j]), but only by
     computation, so the step is taken by hand. *)
 Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
 Proof.
   intros * [[j [? []]] | [n [? []]]]%wf_pi_inversion.
   2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
       split; eapply wf_exp_small_large; eassumption. }
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Type@j ↑ ⊆ exp_wk Type@i ↑) as H'
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Typeω@j ↑ ⊆ exp_wk Typeω@i ↑) as H'
       by (eapply wk_preserves_subtyp; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ Type@j ⊆ Type@i) by exact H'.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ Typeω@j ⊆ Typeω@i) by exact H'.
   split; mauto 3.
 Qed.
 
@@ -273,7 +273,7 @@ Hint Resolve wf_app_inversion : mctt.
 
 Lemma wf_let_inversion : forall {Θ Ξ Γ oA M B T},
     Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA M) B : T ->
-    exists A i C, let_ann oA A /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
+    exists A i C, let_ann oA A /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
            Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
 Proof.
   intros * H.
@@ -286,7 +286,7 @@ Qed.
 (** For an annotated definition, the type is the annotation. *)
 Corollary wf_let_ann_inversion : forall {Θ Ξ Γ A M B T},
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B : T ->
-    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
+    exists i C, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\
            Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B : C /\ Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ⊆ T.
 Proof.
   intros * H; destruct (wf_let_inversion H) as (A' & i & C & [[=] | [= <-]] & ?); eauto.

@@ -33,10 +33,10 @@ Proof.
   induction X as [| [A | A M | U] X IH]; intros * H; cbn in H.
   - constructor; exact H.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Type@?i |- _ =>
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i |- _ =>
       eapply wf_ext_eq_ass; [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HA ] end.
   - inversion H; subst.
-    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Type@?i, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A |- _ =>
+    match goal with HA : _ ⍮ _ ⍮ X ++ Γ ⊢ A : Typeω@?i, HM : _ ⍮ _ ⍮ X ++ Γ ⊢ M : A |- _ =>
       eapply wf_ext_eq_def;
         [ apply IH; eauto using presup_exp_ctx | exact HA | eapply wf_exp_eq_refl; exact HA | exact HM
         | eapply wf_exp_eq_refl; exact HM | exact HA | exact HM ] end.
@@ -59,7 +59,7 @@ Definition modexp_parts (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) : Pro
   | me_app H N =>
       Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H /\
       exists T B T1 i, member_type Θ Ξ Γ H nil (mr_mod T) /\ tele_view T = Some (B, T1) /\
-        Θ ⍮ Ξ ⍮ Γ ⊢ B : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : B
+        Θ ⍮ Ξ ⍮ Γ ⊢ B : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : B
   end.
 
 Lemma modexp_eq_parts : forall Θ Ξ Γ H H',

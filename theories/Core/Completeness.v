@@ -45,7 +45,7 @@ Qed.
 
 (** The same at a type equality, where the element relation is [per_univ i]. *)
 Lemma rel_typ_under_ctx_at_initial_env : forall {Γ A A'} {i : nat},
-    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
     exists ρ a a',
       initial_env_f Γ ρ /\ ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ ↘ a' /\
       Dom a ≈ a' ∈ per_univ i.
@@ -72,7 +72,7 @@ Proof.
 Qed.
 
 Corollary completeness_ty : forall {Γ} {i : nat} {A A'},
-    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊢ A ≈ A' : Typeω@i ->
     exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ A' W.
 Proof.
   intros * [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]]%completeness.

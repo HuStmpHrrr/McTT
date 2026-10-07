@@ -18,7 +18,7 @@ Import Syntax_Notations Wk_Notations.
 
 Corollary presup_exp : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros; split; mauto 2 using presup_exp_typ.
 Qed.
@@ -113,13 +113,13 @@ Hint Resolve ctxsub_sub_eq : mctt.
 
 Lemma wf_sub_eq_q : forall Θ Ξ Γ Δ σ σ' A i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢s q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * H ? ?; saturate_sub_eq.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Type@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Typeω@i) by mauto 2.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A[σ] ⊢w ↑ : Γ) by mauto 2.
   econstructor; [ mauto 2 | | ].
@@ -134,21 +134,21 @@ Qed.
     premise for the same reason. *)
 Lemma wf_sub_eq_q_def : forall Θ Ξ Γ Δ σ σ' A M i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢s q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
   intros * H ? ? ? ?; saturate_sub_eq.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Type@i) by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Type@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] : Typeω@i) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] : Typeω@i) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] : A[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ'] : A[σ']) by mauto 2.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ]) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▸ A[σ] ≔ M[σ] ⊢w ↑ : Γ) by mauto 2.
   econstructor; [ mauto 2 | | ].
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] ≈ A[σ] : Type@i) by mauto 2.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ'] ≈ A[σ] : Typeω@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M[σ'] ≈ M[σ] : A[σ']) by
       (eapply wf_exp_eq_subtyp'; [ symmetry; eassumption | eapply wf_subtyp_refl; eassumption ]).
     eapply ctxsub_sub; [ eapply wf_sub_id_extend_def_eq; eassumption | mauto 2 ].
@@ -185,7 +185,7 @@ Hint Resolve wf_sub_eq_q_False : mctt.
 
 Lemma wf_sub_eq_extend : forall Θ Ξ Γ Δ σ σ' A M M' i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A[σ'] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A[σ] ->
@@ -203,7 +203,7 @@ Qed.
     call sites, which would otherwise have to rewrite [A[Id]] to [A] three
     times over. *)
 Corollary wf_sub_eq_id_extend : forall Θ Ξ Γ A M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -220,7 +220,7 @@ Qed.
 
 Lemma wf_sub_eq_extend_def : forall Θ Ξ Γ Δ σ σ' A M N N' i,
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N : A[σ] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N' : A[σ'] ->
@@ -237,7 +237,7 @@ Proof.
 Qed.
 
 Corollary wf_sub_eq_id_extend_def : forall Θ Ξ Γ A M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
@@ -284,8 +284,8 @@ Lemma wf_exp_eq_meet : forall Θ Ξ Γ L N N' L' T T' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ L ≈ N : T ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T ->
     Θ ⍮ Ξ ⍮ Γ ⊢ L' ≈ N' : T' ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ T : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ T ≈ T' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ L ≈ L' : T.
 Proof.
   intros.
@@ -439,9 +439,9 @@ Qed.
 Hint Resolve sub_eq_preserves_exp : mctt.
 
 Corollary sub_eq_preserves_typ : forall Θ Ξ Γ Δ A σ σ' i,
-    Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i.
 Proof.
   intros.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ exp_sub A σ ≈ exp_sub A σ' : exp_sub (a_typ i) σ) by mauto 2.
@@ -463,8 +463,8 @@ Proof.
   intros * H; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | ].
   intros x A Hlk.
-  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i) as [i ?] by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i) by mauto 2.
+  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i) as [i ?] by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i) by mauto 2.
   eapply wf_exp_eq_subtyp';
     [ symmetry; eapply wf_sub_eq_apply; eassumption | mauto 3 ].
 Qed.
@@ -477,8 +477,8 @@ Proof.
   intros * H1 H2; saturate_sub_eq.
   econstructor; [ mauto 2 | mauto 2 | ].
   intros x A Hlk.
-  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Type@i) as [i ?] by mauto 2.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Type@i) by mauto 2.
+  assert (exists i, Θ ⍮ Ξ ⍮ Δ ⊢ A : Typeω@i) as [i ?] by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[σ] ≈ A[σ'] : Typeω@i) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ⊢ #x[σ'] ≈ #x[σ''] : A[σ]) by
     (eapply wf_exp_eq_subtyp'; [ eapply wf_sub_eq_apply; eassumption | mauto 4 ]).
   etransitivity; [ eapply wf_sub_eq_apply; eassumption | eassumption ].
@@ -568,13 +568,13 @@ Hint Resolve wf_sub_eq_compose_left wf_sub_eq_compose_right wf_sub_eq_compose : 
     same terms, though not the same module expressions; on a well-typed term
     they agree judgmentally. *)
 Lemma wf_sub_eq_var_zero : forall Θ Ξ Γ A i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id,,#0 ≈ sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ.
 Proof.
   intros * HA.
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
-  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; eassumption).
+  assert (HA' : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
   assert (Hv : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
   assert (Hl : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id,,#0 : Γ ▹ A ▹ A[↑]ʷ) by (eapply wf_sub_single; eassumption).
   assert (Hr : Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s sb_extend Id (se_var 0) : Γ ▹ A ▹ A[↑]ʷ).
@@ -587,8 +587,8 @@ Proof.
 Qed.
 
 Lemma wf_fn_eta_expand : forall Θ Ξ Γ A B M i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Π A B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M[↑]ʷ $ #0 : Π A B.
 Proof.
@@ -598,12 +598,12 @@ Proof.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk M ↑ : exp_wk (Π A B) ↑) as H'
       by (eapply wk_preserves_exp; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ : Π A[↑]ʷ B[wk_q ↑]ʷ) by exact H'.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Type@i) by (eapply wk_preserves_typ; eassumption).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ A[↑]ʷ : Typeω@i) by (eapply wk_preserves_typ; eassumption).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ #0 : A[↑]ʷ) by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : Type@i)
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ▹ A[↑]ʷ ⊢ B[wk_q ↑]ʷ : Typeω@i)
       by (eapply wk_preserves_typ; [ eassumption | eapply wf_wk_q'; eassumption ]).
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B[wk_q ↑]ʷ[Id,,#0]) by (eapply wf_app; eassumption).
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : Type@i).
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B[wk_q ↑]ʷ[Id,,#0] ≈ B : Typeω@i).
   { rewrite <- (exp_wk_q_shift_single B) at 2.
     eapply (sub_eq_preserves_typ _ _ _ _ _ _ _ i); [ eassumption | eapply wf_sub_eq_var_zero; eassumption ]. }
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M[↑]ʷ $ #0 : B).
@@ -646,8 +646,8 @@ Hint Resolve no_closed_neutral : mctt.
 
 Lemma wf_conv : forall Θ Ξ Γ M A A' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   intros; mauto 3.
@@ -655,8 +655,8 @@ Qed.
 
 Lemma wf_exp_eq_conv : forall Θ Ξ Γ M M' A A' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   intros; mauto 3.

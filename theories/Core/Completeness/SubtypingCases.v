@@ -14,9 +14,9 @@
     - the judgment never relates [A'] at two different environments (both of its
       links stay within one column), so [rel_exp_eq_subtyp] cannot reconstruct
       [A']'s type chain and must be given it.  This is why [wf_exp_subtyp] and
-      [wf_exp_eq_subtyp] carry the extra premise [Γ ⊢ A' : Type@i];
-    - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Type@i], not also
-      [Γ ⊨ A' ≈ A' : Type@i], since the second link is the first judgment's
+      [wf_exp_eq_subtyp] carry the extra premise [Γ ⊢ A' : Typeω@i];
+    - [subtyp_refl] needs only [Γ ⊨ A ≈ A' : Typeω@i], not also
+      [Γ ⊨ A' ≈ A' : Typeω@i], since the second link is the first judgment's
       third-to-fourth link read backwards. *)
 
 From Stdlib Require Import Lia List Morphisms_Relations RelationClasses.
@@ -40,7 +40,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Lemma subtyp_refl : forall {Γ A A'} {i : nat},
-    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
     Γ ⊨ A ⊆ A'.
 Proof.
   intros * H%rel_exp_of_typ_inversion.
@@ -118,20 +118,20 @@ Qed.
 
 (** ** [Sub-Univ]
 
-    [Type@i[σ]] is [Type@i], so all four values in both columns are equal and the
+    [Typeω@i[σ]] is [Typeω@i], so all four values in both columns are equal and the
     two commutation obligations are reflexivity.  Only the middle has content, and
     it is [per_subtyp_univ].  The ambient level must be strictly above [j], hence
     [S j]. *)
 Lemma subtyp_univ : forall {Γ} {i : nat} {j},
     ⊨ Γ ->
     i <= j ->
-    Γ ⊨ Type@i ⊆ Type@j.
+    Γ ⊨ Typeω@i ⊆ Typeω@j.
 Proof.
   intros * HΓsem Hij.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S j).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌@i, 𝕌@i, 𝕌@j, 𝕌@j.
+  exists 𝕌ω@i, 𝕌ω@i, 𝕌ω@j, 𝕌ω@j.
   repeat apply conj; try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
@@ -147,13 +147,13 @@ Hint Resolve subtyp_univ : mctt.
 Lemma subtyp_suniv : forall {Γ n m},
     ⊨ Γ ->
     n <= m ->
-    Γ ⊨ Typeˢ@n ⊆ Typeˢ@m.
+    Γ ⊨ Type@n ⊆ Type@m.
 Proof.
   intros * HΓsem Hnm.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit m), 𝕌ˢ@(dlvl_lit m).
+  exists 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit m), 𝕌@(dlvl_lit m).
   repeat apply conj; try (apply eval_exp_univ, eval_exp_llit).
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
@@ -162,13 +162,13 @@ Qed.
 
 Lemma subtyp_small_large : forall {Γ n} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ Typeˢ@n ⊆ Type@i.
+    Γ ⊨ Type@n ⊆ Typeω@i.
 Proof.
   intros * HΓsem.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
   eexists_subtyp_with (S i).
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists 𝕌ˢ@(dlvl_lit n), 𝕌ˢ@(dlvl_lit n), 𝕌@i, 𝕌@i.
+  exists 𝕌@(dlvl_lit n), 𝕌@(dlvl_lit n), 𝕌ω@i, 𝕌ω@i.
   repeat apply conj; try (apply eval_exp_univ, eval_exp_llit); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv'; [ apply per_lvl_lit | solve_uidx | reflexivity ].
   - eexists; apply per_univ_elem_core_univ'; [ solve_uidx | reflexivity ].
@@ -196,11 +196,11 @@ Hint Resolve subtyp_suniv subtyp_small_large : mctt.
     premises and its conclusion to agree, so everything is raised to
     [max i i0]. *)
 Lemma subtyp_pi : forall {Γ A A'} {i : nat} {B B'},
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ⊨ A' ≈ A' : Type@i ->
-    Γ ⊨ A ≈ A' : Type@i ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
-    Γ ▹ A' ⊨ B' ≈ B' : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ⊨ A' ≈ A' : Typeω@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
+    Γ ▹ A' ⊨ B' ≈ B' : Typeω@i ->
     Γ ▹ A' ⊨ B ⊆ B' ->
     Γ ⊨ Π A B ⊆ Π A' B'.
 Proof.
@@ -278,7 +278,7 @@ Hint Resolve subtyp_pi : mctt.
     [per_elem_subtyping] needs its subtyping and both type values at one level. *)
 Lemma rel_exp_eq_subtyp : forall {Γ A A'} {i : nat} {M M'},
     Γ ⊨ M ≈ M' : A ->
-    Γ ⊨ A' ≈ A' : Type@i ->
+    Γ ⊨ A' ≈ A' : Typeω@i ->
     Γ ⊨ A ⊆ A' ->
     Γ ⊨ M ≈ M' : A'.
 Proof.

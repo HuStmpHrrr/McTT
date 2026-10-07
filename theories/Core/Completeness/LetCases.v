@@ -33,7 +33,7 @@ Section Fixed_GCtx.
 Lemma rel_exp_of_typ_sub_simple : forall {Γ Δ σ σ' A A'} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A' : Type@i ->
+    Δ ⊨ A ≈ A' : Typeω@i ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       exists a a', ⟦ A[σ] ⟧ ρ ↘ a /\ ⟦ A'[σ] ⟧ ρ' ↘ a' /\ Dom a ≈ a' ∈ per_univ i.
@@ -96,7 +96,7 @@ Qed.
 Lemma per_ctx_env_of_def_sub : forall {Γ Δ σ σ' A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A : Type@i ->
+    Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
     EF Γ ▸ A[σ] ≔ M[σ] ≈ Γ ▸ A[σ] ≔ M[σ] ∈ per_ctx_env
        ↘ per_env_extend_def A[σ] M[σ] env_relΓ.
@@ -138,7 +138,7 @@ Qed.
 
 Lemma rel_sub_under_ctx_into_def : forall {Γ Δ A} {i : nat} {M σ σ' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Δ ⊨ A : Type@i ->
+    Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
     Γ ⊨s σ ≈ σ' : Δ ▹ A ->
     (forall ρ ρσ, Dom ρ ≈ ρ ∈ env_relΓ -> ⟦ σ ⟧s ρ ↘ ρσ -> def_tie A M ρσ) ->
@@ -175,7 +175,7 @@ Qed.
     along [σ]. *)
 Lemma rel_sub_under_ctx_extend_sub_def : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A : Type@i ->
+    Δ ⊨ A : Typeω@i ->
     Δ ⊨ M ≈ M' : A ->
     Γ ⊨s σ,,M[σ] ≈ σ',,M'[σ'] : Δ ▸ A ≔ M.
 Proof.
@@ -204,9 +204,9 @@ Qed.
     [⟦B⟧(ρ ↦ ⟦M⟧ρ)] are related. *)
 Lemma per_univ_of_instance_def : forall {Γ A} {i : nat} {M B k env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
-    Γ ▸ A ≔ M ⊨ B : Type@k ->
+    Γ ▸ A ≔ M ⊨ B : Typeω@k ->
     forall ρ n,
       Dom ρ ≈ ρ ∈ env_relΓ ->
       ⟦ M ⟧ ρ ↘ n ->
@@ -234,7 +234,7 @@ Qed.
     the tail [ρ↯]. *)
 Lemma rel_sub_under_ctx_q_def : forall {Γ Δ σ σ' A} {i : nat} {M},
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A : Type@i ->
+    Δ ⊨ A : Typeω@i ->
     Δ ⊨ M : A ->
     Γ ▸ A[σ] ≔ M[σ] ⊨s q σ ≈ q σ' : Δ ▸ A ≔ M.
 Proof.
@@ -298,7 +298,7 @@ Qed.
     - The last link comes from [B'] along [q σ'], bridged by [B'] at the tail
       [⟦q σ'⟧(ρ' ↦ ⟦M'[σ']⟧ρ')]. *)
 Lemma rel_exp_let_gen : forall {Γ A} {i : nat} {M M' B B' C oA'},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
     Γ ⊨ B[Id,,M] ≈ a_let (b_def oA' M') B' : C[Id,,M].
@@ -477,7 +477,7 @@ Qed.
 
 (** [ζ]. *)
 Corollary rel_exp_let_zeta : forall {Γ oA A} {i : nat} {M B C},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
     Γ ⊨ a_let (b_def oA M) B ≈ B[Id,,M] : C[Id,,M].
@@ -491,7 +491,7 @@ Hint Resolve rel_exp_let_zeta : mctt.
 
 (** Congruence: both sides are related to the instance [B[Id,,M]]. *)
 Corollary rel_exp_let_cong : forall {Γ oA oA' A} {i : nat} {M M' B B' C},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A ->
     Γ ▸ A ≔ M ⊨ B ≈ B' : C ->
     Γ ⊨ a_let (b_def oA M) B ≈ a_let (b_def oA' M') B' : C[Id,,M].
@@ -505,7 +505,7 @@ Qed.
 Hint Resolve rel_exp_let_cong : mctt.
 
 Corollary valid_exp_let : forall {Γ oA A} {i : nat} {M B C},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     Γ ▸ A ≔ M ⊨ B : C ->
     Γ ⊨ a_let (b_def oA M) B : C[Id,,M].

@@ -63,8 +63,8 @@ Section Stuck.
 Inductive dstuck : domain -> Prop :=
 | dstuck_nat : dstuck ℕᵈ
 | dstuck_pi : forall a (ρ : env) B, dstuck a -> (forall x, destuck (env_entry ρ x)) -> dstuck (Πᵈ a ρ B)
-| dstuck_univ : forall i, dstuck 𝕌@i
-| dstuck_suniv : forall l, dstuck l -> dstuck 𝕌ˢ@l
+| dstuck_univ : forall i, dstuck 𝕌ω@i
+| dstuck_suniv : forall l, dstuck l -> dstuck 𝕌@l
 | dstuck_level : dstuck Levelᵈ
 | dstuck_lvl : forall c xs, dstuck_la xs -> dstuck (lvᵈ c xs)
 | dstuck_zero : dstuck zeroᵈ

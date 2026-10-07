@@ -129,7 +129,7 @@ Qed.
     term is valid, at a type that [τ] relates to the entry's own. *)
 Lemma sub_link_ass : forall {Γ Δ τ B} {i : nat} {N},
     Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ ->
-    Δ ⊨ B : Type@i -> Γ ⊨ N : B[τ] ->
+    Δ ⊨ B : Typeω@i -> Γ ⊨ N : B[τ] ->
     sub_link Γ (Δ ▹ B) (τ ,, N).
 Proof.
   intros * Hτj Hl HB HN Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
@@ -186,7 +186,7 @@ Qed.
 (** Extension by a definition of the codomain, read along [τ]. *)
 Lemma sub_link_def : forall {Γ Δ τ B} {i : nat} {M},
     Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ ->
-    Δ ⊨ B : Type@i -> Δ ⊨ M : B ->
+    Δ ⊨ B : Typeω@i -> Δ ⊨ M : B ->
     sub_link Γ (Δ ▸ B ≔ M) (τ ,, M[τ]).
 Proof.
   intros * Hτj Hl HB HM Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
@@ -324,7 +324,7 @@ Qed.
 (** A lifted substitution commutes with further ones: its tail as [τ] does
     along the shift, and its head is the variable itself. *)
 Lemma sub_link_q : forall {Γ Δ τ B} {i : nat},
-    Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ B : Type@i ->
+    Γ ⊨s τ ≈ τ : Δ -> sub_link Γ Δ τ -> Δ ⊨ B : Typeω@i ->
     sub_link (Γ ▹ B[τ]) (Δ ▹ B) (q τ).
 Proof.
   intros * Hτj Hl HB Γ' R' HΓ' σ σ' Hσ RΔB HΔB ρ ρσ Hρ Hev.
@@ -385,14 +385,14 @@ Qed.
 Inductive gsub : ctx -> sub -> ctx -> Prop :=
 | gsub_id : forall Γ, ⊨ Γ -> gsub Γ Id Γ
 | gsub_ass : forall Γ τ Δ B i N,
-    gsub Γ τ Δ -> Δ ⊨ B : Type@i -> Γ ⊨ N : B[τ] -> gsub Γ (τ ,, N) (Δ ▹ B)
+    gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Γ ⊨ N : B[τ] -> gsub Γ (τ ,, N) (Δ ▹ B)
 | gsub_def : forall Γ τ Δ B i M,
-    gsub Γ τ Δ -> Δ ⊨ B : Type@i -> Δ ⊨ M : B -> gsub Γ (τ ,, M[τ]) (Δ ▸ B ≔ M)
+    gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> Δ ⊨ M : B -> gsub Γ (τ ,, M[τ]) (Δ ▸ B ≔ M)
 | gsub_mod : forall Γ τ Δ U,
     gsub Γ τ Δ -> Δ ⊨ᵘ U ≈ U -> gsub Γ (τ ,,ₘ me_lit U[τ]ᵘ) (Δ ▹ₘ U)
 | gsub_eq : forall Γ τ τ' Δ, gsub Γ τ Δ -> sb_eq τ τ' -> gsub Γ τ' Δ
 | gsub_q : forall Γ τ Δ B i,
-    gsub Γ τ Δ -> Δ ⊨ B : Type@i -> gsub (Γ ▹ B[τ]) (q τ) (Δ ▹ B)
+    gsub Γ τ Δ -> Δ ⊨ B : Typeω@i -> gsub (Γ ▹ B[τ]) (q τ) (Δ ▹ B)
 | gsub_comp : forall Γ Γ0 τ σ Δ,
     gsub Γ0 τ Δ -> ⊨ Γ -> Γ ⊨s σ ≈ σ : Γ0 -> sub_link Γ Γ0 σ -> gsub Γ (τ ⨟ σ) Δ.
 

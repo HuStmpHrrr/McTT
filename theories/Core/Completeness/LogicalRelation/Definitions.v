@@ -221,12 +221,12 @@ Inductive sem_ctx : ctx -> Prop :=
 | sem_ctx_cons : forall Γ A i env_rel,
     ⊨ Γ ->
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ env_rel ->
-    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
     ⊨ Γ ▹ A
 | sem_ctx_cons_def : forall Γ A M i env_rel,
     ⊨ Γ ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ env_rel ->
-    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ M ≈ M : A ->
     ⊨ Γ ▸ A ≔ M
 | sem_ctx_cons_mod : forall Γ U env_rel,

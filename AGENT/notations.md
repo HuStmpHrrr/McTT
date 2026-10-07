@@ -17,8 +17,8 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 
 | level | forms |
 | --- | --- |
-| 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
-| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `#n`, `𝕌@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `𝕃@n`, `𝕌ˢ@l`, `Typeˢ@n`, `Typeˢⁿ@n` |
+| 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `Type⟨t⟩`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
+| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `Typeω@n`, `#n`, `𝕌@l`, `𝕌ω@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `Typeωⁿ@n`, `𝕃@n` |
 | 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, `succl`, `maxl`, `univⁿ`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
 | 20, left | `ρ ↦ m` |
@@ -76,31 +76,31 @@ environment after a body).  The selected name and the chain are at level 0:
 
 ## Universes and levels
 
-The two tiers of universes have separate spellings in every sort.  The large
-tier is the old one: `Type@n` in `exp` (read as Typeω+n), `𝕌@n` in `domain`,
-`Typeⁿ@n` in `nf`.  The small tier is indexed by a *level term*, so its
-notation takes a `constr` argument in angle brackets: `Typeˢ⟨M⟩` is
-`a_univ M`, with `Typeˢ@n := Typeˢ⟨𝕃@n⟩` for a literal level.  Braces are
-impossible here — `Type@{` is Rocq's own universe annotation — and `{ }` in
-`constr` would collide with `sig`.  In `domain` the small universe is
-`𝕌ˢ@l`, indexed by a level *value*; in `nf` it is `univⁿ c xs` (a constant and
-a list of level atoms with offsets), with `Typeˢⁿ@n := univⁿ n la_nil`.
+The two tiers of universes are spelled so that the Rocq notation and the
+surface syntax agree: a bare `Type` is **small**, and `ω` marks the **large**
+tier.
+
+| sort | small | large |
+| --- | --- | --- |
+| `exp` | `Type⟨t⟩` (`a_univ t`), `Type@n` (literal level) | `Typeω@n` (`a_typ n`, the universe ω+n) |
+| `domain` | `𝕌@l` (`d_suniv l`, a level *value*) | `𝕌ω@n` (`d_univ n`) |
+| `nf` | `univⁿ c xs` (`nf_univ c xs`), `Typeⁿ@n` (= `univⁿ n la_nil`) | `Typeωⁿ@n` (`nf_typ n`) |
+
+`Type⟨t⟩` takes a level *term* in angle brackets: braces are impossible
+(`Type@{` is Rocq's own universe annotation) and `{ }` in `constr` would
+collide with `sig`.  A small normal form carries a constant and a sorted list
+of level atoms with offsets, which is why `univⁿ` takes two arguments.
 
 `Level` is an ordinary type at each layer: `Level` in `exp`, `Levelᵈ` in
 `domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃@n` (a literal), `succl M` and
 `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values and
-`nf_lvl_of L` on normal forms.  The surface syntax is `0l`, `1l`, …, `succl`,
-`maxl`.  A universe's surface size is small or large: `Type@n` (short for
-`Type@{nl}`), `Type@nl` and `Type@{t}` are small; `Type@ω`, `Type@omega`,
-their braced forms, `Type@{ω+n}` and the shorthand `Type@nL` are large (`nL`
-is a size only, never a term of `Level`).  Only a braced size takes a `+`.
-The printer picks the shortest spelling: `Type@n`, `Type@{t}`, `Type@ω`,
-`Type@nL`.
+`nf_lvl_of L` on normal forms.
 
-**The surface `Type@n` and the Rocq notation `Type@n` are different
-universes.**  In Rocq, `Type@n` is `a_typ n`, the large universe Typeω+n; in
-a `.mctt` program it is the small universe at level `n`, i.e. `a_univ (𝕃@n)`.
-The surface spelling of `a_typ n` is `Type@nL`, and `Type@ω` for `a_typ 0`.
+The surface syntax matches: `Type@n` (short for `Type@{nl}`), `Type@nl` and
+`Type@{t}` are small; `Type@ω`, `Type@omega`, their braced forms,
+`Type@{ω+n}` and the shorthand `Type@nL` are large (`nL` is a universe size
+only, never a term of `Level`).  Only a braced size takes a `+`.  The printer
+picks the shortest spelling: `Type@n`, `Type@{t}`, `Type@ω`, `Type@nL`.
 
 ## Traps
 

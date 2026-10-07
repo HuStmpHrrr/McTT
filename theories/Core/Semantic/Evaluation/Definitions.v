@@ -48,11 +48,11 @@ Generalizable All Variables.
 Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A universe is its own value. *)
 | eval_exp_typ :
-  `( ⟦ Type@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@i )
+  `( ⟦ Typeω@i ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ω@i )
 (** A small universe evaluates its level. *)
 | eval_exp_univ :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ l ->
-     ⟦ Typeˢ⟨M⟩ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ˢ@l )
+     ⟦ Type⟨M⟩ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@l )
 (** [Level] is a value. *)
 | eval_exp_level :
   `( ⟦ Level ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ )

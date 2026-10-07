@@ -40,7 +40,7 @@ Section Fixed_GCtx.
 
 Lemma per_ctx_env_of_typ : forall {Δ A} {i : nat} {env_relΔ},
     EF Δ ≈ Δ ∈ per_ctx_env ↘ env_relΔ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ (per_env_extend A A env_relΔ).
 Proof.
   intros * HΔ H.
@@ -53,7 +53,7 @@ Qed.
     context needs this: [q σ] goes from [Γ ▹ A[σ]] to [Δ ▹ A], and a Π-, λ- or
     ℕ-elim rule instantiates its premise there.
 
-    It is not an instance of the lemma above, because [Γ ⊨ A[σ] ≈ A[σ] : Type@i]
+    It is not an instance of the lemma above, because [Γ ⊨ A[σ] ≈ A[σ] : Typeω@i]
     would need a semantic substitution lemma for types, which the development
     neither has nor needs.  Instead, [A]'s own judgment is instantiated along
     [σ ≈ σ]; its outer values are the values of [A[σ]] at the outer environments,
@@ -64,7 +64,7 @@ Qed.
 Lemma per_ctx_env_of_typ_sub : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     EF Γ ▹ A[σ] ≈ Γ ▹ A[σ] ∈ per_ctx_env ↘ (per_env_extend A[σ] A[σ] env_relΓ).
 Proof.
   intros * HΓ Hσj HA.
@@ -91,7 +91,7 @@ Qed.
 Lemma per_env_extend_sub_intro : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     forall ρ ρ' j a b R c c',
       Dom ρ ≈ ρ' ∈ env_relΓ ->
       ⟦ A[σ] ⟧ ρ ↘ a ->
@@ -131,8 +131,8 @@ Qed.
     typechecks. *)
 Lemma rel_exp_of_typ_extend_simple : forall {Γ A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A ⊨ B ≈ B' : Type@j ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B' : Typeω@j ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
       exists b b',
@@ -152,7 +152,7 @@ Qed.
     head PERs at different arguments, which a bare [R] does not allow. *)
 Lemma rel_exp_under_ctx_extend_simple : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ',
       Dom ρ ≈ ρ' ∈ per_env_extend A A env_relΓ ->
@@ -185,7 +185,7 @@ Qed.
     wants depends on the shape of [B]. *)
 Lemma rel_exp_under_ctx_shift_at : forall {Γ A} {i : nat} {B M M' env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A ≈ A : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ M ≈ M' : B ->
     forall ρ ρ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A A env_relΓ ->
@@ -234,7 +234,7 @@ Qed.
 
 Lemma rel_wk_under_ctx_q : forall {Γ ψ Δ A} {i : nat},
     Γ ⊨w ψ : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ A[ψ]ʷ ⊨w (wk_q ψ) : Δ ▹ A.
 Proof.
   intros * Hψj HA.
@@ -299,7 +299,7 @@ Qed.
 
 Lemma rel_sub_under_ctx_extend : forall {Γ Δ σ σ' A} {i : nat} {M M'},
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A[σ] ->
     Γ ⊨s σ,,M ≈ σ',,M' : Δ ▹ A.
 Proof.
@@ -468,7 +468,7 @@ Qed.
 
 Lemma rel_sub_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat},
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     Γ ▹ A[σ] ⊨s q σ ≈ q σ' : Δ ▹ A.
 Proof.
   intros * Hσj HA.
@@ -568,7 +568,7 @@ Lemma rel_sub_under_ctx_q_at : forall {Γ Δ σ σ' A} {i : nat} {env_relΓ env_
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
       ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -649,7 +649,7 @@ Qed.
 Lemma rel_exp_of_univ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' j env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     Δ ▹ A ⊨ B ≈ B' : ulvl_tm j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
@@ -718,8 +718,8 @@ Qed.
 Corollary rel_exp_of_typ_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B'} {j : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
-    Δ ▹ A ⊨ B ≈ B' : Type@j ->
+    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ▹ A ⊨ B ≈ B' : Typeω@j ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
       ⟦ σ ⟧s ρ ↘ ρσ ->
@@ -765,7 +765,7 @@ mid —⟦B⟧(⟦σ⟧ρ ↦ c)— L1 —⟦B⟧(s ↦ c)— main —⟦B⟧(s'
 Lemma rel_exp_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {M M' B env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
-    Δ ⊨ A ≈ A : Type@i ->
+    Δ ⊨ A ≈ A : Typeω@i ->
     Δ ▹ A ⊨ M ≈ M' : B ->
     forall ρ ρ' ρσ ρ'σ' c c',
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
@@ -883,8 +883,8 @@ Qed.
     reported too, as are [N]'s four values and their domain PER, from which every
     consumer draws its argument pairs. *)
 Lemma rel_typ_of_instance : forall {Γ A} {i : nat} {B N},
-    Γ ⊨ A ≈ A : Type@i ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ⊨ A ≈ A : Typeω@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ N ≈ N : A ->
     forall Γ' env_rel',
       EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel' ->
@@ -991,7 +991,7 @@ Qed.
     [per_univ]. *)
 Lemma per_univ_of_instance : forall {Γ A} {i : nat} {B N env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ▹ A ⊨ B ≈ B : Type@i ->
+    Γ ▹ A ⊨ B ≈ B : Typeω@i ->
     Γ ⊨ N ≈ N : A ->
     forall ρ n,
       Dom ρ ≈ ρ ∈ env_relΓ ->

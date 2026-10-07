@@ -33,10 +33,10 @@ Proof.
   econstructor; [ exact HΓ | exact (per_ctx_env_of_mod HR HU) | exact HU | exact HsU ].
 Qed.
 
-Lemma sem_ctx_ass_inv : forall {Γ A}, ⊨ Γ ▹ A -> exists i, Γ ⊨ A : Type@i.
+Lemma sem_ctx_ass_inv : forall {Γ A}, ⊨ Γ ▹ A -> exists i, Γ ⊨ A : Typeω@i.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
-Lemma sem_ctx_def_inv : forall {Γ A M}, ⊨ Γ ▸ A ≔ M -> (exists i, Γ ⊨ A : Type@i) /\ Γ ⊨ M : A.
+Lemma sem_ctx_def_inv : forall {Γ A M}, ⊨ Γ ▸ A ≔ M -> (exists i, Γ ⊨ A : Typeω@i) /\ Γ ⊨ M : A.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
 Lemma sem_ctx_mod_inv : forall {Γ U}, ⊨ Γ ▹ₘ U -> Γ ⊨ᵘ U ≈ U.
@@ -59,7 +59,7 @@ Qed.
 
 Definition lets_only (Ψ : ctx) : Prop := List.Forall (fun e => forall B, e <> ce_ass B) Ψ.
 
-Lemma valid_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Type@i -> exists j, D ⊨ ctx_pi Ψ X : Type@j.
+Lemma valid_ctx_pi : forall Ψ D X i, ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i -> exists j, D ⊨ ctx_pi Ψ X : Typeω@j.
 Proof.
   induction Ψ as [| e Ψ IH]; intros * HΨ HX; cbn in *; [ eauto |].
   destruct e as [B | B M | U].
@@ -78,7 +78,7 @@ Qed.
 
 Inductive rep : ctx -> typ -> nat -> bool -> Prop :=
 | rep_leaf : forall Γ X i b,
-    ⊨ Γ -> Γ ⊨ X : Type@i -> (b = true -> X = a_True) -> rep Γ X 0 b
+    ⊨ Γ -> Γ ⊨ X : Typeω@i -> (b = true -> X = a_True) -> rep Γ X 0 b
 | rep_nest : forall Γ τ D Ψ Δp X m b,
     gsub Γ τ D -> tele_ass Δp -> lets_only Ψ -> ⊨ Ψ ++ Δp ++ D ->
     rep (Ψ ++ Δp ++ D) X m b ->
@@ -87,7 +87,7 @@ Inductive rep : ctx -> typ -> nat -> bool -> Prop :=
 Lemma rep_ctx : forall Γ A n b, rep Γ A n b -> ⊨ Γ.
 Proof. intros * H; destruct H; [ assumption | exact (proj1 (gsub_sem ltac:(eassumption))) ]. Qed.
 
-Lemma rep_valid : forall Γ A n b, rep Γ A n b -> exists i, Γ ⊨ A : Type@i.
+Lemma rep_valid : forall Γ A n b, rep Γ A n b -> exists i, Γ ⊨ A : Typeω@i.
 Proof.
   induction 1 as [Γ X i b HΓ HX Hb | Γ τ D Ψ Δp X m b Hg HΔ HΨ HC Hr (i & IH)]; [ eauto |].
   rewrite app_assoc in IH, HC.
@@ -112,15 +112,15 @@ Qed.
 (** ** Local Definitions and Modules before a Type *)
 
 Lemma let_step_def : forall {Γ τ G D1 k M1 X} {i : nat},
-    gsub Γ τ G -> G ⊨ D1 : Type@k -> G ⊨ M1 : D1 -> G ▸ D1 ≔ M1 ⊨ X : Type@i ->
-    Γ ⊨ (ℓ D1 ≔ M1 in X)[τ] ≈ X[τ ,, M1[τ]] : Type@i /\
+    gsub Γ τ G -> G ⊨ D1 : Typeω@k -> G ⊨ M1 : D1 -> G ▸ D1 ≔ M1 ⊨ X : Typeω@i ->
+    Γ ⊨ (ℓ D1 ≔ M1 in X)[τ] ≈ X[τ ,, M1[τ]] : Typeω@i /\
     (forall B C, pi_view (ℓ D1 ≔ M1 in X)[τ] = Some (B, C) -> pi_view X[τ ,, M1[τ]] = Some (B, C)).
 Proof.
   intros * Hg HD HM HX; split.
   - pose proof (rel_exp_let_zeta (oA := Some D1) HD HM HX) as H.
     pose proof (rel_exp_under_ctx_gsub Hg H) as H'.
     rewrite !exp_sub_extend_sub in H'.
-    change (Type@i[τ ,, M1[τ]]) with (Type@i : typ) in H'; exact H'.
+    change (Typeω@i[τ ,, M1[τ]]) with (Typeω@i : typ) in H'; exact H'.
   - intros B C Hp; cbn in Hp.
     destruct (pi_view X[q τ]) as [[B' C'] |] eqn:E; [| discriminate ].
     injection Hp as <- <-.
@@ -128,15 +128,15 @@ Proof.
 Qed.
 
 Lemma let_step_mod : forall {Γ τ G U X} {i : nat},
-    gsub Γ τ G -> G ⊨ᵘ U ≈ U -> G ▹ₘ U ⊨ X : Type@i ->
-    Γ ⊨ (ℓₘ U in X)[τ] ≈ X[τ ,,ₘ me_lit U[τ]ᵘ] : Type@i /\
+    gsub Γ τ G -> G ⊨ᵘ U ≈ U -> G ▹ₘ U ⊨ X : Typeω@i ->
+    Γ ⊨ (ℓₘ U in X)[τ] ≈ X[τ ,,ₘ me_lit U[τ]ᵘ] : Typeω@i /\
     (forall B C, pi_view (ℓₘ U in X)[τ] = Some (B, C) -> pi_view X[τ ,,ₘ me_lit U[τ]ᵘ] = Some (B, C)).
 Proof.
   intros * Hg HU HX; split.
   - pose proof (rel_exp_let_mod_zeta HU HX) as H.
     pose proof (rel_exp_under_ctx_gsub Hg H) as H'.
     rewrite !exp_sub_extend_mod_sub in H'.
-    change (Type@i[τ ,,ₘ (me_lit U)[τ]ᵐ]) with (Type@i : typ) in H'; exact H'.
+    change (Typeω@i[τ ,,ₘ (me_lit U)[τ]ᵐ]) with (Typeω@i : typ) in H'; exact H'.
   - intros B C Hp; cbn in Hp.
     destruct (pi_view X[q τ]) as [[B' C'] |] eqn:E; [| discriminate ].
     injection Hp as <- <-.
@@ -144,8 +144,8 @@ Proof.
 Qed.
 
 Lemma lets_peel : forall Ψ D X i Γ τ,
-    lets_only Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Type@i -> gsub Γ τ D ->
-    exists τ' j, gsub Γ τ' (Ψ ++ D) /\ Γ ⊨ (ctx_pi Ψ X)[τ] ≈ X[τ'] : Type@j /\
+    lets_only Ψ -> ⊨ Ψ ++ D -> Ψ ++ D ⊨ X : Typeω@i -> gsub Γ τ D ->
+    exists τ' j, gsub Γ τ' (Ψ ++ D) /\ Γ ⊨ (ctx_pi Ψ X)[τ] ≈ X[τ'] : Typeω@j /\
       (forall B C, pi_view (ctx_pi Ψ X)[τ] = Some (B, C) -> pi_view X[τ'] = Some (B, C)).
 Proof.
   induction Ψ as [| e Ψ IH]; intros * HL HC HX Hg; cbn [ctx_pi app] in *.
@@ -177,8 +177,8 @@ Proof. intros * H; apply Forall_app in H; exact H. Qed.
 Lemma rep_shift : forall D A k b, rep D A k b -> forall n, k = S n ->
     forall Γ σ, gsub Γ σ D ->
     forall B C, pi_view A[σ] = Some (B, C) ->
-    (exists i, Γ ⊨ B : Type@i) /\ (exists i, Γ ▹ B ⊨ C : Type@i) /\
-    (exists i, Γ ⊨ A[σ] ≈ Π B C : Type@i) /\ (forall N, Γ ⊨ N : B -> rep Γ C[Id,,N] n b).
+    (exists i, Γ ⊨ B : Typeω@i) /\ (exists i, Γ ▹ B ⊨ C : Typeω@i) /\
+    (exists i, Γ ⊨ A[σ] ≈ Π B C : Typeω@i) /\ (forall N, Γ ⊨ N : B -> rep Γ C[Id,,N] n b).
 Proof.
   induction 1 as [D X i b HD HX Hb | D τ D0 Ψ Δp X m b Hg0 HΔ HΨ HC Hr IH];
     intros n Hk Γ σ Hg B C Hp; [ discriminate |].
@@ -242,7 +242,7 @@ Proof.
 Qed.
 
 Lemma rep_top_zero_gen : forall D A k b, rep D A k b -> k = 0 -> b = true ->
-    forall Γ σ, gsub Γ σ D -> exists i, Γ ⊨ A[σ] ≈ ⊤ : Type@i.
+    forall Γ σ, gsub Γ σ D -> exists i, Γ ⊨ A[σ] ≈ ⊤ : Typeω@i.
 Proof.
   induction 1 as [D X i b HD HX Hb | D τ D0 Ψ Δp X m b Hg0 HΔ HΨ HC Hr IH]; intros Hk Hb' Γ σ Hg.
   - rewrite (Hb Hb'); cbn.
@@ -258,7 +258,7 @@ Proof.
     exists (max j l); eapply rel_exp_under_ctx_trans; eapply rel_exp_cumu_ge; [| exact HJ | | exact HJ' ]; lia.
 Qed.
 
-Corollary rep_top_zero : forall Γ A, rep Γ A 0 true -> exists i, Γ ⊨ A ≈ ⊤ : Type@i.
+Corollary rep_top_zero : forall Γ A, rep Γ A 0 true -> exists i, Γ ⊨ A ≈ ⊤ : Typeω@i.
 Proof.
   intros * H.
   pose proof (rep_top_zero_gen _ _ _ _ H eq_refl eq_refl _ _ (gsub_id _ (rep_ctx _ _ _ _ H))) as HA.

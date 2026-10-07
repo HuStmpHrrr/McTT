@@ -17,7 +17,7 @@ Section Fixed_GCtx.
 
 Lemma glu_rel_exp_subtyp : forall {Γ M A A'} {i : nat},
     Γ ⊩ M : A ->
-    Γ ⊩ A' : Type@i ->
+    Γ ⊩ A' : Typeω@i ->
     Γ ⊢ A ⊆ A' ->
     Γ ⊩ M : A'.
 Proof.
@@ -47,8 +47,8 @@ Hint Resolve glu_rel_exp_subtyp : mctt.
 
 Lemma glu_rel_exp_conv : forall {Γ M A A'} {i : nat},
     Γ ⊩ M : A ->
-    Γ ⊩ A' : Type@i ->
-    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊩ A' : Typeω@i ->
+    Γ ⊢ A ≈ A' : Typeω@i ->
     Γ ⊩ M : A'.
 Proof.
   mauto 3.

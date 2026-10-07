@@ -33,10 +33,10 @@ Ltac elab_fails := apply elaborate_core_fails; eexists; vm_compute; reflexivity.
 (** ** Pre-application
 
 <<
-module U (A : Type@0) where
-  def a : Type@0 := A end
-  module M (B : Type@0) where
-    def b : Type@0 := B end
+module U (A : Typeω@0) where
+  def a : Typeω@0 := A end
+  module M (B : Typeω@0) where
+    def b : Typeω@0 := B end
     eval a
     eval b
     eval fun (x : Nat) -> b
@@ -64,10 +64,10 @@ Definition U_M_b : exp := qname_term (q_abs ("U" :: nil) ("M" :: "b" :: nil)).
 
 Example nested_spec :
   elab_spec nested
-    (nil, ⋅ ▹ Type@0,
-     cc_def "a" true false Type@0 (Some #0) ::
-     cc_mod "M" false (⋅ ▹ Type@0)
-       (cc_def "b" true false Type@0 (Some #0) ::
+    (nil, ⋅ ▹ Typeω@0,
+     cc_def "a" true false Typeω@0 (Some #0) ::
+     cc_mod "M" false (⋅ ▹ Typeω@0)
+       (cc_def "b" true false Typeω@0 (Some #0) ::
         cc_eval (U_a $ #1) None ::
         cc_eval (U_M_b $ #1 $ #0) None ::
         cc_eval (λ ℕ (U_M_b $ #2 $ #1)) None :: nil) ::
@@ -107,8 +107,8 @@ Definition Church_two : exp := qname_term (q_abs ("ModuleParam" :: nil) ("Church
 Example church_spec :
   elab_spec church
     (nil, ⋅,
-     cc_mod "Church" false (⋅ ▹ Type@0)
-       (cc_def "t" true false Type@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
+     cc_mod "Church" false (⋅ ▹ Typeω@0)
+       (cc_def "t" true false Typeω@0 (Some (Π #0 (Π (Π #1 #2) #2))) ::
         cc_def "two" true false (Church_t $ #0) (Some (λ #0 (λ (Π #1 #2) (#0 $ (#0 $ #1))))) :: nil) ::
      cc_eval (ℓₘ (gu_mk ⋅ (Syntax.md_alias (me_app (mpath ("ModuleParam" :: nil) ("Church" :: nil)) ℕ)))
               in (a_mem (me_var 0) "two" $ zero $ λ ℕ (succ #0))) (Some ℕ) :: nil).
@@ -256,7 +256,7 @@ Example partial_args :
     (c_mod false "M" (("A", typ 0) :: nil) (md_where (c_def md_pub "f" (typ 0) (var "A") :: nil)) ::
      c_eval (proj (var "M") "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 (Some #0) :: nil) ::
+     cc_mod "M" false (⋅ ▹ Typeω@0) (cc_def "f" true false Typeω@0 (Some #0) :: nil) ::
      cc_eval (a_mem (mpath ("T" :: nil) ("M" :: nil)) "f") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -266,7 +266,7 @@ Example dotted_module :
     (c_mod_dotted false "B" ("A" :: nil) (("X", typ 0) :: nil) (md_where (c_def md_abs "y" (typ 0) (var "X") :: nil)) ::
      c_eval (app (proj (proj (var "A") "B") "y") nat) None :: nil))
     (nil, ⋅,
-     cc_mod "A" false ⋅ (cc_mod "B" false (⋅ ▹ Type@0) (cc_def "y" false false Type@0 (Some #0) :: nil) :: nil) ::
+     cc_mod "A" false ⋅ (cc_mod "B" false (⋅ ▹ Typeω@0) (cc_def "y" false false Typeω@0 (Some #0) :: nil) :: nil) ::
      cc_eval (a_mem (me_mem (mpath ("T" :: nil) ("A" :: nil)) "B") "y" $ ℕ) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -470,7 +470,7 @@ Proof. elab_ok. Qed.
 (** Each binding sees the earlier ones, in its type and in its definiens:
 
 <<
-let A : Type@0 := Nat; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> succ z in f z end
+let A : Typeω@0 := Nat; z : A := 0; f : forall (n : A) -> A := fun (n : A) -> succ z in f z end
 >>
 *)
 Example let_multi :
@@ -480,14 +480,14 @@ Example let_multi :
                   (letb (d_def "f" (Some (pi "n" (var "A") (var "A"))) (fn "n" (var "A") (Cst.succ (var "z"))))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓ Type@0 ≔ ℕ in ℓ #0 ≔ zero in ℓ (Π #1 #2) ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ #0 ≔ zero in ℓ (Π #1 #2) ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** Without an annotation the elaborator emits none; the core infers the
     type of the definiens.  Annotated and unannotated bindings mix:
 
 <<
-let A : Type@0 := Nat; z := 0; f := fun (n : A) -> succ z in f z end
+let A : Typeω@0 := Nat; z := 0; f := fun (n : A) -> succ z in f z end
 >>
 *)
 Example let_mixed :
@@ -497,7 +497,7 @@ Example let_mixed :
                   (letb (d_def "f" None (fn "n" (var "A") (Cst.succ (var "z"))))
                      (app (var "f") (var "z"))))) None :: nil))
     (nil, ⋅,
-     cc_eval (ℓ Type@0 ≔ ℕ in ℓ ≔ zero in ℓ ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
+     cc_eval (ℓ Typeω@0 ≔ ℕ in ℓ ≔ zero in ℓ ≔ λ #1 (succ #1) in #0 $ #1) None :: nil).
 Proof. elab_ok. Qed.
 
 (** A [let] may shadow a member of the frame.  The definiens still sees the
@@ -505,7 +505,7 @@ Proof. elab_ok. Qed.
     binder further out.
 
 <<
-module M (A : Type@0) where
+module M (A : Typeω@0) where
   def y : Nat := 0 end
   eval let y : Nat := succ y in fun (a : A) -> y end
 end
@@ -520,7 +520,7 @@ Example let_shadow :
          (c_def md_pub "y" nat Cst.zero ::
           c_eval (letb (d_def "y" (Some nat) (Cst.succ (var "y"))) (fn "a" (var "A") (var "y"))) None :: nil)) :: nil))
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0)
+     cc_mod "M" false (⋅ ▹ Typeω@0)
        (cc_def "y" true false ℕ (Some zero) ::
         cc_eval (ℓ ℕ ≔ succ (T_M_y $ #0) in λ #1 #1) None :: nil) :: nil).
 Proof. elab_ok. Qed.
@@ -529,7 +529,7 @@ Proof. elab_ok. Qed.
 
 Definition T_ (ch : list string) : modexp := mpath ("T" :: nil) ch.
 
-(** [module P (A : Type@0) := M A] is an alias, read under its
+(** [module P (A : Typeω@0) := M A] is an alias, read under its
     parameters. *)
 Example alias_module :
   elab_spec (unit_of
@@ -537,8 +537,8 @@ Example alias_module :
      c_mod false "P" (("A", typ 0) :: nil) (md_alias (app (var "M") (var "A"))) ::
      c_eval (proj (app (var "P") nat) "f") None :: nil))
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "f" true false Type@0 (Some #0) :: nil) ::
-     cc_alias "P" false (⋅ ▹ Type@0) (me_app (T_ ("M" :: nil)) #0) ::
+     cc_mod "M" false (⋅ ▹ Typeω@0) (cc_def "f" true false Typeω@0 (Some #0) :: nil) ::
+     cc_alias "P" false (⋅ ▹ Typeω@0) (me_app (T_ ("M" :: nil)) #0) ::
      cc_eval (a_mem (me_app (T_ ("P" :: nil)) ℕ) "f") None :: nil).
 Proof. elab_ok. Qed.
 
@@ -546,7 +546,7 @@ Proof. elab_ok. Qed.
     entries after it, a nested module included.
 
 <<
-let module L (A : Type@0) where
+let module L (A : Typeω@0) where
   def x : A -> A := fun (a : A) -> a end
   module N where def y : Nat := 0 end end
   def z : Nat := N.y end
@@ -564,7 +564,7 @@ Example local_body :
           (proj (var "L") "x")) None :: nil))
     (nil, ⋅,
      cc_eval
-       (ℓₘ (gu_mk (⋅ ▹ Type@0)
+       (ℓₘ (gu_mk (⋅ ▹ Typeω@0)
               (md_body
                  (gm_ext
                     (gm_ext
@@ -751,8 +751,8 @@ Proof. elab_err. Qed.
     read as terms where the open stands.
 
 <<
-module T (A : Type@0) where
-  module M (B : Type@0) where def c : Type@0 := B end def e : Type@0 := B end end
+module T (A : Typeω@0) where
+  module M (B : Typeω@0) where def c : Typeω@0 := B end def e : Typeω@0 := B end end
   open M A use (c as d) export (e)
   eval d
   eval e
@@ -767,8 +767,8 @@ Example import_items :
       (md_where (c_def md_pub "c" (typ 0) (var "B") :: c_def md_pub "e" (typ 0) (var "B") :: nil)) ::
     c_open nil ("M" :: nil) (var "A" :: nil) (i_items (("c", "d") :: nil) (("e", "e") :: nil)) ::
     c_eval (var "d") None :: c_eval (var "e") None :: nil))
-    (nil, ⋅ ▹ Type@0,
-     cc_mod "M" false (⋅ ▹ Type@0) (cc_def "c" true false Type@0 (Some #0) :: cc_def "e" true false Type@0 (Some #0) :: nil) ::
+    (nil, ⋅ ▹ Typeω@0,
+     cc_mod "M" false (⋅ ▹ Typeω@0) (cc_def "c" true false Typeω@0 (Some #0) :: cc_def "e" true false Typeω@0 (Some #0) :: nil) ::
      cc_open (me_app (me_app (T_ ("M" :: nil)) #0) #0)
        ((Some "c", "d", true) :: (Some "e", "e", false) :: nil) ::
      cc_eval (qname_term (q_abs ("T" :: nil) ("d" :: nil)) $ #0) None ::
@@ -808,7 +808,7 @@ Proof. elab_err. Qed.
 
 <<
 import L::X A as W
-module T (A : Type@0) where end
+module T (A : Typeω@0) where end
 >>
 *)
 Example leading_args :
@@ -942,7 +942,7 @@ Proof. elab_ok. Qed.
 
 <<
 let module L where
-  module N (A : Type@0) where def y : Type@0 := A end end
+  module N (A : Typeω@0) where def y : Typeω@0 := A end end
   open N Nat use (y as u) export (y)
 in L.y end
 >>
@@ -960,8 +960,8 @@ Example local_items :
        (ℓₘ (gu_mk ⋅
               (md_body
                  (gm_open
-                    (gm_ext gm_nil "N" (ge_mod false (gu_mk (⋅ ▹ Type@0)
-                                         (md_body (gm_ext gm_nil "y" (ge_def true false Type@0 (Some #0)))))))
+                    (gm_ext gm_nil "N" (ge_mod false (gu_mk (⋅ ▹ Typeω@0)
+                                         (md_body (gm_ext gm_nil "y" (ge_def true false Typeω@0 (Some #0)))))))
                     (me_app (me_var 0) ℕ) ((Some "y", "u", true) :: (Some "y", "y", false) :: nil))))
         in a_mem (me_var 0) "y") None :: nil).
 Proof. elab_ok. Qed.
@@ -970,9 +970,9 @@ Proof. elab_ok. Qed.
 
 <<
 module Main where
-  module M (A : Type@0) where
+  module M (A : Typeω@0) where
     def id (x : A) : A := x end
-    module N (B : Type@0) where
+    module N (B : Typeω@0) where
       def k (x : A) (y : B) : A := id x end
     end
   end
@@ -995,9 +995,9 @@ Definition Main_M_id : exp := qname_term (q_abs ("Main" :: nil) ("M" :: "id" :: 
 Example running_spec :
   elab_spec running
     (nil, ⋅,
-     cc_mod "M" false (⋅ ▹ Type@0)
+     cc_mod "M" false (⋅ ▹ Typeω@0)
        (cc_def "id" true false (Π #0 #1) (Some (λ #0 #0)) ::
-        cc_mod "N" false (⋅ ▹ Type@0)
+        cc_mod "N" false (⋅ ▹ Typeω@0)
           (cc_def "k" true false (Π #1 (Π #1 #3)) (Some (λ #1 (λ #1 (Main_M_id $ #3 $ #1))))
              :: nil) :: nil) ::
      cc_def "j" true false (Π ℕ ℕ) (Some (a_mem (mpath ("Main" :: nil) ("M" :: nil)) "id" $ ℕ)) :: nil).

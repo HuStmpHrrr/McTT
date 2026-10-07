@@ -104,10 +104,10 @@ Section Fixed_GCtx.
     relies on. *)
 Lemma wf_exp_unf_large : forall {Γ A} {u : unf},
     Γ ⊢ A : unf_tm u ->
-    Γ ⊢ A : Type@(unf_large u).
+    Γ ⊢ A : Typeω@(unf_large u).
 Proof.
   intros * HA; destruct u as [L | n]; cbn in *; [| exact HA ].
-  assert (exists k, Γ ⊢ Typeˢ⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Type@k) as [k Hk]
+  assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Typeω@k) as [k Hk]
     by (gen_presups; eauto 2).
   assert (⊢ Γ) by (gen_presups; assumption).
   eapply wf_exp_subtyp'; [ exact HA | apply wf_subtyp_small_large; [ assumption |] ].
@@ -117,7 +117,7 @@ Qed.
 Lemma wf_exp_unf_large_ge : forall {Γ A} {u : unf} {i : nat},
     unf_le u (unl i) ->
     Γ ⊢ A : unf_tm u ->
-    Γ ⊢ A : Type@i.
+    Γ ⊢ A : Typeω@i.
 Proof.
   intros * Hle HA; apply wf_exp_unf_large in HA.
   destruct u; cbn in *; (eapply lift_exp_ge; [| exact HA ]); lia.
@@ -132,8 +132,8 @@ Lemma wf_pi_unf_max : forall {Γ A B} {u v : unf},
 Proof.
   intros * HA HB.
   assert (⊢ Γ) by (gen_presups; assumption).
-  assert (HAl : Γ ⊢ A : Type@(unf_large u)) by (apply wf_exp_unf_large; exact HA).
-  assert (HBl : Γ ▹ A ⊢ B : Type@(unf_large v)) by (apply wf_exp_unf_large; exact HB).
+  assert (HAl : Γ ⊢ A : Typeω@(unf_large u)) by (apply wf_exp_unf_large; exact HA).
+  assert (HBl : Γ ▹ A ⊢ B : Typeω@(unf_large v)) by (apply wf_exp_unf_large; exact HB).
   assert (⊢ Γ ▹ A) by mauto 2.
   destruct u as [[c xs] | i], v as [[d ys] | j];
     [ destruct xs, ys | destruct xs | destruct ys |]; cbn [unf_max unf_tm unf_large fst snd] in *.
@@ -154,8 +154,8 @@ Qed.
 
 (** A small universe at a literal level reads back as itself. *)
 Lemma nbe_ty_suniv_lit : forall {Γ n W},
-    nbe_ty_f Γ Typeˢ@n W ->
-    W = Typeˢⁿ@n.
+    nbe_ty_f Γ Type@n W ->
+    W = Typeⁿ@n.
 Proof.
   intros * Hn.
   dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
@@ -189,7 +189,7 @@ Qed.
 
 (** A premise [⟹ UA] with [is_univ_nf UA u] is sound as a typing at
     [unf_tm u], while the declarative rules ask for a large universe: such a
-    hypothesis is lifted to [Type@(unf_large u)] ([wf_exp_unf_large]).
+    hypothesis is lifted to [Typeω@(unf_large u)] ([wf_exp_unf_large]).
     [is_univ_nf_eq] turns the side condition into the shape of [UA]. *)
 #[local] Tactic Notation "lift_univ_at" constr(Δ) constr(A) constr(u) :=
   repeat match goal with Hi : is_univ_nf ?UA u |- _ =>
@@ -201,7 +201,7 @@ Qed.
     by (apply wf_exp_unf_large; eassumption).
 
 Lemma alg_type_sound :
-  (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Type@i -> Γ ⊢ M : A) /\
+  (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Typeω@i -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
     (forall {Γ Ψ}, Γ ⊢aˣ Ψ -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ˣ Ψ ≈ Ψ) /\
     (forall {Γ U}, Γ ⊢aᵘ U -> ⊢ Γ -> gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) /\
@@ -217,26 +217,26 @@ Proof.
   (** An unannotated [let]: the type its body infers is a type. *)
   | |- _ ⊢ ℓ ≔ _ in _ : _ =>
       assert (HM : Γ ⊢ M : A) by eauto;
-      assert (exists i, Γ ⊢ (A : exp) : Type@i) as [i HA] by (gen_presups; eauto 2);
+      assert (exists i, Γ ⊢ (A : exp) : Typeω@i) as [i HA] by (gen_presups; eauto 2);
       assert (⊢ Γ ▸ (A : exp) ≔ M) by mauto 3;
       assert (Γ ▸ (A : exp) ≔ M ⊢ B : C) by eauto;
-      assert (exists j, Γ ▸ (A : exp) ≔ M ⊢ C : Type@j) as [j HCj] by (gen_presups; eauto 2);
+      assert (exists j, Γ ▸ (A : exp) ≔ M ⊢ C : Typeω@j) as [j HCj] by (gen_presups; eauto 2);
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_def _ _ _ _ _ _ HA HM)) as HCs;
-      assert (Γ ⊢ C[Id,,M] ≈ D : Type@j) as <- by mauto 3 using soundness_ty';
+      assert (Γ ⊢ C[Id,,M] ≈ D : Typeω@j) as <- by mauto 3 using soundness_ty';
       eapply wf_let; [ exact HA | exact HM | eassumption | solve_let_ann ]
   (** A module [let]. *)
   | |- _ ⊢ ℓₘ _ in _ : _ =>
       assert (HU : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) by eauto;
       assert (⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU);
       assert (Γ ▹ₘ U ⊢ B : C) by eauto;
-      assert (exists j, Γ ▹ₘ U ⊢ C : Type@j) as [j HCj] by (gen_presups; eauto 2);
+      assert (exists j, Γ ▹ₘ U ⊢ C : Typeω@j) as [j HCj] by (gen_presups; eauto 2);
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_mod _ _ _ _ HU)) as HCs;
-      assert (Γ ⊢ C[Id ,,ₘ me_lit U] ≈ D : Type@j) as <- by mauto 3 using soundness_ty';
+      assert (Γ ⊢ C[Id ,,ₘ me_lit U] ≈ D : Typeω@j) as <- by mauto 3 using soundness_ty';
       eapply wf_let_mod; eauto
   (** A member of an applied module: its root's member, applied. *)
   | Hs : modexp_spine _ = (_, _, _) |- _ ⊢ a_mem _ _ : _ =>
       assert (Γ ⊢ apps (member_ref R (pre ++ x :: nil)) args : A) by eauto;
-      assert (exists j, Γ ⊢ A : Type@j) as [j] by (gen_presups; eauto 2);
+      assert (exists j, Γ ⊢ A : Typeω@j) as [j] by (gen_presups; eauto 2);
       eapply wf_mem_app; eauto
   (** A member, at the normal form of its canonical type. *)
   | Hmt : member_type _ _ _ _ _ (mr_term _) |- _ ⊢ a_mem _ _ : _ =>
@@ -244,7 +244,7 @@ Proof.
       destruct (proj1 member_wf _ _ _ _ Hmt HH ltac:(intros; discriminate))
         as ([i HA] & HMu & _); cbn [mres_ty] in *;
       destruct (HMu eq_refl) as (M & HMe & HMt);
-      assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 3 using soundness_ty';
+      assert (Γ ⊢ A ≈ B : Typeω@i) as <- by mauto 3 using soundness_ty';
       eapply wf_mem; [ eassumption | exact HH | exact Hmt | exact HA | exact HMe | exact HMt ]
   (** An extension by an assumption, a definition or a module. *)
   | |- wf_ext_eq _ _ _ (_ ▹ _) _ =>
@@ -284,35 +284,35 @@ Proof.
       reaches: both arguments are checked against [Level]. *)
   all: try solve [ apply wf_maxl; mauto 4 ].
   (** A small universe: its level is a level, and the universe above is the
-      normal form of [Typeˢ⟨succl M⟩]. *)
+      normal form of [Type⟨succl M⟩]. *)
   all: try match goal with
     | Hn : nbe_ty_f _ (a_univ (succl ?M)) ?W |- _ ⊢ a_univ ?M : _ =>
         assert (Γ ⊢ M : Level) by mauto 3;
-        assert (Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3);
-        assert (Γ ⊢ Typeˢ⟨succl M⟩ ≈ W : Type@0) as <- by mauto 3 using soundness_ty';
+        assert (Γ ⊢ Type⟨succl M⟩ : Typeω@0) by (apply wf_univ_large_tm; mauto 3);
+        assert (Γ ⊢ Type⟨succl M⟩ ≈ W : Typeω@0) as <- by mauto 3 using soundness_ty';
         apply wf_univ; assumption
     end.
   - assert (Γ ⊢ M : A) by mauto 3.
-    assert (exists i, Γ ⊢ A : Type@i) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ A : Type@(max i j)) by mauto 3 using lift_exp_max_right.
-    assert (Γ ⊢ B : Type@(max i j)) by mauto 3 using lift_exp_max_left.
+    assert (exists i, Γ ⊢ A : Typeω@i) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ A : Typeω@(max i j)) by mauto 3 using lift_exp_max_right.
+    assert (Γ ⊢ B : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
     assert (Γ ⊢ A ⊆ B) by mauto 2 using alg_subtyping_sound.
     mauto 3.
-  - assert (Γ ⊢ ℕ : Type@0) by mauto 2.
+  - assert (Γ ⊢ ℕ : Typeω@0) by mauto 2.
     assert (⊢ Γ ▹ ℕ) by mauto 2.
     lift_univ_at (Γ ▹ ℕ) A u.
     assert (⊢ Γ ▹ ℕ ▹ A) by mauto 3.
     assert (Γ ⊢ M : ℕ) by mauto 2.
-    assert (Γ ⊢ A[Id,,zero] : Type@(unf_large u)) by mauto 3.
-    assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Type@(unf_large u)) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(unf_large u)) as <- by mauto 4 using soundness_ty'.
+    assert (Γ ⊢ A[Id,,zero] : Typeω@(unf_large u)) by mauto 3.
+    assert (Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] : Typeω@(unf_large u)) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ B : Typeω@(unf_large u)) as <- by mauto 4 using soundness_ty'.
     mauto 4.
-  - assert (Γ ⊢ ⊥ : Type@0) by mauto 2.
+  - assert (Γ ⊢ ⊥ : Typeω@0) by mauto 2.
     assert (⊢ Γ ▹ ⊥) by mauto 2.
     lift_univ_at (Γ ▹ ⊥) A u.
     assert (Γ ⊢ M : ⊥) by mauto 2.
-    assert (Γ ⊢ A[Id,,M] : Type@(unf_large u)) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ B : Type@(unf_large u)) as <- by mauto 4 using soundness_ty'.
+    assert (Γ ⊢ A[Id,,M] : Typeω@(unf_large u)) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ B : Typeω@(unf_large u)) as <- by mauto 4 using soundness_ty'.
     mauto 4.
   (** A [Π] is at the join of the universes of its parts. *)
   - match goal with HW : is_univ_nf ?W (unf_max ?u ?v) |- _ =>
@@ -326,42 +326,42 @@ Proof.
       normal form and the body's type. *)
   - lift_univ_at Γ A u.
     assert (⊢ Γ ▹ A) by mauto 3.
-    assert (Γ ⊢ A ≈ C : Type@(unf_large u)) by mauto 2 using soundness_ty'.
+    assert (Γ ⊢ A ≈ C : Typeω@(unf_large u)) by mauto 2 using soundness_ty'.
     assert (Γ ▹ A ⊢ M : B) by mauto 2.
-    assert (exists j, Γ ▹ A ⊢ B : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ Π A B ≈ Π C B : Type@(max (unf_large u) j)) as <- by mauto 3.
+    assert (exists j, Γ ▹ A ⊢ B : Typeω@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ Π A B ≈ Π C B : Typeω@(max (unf_large u) j)) as <- by mauto 3.
     mauto 3.
   - assert (Γ ⊢ M : Π A B) by mauto 2.
-    assert (exists i, Γ ⊢ Π A B : Type@i) as [i] by (gen_presups; eauto 2).
-    assert (Γ ⊢ A : Type@i /\ Γ ▹ (A : exp) ⊢ B : Type@i) as [] by mauto 3.
+    assert (exists i, Γ ⊢ Π A B : Typeω@i) as [i] by (gen_presups; eauto 2).
+    assert (Γ ⊢ A : Typeω@i /\ Γ ▹ (A : exp) ⊢ B : Typeω@i) as [] by mauto 3.
     assert (Γ ⊢ N : A) by mauto 2.
-    assert (Γ ⊢ B[Id,,N] ≈ C : Type@i) as <- by mauto 4 using soundness_ty'.
+    assert (Γ ⊢ B[Id,,N] ≈ C : Typeω@i) as <- by mauto 4 using soundness_ty'.
     mauto 3.
   - lift_univ_at Γ A u.
     assert (Γ ⊢ M : A) by mauto 2.
     assert (⊢ Γ ▸ A ≔ M) by mauto 2.
     assert (Γ ▸ A ≔ M ⊢ B : C) by mauto 2.
-    assert (exists j, Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ C[Id,,M] : Type@j) by mauto 3.
-    assert (Γ ⊢ C[Id,,M] ≈ D : Type@j) as <- by mauto 3 using soundness_ty'.
+    assert (exists j, Γ ▸ A ≔ M ⊢ C : Typeω@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3.
+    assert (Γ ⊢ C[Id,,M] ≈ D : Typeω@j) as <- by mauto 3 using soundness_ty'.
     mauto 3.
   - assert (Γ ⊢ #x : A) by mauto 2.
-    assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2.
-    assert (Γ ⊢ A ≈ B : Type@i) as <- by mauto 2 using soundness_ty'.
+    assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 2.
+    assert (Γ ⊢ A ≈ B : Typeω@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
   (** The resolution premise of [wf_mem_glob] is the same function call, so
       the declarative rule applies directly; [soundness_ty'] relates the
       inferred normal form to the declarative type. *)
   - assert (Γ ⊢ a_mem H x : A) by mauto 3.
-    assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
-    assert (Γ ⊢ A ≈ C : Type@i) as <- by mauto 2 using soundness_ty'.
+    assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (Γ ⊢ A ≈ C : Typeω@i) as <- by mauto 2 using soundness_ty'.
     mauto 3.
 Qed.
 
 Lemma alg_type_check_sound : forall {Γ i A M},
     Γ ⊢a M ⟸ A ->
     ⊢ Γ ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     Γ ⊢ M : A.
 Proof.
   intros; eapply (proj1 alg_type_sound); eassumption.
@@ -407,17 +407,17 @@ Proof.
          dir_inversion_by_head eval_exp; subst;
          dir_inversion_by_head read_typ; subst;
          reflexivity).
-  (** A small universe infers the normal form of [Typeˢ⟨succl M⟩], which
+  (** A small universe infers the normal form of [Type⟨succl M⟩], which
       normalises to itself. *)
   - assert (Γ ⊢ M : Level) by (eapply alg_type_check_sound; mauto 3).
-    assert (Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3).
+    assert (Γ ⊢ Type⟨succl M⟩ : Typeω@0) by (apply wf_univ_large_tm; mauto 3).
     eapply idempotent_nbe_ty; eassumption.
-  - assert (Γ ⊢ ℕ : Type@0) by mauto 3.
+  - assert (Γ ⊢ ℕ : Typeω@0) by mauto 3.
     assert (Γ ⊢ M : ℕ) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▹ ℕ) by mauto 3.
     lift_univ_sound (Γ ▹ ℕ) A u.
     f_equiv; mautosolve 4.
-  - assert (Γ ⊢ ⊥ : Type@0) by mauto 3.
+  - assert (Γ ⊢ ⊥ : Typeω@0) by mauto 3.
     assert (Γ ⊢ M : ⊥) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▹ ⊥) by mauto 3.
     lift_univ_sound (Γ ▹ ⊥) A u.
@@ -428,9 +428,9 @@ Proof.
       rewrite nf_to_exp_univ_nf in Hnbe;
       symmetry; exact (nbe_ty_unf_max Hnbe) end.
   - lift_univ_sound Γ A u.
-    assert (Γ ⊢ A ≈ C : Type@(unf_large u)) by mauto 3 using soundness_ty'.
+    assert (Γ ⊢ A ≈ C : Typeω@(unf_large u)) by mauto 3 using soundness_ty'.
     assert (Γ ▹ A ⊢ M : B) by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ▹ A ⊢ B : Type@j) as [j] by (gen_presups; eauto 2).
+    assert (exists j, Γ ▹ A ⊢ B : Typeω@j) as [j] by (gen_presups; eauto 2).
     assert (⊨ Γ ▹ (C : exp) ≈ Γ ▹ A) by mauto 3.
     dir_inversion_clear_by_head nbe_ty.
     simplify_evals.
@@ -443,36 +443,36 @@ Proof.
     assert (nbe_ty_f (Γ ▹ (C : exp)) B B') by mauto 3.
     assert (nbe_ty_f (Γ ▹ A) B B') by mauto 4 using ctxeq_nbe_ty_eq'; (f_equiv; mautosolve 4).
   - assert (Γ ⊢ M : Πⁿ A B) by mauto 3 using alg_type_infer_sound.
-    assert (exists i, Γ ⊢ Π A B : Type@i) as [i] by (gen_presups; eauto 2).
-    assert (Γ ⊢ A : Type@i /\ Γ ▹ (A : exp) ⊢ B : Type@i) as [] by mauto 3.
+    assert (exists i, Γ ⊢ Π A B : Typeω@i) as [i] by (gen_presups; eauto 2).
+    assert (Γ ⊢ A : Typeω@i /\ Γ ▹ (A : exp) ⊢ B : Typeω@i) as [] by mauto 3.
     assert (Γ ⊢ N : A) by mauto 3 using alg_type_check_sound.
-    assert (Γ ⊢ B[Id,,N] : Type@i) by mauto 3; (f_equiv; mautosolve 4).
+    assert (Γ ⊢ B[Id,,N] : Typeω@i) by mauto 3; (f_equiv; mautosolve 4).
   - lift_univ_sound Γ A u.
     assert (Γ ⊢ M : A) by mauto 3 using alg_type_check_sound.
     assert (⊢ Γ ▸ A ≔ M) by mauto 2.
     assert (Γ ▸ A ≔ M ⊢ B : C) by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ C[Id,,M] : Type@j) by mauto 3; (f_equiv; mautosolve 4).
+    assert (exists j, Γ ▸ A ≔ M ⊢ C : Typeω@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3; (f_equiv; mautosolve 4).
   - assert (Γ ⊢ M : A) by mauto 3 using alg_type_infer_sound.
-    assert (exists i, Γ ⊢ (A : exp) : Type@i) as [i] by (gen_presups; eauto 2).
+    assert (exists i, Γ ⊢ (A : exp) : Typeω@i) as [i] by (gen_presups; eauto 2).
     assert (⊢ Γ ▸ (A : exp) ≔ M) by mauto 2.
     assert (Γ ▸ (A : exp) ≔ M ⊢ B : C) by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ▸ (A : exp) ≔ M ⊢ C : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ C[Id,,M] : Type@j) by mauto 3; (f_equiv; mautosolve 4).
+    assert (exists j, Γ ▸ (A : exp) ≔ M ⊢ C : Typeω@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3; (f_equiv; mautosolve 4).
   - assert (HU : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) by (eapply alg_unit_sound; eassumption).
     assert (⊢ Γ ▹ₘ U) by (apply wf_ctx_extend_mod; exact HU).
     assert (Γ ▹ₘ U ⊢ B : C) by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ▹ₘ U ⊢ C : Type@j) as [j HCj] by (gen_presups; eauto 2).
+    assert (exists j, Γ ▹ₘ U ⊢ C : Typeω@j) as [j HCj] by (gen_presups; eauto 2).
     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_mod _ _ _ _ HU)); (f_equiv; mautosolve 4).
   - match goal with Hm : member_type _ _ _ _ _ (mr_term _) |- _ => rename Hm into Hmt end.
     destruct (proj1 member_wf _ _ _ _ Hmt ltac:(eapply alg_modexp_sound; eassumption) ltac:(intros; discriminate))
       as ([i HA] & _); cbn [mres_ty] in HA.
     (f_equiv; mautosolve 4).
   - eapply IHHinfer; [ assumption | mauto 3 using alg_type_infer_sound | assumption ].
-  - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
+  - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 2; (f_equiv; mautosolve 4).
   (** A global infers the normal form of a type of the ambient context, so
       [idempotent_nbe_ty] closes it; that it is a type is [wf_glob_typ]. *)
-  - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
+  - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 3 using wf_glob_typ.
     (f_equiv; mautosolve 4).
 Qed.
 
@@ -482,7 +482,7 @@ Hint Resolve alg_type_infer_normal : mctt.
     below it: with the small tier that index need not be a large one. *)
 Lemma alg_type_check_typ_implies_alg_type_infer_typ : forall {Γ A i},
     ⊢ Γ ->
-    Γ ⊢a A ⟸ Type@i ->
+    Γ ⊢a A ⟸ Typeω@i ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   intros * ? Hcheck.
@@ -493,7 +493,7 @@ Proof.
   dir_inversion_by_head eval_exp; subst.
   dir_inversion_by_head read_typ; subst.
   inversion Hnfsub; subst; [ contradiction | |].
-  - exists Typeⁿ@i0, (unl i0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
+  - exists Typeωⁿ@i0, (unl i0); split; [ exact Hinfer | split; [ constructor | cbn; assumption ] ].
   - exists (univⁿ c xs), (uns (c, xs)); split; [ exact Hinfer | split; [ constructor | exact I ] ].
 Qed.
 
@@ -501,12 +501,12 @@ Hint Resolve alg_type_check_typ_implies_alg_type_infer_typ : mctt.
 
 Lemma alg_type_check_pi_implies_alg_type_infer_pi : forall {Γ M A B i},
     ⊢ Γ ->
-    Γ ⊢ Π A B : Type@i ->
+    Γ ⊢ Π A B : Typeω@i ->
     Γ ⊢a M ⟸ Π A B ->
-    exists A' B', Γ ⊢a M ⟹ Πⁿ A' B' /\ Γ ⊢ A' ≈ A : Type@i /\ Γ ▹ A ⊢a B' ⊆ B.
+    exists A' B', Γ ⊢a M ⟹ Πⁿ A' B' /\ Γ ⊢ A' ≈ A : Typeω@i /\ Γ ▹ A ⊢a B' ⊆ B.
 Proof.
   intros * ? ? Hcheck.
-  assert (Γ ⊢ A : Type@i /\ Γ ▹ A ⊢ B : Type@i) as [] by mauto 3.
+  assert (Γ ⊢ A : Typeω@i /\ Γ ▹ A ⊢ B : Typeω@i) as [] by mauto 3.
   inversion Hcheck as [? A' ? ? Hinfer Hsub]; subst.
   inversion Hsub as [? ? ? A'' C Hnbe1 Hnbe2 Hnfsub]; subst.
   replace A' with A'' in * by (symmetry; mauto 3).
@@ -520,11 +520,11 @@ Proof.
   dir_inversion_by_head read_typ; subst.
   simpl in *.
   assert (Γ ⊢ M : Πⁿ A0 B0) by mauto 3 using alg_type_infer_sound.
-  assert (exists j, Γ ⊢ Π A0 B0 : Type@j) as [j] by (gen_presups; eauto 2).
-  assert (Γ ⊢ A0 : Type@j /\ Γ ▹ (A0 : exp) ⊢ B0 : Type@j) as [] by mauto 3.
+  assert (exists j, Γ ⊢ Π A0 B0 : Typeω@j) as [j] by (gen_presups; eauto 2).
+  assert (Γ ⊢ A0 : Typeω@j /\ Γ ▹ (A0 : exp) ⊢ B0 : Typeω@j) as [] by mauto 3.
   do 2 eexists.
   assert (nbe_ty_f Γ A A0) by mauto 3.
-  assert (Γ ⊢ A ≈ A0 : Type@i) by mauto 3 using soundness_ty'.
+  assert (Γ ⊢ A ≈ A0 : Typeω@i) by mauto 3 using soundness_ty'.
   repeat split; mauto 3.
   assert (initial_env_f (Γ ▹ A) (ρ ↦ ⇑! a (length Γ))) by mauto 3.
   assert (nbe_ty_f (Γ ▹ A) B B') by mauto 3.
@@ -551,7 +551,7 @@ Hint Resolve alg_type_check_subtyp : mctt.
 
 Corollary alg_type_check_conv : forall {Γ i A A' M},
     Γ ⊢a M ⟸ A ->
-    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊢ A ≈ A' : Typeω@i ->
     Γ ⊢a M ⟸ A'.
 Proof.
   mauto 3.
@@ -708,7 +708,7 @@ Lemma alg_type_check_typ_of : forall Γ A UA (u : unf) i,
     Γ ⊢a A ⟹ UA ->
     is_univ_nf UA u ->
     unf_le u (unl i) ->
-    Γ ⊢a A ⟸ Type@i.
+    Γ ⊢a A ⟸ Typeω@i.
 Proof.
   intros * HΓ Hi Hu Hle.
   assert (HA : Γ ⊢ A : UA) by (eapply alg_type_infer_sound; eassumption).
@@ -717,7 +717,7 @@ Proof.
   apply alg_subtyping_complete.
   destruct u as [L | j]; cbn [unf_tm unf_le] in *.
   - apply wf_subtyp_small_large; [ assumption |].
-    assert (exists k, Γ ⊢ Typeˢ⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Type@k) as [k Hk]
+    assert (exists k, Γ ⊢ Type⟨lvl_exp_of (fst L) (la_to_list (snd L))⟩ : Typeω@k) as [k Hk]
       by (gen_presups; eauto 2).
     eapply wf_univ_lvl_inversion; exact Hk.
   - apply wf_subtyp_ge; [ assumption | lia ].
@@ -728,7 +728,7 @@ Lemma alg_type_check_suniv : forall Γ A UA (u : unf) m,
     Γ ⊢a A ⟹ UA ->
     is_univ_nf UA u ->
     unf_le u (unf_lit m) ->
-    Γ ⊢a A ⟸ Typeˢ@m.
+    Γ ⊢a A ⟸ Type@m.
 Proof.
   intros * HΓ Hi Hu Hle.
   destruct u as [[c xs] | j]; cbn [unf_le unf_lit] in Hle; [| contradiction ].
@@ -746,7 +746,7 @@ Qed.
     universe below it. *)
 Lemma alg_type_check_suniv_implies_alg_type_infer_univ : forall {Γ A n},
     ⊢ Γ ->
-    Γ ⊢a A ⟸ Typeˢ@n ->
+    Γ ⊢a A ⟸ Type@n ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unf_lit n).
 Proof.
   intros * ? Hcheck.
@@ -805,7 +805,7 @@ Proof.
              universe above it. *)
          try match goal with
            | |- _ ⊢a a_univ ?M ⟸ a_univ (succl ?M) =>
-               assert (HSU : Γ ⊢ Typeˢ⟨succl M⟩ : Type@0) by (apply wf_univ_large_tm; mauto 3);
+               assert (HSU : Γ ⊢ Type⟨succl M⟩ : Typeω@0) by (apply wf_univ_large_tm; mauto 3);
                destruct (soundness_ty HSU) as [W [HW HWe]];
                econstructor; [ eapply ati_suniv; eassumption |];
                apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe
@@ -817,9 +817,9 @@ Proof.
       fewer unannotated [let]s, which is what the outer induction is for. *)
   13:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
       assert (Γ ⊢ M : A') by mauto 3 using alg_type_infer_sound.
-      assert (exists k, Γ ⊢ A' : Type@k) as [k HA'] by (gen_presups; eauto 2).
-      assert (Γ ⊢ A' : Type@(max i k)) by mauto 3 using lift_exp_max_right.
-      assert (Γ ⊢ A : Type@(max i k)) by mauto 3 using lift_exp_max_left.
+      assert (exists k, Γ ⊢ A' : Typeω@k) as [k HA'] by (gen_presups; eauto 2).
+      assert (Γ ⊢ A' : Typeω@(max i k)) by mauto 3 using lift_exp_max_right.
+      assert (Γ ⊢ A : Typeω@(max i k)) by mauto 3 using lift_exp_max_left.
       assert (Γ ⊢ A' ⊆ A) by mauto 3 using alg_subtyping_sound.
       assert (Γ ▸ A' ≔ M ⊢s Id : Γ ▸ A ≔ M) by (eapply wf_sub_id_extend_def; mauto 3).
       assert (HB' : Γ ▸ A' ≔ M ⊢ B : C) by mauto 3.
@@ -830,14 +830,14 @@ Proof.
       inversion HBa as [? C' ? ? HBi HBs]; subst.
       assert (⊢ Γ ▸ A' ≔ M) by mauto 3.
       assert (Γ ▸ A' ≔ M ⊢ B : C') by mauto 3 using alg_type_infer_sound.
-      assert (exists k, Γ ▸ A' ≔ M ⊢ C' : Type@k) as [k1] by (gen_presups; eauto 2).
-      assert (exists k, Γ ▸ A ≔ M ⊢ C : Type@k) as [k2] by (gen_presups; eauto 2).
-      assert (Γ ▸ A' ≔ M ⊢ C : Type@k2) by mauto 3.
+      assert (exists k, Γ ▸ A' ≔ M ⊢ C' : Typeω@k) as [k1] by (gen_presups; eauto 2).
+      assert (exists k, Γ ▸ A ≔ M ⊢ C : Typeω@k) as [k2] by (gen_presups; eauto 2).
+      assert (Γ ▸ A' ≔ M ⊢ C : Typeω@k2) by mauto 3.
       assert (Γ ▸ A' ≔ M ⊢ C' ⊆ C)
         by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
       assert (Γ ⊢s Id,,M : Γ ▸ A' ≔ M) by (eapply wf_sub_single_def; eassumption).
-      assert (Γ ⊢ C'[Id,,M] : Type@k1) by mauto 3.
-      assert (exists W, nbe_ty_f Γ C'[Id,,M] W /\ Γ ⊢ C'[Id,,M] ≈ W : Type@k1) as [W []]
+      assert (Γ ⊢ C'[Id,,M] : Typeω@k1) by mauto 3.
+      assert (exists W, nbe_ty_f Γ C'[Id,,M] W /\ Γ ⊢ C'[Id,,M] ≈ W : Typeω@k1) as [W []]
         by (eapply soundness_ty; mauto 3).
       assert (Γ ⊢ C'[Id,,M] ⊆ C[Id,,M]) by mauto 3.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
@@ -846,7 +846,7 @@ Proof.
   14:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
        assert (Γ ▹ₘ U ⊢ B : C') by mauto 3 using alg_type_infer_sound.
-       assert (exists k, Γ ▹ₘ U ⊢ C' : Type@k) as [k HCk] by (gen_presups; eauto 2).
+       assert (exists k, Γ ▹ₘ U ⊢ C' : Typeω@k) as [k HCk] by (gen_presups; eauto 2).
        pose proof (wf_sub_single_mod _ _ _ _ H) as Hσ.
        pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCk Hσ) as HC'σ.
        destruct (soundness_ty HC'σ) as [W [HW HWe]].
@@ -876,15 +876,15 @@ Proof.
     mauto using alg_subtyping_complete.
   - assert (exists UA u, Γ ▹ ℕ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
-    assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
+    assert (Γ ⊢ A[Id,,M] : Typeω@i) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Typeω@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
   - econstructor; mauto 3.
     mauto using alg_subtyping_complete.
   - assert (exists UA u, Γ ▹ ⊥ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
         as [UA [u [? []]]] by mauto 3.
-    assert (Γ ⊢ A[Id,,M] : Type@i) by mauto 3.
-    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Type@i) as [? [? _]]%completeness_ty by mauto 3.
+    assert (Γ ⊢ A[Id,,M] : Typeω@i) by mauto 3.
+    assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Typeω@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
   (** [Π], at either tier: the join of the two indices is below the universe
       of the rule's conclusion. *)
@@ -899,7 +899,7 @@ Proof.
       | apply is_univ_nf_univ_nf
       | apply unf_max_lub; [ exact I | assumption | assumption ] ].
   (** The small [Π]. *)
-  - match goal with Hc : _ ⊢a _ ⟸ Typeˢ@?m |- _ => rename m into n0 end.
+  - match goal with Hc : _ ⊢a _ ⟸ Type@?m |- _ => rename m into n0 end.
     assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unf_lit n0))
         as [UA [u [? []]]] by (eapply alg_type_check_suniv_implies_alg_type_infer_univ; eassumption).
     assert (exists UB v, Γ ▹ A ⊢a B ⟹ UB /\ is_univ_nf UB v /\ unf_le v (unf_lit n0))
@@ -915,24 +915,24 @@ Proof.
         as [UA [u [? []]]] by mauto 3.
     assert (Γ ▹ A ⊢a M ⟸ B) by mauto 3.
     assert (exists B', Γ ▹ A ⊢a M ⟹ B' /\ Γ ▹ A ⊢a B' ⊆ B) as [B' []] by (inversion_clear_by_head alg_type_check; firstorder).
-    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by mauto 3 using soundness_ty.
+    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i) as [W []] by mauto 3 using soundness_ty.
     assert (⊢ Γ ▹ A) by mauto 3.
     assert (Γ ▹ A ⊢ M : B') by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ▹ A ⊢ B' : Type@j) as [] by (gen_presups; eauto 2).
+    assert (exists j, Γ ▹ A ⊢ B' : Typeω@j) as [] by (gen_presups; eauto 2).
     econstructor; mauto 3.
     eapply alg_subtyping_complete.
     eapply wf_subtyp_pi'; mauto 2.
     mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
   - assert (Γ ⊢a M ⟸ Π A B) by mauto 2.
     assert (Γ ⊢a N ⟸ A) by mauto 2.
-    assert (exists A' B', Γ ⊢a M ⟹ Πⁿ A' B' /\ Γ ⊢ A' ≈ A : Type@i /\ Γ ▹ A ⊢a B' ⊆ B) as [A' [B' [? []]]] by mauto 3.
+    assert (exists A' B', Γ ⊢a M ⟹ Πⁿ A' B' /\ Γ ⊢ A' ≈ A : Typeω@i /\ Γ ▹ A ⊢a B' ⊆ B) as [A' [B' [? []]]] by mauto 3.
     assert (Γ ⊢ M : Πⁿ A' B') by mauto 3 using alg_type_infer_sound.
-    assert (exists j, Γ ⊢ Π A' B' : Type@j) as [j] by (gen_presups; eauto 2).
-    assert (Γ ⊢ A' : Type@j /\ Γ ▹ (A' : exp) ⊢ B' : Type@j) as [] by mauto 3.
+    assert (exists j, Γ ⊢ Π A' B' : Typeω@j) as [j] by (gen_presups; eauto 2).
+    assert (Γ ⊢ A' : Typeω@j /\ Γ ▹ (A' : exp) ⊢ B' : Typeω@j) as [] by mauto 3.
     assert (Γ ⊢ N : A') by mauto 3.
-    assert (Γ ⊢ B'[Id,,N] : Type@j) by mauto 3.
-    assert (exists W, nbe_ty_f Γ B'[Id,,N] W /\ Γ ⊢ B'[Id,,N] ≈ W : Type@j) as [W []] by (eapply soundness_ty; mauto 3).
-    assert (Γ ▹ A ⊢ B' : Type@j) by mauto 4.
+    assert (Γ ⊢ B'[Id,,N] : Typeω@j) by mauto 3.
+    assert (exists W, nbe_ty_f Γ B'[Id,,N] W /\ Γ ⊢ B'[Id,,N] ≈ W : Typeω@j) as [W []] by (eapply soundness_ty; mauto 3).
+    assert (Γ ▹ A ⊢ B' : Typeω@j) by mauto 4.
     assert (Γ ▹ A ⊢ B' ⊆ B) by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
     assert (Γ ⊢ B'[Id,,N] ⊆ B[Id,,N]) by mauto 3.
     assert (Γ ⊢ W ⊆ B[Id,,N]) by (transitivity B'[Id,,N]; mauto 3).
@@ -944,21 +944,21 @@ Proof.
     assert (exists C', Γ ▸ A ≔ M ⊢a B ⟹ C' /\ Γ ▸ A ≔ M ⊢a C' ⊆ C) as [C' []]
         by (inversion_clear_by_head alg_type_check; firstorder).
     assert (Γ ▸ A ≔ M ⊢ B : C') by mauto 3 using alg_type_infer_sound.
-    assert (exists k, Γ ▸ A ≔ M ⊢ C' : Type@k) as [k] by (gen_presups; eauto 2).
-    assert (exists k', Γ ▸ A ≔ M ⊢ C : Type@k') as [k'] by (gen_presups; eauto 2).
+    assert (exists k, Γ ▸ A ≔ M ⊢ C' : Typeω@k) as [k] by (gen_presups; eauto 2).
+    assert (exists k', Γ ▸ A ≔ M ⊢ C : Typeω@k') as [k'] by (gen_presups; eauto 2).
     assert (Γ ▸ A ≔ M ⊢ C' ⊆ C)
       by mauto 4 using alg_subtyping_sound, lift_exp_max_left, lift_exp_max_right.
-    assert (Γ ⊢ C'[Id,,M] : Type@k) by mauto 3.
-    assert (exists W, nbe_ty_f Γ C'[Id,,M] W /\ Γ ⊢ C'[Id,,M] ≈ W : Type@k) as [W []]
+    assert (Γ ⊢ C'[Id,,M] : Typeω@k) by mauto 3.
+    assert (exists W, nbe_ty_f Γ C'[Id,,M] W /\ Γ ⊢ C'[Id,,M] ≈ W : Typeω@k) as [W []]
         by (eapply soundness_ty; mauto 3).
     assert (Γ ⊢ C'[Id,,M] ⊆ C[Id,,M]) by mauto 3.
     assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
-  - assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []] by (eapply soundness_ty; mauto 3).
+  - assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i) as [W []] by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
   (** Resolution is the same function call in both systems. *)
-  - assert (exists i, Γ ⊢ A : Type@i) as [i] by mauto 3 using wf_glob_typ.
-    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Type@i) as [W []]
+  - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 3 using wf_glob_typ.
+    assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i) as [W []]
         by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
 
@@ -1081,7 +1081,7 @@ Hint Resolve alg_type_infer_complete : mctt.
 
 Corollary alg_type_infer_typ_complete : forall {Γ i A},
     user_exp A ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   mauto 4 using alg_type_check_complete.
@@ -1091,7 +1091,7 @@ Hint Resolve alg_type_infer_typ_complete : mctt.
 
 Corollary alg_type_infer_pi_complete : forall {Γ i A},
     user_exp A ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i).
 Proof.
   mauto 4 using alg_type_check_complete.

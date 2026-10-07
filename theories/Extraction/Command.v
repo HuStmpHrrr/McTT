@@ -472,7 +472,7 @@ Section Impl.
   Qed.
 
   Lemma axiom_ok {ch Θ K D Ξ x b pv A i} :
-    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Type@i ->
+    gs_fresh x Ξ -> gds_restrict D Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i ->
     post_cmd ch Θ K D Ξ (cc_def x b pv A None) (cst Θ K D (gs_add x (gs_axiom b pv Ξ A) Ξ)).
   Proof.
     intros Hfr HA ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].

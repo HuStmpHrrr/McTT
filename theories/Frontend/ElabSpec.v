@@ -35,9 +35,9 @@ Import Syntax_Notations.
 
 <<
 module Main where
-  module M (A : Type@0) where
+  module M (A : Typeω@0) where
     def id (x : A) : A := x end
-    module N (B : Type@0) where
+    module N (B : Typeω@0) where
       def k (x : A) (y : B) : A := id x end
     end
   end
@@ -184,8 +184,8 @@ Definition itarget (fq ip : path) (args : list Cst.obj) : option Cst.obj :=
 Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (snd p)) ps).
 
 Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
-| sel_typ : forall S n, sel S (Cst.typ n) (Type@n)
-| sel_suniv : forall S o M, sel S o M -> sel S (Cst.suniv o) (Typeˢ⟨M⟩)
+| sel_typ : forall S n, sel S (Cst.typ n) (Typeω@n)
+| sel_suniv : forall S o M, sel S o M -> sel S (Cst.suniv o) (Type⟨M⟩)
 | sel_level : forall S, sel S Cst.level Level
 | sel_llit : forall S n, sel S (Cst.llit n) (𝕃@n)
 | sel_succl : forall S o M, sel S o M -> sel S (Cst.succl o) (succl M)

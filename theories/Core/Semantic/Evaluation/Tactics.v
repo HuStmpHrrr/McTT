@@ -5,7 +5,7 @@ Import Domain_Notations.
 
 (** Substitution and weakening are functions on syntax, so [M[σ]] is not in
     constructor form even when [M] is: an evaluation hypothesis
-    [⟦ Type@i[σ] ⟧ ρ ↘ a] cannot be inverted until [exp_sub] is unfolded far
+    [⟦ Typeω@i[σ] ⟧ ρ ↘ a] cannot be inverted until [exp_sub] is unfolded far
     enough to expose the head.  [simplify_subs] unfolds only [exp_sub] and
     [exp_wk]; [eval_sub] and [sb_q] stay folded, so the encoding of lifting is
     never exposed. *)

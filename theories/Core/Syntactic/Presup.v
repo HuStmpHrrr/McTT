@@ -16,7 +16,7 @@
     None of the three statements needs a mutual induction:
 
     - the [wf_exp_eq_subtyp] case of [presup_exp_eq] gets
-      [Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i] from a premise rather than from
+      [Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i] from a premise rather than from
       [presup_subtyp];
     - the [wf_subtyp_refl] case of [presup_subtyp] uses the finished
       [presup_exp_eq].
@@ -46,8 +46,8 @@ Lemma presup_exp_eq_sides : forall {Θ Ξ Γ M M' A},
 Proof.
   induction 1; assert (⊢ Θ ⍮ Ξ ⍮ Γ) by mauto 2; destruct_conjs; split; mauto 3.
 
-  (** The universe congruence is stated at [Typeˢ⟨succl M⟩], so its
-      right-hand side has to be moved there from [Typeˢ⟨succl M'⟩].  Its goal
+  (** The universe congruence is stated at [Type⟨succl M⟩], so its
+      right-hand side has to be moved there from [Type⟨succl M'⟩].  Its goal
       is the only one of that shape. *)
   all: try solve [ apply wf_univ_cong_right; mauto 2 ].
 
@@ -65,18 +65,18 @@ Proof.
     assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A) by mauto 2.
     assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A') by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢s Wk ⨟ Wk,,succ #1 : Γ ▹ ℕ) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,zero] ≈ A'[Id,,zero] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,zero] ≈ A'[Id,,zero] : Typeω@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ MZ' : A'[Id,,zero]) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] ≈ A'[Wk ⨟ Wk,,succ #1] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ A[Wk ⨟ Wk,,succ #1] ≈ A'[Wk ⨟ Wk,,succ #1] : Typeω@i) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS' : A'[Wk ⨟ Wk,,succ #1]) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A' ⊢s Id : Γ ▹ ℕ ▹ A) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A' ⊢ MS' : A'[Wk ⨟ Wk,,succ #1]) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ rec M' return A' | zero -> MZ' | succ -> MS' end : A'[Id,,M']) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ℕ) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ℕ) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Typeω@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Typeω@i) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Typeω@i) by mauto 2.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
 
   (** [efq], right.  As for [rec], with no branches to transport. *)
@@ -86,9 +86,9 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ efq M' return A' : A'[Id,,M']) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' ≈ M : ⊥) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M' ≈ Id,,M : Γ ▹ ⊥) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Type@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Type@i) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M'] ≈ A'[Id,,M] : Typeω@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A'[Id,,M] ≈ A[Id,,M] : Typeω@i) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A[Id,,M] : Typeω@i) by mauto 2.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
 
   (** [Π], right.  Only the codomain has to move, and it moves by context
@@ -98,9 +98,9 @@ Proof.
 
   (** Small [Π], right: the same, with the domain moved to a large
       universe for context conversion. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@0) by (eapply wf_exp_eq_small_large; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@0) by (eapply wf_exp_small_large; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@0) by mauto 3.
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_small_large; eassumption).
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_small_large; eassumption).
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@0) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
     mauto 3.
 
@@ -108,16 +108,16 @@ Proof.
       level is unrelated to [i] and the bridging equation [Π A' B ≈ Π A B] has
       to be assembled at the maximum of the two. *)
   - assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
-    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j) as [j] by mauto 2 using presup_exp_typ.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Type@j) by mauto 2.
+    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
+    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@j) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ λ A' M' : Π A' B) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@(max i j)) by mauto 3 using lift_exp_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Type@(max i j)) by mauto 2 using lift_exp_max_right.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A : Type@(max i j)) by mauto 3 using lift_exp_eq_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(max i j)) by mauto 3 using lift_exp_max_left.
-    assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@(max i j)) by mauto 2 using lift_exp_max_right.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@(max i j)) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A' B ≈ Π A B : Type@(max i j)) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
+    assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@(max i j)) by mauto 2 using lift_exp_max_right.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' ≈ A : Typeω@(max i j)) by mauto 3 using lift_exp_eq_max_left.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(max i j)) by mauto 3 using lift_exp_max_left.
+    assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@(max i j)) by mauto 2 using lift_exp_max_right.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@(max i j)) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ Π A' B ≈ Π A B : Typeω@(max i j)) by mauto 3.
     eapply wf_conv; eassumption.
 
   (** application, right: the type is the codomain at the argument, and the
@@ -126,24 +126,24 @@ Proof.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' $ N' : B[Id,,N']) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ N' ≈ N : A) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,N' ≈ Id,,N : Γ ▹ A) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N'] ≈ B[Id,,N] : Type@i) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] : Type@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N'] ≈ B[Id,,N] : Typeω@i) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ B[Id,,N] : Typeω@i) by mauto 2.
     eapply wf_conv; eassumption.
 
   (** [let], right: as for [λ], the body moves by context conversion, and the
       type moves along the equal bodies. *)
   - assert (Θ ⍮ Ξ ⍮ Γ ⊢ M' : A') by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢s Id : Γ ▸ A ≔ M) by mauto 3.
-    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Type@j) as [j] by mauto 2 using presup_exp_typ.
+    assert (exists j, Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     assert (Θ ⍮ Ξ ⍮ Γ ▸ A' ≔ M' ⊢ B' : C) by mauto 2.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ a_let (b_def oA' M') B' : C[Id,,M']) by (eapply wf_let; cycle 3; [ eassumption | eassumption .. ]).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢s Id,,M ≈ Id,,M' : Γ ▸ A ≔ M) by mauto 3.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Type@j) by mauto 2.
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Type@j) by mauto 3.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] ≈ C[Id,,M'] : Typeω@j) by mauto 2.
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ C[Id,,M] : Typeω@j) by mauto 3.
     eapply wf_conv; [ eassumption | eassumption | mauto 2 ].
 
   (** [let module], left: the body's type is a type, by presupposition. *)
-  - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Type@j) as [j] by mauto 2 using presup_exp_typ.
+  - assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ₘ U ⊢ C : Typeω@j) as [j] by mauto 2 using presup_exp_typ.
     eapply wf_let_mod; eauto using wf_unit_eq_refl_left.
 
   (** [rec]-[succ], right.  The right-hand side is a double substitution, and
@@ -164,7 +164,7 @@ Qed.
 
 Theorem presup_exp_eq : forall {Θ Ξ Γ M M' A},
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ Θ ⍮ Ξ ⍮ Γ ⊢ M : A /\ Θ ⍮ Ξ ⍮ Γ ⊢ M' : A /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * H; destruct (presup_exp_eq_sides H) as [HM HM'].
   repeat split; eauto using presup_exp_ctx, presup_exp_typ.
@@ -197,21 +197,21 @@ Hint Resolve presup_exp_eq_left presup_exp_eq_right : mctt.
 
 Lemma presup_subtyp_types : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i.
 Proof.
   induction 1; destruct_conjs; eapply lift_exp_common; mauto 2.
 Qed.
 
 Theorem presup_subtyp : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Type@i.
+    ⊢ Θ ⍮ Ξ ⍮ Γ /\ exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@i.
 Proof.
   intros * H; split; [ eapply presup_subtyp_ctx; eassumption | apply presup_subtyp_types, H ].
 Qed.
 
 Corollary presup_subtyp_left : forall {Θ Ξ Γ A A'},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A' ->
-    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+    exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof.
   intros * H; apply presup_subtyp in H; destruct_conjs; eexists; eassumption.
 Qed.

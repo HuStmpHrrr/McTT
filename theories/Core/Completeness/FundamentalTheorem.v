@@ -106,7 +106,7 @@ Qed.
     soundness does with it. *)
 Corollary completeness_fundamental_typ_shift : forall {Γ e A} {i : nat} {env_rel ρ},
     ⊢ (e :: Γ)%list ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     EF (e :: Γ)%list ≈ (e :: Γ)%list ∈ per_ctx_env ↘ env_rel ->
     Dom ρ ≈ ρ ∈ env_rel ->
     exists a a',
@@ -117,7 +117,7 @@ Proof.
   intros * ? ? Hper Hρ.
   assert ((e :: Γ)%list ⊨w ↑ : Γ)
     by (apply rel_wk_under_ctx_shift, completeness_fundamental_ctx; eassumption).
-  assert (Γ ⊨ A : Type@i) by (apply completeness_fundamental_exp; eassumption).
+  assert (Γ ⊨ A : Typeω@i) by (apply completeness_fundamental_exp; eassumption).
   destruct (rel_exp_of_typ_inversion_wk ltac:(eassumption) ltac:(eassumption))
     as [env_rel' [Hper' Hbridge]].
   handle_per_ctx_env_irrel.

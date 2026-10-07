@@ -77,7 +77,7 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     alias [:= E].  The body of a local module is the same list of commands as
     that of a global one. *)
 Inductive obj : Set :=
-(** [Type@i], a large universe *)
+(** [Typeω@i], a large universe *)
 | typ : nat -> obj
 (** [Type@{M}], the small universe at the level [M] *)
 | suniv : obj -> obj
@@ -828,11 +828,13 @@ Definition exp_to_num e :=
     level 1, and the constructor forms with a recursive last argument at
     level 2. *)
 Module Exp_Notations.
-  Notation "'Type' @ n" := (a_typ n) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  (** A large universe, [a_typ n], is [Typeω@n]: it is the universe ω+n, above
+      every small one. *)
+  Notation "'Typeω' @ n" := (a_typ n) (at level 1, n at level 0, format "'Typeω' @ n") : mctt_scope.
   (** A small universe at an arbitrary level term, and — for a literal level —
-      the short form the stage-1 rules are written with. *)
-  Notation "'Typeˢ' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Typeˢ' ⟨ t ⟩") : mctt_scope.
-  Notation "'Typeˢ' @ n" := (a_univ (a_llit n)) (at level 1, n at level 0, format "'Typeˢ' @ n") : mctt_scope.
+      the short form the literal-level rules are written with. *)
+  Notation "'Type' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : mctt_scope.
+  Notation "'Type' @ n" := (a_univ (a_llit n)) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   Notation "'Level'" := a_level : mctt_scope.
   (** The level literals: [𝕃@n] is the surface syntax's [<n>l].  The token is
       not a word: [lv] would make every identifier of that name a keyword. *)
@@ -940,9 +942,9 @@ End Ctx_Notations.
     by a natural number:
 
     - the small tier [us j], whose universes are the small universes
-      [𝕌ˢ@m] for [m < j];
-    - the large tier [ul n] (the syntactic [Type@n], read as [Typeω+n]),
-      whose universes are every small universe and the large ones [𝕌@m] for
+      [𝕌@m] for [m < j];
+    - the large tier [ul n] (the syntactic [Typeω@n], read as [Typeω+n]),
+      whose universes are every small universe and the large ones [𝕌ω@m] for
       [m < n].
 
     Every small index is below every large one.  The large tier is the
@@ -996,7 +998,7 @@ Qed.
     universe's element PER, whichever tier the universe is in.  The lemmas
     are stated at an index [u], through the universe's term [ulvl_tm u] and
     value [ulvl_val u]; the large forms below are their instances at [ul i],
-    which is [Type@i] by computation. *)
+    which is [Typeω@i] by computation. *)
 Definition ulvl_tm (u : uidx) : exp :=
   match u with us n => a_univ (a_llit n) | ul n => a_typ n end.
 
@@ -1014,12 +1016,12 @@ Proof. intros []; cbn; [ exact I | lia ]. Qed.
 Lemma uidx_le_ulvl : forall u, uidx_le u (ulvl u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
-(** The least index: [Typeˢ@0] is below every universe. *)
+(** The least index: [Type@0] is below every universe. *)
 Lemma uidx_le_least : forall u, uidx_le (us 0) u.
 Proof. intros []; cbn; [ lia | exact I ]. Qed.
 
 (** The large levels of two ordered indices are ordered: a small universe
-    lives in [Type@0], and the large tier's order is the order on levels. *)
+    lives in [Typeω@0], and the large tier's order is the order on levels. *)
 Lemma uidx_le_ulvl_le : forall u v, uidx_le u v -> ulvl u <= ulvl v.
 Proof. intros [] []; cbn; intros; lia. Qed.
 
@@ -1288,9 +1290,9 @@ Module Nf_Notations.
   Notation "'⊤ⁿ'" := nf_True : mctt_scope.
   Notation "'⋆ⁿ'" := nf_true : mctt_scope.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
-  Notation "'Typeⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
-  Notation "'Typeˢⁿ' @ n" := (nf_univ n la_nil) (at level 1, n at level 0, format "'Typeˢⁿ' @ n") : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_univ n la_nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ'" := nf_level : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.

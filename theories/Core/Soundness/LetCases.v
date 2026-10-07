@@ -23,7 +23,7 @@ Section Fixed_GCtx.
 Lemma cons_def_glu_sub_pred_helper : forall {Γ Sb Δ σ ρ A a} {i : nat} {P El M m},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     Δ ⊢s σ ® ρ ∈ Sb ->
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     Γ ⊢ M : A ->
     ⟦ A ⟧ ρ ↘ a ->
     ⟦ M ⟧ ρ ↘ m ->
@@ -44,22 +44,22 @@ Proof.
 Qed.
 
 Lemma glu_rel_exp_let_helper : forall {Γ oA A} {i : nat} {M B C k},
-    Γ ⊩ A : Type@i ->
+    Γ ⊩ A : Typeω@i ->
     Γ ⊩ M : A ->
-    Γ ▸ A ≔ M ⊩ C : Type@k ->
+    Γ ▸ A ≔ M ⊩ C : Typeω@k ->
     Γ ▸ A ≔ M ⊩ B : C ->
     let_ann oA A ->
     Γ ⊩ a_let (b_def oA M) B : C[Id,,M].
 Proof.
   intros * HA HM HC HB Hann.
   assert (⊩ Γ) as [SbΓ] by mauto 3.
-  assert (Γ ⊢ A : Type@i) by mauto 3.
+  assert (Γ ⊢ A : Typeω@i) by mauto 3.
   assert (Γ ⊢ M : A) by mauto 3.
-  assert (Γ ▸ A ≔ M ⊢ C : Type@k) by mauto 3.
+  assert (Γ ▸ A ≔ M ⊢ C : Typeω@k) by mauto 3.
   assert (Γ ▸ A ≔ M ⊢ B : C) by mauto 3.
-  assert (HAc : Γ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.
+  assert (HAc : Γ ⊨ A : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   assert (HMc : Γ ⊨ M : A) by mauto 3 using completeness_fundamental_exp.
-  assert (HCc : Γ ▸ A ≔ M ⊨ C : Type@k) by mauto 3 using completeness_fundamental_exp.
+  assert (HCc : Γ ▸ A ≔ M ⊨ C : Typeω@k) by mauto 3 using completeness_fundamental_exp.
   invert_glu_rel_exp HM.
   invert_glu_rel_exp HA.
   pose (SbΓA := cons_def_glu_sub_pred i Γ A M SbΓ).
@@ -97,7 +97,7 @@ Proof.
 Qed.
 
 Lemma glu_rel_exp_let : forall {Γ oA A} {i : nat} {M B C},
-    Γ ⊩ A : Type@i ->
+    Γ ⊩ A : Typeω@i ->
     Γ ⊩ M : A ->
     Γ ▸ A ≔ M ⊩ B : C ->
     let_ann oA A ->

@@ -36,7 +36,7 @@ Hint Resolve per_univ_elem_level : mctt.
 (** ** [Level] as a Type *)
 Lemma rel_exp_of_typ_level : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ Level ≈ Level : Type@i.
+    Γ ⊨ Level ≈ Level : Typeω@i.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
@@ -51,7 +51,7 @@ Hint Resolve rel_exp_of_typ_level : mctt.
 
 Corollary valid_exp_level : forall {Γ} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ Level : Type@i.
+    Γ ⊨ Level : Typeω@i.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -77,7 +77,7 @@ Qed.
 
 Corollary valid_exp_level_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ Level : Typeˢ@n.
+    Γ ⊨ Level : Type@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -392,7 +392,7 @@ End Fixed_GCtx.
 
 (** ** Universes at a Level Term
 
-    A type of the small universe [Typeˢ⟨T⟩] is a four-value pattern in the
+    A type of the small universe [Type⟨T⟩] is a four-value pattern in the
     small universe at the realiser of [T]'s value: that is the universe's
     element PER ([per_univ_elem_core_suniv]), and related levels have the same
     realiser ([per_lvl_real]), so it does not depend on which of [T]'s four
@@ -411,7 +411,7 @@ Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
           forall t, ⟦ T ⟧ ρσ ↘ t ->
           rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (dlvl_real t)))) ->
-    Γ ⊨ A ≈ A' : Typeˢ⟨T⟩.
+    Γ ⊨ A ≈ A' : Type⟨T⟩.
 Proof.
   intros * HT [env_relΓ [HΓ H]].
   pose proof (rel_exp_of_level_inversion HT) as [env_relΓT [HΓT HTgen]].
@@ -427,19 +427,19 @@ Proof.
   pose proof (per_lvl_real _ _ H34) as E34.
   exists (per_univ (us (dlvl_real t2))).
   split; [| eapply H; eassumption ].
-  apply (mk_rel_exp 𝕌ˢ@t1 𝕌ˢ@t2 𝕌ˢ@t3 𝕌ˢ@t4);
+  apply (mk_rel_exp 𝕌@t1 𝕌@t2 𝕌@t3 𝕌@t4);
     try (apply eval_exp_univ; eassumption).
   apply rel_chain_4; apply per_univ_elem_core_suniv';
     solve [ assumption | rewrite ?E12, ?E23, ?E34; first [ exact I | reflexivity ]
           | rewrite <- ?E12; first [ exact I | reflexivity ] ].
 Qed.
 
-(** [Typeˢ⟨M⟩] is a type of [Typeˢ⟨succl M⟩]: its four values are small
+(** [Type⟨M⟩] is a type of [Type⟨succl M⟩]: its four values are small
     universes at related levels, each a universe below the realiser of
     [succl M], which is one more than the realiser of [M]. *)
 Lemma rel_exp_univ_cong_tm : forall {Γ M M'},
     Γ ⊨ M ≈ M' : Level ->
-    Γ ⊨ Typeˢ⟨M⟩ ≈ Typeˢ⟨M'⟩ : Typeˢ⟨succl M⟩.
+    Γ ⊨ Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩.
 Proof.
   intros * HM.
   pose proof (rel_exp_under_ctx_refl_left HM) as HMM.
@@ -458,14 +458,14 @@ Proof.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
   rewrite dlvl_real_suc.
-  apply (mk_rel_exp 𝕌ˢ@m1 𝕌ˢ@m2 𝕌ˢ@m3 𝕌ˢ@m4); try (apply eval_exp_univ; eassumption).
+  apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
   apply rel_chain_4; eexists; apply per_univ_elem_core_suniv';
     first [ eassumption | cbn; lia | reflexivity ].
 Qed.
 
 Corollary valid_exp_univ_tm : forall {Γ M},
     Γ ⊨ M : Level ->
-    Γ ⊨ Typeˢ⟨M⟩ : Typeˢ⟨succl M⟩.
+    Γ ⊨ Type⟨M⟩ : Type⟨succl M⟩.
 Proof. intros; apply rel_exp_univ_cong_tm; assumption. Qed.
 
 (** ** Subtyping of Small Universes
@@ -478,7 +478,7 @@ Lemma subtyp_suniv_tm : forall {Γ M M'},
     Γ ⊨ M : Level ->
     Γ ⊨ M' : Level ->
     Γ ⊨ maxl M M' ≈ M' : Level ->
-    Γ ⊨ Typeˢ⟨M⟩ ⊆ Typeˢ⟨M'⟩.
+    Γ ⊨ Type⟨M⟩ ⊆ Type⟨M'⟩.
 Proof.
   intros * HM HM' Hmax.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -500,7 +500,7 @@ Proof.
   assert (Dom n2 ≈ n3 ∈ per_lvl) by pairwise.
   assert (Dom dlvl_max m2 n2 ≈ n3 ∈ per_lvl) by pairwise.
   functional_eval_rewrite_clear.
-  exists 𝕌ˢ@m1, 𝕌ˢ@m2, 𝕌ˢ@n4, 𝕌ˢ@n3.
+  exists 𝕌@m1, 𝕌@m2, 𝕌@n4, 𝕌@n3.
   repeat apply conj; try (apply eval_exp_univ; eassumption).
   - eexists; apply per_univ_elem_core_suniv';
       [ eassumption | exact I | reflexivity ].
@@ -512,7 +512,7 @@ Qed.
 
 Lemma subtyp_small_large_tm : forall {Γ M} {i : nat},
     Γ ⊨ M : Level ->
-    Γ ⊨ Typeˢ⟨M⟩ ⊆ Type@i.
+    Γ ⊨ Type⟨M⟩ ⊆ Typeω@i.
 Proof.
   intros * HM.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -522,7 +522,7 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   assert (Dom m1 ≈ m2 ∈ per_lvl) by pairwise.
   assert (Dom m2 ≈ m2 ∈ per_lvl) by pairwise.
-  exists 𝕌ˢ@m1, 𝕌ˢ@m2, 𝕌@i, 𝕌@i.
+  exists 𝕌@m1, 𝕌@m2, 𝕌ω@i, 𝕌ω@i.
   repeat apply conj; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv';
       [ eassumption | exact I | reflexivity ].

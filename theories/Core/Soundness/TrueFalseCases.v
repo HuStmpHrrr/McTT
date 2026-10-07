@@ -45,12 +45,12 @@ Qed.
 
 Lemma glu_rel_exp_True : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ ⊤ : Type@i.
+    Γ ⊩ ⊤ : Typeω@i.
 Proof. intros; apply (glu_rel_exp_True_univ (u := ul i)); assumption. Qed.
 
 Lemma glu_rel_exp_True_small : forall {Γ},
     ⊩ Γ ->
-    Γ ⊩ ⊤ : Typeˢ@0.
+    Γ ⊩ ⊤ : Type@0.
 Proof. intros; apply (glu_rel_exp_True_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_True : mctt.
@@ -76,12 +76,12 @@ Qed.
 
 Lemma glu_rel_exp_False : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ ⊥ : Type@i.
+    Γ ⊩ ⊥ : Typeω@i.
 Proof. intros; apply (glu_rel_exp_False_univ (u := ul i)); assumption. Qed.
 
 Lemma glu_rel_exp_False_small : forall {Γ},
     ⊩ Γ ->
-    Γ ⊩ ⊥ : Typeˢ@0.
+    Γ ⊩ ⊥ : Type@0.
 Proof. intros; apply (glu_rel_exp_False_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_False : mctt.
@@ -131,7 +131,7 @@ Lemma cons_glu_sub_pred_q_False_helper : forall {Γ SbΓ Δ σ ρ} {i : nat},
 Proof.
   intros.
   assert (⊩ Γ) by (eexists; eassumption).
-  assert (Γ ⊩ ⊥ : Type@i) by mauto 3.
+  assert (Γ ⊩ ⊥ : Typeω@i) by mauto 3.
   assert (⟦ ⊥ ⟧ ρ ↘ ⊥ᵈ) by mauto 3.
   exact (@cons_glu_sub_pred_q_helper _ Γ SbΓ Δ σ ρ i ⊥ ⊥ᵈ
            ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
@@ -147,20 +147,20 @@ Hint Resolve cons_glu_sub_pred_q_False_helper : mctt.
     [per_bot_exfalso_diag], and the motive is read back by
     [realize_glu_typ_top] at a fresh variable. *)
 Lemma glu_rel_exp_exfalso : forall {Γ} {i : nat} {A M},
-    Γ ▹ ⊥ ⊩ A : Type@i ->
+    Γ ▹ ⊥ ⊩ A : Typeω@i ->
     Γ ⊩ M : ⊥ ->
     Γ ⊩ efq M return A : A[Id,,M].
 Proof.
   intros * HA HM.
   assert (⊩ Γ) as [SbΓ] by mauto 2.
-  assert (Γ ⊩ ⊥ : Type@i) as HF by mauto 3.
-  assert (Γ ⊩ ⊥ : Type@0) by mauto 3.
+  assert (Γ ⊩ ⊥ : Typeω@i) as HF by mauto 3.
+  assert (Γ ⊩ ⊥ : Typeω@0) by mauto 3.
   pose (SbΓF := cons_glu_sub_pred i Γ ⊥ SbΓ).
   assert (EG Γ ▹ ⊥ ∈ glu_ctx_env ↘ SbΓF)
     by (invert_glu_rel_exp HF; eapply glu_ctx_env_cons with (i := i); mauto 3; try reflexivity).
-  assert (Γ ▹ ⊥ ⊩ Type@i : Type@(S i)) by mauto 3.
+  assert (Γ ▹ ⊥ ⊩ Typeω@i : Typeω@(S i)) by mauto 3.
   assert (Γ ⊢ M : ⊥) by mauto 2.
-  assert (Γ ▹ ⊥ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ▹ ⊥ ⊢ A : Typeω@i) by mauto 2.
   pose proof HA as HAglu.
   invert_glu_rel_exp HM.
   invert_glu_rel_exp HA.
@@ -191,7 +191,7 @@ Proof.
   end.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  assert (Γ ▹ ⊥ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ▹ ⊥ ⊨ A : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   assert (Γ ⊨ M : ⊥) by mauto 3 using completeness_fundamental_exp.
   assert (Δ ⊢ efq M[σ] return A[q σ] : A[σ,,M[σ]] ® ⇑ am (efqᵈ m0 under ρ return A) ∈ El)
     as Hefq.
@@ -199,7 +199,7 @@ Proof.
     econstructor; [| eassumption | eassumption | |].
     - rewrite <- (exp_sub_q_extend A σ M[σ]).
       assert (Δ ▹ ⊥ ⊢s q σ : Γ ▹ ⊥) by mauto 3.
-      assert (Δ ▹ ⊥ ⊢ A[q σ] : Type@i) by mauto 3.
+      assert (Δ ▹ ⊥ ⊢ A[q σ] : Typeω@i) by mauto 3.
       assert (Δ ⊢ M[σ] : ⊥) by mauto 3.
       mauto 3.
     - eapply per_bot_exfalso_diag; eassumption.
@@ -224,7 +224,7 @@ Proof.
       + assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)] ® glu_typ_top i m) as [? ? Hrbt]
           by (eapply realize_glu_typ_top; eassumption).
         assert (Δ' ▹ ⊥ ⊢k wk_id : Δ' ▹ ⊥) by mauto 3.
-        assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Type@i) as Hat by (eapply Hrbt; eassumption).
+        assert (Δ' ▹ ⊥ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Typeω@i) as Hat by (eapply Hrbt; eassumption).
         rewrite exp_wk_id in Hat; eassumption.
       + mauto 3. }
   destruct (per_univ_of_instance HΓ ltac:(eassumption) ltac:(eassumption) ρ (⇑ a m0)

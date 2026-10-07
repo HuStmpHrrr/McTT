@@ -18,7 +18,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 Corollary per_ctx_of_exp_eq : forall {Γ A A'} {i : nat},
-    Γ ⊢ A ≈ A' : Type@i ->
+    Γ ⊢ A ≈ A' : Typeω@i ->
     ⊨ Γ ▹ A ≈ Γ ▹ A'.
 Proof.
   intros * H.
@@ -71,18 +71,18 @@ Proof.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq : forall Γ Γ' A i,
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     ⊨ Γ ≈ Γ' ->
     exists W, nbe_ty_f Γ A W /\ nbe_ty_f Γ' A W.
 Proof.
   intros.
-  assert (exists W, nbe_f Γ A Type@i W /\ nbe_f Γ' A Type@i W)
+  assert (exists W, nbe_f Γ A Typeω@i W /\ nbe_f Γ' A Typeω@i W)
     as [? [?%nbe_type_to_nbe_ty ?%nbe_type_to_nbe_ty]] by mauto 3 using ctxeq_nbe_eq.
   firstorder.
 Qed.
 
 Corollary ctxeq_nbe_ty_eq' : forall Γ Γ' A i W,
-    Γ ⊢ A : Type@i ->
+    Γ ⊢ A : Typeω@i ->
     ⊨ Γ ≈ Γ' ->
     nbe_ty_f Γ A W ->
     nbe_ty_f Γ' A W.

@@ -23,7 +23,7 @@ Section Fixed_GCtx.
 
 Lemma rel_ctx_extend : forall {Γ Γ' A A'} {i : nat},
     ⊨ Γ ≈ Γ' ->
-    Γ ⊨ A ≈ A' : Type@i ->
+    Γ ⊨ A ≈ A' : Typeω@i ->
     ⊨ Γ ▹ A ≈ Γ' ▹ A'.
 Proof.
   intros * [env_relΓΓ' HΓΓ'] H.
@@ -41,7 +41,7 @@ Qed.
 
 Lemma rel_ctx_extend' : forall {Γ A} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     ⊨ Γ ▹ A.
 Proof.
   intros * HΓ HA.
@@ -57,7 +57,7 @@ Hint Resolve rel_ctx_extend rel_ctx_extend' : mctt.
     the [Id] instances of the judgments of [A] and [M]. *)
 Lemma per_ctx_env_of_def : forall {Γ A} {i : nat} {M env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ per_env_extend_def A M env_relΓ.
 Proof.
@@ -69,7 +69,7 @@ Qed.
 
 Lemma rel_ctx_extend_def' : forall {Γ A} {i : nat} {M},
     ⊨ Γ ->
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     ⊨ Γ ▸ A ≔ M.
 Proof.
@@ -82,7 +82,7 @@ Hint Resolve rel_ctx_extend_def' : mctt.
 
 (** A definition entry refines an assumption entry of the same type. *)
 Lemma per_ctx_env_def_forget : forall {Γ A} {i : nat} {M R R'},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
     EF Γ ▹ A ≈ Γ ▹ A ∈ per_ctx_env ↘ R' ->
@@ -100,7 +100,7 @@ Qed.
 
 (** Definition entries with related bodies relate the same environments. *)
 Lemma per_ctx_env_def_conv : forall {Γ A} {i : nat} {M M' R R'},
-    Γ ⊨ A : Type@i ->
+    Γ ⊨ A : Typeω@i ->
     Γ ⊨ M ≈ M' : A ->
     EF Γ ▸ A ≔ M ≈ Γ ▸ A ≔ M ∈ per_ctx_env ↘ R ->
     EF Γ ▸ A ≔ M' ≈ Γ ▸ A ≔ M' ∈ per_ctx_env ↘ R' ->
@@ -134,8 +134,8 @@ Lemma rel_ctx_sub_extend : forall {Γ Δ} {i : nat} {A A'},
   SubE Γ <: Δ ->
   ⊨ Γ ->
   ⊨ Δ ->
-  Γ ⊨ A : Type@i ->
-  Δ ⊨ A' : Type@i ->
+  Γ ⊨ A : Typeω@i ->
+  Δ ⊨ A' : Typeω@i ->
   Γ ⊨ A ⊆ A' ->
   SubE Γ ▹ A <: Δ ▹ A'.
 Proof.

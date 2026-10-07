@@ -38,22 +38,22 @@ Section Bridge.
   Qed.
 
   Lemma alg_type_infer_typ_sound' : forall Θ Ξ Γ i A,
-      @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@i A ->
+      @alg_type_infer (gc_mk Θ Ξ) Γ Typeωⁿ@i A ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof.
-    (** [exact] rather than [eapply]: [nf_to_exp Typeⁿ@i] and [Type@i] are
+    (** [exact] rather than [eapply]: [nf_to_exp Typeωⁿ@i] and [Typeω@i] are
         convertible, but the unifier cannot unify them in this direction. *)
-    intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeⁿ@i _ H HΓ).
+    intros * H HΓ; exact (alg_type_infer_sound' _ _ _ Typeωⁿ@i _ H HΓ).
   Qed.
 
   (** The same at an index of either tier: a type of [unf_tm u] is one of the
-      large universe [Type@(unf_large u)] the index lives at. *)
+      large universe [Typeω@(unf_large u)] the index lives at. *)
   Lemma alg_type_infer_univ_sound' : forall Θ Ξ Γ UA u A,
       @alg_type_infer (gc_mk Θ Ξ) Γ UA A ->
       is_univ_nf UA u ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(unf_large u).
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(unf_large u).
   Proof.
     intros * H Hu HΓ.
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : unf_tm u)
@@ -65,7 +65,7 @@ Section Bridge.
   Lemma alg_type_check_sound' : forall Θ Ξ Γ i A M,
       @alg_type_check (gc_mk Θ Ξ) Γ A M ->
       ⊢ Θ ⍮ Ξ ⍮ Γ ->
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
       Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
   Proof.
     intros; eapply (alg_type_check_sound (GC := gc_mk Θ Ξ)); eassumption.
@@ -83,7 +83,7 @@ Section Bridge.
 
   (** A type infers a universe, at either tier. *)
   Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ i A,
-      Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
       exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u.
   Proof.
     intros * H.
@@ -99,7 +99,7 @@ Section Bridge.
       second through functionality of inference. *)
   Lemma not_wf_typ_of_no_infer : forall Θ Ξ Γ A,
       (forall B : nf, ~ @alg_type_infer (gc_mk Θ Ξ) Γ B A) ->
-      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof.
     intros * Hno * H.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u []]]
@@ -110,7 +110,7 @@ Section Bridge.
   Lemma not_wf_typ_of_infer_not_typ : forall Θ Ξ Γ A (B : nf),
       @alg_type_infer (gc_mk Θ Ξ) Γ B A ->
       (forall u, ~ is_univ_nf B u) ->
-      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i.
+      forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
   Proof.
     intros * HB Hne * H.
     assert (exists UA u, @alg_type_infer (gc_mk Θ Ξ) Γ UA A /\ is_univ_nf UA u) as [UA [u [HA Hu]]]
@@ -158,7 +158,7 @@ Hint Resolve alg_type_infer_typ_sound' alg_type_infer_univ_sound' alg_type_check
 Ltac invert_nf_typ_eq :=
   subst;
   repeat match goal with
-    | H : Typeⁿ@?i = Typeⁿ@?j |- _ => assert (i = j) by congruence; clear H; subst
+    | H : Typeωⁿ@?i = Typeωⁿ@?j |- _ => assert (i = j) by congruence; clear H; subst
     end.
 
 Section check_exp.
@@ -167,7 +167,7 @@ Section check_exp.
       for [A], then require it to be a universe. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations check_typ Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A :
-    { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i } :=
+    { i | Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } + { forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i } :=
   | Θ, Ξ, Γ, HΓ, A =>
       let*o (exist _ UA _) := @type_infer (gc_mk Θ Ξ) Γ _ A _ while _ in
       let*o (exist _ u _) := univ_nf_idx_dec UA while _ in
@@ -188,7 +188,7 @@ Section check_exp.
     end.
   Qed.
   (** The inferred universe gives the typing at its own large level. *)
-  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@(unf_large u) *)
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@(unf_large u) *)
     eapply alg_type_infer_univ_sound'; eassumption.
   Qed.
 
@@ -205,7 +205,7 @@ Section check_exp.
   Obligation 1. (* [A] is no type *)
     gen_presups; eapply H; eassumption.
   Qed.
-  Obligation 2. (* exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i *)
+  Obligation 2. (* exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i *)
     eexists; eassumption.
   Defined.
   Obligation 3. (* type_check_order M *)

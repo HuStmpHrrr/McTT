@@ -23,18 +23,18 @@ where "Γ '⊢a' M ⟸ A" := (alg_type_check Γ A M) : type_scope
 with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** The universes of both tiers infer the universe above.  A small universe's
     level is checked, and the universe above is the normal form of
-    [Typeˢ⟨succl M⟩], as the type of an application is the normal form of the
+    [Type⟨succl M⟩], as the type of an application is the normal form of the
     instantiated codomain: the side condition is a normalisation, not an
     index computed in the conclusion. *)
 | ati_typ :
-  `( Γ ⊢a Type@i ⟹ Typeⁿ@(S i) )
+  `( Γ ⊢a Typeω@i ⟹ Typeωⁿ@(S i) )
 | ati_suniv :
   `( Γ ⊢a M ⟸ Level ->
-     nbe_ty_f Γ Typeˢ⟨succl M⟩ W ->
-     Γ ⊢a Typeˢ⟨M⟩ ⟹ W )
+     nbe_ty_f Γ Type⟨succl M⟩ W ->
+     Γ ⊢a Type⟨M⟩ ⟹ W )
 (** The closed small types infer the least universe. *)
 | ati_level :
-  `( Γ ⊢a Level ⟹ Typeˢⁿ@0 )
+  `( Γ ⊢a Level ⟹ Typeⁿ@0 )
 (** Every level is of type [Level]; the two operations check their
     arguments. *)
 | ati_llit :
@@ -47,7 +47,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a N ⟸ Level ->
      Γ ⊢a maxl M N ⟹ Levelⁿ )
 | ati_nat :
-  `( Γ ⊢a ℕ ⟹ Typeˢⁿ@0 )
+  `( Γ ⊢a ℕ ⟹ Typeⁿ@0 )
 | ati_zero :
   `( Γ ⊢a zero ⟹ ℕⁿ )
 | ati_succ :
@@ -62,11 +62,11 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a rec M return A | zero -> MZ | succ -> MS end ⟹ B )
 | ati_True :
-  `( Γ ⊢a ⊤ ⟹ Typeˢⁿ@0 )
+  `( Γ ⊢a ⊤ ⟹ Typeⁿ@0 )
 | ati_true :
   `( Γ ⊢a ⋆ ⟹ ⊤ⁿ )
 | ati_False :
-  `( Γ ⊢a ⊥ ⟹ Typeˢⁿ@0 )
+  `( Γ ⊢a ⊥ ⟹ Typeⁿ@0 )
 | ati_exfalso :
   `( Γ ▹ ⊥ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
@@ -331,14 +331,14 @@ Hint Resolve is_univ_nf_univ_nf : mctt.
 
 (** The universes as normal forms, for the rewriting the universe cases need:
     the coercion [nf_to_exp] does not unfold by [rewrite] on its own. *)
-Lemma nf_to_exp_typ : forall i, nf_to_exp Typeⁿ@i = Type@i.
+Lemma nf_to_exp_typ : forall i, nf_to_exp Typeωⁿ@i = Typeω@i.
 Proof. reflexivity. Qed.
 
-Lemma nf_to_exp_univ : forall n, nf_to_exp Typeˢⁿ@n = Typeˢ@n.
+Lemma nf_to_exp_univ : forall n, nf_to_exp Typeⁿ@n = Type@n.
 Proof. reflexivity. Qed.
 
 Lemma nf_to_exp_univ_of : forall L,
-    nf_to_exp (nf_univ_of L) = Typeˢ⟨nf_to_exp (nf_lvl_of L)⟩.
+    nf_to_exp (nf_univ_of L) = Type⟨nf_to_exp (nf_lvl_of L)⟩.
 Proof. reflexivity. Qed.
 
 (** Normalises the universes a derivation reads back, whichever of the three

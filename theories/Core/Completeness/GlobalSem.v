@@ -190,7 +190,7 @@ Proof.
     eapply IH; [ exact (chain_bodies_cons _ _ _ Hc) | exact Hr | rewrite !qname_app_app in *; exact Hy | eassumption ].
 Qed.
 
-Lemma rep_closed_tele : forall T X i b, ⊨ T -> tele_ass T -> T ⊨ X : Type@i -> (b = true -> X = a_True) ->
+Lemma rep_closed_tele : forall T X i b, ⊨ T -> tele_ass T -> T ⊨ X : Typeω@i -> (b = true -> X = a_True) ->
     rep ⋅ (ctx_pi T X) (List.length T) b.
 Proof.
   intros * HT HU HX Hb.
@@ -215,7 +215,7 @@ Section Paths.
   Hypothesis HB : forall qp T Φ, gc_body Θs Ξs qp = Some (T, Φ) ->
     ⊨ T /\ tele_ass T /\
     (forall z b pv A B, gm_resolve Φ (z :: nil) = Some (ge_def b pv A B) ->
-       (exists A0 i, A = ctx_pi T A0 /\ T ⊨ A0 : Type@i) /\ ⋅ ⊨ a_mem (qname_mod qp) z : A).
+       (exists A0 i, A = ctx_pi T A0 /\ T ⊨ A0 : Typeω@i) /\ ⋅ ⊨ a_mem (qname_mod qp) z : A).
   Hypothesis HA : forall qp y U, gc_module Θs Ξs (qname_app qp (y :: nil)) = Some (mr_alias U nil) ->
     sem_unit ⋅ U /\ unit_mt Θm Ξm ⋅ U /\ ⋅ ⊨ᵐ me_lit U ≈ me_lit U.
 

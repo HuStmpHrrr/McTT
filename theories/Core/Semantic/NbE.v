@@ -97,8 +97,8 @@ Qed.
 Hint Resolve functional_nbe : mctt.
 
 Lemma nbe_cumu : forall {Θ Ξ Γ A i W},
-    nbe Θ Ξ Γ A Type@i W ->
-    nbe Θ Ξ Γ A Type@(S i) W.
+    nbe Θ Ξ Γ A Typeω@i W ->
+    nbe Θ Ξ Γ A Typeω@(S i) W.
 Proof.
   inversion_clear 1.
   simplify_evals.
@@ -108,15 +108,15 @@ Qed.
 
 Lemma lift_nbe_ge : forall {Θ Ξ Γ A i j W},
     i <= j ->
-    nbe Θ Ξ Γ A Type@i W ->
-    nbe Θ Ξ Γ A Type@j W.
+    nbe Θ Ξ Γ A Typeω@i W ->
+    nbe Θ Ξ Γ A Typeω@j W.
 Proof.
   induction 1; mauto using nbe_cumu.
 Qed.
 
 Lemma lift_nbe_max_left : forall {Θ Ξ Γ A i i' W},
-    nbe Θ Ξ Γ A Type@i W ->
-    nbe Θ Ξ Γ A Type@(max i i') W.
+    nbe Θ Ξ Γ A Typeω@i W ->
+    nbe Θ Ξ Γ A Typeω@(max i i') W.
 Proof.
   intros.
   assert (i <= max i i') by lia.
@@ -124,8 +124,8 @@ Proof.
 Qed.
 
 Lemma lift_nbe_max_right : forall {Θ Ξ Γ A i i' W},
-    nbe Θ Ξ Γ A Type@i' W ->
-    nbe Θ Ξ Γ A Type@(max i i') W.
+    nbe Θ Ξ Γ A Typeω@i' W ->
+    nbe Θ Ξ Γ A Typeω@(max i i') W.
 Proof.
   intros.
   assert (i' <= max i i') by lia.
@@ -136,8 +136,8 @@ Qed.
 Hint Resolve lift_nbe_max_left lift_nbe_max_right : mctt.
 
 Lemma functional_nbe_of_typ : forall {Θ Ξ} Γ A i j W W',
-    nbe Θ Ξ Γ A Type@i W ->
-    nbe Θ Ξ Γ A Type@j W' ->
+    nbe Θ Ξ Γ A Typeω@i W ->
+    nbe Θ Ξ Γ A Typeω@j W' ->
     W = W'.
 Proof.
   mauto.
@@ -171,7 +171,7 @@ Proof.
 Qed.
 
 Lemma nbe_type_to_nbe_ty : forall {Θ Ξ} Γ M i w,
-    nbe Θ Ξ Γ M Type@i w ->
+    nbe Θ Ξ Γ M Typeω@i w ->
     nbe_ty Θ Ξ Γ M w.
 Proof.
   intros. progressive_inversion.
@@ -186,7 +186,7 @@ Ltac functional_nbe_rewrite_clear1 :=
   match goal with
   | H1 : nbe ?T ?X ?G ?M ?A ?W, H2 : nbe ?T ?X ?G ?M ?A ?W' |- _ =>
       clean replace W' with W by first [solve [mauto 2] | tactic_error W' W]; clear H2
-  | H1 : nbe ?T ?X ?G ?A Type@?i ?W, H2 : nbe ?T ?X ?G ?A Type@?j ?W' |- _ =>
+  | H1 : nbe ?T ?X ?G ?A Typeω@?i ?W, H2 : nbe ?T ?X ?G ?A Typeω@?j ?W' |- _ =>
       clean replace W' with W by first [solve [mauto 2] | tactic_error W' W]
   | H1 : nbe_ty ?T ?X ?G ?M ?W, H2 : nbe_ty ?T ?X ?G ?M ?W' |- _ =>
       clean replace W' with W by first [solve [mauto 2] | tactic_error W' W]; clear H2

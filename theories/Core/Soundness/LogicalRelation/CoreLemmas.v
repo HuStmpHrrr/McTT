@@ -141,29 +141,29 @@ Hint Resolve glu_lvl_resp_exp_eq : mctt.
 
 (** ** Cumulativity of an Element of a Small Universe
 
-    An element of a small universe is a type of that universe [Typeˢ⟨t⟩], and
+    An element of a small universe is a type of that universe [Type⟨t⟩], and
     its type-level gluing is at the ambient large universe.  These two lemmas
     are where the gluing relies on cumulativity ([wf_subtyp_small_large]):
-    they move the element's typing and its equations from [Typeˢ⟨t⟩] to every
+    they move the element's typing and its equations from [Type⟨t⟩] to every
     large universe. *)
 Lemma suniv_elem_large : forall Γ M A t j k,
     Γ ⊢ M : A ->
-    Γ ⊢ A ≈ Typeˢ⟨t⟩ : Type@j ->
-    Γ ⊢ M : Type@k.
+    Γ ⊢ A ≈ Type⟨t⟩ : Typeω@j ->
+    Γ ⊢ M : Typeω@k.
 Proof.
   intros * HM HA.
-  assert (Γ ⊢ Typeˢ⟨t⟩ : Type@j) by (gen_presups; eassumption).
+  assert (Γ ⊢ Type⟨t⟩ : Typeω@j) by (gen_presups; eassumption).
   assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption).
   eapply wf_exp_subtyp'; [ eapply wf_conv'; eassumption | apply wf_subtyp_small_large; mauto 3 ].
 Qed.
 
 Lemma suniv_elem_eq_large : forall Γ M M' A t j k,
     Γ ⊢ M ≈ M' : A ->
-    Γ ⊢ A ≈ Typeˢ⟨t⟩ : Type@j ->
-    Γ ⊢ M ≈ M' : Type@k.
+    Γ ⊢ A ≈ Type⟨t⟩ : Typeω@j ->
+    Γ ⊢ M ≈ M' : Typeω@k.
 Proof.
   intros * HM HA.
-  assert (Γ ⊢ Typeˢ⟨t⟩ : Type@j) by (gen_presups; eassumption).
+  assert (Γ ⊢ Type⟨t⟩ : Typeω@j) by (gen_presups; eassumption).
   assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption).
   eapply wf_exp_eq_subtyp';
     [ eapply wf_exp_eq_conv'; eassumption | apply wf_subtyp_small_large; mauto 3 ].
@@ -175,7 +175,7 @@ Qed.
     so that the shared scripts of the gluing lemmas reach it. *)
 Lemma suniv_glu_typ_pred_intro : forall l U Γ A t,
     glu_lvl Γ t l ->
-    Γ ⊢ A ≈ Typeˢ⟨t⟩ : U ->
+    Γ ⊢ A ≈ Type⟨t⟩ : U ->
     suniv_glu_typ_pred l U Γ A.
 Proof. intros; eexists; split; eassumption. Qed.
 
@@ -305,12 +305,12 @@ Section Fixed_GCtx.
 
 (** The large level a glued type is a type of.  It is given as an explicit
     argument, with the equation [ulvl i = l], so that the lemma applies to a
-    goal [Γ ⊢ A : Type@l] whose level is known before the index is. *)
+    goal [Γ ⊢ A : Typeω@l] whose level is known before the index is. *)
 Lemma glu_univ_elem_univ_lvl_gen : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
       Γ ⊢ A ® P ->
-      Γ ⊢ A : Type@(ulvl i).
+      Γ ⊢ A : Typeω@(ulvl i).
 Proof.
   simpl.
   glu_univ_elem_induction1; intros;
@@ -318,7 +318,7 @@ Proof.
 Qed.
 
 Lemma glu_univ_elem_univ_lvl : forall i U P El a,
-    Type@(ulvl i) = U ->
+    Typeω@(ulvl i) = U ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A,
       Γ ⊢ A ® P ->
@@ -329,7 +329,7 @@ Lemma glu_univ_elem_typ_resp_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ A A',
       Γ ⊢ A ® P ->
-      Γ ⊢ A ≈ A' : Type@(ulvl i) ->
+      Γ ⊢ A ≈ A' : Typeω@(ulvl i) ->
       Γ ⊢ A' ® P.
 Proof.
   simpl.
@@ -346,7 +346,7 @@ Proof.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (P Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> iff as glu_univ_elem_typ_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Typeω@(ulvl i)) ==> iff as glu_univ_elem_typ_morphism_iff1.
 Proof.
   split; intros; eapply glu_univ_elem_typ_resp_exp_eq; mauto 2.
 Qed.
@@ -355,7 +355,7 @@ Lemma glu_univ_elem_trm_resp_typ_exp_eq : forall i P El a,
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ M A m A',
       Γ ⊢ M : A ® m ∈ El ->
-      Γ ⊢ A ≈ A' : Type@(ulvl i) ->
+      Γ ⊢ A ≈ A' : Typeω@(ulvl i) ->
       Γ ⊢ M : A' ® m ∈ El.
 Proof.
   simpl.
@@ -371,14 +371,14 @@ Proof.
   all: try solve [ transitivity A[φ]ʷ; mauto 4 ].
   (** The readback clauses of a neutral and of an element of a small universe
       move their type by conversion in the ambient universe. *)
-  all: try solve [ assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) by mauto 3;
+  all: try solve [ assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@(ulvl i)) by mauto 3;
                    eapply wf_exp_eq_conv'; [ eauto | eassumption ] ].
   (** The [Π] case moves the type the same way. *)
   econstructor; mauto 3; eapply wf_conv'; eassumption.
 Qed.
 
 Add Parametric Morphism i P El a (H : glu_univ_elem i P El a) Γ : (El Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Typeω@(ulvl i)) ==> eq ==> eq ==> iff as glu_univ_elem_trm_morphism_iff1.
 Proof.
   split; intros;
     eapply glu_univ_elem_trm_resp_typ_exp_eq;
@@ -401,7 +401,7 @@ Proof.
                 [ eapply glu_lvl_resp_ctxsub; eassumption | mauto 3 ] ];
     mauto 3.
 
-  - assert (Δ ⊢ IT : Type@(ulvl i)) by mauto 3.
+  - assert (Δ ⊢ IT : Typeω@(ulvl i)) by mauto 3.
     assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_univ).
     econstructor; mauto 3; intros; mauto 4.
 
@@ -431,7 +431,7 @@ Proof.
   all: try solve [ split; mauto 3 ].
   (** A [Π]: the context refinement extends over the domain.  A neutral: its
       readback clause is transported along it. *)
-  1:{ assert (Δ ⊢ IT : Type@(ulvl i)) by mauto 3.
+  1:{ assert (Δ ⊢ IT : Typeω@(ulvl i)) by mauto 3.
       assert (Δ ▹ IT ⊆ Γ ▹ IT) by (eapply ctx_sub_extend; mauto 3 using wf_subtyp_refl_univ).
       econstructor; mauto 3; intros; mauto 4. }
   1:{ econstructor; [ split | | | ]; mauto 3; intros; mauto 4. }
@@ -570,7 +570,7 @@ Proof.
 Qed.
 
 Lemma glu_univ_elem_trm_univ_lvl : forall i U P El a,
-    Type@(ulvl i) = U ->
+    Typeω@(ulvl i) = U ->
     DG a ∈ glu_univ_elem i ↘ P ↘ El ->
     forall Γ M A m,
       Γ ⊢ M : A ® m ∈ El ->
@@ -601,7 +601,7 @@ Proof.
     eassumption.
 
   - (** An element of a small universe: its type-level gluing moves along
-        the equation lifted to the ambient [Type@0] by cumulativity, and its
+        the equation lifted to the ambient [Typeω@0] by cumulativity, and its
         readback clause by transitivity. *)
     repeat eexists; try split; eauto.
     eapply glu_univ_elem_typ_resp_exp_eq;
@@ -638,9 +638,9 @@ Qed.
 
 Lemma glu_univ_elem_core_univ' : forall j i typ_rel el_rel,
     uidx_lt (ul j) i ->
-    (typ_rel <∙> univ_glu_typ_pred j (Type@(ulvl i))) ->
-    (el_rel <∙> univ_glu_exp_pred j (Type@(ulvl i))) ->
-    DG 𝕌@j ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
+    (typ_rel <∙> univ_glu_typ_pred j (Typeω@(ulvl i))) ->
+    (el_rel <∙> univ_glu_exp_pred j (Typeω@(ulvl i))) ->
+    DG 𝕌ω@j ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
 Proof.
   intros.
   unshelve basic_glu_univ_elem_econstructor; mautosolve.
@@ -651,9 +651,9 @@ Hint Resolve glu_univ_elem_core_univ' : mctt.
 Lemma glu_univ_elem_core_suniv' : forall l i typ_rel el_rel,
     Dom l ≈ l ∈ per_lvl ->
     uidx_lt (us (dlvl_real l)) i ->
-    (typ_rel <∙> suniv_glu_typ_pred l (Type@(ulvl i))) ->
-    (el_rel <∙> suniv_glu_exp_pred l (Type@(ulvl i))) ->
-    DG 𝕌ˢ@l ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
+    (typ_rel <∙> suniv_glu_typ_pred l (Typeω@(ulvl i))) ->
+    (el_rel <∙> suniv_glu_exp_pred l (Typeω@(ulvl i))) ->
+    DG 𝕌@l ∈ glu_univ_elem i ↘ typ_rel ↘ el_rel.
 Proof.
   intros.
   unshelve basic_glu_univ_elem_econstructor; mautosolve.
@@ -664,7 +664,7 @@ Hint Resolve glu_univ_elem_core_suniv' : mctt.
 (** The gluing of a universe at either tier, in one statement. *)
 Lemma glu_univ_elem_univ_at : forall {u i},
     uidx_lt u i ->
-    DG ulvl_val u ∈ glu_univ_elem i ↘ univ_glu_typ_pred_at u (Type@(ulvl i)) ↘ univ_glu_exp_pred_at u (Type@(ulvl i)).
+    DG ulvl_val u ∈ glu_univ_elem i ↘ univ_glu_typ_pred_at u (Typeω@(ulvl i)) ↘ univ_glu_exp_pred_at u (Typeω@(ulvl i)).
 Proof.
   intros [n | j] * Hlt; cbn [ulvl_val univ_glu_typ_pred_at univ_glu_exp_pred_at].
   - apply glu_univ_elem_core_suniv';
@@ -691,7 +691,7 @@ Section Fixed_GCtx.
 
 
 Lemma glu_univ_elem_univ_simple_constructor : forall {i : nat},
-    glu_univ_elem (S i) (univ_glu_typ_pred i Type@(S i)) (univ_glu_exp_pred i Type@(S i)) 𝕌@i.
+    glu_univ_elem (S i) (univ_glu_typ_pred i Typeω@(S i)) (univ_glu_exp_pred i Typeω@(S i)) 𝕌ω@i.
 Proof.
   intros.
   apply glu_univ_elem_core_univ'; [ cbn; lia | reflexivity | reflexivity ].
@@ -888,8 +888,8 @@ Lemma glu_univ_elem_pi_clean_inversion1 : forall {i a ρ B in_rel P El},
             ⟦ B ⟧ ρ ↦ c ↘ b ->
             DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
         DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
-        (P <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP) /\
-        (El <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl).
+        (P <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP) /\
+        (El <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl).
 Proof.
   intros *.
   simpl.
@@ -958,8 +958,8 @@ Lemma glu_univ_elem_pi_clean_inversion2 : forall {i a ρ B in_rel IP IEl P El},
         ⟦ B ⟧ ρ ↦ c ↘ b ->
         DG b ∈ glu_univ_elem i ↘ OP _ equiv_c ↘ OEl _ equiv_c) /\
       DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel /\
-      (P <∙> pi_glu_typ_pred (Type@(ulvl i)) in_rel IP IEl OP) /\
-      (El <∙> pi_glu_exp_pred (Type@(ulvl i)) in_rel IP IEl elem_rel OEl).
+      (P <∙> pi_glu_typ_pred (Typeω@(ulvl i)) in_rel IP IEl OP) /\
+      (El <∙> pi_glu_exp_pred (Typeω@(ulvl i)) in_rel IP IEl elem_rel OEl).
 Proof.
   intros *.
   simpl.
@@ -1111,7 +1111,7 @@ Proof.
   (** A small universe at the right-hand level, which has the realiser of the
       left-hand one. *)
   all: try match goal with
-         | H : per_lvl ?l ?l' |- exists _ _, glu_univ_elem _ _ _ 𝕌ˢ@?l' =>
+         | H : per_lvl ?l ?l' |- exists _ _, glu_univ_elem _ _ _ 𝕌@?l' =>
              do 2 eexists; apply glu_univ_elem_core_suniv';
                [ etransitivity; [ symmetry |]; exact H
                | rewrite <- (per_lvl_real _ _ H); assumption
@@ -1192,7 +1192,7 @@ Ltac suniv_glu_typ_pred_wk :=
       [ eapply glu_lvl_resp_wk; eassumption
       | match type of Heq with
         | wf_exp_eq ?T ?X _ ?U ?A _ =>
-            assert (wf_exp_eq T X Δ U A[φ]ʷ (Typeˢ⟨t⟩)[φ]ʷ) by mauto 2; eassumption
+            assert (wf_exp_eq T X Δ U A[φ]ʷ (Type⟨t⟩)[φ]ʷ) by mauto 2; eassumption
         end ]
   end.
 
@@ -1220,7 +1220,7 @@ Proof.
   (** A small universe: the level term weakens with the type. *)
   all: try solve [ suniv_glu_typ_pred_wk ].
   - simpl_glu_rel.
-    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Type@(ulvl i)) as HAeq by mauto 2.
+    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Typeω@(ulvl i)) as HAeq by mauto 2.
     rewrite exp_wk_pi in HAeq.
     econstructor; [ eassumption | mauto 2 | mauto 2 | | ]; intros.
     + rewrite exp_wk_wk; mauto 4.
@@ -1258,7 +1258,7 @@ Proof.
                    | intros; rewrite !exp_wk_wk; mauto 3 ] ].
   all: try solve [ repeat split; mauto 2 ].
   - simpl_glu_rel.
-    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Type@(ulvl i)) as HAeq by mauto 2.
+    assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Typeω@(ulvl i)) as HAeq by mauto 2.
     rewrite exp_wk_pi in HAeq.
     econstructor; [ mauto 2 | eassumption | eassumption | mauto 2 | mauto 2 | | ]; intros.
     + rewrite exp_wk_wk; mauto 4.
@@ -1307,13 +1307,13 @@ Qed.
 Hint Resolve glu_elem_bot_resp_ctxsub glu_elem_top_resp_ctxsub glu_typ_top_resp_ctxsub : mctt.
 
 Add Parametric Morphism i a Γ : (glu_elem_bot i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Typeω@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_bot_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
@@ -1330,13 +1330,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_elem_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Typeω@(ulvl i)) ==> eq ==> eq ==> iff as glu_elem_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3; [rewrite <- HAA' | | rewrite -> HAA' |];
     try eassumption;
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.
@@ -1353,13 +1353,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism i a Γ : (glu_typ_top i a Γ)
-    with signature wf_exp_eq gc_deps gc_stack Γ (Type@(ulvl i)) ==> iff as glu_typ_top_morphism_iff2.
+    with signature wf_exp_eq gc_deps gc_stack Γ (Typeω@(ulvl i)) ==> iff as glu_typ_top_morphism_iff2.
 Proof.
   intros A A' HAA' *.
   split; intros []; econstructor; mauto 3;
     try (gen_presup HAA'; eassumption);
     intros;
-    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Type@(ulvl i)) as HAφA'φ by mauto 4;
+    assert (Δ ⊢ A[φ]ʷ ≈ A'[φ]ʷ : Typeω@(ulvl i)) as HAφA'φ by mauto 4;
     [rewrite <- HAφA'φ | rewrite -> HAφA'φ];
     mauto.
 Qed.

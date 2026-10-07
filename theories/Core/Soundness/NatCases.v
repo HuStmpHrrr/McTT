@@ -27,7 +27,7 @@ Section Fixed_GCtx.
   Context {GC : GCtx}.
 
 (** [ℕ] is a type at every index: the rule gives it the small universe
-    [Typeˢ@0], and the large forms are instances. *)
+    [Type@0], and the large forms are instances. *)
 Lemma glu_rel_exp_nat_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
     Γ ⊩ ℕ : ulvl_tm u.
@@ -49,12 +49,12 @@ Qed.
 
 Lemma glu_rel_exp_nat : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ ℕ : Type@i.
+    Γ ⊩ ℕ : Typeω@i.
 Proof. intros; apply (glu_rel_exp_nat_univ (u := ul i)); assumption. Qed.
 
 Lemma glu_rel_exp_nat_small : forall {Γ},
     ⊩ Γ ->
-    Γ ⊩ ℕ : Typeˢ@0.
+    Γ ⊩ ℕ : Type@0.
 Proof. intros; apply (glu_rel_exp_nat_univ (u := us 0)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_nat : mctt.
@@ -65,7 +65,7 @@ Lemma glu_rel_exp_clean_inversion2'' : forall {Γ Sb M},
     glu_rel_exp_clean_inversion2_result 0 Sb M ℕ.
 Proof.
   intros * ? HM.
-  assert (Γ ⊩ ℕ : Type@0) by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@0) by mauto 3.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 
@@ -148,7 +148,7 @@ Hint Resolve glu_rel_exp_succ : mctt.
     [per_univ i], which is all a gluing predicate needs to move between them. *)
 Lemma per_univ_zero_instance : forall {i : nat} {Γ SbΓ A Δ σ ρ az am},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊢ A : Type@i ->
+    Γ ▹ ℕ ⊢ A : Typeω@i ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
     ⟦ A[Id,,zero] ⟧ ρ ↘ az ->
     ⟦ A ⟧ ρ ↦ zeroᵈ ↘ am ->
@@ -158,7 +158,7 @@ Proof.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
   assert (⊢ Γ) by mauto 2.
-  assert (Γ ▹ ℕ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ▹ ℕ ⊨ A : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   assert (Γ ⊨ zero : ℕ) by mauto 3 using completeness_fundamental_exp.
   destruct (per_univ_of_instance HΓ ltac:(eassumption) ltac:(eassumption) ρ zeroᵈ
               ltac:(eassumption) ltac:(mauto 3)) as [? [? [? [? [? ?]]]]].
@@ -172,7 +172,7 @@ Qed.
     wants; [pairwise] reads off the pair. *)
 Lemma per_univ_nat_step_instance : forall {i : nat} {Γ SbΓ A Sb Δ σ ρ p am},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊢ A : Type@i ->
+    Γ ▹ ℕ ⊢ A : Typeω@i ->
     EG Γ ▹ ℕ ▹ A ∈ glu_ctx_env ↘ Sb ->
     Δ ⊢s σ ® ρ ∈ Sb ->
     ⟦ A[Wk ⨟ Wk,,succ #1] ⟧ ρ ↘ p ->
@@ -182,8 +182,8 @@ Proof.
   intros.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (⊢ Γ) by mauto 2.
-  assert (Γ ▹ ℕ ⊨ A : Type@i) as HAsem by mauto 3 using completeness_fundamental_exp.
-  assert (Γ ⊨ ℕ : Type@0) by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ▹ ℕ ⊨ A : Typeω@i) as HAsem by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ⊨ ℕ : Typeω@0) by mauto 3 using completeness_fundamental_exp.
   assert (Dom ρ ≈ ρ ∈ per_env_extend A A (per_env_extend ℕ ℕ env_relΓ))
       by (eapply glu_ctx_env_per_env;
           [ eassumption
@@ -214,8 +214,8 @@ Hint Resolve cons_glu_sub_pred_nat_helper : mctt.
 
 Lemma glu_rel_exp_natrec_zero_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊢ A : Type@i ->
-    Γ ⊩ A[Id,,zero] : Type@i ->
+    Γ ▹ ℕ ⊢ A : Typeω@i ->
+    Γ ⊩ A[Id,,zero] : Typeω@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
     Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
     Δ ⊢ M ≈ zero : ℕ ->
@@ -240,13 +240,13 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 2.
   saturate_sub.
   assert (Δ ▹ ℕ ⊢s q σ : Γ ▹ ℕ) by mauto 3.
-  assert (Δ ▹ ℕ ⊢ A[q σ] : Type@i) by mauto 3.
+  assert (Δ ▹ ℕ ⊢ A[q σ] : Typeω@i) by mauto 3.
   assert (Δ ▹ ℕ ▹ A[q σ] ⊢s q (q σ) : Γ ▹ ℕ ▹ A) by mauto 3.
   assert (Δ ⊢ MZ[σ] : A[q σ][Id,,zero])
       by (rewrite exp_sub_q_extend, <- exp_sub_extend_sub_zero; mauto 3).
   assert (Δ ▹ ℕ ▹ A[q σ] ⊢ MS[q (q σ)] : A[q σ][Wk ⨟ Wk,,succ #1])
       by (rewrite <- exp_sub_sub_natrec; mauto 3).
-  assert (Δ ⊢ A[σ,,M] ≈ A[σ,,zero] : Type@i) as ->
+  assert (Δ ⊢ A[σ,,M] ≈ A[σ,,zero] : Typeω@i) as ->
       by (eapply exp_eq_sub_eq_head with (A := ℕ); mauto 3).
   assert (Δ ⊢ rec M return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end ≈ MZ[σ] : A[σ,,zero]) as ->;
     [| rewrite <- exp_sub_extend_sub_zero; eassumption].
@@ -260,9 +260,9 @@ Qed.
 
 Lemma glu_rel_exp_natrec_succ_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M M' m' σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊩ A : Type@i ->
+    Γ ▹ ℕ ⊩ A : Typeω@i ->
     Γ ⊢ MZ : A[Id,,zero] ->
-    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@i ->
+    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     Δ ⊢ M ≈ succ M' : ℕ ->
     glu_nat Δ M' m' ->
@@ -282,10 +282,10 @@ Lemma glu_rel_exp_natrec_succ_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M M'
 Proof.
   intros * HSbΓ HA ? ? HMS **.
   assert (⊩ Γ) by (eexists; eassumption).
-  assert (Γ ⊩ ℕ : Type@i) as Hℕ by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@i) as Hℕ by mauto 3.
   pose (SbΓℕ := cons_glu_sub_pred i Γ ℕ SbΓ).
   assert (EG Γ ▹ ℕ ∈ glu_ctx_env ↘ SbΓℕ) by (invert_glu_rel_exp Hℕ; econstructor; mauto 3; reflexivity).
-  assert (Γ ▹ ℕ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ▹ ℕ ⊢ A : Typeω@i) by mauto 2.
   invert_glu_rel_exp HA.
   pose (SbΓℕA := cons_glu_sub_pred i (Γ ▹ ℕ) A SbΓℕ).
   assert (EG Γ ▹ ℕ ▹ A ∈ glu_ctx_env ↘ SbΓℕA) as HgΓℕA by (econstructor; mauto 3; reflexivity).
@@ -308,7 +308,7 @@ Proof.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   assert (Δ ⊢ M' : ℕ) by mauto 3.
   assert (Δ ▹ ℕ ⊢s q σ : Γ ▹ ℕ) by mauto 3.
-  assert (Δ ▹ ℕ ⊢ A[q σ] : Type@i) by mauto 3.
+  assert (Δ ▹ ℕ ⊢ A[q σ] : Typeω@i) by mauto 3.
   assert (Δ ▹ ℕ ▹ A[q σ] ⊢s q (q σ) : Γ ▹ ℕ ▹ A) by mauto 3.
   assert (Δ ⊢ MZ[σ] : A[q σ][Id,,zero])
       by (rewrite exp_sub_q_extend, <- exp_sub_extend_sub_zero; mauto 3).
@@ -335,7 +335,7 @@ Proof.
   saturate_glu_by_per.
   handle_functional_glu_univ_elem.
   exists ms; split; [mauto 3 |].
-  assert (Δ ⊢ A[σ,,M] ≈ A[σ,,succ M'] : Type@i) as ->
+  assert (Δ ⊢ A[σ,,M] ≈ A[σ,,succ M'] : Typeω@i) as ->
       by (eapply exp_eq_sub_eq_head with (A := ℕ); mauto 3).
   assert (Δ ⊢ rec M return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end ≈ MS[σ,,M',,R] : A[σ,,succ M']) as ->;
     [| rewrite <- (exp_sub_natrec_step A σ M' R); eassumption ].
@@ -351,12 +351,12 @@ Qed.
 Lemma cons_glu_sub_pred_q_helper : forall {Γ SbΓ Δ σ ρ} {i : nat} {A a},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
     Δ ⊢s σ ® ρ ∈ SbΓ ->
-    Γ ⊩ A : Type@i ->
+    Γ ⊩ A : Typeω@i ->
     ⟦ A ⟧ ρ ↘ a ->
     Δ ▹ A[σ] ⊢s q σ ® ρ ↦ ⇑! a (length Δ) ∈ cons_glu_sub_pred i Γ A SbΓ.
 Proof.
   intros * ? ? HA ?.
-  assert (Γ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ⊢ A : Typeω@i) by mauto 2.
   invert_glu_rel_exp HA.
   destruct_glu_rel_exp_with_sub.
   simplify_evals.
@@ -385,7 +385,7 @@ Lemma cons_glu_sub_pred_q_nat_helper : forall {Γ SbΓ Δ σ ρ} {i : nat},
 Proof.
   intros.
   assert (⊩ Γ) by (eexists; eassumption).
-  assert (Γ ⊩ ℕ : Type@i) by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@i) by mauto 3.
   assert (⟦ ℕ ⟧ ρ ↘ ℕᵈ) by mauto 3.
   exact (@cons_glu_sub_pred_q_helper Γ SbΓ Δ σ ρ i ℕ ℕᵈ
            ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)).
@@ -404,10 +404,10 @@ Qed.
 
 Lemma glu_rel_exp_natrec_neut_helper : forall {i : nat} {Γ SbΓ A MZ MS Δ M a m σ ρ am P El},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊩ A : Type@i ->
-    Γ ⊩ A[Id,,zero] : Type@i ->
+    Γ ▹ ℕ ⊩ A : Typeω@i ->
+    Γ ⊩ A[Id,,zero] : Typeω@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
-    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@i ->
+    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     Dom m ≈ m ∈ per_bot ->
     (forall Δ' φ V, Δ' ⊢k φ : Δ -> Rne m in length Δ' ↘ V -> Δ' ⊢ M[φ]ʷ ≈ V : ℕ) ->
@@ -424,10 +424,10 @@ Proof.
   assert (Γ ⊢ MZ : A[Id,,zero]) by mauto 2.
   invert_glu_rel_exp HMZ.
   assert (⊩ Γ) by (eexists; eassumption).
-  assert (Γ ⊩ ℕ : Type@i) as Hℕ by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@i) as Hℕ by mauto 3.
   pose (SbΓℕ := cons_glu_sub_pred i Γ ℕ SbΓ).
   assert (EG Γ ▹ ℕ ∈ glu_ctx_env ↘ SbΓℕ) by (invert_glu_rel_exp Hℕ; econstructor; mauto 3; reflexivity).
-  assert (Γ ▹ ℕ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ▹ ℕ ⊢ A : Typeω@i) by mauto 2.
   pose proof HA as HAglu.
   invert_glu_rel_exp HA.
   pose (SbΓℕA := cons_glu_sub_pred i (Γ ▹ ℕ) A SbΓℕ).
@@ -461,7 +461,7 @@ Proof.
   handle_functional_glu_univ_elem.
   assert (Δ ⊢ M : ℕ) by mauto 3.
   assert (Δ ▹ ℕ ⊢s q σ : Γ ▹ ℕ) by mauto 3.
-  assert (Δ ▹ ℕ ⊢ A[q σ] : Type@i) by mauto 3.
+  assert (Δ ▹ ℕ ⊢ A[q σ] : Typeω@i) by mauto 3.
   assert (Δ ▹ ℕ ▹ A[q σ] ⊢s q (q σ) : Γ ▹ ℕ ▹ A) by mauto 3.
   assert (Δ ⊢ MZ[σ] : A[q σ][Id,,zero])
       by (rewrite exp_sub_q_extend, <- exp_sub_extend_sub_zero; mauto 3).
@@ -477,7 +477,7 @@ Proof.
         [MZ]'s own semantic element. *)
     assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
     assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-    assert (Γ ▹ ℕ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.
+    assert (Γ ▹ ℕ ⊨ A : Typeω@i) by mauto 3 using completeness_fundamental_exp.
     assert (Γ ▹ ℕ ▹ A ⊨ MS : A[Wk ⨟ Wk,,succ #1]) by mauto 3 using completeness_fundamental_exp.
     assert (Dom azero ≈ azero ∈ per_univ i) as [Rz ?] by mauto 3.
     assert (Dom mz ≈ mz ∈ Rz) by (eapply glu_univ_elem_per_elem; revgoals; eassumption).
@@ -524,7 +524,7 @@ Proof.
     + assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)] ® glu_typ_top i m0) as [? ? Hrbt]
           by (eapply realize_glu_typ_top; eassumption).
       assert (Δ' ▹ ℕ ⊢k wk_id : Δ' ▹ ℕ) by mauto 3.
-      assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Type@i) as Hat by (eapply Hrbt; eassumption).
+      assert (Δ' ▹ ℕ ⊢ A[q (sb_wk σ φ)][wk_id]ʷ ≈ B' : Typeω@i) as Hat by (eapply Hrbt; eassumption).
       rewrite exp_wk_id in Hat; eassumption.
     + rewrite exp_sub_q_extend, <- exp_sub_extend_sub_zero.
       assert (Δ' ⊢ MZ[(sb_wk σ φ)] : A[Id,,zero][(sb_wk σ φ)] ® mz ∈ glu_elem_top i azero)
@@ -547,10 +547,10 @@ Qed.
 
 Lemma glu_rel_exp_natrec_helper : forall {i : nat} {Γ SbΓ A MZ MS},
     EG Γ ∈ glu_ctx_env ↘ SbΓ ->
-    Γ ▹ ℕ ⊩ A : Type@i ->
-    Γ ⊩ A[Id,,zero] : Type@i ->
+    Γ ▹ ℕ ⊩ A : Typeω@i ->
+    Γ ⊩ A[Id,,zero] : Typeω@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
-    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@i ->
+    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     forall {Δ M m},
       glu_nat Δ M m ->
@@ -563,7 +563,7 @@ Lemma glu_rel_exp_natrec_helper : forall {i : nat} {Γ SbΓ A MZ MS},
             Δ ⊢ rec M return A[q σ] | zero -> MZ[σ] | succ -> MS[q (q σ)] end : A[σ,,M] ® r ∈ El.
 Proof.
   intros * ? ? ? ? ? ?.
-  assert (Γ ▹ ℕ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ▹ ℕ ⊢ A : Typeω@i) by mauto 2.
   assert (Γ ⊢ MZ : A[Id,,zero]) by mauto 2.
   assert (Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1]) by mauto 2.
   induction 1; intros; rename Γ0 into Δ.
@@ -576,20 +576,20 @@ Proof.
 Qed.
 
 Lemma glu_rel_exp_natrec_intro : forall {Γ} {i : nat} {A MZ MS M},
-    Γ ▹ ℕ ⊩ A : Type@i ->
-    Γ ⊩ A[Id,,zero] : Type@i ->
+    Γ ▹ ℕ ⊩ A : Typeω@i ->
+    Γ ⊩ A[Id,,zero] : Typeω@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
-    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@i ->
+    Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@i ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     Γ ⊩ M : ℕ ->
     Γ ⊩ rec M return A | zero -> MZ | succ -> MS end : A[Id,,M].
 Proof.
   intros * HA ? ? ? ? HM.
   assert (⊩ Γ) as [SbΓ] by mauto 2.
-  assert (Γ ⊩ ℕ : Type@i) as Hℕ by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@i) as Hℕ by mauto 3.
   pose (SbΓℕ := cons_glu_sub_pred i Γ ℕ SbΓ).
   assert (EG Γ ▹ ℕ ∈ glu_ctx_env ↘ SbΓℕ) by (invert_glu_rel_exp Hℕ; eapply glu_ctx_env_cons with (i := i); mauto 3; try reflexivity).
-  assert (Γ ▹ ℕ ⊩ Type@i : Type@(S i)) by mauto 3.
+  assert (Γ ▹ ℕ ⊩ Typeω@i : Typeω@(S i)) by mauto 3.
   pose proof HM.
   invert_glu_rel_exp HM.
   pose proof HA.
@@ -626,11 +626,11 @@ Proof.
   (** [A[Id,,M]] is a stuck substitution, so its evaluation is not computable;
       [per_univ_of_instance] supplies it, and the predicate moves over by PER. *)
   assert (Γ ⊢ M : ℕ) by mauto 3.
-  assert (Γ ▹ ℕ ⊢ A : Type@i) by mauto 2.
+  assert (Γ ▹ ℕ ⊢ A : Typeω@i) by mauto 2.
   assert (⊢ Γ) by mauto 2.
   assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ HΓ] by mauto 3.
   assert (Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
-  assert (Γ ▹ ℕ ⊨ A : Type@i) by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ▹ ℕ ⊨ A : Typeω@i) by mauto 3 using completeness_fundamental_exp.
   assert (Γ ⊨ M : ℕ) by mauto 3 using completeness_fundamental_exp.
   destruct (per_univ_of_instance HΓ ltac:(eassumption) ltac:(eassumption) ρ m
               ltac:(eassumption) ltac:(eassumption)) as [? [? [? [? [? [? ?]]]]]].
@@ -644,7 +644,7 @@ Proof.
 Qed.
 
 Lemma glu_rel_exp_natrec : forall {Γ} {i : nat} {A MZ MS M},
-    Γ ▹ ℕ ⊩ A : Type@i ->
+    Γ ▹ ℕ ⊩ A : Typeω@i ->
     Γ ⊩ MZ : A[Id,,zero] ->
     Γ ▹ ℕ ▹ A ⊩ MS : A[Wk ⨟ Wk,,succ #1] ->
     Γ ⊩ M : ℕ ->
@@ -653,21 +653,21 @@ Proof.
   intros * HA HMZ HMS HM.
   (** The two instantiated motives are stuck evaluations, so they cannot be
       derived from [HA]; they come from the branches, at their own levels. *)
-  assert (exists j, Γ ⊩ A[Id,,zero] : Type@j) as [j] by mauto 3.
-  assert (exists k, Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@k) as [k] by mauto 3.
+  assert (exists j, Γ ⊩ A[Id,,zero] : Typeω@j) as [j] by mauto 3.
+  assert (exists k, Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@k) as [k] by mauto 3.
   assert (⊩ Γ) by mauto 2.
-  assert (Γ ⊩ ℕ : Type@0) by mauto 3.
+  assert (Γ ⊩ ℕ : Typeω@0) by mauto 3.
   assert (⊩ Γ ▹ ℕ) by mauto 3.
   assert (⊩ Γ ▹ ℕ ▹ A) by mauto 3.
   assert (i <= max i (max j k)) by lia.
   assert (j <= max i (max j k)) by lia.
   assert (k <= max i (max j k)) by lia.
-  assert (Γ ▹ ℕ ⊢ Type@i ⊆ Type@(max i (max j k))) by mauto 4.
-  assert (Γ ⊢ Type@j ⊆ Type@(max i (max j k))) by mauto 4.
-  assert (Γ ▹ ℕ ▹ A ⊢ Type@k ⊆ Type@(max i (max j k))) by mauto 4.
-  assert (Γ ▹ ℕ ⊩ A : Type@(max i (max j k))) by mauto 3.
-  assert (Γ ⊩ A[Id,,zero] : Type@(max i (max j k))) by mauto 3.
-  assert (Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Type@(max i (max j k))) by mauto 3.
+  assert (Γ ▹ ℕ ⊢ Typeω@i ⊆ Typeω@(max i (max j k))) by mauto 4.
+  assert (Γ ⊢ Typeω@j ⊆ Typeω@(max i (max j k))) by mauto 4.
+  assert (Γ ▹ ℕ ▹ A ⊢ Typeω@k ⊆ Typeω@(max i (max j k))) by mauto 4.
+  assert (Γ ▹ ℕ ⊩ A : Typeω@(max i (max j k))) by mauto 3.
+  assert (Γ ⊩ A[Id,,zero] : Typeω@(max i (max j k))) by mauto 3.
+  assert (Γ ▹ ℕ ▹ A ⊩ A[Wk ⨟ Wk,,succ #1] : Typeω@(max i (max j k))) by mauto 3.
   mauto 3 using glu_rel_exp_natrec_intro.
 Qed.
 

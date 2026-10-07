@@ -17,11 +17,11 @@ Hint Resolve glu_rel_ctx_empty : mctt.
 
 Lemma glu_rel_ctx_extend : forall {Γ A} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ A : Type@i ->
+    Γ ⊩ A : Typeω@i ->
     ⊩ Γ ▹ A.
 Proof.
   intros * [Sb] HA.
-  assert (Γ ⊢ A : Type@i) by mauto 3.
+  assert (Γ ⊢ A : Typeω@i) by mauto 3.
   invert_glu_rel_exp HA.
   eexists.
   econstructor; mauto 3; reflexivity.
@@ -31,12 +31,12 @@ Hint Resolve glu_rel_ctx_extend : mctt.
 
 Lemma glu_rel_ctx_extend_def : forall {Γ A M} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ A : Type@i ->
+    Γ ⊩ A : Typeω@i ->
     Γ ⊩ M : A ->
     ⊩ Γ ▸ A ≔ M.
 Proof.
   intros * [Sb] HA HM.
-  assert (Γ ⊢ A : Type@i) by mauto 3.
+  assert (Γ ⊢ A : Typeω@i) by mauto 3.
   assert (Γ ⊢ M : A) by mauto 3.
   invert_glu_rel_exp HM.
   invert_glu_rel_exp HA.

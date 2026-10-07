@@ -1142,7 +1142,7 @@ Proof.
     (** A small universe is below another with a related level, at the index
         of the realiser both levels share. *)
     try (match goal with
-         | H : per_lvl ?l ?l' |- per_subtyp ?i 𝕌ˢ@?l 𝕌ˢ@?l' =>
+         | H : per_lvl ?l ?l' |- per_subtyp ?i 𝕌@?l 𝕌@?l' =>
              apply per_subtyp_suniv;
                [ apply per_sublvl_of_per_lvl; exact H
                | rewrite <- (per_lvl_real _ _ H); assumption ]

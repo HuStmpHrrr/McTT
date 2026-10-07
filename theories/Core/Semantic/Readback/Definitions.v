@@ -16,10 +16,10 @@ Generalizable All Variables.
 Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_type :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     Rnf ⇓ 𝕌@i a in Θ ⍮ Ξ ⍮ s ↘ A )
+     Rnf ⇓ 𝕌ω@i a in Θ ⍮ Ξ ⍮ s ↘ A )
 | read_nf_stype :
   `( Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
-     Rnf ⇓ 𝕌ˢ@n a in Θ ⍮ Ξ ⍮ s ↘ A )
+     Rnf ⇓ 𝕌@n a in Θ ⍮ Ξ ⍮ s ↘ A )
 (** A level reads back canonically: its atoms are read, then sorted and
     merged, and a dominated constant is dropped ([lvl_canon]).  Evaluation
     flattens only, so this is where levels equal by the level equations become
@@ -97,14 +97,14 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
-  `( Rtyp 𝕌@i in Θ ⍮ Ξ ⍮ s ↘ Typeⁿ@i )
+  `( Rtyp 𝕌ω@i in Θ ⍮ Ξ ⍮ s ↘ Typeωⁿ@i )
 (** A small universe reads back as the universe at the canonical form its
     level reads back as: that readback is always of the shape [nf_lvl_of L]
     (see [Core.Semantic.Levels.dlvl_canon_of_read]), and the universe takes
     the same canonical level. *)
 | read_typ_suniv :
   `( Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of L ->
-     Rtyp 𝕌ˢ@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
+     Rtyp 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
 | read_typ_level :
   `( Rtyp Levelᵈ in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ )
 | read_typ_nat :

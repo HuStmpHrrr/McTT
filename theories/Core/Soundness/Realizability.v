@@ -36,7 +36,7 @@ Lemma var_glu_elem_bot : forall a i P El Γ A,
     Γ ▹ A ⊢ #0 : A[↑]ʷ ® #ᵈ (length Γ) ∈ glu_elem_bot i a.
 Proof.
   intros. saturate_glu_info.
-  (** The ambient universe of the index is the large universe [Type@(ulvl i)],
+  (** The ambient universe of the index is the large universe [Typeω@(ulvl i)],
       at which the syntactic rules apply directly. *)
   econstructor; mauto 4.
   - eapply glu_univ_elem_typ_monotone; eauto.
@@ -76,10 +76,10 @@ Proof.
     match_by_head glu_elem_bot ltac:(fun H => destruct H as []);
     destruct_all.
   (** The two universe clauses, large then small.  The large one's equations
-      are at the ambient [Type@(ulvl i)].  The small one's element predicate
+      are at the ambient [Typeω@(ulvl i)].  The small one's element predicate
       carries its own readback clause, at the element's type, so its top case
       is that clause, and its bottom case lifts the neutral's equations to the
-      ambient [Type@0] by cumulativity. *)
+      ambient [Typeω@0] by cumulativity. *)
   1:{ econstructor; eauto; intros.
       progressive_inversion.
       mauto 3. }
@@ -113,11 +113,11 @@ Proof.
       assert (⊢ Δ) by (eapply kripke_dom; eassumption).
       inversion Hr; subst.
       assert (Δ ⊢ H4[φ]ʷ ≈ nf_lvl_of L : Level) by (eapply glu_lvl_readback; eassumption).
-      assert (Δ ⊢ A[φ]ʷ ≈ Typeˢ⟨H4[φ]ʷ⟩ : Type@(ulvl i)) by mauto 3.
+      assert (Δ ⊢ A[φ]ʷ ≈ Type⟨H4[φ]ʷ⟩ : Typeω@(ulvl i)) by mauto 3.
       etransitivity; [ eassumption |].
       apply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; assumption | assumption ]. }
   (** A neutral of a small universe: its type-level gluing is a neutral type's
-      at the ambient [Type@0], which cumulativity reaches from the small
+      at the ambient [Typeω@0], which cumulativity reaches from the small
       universe, and its readback clause is the neutral's. *)
   1:{ handle_functional_glu_univ_elem.
       match_by_head glu_univ_elem invert_glu_univ_elem.
@@ -221,7 +221,7 @@ Proof.
       rewrite exp_wk_id in HIT.
       dir_inversion_clear_by_head read_typ.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [] by mauto 3.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@(ulvl i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HA' by (rewrite <- exp_wk_pi; mauto 3).
       rewrite HA'.
       simpl. apply wf_exp_eq_pi_cong'; [ firstorder | ].
       pose proof (var_per_elem (length Δ) H0).
@@ -235,8 +235,8 @@ Proof.
       assert (⊢ Δ ▹ IT[φ]ʷ) by mauto 3.
       assert (Δ ▹ IT[φ]ʷ ⊢k φ ⊙ ↑ : Γ) as Hk by mauto 3.
       pose proof (H14 _ _ _ _ Hk HEl H24) as HOP.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@(ulvl i))
-        by (assert (Hqv := kripke_q_var_eq _ _ _ (Type@(ulvl i)) _ _ (ulvl i) H12 H17 H16);
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(ulvl i))
+        by (assert (Hqv := kripke_q_var_eq _ _ _ (Typeω@(ulvl i)) _ _ (ulvl i) H12 H17 H16);
             cbn in Hqv; exact Hqv).
       specialize (H8 _ _ _ H27 HOP) as [].
       eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym; exact HOT |].
@@ -254,7 +254,7 @@ Proof.
     simplify_evals.
     eexists; repeat split; mauto 3.
     eapply H2; eauto.
-    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+    assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
     assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
     assert (Δ ⊢ M[φ]ʷ $ N : OT[(ι φ),,N]) as HMN
       by (rewrite <- exp_sub_wk_q_extend; eapply wf_app'; eassumption).
@@ -267,7 +267,7 @@ Proof.
     + intros Δ0 φ0 M' Hk Hrb.
       progressive_invert Hrb.
       assert (Δ0 ⊢k φ ⊙ φ0 : Γ) as Hkc by (eapply kripke_compose; eassumption).
-      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Type@(ulvl i)) as HAeq'
+      assert (Δ0 ⊢ A[φ ⊙ φ0]ʷ ≈ Π IT[φ ⊙ φ0]ʷ OT[wk_q (φ ⊙ φ0)]ʷ : Typeω@(ulvl i)) as HAeq'
         by (rewrite <- exp_wk_pi; mauto 3).
       rewrite exp_wk_sub_of_wk_extend, <- exp_sub_wk_q_extend, exp_wk_app, exp_wk_wk.
       eapply wf_exp_eq_app_cong'.
@@ -289,7 +289,7 @@ Proof.
       pose proof (H10 Γ wk_id ltac:(mauto 3)) as HITId.
       rewrite exp_wk_id in HITId.
       assert (Γ ⊢ IT ® glu_typ_top i a) as [? ? HITrb] by mauto 3.
-      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Type@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
+      assert (Δ ⊢ A[φ]ʷ ≈ Π IT[φ]ʷ OT[wk_q φ]ʷ : Typeω@(ulvl i)) as HAeq by (rewrite <- exp_wk_pi; mauto 3).
       assert (Δ ⊢ M[φ]ʷ : Π IT[φ]ʷ OT[wk_q φ]ʷ) as HM by mauto 3.
       eapply wf_exp_eq_conv'; [ | symmetry; eapply HAeq ].
       (** Read back a function by η-expanding it and recursing into the body. *)
@@ -314,8 +314,8 @@ Proof.
       specialize (Htop _ _ _ _ _ HG HOEl ltac:(eassumption) ltac:(eassumption)) as [? ? ? ? ? ? Hrbtop].
       specialize (Hrbtop (Δ ▹ IT[φ]ʷ) wk_id M0 ltac:(mauto 3) Hrb).
       repeat rewrite exp_wk_id in Hrbtop.
-      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Type@(ulvl i))
-        by (assert (Hqv := kripke_q_var_eq Δ Γ IT (Type@(ulvl i)) OT φ (ulvl i) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption));
+      assert (HOT : Δ ▹ IT[φ]ʷ ⊢ OT[ι (φ ⊙ ↑),,#0] ≈ OT[wk_q φ]ʷ : Typeω@(ulvl i))
+        by (assert (Hqv := kripke_q_var_eq Δ Γ IT (Typeω@(ulvl i)) OT φ (ulvl i) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption));
             cbn in Hqv; exact Hqv).
       eapply wf_exp_eq_conv'; [ exact Hrbtop | exact HOT ].
   (* neut *)

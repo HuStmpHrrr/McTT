@@ -33,26 +33,26 @@ Import Syntax_Notations Wk_Notations.
 (** ** Rewriting the Type of a Judgment *)
 
 Add Parametric Morphism i Θ Ξ Γ : (wf_exp Θ Ξ Γ)
-    with signature wf_exp_eq Θ Ξ Γ Type@i ==> eq ==> iff as wf_exp_morphism_iff3.
+    with signature wf_exp_eq Θ Ξ Γ Typeω@i ==> eq ==> iff as wf_exp_morphism_iff3.
 Proof.
   split; intros; gen_presups; mautosolve.
 Qed.
 
 Add Parametric Morphism i Θ Ξ Γ : (wf_exp_eq Θ Ξ Γ)
-    with signature wf_exp_eq Θ Ξ Γ Type@i ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff3.
+    with signature wf_exp_eq Θ Ξ Γ Typeω@i ==> eq ==> eq ==> iff as wf_exp_eq_morphism_iff3.
 Proof.
   split; intros; gen_presups; mautosolve.
 Qed.
 
 Add Parametric Morphism Θ Ξ Γ i : (wf_subtyp Θ Ξ Γ)
-    with signature (wf_exp_eq Θ Ξ Γ Type@i) ==> eq ==> iff as wf_subtyp_morphism_iff1.
+    with signature (wf_exp_eq Θ Ξ Γ Typeω@i) ==> eq ==> iff as wf_subtyp_morphism_iff1.
 Proof.
   split; intros; gen_presups;
     etransitivity; mauto 4.
 Qed.
 
 Add Parametric Morphism Θ Ξ Γ j : (wf_subtyp Θ Ξ Γ)
-    with signature eq ==> (wf_exp_eq Θ Ξ Γ Type@j) ==> iff as wf_subtyp_morphism_iff2.
+    with signature eq ==> (wf_exp_eq Θ Ξ Γ Typeω@j) ==> iff as wf_subtyp_morphism_iff2.
 Proof.
   split; intros; gen_presups;
     etransitivity; mauto 3.
@@ -67,7 +67,7 @@ Ltac impl_opt_constructor :=
   mautosolve 4.
 
 Corollary wf_subtyp_refl' : forall Θ Ξ Γ M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ⊆ M'.
 Proof.
   impl_opt_constructor.
@@ -80,7 +80,7 @@ Remove Hints wf_subtyp_refl : mctt.
 
 Corollary wf_conv' : forall Θ Ξ Γ M A A' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   impl_opt_constructor.
@@ -93,7 +93,7 @@ Remove Hints wf_conv : mctt.
 
 Corollary wf_exp_eq_conv' : forall Θ Ξ Γ M M' A A' i,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   impl_opt_constructor.
@@ -111,56 +111,56 @@ Remove Hints wf_exp_eq_conv : mctt.
     forms replace them: their own level is fixed. *)
 Corollary wf_nat_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@n.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_nat; assumption ]. Qed.
 
 Corollary wf_level_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type@n.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_level; assumption ]. Qed.
 
 Corollary wf_True_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@n.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_True; assumption ]. Qed.
 
 Corollary wf_False_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@n.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_False; assumption ]. Qed.
 
 Corollary wf_univ' : forall Θ Ξ Γ n m,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     n < m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n : Typeˢ@m.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@n : Type@m.
 Proof.
   intros; eapply (lift_exp_uidx _ _ _ _ (us (S n)) (us m)); [ cbn; lia | apply wf_univ_lit; assumption ].
 Qed.
 
 Corollary wf_exp_eq_nat_cong_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@n.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type@n.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_True_cong_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@n.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_True_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_False_cong_small : forall Θ Ξ Γ n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Typeˢ@n.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@n.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_False_cong; assumption ]. Qed.
 
 Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ n m,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     n < m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Typeˢ@n ≈ Typeˢ@n : Typeˢ@m.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type@n ≈ Type@n : Type@m.
 Proof.
   intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us (S n)) (us m));
     [ cbn; lia | apply wf_exp_eq_univ_cong_lit; assumption ].
@@ -170,31 +170,31 @@ Qed.
     fix an open level to [0], exactly as the large forms are: an unguarded
     [Hint Resolve] would make every search in the database try to solve an
     arithmetic side condition. *)
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type@?n) =>
   fix_open_level n; (apply wf_nat_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type@?n) =>
   fix_open_level n; (apply wf_level_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type@?n) =>
   fix_open_level n; (apply wf_exp_eq_level_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Type@?n) =>
   fix_open_level n; (apply wf_True_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Type@?n) =>
   fix_open_level n; (apply wf_False_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type@?n) =>
   fix_open_level n; (apply wf_exp_eq_nat_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type@?n) =>
   fix_open_level n; (apply wf_exp_eq_True_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Typeˢ@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type@?n) =>
   fix_open_level n; (apply wf_exp_eq_False_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ : Typeˢ@?m) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type@_ : Type@?m) =>
   fix_open_level m; (apply wf_univ'; [ assumption | lia ]) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Typeˢ@_ ≈ Typeˢ@_ : Typeˢ@?m) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type@_ ≈ Type@_ : Type@?m) =>
   fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | lia ]) : mctt.
 
 (** [ℕ] is a type at every level, not only at [0]. *)
 Corollary wf_nat' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Typeω@i.
 Proof.
   intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -206,7 +206,7 @@ Remove Hints wf_nat : mctt.
 
 Corollary wf_exp_eq_nat_cong' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Typeω@i.
 Proof.
   intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -219,7 +219,7 @@ Remove Hints wf_exp_eq_nat_cong : mctt.
 (** So are [⊤] and [⊥]. *)
 Corollary wf_True' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Typeω@i.
 Proof.
   intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -231,7 +231,7 @@ Remove Hints wf_True : mctt.
 
 Corollary wf_exp_eq_True_cong' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Typeω@i.
 Proof.
   intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -243,7 +243,7 @@ Remove Hints wf_exp_eq_True_cong : mctt.
 
 Corollary wf_False' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Typeω@i.
 Proof.
   intros; eapply lift_exp_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -255,7 +255,7 @@ Remove Hints wf_False : mctt.
 
 Corollary wf_exp_eq_False_cong' : forall Θ Ξ Γ i,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Typeω@i.
 Proof.
   intros; eapply lift_exp_eq_ge; [ | mauto 2 ]; lia.
 Qed.
@@ -303,7 +303,7 @@ Corollary wf_app' : forall Θ Ξ Γ A B M N,
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -313,7 +313,7 @@ Hint Resolve wf_app' : mctt.
 Remove Hints wf_app : mctt.
 
 Corollary wf_exp_eq_natrec_cong' : forall Θ Ξ Γ A A' i MZ MZ' MS MS' M M',
-    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ℕ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ MZ ≈ MZ' : A[Id,,zero] ->
     Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS ≈ MS' : A[Wk ⨟ Wk,,succ #1] ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ℕ ->
@@ -329,7 +329,7 @@ Hint Resolve wf_exp_eq_natrec_cong' : mctt.
 Remove Hints wf_exp_eq_natrec_cong : mctt.
 
 Corollary wf_exp_eq_exfalso_cong' : forall Θ Ξ Γ A A' i M M',
-    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M].
 Proof.
@@ -370,9 +370,9 @@ Hint Resolve wf_exp_eq_nat_beta_succ' : mctt.
 Remove Hints wf_exp_eq_nat_beta_succ : mctt.
 
 Corollary wf_exp_eq_pi_cong' : forall Θ Ξ Γ A A' B B' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@i.
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i.
 Proof.
   impl_opt_constructor.
 Qed.
@@ -386,13 +386,13 @@ Remove Hints wf_exp_eq_pi_cong : mctt.
     congruence that takes them as they come, and the counterpart of
     [wf_pi_max]. *)
 Corollary wf_exp_eq_pi_cong_max : forall Θ Ξ Γ A A' B B' i j,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
-    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@j ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@(max i j).
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@j ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@(max i j).
 Proof.
   intros.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(max i j)) by eauto using lift_exp_eq_max_left.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@(max i j)) by eauto using lift_exp_eq_max_right.
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(max i j)) by eauto using lift_exp_eq_max_left.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@(max i j)) by eauto using lift_exp_eq_max_right.
   mautosolve 3.
 Qed.
 
@@ -400,7 +400,7 @@ Qed.
 Hint Resolve wf_exp_eq_pi_cong_max : mctt.
 
 Corollary wf_exp_eq_fn_cong' : forall Θ Ξ Γ A A' B M M' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M ≈ M' : B ->
     Θ ⍮ Ξ ⍮ Γ ⊢ λ A M ≈ λ A' M' : Π A B.
 Proof.
@@ -419,7 +419,7 @@ Corollary wf_exp_eq_app_cong' : forall Θ Ξ Γ A B M M' N N',
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -437,7 +437,7 @@ Corollary wf_exp_eq_pi_beta' : forall Θ Ξ Γ A B M N,
 Proof.
   intros.
   gen_presups.
-  assert (exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@k /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@k) as [? []]
+  assert (exists k, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@k /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@k) as [? []]
       by (eapply lift_exp_pi_common; mauto 2).
   mautosolve 3.
 Qed.
@@ -453,7 +453,7 @@ Corollary wf_exp_eq_fn_eta' : forall Θ Ξ Γ A B M,
 Proof.
   intros.
   gen_presups.
-  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@i) as [] by eauto using wf_pi_inversion').
+  exvar nat ltac:(fun i => assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i) as [] by eauto using wf_pi_inversion').
   mautosolve 3.
 Qed.
 
@@ -489,7 +489,7 @@ Hint Resolve wf_ctx_extend_def' : mctt.
 Remove Hints wf_ctx_extend_def : mctt.
 
 Corollary wf_exp_eq_let_cong' : forall Θ Ξ Γ A A' M M' B B' C i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A ->
     Θ ⍮ Ξ ⍮ Γ ▸ A ≔ M ⊢ B ≈ B' : C ->
     Θ ⍮ Ξ ⍮ Γ ⊢ ℓ A ≔ M in B ≈ ℓ A' ≔ M' in B' : C[Id,,M].
@@ -517,7 +517,7 @@ Remove Hints wf_exp_eq_let_zeta : mctt.
 (** A term equation presupposes that both sides are well-typed, so the
     refinement between two contexts extended by equal types needs nothing else. *)
 Corollary wf_sub_id_extend_eq' : forall Θ Ξ Γ A A' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A.
 Proof.
   intros * H; gen_presups; mauto 3.
@@ -534,16 +534,16 @@ Remove Hints wf_sub_id_extend_eq : mctt.
     checked in [Γ ▹ A'] by the premise and in [Γ ▹ A] by the rule, and the two
     are related by context conversion along the domain equation. *)
 Lemma wf_subtyp_pi' : forall Θ Ξ Γ A A' B B' i,
-    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@i ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B ⊆ B' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ⊆ Π A' B'.
 Proof.
   intros * ? Hsub.
-  assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Type@j /\ Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Type@j) as [j []]
+  assert (exists j, Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B : Typeω@j /\ Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢ B' : Typeω@j) as [j []]
       by (apply presup_subtyp_types; assumption).
   gen_presups.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
-  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@j) by mauto 2.
+  assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@j) by mauto 2.
   eapply wf_subtyp_pi with (i := max i j);
     mauto 3 using lift_exp_max_left, lift_exp_max_right, lift_exp_eq_max_left.
 Qed.
@@ -561,7 +561,7 @@ Corollary wf_conv_univ : forall Θ Ξ Γ M A A' u,
     Θ ⍮ Ξ ⍮ Γ ⊢ M : A'.
 Proof.
   intros * HM HA.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(ulvl u))
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(ulvl u))
     by (eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
   eapply wf_exp_subtyp'; [ exact HM | mauto 3 ].
 Qed.
@@ -572,7 +572,7 @@ Corollary wf_exp_eq_conv_univ : forall Θ Ξ Γ M M' A A' u,
     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : A'.
 Proof.
   intros * HM HA.
-  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@(ulvl u))
+  assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@(ulvl u))
     by (eapply (lift_exp_eq_uidx _ _ _ _ _ u (ulvl u)); [ apply uidx_le_ulvl | exact HA ]).
   eapply wf_exp_eq_subtyp'; [ exact HM | mauto 3 ].
 Qed.
