@@ -418,14 +418,14 @@ Section EvalImpl.
 
 
   #[local]
-  Ltac impl_obl_tac :=
+  Ltac ev_obl :=
     intros; cbv beta in *;
     repeat impl_obl_tac1;
     first [ solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
           | impl_obl_finish ].
 
-  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations eval_exp_impl m p (H : eval_exp_order Θ Ξ m p) : { d | ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
   | Typeω@i, p, H => exist _ 𝕌ω@i _
   | Type⟨M⟩, p, H =>
@@ -633,6 +633,202 @@ Section EvalImpl.
       let (p1, Hp1) := eval_benv_impl p Φ _ in
       exist _ (p1 ↦ᵐ dm_local p1 Uy nil) _
   | p, gm_open Φ _ _, H => False_rect _ _.
+
+(** Each of the 190 holes is discharged by name rather than by Equations'
+    automatic tactic, so that one obligation can never make the whole
+    definition retry: [ev_obl] is an order premise read off the order of the
+    whole by inversion, the evaluation itself by its rule, or a branch the
+    order rules out. *)
+Obligation 1. ev_obl. Qed.
+Obligation 2. ev_obl. Defined.
+Obligation 3. ev_obl. Qed.
+Obligation 4. ev_obl. Qed.
+Obligation 5. ev_obl. Qed.
+Obligation 6. ev_obl. Defined.
+Obligation 7. ev_obl. Qed.
+Obligation 8. ev_obl. Defined.
+Obligation 9. ev_obl. Defined.
+Obligation 10. ev_obl. Qed.
+Obligation 11. ev_obl. Qed.
+Obligation 12. ev_obl. Qed.
+Obligation 13. ev_obl. Defined.
+Obligation 14. ev_obl. Qed.
+Obligation 15. ev_obl. Defined.
+Obligation 16. ev_obl. Defined.
+Obligation 17. ev_obl. Qed.
+Obligation 18. ev_obl. Qed.
+Obligation 19. ev_obl. Qed.
+Obligation 20. ev_obl. Qed.
+Obligation 21. ev_obl. Defined.
+Obligation 22. ev_obl. Qed.
+Obligation 23. ev_obl. Qed.
+Obligation 24. ev_obl. Qed.
+Obligation 25. ev_obl. Qed.
+Obligation 26. ev_obl. Qed.
+Obligation 27. ev_obl. Qed.
+Obligation 28. ev_obl. Qed.
+Obligation 29. ev_obl. Qed.
+Obligation 30. ev_obl. Qed.
+Obligation 31. ev_obl. Qed.
+Obligation 32. ev_obl. Qed.
+Obligation 33. ev_obl. Qed.
+Obligation 34. ev_obl. Defined.
+Obligation 35. ev_obl. Qed.
+Obligation 36. ev_obl. Qed.
+Obligation 37. ev_obl. Defined.
+Obligation 38. ev_obl. Qed.
+Obligation 39. ev_obl. Qed.
+Obligation 40. ev_obl. Defined.
+Obligation 41. ev_obl. Defined.
+Obligation 42. ev_obl. Defined.
+Obligation 43. ev_obl. Qed.
+Obligation 44. ev_obl. Defined.
+Obligation 45. ev_obl. Defined.
+Obligation 46. ev_obl. Qed.
+Obligation 47. ev_obl. Defined.
+Obligation 48. ev_obl. Qed.
+Obligation 49. ev_obl. Defined.
+Obligation 50. ev_obl. Defined.
+Obligation 51. ev_obl. Defined.
+Obligation 52. ev_obl. Defined.
+Obligation 53. ev_obl. Qed.
+Obligation 54. ev_obl. Qed.
+Obligation 55. ev_obl. Qed.
+Obligation 56. ev_obl. Qed.
+Obligation 57. ev_obl. Qed.
+Obligation 58. ev_obl. Qed.
+Obligation 59. ev_obl. Qed.
+Obligation 60. ev_obl. Defined.
+Obligation 61. ev_obl. Qed.
+Obligation 62. ev_obl. Defined.
+Obligation 63. ev_obl. Defined.
+Obligation 64. ev_obl. Qed.
+Obligation 65. ev_obl. Qed.
+Obligation 66. ev_obl. Qed.
+Obligation 67. ev_obl. Qed.
+Obligation 68. ev_obl. Qed.
+Obligation 69. ev_obl. Defined.
+Obligation 70. ev_obl. Defined.
+Obligation 71. ev_obl. Qed.
+Obligation 72. ev_obl. Qed.
+Obligation 73. ev_obl. Qed.
+Obligation 74. ev_obl. Qed.
+Obligation 75. ev_obl. Qed.
+Obligation 76. ev_obl. Qed.
+Obligation 77. ev_obl. Qed.
+Obligation 78. ev_obl. Qed.
+Obligation 79. ev_obl. Qed.
+Obligation 80. ev_obl. Qed.
+Obligation 81. ev_obl. Qed.
+Obligation 82. ev_obl. Qed.
+Obligation 83. ev_obl. Qed.
+Obligation 84. ev_obl. Defined.
+Obligation 85. ev_obl. Qed.
+Obligation 86. ev_obl. Qed.
+Obligation 87. ev_obl. Defined.
+Obligation 88. ev_obl. Qed.
+Obligation 89. ev_obl. Qed.
+Obligation 90. ev_obl. Qed.
+Obligation 91. ev_obl. Qed.
+Obligation 92. ev_obl. Qed.
+Obligation 93. ev_obl. Qed.
+Obligation 94. ev_obl. Qed.
+Obligation 95. ev_obl. Qed.
+Obligation 96. ev_obl. Qed.
+Obligation 97. ev_obl. Qed.
+Obligation 98. ev_obl. Qed.
+Obligation 99. ev_obl. Qed.
+Obligation 100. ev_obl. Qed.
+Obligation 101. ev_obl. Defined.
+Obligation 102. ev_obl. Defined.
+Obligation 103. ev_obl. Qed.
+Obligation 104. ev_obl. Qed.
+Obligation 105. ev_obl. Defined.
+Obligation 106. ev_obl. Defined.
+Obligation 107. ev_obl. Qed.
+Obligation 108. ev_obl. Qed.
+Obligation 109. ev_obl. Defined.
+Obligation 110. ev_obl. Defined.
+Obligation 111. ev_obl. Qed.
+Obligation 112. ev_obl. Qed.
+Obligation 113. ev_obl. Qed.
+Obligation 114. ev_obl. Defined.
+Obligation 115. ev_obl. Defined.
+Obligation 116. ev_obl. Qed.
+Obligation 117. ev_obl. Defined.
+Obligation 118. ev_obl. Defined.
+Obligation 119. ev_obl. Defined.
+Obligation 120. ev_obl. Qed.
+Obligation 121. ev_obl. Qed.
+Obligation 122. ev_obl. Qed.
+Obligation 123. ev_obl. Qed.
+Obligation 124. ev_obl. Defined.
+Obligation 125. ev_obl. Defined.
+Obligation 126. ev_obl. Qed.
+Obligation 127. ev_obl. Qed.
+Obligation 128. ev_obl. Qed.
+Obligation 129. ev_obl. Defined.
+Obligation 130. ev_obl. Defined.
+Obligation 131. ev_obl. Qed.
+Obligation 132. ev_obl. Defined.
+Obligation 133. ev_obl. Defined.
+Obligation 134. ev_obl. Qed.
+Obligation 135. ev_obl. Defined.
+Obligation 136. ev_obl. Defined.
+Obligation 137. ev_obl. Qed.
+Obligation 138. ev_obl. Defined.
+Obligation 139. ev_obl. Defined.
+Obligation 140. ev_obl. Qed.
+Obligation 141. ev_obl. Qed.
+Obligation 142. ev_obl. Qed.
+Obligation 143. ev_obl. Qed.
+Obligation 144. ev_obl. Defined.
+Obligation 145. ev_obl. Defined.
+Obligation 146. ev_obl. Qed.
+Obligation 147. ev_obl. Qed.
+Obligation 148. ev_obl. Qed.
+Obligation 149. ev_obl. Qed.
+Obligation 150. ev_obl. Qed.
+Obligation 151. ev_obl. Defined.
+Obligation 152. ev_obl. Defined.
+Obligation 153. ev_obl. Qed.
+Obligation 154. ev_obl. Qed.
+Obligation 155. ev_obl. Qed.
+Obligation 156. ev_obl. Qed.
+Obligation 157. ev_obl. Qed.
+Obligation 158. ev_obl. Defined.
+Obligation 159. ev_obl. Qed.
+Obligation 160. ev_obl. Qed.
+Obligation 161. ev_obl. Qed.
+Obligation 162. ev_obl. Qed.
+Obligation 163. ev_obl. Defined.
+Obligation 164. ev_obl. Qed.
+Obligation 165. ev_obl. Qed.
+Obligation 166. ev_obl. Qed.
+Obligation 167. ev_obl. Defined.
+Obligation 168. ev_obl. Defined.
+Obligation 169. ev_obl. Qed.
+Obligation 170. ev_obl. Qed.
+Obligation 171. ev_obl. Qed.
+Obligation 172. ev_obl. Qed.
+Obligation 173. ev_obl. Qed.
+Obligation 174. ev_obl. Defined.
+Obligation 175. ev_obl. Qed.
+Obligation 176. ev_obl. Defined.
+Obligation 177. ev_obl. Defined.
+Obligation 178. ev_obl. Qed.
+Obligation 179. ev_obl. Qed.
+Obligation 180. ev_obl. Defined.
+Obligation 181. ev_obl. Defined.
+Obligation 182. ev_obl. Qed.
+Obligation 183. ev_obl. Qed.
+Obligation 184. ev_obl. Defined.
+Obligation 185. ev_obl. Defined.
+Obligation 186. ev_obl. Qed.
+Obligation 187. ev_obl. Qed.
+Obligation 188. ev_obl. Defined.
+Obligation 189. ev_obl. Qed.
+Obligation 190. ev_obl. Qed.
 End EvalImpl.
 
 Extraction Inline eval_exp_impl_functional

@@ -179,7 +179,7 @@ Ltac impl_obl_tac :=
 Section ReadbackImpl.
 Variables (Θ : gdeps) (Ξ : gstack).
 
-#[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+#[tactic="idtac",derive(equations=no,eliminator=no)]
 Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
 | s, ⇓ 𝕌ω@i a      , H =>
     let (A, HA) := read_typ_impl s a _ in
@@ -261,9 +261,80 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (M, HM) := read_ne_impl s m _ in
     let (ys, Hys) := read_la_impl s xs _ in
     exist _ (la_cons k M ys) _.
+
+(** Each hole is either a readback order of a subterm, read off the order of
+    the whole by inversion, or the readback itself, by its rule. *)
+#[local]
+Ltac rb_ord :=
+  repeat impl_obl_tac1;
+  first [ eassumption
+        (** A readback under a binder: the order of the body is a premise
+            quantified over the results of the evaluations above it. *)
+        | solve [ eauto 2 ] ].
+
+#[local]
+Ltac rb_run := repeat impl_obl_tac1; econstructor; eassumption.
+
+Obligation 1. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 2. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 3. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 4. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 5. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 6. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 7. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 8. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 9. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 10. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 11. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 12. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 13. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 14. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 15. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 16. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 17. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 18. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 19. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 20. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 21. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 22. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 23. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 24. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 25. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 26. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 27. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 28. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 29. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 30. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 31. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 32. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 33. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 34. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 35. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 36. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 37. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 38. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 39. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 40. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 41. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 42. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 43. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 44. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 45. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 46. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 47. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 48. all: first [ rb_ord | rb_run ]. Defined.
 (** A small universe: its readback is the universe at the canonical level its
     level reads back as. *)
-Next Obligation. eapply read_typ_suniv_of_nf; eassumption. Qed.
+Obligation 49. eapply read_typ_suniv_of_nf; eassumption. Qed.
+Obligation 50. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 51. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 52. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 53. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 54. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 55. all: first [ rb_ord | rb_run ]. Qed.
+Obligation 56. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 57. all: first [ rb_ord | rb_run ]. Defined.
+Obligation 58. all: first [ rb_ord | rb_run ]. Qed.
 
 
 (** The [read_*_impl] functions are sound by construction.  Completeness
@@ -312,6 +383,7 @@ Lemma read_la_impl_complete : forall s xs ys,
 Proof.
   intros; functional_read_complete.
 Qed.
+
 End ReadbackImpl.
 
 Extraction Inline read_nf_impl_functional
