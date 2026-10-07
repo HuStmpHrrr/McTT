@@ -90,6 +90,7 @@
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v
+./Core/Syntactic/Fresh.v
 ./Core/Syntactic/Levels.v
 ./Core/Syntactic/LevelEq.v
 ./Core/Syntactic/Syntax.v
