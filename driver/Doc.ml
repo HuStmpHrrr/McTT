@@ -613,11 +613,17 @@ let href (from : string list) (s : site) =
   (if s.s_unit = from then "" else page_name s.s_unit) ^ (if s.s_anchor = "" then "" else "#" ^ s.s_anchor)
 
 let is_keyword = function
-  | P.VAR _ | P.INT _ | P.EOF _ -> false
+  | P.VAR _ | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ | P.EOF _ -> false
   | P.ARROW _ | P.AT _ | P.BAR _ | P.COLON _ | P.COLONCOLON _ | P.COMMA _ | P.DARROW _
   | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.PLUS _
   | P.DOT _ | P.EQ _ | P.SEMI _ -> false
   | _ -> true
+
+(* The literals: numerals, level literals [3l], large sizes [2L], and [ω]
+   (or [omega]), the size of the first large universe. *)
+let is_num = function
+  | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ -> true
+  | _ -> false
 
 let is_type_kw = function
   | P.NAT _ | P.TYPE _ | P.LEVEL _ | P.TRUE_TY _ | P.FALSE_TY _ -> true
@@ -768,7 +774,7 @@ let render_unit lib kinds (u : unit_info) : string =
                (match target with
                 | Some s -> Printf.bprintf b "<a class=\"%s\"%s href=\"%s\">%s</a>" cls id (esc (href u.u_path s)) txt
                 | None -> Printf.bprintf b "<span class=\"%s\"%s>%s</span>" cls id txt)
-           | P.INT _ -> Printf.bprintf b "<span class=\"num\">%s</span>" txt
+           | tk when is_num tk -> Printf.bprintf b "<span class=\"num\">%s</span>" txt
            | tk when is_type_kw tk -> Printf.bprintf b "<span class=\"ty\">%s</span>" txt
            | tk when is_keyword tk -> Printf.bprintf b "<span class=\"kw\">%s</span>" txt
            | _ -> Printf.bprintf b "<span class=\"sym\">%s</span>" txt);

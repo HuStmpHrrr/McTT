@@ -2623,3 +2623,97 @@ let%expect_test "mctt-doc: links" =
     x line 34: declares #l11
     x line 34: Tutorial#l11
     |}]
+
+(* The universe syntax: examples/Universes.mctt, and the spellings it does
+   not use, as a second unit. *)
+let doc_univ = lazy (
+  let items = Hashtbl.create 16 in
+  let spellings = "module Spellings where\n\
+                   def f (u : Level) : Type@{succl (maxl u 3l)} := Type@{maxl 3l u} end\n\
+                   eval Type@3l\neval Type@{ω}\neval Type@{omega+1}\neval Type@{3L}\neval f 0l\nend\n" in
+  let us = [ Doc.walk [ "Universes" ] (Doc.read_file "../examples/Universes.mctt") items;
+             Doc.walk [ "Spellings" ] spellings items ] in
+  let thetas = Hashtbl.create 4 and outputs = Hashtbl.create 4 in
+  Doc.check_units "../examples" us thetas outputs;
+  { Doc.root = "../examples"; units = us; failed = []; thetas; outputs; items })
+
+let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
+  let lib = Lazy.force doc_univ in
+  List.iter print_endline (Doc.problems lib);
+  let s = Doc.stats lib in
+  Printf.printf "%d names: %d linked, %d binders\n" s.Doc.names s.Doc.linked s.Doc.binders;
+  (* A level variable links to its binder: [u] and [v] of [Arr]'s
+     [Type@{maxl u v}]. *)
+  let show u x ns = List.iter (fun n -> print_endline (x ^ " " ^ Doc.link_of lib u x n)) ns in
+  show [ "Universes" ] "u" [ 15; 16; 17 ];
+  show [ "Universes" ] "v" [ 6; 7; 8 ];
+  (* A function into [Level], used in a universe: [Type@{depth 3}]. *)
+  show [ "Universes" ] "depth" [ 2 ];
+  (* The class of each spelling, as rendered. *)
+  let kinds = Doc.anchor_kinds lib in
+  let pages = List.map (Doc.render_unit lib kinds) lib.Doc.units in
+  List.iter (fun x ->
+      let cs = List.filter (fun c ->
+          List.exists (fun p -> doc_find (Printf.sprintf "<span class=\"%s\">%s</span>" c x) p 0 <> None) pages)
+          [ "kw"; "ty"; "num"; "sym" ] in
+      Printf.printf "%s: %s\n" x (String.concat " " cs))
+    [ "Level"; "Type"; "maxl"; "succl"; "0l"; "3l"; "2L"; "3L"; "2"; "ω"; "omega"; "@"; "+" ];
+  (* The boxes of the evals that print a universe. *)
+  List.iter (fun p -> List.iter (fun b -> if doc_find "Type@" b 0 <> None then print_endline b) (doc_boxes p)) pages;
+  [%expect {|
+    111 names: 57 linked, 54 binders
+    u line 55: declares #l58
+    u line 55: Universes#l58
+    u line 55: Universes#l58
+    v line 55: declares #l59
+    v line 55: Universes#l59
+    v line 55: Universes#l59
+    depth line 48: Universes#depth
+    Level: ty
+    Type: ty
+    maxl: kw
+    succl: kw
+    0l: num
+    3l: num
+    2L: num
+    3L: num
+    2: num
+    ω: num
+    omega: num
+    @: sym
+    +: sym
+    Evaluate id 1l Type@0 Nat --> Nat : Type@0
+    Evaluate atoms --> fun (x1 : Level)
+                           (x2 : Level)
+                         -> Type@{maxl (maxl 1l x2) x1}
+      : forall (x1 : Level)
+               (x2 : Level)
+          -> Type@{maxl (maxl 2l (succl x2)) (succl x1)}
+    Evaluate Dom --> Nat : Type@0
+    Evaluate Type@{depth 3} --> Type@3 : Type@4
+    Evaluate Endo 0l Nat --> forall (x1 : Nat) -> Nat : Type@0
+    Evaluate fun (x1 : Level)
+                 (A1 : Type@{x1})
+               -> forall (x2 : A1) -> A1
+      --> fun (x1 : Level)
+              (A1 : Type@{x1})
+            -> forall (x2 : A1) -> A1
+      : forall (x1 : Level)
+               (A1 : Type@{x1})
+          -> Type@{x1}
+    Evaluate forall (x1 : Level) -> Type@{x1}
+      --> forall (x1 : Level) -> Type@{x1} : Type@ω
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@2 --> Type@2 : Type@3
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@2L --> Type@2L : Type@3L
+    Evaluate Type@2L --> Type@2L : Type@3L
+    Evaluate Type@3 --> Type@3 : Type@4
+    Evaluate Type@ω --> Type@ω : Type@1L
+    Evaluate Type@1L --> Type@1L : Type@2L
+    Evaluate Type@3L --> Type@3L : Type@4L
+    Evaluate f 0l --> Type@3 : Type@4
+    |}]
