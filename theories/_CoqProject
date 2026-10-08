@@ -61,7 +61,9 @@
 ./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
 ./Core/Semantic/Avoid.v
+./Core/Semantic/Rename.v
 ./Core/Soundness.v
+./Core/NbEWeakening.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
 ./Core/Soundness/FundamentalTheorem.v
@@ -93,6 +95,7 @@
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v
 ./Core/Syntactic/Fresh.v
+./Core/Syntactic/NfRename.v
 ./Core/Syntactic/Levels.v
 ./Core/Syntactic/LevelEq.v
 ./Core/Syntactic/Syntax.v
