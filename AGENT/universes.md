@@ -128,11 +128,99 @@ The inversions at `Type⟨T⟩` are:
 
 ## Rejected routes
 
-- **Readback commutes with weakening.** This needs a level-renaming
-  equivariance lemma over all five domain sorts and readback, which is more
-  than the invariant.
+- **Readback commutes with weakening, as the proof route.** It is now
+  proved, as a second route (next section), but it cannot replace route R:
+  it says nothing about a term that is not already typed in `Γ`.
 - **Re-checking the un-weakened level algorithmically.** Completeness would
   still need the declarative typing, and it breaks `type_infer_order`.
 - **Danielsson et al.'s rule, checking the codomain against the weakened
   universe.** With cumulativity it is incomplete, for example on
   `Π (x : ℕ) Type@0`.
+
+## The second route: NbE commutes with weakening
+
+A second, semantic proof of freshness, next to `Avoid.v`. It is in three
+files:
+
+| file | lines | what |
+| --- | --- | --- |
+| `Core/Syntactic/NfRename.v` | 243 | `nf_wk φ` (the renaming of normal forms); `ne_cmp_wk`; `lvl_canon_wk`; freshness and injectivity of `nf_wk` |
+| `Core/Semantic/Rename.v` | 522 | `drn f` (a renaming of levels on values); `eval_rn`, `read_rn`, `read_shift` |
+| `Core/NbEWeakening.v` | 137 | `nbe_wk`, `nbe_wk_fresh_sem`, `exp_eq_strengthen_sem` |
+
+**The theorem.** For a term `M` of `Γ`, the normal form of `M[↑]ʷ` in
+`Γ ▹ A` is the weakening of the normal form of `M` in `Γ`:
+
+```
+nbe_wk : ⊢ Γ ▹ A -> Γ ⊢ M : T -> nbe_f Γ M T W -> nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ (nf_wk ↑ W)
+```
+
+`nbe_ty_wk` is the same for types. The proof has three steps:
+
+1. The fundamental theorem of the PER model, along `Γ ▹ A ⊨w ↑ : Γ`,
+   relates `⟦M[↑]ʷ⟧ρ1` to `⟦M⟧ρ`. Here `ρ1` is the initial environment of
+   `Γ ▹ A`, and `ρ` is its tail, the initial environment of `Γ`.
+2. Related values read back equally at every length (`per_top`). So the
+   normal form of `M[↑]ʷ` is the readback of `⟦M⟧ρ` at `|Γ| + 1`.
+3. **Readback shift** (`read_shift`). Readback of `⟦M⟧ρ` at `|Γ| + 1` is
+   `nf_wk ↑` of its readback at `|Γ|`, which is `W`.
+
+**Readback shift.** The two readbacks cannot be compared on the same value.
+Under a binder, readback at `s` applies the closure to the fresh level `s`,
+and readback at `s + 1` to the fresh level `s + 1`. So `read_rn` is stated
+for a renaming `f` of levels:
+
+```
+rn_ok f s s' φ -> dbd_nf s m -> Rnf m in Θ ⍮ Ξ ⍮ s ↘ W -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W
+```
+
+- `rn_ok f s s' φ` says that `φ` sends the index of `x` at `s` to the index
+  of `f x` at `s'`, for each level `x < s`. From `s` on, `f` is the shift by
+  `s' - s`, so the fresh levels of the two readbacks correspond. It is
+  preserved by `wk_q`.
+- `dbd s m` says that `m` mentions only levels below `s`. It is
+  `Avoid.dav v s` at every `v ≥ s`. That invariant already handles closures
+  whose environment holds the new variable.
+- **Evaluation is equivariant under every `f`** (`eval_rn`). It never looks
+  at a level, it only carries them.
+- **The canonical form of a level commutes with `φ` when `φ` preserves
+  order** (`lvl_canon_wk`). The order on atoms (`ne_cmp`) is lexicographic
+  on a coding where a variable is its index. Two codings are compared up to
+  their first difference, and both sides are at the same binder depth there.
+  So an order-preserving `φ` (and each `wk_q` of it) does not change the
+  result (`nf_cmp_wk`).
+- `read_shift` is the instance where `f` fixes the levels below `|Γ|` and
+  moves the others up by one, and `φ = ↑`. This `f` fixes the initial
+  environment of `Γ`, and so every value evaluated in it (`initial_env_rn`).
+
+**Consequences.**
+
+- `nbe_wk_fresh_sem` and `nbe_ty_wk_fresh_sem`: the normal form of a weakened
+  term is fresh at `#0`, because `nf_wk ↑ W` is (`nf_wk_fresh`).
+- `exp_eq_strengthen_sem`: if `M` and `N` are terms of `Γ` and
+  `Γ ▹ A ⊢ M[↑]ʷ ≈ N[↑]ʷ : T[↑]ʷ`, then `Γ ⊢ M ≈ N : T`. Completeness gives
+  one normal form of `M[↑]ʷ` and `N[↑]ʷ`. It is `nf_wk ↑` of the normal form
+  of `M`, and also of that of `N`. `nf_wk ↑` is injective, so the two
+  normal forms are equal, and soundness gives the equation.
+
+**Comparison.**
+
+| | route R (`Avoid.v`, `Strengthening.v`) | the second route |
+| --- | --- | --- |
+| size | `Avoid.v` 649 for freshness. `Strengthening.v` 1216 for EqStr, SubStr, shapes and `nf_strengthen`. | 902 in all |
+| NbE of a weakened term | fresh at `#0` (`nbe_wk_fresh`) | equal to `nf_wk ↑ W` (`nbe_wk`), which is stronger |
+| hypotheses of freshness | none: any `M`, typed or not | `⊢ Γ ▹ A` and `Γ ⊢ M : T` |
+| EqStr | at any position `k`, under a telescope `Δ` | at `k = 0` only |
+| strengthening of typing (`nf_strengthen`, `level_nf_strengthen`) | yes | no |
+
+**Why the second route proves no strengthening of typing.**
+`level_nf_strengthen` concludes `Γ ⊢ L : Level` from `Γ ▹ A ⊢ L[↑]ʷ : Level`.
+`nbe_wk` needs `Γ ⊢ L : Level` as a hypothesis, so it cannot start. The
+algorithm needs exactly that conclusion, so route R stays the one it uses.
+
+**Why EqStr only at `k = 0`.** At a position `k > 0`, the long context is
+`tele_wk Δ ↑ ++ Γ ▹ A`. The renaming `f` would have to send the short
+initial environment to the image of the long one. But the entries of `Δ`
+are evaluated again in the long context, and the two are related only by
+the PER model. So the step would need the PER model to be closed under
+renaming of levels, and that is a new lemma over the whole model.
