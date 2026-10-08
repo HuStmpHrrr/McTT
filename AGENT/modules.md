@@ -48,7 +48,7 @@ by changing what the name resolves to inside the nest:
 | --- | --- |
 | `theories/Frontend/Resolve.v` | Scopes: `entry`/`val`/`scope`, lookup, insertion, `ent_public`, `sc_take`, `ent_fix`, `v_bound`/`v_inline`/`v_bind`, `sc_use`, import depths. |
 | `theories/Frontend/Elaborator.v` | `elab_res`/`elab` for objects; `ustate`, `elab_def`/`elab_eval`/`elab_import`/`elab_cmd`/`elab_cmds`, `elaborate_prog`; the closedness development. |
-| `theories/Frontend/Parser.vy`, `driver/Lexer.mll` | Surface syntax; `parserMessages.messages` holds the 81 error sentences. |
+| `theories/Frontend/Parser.vy`, `driver/Lexer.mll` | Surface syntax; `parserMessages.messages` holds the 102 error sentences. |
 | `theories/Core/Syntactic/Syntax.v` | `Cst.cmd`, `Cst.mods`, `Cst.ispec`, `Cst.prog`, `Cst.decl` (the `let` forms); `Cst.glob`; `qual`/`path`/`path_valid` and `a_glob`. |
 | `theories/Core/Syntactic/Syntax.v` (end), `Members.v` (start) | The global context: `gmod`/`gentry` for the `.` level, `gdeps` (the filed units, a flat list newest first) for the `::` level, `gunit`, the `gstack` of open modules, `GCtx`; resolution (`gc_resolve`, `gc_module`, `gc_body`) and its growth (`gc_sub`) in `Members.v`. |
 | `theories/Core/Syntactic/System/Definitions.v` | One mutual block of all ten `wf_*` judgments: the four term ones, the three for units, extensions and module expressions, and `⊢e`, `⊢m`, `⊢g` (`wf_gstack`, which also files units). Also `exp_closed`, the `a_glob` rules, and the `Scheme`s cut from the block. |
@@ -78,6 +78,33 @@ the name).  Closing the rest inside the theory would need an ordering premise on
 prefix already checked), which is deliberately not there.
 
 ## Surface syntax
+
+**Spellings.**  Several tokens have a Unicode and an ASCII spelling, lexed to
+the same token by `driver/Lexer.mll`, so the grammar, the elaborator and the
+core never see the difference:
+
+| Token        | Unicode  | ASCII    |
+|--------------|----------|----------|
+| `ARROW`      | `→`      | `->`     |
+| `DARROW`     | `⇒`      | `=>`     |
+| `LAMBDA`     | `λ`      | `fun`    |
+| `PI`         | `∀`, `Π` | `forall` |
+| `EQ`         | `≔`      | `:=`     |
+| `COLONCOLON` | `∷`      | `::`     |
+| `NAT`        | `ℕ`      | `Nat`    |
+| `TRUE_TY`    | `⊤`      | `True`   |
+| `FALSE_TY`   | `⊥`      | `False`  |
+| `TRUE`       | `⋆`      | `true`   |
+| `OMEGA`      | `ω`      | `omega`  |
+
+The printer (`PrettyPrinter.ml`), the token names in syntax errors
+(`Lexer.token_to_string`), `parserMessages.messages` and the elaborator's
+unit-path message use the Unicode forms (`∀` for `PI`); `lib/` and
+`examples/` are written in them.  Identifiers are ASCII letters only, so
+`λx` is `λ` then `x` and no symbol needs spaces.  Error columns count
+characters: the lexer moves `pos_bol` right by one for every UTF-8
+continuation byte, so `pos_cnum` stays a byte offset (which `Doc.ml` relies
+on).  The ASCII spellings are used below.
 
 The two levels of naming are spelled differently, and the difference is
 significant: `X::Y::Z` names a **unit** — a parameterized module in full, and

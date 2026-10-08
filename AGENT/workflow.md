@@ -50,7 +50,8 @@ Other targets: `make pretty-timed`, `make coqdoc`, `make depgraphdoc`,
 links to. It runs the checker on every unit, each as its own program
 (about 21 s for `lib/`), and exits 1 if a name does not line up with its
 token, a use does not resolve, or a unit's evals and its log differ in
-number. Below each `eval`, a folded `<details>` box holds that eval's
+number. Below each `eval`, a folded `<details>` box, indented to the eval's
+column in characters (`Doc.col`, so Unicode tokens count as one), holds that eval's
 output: the checker's log entry for it, printed by `PrettyPrinter`
 (`eval_outputs`), so the text is exactly what `mctt` prints; a click on the
 open output folds it again. An eval's extent is the span from its `eval`

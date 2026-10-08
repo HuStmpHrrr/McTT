@@ -132,16 +132,32 @@ make
 
 Our interpreter accepts a `prog`, defined in the following grammar
 (written in
-[EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form)):
+[EBNF](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form)).
+
+Several tokens have a Unicode and an ASCII spelling. The two are the same
+token, so either may be used anywhere; the interpreter prints the Unicode
+one (and `∀` for `forall`):
+
+| Unicode | ASCII    |   | Unicode | ASCII   |
+|---------|----------|---|---------|---------|
+| `→`     | `->`     |   | `ℕ`     | `Nat`   |
+| `⇒`     | `=>`     |   | `⊤`     | `True`  |
+| `λ`     | `fun`    |   | `⊥`     | `False` |
+| `∀`, `Π`| `forall` |   | `⋆`     | `true`  |
+| `≔`     | `:=`     |   | `ω`     | `omega` |
+| `∷`     | `::`     |   |         |         |
+
+Identifiers are ASCII letters only, so these symbols need no spaces around
+them: `λ(x:ℕ)→x` is `fun (x : Nat) -> x`.
 
 ```EBNF
 prog = term , ':' , type;
 
 type = term;
      (* function type *)
-term = 'forall' , {parameter} , '->' , term
+term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      (* function *)
-     | 'fun' , {parameter} , '->' , term
+     | ( 'λ' | 'fun' ) , {parameter} , ( '→' | '->' ) , term
      (* application *)
      | {atomic term}
      (* let expression *)
@@ -153,7 +169,9 @@ term = 'forall' , {parameter} , '->' , term
      (* join of two universe levels *)
      | 'maxl' , atomic term , atomic term
      (* natural number eliminator *)
-     | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end';
+     | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end'
+     (* eliminator of the empty type *)
+     | 'exfalso' , term , 'return' , nat motive;
 
             (* small universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
@@ -174,7 +192,11 @@ atomic term = 'Type', '@' , nat
             (* a universe level literal *)
             | nat , 'l'
             (* natural number type *)
-            | 'Nat'
+            | ( 'ℕ' | 'Nat' )
+            (* the unit type and its element *)
+            | ( '⊤' | 'True' ) | ( '⋆' | 'true' )
+            (* the empty type *)
+            | ( '⊥' | 'False' )
             (* natural number zero *)
             | 'zero'
             (* a shorthand for succ (succ (... (succ zero))) *)
@@ -187,19 +209,19 @@ atomic term = 'Type', '@' , nat
 parameter = '(' , id , ':' , type , ')';
 
 (* each definition sees the earlier ones *)
-let definition = id , ':' , type , ':=' , term
+let definition = id , ':' , type , ( '≔' | ':=' ) , term
                (* local module *)
-               | 'module' , id , ':=' , term;
+               | 'module' , id , ( '≔' | ':=' ) , term;
 
 (* This describes the return type of the eliminator
    when id is bound to the scrutinee *)
 nat motive = id , '.' , type;
 
-zero branch = '|', 'zero' , '=>' , term;
+zero branch = '|', 'zero' , ( '⇒' | '=>' ) , term;
 
 (* the first id is predecessor
    and the second id is the result of the recursive call *)
-succ branch = '|', 'succ' , id , id , '=>' , term;
+succ branch = '|', 'succ' , id , ',' , id , ( '⇒' | '=>' ) , term;
 
 id = ? sequence of upper- or lower-case ASCII alphabet characters ?;
 nat = ? natural number ?;

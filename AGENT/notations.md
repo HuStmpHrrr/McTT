@@ -101,6 +101,8 @@ The surface syntax matches: `Type@n` (short for `Type@{nl}`), `Type@nl` and
 `Type@{ω+n}` and the shorthand `Type@nL` are large (`nL` is a universe size
 only, never a term of `Level`).  Only a braced size takes a `+`.  The printer
 picks the shortest spelling: `Type@n`, `Type@{t}`, `Type@ω`, `Type@nL`.
+(`ω` is one of the Unicode spellings listed in `modules.md`, *Surface
+syntax*.)
 
 ## Traps
 
