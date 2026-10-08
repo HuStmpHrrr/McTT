@@ -269,4 +269,42 @@ eval let module Five where
      in Five.addIter Five.eight
      end
 
+(* 14. Universe levels. [Level] is a type, with the literals [0l], [1l], …,
+   and the operations [succl] and [maxl]; levels are compared by
+   normalization, so [maxl 1l (succl 2l)] is [3l]. [Type@{t}] is the
+   universe at the level [t], and [Type@n] abbreviates [Type@{nl}]. *)
+
+eval maxl 1l (succl 2l)
+
+eval Type@{maxl 1l 2l}
+
+(* A level-polymorphic definition takes its level as an argument. A
+   function type of types of [Type@{u}] is in [Type@{u}], even for a
+   variable [u]. *)
+def applyTwice (u : Level) (A : Type@{u}) (f : forall (a : A) -> A) : forall (a : A) -> A :=
+  fun (a : A) -> f (f a)
+end
+
+eval applyTwice 0l Nat double 1
+
+eval applyTwice 1l Type@0 (fun (A : Type@0) -> forall (a : A) -> A) Nat
+
+(* Cumulativity: a type of [Type@{u}] is also one of [Type@{maxl u v}]. *)
+def widen (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} := A end
+
+(* A module may take a level, so that all its members share it: the
+   Prelude's [Prelude::Function::Iter] takes [(u : Level) (A : Type@{u})],
+   and [Iter.iter 0l Nat] iterates on numbers. *)
+module Pointed (u : Level) (A : Type@{u}) (a : A) where
+  def point : A := a end
+end
+
+eval Pointed.point 1l Type@0 Nat
+
+(* A Church encoding quantifies over a universe, so it lives one level up:
+   the conjunction of the Prelude, [Prelude::Logic.Conj u], is in
+   [Type@{succl u}]. A type quantifying over levels themselves is large, in
+   [Type@ω], above every [Type@{u}]. *)
+eval forall (u : Level) -> Type@{u}
+
 end

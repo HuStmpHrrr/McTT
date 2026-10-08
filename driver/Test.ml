@@ -2487,6 +2487,16 @@ let%expect_test "lib/Tutorial.mctt" =
                  end
              in M1.addIter M1.eight
              end --> true : True
+    Evaluate maxl 1l (succl 2l) --> 3l : Level
+    Evaluate Type@{maxl 1l 2l} --> Type@2 : Type@3
+    Evaluate applyTwice 0l Nat double 1 --> 4 : Nat
+    Evaluate applyTwice 1l Type@0 (fun (A1 : Type@0) -> forall (x1 : A1) -> A1)
+               Nat --> forall (x1 : forall (x2 : Nat) -> Nat)
+                              (x3 : Nat)
+                         -> Nat : Type@0
+    Evaluate Pointed.point 1l Type@0 Nat --> Nat : Type@0
+    Evaluate forall (x1 : Level) -> Type@{x1}
+      --> forall (x1 : Level) -> Type@{x1} : Type@ω
     |}]
 
 (** The documentation generator ([Doc]) *)
@@ -2571,7 +2581,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    396 evals, 396 boxes, 396 equal to mctt's output
+    435 evals, 435 boxes, 435 equal to mctt's output
     Evaluate Adding.five --> 5 : Nat
     |}]
 
@@ -2583,7 +2593,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 29 evals, 1 outputs
+    Tutorial: 35 evals, 1 outputs
     0 boxes
     |}]
 
@@ -2716,4 +2726,84 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
     Evaluate Type@1L --> Type@1L : Type@2L
     Evaluate Type@3L --> Type@3L : Type@4L
     Evaluate f 0l --> Type@3 : Type@4
+    |}]
+
+let%expect_test "lib/Universes.mctt" =
+  let _ = main_of_lib "Universes.mctt" in
+  [%expect {|
+    Evaluate ofNat 3 --> 3l : Level
+    Evaluate maxl (ofNat 2) (succl 4l) --> 5l : Level
+    Evaluate plusl 2 (maxl 1l 3l) --> 5l : Level
+    Evaluate lrefl 3l
+      --> fun (x1 : forall (x2 : Level) -> Type@0)
+              (x3 : x1 3l)
+            -> x3 : LEq (maxl 2l 3l) (succl 2l)
+    Evaluate lrefl 3l
+      --> fun (x1 : forall (x2 : Level) -> Type@0)
+              (x3 : x1 3l)
+            -> x3 : LEq (ofNat (max 2 3)) (maxl (ofNat 2) (ofNat 3))
+    Evaluate Arrow 0l 1l Nat Type@0 --> forall (x1 : Nat) -> Type@0 : Type@1
+    Evaluate Pi 1l 1l Type@0 (fun (A1 : Type@0) -> Endo 0l A1)
+      --> forall (A1 : Type@0)
+                 (x1 : A1)
+            -> A1 : Type@1
+    Evaluate Fun 0l 3 Nat True --> forall (x1 : Nat)
+                                          (x2 : Nat)
+                                          (x3 : Nat)
+                                     -> True : Type@0
+    Evaluate Fun 1l 2 Type@0 Type@0
+      --> forall (A1 : Type@0)
+                 (A2 : Type@0)
+            -> Type@0 : Type@1
+    Evaluate fun (A1 : Type@0)
+                 (A2 : Type@0)
+               -> forall (x1 : A1) -> A2
+      --> fun (A1 : Type@0)
+              (A2 : Type@0)
+            -> forall (x1 : A1) -> A2 : Fun 1l 2 Type@0 Type@0
+    Evaluate Universe 2 --> Type@2 : Type@3
+    Evaluate universeIn 1 --> Type@1 : Type@2
+    Evaluate up 0l 2l Nat 3 --> 3 : Nat
+    Evaluate Cj.andFst 1l Type@0 Type@0 natAndTrue --> Nat : Type@0
+    Evaluate Cj.andSnd 1l Type@0 Type@0 (Cj.andSwap 1l Type@0 Type@0 natAndTrue)
+      --> Nat : Type@0
+    Evaluate first 1l Type@0 (fun (A1 : Type@0) -> A1) pointedNat --> Nat
+      : Type@0
+    Evaluate Ex.existsElim 1l Sums Nat twoThree
+               (fun (x1 : Nat)
+                    (x2 : Sums x1)
+                 -> x1) --> 2 : Nat
+    Evaluate Ex.existsElim 1l Sums Nat twoThree
+               (fun (x1 : Nat)
+                    (x2 : Sums x1)
+                 -> Ex.existsElim 0l (fun (x3 : Nat) -> Eq (plus x1 x3) 5) Nat x2
+                      (fun (x4 : Nat)
+                           (x5 : Eq (plus x1 x4) 5)
+                        -> x4)) --> 3 : Nat
+    Evaluate Types.nth 3 threeTypes 1 true --> True : Type@0
+    Evaluate Types.last 2 threeTypes --> False : Type@0
+    Evaluate Types.map Type@0 (fun (A1 : Type@0) -> forall (x1 : A1) -> A1) 3
+               threeTypes
+               0
+               true --> forall (x1 : Nat) -> Nat : Type@0
+    Evaluate Iter.iter 1l Type@0 (fun (A1 : Type@0) -> forall (x1 : A1) -> A1) 2
+               Nat --> forall (x1 : forall (x2 : Nat) -> Nat)
+                              (x3 : Nat)
+                         -> Nat : Type@0
+    Evaluate C.toNat 0l (C.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5)) --> 32
+      : Nat
+    Evaluate C.toNat 0l (C.lower 0l (C.fromNat 1l 4)) --> 4 : Nat
+    Evaluate C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 0)) --> 1 : Nat
+    Evaluate C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 3)) --> 0 : Nat
+    Evaluate C.length 1l Type@0
+               (C.cons 1l Type@0 Nat (C.cons 1l Type@0 True (C.nil 1l Type@0)))
+      --> 2 : Nat
+    Evaluate C.sum 0l
+               (C.append 0l Nat (C.replicate 0l Nat 3 4)
+                 (C.cons 0l Nat 5 (C.nil 0l Nat))) --> 17 : Nat
+    Evaluate toNatPlus 0l 2 3 --> true : True
+    Evaluate toNatPow 0l 2 3 --> true : True
+    Evaluate toNatPow 3l 3 2 --> true : True
+    Evaluate toNatLower 2l 4 --> true : True
+    Evaluate C.toNat 0l (churchHalf 9) --> 4 : Nat
     |}]

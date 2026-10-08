@@ -1,0 +1,210 @@
+(* Universe levels as data.  [Level] is a type of [Type@0]; its elements
+   are built from [0l], [succl] and [maxl], and are compared by
+   normalization: a level is a constant and a set of atoms with offsets.
+   So the laws of [maxl] and [succl] hold by conversion, and their proofs
+   are [lrefl].
+
+   Levels have no eliminator, so equality of levels is Leibniz equality,
+   [LEq u v]: every predicate of [u] holds of [v].  The order [LLe u v] is
+   [LEq (maxl u v) v].  With them, the unit proves the laws that need
+   induction: the embedding [ofNat] of numbers takes [plus] to iterated
+   [succl], [max] to [maxl], and [Le] to [LLe].
+
+   These are propositions about levels, in [Type@1]; they do not drive
+   cumulativity, which only follows the normal forms of levels. *)
+module Prelude::Universe::Levels where
+
+import Prelude::Logic
+open Prelude::Logic.Negation as Neg
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::MinMax use (max)
+import Prelude::Arith::Order use (Le)
+import Prelude::Function::Iter as Iter
+
+(* Leibniz equality of levels: predicates of [u] are predicates of [v]. *)
+def LEq (u : Level) (v : Level) : Type@1 :=
+  forall (P : forall (l : Level) -> Type@0) (p : P u) -> P v
+end
+
+(* The order of levels: [u] is below [v] when their join is [v]. *)
+def LLe (u : Level) (v : Level) : Type@1 := LEq (maxl u v) v end
+
+(* The [n]-th level: [ofNat 3] is [3l]. *)
+def ofNat (n : Nat) : Level :=
+  rec n return x . Level | zero => 0l | succ p, r => succl r end
+end
+
+(* [plusl n u] is [u] raised by [n] levels: [succl] iterated [n] times. *)
+def plusl (n : Nat) (u : Level) : Level :=
+  Iter.iter 0l Level (fun (l : Level) -> succl l) n u
+end
+
+(* Leibniz equality is an equivalence and a congruence. *)
+module Equality where
+
+def lrefl (u : Level) : LEq u u :=
+  fun (P : forall (l : Level) -> Type@0) (p : P u) -> p
+end
+
+(* Symmetry uses [h] at the predicate [fun l -> P l -> P u], which is in
+   [Type@0] like [P]; the textbook motive [fun l -> LEq l u] would be in
+   [Type@1]. *)
+theorem lsym : forall (u : Level) (v : Level) (h : LEq u v) -> LEq v u :=
+  fun (u : Level) (v : Level) (h : LEq u v) (P : forall (l : Level) -> Type@0) ->
+    h (fun (l : Level) -> forall (q : P l) -> P u) (fun (q : P u) -> q)
+end
+
+theorem ltrans : forall (u : Level) (v : Level) (w : Level)
+    (huv : LEq u v) (hvw : LEq v w) -> LEq u w :=
+  fun (u : Level) (v : Level) (w : Level) (huv : LEq u v) (hvw : LEq v w)
+      (P : forall (l : Level) -> Type@0) (p : P u) ->
+    hvw P (huv P p)
+end
+
+(* Every function on levels respects equality. *)
+theorem lcong : forall (f : forall (l : Level) -> Level) (u : Level) (v : Level)
+    (h : LEq u v) -> LEq (f u) (f v) :=
+  fun (f : forall (l : Level) -> Level) (u : Level) (v : Level) (h : LEq u v)
+      (P : forall (l : Level) -> Type@0) ->
+    h (fun (l : Level) -> P (f l))
+end
+
+end
+
+open Equality use (lrefl; lsym; ltrans; lcong)
+
+(* The laws of [maxl] and [succl].  Each holds by conversion. *)
+module Algebra where
+
+theorem maxlComm : forall (u : Level) (v : Level) -> LEq (maxl u v) (maxl v u) :=
+  fun (u : Level) (v : Level) -> lrefl (maxl u v)
+end
+
+theorem maxlAssoc : forall (u : Level) (v : Level) (w : Level) ->
+    LEq (maxl (maxl u v) w) (maxl u (maxl v w)) :=
+  fun (u : Level) (v : Level) (w : Level) -> lrefl (maxl u (maxl v w))
+end
+
+theorem maxlIdem : forall (u : Level) -> LEq (maxl u u) u :=
+  fun (u : Level) -> lrefl u
+end
+
+(* [0l] is neutral for [maxl]. *)
+theorem maxlZero : forall (u : Level) -> LEq (maxl u 0l) u :=
+  fun (u : Level) -> lrefl u
+end
+
+(* [succl] distributes over [maxl]. *)
+theorem succlMaxl : forall (u : Level) (v : Level) ->
+    LEq (succl (maxl u v)) (maxl (succl u) (succl v)) :=
+  fun (u : Level) (v : Level) -> lrefl (succl (maxl u v))
+end
+
+(* A level is absorbed by its successor. *)
+theorem maxlSuccl : forall (u : Level) -> LEq (maxl u (succl u)) (succl u) :=
+  fun (u : Level) -> lrefl (succl u)
+end
+
+end
+
+(* [LLe] is a preorder; [maxl] is the least upper bound and [succl] is
+   monotone.  Reflexivity, the bounds and the successor step hold by
+   conversion; transitivity and the least-upper-bound property use the
+   equality laws. *)
+module Order where
+
+def lleRefl (u : Level) : LLe u u := lrefl u end
+
+def lleSuccl (u : Level) : LLe u (succl u) := lrefl (succl u) end
+
+def lleZero (u : Level) : LLe 0l u := lrefl u end
+
+def lleMaxlLeft (u : Level) (v : Level) : LLe u (maxl u v) := lrefl (maxl u v) end
+
+def lleMaxlRight (u : Level) (v : Level) : LLe v (maxl u v) := lrefl (maxl u v) end
+
+(* [maxl u w] is [maxl u (maxl v w)], which is [maxl (maxl u v) w] by
+   conversion, hence [maxl v w], hence [w]. *)
+theorem lleTrans : forall (u : Level) (v : Level) (w : Level)
+    (huv : LLe u v) (hvw : LLe v w) -> LLe u w :=
+  fun (u : Level) (v : Level) (w : Level) (huv : LLe u v) (hvw : LLe v w) ->
+    ltrans (maxl u w) (maxl v w) w
+      (ltrans (maxl u w) (maxl u (maxl v w)) (maxl v w)
+         (lcong (fun (l : Level) -> maxl u l) w (maxl v w) (lsym (maxl v w) w hvw))
+         (lcong (fun (l : Level) -> maxl l w) (maxl u v) v huv))
+      hvw
+end
+
+(* The join is below every upper bound. *)
+theorem lleMaxlLub : forall (u : Level) (v : Level) (w : Level)
+    (huw : LLe u w) (hvw : LLe v w) -> LLe (maxl u v) w :=
+  fun (u : Level) (v : Level) (w : Level) (huw : LLe u w) (hvw : LLe v w) ->
+    ltrans (maxl u (maxl v w)) (maxl u w) w
+      (lcong (fun (l : Level) -> maxl u l) (maxl v w) w hvw)
+      huw
+end
+
+(* [succl] is monotone, since it distributes over [maxl]. *)
+theorem lleSucclCong : forall (u : Level) (v : Level) (h : LLe u v) -> LLe (succl u) (succl v) :=
+  fun (u : Level) (v : Level) (h : LLe u v) ->
+    lcong (fun (l : Level) -> succl l) (maxl u v) v h
+end
+
+end
+
+open Order use (lleSuccl; lleTrans; lleSucclCong)
+
+(* The embedding of numbers, by induction. *)
+module Embedding where
+
+(* [ofNat] turns addition into raising. *)
+theorem ofNatPlus : forall (m : Nat) (n : Nat) -> LEq (ofNat (plus m n)) (plusl m (ofNat n)) :=
+  fun (m : Nat) (n : Nat) ->
+    rec m return x . LEq (ofNat (plus x n)) (plusl x (ofNat n))
+    | zero => lrefl (ofNat n)
+    | succ p, ih =>
+        lcong (fun (l : Level) -> succl l) (ofNat (plus p n)) (plusl p (ofNat n)) ih
+    end
+end
+
+(* [ofNat] turns [max] into [maxl].  In the step, both sides are
+   successors, and [succl] distributes over [maxl] by conversion. *)
+theorem ofNatMax : forall (m : Nat) (n : Nat) -> LEq (ofNat (max m n)) (maxl (ofNat m) (ofNat n)) :=
+  fun (m : Nat) ->
+    rec m return x . (forall (n : Nat) -> LEq (ofNat (max x n)) (maxl (ofNat x) (ofNat n)))
+    | zero => fun (n : Nat) -> lrefl (ofNat n)
+    | succ p, ih => fun (n : Nat) ->
+        rec n return y . LEq (ofNat (max (succ p) y)) (maxl (succl (ofNat p)) (ofNat y))
+        | zero => lrefl (succl (ofNat p))
+        | succ q, s =>
+            lcong (fun (l : Level) -> succl l) (ofNat (max p q)) (maxl (ofNat p) (ofNat q)) (ih q)
+        end
+    end
+end
+
+(* [ofNat] is monotone.  The impossible case is closed with [absurd] at
+   level [1l], where [LLe] lives. *)
+theorem ofNatLe : forall (m : Nat) (n : Nat) (h : Le m n) -> LLe (ofNat m) (ofNat n) :=
+  fun (m : Nat) ->
+    rec m return x . (forall (n : Nat) (h : Le x n) -> LLe (ofNat x) (ofNat n))
+    | zero => fun (n : Nat) (h : True) -> lrefl (ofNat n)
+    | succ p, ih => fun (n : Nat) ->
+        rec n return y . (forall (h : Le (succ p) y) -> LLe (succl (ofNat p)) (ofNat y))
+        | zero => fun (h : False) -> Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
+        | succ q, s => fun (h : Le p q) -> lleSucclCong (ofNat p) (ofNat q) (ih q h)
+        end
+    end
+end
+
+(* Raising by [n] levels gives an upper bound. *)
+theorem llePlusl : forall (n : Nat) (u : Level) -> LLe u (plusl n u) :=
+  fun (n : Nat) (u : Level) ->
+    rec n return x . LLe u (plusl x u)
+    | zero => lrefl u
+    | succ p, ih => lleTrans u (plusl p u) (succl (plusl p u)) ih (lleSuccl (plusl p u))
+    end
+end
+
+end
+
+end

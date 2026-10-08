@@ -1,0 +1,155 @@
+(* A client of the level-polymorphic Prelude: [Prelude::Universe::Levels],
+   [Prelude::Universe::Formers], [Prelude::Data::Church] and its laws, and
+   the level parameters of [Prelude::Logic], [Prelude::Data::Vec],
+   [Prelude::Function::Iter] and [Prelude::Arith::Induction].  Each section
+   uses a library at a level above [0l], where its old [Type@0] version
+   could not go. *)
+module Universes where
+
+import Prelude::Logic
+open Prelude::Logic.Conj as Cj
+open Prelude::Logic.Exist as Ex
+import Prelude::Arith::Equality use (Eq)
+import Prelude::Arith::Plus use (plus)
+import Prelude::Arith::MinMax use (max)
+import Prelude::Arith::Induction
+open Prelude::Arith::Induction.Principles 1l as Large
+import Prelude::Function::Iter as Iter
+import Prelude::Data::Vec as V
+import Prelude::Universe::Levels use (LEq; LLe; ofNat; plusl)
+open Prelude::Universe::Levels.Equality use (lrefl; lsym; ltrans; lcong)
+open Prelude::Universe::Levels.Embedding use (ofNatMax)
+import Prelude::Universe::Formers use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
+import Prelude::Data::Church as C
+import Prelude::Data::Church::Properties
+open Prelude::Data::Church::Properties.Arithmetic use (toNatPlus; toNatPow)
+open Prelude::Data::Church::Properties.Levels use (toNatLower)
+
+(* 1. Levels are data.  [ofNat] computes a level from a number, and the laws
+   of [maxl] hold by conversion, so [lrefl] proves their closed instances. *)
+
+eval ofNat 3
+
+eval maxl (ofNat 2) (succl 4l)
+
+eval plusl 2 (maxl 1l 3l)
+
+eval lrefl 3l : LEq (maxl 2l 3l) (succl 2l)
+
+eval lrefl 3l : LEq (ofNat (max 2 3)) (maxl (ofNat 2) (ofNat 3))
+
+(* With an open number, [ofNat (max m n)] is stuck, and the law needs the
+   induction of [ofNatMax].  From it, [ofNat m] is below [ofNat (max m n)]. *)
+def ofNatMaxBound (m : Nat) (n : Nat) : LLe (ofNat m) (ofNat (max m n)) :=
+  let a := ofNat m;
+      b := ofNat n;
+      x := ofNat (max m n);
+      e : LEq x (maxl a b) := ofNatMax m n
+  in ltrans (maxl a x) (maxl a b) x
+       (lcong (fun (l : Level) -> maxl a l) x (maxl a b) e)
+       (lsym x (maxl a b) e)
+  end
+end
+
+(* 2. Type formers are functions of their levels. *)
+
+eval Arrow 0l 1l Nat Type@0
+
+eval Pi 1l 1l Type@0 (fun (A : Type@0) -> Endo 0l A)
+
+eval Fun 0l 3 Nat True
+
+(* The binary type operators, and an element: the function type. *)
+eval Fun 1l 2 Type@0 Type@0
+
+eval (fun (A : Type@0) (B : Type@0) -> forall (a : A) -> B) : Fun 1l 2 Type@0 Type@0
+
+(* A universe computed from a number, and the next one up holding it. *)
+eval Universe 2
+
+eval universeIn 1
+
+(* Lifting is the identity: cumulativity puts [Nat] in [Type@{maxl 0l 2l}]. *)
+eval up 0l 2l Nat 3
+
+(* 3. Pairs and existence one level up.  A pair of types is a conjunction
+   at [1l]; it lives in [Type@2]. *)
+
+def natAndTrue : Cj.And 1l Type@0 Type@0 := Cj.andIntro 1l Type@0 Type@0 Nat True end
+
+eval Cj.andFst 1l Type@0 Type@0 natAndTrue
+
+eval Cj.andSnd 1l Type@0 Type@0 (Cj.andSwap 1l Type@0 Type@0 natAndTrue)
+
+(* A pointed type: a type and one of its elements, as a dependent pair. *)
+def pointedNat : Sigma 1l Type@0 (fun (A : Type@0) -> A) := pair 1l Type@0 (fun (A : Type@0) -> A) Nat 7 end
+
+eval first 1l Type@0 (fun (A : Type@0) -> A) pointedNat
+
+(* Existence proofs nest one level per quantifier: "some [m] has some [n]
+   with [m + n = 5]" is an existence at [1l] of existences at [0l]. *)
+def Sums (m : Nat) : Type@1 := Ex.Exists 0l (fun (n : Nat) -> Eq (plus m n) 5) end
+
+def twoThree : Ex.Exists 1l Sums :=
+  Ex.existsIntro 1l Sums 2 (Ex.existsIntro 0l (fun (n : Nat) -> Eq (plus 2 n) 5) 3 true)
+end
+
+(* The outer witness, then the inner one. *)
+eval Ex.existsElim 1l Sums Nat twoThree (fun (m : Nat) (p : Sums m) -> m)
+
+eval Ex.existsElim 1l Sums Nat twoThree
+       (fun (m : Nat) (p : Sums m) ->
+          Ex.existsElim 0l (fun (n : Nat) -> Eq (plus m n) 5) Nat p
+            (fun (n : Nat) (q : Eq (plus m n) 5) -> n))
+
+(* 4. Data over types.  Vectors and iteration at [1l] hold and transform
+   types. *)
+
+module Types := V 1l Type@0
+
+def threeTypes : Types.Vec 3 := Types.cons 2 Nat (Types.cons 1 True (Types.cons 0 False Types.nil)) end
+
+eval Types.nth 3 threeTypes 1 true
+
+eval Types.last 2 threeTypes
+
+eval Types.map Type@0 (fun (A : Type@0) -> forall (a : A) -> A) 3 threeTypes 0 true
+
+(* The type former [A -> A], iterated twice from [Nat]. *)
+eval Iter.iter 1l Type@0 (fun (A : Type@0) -> forall (a : A) -> A) 2 Nat
+
+(* 5. Church numerals.  Exponentiation iterates multiplication at [0l], so
+   its exponent is a numeral at [1l]. *)
+
+eval C.toNat 0l (C.cpow 0l (C.fromNat 0l 2) (C.fromNat 1l 5))
+
+eval C.toNat 0l (C.lower 0l (C.fromNat 1l 4))
+
+eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 0))
+
+eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 3))
+
+(* A Church list of types, at [1l]. *)
+eval C.length 1l Type@0 (C.cons 1l Type@0 Nat (C.cons 1l Type@0 True (C.nil 1l Type@0)))
+
+eval C.sum 0l (C.append 0l Nat (C.replicate 0l Nat 3 4) (C.cons 0l Nat 5 (C.nil 0l Nat)))
+
+(* The laws hold at every level; here closed instances at [0l] and [3l]. *)
+eval toNatPlus 0l 2 3
+
+eval toNatPow 0l 2 3
+
+eval toNatPow 3l 3 2
+
+eval toNatLower 2l 4
+
+(* 6. Induction into a large motive.  Two-step induction at [1l] builds a
+   Church numeral (a type of [Type@1]) by recursion: half of [n]. *)
+def churchHalf (n : Nat) : C.Numeral 0l :=
+  Large.twoStepInd (fun (k : Nat) -> C.Numeral 0l) (C.czero 0l) (C.czero 0l)
+    (fun (k : Nat) (r : C.Numeral 0l) -> C.csucc 0l r) n
+end
+
+eval C.toNat 0l (churchHalf 9)
+
+end
