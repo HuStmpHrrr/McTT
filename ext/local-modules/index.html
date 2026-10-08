@@ -162,14 +162,75 @@ make</code></pre>
 <h2 id="external-syntax">External Syntax</h2>
 <p>Our interpreter accepts a <code>prog</code>, defined in the following
 grammar (written in <a
-href="https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form">EBNF</a>):</p>
+href="https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form">EBNF</a>).</p>
+<p>Several tokens have a Unicode and an ASCII spelling. The two are the
+same token, so either may be used anywhere; the interpreter prints the
+Unicode one (and <code>∀</code> for <code>forall</code>):</p>
+<table>
+<thead>
+<tr class="header">
+<th>Unicode</th>
+<th>ASCII</th>
+<th></th>
+<th>Unicode</th>
+<th>ASCII</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>→</code></td>
+<td><code>-&gt;</code></td>
+<td></td>
+<td><code>ℕ</code></td>
+<td><code>Nat</code></td>
+</tr>
+<tr class="even">
+<td><code>⇒</code></td>
+<td><code>=&gt;</code></td>
+<td></td>
+<td><code>⊤</code></td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>λ</code></td>
+<td><code>fun</code></td>
+<td></td>
+<td><code>⊥</code></td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td><code>∀</code>, <code>Π</code></td>
+<td><code>forall</code></td>
+<td></td>
+<td><code>⋆</code></td>
+<td><code>true</code></td>
+</tr>
+<tr class="odd">
+<td><code>≔</code></td>
+<td><code>:=</code></td>
+<td></td>
+<td><code>ω</code></td>
+<td><code>omega</code></td>
+</tr>
+<tr class="even">
+<td><code>›</code></td>
+<td><code>::</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Identifiers are ASCII letters only, so these symbols need no spaces
+around them: <code>λ(x:ℕ)→x</code> is
+<code>fun (x : Nat) -&gt; x</code>.</p>
 <pre class="ebnf"><code>prog = term , &#39;:&#39; , type;
 
 type = term;
      (* function type *)
-term = &#39;forall&#39; , {parameter} , &#39;-&gt;&#39; , term
+term = ( &#39;∀&#39; | &#39;Π&#39; | &#39;forall&#39; ) , {parameter} , ( &#39;→&#39; | &#39;-&gt;&#39; ) , term
      (* function *)
-     | &#39;fun&#39; , {parameter} , &#39;-&gt;&#39; , term
+     | ( &#39;λ&#39; | &#39;fun&#39; ) , {parameter} , ( &#39;→&#39; | &#39;-&gt;&#39; ) , term
      (* application *)
      | {atomic term}
      (* let expression *)
@@ -181,7 +242,9 @@ term = &#39;forall&#39; , {parameter} , &#39;-&gt;&#39; , term
      (* join of two universe levels *)
      | &#39;maxl&#39; , atomic term , atomic term
      (* natural number eliminator *)
-     | &#39;rec&#39; , term , &#39;return&#39; , nat motive , zero branch , succ branch , &#39;end&#39;;
+     | &#39;rec&#39; , term , &#39;return&#39; , nat motive , zero branch , succ branch , &#39;end&#39;
+     (* eliminator of the empty type *)
+     | &#39;exfalso&#39; , term , &#39;return&#39; , nat motive;
 
             (* small universe at the level nat, short for Type@{&lt;nat&gt;l} *)
 atomic term = &#39;Type&#39;, &#39;@&#39; , nat
@@ -202,7 +265,11 @@ atomic term = &#39;Type&#39;, &#39;@&#39; , nat
             (* a universe level literal *)
             | nat , &#39;l&#39;
             (* natural number type *)
-            | &#39;Nat&#39;
+            | ( &#39;ℕ&#39; | &#39;Nat&#39; )
+            (* the unit type and its element *)
+            | ( &#39;⊤&#39; | &#39;True&#39; ) | ( &#39;⋆&#39; | &#39;true&#39; )
+            (* the empty type *)
+            | ( &#39;⊥&#39; | &#39;False&#39; )
             (* natural number zero *)
             | &#39;zero&#39;
             (* a shorthand for succ (succ (... (succ zero))) *)
@@ -215,19 +282,19 @@ atomic term = &#39;Type&#39;, &#39;@&#39; , nat
 parameter = &#39;(&#39; , id , &#39;:&#39; , type , &#39;)&#39;;
 
 (* each definition sees the earlier ones *)
-let definition = id , &#39;:&#39; , type , &#39;:=&#39; , term
+let definition = id , &#39;:&#39; , type , ( &#39;≔&#39; | &#39;:=&#39; ) , term
                (* local module *)
-               | &#39;module&#39; , id , &#39;:=&#39; , term;
+               | &#39;module&#39; , id , ( &#39;≔&#39; | &#39;:=&#39; ) , term;
 
 (* This describes the return type of the eliminator
    when id is bound to the scrutinee *)
 nat motive = id , &#39;.&#39; , type;
 
-zero branch = &#39;|&#39;, &#39;zero&#39; , &#39;=&gt;&#39; , term;
+zero branch = &#39;|&#39;, &#39;zero&#39; , ( &#39;⇒&#39; | &#39;=&gt;&#39; ) , term;
 
 (* the first id is predecessor
    and the second id is the result of the recursive call *)
-succ branch = &#39;|&#39;, &#39;succ&#39; , id , id , &#39;=&gt;&#39; , term;
+succ branch = &#39;|&#39;, &#39;succ&#39; , id , &#39;,&#39; , id , ( &#39;⇒&#39; | &#39;=&gt;&#39; ) , term;
 
 id = ? sequence of upper- or lower-case ASCII alphabet characters ?;
 nat = ? natural number ?;</code></pre>
