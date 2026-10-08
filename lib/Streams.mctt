@@ -17,7 +17,7 @@ open Prelude::Data::Stream::Properties.Nats use (nthNats)
 open Prelude::Data::Stream::Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
 
 (* Streams of numbers. *)
-module S := St Nat
+module S := St 0l Nat
 
 def square (x : Nat) : Nat := mult x x end
 
@@ -59,7 +59,7 @@ end
 open Pairs use (Pair; fibStep; seed)
 
 def stream : S.Stream :=
-  St.map Pair Nat (fun (p : Pair) -> p 0) (St.iterate Pair fibStep seed)
+  St.map 0l Pair Nat (fun (p : Pair) -> p 0) (St.iterate 0l Pair fibStep seed)
 end
 
 end
@@ -71,7 +71,7 @@ def lucas : S.Stream := FibLike.stream 2 1 end
 (* [0 + 1 + ... + 5]. *)
 eval sumVec 6 (S.take 6 nats)
 
-eval V.nth Nat 5 (S.take 5 evens) 4 true
+eval V.nth 0l Nat 5 (S.take 5 evens) 4 true
 
 eval S.nth odds 6
 

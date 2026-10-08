@@ -1065,7 +1065,7 @@ let%expect_test "lib/Vectors.mctt" =
                (NV.append 3 2 oneTwoThree fourFive) --> 5 : Nat
     Evaluate sumReplicate 4 6 --> true : True
     Evaluate sumAppend 3 2 oneTwoThree fourFive --> true : True
-    Evaluate nthMap Nat square 3 oneTwoThree 1 true --> true : True
+    Evaluate nthMap 0l Nat square 3 oneTwoThree 1 true --> true : True
     Evaluate nthReplicate 4 6 3 true --> true : True
     Evaluate nthAppendLeft 3 2 oneTwoThree fourFive 1 true true --> true : True
     Evaluate nthAppendRight 3 2 oneTwoThree fourFive 1 true --> true : True
@@ -1092,8 +1092,8 @@ let%expect_test "lib/Vectors.mctt" =
       --> 1 : Nat
     Evaluate NV.anyb (fun (x1 : Nat) -> x1) 3 (NV.replicate 3 0) --> 0 : Nat
     Evaluate nthTabulate square 4 3 true --> true : True
-    Evaluate nthZipWith Nat Nat mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 true
-      --> true : True
+    Evaluate nthZipWith 0l Nat Nat mult 2 (NV.take 2 1 oneTwoThree) fourFive 1
+               true --> true : True
     Evaluate nthReverse 5 oneToFive 1 true true --> true : True
     Evaluate takeAppend 3 2 oneTwoThree fourFive 2 true --> true : True
     Evaluate dropAppend 3 2 oneTwoThree fourFive 1 true --> true : True
@@ -1107,13 +1107,13 @@ let%expect_test "lib/Vectors.mctt" =
     Evaluate sumInitLast 4 oneToFive --> true : True
     Evaluate sumReverse 5 oneToFive --> true : True
     Evaluate sumTabulate square 4 --> true : True
-    Evaluate allbSound Nat (fun (x1 : Nat) -> x1) 5 oneToFive true 2 true
+    Evaluate allbSound 0l Nat (fun (x1 : Nat) -> x1) 5 oneToFive true 2 true
       --> true : True
-    Evaluate allbComplete Nat (fun (x1 : Nat) -> x1) 4 (NV.replicate 4 3)
+    Evaluate allbComplete 0l Nat (fun (x1 : Nat) -> x1) 4 (NV.replicate 4 3)
                (fun (x2 : Nat)
                     (x3 : Lt x2 4)
                  -> true) --> true : True
-    Evaluate anybSound Nat (fun (x1 : Nat) -> x1) 3
+    Evaluate anybSound 0l Nat (fun (x1 : Nat) -> x1) 3
                (NV.snoc 2 (NV.replicate 2 0) 9)
                true
                Nat
@@ -1154,7 +1154,7 @@ let%expect_test "lib/Streams.mctt" =
   let _ = main_of_lib "Streams.mctt" in
   [%expect {|
     Evaluate sumVec 6 (S.take 6 nats) --> 15 : Nat
-    Evaluate V.nth Nat 5 (S.take 5 evens) 4 true --> 8 : Nat
+    Evaluate V.nth 0l Nat 5 (S.take 5 evens) 4 true --> 8 : Nat
     Evaluate S.nth odds 6 --> 13 : Nat
     Evaluate sumVec 5 (S.take 5 squares) --> 30 : Nat
     Evaluate S.nth fibs 10 --> 55 : Nat

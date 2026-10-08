@@ -1,14 +1,14 @@
 (* Infinite streams over [A], encoded as functions from indices:
    [Stream] is [forall (n : Nat) -> A].  Reading an element is application,
    so most laws hold by conversion pointwise.  Operations into streams over
-   other types take those types as arguments. *)
-module Prelude::Data::Stream (A : Type@0) where
+   other types take those types as arguments, at the level [u] of [A]. *)
+module Prelude::Data::Stream (u : Level) (A : Type@{u}) where
 
 import Prelude::Arith::Order use (Lt)
 import Prelude::Function::Iter as Iter
 import Prelude::Data::Vec as V
 
-def Stream : Type@0 := forall (n : Nat) -> A end
+def Stream : Type@{u} := forall (n : Nat) -> A end
 
 (* The [n]-th element. *)
 def nth (s : Stream) (n : Nat) : A := s n end
@@ -31,12 +31,12 @@ end
 def const (a : A) : Stream := fun (n : Nat) -> a end
 
 (* Applies [f] to every element; the result is a stream over [B]. *)
-def map (B : Type@0) (f : forall (a : A) -> B) (s : Stream) : forall (n : Nat) -> B :=
+def map (B : Type@{u}) (f : forall (a : A) -> B) (s : Stream) : forall (n : Nat) -> B :=
   fun (n : Nat) -> f (s n)
 end
 
 (* Combines two streams elementwise with [f]. *)
-def zipWith (B : Type@0) (C : Type@0) (f : forall (a : A) (b : B) -> C)
+def zipWith (B : Type@{u}) (C : Type@{u}) (f : forall (a : A) (b : B) -> C)
     (s : Stream) (t : forall (n : Nat) -> B) : forall (n : Nat) -> C :=
   fun (n : Nat) -> f (s n) (t n)
 end
@@ -44,20 +44,20 @@ end
 (* The stream [a, f a, f (f a), ...]: element [n] is [f] applied [n] times
    to [a], by [Prelude::Function::Iter]. *)
 def iterate (f : forall (a : A) -> A) (a : A) : Stream :=
-  fun (n : Nat) -> Iter.iter 0l A f n a
+  fun (n : Nat) -> Iter.iter u A f n a
 end
 
 (* The first [n] elements, as a vector of [Prelude::Data::Vec]. *)
-def take (n : Nat) (s : Stream) : V.Vec A n :=
+def take (n : Nat) (s : Stream) : V.Vec u A n :=
   fun (i : Nat) (h : Lt i n) -> s i
 end
 
 (* [drop k s] removes the first [k] elements.  It takes the tail first,
    so [drop (succ k) s] is [drop k (tail s)]. *)
 def drop (k : Nat) (s : Stream) : Stream :=
-  (rec k return y . (forall (u : Stream) -> Stream)
-   | zero => fun (u : Stream) -> u
-   | succ p, r => fun (u : Stream) -> r (tail u)
+  (rec k return y . (forall (x : Stream) -> Stream)
+   | zero => fun (x : Stream) -> x
+   | succ p, r => fun (x : Stream) -> r (tail x)
    end) s
 end
 
@@ -66,16 +66,16 @@ end
    [interleave t (tail s)]. *)
 def interleave (s : Stream) (t : Stream) : Stream :=
   fun (n : Nat) ->
-    (rec n return y . (forall (u : Stream) (v : Stream) -> A)
-     | zero => fun (u : Stream) (v : Stream) -> u 0
-     | succ p, r => fun (u : Stream) (v : Stream) -> r v (tail u)
+    (rec n return y . (forall (x : Stream) (z : Stream) -> A)
+     | zero => fun (x : Stream) (z : Stream) -> x 0
+     | succ p, r => fun (x : Stream) (z : Stream) -> r z (tail x)
      end) s t
 end
 
 (* The left scan: element [n] of [scan B f z s] folds [f] over the first
    [n] elements of [s] from [z], so it is [z], [f z s0], [f (f z s0) s1],
    and so on. *)
-def scan (B : Type@0) (f : forall (b : B) (a : A) -> B) (z : B) (s : Stream)
+def scan (B : Type@{u}) (f : forall (b : B) (a : A) -> B) (z : B) (s : Stream)
     : forall (n : Nat) -> B :=
   fun (n : Nat) ->
     rec n return y . B

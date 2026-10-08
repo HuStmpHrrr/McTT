@@ -16,7 +16,7 @@ open Prelude::Data::Vec::Properties.Slices use (takeAppend; dropAppend; appendTa
 open Prelude::Data::Vec::Properties.Tests use (allbSound; allbComplete; anybSound)
 
 (* Vectors of numbers. *)
-module NV := V Nat
+module NV := V 0l Nat
 
 (* The vector [1, 2, 3]. *)
 def oneTwoThree : NV.Vec 3 :=
@@ -55,7 +55,7 @@ eval sumReplicate 4 6
 
 eval sumAppend 3 2 oneTwoThree fourFive
 
-eval nthMap Nat square 3 oneTwoThree 1 true
+eval nthMap 0l Nat square 3 oneTwoThree 1 true
 
 eval nthReplicate 4 6 3 true
 
@@ -105,7 +105,7 @@ eval NV.anyb (fun (x : Nat) -> x) 3 (NV.replicate 3 0)
 (* Closed instances of the new laws. *)
 eval nthTabulate square 4 3 true
 
-eval nthZipWith Nat Nat mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 true
+eval nthZipWith 0l Nat Nat mult 2 (NV.take 2 1 oneTwoThree) fourFive 1 true
 
 eval nthReverse 5 oneToFive 1 true true
 
@@ -134,15 +134,15 @@ eval sumReverse 5 oneToFive
 eval sumTabulate square 4
 
 (* [allbSound] gives, at index 2, a proof of [Lt 0 3], which is [true]. *)
-eval allbSound Nat (fun (x : Nat) -> x) 5 oneToFive true 2 true
+eval allbSound 0l Nat (fun (x : Nat) -> x) 5 oneToFive true 2 true
 
 (* Every element of [replicate 4 3] is 3, so [Lt 0 3], that is [True], holds
    at every index. *)
-eval allbComplete Nat (fun (x : Nat) -> x) 4 (NV.replicate 4 3)
+eval allbComplete 0l Nat (fun (x : Nat) -> x) 4 (NV.replicate 4 3)
        (fun (i : Nat) (h : Lt i 4) -> true)
 
 (* [anybSound] is eliminated into [Nat] to recover the index it found. *)
-eval anybSound Nat (fun (x : Nat) -> x) 3 (NV.snoc 2 (NV.replicate 2 0) 9) true Nat
+eval anybSound 0l Nat (fun (x : Nat) -> x) 3 (NV.snoc 2 (NV.replicate 2 0) 9) true Nat
        (fun (i : Nat) (h : Lt i 3) (q : Lt 0 (NV.snoc 2 (NV.replicate 2 0) 9 i h)) -> i)
 
 end

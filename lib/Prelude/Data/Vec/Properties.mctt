@@ -6,6 +6,7 @@
 module Prelude::Data::Vec::Properties where
 
 import Prelude::Logic use (absurd)
+open Prelude::Logic.Negation as Neg
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
 import Prelude::Arith::Plus use (plus)
 open Prelude::Arith::Plus.Basic use (plusZero)
@@ -23,7 +24,7 @@ open Prelude::Arith::Sum.Basic use (sumToShift)
 import Prelude::Data::Vec as V
 
 (* Vectors of numbers, the instance most laws below are about. *)
-module NV := V Nat
+module NV := V 0l Nat
 
 (* The sum of a vector of numbers. *)
 def sumVec (n : Nat) (v : NV.Vec n) : Nat :=
@@ -34,10 +35,10 @@ end
 module Nth where
 
 (* Reading an element of a mapped vector applies the function to it. *)
-theorem nthMap : forall (A : Type@0) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+theorem nthMap : forall (u : Level) (A : Type@{u}) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec u A n)
     (i : Nat) (h : Lt i n) ->
-    Eq (NV.nth n (V.map A Nat f n v) i h) (f (V.nth A n v i h)) :=
-  fun (A : Type@0) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
+    Eq (NV.nth n (V.map u A Nat f n v) i h) (f (V.nth u A n v i h)) :=
+  fun (u : Level) (A : Type@{u}) (f : forall (a : A) -> Nat) (n : Nat) (v : V.Vec u A n)
       (i : Nat) (h : Lt i n) -> refl (f (v i h))
 end
 
@@ -106,12 +107,12 @@ theorem nthTabulate : forall (f : forall (i : Nat) -> Nat) (n : Nat) (i : Nat) (
   fun (f : forall (i : Nat) -> Nat) (n : Nat) (i : Nat) (h : Lt i n) -> refl (f i)
 end
 
-(* Reading an element of [zipWith f u v] applies [f] to the two elements. *)
-theorem nthZipWith : forall (A : Type@0) (B : Type@0) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
-    (u : V.Vec A n) (v : V.Vec B n) (i : Nat) (h : Lt i n) ->
-    Eq (NV.nth n (V.zipWith A B Nat f n u v) i h) (f (V.nth A n u i h) (V.nth B n v i h)) :=
-  fun (A : Type@0) (B : Type@0) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
-      (u : V.Vec A n) (v : V.Vec B n) (i : Nat) (h : Lt i n) -> refl (f (u i h) (v i h))
+(* Reading an element of [zipWith f s v] applies [f] to the two elements. *)
+theorem nthZipWith : forall (u : Level) (A : Type@{u}) (B : Type@{u}) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
+    (s : V.Vec u A n) (v : V.Vec u B n) (i : Nat) (h : Lt i n) ->
+    Eq (NV.nth n (V.zipWith u A B Nat f n s v) i h) (f (V.nth u A n s i h) (V.nth u B n v i h)) :=
+  fun (u : Level) (A : Type@{u}) (B : Type@{u}) (f : forall (a : A) (b : B) -> Nat) (n : Nat)
+      (s : V.Vec u A n) (v : V.Vec u B n) (i : Nat) (h : Lt i n) -> refl (f (s i h) (v i h))
 end
 
 (* The last element of [snoc n v a] is [a]. *)
@@ -491,16 +492,17 @@ lemma allIntro : forall (x : Nat) (b : Nat) (hx : Lt 0 x) (hb : Eq b 1) ->
 end
 
 (* One step of [anyb]: when [rec x | zero => b | succ => 1] is 1, either [x]
-   is positive or [b] is 1.  The conclusion is eliminated into any [C]. *)
-def anyCases : forall (x : Nat) (b : Nat)
+   is positive or [b] is 1.  The conclusion is eliminated into any [C], of
+   any level [u]. *)
+def anyCases : forall (u : Level) (x : Nat) (b : Nat)
     (e : Eq (rec x return y . Nat | zero => b | succ q, s => 1 end) 1)
-    (C : Type@0) (l : forall (hx : Lt 0 x) -> C) (r : forall (hb : Eq b 1) -> C) -> C :=
-  fun (x : Nat) (b : Nat) ->
+    (C : Type@{u}) (l : forall (hx : Lt 0 x) -> C) (r : forall (hb : Eq b 1) -> C) -> C :=
+  fun (u : Level) (x : Nat) (b : Nat) ->
     rec x return z . (forall (e : Eq (rec z return y . Nat | zero => b | succ q, s => 1 end) 1)
-                        (C : Type@0) (l : forall (hx : Lt 0 z) -> C) (r : forall (hb : Eq b 1) -> C) -> C)
-    | zero => fun (e : Eq b 1) (C : Type@0) (l : forall (hx : False) -> C)
+                        (C : Type@{u}) (l : forall (hx : Lt 0 z) -> C) (r : forall (hb : Eq b 1) -> C) -> C)
+    | zero => fun (e : Eq b 1) (C : Type@{u}) (l : forall (hx : False) -> C)
                   (r : forall (hb : Eq b 1) -> C) -> r e
-    | succ q, t => fun (e : True) (C : Type@0) (l : forall (hx : True) -> C)
+    | succ q, t => fun (e : True) (C : Type@{u}) (l : forall (hx : True) -> C)
                        (r : forall (hb : Eq b 1) -> C) -> l true
     end
 end
@@ -509,55 +511,55 @@ end
 
 
 (* [allb] answers 1 only when the test is positive on every element. *)
-def allbSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
-    (e : Eq (V.allb A p n v) 1) -> V.All A (fun (a : A) -> Lt 0 (p a)) n v :=
-  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
-    rec n return k . (forall (v : V.Vec A k) (e : Eq (V.allb A p k v) 1) ->
-                        V.All A (fun (a : A) -> Lt 0 (p a)) k v)
-    | zero => fun (v : V.Vec A 0) (e : True) (i : Nat) (h : Lt i 0) -> absurd (Lt 0 (p (v i h))) h
-    | succ m, ih => fun (w : V.Vec A (succ m)) ->
-        let b := V.allb A p m (V.tail A m w)
+def allbSound : forall (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec u A n)
+    (e : Eq (V.allb u A p n v) 1) -> V.All u A (fun (a : A) -> Lt 0 (p a)) n v :=
+  fun (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec u A k) (e : Eq (V.allb u A p k v) 1) ->
+                        V.All u A (fun (a : A) -> Lt 0 (p a)) k v)
+    | zero => fun (v : V.Vec u A 0) (e : True) (i : Nat) (h : Lt i 0) -> absurd (Lt 0 (p (v i h))) h
+    | succ m, ih => fun (w : V.Vec u A (succ m)) ->
+        let b := V.allb u A p m (V.tail u A m w)
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => 0 | succ q, s => b end) 1)
                (i : Nat) ->
              rec i return x . (forall (h : Lt x (succ m)) -> Lt 0 (p (w x h)))
              | zero => fun (h : True) -> Step.allHead (p (w 0 true)) b e
-             | succ j, s => fun (h : Lt j m) -> ih (V.tail A m w) (Step.allTail (p (w 0 true)) b e) j h
+             | succ j, s => fun (h : Lt j m) -> ih (V.tail u A m w) (Step.allTail (p (w 0 true)) b e) j h
              end
         end
     end
 end
 
 (* [allb] answers 1 when the test is positive on every element. *)
-theorem allbComplete : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
-    (h : V.All A (fun (a : A) -> Lt 0 (p a)) n v) -> Eq (V.allb A p n v) 1 :=
-  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
-    rec n return k . (forall (v : V.Vec A k) (h : V.All A (fun (a : A) -> Lt 0 (p a)) k v) ->
-                        Eq (V.allb A p k v) 1)
-    | zero => fun (v : V.Vec A 0) (h : V.All A (fun (a : A) -> Lt 0 (p a)) 0 v) -> true
-    | succ m, ih => fun (w : V.Vec A (succ m))
-                        (h : V.All A (fun (a : A) -> Lt 0 (p a)) (succ m) w) ->
-        Step.allIntro (p (w 0 true)) (V.allb A p m (V.tail A m w)) (h 0 true)
-          (ih (V.tail A m w) (fun (i : Nat) (hi : Lt i m) -> h (succ i) hi))
+theorem allbComplete : forall (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec u A n)
+    (h : V.All u A (fun (a : A) -> Lt 0 (p a)) n v) -> Eq (V.allb u A p n v) 1 :=
+  fun (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec u A k) (h : V.All u A (fun (a : A) -> Lt 0 (p a)) k v) ->
+                        Eq (V.allb u A p k v) 1)
+    | zero => fun (v : V.Vec u A 0) (h : V.All u A (fun (a : A) -> Lt 0 (p a)) 0 v) -> true
+    | succ m, ih => fun (w : V.Vec u A (succ m))
+                        (h : V.All u A (fun (a : A) -> Lt 0 (p a)) (succ m) w) ->
+        Step.allIntro (p (w 0 true)) (V.allb u A p m (V.tail u A m w)) (h 0 true)
+          (ih (V.tail u A m w) (fun (i : Nat) (hi : Lt i m) -> h (succ i) hi))
     end
 end
 
 (* When [anyb] answers 1, the test is positive on some element. *)
-def anybSound : forall (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec A n)
-    (e : Eq (V.anyb A p n v) 1) -> V.Any A (fun (a : A) -> Lt 0 (p a)) n v :=
-  fun (A : Type@0) (p : forall (a : A) -> Nat) (n : Nat) ->
-    rec n return k . (forall (v : V.Vec A k) (e : Eq (V.anyb A p k v) 1) ->
-                        V.Any A (fun (a : A) -> Lt 0 (p a)) k v)
-    | zero => fun (v : V.Vec A 0) (e : False) ->
-        exfalso e return z . V.Any A (fun (a : A) -> Lt 0 (p a)) 0 v
-    | succ m, ih => fun (w : V.Vec A (succ m)) ->
-        let b := V.anyb A p m (V.tail A m w)
+def anybSound : forall (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) (v : V.Vec u A n)
+    (e : Eq (V.anyb u A p n v) 1) -> V.Any u A (fun (a : A) -> Lt 0 (p a)) n v :=
+  fun (u : Level) (A : Type@{u}) (p : forall (a : A) -> Nat) (n : Nat) ->
+    rec n return k . (forall (v : V.Vec u A k) (e : Eq (V.anyb u A p k v) 1) ->
+                        V.Any u A (fun (a : A) -> Lt 0 (p a)) k v)
+    | zero => fun (v : V.Vec u A 0) (e : False) ->
+        Neg.absurd (succl u) (V.Any u A (fun (a : A) -> Lt 0 (p a)) 0 v) e
+    | succ m, ih => fun (w : V.Vec u A (succ m)) ->
+        let b := V.anyb u A p m (V.tail u A m w)
         in fun (e : Eq (rec (p (w 0 true)) return y . Nat | zero => b | succ q, s => 1 end) 1)
-               (C : Type@0)
+               (C : Type@{u})
                (k : forall (i : Nat) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) -> C) ->
-             Step.anyCases (p (w 0 true)) b e C
+             Step.anyCases u (p (w 0 true)) b e C
                (fun (hx : Lt 0 (p (w 0 true))) -> k 0 true hx)
                (fun (hb : Eq b 1) ->
-                  ih (V.tail A m w) hb C
+                  ih (V.tail u A m w) hb C
                     (fun (i : Nat) (h : Lt i m) (q : Lt 0 (p (w (succ i) h))) -> k (succ i) h q))
         end
     end

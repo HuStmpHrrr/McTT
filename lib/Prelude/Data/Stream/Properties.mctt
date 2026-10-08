@@ -18,7 +18,7 @@ import Prelude::Data::Vec::Properties use (sumVec)
 import Prelude::Data::Stream as St
 
 (* Streams of numbers: every law below is about this one instance. *)
-module S := St Nat
+module S := St 0l Nat
 
 (* The elements of the operations. *)
 module Elements where
@@ -99,7 +99,7 @@ end
 
 (* Element [i] of [take n s] is element [i] of [s]. *)
 theorem nthTake : forall (n : Nat) (s : S.Stream) (i : Nat) (h : Lt i n) ->
-    Eq (V.nth Nat n (S.take n s) i h) (S.nth s i) :=
+    Eq (V.nth 0l Nat n (S.take n s) i h) (S.nth s i) :=
   fun (n : Nat) (s : S.Stream) (i : Nat) (h : Lt i n) -> refl (s i)
 end
 
