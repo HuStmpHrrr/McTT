@@ -126,6 +126,20 @@ Do not "fix" these; they are expected.
 - **`theories/**/Parser.v` is generated** by menhir and gitignored. Never edit
   it; edit the `.vy` grammar.
 
+## Timing the checker
+
+Run times of `lib/` programs can move by several percent when unrelated OCaml
+code changes. Before reading a regression into a difference, count calls with
+OCaml-level counters around the functions involved (`nbe_ty_env_impl`,
+`exp_sub` and the like) and measure CPU time (`getrusage`), not wall-clock
+time; a change in call counts is a real cost, a change in time alone may not
+be.
+
+Almost all checking time goes to normalizations at the initial environment
+of the context. The checker therefore carries that environment along
+(`tenv`, `nbe_ty_env_impl` in `Extraction/TypeCheck.v`), and never rebuilds
+it per normalization.
+
 ## rocq MCP server
 
 Registered local-scope for this repo (LLM4Rocq/rocq-mcp), giving interactive

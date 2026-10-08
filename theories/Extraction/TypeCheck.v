@@ -195,6 +195,62 @@ Section type_check.
     exact (sub_preserves_exp _ _ _ _ _ _ _ HCt (wf_sub_single_mod _ _ _ _ HU')).
   Qed.
 
+  (** ** The Initial Environment the Checker Carries
+
+      Every normalization the checker does is at the initial environment of
+      its context.  The checker computes that environment once, where it
+      enters a context, and extends it entry by entry under binders, rather
+      than once per normalization ([nbe_ty_env_impl]). *)
+  Definition tenv G := { p | initial_env gc_deps gc_stack G p }.
+
+  Lemma tenv_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
+  Proof.
+    intros G HG.
+    assert (G ⊢ ℕ : Typeω@0) as [W [HW _]]%soundness_ty by mauto 2.
+    inversion HW; subst; eauto using initial_env_order_sound.
+  Qed.
+
+  Lemma tenv_eval_order_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p ->
+      eval_exp_order gc_deps gc_stack A p.
+  Proof.
+    intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | |]; subst.
+    destruct (soundness_ty HA) as [W [HW _]]; inversion HW; subst.
+    functional_initial_env_rewrite_clear.
+    eauto using eval_exp_order_sound.
+  Qed.
+
+  Lemma tenv_eval_order_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p ->
+      eval_exp_order gc_deps gc_stack M p.
+  Proof.
+    intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM |]; subst.
+    destruct (soundness HM) as [W [HW _]]; inversion HW; subst.
+    functional_initial_env_rewrite_clear.
+    eauto using eval_exp_order_sound.
+  Qed.
+
+  Lemma tenv_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
+  Proof. intros * [? HX]; gen_presups; assumption. Qed.
+
+  (** The initial environment of a context, from scratch. *)
+  Definition tenv_of G (HG : ⊢ G) : tenv G :=
+    initial_env_impl gc_deps gc_stack G (tenv_order_of_wf G HG).
+
+  (** The initial environment of an extended context, from that of the
+      context: one entry more, by its rule of [initial_env]. *)
+  Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
+    let (p, Hp) := P in
+    let (a, Ha) := eval_exp_impl gc_deps gc_stack A p (tenv_eval_order_ass G A p HGA Hp) in
+    exist _ (p ↦ ⇑! a (List.length G)) (initial_env_cons _ _ _ _ _ _ Hp Ha).
+
+  Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
+    let (p, Hp) := P in
+    let (m, Hm) := eval_exp_impl gc_deps gc_stack M p (tenv_eval_order_def G A M p HGA Hp) in
+    exist _ (p ↦ m) (initial_env_cons_def _ _ _ _ _ _ _ Hp Hm).
+
+  Definition tenv_mod G (P : tenv G) U : tenv (G ▹ₘ U) :=
+    let (p, Hp) := P in
+    exist _ (p ↦ᵐ dm_local p U nil) (initial_env_cons_mod _ _ _ _ _ Hp).
+
   (** A member of a chain from a unit, read off the global context: the type
       of the global, if it is one. *)
   Definition glob_lookup (R : modexp) (pre : list string) (x : string) : option typ :=
@@ -414,6 +470,7 @@ Section type_check.
     repeat lazymatch goal with
       | H: (forall (G : ctx) (A : typ),
                (exists i : nat, G ⊢ A : Typeω@i) ->
+               tenv G ->
                forall M : typ,
                  type_check_order M ->
                  ({ G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A }))
@@ -421,12 +478,13 @@ Section type_check.
           clear H
       | H: (let H := fixproto in
             forall (G : ctx) (A : typ),
-              (exists i : nat, G ⊢ A : Typeω@i) -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
+              (exists i : nat, G ⊢ A : Typeω@i) -> tenv G -> forall M : typ, type_check_order M -> { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A })
         |- _ =>
           clear H
       | H: (let H := fixproto in
             forall G : ctx,
               ⊢ G ->
+              tenv G ->
               forall M : typ,
                 type_infer_order M ->
                 ({ B : nf | G ⊢a M ⟹ B /\
@@ -436,6 +494,7 @@ Section type_check.
           clear H
       | H: (forall G : ctx,
                ⊢ G ->
+               tenv G ->
                forall M : typ,
                  type_infer_order M ->
                  ({ B : nf | G ⊢a M ⟹ B /\
@@ -833,44 +892,48 @@ Section type_check.
     split; [ eapply ati_suniv; eassumption | eapply level_of_nbe; eassumption ].
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations type_check G A (HA : (exists i, G ⊢ A : Typeω@i)) M (H : type_check_order M) : { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
-  | G, A, HA, M, H =>
-      let*o->b (exist _ B _) := type_infer G _ M _ while _ in
-      let*b _ := subtyping_impl G (B : nf) A _ while _ in
+  Equations type_check_in G A (HA : (exists i, G ⊢ A : Typeω@i)) (P : tenv G) M (H : type_check_order M) : { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } by struct H :=
+  | G, A, HA, P, M, H =>
+      let*o->b (exist _ B _) := type_infer_in G _ P M _ while _ in
+      let*b _ := subtyping_env_impl G P (B : nf) A _ while _ in
       pureb _
-  with type_infer G (HG : ⊢ G) M (H : type_infer_order M) : { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
-  | G, HG, M, H with M => {
+  with type_infer_in G (HG : ⊢ G) (P : tenv G) M (H : type_infer_order M) : { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) } + { forall A, ~ G ⊢a M ⟹ A } by struct H :=
+  | G, HG, P, M, H with M => {
     | Typeω@j =>
         pureo (exist _ Typeωⁿ@(S j) _)
     | Type⟨M'⟩ =>
-        let*b->o _ := type_check G Level _ M' _ while _ in
-        let (W, _) := nbe_ty_impl gc_deps gc_stack G Type⟨succl M'⟩ _ in
+        let*b->o _ := type_check_in G Level _ P M' _ while _ in
+        let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P Type⟨succl M'⟩ _ in
         pureo (exist _ W _)
     | Level =>
         pureo (exist _ Typeⁿ@0 _)
     | 𝕃@m =>
         pureo (exist _ Levelⁿ _)
     | succl M' =>
-        let*b->o _ := type_check G Level _ M' _ while _ in
+        let*b->o _ := type_check_in G Level _ P M' _ while _ in
         pureo (exist _ Levelⁿ _)
     | maxl M' N' =>
-        let*b->o _ := type_check G Level _ M' _ while _ in
-        let*b->o _ := type_check G Level _ N' _ while _ in
+        let*b->o _ := type_check_in G Level _ P M' _ while _ in
+        let*b->o _ := type_check_in G Level _ P N' _ while _ in
         pureo (exist _ Levelⁿ _)
     | ℕ =>
         pureo (exist _ Typeⁿ@0 _)
     | zero =>
         pureo (exist _ ℕⁿ _)
     | succ M' =>
-        let*b->o _ := type_check G ℕ _ M' _ while _ in
+        let*b->o _ := type_check_in G ℕ _ P M' _ while _ in
         pureo (exist _ ℕⁿ _)
     | rec M' return A' | zero -> MZ | succ -> MS end =>
-        let*b->o _ := type_check G ℕ _ M' _ while _ in
-        let*o (exist _ UA' _) := type_infer (G ▹ ℕ) _ A' _ while _ in
+        let*b->o _ := type_check_in G ℕ _ P M' _ while _ in
+        let HGN : ⊢ G ▹ ℕ := _ in
+        let PN := tenv_ass G P ℕ HGN in
+        let*o (exist _ UA' _) := type_infer_in (G ▹ ℕ) HGN PN A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let*b->o _ := type_check G A'[Id,,zero] _ MZ _ while _ in
-        let*b->o _ := type_check (G ▹ ℕ ▹ A') A'[Wk ⨟ Wk,,succ #1] _ MS _ while _ in
-        let (A'', _) := nbe_ty_impl gc_deps gc_stack G A'[Id,,M'] _ in
+        let*b->o _ := type_check_in G A'[Id,,zero] _ P MZ _ while _ in
+        let HAS : exists i, G ▹ ℕ ▹ A' ⊢ A'[Wk ⨟ Wk,,succ #1] : Typeω@i := _ in
+        let*b->o _ := type_check_in (G ▹ ℕ ▹ A') A'[Wk ⨟ Wk,,succ #1] HAS
+                        (tenv_ass (G ▹ ℕ) PN A' (tenv_ctx_of_typ _ _ HAS)) MS _ while _ in
+        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A'[Id,,M'] _ in
         pureo (exist _ A'' _)
     | ⊤ =>
         pureo (exist _ Typeⁿ@0 _)
@@ -879,81 +942,89 @@ Section type_check.
     | ⊥ =>
         pureo (exist _ Typeⁿ@0 _)
     | efq M' return A' =>
-        let*b->o _ := type_check G ⊥ _ M' _ while _ in
-        let*o (exist _ UA' _) := type_infer (G ▹ ⊥) _ A' _ while _ in
+        let*b->o _ := type_check_in G ⊥ _ P M' _ while _ in
+        let HGF : ⊢ G ▹ ⊥ := _ in
+        let*o (exist _ UA' _) := type_infer_in (G ▹ ⊥) HGF (tenv_ass G P ⊥ HGF) A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let (A'', _) := nbe_ty_impl gc_deps gc_stack G A'[Id,,M'] _ in
+        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A'[Id,,M'] _ in
         pureo (exist _ A'' _)
     | Π B C =>
-        let*o (exist _ UB _) := type_infer G _ B _ while _ in
+        let*o (exist _ UB _) := type_infer_in G _ P B _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UB while _ in
-        let*o (exist _ UC _) := type_infer (G ▹ B) _ C _ while _ in
+        let HGB : ⊢ G ▹ B := _ in
+        let*o (exist _ UC _) := type_infer_in (G ▹ B) HGB (tenv_ass G P B HGB) C _ while _ in
         let*o (exist _ v _) :=  univ_nf_idx_dec UC while _ in
-        let (W, _) := nbe_ty_impl gc_deps gc_stack G (unf_pi_tm u v) _ in
+        let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P (unf_pi_tm u v) _ in
         pureo (exist _ W _)
     | λ A' M' =>
-        let*o (exist _ UA' _) := type_infer G _ A' _ while _ in
+        let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let*o (exist _ B' _) := type_infer (G ▹ A') _ M' _ while _ in
-        let (A'', _) := nbe_ty_impl gc_deps gc_stack G A' _ in
+        let HGA : ⊢ G ▹ A' := _ in
+        let*o (exist _ B' _) := type_infer_in (G ▹ A') HGA (tenv_ass G P A' HGA) M' _ while _ in
+        let (A'', _) := nbe_ty_env_impl gc_deps gc_stack G P A' _ in
         pureo (exist _ (Πⁿ A'' B') _)
     | M' $ N' =>
-        let*o (exist _ C _) := type_infer G _ M' _ while _ in
+        let*o (exist _ C _) := type_infer_in G _ P M' _ while _ in
         let*o (existT _ A (exist _ B _)) := get_subterms_of_pi_nf C while _ in
-        let*b->o _ := type_check G (A : nf) _ N' _ while _ in
-        let (B', _) := nbe_ty_impl gc_deps gc_stack G (B : nf)[Id,,N'] _ in
+        let*b->o _ := type_check_in G (A : nf) _ P N' _ while _ in
+        let (B', _) := nbe_ty_env_impl gc_deps gc_stack G P (B : nf)[Id,,N'] _ in
         pureo (exist _ B' _)
     | ℓ A' ≔ M' in B' =>
-        let*o (exist _ UA' _) := type_infer G _ A' _ while _ in
+        let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in
-        let*b->o _ := type_check G A' _ M' _ while _ in
-        let*o (exist _ C _) := type_infer (G ▸ A' ≔ M') _ B' _ while _ in
-        let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id,,M'] _ in
+        let*b->o _ := type_check_in G A' _ P M' _ while _ in
+        let HGD : ⊢ G ▸ A' ≔ M' := _ in
+        let*o (exist _ C _) := type_infer_in (G ▸ A' ≔ M') HGD (tenv_def G P A' M' HGD) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id,,M'] _ in
         pureo (exist _ D _)
     (** Without an annotation, the definiens's type is inferred. *)
     | ℓ ≔ M' in B' =>
-        let*o (exist _ A _) := type_infer G _ M' _ while _ in
-        let*o (exist _ C _) := type_infer (G ▸ (A : nf) ≔ M') _ B' _ while _ in
-        let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id,,M'] _ in
+        let*o (exist _ A _) := type_infer_in G _ P M' _ while _ in
+        let HGD : ⊢ G ▸ (A : nf) ≔ M' := _ in
+        let*o (exist _ C _) := type_infer_in (G ▸ (A : nf) ≔ M') HGD (tenv_def G P (A : nf) M' HGD) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id,,M'] _ in
         pureo (exist _ D _)
     | ℓₘ U in B' =>
         let*b->o _ := unit_check G HG U _ while _ in
-        let*o (exist _ C _) := type_infer (G ▹ₘ U) _ B' _ while _ in
-        let (D, _) := nbe_ty_impl gc_deps gc_stack G (C : nf)[Id ,,ₘ me_lit U] _ in
+        let*o (exist _ C _) := type_infer_in (G ▹ₘ U) _ (tenv_mod G P U) B' _ while _ in
+        let (D, _) := nbe_ty_env_impl gc_deps gc_stack G P (C : nf)[Id ,,ₘ me_lit U] _ in
         pureo (exist _ D _)
     (** A global infers the closed type that resolution returns for it,
         normalized at [G]; any other member, through its module. *)
     | a_mem M' x with inspect (modexp_spine M') => {
       | exist _ (R, nil, pre) Es with inspect (glob_lookup R pre x) => {
         | exist _ (Some A) Eg =>
-            let (C, _) := nbe_ty_impl gc_deps gc_stack G A _ in
+            let (C, _) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
             pureo (exist _ C _)
         | exist _ None Eg =>
           let*b->o HM := modexp_check G HG M' _ while _ in
           let*o (exist _ A _) := member_term_dec _ G M' (x :: nil) _ while _ in
-          let (B, _) := nbe_ty_impl gc_deps gc_stack G A _ in
+          let (B, _) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
           pureo (exist _ B _) }
       | exist _ (R, N :: args, pre) Es =>
           let*b->o HM := modexp_check G HG M' _ while _ in
-          let*o (exist _ A _) := type_infer G HG (apps (member_ref R (pre ++ x :: nil)) (N :: args)) _ while _ in
+          let*o (exist _ A _) := type_infer_in G HG P (apps (member_ref R (pre ++ x :: nil)) (N :: args)) _ while _ in
           pureo (exist _ A _) }
     | #x =>
         let*o (exist _ A _) := lookup G _ x while _ in
-        let (A', _) := nbe_ty_impl gc_deps gc_stack G A _ in
+        let (A', _) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
         pureo (exist _ A' _)
     }
   with ext_check G (HG : ⊢ G) Ψ (H : ext_order Ψ) : { G ⊢aˣ Ψ } + { ~ G ⊢aˣ Ψ } by struct H :=
   | G, HG, nil, H => left _
   | G, HG, ce_ass A :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
-      let*o->b (exist _ UA _) := type_infer (Ψ ++ G) _ A _ while _ in
+      let HΨ : ⊢ Ψ ++ G := _ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ (tenv_of (Ψ ++ G) HΨ) A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
       pureb _
   | G, HG, ce_def A M :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
-      let*o->b (exist _ UA _) := type_infer (Ψ ++ G) _ A _ while _ in
+      let HΨ : ⊢ Ψ ++ G := _ in
+      let PΨ := tenv_of (Ψ ++ G) HΨ in
+      let*o->b (exist _ UA _) := type_infer_in (Ψ ++ G) HΨ PΨ A _ while _ in
       let*o->b (exist _ u _) := univ_nf_idx_dec UA while _ in
-      let*b _ := type_check (Ψ ++ G) A _ M _ while _ in
+      let*b _ := type_check_in (Ψ ++ G) A _ PΨ M _ while _ in
       pureb _
   | G, HG, ce_mod U :: Ψ, H =>
       let*b _ := ext_check G HG Ψ _ while _ in
@@ -993,7 +1064,7 @@ Section type_check.
       let*b HM := modexp_check G HG M _ while _ in
       let*o->b (exist _ T _) := member_mod_dec _ G M nil _ while _ in
       let*o->b (existT _ B (exist _ T1 _)) := tele_view_dec T while _ in
-      let*b _ := type_check G B _ N _ while _ in
+      let*b _ := type_check_in G B _ (tenv_of G HG) N _ while _ in
       pureb _
   .
 
@@ -1395,8 +1466,19 @@ Section type_check.
   Obligation 195. (* G ⊢aᵐ me_lit U File "./Extraction/TCprobe2.v", line 1071,... *) ob_check. Qed.
 
 
-  Extraction Inline type_check_functional type_infer_functional ext_check_functional
+  Extraction Inline type_check_in_functional type_infer_in_functional ext_check_functional
     unit_check_functional modexp_check_functional.
+
+  (** The checker from scratch: the initial environment of the context is
+      computed once, at the start. *)
+  Definition type_check G A (HA : exists i, G ⊢ A : Typeω@i) M (H : type_check_order M) :
+      { G ⊢a M ⟸ A } + { ~ G ⊢a M ⟸ A } :=
+    type_check_in G A HA (tenv_of G (tenv_ctx_of_typ _ _ HA)) M H.
+
+  Definition type_infer G (HG : ⊢ G) M (H : type_infer_order M) :
+      { A : nf | G ⊢a M ⟹ A /\ (exists UA u, G ⊢a A ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ A : Typeω@i) } +
+      { forall A, ~ G ⊢a M ⟹ A } :=
+    type_infer_in G HG (tenv_of G HG) M H.
 
   Lemma type_infer_order_soundness : forall G M A,
       G ⊢a M ⟹ A ->

@@ -238,6 +238,31 @@ Obligation 4. (* G ⊢a A ⊆ B *)
   econstructor; eassumption.
 Qed.
 
+(** [subtyping_impl] at an initial environment of [G] computed beforehand,
+    which both normalizations share. *)
+#[tactic="idtac",derive(equations=no,eliminator=no)]
+Equations subtyping_env_impl {GC : GCtx} G (P : { p | initial_env gc_deps gc_stack G p }) A B
+  (H : subtyping_order G A B) : { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
+| G, P, A, B, H =>
+    let (a, Ha) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
+    let (b, Hb) := nbe_ty_env_impl gc_deps gc_stack G P B _ in
+    let*b _ := subtyping_nf_impl a b while _ in
+    pureb _.
+Obligation 1. (* nbe_ty_order gc_deps gc_stack G A *)
+  destruct H; assumption.
+Defined.
+Obligation 2. (* nbe_ty_order gc_deps gc_stack G B *)
+  destruct H; assumption.
+Defined.
+Obligation 3. (* ~ G ⊢a A ⊆ B *)
+  progressive_inversion.
+  functional_nbe_rewrite_clear.
+  contradiction.
+Qed.
+Obligation 4. (* G ⊢a A ⊆ B *)
+  econstructor; eassumption.
+Qed.
+
 (** The same holds for [subtyping_impl]. *)
 
 Theorem subtyping_impl_complete' : forall {GC : GCtx} G A B,

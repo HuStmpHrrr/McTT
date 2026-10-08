@@ -209,3 +209,28 @@ Lemma nbe_ty_impl_complete : forall Θ Ξ G A w,
 Proof.
   intros; functional_nbe_complete.
 Qed.
+
+(** [nbe_ty_impl] at an initial environment computed beforehand: the
+    checker computes the initial environment of its context once, and extends
+    it under binders, rather than once per normalization. *)
+Section NbETyEnvDef.
+
+  #[local]
+  Ltac impl_obl_tac1 :=
+  match goal with
+  | H : nbe_ty_order _ _ _ _ |- _ => progressive_invert H
+  end.
+
+  #[local]
+  Ltac impl_obl_tac :=
+    repeat impl_obl_tac1; try econstructor; mauto.
+
+  #[tactic="impl_obl_tac",derive(equations=no,eliminator=no)]
+  Equations nbe_ty_env_impl Θ Ξ G (P : { p | initial_env Θ Ξ G p }) A (H : nbe_ty_order Θ Ξ G A) :
+    { w | nbe_ty Θ Ξ G A w } :=
+  | Θ, Ξ, G, exist _ p Hp, A, H =>
+      let (a, Ha) := eval_exp_impl Θ Ξ A p _ in
+      let (w, Hw) := read_typ_impl Θ Ξ (List.length G) a _ in
+      exist _ w _.
+
+End NbETyEnvDef.
