@@ -457,6 +457,12 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_def (x, _, typ, exp) ->
      fprintf f "@[<hov 2>Error: the body of %s,@ %a,@ is not of type@ %a@]" x
        format_exp exp format_exp typ
+  | Coq_re_def_typ (x, _, typ) ->
+     fprintf f "@[<hov 2>Error: the type of %s,@ %a,@ is not a type@]" x
+       format_exp typ
+  | Coq_re_eval_typ (_, exp, typ) ->
+     fprintf f "@[<hov 2>Error: the ascribed type of@ %a,@ %a,@ is not a type@]"
+       format_exp exp format_exp typ
   | Coq_re_eval_check (_, exp, typ) ->
      fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
        format_exp typ

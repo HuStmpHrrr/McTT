@@ -35,6 +35,11 @@ Notation "'let*' x ':=' m 'in' f" := (ebind m (fun x => f))
 
 Definition echeck (b : bool) (e : string) : eres unit := if b then eok tt else eerr e.
 
+(** The error for a unit, named by its path as the driver prints paths,
+    that the program does not import. *)
+Definition unit_not_imported_msg (fq : list string) : string :=
+  "the unit " ++ String.concat "::" fq ++ " is not imported".
+
 (** ** Names *)
 
 Definition mem_b (x : string) (xs : list string) : bool := List.existsb (String.eqb x) xs.
@@ -114,7 +119,7 @@ Definition elab_ihead (S : list ent) (fq ip : list string) : eres modexp :=
       eok (fold_left me_mem ip' H)
   | nil, nil => eerr "nothing to open"
   | _, _ =>
-      let* _ := echeck (unit_in_b fq S) "the unit is not imported" in
+      let* _ := echeck (unit_in_b fq S) (unit_not_imported_msg fq) in
       eok (fold_left me_mem ip (me_unit fq))
   end.
 
@@ -225,7 +230,7 @@ with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
       | None => eerr ("unbound name " ++ x)
       end
   | Cst.glob fq =>
-      let* _ := echeck (unit_in_b fq S) "the unit is not imported" in
+      let* _ := echeck (unit_in_b fq S) (unit_not_imported_msg fq) in
       eok (me_unit fq)
   | Cst.proj o y =>
       let* H := elab_mod S o in

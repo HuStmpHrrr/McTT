@@ -683,7 +683,23 @@ let%expect_test "a small universe is not in itself" =
 (* A level is not a type, and a type is not a level. *)
 let%expect_test "a level is not a type" =
   let _ = main_of_body "eval zero : 0l" in
-  [%expect {| Error: 0 is not of type 0l |}]
+  [%expect {| Error: the ascribed type of 0, 0l, is not a type |}]
+
+(* A declared type is checked to be a type before the body is checked
+   against it, and each failure has its own message. *)
+let%expect_test "the declared type of a definition is a type" =
+  let _ = main_of_program_string "module Repro where def t : Nat Nat := 1 end end" in
+  [%expect {| Error: the type of t, Nat Nat, is not a type |}];
+  let _ = main_of_body "def t : Nat := Type@0 end" in
+  [%expect {| Error: the body of t, Type@0, is not of type Nat |}];
+  let _ = main_of_body "def t : Nat := 1 end eval t" in
+  [%expect {| Evaluate t --> 1 : Nat |}]
+
+let%expect_test "the ascription of an eval is a type" =
+  let _ = main_of_body "eval 1 : Nat Nat" in
+  [%expect {| Error: the ascribed type of 1, Nat Nat, is not a type |}];
+  let _ = main_of_body "eval Type@0 : Nat" in
+  [%expect {| Error: Type@0 is not of type Nat |}]
 
 let%expect_test "Nat is not a level" =
   let _ = main_of_body "eval Nat : Level" in
@@ -818,7 +834,7 @@ let%expect_test "a unit with parameters" =
 
 let%expect_test "an import is not transitive" =
   let _ = main_of_multi "Transitive.mctt" in
-  [%expect {| Error: the unit is not imported |}]
+  [%expect {| Error: the unit Lib::Num is not imported |}]
 
 let%expect_test "a cyclic import is rejected" =
   let _ = main_of_multi "Cycle.mctt" in
@@ -1898,7 +1914,7 @@ let%expect_test "a local import of a unit that is not imported is rejected" =
       "module LocalImp where eval let module L where open Prelude::Arith::MinMax use (max) \
        def m : Nat := max 2 3 end end in L.m end end"
   in
-  [%expect {| Error: the unit is not imported |}]
+  [%expect {| Error: the unit Prelude::Arith::MinMax is not imported |}]
 
 let%expect_test "a local import of a unit imported at the top level" =
   let _ =
@@ -2234,7 +2250,7 @@ let%expect_test "an open of a term is rejected" =
 
 let%expect_test "an open of a unit that is not imported is rejected" =
   let _ = main_of_multi_string "module X where open Lib::Num use (double) end" in
-  [%expect {| Error: the unit is not imported |}]
+  [%expect {| Error: the unit Lib::Num is not imported |}]
 
 let%expect_test "an open of a unit loaded by import" =
   let _ = main_of_multi_string "import Lib::Num module X where open Lib::Num use (double) open Lib::Num.Ops as O eval O.pred (double 2) end" in
@@ -2318,7 +2334,20 @@ let%expect_test "a leading open of a unit that is not imported is rejected" =
     main_of_program_string ~search_root:"../lib"
       "open Prelude::Arith::Equality use (Eq) module ScratchP (p : Eq 1 1) where end"
   in
-  [%expect {| Error: the unit is not imported |}]
+  [%expect {| Error: the unit Prelude::Arith::Equality is not imported |}]
+
+let%expect_test "an open in a module names the unit that is not imported" =
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) end"
+  in
+  [%expect {| Error: the unit Prelude::Arith::Plus is not imported |}];
+  let _ =
+    main_of_program_string ~search_root:"../lib"
+      "import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) \
+       eval plusZero 0 end"
+  in
+  [%expect {| Evaluate plusZero 0 --> true : True |}]
 
 let%expect_test "a leading open may not export" =
   let _ =

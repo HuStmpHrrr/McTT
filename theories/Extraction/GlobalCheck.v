@@ -214,31 +214,39 @@ Section check_exp.
     eapply alg_type_infer_univ_sound'; eassumption.
   Qed.
 
+  (** The type of a well-typed term is a type. *)
+  Lemma not_exp_of_not_typ : forall Θ Ξ Γ A M,
+      (forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
+  Proof.
+    intros * HA HM; gen_presups; eapply HA; eassumption.
+  Qed.
+
+  (** "Is [M] of type [A]?", for [A] known to be a type: [check_exp] once
+      [check_typ] has succeeded, so that a caller can tell the two failures
+      apart without inferring [A] twice. *)
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations check_exp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
+  Equations check_exp_typed Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A (HA : exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) M :
     { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
-  | Θ, Ξ, Γ, HΓ, A, M =>
-      let*o->b (exist _ i _) := check_typ Θ Ξ Γ HΓ A while _ in
-      let*b _ := @type_check (gc_mk Θ Ξ) Γ A _ M _ while _ in
+  | Θ, Ξ, Γ, HΓ, A, HA, M =>
+      let*b _ := @type_check (gc_mk Θ Ξ) Γ A HA M _ while _ in
       pureb _
   .
-  (** The type of a well-typed term is a type, so if [A] is not one, the
-      judgment cannot hold. *)
-  Obligation 1. (* [A] is no type *)
-    gen_presups; eapply H; eassumption.
-  Qed.
-  Obligation 2. (* exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i *)
-    eexists; eassumption.
-  Defined.
-  Obligation 3. (* type_check_order M *)
+  Obligation 1. (* type_check_order M *)
     apply tc_ti, user_exp_to_type_infer_order, user_exp_all.
   Defined.
-  Obligation 4. (* the algorithmic check fails *)
+  Obligation 2. (* the algorithmic check fails *)
     eapply H, alg_type_check_complete'; eassumption.
   Qed.
-  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
+  Obligation 3. (* Θ ⍮ Ξ ⍮ Γ ⊢ M : A *)
     eapply alg_type_check_sound'; eassumption.
   Qed.
+
+  Definition check_exp Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) A M :
+      { Θ ⍮ Ξ ⍮ Γ ⊢ M : A } + { ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A } :=
+    match check_typ Θ Ξ Γ HΓ A with
+    | inleft (exist _ i HA) => check_exp_typed Θ Ξ Γ HΓ A (ex_intro _ i HA) M
+    | inright HA => right (not_exp_of_not_typ _ _ _ _ _ HA)
+    end.
 
   (** A unit and a module expression, through their algorithmic checks. *)
   Definition check_unit Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) U :

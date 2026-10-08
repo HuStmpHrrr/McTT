@@ -97,8 +97,14 @@ Definition cycle_msg (cyc : list path) : string :=
 
 Inductive run_error : Set :=
 | re_msg : string -> run_error
+(** The body of a definition is not of its declared type, which is a type. *)
 | re_def : string -> gstack -> typ -> exp -> run_error
+(** The declared type of a definition with a body is not a type. *)
+| re_def_typ : string -> gstack -> typ -> run_error
+(** An ascribed eval: the term is not of its ascription, which is a type. *)
 | re_eval_check : gstack -> exp -> typ -> run_error
+(** An ascribed eval: the ascription of the term is not a type. *)
+| re_eval_typ : gstack -> exp -> typ -> run_error
 | re_eval_infer : gstack -> exp -> run_error
 | re_cycle : list path -> run_error
 | re_unit : path -> string -> run_error
@@ -906,9 +912,11 @@ Section Impl.
     (c : ccmd) (H : exists ΘR, linv ch Θ K D ΘR Ξ) : rres {Ξ' | post_cmd ch Θ K D Ξ c (cst Θ K D Ξ')} :=
   | ch, Θ, K, D, Ξ, cc_def x b pv A (Some M), H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
-    | left Hfr with check_exp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A M => {
-      | left HM => rok (da_ok (def_ok Hfr HM))
-      | right _ => rerr (re_def x Ξ A M) } }
+    | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
+      | inright _ => rerr (re_def_typ x Ξ A)
+      | inleft (exist _ i HA) with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
+        | left HM => rok (da_ok (def_ok Hfr HM))
+        | right _ => rerr (re_def x Ξ A M) } } }
   | ch, Θ, K, D, Ξ, cc_def x b pv A None, H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
@@ -1000,9 +1008,12 @@ Section Impl.
         | rerr e => rerr e
         | rok (exist _ Ξ' Hgs) => rok (exist _ _ (import_ok (pre_gctx H) HE Eg Hgs), log_nil) } } }
   | ch, L, Θ, K, D, Ξ, cc_eval M (Some A), H
-      with check_exp (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A M => {
-    | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (pre_gctx H) M A HM)
-    | right _ => rerr (re_eval_check Ξ M A) }
+      with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
+    | inright _ => rerr (re_eval_typ Ξ M A)
+    | inleft (exist _ i HA)
+        with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
+      | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (pre_gctx H) M A HM)
+      | right _ => rerr (re_eval_check Ξ M A) } }
   | ch, L, Θ, K, D, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (pre_gctx H) M A HA)
@@ -1172,10 +1183,13 @@ Section Impl.
   Proof.
     intros * Hli Hr; inversion Hr; subst; simp defalias_step;
       (destruct (gs_fresh_dec x Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp defalias_step).
-    - match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
+    - match goal with HM : _ ⍮ _ ⍮ _ ⊢ _ : A |- _ =>
+          pose proof (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) as HM0 end.
+      match goal with |- context [check_typ ?a ?b ?c ?d ?e] => destruct (check_typ a b c d e) as [[j HA'] | HA'] end;
+        simp defalias_step; [| exfalso; exact (not_exp_of_not_typ _ _ _ _ _ HA' HM0) ].
+      match goal with |- context [check_exp_typed ?a ?b ?c ?d ?e ?f ?g] => destruct (check_exp_typed a b c d e f g) as [HM' | HM'] end;
         simp defalias_step; [ eexists; reflexivity |].
-      exfalso; apply HM'.
-      match goal with HM : _ ⍮ _ ⍮ _ ⊢ _ : A |- _ => exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) end.
+      exfalso; exact (HM' HM0).
     - (* an axiom: its type is a type *)
       match goal with |- context [check_typ ?a ?b ?c ?d ?e] => destruct (check_typ a b c d e) as [[j HA'] | HA'] end;
         simp defalias_step; [ eexists; reflexivity |].
@@ -1330,10 +1344,13 @@ Section Impl.
     - (* an ascribed eval *)
       intros ch ΘR Ξ M A HM Hacc Θ K D H Hli c Hx.
       refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
-      match goal with |- context [check_exp ?a ?b ?c ?d ?e ?f] => destruct (check_exp a b c d e f) as [HM' | HM'] end;
+      pose proof (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM) as HM0.
+      match goal with |- context [check_typ ?a ?b ?c ?d ?e] => destruct (check_typ a b c d e) as [[j HA'] | HA'] end;
+        simp simple_step; [| exfalso; exact (not_exp_of_not_typ _ _ _ _ _ HA' HM0) ].
+      match goal with |- context [check_exp_typed ?a ?b ?c ?d ?e ?f ?g] => destruct (check_exp_typed a b c d e f g) as [HM' | HM'] end;
         simp simple_step.
       { eexists; reflexivity. }
-      exfalso; apply HM'; exact (equiv_exp _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HM).
+      exfalso; exact (HM' HM0).
     - (* an inferred eval: failure of inference contradicts its completeness *)
       intros ch ΘR Ξ M A HM Hacc Θ K D H Hli c Hx.
       refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
