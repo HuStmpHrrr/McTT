@@ -11,7 +11,11 @@
       normal form of [M[↑]] in [Γ ▹ A] is the readback of [⟦M⟧ρΓ] at
       [|Γ| + 1];
     - that is the weakening of its readback at [|Γ|], the normal form of [M]
-      in [Γ] ([Core.Semantic.Rename.read_shift]). *)
+      in [Γ] ([Core.Semantic.Rename.read_shift]).
+
+    A consequence: the normal form of a weakened term is fresh at the new
+    variable ([nbe_wk_fresh_sem], an alternative proof of
+    [Core.Semantic.Avoid.nbe_wk_fresh] for well-typed terms). *)
 From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
@@ -74,6 +78,33 @@ Corollary nbe_ty_wk : forall Γ A T i W,
 Proof.
   intros * HΓA HT Hn.
   eapply nbe_type_to_nbe_ty, (nbe_wk _ _ _ _ _ HΓA HT), nbe_ty_to_nbe_type; eassumption.
+Qed.
+
+(** ** NbE Invents No Variables, Semantically *)
+Corollary nbe_wk_fresh_sem : forall Γ A M T W,
+    ⊢ Γ ▹ A ->
+    Γ ⊢ M : T ->
+    nbe_f (Γ ▹ A) M[↑]ʷ T[↑]ʷ W ->
+    nf_fresh 0 W.
+Proof.
+  intros * HΓA HM Hn.
+  destruct (soundness HM) as [W1 [Hn1 _]].
+  pose proof (nbe_wk _ _ _ _ _ HΓA HM Hn1) as Hn2.
+  functional_nbe_rewrite_clear.
+  apply (proj1 nf_wk_fresh); intros x; cbn; lia.
+Qed.
+
+Corollary nbe_ty_wk_fresh_sem : forall Γ A T i W,
+    ⊢ Γ ▹ A ->
+    Γ ⊢ T : Typeω@i ->
+    nbe_ty_f (Γ ▹ A) T[↑]ʷ W ->
+    nf_fresh 0 W.
+Proof.
+  intros * HΓA HT Hn.
+  destruct (soundness_ty HT) as [W1 [Hn1 _]].
+  pose proof (nbe_ty_wk _ _ _ _ _ HΓA HT Hn1) as Hn2.
+  functional_nbe_rewrite_clear.
+  apply (proj1 nf_wk_fresh); intros x; cbn; lia.
 Qed.
 
 End Fixed_GCtx.

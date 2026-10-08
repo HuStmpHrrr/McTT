@@ -204,3 +204,15 @@ Proof.
   intros φ Hφ [c xs]; unfold lvl_canon, lvl_wk; cbn [fst snd].
   rewrite <- la_sort_wk, la_maxoff_wk by assumption; reflexivity.
 Qed.
+
+(** ** Freshness
+
+    A renaming that never hits [k] produces normal forms fresh at [k]. *)
+
+Lemma nf_wk_fresh :
+  (forall W k φ, wk_avoids k φ -> nf_fresh k (nf_wk φ W)) /\
+  (forall u k φ, wk_avoids k φ -> ne_fresh k (ne_wk φ u)) /\
+  (forall xs k φ, wk_avoids k φ -> la_fresh k (la_wk φ xs)).
+Proof.
+  apply nf_mut_ind; intros; cbn; repeat split; eauto 6 using wk_avoids_q.
+Qed.
