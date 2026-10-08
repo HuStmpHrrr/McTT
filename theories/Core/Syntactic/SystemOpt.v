@@ -109,87 +109,89 @@ Remove Hints wf_exp_eq_conv : mctt.
     primed rules below, so that a search is never stuck on the tier.  [wf_nat]
     and friends are removed from the database for the same reason the large
     forms replace them: their own level is fixed. *)
-Corollary wf_nat_small : forall Θ Ξ Γ n,
+Corollary wf_nat_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type@n.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_nat; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_nat; assumption ]. Qed.
 
-Corollary wf_level_small : forall Θ Ξ Γ n,
+Corollary wf_level_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type@n.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_level; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_level; assumption ]. Qed.
 
-Corollary wf_True_small : forall Θ Ξ Γ n,
+Corollary wf_True_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type@n.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_True; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_True; assumption ]. Qed.
 
-Corollary wf_False_small : forall Θ Ξ Γ n,
+Corollary wf_False_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type@n.
-Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_False; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_False; assumption ]. Qed.
 
-Corollary wf_univ' : forall Θ Ξ Γ n m,
+Corollary wf_univ' : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    n < m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@n : Type@m.
+    olt o o' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ : Type⟨𝕃ᵒ o'⟩.
 Proof.
-  intros; eapply (lift_exp_uidx _ _ _ _ (us (S n)) (us m)); [ cbn; lia | apply wf_univ_lit; assumption ].
+  intros * ? Hlt; destruct o as [a b].
+  eapply (lift_exp_uidx _ _ _ _ (us (a, S b)) (us o')); [ cbn; ord | apply wf_univ_lit; assumption ].
 Qed.
 
-Corollary wf_exp_eq_nat_cong_small : forall Θ Ξ Γ n,
+Corollary wf_exp_eq_nat_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type@n.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_nat_cong; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
-Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ n,
+Corollary wf_exp_eq_level_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type@n.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_level_cong; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
-Corollary wf_exp_eq_True_cong_small : forall Θ Ξ Γ n,
+Corollary wf_exp_eq_True_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type@n.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_True_cong; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_True_cong; assumption ]. Qed.
 
-Corollary wf_exp_eq_False_cong_small : forall Θ Ξ Γ n,
+Corollary wf_exp_eq_False_cong_small : forall Θ Ξ Γ o,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type@n.
-Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us 0) (us n)); [ cbn; lia | apply wf_exp_eq_False_cong; assumption ]. Qed.
+    Θ ⍮ Ξ ⍮ Γ ⊢ ⊥ ≈ ⊥ : Type⟨𝕃ᵒ o⟩.
+Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz) (us o)); [ cbn; ord | apply wf_exp_eq_False_cong; assumption ]. Qed.
 
-Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ n m,
+Corollary wf_exp_eq_univ_cong_small : forall Θ Ξ Γ o o',
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    n < m ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Type@n ≈ Type@n : Type@m.
+    olt o o' ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ≈ Type⟨𝕃ᵒ o⟩ : Type⟨𝕃ᵒ o'⟩.
 Proof.
-  intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us (S n)) (us m));
-    [ cbn; lia | apply wf_exp_eq_univ_cong_lit; assumption ].
+  intros * ? Hlt; destruct o as [a b].
+  eapply (lift_exp_eq_uidx _ _ _ _ _ (us (a, S b)) (us o'));
+    [ cbn; ord | apply wf_exp_eq_univ_cong_lit; assumption ].
 Qed.
 
 (** As hints these are guarded on the goal's universe being a small one, and
     fix an open level to [0], exactly as the large forms are: an unguarded
     [Hint Resolve] would make every search in the database try to solve an
     arithmetic side condition. *)
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_nat_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_level_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Level ≈ Level : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_level_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_True_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_False_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ℕ ≈ ℕ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_nat_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊤ ≈ ⊤ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_True_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type@?n) =>
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ ⊥ ≈ ⊥ : Type⟨𝕃ᵒ ?n⟩) =>
   fix_open_level n; (apply wf_exp_eq_False_cong_small; assumption) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type@_ : Type@?m) =>
-  fix_open_level m; (apply wf_univ'; [ assumption | lia ]) : mctt.
-#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type@_ ≈ Type@_ : Type@?m) =>
-  fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | lia ]) : mctt.
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ : Type⟨𝕃ᵒ ?m⟩) =>
+  fix_open_level m; (apply wf_univ'; [ assumption | ord ]) : mctt.
+#[export] Hint Extern 1 (_ ⍮ _ ⍮ _ ⊢ Type⟨𝕃ᵒ _⟩ ≈ Type⟨𝕃ᵒ _⟩ : Type⟨𝕃ᵒ ?m⟩) =>
+  fix_open_level m; (apply wf_exp_eq_univ_cong_small; [ assumption | ord ]) : mctt.
 
 (** [ℕ] is a type at every level, not only at [0]. *)
 Corollary wf_nat' : forall Θ Ξ Γ i,

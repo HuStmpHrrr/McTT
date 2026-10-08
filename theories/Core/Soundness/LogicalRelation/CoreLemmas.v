@@ -196,7 +196,7 @@ Qed.
 (** A literal level is glued to its value: its readback is itself. *)
 Lemma glu_lvl_lit : forall Γ n,
     ⊢ Γ ->
-    glu_lvl Γ 𝕃@n (dlvl_lit n).
+    glu_lvl Γ (𝕃ᵒ n) (dlvl_lit n).
 Proof.
   intros * HΓ Δ φ L Hφ Hr.
   assert (⊢ Δ) by (eapply kripke_dom; eassumption).

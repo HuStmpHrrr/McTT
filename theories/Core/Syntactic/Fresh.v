@@ -315,7 +315,7 @@ Qed.
 Lemma lvl_exp_of_wk : forall c xs φ,
     (lvl_exp_of c xs)[φ]ʷ = lvl_exp_of c (List.map (fun p => (fst p, (snd p)[φ]ʷ)) xs).
 Proof.
-  intros c [| [j a] r] φ; destruct c; cbn; try reflexivity;
+  intros c [| [j a] r] φ; destruct c as [[|] [|]]; cbn; try reflexivity;
     rewrite lvl_fold_wk; cbn; rewrite succl_n_wk; reflexivity.
 Qed.
 
@@ -338,10 +338,10 @@ Lemma lvl_exp_of_fresh : forall c xs k,
     List.Forall (fun p => exp_fresh k (snd p)) xs ->
     exp_fresh k (lvl_exp_of c xs).
 Proof.
-  intros c [| [j a] r] k HF; destruct c; cbn; try exact I;
+  intros c [| [j a] r] k HF; destruct c as [[|] [|]]; cbn; try exact I;
     inversion HF as [| ? ? Ha HF']; subst;
-    apply lvl_fold_fresh; [ apply succl_n_fresh; exact Ha | exact HF'
-                          | split; [ exact I | apply succl_n_fresh; exact Ha ] | exact HF' ].
+    apply lvl_fold_fresh; first [ exact HF' | apply succl_n_fresh; exact Ha
+                                | split; [ exact I | apply succl_n_fresh; exact Ha ] ].
 Qed.
 
 (** A global is closed: the term of a qualified name is a chain of selections
@@ -488,12 +488,13 @@ Proof.
       apply la_look_In in L.
       pose proof (la_fresh_In _ _ _ _ Hys L) as Hf.
       apply (proj1 (proj2 nf_freshb_iff)) in Hf; congruence. }
-    specialize (Hle (ν_at a (S (Nat.max d (la_maxoff ys))))).
+    specialize (Hle (ν_at a (S (fst d)))).
     unfold lvl_ev in Hle; cbn [fst snd la_ev] in Hle.
     rewrite (la_ev_at_none _ _ _ Hn) in Hle.
     unfold ν_at at 1 in Hle; rewrite ne_cmp_refl in Hle.
-    lia.
-  - apply (IH c); intros ν; specialize (Hle ν); unfold lvl_ev in *; cbn [fst snd la_ev] in *; lia.
+    revert Hle; generalize (la_ev (ν_at a (S (fst d))) r); intros; ord.
+  - apply (IH c); intros ν; specialize (Hle ν); unfold lvl_ev in *; cbn [fst snd la_ev] in *.
+    revert Hle; generalize (la_ev ν r) (la_ev ν ys) (ν a); intros; ord.
 Qed.
 
 (** ** The Universe of a [Π]

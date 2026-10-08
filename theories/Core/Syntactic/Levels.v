@@ -15,7 +15,7 @@ Import Syntax_Notations.
       dominated.
 
     [lvl_canon_iff]: two levels have the same canonical form exactly when they
-    agree under every assignment of naturals to atoms.  That is the
+    agree under every assignment of ordinals below ω² to atoms.  That is the
     uniqueness-of-normal-forms theorem for levels, and with it the level
     equations ([maxl] is a semilattice, [succl] distributes over it, and a
     level is below its successor) hold on canonical forms.  [lvl_le] is the
@@ -141,9 +141,9 @@ Qed.
 Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   match M with
   | nf_typ i => lt_node 0 (lt_node i lt_nil lt_nil) t
-  | nf_univ c xs => lt_node 1 (lt_node c (la_code xs lt_nil) lt_nil) t
+  | nf_univ (a, b) xs => lt_node 1 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
   | nf_level => lt_node 2 lt_nil t
-  | nf_lvl c xs => lt_node 3 (lt_node c (la_code xs lt_nil) lt_nil) t
+  | nf_lvl (a, b) xs => lt_node 3 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
   | nf_nat => lt_node 4 lt_nil t
   | nf_zero => lt_node 5 lt_nil t
   | nf_succ M' => lt_node 6 (nf_code M' lt_nil) t
@@ -173,6 +173,7 @@ with ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t 
 with la_code_inj : forall xs ys t t', la_code xs t = la_code ys t' -> xs = ys /\ t = t'.
 Proof.
   all: [> destruct M, N | destruct m, m' | destruct xs, ys ].
+  all: repeat match goal with p : o2 |- _ => destruct p end.
   all: intros t t' H; cbn in H; injection H as; subst; try discriminate.
   all: repeat match goal with
          | H : nf_code _ _ = nf_code _ _ |- _ => apply nf_code_inj in H as [-> H]
@@ -203,19 +204,22 @@ Proof. intros; eapply lt_cmp_trans; eassumption. Qed.
 
 (** ** Levels and Their Canonical Forms
 
-    A level is a constant and a list of atoms under offsets.  [lvl_ev ν]
-    evaluates it at an assignment [ν] of naturals to atoms; two levels are
-    equal exactly when they agree at every [ν].  The type [lvl] itself is in
-    [Core.Syntactic.Syntax], with the normal forms it indexes. *)
-Fixpoint la_ev (ν : ne -> nat) (xs : lvl_atoms) : nat :=
+    A level is a constant, an ordinal below ω², and a list of atoms under
+    finite offsets.  [lvl_ev ν] evaluates it at an assignment [ν] of
+    ordinals below ω² to atoms; two levels are equal exactly when they agree
+    at every [ν].  An atom ranges over all of ω², so a constant [ω] does not
+    absorb an atom ([max (ω, u)] is not [ω]: take [u := ω + 1]).  The type
+    [lvl] itself is in [Core.Syntactic.Syntax], with the normal forms it
+    indexes. *)
+Fixpoint la_ev (ν : ne -> o2) (xs : lvl_atoms) : o2 :=
   match xs with
-  | la_nil => 0
-  | la_cons k a r => Nat.max (k + ν a) (la_ev ν r)
+  | la_nil => oz
+  | la_cons k a r => omax (osucn k (ν a)) (la_ev ν r)
   end.
 
-Definition lvl_ev (ν : ne -> nat) (l : lvl) : nat := Nat.max (fst l) (la_ev ν (snd l)).
+Definition lvl_ev (ν : ne -> o2) (l : lvl) : o2 := omax (fst l) (la_ev ν (snd l)).
 
-Definition lvl_zero : lvl := (0, la_nil).
+Definition lvl_zero : lvl := (oz, la_nil).
 
 Fixpoint la_suc (xs : lvl_atoms) : lvl_atoms :=
   match xs with
@@ -223,7 +227,7 @@ Fixpoint la_suc (xs : lvl_atoms) : lvl_atoms :=
   | la_cons k a r => la_cons (S k) a (la_suc r)
   end.
 
-Definition lvl_suc (l : lvl) : lvl := (S (fst l), la_suc (snd l)).
+Definition lvl_suc (l : lvl) : lvl := (osuc (fst l), la_suc (snd l)).
 
 Fixpoint la_app (xs ys : lvl_atoms) : lvl_atoms :=
   match xs with
@@ -231,7 +235,7 @@ Fixpoint la_app (xs ys : lvl_atoms) : lvl_atoms :=
   | la_cons k a r => la_cons k a (la_app r ys)
   end.
 
-Definition lvl_max (l l' : lvl) : lvl := (Nat.max (fst l) (fst l'), la_app (snd l) (snd l')).
+Definition lvl_max (l l' : lvl) : lvl := (omax (fst l) (fst l'), la_app (snd l) (snd l')).
 
 (** Insertion into a sorted list of atoms, merging at the larger offset. *)
 Fixpoint la_ins (k : nat) (a : ne) (ys : lvl_atoms) : lvl_atoms :=
@@ -257,33 +261,49 @@ Fixpoint la_maxoff (xs : lvl_atoms) : nat :=
   | la_cons k _ r => Nat.max k (la_maxoff r)
   end.
 
+(** A constant is dominated by atoms whose largest offset is [m] when it is
+    at most [m]: that is the least value of the atoms, at the assignment of
+    [0] to every atom.  A constant [≥ ω] is never dominated. *)
+Definition o2_dominated (c : o2) (m : nat) : bool := (fst c =? 0) && (snd c <=? m).
+
+Lemma o2_dominated_spec : forall c m, o2_dominated c m = true <-> ole c (ofin m).
+Proof.
+  intros [a b] m; unfold o2_dominated; cbn.
+  rewrite Bool.andb_true_iff, Nat.eqb_eq, Nat.leb_le; ord.
+Qed.
+
 (** The canonical form: sort and merge the atoms, then drop the constant if
-    some atom dominates it. *)
+    the atoms dominate it. *)
 Definition lvl_canon (l : lvl) : lvl :=
   let ys := la_sort (snd l) in
-  (if fst l <=? la_maxoff ys then 0 else fst l, ys).
+  (if o2_dominated (fst l) (la_maxoff ys) then oz else fst l, ys).
 
-Lemma la_ev_ins : forall ν k a ys, la_ev ν (la_ins k a ys) = Nat.max (k + ν a) (la_ev ν ys).
+Lemma la_ev_ins : forall ν k a ys, la_ev ν (la_ins k a ys) = omax (osucn k (ν a)) (la_ev ν ys).
 Proof.
-  induction ys as [| k' b r IH]; cbn; [ lia |].
+  induction ys as [| k' b r IH]; cbn; [ reflexivity |].
   destruct (ne_cmp a b) eqn:E; cbn.
-  - apply ne_cmp_eq in E; subst; lia.
-  - lia.
-  - rewrite IH; lia.
+  - apply ne_cmp_eq in E; subst; generalize (ν b) (la_ev ν r); intros; ord.
+  - reflexivity.
+  - rewrite IH; generalize (ν a) (ν b) (la_ev ν r); intros; ord.
 Qed.
 
 Lemma la_ev_sort : forall ν xs, la_ev ν (la_sort xs) = la_ev ν xs.
 Proof. induction xs as [| k a r IH]; cbn; [ reflexivity | rewrite la_ev_ins, IH; reflexivity ]. Qed.
 
-Lemma la_maxoff_le_ev : forall ν xs, la_maxoff xs <= la_ev ν xs.
-Proof. induction xs as [| k a r IH]; cbn; lia. Qed.
+Lemma la_maxoff_le_ev : forall ν xs, ole (ofin (la_maxoff xs)) (la_ev ν xs).
+Proof.
+  induction xs as [| k a r IH]; cbn; [ ord |].
+  revert IH; generalize (ν a) (la_ev ν r) (la_maxoff r); intros; ord.
+Qed.
 
 Lemma lvl_canon_ev : forall ν l, lvl_ev ν (lvl_canon l) = lvl_ev ν l.
 Proof.
   intros ν [c xs]; unfold lvl_canon, lvl_ev; cbn.
   rewrite la_ev_sort.
   pose proof (la_maxoff_le_ev ν (la_sort xs)) as H; rewrite la_ev_sort in H.
-  destruct (Nat.leb_spec c (la_maxoff (la_sort xs))); lia.
+  destruct (o2_dominated c (la_maxoff (la_sort xs))) eqn:E; [| reflexivity ].
+  apply o2_dominated_spec in E.
+  revert H E; generalize (la_ev ν xs) (la_maxoff (la_sort xs)); intros; ord.
 Qed.
 
 (** Strictly sorted: every later atom is greater. *)
@@ -328,12 +348,15 @@ Lemma la_sort_sorted : forall xs, la_sorted (la_sort xs).
 Proof. induction xs as [| k a r IH]; cbn; [ exact I | apply la_ins_sorted; exact IH ]. Qed.
 
 Definition lvl_canonical (l : lvl) : Prop :=
-  la_sorted (snd l) /\ (fst l = 0 \/ la_maxoff (snd l) < fst l).
+  la_sorted (snd l) /\ (fst l = oz \/ olt (ofin (la_maxoff (snd l))) (fst l)).
 
 Lemma lvl_canon_canonical : forall l, lvl_canonical (lvl_canon l).
 Proof.
   intros [c xs]; unfold lvl_canon, lvl_canonical; cbn; split; [ apply la_sort_sorted |].
-  destruct (Nat.leb_spec c (la_maxoff (la_sort xs))); cbn; lia.
+  destruct (o2_dominated c (la_maxoff (la_sort xs))) eqn:E; cbn; [ left; reflexivity | right ].
+  assert (~ ole c (ofin (la_maxoff (la_sort xs)))) as Hn
+    by (rewrite <- o2_dominated_spec, E; discriminate).
+  revert Hn; generalize (la_maxoff (la_sort xs)); intros; ord.
 Qed.
 
 Fixpoint la_look (a : ne) (ys : lvl_atoms) : option nat :=
@@ -377,31 +400,32 @@ Proof.
       rewrite ne_cmp_opp, Eb in Ha1; discriminate.
 Qed.
 
-(** The assignment that separates one atom: it alone is large. *)
-Definition ν_at (a : ne) (N : nat) : ne -> nat :=
-  fun b => match ne_cmp a b with Eq => N | _ => 0 end.
+(** The assignment that separates one atom: it alone is large, at the limit
+    [ω·N]. *)
+Definition ν_at (a : ne) (N : nat) : ne -> o2 :=
+  fun b => match ne_cmp a b with Eq => (N, 0) | _ => oz end.
 
-Lemma la_ev_zero : forall ys, la_ev (fun _ => 0) ys = la_maxoff ys.
-Proof. induction ys as [| k a r IH]; cbn; lia. Qed.
+Lemma la_ev_zero : forall ys, la_ev (fun _ => oz) ys = ofin (la_maxoff ys).
+Proof. induction ys as [| k a r IH]; cbn; [ reflexivity | rewrite IH; ord ]. Qed.
 
-Lemma la_ev_at_none : forall a N ys, la_look a ys = None -> la_ev (ν_at a N) ys = la_maxoff ys.
+Lemma la_ev_at_none : forall a N ys, la_look a ys = None -> la_ev (ν_at a N) ys = ofin (la_maxoff ys).
 Proof.
   induction ys as [| k b r IH]; cbn; intros H; [ reflexivity |].
-  unfold ν_at at 1; destruct (ne_cmp a b); try discriminate; rewrite IH by auto; lia.
+  unfold ν_at at 1; destruct (ne_cmp a b); try discriminate; rewrite IH by auto; ord.
 Qed.
 
-Lemma la_ev_at_some : forall a N ys k, la_sorted ys -> la_look a ys = Some k ->
-    la_ev (ν_at a N) ys = Nat.max (k + N) (la_maxoff ys).
+Lemma la_ev_at_some : forall a N ys k, 0 < N -> la_sorted ys -> la_look a ys = Some k ->
+    la_ev (ν_at a N) ys = (N, k).
 Proof.
-  induction ys as [| k0 b r IH]; cbn; intros k Hs H; [ discriminate |].
+  induction ys as [| k0 b r IH]; cbn; intros k HN Hs H; [ discriminate |].
   destruct Hs as [Hb Hr]; unfold ν_at at 1.
   destruct (ne_cmp a b) eqn:E.
   - apply ne_cmp_eq in E; subst b; injection H as <-.
-    rewrite la_ev_at_none; [ lia |].
+    rewrite la_ev_at_none; [ ord |].
     destruct (la_look a r) eqn:L; auto.
     apply la_look_In in L; specialize (Hb _ _ L); rewrite ne_cmp_refl in Hb; discriminate.
-  - rewrite (IH k Hr H); lia.
-  - rewrite (IH k Hr H); lia.
+  - rewrite (IH k HN Hr H); ord.
+  - rewrite (IH k HN Hr H); ord.
 Qed.
 
 Theorem lvl_canonical_unique : forall l1 l2, lvl_canonical l1 -> lvl_canonical l2 ->
@@ -410,16 +434,18 @@ Proof.
   intros [c1 ys1] [c2 ys2] [S1 C1] [S2 C2] Hev; cbn in *.
   assert (Hys : ys1 = ys2).
   { apply la_sorted_unique; auto; intros a.
-    set (N := S (c1 + c2 + la_maxoff ys1 + la_maxoff ys2)).
+    set (N := S (fst c1 + fst c2)).
+    assert (HN : 0 < N) by (subst N; lia).
     specialize (Hev (ν_at a N)); unfold lvl_ev in Hev; cbn in Hev.
     destruct (la_look a ys1) as [k1 |] eqn:L1, (la_look a ys2) as [k2 |] eqn:L2.
-    - rewrite (la_ev_at_some _ _ _ _ S1 L1), (la_ev_at_some _ _ _ _ S2 L2) in Hev.
-      f_equal; subst N; lia.
-    - rewrite (la_ev_at_some _ _ _ _ S1 L1), (la_ev_at_none _ _ _ L2) in Hev; subst N; lia.
-    - rewrite (la_ev_at_none _ _ _ L1), (la_ev_at_some _ _ _ _ S2 L2) in Hev; subst N; lia.
+    - rewrite (la_ev_at_some _ _ _ _ HN S1 L1), (la_ev_at_some _ _ _ _ HN S2 L2) in Hev.
+      f_equal; subst N; revert Hev; ord.
+    - rewrite (la_ev_at_some _ _ _ _ HN S1 L1), (la_ev_at_none _ _ _ L2) in Hev; subst N; revert Hev; ord.
+    - rewrite (la_ev_at_none _ _ _ L1), (la_ev_at_some _ _ _ _ HN S2 L2) in Hev; subst N; revert Hev; ord.
     - reflexivity. }
   subst ys2; f_equal.
-  specialize (Hev (fun _ => 0)); unfold lvl_ev in Hev; cbn in Hev; rewrite la_ev_zero in Hev; lia.
+  specialize (Hev (fun _ => oz)); unfold lvl_ev in Hev; cbn in Hev; rewrite la_ev_zero in Hev.
+  revert Hev C1 C2; generalize (la_maxoff ys1); intros; ord.
 Qed.
 
 Theorem lvl_canon_iff : forall l l', lvl_canon l = lvl_canon l' <-> (forall ν, lvl_ev ν l = lvl_ev ν l').
@@ -439,20 +465,31 @@ Proof.
   intros; apply lvl_canon_ev.
 Qed.
 
-(** The level operations evaluate as the successor and the maximum. *)
-Lemma lvl_ev_suc : forall ν l, lvl_ev ν (lvl_suc l) = S (lvl_ev ν l).
+(** The level operations evaluate as the successor and the join. *)
+Lemma la_ev_suc : forall ν xs,
+    la_ev ν (la_suc xs) = match xs with la_nil => oz | _ => osuc (la_ev ν xs) end.
 Proof.
-  intros ν [c xs]; unfold lvl_ev, lvl_suc; cbn.
-  assert (H : la_ev ν (la_suc xs) = match xs with la_nil => 0 | _ => S (la_ev ν xs) end).
-  { induction xs as [| k a r IH]; cbn; [ reflexivity |]; rewrite IH; destruct r; cbn; lia. }
-  rewrite H; destruct xs; cbn; lia.
+  intros ν; induction xs as [| k a r IH]; cbn; [ reflexivity |]; rewrite IH.
+  destruct r; cbn; [| generalize (la_ev ν (la_cons n n0 r)) ]; generalize (ν a); intros; ord.
 Qed.
 
-Lemma la_ev_app : forall ν xs ys, la_ev ν (la_app xs ys) = Nat.max (la_ev ν xs) (la_ev ν ys).
-Proof. induction xs as [| k a r IH]; intros; cbn; [ reflexivity | rewrite IH; lia ]. Qed.
+Lemma lvl_ev_suc : forall ν l, lvl_ev ν (lvl_suc l) = osuc (lvl_ev ν l).
+Proof.
+  intros ν [c xs]; unfold lvl_ev, lvl_suc; cbn; rewrite la_ev_suc.
+  destruct xs; cbn; [| generalize (la_ev ν (la_cons n n0 xs)) ]; intros; ord.
+Qed.
 
-Lemma lvl_ev_max : forall ν l l', lvl_ev ν (lvl_max l l') = Nat.max (lvl_ev ν l) (lvl_ev ν l').
-Proof. intros ν [c xs] [d ys]; unfold lvl_ev, lvl_max; cbn; rewrite la_ev_app; lia. Qed.
+Lemma la_ev_app : forall ν xs ys, la_ev ν (la_app xs ys) = omax (la_ev ν xs) (la_ev ν ys).
+Proof.
+  induction xs as [| k a r IH]; intros; cbn; [ symmetry; apply omax_zero_l |].
+  rewrite IH; symmetry; apply omax_assoc.
+Qed.
+
+Lemma lvl_ev_max : forall ν l l', lvl_ev ν (lvl_max l l') = omax (lvl_ev ν l) (lvl_ev ν l').
+Proof.
+  intros ν [c xs] [d ys]; unfold lvl_ev, lvl_max; cbn; rewrite la_ev_app.
+  generalize (la_ev ν xs) (la_ev ν ys); intros; ord.
+Qed.
 
 (** Canonicalising a part of a level does not change its canonical form: this
     is what makes readback compositional, since the atoms of a level read back
@@ -534,15 +571,15 @@ Proof. intros * H; apply la_clean_all, la_all_sort, la_clean_all; assumption. Qe
     order at every assignment. *)
 Definition lvl_le (l l' : lvl) : Prop := lvl_canon (lvl_max l l') = lvl_canon l'.
 
-Theorem lvl_le_correct : forall l l', lvl_le l l' <-> (forall ν, lvl_ev ν l <= lvl_ev ν l').
+Theorem lvl_le_correct : forall l l', lvl_le l l' <-> (forall ν, ole (lvl_ev ν l) (lvl_ev ν l')).
 Proof.
   intros l l'; unfold lvl_le; rewrite lvl_canon_iff; split; intros H ν; specialize (H ν);
-    rewrite lvl_ev_max in *; lia.
+    rewrite lvl_ev_max in *; revert H; generalize (lvl_ev ν l) (lvl_ev ν l'); intros; ord.
 Qed.
 
 Definition lvl_eq_dec : forall (l l' : lvl), ({l = l'} + {l <> l'})%type.
 Proof.
-  intros [c xs] [c' ys]; destruct (Nat.eq_dec c c') as [-> |]; [| right; congruence ].
+  intros [c xs] [c' ys]; destruct (o2_eq_dec c c') as [-> |]; [| right; congruence ].
   destruct (la_eq_dec xs ys) as [-> |]; [ left; reflexivity | right; congruence ].
 Defined.
 
@@ -550,90 +587,91 @@ Definition lvl_le_dec : forall l l', ({lvl_le l l'} + {~ lvl_le l l'})%type.
 Proof. intros; unfold lvl_le; apply lvl_eq_dec. Defined.
 
 Lemma lvl_le_refl : forall l, lvl_le l l.
-Proof. intros; apply lvl_le_correct; intros; lia. Qed.
+Proof. intros; apply lvl_le_correct; intros; apply ole_refl. Qed.
 
 Lemma lvl_le_trans : forall l1 l2 l3, lvl_le l1 l2 -> lvl_le l2 l3 -> lvl_le l1 l3.
 Proof.
   intros * H1 H2; rewrite lvl_le_correct in H1, H2; apply lvl_le_correct; intros ν.
-  specialize (H1 ν); specialize (H2 ν); lia.
+  eapply ole_trans; [ apply H1 | apply H2 ].
 Qed.
 
 Lemma lvl_le_canon : forall l l', lvl_canon l = lvl_canon l' -> lvl_le l l'.
-Proof. intros * H; rewrite lvl_canon_iff in H; apply lvl_le_correct; intros; rewrite H; lia. Qed.
+Proof. intros * H; rewrite lvl_canon_iff in H; apply lvl_le_correct; intros; rewrite H; apply ole_refl. Qed.
 
 Lemma lvl_le_antisym : forall l l', lvl_le l l' -> lvl_le l' l -> lvl_canon l = lvl_canon l'.
 Proof.
   intros * H H'; rewrite lvl_le_correct in H, H'; apply lvl_canon_iff; intros ν.
-  specialize (H ν); specialize (H' ν); lia.
+  apply ole_antisym; [ apply H | apply H' ].
 Qed.
 
 Lemma lvl_le_max_left : forall l l', lvl_le l (lvl_max l l').
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_max; lia. Qed.
+Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_max; apply ole_omax_l. Qed.
 
 Lemma lvl_le_max_right : forall l l', lvl_le l' (lvl_max l l').
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_max; lia. Qed.
+Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_max; apply ole_omax_r. Qed.
 
 Lemma lvl_le_max_lub : forall l l' l'', lvl_le l l'' -> lvl_le l' l'' -> lvl_le (lvl_max l l') l''.
 Proof.
   intros * H H'; rewrite lvl_le_correct in H, H'; apply lvl_le_correct; intros ν.
-  specialize (H ν); specialize (H' ν); rewrite lvl_ev_max; lia.
+  rewrite lvl_ev_max; apply omax_lub; [ apply H | apply H' ].
 Qed.
 
 Lemma lvl_le_suc : forall l, lvl_le l (lvl_suc l).
-Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_suc; lia. Qed.
+Proof. intros; apply lvl_le_correct; intros; rewrite lvl_ev_suc; apply ole_osuc. Qed.
 
 (** The least level, and the literals. *)
-Definition lvl_lit (n : nat) : lvl := (n, la_nil).
+Definition lvl_lit (o : o2) : lvl := (o, la_nil).
 
-Lemma lvl_ev_lit : forall ν n, lvl_ev ν (lvl_lit n) = n.
-Proof. intros; unfold lvl_ev, lvl_lit; cbn; lia. Qed.
+Lemma lvl_ev_lit : forall ν o, lvl_ev ν (lvl_lit o) = o.
+Proof. intros; unfold lvl_ev, lvl_lit; cbn; apply omax_zero_r. Qed.
 
-Lemma lvl_canon_lit : forall n, lvl_canon (lvl_lit n) = lvl_lit n.
-Proof. intros; apply lvl_canonical_canon; split; cbn; [ exact I | destruct n; [ left | right ]; lia ]. Qed.
+Lemma lvl_canon_lit : forall o, lvl_canon (lvl_lit o) = lvl_lit o.
+Proof. intros; apply lvl_canonical_canon; split; cbn; [ exact I | destruct o as [[|] [|]]; [ left | right .. ]; ord ]. Qed.
 
-Lemma lvl_le_lit : forall n m, n <= m -> lvl_le (lvl_lit n) (lvl_lit m).
+Lemma lvl_le_lit : forall o o', ole o o' -> lvl_le (lvl_lit o) (lvl_lit o').
 Proof. intros; apply lvl_le_correct; intros; rewrite !lvl_ev_lit; assumption. Qed.
 
 Lemma lvl_le_zero : forall l, lvl_le lvl_zero l.
-Proof. intros; apply lvl_le_correct; intros; unfold lvl_ev, lvl_zero; cbn; lia. Qed.
+Proof. intros; apply lvl_le_correct; intros; unfold lvl_ev, lvl_zero; cbn; rewrite omax_zero_l; apply ole_zero. Qed.
 
 (** ** The Realiser
 
     The realiser of a level is its value when every atom is [0].  It is the
     index of a small universe in the PER and gluing models: those are indexed
-    by naturals, and a level's canonical form depends on the length of the
+    by ordinals, and a level's canonical form depends on the length of the
     context, so no finer index would be stable.  The order on levels refines
     the order on realisers ([lvl_le_real]), which is what makes a subtyping
     between small universes hold in the model. *)
-(** The constant is the base of the fold rather than a [Nat.max] on top of it,
+(** The constant is the base of the fold rather than an [omax] on top of it,
     so that the realiser of a literal level is that literal by computation. *)
-Fixpoint la_max (c : nat) (xs : lvl_atoms) : nat :=
+Fixpoint la_max (c : o2) (xs : lvl_atoms) : o2 :=
   match xs with
   | la_nil => c
-  | la_cons k _ r => Nat.max k (la_max c r)
+  | la_cons k _ r => omax (ofin k) (la_max c r)
   end.
 
-Definition lvl_real (l : lvl) : nat := la_max (fst l) (snd l).
+Definition lvl_real (l : lvl) : o2 := la_max (fst l) (snd l).
 
-Lemma lvl_real_ev : forall l, lvl_real l = lvl_ev (fun _ => 0) l.
+Lemma lvl_real_ev : forall l, lvl_real l = lvl_ev (fun _ => oz) l.
 Proof.
   intros [c xs]; unfold lvl_real, lvl_ev; cbn.
-  induction xs as [| k a r IH]; cbn; [ lia | rewrite IH; lia ].
+  induction xs as [| k a r IH]; cbn; [ symmetry; apply omax_zero_r |].
+  rewrite IH; generalize (la_ev (fun _ => oz) r); intros; ord.
 Qed.
 
 Lemma lvl_real_canon : forall l, lvl_real (lvl_canon l) = lvl_real l.
 Proof. intros; rewrite !lvl_real_ev; apply lvl_canon_ev. Qed.
 
-Lemma lvl_le_real : forall l l', lvl_le l l' -> lvl_real l <= lvl_real l'.
+Lemma lvl_le_real : forall l l', lvl_le l l' -> ole (lvl_real l) (lvl_real l').
 Proof. intros * H; rewrite lvl_le_correct in H; rewrite !lvl_real_ev; apply H. Qed.
 
-Lemma lvl_real_lit : forall n, lvl_real (lvl_lit n) = n.
+Lemma lvl_real_lit : forall o, lvl_real (lvl_lit o) = o.
 Proof. reflexivity. Qed.
 
-Lemma lvl_real_suc : forall l, lvl_real (lvl_suc l) = S (lvl_real l).
+Lemma lvl_real_suc : forall l, lvl_real (lvl_suc l) = osuc (lvl_real l).
 Proof. intros; rewrite !lvl_real_ev; apply lvl_ev_suc. Qed.
 
-Lemma lvl_real_max : forall l l', lvl_real (lvl_max l l') = Nat.max (lvl_real l) (lvl_real l').
+Lemma lvl_real_max : forall l l', lvl_real (lvl_max l l') = omax (lvl_real l) (lvl_real l').
 Proof. intros; rewrite !lvl_real_ev; apply lvl_ev_max. Qed.
 
 (** ** The Order on Universe Normal Forms
@@ -679,7 +717,7 @@ Proof. intros [] []; cbn; try contradiction; intros; [ apply lvl_le_real | exact
     out of that context, so it falls back to the least large universe. *)
 Definition unf_max (u v : unf) : unf :=
   match u, v with
-  | uns (c, la_nil), uns (d, la_nil) => uns (lvl_lit (Nat.max c d))
+  | uns (c, la_nil), uns (d, la_nil) => uns (lvl_lit (omax c d))
   | uns _, uns _ => unl 0
   | uns _, unl j => unl j
   | unl i, uns _ => unl i
@@ -689,21 +727,22 @@ Definition unf_max (u v : unf) : unf :=
 Lemma unf_le_max_left : forall u v, unf_le u (unf_max u v).
 Proof.
   intros [[c []] |] [[d []] |]; cbn [unf_max unf_le];
-    try solve [ exact I | lia | apply lvl_le_lit; lia ].
+    try solve [ exact I | lia | apply lvl_le_lit; apply ole_omax_l ].
 Qed.
 
 Lemma unf_le_max_right : forall u v, unf_le v (unf_max u v).
 Proof.
   intros [[c []] |] [[d []] |]; cbn [unf_max unf_le];
-    try solve [ exact I | lia | apply lvl_le_lit; lia ].
+    try solve [ exact I | lia | apply lvl_le_lit; apply ole_omax_r ].
 Qed.
 
 (** A level below a literal has no atom: an atom's assignment is arbitrary,
     so it would exceed the literal. *)
-Lemma lvl_le_lit_closed : forall l n, lvl_le l (lvl_lit n) -> snd l = la_nil.
+Lemma lvl_le_lit_closed : forall l o, lvl_le l (lvl_lit o) -> snd l = la_nil.
 Proof.
-  intros [c xs] n H; rewrite lvl_le_correct in H; destruct xs as [| k a r]; [ reflexivity |].
-  specialize (H (fun _ => S n)); unfold lvl_ev, lvl_lit in H; cbn in H; lia.
+  intros [c xs] o H; rewrite lvl_le_correct in H; destruct xs as [| k a r]; [ reflexivity |].
+  specialize (H (fun _ => (S (fst o), 0))); unfold lvl_ev, lvl_lit in H; cbn in H.
+  revert H; generalize (la_ev (fun _ => (S (fst o), 0)) r); intros; ord.
 Qed.
 
 (** A universe with no open level in the small tier; the join is a least upper
@@ -712,7 +751,7 @@ Qed.
 Definition unf_closed (u : unf) : Prop :=
   match u with uns (_, la_nil) => True | uns _ => False | unl _ => True end.
 
-Lemma unf_closed_lit : forall n, unf_closed (uns (lvl_lit n)).
+Lemma unf_closed_lit : forall o, unf_closed (uns (lvl_lit o)).
 Proof. exact (fun _ => I). Qed.
 
 Lemma unf_max_lub : forall u v w,
@@ -729,14 +768,22 @@ Proof.
     assert (ys = la_nil) as -> by exact (lvl_le_lit_closed (d, ys) e Hv).
     cbn [unf_max unf_le] in Hu, Hv |- *; rewrite lvl_le_correct in Hu, Hv |- *; intros ν.
     specialize (Hu ν); specialize (Hv ν).
-    unfold lvl_ev, lvl_lit in *; cbn in *; lia.
+    unfold lvl_ev, lvl_lit in *; cbn in *; ord.
   - destruct u as [[c xs] |]; destruct v as [[d ys] |];
       try destruct xs; try destruct ys;
       cbn [unf_max unf_le] in *; try solve [ exact I | lia ].
 Qed.
 
 (** The literal small universes. *)
-Definition unf_lit (n : nat) : unf := uns (lvl_lit n).
+Definition unf_lit (o : o2) : unf := uns (lvl_lit o).
 
-Lemma unf_le_lit : forall n m, n <= m -> unf_le (unf_lit n) (unf_lit m).
+Lemma unf_le_lit : forall o o', ole o o' -> unf_le (unf_lit o) (unf_lit o').
 Proof. intros; apply lvl_le_lit; assumption. Qed.
+
+(** Decides an identity between ordinals built from the values of levels:
+    each value [lvl_ev ν l] is an opaque ordinal, and [ord] does the rest. *)
+Ltac lvl_ord :=
+  repeat match goal with
+         | |- context [lvl_ev ?ν ?l] => let x := fresh "x" in generalize (lvl_ev ν l) as x
+         end;
+  ord.

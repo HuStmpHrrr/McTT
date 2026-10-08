@@ -102,7 +102,7 @@ Qed.
 
 Corollary valid_exp_nat_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ℕ : Type@n.
+    Γ ⊨ ℕ : Type⟨𝕃ᵒ n⟩.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].

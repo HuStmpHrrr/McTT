@@ -1,6 +1,7 @@
 From Stdlib Require Import Lia List Morphisms Relation_Definitions RelationClasses Setoid String Wf_nat.
 
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Export Ordinals.
 
 (** An item of an open: [(Some n, d, pv)] declares [d] as the member [n] of
     the opened module, [(None, d, pv)] declares [d] as the opened module
@@ -464,7 +465,7 @@ Definition qname_strip (mp p : qname) : option (list string) :=
     - [centry] is a context entry: an assumption, a definition, or a module
       slot [ce_mod U], which binds one index to the unit [U]. *)
 Inductive exp : Set :=
-(** A large universe: [a_typ n] is [Typeω+n].  It contains every small
+(** A large universe: [a_typ n] is [Typeω²+n].  It contains every small
     universe, and the large universes below it. *)
 | a_typ : nat -> exp
 (** A small universe, at a level: [a_univ t] is [Type@{t}].  The level is an
@@ -474,9 +475,9 @@ Inductive exp : Set :=
 (** The type of universe levels.  Levels are ordinary terms: a function may
     take and return them, so universe polymorphism is plain [Π]. *)
 | a_level : exp
-(** A level literal: [a_llit n] is the [n]-th level, written [<n>l] in the
-    surface syntax. *)
-| a_llit : nat -> exp
+(** A level literal: [a_llit (a, b)] is the ordinal [ω·a + b].  The finite
+    level [n], [a_llit (0, n)], is written [<n>l] in the surface syntax. *)
+| a_llit : o2 -> exp
 (** The successor of a level *)
 | a_succl : exp -> exp
 (** The join of two levels *)
@@ -828,17 +829,19 @@ Definition exp_to_num e :=
     level 1, and the constructor forms with a recursive last argument at
     level 2. *)
 Module Exp_Notations.
-  (** A large universe, [a_typ n], is [Typeω@n]: it is the universe ω+n, above
-      every small one. *)
+  (** A large universe, [a_typ n], is [Typeω@n]: it is the universe ω²+n,
+      above every small one. *)
   Notation "'Typeω' @ n" := (a_typ n) (at level 1, n at level 0, format "'Typeω' @ n") : mctt_scope.
   (** A small universe at an arbitrary level term, and — for a literal level —
       the short form the literal-level rules are written with. *)
   Notation "'Type' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : mctt_scope.
-  Notation "'Type' @ n" := (a_univ (a_llit n)) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
+  Notation "'Type' @ n" := (a_univ (a_llit (ofin n))) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
   Notation "'Level'" := a_level : mctt_scope.
-  (** The level literals: [𝕃@n] is the surface syntax's [<n>l].  The token is
-      not a word: [lv] would make every identifier of that name a keyword. *)
-  Notation "'𝕃' @ n" := (a_llit n) (at level 1, n at level 0, format "'𝕃' @ n") : mctt_scope.
+  (** The level literals: [𝕃ᵒ o] is the ordinal [o], and [𝕃@n] the finite
+      level [n], the surface syntax's [<n>l].  The token is not a word: [lv]
+      would make every identifier of that name a keyword. *)
+  Notation "'𝕃ᵒ' o" := (a_llit o) (at level 1, o at level 0, format "'𝕃ᵒ' o") : mctt_scope.
+  Notation "'𝕃' @ n" := (a_llit (ofin n)) (at level 1, n at level 0, format "'𝕃' @ n") : mctt_scope.
   Notation "'succl' M" := (a_succl M) (at level 2, M at level 1) : mctt_scope.
   Notation "'maxl' M N" := (a_maxl M N) (at level 2, M at level 1, N at level 1) : mctt_scope.
   Notation "'#' n" := (a_var n) (at level 1, n at level 0, format "'#' n") : mctt_scope.
@@ -938,27 +941,27 @@ End Ctx_Notations.
 
 (** * Universe Indices
 
-    The universes of the model form two tiers, both of them families indexed
-    by a natural number:
+    The universes of the model form two tiers:
 
-    - the small tier [us j], whose universes are the small universes
-      [𝕌@m] for [m < j];
-    - the large tier [ul n] (the syntactic [Typeω@n], read as [Typeω+n]),
+    - the small tier [us o], indexed by an ordinal [o] below ω² (see
+      [Core.Syntactic.Ordinals]), whose universes are the small universes
+      [𝕌@l] whose levels realise an ordinal below [o];
+    - the large tier [ul n] (the syntactic [Typeω@n], read as [Typeω²+n]),
       whose universes are every small universe and the large ones [𝕌ω@m] for
       [m < n].
 
     Every small index is below every large one.  The large tier is the
-    default: [ul] is a coercion, so [per_univ_elem i] for a level [i] is the
-    large universe [Typeω+i]. *)
+    default: [ul] is a coercion, so [per_univ_elem i] for a natural number
+    [i] is the large universe [Typeω²+i]. *)
 Inductive uidx : Set :=
-| us : nat -> uidx
+| us : o2 -> uidx
 | ul : nat -> uidx.
 
 Coercion ul : nat >-> uidx.
 
 Definition uidx_lt (u v : uidx) : Prop :=
   match u, v with
-  | us j, us k => j < k
+  | us j, us k => olt j k
   | us _, ul _ => True
   | ul _, us _ => False
   | ul j, ul k => j < k
@@ -966,28 +969,29 @@ Definition uidx_lt (u v : uidx) : Prop :=
 
 Definition uidx_le (u v : uidx) : Prop :=
   match u, v with
-  | us j, us k => j <= k
+  | us j, us k => ole j k
   | us _, ul _ => True
   | ul _, us _ => False
   | ul j, ul k => j <= k
   end.
 
 Lemma uidx_lt_le_trans : forall u v w, uidx_lt u v -> uidx_le v w -> uidx_lt u w.
-Proof. intros [] [] []; cbn; intros; auto; lia. Qed.
+Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
 
 Lemma uidx_le_refl : forall u, uidx_le u u.
-Proof. intros []; cbn; lia. Qed.
+Proof. intros []; cbn; [ ord | lia ]. Qed.
 
 Lemma uidx_le_trans : forall u v w, uidx_le u v -> uidx_le v w -> uidx_le u w.
-Proof. intros [] [] []; cbn; intros; auto; lia. Qed.
+Proof. intros [] [] []; cbn; intros; auto; try lia; ord. Qed.
 
 Lemma uidx_lt_le : forall u v, uidx_lt u v -> uidx_le u v.
-Proof. intros [] []; cbn; intros; auto; lia. Qed.
+Proof. intros [] []; cbn; intros; auto; try lia; ord. Qed.
 
 Lemma uidx_wf : well_founded uidx_lt.
 Proof.
   assert (Hs : forall j, Acc uidx_lt (us j)).
-  { induction j as [j IH] using lt_wf_ind; constructor; intros [k | k] Hk; cbn in Hk; [ apply IH; exact Hk | contradiction ]. }
+  { intros j; induction j as [j IH] using (well_founded_ind olt_wf).
+    constructor; intros [k | k] Hk; cbn in Hk; [ apply IH; exact Hk | contradiction ]. }
   intros [j | n]; [ apply Hs |].
   induction n as [n IH] using lt_wf_ind; constructor; intros [k | k] Hk; cbn in Hk; [ apply Hs | apply IH; exact Hk ].
 Qed.
@@ -1000,7 +1004,7 @@ Qed.
     value [ulvl_val u]; the large forms below are their instances at [ul i],
     which is [Typeω@i] by computation. *)
 Definition ulvl_tm (u : uidx) : exp :=
-  match u with us n => a_univ (a_llit n) | ul n => a_typ n end.
+  match u with us o => a_univ (a_llit o) | ul n => a_typ n end.
 
 (** A large level whose universe contains the universe at [u]. *)
 Definition ulvl_above (u : uidx) : nat :=
@@ -1017,8 +1021,8 @@ Lemma uidx_le_ulvl : forall u, uidx_le u (ulvl u).
 Proof. intros []; cbn; [ exact I | lia ]. Qed.
 
 (** The least index: [Type@0] is below every universe. *)
-Lemma uidx_le_least : forall u, uidx_le (us 0) u.
-Proof. intros []; cbn; [ lia | exact I ]. Qed.
+Lemma uidx_le_least : forall u, uidx_le (us oz) u.
+Proof. intros []; cbn; [ ord | exact I ]. Qed.
 
 (** The large levels of two ordered indices are ordered: a small universe
     lives in [Typeω@0], and the large tier's order is the order on levels. *)
@@ -1028,26 +1032,27 @@ Proof. intros [] []; cbn; intros; lia. Qed.
 (** The join of two indices: a large universe absorbs a small one. *)
 Definition umax (u v : uidx) : uidx :=
   match u, v with
-  | us n, us m => us (max n m)
+  | us n, us m => us (omax n m)
   | us _, ul i => ul i
   | ul i, us _ => ul i
   | ul i, ul j => ul (max i j)
   end.
 
 Lemma uidx_le_umax_left : forall u v, uidx_le u (umax u v).
-Proof. intros [] []; cbn; try exact I; lia. Qed.
+Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
 
 Lemma uidx_le_umax_right : forall u v, uidx_le v (umax u v).
-Proof. intros [] []; cbn; try exact I; lia. Qed.
+Proof. intros [] []; cbn; try exact I; try lia; ord. Qed.
 
 Lemma umax_lub : forall u v w, uidx_le u w -> uidx_le v w -> uidx_le (umax u v) w.
-Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; lia. Qed.
+Proof. intros [] [] []; cbn; intros; try contradiction; try exact I; try lia; ord. Qed.
 
 (** Discharges the order side conditions between universe indices. *)
 Ltac solve_uidx :=
   first [ assumption | exact I | solve [ cbn [uidx_lt uidx_le] in *; lia ]
+        | solve [ cbn [uidx_lt uidx_le] in *; ord ]
         | solve [ repeat match goal with k : uidx |- _ => destruct k end;
-                  cbn [uidx_lt uidx_le] in *; first [ contradiction | exact I | lia ] ] ].
+                  cbn [uidx_lt uidx_le] in *; first [ contradiction | exact I | lia | ord ] ] ].
 
 
 (** * Levels as Expressions
@@ -1070,11 +1075,11 @@ Fixpoint lvl_fold (hd : exp) (xs : list (nat * exp)) : exp :=
   | (k, a) :: r => lvl_fold (a_maxl hd (succl_n k a)) r
   end.
 
-Definition lvl_exp_of (c : nat) (xs : list (nat * exp)) : exp :=
+Definition lvl_exp_of (c : o2) (xs : list (nat * exp)) : exp :=
   match xs, c with
   | nil, _ => a_llit c
-  | (k, a) :: r, 0 => lvl_fold (succl_n k a) r
-  | (k, a) :: r, S _ => lvl_fold (a_maxl (a_llit c) (succl_n k a)) r
+  | (k, a) :: r, (0, 0) => lvl_fold (succl_n k a) r
+  | (k, a) :: r, _ => lvl_fold (a_maxl (a_llit c) (succl_n k a)) r
   end.
 
 (** * Normal and Neutral Forms *)
@@ -1083,14 +1088,14 @@ Inductive nf : Set :=
 | nf_typ : nat -> nf
 (** A small universe at a canonical level [max (c, k₁ + a₁, …)], in the shape
     of [nf_lvl] below *)
-| nf_univ : nat -> lvl_atoms -> nf
+| nf_univ : o2 -> lvl_atoms -> nf
 (** The type [Level] *)
 | nf_level : nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
     [ne_cmp] (see [Core.Syntactic.Levels]) with no repetition, and the
     constant [c] is [0] unless it exceeds every offset.  [nf_lvl_of] builds
     the normal form of a canonical level [lvl]. *)
-| nf_lvl : nat -> lvl_atoms -> nf
+| nf_lvl : o2 -> lvl_atoms -> nf
 (** [ℕ] *)
 | nf_nat : nf
 (** [zero] *)
@@ -1167,7 +1172,7 @@ Coercion ne_to_exp : ne >-> exp.
     A canonical level is its constant and its atoms.  The operations on
     canonical levels, and their order, are [Core.Syntactic.Levels]; the type
     is here because the universe normal forms below are indexed by it. *)
-Definition lvl : Set := (nat * lvl_atoms)%type.
+Definition lvl : Set := (o2 * lvl_atoms)%type.
 
 Definition nf_lvl_of (l : lvl) : nf := nf_lvl (fst l) (snd l).
 
@@ -1193,12 +1198,12 @@ Qed.
     The universe a type is inferred at, as the algorithmic layer sees it: a
     small universe at a canonical level, or a large one.  It is not the
     semantic index [uidx]: a small universe's semantic index is the realiser
-    of its level, a natural number, while the checker compares the canonical
+    of its level, an ordinal below ω², while the checker compares the canonical
     levels themselves (see [Core.Syntactic.Levels]: [unf_le], [unf_max]). *)
 Inductive unf : Set :=
 (** A small universe at a canonical level *)
 | uns : lvl -> unf
-(** The large universe [Typeω+n] *)
+(** The large universe [Typeω²+n] *)
 | unl : nat -> unf.
 
 Coercion unl : nat >-> unf.
@@ -1292,7 +1297,7 @@ Module Nf_Notations.
   Notation "'⊥ⁿ'" := nf_False : mctt_scope.
   Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
-  Notation "'Typeⁿ' @ n" := (nf_univ n la_nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
+  Notation "'Typeⁿ' @ n" := (nf_univ (ofin n) la_nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
   Notation "'Levelⁿ'" := nf_level : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.

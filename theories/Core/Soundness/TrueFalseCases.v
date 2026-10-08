@@ -51,7 +51,7 @@ Proof. intros; apply (glu_rel_exp_True_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_True_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ ⊤ : Type@0.
-Proof. intros; apply (glu_rel_exp_True_univ (u := us 0)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_True_univ (u := us oz)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_True : mctt.
 
@@ -82,7 +82,7 @@ Proof. intros; apply (glu_rel_exp_False_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_False_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ ⊥ : Type@0.
-Proof. intros; apply (glu_rel_exp_False_univ (u := us 0)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_False_univ (u := us oz)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_False : mctt.
 

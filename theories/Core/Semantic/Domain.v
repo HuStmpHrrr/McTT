@@ -41,7 +41,7 @@ Inductive domain : Set :=
     flattens, so the same level has many values; readback canonicalises.  A
     neutral level is not of this shape — it is [⇑ Levelᵈ m] — so the level
     operations take the flat view ([dlvl_view]) of their arguments. *)
-| d_lvl : nat -> list (nat * domain_ne) -> domain
+| d_lvl : o2 -> list (nat * domain_ne) -> domain
 (** [zero] *)
 | d_zero : domain
 (** [succ] *)
@@ -181,78 +181,79 @@ End Domain_Notations.
 
 (** The value of the universe at an index, at either tier. *)
 Definition ulvl_val (u : uidx) : domain :=
-  match u with us n => d_suniv (d_lvl n nil) | ul n => d_univ n end.
+  match u with us o => d_suniv (d_lvl o nil) | ul n => d_univ n end.
 
 (** ** Level Values
 
     The flat view of a value of type [Level]: a flat level is its own view, and
     a neutral is the single atom [(0, m)].  No other value has type [Level], so
     the default is never used. *)
-Definition dlvl_view (d : domain) : nat * list (nat * domain_ne) :=
+Definition dlvl_view (d : domain) : o2 * list (nat * domain_ne) :=
   match d with
   | d_lvl c xs => (c, xs)
-  | d_neut _ m => (0, (0, m) :: nil)
-  | _ => (0, nil)
+  | d_neut _ m => (oz, (0, m) :: nil)
+  | _ => (oz, nil)
   end.
 
-Definition dlvl_cst (d : domain) : nat := fst (dlvl_view d).
+Definition dlvl_cst (d : domain) : o2 := fst (dlvl_view d).
 Definition dlvl_atoms (d : domain) : list (nat * domain_ne) := snd (dlvl_view d).
 
 (** The successor and the join of levels: both only flatten. *)
 Definition dlvl_suc (d : domain) : domain :=
-  d_lvl (S (dlvl_cst d)) (List.map (fun ka => (S (fst ka), snd ka)) (dlvl_atoms d)).
+  d_lvl (osuc (dlvl_cst d)) (List.map (fun ka => (S (fst ka), snd ka)) (dlvl_atoms d)).
 
 Definition dlvl_max (d e : domain) : domain :=
-  d_lvl (Nat.max (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
+  d_lvl (omax (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
 
-Definition dlvl_lit (n : nat) : domain := d_lvl n nil.
+Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
 
 (** ** The Realiser of a Level Value
 
     The value of a level when every atom is [0].  It is the index of a small
-    universe in the PER and gluing models: those are indexed by naturals, and
-    a level's canonical form depends on the length of the context, so no finer
-    index would be stable.  See [Core.Syntactic.Levels.lvl_real]. *)
+    universe in the PER and gluing models: those are indexed by ordinals, and
+    a level's canonical form depends on the length of the context, so no
+    finer index would be stable.  See [Core.Syntactic.Levels.lvl_real]. *)
 (** The maximum of the offsets of the atoms and the constant.  The constant is
-    the base of the fold rather than a [Nat.max] on top of it, so that the
+    the base of the fold rather than an [omax] on top of it, so that the
     realiser of a literal level is that literal by computation. *)
-Fixpoint dla_max (c : nat) (xs : list (nat * domain_ne)) : nat :=
+Fixpoint dla_max (c : o2) (xs : list (nat * domain_ne)) : o2 :=
   match xs with
   | nil => c
-  | ka :: r => Nat.max (fst ka) (dla_max c r)
+  | ka :: r => omax (ofin (fst ka)) (dla_max c r)
   end.
 
-Definition dlvl_real (d : domain) : nat := dla_max (dlvl_cst d) (dlvl_atoms d).
+Definition dlvl_real (d : domain) : o2 := dla_max (dlvl_cst d) (dlvl_atoms d).
 
-Fact dlvl_real_lit : forall n, dlvl_real (dlvl_lit n) = n.
+Fact dlvl_real_lit : forall o, dlvl_real (dlvl_lit o) = o.
 Proof. reflexivity. Qed.
 
-Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = 0.
+Fact dlvl_real_neut : forall a m, dlvl_real (d_neut a m) = oz.
 Proof. reflexivity. Qed.
 
 Fact dla_max_app : forall c c' xs ys,
-    dla_max (Nat.max c c') (xs ++ ys) = Nat.max (dla_max c xs) (dla_max c' ys).
+    dla_max (omax c c') (xs ++ ys) = omax (dla_max c xs) (dla_max c' ys).
 Proof.
   intros c c' xs ys; induction xs as [| ka xs IH]; cbn [dla_max List.app].
-  - induction ys as [| ka ys IH]; cbn [dla_max]; [ reflexivity | lia ].
-  - rewrite IH; lia.
+  - induction ys as [| ka ys IH]; cbn [dla_max]; [ reflexivity |].
+    rewrite IH; generalize (dla_max c' ys); intros; ord.
+  - rewrite IH; generalize (dla_max c xs) (dla_max c' ys); intros; ord.
 Qed.
 
 Fact dla_max_suc : forall c xs,
-    dla_max (S c) (List.map (fun ka => (S (fst ka), snd ka)) xs) = S (dla_max c xs).
+    dla_max (osuc c) (List.map (fun ka => (S (fst ka), snd ka)) xs) = osuc (dla_max c xs).
 Proof.
   intros c xs; induction xs as [| ka xs IH]; cbn [dla_max List.map fst snd];
-    [ reflexivity | rewrite IH; lia ].
+    [ reflexivity | rewrite IH; generalize (dla_max c xs); intros; ord ].
 Qed.
 
-Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = S (dlvl_real l).
+Fact dlvl_real_suc : forall l, dlvl_real (dlvl_suc l) = osuc (dlvl_real l).
 Proof.
   intros; unfold dlvl_real, dlvl_suc, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
   apply dla_max_suc.
 Qed.
 
 Fact dlvl_real_max : forall l l',
-    dlvl_real (dlvl_max l l') = Nat.max (dlvl_real l) (dlvl_real l').
+    dlvl_real (dlvl_max l l') = omax (dlvl_real l) (dlvl_real l').
 Proof.
   intros; unfold dlvl_real, dlvl_max, dlvl_cst, dlvl_atoms; cbn [dlvl_view fst snd].
   apply dla_max_app.

@@ -39,7 +39,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** Every level is of type [Level]; the two operations check their
     arguments. *)
 | ati_llit :
-  `( Γ ⊢a 𝕃@n ⟹ Levelⁿ )
+  `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ )
 | ati_succl :
   `( Γ ⊢a M ⟸ Level ->
      Γ ⊢a succl M ⟹ Levelⁿ )

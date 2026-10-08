@@ -101,8 +101,8 @@ Qed.
 #[export]
 Hint Resolve wf_level_inversion : mctt.
 
-Corollary wf_llit_inversion : forall Θ Ξ Γ A n,
-    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n : A ->
+Corollary wf_llit_inversion : forall Θ Ξ Γ A o,
+    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
 Proof.
   intros * H.

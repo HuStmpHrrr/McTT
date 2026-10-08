@@ -294,7 +294,7 @@ Section type_check.
   | ti_typ : forall {i}, type_infer_order Typeω@i
   | ti_suniv : forall {M}, type_check_order M -> type_infer_order Type⟨M⟩
   | ti_level : type_infer_order Level
-  | ti_llit : forall {n}, type_infer_order 𝕃@n
+  | ti_llit : forall {o}, type_infer_order (𝕃ᵒ o)
   | ti_succl : forall {M}, type_check_order M -> type_infer_order (succl M)
   | ti_maxl : forall {M N}, type_check_order M -> type_check_order N -> type_infer_order (maxl M N)
   | ti_nat : type_infer_order ℕ
@@ -907,7 +907,7 @@ Section type_check.
         pureo (exist _ W _)
     | Level =>
         pureo (exist _ Typeⁿ@0 _)
-    | 𝕃@m =>
+    | 𝕃ᵒ m =>
         pureo (exist _ Levelⁿ _)
     | succl M' =>
         let*b->o _ := type_check_in G Level _ P M' _ while _ in

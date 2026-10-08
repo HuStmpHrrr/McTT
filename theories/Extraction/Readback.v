@@ -13,7 +13,7 @@ Generalizable All Variables.
     back as [nf_lvl_of] of a canonical level ([read_nf_level_lvl_of_nf]), so
     the default is never reached. *)
 Definition lvl_of_nf (W : nf) : lvl :=
-  match W with nf_lvl c xs => (c, xs) | _ => (0, la_nil) end.
+  match W with nf_lvl c xs => (c, xs) | _ => (oz, la_nil) end.
 
 Lemma read_nf_level_lvl_of_nf : forall Θ Ξ s l W,
     Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
@@ -192,7 +192,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
 | s, ⇓ Levelᵈ (⇑ _ m), H =>
     let (M, HM) := read_ne_impl s m _ in
-    exist _ (lvⁿ 0 (la_cons 0 M la_nil)) _
+    exist _ (lvⁿ oz (la_cons 0 M la_nil)) _
 | s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
 | s, ⇓ ℕᵈ (succᵈ m) , H =>
     let (M, HM) := read_nf_impl s ⇓ ℕᵈ m _ in

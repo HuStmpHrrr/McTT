@@ -56,7 +56,7 @@ Hint Constructors glu_nat : mctt.
 (** The gluing predicates take the ambient universe as a *term* [U].  It is
     the large universe of the tier, [Typeω@(ulvl i)]: [Typeω@i] in the large
     tier, and [Typeω@0] at every small index.  A small universe's index is the
-    realiser of its level, a natural number, while the universe a small type
+    realiser of its level, an ordinal below ω², while the universe a small type
     is in is [Type⟨t⟩] for a level *term* [t]; no term is determined by the
     index, so the only ambient that every small type at that index shares is
     the large universe they are all below ([wf_subtyp_small_large]).
@@ -285,25 +285,43 @@ End Gluing.
 Hint Constructors glu_univ_elem_core : mctt.
 
 (** The universes below an index, indexed by theirs, as for
-    [per_univ_below]: the recursion is structural, so [glu_univ_elem] unfolds
-    by computation. *)
+    [per_univ_below]: the recursion is structural, nested on the tier and the
+    offset of a small index, so [glu_univ_elem] unfolds by computation. *)
 Definition glu_empty : domain -> glu_typ_pred := fun _ _ _ => False.
 
-Fixpoint glu_univ_below_s (j : nat) : nat -> domain -> glu_typ_pred :=
-  match j with
+Definition glu_rec_at (a : nat) (lower : nat -> nat -> domain -> glu_typ_pred) (inner : nat -> domain -> glu_typ_pred)
+  : uidx -> domain -> glu_typ_pred :=
+  fun v => match v with
+        | us (a', b') => if a' <? a then lower a' b' else if a' =? a then inner b' else glu_empty
+        | ul _ => glu_empty
+        end.
+
+Fixpoint glu_univ_below_in (a : nat) (lower : nat -> nat -> domain -> glu_typ_pred) (b : nat)
+  : nat -> domain -> glu_typ_pred :=
+  match b with
   | 0 => fun _ => glu_empty
-  | S j' => fun m =>
-      if Nat.eqb m j'
-      then fun a Γ A => exists P El, DG a ∈ glu_univ_elem_core (us j')
-                                  (fun v => match v with us k => glu_univ_below_s j' k | ul _ => glu_empty end) ↘ P ↘ El /\ Γ ⊢ A ® P
-      else glu_univ_below_s j' m
+  | S b' => fun m =>
+      if Nat.eqb m b'
+      then fun x Γ A => exists P El, DG x ∈ glu_univ_elem_core (us (a, b'))
+                                  (glu_rec_at a lower (glu_univ_below_in a lower b')) ↘ P ↘ El /\ Γ ⊢ A ® P
+      else glu_univ_below_in a lower b' m
   end.
 
-Definition glu_univ_rec_s (j : nat) : uidx -> domain -> glu_typ_pred :=
-  fun v => match v with us k => glu_univ_below_s j k | ul _ => glu_empty end.
+Definition glu_tier (a : nat) (lower : nat -> nat -> domain -> glu_typ_pred) (b : nat) : domain -> glu_typ_pred :=
+  fun x Γ A => exists P El, DG x ∈ glu_univ_elem_core (us (a, b))
+                         (glu_rec_at a lower (glu_univ_below_in a lower b)) ↘ P ↘ El /\ Γ ⊢ A ® P.
 
-Definition glu_suniv (m : nat) : domain -> glu_typ_pred :=
-  fun a Γ A => exists P El, DG a ∈ glu_univ_elem_core (us m) (glu_univ_rec_s m) ↘ P ↘ El /\ Γ ⊢ A ® P.
+Fixpoint glu_tiers_below (a : nat) : nat -> nat -> domain -> glu_typ_pred :=
+  match a with
+  | 0 => fun _ _ => glu_empty
+  | S a' => fun a'' => if Nat.eqb a'' a' then glu_tier a' (glu_tiers_below a') else glu_tiers_below a' a''
+  end.
+
+Definition glu_univ_rec_s (j : o2) : uidx -> domain -> glu_typ_pred :=
+  glu_rec_at (fst j) (glu_tiers_below (fst j)) (glu_univ_below_in (fst j) (glu_tiers_below (fst j)) (snd j)).
+
+Definition glu_suniv (m : o2) : domain -> glu_typ_pred :=
+  glu_tier (fst m) (glu_tiers_below (fst m)) (snd m).
 
 Fixpoint glu_univ_below_l (n : nat) : nat -> domain -> glu_typ_pred :=
   match n with
@@ -335,18 +353,31 @@ Lemma glu_univ_below_spec : forall i j,
     uidx_lt j i ->
     glu_univ_below i j = fun a Γ A => exists P El, DG a ∈ glu_univ_elem j ↘ P ↘ El /\ Γ ⊢ A ® P.
 Proof.
-  assert (Hs : forall j m, m < j -> glu_univ_below_s j m = fun a Γ A => exists P El, DG a ∈ glu_univ_elem (us m) ↘ P ↘ El /\ Γ ⊢ A ® P).
-  { induction j as [| j IHj]; intros m Hlt; [lia |].
+  assert (Hin : forall a lower b m, m < b -> glu_univ_below_in a lower b m = glu_tier a lower m).
+  { intros a lower b; induction b as [| b IHb]; intros m Hlt; [lia |].
     simpl.
-    destruct (Nat.eqb_spec m j) as [-> | Hneq]; [reflexivity |].
-    apply IHj; lia. }
+    destruct (Nat.eqb_spec m b) as [-> | Hneq]; [reflexivity |].
+    apply IHb; lia. }
+  assert (Htiers : forall a a', a' < a -> glu_tiers_below a a' = glu_tier a' (glu_tiers_below a')).
+  { induction a as [| a IHa]; intros a' Hlt; [lia |].
+    simpl.
+    destruct (Nat.eqb_spec a' a) as [-> | Hneq]; [reflexivity |].
+    apply IHa; lia. }
+  assert (Htier : forall a b, glu_tier a (glu_tiers_below a) b
+                         = fun x Γ A => exists P El, DG x ∈ glu_univ_elem (us (a, b)) ↘ P ↘ El /\ Γ ⊢ A ® P).
+  { reflexivity. }
   assert (Hl : forall n m, m < n -> glu_univ_below_l n m = fun a Γ A => exists P El, DG a ∈ glu_univ_elem (ul m) ↘ P ↘ El /\ Γ ⊢ A ® P).
   { induction n as [| n IHn]; intros m Hlt; [lia |].
     simpl.
     destruct (Nat.eqb_spec m n) as [-> | Hneq]; [reflexivity |].
     apply IHn; lia. }
-  intros [j | n] [m | m] Hlt; cbn in Hlt; try contradiction.
-  - apply Hs; assumption.
+  intros [[a b] | n] [[a' b'] | m] Hlt; cbn in Hlt; try contradiction.
+  - unfold glu_univ_below, glu_univ_rec_s, glu_rec_at; cbn [fst snd].
+    unfold olt in Hlt; cbn [fst snd] in Hlt.
+    destruct (Nat.ltb_spec a' a) as [Ha | Ha].
+    + rewrite Htiers by exact Ha; apply Htier.
+    + destruct (Nat.eqb_spec a' a) as [-> | Hne]; [| lia ].
+      rewrite Hin by lia; apply Htier.
   - reflexivity.
   - apply Hl; assumption.
 Qed.

@@ -47,13 +47,13 @@ Hint Resolve wf_exp_eq_succl_n_cong : mctt.
 Fact succl_n_add : forall k k' M, succl_n (k + k') M = succl_n k (succl_n k' M).
 Proof. intros k; induction k; intros; cbn; [ reflexivity | rewrite IHk; reflexivity ]. Qed.
 
-(** A literal is the iterated successor of [𝕃@0]. *)
-Lemma wf_exp_eq_llit_succl_n : forall {Γ} n,
+(** A literal [ω·a + n] is the [n]-th successor of the limit [ω·a]. *)
+Lemma wf_exp_eq_llit_succl_n : forall {Γ} a n,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n ≈ succl_n n (𝕃@0) : Level.
+    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ(a, n) ≈ succl_n n (𝕃ᵒ(a, 0)) : Level.
 Proof.
-  intros ? n HΓ; induction n; cbn; [ mauto 3 |].
-  transitivity (succl (𝕃@n)); [ mauto 3 |].
+  intros ? a n HΓ; induction n; cbn; [ mauto 3 |].
+  transitivity (succl (𝕃ᵒ(a, n))); [ mauto 3 |].
   apply wf_exp_eq_succl_cong; exact IHn.
 Qed.
 
@@ -204,7 +204,7 @@ Proof.
   (** [𝕃@c] is [succl^c 𝕃@0], and [succl^k M] is [succl^c (succl^(k-c) M)];
       the join distributes over the common prefix and [𝕃@0] is the unit. *)
   transitivity (maxl (succl_n c (𝕃@0)) (succl_n c (succl_n (k - c) M))).
-  { apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_llit_succl_n; assumption |].
+  { apply wf_exp_eq_maxl_cong; [ apply (wf_exp_eq_llit_succl_n 0); assumption |].
     rewrite <- succl_n_add; replace (c + (k - c)) with k by lia; mauto 3. }
   transitivity (succl_n c (maxl (𝕃@0) (succl_n (k - c) M)));
     [ apply wf_exp_eq_sym, wf_exp_eq_succl_n_maxl; mauto 3 |].
@@ -265,7 +265,7 @@ Fixpoint lvl_tm_from (hd : exp) (xs : lvl_atoms) : exp :=
   | la_cons k a r => maxl (succl_n k (a : exp)) (lvl_tm_from hd r)
   end.
 
-Definition lvl_tm (c : nat) (xs : lvl_atoms) : exp := lvl_tm_from (𝕃@c) xs.
+Definition lvl_tm (c : o2) (xs : lvl_atoms) : exp := lvl_tm_from (𝕃ᵒ c) xs.
 
 Lemma lvl_tm_from_wf : forall {Γ} hd xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ hd : Level ->
@@ -335,43 +335,46 @@ Lemma lvl_exp_of_tm : forall {Γ} c xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_exp_of c (la_to_list xs) ≈ lvl_tm c xs : Level.
 Proof.
   intros Γ c xs HΓ Hxs; unfold lvl_tm.
-  destruct xs as [| k a r]; cbn; [ destruct c; mauto 3 |].
+  destruct xs as [| k a r]; cbn; [ mauto 3 |].
   destruct Hxs as [Ha Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level) by (apply (wf_succl_n k); exact Ha).
   assert (Hz : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@0 : Level) by mauto 3.
   assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@0) r : Level) by (apply lvl_tm_from_wf; assumption).
-  destruct c.
-  - (** With atoms and no constant, the fold starts at the first atom. *)
-    transitivity (lvl_tm_from (succl_n k a) r);
-      [ apply lvl_fold_tm_from; [ exact Hka | exact Hr ] |].
-    apply lvl_tm_from_out; [ exact Hka | exact Hr ].
-  - assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@(S c) : Level) by mauto 3.
-    assert (Hhd : Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃@(S c)) (succl_n k a) : Level)
+  assert (Hgen : forall c', c' <> oz ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_fold (maxl (𝕃ᵒ c') (succl_n k a)) (la_to_list r) ≈ lvl_tm_from (𝕃ᵒ c') (la_cons k a r) : Level).
+  { intros c' _; cbn [lvl_tm_from].
+    assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c' : Level) by mauto 3.
+    assert (Hhd : Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ c') (succl_n k a) : Level)
       by (apply wf_maxl; [ exact Hc | exact Hka ]).
-    transitivity (lvl_tm_from (maxl (𝕃@(S c)) (succl_n k a)) r);
+    transitivity (lvl_tm_from (maxl (𝕃ᵒ c') (succl_n k a)) r);
       [ apply lvl_fold_tm_from; [ exact Hhd | exact Hr ] |].
-    transitivity (maxl (maxl (𝕃@(S c)) (succl_n k a)) (lvl_tm_from (𝕃@0) r));
+    transitivity (maxl (maxl (𝕃ᵒ c') (succl_n k a)) (lvl_tm_from (𝕃@0) r));
       [ apply lvl_tm_from_out; [ exact Hhd | exact Hr ] |].
-    transitivity (maxl (maxl (succl_n k a) (𝕃@(S c))) (lvl_tm_from (𝕃@0) r));
+    transitivity (maxl (maxl (succl_n k a) (𝕃ᵒ c')) (lvl_tm_from (𝕃@0) r));
       [ apply wf_exp_eq_maxl_cong;
         [ apply wf_exp_eq_maxl_comm; [ exact Hc | exact Hka ] | mauto 3 ] |].
-    transitivity (maxl (succl_n k a) (maxl (𝕃@(S c)) (lvl_tm_from (𝕃@0) r)));
+    transitivity (maxl (succl_n k a) (maxl (𝕃ᵒ c') (lvl_tm_from (𝕃@0) r)));
       [ apply wf_exp_eq_maxl_assoc; assumption |].
     apply wf_exp_eq_maxl_cong;
-      [ mauto 3 | apply wf_exp_eq_sym, lvl_tm_from_out; [ exact Hc | exact Hr ] ].
+      [ mauto 3 | apply wf_exp_eq_sym, lvl_tm_from_out; [ exact Hc | exact Hr ] ]. }
+  destruct c as [[| c1] [| c2]]; try (apply Hgen; discriminate).
+  (** With atoms and no constant, the fold starts at the first atom. *)
+  transitivity (lvl_tm_from (succl_n k a) r);
+    [ apply lvl_fold_tm_from; [ exact Hka | exact Hr ] |].
+  apply lvl_tm_from_out; [ exact Hka | exact Hr ].
 Qed.
 
 (** Two literals join at the larger one. *)
 Lemma wf_exp_eq_maxl_llit : forall {Γ} c d,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃@c) (𝕃@d) ≈ 𝕃@(Nat.max c d) : Level.
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ c) (𝕃ᵒ d) ≈ 𝕃ᵒ (omax c d) : Level.
 Proof.
   intros Γ c d HΓ.
-  transitivity (maxl (succl_n c (𝕃@0)) (succl_n d (𝕃@0)));
-    [ apply wf_exp_eq_maxl_cong; apply wf_exp_eq_llit_succl_n; assumption |].
-  transitivity (succl_n (Nat.max c d) (𝕃@0));
-    [ apply wf_exp_eq_maxl_succl_n; mauto 3 |].
-  apply wf_exp_eq_sym, wf_exp_eq_llit_succl_n; assumption.
+  destruct (ole_or_olt c d) as [Hle | Hlt].
+  - rewrite omax_r by exact Hle; apply wf_exp_eq_maxl_llit_ole; assumption.
+  - rewrite omax_l by (apply olt_ole; exact Hlt).
+    transitivity (maxl (𝕃ᵒ d) (𝕃ᵒ c)); [ apply wf_exp_eq_maxl_comm; mauto 3 |].
+    apply wf_exp_eq_maxl_llit_ole; [ assumption | apply olt_ole; exact Hlt ].
 Qed.
 
 (** The two operations on the fold: the successor raises every offset and the
@@ -380,15 +383,15 @@ Qed.
 Lemma lvl_tm_suc : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ succl (lvl_tm c xs) ≈ lvl_tm (S c) (la_suc xs) : Level.
+    Θ ⍮ Ξ ⍮ Γ ⊢ succl (lvl_tm c xs) ≈ lvl_tm (osuc c) (la_suc xs) : Level.
 Proof.
   intros Γ c xs HΓ; revert c; induction xs as [| k a r IH]; cbn; intros c Hxs;
-    [ unfold lvl_tm; cbn; apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption |].
+    [ unfold lvl_tm; cbn; destruct c; apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption |].
   destruct Hxs as [Ha Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level) by (apply (wf_succl_n k); exact Ha).
   assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c r : Level) by (apply lvl_tm_wf; assumption).
   unfold lvl_tm in *; cbn in *.
-  transitivity (maxl (succl (succl_n k a)) (succl (lvl_tm_from (𝕃@c) r)));
+  transitivity (maxl (succl (succl_n k a)) (succl (lvl_tm_from (𝕃ᵒ c) r)));
     [ apply wf_exp_eq_succl_maxl; assumption |].
   apply wf_exp_eq_maxl_cong; [ mauto 3 | apply IH; exact Hr ].
 Qed.
@@ -397,19 +400,19 @@ Lemma lvl_tm_max : forall {Γ} c xs d ys,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
     la_wf Γ ys ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (Nat.max c d) (la_app xs ys) : Level.
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (lvl_tm c xs) (lvl_tm d ys) ≈ lvl_tm (omax c d) (la_app xs ys) : Level.
 Proof.
   intros Γ c xs d ys HΓ; revert c; induction xs as [| k a r IH]; cbn; intros c Hxs Hys.
   - (** No atom on the left: the two constants join in front of the right. *)
-    assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@c : Level) by mauto 3.
-    assert (Hd : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@d : Level) by mauto 3.
+    assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level) by mauto 3.
+    assert (Hd : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ d : Level) by mauto 3.
     assert (HT0 : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@0) ys : Level) by (apply lvl_tm_from_wf; mauto 3).
     unfold lvl_tm; cbn.
-    transitivity (maxl (𝕃@c) (maxl (𝕃@d) (lvl_tm_from (𝕃@0) ys)));
+    transitivity (maxl (𝕃ᵒ c) (maxl (𝕃ᵒ d) (lvl_tm_from (𝕃@0) ys)));
       [ apply wf_exp_eq_maxl_cong; [ mauto 3 | apply lvl_tm_from_out; [ exact Hd | exact Hys ] ] |].
-    transitivity (maxl (maxl (𝕃@c) (𝕃@d)) (lvl_tm_from (𝕃@0) ys));
+    transitivity (maxl (maxl (𝕃ᵒ c) (𝕃ᵒ d)) (lvl_tm_from (𝕃@0) ys));
       [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; assumption |].
-    transitivity (maxl (𝕃@(Nat.max c d)) (lvl_tm_from (𝕃@0) ys));
+    transitivity (maxl (𝕃ᵒ (omax c d)) (lvl_tm_from (𝕃@0) ys));
       [ apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_maxl_llit; assumption | mauto 3 ] |].
     apply wf_exp_eq_sym, lvl_tm_from_out; [ mauto 3 | exact Hys ].
   - destruct Hxs as [Ha Hr].
@@ -417,7 +420,7 @@ Proof.
     assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c r : Level) by (apply lvl_tm_wf; assumption).
     assert (Hyt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm d ys : Level) by (apply lvl_tm_wf; assumption).
     unfold lvl_tm in *; cbn in *.
-    transitivity (maxl (succl_n k a) (maxl (lvl_tm_from (𝕃@c) r) (lvl_tm_from (𝕃@d) ys)));
+    transitivity (maxl (succl_n k a) (maxl (lvl_tm_from (𝕃ᵒ c) r) (lvl_tm_from (𝕃ᵒ d) ys)));
       [ apply wf_exp_eq_maxl_assoc; assumption |].
     apply wf_exp_eq_maxl_cong; [ mauto 3 | apply IH; assumption ].
 Qed.
@@ -435,13 +438,13 @@ Proof.
   destruct Hys as [Hb Hr].
   assert (Hka : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k a : Level) by (apply (wf_succl_n k); exact Ha).
   assert (Hk'b : Θ ⍮ Ξ ⍮ Γ ⊢ succl_n k' b : Level) by (apply (wf_succl_n k'); exact Hb).
-  assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@c : Level) by mauto 3.
-  assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃@c) r : Level) by (apply lvl_tm_from_wf; assumption).
+  assert (Hc : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ c : Level) by mauto 3.
+  assert (Hrt : Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm_from (𝕃ᵒ c) r : Level) by (apply lvl_tm_from_wf; assumption).
   destruct (ne_cmp a b) eqn:E; cbn.
   - (** The same atom: the two offsets merge at the larger one. *)
     apply ne_cmp_eq in E; subst b.
     unfold lvl_tm; cbn.
-    transitivity (maxl (maxl (succl_n k a) (succl_n k' a)) (lvl_tm_from (𝕃@c) r));
+    transitivity (maxl (maxl (succl_n k a) (succl_n k' a)) (lvl_tm_from (𝕃ᵒ c) r));
       [ apply wf_exp_eq_maxl_cong;
         [ apply wf_exp_eq_sym, wf_exp_eq_maxl_succl_n; exact Ha
         | apply wf_exp_eq_refl; exact Hrt ] |].
@@ -451,11 +454,11 @@ Proof.
     apply wf_exp_eq_refl, wf_maxl; [ exact Hka | apply wf_maxl; [ exact Hk'b | exact Hrt ] ].
   - (** Above the head: the atom goes past it, by the swap. *)
     unfold lvl_tm in *; cbn.
-    transitivity (maxl (succl_n k' b) (maxl (succl_n k a) (lvl_tm_from (𝕃@c) r)));
+    transitivity (maxl (succl_n k' b) (maxl (succl_n k a) (lvl_tm_from (𝕃ᵒ c) r)));
       [ apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_refl; exact Hk'b | apply IH; exact Hr ] |].
-    transitivity (maxl (maxl (succl_n k' b) (succl_n k a)) (lvl_tm_from (𝕃@c) r));
+    transitivity (maxl (maxl (succl_n k' b) (succl_n k a)) (lvl_tm_from (𝕃ᵒ c) r));
       [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; [ exact Hk'b | exact Hka | exact Hrt ] |].
-    transitivity (maxl (maxl (succl_n k a) (succl_n k' b)) (lvl_tm_from (𝕃@c) r));
+    transitivity (maxl (maxl (succl_n k a) (succl_n k' b)) (lvl_tm_from (𝕃ᵒ c) r));
       [ apply wf_exp_eq_maxl_cong;
         [ apply wf_exp_eq_maxl_comm; [ exact Hk'b | exact Hka ] | apply wf_exp_eq_refl; exact Hrt ] |].
     apply wf_exp_eq_maxl_assoc; [ exact Hka | exact Hk'b | exact Hrt ].
@@ -474,12 +477,13 @@ Proof.
   apply wf_exp_eq_maxl_cong; [ mauto 3 | apply IH; assumption ].
 Qed.
 
-(** The constant is dropped when some atom's offset dominates it. *)
-Lemma lvl_tm_drop : forall {Γ} c xs,
+(** The constant is dropped when some atom's offset dominates it; such a
+    constant is finite. *)
+Lemma lvl_tm_drop_fin : forall {Γ} c xs,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     la_wf Γ xs ->
     c <= la_maxoff xs ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm 0 xs : Level.
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm (ofin c) xs ≈ lvl_tm oz xs : Level.
 Proof.
   intros Γ c xs HΓ; induction xs as [| k a r IH]; cbn; intros Hxs Hle.
   - (** No atom: the constant is [0] already. *)
@@ -507,6 +511,17 @@ Proof.
       apply IH; assumption.
 Qed.
 
+Lemma lvl_tm_drop : forall {Γ} c xs,
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    la_wf Γ xs ->
+    ole c (ofin (la_maxoff xs)) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm oz xs : Level.
+Proof.
+  intros Γ [a c] xs HΓ Hxs Hle.
+  assert (a = 0) as -> by (unfold ole in Hle; cbn in Hle; lia).
+  apply lvl_tm_drop_fin; [ assumption | assumption | unfold ole in Hle; cbn in Hle; lia ].
+Qed.
+
 (** ** The Canonical Form
 
     The equation soundness needs: a level is equal to its canonical form. *)
@@ -516,7 +531,8 @@ Theorem lvl_tm_canon : forall {Γ} c xs,
     Θ ⍮ Ξ ⍮ Γ ⊢ lvl_tm c xs ≈ lvl_tm (fst (lvl_canon (c, xs))) (snd (lvl_canon (c, xs))) : Level.
 Proof.
   intros Γ c xs HΓ Hxs; unfold lvl_canon; cbn.
-  destruct (Nat.leb_spec c (la_maxoff (la_sort xs))) as [Hle | Hgt]; cbn.
+  destruct (o2_dominated c (la_maxoff (la_sort xs))) eqn:Hle; cbn;
+    [ apply o2_dominated_spec in Hle |].
   - transitivity (lvl_tm c (la_sort xs));
       [ apply wf_exp_eq_sym, lvl_tm_sort; assumption |].
     apply lvl_tm_drop; [ assumption | apply la_wf_sort; assumption | assumption ].
@@ -576,11 +592,10 @@ Lemma lvl_exp_of_la_wf : forall {Γ} c xs,
     la_wf Γ xs.
 Proof.
   intros Γ c xs H; destruct xs as [| k a r]; cbn in *; [ exact I |].
-  destruct c.
-  - split; [| eapply lvl_fold_la_wf; exact H ].
-    apply lvl_fold_hd_wf in H; apply (wf_succl_n_inversion k); exact H.
-  - split; [| eapply lvl_fold_la_wf; exact H ].
-    apply lvl_fold_hd_wf in H; apply wf_maxl_inversion in H as (_ & H & _).
+  destruct c as [[| c1] [| c2]];
+    (split; [| eapply lvl_fold_la_wf; exact H ]);
+    apply lvl_fold_hd_wf in H;
+    try (apply wf_maxl_inversion in H as (_ & H & _));
     apply (wf_succl_n_inversion k); exact H.
 Qed.
 
@@ -617,7 +632,7 @@ Proof.
                        (snd (lvl_canon (lvl_max (c, xs) (d, ys))))).
   - transitivity (maxl (lvl_tm c xs) (lvl_tm d ys));
       [ apply wf_exp_eq_maxl_cong; apply lvl_exp_of_tm; assumption |].
-    transitivity (lvl_tm (Nat.max c d) (la_app xs ys));
+    transitivity (lvl_tm (omax c d) (la_app xs ys));
       [ apply lvl_tm_max; assumption |].
     apply lvl_tm_canon; [ assumption | cbn; apply la_wf_app; assumption ].
   - unfold lvl_le in Hle; rewrite Hle.

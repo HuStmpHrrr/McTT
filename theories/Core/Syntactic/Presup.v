@@ -51,9 +51,10 @@ Proof.
       is the only one of that shape. *)
   all: try solve [ apply wf_univ_cong_right; mauto 2 ].
 
-  (** The right-hand side of the distributivity equation of levels is one
-      level operation deeper than [mauto 3] reaches. *)
-  - mauto 4.
+  (** The left-hand side of the limit equation and the right-hand side of
+      the distributivity equation of levels are one level operation deeper
+      than [mauto 3] reaches. *)
+  1-2: mauto 4.
 
   (** [rec], right.  The motive varies, so the eliminator has to be built at
       [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by

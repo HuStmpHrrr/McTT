@@ -98,6 +98,7 @@
 ./Core/Syntactic/NfRename.v
 ./Core/Syntactic/Levels.v
 ./Core/Syntactic/LevelEq.v
+./Core/Syntactic/Ordinals.v
 ./Core/Syntactic/Syntax.v
 ./Core/Syntactic/System.v
 ./Core/Syntactic/System/Command.v

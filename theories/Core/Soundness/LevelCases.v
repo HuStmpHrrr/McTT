@@ -55,7 +55,7 @@ Proof. intros; apply (glu_rel_exp_level_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_level_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ Level : Type@0.
-Proof. intros; apply (glu_rel_exp_level_univ (u := us 0)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_level_univ (u := us oz)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_level : mctt.
 
@@ -115,7 +115,7 @@ Qed.
     literal itself. *)
 Lemma glu_rel_exp_llit : forall {Γ n},
     ⊩ Γ ->
-    Γ ⊩ 𝕃@n : Level.
+    Γ ⊩ 𝕃ᵒ n : Level.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto 2.
@@ -267,7 +267,7 @@ Proof.
     apply wf_exp_eq_univ_cong_large_tm; [ assumption | mauto 3 | mauto 3 ].
   - rewrite dlvl_real_suc.
     do 2 eexists; split;
-      [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; lia | reflexivity | reflexivity ] |].
+      [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; ord | reflexivity | reflexivity ] |].
     exists M[σ]; split; [ exact Hglu |].
     apply wf_exp_eq_univ_cong_large_tm; [ assumption | assumption | mauto 3 ].
   - intros Δ' φ W Hφ Hr.

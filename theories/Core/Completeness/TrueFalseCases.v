@@ -117,7 +117,7 @@ Qed.
 
 Corollary valid_exp_True_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ⊤ : Type@n.
+    Γ ⊨ ⊤ : Type⟨𝕃ᵒ n⟩.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -143,7 +143,7 @@ Qed.
 
 Corollary valid_exp_False_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ ⊥ : Type@n.
+    Γ ⊨ ⊥ : Type⟨𝕃ᵒ n⟩.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].

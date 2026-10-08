@@ -18,7 +18,7 @@ This is what makes an un-ported fragment a hard error rather than a misparse:
 | level | forms |
 | --- | --- |
 | 0 | closed forms: `ℕ`, `zero`, `Id`, `Wk`, `⋅`, `⋄`, `↑`, `Type⟨t⟩`, `rec … end`, `recⁿ … end`, `recᵈ … end` |
-| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `Typeω@n`, `#n`, `𝕌@l`, `𝕌ω@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `Typeωⁿ@n`, `𝕃@n` |
+| 1, left | postfix and prefix-with-`constr`-argument: `M[σ]`, `M[φ]ʷ`, `ρ↯`, `Type@n`, `Typeω@n`, `#n`, `𝕌@l`, `𝕌ω@n`, `#ᵈ n`, `#ⁿ n`, `Typeⁿ@n`, `Typeωⁿ@n`, `𝕃@n`, `𝕃ᵒ o` |
 | 2 | constructors with a recursive last argument: `succ`, `λ`, `Π`, `⇑`, `⇓`, `⇑!`, `succl`, `maxl`, `univⁿ`, and the `ᵈ`/`ⁿ` counterparts |
 | 10, left | application: `M $ N`, `m $ᵈ n`, `M $ⁿ N` |
 | 20, left | `ρ ↦ m` |
@@ -82,7 +82,7 @@ tier.
 
 | sort | small | large |
 | --- | --- | --- |
-| `exp` | `Type⟨t⟩` (`a_univ t`), `Type@n` (literal level) | `Typeω@n` (`a_typ n`, the universe ω+n) |
+| `exp` | `Type⟨t⟩` (`a_univ t`), `Type@n` (literal level) | `Typeω@n` (`a_typ n`, the universe ω²+n) |
 | `domain` | `𝕌@l` (`d_suniv l`, a level *value*) | `𝕌ω@n` (`d_univ n`) |
 | `nf` | `univⁿ c xs` (`nf_univ c xs`), `Typeⁿ@n` (= `univⁿ n la_nil`) | `Typeωⁿ@n` (`nf_typ n`) |
 
@@ -92,9 +92,12 @@ collide with `sig`.  A small normal form carries a constant and a sorted list
 of level atoms with offsets, which is why `univⁿ` takes two arguments.
 
 `Level` is an ordinary type at each layer: `Level` in `exp`, `Levelᵈ` in
-`domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃@n` (a literal), `succl M` and
-`maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values and
-`nf_lvl_of L` on normal forms.
+`domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃ᵒ o` (a literal: an ordinal
+`o = (a, b)`, that is `ω·a + b`, below ω²; `Core/Syntactic/Ordinals.v`),
+`succl M` and `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values
+and `nf_lvl_of L` on normal forms.  `𝕃@n` is the finite literal
+`𝕃ᵒ (0, n)` and `Type@n` is `Type⟨𝕃@n⟩`: both notations match only a
+finite literal, so a lemma about any literal is stated with `𝕃ᵒ`.
 
 The surface syntax matches: `Type@n` (short for `Type@{nl}`), `Type@nl` and
 `Type@{t}` are small; `Type@ω`, `Type@omega`, their braced forms,

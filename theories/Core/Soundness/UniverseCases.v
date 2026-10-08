@@ -57,7 +57,7 @@ Proof.
         literal, and the readback clause is the premise's. *)
     repeat split.
     + exact H0.
-    + exists 𝕃@n; split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    + exists (𝕃ᵒ n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
     + exists P, El; split; [ exact HPEl | exact (H3 P El HPEl) ].
     + exact Hrb.
   - repeat split.
@@ -88,7 +88,7 @@ Proof.
     pose proof (glu_univ_elem_univ_at (u := u) (i := ul (ulvl_above u)) (uidx_lt_ulvl_above u)).
     handle_functional_glu_univ_elem.
     destruct u as [n | j]; cbn [univ_glu_typ_pred_at ulvl_tm ulvl_above ulvl] in *.
-    + exists 𝕃@n; split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    + exists (𝕃ᵒ n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
     + apply wf_exp_eq_typ_cong; assumption.
   - (** The universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
@@ -208,32 +208,32 @@ Proof.
 Qed.
 
 (** The small universe as a term of the next small universe. *)
-Lemma glu_rel_exp_suniv : forall {Γ} {n : nat},
+Lemma glu_rel_exp_suniv : forall {Γ} {a n : nat},
     ⊩ Γ ->
-    Γ ⊩ Type@n : Type@(S n).
+    Γ ⊩ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
 Proof.
   intros * [Sb HΓ].
   assert (⊢ Γ) by mauto 2.
-  eapply (glu_rel_exp_of_univ (u := us (S n))); [ eassumption |].
+  eapply (glu_rel_exp_of_univ (u := us (a, S n))); [ eassumption |].
   intros Δ σ ρ HΔ.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
   cbn.
   split; [ apply wf_univ_lit; assumption |].
-  exists 𝕌@(dlvl_lit n).
+  exists 𝕌@(dlvl_lit (a, n)).
   split; [ apply eval_exp_univ, eval_exp_llit |].
-  split; [ eexists; apply (per_univ_elem_ulvl_val (us n) (us (S n))); cbn; lia |].
+  split; [ eexists; apply (per_univ_elem_ulvl_val (us (a, n)) (us (a, S n))); cbn; ord |].
   split.
   - intros P El HPEl.
-    pose proof (glu_univ_elem_univ_at (u := us n) (i := us (S n)) ltac:(cbn; lia)).
+    pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ord)).
     handle_functional_glu_univ_elem.
-    cbn; exists 𝕃@n; split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    cbn; exists (𝕃ᵒ(a, n)); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
   - (** The small universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     inversion Hr; subst.
-    assert (Hn := read_nf_dlvl_lit n (length Δ')); unfold dlvl_lit in Hn.
-    assert (L = lvl_lit n) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
+    assert (Hn := read_nf_dlvl_lit (a, n) (length Δ')); unfold dlvl_lit in Hn.
+    assert (L = lvl_lit (a, n)) as -> by (apply nf_lvl_of_inj; eapply functional_read_nf; eassumption).
     cbn; apply wf_exp_eq_univ_cong_lit; assumption.
 Qed.
 

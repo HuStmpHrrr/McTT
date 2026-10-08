@@ -281,7 +281,7 @@ Section Small_Typ.
 Lemma subtyp_suniv_lit_bound : forall {Γ M n L},
     Γ ⊢ Type⟨M⟩ ⊆ Type@n ->
     nbe_f Γ M Level (nf_lvl_of L) ->
-    lvl_le L (lvl_lit n).
+    lvl_le L (lvl_lit (ofin n)).
 Proof.
   intros * Hs Hn.
   apply completeness_fundamental_subtyp in Hs as [R [HR [i Hg]]].
@@ -298,7 +298,7 @@ Proof.
   match goal with Hl : per_sublvl _ _ |- _ =>
     destruct (Hl (length Γ)) as (L0 & L1 & HL0 & HL1 & Hle) end.
   functional_read_rewrite_clear.
-  assert (Hlit : Rnf ⇓ Levelᵈ (dlvl_lit n) in length Γ ↘ nf_lvl_of (lvl_lit n)) by mauto 3.
+  assert (Hlit : Rnf ⇓ Levelᵈ (dlvl_lit (ofin n)) in length Γ ↘ nf_lvl_of (lvl_lit (ofin n))) by mauto 3.
   functional_read_rewrite_clear.
   repeat match goal with H : nf_lvl_of _ = nf_lvl_of _ |- _ => apply nf_lvl_of_inj in H; subst end.
   exact Hle.
@@ -324,7 +324,7 @@ Qed.
 Lemma univ_nf_below_lit : forall {Γ c xs n},
     Γ ⊢ nf_to_exp (univⁿ c xs) : Type@n ->
     nbe_ty_f Γ (nf_to_exp (univⁿ c xs)) (univⁿ c xs) ->
-    xs = la_nil /\ c < n.
+    xs = la_nil /\ olt c (ofin n).
 Proof.
   intros * HW Hn.
   cbn [nf_to_exp] in HW, Hn.
@@ -345,12 +345,13 @@ Proof.
                   | apply dlvl_canon_read; [ apply dlvl_shape_suc | exact Hc' ] ]. }
   pose proof (subtyp_suniv_lit_bound HW Hn') as Hle.
   rewrite lvl_le_correct in Hle.
-  assert (Hev : forall ν, S (lvl_ev ν (c, xs)) <= n).
+  assert (Hev : forall ν, ole (osuc (lvl_ev ν (c, xs))) (ofin n)).
   { intros ν; specialize (Hle ν); rewrite lvl_canon_ev, lvl_ev_suc, lvl_ev_lit in Hle; exact Hle. }
-  (** An atom is unbounded: assign it [n]. *)
+  (** An atom is unbounded: assign it [ω]. *)
   destruct xs as [| k a r].
-  - split; [ reflexivity |]. specialize (Hev (fun _ => 0)); unfold lvl_ev in Hev; cbn in Hev; lia.
-  - exfalso; specialize (Hev (fun _ => n)); unfold lvl_ev in Hev; cbn in Hev; lia.
+  - split; [ reflexivity |]. specialize (Hev (fun _ => oz)); unfold lvl_ev in Hev; cbn in Hev; ord.
+  - exfalso; specialize (Hev (fun _ => (1, 0))); unfold lvl_ev in Hev; cbn in Hev.
+    revert Hev; generalize (la_ev (fun _ => (1, 0)) r); intros; ord.
 Qed.
 
 (** NbE at a small universe reads the term back as a type. *)
@@ -391,7 +392,8 @@ Proof.
   - exfalso; cbn in HW; apply wf_typ_inversion in HW; eapply subtyp_large_small_absurd; exact HW.
   - destruct L as [c xs]; unfold nf_univ_of in *; cbn [fst snd] in *.
     destruct (univ_nf_below_lit HW HWW) as [-> Hc].
-    constructor; exact Hc.
+    destruct c as [a m]; assert (a = 0) as -> by (unfold olt in Hc; cbn in Hc; lia).
+    constructor; unfold olt in Hc; cbn in Hc; lia.
   - constructor.
   - constructor.
   - constructor.

@@ -94,7 +94,7 @@ Import Domain_Notations.
       rewrite lvl_real_canon.
       unfold lvl_real, dlvl_real; cbn.
       erewrite read_la_max by eassumption; reflexivity.
-    - exists (0, la_cons 0 M la_nil); split; [ reflexivity | reflexivity ].
+    - exists (oz, la_cons 0 M la_nil); split; [ reflexivity | reflexivity ].
   Qed.
 
 #[export]

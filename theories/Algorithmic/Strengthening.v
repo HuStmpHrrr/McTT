@@ -673,11 +673,15 @@ Qed.
 Lemma lvl_exp_of_inv : forall Γ c xs C,
     Γ ⊢ lvl_exp_of c xs : C ->
     (Γ ⊢ Level ⊆ C /\ List.Forall (fun p => Γ ⊢ snd p : Level) xs) \/
-      (exists a, c = 0 /\ xs = (0, a) :: nil).
+      (exists a, c = oz /\ xs = (0, a) :: nil).
 Proof.
-  intros * H; destruct xs as [| [k a] r]; cbn in H.
-  - left; split; [ eapply wf_llit_inversion; exact H | constructor ].
-  - destruct c, r as [| [k' a'] r'], k as [| k]; cbn [lvl_fold] in H.
+  intros * H; destruct xs as [| [k a] r].
+  - cbn in H; left; split; [ eapply wf_llit_inversion; exact H | constructor ].
+  - destruct (o2_eq_dec c oz) as [-> | Hc]; [ cbn in H |].
+    2: assert (E : lvl_exp_of c ((k, a) :: r) = lvl_fold (maxl (𝕃ᵒ c) (succl_n k a)) r)
+         by (destruct c as [[|] [|]]; [ exfalso; apply Hc; reflexivity | reflexivity .. ]);
+       rewrite E in H; clear E.
+    all: destruct r as [| [k' a'] r'], k as [| k]; cbn [lvl_fold] in H.
     + right; eexists; split; reflexivity.
     + left; apply succl_n_wf_inv in H as (? & ? & ?); split; [ assumption | repeat constructor; assumption ].
     + left; apply lvl_fold_maxl_inv in H as [H HC]; split; [ exact HC |].

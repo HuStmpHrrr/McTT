@@ -146,8 +146,8 @@ Hint Resolve subtyp_univ : mctt.
     one; any ambient level relates small universes. *)
 Lemma subtyp_suniv : forall {Γ n m},
     ⊨ Γ ->
-    n <= m ->
-    Γ ⊨ Type@n ⊆ Type@m.
+    ole n m ->
+    Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Type⟨𝕃ᵒ m⟩.
 Proof.
   intros * HΓsem Hnm.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
@@ -162,7 +162,7 @@ Qed.
 
 Lemma subtyp_small_large : forall {Γ n} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ Type@n ⊆ Typeω@i.
+    Γ ⊨ Type⟨𝕃ᵒ n⟩ ⊆ Typeω@i.
 Proof.
   intros * HΓsem.
   pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].

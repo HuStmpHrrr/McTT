@@ -111,28 +111,28 @@ Proof.
 Qed.
 
 Corollary rel_exp_small_large : forall {Γ A A' n} {i : nat},
-    Γ ⊨ A ≈ A' : Type@n ->
+    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
     Γ ⊨ A ≈ A' : Typeω@i.
 Proof. intros * H; exact (rel_exp_univ_cumu (u := us n) (v := ul i) I H). Qed.
 
 Corollary rel_exp_suniv_cumu_ge : forall {Γ A A' n m},
-    n <= m ->
-    Γ ⊨ A ≈ A' : Type@n ->
-    Γ ⊨ A ≈ A' : Type@m.
+    ole n m ->
+    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
+    Γ ⊨ A ≈ A' : Type⟨𝕃ᵒ m⟩.
 Proof. intros * Hle H; exact (rel_exp_univ_cumu (u := us n) (v := us m) Hle H). Qed.
 
-Lemma valid_exp_univ : forall {n Γ},
+Lemma valid_exp_univ : forall {a n Γ},
     ⊨ Γ ->
-    Γ ⊨ Type@n : Type@(S n).
+    Γ ⊨ Type⟨𝕃ᵒ(a, n)⟩ : Type⟨𝕃ᵒ(a, S n)⟩.
 Proof.
   intros * H.
   pose proof (sem_ctx_per_ctx_env H) as [env_relΓ HΓ].
-  apply (rel_exp_of_univ (u := us (S n))).
+  apply (rel_exp_of_univ (u := us (a, S n))).
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hu : per_univ (us (S n)) 𝕌@(dlvl_lit n) 𝕌@(dlvl_lit n))
+  assert (Hu : per_univ (us (a, S n)) 𝕌@(dlvl_lit (a, n)) 𝕌@(dlvl_lit (a, n)))
     by (eexists; apply per_univ_elem_core_suniv';
-        [ apply per_lvl_lit | cbn; lia | reflexivity ]).
+        [ apply per_lvl_lit | cbn; ord | reflexivity ]).
   econstructor; try (apply eval_exp_univ, eval_exp_llit).
   apply rel_chain_4; assumption.
 Qed.

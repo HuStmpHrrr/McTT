@@ -132,7 +132,7 @@ Section Per_univ_elem_core_def.
   (** A smaller small universe, its elements the types of that universe.  Two
       small universes are the same when their levels are related ([per_lvl]),
       and the index of their elements is the realiser of the level — the only
-      natural number a level determines independently of a length. *)
+      ordinal a level determines independently of a length. *)
   | per_univ_elem_core_suniv :
     `{ forall (elem_rel : relation domain)
           (lt_j_i : uidx_lt (us (dlvl_real l)) i),
@@ -240,30 +240,56 @@ Hint Constructors per_univ_elem_core : mctt.
 
 (** The universes below an index, indexed by theirs: the entry at [v] below
     [u] is the universe at [v], and the other entries are empty.  The
-    recursion is structural (on the level of each tier, the small tier
-    first), so [per_univ_elem] unfolds by computation, and
+    recursion is structural, so [per_univ_elem] unfolds by computation, and
     [per_univ_below_spec] states the entries without [per_univ_below].  (A
     well-founded definition of [per_univ_elem] would need functional
-    extensionality for its unfolding equation.) *)
+    extensionality for its unfolding equation.)
+
+    A small index is an ordinal [(a, b)] below ω² (see
+    [Core.Syntactic.Ordinals]), so the small tier is built by a nested
+    recursion: on the tier [a], and inside a tier on [b].  [per_rec_at a
+    lower inner] is the family below an index of tier [a]: the universes of
+    the lower tiers, [lower a' b'] for [a' < a], and those of tier [a] below
+    it, [inner b'].  The large tier then has every small universe below it. *)
 Definition empty_rel : relation domain := fun _ _ => False.
 
-Fixpoint per_univ_below_s (j : nat) : nat -> relation domain :=
-  match j with
+Definition per_rec_at (a : nat) (lower : nat -> nat -> relation domain) (inner : nat -> relation domain)
+  : uidx -> relation domain :=
+  fun v => match v with
+        | us (a', b') => if a' <? a then lower a' b' else if a' =? a then inner b' else empty_rel
+        | ul _ => empty_rel
+        end.
+
+(** Inside the tier [a]: the universes at [(a, m)] for [m < b]. *)
+Fixpoint per_univ_below_in (a : nat) (lower : nat -> nat -> relation domain) (b : nat) : nat -> relation domain :=
+  match b with
   | 0 => fun _ => empty_rel
-  | S j' => fun m =>
-      if Nat.eqb m j'
-      then fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core (us j')
-                                  (fun v => match v with us k => per_univ_below_s j' k | ul _ => empty_rel end) ↘ R'
-      else per_univ_below_s j' m
+  | S b' => fun m =>
+      if Nat.eqb m b'
+      then fun x y => exists R', DF x ≈ y ∈ per_univ_elem_core (us (a, b'))
+                                  (per_rec_at a lower (per_univ_below_in a lower b')) ↘ R'
+      else per_univ_below_in a lower b' m
+  end.
+
+(** The small universe at [(a, b)], given the tiers below [a]. *)
+Definition per_tier (a : nat) (lower : nat -> nat -> relation domain) (b : nat) : relation domain :=
+  fun x y => exists R', DF x ≈ y ∈ per_univ_elem_core (us (a, b))
+                         (per_rec_at a lower (per_univ_below_in a lower b)) ↘ R'.
+
+(** The tiers below [a]: the universe at [(a', b')] for every [a' < a]. *)
+Fixpoint per_tiers_below (a : nat) : nat -> nat -> relation domain :=
+  match a with
+  | 0 => fun _ _ => empty_rel
+  | S a' => fun a'' => if Nat.eqb a'' a' then per_tier a' (per_tiers_below a') else per_tiers_below a' a''
   end.
 
 (** The small universes below the small index [j]. *)
-Definition per_univ_rec_s (j : nat) : uidx -> relation domain :=
-  fun v => match v with us k => per_univ_below_s j k | ul _ => empty_rel end.
+Definition per_univ_rec_s (j : o2) : uidx -> relation domain :=
+  per_rec_at (fst j) (per_tiers_below (fst j)) (per_univ_below_in (fst j) (per_tiers_below (fst j)) (snd j)).
 
 (** The small universe at [m], the entry of every large index. *)
-Definition per_suniv (m : nat) : relation domain :=
-  fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem_core (us m) (per_univ_rec_s m) ↘ R'.
+Definition per_suniv (m : o2) : relation domain :=
+  per_tier (fst m) (per_tiers_below (fst m)) (snd m).
 
 Fixpoint per_univ_below_l (n : nat) : nat -> relation domain :=
   match n with
@@ -295,18 +321,31 @@ Lemma per_univ_below_spec : forall i j,
     uidx_lt j i ->
     per_univ_below i j = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem j ↘ R'.
 Proof.
-  assert (Hs : forall j m, m < j -> per_univ_below_s j m = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem (us m) ↘ R').
-  { induction j as [| j IHj]; intros m Hlt; [lia |].
+  assert (Hin : forall a lower b m, m < b -> per_univ_below_in a lower b m = per_tier a lower m).
+  { intros a lower b; induction b as [| b IHb]; intros m Hlt; [lia |].
     simpl.
-    destruct (Nat.eqb_spec m j) as [-> | Hneq]; [reflexivity |].
-    apply IHj; lia. }
+    destruct (Nat.eqb_spec m b) as [-> | Hneq]; [reflexivity |].
+    apply IHb; lia. }
+  assert (Htiers : forall a a', a' < a -> per_tiers_below a a' = per_tier a' (per_tiers_below a')).
+  { induction a as [| a IHa]; intros a' Hlt; [lia |].
+    simpl.
+    destruct (Nat.eqb_spec a' a) as [-> | Hneq]; [reflexivity |].
+    apply IHa; lia. }
+  assert (Htier : forall a b, per_tier a (per_tiers_below a) b
+                         = fun x y => exists R', DF x ≈ y ∈ per_univ_elem (us (a, b)) ↘ R').
+  { reflexivity. }
   assert (Hl : forall n m, m < n -> per_univ_below_l n m = fun a a' => exists R', DF a ≈ a' ∈ per_univ_elem (ul m) ↘ R').
   { induction n as [| n IHn]; intros m Hlt; [lia |].
     simpl.
     destruct (Nat.eqb_spec m n) as [-> | Hneq]; [reflexivity |].
     apply IHn; lia. }
-  intros [j | n] [m | m] Hlt; cbn in Hlt; try contradiction.
-  - apply Hs; assumption.
+  intros [[a b] | n] [[a' b'] | m] Hlt; cbn in Hlt; try contradiction.
+  - unfold per_univ_below, per_univ_rec_s, per_rec_at; cbn [fst snd].
+    unfold olt in Hlt; cbn [fst snd] in Hlt.
+    destruct (Nat.ltb_spec a' a) as [Ha | Ha].
+    + rewrite Htiers by exact Ha; apply Htier.
+    + destruct (Nat.eqb_spec a' a) as [-> | Hne]; [| lia ].
+      rewrite Hin by lia; apply Htier.
   - reflexivity.
   - apply Hl; assumption.
 Qed.

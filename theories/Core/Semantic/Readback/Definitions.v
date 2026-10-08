@@ -30,7 +30,7 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
      Rnf ⇓ Levelᵈ (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ Levelᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ 0 (la_cons 0 M la_nil) )
+     Rnf ⇓ Levelᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 M la_nil) )
 | read_nf_zero :
   `( Rnf ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
 | read_nf_succ :

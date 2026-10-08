@@ -55,7 +55,7 @@ Proof. intros; apply (glu_rel_exp_nat_univ (u := ul i)); assumption. Qed.
 Lemma glu_rel_exp_nat_small : forall {Γ},
     ⊩ Γ ->
     Γ ⊩ ℕ : Type@0.
-Proof. intros; apply (glu_rel_exp_nat_univ (u := us 0)); assumption. Qed.
+Proof. intros; apply (glu_rel_exp_nat_univ (u := us oz)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_nat : mctt.
 

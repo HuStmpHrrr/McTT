@@ -58,7 +58,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ Level ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ )
 (** A level literal is the flat level with that constant and no atom. *)
 | eval_exp_llit :
-  `( ⟦ 𝕃@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_lit n )
+  `( ⟦ 𝕃ᵒ o ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_lit o )
 (** The level operations only flatten: they add to the offsets, or join the
     constants and concatenate the atoms.  Canonicalisation is readback's. *)
 | eval_exp_succl :

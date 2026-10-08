@@ -1,7 +1,7 @@
 (** * Fundamental Theorem: Universe Levels
 
     Substitution pushes through every level form by computation of [exp_sub]:
-    [Level[σ]] is [Level], [(𝕃@n)[σ]] is [𝕃@n], and [succl] and [maxl] commute
+    [Level[σ]] is [Level], [(𝕃ᵒ o)[σ]] is [𝕃ᵒ o], and [succl] and [maxl] commute
     with it.  So what is validated here is the typing of [Level] and of a level
     literal, the congruence rules of [succl] and [maxl], and the level
     equations.
@@ -77,7 +77,7 @@ Qed.
 
 Corollary valid_exp_level_small : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ Level : Type@n.
+    Γ ⊨ Level : Type⟨𝕃ᵒ n⟩.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -152,12 +152,12 @@ Section Fixed_GCtx.
 
 (** ** The Level Forms
 
-    [𝕃@n] is a value, and [succl] and [maxl] evaluate by flattening the values
+    [𝕃ᵒ o] is a value, and [succl] and [maxl] evaluate by flattening the values
     of their arguments, so each rule is a four-value pattern built from those of
     its arguments. *)
 Lemma rel_exp_llit : forall {Γ env_relΓ n},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ 𝕃@n ≈ 𝕃@n : Level.
+    Γ ⊨ 𝕃ᵒ n ≈ 𝕃ᵒ n : Level.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_level.
@@ -168,7 +168,7 @@ Qed.
 
 Corollary valid_exp_llit : forall {Γ n},
     ⊨ Γ ->
-    Γ ⊨ 𝕃@n : Level.
+    Γ ⊨ 𝕃ᵒ n : Level.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -220,27 +220,54 @@ Hint Resolve rel_exp_maxl_cong : mctt.
     Each is a four-value pattern whose middle link is the corresponding lemma
     of [Core.Semantic.Levels], and whose outer links are the reflexivity of
     both sides. *)
-Lemma rel_exp_llit_succl : forall {Γ env_relΓ n},
+Lemma rel_exp_llit_succl : forall {Γ env_relΓ a n},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ 𝕃@(S n) ≈ succl (𝕃@n) : Level.
+    Γ ⊨ 𝕃ᵒ(a, S n) ≈ succl (𝕃ᵒ(a, n)) : Level.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  apply (mk_rel_exp (dlvl_lit (S n)) (dlvl_lit (S n)) (dlvl_suc (dlvl_lit n)) (dlvl_suc (dlvl_lit n)));
+  apply (mk_rel_exp (dlvl_lit (a, S n)) (dlvl_lit (a, S n)) (dlvl_suc (dlvl_lit (a, n))) (dlvl_suc (dlvl_lit (a, n))));
     try (apply eval_exp_llit);
     try (apply eval_exp_succl, eval_exp_llit).
   apply rel_chain_4; [ apply per_lvl_lit | apply per_lvl_llit_suc | apply per_lvl_suc, per_lvl_lit ].
 Qed.
 
-Corollary valid_exp_llit_succl : forall {Γ n},
+Corollary valid_exp_llit_succl : forall {Γ a n},
     ⊨ Γ ->
-    Γ ⊨ 𝕃@(S n) ≈ succl (𝕃@n) : Level.
+    Γ ⊨ 𝕃ᵒ(a, S n) ≈ succl (𝕃ᵒ(a, n)) : Level.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_llit_succl; eassumption.
 Qed.
+
+Lemma rel_exp_maxl_llit_limit : forall {Γ env_relΓ a b a'},
+    a < a' ->
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level.
+Proof.
+  intros * Ha HΓ.
+  eexists_rel_exp_of_level.
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  apply (mk_rel_exp (dlvl_max (dlvl_lit (a, b)) (dlvl_lit (a', 0))) (dlvl_max (dlvl_lit (a, b)) (dlvl_lit (a', 0)))
+                    (dlvl_lit (a', 0)) (dlvl_lit (a', 0)));
+    try (apply eval_exp_llit);
+    try (apply eval_exp_maxl; apply eval_exp_llit).
+  apply rel_chain_4; [ apply per_lvl_max; apply per_lvl_lit | apply per_lvl_llit_limit, Ha | apply per_lvl_lit ].
+Qed.
+
+Corollary valid_exp_maxl_llit_limit : forall {Γ a b a'},
+    a < a' ->
+    ⊨ Γ ->
+    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level.
+Proof.
+  intros * Ha H%sem_ctx_per_ctx_env.
+  destruct H as [env_relΓ HΓ].
+  eapply rel_exp_maxl_llit_limit; eassumption.
+Qed.
+
+Hint Resolve rel_exp_maxl_llit_limit valid_exp_maxl_llit_limit : mctt.
 
 Hint Resolve rel_exp_llit_succl valid_exp_llit_succl : mctt.
 
@@ -254,7 +281,7 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  apply (mk_rel_exp (dlvl_max (dlvl_lit 0) m1) (dlvl_max (dlvl_lit 0) m2) m3 m4);
+  apply (mk_rel_exp (dlvl_max (dlvl_lit oz) m1) (dlvl_max (dlvl_lit oz) m2) m3 m4);
     try (apply eval_exp_maxl; [ apply eval_exp_llit | eassumption ]);
     try eassumption.
   apply rel_chain_4;
@@ -531,7 +558,7 @@ Proof.
   rewrite dlvl_real_suc.
   apply (mk_rel_exp 𝕌@m1 𝕌@m2 𝕌@m3 𝕌@m4); try (apply eval_exp_univ; eassumption).
   apply rel_chain_4; eexists; apply per_univ_elem_core_suniv';
-    first [ eassumption | cbn; lia | reflexivity ].
+    first [ eassumption | cbn; ord | reflexivity ].
 Qed.
 
 Corollary valid_exp_univ_tm : forall {Γ M},
@@ -610,4 +637,4 @@ Hint Resolve rel_exp_univ_cong_tm valid_exp_univ_tm subtyp_suniv_tm subtyp_small
 Hint Resolve valid_exp_llit rel_exp_succl_cong rel_exp_maxl_cong : mctt.
 #[export]
 Hint Resolve rel_exp_llit_succl valid_exp_llit_succl rel_exp_maxl_zero rel_exp_maxl_assoc rel_exp_maxl_comm
-  rel_exp_maxl_idem rel_exp_succl_maxl rel_exp_maxl_succl : mctt.
+  rel_exp_maxl_idem rel_exp_succl_maxl rel_exp_maxl_succl valid_exp_maxl_llit_limit : mctt.

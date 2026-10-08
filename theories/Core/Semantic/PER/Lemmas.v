@@ -123,7 +123,7 @@ Qed.
 Hint Resolve per_lvl_lit : mctt.
 
 Lemma per_sublvl_lit : forall n m,
-    n <= m ->
+    ole n m ->
     per_sublvl (dlvl_lit n) (dlvl_lit m).
 Proof.
   intros n m Hle s; exists (lvl_lit n), (lvl_lit m);
@@ -171,7 +171,7 @@ Hint Resolve per_sublvl_left per_sublvl_right : mctt.
 
 Lemma per_sublvl_real : forall l l',
     per_sublvl l l' ->
-    dlvl_real l <= dlvl_real l'.
+    ole (dlvl_real l) (dlvl_real l').
 Proof.
   intros * H; destruct (H 0) as [L [L' [HL [HL' Hle]]]].
   apply read_nf_level_real in HL as [L1 [HL1 <-]].
@@ -237,7 +237,7 @@ Lemma per_bot_then_per_lvl : forall m m' a a',
 Proof.
   intros * H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (lvⁿ 0 (la_cons 0 M la_nil)); split; econstructor; eassumption.
+  exists (lvⁿ oz (la_cons 0 M la_nil)); split; econstructor; eassumption.
 Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.

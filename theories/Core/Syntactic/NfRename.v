@@ -109,7 +109,7 @@ Proof.
 Qed.
 
 Lemma nf_code_node : forall M t, exists a c, nf_code M t = lt_node a c t /\ nf_code M lt_nil = lt_node a c lt_nil.
-Proof. intros [] t; cbn; eauto. Qed.
+Proof. intros [] t; repeat match goal with p : o2 |- _ => destruct p end; cbn; eauto. Qed.
 
 Lemma ne_code_node : forall m t, exists a c, ne_code m t = lt_node a c t /\ ne_code m lt_nil = lt_node a c lt_nil.
 Proof. intros [] t; cbn; eauto. Qed.
@@ -168,6 +168,7 @@ Proof.
     | |- ne_cmp _ (ne_wk _ ?N) = _ => destruct N
     | |- la_cmp _ (la_wk _ ?N) = _ => destruct N
     end;
+    repeat match goal with p : o2 |- _ => destruct p end;
     cmp_norm; try reflexivity.
   all: repeat match goal with
          | IH : forall φ N, wk_mono φ -> ?cmp (?wk φ ?M) (?wk φ N) = _ |- context [ ?cmp (?wk ?ψ ?M) (?wk ?ψ ?N') ] =>

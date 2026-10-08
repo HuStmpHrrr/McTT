@@ -75,7 +75,7 @@ Proof.
 Qed.
 
 Corollary exp_eq_univ_implies_eq_level : forall {Γ} {n m k},
-    Γ ⊢ Type@n ≈ Type@m : Typeω@k ->
+    Γ ⊢ Type⟨𝕃ᵒ n⟩ ≈ Type⟨𝕃ᵒ m⟩ : Typeω@k ->
     n = m.
 Proof.
   intros * H.
@@ -104,7 +104,7 @@ Hint Constructors is_typ_constr : mctt.
     is equal to its body. *)
 Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | typ_is_rigid : forall i, rigid_typ Γ Typeω@i
-| univ_is_rigid : forall n, rigid_typ Γ Type@n
+| univ_is_rigid : forall n, rigid_typ Γ Type⟨𝕃ᵒ n⟩
 | level_is_rigid : rigid_typ Γ Level
 | nat_is_rigid : rigid_typ Γ ℕ
 | True_is_rigid : rigid_typ Γ ⊤
@@ -228,8 +228,8 @@ Hint Resolve is_typ_constr_and_exp_eq_typ_implies_eq_typ : mctt.
 
 Theorem is_typ_constr_and_exp_eq_univ_implies_eq_univ : forall Γ A n j,
     rigid_typ Γ A ->
-    Γ ⊢ A ≈ Type@n : Typeω@j ->
-    A = Type@n.
+    Γ ⊢ A ≈ Type⟨𝕃ᵒ n⟩ : Typeω@j ->
+    A = Type⟨𝕃ᵒ n⟩.
 Proof.
   intros * Histyp H.
   assert (Γ ⊢ A : Typeω@j) by mauto 2.
@@ -394,7 +394,7 @@ Corollary pi_ulvl_tm_absurd : forall Γ A B (u : uidx) k,
     False.
 Proof.
   intros * H; destruct u as [n | i]; cbn in H;
-    [ assert (Π A B = Type@n) as Heq by mauto 3 | assert (Π A B = Typeω@i) as Heq by mauto 3 ];
+    [ assert (Π A B = Type⟨𝕃ᵒ n⟩) as Heq by mauto 3 | assert (Π A B = Typeω@i) as Heq by mauto 3 ];
     discriminate Heq.
 Qed.
 

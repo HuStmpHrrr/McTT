@@ -185,8 +185,8 @@ Qed.
 
 (** A small universe at a literal level reads back as itself. *)
 Lemma nbe_ty_suniv_lit : forall {Γ n W},
-    nbe_ty_f Γ Type@n W ->
-    W = Typeⁿ@n.
+    nbe_ty_f Γ Type⟨𝕃ᵒ n⟩ W ->
+    W = nf_univ n la_nil.
 Proof.
   intros * Hn.
   dir_inversion_clear_by_head nbe_ty; dir_inversion_by_head eval_exp; subst.
@@ -746,25 +746,25 @@ Lemma alg_type_check_suniv : forall Γ A UA (u : unf) m,
     Γ ⊢a A ⟹ UA ->
     is_univ_nf UA u ->
     unf_le u (unf_lit m) ->
-    Γ ⊢a A ⟸ Type@m.
+    Γ ⊢a A ⟸ Type⟨𝕃ᵒ m⟩.
 Proof.
   intros * HΓ Hi Hu Hle.
   destruct u as [[c xs] | j]; cbn [unf_le unf_lit] in Hle; [| contradiction ].
   (** A level below a literal has no atom. *)
   assert (xs = la_nil) as -> by exact (lvl_le_lit_closed (c, xs) m Hle).
-  assert (c <= m) by (apply lvl_le_real in Hle; exact Hle).
+  assert (ole c m) by (apply lvl_le_real in Hle; exact Hle).
   econstructor; [ exact Hi |].
   rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf.
   apply alg_subtyping_complete.
   cbn [unf_tm fst snd la_to_list lvl_exp_of].
-  apply wf_subtyp_suniv_le; [ assumption | lia ].
+  apply wf_subtyp_suniv_ole; assumption.
 Qed.
 
 (** A type checked against a small universe at a literal level infers a
     universe below it. *)
 Lemma alg_type_check_suniv_implies_alg_type_infer_univ : forall {Γ A n},
     ⊢ Γ ->
-    Γ ⊢a A ⟸ Type@n ->
+    Γ ⊢a A ⟸ Type⟨𝕃ᵒ n⟩ ->
     exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unf_lit n).
 Proof.
   intros * ? Hcheck.
@@ -1289,8 +1289,9 @@ Proof.
   destruct u as [[c xs] | i]; cbn in Hle; [| contradiction].
   inversion Hu; subst.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs; cbn in Hxs; subst xs.
-  exists c; split; [ exact Hinf |].
-  rewrite lvl_le_correct in Hle; specialize (Hle (fun _ => 0)); unfold lvl_ev, lvl_lit in Hle; cbn in Hle; lia.
+  rewrite lvl_le_correct in Hle; specialize (Hle (fun _ => oz)); unfold lvl_ev, lvl_lit in Hle; cbn in Hle.
+  destruct c as [a m]; assert (a = 0) as -> by ord.
+  exists m; split; [ exact Hinf | ord ].
 Qed.
 
 (** The same at a level term [t]: the inferred universe is small, at a

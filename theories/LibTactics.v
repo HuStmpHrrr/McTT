@@ -239,7 +239,9 @@ Tactic Notation "mauto" int_or_var(pow) "using" uconstr(use1) "," uconstr(use2) 
 Tactic Notation "mauto" int_or_var(pow) "using" uconstr(use1) "," uconstr(use2) "," uconstr(use3) "," uconstr(use4) :=
   eauto pow using use1, use2, use3, use4 with mctt core.
 
-Ltac mautosolve_impl pow := unshelve solve [mauto pow]; solve [constructor].
+(** A goal the search leaves open is an unconstrained index, a natural
+    number or an ordinal (a pair of them): any value closes it. *)
+Ltac mautosolve_impl pow := unshelve solve [mauto pow]; solve [repeat constructor].
 
 Tactic Notation "mautosolve" := mautosolve_impl integer:(5).
 Tactic Notation "mautosolve" int_or_var(pow) := mautosolve_impl pow.

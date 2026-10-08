@@ -342,7 +342,11 @@ let exp_to_obj =
        let es' = impl (sr :: sx :: ctx) es in
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
     | Coq_a_level -> Cst.Coq_level
-    | Coq_a_llit n -> Cst.Coq_llit n
+    | Coq_a_llit (0, n) -> Cst.Coq_llit n
+    (* A literal at or above [ω] has no surface form yet, and no program
+       produces one: the surface literals are finite, and the level
+       operations keep them finite. *)
+    | Coq_a_llit (_, _) -> invalid_arg "PrettyPrinter: a level literal at or above ω"
     | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
     | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
     | Coq_a_nat -> Cst.Coq_nat
