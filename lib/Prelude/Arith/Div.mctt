@@ -7,20 +7,20 @@
    theorems are stated for a positive divisor [succ d]. *)
 (* Written with the long forms ([abstract def], [private def], ...) rather
    than [theorem], [fact] and [let], for comparison. *)
-module Prelude∷Arith∷Div where
+module Prelude›Arith›Div where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong; transport)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
-open Prelude∷Arith∷Plus.Algebra use (plusComm; plusAssoc)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multOne)
-import Prelude∷Arith∷Order use (Le; Lt)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans; leSucc)
-open Prelude∷Arith∷Order.LtLaws use (ltNotEq)
-import Prelude∷Arith∷Decide use (pick; eqb)
-open Prelude∷Arith∷Decide.EqbLaws use (eqbRefl; eqbCases; leEqbZero)
-import Prelude∷Function∷Combinators use (Generic; IterateLaws)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong; transport)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multOne)
+import Prelude›Arith›Order use (Le; Lt)
+open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leSucc)
+open Prelude›Arith›Order.LtLaws use (ltNotEq)
+import Prelude›Arith›Decide use (pick; eqb)
+open Prelude›Arith›Decide.EqbLaws use (eqbRefl; eqbCases; leEqbZero)
+import Prelude›Function›Combinators use (Generic; IterateLaws)
 
 (* One step of the remainder modulo [succ d]: [succ r], or [0] when [r] has
    reached [d]. *)

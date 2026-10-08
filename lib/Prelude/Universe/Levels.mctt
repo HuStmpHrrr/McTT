@@ -12,14 +12,14 @@
 
    These are propositions about levels, in [Type@1]; they do not drive
    cumulativity, which only follows the normal forms of levels. *)
-module Prelude∷Universe∷Levels where
+module Prelude›Universe›Levels where
 
-import Prelude∷Logic
-open Prelude∷Logic.Negation as Neg
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷MinMax use (max)
-import Prelude∷Arith∷Order use (Le)
-import Prelude∷Function∷Iter as Iter
+import Prelude›Logic
+open Prelude›Logic.Negation as Neg
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Arith›Order use (Le)
+import Prelude›Function›Iter as Iter
 
 (* Leibniz equality of levels: predicates of [u] are predicates of [v]. *)
 def LEq (u : Level) (v : Level) : Type@1 ≔

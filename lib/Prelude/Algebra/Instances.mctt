@@ -1,4 +1,4 @@
-(* Instances of [Prelude∷Algebra∷Monoid]: numbers under addition,
+(* Instances of [Prelude›Algebra›Monoid]: numbers under addition,
    multiplication and maximum, and functions on numbers under composition.
 
    The three monoids on numbers share their setoid, equality of numbers,
@@ -9,19 +9,19 @@
    commutativity. *)
 (* Written with the long forms ([abstract def], [private def], ...) rather
    than [theorem], [fact] and [let], for comparison. *)
-module Prelude∷Algebra∷Instances where
+module Prelude›Algebra›Instances where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusComm)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multOne; oneMult)
-open Prelude∷Arith∷Mult.Algebra use (multAssoc; multComm)
-import Prelude∷Arith∷MinMax use (max)
-open Prelude∷Arith∷MinMax.Laws use (maxZero; maxComm)
-import Prelude∷Arith∷Lattice.Algebra use (maxAssoc)
-import Prelude∷Algebra∷Monoid as Monoid
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Algebra use (plusAssoc; plusComm)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multOne; oneMult)
+open Prelude›Arith›Mult.Algebra use (multAssoc; multComm)
+import Prelude›Arith›MinMax use (max)
+open Prelude›Arith›MinMax.Laws use (maxZero; maxComm)
+import Prelude›Arith›Lattice.Algebra use (maxAssoc)
+import Prelude›Algebra›Monoid as Monoid
 
 (* Every binary operation on numbers respects equality on both sides: the
    congruence each instance on numbers needs, proved once. *)
@@ -37,7 +37,7 @@ end
 (* Monoids on numbers, up to equality: the unit applied to the carrier and
    the setoid, and to the congruence of the given operation. *)
 module OnNat (op : ∀ (x : ℕ) (y : ℕ) → ℕ) ≔
-  Prelude∷Algebra∷Monoid 0l ℕ Eq refl sym trans op (congBoth op)
+  Prelude›Algebra›Monoid 0l ℕ Eq refl sym trans op (congBoth op)
 
 (* Numbers under addition: [Additive.pow x n] is [n] times [x]. *)
 module Additive ≔ OnNat plus 0 plusAssoc refl plusZero
@@ -98,7 +98,7 @@ open PointwiseLaws use (pwRefl; pwSym; pwTrans; composeCong)
    iterated [n] times.  Associativity and the unit laws hold pointwise by
    conversion. *)
 module Composition ≔
-  Prelude∷Algebra∷Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
+  Prelude›Algebra›Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
     (λ (f : Endo) (g : Endo) (k : Endo) → pwRefl (compose f (compose g k)))
     pwRefl pwRefl
 

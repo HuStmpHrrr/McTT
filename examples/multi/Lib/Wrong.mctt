@@ -1,4 +1,4 @@
-module Lib∷Other where
+module Lib›Other where
 
 def x : ℕ ≔ 0 end
 

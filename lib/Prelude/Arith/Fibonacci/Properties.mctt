@@ -1,17 +1,17 @@
-(* Laws of [Prelude∷Arith∷Fibonacci]: the defining recurrence, positivity,
+(* Laws of [Prelude›Arith›Fibonacci]: the defining recurrence, positivity,
    monotonicity, the sum identity and the addition formula. *)
-module Prelude∷Arith∷Fibonacci∷Properties where
+module Prelude›Arith›Fibonacci›Properties where
 
-import Prelude∷Arith∷Equality use (Eq; sym; trans; cong; transport)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
-open Prelude∷Arith∷Plus.Algebra use (plusComm; plusAssoc; plusRightComm)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Algebra use (multDistribLeft; multDistribRight)
-import Prelude∷Arith∷Order use (Le; Lt)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans; lePlusRight; lePlusLeft)
-import Prelude∷Arith∷Sum use (sumTo)
-import Prelude∷Arith∷Fibonacci use (fibFrom; fib)
+import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusRightComm)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Algebra use (multDistribLeft; multDistribRight)
+import Prelude›Arith›Order use (Le; Lt)
+open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; lePlusRight; lePlusLeft)
+import Prelude›Arith›Sum use (sumTo)
+import Prelude›Arith›Fibonacci use (fibFrom; fib)
 
 (* Sequences [fibFrom n a b] from any two starting terms: the recurrence,
    and positivity.  [fib] is the one starting from [0] and [1]. *)

@@ -1,8 +1,8 @@
 (* The Fibonacci numbers, computed in linear time by iterating on a pair of
    consecutive values. *)
-module Prelude∷Arith∷Fibonacci where
+module Prelude›Arith›Fibonacci where
 
-import Prelude∷Arith∷Plus use (plus)
+import Prelude›Arith›Plus use (plus)
 
 (* [fibFrom n a b] is the [n]-th term of the Fibonacci-like sequence that
    starts with [a] and [b]: [fibFrom 0 a b] is [a], and

@@ -1,19 +1,19 @@
-(* A client of [Prelude∷Arith∷Binary]: halves, low bits and binary digits
+(* A client of [Prelude›Arith›Binary]: halves, low bits and binary digits
    of numbers, the number they write, the count of ones, and exponentiation
    by squaring.  Two theorems are proved here from the public laws: the
    digits of [double n] write twice the number, and [powFast] squares at
    even exponents. *)
 module Binary where
 
-import Prelude∷Arith∷Equality use (Eq; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Pow use (pow)
-open Prelude∷Arith∷Pow.Exp use (powPlus)
-import Prelude∷Arith∷Parity use (double)
-import Prelude∷Arith∷Binary use (half; bit; Bits; bits; fromBits; bitCount; powFast)
-open Prelude∷Arith∷Binary.Halving use (halfDouble; bitDouble)
+import Prelude›Arith›Equality use (Eq; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Pow use (pow)
+open Prelude›Arith›Pow.Exp use (powPlus)
+import Prelude›Arith›Parity use (double)
+import Prelude›Arith›Binary use (half; bit; Bits; bits; fromBits; bitCount; powFast)
+open Prelude›Arith›Binary.Halving use (halfDouble; bitDouble)
 
 (* 13 is [1101] in binary: its half, its low bit and its digits. *)
 eval half 13
@@ -79,8 +79,8 @@ theorem powFastDouble : ∀ (x : ℕ) (n : ℕ) →
     Eq (powFast x (double n)) (mult (pow x n) (pow x n)) ≔
   λ (x : ℕ) (n : ℕ) →
     let module Proof where
-      open Prelude∷Arith∷Binary.Laws use (powFastPow)
-      open Prelude∷Arith∷Binary.Halving use (doublePlus)
+      open Prelude›Arith›Binary.Laws use (powFastPow)
+      open Prelude›Arith›Binary.Halving use (doublePlus)
       def fast : Eq (powFast x (double n)) (pow x (double n)) ≔ powFastPow x (double n) end
       def sum : Eq (pow x (double n)) (pow x (plus n n)) ≔
         cong (λ (m : ℕ) → pow x m) (double n) (plus n n) (doublePlus n)

@@ -1,20 +1,20 @@
-(* A client of [Prelude∷Data∷Stream] and its laws: the natural numbers,
+(* A client of [Prelude›Data›Stream] and its laws: the natural numbers,
    the even and odd numbers, the squares and two Fibonacci-like streams are
    read with [nth] and summed through [take], and closed instances of the
    laws normalize to [⋆]. *)
 module Streams where
 
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Parity use (double)
-import Prelude∷Arith∷Sum.Basic use (sumToShift)
-import Prelude∷Data∷Vec as V
-import Prelude∷Data∷Vec∷Properties use (sumVec)
-import Prelude∷Data∷Stream as St
-import Prelude∷Data∷Stream∷Properties use (nats)
-open Prelude∷Data∷Stream∷Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
-open Prelude∷Data∷Stream∷Properties.Nats use (nthNats)
-open Prelude∷Data∷Stream∷Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Parity use (double)
+import Prelude›Arith›Sum.Basic use (sumToShift)
+import Prelude›Data›Vec as V
+import Prelude›Data›Vec›Properties use (sumVec)
+import Prelude›Data›Stream as St
+import Prelude›Data›Stream›Properties use (nats)
+open Prelude›Data›Stream›Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
+open Prelude›Data›Stream›Properties.Nats use (nthNats)
+open Prelude›Data›Stream›Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
 
 (* Streams of numbers. *)
 module S ≔ St 0l ℕ

@@ -559,8 +559,8 @@ let stats lib : stats =
               else if checked then unres := (u.u_path, x, line) :: !unres) u.u_occ) lib.units;
   { names = !names; linked = !linked; binders = !binders; unresolved = List.rev !unres; dangling = List.rev !dang }
 
-(* A unit path as the printer spells it, joined by [∷]. *)
-let unit_name fq = String.concat "\u{2237}" fq
+(* A unit path as the printer spells it, joined by [›]. *)
+let unit_name fq = String.concat "\u{203A}" fq
 
 (* The problems [--check] reports, one per line. *)
 let problems ?(resolve = true) (lib : lib) : string list =

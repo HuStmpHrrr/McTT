@@ -1,29 +1,29 @@
-(* A client of the level-polymorphic Prelude: [Prelude∷Universe∷Levels],
-   [Prelude∷Universe∷Formers], [Prelude∷Data∷Church] and its laws, and
-   the level parameters of [Prelude∷Logic], [Prelude∷Data∷Vec],
-   [Prelude∷Function∷Iter] and [Prelude∷Arith∷Induction].  Each section
+(* A client of the level-polymorphic Prelude: [Prelude›Universe›Levels],
+   [Prelude›Universe›Formers], [Prelude›Data›Church] and its laws, and
+   the level parameters of [Prelude›Logic], [Prelude›Data›Vec],
+   [Prelude›Function›Iter] and [Prelude›Arith›Induction].  Each section
    uses a library at a level above [0l], where its old [Type@0] version
    could not go. *)
 module Universes where
 
-import Prelude∷Logic
-open Prelude∷Logic.Conj as Cj
-open Prelude∷Logic.Exist as Ex
-import Prelude∷Arith∷Equality use (Eq)
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷MinMax use (max)
-import Prelude∷Arith∷Induction
-open Prelude∷Arith∷Induction.Principles 1l as Large
-import Prelude∷Function∷Iter as Iter
-import Prelude∷Data∷Vec as V
-import Prelude∷Universe∷Levels use (LEq; LLe; ofNat; plusl)
-open Prelude∷Universe∷Levels.Equality use (lrefl; lsym; ltrans; lcong)
-open Prelude∷Universe∷Levels.Embedding use (ofNatMax)
-import Prelude∷Universe∷Formers use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
-import Prelude∷Data∷Church as C
-import Prelude∷Data∷Church∷Properties
-open Prelude∷Data∷Church∷Properties.Arithmetic use (toNatPlus; toNatPow)
-open Prelude∷Data∷Church∷Properties.Levels use (toNatLower)
+import Prelude›Logic
+open Prelude›Logic.Conj as Cj
+open Prelude›Logic.Exist as Ex
+import Prelude›Arith›Equality use (Eq)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›MinMax use (max)
+import Prelude›Arith›Induction
+open Prelude›Arith›Induction.Principles 1l as Large
+import Prelude›Function›Iter as Iter
+import Prelude›Data›Vec as V
+import Prelude›Universe›Levels use (LEq; LLe; ofNat; plusl)
+open Prelude›Universe›Levels.Equality use (lrefl; lsym; ltrans; lcong)
+open Prelude›Universe›Levels.Embedding use (ofNatMax)
+import Prelude›Universe›Formers use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
+import Prelude›Data›Church as C
+import Prelude›Data›Church›Properties
+open Prelude›Data›Church›Properties.Arithmetic use (toNatPlus; toNatPow)
+open Prelude›Data›Church›Properties.Levels use (toNatLower)
 
 (* 1. Levels are data.  [ofNat] computes a level from a number, and the laws
    of [maxl] hold by conversion, so [lrefl] proves their closed instances. *)

@@ -1,19 +1,19 @@
-(* Laws of [Prelude∷Arith∷Binomial]: the edges of Pascal's triangle,
+(* Laws of [Prelude›Arith›Binomial]: the edges of Pascal's triangle,
    vanishing above the diagonal, Pascal's rule, symmetry, and the row sum
    [sumTo (choose n) (succ n) = pow 2 n]. *)
-module Prelude∷Arith∷Binomial∷Properties where
+module Prelude›Arith›Binomial›Properties where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
-open Prelude∷Arith∷Plus.Algebra use (plusComm; plusSwapMiddle; plusCongBoth)
-import Prelude∷Arith∷Sub use (sub)
-import Prelude∷Arith∷Order use (Le; Lt)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leStep)
-import Prelude∷Arith∷Monotone.SubLaws use (plusSubCancel)
-import Prelude∷Arith∷Pow use (pow)
-import Prelude∷Arith∷Sum use (sumTo)
-import Prelude∷Arith∷Binomial use (choose)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusSwapMiddle; plusCongBoth)
+import Prelude›Arith›Sub use (sub)
+import Prelude›Arith›Order use (Le; Lt)
+open Prelude›Arith›Order.LeLaws use (leRefl; leStep)
+import Prelude›Arith›Monotone.SubLaws use (plusSubCancel)
+import Prelude›Arith›Pow use (pow)
+import Prelude›Arith›Sum use (sumTo)
+import Prelude›Arith›Binomial use (choose)
 
 (* Values at the edges, and Pascal's rule. *)
 module Basic where

@@ -1,8 +1,8 @@
 (* Equality of natural numbers, computed by recursion on both sides, with its
    basic laws. *)
-module Prelude∷Arith∷Equality where
+module Prelude›Arith›Equality where
 
-import Prelude∷Logic use (Not; absurd)
+import Prelude›Logic use (Not; absurd)
 
 def Eq : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
   λ (n : ℕ) →
@@ -86,7 +86,7 @@ end
 (* Equal numbers satisfy the same predicates, of any level [u]. *)
 module Transport (u : Level) where
 
-open Prelude∷Logic.Negation u use (absurd)
+open Prelude›Logic.Negation u use (absurd)
 
 def transport : ∀ (P : ∀ (n : ℕ) → Type@{u}) (x : ℕ) (y : ℕ)
     (h : Eq x y) (px : P x) → P y ≔

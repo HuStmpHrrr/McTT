@@ -1,9 +1,9 @@
 (* A unit with parameters: its members are applied to them. *)
-import Lib∷Poly use (id)
+import Lib›Poly use (id)
 
 module Params where
 
-eval Lib∷Poly.id ℕ 3 : ℕ
+eval Lib›Poly.id ℕ 3 : ℕ
 
 eval id ℕ 4
 

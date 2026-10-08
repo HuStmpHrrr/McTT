@@ -3,17 +3,17 @@
    instances. *)
 module Programs where
 
-import Prelude∷Arith∷Sub use (pred; sub)
-open Prelude∷Arith∷Sub.Laws use (subSelf; subSuccRight)
-open Prelude∷Arith∷Sub.PlusSub use (plusSub)
-import Prelude∷Arith∷MinMax use (min; max)
-open Prelude∷Arith∷MinMax.Laws use (minComm; maxComm; plusMinMax)
-import Prelude∷Function∷Combinators use (Generic)
-open Prelude∷Function∷Combinators.IterateLaws use (iteratePlus; iterateComm)
-import Prelude∷Arith∷Ackermann use (ack)
-open Prelude∷Arith∷Ackermann.Equations use (ackZero)
-open Prelude∷Arith∷Ackermann.Rows use (ackTwo)
-import Prelude∷Arith∷Plus use (plus)
+import Prelude›Arith›Sub use (pred; sub)
+open Prelude›Arith›Sub.Laws use (subSelf; subSuccRight)
+open Prelude›Arith›Sub.PlusSub use (plusSub)
+import Prelude›Arith›MinMax use (min; max)
+open Prelude›Arith›MinMax.Laws use (minComm; maxComm; plusMinMax)
+import Prelude›Function›Combinators use (Generic)
+open Prelude›Function›Combinators.IterateLaws use (iteratePlus; iterateComm)
+import Prelude›Arith›Ackermann use (ack)
+open Prelude›Arith›Ackermann.Equations use (ackZero)
+open Prelude›Arith›Ackermann.Rows use (ackTwo)
+import Prelude›Arith›Plus use (plus)
 
 eval pred 5
 

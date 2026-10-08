@@ -2,19 +2,19 @@
    induction and strong (course-of-values) induction, all from [rec], for
    motives of any level.  [Principles u] states them for motives into
    [Type@{u}]; the unit exports them at [0l]. *)
-module Prelude∷Arith∷Induction where
+module Prelude›Arith›Induction where
 
-import Prelude∷Logic
-import Prelude∷Arith∷Equality use (Eq; sym)
-import Prelude∷Arith∷Order use (Le; Lt)
+import Prelude›Logic
+import Prelude›Arith›Equality use (Eq; sym)
+import Prelude›Arith›Order use (Le; Lt)
 
 module Principles (u : Level) where
 
-open Prelude∷Logic.Negation u use (absurd)
-open Prelude∷Logic.Conj u use (And; andIntro; andFst; andSnd)
-open Prelude∷Logic.Disj u use (orElim)
-open Prelude∷Arith∷Equality.Transport u use (transport)
-open Prelude∷Arith∷Order.LtLaws.Cases u use (leCases)
+open Prelude›Logic.Negation u use (absurd)
+open Prelude›Logic.Conj u use (And; andIntro; andFst; andSnd)
+open Prelude›Logic.Disj u use (orElim)
+open Prelude›Arith›Equality.Transport u use (transport)
+open Prelude›Arith›Order.LtLaws.Cases u use (leCases)
 
 (* Case analysis: a property of [0] and of every successor holds of every
    number.  It is [rec] without the induction hypothesis. *)

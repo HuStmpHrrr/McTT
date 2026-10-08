@@ -1,22 +1,22 @@
-(* A client of [Prelude∷Arith∷Induction] and [Prelude∷Arith∷Decide]:
+(* A client of [Prelude›Arith›Induction] and [Prelude›Arith›Decide]:
    halving by strong and by two-step induction, decisions eliminated into
    [ℕ] to show which branch they compute, and the equality test [eqb]. *)
 module Induction where
 
-import Prelude∷Logic use (Not)
-open Prelude∷Logic.Disj 0l use (orElim)
-open Prelude∷Logic.Equiv 0l use (iffFwd; iffBwd)
-open Prelude∷Logic.Exist 0l use (existsIntro; existsElim)
-open Prelude∷Logic.Decidable 0l use (decStable)
-import Prelude∷Arith∷Equality use (Eq)
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Order use (Le; Lt)
-open Prelude∷Arith∷Order.LeLaws use (leSucc)
-import Prelude∷Arith∷Parity use (Even; double)
-import Prelude∷Arith∷Induction use (caseNat; twoStepInd; strongInd)
-import Prelude∷Arith∷Decide use (eqb)
-open Prelude∷Arith∷Decide.Deciders use (decEq; decLe; decLt)
-open Prelude∷Arith∷Decide.EqbLaws use (eqbSpec; eqbZero)
+import Prelude›Logic use (Not)
+open Prelude›Logic.Disj 0l use (orElim)
+open Prelude›Logic.Equiv 0l use (iffFwd; iffBwd)
+open Prelude›Logic.Exist 0l use (existsIntro; existsElim)
+open Prelude›Logic.Decidable 0l use (decStable)
+import Prelude›Arith›Equality use (Eq)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Order use (Le; Lt)
+open Prelude›Arith›Order.LeLaws use (leSucc)
+import Prelude›Arith›Parity use (Even; double)
+import Prelude›Arith›Induction use (caseNat; twoStepInd; strongInd)
+import Prelude›Arith›Decide use (eqb)
+open Prelude›Arith›Decide.Deciders use (decEq; decLe; decLt)
+open Prelude›Arith›Decide.EqbLaws use (eqbSpec; eqbZero)
 
 (* Halving, by the two induction principles; [eval]s below compare them. *)
 module Halving where

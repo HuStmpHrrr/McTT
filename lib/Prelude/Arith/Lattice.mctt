@@ -1,15 +1,15 @@
 (* The natural numbers as a distributive lattice under
-   [Prelude∷Arith∷MinMax.min] and [Prelude∷Arith∷MinMax.max]: associativity,
+   [Prelude›Arith›MinMax.min] and [Prelude›Arith›MinMax.max]: associativity,
    absorption and distributivity, and the order-theoretic characterization of
    [min] and [max] as greatest lower and least upper bounds. *)
-module Prelude∷Arith∷Lattice where
+module Prelude›Arith›Lattice where
 
-import Prelude∷Logic use (absurd)
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
-import Prelude∷Arith∷MinMax use (min; max)
-open Prelude∷Arith∷MinMax.Laws use (minComm; minIdem)
-import Prelude∷Arith∷Order use (Le)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans)
+import Prelude›Logic use (absurd)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans)
+import Prelude›Arith›MinMax use (min; max)
+open Prelude›Arith›MinMax.Laws use (minComm; minIdem)
+import Prelude›Arith›Order use (Le)
+open Prelude›Arith›Order.LeLaws use (leRefl; leTrans)
 
 (* Associativity, absorption and distributivity. *)
 module Algebra where

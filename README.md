@@ -145,7 +145,7 @@ one (and `∀` for `forall`):
 | `λ`     | `fun`    |   | `⊥`     | `False` |
 | `∀`, `Π`| `forall` |   | `⋆`     | `true`  |
 | `≔`     | `:=`     |   | `ω`     | `omega` |
-| `∷`     | `::`     |   |         |         |
+| `›`     | `::`     |   |         |         |
 
 Identifiers are ASCII letters only, so these symbols need no spaces around
 them: `λ(x:ℕ)→x` is `fun (x : Nat) -> x`.

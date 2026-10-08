@@ -1,15 +1,15 @@
 (* Finite sums [sumTo f n] of [f i] for [i < n], with linearity laws, sums
    of constants, and the closed forms of Gauss and of the odd numbers. *)
-module Prelude∷Arith∷Sum where
+module Prelude›Arith›Sum where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multZero; multSucc)
-open Prelude∷Arith∷Mult.Algebra use (multComm; multDistribLeft; multDistribRight)
-import Prelude∷Function∷Combinators use (Generic)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multZero; multSucc)
+open Prelude›Arith›Mult.Algebra use (multComm; multDistribLeft; multDistribRight)
+import Prelude›Function›Combinators use (Generic)
 
 (* [sumTo f n] is [f (n - 1) + ... + f 0]: [sumTo f 0] is [0] and
    [sumTo f (succ p)] is [plus (f p) (sumTo f p)]. *)

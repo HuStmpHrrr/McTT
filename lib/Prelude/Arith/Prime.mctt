@@ -3,20 +3,20 @@
    first one that divides [n], or [n] itself when none does.  [isPrime n] is
    1 when [n] is at least 2 and has no such divisor, and 0 otherwise;
    [Prime n] is the computed proposition [Eq (isPrime n) 1]. *)
-module Prelude∷Arith∷Prime where
+module Prelude›Arith›Prime where
 
-import Prelude∷Logic use (Not; absurd)
-import Prelude∷Arith∷Equality use (Eq; refl)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Sub use (pred)
-import Prelude∷Arith∷Order use (Le; leb)
-import Prelude∷Arith∷Decide use (pick; eqb)
-open Prelude∷Arith∷Decide.EqbLaws use (eqbCases)
-import Prelude∷Arith∷Div use (mod)
-import Prelude∷Arith∷Divides use (Divides)
-open Prelude∷Arith∷Divides.Basic use (dividesRefl)
-import Prelude∷Arith∷Induction use (caseNat)
-import Prelude∷Function∷Combinators use (Generic)
+import Prelude›Logic use (Not; absurd)
+import Prelude›Arith›Equality use (Eq; refl)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Sub use (pred)
+import Prelude›Arith›Order use (Le; leb)
+import Prelude›Arith›Decide use (pick; eqb)
+open Prelude›Arith›Decide.EqbLaws use (eqbCases)
+import Prelude›Arith›Div use (mod)
+import Prelude›Arith›Divides use (Divides)
+open Prelude›Arith›Divides.Basic use (dividesRefl)
+import Prelude›Arith›Induction use (caseNat)
+import Prelude›Function›Combinators use (Generic)
 
 (* Trial division and the invariants of its search.  The definitions
    below unfold to it, and clients see only them. *)
@@ -24,7 +24,7 @@ private module TrialDivision where
 
 (* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
    exactly when [a] is at most [b].  It is kept apart from
-   [Prelude∷Arith∷Sub.sub], whose evaluation takes exponential time. *)
+   [Prelude›Arith›Sub.sub], whose evaluation takes exponential time. *)
 def monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]

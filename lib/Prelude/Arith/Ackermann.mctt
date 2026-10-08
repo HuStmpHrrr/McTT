@@ -1,11 +1,11 @@
 (* The Ackermann function, by higher-order primitive recursion, with its
    defining equations and closed forms for [ack 1] and [ack 2]. *)
-module Prelude∷Arith∷Ackermann where
+module Prelude›Arith›Ackermann where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusSucc)
-import Prelude∷Function∷Combinators use (Generic)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusSucc)
+import Prelude›Function›Combinators use (Generic)
 
 (* The Ackermann function. Recursion on [m] returns a function [ℕ → ℕ]:
    [ack (succ m)] iterates [ack m] [succ n] times from [1], so

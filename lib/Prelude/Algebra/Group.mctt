@@ -1,5 +1,5 @@
 (* Groups over a setoid.  The unit takes the parameters of
-   [Prelude∷Algebra∷Monoid], then an inverse [inv] that respects [R],
+   [Prelude›Algebra›Monoid], then an inverse [inv] that respects [R],
    with the two inverse laws.  The monoid itself is the submodule [Base],
    with its powers and their laws; [Laws] adds what the inverse gives:
    cancellation on both sides, the uniqueness of inverses, the inverse of
@@ -8,7 +8,7 @@
 
    The proofs share two private lemma modules: [Solve] solves one-sided
    equations, and [Product] computes the products that cancel. *)
-module Prelude∷Algebra∷Group
+module Prelude›Algebra›Group
     (u : Level)
     (M : Type@{u})
     (R : ∀ (x : M) (y : M) → Type@{u})
@@ -27,7 +27,7 @@ module Prelude∷Algebra∷Group
     (leftInv : ∀ (x : M) → R (op (inv x) x) e)
     (rightInv : ∀ (x : M) → R (op x (inv x)) e) where
 
-import Prelude∷Algebra∷Monoid as Monoid
+import Prelude›Algebra›Monoid as Monoid
 
 (* The underlying monoid. *)
 module Base ≔ Monoid u M R rRefl rSym rTrans op opCong e assoc leftId rightId

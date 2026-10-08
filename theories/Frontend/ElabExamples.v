@@ -278,7 +278,7 @@ Proof. elab_fails. Qed.
 (** The error names the unit by its path. *)
 Example unit_not_imported_msg :
   elaborate_core (unit_of (c_eval (proj (glob ("L" :: "M" :: nil)) "f") None :: nil))
-  = eerr "the unit L∷M is not imported".
+  = eerr "the unit L›M is not imported".
 Proof. vm_compute; reflexivity. Qed.
 
 (** ** Definition Keywords
@@ -880,7 +880,7 @@ Proof. elab_err. Qed.
 Example leading_open_unloaded :
   elaborate_core (open_cmds ("P" :: "E" :: nil) nil nil None (i_items (("Eq", "Eq") :: nil) nil),
                   ("T" :: nil, nil, nil))
-  = eerr "the unit P∷E is not imported".
+  = eerr "the unit P›E is not imported".
 Proof. elab_err. Qed.
 
 (** Before the header, an open may [use] but not [export] ([Cst.lead_cmds]),

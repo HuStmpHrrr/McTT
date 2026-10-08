@@ -5,8 +5,8 @@
 
 module Tutorial where
 
-import Prelude∷Arith∷Equality use (Eq; refl)
-import Prelude∷Function∷Iter as Iter
+import Prelude›Arith›Equality use (Eq; refl)
+import Prelude›Function›Iter as Iter
 
 (* 1. Lexical matters.
    This text is a comment; comments do not nest. Identifiers are letters
@@ -15,7 +15,7 @@ import Prelude∷Function∷Iter as Iter
 
    Symbols have a Unicode and an ASCII spelling, and either may be used
    anywhere; this file uses the Unicode ones, which the checker also prints:
-     →  ->      ⇒  =>      ≔  :=      ∷  ::
+     →  ->      ⇒  =>      ≔  :=      ›  ::
      λ  fun     ∀  forall (or Π)      ℕ  Nat
      ⊤  True    ⊥  False   ⋆  true    ω  omega
    Identifiers are ASCII letters, so the symbols need no spaces around
@@ -189,12 +189,12 @@ eval Vault.Inside.peek
 
 (* Rejected: eval Vault.secret   Error: Tutorial.Vault.secret is private *)
 
-(* 11. Imports and opens. [import X∷Y] only loads the unit X∷Y: its
+(* 11. Imports and opens. [import X›Y] only loads the unit X›Y: its
    members are reached by their full name. *)
 
-import Prelude∷Arith∷Plus
+import Prelude›Arith›Plus
 
-eval Prelude∷Arith∷Plus.plus 2 3
+eval Prelude›Arith›Plus.plus 2 3
 
 (* [open E as Z use (a; c as d) export (e)] declares, in this module, a
    private alias [module Z ≔ E], private definitions [a ≔ Z.a] and
@@ -202,7 +202,7 @@ eval Prelude∷Arith∷Plus.plus 2 3
    declare aliases instead. *)
 
 module Adding where
-  open Prelude∷Arith∷Plus as P use (plus as add) export (Algebra)
+  open Prelude›Arith›Plus as P use (plus as add) export (Algebra)
   def five : ℕ ≔ add 2 (P.plus 1 2) end
 end
 
@@ -212,12 +212,12 @@ eval Adding.Algebra.plusComm 1 2
 
 (* Rejected: eval Adding.add   Error: Tutorial.Adding.add is private *)
 
-(* The long form [import X∷Y as Z use (…)] is [import X∷Y] then
-   [open X∷Y as Z use (…)]. Prelude∷Arith∷Plus is loaded already, and a
+(* The long form [import X›Y as Z use (…)] is [import X›Y] then
+   [open X›Y as Z use (…)]. Prelude›Arith›Plus is loaded already, and a
    repeated import does nothing, so this one only opens it. *)
 
 module Counting where
-  import Prelude∷Arith∷Plus as Q use (plus)
+  import Prelude›Arith›Plus as Q use (plus)
   def seven : ℕ ≔ plus 3 (Q.plus 2 2) end
 end
 
@@ -227,7 +227,7 @@ eval Counting.seven
    the unit's parameter types need; everything else is imported inside the
    module, as at the top of this file. Leading ones may [use] and [as] but
    not [export]:
-     import Prelude∷Arith∷Equality use (Eq)
+     import Prelude›Arith›Equality use (Eq)
      module Proofs (h : Eq 1 1) where … end *)
 
 (* 12. Local modules. [let module X (ps) where … end in M end] declares a
@@ -244,7 +244,7 @@ eval let module Doubler (n : ℕ) where
      end
 
 (* Rejected in a local module body:
-     import X∷Y     Error: import is not allowed in a local module; use open
+     import X›Y     Error: import is not allowed in a local module; use open
      eval M         Error: eval is not allowed in a local module
      axiom x : T    Error: axioms are not allowed in a local module
    An abstract member, or an abstract keyword, makes the whole let
@@ -301,7 +301,7 @@ eval applyTwice 1l Type@0 (λ (A : Type@0) → ∀ (a : A) → A) ℕ
 def widen (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
 
 (* A module may take a level, so that all its members share it: the
-   Prelude's [Prelude∷Function∷Iter] takes [(u : Level) (A : Type@{u})],
+   Prelude's [Prelude›Function›Iter] takes [(u : Level) (A : Type@{u})],
    and [Iter.iter 0l ℕ] iterates on numbers. *)
 module Pointed (u : Level) (A : Type@{u}) (a : A) where
   def point : A ≔ a end
@@ -310,7 +310,7 @@ end
 eval Pointed.point 1l Type@0 ℕ
 
 (* A Church encoding quantifies over a universe, so it lives one level up:
-   the conjunction of the Prelude, [Prelude∷Logic.Conj u], is in
+   the conjunction of the Prelude, [Prelude›Logic.Conj u], is in
    [Type@{succl u}]. A type quantifying over levels themselves is large, in
    [Type@ω], above every [Type@{u}]. *)
 eval ∀ (u : Level) → Type@{u}

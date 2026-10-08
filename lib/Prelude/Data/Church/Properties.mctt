@@ -1,4 +1,4 @@
-(* Laws of [Prelude∷Data∷Church], at every level [u]: the arithmetic of
+(* Laws of [Prelude›Data›Church], at every level [u]: the arithmetic of
    numerals agrees with that of [ℕ], moving between levels keeps the
    number, and the length and sum of lists.
 
@@ -7,15 +7,15 @@
    about the numerals of numbers, [fromNat u n], and are proved by induction
    on [n].  Laws that only unfold definitions, like [lengthMap], hold for
    every list. *)
-module Prelude∷Data∷Church∷Properties where
+module Prelude›Data›Church›Properties where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Algebra use (plusAssoc)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Pow use (pow)
-import Prelude∷Data∷Church as C
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Algebra use (plusAssoc)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Pow use (pow)
+import Prelude›Data›Church as C
 
 (* The successor on numbers, the function [toNat] iterates. *)
 private def S (k : ℕ) : ℕ ≔ succ k end

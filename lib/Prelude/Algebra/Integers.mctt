@@ -3,22 +3,22 @@
    [Same x y], when they stand for the same difference: [a + d = c + b] for
    [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
    pair.  With [ofNat 0] as zero they form a commutative group, [Additive],
-   an instance of [Prelude∷Algebra∷Group]; its powers are the multiples
+   an instance of [Prelude›Algebra›Group]; its powers are the multiples
    of an integer.
 
    [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude]
    and [negative] read a pair back as a sign and a number. *)
-module Prelude∷Algebra∷Integers where
+module Prelude›Algebra›Integers where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
-open Prelude∷Arith∷Plus.Cancel use (plusCancelRight)
-import Prelude∷Arith∷Sub use (pred)
-import Prelude∷Arith∷Decide use (pick)
-import Prelude∷Function∷Combinators use (Generic)
-import Prelude∷Algebra∷Group as Group
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
+open Prelude›Arith›Plus.Cancel use (plusCancelRight)
+import Prelude›Arith›Sub use (pred)
+import Prelude›Arith›Decide use (pick)
+import Prelude›Function›Combinators use (Generic)
+import Prelude›Algebra›Group as Group
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
 def Int : Type@0 ≔ ∀ (i : ℕ) → ℕ end

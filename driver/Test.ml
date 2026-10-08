@@ -88,12 +88,17 @@ let%expect_test "Unicode symbols need no spaces" =
   let _ = main_of_body "def g:∀(x:ℕ)→ℕ≔λ(x:ℕ)→x end eval g" in
   [%expect {| Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ |}]
 
-let%expect_test "a unit path may be spelled with ∷" =
-  let _ = main_of_multi_string "import Lib∷Num module Test where eval Lib::Num.double 2 eval Lib∷Num.Ops.pred 2 end" in
+let%expect_test "a unit path may be spelled with ›" =
+  let _ = main_of_multi_string "import Lib›Num module Test where eval Lib::Num.double 2 eval Lib›Num.Ops.pred 2 end" in
   [%expect {|
-    Evaluate Lib∷Num.double 2 --> 4 : ℕ
-    Evaluate Lib∷Num.Ops.pred 2 --> 1 : ℕ
+    Evaluate Lib›Num.double 2 --> 4 : ℕ
+    Evaluate Lib›Num.Ops.pred 2 --> 1 : ℕ
     |}]
+
+(* [∷] is not a path separator: only [::] and [›] are. *)
+let%expect_test "a unit path spelled with ∷ is rejected" =
+  let _ = main_of_multi_string "import Lib∷Num module Test where eval 0 end" in
+  [%expect {| Error: unexpected character "∷" at line 1, column 11 |}]
 
 let%expect_test "a Unicode character that is not a token is rejected" =
   let _ = main_of_body "eval λ (x : ℕ) ↦ x" in
@@ -177,7 +182,7 @@ let%expect_test "lib/NatTheory.mctt" =
   [%expect {|
     Evaluate plusComm 2 3 --> ⋆ : ⊤
     Evaluate sym 4 4 (refl 4) --> ⋆ : ⊤
-    Evaluate zeroNeSucc 5 --> λ (x1 : ⊥) → Prelude∷Arith∷Equality.zeroNeSucc 5 x1
+    Evaluate zeroNeSucc 5 --> λ (x1 : ⊥) → Prelude›Arith›Equality.zeroNeSucc 5 x1
       : ∀ (x1 : ⊥) → ⊥
     Evaluate iterSucc 3 4 --> ⋆ : ⊤
     Evaluate Iter.iter 0l ℕ (λ (x1 : ℕ) → plus x1 x1) 3 1 --> 8 : ℕ
@@ -853,21 +858,21 @@ let%expect_test "imports, sharing a diamond" =
 let%expect_test "a unit with parameters" =
   let _ = main_of_multi "Params.mctt" in
   [%expect {|
-    Evaluate Lib∷Poly.id ℕ 3 --> 3 : ℕ
+    Evaluate Lib›Poly.id ℕ 3 --> 3 : ℕ
     Evaluate id ℕ 4 --> 4 : ℕ
     |}]
 
 let%expect_test "an import is not transitive" =
   let _ = main_of_multi "Transitive.mctt" in
-  [%expect {| Error: the unit Lib∷Num is not imported |}]
+  [%expect {| Error: the unit Lib›Num is not imported |}]
 
 let%expect_test "a cyclic import is rejected" =
   let _ = main_of_multi "Cycle.mctt" in
-  [%expect {| Error: cyclic import: Cyc∷A → Cyc∷B → Cyc∷A |}]
+  [%expect {| Error: cyclic import: Cyc›A → Cyc›B → Cyc›A |}]
 
 let%expect_test "a missing unit is reported" =
   let _ = main_of_multi "Missing.mctt" in
-  [%expect {| Error: Lib∷Nowhere: cannot find unit |}]
+  [%expect {| Error: Lib›Nowhere: cannot find unit |}]
 
 let%expect_test "an ill-typed imported unit is reported" =
   let _ = main_of_multi "BadDep.mctt" in
@@ -875,7 +880,7 @@ let%expect_test "an ill-typed imported unit is reported" =
 
 let%expect_test "a file declaring another unit is reported" =
   let _ = main_of_multi "Misnamed.mctt" in
-  [%expect {| Error: Lib∷Wrong: the file of the unit declares another unit |}]
+  [%expect {| Error: Lib›Wrong: the file of the unit declares another unit |}]
 
 let%expect_test "lib/Arithmetic.mctt" =
   let _ = main_of_lib "Arithmetic.mctt" in
@@ -903,10 +908,10 @@ let%expect_test "lib/OrderParity.mctt" =
     Evaluate lePlusRight 2 3 --> ⋆ : ⊤
     Evaluate orElim (Le 5 2) (Le 2 5) ℕ (leTotal 5 2) (λ (x1 : Le 5 2) → 0)
                (λ (x2 : Le 2 5) → 1) --> 1 : ℕ
-    Evaluate ltIrrefl 3 --> λ (x1 : ⊥) → Prelude∷Arith∷Order.LtLaws.ltIrrefl 3 x1
+    Evaluate ltIrrefl 3 --> λ (x1 : ⊥) → Prelude›Arith›Order.LtLaws.ltIrrefl 3 x1
       : ∀ (x1 : ⊥) → ⊥
     Evaluate notLtZero 2
-      --> λ (x1 : ⊥) → Prelude∷Arith∷Order.LtLaws.notLtZero 2 x1 : ∀ (x1 : ⊥) → ⊥
+      --> λ (x1 : ⊥) → Prelude›Arith›Order.LtLaws.notLtZero 2 x1 : ∀ (x1 : ⊥) → ⊥
     Evaluate leb 2 5 --> 1 : ℕ
     Evaluate leb 5 2 --> 0 : ℕ
     Evaluate lebComplete 2 5 ⋆ --> ⋆ : ⊤
@@ -1000,7 +1005,7 @@ let%expect_test "lib/Induction.mctt" =
     Evaluate iffFwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
     Evaluate iffBwd (Eq (eqb 5 5) 1) (Eq 5 5) (eqbSpec 5 5) ⋆ --> ⋆ : ⊤
     Evaluate eqbZero 2 3 ⋆
-      --> λ (x1 : ⊥) → Prelude∷Arith∷Decide.EqbLaws.eqbZero 2 3 ⋆ x1
+      --> λ (x1 : ⊥) → Prelude›Arith›Decide.EqbLaws.eqbZero 2 3 ⋆ x1
       : ∀ (x1 : ⊥) → ⊥
     Evaluate existsElim (λ (x1 : ℕ) → Eq (plus x1 x1) 6) ℕ
                (existsIntro (λ (x2 : ℕ) → Eq (plus x2 x2) 6) 3 ⋆)
@@ -1304,7 +1309,7 @@ let%expect_test "lib/NumberTheory.mctt" =
     Evaluate twoPrime --> ⋆ : ⊤
     Evaluate sevenPrime --> ⋆ : ⊤
     Evaluate nineNotPrime
-      --> λ (x1 : ⊥) → Prelude∷Arith∷Prime.Facts.nineNotPrime x1 : ∀ (x1 : ⊥) → ⊥
+      --> λ (x1 : ⊥) → Prelude›Arith›Prime.Facts.nineNotPrime x1 : ∀ (x1 : ⊥) → ⊥
     Evaluate smallestDivisorDivides 15 --> ⋆ : ⊤
     Evaluate primeGeTwo 13 ⋆ --> ⋆ : ⊤
     Evaluate primeSmallestDivisor 13 ⋆ --> ⋆ : ⊤
@@ -1562,7 +1567,7 @@ let%expect_test "an imported member may have a private type" =
 
 let%expect_test "a used name that is not a member is rejected" =
   let _ = main_of_multi_string "import Lib::Num use (q) module X where end" in
-  [%expect {| Error: Lib∷Num.q is not a member |}]
+  [%expect {| Error: Lib›Num.q is not a member |}]
 
 let%expect_test "a member both used and exported is rejected" =
   let _ = main_of_multi_string "module X where import Lib::Num use (double) export (double) end" in
@@ -1584,7 +1589,7 @@ let%expect_test "an import of a definition is rejected" =
 
 let%expect_test "a private member is not used through an import" =
   let _ = main_of_multi_string "import Lib::Priv use (s) module X where end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a local use, use as and export" =
   let _ =
@@ -1595,9 +1600,9 @@ let%expect_test "a local use, use as and export" =
   [%expect {|
     Evaluate let module M1 where
                    private def dbl : ∀ (x1 : ℕ) → ℕ ≔
-                     Lib∷Num.double
+                     Lib›Num.double
                    end
-                   module Ops ≔ Lib∷Num.Ops
+                   module Ops ≔ Lib›Num.Ops
                    def t : ℕ ≔
                      dbl 2
                    end
@@ -1615,7 +1620,7 @@ let%expect_test "a local export as" =
   [%expect {|
     Evaluate let module M1 where
                    def dbl : ∀ (x1 : ℕ) → ℕ ≔
-                     Lib∷Num.double
+                     Lib›Num.double
                    end
                  end
              in M1.dbl 2
@@ -1630,7 +1635,7 @@ let%expect_test "a local submodule use" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private module Ops ≔ Lib∷Num.Ops
+                   private module Ops ≔ Lib›Num.Ops
                    def t : ℕ ≔
                      Ops.pred 5
                    end
@@ -1647,7 +1652,7 @@ let%expect_test "a local import as" =
   in
   [%expect {|
     Evaluate let module M1 where
-                   private module W ≔ Lib∷Num
+                   private module W ≔ Lib›Num
                    def t : ℕ ≔
                      W.double 1
                    end
@@ -1685,7 +1690,7 @@ let%expect_test "a local use of a missing member is rejected" =
     main_of_multi_string
       "import Lib::Num module X where eval let module L where open Lib::Num use (q) end in 0 end end"
   in
-  [%expect {| Error: Lib∷Num.q is not a member |}]
+  [%expect {| Error: Lib›Num.q is not a member |}]
 
 let%expect_test "a local member both used and exported is rejected" =
   let _ =
@@ -1760,11 +1765,11 @@ let%expect_test "a private member of a local submodule is rejected outside it" =
 
 let%expect_test "a private global member is rejected through a local alias" =
   let _ = main_of_multi_string "import Lib::Priv module X where eval let module L := Lib::Priv in L.s end end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a public global member is used through a local alias" =
   let _ = main_of_multi_string "import Lib::Priv module X where eval let module L := Lib::Priv in L.pub end end" in
-  [%expect {| Evaluate let module M1 ≔ Lib∷Priv in M1.pub end --> 8 : ℕ |}]
+  [%expect {| Evaluate let module M1 ≔ Lib›Priv in M1.pub end --> 8 : ℕ |}]
 
 let%expect_test "a private member of a closed sibling is rejected" =
   let _ = main_of_body "module A where private def s : Nat := 0 end end def t : Nat := A.s end" in
@@ -1789,43 +1794,43 @@ let%expect_test "a private member is used in its unit and in a nested module" =
 
 let%expect_test "a private member of another unit is not used in a def" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where def x : Nat := P.s end end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not evaluated" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.s end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not named by its path" =
   let _ = main_of_multi_string "import Lib::Priv module X where eval Lib::Priv.s end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not used in a module body" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module M where def y : Nat := P.s end end end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not used in module parameters" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module M (x : P.T) where end end" in
-  [%expect {| Error: Lib∷Priv.T is private |}]
+  [%expect {| Error: Lib›Priv.T is private |}]
 
 let%expect_test "a private member of another unit is not used in an alias" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module A := P.F P.s end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not imported by use" =
   let _ = main_of_multi_string "import Lib::Priv use (s) module X where end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member of another unit is not imported by use in a local module" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module L where open P use (s) end end" in
-  [%expect {| Error: Lib∷Priv.s is private |}]
+  [%expect {| Error: Lib›Priv.s is private |}]
 
 let%expect_test "a private member is not reached through an alias declared outside" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module Q := P.Sub eval Q.u end" in
-  [%expect {| Error: Lib∷Priv.Sub.u is private |}]
+  [%expect {| Error: Lib›Priv.Sub.u is private |}]
 
 let%expect_test "a private member is not reached through an alias in its unit" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.A.u end" in
-  [%expect {| Error: Lib∷Priv.Sub.u is private |}]
+  [%expect {| Error: Lib›Priv.Sub.u is private |}]
 
 let%expect_test "a public definition naming a private one is used from another unit" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.pub eval P.Sub.t end" in
@@ -1867,19 +1872,19 @@ let%expect_test "a private module is used inside its unit" =
 
 let%expect_test "a member of a private module of another unit is rejected" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.Hidden.h end" in
-  [%expect {| Error: Lib∷Priv.Hidden is private |}]
+  [%expect {| Error: Lib›Priv.Hidden is private |}]
 
 let%expect_test "a private module of another unit is not aliased" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where module Q := P.Hidden end" in
-  [%expect {| Error: Lib∷Priv.Hidden is private |}]
+  [%expect {| Error: Lib›Priv.Hidden is private |}]
 
 let%expect_test "a private module alias of another unit is rejected" =
   let _ = main_of_multi_string "import Lib::Priv as P module X where eval P.PA.t end" in
-  [%expect {| Error: Lib∷Priv.PA is private |}]
+  [%expect {| Error: Lib›Priv.PA is private |}]
 
 let%expect_test "a private module of another unit is not imported by use" =
   let _ = main_of_multi_string "import Lib::Priv use (Hidden) module X where end" in
-  [%expect {| Error: Lib∷Priv.Hidden is private |}]
+  [%expect {| Error: Lib›Priv.Hidden is private |}]
 
 let%expect_test "private module M.N makes only N private, to M" =
   let _ = main_of_body "private module M.N where def a : Nat := 1 end end module Q := M eval M.N.a" in
@@ -1925,7 +1930,7 @@ let%expect_test "a local import of a unit that is not imported is rejected" =
       "module LocalImp where eval let module L where open Prelude::Arith::MinMax use (max) \
        def m : Nat := max 2 3 end end in L.m end end"
   in
-  [%expect {| Error: the unit Prelude∷Arith∷MinMax is not imported |}]
+  [%expect {| Error: the unit Prelude›Arith›MinMax is not imported |}]
 
 let%expect_test "a local import of a unit imported at the top level" =
   let _ =
@@ -1938,7 +1943,7 @@ let%expect_test "a local import of a unit imported at the top level" =
                    private def max : ∀ (x1 : ℕ)
                                        (x2 : ℕ)
                                        → ℕ ≔
-                     Prelude∷Arith∷MinMax.max
+                     Prelude›Arith›MinMax.max
                    end
                    def m : ℕ ≔
                      max 2 3
@@ -2002,7 +2007,7 @@ let%expect_test "lib/Polynomials.mctt" =
                    private def max : ∀ (x2 : ℕ)
                                        (x3 : ℕ)
                                        → ℕ ≔
-                     Prelude∷Arith∷MinMax.max
+                     Prelude›Arith›MinMax.max
                    end
                    def value : ∀ (x4 : ℕ) → ℕ ≔
                      λ (x5 : ℕ) → At.horner x5 x1 4
@@ -2261,7 +2266,7 @@ let%expect_test "an open of a term is rejected" =
 
 let%expect_test "an open of a unit that is not imported is rejected" =
   let _ = main_of_multi_string "module X where open Lib::Num use (double) end" in
-  [%expect {| Error: the unit Lib∷Num is not imported |}]
+  [%expect {| Error: the unit Lib›Num is not imported |}]
 
 let%expect_test "an open of a unit loaded by import" =
   let _ = main_of_multi_string "import Lib::Num module X where open Lib::Num use (double) open Lib::Num.Ops as O eval O.pred (double 2) end" in
@@ -2278,9 +2283,9 @@ let%expect_test "import names a unit" =
   let _ = main_of_body "module M where end import M" in
   [%expect {|
     Error: on "end" (at line 1, column 47 - line 1, column 50): Expected a
-      further "∷" or "." in the path, the arguments of the module, "as", "use",
+      further "›" or "." in the path, the arguments of the module, "as", "use",
       "export", or the next command.
-      "import" names a unit, as in "import X∷Y"; a module in scope is opened with
+      "import" names a unit, as in "import X›Y"; a module in scope is opened with
       "open".
     |}]
 
@@ -2290,7 +2295,7 @@ let%expect_test "an import declares nothing" =
   let _ = main_of_multi_string "import Lib::Num module X where eval double 1 end" in
   [%expect {| Error: unbound name double |}];
   let _ = main_of_multi_string "import Lib::Num module X where eval Lib::Num.double 1 end" in
-  [%expect {| Evaluate Lib∷Num.double 1 --> 2 : ℕ |}]
+  [%expect {| Evaluate Lib›Num.double 1 --> 2 : ℕ |}]
 
 let%expect_test "a repeated import does nothing" =
   let _ =
@@ -2298,7 +2303,7 @@ let%expect_test "a repeated import does nothing" =
       "import Lib::Num import Lib::Num module X where import Lib::Num module M where import Lib::Num end \
        eval Lib::Num.double 2 end"
   in
-  [%expect {| Evaluate Lib∷Num.double 2 --> 4 : ℕ |}]
+  [%expect {| Evaluate Lib›Num.double 2 --> 4 : ℕ |}]
 
 let%expect_test "the long form of import is an import and an open" =
   let _ =
@@ -2345,14 +2350,14 @@ let%expect_test "a leading open of a unit that is not imported is rejected" =
     main_of_program_string ~search_root:"../lib"
       "open Prelude::Arith::Equality use (Eq) module ScratchP (p : Eq 1 1) where end"
   in
-  [%expect {| Error: the unit Prelude∷Arith∷Equality is not imported |}]
+  [%expect {| Error: the unit Prelude›Arith›Equality is not imported |}]
 
 let%expect_test "an open in a module names the unit that is not imported" =
   let _ =
     main_of_program_string ~search_root:"../lib"
       "module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) end"
   in
-  [%expect {| Error: the unit Prelude∷Arith∷Plus is not imported |}];
+  [%expect {| Error: the unit Prelude›Arith›Plus is not imported |}];
   let _ =
     main_of_program_string ~search_root:"../lib"
       "import Prelude::Arith::Plus module Scratch where open Prelude::Arith::Plus.Basic use (plusZero) \
@@ -2398,10 +2403,10 @@ let%expect_test "an axiom of another unit" =
        eval fun (x : Lib::Axioms.Inner.P 0) -> x end"
   in
   [%expect {|
-    Evaluate d --> succ Lib∷Axioms.c : ℕ
-    Evaluate λ (x1 : Lib∷Axioms.Inner.P 0) → x1
-      --> λ (x1 : Lib∷Axioms.Inner.P 0) → x1
-      : ∀ (x1 : Lib∷Axioms.Inner.P 0) → Lib∷Axioms.Inner.P 0
+    Evaluate d --> succ Lib›Axioms.c : ℕ
+    Evaluate λ (x1 : Lib›Axioms.Inner.P 0) → x1
+      --> λ (x1 : Lib›Axioms.Inner.P 0) → x1
+      : ∀ (x1 : Lib›Axioms.Inner.P 0) → Lib›Axioms.Inner.P 0
     |}]
 
 let%expect_test "an axiom of False makes False inhabited" =
@@ -2482,7 +2487,7 @@ let%expect_test "lib/Tutorial.mctt" =
     Evaluate Shapes.Square.side --> 2 : ℕ
     Evaluate Vault.reveal --> 8 : ℕ
     Evaluate Vault.Inside.peek --> 7 : ℕ
-    Evaluate Prelude∷Arith∷Plus.plus 2 3 --> 5 : ℕ
+    Evaluate Prelude›Arith›Plus.plus 2 3 --> 5 : ℕ
     Evaluate Adding.five --> 5 : ℕ
     Evaluate Adding.Algebra.plusComm 1 2 --> ⋆ : ⊤
     Evaluate Counting.seven --> 7 : ℕ
@@ -2544,10 +2549,10 @@ let%expect_test "mctt-doc: the units the checker rejects are reported" =
   List.iter print_endline (Doc.problems (Doc.load "../examples/multi"));
   [%expect {|
     BadDep: not checked
-    Cyc∷A: not checked
-    Cyc∷B: not checked
+    Cyc›A: not checked
+    Cyc›B: not checked
     Cycle: not checked
-    Lib∷Bad: not checked
+    Lib›Bad: not checked
     Misnamed: not checked
     Missing: not checked
     Transitive: not checked
@@ -2646,15 +2651,15 @@ let%expect_test "mctt-doc: links" =
   (* A local binder. *)
   show [ "Tutorial" ] "x" [ 1; 2 ];
   [%expect {|
-    pow line 35: Prelude∷Algebra∷Monoid#pow
-    pow line 35: Prelude∷Arith∷Pow#pow
-    Additive line 19: Prelude∷Algebra∷Instances#Additive
-    pow line 19: Prelude∷Algebra∷Monoid#pow
-    powPlus line 72: Prelude∷Algebra∷Monoid#Power.powPlus
-    plus line 205: Prelude∷Arith∷Plus#plus
-    plus line 206: Prelude∷Arith∷Plus#plus
+    pow line 35: Prelude›Algebra›Monoid#pow
+    pow line 35: Prelude›Arith›Pow#pow
+    Additive line 19: Prelude›Algebra›Instances#Additive
+    pow line 19: Prelude›Algebra›Monoid#pow
+    powPlus line 72: Prelude›Algebra›Monoid#Power.powPlus
+    plus line 205: Prelude›Arith›Plus#plus
+    plus line 206: Prelude›Arith›Plus#plus
     add line 205: declares #Adding.add
-    add line 206: Prelude∷Arith∷Plus#plus
+    add line 206: Prelude›Arith›Plus#plus
     P line 205: declares #Adding.P
     P line 206: Tutorial#Adding.P
     addIter line 277: Tutorial#Adder.addIter

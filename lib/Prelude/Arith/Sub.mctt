@@ -1,10 +1,10 @@
 (* Predecessor and truncated subtraction, with their laws stated with
-   [Prelude∷Arith∷Equality]. *)
-module Prelude∷Arith∷Sub where
+   [Prelude›Arith›Equality]. *)
+module Prelude›Arith›Sub where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; transport)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Algebra use (plusComm)
+import Prelude›Arith›Equality use (Eq; refl; sym; transport)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Algebra use (plusComm)
 
 (* The predecessor; [pred 0] is [0]. *)
 def pred (n : ℕ) : ℕ ≔

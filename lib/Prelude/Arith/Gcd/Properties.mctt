@@ -1,28 +1,28 @@
-(* Laws of [Prelude∷Arith∷Gcd]: the values at [0], [1] and the diagonal,
+(* Laws of [Prelude›Arith›Gcd]: the values at [0], [1] and the diagonal,
    independence from the fuel, divisibility of both arguments, the greatest
    divisor property, and commutativity. *)
 (* Written with the long forms ([abstract def], [private def], ...) rather
    than [theorem], [fact] and [let], for comparison. *)
-module Prelude∷Arith∷Gcd∷Properties where
+module Prelude›Arith›Gcd›Properties where
 
-import Prelude∷Logic use (absurd)
-open Prelude∷Logic.Negation as Neg
-open Prelude∷Logic.Conj 0l use (And; andIntro; andFst; andSnd)
-open Prelude∷Logic.Disj 0l use (orElim)
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong; transport)
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Order use (Le; Lt)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans; leTotal)
-open Prelude∷Arith∷Order.LtLaws use (leCases)
-import Prelude∷Arith∷Div use (div; mod)
-open Prelude∷Arith∷Div.Bounds use (divModSpec; modLt; modSmall)
-open Prelude∷Arith∷Div.Periodic use (modSelf)
-open Prelude∷Arith∷Div.One use (modOne)
-import Prelude∷Arith∷Divides use (Divides)
-open Prelude∷Arith∷Divides.Basic use (dividesRefl; dividesZero)
-open Prelude∷Arith∷Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
-import Prelude∷Arith∷Gcd use (gcdFuel; gcd)
+import Prelude›Logic use (absurd)
+open Prelude›Logic.Negation as Neg
+open Prelude›Logic.Conj 0l use (And; andIntro; andFst; andSnd)
+open Prelude›Logic.Disj 0l use (orElim)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong; transport)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Order use (Le; Lt)
+open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leTotal)
+open Prelude›Arith›Order.LtLaws use (leCases)
+import Prelude›Arith›Div use (div; mod)
+open Prelude›Arith›Div.Bounds use (divModSpec; modLt; modSmall)
+open Prelude›Arith›Div.Periodic use (modSelf)
+open Prelude›Arith›Div.One use (modOne)
+import Prelude›Arith›Divides use (Divides)
+open Prelude›Arith›Divides.Basic use (dividesRefl; dividesZero)
+open Prelude›Arith›Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
+import Prelude›Arith›Gcd use (gcdFuel; gcd)
 
 (* The invariants of Euclid's algorithm with enough fuel, from which
    [Divisor] below reads the laws of [gcd]. *)

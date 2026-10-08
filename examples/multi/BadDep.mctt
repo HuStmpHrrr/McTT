@@ -1,4 +1,4 @@
-import Lib∷Bad
+import Lib›Bad
 
 module BadDep where
 

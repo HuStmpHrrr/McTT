@@ -26,7 +26,7 @@ let s_darrow = "\u{21D2}" (* ⇒ for => *)
 let s_lambda = "\u{03BB}" (* λ for fun *)
 let s_pi = "\u{2200}" (* ∀ for forall; Π is also accepted *)
 let s_eq = "\u{2254}" (* ≔ for := *)
-let s_coloncolon = "\u{2237}" (* ∷ for :: *)
+let s_coloncolon = "\u{203A}" (* › for :: *)
 let s_nat = "\u{2115}" (* ℕ for Nat *)
 let s_true_ty = "\u{22A4}" (* ⊤ for True *)
 let s_false_ty = "\u{22A5}" (* ⊥ for False *)
@@ -107,10 +107,10 @@ let format_items (f : Format.formatter) (its : ((string option * string) * bool)
     (fun (pv, l) -> fprintf f " %s (%s)" (if pv then "use" else "export") (String.concat "; " l))
     (groups its)
 
-(* A unit path, its names joined by [∷]. *)
+(* A unit path, its names joined by [›]. *)
 let string_of_upath (fp : string list) : string = String.concat s_coloncolon fp
 
-(* [∷] joins a file path and [.] an internal one; either half may be empty. *)
+(* [›] joins a file path and [.] an internal one; either half may be empty. *)
 let string_of_qpath (fp : string list) (ip : string list) : string =
   match (fp, ip) with
   | [], _ -> String.concat "." ip
@@ -292,7 +292,7 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
   let open Format in
   List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
   pp_open_vbox f 2;
-  (* The unit's own name is a [∷] path *)
+  (* The unit's own name is a [›] path *)
   fprintf f "module %a" pp_upath path;
   List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
   pp_print_string f " where";

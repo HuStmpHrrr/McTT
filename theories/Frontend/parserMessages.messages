@@ -72,7 +72,7 @@ prog: MODULE VAR WHERE EVAL VAR WHERE
 ## VAR
 ##
 
-This token cannot follow a name; expected "∷" to continue a unit path, "." to select a member, an argument, or the end of the expression.
+This token cannot follow a name; expected "›" to continue a unit path, "." to select a member, an argument, or the end of the expression.
 
 prog: MODULE VAR WHERE EVAL TYPE ZERO
 ##
@@ -269,7 +269,7 @@ prog: MODULE VAR WHERE EVAL VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "∷" in the path.
+Expected a name after "›" in the path.
 
 prog: MODULE VAR WHERE EVAL VAR COLONCOLON VAR WHERE
 ##
@@ -282,7 +282,7 @@ prog: MODULE VAR WHERE EVAL VAR COLONCOLON VAR WHERE
 ## fpath COLONCOLON VAR
 ##
 
-This token cannot follow a unit path; expected "∷" to continue it, "." to select a member, an argument, or the end of the expression.
+This token cannot follow a unit path; expected "›" to continue it, "." to select a member, an argument, or the end of the expression.
 
 prog: MODULE VAR WHERE EVAL LAMBDA ZERO
 ##
@@ -420,7 +420,7 @@ prog: IMPORT ZERO
 ## IMPORT
 ##
 
-Expected the unit to import, as in "import X∷Y".
+Expected the unit to import, as in "import X›Y".
 
 prog: IMPORT VAR COLONCOLON ZERO
 ##
@@ -433,7 +433,7 @@ prog: IMPORT VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "∷" in the path.
+Expected a name after "›" in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT ZERO
 ##
@@ -991,7 +991,7 @@ prog: MODULE VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "∷" in the path.
+Expected a name after "›" in the path.
 
 prog: MODULE VAR ZERO
 ##
@@ -1064,8 +1064,8 @@ prog: IMPORT VAR COLONCOLON VAR WHERE
 ## In state 112, spurious reduction of production fpath -> fpath COLONCOLON VAR
 ##
 
-Expected a further "∷" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
-"import" names a unit, as in "import X∷Y"; a module in scope is opened with "open".
+Expected a further "›" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
+"import" names a unit, as in "import X›Y"; a module in scope is opened with "open".
 
 prog: IMPORT VAR COLONCOLON VAR DOT VAR WHERE
 ##
@@ -1103,7 +1103,7 @@ prog: OPEN VAR WHERE
 ## VAR
 ##
 
-Expected a further "∷" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
+Expected a further "›" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
 
 prog: OPEN VAR DOT ZERO
 ##

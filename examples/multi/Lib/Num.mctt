@@ -1,4 +1,4 @@
-module Lib∷Num where
+module Lib›Num where
 
 def double : ∀ (x : ℕ) → ℕ ≔
   λ (x : ℕ) → rec x return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end

@@ -11,10 +11,10 @@
 
    The definitions take their levels one by one, since operations relate
    encodings at different levels.  Pairs and sums at level [u] are
-   [Prelude∷Logic.Conj u] and [Prelude∷Logic.Disj u]. *)
-module Prelude∷Data∷Church where
+   [Prelude›Logic.Conj u] and [Prelude›Logic.Disj u]. *)
+module Prelude›Data›Church where
 
-import Prelude∷Arith∷Plus use (plus)
+import Prelude›Arith›Plus use (plus)
 
 (* Numerals: [n] applies a function [n] times. *)
 def Numeral (u : Level) : Type@{succl u} ≔

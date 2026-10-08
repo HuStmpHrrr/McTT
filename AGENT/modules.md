@@ -90,7 +90,7 @@ core never see the difference:
 | `LAMBDA`     | `λ`      | `fun`    |
 | `PI`         | `∀`, `Π` | `forall` |
 | `EQ`         | `≔`      | `:=`     |
-| `COLONCOLON` | `∷`      | `::`     |
+| `COLONCOLON` | `›`      | `::`     |
 | `NAT`        | `ℕ`      | `Nat`    |
 | `TRUE_TY`    | `⊤`      | `True`   |
 | `FALSE_TY`   | `⊥`      | `False`  |

@@ -1,6 +1,6 @@
-import Cyc∷A
+import Cyc›A
 
-module Cyc∷B where
+module Cyc›B where
 
 def b : ℕ ≔ 1 end
 

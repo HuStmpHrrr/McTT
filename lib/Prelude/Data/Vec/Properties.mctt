@@ -1,27 +1,27 @@
-(* Laws of [Prelude∷Data∷Vec], stated with [Prelude∷Arith∷Equality] on
+(* Laws of [Prelude›Data›Vec], stated with [Prelude›Arith›Equality] on
    number-valued observations: elements read with [nth], sums of vectors of
    numbers, and the answers of the tests [allb] and [anyb].  Bound proofs are
    irrelevant to the elements read ([nthIrrel]), which, with [sumExt], lets
    laws relate vectors that agree only up to those proofs. *)
-module Prelude∷Data∷Vec∷Properties where
+module Prelude›Data›Vec›Properties where
 
-import Prelude∷Logic use (absurd)
-open Prelude∷Logic.Negation as Neg
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Algebra use (plusComm; plusAssoc; plusSwapMiddle)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multZero)
-open Prelude∷Arith∷Mult.Algebra use (multDistribLeft)
-import Prelude∷Arith∷Sub use (sub)
-import Prelude∷Arith∷Order use (Lt)
-open Prelude∷Arith∷Order.LeLaws use (leStep; lePlusRight)
-import Prelude∷Arith∷Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
-open Prelude∷Arith∷Monotone.SubLaws use (subLe)
-import Prelude∷Arith∷Sum use (sumTo)
-open Prelude∷Arith∷Sum.Basic use (sumToShift)
-import Prelude∷Data∷Vec as V
+import Prelude›Logic use (absurd)
+open Prelude›Logic.Negation as Neg
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusSwapMiddle)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multZero)
+open Prelude›Arith›Mult.Algebra use (multDistribLeft)
+import Prelude›Arith›Sub use (sub)
+import Prelude›Arith›Order use (Lt)
+open Prelude›Arith›Order.LeLaws use (leStep; lePlusRight)
+import Prelude›Arith›Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
+open Prelude›Arith›Monotone.SubLaws use (subLe)
+import Prelude›Arith›Sum use (sumTo)
+open Prelude›Arith›Sum.Basic use (sumToShift)
+import Prelude›Data›Vec as V
 
 (* Vectors of numbers, the instance most laws below are about. *)
 module NV ≔ V 0l ℕ

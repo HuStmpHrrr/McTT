@@ -1,4 +1,4 @@
-module Lib∷Bad where
+module Lib›Bad where
 
 def wrong : ℕ ≔ Type@0 end
 

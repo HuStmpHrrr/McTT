@@ -2,13 +2,13 @@
    addition and multiplication, and a few computations. *)
 module Arithmetic where
 
-import Prelude∷Arith∷Equality use (refl; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Algebra use (plusAssoc)
-open Prelude∷Arith∷Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
-open Prelude∷Arith∷Mult.Cancel use (multEqZero)
+import Prelude›Arith›Equality use (refl; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Algebra use (plusAssoc)
+open Prelude›Arith›Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
+open Prelude›Arith›Mult.Cancel use (multEqZero)
 
 eval mult 6 7
 

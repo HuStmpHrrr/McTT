@@ -1,4 +1,4 @@
-module Lib∷Axioms where
+module Lib›Axioms where
 
 (* A number about which nothing is known. *)
 axiom c : ℕ

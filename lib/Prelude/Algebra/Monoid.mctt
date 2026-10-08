@@ -6,12 +6,12 @@
    uniqueness of the neutral element, the laws of powers [pow x n], and, in
    the submodule [Commutative], the laws that need commutativity.
 
-   Laws are stated up to [R] rather than up to [Prelude∷Arith∷Equality],
+   Laws are stated up to [R] rather than up to [Prelude›Arith›Equality],
    so a carrier that is not [ℕ] (functions, compared pointwise) is an
    instance as well.  The relation is at the carrier's level; this loses
    nothing, since a relation into a lower universe is also one into
    [Type@{u}], by cumulativity. *)
-module Prelude∷Algebra∷Monoid
+module Prelude›Algebra›Monoid
     (u : Level)
     (M : Type@{u})
     (R : ∀ (x : M) (y : M) → Type@{u})
@@ -26,8 +26,8 @@ module Prelude∷Algebra∷Monoid
     (leftId : ∀ (x : M) → R (op e x) x)
     (rightId : ∀ (x : M) → R (op x e) x) where
 
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Mult use (mult)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
 
 (* [pow x n] is [x] combined with itself [n] times: [op x (op x ... e)]. *)
 def pow (x : M) (n : ℕ) : M ≔

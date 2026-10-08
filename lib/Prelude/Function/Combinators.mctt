@@ -1,11 +1,11 @@
 (* Generic combinators over a type parameter at any universe level, with
    their laws at [ℕ]. *)
-module Prelude∷Function∷Combinators where
+module Prelude›Function›Combinators where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Algebra use (plusComm)
-import Prelude∷Function∷Iter as Iter
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Algebra use (plusComm)
+import Prelude›Function›Iter as Iter
 
 (* Combinators over an arbitrary type [A] of [Type@{u}].  The other types
    they mention are at the same level [u]; this loses nothing, since by
@@ -23,7 +23,7 @@ def compose (B : Type@{u}) (C : Type@{u}) (g : ∀ (b : B) → C)
   g (f a)
 end
 
-(* [iterate f n a] applies [f] to [a] [n] times; it is [Prelude∷Function∷Iter]. *)
+(* [iterate f n a] applies [f] to [a] [n] times; it is [Prelude›Function›Iter]. *)
 def iterate (f : ∀ (a : A) → A) (n : ℕ) (a : A) : A ≔
   Iter.iter u A f n a
 end

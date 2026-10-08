@@ -7,8 +7,8 @@
    [Conj.And 1l A B] that of two propositions of [Type@1].  A Church encoding
    quantifies over its target proposition, so it lives one level up, in
    [Type@{succl u}].  Clients that only need propositions in [Type@0] open a
-   submodule at [0l]: [open Prelude∷Logic.Conj 0l use (And)]. *)
-module Prelude∷Logic where
+   submodule at [0l]: [open Prelude›Logic.Conj 0l use (And)]. *)
+module Prelude›Logic where
 
 (* Negation and ex falso quodlibet for the propositions of [Type@{u}]. *)
 module Negation (u : Level) where

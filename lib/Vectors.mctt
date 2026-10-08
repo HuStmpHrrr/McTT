@@ -1,19 +1,19 @@
-(* A client of [Prelude∷Data∷Vec] and [Prelude∷Data∷Vec∷Properties]: small
+(* A client of [Prelude›Data›Vec] and [Prelude›Data›Vec›Properties]: small
    vectors of numbers are built, mapped, zipped, appended, split, reversed,
    folded, read and summed, and
    closed instances of the laws normalize to [⋆].  Index bounds on closed
    numbers compute to [⊤], so [⋆] proves them. *)
 module Vectors where
 
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Order use (Lt)
-import Prelude∷Data∷Vec as V
-import Prelude∷Data∷Vec∷Properties use (sumVec)
-open Prelude∷Data∷Vec∷Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
-open Prelude∷Data∷Vec∷Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
-open Prelude∷Data∷Vec∷Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
-open Prelude∷Data∷Vec∷Properties.Tests use (allbSound; allbComplete; anybSound)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Order use (Lt)
+import Prelude›Data›Vec as V
+import Prelude›Data›Vec›Properties use (sumVec)
+open Prelude›Data›Vec›Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
+open Prelude›Data›Vec›Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
+open Prelude›Data›Vec›Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
+open Prelude›Data›Vec›Properties.Tests use (allbSound; allbComplete; anybSound)
 
 (* Vectors of numbers. *)
 module NV ≔ V 0l ℕ

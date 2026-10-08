@@ -8,24 +8,24 @@
    The recursions on the length of a representation run on fuel.  They and
    the facts about their fuel live in the private module [Digits]; the
    public laws read them at enough fuel ([Laws]). *)
-module Prelude∷Arith∷Binary where
+module Prelude›Arith›Binary where
 
-import Prelude∷Logic use (absurd)
-import Prelude∷Arith∷Equality use (Eq; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusSucc)
-open Prelude∷Arith∷Plus.Algebra use (plusComm)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multOne; oneMult)
-import Prelude∷Arith∷Order use (Le)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans; leStep)
-import Prelude∷Arith∷Monotone.Mono use (lePlusMono)
-import Prelude∷Arith∷Pow use (pow)
-open Prelude∷Arith∷Pow.Exp use (powPlus)
-import Prelude∷Arith∷Parity use (double)
-import Prelude∷Arith∷Sum use (sumTo)
-import Prelude∷Arith∷Decide use (pick)
-import Prelude∷Arith∷Induction use (twoStepInd)
+import Prelude›Logic use (absurd)
+import Prelude›Arith›Equality use (Eq; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusSucc)
+open Prelude›Arith›Plus.Algebra use (plusComm)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multOne; oneMult)
+import Prelude›Arith›Order use (Le)
+open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leStep)
+import Prelude›Arith›Monotone.Mono use (lePlusMono)
+import Prelude›Arith›Pow use (pow)
+open Prelude›Arith›Pow.Exp use (powPlus)
+import Prelude›Arith›Parity use (double)
+import Prelude›Arith›Sum use (sumTo)
+import Prelude›Arith›Decide use (pick)
+import Prelude›Arith›Induction use (twoStepInd)
 
 (* Half of [n], rounded down.  The recursion takes a flag [b], 0 or 1, and
    computes half of [n + b], so [half (succ (succ n))] is [succ (half n)]

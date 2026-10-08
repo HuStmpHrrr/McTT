@@ -41,7 +41,7 @@
     | AT _ -> "@"
     | BAR _ -> "|"
     | COLON _ -> ":"
-    | COLONCOLON _ -> "\xe2\x88\xb7"
+    | COLONCOLON _ -> "\xe2\x80\xba"
     | COMMA _ -> ","
     | DARROW _ -> "\xe2\x87\x92"
     | LPAREN _ -> "("
@@ -174,7 +174,7 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
 
 (* Each Unicode spelling below is an alternative to an ASCII one and lexes to
    the same token, as its UTF-8 bytes:
-     →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ∷  ::
+     →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
      ℕ  Nat     ⊤  True    ⊥  False   ⋆  true       ω  omega
    Identifiers are ASCII letters only, so [λx] is [λ] then [x], and no
    symbol needs a space around it. *)
@@ -186,7 +186,7 @@ rule read =
   | '@' { AT (get_range lexbuf) }
   | '|' { BAR (get_range lexbuf) }
   | "::" { COLONCOLON (get_range lexbuf) }
-  | "\xe2\x88\xb7" { COLONCOLON (wide lexbuf 3) }
+  | "\xe2\x80\xba" { COLONCOLON (wide lexbuf 3) }
   | ':' { COLON (get_range lexbuf) }
   | ',' { COMMA (get_range lexbuf) }
   | "=>" { DARROW (get_range lexbuf) }

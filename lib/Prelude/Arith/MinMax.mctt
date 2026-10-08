@@ -1,10 +1,10 @@
 (* Minimum and maximum, by recursion on both arguments, with their laws
-   stated with [Prelude∷Arith∷Equality]. *)
-module Prelude∷Arith∷MinMax where
+   stated with [Prelude›Arith›Equality]. *)
+module Prelude›Arith›MinMax where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
 
 def min (a : ℕ) (b : ℕ) : ℕ ≔
   (rec a return y . (∀ (x : ℕ) → ℕ)

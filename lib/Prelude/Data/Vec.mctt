@@ -14,20 +14,20 @@
    [v] at a shifted index, with a bound proof built from the order laws;
    those that change the length by one ([append], [snoc]) recurse on it.
 
-   The unit takes the level [u] of [A], so [Prelude∷Data∷Vec 0l ℕ] holds
-   vectors of numbers and [Prelude∷Data∷Vec 1l Type@{u}] vectors of types.
+   The unit takes the level [u] of [A], so [Prelude›Data›Vec 0l ℕ] holds
+   vectors of numbers and [Prelude›Data›Vec 1l Type@{u}] vectors of types.
    Operations into vectors over other types take them at the same level; by
    cumulativity, types of levels [u] and [v] are both in
    [Type@{maxl u v}]. *)
-module Prelude∷Data∷Vec (u : Level) (A : Type@{u}) where
+module Prelude›Data›Vec (u : Level) (A : Type@{u}) where
 
-import Prelude∷Logic.Negation u use (absurd)
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Sub use (sub)
-import Prelude∷Arith∷Order use (Lt)
-open Prelude∷Arith∷Order.LeLaws use (leRefl; leStep; lePlusRight)
-import Prelude∷Arith∷Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
-open Prelude∷Arith∷Monotone.SubLaws use (subLe)
+import Prelude›Logic.Negation u use (absurd)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Sub use (sub)
+import Prelude›Arith›Order use (Lt)
+open Prelude›Arith›Order.LeLaws use (leRefl; leStep; lePlusRight)
+import Prelude›Arith›Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
+open Prelude›Arith›Monotone.SubLaws use (subLe)
 
 def Vec (n : ℕ) : Type@{u} ≔ ∀ (i : ℕ) (h : Lt i n) → A end
 
@@ -145,7 +145,7 @@ def All (P : ∀ (a : A) → Type@{u}) (n : ℕ) (v : Vec n) : Type@{u} ≔
 end
 
 (* [Any P n v] says that some element of [v] satisfies [P].  It is
-   Church-encoded like [Prelude∷Logic.Exist.Exists], so it lives one level
+   Church-encoded like [Prelude›Logic.Exist.Exists], so it lives one level
    up. *)
 def Any (P : ∀ (a : A) → Type@{u}) (n : ℕ) (v : Vec n) : Type@{succl u} ≔
   ∀ (C : Type@{u}) (k : ∀ (i : ℕ) (h : Lt i n) (q : P (v i h)) → C) → C

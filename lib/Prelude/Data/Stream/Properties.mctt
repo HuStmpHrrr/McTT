@@ -1,21 +1,21 @@
-(* Laws of [Prelude∷Data∷Stream] on streams of numbers, stated pointwise
-   with [Prelude∷Arith∷Equality], and the stream [nats]: elements of the
-   operations, the scan by addition as prefix sums of [Prelude∷Arith∷Sum],
-   interleaving at even and odd indices of [Prelude∷Arith∷Parity], and
+(* Laws of [Prelude›Data›Stream] on streams of numbers, stated pointwise
+   with [Prelude›Arith›Equality], and the stream [nats]: elements of the
+   operations, the scan by addition as prefix sums of [Prelude›Arith›Sum],
+   interleaving at even and odd indices of [Prelude›Arith›Parity], and
    sums of taken prefixes. *)
-module Prelude∷Data∷Stream∷Properties where
+module Prelude›Data›Stream›Properties where
 
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Algebra use (plusComm)
-import Prelude∷Arith∷Order use (Lt)
-import Prelude∷Arith∷Parity use (double)
-import Prelude∷Arith∷Sum use (sumTo)
-open Prelude∷Arith∷Sum.Basic use (sumToShift)
-import Prelude∷Function∷Combinators.IterateLaws use (iterateSucc)
-import Prelude∷Data∷Vec as V
-import Prelude∷Data∷Vec∷Properties use (sumVec)
-import Prelude∷Data∷Stream as St
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Algebra use (plusComm)
+import Prelude›Arith›Order use (Lt)
+import Prelude›Arith›Parity use (double)
+import Prelude›Arith›Sum use (sumTo)
+open Prelude›Arith›Sum.Basic use (sumToShift)
+import Prelude›Function›Combinators.IterateLaws use (iterateSucc)
+import Prelude›Data›Vec as V
+import Prelude›Data›Vec›Properties use (sumVec)
+import Prelude›Data›Stream as St
 
 (* Streams of numbers: every law below is about this one instance. *)
 module S ≔ St 0l ℕ
@@ -57,7 +57,7 @@ theorem nthIterate : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (n : ℕ) →
 end
 
 (* The tail of [iterate f a] is [iterate f (f a)], pointwise, by
-   [Prelude∷Function∷Combinators.IterateLaws.iterateSucc]. *)
+   [Prelude›Function›Combinators.IterateLaws.iterateSucc]. *)
 theorem tailIterate : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (n : ℕ) →
     Eq (S.nth (S.tail (S.iterate f a)) n) (S.nth (S.iterate f (f a)) n) ≔
   λ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (n : ℕ) → iterateSucc f n a

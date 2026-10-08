@@ -1,25 +1,25 @@
-(* Divisibility, decided by the remainder of [Prelude∷Arith∷Div], with its
-   basic laws and its link to [Prelude∷Arith∷Parity]. *)
-module Prelude∷Arith∷Divides where
+(* Divisibility, decided by the remainder of [Prelude›Arith›Div], with its
+   basic laws and its link to [Prelude›Arith›Parity]. *)
+module Prelude›Arith›Divides where
 
-import Prelude∷Logic use (absurd)
-open Prelude∷Logic.Conj 0l use (And; andIntro; andFst; andSnd)
-open Prelude∷Logic.Disj 0l use (orElim)
-import Prelude∷Arith∷Equality use (Eq; sym; trans; cong; transport)
-import Prelude∷Arith∷Plus use (plus)
-open Prelude∷Arith∷Plus.Basic use (plusZero)
-open Prelude∷Arith∷Plus.Cancel use (plusEqZeroRight)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multZero)
-open Prelude∷Arith∷Mult.Algebra use (multAssoc)
-import Prelude∷Arith∷Parity use (Even; Odd)
-open Prelude∷Arith∷Parity.Laws use (evenOrOdd)
-import Prelude∷Arith∷Div use (wrap; div; mod)
-open Prelude∷Arith∷Div.Bounds use (divModSpec)
-open Prelude∷Arith∷Div.Zero use (modZero)
-open Prelude∷Arith∷Div.Periodic use (modSelf; modPlus; modPlusMult)
-open Prelude∷Arith∷Div.One use (modOne)
-import Prelude∷Function∷Combinators use (Generic)
+import Prelude›Logic use (absurd)
+open Prelude›Logic.Conj 0l use (And; andIntro; andFst; andSnd)
+open Prelude›Logic.Disj 0l use (orElim)
+import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
+import Prelude›Arith›Plus use (plus)
+open Prelude›Arith›Plus.Basic use (plusZero)
+open Prelude›Arith›Plus.Cancel use (plusEqZeroRight)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multZero)
+open Prelude›Arith›Mult.Algebra use (multAssoc)
+import Prelude›Arith›Parity use (Even; Odd)
+open Prelude›Arith›Parity.Laws use (evenOrOdd)
+import Prelude›Arith›Div use (wrap; div; mod)
+open Prelude›Arith›Div.Bounds use (divModSpec)
+open Prelude›Arith›Div.Zero use (modZero)
+open Prelude›Arith›Div.Periodic use (modSelf; modPlus; modPlusMult)
+open Prelude›Arith›Div.One use (modOne)
+import Prelude›Function›Combinators use (Generic)
 
 (* [Divides k n] says that [k] divides [n]: the remainder of [n] by [k] is
    [0].  Since [mod n 0] is [n], [Divides 0 n] computes to [Eq n 0].  It

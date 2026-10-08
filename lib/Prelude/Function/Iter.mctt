@@ -2,7 +2,7 @@
    [u] of the type, the type [A] and the function, so each client
    instantiates it as it needs: [Iter.iter 0l ℕ f n a] iterates on
    numbers, [Iter.iter 1l Type@0 F n A] iterates a type former. *)
-module Prelude∷Function∷Iter (u : Level) (A : Type@{u}) (f : ∀ (a : A) → A) where
+module Prelude›Function›Iter (u : Level) (A : Type@{u}) (f : ∀ (a : A) → A) where
 
 def iter (n : ℕ) (a : A) : A ≔
   rec n return y . A

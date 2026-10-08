@@ -1,19 +1,19 @@
-(* A client of [Prelude∷Arith∷Pow], [Prelude∷Arith∷Sum] and
-   [Prelude∷Arith∷Factorial]: a few computations, and closed instances of
+(* A client of [Prelude›Arith›Pow], [Prelude›Arith›Sum] and
+   [Prelude›Arith›Factorial]: a few computations, and closed instances of
    their theorems, which normalize to [⋆]. *)
 module Powers where
 
-import Prelude∷Arith∷Mult use (mult)
-import Prelude∷Arith∷Pow use (pow)
-open Prelude∷Arith∷Pow.Basic use (powZero; powOne; onePow)
-open Prelude∷Arith∷Pow.Exp use (powPlus; powMult; powMultBase)
-import Prelude∷Arith∷Sum use (sumTo)
-open Prelude∷Arith∷Sum.Linear use (sumToPlus; sumToScale; sumToConst)
-open Prelude∷Arith∷Sum.Closed use (gauss; sumOdd)
-import Prelude∷Arith∷Factorial use (factorial)
-open Prelude∷Arith∷Factorial.Laws use (factSucc)
-open Prelude∷Arith∷Factorial.Bounds use (factPos; factLeSucc; lePowFact)
-import Prelude∷Function∷Combinators use (Generic)
+import Prelude›Arith›Mult use (mult)
+import Prelude›Arith›Pow use (pow)
+open Prelude›Arith›Pow.Basic use (powZero; powOne; onePow)
+open Prelude›Arith›Pow.Exp use (powPlus; powMult; powMultBase)
+import Prelude›Arith›Sum use (sumTo)
+open Prelude›Arith›Sum.Linear use (sumToPlus; sumToScale; sumToConst)
+open Prelude›Arith›Sum.Closed use (gauss; sumOdd)
+import Prelude›Arith›Factorial use (factorial)
+open Prelude›Arith›Factorial.Laws use (factSucc)
+open Prelude›Arith›Factorial.Bounds use (factPos; factLeSucc; lePowFact)
+import Prelude›Function›Combinators use (Generic)
 
 (* The generic combinators at [ℕ]. *)
 module NatFun ≔ Generic 0l ℕ

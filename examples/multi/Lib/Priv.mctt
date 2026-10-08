@@ -1,5 +1,5 @@
 (* Private members, used where they are declared. *)
-module Lib∷Priv where
+module Lib›Priv where
 
 private def s : ℕ ≔ 7 end
 

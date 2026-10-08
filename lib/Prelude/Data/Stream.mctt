@@ -2,11 +2,11 @@
    [Stream] is [∀ (n : ℕ) → A].  Reading an element is application,
    so most laws hold by conversion pointwise.  Operations into streams over
    other types take those types as arguments, at the level [u] of [A]. *)
-module Prelude∷Data∷Stream (u : Level) (A : Type@{u}) where
+module Prelude›Data›Stream (u : Level) (A : Type@{u}) where
 
-import Prelude∷Arith∷Order use (Lt)
-import Prelude∷Function∷Iter as Iter
-import Prelude∷Data∷Vec as V
+import Prelude›Arith›Order use (Lt)
+import Prelude›Function›Iter as Iter
+import Prelude›Data›Vec as V
 
 def Stream : Type@{u} ≔ ∀ (n : ℕ) → A end
 
@@ -42,12 +42,12 @@ def zipWith (B : Type@{u}) (C : Type@{u}) (f : ∀ (a : A) (b : B) → C)
 end
 
 (* The stream [a, f a, f (f a), ...]: element [n] is [f] applied [n] times
-   to [a], by [Prelude∷Function∷Iter]. *)
+   to [a], by [Prelude›Function›Iter]. *)
 def iterate (f : ∀ (a : A) → A) (a : A) : Stream ≔
   λ (n : ℕ) → Iter.iter u A f n a
 end
 
-(* The first [n] elements, as a vector of [Prelude∷Data∷Vec]. *)
+(* The first [n] elements, as a vector of [Prelude›Data›Vec]. *)
 def take (n : ℕ) (s : Stream) : V.Vec u A n ≔
   λ (i : ℕ) (h : Lt i n) → s i
 end

@@ -8,9 +8,9 @@
    Church encoding it lives one level up, and only its first component can
    be projected, since its eliminator is not dependent.  [Universe n] is the
    universe at the [n]-th level, computed from the number [n]. *)
-module Prelude∷Universe∷Formers where
+module Prelude›Universe›Formers where
 
-import Prelude∷Universe∷Levels use (ofNat)
+import Prelude›Universe›Levels use (ofNat)
 
 def Lift (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
 

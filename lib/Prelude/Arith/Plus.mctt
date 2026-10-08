@@ -1,8 +1,8 @@
-(* Addition and its laws, stated with [Prelude∷Arith∷Equality]. *)
-module Prelude∷Arith∷Plus where
+(* Addition and its laws, stated with [Prelude›Arith›Equality]. *)
+module Prelude›Arith›Plus where
 
-import Prelude∷Logic use (absurd)
-import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
+import Prelude›Logic use (absurd)
+import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 
 def plus (n : ℕ) (m : ℕ) : ℕ ≔
   rec n return y . ℕ

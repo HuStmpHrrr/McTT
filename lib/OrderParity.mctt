@@ -1,14 +1,14 @@
-(* A client of [Prelude∷Arith∷Order] and [Prelude∷Arith∷Parity]: closed instances of
+(* A client of [Prelude›Arith›Order] and [Prelude›Arith›Parity]: closed instances of
    their theorems normalize to [⋆], and [leb] decides the order. *)
 module OrderParity where
 
-import Prelude∷Logic.Disj 0l use (orElim)
-import Prelude∷Arith∷Order use (Le; leb)
-open Prelude∷Arith∷Order.LeLaws use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
-open Prelude∷Arith∷Order.LtLaws use (ltIrrefl; notLtZero)
-open Prelude∷Arith∷Order.LebLaws use (lebComplete; lebZero)
-import Prelude∷Arith∷Parity use (Even; Odd; double)
-open Prelude∷Arith∷Parity.Laws use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
+import Prelude›Logic.Disj 0l use (orElim)
+import Prelude›Arith›Order use (Le; leb)
+open Prelude›Arith›Order.LeLaws use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
+open Prelude›Arith›Order.LtLaws use (ltIrrefl; notLtZero)
+open Prelude›Arith›Order.LebLaws use (lebComplete; lebZero)
+import Prelude›Arith›Parity use (Even; Odd; double)
+open Prelude›Arith›Parity.Laws use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
 
 eval leTrans 1 2 5 ⋆ ⋆
 

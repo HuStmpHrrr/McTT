@@ -8,16 +8,16 @@
    coefficients ([hornerAtOne]). *)
 module Polynomials where
 
-import Prelude∷Arith∷Equality use (Eq; sym; trans; cong)
-import Prelude∷Arith∷Plus use (plus)
-import Prelude∷Arith∷Mult use (mult)
-open Prelude∷Arith∷Mult.Basic use (multOne)
-open Prelude∷Arith∷Mult.Algebra use (multLeftComm)
-import Prelude∷Arith∷Pow use (pow)
-open Prelude∷Arith∷Pow.Basic use (onePow)
-import Prelude∷Arith∷Sum use (sumTo)
-open Prelude∷Arith∷Sum.Basic use (sumToExt; sumToShift)
-open Prelude∷Arith∷Sum.Linear use (sumToScale)
+import Prelude›Arith›Equality use (Eq; sym; trans; cong)
+import Prelude›Arith›Plus use (plus)
+import Prelude›Arith›Mult use (mult)
+open Prelude›Arith›Mult.Basic use (multOne)
+open Prelude›Arith›Mult.Algebra use (multLeftComm)
+import Prelude›Arith›Pow use (pow)
+open Prelude›Arith›Pow.Basic use (onePow)
+import Prelude›Arith›Sum use (sumTo)
+open Prelude›Arith›Sum.Basic use (sumToExt; sumToShift)
+open Prelude›Arith›Sum.Linear use (sumToScale)
 
 def Coeffs : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 
@@ -127,10 +127,10 @@ eval At.naive 2 (cubic 1 2 3 4) 4
    points below [k], summed, and their maximum.  The maximum comes from an
    open inside the local body.  A local body may not import, so the unit is
    loaded just before. *)
-import Prelude∷Arith∷MinMax
+import Prelude›Arith›MinMax
 
 eval let module Table (c : Coeffs) where
-       open Prelude∷Arith∷MinMax use (max)
+       open Prelude›Arith›MinMax use (max)
        def value (x : ℕ) : ℕ ≔ At.horner x c 4 end
        def total (k : ℕ) : ℕ ≔ sumTo value k end
        def peak (k : ℕ) : ℕ ≔
