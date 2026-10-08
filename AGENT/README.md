@@ -32,6 +32,7 @@ invariants you must preserve when editing one, are in
 | [`modules.md`](modules.md) | Modules, global and local bindings (complete): why they are an elaboration-layer feature only, the definition telescope, what is proved, and the deviations from [`modules-spec.md`](modules-spec.md). **Start here before touching anything under `theories/Frontend/`, or the global context (end of `Core/Syntactic/Syntax.v`, start of `Members.v`).** |
 | [`elab-spec.md`](elab-spec.md) | The declarative specification of the elaborator (`Frontend/ElabSpec.v`) and its proof of soundness and completeness (`Frontend/ElabCorrect.v`). |
 | [`elab-simplify.md`](elab-simplify.md) | The flat-scope elaborator: what moved where, examples, and the core options with their costs. |
+| [`universes.md`](universes.md) | The small Π at open levels: the rule, the algorithm's normalised join, semantic strengthening of normal forms, and why NbE invents no variables. |
 | [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |

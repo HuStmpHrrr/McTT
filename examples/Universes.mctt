@@ -47,6 +47,32 @@ def depth (n : Nat) : Level := rec n return x . Level | zero => 0l | succ y, r =
 
 eval Type@{depth 3}
 
+(* A function type of small types is small at their level, even when the
+   level is a variable: [Endo u A] is in [Type@{u}], and a function between
+   two universes is in the one at their join. *)
+def Endo (u : Level) (A : Type@{u}) : Type@{u} := forall (a : A) -> A end
+
+def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} :=
+  forall (a : A) -> B
+end
+
+eval Endo 0l Nat
+
+(* The level may be any term of [Level], here an application. *)
+def Twice (g : forall (f : forall (n : Nat) -> Nat) -> Level)
+          (A : Type@{g (fun (x : Nat) -> x)}) : Type@{g (fun (x : Nat) -> x)} :=
+  forall (a : A) -> A
+end
+
+(* An unannotated [let] gets the principal type, the small universe. *)
+def LetEndo (u : Level) (A : Type@{u}) : Type@{u} := let e := forall (a : A) -> A in e end end
+
+eval fun (u : Level) (A : Type@{u}) -> forall (a : A) -> A
+
+(* A codomain whose level mentions the bound variable has no small universe
+   to be in: the type of all small universes is large. *)
+eval forall (u : Level) -> Type@{u}
+
 (* Both tiers: the large universe holds every small one. *)
 def small (u : Level) : Type@ω := Type@{u} end
 

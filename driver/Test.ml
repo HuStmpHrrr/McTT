@@ -565,6 +565,18 @@ let%expect_test "Universes.mctt works" =
     Evaluate self 3 --> 3 : Nat
     Evaluate Dom --> Nat : Type@0
     Evaluate Type@{depth 3} --> Type@3 : Type@4
+    Evaluate Endo 0l Nat --> forall (x1 : Nat) -> Nat : Type@0
+    Evaluate fun (x1 : Level)
+                 (A1 : Type@{x1})
+               -> forall (x2 : A1) -> A1
+      --> fun (x1 : Level)
+              (A1 : Type@{x1})
+            -> forall (x2 : A1) -> A1
+      : forall (x1 : Level)
+               (A1 : Type@{x1})
+          -> Type@{x1}
+    Evaluate forall (x1 : Level) -> Type@{x1}
+      --> forall (x1 : Level) -> Type@{x1} : Type@ω
     Evaluate Type@2 --> Type@2 : Type@3
     Evaluate Type@2 --> Type@2 : Type@3
     Evaluate Type@2 --> Type@2 : Type@3
@@ -607,6 +619,45 @@ let%expect_test "a large universe above the first" =
 let%expect_test "a large universe is not in a small one" =
   let _ = main_of_body "eval Type@ω : Type@3" in
   [%expect {| Error: Type@ω is not of type Type@3 |}]
+
+(* A function type of small types is small at their level, also at a level
+   variable; two levels join. *)
+let%expect_test "a function type at a level variable is small" =
+  let _ = main_of_body "def Endo (u : Level) (A : Type@{u}) : Type@{u} := forall (a : A) -> A end eval Endo" in
+  [%expect {|
+    Evaluate Endo --> fun (x1 : Level)
+                          (A1 : Type@{x1})
+                        -> forall (x2 : A1) -> A1
+      : forall (x1 : Level)
+               (A1 : Type@{x1})
+          -> Type@{x1}
+    |}]
+
+let%expect_test "a function type between two small universes is at their join" =
+  let _ = main_of_body "eval fun (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) -> forall (a : A) -> B" in
+  [%expect {|
+    Evaluate fun (x1 : Level)
+                 (x2 : Level)
+                 (A1 : Type@{x1})
+                 (A2 : Type@{x2})
+               -> forall (x3 : A1) -> A2
+      --> fun (x1 : Level)
+              (x2 : Level)
+              (A1 : Type@{x1})
+              (A2 : Type@{x2})
+            -> forall (x3 : A1) -> A2
+      : forall (x1 : Level)
+               (x2 : Level)
+               (A1 : Type@{x1})
+               (A2 : Type@{x2})
+          -> Type@{maxl x2 x1}
+    |}]
+
+(* A codomain whose level mentions the bound variable has no small universe
+   to be in. *)
+let%expect_test "a type quantifying over levels is not small" =
+  let _ = main_of_body "eval (forall (u : Level) -> Type@{u}) : Type@5" in
+  [%expect {| Error: forall (x1 : Level) -> Type@{x1} is not of type Type@5 |}]
 
 (* A large size is a size only: it is not a term of [Level]. *)
 let%expect_test "a large size is not a level" =
