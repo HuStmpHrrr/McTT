@@ -44,7 +44,7 @@ end
 (* The stream [a, f a, f (f a), ...]: element [n] is [f] applied [n] times
    to [a], by [Prelude::Function::Iter]. *)
 def iterate (f : forall (a : A) -> A) (a : A) : Stream :=
-  fun (n : Nat) -> Iter.iter A f n a
+  fun (n : Nat) -> Iter.iter 0l A f n a
 end
 
 (* The first [n] elements, as a vector of [Prelude::Data::Vec]. *)

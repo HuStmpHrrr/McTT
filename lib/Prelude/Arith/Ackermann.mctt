@@ -14,7 +14,7 @@ import Prelude::Function::Combinators use (Generic)
 def ack (m : Nat) (n : Nat) : Nat :=
   (rec m return y . (forall (x : Nat) -> Nat)
    | zero => fun (x : Nat) -> succ x
-   | succ p, r => fun (x : Nat) -> Generic.iterate Nat r (succ x) 1
+   | succ p, r => fun (x : Nat) -> Generic.iterate 0l Nat r (succ x) 1
    end) n
 end
 

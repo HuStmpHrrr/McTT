@@ -3,8 +3,9 @@
 module Prelude::Arith::Parity where
 
 import Prelude::Logic use (absurd)
-open Prelude::Logic.Conj use (And; andIntro; andSwap)
-open Prelude::Logic.Disj use (Or; orInl; orSwap)
+open Prelude::Logic.Negation as Neg
+open Prelude::Logic.Conj 0l use (And; andIntro; andSwap)
+open Prelude::Logic.Disj 0l use (Or; orInl; orSwap)
 import Prelude::Arith::Plus use (plus)
 
 (* Parity flags, and numbers having a given flag.  [Even] and [Odd] below
@@ -71,9 +72,9 @@ def evenOrOdd : forall (n : Nat) -> Or (Even n) (Odd n) :=
     end
 end
 
-(* No number is both even and odd.  The statement does not use [Not],
-   since [And] lives in [Type@1] and [Not] takes a proposition in [Type@0]. *)
-theorem notEvenAndOdd : forall (n : Nat) (h : And (Even n) (Odd n)) -> False :=
+(* No number is both even and odd.  [And] lives in [Type@1], so the
+   negation is the one at level [1l]. *)
+theorem notEvenAndOdd : forall (n : Nat) -> Neg.Not 1l (And (Even n) (Odd n)) :=
   fun (n : Nat) ->
     rec n return x . (forall (h : And (Even x) (Odd x)) -> False)
     | zero => fun (h : And True False) -> h False (fun (a : True) (b : False) -> b)

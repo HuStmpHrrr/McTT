@@ -9,9 +9,9 @@ import Prelude::Function::Iter as Iter
 
 (* [Prelude::Function::Iter] instantiated with [succ]: iterating it is addition. *)
 def iterSucc : forall (n : Nat) (m : Nat) ->
-    Eq (Iter.iter Nat (fun (x : Nat) -> succ x) n m) (plus n m) :=
+    Eq (Iter.iter 0l Nat (fun (x : Nat) -> succ x) n m) (plus n m) :=
   fun (n : Nat) (m : Nat) ->
-    rec n return x . Eq (Iter.iter Nat (fun (y : Nat) -> succ y) x m) (plus x m)
+    rec n return x . Eq (Iter.iter 0l Nat (fun (y : Nat) -> succ y) x m) (plus x m)
     | zero => refl m
     | succ p, ih => ih
     end
@@ -27,11 +27,11 @@ eval zeroNeSucc 5
 eval iterSucc 3 4
 
 (* The same unit, instantiated with doubling. *)
-eval Iter.iter Nat (fun (x : Nat) -> plus x x) 3 1
+eval Iter.iter 0l Nat (fun (x : Nat) -> plus x x) 3 1
 
 (* A let-bound number is known in the body, so [true] proves the equation;
    [Doubling] names an instance of [Prelude::Function::Iter]. *)
-eval let module Doubling := Iter Nat (fun (x : Nat) -> plus x x);
+eval let module Doubling := Iter 0l Nat (fun (x : Nat) -> plus x x);
          n := 2;
          p : Eq (Doubling.iter n 1) 4 := true
      in p

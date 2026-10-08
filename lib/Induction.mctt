@@ -4,10 +4,10 @@
 module Induction where
 
 import Prelude::Logic use (Not)
-open Prelude::Logic.Disj use (orElim)
-open Prelude::Logic.Equiv use (iffFwd; iffBwd)
-open Prelude::Logic.Exist use (existsIntro; existsElim)
-open Prelude::Logic.Decidable use (decStable)
+open Prelude::Logic.Disj 0l use (orElim)
+open Prelude::Logic.Equiv 0l use (iffFwd; iffBwd)
+open Prelude::Logic.Exist 0l use (existsIntro; existsElim)
+open Prelude::Logic.Decidable 0l use (decStable)
 import Prelude::Arith::Equality use (Eq)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Order use (Le; Lt)

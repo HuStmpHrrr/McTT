@@ -83,24 +83,33 @@ theorem cong : forall (f : forall (x : Nat) -> Nat) (a : Nat) (b : Nat) (h : Eq 
      end) f
 end
 
-(* Equal numbers satisfy the same predicates. *)
-def transport : forall (P : forall (n : Nat) -> Type@0) (x : Nat) (y : Nat)
+(* Equal numbers satisfy the same predicates, of any level [u]. *)
+module Transport (u : Level) where
+
+open Prelude::Logic.Negation u use (absurd)
+
+def transport : forall (P : forall (n : Nat) -> Type@{u}) (x : Nat) (y : Nat)
     (h : Eq x y) (px : P x) -> P y :=
-  fun (P : forall (n : Nat) -> Type@0) (x : Nat) ->
-    (rec x return u . (forall (Q : forall (n : Nat) -> Type@0) (y : Nat)
-                         (h : Eq u y) (pu : Q u) -> Q y)
-     | zero => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
-         rec y return v . (forall (h : Eq 0 v) (pu : Q 0) -> Q v)
-         | zero => fun (h : True) (pu : Q 0) -> pu
-         | succ q, s => fun (h : Eq 0 (succ q)) (pu : Q 0) -> absurd (Q (succ q)) h
+  fun (P : forall (n : Nat) -> Type@{u}) (x : Nat) ->
+    (rec x return v . (forall (Q : forall (n : Nat) -> Type@{u}) (y : Nat)
+                         (h : Eq v y) (pv : Q v) -> Q y)
+     | zero => fun (Q : forall (n : Nat) -> Type@{u}) (y : Nat) ->
+         rec y return w . (forall (h : Eq 0 w) (pv : Q 0) -> Q w)
+         | zero => fun (h : True) (pv : Q 0) -> pv
+         | succ q, s => fun (h : Eq 0 (succ q)) (pv : Q 0) -> absurd (Q (succ q)) h
          end
-     | succ p, ih => fun (Q : forall (n : Nat) -> Type@0) (y : Nat) ->
-         rec y return v . (forall (h : Eq (succ p) v) (pu : Q (succ p)) -> Q v)
-         | zero => fun (h : Eq (succ p) 0) (pu : Q (succ p)) -> absurd (Q 0) h
-         | succ q, s => fun (h : Eq p q) (pu : Q (succ p)) ->
-             ih (fun (n : Nat) -> Q (succ n)) q h pu
+     | succ p, ih => fun (Q : forall (n : Nat) -> Type@{u}) (y : Nat) ->
+         rec y return w . (forall (h : Eq (succ p) w) (pv : Q (succ p)) -> Q w)
+         | zero => fun (h : Eq (succ p) 0) (pv : Q (succ p)) -> absurd (Q 0) h
+         | succ q, s => fun (h : Eq p q) (pv : Q (succ p)) ->
+             ih (fun (n : Nat) -> Q (succ n)) q h pv
          end
      end) P
 end
+
+end
+
+(* Transport for predicates into [Type@0]. *)
+open Transport 0l export (transport)
 
 end

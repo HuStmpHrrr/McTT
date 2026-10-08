@@ -2,7 +2,7 @@
    their theorems normalize to [true], and [leb] decides the order. *)
 module OrderParity where
 
-import Prelude::Logic.Disj use (orElim)
+import Prelude::Logic.Disj 0l use (orElim)
 import Prelude::Arith::Order use (Le; leb)
 open Prelude::Arith::Order.LeLaws use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
 open Prelude::Arith::Order.LtLaws use (ltIrrefl; notLtZero)

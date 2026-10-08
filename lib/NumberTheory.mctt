@@ -38,7 +38,7 @@ let nextPrime (n : Nat) : Nat :=
 end
 
 (* The [k]-th prime, counting from [0]. *)
-def nthPrime (k : Nat) : Nat := Generic.iterate Nat nextPrime (succ k) 0 end
+def nthPrime (k : Nat) : Nat := Generic.iterate 0l Nat nextPrime (succ k) 0 end
 
 end
 

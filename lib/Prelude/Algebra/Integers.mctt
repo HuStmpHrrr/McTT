@@ -41,7 +41,7 @@ def negate (x : Int) : Int := pair (x 1) (x 0) end
 def minus (x : Int) (y : Int) : Int := add x (negate y) end
 
 (* Truncated subtraction, which reads a difference back. *)
-let monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
+let monus (a : Nat) (b : Nat) : Nat := Generic.iterate 0l Nat pred b a end
 
 (* The absolute value of the difference. *)
 def magnitude (x : Int) : Nat := plus (monus (x 0) (x 1)) (monus (x 1) (x 0)) end

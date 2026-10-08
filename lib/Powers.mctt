@@ -16,7 +16,7 @@ open Prelude::Arith::Factorial.Bounds use (factPos; factLeSucc; lePowFact)
 import Prelude::Function::Combinators use (Generic)
 
 (* The generic combinators at [Nat]. *)
-module NatFun := Generic Nat
+module NatFun := Generic 0l Nat
 
 eval pow 2 10
 

@@ -1,17 +1,24 @@
 (* Derived induction principles on natural numbers: case analysis, two-step
-   induction and strong (course-of-values) induction, all from [rec]. *)
+   induction and strong (course-of-values) induction, all from [rec], for
+   motives of any level.  [Principles u] states them for motives into
+   [Type@{u}]; the unit exports them at [0l]. *)
 module Prelude::Arith::Induction where
 
-import Prelude::Logic use (absurd)
-open Prelude::Logic.Disj use (orElim)
-open Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
-import Prelude::Arith::Equality use (Eq; sym; transport)
+import Prelude::Logic
+import Prelude::Arith::Equality use (Eq; sym)
 import Prelude::Arith::Order use (Le; Lt)
-open Prelude::Arith::Order.LtLaws use (leCases)
+
+module Principles (u : Level) where
+
+open Prelude::Logic.Negation u use (absurd)
+open Prelude::Logic.Conj u use (And; andIntro; andFst; andSnd)
+open Prelude::Logic.Disj u use (orElim)
+open Prelude::Arith::Equality.Transport u use (transport)
+open Prelude::Arith::Order.LtLaws.Cases u use (leCases)
 
 (* Case analysis: a property of [0] and of every successor holds of every
    number.  It is [rec] without the induction hypothesis. *)
-def caseNat (P : forall (n : Nat) -> Type@0) (pz : P 0)
+def caseNat (P : forall (n : Nat) -> Type@{u}) (pz : P 0)
     (ps : forall (n : Nat) -> P (succ n)) : forall (n : Nat) -> P n :=
   fun (n : Nat) ->
     rec n return x . P x
@@ -22,9 +29,9 @@ end
 
 (* Two-step induction: from [P 0], [P 1], and [P n] implying
    [P (succ (succ n))], [P] holds of every number.  The induction carries
-   the pair [P n] and [P (succ n)]; the motive is a conjunction, in
-   [Type@1]. *)
-def twoStepInd (P : forall (n : Nat) -> Type@0) (pz : P 0) (po : P 1)
+   the pair [P n] and [P (succ n)]; the motive is a conjunction, one level
+   up. *)
+def twoStepInd (P : forall (n : Nat) -> Type@{u}) (pz : P 0) (po : P 1)
     (step : forall (n : Nat) (h : P n) -> P (succ (succ n))) : forall (n : Nat) -> P n :=
   fun (n : Nat) ->
     andFst (P n) (P (succ n))
@@ -42,7 +49,7 @@ end
    all [m] below [n]", proved by [rec] on [n]: nothing is below [0], and a
    number below [succ p] is either below [p], covered by the hypothesis, or
    [p] itself, given by [step]. *)
-def strongInd (P : forall (n : Nat) -> Type@0)
+def strongInd (P : forall (n : Nat) -> Type@{u})
     (step : forall (n : Nat) (h : forall (m : Nat) (lt : Lt m n) -> P m) -> P n)
     : forall (n : Nat) -> P n :=
   fun (n : Nat) ->
@@ -55,5 +62,10 @@ def strongInd (P : forall (n : Nat) -> Type@0)
              (fun (e : Eq m p) -> transport P p m (sym m p e) (step p ih))
        end)
 end
+
+end
+
+(* The principles for motives into [Type@0]. *)
+open Principles 0l export (caseNat; twoStepInd; strongInd)
 
 end

@@ -113,12 +113,12 @@ end
 
 (* The sum of [n] copies of [c] is [mult n c]. *)
 theorem sumToConst : forall (c : Nat) (n : Nat) ->
-    Eq (sumTo (Generic.const Nat Nat c) n) (mult n c) :=
+    Eq (sumTo (Generic.const 0l Nat Nat c) n) (mult n c) :=
   fun (c : Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo (Generic.const Nat Nat c) x) (mult x c)
+    rec n return x . Eq (sumTo (Generic.const 0l Nat Nat c) x) (mult x c)
     | zero => true
     | succ p, ih =>
-        cong (fun (y : Nat) -> plus c y) (sumTo (Generic.const Nat Nat c) p) (mult p c) ih
+        cong (fun (y : Nat) -> plus c y) (sumTo (Generic.const 0l Nat Nat c) p) (mult p c) ih
     end
 end
 
@@ -130,12 +130,12 @@ module Closed where
 (* Gauss: twice [0 + 1 + ... + n] is [n (n + 1)].  The step distributes
    [mult 2] over the new summand and collects [mult (succ (succ p)) (succ p)]. *)
 theorem gauss : forall (n : Nat) ->
-    Eq (mult 2 (sumTo (Generic.id Nat) (succ n))) (mult n (succ n)) :=
+    Eq (mult 2 (sumTo (Generic.id 0l Nat) (succ n))) (mult n (succ n)) :=
   fun (n : Nat) ->
-    rec n return x . Eq (mult 2 (sumTo (Generic.id Nat) (succ x))) (mult x (succ x))
+    rec n return x . Eq (mult 2 (sumTo (Generic.id 0l Nat) (succ x))) (mult x (succ x))
     | zero => true
     | succ p, ih =>
-        let s := sumTo (Generic.id Nat) (succ p);
+        let s := sumTo (Generic.id 0l Nat) (succ p);
             q := succ p;
             lhs := mult 2 (plus q s);
             dist := plus (mult 2 q) (mult 2 s);

@@ -254,8 +254,8 @@ module Adder (m : Nat) where
 
   (* Adding n is iterating succ n times. *)
   theorem addIter (n : Nat) :
-      Eq (add n) (Iter.iter Nat (fun (x : Nat) -> succ x) n m) :=
-    rec n return y . Eq (add y) (Iter.iter Nat (fun (x : Nat) -> succ x) y m)
+      Eq (add n) (Iter.iter 0l Nat (fun (x : Nat) -> succ x) n m) :=
+    rec n return y . Eq (add y) (Iter.iter 0l Nat (fun (x : Nat) -> succ x) y m)
     | zero => refl m
     | succ p, ih => ih
     end

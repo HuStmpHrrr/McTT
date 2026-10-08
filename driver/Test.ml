@@ -136,8 +136,8 @@ let%expect_test "lib/NatTheory.mctt" =
       --> fun (x1 : False) -> Prelude::Arith::Equality.zeroNeSucc 5 x1
       : forall (x1 : False) -> False
     Evaluate iterSucc 3 4 --> true : True
-    Evaluate Iter.iter Nat (fun (x1 : Nat) -> plus x1 x1) 3 1 --> 8 : Nat
-    Evaluate let module M1 := Iter Nat (fun (x1 : Nat) -> plus x1 x1);
+    Evaluate Iter.iter 0l Nat (fun (x1 : Nat) -> plus x1 x1) 3 1 --> 8 : Nat
+    Evaluate let module M1 := Iter 0l Nat (fun (x1 : Nat) -> plus x1 x1);
                  x2 := 2;
                  x3 : Eq (M1.iter x2 1) 4 := true
              in x3
@@ -927,10 +927,10 @@ let%expect_test "lib/Programs.mctt" =
     Evaluate ackTwo 5 --> true : True
     Evaluate iteratePlus (fun (x1 : Nat) -> plus x1 3) 2 3 1 --> true : True
     Evaluate iterateComm (fun (x1 : Nat) -> succ (succ x1)) 3 4 0 --> true : True
-    Evaluate Generic.compose Nat Nat Nat (sub 20) (fun (x1 : Nat) -> max x1 5) 2
-      --> 15 : Nat
-    Evaluate Generic.const Nat Nat 7 100 --> 7 : Nat
-    Evaluate Generic.iterate Nat (ack 1) 3 0 --> 6 : Nat
+    Evaluate Generic.compose 0l Nat Nat Nat (sub 20) (fun (x1 : Nat) -> max x1 5)
+               2 --> 15 : Nat
+    Evaluate Generic.const 0l Nat Nat 7 100 --> 7 : Nat
+    Evaluate Generic.iterate 0l Nat (ack 1) 3 0 --> 6 : Nat
     |}]
 
 let%expect_test "lib/Induction.mctt" =
@@ -2475,7 +2475,7 @@ let%expect_test "lib/Tutorial.mctt" =
                    end
                    def addIter : forall (x2 : Nat)
                                    -> Eq (Adder.add 5 x2)
-                                        (Iter.iter Nat
+                                        (Iter.iter 0l Nat
                                            (fun (x3 : Nat) -> succ x3)
                                            x2
                                           5) :=

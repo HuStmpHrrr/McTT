@@ -25,7 +25,7 @@ private module TrialDivision where
 (* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
    exactly when [a] is at most [b].  It is kept apart from
    [Prelude::Arith::Sub.sub], whose evaluation takes exponential time. *)
-def monus (a : Nat) (b : Nat) : Nat := Generic.iterate Nat pred b a end
+def monus (a : Nat) (b : Nat) : Nat := Generic.iterate 0l Nat pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
    candidates.  It answers [found d] for the first candidate [d] that

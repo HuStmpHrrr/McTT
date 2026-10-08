@@ -52,10 +52,10 @@ eval iteratePlus (fun (x : Nat) -> plus x 3) 2 3 1
 eval iterateComm (fun (x : Nat) -> succ (succ x)) 3 4 0
 
 (* The generic combinators, instantiated at [Nat]. *)
-eval Generic.compose Nat Nat Nat (sub 20) (fun (x : Nat) -> max x 5) 2
+eval Generic.compose 0l Nat Nat Nat (sub 20) (fun (x : Nat) -> max x 5) 2
 
-eval Generic.const Nat Nat 7 100
+eval Generic.const 0l Nat Nat 7 100
 
-eval Generic.iterate Nat (ack 1) 3 0
+eval Generic.iterate 0l Nat (ack 1) 3 0
 
 end

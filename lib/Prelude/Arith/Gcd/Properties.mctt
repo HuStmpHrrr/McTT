@@ -6,8 +6,9 @@
 module Prelude::Arith::Gcd::Properties where
 
 import Prelude::Logic use (absurd)
-open Prelude::Logic.Conj use (And; andIntro; andFst; andSnd)
-open Prelude::Logic.Disj use (orElim)
+open Prelude::Logic.Negation as Neg
+open Prelude::Logic.Conj 0l use (And; andIntro; andFst; andSnd)
+open Prelude::Logic.Disj 0l use (orElim)
 import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong; transport)
 import Prelude::Arith::Plus use (plus)
 import Prelude::Arith::Mult use (mult)
@@ -36,7 +37,7 @@ def divides : forall (f : Nat) (a : Nat) (b : Nat) (h : Lt b f) ->
     rec f return x . (forall (a : Nat) (b : Nat) (h : Lt b x) ->
                         And (Divides (gcdFuel x a b) a) (Divides (gcdFuel x a b) b))
     | zero => fun (a : Nat) (b : Nat) (h : False) ->
-        exfalso h return w . And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)
+        Neg.absurd 1l (And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)) h
     | succ p, ih => fun (a : Nat) (b : Nat) ->
         rec b return z . (forall (h : Lt z (succ p)) ->
                             And (Divides (gcdFuel (succ p) a z) a) (Divides (gcdFuel (succ p) a z) z))

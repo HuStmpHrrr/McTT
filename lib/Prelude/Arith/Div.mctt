@@ -36,7 +36,7 @@ end
 
 (* The remainder of [n] by [succ d]: [n] steps of [wrap] from [0]. *)
 def modSucc (n : Nat) (d : Nat) : Nat :=
-  Generic.iterate Nat (fun (r : Nat) -> wrap r d) n 0
+  Generic.iterate 0l Nat (fun (r : Nat) -> wrap r d) n 0
 end
 
 (* The quotient of [n] by [succ d]. *)
@@ -211,7 +211,7 @@ end
    [mod b (succ d)]. *)
 abstract def modPlus : forall (a : Nat) (b : Nat) (d : Nat) ->
     Eq (mod (plus a b) (succ d))
-       (Generic.iterate Nat (fun (r : Nat) -> wrap r d) a (mod b (succ d))) :=
+       (Generic.iterate 0l Nat (fun (r : Nat) -> wrap r d) a (mod b (succ d))) :=
   fun (a : Nat) (b : Nat) (d : Nat) ->
     let module Wrap := IterateLaws (fun (r : Nat) -> wrap r d) in Wrap.iteratePlus a b 0 end
 end
@@ -223,7 +223,7 @@ abstract def modPlusDivisor : forall (n : Nat) (d : Nat) ->
     Eq (mod (plus (succ d) n) (succ d)) (mod n (succ d)) :=
   fun (n : Nat) (d : Nat) ->
     let module Wrap := IterateLaws (fun (r : Nat) -> wrap r d);
-        module Steps := Generic Nat;
+        module Steps := Generic 0l Nat;
         w := fun (r : Nat) -> wrap r d;
         k := succ d;
         split : Eq (mod (plus k n) k) (Steps.iterate w k (mod n k)) := modPlus k n d;
