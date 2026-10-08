@@ -111,7 +111,7 @@ end
 (* A monoid built here, from a partial application of the unit: the setoid
    of numbers is fixed, and the operation and its laws come later.  It is
    addition again, so its powers agree with [Additive]'s. *)
-module NatMonoid := Monoid Nat Eq refl sym trans
+module NatMonoid := Monoid 0l Nat Eq refl sym trans
 
 module Sums := NatMonoid plus plusCongBoth 0 plusAssoc refl plusZero
 

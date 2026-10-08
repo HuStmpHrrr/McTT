@@ -157,7 +157,7 @@ open Addition use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; neg
 
 (* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
 module Additive :=
-  Group Int Same sameRefl sameSym sameTrans add addCong (ofNat 0) addAssoc zeroAdd addZero
+  Group 0l Int Same sameRefl sameSym sameTrans add addCong (ofNat 0) addAssoc zeroAdd addZero
     negate negateCong negateLeft negateRight
 
 module AdditiveComm := Additive.Base.Commutative addComm

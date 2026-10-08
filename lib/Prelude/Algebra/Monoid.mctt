@@ -1,5 +1,5 @@
-(* Monoids over a setoid.  The unit is parameterized by a carrier [M], an
-   equivalence [R] on it with its three laws, an operation [op] that
+(* Monoids over a setoid.  The unit is parameterized by a level [u], a
+   carrier [M] in [Type@{u}], an equivalence [R] on it with its three laws, an operation [op] that
    respects [R], a neutral element [e], and the proofs of associativity and
    of the two unit laws.  Everything below is proved once from these
    parameters and holds in every instance: congruence on each side, the
@@ -8,10 +8,13 @@
 
    Laws are stated up to [R] rather than up to [Prelude::Arith::Equality],
    so a carrier that is not [Nat] (functions, compared pointwise) is an
-   instance as well. *)
+   instance as well.  The relation is at the carrier's level; this loses
+   nothing, since a relation into a lower universe is also one into
+   [Type@{u}], by cumulativity. *)
 module Prelude::Algebra::Monoid
-    (M : Type@0)
-    (R : forall (x : M) (y : M) -> Type@0)
+    (u : Level)
+    (M : Type@{u})
+    (R : forall (x : M) (y : M) -> Type@{u})
     (rRefl : forall (x : M) -> R x x)
     (rSym : forall (x : M) (y : M) (h : R x y) -> R y x)
     (rTrans : forall (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) -> R x z)
@@ -57,16 +60,16 @@ open Cong use (congLeft; congRight; assocBack)
 (* The neutral element is unique. *)
 module Neutral where
 
-(* An element that is neutral on the left is [e]: both are [op u e]. *)
-theorem leftIdUnique : forall (u : M) (h : forall (x : M) -> R (op u x) x) -> R u e :=
-  fun (u : M) (h : forall (x : M) -> R (op u x) x) ->
-    rTrans u (op u e) e (rSym (op u e) u (rightId u)) (h e)
+(* An element that is neutral on the left is [e]: both are [op d e]. *)
+theorem leftIdUnique : forall (d : M) (h : forall (x : M) -> R (op d x) x) -> R d e :=
+  fun (d : M) (h : forall (x : M) -> R (op d x) x) ->
+    rTrans d (op d e) e (rSym (op d e) d (rightId d)) (h e)
 end
 
-(* An element that is neutral on the right is [e]: both are [op e u]. *)
-theorem rightIdUnique : forall (u : M) (h : forall (x : M) -> R (op x u) x) -> R u e :=
-  fun (u : M) (h : forall (x : M) -> R (op x u) x) ->
-    rTrans u (op e u) e (rSym (op e u) u (leftId u)) (h e)
+(* An element that is neutral on the right is [e]: both are [op e d]. *)
+theorem rightIdUnique : forall (d : M) (h : forall (x : M) -> R (op x d) x) -> R d e :=
+  fun (d : M) (h : forall (x : M) -> R (op x d) x) ->
+    rTrans d (op e d) e (rSym (op e d) d (leftId d)) (h e)
 end
 
 end

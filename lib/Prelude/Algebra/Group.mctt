@@ -9,8 +9,9 @@
    The proofs share two private lemma modules: [Solve] solves one-sided
    equations, and [Product] computes the products that cancel. *)
 module Prelude::Algebra::Group
-    (M : Type@0)
-    (R : forall (x : M) (y : M) -> Type@0)
+    (u : Level)
+    (M : Type@{u})
+    (R : forall (x : M) (y : M) -> Type@{u})
     (rRefl : forall (x : M) -> R x x)
     (rSym : forall (x : M) (y : M) (h : R x y) -> R y x)
     (rTrans : forall (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) -> R x z)
@@ -29,7 +30,7 @@ module Prelude::Algebra::Group
 import Prelude::Algebra::Monoid as Monoid
 
 (* The underlying monoid. *)
-module Base := Monoid M R rRefl rSym rTrans op opCong e assoc leftId rightId
+module Base := Monoid u M R rRefl rSym rTrans op opCong e assoc leftId rightId
 
 open Base use (pow)
 open Base.Cong use (congLeft; congRight; assocBack)

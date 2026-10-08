@@ -37,7 +37,7 @@ end
 (* Monoids on numbers, up to equality: the unit applied to the carrier and
    the setoid, and to the congruence of the given operation. *)
 module OnNat (op : forall (x : Nat) (y : Nat) -> Nat) :=
-  Prelude::Algebra::Monoid Nat Eq refl sym trans op (congBoth op)
+  Prelude::Algebra::Monoid 0l Nat Eq refl sym trans op (congBoth op)
 
 (* Numbers under addition: [Additive.pow x n] is [n] times [x]. *)
 module Additive := OnNat plus 0 plusAssoc refl plusZero
@@ -98,7 +98,7 @@ open PointwiseLaws use (pwRefl; pwSym; pwTrans; composeCong)
    iterated [n] times.  Associativity and the unit laws hold pointwise by
    conversion. *)
 module Composition :=
-  Prelude::Algebra::Monoid Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
+  Prelude::Algebra::Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
     (fun (f : Endo) (g : Endo) (k : Endo) -> pwRefl (compose f (compose g k)))
     pwRefl pwRefl
 
