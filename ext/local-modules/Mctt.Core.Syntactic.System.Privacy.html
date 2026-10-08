@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab423"></a><h1 class="section">Privacy</h1>
+<a id="lab528"></a><h1 class="section">Privacy</h1>
 
 
 <div class="paragraph"> </div>
@@ -65,7 +65,7 @@
 </div>
 
 <div class="doc">
-<a id="lab424"></a><h2 class="section">Entries</h2>
+<a id="lab529"></a><h2 class="section">Entries</h2>
 
 
 <div class="paragraph"> </div>
@@ -168,7 +168,7 @@ Whether an entry is private.
 </div>
 
 <div class="doc">
-<a id="lab425"></a><h2 class="section">The Module that Declares a Member</h2>
+<a id="lab530"></a><h2 class="section">The Module that Declares a Member</h2>
 
 
 <div class="paragraph"> </div>
@@ -325,7 +325,7 @@ The module <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.S
 </div>
 
 <div class="doc">
-<a id="lab426"></a><h2 class="section">Module Tables</h2>
+<a id="lab531"></a><h2 class="section">Module Tables</h2>
 
 
 <div class="paragraph"> </div>
@@ -492,7 +492,7 @@ The table a local binding gives its index.
 </div>
 
 <div class="doc">
-<a id="lab427"></a><h2 class="section">Member References</h2>
+<a id="lab532"></a><h2 class="section">Member References</h2>
 
 <div class="paragraph"> </div>
 
@@ -503,8 +503,9 @@ The table a local binding gives its index.
 <div class="code">
 <span class="id" title="keyword">Fixpoint</span> <a id="exp_refs" class="idref" href="#exp_refs"><span class="id" title="definition">exp_refs</span></a> (<a id="S:149" class="idref" href="#S:149"><span class="id" title="binder">S</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#ptab"><span class="id" title="inductive">ptab</span></a>) (<a id="M:150" class="idref" href="#M:150"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#ptab"><span class="id" title="inductive">ptab</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#11c698c8685bb8ab1cf725545c085ac4"><span class="id" title="notation">*</span></a> <span class="id" title="inductive">string</span>)%<span class="id" title="keyword">type</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_var"><span class="id" title="constructor">a_var</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_llit"><span class="id" title="constructor">a_llit</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_var"><span class="id" title="constructor">a_var</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nil"><span class="id" title="constructor">nil</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <span class="id" title="var">M</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succl"><span class="id" title="constructor">a_succl</span></a> <span class="id" title="var">M</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_maxl"><span class="id" title="constructor">a_maxl</span></a> <span class="id" title="var">M</span> <span class="id" title="var">N</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <span class="id" title="var">N</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_natrec"><span class="id" title="constructor">a_natrec</span></a> <span class="id" title="var">A</span> <span class="id" title="var">MZ</span> <span class="id" title="var">MS</span> <span class="id" title="var">M</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#pt_none"><span class="id" title="constructor">pt_none</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a>) <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <span class="id" title="var">MZ</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#pt_none"><span class="id" title="constructor">pt_none</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#pt_none"><span class="id" title="constructor">pt_none</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a>) <span class="id" title="var">MS</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_exfalso"><span class="id" title="constructor">a_exfalso</span></a> <span class="id" title="var">A</span> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> (<a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#pt_none"><span class="id" title="constructor">pt_none</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#::list_scope:x_'::'_x"><span class="id" title="notation">::</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a>) <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#bc347c51eaf667706ae54503b26d52c6"><span class="id" title="notation">++</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#exp_refs:165"><span class="id" title="definition">exp_refs</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#S:149"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Privacy.html#M:150"><span class="id" title="variable">M</span></a><br/>
@@ -589,7 +590,7 @@ The references a command makes, as written: its own terms, and for an
 </div>
 
 <div class="doc">
-<a id="lab428"></a><h2 class="section">Accessibility</h2>
+<a id="lab533"></a><h2 class="section">Accessibility</h2>
 
 <div class="paragraph"> </div>
 

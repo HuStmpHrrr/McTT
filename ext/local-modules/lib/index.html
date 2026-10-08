@@ -36,7 +36,7 @@
 </li>
 <li><a class="unit" href="Prelude.Arith.Gcd.html">Prelude::Arith::Gcd</a> <p>The greatest common divisor, by Euclid's algorithm.</p>
 </li>
-<li><a class="unit" href="Prelude.Arith.Induction.html">Prelude::Arith::Induction</a> <p>Derived induction principles on natural numbers: case analysis, two-step induction and strong (course-of-values) induction, all from <code>rec</code>.</p>
+<li><a class="unit" href="Prelude.Arith.Induction.html">Prelude::Arith::Induction</a> <p>Derived induction principles on natural numbers: case analysis, two-step induction and strong (course-of-values) induction, all from <code>rec</code>, for motives of any level.</p>
 </li>
 <li><a class="unit" href="Prelude.Arith.Lattice.html">Prelude::Arith::Lattice</a> <p>The natural numbers as a distributive lattice under <code>Prelude::Arith::MinMax.</code></p>
 </li>
@@ -60,6 +60,10 @@
 </li>
 <li><a class="unit" href="Prelude.Arith.Sum.html">Prelude::Arith::Sum</a> <p>Finite sums <code>sumTo f n</code> of <code>f i</code> for <code>i &lt; n</code>, with linearity laws, sums of constants, and the closed forms of Gauss and of the odd numbers.</p>
 </li>
+<li><a class="unit" href="Prelude.Data.Church.Properties.html">Prelude::Data::Church::Properties</a> <p>Laws of <code>Prelude::Data::Church</code>, at every level <code>u</code>: the arithmetic of numerals agrees with that of <code>Nat</code>, moving between levels keeps the number, and the length and sum of lists.</p>
+</li>
+<li><a class="unit" href="Prelude.Data.Church.html">Prelude::Data::Church</a> <p>Church encodings at a universe level: numerals, booleans and lists.</p>
+</li>
 <li><a class="unit" href="Prelude.Data.Stream.Properties.html">Prelude::Data::Stream::Properties</a> <p>Laws of <code>Prelude::Data::Stream</code> on streams of numbers, stated pointwise with <code>Prelude::Arith::Equality</code>, and the stream <code>nats</code>: elements of the operations, the scan by addition as prefix sums of <code>Prelude::Arith::Sum</code>, interleaving at even and odd indices of <code>Prelude::Arith::Parity</code>, and sums of taken prefixes.</p>
 </li>
 <li><a class="unit" href="Prelude.Data.Stream.html">Prelude::Data::Stream</a> <p>Infinite streams over <code>A</code>, encoded as functions from indices: <code>Stream</code> is <code>forall (n : Nat) -&gt; A</code>.</p>
@@ -68,11 +72,15 @@
 </li>
 <li><a class="unit" href="Prelude.Data.Vec.html">Prelude::Data::Vec</a> <p>Vectors of length <code>n</code> over <code>A</code>, encoded as functions from bounded indices: <code>Vec n</code> is <code>forall (i : Nat) (h : Lt i n) -&gt; A</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Function.Combinators.html">Prelude::Function::Combinators</a> <p>Generic combinators over a type parameter, with their laws at <code>Nat</code>.</p>
+<li><a class="unit" href="Prelude.Function.Combinators.html">Prelude::Function::Combinators</a> <p>Generic combinators over a type parameter at any universe level, with their laws at <code>Nat</code>.</p>
 </li>
-<li><a class="unit" href="Prelude.Function.Iter.html">Prelude::Function::Iter</a> <p>Iteration of an arbitrary function: a unit parameterized by the type and the function, so each client instantiates it as it needs.</p>
+<li><a class="unit" href="Prelude.Function.Iter.html">Prelude::Function::Iter</a> <p>Iteration of an arbitrary function: a unit parameterized by the level <code>u</code> of the type, the type <code>A</code> and the function, so each client instantiates it as it needs: <code>Iter.</code></p>
 </li>
-<li><a class="unit" href="Prelude.Logic.html">Prelude::Logic</a> <p>Propositions as types in Type@0: <code>True</code> holds, <code>False</code> has no proof; negation, Church-encoded conjunction, disjunction, equivalence and existence over numbers, and decidability.</p>
+<li><a class="unit" href="Prelude.Logic.html">Prelude::Logic</a> <p>Propositions as types, at every universe level: <code>True</code> holds, <code>False</code> has no proof; negation, Church-encoded conjunction, disjunction, equivalence and existence over numbers, and decidability.</p>
+</li>
+<li><a class="unit" href="Prelude.Universe.Formers.html">Prelude::Universe::Formers</a> <p>Type formers at universe levels.</p>
+</li>
+<li><a class="unit" href="Prelude.Universe.Levels.html">Prelude::Universe::Levels</a> <p>Universe levels as data.</p>
 </li>
 </ul><h2>Programs</h2><ul class="units"><li><a class="unit" href="Algebra.html">Algebra</a> <p>A client of <code>Prelude::Algebra::Monoid</code> and its instances.</p>
 </li>
@@ -105,6 +113,8 @@
 <li><a class="unit" href="Streams.html">Streams</a> <p>A client of <code>Prelude::Data::Stream</code> and its laws: the natural numbers, the even and odd numbers, the squares and two Fibonacci-like streams are read with <code>nth</code> and summed through <code>take</code>, and closed instances of the laws normalize to <code>true</code>.</p>
 </li>
 <li><a class="unit" href="Tutorial.html">Tutorial</a> <p>A tour of the McTT surface language, one feature at a time.</p>
+</li>
+<li><a class="unit" href="Universes.html">Universes</a> <p>A client of the level-polymorphic Prelude: <code>Prelude::Universe::Levels</code>, <code>Prelude::Universe::Formers</code>, <code>Prelude::Data::Church</code> and its laws, and the level parameters of <code>Prelude::Logic</code>, <code>Prelude::Data::Vec</code>, <code>Prelude::Function::Iter</code> and <code>Prelude::Arith::Induction</code>.</p>
 </li>
 <li><a class="unit" href="Vectors.html">Vectors</a> <p>A client of <code>Prelude::Data::Vec</code> and <code>Prelude::Data::Vec::Properties</code>: small vectors of numbers are built, mapped, zipped, appended, split, reversed, folded, read and summed, and closed instances of the laws normalize to <code>true</code>.</p>
 </li>

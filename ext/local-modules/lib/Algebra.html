@@ -120,7 +120,7 @@
 </pre>
 <div class="doc"><p>A monoid built here, from a partial application of the unit: the setoid of numbers is fixed, and the operation and its laws come later.  It is addition again, so its powers agree with <code>Additive</code>'s.</p>
 </div>
-<pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatMonoid">NatMonoid</span> <span class="sym">:=</span> <a class="mod" href="#Monoid">Monoid</a> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <a class="def" href="Prelude.Arith.Equality.html#sym">sym</a> <a class="def" href="Prelude.Arith.Equality.html#trans">trans</a>
+<pre class="code"><span class="kw">module</span> <span class="mod bind" id="NatMonoid">NatMonoid</span> <span class="sym">:=</span> <a class="mod" href="#Monoid">Monoid</a> <span class="num">0l</span> <span class="ty">Nat</span> <a class="def" href="Prelude.Arith.Equality.html#Eq">Eq</a> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <a class="def" href="Prelude.Arith.Equality.html#sym">sym</a> <a class="def" href="Prelude.Arith.Equality.html#trans">trans</a>
 
 <span class="kw">module</span> <span class="mod bind" id="Sums">Sums</span> <span class="sym">:=</span> <a class="mod" href="#NatMonoid">NatMonoid</a> <a class="def" href="Prelude.Arith.Plus.html#plus">plus</a> <a class="def" href="Prelude.Arith.Plus.html#Algebra.plusCongBoth">plusCongBoth</a> <span class="num">0</span> <a class="def" href="Prelude.Arith.Plus.html#Algebra.plusAssoc">plusAssoc</a> <a class="def" href="Prelude.Arith.Equality.html#refl">refl</a> <a class="def" href="Prelude.Arith.Plus.html#Basic.plusZero">plusZero</a>
 

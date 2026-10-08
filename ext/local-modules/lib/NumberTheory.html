@@ -42,7 +42,7 @@
 </pre>
 <div class="doc"><p>The <code>k</code>-th prime, counting from <code>0</code>.</p>
 </div>
-<pre class="code"><span class="kw">def</span> <span class="def bind" id="Primes.nthPrime">nthPrime</span> <span class="sym">(</span><span class="var bind" id="l96">k</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="ty">Nat</span> <a class="def" href="#Primes.nextPrime">nextPrime</a> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l96">k</a><span class="sym">)</span> <span class="num">0</span> <span class="kw">end</span>
+<pre class="code"><span class="kw">def</span> <span class="def bind" id="Primes.nthPrime">nthPrime</span> <span class="sym">(</span><span class="var bind" id="l96">k</span> <span class="sym">:</span> <span class="ty">Nat</span><span class="sym">)</span> <span class="sym">:</span> <span class="ty">Nat</span> <span class="sym">:=</span> <a class="mod" href="Prelude.Function.Combinators.html#Generic">Generic</a><span class="sym">.</span><a class="def" href="Prelude.Function.Combinators.html#Generic.iterate">iterate</a> <span class="num">0l</span> <span class="ty">Nat</span> <a class="def" href="#Primes.nextPrime">nextPrime</a> <span class="sym">(</span><span class="kw">succ</span> <a class="var" href="#l96">k</a><span class="sym">)</span> <span class="num">0</span> <span class="kw">end</span>
 
 <span class="kw">end</span>
 

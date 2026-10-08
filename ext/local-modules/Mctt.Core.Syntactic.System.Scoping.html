@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab429"></a><h1 class="section">Scoping</h1>
+<a id="lab534"></a><h1 class="section">Scoping</h1>
 
 
 <div class="paragraph"> </div>
@@ -66,7 +66,7 @@
 </div>
 
 <div class="doc">
-<a id="lab430"></a><h2 class="section">Definitions</h2>
+<a id="lab535"></a><h2 class="section">Definitions</h2>
 
 
 <div class="paragraph"> </div>
@@ -79,8 +79,9 @@
 <br/>
 <span class="id" title="keyword">Fixpoint</span> <a id="exp_scoped" class="idref" href="#exp_scoped"><span class="id" title="definition">exp_scoped</span></a> (<a id="n:1" class="idref" href="#n:1"><span class="id" title="binder">n</span></a> : <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#nat"><span class="id" title="inductive">nat</span></a>) (<a id="M:2" class="idref" href="#M:2"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) : <span class="id" title="keyword">Prop</span> :=<br/>
 &nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#True"><span class="id" title="inductive">True</span></a><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_llit"><span class="id" title="constructor">a_llit</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> =&gt; <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#True"><span class="id" title="inductive">True</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <span class="id" title="var">M</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succl"><span class="id" title="constructor">a_succl</span></a> <span class="id" title="var">M</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a><br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_maxl"><span class="id" title="constructor">a_maxl</span></a> <span class="id" title="var">M</span> <span class="id" title="var">N</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <span class="id" title="var">N</span><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_natrec"><span class="id" title="constructor">a_natrec</span></a> <span class="id" title="var">A</span> <span class="id" title="var">MZ</span> <span class="id" title="var">MS</span> <span class="id" title="var">M</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a>) <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <span class="id" title="var">MZ</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a>)) <span class="id" title="var">MS</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a><br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_exfalso"><span class="id" title="constructor">a_exfalso</span></a> <span class="id" title="var">A</span> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a>) <span class="id" title="var">A</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Logic.html#ba2b0e492d2b4675a0acf3ea92aabadd"><span class="id" title="notation">/\</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#exp_scoped:17"><span class="id" title="definition">exp_scoped</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#n:1"><span class="id" title="variable">n</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Scoping.html#M:2"><span class="id" title="variable">M</span></a><br/>
@@ -186,7 +187,7 @@ Each binding is scoped by the bindings below it, and the bottom one by <span cla
 </div>
 
 <div class="doc">
-<a id="lab431"></a><h2 class="section">Syntactic Facts</h2>
+<a id="lab536"></a><h2 class="section">Syntactic Facts</h2>
 
 </div>
 <div class="code">
@@ -559,7 +560,7 @@ A term with no free variable is fixed by every weakening and every
 </div>
 
 <div class="doc">
-<a id="lab432"></a><h2 class="section">Telescopes</h2>
+<a id="lab537"></a><h2 class="section">Telescopes</h2>
 
 </div>
 <div class="code">
@@ -696,7 +697,7 @@ A typed body, with no local import, is scoped when the context it binds
 </div>
 
 <div class="doc">
-<a id="lab433"></a><h2 class="section">Closed Entries</h2>
+<a id="lab538"></a><h2 class="section">Closed Entries</h2>
 
 
 <div class="paragraph"> </div>
@@ -847,7 +848,7 @@ A chain from a unit has no variable.
 </div>
 
 <div class="doc">
-<a id="lab434"></a><h2 class="section">Every Judgment is Well Scoped</h2>
+<a id="lab539"></a><h2 class="section">Every Judgment is Well Scoped</h2>
 
 </div>
 <div class="code">
@@ -942,7 +943,7 @@ A chain from a unit has no variable.
 </div>
 
 <div class="doc">
-<a id="lab435"></a><h2 class="section">Consequences</h2>
+<a id="lab540"></a><h2 class="section">Consequences</h2>
 
 </div>
 <div class="code">

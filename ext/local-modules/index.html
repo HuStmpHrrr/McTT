@@ -176,11 +176,31 @@ term = &#39;forall&#39; , {parameter} , &#39;-&gt;&#39; , term
      | &#39;let&#39; , let definition , {&#39;;&#39; , let definition} , &#39;in&#39; , term , &#39;end&#39;
      (* successor of a natural number *)
      | &#39;succ&#39; , term
+     (* successor of a universe level *)
+     | &#39;succl&#39; , atomic term
+     (* join of two universe levels *)
+     | &#39;maxl&#39; , atomic term , atomic term
      (* natural number eliminator *)
      | &#39;rec&#39; , term , &#39;return&#39; , nat motive , zero branch , succ branch , &#39;end&#39;;
 
-            (* universe of level n *)
+            (* small universe at the level nat, short for Type@{&lt;nat&gt;l} *)
 atomic term = &#39;Type&#39;, &#39;@&#39; , nat
+            (* the same, written with the level literal *)
+            | &#39;Type&#39;, &#39;@&#39; , nat , &#39;l&#39;
+            (* small universe at the level denoted by a term *)
+            | &#39;Type&#39; , &#39;@&#39; , &#39;{&#39; , term , &#39;}&#39;
+            (* the first large universe, above every small one *)
+            | &#39;Type&#39; , &#39;@&#39; , ( &#39;ω&#39; | &#39;omega&#39; )
+            | &#39;Type&#39; , &#39;@&#39; , &#39;{&#39; , ( &#39;ω&#39; | &#39;omega&#39; ) , &#39;}&#39;
+            (* the large universe ω+nat; only the braced form takes a &#39;+&#39; *)
+            | &#39;Type&#39; , &#39;@&#39; , &#39;{&#39; , ( &#39;ω&#39; | &#39;omega&#39; ) , &#39;+&#39; , nat , &#39;}&#39;
+            (* its shorthand: a large universe size, never a level *)
+            | &#39;Type&#39; , &#39;@&#39; , nat , &#39;L&#39;
+            | &#39;Type&#39; , &#39;@&#39; , &#39;{&#39; , nat , &#39;L&#39; , &#39;}&#39;
+            (* the type of universe levels *)
+            | &#39;Level&#39;
+            (* a universe level literal *)
+            | nat , &#39;l&#39;
             (* natural number type *)
             | &#39;Nat&#39;
             (* natural number zero *)
