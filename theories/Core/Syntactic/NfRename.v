@@ -216,3 +216,28 @@ Lemma nf_wk_fresh :
 Proof.
   apply nf_mut_ind; intros; cbn; repeat split; eauto 6 using wk_avoids_q.
 Qed.
+
+(** ** Injectivity
+
+    An injective renaming is injective on normal forms. *)
+Definition wk_inj (φ : wk) : Prop := forall x y, φ x = φ y -> x = y.
+
+Lemma wk_inj_q : forall φ, wk_inj φ -> wk_inj (wk_q φ).
+Proof. intros φ Hφ [| x] [| y]; cbn; intros H; try discriminate; [ reflexivity | f_equal; apply Hφ; lia ]. Qed.
+
+Lemma wk_inj_shift : wk_inj wk_shift.
+Proof. intros x y; cbn; lia. Qed.
+
+Lemma nf_wk_inj :
+  (forall W φ W', wk_inj φ -> nf_wk φ W = nf_wk φ W' -> W = W') /\
+  (forall u φ u', wk_inj φ -> ne_wk φ u = ne_wk φ u' -> u = u') /\
+  (forall xs φ xs', wk_inj φ -> la_wk φ xs = la_wk φ xs' -> xs = xs').
+Proof.
+  apply nf_mut_ind; intros;
+    match goal with
+    | H : nf_wk _ _ = nf_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
+    | H : ne_wk _ _ = ne_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
+    | H : la_wk _ _ = la_wk _ ?W' |- _ => destruct W'; cbn in H; inversion H; subst
+    end;
+    f_equal; eauto using wk_inj_q.
+Qed.

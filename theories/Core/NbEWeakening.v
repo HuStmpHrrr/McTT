@@ -13,9 +13,12 @@
     - that is the weakening of its readback at [|Γ|], the normal form of [M]
       in [Γ] ([Core.Semantic.Rename.read_shift]).
 
-    A consequence: the normal form of a weakened term is fresh at the new
-    variable ([nbe_wk_fresh_sem], an alternative proof of
-    [Core.Semantic.Avoid.nbe_wk_fresh] for well-typed terms). *)
+    Two consequences follow: the normal form of a weakened term is fresh at
+    the new variable ([nbe_wk_fresh_sem], an alternative proof of
+    [Core.Semantic.Avoid.nbe_wk_fresh] for well-typed terms), and an equation
+    between two terms of [Γ] that holds in [Γ ▹ A] holds in [Γ]
+    ([exp_eq_strengthen_sem], the case [Δ = nil] of
+    [Algorithmic.Strengthening.exp_eq_strengthen]). *)
 From Stdlib Require Import Arith Lia List PeanoNat.
 
 From Mctt Require Import LibTactics.
@@ -105,6 +108,30 @@ Proof.
   pose proof (nbe_ty_wk _ _ _ _ _ HΓA HT Hn1) as Hn2.
   functional_nbe_rewrite_clear.
   apply (proj1 nf_wk_fresh); intros x; cbn; lia.
+Qed.
+
+(** ** Strengthening an Equation
+
+    Both ends are terms of [Γ]: their normal forms in [Γ ▹ A] are the
+    weakenings of their normal forms in [Γ], the long equation makes the
+    former equal, and the weakening is injective. *)
+Theorem exp_eq_strengthen_sem : forall Γ A M N T,
+    ⊢ Γ ▹ A ->
+    Γ ⊢ M : T ->
+    Γ ⊢ N : T ->
+    Γ ▹ A ⊢ M[↑]ʷ ≈ N[↑]ʷ : T[↑]ʷ ->
+    Γ ⊢ M ≈ N : T.
+Proof.
+  intros * HΓA HM HN HMN.
+  destruct (soundness HM) as [WM [HnM HeqM]].
+  destruct (soundness HN) as [WN [HnN HeqN]].
+  destruct (completeness HMN) as [W [HnM' HnN']].
+  pose proof (nbe_wk _ _ _ _ _ HΓA HM HnM).
+  pose proof (nbe_wk _ _ _ _ _ HΓA HN HnN).
+  functional_nbe_rewrite_clear.
+  assert (WM = WN) as <-
+      by (eapply (proj1 nf_wk_inj); [ apply wk_inj_shift | eassumption ]).
+  etransitivity; [ exact HeqM | symmetry; exact HeqN ].
 Qed.
 
 End Fixed_GCtx.
