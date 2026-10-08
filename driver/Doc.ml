@@ -559,7 +559,8 @@ let stats lib : stats =
               else if checked then unres := (u.u_path, x, line) :: !unres) u.u_occ) lib.units;
   { names = !names; linked = !linked; binders = !binders; unresolved = List.rev !unres; dangling = List.rev !dang }
 
-let unit_name fq = String.concat "::" fq
+(* A unit path as the printer spells it, joined by [∷]. *)
+let unit_name fq = String.concat "\u{2237}" fq
 
 (* The problems [--check] reports, one per line. *)
 let problems ?(resolve = true) (lib : lib) : string list =
@@ -673,7 +674,14 @@ let prose (txt : string) =
 
 let comment_text src (a, e) = String.sub src (a + 2) (e - a - 4)
 
-let col src p = let i = ref p in while !i > 0 && src.[!i - 1] <> '\n' do decr i done; p - !i
+(* The column of byte [p], in characters: UTF-8 continuation bytes do not
+   count, so a line with [→] or [ℕ] before [p] aligns as displayed. *)
+let col src p =
+  let i = ref p and n = ref 0 in
+  while !i > 0 && src.[!i - 1] <> '\n' do
+    decr i; if Char.code src.[!i] land 0xC0 <> 0x80 then incr n
+  done;
+  !n
 
 let line_start src p =
   let i = ref (p - 1) in

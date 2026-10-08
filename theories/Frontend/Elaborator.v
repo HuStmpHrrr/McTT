@@ -38,7 +38,7 @@ Definition echeck (b : bool) (e : string) : eres unit := if b then eok tt else e
 (** The error for a unit, named by its path as the driver prints paths,
     that the program does not import. *)
 Definition unit_not_imported_msg (fq : list string) : string :=
-  "the unit " ++ String.concat "::" fq ++ " is not imported".
+  "the unit " ++ String.concat "∷" fq ++ " is not imported".
 
 (** ** Names *)
 

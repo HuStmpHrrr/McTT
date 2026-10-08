@@ -72,7 +72,7 @@ prog: MODULE VAR WHERE EVAL VAR WHERE
 ## VAR
 ##
 
-This token cannot follow a name; expected "::" to continue a unit path, "." to select a member, an argument, or the end of the expression.
+This token cannot follow a name; expected "∷" to continue a unit path, "." to select a member, an argument, or the end of the expression.
 
 prog: MODULE VAR WHERE EVAL TYPE ZERO
 ##
@@ -161,7 +161,7 @@ prog: MODULE VAR WHERE EVAL LET ZERO
 ## LET
 ##
 
-Expected a binding "x : A := a", "x := a" or "module X := E" after "let".
+Expected a binding "x : A ≔ a", "x ≔ a" or "module X ≔ E" after "let".
 
 prog: MODULE VAR WHERE EVAL LET VAR ZERO
 ##
@@ -174,7 +174,7 @@ prog: MODULE VAR WHERE EVAL LET VAR ZERO
 ## VAR
 ##
 
-Expected ":" followed by the type of the local definition, or ":=" followed by its body.
+Expected ":" followed by the type of the local definition, or "≔" followed by its body.
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON WHERE
 ##
@@ -269,7 +269,7 @@ prog: MODULE VAR WHERE EVAL VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "::" in the path.
+Expected a name after "∷" in the path.
 
 prog: MODULE VAR WHERE EVAL VAR COLONCOLON VAR WHERE
 ##
@@ -282,7 +282,7 @@ prog: MODULE VAR WHERE EVAL VAR COLONCOLON VAR WHERE
 ## fpath COLONCOLON VAR
 ##
 
-This token cannot follow a unit path; expected "::" to continue it, "." to select a member, an argument, or the end of the expression.
+This token cannot follow a unit path; expected "∷" to continue it, "." to select a member, an argument, or the end of the expression.
 
 prog: MODULE VAR WHERE EVAL LAMBDA ZERO
 ##
@@ -294,9 +294,9 @@ prog: MODULE VAR WHERE EVAL LAMBDA ZERO
 ## fnbinder
 ##
 
-"forall" requires a list of parenthesized parameters.
+"∀" requires a list of parenthesized parameters.
 For example,
-  "(x : Nat) (y : Nat)" in "forall (x : Nat) (y : Nat) -> Nat"
+  "(x : ℕ) (y : ℕ)" in "∀ (x : ℕ) (y : ℕ) → ℕ"
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN ZERO
 ##
@@ -309,7 +309,7 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN ZERO
 ## fnbinder params
 ##
 
-"->" or another parameter is expected after a list of parameters for "fun".
+"→" or another parameter is expected after a list of parameters for "λ".
 
 prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN ARROW WHERE
 ##
@@ -321,7 +321,7 @@ prog: MODULE VAR WHERE EVAL LAMBDA LPAREN VAR COLON FALSE_TY RPAREN ARROW WHERE
 ## fnbinder params ARROW
 ##
 
-An expression is expected after "->".
+An expression is expected after "→".
 This token is invalid for the beginning of an expression.
 
 prog: MODULE VAR WHERE EVAL FALSE_TY DOT ZERO
@@ -353,7 +353,7 @@ prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY WHERE
 ## In state 59, spurious reduction of production obj -> app_obj
 ##
 
-Expected ":=" after the type of the local definition.
+Expected "≔" after the type of the local definition.
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY EQ WHERE
 ##
@@ -395,7 +395,7 @@ prog: MODULE VAR WHERE MODULE VAR ZERO
 ## In state 83, spurious reduction of production params_opt ->
 ##
 
-Expected a parameter "(x : A)", ":=" or keyword "where",
+Expected a parameter "(x : A)", "≔" or keyword "where",
 or a further "." in the path of a module command.
 
 prog: MODULE VAR WHERE MODULE ZERO
@@ -420,7 +420,7 @@ prog: IMPORT ZERO
 ## IMPORT
 ##
 
-Expected the unit to import, as in "import X::Y".
+Expected the unit to import, as in "import X∷Y".
 
 prog: IMPORT VAR COLONCOLON ZERO
 ##
@@ -433,7 +433,7 @@ prog: IMPORT VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "::" in the path.
+Expected a name after "∷" in the path.
 
 prog: IMPORT VAR COLONCOLON VAR DOT ZERO
 ##
@@ -613,7 +613,7 @@ prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY WHERE
 ## In state 59, spurious reduction of production obj -> app_obj
 ##
 
-Expected ":=" after the type of the definition.
+Expected "≔" after the type of the definition.
 
 prog: MODULE VAR WHERE DEF VAR COLON FALSE_TY EQ WHERE
 ##
@@ -656,7 +656,7 @@ prog: MODULE VAR WHERE MODULE VAR EQ WHERE
 ## EQ
 ##
 
-Expected a module expression after ":=".
+Expected a module expression after "≔".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR WHERE END ZERO
 ##
@@ -681,7 +681,7 @@ prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY SEMI ZERO
 ## let_defns SEMI
 ##
 
-Expected a binding "x : A := a" or "module X := E" after ";".
+Expected a binding "x : A ≔ a" or "module X ≔ E" after ";".
 
 prog: MODULE VAR WHERE EVAL LET MODULE VAR EQ FALSE_TY IN WHERE
 ##
@@ -833,7 +833,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO ZERO
 ## REC obj RETURN VAR DOT obj BAR ZERO
 ##
 
-"=>" is expected after a pattern for "rec".
+"⇒" is expected after a pattern for "rec".
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW WHERE
 ##
@@ -926,7 +926,7 @@ prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW
 ## REC obj RETURN VAR DOT obj BAR ZERO DARROW obj BAR SUCC VAR COMMA VAR
 ##
 
-"=>" is expected after a pattern for "rec".
+"⇒" is expected after a pattern for "rec".
 
 prog: MODULE VAR WHERE EVAL REC FALSE_TY RETURN VAR DOT FALSE_TY BAR ZERO DARROW FALSE_TY BAR SUCC VAR COMMA VAR DARROW WHERE
 ##
@@ -991,7 +991,7 @@ prog: MODULE VAR COLONCOLON ZERO
 ## fpath COLONCOLON
 ##
 
-Expected a name after "::" in the path.
+Expected a name after "∷" in the path.
 
 prog: MODULE VAR ZERO
 ##
@@ -1064,8 +1064,8 @@ prog: IMPORT VAR COLONCOLON VAR WHERE
 ## In state 112, spurious reduction of production fpath -> fpath COLONCOLON VAR
 ##
 
-Expected a further "::" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
-"import" names a unit, as in "import X::Y"; a module in scope is opened with "open".
+Expected a further "∷" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
+"import" names a unit, as in "import X∷Y"; a module in scope is opened with "open".
 
 prog: IMPORT VAR COLONCOLON VAR DOT VAR WHERE
 ##
@@ -1103,7 +1103,7 @@ prog: OPEN VAR WHERE
 ## VAR
 ##
 
-Expected a further "::" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
+Expected a further "∷" or "." in the path, the arguments of the module, "as", "use", "export", or the next command.
 
 prog: OPEN VAR DOT ZERO
 ##

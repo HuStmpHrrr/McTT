@@ -18,6 +18,43 @@ let pp_print_paren_if
   body f ();
   if cond then Format.pp_print_char f ')'
 
+(* The printer's spellings of the tokens that have a Unicode form.  Each is
+   one character wide, which Format is told with [pp_print_as] or [@<1>%s],
+   since it counts bytes. *)
+let s_arrow = "\u{2192}" (* → for -> *)
+let s_darrow = "\u{21D2}" (* ⇒ for => *)
+let s_lambda = "\u{03BB}" (* λ for fun *)
+let s_pi = "\u{2200}" (* ∀ for forall; Π is also accepted *)
+let s_eq = "\u{2254}" (* ≔ for := *)
+let s_coloncolon = "\u{2237}" (* ∷ for :: *)
+let s_nat = "\u{2115}" (* ℕ for Nat *)
+let s_true_ty = "\u{22A4}" (* ⊤ for True *)
+let s_false_ty = "\u{22A5}" (* ⊥ for False *)
+let s_true_tm = "\u{22C6}" (* ⋆ for true *)
+let s_omega = "\u{03C9}" (* ω for omega *)
+
+let pp_sym (f : Format.formatter) (s : string) : unit = Format.pp_print_as f 1 s
+
+(* A string that may contain Unicode, at its width in characters: the bytes
+   that are not UTF-8 continuation bytes. *)
+let utf8_width (s : string) : int =
+  let n = ref 0 in
+  String.iter (fun c -> if Char.code c land 0xC0 <> 0x80 then incr n) s;
+  !n
+
+let pp_u (f : Format.formatter) (s : string) : unit = Format.pp_print_as f (utf8_width s) s
+
+(* [Format.pp_print_text] with the words at their width in characters: a
+   space is a break hint, a newline a forced one. *)
+let pp_text_u (f : Format.formatter) (s : string) : unit =
+  List.iteri
+    (fun i line ->
+      if i > 0 then Format.pp_force_newline f ();
+      List.iteri
+        (fun j w -> if j > 0 then Format.pp_print_space f (); pp_u f w)
+        (String.split_on_char ' ' line))
+    (String.split_on_char '\n' s)
+
 (************************************************************)
 (* Formatting Cst.obj *)
 (************************************************************)
@@ -70,12 +107,17 @@ let format_items (f : Format.formatter) (its : ((string option * string) * bool)
     (fun (pv, l) -> fprintf f " %s (%s)" (if pv then "use" else "export") (String.concat "; " l))
     (groups its)
 
-(* [::] joins a file path and [.] an internal one; either half may be empty. *)
+(* A unit path, its names joined by [∷]. *)
+let string_of_upath (fp : string list) : string = String.concat s_coloncolon fp
+
+(* [∷] joins a file path and [.] an internal one; either half may be empty. *)
 let string_of_qpath (fp : string list) (ip : string list) : string =
   match (fp, ip) with
   | [], _ -> String.concat "." ip
-  | _, [] -> String.concat "::" fp
-  | _, _ -> String.concat "::" fp ^ "." ^ String.concat "." ip
+  | _, [] -> string_of_upath fp
+  | _, _ -> string_of_upath fp ^ "." ^ String.concat "." ip
+
+let pp_upath (f : Format.formatter) (fp : string list) : unit = pp_u f (string_of_upath fp)
 
 let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
@@ -83,7 +125,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   (* A universe prints at its shortest spelling: a large one as [Type@ω] or
      [Type@<n>L], a small one at a literal level as [Type@<n>] and at any
      other level as [Type@{t}]. *)
-  | Cst.Coq_typ 0 -> fprintf f "Type@@ω"
+  | Cst.Coq_typ 0 -> fprintf f "Type@@@<1>%s" s_omega
   | Cst.Coq_typ i -> fprintf f "Type@@%dL" i
   | Cst.Coq_suniv (Cst.Coq_llit n) -> fprintf f "Type@@%d" n
   | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_obj_prec 0) e
@@ -101,7 +143,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_open_hovbox f 2;
      pp_print_paren_if (p >= 2) impl f ();
      pp_close_box f ()
-  | Cst.Coq_nat -> fprintf f "Nat"
+  | Cst.Coq_nat -> pp_sym f s_nat
   | Cst.Coq_zero -> fprintf f "0"
   | Cst.Coq_succ e -> begin
      match get_nat_of_obj e with
@@ -115,14 +157,14 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_natrec (escr, mx, em, ez, sx, sr, es) ->
      let impl f () =
        fprintf f
-         "@[<hv 0>@[<hov 2>rec %a@ return %s . %a@]@ @[<hov 2>| zero =>@ \
-          %a@]@ @[<hov 2>| succ %s, %s =>@ %a@]@ end@]"
-         format_obj escr mx format_obj em format_obj ez sx sr format_obj es
+         "@[<hv 0>@[<hov 2>rec %a@ return %s . %a@]@ @[<hov 2>| zero @<1>%s@ \
+          %a@]@ @[<hov 2>| succ %s, %s @<1>%s@ %a@]@ end@]"
+         format_obj escr mx format_obj em s_darrow format_obj ez sx sr s_darrow format_obj es
      in
      pp_print_paren_if (p >= 1) impl f ()
-  | Cst.Coq_true_ty -> fprintf f "True"
-  | Cst.Coq_true_tm -> fprintf f "true"
-  | Cst.Coq_false_ty -> fprintf f "False"
+  | Cst.Coq_true_ty -> pp_sym f s_true_ty
+  | Cst.Coq_true_tm -> pp_sym f s_true_tm
+  | Cst.Coq_false_ty -> pp_sym f s_false_ty
   | Cst.Coq_exfalso (escr, mx, em) ->
      let impl f () =
        fprintf f "@[<hov 2>exfalso %a@ return %s .@ %a@]" format_obj escr mx
@@ -139,7 +181,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_fn (px, ep, ebody) ->
      let params, ebody' = get_fn_params_of_obj ebody in
      let impl f () =
-       pp_print_string f "fun ";
+       pp_sym f s_lambda; pp_print_char f ' ';
        pp_open_tbox f ();
        pp_set_tab f ();
        pp_print_list ~pp_sep:pp_print_tab format_obj_param f ((px, ep) :: params);
@@ -149,7 +191,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          then pp_print_space f ()
          else pp_force_newline f ()
        end;
-       fprintf f "-> @[<hov 2>%a@]" format_obj ebody'
+       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_obj ebody'
      in
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 1) impl f ();
@@ -157,7 +199,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_pi (px, ep, eret) ->
      let params, eret' = get_pi_params_of_obj eret in
      let impl f () =
-       pp_print_string f "forall ";
+       pp_sym f s_pi; pp_print_char f ' ';
        pp_open_tbox f ();
        pp_set_tab f ();
        pp_print_list ~pp_sep:pp_print_tab format_obj_param f ((px, ep) :: params);
@@ -167,13 +209,13 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          then pp_print_space f ()
          else pp_force_newline f ()
        end;
-       fprintf f "-> @[<hov 2>%a@]" format_obj eret'
+       fprintf f "@<1>%s @[<hov 2>%a@]" s_arrow format_obj eret'
      in
      pp_open_hvbox f 2;
      pp_print_paren_if (p >= 1) impl f ();
      pp_close_box f ()
   | Cst.Coq_var x -> pp_print_string f x
-  | Cst.Coq_glob path -> pp_print_string f (String.concat "::" path)
+  | Cst.Coq_glob path -> pp_upath f path
   (* Dot binds tighter than application, so the target prints at the precedence
      of an application argument. *)
   | Cst.Coq_proj (e, x) -> fprintf f "%a.%s" (format_obj_prec 2) e x
@@ -192,9 +234,9 @@ and format_decl (f : Format.formatter) : Cst.decl -> unit =
   let open Format in
   function
   | Cst.Coq_d_def (x, Some ea, eb) ->
-     fprintf f "@[<hov 2>%s : %a :=@ %a@]" x format_obj ea format_obj eb
+     fprintf f "@[<hov 2>%s : %a @<1>%s@ %a@]" x format_obj ea s_eq format_obj eb
   | Cst.Coq_d_def (x, None, eb) ->
-     fprintf f "@[<hov 2>%s :=@ %a@]" x format_obj eb
+     fprintf f "@[<hov 2>%s @<1>%s@ %a@]" x s_eq format_obj eb
   | Cst.Coq_d_mod (x, params, md) -> format_module f x params md
 
 (* [module x (ps) where … end] or [module x (ps) := E]. *)
@@ -212,7 +254,7 @@ and format_module (f : Format.formatter) (x : string) params (md : Cst.mdef) : u
   | Cst.Coq_md_alias e ->
      fprintf f "@[<hov 2>module %s" x;
      List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
-     fprintf f " :=@ %a@]" format_obj e
+     fprintf f " @<1>%s@ %a@]" s_eq format_obj e
 
 and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
   let open Format in
@@ -221,14 +263,14 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      if priv then Format.pp_print_string f "private ";
      format_module f x params md
   | Cst.Coq_c_def (m, x, ea, eb) ->
-     fprintf f "@[<v 2>%adef %s : %a :=@ %a@;<1 -2>end" format_mods m x
-       format_obj ea format_obj eb;
+     fprintf f "@[<v 2>%adef %s : %a @<1>%s@ %a@;<1 -2>end" format_mods m x
+       format_obj ea s_eq format_obj eb;
      pp_close_box f ()
   | Cst.Coq_c_axiom (x, ea) ->
      fprintf f "@[<hov 2>axiom %s :@ %a@]" x format_obj ea
-  | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %s@]" (String.concat "::" fp)
+  | Cst.Coq_c_import fp -> fprintf f "@[<hov 2>import %a@]" pp_upath fp
   | Cst.Coq_c_open (fp, ip, args, its) ->
-     fprintf f "@[<hov 2>open %s" (string_of_qpath fp ip);
+     fprintf f "@[<hov 2>open %a" pp_u (string_of_qpath fp ip);
      List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
@@ -250,8 +292,8 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
   let open Format in
   List.iter (fun c -> fprintf f "%a@ " format_cmd c) is;
   pp_open_vbox f 2;
-  (* The unit's own name is a [::] path *)
-  fprintf f "module %s" (String.concat "::" path);
+  (* The unit's own name is a [∷] path *)
+  fprintf f "module %a" pp_upath path;
   List.iter (fun p -> fprintf f " %a" format_obj_param p) params;
   pp_print_string f " where";
   List.iter (fun c -> fprintf f "@ %a" format_cmd c) cs;
@@ -469,13 +511,13 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_eval_infer (_, exp) ->
      fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
   | Coq_re_cycle ch ->
-     fprintf f "@[<hov 2>Error: cyclic import:@ %s@]"
-       (String.concat " -> " (List.map (String.concat "::") ch))
+     fprintf f "@[<hov 2>Error: cyclic import:@ %a@]"
+       pp_u (String.concat (" " ^ s_arrow ^ " ") (List.map string_of_upath ch))
   | Coq_re_unit (fp, msg) ->
-     fprintf f "@[<hov 2>Error: %s:@ %s@]" ((String.concat "::") fp) msg
+     fprintf f "@[<hov 2>Error: %a:@ %s@]" pp_upath fp msg
   (* A private member is named by the module declaring it, from its unit. *)
   | Coq_re_private (q, x) ->
-     fprintf f "@[<hov 2>Error: %s is private@]" (string_of_qpath q.q_unit (q.q_chain @ [x]))
+     fprintf f "@[<hov 2>Error: %a is private@]" pp_u (string_of_qpath q.q_unit (q.q_chain @ [x]))
   (* A private entry of a local body, from the local module. *)
   | Coq_re_private_local (ch, x) ->
      fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
@@ -490,7 +532,7 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
            | Coq_me_mem (h, y) -> Option.map (fun (fp, ch) -> (fp, ch @ [y])) (chain h)
            | _ -> None in
          (match chain h with
-          | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %s is not a member@]" (string_of_qpath fp (ch @ [n]))
+          | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
@@ -522,6 +564,6 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
      format_run_error f e
   | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg
   | ParserFailure (s, t) ->
-     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_print_text
+     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_u
        (String.trim (ParserMessages.message (Parser.Aut.coq_N_of_state s)))
   | ParserTimeout fuel -> fprintf f "@[<hov 2>Error: parser timeout with fuel %d@]" fuel
