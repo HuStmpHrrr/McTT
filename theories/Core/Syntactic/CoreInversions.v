@@ -208,13 +208,18 @@ Hint Resolve wf_exfalso_inversion : mctt.
 Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
     (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ C) \/
-    (exists n, Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Type@n ⊆ C).
+    (exists L, Θ ⍮ Ξ ⍮ Γ ⊢ L : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ /\
+               Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨L⟩ ⊆ C).
 Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
-    try destruct IHwf_exp1;
-    destruct_conjs; gen_core_presups; [ left | right | left | right ]; eexists; mautosolve 4.
+    try destruct IHwf_exp1 as [(j & ? & ? & ?) | (L' & ? & ? & ? & ?)];
+    gen_core_presups.
+  - left; eexists; mautosolve 4.
+  - right; exists L; repeat split; try assumption; mautosolve 4.
+  - left; exists j; repeat split; try assumption; mautosolve 4.
+  - right; exists L'; repeat split; try assumption; mautosolve 4.
 Qed.
 
 #[export]
@@ -229,9 +234,11 @@ Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
 Proof.
-  intros * [[j [? []]] | [n [? []]]]%wf_pi_inversion.
+  intros * [[j [? []]] | [L [? [? []]]]]%wf_pi_inversion.
   2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
-      split; eapply wf_exp_small_large; eassumption. }
+      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
+      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level) by (eapply (wk_preserves_exp _ _ _ _ Level); eassumption).
+      split; eapply wf_exp_suniv_large; eassumption. }
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ exp_wk Typeω@j ↑ ⊆ exp_wk Typeω@i ↑) as H'

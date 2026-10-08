@@ -134,6 +134,30 @@ Lemma wf_exp_small_large : forall {Θ Ξ Γ A n i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
 Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
 
+(** The same at a level term, given that it is a level. *)
+Lemma wf_exp_suniv_large : forall {Θ Ξ Γ A L i},
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+
+Lemma wf_exp_eq_suniv_large : forall {Θ Ξ Γ A A' L i},
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
+Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+
+(** The small [Π] and its congruence at a literal level, whose weakening is
+    itself. *)
+Lemma wf_pi_small_lit : forall {Θ Ξ Γ A B n},
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@n.
+Proof. intros * HA HB; apply wf_pi_small; [ apply wf_llit; mauto 2 | exact HA | exact HB ]. Qed.
+
+Lemma wf_exp_eq_pi_cong_small_lit : forall {Θ Ξ Γ A A' B B' n},
+    Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@n ->
+    Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@n ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@n.
+Proof. intros * HA HAA HB; apply wf_exp_eq_pi_cong_small; [ apply wf_llit; mauto 2 | exact HA | exact HAA | exact HB ]. Qed.
+
 Lemma wf_exp_eq_small_large : forall {Θ Ξ Γ A A' n i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
 Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
@@ -747,6 +771,21 @@ Proof.
         [ exact HUφ
         | apply IHB; apply wf_wk_q_mod; eauto using wf_unit_eq_refl_left
         | exact HL ]
+    end ].
+  (** The small [Π]: the domain is moved into a large universe by its level,
+      and the codomain's universe, the weakened level, commutes with the
+      lifted weakening. *)
+  all: try solve [
+    match goal with
+    | HL : forall Δ0 φ0, wf_wk ?T ?X Δ0 ?Γ φ0 -> wf_exp ?T ?X Δ0 a_level ?L[φ0]ʷ,
+      HA : wf_exp ?T ?X ?Γ (a_univ ?L) ?A,
+      Hφ : wf_wk ?T ?X ?Δ ?Γ ?φ,
+      HL0 : wf_exp ?T ?X ?Γ a_level ?L |- _ =>
+        assert (wf_exp T X Γ (a_typ 0) A) by (eapply wf_exp_suniv_large; eassumption);
+        assert (wf_exp T X Δ (a_typ 0) A[φ]ʷ) by (eapply wf_exp_suniv_large; eauto);
+        assert (wf_wk T X (Δ ▹ A[φ]ʷ) (Γ ▹ A) (wk_q φ)) by (eapply wf_wk_q; eassumption);
+        first [ eapply wf_pi_small | eapply wf_exp_eq_pi_cong_small ];
+        rewrite <- ?exp_wk_shift_wk_q; eauto
     end ].
 Qed.
 
@@ -1397,6 +1436,19 @@ Proof.
         | exact (tele_view_sub_some _ _ _ _ Hv) | eauto | eauto | eauto
         | exact (member_type_sub_mod _ _ Hc _ _ _ _ Hm' _ _ (wf_sub_mod_compat _ _ _ _ _ Hσ))
         | exact (tele_view_sub_some _ _ _ _ Hv') | eauto | eauto ]
+    end ].
+  (** The small [Π], as for weakening. *)
+  all: try solve [
+    match goal with
+    | HL : forall Γ0 σ0, wf_sub ?T ?X Γ0 ?Δ σ0 -> wf_exp ?T ?X Γ0 a_level ?L[σ0],
+      HA : wf_exp ?T ?X ?Δ (a_univ ?L) ?A,
+      Hσ : wf_sub ?T ?X ?Γ ?Δ ?σ,
+      HL0 : wf_exp ?T ?X ?Δ a_level ?L |- _ =>
+        assert (wf_exp T X Δ (a_typ 0) A) by (eapply wf_exp_suniv_large; eassumption);
+        assert (wf_exp T X Γ (a_typ 0) A[σ]) by (eapply wf_exp_suniv_large; eauto);
+        assert (wf_sub T X (Γ ▹ A[σ]) (Δ ▹ A) (q σ)) by (eapply wf_sub_q; eassumption);
+        first [ eapply wf_pi_small | eapply wf_exp_eq_pi_cong_small ];
+        rewrite <- ?exp_wk_shift_sub_q; eauto
     end ].
 Qed.
 

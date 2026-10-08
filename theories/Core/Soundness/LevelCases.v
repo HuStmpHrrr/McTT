@@ -280,6 +280,138 @@ Qed.
 
 Hint Resolve glu_rel_exp_univ_lvl : mctt.
 
+(** ** Types of the Small Universe at a Level Term
+
+    [Type⟨T⟩] is in the least large universe, which is the ambient universe
+    its types are glued at; inverting that gluing gives the type-level gluing
+    at the realiser of [T]'s value, and the readback clause at [Type⟨T⟩]. *)
+Lemma glu_rel_exp_suniv_tm_large : forall {Γ T},
+    Γ ⊩ T : Level ->
+    Γ ⊩ Type⟨T⟩ : Typeω@0.
+Proof.
+  intros * HT.
+  assert (⊩ Γ) by mauto 3.
+  assert (Γ ⊢ T : Level) by (eapply glu_rel_exp_to_wf_exp; exact HT).
+  assert (⊢ Γ) by mauto 3.
+  eapply glu_rel_exp_subtyp;
+    [ apply glu_rel_exp_univ_lvl, HT | apply glu_rel_exp_typ; assumption
+    | apply wf_subtyp_small_large; mauto 3 ].
+Qed.
+
+(** The same inversion without the level's own gluing: the index of the
+    judgment is whatever it is, and the small universe is below it. *)
+Lemma glu_rel_exp_of_suniv_tm_inversion' : forall {Γ Sb T A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ A : Type⟨T⟩ ->
+    forall Δ σ ρ,
+      Δ ⊢s σ ® ρ ∈ Sb ->
+      exists l,
+        ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\
+        Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
+        exists a,
+          ⟦ A ⟧ ρ ↘ a /\
+            Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
+            (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+            (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+                       Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
+Proof.
+  intros * HΓ HA * HΔ.
+  destruct (glu_rel_exp_clean_inversion1 HΓ HA) as [i HAi].
+  destruct (HAi _ _ _ HΔ) as [a0 m P El Ha0 Hm HPEl Hglu].
+  inversion Ha0; subst.
+  invert_glu_univ_elem HPEl.
+  apply_predicate_equivalence.
+  cbn [suniv_glu_exp_pred'] in Hglu.
+  destruct Hglu as [HAσ [_ [Hty Hrb]]].
+  destruct Hty as [Pm [Elm [HPm HP]]].
+  match goal with Hl : ⟦ T ⟧ ρ ↘ ?l |- _ => exists l; split; [ exact Hl |] end.
+  split; [ assumption |].
+  split; [ exact HAσ |].
+  exists m; split; [ assumption | split; [| split ] ].
+  - eapply glu_univ_elem_per_univ; eassumption.
+  - intros P' El' H'.
+    handle_functional_glu_univ_elem.
+    assumption.
+  - exact Hrb.
+Qed.
+
+Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ T : Level ->
+    (forall Δ σ ρ,
+        Δ ⊢s σ ® ρ ∈ Sb ->
+        forall l, ⟦ T ⟧ ρ ↘ l ->
+        Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
+          exists a,
+            ⟦ A ⟧ ρ ↘ a /\
+              Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
+              (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+              (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+                         Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩)) ->
+    Γ ⊩ A : Type⟨T⟩.
+Proof.
+  intros * HΓ HT Hbody.
+  eexists; split; [ eassumption |].
+  exists 0.
+  intros Δ σ ρ Hσ.
+  assert (Δ ⊢s σ : Γ) by mauto 3.
+  saturate_sub.
+  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ Hσ) as [l [Hl [Hper Hglu]]].
+  destruct (Hbody _ _ _ Hσ l Hl) as [HAσ [a [Ha [Haper [HaP Hrb]]]]].
+  assert (Δ ⊢ T[σ] : Level) by (eapply (glu_lvl_escape _ _ _ Hper Hglu); assumption).
+  assert (exists P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
+  econstructor;
+    [ apply eval_exp_univ; eassumption
+    | eassumption
+    | apply glu_univ_elem_core_suniv'; [ exact Hper | exact I | reflexivity | reflexivity ]
+    |].
+  cbn [exp_sub suniv_glu_exp_pred'].
+  repeat split.
+  - exact HAσ.
+  - exists T[σ]; split; [ exact Hglu |].
+    apply wf_exp_eq_univ_cong_large_tm; [ assumption | assumption | mauto 3 ].
+  - exists P, El; split; [ exact HPEl | exact (HaP _ _ HPEl) ].
+  - exact Hrb.
+Qed.
+
+Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
+    EG Γ ∈ glu_ctx_env ↘ Sb ->
+    Γ ⊩ T : Level ->
+    Γ ⊩ A : Type⟨T⟩ ->
+    forall Δ σ ρ,
+      Δ ⊢s σ ® ρ ∈ Sb ->
+      exists l,
+        ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\ glu_lvl Δ T[σ] l /\
+        Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
+        exists a,
+          ⟦ A ⟧ ρ ↘ a /\
+            Dom a ≈ a ∈ per_univ (us (dlvl_real l)) /\
+            (forall P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El -> Δ ⊢ A[σ] ® P) /\
+            (forall Δ' φ W, Δ' ⊢k φ : Δ -> Rtyp a in length Δ' ↘ W ->
+                       Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
+Proof.
+  intros * HΓ HT HA * HΔ.
+  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ HΔ) as [l [Hl [Hlper Hlglu]]].
+  pose proof (glu_rel_exp_suniv_tm_large HT) as HU.
+  eapply glu_rel_exp_clean_inversion2 in HA; [| eassumption | eassumption ].
+  destruct (HA _ _ _ HΔ) as [a0 m P El Ha0 Hm HPEl Hglu].
+  inversion Ha0; subst.
+  functional_eval_rewrite_clear.
+  invert_glu_univ_elem HPEl.
+  apply_predicate_equivalence.
+  cbn [suniv_glu_exp_pred'] in Hglu.
+  destruct Hglu as [HAσ [_ [Hty Hrb]]].
+  destruct Hty as [Pm [Elm [HPm HP]]].
+  exists l; split; [ assumption | split; [ assumption | split; [ assumption |] ] ].
+  split; [ exact HAσ |].
+  exists m; split; [ assumption | split; [| split ] ].
+  - eapply glu_univ_elem_per_univ; eassumption.
+  - intros P' El' H'.
+    handle_functional_glu_univ_elem.
+    assumption.
+  - exact Hrb.
+Qed.
+
 End Fixed_GCtx.
 
 #[export]

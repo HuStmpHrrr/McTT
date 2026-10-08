@@ -69,7 +69,7 @@ Proof.
     | eapply glu_rel_exp_maxl; eassumption
     | apply glu_rel_exp_nat_small; assumption
     | apply glu_rel_exp_True_small; assumption | apply glu_rel_exp_False_small; assumption
-    | eapply glu_rel_exp_pi_small; eassumption
+    | eapply glu_rel_exp_pi_small_tm; eassumption
     | apply glu_rel_exp_nat; assumption
     | apply glu_rel_exp_zero; assumption | apply glu_rel_exp_succ; assumption
     | eapply glu_rel_exp_natrec; eassumption

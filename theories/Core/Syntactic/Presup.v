@@ -98,8 +98,8 @@ Proof.
 
   (** Small [Π], right: the same, with the domain moved to a large
       universe for context conversion. *)
-  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_small_large; eassumption).
-    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_small_large; eassumption).
+  - assert (Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@0) by (eapply wf_exp_eq_suniv_large; eassumption).
+    assert (Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
     assert (Θ ⍮ Ξ ⍮ Γ ⊢ A' : Typeω@0) by mauto 3.
     assert (Θ ⍮ Ξ ⍮ Γ ▹ A' ⊢s Id : Γ ▹ A) by mauto 3.
     mauto 3.

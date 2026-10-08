@@ -30,7 +30,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Completeness Require Import
-  ContextCases LogicalRelation SubstitutionCases UniverseCases VariableCases.
+  ContextCases LevelCases LogicalRelation SubstitutionCases UniverseCases VariableCases.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
@@ -146,29 +146,152 @@ Proof.
     eassumption.
 Qed.
 
-(** ** Small Π-Congruence
+(** ** The Small [Π] at a Level Term
 
-    The same type judgment, read in the small universe: the four Π-values are
-    related at the small index, whose element PER [per_univ (us n)] is the
-    goal's. *)
-Lemma rel_exp_pi_cong_small : forall {Γ A A' n B B'},
-    Γ ⊨ A ≈ A' : Type@n ->
-    Γ ▹ A ⊨ B ≈ B' : Type@n ->
-    Γ ⊨ Π A B ≈ Π A' B' : Type@n.
+    The codomain is at the weakened level [L[↑]ʷ], whose value at an extended
+    environment has the realiser of [L]'s at the tail: the two are related
+    levels, through [L]'s judgment along [Wk]
+    ([rel_exp_under_ctx_shift_at]). *)
+Lemma suniv_real_shift : forall {Δ A L} {i : nat} {env_relΔA},
+    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ L : Level ->
+    EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
+    forall e x e' x' t1 t2,
+      Dom e ↦ x ≈ e' ↦ x' ∈ env_relΔA ->
+      ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t1 ->
+      ⟦ L ⟧ e' ↘ t2 ->
+      dlvl_real t1 = dlvl_real t2.
 Proof.
-  intros * HA HB.
-  pose proof (rel_exp_of_univ_inversion (u := us n) HA) as [env_relΓ [HΓ _]].
-  apply (rel_exp_of_univ (u := us n)).
-  eexists; eexists; [eassumption |].
-  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  destruct (rel_typ_of_pi_univ (u := us n) HA HB _ _ HΓ' _ _ _ _ _ _ Hσj Hρ Hev Hev')
-    as [in_rel [a1 [a2 [a3 [a4 [Ha1 [Ha2 [Ha3 [Ha4 [Houter [Hmid [? ? ? ? ? ? ? ? Hchain]]]]]]]]]]]].
-  econstructor; try eassumption.
-  eapply rel_chain_mono; [| eassumption].
-  intros ? ? HR; eexists; exact HR.
+  intros * HA HL HΔA * Hee Ht1 Ht2.
+  pose proof (rel_exp_of_level_inversion HL) as [env_relΔ [HΔ _]].
+  pose proof (per_ctx_env_of_typ HΔ HA) as HΔA'.
+  handle_per_ctx_env_irrel.
+  destruct (rel_exp_under_ctx_shift_at HΔ HA HL _ _ _ _ Hee)
+    as (j & R & b1 & b2 & b3 & b4 & w1 & w2 & w3 & w4 & Hb1 & Hb2 & Hb3 & Hb4 & HR1 & HR2 & Hw1 & Hw2 & Hw3 & Hw4 & Hwc).
+  cbn [exp_wk] in Hb1, Hb4.
+  simplify_evals.
+  match goal with H : per_univ_elem _ _ Levelᵈ Levelᵈ |- _ => invert_per_univ_elem H end.
+  apply_relation_equivalence.
+  assert (Hw : per_lvl t1 t2) by pairwise.
+  exact (per_lvl_real _ _ Hw).
 Qed.
 
-Hint Resolve rel_exp_pi_cong_small : mctt.
+(** [rel_exp_of_univ_under_ctx_q] for a codomain in the small universe at
+    the weakened level: the five instantiations have the realisers of [L[↑]ʷ]
+    at extended environments related to [ρσ ↦ c], which are [L]'s at
+    [ρσ] ([suniv_real_shift]), so all five chains are in one small universe. *)
+Lemma rel_exp_of_suniv_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' L env_relΓ},
+    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
+    Γ ⊨s σ ≈ σ' : Δ ->
+    Δ ⊨ A ≈ A : Typeω@i ->
+    Δ ⊨ L : Level ->
+    Δ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
+    forall ρ ρ' ρσ ρ'σ' c c' t,
+      Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
+      ⟦ σ ⟧s ρ ↘ ρσ ->
+      ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+      ⟦ L ⟧ ρσ ↘ t ->
+      (exists b b',
+          ⟦ B[q σ] ⟧ ρ ↦ c ↘ b /\ ⟦ B ⟧ ρσ ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))) /\
+      (exists b b',
+          ⟦ B ⟧ ρσ ↦ c ↘ b /\ ⟦ B' ⟧ ρ'σ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))) /\
+      (exists b b',
+          ⟦ B' ⟧ ρ'σ' ↦ c ↘ b /\ ⟦ B'[q σ'] ⟧ ρ' ↦ c' ↘ b' /\
+          Dom b ≈ b' ∈ per_univ (us (dlvl_real t))).
+Proof.
+  intros * HΓ Hσj HA HL HB * Hpair Hev Hev' Ht.
+  pose proof (per_ctx_env_of_typ_sub HΓ Hσj HA) as HΓA.
+  pose proof (rel_sub_under_ctx_q Hσj HA) as Hqj.
+  pose proof (rel_exp_of_suniv_tm_inversion HB) as [env_relΔA [HΔA HBgen]].
+  pose proof (rel_exp_of_suniv_tm_inversion_simple (rel_exp_under_ctx_refl_left HB))
+    as [env_relΔA2 [HΔA2 HBl]].
+  pose proof (rel_exp_of_suniv_tm_inversion_simple (rel_exp_under_ctx_refl_right HB))
+    as [env_relΔA3 [HΔA3 HBr]].
+  handle_per_ctx_env_irrel.
+  destruct (rel_sub_under_ctx_q_at HΓ HΔA3 Hσj HA _ _ _ _ _ _ Hpair Hev Hev')
+    as [s [s' [Hq [Hq' Hchain]]]].
+  destruct (HBgen _ _ HΓA _ _ Hqj _ _ _ _ Hpair Hq Hq')
+    as [t0 [Ht0 [b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 Hbchain]]].
+  assert (P1 : Dom s ↦ c ≈ ρσ ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P2 : Dom ρσ ↦ c ≈ s ↦ c ∈ env_relΔA) by pairwise.
+  assert (P3 : Dom s' ↦ c' ≈ ρ'σ' ↦ c' ∈ env_relΔA) by pairwise.
+  assert (P4 : Dom ρ'σ' ↦ c ≈ s' ↦ c' ∈ env_relΔA) by pairwise.
+  destruct (HBl _ _ P1) as [x1 [x2 [t1 [Hx1 [Hx2 [Ht1 Hx]]]]]].
+  destruct (HBl _ _ P2) as [y1 [y2 [t2 [Hy1 [Hy2 [Ht2 Hy]]]]]].
+  destruct (HBr _ _ P3) as [z1 [z2 [t3 [Hz1 [Hz2 [Ht3 Hz]]]]]].
+  destruct (HBr _ _ P4) as [u1 [u2 [t4 [Hu1 [Hu2 [Ht4 Hu]]]]]].
+  (** All five realisers are [L]'s at [ρσ]. *)
+  assert (R0 : dlvl_real t0 = dlvl_real t)
+    by (eapply (suniv_real_shift HA HL HΔA3 s c ρσ c); [ pairwise | exact Ht0 | exact Ht ]).
+  assert (R1 : dlvl_real t1 = dlvl_real t)
+    by (eapply (suniv_real_shift HA HL HΔA3 s c ρσ c); [ pairwise | exact Ht1 | exact Ht ]).
+  assert (R2 : dlvl_real t2 = dlvl_real t)
+    by (eapply (suniv_real_shift HA HL HΔA3 ρσ c ρσ c); [ pairwise | exact Ht2 | exact Ht ]).
+  assert (R3 : dlvl_real t3 = dlvl_real t)
+    by (eapply (suniv_real_shift HA HL HΔA3 s' c' ρσ c); [ pairwise | exact Ht3 | exact Ht ]).
+  assert (R4 : dlvl_real t4 = dlvl_real t)
+    by (eapply (suniv_real_shift HA HL HΔA3 ρ'σ' c ρσ c); [ pairwise | exact Ht4 | exact Ht ]).
+  rewrite R0 in Hbchain; rewrite R1 in Hx; rewrite R2 in Hy; rewrite R3 in Hz; rewrite R4 in Hu.
+  assert (x1 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (y2 = b2) by (eapply functional_eval_exp; eassumption).
+  assert (z1 = b3) by (eapply functional_eval_exp; eassumption).
+  assert (u2 = b3) by (eapply functional_eval_exp; eassumption).
+  subst.
+  apply rel_chain_of_pair in Hx, Hy, Hz, Hu.
+  set (j := us (dlvl_real t)) in *.
+  assert (M1 : rel_chain (per_univ j) ([b1; b2; b3; b4; x2]))
+    by (merge_rel_chain Hbchain Hx b2).
+  assert (M2 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2]))
+    by (merge_rel_chain M1 Hy b2).
+  assert (M3 : rel_chain (per_univ j) ([y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M2 Hz b3).
+  assert (M4 : rel_chain (per_univ j) ([u1; y1; b1; b2; b3; b4; x2; z2]))
+    by (merge_rel_chain M3 Hu b3).
+  repeat split.
+  - exists b1, x2; repeat split; try eassumption.
+    pairwise.
+  - exists y1, z2; repeat split; try eassumption.
+    pairwise.
+  - exists u1, b4; repeat split; try eassumption.
+    pairwise.
+Qed.
+
+(** The small [Π] at a level term: at each pair of environments it is the
+    small [Π] at the realiser of the level's value, whose codomain obligations
+    [rel_exp_of_suniv_under_ctx_q] discharges. *)
+Lemma rel_exp_pi_cong_small_tm : forall {Γ L A A' B B'},
+    Γ ⊨ L : Level ->
+    Γ ⊨ A ≈ A' : Type⟨L⟩ ->
+    Γ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
+    Γ ⊨ Π A B ≈ Π A' B' : Type⟨L⟩.
+Proof.
+  intros * HL HA HB.
+  pose proof (rel_exp_suniv_tm_large (i := 0) (rel_exp_under_ctx_refl_left HA)) as HAself.
+  pose proof (rel_exp_of_suniv_tm_inversion HA) as [env_relΓ [HΓ HAgen]].
+  apply rel_exp_of_suniv_tm; [ exact HL |].
+  eexists; eexists; [ eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev' t Ht.
+  destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
+    as [t' [Ht' [a1 a2 a3 a4 Ha1 Ha2 Ha3 Ha4 Hachain]]].
+  assert (t' = t) as -> by (eapply functional_eval_exp; eassumption).
+  functionalize_per_univ_chain Hachain in_rel.
+  apply (mk_rel_exp Πᵈ a1 ρ B[q σ] Πᵈ a2 ρσ B
+                    Πᵈ a3 ρ'σ' B' Πᵈ a4 ρ' B'[q σ']);
+    [ apply eval_exp_pi; exact Ha1 | apply eval_exp_pi; exact Ha2
+    | apply eval_exp_pi; exact Ha3 | apply eval_exp_pi; exact Ha4 |].
+  eapply rel_chain_mono; [ intros ? ? HR; eexists; exact HR |].
+  eapply per_univ_elem_pi_chain; [ exact Hachain | | |];
+    intros c c' Hc;
+    pose proof (per_env_extend_sub_intro HΓ' Hσj HAself _ _ _ _ _ _ _ _ Hρ Ha1
+                  ltac:(pairwise) Hc) as Hpair;
+    destruct (rel_exp_of_suniv_under_ctx_q HΓ' Hσj HAself HL HB _ _ _ _ _ _ t Hpair Hev Hev' Ht)
+      as [O1 [O2 O3]];
+    eassumption.
+Qed.
+
+Hint Resolve rel_exp_pi_cong_small_tm : mctt.
 
 (** ** Π-Congruence *)
 

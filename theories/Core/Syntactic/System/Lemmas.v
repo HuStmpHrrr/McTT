@@ -326,12 +326,20 @@ Ltac lift_sub_eq_step :=
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
       assert T by (eapply wf_sub_eq_q; [ exact Hσ | | exact (IH _ _ _ Hσ) ]; mauto 2)
+  (** A domain in a small universe, at a level it is given to be one: both are
+      moved into the least large universe. *)
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
+    HL : wf_exp ?Θ ?Ξ ?Δ a_level ?L,
+    HA : wf_exp ?Θ ?Ξ ?Δ (a_univ ?L) ?A,
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
       assert_fails (assert T by assumption);
-      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ 0); [ exact Hσ | | exact (wf_exp_eq_small_large (IH _ _ _ Hσ)) ];
-                   eapply wf_exp_small_large; eassumption)
+      assert T by (eapply (wf_sub_eq_q _ _ _ _ _ _ _ 0);
+                   [ exact Hσ | exact (wf_exp_suniv_large HL HA)
+                   | eapply wf_exp_eq_suniv_large; [| exact (IH _ _ _ Hσ) ];
+                     let HLs := fresh "HLs" in
+                     pose proof (sub_preserves_exp _ _ _ _ _ _ _ HL (wf_sub_eq_left _ _ _ _ _ _ Hσ)) as HLs;
+                     exact HLs ])
   end.
 
 Ltac lift_sub_eq_def :=
@@ -392,6 +400,20 @@ Proof.
       [saturate_sub_typ], i.e. after [push_sub] has run. *)
   all: try solve [ push_closed; mauto 3 ].
   all: try solve [ mauto 3 ].
+  (** The small [Π]: the codomain's universe, the weakened level, commutes
+      with the lifted substitution. *)
+  all: try solve [
+    match goal with
+    | HL : wf_exp _ _ ?Δ a_level ?L, HA : wf_exp _ _ ?Δ (a_univ ?L) ?A, Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ',
+      Hs : wf_sub _ _ ?Γ ?Δ ?σ, IHA : forall _ _ _, wf_sub_eq _ _ _ ?Δ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
+      IHB : forall _ _ _, wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) _ _ -> _,
+      Hq : wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) (sb_q ?σ) (sb_q ?σ') |- _ =>
+        eapply wf_exp_eq_pi_cong_small;
+        [ let H' := fresh in pose proof (sub_preserves_exp _ _ _ _ _ _ _ HL Hs) as H'; exact H'
+        | let H' := fresh in pose proof (sub_preserves_exp _ _ _ _ _ _ _ HA Hs) as H'; exact H'
+        | exact (IHA _ _ _ Hσ)
+        | rewrite <- exp_wk_shift_sub_q; exact (IHB _ _ _ Hq) ]
+    end ].
   (** A local module: both sides are reduced by [ζ] and meet at the body
       under the two extended substitutions, at the body's type. *)
   1: { pose proof (wf_sub_eq_extend_mod _ _ _ _ _ _ _ H2 H) as Hτ.

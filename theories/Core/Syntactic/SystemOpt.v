@@ -588,7 +588,7 @@ Corollary wf_pi_univ : forall Θ Ξ Γ A B u,
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : ulvl_tm u ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : ulvl_tm u.
 Proof.
-  intros * HA HB; destruct u; cbn in *; [ apply wf_pi_small | apply wf_pi ]; assumption.
+  intros * HA HB; destruct u; cbn in *; [ apply wf_pi_small_lit | apply wf_pi ]; assumption.
 Qed.
 
 (** The principal universe of a [Π] is the join of those of its parts. *)
@@ -608,7 +608,7 @@ Corollary wf_exp_eq_pi_cong_univ : forall Θ Ξ Γ A A' B B' u,
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : ulvl_tm u.
 Proof.
   intros * HA HB; destruct u; cbn in *;
-    [ apply wf_exp_eq_pi_cong_small; [ gen_presups; eassumption | assumption | assumption ]
+    [ apply wf_exp_eq_pi_cong_small_lit; [ gen_presups; eassumption | assumption | assumption ]
     | apply wf_exp_eq_pi_cong'; assumption ].
 Qed.
 

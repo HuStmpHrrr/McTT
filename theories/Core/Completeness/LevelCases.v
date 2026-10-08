@@ -434,6 +434,77 @@ Proof.
           | rewrite <- ?E12; first [ exact I | reflexivity ] ].
 Qed.
 
+(** The converse: a judgment at [Type⟨T⟩] relates, at every pair of
+    environments, its four values in the small universe at the realiser of
+    [T]'s inner value. *)
+Lemma rel_exp_of_suniv_tm_inversion : forall {Γ T A A'},
+    Γ ⊨ A ≈ A' : Type⟨T⟩ ->
+    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+    forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
+      Γ' ⊨s σ ≈ σ' : Γ ->
+      forall ρ ρ' ρσ ρ'σ',
+        Dom ρ ≈ ρ' ∈ env_rel' ->
+        ⟦ σ ⟧s ρ ↘ ρσ ->
+        ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
+        exists t, ⟦ T ⟧ ρσ ↘ t /\ rel_exp A σ ρ ρσ A' σ' ρ' ρ'σ' (per_univ (us (dlvl_real t))).
+Proof.
+  intros * [env_relΓ [HΓ [i HA]]].
+  eexists; eexists; [eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev') as [R [Htyp Hexp]].
+  destruct Htyp as [u1 u2 u3 u4 Hu1 Hu2 Hu3 Hu4 Hchain].
+  cbn [exp_sub] in *.
+  inversion Hu1; inversion Hu2; inversion Hu3; inversion Hu4; subst.
+  destruct Hchain as [Hl12 _].
+  (** The first link names the element PER: the small universe at the
+      realiser of the outer level, which is the inner one's. *)
+  invert_per_univ_elem Hl12.
+  match goal with HT : ⟦ T ⟧ ρσ ↘ ?t |- _ => exists t; split; [ exact HT |] end.
+  destruct Hexp as [? ? ? ? ? ? ? ? Hc].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| exact Hc ].
+  intros x y Hxy.
+  match goal with
+  | Hl : per_lvl ?a ?b, Heq : _ <~> _ |- per_univ (us (dlvl_real ?b)) _ _ =>
+      rewrite <- (per_lvl_real _ _ Hl); apply Heq in Hxy; exact Hxy
+  end.
+Qed.
+
+Corollary rel_exp_of_suniv_tm_inversion_simple : forall {Γ T A A'},
+    Γ ⊨ A ≈ A' : Type⟨T⟩ ->
+    exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
+    forall ρ ρ',
+      Dom ρ ≈ ρ' ∈ env_rel ->
+      exists a a' t,
+        ⟦ A ⟧ ρ ↘ a /\ ⟦ A' ⟧ ρ' ↘ a' /\ ⟦ T ⟧ ρ ↘ t /\ Dom a ≈ a' ∈ per_univ (us (dlvl_real t)).
+Proof.
+  intros * H%rel_exp_of_suniv_tm_inversion.
+  destruct H as [env_relΓ [HΓ HA]].
+  eexists; eexists; [eassumption |].
+  intros ρ ρ' Hρ.
+  destruct (HA _ _ HΓ _ _ (rel_sub_id (ex_intro _ _ HΓ)) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+    as [t [Ht [aσ a a' a'σ' HaσI ? ? Ha'σ'I Hchain]]].
+  rewrite exp_sub_id in HaσI, Ha'σ'I.
+  exists a, a', t.
+  repeat split; try eassumption.
+  pairwise.
+Qed.
+
+(** A type of a small universe is a type of every large one. *)
+Corollary rel_exp_suniv_tm_large : forall {Γ T A A'} {i : nat},
+    Γ ⊨ A ≈ A' : Type⟨T⟩ ->
+    Γ ⊨ A ≈ A' : Typeω@i.
+Proof.
+  intros * H%rel_exp_of_suniv_tm_inversion.
+  destruct H as [env_relΓ [HΓ HA]].
+  apply rel_exp_of_typ; eexists; eexists; [ eassumption |].
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HA _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev') as [t [_ [? ? ? ? ? ? ? ? Hchain]]].
+  econstructor; try eassumption.
+  eapply rel_chain_mono; [| eassumption ].
+  intros ? ? Hx; eapply (per_univ_cumu_uidx (u := us _)); [| exact Hx ]; exact I.
+Qed.
+
 (** [Type⟨M⟩] is a type of [Type⟨succl M⟩]: its four values are small
     universes at related levels, each a universe below the realiser of
     [succl M], which is one more than the realiser of [M]. *)

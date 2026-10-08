@@ -97,6 +97,42 @@ Proof.
   transitivity (maxl N P); [ apply wf_exp_eq_maxl_cong; [ exact HMN | mauto 3 ] | exact HNP ].
 Qed.
 
+(** The join is the least upper bound. *)
+Lemma lvl_sub_maxl_l : forall {Γ M N},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+    lvl_sub Γ M (maxl M N).
+Proof.
+  intros * HM HN; unfold lvl_sub.
+  transitivity (maxl (maxl M M) N); [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; assumption |].
+  apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_maxl_idem; assumption | mauto 3 ].
+Qed.
+
+Lemma lvl_sub_maxl_r : forall {Γ M N},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+    lvl_sub Γ N (maxl M N).
+Proof.
+  intros * HM HN; unfold lvl_sub.
+  transitivity (maxl N (maxl N M)); [ apply wf_exp_eq_maxl_cong; [ mauto 3 | apply wf_exp_eq_maxl_comm; assumption ] |].
+  transitivity (maxl (maxl N N) M); [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; assumption |].
+  transitivity (maxl N M); [ apply wf_exp_eq_maxl_cong; [ apply wf_exp_eq_maxl_idem; assumption | mauto 3 ] |].
+  apply wf_exp_eq_maxl_comm; assumption.
+Qed.
+
+Lemma lvl_sub_maxl_lub : forall {Γ M N P},
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ P : Level ->
+    lvl_sub Γ M P ->
+    lvl_sub Γ N P ->
+    lvl_sub Γ (maxl M N) P.
+Proof.
+  intros * HM HN HP HMP HNP; unfold lvl_sub in *.
+  transitivity (maxl M (maxl N P)); [ apply wf_exp_eq_maxl_assoc; assumption |].
+  transitivity (maxl M P); [ apply wf_exp_eq_maxl_cong; [ mauto 3 | exact HNP ] | exact HMP ].
+Qed.
+
 Lemma lvl_sub_succl : forall {Γ M N},
     Θ ⍮ Ξ ⍮ Γ ⊢ M : Level ->
     Θ ⍮ Ξ ⍮ Γ ⊢ N : Level ->

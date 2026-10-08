@@ -1,6 +1,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Subtyping Require Export Definitions.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Syntactic Require Import Fresh.
 Import Domain_Notations Fixed_Notations.
 
 Reserved Notation "Γ '⊢a' M ⟹ A" (at level 70, M at level 69, A at level 69).
@@ -73,18 +74,20 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a M ⟸ ⊥ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a efq M return A ⟹ B )
-(** A [Π] is at the join of the universes of its parts: a large universe
-    absorbs a small one, and inside a tier the join is on levels.  The join is
-    a side condition rather than the conclusion's index: an index computed
-    from the premises makes the judgment's inversion non-terminating.  The
-    side conditions are [is_univ_nf] rather than equations on [univ_nf_idx],
-    for the reason given there. *)
+(** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
+    large universe absorbs a small one, and two small ones join on levels when
+    the codomain's level does not mention the bound variable.  The join is
+    the normal form of that universe, a side condition rather than the
+    conclusion's index: an index computed from the premises makes the
+    judgment's inversion non-terminating.  The side conditions on the parts
+    are [is_univ_nf] rather than equations on [univ_nf_idx], for the reason
+    given there. *)
 | ati_pi :
   `( Γ ⊢a A ⟹ UA ->
      Γ ▹ A ⊢a B ⟹ UB ->
      is_univ_nf UA u ->
      is_univ_nf UB v ->
-     is_univ_nf W (unf_max u v) ->
+     nbe_ty_f Γ (unf_pi_tm u v) W ->
      Γ ⊢a Π A B ⟹ W )
 | ati_fn :
   `( Γ ⊢a A ⟹ UA ->

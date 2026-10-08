@@ -192,11 +192,17 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i )
-(** A [Π] of small types at a level is small at that level. *)
+(** A [Π] of small types at a level is small at that level.  The level is a
+    term of [Γ], so the codomain's universe is its weakening: a level that
+    mentions the bound variable has no universe to name here.  The premise on
+    the level follows from the domain's by presupposition; it is stated so
+    that weakening and substitution, which come before presupposition, can
+    move the domain into a large universe and extend the context with it. *)
 | wf_pi_small :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type@n ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type@n )
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ L : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type⟨L⟩ )
 | wf_fn :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ M : B ->
@@ -358,10 +364,11 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Typeω@i )
 | wf_exp_eq_pi_cong_small :
-  `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type@n ->
-     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type@n ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type@n )
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ L : Level ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ ->
+     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type⟨L⟩ )
 | wf_exp_eq_fn_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->

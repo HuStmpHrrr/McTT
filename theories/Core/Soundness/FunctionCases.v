@@ -12,9 +12,11 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases.
+From Mctt.Core.Completeness Require LevelCases FunctionCases.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Import
   ContextCases
+  LevelCases
   LogicalRelation
   SubtypingCases
   TermStructureCases
@@ -210,13 +212,147 @@ Lemma glu_rel_exp_pi : forall {Γ A B} {i : nat},
     Γ ⊩ Π A B : Typeω@i.
 Proof. intros; apply (glu_rel_exp_pi_univ (u := ul i)); assumption. Qed.
 
-Lemma glu_rel_exp_pi_small : forall {Γ A B} {n : nat},
-    Γ ⊩ A : Type@n ->
-    Γ ▹ A ⊩ B : Type@n ->
-    Γ ⊩ Π A B : Type@n.
-Proof. intros; apply (glu_rel_exp_pi_univ (u := us n)); assumption. Qed.
-
 Hint Resolve glu_rel_exp_pi : mctt.
+
+(** The small [Π] at a level term.  At each glued substitution the level's
+    value has a realiser [n], and the proof is that of [glu_rel_exp_pi_univ]
+    at the index [us n]: the codomain's gluing is at the realiser of the
+    weakened level's value at the extended environment, which is [n]
+    ([Completeness.FunctionCases.suniv_real_shift]). *)
+Lemma glu_rel_exp_pi_small_tm : forall {Γ L A B},
+    Γ ⊩ L : Level ->
+    Γ ⊩ A : Type⟨L⟩ ->
+    Γ ▹ A ⊩ B : Type⟨L[↑]ʷ⟩ ->
+    Γ ⊩ Π A B : Type⟨L⟩.
+Proof.
+  intros * HL HA HB.
+  assert (⊩ Γ) as [SbΓ HSbΓ] by mauto.
+  assert (HLw : Γ ⊢ L : Level) by (eapply glu_rel_exp_to_wf_exp; exact HL).
+  assert (HAw : Γ ⊢ A : Type⟨L⟩) by (eapply glu_rel_exp_to_wf_exp; exact HA).
+  assert (HAl : Γ ⊢ A : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
+  pose proof (glu_rel_exp_of_suniv_tm_inversion HSbΓ HL HA) as HAg.
+  assert (HSbA : EG Γ ▹ A ∈ glu_ctx_env ↘ cons_glu_sub_pred 0 Γ A SbΓ).
+  { eapply glu_ctx_env_cons; [ eassumption | exact HAl | | reflexivity ].
+    intros Δ σ ρ HΔ.
+    destruct (HAg _ _ _ HΔ) as (l & _ & _ & _ & _ & a & ? & ? & ? & _).
+    apply (glu_rel_typ_with_sub_uidx (u := us (dlvl_real l))).
+    exists a; repeat split; eassumption. }
+  assert (HBw : Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩) by (eapply glu_rel_exp_to_wf_exp; exact HB).
+  pose proof (glu_rel_exp_of_suniv_tm_inversion' HSbA HB) as HBg.
+  (** The PER side: the context PER of [Γ ▹ A], and the realisers. *)
+  assert (HLc : Γ ⊨ L : Level) by mauto 3 using completeness_fundamental_exp.
+  assert (Γ ⊨ A : Typeω@0) as [env_relΓ [HΓ HAsimple]]%rel_exp_of_typ_inversion_simple
+      by mauto 3 using completeness_fundamental_exp.
+  pose proof (per_ctx_env_extend HΓ HAsimple) as HΓA.
+  assert (Γ ▹ A ⊨ B : Type⟨L[↑]ʷ⟩) as [env_relΓA [HΓA' HBsimple]]%LevelCases.rel_exp_of_suniv_tm_inversion_simple
+      by mauto 3 using completeness_fundamental_exp.
+  handle_per_ctx_env_irrel.
+  assert (HAc : Γ ⊨ A ≈ A : Typeω@0) by mauto 3 using completeness_fundamental_exp.
+  eapply glu_rel_exp_of_suniv_tm; [ exact HSbΓ | exact HL |].
+  intros Δ σ ρ HSb l Hl.
+  assert (Δ ⊢s σ : Γ) by mauto 4.
+  destruct (HAg _ _ _ HSb) as (l0 & Hl0 & Hlper & Hlglu & HAσ & a & Hae & [in_rel Hin] & HaP & HaR).
+  assert (l0 = l) as -> by (eapply functional_eval_exp; eassumption).
+  assert (⊢ Δ) by mauto 3.
+  assert (HLσ : Δ ⊢ L[σ] : Level) by (eapply (glu_lvl_escape _ _ _ Hlper Hlglu); assumption).
+  assert (HAσl : Δ ⊢ A[σ] : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
+  assert (Hq : Δ ▹ A[σ] ⊢s q σ : Γ ▹ A) by mauto 3.
+  assert (HBq : Δ ▹ A[σ] ⊢ B[q σ] : Type⟨L[σ][↑]ʷ⟩)
+    by (rewrite <- exp_wk_shift_sub_q; eapply (sub_preserves_exp _ _ _ _ Type⟨L[↑]ʷ⟩); eassumption).
+  split; [ cbn [exp_sub]; apply wf_pi_small; assumption |].
+  assert (Hρ : Dom ρ ≈ ρ ∈ env_relΓ) by (eapply glu_ctx_env_per_env; revgoals; eassumption).
+  set (n := dlvl_real l) in *.
+  (** Every realiser met below is [n]. *)
+  assert (Hreal : forall e x e' x' t, Dom e ↦ x ≈ e' ↦ x' ∈ per_env_extend A A env_relΓ ->
+                   ⟦ L[↑]ʷ ⟧ e ↦ x ↘ t -> ⟦ L ⟧ e' ↘ l -> dlvl_real t = n).
+  { intros * Hee Ht Hl'; exact (FunctionCases.suniv_real_shift HAc HLc HΓA' _ _ _ _ _ _ Hee Ht Hl'). }
+  assert (Hrealg : forall Δ0 σ0 x, Δ0 ⊢s σ0 ® ρ ↦ x ∈ cons_glu_sub_pred 0 Γ A SbΓ ->
+                    forall t, ⟦ L[↑]ʷ ⟧ ρ ↦ x ↘ t -> dlvl_real t = n).
+  { intros * Hc t Ht.
+    assert (Dom ρ ↦ x ≈ ρ ↦ x ∈ per_env_extend A A env_relΓ) as Hxx
+      by (eapply glu_ctx_env_per_env; revgoals; eassumption).
+    exact (Hreal _ _ _ _ _ Hxx Ht Hl). }
+  assert (Dom Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ (us n)) as [elem_rel Helem].
+  { eexists.
+    eapply per_univ_elem_pi_canonical; [ eassumption |].
+    intros c c' Hc.
+    assert (Hpair : Dom ρ ↦ c ≈ ρ ↦ c' ∈ per_env_extend A A env_relΓ)
+      by (apply per_env_extend_intro'; [ eassumption | eapply per_head_of; eassumption ]).
+    destruct (HBsimple _ _ Hpair) as [b [b' [t [Hb [Hb' [Ht [R HR]]]]]]].
+    rewrite (Hreal _ _ _ _ _ Hpair Ht Hl) in HR.
+    exists b, b', R; mauto 3. }
+  exists (Πᵈ a ρ B); split; [ mauto 3 | split; [ eexists; eassumption | split ] ].
+  2:{ (** The readback clause, as in [glu_rel_exp_pi_univ], at the universe of
+          the weakened level. *)
+      intros Δ' φ W Hφ Hr.
+      assert (⊢ Δ') by (eapply kripke_dom; eassumption).
+      inversion Hr; subst.
+      assert (HA0 : Δ' ⊢ A[σ][φ]ʷ ≈ A0 : Type⟨L[σ][φ]ʷ⟩) by eauto.
+      assert (exists P El, DG a ∈ glu_univ_elem (us n) ↘ P ↘ El) as [Pa [Ela Hga]] by mauto 3.
+      assert (HPa : Δ' ⊢ A[σ][φ]ʷ ® Pa)
+        by (eapply (glu_univ_elem_typ_monotone _ _ _ _ Hga); [ apply (HaP _ _ Hga) | exact Hφ ]).
+      pose proof (var0_glu_elem Hga HPa) as Hv.
+      assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
+        by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n)); [ exact I | exact Hga ]).
+      assert (Hv' : Δ' ▹ A[σ][φ]ʷ ⊢ #0 : A[σ][φ]ʷ[↑]ʷ ® ⇑! a (length Δ') ∈ El')
+        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := us n) (j := ul 0));
+            [ exact I | exact Hga | exact Hl0' | exact Hv ]).
+      assert (HAφ : Δ' ⊢ A[σ][φ]ʷ : Type⟨L[σ][φ]ʷ⟩) by (gen_presups; eassumption).
+      assert (exists k, Δ' ⊢ Type⟨L[σ][φ]ʷ⟩ : Typeω@k) as [k Hk] by (gen_presups; eexists; eassumption).
+      assert (HLφ : Δ' ⊢ L[σ][φ]ʷ : Level) by (eapply wf_univ_lvl_inversion; exact Hk).
+      assert (Δ' ⊢ A[σ][φ]ʷ : Typeω@0) by (eapply wf_exp_suniv_large; eassumption).
+      assert (⊢ Δ' ▹ A[σ][φ]ʷ) by mauto 3.
+      assert (Hk' : Δ' ▹ A[σ][φ]ʷ ⊢k φ ⊙ ↑ : Δ) by mauto 3.
+      rewrite exp_wk_wk in Hv'.
+      assert (Hcons : Δ' ▹ A[σ][φ]ʷ ⊢s (sb_wk σ (φ ⊙ ↑)),,#0 ® ρ ↦ ⇑! a (length Δ')
+                        ∈ cons_glu_sub_pred 0 Γ A SbΓ) by mauto 2.
+      destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b0 & Hb0 & _ & _ & HbR).
+      pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
+      simplify_evals.
+      assert (HBW : Δ' ▹ A[σ][φ]ʷ ⊢ B[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ ≈ B'
+                      : Type⟨L[↑]ʷ[sb_wk σ (φ ⊙ ↑),,#0][wk_id]ʷ⟩)
+        by (apply HbR; [ mauto 3 | eassumption ]).
+      rewrite !exp_wk_id in HBW.
+      pose proof (kripke_q_var_eq _ _ _ _ _ _ _ HBq HAσl Hφ) as Hq'.
+      rewrite exp_sub_q_extend_wk in Hq'.
+      assert (E1 : L[↑]ʷ[sb_wk σ (φ ⊙ ↑),,#0] = L[σ][φ]ʷ[↑]ʷ)
+        by (rewrite exp_sub_shift_extend, <- exp_wk_sub, exp_wk_wk; reflexivity).
+      cbn [exp_wk] in Hq'.
+      rewrite exp_wk_shift_wk_q in Hq'.
+      rewrite E1 in HBW.
+      apply wf_exp_eq_pi_cong_small; [ exact HLφ | exact HAφ | exact HA0 |].
+      etransitivity; [ symmetry; exact Hq' | exact HBW ]. }
+  intros P El HPEl.
+  invert_glu_univ_elem HPEl.
+  handle_per_univ_elem_irrel.
+  handle_functional_glu_univ_elem.
+  assert (HPieq : Δ ⊢ Π A[σ] B[q σ] ≈ Π A[σ] B[q σ] : Typeω@0).
+  { eapply wf_exp_eq_suniv_large; [ exact HLσ |].
+    apply wf_exp_eq_pi_cong_small; [ exact HLσ | exact HAσ | mauto 3 | mauto 3 ]. }
+  assert (Δ ▹ A[σ] ⊢ B[q σ] : Typeω@0)
+    by (eapply wf_exp_suniv_large; [| exact HBq ]; eapply (wk_preserves_exp _ _ _ _ Level); mauto 3).
+  econstructor; [ eassumption | mauto 3 | eassumption | | ]; intros Δ' φ **.
+  - match goal with Hx : glu_univ_elem (us n) ?P ?El a |- _ => assert (Δ ⊢ A[σ] ® P) by exact (HaP P El Hx) end.
+    eapply glu_univ_elem_typ_monotone; eassumption.
+  - rewrite exp_sub_q_extend_wk.
+    match goal with Hx : glu_univ_elem (us n) ?P ?El a, HM : ?El _ _ ?M ?m |- _ =>
+      assert (exists P' El', DG a ∈ glu_univ_elem 0 ↘ P' ↘ El') as [P' [El' Hl0']]
+        by (eapply (glu_univ_elem_cumu_ge_uidx (i := us n)); [ exact I | exact Hx ]);
+      assert (Δ' ⊢ M : A[σ][φ]ʷ ® m ∈ El')
+        by (eapply (glu_univ_elem_exp_cumu_ge_uidx (i := us n) (j := ul 0));
+            [ exact I | exact Hx | exact Hl0' | exact HM ]) end.
+    assert (Δ' ⊢s (sb_wk σ φ),,M ® ρ ↦ m ∈ cons_glu_sub_pred 0 Γ A SbΓ) as Hcons by mauto 2.
+    destruct (HBg _ _ _ Hcons) as (l' & Hl' & _ & _ & b & Hbe & _ & HbP & _).
+    pose proof (Hrealg _ _ _ Hcons _ Hl') as Hn'.
+    rewrite Hn' in HbP.
+    simplify_evals.
+    match goal with
+    | H : forall c (equiv_c : in_rel c c) b, ⟦ B ⟧ ρ ↦ c ↘ b -> glu_univ_elem _ _ _ b |- _ =>
+        exact (HbP _ _ (H m equiv_m _ ltac:(eassumption)))
+    end.
+Qed.
+
+
 
 Lemma glu_rel_exp_of_pi : forall {Γ M A B} {i : nat} {Sb},
     EG Γ ∈ glu_ctx_env ↘ Sb ->

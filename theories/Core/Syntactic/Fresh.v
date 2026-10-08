@@ -22,6 +22,7 @@ From Stdlib Require Import Arith Lia List PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Substitution.
+From Mctt.Core.Syntactic Require Import Levels.
 Import Syntax_Notations Wk_Notations.
 
 (** ** Un-weakening
@@ -464,3 +465,53 @@ Proof.
     [ left; apply (proj1 nf_freshb_iff); exact E
     | right; intros H; apply (proj1 nf_freshb_iff) in H; congruence ].
 Defined.
+
+(** A level below a level fresh at [k] is fresh at [k]: an atom of the
+    smaller one that mentions [k] is not an atom of the larger, and the
+    assignment that makes it alone large separates the two. *)
+Lemma la_fresh_In : forall k ys j a, la_fresh k ys -> la_In j a ys -> ne_fresh k a.
+Proof.
+  induction ys as [| j0 b r IH]; cbn; intros j a Hf Hi; [ contradiction |].
+  destruct Hf as [Hb Hr]; destruct Hi as [[_ ->] | Hi]; [ exact Hb | eapply IH; eassumption ].
+Qed.
+
+Lemma lvl_le_la_fresh : forall k l l', lvl_le l l' -> la_fresh k (snd l') -> la_fresh k (snd l).
+Proof.
+  intros k [c xs] [d ys] Hle Hys; cbn in *.
+  pose proof (proj1 (lvl_le_correct _ _) Hle) as Hev; clear Hle; rename Hev into Hle.
+  revert c Hle; induction xs as [| j a r IH]; intros c Hle; cbn; [ exact I |].
+  split.
+  - destruct (ne_freshb k a) eqn:E; [ apply (proj1 (proj2 nf_freshb_iff)); exact E |].
+    exfalso.
+    assert (Hn : la_look a ys = None).
+    { destruct (la_look a ys) eqn:L; [| reflexivity ].
+      apply la_look_In in L.
+      pose proof (la_fresh_In _ _ _ _ Hys L) as Hf.
+      apply (proj1 (proj2 nf_freshb_iff)) in Hf; congruence. }
+    specialize (Hle (ν_at a (S (Nat.max d (la_maxoff ys))))).
+    unfold lvl_ev in Hle; cbn [fst snd la_ev] in Hle.
+    rewrite (la_ev_at_none _ _ _ Hn) in Hle.
+    unfold ν_at at 1 in Hle; rewrite ne_cmp_refl in Hle.
+    lia.
+  - apply (IH c); intros ν; specialize (Hle ν); unfold lvl_ev in *; cbn [fst snd la_ev] in *; lia.
+Qed.
+
+(** ** The Universe of a [Π]
+
+    A [Π] of a small domain and a small codomain whose level does not mention
+    the bound variable is small, at the join of the domain's level and the
+    codomain's, un-weakened into the context of the [Π]; any other [Π] is at
+    the join of the universes of its parts ([unf_max]), where a small
+    universe at an open level falls back to the least large one.  This is the
+    term the checker normalises: the join of two canonical levels, one of them
+    un-weakened, is not canonical, and normalising it is what makes the
+    inferred universe a normal form. *)
+Definition unf_pi_tm (u v : unf) : exp :=
+  match u, v with
+  | uns l, uns l' =>
+      if la_freshb 0 (snd l')
+      then a_univ (a_maxl (lvl_exp_of (fst l) (la_to_list (snd l)))
+                          (lvl_exp_of (fst l') (la_to_list (la_unwk 0 (snd l')))))
+      else a_typ 0
+  | _, _ => unf_tm (unf_max u v)
+  end.

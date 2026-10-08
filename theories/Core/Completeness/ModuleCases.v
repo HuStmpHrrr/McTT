@@ -164,7 +164,7 @@ Proof.
     | eapply rel_exp_maxl_idem; eassumption
     | eapply rel_exp_succl_maxl; eassumption
     | eapply rel_exp_maxl_succl; eassumption
-    | eapply rel_exp_pi_cong_small; eassumption
+    | eapply rel_exp_pi_cong_small_tm; eassumption
     | apply subtyp_suniv; [assumption | lia]
     | apply subtyp_small_large; assumption ].
   all: try solve [ eapply valid_exp_var; eassumption | eapply rel_exp_var_delta; eassumption ].
