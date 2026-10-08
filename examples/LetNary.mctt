@@ -1,44 +1,44 @@
 module LetNary where
 
-eval let Nary : forall (n : Nat) -> Type@0 :=
-       fun (n : Nat)
-         -> rec n return y . Type@0
-            | zero => Nat
-            | succ m, r => forall (a : Nat) -> r
-            end;
+eval let Nary : ∀ (n : ℕ) → Type@0 ≔
+       λ (n : ℕ)
+         → rec n return y . Type@0
+           | zero ⇒ ℕ
+           | succ m, r ⇒ ∀ (a : ℕ) → r
+           end;
 
-     toNat : forall (f : Nary 0) -> Nat :=
-       fun (f : Nat) -> f;
+     toNat : ∀ (f : Nary 0) → ℕ ≔
+       λ (f : ℕ) → f;
 
-     appNary : forall (n : Nat) (f : Nary (succ n)) (arg : Nat) -> Nary n :=
-       fun (n : Nat)
-           (f : rec succ n return y . Type@0
-                | zero => Nat
-                | succ m, r => forall (a : Nat) -> r
-                end)
-           (arg : Nat)
-         -> f arg;
+     appNary : ∀ (n : ℕ) (f : Nary (succ n)) (arg : ℕ) → Nary n ≔
+       λ (n : ℕ)
+         (f : rec succ n return y . Type@0
+              | zero ⇒ ℕ
+              | succ m, r ⇒ ∀ (a : ℕ) → r
+              end)
+         (arg : ℕ)
+         → f arg;
 
-     n : Nat := 3;
+     n : ℕ ≔ 3;
 
-     f : Nary n :=
-       let add : forall (a : Nat) (b : Nat) -> Nat :=
-             fun (a : Nat)
-                 (b : Nat)
-               -> rec a return y . Nat
-                  | zero => b
-                  | succ m, r => succ r
-                  end
+     f : Nary n ≔
+       let add : ∀ (a : ℕ) (b : ℕ) → ℕ ≔
+             λ (a : ℕ)
+               (b : ℕ)
+               → rec a return y . ℕ
+                 | zero ⇒ b
+                 | succ m, r ⇒ succ r
+                 end
        in
-         fun (a : Nat) (b : Nat) (c : Nat) -> add a (add b c)
+         λ (a : ℕ) (b : ℕ) (c : ℕ) → add a (add b c)
        end
 
   in
-    ((rec n return y . (forall (g : Nary y) -> Nat)
-         | zero => toNat
-         | succ m, r => fun (g : Nary (succ m)) -> r (appNary m g (succ m))
+    ((rec n return y . (∀ (g : Nary y) → ℕ)
+         | zero ⇒ toNat
+         | succ m, r ⇒ λ (g : Nary (succ m)) → r (appNary m g (succ m))
          end) f)
-  end : Nat
+  end : ℕ
   (*
     Basically:
     f 3 2 1

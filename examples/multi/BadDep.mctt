@@ -1,7 +1,7 @@
-import Lib::Bad
+import Lib∷Bad
 
 module BadDep where
 
-eval 0 : Nat
+eval 0 : ℕ
 
 end

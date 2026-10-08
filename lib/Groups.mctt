@@ -1,16 +1,16 @@
-(* A client of [Prelude::Algebra::Group], read in the group of integers of
-   [Prelude::Algebra::Integers].  Integers are evaluated as a sign and a
+(* A client of [Prelude∷Algebra∷Group], read in the group of integers of
+   [Prelude∷Algebra∷Integers].  Integers are evaluated as a sign and a
    magnitude.  The laws proved once for every group solve equations,
    negate differences and multiples, and closed instances normalize to
-   [true]. *)
+   [⋆]. *)
 module Groups where
 
-import Prelude::Algebra::Integers use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative; Additive; AdditiveComm)
-open Prelude::Algebra::Integers.Setoid use (sameSym; sameTrans)
-open Prelude::Algebra::Integers.Addition use (zeroAdd; negateRight)
+import Prelude∷Algebra∷Integers use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative; Additive; AdditiveComm)
+open Prelude∷Algebra∷Integers.Setoid use (sameSym; sameTrans)
+open Prelude∷Algebra∷Integers.Addition use (zeroAdd; negateRight)
 
 (* [-3], as [2 - 5]. *)
-def minusThree : Int := pair 2 5 end
+def minusThree : Int ≔ pair 2 5 end
 
 eval negative minusThree
 
@@ -29,21 +29,21 @@ eval magnitude (minus (ofNat 4) (ofNat 9))
 (* [a + x = b] has the solution [x = -a + b], and only that one: [a]
    cancels on the left once [b] is written as [a + (-a + b)].  The proof is
    a local module that opens the laws of the group and its monoid. *)
-theorem solve : forall (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
-    Same x (add (negate a) b) :=
-  fun (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) ->
+theorem solve : ∀ (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) →
+    Same x (add (negate a) b) ≔
+  λ (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) →
     let module Proof where
       open Additive.Laws use (leftCancel)
       open Additive.Base.Cong use (congLeft; assocBack)
       (* [a + (-a + b)] is [(a + -a) + b], which is [0 + b]. *)
-      def back : Same (add a (add (negate a) b)) b :=
+      def back : Same (add a (add (negate a) b)) b ≔
         sameTrans (add a (add (negate a) b)) (add (add a (negate a)) b) b
           (assocBack a (negate a) b)
           (sameTrans (add (add a (negate a)) b) (add (ofNat 0) b) b
              (congLeft (add a (negate a)) (ofNat 0) b (negateRight a))
              (zeroAdd b))
       end
-      def cancel : Same x (add (negate a) b) :=
+      def cancel : Same x (add (negate a) b) ≔
         leftCancel a x (add (negate a) b)
           (sameTrans (add a x) b (add a (add (negate a) b)) h
              (sameSym (add a (add (negate a) b)) b back))
@@ -54,12 +54,12 @@ end
 
 (* [-(a - b)] is [b - a]: the inverse of a sum is the sum of the inverses
    in the other order, and [-(-b)] is [b]. *)
-theorem negateMinus : forall (a : Int) (b : Int) -> Same (negate (minus a b)) (minus b a) :=
-  fun (a : Int) (b : Int) ->
-    let nb := negate b;
-        na := negate a;
-        swap : Same (negate (add a nb)) (add (negate nb) na) := Additive.Laws.invOp a nb;
-        twice : Same (add (negate nb) na) (add b na) :=
+theorem negateMinus : ∀ (a : Int) (b : Int) → Same (negate (minus a b)) (minus b a) ≔
+  λ (a : Int) (b : Int) →
+    let nb ≔ negate b;
+        na ≔ negate a;
+        swap : Same (negate (add a nb)) (add (negate nb) na) ≔ Additive.Laws.invOp a nb;
+        twice : Same (add (negate nb) na) (add b na) ≔
           Additive.Base.Cong.congLeft (negate nb) b na (Additive.Laws.invInv b)
     in sameTrans (negate (add a nb)) (add (negate nb) na) (add b na) swap twice
     end
@@ -69,23 +69,23 @@ end
    sum are sums of multiples, the second since addition commutes. *)
 module Multiples where
 
-theorem multipleNegate : forall (x : Int) (n : Nat) ->
-    Same (Additive.Base.pow (negate x) n) (negate (Additive.Base.pow x n)) :=
-  fun (x : Int) (n : Nat) -> Additive.Laws.powInv x n
+theorem multipleNegate : ∀ (x : Int) (n : ℕ) →
+    Same (Additive.Base.pow (negate x) n) (negate (Additive.Base.pow x n)) ≔
+  λ (x : Int) (n : ℕ) → Additive.Laws.powInv x n
 end
 
-theorem multipleAdd : forall (x : Int) (y : Int) (n : Nat) ->
-    Same (Additive.Base.pow (add x y) n) (add (Additive.Base.pow x n) (Additive.Base.pow y n)) :=
-  fun (x : Int) (y : Int) (n : Nat) -> AdditiveComm.powOp x y n
+theorem multipleAdd : ∀ (x : Int) (y : Int) (n : ℕ) →
+    Same (Additive.Base.pow (add x y) n) (add (Additive.Base.pow x n) (Additive.Base.pow y n)) ≔
+  λ (x : Int) (y : Int) (n : ℕ) → AdditiveComm.powOp x y n
 end
 
 end
 
-(* Closed instances normalize to [true].  The hypothesis of [solve] is
-   itself a closed instance of [Same], and [true] proves it. *)
-eval solve (ofNat 2) (ofNat 5) (ofNat 3) true
+(* Closed instances normalize to [⋆].  The hypothesis of [solve] is
+   itself a closed instance of [Same], and [⋆] proves it. *)
+eval solve (ofNat 2) (ofNat 5) (ofNat 3) ⋆
 
-eval solve minusThree (ofNat 1) (pair 4 0) true
+eval solve minusThree (ofNat 1) (pair 4 0) ⋆
 
 eval negateMinus (ofNat 3) minusThree
 

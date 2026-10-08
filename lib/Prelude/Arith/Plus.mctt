@@ -1,32 +1,32 @@
-(* Addition and its laws, stated with [Prelude::Arith::Equality]. *)
-module Prelude::Arith::Plus where
+(* Addition and its laws, stated with [Prelude∷Arith∷Equality]. *)
+module Prelude∷Arith∷Plus where
 
-import Prelude::Logic use (absurd)
-import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
+import Prelude∷Logic use (absurd)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
 
-def plus (n : Nat) (m : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => m
-  | succ p, r => succ r
+def plus (n : ℕ) (m : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ m
+  | succ p, r ⇒ succ r
   end
 end
 
 (* Addition of zero and of a successor on the right. *)
 module Basic where
 
-theorem plusZero : forall (n : Nat) -> Eq (plus n 0) n :=
-  fun (n : Nat) ->
+theorem plusZero : ∀ (n : ℕ) → Eq (plus n 0) n ≔
+  λ (n : ℕ) →
     rec n return x . Eq (plus x 0) x
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem plusSucc : forall (n : Nat) (m : Nat) -> Eq (plus n (succ m)) (succ (plus n m)) :=
-  fun (n : Nat) (m : Nat) ->
+theorem plusSucc : ∀ (n : ℕ) (m : ℕ) → Eq (plus n (succ m)) (succ (plus n m)) ≔
+  λ (n : ℕ) (m : ℕ) →
     rec n return x . Eq (plus x (succ m)) (succ (plus x m))
-    | zero => refl m
-    | succ p, ih => ih
+    | zero ⇒ refl m
+    | succ p, ih ⇒ ih
     end
 end
 
@@ -37,35 +37,35 @@ open Basic use (plusZero; plusSucc)
 (* Commutativity and associativity, and their consequences. *)
 module Algebra where
 
-theorem plusComm : forall (a : Nat) (b : Nat) -> Eq (plus a b) (plus b a) :=
-  fun (a : Nat) (b : Nat) ->
+theorem plusComm : ∀ (a : ℕ) (b : ℕ) → Eq (plus a b) (plus b a) ≔
+  λ (a : ℕ) (b : ℕ) →
     rec a return x . Eq (plus x b) (plus b x)
-    | zero => sym (plus b 0) b (plusZero b)
-    | succ p, ih =>
-        let back : Eq (succ (plus b p)) (plus b (succ p)) :=
+    | zero ⇒ sym (plus b 0) b (plusZero b)
+    | succ p, ih ⇒
+        let back : Eq (succ (plus b p)) (plus b (succ p)) ≔
               sym (plus b (succ p)) (succ (plus b p)) (plusSucc b p)
         in trans (succ (plus p b)) (succ (plus b p)) (plus b (succ p)) ih back
         end
     end
 end
 
-theorem plusAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (plus (plus a b) c) (plus a (plus b c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (plus (plus a b) c) (plus a (plus b c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . Eq (plus (plus x b) c) (plus x (plus b c))
-    | zero => refl (plus b c)
-    | succ p, ih => ih
+    | zero ⇒ refl (plus b c)
+    | succ p, ih ⇒ ih
     end
 end
 
 (* The first summand can be moved past the second. *)
-theorem plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (plus a (plus b c)) (plus b (plus a c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusLeftComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (plus a (plus b c)) (plus b (plus a c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . Eq (plus x (plus b c)) (plus b (plus x c))
-    | zero => refl (plus b c)
-    | succ p, ih =>
-        let back : Eq (succ (plus b (plus p c))) (plus b (succ (plus p c))) :=
+    | zero ⇒ refl (plus b c)
+    | succ p, ih ⇒
+        let back : Eq (succ (plus b (plus p c))) (plus b (succ (plus p c))) ≔
               sym (plus b (succ (plus p c))) (succ (plus b (plus p c))) (plusSucc b (plus p c))
         in trans (succ (plus p (plus b c))) (succ (plus b (plus p c))) (plus b (succ (plus p c)))
              ih back
@@ -74,37 +74,37 @@ theorem plusLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The last two summands of a sum can be exchanged. *)
-theorem plusRightComm : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (plus (plus a b) c) (plus (plus a c) b) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem plusRightComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (plus (plus a b) c) (plus (plus a c) b) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     trans (plus (plus a b) c) (plus a (plus b c)) (plus (plus a c) b)
       (plusAssoc a b c)
       (trans (plus a (plus b c)) (plus a (plus c b)) (plus (plus a c) b)
-         (cong (fun (y : Nat) -> plus a y) (plus b c) (plus c b) (plusComm b c))
+         (cong (λ (y : ℕ) → plus a y) (plus b c) (plus c b) (plusComm b c))
          (sym (plus (plus a c) b) (plus a (plus c b)) (plusAssoc a c b)))
 end
 
 (* Equal summands have equal sums. *)
-theorem plusCongBoth : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-    (hac : Eq a c) (hbd : Eq b d) -> Eq (plus a b) (plus c d) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) ->
+theorem plusCongBoth : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
+    (hac : Eq a c) (hbd : Eq b d) → Eq (plus a b) (plus c d) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) →
     trans (plus a b) (plus c b) (plus c d)
-      (cong (fun (y : Nat) -> plus y b) a c hac)
-      (cong (fun (y : Nat) -> plus c y) b d hbd)
+      (cong (λ (y : ℕ) → plus y b) a c hac)
+      (cong (λ (y : ℕ) → plus c y) b d hbd)
 end
 
 (* The two middle summands of a sum of sums can be exchanged. *)
-theorem plusSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs := plus (plus a b) (plus c d);
-        mid := plus a (plus b (plus c d));
-        inner := plus a (plus c (plus b d));
-        rhs := plus (plus a c) (plus b d);
-        swap : Eq mid inner :=
-          cong (fun (y : Nat) -> plus a y) (plus b (plus c d)) (plus c (plus b d))
+theorem plusSwapMiddle : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
+    Eq (plus (plus a b) (plus c d)) (plus (plus a c) (plus b d)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
+    let lhs ≔ plus (plus a b) (plus c d);
+        mid ≔ plus a (plus b (plus c d));
+        inner ≔ plus a (plus c (plus b d));
+        rhs ≔ plus (plus a c) (plus b d);
+        swap : Eq mid inner ≔
+          cong (λ (y : ℕ) → plus a y) (plus b (plus c d)) (plus c (plus b d))
             (plusLeftComm b c d);
-        back : Eq inner rhs := sym rhs inner (plusAssoc a c (plus b d))
+        back : Eq inner rhs ≔ sym rhs inner (plusAssoc a c (plus b d))
     in trans lhs mid rhs (plusAssoc a b (plus c d)) (trans mid inner rhs swap back)
     end
 end
@@ -118,44 +118,44 @@ module Cancel where
 
 (* The successor is injective; since [Eq (succ a) (succ b)] computes to
    [Eq a b], the proof is the hypothesis itself. *)
-theorem succInj : forall (a : Nat) (b : Nat) (h : Eq (succ a) (succ b)) -> Eq a b :=
-  fun (a : Nat) (b : Nat) (h : Eq (succ a) (succ b)) -> h
+theorem succInj : ∀ (a : ℕ) (b : ℕ) (h : Eq (succ a) (succ b)) → Eq a b ≔
+  λ (a : ℕ) (b : ℕ) (h : Eq (succ a) (succ b)) → h
 end
 
-theorem plusCancelLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a b) (plus a c)) -> Eq b c :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    rec a return x . (forall (h : Eq (plus x b) (plus x c)) -> Eq b c)
-    | zero => fun (h : Eq b c) -> h
-    | succ p, ih => fun (h : Eq (plus p b) (plus p c)) -> ih h
+theorem plusCancelLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a b) (plus a c)) → Eq b c ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
+    rec a return x . (∀ (h : Eq (plus x b) (plus x c)) → Eq b c)
+    | zero ⇒ λ (h : Eq b c) → h
+    | succ p, ih ⇒ λ (h : Eq (plus p b) (plus p c)) → ih h
     end
 end
 
 (* Right cancellation, reduced to left cancellation by commutativity. *)
-theorem plusCancelRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a c) (plus b c)) -> Eq a b :=
-  fun (a : Nat) (b : Nat) (c : Nat) (h : Eq (plus a c) (plus b c)) ->
-    let hb : Eq (plus a c) (plus c b) :=
+theorem plusCancelRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a c) (plus b c)) → Eq a b ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a c) (plus b c)) →
+    let hb : Eq (plus a c) (plus c b) ≔
           trans (plus a c) (plus b c) (plus c b) h (plusComm b c);
-        hc : Eq (plus c a) (plus c b) :=
+        hc : Eq (plus c a) (plus c b) ≔
           trans (plus c a) (plus a c) (plus c b) (plusComm c a) hb
     in plusCancelLeft c a b hc
     end
 end
 
 (* If a sum is zero, so is its first summand. *)
-theorem plusEqZero : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq a 0 :=
-  fun (a : Nat) (b : Nat) ->
-    rec a return x . (forall (h : Eq (plus x b) 0) -> Eq x 0)
-    | zero => fun (h : Eq b 0) -> true
-    | succ p, ih => fun (h : False) -> h
+theorem plusEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq a 0 ≔
+  λ (a : ℕ) (b : ℕ) →
+    rec a return x . (∀ (h : Eq (plus x b) 0) → Eq x 0)
+    | zero ⇒ λ (h : Eq b 0) → ⋆
+    | succ p, ih ⇒ λ (h : ⊥) → h
     end
 end
 
 (* If a sum is zero, so is its second summand. *)
-theorem plusEqZeroRight : forall (a : Nat) (b : Nat) (h : Eq (plus a b) 0) -> Eq b 0 :=
-  fun (a : Nat) (b : Nat) ->
-    rec a return x . (forall (h : Eq (plus x b) 0) -> Eq b 0)
-    | zero => fun (h : Eq b 0) -> h
-    | succ p, ih => fun (h : False) -> absurd (Eq b 0) h
+theorem plusEqZeroRight : ∀ (a : ℕ) (b : ℕ) (h : Eq (plus a b) 0) → Eq b 0 ≔
+  λ (a : ℕ) (b : ℕ) →
+    rec a return x . (∀ (h : Eq (plus x b) 0) → Eq b 0)
+    | zero ⇒ λ (h : Eq b 0) → h
+    | succ p, ih ⇒ λ (h : ⊥) → absurd (Eq b 0) h
     end
 end
 

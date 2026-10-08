@@ -2,28 +2,28 @@
    induction and strong (course-of-values) induction, all from [rec], for
    motives of any level.  [Principles u] states them for motives into
    [Type@{u}]; the unit exports them at [0l]. *)
-module Prelude::Arith::Induction where
+module Prelude∷Arith∷Induction where
 
-import Prelude::Logic
-import Prelude::Arith::Equality use (Eq; sym)
-import Prelude::Arith::Order use (Le; Lt)
+import Prelude∷Logic
+import Prelude∷Arith∷Equality use (Eq; sym)
+import Prelude∷Arith∷Order use (Le; Lt)
 
 module Principles (u : Level) where
 
-open Prelude::Logic.Negation u use (absurd)
-open Prelude::Logic.Conj u use (And; andIntro; andFst; andSnd)
-open Prelude::Logic.Disj u use (orElim)
-open Prelude::Arith::Equality.Transport u use (transport)
-open Prelude::Arith::Order.LtLaws.Cases u use (leCases)
+open Prelude∷Logic.Negation u use (absurd)
+open Prelude∷Logic.Conj u use (And; andIntro; andFst; andSnd)
+open Prelude∷Logic.Disj u use (orElim)
+open Prelude∷Arith∷Equality.Transport u use (transport)
+open Prelude∷Arith∷Order.LtLaws.Cases u use (leCases)
 
 (* Case analysis: a property of [0] and of every successor holds of every
    number.  It is [rec] without the induction hypothesis. *)
-def caseNat (P : forall (n : Nat) -> Type@{u}) (pz : P 0)
-    (ps : forall (n : Nat) -> P (succ n)) : forall (n : Nat) -> P n :=
-  fun (n : Nat) ->
+def caseNat (P : ∀ (n : ℕ) → Type@{u}) (pz : P 0)
+    (ps : ∀ (n : ℕ) → P (succ n)) : ∀ (n : ℕ) → P n ≔
+  λ (n : ℕ) →
     rec n return x . P x
-    | zero => pz
-    | succ p, ih => ps p
+    | zero ⇒ pz
+    | succ p, ih ⇒ ps p
     end
 end
 
@@ -31,13 +31,13 @@ end
    [P (succ (succ n))], [P] holds of every number.  The induction carries
    the pair [P n] and [P (succ n)]; the motive is a conjunction, one level
    up. *)
-def twoStepInd (P : forall (n : Nat) -> Type@{u}) (pz : P 0) (po : P 1)
-    (step : forall (n : Nat) (h : P n) -> P (succ (succ n))) : forall (n : Nat) -> P n :=
-  fun (n : Nat) ->
+def twoStepInd (P : ∀ (n : ℕ) → Type@{u}) (pz : P 0) (po : P 1)
+    (step : ∀ (n : ℕ) (h : P n) → P (succ (succ n))) : ∀ (n : ℕ) → P n ≔
+  λ (n : ℕ) →
     andFst (P n) (P (succ n))
       (rec n return x . And (P x) (P (succ x))
-       | zero => andIntro (P 0) (P 1) pz po
-       | succ p, ih =>
+       | zero ⇒ andIntro (P 0) (P 1) pz po
+       | succ p, ih ⇒
            andIntro (P (succ p)) (P (succ (succ p)))
              (andSnd (P p) (P (succ p)) ih)
              (step p (andFst (P p) (P (succ p)) ih))
@@ -49,17 +49,17 @@ end
    all [m] below [n]", proved by [rec] on [n]: nothing is below [0], and a
    number below [succ p] is either below [p], covered by the hypothesis, or
    [p] itself, given by [step]. *)
-def strongInd (P : forall (n : Nat) -> Type@{u})
-    (step : forall (n : Nat) (h : forall (m : Nat) (lt : Lt m n) -> P m) -> P n)
-    : forall (n : Nat) -> P n :=
-  fun (n : Nat) ->
+def strongInd (P : ∀ (n : ℕ) → Type@{u})
+    (step : ∀ (n : ℕ) (h : ∀ (m : ℕ) (lt : Lt m n) → P m) → P n)
+    : ∀ (n : ℕ) → P n ≔
+  λ (n : ℕ) →
     step n
-      (rec n return x . (forall (m : Nat) (lt : Lt m x) -> P m)
-       | zero => fun (m : Nat) (lt : False) -> absurd (P m) lt
-       | succ p, ih => fun (m : Nat) (lt : Le m p) ->
+      (rec n return x . (∀ (m : ℕ) (lt : Lt m x) → P m)
+       | zero ⇒ λ (m : ℕ) (lt : ⊥) → absurd (P m) lt
+       | succ p, ih ⇒ λ (m : ℕ) (lt : Le m p) →
            orElim (Lt m p) (Eq m p) (P m) (leCases m p lt)
-             (fun (h : Lt m p) -> ih m h)
-             (fun (e : Eq m p) -> transport P p m (sym m p e) (step p ih))
+             (λ (h : Lt m p) → ih m h)
+             (λ (e : Eq m p) → transport P p m (sym m p e) (step p ih))
        end)
 end
 

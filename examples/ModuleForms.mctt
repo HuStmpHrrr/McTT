@@ -2,16 +2,16 @@ module ModuleForms where
 
 (* A parameterized module, and an alias of one of its instances *)
 module Iter (A : Type@0) where
-  def twice (f : forall (x : A) -> A) (x : A) : A := f (f x) end
+  def twice (f : ∀ (x : A) → A) (x : A) : A ≔ f (f x) end
 end
 
-module NatIter := Iter Nat
+module NatIter ≔ Iter ℕ
 
-eval NatIter.twice (fun (x : Nat) -> succ x) 0
+eval NatIter.twice (λ (x : ℕ) → succ x) 0
 
 (* A dotted declaration: [Num] holds [Ops] *)
-module Num.Ops (k : Nat) where
-  def add (n : Nat) : Nat := rec n return y . Nat | zero => k | succ p, r => succ r end end
+module Num.Ops (k : ℕ) where
+  def add (n : ℕ) : ℕ ≔ rec n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end end
 end
 
 eval Num.Ops.add 2 3
@@ -23,12 +23,12 @@ eval O.add 1 1
 
 (* A local module with a body: each entry sees the earlier ones, and an
    open inside it declares private definitions of the members it uses *)
-eval let module L (n : Nat) where
-       module Inner where def m : Nat := succ n end end
+eval let module L (n : ℕ) where
+       module Inner where def m : ℕ ≔ succ n end end
        open Inner use (m)
-       def doubled : Nat := Num.Ops.add m m end
+       def doubled : ℕ ≔ Num.Ops.add m m end
      end in
        L.doubled 2
-     end : Nat
+     end : ℕ
 
 end

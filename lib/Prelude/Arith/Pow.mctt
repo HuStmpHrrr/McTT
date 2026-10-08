@@ -1,45 +1,45 @@
 (* Exponentiation by recursion on the exponent, with its laws stated with
-   [Prelude::Arith::Equality] and proved from those of
-   [Prelude::Arith::Mult]. *)
-module Prelude::Arith::Pow where
+   [Prelude∷Arith∷Equality] and proved from those of
+   [Prelude∷Arith∷Mult]. *)
+module Prelude∷Arith∷Pow where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Mult use (mult)
-open Prelude::Arith::Mult.Basic use (multOne; oneMult)
-open Prelude::Arith::Mult.Algebra use (multAssoc; multSwapMiddle)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+import Prelude∷Arith∷Mult use (mult)
+open Prelude∷Arith∷Mult.Basic use (multOne; oneMult)
+open Prelude∷Arith∷Mult.Algebra use (multAssoc; multSwapMiddle)
 
 (* [pow a n] is [a] to the power [n]: [pow a 0] is [1] and
    [pow a (succ p)] is [mult a (pow a p)]. *)
-def pow (a : Nat) (n : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => 1
-  | succ p, r => mult a r
+def pow (a : ℕ) (n : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ 1
+  | succ p, r ⇒ mult a r
   end
 end
 
 (* Exponents zero, one and successor, and powers of one. *)
 module Basic where
 
-theorem powZero : forall (a : Nat) -> Eq (pow a 0) 1 :=
-  fun (a : Nat) -> true
+theorem powZero : ∀ (a : ℕ) → Eq (pow a 0) 1 ≔
+  λ (a : ℕ) → ⋆
 end
 
-theorem powSucc : forall (a : Nat) (n : Nat) -> Eq (pow a (succ n)) (mult a (pow a n)) :=
-  fun (a : Nat) (n : Nat) -> refl (mult a (pow a n))
+theorem powSucc : ∀ (a : ℕ) (n : ℕ) → Eq (pow a (succ n)) (mult a (pow a n)) ≔
+  λ (a : ℕ) (n : ℕ) → refl (mult a (pow a n))
 end
 
-theorem powOne : forall (a : Nat) -> Eq (pow a 1) a :=
-  fun (a : Nat) -> multOne a
+theorem powOne : ∀ (a : ℕ) → Eq (pow a 1) a ≔
+  λ (a : ℕ) → multOne a
 end
 
 (* [pow 1 (succ p)] computes to [plus (pow 1 p) 0]. *)
-theorem onePow : forall (n : Nat) -> Eq (pow 1 n) 1 :=
-  fun (n : Nat) ->
+theorem onePow : ∀ (n : ℕ) → Eq (pow 1 n) 1 ≔
+  λ (n : ℕ) →
     rec n return x . Eq (pow 1 x) 1
-    | zero => true
-    | succ p, ih => trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusZero (pow 1 p)) ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ trans (plus (pow 1 p) 0) (pow 1 p) 1 (plusZero (pow 1 p)) ih
     end
 end
 
@@ -52,17 +52,17 @@ module Exp where
 
 (* Powers turn sums of exponents into products.  The step multiplies the
    induction hypothesis by [a] and reassociates. *)
-theorem powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
-    Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) :=
-  fun (a : Nat) (m : Nat) (n : Nat) ->
+theorem powPlus : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
+    Eq (pow a (plus m n)) (mult (pow a m) (pow a n)) ≔
+  λ (a : ℕ) (m : ℕ) (n : ℕ) →
     rec m return x . Eq (pow a (plus x n)) (mult (pow a x) (pow a n))
-    | zero => sym (mult 1 (pow a n)) (pow a n) (oneMult (pow a n))
-    | succ p, ih =>
-        let lhs := mult a (pow a (plus p n));
-            mid := mult a (mult (pow a p) (pow a n));
-            rhs := mult (mult a (pow a p)) (pow a n);
-            step : Eq lhs mid :=
-              cong (fun (y : Nat) -> mult a y) (pow a (plus p n))
+    | zero ⇒ sym (mult 1 (pow a n)) (pow a n) (oneMult (pow a n))
+    | succ p, ih ⇒
+        let lhs ≔ mult a (pow a (plus p n));
+            mid ≔ mult a (mult (pow a p) (pow a n));
+            rhs ≔ mult (mult a (pow a p)) (pow a n);
+            step : Eq lhs mid ≔
+              cong (λ (y : ℕ) → mult a y) (pow a (plus p n))
                 (mult (pow a p) (pow a n)) ih
         in trans lhs mid rhs step (sym rhs mid (multAssoc a (pow a p) (pow a n)))
         end
@@ -70,17 +70,17 @@ theorem powPlus : forall (a : Nat) (m : Nat) (n : Nat) ->
 end
 
 (* A power of a product is the product of the powers. *)
-theorem powMultBase : forall (a : Nat) (b : Nat) (n : Nat) ->
-    Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) :=
-  fun (a : Nat) (b : Nat) (n : Nat) ->
+theorem powMultBase : ∀ (a : ℕ) (b : ℕ) (n : ℕ) →
+    Eq (pow (mult a b) n) (mult (pow a n) (pow b n)) ≔
+  λ (a : ℕ) (b : ℕ) (n : ℕ) →
     rec n return x . Eq (pow (mult a b) x) (mult (pow a x) (pow b x))
-    | zero => true
-    | succ p, ih =>
-        let lhs := mult (mult a b) (pow (mult a b) p);
-            mid := mult (mult a b) (mult (pow a p) (pow b p));
-            rhs := mult (mult a (pow a p)) (mult b (pow b p));
-            step : Eq lhs mid :=
-              cong (fun (y : Nat) -> mult (mult a b) y) (pow (mult a b) p)
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let lhs ≔ mult (mult a b) (pow (mult a b) p);
+            mid ≔ mult (mult a b) (mult (pow a p) (pow b p));
+            rhs ≔ mult (mult a (pow a p)) (mult b (pow b p));
+            step : Eq lhs mid ≔
+              cong (λ (y : ℕ) → mult (mult a b) y) (pow (mult a b) p)
                 (mult (pow a p) (pow b p)) ih
         in trans lhs mid rhs step (multSwapMiddle a b (pow a p) (pow b p))
         end
@@ -90,20 +90,20 @@ end
 (* A power of a power multiplies the exponents.  The step splits
    [pow a (plus n (mult p n))] by [powPlus] and recombines the bases by
    [powMultBase]. *)
-theorem powMult : forall (a : Nat) (m : Nat) (n : Nat) ->
-    Eq (pow a (mult m n)) (pow (pow a m) n) :=
-  fun (a : Nat) (m : Nat) (n : Nat) ->
+theorem powMult : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
+    Eq (pow a (mult m n)) (pow (pow a m) n) ≔
+  λ (a : ℕ) (m : ℕ) (n : ℕ) →
     rec m return x . Eq (pow a (mult x n)) (pow (pow a x) n)
-    | zero => sym (pow 1 n) 1 (onePow n)
-    | succ p, ih =>
-        let lhs := pow a (plus n (mult p n));
-            split := mult (pow a n) (pow a (mult p n));
-            mid := mult (pow a n) (pow (pow a p) n);
-            rhs := pow (mult a (pow a p)) n;
-            step : Eq split mid :=
-              cong (fun (y : Nat) -> mult (pow a n) y) (pow a (mult p n))
+    | zero ⇒ sym (pow 1 n) 1 (onePow n)
+    | succ p, ih ⇒
+        let lhs ≔ pow a (plus n (mult p n));
+            split ≔ mult (pow a n) (pow a (mult p n));
+            mid ≔ mult (pow a n) (pow (pow a p) n);
+            rhs ≔ pow (mult a (pow a p)) n;
+            step : Eq split mid ≔
+              cong (λ (y : ℕ) → mult (pow a n) y) (pow a (mult p n))
                 (pow (pow a p) n) ih;
-            back : Eq mid rhs := sym rhs mid (powMultBase a (pow a p) n)
+            back : Eq mid rhs ≔ sym rhs mid (powMultBase a (pow a p) n)
         in trans lhs split rhs (powPlus a n (mult p n)) (trans split mid rhs step back)
         end
     end

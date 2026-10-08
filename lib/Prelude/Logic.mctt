@@ -1,4 +1,4 @@
-(* Propositions as types, at every universe level: [True] holds, [False] has
+(* Propositions as types, at every universe level: [⊤] holds, [⊥] has
    no proof; negation, Church-encoded conjunction, disjunction, equivalence
    and existence over numbers, and decidability.
 
@@ -7,16 +7,16 @@
    [Conj.And 1l A B] that of two propositions of [Type@1].  A Church encoding
    quantifies over its target proposition, so it lives one level up, in
    [Type@{succl u}].  Clients that only need propositions in [Type@0] open a
-   submodule at [0l]: [open Prelude::Logic.Conj 0l use (And)]. *)
-module Prelude::Logic where
+   submodule at [0l]: [open Prelude∷Logic.Conj 0l use (And)]. *)
+module Prelude∷Logic where
 
 (* Negation and ex falso quodlibet for the propositions of [Type@{u}]. *)
 module Negation (u : Level) where
 
-def Not (A : Type@{u}) : Type@{u} := forall (a : A) -> False end
+def Not (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → ⊥ end
 
-(* From a proof of [False], anything follows. *)
-def absurd (A : Type@{u}) (f : False) : A := exfalso f return x . A end
+(* From a proof of [⊥], anything follows. *)
+def absurd (A : Type@{u}) (f : ⊥) : A ≔ exfalso f return x . A end
 
 end
 
@@ -29,25 +29,25 @@ module Conj (u : Level) where
 (* Conjunction, Church-encoded: a proof of [And A B] eliminates into any
    proposition [C] of the same level.  It quantifies over [Type@{u}], so it
    lives in [Type@{succl u}]. *)
-def And (A : Type@{u}) (B : Type@{u}) : Type@{succl u} :=
-  forall (C : Type@{u}) (f : forall (a : A) (b : B) -> C) -> C
+def And (A : Type@{u}) (B : Type@{u}) : Type@{succl u} ≔
+  ∀ (C : Type@{u}) (f : ∀ (a : A) (b : B) → C) → C
 end
 
-def andIntro (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) : And A B :=
-  fun (C : Type@{u}) (f : forall (x : A) (y : B) -> C) -> f a b
+def andIntro (A : Type@{u}) (B : Type@{u}) (a : A) (b : B) : And A B ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) (y : B) → C) → f a b
 end
 
-def andFst (A : Type@{u}) (B : Type@{u}) (h : And A B) : A :=
-  h A (fun (a : A) (b : B) -> a)
+def andFst (A : Type@{u}) (B : Type@{u}) (h : And A B) : A ≔
+  h A (λ (a : A) (b : B) → a)
 end
 
-def andSnd (A : Type@{u}) (B : Type@{u}) (h : And A B) : B :=
-  h B (fun (a : A) (b : B) -> b)
+def andSnd (A : Type@{u}) (B : Type@{u}) (h : And A B) : B ≔
+  h B (λ (a : A) (b : B) → b)
 end
 
-def andSwap (A : Type@{u}) (B : Type@{u}) (h : And A B) : And B A :=
-  fun (C : Type@{u}) (f : forall (b : B) (a : A) -> C) ->
-    h C (fun (a : A) (b : B) -> f b a)
+def andSwap (A : Type@{u}) (B : Type@{u}) (h : And A B) : And B A ≔
+  λ (C : Type@{u}) (f : ∀ (b : B) (a : A) → C) →
+    h C (λ (a : A) (b : B) → f b a)
 end
 
 end
@@ -56,29 +56,29 @@ end
 module Disj (u : Level) where
 
 (* Disjunction, Church-encoded like [And], and likewise one level up. *)
-def Or (A : Type@{u}) (B : Type@{u}) : Type@{succl u} :=
-  forall (C : Type@{u}) (f : forall (a : A) -> C) (g : forall (b : B) -> C) -> C
+def Or (A : Type@{u}) (B : Type@{u}) : Type@{succl u} ≔
+  ∀ (C : Type@{u}) (f : ∀ (a : A) → C) (g : ∀ (b : B) → C) → C
 end
 
-def orInl (A : Type@{u}) (B : Type@{u}) (a : A) : Or A B :=
-  fun (C : Type@{u}) (f : forall (x : A) -> C) (g : forall (y : B) -> C) -> f a
+def orInl (A : Type@{u}) (B : Type@{u}) (a : A) : Or A B ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) → C) (g : ∀ (y : B) → C) → f a
 end
 
-def orInr (A : Type@{u}) (B : Type@{u}) (b : B) : Or A B :=
-  fun (C : Type@{u}) (f : forall (x : A) -> C) (g : forall (y : B) -> C) -> g b
+def orInr (A : Type@{u}) (B : Type@{u}) (b : B) : Or A B ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) → C) (g : ∀ (y : B) → C) → g b
 end
 
 (* Case analysis on a disjunction, into a proposition [C] of the same
    level. *)
 def orElim (A : Type@{u}) (B : Type@{u}) (C : Type@{u}) (h : Or A B)
-    (f : forall (a : A) -> C) (g : forall (b : B) -> C) : C :=
+    (f : ∀ (a : A) → C) (g : ∀ (b : B) → C) : C ≔
   h C f g
 end
 
 (* Swapping needs no elimination into [Type@{succl u}]: the result is
    itself a function of the target proposition. *)
-def orSwap (A : Type@{u}) (B : Type@{u}) (h : Or A B) : Or B A :=
-  fun (C : Type@{u}) (f : forall (b : B) -> C) (g : forall (a : A) -> C) -> h C g f
+def orSwap (A : Type@{u}) (B : Type@{u}) (h : Or A B) : Or B A ≔
+  λ (C : Type@{u}) (f : ∀ (b : B) → C) (g : ∀ (a : A) → C) → h C g f
 end
 
 end
@@ -90,31 +90,31 @@ open Conj u use (And; andIntro; andFst; andSnd; andSwap)
 
 (* Logical equivalence: implications both ways, as a conjunction.  Like
    [And], it lives one level up. *)
-def Iff (A : Type@{u}) (B : Type@{u}) : Type@{succl u} :=
-  And (forall (a : A) -> B) (forall (b : B) -> A)
+def Iff (A : Type@{u}) (B : Type@{u}) : Type@{succl u} ≔
+  And (∀ (a : A) → B) (∀ (b : B) → A)
 end
 
-def iffIntro (A : Type@{u}) (B : Type@{u}) (f : forall (a : A) -> B) (g : forall (b : B) -> A)
-    : Iff A B :=
-  andIntro (forall (a : A) -> B) (forall (b : B) -> A) f g
+def iffIntro (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (g : ∀ (b : B) → A)
+    : Iff A B ≔
+  andIntro (∀ (a : A) → B) (∀ (b : B) → A) f g
 end
 
 (* The forward implication of an equivalence. *)
-def iffFwd (A : Type@{u}) (B : Type@{u}) (h : Iff A B) (a : A) : B :=
-  andFst (forall (x : A) -> B) (forall (y : B) -> A) h a
+def iffFwd (A : Type@{u}) (B : Type@{u}) (h : Iff A B) (a : A) : B ≔
+  andFst (∀ (x : A) → B) (∀ (y : B) → A) h a
 end
 
 (* The backward implication of an equivalence. *)
-def iffBwd (A : Type@{u}) (B : Type@{u}) (h : Iff A B) (b : B) : A :=
-  andSnd (forall (x : A) -> B) (forall (y : B) -> A) h b
+def iffBwd (A : Type@{u}) (B : Type@{u}) (h : Iff A B) (b : B) : A ≔
+  andSnd (∀ (x : A) → B) (∀ (y : B) → A) h b
 end
 
-def iffRefl (A : Type@{u}) : Iff A A :=
-  iffIntro A A (fun (a : A) -> a) (fun (a : A) -> a)
+def iffRefl (A : Type@{u}) : Iff A A ≔
+  iffIntro A A (λ (a : A) → a) (λ (a : A) → a)
 end
 
-def iffSym (A : Type@{u}) (B : Type@{u}) (h : Iff A B) : Iff B A :=
-  andSwap (forall (a : A) -> B) (forall (b : B) -> A) h
+def iffSym (A : Type@{u}) (B : Type@{u}) (h : Iff A B) : Iff B A ≔
+  andSwap (∀ (a : A) → B) (∀ (b : B) → A) h
 end
 
 end
@@ -127,17 +127,17 @@ module Exist (u : Level) where
    It quantifies over [Type@{u}], so it lives in [Type@{succl u}]; an
    [Exists] at level [u] is a predicate for [Exist (succl u)], so existence
    proofs nest one level per quantifier. *)
-def Exists (P : forall (n : Nat) -> Type@{u}) : Type@{succl u} :=
-  forall (C : Type@{u}) (f : forall (n : Nat) (p : P n) -> C) -> C
+def Exists (P : ∀ (n : ℕ) → Type@{u}) : Type@{succl u} ≔
+  ∀ (C : Type@{u}) (f : ∀ (n : ℕ) (p : P n) → C) → C
 end
 
-def existsIntro (P : forall (n : Nat) -> Type@{u}) (n : Nat) (p : P n) : Exists P :=
-  fun (C : Type@{u}) (f : forall (m : Nat) (q : P m) -> C) -> f n p
+def existsIntro (P : ∀ (n : ℕ) → Type@{u}) (n : ℕ) (p : P n) : Exists P ≔
+  λ (C : Type@{u}) (f : ∀ (m : ℕ) (q : P m) → C) → f n p
 end
 
 (* Elimination of an existence proof into a proposition [C]. *)
-def existsElim (P : forall (n : Nat) -> Type@{u}) (C : Type@{u}) (h : Exists P)
-    (f : forall (n : Nat) (p : P n) -> C) : C :=
+def existsElim (P : ∀ (n : ℕ) → Type@{u}) (C : Type@{u}) (h : Exists P)
+    (f : ∀ (n : ℕ) (p : P n) → C) : C ≔
   h C f
 end
 
@@ -152,19 +152,19 @@ open Disj u use (Or; orElim)
 (* A proposition is decidable when it holds or is refuted.  [Dec A] is a
    disjunction, so it lives one level up, and is eliminated with
    [orElim]. *)
-def Dec (A : Type@{u}) : Type@{succl u} := Or A (Not A) end
+def Dec (A : Type@{u}) : Type@{succl u} ≔ Or A (Not A) end
 
 (* A decidable proposition is stable under double negation. *)
-def decStable (A : Type@{u}) (d : Dec A) (h : Not (Not A)) : A :=
-  orElim A (Not A) A d (fun (a : A) -> a) (fun (n : Not A) -> absurd A (h n))
+def decStable (A : Type@{u}) (d : Dec A) (h : Not (Not A)) : A ≔
+  orElim A (Not A) A d (λ (a : A) → a) (λ (n : Not A) → absurd A (h n))
 end
 
 (* Decidability is preserved by negation.  As for [orSwap], the result is
    built as a function of the target proposition, since [Dec] is one level
    up and [orElim] only targets [Type@{u}]. *)
-def decNot (A : Type@{u}) (d : Dec A) : Dec (Not A) :=
-  fun (C : Type@{u}) (f : forall (n : Not A) -> C) (g : forall (nn : Not (Not A)) -> C) ->
-    d C (fun (a : A) -> g (fun (n : Not A) -> n a)) (fun (n : Not A) -> f n)
+def decNot (A : Type@{u}) (d : Dec A) : Dec (Not A) ≔
+  λ (C : Type@{u}) (f : ∀ (n : Not A) → C) (g : ∀ (nn : Not (Not A)) → C) →
+    d C (λ (a : A) → g (λ (n : Not A) → n a)) (λ (n : Not A) → f n)
 end
 
 end

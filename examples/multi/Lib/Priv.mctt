@@ -1,39 +1,39 @@
 (* Private members, used where they are declared. *)
-module Lib::Priv where
+module Lib∷Priv where
 
-private def s : Nat := 7 end
+private def s : ℕ ≔ 7 end
 
-private def T : Type@0 := Nat end
+private def T : Type@0 ≔ ℕ end
 
 (* A public definition may unfold to a private one. *)
-def pub : Nat := succ s end
+def pub : ℕ ≔ succ s end
 
 module Sub where
 
 (* A nested module is inside the one declaring [s]. *)
-def t : T := s end
+def t : T ≔ s end
 
-private def u : Nat := 1 end
-
-end
-
-module F (n : Nat) where
-
-def g : Nat := n end
+private def u : ℕ ≔ 1 end
 
 end
 
-module A := Sub
+module F (n : ℕ) where
+
+def g : ℕ ≔ n end
+
+end
+
+module A ≔ Sub
 
 (* A private module, used inside its unit. *)
 private module Hidden where
 
-def h : Nat := 2 end
+def h : ℕ ≔ 2 end
 
 end
 
-def viaHidden : Nat := Hidden.h end
+def viaHidden : ℕ ≔ Hidden.h end
 
-private module PA := Sub
+private module PA ≔ Sub
 
 end

@@ -1,7 +1,7 @@
-import Lib::Wrong
+import Lib∷Wrong
 
 module Misnamed where
 
-eval 0 : Nat
+eval 0 : ℕ
 
 end

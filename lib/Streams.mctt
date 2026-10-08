@@ -1,77 +1,77 @@
-(* A client of [Prelude::Data::Stream] and its laws: the natural numbers,
+(* A client of [Prelude∷Data∷Stream] and its laws: the natural numbers,
    the even and odd numbers, the squares and two Fibonacci-like streams are
    read with [nth] and summed through [take], and closed instances of the
-   laws normalize to [true]. *)
+   laws normalize to [⋆]. *)
 module Streams where
 
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Parity use (double)
-import Prelude::Arith::Sum.Basic use (sumToShift)
-import Prelude::Data::Vec as V
-import Prelude::Data::Vec::Properties use (sumVec)
-import Prelude::Data::Stream as St
-import Prelude::Data::Stream::Properties use (nats)
-open Prelude::Data::Stream::Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
-open Prelude::Data::Stream::Properties.Nats use (nthNats)
-open Prelude::Data::Stream::Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Parity use (double)
+import Prelude∷Arith∷Sum.Basic use (sumToShift)
+import Prelude∷Data∷Vec as V
+import Prelude∷Data∷Vec∷Properties use (sumVec)
+import Prelude∷Data∷Stream as St
+import Prelude∷Data∷Stream∷Properties use (nats)
+open Prelude∷Data∷Stream∷Properties.Elements use (headCons; tailCons; nthConst; nthMap; nthZipWith; nthIterate; tailIterate)
+open Prelude∷Data∷Stream∷Properties.Nats use (nthNats)
+open Prelude∷Data∷Stream∷Properties.Slices use (nthDrop; nthTake; scanSum; nthInterleaveEven; nthInterleaveOdd; sumTake)
 
 (* Streams of numbers. *)
-module S := St 0l Nat
+module S ≔ St 0l ℕ
 
-def square (x : Nat) : Nat := mult x x end
+def square (x : ℕ) : ℕ ≔ mult x x end
 
 (* The even numbers [0, 2, 4, ...]. *)
-def evens : S.Stream := S.map Nat double nats end
+def evens : S.Stream ≔ S.map ℕ double nats end
 
 (* The odd numbers [1, 3, 5, ...], iterating [+ 2] from [1]. *)
-def odds : S.Stream := S.iterate (fun (x : Nat) -> succ (succ x)) 1 end
+def odds : S.Stream ≔ S.iterate (λ (x : ℕ) → succ (succ x)) 1 end
 
-def squares : S.Stream := S.map Nat square nats end
+def squares : S.Stream ≔ S.map ℕ square nats end
 
 (* The Fibonacci-like stream from the seeds [a] and [b]: the first
    components of the iterated Fibonacci step on pairs. *)
-module FibLike (a : Nat) (b : Nat) where
+module FibLike (a : ℕ) (b : ℕ) where
 
 (* Pairs of numbers, the step on them, and the seeds: the implementation
    of [stream], private to the module. *)
 private module Pairs where
 
 (* A pair of numbers, as a function from the index 0 or 1. *)
-def Pair : Type@0 := forall (i : Nat) -> Nat end
+def Pair : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 
 (* One Fibonacci step [(x, y)] to [(y, x + y)]. *)
-def fibStep (p : Pair) : Pair :=
-  fun (i : Nat) ->
-    rec i return y . Nat
-    | zero => p 1
-    | succ q, r => plus (p 0) (p 1)
+def fibStep (p : Pair) : Pair ≔
+  λ (i : ℕ) →
+    rec i return y . ℕ
+    | zero ⇒ p 1
+    | succ q, r ⇒ plus (p 0) (p 1)
     end
 end
 
 (* The seeds, as a pair. *)
-def seed : Pair :=
-  fun (i : Nat) -> rec i return y . Nat | zero => a | succ q, r => b end
+def seed : Pair ≔
+  λ (i : ℕ) → rec i return y . ℕ | zero ⇒ a | succ q, r ⇒ b end
 end
 
 end
 
 open Pairs use (Pair; fibStep; seed)
 
-def stream : S.Stream :=
-  St.map 0l Pair Nat (fun (p : Pair) -> p 0) (St.iterate 0l Pair fibStep seed)
+def stream : S.Stream ≔
+  St.map 0l Pair ℕ (λ (p : Pair) → p 0) (St.iterate 0l Pair fibStep seed)
 end
 
 end
 
-def fibs : S.Stream := FibLike.stream 0 1 end
+def fibs : S.Stream ≔ FibLike.stream 0 1 end
 
-def lucas : S.Stream := FibLike.stream 2 1 end
+def lucas : S.Stream ≔ FibLike.stream 2 1 end
 
 (* [0 + 1 + ... + 5]. *)
 eval sumVec 6 (S.take 6 nats)
 
-eval V.nth 0l Nat 5 (S.take 5 evens) 4 true
+eval V.nth 0l ℕ 5 (S.take 5 evens) 4 ⋆
 
 eval S.nth odds 6
 
@@ -85,20 +85,20 @@ eval S.nth lucas 8
 eval sumVec 10 (S.take 10 fibs)
 
 (* The prefix sums of the squares. *)
-eval S.nth (S.scan Nat plus 0 squares) 5
+eval S.nth (S.scan ℕ plus 0 squares) 5
 
 (* Interleaving the evens and the odds gives back the natural numbers. *)
 eval S.nth (S.interleave evens odds) 7
 
 eval S.nth (S.drop 4 squares) 3
 
-eval S.nth (S.zipWith Nat Nat plus evens odds) 4
+eval S.nth (S.zipWith ℕ ℕ plus evens odds) 4
 
 eval S.head (S.tail (S.cons 9 nats))
 
 eval S.nth (S.const 3) 100
 
-(* A proof of a closed equation normalizes to [true], of type [True]. *)
+(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
 eval headCons 9 nats
 
 eval tailCons 9 squares 3
@@ -109,15 +109,15 @@ eval nthMap square nats 4
 
 eval nthZipWith plus evens odds 3
 
-eval nthIterate (fun (x : Nat) -> succ (succ x)) 1 4
+eval nthIterate (λ (x : ℕ) → succ (succ x)) 1 4
 
-eval tailIterate (fun (x : Nat) -> succ (succ x)) 1 4
+eval tailIterate (λ (x : ℕ) → succ (succ x)) 1 4
 
 eval nthNats 12
 
 eval nthDrop 3 squares 1
 
-eval nthTake 5 squares 3 true
+eval nthTake 5 squares 3 ⋆
 
 eval scanSum squares 4
 

@@ -1,19 +1,19 @@
-(* A client of [Prelude::Algebra::Monoid] and its instances.  The laws of
+(* A client of [Prelude∷Algebra∷Monoid] and its instances.  The laws of
    powers are proved once, for every monoid; read in the additive, the
    multiplicative and the composition monoid, they become laws of
    multiplication, of exponentiation and of iteration. *)
 module Algebra where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-open Prelude::Arith::Plus.Algebra use (plusAssoc; plusCongBoth)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Pow use (pow)
-import Prelude::Arith::MinMax use (max)
-open Prelude::Arith::MinMax.Laws use (maxIdem; maxZero)
-import Prelude::Algebra::Monoid as Monoid
-import Prelude::Algebra::Instances use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum; Composition; Endo; Pointwise; compose)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusCongBoth)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Pow use (pow)
+import Prelude∷Arith∷MinMax use (max)
+open Prelude∷Arith∷MinMax.Laws use (maxIdem; maxZero)
+import Prelude∷Algebra∷Monoid as Monoid
+import Prelude∷Algebra∷Instances use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum; Composition; Endo; Pointwise; compose)
 
 (* Powers in each monoid. *)
 eval Additive.pow 3 4
@@ -22,18 +22,18 @@ eval Multiplicative.pow 2 5
 
 eval Maximum.pow 7 3
 
-eval Composition.pow (fun (x : Nat) -> succ (succ x)) 5 0
+eval Composition.pow (λ (x : ℕ) → succ (succ x)) 5 0
 
 (* The powers of the additive and multiplicative monoids are multiplication
    and exponentiation, by conversion. *)
 module Unfold where
 
-theorem additivePow : forall (x : Nat) (n : Nat) -> Eq (Additive.pow x n) (mult n x) :=
-  fun (x : Nat) (n : Nat) -> refl (mult n x)
+theorem additivePow : ∀ (x : ℕ) (n : ℕ) → Eq (Additive.pow x n) (mult n x) ≔
+  λ (x : ℕ) (n : ℕ) → refl (mult n x)
 end
 
-theorem multiplicativePow : forall (x : Nat) (n : Nat) -> Eq (Multiplicative.pow x n) (pow x n) :=
-  fun (x : Nat) (n : Nat) -> refl (pow x n)
+theorem multiplicativePow : ∀ (x : ℕ) (n : ℕ) → Eq (Multiplicative.pow x n) (pow x n) ≔
+  λ (x : ℕ) (n : ℕ) → refl (pow x n)
 end
 
 end
@@ -42,22 +42,22 @@ end
 module Scaling where
 
 (* Right distributivity is [powPlus]. *)
-theorem multPlusRight : forall (m : Nat) (n : Nat) (x : Nat) ->
-    Eq (mult (plus m n) x) (plus (mult m x) (mult n x)) :=
-  fun (m : Nat) (n : Nat) (x : Nat) -> Additive.Power.powPlus x m n
+theorem multPlusRight : ∀ (m : ℕ) (n : ℕ) (x : ℕ) →
+    Eq (mult (plus m n) x) (plus (mult m x) (mult n x)) ≔
+  λ (m : ℕ) (n : ℕ) (x : ℕ) → Additive.Power.powPlus x m n
 end
 
 (* Associativity is [powMult]. *)
-theorem multAssocPow : forall (m : Nat) (n : Nat) (x : Nat) ->
-    Eq (mult (mult m n) x) (mult m (mult n x)) :=
-  fun (m : Nat) (n : Nat) (x : Nat) -> Additive.Power.powMult x m n
+theorem multAssocPow : ∀ (m : ℕ) (n : ℕ) (x : ℕ) →
+    Eq (mult (mult m n) x) (mult m (mult n x)) ≔
+  λ (m : ℕ) (n : ℕ) (x : ℕ) → Additive.Power.powMult x m n
 end
 
 (* Left distributivity needs commutativity of addition: it is [powOp] in
    the commutative instance. *)
-theorem multPlusLeft : forall (n : Nat) (x : Nat) (y : Nat) ->
-    Eq (mult n (plus x y)) (plus (mult n x) (mult n y)) :=
-  fun (n : Nat) (x : Nat) (y : Nat) -> AdditiveComm.powOp x y n
+theorem multPlusLeft : ∀ (n : ℕ) (x : ℕ) (y : ℕ) →
+    Eq (mult n (plus x y)) (plus (mult n x) (mult n y)) ≔
+  λ (n : ℕ) (x : ℕ) (y : ℕ) → AdditiveComm.powOp x y n
 end
 
 end
@@ -66,27 +66,27 @@ end
    proof names the submodule of laws it uses with a local module. *)
 module Exponents where
 
-theorem powPlus : forall (x : Nat) (m : Nat) (n : Nat) ->
-    Eq (pow x (plus m n)) (mult (pow x m) (pow x n)) :=
-  fun (x : Nat) (m : Nat) (n : Nat) ->
-    let module P := Multiplicative.Power in P.powPlus x m n end
+theorem powPlus : ∀ (x : ℕ) (m : ℕ) (n : ℕ) →
+    Eq (pow x (plus m n)) (mult (pow x m) (pow x n)) ≔
+  λ (x : ℕ) (m : ℕ) (n : ℕ) →
+    let module P ≔ Multiplicative.Power in P.powPlus x m n end
 end
 
-theorem powMult : forall (x : Nat) (m : Nat) (n : Nat) ->
-    Eq (pow x (mult m n)) (pow (pow x n) m) :=
-  fun (x : Nat) (m : Nat) (n : Nat) ->
-    let module P := Multiplicative.Power in P.powMult x m n end
+theorem powMult : ∀ (x : ℕ) (m : ℕ) (n : ℕ) →
+    Eq (pow x (mult m n)) (pow (pow x n) m) ≔
+  λ (x : ℕ) (m : ℕ) (n : ℕ) →
+    let module P ≔ Multiplicative.Power in P.powMult x m n end
 end
 
-theorem powOfProduct : forall (x : Nat) (y : Nat) (n : Nat) ->
-    Eq (pow (mult x y) n) (mult (pow x n) (pow y n)) :=
-  fun (x : Nat) (y : Nat) (n : Nat) -> MultiplicativeComm.powOp x y n
+theorem powOfProduct : ∀ (x : ℕ) (y : ℕ) (n : ℕ) →
+    Eq (pow (mult x y) n) (mult (pow x n) (pow y n)) ≔
+  λ (x : ℕ) (y : ℕ) (n : ℕ) → MultiplicativeComm.powOp x y n
 end
 
 (* [x] to the fourth is the square of its square: [mult 2 2] computes to
    [4]. *)
-theorem fourthPower : forall (x : Nat) -> Eq (pow x 4) (pow (pow x 2) 2) :=
-  fun (x : Nat) -> let module P := Multiplicative.Power in P.powMult x 2 2 end
+theorem fourthPower : ∀ (x : ℕ) → Eq (pow x 4) (pow (pow x 2) 2) ≔
+  λ (x : ℕ) → let module P ≔ Multiplicative.Power in P.powMult x 2 2 end
 end
 
 end
@@ -95,15 +95,15 @@ end
 module Iteration where
 
 (* Iterating [m + n] times is iterating [n] times, then [m] times. *)
-theorem iterPlus : forall (f : Endo) (m : Nat) (n : Nat) ->
-    Pointwise (Composition.pow f (plus m n)) (compose (Composition.pow f m) (Composition.pow f n)) :=
-  fun (f : Endo) (m : Nat) (n : Nat) -> Composition.Power.powPlus f m n
+theorem iterPlus : ∀ (f : Endo) (m : ℕ) (n : ℕ) →
+    Pointwise (Composition.pow f (plus m n)) (compose (Composition.pow f m) (Composition.pow f n)) ≔
+  λ (f : Endo) (m : ℕ) (n : ℕ) → Composition.Power.powPlus f m n
 end
 
 (* Iterating [m * n] times is iterating [n] times, [m] times over. *)
-theorem iterMult : forall (f : Endo) (m : Nat) (n : Nat) ->
-    Pointwise (Composition.pow f (mult m n)) (Composition.pow (Composition.pow f n) m) :=
-  fun (f : Endo) (m : Nat) (n : Nat) -> Composition.Power.powMult f m n
+theorem iterMult : ∀ (f : Endo) (m : ℕ) (n : ℕ) →
+    Pointwise (Composition.pow f (mult m n)) (Composition.pow (Composition.pow f n) m) ≔
+  λ (f : Endo) (m : ℕ) (n : ℕ) → Composition.Power.powMult f m n
 end
 
 end
@@ -111,9 +111,9 @@ end
 (* A monoid built here, from a partial application of the unit: the setoid
    of numbers is fixed, and the operation and its laws come later.  It is
    addition again, so its powers agree with [Additive]'s. *)
-module NatMonoid := Monoid 0l Nat Eq refl sym trans
+module NatMonoid ≔ Monoid 0l ℕ Eq refl sym trans
 
-module Sums := NatMonoid plus plusCongBoth 0 plusAssoc refl plusZero
+module Sums ≔ NatMonoid plus plusCongBoth 0 plusAssoc refl plusZero
 
 eval Sums.pow 6 3
 
@@ -121,23 +121,23 @@ eval Sums.pow 6 3
    [max x 0], and each further factor is absorbed by [maxIdem].  The step
    names its rewriting under [max x] in a local module, which opens the
    congruence laws of the instance. *)
-theorem maxPowSucc : forall (x : Nat) (n : Nat) -> Eq (Maximum.pow x (succ n)) x :=
-  fun (x : Nat) (n : Nat) ->
+theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x ≔
+  λ (x : ℕ) (n : ℕ) →
     rec n return k . Eq (Maximum.pow x (succ k)) x
-    | zero => maxZero x
-    | succ p, ih =>
-        let power := Maximum.pow x (succ p);
+    | zero ⇒ maxZero x
+    | succ p, ih ⇒
+        let power ≔ Maximum.pow x (succ p);
             module L where
               open Maximum.Cong use (congRight)
               (* One more factor [x] in front of a power that is already [x]. *)
-              def front : Eq (max x power) (max x x) := congRight x power x ih end
+              def front : Eq (max x power) (max x x) ≔ congRight x power x ih end
             end
         in trans (max x power) (max x x) x L.front (maxIdem x)
         end
     end
 end
 
-(* Closed instances normalize to [true]. *)
+(* Closed instances normalize to [⋆]. *)
 eval Unfold.additivePow 3 4
 
 eval Scaling.multPlusRight 2 3 2
@@ -154,7 +154,7 @@ eval Exponents.powOfProduct 2 2 2
 
 eval Exponents.fourthPower 2
 
-eval Iteration.iterPlus (fun (x : Nat) -> succ x) 2 3 4
+eval Iteration.iterPlus (λ (x : ℕ) → succ x) 2 3 4
 
 eval maxPowSucc 5 3
 

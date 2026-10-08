@@ -10,17 +10,17 @@
 module Universes where
 
 (* The identity, polymorphic in the level of its type. *)
-def id (u : Level) (A : Type@{u}) (a : A) : A := a end
+def id (u : Level) (A : Type@{u}) (a : A) : A ≔ a end
 
-eval id 1l Type@0 Nat
+eval id 1l Type@0 ℕ
 
 (* A small universe is in the next one up, and cumulativity lifts it to any
    larger level — here to the join with the successor. *)
-def lift (u : Level) (v : Level) : Type@{maxl (succl u) v} := Type@{u} end
+def lift (u : Level) (v : Level) : Type@{maxl (succl u) v} ≔ Type@{u} end
 
 (* Levels normalize: a level is a constant and a set of atoms with offsets,
    so [maxl v (maxl 1l u)] and [maxl (maxl 1l v) u] are the same level. *)
-def atoms (u : Level) (v : Level) : Type@{succl (maxl (maxl 1l v) u)} :=
+def atoms (u : Level) (v : Level) : Type@{succl (maxl (maxl 1l v) u)} ≔
   Type@{maxl v (maxl 1l u)}
 end
 
@@ -29,13 +29,13 @@ eval atoms
 (* A module may take a level parameter like any other. *)
 module Poly (u : Level) (A : Type@{u}) where
 
-def self (a : A) : A := a end
+def self (a : A) : A ≔ a end
 
-def Dom : Type@{u} := A end
+def Dom : Type@{u} ≔ A end
 
 end
 
-open Poly 0l Nat use (self; Dom)
+open Poly 0l ℕ use (self; Dom)
 
 eval self 3
 
@@ -43,41 +43,41 @@ eval Dom
 
 (* A function into [Level] may be used in a universe: levels are computed by
    the same evaluator as everything else. *)
-def depth (n : Nat) : Level := rec n return x . Level | zero => 0l | succ y, r => succl r end end
+def depth (n : ℕ) : Level ≔ rec n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end end
 
 eval Type@{depth 3}
 
 (* A function type of small types is small at their level, even when the
    level is a variable: [Endo u A] is in [Type@{u}], and a function between
    two universes is in the one at their join. *)
-def Endo (u : Level) (A : Type@{u}) : Type@{u} := forall (a : A) -> A end
+def Endo (u : Level) (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → A end
 
-def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} :=
-  forall (a : A) -> B
+def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} ≔
+  ∀ (a : A) → B
 end
 
-eval Endo 0l Nat
+eval Endo 0l ℕ
 
 (* The level may be any term of [Level], here an application. *)
-def Twice (g : forall (f : forall (n : Nat) -> Nat) -> Level)
-          (A : Type@{g (fun (x : Nat) -> x)}) : Type@{g (fun (x : Nat) -> x)} :=
-  forall (a : A) -> A
+def Twice (g : ∀ (f : ∀ (n : ℕ) → ℕ) → Level)
+          (A : Type@{g (λ (x : ℕ) → x)}) : Type@{g (λ (x : ℕ) → x)} ≔
+  ∀ (a : A) → A
 end
 
 (* An unannotated [let] gets the principal type, the small universe. *)
-def LetEndo (u : Level) (A : Type@{u}) : Type@{u} := let e := forall (a : A) -> A in e end end
+def LetEndo (u : Level) (A : Type@{u}) : Type@{u} ≔ let e ≔ ∀ (a : A) → A in e end end
 
-eval fun (u : Level) (A : Type@{u}) -> forall (a : A) -> A
+eval λ (u : Level) (A : Type@{u}) → ∀ (a : A) → A
 
 (* A codomain whose level mentions the bound variable has no small universe
    to be in: the type of all small universes is large. *)
-eval forall (u : Level) -> Type@{u}
+eval ∀ (u : Level) → Type@{u}
 
 (* Both tiers: the large universe holds every small one. *)
-def small (u : Level) : Type@ω := Type@{u} end
+def small (u : Level) : Type@ω ≔ Type@{u} end
 
 (* Every spelling of a universe size.  Small: a bare numeral, the level
-   literal [<n>l], or any level term in braces.  Large: [ω] or [omega], bare
+   literal [<n>l], or any level term in braces.  Large: [ω] or [ω], bare
    or braced, [ω+n] braced, and the shorthand [<n>L]. *)
 eval Type@2
 
@@ -87,9 +87,9 @@ eval Type@{2l}
 
 eval Type@ω
 
-eval Type@omega
+eval Type@ω
 
-eval Type@{omega}
+eval Type@{ω}
 
 eval Type@{ω+2}
 

@@ -3,17 +3,17 @@
    instances. *)
 module Programs where
 
-import Prelude::Arith::Sub use (pred; sub)
-open Prelude::Arith::Sub.Laws use (subSelf; subSuccRight)
-open Prelude::Arith::Sub.PlusSub use (plusSub)
-import Prelude::Arith::MinMax use (min; max)
-open Prelude::Arith::MinMax.Laws use (minComm; maxComm; plusMinMax)
-import Prelude::Function::Combinators use (Generic)
-open Prelude::Function::Combinators.IterateLaws use (iteratePlus; iterateComm)
-import Prelude::Arith::Ackermann use (ack)
-open Prelude::Arith::Ackermann.Equations use (ackZero)
-open Prelude::Arith::Ackermann.Rows use (ackTwo)
-import Prelude::Arith::Plus use (plus)
+import Prelude∷Arith∷Sub use (pred; sub)
+open Prelude∷Arith∷Sub.Laws use (subSelf; subSuccRight)
+open Prelude∷Arith∷Sub.PlusSub use (plusSub)
+import Prelude∷Arith∷MinMax use (min; max)
+open Prelude∷Arith∷MinMax.Laws use (minComm; maxComm; plusMinMax)
+import Prelude∷Function∷Combinators use (Generic)
+open Prelude∷Function∷Combinators.IterateLaws use (iteratePlus; iterateComm)
+import Prelude∷Arith∷Ackermann use (ack)
+open Prelude∷Arith∷Ackermann.Equations use (ackZero)
+open Prelude∷Arith∷Ackermann.Rows use (ackTwo)
+import Prelude∷Arith∷Plus use (plus)
 
 eval pred 5
 
@@ -30,7 +30,7 @@ eval ack 2 3
 
 eval ack 3 3
 
-(* A proof of a closed equation normalizes to [true], of type [True]. *)
+(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
 eval plusSub 6 4
 
 eval subSelf 7
@@ -47,15 +47,15 @@ eval ackZero 4
 
 eval ackTwo 5
 
-eval iteratePlus (fun (x : Nat) -> plus x 3) 2 3 1
+eval iteratePlus (λ (x : ℕ) → plus x 3) 2 3 1
 
-eval iterateComm (fun (x : Nat) -> succ (succ x)) 3 4 0
+eval iterateComm (λ (x : ℕ) → succ (succ x)) 3 4 0
 
-(* The generic combinators, instantiated at [Nat]. *)
-eval Generic.compose 0l Nat Nat Nat (sub 20) (fun (x : Nat) -> max x 5) 2
+(* The generic combinators, instantiated at [ℕ]. *)
+eval Generic.compose 0l ℕ ℕ ℕ (sub 20) (λ (x : ℕ) → max x 5) 2
 
-eval Generic.const 0l Nat Nat 7 100
+eval Generic.const 0l ℕ ℕ 7 100
 
-eval Generic.iterate 0l Nat (ack 1) 3 0
+eval Generic.iterate 0l ℕ (ack 1) 3 0
 
 end

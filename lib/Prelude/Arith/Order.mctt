@@ -1,124 +1,124 @@
 (* The order on natural numbers, computed by recursion on both sides like
-   [Prelude::Arith::Equality.Eq], with its basic laws, case analysis, and a
+   [Prelude∷Arith∷Equality.Eq], with its basic laws, case analysis, and a
    decision function. *)
-module Prelude::Arith::Order where
+module Prelude∷Arith∷Order where
 
-import Prelude::Logic use (Not; absurd)
-open Prelude::Logic.Negation as Neg
-open Prelude::Logic.Disj 0l use (Or; orInl; orInr)
-import Prelude::Arith::Equality use (Eq; sym; transport)
-import Prelude::Arith::Plus use (plus)
+import Prelude∷Logic use (Not; absurd)
+open Prelude∷Logic.Negation as Neg
+open Prelude∷Logic.Disj 0l use (Or; orInl; orInr)
+import Prelude∷Arith∷Equality use (Eq; sym; transport)
+import Prelude∷Arith∷Plus use (plus)
 
-(* [Le n m] computes to [True] or [False]: [Le 0 m] is [True],
-   [Le (succ n) 0] is [False], and [Le (succ n) (succ m)] is [Le n m]. *)
-def Le : forall (n : Nat) (m : Nat) -> Type@0 :=
-  fun (n : Nat) ->
-    rec n return y . (forall (m : Nat) -> Type@0)
-    | zero => fun (m : Nat) -> True
-    | succ p, r => fun (m : Nat) ->
-        rec m return z . Type@0 | zero => False | succ q, s => r q end
+(* [Le n m] computes to [⊤] or [⊥]: [Le 0 m] is [⊤],
+   [Le (succ n) 0] is [⊥], and [Le (succ n) (succ m)] is [Le n m]. *)
+def Le : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
+  λ (n : ℕ) →
+    rec n return y . (∀ (m : ℕ) → Type@0)
+    | zero ⇒ λ (m : ℕ) → ⊤
+    | succ p, r ⇒ λ (m : ℕ) →
+        rec m return z . Type@0 | zero ⇒ ⊥ | succ q, s ⇒ r q end
     end
 end
 
 (* Strict order. *)
-def Lt (n : Nat) (m : Nat) : Type@0 := Le (succ n) m end
+def Lt (n : ℕ) (m : ℕ) : Type@0 ≔ Le (succ n) m end
 
 (* [Le] is a total order, and its relation to successors and sums. *)
 module LeLaws where
 
-def leRefl : forall (n : Nat) -> Le n n :=
-  fun (n : Nat) ->
+def leRefl : ∀ (n : ℕ) → Le n n ≔
+  λ (n : ℕ) →
     rec n return x . Le x x
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-def leTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Le b c) -> Le a c :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (c : Nat) (hab : Le x b) (hbc : Le b c) -> Le x c)
-    | zero => fun (b : Nat) (c : Nat) (hab : True) (hbc : Le b c) -> true
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (c : Nat) (hab : Le (succ p) z) (hbc : Le z c) -> Le (succ p) c)
-        | zero => fun (c : Nat) (hab : False) (hbc : True) -> absurd (Le (succ p) c) hab
-        | succ q, s => fun (c : Nat) ->
-            rec c return w . (forall (hab : Le p q) (hbc : Le (succ q) w) -> Le (succ p) w)
-            | zero => fun (hab : Le p q) (hbc : False) -> hbc
-            | succ r, t => fun (hab : Le p q) (hbc : Le q r) -> ih q r hab hbc
+def leTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Le b c) → Le a c ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (c : ℕ) (hab : Le x b) (hbc : Le b c) → Le x c)
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (hab : ⊤) (hbc : Le b c) → ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (c : ℕ) (hab : Le (succ p) z) (hbc : Le z c) → Le (succ p) c)
+        | zero ⇒ λ (c : ℕ) (hab : ⊥) (hbc : ⊤) → absurd (Le (succ p) c) hab
+        | succ q, s ⇒ λ (c : ℕ) →
+            rec c return w . (∀ (hab : Le p q) (hbc : Le (succ q) w) → Le (succ p) w)
+            | zero ⇒ λ (hab : Le p q) (hbc : ⊥) → hbc
+            | succ r, t ⇒ λ (hab : Le p q) (hbc : Le q r) → ih q r hab hbc
             end
         end
     end
 end
 
-theorem leAntisym : forall (a : Nat) (b : Nat) (hab : Le a b) (hba : Le b a) -> Eq a b :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (hab : Le x b) (hba : Le b x) -> Eq x b)
-    | zero => fun (b : Nat) ->
-        rec b return z . (forall (hab : True) (hba : Le z 0) -> Eq 0 z)
-        | zero => fun (hab : True) (hba : True) -> true
-        | succ q, s => fun (hab : True) (hba : False) -> hba
+theorem leAntisym : ∀ (a : ℕ) (b : ℕ) (hab : Le a b) (hba : Le b a) → Eq a b ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (hab : Le x b) (hba : Le b x) → Eq x b)
+    | zero ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (hab : ⊤) (hba : Le z 0) → Eq 0 z)
+        | zero ⇒ λ (hab : ⊤) (hba : ⊤) → ⋆
+        | succ q, s ⇒ λ (hab : ⊤) (hba : ⊥) → hba
         end
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (hab : Le (succ p) z) (hba : Le z (succ p)) -> Eq (succ p) z)
-        | zero => fun (hab : False) (hba : True) -> hab
-        | succ q, s => fun (hab : Le p q) (hba : Le q p) -> ih q hab hba
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (hab : Le (succ p) z) (hba : Le z (succ p)) → Eq (succ p) z)
+        | zero ⇒ λ (hab : ⊥) (hba : ⊤) → hab
+        | succ q, s ⇒ λ (hab : Le p q) (hba : Le q p) → ih q hab hba
         end
     end
 end
 
 (* Zero is the least number. *)
-theorem leZero : forall (n : Nat) -> Le 0 n :=
-  fun (n : Nat) -> true
+theorem leZero : ∀ (n : ℕ) → Le 0 n ≔
+  λ (n : ℕ) → ⋆
 end
 
 (* Only zero is below zero. *)
-theorem leZeroInv : forall (n : Nat) (h : Le n 0) -> Eq n 0 :=
-  fun (n : Nat) ->
-    rec n return x . (forall (h : Le x 0) -> Eq x 0)
-    | zero => fun (h : True) -> h
-    | succ p, ih => fun (h : False) -> h
+theorem leZeroInv : ∀ (n : ℕ) (h : Le n 0) → Eq n 0 ≔
+  λ (n : ℕ) →
+    rec n return x . (∀ (h : Le x 0) → Eq x 0)
+    | zero ⇒ λ (h : ⊤) → h
+    | succ p, ih ⇒ λ (h : ⊥) → h
     end
 end
 
-def leSucc : forall (n : Nat) -> Le n (succ n) :=
-  fun (n : Nat) ->
+def leSucc : ∀ (n : ℕ) → Le n (succ n) ≔
+  λ (n : ℕ) →
     rec n return x . Le x (succ x)
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
 (* Weakening of the upper bound by one. *)
-def leStep : forall (a : Nat) (b : Nat) (h : Le a b) -> Le a (succ b) :=
-  fun (a : Nat) (b : Nat) (h : Le a b) -> leTrans a b (succ b) h (leSucc b)
+def leStep : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Le a (succ b) ≔
+  λ (a : ℕ) (b : ℕ) (h : Le a b) → leTrans a b (succ b) h (leSucc b)
 end
 
-def lePlusRight : forall (a : Nat) (b : Nat) -> Le a (plus a b) :=
-  fun (a : Nat) (b : Nat) ->
+def lePlusRight : ∀ (a : ℕ) (b : ℕ) → Le a (plus a b) ≔
+  λ (a : ℕ) (b : ℕ) →
     rec a return x . Le x (plus x b)
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem lePlusLeft : forall (a : Nat) (b : Nat) -> Le b (plus a b) :=
-  fun (a : Nat) (b : Nat) ->
+theorem lePlusLeft : ∀ (a : ℕ) (b : ℕ) → Le b (plus a b) ≔
+  λ (a : ℕ) (b : ℕ) →
     rec a return x . Le b (plus x b)
-    | zero => leRefl b
-    | succ p, ih => leStep b (plus p b) ih
+    | zero ⇒ leRefl b
+    | succ p, ih ⇒ leStep b (plus p b) ih
     end
 end
 
 (* Any two numbers are comparable.  In the step, [Le (succ p) (succ q)] is
    [Le p q], so the hypothesis already has the goal's type. *)
-def leTotal : forall (a : Nat) (b : Nat) -> Or (Le a b) (Le b a) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) -> Or (Le x b) (Le b x))
-    | zero => fun (b : Nat) -> orInl (Le 0 b) (Le b 0) true
-    | succ p, ih => fun (b : Nat) ->
+def leTotal : ∀ (a : ℕ) (b : ℕ) → Or (Le a b) (Le b a) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) → Or (Le x b) (Le b x))
+    | zero ⇒ λ (b : ℕ) → orInl (Le 0 b) (Le b 0) ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
         rec b return z . Or (Le (succ p) z) (Le z (succ p))
-        | zero => orInr (Le (succ p) 0) (Le 0 (succ p)) true
-        | succ q, s => ih q
+        | zero ⇒ orInr (Le (succ p) 0) (Le 0 (succ p)) ⋆
+        | succ q, s ⇒ ih q
         end
     end
 end
@@ -128,22 +128,22 @@ end
 (* [Lt] is irreflexive and has no element below zero. *)
 module LtLaws where
 
-theorem ltIrrefl : forall (n : Nat) -> Not (Lt n n) :=
-  fun (n : Nat) ->
+theorem ltIrrefl : ∀ (n : ℕ) → Not (Lt n n) ≔
+  λ (n : ℕ) →
     rec n return x . Not (Lt x x)
-    | zero => fun (h : False) -> h
-    | succ p, ih => ih
+    | zero ⇒ λ (h : ⊥) → h
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem notLtZero : forall (n : Nat) -> Not (Lt n 0) :=
-  fun (n : Nat) (h : False) -> h
+theorem notLtZero : ∀ (n : ℕ) → Not (Lt n 0) ≔
+  λ (n : ℕ) (h : ⊥) → h
 end
 
 (* A number below another is different from it. *)
-theorem ltNotEq : forall (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) -> False :=
-  fun (a : Nat) (b : Nat) (h : Lt a b) (e : Eq a b) ->
-    ltIrrefl a (transport (fun (x : Nat) -> Lt a x) b a (sym a b e) h)
+theorem ltNotEq : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) (e : Eq a b) → ⊥ ≔
+  λ (a : ℕ) (b : ℕ) (h : Lt a b) (e : Eq a b) →
+    ltIrrefl a (transport (λ (x : ℕ) → Lt a x) b a (sym a b e) h)
 end
 
 (* A number at most [p] is either below [p] or equal to it, as a
@@ -154,21 +154,21 @@ end
    [absurd] one level up, where the disjunction lives. *)
 module Cases (u : Level) where
 
-open Prelude::Logic.Disj u as D
+open Prelude∷Logic.Disj u as D
 
-def leCases : forall (m : Nat) (p : Nat) (h : Le m p) -> D.Or (Lt m p) (Eq m p) :=
-  fun (m : Nat) ->
-    rec m return x . (forall (p : Nat) (h : Le x p) -> D.Or (Lt x p) (Eq x p))
-    | zero => fun (p : Nat) ->
-        rec p return z . (forall (h : True) -> D.Or (Lt 0 z) (Eq 0 z))
-        | zero => fun (h : True) -> D.orInr (Lt 0 0) (Eq 0 0) true
-        | succ q, s => fun (h : True) -> D.orInl (Lt 0 (succ q)) (Eq 0 (succ q)) true
+def leCases : ∀ (m : ℕ) (p : ℕ) (h : Le m p) → D.Or (Lt m p) (Eq m p) ≔
+  λ (m : ℕ) →
+    rec m return x . (∀ (p : ℕ) (h : Le x p) → D.Or (Lt x p) (Eq x p))
+    | zero ⇒ λ (p : ℕ) →
+        rec p return z . (∀ (h : ⊤) → D.Or (Lt 0 z) (Eq 0 z))
+        | zero ⇒ λ (h : ⊤) → D.orInr (Lt 0 0) (Eq 0 0) ⋆
+        | succ q, s ⇒ λ (h : ⊤) → D.orInl (Lt 0 (succ q)) (Eq 0 (succ q)) ⋆
         end
-    | succ r, ih => fun (p : Nat) ->
-        rec p return z . (forall (h : Le (succ r) z) -> D.Or (Lt (succ r) z) (Eq (succ r) z))
-        | zero => fun (h : False) ->
+    | succ r, ih ⇒ λ (p : ℕ) →
+        rec p return z . (∀ (h : Le (succ r) z) → D.Or (Lt (succ r) z) (Eq (succ r) z))
+        | zero ⇒ λ (h : ⊥) →
             Neg.absurd (succl u) (D.Or (Lt (succ r) 0) (Eq (succ r) 0)) h
-        | succ q, s => fun (h : Le r q) -> ih q h
+        | succ q, s ⇒ λ (h : Le r q) → ih q h
         end
     end
 end
@@ -182,12 +182,12 @@ end
 
 (* Decision of [Le]: [leb a b] is 1 when [a] is at most [b], and 0
    otherwise. *)
-def leb : forall (n : Nat) (m : Nat) -> Nat :=
-  fun (n : Nat) ->
-    rec n return y . (forall (m : Nat) -> Nat)
-    | zero => fun (m : Nat) -> 1
-    | succ p, r => fun (m : Nat) ->
-        rec m return z . Nat | zero => 0 | succ q, s => r q end
+def leb : ∀ (n : ℕ) (m : ℕ) → ℕ ≔
+  λ (n : ℕ) →
+    rec n return y . (∀ (m : ℕ) → ℕ)
+    | zero ⇒ λ (m : ℕ) → 1
+    | succ p, r ⇒ λ (m : ℕ) →
+        rec m return z . ℕ | zero ⇒ 0 | succ q, s ⇒ r q end
     end
 end
 
@@ -195,40 +195,40 @@ end
 module LebLaws where
 
 (* [leb] answers 1 exactly on [Le]: soundness. *)
-theorem lebSound : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 1) -> Le a b :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (h : Eq (leb x b) 1) -> Le x b)
-    | zero => fun (b : Nat) (h : True) -> true
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (h : Eq (leb (succ p) z) 1) -> Le (succ p) z)
-        | zero => fun (h : False) -> h
-        | succ q, s => fun (h : Eq (leb p q) 1) -> ih q h
+theorem lebSound : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 1) → Le a b ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (h : Eq (leb x b) 1) → Le x b)
+    | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (h : Eq (leb (succ p) z) 1) → Le (succ p) z)
+        | zero ⇒ λ (h : ⊥) → h
+        | succ q, s ⇒ λ (h : Eq (leb p q) 1) → ih q h
         end
     end
 end
 
 (* [leb] answers 1 exactly on [Le]: completeness. *)
-theorem lebComplete : forall (a : Nat) (b : Nat) (h : Le a b) -> Eq (leb a b) 1 :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (h : Le x b) -> Eq (leb x b) 1)
-    | zero => fun (b : Nat) (h : True) -> true
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (h : Le (succ p) z) -> Eq (leb (succ p) z) 1)
-        | zero => fun (h : False) -> h
-        | succ q, s => fun (h : Le p q) -> ih q h
+theorem lebComplete : ∀ (a : ℕ) (b : ℕ) (h : Le a b) → Eq (leb a b) 1 ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (h : Le x b) → Eq (leb x b) 1)
+    | zero ⇒ λ (b : ℕ) (h : ⊤) → ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (h : Le (succ p) z) → Eq (leb (succ p) z) 1)
+        | zero ⇒ λ (h : ⊥) → h
+        | succ q, s ⇒ λ (h : Le p q) → ih q h
         end
     end
 end
 
 (* When [leb a b] answers 0, the order holds strictly the other way. *)
-theorem lebZero : forall (a : Nat) (b : Nat) (h : Eq (leb a b) 0) -> Lt b a :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (h : Eq (leb x b) 0) -> Lt b x)
-    | zero => fun (b : Nat) (h : False) -> absurd (Lt b 0) h
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (h : Eq (leb (succ p) z) 0) -> Lt z (succ p))
-        | zero => fun (h : True) -> true
-        | succ q, s => fun (h : Eq (leb p q) 0) -> ih q h
+theorem lebZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (leb a b) 0) → Lt b a ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (h : Eq (leb x b) 0) → Lt b x)
+    | zero ⇒ λ (b : ℕ) (h : ⊥) → absurd (Lt b 0) h
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (h : Eq (leb (succ p) z) 0) → Lt z (succ p))
+        | zero ⇒ λ (h : ⊤) → ⋆
+        | succ q, s ⇒ λ (h : Eq (leb p q) 0) → ih q h
         end
     end
 end

@@ -1,14 +1,14 @@
-(* A diamond: Lib::Arith imports Lib::Num too, which is loaded once. *)
-import Lib::Arith use (quadruple)
-import Lib::Num as N
-import Lib::Num.Ops use (pred)
+(* A diamond: Lib∷Arith imports Lib∷Num too, which is loaded once. *)
+import Lib∷Arith use (quadruple)
+import Lib∷Num as N
+import Lib∷Num.Ops use (pred)
 
 module Main where
 
-eval quadruple 2 : Nat
+eval quadruple 2 : ℕ
 
 eval N.double 3
 
-eval pred (N.double 5) : Nat
+eval pred (N.double 5) : ℕ
 
 end

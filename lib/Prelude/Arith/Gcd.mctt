@@ -4,26 +4,26 @@
    the second number.  Fuel is preferred to strong induction, whose
    recursive calls are transported along order proofs and compute slowly.
    [gcd a 0] is [a], so [gcd 0 0] is [0]. *)
-module Prelude::Arith::Gcd where
+module Prelude∷Arith∷Gcd where
 
-import Prelude::Arith::Div use (mod)
+import Prelude∷Arith∷Div use (mod)
 
 (* Euclid's algorithm with [fuel] steps: [gcdFuel (succ f) a (succ d)] is
    [gcdFuel f (succ d) (mod a (succ d))], and [gcdFuel f a 0] is [a] for
    positive fuel.  Without fuel it answers [a]; fuel above [b] is enough, see
-   [Prelude::Arith::Gcd::Properties.gcdFuelEnough]. *)
-def gcdFuel (fuel : Nat) : forall (a : Nat) (b : Nat) -> Nat :=
-  rec fuel return y . (forall (a : Nat) (b : Nat) -> Nat)
-  | zero => fun (a : Nat) (b : Nat) -> a
-  | succ f, r => fun (a : Nat) (b : Nat) ->
-      rec b return z . Nat
-      | zero => a
-      | succ d, s => r (succ d) (mod a (succ d))
+   [Prelude∷Arith∷Gcd∷Properties.gcdFuelEnough]. *)
+def gcdFuel (fuel : ℕ) : ∀ (a : ℕ) (b : ℕ) → ℕ ≔
+  rec fuel return y . (∀ (a : ℕ) (b : ℕ) → ℕ)
+  | zero ⇒ λ (a : ℕ) (b : ℕ) → a
+  | succ f, r ⇒ λ (a : ℕ) (b : ℕ) →
+      rec b return z . ℕ
+      | zero ⇒ a
+      | succ d, s ⇒ r (succ d) (mod a (succ d))
       end
   end
 end
 
 (* The greatest common divisor, with fuel [succ b]. *)
-def gcd (a : Nat) (b : Nat) : Nat := gcdFuel (succ b) a b end
+def gcd (a : ℕ) (b : ℕ) : ℕ ≔ gcdFuel (succ b) a b end
 
 end

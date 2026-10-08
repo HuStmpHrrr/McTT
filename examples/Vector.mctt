@@ -3,43 +3,43 @@ module Vector where
 eval (
     (* Main example *)
     (
-      fun (Vec : forall (A : Type@0) (n : Nat) -> Type@2)
-          (nil : forall (A : Type@0) -> Vec A 0)
-          (cons : forall (A : Type@0) (n : Nat) (head : A) (tail : Vec A n) -> Vec A (succ n))
-          (vecRec : forall (A : Type@0) (n : Nat) (vec : Vec A n) (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> C n) ->
+      λ (Vec : ∀ (A : Type@0) (n : ℕ) → Type@2)
+        (nil : ∀ (A : Type@0) → Vec A 0)
+        (cons : ∀ (A : Type@0) (n : ℕ) (head : A) (tail : Vec A n) → Vec A (succ n))
+        (vecRec : ∀ (A : Type@0) (n : ℕ) (vec : Vec A n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) →
         (
-          fun (totalHead : forall (A : Type@0) (n : Nat) (vec : Vec A (succ n)) -> A)
-              (vec : Vec (forall (n : Nat) -> Nat) 3) ->
-            totalHead ((forall (n : Nat) -> Nat)) 2 vec 4
+          λ (totalHead : ∀ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) → A)
+            (vec : Vec (∀ (n : ℕ) → ℕ) 3) →
+            totalHead ((∀ (n : ℕ) → ℕ)) 2 vec 4
         )
         (* total head function *)
         (
-          fun (A : Type@0) (n : Nat) (vec : Vec A (succ n)) ->
-            vecRec A (succ n) vec (fun (l : Nat) -> rec l return r . Type@0 | zero => Nat | succ l, r => A end) 0 (fun (l : Nat) (a : A) (r : rec l return r . Type@0 | zero => Nat | succ l, r => A end) -> a)
+          λ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) →
+            vecRec A (succ n) vec (λ (l : ℕ) → rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) 0 (λ (l : ℕ) (a : A) (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) → a)
         )
         (* example vector *)
         (
-          cons (forall (n : Nat) -> Nat) 2
-            (fun (n : Nat) -> succ (succ (succ n)))
+          cons (∀ (n : ℕ) → ℕ) 2
+            (λ (n : ℕ) → succ (succ (succ n)))
             (
-              cons (forall (n : Nat) -> Nat) 1
-                (fun (n : Nat) -> succ n)
+              cons (∀ (n : ℕ) → ℕ) 1
+                (λ (n : ℕ) → succ n)
                 (
-                  cons (forall (n : Nat) -> Nat) 0
-                    (fun (n : Nat) -> succ (succ n))
-                    (nil (forall (n : Nat) -> Nat))
+                  cons (∀ (n : ℕ) → ℕ) 0
+                    (λ (n : ℕ) → succ (succ n))
+                    (nil (∀ (n : ℕ) → ℕ))
                 )
             )
         )
     )
     (* Church vector *)
-    (fun (A : Type@0) (n : Nat) -> forall (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> C n)
+    (λ (A : Type@0) (n : ℕ) → ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n)
     (* Church vector nil *)
-    (fun (A : Type@0) (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> nil)
+    (λ (A : Type@0) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → nil)
     (* Church vector cons *)
-    (fun (A : Type@0) (n : Nat) (head : A) (tail : forall (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> C n) (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> cons n head (tail C nil cons))
+    (λ (A : Type@0) (n : ℕ) (head : A) (tail : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → cons n head (tail C nil cons))
     (* Church vector recursor *)
-    (fun (A : Type@0) (n : Nat) (vec : forall (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> C n) (C : forall (l : Nat) -> Type@1) (nil : C 0) (cons : forall (l : Nat) (a : A) (r : C l) -> C (succ l)) -> vec C nil cons)
-  ) : Nat
+    (λ (A : Type@0) (n : ℕ) (vec : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → vec C nil cons)
+  ) : ℕ
 
 end

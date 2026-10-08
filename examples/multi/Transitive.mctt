@@ -1,8 +1,8 @@
-(* Lib::Arith imports Lib::Num, but that does not make Lib::Num visible here. *)
-import Lib::Arith
+(* Lib∷Arith imports Lib∷Num, but that does not make Lib∷Num visible here. *)
+import Lib∷Arith
 
 module Transitive where
 
-eval Lib::Num.double 1 : Nat
+eval Lib∷Num.double 1 : ℕ
 
 end

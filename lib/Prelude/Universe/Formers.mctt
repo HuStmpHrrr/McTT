@@ -8,61 +8,61 @@
    Church encoding it lives one level up, and only its first component can
    be projected, since its eliminator is not dependent.  [Universe n] is the
    universe at the [n]-th level, computed from the number [n]. *)
-module Prelude::Universe::Formers where
+module Prelude∷Universe∷Formers where
 
-import Prelude::Universe::Levels use (ofNat)
+import Prelude∷Universe∷Levels use (ofNat)
 
-def Lift (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} := A end
+def Lift (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
 
-def up (u : Level) (v : Level) (A : Type@{u}) (a : A) : Lift u v A := a end
+def up (u : Level) (v : Level) (A : Type@{u}) (a : A) : Lift u v A ≔ a end
 
-def down (u : Level) (v : Level) (A : Type@{u}) (a : Lift u v A) : A := a end
+def down (u : Level) (v : Level) (A : Type@{u}) (a : Lift u v A) : A ≔ a end
 
-def Arrow (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} :=
-  forall (a : A) -> B
+def Arrow (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} ≔
+  ∀ (a : A) → B
 end
 
 (* The dependent function type of a family [B] over [A]. *)
-def Pi (u : Level) (v : Level) (A : Type@{u}) (B : forall (a : A) -> Type@{v}) :
-    Type@{maxl u v} :=
-  forall (a : A) -> B a
+def Pi (u : Level) (v : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{v}) :
+    Type@{maxl u v} ≔
+  ∀ (a : A) → B a
 end
 
-def Endo (u : Level) (A : Type@{u}) : Type@{u} := forall (a : A) -> A end
+def Endo (u : Level) (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → A end
 
 (* [Fun u n A B] is the type of functions of [n] arguments in [A] into [B],
    computed by recursion on [n]. *)
-def Fun (u : Level) (n : Nat) (A : Type@{u}) (B : Type@{u}) : Type@{u} :=
+def Fun (u : Level) (n : ℕ) (A : Type@{u}) (B : Type@{u}) : Type@{u} ≔
   rec n return y . Type@{u}
-  | zero => B
-  | succ p, r => forall (a : A) -> r
+  | zero ⇒ B
+  | succ p, r ⇒ ∀ (a : A) → r
   end
 end
 
 (* Dependent pairs, Church-encoded. *)
-def Sigma (u : Level) (A : Type@{u}) (B : forall (a : A) -> Type@{u}) : Type@{succl u} :=
-  forall (C : Type@{u}) (f : forall (a : A) (b : B a) -> C) -> C
+def Sigma (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) : Type@{succl u} ≔
+  ∀ (C : Type@{u}) (f : ∀ (a : A) (b : B a) → C) → C
 end
 
-def pair (u : Level) (A : Type@{u}) (B : forall (a : A) -> Type@{u}) (a : A) (b : B a) :
-    Sigma u A B :=
-  fun (C : Type@{u}) (f : forall (x : A) (y : B x) -> C) -> f a b
+def pair (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (a : A) (b : B a) :
+    Sigma u A B ≔
+  λ (C : Type@{u}) (f : ∀ (x : A) (y : B x) → C) → f a b
 end
 
-def first (u : Level) (A : Type@{u}) (B : forall (a : A) -> Type@{u}) (p : Sigma u A B) : A :=
-  p A (fun (a : A) (b : B a) -> a)
+def first (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (p : Sigma u A B) : A ≔
+  p A (λ (a : A) (b : B a) → a)
 end
 
 (* Elimination into a type [C] of the same level. *)
-def sigmaElim (u : Level) (A : Type@{u}) (B : forall (a : A) -> Type@{u}) (C : Type@{u})
-    (f : forall (a : A) (b : B a) -> C) (p : Sigma u A B) : C :=
+def sigmaElim (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (C : Type@{u})
+    (f : ∀ (a : A) (b : B a) → C) (p : Sigma u A B) : C ≔
   p C f
 end
 
 (* The universe at the [n]-th level, which is in the next one. *)
-def Universe (n : Nat) : Type@{succl (ofNat n)} := Type@{ofNat n} end
+def Universe (n : ℕ) : Type@{succl (ofNat n)} ≔ Type@{ofNat n} end
 
 (* Each universe is an element of the next. *)
-def universeIn (n : Nat) : Universe (succ n) := Universe n end
+def universeIn (n : ℕ) : Universe (succ n) ≔ Universe n end
 
 end

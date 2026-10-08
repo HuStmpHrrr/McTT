@@ -1,37 +1,37 @@
 (* The Ackermann function, by higher-order primitive recursion, with its
    defining equations and closed forms for [ack 1] and [ack 2]. *)
-module Prelude::Arith::Ackermann where
+module Prelude∷Arith∷Ackermann where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusSucc)
-import Prelude::Function::Combinators use (Generic)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusSucc)
+import Prelude∷Function∷Combinators use (Generic)
 
-(* The Ackermann function. Recursion on [m] returns a function [Nat -> Nat]:
+(* The Ackermann function. Recursion on [m] returns a function [ℕ → ℕ]:
    [ack (succ m)] iterates [ack m] [succ n] times from [1], so
    [ack (succ m) 0] is [ack m 1] and [ack (succ m) (succ n)] is
    [ack m (ack (succ m) n)]. *)
-def ack (m : Nat) (n : Nat) : Nat :=
-  (rec m return y . (forall (x : Nat) -> Nat)
-   | zero => fun (x : Nat) -> succ x
-   | succ p, r => fun (x : Nat) -> Generic.iterate 0l Nat r (succ x) 1
+def ack (m : ℕ) (n : ℕ) : ℕ ≔
+  (rec m return y . (∀ (x : ℕ) → ℕ)
+   | zero ⇒ λ (x : ℕ) → succ x
+   | succ p, r ⇒ λ (x : ℕ) → Generic.iterate 0l ℕ r (succ x) 1
    end) n
 end
 
 (* The defining equations, one per clause. *)
 module Equations where
 
-theorem ackZero : forall (n : Nat) -> Eq (ack 0 n) (succ n) :=
-  fun (n : Nat) -> refl n
+theorem ackZero : ∀ (n : ℕ) → Eq (ack 0 n) (succ n) ≔
+  λ (n : ℕ) → refl n
 end
 
-theorem ackSuccZero : forall (m : Nat) -> Eq (ack (succ m) 0) (ack m 1) :=
-  fun (m : Nat) -> refl (ack m 1)
+theorem ackSuccZero : ∀ (m : ℕ) → Eq (ack (succ m) 0) (ack m 1) ≔
+  λ (m : ℕ) → refl (ack m 1)
 end
 
-theorem ackSuccSucc : forall (m : Nat) (n : Nat) ->
-    Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) :=
-  fun (m : Nat) (n : Nat) -> refl (ack m (ack (succ m) n))
+theorem ackSuccSucc : ∀ (m : ℕ) (n : ℕ) →
+    Eq (ack (succ m) (succ n)) (ack m (ack (succ m) n)) ≔
+  λ (m : ℕ) (n : ℕ) → refl (ack m (ack (succ m) n))
 end
 
 end
@@ -39,25 +39,25 @@ end
 (* Closed forms of the first rows. *)
 module Rows where
 
-theorem ackOne : forall (n : Nat) -> Eq (ack 1 n) (succ (succ n)) :=
-  fun (n : Nat) ->
+theorem ackOne : ∀ (n : ℕ) → Eq (ack 1 n) (succ (succ n)) ≔
+  λ (n : ℕ) →
     rec n return x . Eq (ack 1 x) (succ (succ x))
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
 (* [ack 2 n] is [2 n + 3]: the step rewrites [ack 1] by [ackOne] and moves a
    successor past [plusSucc]. *)
-theorem ackTwo : forall (n : Nat) -> Eq (ack 2 n) (succ (succ (succ (plus n n)))) :=
-  fun (n : Nat) ->
+theorem ackTwo : ∀ (n : ℕ) → Eq (ack 2 n) (succ (succ (succ (plus n n)))) ≔
+  λ (n : ℕ) →
     rec n return x . Eq (ack 2 x) (succ (succ (succ (plus x x))))
-    | zero => true
-    | succ p, ih =>
-        let prev := ack 2 p;
-            step : Eq (ack 1 prev) (succ (succ prev)) := ackOne prev;
-            target := succ (succ (succ (plus (succ p) (succ p))));
-            shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target :=
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let prev ≔ ack 2 p;
+            step : Eq (ack 1 prev) (succ (succ prev)) ≔ ackOne prev;
+            target ≔ succ (succ (succ (plus (succ p) (succ p))));
+            shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target ≔
               sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p)
         in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p)))))) target
              (trans (ack 1 prev) (succ (succ prev))

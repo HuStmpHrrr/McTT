@@ -1,17 +1,17 @@
-(* A client of [Prelude::Arith::Monotone] and [Prelude::Arith::Lattice]:
-   closed instances of the order and lattice laws normalize to [true], and a
+(* A client of [Prelude∷Arith∷Monotone] and [Prelude∷Arith∷Lattice]:
+   closed instances of the order and lattice laws normalize to [⋆], and a
    few computations with [min], [max] and [sub]. *)
 module Lattice where
 
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::MinMax use (min; max)
-import Prelude::Arith::Monotone.Mono use (lePlusMono; lePlusCancel; leMultMono)
-open Prelude::Arith::Monotone.Strict use (ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus)
-open Prelude::Arith::Monotone.SubLaws use (subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
-import Prelude::Arith::Lattice.Algebra use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib; maxMinDistrib)
-open Prelude::Arith::Lattice.Bounds use (minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight)
-open Prelude::Arith::Lattice.Mono use (minMono; maxMono)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Sub use (sub)
+import Prelude∷Arith∷MinMax use (min; max)
+import Prelude∷Arith∷Monotone.Mono use (lePlusMono; lePlusCancel; leMultMono)
+open Prelude∷Arith∷Monotone.Strict use (ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus)
+open Prelude∷Arith∷Monotone.SubLaws use (subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
+import Prelude∷Arith∷Lattice.Algebra use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib; maxMinDistrib)
+open Prelude∷Arith∷Lattice.Bounds use (minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight)
+open Prelude∷Arith∷Lattice.Mono use (minMono; maxMono)
 
 eval min (max 2 7) (max 5 3)
 
@@ -19,18 +19,18 @@ eval max (min 9 4) (min 6 8)
 
 eval plus (sub 9 4) 4
 
-(* A proof of a closed proposition normalizes to [true], of type [True]. *)
-eval lePlusMono 1 2 3 4 true true
+(* A proof of a closed proposition normalizes to [⋆], of type [⊤]. *)
+eval lePlusMono 1 2 3 4 ⋆ ⋆
 
-eval lePlusCancel 3 2 5 true
+eval lePlusCancel 3 2 5 ⋆
 
-eval leMultMono 2 3 2 4 true true
+eval leMultMono 2 3 2 4 ⋆ ⋆
 
-eval ltTrans 1 2 4 true true
+eval ltTrans 1 2 4 ⋆ ⋆
 
-eval ltLeTrans 1 3 3 true true
+eval ltLeTrans 1 3 3 ⋆ ⋆
 
-eval leLtTrans 2 2 5 true true
+eval leLtTrans 2 2 5 ⋆ ⋆
 
 eval ltSucc 6
 
@@ -38,15 +38,15 @@ eval ltPlus 4 2
 
 eval subLe 7 3
 
-eval subMonoLeft 4 6 2 true
+eval subMonoLeft 4 6 2 ⋆
 
-eval subMonoRight 8 2 5 true
+eval subMonoRight 8 2 5 ⋆
 
-eval plusSubCancel 9 4 true
+eval plusSubCancel 9 4 ⋆
 
-eval subPlusCancel 9 4 true
+eval subPlusCancel 9 4 ⋆
 
-eval subPos 5 2 true
+eval subPos 5 2 ⋆
 
 eval minAssoc 4 2 7
 
@@ -64,16 +64,16 @@ eval minLe 3 8
 
 eval leMax 8 3
 
-eval leMin 2 4 5 true true
+eval leMin 2 4 5 ⋆ ⋆
 
-eval maxLe 3 4 6 true true
+eval maxLe 3 4 6 ⋆ ⋆
 
-eval minEqLeft 3 5 true
+eval minEqLeft 3 5 ⋆
 
-eval maxEqRight 3 5 true
+eval maxEqRight 3 5 ⋆
 
-eval minMono 2 3 4 6 true true
+eval minMono 2 3 4 6 ⋆ ⋆
 
-eval maxMono 2 3 6 7 true true
+eval maxMono 2 3 6 7 ⋆ ⋆
 
 end

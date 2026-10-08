@@ -1,10 +1,10 @@
 (* A unit with parameters: its members are applied to them. *)
-import Lib::Poly use (id)
+import Lib∷Poly use (id)
 
 module Params where
 
-eval Lib::Poly.id Nat 3 : Nat
+eval Lib∷Poly.id ℕ 3 : ℕ
 
-eval id Nat 4
+eval id ℕ 4
 
 end

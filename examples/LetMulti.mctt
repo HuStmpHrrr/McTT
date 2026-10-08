@@ -1,12 +1,12 @@
 module LetMulti where
 
 (* Each binding uses the one before it. *)
-eval let A : Type@0 := Nat;
-         n : A := 2;
-         double : forall (x : A) -> A :=
-           fun (x : A) -> rec x return y . A | zero => n | succ m, r => succ r end
+eval let A : Type@0 ≔ ℕ;
+         n : A ≔ 2;
+         double : ∀ (x : A) → A ≔
+           λ (x : A) → rec x return y . A | zero ⇒ n | succ m, r ⇒ succ r end
      in
        double n
-     end : Nat
+     end : ℕ
 
 end

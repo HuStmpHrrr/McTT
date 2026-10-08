@@ -6,51 +6,51 @@
    uniqueness of the neutral element, the laws of powers [pow x n], and, in
    the submodule [Commutative], the laws that need commutativity.
 
-   Laws are stated up to [R] rather than up to [Prelude::Arith::Equality],
-   so a carrier that is not [Nat] (functions, compared pointwise) is an
+   Laws are stated up to [R] rather than up to [Prelude∷Arith∷Equality],
+   so a carrier that is not [ℕ] (functions, compared pointwise) is an
    instance as well.  The relation is at the carrier's level; this loses
    nothing, since a relation into a lower universe is also one into
    [Type@{u}], by cumulativity. *)
-module Prelude::Algebra::Monoid
+module Prelude∷Algebra∷Monoid
     (u : Level)
     (M : Type@{u})
-    (R : forall (x : M) (y : M) -> Type@{u})
-    (rRefl : forall (x : M) -> R x x)
-    (rSym : forall (x : M) (y : M) (h : R x y) -> R y x)
-    (rTrans : forall (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) -> R x z)
-    (op : forall (x : M) (y : M) -> M)
-    (opCong : forall (a : M) (b : M) (c : M) (d : M) (hac : R a c) (hbd : R b d) ->
+    (R : ∀ (x : M) (y : M) → Type@{u})
+    (rRefl : ∀ (x : M) → R x x)
+    (rSym : ∀ (x : M) (y : M) (h : R x y) → R y x)
+    (rTrans : ∀ (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) → R x z)
+    (op : ∀ (x : M) (y : M) → M)
+    (opCong : ∀ (a : M) (b : M) (c : M) (d : M) (hac : R a c) (hbd : R b d) →
                 R (op a b) (op c d))
     (e : M)
-    (assoc : forall (x : M) (y : M) (z : M) -> R (op (op x y) z) (op x (op y z)))
-    (leftId : forall (x : M) -> R (op e x) x)
-    (rightId : forall (x : M) -> R (op x e) x) where
+    (assoc : ∀ (x : M) (y : M) (z : M) → R (op (op x y) z) (op x (op y z)))
+    (leftId : ∀ (x : M) → R (op e x) x)
+    (rightId : ∀ (x : M) → R (op x e) x) where
 
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Mult use (mult)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Mult use (mult)
 
 (* [pow x n] is [x] combined with itself [n] times: [op x (op x ... e)]. *)
-def pow (x : M) (n : Nat) : M :=
+def pow (x : M) (n : ℕ) : M ≔
   rec n return y . M
-  | zero => e
-  | succ p, r => op x r
+  | zero ⇒ e
+  | succ p, r ⇒ op x r
   end
 end
 
 (* Rewriting one side of the operation. *)
 module Cong where
 
-theorem congLeft : forall (a : M) (b : M) (c : M) (h : R a b) -> R (op a c) (op b c) :=
-  fun (a : M) (b : M) (c : M) (h : R a b) -> opCong a c b c h (rRefl c)
+theorem congLeft : ∀ (a : M) (b : M) (c : M) (h : R a b) → R (op a c) (op b c) ≔
+  λ (a : M) (b : M) (c : M) (h : R a b) → opCong a c b c h (rRefl c)
 end
 
-theorem congRight : forall (a : M) (b : M) (c : M) (h : R b c) -> R (op a b) (op a c) :=
-  fun (a : M) (b : M) (c : M) (h : R b c) -> opCong a b a c (rRefl a) h
+theorem congRight : ∀ (a : M) (b : M) (c : M) (h : R b c) → R (op a b) (op a c) ≔
+  λ (a : M) (b : M) (c : M) (h : R b c) → opCong a b a c (rRefl a) h
 end
 
 (* Associativity read from right to left. *)
-theorem assocBack : forall (x : M) (y : M) (z : M) -> R (op x (op y z)) (op (op x y) z) :=
-  fun (x : M) (y : M) (z : M) -> rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
+theorem assocBack : ∀ (x : M) (y : M) (z : M) → R (op x (op y z)) (op (op x y) z) ≔
+  λ (x : M) (y : M) (z : M) → rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
 end
 
 end
@@ -61,14 +61,14 @@ open Cong use (congLeft; congRight; assocBack)
 module Neutral where
 
 (* An element that is neutral on the left is [e]: both are [op d e]. *)
-theorem leftIdUnique : forall (d : M) (h : forall (x : M) -> R (op d x) x) -> R d e :=
-  fun (d : M) (h : forall (x : M) -> R (op d x) x) ->
+theorem leftIdUnique : ∀ (d : M) (h : ∀ (x : M) → R (op d x) x) → R d e ≔
+  λ (d : M) (h : ∀ (x : M) → R (op d x) x) →
     rTrans d (op d e) e (rSym (op d e) d (rightId d)) (h e)
 end
 
 (* An element that is neutral on the right is [e]: both are [op e d]. *)
-theorem rightIdUnique : forall (d : M) (h : forall (x : M) -> R (op x d) x) -> R d e :=
-  fun (d : M) (h : forall (x : M) -> R (op x d) x) ->
+theorem rightIdUnique : ∀ (d : M) (h : ∀ (x : M) → R (op x d) x) → R d e ≔
+  λ (d : M) (h : ∀ (x : M) → R (op x d) x) →
     rTrans d (op e d) e (rSym (op e d) d (leftId d)) (h e)
 end
 
@@ -77,25 +77,25 @@ end
 (* Laws of powers. *)
 module Power where
 
-theorem powOne : forall (x : M) -> R (pow x 1) x :=
-  fun (x : M) -> rightId x
+theorem powOne : ∀ (x : M) → R (pow x 1) x ≔
+  λ (x : M) → rightId x
 end
 
 (* Powers respect [R]. *)
-theorem powCong : forall (x : M) (y : M) (h : R x y) (n : Nat) -> R (pow x n) (pow y n) :=
-  fun (x : M) (y : M) (h : R x y) (n : Nat) ->
+theorem powCong : ∀ (x : M) (y : M) (h : R x y) (n : ℕ) → R (pow x n) (pow y n) ≔
+  λ (x : M) (y : M) (h : R x y) (n : ℕ) →
     rec n return k . R (pow x k) (pow y k)
-    | zero => rRefl e
-    | succ p, ih => opCong x (pow x p) y (pow y p) h ih
+    | zero ⇒ rRefl e
+    | succ p, ih ⇒ opCong x (pow x p) y (pow y p) h ih
     end
 end
 
 (* The last factor may be split off on the right as well as on the left. *)
-theorem powSuccRight : forall (x : M) (n : Nat) -> R (pow x (succ n)) (op (pow x n) x) :=
-  fun (x : M) (n : Nat) ->
+theorem powSuccRight : ∀ (x : M) (n : ℕ) → R (pow x (succ n)) (op (pow x n) x) ≔
+  λ (x : M) (n : ℕ) →
     rec n return k . R (pow x (succ k)) (op (pow x k) x)
-    | zero => rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
-    | succ p, ih =>
+    | zero ⇒ rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
+    | succ p, ih ⇒
         rTrans (op x (pow x (succ p))) (op x (op (pow x p) x)) (op (op x (pow x p)) x)
           (congRight x (pow x (succ p)) (op (pow x p) x) ih)
           (assocBack x (pow x p) x)
@@ -103,12 +103,12 @@ theorem powSuccRight : forall (x : M) (n : Nat) -> R (pow x (succ n)) (op (pow x
 end
 
 (* A power of a sum of exponents is the product of the powers. *)
-theorem powPlus : forall (x : M) (m : Nat) (n : Nat) ->
-    R (pow x (plus m n)) (op (pow x m) (pow x n)) :=
-  fun (x : M) (m : Nat) (n : Nat) ->
+theorem powPlus : ∀ (x : M) (m : ℕ) (n : ℕ) →
+    R (pow x (plus m n)) (op (pow x m) (pow x n)) ≔
+  λ (x : M) (m : ℕ) (n : ℕ) →
     rec m return k . R (pow x (plus k n)) (op (pow x k) (pow x n))
-    | zero => rSym (op e (pow x n)) (pow x n) (leftId (pow x n))
-    | succ p, ih =>
+    | zero ⇒ rSym (op e (pow x n)) (pow x n) (leftId (pow x n))
+    | succ p, ih ⇒
         rTrans (op x (pow x (plus p n))) (op x (op (pow x p) (pow x n)))
           (op (op x (pow x p)) (pow x n))
           (congRight x (pow x (plus p n)) (op (pow x p) (pow x n)) ih)
@@ -117,12 +117,12 @@ theorem powPlus : forall (x : M) (m : Nat) (n : Nat) ->
 end
 
 (* A power of a product of exponents is a power of a power. *)
-theorem powMult : forall (x : M) (m : Nat) (n : Nat) ->
-    R (pow x (mult m n)) (pow (pow x n) m) :=
-  fun (x : M) (m : Nat) (n : Nat) ->
+theorem powMult : ∀ (x : M) (m : ℕ) (n : ℕ) →
+    R (pow x (mult m n)) (pow (pow x n) m) ≔
+  λ (x : M) (m : ℕ) (n : ℕ) →
     rec m return k . R (pow x (mult k n)) (pow (pow x n) k)
-    | zero => rRefl e
-    | succ p, ih =>
+    | zero ⇒ rRefl e
+    | succ p, ih ⇒
         rTrans (pow x (plus n (mult p n))) (op (pow x n) (pow x (mult p n)))
           (op (pow x n) (pow (pow x n) p))
           (powPlus x n (mult p n))
@@ -131,25 +131,25 @@ theorem powMult : forall (x : M) (m : Nat) (n : Nat) ->
 end
 
 (* Powers of the same element commute. *)
-theorem powComm : forall (x : M) (m : Nat) (n : Nat) ->
-    R (op (pow x m) (pow x n)) (op (pow x n) (pow x m)) :=
-  fun (x : M) (m : Nat) (n : Nat) ->
+theorem powComm : ∀ (x : M) (m : ℕ) (n : ℕ) →
+    R (op (pow x m) (pow x n)) (op (pow x n) (pow x m)) ≔
+  λ (x : M) (m : ℕ) (n : ℕ) →
     rec m return k . R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
-    | zero =>
+    | zero ⇒
         rTrans (op e (pow x n)) (pow x n) (op (pow x n) e)
           (leftId (pow x n)) (rSym (op (pow x n) e) (pow x n) (rightId (pow x n)))
-    | succ p, ih =>
-        let a := op (op x (pow x p)) (pow x n);
-            b := op x (op (pow x p) (pow x n));
-            c := op x (op (pow x n) (pow x p));
-            d := op (op x (pow x n)) (pow x p);
-            f := op (op (pow x n) x) (pow x p);
-            g := op (pow x n) (op x (pow x p));
-            ab : R a b := assoc x (pow x p) (pow x n);
-            bc : R b c := congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
-            cd : R c d := assocBack x (pow x n) (pow x p);
-            df : R d f := congLeft (op x (pow x n)) (op (pow x n) x) (pow x p) (powSuccRight x n);
-            fg : R f g := assoc (pow x n) x (pow x p)
+    | succ p, ih ⇒
+        let a ≔ op (op x (pow x p)) (pow x n);
+            b ≔ op x (op (pow x p) (pow x n));
+            c ≔ op x (op (pow x n) (pow x p));
+            d ≔ op (op x (pow x n)) (pow x p);
+            f ≔ op (op (pow x n) x) (pow x p);
+            g ≔ op (pow x n) (op x (pow x p));
+            ab : R a b ≔ assoc x (pow x p) (pow x n);
+            bc : R b c ≔ congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
+            cd : R c d ≔ assocBack x (pow x n) (pow x p);
+            df : R d f ≔ congLeft (op x (pow x n)) (op (pow x n) x) (pow x p) (powSuccRight x n);
+            fg : R f g ≔ assoc (pow x n) x (pow x p)
         in rTrans a b g ab (rTrans b c g bc (rTrans c d g cd (rTrans d f g df fg)))
         end
     end
@@ -158,11 +158,11 @@ end
 end
 
 (* Laws of a commutative monoid, given the proof [comm] of commutativity. *)
-module Commutative (comm : forall (x : M) (y : M) -> R (op x y) (op y x)) where
+module Commutative (comm : ∀ (x : M) (y : M) → R (op x y) (op y x)) where
 
 (* The first factor may be moved past the second. *)
-theorem leftComm : forall (a : M) (b : M) (c : M) -> R (op a (op b c)) (op b (op a c)) :=
-  fun (a : M) (b : M) (c : M) ->
+theorem leftComm : ∀ (a : M) (b : M) (c : M) → R (op a (op b c)) (op b (op a c)) ≔
+  λ (a : M) (b : M) (c : M) →
     rTrans (op a (op b c)) (op (op a b) c) (op b (op a c))
       (assocBack a b c)
       (rTrans (op (op a b) c) (op (op b a) c) (op b (op a c))
@@ -171,9 +171,9 @@ theorem leftComm : forall (a : M) (b : M) (c : M) -> R (op a (op b c)) (op b (op
 end
 
 (* The two middle factors of a product of products can be exchanged. *)
-theorem swapMiddle : forall (a : M) (b : M) (c : M) (d : M) ->
-    R (op (op a b) (op c d)) (op (op a c) (op b d)) :=
-  fun (a : M) (b : M) (c : M) (d : M) ->
+theorem swapMiddle : ∀ (a : M) (b : M) (c : M) (d : M) →
+    R (op (op a b) (op c d)) (op (op a c) (op b d)) ≔
+  λ (a : M) (b : M) (c : M) (d : M) →
     rTrans (op (op a b) (op c d)) (op a (op b (op c d))) (op (op a c) (op b d))
       (assoc a b (op c d))
       (rTrans (op a (op b (op c d))) (op a (op c (op b d))) (op (op a c) (op b d))
@@ -182,12 +182,12 @@ theorem swapMiddle : forall (a : M) (b : M) (c : M) (d : M) ->
 end
 
 (* A power of a product is the product of the powers. *)
-theorem powOp : forall (x : M) (y : M) (n : Nat) ->
-    R (pow (op x y) n) (op (pow x n) (pow y n)) :=
-  fun (x : M) (y : M) (n : Nat) ->
+theorem powOp : ∀ (x : M) (y : M) (n : ℕ) →
+    R (pow (op x y) n) (op (pow x n) (pow y n)) ≔
+  λ (x : M) (y : M) (n : ℕ) →
     rec n return k . R (pow (op x y) k) (op (pow x k) (pow y k))
-    | zero => rSym (op e e) e (leftId e)
-    | succ p, ih =>
+    | zero ⇒ rSym (op e e) e (leftId e)
+    | succ p, ih ⇒
         rTrans (op (op x y) (pow (op x y) p)) (op (op x y) (op (pow x p) (pow y p)))
           (op (op x (pow x p)) (op y (pow y p)))
           (congRight (op x y) (pow (op x y) p) (op (pow x p) (pow y p)) ih)

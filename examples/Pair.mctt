@@ -3,25 +3,25 @@ module Pair where
 eval (
     (* Main example *)
     (
-      fun (Pair : forall (A : Type@0) (B : Type@0) -> Type@1)
-          (pair : forall (A : Type@0) (B : Type@0) (a : A) (b : B) -> Pair A B)
-          (fst : forall (A : Type@0) (B : Type@0) (p : Pair A B) -> A)
-          (snd : forall (A : Type@0) (B : Type@0) (p : Pair A B) -> B) ->
+      λ (Pair : ∀ (A : Type@0) (B : Type@0) → Type@1)
+        (pair : ∀ (A : Type@0) (B : Type@0) (a : A) (b : B) → Pair A B)
+        (fst : ∀ (A : Type@0) (B : Type@0) (p : Pair A B) → A)
+        (snd : ∀ (A : Type@0) (B : Type@0) (p : Pair A B) → B) →
         (
-          fun (p : Pair Nat (forall (x : Nat) -> Nat)) ->
-            snd Nat (forall (x : Nat) -> Nat) p
-              (fst Nat (forall (x : Nat) -> Nat) p)
+          λ (p : Pair ℕ (∀ (x : ℕ) → ℕ)) →
+            snd ℕ (∀ (x : ℕ) → ℕ) p
+              (fst ℕ (∀ (x : ℕ) → ℕ) p)
         )
-        (pair Nat (forall (x : Nat) -> Nat) 3 (fun (x : Nat) -> succ (succ x)))
+        (pair ℕ (∀ (x : ℕ) → ℕ) 3 (λ (x : ℕ) → succ (succ x)))
     )
     (* Church pair *)
-    (fun (A : Type@0) (B : Type@0) -> forall (C : Type@0) (pair : forall (a : A) (b : B) -> C) -> C)
+    (λ (A : Type@0) (B : Type@0) → ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C)
     (* Church pair constructor *)
-    (fun (A : Type@0) (B : Type@0) (a : A) (b : B) (C : Type@0) (pair : forall (a : A) (b : B) -> C) -> pair a b)
+    (λ (A : Type@0) (B : Type@0) (a : A) (b : B) (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → pair a b)
     (* Church pair fst *)
-    (fun (A : Type@0) (B : Type@0) (p : forall (C : Type@0) (pair : forall (a : A) (b : B) -> C) -> C) -> p A (fun (a : A) (b : B) -> a))
+    (λ (A : Type@0) (B : Type@0) (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) → p A (λ (a : A) (b : B) → a))
     (* Church pair snd *)
-    (fun (A : Type@0) (B : Type@0) (p : forall (C : Type@0) (pair : forall (a : A) (b : B) -> C) -> C) -> p B (fun (a : A) (b : B) -> b))
-  ) : Nat
+    (λ (A : Type@0) (B : Type@0) (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) → p B (λ (a : A) (b : B) → b))
+  ) : ℕ
 
 end

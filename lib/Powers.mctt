@@ -1,22 +1,22 @@
-(* A client of [Prelude::Arith::Pow], [Prelude::Arith::Sum] and
-   [Prelude::Arith::Factorial]: a few computations, and closed instances of
-   their theorems, which normalize to [true]. *)
+(* A client of [Prelude∷Arith∷Pow], [Prelude∷Arith∷Sum] and
+   [Prelude∷Arith∷Factorial]: a few computations, and closed instances of
+   their theorems, which normalize to [⋆]. *)
 module Powers where
 
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Pow use (pow)
-open Prelude::Arith::Pow.Basic use (powZero; powOne; onePow)
-open Prelude::Arith::Pow.Exp use (powPlus; powMult; powMultBase)
-import Prelude::Arith::Sum use (sumTo)
-open Prelude::Arith::Sum.Linear use (sumToPlus; sumToScale; sumToConst)
-open Prelude::Arith::Sum.Closed use (gauss; sumOdd)
-import Prelude::Arith::Factorial use (factorial)
-open Prelude::Arith::Factorial.Laws use (factSucc)
-open Prelude::Arith::Factorial.Bounds use (factPos; factLeSucc; lePowFact)
-import Prelude::Function::Combinators use (Generic)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Pow use (pow)
+open Prelude∷Arith∷Pow.Basic use (powZero; powOne; onePow)
+open Prelude∷Arith∷Pow.Exp use (powPlus; powMult; powMultBase)
+import Prelude∷Arith∷Sum use (sumTo)
+open Prelude∷Arith∷Sum.Linear use (sumToPlus; sumToScale; sumToConst)
+open Prelude∷Arith∷Sum.Closed use (gauss; sumOdd)
+import Prelude∷Arith∷Factorial use (factorial)
+open Prelude∷Arith∷Factorial.Laws use (factSucc)
+open Prelude∷Arith∷Factorial.Bounds use (factPos; factLeSucc; lePowFact)
+import Prelude∷Function∷Combinators use (Generic)
 
-(* The generic combinators at [Nat]. *)
-module NatFun := Generic 0l Nat
+(* The generic combinators at [ℕ]. *)
+module NatFun ≔ Generic 0l ℕ
 
 eval pow 2 10
 
@@ -28,13 +28,13 @@ eval pow 0 0
 eval sumTo NatFun.id 11
 
 (* [0 + 1 + 4 + ... + 25]. *)
-eval sumTo (fun (i : Nat) -> mult i i) 6
+eval sumTo (λ (i : ℕ) → mult i i) 6
 
 eval factorial 5
 
 eval factorial 0
 
-(* A proof of a closed equation normalizes to [true], of type [True].  The
+(* A proof of a closed equation normalizes to [⋆], of type [⊤].  The
    numbers stay at most about 20: checking [Eq n n] takes time exponential
    in [n] (about 6s at [n = 27]). *)
 eval powZero 7
@@ -49,7 +49,7 @@ eval powMult 2 2 2
 
 eval powMultBase 2 2 2
 
-eval sumToPlus NatFun.id (fun (i : Nat) -> mult i i) 4
+eval sumToPlus NatFun.id (λ (i : ℕ) → mult i i) 4
 
 eval sumToScale 3 NatFun.id 4
 

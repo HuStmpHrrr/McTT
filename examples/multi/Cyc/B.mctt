@@ -1,7 +1,7 @@
-import Cyc::A
+import Cyc∷A
 
-module Cyc::B where
+module Cyc∷B where
 
-def b : Nat := 1 end
+def b : ℕ ≔ 1 end
 
 end

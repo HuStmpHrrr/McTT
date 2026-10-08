@@ -1,67 +1,67 @@
 (* Finite sums [sumTo f n] of [f i] for [i < n], with linearity laws, sums
    of constants, and the closed forms of Gauss and of the odd numbers. *)
-module Prelude::Arith::Sum where
+module Prelude∷Arith∷Sum where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-open Prelude::Arith::Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
-import Prelude::Arith::Mult use (mult)
-open Prelude::Arith::Mult.Basic use (multZero; multSucc)
-open Prelude::Arith::Mult.Algebra use (multComm; multDistribLeft; multDistribRight)
-import Prelude::Function::Combinators use (Generic)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
+import Prelude∷Arith∷Mult use (mult)
+open Prelude∷Arith∷Mult.Basic use (multZero; multSucc)
+open Prelude∷Arith∷Mult.Algebra use (multComm; multDistribLeft; multDistribRight)
+import Prelude∷Function∷Combinators use (Generic)
 
 (* [sumTo f n] is [f (n - 1) + ... + f 0]: [sumTo f 0] is [0] and
    [sumTo f (succ p)] is [plus (f p) (sumTo f p)]. *)
-def sumTo (f : forall (i : Nat) -> Nat) (n : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => 0
-  | succ p, r => plus (f p) r
+def sumTo (f : ∀ (i : ℕ) → ℕ) (n : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ 0
+  | succ p, r ⇒ plus (f p) r
   end
 end
 
 (* The defining equations, extensionality, and shifting. *)
 module Basic where
 
-theorem sumToZero : forall (f : forall (i : Nat) -> Nat) -> Eq (sumTo f 0) 0 :=
-  fun (f : forall (i : Nat) -> Nat) -> true
+theorem sumToZero : ∀ (f : ∀ (i : ℕ) → ℕ) → Eq (sumTo f 0) 0 ≔
+  λ (f : ∀ (i : ℕ) → ℕ) → ⋆
 end
 
-theorem sumToSucc : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
-    Eq (sumTo f (succ n)) (plus (f n) (sumTo f n)) :=
-  fun (f : forall (i : Nat) -> Nat) (n : Nat) -> refl (plus (f n) (sumTo f n))
+theorem sumToSucc : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    Eq (sumTo f (succ n)) (plus (f n) (sumTo f n)) ≔
+  λ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) → refl (plus (f n) (sumTo f n))
 end
 
 (* Pointwise equal functions have equal sums. *)
-theorem sumToExt : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat)
-    (h : forall (i : Nat) -> Eq (f i) (g i)) (n : Nat) -> Eq (sumTo f n) (sumTo g n) :=
-  fun (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat)
-      (h : forall (i : Nat) -> Eq (f i) (g i)) (n : Nat) ->
+theorem sumToExt : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
+    (h : ∀ (i : ℕ) → Eq (f i) (g i)) (n : ℕ) → Eq (sumTo f n) (sumTo g n) ≔
+  λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ)
+    (h : ∀ (i : ℕ) → Eq (f i) (g i)) (n : ℕ) →
     rec n return x . Eq (sumTo f x) (sumTo g x)
-    | zero => true
-    | succ p, ih =>
-        let sf := sumTo f p;
-            sg := sumTo g p
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let sf ≔ sumTo f p;
+            sg ≔ sumTo g p
         in trans (plus (f p) sf) (plus (g p) sf) (plus (g p) sg)
-             (cong (fun (y : Nat) -> plus y sf) (f p) (g p) (h p))
-             (cong (fun (y : Nat) -> plus (g p) y) sf sg ih)
+             (cong (λ (y : ℕ) → plus y sf) (f p) (g p) (h p))
+             (cong (λ (y : ℕ) → plus (g p) y) sf sg ih)
         end
     end
 end
 
 (* The first summand splits off: [sumTo f (succ n)] is [f 0] plus the sum
-   of the shifted function [fun i -> f (succ i)]. *)
-theorem sumToShift : forall (f : forall (i : Nat) -> Nat) (n : Nat) ->
-    Eq (sumTo f (succ n)) (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) n)) :=
-  fun (f : forall (i : Nat) -> Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo f (succ x)) (plus (f 0) (sumTo (fun (i : Nat) -> f (succ i)) x))
-    | zero => refl (plus (f 0) 0)
-    | succ p, ih =>
-        let b := f (succ p);
-            l := sumTo f (succ p);
-            r := sumTo (fun (i : Nat) -> f (succ i)) p
+   of the shifted function [λ i → f (succ i)]. *)
+theorem sumToShift : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    Eq (sumTo f (succ n)) (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) n)) ≔
+  λ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    rec n return x . Eq (sumTo f (succ x)) (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) x))
+    | zero ⇒ refl (plus (f 0) 0)
+    | succ p, ih ⇒
+        let b ≔ f (succ p);
+            l ≔ sumTo f (succ p);
+            r ≔ sumTo (λ (i : ℕ) → f (succ i)) p
         in trans (plus b l) (plus b (plus (f 0) r)) (plus (f 0) (plus b r))
-             (cong (fun (y : Nat) -> plus b y) l (plus (f 0) r) ih)
+             (cong (λ (y : ℕ) → plus b y) l (plus (f 0) r) ih)
              (plusLeftComm b (f 0) r)
         end
     end
@@ -73,19 +73,19 @@ end
 module Linear where
 
 (* Summation is additive in the summand. *)
-theorem sumToPlus : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat) (n : Nat) ->
-    Eq (sumTo (fun (i : Nat) -> plus (f i) (g i)) n) (plus (sumTo f n) (sumTo g n)) :=
-  fun (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -> Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo (fun (i : Nat) -> plus (f i) (g i)) x)
+theorem sumToPlus : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) n) (plus (sumTo f n) (sumTo g n)) ≔
+  λ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    rec n return x . Eq (sumTo (λ (i : ℕ) → plus (f i) (g i)) x)
                         (plus (sumTo f x) (sumTo g x))
-    | zero => true
-    | succ p, ih =>
-        let fg := plus (f p) (g p);
-            sfg := sumTo (fun (i : Nat) -> plus (f i) (g i)) p;
-            sf := sumTo f p;
-            sg := sumTo g p;
-            step : Eq (plus fg sfg) (plus fg (plus sf sg)) :=
-              cong (fun (y : Nat) -> plus fg y) sfg (plus sf sg) ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let fg ≔ plus (f p) (g p);
+            sfg ≔ sumTo (λ (i : ℕ) → plus (f i) (g i)) p;
+            sf ≔ sumTo f p;
+            sg ≔ sumTo g p;
+            step : Eq (plus fg sfg) (plus fg (plus sf sg)) ≔
+              cong (λ (y : ℕ) → plus fg y) sfg (plus sf sg) ih
         in trans (plus fg sfg) (plus fg (plus sf sg)) (plus (plus (f p) sf) (plus (g p) sg))
              step (plusSwapMiddle (f p) (g p) sf sg)
         end
@@ -93,17 +93,17 @@ theorem sumToPlus : forall (f : forall (i : Nat) -> Nat) (g : forall (i : Nat) -
 end
 
 (* A constant factor can be taken out of a sum. *)
-theorem sumToScale : forall (c : Nat) (f : forall (i : Nat) -> Nat) (n : Nat) ->
-    Eq (sumTo (fun (i : Nat) -> mult c (f i)) n) (mult c (sumTo f n)) :=
-  fun (c : Nat) (f : forall (i : Nat) -> Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo (fun (i : Nat) -> mult c (f i)) x) (mult c (sumTo f x))
-    | zero => sym (mult c 0) 0 (multZero c)
-    | succ p, ih =>
-        let cf := mult c (f p);
-            scf := sumTo (fun (i : Nat) -> mult c (f i)) p;
-            sf := sumTo f p;
-            step : Eq (plus cf scf) (plus cf (mult c sf)) :=
-              cong (fun (y : Nat) -> plus cf y) scf (mult c sf) ih
+theorem sumToScale : ∀ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    Eq (sumTo (λ (i : ℕ) → mult c (f i)) n) (mult c (sumTo f n)) ≔
+  λ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
+    rec n return x . Eq (sumTo (λ (i : ℕ) → mult c (f i)) x) (mult c (sumTo f x))
+    | zero ⇒ sym (mult c 0) 0 (multZero c)
+    | succ p, ih ⇒
+        let cf ≔ mult c (f p);
+            scf ≔ sumTo (λ (i : ℕ) → mult c (f i)) p;
+            sf ≔ sumTo f p;
+            step : Eq (plus cf scf) (plus cf (mult c sf)) ≔
+              cong (λ (y : ℕ) → plus cf y) scf (mult c sf) ih
         in trans (plus cf scf) (plus cf (mult c sf)) (mult c (plus (f p) sf))
              step (sym (mult c (plus (f p) sf)) (plus cf (mult c sf))
                      (multDistribLeft c (f p) sf))
@@ -112,13 +112,13 @@ theorem sumToScale : forall (c : Nat) (f : forall (i : Nat) -> Nat) (n : Nat) ->
 end
 
 (* The sum of [n] copies of [c] is [mult n c]. *)
-theorem sumToConst : forall (c : Nat) (n : Nat) ->
-    Eq (sumTo (Generic.const 0l Nat Nat c) n) (mult n c) :=
-  fun (c : Nat) (n : Nat) ->
-    rec n return x . Eq (sumTo (Generic.const 0l Nat Nat c) x) (mult x c)
-    | zero => true
-    | succ p, ih =>
-        cong (fun (y : Nat) -> plus c y) (sumTo (Generic.const 0l Nat Nat c) p) (mult p c) ih
+theorem sumToConst : ∀ (c : ℕ) (n : ℕ) →
+    Eq (sumTo (Generic.const 0l ℕ ℕ c) n) (mult n c) ≔
+  λ (c : ℕ) (n : ℕ) →
+    rec n return x . Eq (sumTo (Generic.const 0l ℕ ℕ c) x) (mult x c)
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        cong (λ (y : ℕ) → plus c y) (sumTo (Generic.const 0l ℕ ℕ c) p) (mult p c) ih
     end
 end
 
@@ -129,23 +129,23 @@ module Closed where
 
 (* Gauss: twice [0 + 1 + ... + n] is [n (n + 1)].  The step distributes
    [mult 2] over the new summand and collects [mult (succ (succ p)) (succ p)]. *)
-theorem gauss : forall (n : Nat) ->
-    Eq (mult 2 (sumTo (Generic.id 0l Nat) (succ n))) (mult n (succ n)) :=
-  fun (n : Nat) ->
-    rec n return x . Eq (mult 2 (sumTo (Generic.id 0l Nat) (succ x))) (mult x (succ x))
-    | zero => true
-    | succ p, ih =>
-        let s := sumTo (Generic.id 0l Nat) (succ p);
-            q := succ p;
-            lhs := mult 2 (plus q s);
-            dist := plus (mult 2 q) (mult 2 s);
-            mid := plus (mult 2 q) (mult p q);
-            coll := mult (succ q) q;
-            rhs := mult q (succ q);
-            stepA : Eq lhs dist := multDistribLeft 2 q s;
-            stepB : Eq dist mid := cong (fun (y : Nat) -> plus (mult 2 q) y) (mult 2 s) (mult p q) ih;
-            stepC : Eq mid coll := sym coll mid (multDistribRight 2 p q);
-            stepD : Eq coll rhs := multComm (succ q) q
+theorem gauss : ∀ (n : ℕ) →
+    Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ n))) (mult n (succ n)) ≔
+  λ (n : ℕ) →
+    rec n return x . Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x))) (mult x (succ x))
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let s ≔ sumTo (Generic.id 0l ℕ) (succ p);
+            q ≔ succ p;
+            lhs ≔ mult 2 (plus q s);
+            dist ≔ plus (mult 2 q) (mult 2 s);
+            mid ≔ plus (mult 2 q) (mult p q);
+            coll ≔ mult (succ q) q;
+            rhs ≔ mult q (succ q);
+            stepA : Eq lhs dist ≔ multDistribLeft 2 q s;
+            stepB : Eq dist mid ≔ cong (λ (y : ℕ) → plus (mult 2 q) y) (mult 2 s) (mult p q) ih;
+            stepC : Eq mid coll ≔ sym coll mid (multDistribRight 2 p q);
+            stepD : Eq coll rhs ≔ multComm (succ q) q
         in trans lhs dist rhs stepA
              (trans dist mid rhs stepB (trans mid coll rhs stepC stepD))
         end
@@ -155,25 +155,25 @@ end
 (* The sum of the first [n] odd numbers [1 + 3 + ... + (2 n - 1)] is
    [mult n n].  The step reduces to
    [plus (mult 2 p) (mult p p) = plus p (mult p (succ p))]. *)
-theorem sumOdd : forall (n : Nat) ->
-    Eq (sumTo (fun (i : Nat) -> succ (mult 2 i)) n) (mult n n) :=
-  fun (n : Nat) ->
-    rec n return x . Eq (sumTo (fun (i : Nat) -> succ (mult 2 i)) x) (mult x x)
-    | zero => true
-    | succ p, ih =>
-        let s := sumTo (fun (i : Nat) -> succ (mult 2 i)) p;
-            pp := mult p p;
-            lhs := plus (mult 2 p) s;
-            a := plus (mult 2 p) pp;
-            b := plus p (plus (plus p 0) pp);
-            c := plus p (plus p pp);
-            rhs := plus p (mult p (succ p));
-            stepA : Eq lhs a := cong (fun (y : Nat) -> plus (mult 2 p) y) s pp ih;
-            stepB : Eq a b := plusAssoc p (plus p 0) pp;
-            stepC : Eq b c :=
-              cong (fun (y : Nat) -> plus p (plus y pp)) (plus p 0) p (plusZero p);
-            stepD : Eq c rhs :=
-              cong (fun (y : Nat) -> plus p y) (plus p pp) (mult p (succ p))
+theorem sumOdd : ∀ (n : ℕ) →
+    Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) n) (mult n n) ≔
+  λ (n : ℕ) →
+    rec n return x . Eq (sumTo (λ (i : ℕ) → succ (mult 2 i)) x) (mult x x)
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let s ≔ sumTo (λ (i : ℕ) → succ (mult 2 i)) p;
+            pp ≔ mult p p;
+            lhs ≔ plus (mult 2 p) s;
+            a ≔ plus (mult 2 p) pp;
+            b ≔ plus p (plus (plus p 0) pp);
+            c ≔ plus p (plus p pp);
+            rhs ≔ plus p (mult p (succ p));
+            stepA : Eq lhs a ≔ cong (λ (y : ℕ) → plus (mult 2 p) y) s pp ih;
+            stepB : Eq a b ≔ plusAssoc p (plus p 0) pp;
+            stepC : Eq b c ≔
+              cong (λ (y : ℕ) → plus p (plus y pp)) (plus p 0) p (plusZero p);
+            stepD : Eq c rhs ≔
+              cong (λ (y : ℕ) → plus p y) (plus p pp) (mult p (succ p))
                 (sym (mult p (succ p)) (plus p pp) (multSucc p p))
         in trans lhs a rhs stepA
              (trans a b rhs stepB (trans b c rhs stepC stepD))

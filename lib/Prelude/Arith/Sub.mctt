@@ -1,29 +1,29 @@
 (* Predecessor and truncated subtraction, with their laws stated with
-   [Prelude::Arith::Equality]. *)
-module Prelude::Arith::Sub where
+   [Prelude∷Arith∷Equality]. *)
+module Prelude∷Arith∷Sub where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; transport)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Algebra use (plusComm)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; transport)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Algebra use (plusComm)
 
 (* The predecessor; [pred 0] is [0]. *)
-def pred (n : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => 0
-  | succ p, r => p
+def pred (n : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ 0
+  | succ p, r ⇒ p
   end
 end
 
 (* Truncated subtraction [sub a b], which is [0] when [b] exceeds [a]. It
    recurses on [b] and then on [a], so [sub (succ a) (succ b)] is [sub a b]
    by computation. *)
-def sub (a : Nat) (b : Nat) : Nat :=
-  (rec b return y . (forall (x : Nat) -> Nat)
-   | zero => fun (x : Nat) -> x
-   | succ q, r => fun (x : Nat) ->
-       rec x return z . Nat
-       | zero => 0
-       | succ p, s => r p
+def sub (a : ℕ) (b : ℕ) : ℕ ≔
+  (rec b return y . (∀ (x : ℕ) → ℕ)
+   | zero ⇒ λ (x : ℕ) → x
+   | succ q, r ⇒ λ (x : ℕ) →
+       rec x return z . ℕ
+       | zero ⇒ 0
+       | succ p, s ⇒ r p
        end
    end) a
 end
@@ -31,46 +31,46 @@ end
 (* Predecessor and subtraction at zero, successors and equal arguments. *)
 module Laws where
 
-theorem predSucc : forall (n : Nat) -> Eq (pred (succ n)) n :=
-  fun (n : Nat) -> refl n
+theorem predSucc : ∀ (n : ℕ) → Eq (pred (succ n)) n ≔
+  λ (n : ℕ) → refl n
 end
 
-theorem subZero : forall (n : Nat) -> Eq (sub n 0) n :=
-  fun (n : Nat) -> refl n
+theorem subZero : ∀ (n : ℕ) → Eq (sub n 0) n ≔
+  λ (n : ℕ) → refl n
 end
 
-theorem zeroSub : forall (n : Nat) -> Eq (sub 0 n) 0 :=
-  fun (n : Nat) ->
+theorem zeroSub : ∀ (n : ℕ) → Eq (sub 0 n) 0 ≔
+  λ (n : ℕ) →
     rec n return x . Eq (sub 0 x) 0
-    | zero => true
-    | succ p, ih => true
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ⋆
     end
 end
 
-theorem subSelf : forall (n : Nat) -> Eq (sub n n) 0 :=
-  fun (n : Nat) ->
+theorem subSelf : ∀ (n : ℕ) → Eq (sub n n) 0 ≔
+  λ (n : ℕ) →
     rec n return x . Eq (sub x x) 0
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
 (* Subtracting successors is subtracting the numbers. *)
-theorem subSucc : forall (a : Nat) (b : Nat) -> Eq (sub (succ a) (succ b)) (sub a b) :=
-  fun (a : Nat) (b : Nat) -> refl (sub a b)
+theorem subSucc : ∀ (a : ℕ) (b : ℕ) → Eq (sub (succ a) (succ b)) (sub a b) ≔
+  λ (a : ℕ) (b : ℕ) → refl (sub a b)
 end
 
 (* Subtracting one more takes one more predecessor. *)
-theorem subSuccRight : forall (a : Nat) (b : Nat) -> Eq (sub a (succ b)) (pred (sub a b)) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) -> Eq (sub x (succ b)) (pred (sub x b)))
-    | zero => fun (b : Nat) ->
-        transport (fun (m : Nat) -> Eq 0 (pred m)) 0 (sub 0 b)
-          (sym (sub 0 b) 0 (zeroSub b)) true
-    | succ p, ih => fun (b : Nat) ->
+theorem subSuccRight : ∀ (a : ℕ) (b : ℕ) → Eq (sub a (succ b)) (pred (sub a b)) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) → Eq (sub x (succ b)) (pred (sub x b)))
+    | zero ⇒ λ (b : ℕ) →
+        transport (λ (m : ℕ) → Eq 0 (pred m)) 0 (sub 0 b)
+          (sym (sub 0 b) 0 (zeroSub b)) ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . Eq (sub (succ p) (succ y)) (pred (sub (succ p) y))
-        | zero => refl p
-        | succ q, s => ih q
+        | zero ⇒ refl p
+        | succ q, s ⇒ ih q
         end
     end
 end
@@ -81,17 +81,17 @@ end
 module PlusSub where
 
 (* Adding [b] on the left and subtracting it again gives back [a]. *)
-theorem plusSubLeft : forall (b : Nat) (a : Nat) -> Eq (sub (plus b a) b) a :=
-  fun (b : Nat) (a : Nat) ->
+theorem plusSubLeft : ∀ (b : ℕ) (a : ℕ) → Eq (sub (plus b a) b) a ≔
+  λ (b : ℕ) (a : ℕ) →
     rec b return x . Eq (sub (plus x a) x) a
-    | zero => refl a
-    | succ p, ih => ih
+    | zero ⇒ refl a
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem plusSub : forall (a : Nat) (b : Nat) -> Eq (sub (plus a b) b) a :=
-  fun (a : Nat) (b : Nat) ->
-    transport (fun (m : Nat) -> Eq (sub m b) a) (plus b a) (plus a b)
+theorem plusSub : ∀ (a : ℕ) (b : ℕ) → Eq (sub (plus a b) b) a ≔
+  λ (a : ℕ) (b : ℕ) →
+    transport (λ (m : ℕ) → Eq (sub m b) a) (plus b a) (plus a b)
       (plusComm b a) (plusSubLeft b a)
 end
 

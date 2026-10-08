@@ -1,9 +1,9 @@
-import Lib::Num
+import Lib∷Num
 
-module Lib::Arith where
+module Lib∷Arith where
 
-def quadruple : forall (x : Nat) -> Nat :=
-  fun (x : Nat) -> Lib::Num.double (Lib::Num.double x)
+def quadruple : ∀ (x : ℕ) → ℕ ≔
+  λ (x : ℕ) → Lib∷Num.double (Lib∷Num.double x)
 end
 
 end

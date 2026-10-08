@@ -1,29 +1,29 @@
 (* Minimum and maximum, by recursion on both arguments, with their laws
-   stated with [Prelude::Arith::Equality]. *)
-module Prelude::Arith::MinMax where
+   stated with [Prelude∷Arith∷Equality]. *)
+module Prelude∷Arith∷MinMax where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
 
-def min (a : Nat) (b : Nat) : Nat :=
-  (rec a return y . (forall (x : Nat) -> Nat)
-   | zero => fun (x : Nat) -> 0
-   | succ p, r => fun (x : Nat) ->
-       rec x return z . Nat
-       | zero => 0
-       | succ q, s => succ (r q)
+def min (a : ℕ) (b : ℕ) : ℕ ≔
+  (rec a return y . (∀ (x : ℕ) → ℕ)
+   | zero ⇒ λ (x : ℕ) → 0
+   | succ p, r ⇒ λ (x : ℕ) →
+       rec x return z . ℕ
+       | zero ⇒ 0
+       | succ q, s ⇒ succ (r q)
        end
    end) b
 end
 
-def max (a : Nat) (b : Nat) : Nat :=
-  (rec a return y . (forall (x : Nat) -> Nat)
-   | zero => fun (x : Nat) -> x
-   | succ p, r => fun (x : Nat) ->
-       rec x return z . Nat
-       | zero => succ p
-       | succ q, s => succ (r q)
+def max (a : ℕ) (b : ℕ) : ℕ ≔
+  (rec a return y . (∀ (x : ℕ) → ℕ)
+   | zero ⇒ λ (x : ℕ) → x
+   | succ p, r ⇒ λ (x : ℕ) →
+       rec x return z . ℕ
+       | zero ⇒ succ p
+       | succ q, s ⇒ succ (r q)
        end
    end) b
 end
@@ -31,84 +31,84 @@ end
 (* Commutativity, idempotence, zero, and the sum of minimum and maximum. *)
 module Laws where
 
-theorem minComm : forall (a : Nat) (b : Nat) -> Eq (min a b) (min b a) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) -> Eq (min x b) (min b x))
-    | zero => fun (b : Nat) ->
+theorem minComm : ∀ (a : ℕ) (b : ℕ) → Eq (min a b) (min b a) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) → Eq (min x b) (min b x))
+    | zero ⇒ λ (b : ℕ) →
         rec b return y . Eq (min 0 y) (min y 0)
-        | zero => true
-        | succ q, s => true
+        | zero ⇒ ⋆
+        | succ q, s ⇒ ⋆
         end
-    | succ p, ih => fun (b : Nat) ->
+    | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . Eq (min (succ p) y) (min y (succ p))
-        | zero => true
-        | succ q, s => ih q
+        | zero ⇒ ⋆
+        | succ q, s ⇒ ih q
         end
     end
 end
 
-theorem maxComm : forall (a : Nat) (b : Nat) -> Eq (max a b) (max b a) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) -> Eq (max x b) (max b x))
-    | zero => fun (b : Nat) ->
+theorem maxComm : ∀ (a : ℕ) (b : ℕ) → Eq (max a b) (max b a) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) → Eq (max x b) (max b x))
+    | zero ⇒ λ (b : ℕ) →
         rec b return y . Eq (max 0 y) (max y 0)
-        | zero => true
-        | succ q, s => refl q
+        | zero ⇒ ⋆
+        | succ q, s ⇒ refl q
         end
-    | succ p, ih => fun (b : Nat) ->
+    | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . Eq (max (succ p) y) (max y (succ p))
-        | zero => refl p
-        | succ q, s => ih q
+        | zero ⇒ refl p
+        | succ q, s ⇒ ih q
         end
     end
 end
 
-theorem minIdem : forall (n : Nat) -> Eq (min n n) n :=
-  fun (n : Nat) ->
+theorem minIdem : ∀ (n : ℕ) → Eq (min n n) n ≔
+  λ (n : ℕ) →
     rec n return x . Eq (min x x) x
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem minZero : forall (n : Nat) -> Eq (min n 0) 0 :=
-  fun (n : Nat) ->
+theorem minZero : ∀ (n : ℕ) → Eq (min n 0) 0 ≔
+  λ (n : ℕ) →
     rec n return x . Eq (min x 0) 0
-    | zero => true
-    | succ p, ih => true
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ⋆
     end
 end
 
-theorem maxIdem : forall (n : Nat) -> Eq (max n n) n :=
-  fun (n : Nat) ->
+theorem maxIdem : ∀ (n : ℕ) → Eq (max n n) n ≔
+  λ (n : ℕ) →
     rec n return x . Eq (max x x) x
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem maxZero : forall (n : Nat) -> Eq (max n 0) n :=
-  fun (n : Nat) ->
+theorem maxZero : ∀ (n : ℕ) → Eq (max n 0) n ≔
+  λ (n : ℕ) →
     rec n return x . Eq (max x 0) x
-    | zero => true
-    | succ p, ih => refl p
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ refl p
     end
 end
 
 (* The minimum and the maximum add up to the sum. In the successor case both
    sides are moved past [plusSucc] and meet at the induction hypothesis. *)
-theorem plusMinMax : forall (a : Nat) (b : Nat) -> Eq (plus (min a b) (max a b)) (plus a b) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) -> Eq (plus (min x b) (max x b)) (plus x b))
-    | zero => fun (b : Nat) -> refl b
-    | succ p, ih => fun (b : Nat) ->
+theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) → Eq (plus (min a b) (max a b)) (plus a b) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) → Eq (plus (min x b) (max x b)) (plus x b))
+    | zero ⇒ λ (b : ℕ) → refl b
+    | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . Eq (plus (min (succ p) y) (max (succ p) y)) (plus (succ p) y)
-        | zero => sym (plus p 0) p (plusZero p)
-        | succ q, s =>
-            let m := min p q;
-                M := max p q;
-                left : Eq (plus m (succ M)) (succ (plus m M)) := plusSucc m M;
-                right : Eq (succ (plus p q)) (plus p (succ q)) :=
+        | zero ⇒ sym (plus p 0) p (plusZero p)
+        | succ q, s ⇒
+            let m ≔ min p q;
+                M ≔ max p q;
+                left : Eq (plus m (succ M)) (succ (plus m M)) ≔ plusSucc m M;
+                right : Eq (succ (plus p q)) (plus p (succ q)) ≔
                   sym (plus p (succ q)) (succ (plus p q)) (plusSucc p q)
             in trans (plus m (succ M)) (succ (plus p q)) (plus p (succ q))
                  (trans (plus m (succ M)) (succ (plus m M)) (succ (plus p q)) left (ih q))

@@ -1,77 +1,77 @@
 (* Monotonicity of addition, multiplication and subtraction with respect to
-   [Prelude::Arith::Order.Le], transitivity laws for the strict order, and the
-   interaction of [Prelude::Arith::Sub.sub] with the order. *)
-module Prelude::Arith::Monotone where
+   [Prelude∷Arith∷Order.Le], transitivity laws for the strict order, and the
+   interaction of [Prelude∷Arith∷Sub.sub] with the order. *)
+module Prelude∷Arith∷Monotone where
 
-import Prelude::Logic use (absurd)
-import Prelude::Arith::Equality use (Eq; refl; trans)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero; plusSucc)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Le; Lt)
-open Prelude::Arith::Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
+import Prelude∷Logic use (absurd)
+import Prelude∷Arith∷Equality use (Eq; refl; trans)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero; plusSucc)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Sub use (sub)
+import Prelude∷Arith∷Order use (Le; Lt)
+open Prelude∷Arith∷Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
 
 (* Addition and multiplication are monotone, and addition cancels. *)
 module Mono where
 
 (* Addition is monotone in both arguments.  The induction is on [a] with [b]
    generalized; at [a = 0] the bound on [c] is weakened by [lePlusLeft]. *)
-theorem lePlusMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-    (hab : Le a b) (hcd : Le c d) -> Le (plus a c) (plus b d) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
-                        (hab : Le x b) (hcd : Le c d) -> Le (plus x c) (plus b d))
-    | zero => fun (b : Nat) (c : Nat) (d : Nat) (hab : True) (hcd : Le c d) ->
+theorem lePlusMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
+    (hab : Le a b) (hcd : Le c d) → Le (plus a c) (plus b d) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (c : ℕ) (d : ℕ)
+                        (hab : Le x b) (hcd : Le c d) → Le (plus x c) (plus b d))
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) →
         leTrans c d (plus b d) hcd (lePlusLeft b d)
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (c : Nat) (d : Nat)
-                            (hab : Le (succ p) z) (hcd : Le c d) -> Le (plus (succ p) c) (plus z d))
-        | zero => fun (c : Nat) (d : Nat) (hab : False) (hcd : Le c d) ->
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (c : ℕ) (d : ℕ)
+                            (hab : Le (succ p) z) (hcd : Le c d) → Le (plus (succ p) c) (plus z d))
+        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
             absurd (Le (succ (plus p c)) d) hab
-        | succ q, s => fun (c : Nat) (d : Nat) (hab : Le p q) (hcd : Le c d) ->
+        | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
             ih q c d hab hcd
         end
     end
 end
 
 (* Addition is monotone in its first argument. *)
-theorem lePlusMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) ->
-    Le (plus a c) (plus b c) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> lePlusMono a b c c h (leRefl c)
+theorem lePlusMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) →
+    Le (plus a c) (plus b c) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) → lePlusMono a b c c h (leRefl c)
 end
 
 (* Addition is monotone in its second argument. *)
-theorem lePlusMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) ->
-    Le (plus a b) (plus a c) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> lePlusMono a a b c (leRefl a) h
+theorem lePlusMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) →
+    Le (plus a b) (plus a c) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) → lePlusMono a a b c (leRefl a) h
 end
 
 (* A common first summand cancels: [Le (plus (succ p) b) (plus (succ p) c)]
    computes to [Le (plus p b) (plus p c)]. *)
-theorem lePlusCancel : forall (a : Nat) (b : Nat) (c : Nat)
-    (h : Le (plus a b) (plus a c)) -> Le b c :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    rec a return x . (forall (h : Le (plus x b) (plus x c)) -> Le b c)
-    | zero => fun (h : Le b c) -> h
-    | succ p, ih => fun (h : Le (plus p b) (plus p c)) -> ih h
+theorem lePlusCancel : ∀ (a : ℕ) (b : ℕ) (c : ℕ)
+    (h : Le (plus a b) (plus a c)) → Le b c ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
+    rec a return x . (∀ (h : Le (plus x b) (plus x c)) → Le b c)
+    | zero ⇒ λ (h : Le b c) → h
+    | succ p, ih ⇒ λ (h : Le (plus p b) (plus p c)) → ih h
     end
 end
 
 (* Multiplication is monotone in both arguments: the step is [lePlusMono]
    applied to the bound on the factors and the induction hypothesis. *)
-theorem leMultMono : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-    (hab : Le a b) (hcd : Le c d) -> Le (mult a c) (mult b d) :=
-  fun (a : Nat) ->
-    rec a return x . (forall (b : Nat) (c : Nat) (d : Nat)
-                        (hab : Le x b) (hcd : Le c d) -> Le (mult x c) (mult b d))
-    | zero => fun (b : Nat) (c : Nat) (d : Nat) (hab : True) (hcd : Le c d) -> true
-    | succ p, ih => fun (b : Nat) ->
-        rec b return z . (forall (c : Nat) (d : Nat)
-                            (hab : Le (succ p) z) (hcd : Le c d) -> Le (mult (succ p) c) (mult z d))
-        | zero => fun (c : Nat) (d : Nat) (hab : False) (hcd : Le c d) ->
+theorem leMultMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
+    (hab : Le a b) (hcd : Le c d) → Le (mult a c) (mult b d) ≔
+  λ (a : ℕ) →
+    rec a return x . (∀ (b : ℕ) (c : ℕ) (d : ℕ)
+                        (hab : Le x b) (hcd : Le c d) → Le (mult x c) (mult b d))
+    | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) → ⋆
+    | succ p, ih ⇒ λ (b : ℕ) →
+        rec b return z . (∀ (c : ℕ) (d : ℕ)
+                            (hab : Le (succ p) z) (hcd : Le c d) → Le (mult (succ p) c) (mult z d))
+        | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
             absurd (Le (plus c (mult p c)) 0) hab
-        | succ q, s => fun (c : Nat) (d : Nat) (hab : Le p q) (hcd : Le c d) ->
+        | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
             lePlusMono c d (mult p c) (mult q d) hcd (ih q c d hab hcd)
         end
     end
@@ -83,44 +83,44 @@ end
 module Strict where
 
 (* A strict bound gives a non-strict one. *)
-theorem ltLe : forall (a : Nat) (b : Nat) (h : Lt a b) -> Le a b :=
-  fun (a : Nat) (b : Nat) (h : Lt a b) -> leTrans a (succ a) b (leSucc a) h
+theorem ltLe : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) → Le a b ≔
+  λ (a : ℕ) (b : ℕ) (h : Lt a b) → leTrans a (succ a) b (leSucc a) h
 end
 
-def ltLeTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Le b c) -> Lt a c :=
-  fun (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Le b c) ->
+def ltLeTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Le b c) → Lt a c ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Le b c) →
     leTrans (succ a) b c hab hbc
 end
 
 (* [Le (succ a) (succ b)] computes to [Le a b], so [hab] bounds [succ a]. *)
-theorem leLtTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) -> Lt a c :=
-  fun (a : Nat) (b : Nat) (c : Nat) (hab : Le a b) (hbc : Lt b c) ->
+theorem leLtTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Lt b c) → Lt a c ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Lt b c) →
     leTrans (succ a) (succ b) c hab hbc
 end
 
-theorem ltTrans : forall (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) -> Lt a c :=
-  fun (a : Nat) (b : Nat) (c : Nat) (hab : Lt a b) (hbc : Lt b c) ->
+theorem ltTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Lt b c) → Lt a c ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Lt b c) →
     ltLeTrans a b c hab (ltLe b c hbc)
 end
 
-theorem ltSucc : forall (n : Nat) -> Lt n (succ n) :=
-  fun (n : Nat) -> leRefl n
+theorem ltSucc : ∀ (n : ℕ) → Lt n (succ n) ≔
+  λ (n : ℕ) → leRefl n
 end
 
-theorem ltPlus : forall (a : Nat) (b : Nat) -> Lt a (plus a (succ b)) :=
-  fun (a : Nat) (b : Nat) ->
+theorem ltPlus : ∀ (a : ℕ) (b : ℕ) → Lt a (plus a (succ b)) ≔
+  λ (a : ℕ) (b : ℕ) →
     rec a return x . Lt x (plus x (succ b))
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
 (* Addition preserves a strict bound in its second argument. *)
-def ltPlusMonoRight : forall (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) -> Lt (plus m j) (plus m n) :=
-  fun (m : Nat) (j : Nat) (n : Nat) (h : Lt j n) ->
+def ltPlusMonoRight : ∀ (m : ℕ) (j : ℕ) (n : ℕ) (h : Lt j n) → Lt (plus m j) (plus m n) ≔
+  λ (m : ℕ) (j : ℕ) (n : ℕ) (h : Lt j n) →
     rec m return x . Lt (plus x j) (plus x n)
-    | zero => h
-    | succ p, ih => ih
+    | zero ⇒ h
+    | succ p, ih ⇒ ih
     end
 end
 
@@ -130,61 +130,61 @@ end
 module SubLaws where
 
 (* Truncated subtraction never exceeds its first argument. *)
-def subLe : forall (a : Nat) (b : Nat) -> Le (sub a b) a :=
-  fun (a : Nat) (b : Nat) ->
-    (rec b return y . (forall (x : Nat) -> Le (sub x y) x)
-     | zero => fun (x : Nat) -> leRefl x
-     | succ q, ih => fun (x : Nat) ->
+def subLe : ∀ (a : ℕ) (b : ℕ) → Le (sub a b) a ≔
+  λ (a : ℕ) (b : ℕ) →
+    (rec b return y . (∀ (x : ℕ) → Le (sub x y) x)
+     | zero ⇒ λ (x : ℕ) → leRefl x
+     | succ q, ih ⇒ λ (x : ℕ) →
          rec x return z . Le (sub z (succ q)) z
-         | zero => true
-         | succ p, s => leStep (sub p q) p (ih p)
+         | zero ⇒ ⋆
+         | succ p, s ⇒ leStep (sub p q) p (ih p)
          end
      end) a
 end
 
 (* Subtraction is monotone in its first argument. *)
-theorem subMonoLeft : forall (a : Nat) (b : Nat) (c : Nat) (h : Le a b) -> Le (sub a c) (sub b c) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    (rec c return w . (forall (x : Nat) (y : Nat) (h : Le x y) -> Le (sub x w) (sub y w))
-     | zero => fun (x : Nat) (y : Nat) (h : Le x y) -> h
-     | succ r, ih => fun (x : Nat) ->
-         rec x return u . (forall (y : Nat) (h : Le u y) -> Le (sub u (succ r)) (sub y (succ r)))
-         | zero => fun (y : Nat) (h : True) -> true
-         | succ p, s => fun (y : Nat) ->
-             rec y return v . (forall (h : Le (succ p) v) -> Le (sub (succ p) (succ r)) (sub v (succ r)))
-             | zero => fun (h : False) -> absurd (Le (sub p r) 0) h
-             | succ q, t => fun (h : Le p q) -> ih p q h
+theorem subMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) → Le (sub a c) (sub b c) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
+    (rec c return w . (∀ (x : ℕ) (y : ℕ) (h : Le x y) → Le (sub x w) (sub y w))
+     | zero ⇒ λ (x : ℕ) (y : ℕ) (h : Le x y) → h
+     | succ r, ih ⇒ λ (x : ℕ) →
+         rec x return u . (∀ (y : ℕ) (h : Le u y) → Le (sub u (succ r)) (sub y (succ r)))
+         | zero ⇒ λ (y : ℕ) (h : ⊤) → ⋆
+         | succ p, s ⇒ λ (y : ℕ) →
+             rec y return v . (∀ (h : Le (succ p) v) → Le (sub (succ p) (succ r)) (sub v (succ r)))
+             | zero ⇒ λ (h : ⊥) → absurd (Le (sub p r) 0) h
+             | succ q, t ⇒ λ (h : Le p q) → ih p q h
              end
          end
      end) a b
 end
 
 (* Subtraction is antitone in its second argument. *)
-theorem subMonoRight : forall (a : Nat) (b : Nat) (c : Nat) (h : Le b c) -> Le (sub a c) (sub a b) :=
-  fun (a : Nat) (b : Nat) ->
-    (rec b return y . (forall (x : Nat) (c : Nat) (h : Le y c) -> Le (sub x c) (sub x y))
-     | zero => fun (x : Nat) (c : Nat) (h : True) -> subLe x c
-     | succ q, ih => fun (x : Nat) (c : Nat) ->
-         rec c return w . (forall (h : Le (succ q) w) -> Le (sub x w) (sub x (succ q)))
-         | zero => fun (h : False) -> absurd (Le x (sub x (succ q))) h
-         | succ r, t => fun (h : Le q r) ->
+theorem subMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) → Le (sub a c) (sub a b) ≔
+  λ (a : ℕ) (b : ℕ) →
+    (rec b return y . (∀ (x : ℕ) (c : ℕ) (h : Le y c) → Le (sub x c) (sub x y))
+     | zero ⇒ λ (x : ℕ) (c : ℕ) (h : ⊤) → subLe x c
+     | succ q, ih ⇒ λ (x : ℕ) (c : ℕ) →
+         rec c return w . (∀ (h : Le (succ q) w) → Le (sub x w) (sub x (succ q)))
+         | zero ⇒ λ (h : ⊥) → absurd (Le x (sub x (succ q))) h
+         | succ r, t ⇒ λ (h : Le q r) →
              rec x return u . Le (sub u (succ r)) (sub u (succ q))
-             | zero => true
-             | succ p, s => ih p r h
+             | zero ⇒ ⋆
+             | succ p, s ⇒ ih p r h
              end
          end
      end) a
 end
 
 (* Below [a], subtracting [b] and adding it back on the right gives [a]. *)
-theorem plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub a b) b) a :=
-  fun (a : Nat) (b : Nat) ->
-    (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus (sub x y) y) x)
-     | zero => fun (x : Nat) (h : True) -> plusZero x
-     | succ q, ih => fun (x : Nat) ->
-         rec x return z . (forall (h : Le (succ q) z) -> Eq (plus (sub z (succ q)) (succ q)) z)
-         | zero => fun (h : False) -> absurd (Eq (plus 0 (succ q)) 0) h
-         | succ p, s => fun (h : Le q p) ->
+theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) → Eq (plus (sub a b) b) a ≔
+  λ (a : ℕ) (b : ℕ) →
+    (rec b return y . (∀ (x : ℕ) (h : Le y x) → Eq (plus (sub x y) y) x)
+     | zero ⇒ λ (x : ℕ) (h : ⊤) → plusZero x
+     | succ q, ih ⇒ λ (x : ℕ) →
+         rec x return z . (∀ (h : Le (succ q) z) → Eq (plus (sub z (succ q)) (succ q)) z)
+         | zero ⇒ λ (h : ⊥) → absurd (Eq (plus 0 (succ q)) 0) h
+         | succ p, s ⇒ λ (h : Le q p) →
              trans (plus (sub p q) (succ q)) (succ (plus (sub p q) q)) (succ p)
                (plusSucc (sub p q) q) (ih p h)
          end
@@ -192,27 +192,27 @@ theorem plusSubCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus (sub
 end
 
 (* Below [a], adding [b] on the left of [sub a b] gives [a]. *)
-theorem subPlusCancel : forall (a : Nat) (b : Nat) (h : Le b a) -> Eq (plus b (sub a b)) a :=
-  fun (a : Nat) (b : Nat) ->
-    (rec b return y . (forall (x : Nat) (h : Le y x) -> Eq (plus y (sub x y)) x)
-     | zero => fun (x : Nat) (h : True) -> refl x
-     | succ q, ih => fun (x : Nat) ->
-         rec x return z . (forall (h : Le (succ q) z) -> Eq (plus (succ q) (sub z (succ q))) z)
-         | zero => fun (h : False) -> absurd (Eq (succ (plus q 0)) 0) h
-         | succ p, s => fun (h : Le q p) -> ih p h
+theorem subPlusCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) → Eq (plus b (sub a b)) a ≔
+  λ (a : ℕ) (b : ℕ) →
+    (rec b return y . (∀ (x : ℕ) (h : Le y x) → Eq (plus y (sub x y)) x)
+     | zero ⇒ λ (x : ℕ) (h : ⊤) → refl x
+     | succ q, ih ⇒ λ (x : ℕ) →
+         rec x return z . (∀ (h : Le (succ q) z) → Eq (plus (succ q) (sub z (succ q))) z)
+         | zero ⇒ λ (h : ⊥) → absurd (Eq (succ (plus q 0)) 0) h
+         | succ p, s ⇒ λ (h : Le q p) → ih p h
          end
      end) a
 end
 
 (* A strict bound leaves a positive difference. *)
-theorem subPos : forall (a : Nat) (b : Nat) (h : Lt b a) -> Lt 0 (sub a b) :=
-  fun (a : Nat) (b : Nat) ->
-    (rec b return y . (forall (x : Nat) (h : Lt y x) -> Lt 0 (sub x y))
-     | zero => fun (x : Nat) (h : Lt 0 x) -> h
-     | succ q, ih => fun (x : Nat) ->
-         rec x return z . (forall (h : Lt (succ q) z) -> Lt 0 (sub z (succ q)))
-         | zero => fun (h : False) -> absurd (Lt 0 0) h
-         | succ p, s => fun (h : Lt q p) -> ih p h
+theorem subPos : ∀ (a : ℕ) (b : ℕ) (h : Lt b a) → Lt 0 (sub a b) ≔
+  λ (a : ℕ) (b : ℕ) →
+    (rec b return y . (∀ (x : ℕ) (h : Lt y x) → Lt 0 (sub x y))
+     | zero ⇒ λ (x : ℕ) (h : Lt 0 x) → h
+     | succ q, ih ⇒ λ (x : ℕ) →
+         rec x return z . (∀ (h : Lt (succ q) z) → Lt 0 (sub z (succ q)))
+         | zero ⇒ λ (h : ⊥) → absurd (Lt 0 0) h
+         | succ p, s ⇒ λ (h : Lt q p) → ih p h
          end
      end) a
 end

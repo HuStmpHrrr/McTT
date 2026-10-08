@@ -1,10 +1,10 @@
 module TrueFalse where
 
-eval true
+eval ⋆
 
-(* By eta for True, the body normalizes to true. *)
-eval fun (u : True) -> u
+(* By eta for ⊤, the body normalizes to ⋆. *)
+eval λ (u : ⊤) → u
 
-eval fun (f : False) -> exfalso f return x. Nat
+eval λ (f : ⊥) → exfalso f return x. ℕ
 
 end

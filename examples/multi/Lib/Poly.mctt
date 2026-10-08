@@ -1,5 +1,5 @@
-module Lib::Poly (A : Type@0) where
+module Lib∷Poly (A : Type@0) where
 
-def id : forall (x : A) -> A := fun (x : A) -> x end
+def id : ∀ (x : A) → A ≔ λ (x : A) → x end
 
 end

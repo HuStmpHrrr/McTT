@@ -2,19 +2,19 @@
    addition and multiplication, and a few computations. *)
 module Arithmetic where
 
-import Prelude::Arith::Equality use (refl; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Algebra use (plusAssoc)
-open Prelude::Arith::Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
-import Prelude::Arith::Mult use (mult)
-open Prelude::Arith::Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
-open Prelude::Arith::Mult.Cancel use (multEqZero)
+import Prelude∷Arith∷Equality use (refl; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Algebra use (plusAssoc)
+open Prelude∷Arith∷Plus.Cancel use (plusCancelLeft; plusCancelRight; plusEqZero)
+import Prelude∷Arith∷Mult use (mult)
+open Prelude∷Arith∷Mult.Algebra use (multComm; multAssoc; multDistribLeft; multDistribRight)
+open Prelude∷Arith∷Mult.Cancel use (multEqZero)
 
 eval mult 6 7
 
 eval plus (mult 3 4) (mult 2 5)
 
-(* A proof of a closed equation normalizes to [true], of type [True]. *)
+(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
 eval plusAssoc 1 2 3
 
 eval multComm 3 4
@@ -25,15 +25,15 @@ eval multDistribLeft 2 3 4
 
 eval multDistribRight 2 3 4
 
-eval cong (fun (x : Nat) -> mult x x) 3 3 (refl 3)
+eval cong (λ (x : ℕ) → mult x x) 3 3 (refl 3)
 
-eval plusCancelLeft 2 3 3 true
+eval plusCancelLeft 2 3 3 ⋆
 
-eval plusCancelRight 4 4 1 true
+eval plusCancelRight 4 4 1 ⋆
 
-eval plusEqZero 0 0 true
+eval plusEqZero 0 0 ⋆
 
-(* [Not (Eq 2 0)] computes to [False -> False]. *)
-eval multEqZero 2 0 true (fun (h : False) -> h)
+(* [Not (Eq 2 0)] computes to [⊥ → ⊥]. *)
+eval multEqZero 2 0 ⋆ (λ (h : ⊥) → h)
 
 end

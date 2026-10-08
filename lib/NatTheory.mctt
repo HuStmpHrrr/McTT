@@ -1,23 +1,23 @@
-(* A client of the [Prelude] library: [Prelude::Arith::Equality], [Prelude::Arith::Plus] and
-   [Prelude::Function::Iter] are separate units, loaded once each. *)
+(* A client of the [Prelude] library: [Prelude∷Arith∷Equality], [Prelude∷Arith∷Plus] and
+   [Prelude∷Function∷Iter] are separate units, loaded once each. *)
 module NatTheory where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; zeroNeSucc)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Algebra use (plusComm)
-import Prelude::Function::Iter as Iter
+import Prelude∷Arith∷Equality use (Eq; refl; sym; zeroNeSucc)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Algebra use (plusComm)
+import Prelude∷Function∷Iter as Iter
 
-(* [Prelude::Function::Iter] instantiated with [succ]: iterating it is addition. *)
-def iterSucc : forall (n : Nat) (m : Nat) ->
-    Eq (Iter.iter 0l Nat (fun (x : Nat) -> succ x) n m) (plus n m) :=
-  fun (n : Nat) (m : Nat) ->
-    rec n return x . Eq (Iter.iter 0l Nat (fun (y : Nat) -> succ y) x m) (plus x m)
-    | zero => refl m
-    | succ p, ih => ih
+(* [Prelude∷Function∷Iter] instantiated with [succ]: iterating it is addition. *)
+def iterSucc : ∀ (n : ℕ) (m : ℕ) →
+    Eq (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) (plus n m) ≔
+  λ (n : ℕ) (m : ℕ) →
+    rec n return x . Eq (Iter.iter 0l ℕ (λ (y : ℕ) → succ y) x m) (plus x m)
+    | zero ⇒ refl m
+    | succ p, ih ⇒ ih
     end
 end
 
-(* A proof of a closed equation normalizes to [true], of type [True]. *)
+(* A proof of a closed equation normalizes to [⋆], of type [⊤]. *)
 eval plusComm 2 3
 
 eval sym 4 4 (refl 4)
@@ -27,13 +27,13 @@ eval zeroNeSucc 5
 eval iterSucc 3 4
 
 (* The same unit, instantiated with doubling. *)
-eval Iter.iter 0l Nat (fun (x : Nat) -> plus x x) 3 1
+eval Iter.iter 0l ℕ (λ (x : ℕ) → plus x x) 3 1
 
-(* A let-bound number is known in the body, so [true] proves the equation;
-   [Doubling] names an instance of [Prelude::Function::Iter]. *)
-eval let module Doubling := Iter 0l Nat (fun (x : Nat) -> plus x x);
-         n := 2;
-         p : Eq (Doubling.iter n 1) 4 := true
+(* A let-bound number is known in the body, so [⋆] proves the equation;
+   [Doubling] names an instance of [Prelude∷Function∷Iter]. *)
+eval let module Doubling ≔ Iter 0l ℕ (λ (x : ℕ) → plus x x);
+         n ≔ 2;
+         p : Eq (Doubling.iter n 1) 4 ≔ ⋆
      in p
      end
 

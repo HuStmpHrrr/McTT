@@ -1,9 +1,9 @@
 module LetDecl where
 
-eval let n : Nat := 2;
-         m : Nat := succ n
+eval let n : ℕ ≔ 2;
+         m : ℕ ≔ succ n
      in
        succ m
-     end : Nat
+     end : ℕ
 
 end

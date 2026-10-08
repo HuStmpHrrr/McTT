@@ -1,7 +1,7 @@
-import Lib::Nowhere
+import Lib∷Nowhere
 
 module Missing where
 
-eval 0 : Nat
+eval 0 : ℕ
 
 end

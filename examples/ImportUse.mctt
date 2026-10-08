@@ -2,9 +2,9 @@ module ImportUse where
 
 module Impl where
 
-private def secret : Nat := 3 end
+private def secret : ℕ ≔ 3 end
 
-def exposed : Nat := succ secret end
+def exposed : ℕ ≔ succ secret end
 
 end
 
@@ -12,11 +12,11 @@ open Impl as I
 
 open Impl use (exposed)
 
-def sum : forall (x : Nat) (y : Nat) -> Nat :=
-  fun (x : Nat) (y : Nat) ->
-    rec x return z . Nat | zero => y | succ p, r => succ r end
+def sum : ∀ (x : ℕ) (y : ℕ) → ℕ ≔
+  λ (x : ℕ) (y : ℕ) →
+    rec x return z . ℕ | zero ⇒ y | succ p, r ⇒ succ r end
 end
 
-eval sum I.exposed exposed : Nat
+eval sum I.exposed exposed : ℕ
 
 end

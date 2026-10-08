@@ -1,10 +1,10 @@
-module Lib::Axioms where
+module Lib∷Axioms where
 
 (* A number about which nothing is known. *)
-axiom c : Nat
+axiom c : ℕ
 
 module Inner where
-  axiom P (n : Nat) : Type@0
+  axiom P (n : ℕ) : Type@0
 end
 
 end

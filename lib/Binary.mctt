@@ -1,19 +1,19 @@
-(* A client of [Prelude::Arith::Binary]: halves, low bits and binary digits
+(* A client of [Prelude∷Arith∷Binary]: halves, low bits and binary digits
    of numbers, the number they write, the count of ones, and exponentiation
    by squaring.  Two theorems are proved here from the public laws: the
    digits of [double n] write twice the number, and [powFast] squares at
    even exponents. *)
 module Binary where
 
-import Prelude::Arith::Equality use (Eq; trans; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Pow use (pow)
-open Prelude::Arith::Pow.Exp use (powPlus)
-import Prelude::Arith::Parity use (double)
-import Prelude::Arith::Binary use (half; bit; Bits; bits; fromBits; bitCount; powFast)
-open Prelude::Arith::Binary.Halving use (halfDouble; bitDouble)
+import Prelude∷Arith∷Equality use (Eq; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Pow use (pow)
+open Prelude∷Arith∷Pow.Exp use (powPlus)
+import Prelude∷Arith∷Parity use (double)
+import Prelude∷Arith∷Binary use (half; bit; Bits; bits; fromBits; bitCount; powFast)
+open Prelude∷Arith∷Binary.Halving use (halfDouble; bitDouble)
 
 (* 13 is [1101] in binary: its half, its low bit and its digits. *)
 eval half 13
@@ -39,11 +39,11 @@ eval bitCount 255
 eval bitCount 256
 
 (* Digits given by hand: [1, 0, 1, 1], then zeros, write [1 + 4 + 8]. *)
-def oneZeroOneOne : Bits :=
-  fun (i : Nat) ->
-    rec i return y . Nat
-    | zero => 1
-    | succ j, r => rec j return z . Nat | zero => 0 | succ k, s => 1 end
+def oneZeroOneOne : Bits ≔
+  λ (i : ℕ) →
+    rec i return y . ℕ
+    | zero ⇒ 1
+    | succ j, r ⇒ rec j return z . ℕ | zero ⇒ 0 | succ k, s ⇒ 1 end
     end
 end
 
@@ -58,34 +58,34 @@ eval powFast 2 10
    first [k + 1] digits of [double n] write twice the number written by the
    first [k] digits of [n].  The digits after the lowest are those of
    [half (double n)], which is [n]. *)
-theorem fromBitsDouble : forall (n : Nat) (k : Nat) ->
-    Eq (fromBits (bits (double n)) (succ k)) (double (fromBits (bits n) k)) :=
-  fun (n : Nat) (k : Nat) ->
-    let upper := fromBits (bits (half (double n))) k;
-        lower := fromBits (bits n) k;
-        shifted : Eq upper lower :=
-          cong (fun (m : Nat) -> fromBits (bits m) k) (half (double n)) n (halfDouble n);
-        lowest : Eq (plus (double upper) (bit (double n))) (plus (double upper) 0) :=
-          cong (fun (b : Nat) -> plus (double upper) b) (bit (double n)) 0 (bitDouble n)
+theorem fromBitsDouble : ∀ (n : ℕ) (k : ℕ) →
+    Eq (fromBits (bits (double n)) (succ k)) (double (fromBits (bits n) k)) ≔
+  λ (n : ℕ) (k : ℕ) →
+    let upper ≔ fromBits (bits (half (double n))) k;
+        lower ≔ fromBits (bits n) k;
+        shifted : Eq upper lower ≔
+          cong (λ (m : ℕ) → fromBits (bits m) k) (half (double n)) n (halfDouble n);
+        lowest : Eq (plus (double upper) (bit (double n))) (plus (double upper) 0) ≔
+          cong (λ (b : ℕ) → plus (double upper) b) (bit (double n)) 0 (bitDouble n)
     in trans (plus (double upper) (bit (double n))) (plus (double upper) 0) (double lower) lowest
          (trans (plus (double upper) 0) (double upper) (double lower) (plusZero (double upper))
-            (cong (fun (m : Nat) -> double m) upper lower shifted))
+            (cong (λ (m : ℕ) → double m) upper lower shifted))
     end
 end
 
 (* At an even exponent, [powFast] computes a square.  The proof is a local
    module that opens the laws it needs from the units loaded above. *)
-theorem powFastDouble : forall (x : Nat) (n : Nat) ->
-    Eq (powFast x (double n)) (mult (pow x n) (pow x n)) :=
-  fun (x : Nat) (n : Nat) ->
+theorem powFastDouble : ∀ (x : ℕ) (n : ℕ) →
+    Eq (powFast x (double n)) (mult (pow x n) (pow x n)) ≔
+  λ (x : ℕ) (n : ℕ) →
     let module Proof where
-      open Prelude::Arith::Binary.Laws use (powFastPow)
-      open Prelude::Arith::Binary.Halving use (doublePlus)
-      def fast : Eq (powFast x (double n)) (pow x (double n)) := powFastPow x (double n) end
-      def sum : Eq (pow x (double n)) (pow x (plus n n)) :=
-        cong (fun (m : Nat) -> pow x m) (double n) (plus n n) (doublePlus n)
+      open Prelude∷Arith∷Binary.Laws use (powFastPow)
+      open Prelude∷Arith∷Binary.Halving use (doublePlus)
+      def fast : Eq (powFast x (double n)) (pow x (double n)) ≔ powFastPow x (double n) end
+      def sum : Eq (pow x (double n)) (pow x (plus n n)) ≔
+        cong (λ (m : ℕ) → pow x m) (double n) (plus n n) (doublePlus n)
       end
-      def square : Eq (pow x (double n)) (mult (pow x n) (pow x n)) :=
+      def square : Eq (pow x (double n)) (mult (pow x n) (pow x n)) ≔
         trans (pow x (double n)) (pow x (plus n n)) (mult (pow x n) (pow x n)) sum (powPlus x n n)
       end
     end in trans (powFast x (double n)) (pow x (double n)) (mult (pow x n) (pow x n))
@@ -93,7 +93,7 @@ theorem powFastDouble : forall (x : Nat) (n : Nat) ->
     end
 end
 
-(* Closed instances normalize to [true]. *)
+(* Closed instances normalize to [⋆]. *)
 eval fromBitsDouble 6 3
 
 eval powFastDouble 2 2

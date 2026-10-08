@@ -1,9 +1,9 @@
 module LetTrueFalse where
 
-(* A local definition of each of [True] and [False -> Nat]; the body only
-   uses the first, which by η normalizes to [true]. *)
-eval let t : True := true;
-         f : forall (x : False) -> Nat := fun (x : False) -> exfalso x return y. Nat
+(* A local definition of each of [⊤] and [⊥ → ℕ]; the body only
+   uses the first, which by η normalizes to [⋆]. *)
+eval let t : ⊤ ≔ ⋆;
+         f : ∀ (x : ⊥) → ℕ ≔ λ (x : ⊥) → exfalso x return y. ℕ
      in t
      end
 

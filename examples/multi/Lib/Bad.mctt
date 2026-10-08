@@ -1,5 +1,5 @@
-module Lib::Bad where
+module Lib∷Bad where
 
-def wrong : Nat := Type@0 end
+def wrong : ℕ ≔ Type@0 end
 
 end

@@ -1,20 +1,20 @@
-(* A client of [Prelude::Arith::Gcd], its laws, and [Prelude::Arith::Prime]:
+(* A client of [Prelude∷Arith∷Gcd], its laws, and [Prelude∷Arith∷Prime]:
    greatest common divisors, the primes below 30, and closed instances of
-   the theorems, which normalize to [true].  The numbers in the proofs stay
+   the theorems, which normalize to [⋆].  The numbers in the proofs stay
    small, since they compute with remainders and equalities of numbers. *)
 module NumberTheory where
 
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Sum use (sumTo)
-import Prelude::Arith::Decide use (pick)
-import Prelude::Arith::Divides.Closure use (dividesMultLeft; dividesPlusCancel)
-import Prelude::Function::Combinators use (Generic)
-import Prelude::Arith::Gcd use (gcd)
-import Prelude::Arith::Gcd::Properties.Values use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
-open Prelude::Arith::Gcd::Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
-import Prelude::Arith::Prime use (smallestDivisor; isPrime; Prime)
-open Prelude::Arith::Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
-open Prelude::Arith::Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Sum use (sumTo)
+import Prelude∷Arith∷Decide use (pick)
+import Prelude∷Arith∷Divides.Closure use (dividesMultLeft; dividesPlusCancel)
+import Prelude∷Function∷Combinators use (Generic)
+import Prelude∷Arith∷Gcd use (gcd)
+import Prelude∷Arith∷Gcd∷Properties.Values use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
+open Prelude∷Arith∷Gcd∷Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
+import Prelude∷Arith∷Prime use (smallestDivisor; isPrime; Prime)
+open Prelude∷Arith∷Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
+open Prelude∷Arith∷Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
 
 eval gcd 12 18
 
@@ -30,15 +30,15 @@ module Primes where
 
 (* The least prime above [n], searched among the numbers from [n + 1] to
    [2 n + 2], which contain one by Bertrand's postulate. *)
-let nextPrime (n : Nat) : Nat :=
-  (rec n return y . (forall (c : Nat) -> Nat)
-   | zero => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> succ c) (fun (u : Nat) -> c)
-   | succ p, r => fun (c : Nat) -> pick (isPrime c) (fun (u : Nat) -> r (succ c)) (fun (u : Nat) -> c)
+let nextPrime (n : ℕ) : ℕ ≔
+  (rec n return y . (∀ (c : ℕ) → ℕ)
+   | zero ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → succ c) (λ (u : ℕ) → c)
+   | succ p, r ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → r (succ c)) (λ (u : ℕ) → c)
    end) (succ n)
 end
 
 (* The [k]-th prime, counting from [0]. *)
-def nthPrime (k : Nat) : Nat := Generic.iterate 0l Nat nextPrime (succ k) 0 end
+def nthPrime (k : ℕ) : ℕ ≔ Generic.iterate 0l ℕ nextPrime (succ k) 0 end
 
 end
 
@@ -70,18 +70,18 @@ eval nthPrime 10
 (* There are ten primes below 30, and they add up to 129. *)
 eval sumTo isPrime 30
 
-eval sumTo (fun (i : Nat) -> mult i (isPrime i)) 30
+eval sumTo (λ (i : ℕ) → mult i (isPrime i)) 30
 
 eval smallestDivisor 91
 
 eval smallestDivisor 29
 
-(* Primality computes to [True] or [False]. *)
+(* Primality computes to [⊤] or [⊥]. *)
 eval Prime 29
 
 eval Prime 27
 
-(* A proof of a closed proposition normalizes to [true], of type [True]. *)
+(* A proof of a closed proposition normalizes to [⋆], of type [⊤]. *)
 eval gcdZeroLeft 5
 
 eval gcdZeroRight 5
@@ -94,13 +94,13 @@ eval gcdDividesLeft 6 9
 
 eval gcdDividesRight 6 9
 
-eval gcdGreatest 2 8 12 true true
+eval gcdGreatest 2 8 12 ⋆ ⋆
 
 eval gcdComm 6 9
 
-eval dividesMultLeft 3 6 2 true
+eval dividesMultLeft 3 6 2 ⋆
 
-eval dividesPlusCancel 3 6 9 true true
+eval dividesPlusCancel 3 6 9 ⋆ ⋆
 
 eval twoPrime
 
@@ -110,8 +110,8 @@ eval nineNotPrime
 
 eval smallestDivisorDivides 15
 
-eval primeGeTwo 13 true
+eval primeGeTwo 13 ⋆
 
-eval primeSmallestDivisor 13 true
+eval primeSmallestDivisor 13 ⋆
 
 end

@@ -1,5 +1,5 @@
 module SimpleLet where
 
-eval let x : Nat := zero in succ x end : Nat
+eval let x : ℕ ≔ zero in succ x end : ℕ
 
 end

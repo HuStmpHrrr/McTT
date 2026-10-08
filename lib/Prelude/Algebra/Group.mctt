@@ -1,5 +1,5 @@
 (* Groups over a setoid.  The unit takes the parameters of
-   [Prelude::Algebra::Monoid], then an inverse [inv] that respects [R],
+   [Prelude∷Algebra∷Monoid], then an inverse [inv] that respects [R],
    with the two inverse laws.  The monoid itself is the submodule [Base],
    with its powers and their laws; [Laws] adds what the inverse gives:
    cancellation on both sides, the uniqueness of inverses, the inverse of
@@ -8,29 +8,29 @@
 
    The proofs share two private lemma modules: [Solve] solves one-sided
    equations, and [Product] computes the products that cancel. *)
-module Prelude::Algebra::Group
+module Prelude∷Algebra∷Group
     (u : Level)
     (M : Type@{u})
-    (R : forall (x : M) (y : M) -> Type@{u})
-    (rRefl : forall (x : M) -> R x x)
-    (rSym : forall (x : M) (y : M) (h : R x y) -> R y x)
-    (rTrans : forall (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) -> R x z)
-    (op : forall (x : M) (y : M) -> M)
-    (opCong : forall (a : M) (b : M) (c : M) (d : M) (hac : R a c) (hbd : R b d) ->
+    (R : ∀ (x : M) (y : M) → Type@{u})
+    (rRefl : ∀ (x : M) → R x x)
+    (rSym : ∀ (x : M) (y : M) (h : R x y) → R y x)
+    (rTrans : ∀ (x : M) (y : M) (z : M) (hxy : R x y) (hyz : R y z) → R x z)
+    (op : ∀ (x : M) (y : M) → M)
+    (opCong : ∀ (a : M) (b : M) (c : M) (d : M) (hac : R a c) (hbd : R b d) →
                 R (op a b) (op c d))
     (e : M)
-    (assoc : forall (x : M) (y : M) (z : M) -> R (op (op x y) z) (op x (op y z)))
-    (leftId : forall (x : M) -> R (op e x) x)
-    (rightId : forall (x : M) -> R (op x e) x)
-    (inv : forall (x : M) -> M)
-    (invCong : forall (a : M) (b : M) (h : R a b) -> R (inv a) (inv b))
-    (leftInv : forall (x : M) -> R (op (inv x) x) e)
-    (rightInv : forall (x : M) -> R (op x (inv x)) e) where
+    (assoc : ∀ (x : M) (y : M) (z : M) → R (op (op x y) z) (op x (op y z)))
+    (leftId : ∀ (x : M) → R (op e x) x)
+    (rightId : ∀ (x : M) → R (op x e) x)
+    (inv : ∀ (x : M) → M)
+    (invCong : ∀ (a : M) (b : M) (h : R a b) → R (inv a) (inv b))
+    (leftInv : ∀ (x : M) → R (op (inv x) x) e)
+    (rightInv : ∀ (x : M) → R (op x (inv x)) e) where
 
-import Prelude::Algebra::Monoid as Monoid
+import Prelude∷Algebra∷Monoid as Monoid
 
 (* The underlying monoid. *)
-module Base := Monoid u M R rRefl rSym rTrans op opCong e assoc leftId rightId
+module Base ≔ Monoid u M R rRefl rSym rTrans op opCong e assoc leftId rightId
 
 open Base use (pow)
 open Base.Cong use (congLeft; congRight; assocBack)
@@ -41,9 +41,9 @@ open Base.Power use (powSuccRight)
 private module Solve where
 
 (* With [ia] the inverse of [a]: [x ~ e x ~ (ia a) x ~ ia (a x) ~ ia b]. *)
-lemma left : forall (a : M) (x : M) (b : M) (h : R (op a x) b) -> R x (op (inv a) b) :=
-  fun (a : M) (x : M) (b : M) (h : R (op a x) b) ->
-    let ia := inv a
+lemma left : ∀ (a : M) (x : M) (b : M) (h : R (op a x) b) → R x (op (inv a) b) ≔
+  λ (a : M) (x : M) (b : M) (h : R (op a x) b) →
+    let ia ≔ inv a
     in rTrans x (op e x) (op ia b) (rSym (op e x) x (leftId x))
          (rTrans (op e x) (op (op ia a) x) (op ia b)
             (congLeft e (op ia a) x (rSym (op ia a) e (leftInv a)))
@@ -53,9 +53,9 @@ lemma left : forall (a : M) (x : M) (b : M) (h : R (op a x) b) -> R x (op (inv a
 end
 
 (* With [ia] the inverse of [a]: [x ~ x e ~ x (a ia) ~ (x a) ia ~ b ia]. *)
-lemma right : forall (x : M) (a : M) (b : M) (h : R (op x a) b) -> R x (op b (inv a)) :=
-  fun (x : M) (a : M) (b : M) (h : R (op x a) b) ->
-    let ia := inv a
+lemma right : ∀ (x : M) (a : M) (b : M) (h : R (op x a) b) → R x (op b (inv a)) ≔
+  λ (x : M) (a : M) (b : M) (h : R (op x a) b) →
+    let ia ≔ inv a
     in rTrans x (op x e) (op b ia) (rSym (op x e) x (rightId x))
          (rTrans (op x e) (op x (op a ia)) (op b ia)
             (congRight x e (op a ia) (rSym (op a ia) e (rightInv a)))
@@ -71,11 +71,11 @@ private module Product where
 
 (* With [ia] and [ib] the inverses:
    [(a b) (ib ia) ~ a (b (ib ia)) ~ a ((b ib) ia) ~ a (e ia) ~ a ia ~ e]. *)
-lemma opInvs : forall (a : M) (b : M) -> R (op (op a b) (op (inv b) (inv a))) e :=
-  fun (a : M) (b : M) ->
-    let ia := inv a;
-        ib := inv b;
-        inner : R (op b (op ib ia)) ia :=
+lemma opInvs : ∀ (a : M) (b : M) → R (op (op a b) (op (inv b) (inv a))) e ≔
+  λ (a : M) (b : M) →
+    let ia ≔ inv a;
+        ib ≔ inv b;
+        inner : R (op b (op ib ia)) ia ≔
           rTrans (op b (op ib ia)) (op (op b ib) ia) ia (assocBack b ib ia)
             (rTrans (op (op b ib) ia) (op e ia) ia (congLeft (op b ib) e ia (rightInv b)) (leftId ia))
     in rTrans (op (op a b) (op ib ia)) (op a (op b (op ib ia))) e (assoc a b (op ib ia))
@@ -90,54 +90,54 @@ end
 module Laws where
 
 (* Cancelling [a] on the left: [b] and [c] are both [inv a] times [op a c]. *)
-theorem leftCancel : forall (a : M) (b : M) (c : M) (h : R (op a b) (op a c)) -> R b c :=
-  fun (a : M) (b : M) (c : M) (h : R (op a b) (op a c)) ->
-    let ia := inv a
+theorem leftCancel : ∀ (a : M) (b : M) (c : M) (h : R (op a b) (op a c)) → R b c ≔
+  λ (a : M) (b : M) (c : M) (h : R (op a b) (op a c)) →
+    let ia ≔ inv a
     in rTrans b (op ia (op a c)) c (Solve.left a b (op a c) h)
          (rSym c (op ia (op a c)) (Solve.left a c (op a c) (rRefl (op a c))))
     end
 end
 
-theorem rightCancel : forall (a : M) (b : M) (c : M) (h : R (op b a) (op c a)) -> R b c :=
-  fun (a : M) (b : M) (c : M) (h : R (op b a) (op c a)) ->
-    let ia := inv a
+theorem rightCancel : ∀ (a : M) (b : M) (c : M) (h : R (op b a) (op c a)) → R b c ≔
+  λ (a : M) (b : M) (c : M) (h : R (op b a) (op c a)) →
+    let ia ≔ inv a
     in rTrans b (op (op c a) ia) c (Solve.right b a (op c a) h)
          (rSym c (op (op c a) ia) (Solve.right c a (op c a) (rRefl (op c a))))
     end
 end
 
 (* An element whose product with [a] is [e] is the inverse of [a]. *)
-theorem invUnique : forall (a : M) (b : M) (h : R (op a b) e) -> R b (inv a) :=
-  fun (a : M) (b : M) (h : R (op a b) e) ->
+theorem invUnique : ∀ (a : M) (b : M) (h : R (op a b) e) → R b (inv a) ≔
+  λ (a : M) (b : M) (h : R (op a b) e) →
     rTrans b (op (inv a) e) (inv a) (Solve.left a b e h) (rightId (inv a))
 end
 
-theorem invE : R (inv e) e :=
+theorem invE : R (inv e) e ≔
   rSym e (inv e) (invUnique e e (leftId e))
 end
 
-theorem invInv : forall (a : M) -> R (inv (inv a)) a :=
-  fun (a : M) -> rSym a (inv (inv a)) (invUnique (inv a) a (leftInv a))
+theorem invInv : ∀ (a : M) → R (inv (inv a)) a ≔
+  λ (a : M) → rSym a (inv (inv a)) (invUnique (inv a) a (leftInv a))
 end
 
 (* The inverse of a product is the product of the inverses, in the other
    order. *)
-theorem invOp : forall (a : M) (b : M) -> R (inv (op a b)) (op (inv b) (inv a)) :=
-  fun (a : M) (b : M) ->
+theorem invOp : ∀ (a : M) (b : M) → R (inv (op a b)) (op (inv b) (inv a)) ≔
+  λ (a : M) (b : M) →
     rSym (op (inv b) (inv a)) (inv (op a b)) (invUnique (op a b) (op (inv b) (inv a)) (Product.opInvs a b))
 end
 
 (* A power of the inverse is the inverse of the power.  In the step, the
    inverse of [op x q], with [q] the power [p] of [x], is the inverse of
    [op q x] by [powSuccRight], which [invOp] turns into [op (inv x) (inv q)]. *)
-theorem powInv : forall (x : M) (n : Nat) -> R (pow (inv x) n) (inv (pow x n)) :=
-  fun (x : M) (n : Nat) ->
+theorem powInv : ∀ (x : M) (n : ℕ) → R (pow (inv x) n) (inv (pow x n)) ≔
+  λ (x : M) (n : ℕ) →
     rec n return k . R (pow (inv x) k) (inv (pow x k))
-    | zero => rSym (inv e) e invE
-    | succ p, ih =>
-        let ix := inv x;
-            q := pow x p;
-            swapped : R (inv (op q x)) (inv (op x q)) :=
+    | zero ⇒ rSym (inv e) e invE
+    | succ p, ih ⇒
+        let ix ≔ inv x;
+            q ≔ pow x p;
+            swapped : R (inv (op q x)) (inv (op x q)) ≔
               invCong (op q x) (op x q) (rSym (op x q) (op q x) (powSuccRight x p))
         in rTrans (op ix (pow ix p)) (op ix (inv q)) (inv (op x q))
              (congRight ix (pow ix p) (inv q) ih)

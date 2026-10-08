@@ -1,44 +1,44 @@
-(* Multiplication and its laws, stated with [Prelude::Arith::Equality] and proved from
-   the laws of [Prelude::Arith::Plus]. *)
-module Prelude::Arith::Mult where
+(* Multiplication and its laws, stated with [Prelude∷Arith∷Equality] and proved from
+   the laws of [Prelude∷Arith∷Plus]. *)
+module Prelude∷Arith∷Mult where
 
-import Prelude::Logic use (Not; absurd)
-import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-open Prelude::Arith::Plus.Algebra use (plusAssoc; plusLeftComm)
-open Prelude::Arith::Plus.Cancel use (plusEqZero)
+import Prelude∷Logic use (Not; absurd)
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusLeftComm)
+open Prelude∷Arith∷Plus.Cancel use (plusEqZero)
 
 (* Multiplication by recursion on the first factor:
    [mult (succ p) m] is [plus m (mult p m)]. *)
-def mult (n : Nat) (m : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => 0
-  | succ p, r => plus m r
+def mult (n : ℕ) (m : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ 0
+  | succ p, r ⇒ plus m r
   end
 end
 
 (* Multiplication by zero, successors and one. *)
 module Basic where
 
-theorem multZero : forall (n : Nat) -> Eq (mult n 0) 0 :=
-  fun (n : Nat) ->
+theorem multZero : ∀ (n : ℕ) → Eq (mult n 0) 0 ≔
+  λ (n : ℕ) →
     rec n return x . Eq (mult x 0) 0
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (mult n m)) :=
-  fun (n : Nat) (m : Nat) ->
+theorem multSucc : ∀ (n : ℕ) (m : ℕ) → Eq (mult n (succ m)) (plus n (mult n m)) ≔
+  λ (n : ℕ) (m : ℕ) →
     rec n return x . Eq (mult x (succ m)) (plus x (mult x m))
-    | zero => true
-    | succ p, ih =>
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
         (* After the successors cancel, the goal is
            [Eq (plus m (mult p (succ m))) (plus p (plus m (mult p m)))]. *)
-        let step : Eq (plus m (mult p (succ m))) (plus m (plus p (mult p m))) :=
-              cong (fun (y : Nat) -> plus m y) (mult p (succ m)) (plus p (mult p m)) ih;
-            swap : Eq (plus m (plus p (mult p m))) (plus p (plus m (mult p m))) :=
+        let step : Eq (plus m (mult p (succ m))) (plus m (plus p (mult p m))) ≔
+              cong (λ (y : ℕ) → plus m y) (mult p (succ m)) (plus p (mult p m)) ih;
+            swap : Eq (plus m (plus p (mult p m))) (plus p (plus m (mult p m))) ≔
               plusLeftComm m p (mult p m)
         in trans (plus m (mult p (succ m))) (plus m (plus p (mult p m)))
              (plus p (plus m (mult p m))) step swap
@@ -46,16 +46,16 @@ theorem multSucc : forall (n : Nat) (m : Nat) -> Eq (mult n (succ m)) (plus n (m
     end
 end
 
-theorem multOne : forall (n : Nat) -> Eq (mult n 1) n :=
-  fun (n : Nat) ->
+theorem multOne : ∀ (n : ℕ) → Eq (mult n 1) n ≔
+  λ (n : ℕ) →
     rec n return x . Eq (mult x 1) x
-    | zero => true
-    | succ p, ih => ih
+    | zero ⇒ ⋆
+    | succ p, ih ⇒ ih
     end
 end
 
-theorem oneMult : forall (n : Nat) -> Eq (mult 1 n) n :=
-  fun (n : Nat) -> plusZero n
+theorem oneMult : ∀ (n : ℕ) → Eq (mult 1 n) n ≔
+  λ (n : ℕ) → plusZero n
 end
 
 end
@@ -65,30 +65,30 @@ open Basic use (multZero; multSucc)
 (* Commutativity, distributivity and associativity. *)
 module Algebra where
 
-theorem multComm : forall (a : Nat) (b : Nat) -> Eq (mult a b) (mult b a) :=
-  fun (a : Nat) (b : Nat) ->
+theorem multComm : ∀ (a : ℕ) (b : ℕ) → Eq (mult a b) (mult b a) ≔
+  λ (a : ℕ) (b : ℕ) →
     rec a return x . Eq (mult x b) (mult b x)
-    | zero => sym (mult b 0) 0 (multZero b)
-    | succ p, ih =>
-        let step : Eq (plus b (mult p b)) (plus b (mult b p)) :=
-              cong (fun (y : Nat) -> plus b y) (mult p b) (mult b p) ih;
-            back : Eq (plus b (mult b p)) (mult b (succ p)) :=
+    | zero ⇒ sym (mult b 0) 0 (multZero b)
+    | succ p, ih ⇒
+        let step : Eq (plus b (mult p b)) (plus b (mult b p)) ≔
+              cong (λ (y : ℕ) → plus b y) (mult p b) (mult b p) ih;
+            back : Eq (plus b (mult b p)) (mult b (succ p)) ≔
               sym (mult b (succ p)) (plus b (mult b p)) (multSucc b p)
         in trans (plus b (mult p b)) (plus b (mult b p)) (mult b (succ p)) step back
         end
     end
 end
 
-theorem multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (mult (plus a b) c) (plus (mult a c) (mult b c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem multDistribRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (mult (plus a b) c) (plus (mult a c) (mult b c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . Eq (mult (plus x b) c) (plus (mult x c) (mult b c))
-    | zero => refl (mult b c)
-    | succ p, ih =>
-        let step : Eq (plus c (mult (plus p b) c)) (plus c (plus (mult p c) (mult b c))) :=
-              cong (fun (y : Nat) -> plus c y)
+    | zero ⇒ refl (mult b c)
+    | succ p, ih ⇒
+        let step : Eq (plus c (mult (plus p b) c)) (plus c (plus (mult p c) (mult b c))) ≔
+              cong (λ (y : ℕ) → plus c y)
                 (mult (plus p b) c) (plus (mult p c) (mult b c)) ih;
-            assoc : Eq (plus c (plus (mult p c) (mult b c))) (plus (plus c (mult p c)) (mult b c)) :=
+            assoc : Eq (plus c (plus (mult p c) (mult b c))) (plus (plus c (mult p c)) (mult b c)) ≔
               sym (plus (plus c (mult p c)) (mult b c)) (plus c (plus (mult p c) (mult b c)))
                 (plusAssoc c (mult p c) (mult b c))
         in trans (plus c (mult (plus p b) c)) (plus c (plus (mult p c) (mult b c)))
@@ -97,25 +97,25 @@ theorem multDistribRight : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
-theorem multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem multDistribLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (mult a (plus b c)) (plus (mult a b) (mult a c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . Eq (mult x (plus b c)) (plus (mult x b) (mult x c))
-    | zero => true
-    | succ p, ih =>
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
         (* [plus (plus b c) (mult p (plus b c))] is rearranged, through
            [plus b (plus c (plus X Y))], into [plus (plus b X) (plus c Y)]. *)
-        let bc := plus b c;
-            x := mult p b;
-            y := mult p c;
-            step : Eq (plus bc (mult p bc)) (plus bc (plus x y)) :=
-              cong (fun (z : Nat) -> plus bc z) (mult p bc) (plus x y) ih;
-            assoc : Eq (plus bc (plus x y)) (plus b (plus c (plus x y))) :=
+        let bc ≔ plus b c;
+            x ≔ mult p b;
+            y ≔ mult p c;
+            step : Eq (plus bc (mult p bc)) (plus bc (plus x y)) ≔
+              cong (λ (z : ℕ) → plus bc z) (mult p bc) (plus x y) ih;
+            assoc : Eq (plus bc (plus x y)) (plus b (plus c (plus x y))) ≔
               plusAssoc b c (plus x y);
-            swap : Eq (plus b (plus c (plus x y))) (plus b (plus x (plus c y))) :=
-              cong (fun (z : Nat) -> plus b z) (plus c (plus x y)) (plus x (plus c y))
+            swap : Eq (plus b (plus c (plus x y))) (plus b (plus x (plus c y))) ≔
+              cong (λ (z : ℕ) → plus b z) (plus c (plus x y)) (plus x (plus c y))
                 (plusLeftComm c x y);
-            regroup : Eq (plus b (plus x (plus c y))) (plus (plus b x) (plus c y)) :=
+            regroup : Eq (plus b (plus x (plus c y))) (plus (plus b x) (plus c y)) ≔
               sym (plus (plus b x) (plus c y)) (plus b (plus x (plus c y)))
                 (plusAssoc b x (plus c y))
         in trans (plus bc (mult p bc)) (plus bc (plus x y)) (plus (plus b x) (plus c y)) step
@@ -127,16 +127,16 @@ theorem multDistribLeft : forall (a : Nat) (b : Nat) (c : Nat) ->
     end
 end
 
-theorem multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (mult (mult a b) c) (mult a (mult b c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
+theorem multAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (mult (mult a b) c) (mult a (mult b c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . Eq (mult (mult x b) c) (mult x (mult b c))
-    | zero => true
-    | succ p, ih =>
-        let distrib : Eq (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c)) :=
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let distrib : Eq (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c)) ≔
               multDistribRight b (mult p b) c;
-            step : Eq (plus (mult b c) (mult (mult p b) c)) (plus (mult b c) (mult p (mult b c))) :=
-              cong (fun (y : Nat) -> plus (mult b c) y) (mult (mult p b) c) (mult p (mult b c)) ih
+            step : Eq (plus (mult b c) (mult (mult p b) c)) (plus (mult b c) (mult p (mult b c))) ≔
+              cong (λ (y : ℕ) → plus (mult b c) y) (mult (mult p b) c) (mult p (mult b c)) ih
         in trans (mult (plus b (mult p b)) c) (plus (mult b c) (mult (mult p b) c))
              (plus (mult b c) (mult p (mult b c))) distrib step
         end
@@ -144,13 +144,13 @@ theorem multAssoc : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The first factor of a product can be moved past the second. *)
-theorem multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
-    Eq (mult a (mult b c)) (mult b (mult a c)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) ->
-    let left : Eq (mult a (mult b c)) (mult (mult a b) c) :=
+theorem multLeftComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
+    Eq (mult a (mult b c)) (mult b (mult a c)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) →
+    let left : Eq (mult a (mult b c)) (mult (mult a b) c) ≔
           sym (mult (mult a b) c) (mult a (mult b c)) (multAssoc a b c);
-        swap : Eq (mult (mult a b) c) (mult (mult b a) c) :=
-          cong (fun (y : Nat) -> mult y c) (mult a b) (mult b a) (multComm a b)
+        swap : Eq (mult (mult a b) c) (mult (mult b a) c) ≔
+          cong (λ (y : ℕ) → mult y c) (mult a b) (mult b a) (multComm a b)
     in trans (mult a (mult b c)) (mult (mult b a) c) (mult b (mult a c))
          (trans (mult a (mult b c)) (mult (mult a b) c) (mult (mult b a) c) left swap)
          (multAssoc b a c)
@@ -158,18 +158,18 @@ theorem multLeftComm : forall (a : Nat) (b : Nat) (c : Nat) ->
 end
 
 (* The two middle factors of a product of products can be exchanged. *)
-theorem multSwapMiddle : forall (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) :=
-  fun (a : Nat) (b : Nat) (c : Nat) (d : Nat) ->
-    let lhs := mult (mult a b) (mult c d);
-        mid := mult a (mult b (mult c d));
-        inner := mult a (mult c (mult b d));
-        rhs := mult (mult a c) (mult b d);
-        assoc : Eq lhs mid := multAssoc a b (mult c d);
-        swap : Eq mid inner :=
-          cong (fun (y : Nat) -> mult a y) (mult b (mult c d)) (mult c (mult b d))
+theorem multSwapMiddle : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
+    Eq (mult (mult a b) (mult c d)) (mult (mult a c) (mult b d)) ≔
+  λ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
+    let lhs ≔ mult (mult a b) (mult c d);
+        mid ≔ mult a (mult b (mult c d));
+        inner ≔ mult a (mult c (mult b d));
+        rhs ≔ mult (mult a c) (mult b d);
+        assoc : Eq lhs mid ≔ multAssoc a b (mult c d);
+        swap : Eq mid inner ≔
+          cong (λ (y : ℕ) → mult a y) (mult b (mult c d)) (mult c (mult b d))
             (multLeftComm b c d);
-        back : Eq inner rhs := sym rhs inner (multAssoc a c (mult b d))
+        back : Eq inner rhs ≔ sym rhs inner (multAssoc a c (mult b d))
     in trans lhs mid rhs assoc (trans mid inner rhs swap back)
     end
 end
@@ -181,11 +181,11 @@ module Cancel where
 
 (* A product is zero only if a factor is: with a nonzero first factor, the
    second one is zero. *)
-theorem multEqZero : forall (a : Nat) (b : Nat) (h : Eq (mult a b) 0) (ha : Not (Eq a 0)) -> Eq b 0 :=
-  fun (a : Nat) (b : Nat) ->
-    rec a return x . (forall (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) -> Eq b 0)
-    | zero => fun (h : True) (ha : Not True) -> absurd (Eq b 0) (ha true)
-    | succ p, ih => fun (h : Eq (plus b (mult p b)) 0) (ha : Not False) ->
+theorem multEqZero : ∀ (a : ℕ) (b : ℕ) (h : Eq (mult a b) 0) (ha : Not (Eq a 0)) → Eq b 0 ≔
+  λ (a : ℕ) (b : ℕ) →
+    rec a return x . (∀ (h : Eq (mult x b) 0) (ha : Not (Eq x 0)) → Eq b 0)
+    | zero ⇒ λ (h : ⊤) (ha : Not ⊤) → absurd (Eq b 0) (ha ⋆)
+    | succ p, ih ⇒ λ (h : Eq (plus b (mult p b)) 0) (ha : Not ⊥) →
         plusEqZero b (mult p b) h
     end
 end

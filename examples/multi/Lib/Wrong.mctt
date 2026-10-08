@@ -1,5 +1,5 @@
-module Lib::Other where
+module Lib∷Other where
 
-def x : Nat := 0 end
+def x : ℕ ≔ 0 end
 
 end

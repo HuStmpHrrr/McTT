@@ -1,5 +1,5 @@
 module LetTwoVars where
 
-eval let x : Nat := 0; f : forall (y : Nat) -> Nat := fun (n : Nat) -> n in f x end : Nat
+eval let x : ℕ ≔ 0; f : ∀ (y : ℕ) → ℕ ≔ λ (n : ℕ) → n in f x end : ℕ
 
 end

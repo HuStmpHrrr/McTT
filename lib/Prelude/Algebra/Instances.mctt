@@ -1,4 +1,4 @@
-(* Instances of [Prelude::Algebra::Monoid]: numbers under addition,
+(* Instances of [Prelude∷Algebra∷Monoid]: numbers under addition,
    multiplication and maximum, and functions on numbers under composition.
 
    The three monoids on numbers share their setoid, equality of numbers,
@@ -9,84 +9,84 @@
    commutativity. *)
 (* Written with the long forms ([abstract def], [private def], ...) rather
    than [theorem], [fact] and [let], for comparison. *)
-module Prelude::Algebra::Instances where
+module Prelude∷Algebra∷Instances where
 
-import Prelude::Arith::Equality use (Eq; refl; sym; trans; cong)
-import Prelude::Arith::Plus use (plus)
-open Prelude::Arith::Plus.Basic use (plusZero)
-open Prelude::Arith::Plus.Algebra use (plusAssoc; plusComm)
-import Prelude::Arith::Mult use (mult)
-open Prelude::Arith::Mult.Basic use (multOne; oneMult)
-open Prelude::Arith::Mult.Algebra use (multAssoc; multComm)
-import Prelude::Arith::MinMax use (max)
-open Prelude::Arith::MinMax.Laws use (maxZero; maxComm)
-import Prelude::Arith::Lattice.Algebra use (maxAssoc)
-import Prelude::Algebra::Monoid as Monoid
+import Prelude∷Arith∷Equality use (Eq; refl; sym; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+open Prelude∷Arith∷Plus.Basic use (plusZero)
+open Prelude∷Arith∷Plus.Algebra use (plusAssoc; plusComm)
+import Prelude∷Arith∷Mult use (mult)
+open Prelude∷Arith∷Mult.Basic use (multOne; oneMult)
+open Prelude∷Arith∷Mult.Algebra use (multAssoc; multComm)
+import Prelude∷Arith∷MinMax use (max)
+open Prelude∷Arith∷MinMax.Laws use (maxZero; maxComm)
+import Prelude∷Arith∷Lattice.Algebra use (maxAssoc)
+import Prelude∷Algebra∷Monoid as Monoid
 
 (* Every binary operation on numbers respects equality on both sides: the
    congruence each instance on numbers needs, proved once. *)
-abstract private def congBoth : forall (f : forall (x : Nat) (y : Nat) -> Nat)
-    (a : Nat) (b : Nat) (c : Nat) (d : Nat) (hac : Eq a c) (hbd : Eq b d) -> Eq (f a b) (f c d) :=
-  fun (f : forall (x : Nat) (y : Nat) -> Nat) (a : Nat) (b : Nat) (c : Nat) (d : Nat)
-      (hac : Eq a c) (hbd : Eq b d) ->
+abstract private def congBoth : ∀ (f : ∀ (x : ℕ) (y : ℕ) → ℕ)
+    (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) → Eq (f a b) (f c d) ≔
+  λ (f : ∀ (x : ℕ) (y : ℕ) → ℕ) (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
+    (hac : Eq a c) (hbd : Eq b d) →
     trans (f a b) (f c b) (f c d)
-      (cong (fun (y : Nat) -> f y b) a c hac)
-      (cong (fun (y : Nat) -> f c y) b d hbd)
+      (cong (λ (y : ℕ) → f y b) a c hac)
+      (cong (λ (y : ℕ) → f c y) b d hbd)
 end
 
 (* Monoids on numbers, up to equality: the unit applied to the carrier and
    the setoid, and to the congruence of the given operation. *)
-module OnNat (op : forall (x : Nat) (y : Nat) -> Nat) :=
-  Prelude::Algebra::Monoid 0l Nat Eq refl sym trans op (congBoth op)
+module OnNat (op : ∀ (x : ℕ) (y : ℕ) → ℕ) ≔
+  Prelude∷Algebra∷Monoid 0l ℕ Eq refl sym trans op (congBoth op)
 
 (* Numbers under addition: [Additive.pow x n] is [n] times [x]. *)
-module Additive := OnNat plus 0 plusAssoc refl plusZero
+module Additive ≔ OnNat plus 0 plusAssoc refl plusZero
 
-module AdditiveComm := Additive.Commutative plusComm
+module AdditiveComm ≔ Additive.Commutative plusComm
 
 (* Numbers under multiplication: [Multiplicative.pow x n] is [x] to the
    [n]. *)
-module Multiplicative := OnNat mult 1 multAssoc oneMult multOne
+module Multiplicative ≔ OnNat mult 1 multAssoc oneMult multOne
 
-module MultiplicativeComm := Multiplicative.Commutative multComm
+module MultiplicativeComm ≔ Multiplicative.Commutative multComm
 
 (* Numbers under maximum, with [0] as the neutral element. *)
-module Maximum := OnNat max 0 maxAssoc refl maxZero
+module Maximum ≔ OnNat max 0 maxAssoc refl maxZero
 
-module MaximumComm := Maximum.Commutative maxComm
+module MaximumComm ≔ Maximum.Commutative maxComm
 
 (* Functions on numbers, compared pointwise. *)
-def Endo : Type@0 := forall (n : Nat) -> Nat end
+def Endo : Type@0 ≔ ∀ (n : ℕ) → ℕ end
 
-def Pointwise (f : Endo) (g : Endo) : Type@0 := forall (n : Nat) -> Eq (f n) (g n) end
+def Pointwise (f : Endo) (g : Endo) : Type@0 ≔ ∀ (n : ℕ) → Eq (f n) (g n) end
 
 (* Composition: [compose f g] applies [g], then [f]. *)
-def compose (f : Endo) (g : Endo) : Endo := fun (n : Nat) -> f (g n) end
+def compose (f : Endo) (g : Endo) : Endo ≔ λ (n : ℕ) → f (g n) end
 
-def identity : Endo := fun (n : Nat) -> n end
+def identity : Endo ≔ λ (n : ℕ) → n end
 
 (* Pointwise equality is an equivalence, and composition respects it. *)
 module PointwiseLaws where
 
-abstract def pwRefl : forall (f : Endo) -> Pointwise f f :=
-  fun (f : Endo) (n : Nat) -> refl (f n)
+abstract def pwRefl : ∀ (f : Endo) → Pointwise f f ≔
+  λ (f : Endo) (n : ℕ) → refl (f n)
 end
 
-abstract def pwSym : forall (f : Endo) (g : Endo) (h : Pointwise f g) -> Pointwise g f :=
-  fun (f : Endo) (g : Endo) (h : Pointwise f g) (n : Nat) -> sym (f n) (g n) (h n)
+abstract def pwSym : ∀ (f : Endo) (g : Endo) (h : Pointwise f g) → Pointwise g f ≔
+  λ (f : Endo) (g : Endo) (h : Pointwise f g) (n : ℕ) → sym (f n) (g n) (h n)
 end
 
-abstract def pwTrans : forall (f : Endo) (g : Endo) (k : Endo)
-    (hfg : Pointwise f g) (hgk : Pointwise g k) -> Pointwise f k :=
-  fun (f : Endo) (g : Endo) (k : Endo) (hfg : Pointwise f g) (hgk : Pointwise g k) (n : Nat) ->
+abstract def pwTrans : ∀ (f : Endo) (g : Endo) (k : Endo)
+    (hfg : Pointwise f g) (hgk : Pointwise g k) → Pointwise f k ≔
+  λ (f : Endo) (g : Endo) (k : Endo) (hfg : Pointwise f g) (hgk : Pointwise g k) (n : ℕ) →
     trans (f n) (g n) (k n) (hfg n) (hgk n)
 end
 
 (* [compose f g] at [n] is [f (g n)]: rewrite under [f], then use [f ~ fb]. *)
-abstract def composeCong : forall (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
-    (hf : Pointwise f fb) (hg : Pointwise g gb) -> Pointwise (compose f g) (compose fb gb) :=
-  fun (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
-      (hf : Pointwise f fb) (hg : Pointwise g gb) (n : Nat) ->
+abstract def composeCong : ∀ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
+    (hf : Pointwise f fb) (hg : Pointwise g gb) → Pointwise (compose f g) (compose fb gb) ≔
+  λ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
+    (hf : Pointwise f fb) (hg : Pointwise g gb) (n : ℕ) →
     trans (f (g n)) (f (gb n)) (fb (gb n)) (cong f (g n) (gb n) (hg n)) (hf (gb n))
 end
 
@@ -97,9 +97,9 @@ open PointwiseLaws use (pwRefl; pwSym; pwTrans; composeCong)
 (* Functions on numbers under composition: [Composition.pow f n] is [f]
    iterated [n] times.  Associativity and the unit laws hold pointwise by
    conversion. *)
-module Composition :=
-  Prelude::Algebra::Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
-    (fun (f : Endo) (g : Endo) (k : Endo) -> pwRefl (compose f (compose g k)))
+module Composition ≔
+  Prelude∷Algebra∷Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
+    (λ (f : Endo) (g : Endo) (k : Endo) → pwRefl (compose f (compose g k)))
     pwRefl pwRefl
 
 end

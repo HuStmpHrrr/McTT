@@ -3,39 +3,39 @@
    indices below [n], so [c i] is the coefficient of [x] to the [i].
 
    The point [x] is fixed across an evaluation, so the evaluators live in a
-   module [At (x : Nat)].  Horner's scheme and the sum of monomials agree at
+   module [At (x : ℕ)].  Horner's scheme and the sum of monomials agree at
    every point ([At.hornerNaive]); at the point 1 both give the sum of the
    coefficients ([hornerAtOne]). *)
 module Polynomials where
 
-import Prelude::Arith::Equality use (Eq; sym; trans; cong)
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Mult use (mult)
-open Prelude::Arith::Mult.Basic use (multOne)
-open Prelude::Arith::Mult.Algebra use (multLeftComm)
-import Prelude::Arith::Pow use (pow)
-open Prelude::Arith::Pow.Basic use (onePow)
-import Prelude::Arith::Sum use (sumTo)
-open Prelude::Arith::Sum.Basic use (sumToExt; sumToShift)
-open Prelude::Arith::Sum.Linear use (sumToScale)
+import Prelude∷Arith∷Equality use (Eq; sym; trans; cong)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Mult use (mult)
+open Prelude∷Arith∷Mult.Basic use (multOne)
+open Prelude∷Arith∷Mult.Algebra use (multLeftComm)
+import Prelude∷Arith∷Pow use (pow)
+open Prelude∷Arith∷Pow.Basic use (onePow)
+import Prelude∷Arith∷Sum use (sumTo)
+open Prelude∷Arith∷Sum.Basic use (sumToExt; sumToShift)
+open Prelude∷Arith∷Sum.Linear use (sumToScale)
 
-def Coeffs : Type@0 := forall (i : Nat) -> Nat end
+def Coeffs : Type@0 ≔ ∀ (i : ℕ) → ℕ end
 
 (* The coefficients [a, b, c, d], then zeros. *)
-def cubic (a : Nat) (b : Nat) (c : Nat) (d : Nat) : Coeffs :=
-  fun (i : Nat) ->
-    rec i return y . Nat
-    | zero => a
-    | succ j, r =>
-        rec j return z . Nat
-        | zero => b
-        | succ k, s => rec k return w . Nat | zero => c | succ l, t => d end
+def cubic (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) : Coeffs ≔
+  λ (i : ℕ) →
+    rec i return y . ℕ
+    | zero ⇒ a
+    | succ j, r ⇒
+        rec j return z . ℕ
+        | zero ⇒ b
+        | succ k, s ⇒ rec k return w . ℕ | zero ⇒ c | succ l, t ⇒ d end
         end
     end
 end
 
 (* Evaluation at the point [x]. *)
-module At (x : Nat) where
+module At (x : ℕ) where
 
 (* The pieces of Horner's scheme, private to [At]: the shifted
    coefficients, the monomials, and the scheme generalized over the
@@ -43,17 +43,17 @@ module At (x : Nat) where
 private module Scheme where
 
 (* The coefficients of [(c - c 0) / x]: the polynomial shifted down. *)
-def shift (c : Coeffs) : Coeffs := fun (i : Nat) -> c (succ i) end
+def shift (c : Coeffs) : Coeffs ≔ λ (i : ℕ) → c (succ i) end
 
 (* The monomial of index [i]. *)
-def term (c : Coeffs) (i : Nat) : Nat := mult (c i) (pow x i) end
+def term (c : Coeffs) (i : ℕ) : ℕ ≔ mult (c i) (pow x i) end
 
 (* Horner's scheme, [c 0 + x * (c 1 + x * (...))], by recursion on the
    length, generalized over the coefficients. *)
-def hornerFrom (n : Nat) : forall (c : Coeffs) -> Nat :=
-  rec n return k . (forall (c : Coeffs) -> Nat)
-  | zero => fun (c : Coeffs) -> 0
-  | succ p, r => fun (c : Coeffs) -> plus (c 0) (mult x (r (shift c)))
+def hornerFrom (n : ℕ) : ∀ (c : Coeffs) → ℕ ≔
+  rec n return k . (∀ (c : Coeffs) → ℕ)
+  | zero ⇒ λ (c : Coeffs) → 0
+  | succ p, r ⇒ λ (c : Coeffs) → plus (c 0) (mult x (r (shift c)))
   end
 end
 
@@ -61,39 +61,39 @@ end
 
 open Scheme use (shift; term; hornerFrom)
 
-def horner (c : Coeffs) (n : Nat) : Nat := hornerFrom n c end
+def horner (c : Coeffs) (n : ℕ) : ℕ ≔ hornerFrom n c end
 
 (* The sum of the monomials, each with its own power of [x]. *)
-def naive (c : Coeffs) (n : Nat) : Nat := sumTo (fun (i : Nat) -> mult (c i) (pow x i)) n end
+def naive (c : Coeffs) (n : ℕ) : ℕ ≔ sumTo (λ (i : ℕ) → mult (c i) (pow x i)) n end
 
 (* Horner's scheme computes the sum of the monomials.  In the step, the
    factor [x] goes into the sum ([sumToScale]) and into each power
    ([multLeftComm]), and the first monomial is split off ([sumToShift]). *)
-theorem hornerNaive : forall (c : Coeffs) (n : Nat) -> Eq (horner c n) (naive c n) :=
-  fun (c : Coeffs) (n : Nat) ->
-    (rec n return k . (forall (d : Coeffs) -> Eq (hornerFrom k d) (sumTo (term d) k))
-     | zero => fun (d : Coeffs) -> true
-     | succ p, ih => fun (d : Coeffs) ->
-         let rest := hornerFrom p (shift d);
-             tail := sumTo (term (shift d)) p;
-             scaled := sumTo (fun (i : Nat) -> mult x (term (shift d) i)) p;
-             shifted := sumTo (fun (i : Nat) -> term d (succ i)) p;
-             whole := sumTo (term d) (succ p);
-             inner : Eq (mult x rest) (mult x tail) :=
-               cong (fun (y : Nat) -> mult x y) rest tail (ih (shift d));
-             scale : Eq (mult x tail) scaled :=
+theorem hornerNaive : ∀ (c : Coeffs) (n : ℕ) → Eq (horner c n) (naive c n) ≔
+  λ (c : Coeffs) (n : ℕ) →
+    (rec n return k . (∀ (d : Coeffs) → Eq (hornerFrom k d) (sumTo (term d) k))
+     | zero ⇒ λ (d : Coeffs) → ⋆
+     | succ p, ih ⇒ λ (d : Coeffs) →
+         let rest ≔ hornerFrom p (shift d);
+             tail ≔ sumTo (term (shift d)) p;
+             scaled ≔ sumTo (λ (i : ℕ) → mult x (term (shift d) i)) p;
+             shifted ≔ sumTo (λ (i : ℕ) → term d (succ i)) p;
+             whole ≔ sumTo (term d) (succ p);
+             inner : Eq (mult x rest) (mult x tail) ≔
+               cong (λ (y : ℕ) → mult x y) rest tail (ih (shift d));
+             scale : Eq (mult x tail) scaled ≔
                sym scaled (mult x tail) (sumToScale x (term (shift d)) p);
-             powers : Eq scaled shifted :=
-               sumToExt (fun (i : Nat) -> mult x (term (shift d) i))
-                 (fun (i : Nat) -> term d (succ i))
-                 (fun (i : Nat) -> multLeftComm x (d (succ i)) (pow x i)) p;
-             first : Eq (plus (d 0) shifted) whole :=
+             powers : Eq scaled shifted ≔
+               sumToExt (λ (i : ℕ) → mult x (term (shift d) i))
+                 (λ (i : ℕ) → term d (succ i))
+                 (λ (i : ℕ) → multLeftComm x (d (succ i)) (pow x i)) p;
+             first : Eq (plus (d 0) shifted) whole ≔
                trans (plus (d 0) shifted) (plus (term d 0) shifted) whole
-                 (cong (fun (y : Nat) -> plus y shifted) (d 0) (term d 0)
+                 (cong (λ (y : ℕ) → plus y shifted) (d 0) (term d 0)
                     (sym (term d 0) (d 0) (multOne (d 0))))
                  (sym whole (plus (term d 0) shifted) (sumToShift (term d) p))
          in trans (plus (d 0) (mult x rest)) (plus (d 0) shifted) whole
-              (cong (fun (y : Nat) -> plus (d 0) y) (mult x rest) shifted
+              (cong (λ (y : ℕ) → plus (d 0) y) (mult x rest) shifted
                  (trans (mult x rest) (mult x tail) shifted inner
                     (trans (mult x tail) scaled shifted scale powers)))
               first
@@ -105,14 +105,14 @@ end
 
 (* At the point 1, a polynomial is the sum of its coefficients.  The proof
    instantiates [At] locally, and uses [onePow] in every monomial. *)
-theorem hornerAtOne : forall (c : Coeffs) (n : Nat) -> Eq (At.horner 1 c n) (sumTo c n) :=
-  fun (c : Coeffs) (n : Nat) ->
-    let module One := At 1 in
+theorem hornerAtOne : ∀ (c : Coeffs) (n : ℕ) → Eq (At.horner 1 c n) (sumTo c n) ≔
+  λ (c : Coeffs) (n : ℕ) →
+    let module One ≔ At 1 in
       trans (One.horner c n) (One.naive c n) (sumTo c n) (One.hornerNaive c n)
-        (sumToExt (fun (i : Nat) -> mult (c i) (pow 1 i)) c
-           (fun (i : Nat) ->
+        (sumToExt (λ (i : ℕ) → mult (c i) (pow 1 i)) c
+           (λ (i : ℕ) →
               trans (mult (c i) (pow 1 i)) (mult (c i) 1) (c i)
-                (cong (fun (y : Nat) -> mult (c i) y) (pow 1 i) 1 (onePow i))
+                (cong (λ (y : ℕ) → mult (c i) y) (pow 1 i) 1 (onePow i))
                 (multOne (c i)))
            n)
     end
@@ -127,19 +127,19 @@ eval At.naive 2 (cubic 1 2 3 4) 4
    points below [k], summed, and their maximum.  The maximum comes from an
    open inside the local body.  A local body may not import, so the unit is
    loaded just before. *)
-import Prelude::Arith::MinMax
+import Prelude∷Arith∷MinMax
 
 eval let module Table (c : Coeffs) where
-       open Prelude::Arith::MinMax use (max)
-       def value (x : Nat) : Nat := At.horner x c 4 end
-       def total (k : Nat) : Nat := sumTo value k end
-       def peak (k : Nat) : Nat :=
-         rec k return y . Nat | zero => 0 | succ p, r => max (value p) r end
+       open Prelude∷Arith∷MinMax use (max)
+       def value (x : ℕ) : ℕ ≔ At.horner x c 4 end
+       def total (k : ℕ) : ℕ ≔ sumTo value k end
+       def peak (k : ℕ) : ℕ ≔
+         rec k return y . ℕ | zero ⇒ 0 | succ p, r ⇒ max (value p) r end
        end
      end in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
      end
 
-(* Closed instances of the theorems normalize to [true]. *)
+(* Closed instances of the theorems normalize to [⋆]. *)
 eval At.hornerNaive 2 (cubic 1 0 1 0) 4
 
 eval At.hornerNaive 3 (cubic 2 1 0 0) 4

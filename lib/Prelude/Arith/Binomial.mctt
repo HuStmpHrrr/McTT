@@ -1,19 +1,19 @@
 (* Binomial coefficients [choose n k], computed by Pascal's recursion. *)
-module Prelude::Arith::Binomial where
+module Prelude∷Arith∷Binomial where
 
-import Prelude::Arith::Plus use (plus)
+import Prelude∷Arith∷Plus use (plus)
 
 (* [choose n k] is the number of [k]-element subsets of an [n]-element set.
    Row [0] is [1] at [k = 0] and [0] elsewhere; in row [succ n], [choose
    (succ n) 0] is [1] and [choose (succ n) (succ k)] is
    [plus (choose n k) (choose n (succ k))].  The recursion on [n] returns the
    whole row as a function, so both equations hold by computation. *)
-def choose (n : Nat) (k : Nat) : Nat :=
-  (rec n return y . (forall (j : Nat) -> Nat)
-   | zero => fun (j : Nat) ->
-       rec j return z . Nat | zero => 1 | succ q, s => 0 end
-   | succ p, r => fun (j : Nat) ->
-       rec j return z . Nat | zero => 1 | succ q, s => plus (r q) (r (succ q)) end
+def choose (n : ℕ) (k : ℕ) : ℕ ≔
+  (rec n return y . (∀ (j : ℕ) → ℕ)
+   | zero ⇒ λ (j : ℕ) →
+       rec j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ 0 end
+   | succ p, r ⇒ λ (j : ℕ) →
+       rec j return z . ℕ | zero ⇒ 1 | succ q, s ⇒ plus (r q) (r (succ q)) end
    end) k
 end
 

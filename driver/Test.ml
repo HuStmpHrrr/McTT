@@ -2651,15 +2651,15 @@ let%expect_test "mctt-doc: links" =
     Additive line 19: Prelude∷Algebra∷Instances#Additive
     pow line 19: Prelude∷Algebra∷Monoid#pow
     powPlus line 72: Prelude∷Algebra∷Monoid#Power.powPlus
-    plus line 197: Prelude∷Arith∷Plus#plus
-    plus line 198: Prelude∷Arith∷Plus#plus
-    add line 197: declares #Adding.add
-    add line 198: Prelude∷Arith∷Plus#plus
-    P line 197: declares #Adding.P
-    P line 198: Tutorial#Adding.P
-    addIter line 269: Tutorial#Adder.addIter
-    x line 34: declares #l11
-    x line 34: Tutorial#l11
+    plus line 205: Prelude∷Arith∷Plus#plus
+    plus line 206: Prelude∷Arith∷Plus#plus
+    add line 205: declares #Adding.add
+    add line 206: Prelude∷Arith∷Plus#plus
+    P line 205: declares #Adding.P
+    P line 206: Tutorial#Adding.P
+    addIter line 277: Tutorial#Adder.addIter
+    x line 42: declares #l11
+    x line 42: Tutorial#l11
     |}]
 
 (* The universe syntax: examples/Universes.mctt, and the spellings it does

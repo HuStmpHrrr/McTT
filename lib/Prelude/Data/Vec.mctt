@@ -1,5 +1,5 @@
 (* Vectors of length [n] over [A], encoded as functions from bounded indices:
-   [Vec n] is [forall (i : Nat) (h : Lt i n) -> A].
+   [Vec n] is [∀ (i : ℕ) (h : Lt i n) → A].
 
    This encoding is chosen over nested Church-encoded pairs because a Church
    pair quantifies over its target type, so it lives one universe above its
@@ -14,154 +14,154 @@
    [v] at a shifted index, with a bound proof built from the order laws;
    those that change the length by one ([append], [snoc]) recurse on it.
 
-   The unit takes the level [u] of [A], so [Prelude::Data::Vec 0l Nat] holds
-   vectors of numbers and [Prelude::Data::Vec 1l Type@{u}] vectors of types.
+   The unit takes the level [u] of [A], so [Prelude∷Data∷Vec 0l ℕ] holds
+   vectors of numbers and [Prelude∷Data∷Vec 1l Type@{u}] vectors of types.
    Operations into vectors over other types take them at the same level; by
    cumulativity, types of levels [u] and [v] are both in
    [Type@{maxl u v}]. *)
-module Prelude::Data::Vec (u : Level) (A : Type@{u}) where
+module Prelude∷Data∷Vec (u : Level) (A : Type@{u}) where
 
-import Prelude::Logic.Negation u use (absurd)
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Sub use (sub)
-import Prelude::Arith::Order use (Lt)
-open Prelude::Arith::Order.LeLaws use (leRefl; leStep; lePlusRight)
-import Prelude::Arith::Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
-open Prelude::Arith::Monotone.SubLaws use (subLe)
+import Prelude∷Logic.Negation u use (absurd)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Sub use (sub)
+import Prelude∷Arith∷Order use (Lt)
+open Prelude∷Arith∷Order.LeLaws use (leRefl; leStep; lePlusRight)
+import Prelude∷Arith∷Monotone.Strict use (ltLeTrans; ltPlusMonoRight)
+open Prelude∷Arith∷Monotone.SubLaws use (subLe)
 
-def Vec (n : Nat) : Type@{u} := forall (i : Nat) (h : Lt i n) -> A end
+def Vec (n : ℕ) : Type@{u} ≔ ∀ (i : ℕ) (h : Lt i n) → A end
 
-(* The empty vector; [Lt i 0] computes to [False]. *)
-def nil : Vec 0 := fun (i : Nat) (h : Lt i 0) -> absurd A h end
+(* The empty vector; [Lt i 0] computes to [⊥]. *)
+def nil : Vec 0 ≔ λ (i : ℕ) (h : Lt i 0) → absurd A h end
 
 (* [cons n a v] puts [a] in front of [v], by cases on the index. *)
-def cons (n : Nat) (a : A) (v : Vec n) : Vec (succ n) :=
-  fun (i : Nat) ->
-    rec i return x . (forall (h : Lt x (succ n)) -> A)
-    | zero => fun (h : Lt 0 (succ n)) -> a
-    | succ p, r => fun (h : Lt p n) -> v p h
+def cons (n : ℕ) (a : A) (v : Vec n) : Vec (succ n) ≔
+  λ (i : ℕ) →
+    rec i return x . (∀ (h : Lt x (succ n)) → A)
+    | zero ⇒ λ (h : Lt 0 (succ n)) → a
+    | succ p, r ⇒ λ (h : Lt p n) → v p h
     end
 end
 
 (* The [i]-th element, given a proof that [i] is in bounds. *)
-def nth (n : Nat) (v : Vec n) (i : Nat) (h : Lt i n) : A := v i h end
+def nth (n : ℕ) (v : Vec n) (i : ℕ) (h : Lt i n) : A ≔ v i h end
 
-(* The first element; [Lt 0 (succ n)] computes to [True]. *)
-def head (n : Nat) (v : Vec (succ n)) : A := v 0 true end
+(* The first element; [Lt 0 (succ n)] computes to [⊤]. *)
+def head (n : ℕ) (v : Vec (succ n)) : A ≔ v 0 ⋆ end
 
 (* All elements but the first; [Lt (succ i) (succ n)] computes to [Lt i n]. *)
-def tail (n : Nat) (v : Vec (succ n)) : Vec n :=
-  fun (i : Nat) (h : Lt i n) -> v (succ i) h
+def tail (n : ℕ) (v : Vec (succ n)) : Vec n ≔
+  λ (i : ℕ) (h : Lt i n) → v (succ i) h
 end
 
-def replicate (n : Nat) (c : A) : Vec n := fun (i : Nat) (h : Lt i n) -> c end
+def replicate (n : ℕ) (c : A) : Vec n ≔ λ (i : ℕ) (h : Lt i n) → c end
 
 (* Applies [f] to every element; the result is a vector over [B]. *)
-def map (B : Type@{u}) (f : forall (a : A) -> B) (n : Nat) (v : Vec n) :
-    forall (i : Nat) (h : Lt i n) -> B :=
-  fun (i : Nat) (h : Lt i n) -> f (v i h)
+def map (B : Type@{u}) (f : ∀ (a : A) → B) (n : ℕ) (v : Vec n) :
+    ∀ (i : ℕ) (h : Lt i n) → B ≔
+  λ (i : ℕ) (h : Lt i n) → f (v i h)
 end
 
 (* Right fold: [foldr B f z n v] is [f v0 (f v1 (... (f v(n-1) z)))]. *)
-def foldr (B : Type@{u}) (f : forall (a : A) (b : B) -> B) (z : B) (n : Nat) (v : Vec n) : B :=
-  (rec n return k . (forall (w : Vec k) -> B)
-   | zero => fun (w : Vec 0) -> z
-   | succ p, r => fun (w : Vec (succ p)) -> f (head p w) (r (tail p w))
+def foldr (B : Type@{u}) (f : ∀ (a : A) (b : B) → B) (z : B) (n : ℕ) (v : Vec n) : B ≔
+  (rec n return k . (∀ (w : Vec k) → B)
+   | zero ⇒ λ (w : Vec 0) → z
+   | succ p, r ⇒ λ (w : Vec (succ p)) → f (head p w) (r (tail p w))
    end) v
 end
 
 (* Concatenation, by recursion on the length [m] of the first vector, so the
    length [plus m n] computes: [append 0 n s v] is [v], and
    [append (succ m) n s v] is [cons (head s) (append m n (tail s) v)]. *)
-def append (m : Nat) (n : Nat) (s : Vec m) (v : Vec n) : Vec (plus m n) :=
-  (rec m return k . (forall (w : Vec k) -> Vec (plus k n))
-   | zero => fun (w : Vec 0) -> v
-   | succ p, r => fun (w : Vec (succ p)) ->
+def append (m : ℕ) (n : ℕ) (s : Vec m) (v : Vec n) : Vec (plus m n) ≔
+  (rec m return k . (∀ (w : Vec k) → Vec (plus k n))
+   | zero ⇒ λ (w : Vec 0) → v
+   | succ p, r ⇒ λ (w : Vec (succ p)) →
        cons (plus p n) (head p w) (r (tail p w))
    end) s
 end
 
 (* The vector whose [i]-th element is [f i]. *)
-def tabulate (f : forall (i : Nat) -> A) (n : Nat) : Vec n :=
-  fun (i : Nat) (h : Lt i n) -> f i
+def tabulate (f : ∀ (i : ℕ) → A) (n : ℕ) : Vec n ≔
+  λ (i : ℕ) (h : Lt i n) → f i
 end
 
 (* Combines two vectors of the same length elementwise with [f]. *)
-def zipWith (B : Type@{u}) (C : Type@{u}) (f : forall (a : A) (b : B) -> C) (n : Nat)
-    (s : Vec n) (v : forall (i : Nat) (h : Lt i n) -> B) :
-    forall (i : Nat) (h : Lt i n) -> C :=
-  fun (i : Nat) (h : Lt i n) -> f (s i h) (v i h)
+def zipWith (B : Type@{u}) (C : Type@{u}) (f : ∀ (a : A) (b : B) → C) (n : ℕ)
+    (s : Vec n) (v : ∀ (i : ℕ) (h : Lt i n) → B) :
+    ∀ (i : ℕ) (h : Lt i n) → C ≔
+  λ (i : ℕ) (h : Lt i n) → f (s i h) (v i h)
 end
 
 (* Left fold: [foldl B f z n v] is [f (... (f (f z v0) v1) ...) v(n-1)].  The
    accumulator is threaded through the recursion on the length. *)
-def foldl (B : Type@{u}) (f : forall (b : B) (a : A) -> B) (z : B) (n : Nat) (v : Vec n) : B :=
-  (rec n return k . (forall (w : Vec k) (acc : B) -> B)
-   | zero => fun (w : Vec 0) (acc : B) -> acc
-   | succ p, r => fun (w : Vec (succ p)) (acc : B) -> r (tail p w) (f acc (head p w))
+def foldl (B : Type@{u}) (f : ∀ (b : B) (a : A) → B) (z : B) (n : ℕ) (v : Vec n) : B ≔
+  (rec n return k . (∀ (w : Vec k) (acc : B) → B)
+   | zero ⇒ λ (w : Vec 0) (acc : B) → acc
+   | succ p, r ⇒ λ (w : Vec (succ p)) (acc : B) → r (tail p w) (f acc (head p w))
    end) v z
 end
 
 (* The last element; [Lt n (succ n)] is [Le n n], proved by [leRefl]. *)
-def last (n : Nat) (v : Vec (succ n)) : A := v n (leRefl n) end
+def last (n : ℕ) (v : Vec (succ n)) : A ≔ v n (leRefl n) end
 
 (* All elements but the last. *)
-def init (n : Nat) (v : Vec (succ n)) : Vec n :=
-  fun (i : Nat) (h : Lt i n) -> v i (leStep (succ i) n h)
+def init (n : ℕ) (v : Vec (succ n)) : Vec n ≔
+  λ (i : ℕ) (h : Lt i n) → v i (leStep (succ i) n h)
 end
 
 (* [snoc n v a] puts [a] after the end of [v].  Like [append], it recurses on
    the length: [snoc (succ p) v a] is [cons (head v) (snoc p (tail v) a)]. *)
-def snoc (n : Nat) (v : Vec n) (a : A) : Vec (succ n) :=
-  (rec n return k . (forall (w : Vec k) -> Vec (succ k))
-   | zero => fun (w : Vec 0) -> cons 0 a nil
-   | succ p, r => fun (w : Vec (succ p)) -> cons (succ p) (head p w) (r (tail p w))
+def snoc (n : ℕ) (v : Vec n) (a : A) : Vec (succ n) ≔
+  (rec n return k . (∀ (w : Vec k) → Vec (succ k))
+   | zero ⇒ λ (w : Vec 0) → cons 0 a nil
+   | succ p, r ⇒ λ (w : Vec (succ p)) → cons (succ p) (head p w) (r (tail p w))
    end) v
 end
 
 (* Reversal: element [i] of [reverse (succ p) v] is element [sub p i] of [v],
    which is in bounds by [subLe]. *)
-def reverse (n : Nat) (v : Vec n) : Vec n :=
-  (rec n return k . (forall (w : Vec k) -> Vec k)
-   | zero => fun (w : Vec 0) -> w
-   | succ p, r => fun (w : Vec (succ p)) (i : Nat) (h : Lt i (succ p)) ->
+def reverse (n : ℕ) (v : Vec n) : Vec n ≔
+  (rec n return k . (∀ (w : Vec k) → Vec k)
+   | zero ⇒ λ (w : Vec 0) → w
+   | succ p, r ⇒ λ (w : Vec (succ p)) (i : ℕ) (h : Lt i (succ p)) →
        w (sub p i) (subLe p i)
    end) v
 end
 
 (* The first [m] elements of a vector of length [plus m n]. *)
-def take (m : Nat) (n : Nat) (v : Vec (plus m n)) : Vec m :=
-  fun (i : Nat) (h : Lt i m) -> v i (ltLeTrans i m (plus m n) h (lePlusRight m n))
+def take (m : ℕ) (n : ℕ) (v : Vec (plus m n)) : Vec m ≔
+  λ (i : ℕ) (h : Lt i m) → v i (ltLeTrans i m (plus m n) h (lePlusRight m n))
 end
 
 (* The last [n] elements of a vector of length [plus m n]. *)
-def drop (m : Nat) (n : Nat) (v : Vec (plus m n)) : Vec n :=
-  fun (j : Nat) (h : Lt j n) -> v (plus m j) (ltPlusMonoRight m j n h)
+def drop (m : ℕ) (n : ℕ) (v : Vec (plus m n)) : Vec n ≔
+  λ (j : ℕ) (h : Lt j n) → v (plus m j) (ltPlusMonoRight m j n h)
 end
 
 (* [All P n v] says that every element of [v] satisfies [P]. *)
-def All (P : forall (a : A) -> Type@{u}) (n : Nat) (v : Vec n) : Type@{u} :=
-  forall (i : Nat) (h : Lt i n) -> P (v i h)
+def All (P : ∀ (a : A) → Type@{u}) (n : ℕ) (v : Vec n) : Type@{u} ≔
+  ∀ (i : ℕ) (h : Lt i n) → P (v i h)
 end
 
 (* [Any P n v] says that some element of [v] satisfies [P].  It is
-   Church-encoded like [Prelude::Logic.Exist.Exists], so it lives one level
+   Church-encoded like [Prelude∷Logic.Exist.Exists], so it lives one level
    up. *)
-def Any (P : forall (a : A) -> Type@{u}) (n : Nat) (v : Vec n) : Type@{succl u} :=
-  forall (C : Type@{u}) (k : forall (i : Nat) (h : Lt i n) (q : P (v i h)) -> C) -> C
+def Any (P : ∀ (a : A) → Type@{u}) (n : ℕ) (v : Vec n) : Type@{succl u} ≔
+  ∀ (C : Type@{u}) (k : ∀ (i : ℕ) (h : Lt i n) (q : P (v i h)) → C) → C
 end
 
 (* [allb p n v] is 1 when [p] is nonzero on every element of [v], and 0
    otherwise. *)
-def allb (p : forall (a : A) -> Nat) (n : Nat) (v : Vec n) : Nat :=
-  foldr Nat (fun (a : A) (b : Nat) -> rec (p a) return y . Nat | zero => 0 | succ q, s => b end)
+def allb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
+  foldr ℕ (λ (a : A) (b : ℕ) → rec (p a) return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end)
     1 n v
 end
 
 (* [anyb p n v] is 1 when [p] is nonzero on some element of [v], and 0
    otherwise. *)
-def anyb (p : forall (a : A) -> Nat) (n : Nat) (v : Vec n) : Nat :=
-  foldr Nat (fun (a : A) (b : Nat) -> rec (p a) return y . Nat | zero => b | succ q, s => 1 end)
+def anyb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
+  foldr ℕ (λ (a : A) (b : ℕ) → rec (p a) return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end)
     0 n v
 end
 

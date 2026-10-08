@@ -1,30 +1,30 @@
 (* The factorial, with its defining equations, positivity, monotonicity in
    one step, and the bound [pow 2 n <= factorial (succ n)]. *)
-module Prelude::Arith::Factorial where
+module Prelude∷Arith∷Factorial where
 
-import Prelude::Arith::Equality use (Eq; refl)
-import Prelude::Arith::Plus use (plus)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Order use (Le; Lt)
-open Prelude::Arith::Order.LeLaws use (leTrans; lePlusRight)
-import Prelude::Arith::Monotone.Mono use (lePlusMono)
-import Prelude::Arith::Pow use (pow)
+import Prelude∷Arith∷Equality use (Eq; refl)
+import Prelude∷Arith∷Plus use (plus)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Order use (Le; Lt)
+open Prelude∷Arith∷Order.LeLaws use (leTrans; lePlusRight)
+import Prelude∷Arith∷Monotone.Mono use (lePlusMono)
+import Prelude∷Arith∷Pow use (pow)
 
 (* [factorial 0] is [1] and [factorial (succ p)] is [mult (succ p) (factorial p)]. *)
-def factorial (n : Nat) : Nat :=
-  rec n return y . Nat
-  | zero => 1
-  | succ p, r => mult (succ p) r
+def factorial (n : ℕ) : ℕ ≔
+  rec n return y . ℕ
+  | zero ⇒ 1
+  | succ p, r ⇒ mult (succ p) r
   end
 end
 
 (* The defining equations. *)
 module Laws where
 
-theorem factZero : Eq (factorial 0) 1 := true end
+theorem factZero : Eq (factorial 0) 1 ≔ ⋆ end
 
-theorem factSucc : forall (n : Nat) -> Eq (factorial (succ n)) (mult (succ n) (factorial n)) :=
-  fun (n : Nat) -> refl (mult (succ n) (factorial n))
+theorem factSucc : ∀ (n : ℕ) → Eq (factorial (succ n)) (mult (succ n) (factorial n)) ≔
+  λ (n : ℕ) → refl (mult (succ n) (factorial n))
 end
 
 end
@@ -34,33 +34,33 @@ module Bounds where
 
 (* Every factorial is positive.  [factorial (succ p)] computes to
    [plus (factorial p) (mult p (factorial p))], which is at least [factorial p]. *)
-theorem factPos : forall (n : Nat) -> Lt 0 (factorial n) :=
-  fun (n : Nat) ->
+theorem factPos : ∀ (n : ℕ) → Lt 0 (factorial n) ≔
+  λ (n : ℕ) →
     rec n return x . Lt 0 (factorial x)
-    | zero => true
-    | succ p, ih =>
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
         leTrans 1 (factorial p) (factorial (succ p)) ih (lePlusRight (factorial p) (mult p (factorial p)))
     end
 end
 
 (* The factorial does not decrease from [n] to [succ n]. *)
-theorem factLeSucc : forall (n : Nat) -> Le (factorial n) (factorial (succ n)) :=
-  fun (n : Nat) -> lePlusRight (factorial n) (mult n (factorial n))
+theorem factLeSucc : ∀ (n : ℕ) → Le (factorial n) (factorial (succ n)) ≔
+  λ (n : ℕ) → lePlusRight (factorial n) (mult n (factorial n))
 end
 
 (* Powers of two are bounded by factorials: [pow 2 n <= factorial (succ n)].  In
    the step, [mult 2 P] computes to [plus P (plus P 0)] and
    [mult (succ (succ p)) F] to [plus F (plus F (mult p F))], so two uses of
    [lePlusMono] on the hypothesis [P <= F] conclude. *)
-theorem lePowFact : forall (n : Nat) -> Le (pow 2 n) (factorial (succ n)) :=
-  fun (n : Nat) ->
+theorem lePowFact : ∀ (n : ℕ) → Le (pow 2 n) (factorial (succ n)) ≔
+  λ (n : ℕ) →
     rec n return x . Le (pow 2 x) (factorial (succ x))
-    | zero => true
-    | succ p, ih =>
-        let P := pow 2 p;
-            F := factorial (succ p);
-            inner : Le (plus P 0) (plus F (mult p F)) :=
-              lePlusMono P F 0 (mult p F) ih true
+    | zero ⇒ ⋆
+    | succ p, ih ⇒
+        let P ≔ pow 2 p;
+            F ≔ factorial (succ p);
+            inner : Le (plus P 0) (plus F (mult p F)) ≔
+              lePlusMono P F 0 (mult p F) ih ⋆
         in lePlusMono P F (plus P 0) (plus F (mult p F)) ih inner
         end
     end

@@ -3,20 +3,20 @@
    first one that divides [n], or [n] itself when none does.  [isPrime n] is
    1 when [n] is at least 2 and has no such divisor, and 0 otherwise;
    [Prime n] is the computed proposition [Eq (isPrime n) 1]. *)
-module Prelude::Arith::Prime where
+module Prelude∷Arith∷Prime where
 
-import Prelude::Logic use (Not; absurd)
-import Prelude::Arith::Equality use (Eq; refl)
-import Prelude::Arith::Mult use (mult)
-import Prelude::Arith::Sub use (pred)
-import Prelude::Arith::Order use (Le; leb)
-import Prelude::Arith::Decide use (pick; eqb)
-open Prelude::Arith::Decide.EqbLaws use (eqbCases)
-import Prelude::Arith::Div use (mod)
-import Prelude::Arith::Divides use (Divides)
-open Prelude::Arith::Divides.Basic use (dividesRefl)
-import Prelude::Arith::Induction use (caseNat)
-import Prelude::Function::Combinators use (Generic)
+import Prelude∷Logic use (Not; absurd)
+import Prelude∷Arith∷Equality use (Eq; refl)
+import Prelude∷Arith∷Mult use (mult)
+import Prelude∷Arith∷Sub use (pred)
+import Prelude∷Arith∷Order use (Le; leb)
+import Prelude∷Arith∷Decide use (pick; eqb)
+open Prelude∷Arith∷Decide.EqbLaws use (eqbCases)
+import Prelude∷Arith∷Div use (mod)
+import Prelude∷Arith∷Divides use (Divides)
+open Prelude∷Arith∷Divides.Basic use (dividesRefl)
+import Prelude∷Arith∷Induction use (caseNat)
+import Prelude∷Function∷Combinators use (Generic)
 
 (* Trial division and the invariants of its search.  The definitions
    below unfold to it, and clients see only them. *)
@@ -24,44 +24,44 @@ private module TrialDivision where
 
 (* Truncated subtraction [a - b], as [b] predecessors of [a]; it is [0]
    exactly when [a] is at most [b].  It is kept apart from
-   [Prelude::Arith::Sub.sub], whose evaluation takes exponential time. *)
-def monus (a : Nat) (b : Nat) : Nat := Generic.iterate 0l Nat pred b a end
+   [Prelude∷Arith∷Sub.sub], whose evaluation takes exponential time. *)
+def monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
 
 (* Trial division of [n] from the candidate [d], for at most [fuel]
    candidates.  It answers [found d] for the first candidate [d] that
    divides [n], and [none] once [mult d d] exceeds [n] or the fuel runs
    out. *)
-def trialDivision (n : Nat) (none : Nat) (found : forall (d : Nat) -> Nat) (fuel : Nat) :
-    forall (d : Nat) -> Nat :=
-  rec fuel return y . (forall (d : Nat) -> Nat)
-  | zero => fun (d : Nat) -> none
-  | succ f, r => fun (d : Nat) ->
+def trialDivision (n : ℕ) (none : ℕ) (found : ∀ (d : ℕ) → ℕ) (fuel : ℕ) :
+    ∀ (d : ℕ) → ℕ ≔
+  rec fuel return y . (∀ (d : ℕ) → ℕ)
+  | zero ⇒ λ (d : ℕ) → none
+  | succ f, r ⇒ λ (d : ℕ) →
       pick (monus (mult d d) n)
-        (fun (u : Nat) ->
-           pick (eqb (mod n d) 0) (fun (v : Nat) -> r (succ d)) (fun (v : Nat) -> found d))
-        (fun (u : Nat) -> none)
+        (λ (u : ℕ) →
+           pick (eqb (mod n d) 0) (λ (v : ℕ) → r (succ d)) (λ (v : ℕ) → found d))
+        (λ (u : ℕ) → none)
   end
 end
 
 (* [1] when trial division finds no divisor of [n], and [0] otherwise. *)
-def noSmallDivisor (n : Nat) : Nat := trialDivision n 1 (fun (d : Nat) -> 0) n 2 end
+def noSmallDivisor (n : ℕ) : ℕ ≔ trialDivision n 1 (λ (d : ℕ) → 0) n 2 end
 
 (* Every answer of the search for a divisor divides [n]: a candidate is
    answered only when the remainder of [n] by it is [0]. *)
-lemma trialDivisionDivides : forall (n : Nat) (fuel : Nat) (d : Nat) ->
-    Divides (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
-  fun (n : Nat) (fuel : Nat) ->
-    rec fuel return x . (forall (d : Nat) -> Divides (trialDivision n n (fun (y : Nat) -> y) x d) n)
-    | zero => fun (d : Nat) -> dividesRefl n
-    | succ f, ih => fun (d : Nat) ->
-        let next := trialDivision n n (fun (y : Nat) -> y) f (succ d);
-            inner := pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d)
-        in caseNat (fun (b : Nat) -> Divides (pick b (fun (u : Nat) -> inner) (fun (u : Nat) -> n)) n)
+lemma trialDivisionDivides : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ) →
+    Divides (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
+  λ (n : ℕ) (fuel : ℕ) →
+    rec fuel return x . (∀ (d : ℕ) → Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    | zero ⇒ λ (d : ℕ) → dividesRefl n
+    | succ f, ih ⇒ λ (d : ℕ) →
+        let next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d);
+            inner ≔ pick (eqb (mod n d) 0) (λ (v : ℕ) → next) (λ (v : ℕ) → d)
+        in caseNat (λ (b : ℕ) → Divides (pick b (λ (u : ℕ) → inner) (λ (u : ℕ) → n)) n)
              (eqbCases (mod n d) 0
-                (fun (b : Nat) -> Divides (pick b (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
-                (fun (h : Eq (eqb (mod n d) 0) 0) -> ih (succ d))
-                (fun (h : Eq (mod n d) 0) -> h))
-             (fun (k : Nat) -> dividesRefl n)
+                (λ (b : ℕ) → Divides (pick b (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
+                (λ (h : Eq (eqb (mod n d) 0) 0) → ih (succ d))
+                (λ (h : Eq (mod n d) 0) → h))
+             (λ (k : ℕ) → dividesRefl n)
              (monus (mult d d) n)
         end
     end
@@ -69,35 +69,35 @@ end
 
 (* When the search for a divisor fails, the smallest divisor is the number
    itself: both searches run through the same candidates. *)
-lemma trialDivisionNone : forall (n : Nat) (fuel : Nat) (d : Nat)
-    (h : Eq (trialDivision n 1 (fun (x : Nat) -> 0) fuel d) 1) ->
-    Eq (trialDivision n n (fun (x : Nat) -> x) fuel d) n :=
-  fun (n : Nat) (fuel : Nat) ->
-    rec fuel return x . (forall (d : Nat) (h : Eq (trialDivision n 1 (fun (y : Nat) -> 0) x d) 1) ->
-                           Eq (trialDivision n n (fun (y : Nat) -> y) x d) n)
-    | zero => fun (d : Nat) (h : True) -> refl n
-    | succ f, ih => fun (d : Nat) ->
-        let flagNext := trialDivision n 1 (fun (y : Nat) -> 0) f (succ d);
-            next := trialDivision n n (fun (y : Nat) -> y) f (succ d)
+lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
+    (h : Eq (trialDivision n 1 (λ (x : ℕ) → 0) fuel d) 1) →
+    Eq (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
+  λ (n : ℕ) (fuel : ℕ) →
+    rec fuel return x . (∀ (d : ℕ) (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
+                           Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    | zero ⇒ λ (d : ℕ) (h : ⊤) → refl n
+    | succ f, ih ⇒ λ (d : ℕ) →
+        let flagNext ≔ trialDivision n 1 (λ (y : ℕ) → 0) f (succ d);
+            next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d)
         in caseNat
-             (fun (b : Nat) ->
-                forall (h : Eq (pick b
-                                (fun (u : Nat) ->
-                                   pick (eqb (mod n d) 0) (fun (v : Nat) -> flagNext)
-                                     (fun (v : Nat) -> 0))
-                                (fun (u : Nat) -> 1)) 1) ->
+             (λ (b : ℕ) →
+                ∀ (h : Eq (pick b
+                                (λ (u : ℕ) →
+                                   pick (eqb (mod n d) 0) (λ (v : ℕ) → flagNext)
+                                     (λ (v : ℕ) → 0))
+                                (λ (u : ℕ) → 1)) 1) →
                 Eq (pick b
-                    (fun (u : Nat) ->
-                       pick (eqb (mod n d) 0) (fun (v : Nat) -> next) (fun (v : Nat) -> d))
-                    (fun (u : Nat) -> n)) n)
+                    (λ (u : ℕ) →
+                       pick (eqb (mod n d) 0) (λ (v : ℕ) → next) (λ (v : ℕ) → d))
+                    (λ (u : ℕ) → n)) n)
              (caseNat
-                (fun (c : Nat) ->
-                   forall (h : Eq (pick c (fun (v : Nat) -> flagNext) (fun (v : Nat) -> 0)) 1) ->
-                   Eq (pick c (fun (v : Nat) -> next) (fun (v : Nat) -> d)) n)
-                (fun (h : Eq flagNext 1) -> ih (succ d) h)
-                (fun (k : Nat) (h : False) -> absurd (Eq d n) h)
+                (λ (c : ℕ) →
+                   ∀ (h : Eq (pick c (λ (v : ℕ) → flagNext) (λ (v : ℕ) → 0)) 1) →
+                   Eq (pick c (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
+                (λ (h : Eq flagNext 1) → ih (succ d) h)
+                (λ (k : ℕ) (h : ⊥) → absurd (Eq d n) h)
                 (eqb (mod n d) 0))
-             (fun (k : Nat) (h : True) -> refl n)
+             (λ (k : ℕ) (h : ⊤) → refl n)
              (monus (mult d d) n)
         end
     end
@@ -110,48 +110,48 @@ open TrialDivision use (trialDivision; noSmallDivisor; trialDivisionDivides; tri
 (* The smallest divisor of [n] from 2 on, found by trial division up to the
    square root.  It is [n] when [n] is prime, and also when [n] is [0] or
    [1]. *)
-def smallestDivisor (n : Nat) : Nat := trialDivision n n (fun (d : Nat) -> d) n 2 end
+def smallestDivisor (n : ℕ) : ℕ ≔ trialDivision n n (λ (d : ℕ) → d) n 2 end
 
 (* The primality test: [1] for primes, [0] otherwise. *)
-def isPrime (n : Nat) : Nat :=
-  pick (leb 2 n) (fun (u : Nat) -> 0) (fun (u : Nat) -> noSmallDivisor n)
+def isPrime (n : ℕ) : ℕ ≔
+  pick (leb 2 n) (λ (u : ℕ) → 0) (λ (u : ℕ) → noSmallDivisor n)
 end
 
 (* [Prime n] says that [n] is prime.  It computes, so a closed instance is
-   [True] or [False]. *)
-def Prime (n : Nat) : Type@0 := Eq (isPrime n) 1 end
+   [⊤] or [⊥]. *)
+def Prime (n : ℕ) : Type@0 ≔ Eq (isPrime n) 1 end
 
 (* The smallest divisor divides, primes are at least 2 and are their own
    smallest divisor. *)
 module Laws where
 
 (* The smallest divisor divides the number. *)
-theorem smallestDivisorDivides : forall (n : Nat) -> Divides (smallestDivisor n) n :=
-  fun (n : Nat) -> trialDivisionDivides n n 2
+theorem smallestDivisorDivides : ∀ (n : ℕ) → Divides (smallestDivisor n) n ≔
+  λ (n : ℕ) → trialDivisionDivides n n 2
 end
 
 (* Every prime is at least 2: below 2, [isPrime] answers 0. *)
-theorem primeGeTwo : forall (n : Nat) (h : Prime n) -> Le 2 n :=
-  fun (n : Nat) ->
-    rec n return x . (forall (h : Prime x) -> Le 2 x)
-    | zero => fun (h : False) -> h
-    | succ p, ih =>
-        rec p return y . (forall (h : Prime (succ y)) -> Le 2 (succ y))
-        | zero => fun (h : False) -> h
-        | succ q, s => fun (h : Prime (succ (succ q))) -> true
+theorem primeGeTwo : ∀ (n : ℕ) (h : Prime n) → Le 2 n ≔
+  λ (n : ℕ) →
+    rec n return x . (∀ (h : Prime x) → Le 2 x)
+    | zero ⇒ λ (h : ⊥) → h
+    | succ p, ih ⇒
+        rec p return y . (∀ (h : Prime (succ y)) → Le 2 (succ y))
+        | zero ⇒ λ (h : ⊥) → h
+        | succ q, s ⇒ λ (h : Prime (succ (succ q))) → ⋆
         end
     end
 end
 
 (* A prime is its own smallest divisor. *)
-theorem primeSmallestDivisor : forall (n : Nat) (h : Prime n) -> Eq (smallestDivisor n) n :=
-  fun (n : Nat) ->
-    rec n return x . (forall (h : Prime x) -> Eq (smallestDivisor x) x)
-    | zero => fun (h : False) -> absurd (Eq (smallestDivisor 0) 0) h
-    | succ p, ih =>
-        rec p return y . (forall (h : Prime (succ y)) -> Eq (smallestDivisor (succ y)) (succ y))
-        | zero => fun (h : False) -> absurd (Eq (smallestDivisor 1) 1) h
-        | succ q, s => fun (h : Eq (noSmallDivisor (succ (succ q))) 1) ->
+theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) → Eq (smallestDivisor n) n ≔
+  λ (n : ℕ) →
+    rec n return x . (∀ (h : Prime x) → Eq (smallestDivisor x) x)
+    | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 0) 0) h
+    | succ p, ih ⇒
+        rec p return y . (∀ (h : Prime (succ y)) → Eq (smallestDivisor (succ y)) (succ y))
+        | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 1) 1) h
+        | succ q, s ⇒ λ (h : Eq (noSmallDivisor (succ (succ q))) 1) →
             trialDivisionNone (succ (succ q)) (succ (succ q)) 2 h
         end
     end
@@ -159,23 +159,23 @@ end
 
 end
 
-(* Closed facts.  [Prime n] computes, so [true] proves it for a prime, and
+(* Closed facts.  [Prime n] computes, so [⋆] proves it for a prime, and
    the identity refutes it otherwise. *)
 module Facts where
 
-theorem twoPrime : Prime 2 := true end
+theorem twoPrime : Prime 2 ≔ ⋆ end
 
-theorem threePrime : Prime 3 := true end
+theorem threePrime : Prime 3 ≔ ⋆ end
 
-theorem sevenPrime : Prime 7 := true end
+theorem sevenPrime : Prime 7 ≔ ⋆ end
 
-theorem zeroNotPrime : Not (Prime 0) := fun (h : Prime 0) -> h end
+theorem zeroNotPrime : Not (Prime 0) ≔ λ (h : Prime 0) → h end
 
-theorem oneNotPrime : Not (Prime 1) := fun (h : Prime 1) -> h end
+theorem oneNotPrime : Not (Prime 1) ≔ λ (h : Prime 1) → h end
 
-theorem fourNotPrime : Not (Prime 4) := fun (h : Prime 4) -> h end
+theorem fourNotPrime : Not (Prime 4) ≔ λ (h : Prime 4) → h end
 
-theorem nineNotPrime : Not (Prime 9) := fun (h : Prime 9) -> h end
+theorem nineNotPrime : Not (Prime 9) ≔ λ (h : Prime 9) → h end
 
 end
 

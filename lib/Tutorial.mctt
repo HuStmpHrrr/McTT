@@ -5,90 +5,98 @@
 
 module Tutorial where
 
-import Prelude::Arith::Equality use (Eq; refl)
-import Prelude::Function::Iter as Iter
+import Prelude∷Arith∷Equality use (Eq; refl)
+import Prelude∷Function∷Iter as Iter
 
 (* 1. Lexical matters.
    This text is a comment; comments do not nest. Identifiers are letters
    only, so names are camelCase. A numeral is unary: 3 is
-   succ (succ (succ zero)). *)
+   succ (succ (succ zero)).
+
+   Symbols have a Unicode and an ASCII spelling, and either may be used
+   anywhere; this file uses the Unicode ones, which the checker also prints:
+     →  ->      ⇒  =>      ≔  :=      ∷  ::
+     λ  fun     ∀  forall (or Π)      ℕ  Nat
+     ⊤  True    ⊥  False   ⋆  true    ω  omega
+   Identifiers are ASCII letters, so the symbols need no spaces around
+   them: [λ(x:ℕ)→x] is [fun (x : Nat) -> x]. *)
 
 eval succ (succ (succ zero))
 
 (* 2. Evaluation. [eval M] normalizes M and infers its type; [eval M : T]
    checks M against T first. *)
 
-eval 3 : Nat
+eval 3 : ℕ
 
 (* 3. Universes and types. Type@i is the universe of level i, with
-   Type@i : Type@(i+1). Nat is in Type@0, with zero and succ. *)
+   Type@i : Type@(i+1). ℕ is in Type@0, with zero and succ. *)
 
-eval Nat : Type@0
+eval ℕ : Type@0
 
 eval Type@0 : Type@1
 
-(* A function is [fun (x : A) -> M]; its type is [forall (x : A) -> B],
+(* A function is [λ (x : A) → M]; its type is [∀ (x : A) → B],
    where B may mention x. Application is juxtaposition. Several binders
    abbreviate nested ones. *)
 
-eval (fun (A : Type@0) (x : A) -> x) Nat 4
+eval (λ (A : Type@0) (x : A) → x) ℕ 4
 
-eval fun (A : Type@0) (x : A) -> x
+eval λ (A : Type@0) (x : A) → x
 
-(* 4. Recursion. [rec n return y . T | zero => z | succ p, r => s end] is
+(* 4. Recursion. [rec n return y . T | zero ⇒ z | succ p, r ⇒ s end] is
    primitive recursion on n: T is the motive, p the predecessor and r the
    result for p. *)
 
-eval rec 3 return y . Nat | zero => 0 | succ p, r => succ (succ r) end
+eval rec 3 return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 
-(* The motive may compute a type: here, the type of n-ary functions on Nat. *)
+(* The motive may compute a type: here, the type of n-ary functions on ℕ. *)
 eval rec 2 return y . Type@0
-     | zero => Nat
-     | succ p, r => forall (x : Nat) -> r
+     | zero ⇒ ℕ
+     | succ p, r ⇒ ∀ (x : ℕ) → r
      end
 
-(* 5. Unit and empty types. True has the one element true; False has none.
-   [exfalso h return x . P] eliminates h : False into any type P. *)
+(* 5. Unit and empty types. ⊤ has the one element ⋆; ⊥ has none.
+   [exfalso h return x . P] eliminates h : ⊥ into any type P. *)
 
-eval true : True
+eval ⋆ : ⊤
 
-eval fun (h : False) -> exfalso h return x . Nat
+eval λ (h : ⊥) → exfalso h return x . ℕ
 
-(* 6. Local definitions. [let x : A := a; y := b in M end] binds each name
+(* 6. Local definitions. [let x : A ≔ a; y ≔ b in M end] binds each name
    in the later bindings and in M. A binding is transparent, so its value
    is known while checking the rest; an unannotated one has its type
-   inferred. [Eq n m], imported above, computes to True exactly when n and
-   m are equal, so [true] proves [Eq 3 3]. *)
+   inferred. [Eq n m], imported above, computes to ⊤ exactly when n and
+   m are equal, so [⋆] proves [Eq 3 3]. *)
 
-eval let n : Nat := 2;
-         f := fun (x : Nat) -> succ x;
-         p : Eq (f n) 3 := true
+eval let n : ℕ ≔ 2;
+         f ≔ λ (x : ℕ) → succ x;
+         p : Eq (f n) 3 ≔ ⋆
      in f (f n)
      end
 
-(* 7. Definitions. [def f (x : A) : T := M end] is
-   [def f : forall (x : A) -> T := fun (x : A) -> M end]. A definition is
+(* 7. Definitions. [def f (x : A) : T ≔ M end] is
+   [def f : ∀ (x : A) → T ≔ λ (x : A) → M end]. A definition is
    transparent: it unfolds wherever it is used. *)
 
-def double (n : Nat) : Nat :=
-  rec n return y . Nat | zero => 0 | succ p, r => succ (succ r) end
+def double (n : ℕ) : ℕ ≔
+  rec n return y . ℕ | zero ⇒ 0 | succ p, r ⇒ succ (succ r) end
 end
 
 eval double 3
 
 (* An [abstract] definition is opaque: it is checked, but never unfolds, so
    its uses are stuck. *)
-abstract def four : Nat := 4 end
+abstract def four : ℕ ≔ 4 end
 
 eval double four
 
 (* A [private] definition is usable only inside its module (section 10).
    Both modifiers combine, in either order. *)
-private def helper : Nat := 1 end
+private def helper : ℕ ≔ 1 end
 
-private abstract def hiddenFive : Nat := 5 end
+private abstract def hiddenFive : ℕ ≔ 5 end
 
-abstract private def hiddenSix : Nat := 6 end
+abstract private def hiddenSix : ℕ ≔ 6 end
 
 eval succ helper
 
@@ -96,34 +104,34 @@ eval succ helper
    theorem, lemma = abstract; fact, remark = abstract private;
    let, given = private. [refl n] proves [Eq n n]. *)
 
-theorem doubleTwo : Eq (double 2) 4 := refl 4 end
+theorem doubleTwo : Eq (double 2) 4 ≔ refl 4 end
 
-lemma twoDouble : Eq 4 (double 2) := refl 4 end
+lemma twoDouble : Eq 4 (double 2) ≔ refl 4 end
 
-fact factTrue : True := true end
+fact factTrue : ⊤ ≔ ⋆ end
 
-remark remarkTrue : True := true end
+remark remarkTrue : ⊤ ≔ ⋆ end
 
-let one : Nat := 1 end
+let one : ℕ ≔ 1 end
 
-given two : Nat := 2 end
+given two : ℕ ≔ 2 end
 
 eval double two
 
 (* A keyword takes only the modifiers it does not imply: [private theorem]
    and [abstract let] are allowed; fact and remark take none. *)
-private theorem privateThm : Eq 1 1 := true end
+private theorem privateThm : Eq 1 1 ≔ ⋆ end
 
-abstract let opaqueLet : Nat := 3 end
+abstract let opaqueLet : ℕ ≔ 3 end
 
 (* Rejected:
-     abstract theorem t : Nat := 1 end   Error: theorem is already abstract
-     private let l : Nat := 1 end        Error: let is already private
-     private fact f : Nat := 1 end       Error: fact takes no modifiers *)
+     abstract theorem t : ℕ ≔ 1 end   Error: theorem is already abstract
+     private let l : ℕ ≔ 1 end        Error: let is already private
+     private fact f : ℕ ≔ 1 end       Error: fact takes no modifiers *)
 
 (* [axiom x : T] declares x with no body: it never normalizes. An axiom
    takes no modifiers ([private axiom] gives "axiom takes no modifiers"). *)
-axiom k : Nat
+axiom k : ℕ
 
 eval double (succ k)
 
@@ -131,9 +139,9 @@ eval double (succ k)
    through any chain of nested modules. *)
 
 module Outer where
-  def base : Nat := 10 end
+  def base : ℕ ≔ 10 end
   module Inner where
-    def next : Nat := succ base end
+    def next : ℕ ≔ succ base end
   end
 end
 
@@ -141,25 +149,25 @@ eval Outer.Inner.next
 
 (* A module with parameters abstracts every member over them. Its
    arguments follow the selection, or apply the module in parentheses. *)
-module Twice (A : Type@0) (f : forall (a : A) -> A) where
-  def twice (a : A) : A := f (f a) end
+module Twice (A : Type@0) (f : ∀ (a : A) → A) where
+  def twice (a : A) : A ≔ f (f a) end
 end
 
-eval Twice.twice Nat double 1
+eval Twice.twice ℕ double 1
 
-eval (Twice Nat double).twice 1
+eval (Twice ℕ double).twice 1
 
-(* [module Y := E] declares an alias. Applying a module to some of its
+(* [module Y ≔ E] declares an alias. Applying a module to some of its
    parameters is partial application. *)
-module NatTwice := Twice Nat
+module NatTwice ≔ Twice ℕ
 
-module Quadruple := NatTwice double
+module Quadruple ≔ NatTwice double
 
 eval Quadruple.twice 1
 
 (* [module A.B where … end] declares B inside A. *)
 module Shapes.Square where
-  def side : Nat := 2 end
+  def side : ℕ ≔ 2 end
 end
 
 eval Shapes.Square.side
@@ -168,10 +176,10 @@ eval Shapes.Square.side
    it, including its nested modules, and nowhere else. *)
 
 module Vault where
-  private def secret : Nat := 7 end
-  def reveal : Nat := succ secret end
+  private def secret : ℕ ≔ 7 end
+  def reveal : ℕ ≔ succ secret end
   module Inside where
-    def peek : Nat := secret end
+    def peek : ℕ ≔ secret end
   end
 end
 
@@ -181,21 +189,21 @@ eval Vault.Inside.peek
 
 (* Rejected: eval Vault.secret   Error: Tutorial.Vault.secret is private *)
 
-(* 11. Imports and opens. [import X::Y] only loads the unit X::Y: its
+(* 11. Imports and opens. [import X∷Y] only loads the unit X∷Y: its
    members are reached by their full name. *)
 
-import Prelude::Arith::Plus
+import Prelude∷Arith∷Plus
 
-eval Prelude::Arith::Plus.plus 2 3
+eval Prelude∷Arith∷Plus.plus 2 3
 
 (* [open E as Z use (a; c as d) export (e)] declares, in this module, a
-   private alias [module Z := E], private definitions [a := Z.a] and
-   [d := Z.c], and a public definition [e := Z.e]. Items naming a submodule
+   private alias [module Z ≔ E], private definitions [a ≔ Z.a] and
+   [d ≔ Z.c], and a public definition [e ≔ Z.e]. Items naming a submodule
    declare aliases instead. *)
 
 module Adding where
-  open Prelude::Arith::Plus as P use (plus as add) export (Algebra)
-  def five : Nat := add 2 (P.plus 1 2) end
+  open Prelude∷Arith∷Plus as P use (plus as add) export (Algebra)
+  def five : ℕ ≔ add 2 (P.plus 1 2) end
 end
 
 eval Adding.five
@@ -204,13 +212,13 @@ eval Adding.Algebra.plusComm 1 2
 
 (* Rejected: eval Adding.add   Error: Tutorial.Adding.add is private *)
 
-(* The long form [import X::Y as Z use (…)] is [import X::Y] then
-   [open X::Y as Z use (…)]. Prelude::Arith::Plus is loaded already, and a
+(* The long form [import X∷Y as Z use (…)] is [import X∷Y] then
+   [open X∷Y as Z use (…)]. Prelude∷Arith∷Plus is loaded already, and a
    repeated import does nothing, so this one only opens it. *)
 
 module Counting where
-  import Prelude::Arith::Plus as Q use (plus)
-  def seven : Nat := plus 3 (Q.plus 2 2) end
+  import Prelude∷Arith∷Plus as Q use (plus)
+  def seven : ℕ ≔ plus 3 (Q.plus 2 2) end
 end
 
 eval Counting.seven
@@ -219,24 +227,24 @@ eval Counting.seven
    the unit's parameter types need; everything else is imported inside the
    module, as at the top of this file. Leading ones may [use] and [as] but
    not [export]:
-     import Prelude::Arith::Equality use (Eq)
+     import Prelude∷Arith∷Equality use (Eq)
      module Proofs (h : Eq 1 1) where … end *)
 
 (* 12. Local modules. [let module X (ps) where … end in M end] declares a
-   module inside a term, and [let module X := E in M end] an alias. The body
+   module inside a term, and [let module X ≔ E in M end] an alias. The body
    may [open] modules and declare private members, which M cannot use. *)
 
-eval let module Doubler (n : Nat) where
-         open Twice Nat double use (twice)
-         private def base : Nat := twice n end
-         def sum : Nat := succ base end
+eval let module Doubler (n : ℕ) where
+         open Twice ℕ double use (twice)
+         private def base : ℕ ≔ twice n end
+         def sum : ℕ ≔ succ base end
        end;
-       module DoublerOne := Doubler 1
+       module DoublerOne ≔ Doubler 1
      in DoublerOne.sum
      end
 
 (* Rejected in a local module body:
-     import X::Y    Error: import is not allowed in a local module; use open
+     import X∷Y     Error: import is not allowed in a local module; use open
      eval M         Error: eval is not allowed in a local module
      axiom x : T    Error: axioms are not allowed in a local module
    An abstract member, or an abstract keyword, makes the whole let
@@ -247,24 +255,24 @@ eval let module Doubler (n : Nat) where
 (* 13. Putting it together: a parameterized module with a theorem proved by
    induction, opened in a local module and instantiated. *)
 
-module Adder (m : Nat) where
-  def add (n : Nat) : Nat :=
-    rec n return y . Nat | zero => m | succ p, r => succ r end
+module Adder (m : ℕ) where
+  def add (n : ℕ) : ℕ ≔
+    rec n return y . ℕ | zero ⇒ m | succ p, r ⇒ succ r end
   end
 
   (* Adding n is iterating succ n times. *)
-  theorem addIter (n : Nat) :
-      Eq (add n) (Iter.iter 0l Nat (fun (x : Nat) -> succ x) n m) :=
-    rec n return y . Eq (add y) (Iter.iter 0l Nat (fun (x : Nat) -> succ x) y m)
-    | zero => refl m
-    | succ p, ih => ih
+  theorem addIter (n : ℕ) :
+      Eq (add n) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) ≔
+    rec n return y . Eq (add y) (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) y m)
+    | zero ⇒ refl m
+    | succ p, ih ⇒ ih
     end
   end
 end
 
 eval let module Five where
          open Adder 5 use (add) export (addIter)
-         def eight : Nat := add 3 end
+         def eight : ℕ ≔ add 3 end
        end
      in Five.addIter Five.eight
      end
@@ -281,30 +289,30 @@ eval Type@{maxl 1l 2l}
 (* A level-polymorphic definition takes its level as an argument. A
    function type of types of [Type@{u}] is in [Type@{u}], even for a
    variable [u]. *)
-def applyTwice (u : Level) (A : Type@{u}) (f : forall (a : A) -> A) : forall (a : A) -> A :=
-  fun (a : A) -> f (f a)
+def applyTwice (u : Level) (A : Type@{u}) (f : ∀ (a : A) → A) : ∀ (a : A) → A ≔
+  λ (a : A) → f (f a)
 end
 
-eval applyTwice 0l Nat double 1
+eval applyTwice 0l ℕ double 1
 
-eval applyTwice 1l Type@0 (fun (A : Type@0) -> forall (a : A) -> A) Nat
+eval applyTwice 1l Type@0 (λ (A : Type@0) → ∀ (a : A) → A) ℕ
 
 (* Cumulativity: a type of [Type@{u}] is also one of [Type@{maxl u v}]. *)
-def widen (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} := A end
+def widen (u : Level) (v : Level) (A : Type@{u}) : Type@{maxl u v} ≔ A end
 
 (* A module may take a level, so that all its members share it: the
-   Prelude's [Prelude::Function::Iter] takes [(u : Level) (A : Type@{u})],
-   and [Iter.iter 0l Nat] iterates on numbers. *)
+   Prelude's [Prelude∷Function∷Iter] takes [(u : Level) (A : Type@{u})],
+   and [Iter.iter 0l ℕ] iterates on numbers. *)
 module Pointed (u : Level) (A : Type@{u}) (a : A) where
-  def point : A := a end
+  def point : A ≔ a end
 end
 
-eval Pointed.point 1l Type@0 Nat
+eval Pointed.point 1l Type@0 ℕ
 
 (* A Church encoding quantifies over a universe, so it lives one level up:
-   the conjunction of the Prelude, [Prelude::Logic.Conj u], is in
+   the conjunction of the Prelude, [Prelude∷Logic.Conj u], is in
    [Type@{succl u}]. A type quantifying over levels themselves is large, in
    [Type@ω], above every [Type@{u}]. *)
-eval forall (u : Level) -> Type@{u}
+eval ∀ (u : Level) → Type@{u}
 
 end
