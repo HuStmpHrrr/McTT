@@ -101,6 +101,15 @@ and `nf_lvl_of L` on normal forms.  `𝕃@n` is the finite literal
 `𝕃ᵒ (0, n)` and `Type@n` is `Type⟨𝕃@n⟩`: both notations match only a
 finite literal, so a lemma about any literal is stated with `𝕃ᵒ`.
 
+`Level@n` holds the levels below ω·(n+1): a literal `𝕃ᵒ o` is in it when
+`fst o <= n` (`wf_llit`), and `maxl M 𝕃ᵒ(S n, 0) ≈ 𝕃ᵒ(S n, 0) : Level@(S n)`
+for `M : Level@n` (`wf_exp_eq_maxl_absorb`).  An atom of a level normal form
+carries its sort, `la_cons k s a r` (offset, sort, neutral); in values the
+sort is read from the annotation of the neutral, `dsort (Levelᵈ@s) = s`.
+The canonical form drops an atom whose sort is below the constant's tier
+(`la_keep`), and `lvl_canon_iff` holds over the assignments that put an atom
+of sort `s` below ω·(s+1) (`lvl_adm`).
+
 The surface syntax matches: `Type@n` (short for `Type@{nl}`), `Type@nl` and
 `Type@{t}` are small; `Type@ω`, `Type@omega`, their braced forms,
 `Type@{ω+n}` and the shorthand `Type@nL` are large (`nL` is a universe size

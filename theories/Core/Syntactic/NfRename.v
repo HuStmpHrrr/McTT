@@ -49,7 +49,7 @@ with ne_wk (φ : wk) (u : ne) {struct u} : ne :=
 with la_wk (φ : wk) (xs : lvl_atoms) {struct xs} : lvl_atoms :=
   match xs with
   | la_nil => la_nil
-  | la_cons j u r => la_cons j (ne_wk φ u) (la_wk φ r)
+  | la_cons j s u r => la_cons j s (ne_wk φ u) (la_wk φ r)
   end.
 
 Definition lvl_wk (φ : wk) (l : lvl) : lvl := (fst l, la_wk φ (snd l)).
@@ -136,7 +136,7 @@ Proof. intros [] [] []; reflexivity. Qed.
 Lemma la_code_cmp : forall xs ys t t',
     lt_cmp (la_code xs t) (la_code ys t') = cmp_then (la_cmp xs ys) (lt_cmp t t').
 Proof.
-  unfold la_cmp; induction xs as [| k m r IH]; intros [| k' m' r'] t t'; cbn [la_code];
+  unfold la_cmp; induction xs as [| k n m r IH]; intros [| k' n' m' r'] t t'; cbn [la_code];
     rewrite ?lt_cmp_node; cbn [Nat.compare lt_cmp cmp_then]; try reflexivity.
   rewrite (IH r' t t'), (IH r' lt_nil lt_nil); cbn [lt_cmp]; rewrite !cmp_then_eq, !cmp_then_assoc; reflexivity.
 Qed.
@@ -183,18 +183,27 @@ Proof. intros; apply (proj1 (proj2 nf_cmp_wk)); assumption. Qed.
 
 (** ** Order-Preserving Renamings Commute with the Canonical Form *)
 
+Lemma at_cmp_wk : forall φ a s b t, wk_mono φ -> at_cmp (ne_wk φ a) s (ne_wk φ b) t = at_cmp a s b t.
+Proof. intros; unfold at_cmp; rewrite ne_cmp_wk by assumption; reflexivity. Qed.
+
 Lemma la_ins_wk : forall φ, wk_mono φ ->
-    forall k a ys, la_wk φ (la_ins k a ys) = la_ins k (ne_wk φ a) (la_wk φ ys).
+    forall k s a ys, la_wk φ (la_ins k s a ys) = la_ins k s (ne_wk φ a) (la_wk φ ys).
 Proof.
-  intros φ Hφ k a; induction ys as [| k' b r IH]; cbn [la_ins la_wk]; [ reflexivity |].
-  rewrite ne_cmp_wk by assumption.
-  destruct (ne_cmp a b); cbn [la_wk]; congruence.
+  intros φ Hφ k s a; induction ys as [| k' t b r IH]; cbn [la_ins la_wk]; [ reflexivity |].
+  rewrite at_cmp_wk by assumption.
+  destruct (at_cmp a s b t); cbn [la_wk]; congruence.
 Qed.
 
 Lemma la_sort_wk : forall φ, wk_mono φ -> forall xs, la_wk φ (la_sort xs) = la_sort (la_wk φ xs).
 Proof.
-  intros φ Hφ; induction xs as [| k a r IH]; cbn [la_sort la_wk]; [ reflexivity |].
+  intros φ Hφ; induction xs as [| k s a r IH]; cbn [la_sort la_wk]; [ reflexivity |].
   rewrite la_ins_wk, IH by assumption; reflexivity.
+Qed.
+
+Lemma la_keep_wk : forall φ c xs, la_wk φ (la_keep c xs) = la_keep c (la_wk φ xs).
+Proof.
+  intros φ c; induction xs as [| k s a r IH]; cbn [la_keep la_wk]; [ reflexivity |].
+  destruct (fst c <=? s); cbn [la_wk]; congruence.
 Qed.
 
 Lemma la_maxoff_wk : forall φ xs, la_maxoff (la_wk φ xs) = la_maxoff xs.
@@ -203,7 +212,7 @@ Proof. intros φ; induction xs; cbn; congruence. Qed.
 Theorem lvl_canon_wk : forall φ, wk_mono φ -> forall l, lvl_canon (lvl_wk φ l) = lvl_wk φ (lvl_canon l).
 Proof.
   intros φ Hφ [c xs]; unfold lvl_canon, lvl_wk; cbn [fst snd].
-  rewrite <- la_sort_wk, la_maxoff_wk by assumption; reflexivity.
+  rewrite <- la_sort_wk, <- la_keep_wk, la_maxoff_wk by assumption; reflexivity.
 Qed.
 
 (** ** Freshness

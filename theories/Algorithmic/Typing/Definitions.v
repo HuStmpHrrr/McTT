@@ -36,10 +36,11 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** The closed small types infer the least universe. *)
 | ati_level :
   `( Γ ⊢a Level@n ⟹ Typeⁿ@0 )
-(** A level literal is of the least type of levels; the two operations
-    infer the types of levels of their arguments, and are of the larger. *)
+(** A level literal is of the type of levels of its tier, the least one it
+    is in; the two operations infer the types of levels of their arguments,
+    and are of the larger. *)
 | ati_llit :
-  `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ@0 )
+  `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ@(fst o) )
 | ati_succl :
   `( Γ ⊢a M ⟹ Levelⁿ@n ->
      Γ ⊢a succl M ⟹ Levelⁿ@n )
@@ -75,18 +76,24 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a efq M return A ⟹ B )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
-    large universe absorbs a small one, and two small ones join on levels when
-    the codomain's level does not mention the bound variable.  The join is
-    the normal form of that universe, a side condition rather than the
+    large universe absorbs a small one, and two small ones join on levels,
+    the codomain's bounded under the binder ([lvl_bound]): an atom that
+    mentions the bound variable is bounded by its sort.  The join is the
+    normal form of that universe, a side condition rather than the
     conclusion's index: an index computed from the premises makes the
     judgment's inversion non-terminating.  The side conditions on the parts
     are [is_univ_nf] rather than equations on [univ_nf_idx], for the reason
-    given there. *)
+    given there.  The codomain's universe is taken normalised ([UB']): the
+    bound trusts the sorts its atoms carry, and those of a normal form are
+    the sorts of the atoms' types.  (An inferred type is already normal,
+    [alg_type_infer_normal], so [UB'] is [UB]; the premise is what lets
+    soundness, which that theorem rests on, see it.) *)
 | ati_pi :
   `( Γ ⊢a A ⟹ UA ->
      Γ ▹ A ⊢a B ⟹ UB ->
      is_univ_nf UA u ->
-     is_univ_nf UB v ->
+     nbe_ty_f (Γ ▹ A) UB UB' ->
+     is_univ_nf UB' v ->
      nbe_ty_f Γ (unf_pi_tm u v) W ->
      Γ ⊢a Π A B ⟹ W )
 | ati_fn :

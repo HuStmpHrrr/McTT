@@ -37,11 +37,13 @@ Inductive domain : Set :=
 | d_suniv : domain -> domain
 (** The type [Level@n] *)
 | d_level : nat -> domain
-(** A flat level [max (c, k₁ + a₁, …)]: evaluation of [succl] and [maxl] only
-    flattens, so the same level has many values; readback canonicalises.  A
-    neutral level is not of this shape — it is [⇑ (Levelᵈ@n) m] — so the level
-    operations take the flat view ([dlvl_view]) of their arguments. *)
-| d_lvl : o2 -> list (nat * domain_ne) -> domain
+(** A flat level [max (c, k₁ + a₁, …)], each atom with its offset and its
+    sort: evaluation of [succl] and [maxl] only flattens, so the same level
+    has many values; readback canonicalises.  A neutral level is not of this
+    shape — it is [⇑ (Levelᵈ@n) m] — so the level operations take the flat
+    view ([dlvl_view]) of their arguments, where the neutral is an atom of
+    sort [n]. *)
+| d_lvl : o2 -> list (nat * nat * domain_ne) -> domain
 (** [zero] *)
 | d_zero : domain
 (** [succ] *)
@@ -186,22 +188,28 @@ Definition ulvl_val (u : uidx) : domain :=
 
 (** ** Level Values
 
-    The flat view of a value of type [Level]: a flat level is its own view, and
-    a neutral is the single atom [(0, m)].  No other value has type [Level], so
+    The sort of a neutral level, read off its type: a neutral of type
+    [Levelᵈ@n] is an atom of sort [n].  No other type has neutral levels, so
     the default is never used. *)
-Definition dlvl_view (d : domain) : o2 * list (nat * domain_ne) :=
+Definition dsort (a : domain) : nat :=
+  match a with d_level n => n | _ => 0 end.
+
+(** The flat view of a value of type [Level]: a flat level is its own view, and
+    a neutral is the single atom [(0, n, m)] at the sort of its type.  No other
+    value has type [Level], so the default is never used. *)
+Definition dlvl_view (d : domain) : o2 * list (nat * nat * domain_ne) :=
   match d with
   | d_lvl c xs => (c, xs)
-  | d_neut _ m => (oz, (0, m) :: nil)
+  | d_neut a m => (oz, (0, dsort a, m) :: nil)
   | _ => (oz, nil)
   end.
 
 Definition dlvl_cst (d : domain) : o2 := fst (dlvl_view d).
-Definition dlvl_atoms (d : domain) : list (nat * domain_ne) := snd (dlvl_view d).
+Definition dlvl_atoms (d : domain) : list (nat * nat * domain_ne) := snd (dlvl_view d).
 
 (** The successor and the join of levels: both only flatten. *)
 Definition dlvl_suc (d : domain) : domain :=
-  d_lvl (osuc (dlvl_cst d)) (List.map (fun ka => (S (fst ka), snd ka)) (dlvl_atoms d)).
+  d_lvl (osuc (dlvl_cst d)) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms d)).
 
 Definition dlvl_max (d e : domain) : domain :=
   d_lvl (omax (dlvl_cst d) (dlvl_cst e)) (dlvl_atoms d ++ dlvl_atoms e).
@@ -217,10 +225,10 @@ Definition dlvl_lit (o : o2) : domain := d_lvl o nil.
 (** The maximum of the offsets of the atoms and the constant.  The constant is
     the base of the fold rather than an [omax] on top of it, so that the
     realiser of a literal level is that literal by computation. *)
-Fixpoint dla_max (c : o2) (xs : list (nat * domain_ne)) : o2 :=
+Fixpoint dla_max (c : o2) (xs : list (nat * nat * domain_ne)) : o2 :=
   match xs with
   | nil => c
-  | ka :: r => omax (ofin (fst ka)) (dla_max c r)
+  | ka :: r => omax (ofin (fst (fst ka))) (dla_max c r)
   end.
 
 Definition dlvl_real (d : domain) : o2 := dla_max (dlvl_cst d) (dlvl_atoms d).
@@ -241,7 +249,7 @@ Proof.
 Qed.
 
 Fact dla_max_suc : forall c xs,
-    dla_max (osuc c) (List.map (fun ka => (S (fst ka), snd ka)) xs) = osuc (dla_max c xs).
+    dla_max (osuc c) (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) = osuc (dla_max c xs).
 Proof.
   intros c xs; induction xs as [| ka xs IH]; cbn [dla_max List.map fst snd];
     [ reflexivity | rewrite IH; generalize (dla_max c xs); intros; ord ].

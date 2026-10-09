@@ -8,6 +8,7 @@
     and then rewrite the syntax by the level equations until it is the canonical
     form — which is [Core.Syntactic.LevelEq]. *)
 
+From Stdlib Require Import PeanoNat.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem LevelCases.
@@ -69,7 +70,7 @@ Lemma glu_rel_exp_of_level : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
         Δ ⊢s σ ® ρ ∈ Sb ->
-        exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Δ M[σ] m) ->
+        exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Δ M[σ] m) ->
     Γ ⊩ M : Level@n.
 Proof.
   intros * ? Hbody.
@@ -81,7 +82,7 @@ Proof.
   edestruct Hbody as [? [? []]]; mauto 3.
   econstructor; mauto 3.
   - glu_univ_elem_econstructor; mauto 3; reflexivity.
-  - simpl; repeat split; mauto 3.
+  - simpl; split; [| split ]; [ mauto 3 | assumption | assumption ].
 Qed.
 
 Lemma glu_rel_exp_clean_inversion_level : forall {Γ Sb M},
@@ -101,7 +102,7 @@ Lemma glu_rel_exp_level_elim : forall {Γ Sb M},
     Γ ⊩ M : Level@n ->
     forall Δ σ ρ,
       Δ ⊢s σ ® ρ ∈ Sb ->
-      exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Δ M[σ] m.
+      exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Δ M[σ] m.
 Proof.
   intros * HSb HM * Hσ.
   eapply glu_rel_exp_clean_inversion_level in HM; [| exact HSb ].
@@ -111,7 +112,7 @@ Proof.
   match_by_head1 glu_univ_elem invert_glu_univ_elem.
   apply_predicate_equivalence.
   simpl in *; destruct_conjs.
-  eexists; repeat split; eassumption.
+  eexists; split; [| split ]; eassumption.
 Qed.
 
 (** ** The Level Forms
@@ -119,31 +120,27 @@ Qed.
     A literal evaluates to a flat level with no atom, whose readback is the
     literal itself. *)
 Lemma glu_rel_exp_llit : forall {Γ o},
+    fst o <= n ->
     ⊩ Γ ->
     Γ ⊩ 𝕃ᵒ o : Level@n.
 Proof.
-  intros * [Sb].
+  intros * Ho [Sb].
   assert (⊢ Γ) by mauto 2.
   eapply glu_rel_exp_of_level; [ eassumption |].
   intros Δ σ ρ Hσ.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  exists (dlvl_lit o); split; [ mauto 3 | split; [ apply per_lvl_lit |] ].
-  intros Δ' φ L Hφ Hr.
-  assert (⊢ Δ') by (eapply kripke_dom; eassumption).
-  (** The readback of a literal is the literal. *)
-  apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
-  assert (L' = lvl_lit o) as ->
-    by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_lit ]).
-  simplify_subs; cbn.
-  mauto 3.
+  exists (dlvl_lit o); split; [ mauto 3 | split; [ apply per_lvl_at_lit; exact Ho |] ].
+  simplify_subs; apply glu_lvl_lit; assumption.
 Qed.
 
 Hint Resolve glu_rel_exp_llit : mctt.
 
 (** The readback of a level is its canonical form, and the canonical form of a
     level operation is the operation on the canonical forms, which the
-    equations of [LevelEq] identify with the syntax. *)
+    equations of [LevelEq] identify with the syntax.  The readbacks of the
+    arguments are canonical levels of sort [n] (the second half of
+    [glu_lvl]), so the canonical form of the operation is too. *)
 Lemma glu_rel_exp_succl : forall {Γ M},
     Γ ⊩ M : Level@n ->
     Γ ⊩ succl M : Level@n.
@@ -153,35 +150,40 @@ Proof.
   eapply glu_rel_exp_of_level; [ eassumption |].
   intros Δ σ ρ Hσ.
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
-  exists (dlvl_suc m); split; [ mauto 3 | split; [ apply per_lvl_suc; exact Hper |] ].
+  pose proof (per_lvl_at_lvl _ _ _ Hper) as Hperl.
+  exists (dlvl_suc m); split; [ mauto 3 | split; [ apply per_lvl_at_suc; exact Hper |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
-  destruct (per_lvl_ex _ _ Hper (length Δ')) as [A HA].
+  destruct (per_lvl_ex _ _ Hperl (length Δ')) as [A HA].
   assert (L' = lvl_canon (lvl_suc A)) as ->
     by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_suc; exact HA ]).
-  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hper); assumption).
-  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level@n)
-    by (eapply glu_lvl_readback;
-        [ exact Hglu | exact Hφ | apply dlvl_canon_read; [ exact Hsh | exact HA ] ]).
-  destruct A as [c xs].
-  assert (HL : Δ' ⊢ nf_lvl_of (c, xs) : Level@n) by (gen_presups; eassumption).
-  unfold nf_lvl_of in HL; cbn in HL.
-  assert (Hwf : la_wf Δ' xs) by (eapply lvl_exp_of_la_wf; exact HL).
-  assert (Hwfs : la_wf Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
-    by (unfold lvl_canon, lvl_suc; cbn; apply la_wf_sort, la_wf_suc; exact Hwf).
-  (** The syntax is the canonical form of the argument; the successor of that
-      is, by the level equations, the canonical form of the successor. *)
-  simplify_subs; cbn [exp_wk].
-  transitivity (succl (nf_lvl_of (c, xs))); [ mauto 3 |].
-  unfold nf_lvl_of; cbn [fst snd].
-  transitivity (succl (lvl_tm c xs));
-    [ apply wf_exp_eq_succl_cong, lvl_exp_of_tm; [ assumption | exact Hwf ] |].
-  transitivity (lvl_tm (fst (lvl_suc (c, xs))) (snd (lvl_suc (c, xs))));
-    [ apply lvl_tm_suc; [ assumption | exact Hwf ] |].
-  transitivity (lvl_tm (fst (lvl_canon (lvl_suc (c, xs)))) (snd (lvl_canon (lvl_suc (c, xs)))));
-    [ apply lvl_tm_canon; [ assumption | unfold lvl_suc; cbn; apply la_wf_suc; exact Hwf ] |].
-  apply wf_exp_eq_sym, lvl_exp_of_tm; [ assumption | exact Hwfs ].
+  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
+  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply dlvl_canon_read; [ exact Hsh | exact HA ]).
+  destruct (Hglu _ _ _ Hφ HrA) as [HMA HwsA].
+  destruct A as [c xs]; cbn in HwsA; destruct HwsA as [Hc0 Hws].
+  pose proof (la_ws_wf _ Hws) as Hwf.
+  assert (Hcs : fst (osuc c) <= n) by (rewrite osuc_fst; exact Hc0).
+  assert (Hws' : @la_ws gc_deps gc_stack n Δ' (la_suc xs)) by (apply la_ws_suc; exact Hws).
+  assert (Hcc : fst (fst (lvl_canon (lvl_suc (c, xs)))) <= n)
+    by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcs ]).
+  assert (Hwsc : @la_ws gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
+    by (unfold lvl_canon, lvl_suc; cbn; apply la_ws_keep, la_ws_sort; exact Hws').
+  split.
+  - (** The syntax is the canonical form of the argument; the successor of
+        that is, by the level equations, the canonical form of the
+        successor. *)
+    simplify_subs; cbn [exp_wk].
+    transitivity (succl (nf_lvl_of (c, xs))); [ mauto 3 |].
+    unfold nf_lvl_of; cbn [fst snd].
+    transitivity (succl (lvl_tm c xs));
+      [ apply wf_exp_eq_succl_cong, lvl_exp_of_tm; [ exact Hc0 | assumption | exact Hwf ] |].
+    transitivity (lvl_tm (fst (lvl_suc (c, xs))) (snd (lvl_suc (c, xs))));
+      [ apply lvl_tm_suc; [ exact Hc0 | assumption | exact Hwf ] |].
+    transitivity (lvl_tm (fst (lvl_canon (lvl_suc (c, xs)))) (snd (lvl_canon (lvl_suc (c, xs)))));
+      [ apply lvl_tm_canon; [ exact Hcs | assumption | exact Hws' ] |].
+    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply la_ws_wf; exact Hwsc ].
+  - unfold nf_lvl_of; cbn; split; assumption.
 Qed.
 
 Hint Resolve glu_rel_exp_succl : mctt.
@@ -197,42 +199,45 @@ Proof.
   intros Δ σ ρ Hσ.
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HN _ _ _ Hσ) as [m' [Hev' [Hper' Hglu']]].
-  exists (dlvl_max m m'); split; [ mauto 3 | split; [ apply per_lvl_max; eassumption |] ].
+  pose proof (per_lvl_at_lvl _ _ _ Hper) as Hperl.
+  pose proof (per_lvl_at_lvl _ _ _ Hper') as Hperl'.
+  exists (dlvl_max m m'); split; [ mauto 3 | split; [ apply per_lvl_at_max; eassumption |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
-  destruct (per_lvl_ex _ _ Hper (length Δ')) as [A HA].
-  destruct (per_lvl_ex _ _ Hper' (length Δ')) as [B HB].
+  destruct (per_lvl_ex _ _ Hperl (length Δ')) as [A HA].
+  destruct (per_lvl_ex _ _ Hperl' (length Δ')) as [B HB].
   assert (L' = lvl_canon (lvl_max A B)) as ->
     by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_max; eassumption ]).
-  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hper); assumption).
-  assert (Hsh' : dlvl_shape m') by (destruct (per_lvl_shape _ _ Hper'); assumption).
-  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level@n)
-    by (eapply glu_lvl_readback;
-        [ exact Hglu | exact Hφ | apply dlvl_canon_read; [ exact Hsh | exact HA ] ]).
-  assert (HNB : Δ' ⊢ N[σ][φ]ʷ ≈ nf_lvl_of B : Level@n)
-    by (eapply glu_lvl_readback;
-        [ exact Hglu' | exact Hφ | apply dlvl_canon_read; [ exact Hsh' | exact HB ] ]).
+  assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hperl); assumption).
+  assert (Hsh' : dlvl_shape m') by (destruct (per_lvl_shape _ _ Hperl'); assumption).
+  assert (HrA : Rnf ⇓ Levelᵈ m in length Δ' ↘ nf_lvl_of A) by (apply dlvl_canon_read; [ exact Hsh | exact HA ]).
+  assert (HrB : Rnf ⇓ Levelᵈ m' in length Δ' ↘ nf_lvl_of B) by (apply dlvl_canon_read; [ exact Hsh' | exact HB ]).
+  destruct (Hglu _ _ _ Hφ HrA) as [HMA HwsA].
+  destruct (Hglu' _ _ _ Hφ HrB) as [HNB HwsB].
   destruct A as [c xs]; destruct B as [d ys].
-  assert (HLA : Δ' ⊢ nf_lvl_of (c, xs) : Level@n) by (gen_presups; eassumption).
-  assert (HLB : Δ' ⊢ nf_lvl_of (d, ys) : Level@n) by (gen_presups; eassumption).
-  unfold nf_lvl_of in HLA, HLB; cbn in HLA, HLB.
-  assert (Hwfx : la_wf Δ' xs) by (eapply lvl_exp_of_la_wf; exact HLA).
-  assert (Hwfy : la_wf Δ' ys) by (eapply lvl_exp_of_la_wf; exact HLB).
-  assert (Hwfm : la_wf Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))
-    by (unfold lvl_canon, lvl_max; cbn; apply la_wf_sort, la_wf_app; [ exact Hwfx | exact Hwfy ]).
-  simplify_subs; cbn [exp_wk].
-  transitivity (maxl (nf_lvl_of (c, xs)) (nf_lvl_of (d, ys))); [ mauto 3 |].
-  unfold nf_lvl_of; cbn [fst snd].
-  transitivity (maxl (lvl_tm c xs) (lvl_tm d ys));
-    [ apply wf_exp_eq_maxl_cong; apply lvl_exp_of_tm;
-      [ assumption | exact Hwfx | assumption | exact Hwfy ] |].
-  transitivity (lvl_tm (fst (lvl_max (c, xs) (d, ys))) (snd (lvl_max (c, xs) (d, ys))));
-    [ apply lvl_tm_max; [ assumption | exact Hwfx | exact Hwfy ] |].
-  transitivity (lvl_tm (fst (lvl_canon (lvl_max (c, xs) (d, ys))))
-                       (snd (lvl_canon (lvl_max (c, xs) (d, ys)))));
-    [ apply lvl_tm_canon; [ assumption | unfold lvl_max; cbn; apply la_wf_app; [ exact Hwfx | exact Hwfy ] ] |].
-  apply wf_exp_eq_sym, lvl_exp_of_tm; [ assumption | exact Hwfm ].
+  cbn in HwsA, HwsB; destruct HwsA as [Hc0 Hwsx]; destruct HwsB as [Hd0 Hwsy].
+  pose proof (la_ws_wf _ Hwsx) as Hwfx; pose proof (la_ws_wf _ Hwsy) as Hwfy.
+  assert (Hcd : fst (omax c d) <= n) by (apply omax_fst_le; assumption).
+  assert (Hwsa : @la_ws gc_deps gc_stack n Δ' (la_app xs ys)) by (apply la_ws_app; [ exact Hwsx | exact Hwsy ]).
+  assert (Hcc : fst (fst (lvl_canon (lvl_max (c, xs) (d, ys)))) <= n)
+    by (eapply Nat.le_trans; [ apply lvl_canon_cst_le | exact Hcd ]).
+  assert (Hwsm : @la_ws gc_deps gc_stack n Δ' (snd (lvl_canon (lvl_max (c, xs) (d, ys)))))
+    by (unfold lvl_canon, lvl_max; cbn; apply la_ws_keep, la_ws_sort; exact Hwsa).
+  split.
+  - simplify_subs; cbn [exp_wk].
+    transitivity (maxl (nf_lvl_of (c, xs)) (nf_lvl_of (d, ys))); [ mauto 3 |].
+    unfold nf_lvl_of; cbn [fst snd].
+    transitivity (maxl (lvl_tm c xs) (lvl_tm d ys));
+      [ apply wf_exp_eq_maxl_cong; apply lvl_exp_of_tm;
+        [ exact Hc0 | assumption | exact Hwfx | exact Hd0 | assumption | exact Hwfy ] |].
+    transitivity (lvl_tm (fst (lvl_max (c, xs) (d, ys))) (snd (lvl_max (c, xs) (d, ys))));
+      [ apply lvl_tm_max; [ exact Hc0 | exact Hd0 | assumption | exact Hwfx | exact Hwfy ] |].
+    transitivity (lvl_tm (fst (lvl_canon (lvl_max (c, xs) (d, ys))))
+                         (snd (lvl_canon (lvl_max (c, xs) (d, ys)))));
+      [ apply lvl_tm_canon; [ exact Hcd | assumption | exact Hwsa ] |].
+    apply wf_exp_eq_sym, lvl_exp_of_tm; [ exact Hcc | assumption | apply la_ws_wf; exact Hwsm ].
+  - unfold nf_lvl_of; cbn; split; assumption.
 Qed.
 
 Hint Resolve glu_rel_exp_maxl : mctt.
@@ -256,8 +261,9 @@ Proof.
   intros Δ σ ρ Hσ.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  destruct (glu_rel_exp_level_elim HSb HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
-  destruct (glu_rel_exp_level_elim HSb HSM _ _ _ Hσ) as [m' [Hev' [Hper' Hglu']]].
+  destruct (glu_rel_exp_level_elim HSb HM _ _ _ Hσ) as [m [Hev [Hper0 Hglu]]].
+  destruct (glu_rel_exp_level_elim HSb HSM _ _ _ Hσ) as [m' [Hev' [Hper0' Hglu']]].
+  pose proof (per_lvl_at_lvl _ _ _ Hper0) as Hper; pose proof (per_lvl_at_lvl _ _ _ Hper0') as Hper'.
   inversion Hev'; subst; functional_eval_rewrite_clear.
   assert (Δ ⊢ M[σ] : Level@n) by (eapply (glu_lvl_escape _ _ _ _ Hper Hglu); assumption).
   econstructor;
@@ -361,7 +367,8 @@ Proof.
   intros Δ σ ρ Hσ.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ Hσ) as [l [Hl [Hper Hglu]]].
+  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ Hσ) as [l [Hl [Hper0 Hglu]]].
+  pose proof (per_lvl_at_lvl _ _ _ Hper0) as Hper.
   destruct (Hbody _ _ _ Hσ l Hl) as [HAσ [a [Ha [Haper [HaP Hrb]]]]].
   assert (Δ ⊢ T[σ] : Level@n) by (eapply (glu_lvl_escape _ _ _ _ Hper Hglu); assumption).
   assert (exists P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
@@ -396,7 +403,8 @@ Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
                        Δ' ⊢ A[σ][φ]ʷ ≈ W : Type⟨T[σ][φ]ʷ⟩).
 Proof.
   intros * HΓ HT HA * HΔ.
-  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ HΔ) as [l [Hl [Hlper Hlglu]]].
+  destruct (glu_rel_exp_level_elim HΓ HT _ _ _ HΔ) as [l [Hl [Hlper0 Hlglu]]].
+  pose proof (per_lvl_at_lvl _ _ _ Hlper0) as Hlper.
   pose proof (glu_rel_exp_suniv_tm_large HT) as HU.
   eapply glu_rel_exp_clean_inversion2 in HA; [| eassumption | eassumption ].
   destruct (HA _ _ _ HΔ) as [a0 m P El Ha0 Hm HPEl Hglu].

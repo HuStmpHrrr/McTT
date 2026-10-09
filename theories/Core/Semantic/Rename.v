@@ -47,7 +47,7 @@ Section Rename.
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (drn l)
     | d_level n => d_level n
-    | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, m) => (k, drn_ne m) end) xs)
+    | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, n, m) => (k, n, drn_ne m) end) xs)
     | d_zero => d_zero
     | d_succ m => d_succ (drn m)
     | d_True => d_True
@@ -82,8 +82,8 @@ Section Rename.
     end.
 
   Definition ern (ρ : env) : env := List.map dern ρ.
-  Definition larn (xs : list (nat * domain_ne)) : list (nat * domain_ne) :=
-    List.map (fun ka => match ka with (k, m) => (k, drn_ne m) end) xs.
+  Definition larn (xs : list (nat * nat * domain_ne)) : list (nat * nat * domain_ne) :=
+    List.map (fun ka => match ka with (k, n, m) => (k, n, drn_ne m) end) xs.
 
   Lemma drn_lvl : forall c xs, drn (d_lvl c xs) = d_lvl c (larn xs).
   Proof. reflexivity. Qed.
@@ -110,13 +110,16 @@ Section Rename.
   Lemma env_args_rn : forall args ρ, ern (env_args ρ args) = env_args (ern ρ) (List.map drn args).
   Proof. induction args; intros; cbn; [ reflexivity | apply IHargs ]. Qed.
 
-  Lemma dlvl_view_rn : forall d, dlvl_view (drn d) = (fst (dlvl_view d), larn (snd (dlvl_view d))).
+  Lemma dsort_rn : forall d, dsort (drn d) = dsort d.
   Proof. destruct d; reflexivity. Qed.
+
+  Lemma dlvl_view_rn : forall d, dlvl_view (drn d) = (fst (dlvl_view d), larn (snd (dlvl_view d))).
+  Proof. destruct d; cbn; try reflexivity; rewrite dsort_rn; reflexivity. Qed.
 
   Lemma dlvl_suc_rn : forall d, drn (dlvl_suc d) = dlvl_suc (drn d).
   Proof.
     intros; unfold dlvl_suc, dlvl_cst, dlvl_atoms; rewrite dlvl_view_rn, drn_lvl; cbn [fst snd]; f_equal.
-    unfold larn; rewrite !List.map_map; apply List.map_ext; intros []; reflexivity.
+    unfold larn; rewrite !List.map_map; apply List.map_ext; intros [[] ?]; reflexivity.
   Qed.
 
   Lemma dlvl_max_rn : forall d e, drn (dlvl_max d e) = dlvl_max (drn d) (drn e).
@@ -184,7 +187,7 @@ End Eval.
 Definition dbd (b : nat) (d : domain) : Prop := forall v, b <= v -> dav v b d.
 Definition dbd_ne (b : nat) (m : domain_ne) : Prop := forall v, b <= v -> dav_ne v b m.
 Definition dbd_nf (b : nat) (n : domain_nf) : Prop := forall v, b <= v -> dav_nf v b n.
-Definition dbd_la (b : nat) (xs : list (nat * domain_ne)) : Prop := forall v, b <= v -> dav_la v b xs.
+Definition dbd_la (b : nat) (xs : list (nat * nat * domain_ne)) : Prop := forall v, b <= v -> dav_la v b xs.
 
 Section Bound.
   Variables (Θ : gdeps) (Ξ : gstack).
@@ -213,7 +216,7 @@ Section Bound.
   Proof. dbd_inv. Qed.
   Lemma dbd_lvl_inv : forall b c xs, dbd b (lvᵈ c xs) -> dbd_la b xs.
   Proof. dbd_inv. Qed.
-  Lemma dbd_la_inv : forall b k m xs, dbd_la b ((k, m) :: xs) -> dbd_ne b m /\ dbd_la b xs.
+  Lemma dbd_la_inv : forall b k n m xs, dbd_la b ((k, n, m) :: xs) -> dbd_ne b m /\ dbd_la b xs.
   Proof. dbd_inv. Qed.
   Lemma dbd_app_inv : forall b m n, dbd_ne b (m $ᵈ n) -> dbd_ne b m /\ dbd_nf b n.
   Proof. dbd_inv. Qed.
@@ -408,6 +411,9 @@ Section Read.
          end.
     (** A small universe: the same through [nf_univ_of]. *)
     all: try match goal with |- read_typ _ _ _ (d_suniv _) _ => rewrite nf_univ_of_wk end.
+    (** A neutral level: its sort is that of its type, which the renaming
+        keeps. *)
+    all: try match goal with |- context [dsort ?a] => rewrite <- (dsort_rn f a) end.
     all: econstructor.
     all: try rewrite <- nf_lvl_of_wk.
     all: try eassumption.

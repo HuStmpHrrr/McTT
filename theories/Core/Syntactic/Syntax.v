@@ -1098,8 +1098,10 @@ Inductive nf : Set :=
 (** The type [Level@n] *)
 | nf_level : nat -> nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
-    [ne_cmp] (see [Core.Syntactic.Levels]) with no repetition, and the
-    constant [c] is [0] unless it exceeds every offset.  [nf_lvl_of] builds
+    their neutral and their sort (see [Core.Syntactic.Levels]) with no
+    repetition, no atom is of a sort below the constant's tier (the constant
+    absorbs it), and the constant [c] is [0] unless it exceeds every
+    offset.  [nf_lvl_of] builds
     the normal form of a canonical level [lvl]. *)
 | nf_lvl : o2 -> lvl_atoms -> nf
 (** [ℕ] *)
@@ -1131,12 +1133,13 @@ with ne : Set :=
 | ne_var : nat -> ne
 (** An opaque definition or an axiom: it does not unfold. *)
 | ne_glob : qname -> ne
-(** The atoms of a canonical level, each with its offset.  They are their own
-    sort rather than a [list (nat * ne)] so that the family stays mutual and
-    [Scheme] generates the induction principle. *)
+(** The atoms of a canonical level, each with its offset and its sort: an
+    atom of sort [s] is a level of type [Level@s], below ω·(s+1).  They are
+    their own sort rather than a [list (nat * nat * ne)] so that the family
+    stays mutual and [Scheme] generates the induction principle. *)
 with lvl_atoms : Set :=
 | la_nil : lvl_atoms
-| la_cons : nat -> ne -> lvl_atoms -> lvl_atoms
+| la_cons : nat -> nat -> ne -> lvl_atoms -> lvl_atoms
 .
 
 Fixpoint nf_to_exp (M : nf) : exp :=
@@ -1166,7 +1169,7 @@ with ne_to_exp (M : ne) : exp :=
 with la_to_list (xs : lvl_atoms) : list (nat * exp) :=
   match xs with
   | la_nil => nil
-  | la_cons k M r => (k, ne_to_exp M) :: la_to_list r
+  | la_cons k _ M r => (k, ne_to_exp M) :: la_to_list r
   end
 .
 
@@ -1279,7 +1282,7 @@ with ne_clean (M : ne) : Prop :=
 with la_clean (xs : lvl_atoms) : Prop :=
   match xs with
   | la_nil => True
-  | la_cons _ M r => ne_clean M /\ la_clean r
+  | la_cons _ _ M r => ne_clean M /\ la_clean r
   end.
 
 Fact nf_eq_dec : forall (M M' : nf),

@@ -261,7 +261,7 @@ Proof.
   all: solve [ apply valid_exp_llit; assumption
              | apply rel_exp_llit; eassumption
              | eapply valid_exp_llit_succl; assumption
-             | eapply valid_exp_maxl_llit_limit; eassumption
+             | eapply valid_exp_maxl_absorb; eassumption
              | apply subtyp_level; assumption ].
 Qed.
 

@@ -58,7 +58,7 @@ Proof.
       (solve [try (try (eexists; split); econstructor); mauto]).
   (** The elements of a type of levels read back at every sort. *)
   - intro s.
-    match goal with H : per_lvl _ _ |- _ => destruct (H s) as [L [HL HL']] end.
+    match goal with H : per_lvl_at _ _ _ |- _ => apply per_lvl_at_lvl in H; destruct (H s) as [L [HL HL']] end.
     exists L; split; eapply read_nf_level_sort; eassumption.
   - intro s.
     inversion_clear_by_head per_ne.

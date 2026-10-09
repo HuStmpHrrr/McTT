@@ -114,6 +114,17 @@ Qed.
 #[export]
 Hint Resolve wf_llit_inversion : mctt.
 
+(** The same with the bound of the sort the literal is typed at. *)
+Corollary wf_llit_inversion_sort : forall Θ Ξ Γ A o,
+    Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : A ->
+    exists n, fst o <= n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
+Proof.
+  intros * H.
+  dependent induction H;
+    [ eexists; split; [ eassumption | mauto 3 ]
+    | specialize (IHwf_exp1 _ eq_refl) as (n & Hn & Hs); exists n; split; [ exact Hn | mauto 3 ] ].
+Qed.
+
 Corollary wf_succl_inversion : forall Θ Ξ Γ A M,
     Θ ⍮ Ξ ⍮ Γ ⊢ succl M : A ->
     exists n, Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.

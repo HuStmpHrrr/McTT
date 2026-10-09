@@ -149,12 +149,12 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
 | wf_level :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : Type@0 )
-(** A level is a literal, a successor, or a join.  The sort of a literal is
-    not constrained here: the sorts bound the *values* of levels, which is
-    what the model of [Level@n] says, and the syntax of a literal carries no
-    bound of its own. *)
+(** A level is a literal, a successor, or a join.  [Level@n] is the type of
+    the levels below ω·(n+1), so a literal is of the sorts at least its
+    tier. *)
 | wf_llit :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+  `( fst o <= n ->
+     ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@n )
 | wf_succl :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
@@ -290,7 +290,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : Type@0 )
 | wf_exp_eq_llit_cong :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+  `( fst o <= n ->
+     ⊢ Θ ⍮ Ξ ⍮ Γ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o ≈ 𝕃ᵒ o : Level@n )
 | wf_exp_eq_succl_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : Level@n ->
@@ -303,18 +304,18 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
 
     Levels are a join semilattice with a least element and an inflationary
     successor that distributes over the join; the literal [ω·a + b] is the
-    [b]-th successor of the limit [ω·a], and a limit is above every literal
-    of a lower tier.  These are the equations of Danielsson–Favier–Kubánek
-    Fig. 2 and the limit rule, and they are complete for the canonical forms
-    of [Core.Syntactic.Levels]: two levels are equal exactly when they have
-    the same canonical form. *)
+    [b]-th successor of the limit [ω·a], and the limit [ω·(n+1)] is above
+    every level of sort [n] (absorption).  These are the equations of
+    Danielsson–Favier–Kubánek Fig. 2 and absorption, and they are complete
+    for the canonical forms of [Core.Syntactic.Levels]: two levels are equal
+    exactly when they have the same canonical form. *)
 | wf_exp_eq_llit_succl :
-  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n )
-| wf_exp_eq_maxl_llit_limit :
-  `( a < a' ->
+  `( a <= n ->
      ⊢ Θ ⍮ Ξ ⍮ Γ ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n )
+     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n )
+| wf_exp_eq_maxl_absorb :
+  `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M (𝕃ᵒ(S n, 0)) ≈ 𝕃ᵒ(S n, 0) : Level@(S n) )
 | wf_exp_eq_maxl_zero :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n ->
      Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃@0) M ≈ M : Level@n )
@@ -1013,18 +1014,21 @@ Qed.
 (** ** Immediate & Independent Presuppositions *)
 
 (** The two forms of a literal's typing the proofs below name: at its own
-    sort, which the conclusion of the rule does not determine, and at the
-    least sort for a finite one. *)
+    sort, the least one, and at sort [0] for a finite one. *)
 Lemma wf_llit_ord : forall {Θ Ξ Γ o},
     ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@(fst o).
-Proof. intros; apply wf_llit; assumption. Qed.
+Proof. intros; apply wf_llit; [ reflexivity | assumption ]. Qed.
 
 Lemma wf_llit_fin : forall {Θ Ξ Γ n},
     ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃@n : Level.
-Proof. intros; apply wf_llit; assumption. Qed.
+Proof. intros; apply wf_llit; [ reflexivity | assumption ]. Qed.
 
 #[export]
 Hint Resolve wf_llit_ord wf_llit_fin : mctt.
+(** The side condition of [wf_llit] and of the literal equations: the tier
+    of a literal is at most the sort. *)
+#[export]
+Hint Extern 1 (fst _ <= _) => cbn [fst]; lia : mctt.
 
 (** A small universe is a type of every large universe. *)
 Lemma wf_univ_large_tm : forall {Θ Ξ Γ M i n},
@@ -1078,7 +1082,7 @@ Proof.
 Qed.
 
 Lemma wf_exp_eq_univ_cong_large : forall {Θ Ξ Γ o i}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ≈ Type⟨𝕃ᵒ o⟩ : Typeω@i.
-Proof. intros; eapply wf_exp_eq_univ_cong_large_tm; [ assumption | apply wf_llit_ord; assumption | apply wf_exp_eq_llit_cong; assumption ]. Qed.
+Proof. intros; eapply wf_exp_eq_univ_cong_large_tm; [ assumption | apply wf_llit_ord; assumption | apply wf_exp_eq_llit_cong; [ reflexivity | assumption ] ]. Qed.
 
 (** ** Literal Levels
 
@@ -1137,72 +1141,93 @@ Qed.
 
 (** Below a literal, below its successor. *)
 Lemma wf_exp_eq_maxl_succl_right : forall {Θ Ξ Γ} o o' n,
+    fst o <= n ->
+    fst o' <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ o) (𝕃ᵒ o') ≈ 𝕃ᵒ o' : Level@n ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ o) (succl (𝕃ᵒ o')) ≈ succl (𝕃ᵒ o') : Level@n.
 Proof.
-  intros * HΓ H.
-  assert (HM : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@n) by (apply wf_llit, HΓ).
-  assert (HN : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o' : Level@n) by (apply wf_llit, HΓ).
+  intros * Ho Ho' HΓ H.
+  assert (HM : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : Level@n) by (apply wf_llit; assumption).
+  assert (HN : Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o' : Level@n) by (apply wf_llit; assumption).
   assert (HSN : Θ ⍮ Ξ ⍮ Γ ⊢ succl (𝕃ᵒ o') : Level@n) by (apply wf_succl, HN).
   eapply wf_exp_eq_trans;
     [ apply wf_exp_eq_maxl_cong;
-      [ apply wf_exp_eq_llit_cong, HΓ
+      [ apply wf_exp_eq_llit_cong; assumption
       | apply wf_exp_eq_sym, wf_exp_eq_maxl_succl, HN ] |].
   eapply wf_exp_eq_trans; [ apply wf_exp_eq_sym, wf_exp_eq_maxl_assoc; [ exact HM | exact HN | exact HSN ] |].
   eapply wf_exp_eq_trans;
     [ apply wf_exp_eq_maxl_cong;
-      [ exact H | apply wf_exp_eq_succl_cong, wf_exp_eq_llit_cong, HΓ ] |].
+      [ exact H | apply wf_exp_eq_succl_cong, wf_exp_eq_llit_cong; assumption ] |].
   apply wf_exp_eq_maxl_succl, HN.
 Qed.
 
 (** Two literals of one tier, [ω·a + b] below [ω·a + (b + d)]. *)
 Lemma wf_exp_eq_maxl_llit_tier : forall {Θ Ξ Γ} a b d n,
+    a <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a, d + b)) ≈ 𝕃ᵒ(a, d + b) : Level@n.
 Proof.
-  intros Θ Ξ Γ a b d n HΓ; induction d as [| d IH]; cbn.
-  - apply wf_exp_eq_maxl_idem, wf_llit, HΓ.
+  intros Θ Ξ Γ a b d n Ha HΓ; induction d as [| d IH]; cbn.
+  - apply wf_exp_eq_maxl_idem, wf_llit; assumption.
   - eapply wf_exp_eq_trans;
       [ apply wf_exp_eq_maxl_cong;
-        [ apply wf_exp_eq_llit_cong, HΓ | apply wf_exp_eq_llit_succl, HΓ ] |].
+        [ apply wf_exp_eq_llit_cong; assumption | apply wf_exp_eq_llit_succl; assumption ] |].
     eapply wf_exp_eq_trans;
-      [ apply wf_exp_eq_maxl_succl_right; [ exact HΓ | exact IH ] |].
-    apply wf_exp_eq_sym, wf_exp_eq_llit_succl, HΓ.
+      [ apply wf_exp_eq_maxl_succl_right; [ exact Ha | exact Ha | exact HΓ | exact IH ] |].
+    apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption.
+Qed.
+
+(** The limit [ω·a'] is above every literal of a lower tier: absorption, at
+    the sort just below [a'], moved up to [n]. *)
+Lemma wf_exp_eq_maxl_llit_limit : forall {Θ Ξ Γ} a b a' n,
+    a < a' ->
+    a' <= n ->
+    ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n.
+Proof.
+  intros Θ Ξ Γ a b a' n Ha Hn HΓ.
+  destruct a' as [| m]; [ lia |].
+  eapply wf_exp_eq_subtyp;
+    [ apply wf_exp_eq_maxl_absorb, wf_llit; [ cbn; lia | exact HΓ ]
+    | apply (wf_level_large (i := 0)), HΓ
+    | apply wf_subtyp_level; [ exact Hn | exact HΓ ] ].
 Qed.
 
 (** A literal of a lower tier is below every literal of a higher one. *)
 Lemma wf_exp_eq_maxl_llit_lower : forall {Θ Ξ Γ} a b a' d n,
     a < a' ->
+    a' <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', d)) ≈ 𝕃ᵒ(a', d) : Level@n.
 Proof.
-  intros Θ Ξ Γ a b a' d n Ha HΓ; induction d as [| d IH].
-  - apply wf_exp_eq_maxl_llit_limit; [ exact Ha | exact HΓ ].
+  intros Θ Ξ Γ a b a' d n Ha Hn HΓ; induction d as [| d IH].
+  - apply wf_exp_eq_maxl_llit_limit; assumption.
   - eapply wf_exp_eq_trans;
       [ apply wf_exp_eq_maxl_cong;
-        [ apply wf_exp_eq_llit_cong, HΓ | apply wf_exp_eq_llit_succl, HΓ ] |].
+        [ apply wf_exp_eq_llit_cong; [ cbn; lia | exact HΓ ] | apply wf_exp_eq_llit_succl; assumption ] |].
     eapply wf_exp_eq_trans;
-      [ apply wf_exp_eq_maxl_succl_right; [ exact HΓ | exact IH ] |].
-    apply wf_exp_eq_sym, wf_exp_eq_llit_succl, HΓ.
+      [ apply wf_exp_eq_maxl_succl_right; [ cbn; lia | exact Hn | exact HΓ | exact IH ] |].
+    apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption.
 Qed.
 
 Lemma wf_exp_eq_maxl_llit_ole : forall {Θ Ξ Γ} o o' n,
     ole o o' ->
+    fst o' <= n ->
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl (𝕃ᵒ o) (𝕃ᵒ o') ≈ 𝕃ᵒ o' : Level@n.
 Proof.
-  intros Θ Ξ Γ [a b] [a' b'] n Hle HΓ; unfold ole in Hle; cbn in Hle.
+  intros Θ Ξ Γ [a b] [a' b'] n Hle Hn HΓ; unfold ole in Hle; cbn in Hle, Hn.
   destruct Hle as [Ha | [<- Hb]].
-  - apply wf_exp_eq_maxl_llit_lower; [ exact Ha | exact HΓ ].
-  - replace b' with ((b' - b) + b) by lia; apply wf_exp_eq_maxl_llit_tier, HΓ.
+  - apply wf_exp_eq_maxl_llit_lower; assumption.
+  - replace b' with ((b' - b) + b) by lia; apply wf_exp_eq_maxl_llit_tier; assumption.
 Qed.
 
 Lemma wf_exp_eq_maxl_llit_le : forall {Θ Ξ Γ} n m,
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     n <= m ->
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl 𝕃@n 𝕃@m ≈ 𝕃@m : Level.
-Proof. intros; apply wf_exp_eq_maxl_llit_ole; [ apply ole_fin; assumption | assumption ]. Qed.
+Proof. intros; apply wf_exp_eq_maxl_llit_ole; [ apply ole_fin; assumption | cbn; lia | assumption ]. Qed.
 
 Lemma wf_subtyp_small_large_lit : forall {Θ Ξ Γ o i},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
@@ -1214,9 +1239,11 @@ Lemma wf_subtyp_suniv_ole : forall {Θ Ξ Γ o o'},
     ole o o' ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ o⟩ ⊆ Type⟨𝕃ᵒ o'⟩.
 Proof.
-  intros * HΓ Hle; eapply (wf_subtyp_suniv _ _ _ 0);
-    [ assumption | apply wf_llit; assumption | apply wf_llit; assumption
-    | apply wf_exp_eq_maxl_llit_ole; assumption ].
+  intros * HΓ Hle.
+  assert (fst o <= fst o') by (destruct o, o'; unfold ole in Hle; cbn in *; lia).
+  eapply (wf_subtyp_suniv _ _ _ (fst o'));
+    [ assumption | apply wf_llit; assumption | apply wf_llit; [ reflexivity | assumption ]
+    | apply wf_exp_eq_maxl_llit_ole; [ assumption | reflexivity | assumption ] ].
 Qed.
 
 Lemma wf_subtyp_suniv_le : forall {Θ Ξ Γ n m},
@@ -1229,13 +1256,13 @@ Lemma wf_subtyp_suniv_succl : forall {Θ Ξ Γ a b},
     ⊢ Θ ⍮ Ξ ⍮ Γ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨succl 𝕃ᵒ(a, b)⟩ ⊆ Type⟨𝕃ᵒ(a, S b)⟩.
 Proof.
-  intros; eapply (wf_subtyp_suniv _ _ _ 0);
-    [ assumption | apply wf_succl, wf_llit; assumption | apply wf_llit; assumption |].
+  intros; eapply (wf_subtyp_suniv _ _ _ a);
+    [ assumption | apply wf_succl, wf_llit; [ reflexivity | assumption ] | apply wf_llit; [ reflexivity | assumption ] |].
   eapply wf_exp_eq_trans;
     [ apply wf_exp_eq_maxl_cong;
-      [ apply wf_exp_eq_sym, wf_exp_eq_llit_succl; assumption
-      | apply wf_exp_eq_llit_cong; assumption ]
-    | apply wf_exp_eq_maxl_idem, wf_llit; assumption ].
+      [ apply wf_exp_eq_sym, wf_exp_eq_llit_succl; [ reflexivity | assumption ]
+      | apply wf_exp_eq_llit_cong; [ reflexivity | assumption ] ]
+    | apply wf_exp_eq_maxl_idem, wf_llit; [ reflexivity | assumption ] ].
 Qed.
 
 Lemma wf_univ_lit : forall {Θ Ξ Γ a b},
@@ -1243,7 +1270,8 @@ Lemma wf_univ_lit : forall {Θ Ξ Γ a b},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨𝕃ᵒ(a, S b)⟩.
 Proof.
   intros * HΓ.
-  assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨succl 𝕃ᵒ(a, b)⟩) by (eapply (wf_univ _ _ _ 0), wf_llit, HΓ).
+  assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨succl 𝕃ᵒ(a, b)⟩)
+    by (eapply (wf_univ _ _ _ a), wf_llit; [ reflexivity | exact HΓ ]).
   assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, S b)⟩ : Typeω@0) by (apply wf_univ_large; exact HΓ).
   eapply wf_exp_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
 Qed.
@@ -1254,7 +1282,7 @@ Lemma wf_exp_eq_univ_cong_lit : forall {Θ Ξ Γ a b},
 Proof.
   intros * HΓ.
   assert (H1 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, b)⟩ ≈ Type⟨𝕃ᵒ(a, b)⟩ : Type⟨succl 𝕃ᵒ(a, b)⟩)
-    by (eapply (wf_exp_eq_univ_cong _ _ _ 0), wf_exp_eq_llit_cong, HΓ).
+    by (eapply (wf_exp_eq_univ_cong _ _ _ a), wf_exp_eq_llit_cong; [ reflexivity | exact HΓ ]).
   assert (H2 : Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨𝕃ᵒ(a, S b)⟩ : Typeω@0) by (apply wf_univ_large; exact HΓ).
   eapply wf_exp_eq_subtyp; [ exact H1 | exact H2 | apply wf_subtyp_suniv_succl, HΓ ].
 Qed.

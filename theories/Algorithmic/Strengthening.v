@@ -676,39 +676,57 @@ Proof.
   - apply IH in H; exact H.
 Qed.
 
+(** The constant of a fold typed at [Level@n] is a literal of a tier at most
+    [n]. *)
+Lemma lvl_fold_maxl_cst : forall Γ c X r n,
+    Γ ⊢ lvl_fold (maxl (𝕃ᵒ c) X) r : Level@n ->
+    fst c <= n.
+Proof.
+  intros * H; apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m & Hc & _ & Hs).
+  apply subtyp_level_inv in Hs; apply wf_llit_sort in Hc; lia.
+Qed.
+
 Lemma lvl_exp_of_inv : forall Γ c xs C,
     Γ ⊢ lvl_exp_of c xs : C ->
-    (exists n, Γ ⊢ Level@n ⊆ C /\ List.Forall (fun p => Γ ⊢ snd p : Level@n) xs) \/
+    (exists n, Γ ⊢ Level@n ⊆ C /\ fst c <= n /\ List.Forall (fun p => Γ ⊢ snd p : Level@n) xs) \/
       (exists a, c = oz /\ xs = (0, a) :: nil).
 Proof.
   intros * H; destruct xs as [| [k a] r].
-  - cbn in H; left; destruct (wf_llit_inversion _ _ _ _ _ H) as [n Hn]; exists n; split; [ exact Hn | constructor ].
+  - cbn in H; left; destruct (wf_llit_inversion_sort _ _ _ _ _ H) as (n & Hcn & Hn).
+    exists n; split; [ exact Hn | split; [ exact Hcn | constructor ] ].
   - destruct (o2_eq_dec c oz) as [-> | Hc]; [ cbn in H |].
     2: assert (E : lvl_exp_of c ((k, a) :: r) = lvl_fold (maxl (𝕃ᵒ c) (succl_n k a)) r)
          by (destruct c as [[|] [|]]; [ exfalso; apply Hc; reflexivity | reflexivity .. ]);
        rewrite E in H; clear E.
     all: destruct r as [| [k' a'] r'], k as [| k]; cbn [lvl_fold] in H.
     + right; eexists; split; reflexivity.
-    + left; apply succl_n_wf_inv in H as (n & ? & ? & ?); exists n; split; [ assumption | repeat constructor; assumption ].
-    + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
+    + left; apply succl_n_wf_inv in H as (n & ? & ? & ?); exists n;
+        split; [ assumption | split; [ cbn; lia | repeat constructor; assumption ] ].
+    + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC | split; [ cbn; lia |] ].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & ? & ? & Hmn).
       constructor; [ eapply wf_exp_subtyp'; eassumption
                    | constructor; [ cbn; eapply (wf_succl_n_inversion k'); eapply wf_exp_subtyp'; eassumption | exact Hr ] ].
-    + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
+    + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC | split; [ cbn; lia |] ].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & Hk & ? & Hmn).
       constructor; [ cbn; eapply (wf_succl_n_inversion (S k)); eapply wf_exp_subtyp'; [ exact Hk | exact Hmn ]
                    | constructor; [ cbn; eapply (wf_succl_n_inversion k'); eapply wf_exp_subtyp'; eassumption | exact Hr ] ].
-    + left; apply wf_maxl_inversion in H as (n & ? & Ha & HC); exists n; split; [ exact HC |].
+    + left; apply wf_maxl_inversion in H as (n & Hcl & Ha & HC); exists n;
+        split; [ exact HC | split; [ exact (wf_llit_sort Hcl) |] ].
       repeat constructor; cbn; exact Ha.
-    + left; apply wf_maxl_inversion in H as (n & ? & Ha & HC); exists n; split; [ exact HC |].
+    + left; apply wf_maxl_inversion in H as (n & Hcl & Ha & HC); exists n;
+        split; [ exact HC | split; [ exact (wf_llit_sort Hcl) |] ].
       repeat constructor; cbn; eapply (wf_succl_n_inversion (S k)); exact Ha.
     + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
+      split; [ apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m0 & H0 & _ & Hs0);
+               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_cst _ _ _ nil _ H0); lia |].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & Hh1 & ? & Hmn).
       apply wf_maxl_inversion in Hh1 as (m' & _ & ? & Hm'm).
       assert (Γ ⊢ Level@m' ⊆ Level@n) by (etransitivity; eassumption).
       constructor; [ eapply wf_exp_subtyp'; eassumption
                    | constructor; [ cbn; eapply (wf_succl_n_inversion k'); eapply wf_exp_subtyp'; eassumption | exact Hr ] ].
     + left; apply lvl_fold_maxl_inv in H as (n & H & HC); exists n; split; [ exact HC |].
+      split; [ apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m0 & H0 & _ & Hs0);
+               apply subtyp_level_inv in Hs0; pose proof (lvl_fold_maxl_cst _ _ _ nil _ H0); lia |].
       apply lvl_fold_wf_list in H as [Hh Hr]; apply wf_maxl_inversion in Hh as (m & Hh1 & ? & Hmn).
       apply wf_maxl_inversion in Hh1 as (m' & _ & Hk & Hm'm).
       assert (Γ ⊢ Level@m' ⊆ Level@n) by (etransitivity; eassumption).
@@ -890,7 +908,7 @@ Lemma la_wf_strengthen : forall Γ A Δ n xs,
       (List.map (fun p => (fst p, (snd p)[wk_qn (length Δ) ↑]ʷ)) (la_to_list xs)) ->
     @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs.
 Proof.
-  intros Γ A Δ n xs; induction xs as [| k u r IH]; cbn; [ intros; exact I |].
+  intros Γ A Δ n xs; induction xs as [| k s u r IH]; cbn; [ intros; exact I |].
   intros [Hu Hr] Hass HΓf HΓs HF.
   inversion HF as [| ? ? Hk HF']; subst.
   split; [ eapply ne_str_level; eassumption | apply IH; assumption ].
@@ -901,7 +919,7 @@ Lemma lvl_exp_of_atoms : forall Γ n c xs,
     Γ ⊢ lvl_exp_of c xs : Level@n ->
     List.Forall (fun p => Γ ⊢ snd p : Level@n) xs.
 Proof.
-  intros * H; destruct (lvl_exp_of_inv _ _ _ _ H) as [(m & Hmn & HF) | (a & -> & ->)].
+  intros * H; destruct (lvl_exp_of_inv _ _ _ _ H) as [(m & Hmn & _ & HF) | (a & -> & ->)].
   - eapply List.Forall_impl; [| exact HF ]; intros p Hp; eapply wf_exp_subtyp'; [ exact Hp | exact Hmn ].
   - repeat constructor; exact H.
 Qed.
@@ -909,10 +927,10 @@ Qed.
 (** A weakened atom list with a single entry and no offset. *)
 Lemma la_map_single : forall φ xs a,
     List.map (fun p => (fst p, (snd p)[φ]ʷ)) (la_to_list xs) = (0, a) :: nil ->
-    exists u, xs = la_cons 0 u la_nil /\ a = (u : exp)[φ]ʷ.
+    exists s u, xs = la_cons 0 s u la_nil /\ a = (u : exp)[φ]ʷ.
 Proof.
-  intros φ [| k u [| k' u' r]] a H; cbn in H; try discriminate.
-  injection H as -> <-; eexists; split; reflexivity.
+  intros φ [| k s u [| k' s' u' r]] a H; cbn in H; try discriminate.
+  injection H as -> <-; do 2 eexists; split; reflexivity.
 Qed.
 
 Theorem nf_strengthen : forall Γ A,
@@ -938,7 +956,8 @@ Proof.
     rewrite lvl_exp_of_wk in HW.
     assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
       by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | eapply lvl_exp_of_atoms; exact HW ]).
-    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n) by (apply lvl_exp_of_wf; assumption).
+    assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n)
+      by (apply lvl_exp_of_wf; [ exact (lvl_exp_of_cst_sort HW) | assumption | assumption ]).
     eapply wf_exp_subtyp; [ eapply wf_univ; exact HL | exact HT |].
     eapply subtyp_strengthen';
       [ exact Hass | exact HΓf | apply (wf_univ_large_tm (i := 0) (n := n)); [ exact HΓs | eapply wf_succl; exact HL ] | exact HT | exact Hs ].
@@ -950,15 +969,16 @@ Proof.
   - intros c xs IH * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     rewrite lvl_exp_of_wk in HW.
-    destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & HF) | (a & -> & Hmap)].
+    destruct (lvl_exp_of_inv _ _ _ _ HW) as [(n & HsL & Hcn & HF) | (a & -> & Hmap)].
     + assert (Hla : @la_wf gc_deps gc_stack n (Δ ++ Γ)%list xs)
         by (eapply la_wf_strengthen; [ exact IH | exact Hass | exact HΓf | exact HΓs | exact HF ]).
-      assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n) by (apply lvl_exp_of_wf; assumption).
+      assert (HL : (Δ ++ Γ)%list ⊢ lvl_exp_of c (la_to_list xs) : Level@n)
+        by (apply lvl_exp_of_wf; [ exact Hcn | assumption | assumption ]).
       eapply wf_exp_subtyp; [ exact HL | exact HT |].
       eapply subtyp_strengthen_closed;
         [ exact Hass | exact HΓf | apply (wf_level_large (i := 0)), HΓs | exact HT | reflexivity | exact HsL ].
     + (** A single atom with no offset is the atom itself. *)
-      destruct (la_map_single _ _ _ Hmap) as (u & -> & ->).
+      destruct (la_map_single _ _ _ Hmap) as (s & u & -> & ->).
       destruct IH as [Hu _].
       cbn in HW |- *.
       destruct (Hu _ _ Hass HΓf HΓs HW) as (T0 & j & HuT & HT0 & Hs).

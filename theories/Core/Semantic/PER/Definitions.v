@@ -88,6 +88,15 @@ Hint Constructors per_nat : mctt.
     unfolding to a one-constructor inductive would expose. *)
 Definition per_lvl : relation domain := fun m m' => Dom ⇓ Levelᵈ m ≈ ⇓ Levelᵈ m' ∈ per_top.
 
+(** The elements of [Level@n]: levels that read back, at every length, as
+    the same canonical level of sort [n] ([lvl_bnd]), below ω·(n+1).  A small
+    universe is indexed by any level, so its levels are related by [per_lvl]
+    alone.  Like [per_lvl] it has a [forall] head, so the shared scripts do
+    not split it. *)
+Definition per_lvl_at (n : nat) : relation domain :=
+  fun m m' => forall s, exists L,
+      Rnf ⇓ Levelᵈ m in s ↘ nf_lvl_of L /\ Rnf ⇓ Levelᵈ m' in s ↘ nf_lvl_of L /\ lvl_bnd n L.
+
 (** [l] is below [l'] when at every length their canonical forms are ordered
     by the decidable order on canonical levels.  It is the semantic
     counterpart of [maxl M M' ≈ M'], and the order the algorithmic subtyping
@@ -139,10 +148,10 @@ Section Per_univ_elem_core_def.
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
-  (** [Level@n], its elements related by [per_lvl]. *)
+  (** [Level@n], its elements the related levels of sort [n]. *)
   | per_univ_elem_core_level :
     forall n (elem_rel : relation domain),
-      (elem_rel <~> per_lvl) ->
+      (elem_rel <~> per_lvl_at n) ->
       DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem_core ↘ elem_rel
   (** [ℕ], its elements related by [per_nat]. *)
   | per_univ_elem_core_nat :
@@ -190,7 +199,7 @@ Section Per_univ_elem_core_def.
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           motive elem_rel 𝕌@l 𝕌@l')
       (case_level : forall {n elem_rel},
-          (elem_rel <~> per_lvl) ->
+          (elem_rel <~> per_lvl_at n) ->
           motive elem_rel (Levelᵈ@n) (Levelᵈ@n))
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
@@ -400,7 +409,7 @@ Section Per_univ_elem_ind_def.
                          motive (us (dlvl_real l)) R A B) ->
           motive i elem_rel 𝕌@l 𝕌@l')
       (case_L : forall i {n elem_rel},
-          (elem_rel <~> per_lvl) ->
+          (elem_rel <~> per_lvl_at n) ->
           motive i elem_rel (Levelᵈ@n) (Levelᵈ@n))
       (case_N : forall i {elem_rel},
           (elem_rel <~> per_nat) ->

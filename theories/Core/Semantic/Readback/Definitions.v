@@ -24,13 +24,14 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
     merged, and a dominated constant is dropped ([lvl_canon]).  Evaluation
     flattens only, so this is where levels equal by the level equations become
     the same normal form.  A neutral level is the single atom at offset [0],
-    which is already canonical. *)
+    of the sort of its type ([dsort]), which is already canonical: the sort
+    is read off the neutral's type, not off the type it is read back at. *)
 | read_nf_lvl :
   `( Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rnf ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 M la_nil) )
+     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 (dsort a) M la_nil) )
 | read_nf_zero :
   `( Rnf ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
 | read_nf_succ :
@@ -127,13 +128,13 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
      Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
-with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * domain_ne) -> lvl_atoms -> Prop :=
+with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
 | read_la_nil :
   `( Rla nil in Θ ⍮ Ξ ⍮ s ↘ la_nil )
 | read_la_cons :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rla (k, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k M ys )
+     Rla (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k n M ys )
 where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : type_scope
 .
 

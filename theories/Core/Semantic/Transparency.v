@@ -44,9 +44,9 @@ with dmclean : dmod -> Prop :=
 | dmclean_local : forall (ρ : env) U args,
     (forall x, declean (env_entry ρ x)) -> (forall a, In a args -> dclean a) -> dmclean (dm_local ρ U args)
 | dmclean_member : forall h ch, dmclean h -> dmclean (dm_member h ch)
-with dclean_la : list (nat * domain_ne) -> Prop :=
+with dclean_la : list (nat * nat * domain_ne) -> Prop :=
 | dclean_la_nil : dclean_la nil
-| dclean_la_cons : forall k m xs, dclean_ne m -> dclean_la xs -> dclean_la ((k, m) :: xs)
+| dclean_la_cons : forall k n m xs, dclean_ne m -> dclean_la xs -> dclean_la ((k, n, m) :: xs)
 with declean : dentry -> Prop :=
 | declean_term : forall d, dclean d -> declean (de_term d)
 | declean_mod : forall h, dmclean h -> declean (de_mod h).
@@ -100,7 +100,7 @@ Proof. intros; constructor; intros ? []. Qed.
 Lemma dclean_la_view : forall d, dclean d -> dclean_la (dlvl_atoms d).
 Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
 
-Lemma dclean_la_suc : forall xs, dclean_la xs -> dclean_la (List.map (fun ka => (S (fst ka), snd ka)) xs).
+Lemma dclean_la_suc : forall xs, dclean_la xs -> dclean_la (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs).
 Proof. induction 1; cbn; repeat constructor; assumption. Qed.
 
 Lemma dclean_la_app : forall xs ys, dclean_la xs -> dclean_la ys -> dclean_la (xs ++ ys).
@@ -217,8 +217,10 @@ Section Transparent.
         end;
       repeat split; auto.
     (** A level reads back canonically, so its atoms are sorted and merged;
-        [la_clean_sort] moves the property of all the atoms across. *)
-    all: try solve [ apply la_clean_sort; eauto 3 with mctt ].
+        [la_all_keep] and [la_all_sort] move the property of all the atoms
+        across. *)
+    all: try solve [ apply la_clean_all, la_all_keep, la_all_sort, la_clean_all; eauto 3 with mctt
+                   | apply la_clean_sort; eauto 3 with mctt ].
     (** A small universe reads back at the canonical level its level reads
         back as, and the two normal forms have the same atoms, so this case
         is the level's. *)

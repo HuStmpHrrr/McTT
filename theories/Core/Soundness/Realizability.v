@@ -153,12 +153,18 @@ Proof.
   - handle_functional_glu_univ_elem.
     match_by_head glu_univ_elem invert_glu_univ_elem.
     apply_equiv_left.
-    repeat split; [ eauto | mauto 3 |].
-    intros Δ φ L **.
+    assert (HA : Γ ⊢ A ≈ Level@n : Typeω@(ulvl i)) by eauto.
+    split; [ exact HA | split; [ apply per_bot_then_per_lvl_at; assumption |] ].
+    (** A neutral level reads back as the atom of its sort, a level of that
+        sort by its readback equation. *)
+    intros Δ φ L Hφ Hr.
     progressive_inversion.
-    eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ].
+    assert (HMeq : Δ ⊢ M[φ]ʷ ≈ M0 : Level@n) by (eapply wf_exp_eq_conv'; [ firstorder | mauto 3 ]).
+    split; [ exact HMeq |].
+    cbn; split; [ lia | split; [ split; [ lia | gen_presups; eassumption ] | exact I ] ].
   - econstructor; mauto 3.
-    + bulky_rewrite. mauto 3.
+    + match goal with H : per_lvl_at _ ?m ?m |- _ => pose proof (per_lvl_at_lvl _ _ _ H) end.
+      bulky_rewrite. mauto 3.
     + apply_equiv_left. trivial.
     + intros.
       saturate_kripke_escape.

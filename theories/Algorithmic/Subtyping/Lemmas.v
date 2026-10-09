@@ -2,7 +2,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic.Subtyping Require Import Definitions.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import CoreInversions LevelEq SystemOpt.
-From Mctt.Core.Semantic Require Import Levels.
+From Mctt.Core.Semantic Require Import Levels Consequences.
 From Mctt.Core.Completeness.Consequences Require Import Rules.
 Import Syntax_Notations Fixed_Notations.
 
@@ -17,33 +17,50 @@ Ltac apply_subtyping :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The codomain of a [Π] in normal form is the normal form of the codomain,
+    in the context extended by the domain: the readback of a [Π] reads its
+    codomain at the next variable, which is the initial environment of the
+    extended context. *)
+Lemma nbe_ty_pi_cod : forall Γ A B A' B',
+    nbe_ty_f Γ (Π A B) (Πⁿ A' B') ->
+    nbe_ty_f (Γ ▹ A) B B'.
+Proof.
+  intros * Hn.
+  inversion Hn; subst.
+  dir_inversion_by_head eval_exp; subst.
+  dir_inversion_by_head read_typ; subst.
+  econstructor; [ econstructor; eassumption | eassumption | cbn; eassumption ].
+Qed.
+
+(** The two normal forms are their own normal forms, as the normal forms
+    algorithmic subtyping compares are: the sorts their level atoms carry are
+    then the sorts of the atoms ([univ_nf_ws]), which the absorption step of
+    [lvl_exp_of_le] needs. *)
 Lemma alg_subtyping_nf_sound : forall A B,
     ⊢anf A ⊆ B ->
     forall Γ i,
       Γ ⊢ A : Typeω@i ->
       Γ ⊢ B : Typeω@i ->
+      nbe_ty_f Γ A A ->
+      nbe_ty_f Γ B B ->
       Γ ⊢ A ⊆ B.
 Proof.
-  induction 1; intros; subst; simpl in *.
+  induction 1; intros * HA HB HnA HnB; subst; simpl in *.
   - eapply wf_subtyp_refl'; mauto.
   - assert (i < j \/ i = j) as [] by lia; mauto 3.
-  (** The two small-universe rules are the syntactic rules themselves; the
-      order on canonical levels is the level equation [lvl_exp_of_le]. *)
+  (** Two small universes: the order on canonical levels is the level
+      equation [lvl_exp_of_le], at a sort both levels are of. *)
   - gen_presups.
-    (** The two level terms are levels of their own sorts; both move to the
-        larger of the two, where the order on levels is stated. *)
-    match goal with
-    | HA : _ ⊢ a_univ ?t : _, HB : _ ⊢ a_univ ?t' : _ |- _ =>
-        assert (exists n, Γ ⊢ t : Level@n) as [n1 Ht] by (eapply wf_univ_lvl_inversion; exact HA);
-        assert (exists n, Γ ⊢ t' : Level@n) as [n2 Ht'] by (eapply wf_univ_lvl_inversion; exact HB);
-        assert (Γ ⊢ t : Level@(Nat.max n1 n2))
-          by (eapply wf_exp_subtyp'; [ exact Ht | apply wf_subtyp_level; [ lia | mauto 2 ] ]);
-        assert (Γ ⊢ t' : Level@(Nat.max n1 n2))
-          by (eapply wf_exp_subtyp'; [ exact Ht' | apply wf_subtyp_level; [ lia | mauto 2 ] ])
-    end.
+    destruct (univ_nf_ws HA HnA) as (n1 & Ht & Hc & Hxs).
+    destruct (univ_nf_ws HB HnB) as (n2 & Ht' & Hd & Hys).
+    assert (Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@(Nat.max n1 n2))
+      by (eapply wf_exp_subtyp'; [ exact Ht | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
+    assert (Γ ⊢ lvl_exp_of d (la_to_list ys) : Level@(Nat.max n1 n2))
+      by (eapply wf_exp_subtyp'; [ exact Ht' | apply wf_subtyp_level; [ lia | mauto 2 ] ]).
     eapply wf_subtyp_suniv; [ assumption | eassumption | eassumption |].
-    apply lvl_exp_of_le; [ assumption | eapply lvl_exp_of_la_wf; eassumption
-                         | eapply lvl_exp_of_la_wf; eassumption | assumption ].
+    apply lvl_exp_of_le; [ lia | lia | assumption
+                         | eapply la_ws_mono; [| exact Hxs ]; lia
+                         | eapply la_ws_mono; [| exact Hys ]; lia | assumption ].
   - gen_presups.
     assert (exists n, Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n) as [n Ht]
       by (eapply wf_univ_lvl_inversion; eassumption).
@@ -55,6 +72,8 @@ Proof.
     (** [Typeω@i[↑]ʷ] is [Typeω@i], so [wf_subtyp_ge] derives [Typeω@i ⊆ Typeω@j]
         in the extended context from [⊢ Γ ▹ A] alone. *)
     apply_subtyping.
+    pose proof (nbe_ty_pi_cod _ _ _ _ _ HnA).
+    pose proof (nbe_ty_pi_cod _ _ _ _ _ HnB).
     deepexec IHalg_subtyping_nf ltac:(fun H => pose proof H).
     mauto 3.
 Qed.
@@ -179,7 +198,18 @@ Proof.
   on_all_hyp: fun H => apply nbe_type_to_nbe_ty in H.
   functional_nbe_rewrite_clear.
   gen_presups.
-  assert (Γ ⊢ A' ⊆ B') by mauto 3 using alg_subtyping_nf_sound.
+  (** The normal forms are their own normal forms. *)
+  assert (nbe_ty_f Γ A' A').
+  { destruct (soundness_ty (A := A') ltac:(eassumption)) as (C & HC & _).
+    assert (A' = C) as <-
+      by (match goal with H1 : nbe_ty_f Γ ?X A', H2 : Γ ⊢ ?X : Typeω@_ |- _ => exact (idempotent_nbe_ty H2 H1 HC) end).
+    exact HC. }
+  assert (nbe_ty_f Γ B' B').
+  { destruct (soundness_ty (A := B') ltac:(eassumption)) as (C & HC & _).
+    assert (B' = C) as <-
+      by (match goal with H1 : nbe_ty_f Γ ?X B', H2 : Γ ⊢ ?X : Typeω@_ |- _ => exact (idempotent_nbe_ty H2 H1 HC) end).
+    exact HC. }
+  assert (Γ ⊢ A' ⊆ B') by (eapply alg_subtyping_nf_sound; eassumption).
   transitivity A'; [mauto |].
   transitivity B'; [eassumption |].
   mauto.

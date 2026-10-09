@@ -11,6 +11,7 @@ From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Semantic Require Export NbE.
 From Mctt.Core.Syntactic Require Import Substitution.
 From Mctt.Core.Soundness Require Export FundamentalTheorem.
+From Mctt.Core.Soundness Require Import LevelCases.
 Import Domain_Notations Fixed_Notations.
 
 
@@ -68,6 +69,37 @@ Proof.
   assert (exists B', nbe_ty_f Γ A B' /\ Γ ⊢ A ≈ B' : Typeω@i) as [? [? Heq]] by mauto using soundness_ty.
   functional_nbe_rewrite_clear.
   eassumption.
+Qed.
+
+(** The normal form of a level of sort [n] is a canonical level of sort [n]:
+    its constant is of a tier at most [n], and each atom is a level of its
+    own sort ([nf_lvl_ws]).  It is read off the gluing of the level, whose
+    atoms are glued at their types.  The algorithmic layer needs it to trust
+    the sorts an atom of a normal form carries. *)
+Theorem soundness_lvl_ws : forall {Γ M n W},
+    Γ ⊢ M : Level@n ->
+    nbe_f Γ M Level@n W ->
+    nf_lvl_ws n Γ W.
+Proof.
+  intros * H Hn.
+  assert (⊢ Γ) by mauto 3.
+  assert (exists env_relΓ, EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ) as [env_relΓ]
+      by mauto 3 using completeness_fundamental_ctx, sem_ctx_per_ctx_env.
+  pose proof (soundness_fundamental_exp _ _ _ H) as HM.
+  destruct HM as [Sb [HSb Hrest]].
+  pose proof (per_ctx_then_per_env_initial_env ltac:(eassumption)) as [ρ [? ?]].
+  destruct_conjs.
+  functional_initial_env_rewrite_clear.
+  assert (HId : Γ ⊢s Id ® ρ ∈ Sb) by (eapply initial_env_glu_rel_exp; mauto 3).
+  destruct (glu_rel_exp_level_elim (n := n) HSb (soundness_fundamental_exp _ _ _ H) _ _ _ HId)
+    as [m [Hev [_ Hglu]]].
+  inversion Hn; subst.
+  functional_initial_env_rewrite_clear.
+  functional_eval_rewrite_clear.
+  match goal with He : ⟦ Level@n ⟧ _ ↘ _ |- _ => inversion He; subst end.
+  assert (Γ ⊢k wk_id : Γ) by mauto 3.
+  match goal with Hr : Rnf ⇓ (Levelᵈ@n) m in _ ↘ W |- _ =>
+    exact (proj2 (Hglu _ _ _ ltac:(eassumption) (read_nf_level_sort _ _ 0 _ _ Hr))) end.
 Qed.
 
 End Fixed_GCtx.

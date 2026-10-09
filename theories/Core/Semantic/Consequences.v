@@ -343,6 +343,52 @@ Qed.
 
 Hint Resolve subtyp_spec : mctt.
 
+(** The types of levels are ordered by their sorts. *)
+Lemma subtyp_level_inv : forall {Γ m n},
+    Γ ⊢ Level@m ⊆ Level@n ->
+    m <= n.
+Proof.
+  intros * H.
+  apply subtyp_spec in H as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & _)]].
+  - apply exp_eq_level_inj in Heq; lia.
+  - destruct Hs as [i j | t t' ? | t j ? | m' n' Hmn'];
+      try solve [ exfalso;
+                  (eapply exp_eq_level_typ_absurd + eapply exp_eq_level_suniv_absurd);
+                  (exact HU + exact HV + (symmetry; exact HV)) ].
+    apply exp_eq_level_inj in HU; symmetry in HV; apply exp_eq_level_inj in HV; lia.
+  - exfalso; eapply exp_eq_level_pi_absurd; exact HA.
+Qed.
+
+(** A literal of type [Level@n] is of a tier at most [n], and so is the
+    constant of a level of type [Level@n]. *)
+Lemma wf_llit_sort : forall {Γ o n},
+    Γ ⊢ 𝕃ᵒ o : Level@n ->
+    fst o <= n.
+Proof.
+  intros * H; destruct (wf_llit_inversion_sort _ _ _ _ _ H) as (m & Hm & Hs).
+  apply subtyp_level_inv in Hs; lia.
+Qed.
+
+Lemma lvl_fold_hd_sort : forall {Γ} (l : list (nat * exp)) hd n,
+    Γ ⊢ lvl_fold hd l : Level@n ->
+    Γ ⊢ hd : Level@n.
+Proof.
+  intros Γ l; induction l as [| [k a] r IH]; cbn; intros hd n H; [ exact H |].
+  apply IH in H; apply wf_maxl_inversion in H as (m & Hhd & _ & Hs).
+  eapply wf_exp_subtyp'; [ exact Hhd | exact Hs ].
+Qed.
+
+Lemma lvl_exp_of_cst_sort : forall {Γ c} {l : list (nat * exp)} {n},
+    Γ ⊢ lvl_exp_of c l : Level@n ->
+    fst c <= n.
+Proof.
+  intros * H.
+  destruct l as [| [k a] r]; cbn in H; [ exact (wf_llit_sort H) |].
+  destruct c as [[| c1] [| c2]]; try (cbn; lia);
+    apply lvl_fold_hd_sort in H; apply wf_maxl_inversion in H as (m & Hc & _ & Hs);
+    apply subtyp_level_inv in Hs; apply wf_llit_sort in Hc; cbn in *; lia.
+Qed.
+
 (** The large tier is never below the small one. *)
 Lemma subtyp_large_small_absurd : forall {Γ i t},
     Γ ⊢ Typeω@i ⊆ Type⟨t⟩ ->
@@ -409,9 +455,9 @@ Qed.
 
 (** The normal form of a small universe is the universe at the normal form of
     its level. *)
-Lemma nbe_ty_univ_level : forall {Γ t L},
+Lemma nbe_ty_univ_level : forall {Γ t L n},
     nbe_ty_f Γ Type⟨t⟩ (nf_univ_of L) ->
-    nbe_f Γ t Level (nf_lvl_of L).
+    nbe_f Γ t Level@n (nf_lvl_of L).
 Proof.
   intros * Hn.
   inversion Hn; subst.
@@ -419,7 +465,22 @@ Proof.
   dir_inversion_by_head read_typ; subst.
   match goal with H1 : fst ?L0 = fst L, H2 : snd ?L0 = snd L |- _ =>
     assert (L0 = L) as -> by (destruct L0, L; cbn in *; congruence) end.
-  econstructor; [ eassumption | apply eval_exp_level | eassumption | eassumption ].
+  econstructor; [ eassumption | apply eval_exp_level | eassumption | eapply read_nf_level_sort; eassumption ].
+Qed.
+
+(** The level of a small universe in normal form is a canonical level of a
+    sort its level term has: its constant is of a tier at most that sort, and
+    each atom is a level of its own sort ([soundness_lvl_ws]). *)
+Lemma univ_nf_ws : forall {Γ c xs A},
+    Γ ⊢ Type⟨lvl_exp_of c (la_to_list xs)⟩ : A ->
+    nbe_ty_f Γ Type⟨lvl_exp_of c (la_to_list xs)⟩ (univⁿ c xs) ->
+    exists n, Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n /\ fst c <= n /\ @la_ws gc_deps gc_stack n Γ xs.
+Proof.
+  intros * HA Hn.
+  destruct (wf_univ_lvl_inversion HA) as [n Ht].
+  pose proof (nbe_ty_univ_level (L := (c, xs)) (n := n) Hn) as Hl.
+  pose proof (soundness_lvl_ws Ht Hl) as Hws; cbn in Hws.
+  exists n; split; [ exact Ht | exact Hws ].
 Qed.
 
 (** A small universe in normal form inside a small universe at a literal level
@@ -448,13 +509,14 @@ Proof.
                   | apply dlvl_canon_read; [ apply dlvl_shape_suc | exact Hc' ] ]. }
   pose proof (subtyp_suniv_lit_bound HW Hn') as Hle.
   rewrite lvl_le_correct in Hle.
-  assert (Hev : forall ν, ole (osuc (lvl_ev ν (c, xs))) (ofin n)).
-  { intros ν; specialize (Hle ν); rewrite lvl_canon_ev, lvl_ev_suc, lvl_ev_lit in Hle; exact Hle. }
-  (** An atom is unbounded: assign it [ω]. *)
-  destruct xs as [| k a r].
-  - split; [ reflexivity |]. specialize (Hev (fun _ => oz)); unfold lvl_ev in Hev; cbn in Hev; ord.
-  - exfalso; specialize (Hev (fun _ => (1, 0))); unfold lvl_ev in Hev; cbn in Hev.
-    revert Hev; generalize (la_ev (fun _ => (1, 0)) r); intros; ord.
+  assert (Hev : forall ν, lvl_adm ν -> ole (osuc (lvl_ev ν (c, xs))) (ofin n)).
+  { intros ν Hν; specialize (Hle ν Hν); rewrite lvl_canon_ev, lvl_ev_suc, lvl_ev_lit in Hle by exact Hν; exact Hle. }
+  (** An atom is unbounded below a finite literal: assign it [ω·s + n]. *)
+  destruct xs as [| k s a r].
+  - split; [ reflexivity |]. specialize (Hev _ lvl_adm_zero); unfold lvl_ev in Hev; cbn in Hev; ord.
+  - exfalso; specialize (Hev (ν_at a s n) (ν_at_adm _ _ _)); unfold lvl_ev in Hev; cbn [la_ev fst snd] in Hev.
+    unfold ν_at at 1 in Hev; rewrite at_cmp_refl in Hev.
+    revert Hev; generalize (la_ev (ν_at a s n) r); intros; ord.
 Qed.
 
 (** NbE at a small universe reads the term back as a type. *)

@@ -37,11 +37,22 @@ take a level term `L` of `Γ`. The codomain is at the weakening of `L`:
 `ati_pi` infers the normal form of `unf_pi_tm u v` (`Core/Syntactic/Fresh.v`),
 where `u` and `v` are the universes of the parts:
 
-- **Both parts small, codomain level fresh at index 0.** The result is
-  `Type⟨maxl LA LB'⟩`, where `LB'` is the codomain level un-weakened by
-  `la_unwk 0`.
+- **Both parts small.** The result is always small:
+  `Type⟨maxl LA LB'⟩`, where `LB'` is the *bound* of the codomain level,
+  `lvl_bound 0` (`Core/Syntactic/Fresh.v`): its atoms fresh at index 0 are
+  un-weakened by `la_unwk 0`, and an atom on `#0` of sort `s` is replaced by
+  the constant `ω·(s+1)`, the least level above every level of `Level@s`.
+  So `forall (u : Level) -> Type@{u}` is in `Type@{ω}`, by
+  `wf_exp_eq_maxl_absorb` and `wf_pi_small`.
 - **Otherwise.** The result is the large join, `unf_tm (unf_max u v)`, as
   before.
+
+The bound reads the sorts of the codomain level's atoms, so `ati_pi` takes
+the codomain's universe in normal form (`nbe_ty_f (Γ ▹ A) UB UB'`, then
+`is_univ_nf UB' v`): the sort of an atom of a normal form is the sort its
+neutral is typed at (`soundness_lvl_ws`), which an inferred, unnormalised
+universe does not promise.  The algorithm infers normal forms, so
+`UB' = UB` always (`alg_type_infer_self`).
 
 The result is the *normal form* of that term, a side condition
 `nbe_ty_f Γ (unf_pi_tm u v) W`, in the style of `ati_suniv`:

@@ -51,7 +51,7 @@ Fact dlvl_cst_suc : forall l, dlvl_cst (dlvl_suc l) = osuc (dlvl_cst l).
 Proof. reflexivity. Qed.
 
 Fact dlvl_atoms_suc : forall l,
-    dlvl_atoms (dlvl_suc l) = List.map (fun ka => (S (fst ka), snd ka)) (dlvl_atoms l).
+    dlvl_atoms (dlvl_suc l) = List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) (dlvl_atoms l).
 Proof. reflexivity. Qed.
 
 Fact dlvl_cst_max : forall l l', dlvl_cst (dlvl_max l l') = omax (dlvl_cst l) (dlvl_cst l').
@@ -72,7 +72,7 @@ Qed.
 
 Lemma read_la_suc : forall s xs ys,
     Rla xs in s ↘ ys ->
-    Rla (List.map (fun ka => (S (fst ka), snd ka)) xs) in s ↘ la_suc ys.
+    Rla (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs) in s ↘ la_suc ys.
 Proof.
   intros * H; induction H; cbn; eauto with mctt.
 Qed.
@@ -109,7 +109,7 @@ Proof.
     eexists (lvl_canon (_, _)); split; [ reflexivity |].
     eexists; split; [ eassumption | reflexivity ].
   - split; [ constructor |].
-    exists (oz, la_cons 0 M la_nil); split; [ reflexivity |].
+    exists (oz, la_cons 0 (dsort a) M la_nil); split; [ reflexivity |].
     eexists; split; [ repeat constructor; eassumption | reflexivity ].
 Qed.
 
@@ -273,6 +273,97 @@ Qed.
 
 Hint Resolve per_lvl_suc per_lvl_max : mctt.
 
+(** ** Levels of a Sort
+
+    The elements of [Level@n] read back as canonical levels of sort [n]
+    ([per_lvl_at]).  Readback keeps the sorts of the atoms, which are read off
+    the types of the neutrals, and the level operations keep the bound. *)
+Lemma per_lvl_at_canon_bnd : forall n l l' s L,
+    Dom l ≈ l' ∈ per_lvl_at n ->
+    dlvl_canon s l L ->
+    lvl_bnd n L.
+Proof.
+  intros * H HL.
+  destruct (H s) as (L' & HL' & _ & Hb).
+  apply dlvl_canon_of_read in HL' as [_ [L'' [Heq HL'']]].
+  apply nf_lvl_of_inj in Heq as <-.
+  assert (L = L') as -> by (eapply dlvl_canon_functional; eassumption).
+  exact Hb.
+Qed.
+
+(** A level related to one whose canonical forms are of sort [n] is an
+    element of [Level@n]. *)
+Lemma per_lvl_at_intro : forall n l l',
+    Dom l ≈ l' ∈ per_lvl ->
+    (forall s L, dlvl_canon s l L -> lvl_bnd n L) ->
+    Dom l ≈ l' ∈ per_lvl_at n.
+Proof.
+  intros * H Hb s.
+  destruct (H s) as (W & HW & HW').
+  pose proof HW as HW0; apply dlvl_canon_of_read in HW0 as [_ [L [-> HL]]].
+  exists L; split; [| split ]; [ exact HW | exact HW' | eapply Hb; exact HL ].
+Qed.
+
+Lemma per_lvl_at_of_lvl : forall n l l',
+    Dom l ≈ l' ∈ per_lvl ->
+    Dom l ≈ l ∈ per_lvl_at n ->
+    Dom l ≈ l' ∈ per_lvl_at n.
+Proof.
+  intros * H Hb; apply per_lvl_at_intro; [ exact H |].
+  intros; eapply per_lvl_at_canon_bnd; eassumption.
+Qed.
+
+Lemma per_lvl_at_lit : forall n o, fst o <= n -> Dom dlvl_lit o ≈ dlvl_lit o ∈ per_lvl_at n.
+Proof.
+  intros; apply per_lvl_at_intro; [ apply per_lvl_lit |].
+  intros s L HL; assert (L = lvl_lit o) as -> by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_lit ]).
+  apply lvl_bnd_lit; assumption.
+Qed.
+
+Lemma per_lvl_at_suc : forall n l l',
+    Dom l ≈ l' ∈ per_lvl_at n -> Dom dlvl_suc l ≈ dlvl_suc l' ∈ per_lvl_at n.
+Proof.
+  intros * H; pose proof (per_lvl_at_lvl _ _ _ H) as Hl.
+  apply per_lvl_at_intro; [ apply per_lvl_suc; exact Hl |].
+  intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA].
+  assert (L = lvl_canon (lvl_suc A)) as ->
+    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_suc; exact HA ]).
+  apply lvl_bnd_canon, lvl_bnd_suc; eapply per_lvl_at_canon_bnd; eassumption.
+Qed.
+
+Lemma per_lvl_at_max : forall n l l' m m',
+    Dom l ≈ l' ∈ per_lvl_at n -> Dom m ≈ m' ∈ per_lvl_at n ->
+    Dom dlvl_max l m ≈ dlvl_max l' m' ∈ per_lvl_at n.
+Proof.
+  intros * H H'; pose proof (per_lvl_at_lvl _ _ _ H) as Hl; pose proof (per_lvl_at_lvl _ _ _ H') as Hm.
+  apply per_lvl_at_intro; [ apply per_lvl_max; assumption |].
+  intros s L HL; destruct (per_lvl_ex _ _ Hl s) as [A HA]; destruct (per_lvl_ex _ _ Hm s) as [B HB].
+  assert (L = lvl_canon (lvl_max A B)) as ->
+    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HB ] ]).
+  apply lvl_bnd_canon, lvl_bnd_max; [ exact (per_lvl_at_canon_bnd _ _ _ _ _ H HA) | exact (per_lvl_at_canon_bnd _ _ _ _ _ H' HB) ].
+Qed.
+
+Hint Resolve per_lvl_at_lit per_lvl_at_suc per_lvl_at_max : mctt.
+
+(** The limit [ω·(n+1)] absorbs every level of sort [n]. *)
+Lemma per_lvl_absorb : forall n l l',
+    Dom l ≈ l' ∈ per_lvl_at n ->
+    Dom dlvl_max l (dlvl_lit (S n, 0)) ≈ dlvl_lit (S n, 0) ∈ per_lvl.
+Proof.
+  intros * H; pose proof (per_lvl_at_lvl _ _ _ H) as Hl0.
+  pose proof (per_lvl_shape _ _ Hl0) as [Hl _].
+  apply per_lvl_of; [ mauto 3 | mauto 3 | | eauto with mctt |].
+  - intros s; destruct (per_lvl_ex _ _ Hl0 s) as [A HA].
+    eexists; apply dlvl_canon_max; [ exact HA | apply dlvl_canon_lit ].
+  - intros s L L' HL HL'.
+    destruct (per_lvl_ex _ _ Hl0 s) as [A HA].
+    assert (L = lvl_canon (lvl_max A (lvl_lit (S n, 0)))) as ->
+      by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | apply dlvl_canon_lit ] ]).
+    assert (L' = lvl_lit (S n, 0)) as ->
+      by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_lit ]).
+    apply lvl_canon_absorb; eapply per_lvl_at_canon_bnd; eassumption.
+Qed.
+
 (** ** The Level Equations in the Model
 
     Each is the identity between the canonical forms of the two sides, which
@@ -287,23 +378,8 @@ Proof.
     by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_lit ]).
   assert (L' = lvl_canon (lvl_suc (lvl_lit (a, b)))) as ->
     by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_suc, dlvl_canon_lit ]).
-  rewrite <- (lvl_canon_lit (a, S b)); apply lvl_canon_iff; intros ν.
+  rewrite <- (lvl_canon_lit (a, S b)); apply lvl_canon_iff; intros ν Hν.
   rewrite lvl_ev_suc, !lvl_ev_lit; reflexivity.
-Qed.
-
-(** A limit is above every literal of a lower tier. *)
-Lemma per_lvl_llit_limit : forall a b a',
-    a < a' ->
-    Dom dlvl_max (dlvl_lit (a, b)) (dlvl_lit (a', 0)) ≈ dlvl_lit (a', 0) ∈ per_lvl.
-Proof.
-  intros * Ha; apply per_lvl_of; [ mauto 3 | mauto 3 | eauto with mctt | eauto with mctt |].
-  intros s L L' HL HL'.
-  assert (L = lvl_canon (lvl_max (lvl_lit (a, b)) (lvl_lit (a', 0)))) as ->
-    by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; apply dlvl_canon_lit ]).
-  assert (L' = lvl_lit (a', 0)) as ->
-    by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_lit ]).
-  rewrite <- (lvl_canon_lit (a', 0)); apply lvl_canon_iff; intros ν.
-  rewrite lvl_ev_max, lvl_canon_lit, !lvl_ev_lit; ord.
 Qed.
 
 Lemma per_lvl_max_zero : forall l l',
@@ -323,7 +399,7 @@ Proof.
           [ exact HL | apply dlvl_canon_max; [ apply dlvl_canon_lit | exact HA ] ]).
     assert (L' = A) as -> by (symmetry; eapply per_lvl_eq; [ exact H | exact HA | exact HL' ]).
     transitivity (lvl_canon A); [| exact (dlvl_canon_canonical _ _ _ HA) ].
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_max, lvl_ev_lit; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max, lvl_ev_lit; lvl_ord.
 Qed.
 
 Lemma per_lvl_max_assoc : forall l l' m m' n n',
@@ -358,7 +434,7 @@ Proof.
       by (eapply dlvl_canon_functional;
           [ exact HL' | repeat apply dlvl_canon_max; [ exact HA' | exact HB' | exact HC' ] ]).
     rewrite lvl_canon_max_l, lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_max; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
 Qed.
 
 Lemma per_lvl_max_comm : forall l l' m m',
@@ -383,7 +459,7 @@ Proof.
       by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HB ] ]).
     assert (L' = lvl_canon (lvl_max B A)) as ->
       by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_max; [ exact HB' | exact HA' ] ]).
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_max; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
 Qed.
 
 Lemma per_lvl_max_idem : forall l l',
@@ -402,7 +478,7 @@ Proof.
       by (eapply dlvl_canon_functional; [ exact HL | apply dlvl_canon_max; [ exact HA | exact HA ] ]).
     assert (L' = A) as -> by (symmetry; eapply per_lvl_eq; [ exact H | exact HA | exact HL' ]).
     transitivity (lvl_canon A); [| exact (dlvl_canon_canonical _ _ _ HA) ].
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_max; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max; lvl_ord.
 Qed.
 
 Lemma per_lvl_suc_max : forall l l' m m',
@@ -430,7 +506,7 @@ Proof.
       by (eapply dlvl_canon_functional;
           [ exact HL' | apply dlvl_canon_max; apply dlvl_canon_suc; [ exact HA' | exact HB' ] ]).
     rewrite lvl_canon_suc, lvl_canon_max_l, lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_suc, !lvl_ev_max, !lvl_ev_suc; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_suc, !lvl_ev_max, !lvl_ev_suc; lvl_ord.
 Qed.
 
 Lemma per_lvl_max_suc : forall l l',
@@ -453,7 +529,7 @@ Proof.
     assert (L' = lvl_canon (lvl_suc A)) as ->
       by (eapply dlvl_canon_functional; [ exact HL' | apply dlvl_canon_suc; exact HB ]).
     rewrite lvl_canon_max_r.
-    apply lvl_canon_iff; intros ν; rewrite !lvl_ev_max, !lvl_ev_suc; lvl_ord.
+    apply lvl_canon_iff; intros ν Hν; rewrite !lvl_ev_max, !lvl_ev_suc; lvl_ord.
 Qed.
 
 (** ** The Order on Levels from a Join
@@ -518,3 +594,5 @@ Hint Resolve read_la_app read_la_suc : mctt.
 Hint Resolve dlvl_canon_lit dlvl_canon_suc dlvl_canon_max : mctt.
 #[export]
 Hint Resolve per_lvl_suc per_lvl_max : mctt.
+#[export]
+Hint Resolve per_lvl_at_lit per_lvl_at_suc per_lvl_at_max : mctt.

@@ -34,11 +34,11 @@ with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
 with la_stuck (G : qname -> Prop) (xs : lvl_atoms) : Prop :=
   match xs with
   | la_nil => True
-  | la_cons _ M r => ne_stuck G M /\ la_stuck G r
+  | la_cons _ _ M r => ne_stuck G M /\ la_stuck G r
   end.
 
 Lemma la_stuck_all : forall G xs, la_stuck G xs <-> la_all (ne_stuck G) xs.
-Proof. intros G; induction xs as [| k a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
+Proof. intros G; induction xs as [| k s a r IH]; cbn; [ reflexivity | rewrite IH; reflexivity ]. Qed.
 
 Lemma la_stuck_canon : forall G c xs, la_stuck G xs -> la_stuck G (snd (lvl_canon (c, xs))).
 Proof. intros * H; apply la_stuck_all, la_all_canon, la_stuck_all; assumption. Qed.
@@ -92,9 +92,9 @@ with dmstuck : dmod -> Prop :=
 | dmstuck_local : forall (ρ : env) U args,
     (forall x, destuck (env_entry ρ x)) -> (forall a, In a args -> dstuck a) -> dmstuck (dm_local ρ U args)
 | dmstuck_member : forall h ch, dmstuck h -> dmstuck (dm_member h ch)
-with dstuck_la : list (nat * domain_ne) -> Prop :=
+with dstuck_la : list (nat * nat * domain_ne) -> Prop :=
 | dstuck_la_nil : dstuck_la nil
-| dstuck_la_cons : forall k m xs, dstuck_ne m -> dstuck_la xs -> dstuck_la ((k, m) :: xs)
+| dstuck_la_cons : forall k n m xs, dstuck_ne m -> dstuck_la xs -> dstuck_la ((k, n, m) :: xs)
 with destuck : dentry -> Prop :=
 | destuck_term : forall d, dstuck d -> destuck (de_term d)
 | destuck_mod : forall h, dmstuck h -> destuck (de_mod h).
@@ -148,7 +148,7 @@ Proof. intros; constructor; intros ? []. Qed.
 Lemma dstuck_la_view : forall d, dstuck d -> dstuck_la (dlvl_atoms d).
 Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
 
-Lemma dstuck_la_suc : forall xs, dstuck_la xs -> dstuck_la (List.map (fun ka => (S (fst ka), snd ka)) xs).
+Lemma dstuck_la_suc : forall xs, dstuck_la xs -> dstuck_la (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs).
 Proof. induction 1; cbn; repeat constructor; assumption. Qed.
 
 Lemma dstuck_la_app : forall xs ys, dstuck_la xs -> dstuck_la ys -> dstuck_la (xs ++ ys).
@@ -259,8 +259,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
         end;
       repeat split; auto.
     (** A level reads back canonically, so its atoms are sorted and merged;
-        [la_stuck_sort] moves the property of all the atoms across. *)
-    all: try solve [ apply la_stuck_sort; eauto 3 with mctt ].
+        [la_all_keep] and [la_all_sort] move the property of all the atoms
+        across. *)
+    all: try solve [ apply la_stuck_all, la_all_keep, la_all_sort, la_stuck_all; eauto 3 with mctt
+                   | apply la_stuck_sort; eauto 3 with mctt ].
     (** A small universe reads back at the canonical level its level reads
         back as, and the two normal forms have the same atoms, so this case
         is the level's. *)

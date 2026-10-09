@@ -172,7 +172,7 @@ Proof.
   simplify_evals.
   match goal with H : per_univ_elem _ _ (Levelᵈ@_) (Levelᵈ@_) |- _ => invert_per_univ_elem H end.
   apply_relation_equivalence.
-  assert (Hw : per_lvl t1 t2) by pairwise.
+  assert (Hw : per_lvl t1 t2) by lvl_pw.
   exact (per_lvl_real _ _ Hw).
 Qed.
 

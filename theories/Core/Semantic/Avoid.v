@@ -102,9 +102,9 @@ Section Avoid.
       (forall a, In a args -> dav a) ->
       dmav (dm_local ρ U args)
   | dmav_member : forall h ch, dmav h -> dmav (dm_member h ch)
-  with dav_la : list (nat * domain_ne) -> Prop :=
+  with dav_la : list (nat * nat * domain_ne) -> Prop :=
   | dav_la_nil : dav_la nil
-  | dav_la_cons : forall k m xs, dav_ne m -> dav_la xs -> dav_la ((k, m) :: xs)
+  | dav_la_cons : forall k n m xs, dav_ne m -> dav_la xs -> dav_la ((k, n, m) :: xs)
   with deav : dentry -> Prop :=
   | deav_term : forall d, dav d -> deav (de_term d)
   | deav_mod : forall h, dmav h -> deav (de_mod h).
@@ -195,7 +195,7 @@ Section Env.
   Lemma dav_la_view : forall d, dav v b d -> dav_la v b (dlvl_atoms d).
   Proof. destruct 1; cbn; repeat constructor; assumption. Qed.
 
-  Lemma dav_la_suc : forall xs, dav_la v b xs -> dav_la v b (List.map (fun ka => (S (fst ka), snd ka)) xs).
+  Lemma dav_la_suc : forall xs, dav_la v b xs -> dav_la v b (List.map (fun ka => (S (fst (fst ka)), snd (fst ka), snd ka)) xs).
   Proof. induction 1; cbn; repeat constructor; assumption. Qed.
 
   Lemma dav_la_app : forall xs ys, dav_la v b xs -> dav_la v b ys -> dav_la v b (xs ++ ys).
@@ -501,7 +501,7 @@ Proof. intros; eapply (proj1 (proj2 (dav_mono v b))); eassumption. Qed.
 (** ** Readback Introduces Only Variables Above the Ones in Scope *)
 
 Lemma la_fresh_all : forall k xs, la_fresh k xs <-> la_all (ne_fresh k) xs.
-Proof. intros k xs; induction xs as [| j a r IH]; cbn; [ tauto | rewrite IH; tauto ]. Qed.
+Proof. intros k xs; induction xs as [| j s a r IH]; cbn; [ tauto | rewrite IH; tauto ]. Qed.
 
 Lemma la_fresh_canon : forall k c xs, la_fresh k xs -> la_fresh k (snd (lvl_canon (c, xs))).
 Proof. intros * H; apply la_fresh_all, la_all_canon, la_fresh_all; assumption. Qed.

@@ -229,18 +229,69 @@ Proof.
   - eauto using per_lvl_trans.
 Qed.
 
-(** A neutral of type [Level] is a level: it reads back as the single atom at
-    offset [0], which is canonical. *)
+(** A neutral of type [Level@n] is a level: it reads back as the single atom
+    at offset [0], of sort [n], which is canonical.  The sort is read off the
+    neutral's type, so two neutrals are related levels only at types of one
+    sort. *)
 Lemma per_bot_then_per_lvl : forall m m' a a',
+    dsort a = dsort a' ->
     Dom m ≈ m' ∈ per_bot ->
     Dom ⇑ a m ≈ ⇑ a' m' ∈ per_lvl.
 Proof.
-  intros * H s.
+  intros * Ha H s.
   destruct (H s) as [M [Hl Hr]].
-  exists (lvⁿ oz (la_cons 0 M la_nil)); split; econstructor; eassumption.
+  exists (lvⁿ oz (la_cons 0 (dsort a) M la_nil)); split; [| rewrite Ha ]; econstructor; eassumption.
 Qed.
 
 Hint Resolve per_bot_then_per_lvl : mctt.
+
+(** The levels of sort [n] form a PER, and a neutral of type [Level@n] is
+    one. *)
+Lemma per_lvl_at_lvl : forall n l l', Dom l ≈ l' ∈ per_lvl_at n -> Dom l ≈ l' ∈ per_lvl.
+Proof. intros * H s; destruct (H s) as (L & HL & HL' & _); eexists; split; eassumption. Qed.
+
+Lemma per_lvl_at_sym : forall n m m',
+    Dom m ≈ m' ∈ per_lvl_at n ->
+    Dom m' ≈ m ∈ per_lvl_at n.
+Proof. intros * H s; destruct (H s) as (L & HL & HL' & Hb); exists L; split; [| split ]; assumption. Qed.
+
+Lemma per_lvl_at_trans : forall n m m' m'',
+    Dom m ≈ m' ∈ per_lvl_at n ->
+    Dom m' ≈ m'' ∈ per_lvl_at n ->
+    Dom m ≈ m'' ∈ per_lvl_at n.
+Proof.
+  intros * H H' s; destruct (H s) as (L & HL & HL' & Hb), (H' s) as (L' & HM & HM' & Hb').
+  assert (L' = L) as -> by (apply nf_lvl_of_inj; exact (functional_read_nf _ _ _ _ HM HL')).
+  exists L; split; [| split ]; assumption.
+Qed.
+
+#[local] Instance per_lvl_at_PER n : PER (per_lvl_at n).
+Proof.
+  split.
+  - intros ? ?; apply per_lvl_at_sym.
+  - intros ? ? ?; apply per_lvl_at_trans.
+Qed.
+
+Lemma lvl_bnd_mono : forall m n L, m <= n -> lvl_bnd m L -> lvl_bnd n L.
+Proof. intros * Hmn [Hc Ha]; split; [ lia | intros; eapply Nat.le_trans; [ eapply Ha; eassumption | exact Hmn ] ]. Qed.
+
+Lemma per_lvl_at_mono : forall m n l l', m <= n -> Dom l ≈ l' ∈ per_lvl_at m -> Dom l ≈ l' ∈ per_lvl_at n.
+Proof.
+  intros * Hmn H s; destruct (H s) as (L & HL & HL' & Hb).
+  exists L; split; [| split ]; [ assumption | assumption | eapply lvl_bnd_mono; eassumption ].
+Qed.
+
+Lemma per_bot_then_per_lvl_at : forall n m m',
+    Dom m ≈ m' ∈ per_bot ->
+    Dom ⇑ (Levelᵈ@n) m ≈ ⇑ (Levelᵈ@n) m' ∈ per_lvl_at n.
+Proof.
+  intros * H s.
+  destruct (H s) as [M [Hl Hr]].
+  exists (oz, la_cons 0 n M la_nil); split; [| split ]; [ econstructor; eassumption .. | split; [ cbn; lia |] ].
+  intros k t a Hin; cbn in Hin; destruct Hin as [(_ & -> & _) | []]; lia.
+Qed.
+
+Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at : mctt.
 
 Lemma per_bot_then_per_top : forall m m' a a' b b' c c',
     Dom m ≈ m' ∈ per_bot ->
@@ -433,6 +484,9 @@ Hint Resolve per_lvl_sym : mctt.
 #[export]
 Hint Resolve per_lvl_trans : mctt.
 #[export] Existing Instance per_lvl_PER.
+#[export] Existing Instance per_lvl_at_PER.
+#[export]
+Hint Resolve per_lvl_at_sym per_lvl_at_trans per_bot_then_per_lvl_at per_lvl_at_lvl : mctt.
 #[export]
 Hint Resolve per_bot_then_per_lvl : mctt.
 #[export]
@@ -1099,6 +1153,9 @@ Proof.
     handle_per_univ_elem_irrel;
     clear_refl_eqs;
     trivial.
+  (** The types of levels: the levels of a smaller sort are levels of the
+      larger one. *)
+  1: eapply per_lvl_at_mono; eassumption.
   - firstorder mauto.
   (** The three universe cases cumulate the elements of the smaller universe
       to the larger: inside the large tier along the order on levels, inside

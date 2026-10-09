@@ -130,13 +130,13 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
   `( read_ne_order Θ Ξ s b ->
     read_typ_order Θ Ξ s ⇑ a b )
 
-with read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * domain_ne) -> Prop :=
+with read_la_order (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> Prop :=
 | rla_nil :
   `( read_la_order Θ Ξ s nil )
 | rla_cons :
   `( read_ne_order Θ Ξ s m ->
      read_la_order Θ Ξ s xs ->
-     read_la_order Θ Ξ s ((k, m) :: xs) ).
+     read_la_order Θ Ξ s ((k, n, m) :: xs) ).
 
 #[local]
 Hint Constructors read_nf_order read_ne_order read_typ_order read_la_order : mctt.
@@ -190,9 +190,9 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ (Levelᵈ@n) (lvᵈ c xs), H =>
     let (ys, Hys) := read_la_impl s xs _ in
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
-| s, ⇓ (Levelᵈ@n) (⇑ _ m), H =>
+| s, ⇓ (Levelᵈ@n) (⇑ a m), H =>
     let (M, HM) := read_ne_impl s m _ in
-    exist _ (lvⁿ oz (la_cons 0 M la_nil)) _
+    exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
 | s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
 | s, ⇓ ℕᵈ (succᵈ m) , H =>
     let (M, HM) := read_nf_impl s ⇓ ℕᵈ m _ in
@@ -257,10 +257,10 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 
   with read_la_impl s xs (H : read_la_order Θ Ξ s xs) : { ys | Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
 | s, nil, H => exist _ la_nil _
-| s, cons (k, m) xs, H =>
+| s, cons (k, n, m) xs, H =>
     let (M, HM) := read_ne_impl s m _ in
     let (ys, Hys) := read_la_impl s xs _ in
-    exist _ (la_cons k M ys) _.
+    exist _ (la_cons k n M ys) _.
 
 (** Each hole is either a readback order of a subterm, read off the order of
     the whole by inversion, or the readback itself, by its rule. *)

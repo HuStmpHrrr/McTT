@@ -135,6 +135,8 @@ Lemma olt_osuc : forall x, olt x (osuc x). Proof. intros; ord. Qed.
 Lemma olt_osuc_ole : forall x y, olt x (osuc y) <-> ole x y. Proof. intros; ord. Qed.
 Lemma osuc_mono : forall x y, ole x y -> ole (osuc x) (osuc y). Proof. intros; ord. Qed.
 Lemma osuc_inj : forall x y, osuc x = osuc y -> x = y. Proof. intros; ord. Qed.
+Lemma omax_fst_le : forall x y n, fst x <= n -> fst y <= n -> fst (omax x y) <= n. Proof. intros; ord. Qed.
+Lemma osuc_fst : forall x, fst (osuc x) = fst x. Proof. reflexivity. Qed.
 
 Definition o2_eq_dec : forall x y : o2, {x = y} + {x <> y}.
 Proof. intros [a b] [c d]; decide equality; apply Nat.eq_dec. Defined.

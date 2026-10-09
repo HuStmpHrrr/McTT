@@ -6,9 +6,10 @@
     literal, the congruence rules of [succl] and [maxl], and the level
     equations.
 
-    A judgment at type [Level@n] is exactly a four-value pattern in [per_lvl], as
-    at [ℕ].  Each equation is then the corresponding lemma of
-    [Core.Semantic.Levels], where it is an identity between canonical forms. *)
+    A judgment at type [Level@n] is exactly a four-value pattern in
+    [per_lvl_at n]: related levels, all of sort [n].  Each equation is then
+    the corresponding lemma of [Core.Semantic.Levels], where it is an
+    identity between canonical forms, and the bound of each side. *)
 
 From Stdlib Require Import List Morphisms_Relations RelationClasses.
 Import ListNotations.
@@ -21,17 +22,29 @@ From Mctt.Core.Semantic Require Import Levels Realizability.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
+(** A link of a chain of levels at a sort as a fact of [per_lvl], and the
+    bounds of the values of a chain of four. *)
+Ltac lvl_pw :=
+  first [ pairwise
+        | match goal with
+          | H : rel_chain (per_lvl_at ?n) _ |- per_lvl _ _ => apply (per_lvl_at_lvl n); pairwise_from H (per_lvl_at n)
+          end ].
+
+Ltac lvl_bnd :=
+  first [ pairwise
+        | solve [ apply per_lvl_at_lit; cbn; lia ]
+        | solve [ apply per_lvl_at_suc; lvl_bnd ]
+        | solve [ apply per_lvl_at_max; lvl_bnd ] ].
+
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** The sort of the levels is a parameter of this section: the elements of
-    [Level@n] are the level values, whatever the sort, so each case is proved
-    once for every sort. *)
+(** The sort of the levels is a parameter of this section. *)
   Context {n : nat}.
 
 (** [Level@n]'s [per_univ_elem], at its element PER and at any index. *)
 Lemma per_univ_elem_level : forall i,
-    DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem i ↘ per_lvl.
+    DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem i ↘ per_lvl_at n.
 Proof.
   intros; per_univ_elem_econstructor; reflexivity.
 Qed.
@@ -104,7 +117,7 @@ Lemma rel_exp_of_level_inversion : forall {Γ M M'},
         Dom ρ ≈ ρ' ∈ env_rel' ->
         ⟦ σ ⟧s ρ ↘ ρσ ->
         ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-        rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' per_lvl.
+        rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' (per_lvl_at n).
 Proof.
   intros * [env_relΓ [HΓ [i HM]]].
   eexists; eexists; [eassumption |].
@@ -124,13 +137,13 @@ Lemma rel_exp_of_level : forall {Γ M M'},
           Dom ρ ≈ ρ' ∈ env_rel' ->
           ⟦ σ ⟧s ρ ↘ ρσ ->
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
-          rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' per_lvl) ->
+          rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' (per_lvl_at n)) ->
     Γ ⊨ M ≈ M' : Level@n.
 Proof.
   intros * [env_relΓ [HΓ H]].
   eexists_rel_exp_with 0.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  exists per_lvl.
+  exists (per_lvl_at n).
   split; [| eapply H; eassumption].
   pose proof (per_univ_elem_level 0) as Hn.
   econstructor; try apply eval_exp_level.
@@ -155,9 +168,7 @@ Ltac eexists_rel_exp_of_level :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** The sort of the levels is a parameter of this section: the elements of
-    [Level@n] are the level values, whatever the sort, so each case is proved
-    once for every sort. *)
+(** The sort of the levels is a parameter of this section. *)
   Context {n : nat}.
 
 (** ** The Level Forms
@@ -166,21 +177,23 @@ Section Fixed_GCtx.
     of their arguments, so each rule is a four-value pattern built from those of
     its arguments. *)
 Lemma rel_exp_llit : forall {Γ env_relΓ o},
+    fst o <= n ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ 𝕃ᵒ o ≈ 𝕃ᵒ o : Level@n.
 Proof.
-  intros * HΓ.
+  intros * Ho HΓ.
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   econstructor; try apply eval_exp_llit.
-  apply rel_chain_4; apply per_lvl_lit.
+  apply rel_chain_4; apply per_lvl_at_lit; exact Ho.
 Qed.
 
 Corollary valid_exp_llit : forall {Γ o},
+    fst o <= n ->
     ⊨ Γ ->
     Γ ⊨ 𝕃ᵒ o : Level@n.
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * Ho H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_llit; eassumption.
 Qed.
@@ -199,7 +212,7 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hchain].
   apply (mk_rel_exp (dlvl_suc m1) (dlvl_suc m2) (dlvl_suc m3) (dlvl_suc m4));
     try (apply eval_exp_succl; eassumption).
-  apply rel_chain_4; apply per_lvl_suc; pairwise.
+  apply rel_chain_4; apply per_lvl_at_suc; pairwise.
 Qed.
 
 Hint Resolve rel_exp_succl_cong : mctt.
@@ -220,7 +233,7 @@ Proof.
     as [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 Hnchain].
   apply (mk_rel_exp (dlvl_max m1 n1) (dlvl_max m2 n2) (dlvl_max m3 n3) (dlvl_max m4 n4));
     try (apply eval_exp_maxl; eassumption).
-  apply rel_chain_4; apply per_lvl_max; pairwise.
+  apply rel_chain_4; apply per_lvl_at_max; pairwise.
 Qed.
 
 Hint Resolve rel_exp_maxl_cong : mctt.
@@ -228,56 +241,34 @@ Hint Resolve rel_exp_maxl_cong : mctt.
 (** ** The Level Equations
 
     Each is a four-value pattern whose middle link is the corresponding lemma
-    of [Core.Semantic.Levels], and whose outer links are the reflexivity of
-    both sides. *)
+    of [Core.Semantic.Levels], with the bound of both sides, and whose outer
+    links are the reflexivity of both sides. *)
 Lemma rel_exp_llit_succl : forall {Γ env_relΓ a b},
+    a <= n ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n.
 Proof.
-  intros * HΓ.
+  intros * Ha HΓ.
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   apply (mk_rel_exp (dlvl_lit (a, S b)) (dlvl_lit (a, S b)) (dlvl_suc (dlvl_lit (a, b))) (dlvl_suc (dlvl_lit (a, b))));
     try (apply eval_exp_llit);
     try (apply eval_exp_succl, eval_exp_llit).
-  apply rel_chain_4; [ apply per_lvl_lit | apply per_lvl_llit_suc | apply per_lvl_suc, per_lvl_lit ].
+  apply rel_chain_4;
+    [ apply per_lvl_at_lit; exact Ha
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_llit_suc | lvl_bnd ]
+    | apply per_lvl_at_suc, per_lvl_at_lit; exact Ha ].
 Qed.
 
 Corollary valid_exp_llit_succl : forall {Γ a b},
+    a <= n ->
     ⊨ Γ ->
     Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n.
 Proof.
-  intros * H%sem_ctx_per_ctx_env.
+  intros * Ha H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
   eapply rel_exp_llit_succl; eassumption.
 Qed.
-
-Lemma rel_exp_maxl_llit_limit : forall {Γ env_relΓ a b a'},
-    a < a' ->
-    EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n.
-Proof.
-  intros * Ha HΓ.
-  eexists_rel_exp_of_level.
-  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  apply (mk_rel_exp (dlvl_max (dlvl_lit (a, b)) (dlvl_lit (a', 0))) (dlvl_max (dlvl_lit (a, b)) (dlvl_lit (a', 0)))
-                    (dlvl_lit (a', 0)) (dlvl_lit (a', 0)));
-    try (apply eval_exp_llit);
-    try (apply eval_exp_maxl; apply eval_exp_llit).
-  apply rel_chain_4; [ apply per_lvl_max; apply per_lvl_lit | apply per_lvl_llit_limit, Ha | apply per_lvl_lit ].
-Qed.
-
-Corollary valid_exp_maxl_llit_limit : forall {Γ a b a'},
-    a < a' ->
-    ⊨ Γ ->
-    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n.
-Proof.
-  intros * Ha H%sem_ctx_per_ctx_env.
-  destruct H as [env_relΓ HΓ].
-  eapply rel_exp_maxl_llit_limit; eassumption.
-Qed.
-
-Hint Resolve rel_exp_maxl_llit_limit valid_exp_maxl_llit_limit : mctt.
 
 Hint Resolve rel_exp_llit_succl valid_exp_llit_succl : mctt.
 
@@ -295,8 +286,8 @@ Proof.
     try (apply eval_exp_maxl; [ apply eval_exp_llit | eassumption ]);
     try eassumption.
   apply rel_chain_4;
-    [ apply per_lvl_max; [ apply per_lvl_lit | pairwise ]
-    | apply per_lvl_max_zero; pairwise
+    [ apply per_lvl_at_max; [ apply per_lvl_at_lit; cbn; lia | pairwise ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_zero; lvl_pw | lvl_bnd ]
     | pairwise ].
 Qed.
 
@@ -325,9 +316,9 @@ Proof.
     try (apply eval_exp_maxl; [ apply eval_exp_maxl |]; eassumption);
     try (apply eval_exp_maxl; [| apply eval_exp_maxl ]; eassumption).
   apply rel_chain_4;
-    [ apply per_lvl_max; [ apply per_lvl_max |]; pairwise
-    | apply per_lvl_max_assoc; pairwise
-    | apply per_lvl_max; [| apply per_lvl_max ]; pairwise ].
+    [ apply per_lvl_at_max; [ apply per_lvl_at_max |]; pairwise
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_assoc; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_max; [| apply per_lvl_at_max ]; pairwise ].
 Qed.
 
 Hint Resolve rel_exp_maxl_assoc : mctt.
@@ -349,9 +340,9 @@ Proof.
   apply (mk_rel_exp (dlvl_max m1 n1) (dlvl_max m2 n2) (dlvl_max n3 m3) (dlvl_max n4 m4));
     try (apply eval_exp_maxl; eassumption).
   apply rel_chain_4;
-    [ apply per_lvl_max; pairwise
-    | apply per_lvl_max_comm; pairwise
-    | apply per_lvl_max; pairwise ].
+    [ apply per_lvl_at_max; pairwise
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_comm; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_max; pairwise ].
 Qed.
 
 Hint Resolve rel_exp_maxl_comm : mctt.
@@ -370,8 +361,8 @@ Proof.
     try (apply eval_exp_maxl; eassumption);
     try eassumption.
   apply rel_chain_4;
-    [ apply per_lvl_max; pairwise
-    | apply per_lvl_max_idem; pairwise
+    [ apply per_lvl_at_max; pairwise
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_idem; lvl_pw | lvl_bnd ]
     | pairwise ].
 Qed.
 
@@ -396,9 +387,9 @@ Proof.
     try (apply eval_exp_succl, eval_exp_maxl; eassumption);
     try (apply eval_exp_maxl; apply eval_exp_succl; eassumption).
   apply rel_chain_4;
-    [ apply per_lvl_suc, per_lvl_max; pairwise
-    | apply per_lvl_suc_max; pairwise
-    | apply per_lvl_max; apply per_lvl_suc; pairwise ].
+    [ apply per_lvl_at_suc, per_lvl_at_max; pairwise
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_suc_max; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_max; apply per_lvl_at_suc; pairwise ].
 Qed.
 
 Hint Resolve rel_exp_succl_maxl : mctt.
@@ -418,12 +409,47 @@ Proof.
     try (apply eval_exp_maxl; [ eassumption | apply eval_exp_succl; eassumption ]);
     try (apply eval_exp_succl; eassumption).
   apply rel_chain_4;
-    [ apply per_lvl_max; [ pairwise | apply per_lvl_suc; pairwise ]
-    | apply per_lvl_max_suc; pairwise
-    | apply per_lvl_suc; pairwise ].
+    [ apply per_lvl_at_max; [ pairwise | apply per_lvl_at_suc; pairwise ]
+    | apply per_lvl_at_of_lvl; [ apply per_lvl_max_suc; lvl_pw | lvl_bnd ]
+    | apply per_lvl_at_suc; pairwise ].
 Qed.
 
 Hint Resolve rel_exp_maxl_succl : mctt.
+
+(** Absorption: the limit [ω·(n+1)] is above every level of sort [n]
+    ([per_lvl_absorb]).  The two sides are levels of sort [n+1]. *)
+Lemma rel_exp_maxl_absorb : forall {Γ M},
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ maxl M (𝕃ᵒ(S n, 0)) ≈ 𝕃ᵒ(S n, 0) : Level@(S n).
+Proof.
+  intros * HM.
+  pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
+  eexists_rel_exp_of_level.
+  intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  destruct (HMgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')
+    as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
+  assert (H12 : Dom m1 ≈ m2 ∈ per_lvl_at n) by pairwise.
+  assert (H22 : Dom m2 ≈ m2 ∈ per_lvl_at n) by pairwise.
+  apply (mk_rel_exp (dlvl_max m1 (dlvl_lit (S n, 0))) (dlvl_max m2 (dlvl_lit (S n, 0)))
+                    (dlvl_lit (S n, 0)) (dlvl_lit (S n, 0)));
+    try (apply eval_exp_maxl; [ eassumption | apply eval_exp_llit ]);
+    try (apply eval_exp_llit).
+  assert (H12' : Dom m1 ≈ m2 ∈ per_lvl_at (S n)) by (eapply per_lvl_at_mono; [| exact H12 ]; lia).
+  assert (H22' : Dom m2 ≈ m2 ∈ per_lvl_at (S n)) by (eapply per_lvl_at_mono; [| exact H22 ]; lia).
+  apply rel_chain_4;
+    [ apply per_lvl_at_max; [ exact H12' | apply per_lvl_at_lit; cbn; lia ]
+    | apply per_lvl_at_of_lvl;
+      [ eapply per_lvl_absorb; exact H22
+      | apply per_lvl_at_max; [ exact H22' | apply per_lvl_at_lit; cbn; lia ] ]
+    | apply per_lvl_at_lit; cbn; lia ].
+Qed.
+
+Corollary valid_exp_maxl_absorb : forall {Γ M},
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ maxl M (𝕃ᵒ(S n, 0)) ≈ 𝕃ᵒ(S n, 0) : Level@(S n).
+Proof. intros; apply rel_exp_maxl_absorb; assumption. Qed.
+
+Hint Resolve rel_exp_maxl_absorb valid_exp_maxl_absorb : mctt.
 
 End Fixed_GCtx.
 
@@ -461,9 +487,9 @@ Proof.
   intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HTgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [t1 t2 t3 t4 Ht1 Ht2 Ht3 Ht4 Htchain].
-  assert (H12 : Dom t1 ≈ t2 ∈ per_lvl) by pairwise.
-  assert (H23 : Dom t2 ≈ t3 ∈ per_lvl) by pairwise.
-  assert (H34 : Dom t3 ≈ t4 ∈ per_lvl) by pairwise.
+  assert (H12 : Dom t1 ≈ t2 ∈ per_lvl) by lvl_pw.
+  assert (H23 : Dom t2 ≈ t3 ∈ per_lvl) by lvl_pw.
+  assert (H34 : Dom t3 ≈ t4 ∈ per_lvl) by lvl_pw.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
@@ -564,9 +590,9 @@ Proof.
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
   inversion Ht; subst.
   functional_eval_rewrite_clear.
-  assert (H12 : Dom m1 ≈ m2 ∈ per_lvl) by pairwise.
-  assert (H23 : Dom m2 ≈ m3 ∈ per_lvl) by pairwise.
-  assert (H34 : Dom m3 ≈ m4 ∈ per_lvl) by pairwise.
+  assert (H12 : Dom m1 ≈ m2 ∈ per_lvl) by lvl_pw.
+  assert (H23 : Dom m2 ≈ m3 ∈ per_lvl) by lvl_pw.
+  assert (H34 : Dom m3 ≈ m4 ∈ per_lvl) by lvl_pw.
   pose proof (per_lvl_real _ _ H12) as E12.
   pose proof (per_lvl_real _ _ H23) as E23.
   pose proof (per_lvl_real _ _ H34) as E34.
@@ -607,11 +633,11 @@ Proof.
     as [j1 j2 j3 j4 Hj1 Hj2 Hj3 Hj4 Hjchain].
   inversion Hj2; subst.
   functional_eval_rewrite_clear.
-  assert (Dom m1 ≈ m2 ∈ per_lvl) by pairwise.
-  assert (Dom m2 ≈ m2 ∈ per_lvl) by pairwise.
-  assert (Dom n4 ≈ n3 ∈ per_lvl) by pairwise.
-  assert (Dom n2 ≈ n3 ∈ per_lvl) by pairwise.
-  assert (Dom dlvl_max m2 n2 ≈ n3 ∈ per_lvl) by pairwise.
+  assert (Dom m1 ≈ m2 ∈ per_lvl) by lvl_pw.
+  assert (Dom m2 ≈ m2 ∈ per_lvl) by lvl_pw.
+  assert (Dom n4 ≈ n3 ∈ per_lvl) by lvl_pw.
+  assert (Dom n2 ≈ n3 ∈ per_lvl) by lvl_pw.
+  assert (Dom dlvl_max m2 n2 ≈ n3 ∈ per_lvl) by lvl_pw.
   functional_eval_rewrite_clear.
   exists 𝕌@m1, 𝕌@m2, 𝕌@n4, 𝕌@n3.
   repeat apply conj; try (apply eval_exp_univ; eassumption).
@@ -633,8 +659,8 @@ Proof.
   intros Γ' env_rel' HΓ0 σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   destruct (HMgen _ _ HΓ0 _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [m1 m2 m3 m4 Hm1 Hm2 Hm3 Hm4 Hmchain].
-  assert (Dom m1 ≈ m2 ∈ per_lvl) by pairwise.
-  assert (Dom m2 ≈ m2 ∈ per_lvl) by pairwise.
+  assert (Dom m1 ≈ m2 ∈ per_lvl) by lvl_pw.
+  assert (Dom m2 ≈ m2 ∈ per_lvl) by lvl_pw.
   exists 𝕌@m1, 𝕌@m2, 𝕌ω@i, 𝕌ω@i.
   repeat apply conj; try (apply eval_exp_univ; eassumption); try apply eval_exp_typ.
   - eexists; apply per_univ_elem_core_suniv';
@@ -652,4 +678,4 @@ Hint Resolve rel_exp_univ_cong_tm valid_exp_univ_tm subtyp_suniv_tm subtyp_small
 Hint Resolve valid_exp_llit rel_exp_succl_cong rel_exp_maxl_cong : mctt.
 #[export]
 Hint Resolve rel_exp_llit_succl valid_exp_llit_succl rel_exp_maxl_zero rel_exp_maxl_assoc rel_exp_maxl_comm
-  rel_exp_maxl_idem rel_exp_succl_maxl rel_exp_maxl_succl valid_exp_maxl_llit_limit : mctt.
+  rel_exp_maxl_idem rel_exp_succl_maxl rel_exp_maxl_succl valid_exp_maxl_absorb : mctt.

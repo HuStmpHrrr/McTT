@@ -492,11 +492,13 @@ Proof.
     by (rewrite <- (exp_wk_id t); eapply glu_lvl_readback; mauto 3).
   assert (Γ ⊢ t' ≈ nf_lvl_of (d, ys) : Level@n) as Htd
     by (rewrite <- (exp_wk_id t'); eapply glu_lvl_readback; mauto 3).
-  assert (Γ ⊢ nf_lvl_of (c, xs) : Level@n) as Hc by (gen_presups; eassumption).
-  assert (Γ ⊢ nf_lvl_of (d, ys) : Level@n) as Hd by (gen_presups; eassumption).
+  (** The readbacks are canonical levels of sort [n], their atoms typed at
+      their own sorts, which the absorption step of [lvl_exp_of_le] needs. *)
+  assert (nf_lvl_ws n Γ (nf_lvl_of (c, xs))) as [Hc Hxs]
+    by (eapply glu_lvl_ws_readback; [ exact Ht | mauto 3 | exact HL ]).
+  assert (nf_lvl_ws n Γ (nf_lvl_of (d, ys))) as [Hd Hys]
+    by (eapply glu_lvl_ws_readback; [ exact Ht' | mauto 3 | exact HL' ]).
   unfold nf_lvl_of in *; cbn [nf_to_exp fst snd] in *.
-  assert (la_wf Γ xs) by (eapply lvl_exp_of_la_wf; exact Hc).
-  assert (la_wf Γ ys) by (eapply lvl_exp_of_la_wf; exact Hd).
   transitivity (maxl (lvl_exp_of c (la_to_list xs)) (lvl_exp_of d (la_to_list ys)));
     [ apply wf_exp_eq_maxl_cong; assumption |].
   transitivity (lvl_exp_of d (la_to_list ys));
@@ -642,10 +644,11 @@ Proof.
     handle_functional_glu_univ_elem;
     repeat invert_glu_rel1;
     try solve [simpl in *; intuition mauto 3].
-  (** A type of levels below one of a larger sort: the element's readback
-      equation moves to the larger sort ([glu_lvl_sort_le]). *)
-  all: try solve [ simpl in *; destruct_conjs; repeat split;
-                   [ mauto 3 | assumption | eapply glu_lvl_sort_le; eassumption ] ].
+  (** A type of levels below one of a larger sort: the element is a level of
+      the larger sort, and its readback equation moves there
+      ([glu_lvl_sort_le]). *)
+  all: try solve [ simpl in *; destruct_conjs; split; [| split ];
+                   [ mauto 3 | eapply per_lvl_at_mono; eassumption | eapply glu_lvl_sort_le; eassumption ] ].
   - match_by_head1 (per_bot b b') ltac:(fun H => destruct (H (length Γ)) as [V []]).
     econstructor; mauto 3.
     + econstructor; mauto 3.

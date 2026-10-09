@@ -2,7 +2,7 @@ From Stdlib Require Import Equivalence Morphisms Morphisms_Prop Morphisms_Relati
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Corollaries Substitution.
+From Mctt.Core.Syntactic Require Import Corollaries Substitution LevelEq.
 From Mctt.Core.Semantic Require Import Realizability.
 From Mctt.Core.Soundness.LogicalRelation Require Import CoreTactics Definitions.
 From Mctt.Core.Soundness.Weakening Require Export Lemmas.
@@ -108,7 +108,7 @@ Proof.
   assert (Γ ⊢k wk_id : Γ) by mauto 2.
   apply per_lvl_then_per_top in Hper; specialize (Hper (length Γ)) as [M' []].
   clear_dups.
-  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : Level@n) as HM by mauto.
+  assert (Γ ⊢ M[wk_id]ʷ ≈ M' : Level@n) as HM by (eapply H; eassumption).
   rewrite exp_wk_id in HM.
   gen_presups.
   mauto.
@@ -125,8 +125,10 @@ Lemma glu_lvl_sort_le : forall Γ M a m n,
 Proof.
   intros * Hmn H Δ φ L Hφ Hr.
   assert (⊢ Δ) by (eapply kripke_dom; eassumption).
-  eapply wf_exp_eq_subtyp';
-    [ eapply H; eassumption | apply wf_subtyp_level; assumption ].
+  destruct (H _ _ _ Hφ Hr) as [Heq Hws]; split.
+  - eapply wf_exp_eq_subtyp'; [ exact Heq | apply wf_subtyp_level; assumption ].
+  - destruct L; cbn in Hws |- *; try contradiction.
+    destruct Hws; split; [ lia | eapply la_ws_mono; eassumption ].
 Qed.
 
 Lemma glu_lvl_resp_ctxsub : forall Γ M a n Δ,
@@ -145,7 +147,8 @@ Lemma glu_lvl_resp_exp_eq : forall Γ M a n,
     Γ ⊢ M ≈ M' : Level@n ->
     glu_lvl n Γ M' a.
 Proof.
-  intros * H * ? Δ φ L **.
+  intros * H * ? Δ φ L Hφ Hr.
+  destruct (H _ _ _ Hφ Hr) as [Heq Hws]; split; [| exact Hws ].
   transitivity M[φ]ʷ; mauto 4.
 Qed.
 
@@ -203,18 +206,31 @@ Lemma glu_lvl_readback : forall Γ M a n,
       Rnf ⇓ Levelᵈ a in length Δ ↘ M' ->
       Δ ⊢ M[φ]ʷ ≈ M' : Level@n.
 Proof.
-  intros * H; exact H.
+  intros * H * Hφ Hr; exact (proj1 (H _ _ _ Hφ Hr)).
 Qed.
 
-(** A literal level is glued to its value: its readback is itself. *)
+(** The readback of a glued level is a canonical level of its sort. *)
+Lemma glu_lvl_ws_readback : forall Γ M a n,
+    glu_lvl n Γ M a ->
+    forall Δ φ M',
+      Δ ⊢k φ : Γ ->
+      Rnf ⇓ Levelᵈ a in length Δ ↘ M' ->
+      nf_lvl_ws n Δ M'.
+Proof.
+  intros * H * Hφ Hr; exact (proj2 (H _ _ _ Hφ Hr)).
+Qed.
+
+(** A literal level of a tier at most [n] is glued to its value: its readback
+    is itself. *)
 Lemma glu_lvl_lit : forall Γ o n,
+    fst o <= n ->
     ⊢ Γ ->
     glu_lvl n Γ (𝕃ᵒ o) (dlvl_lit o).
 Proof.
-  intros * HΓ Δ φ L Hφ Hr.
+  intros * Ho HΓ Δ φ L Hφ Hr.
   assert (⊢ Δ) by (eapply kripke_dom; eassumption).
   assert (L = nf_lvl_of (lvl_lit o)) as -> by (eapply functional_read_nf; [ exact Hr | apply read_nf_dlvl_lit ]).
-  cbn; apply wf_exp_eq_llit_cong; assumption.
+  cbn; split; [ apply wf_exp_eq_llit_cong; assumption | split; [ exact Ho | exact I ] ].
 Qed.
 
 (** The same lemmas for [glu_False], which is the neutral case of
@@ -292,7 +308,7 @@ Hint Resolve glu_lvl_escape glu_lvl_resp_ctxsub : mctt.
     [glu_lvl Γ M m] into its premises; the readback clause is then
     [glu_lvl_readback], and it is a hint so that the shared scripts reach it. *)
 #[local]
-Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback : mctt.
+Hint Resolve glu_lvl_resp_exp_eq glu_lvl_readback glu_lvl_ws_readback : mctt.
 #[export]
 Hint Resolve glu_False_escape glu_False_resp_ctxsub : mctt.
 #[local]
@@ -310,6 +326,15 @@ Ltac simpl_glu_rel :=
   repeat invert_glu_rel1;
   apply_equiv_left;
   destruct_all;
+  (** The elements of a type of levels are related levels of its sort; the
+      lemmas about glued levels need the first half. *)
+  repeat match goal with
+    | H : per_lvl_at _ ?m ?m' |- _ =>
+        lazymatch goal with
+        | _ : per_lvl m m' |- _ => fail
+        | _ => pose proof (per_lvl_at_lvl _ _ _ H)
+        end
+    end;
   gen_presups.
 
 Section Fixed_GCtx.
@@ -488,10 +513,10 @@ Lemma glu_lvl_resp_wk : forall Γ M a n,
       Δ ⊢k φ : Γ ->
       glu_lvl n Δ M[φ]ʷ a.
 Proof.
-  intros * H * ? Δ' ψ M' **.
+  intros * H * ? Δ' ψ M' Hψ Hr.
   rewrite exp_wk_wk.
   assert (Δ' ⊢k φ ⊙ ψ : Γ) by mauto 3.
-  mauto 4.
+  exact (H _ _ _ ltac:(eassumption) Hr).
 Qed.
 
 Hint Resolve glu_lvl_resp_wk : mctt.
@@ -607,6 +632,11 @@ Proof.
   (** The type of the element is unchanged, so a small universe's level term
       and its equation carry over. *)
   all: try solve [ eapply suniv_glu_typ_pred_intro; eassumption ].
+  (** A level: the readback clause, by transitivity. *)
+  all: try solve [ match goal with
+    | H : glu_lvl ?n ?Γ ?M ?m |- ?Δ ⊢ ?M'[?φ]ʷ ≈ ?L : Level@?n =>
+        transitivity M[φ]ʷ; [ symmetry; mauto 3 | eapply glu_lvl_readback; eassumption ]
+    end ].
 
   - repeat eexists; try split; eauto.
     eapply glu_univ_elem_typ_resp_exp_eq;
@@ -1006,8 +1036,8 @@ Qed.
 
 Lemma glu_lvl_resp_per : forall Γ M m n, glu_lvl n Γ M m -> forall m', Dom m ≈ m' ∈ per_lvl -> glu_lvl n Γ M m'.
 Proof.
-  intros * H * Hm Δ φ L **.
-  eapply H; [ eassumption | eapply per_lvl_read_left; eassumption ].
+  intros * H * Hm Δ φ L Hφ Hr.
+  apply H; [ eassumption | eapply per_lvl_read_left; eassumption ].
 Qed.
 
 (** Related levels give equivalent small-universe predicates: a level term
@@ -1269,6 +1299,8 @@ Proof.
                    | do 2 eexists; split;
                      [ eassumption | eapply glu_univ_elem_typ_monotone; eassumption ]
                    | intros; rewrite !exp_wk_wk; mauto 3 ] ].
+  (** A level: its readback clause weakens. *)
+  all: try solve [ split; [ mauto 2 | split; [ assumption | eapply glu_lvl_resp_wk; eassumption ] ] ].
   all: try solve [ repeat split; mauto 2 ].
   - simpl_glu_rel.
     assert (Δ ⊢ A[φ]ʷ ≈ (Π IT OT)[φ]ʷ : Typeω@(ulvl i)) as HAeq by mauto 2.
@@ -1478,12 +1510,12 @@ Proof.
       match goal with Hrb : forall _ _ _, _ -> Rtyp m in _ ↘ _ -> _ |- _ => apply Hrb; [ exact Hk |] end.
       eapply per_top_typ_read_left; [ eapply per_univ_then_per_top_typ; exact HR' | exact Hr ].
   (** [Level]: the readback moves along the level PER. *)
-  - assert (Dom m ≈ m' ∈ per_lvl) as Hmm'
-      by (match goal with E : _ <~> per_lvl |- _ => apply E; eassumption end).
-    repeat split;
+  - assert (Dom m ≈ m' ∈ per_lvl_at n) as Hmm'
+      by (match goal with E : _ <~> per_lvl_at _ |- _ => apply E; eassumption end).
+    split; [| split ];
       [ assumption
-      | eapply per_lvl_trans; [ eapply per_lvl_sym; exact Hmm' | exact Hmm' ]
-      | eapply glu_lvl_resp_per; eassumption ].
+      | eapply per_lvl_at_trans; [ eapply per_lvl_at_sym; exact Hmm' | exact Hmm' ]
+      | eapply glu_lvl_resp_per; [ eassumption | eapply per_lvl_at_lvl; exact Hmm' ] ].
   (** [ℕ] *)
   - split; [ assumption | eapply glu_nat_resp_per; [ eassumption | apply H1; eassumption ] ].
   - split; assumption.

@@ -5,6 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export PER.
 From Mctt.Core.Syntactic Require Export SystemOpt.
+From Mctt.Core.Syntactic Require Import Levels LevelEq.
 From Mctt.Core.Soundness.Weakening Require Export Definitions.
 
 Import Domain_Notations Wk_Notations Fixed_Notations.
@@ -80,14 +81,27 @@ Definition level_glu_typ_pred (n : nat) (U : typ) : glu_typ_pred := fun Γ A => 
     they would then take such an inductive apart and lose the shape the lemmas
     about it are keyed on.  Membership in [per_lvl] is a separate conjunct of
     [level_glu_exp_pred] for the same reason. *)
+(** The readback of a level of sort [n] is a canonical level of sort [n]:
+    its constant is of a tier at most [n], and each atom is a level of its
+    own sort ([la_ws]).  The atoms' sorts are read off the types of the
+    neutrals, and this is what makes them reliable: the equations of a
+    canonical form drop an atom by absorption, which needs it typed at its
+    sort. *)
+Definition nf_lvl_ws (n : nat) (Δ : ctx) (L : nf) : Prop :=
+  match L with
+  | nf_lvl c xs => fst c <= n /\ @la_ws gc_deps gc_stack n Δ xs
+  | _ => False
+  end.
+
 (** The sort is a parameter: the readback of a level value is the same at
     every sort, but the equation it satisfies is at the type the level was
     given, [Level@n]. *)
 Definition glu_lvl (n : nat) (Γ : ctx) (M : exp) (m : domain) : Prop :=
-  forall Δ φ L, Δ ⊢k φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L -> Δ ⊢ M[φ]ʷ ≈ L : Level@n.
+  forall Δ φ L, Δ ⊢k φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L ->
+    Δ ⊢ M[φ]ʷ ≈ L : Level@n /\ nf_lvl_ws n Δ L.
 
 Definition level_glu_exp_pred (n : nat) (U : typ) : glu_exp_pred :=
-  fun Γ A M m => Γ ⊢ A ® level_glu_typ_pred n U /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Γ M m.
+  fun Γ A M m => Γ ⊢ A ® level_glu_typ_pred n U /\ Dom m ≈ m ∈ per_lvl_at n /\ glu_lvl n Γ M m.
 #[global] Arguments level_glu_exp_pred n U Γ A M m/.
 
 Definition nat_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ℕ : U.
