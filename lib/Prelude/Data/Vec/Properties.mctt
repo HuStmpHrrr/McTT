@@ -35,8 +35,8 @@ end
 module Nth where
 
 (* Reading an element of a mapped vector applies the function to it. *)
-theorem nthMap : ∀ (u : Level) (A : Type@{u}) (f : ∀ (a : A) → ℕ) (n : ℕ) (v : V.Vec u A n)
-    (i : ℕ) (h : Lt i n) →
+theorem nthMap : ∀ (u : Level) (A : Type@{u}) (f : ∀ (a : A) → ℕ) (n : ℕ)
+    (v : V.Vec u A n) (i : ℕ) (h : Lt i n) →
     Eq (NV.nth n (V.map u A ℕ f n v) i h) (f (V.nth u A n v i h)) ≔
   λ (u : Level) (A : Type@{u}) (f : ∀ (a : A) → ℕ) (n : ℕ) (v : V.Vec u A n)
     (i : ℕ) (h : Lt i n) → refl (f (v i h))
@@ -54,13 +54,17 @@ theorem nthAppendLeft : ∀ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n)
     (i : ℕ) (h : Lt i (plus m n)) (hm : Lt i m) →
     Eq (NV.nth (plus m n) (NV.append m n u v) i h) (NV.nth m u i hm) ≔
   λ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n) →
-    (rec m return k . (∀ (w : NV.Vec k) (i : ℕ) (h : Lt i (plus k n)) (hm : Lt i k) →
-                         Eq (NV.nth (plus k n) (NV.append k n w v) i h) (NV.nth k w i hm))
+    (rec m return k . (∀ (w : NV.Vec k) (i : ℕ) (h : Lt i (plus k n))
+                         (hm : Lt i k) →
+                         Eq (NV.nth (plus k n) (NV.append k n w v) i h)
+                            (NV.nth k w i hm))
      | zero ⇒ λ (w : NV.Vec 0) (i : ℕ) (h : Lt i n) (hm : Lt i 0) →
          absurd (Eq (v i h) (w i hm)) hm
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) (i : ℕ) →
-         rec i return x . (∀ (h : Lt x (succ (plus p n))) (hm : Lt x (succ p)) →
-                             Eq (NV.nth (succ (plus p n)) (NV.append (succ p) n w v) x h)
+         rec i return x . (∀ (h : Lt x (succ (plus p n)))
+                             (hm : Lt x (succ p)) →
+                             Eq (NV.nth (succ (plus p n))
+                                   (NV.append (succ p) n w v) x h)
                                 (NV.nth (succ p) w x hm))
          | zero ⇒ λ (h : ⊤) (hm : ⊤) → refl (w 0 ⋆)
          | succ q, s ⇒ λ (h : Lt q (plus p n)) (hm : Lt q p) →
@@ -72,11 +76,13 @@ end
 (* The index [plus m j] reads element [j] of the second part of an append. *)
 theorem nthAppendRight : ∀ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n)
     (j : ℕ) (h : Lt j n) →
-    Eq (NV.nth (plus m n) (NV.append m n u v) (plus m j) (ltPlusMonoRight m j n h))
+    Eq (NV.nth (plus m n) (NV.append m n u v) (plus m j)
+          (ltPlusMonoRight m j n h))
        (NV.nth n v j h) ≔
   λ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n) (j : ℕ) (h : Lt j n) →
     (rec m return k . (∀ (w : NV.Vec k) →
-                         Eq (NV.nth (plus k n) (NV.append k n w v) (plus k j) (ltPlusMonoRight k j n h))
+                         Eq (NV.nth (plus k n) (NV.append k n w v) (plus k j)
+                               (ltPlusMonoRight k j n h))
                             (NV.nth n v j h))
      | zero ⇒ λ (w : NV.Vec 0) → refl (v j h)
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) → ih (NV.tail p w)
@@ -87,7 +93,8 @@ end
    whichever proof of [Lt i n] is given.  At index 0 both proofs are of
    [⊤], which eta identifies; at [succ i] the claim is the hypothesis for
    the tail. *)
-theorem nthIrrel : ∀ (n : ℕ) (v : NV.Vec n) (i : ℕ) (h : Lt i n) (g : Lt i n) →
+theorem nthIrrel : ∀ (n : ℕ) (v : NV.Vec n) (i : ℕ) (h : Lt i n)
+    (g : Lt i n) →
     Eq (NV.nth n v i h) (NV.nth n v i g) ≔
   λ (n : ℕ) (v : NV.Vec n) →
     (rec n return k . (∀ (w : NV.Vec k) (i : ℕ) (h : Lt i k) (g : Lt i k) →
@@ -95,7 +102,8 @@ theorem nthIrrel : ∀ (n : ℕ) (v : NV.Vec n) (i : ℕ) (h : Lt i n) (g : Lt i
      | zero ⇒ λ (w : NV.Vec 0) (i : ℕ) (h : Lt i 0) (g : Lt i 0) →
          absurd (Eq (w i h) (w i g)) h
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) (i : ℕ) →
-         rec i return x . (∀ (h : Lt x (succ p)) (g : Lt x (succ p)) → Eq (w x h) (w x g))
+         rec i return x . (∀ (h : Lt x (succ p)) (g : Lt x (succ p)) →
+                             Eq (w x h) (w x g))
          | zero ⇒ λ (h : ⊤) (g : ⊤) → refl (w 0 ⋆)
          | succ q, s ⇒ λ (h : Lt q p) (g : Lt q p) → ih (NV.tail p w) q h g
          end
@@ -108,11 +116,14 @@ theorem nthTabulate : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) (i : ℕ) (h : L
 end
 
 (* Reading an element of [zipWith f s v] applies [f] to the two elements. *)
-theorem nthZipWith : ∀ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) (b : B) → ℕ) (n : ℕ)
+theorem nthZipWith : ∀ (u : Level) (A : Type@{u}) (B : Type@{u})
+    (f : ∀ (a : A) (b : B) → ℕ) (n : ℕ)
     (s : V.Vec u A n) (v : V.Vec u B n) (i : ℕ) (h : Lt i n) →
-    Eq (NV.nth n (V.zipWith u A B ℕ f n s v) i h) (f (V.nth u A n s i h) (V.nth u B n v i h)) ≔
-  λ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) (b : B) → ℕ) (n : ℕ)
-    (s : V.Vec u A n) (v : V.Vec u B n) (i : ℕ) (h : Lt i n) → refl (f (s i h) (v i h))
+    Eq (NV.nth n (V.zipWith u A B ℕ f n s v) i h)
+       (f (V.nth u A n s i h) (V.nth u B n v i h)) ≔
+  λ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) (b : B) → ℕ)
+    (n : ℕ) (s : V.Vec u A n) (v : V.Vec u B n) (i : ℕ) (h : Lt i n) →
+    refl (f (s i h) (v i h))
 end
 
 (* The last element of [snoc n v a] is [a]. *)
@@ -131,9 +142,12 @@ theorem nthReverse : ∀ (n : ℕ) (v : NV.Vec n) (i : ℕ) (h : Lt i n)
     (g : Lt (sub n (succ i)) n) →
     Eq (NV.nth n (NV.reverse n v) i h) (NV.nth n v (sub n (succ i)) g) ≔
   λ (n : ℕ) →
-    rec n return k . (∀ (v : NV.Vec k) (i : ℕ) (h : Lt i k) (g : Lt (sub k (succ i)) k) →
-                        Eq (NV.nth k (NV.reverse k v) i h) (NV.nth k v (sub k (succ i)) g))
-    | zero ⇒ λ (v : NV.Vec 0) (i : ℕ) (h : Lt i 0) (g : Lt (sub 0 (succ i)) 0) →
+    rec n return k . (∀ (v : NV.Vec k) (i : ℕ) (h : Lt i k)
+                        (g : Lt (sub k (succ i)) k) →
+                        Eq (NV.nth k (NV.reverse k v) i h)
+                           (NV.nth k v (sub k (succ i)) g))
+    | zero ⇒ λ (v : NV.Vec 0) (i : ℕ) (h : Lt i 0)
+               (g : Lt (sub 0 (succ i)) 0) →
         absurd (Eq (NV.nth 0 (NV.reverse 0 v) i h) (v (sub 0 (succ i)) g)) h
     | succ p, ih ⇒ λ (v : NV.Vec (succ p)) (i : ℕ) (h : Lt i (succ p))
                      (g : Lt (sub p i) (succ p)) →
@@ -155,7 +169,8 @@ theorem sumReplicate : ∀ (n : ℕ) (c : ℕ) →
     rec n return x . Eq (sumVec x (NV.replicate x c)) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        cong (λ (y : ℕ) → plus c y) (sumVec p (NV.replicate p c)) (mult p c) ih
+        cong (λ (y : ℕ) → plus c y)
+          (sumVec p (NV.replicate p c)) (mult p c) ih
     end
 end
 
@@ -163,7 +178,8 @@ end
    [append (succ p) n u v] is [append p n (tail u) v] by eta, and the head
    is moved out by [plusAssoc]. *)
 theorem sumAppend : ∀ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n) →
-    Eq (sumVec (plus m n) (NV.append m n u v)) (plus (sumVec m u) (sumVec n v)) ≔
+    Eq (sumVec (plus m n) (NV.append m n u v))
+       (plus (sumVec m u) (sumVec n v)) ≔
   λ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n) →
     (rec m return k . (∀ (w : NV.Vec k) →
                          Eq (sumVec (plus k n) (NV.append k n w v))
@@ -174,10 +190,12 @@ theorem sumAppend : ∀ (m : ℕ) (n : ℕ) (u : NV.Vec m) (v : NV.Vec n) →
              t ≔ NV.tail p w;
              rest ≔ sumVec (plus p n) (NV.append p n t v);
              step : Eq (plus a rest) (plus a (plus (sumVec p t) (sumVec n v))) ≔
-               cong (λ (y : ℕ) → plus a y) rest (plus (sumVec p t) (sumVec n v)) (ih t);
+               cong (λ (y : ℕ) → plus a y)
+                 rest (plus (sumVec p t) (sumVec n v)) (ih t);
              assoc : Eq (plus a (plus (sumVec p t) (sumVec n v)))
                         (plus (plus a (sumVec p t)) (sumVec n v)) ≔
-               sym (plus (plus a (sumVec p t)) (sumVec n v)) (plus a (plus (sumVec p t) (sumVec n v)))
+               sym (plus (plus a (sumVec p t)) (sumVec n v))
+                 (plus a (plus (sumVec p t) (sumVec n v)))
                  (plusAssoc a (sumVec p t) (sumVec n v))
          in trans (plus a rest) (plus a (plus (sumVec p t) (sumVec n v)))
               (plus (plus a (sumVec p t)) (sumVec n v)) step assoc
@@ -215,7 +233,8 @@ theorem sumMapPlus : ∀ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
     Eq (sumVec n (NV.map ℕ (plus c) n v)) (plus (sumVec n v) (mult n c)) ≔
   λ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
     (rec n return k . (∀ (w : NV.Vec k) →
-                         Eq (sumVec k (NV.map ℕ (plus c) k w)) (plus (sumVec k w) (mult k c)))
+                         Eq (sumVec k (NV.map ℕ (plus c) k w))
+                            (plus (sumVec k w) (mult k c)))
      | zero ⇒ λ (w : NV.Vec 0) → ⋆
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
          let a ≔ w 0 ⋆;
@@ -225,11 +244,14 @@ theorem sumMapPlus : ∀ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
              m ≔ mult p c;
              step : Eq (plus (plus c a) sm) (plus (plus c a) (plus s m)) ≔
                cong (λ (y : ℕ) → plus (plus c a) y) sm (plus s m) (ih t);
-             swap : Eq (plus (plus c a) (plus s m)) (plus (plus a c) (plus s m)) ≔
-               cong (λ (y : ℕ) → plus y (plus s m)) (plus c a) (plus a c) (plusComm c a)
-         in trans (plus (plus c a) sm) (plus (plus a c) (plus s m)) (plus (plus a s) (plus c m))
-              (trans (plus (plus c a) sm) (plus (plus c a) (plus s m)) (plus (plus a c) (plus s m))
-                 step swap)
+             swap : Eq (plus (plus c a) (plus s m))
+                       (plus (plus a c) (plus s m)) ≔
+               cong (λ (y : ℕ) → plus y (plus s m))
+                 (plus c a) (plus a c) (plusComm c a)
+         in trans (plus (plus c a) sm) (plus (plus a c) (plus s m))
+              (plus (plus a s) (plus c m))
+              (trans (plus (plus c a) sm) (plus (plus c a) (plus s m))
+                 (plus (plus a c) (plus s m)) step swap)
               (plusSwapMiddle a c s m)
          end
      end) v
@@ -240,23 +262,27 @@ theorem sumMapScale : ∀ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
     Eq (sumVec n (NV.map ℕ (mult c) n v)) (mult c (sumVec n v)) ≔
   λ (c : ℕ) (n : ℕ) (v : NV.Vec n) →
     (rec n return k . (∀ (w : NV.Vec k) →
-                         Eq (sumVec k (NV.map ℕ (mult c) k w)) (mult c (sumVec k w)))
+                         Eq (sumVec k (NV.map ℕ (mult c) k w))
+                            (mult c (sumVec k w)))
      | zero ⇒ λ (w : NV.Vec 0) → sym (mult c 0) 0 (multZero c)
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
          let a ≔ w 0 ⋆;
              t ≔ NV.tail p w;
              sm ≔ sumVec p (NV.map ℕ (mult c) p t);
              s ≔ sumVec p t
-         in trans (plus (mult c a) sm) (plus (mult c a) (mult c s)) (mult c (plus a s))
+         in trans (plus (mult c a) sm) (plus (mult c a) (mult c s))
+              (mult c (plus a s))
               (cong (λ (y : ℕ) → plus (mult c a) y) sm (mult c s) (ih t))
-              (sym (mult c (plus a s)) (plus (mult c a) (mult c s)) (multDistribLeft c a s))
+              (sym (mult c (plus a s)) (plus (mult c a) (mult c s))
+                 (multDistribLeft c a s))
          end
      end) v
 end
 
 (* The sum of [zipWith plus u v] is the sum of the sums. *)
 theorem sumZipWithPlus : ∀ (n : ℕ) (u : NV.Vec n) (v : NV.Vec n) →
-    Eq (sumVec n (NV.zipWith ℕ ℕ plus n u v)) (plus (sumVec n u) (sumVec n v)) ≔
+    Eq (sumVec n (NV.zipWith ℕ ℕ plus n u v))
+       (plus (sumVec n u) (sumVec n v)) ≔
   λ (n : ℕ) →
     rec n return k . (∀ (u : NV.Vec k) (v : NV.Vec k) →
                         Eq (sumVec k (NV.zipWith ℕ ℕ plus k u v))
@@ -270,7 +296,8 @@ theorem sumZipWithPlus : ∀ (n : ℕ) (u : NV.Vec n) (v : NV.Vec n) →
             sz ≔ sumVec p (NV.zipWith ℕ ℕ plus p tu tv);
             su ≔ sumVec p tu;
             sv ≔ sumVec p tv
-        in trans (plus (plus a b) sz) (plus (plus a b) (plus su sv)) (plus (plus a su) (plus b sv))
+        in trans (plus (plus a b) sz) (plus (plus a b) (plus su sv))
+             (plus (plus a su) (plus b sv))
              (cong (λ (y : ℕ) → plus (plus a b) y) sz (plus su sv) (ih tu tv))
              (plusSwapMiddle a b su sv)
         end
@@ -287,8 +314,8 @@ theorem foldlPlus : ∀ (a : ℕ) (n : ℕ) (v : NV.Vec n) →
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) (acc : ℕ) →
          let b ≔ w 0 ⋆;
              s ≔ sumVec p (NV.tail p w)
-         in trans (NV.foldl ℕ plus (plus acc b) p (NV.tail p w)) (plus (plus acc b) s)
-              (plus acc (plus b s))
+         in trans (NV.foldl ℕ plus (plus acc b) p (NV.tail p w))
+              (plus (plus acc b) s) (plus acc (plus b s))
               (ih (NV.tail p w) (plus acc b)) (plusAssoc acc b s)
          end
      end) v a
@@ -299,7 +326,8 @@ theorem sumSnoc : ∀ (n : ℕ) (v : NV.Vec n) (a : ℕ) →
     Eq (sumVec (succ n) (NV.snoc n v a)) (plus (sumVec n v) a) ≔
   λ (n : ℕ) (v : NV.Vec n) (a : ℕ) →
     (rec n return k . (∀ (w : NV.Vec k) →
-                         Eq (sumVec (succ k) (NV.snoc k w a)) (plus (sumVec k w) a))
+                         Eq (sumVec (succ k) (NV.snoc k w a))
+                            (plus (sumVec k w) a))
      | zero ⇒ λ (w : NV.Vec 0) → plusZero a
      | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
          let b ≔ w 0 ⋆;
@@ -319,7 +347,8 @@ theorem sumInitLast : ∀ (n : ℕ) (v : NV.Vec (succ n)) →
     Eq (sumVec (succ n) v) (plus (sumVec n (NV.init n v)) (NV.last n v)) ≔
   λ (n : ℕ) →
     rec n return k . (∀ (v : NV.Vec (succ k)) →
-                        Eq (sumVec (succ k) v) (plus (sumVec k (NV.init k v)) (NV.last k v)))
+                        Eq (sumVec (succ k) v)
+                           (plus (sumVec k (NV.init k v)) (NV.last k v)))
     | zero ⇒ λ (v : NV.Vec 1) → plusZero (v 0 ⋆)
     | succ p, ih ⇒ λ (w : NV.Vec (succ (succ p))) →
         let a ≔ w 0 ⋆;
@@ -328,7 +357,8 @@ theorem sumInitLast : ∀ (n : ℕ) (v : NV.Vec (succ n)) →
             sa ≔ sumVec p (NV.init p t);
             sb ≔ sumVec p (NV.tail p (NV.init (succ p) w));
             step : Eq (plus a (sumVec (succ p) t)) (plus a (plus sa l)) ≔
-              cong (λ (y : ℕ) → plus a y) (sumVec (succ p) t) (plus sa l) (ih t);
+              cong (λ (y : ℕ) → plus a y)
+                (sumVec (succ p) t) (plus sa l) (ih t);
             assoc : Eq (plus a (plus sa l)) (plus (plus a sa) l) ≔
               sym (plus (plus a sa) l) (plus a (plus sa l)) (plusAssoc a sa l);
             ext : Eq sa sb ≔
@@ -338,22 +368,27 @@ theorem sumInitLast : ∀ (n : ℕ) (v : NV.Vec (succ n)) →
                      (leStep (succ (succ i)) (succ p) h));
             swap : Eq (plus (plus a sa) l) (plus (plus a sb) l) ≔
               cong (λ (y : ℕ) → plus (plus a y) l) sa sb ext
-        in trans (plus a (sumVec (succ p) t)) (plus a (plus sa l)) (plus (plus a sb) l) step
-             (trans (plus a (plus sa l)) (plus (plus a sa) l) (plus (plus a sb) l) assoc swap)
+        in trans (plus a (sumVec (succ p) t)) (plus a (plus sa l))
+             (plus (plus a sb) l) step
+             (trans (plus a (plus sa l)) (plus (plus a sa) l)
+                (plus (plus a sb) l) assoc swap)
         end
     end
 end
 
 (* The tail of [reverse (succ p) w] is the reverse of [init p w], pointwise. *)
 fact tailReverse : ∀ (p : ℕ) (w : NV.Vec (succ p)) (i : ℕ) (h : Lt i p) →
-    Eq (NV.tail p (NV.reverse (succ p) w) i h) (NV.reverse p (NV.init p w) i h) ≔
+    Eq (NV.tail p (NV.reverse (succ p) w) i h)
+       (NV.reverse p (NV.init p w) i h) ≔
   λ (p : ℕ) →
     rec p return k . (∀ (w : NV.Vec (succ k)) (i : ℕ) (h : Lt i k) →
                         Eq (NV.tail k (NV.reverse (succ k) w) i h)
                            (NV.reverse k (NV.init k w) i h))
     | zero ⇒ λ (w : NV.Vec 1) (i : ℕ) (h : Lt i 0) →
-        absurd (Eq (NV.tail 0 (NV.reverse 1 w) i h) (NV.reverse 0 (NV.init 0 w) i h)) h
-    | succ q, ih ⇒ λ (w : NV.Vec (succ (succ q))) (i : ℕ) (h : Lt i (succ q)) →
+        absurd (Eq (NV.tail 0 (NV.reverse 1 w) i h)
+                   (NV.reverse 0 (NV.init 0 w) i h)) h
+    | succ q, ih ⇒ λ (w : NV.Vec (succ (succ q))) (i : ℕ)
+                     (h : Lt i (succ q)) →
         nthIrrel (succ (succ q)) w (sub q i) (subLe (succ q) (succ i))
           (leStep (succ (sub q i)) (succ q) (subLe q i))
     end
@@ -364,7 +399,8 @@ end
 theorem sumReverse : ∀ (n : ℕ) (v : NV.Vec n) →
     Eq (sumVec n (NV.reverse n v)) (sumVec n v) ≔
   λ (n : ℕ) →
-    rec n return k . (∀ (v : NV.Vec k) → Eq (sumVec k (NV.reverse k v)) (sumVec k v))
+    rec n return k . (∀ (v : NV.Vec k) →
+                        Eq (sumVec k (NV.reverse k v)) (sumVec k v))
     | zero ⇒ λ (v : NV.Vec 0) → ⋆
     | succ p, ih ⇒ λ (w : NV.Vec (succ p)) →
         let l ≔ NV.last p w;
@@ -374,12 +410,15 @@ theorem sumReverse : ∀ (n : ℕ) (v : NV.Vec n) →
             si ≔ sumVec p iw;
             sr ≔ sumVec p (NV.reverse p iw);
             toInit : Eq st si ≔
-              trans st sr si (sumExt p t (NV.reverse p iw) (tailReverse p w)) (ih iw);
-            step : Eq (plus l st) (plus l si) ≔ cong (λ (y : ℕ) → plus l y) st si toInit;
+              trans st sr si (sumExt p t (NV.reverse p iw) (tailReverse p w))
+                (ih iw);
+            step : Eq (plus l st) (plus l si) ≔
+              cong (λ (y : ℕ) → plus l y) st si toInit;
             back : Eq (plus si l) (sumVec (succ p) w) ≔
               sym (sumVec (succ p) w) (plus si l) (sumInitLast p w)
         in trans (plus l st) (plus l si) (sumVec (succ p) w) step
-             (trans (plus l si) (plus si l) (sumVec (succ p) w) (plusComm l si) back)
+             (trans (plus l si) (plus si l) (sumVec (succ p) w)
+                (plusComm l si) back)
         end
     end
 end
@@ -395,7 +434,8 @@ theorem sumTabulate : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
          let s ≔ sumVec p (NV.tabulate (λ (i : ℕ) → g (succ i)) p);
              t ≔ sumTo (λ (i : ℕ) → g (succ i)) p
          in trans (plus (g 0) s) (plus (g 0) t) (sumTo g (succ p))
-              (cong (λ (y : ℕ) → plus (g 0) y) s t (ih (λ (i : ℕ) → g (succ i))))
+              (cong (λ (y : ℕ) → plus (g 0) y) s t
+                 (ih (λ (i : ℕ) → g (succ i))))
               (sym (sumTo g (succ p)) (plus (g 0) t) (sumToShift g p))
          end
      end) f
@@ -433,7 +473,8 @@ theorem appendTakeDrop : ∀ (m : ℕ) (n : ℕ) (v : NV.Vec (plus m n))
   λ (m : ℕ) (n : ℕ) →
     rec m return k . (∀ (w : NV.Vec (plus k n)) (i : ℕ) (h : Lt i (plus k n)) →
                         Eq (NV.nth (plus k n)
-                              (NV.append k n (NV.take k n w) (NV.drop k n w)) i h)
+                              (NV.append k n (NV.take k n w) (NV.drop k n w))
+                              i h)
                            (w i h))
     | zero ⇒ λ (w : NV.Vec n) (i : ℕ) (h : Lt i n) → refl (w i h)
     | succ p, ih ⇒ λ (w : NV.Vec (succ (plus p n))) (i : ℕ) →
@@ -464,7 +505,10 @@ private module Step where
 lemma allHead : ∀ (x : ℕ) (b : ℕ)
     (e : Eq (rec x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) → Lt 0 x ≔
   λ (x : ℕ) (b : ℕ) →
-    rec x return z . (∀ (e : Eq (rec z return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) →
+    rec x return z . (∀ (e : Eq (rec z return y . ℕ
+                                 | zero ⇒ 0
+                                 | succ q, s ⇒ b
+                                 end) 1) →
                         Lt 0 z)
     | zero ⇒ λ (e : ⊥) → e
     | succ r, t ⇒ λ (e : Eq b 1) → ⋆
@@ -474,7 +518,10 @@ end
 lemma allTail : ∀ (x : ℕ) (b : ℕ)
     (e : Eq (rec x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) → Eq b 1 ≔
   λ (x : ℕ) (b : ℕ) →
-    rec x return z . (∀ (e : Eq (rec z return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1) →
+    rec x return z . (∀ (e : Eq (rec z return y . ℕ
+                                 | zero ⇒ 0
+                                 | succ q, s ⇒ b
+                                 end) 1) →
                         Eq b 1)
     | zero ⇒ λ (e : ⊥) → absurd (Eq b 1) e
     | succ r, t ⇒ λ (e : Eq b 1) → e
@@ -485,7 +532,10 @@ lemma allIntro : ∀ (x : ℕ) (b : ℕ) (hx : Lt 0 x) (hb : Eq b 1) →
     Eq (rec x return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1 ≔
   λ (x : ℕ) (b : ℕ) →
     rec x return z . (∀ (hx : Lt 0 z) (hb : Eq b 1) →
-                        Eq (rec z return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1)
+                        Eq (rec z return y . ℕ
+                            | zero ⇒ 0
+                            | succ q, s ⇒ b
+                            end) 1)
     | zero ⇒ λ (hx : ⊥) (hb : Eq b 1) → absurd ⊥ hx
     | succ r, t ⇒ λ (hx : ⊤) (hb : Eq b 1) → hb
     end
@@ -498,8 +548,12 @@ def anyCases : ∀ (u : Level) (x : ℕ) (b : ℕ)
     (e : Eq (rec x return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end) 1)
     (C : Type@{u}) (l : ∀ (hx : Lt 0 x) → C) (r : ∀ (hb : Eq b 1) → C) → C ≔
   λ (u : Level) (x : ℕ) (b : ℕ) →
-    rec x return z . (∀ (e : Eq (rec z return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end) 1)
-                        (C : Type@{u}) (l : ∀ (hx : Lt 0 z) → C) (r : ∀ (hb : Eq b 1) → C) → C)
+    rec x return z . (∀ (e : Eq (rec z return y . ℕ
+                                 | zero ⇒ b
+                                 | succ q, s ⇒ 1
+                                 end) 1)
+                        (C : Type@{u}) (l : ∀ (hx : Lt 0 z) → C)
+                        (r : ∀ (hb : Eq b 1) → C) → C)
     | zero ⇒ λ (e : Eq b 1) (C : Type@{u}) (l : ∀ (hx : ⊥) → C)
                (r : ∀ (hb : Eq b 1) → C) → r e
     | succ q, t ⇒ λ (e : ⊤) (C : Type@{u}) (l : ∀ (hx : ⊤) → C)
@@ -509,33 +563,41 @@ end
 
 end
 
-
 (* [allb] answers 1 only when the test is positive on every element. *)
-def allbSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) (v : V.Vec u A n)
-    (e : Eq (V.allb u A p n v) 1) → V.All u A (λ (a : A) → Lt 0 (p a)) n v ≔
+def allbSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
+    (v : V.Vec u A n) (e : Eq (V.allb u A p n v) 1) →
+    V.All u A (λ (a : A) → Lt 0 (p a)) n v ≔
   λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
     rec n return k . (∀ (v : V.Vec u A k) (e : Eq (V.allb u A p k v) 1) →
                         V.All u A (λ (a : A) → Lt 0 (p a)) k v)
-    | zero ⇒ λ (v : V.Vec u A 0) (e : ⊤) (i : ℕ) (h : Lt i 0) → absurd (Lt 0 (p (v i h))) h
+    | zero ⇒ λ (v : V.Vec u A 0) (e : ⊤) (i : ℕ) (h : Lt i 0) →
+        absurd (Lt 0 (p (v i h))) h
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m)) →
         let b ≔ V.allb u A p m (V.tail u A m w)
-        in λ (e : Eq (rec (p (w 0 ⋆)) return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end) 1)
+        in λ (e : Eq (rec (p (w 0 ⋆)) return y . ℕ
+                      | zero ⇒ 0
+                      | succ q, s ⇒ b
+                      end) 1)
              (i : ℕ) →
              rec i return x . (∀ (h : Lt x (succ m)) → Lt 0 (p (w x h)))
              | zero ⇒ λ (h : ⊤) → Step.allHead (p (w 0 ⋆)) b e
-             | succ j, s ⇒ λ (h : Lt j m) → ih (V.tail u A m w) (Step.allTail (p (w 0 ⋆)) b e) j h
+             | succ j, s ⇒ λ (h : Lt j m) →
+                 ih (V.tail u A m w) (Step.allTail (p (w 0 ⋆)) b e) j h
              end
         end
     end
 end
 
 (* [allb] answers 1 when the test is positive on every element. *)
-theorem allbComplete : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) (v : V.Vec u A n)
-    (h : V.All u A (λ (a : A) → Lt 0 (p a)) n v) → Eq (V.allb u A p n v) 1 ≔
+theorem allbComplete : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
+    (v : V.Vec u A n) (h : V.All u A (λ (a : A) → Lt 0 (p a)) n v) →
+    Eq (V.allb u A p n v) 1 ≔
   λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
-    rec n return k . (∀ (v : V.Vec u A k) (h : V.All u A (λ (a : A) → Lt 0 (p a)) k v) →
+    rec n return k . (∀ (v : V.Vec u A k)
+                        (h : V.All u A (λ (a : A) → Lt 0 (p a)) k v) →
                         Eq (V.allb u A p k v) 1)
-    | zero ⇒ λ (v : V.Vec u A 0) (h : V.All u A (λ (a : A) → Lt 0 (p a)) 0 v) → ⋆
+    | zero ⇒ λ (v : V.Vec u A 0)
+               (h : V.All u A (λ (a : A) → Lt 0 (p a)) 0 v) → ⋆
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m))
                      (h : V.All u A (λ (a : A) → Lt 0 (p a)) (succ m) w) →
         Step.allIntro (p (w 0 ⋆)) (V.allb u A p m (V.tail u A m w)) (h 0 ⋆)
@@ -544,8 +606,9 @@ theorem allbComplete : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) 
 end
 
 (* When [anyb] answers 1, the test is positive on some element. *)
-def anybSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) (v : V.Vec u A n)
-    (e : Eq (V.anyb u A p n v) 1) → V.Any u A (λ (a : A) → Lt 0 (p a)) n v ≔
+def anybSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ)
+    (v : V.Vec u A n) (e : Eq (V.anyb u A p n v) 1) →
+    V.Any u A (λ (a : A) → Lt 0 (p a)) n v ≔
   λ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : ℕ) →
     rec n return k . (∀ (v : V.Vec u A k) (e : Eq (V.anyb u A p k v) 1) →
                         V.Any u A (λ (a : A) → Lt 0 (p a)) k v)
@@ -553,14 +616,18 @@ def anybSound : ∀ (u : Level) (A : Type@{u}) (p : ∀ (a : A) → ℕ) (n : �
         Neg.absurd (succl u) (V.Any u A (λ (a : A) → Lt 0 (p a)) 0 v) e
     | succ m, ih ⇒ λ (w : V.Vec u A (succ m)) →
         let b ≔ V.anyb u A p m (V.tail u A m w)
-        in λ (e : Eq (rec (p (w 0 ⋆)) return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end) 1)
+        in λ (e : Eq (rec (p (w 0 ⋆)) return y . ℕ
+                      | zero ⇒ b
+                      | succ q, s ⇒ 1
+                      end) 1)
              (C : Type@{u})
              (k : ∀ (i : ℕ) (h : Lt i (succ m)) (q : Lt 0 (p (w i h))) → C) →
              Step.anyCases u (p (w 0 ⋆)) b e C
                (λ (hx : Lt 0 (p (w 0 ⋆))) → k 0 ⋆ hx)
                (λ (hb : Eq b 1) →
                   ih (V.tail u A m w) hb C
-                    (λ (i : ℕ) (h : Lt i m) (q : Lt 0 (p (w (succ i) h))) → k (succ i) h q))
+                    (λ (i : ℕ) (h : Lt i m) (q : Lt 0 (p (w (succ i) h))) →
+                       k (succ i) h q))
         end
     end
 end

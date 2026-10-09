@@ -1,7 +1,7 @@
-(* Infinite streams over [A], encoded as functions from indices:
-   [Stream] is [∀ (n : ℕ) → A].  Reading an element is application,
-   so most laws hold by conversion pointwise.  Operations into streams over
-   other types take those types as arguments, at the level [u] of [A]. *)
+(* Infinite streams over [A], encoded as functions from indices: [Stream] is
+   [∀ (n : ℕ) → A].  Reading an element is application, so most laws hold by
+   conversion pointwise.  Operations into streams over other types take those
+   types as arguments, at the level [u] of [A]. *)
 module Prelude›Data›Stream (u : Level) (A : Type@{u}) where
 
 import Prelude›Arith›Order use (Lt)

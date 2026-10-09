@@ -47,8 +47,7 @@ def fromNat (u : Level) (n : ℕ) : Numeral u ≔
   end
 end
 
-(* The number of a numeral: [ℕ] is in [Type@0], hence in every
-   [Type@{u}]. *)
+(* The number of a numeral: [ℕ] is in [Type@0], hence in every [Type@{u}]. *)
 def toNat (u : Level) (n : Numeral u) : ℕ ≔ n ℕ (λ (k : ℕ) → succ k) 0 end
 
 (* [cpow u m n] is [m] to the power [n]: [n] iterates [cmult u m] on the
@@ -69,13 +68,17 @@ def raise (u : Level) (n : Numeral u) : Numeral (succl u) ≔
 end
 
 (* Booleans: a boolean chooses one of two elements. *)
-def Boolean (u : Level) : Type@{succl u} ≔ ∀ (A : Type@{u}) (t : A) (f : A) → A end
+def Boolean (u : Level) : Type@{succl u} ≔
+  ∀ (A : Type@{u}) (t : A) (f : A) → A
+end
 
 def ctrue (u : Level) : Boolean u ≔ λ (A : Type@{u}) (t : A) (f : A) → t end
 
 def cfalse (u : Level) : Boolean u ≔ λ (A : Type@{u}) (t : A) (f : A) → f end
 
-def cif (u : Level) (A : Type@{u}) (b : Boolean u) (t : A) (f : A) : A ≔ b A t f end
+def cif (u : Level) (A : Type@{u}) (b : Boolean u) (t : A) (f : A) : A ≔
+  b A t f
+end
 
 def cnot (u : Level) (b : Boolean u) : Boolean u ≔
   λ (A : Type@{u}) (t : A) (f : A) → b A f t
@@ -107,8 +110,8 @@ def cons (u : Level) (A : Type@{u}) (a : A) (l : List u A) : List u A ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (x : A) (r : C) → C) → c a (l C n c)
 end
 
-def foldr (u : Level) (A : Type@{u}) (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C)
-    (l : List u A) : C ≔
+def foldr (u : Level) (A : Type@{u}) (C : Type@{u}) (n : C)
+    (c : ∀ (a : A) (r : C) → C) (l : List u A) : C ≔
   l C n c
 end
 
@@ -116,8 +119,8 @@ def append (u : Level) (A : Type@{u}) (k : List u A) (l : List u A) : List u A �
   λ (C : Type@{u}) (n : C) (c : ∀ (a : A) (r : C) → C) → k C (l C n c) c
 end
 
-def map (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (l : List u A) :
-    List u B ≔
+def map (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
+    (l : List u A) : List u B ≔
   λ (C : Type@{u}) (n : C) (c : ∀ (b : B) (r : C) → C) →
     l C n (λ (a : A) (r : C) → c (f a) r)
 end

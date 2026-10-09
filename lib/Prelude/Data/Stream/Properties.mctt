@@ -1,8 +1,8 @@
-(* Laws of [Prelude›Data›Stream] on streams of numbers, stated pointwise
-   with [Prelude›Arith›Equality], and the stream [nats]: elements of the
-   operations, the scan by addition as prefix sums of [Prelude›Arith›Sum],
-   interleaving at even and odd indices of [Prelude›Arith›Parity], and
-   sums of taken prefixes. *)
+(* Laws of [Prelude›Data›Stream] on streams of numbers, stated pointwise with
+   [Prelude›Arith›Equality], and the stream [nats]: elements of the operations,
+   the scan by addition as prefix sums of [Prelude›Arith›Sum], interleaving at
+   even and odd indices of [Prelude›Arith›Parity], and sums of taken
+   prefixes. *)
 module Prelude›Data›Stream›Properties where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -91,7 +91,8 @@ module Slices where
 theorem nthDrop : ∀ (k : ℕ) (s : S.Stream) (n : ℕ) →
     Eq (S.nth (S.drop k s) n) (S.nth s (plus k n)) ≔
   λ (k : ℕ) (s : S.Stream) (n : ℕ) →
-    (rec k return x . (∀ (u : S.Stream) → Eq (S.nth (S.drop x u) n) (S.nth u (plus x n)))
+    (rec k return x . (∀ (u : S.Stream) →
+                         Eq (S.nth (S.drop x u) n) (S.nth u (plus x n)))
      | zero ⇒ λ (u : S.Stream) → refl (u n)
      | succ p, ih ⇒ λ (u : S.Stream) → ih (S.tail u)
      end) s
@@ -147,7 +148,8 @@ end
 theorem sumTake : ∀ (n : ℕ) (s : S.Stream) →
     Eq (sumVec n (S.take n s)) (sumTo (S.nth s) n) ≔
   λ (n : ℕ) (s : S.Stream) →
-    (rec n return x . (∀ (u : S.Stream) → Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
+    (rec n return x . (∀ (u : S.Stream) →
+                         Eq (sumVec x (S.take x u)) (sumTo (S.nth u) x))
      | zero ⇒ λ (u : S.Stream) → ⋆
      | succ p, ih ⇒ λ (u : S.Stream) →
          let vs ≔ sumVec p (S.take p (S.tail u));

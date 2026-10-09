@@ -63,7 +63,8 @@ def map (B : Type@{u}) (f : ∀ (a : A) → B) (n : ℕ) (v : Vec n) :
 end
 
 (* Right fold: [foldr B f z n v] is [f v0 (f v1 (... (f v(n-1) z)))]. *)
-def foldr (B : Type@{u}) (f : ∀ (a : A) (b : B) → B) (z : B) (n : ℕ) (v : Vec n) : B ≔
+def foldr (B : Type@{u}) (f : ∀ (a : A) (b : B) → B) (z : B) (n : ℕ)
+    (v : Vec n) : B ≔
   (rec n return k . (∀ (w : Vec k) → B)
    | zero ⇒ λ (w : Vec 0) → z
    | succ p, r ⇒ λ (w : Vec (succ p)) → f (head p w) (r (tail p w))
@@ -95,10 +96,12 @@ end
 
 (* Left fold: [foldl B f z n v] is [f (... (f (f z v0) v1) ...) v(n-1)].  The
    accumulator is threaded through the recursion on the length. *)
-def foldl (B : Type@{u}) (f : ∀ (b : B) (a : A) → B) (z : B) (n : ℕ) (v : Vec n) : B ≔
+def foldl (B : Type@{u}) (f : ∀ (b : B) (a : A) → B) (z : B) (n : ℕ)
+    (v : Vec n) : B ≔
   (rec n return k . (∀ (w : Vec k) (acc : B) → B)
    | zero ⇒ λ (w : Vec 0) (acc : B) → acc
-   | succ p, r ⇒ λ (w : Vec (succ p)) (acc : B) → r (tail p w) (f acc (head p w))
+   | succ p, r ⇒ λ (w : Vec (succ p)) (acc : B) →
+       r (tail p w) (f acc (head p w))
    end) v z
 end
 
@@ -154,14 +157,18 @@ end
 (* [allb p n v] is 1 when [p] is nonzero on every element of [v], and 0
    otherwise. *)
 def allb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
-  foldr ℕ (λ (a : A) (b : ℕ) → rec (p a) return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end)
+  foldr ℕ
+    (λ (a : A) (b : ℕ) →
+       rec (p a) return y . ℕ | zero ⇒ 0 | succ q, s ⇒ b end)
     1 n v
 end
 
 (* [anyb p n v] is 1 when [p] is nonzero on some element of [v], and 0
    otherwise. *)
 def anyb (p : ∀ (a : A) → ℕ) (n : ℕ) (v : Vec n) : ℕ ≔
-  foldr ℕ (λ (a : A) (b : ℕ) → rec (p a) return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end)
+  foldr ℕ
+    (λ (a : A) (b : ℕ) →
+       rec (p a) return y . ℕ | zero ⇒ b | succ q, s ⇒ 1 end)
     0 n v
 end
 

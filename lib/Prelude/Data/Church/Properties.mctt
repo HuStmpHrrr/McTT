@@ -1,12 +1,12 @@
-(* Laws of [Prelude›Data›Church], at every level [u]: the arithmetic of
-   numerals agrees with that of [ℕ], moving between levels keeps the
-   number, and the length and sum of lists.
+(* Laws of [Prelude›Data›Church], at every level [u]: the arithmetic of numerals
+   agrees with that of [ℕ], moving between levels keeps the number, and the
+   length and sum of lists.
 
    A Church numeral is any function of the right type, and without
    parametricity nothing can be said of an arbitrary one.  So the laws are
-   about the numerals of numbers, [fromNat u n], and are proved by induction
-   on [n].  Laws that only unfold definitions, like [lengthMap], hold for
-   every list. *)
+   about the numerals of numbers, [fromNat u n], and are proved by
+   induction on [n].  Laws that only unfold definitions, like [lengthMap],
+   hold for every list. *)
 module Prelude›Data›Church›Properties where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -23,7 +23,8 @@ private def S (k : ℕ) : ℕ ≔ succ k end
 (* Numerals of numbers. *)
 module Numerals where
 
-theorem toNatFromNat : ∀ (u : Level) (n : ℕ) → Eq (C.toNat u (C.fromNat u n)) n ≔
+theorem toNatFromNat : ∀ (u : Level) (n : ℕ) →
+    Eq (C.toNat u (C.fromNat u n)) n ≔
   λ (u : Level) (n : ℕ) →
     rec n return x . Eq (C.toNat u (C.fromNat u x)) x
     | zero ⇒ ⋆
@@ -54,7 +55,8 @@ theorem fromNatAddsMult : ∀ (u : Level) (c : ℕ) (g : ∀ (k : ℕ) → ℕ)
         let r ≔ C.fromNat u p ℕ g y
         in trans (g r) (plus c r) (plus (mult (succ p) c) y)
              (hg r)
-             (trans (plus c r) (plus c (plus (mult p c) y)) (plus (plus c (mult p c)) y)
+             (trans (plus c r) (plus c (plus (mult p c) y))
+                (plus (plus c (mult p c)) y)
                 (cong (λ (k : ℕ) → plus c k) r (plus (mult p c) y) ih)
                 (sym (plus (plus c (mult p c)) y) (plus c (plus (mult p c) y))
                    (plusAssoc c (mult p c) y)))
@@ -82,7 +84,8 @@ end
 theorem toNatMult : ∀ (u : Level) (m : ℕ) (n : ℕ) →
     Eq (C.toNat u (C.cmult u (C.fromNat u m) (C.fromNat u n))) (mult m n) ≔
   λ (u : Level) (m : ℕ) (n : ℕ) →
-    trans (C.fromNat u m ℕ (C.fromNat u n ℕ S) 0) (plus (mult m n) 0) (mult m n)
+    trans (C.fromNat u m ℕ (C.fromNat u n ℕ S) 0) (plus (mult m n) 0)
+      (mult m n)
       (fromNatAddsMult u n (C.fromNat u n ℕ S) (fromNatAdds u n) m 0)
       (plusZero (mult m n))
 end
@@ -91,22 +94,26 @@ end
    when it iterates the successor.  The induction is on [k], with the
    starting point general, so the step can use [fromNatAddsMult]. *)
 theorem cpowAdds : ∀ (u : Level) (m : ℕ) (k : ℕ) (y : ℕ) →
-    Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k) ℕ S y) (plus (pow m k) y) ≔
+    Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k) ℕ S y)
+       (plus (pow m k) y) ≔
   λ (u : Level) (m : ℕ) (k : ℕ) →
     rec k return x . (∀ (y : ℕ) →
-        Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) x) ℕ S y) (plus (pow m x) y))
+                        Eq (C.cpow u (C.fromNat u m) (C.fromNat (succl u) x)
+                              ℕ S y)
+                           (plus (pow m x) y))
     | zero ⇒ λ (y : ℕ) → refl (succ y)
     | succ p, ih ⇒ λ (y : ℕ) →
-        fromNatAddsMult u (pow m p) (C.cpow u (C.fromNat u m) (C.fromNat (succl u) p) ℕ S)
-          ih m y
+        fromNatAddsMult u (pow m p)
+          (C.cpow u (C.fromNat u m) (C.fromNat (succl u) p) ℕ S) ih m y
     end
 end
 
 theorem toNatPow : ∀ (u : Level) (m : ℕ) (k : ℕ) →
-    Eq (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k))) (pow m k) ≔
+    Eq (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k)))
+       (pow m k) ≔
   λ (u : Level) (m : ℕ) (k : ℕ) →
-    trans (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k))) (plus (pow m k) 0)
-      (pow m k)
+    trans (C.toNat u (C.cpow u (C.fromNat u m) (C.fromNat (succl u) k)))
+      (plus (pow m k) 0) (pow m k)
       (cpowAdds u m k 0) (plusZero (pow m k))
 end
 
@@ -141,9 +148,11 @@ end
 module Lists where
 
 (* Mapping keeps the length of every list, by conversion. *)
-theorem lengthMap : ∀ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
-    (l : C.List u A) → Eq (C.length u B (C.map u A B f l)) (C.length u A l) ≔
-  λ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (l : C.List u A) →
+theorem lengthMap : ∀ (u : Level) (A : Type@{u}) (B : Type@{u})
+    (f : ∀ (a : A) → B) (l : C.List u A) →
+    Eq (C.length u B (C.map u A B f l)) (C.length u A l) ≔
+  λ (u : Level) (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
+    (l : C.List u A) →
     refl (C.length u A l)
 end
 
@@ -159,7 +168,8 @@ end
 (* Appending [n] copies of [a] in front adds [n] to the length. *)
 theorem lengthAppendReplicate : ∀ (u : Level) (A : Type@{u}) (n : ℕ) (a : A)
     (l : C.List u A) →
-    Eq (C.length u A (C.append u A (C.replicate u A n a) l)) (plus n (C.length u A l)) ≔
+    Eq (C.length u A (C.append u A (C.replicate u A n a) l))
+       (plus n (C.length u A l)) ≔
   λ (u : Level) (A : Type@{u}) (n : ℕ) (a : A) (l : C.List u A) →
     rec n return x . Eq (C.length u A (C.append u A (C.replicate u A x a) l))
                         (plus x (C.length u A l))
@@ -174,7 +184,8 @@ theorem sumReplicate : ∀ (u : Level) (n : ℕ) (c : ℕ) →
     rec n return x . Eq (C.sum u (C.replicate u ℕ x c)) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        cong (λ (k : ℕ) → plus c k) (C.sum u (C.replicate u ℕ p c)) (mult p c) ih
+        cong (λ (k : ℕ) → plus c k)
+          (C.sum u (C.replicate u ℕ p c)) (mult p c) ih
     end
 end
 
