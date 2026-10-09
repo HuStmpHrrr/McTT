@@ -482,13 +482,28 @@ let exp_to_obj =
        let names = List.map (fun ((_, d), _) -> d) its in
        (cs @ [Cst.Coq_c_open ([], [target], [], its)], List.rev_append names ctx')
   in
-  fun exp ->
+  (* The names of a context, innermost entry first, as binders are named. *)
+  let names_of (delta : centry list) : string list =
+    List.fold_left
+      (fun names ce ->
+        let px = match ce with
+          | Coq_ce_ass (Coq_a_typ _ | Coq_a_univ _) | Coq_ce_def ((Coq_a_typ _ | Coq_a_univ _), _) -> new_tyvar ()
+          | Coq_ce_mod _ -> new_mod ()
+          | _ -> new_var () in
+        px :: names)
+      [] (List.rev delta)
+  in
+  (* A term in the context [delta], whose entries are named first. *)
+  fun ?(delta = []) exp ->
     reset_var_suffix ();
     reset_tyvar_suffix ();
     reset_mod_suffix ();
-    impl [] exp
+    let ctx = names_of delta in
+    impl ctx exp
 
 let format_exp f exp = format_obj f (exp_to_obj exp)
+
+let format_exp_in delta f exp = format_obj f (exp_to_obj ~delta exp)
 
 (************************************************************)
 (* Formatting nf *)
@@ -520,6 +535,15 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_eval_check (_, exp, typ) ->
      fprintf f "@[<hov 2>Error:@ %a@ is not of type@ %a@]" format_exp exp
        format_exp typ
+  (* The level of a universe that is no level, in the binders crossed to
+     reach it; a numeral there is a natural number, not the level. *)
+  | Coq_re_level (_, delta, t) ->
+     let hint f () =
+       match get_nat_of_obj (exp_to_obj ~delta t) with
+       | Some n -> fprintf f ";@ write %dl for the level %d" n n
+       | None -> () in
+     fprintf f "@[<hov 2>Error:@ %a@ is not of type Level@@n for any n@ (the level of@ %a)%a@]"
+       (format_exp_in delta) t (format_exp_in delta) (Coq_a_univ t) hint ()
   | Coq_re_eval_infer (_, exp) ->
      fprintf f "@[<hov 2>Error:@ %a@ has no inferable type@]" format_exp exp
   | Coq_re_cycle ch ->

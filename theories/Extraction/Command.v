@@ -106,6 +106,11 @@ Inductive run_error : Set :=
 (** An ascribed eval: the ascription of the term is not a type. *)
 | re_eval_typ : gstack -> exp -> typ -> run_error
 | re_eval_infer : gstack -> exp -> run_error
+(** A small universe [Type@{t}] whose level [t] is of no type of levels,
+    found by [find_level_blame] where a type or a telescope is rejected:
+    [t] lives in the context the stack's telescope is extended by, innermost
+    entry first. *)
+| re_level : gstack -> ctx -> exp -> run_error
 | re_cycle : list path -> run_error
 | re_unit : path -> string -> run_error
 (** A private member, named by its module, reached from outside it. *)
@@ -120,6 +125,21 @@ Definition priv_error (e : priv_err) : run_error :=
   match e with
   | pe_global qd x => re_private qd x
   | pe_local ch x => re_private_local ch x
+  end.
+
+(** The error for a rejected type or telescope: the blamed level if
+    [find_level_blame] found one, otherwise the given error. *)
+Definition blame_error {Θ Ξ Γ} (b : option (level_blame Θ Ξ Γ)) (e : run_error) : run_error :=
+  match b with
+  | Some (exist _ (Δ, t) _) => re_level Ξ Δ t
+  | None => e
+  end.
+
+Definition tele_blame_error {Θ Ξ Γ Δ} (b : option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ ++ Γ) })
+    (e : run_error) : run_error :=
+  match b with
+  | inleft ob => blame_error ob e
+  | inright _ => e
   end.
 
 Inductive rres (A : Type) : Type :=
@@ -913,7 +933,7 @@ Section Impl.
   | ch, Θ, K, D, Ξ, cc_def x b pv A (Some M), H with gs_fresh_dec x Ξ => {
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
-      | inright _ => rerr (re_def_typ x Ξ A)
+      | inright _ => rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A) (re_def_typ x Ξ A))
       | inleft (exist _ i HA) with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
         | left HM => rok (da_ok (def_ok Hfr HM))
         | right _ => rerr (re_def x Ξ A M) } } }
@@ -921,11 +941,15 @@ Section Impl.
     | right _ => rerr (re_msg ("duplicate name " ++ x))
     | left Hfr with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
       | inleft (exist _ i HA) => rok (da_ok (axiom_ok Hfr HA))
-      | inright _ => rerr (re_msg ("the type of axiom " ++ x ++ " is not a type")) } }
+      | inright _ =>
+          rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A)
+                  (re_msg ("the type of axiom " ++ x ++ " is not a type"))) } }
   | ch, Θ, K, D, Ξ, cc_alias x pv Δ E, H with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ext (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) Δ => {
-      | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
+      | right _ =>
+          rerr (tele_blame_error (find_tele_blame _ _ _ (pre_ctx H) Δ)
+                  (re_msg ("ill-formed parameters of module " ++ x)))
       | left HΔ with check_modexp (gds_restrict D Θ) Ξ (Δ ++ gs_tele Ξ) (ext_eq_ctx_left _ _ _ _ _ HΔ) E => {
         | right _ => rerr (re_msg ("ill-formed module expression for module " ++ x))
         | left HE with gs_fresh_dec x Ξ => {
@@ -1009,7 +1033,7 @@ Section Impl.
         | rok (exist _ Ξ' Hgs) => rok (exist _ _ (import_ok (pre_gctx H) HE Eg Hgs), log_nil) } } }
   | ch, L, Θ, K, D, Ξ, cc_eval M (Some A), H
       with check_typ (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A => {
-    | inright _ => rerr (re_eval_typ Ξ M A)
+    | inright _ => rerr (blame_error (find_level_blame _ _ _ (pre_ctx H) A) (re_eval_typ Ξ M A))
     | inleft (exist _ i HA)
         with check_exp_typed (gds_restrict D Θ) Ξ (gs_tele Ξ) (pre_ctx H) A (ex_intro _ i HA) M => {
       | left HM => rok (exist _ _ (eval_check_ok HM), eval_log _ _ (pre_gctx H) M A HM)
@@ -1039,7 +1063,9 @@ Section Impl.
     | exist _ (xok Δ) EΔ with tele_ass_dec Δ => {
     | right _ => rerr (re_msg ("parameters of module " ++ x ++ " that are not assumptions"))
     | left Htel with check_ctx (gds_restrict D Θ) Ξ (pre_gctx H) (Δ ++ gs_tele Ξ) => {
-      | right _ => rerr (re_msg ("ill-formed parameters of module " ++ x))
+      | right _ =>
+          rerr (tele_blame_error (find_tele_blame _ _ _ (pre_ctx H) Δ)
+                  (re_msg ("ill-formed parameters of module " ++ x)))
       | left HΔ with gs_fresh_dec x Ξ => {
         | right _ => rerr (re_msg ("duplicate name " ++ x))
         | left Hfr with cmds_step ch (run_cmd_impl ch L) Θ K D (gs_push (qname_in (gs_path Ξ) x) Δ Ξ) cs
@@ -1074,7 +1100,9 @@ Section Impl.
             | right _ => rerr (re_msg "unit parameters that are not assumptions")
             | left Htel =>
             match check_ctx (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) P with
-            | right _ => rerr (re_msg "ill-formed unit parameters")
+            | right _ =>
+                rerr (tele_blame_error (find_tele_blame _ _ _ (wf_ctx_empty _ _ (unit_gctx H Hr1)) P)
+                        (re_msg "ill-formed unit parameters"))
             | left HP =>
             match refs_check (gds_restrict (cs_dom r1) (cs_deps r1)) nil (unit_gctx H Hr1) (tele_refs nil P0) with
             | inleft (exist _ e _) => rerr (priv_error e)

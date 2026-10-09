@@ -947,6 +947,76 @@ let%expect_test "Nat is not a level" =
   let _ = main_of_body "eval Nat : Level" in
   [%expect {| Error: ℕ is not of type Level |}]
 
+(* The level of a small universe is an ordinary term, checked against the
+   types of levels: a numeral there is a natural number, so [Type@{0}] is no
+   type.  Wherever a type or a parameter is rejected for it, the error names
+   the level, with a hint for a numeral. *)
+let%expect_test "the level of a universe is a level: eval" =
+  let _ = main_of_body "eval Level@{5} : Type@{0}" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_body "eval Nat : Type@{5}" in
+  [%expect {|
+    Error: 5 is not of type Level@n for any n (the level of Type@{5});
+      write 5l for the level 5
+    |}];
+  let _ = main_of_body "eval Nat : Type@{true}" in
+  [%expect {| Error: ⋆ is not of type Level@n for any n (the level of Type@{⋆}) |}];
+  let _ = main_of_body "eval Nat : Type@{Nat}" in
+  [%expect {| Error: ℕ is not of type Level@n for any n (the level of Type@{ℕ}) |}]
+
+let%expect_test "the level of a universe is a level: declarations" =
+  let _ = main_of_body "def t : Type@{0} := Nat end" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_body "theorem t : Type@{0} := Nat end" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_body "axiom x : Type@{0}" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}]
+
+let%expect_test "the level of a universe is a level: parameters" =
+  let _ = main_of_body "def g (A : Type@{0}) : Nat := 0 end" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_body "module M (u : Level) (A : Type@{succ u}) where end" in
+  [%expect {| Error: succ x1 is not of type Level@n for any n (the level of Type@{succ x1}) |}];
+  let _ = main_of_body "module N where end module M (A : Type@{0}) := N" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_program_string "module T (A : Type@{0}) where end" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}]
+
+let%expect_test "the level of a universe is a level: nested" =
+  let _ = main_of_body "eval Nat : Π (A : Type@{0}) → A" in
+  [%expect {|
+    Error: 0 is not of type Level@n for any n (the level of Type@{0});
+      write 0l for the level 0
+    |}];
+  let _ = main_of_body "def f (u : Level) : Type@{succ u} := Nat end" in
+  [%expect {| Error: succ x1 is not of type Level@n for any n (the level of Type@{succ x1}) |}];
+  let _ = main_of_body "eval Nat : forall (u : Level) -> forall (B : Type@{u}) -> Type@{B}" in
+  [%expect {| Error: A1 is not of type Level@n for any n (the level of Type@{A1}) |}];
+  (* A type rejected for another reason keeps its message. *)
+  let _ = main_of_body "eval Nat : Type@{0l} Nat" in
+  [%expect {| Error: the ascribed type of ℕ, Type@0 ℕ, is not a type |}]
+
 (* The level of a small universe may be any term of [Level], including an
    open one, so the normal form of a level has atoms. *)
 let%expect_test "an open level normalizes with atoms" =

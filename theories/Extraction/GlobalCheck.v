@@ -226,6 +226,134 @@ Section check_exp.
     eapply alg_type_infer_univ_sound'; eassumption.
   Qed.
 
+  (** ** Blaming the Level of a Universe
+
+      When "is [A] a type?" fails, [find_level_blame] looks for the reason
+      most often met in practice: a small universe [Type@{t}] in [A] whose
+      [t] is of no type of levels, such as the natural number [0] in
+      [Type@{0}].  It only serves the error message; the decision itself
+      stays [check_typ]'s. *)
+
+  (** The two ways "is [t] a level?" can fail, as for [check_typ]: nothing
+      is inferred for [t], or what is inferred is no type of levels.  Each
+      contradicts completeness, through [alg_type_check_level_infer]. *)
+  Lemma not_level_of_no_infer : forall Θ Ξ Γ t,
+      ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      (forall B : nf, ~ @alg_type_infer (gc_mk Θ Ξ) Γ B t) ->
+      forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n.
+  Proof.
+    intros * HΓ Hno n H.
+    destruct (alg_type_check_level_infer (GC := gc_mk Θ Ξ) HΓ (alg_type_check_complete' _ _ _ _ _ H))
+      as [m [Hm _]].
+    exact (Hno _ Hm).
+  Qed.
+
+  Lemma not_level_of_infer_not_level : forall Θ Ξ Γ t (B : nf),
+      ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      @alg_type_infer (gc_mk Θ Ξ) Γ B t ->
+      (forall k, B <> Levelⁿ@k) ->
+      forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n.
+  Proof.
+    intros * HΓ HB Hne n H.
+    destruct (alg_type_check_level_infer (GC := gc_mk Θ Ξ) HΓ (alg_type_check_complete' _ _ _ _ _ H))
+      as [m [Hm _]].
+    exact (Hne m (functional_alg_type_infer (GC := gc_mk Θ Ξ) HB Hm)).
+  Qed.
+
+  (** "Is [t] a level?", decided as the premise of [ati_suniv]: infer a type
+      for [t], then require it to be a type of levels. *)
+  #[tactic="idtac",derive(equations=no,eliminator=no)]
+  Equations check_level Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) t :
+    { n | Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } + { forall n, ~ Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n } :=
+  | Θ, Ξ, Γ, HΓ, t =>
+      let*o (exist _ B _) := @type_infer (gc_mk Θ Ξ) Γ _ t _ while _ in
+      let*o (exist _ n _) := get_level_sort_nf B while _ in
+      pureo (exist _ n _)
+  .
+  Obligation 1. Qed.
+  Obligation 2. (* type_infer_order t *)
+    apply user_exp_to_type_infer_order, user_exp_all.
+  Defined.
+  Obligation 3. (* nothing is inferred for [t] *)
+    eapply not_level_of_no_infer; eassumption.
+  Qed.
+  Obligation 4. (* what is inferred for [t] is no type of levels *)
+    match goal with
+    | Hn : forall k, ?B <> _, Ha : _ ⊢a _ ⟹ ?B |- False =>
+        eapply not_level_of_infer_not_level; [ exact HΓ | exact Ha | exact Hn | eassumption ]
+    end.
+  Qed.
+  Obligation 5. (* Θ ⍮ Ξ ⍮ Γ ⊢ t : Level@n *)
+    subst; match goal with
+    | Ha : _ ⊢a _ ⟹ Levelⁿ@_ |- _ => exact (alg_type_infer_sound' _ _ _ _ _ Ha HΓ)
+    end.
+  Qed.
+
+  (** A blamed level, in [Γ]: a context [Δ] extending [Γ], innermost entry
+      first, and a [t] of no type of levels in [Δ ++ Γ]. *)
+  Definition level_blame Θ Ξ Γ : Set :=
+    { p : ctx * exp | forall n, ~ Θ ⍮ Ξ ⍮ (fst p ++ Γ) ⊢ snd p : Level@n }.
+
+  Lemma level_blame_app_ok : forall Θ Ξ Γ Δ Δ' t,
+      (forall n, ~ Θ ⍮ Ξ ⍮ (Δ' ++ (Δ ++ Γ)) ⊢ t : Level@n) ->
+      forall n, ~ Θ ⍮ Ξ ⍮ ((Δ' ++ Δ) ++ Γ) ⊢ t : Level@n.
+  Proof. intros *; rewrite <- app_assoc; exact (fun H => H). Qed.
+
+  (** A level blamed in an extension [Δ ++ Γ] is blamed in [Γ]. *)
+  Definition level_blame_app {Θ Ξ Γ} Δ (b : level_blame Θ Ξ (Δ ++ Γ)) : level_blame Θ Ξ Γ :=
+    match b with
+    | exist _ (Δ', t) Ht => exist _ (Δ' ++ Δ, t) (level_blame_app_ok _ _ _ _ _ _ Ht)
+    end.
+
+  (** The search: a universe whose level fails [check_level], at the
+      universe itself, or in either part of a [Π], the codomain once the
+      domain is a type.  Elsewhere, and below a universe whose level is a
+      level, it finds nothing. *)
+  Fixpoint find_level_blame Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (A : exp) {struct A} : option (level_blame Θ Ξ Γ) :=
+    match A with
+    | a_univ t =>
+        match check_level Θ Ξ Γ HΓ t with
+        | inleft _ => None
+        | inright Ht => Some (exist _ (nil, t) Ht)
+        end
+    | a_pi A' B =>
+        match find_level_blame Θ Ξ Γ HΓ A' with
+        | Some b => Some b
+        | None =>
+            match check_typ Θ Ξ Γ HΓ A' with
+            | inleft (exist _ i HA) =>
+                option_map (level_blame_app (ce_ass A' :: nil))
+                  (find_level_blame Θ Ξ (Γ ▹ A') (wf_ctx_extend _ _ _ _ _ HA) B)
+            | inright _ => None
+            end
+        end
+    | _ => None
+    end.
+
+  (** The same in a telescope [Δ] over a well-formed [Γ]: the first
+      assumption that is no type, searched by [find_level_blame].  The
+      result is the blame, if any, or that [Δ ++ Γ] is well formed.  A
+      definition or a module slot is not searched. *)
+  Fixpoint find_tele_blame Θ Ξ Γ (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) (Δ : ctx) {struct Δ} :
+      option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ ++ Γ) } :=
+    match Δ as Δ0 return option (level_blame Θ Ξ Γ) + { ⊢ Θ ⍮ Ξ ⍮ (Δ0 ++ Γ) } with
+    | nil => inright HΓ
+    | ce_ass A :: Δ' =>
+        match find_tele_blame Θ Ξ Γ HΓ Δ' with
+        | inleft b => inleft b
+        | inright HΔ' =>
+            match check_typ Θ Ξ (Δ' ++ Γ) HΔ' A with
+            | inleft (exist _ i HA) => inright (wf_ctx_extend _ _ _ _ _ HA)
+            | inright _ => inleft (option_map (level_blame_app Δ') (find_level_blame Θ Ξ (Δ' ++ Γ) HΔ' A))
+            end
+        end
+    | _ :: Δ' =>
+        match find_tele_blame Θ Ξ Γ HΓ Δ' with
+        | inleft b => inleft b
+        | inright _ => inleft None
+        end
+    end.
+
   (** The type of a well-typed term is a type. *)
   Lemma not_exp_of_not_typ : forall Θ Ξ Γ A M,
       (forall i, ~ Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i) -> ~ Θ ⍮ Ξ ⍮ Γ ⊢ M : A.
