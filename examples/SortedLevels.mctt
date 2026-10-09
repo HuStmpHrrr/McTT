@@ -1,0 +1,89 @@
+(* Sorted levels.  The levels go up to ω²: a level literal is [<n>l] for a
+   finite level, or [ω], [ω + b], [ω·a] and [ω·a + b] ([*] is the ASCII
+   spelling of [·], and [omega] of [ω]).  The type of levels is sorted:
+   [Level@n] holds the levels below ω·(n+1), and [Level] is [Level@0], the
+   finite levels.  A universe at any level is small: [Type@ω] is the
+   universe at [ω], and [Type@nL] the one at [ω + n]. *)
+module SortedLevels where
+
+(* The literals at and above ω, and how [succl] and [maxl] compute on them. *)
+eval ω : Level@1
+
+eval succl ω : Level@1
+
+eval maxl 3l (ω * 2 + 1) : Level@2
+
+eval maxl (ω·2) ω : Level@2
+
+(* A level of a sort is a level of every larger sort. *)
+def lift (u : Level) : Level@1 ≔ u end
+
+(* ω is above every finite level, so [maxl u ω] is [ω] for every [u] of
+   [Level], also a variable one. *)
+eval λ (u : Level) → maxl u ω
+
+(* For a [u] of [Level@1] that is not so, and the join stays. *)
+eval λ (u : Level@1) → maxl u ω
+
+(* A type that quantifies over the finite levels is a small type at ω. *)
+def PolyId : Type@ω ≔ ∀ (u : Level) (A : Type@{u}) (a : A) → A end
+
+def polyId : PolyId ≔ λ (u : Level) (A : Type@{u}) (a : A) → a end
+
+eval PolyId
+
+eval polyId 3l Type@2 Type@1
+
+(* One sort up, at ω·2.  This identity applies to [PolyId] itself. *)
+def PolyIdUp : Type@{ω·2} ≔ ∀ (u : Level@1) (A : Type@{u}) (a : A) → A end
+
+def polyIdUp : PolyIdUp ≔ λ (u : Level@1) (A : Type@{u}) (a : A) → a end
+
+eval PolyIdUp
+
+eval polyIdUp ω PolyId polyId
+
+(* Church lists over a type at a level of [Level@1]. *)
+def List (u : Level@1) (A : Type@{u}) : Type@{succl u} ≔
+  ∀ (R : Type@{u}) (c : ∀ (a : A) (r : R) → R) (n : R) → R
+end
+
+def nil (u : Level@1) (A : Type@{u}) : List u A ≔
+  λ (R : Type@{u}) (c : ∀ (a : A) (r : R) → R) (n : R) → n
+end
+
+def cons (u : Level@1) (A : Type@{u}) (a : A) (l : List u A) : List u A ≔
+  λ (R : Type@{u}) (c : ∀ (a : A) (r : R) → R) (n : R) → c a (l R c n)
+end
+
+def length (u : Level@1) (A : Type@{u}) (l : List u A) : ℕ ≔
+  l ℕ (λ (a : A) (r : ℕ) → succ r) 0
+end
+
+def headOr (u : Level@1) (A : Type@{u}) (d : A) (l : List u A) : A ≔
+  l A (λ (a : A) (r : A) → a) d
+end
+
+(* A list of polymorphic functions, at the level ω. *)
+def twice : PolyId ≔ λ (u : Level) (A : Type@{u}) (a : A) → polyId u A (polyId u A a) end
+
+def fs : List ω PolyId ≔ cons ω PolyId polyId (cons ω PolyId twice (nil ω PolyId)) end
+
+eval length ω PolyId fs
+
+eval headOr ω PolyId twice fs 0l ℕ 5
+
+(* A list of types of different finite levels, at the level ω + 1: each is
+   in [Type@ω] by cumulativity. *)
+def ts : List (ω + 1) Type@ω ≔
+  cons (ω + 1) Type@ω ℕ
+    (cons (ω + 1) Type@ω Type@0
+      (cons (ω + 1) Type@ω Type@3
+        (cons (ω + 1) Type@ω (∀ (A : Type@7) → A) (nil (ω + 1) Type@ω))))
+end
+
+eval length (ω + 1) Type@ω ts
+
+eval headOr (ω + 1) Type@ω ⊤ ts
+
+end

@@ -32,6 +32,7 @@ let s_true_ty = "\u{22A4}" (* ⊤ for True *)
 let s_false_ty = "\u{22A5}" (* ⊥ for False *)
 let s_true_tm = "\u{22C6}" (* ⋆ for true *)
 let s_omega = "\u{03C9}" (* ω for omega *)
+let s_cdot = "\u{00B7}" (* · for * *)
 
 let pp_sym (f : Format.formatter) (s : string) : unit = Format.pp_print_as f 1 s
 
@@ -122,15 +123,25 @@ let pp_upath (f : Format.formatter) (fp : string list) : unit = pp_u f (string_o
 let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   let open Format in
   function
-  (* A universe prints at its shortest spelling: a large one as [Type@ω] or
-     [Type@<n>L], a small one at a literal level as [Type@<n>] and at any
-     other level as [Type@{t}]. *)
-  | Cst.Coq_typ 0 -> fprintf f "Type@@@<1>%s" s_omega
-  | Cst.Coq_typ i -> fprintf f "Type@@%dL" i
-  | Cst.Coq_suniv (Cst.Coq_llit n) -> fprintf f "Type@@%d" n
+  (* A universe prints at its shortest spelling: at a finite literal level
+     as [Type@<n>], at [ω] as [Type@ω], at [ω+n] as [Type@<n>L], and at any
+     other level as [Type@{t}].  The large universe [ω²+i] has no surface
+     syntax; it prints as [Type@{ω^2+i}]. *)
+  | Cst.Coq_typ 0 -> fprintf f "Type@@{@<1>%s^2}" s_omega
+  | Cst.Coq_typ i -> fprintf f "Type@@{@<1>%s^2+%d}" s_omega i
+  | Cst.Coq_suniv (Cst.Coq_llit (0, n)) -> fprintf f "Type@@%d" n
+  | Cst.Coq_suniv (Cst.Coq_llit (1, 0)) -> fprintf f "Type@@@<1>%s" s_omega
+  | Cst.Coq_suniv (Cst.Coq_llit (1, n)) -> fprintf f "Type@@%dL" n
   | Cst.Coq_suniv e -> fprintf f "@[<hov 2>Type@@{%a}@]" (format_obj_prec 0) e
-  | Cst.Coq_level -> fprintf f "Level"
-  | Cst.Coq_llit n -> fprintf f "%dl" n
+  | Cst.Coq_level 0 -> fprintf f "Level"
+  | Cst.Coq_level n -> fprintf f "Level@@%d" n
+  (* A level literal: [<n>l] when finite, else [ω·a+b] with [·a] dropped at
+     [a = 1] and [+b] dropped at [b = 0]. *)
+  | Cst.Coq_llit (0, n) -> fprintf f "%dl" n
+  | Cst.Coq_llit (a, b) ->
+     fprintf f "@<1>%s" s_omega;
+     if a <> 1 then fprintf f "@<1>%s%d" s_cdot a;
+     if b <> 0 then fprintf f "+%d" b
   | Cst.Coq_succl e ->
      let impl f () = fprintf f "succl@ %a" (format_obj_prec 2) e in
      pp_open_hovbox f 2;
@@ -341,17 +352,8 @@ let exp_to_obj =
        let ez' = impl ctx ez in
        let es' = impl (sr :: sx :: ctx) es in
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
-    | Coq_a_level 0 -> Cst.Coq_level
-    (* A type of levels of a positive sort has no surface form yet, and no
-       program produces one: the surface [Level] is of sort 0. *)
-    | Coq_a_level _ -> invalid_arg "PrettyPrinter: a type of levels of a positive sort"
-    | Coq_a_llit (0, n) -> Cst.Coq_llit n
-    (* A literal at or above [ω] has no surface form yet; the algorithm
-       produces one as the bound of a level quantified in a Π.  It prints in
-       the ordinal notation [ω·a+b]. *)
-    | Coq_a_llit (a, b) ->
-       let w = if a = 1 then s_omega else s_omega ^ "\u{00B7}" ^ string_of_int a in
-       Cst.Coq_var (if b = 0 then w else w ^ "+" ^ string_of_int b)
+    | Coq_a_level n -> Cst.Coq_level n
+    | Coq_a_llit o -> Cst.Coq_llit o
     | Coq_a_succl e -> Cst.Coq_succl (impl ctx e)
     | Coq_a_maxl (e1, e2) -> Cst.Coq_maxl (impl ctx e1, impl ctx e2)
     | Coq_a_nat -> Cst.Coq_nat
@@ -364,9 +366,6 @@ let exp_to_obj =
        let em' = impl (mx :: ctx) em in
        Cst.Coq_exfalso (escr', mx, em')
     | Coq_a_typ i -> Cst.Coq_typ i
-    (* The small universe at [ω+b] spells as the large [Type@ω] / [Type@bL]
-       until the surface syntax has its own form for it. *)
-    | Coq_a_univ (Coq_a_llit (1, b)) -> Cst.Coq_typ b
     | Coq_a_univ e -> Cst.Coq_suniv (impl ctx e)
     (* A variable past the local binders is a parameter of an open module,
        which has no name here: it prints as [$k], counting outwards. *)

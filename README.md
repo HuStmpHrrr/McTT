@@ -145,7 +145,7 @@ one (and `∀` for `forall`):
 | `λ`     | `fun`    |   | `⊥`     | `False` |
 | `∀`, `Π`| `forall` |   | `⋆`     | `true`  |
 | `≔`     | `:=`     |   | `ω`     | `omega` |
-| `›`     | `::`     |   |         |         |
+| `›`     | `::`     |   | `·`     | `*`     |
 
 Identifiers are ASCII letters only, so these symbols need no spaces around
 them: `λ(x:ℕ)→x` is `fun (x : Nat) -> x`.
@@ -173,24 +173,23 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      (* eliminator of the empty type *)
      | 'exfalso' , term , 'return' , nat motive;
 
-            (* small universe at the level nat, short for Type@{<nat>l} *)
+            (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
             (* the same, written with the level literal *)
             | 'Type', '@' , nat , 'l'
-            (* small universe at the level denoted by a term *)
+            (* universe at the level denoted by a term *)
             | 'Type' , '@' , '{' , term , '}'
-            (* the first large universe, above every small one *)
+            (* universe at the level ω, above every finite one *)
             | 'Type' , '@' , ( 'ω' | 'omega' )
-            | 'Type' , '@' , '{' , ( 'ω' | 'omega' ) , '}'
-            (* the large universe ω+nat; only the braced form takes a '+' *)
-            | 'Type' , '@' , '{' , ( 'ω' | 'omega' ) , '+' , nat , '}'
-            (* its shorthand: a large universe size, never a level *)
+            (* universe at ω+nat: a universe level only, never a level term *)
             | 'Type' , '@' , nat , 'L'
             | 'Type' , '@' , '{' , nat , 'L' , '}'
-            (* the type of universe levels *)
-            | 'Level'
-            (* a universe level literal *)
+            (* the type of the levels below ω·(nat+1); 'Level' is 'Level@0' *)
+            | 'Level' , [ '@' , nat ]
+            (* a finite universe level literal *)
             | nat , 'l'
+            (* the universe level literals ω, ω+b, ω·a, ω·a+b *)
+            | ( 'ω' | 'omega' ) , [ ( '·' | '*' ) , nat ] , [ '+' , nat ]
             (* natural number type *)
             | ( 'ℕ' | 'Nat' )
             (* the unit type and its element *)

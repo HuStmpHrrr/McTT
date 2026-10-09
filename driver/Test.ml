@@ -585,6 +585,40 @@ let%expect_test "ModuleParam.mctt works" =
       --> 2 : ℕ
     |}]
 
+let%expect_test "SortedLevels.mctt works" =
+  let _ = main_of_example "SortedLevels.mctt" in
+  [%expect {|
+    Evaluate ω --> ω : Level@1
+    Evaluate succl ω --> ω+1 : Level@1
+    Evaluate maxl 3l ω·2+1 --> ω·2+1 : Level@2
+    Evaluate maxl ω·2 ω --> ω·2 : Level@2
+    Evaluate λ (x1 : Level) → maxl x1 ω --> λ (x1 : Level) → ω
+      : ∀ (x1 : Level) → Level@1
+    Evaluate λ (x1 : Level@1) → maxl x1 ω --> λ (x1 : Level@1) → maxl ω x1
+      : ∀ (x1 : Level@1) → Level@1
+    Evaluate PolyId --> ∀ (x1 : Level)
+                          (A1 : Type@{x1})
+                          (x2 : A1)
+                          → A1 : Type@ω
+    Evaluate polyId 3l Type@2 Type@1 --> Type@1 : Type@2
+    Evaluate PolyIdUp --> ∀ (x1 : Level@1)
+                            (A1 : Type@{x1})
+                            (x2 : A1)
+                            → A1 : Type@{ω·2}
+    Evaluate polyIdUp ω PolyId polyId
+      --> λ (x1 : Level)
+            (A1 : Type@{x1})
+            (x2 : A1)
+            → x2 : ∀ (x1 : Level)
+                     (A1 : Type@{x1})
+                     (x2 : A1)
+                     → A1
+    Evaluate length ω PolyId fs --> 2 : ℕ
+    Evaluate headOr ω PolyId twice fs 0l ℕ 5 --> 5 : ℕ
+    Evaluate length ω+1 Type@ω ts --> 4 : ℕ
+    Evaluate headOr ω+1 Type@ω ⊤ ts --> ℕ : Type@ω
+    |}]
+
 let%expect_test "Universes.mctt works" =
   let _ = main_of_example "Universes.mctt" in
   [%expect {|
@@ -628,26 +662,27 @@ let%expect_test "a small universe at a literal level" =
   let _ = main_of_body "eval Type@{succl 1l} : Type@3" in
   [%expect {| Evaluate Type@{succl 1l} --> Type@2 : Type@3 |}]
 
-(* [Type@ω] is the first large universe, above every small one; it has three
-   other spellings, and the higher ones are [Type@{ω+n}] or [Type@nL]. *)
-let%expect_test "the large universe holds a small one" =
+(* [Type@ω] is the universe at [ω], above every one at a finite level; it
+   has three other spellings, and the higher ones are [Type@{ω+n}] or
+   [Type@nL]. *)
+let%expect_test "the universe at ω holds one at a finite level" =
   let _ = main_of_body "eval Type@5 : Type@ω" in
   [%expect {| Evaluate Type@5 --> Type@5 : Type@ω |}]
 
-let%expect_test "every spelling of a large universe size" =
+let%expect_test "every spelling of the universe at ω" =
   let _ = main_of_body "eval Type@omega : Type@{ω+1}" in
   [%expect {| Evaluate Type@ω --> Type@ω : Type@1L |}]
 
-let%expect_test "the shorthand for a large universe size" =
+let%expect_test "the shorthand for a universe at ω+n" =
   let _ = main_of_body "eval Type@{omega} : Type@1L" in
   [%expect {| Evaluate Type@ω --> Type@ω : Type@1L |}]
 
-let%expect_test "a large universe above the first" =
+let%expect_test "a universe above the one at ω" =
   let _ = main_of_body "eval Type@{ω+2}" in
   [%expect {| Evaluate Type@2L --> Type@2L : Type@3L |}]
 
-(* A bare numeral is a small size, so a large universe is not below it. *)
-let%expect_test "a large universe is not in a small one" =
+(* A bare numeral is a finite level, so the universe at ω is not below it. *)
+let%expect_test "the universe at ω is not in one at a finite level" =
   let _ = main_of_body "eval Type@ω : Type@3" in
   [%expect {| Error: Type@ω is not of type Type@3 |}]
 
@@ -684,14 +719,14 @@ let%expect_test "a function type between two small universes is at their join" =
           → Type@{maxl x2 x1}
     |}]
 
-(* A codomain whose level mentions the bound variable has no small universe
-   to be in. *)
-let%expect_test "a type quantifying over levels is not small" =
+(* A codomain whose level mentions the bound variable has no universe at a
+   finite level to be in. *)
+let%expect_test "a type quantifying over levels is not at a finite level" =
   let _ = main_of_body "eval (forall (u : Level) -> Type@{u}) : Type@5" in
   [%expect {| Error: ∀ (x1 : Level) → Type@{x1} is not of type Type@5 |}]
 
-(* A large size is a size only: it is not a term of [Level]. *)
-let%expect_test "a large size is not a level" =
+(* [<n>L] is a universe level only: it is not a term of [Level]. *)
+let%expect_test "the universe shorthand <n>L is not a level" =
   let _ = main_of_body "eval 1L : Level" in
   [%expect {|
     Error: on "1L" (at line 1, column 24 - line 1, column 26): This token is
@@ -704,6 +739,80 @@ let%expect_test "an unbraced omega offset is a syntax error" =
   [%expect {|
     Error: on "+" (at line 1, column 30 - line 1, column 31): Expected ":"
       followed by the type to check against, or the next command.
+    |}]
+
+(* Sorted levels: the literals up to ω², the types [Level@n] of the levels
+   below ω·(n+1), absorption at the sort, and the universes at ordinal
+   levels. *)
+let%expect_test "the ASCII spelling of an ordinal level literal" =
+  let _ = main_of_body "eval omega * 2 + 3 : Level@2" in
+  [%expect {| Evaluate ω·2+3 --> ω·2+3 : Level@2 |}]
+
+let%expect_test "an ordinal literal abbreviates its zero parts" =
+  let _ = main_of_body "eval maxl (ω + 0) (ω * 1) : Level@1" in
+  [%expect {| Evaluate maxl ω ω --> ω : Level@1 |}]
+
+let%expect_test "a literal at or above ω is not a finite level" =
+  let _ = main_of_body "eval ω : Level" in
+  [%expect {| Error: ω is not of type Level |}]
+
+let%expect_test "ω·2 is not a level of Level@1" =
+  let _ = main_of_body "eval ω·2 : Level@1" in
+  [%expect {| Error: ω·2 is not of type Level@1 |}]
+
+let%expect_test "every type of levels is in the lowest universe" =
+  let _ = main_of_body "eval Level@3 : Type@0" in
+  [%expect {| Evaluate Level@3 --> Level@3 : Type@0 |}]
+
+let%expect_test "a finite level is a level of every sort" =
+  let _ = main_of_body "eval (λ (u : Level) → u) : ∀ (u : Level) → Level@5" in
+  [%expect {|
+    Evaluate λ (x1 : Level) → x1 --> λ (x1 : Level) → x1
+      : ∀ (x1 : Level) → Level@5
+    |}]
+
+let%expect_test "a level of a larger sort is not a finite level" =
+  let _ = main_of_body "eval (λ (u : Level@1) → u) : ∀ (u : Level@1) → Level" in
+  [%expect {| Error: λ (x1 : Level@1) → x1 is not of type ∀ (x1 : Level@1) → Level |}]
+
+let%expect_test "ω absorbs a finite level variable" =
+  let _ = main_of_body "eval λ (u : Level) → maxl (succl u) ω" in
+  [%expect {|
+    Evaluate λ (x1 : Level) → maxl (succl x1) ω --> λ (x1 : Level) → ω
+      : ∀ (x1 : Level) → Level@1
+    |}]
+
+let%expect_test "ω does not absorb a level variable of a larger sort" =
+  let _ = main_of_body "eval λ (u : Level@1) → maxl ω u" in
+  [%expect {|
+    Evaluate λ (x1 : Level@1) → maxl ω x1 --> λ (x1 : Level@1) → maxl ω x1
+      : ∀ (x1 : Level@1) → Level@1
+    |}]
+
+let%expect_test "quantifying over the finite levels lands at ω" =
+  let _ = main_of_body "eval (∀ (u : Level) → Type@{u}) : Type@ω" in
+  [%expect {| Evaluate ∀ (x1 : Level) → Type@{x1} --> ∀ (x1 : Level) → Type@{x1} : Type@ω |}]
+
+let%expect_test "quantifying over Level@1 lands at ω·2" =
+  let _ = main_of_body "eval ∀ (u : Level@1) → Type@{u}" in
+  [%expect {|
+    Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
+      : Type@{ω·2}
+    |}]
+
+let%expect_test "quantifying over Level@1 does not land at ω" =
+  let _ = main_of_body "eval (∀ (u : Level@1) → Type@{u}) : Type@ω" in
+  [%expect {| Error: ∀ (x1 : Level@1) → Type@{x1} is not of type Type@ω |}]
+
+let%expect_test "a universe at an ordinal level, in the next one up" =
+  let _ = main_of_body "eval Type@{omega*3} : Type@{ω·3+1}" in
+  [%expect {| Evaluate Type@{ω·3} --> Type@{ω·3} : Type@{ω·3+1} |}]
+
+let%expect_test "Level@ needs a numeral" =
+  let _ = main_of_body "eval Level@u" in
+  [%expect {|
+    Error: on "u" (at line 1, column 30 - line 1, column 31): A numeral is
+      expected after "Level@": the sort of the type of levels.
     |}]
 
 (* A universe is not in itself. *)

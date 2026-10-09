@@ -22,7 +22,10 @@ take a level term `L` of `Γ`. The codomain is at the weakening of `L`:
 
 - **Why the codomain sits at the weakened level.** A level that mentions the
   bound variable cannot name a universe of `Γ`. So `forall (u : Level) -> Type@{u}`
-  stays in `Type@ω`.
+  is at a level above every `u`: `L := ω` (`𝕃ᵒ(1,0)`), since
+  `maxl (succl u) ω ≈ ω` for `u : Level` (`wf_exp_eq_maxl_absorb`) and
+  `ω[↑]ʷ = ω`.  It is in `Type@ω`, the universe at the level ω; quantifying
+  over `Level@1` gives `Type@{ω·2}`.
 - **Why the premise `Γ ⊢ L : Level` is there.** It is admissible by
   presupposition. But weakening and substitution (`Structural.v`) come before
   presupposition, and they need it to move `A` into a large universe and

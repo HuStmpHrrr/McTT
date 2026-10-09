@@ -110,13 +110,19 @@ The canonical form drops an atom whose sort is below the constant's tier
 (`la_keep`), and `lvl_canon_iff` holds over the assignments that put an atom
 of sort `s` below ω·(s+1) (`lvl_adm`).
 
-The surface syntax matches: `Type@n` (short for `Type@{nl}`), `Type@nl` and
-`Type@{t}` are small; `Type@ω`, `Type@omega`, their braced forms,
-`Type@{ω+n}` and the shorthand `Type@nL` are large (`nL` is a universe size
-only, never a term of `Level`).  Only a braced size takes a `+`.  The printer
-picks the shortest spelling: `Type@n`, `Type@{t}`, `Type@ω`, `Type@nL`.
-(`ω` is one of the Unicode spellings listed in `modules.md`, *Surface
-syntax*.)
+The surface syntax matches.  A level literal is `nl` (finite, `𝕃ᵒ (0, n)`)
+or `ω`, `ω + b`, `ω * a`, `ω * a + b` (`𝕃ᵒ (a, b)`; `·` is the Unicode
+spelling of `*`, `omega` the ASCII one of `ω`).  `Level@n` is `a_level n`
+and `Level` is `Level@0`.  Every universe of the surface is small:
+`Type@n` (short for `Type@{nl}`), `Type@nl` and `Type@{t}`, and `Type@ω`
+(`Type@omega`) and `Type@nL` (also braced), short for `Type@{ω}` and
+`Type@{ω+n}` (`nL` is a universe level only, never a term of `Level`).  The
+large tier `Typeω@i`, the universe ω²+i, has no surface syntax; the printer
+spells it `Type@{ω^2+i}`, which does not parse.  The printer picks the
+shortest spelling: `Type@n`, `Type@ω`, `Type@nL`, else `Type@{t}`; a literal
+prints as `nl` or as `ω·a+b` with `·a` dropped at `a = 1` and `+b` at
+`b = 0`.  (`ω` and `·` are among the Unicode spellings listed in
+`modules.md`, *Surface syntax*.)
 
 ## Traps
 

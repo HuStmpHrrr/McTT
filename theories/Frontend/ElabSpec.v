@@ -186,8 +186,8 @@ Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (
 Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_typ : forall S n, sel S (Cst.typ n) (Typeω@n)
 | sel_suniv : forall S o M, sel S o M -> sel S (Cst.suniv o) (Type⟨M⟩)
-| sel_level : forall S, sel S Cst.level Level
-| sel_llit : forall S n, sel S (Cst.llit n) (𝕃@n)
+| sel_level : forall S n, sel S (Cst.level n) (Level@n)
+| sel_llit : forall S o, sel S (Cst.llit o) (𝕃ᵒ o)
 | sel_succl : forall S o M, sel S o M -> sel S (Cst.succl o) (succl M)
 | sel_maxl : forall S o1 o2 M N, sel S o1 M -> sel S o2 N -> sel S (Cst.maxl o1 o2) (maxl M N)
 | sel_nat : forall S, sel S Cst.nat ℕ

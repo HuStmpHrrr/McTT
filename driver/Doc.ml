@@ -223,7 +223,7 @@ let unit_path st fq =
 
 let rec term st env (o : C.obj) : unit =
   match o with
-  | C.Coq_typ _ | C.Coq_level | C.Coq_llit _
+  | C.Coq_typ _ | C.Coq_level _ | C.Coq_llit _
   | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
   | C.Coq_suniv o | C.Coq_succl o -> term st env o
   | C.Coq_maxl (o1, o2) -> term st env o1; term st env o2
@@ -616,12 +616,12 @@ let href (from : string list) (s : site) =
 let is_keyword = function
   | P.VAR _ | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ | P.EOF _ -> false
   | P.ARROW _ | P.AT _ | P.BAR _ | P.COLON _ | P.COLONCOLON _ | P.COMMA _ | P.DARROW _
-  | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.PLUS _
+  | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.PLUS _ | P.STAR _
   | P.DOT _ | P.EQ _ | P.SEMI _ -> false
   | _ -> true
 
-(* The literals: numerals, level literals [3l], large sizes [2L], and [ω]
-   (or [omega]), the size of the first large universe. *)
+(* The literals: numerals, level literals [3l], the universe sizes [2L]
+   (for [ω+2]), and [ω] (or [omega]), the first infinite level. *)
 let is_num = function
   | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ -> true
   | _ -> false

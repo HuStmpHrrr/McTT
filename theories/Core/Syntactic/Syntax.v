@@ -78,14 +78,15 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     alias [:= E].  The body of a local module is the same list of commands as
     that of a global one. *)
 Inductive obj : Set :=
-(** [Typeω@i], a large universe *)
+(** [Typeω@i], a large universe, the universe [ω²+i].  It has no surface
+    syntax: the printer spells it [Type@{ω^2+i}]. *)
 | typ : nat -> obj
 (** [Type@{M}], the small universe at the level [M] *)
 | suniv : obj -> obj
-(** [Level], the type of universe levels *)
-| level : obj
-(** A level literal, written [<n>l] *)
-| llit : nat -> obj
+(** [Level@n], the type of the levels below [ω·(n+1)]; [Level] is [Level@0] *)
+| level : nat -> obj
+(** A level literal [ω·a + b], written [<b>l] when [a] is [0] *)
+| llit : o2 -> obj
 (** [succl M] *)
 | succl : obj -> obj
 (** [maxl M N] *)
@@ -171,7 +172,7 @@ Section cst_mut_ind.
   Hypotheses
     (case_typ : forall n, Po (typ n))
     (case_suniv : forall o, Po o -> Po (suniv o))
-    (case_level : Po level)
+    (case_level : forall n, Po (level n))
     (case_llit : forall n, Po (llit n))
     (case_succl : forall o, Po o -> Po (succl o))
     (case_maxl : forall o1 o2, Po o1 -> Po o2 -> Po (maxl o1 o2))
@@ -206,7 +207,7 @@ Section cst_mut_ind.
     match o with
     | typ n => case_typ n
     | suniv o => case_suniv o (obj_mut o)
-    | level => case_level
+    | level n => case_level n
     | llit n => case_llit n
     | succl o => case_succl o (obj_mut o)
     | maxl o1 o2 => case_maxl o1 o2 (obj_mut o1) (obj_mut o2)

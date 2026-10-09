@@ -5,8 +5,8 @@
    computes to.  [Type@{t}] is the small universe at the level [t], so a
    level-polymorphic definition is an ordinary function of a [Level], and a
    level-polymorphic module an ordinary parametrized module.  Above every
-   small universe sit the large ones, [Type@ω] and [Type@{ω+n}], with the
-   shorthand [Type@nL]. *)
+   universe at a finite level sit those at [ω] and [ω+n], [Type@ω] and
+   [Type@{ω+n}], with the shorthand [Type@nL]. *)
 module Universes where
 
 (* The identity, polymorphic in the level of its type. *)
@@ -69,16 +69,16 @@ def LetEndo (u : Level) (A : Type@{u}) : Type@{u} ≔ let e ≔ ∀ (a : A) → 
 
 eval λ (u : Level) (A : Type@{u}) → ∀ (a : A) → A
 
-(* A codomain whose level mentions the bound variable has no small universe
-   to be in: the type of all small universes is large. *)
+(* A codomain whose level mentions the bound variable has no finite level
+   to be in: the type of all universes at finite levels is at [ω]. *)
 eval ∀ (u : Level) → Type@{u}
 
-(* Both tiers: the large universe holds every small one. *)
+(* The universe at [ω] holds every universe at a finite level. *)
 def small (u : Level) : Type@ω ≔ Type@{u} end
 
-(* Every spelling of a universe size.  Small: a bare numeral, the level
-   literal [<n>l], or any level term in braces.  Large: [ω] or [ω], bare
-   or braced, [ω+n] braced, and the shorthand [<n>L]. *)
+(* Every spelling of a universe level.  Finite: a bare numeral, the level
+   literal [<n>l], or any level term in braces.  At [ω] and above: [ω] or
+   [omega], bare or braced, [ω+n] braced, and the shorthand [<n>L]. *)
 eval Type@2
 
 eval Type@2l

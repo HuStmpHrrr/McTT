@@ -157,8 +157,8 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   | Cst.suniv o =>
       let* M := elab S o in
       eok (Type⟨M⟩)
-  | Cst.level => eok Level
-  | Cst.llit n => eok (𝕃@n)
+  | Cst.level n => eok (Level@n)
+  | Cst.llit o => eok (𝕃ᵒ o)
   | Cst.succl o =>
       let* M := elab S o in
       eok (succl M)

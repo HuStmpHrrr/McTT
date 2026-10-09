@@ -49,6 +49,7 @@
     | LBRACE _ -> "{"
     | RBRACE _ -> "}"
     | PLUS _ -> "+"
+    | STAR _ -> "\xc2\xb7"
     | ZERO _ -> "zero"
     | SUCC _ -> "succ"
     | REC _ -> "rec"
@@ -108,6 +109,7 @@
     | LBRACE r
     | RBRACE r
     | PLUS r
+    | STAR r
     | ZERO r
     | SUCC r
     | REC r
@@ -176,6 +178,7 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
    the same token, as its UTF-8 bytes:
      →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
      ℕ  Nat     ⊤  True    ⊥  False   ⋆  true       ω  omega
+     ·  *
    Identifiers are ASCII letters only, so [λx] is [λ] then [x], and no
    symbol needs a space around it. *)
 
@@ -196,6 +199,8 @@ rule read =
   | ')' { RPAREN (get_range lexbuf) }
   | '{' { LBRACE (get_range lexbuf) }
   | '+' { PLUS (get_range lexbuf) }
+  | '*' { STAR (get_range lexbuf) }
+  | "\xc2\xb7" { STAR (wide lexbuf 2) }
   | '}' { RBRACE (get_range lexbuf) }
   | "zero" { ZERO (get_range lexbuf) }
   | "succ" { SUCC (get_range lexbuf) }
