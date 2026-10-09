@@ -189,6 +189,8 @@ atomic term = 'Type', '@' , nat
             | 'Type' , '@' , '{' , ( 'ω^2' | 'omega^2' ) , [ '+' , nat ] , '}'
             (* the type of the levels below ω·(nat+1); 'Level' is 'Level@0' *)
             | 'Level' , [ '@' , nat ]
+            (* the same, braced *)
+            | 'Level' , '@' , '{' , nat , '}'
             (* a finite universe level literal *)
             | nat , 'l'
             (* the universe level literal ω+nat, the same level as ω + nat *)

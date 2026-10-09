@@ -234,10 +234,11 @@ let atomic_obj :=
   | TYPE; "@"; "{"; OMEGA2; "}"; { Cst.typ 0 }
   | TYPE; "@"; "{"; OMEGA2; "+"; i = INT; "}"; { Cst.typ (snd i) }
 
-  (* [Level@n] is the type of the levels below [ω·(n+1)], and [Level] is
-     [Level@0], the finite levels. *)
+  (* [Level@n], also written [Level@{n}], is the type of the levels below
+     [ω·(n+1)], and [Level] is [Level@0], the finite levels. *)
   | LEVEL; { Cst.level 0 }
   | LEVEL; "@"; n = INT; { Cst.level (snd n) }
+  | LEVEL; "@"; "{"; n = INT; "}"; { Cst.level (snd n) }
   | n = LLIT; { Cst.llit (0, snd n) }
   (* [<n>L] is the level [ω+n], the same literal as [ω + n]. *)
   | n = LLITL; { Cst.llit (1, snd n) }

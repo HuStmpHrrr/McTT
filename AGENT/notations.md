@@ -113,7 +113,8 @@ of sort `s` below ω·(s+1) (`lvl_adm`).
 The surface syntax matches.  A level literal is `nl` (finite, `𝕃ᵒ (0, n)`),
 `nL` (`𝕃ᵒ (1, n)`, the same literal as `ω + n`), or `ω`, `ω + b`, `ω * a`,
 `ω * a + b` (`𝕃ᵒ (a, b)`; `·` is the Unicode spelling of `*`, `omega` the
-ASCII one of `ω`).  `Level@n` is `a_level n` and `Level` is `Level@0`.  The
+ASCII one of `ω`).  `Level@n`, also `Level@{n}`, is `a_level n`, and
+`Level` is `Level@0`; the printer writes `Level` and `Level@n`.  The
 small universes are `Type@n` (short for `Type@{nl}`), `Type@nl` and
 `Type@{t}`, and `Type@ω` (`Type@omega`) and `Type@nL`, short for `Type@{ω}`
 and `Type@{ω+n}`.  The large tier `Typeω@i` (`Cst.typ i`), the universe

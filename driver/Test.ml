@@ -886,6 +886,30 @@ let%expect_test "a universe at an ordinal level, in the next one up" =
   let _ = main_of_body "eval Type@{omega*3} : Type@{ω·3+1}" in
   [%expect {| Evaluate Type@{ω·3} --> Type@{ω·3} : Type@{ω·3+1} |}]
 
+(* [Level@{n}] is [Level@n], and [Level] is [Level@{0}]; the type prints
+   at its shortest. *)
+let%expect_test "the braced type of levels" =
+  let _ = main_of_body "eval 3l : Level@{1}" in
+  [%expect {| Evaluate 3l --> 3l : Level@1 |}]
+
+let%expect_test "Level is Level@{0}" =
+  let _ = main_of_body "eval (fun (u : Level@{0}) -> u) : forall (u : Level) -> Level@0" in
+  [%expect {| Evaluate λ (x1 : Level) → x1 --> λ (x1 : Level) → x1 : ∀ (x1 : Level) → Level |}]
+
+let%expect_test "the braced type of levels needs a numeral" =
+  let _ = main_of_body "eval Level@{u}" in
+  [%expect {|
+    Error: on "u" (at line 1, column 31 - line 1, column 32): A numeral is
+      expected after "Level@{": the sort of the type of levels.
+    |}]
+
+let%expect_test "the braced type of levels needs its closing brace" =
+  let _ = main_of_body "eval Level@{1 Nat}" in
+  [%expect {|
+    Error: on "ℕ" (at line 1, column 33 - line 1, column 36): A closing "}" is
+      expected after the sort of "Level@{n".
+    |}]
+
 let%expect_test "Level@ needs a numeral" =
   let _ = main_of_body "eval Level@u" in
   [%expect {|
