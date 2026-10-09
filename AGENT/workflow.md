@@ -138,8 +138,10 @@ be.
 
 Almost all checking time goes to normalizations at the initial environment
 of the context. The checker therefore carries that environment along
-(`tenv`, `nbe_ty_env_impl` in `Extraction/TypeCheck.v`), and never rebuilds
-it per normalization.
+(`tenv` in `Extraction/TypeCheckBase.v`, `nbe_ty_env_impl` in
+`Extraction/NbE.v`), and never rebuilds it per normalization.  The
+refinements of the checker and of evaluation are in
+[`refinement.md`](refinement.md).
 
 ## rocq MCP server
 

@@ -117,6 +117,8 @@
 ./Entrypoint.v
 ./Extraction/Command.v
 ./Extraction/Evaluation.v
+./Extraction/FastEval.v
+./Extraction/Simulation.v
 ./Extraction/GlobalCheck.v
 ./Extraction/MemberType.v
 ./Extraction/Privacy.v
@@ -132,5 +134,8 @@
 ./Frontend/Elaborator.v
 ./Frontend/Parser.v
 ./LibTactics.v
+./Reference/Evaluation.v
+./Reference/NbE.v
+./Reference/Readback.v
 ./Reference/Refinement.v
 ./Reference/TypeCheck.v

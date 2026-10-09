@@ -8,7 +8,9 @@ From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Core.Semantic Require Import Evaluation.
+From Mctt.Extraction Require Import FastEval Simulation NbE PseudoMonadic Subtyping MemberType.
+From Mctt.Extraction Require Import Evaluation.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * What the Two Checkers Share
@@ -213,10 +215,11 @@ Section type_check.
   (** ** The Initial Environment the Checker Carries
 
       Every normalization the checker does is at the initial environment of
-      its context.  The checker computes that environment once, where it
-      enters a context, and extends it entry by entry under binders, rather
-      than once per normalization ([nbe_ty_env_impl]). *)
-  Definition tenv G := { p | initial_env gc_deps gc_stack G p }.
+      its context, or rather at an environment related to it entry by entry
+      ([fenv]), which the fast evaluation computes.  The checker computes it
+      once, where it enters a context, and extends it entry by entry under
+      binders, rather than once per normalization ([nbe_ty_env_impl]). *)
+  Definition tenv G := fenv gc_deps gc_stack G.
 
   Lemma tenv_order_of_wf : forall G, ⊢ G -> initial_env_order gc_deps gc_stack G.
   Proof.
@@ -225,22 +228,67 @@ Section type_check.
     inversion HW; subst; eauto using initial_env_order_sound.
   Qed.
 
-  Lemma tenv_eval_order_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p ->
-      eval_exp_order gc_deps gc_stack A p.
+  (** The reference value of the type or definition an extension adds. *)
+  Lemma tenv_ref_ass : forall G A p, ⊢ G ▹ A -> initial_env gc_deps gc_stack G p -> exists a, ⟦ A ⟧ p ↘ a.
   Proof.
     intros * HGA Hp; inversion HGA as [| ? ? ? i ? HA | |]; subst.
     destruct (soundness_ty HA) as [W [HW _]]; inversion HW; subst.
-    functional_initial_env_rewrite_clear.
-    eauto using eval_exp_order_sound.
+    functional_initial_env_rewrite_clear; eauto.
   Qed.
 
-  Lemma tenv_eval_order_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p ->
-      eval_exp_order gc_deps gc_stack M p.
+  Lemma tenv_ref_def : forall G A M p, ⊢ G ▸ A ≔ M -> initial_env gc_deps gc_stack G p -> exists m, ⟦ M ⟧ p ↘ m.
   Proof.
     intros * HGA Hp; inversion HGA as [| | ? ? ? i ? ? HA HM |]; subst.
     destruct (soundness HM) as [W [HW _]]; inversion HW; subst.
-    functional_initial_env_rewrite_clear.
-    eauto using eval_exp_order_sound.
+    functional_initial_env_rewrite_clear; eauto.
+  Qed.
+
+  Lemma tenv_eval_order_ass : forall G A p', ⊢ G ▹ A ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      feval_exp_order gc_deps gc_stack A p'.
+  Proof.
+    intros * HGA (p & Hp & Hag); destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
+    eapply (feval_of_ref _ _ _ _ _ _ Ha), agree_all, Hag.
+  Qed.
+
+  Lemma tenv_eval_order_def : forall G A M p', ⊢ G ▸ A ≔ M ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      feval_exp_order gc_deps gc_stack M p'.
+  Proof.
+    intros * HGA (p & Hp & Hag); destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    eapply (feval_of_ref _ _ _ _ _ _ Hm), agree_all, Hag.
+  Qed.
+
+  Lemma tenv_ass_sim : forall G A p' a', ⊢ G ▹ A ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      ⟦ A ⟧ᶠ gc_deps ⍮ gc_stack ⍮ p' ↘ a' ->
+      exists p, initial_env gc_deps gc_stack (G ▹ A) p /\ env_agree (fun _ => True) p (p' ↦ ⇑! a' (List.length G)).
+  Proof.
+    intros * HGA (p & Hp & Hag) Ha'; destruct (tenv_ref_ass _ _ _ HGA Hp) as [a Ha].
+    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Ha (agree_all _ _ _ Hag)) _ Ha').
+    eexists; split; [ econstructor; eassumption |].
+    eapply env_agree_cons; [ exact Hag | repeat constructor; assumption | intros; exact I ].
+  Qed.
+
+  Lemma tenv_def_sim : forall G A M p' m', ⊢ G ▸ A ≔ M ->
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      ⟦ M ⟧ᶠ gc_deps ⍮ gc_stack ⍮ p' ↘ m' ->
+      exists p, initial_env gc_deps gc_stack (G ▸ A ≔ M) p /\ env_agree (fun _ => True) p (p' ↦ m').
+  Proof.
+    intros * HGA (p & Hp & Hag) Hm'; destruct (tenv_ref_def _ _ _ _ HGA Hp) as [m Hm].
+    pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hm (agree_all _ _ _ Hag)) _ Hm').
+    eexists; split; [ econstructor; eassumption |].
+    eapply env_agree_cons; [ exact Hag | constructor; assumption | intros; exact I ].
+  Qed.
+
+  Lemma tenv_mod_sim : forall G U p',
+      (exists p, initial_env gc_deps gc_stack G p /\ env_agree (fun _ => True) p p') ->
+      exists p, initial_env gc_deps gc_stack (G ▹ₘ U) p /\ env_agree (fun _ => True) p (p' ↦ᵐ dm_local p' U nil).
+  Proof.
+    intros * (p & Hp & Hag).
+    eexists; split; [ econstructor; eassumption |].
+    eapply env_agree_cons; [ exact Hag | | intros; exact I ].
+    apply des_mod, dms_local; [ apply agree_all; exact Hag | constructor ].
   Qed.
 
   Lemma tenv_ctx_of_typ : forall G X, (exists j, G ⊢ X : Typeω@j) -> ⊢ G.
@@ -254,17 +302,17 @@ Section type_check.
       context: one entry more, by its rule of [initial_env]. *)
   Definition tenv_ass G (P : tenv G) A (HGA : ⊢ G ▹ A) : tenv (G ▹ A) :=
     let (p, Hp) := P in
-    let (a, Ha) := eval_exp_impl gc_deps gc_stack A p (tenv_eval_order_ass G A p HGA Hp) in
-    exist _ (p ↦ ⇑! a (List.length G)) (initial_env_cons _ _ _ _ _ _ Hp Ha).
+    let (a, Ha) := feval_exp_impl gc_deps gc_stack A p (tenv_eval_order_ass G A p HGA Hp) in
+    exist _ (p ↦ ⇑! a (List.length G)) (tenv_ass_sim _ _ _ _ HGA Hp Ha).
 
   Definition tenv_def G (P : tenv G) A M (HGA : ⊢ G ▸ A ≔ M) : tenv (G ▸ A ≔ M) :=
     let (p, Hp) := P in
-    let (m, Hm) := eval_exp_impl gc_deps gc_stack M p (tenv_eval_order_def G A M p HGA Hp) in
-    exist _ (p ↦ m) (initial_env_cons_def _ _ _ _ _ _ _ Hp Hm).
+    let (m, Hm) := feval_exp_impl gc_deps gc_stack M p (tenv_eval_order_def G A M p HGA Hp) in
+    exist _ (p ↦ m) (tenv_def_sim _ _ _ _ _ HGA Hp Hm).
 
   Definition tenv_mod G (P : tenv G) U : tenv (G ▹ₘ U) :=
     let (p, Hp) := P in
-    exist _ (p ↦ᵐ dm_local p U nil) (initial_env_cons_mod _ _ _ _ _ Hp).
+    exist _ (p ↦ᵐ dm_local p U nil) (tenv_mod_sim _ U _ Hp).
 
   (** A member of a chain from a unit, read off the global context: the type
       of the global, if it is one. *)

@@ -34,7 +34,7 @@ invariants you must preserve when editing one, are in
 | [`elab-simplify.md`](elab-simplify.md) | The flat-scope elaborator: what moved where, examples, and the core options with their costs. |
 | [`universes.md`](universes.md) | The small Π at open levels: the rule, the algorithm's normalised join, semantic strengthening of normal forms, and why NbE invents no variables. |
 | [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
-| [`refinement.md`](refinement.md) | The extracted checker and its reference implementation: what was refined, why the specifications are unchanged, the invariants of the proofs. |
+| [`refinement.md`](refinement.md) | The extracted checker and normalizer and their reference implementations: what was refined, why the specifications are unchanged, the simulation of the fast evaluation. |
 | [`workflow.md`](workflow.md) | Build, test, and verification commands; environment gotchas. |
 | [`../doc/tactics.md`](../doc/tactics.md) | Reference for all 224 `Ltac`/`Tactic Notation` definitions, grouped by layer, with `file:line` for each. |
 | [`../doc/alignment.md`](../doc/alignment.md) | Where the mechanization diverges from `paper.pdf` and `main.pdf`, and answers to the papers' open questions. The one place that cites them by number. |

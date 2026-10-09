@@ -634,10 +634,6 @@ Section type_check.
   Obligation 199. (* False *) mo_10. Qed.
   Obligation 200. (* G ⊢aᵐ me_lit U *) ob_check. Qed.
 
-
-  Extraction Inline type_check_in_functional type_infer_in_functional ext_check_functional
-    unit_check_functional modexp_check_functional.
-
   (** The checker from scratch: the initial environment of the context is
       computed once, at the start. *)
 End type_check.

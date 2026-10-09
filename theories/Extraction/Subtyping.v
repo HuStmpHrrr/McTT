@@ -149,7 +149,7 @@ Qed.
 (** [subtyping_impl] at an initial environment of [G] computed beforehand,
     which both normalizations share. *)
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations subtyping_env_impl {GC : GCtx} G (P : { p | initial_env gc_deps gc_stack G p }) A B
+Equations subtyping_env_impl {GC : GCtx} G (P : fenv gc_deps gc_stack G) A B
   (H : subtyping_order G A B) : { G ⊢a A ⊆ B } + { ~ G ⊢a A ⊆ B } :=
 | G, P, A, B, H =>
     let (a, Ha) := nbe_ty_env_impl gc_deps gc_stack G P A _ in
