@@ -34,9 +34,9 @@ eval factorial 5
 
 eval factorial 0
 
-(* A proof of a closed equation normalizes to [⋆], of type [⊤].  The
-   numbers stay at most about 20: checking [Eq n n] takes time exponential
-   in [n] (about 6s at [n = 27]). *)
+(* A proof of a closed equation normalizes to [⋆], of type [⊤].  The numbers
+   stay at most about 20: checking [Eq n n] takes time exponential in [n] (about
+   6s at [n = 27]). *)
 eval powZero 7
 
 eval powOne 9

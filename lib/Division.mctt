@@ -5,12 +5,14 @@
 module Division where
 
 import Prelude›Arith›Div use (div; mod; divSucc; modSucc)
-open Prelude›Arith›Div.Zero use (divZeroDivisor; modZeroDivisor; divZero; modZero)
+open Prelude›Arith›Div.Zero
+  use (divZeroDivisor; modZeroDivisor; divZero; modZero)
 open Prelude›Arith›Div.Bounds use (divModSpec; modLt; modSmall; divSmall)
 open Prelude›Arith›Div.Periodic use (modSelf; modPlusDivisor)
 open Prelude›Arith›Div.One use (modOne; divOne)
 import Prelude›Arith›Divides use (Divides)
-open Prelude›Arith›Divides.Basic use (zeroDivides; dividesRefl; dividesZero; oneDivides)
+open Prelude›Arith›Divides.Basic
+  use (zeroDivides; dividesRefl; dividesZero; oneDivides)
 open Prelude›Arith›Divides.Closure use (dividesPlus; dividesMult)
 open Prelude›Arith›Divides.Two use (evenDividesTwo; dividesTwoEven)
 

@@ -64,7 +64,9 @@ open Scheme use (shift; term; hornerFrom)
 def horner (c : Coeffs) (n : ℕ) : ℕ ≔ hornerFrom n c end
 
 (* The sum of the monomials, each with its own power of [x]. *)
-def naive (c : Coeffs) (n : ℕ) : ℕ ≔ sumTo (λ (i : ℕ) → mult (c i) (pow x i)) n end
+def naive (c : Coeffs) (n : ℕ) : ℕ ≔
+  sumTo (λ (i : ℕ) → mult (c i) (pow x i)) n
+end
 
 (* Horner's scheme computes the sum of the monomials.  In the step, the
    factor [x] goes into the sum ([sumToScale]) and into each power
@@ -105,16 +107,18 @@ end
 
 (* At the point 1, a polynomial is the sum of its coefficients.  The proof
    instantiates [At] locally, and uses [onePow] in every monomial. *)
-theorem hornerAtOne : ∀ (c : Coeffs) (n : ℕ) → Eq (At.horner 1 c n) (sumTo c n) ≔
+theorem hornerAtOne : ∀ (c : Coeffs) (n : ℕ) →
+    Eq (At.horner 1 c n) (sumTo c n) ≔
   λ (c : Coeffs) (n : ℕ) →
-    let module One ≔ At 1 in
-      trans (One.horner c n) (One.naive c n) (sumTo c n) (One.hornerNaive c n)
-        (sumToExt (λ (i : ℕ) → mult (c i) (pow 1 i)) c
-           (λ (i : ℕ) →
-              trans (mult (c i) (pow 1 i)) (mult (c i) 1) (c i)
-                (cong (λ (y : ℕ) → mult (c i) y) (pow 1 i) 1 (onePow i))
-                (multOne (c i)))
-           n)
+    let module One ≔ At 1
+    in trans (One.horner c n) (One.naive c n) (sumTo c n)
+         (One.hornerNaive c n)
+         (sumToExt (λ (i : ℕ) → mult (c i) (pow 1 i)) c
+            (λ (i : ℕ) →
+               trans (mult (c i) (pow 1 i)) (mult (c i) 1) (c i)
+                 (cong (λ (y : ℕ) → mult (c i) y) (pow 1 i) 1 (onePow i))
+                 (multOne (c i)))
+            n)
     end
 end
 
@@ -136,7 +140,8 @@ eval let module Table (c : Coeffs) where
        def peak (k : ℕ) : ℕ ≔
          rec k return y . ℕ | zero ⇒ 0 | succ p, r ⇒ max (value p) r end
        end
-     end in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
+     end
+     in plus (Table.total (cubic 1 1 0 0) 4) (Table.peak (cubic 0 0 1 0) 5)
      end
 
 (* Closed instances of the theorems normalize to [⋆]. *)

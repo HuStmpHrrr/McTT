@@ -1,9 +1,8 @@
 (* A client of the level-polymorphic Prelude: [Prelude›Universe›Levels],
-   [Prelude›Universe›Formers], [Prelude›Data›Church] and its laws, and
-   the level parameters of [Prelude›Logic], [Prelude›Data›Vec],
-   [Prelude›Function›Iter] and [Prelude›Arith›Induction].  Each section
-   uses a library at a level above [0l], where its old [Type@0] version
-   could not go. *)
+   [Prelude›Universe›Formers], [Prelude›Data›Church] and its laws, and the level
+   parameters of [Prelude›Logic], [Prelude›Data›Vec], [Prelude›Function›Iter]
+   and [Prelude›Arith›Induction].  Each section uses a library at a level above
+   [0l], where its old [Type@0] version could not go. *)
 module Universes where
 
 import Prelude›Logic
@@ -19,7 +18,8 @@ import Prelude›Data›Vec as V
 import Prelude›Universe›Levels use (LEq; LLe; ofNat; plusl)
 open Prelude›Universe›Levels.Equality use (lrefl; lsym; ltrans; lcong)
 open Prelude›Universe›Levels.Embedding use (ofNatMax)
-import Prelude›Universe›Formers use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
+import Prelude›Universe›Formers
+  use (Lift; up; Arrow; Pi; Endo; Fun; Sigma; pair; first; Universe; universeIn)
 import Prelude›Data›Church as C
 import Prelude›Data›Church›Properties
 open Prelude›Data›Church›Properties.Arithmetic use (toNatPlus; toNatPow)
@@ -82,7 +82,9 @@ eval Cj.andFst 1l Type@0 Type@0 natAndTrue
 eval Cj.andSnd 1l Type@0 Type@0 (Cj.andSwap 1l Type@0 Type@0 natAndTrue)
 
 (* A pointed type: a type and one of its elements, as a dependent pair. *)
-def pointedNat : Sigma 1l Type@0 (λ (A : Type@0) → A) ≔ pair 1l Type@0 (λ (A : Type@0) → A) ℕ 7 end
+def pointedNat : Sigma 1l Type@0 (λ (A : Type@0) → A) ≔
+  pair 1l Type@0 (λ (A : Type@0) → A) ℕ 7
+end
 
 eval first 1l Type@0 (λ (A : Type@0) → A) pointedNat
 
@@ -107,7 +109,9 @@ eval Ex.existsElim 1l Sums ℕ twoThree
 
 module Types ≔ V 1l Type@0
 
-def threeTypes : Types.Vec 3 ≔ Types.cons 2 ℕ (Types.cons 1 ⊤ (Types.cons 0 ⊥ Types.nil)) end
+def threeTypes : Types.Vec 3 ≔
+  Types.cons 2 ℕ (Types.cons 1 ⊤ (Types.cons 0 ⊥ Types.nil))
+end
 
 eval Types.nth 3 threeTypes 1 ⋆
 
@@ -130,9 +134,11 @@ eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 0))
 eval C.boolToNat 0l (C.isZero 0l (C.fromNat 1l 3))
 
 (* A Church list of types, at [1l]. *)
-eval C.length 1l Type@0 (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 ⊤ (C.nil 1l Type@0)))
+eval C.length 1l Type@0
+       (C.cons 1l Type@0 ℕ (C.cons 1l Type@0 ⊤ (C.nil 1l Type@0)))
 
-eval C.sum 0l (C.append 0l ℕ (C.replicate 0l ℕ 3 4) (C.cons 0l ℕ 5 (C.nil 0l ℕ)))
+eval C.sum 0l
+       (C.append 0l ℕ (C.replicate 0l ℕ 3 4) (C.cons 0l ℕ 5 (C.nil 0l ℕ)))
 
 (* The laws hold at every level; here closed instances at [0l] and [3l]. *)
 eval toNatPlus 0l 2 3

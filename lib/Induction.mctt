@@ -1,6 +1,6 @@
-(* A client of [Prelude›Arith›Induction] and [Prelude›Arith›Decide]:
-   halving by strong and by two-step induction, decisions eliminated into
-   [ℕ] to show which branch they compute, and the equality test [eqb]. *)
+(* A client of [Prelude›Arith›Induction] and [Prelude›Arith›Decide]: halving by
+   strong and by two-step induction, decisions eliminated into [ℕ] to show which
+   branch they compute, and the equality test [eqb]. *)
 module Induction where
 
 import Prelude›Logic use (Not)

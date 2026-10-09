@@ -1,8 +1,7 @@
 (* A client of [Prelude›Data›Vec] and [Prelude›Data›Vec›Properties]: small
    vectors of numbers are built, mapped, zipped, appended, split, reversed,
-   folded, read and summed, and
-   closed instances of the laws normalize to [⋆].  Index bounds on closed
-   numbers compute to [⊤], so [⋆] proves them. *)
+   folded, read and summed, and closed instances of the laws normalize to [⋆].
+   Index bounds on closed numbers compute to [⊤], so [⋆] proves them. *)
 module Vectors where
 
 import Prelude›Arith›Plus use (plus)
@@ -10,9 +9,14 @@ import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Order use (Lt)
 import Prelude›Data›Vec as V
 import Prelude›Data›Vec›Properties use (sumVec)
-open Prelude›Data›Vec›Properties.Nth use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate; nthZipWith; lastSnoc; nthReverse)
-open Prelude›Data›Vec›Properties.Sums use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus; foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
-open Prelude›Data›Vec›Properties.Slices use (takeAppend; dropAppend; appendTakeDrop)
+open Prelude›Data›Vec›Properties.Nth
+  use (nthMap; nthReplicate; nthAppendLeft; nthAppendRight; nthTabulate;
+       nthZipWith; lastSnoc; nthReverse)
+open Prelude›Data›Vec›Properties.Sums
+  use (sumReplicate; sumAppend; sumMapPlus; sumMapScale; sumZipWithPlus;
+       foldlPlus; sumSnoc; sumInitLast; sumReverse; sumTabulate)
+open Prelude›Data›Vec›Properties.Slices
+  use (takeAppend; dropAppend; appendTakeDrop)
 open Prelude›Data›Vec›Properties.Tests use (allbSound; allbComplete; anybSound)
 
 (* Vectors of numbers. *)
@@ -136,13 +140,14 @@ eval sumTabulate square 4
 (* [allbSound] gives, at index 2, a proof of [Lt 0 3], which is [⋆]. *)
 eval allbSound 0l ℕ (λ (x : ℕ) → x) 5 oneToFive ⋆ 2 ⋆
 
-(* Every element of [replicate 4 3] is 3, so [Lt 0 3], that is [⊤], holds
-   at every index. *)
+(* Every element of [replicate 4 3] is 3, so [Lt 0 3], that is [⊤], holds at
+   every index. *)
 eval allbComplete 0l ℕ (λ (x : ℕ) → x) 4 (NV.replicate 4 3)
        (λ (i : ℕ) (h : Lt i 4) → ⋆)
 
 (* [anybSound] is eliminated into [ℕ] to recover the index it found. *)
 eval anybSound 0l ℕ (λ (x : ℕ) → x) 3 (NV.snoc 2 (NV.replicate 2 0) 9) ⋆ ℕ
-       (λ (i : ℕ) (h : Lt i 3) (q : Lt 0 (NV.snoc 2 (NV.replicate 2 0) 9 i h)) → i)
+       (λ (i : ℕ) (h : Lt i 3)
+          (q : Lt 0 (NV.snoc 2 (NV.replicate 2 0) 9 i h)) → i)
 
 end

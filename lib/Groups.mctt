@@ -5,7 +5,9 @@
    [⋆]. *)
 module Groups where
 
-import Prelude›Algebra›Integers use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative; Additive; AdditiveComm)
+import Prelude›Algebra›Integers
+  use (Int; pair; Same; ofNat; add; negate; minus; magnitude; negative;
+       Additive; AdditiveComm)
 open Prelude›Algebra›Integers.Setoid use (sameSym; sameTrans)
 open Prelude›Algebra›Integers.Addition use (zeroAdd; negateRight)
 
@@ -48,17 +50,20 @@ theorem solve : ∀ (a : Int) (b : Int) (x : Int) (h : Same (add a x) b) →
           (sameTrans (add a x) b (add a (add (negate a) b)) h
              (sameSym (add a (add (negate a) b)) b back))
       end
-    end in Proof.cancel
+    end
+    in Proof.cancel
     end
 end
 
-(* [-(a - b)] is [b - a]: the inverse of a sum is the sum of the inverses
-   in the other order, and [-(-b)] is [b]. *)
-theorem negateMinus : ∀ (a : Int) (b : Int) → Same (negate (minus a b)) (minus b a) ≔
+(* [-(a - b)] is [b - a]: the inverse of a sum is the sum of the inverses in the
+   other order, and [-(-b)] is [b]. *)
+theorem negateMinus : ∀ (a : Int) (b : Int) →
+    Same (negate (minus a b)) (minus b a) ≔
   λ (a : Int) (b : Int) →
     let nb ≔ negate b;
         na ≔ negate a;
-        swap : Same (negate (add a nb)) (add (negate nb) na) ≔ Additive.Laws.invOp a nb;
+        swap : Same (negate (add a nb)) (add (negate nb) na) ≔
+          Additive.Laws.invOp a nb;
         twice : Same (add (negate nb) na) (add b na) ≔
           Additive.Base.Cong.congLeft (negate nb) b na (Additive.Laws.invInv b)
     in sameTrans (negate (add a nb)) (add (negate nb) na) (add b na) swap twice
@@ -75,7 +80,8 @@ theorem multipleNegate : ∀ (x : Int) (n : ℕ) →
 end
 
 theorem multipleAdd : ∀ (x : Int) (y : Int) (n : ℕ) →
-    Same (Additive.Base.pow (add x y) n) (add (Additive.Base.pow x n) (Additive.Base.pow y n)) ≔
+    Same (Additive.Base.pow (add x y) n)
+      (add (Additive.Base.pow x n) (Additive.Base.pow y n)) ≔
   λ (x : Int) (y : Int) (n : ℕ) → AdditiveComm.powOp x y n
 end
 

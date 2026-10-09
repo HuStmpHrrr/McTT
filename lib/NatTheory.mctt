@@ -1,5 +1,6 @@
-(* A client of the [Prelude] library: [Prelude›Arith›Equality], [Prelude›Arith›Plus] and
-   [Prelude›Function›Iter] are separate units, loaded once each. *)
+(* A client of the [Prelude] library: [Prelude›Arith›Equality],
+   [Prelude›Arith›Plus] and [Prelude›Function›Iter] are separate units,
+   loaded once each. *)
 module NatTheory where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; zeroNeSucc)
@@ -7,7 +8,8 @@ import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Algebra use (plusComm)
 import Prelude›Function›Iter as Iter
 
-(* [Prelude›Function›Iter] instantiated with [succ]: iterating it is addition. *)
+(* [Prelude›Function›Iter] instantiated with [succ]: iterating it is
+   addition. *)
 def iterSucc : ∀ (n : ℕ) (m : ℕ) →
     Eq (Iter.iter 0l ℕ (λ (x : ℕ) → succ x) n m) (plus n m) ≔
   λ (n : ℕ) (m : ℕ) →

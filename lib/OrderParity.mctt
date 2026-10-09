@@ -1,14 +1,17 @@
-(* A client of [Prelude›Arith›Order] and [Prelude›Arith›Parity]: closed instances of
-   their theorems normalize to [⋆], and [leb] decides the order. *)
+(* A client of [Prelude›Arith›Order] and [Prelude›Arith›Parity]: closed
+   instances of their theorems normalize to [⋆], and [leb] decides the
+   order. *)
 module OrderParity where
 
 import Prelude›Logic.Disj 0l use (orElim)
 import Prelude›Arith›Order use (Le; leb)
-open Prelude›Arith›Order.LeLaws use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
+open Prelude›Arith›Order.LeLaws
+  use (leTrans; leAntisym; leSucc; lePlusRight; leTotal)
 open Prelude›Arith›Order.LtLaws use (ltIrrefl; notLtZero)
 open Prelude›Arith›Order.LebLaws use (lebComplete; lebZero)
 import Prelude›Arith›Parity use (Even; Odd; double)
-open Prelude›Arith›Parity.Laws use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
+open Prelude›Arith›Parity.Laws
+  use (evenDouble; evenOrOdd; evenSuccOdd; evenPlus)
 
 eval leTrans 1 2 5 ⋆ ⋆
 
@@ -20,7 +23,8 @@ eval lePlusRight 2 3
 
 (* [leTotal] at closed numbers, eliminated into [ℕ]: 0 for the left side,
    1 for the right. *)
-eval orElim (Le 5 2) (Le 2 5) ℕ (leTotal 5 2) (λ (h : Le 5 2) → 0) (λ (h : Le 2 5) → 1)
+eval orElim (Le 5 2) (Le 2 5) ℕ (leTotal 5 2)
+       (λ (h : Le 5 2) → 0) (λ (h : Le 2 5) → 1)
 
 eval ltIrrefl 3
 
@@ -38,7 +42,8 @@ eval double 7
 
 eval evenDouble 7
 
-eval orElim (Even 7) (Odd 7) ℕ (evenOrOdd 7) (λ (h : Even 7) → 0) (λ (h : Odd 7) → 1)
+eval orElim (Even 7) (Odd 7) ℕ (evenOrOdd 7)
+       (λ (h : Even 7) → 0) (λ (h : Odd 7) → 1)
 
 eval evenSuccOdd 4 ⋆
 

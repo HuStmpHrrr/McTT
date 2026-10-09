@@ -10,10 +10,13 @@ import Prelude›Arith›Decide use (pick)
 import Prelude›Arith›Divides.Closure use (dividesMultLeft; dividesPlusCancel)
 import Prelude›Function›Combinators use (Generic)
 import Prelude›Arith›Gcd use (gcd)
-import Prelude›Arith›Gcd›Properties.Values use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
-open Prelude›Arith›Gcd›Properties.Divisor use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
+import Prelude›Arith›Gcd›Properties.Values
+  use (gcdZeroLeft; gcdZeroRight; gcdSelf; gcdOneRight; gcdComm)
+open Prelude›Arith›Gcd›Properties.Divisor
+  use (gcdDividesLeft; gcdDividesRight; gcdGreatest)
 import Prelude›Arith›Prime use (smallestDivisor; isPrime; Prime)
-open Prelude›Arith›Prime.Laws use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
+open Prelude›Arith›Prime.Laws
+  use (smallestDivisorDivides; primeGeTwo; primeSmallestDivisor)
 open Prelude›Arith›Prime.Facts use (twoPrime; sevenPrime; nineNotPrime)
 
 eval gcd 12 18
@@ -33,7 +36,8 @@ module Primes where
 let nextPrime (n : ℕ) : ℕ ≔
   (rec n return y . (∀ (c : ℕ) → ℕ)
    | zero ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → succ c) (λ (u : ℕ) → c)
-   | succ p, r ⇒ λ (c : ℕ) → pick (isPrime c) (λ (u : ℕ) → r (succ c)) (λ (u : ℕ) → c)
+   | succ p, r ⇒ λ (c : ℕ) →
+       pick (isPrime c) (λ (u : ℕ) → r (succ c)) (λ (u : ℕ) → c)
    end) (succ n)
 end
 

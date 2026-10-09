@@ -2862,11 +2862,11 @@ let%expect_test "mctt-doc: links" =
   (* A local binder. *)
   show [ "Tutorial" ] "x" [ 1; 2 ];
   [%expect {|
-    pow line 35: Prelude›Algebra›Monoid#pow
-    pow line 35: Prelude›Arith›Pow#pow
-    Additive line 19: Prelude›Algebra›Instances#Additive
-    pow line 19: Prelude›Algebra›Monoid#pow
-    powPlus line 72: Prelude›Algebra›Monoid#Power.powPlus
+    pow line 38: Prelude›Algebra›Monoid#pow
+    pow line 38: Prelude›Arith›Pow#pow
+    Additive line 21: Prelude›Algebra›Instances#Additive
+    pow line 21: Prelude›Algebra›Monoid#pow
+    powPlus line 75: Prelude›Algebra›Monoid#Power.powPlus
     plus line 205: Prelude›Arith›Plus#plus
     plus line 206: Prelude›Arith›Plus#plus
     add line 205: declares #Adding.add

@@ -13,7 +13,9 @@ import Prelude›Arith›Pow use (pow)
 import Prelude›Arith›MinMax use (max)
 open Prelude›Arith›MinMax.Laws use (maxIdem; maxZero)
 import Prelude›Algebra›Monoid as Monoid
-import Prelude›Algebra›Instances use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum; Composition; Endo; Pointwise; compose)
+import Prelude›Algebra›Instances
+  use (Additive; AdditiveComm; Multiplicative; MultiplicativeComm; Maximum;
+       Composition; Endo; Pointwise; compose)
 
 (* Powers in each monoid. *)
 eval Additive.pow 3 4
@@ -32,7 +34,8 @@ theorem additivePow : ∀ (x : ℕ) (n : ℕ) → Eq (Additive.pow x n) (mult n 
   λ (x : ℕ) (n : ℕ) → refl (mult n x)
 end
 
-theorem multiplicativePow : ∀ (x : ℕ) (n : ℕ) → Eq (Multiplicative.pow x n) (pow x n) ≔
+theorem multiplicativePow : ∀ (x : ℕ) (n : ℕ) →
+    Eq (Multiplicative.pow x n) (pow x n) ≔
   λ (x : ℕ) (n : ℕ) → refl (pow x n)
 end
 
@@ -53,8 +56,8 @@ theorem multAssocPow : ∀ (m : ℕ) (n : ℕ) (x : ℕ) →
   λ (m : ℕ) (n : ℕ) (x : ℕ) → Additive.Power.powMult x m n
 end
 
-(* Left distributivity needs commutativity of addition: it is [powOp] in
-   the commutative instance. *)
+(* Left distributivity needs commutativity of addition: it is [powOp] in the
+   commutative instance. *)
 theorem multPlusLeft : ∀ (n : ℕ) (x : ℕ) (y : ℕ) →
     Eq (mult n (plus x y)) (plus (mult n x) (mult n y)) ≔
   λ (n : ℕ) (x : ℕ) (y : ℕ) → AdditiveComm.powOp x y n
@@ -96,13 +99,15 @@ module Iteration where
 
 (* Iterating [m + n] times is iterating [n] times, then [m] times. *)
 theorem iterPlus : ∀ (f : Endo) (m : ℕ) (n : ℕ) →
-    Pointwise (Composition.pow f (plus m n)) (compose (Composition.pow f m) (Composition.pow f n)) ≔
+    Pointwise (Composition.pow f (plus m n))
+      (compose (Composition.pow f m) (Composition.pow f n)) ≔
   λ (f : Endo) (m : ℕ) (n : ℕ) → Composition.Power.powPlus f m n
 end
 
 (* Iterating [m * n] times is iterating [n] times, [m] times over. *)
 theorem iterMult : ∀ (f : Endo) (m : ℕ) (n : ℕ) →
-    Pointwise (Composition.pow f (mult m n)) (Composition.pow (Composition.pow f n) m) ≔
+    Pointwise (Composition.pow f (mult m n))
+      (Composition.pow (Composition.pow f n) m) ≔
   λ (f : Endo) (m : ℕ) (n : ℕ) → Composition.Power.powMult f m n
 end
 
@@ -130,7 +135,9 @@ theorem maxPowSucc : ∀ (x : ℕ) (n : ℕ) → Eq (Maximum.pow x (succ n)) x �
             module L where
               open Maximum.Cong use (congRight)
               (* One more factor [x] in front of a power that is already [x]. *)
-              def front : Eq (max x power) (max x x) ≔ congRight x power x ih end
+              def front : Eq (max x power) (max x x) ≔
+                congRight x power x ih
+              end
             end
         in trans (max x power) (max x x) x L.front (maxIdem x)
         end

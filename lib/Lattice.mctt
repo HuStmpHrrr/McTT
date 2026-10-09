@@ -1,16 +1,21 @@
-(* A client of [Prelude›Arith›Monotone] and [Prelude›Arith›Lattice]:
-   closed instances of the order and lattice laws normalize to [⋆], and a
-   few computations with [min], [max] and [sub]. *)
+(* A client of [Prelude›Arith›Monotone] and [Prelude›Arith›Lattice]: closed
+   instances of the order and lattice laws normalize to [⋆], and a few
+   computations with [min], [max] and [sub]. *)
 module Lattice where
 
 import Prelude›Arith›Plus use (plus)
 import Prelude›Arith›Sub use (sub)
 import Prelude›Arith›MinMax use (min; max)
 import Prelude›Arith›Monotone.Mono use (lePlusMono; lePlusCancel; leMultMono)
-open Prelude›Arith›Monotone.Strict use (ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus)
-open Prelude›Arith›Monotone.SubLaws use (subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
-import Prelude›Arith›Lattice.Algebra use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib; maxMinDistrib)
-open Prelude›Arith›Lattice.Bounds use (minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight)
+open Prelude›Arith›Monotone.Strict
+  use (ltTrans; ltLeTrans; leLtTrans; ltSucc; ltPlus)
+open Prelude›Arith›Monotone.SubLaws
+  use (subLe; subMonoLeft; subMonoRight; plusSubCancel; subPlusCancel; subPos)
+import Prelude›Arith›Lattice.Algebra
+  use (minAssoc; maxAssoc; minMaxAbsorb; maxMinAbsorb; minMaxDistrib;
+       maxMinDistrib)
+open Prelude›Arith›Lattice.Bounds
+  use (minLe; leMax; leMin; maxLe; minEqLeft; maxEqRight)
 open Prelude›Arith›Lattice.Mono use (minMono; maxMono)
 
 eval min (max 2 7) (max 5 3)
