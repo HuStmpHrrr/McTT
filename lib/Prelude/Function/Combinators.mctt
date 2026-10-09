@@ -23,7 +23,8 @@ def compose (B : Type@{u}) (C : Type@{u}) (g : ∀ (b : B) → C)
   g (f a)
 end
 
-(* [iterate f n a] applies [f] to [a] [n] times; it is [Prelude›Function›Iter]. *)
+(* [iterate f n a] applies [f] to [a] [n] times; it is
+   [Prelude›Function›Iter]. *)
 def iterate (f : ∀ (a : A) → A) (n : ℕ) (a : A) : A ≔
   Iter.iter u A f n a
 end
@@ -66,10 +67,12 @@ end
 theorem iterateSucc : ∀ (n : ℕ) (a : ℕ) →
     Eq (Generic.iterate 0l ℕ f (succ n) a) (Generic.iterate 0l ℕ f n (f a)) ≔
   λ (n : ℕ) (a : ℕ) →
-    rec n return x . Eq (Generic.iterate 0l ℕ f (succ x) a) (Generic.iterate 0l ℕ f x (f a))
+    rec n return x . Eq (Generic.iterate 0l ℕ f (succ x) a)
+                        (Generic.iterate 0l ℕ f x (f a))
     | zero ⇒ refl (f a)
     | succ p, ih ⇒
-        cong f (Generic.iterate 0l ℕ f (succ p) a) (Generic.iterate 0l ℕ f p (f a)) ih
+        cong f (Generic.iterate 0l ℕ f (succ p) a)
+          (Generic.iterate 0l ℕ f p (f a)) ih
     end
 end
 
@@ -82,12 +85,13 @@ theorem iterateComm : ∀ (m : ℕ) (n : ℕ) (a : ℕ) →
         nm ≔ Generic.iterate 0l ℕ f n (Generic.iterate 0l ℕ f m a);
         toPlus : Eq mn (Generic.iterate 0l ℕ f (plus m n) a) ≔
           sym (Generic.iterate 0l ℕ f (plus m n) a) mn (iteratePlus m n a);
-        swap : Eq (Generic.iterate 0l ℕ f (plus m n) a) (Generic.iterate 0l ℕ f (plus n m) a) ≔
+        swap : Eq (Generic.iterate 0l ℕ f (plus m n) a)
+                  (Generic.iterate 0l ℕ f (plus n m) a) ≔
           cong (λ (k : ℕ) → Generic.iterate 0l ℕ f k a) (plus m n) (plus n m)
             (plusComm m n)
     in trans mn (Generic.iterate 0l ℕ f (plus n m) a) nm
-         (trans mn (Generic.iterate 0l ℕ f (plus m n) a) (Generic.iterate 0l ℕ f (plus n m) a)
-            toPlus swap)
+         (trans mn (Generic.iterate 0l ℕ f (plus m n) a)
+            (Generic.iterate 0l ℕ f (plus n m) a) toPlus swap)
          (iteratePlus n m a)
     end
 end

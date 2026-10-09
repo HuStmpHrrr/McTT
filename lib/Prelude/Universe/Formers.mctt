@@ -18,7 +18,8 @@ def up (u : Level) (v : Level) (A : Type@{u}) (a : A) : Lift u v A ≔ a end
 
 def down (u : Level) (v : Level) (A : Type@{u}) (a : Lift u v A) : A ≔ a end
 
-def Arrow (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} ≔
+def Arrow (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) :
+    Type@{maxl u v} ≔
   ∀ (a : A) → B
 end
 
@@ -40,22 +41,24 @@ def Fun (u : Level) (n : ℕ) (A : Type@{u}) (B : Type@{u}) : Type@{u} ≔
 end
 
 (* Dependent pairs, Church-encoded. *)
-def Sigma (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) : Type@{succl u} ≔
+def Sigma (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) :
+    Type@{succl u} ≔
   ∀ (C : Type@{u}) (f : ∀ (a : A) (b : B a) → C) → C
 end
 
-def pair (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (a : A) (b : B a) :
-    Sigma u A B ≔
+def pair (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (a : A)
+    (b : B a) : Sigma u A B ≔
   λ (C : Type@{u}) (f : ∀ (x : A) (y : B x) → C) → f a b
 end
 
-def first (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (p : Sigma u A B) : A ≔
+def first (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u})
+    (p : Sigma u A B) : A ≔
   p A (λ (a : A) (b : B a) → a)
 end
 
 (* Elimination into a type [C] of the same level. *)
-def sigmaElim (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u}) (C : Type@{u})
-    (f : ∀ (a : A) (b : B a) → C) (p : Sigma u A B) : C ≔
+def sigmaElim (u : Level) (A : Type@{u}) (B : ∀ (a : A) → Type@{u})
+    (C : Type@{u}) (f : ∀ (a : A) (b : B a) → C) (p : Sigma u A B) : C ≔
   p C f
 end
 

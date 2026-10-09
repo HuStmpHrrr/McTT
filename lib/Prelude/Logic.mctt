@@ -1,6 +1,6 @@
-(* Propositions as types, at every universe level: [⊤] holds, [⊥] has
-   no proof; negation, Church-encoded conjunction, disjunction, equivalence
-   and existence over numbers, and decidability.
+(* Propositions as types, at every universe level: [⊤] holds, [⊥] has no proof;
+   negation, Church-encoded conjunction, disjunction, equivalence and existence
+   over numbers, and decidability.
 
    Each submodule takes the level [u] of the propositions it combines, so
    [Conj.And 0l A B] is the conjunction of two propositions of [Type@0] and
@@ -94,8 +94,8 @@ def Iff (A : Type@{u}) (B : Type@{u}) : Type@{succl u} ≔
   And (∀ (a : A) → B) (∀ (b : B) → A)
 end
 
-def iffIntro (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B) (g : ∀ (b : B) → A)
-    : Iff A B ≔
+def iffIntro (A : Type@{u}) (B : Type@{u}) (f : ∀ (a : A) → B)
+    (g : ∀ (b : B) → A) : Iff A B ≔
   andIntro (∀ (a : A) → B) (∀ (b : B) → A) f g
 end
 

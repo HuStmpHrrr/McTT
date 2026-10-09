@@ -119,9 +119,13 @@ def lleSuccl (u : Level) : LLe u (succl u) ≔ lrefl (succl u) end
 
 def lleZero (u : Level) : LLe 0l u ≔ lrefl u end
 
-def lleMaxlLeft (u : Level) (v : Level) : LLe u (maxl u v) ≔ lrefl (maxl u v) end
+def lleMaxlLeft (u : Level) (v : Level) : LLe u (maxl u v) ≔
+  lrefl (maxl u v)
+end
 
-def lleMaxlRight (u : Level) (v : Level) : LLe v (maxl u v) ≔ lrefl (maxl u v) end
+def lleMaxlRight (u : Level) (v : Level) : LLe v (maxl u v) ≔
+  lrefl (maxl u v)
+end
 
 (* [maxl u w] is [maxl u (maxl v w)], which is [maxl (maxl u v) w] by
    conversion, hence [maxl v w], hence [w]. *)
@@ -145,7 +149,8 @@ theorem lleMaxlLub : ∀ (u : Level) (v : Level) (w : Level)
 end
 
 (* [succl] is monotone, since it distributes over [maxl]. *)
-theorem lleSucclCong : ∀ (u : Level) (v : Level) (h : LLe u v) → LLe (succl u) (succl v) ≔
+theorem lleSucclCong : ∀ (u : Level) (v : Level) (h : LLe u v) →
+    LLe (succl u) (succl v) ≔
   λ (u : Level) (v : Level) (h : LLe u v) →
     lcong (λ (l : Level) → succl l) (maxl u v) v h
 end
@@ -158,26 +163,32 @@ open Order use (lleSuccl; lleTrans; lleSucclCong)
 module Embedding where
 
 (* [ofNat] turns addition into raising. *)
-theorem ofNatPlus : ∀ (m : ℕ) (n : ℕ) → LEq (ofNat (plus m n)) (plusl m (ofNat n)) ≔
+theorem ofNatPlus : ∀ (m : ℕ) (n : ℕ) →
+    LEq (ofNat (plus m n)) (plusl m (ofNat n)) ≔
   λ (m : ℕ) (n : ℕ) →
     rec m return x . LEq (ofNat (plus x n)) (plusl x (ofNat n))
     | zero ⇒ lrefl (ofNat n)
     | succ p, ih ⇒
-        lcong (λ (l : Level) → succl l) (ofNat (plus p n)) (plusl p (ofNat n)) ih
+        lcong (λ (l : Level) → succl l)
+          (ofNat (plus p n)) (plusl p (ofNat n)) ih
     end
 end
 
 (* [ofNat] turns [max] into [maxl].  In the step, both sides are
    successors, and [succl] distributes over [maxl] by conversion. *)
-theorem ofNatMax : ∀ (m : ℕ) (n : ℕ) → LEq (ofNat (max m n)) (maxl (ofNat m) (ofNat n)) ≔
+theorem ofNatMax : ∀ (m : ℕ) (n : ℕ) →
+    LEq (ofNat (max m n)) (maxl (ofNat m) (ofNat n)) ≔
   λ (m : ℕ) →
-    rec m return x . (∀ (n : ℕ) → LEq (ofNat (max x n)) (maxl (ofNat x) (ofNat n)))
+    rec m return x . (∀ (n : ℕ) →
+                        LEq (ofNat (max x n)) (maxl (ofNat x) (ofNat n)))
     | zero ⇒ λ (n : ℕ) → lrefl (ofNat n)
     | succ p, ih ⇒ λ (n : ℕ) →
-        rec n return y . LEq (ofNat (max (succ p) y)) (maxl (succl (ofNat p)) (ofNat y))
+        rec n return y . LEq (ofNat (max (succ p) y))
+                             (maxl (succl (ofNat p)) (ofNat y))
         | zero ⇒ lrefl (succl (ofNat p))
         | succ q, s ⇒
-            lcong (λ (l : Level) → succl l) (ofNat (max p q)) (maxl (ofNat p) (ofNat q)) (ih q)
+            lcong (λ (l : Level) → succl l)
+              (ofNat (max p q)) (maxl (ofNat p) (ofNat q)) (ih q)
         end
     end
 end
@@ -189,7 +200,8 @@ theorem ofNatLe : ∀ (m : ℕ) (n : ℕ) (h : Le m n) → LLe (ofNat m) (ofNat 
     rec m return x . (∀ (n : ℕ) (h : Le x n) → LLe (ofNat x) (ofNat n))
     | zero ⇒ λ (n : ℕ) (h : ⊤) → lrefl (ofNat n)
     | succ p, ih ⇒ λ (n : ℕ) →
-        rec n return y . (∀ (h : Le (succ p) y) → LLe (succl (ofNat p)) (ofNat y))
+        rec n return y . (∀ (h : Le (succ p) y) →
+                            LLe (succl (ofNat p)) (ofNat y))
         | zero ⇒ λ (h : ⊥) → Neg.absurd 1l (LLe (succl (ofNat p)) 0l) h
         | succ q, s ⇒ λ (h : Le p q) → lleSucclCong (ofNat p) (ofNat q) (ih q h)
         end
@@ -201,7 +213,8 @@ theorem llePlusl : ∀ (n : ℕ) (u : Level) → LLe u (plusl n u) ≔
   λ (n : ℕ) (u : Level) →
     rec n return x . LLe u (plusl x u)
     | zero ⇒ lrefl u
-    | succ p, ih ⇒ lleTrans u (plusl p u) (succl (plusl p u)) ih (lleSuccl (plusl p u))
+    | succ p, ih ⇒
+        lleTrans u (plusl p u) (succl (plusl p u)) ih (lleSuccl (plusl p u))
     end
 end
 
