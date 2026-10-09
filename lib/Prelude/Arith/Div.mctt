@@ -1,10 +1,10 @@
-(* Euclidean division.  [div n k] and [mod n k] are the quotient and remainder
-   of [n] by [k]; they are total, with [div n 0 = 0] and [mod n 0 = n].  They
-   are implemented by [divSucc n d] and [modSucc n d], which divide by
-   [succ d], so [div n (succ d)] computes to [divSucc n d].  Both are primitive
-   recursive in the dividend: the remainder counts up and wraps to [0] on
-   reaching the divisor, and the quotient grows by one at each wrap.  The
-   theorems are stated for a positive divisor [succ d]. *)
+(* Euclidean division.  [div n k] and [mod n k] are the quotient and
+   remainder of [n] by [k]; they are total, with [div n 0 = 0] and
+   [mod n 0 = n].  They are implemented by [divSucc n d] and [modSucc n d],
+   which divide by [succ d], so [div n (succ d)] computes to [divSucc n d].
+   Both are primitive recursive in the dividend: the remainder counts up and
+   wraps to [0] on reaching the divisor, and the quotient grows by one at
+   each wrap.  The theorems are stated for a positive divisor [succ d]. *)
 (* Written with the long forms ([abstract def], [private def], ...) rather
    than [theorem], [fact] and [let], for comparison. *)
 module Prelude›Arith›Div where
@@ -104,7 +104,8 @@ module Bounds where
 abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
     Eq (plus (mult (div n (succ d)) (succ d)) (mod n (succ d))) n ≔
   λ (n : ℕ) (d : ℕ) →
-    rec n return x . Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
+    rec n return x .
+      Eq (plus (mult (div x (succ d)) (succ d)) (mod x (succ d))) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let r ≔ mod p (succ d);
@@ -112,18 +113,22 @@ abstract def divModSpec : ∀ (n : ℕ) (d : ℕ) →
             m ≔ mult q (succ d)
         in eqbCases r d
              (λ (b : ℕ) →
-                Eq (plus (mult (pick b (λ (u : ℕ) → q) (λ (u : ℕ) → succ q)) (succ d))
+                Eq (plus (mult (pick b (λ (u : ℕ) → q) (λ (u : ℕ) → succ q))
+                           (succ d))
                          (pick b (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)))
                    (succ p))
              (λ (h : Eq (eqb r d) 0) →
-                trans (plus m (succ r)) (succ (plus m r)) (succ p) (plusSucc m r) ih)
+                trans (plus m (succ r)) (succ (plus m r)) (succ p)
+                  (plusSucc m r) ih)
              (λ (h : Eq r d) →
-                let toSum : Eq (plus (plus d m) 0) (plus d m) ≔ plusZero (plus d m);
+                let toSum : Eq (plus (plus d m) 0) (plus d m) ≔
+                      plusZero (plus d m);
                     swap : Eq (plus d m) (plus m d) ≔ plusComm d m;
                     toRem : Eq (plus m d) (plus m r) ≔
                       cong (λ (y : ℕ) → plus m y) d r (sym r d h)
                 in trans (plus (plus d m) 0) (plus m d) p
-                     (trans (plus (plus d m) 0) (plus d m) (plus m d) toSum swap)
+                     (trans (plus (plus d m) 0) (plus d m) (plus m d)
+                        toSum swap)
                      (trans (plus m d) (plus m r) p toRem ih)
                 end)
         end
@@ -138,7 +143,8 @@ abstract def modLt : ∀ (n : ℕ) (d : ℕ) → Lt (mod n (succ d)) (succ d) �
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let r ≔ mod p (succ d)
-        in eqbCases r d (λ (b : ℕ) → Le (pick b (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)) d)
+        in eqbCases r d
+             (λ (b : ℕ) → Le (pick b (λ (u : ℕ) → succ r) (λ (u : ℕ) → 0)) d)
              (λ (h : Eq (eqb r d) 0) → leEqbZero r d ih h)
              (λ (h : Eq r d) → ⋆)
         end
@@ -146,15 +152,18 @@ abstract def modLt : ∀ (n : ℕ) (d : ℕ) → Lt (mod n (succ d)) (succ d) �
 end
 
 (* A dividend below the divisor is its own remainder. *)
-abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) → Eq (mod n (succ d)) n ≔
+abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
+    Eq (mod n (succ d)) n ≔
   λ (n : ℕ) (d : ℕ) →
     rec n return x . (∀ (h : Lt x (succ d)) → Eq (mod x (succ d)) x)
     | zero ⇒ λ (h : ⊤) → ⋆
     | succ p, ih ⇒ λ (h : Le (succ p) d) →
-        let hp : Eq (mod p (succ d)) p ≔ ih (leTrans p (succ p) d (leSucc p) h);
+        let hp : Eq (mod p (succ d)) p ≔
+              ih (leTrans p (succ p) d (leSucc p) h);
             atP : Eq (wrap p d) (succ p) ≔
               eqbCases p d
-                (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → succ p) (λ (u : ℕ) → 0)) (succ p))
+                (λ (b : ℕ) →
+                   Eq (pick b (λ (u : ℕ) → succ p) (λ (u : ℕ) → 0)) (succ p))
                 (λ (e : Eq (eqb p d) 0) → refl p)
                 (λ (e : Eq p d) → ltNotEq p d h e)
         in transport (λ (x : ℕ) → Eq (wrap x d) (succ p)) p (mod p (succ d))
@@ -164,7 +173,8 @@ abstract def modSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) → Eq (mod 
 end
 
 (* A dividend below the divisor has quotient [0]. *)
-abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) → Eq (div n (succ d)) 0 ≔
+abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) →
+    Eq (div n (succ d)) 0 ≔
   λ (n : ℕ) (d : ℕ) →
     rec n return x . (∀ (h : Lt x (succ d)) → Eq (div x (succ d)) 0)
     | zero ⇒ λ (h : ⊤) → ⋆
@@ -173,14 +183,15 @@ abstract def divSmall : ∀ (n : ℕ) (d : ℕ) (h : Lt n (succ d)) → Eq (div 
             hq : Eq (div p (succ d)) 0 ≔ ih hp;
             hr : Eq (mod p (succ d)) p ≔ modSmall p d hp;
             atZero : Eq (carry p d 0) 0 ≔
-              eqbCases p d (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → 0) (λ (u : ℕ) → 1)) 0)
+              eqbCases p d
+                (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → 0) (λ (u : ℕ) → 1)) 0)
                 (λ (e : Eq (eqb p d) 0) → ⋆)
                 (λ (e : Eq p d) → ltNotEq p d h e);
             atP : Eq (carry p d (div p (succ d))) 0 ≔
               transport (λ (y : ℕ) → Eq (carry p d y) 0) 0 (div p (succ d))
                 (sym (div p (succ d)) 0 hq) atZero
-        in transport (λ (x : ℕ) → Eq (carry x d (div p (succ d))) 0) p (mod p (succ d))
-             (sym (mod p (succ d)) p hr) atP
+        in transport (λ (x : ℕ) → Eq (carry x d (div p (succ d))) 0)
+             p (mod p (succ d)) (sym (mod p (succ d)) p hr) atP
         end
     end
 end
@@ -197,7 +208,8 @@ abstract def modSelf : ∀ (d : ℕ) → Eq (mod (succ d) (succ d)) 0 ≔
   λ (d : ℕ) →
     let hd : Eq (mod d (succ d)) d ≔ modSmall d d (leRefl d);
         atD : Eq (wrap d d) 0 ≔
-          eqbCases d d (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → succ d) (λ (u : ℕ) → 0)) 0)
+          eqbCases d d
+            (λ (b : ℕ) → Eq (pick b (λ (u : ℕ) → succ d) (λ (u : ℕ) → 0)) 0)
             (λ (e : Eq (eqb d d) 0) →
                transport (λ (m : ℕ) → Eq m 1) (eqb d d) 0 e (eqbRefl d))
             (λ (e : Eq d d) → ⋆)
@@ -213,7 +225,9 @@ abstract def modPlus : ∀ (a : ℕ) (b : ℕ) (d : ℕ) →
     Eq (mod (plus a b) (succ d))
        (Generic.iterate 0l ℕ (λ (r : ℕ) → wrap r d) a (mod b (succ d))) ≔
   λ (a : ℕ) (b : ℕ) (d : ℕ) →
-    let module Wrap ≔ IterateLaws (λ (r : ℕ) → wrap r d) in Wrap.iteratePlus a b 0 end
+    let module Wrap ≔ IterateLaws (λ (r : ℕ) → wrap r d)
+    in Wrap.iteratePlus a b 0
+    end
 end
 
 (* The remainder is periodic: adding the divisor does not change it.  The
@@ -226,14 +240,16 @@ abstract def modPlusDivisor : ∀ (n : ℕ) (d : ℕ) →
         module Steps ≔ Generic 0l ℕ;
         w ≔ λ (r : ℕ) → wrap r d;
         k ≔ succ d;
-        split : Eq (mod (plus k n) k) (Steps.iterate w k (mod n k)) ≔ modPlus k n d;
-        comm : Eq (Steps.iterate w k (mod n k)) (Steps.iterate w n (mod k k)) ≔
+        split : Eq (mod (plus k n) k) (Steps.iterate w k (mod n k)) ≔
+          modPlus k n d;
+        comm : Eq (Steps.iterate w k (mod n k))
+                  (Steps.iterate w n (mod k k)) ≔
           Wrap.iterateComm k n 0;
         back : Eq (Steps.iterate w n (mod k k)) (mod n k) ≔
           cong (λ (y : ℕ) → Steps.iterate w n y) (mod k k) 0 (modSelf d)
     in trans (mod (plus k n) k) (Steps.iterate w n (mod k k)) (mod n k)
-         (trans (mod (plus k n) k) (Steps.iterate w k (mod n k)) (Steps.iterate w n (mod k k))
-            split comm)
+         (trans (mod (plus k n) k) (Steps.iterate w k (mod n k))
+            (Steps.iterate w n (mod k k)) split comm)
          back
     end
 end
@@ -243,15 +259,18 @@ end
 abstract def modPlusMult : ∀ (d : ℕ) (t : ℕ) (y : ℕ) →
     Eq (mod (plus (mult t (succ d)) y) (succ d)) (mod y (succ d)) ≔
   λ (d : ℕ) (t : ℕ) (y : ℕ) →
-    rec t return x . Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
+    rec t return x .
+      Eq (mod (plus (mult x (succ d)) y) (succ d)) (mod y (succ d))
     | zero ⇒ refl (mod y (succ d))
     | succ p, ih ⇒
         let k ≔ succ d;
             m ≔ mult p k;
-            assoc : Eq (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) ≔
+            assoc : Eq (mod (plus (plus k m) y) k)
+                       (mod (plus k (plus m y)) k) ≔
               cong (λ (z : ℕ) → mod z k) (plus (plus k m) y) (plus k (plus m y))
                 (plusAssoc k m y)
-        in trans (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k) (mod y k) assoc
+        in trans (mod (plus (plus k m) y) k) (mod (plus k (plus m y)) k)
+             (mod y k) assoc
              (trans (mod (plus k (plus m y)) k) (mod (plus m y) k) (mod y k)
                 (modPlusDivisor (plus m y) d) ih)
         end
@@ -269,7 +288,8 @@ abstract def modOne : ∀ (n : ℕ) → Eq (mod n 1) 0 ≔
     rec n return x . Eq (mod x 1) 0
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        transport (λ (x : ℕ) → Eq (wrap x 0) 0) 0 (mod p 1) (sym (mod p 1) 0 ih) ⋆
+        transport (λ (x : ℕ) → Eq (wrap x 0) 0) 0 (mod p 1)
+          (sym (mod p 1) 0 ih) ⋆
     end
 end
 
@@ -280,13 +300,15 @@ abstract def divOne : ∀ (n : ℕ) → Eq (div n 1) n ≔
     let q ≔ div n 1;
         spec : Eq (plus (mult q 1) (mod n 1)) n ≔ divModSpec n 0;
         dropMod : Eq (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) ≔
-          cong (λ (y : ℕ) → plus (mult q 1) y) 0 (mod n 1) (sym (mod n 1) 0 (modOne n));
+          cong (λ (y : ℕ) → plus (mult q 1) y) 0 (mod n 1)
+            (sym (mod n 1) 0 (modOne n));
         dropPlus : Eq (mult q 1) (plus (mult q 1) 0) ≔
           sym (plus (mult q 1) 0) (mult q 1) (plusZero (mult q 1));
         dropMult : Eq q (mult q 1) ≔ sym (mult q 1) q (multOne q)
     in trans q (mult q 1) n dropMult
          (trans (mult q 1) (plus (mult q 1) 0) n dropPlus
-            (trans (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) n dropMod spec))
+            (trans (plus (mult q 1) 0) (plus (mult q 1) (mod n 1)) n
+               dropMod spec))
     end
 end
 

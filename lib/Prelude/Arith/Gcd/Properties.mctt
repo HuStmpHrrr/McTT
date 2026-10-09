@@ -21,7 +21,8 @@ open Prelude›Arith›Div.Periodic use (modSelf)
 open Prelude›Arith›Div.One use (modOne)
 import Prelude›Arith›Divides use (Divides)
 open Prelude›Arith›Divides.Basic use (dividesRefl; dividesZero)
-open Prelude›Arith›Divides.Closure use (dividesPlus; dividesMultLeft; dividesPlusCancel)
+open Prelude›Arith›Divides.Closure
+  use (dividesPlus; dividesMultLeft; dividesPlusCancel)
 import Prelude›Arith›Gcd use (gcdFuel; gcd)
 
 (* The invariants of Euclid's algorithm with enough fuel, from which
@@ -35,12 +36,15 @@ def divides : ∀ (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f) →
     And (Divides (gcdFuel f a b) a) (Divides (gcdFuel f a b) b) ≔
   λ (f : ℕ) →
     rec f return x . (∀ (a : ℕ) (b : ℕ) (h : Lt b x) →
-                        And (Divides (gcdFuel x a b) a) (Divides (gcdFuel x a b) b))
+                        And (Divides (gcdFuel x a b) a)
+                            (Divides (gcdFuel x a b) b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) →
-        Neg.absurd 1l (And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)) h
+        Neg.absurd 1l
+          (And (Divides (gcdFuel 0 a b) a) (Divides (gcdFuel 0 a b) b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
         rec b return z . (∀ (h : Lt z (succ p)) →
-                            And (Divides (gcdFuel (succ p) a z) a) (Divides (gcdFuel (succ p) a z) z))
+                            And (Divides (gcdFuel (succ p) a z) a)
+                                (Divides (gcdFuel (succ p) a z) z))
         | zero ⇒ λ (h : ⊤) →
             andIntro (Divides a a) (Divides a 0) (dividesRefl a) (dividesZero a)
         | succ d, s ⇒ λ (h : Le (succ d) p) →
@@ -53,7 +57,8 @@ def divides : ∀ (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f) →
                 ge : Divides g e ≔ andFst (Divides g e) (Divides g r) both;
                 gr : Divides g r ≔ andSnd (Divides g e) (Divides g r) both;
                 ga : Divides g a ≔
-                  transport (λ (y : ℕ) → Divides g y) (plus (mult q e) r) a (divModSpec a d)
+                  transport (λ (y : ℕ) → Divides g y) (plus (mult q e) r) a
+                    (divModSpec a d)
                     (dividesPlus g (mult q e) r (dividesMultLeft g e q ge) gr)
             in andIntro (Divides g a) (Divides g e) ga ge
             end
@@ -68,14 +73,17 @@ abstract def greatest : ∀ (k : ℕ) (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f)
     (ha : Divides k a) (hb : Divides k b) → Divides k (gcdFuel f a b) ≔
   λ (k : ℕ) (f : ℕ) →
     rec f return x . (∀ (a : ℕ) (b : ℕ) (h : Lt b x)
-                        (ha : Divides k a) (hb : Divides k b) → Divides k (gcdFuel x a b))
+                        (ha : Divides k a) (hb : Divides k b) →
+                        Divides k (gcdFuel x a b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : ⊥) (ha : Divides k a) (hb : Divides k b) →
         absurd (Divides k (gcdFuel 0 a b)) h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) →
-        rec b return z . (∀ (h : Lt z (succ p)) (ha : Divides k a) (hb : Divides k z) →
+        rec b return z . (∀ (h : Lt z (succ p)) (ha : Divides k a)
+                            (hb : Divides k z) →
                             Divides k (gcdFuel (succ p) a z))
         | zero ⇒ λ (h : ⊤) (ha : Divides k a) (hb : Divides k 0) → ha
-        | succ d, s ⇒ λ (h : Le (succ d) p) (ha : Divides k a) (hb : Divides k (succ d)) →
+        | succ d, s ⇒ λ (h : Le (succ d) p) (ha : Divides k a)
+                        (hb : Divides k (succ d)) →
             let e ≔ succ d;
                 r ≔ mod a e;
                 q ≔ div a e;
@@ -83,7 +91,8 @@ abstract def greatest : ∀ (k : ℕ) (f : ℕ) (a : ℕ) (b : ℕ) (h : Lt b f)
                   transport (λ (y : ℕ) → Divides k y) a (plus (mult q e) r)
                     (sym (plus (mult q e) r) a (divModSpec a d)) ha;
                 hr : Divides k r ≔
-                  dividesPlusCancel k (mult q e) r (dividesMultLeft k e q hb) hsum
+                  dividesPlusCancel k (mult q e) r
+                    (dividesMultLeft k e q hb) hsum
             in ih e r (leTrans (succ r) e p (modLt a d) h) hb hr
             end
         end
@@ -92,25 +101,28 @@ end
 
 end
 
-(* The greatest common divisor divides both numbers, and every common divisor
-   divides it. *)
+(* The greatest common divisor divides both numbers, and every common
+   divisor divides it. *)
 module Divisor where
 
 (* The gcd divides its first argument. *)
 abstract def gcdDividesLeft : ∀ (a : ℕ) (b : ℕ) → Divides (gcd a b) a ≔
   λ (a : ℕ) (b : ℕ) →
-    andFst (Divides (gcd a b) a) (Divides (gcd a b) b) (Fuel.divides (succ b) a b (leRefl b))
+    andFst (Divides (gcd a b) a) (Divides (gcd a b) b)
+      (Fuel.divides (succ b) a b (leRefl b))
 end
 
 (* The gcd divides its second argument. *)
 abstract def gcdDividesRight : ∀ (a : ℕ) (b : ℕ) → Divides (gcd a b) b ≔
   λ (a : ℕ) (b : ℕ) →
-    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b) (Fuel.divides (succ b) a b (leRefl b))
+    andSnd (Divides (gcd a b) a) (Divides (gcd a b) b)
+      (Fuel.divides (succ b) a b (leRefl b))
 end
 
 (* The gcd is the greatest common divisor: every common divisor divides
    it. *)
-abstract def gcdGreatest : ∀ (k : ℕ) (a : ℕ) (b : ℕ) (ha : Divides k a) (hb : Divides k b) →
+abstract def gcdGreatest : ∀ (k : ℕ) (a : ℕ) (b : ℕ)
+    (ha : Divides k a) (hb : Divides k b) →
     Divides k (gcd a b) ≔
   λ (k : ℕ) (a : ℕ) (b : ℕ) (ha : Divides k a) (hb : Divides k b) →
     Fuel.greatest k (succ b) a b (leRefl b) ha hb
@@ -122,24 +134,28 @@ end
 abstract def gcdFuelEnough : ∀ (f : ℕ) (g : ℕ) (a : ℕ) (b : ℕ)
     (hf : Lt b f) (hg : Lt b g) → Eq (gcdFuel f a b) (gcdFuel g a b) ≔
   λ (f : ℕ) →
-    rec f return x . (∀ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Lt b x) (hg : Lt b g) →
+    rec f return x . (∀ (g : ℕ) (a : ℕ) (b : ℕ) (hf : Lt b x)
+                        (hg : Lt b g) →
                         Eq (gcdFuel x a b) (gcdFuel g a b))
     | zero ⇒ λ (g : ℕ) (a : ℕ) (b : ℕ) (hf : ⊥) (hg : Lt b g) →
         absurd (Eq (gcdFuel 0 a b) (gcdFuel g a b)) hf
     | succ p, ih ⇒ λ (g : ℕ) →
-        rec g return y . (∀ (a : ℕ) (b : ℕ) (hf : Lt b (succ p)) (hg : Lt b y) →
+        rec g return y . (∀ (a : ℕ) (b : ℕ) (hf : Lt b (succ p))
+                            (hg : Lt b y) →
                             Eq (gcdFuel (succ p) a b) (gcdFuel y a b))
         | zero ⇒ λ (a : ℕ) (b : ℕ) (hf : Lt b (succ p)) (hg : ⊥) →
             absurd (Eq (gcdFuel (succ p) a b) (gcdFuel 0 a b)) hg
         | succ q, t ⇒ λ (a : ℕ) (b : ℕ) →
             rec b return z . (∀ (hf : Lt z (succ p)) (hg : Lt z (succ q)) →
-                                Eq (gcdFuel (succ p) a z) (gcdFuel (succ q) a z))
+                                Eq (gcdFuel (succ p) a z)
+                                   (gcdFuel (succ q) a z))
             | zero ⇒ λ (hf : ⊤) (hg : ⊤) → refl a
             | succ d, s ⇒ λ (hf : Le (succ d) p) (hg : Le (succ d) q) →
                 let e ≔ succ d;
                     r ≔ mod a e;
                     hr : Le (succ r) e ≔ modLt a d
-                in ih q e r (leTrans (succ r) e p hr hf) (leTrans (succ r) e q hr hg)
+                in ih q e r (leTrans (succ r) e p hr hf)
+                     (leTrans (succ r) e q hr hg)
                 end
             end
         end
@@ -148,7 +164,8 @@ end
 
 (* Below [b], the first step of Euclid's algorithm swaps the arguments:
    [mod a b] is [a]. *)
-private abstract def gcdSwapSmall : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) → Eq (gcd a b) (gcd b a) ≔
+private abstract def gcdSwapSmall : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) →
+    Eq (gcd a b) (gcd b a) ≔
   λ (a : ℕ) (b : ℕ) →
     rec b return x . (∀ (h : Lt a x) → Eq (gcd a x) (gcd x a))
     | zero ⇒ λ (h : Lt a 0) → absurd (Eq (gcd a 0) (gcd 0 a)) h
@@ -156,7 +173,8 @@ private abstract def gcdSwapSmall : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) → Eq 
         let e ≔ succ d;
             swap : Eq (gcdFuel e e (mod a e)) (gcdFuel e e a) ≔
               cong (λ (y : ℕ) → gcdFuel e e y) (mod a e) a (modSmall a d h)
-        in trans (gcdFuel e e (mod a e)) (gcdFuel e e a) (gcdFuel (succ a) e a) swap
+        in trans (gcdFuel e e (mod a e)) (gcdFuel e e a) (gcdFuel (succ a) e a)
+             swap
              (gcdFuelEnough e (succ a) e a h (leRefl a))
         end
     end
@@ -185,7 +203,8 @@ abstract def gcdSelf : ∀ (n : ℕ) → Eq (gcd n n) n ≔
     rec n return x . Eq (gcd x x) x
     | zero ⇒ ⋆
     | succ d, ih ⇒
-        cong (λ (y : ℕ) → gcdFuel (succ d) (succ d) y) (mod (succ d) (succ d)) 0 (modSelf d)
+        cong (λ (y : ℕ) → gcdFuel (succ d) (succ d) y)
+          (mod (succ d) (succ d)) 0 (modSelf d)
     end
 end
 
@@ -204,12 +223,14 @@ abstract def gcdComm : ∀ (a : ℕ) (b : ℕ) → Eq (gcd a b) (gcd b a) ≔
          orElim (Lt a b) (Eq a b) (Eq (gcd a b) (gcd b a)) (leCases a b hab)
            (λ (lt : Lt a b) → gcdSwapSmall a b lt)
            (λ (e : Eq a b) →
-              transport (λ (y : ℕ) → Eq (gcd a y) (gcd y a)) a b e (refl (gcd a a))))
+              transport (λ (y : ℕ) → Eq (gcd a y) (gcd y a)) a b e
+                (refl (gcd a a))))
       (λ (hba : Le b a) →
          orElim (Lt b a) (Eq b a) (Eq (gcd a b) (gcd b a)) (leCases b a hba)
            (λ (lt : Lt b a) → sym (gcd b a) (gcd a b) (gcdSwapSmall b a lt))
            (λ (e : Eq b a) →
-              transport (λ (y : ℕ) → Eq (gcd y b) (gcd b y)) b a e (refl (gcd b b))))
+              transport (λ (y : ℕ) → Eq (gcd y b) (gcd b y)) b a e
+                (refl (gcd b b))))
 end
 
 end

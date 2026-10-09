@@ -38,7 +38,8 @@ def trialDivision (n : ℕ) (none : ℕ) (found : ∀ (d : ℕ) → ℕ) (fuel :
   | succ f, r ⇒ λ (d : ℕ) →
       pick (monus (mult d d) n)
         (λ (u : ℕ) →
-           pick (eqb (mod n d) 0) (λ (v : ℕ) → r (succ d)) (λ (v : ℕ) → found d))
+           pick (eqb (mod n d) 0) (λ (v : ℕ) → r (succ d))
+             (λ (v : ℕ) → found d))
         (λ (u : ℕ) → none)
   end
 end
@@ -51,14 +52,18 @@ def noSmallDivisor (n : ℕ) : ℕ ≔ trialDivision n 1 (λ (d : ℕ) → 0) n 
 lemma trialDivisionDivides : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ) →
     Divides (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    rec fuel return x . (∀ (d : ℕ) → Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    rec fuel return x . (∀ (d : ℕ) →
+                           Divides (trialDivision n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) → dividesRefl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let next ≔ trialDivision n n (λ (y : ℕ) → y) f (succ d);
             inner ≔ pick (eqb (mod n d) 0) (λ (v : ℕ) → next) (λ (v : ℕ) → d)
-        in caseNat (λ (b : ℕ) → Divides (pick b (λ (u : ℕ) → inner) (λ (u : ℕ) → n)) n)
+        in caseNat
+             (λ (b : ℕ) →
+                Divides (pick b (λ (u : ℕ) → inner) (λ (u : ℕ) → n)) n)
              (eqbCases (mod n d) 0
-                (λ (b : ℕ) → Divides (pick b (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
+                (λ (b : ℕ) →
+                   Divides (pick b (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
                 (λ (h : Eq (eqb (mod n d) 0) 0) → ih (succ d))
                 (λ (h : Eq (mod n d) 0) → h))
              (λ (k : ℕ) → dividesRefl n)
@@ -73,8 +78,9 @@ lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
     (h : Eq (trialDivision n 1 (λ (x : ℕ) → 0) fuel d) 1) →
     Eq (trialDivision n n (λ (x : ℕ) → x) fuel d) n ≔
   λ (n : ℕ) (fuel : ℕ) →
-    rec fuel return x . (∀ (d : ℕ) (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
-                           Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
+    rec fuel return x . (∀ (d : ℕ)
+                          (h : Eq (trialDivision n 1 (λ (y : ℕ) → 0) x d) 1) →
+                          Eq (trialDivision n n (λ (y : ℕ) → y) x d) n)
     | zero ⇒ λ (d : ℕ) (h : ⊤) → refl n
     | succ f, ih ⇒ λ (d : ℕ) →
         let flagNext ≔ trialDivision n 1 (λ (y : ℕ) → 0) f (succ d);
@@ -88,11 +94,13 @@ lemma trialDivisionNone : ∀ (n : ℕ) (fuel : ℕ) (d : ℕ)
                                 (λ (u : ℕ) → 1)) 1) →
                 Eq (pick b
                     (λ (u : ℕ) →
-                       pick (eqb (mod n d) 0) (λ (v : ℕ) → next) (λ (v : ℕ) → d))
+                       pick (eqb (mod n d) 0) (λ (v : ℕ) → next)
+                         (λ (v : ℕ) → d))
                     (λ (u : ℕ) → n)) n)
              (caseNat
                 (λ (c : ℕ) →
-                   ∀ (h : Eq (pick c (λ (v : ℕ) → flagNext) (λ (v : ℕ) → 0)) 1) →
+                   ∀ (h : Eq (pick c (λ (v : ℕ) → flagNext)
+                                (λ (v : ℕ) → 0)) 1) →
                    Eq (pick c (λ (v : ℕ) → next) (λ (v : ℕ) → d)) n)
                 (λ (h : Eq flagNext 1) → ih (succ d) h)
                 (λ (k : ℕ) (h : ⊥) → absurd (Eq d n) h)
@@ -105,7 +113,8 @@ end
 
 end
 
-open TrialDivision use (trialDivision; noSmallDivisor; trialDivisionDivides; trialDivisionNone)
+open TrialDivision
+  use (trialDivision; noSmallDivisor; trialDivisionDivides; trialDivisionNone)
 
 (* The smallest divisor of [n] from 2 on, found by trial division up to the
    square root.  It is [n] when [n] is prime, and also when [n] is [0] or
@@ -144,12 +153,14 @@ theorem primeGeTwo : ∀ (n : ℕ) (h : Prime n) → Le 2 n ≔
 end
 
 (* A prime is its own smallest divisor. *)
-theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) → Eq (smallestDivisor n) n ≔
+theorem primeSmallestDivisor : ∀ (n : ℕ) (h : Prime n) →
+    Eq (smallestDivisor n) n ≔
   λ (n : ℕ) →
     rec n return x . (∀ (h : Prime x) → Eq (smallestDivisor x) x)
     | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 0) 0) h
     | succ p, ih ⇒
-        rec p return y . (∀ (h : Prime (succ y)) → Eq (smallestDivisor (succ y)) (succ y))
+        rec p return y . (∀ (h : Prime (succ y)) →
+                            Eq (smallestDivisor (succ y)) (succ y))
         | zero ⇒ λ (h : ⊥) → absurd (Eq (smallestDivisor 1) 1) h
         | succ q, s ⇒ λ (h : Eq (noSmallDivisor (succ (succ q))) 1) →
             trialDivisionNone (succ (succ q)) (succ (succ q)) 2 h
@@ -159,8 +170,8 @@ end
 
 end
 
-(* Closed facts.  [Prime n] computes, so [⋆] proves it for a prime, and
-   the identity refutes it otherwise. *)
+(* Closed facts.  [Prime n] computes, so [⋆] proves it for a prime, and the
+   identity refutes it otherwise. *)
 module Facts where
 
 theorem twoPrime : Prime 2 ≔ ⋆ end

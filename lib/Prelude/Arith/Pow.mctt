@@ -1,6 +1,5 @@
 (* Exponentiation by recursion on the exponent, with its laws stated with
-   [Prelude›Arith›Equality] and proved from those of
-   [Prelude›Arith›Mult]. *)
+   [Prelude›Arith›Equality] and proved from those of [Prelude›Arith›Mult]. *)
 module Prelude›Arith›Pow where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
@@ -64,7 +63,8 @@ theorem powPlus : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
             step : Eq lhs mid ≔
               cong (λ (y : ℕ) → mult a y) (pow a (plus p n))
                 (mult (pow a p) (pow a n)) ih
-        in trans lhs mid rhs step (sym rhs mid (multAssoc a (pow a p) (pow a n)))
+        in trans lhs mid rhs step
+             (sym rhs mid (multAssoc a (pow a p) (pow a n)))
         end
     end
 end
@@ -104,7 +104,8 @@ theorem powMult : ∀ (a : ℕ) (m : ℕ) (n : ℕ) →
               cong (λ (y : ℕ) → mult (pow a n) y) (pow a (mult p n))
                 (pow (pow a p) n) ih;
             back : Eq mid rhs ≔ sym rhs mid (powMultBase a (pow a p) n)
-        in trans lhs split rhs (powPlus a n (mult p n)) (trans split mid rhs step back)
+        in trans lhs split rhs (powPlus a n (mult p n))
+             (trans split mid rhs step back)
         end
     end
 end

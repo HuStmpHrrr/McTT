@@ -1,7 +1,8 @@
 (* The natural numbers as a distributive lattice under
-   [Prelude›Arith›MinMax.min] and [Prelude›Arith›MinMax.max]: associativity,
-   absorption and distributivity, and the order-theoretic characterization of
-   [min] and [max] as greatest lower and least upper bounds. *)
+   [Prelude›Arith›MinMax.min] and [Prelude›Arith›MinMax.max]:
+   associativity, absorption and distributivity, and the order-theoretic
+   characterization of [min] and [max] as greatest lower and least upper
+   bounds. *)
 module Prelude›Arith›Lattice where
 
 import Prelude›Logic use (absurd)
@@ -17,13 +18,17 @@ module Algebra where
 theorem minAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (min (min a b) c) (min a (min b c)) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) → Eq (min (min x b) c) (min x (min b c)))
+    rec a return x . (∀ (b : ℕ) (c : ℕ) →
+                        Eq (min (min x b) c) (min x (min b c)))
     | zero ⇒ λ (b : ℕ) (c : ℕ) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . (∀ (c : ℕ) → Eq (min (min (succ p) y) c) (min (succ p) (min y c)))
+        rec b return y . (∀ (c : ℕ) →
+                            Eq (min (min (succ p) y) c)
+                               (min (succ p) (min y c)))
         | zero ⇒ λ (c : ℕ) → ⋆
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return z . Eq (min (min (succ p) (succ q)) z) (min (succ p) (min (succ q) z))
+            rec c return z . Eq (min (min (succ p) (succ q)) z)
+                                (min (succ p) (min (succ q) z))
             | zero ⇒ ⋆
             | succ r, t ⇒ ih q r
             end
@@ -34,13 +39,17 @@ end
 theorem maxAssoc : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (max (max a b) c) (max a (max b c)) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) → Eq (max (max x b) c) (max x (max b c)))
+    rec a return x . (∀ (b : ℕ) (c : ℕ) →
+                        Eq (max (max x b) c) (max x (max b c)))
     | zero ⇒ λ (b : ℕ) (c : ℕ) → refl (max b c)
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . (∀ (c : ℕ) → Eq (max (max (succ p) y) c) (max (succ p) (max y c)))
+        rec b return y . (∀ (c : ℕ) →
+                            Eq (max (max (succ p) y) c)
+                               (max (succ p) (max y c)))
         | zero ⇒ λ (c : ℕ) → refl (max (succ p) c)
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return z . Eq (max (max (succ p) (succ q)) z) (max (succ p) (max (succ q) z))
+            rec c return z . Eq (max (max (succ p) (succ q)) z)
+                                (max (succ p) (max (succ q) z))
             | zero ⇒ refl (max p q)
             | succ r, t ⇒ ih q r
             end
@@ -78,11 +87,13 @@ end
 theorem minMaxDistrib : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (min a (max b c)) (max (min a b) (min a c)) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) → Eq (min x (max b c)) (max (min x b) (min x c)))
+    rec a return x . (∀ (b : ℕ) (c : ℕ) →
+                        Eq (min x (max b c)) (max (min x b) (min x c)))
     | zero ⇒ λ (b : ℕ) (c : ℕ) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . (∀ (c : ℕ) →
-                            Eq (min (succ p) (max y c)) (max (min (succ p) y) (min (succ p) c)))
+                            Eq (min (succ p) (max y c))
+                               (max (min (succ p) y) (min (succ p) c)))
         | zero ⇒ λ (c : ℕ) → refl (min (succ p) c)
         | succ q, s ⇒ λ (c : ℕ) →
             rec c return z . Eq (min (succ p) (max (succ q) z))
@@ -94,18 +105,21 @@ theorem minMaxDistrib : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     end
 end
 
-(* The maximum distributes over the minimum.  Two of the cases are instances
-   of absorption, the second one up to [minComm]. *)
+(* The maximum distributes over the minimum.  Two of the cases are
+   instances of absorption, the second one up to [minComm]. *)
 theorem maxMinDistrib : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     Eq (max a (min b c)) (min (max a b) (max a c)) ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) → Eq (max x (min b c)) (min (max x b) (max x c)))
+    rec a return x . (∀ (b : ℕ) (c : ℕ) →
+                        Eq (max x (min b c)) (min (max x b) (max x c)))
     | zero ⇒ λ (b : ℕ) (c : ℕ) → refl (min b c)
     | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . (∀ (c : ℕ) →
-                            Eq (max (succ p) (min y c)) (min (max (succ p) y) (max (succ p) c)))
+                            Eq (max (succ p) (min y c))
+                               (min (max (succ p) y) (max (succ p) c)))
         | zero ⇒ λ (c : ℕ) →
-            sym (min (succ p) (max (succ p) c)) (succ p) (minMaxAbsorb (succ p) c)
+            sym (min (succ p) (max (succ p) c)) (succ p)
+              (minMaxAbsorb (succ p) c)
         | succ q, s ⇒ λ (c : ℕ) →
             rec c return z . Eq (max (succ p) (min (succ q) z))
                                 (min (max (succ p) (succ q)) (max (succ p) z))
@@ -181,15 +195,20 @@ theorem minLeMax : ∀ (a : ℕ) (b : ℕ) → Le (min a b) (max a b) ≔
   λ (a : ℕ) (b : ℕ) → leTrans (min a b) a (max a b) (minLe a b) (leMax a b)
 end
 
-(* The minimum is the greatest lower bound: a common lower bound is below it. *)
-theorem leMin : ∀ (c : ℕ) (a : ℕ) (b : ℕ) (hca : Le c a) (hcb : Le c b) → Le c (min a b) ≔
+(* The minimum is the greatest lower bound: a common lower bound is below
+   it. *)
+theorem leMin : ∀ (c : ℕ) (a : ℕ) (b : ℕ) (hca : Le c a) (hcb : Le c b) →
+    Le c (min a b) ≔
   λ (c : ℕ) →
-    rec c return w . (∀ (a : ℕ) (b : ℕ) (hca : Le w a) (hcb : Le w b) → Le w (min a b))
+    rec c return w . (∀ (a : ℕ) (b : ℕ) (hca : Le w a) (hcb : Le w b) →
+                        Le w (min a b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (hca : ⊤) (hcb : ⊤) → ⋆
     | succ p, ih ⇒ λ (a : ℕ) →
-        rec a return x . (∀ (b : ℕ) (hca : Le (succ p) x) (hcb : Le (succ p) b) →
+        rec a return x . (∀ (b : ℕ) (hca : Le (succ p) x)
+                            (hcb : Le (succ p) b) →
                             Le (succ p) (min x b))
-        | zero ⇒ λ (b : ℕ) (hca : ⊥) (hcb : Le (succ p) b) → absurd (Le (succ p) 0) hca
+        | zero ⇒ λ (b : ℕ) (hca : ⊥) (hcb : Le (succ p) b) →
+            absurd (Le (succ p) 0) hca
         | succ q, s ⇒ λ (b : ℕ) →
             rec b return y . (∀ (hca : Le p q) (hcb : Le (succ p) y) →
                                 Le (succ p) (min (succ q) y))
@@ -212,10 +231,13 @@ theorem leMinRight : ∀ (c : ℕ) (a : ℕ) (b : ℕ) (h : Le c (min a b)) → 
     leTrans c (min a b) b h (minLeRight a b)
 end
 
-(* The maximum is the least upper bound: a common upper bound is above it. *)
-theorem maxLe : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hac : Le a c) (hbc : Le b c) → Le (max a b) c ≔
+(* The maximum is the least upper bound: a common upper bound is above
+   it. *)
+theorem maxLe : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hac : Le a c) (hbc : Le b c) →
+    Le (max a b) c ≔
   λ (a : ℕ) →
-    rec a return x . (∀ (b : ℕ) (c : ℕ) (hac : Le x c) (hbc : Le b c) → Le (max x b) c)
+    rec a return x . (∀ (b : ℕ) (c : ℕ) (hac : Le x c) (hbc : Le b c) →
+                        Le (max x b) c)
     | zero ⇒ λ (b : ℕ) (c : ℕ) (hac : ⊤) (hbc : Le b c) → hbc
     | succ p, ih ⇒ λ (b : ℕ) →
         rec b return y . (∀ (c : ℕ) (hac : Le (succ p) c) (hbc : Le y c) →

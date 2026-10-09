@@ -8,7 +8,8 @@ open Prelude›Arith›Plus.Basic use (plusZero)
 open Prelude›Arith›Plus.Algebra use (plusAssoc; plusLeftComm; plusSwapMiddle)
 import Prelude›Arith›Mult use (mult)
 open Prelude›Arith›Mult.Basic use (multZero; multSucc)
-open Prelude›Arith›Mult.Algebra use (multComm; multDistribLeft; multDistribRight)
+open Prelude›Arith›Mult.Algebra
+  use (multComm; multDistribLeft; multDistribRight)
 import Prelude›Function›Combinators use (Generic)
 
 (* [sumTo f n] is [f (n - 1) + ... + f 0]: [sumTo f 0] is [0] and
@@ -54,7 +55,8 @@ end
 theorem sumToShift : ∀ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     Eq (sumTo f (succ n)) (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) n)) ≔
   λ (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
-    rec n return x . Eq (sumTo f (succ x)) (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) x))
+    rec n return x . Eq (sumTo f (succ x))
+                        (plus (f 0) (sumTo (λ (i : ℕ) → f (succ i)) x))
     | zero ⇒ refl (plus (f 0) 0)
     | succ p, ih ⇒
         let b ≔ f (succ p);
@@ -86,7 +88,8 @@ theorem sumToPlus : ∀ (f : ∀ (i : ℕ) → ℕ) (g : ∀ (i : ℕ) → ℕ) 
             sg ≔ sumTo g p;
             step : Eq (plus fg sfg) (plus fg (plus sf sg)) ≔
               cong (λ (y : ℕ) → plus fg y) sfg (plus sf sg) ih
-        in trans (plus fg sfg) (plus fg (plus sf sg)) (plus (plus (f p) sf) (plus (g p) sg))
+        in trans (plus fg sfg) (plus fg (plus sf sg))
+             (plus (plus (f p) sf) (plus (g p) sg))
              step (plusSwapMiddle (f p) (g p) sf sg)
         end
     end
@@ -96,7 +99,8 @@ end
 theorem sumToScale : ∀ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
     Eq (sumTo (λ (i : ℕ) → mult c (f i)) n) (mult c (sumTo f n)) ≔
   λ (c : ℕ) (f : ∀ (i : ℕ) → ℕ) (n : ℕ) →
-    rec n return x . Eq (sumTo (λ (i : ℕ) → mult c (f i)) x) (mult c (sumTo f x))
+    rec n return x . Eq (sumTo (λ (i : ℕ) → mult c (f i)) x)
+                        (mult c (sumTo f x))
     | zero ⇒ sym (mult c 0) 0 (multZero c)
     | succ p, ih ⇒
         let cf ≔ mult c (f p);
@@ -118,7 +122,8 @@ theorem sumToConst : ∀ (c : ℕ) (n : ℕ) →
     rec n return x . Eq (sumTo (Generic.const 0l ℕ ℕ c) x) (mult x c)
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        cong (λ (y : ℕ) → plus c y) (sumTo (Generic.const 0l ℕ ℕ c) p) (mult p c) ih
+        cong (λ (y : ℕ) → plus c y)
+          (sumTo (Generic.const 0l ℕ ℕ c) p) (mult p c) ih
     end
 end
 
@@ -128,11 +133,13 @@ end
 module Closed where
 
 (* Gauss: twice [0 + 1 + ... + n] is [n (n + 1)].  The step distributes
-   [mult 2] over the new summand and collects [mult (succ (succ p)) (succ p)]. *)
+   [mult 2] over the new summand and collects
+   [mult (succ (succ p)) (succ p)]. *)
 theorem gauss : ∀ (n : ℕ) →
     Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ n))) (mult n (succ n)) ≔
   λ (n : ℕ) →
-    rec n return x . Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x))) (mult x (succ x))
+    rec n return x . Eq (mult 2 (sumTo (Generic.id 0l ℕ) (succ x)))
+                        (mult x (succ x))
     | zero ⇒ ⋆
     | succ p, ih ⇒
         let s ≔ sumTo (Generic.id 0l ℕ) (succ p);
@@ -143,7 +150,8 @@ theorem gauss : ∀ (n : ℕ) →
             coll ≔ mult (succ q) q;
             rhs ≔ mult q (succ q);
             stepA : Eq lhs dist ≔ multDistribLeft 2 q s;
-            stepB : Eq dist mid ≔ cong (λ (y : ℕ) → plus (mult 2 q) y) (mult 2 s) (mult p q) ih;
+            stepB : Eq dist mid ≔
+              cong (λ (y : ℕ) → plus (mult 2 q) y) (mult 2 s) (mult p q) ih;
             stepC : Eq mid coll ≔ sym coll mid (multDistribRight 2 p q);
             stepD : Eq coll rhs ≔ multComm (succ q) q
         in trans lhs dist rhs stepA

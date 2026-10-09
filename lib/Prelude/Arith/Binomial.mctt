@@ -4,8 +4,8 @@ module Prelude›Arith›Binomial where
 import Prelude›Arith›Plus use (plus)
 
 (* [choose n k] is the number of [k]-element subsets of an [n]-element set.
-   Row [0] is [1] at [k = 0] and [0] elsewhere; in row [succ n], [choose
-   (succ n) 0] is [1] and [choose (succ n) (succ k)] is
+   Row [0] is [1] at [k = 0] and [0] elsewhere; in row [succ n],
+   [choose (succ n) 0] is [1] and [choose (succ n) (succ k)] is
    [plus (choose n k) (choose n (succ k))].  The recursion on [n] returns the
    whole row as a function, so both equations hold by computation. *)
 def choose (n : ℕ) (k : ℕ) : ℕ ≔

@@ -1,5 +1,5 @@
-(* Laws of [Prelude›Arith›Fibonacci]: the defining recurrence, positivity,
-   monotonicity, the sum identity and the addition formula. *)
+(* Laws of [Prelude›Arith›Fibonacci]: the defining recurrence,
+   positivity, monotonicity, the sum identity and the addition formula. *)
 module Prelude›Arith›Fibonacci›Properties where
 
 import Prelude›Arith›Equality use (Eq; sym; trans; cong; transport)
@@ -9,7 +9,8 @@ open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusRightComm)
 import Prelude›Arith›Mult use (mult)
 open Prelude›Arith›Mult.Algebra use (multDistribLeft; multDistribRight)
 import Prelude›Arith›Order use (Le; Lt)
-open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; lePlusRight; lePlusLeft)
+open Prelude›Arith›Order.LeLaws
+  use (leRefl; leTrans; lePlusRight; lePlusLeft)
 import Prelude›Arith›Sum use (sumTo)
 import Prelude›Arith›Fibonacci use (fibFrom; fib)
 
@@ -17,14 +18,17 @@ import Prelude›Arith›Fibonacci use (fibFrom; fib)
    and positivity.  [fib] is the one starting from [0] and [1]. *)
 private module FibFrom where
 
-(* Every sequence computed by [fibFrom] satisfies the Fibonacci recurrence.
-   In the step, [fibFrom (succ n) a b] computes to [fibFrom n b (plus a b)],
-   so the hypothesis at [b] and [plus a b] is the goal. *)
+(* Every sequence computed by [fibFrom] satisfies the Fibonacci
+   recurrence.  In the step, [fibFrom (succ n) a b] computes to
+   [fibFrom n b (plus a b)], so the hypothesis at [b] and [plus a b] is the
+   goal. *)
 lemma recurrence : ∀ (n : ℕ) (a : ℕ) (b : ℕ) →
-    Eq (fibFrom (succ (succ n)) a b) (plus (fibFrom (succ n) a b) (fibFrom n a b)) ≔
+    Eq (fibFrom (succ (succ n)) a b)
+       (plus (fibFrom (succ n) a b) (fibFrom n a b)) ≔
   λ (n : ℕ) →
     rec n return x . (∀ (a : ℕ) (b : ℕ) →
-                        Eq (fibFrom (succ (succ x)) a b) (plus (fibFrom (succ x) a b) (fibFrom x a b)))
+                        Eq (fibFrom (succ (succ x)) a b)
+                           (plus (fibFrom (succ x) a b) (fibFrom x a b)))
     | zero ⇒ λ (a : ℕ) (b : ℕ) → plusComm a b
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) → ih b (plus a b)
     end
@@ -35,7 +39,8 @@ end
 lemma positive : ∀ (n : ℕ) (a : ℕ) (b : ℕ) (h : Lt 0 b) →
     Lt 0 (fibFrom (succ n) a b) ≔
   λ (n : ℕ) →
-    rec n return x . (∀ (a : ℕ) (b : ℕ) (h : Lt 0 b) → Lt 0 (fibFrom (succ x) a b))
+    rec n return x . (∀ (a : ℕ) (b : ℕ) (h : Lt 0 b) →
+                        Lt 0 (fibFrom (succ x) a b))
     | zero ⇒ λ (a : ℕ) (b : ℕ) (h : Lt 0 b) → h
     | succ p, ih ⇒ λ (a : ℕ) (b : ℕ) (h : Lt 0 b) →
         ih b (plus a b) (leTrans 1 b (plus a b) h (lePlusLeft a b))
@@ -52,7 +57,8 @@ theorem fibZero : Eq (fib 0) 0 ≔ ⋆ end
 theorem fibOne : Eq (fib 1) 1 ≔ ⋆ end
 
 (* The Fibonacci recurrence. *)
-theorem fibSucc : ∀ (n : ℕ) → Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) ≔
+theorem fibSucc : ∀ (n : ℕ) →
+    Eq (fib (succ (succ n))) (plus (fib (succ n)) (fib n)) ≔
   λ (n : ℕ) → FibFrom.recurrence n 0 1
 end
 
@@ -86,7 +92,9 @@ theorem fibMonoPlus : ∀ (k : ℕ) (m : ℕ) → Le (fib m) (fib (plus k m)) �
   λ (k : ℕ) (m : ℕ) →
     rec k return x . Le (fib m) (fib (plus x m))
     | zero ⇒ leRefl (fib m)
-    | succ p, ih ⇒ leTrans (fib m) (fib (plus p m)) (fib (succ (plus p m))) ih (fibMono (plus p m))
+    | succ p, ih ⇒
+        leTrans (fib m) (fib (plus p m)) (fib (succ (plus p m))) ih
+          (fibMono (plus p m))
     end
 end
 
@@ -124,15 +132,19 @@ end
    [fib (succ (succ n))] and [fib (succ (succ p))] by [fibSucc], and
    distributes. *)
 theorem fibPlus : ∀ (m : ℕ) (n : ℕ) →
-    Eq (fib (succ (plus m n))) (plus (mult (fib (succ m)) (fib (succ n))) (mult (fib m) (fib n))) ≔
+    Eq (fib (succ (plus m n)))
+       (plus (mult (fib (succ m)) (fib (succ n))) (mult (fib m) (fib n))) ≔
   λ (m : ℕ) →
     rec m return x . (∀ (n : ℕ) →
-        Eq (fib (succ (plus x n))) (plus (mult (fib (succ x)) (fib (succ n))) (mult (fib x) (fib n))))
+                        Eq (fib (succ (plus x n)))
+                           (plus (mult (fib (succ x)) (fib (succ n)))
+                              (mult (fib x) (fib n))))
     | zero ⇒ λ (n : ℕ) →
         (* The right-hand side computes to [plus (plus (fib (succ n)) 0) 0]. *)
         let g ≔ fib (succ n)
         in sym (plus (plus g 0) 0) g
-             (trans (plus (plus g 0) 0) (plus g 0) g (plusZero (plus g 0)) (plusZero g))
+             (trans (plus (plus g 0) 0) (plus g 0) g (plusZero (plus g 0))
+                (plusZero g))
         end
     | succ p, ih ⇒ λ (n : ℕ) →
         let a ≔ fib (succ p);
@@ -148,22 +160,26 @@ theorem fibPlus : ∀ (m : ℕ) (n : ℕ) →
             collect ≔ plus (mult (plus a b) x) (mult a y);
             rhs ≔ plus (mult (fib (succ (succ p))) x) (mult a y);
             stepA : Eq lhs shifted ≔
-              cong (λ (z : ℕ) → fib (succ z)) (succ (plus p n)) (plus p (succ n))
+              cong (λ (z : ℕ) → fib (succ z))
+                (succ (plus p n)) (plus p (succ n))
                 (sym (plus p (succ n)) (succ (plus p n)) (plusSucc p n));
             stepB : Eq shifted hyp ≔ ih (succ n);
             stepC : Eq hyp expanded ≔
-              cong (λ (z : ℕ) → plus (mult a z) (mult b x)) (fib (succ (succ n))) (plus x y)
-                (fibSucc n);
+              cong (λ (z : ℕ) → plus (mult a z) (mult b x))
+                (fib (succ (succ n))) (plus x y) (fibSucc n);
             stepD : Eq expanded dist ≔
               cong (λ (z : ℕ) → plus z (mult b x)) (mult a (plus x y))
                 (plus (mult a x) (mult a y)) (multDistribLeft a x y);
-            stepE : Eq dist regroup ≔ plusRightComm (mult a x) (mult a y) (mult b x);
+            stepE : Eq dist regroup ≔
+              plusRightComm (mult a x) (mult a y) (mult b x);
             stepF : Eq regroup collect ≔
               cong (λ (z : ℕ) → plus z (mult a y)) (plus (mult a x) (mult b x))
                 (mult (plus a b) x)
-                (sym (mult (plus a b) x) (plus (mult a x) (mult b x)) (multDistribRight a b x));
+                (sym (mult (plus a b) x) (plus (mult a x) (mult b x))
+                   (multDistribRight a b x));
             stepG : Eq collect rhs ≔
-              cong (λ (z : ℕ) → plus (mult z x) (mult a y)) (plus a b) (fib (succ (succ p)))
+              cong (λ (z : ℕ) → plus (mult z x) (mult a y))
+                (plus a b) (fib (succ (succ p)))
                 (sym (fib (succ (succ p))) (plus a b) (fibSucc p))
         in trans lhs shifted rhs stepA
              (trans shifted hyp rhs stepB

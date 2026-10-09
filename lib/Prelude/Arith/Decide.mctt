@@ -171,7 +171,8 @@ def eqbCases : ∀ (a : ℕ) (b : ℕ) (P : ∀ (m : ℕ) → Type@0)
 end
 
 (* A number at most [b] for which [eqb] answers 0 is strictly below [b]. *)
-theorem leEqbZero : ∀ (a : ℕ) (b : ℕ) (h : Le a b) (e : Eq (eqb a b) 0) → Lt a b ≔
+theorem leEqbZero : ∀ (a : ℕ) (b : ℕ) (h : Le a b) (e : Eq (eqb a b) 0) →
+    Lt a b ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) (h : Le x b) (e : Eq (eqb x b) 0) → Lt x b)
     | zero ⇒ λ (b : ℕ) →
@@ -180,7 +181,8 @@ theorem leEqbZero : ∀ (a : ℕ) (b : ℕ) (h : Le a b) (e : Eq (eqb a b) 0) �
         | succ q, s ⇒ λ (h : ⊤) (e : ⊤) → ⋆
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) → Lt (succ p) z)
+        rec b return z . (∀ (h : Le (succ p) z) (e : Eq (eqb (succ p) z) 0) →
+                            Lt (succ p) z)
         | zero ⇒ λ (h : ⊥) (e : ⊤) → h
         | succ q, s ⇒ λ (h : Le p q) (e : Eq (eqb p q) 0) → ih q h e
         end

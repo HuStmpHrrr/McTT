@@ -9,8 +9,8 @@ open Prelude›Logic.Disj 0l use (Or; orInl; orInr)
 import Prelude›Arith›Equality use (Eq; sym; transport)
 import Prelude›Arith›Plus use (plus)
 
-(* [Le n m] computes to [⊤] or [⊥]: [Le 0 m] is [⊤],
-   [Le (succ n) 0] is [⊥], and [Le (succ n) (succ m)] is [Le n m]. *)
+(* [Le n m] computes to [⊤] or [⊥]: [Le 0 m] is [⊤], [Le (succ n) 0] is [⊥], and
+   [Le (succ n) (succ m)] is [Le n m]. *)
 def Le : ∀ (n : ℕ) (m : ℕ) → Type@0 ≔
   λ (n : ℕ) →
     rec n return y . (∀ (m : ℕ) → Type@0)
@@ -39,10 +39,12 @@ def leTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Le b c) �
     rec a return x . (∀ (b : ℕ) (c : ℕ) (hab : Le x b) (hbc : Le b c) → Le x c)
     | zero ⇒ λ (b : ℕ) (c : ℕ) (hab : ⊤) (hbc : Le b c) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (c : ℕ) (hab : Le (succ p) z) (hbc : Le z c) → Le (succ p) c)
+        rec b return z . (∀ (c : ℕ) (hab : Le (succ p) z) (hbc : Le z c) →
+                            Le (succ p) c)
         | zero ⇒ λ (c : ℕ) (hab : ⊥) (hbc : ⊤) → absurd (Le (succ p) c) hab
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return w . (∀ (hab : Le p q) (hbc : Le (succ q) w) → Le (succ p) w)
+            rec c return w . (∀ (hab : Le p q) (hbc : Le (succ q) w) →
+                                Le (succ p) w)
             | zero ⇒ λ (hab : Le p q) (hbc : ⊥) → hbc
             | succ r, t ⇒ λ (hab : Le p q) (hbc : Le q r) → ih q r hab hbc
             end
@@ -59,7 +61,8 @@ theorem leAntisym : ∀ (a : ℕ) (b : ℕ) (hab : Le a b) (hba : Le b a) → Eq
         | succ q, s ⇒ λ (hab : ⊤) (hba : ⊥) → hba
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (hab : Le (succ p) z) (hba : Le z (succ p)) → Eq (succ p) z)
+        rec b return z . (∀ (hab : Le (succ p) z) (hba : Le z (succ p)) →
+                            Eq (succ p) z)
         | zero ⇒ λ (hab : ⊥) (hba : ⊤) → hab
         | succ q, s ⇒ λ (hab : Le p q) (hba : Le q p) → ih q hab hba
         end
@@ -165,7 +168,8 @@ def leCases : ∀ (m : ℕ) (p : ℕ) (h : Le m p) → D.Or (Lt m p) (Eq m p) �
         | succ q, s ⇒ λ (h : ⊤) → D.orInl (Lt 0 (succ q)) (Eq 0 (succ q)) ⋆
         end
     | succ r, ih ⇒ λ (p : ℕ) →
-        rec p return z . (∀ (h : Le (succ r) z) → D.Or (Lt (succ r) z) (Eq (succ r) z))
+        rec p return z . (∀ (h : Le (succ r) z) →
+                            D.Or (Lt (succ r) z) (Eq (succ r) z))
         | zero ⇒ λ (h : ⊥) →
             Neg.absurd (succl u) (D.Or (Lt (succ r) 0) (Eq (succ r) 0)) h
         | succ q, s ⇒ λ (h : Le r q) → ih q h

@@ -66,9 +66,10 @@ theorem plusLeftComm : ∀ (a : ℕ) (b : ℕ) (c : ℕ) →
     | zero ⇒ refl (plus b c)
     | succ p, ih ⇒
         let back : Eq (succ (plus b (plus p c))) (plus b (succ (plus p c))) ≔
-              sym (plus b (succ (plus p c))) (succ (plus b (plus p c))) (plusSucc b (plus p c))
-        in trans (succ (plus p (plus b c))) (succ (plus b (plus p c))) (plus b (succ (plus p c)))
-             ih back
+              sym (plus b (succ (plus p c))) (succ (plus b (plus p c)))
+                (plusSucc b (plus p c))
+        in trans (succ (plus p (plus b c))) (succ (plus b (plus p c)))
+             (plus b (succ (plus p c))) ih back
         end
     end
 end
@@ -105,7 +106,8 @@ theorem plusSwapMiddle : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) →
           cong (λ (y : ℕ) → plus a y) (plus b (plus c d)) (plus c (plus b d))
             (plusLeftComm b c d);
         back : Eq inner rhs ≔ sym rhs inner (plusAssoc a c (plus b d))
-    in trans lhs mid rhs (plusAssoc a b (plus c d)) (trans mid inner rhs swap back)
+    in trans lhs mid rhs (plusAssoc a b (plus c d))
+         (trans mid inner rhs swap back)
     end
 end
 
@@ -122,7 +124,8 @@ theorem succInj : ∀ (a : ℕ) (b : ℕ) (h : Eq (succ a) (succ b)) → Eq a b 
   λ (a : ℕ) (b : ℕ) (h : Eq (succ a) (succ b)) → h
 end
 
-theorem plusCancelLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a b) (plus a c)) → Eq b c ≔
+theorem plusCancelLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ)
+    (h : Eq (plus a b) (plus a c)) → Eq b c ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
     rec a return x . (∀ (h : Eq (plus x b) (plus x c)) → Eq b c)
     | zero ⇒ λ (h : Eq b c) → h
@@ -131,7 +134,8 @@ theorem plusCancelLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a b) (p
 end
 
 (* Right cancellation, reduced to left cancellation by commutativity. *)
-theorem plusCancelRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a c) (plus b c)) → Eq a b ≔
+theorem plusCancelRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ)
+    (h : Eq (plus a c) (plus b c)) → Eq a b ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) (h : Eq (plus a c) (plus b c)) →
     let hb : Eq (plus a c) (plus c b) ≔
           trans (plus a c) (plus b c) (plus c b) h (plusComm b c);

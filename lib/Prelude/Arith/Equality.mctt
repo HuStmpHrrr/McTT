@@ -42,7 +42,8 @@ theorem sym : ∀ (a : ℕ) (b : ℕ) (h : Eq a b) → Eq b a ≔
     end
 end
 
-theorem trans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Eq a b) (hbc : Eq b c) → Eq a c ≔
+theorem trans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Eq a b) (hbc : Eq b c) →
+    Eq a c ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) (c : ℕ) (hab : Eq x b) (hbc : Eq b c) → Eq x c)
     | zero ⇒ λ (b : ℕ) →
@@ -52,12 +53,16 @@ theorem trans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Eq a b) (hbc : Eq b c) 
             absurd (Eq 0 c) hab
         end
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return z . (∀ (c : ℕ) (hab : Eq (succ p) z) (hbc : Eq z c) → Eq (succ p) c)
+        rec b return z . (∀ (c : ℕ) (hab : Eq (succ p) z) (hbc : Eq z c) →
+                            Eq (succ p) c)
         | zero ⇒ λ (c : ℕ) (hab : Eq (succ p) 0) (hbc : Eq 0 c) →
             absurd (Eq (succ p) c) hab
         | succ q, s ⇒ λ (c : ℕ) →
-            rec c return w . (∀ (hab : Eq (succ p) (succ q)) (hbc : Eq (succ q) w) → Eq (succ p) w)
-            | zero ⇒ λ (hab : Eq p q) (hbc : Eq (succ q) 0) → absurd (Eq (succ p) 0) hbc
+            rec c return w . (∀ (hab : Eq (succ p) (succ q))
+                                (hbc : Eq (succ q) w) →
+                                Eq (succ p) w)
+            | zero ⇒ λ (hab : Eq p q) (hbc : Eq (succ q) 0) →
+                absurd (Eq (succ p) 0) hbc
             | succ r, t ⇒ λ (hab : Eq p q) (hbc : Eq q r) → ih q r hab hbc
             end
         end
@@ -67,9 +72,11 @@ end
 (* Every function on numbers respects equality. The proof is by induction on
    both numbers, with the function generalized so that the successor case can
    use the hypothesis at [λ y → f (succ y)]. *)
-theorem cong : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (b : ℕ) (h : Eq a b) → Eq (f a) (f b) ≔
+theorem cong : ∀ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) (b : ℕ) (h : Eq a b) →
+    Eq (f a) (f b) ≔
   λ (f : ∀ (x : ℕ) → ℕ) (a : ℕ) →
-    (rec a return x . (∀ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) (h : Eq x b) → Eq (g x) (g b))
+    (rec a return x . (∀ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) (h : Eq x b) →
+                         Eq (g x) (g b))
      | zero ⇒ λ (g : ∀ (y : ℕ) → ℕ) (b : ℕ) →
          rec b return z . (∀ (h : Eq 0 z) → Eq (g 0) (g z))
          | zero ⇒ λ (h : ⊤) → refl (g 0)

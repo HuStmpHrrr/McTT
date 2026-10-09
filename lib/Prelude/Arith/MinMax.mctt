@@ -97,12 +97,14 @@ end
 
 (* The minimum and the maximum add up to the sum. In the successor case both
    sides are moved past [plusSucc] and meet at the induction hypothesis. *)
-theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) → Eq (plus (min a b) (max a b)) (plus a b) ≔
+theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) →
+    Eq (plus (min a b) (max a b)) (plus a b) ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) → Eq (plus (min x b) (max x b)) (plus x b))
     | zero ⇒ λ (b : ℕ) → refl b
     | succ p, ih ⇒ λ (b : ℕ) →
-        rec b return y . Eq (plus (min (succ p) y) (max (succ p) y)) (plus (succ p) y)
+        rec b return y . Eq (plus (min (succ p) y) (max (succ p) y))
+                            (plus (succ p) y)
         | zero ⇒ sym (plus p 0) p (plusZero p)
         | succ q, s ⇒
             let m ≔ min p q;
@@ -111,7 +113,8 @@ theorem plusMinMax : ∀ (a : ℕ) (b : ℕ) → Eq (plus (min a b) (max a b)) (
                 right : Eq (succ (plus p q)) (plus p (succ q)) ≔
                   sym (plus p (succ q)) (succ (plus p q)) (plusSucc p q)
             in trans (plus m (succ M)) (succ (plus p q)) (plus p (succ q))
-                 (trans (plus m (succ M)) (succ (plus m M)) (succ (plus p q)) left (ih q))
+                 (trans (plus m (succ M)) (succ (plus m M)) (succ (plus p q))
+                    left (ih q))
                  right
             end
         end

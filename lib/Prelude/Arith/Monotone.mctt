@@ -1,6 +1,6 @@
-(* Monotonicity of addition, multiplication and subtraction with respect to
-   [Prelude›Arith›Order.Le], transitivity laws for the strict order, and the
-   interaction of [Prelude›Arith›Sub.sub] with the order. *)
+(* Monotonicity of addition, multiplication and subtraction with respect
+   to [Prelude›Arith›Order.Le], transitivity laws for the strict order, and
+   the interaction of [Prelude›Arith›Sub.sub] with the order. *)
 module Prelude›Arith›Monotone where
 
 import Prelude›Logic use (absurd)
@@ -10,23 +10,27 @@ open Prelude›Arith›Plus.Basic use (plusZero; plusSucc)
 import Prelude›Arith›Mult use (mult)
 import Prelude›Arith›Sub use (sub)
 import Prelude›Arith›Order use (Le; Lt)
-open Prelude›Arith›Order.LeLaws use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
+open Prelude›Arith›Order.LeLaws
+  use (leRefl; leTrans; leSucc; leStep; lePlusLeft)
 
 (* Addition and multiplication are monotone, and addition cancels. *)
 module Mono where
 
-(* Addition is monotone in both arguments.  The induction is on [a] with [b]
-   generalized; at [a = 0] the bound on [c] is weakened by [lePlusLeft]. *)
+(* Addition is monotone in both arguments.  The induction is on [a] with
+   [b] generalized; at [a = 0] the bound on [c] is weakened by
+   [lePlusLeft]. *)
 theorem lePlusMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
     (hab : Le a b) (hcd : Le c d) → Le (plus a c) (plus b d) ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) (c : ℕ) (d : ℕ)
-                        (hab : Le x b) (hcd : Le c d) → Le (plus x c) (plus b d))
+                        (hab : Le x b) (hcd : Le c d) →
+                        Le (plus x c) (plus b d))
     | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) →
         leTrans c d (plus b d) hcd (lePlusLeft b d)
     | succ p, ih ⇒ λ (b : ℕ) →
         rec b return z . (∀ (c : ℕ) (d : ℕ)
-                            (hab : Le (succ p) z) (hcd : Le c d) → Le (plus (succ p) c) (plus z d))
+                            (hab : Le (succ p) z) (hcd : Le c d) →
+                            Le (plus (succ p) c) (plus z d))
         | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
             absurd (Le (succ (plus p c)) d) hab
         | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
@@ -64,11 +68,13 @@ theorem leMultMono : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
     (hab : Le a b) (hcd : Le c d) → Le (mult a c) (mult b d) ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) (c : ℕ) (d : ℕ)
-                        (hab : Le x b) (hcd : Le c d) → Le (mult x c) (mult b d))
+                        (hab : Le x b) (hcd : Le c d) →
+                        Le (mult x c) (mult b d))
     | zero ⇒ λ (b : ℕ) (c : ℕ) (d : ℕ) (hab : ⊤) (hcd : Le c d) → ⋆
     | succ p, ih ⇒ λ (b : ℕ) →
         rec b return z . (∀ (c : ℕ) (d : ℕ)
-                            (hab : Le (succ p) z) (hcd : Le c d) → Le (mult (succ p) c) (mult z d))
+                            (hab : Le (succ p) z) (hcd : Le c d) →
+                            Le (mult (succ p) c) (mult z d))
         | zero ⇒ λ (c : ℕ) (d : ℕ) (hab : ⊥) (hcd : Le c d) →
             absurd (Le (plus c (mult p c)) 0) hab
         | succ q, s ⇒ λ (c : ℕ) (d : ℕ) (hab : Le p q) (hcd : Le c d) →
@@ -87,18 +93,21 @@ theorem ltLe : ∀ (a : ℕ) (b : ℕ) (h : Lt a b) → Le a b ≔
   λ (a : ℕ) (b : ℕ) (h : Lt a b) → leTrans a (succ a) b (leSucc a) h
 end
 
-def ltLeTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Le b c) → Lt a c ≔
+def ltLeTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Le b c) →
+    Lt a c ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Le b c) →
     leTrans (succ a) b c hab hbc
 end
 
 (* [Le (succ a) (succ b)] computes to [Le a b], so [hab] bounds [succ a]. *)
-theorem leLtTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Lt b c) → Lt a c ≔
+theorem leLtTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Lt b c) →
+    Lt a c ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Le a b) (hbc : Lt b c) →
     leTrans (succ a) (succ b) c hab hbc
 end
 
-theorem ltTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Lt b c) → Lt a c ≔
+theorem ltTrans : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Lt b c) →
+    Lt a c ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) (hab : Lt a b) (hbc : Lt b c) →
     ltLeTrans a b c hab (ltLe b c hbc)
 end
@@ -116,7 +125,8 @@ theorem ltPlus : ∀ (a : ℕ) (b : ℕ) → Lt a (plus a (succ b)) ≔
 end
 
 (* Addition preserves a strict bound in its second argument. *)
-def ltPlusMonoRight : ∀ (m : ℕ) (j : ℕ) (n : ℕ) (h : Lt j n) → Lt (plus m j) (plus m n) ≔
+def ltPlusMonoRight : ∀ (m : ℕ) (j : ℕ) (n : ℕ) (h : Lt j n) →
+    Lt (plus m j) (plus m n) ≔
   λ (m : ℕ) (j : ℕ) (n : ℕ) (h : Lt j n) →
     rec m return x . Lt (plus x j) (plus x n)
     | zero ⇒ h
@@ -143,15 +153,19 @@ def subLe : ∀ (a : ℕ) (b : ℕ) → Le (sub a b) a ≔
 end
 
 (* Subtraction is monotone in its first argument. *)
-theorem subMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) → Le (sub a c) (sub b c) ≔
+theorem subMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) →
+    Le (sub a c) (sub b c) ≔
   λ (a : ℕ) (b : ℕ) (c : ℕ) →
-    (rec c return w . (∀ (x : ℕ) (y : ℕ) (h : Le x y) → Le (sub x w) (sub y w))
+    (rec c return w . (∀ (x : ℕ) (y : ℕ) (h : Le x y) →
+                         Le (sub x w) (sub y w))
      | zero ⇒ λ (x : ℕ) (y : ℕ) (h : Le x y) → h
      | succ r, ih ⇒ λ (x : ℕ) →
-         rec x return u . (∀ (y : ℕ) (h : Le u y) → Le (sub u (succ r)) (sub y (succ r)))
+         rec x return u . (∀ (y : ℕ) (h : Le u y) →
+                             Le (sub u (succ r)) (sub y (succ r)))
          | zero ⇒ λ (y : ℕ) (h : ⊤) → ⋆
          | succ p, s ⇒ λ (y : ℕ) →
-             rec y return v . (∀ (h : Le (succ p) v) → Le (sub (succ p) (succ r)) (sub v (succ r)))
+             rec y return v . (∀ (h : Le (succ p) v) →
+                                 Le (sub (succ p) (succ r)) (sub v (succ r)))
              | zero ⇒ λ (h : ⊥) → absurd (Le (sub p r) 0) h
              | succ q, t ⇒ λ (h : Le p q) → ih p q h
              end
@@ -160,12 +174,15 @@ theorem subMonoLeft : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le a b) → Le (sub
 end
 
 (* Subtraction is antitone in its second argument. *)
-theorem subMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) → Le (sub a c) (sub a b) ≔
+theorem subMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) →
+    Le (sub a c) (sub a b) ≔
   λ (a : ℕ) (b : ℕ) →
-    (rec b return y . (∀ (x : ℕ) (c : ℕ) (h : Le y c) → Le (sub x c) (sub x y))
+    (rec b return y . (∀ (x : ℕ) (c : ℕ) (h : Le y c) →
+                         Le (sub x c) (sub x y))
      | zero ⇒ λ (x : ℕ) (c : ℕ) (h : ⊤) → subLe x c
      | succ q, ih ⇒ λ (x : ℕ) (c : ℕ) →
-         rec c return w . (∀ (h : Le (succ q) w) → Le (sub x w) (sub x (succ q)))
+         rec c return w . (∀ (h : Le (succ q) w) →
+                             Le (sub x w) (sub x (succ q)))
          | zero ⇒ λ (h : ⊥) → absurd (Le x (sub x (succ q))) h
          | succ r, t ⇒ λ (h : Le q r) →
              rec x return u . Le (sub u (succ r)) (sub u (succ q))
@@ -177,12 +194,14 @@ theorem subMonoRight : ∀ (a : ℕ) (b : ℕ) (c : ℕ) (h : Le b c) → Le (su
 end
 
 (* Below [a], subtracting [b] and adding it back on the right gives [a]. *)
-theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) → Eq (plus (sub a b) b) a ≔
+theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) →
+    Eq (plus (sub a b) b) a ≔
   λ (a : ℕ) (b : ℕ) →
     (rec b return y . (∀ (x : ℕ) (h : Le y x) → Eq (plus (sub x y) y) x)
      | zero ⇒ λ (x : ℕ) (h : ⊤) → plusZero x
      | succ q, ih ⇒ λ (x : ℕ) →
-         rec x return z . (∀ (h : Le (succ q) z) → Eq (plus (sub z (succ q)) (succ q)) z)
+         rec x return z . (∀ (h : Le (succ q) z) →
+                             Eq (plus (sub z (succ q)) (succ q)) z)
          | zero ⇒ λ (h : ⊥) → absurd (Eq (plus 0 (succ q)) 0) h
          | succ p, s ⇒ λ (h : Le q p) →
              trans (plus (sub p q) (succ q)) (succ (plus (sub p q) q)) (succ p)
@@ -192,12 +211,14 @@ theorem plusSubCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) → Eq (plus (sub a
 end
 
 (* Below [a], adding [b] on the left of [sub a b] gives [a]. *)
-theorem subPlusCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) → Eq (plus b (sub a b)) a ≔
+theorem subPlusCancel : ∀ (a : ℕ) (b : ℕ) (h : Le b a) →
+    Eq (plus b (sub a b)) a ≔
   λ (a : ℕ) (b : ℕ) →
     (rec b return y . (∀ (x : ℕ) (h : Le y x) → Eq (plus y (sub x y)) x)
      | zero ⇒ λ (x : ℕ) (h : ⊤) → refl x
      | succ q, ih ⇒ λ (x : ℕ) →
-         rec x return z . (∀ (h : Le (succ q) z) → Eq (plus (succ q) (sub z (succ q))) z)
+         rec x return z . (∀ (h : Le (succ q) z) →
+                             Eq (plus (succ q) (sub z (succ q))) z)
          | zero ⇒ λ (h : ⊥) → absurd (Eq (succ (plus q 0)) 0) h
          | succ p, s ⇒ λ (h : Le q p) → ih p h
          end

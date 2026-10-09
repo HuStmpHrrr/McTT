@@ -59,7 +59,8 @@ theorem ackTwo : ∀ (n : ℕ) → Eq (ack 2 n) (succ (succ (succ (plus n n)))) 
             target ≔ succ (succ (succ (plus (succ p) (succ p))));
             shift : Eq (succ (succ (succ (succ (succ (plus p p)))))) target ≔
               sym (plus p (succ p)) (succ (plus p p)) (plusSucc p p)
-        in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p)))))) target
+        in trans (ack 1 prev) (succ (succ (succ (succ (succ (plus p p))))))
+             target
              (trans (ack 1 prev) (succ (succ prev))
                 (succ (succ (succ (succ (succ (plus p p)))))) step ih)
              shift

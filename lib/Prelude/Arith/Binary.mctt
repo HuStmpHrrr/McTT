@@ -34,7 +34,8 @@ import Prelude›Arith›Induction use (twoStepInd)
 def half (n : ℕ) : ℕ ≔
   (rec n return y . (∀ (b : ℕ) → ℕ)
    | zero ⇒ λ (b : ℕ) → 0
-   | succ p, r ⇒ λ (b : ℕ) → pick b (λ (u : ℕ) → r 1) (λ (u : ℕ) → succ (r 0))
+   | succ p, r ⇒ λ (b : ℕ) →
+       pick b (λ (u : ℕ) → r 1) (λ (u : ℕ) → succ (r 0))
    end) 0
 end
 
@@ -51,7 +52,8 @@ end
 module Halving where
 
 theorem bitLe : ∀ (n : ℕ) → Le (bit n) 1 ≔
-  twoStepInd (λ (n : ℕ) → Le (bit n) 1) ⋆ ⋆ (λ (n : ℕ) (h : Le (bit n) 1) → h)
+  twoStepInd (λ (n : ℕ) → Le (bit n) 1) ⋆ ⋆
+    (λ (n : ℕ) (h : Le (bit n) 1) → h)
 end
 
 (* Division by 2: [n] is twice its half, plus its low bit.  Both sides of
@@ -111,13 +113,15 @@ theorem doublePlus : ∀ (n : ℕ) → Eq (double n) (plus n n) ≔
 end
 
 (* [halfSpec] with the low bit first and the double spelled as a sum. *)
-theorem bitPlusHalves : ∀ (n : ℕ) → Eq (plus (bit n) (plus (half n) (half n))) n ≔
+theorem bitPlusHalves : ∀ (n : ℕ) →
+    Eq (plus (bit n) (plus (half n) (half n))) n ≔
   λ (n : ℕ) →
     let b ≔ bit n;
         h ≔ half n
     in trans (plus b (plus h h)) (plus (plus h h) b) n (plusComm b (plus h h))
          (trans (plus (plus h h) b) (plus (double h) b) n
-            (cong (λ (y : ℕ) → plus y b) (plus h h) (double h) (sym (double h) (plus h h) (doublePlus h)))
+            (cong (λ (y : ℕ) → plus y b) (plus h h) (double h)
+               (sym (double h) (plus h h) (doublePlus h)))
             (halfSpec n))
     end
 end
@@ -146,12 +150,15 @@ end
 def readFrom (k : ℕ) : ∀ (c : Bits) → ℕ ≔
   rec k return y . (∀ (c : Bits) → ℕ)
   | zero ⇒ λ (c : Bits) → 0
-  | succ p, r ⇒ λ (c : Bits) → plus (double (r (λ (i : ℕ) → c (succ i)))) (c 0)
+  | succ p, r ⇒ λ (c : Bits) →
+      plus (double (r (λ (i : ℕ) → c (succ i)))) (c 0)
   end
 end
 
 (* [y], times [x] when the flag [b] is set. *)
-def times (b : ℕ) (x : ℕ) (y : ℕ) : ℕ ≔ pick b (λ (u : ℕ) → y) (λ (u : ℕ) → mult x y) end
+def times (b : ℕ) (x : ℕ) (y : ℕ) : ℕ ≔
+  pick b (λ (u : ℕ) → y) (λ (u : ℕ) → mult x y)
+end
 
 (* Exponentiation by squaring with fuel [f]: [x] to the [n] is the square
    of [x] to the [half n], times [x] when the low bit of [n] is set.  It
@@ -187,7 +194,8 @@ end
 lemma readDigits : ∀ (k : ℕ) (n : ℕ) (h : Le n k) →
     Eq (readFrom k (λ (i : ℕ) → digitAt i n)) n ≔
   λ (k : ℕ) →
-    rec k return x . (∀ (n : ℕ) (h : Le n x) → Eq (readFrom x (λ (i : ℕ) → digitAt i n)) n)
+    rec k return x . (∀ (n : ℕ) (h : Le n x) →
+                        Eq (readFrom x (λ (i : ℕ) → digitAt i n)) n)
     | zero ⇒ λ (n : ℕ) →
         rec n return m . (∀ (h : Le m 0) → Eq 0 m)
         | zero ⇒ λ (h : ⊤) → ⋆
@@ -204,12 +212,14 @@ lemma readDigits : ∀ (k : ℕ) (n : ℕ) (h : Le n k) →
 end
 
 (* At most [k] of the first [k] digits are ones. *)
-lemma countLe : ∀ (n : ℕ) (k : ℕ) → Le (sumTo (λ (i : ℕ) → digitAt i n) k) k ≔
+lemma countLe : ∀ (n : ℕ) (k : ℕ) →
+    Le (sumTo (λ (i : ℕ) → digitAt i n) k) k ≔
   λ (n : ℕ) (k : ℕ) →
     rec k return x . Le (sumTo (λ (i : ℕ) → digitAt i n) x) x
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        lePlusMono (digitAt p n) 1 (sumTo (λ (i : ℕ) → digitAt i n) p) p (digitLe p n) ih
+        lePlusMono (digitAt p n) 1 (sumTo (λ (i : ℕ) → digitAt i n) p) p
+          (digitLe p n) ih
     end
 end
 
@@ -217,22 +227,26 @@ end
 lemma timesPow : ∀ (b : ℕ) (h : Le b 1) (x : ℕ) (y : ℕ) →
     Eq (times b x y) (mult (pow x b) y) ≔
   λ (b : ℕ) →
-    rec b return k . (∀ (h : Le k 1) (x : ℕ) (y : ℕ) → Eq (times k x y) (mult (pow x k) y))
+    rec b return k . (∀ (h : Le k 1) (x : ℕ) (y : ℕ) →
+                        Eq (times k x y) (mult (pow x k) y))
     | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) → sym (mult 1 y) y (oneMult y)
     | succ c, ih ⇒
         rec c return k . (∀ (h : Le (succ k) 1) (x : ℕ) (y : ℕ) →
                             Eq (times (succ k) x y) (mult (pow x (succ k)) y))
         | zero ⇒ λ (h : ⊤) (x : ℕ) (y : ℕ) →
-            cong (λ (z : ℕ) → mult z y) x (mult x 1) (sym (mult x 1) x (multOne x))
+            cong (λ (z : ℕ) → mult z y) x (mult x 1)
+              (sym (mult x 1) x (multOne x))
         | succ e, s ⇒ λ (h : ⊥) (x : ℕ) (y : ℕ) →
-            absurd (Eq (times (succ (succ e)) x y) (mult (pow x (succ (succ e))) y)) h
+            absurd (Eq (times (succ (succ e)) x y)
+                       (mult (pow x (succ (succ e))) y)) h
         end
     end
 end
 
 (* With fuel [f] at least [n], squaring computes the power.  In the step,
-   [times] contributes [pow x (bit n)], the square [pow x (half n + half n)],
-   and the exponents add up to [n] by [bitPlusHalves]. *)
+   [times] contributes [pow x (bit n)], the square
+   [pow x (half n + half n)], and the exponents add up to [n] by
+   [bitPlusHalves]. *)
 lemma powFromPow : ∀ (x : ℕ) (f : ℕ) (n : ℕ) (h : Le n f) →
     Eq (powFrom f x n) (pow x n) ≔
   λ (x : ℕ) (f : ℕ) →
@@ -243,7 +257,8 @@ lemma powFromPow : ∀ (x : ℕ) (f : ℕ) (n : ℕ) (h : Le n f) →
         | succ m, s ⇒ λ (h : ⊥) → absurd (Eq 1 (pow x (succ m))) h
         end
     | succ g, ih ⇒ λ (n : ℕ) →
-        rec n return m . (∀ (h : Le m (succ g)) → Eq (powFrom (succ g) x m) (pow x m))
+        rec n return m . (∀ (h : Le m (succ g)) →
+                            Eq (powFrom (succ g) x m) (pow x m))
         | zero ⇒ λ (h : ⊤) → ⋆
         | succ m, s ⇒ λ (h : Le m g) →
             let k ≔ succ m;
@@ -260,15 +275,22 @@ lemma powFromPow : ∀ (x : ℕ) (f : ℕ) (n : ℕ) (h : Le n f) →
                        (cong (λ (z : ℕ) → mult z y) y p hy)
                        (cong (λ (z : ℕ) → mult p z) y p hy))
                     (sym (pow x (plus hk hk)) (mult p p) (powPlus x hk hk));
-                whole : Eq (mult (pow x b) (pow x (plus hk hk))) (pow x (plus b (plus hk hk))) ≔
-                  sym (pow x (plus b (plus hk hk))) (mult (pow x b) (pow x (plus hk hk)))
+                whole : Eq (mult (pow x b) (pow x (plus hk hk)))
+                           (pow x (plus b (plus hk hk))) ≔
+                  sym (pow x (plus b (plus hk hk)))
+                    (mult (pow x b) (pow x (plus hk hk)))
                     (powPlus x b (plus hk hk));
                 exponent : Eq (pow x (plus b (plus hk hk))) (pow x k) ≔
-                  cong (λ (z : ℕ) → pow x z) (plus b (plus hk hk)) k (bitPlusHalves k)
-            in trans (times b x (mult y y)) (mult (pow x b) (mult y y)) (pow x k) flag
-                 (trans (mult (pow x b) (mult y y)) (mult (pow x b) (pow x (plus hk hk))) (pow x k)
-                    (cong (λ (z : ℕ) → mult (pow x b) z) (mult y y) (pow x (plus hk hk)) square)
-                    (trans (mult (pow x b) (pow x (plus hk hk))) (pow x (plus b (plus hk hk))) (pow x k)
+                  cong (λ (z : ℕ) → pow x z) (plus b (plus hk hk)) k
+                    (bitPlusHalves k)
+            in trans (times b x (mult y y)) (mult (pow x b) (mult y y))
+                 (pow x k) flag
+                 (trans (mult (pow x b) (mult y y))
+                    (mult (pow x b) (pow x (plus hk hk))) (pow x k)
+                    (cong (λ (z : ℕ) → mult (pow x b) z)
+                       (mult y y) (pow x (plus hk hk)) square)
+                    (trans (mult (pow x b) (pow x (plus hk hk)))
+                       (pow x (plus b (plus hk hk))) (pow x k)
                        whole exponent))
             end
         end
@@ -277,8 +299,8 @@ end
 
 end
 
-(* The binary digits of [n], least significant first; from index
-   [n] on they are all [0]. *)
+(* The binary digits of [n], least significant first; from index [n] on they are
+   all [0]. *)
 def bits (n : ℕ) : Bits ≔ λ (i : ℕ) → Digits.digitAt i n end
 
 (* The number written by the first [k] digits of [c]. *)
@@ -295,7 +317,8 @@ def powFast (x : ℕ) (n : ℕ) : ℕ ≔ Digits.powFrom n x n end
 module Laws where
 
 (* The first [k] digits of [n] write [n], when [k] is at least [n]. *)
-theorem fromBitsBits : ∀ (n : ℕ) (k : ℕ) (h : Le n k) → Eq (fromBits (bits n) k) n ≔
+theorem fromBitsBits : ∀ (n : ℕ) (k : ℕ) (h : Le n k) →
+    Eq (fromBits (bits n) k) n ≔
   λ (n : ℕ) (k : ℕ) (h : Le n k) → Digits.readDigits k n h
 end
 
@@ -309,8 +332,10 @@ theorem bitsDoubleZero : ∀ (n : ℕ) → Eq (bits (double n) 0) 0 ≔
   λ (n : ℕ) → Halving.bitDouble n
 end
 
-theorem bitsDoubleSucc : ∀ (n : ℕ) (i : ℕ) → Eq (bits (double n) (succ i)) (bits n i) ≔
-  λ (n : ℕ) (i : ℕ) → cong (λ (m : ℕ) → bits m i) (half (double n)) n (halfDouble n)
+theorem bitsDoubleSucc : ∀ (n : ℕ) (i : ℕ) →
+    Eq (bits (double n) (succ i)) (bits n i) ≔
+  λ (n : ℕ) (i : ℕ) →
+    cong (λ (m : ℕ) → bits m i) (half (double n)) n (halfDouble n)
 end
 
 (* Every digit is a 0 or a 1, so there are at most [n] ones. *)

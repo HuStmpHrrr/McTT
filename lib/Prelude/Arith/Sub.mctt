@@ -61,7 +61,8 @@ theorem subSucc : ∀ (a : ℕ) (b : ℕ) → Eq (sub (succ a) (succ b)) (sub a 
 end
 
 (* Subtracting one more takes one more predecessor. *)
-theorem subSuccRight : ∀ (a : ℕ) (b : ℕ) → Eq (sub a (succ b)) (pred (sub a b)) ≔
+theorem subSuccRight : ∀ (a : ℕ) (b : ℕ) →
+    Eq (sub a (succ b)) (pred (sub a b)) ≔
   λ (a : ℕ) →
     rec a return x . (∀ (b : ℕ) → Eq (sub x (succ b)) (pred (sub x b)))
     | zero ⇒ λ (b : ℕ) →

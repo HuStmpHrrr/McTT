@@ -78,14 +78,16 @@ theorem notEvenAndOdd : ∀ (n : ℕ) → Neg.Not 1l (And (Even n) (Odd n)) ≔
   λ (n : ℕ) →
     rec n return x . (∀ (h : And (Even x) (Odd x)) → ⊥)
     | zero ⇒ λ (h : And ⊤ ⊥) → h ⊥ (λ (a : ⊤) (b : ⊥) → b)
-    | succ p, ih ⇒ λ (h : And (Odd p) (Even p)) → ih (andSwap (Odd p) (Even p) h)
+    | succ p, ih ⇒ λ (h : And (Odd p) (Even p)) →
+        ih (andSwap (Odd p) (Even p) h)
     end
 end
 
 (* The sum of two even numbers is even.  The induction on [a] carries both
    "even [a] gives even [plus a b]" and "odd [a] gives odd [plus a b]",
    which the step swaps. *)
-theorem evenPlus : ∀ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) → Even (plus a b) ≔
+theorem evenPlus : ∀ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
+    Even (plus a b) ≔
   λ (a : ℕ) (b : ℕ) (ha : Even a) (hb : Even b) →
     let both : And (∀ (h : Even a) → Even (plus a b))
                    (∀ (h : Odd a) → Odd (plus a b)) ≔

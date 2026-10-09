@@ -61,20 +61,26 @@ module Closure where
    remainder of [a + b] is [a] steps of [wrap] from the remainder of [b],
    which is [0] by [hb], so it is the remainder of [a], which is [0] by
    [ha]. *)
-theorem dividesPlus : ∀ (k : ℕ) (a : ℕ) (b : ℕ) (ha : Divides k a) (hb : Divides k b) →
+theorem dividesPlus : ∀ (k : ℕ) (a : ℕ) (b : ℕ)
+    (ha : Divides k a) (hb : Divides k b) →
     Divides k (plus a b) ≔
   λ (k : ℕ) (a : ℕ) (b : ℕ) →
-    rec k return x . (∀ (ha : Divides x a) (hb : Divides x b) → Divides x (plus a b))
+    rec k return x . (∀ (ha : Divides x a) (hb : Divides x b) →
+                        Divides x (plus a b))
     | zero ⇒ λ (ha : Eq a 0) (hb : Eq b 0) →
         transport (λ (y : ℕ) → Eq (plus y b) 0) 0 a (sym a 0 ha) hb
-    | succ d, ih ⇒ λ (ha : Eq (mod a (succ d)) 0) (hb : Eq (mod b (succ d)) 0) →
+    | succ d, ih ⇒ λ (ha : Eq (mod a (succ d)) 0)
+                     (hb : Eq (mod b (succ d)) 0) →
         let e ≔ succ d;
             w ≔ λ (r : ℕ) → wrap r d;
-            split : Eq (mod (plus a b) e) (Generic.iterate 0l ℕ w a (mod b e)) ≔ modPlus a b d;
+            split : Eq (mod (plus a b) e)
+                       (Generic.iterate 0l ℕ w a (mod b e)) ≔
+              modPlus a b d;
             atZero : Eq (Generic.iterate 0l ℕ w a (mod b e)) (mod a e) ≔
               cong (λ (y : ℕ) → Generic.iterate 0l ℕ w a y) (mod b e) 0 hb
         in trans (mod (plus a b) e) (mod a e) 0
-             (trans (mod (plus a b) e) (Generic.iterate 0l ℕ w a (mod b e)) (mod a e) split atZero)
+             (trans (mod (plus a b) e) (Generic.iterate 0l ℕ w a (mod b e))
+                (mod a e) split atZero)
              ha
         end
     end
@@ -99,7 +105,8 @@ theorem dividesQuot : ∀ (d : ℕ) (b : ℕ) (h : Divides (succ d) b) →
         dropZero : Eq m (plus m 0) ≔ sym (plus m 0) m (plusZero m);
         toRem : Eq (plus m 0) (plus m (mod b k)) ≔
           cong (λ (y : ℕ) → plus m y) 0 (mod b k) (sym (mod b k) 0 h)
-    in trans m (plus m 0) b dropZero (trans (plus m 0) (plus m (mod b k)) b toRem (divModSpec b d))
+    in trans m (plus m 0) b dropZero
+         (trans (plus m 0) (plus m (mod b k)) b toRem (divModSpec b d))
     end
 end
 
@@ -117,8 +124,8 @@ theorem dividesMultLeft : ∀ (k : ℕ) (b : ℕ) (m : ℕ) (h : Divides k b) �
               trans (mult (mult m q) e) (mult m (mult q e)) (mult m b)
                 (multAssoc m q e)
                 (cong (λ (y : ℕ) → mult m y) (mult q e) b (dividesQuot d b h))
-        in transport (λ (y : ℕ) → Divides e y) (mult (mult m q) e) (mult m b) toB
-             (dividesMult e (mult m q))
+        in transport (λ (y : ℕ) → Divides e y) (mult (mult m q) e) (mult m b)
+             toB (dividesMult e (mult m q))
         end
     end
 end
@@ -127,9 +134,11 @@ end
 theorem dividesPlusCancel : ∀ (k : ℕ) (x : ℕ) (y : ℕ)
     (hx : Divides k x) (hxy : Divides k (plus x y)) → Divides k y ≔
   λ (k : ℕ) (x : ℕ) (y : ℕ) →
-    rec k return w . (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) → Divides w y)
+    rec k return w . (∀ (hx : Divides w x) (hxy : Divides w (plus x y)) →
+                        Divides w y)
     | zero ⇒ λ (hx : Eq x 0) (hxy : Eq (plus x y) 0) → plusEqZeroRight x y hxy
-    | succ d, ih ⇒ λ (hx : Divides (succ d) x) (hxy : Eq (mod (plus x y) (succ d)) 0) →
+    | succ d, ih ⇒ λ (hx : Divides (succ d) x)
+                     (hxy : Eq (mod (plus x y) (succ d)) 0) →
         let e ≔ succ d;
             m ≔ mult (div x e) e;
             atM : Eq (mod (plus m y) e) 0 ≔
@@ -146,8 +155,8 @@ end
 (* Divisibility by two is evenness. *)
 module Two where
 
-(* The remainder by two is the parity flag: [0] for even numbers and [1] for
-   odd ones.  Both halves are proved together, since the step exchanges
+(* The remainder by two is the parity flag: [0] for even numbers and [1]
+   for odd ones.  Both halves are proved together, since the step exchanges
    them. *)
 let modTwoParity : ∀ (n : ℕ) →
     And (∀ (h : Even n) → Eq (mod n 2) 0) (∀ (h : Odd n) → Eq (mod n 2) 1) ≔
@@ -161,15 +170,19 @@ let modTwoParity : ∀ (n : ℕ) →
             fromOdd : ∀ (h : Odd p) → Eq (wrap r 1) 0 ≔
               λ (h : Odd p) →
                 transport (λ (y : ℕ) → Eq (wrap y 1) 0) 1 r
-                  (sym r 1 (andSnd (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1) ih h))
+                  (sym r 1
+                     (andSnd (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1)
+                        ih h))
                   ⋆;
             fromEven : ∀ (h : Even p) → Eq (wrap r 1) 1 ≔
               λ (h : Even p) →
                 transport (λ (y : ℕ) → Eq (wrap y 1) 1) 0 r
-                  (sym r 0 (andFst (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1) ih h))
+                  (sym r 0
+                     (andFst (∀ (h : Even p) → Eq r 0) (∀ (h : Odd p) → Eq r 1)
+                        ih h))
                   ⋆
-        in andIntro (∀ (h : Odd p) → Eq (wrap r 1) 0) (∀ (h : Even p) → Eq (wrap r 1) 1)
-             fromOdd fromEven
+        in andIntro (∀ (h : Odd p) → Eq (wrap r 1) 0)
+             (∀ (h : Even p) → Eq (wrap r 1) 1) fromOdd fromEven
         end
     end
 end
@@ -191,8 +204,8 @@ theorem dividesTwoEven : ∀ (n : ℕ) (h : Divides 2 n) → Even n ≔
          absurd (Even n)
            (trans 1 (mod n 2) 0
               (sym (mod n 2) 1
-                 (andSnd (∀ (h : Even n) → Eq (mod n 2) 0) (∀ (h : Odd n) → Eq (mod n 2) 1)
-                    (modTwoParity n) o))
+                 (andSnd (∀ (h : Even n) → Eq (mod n 2) 0)
+                    (∀ (h : Odd n) → Eq (mod n 2) 1) (modTwoParity n) o))
               h))
 end
 

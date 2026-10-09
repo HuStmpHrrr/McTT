@@ -128,7 +128,8 @@ lemma symm : ∀ (a : ℕ) (b : ℕ) → Eq (split a b) (split b a) ≔
                 ra ≔ split q (succ p);
                 rb ≔ split (succ q) p;
                 rhs ≔ split (succ q) (succ p);
-                mid : Eq (plus la lb) (plus rb ra) ≔ plusCongBoth la lb rb ra (ih (succ q)) s;
+                mid : Eq (plus la lb) (plus rb ra) ≔
+                  plusCongBoth la lb rb ra (ih (succ q)) s;
                 swap : Eq (plus rb ra) (plus ra rb) ≔ plusComm rb ra
             in trans lhs (plus la lb) rhs (succSucc p q)
                  (trans (plus la lb) (plus rb ra) rhs mid
@@ -186,7 +187,8 @@ fact rowPrefixSucc : ∀ (p : ℕ) (m : ℕ) →
         sym (plus (plus (choose p 0) 0) 0) 1
           (trans (plus (plus (choose p 0) 0) 0) (plus (choose p 0) 0) 1
              (plusZero (plus (choose p 0) 0))
-             (trans (plus (choose p 0) 0) (choose p 0) 1 (plusZero (choose p 0)) (chooseZero p)))
+             (trans (plus (choose p 0) 0) (choose p 0) 1 (plusZero (choose p 0))
+                (chooseZero p)))
     | succ q, ih ⇒
         let a ≔ choose p q;
             b ≔ choose p (succ q);
@@ -196,9 +198,12 @@ fact rowPrefixSucc : ∀ (p : ℕ) (m : ℕ) →
             step : Eq lhs (plus (plus a b) (plus c d)) ≔
               cong (λ (y : ℕ) → plus (plus a b) y)
                 (sumTo (choose (succ p)) (succ q)) (plus c d) ih;
-            swap : Eq (plus (plus a b) (plus c d)) (plus (plus b a) (plus c d)) ≔
-              cong (λ (y : ℕ) → plus y (plus c d)) (plus a b) (plus b a) (plusComm a b)
-        in trans lhs (plus (plus a b) (plus c d)) (plus (plus b c) (plus a d)) step
+            swap : Eq (plus (plus a b) (plus c d))
+                      (plus (plus b a) (plus c d)) ≔
+              cong (λ (y : ℕ) → plus y (plus c d)) (plus a b) (plus b a)
+                (plusComm a b)
+        in trans lhs (plus (plus a b) (plus c d)) (plus (plus b c) (plus a d))
+             step
              (trans (plus (plus a b) (plus c d)) (plus (plus b a) (plus c d))
                 (plus (plus b c) (plus a d)) swap (plusSwapMiddle b a c d))
         end
@@ -220,8 +225,10 @@ theorem rowSum : ∀ (n : ℕ) → Eq (sumTo (choose n) (succ n)) (pow 2 n) ≔
               cong (λ (y : ℕ) → plus y s) (choose p (succ p)) 0
                 (chooseOver p (succ p) (leRefl p));
             first : Eq longer P ≔ trans longer s P dropTop ih;
-            second : Eq s (plus P 0) ≔ trans s P (plus P 0) ih (sym (plus P 0) P (plusZero P))
-        in trans (sumTo (choose (succ p)) (succ (succ p))) (plus longer s) (plus P (plus P 0))
+            second : Eq s (plus P 0) ≔
+              trans s P (plus P 0) ih (sym (plus P 0) P (plusZero P))
+        in trans (sumTo (choose (succ p)) (succ (succ p))) (plus longer s)
+             (plus P (plus P 0))
              (rowPrefixSucc p (succ p))
              (plusCongBoth longer s P (plus P 0) first second)
         end

@@ -10,7 +10,8 @@ open Prelude›Arith›Order.LeLaws use (leTrans; lePlusRight)
 import Prelude›Arith›Monotone.Mono use (lePlusMono)
 import Prelude›Arith›Pow use (pow)
 
-(* [factorial 0] is [1] and [factorial (succ p)] is [mult (succ p) (factorial p)]. *)
+(* [factorial 0] is [1] and [factorial (succ p)] is
+   [mult (succ p) (factorial p)]. *)
 def factorial (n : ℕ) : ℕ ≔
   rec n return y . ℕ
   | zero ⇒ 1
@@ -23,7 +24,8 @@ module Laws where
 
 theorem factZero : Eq (factorial 0) 1 ≔ ⋆ end
 
-theorem factSucc : ∀ (n : ℕ) → Eq (factorial (succ n)) (mult (succ n) (factorial n)) ≔
+theorem factSucc : ∀ (n : ℕ) →
+    Eq (factorial (succ n)) (mult (succ n) (factorial n)) ≔
   λ (n : ℕ) → refl (mult (succ n) (factorial n))
 end
 
@@ -33,13 +35,15 @@ end
 module Bounds where
 
 (* Every factorial is positive.  [factorial (succ p)] computes to
-   [plus (factorial p) (mult p (factorial p))], which is at least [factorial p]. *)
+   [plus (factorial p) (mult p (factorial p))], which is at least
+   [factorial p]. *)
 theorem factPos : ∀ (n : ℕ) → Lt 0 (factorial n) ≔
   λ (n : ℕ) →
     rec n return x . Lt 0 (factorial x)
     | zero ⇒ ⋆
     | succ p, ih ⇒
-        leTrans 1 (factorial p) (factorial (succ p)) ih (lePlusRight (factorial p) (mult p (factorial p)))
+        leTrans 1 (factorial p) (factorial (succ p)) ih
+          (lePlusRight (factorial p) (mult p (factorial p)))
     end
 end
 
