@@ -315,8 +315,31 @@ eval Pointed.point 1l Type@0 ℕ
 
 (* A Church encoding quantifies over a universe, so it lives one level up:
    the conjunction of the Prelude, [Prelude›Logic.Conj u], is in
-   [Type@{succl u}]. A type quantifying over levels themselves is large, in
-   [Type@ω], above every [Type@{u}]. *)
+   [Type@{succl u}]. A type quantifying over levels themselves is in
+   [Type@ω], the universe at the level ω, above every [Type@{u}] with [u] in
+   [Level]. *)
 eval ∀ (u : Level) → Type@{u}
+
+(* Sorted levels. The levels of [Level] are the finite ones; ω and the
+   levels above it are in sorted types of levels. [Level@n] holds the
+   levels below ω·(n+1), and [Level] is [Level@0]; [Level@{n}] is another
+   spelling of [Level@n]. A sort is included in every larger one,
+   [Level@m ⊆ Level@n] for m ≤ n, and every [Level@n] is in [Type@0].
+   Beyond [0l], [1l], …, the literals are [ω], [ω + b] and [ω·a + b], with
+   [*] the ASCII spelling of [·]. The Prelude stays at [Level]: its
+   level-polymorphic definitions take their levels there. *)
+eval ω + 1 : Level@1
+
+eval ω·2 + 1 : Level@2
+
+eval Level@1
+
+(* A finite level is a level of every sort. *)
+def lift (u : Level) : Level@1 ≔ u end
+
+eval lift 3l
+
+(* Quantifying over the levels of [Level@1] gives a type at ω·2. *)
+eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
 
 end

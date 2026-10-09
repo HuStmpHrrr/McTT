@@ -158,4 +158,27 @@ end
 
 eval C.toNat 0l (churchHalf 9)
 
+(* 7. Sorted levels.  The Prelude is polymorphic over [Level], the finite
+   levels; the levels from ω on are in sorted types of levels.  [Level@n]
+   holds the levels below ω·(n+1), and [Level] is [Level@0]; [Level@{n}] is
+   another spelling of [Level@n].  A sort is included in every larger one,
+   [Level@m ⊆ Level@n] for m ≤ n, and every [Level@n] is in [Type@0].  The
+   literals beyond [0l], [1l], … are [ω], [ω + b] and [ω·a + b], with [*]
+   the ASCII spelling of [·]. *)
+
+eval ω + 1 : Level@1
+
+eval maxl 3l (ω·2 + 1) : Level@2
+
+eval Level@2
+
+(* A finite level is a level of every sort, so the Prelude's levels are
+   levels of [Level@1] too. *)
+def liftLevel (u : Level) : Level@1 ≔ u end
+
+eval liftLevel (ofNat 3)
+
+(* Above the Prelude: a type quantifying over [Level@1] is at ω·2. *)
+eval (∀ (u : Level@1) → Type@{u}) : Type@{ω·2}
+
 end

@@ -2741,6 +2741,12 @@ let%expect_test "lib/Tutorial.mctt" =
             → ℕ : Type@0
     Evaluate Pointed.point 1l Type@0 ℕ --> ℕ : Type@0
     Evaluate ∀ (x1 : Level) → Type@{x1} --> ∀ (x1 : Level) → Type@{x1} : Type@ω
+    Evaluate ω+1 --> ω+1 : Level@1
+    Evaluate ω·2+1 --> ω·2+1 : Level@2
+    Evaluate Level@1 --> Level@1 : Type@0
+    Evaluate lift 3l --> 3l : Level@1
+    Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
+      : Type@{ω·2}
     |}]
 
 (** The documentation generator ([Doc]) *)
@@ -2825,7 +2831,7 @@ let%expect_test "mctt-doc: every eval of lib has one output box, with mctt's out
   List.iter (fun b -> if String.starts_with ~prefix:"Evaluate Adding.five " b then print_endline b)
     (doc_boxes (Doc.render_unit lib kinds tut));
   [%expect {|
-    435 evals, 435 boxes, 435 equal to mctt's output
+    445 evals, 445 boxes, 445 equal to mctt's output
     Evaluate Adding.five --> 5 : ℕ
     |}]
 
@@ -2837,7 +2843,7 @@ let%expect_test "mctt-doc: a unit whose log is out of step with its evals is rep
   let tut = List.find (fun u -> u.Doc.u_path = [ "Tutorial" ]) lib.Doc.units in
   Printf.printf "%d boxes\n" (List.length (doc_boxes (Doc.render_unit lib (Doc.anchor_kinds lib) tut)));
   [%expect {|
-    Tutorial: 35 evals, 1 outputs
+    Tutorial: 40 evals, 1 outputs
     0 boxes
     |}]
 
@@ -3041,4 +3047,10 @@ let%expect_test "lib/Universes.mctt" =
     Evaluate toNatPow 3l 3 2 --> ⋆ : ⊤
     Evaluate toNatLower 2l 4 --> ⋆ : ⊤
     Evaluate C.toNat 0l (churchHalf 9) --> 4 : ℕ
+    Evaluate ω+1 --> ω+1 : Level@1
+    Evaluate maxl 3l ω·2+1 --> ω·2+1 : Level@2
+    Evaluate Level@2 --> Level@2 : Type@0
+    Evaluate liftLevel (ofNat 3) --> 3l : Level@1
+    Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
+      : Type@{ω·2}
     |}]
