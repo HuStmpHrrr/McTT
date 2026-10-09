@@ -1,3 +1,4 @@
+(* Numbers: doubling, and a predecessor in a nested module. *)
 module Lib›Num where
 
 def double : ∀ (x : ℕ) → ℕ ≔

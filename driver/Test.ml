@@ -2916,13 +2916,13 @@ let%expect_test "mctt-doc: universes line up, link, and are highlighted" =
   List.iter (fun p -> List.iter (fun b -> if doc_find "Type@" b 0 <> None then print_endline b) (doc_boxes p)) pages;
   [%expect {|
     111 names: 57 linked, 54 binders
-    u line 55: declares #l58
-    u line 55: Universes#l58
-    u line 55: Universes#l58
-    v line 55: declares #l59
-    v line 55: Universes#l59
-    v line 55: Universes#l59
-    depth line 48: Universes#depth
+    u line 57: declares #l58
+    u line 57: Universes#l58
+    u line 58: Universes#l58
+    v line 57: declares #l59
+    v line 57: Universes#l59
+    v line 58: Universes#l59
+    depth line 50: Universes#depth
     Level: ty
     Type: ty
     maxl: kw

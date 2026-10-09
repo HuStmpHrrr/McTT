@@ -1,3 +1,4 @@
+(* Rejected: [Lib›Wrong] declares another unit than its file name. *)
 import Lib›Wrong
 
 module Misnamed where

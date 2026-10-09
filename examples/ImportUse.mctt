@@ -1,3 +1,6 @@
+(* Opening a module: [open Impl as I] names it [I], and
+   [open Impl use (exposed)] declares [exposed] here; [Impl.secret] stays
+   private. *)
 module ImportUse where
 
 module Impl where

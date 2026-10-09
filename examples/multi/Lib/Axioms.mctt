@@ -1,3 +1,4 @@
+(* Axioms in a unit and in a nested module. *)
 module Lib›Axioms where
 
 (* A number about which nothing is known. *)

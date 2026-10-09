@@ -1,3 +1,4 @@
+(* A [let] with two bindings on one line. *)
 module LetTwoVars where
 
 eval let x : ℕ ≔ 0; f : ∀ (y : ℕ) → ℕ ≔ λ (n : ℕ) → n in f x end : ℕ

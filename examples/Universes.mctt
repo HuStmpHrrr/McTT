@@ -43,7 +43,9 @@ eval Dom
 
 (* A function into [Level] may be used in a universe: levels are computed by
    the same evaluator as everything else. *)
-def depth (n : ℕ) : Level ≔ rec n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end end
+def depth (n : ℕ) : Level ≔
+  rec n return x . Level | zero ⇒ 0l | succ y, r ⇒ succl r end
+end
 
 eval Type@{depth 3}
 
@@ -52,7 +54,8 @@ eval Type@{depth 3}
    two universes is in the one at their join. *)
 def Endo (u : Level) (A : Type@{u}) : Type@{u} ≔ ∀ (a : A) → A end
 
-def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) : Type@{maxl u v} ≔
+def Arr (u : Level) (v : Level) (A : Type@{u}) (B : Type@{v}) :
+    Type@{maxl u v} ≔
   ∀ (a : A) → B
 end
 
@@ -65,7 +68,9 @@ def Twice (g : ∀ (f : ∀ (n : ℕ) → ℕ) → Level)
 end
 
 (* An unannotated [let] gets the principal type, the small universe. *)
-def LetEndo (u : Level) (A : Type@{u}) : Type@{u} ≔ let e ≔ ∀ (a : A) → A in e end end
+def LetEndo (u : Level) (A : Type@{u}) : Type@{u} ≔
+  let e ≔ ∀ (a : A) → A in e end
+end
 
 eval λ (u : Level) (A : Type@{u}) → ∀ (a : A) → A
 

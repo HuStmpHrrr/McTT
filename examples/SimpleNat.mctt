@@ -1,3 +1,4 @@
+(* A numeral, checked against [ℕ]. *)
 module SimpleNat where
 
 eval succ 3 : ℕ

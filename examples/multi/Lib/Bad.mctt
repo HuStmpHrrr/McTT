@@ -1,3 +1,4 @@
+(* A unit that does not check: the body of [wrong] is not a number. *)
 module Lib›Bad where
 
 def wrong : ℕ ≔ Type@0 end

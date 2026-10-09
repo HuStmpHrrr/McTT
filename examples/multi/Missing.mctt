@@ -1,3 +1,4 @@
+(* Rejected: no file holds the unit [Lib›Nowhere]. *)
 import Lib›Nowhere
 
 module Missing where

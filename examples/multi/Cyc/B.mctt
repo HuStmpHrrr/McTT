@@ -1,3 +1,4 @@
+(* Half of an import cycle with [Cyc›A]. *)
 import Cyc›A
 
 module Cyc›B where

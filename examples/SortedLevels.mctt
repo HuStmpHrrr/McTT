@@ -65,9 +65,13 @@ def headOr (u : Level@1) (A : Type@{u}) (d : A) (l : List u A) : A ≔
 end
 
 (* A list of polymorphic functions, at the level ω. *)
-def twice : PolyId ≔ λ (u : Level) (A : Type@{u}) (a : A) → polyId u A (polyId u A a) end
+def twice : PolyId ≔
+  λ (u : Level) (A : Type@{u}) (a : A) → polyId u A (polyId u A a)
+end
 
-def fs : List ω PolyId ≔ cons ω PolyId polyId (cons ω PolyId twice (nil ω PolyId)) end
+def fs : List ω PolyId ≔
+  cons ω PolyId polyId (cons ω PolyId twice (nil ω PolyId))
+end
 
 eval length ω PolyId fs
 

@@ -1,3 +1,4 @@
+(* A function defined by recursion, checked against its type. *)
 module SimpleRec where
 
 eval (λ (x : ℕ) → rec x return y . ℕ

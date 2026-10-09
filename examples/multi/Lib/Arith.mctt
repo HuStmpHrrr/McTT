@@ -1,3 +1,4 @@
+(* A unit that imports another one, [Lib›Num]. *)
 import Lib›Num
 
 module Lib›Arith where

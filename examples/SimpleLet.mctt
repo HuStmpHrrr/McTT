@@ -1,3 +1,4 @@
+(* The smallest [let]. *)
 module SimpleLet where
 
 eval let x : ℕ ≔ zero in succ x end : ℕ

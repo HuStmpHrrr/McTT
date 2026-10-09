@@ -1,3 +1,5 @@
+(* The unit type [⊤], with its element [⋆] and eta, and the empty type [⊥]
+   with [exfalso]. *)
 module TrueFalse where
 
 eval ⋆

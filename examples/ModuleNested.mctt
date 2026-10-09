@@ -1,3 +1,4 @@
+(* A nested module, and selecting its members with [Ops.f]. *)
 module ModuleNested where
 
 module Ops where

@@ -1,3 +1,5 @@
+(* Church-encoded pairs, passed as arguments to the program that uses
+   them. *)
 module Pair where
 
 eval (
@@ -15,13 +17,20 @@ eval (
         (pair ℕ (∀ (x : ℕ) → ℕ) 3 (λ (x : ℕ) → succ (succ x)))
     )
     (* Church pair *)
-    (λ (A : Type@0) (B : Type@0) → ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C)
+    (λ (A : Type@0) (B : Type@0) →
+       ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C)
     (* Church pair constructor *)
-    (λ (A : Type@0) (B : Type@0) (a : A) (b : B) (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → pair a b)
+    (λ (A : Type@0) (B : Type@0) (a : A) (b : B)
+       (C : Type@0) (pair : ∀ (a : A) (b : B) → C) →
+       pair a b)
     (* Church pair fst *)
-    (λ (A : Type@0) (B : Type@0) (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) → p A (λ (a : A) (b : B) → a))
+    (λ (A : Type@0) (B : Type@0)
+       (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) →
+       p A (λ (a : A) (b : B) → a))
     (* Church pair snd *)
-    (λ (A : Type@0) (B : Type@0) (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) → p B (λ (a : A) (b : B) → b))
+    (λ (A : Type@0) (B : Type@0)
+       (p : ∀ (C : Type@0) (pair : ∀ (a : A) (b : B) → C) → C) →
+       p B (λ (a : A) (b : B) → b))
   ) : ℕ
 
 end

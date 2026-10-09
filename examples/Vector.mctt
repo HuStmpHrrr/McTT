@@ -1,3 +1,5 @@
+(* Church-encoded vectors, passed as arguments to the program that uses
+   them, with a head function that is total on non-empty vectors. *)
 module Vector where
 
 eval (
@@ -5,8 +7,13 @@ eval (
     (
       λ (Vec : ∀ (A : Type@0) (n : ℕ) → Type@2)
         (nil : ∀ (A : Type@0) → Vec A 0)
-        (cons : ∀ (A : Type@0) (n : ℕ) (head : A) (tail : Vec A n) → Vec A (succ n))
-        (vecRec : ∀ (A : Type@0) (n : ℕ) (vec : Vec A n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) →
+        (cons : ∀ (A : Type@0) (n : ℕ) (head : A) (tail : Vec A n) →
+                  Vec A (succ n))
+        (vecRec : ∀ (A : Type@0) (n : ℕ) (vec : Vec A n)
+                    (C : ∀ (l : ℕ) → Type@1)
+                    (nil : C 0)
+                    (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                    C n) →
         (
           λ (totalHead : ∀ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) → A)
             (vec : Vec (∀ (n : ℕ) → ℕ) 3) →
@@ -15,7 +22,13 @@ eval (
         (* total head function *)
         (
           λ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) →
-            vecRec A (succ n) vec (λ (l : ℕ) → rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) 0 (λ (l : ℕ) (a : A) (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) → a)
+            vecRec A (succ n) vec
+              (λ (l : ℕ) →
+                 rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end)
+              0
+              (λ (l : ℕ) (a : A)
+                 (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) →
+                 a)
         )
         (* example vector *)
         (
@@ -33,13 +46,40 @@ eval (
         )
     )
     (* Church vector *)
-    (λ (A : Type@0) (n : ℕ) → ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n)
+    (λ (A : Type@0) (n : ℕ) →
+       ∀ (C : ∀ (l : ℕ) → Type@1)
+         (nil : C 0)
+         (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+         C n)
     (* Church vector nil *)
-    (λ (A : Type@0) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → nil)
+    (λ (A : Type@0)
+       (C : ∀ (l : ℕ) → Type@1)
+       (nil : C 0)
+       (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+       nil)
     (* Church vector cons *)
-    (λ (A : Type@0) (n : ℕ) (head : A) (tail : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → cons n head (tail C nil cons))
+    (λ (A : Type@0)
+       (n : ℕ)
+       (head : A)
+       (tail : ∀ (C : ∀ (l : ℕ) → Type@1)
+                 (nil : C 0)
+                 (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                 C n)
+       (C : ∀ (l : ℕ) → Type@1)
+       (nil : C 0)
+       (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+       cons n head (tail C nil cons))
     (* Church vector recursor *)
-    (λ (A : Type@0) (n : ℕ) (vec : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → vec C nil cons)
+    (λ (A : Type@0)
+       (n : ℕ)
+       (vec : ∀ (C : ∀ (l : ℕ) → Type@1)
+                (nil : C 0)
+                (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                C n)
+       (C : ∀ (l : ℕ) → Type@1)
+       (nil : C 0)
+       (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+       vec C nil cons)
   ) : ℕ
 
 end

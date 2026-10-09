@@ -1,3 +1,5 @@
+(* An [abstract] definition is checked but never unfolds, so [double four]
+   is stuck at [four]. *)
 module DefAbstract where
 
 def double : ∀ (x : ℕ) → ℕ ≔

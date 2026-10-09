@@ -1,3 +1,4 @@
+(* A unit with a type parameter. *)
 module Lib›Poly (A : Type@0) where
 
 def id : ∀ (x : A) → A ≔ λ (x : A) → x end

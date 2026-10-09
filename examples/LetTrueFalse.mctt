@@ -1,3 +1,4 @@
+(* Local definitions at [⊤] and at a function out of [⊥]. *)
 module LetTrueFalse where
 
 (* A local definition of each of [⊤] and [⊥ → ℕ]; the body only

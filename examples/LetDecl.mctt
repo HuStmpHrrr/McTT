@@ -1,3 +1,4 @@
+(* A [let] with two annotated bindings, the second using the first. *)
 module LetDecl where
 
 eval let n : ℕ ≔ 2;

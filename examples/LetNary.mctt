@@ -1,3 +1,4 @@
+(* N-ary functions on numbers, defined and applied inside one [let]. *)
 module LetNary where
 
 eval let Nary : ∀ (n : ℕ) → Type@0 ≔

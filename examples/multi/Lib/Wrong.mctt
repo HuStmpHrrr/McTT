@@ -1,3 +1,5 @@
+(* A file whose unit has another name than the file: [Lib›Wrong] declares
+   [Lib›Other]. *)
 module Lib›Other where
 
 def x : ℕ ≔ 0 end

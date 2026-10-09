@@ -1,3 +1,4 @@
+(* N-ary functions over a type, in a parameterized module. *)
 module Nary where
 
 (* Functions of any number of arguments over a type [A]. *)

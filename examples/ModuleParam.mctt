@@ -1,3 +1,4 @@
+(* A parameterized module, instantiated by a local alias. *)
 module ModuleParam where
 
 module Church (A : Type@0) where

@@ -1,3 +1,5 @@
+(* The forms of module declarations: parameterized modules, aliases, dotted
+   names, opens and local modules with a body. *)
 module ModuleForms where
 
 (* A parameterized module, and an alias of one of its instances *)
@@ -11,7 +13,9 @@ eval NatIter.twice (λ (x : ℕ) → succ x) 0
 
 (* A dotted declaration: [Num] holds [Ops] *)
 module Num.Ops (k : ℕ) where
-  def add (n : ℕ) : ℕ ≔ rec n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end end
+  def add (n : ℕ) : ℕ ≔
+    rec n return y . ℕ | zero ⇒ k | succ p, r ⇒ succ r end
+  end
 end
 
 eval Num.Ops.add 2 3

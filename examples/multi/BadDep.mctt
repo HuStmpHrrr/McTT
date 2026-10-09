@@ -1,3 +1,4 @@
+(* Rejected: it imports [Lib›Bad], which does not check. *)
 import Lib›Bad
 
 module BadDep where

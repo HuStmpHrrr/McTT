@@ -1,3 +1,5 @@
+(* A binding of a [let] is transparent: its value is known while the rest
+   is checked. *)
 module LetDelta where
 
 def Nary (n : ℕ) : Type@0 ≔

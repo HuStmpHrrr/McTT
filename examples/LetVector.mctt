@@ -1,8 +1,14 @@
+(* Church-encoded vectors, defined in a [let], with a head function that
+   is total on non-empty vectors. *)
 module LetVector where
 
 eval
   let Vec : ∀ (A : Type@0) (n : ℕ) → Type@2 ≔
-        λ (A : Type@0) (n : ℕ) → ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n;
+        λ (A : Type@0) (n : ℕ) →
+          ∀ (C : ∀ (l : ℕ) → Type@1)
+            (nil : C 0)
+            (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+            C n;
 
       nil : ∀ (A : Type@0) → Vec A 0 ≔
         λ (A : Type@0)
@@ -11,23 +17,46 @@ eval
           (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
           nil;
 
-      cons : ∀ (A : Type@0) (n : ℕ) (head : A) (tail : Vec A n) → Vec A (succ n) ≔
+      cons : ∀ (A : Type@0) (n : ℕ) (head : A) (tail : Vec A n) →
+               Vec A (succ n) ≔
         λ (A : Type@0)
           (n : ℕ)
           (head : A)
-          (tail : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n)
+          (tail : ∀ (C : ∀ (l : ℕ) → Type@1)
+                    (nil : C 0)
+                    (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                    C n)
           (C : ∀ (l : ℕ) → Type@1)
           (nil : C 0)
           (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
           cons n head (tail C nil cons);
 
-      vecRec : ∀ (A : Type@0) (n : ℕ) (vec : Vec A n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n ≔
-        λ (A : Type@0) (n : ℕ) (vec : ∀ (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → C n) (C : ∀ (l : ℕ) → Type@1) (nil : C 0) (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) → vec C nil cons
+      vecRec : ∀ (A : Type@0) (n : ℕ) (vec : Vec A n)
+                 (C : ∀ (l : ℕ) → Type@1)
+                 (nil : C 0)
+                 (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                 C n ≔
+        λ (A : Type@0)
+          (n : ℕ)
+          (vec : ∀ (C : ∀ (l : ℕ) → Type@1)
+                   (nil : C 0)
+                   (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+                   C n)
+          (C : ∀ (l : ℕ) → Type@1)
+          (nil : C 0)
+          (cons : ∀ (l : ℕ) (a : A) (r : C l) → C (succ l)) →
+          vec C nil cons
 
   in
   let totalHead : ∀ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) → A ≔
         λ (A : Type@0) (n : ℕ) (vec : Vec A (succ n)) →
-          vecRec A (succ n) vec (λ (l : ℕ) → rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) 0 (λ (l : ℕ) (a : A) (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) → a);
+          vecRec A (succ n) vec
+            (λ (l : ℕ) →
+               rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end)
+            0
+            (λ (l : ℕ) (a : A)
+               (r : rec l return r . Type@0 | zero ⇒ ℕ | succ l, r ⇒ A end) →
+               a);
 
       vec : Vec (∀ (n : ℕ) → ℕ) 3 ≔
         cons (∀ (n : ℕ) → ℕ) 2

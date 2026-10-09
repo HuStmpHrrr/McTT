@@ -1,3 +1,4 @@
+(* A [let] whose bindings depend on the earlier ones, a type among them. *)
 module LetMulti where
 
 (* Each binding uses the one before it. *)
