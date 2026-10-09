@@ -190,23 +190,23 @@ Qed.
 (** The same for [Level], whose elements the gluing predicate relates by
     readback. *)
 
-Corollary kripke_preserves_level : forall Γ Δ M φ,
-    Δ ⊢ M : Level ->
+Corollary kripke_preserves_level : forall Γ Δ M φ n,
+    Δ ⊢ M : Level@n ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]ʷ : Level.
+    Γ ⊢ M[φ]ʷ : Level@n.
 Proof.
   intros.
-  assert (Γ ⊢ exp_wk M φ : exp_wk a_level φ) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ : exp_wk (a_level n) φ) by mauto 2.
   assumption.
 Qed.
 
-Corollary kripke_preserves_level_eq : forall Γ Δ M M' φ,
-    Δ ⊢ M ≈ M' : Level ->
+Corollary kripke_preserves_level_eq : forall Γ Δ M M' φ n,
+    Δ ⊢ M ≈ M' : Level@n ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : Level.
+    Γ ⊢ M[φ]ʷ ≈ M'[φ]ʷ : Level@n.
 Proof.
   intros.
-  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk a_level φ) by mauto 2.
+  assert (Γ ⊢ exp_wk M φ ≈ exp_wk M' φ : exp_wk (a_level n) φ) by mauto 2.
   assumption.
 Qed.
 
@@ -370,13 +370,13 @@ Proof.
   assumption.
 Qed.
 
-Corollary kripke_preserves_typ_eq_level : forall Γ Δ A φ i,
-    Δ ⊢ A ≈ Level : Typeω@i ->
+Corollary kripke_preserves_typ_eq_level : forall Γ Δ A φ i n,
+    Δ ⊢ A ≈ Level@n : Typeω@i ->
     Γ ⊢k φ : Δ ->
-    Γ ⊢ A[φ]ʷ ≈ Level : Typeω@i.
+    Γ ⊢ A[φ]ʷ ≈ Level@n : Typeω@i.
 Proof.
   intros.
-  assert (Γ ⊢ exp_wk A φ ≈ exp_wk a_level φ : exp_wk (a_typ i) φ) by mauto 2.
+  assert (Γ ⊢ exp_wk A φ ≈ exp_wk (a_level n) φ : exp_wk (a_typ i) φ) by mauto 2.
   assumption.
 Qed.
 

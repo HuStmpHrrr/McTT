@@ -472,9 +472,11 @@ Inductive exp : Set :=
     arbitrary term of type [Level], so a universe may be indexed by a
     variable, which is what makes universe polymorphism plain [Π]. *)
 | a_univ : exp -> exp
-(** The type of universe levels.  Levels are ordinary terms: a function may
-    take and return them, so universe polymorphism is plain [Π]. *)
-| a_level : exp
+(** The type of universe levels below [ω·(n+1)]: [a_level n] is [Level@n],
+    and [Level] is [Level@0], the finite levels.  Levels are ordinary terms:
+    a function may take and return them, so universe polymorphism is plain
+    [Π]. *)
+| a_level : nat -> exp
 (** A level literal: [a_llit (a, b)] is the ordinal [ω·a + b].  The finite
     level [n], [a_llit (0, n)], is written [<n>l] in the surface syntax. *)
 | a_llit : o2 -> exp
@@ -581,7 +583,7 @@ Section syn_mut_ind.
   Hypotheses
     (case_typ : forall i, Pe (a_typ i))
     (case_univ : forall t, Pe t -> Pe (a_univ t))
-    (case_level : Pe a_level)
+    (case_level : forall n, Pe (a_level n))
     (case_llit : forall n, Pe (a_llit n))
     (case_succl : forall M, Pe M -> Pe (a_succl M))
     (case_maxl : forall M N, Pe M -> Pe N -> Pe (a_maxl M N))
@@ -622,7 +624,7 @@ Section syn_mut_ind.
     match M with
     | a_typ i => case_typ i
     | a_univ t => case_univ t (exp_mut t)
-    | a_level => case_level
+    | a_level n => case_level n
     | a_llit n => case_llit n
     | a_succl M => case_succl M (exp_mut M)
     | a_maxl M N => case_maxl M N (exp_mut M) (exp_mut N)
@@ -836,7 +838,11 @@ Module Exp_Notations.
       the short form the literal-level rules are written with. *)
   Notation "'Type' ⟨ t ⟩" := (a_univ t) (at level 0, t at level 99, format "'Type' ⟨ t ⟩") : mctt_scope.
   Notation "'Type' @ n" := (a_univ (a_llit (ofin n))) (at level 1, n at level 0, format "'Type' @ n") : mctt_scope.
-  Notation "'Level'" := a_level : mctt_scope.
+  (** [Level@n] is the type of levels below [ω·(n+1)], and [Level] the
+      finite ones, [Level@0]: [Level] is declared second so that it is the
+      spelling a level type of sort [0] prints with. *)
+  Notation "'Level' @ n" := (a_level n) (at level 1, n at level 0, format "'Level' @ n") : mctt_scope.
+  Notation "'Level'" := (a_level 0) : mctt_scope.
   (** The level literals: [𝕃ᵒ o] is the ordinal [o], and [𝕃@n] the finite
       level [n], the surface syntax's [<n>l].  The token is not a word: [lv]
       would make every identifier of that name a keyword. *)
@@ -1089,8 +1095,8 @@ Inductive nf : Set :=
 (** A small universe at a canonical level [max (c, k₁ + a₁, …)], in the shape
     of [nf_lvl] below *)
 | nf_univ : o2 -> lvl_atoms -> nf
-(** The type [Level] *)
-| nf_level : nf
+(** The type [Level@n] *)
+| nf_level : nat -> nf
 (** A canonical level [max (c, k₁ + a₁, …)]: the atoms are strictly sorted by
     [ne_cmp] (see [Core.Syntactic.Levels]) with no repetition, and the
     constant [c] is [0] unless it exceeds every offset.  [nf_lvl_of] builds
@@ -1137,7 +1143,7 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
   | nf_typ i => a_typ i
   | nf_univ c xs => a_univ (lvl_exp_of c (la_to_list xs))
-  | nf_level => a_level
+  | nf_level n => a_level n
   | nf_lvl c xs => lvl_exp_of c (la_to_list xs)
   | nf_nat => a_nat
   | nf_zero => a_zero
@@ -1256,7 +1262,7 @@ Proof. intros [] ? H Hu; cbn in H; try discriminate; inversion Hu. Qed.
 
 Fixpoint nf_clean (W : nf) : Prop :=
   match W with
-  | nf_typ _ | nf_level | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_clean xs
   | nf_succ W => nf_clean W
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
@@ -1298,7 +1304,8 @@ Module Nf_Notations.
   Notation "'Typeωⁿ' @ n" := (nf_typ n) (at level 1, n at level 0, format "'Typeωⁿ' @ n") : mctt_scope.
   Notation "'univⁿ' c xs" := (nf_univ c xs) (at level 1, c at level 0, xs at level 0, format "'univⁿ'  c  xs") : mctt_scope.
   Notation "'Typeⁿ' @ n" := (nf_univ (ofin n) la_nil) (at level 1, n at level 0, format "'Typeⁿ' @ n") : mctt_scope.
-  Notation "'Levelⁿ'" := nf_level : mctt_scope.
+  Notation "'Levelⁿ' @ n" := (nf_level n) (at level 1, n at level 0, format "'Levelⁿ' @ n") : mctt_scope.
+  Notation "'Levelⁿ'" := (nf_level 0) : mctt_scope.
   Notation "'lvⁿ' c xs" := (nf_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvⁿ'  c  xs") : mctt_scope.
   Notation "'λⁿ' A M" := (nf_fn A M) (at level 2, A at level 1, M at level 60) : mctt_scope.
   Notation "'Πⁿ' A B" := (nf_pi A B) (at level 2, A at level 1, B at level 60) : mctt_scope.
@@ -1364,7 +1371,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   match M with
   | a_typ i => a_typ i
   | a_univ t => a_univ (exp_wk t φ)
-  | a_level => a_level
+  | a_level n => a_level n
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_wk M φ)
   | a_maxl M N => a_maxl (exp_wk M φ) (exp_wk N φ)
@@ -1536,7 +1543,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   match M with
   | a_typ i => a_typ i
   | a_univ t => a_univ (exp_sub t σ)
-  | a_level => a_level
+  | a_level n => a_level n
   | a_llit n => a_llit n
   | a_succl M => a_succl (exp_sub M σ)
   | a_maxl M N => a_maxl (exp_sub M σ) (exp_sub N σ)

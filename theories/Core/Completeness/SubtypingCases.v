@@ -140,6 +140,28 @@ Qed.
 
 Hint Resolve subtyp_univ : mctt.
 
+(** ** Types of Levels
+
+    A type of levels is below every type of levels of a larger sort: in the
+    model their elements are the same, the level values. *)
+Lemma subtyp_level : forall {Γ m n},
+    ⊨ Γ ->
+    m <= n ->
+    Γ ⊨ Level@m ⊆ Level@n.
+Proof.
+  intros * HΓsem Hmn.
+  pose proof (sem_ctx_per_ctx_env HΓsem) as [env_relΓ HΓ].
+  eexists_subtyp_with 0.
+  intros Γ' env_rel' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
+  exists (Levelᵈ@m), (Levelᵈ@m), (Levelᵈ@n), (Levelᵈ@n).
+  repeat apply conj; try apply eval_exp_level.
+  - eexists; per_univ_elem_econstructor; reflexivity.
+  - eexists; per_univ_elem_econstructor; reflexivity.
+  - apply per_subtyp_level; assumption.
+Qed.
+
+Hint Resolve subtyp_level : mctt.
+
 (** ** Small Universes
 
     As [subtyp_univ], at the small level, and from a small universe to a large

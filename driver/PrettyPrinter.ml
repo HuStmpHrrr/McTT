@@ -341,7 +341,10 @@ let exp_to_obj =
        let ez' = impl ctx ez in
        let es' = impl (sr :: sx :: ctx) es in
        Cst.Coq_natrec (escr', mx, em', ez', sx, sr, es')
-    | Coq_a_level -> Cst.Coq_level
+    | Coq_a_level 0 -> Cst.Coq_level
+    (* A type of levels of a positive sort has no surface form yet, and no
+       program produces one: the surface [Level] is of sort 0. *)
+    | Coq_a_level _ -> invalid_arg "PrettyPrinter: a type of levels of a positive sort"
     | Coq_a_llit (0, n) -> Cst.Coq_llit n
     (* A literal at or above [ω] has no surface form yet, and no program
        produces one: the surface literals are finite, and the level

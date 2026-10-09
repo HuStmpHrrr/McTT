@@ -40,7 +40,7 @@ Definition unwk (k : nat) : wk := wk_qn k pred.
     module body by its binders, exactly as the weakenings do. *)
 Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   match M with
-  | a_typ _ | a_level | a_llit _ | a_nat | a_zero
+  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero
   | a_True | a_true | a_False => True
   | a_univ M | a_succl M | a_succ M => exp_fresh k M
   | a_maxl M N | a_app M N => exp_fresh k M /\ exp_fresh k N
@@ -247,7 +247,7 @@ Combined Scheme nf_mut_ind from nf_mind, ne_mind, la_mind.
 
 Fixpoint nf_fresh (k : nat) (W : nf) {struct W} : Prop :=
   match W with
-  | nf_typ _ | nf_level | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
+  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => True
   | nf_univ _ xs | nf_lvl _ xs => la_fresh k xs
   | nf_succ W => nf_fresh k W
   | nf_pi A B | nf_fn A B => nf_fresh k A /\ nf_fresh (S k) B
@@ -272,7 +272,7 @@ Fixpoint nf_unwk (k : nat) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
   | nf_univ c xs => nf_univ c (la_unwk k xs)
-  | nf_level => nf_level
+  | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (la_unwk k xs)
   | nf_nat => nf_nat
   | nf_zero => nf_zero
@@ -426,7 +426,7 @@ Qed.
     reflection. *)
 Fixpoint nf_freshb (k : nat) (W : nf) {struct W} : bool :=
   match W with
-  | nf_typ _ | nf_level | nf_nat | nf_zero | nf_True | nf_true | nf_False => true
+  | nf_typ _ | nf_level _ | nf_nat | nf_zero | nf_True | nf_true | nf_False => true
   | nf_univ _ xs | nf_lvl _ xs => la_freshb k xs
   | nf_succ W => nf_freshb k W
   | nf_pi A B | nf_fn A B => nf_freshb k A && nf_freshb (S k) B

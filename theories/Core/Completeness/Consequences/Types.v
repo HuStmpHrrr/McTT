@@ -90,7 +90,7 @@ Inductive is_typ_constr : typ -> Prop :=
 (** A small universe at any level term: in a context with an axiom of type
     [Level] a closed type may be the universe at that axiom. *)
 | univ_is_typ_constr : forall t, is_typ_constr Type⟨t⟩
-| level_is_typ_constr : is_typ_constr Level
+| level_is_typ_constr : forall n, is_typ_constr Level@n
 | nat_is_typ_constr : is_typ_constr ℕ
 | True_is_typ_constr : is_typ_constr ⊤
 | False_is_typ_constr : is_typ_constr ⊥
@@ -105,7 +105,7 @@ Hint Constructors is_typ_constr : mctt.
 Inductive rigid_typ (Γ : ctx) : typ -> Prop :=
 | typ_is_rigid : forall i, rigid_typ Γ Typeω@i
 | univ_is_rigid : forall n, rigid_typ Γ Type⟨𝕃ᵒ n⟩
-| level_is_rigid : rigid_typ Γ Level
+| level_is_rigid : forall n, rigid_typ Γ Level@n
 | nat_is_rigid : rigid_typ Γ ℕ
 | True_is_rigid : rigid_typ Γ ⊤
 | False_is_rigid : rigid_typ Γ ⊥
@@ -166,8 +166,7 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = 𝕌@(dlvl_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | assert (a = Levelᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    | inversion Ha; subst
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -208,8 +207,7 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = 𝕌@(dlvl_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | assert (a = Levelᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    | inversion Ha; subst
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -243,8 +241,7 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = 𝕌@(dlvl_lit n0)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | assert (a = Levelᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    | inversion Ha; subst
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->
@@ -281,8 +278,7 @@ Proof.
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_typ ])
     | assert (a = 𝕌@(dlvl_lit n)) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_univ, eval_exp_llit ])
-    | assert (a = Levelᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    | inversion Ha; subst
     | reflexivity
     | assert (a = ⊤ᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_True ])
@@ -328,8 +324,7 @@ Proof.
     as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
   inversion Ha'; subst.
   destruct Histyp; try solve [ constructor ];
-    [ assert (a = Levelᵈ) as ->
-        by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_level ])
+    [ inversion Ha; subst
     | assert (a = ℕᵈ) as ->
         by (eapply functional_eval_exp; [ exact Ha | apply eval_exp_nat ])
     | assert (a = ⊤ᵈ) as ->

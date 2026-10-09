@@ -91,8 +91,10 @@ tier.
 collide with `sig`.  A small normal form carries a constant and a sorted list
 of level atoms with offsets, which is why `univⁿ` takes two arguments.
 
-`Level` is an ordinary type at each layer: `Level` in `exp`, `Levelᵈ` in
-`domain`, `Levelⁿ` in `nf`.  Its terms are `𝕃ᵒ o` (a literal: an ordinal
+The types of levels are indexed by a sort: `Level@n` in `exp` (`a_level n`),
+`Levelᵈ@n` in `domain`, `Levelⁿ@n` in `nf`, and `Level`, `Levelᵈ`, `Levelⁿ`
+are the sort-0 ones.  `Level@m ⊆ Level@n` for `m <= n`
+(`wf_subtyp_level`), and every `Level@n` is in `Type@0`.  Their terms are `𝕃ᵒ o` (a literal: an ordinal
 `o = (a, b)`, that is `ω·a + b`, below ω²; `Core/Syntactic/Ordinals.v`),
 `succl M` and `maxl M N`, with `dlvl_lit`, `dlvl_suc`, `dlvl_max` on values
 and `nf_lvl_of L` on normal forms.  `𝕃@n` is the finite literal

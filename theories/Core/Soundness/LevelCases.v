@@ -26,11 +26,16 @@ Import Fixed_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** [Level] is a type at every index: the rule gives it the small universe
+(** The sort of the levels is a parameter of the file: the elements of
+    [Level@n] are the level values, whatever the sort, so each case is proved
+    once for every sort. *)
+  Context {n : nat}.
+
+(** [Level@n] is a type at every index: the rule gives it the small universe
     [Type@0], and the other forms are instances. *)
 Lemma glu_rel_exp_level_univ : forall {Γ} {u : uidx},
     ⊩ Γ ->
-    Γ ⊩ Level : ulvl_tm u.
+    Γ ⊩ Level@n : ulvl_tm u.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto.
@@ -49,23 +54,23 @@ Qed.
 
 Lemma glu_rel_exp_level : forall {Γ} {i : nat},
     ⊩ Γ ->
-    Γ ⊩ Level : Typeω@i.
+    Γ ⊩ Level@n : Typeω@i.
 Proof. intros; apply (glu_rel_exp_level_univ (u := ul i)); assumption. Qed.
 
 Lemma glu_rel_exp_level_small : forall {Γ},
     ⊩ Γ ->
-    Γ ⊩ Level : Type@0.
+    Γ ⊩ Level@n : Type@0.
 Proof. intros; apply (glu_rel_exp_level_univ (u := us oz)); assumption. Qed.
 
 Hint Resolve glu_rel_exp_level : mctt.
 
-(** ** Terms of Type [Level] *)
+(** ** Terms of Type [Level@n] *)
 Lemma glu_rel_exp_of_level : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
     (forall Δ σ ρ,
         Δ ⊢s σ ® ρ ∈ Sb ->
-        exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl Δ M[σ] m) ->
-    Γ ⊩ M : Level.
+        exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Δ M[σ] m) ->
+    Γ ⊩ M : Level@n.
 Proof.
   intros * ? Hbody.
   eexists; split; mauto 3.
@@ -81,22 +86,22 @@ Qed.
 
 Lemma glu_rel_exp_clean_inversion_level : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ M : Level ->
-    glu_rel_exp_clean_inversion2_result 0 Sb M Level.
+    Γ ⊩ M : Level@n ->
+    glu_rel_exp_clean_inversion2_result 0 Sb M Level@n.
 Proof.
   intros * ? HM.
-  assert (Γ ⊩ Level : Typeω@0) by mauto 3.
+  assert (Γ ⊩ Level@n : Typeω@0) by mauto 3.
   eapply glu_rel_exp_clean_inversion2 in HM; mauto 3.
 Qed.
 
-(** The glued level of a term of type [Level]: its value, the canonical form
+(** The glued level of a term of type [Level@n]: its value, the canonical form
     the value reads back as, and the equation between the two. *)
 Lemma glu_rel_exp_level_elim : forall {Γ Sb M},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ M : Level ->
+    Γ ⊩ M : Level@n ->
     forall Δ σ ρ,
       Δ ⊢s σ ® ρ ∈ Sb ->
-      exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl Δ M[σ] m.
+      exists m, ⟦ M ⟧ ρ ↘ m /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Δ M[σ] m.
 Proof.
   intros * HSb HM * Hσ.
   eapply glu_rel_exp_clean_inversion_level in HM; [| exact HSb ].
@@ -113,9 +118,9 @@ Qed.
 
     A literal evaluates to a flat level with no atom, whose readback is the
     literal itself. *)
-Lemma glu_rel_exp_llit : forall {Γ n},
+Lemma glu_rel_exp_llit : forall {Γ o},
     ⊩ Γ ->
-    Γ ⊩ 𝕃ᵒ n : Level.
+    Γ ⊩ 𝕃ᵒ o : Level@n.
 Proof.
   intros * [Sb].
   assert (⊢ Γ) by mauto 2.
@@ -123,12 +128,12 @@ Proof.
   intros Δ σ ρ Hσ.
   assert (Δ ⊢s σ : Γ) by mauto 3.
   saturate_sub.
-  exists (dlvl_lit n); split; [ mauto 3 | split; [ apply per_lvl_lit |] ].
+  exists (dlvl_lit o); split; [ mauto 3 | split; [ apply per_lvl_lit |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   (** The readback of a literal is the literal. *)
   apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
-  assert (L' = lvl_lit n) as ->
+  assert (L' = lvl_lit o) as ->
     by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_lit ]).
   simplify_subs; cbn.
   mauto 3.
@@ -140,8 +145,8 @@ Hint Resolve glu_rel_exp_llit : mctt.
     level operation is the operation on the canonical forms, which the
     equations of [LevelEq] identify with the syntax. *)
 Lemma glu_rel_exp_succl : forall {Γ M},
-    Γ ⊩ M : Level ->
-    Γ ⊩ succl M : Level.
+    Γ ⊩ M : Level@n ->
+    Γ ⊩ succl M : Level@n.
 Proof.
   intros * HM.
   assert (⊩ Γ) as [Sb] by mauto 3.
@@ -156,11 +161,11 @@ Proof.
   assert (L' = lvl_canon (lvl_suc A)) as ->
     by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_suc; exact HA ]).
   assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hper); assumption).
-  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level)
+  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level@n)
     by (eapply glu_lvl_readback;
         [ exact Hglu | exact Hφ | apply dlvl_canon_read; [ exact Hsh | exact HA ] ]).
   destruct A as [c xs].
-  assert (HL : Δ' ⊢ nf_lvl_of (c, xs) : Level) by (gen_presups; eassumption).
+  assert (HL : Δ' ⊢ nf_lvl_of (c, xs) : Level@n) by (gen_presups; eassumption).
   unfold nf_lvl_of in HL; cbn in HL.
   assert (Hwf : la_wf Δ' xs) by (eapply lvl_exp_of_la_wf; exact HL).
   assert (Hwfs : la_wf Δ' (snd (lvl_canon (lvl_suc (c, xs)))))
@@ -182,17 +187,17 @@ Qed.
 Hint Resolve glu_rel_exp_succl : mctt.
 
 Lemma glu_rel_exp_maxl : forall {Γ M N},
-    Γ ⊩ M : Level ->
-    Γ ⊩ N : Level ->
-    Γ ⊩ maxl M N : Level.
+    Γ ⊩ M : Level@n ->
+    Γ ⊩ N : Level@n ->
+    Γ ⊩ maxl M N : Level@n.
 Proof.
   intros * HM HN.
   assert (⊩ Γ) as [Sb] by mauto 3.
   eapply glu_rel_exp_of_level; [ eassumption |].
   intros Δ σ ρ Hσ.
   destruct (glu_rel_exp_level_elim ltac:(eassumption) HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
-  destruct (glu_rel_exp_level_elim ltac:(eassumption) HN _ _ _ Hσ) as [n [Hev' [Hper' Hglu']]].
-  exists (dlvl_max m n); split; [ mauto 3 | split; [ apply per_lvl_max; eassumption |] ].
+  destruct (glu_rel_exp_level_elim ltac:(eassumption) HN _ _ _ Hσ) as [m' [Hev' [Hper' Hglu']]].
+  exists (dlvl_max m m'); split; [ mauto 3 | split; [ apply per_lvl_max; eassumption |] ].
   intros Δ' φ L Hφ Hr.
   assert (⊢ Δ') by (eapply kripke_dom; eassumption).
   apply dlvl_canon_of_read in Hr as [_ [L' [-> Hc]]].
@@ -201,16 +206,16 @@ Proof.
   assert (L' = lvl_canon (lvl_max A B)) as ->
     by (eapply dlvl_canon_functional; [ exact Hc | apply dlvl_canon_max; eassumption ]).
   assert (Hsh : dlvl_shape m) by (destruct (per_lvl_shape _ _ Hper); assumption).
-  assert (Hsh' : dlvl_shape n) by (destruct (per_lvl_shape _ _ Hper'); assumption).
-  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level)
+  assert (Hsh' : dlvl_shape m') by (destruct (per_lvl_shape _ _ Hper'); assumption).
+  assert (HMA : Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of A : Level@n)
     by (eapply glu_lvl_readback;
         [ exact Hglu | exact Hφ | apply dlvl_canon_read; [ exact Hsh | exact HA ] ]).
-  assert (HNB : Δ' ⊢ N[σ][φ]ʷ ≈ nf_lvl_of B : Level)
+  assert (HNB : Δ' ⊢ N[σ][φ]ʷ ≈ nf_lvl_of B : Level@n)
     by (eapply glu_lvl_readback;
         [ exact Hglu' | exact Hφ | apply dlvl_canon_read; [ exact Hsh' | exact HB ] ]).
   destruct A as [c xs]; destruct B as [d ys].
-  assert (HLA : Δ' ⊢ nf_lvl_of (c, xs) : Level) by (gen_presups; eassumption).
-  assert (HLB : Δ' ⊢ nf_lvl_of (d, ys) : Level) by (gen_presups; eassumption).
+  assert (HLA : Δ' ⊢ nf_lvl_of (c, xs) : Level@n) by (gen_presups; eassumption).
+  assert (HLB : Δ' ⊢ nf_lvl_of (d, ys) : Level@n) by (gen_presups; eassumption).
   unfold nf_lvl_of in HLA, HLB; cbn in HLA, HLB.
   assert (Hwfx : la_wf Δ' xs) by (eapply lvl_exp_of_la_wf; exact HLA).
   assert (Hwfy : la_wf Δ' ys) by (eapply lvl_exp_of_la_wf; exact HLB).
@@ -232,7 +237,7 @@ Qed.
 
 Hint Resolve glu_rel_exp_maxl : mctt.
 
-(** ** The Small Universe at a Level Term
+(** ** The Small Universe at a Level@n Term
 
     [Type⟨M⟩] is an element of [Type⟨succl M⟩], glued at the large index [0].
     Its type-level gluing takes the level term [succl M], and its element
@@ -240,7 +245,7 @@ Hint Resolve glu_rel_exp_maxl : mctt.
     above; its readback is the universe at the readback of [M], which the
     congruence rule of universes equates with it. *)
 Lemma glu_rel_exp_univ_lvl : forall {Γ M},
-    Γ ⊩ M : Level ->
+    Γ ⊩ M : Level@n ->
     Γ ⊩ Type⟨M⟩ : Type⟨succl M⟩.
 Proof.
   intros * HM.
@@ -254,7 +259,7 @@ Proof.
   destruct (glu_rel_exp_level_elim HSb HM _ _ _ Hσ) as [m [Hev [Hper Hglu]]].
   destruct (glu_rel_exp_level_elim HSb HSM _ _ _ Hσ) as [m' [Hev' [Hper' Hglu']]].
   inversion Hev'; subst; functional_eval_rewrite_clear.
-  assert (Δ ⊢ M[σ] : Level) by (eapply (glu_lvl_escape _ _ _ Hper Hglu); assumption).
+  assert (Δ ⊢ M[σ] : Level@n) by (eapply (glu_lvl_escape _ _ _ _ Hper Hglu); assumption).
   econstructor;
     [ apply eval_exp_univ; eassumption
     | apply eval_exp_univ; eassumption
@@ -262,20 +267,20 @@ Proof.
     |].
   simplify_subs; cbn [exp_sub] in *.
   repeat split.
-  - apply wf_univ; assumption.
-  - exists (succl M[σ]); split; [ exact Hglu' |].
-    apply wf_exp_eq_univ_cong_large_tm; [ assumption | mauto 3 | mauto 3 ].
+  - eapply wf_univ; eassumption.
+  - exists (succl M[σ]), n; split; [ exact Hglu' |].
+    eapply wf_exp_eq_univ_cong_large_tm; [ assumption | mauto 3 | mauto 3 ].
   - rewrite dlvl_real_suc.
     do 2 eexists; split;
       [ apply glu_univ_elem_core_suniv'; [ exact Hper | cbn; ord | reflexivity | reflexivity ] |].
-    exists M[σ]; split; [ exact Hglu |].
-    apply wf_exp_eq_univ_cong_large_tm; [ assumption | assumption | mauto 3 ].
+    exists M[σ], n; split; [ exact Hglu |].
+    eapply wf_exp_eq_univ_cong_large_tm; [ assumption | eassumption | mauto 3 ].
   - intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).
     inversion Hr; subst.
-    assert (Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of L : Level) by (eapply glu_lvl_readback; eassumption).
+    assert (Δ' ⊢ M[σ][φ]ʷ ≈ nf_lvl_of L : Level@n) by (eapply glu_lvl_readback; eassumption).
     cbn [exp_wk nf_to_exp nf_univ_of].
-    apply wf_exp_eq_univ_cong; assumption.
+    eapply wf_exp_eq_univ_cong; eassumption.
 Qed.
 
 Hint Resolve glu_rel_exp_univ_lvl : mctt.
@@ -286,16 +291,16 @@ Hint Resolve glu_rel_exp_univ_lvl : mctt.
     its types are glued at; inverting that gluing gives the type-level gluing
     at the realiser of [T]'s value, and the readback clause at [Type⟨T⟩]. *)
 Lemma glu_rel_exp_suniv_tm_large : forall {Γ T},
-    Γ ⊩ T : Level ->
+    Γ ⊩ T : Level@n ->
     Γ ⊩ Type⟨T⟩ : Typeω@0.
 Proof.
   intros * HT.
   assert (⊩ Γ) by mauto 3.
-  assert (Γ ⊢ T : Level) by (eapply glu_rel_exp_to_wf_exp; exact HT).
+  assert (Γ ⊢ T : Level@n) by (eapply glu_rel_exp_to_wf_exp; exact HT).
   assert (⊢ Γ) by mauto 3.
   eapply glu_rel_exp_subtyp;
     [ apply glu_rel_exp_univ_lvl, HT | apply glu_rel_exp_typ; assumption
-    | apply wf_subtyp_small_large; mauto 3 ].
+    | eapply wf_subtyp_small_large; mauto 3 ].
 Qed.
 
 (** The same inversion without the level's own gluing: the index of the
@@ -337,7 +342,7 @@ Qed.
 
 Lemma glu_rel_exp_of_suniv_tm : forall {Γ Sb T A},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ T : Level ->
+    Γ ⊩ T : Level@n ->
     (forall Δ σ ρ,
         Δ ⊢s σ ® ρ ∈ Sb ->
         forall l, ⟦ T ⟧ ρ ↘ l ->
@@ -358,7 +363,7 @@ Proof.
   saturate_sub.
   destruct (glu_rel_exp_level_elim HΓ HT _ _ _ Hσ) as [l [Hl [Hper Hglu]]].
   destruct (Hbody _ _ _ Hσ l Hl) as [HAσ [a [Ha [Haper [HaP Hrb]]]]].
-  assert (Δ ⊢ T[σ] : Level) by (eapply (glu_lvl_escape _ _ _ Hper Hglu); assumption).
+  assert (Δ ⊢ T[σ] : Level@n) by (eapply (glu_lvl_escape _ _ _ _ Hper Hglu); assumption).
   assert (exists P El, DG a ∈ glu_univ_elem (us (dlvl_real l)) ↘ P ↘ El) as [P [El HPEl]] by mauto 3.
   econstructor;
     [ apply eval_exp_univ; eassumption
@@ -368,20 +373,20 @@ Proof.
   cbn [exp_sub suniv_glu_exp_pred'].
   repeat split.
   - exact HAσ.
-  - exists T[σ]; split; [ exact Hglu |].
-    apply wf_exp_eq_univ_cong_large_tm; [ assumption | assumption | mauto 3 ].
+  - exists T[σ], n; split; [ exact Hglu |].
+    eapply wf_exp_eq_univ_cong_large_tm; [ assumption | eassumption | mauto 3 ].
   - exists P, El; split; [ exact HPEl | exact (HaP _ _ HPEl) ].
   - exact Hrb.
 Qed.
 
 Lemma glu_rel_exp_of_suniv_tm_inversion : forall {Γ Sb T A},
     EG Γ ∈ glu_ctx_env ↘ Sb ->
-    Γ ⊩ T : Level ->
+    Γ ⊩ T : Level@n ->
     Γ ⊩ A : Type⟨T⟩ ->
     forall Δ σ ρ,
       Δ ⊢s σ ® ρ ∈ Sb ->
       exists l,
-        ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\ glu_lvl Δ T[σ] l /\
+        ⟦ T ⟧ ρ ↘ l /\ Dom l ≈ l ∈ per_lvl /\ glu_lvl n Δ T[σ] l /\
         Δ ⊢ A[σ] : Type⟨T[σ]⟩ /\
         exists a,
           ⟦ A ⟧ ρ ↘ a /\

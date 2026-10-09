@@ -23,30 +23,30 @@ Inductive alg_type_check : ctx -> typ -> exp -> Prop :=
 where "Γ '⊢a' M ⟸ A" := (alg_type_check Γ A M) : type_scope
 with alg_type_infer : ctx -> nf -> exp -> Prop :=
 (** The universes of both tiers infer the universe above.  A small universe's
-    level is checked, and the universe above is the normal form of
-    [Type⟨succl M⟩], as the type of an application is the normal form of the
-    instantiated codomain: the side condition is a normalisation, not an
+    level infers a type of levels, and the universe above is the normal form
+    of [Type⟨succl M⟩], as the type of an application is the normal form of
+    the instantiated codomain: the side condition is a normalisation, not an
     index computed in the conclusion. *)
 | ati_typ :
   `( Γ ⊢a Typeω@i ⟹ Typeωⁿ@(S i) )
 | ati_suniv :
-  `( Γ ⊢a M ⟸ Level ->
+  `( Γ ⊢a M ⟹ Levelⁿ@n ->
      nbe_ty_f Γ Type⟨succl M⟩ W ->
      Γ ⊢a Type⟨M⟩ ⟹ W )
 (** The closed small types infer the least universe. *)
 | ati_level :
-  `( Γ ⊢a Level ⟹ Typeⁿ@0 )
-(** Every level is of type [Level]; the two operations check their
-    arguments. *)
+  `( Γ ⊢a Level@n ⟹ Typeⁿ@0 )
+(** A level literal is of the least type of levels; the two operations
+    infer the types of levels of their arguments, and are of the larger. *)
 | ati_llit :
-  `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ )
+  `( Γ ⊢a 𝕃ᵒ o ⟹ Levelⁿ@0 )
 | ati_succl :
-  `( Γ ⊢a M ⟸ Level ->
-     Γ ⊢a succl M ⟹ Levelⁿ )
+  `( Γ ⊢a M ⟹ Levelⁿ@n ->
+     Γ ⊢a succl M ⟹ Levelⁿ@n )
 | ati_maxl :
-  `( Γ ⊢a M ⟸ Level ->
-     Γ ⊢a N ⟸ Level ->
-     Γ ⊢a maxl M N ⟹ Levelⁿ )
+  `( Γ ⊢a M ⟹ Levelⁿ@m ->
+     Γ ⊢a N ⟹ Levelⁿ@n ->
+     Γ ⊢a maxl M N ⟹ Levelⁿ@(Nat.max m n) )
 | ati_nat :
   `( Γ ⊢a ℕ ⟹ Typeⁿ@0 )
 | ati_zero :
@@ -243,7 +243,7 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp M ->
      user_exp (a_univ M) )
 | user_exp_level :
-  `( user_exp a_level )
+  `( user_exp (a_level n) )
 | user_exp_llit :
   `( user_exp (a_llit n) )
 | user_exp_succl :

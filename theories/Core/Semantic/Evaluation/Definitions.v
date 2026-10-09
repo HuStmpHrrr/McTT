@@ -55,7 +55,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
      ⟦ Type⟨M⟩ ⟧ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌@l )
 (** [Level] is a value. *)
 | eval_exp_level :
-  `( ⟦ Level ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ )
+  `( ⟦ Level@n ⟧ Θ ⍮ Ξ ⍮ ρ ↘ Levelᵈ@n )
 (** A level literal is the flat level with that constant and no atom. *)
 | eval_exp_llit :
   `( ⟦ 𝕃ᵒ o ⟧ Θ ⍮ Ξ ⍮ ρ ↘ dlvl_lit o )

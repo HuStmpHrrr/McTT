@@ -132,16 +132,16 @@ Hint Resolve presup_subtyp_ctx : mctt.
 (** A small type is a type of every large universe. *)
 Lemma wf_exp_small_large : forall {Θ Ξ Γ A o i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ o⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+Proof. intros; eapply wf_exp_subtyp'; [ eassumption | eapply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 (** The same at a level term, given that it is a level. *)
-Lemma wf_exp_suniv_large : forall {Θ Ξ Γ A L i},
-    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
-Proof. intros; eapply wf_exp_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+Lemma wf_exp_suniv_large : forall {Θ Ξ Γ A L i n},
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i.
+Proof. intros; eapply wf_exp_subtyp'; [ eassumption | eapply wf_subtyp_small_large; mauto 3 ]. Qed.
 
-Lemma wf_exp_eq_suniv_large : forall {Θ Ξ Γ A A' L i},
-    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+Lemma wf_exp_eq_suniv_large : forall {Θ Ξ Γ A A' L i n},
+    Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨L⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
+Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | eapply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 (** The small [Π] and its congruence at a literal level, whose weakening is
     itself. *)
@@ -149,18 +149,18 @@ Lemma wf_pi_small_lit : forall {Θ Ξ Γ A B n},
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨𝕃ᵒ n⟩ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Type⟨𝕃ᵒ n⟩.
-Proof. intros * HA HB; apply wf_pi_small; [ apply wf_llit; mauto 2 | exact HA | exact HB ]. Qed.
+Proof. intros * HA HB; eapply wf_pi_small; [ apply wf_llit_ord; mauto 2 | exact HA | exact HB ]. Qed.
 
 Lemma wf_exp_eq_pi_cong_small_lit : forall {Θ Ξ Γ A A' B B' n},
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨𝕃ᵒ n⟩ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨𝕃ᵒ n⟩ ->
     Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B ≈ B' : Type⟨𝕃ᵒ n⟩ ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B ≈ Π A' B' : Type⟨𝕃ᵒ n⟩.
-Proof. intros * HA HAA HB; apply wf_exp_eq_pi_cong_small; [ apply wf_llit; mauto 2 | exact HA | exact HAA | exact HB ]. Qed.
+Proof. intros * HA HAA HB; eapply wf_exp_eq_pi_cong_small; [ apply wf_llit_ord; mauto 2 | exact HA | exact HAA | exact HB ]. Qed.
 
 Lemma wf_exp_eq_small_large : forall {Θ Ξ Γ A A' o i},
     Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Type⟨𝕃ᵒ o⟩ -> Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i.
-Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | apply wf_subtyp_small_large; mauto 3 ]. Qed.
+Proof. intros; eapply wf_exp_eq_subtyp'; [ eassumption | eapply wf_subtyp_small_large; mauto 3 ]. Qed.
 
 Lemma ctx_decomp : forall {Θ Ξ Γ A},
     ⊢ Θ ⍮ Ξ ⍮ Γ ▹ A ->
@@ -777,10 +777,10 @@ Proof.
       lifted weakening. *)
   all: try solve [
     match goal with
-    | HL : forall Δ0 φ0, wf_wk ?T ?X Δ0 ?Γ φ0 -> wf_exp ?T ?X Δ0 a_level ?L[φ0]ʷ,
+    | HL : forall Δ0 φ0, wf_wk ?T ?X Δ0 ?Γ φ0 -> wf_exp ?T ?X Δ0 (a_level ?n) ?L[φ0]ʷ,
       HA : wf_exp ?T ?X ?Γ (a_univ ?L) ?A,
       Hφ : wf_wk ?T ?X ?Δ ?Γ ?φ,
-      HL0 : wf_exp ?T ?X ?Γ a_level ?L |- _ =>
+      HL0 : wf_exp ?T ?X ?Γ (a_level ?n) ?L |- _ =>
         assert (wf_exp T X Γ (a_typ 0) A) by (eapply wf_exp_suniv_large; eassumption);
         assert (wf_exp T X Δ (a_typ 0) A[φ]ʷ) by (eapply wf_exp_suniv_large; eauto);
         assert (wf_wk T X (Δ ▹ A[φ]ʷ) (Γ ▹ A) (wk_q φ)) by (eapply wf_wk_q; eassumption);
@@ -1440,10 +1440,10 @@ Proof.
   (** The small [Π], as for weakening. *)
   all: try solve [
     match goal with
-    | HL : forall Γ0 σ0, wf_sub ?T ?X Γ0 ?Δ σ0 -> wf_exp ?T ?X Γ0 a_level ?L[σ0],
+    | HL : forall Γ0 σ0, wf_sub ?T ?X Γ0 ?Δ σ0 -> wf_exp ?T ?X Γ0 (a_level ?n) ?L[σ0],
       HA : wf_exp ?T ?X ?Δ (a_univ ?L) ?A,
       Hσ : wf_sub ?T ?X ?Γ ?Δ ?σ,
-      HL0 : wf_exp ?T ?X ?Δ a_level ?L |- _ =>
+      HL0 : wf_exp ?T ?X ?Δ (a_level ?n) ?L |- _ =>
         assert (wf_exp T X Δ (a_typ 0) A) by (eapply wf_exp_suniv_large; eassumption);
         assert (wf_exp T X Γ (a_typ 0) A[σ]) by (eapply wf_exp_suniv_large; eauto);
         assert (wf_sub T X (Γ ▹ A[σ]) (Δ ▹ A) (q σ)) by (eapply wf_sub_q; eassumption);
@@ -2051,7 +2051,7 @@ Hint Resolve lift_exp_uidx lift_exp_eq_uidx : mctt.
 Lemma wf_nat_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_nat; assumption ]. Qed.
 
-Lemma wf_level_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level : ulvl_tm u.
+Lemma wf_level_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : ulvl_tm u.
 Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_level; assumption ]. Qed.
 
 Lemma wf_True_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ : ulvl_tm u.
@@ -2063,7 +2063,7 @@ Proof. intros; eapply (lift_exp_uidx _ _ _ _ (us oz)); [ apply uidx_le_least | a
 Lemma wf_exp_eq_nat_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ℕ ≈ ℕ : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_nat_cong; assumption ]. Qed.
 
-Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level ≈ Level : ulvl_tm u.
+Lemma wf_exp_eq_level_cong_univ : forall {Θ Ξ Γ n} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ≈ Level@n : ulvl_tm u.
 Proof. intros; eapply (lift_exp_eq_uidx _ _ _ _ _ (us oz)); [ apply uidx_le_least | apply wf_exp_eq_level_cong; assumption ]. Qed.
 
 Lemma wf_exp_eq_True_cong_univ : forall {Θ Ξ Γ} {u : uidx}, ⊢ Θ ⍮ Ξ ⍮ Γ -> Θ ⍮ Ξ ⍮ Γ ⊢ ⊤ ≈ ⊤ : ulvl_tm u.
@@ -2083,7 +2083,7 @@ Lemma wf_subtyp_uidx : forall {Θ Ξ Γ} {u v : uidx},
 Proof.
   intros * HΓ Hle; destruct u as [n | n], v as [m | m]; cbn in Hle |- *;
     [ apply wf_subtyp_suniv_ole; assumption
-    | apply wf_subtyp_small_large; mauto 3
+    | eapply wf_subtyp_small_large; mauto 3
     | contradiction
     | apply wf_subtyp_ge; assumption ].
 Qed.

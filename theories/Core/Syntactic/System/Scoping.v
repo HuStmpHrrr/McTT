@@ -26,7 +26,7 @@ Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   match M with
-  | a_typ _ | a_level | a_llit _ | a_nat | a_zero | a_True | a_true | a_False => True
+  | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False => True
   | a_succ M | a_succl M | a_univ M => exp_scoped n M
   | a_maxl M N => exp_scoped n M /\ exp_scoped n N
   | a_natrec A MZ MS M =>

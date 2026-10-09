@@ -63,7 +63,7 @@ Section Avoid.
       dav (Πᵈ a ρ B)
   | dav_univ : forall i, dav 𝕌ω@i
   | dav_suniv : forall l, dav l -> dav 𝕌@l
-  | dav_level : dav Levelᵈ
+  | dav_level : forall n, dav (Levelᵈ@n)
   | dav_lvl : forall c xs, dav_la xs -> dav (lvᵈ c xs)
   | dav_zero : dav zeroᵈ
   | dav_succ : forall m, dav m -> dav (succᵈ m)

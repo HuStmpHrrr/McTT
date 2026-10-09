@@ -30,17 +30,25 @@ Proof.
   (** The two small-universe rules are the syntactic rules themselves; the
       order on canonical levels is the level equation [lvl_exp_of_le]. *)
   - gen_presups.
+    (** The two level terms are levels of their own sorts; both move to the
+        larger of the two, where the order on levels is stated. *)
     match goal with
     | HA : _ ⊢ a_univ ?t : _, HB : _ ⊢ a_univ ?t' : _ |- _ =>
-        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; exact HA);
-        assert (Γ ⊢ t' : Level) by (eapply wf_univ_lvl_inversion; exact HB)
+        assert (exists n, Γ ⊢ t : Level@n) as [n1 Ht] by (eapply wf_univ_lvl_inversion; exact HA);
+        assert (exists n, Γ ⊢ t' : Level@n) as [n2 Ht'] by (eapply wf_univ_lvl_inversion; exact HB);
+        assert (Γ ⊢ t : Level@(Nat.max n1 n2))
+          by (eapply wf_exp_subtyp'; [ exact Ht | apply wf_subtyp_level; [ lia | mauto 2 ] ]);
+        assert (Γ ⊢ t' : Level@(Nat.max n1 n2))
+          by (eapply wf_exp_subtyp'; [ exact Ht' | apply wf_subtyp_level; [ lia | mauto 2 ] ])
     end.
-    apply wf_subtyp_suniv; [ assumption | assumption | assumption |].
+    eapply wf_subtyp_suniv; [ assumption | eassumption | eassumption |].
     apply lvl_exp_of_le; [ assumption | eapply lvl_exp_of_la_wf; eassumption
                          | eapply lvl_exp_of_la_wf; eassumption | assumption ].
   - gen_presups.
-    apply wf_subtyp_small_large; [ assumption |].
-    eapply wf_univ_lvl_inversion; eassumption.
+    assert (exists n, Γ ⊢ lvl_exp_of c (la_to_list xs) : Level@n) as [n Ht]
+      by (eapply wf_univ_lvl_inversion; eassumption).
+    eapply wf_subtyp_small_large; [ assumption | exact Ht ].
+  - gen_presups; apply wf_subtyp_level; assumption.
   - on_all_hyp: fun H => apply wf_pi_inversion' in H; destruct H as [? ?].
     destruct_all.
     gen_presups.
@@ -70,7 +78,7 @@ Lemma alg_subtyping_nf_refl : forall A,
     ⊢anf A ⊆ A.
 Proof.
   induction A;
-    solve [constructor; simpl; trivial | apply asnf_suniv, lvl_le_refl].
+    solve [constructor; simpl; trivial | apply asnf_suniv, lvl_le_refl | apply asnf_level; reflexivity].
 Qed.
 
 #[local]
@@ -115,15 +123,23 @@ Proof.
         the premise [maxl M M' ≈ M'] ([read_max_lvl_le]). *)
     match goal with H : wf_exp_eq _ _ _ _ (maxl _ _) _ |- _ =>
       apply completeness in H as [W [Hn1 Hn2]] end.
-    assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as HA%soundness by (apply wf_univ_large_tm; assumption).
-    assert (Γ ⊢ Type⟨M'⟩ : Typeω@0) as HB%soundness by (apply wf_univ_large_tm; assumption).
+    assert (Γ ⊢ Type⟨M⟩ : Typeω@0) as HA%soundness by (eapply wf_univ_large_tm; eassumption).
+    assert (Γ ⊢ Type⟨M'⟩ : Typeω@0) as HB%soundness by (eapply wf_univ_large_tm; eassumption).
     destruct HA as [WA [HA _]]; destruct HB as [WB [HB _]].
     econstructor; mauto 2.
     progressive_inversion.
     functional_initial_env_rewrite_clear.
     simplify_evals.
     apply asnf_suniv; eapply read_max_lvl_le; eassumption.
-  - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) by (apply wf_univ_large_tm; assumption).
+  (** The types of levels are their own normal forms. *)
+  - assert (Γ ⊢ Level@m : Typeω@0) by mauto 3.
+    assert (Γ ⊢ Level@n : Typeω@0) by mauto 3.
+    on_all_hyp: fun H => apply soundness in H.
+    destruct_all.
+    econstructor; mauto 2.
+    progressive_inversion.
+    apply asnf_level; assumption.
+  - assert (Γ ⊢ Type⟨M⟩ : Typeω@0) by (eapply wf_univ_large_tm; eassumption).
     assert (Γ ⊢ Typeω@i : Typeω@(S i)) by mauto.
     on_all_hyp: fun H => apply soundness in H.
     destruct_all.

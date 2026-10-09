@@ -142,7 +142,7 @@ Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   match M with
   | nf_typ i => lt_node 0 (lt_node i lt_nil lt_nil) t
   | nf_univ (a, b) xs => lt_node 1 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
-  | nf_level => lt_node 2 lt_nil t
+  | nf_level n => lt_node 2 (lt_node n lt_nil lt_nil) t
   | nf_lvl (a, b) xs => lt_node 3 (lt_node a (lt_node b (la_code xs lt_nil) lt_nil) lt_nil) t
   | nf_nat => lt_node 4 lt_nil t
   | nf_zero => lt_node 5 lt_nil t

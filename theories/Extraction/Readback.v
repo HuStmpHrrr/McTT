@@ -37,10 +37,10 @@ Inductive read_nf_order (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> Prop :=
     read_nf_order Θ Ξ s ⇓ 𝕌@n a )
 | rnf_lvl :
   `( read_la_order Θ Ξ s xs ->
-     read_nf_order Θ Ξ s ⇓ Levelᵈ (lvᵈ c xs) )
+     read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (lvᵈ c xs) )
 | rnf_lvl_neut :
   `( read_ne_order Θ Ξ s m ->
-     read_nf_order Θ Ξ s ⇓ Levelᵈ (⇑ a m) )
+     read_nf_order Θ Ξ s ⇓ (Levelᵈ@n) (⇑ a m) )
 | rnf_zero :
   `( read_nf_order Θ Ξ s ⇓ ℕᵈ zeroᵈ )
 | rnf_succ :
@@ -112,7 +112,7 @@ with read_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
   `( read_nf_order Θ Ξ s ⇓ Levelᵈ l ->
      read_typ_order Θ Ξ s 𝕌@l )
 | rtyp_level :
-  `( read_typ_order Θ Ξ s Levelᵈ )
+  `( read_typ_order Θ Ξ s (Levelᵈ@n) )
 | rtyp_nat :
   `( read_typ_order Θ Ξ s ℕᵈ )
 | rtyp_True :
@@ -187,10 +187,10 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, ⇓ 𝕌@n a     , H =>
     let (A, HA) := read_typ_impl s a _ in
     exist _ A _
-| s, ⇓ Levelᵈ (lvᵈ c xs), H =>
+| s, ⇓ (Levelᵈ@n) (lvᵈ c xs), H =>
     let (ys, Hys) := read_la_impl s xs _ in
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
-| s, ⇓ Levelᵈ (⇑ _ m), H =>
+| s, ⇓ (Levelᵈ@n) (⇑ _ m), H =>
     let (M, HM) := read_ne_impl s m _ in
     exist _ (lvⁿ oz (la_cons 0 M la_nil)) _
 | s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
@@ -242,7 +242,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
 | s, 𝕌@l, H =>
     let (W, HW) := read_nf_impl s ⇓ Levelᵈ l _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
-| s, Levelᵈ, H => exist _ Levelⁿ _
+| s, Levelᵈ@n, H => exist _ (Levelⁿ@n) _
 | s, ℕᵈ, H => exist _ ℕⁿ _
 | s, ⊤ᵈ, H => exist _ ⊤ⁿ _
 | s, ⊥ᵈ, H => exist _ ⊥ⁿ _

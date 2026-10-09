@@ -39,14 +39,14 @@ Proof.
   dependent induction H; mautosolve.
 Qed.
 
-(** The level of a universe that is a type is a level: the only rule that
-    gives a universe a type asks for it. *)
+(** The level of a universe that is a type is a level of some sort: the only
+    rule that gives a universe a type asks for it. *)
 Lemma wf_univ_lvl_inversion : forall {Θ Ξ Γ M A},
     Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨M⟩ : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level.
+    exists n, Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n.
 Proof.
   intros * H.
-  dependent induction H; mautosolve.
+  dependent induction H; [ eexists; eassumption | apply (IHwf_exp1 _ eq_refl) ].
 Qed.
 
 #[export]
@@ -90,8 +90,8 @@ Hint Resolve wf_succ_inversion : mctt.
 
 (** The level forms.  A level is of type [Level] up to subtyping, and so is
     every argument of [succl] and [maxl]. *)
-Lemma wf_level_inversion : forall Θ Ξ Γ A,
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level : A ->
+Lemma wf_level_inversion : forall Θ Ξ Γ A n,
+    Θ ⍮ Ξ ⍮ Γ ⊢ Level@n : A ->
     Θ ⍮ Ξ ⍮ Γ ⊢ Type@0 ⊆ A.
 Proof.
   intros * H.
@@ -103,11 +103,12 @@ Hint Resolve wf_level_inversion : mctt.
 
 Corollary wf_llit_inversion : forall Θ Ξ Γ A o,
     Θ ⍮ Ξ ⍮ Γ ⊢ 𝕃ᵒ o : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+    exists n, Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
-    try specialize (IHwf_exp eq_refl); mautosolve 4.
+    [ eexists; mauto 3
+    | specialize (IHwf_exp1 _ eq_refl) as (n & Hs); exists n; mauto 3 ].
 Qed.
 
 #[export]
@@ -115,12 +116,13 @@ Hint Resolve wf_llit_inversion : mctt.
 
 Corollary wf_succl_inversion : forall Θ Ξ Γ A M,
     Θ ⍮ Ξ ⍮ Γ ⊢ succl M : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+    exists n, Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
-    try specialize (IHwf_exp1 _ eq_refl);
-    destruct_conjs; mautosolve.
+    [ eexists; split; [ eassumption | mauto 3 ]
+    | specialize (IHwf_exp1 _ eq_refl) as (n & HM & Hs);
+      exists n; split; [ exact HM | mauto 3 ] ].
 Qed.
 
 #[export]
@@ -128,12 +130,13 @@ Hint Resolve wf_succl_inversion : mctt.
 
 Corollary wf_maxl_inversion : forall Θ Ξ Γ A M N,
     Θ ⍮ Ξ ⍮ Γ ⊢ maxl M N : A ->
-    Θ ⍮ Ξ ⍮ Γ ⊢ M : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level ⊆ A.
+    exists n, Θ ⍮ Ξ ⍮ Γ ⊢ M : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ N : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ Level@n ⊆ A.
 Proof.
   intros * H.
   dependent induction H;
-    try specialize (IHwf_exp1 _ _ eq_refl);
-    destruct_conjs; mautosolve.
+    [ eexists; repeat split; [ eassumption | eassumption | mauto 3 ]
+    | specialize (IHwf_exp1 _ _ eq_refl) as (n & HM & HN & Hs);
+      exists n; repeat split; [ exact HM | exact HN | mauto 3 ] ].
 Qed.
 
 #[export]
@@ -208,18 +211,18 @@ Hint Resolve wf_exfalso_inversion : mctt.
 Lemma wf_pi_inversion : forall {Θ Ξ Γ A B C},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : C ->
     (exists i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ⊢ Typeω@i ⊆ C) \/
-    (exists L, Θ ⍮ Ξ ⍮ Γ ⊢ L : Level /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ /\
+    (exists L n, Θ ⍮ Ξ ⍮ Γ ⊢ L : Level@n /\ Θ ⍮ Ξ ⍮ Γ ⊢ A : Type⟨L⟩ /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Type⟨L[↑]ʷ⟩ /\
                Θ ⍮ Ξ ⍮ Γ ⊢ Type⟨L⟩ ⊆ C).
 Proof.
   intros * H.
   dependent induction H;
     try specialize (IHwf_exp1 _ _ eq_refl);
-    try destruct IHwf_exp1 as [(j & ? & ? & ?) | (L' & ? & ? & ? & ?)];
+    try destruct IHwf_exp1 as [(j & ? & ? & ?) | (L' & n' & ? & ? & ? & ?)];
     gen_core_presups.
   - left; eexists; mautosolve 4.
-  - right; exists L; repeat split; try assumption; mautosolve 4.
+  - right; exists L, n; repeat split; try assumption; mautosolve 4.
   - left; exists j; repeat split; try assumption; mautosolve 4.
-  - right; exists L'; repeat split; try assumption; mautosolve 4.
+  - right; exists L', n'; repeat split; try assumption; mautosolve 4.
 Qed.
 
 #[export]
@@ -234,10 +237,10 @@ Corollary wf_pi_inversion' : forall {Θ Ξ Γ A B i},
     Θ ⍮ Ξ ⍮ Γ ⊢ Π A B : Typeω@i ->
     Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i /\ Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i.
 Proof.
-  intros * [[j [? []]] | [L [? [? []]]]]%wf_pi_inversion.
+  intros * [[j [? []]] | [L [n [? [? []]]]]]%wf_pi_inversion.
   2:{ assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
       assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.
-      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level) by (eapply (wk_preserves_exp _ _ _ _ Level); eassumption).
+      assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ L[↑]ʷ : Level@n) by (eapply (wk_preserves_exp _ _ _ _ (Level@n)); eassumption).
       split; eapply wf_exp_suniv_large; eassumption. }
   assert (⊢ Θ ⍮ Ξ ⍮ Γ ▹ A) by mauto 3.
   assert (Θ ⍮ Ξ ⍮ Γ ▹ A ⊢w ↑ : Γ) by mauto 2.

@@ -255,7 +255,14 @@ Proof.
   (** The small universes at a level term, and their subtyping: the cases of
       [Completeness.LevelCases], whose premises are the induction
       hypotheses. *)
-  all: solve [ mauto 2 ].
+  all: try solve [ mauto 2 ].
+  (** The literal of a sort: the side condition of its rule is an arithmetic
+      one the search does not take. *)
+  all: solve [ apply valid_exp_llit; assumption
+             | apply rel_exp_llit; eassumption
+             | eapply valid_exp_llit_succl; assumption
+             | eapply valid_exp_maxl_llit_limit; eassumption
+             | apply subtyp_level; assumption ].
 Qed.
 
 (** ** 3. Closed judgments *)

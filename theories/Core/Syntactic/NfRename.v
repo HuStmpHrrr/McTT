@@ -25,7 +25,7 @@ Fixpoint nf_wk (φ : wk) (W : nf) {struct W} : nf :=
   match W with
   | nf_typ i => nf_typ i
   | nf_univ c xs => nf_univ c (la_wk φ xs)
-  | nf_level => nf_level
+  | nf_level n => nf_level n
   | nf_lvl c xs => nf_lvl c (la_wk φ xs)
   | nf_nat => nf_nat
   | nf_zero => nf_zero

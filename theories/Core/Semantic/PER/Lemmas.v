@@ -185,7 +185,7 @@ Lemma per_sublvl_of_per_lvl : forall l l',
     per_sublvl l l'.
 Proof.
   intros * H s; destruct (H s) as [W [HW HW']].
-  destruct (read_nf_level_real _ _ _ HW) as [L [-> _]].
+  destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
   exists L, L; repeat split; [ assumption | assumption | apply lvl_le_refl ].
 Qed.
 

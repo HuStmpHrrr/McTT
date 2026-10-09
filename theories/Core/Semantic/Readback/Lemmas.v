@@ -85,8 +85,16 @@ Import Domain_Notations.
     intros * H; induction H; intros c; cbn; [ reflexivity | congruence ].
   Qed.
 
-  Lemma read_nf_level_real : forall {Θ Ξ} s l W,
-      Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ W ->
+(** The readback of a level does not depend on the sort of the type it is
+    read at: the two clauses for [Level] mention it nowhere.  This is what
+    lets [per_lvl] be stated at one sort and used at every one. *)
+  Lemma read_nf_level_sort : forall {Θ Ξ} s m n l W,
+      Rnf ⇓ (Levelᵈ@m) l in Θ ⍮ Ξ ⍮ s ↘ W ->
+      Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W.
+  Proof. inversion 1; subst; econstructor; eassumption. Qed.
+
+  Lemma read_nf_level_real : forall {Θ Ξ} s n l W,
+      Rnf ⇓ (Levelᵈ@n) l in Θ ⍮ Ξ ⍮ s ↘ W ->
       exists L, W = nf_lvl_of L /\ lvl_real L = dlvl_real l.
   Proof.
     inversion 1; subst.

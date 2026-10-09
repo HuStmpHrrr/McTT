@@ -57,7 +57,7 @@ Proof.
         literal, and the readback clause is the premise's. *)
     repeat split.
     + exact H0.
-    + exists (𝕃ᵒ n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    + exists (𝕃ᵒ n), (fst n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
     + exists P, El; split; [ exact HPEl | exact (H3 P El HPEl) ].
     + exact Hrb.
   - repeat split.
@@ -88,7 +88,7 @@ Proof.
     pose proof (glu_univ_elem_univ_at (u := u) (i := ul (ulvl_above u)) (uidx_lt_ulvl_above u)).
     handle_functional_glu_univ_elem.
     destruct u as [n | j]; cbn [univ_glu_typ_pred_at ulvl_tm ulvl_above ulvl] in *.
-    + exists (𝕃ᵒ n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    + exists (𝕃ᵒ n), (fst n); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
     + apply wf_exp_eq_typ_cong; assumption.
   - (** The universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
@@ -227,7 +227,7 @@ Proof.
   - intros P El HPEl.
     pose proof (glu_univ_elem_univ_at (u := us (a, n)) (i := us (a, S n)) ltac:(cbn; ord)).
     handle_functional_glu_univ_elem.
-    cbn; exists (𝕃ᵒ(a, n)); split; [ apply glu_lvl_lit; assumption | mauto 3 ].
+    cbn; exists (𝕃ᵒ(a, n)), a; split; [ apply glu_lvl_lit; assumption | mauto 3 ].
   - (** The small universe reads back as itself. *)
     intros Δ' φ W Hφ Hr.
     assert (⊢ Δ') by (eapply kripke_dom; eassumption).

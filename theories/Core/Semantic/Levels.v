@@ -485,14 +485,15 @@ Qed.
 (** The same from readbacks: if [maxl l l'] and [l'] read back equally, the
     canonical forms of [l] and [l'] are in [lvl_le].  This is what the
     algorithmic subtyping of two small universes decides. *)
-Lemma read_max_lvl_le : forall s l l' L L' W,
-    Rnf ⇓ Levelᵈ l in s ↘ nf_lvl_of L ->
-    Rnf ⇓ Levelᵈ l' in s ↘ nf_lvl_of L' ->
-    Rnf ⇓ Levelᵈ (dlvl_max l l') in s ↘ W ->
-    Rnf ⇓ Levelᵈ l' in s ↘ W ->
+Lemma read_max_lvl_le : forall s n1 n2 n3 n4 l l' L L' W,
+    Rnf ⇓ (Levelᵈ@n1) l in s ↘ nf_lvl_of L ->
+    Rnf ⇓ (Levelᵈ@n2) l' in s ↘ nf_lvl_of L' ->
+    Rnf ⇓ (Levelᵈ@n3) (dlvl_max l l') in s ↘ W ->
+    Rnf ⇓ (Levelᵈ@n4) l' in s ↘ W ->
     lvl_le L L'.
 Proof.
   intros * HL HL' Hmax Hmax'.
+  apply (read_nf_level_sort _ _ 0 _ _) in HL, HL', Hmax, Hmax'.
   pose proof (functional_read_nf _ _ _ _ HL' Hmax') as <-.
   apply dlvl_canon_of_read in HL as [_ [L1 [Heq1 HL1]]].
   apply nf_lvl_of_inj in Heq1 as <-.

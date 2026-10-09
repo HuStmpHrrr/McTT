@@ -139,11 +139,11 @@ Section Per_univ_elem_core_def.
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           DF 𝕌@l ≈ 𝕌@l' ∈ per_univ_elem_core ↘ elem_rel }
-  (** [Level], its elements related by [per_lvl]. *)
+  (** [Level@n], its elements related by [per_lvl]. *)
   | per_univ_elem_core_level :
-    forall (elem_rel : relation domain),
+    forall n (elem_rel : relation domain),
       (elem_rel <~> per_lvl) ->
-      DF Levelᵈ ≈ Levelᵈ ∈ per_univ_elem_core ↘ elem_rel
+      DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem_core ↘ elem_rel
   (** [ℕ], its elements related by [per_nat]. *)
   | per_univ_elem_core_nat :
     forall (elem_rel : relation domain),
@@ -189,9 +189,9 @@ Section Per_univ_elem_core_def.
           Dom l ≈ l' ∈ per_lvl ->
           (elem_rel <~> per_univ_rec (us (dlvl_real l))) ->
           motive elem_rel 𝕌@l 𝕌@l')
-      (case_level : forall {elem_rel},
+      (case_level : forall {n elem_rel},
           (elem_rel <~> per_lvl) ->
-          motive elem_rel Levelᵈ Levelᵈ)
+          motive elem_rel (Levelᵈ@n) (Levelᵈ@n))
       (case_nat : forall {elem_rel},
           (elem_rel <~> per_nat) ->
           motive elem_rel ℕᵈ ℕᵈ)
@@ -221,7 +221,7 @@ Section Per_univ_elem_core_def.
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
   | R, a, b, (per_univ_elem_core_univ _ lt_j_i HE eq)                 => case_U lt_j_i HE eq;
   | R, a, b, (per_univ_elem_core_suniv _ lt_j_i HE eq)                => case_SU lt_j_i HE eq;
-  | R, a, b, (per_univ_elem_core_level _ HE)                          => case_level HE;
+  | R, a, b, (per_univ_elem_core_level _ _ HE)                        => case_level HE;
   | R, a, b, (per_univ_elem_core_nat _ HE)                            => case_nat HE;
   | R, a, b, (per_univ_elem_core_True _ HE)                           => case_True HE;
   | R, a, b, (per_univ_elem_core_False _ HE)                          => case_False HE;
@@ -399,9 +399,9 @@ Section Per_univ_elem_ind_def.
           (forall A B R, DF A ≈ B ∈ per_univ_elem (us (dlvl_real l)) ↘ R ->
                          motive (us (dlvl_real l)) R A B) ->
           motive i elem_rel 𝕌@l 𝕌@l')
-      (case_L : forall i {elem_rel},
+      (case_L : forall i {n elem_rel},
           (elem_rel <~> per_lvl) ->
-          motive i elem_rel Levelᵈ Levelᵈ)
+          motive i elem_rel (Levelᵈ@n) (Levelᵈ@n))
       (case_N : forall i {elem_rel},
           (elem_rel <~> per_nat) ->
           motive i elem_rel ℕᵈ ℕᵈ)
@@ -433,7 +433,7 @@ Section Per_univ_elem_ind_def.
     induction i as [i IHi] using (well_founded_ind uidx_wf).
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
-              (fun _ => case_L i) (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
+              (fun _ _ => case_L i) (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
               _ (fun _ _ _ _ _ => case_ne i) R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
@@ -454,9 +454,10 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
 | per_subtyp_neut :
   `( Dom b ≈ b' ∈ per_bot ->
      Sub ⇑ a b <: ⇑ a' b' at i )
-(** [Level] below itself. *)
+(** A type of levels below every type of levels of a larger sort. *)
 | per_subtyp_level :
-  `( Sub Levelᵈ <: Levelᵈ at i )
+  `( m <= n ->
+     Sub Levelᵈ@m <: Levelᵈ@n at i )
 (** [ℕ] below itself. *)
 | per_subtyp_nat :
   `( Sub ℕᵈ <: ℕᵈ at i )
@@ -809,7 +810,9 @@ Ltac per_univ_elem_induction_core HH ih :=
              end;
       revert HH; revert i R a b;
       refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _);
-      [ do 8 intro | do 8 intro | do 3 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      (** The level case has one binder more than the other closed types: the
+          sort of its type of levels. *)
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

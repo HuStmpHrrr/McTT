@@ -112,10 +112,11 @@ Proof.
       intros Δ φ W Hφ Hr.
       assert (⊢ Δ) by (eapply kripke_dom; eassumption).
       inversion Hr; subst.
-      assert (Δ ⊢ H4[φ]ʷ ≈ nf_lvl_of L : Level) by (eapply glu_lvl_readback; eassumption).
+      match goal with Hg : glu_lvl ?n _ _ _ |- _ =>
+        assert (Δ ⊢ H4[φ]ʷ ≈ nf_lvl_of L : Level@n) by (eapply glu_lvl_readback; eassumption) end.
       assert (Δ ⊢ A[φ]ʷ ≈ Type⟨H4[φ]ʷ⟩ : Typeω@(ulvl i)) by mauto 3.
       etransitivity; [ eassumption |].
-      apply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; assumption | assumption ]. }
+      eapply wf_exp_eq_univ_cong_large_tm; [ assumption | gen_presups; eassumption | eassumption ]. }
   (** A neutral of a small universe: its type-level gluing is a neutral type's
       at the ambient [Typeω@0], which cumulativity reaches from the small
       universe, and its readback clause is the neutral's. *)
@@ -124,10 +125,10 @@ Proof.
       clear_dups.
       apply_equiv_left.
       match goal with
-      | H : suniv_glu_typ_pred _ _ _ _ |- _ => destruct H as [t [Ht HAt]]
-      | H : exists t, glu_lvl _ t _ /\ _ |- _ => destruct H as [t [Ht HAt]]
+      | H : suniv_glu_typ_pred _ _ _ _ |- _ => destruct H as (t & nt & Ht & HAt)
+      | H : exists t n, glu_lvl n _ t _ /\ _ |- _ => destruct H as (t & nt & Ht & HAt)
       end.
-      repeat apply conj; [ assumption | exists t; split; assumption | |].
+      repeat apply conj; [ assumption | exists t, nt; split; assumption | |].
       + do 2 eexists; split; [ glu_univ_elem_econstructor; eauto; reflexivity |].
         cbn; split; [ eapply suniv_elem_large; eassumption |].
         intros Δ φ M' Hφ Hr.
@@ -139,8 +140,8 @@ Proof.
   1:{ deepexec glu_univ_elem_per_univ ltac:(fun H => pose proof H).
       match goal with Hx : per_univ _ m m |- _ => destruct Hx as [? Hx] end.
       match goal with
-      | Hx : per_univ_elem (us _) ?x m m, Ht : glu_lvl _ ?t l |- _ =>
-          econstructor; [ assumption | eassumption | apply_equiv_left; cbn; exists t; split; assumption | |];
+      | Hx : per_univ_elem (us _) ?x m m, Ht : glu_lvl ?nt _ ?t l |- _ =>
+          econstructor; [ assumption | eassumption | apply_equiv_left; cbn; exists t, nt; split; assumption | |];
           [ intros s; destruct (per_univ_then_per_top_typ Hx s) as [W [HW _]];
             exists W; split; constructor; assumption
           | intros Δ φ w Hφ Hr; inversion Hr; subst; eauto ]
@@ -161,7 +162,10 @@ Proof.
     + apply_equiv_left. trivial.
     + intros.
       saturate_kripke_escape.
-      eapply wf_exp_eq_conv'; [ eapply glu_lvl_readback; eassumption | mauto 3 ].
+      eapply wf_exp_eq_conv';
+        [ eapply glu_lvl_readback;
+          [ eassumption | eassumption | eapply read_nf_level_sort; eassumption ]
+        | mauto 3 ].
   (* nat *)
   - econstructor; eauto; intros.
     progressive_inversion.

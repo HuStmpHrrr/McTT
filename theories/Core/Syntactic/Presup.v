@@ -49,7 +49,7 @@ Proof.
   (** The universe congruence is stated at [Type⟨succl M⟩], so its
       right-hand side has to be moved there from [Type⟨succl M'⟩].  Its goal
       is the only one of that shape. *)
-  all: try solve [ apply wf_univ_cong_right; mauto 2 ].
+  all: try solve [ eapply wf_univ_cong_right; mauto 2 ].
 
   (** The left-hand side of the limit equation and the right-hand side of
       the distributivity equation of levels are one level operation deeper

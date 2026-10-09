@@ -26,7 +26,7 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_var :
   `( eval_exp_order Θ Ξ #x p )
 | eeo_level :
-  `( eval_exp_order Θ Ξ Level p )
+  `( eval_exp_order Θ Ξ (Level@n) p )
 | eeo_llit :
   `( eval_exp_order Θ Ξ (𝕃ᵒ o) p )
 | eeo_succl :
@@ -432,7 +432,7 @@ Section EvalImpl.
       let (m , Hm) := eval_exp_impl M p _ in
       exist _ 𝕌@m _
   | #x    , p, H => eval_var_impl x p H
-  | Level , p, H => exist _ Levelᵈ _
+  | Level@n, p, H => exist _ (Levelᵈ@n) _
   | 𝕃ᵒ o  , p, H => exist _ (dlvl_lit o) _
   | succl M, p, H =>
       let (m , Hm) := eval_exp_impl M p _ in

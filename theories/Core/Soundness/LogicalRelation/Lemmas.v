@@ -217,14 +217,14 @@ Section glu_univ_elem_cumulativity.
         at the realiser of the level and its readback clause carry over. *)
     all: try solve
       [ match goal with
-        | H : exists t, glu_lvl _ t _ /\ _ |- exists t, glu_lvl _ t _ /\ _ =>
-            destruct H as (t & Ht & Heq); exists t; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ]
-        | H : _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ |- _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ =>
-            destruct H as (HM & (t & Ht & Heq) & HP & Hr);
+        | H : exists t n, glu_lvl n _ t _ /\ _ |- exists t n, glu_lvl n _ t _ /\ _ =>
+            destruct H as (t & nt & Ht & Heq); exists t, nt; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ]
+        | H : _ /\ (exists t n, glu_lvl n _ t _ /\ _) /\ _ /\ _ |- _ /\ (exists t n, glu_lvl n _ t _ /\ _) /\ _ /\ _ =>
+            destruct H as (HM & (t & nt & Ht & Heq) & HP & Hr);
             repeat apply conj;
-            [ exact HM | exists t; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ] | exact HP | exact Hr ]
-        | H : _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _,
-            H' : exists t, glu_lvl _ t _ /\ _ |- _ /\ (exists t, glu_lvl _ t _ /\ _) /\ _ /\ _ =>
+            [ exact HM | exists t, nt; split; [ exact Ht | eapply lift_exp_eq_ge; eassumption ] | exact HP | exact Hr ]
+        | H : _ /\ (exists t n, glu_lvl n _ t _ /\ _) /\ _ /\ _,
+            H' : exists t n, glu_lvl n _ t _ /\ _ |- _ /\ (exists t n, glu_lvl n _ t _ /\ _) /\ _ /\ _ =>
             destruct H as (HM & _ & HP & Hr);
             repeat apply conj; [ exact HM | exact H' | exact HP | exact Hr ]
         end ].
@@ -477,23 +477,23 @@ Qed.
     and the readbacks are canonical levels in [lvl_le], which the level
     equations turn into the equation ([lvl_exp_of_le]).  This is the
     syntactic content of a semantic subtyping between small universes. *)
-Lemma glu_lvl_sublvl_eq : forall {Γ t t' l l'},
+Lemma glu_lvl_sublvl_eq : forall {Γ t t' l l' n},
     ⊢ Γ ->
     Dom l ≈ l ∈ per_lvl ->
     Dom l' ≈ l' ∈ per_lvl ->
     per_sublvl l l' ->
-    glu_lvl Γ t l ->
-    glu_lvl Γ t' l' ->
-    Γ ⊢ maxl t t' ≈ t' : Level.
+    glu_lvl n Γ t l ->
+    glu_lvl n Γ t' l' ->
+    Γ ⊢ maxl t t' ≈ t' : Level@n.
 Proof.
   intros * HΓ Hl Hl' Hle Ht Ht'.
   destruct (Hle (length Γ)) as [[c xs] [[d ys] [HL [HL' HLL']]]].
-  assert (Γ ⊢ t ≈ nf_lvl_of (c, xs) : Level) as Htc
+  assert (Γ ⊢ t ≈ nf_lvl_of (c, xs) : Level@n) as Htc
     by (rewrite <- (exp_wk_id t); eapply glu_lvl_readback; mauto 3).
-  assert (Γ ⊢ t' ≈ nf_lvl_of (d, ys) : Level) as Htd
+  assert (Γ ⊢ t' ≈ nf_lvl_of (d, ys) : Level@n) as Htd
     by (rewrite <- (exp_wk_id t'); eapply glu_lvl_readback; mauto 3).
-  assert (Γ ⊢ nf_lvl_of (c, xs) : Level) as Hc by (gen_presups; eassumption).
-  assert (Γ ⊢ nf_lvl_of (d, ys) : Level) as Hd by (gen_presups; eassumption).
+  assert (Γ ⊢ nf_lvl_of (c, xs) : Level@n) as Hc by (gen_presups; eassumption).
+  assert (Γ ⊢ nf_lvl_of (d, ys) : Level@n) as Hd by (gen_presups; eassumption).
   unfold nf_lvl_of in *; cbn [nf_to_exp fst snd] in *.
   assert (la_wf Γ xs) by (eapply lvl_exp_of_la_wf; exact Hc).
   assert (la_wf Γ ys) by (eapply lvl_exp_of_la_wf; exact Hd).
@@ -548,20 +548,27 @@ Proof.
   - simpl in *; destruct_conjs; gen_presups.
     match goal with
     | Hle : per_sublvl ?l ?l', Hl : per_lvl ?l ?l, Hl' : per_lvl ?l' ?l',
-        Ht : glu_lvl _ ?t ?l, Ht' : glu_lvl _ ?t' ?l',
+        Ht : glu_lvl ?nt _ ?t ?l, Ht' : glu_lvl ?nt' _ ?t' ?l',
         Heq : _ ⊢ A ≈ Type⟨?t⟩ : _, Heq' : _ ⊢ A' ≈ Type⟨?t'⟩ : _ |- _ =>
-        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption);
-        assert (Γ ⊢ t' : Level) by (eapply wf_univ_lvl_inversion; eassumption);
-        rewrite Heq, Heq';
-        apply wf_subtyp_suniv; [ assumption | assumption | assumption |];
+        (** The two level terms are glued at their own sorts; both move to
+            the larger of the two, where the order on levels is stated. *)
         let HΓ := fresh "HΓ" in
         assert (HΓ : ⊢ Γ) by (gen_presups; assumption);
-        exact (glu_lvl_sublvl_eq HΓ Hl Hl' Hle Ht Ht')
+        assert (Γ ⊢ t : Level@(Nat.max nt nt'))
+          by (eapply glu_lvl_escape; [ exact Hl | eapply glu_lvl_sort_le; [ | exact Ht ] | exact HΓ ]; lia);
+        assert (Γ ⊢ t' : Level@(Nat.max nt nt'))
+          by (eapply glu_lvl_escape; [ exact Hl' | eapply glu_lvl_sort_le; [ | exact Ht' ] | exact HΓ ]; lia);
+        rewrite Heq, Heq';
+        eapply wf_subtyp_suniv; [ assumption | eassumption | eassumption |];
+        eapply glu_lvl_sublvl_eq;
+          [ exact HΓ | exact Hl | exact Hl' | exact Hle
+          | eapply glu_lvl_sort_le; [ | exact Ht ]
+          | eapply glu_lvl_sort_le; [ | exact Ht' ] ]; lia
     end.
   - simpl in *; destruct_conjs; gen_presups.
     match goal with
-    | Ht : glu_lvl _ ?t ?l, Heq : _ ⊢ A ≈ Type⟨?t⟩ : _ |- _ =>
-        assert (Γ ⊢ t : Level) by (eapply wf_univ_lvl_inversion; eassumption);
+    | Ht : glu_lvl ?nt _ ?t ?l, Heq : _ ⊢ A ≈ Type⟨?t⟩ : _ |- _ =>
+        assert (exists k, Γ ⊢ t : Level@k) as [? ?] by (eapply wf_univ_lvl_inversion; eassumption);
         rewrite Heq
     end.
     bulky_rewrite; mauto 3.
@@ -635,6 +642,10 @@ Proof.
     handle_functional_glu_univ_elem;
     repeat invert_glu_rel1;
     try solve [simpl in *; intuition mauto 3].
+  (** A type of levels below one of a larger sort: the element's readback
+      equation moves to the larger sort ([glu_lvl_sort_le]). *)
+  all: try solve [ simpl in *; destruct_conjs; repeat split;
+                   [ mauto 3 | assumption | eapply glu_lvl_sort_le; eassumption ] ].
   - match_by_head1 (per_bot b b') ltac:(fun H => destruct (H (length Γ)) as [V []]).
     econstructor; mauto 3.
     + econstructor; mauto 3.
@@ -661,7 +672,7 @@ Proof.
               [ cbn; apply per_sublvl_real; exact Hle | exact Hg ]);
         repeat apply conj;
         [ mauto 3
-        | eexists; split; eassumption
+        | do 2 eexists; split; eassumption
         | do 2 eexists; split;
           [ exact Hj
           | eapply (glu_univ_elem_typ_cumu_ge_uidx (i := us (dlvl_real l)) (j := us (dlvl_real l')));

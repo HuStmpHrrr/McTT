@@ -152,9 +152,9 @@ Qed.
     environment has the realiser of [L]'s at the tail: the two are related
     levels, through [L]'s judgment along [Wk]
     ([rel_exp_under_ctx_shift_at]). *)
-Lemma suniv_real_shift : forall {Δ A L} {i : nat} {env_relΔA},
+Lemma suniv_real_shift : forall {Δ A L} {i n : nat} {env_relΔA},
     Δ ⊨ A ≈ A : Typeω@i ->
-    Δ ⊨ L : Level ->
+    Δ ⊨ L : Level@n ->
     EF Δ ▹ A ≈ Δ ▹ A ∈ per_ctx_env ↘ env_relΔA ->
     forall e x e' x' t1 t2,
       Dom e ↦ x ≈ e' ↦ x' ∈ env_relΔA ->
@@ -170,7 +170,7 @@ Proof.
     as (j & R & b1 & b2 & b3 & b4 & w1 & w2 & w3 & w4 & Hb1 & Hb2 & Hb3 & Hb4 & HR1 & HR2 & Hw1 & Hw2 & Hw3 & Hw4 & Hwc).
   cbn [exp_wk] in Hb1, Hb4.
   simplify_evals.
-  match goal with H : per_univ_elem _ _ Levelᵈ Levelᵈ |- _ => invert_per_univ_elem H end.
+  match goal with H : per_univ_elem _ _ (Levelᵈ@_) (Levelᵈ@_) |- _ => invert_per_univ_elem H end.
   apply_relation_equivalence.
   assert (Hw : per_lvl t1 t2) by pairwise.
   exact (per_lvl_real _ _ Hw).
@@ -180,11 +180,11 @@ Qed.
     the weakened level: the five instantiations have the realisers of [L[↑]ʷ]
     at extended environments related to [ρσ ↦ c], which are [L]'s at
     [ρσ] ([suniv_real_shift]), so all five chains are in one small universe. *)
-Lemma rel_exp_of_suniv_under_ctx_q : forall {Γ Δ σ σ' A} {i : nat} {B B' L env_relΓ},
+Lemma rel_exp_of_suniv_under_ctx_q : forall {Γ Δ σ σ' A} {i n : nat} {B B' L env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
     Γ ⊨s σ ≈ σ' : Δ ->
     Δ ⊨ A ≈ A : Typeω@i ->
-    Δ ⊨ L : Level ->
+    Δ ⊨ L : Level@n ->
     Δ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
     forall ρ ρ' ρσ ρ'σ' c c' t,
       Dom ρ ↦ c ≈ ρ' ↦ c' ∈ per_env_extend A[σ] A[σ] env_relΓ ->
@@ -261,8 +261,8 @@ Qed.
 (** The small [Π] at a level term: at each pair of environments it is the
     small [Π] at the realiser of the level's value, whose codomain obligations
     [rel_exp_of_suniv_under_ctx_q] discharges. *)
-Lemma rel_exp_pi_cong_small_tm : forall {Γ L A A' B B'},
-    Γ ⊨ L : Level ->
+Lemma rel_exp_pi_cong_small_tm : forall {Γ L A A' B B'} {n : nat},
+    Γ ⊨ L : Level@n ->
     Γ ⊨ A ≈ A' : Type⟨L⟩ ->
     Γ ▹ A ⊨ B ≈ B' : Type⟨L[↑]ʷ⟩ ->
     Γ ⊨ Π A B ≈ Π A' B' : Type⟨L⟩.
@@ -270,7 +270,7 @@ Proof.
   intros * HL HA HB.
   pose proof (rel_exp_suniv_tm_large (i := 0) (rel_exp_under_ctx_refl_left HA)) as HAself.
   pose proof (rel_exp_of_suniv_tm_inversion HA) as [env_relΓ [HΓ HAgen]].
-  apply rel_exp_of_suniv_tm; [ exact HL |].
+  apply (rel_exp_of_suniv_tm (n := n)); [ exact HL |].
   eexists; eexists; [ eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev' t Ht.
   destruct (HAgen _ _ HΓ' _ _ Hσj _ _ _ _ Hρ Hev Hev')

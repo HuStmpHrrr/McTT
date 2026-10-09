@@ -329,7 +329,7 @@ Ltac lift_sub_eq_step :=
   (** A domain in a small universe, at a level it is given to be one: both are
       moved into the least large universe. *)
   | Hσ : wf_sub_eq ?Θ ?Ξ ?Γ ?Δ ?σ ?σ',
-    HL : wf_exp ?Θ ?Ξ ?Δ a_level ?L,
+    HL : wf_exp ?Θ ?Ξ ?Δ (a_level ?n) ?L,
     HA : wf_exp ?Θ ?Ξ ?Δ (a_univ ?L) ?A,
     IH : forall _ _ _, wf_sub_eq ?Θ ?Ξ _ ?Δ _ _ -> wf_exp_eq ?Θ ?Ξ _ (a_univ _) (exp_sub ?A _) _ |- _ =>
       let T := constr:(wf_sub_eq Θ Ξ (cons (ce_ass (exp_sub A σ)) Γ) (cons (ce_ass A) Δ) (sb_q σ) (sb_q σ')) in
@@ -404,7 +404,7 @@ Proof.
       with the lifted substitution. *)
   all: try solve [
     match goal with
-    | HL : wf_exp _ _ ?Δ a_level ?L, HA : wf_exp _ _ ?Δ (a_univ ?L) ?A, Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ',
+    | HL : wf_exp _ _ ?Δ (a_level ?n) ?L, HA : wf_exp _ _ ?Δ (a_univ ?L) ?A, Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ',
       Hs : wf_sub _ _ ?Γ ?Δ ?σ, IHA : forall _ _ _, wf_sub_eq _ _ _ ?Δ _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
       IHB : forall _ _ _, wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) _ _ -> _,
       Hq : wf_sub_eq _ _ _ (cons (ce_ass ?A) ?Δ) (sb_q ?σ) (sb_q ?σ') |- _ =>

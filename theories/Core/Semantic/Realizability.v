@@ -46,7 +46,7 @@ Proof.
       index of the realiser. *)
   - intro s.
     destruct (H0 s) as [W [HW HW']].
-    destruct (read_nf_level_real _ _ _ HW) as [L [-> _]].
+    destruct (read_nf_level_real _ _ _ _ HW) as [L [-> _]].
     exists (nf_univ_of L); split; apply read_typ_suniv; assumption.
   - eexists.
     per_univ_elem_econstructor; (solve [try (try (eexists; split); econstructor); mauto]).
@@ -56,6 +56,10 @@ Proof.
     intro s.
     match goal with H : per_top_typ _ _ |- _ => specialize (H s) as [? []] end;
       (solve [try (try (eexists; split); econstructor); mauto]).
+  (** The elements of a type of levels read back at every sort. *)
+  - intro s.
+    match goal with H : per_lvl _ _ |- _ => destruct (H s) as [L [HL HL']] end.
+    exists L; split; eapply read_nf_level_sort; eassumption.
   - intro s.
     inversion_clear_by_head per_ne.
     (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).

@@ -1,12 +1,12 @@
 (** * Fundamental Theorem: Universe Levels
 
     Substitution pushes through every level form by computation of [exp_sub]:
-    [Level[σ]] is [Level], [(𝕃ᵒ o)[σ]] is [𝕃ᵒ o], and [succl] and [maxl] commute
-    with it.  So what is validated here is the typing of [Level] and of a level
+    [Level@n[σ]] is [Level@n], [(𝕃ᵒ o)[σ]] is [𝕃ᵒ o], and [succl] and [maxl] commute
+    with it.  So what is validated here is the typing of [Level@n] and of a level
     literal, the congruence rules of [succl] and [maxl], and the level
     equations.
 
-    A judgment at type [Level] is exactly a four-value pattern in [per_lvl], as
+    A judgment at type [Level@n] is exactly a four-value pattern in [per_lvl], as
     at [ℕ].  Each equation is then the corresponding lemma of
     [Core.Semantic.Levels], where it is an identity between canonical forms. *)
 
@@ -24,24 +24,29 @@ Import Wk_Notations.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
-(** [Level]'s [per_univ_elem], at its element PER and at any index. *)
+(** The sort of the levels is a parameter of this section: the elements of
+    [Level@n] are the level values, whatever the sort, so each case is proved
+    once for every sort. *)
+  Context {n : nat}.
+
+(** [Level@n]'s [per_univ_elem], at its element PER and at any index. *)
 Lemma per_univ_elem_level : forall i,
-    DF Levelᵈ ≈ Levelᵈ ∈ per_univ_elem i ↘ per_lvl.
+    DF Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ_elem i ↘ per_lvl.
 Proof.
   intros; per_univ_elem_econstructor; reflexivity.
 Qed.
 
 Hint Resolve per_univ_elem_level : mctt.
 
-(** ** [Level] as a Type *)
+(** ** [Level@n] as a Type *)
 Lemma rel_exp_of_typ_level : forall {Γ} {i : nat} {env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ Level ≈ Level : Typeω@i.
+    Γ ⊨ Level@n ≈ Level@n : Typeω@i.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_typ.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : Dom Levelᵈ ≈ Levelᵈ ∈ per_univ i)
+  assert (Hn : Dom Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ i)
     by (eexists; apply per_univ_elem_level).
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
@@ -51,7 +56,7 @@ Hint Resolve rel_exp_of_typ_level : mctt.
 
 Corollary valid_exp_level : forall {Γ} {i : nat},
     ⊨ Γ ->
-    Γ ⊨ Level : Typeω@i.
+    Γ ⊨ Level@n : Typeω@i.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -60,38 +65,38 @@ Qed.
 
 Hint Resolve valid_exp_level : mctt.
 
-(** [Level] in a universe at any index, in particular in the small ones. *)
+(** [Level@n] in a universe at any index, in particular in the small ones. *)
 Lemma rel_exp_of_univ_level : forall {Γ u env_relΓ},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ Level ≈ Level : ulvl_tm u.
+    Γ ⊨ Level@n ≈ Level@n : ulvl_tm u.
 Proof.
   intros * HΓ.
   apply rel_exp_of_univ.
   eexists; eexists; [eassumption |].
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  assert (Hn : Dom Levelᵈ ≈ Levelᵈ ∈ per_univ u)
+  assert (Hn : Dom Levelᵈ@n ≈ Levelᵈ@n ∈ per_univ u)
     by (eexists; apply per_univ_elem_level).
   econstructor; try apply eval_exp_level.
   apply rel_chain_4; assumption.
 Qed.
 
-Corollary valid_exp_level_small : forall {Γ n},
+Corollary valid_exp_level_small : forall {Γ o},
     ⊨ Γ ->
-    Γ ⊨ Level : Type⟨𝕃ᵒ n⟩.
+    Γ ⊨ Level@n : Type⟨𝕃ᵒ o⟩.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
-  exact (rel_exp_of_univ_level (u := us n) HΓ).
+  exact (rel_exp_of_univ_level (u := us o) HΓ).
 Qed.
 
 Hint Resolve valid_exp_level_small : mctt.
 
 (** ** Levels as Terms
 
-    As for [ℕ], a judgment at [Level] is exactly a four-value pattern in its
+    As for [ℕ], a judgment at [Level@n] is exactly a four-value pattern in its
     element PER. *)
 Lemma rel_exp_of_level_inversion : forall {Γ M M'},
-    Γ ⊨ M ≈ M' : Level ->
+    Γ ⊨ M ≈ M' : Level@n ->
     exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
     forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
       Γ' ⊨s σ ≈ σ' : Γ ->
@@ -120,7 +125,7 @@ Lemma rel_exp_of_level : forall {Γ M M'},
           ⟦ σ ⟧s ρ ↘ ρσ ->
           ⟦ σ' ⟧s ρ' ↘ ρ'σ' ->
           rel_exp M σ ρ ρσ M' σ' ρ' ρ'σ' per_lvl) ->
-    Γ ⊨ M ≈ M' : Level.
+    Γ ⊨ M ≈ M' : Level@n.
 Proof.
   intros * [env_relΓ [HΓ H]].
   eexists_rel_exp_with 0.
@@ -150,14 +155,19 @@ Ltac eexists_rel_exp_of_level :=
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The sort of the levels is a parameter of this section: the elements of
+    [Level@n] are the level values, whatever the sort, so each case is proved
+    once for every sort. *)
+  Context {n : nat}.
+
 (** ** The Level Forms
 
     [𝕃ᵒ o] is a value, and [succl] and [maxl] evaluate by flattening the values
     of their arguments, so each rule is a four-value pattern built from those of
     its arguments. *)
-Lemma rel_exp_llit : forall {Γ env_relΓ n},
+Lemma rel_exp_llit : forall {Γ env_relΓ o},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ 𝕃ᵒ n ≈ 𝕃ᵒ n : Level.
+    Γ ⊨ 𝕃ᵒ o ≈ 𝕃ᵒ o : Level@n.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_level.
@@ -166,9 +176,9 @@ Proof.
   apply rel_chain_4; apply per_lvl_lit.
 Qed.
 
-Corollary valid_exp_llit : forall {Γ n},
+Corollary valid_exp_llit : forall {Γ o},
     ⊨ Γ ->
-    Γ ⊨ 𝕃ᵒ n : Level.
+    Γ ⊨ 𝕃ᵒ o : Level@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -178,8 +188,8 @@ Qed.
 Hint Resolve valid_exp_llit : mctt.
 
 Lemma rel_exp_succl_cong : forall {Γ M M'},
-    Γ ⊨ M ≈ M' : Level ->
-    Γ ⊨ succl M ≈ succl M' : Level.
+    Γ ⊨ M ≈ M' : Level@n ->
+    Γ ⊨ succl M ≈ succl M' : Level@n.
 Proof.
   intros * HM.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -195,9 +205,9 @@ Qed.
 Hint Resolve rel_exp_succl_cong : mctt.
 
 Lemma rel_exp_maxl_cong : forall {Γ M M' N N'},
-    Γ ⊨ M ≈ M' : Level ->
-    Γ ⊨ N ≈ N' : Level ->
-    Γ ⊨ maxl M N ≈ maxl M' N' : Level.
+    Γ ⊨ M ≈ M' : Level@n ->
+    Γ ⊨ N ≈ N' : Level@n ->
+    Γ ⊨ maxl M N ≈ maxl M' N' : Level@n.
 Proof.
   intros * HM HN.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -220,22 +230,22 @@ Hint Resolve rel_exp_maxl_cong : mctt.
     Each is a four-value pattern whose middle link is the corresponding lemma
     of [Core.Semantic.Levels], and whose outer links are the reflexivity of
     both sides. *)
-Lemma rel_exp_llit_succl : forall {Γ env_relΓ a n},
+Lemma rel_exp_llit_succl : forall {Γ env_relΓ a b},
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ 𝕃ᵒ(a, S n) ≈ succl (𝕃ᵒ(a, n)) : Level.
+    Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n.
 Proof.
   intros * HΓ.
   eexists_rel_exp_of_level.
   intros Γ' env_rel' HΓ' σ σ' Hσj ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
-  apply (mk_rel_exp (dlvl_lit (a, S n)) (dlvl_lit (a, S n)) (dlvl_suc (dlvl_lit (a, n))) (dlvl_suc (dlvl_lit (a, n))));
+  apply (mk_rel_exp (dlvl_lit (a, S b)) (dlvl_lit (a, S b)) (dlvl_suc (dlvl_lit (a, b))) (dlvl_suc (dlvl_lit (a, b))));
     try (apply eval_exp_llit);
     try (apply eval_exp_succl, eval_exp_llit).
   apply rel_chain_4; [ apply per_lvl_lit | apply per_lvl_llit_suc | apply per_lvl_suc, per_lvl_lit ].
 Qed.
 
-Corollary valid_exp_llit_succl : forall {Γ a n},
+Corollary valid_exp_llit_succl : forall {Γ a b},
     ⊨ Γ ->
-    Γ ⊨ 𝕃ᵒ(a, S n) ≈ succl (𝕃ᵒ(a, n)) : Level.
+    Γ ⊨ 𝕃ᵒ(a, S b) ≈ succl (𝕃ᵒ(a, b)) : Level@n.
 Proof.
   intros * H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -245,7 +255,7 @@ Qed.
 Lemma rel_exp_maxl_llit_limit : forall {Γ env_relΓ a b a'},
     a < a' ->
     EF Γ ≈ Γ ∈ per_ctx_env ↘ env_relΓ ->
-    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level.
+    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n.
 Proof.
   intros * Ha HΓ.
   eexists_rel_exp_of_level.
@@ -260,7 +270,7 @@ Qed.
 Corollary valid_exp_maxl_llit_limit : forall {Γ a b a'},
     a < a' ->
     ⊨ Γ ->
-    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level.
+    Γ ⊨ maxl (𝕃ᵒ(a, b)) (𝕃ᵒ(a', 0)) ≈ 𝕃ᵒ(a', 0) : Level@n.
 Proof.
   intros * Ha H%sem_ctx_per_ctx_env.
   destruct H as [env_relΓ HΓ].
@@ -272,8 +282,8 @@ Hint Resolve rel_exp_maxl_llit_limit valid_exp_maxl_llit_limit : mctt.
 Hint Resolve rel_exp_llit_succl valid_exp_llit_succl : mctt.
 
 Lemma rel_exp_maxl_zero : forall {Γ M},
-    Γ ⊨ M : Level ->
-    Γ ⊨ maxl (𝕃@0) M ≈ M : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ maxl (𝕃@0) M ≈ M : Level@n.
 Proof.
   intros * HM.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -293,10 +303,10 @@ Qed.
 Hint Resolve rel_exp_maxl_zero : mctt.
 
 Lemma rel_exp_maxl_assoc : forall {Γ M N P},
-    Γ ⊨ M : Level ->
-    Γ ⊨ N : Level ->
-    Γ ⊨ P : Level ->
-    Γ ⊨ maxl (maxl M N) P ≈ maxl M (maxl N P) : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ N : Level@n ->
+    Γ ⊨ P : Level@n ->
+    Γ ⊨ maxl (maxl M N) P ≈ maxl M (maxl N P) : Level@n.
 Proof.
   intros * HM HN HP.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -323,9 +333,9 @@ Qed.
 Hint Resolve rel_exp_maxl_assoc : mctt.
 
 Lemma rel_exp_maxl_comm : forall {Γ M N},
-    Γ ⊨ M : Level ->
-    Γ ⊨ N : Level ->
-    Γ ⊨ maxl M N ≈ maxl N M : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ N : Level@n ->
+    Γ ⊨ maxl M N ≈ maxl N M : Level@n.
 Proof.
   intros * HM HN.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -347,8 +357,8 @@ Qed.
 Hint Resolve rel_exp_maxl_comm : mctt.
 
 Lemma rel_exp_maxl_idem : forall {Γ M},
-    Γ ⊨ M : Level ->
-    Γ ⊨ maxl M M ≈ M : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ maxl M M ≈ M : Level@n.
 Proof.
   intros * HM.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -368,9 +378,9 @@ Qed.
 Hint Resolve rel_exp_maxl_idem : mctt.
 
 Lemma rel_exp_succl_maxl : forall {Γ M N},
-    Γ ⊨ M : Level ->
-    Γ ⊨ N : Level ->
-    Γ ⊨ succl (maxl M N) ≈ maxl (succl M) (succl N) : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ N : Level@n ->
+    Γ ⊨ succl (maxl M N) ≈ maxl (succl M) (succl N) : Level@n.
 Proof.
   intros * HM HN.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -394,8 +404,8 @@ Qed.
 Hint Resolve rel_exp_succl_maxl : mctt.
 
 Lemma rel_exp_maxl_succl : forall {Γ M},
-    Γ ⊨ M : Level ->
-    Γ ⊨ maxl M (succl M) ≈ succl M : Level.
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ maxl M (succl M) ≈ succl M : Level@n.
 Proof.
   intros * HM.
   pose proof (rel_exp_of_level_inversion HM) as [env_relΓ [HΓ HMgen]].
@@ -417,7 +427,7 @@ Hint Resolve rel_exp_maxl_succl : mctt.
 
 End Fixed_GCtx.
 
-(** ** Universes at a Level Term
+(** ** Universes at a Level@n Term
 
     A type of the small universe [Type⟨T⟩] is a four-value pattern in the
     small universe at the realiser of [T]'s value: that is the universe's
@@ -427,8 +437,13 @@ End Fixed_GCtx.
 Section Fixed_GCtx.
   Context {GC : GCtx}.
 
+(** The sort of the levels is a parameter of this section: the elements of
+    [Level@n] are the level values, whatever the sort, so each case is proved
+    once for every sort. *)
+  Context {n : nat}.
+
 Lemma rel_exp_of_suniv_tm : forall {Γ T A A'},
-    Γ ⊨ T : Level ->
+    Γ ⊨ T : Level@n ->
     (exists env_rel (_ : EF Γ ≈ Γ ∈ per_ctx_env ↘ env_rel),
       forall Γ' env_rel' (_ : EF Γ' ≈ Γ' ∈ per_ctx_env ↘ env_rel') σ σ',
         Γ' ⊨s σ ≈ σ' : Γ ->
@@ -536,7 +551,7 @@ Qed.
     universes at related levels, each a universe below the realiser of
     [succl M], which is one more than the realiser of [M]. *)
 Lemma rel_exp_univ_cong_tm : forall {Γ M M'},
-    Γ ⊨ M ≈ M' : Level ->
+    Γ ⊨ M ≈ M' : Level@n ->
     Γ ⊨ Type⟨M⟩ ≈ Type⟨M'⟩ : Type⟨succl M⟩.
 Proof.
   intros * HM.
@@ -562,7 +577,7 @@ Proof.
 Qed.
 
 Corollary valid_exp_univ_tm : forall {Γ M},
-    Γ ⊨ M : Level ->
+    Γ ⊨ M : Level@n ->
     Γ ⊨ Type⟨M⟩ : Type⟨succl M⟩.
 Proof. intros; apply rel_exp_univ_cong_tm; assumption. Qed.
 
@@ -573,9 +588,9 @@ Proof. intros; apply rel_exp_univ_cong_tm; assumption. Qed.
     [per_subtyp_suniv] asks.  A small universe below a large one needs only
     that its level is a level. *)
 Lemma subtyp_suniv_tm : forall {Γ M M'},
-    Γ ⊨ M : Level ->
-    Γ ⊨ M' : Level ->
-    Γ ⊨ maxl M M' ≈ M' : Level ->
+    Γ ⊨ M : Level@n ->
+    Γ ⊨ M' : Level@n ->
+    Γ ⊨ maxl M M' ≈ M' : Level@n ->
     Γ ⊨ Type⟨M⟩ ⊆ Type⟨M'⟩.
 Proof.
   intros * HM HM' Hmax.
@@ -609,7 +624,7 @@ Proof.
 Qed.
 
 Lemma subtyp_small_large_tm : forall {Γ M} {i : nat},
-    Γ ⊨ M : Level ->
+    Γ ⊨ M : Level@n ->
     Γ ⊨ Type⟨M⟩ ⊆ Typeω@i.
 Proof.
   intros * HM.

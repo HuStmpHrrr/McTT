@@ -27,10 +27,10 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
     which is already canonical. *)
 | read_nf_lvl :
   `( Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-     Rnf ⇓ Levelᵈ (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
+     Rnf ⇓ (Levelᵈ@n) (lvᵈ c xs) in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of (lvl_canon (c, ys)) )
 | read_nf_lvl_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rnf ⇓ Levelᵈ (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 M la_nil) )
+     Rnf ⇓ (Levelᵈ@n) (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ lvⁿ oz (la_cons 0 M la_nil) )
 | read_nf_zero :
   `( Rnf ⇓ ℕᵈ zeroᵈ in Θ ⍮ Ξ ⍮ s ↘ zeroⁿ )
 | read_nf_succ :
@@ -106,7 +106,7 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
   `( Rnf ⇓ Levelᵈ l in Θ ⍮ Ξ ⍮ s ↘ nf_lvl_of L ->
      Rtyp 𝕌@l in Θ ⍮ Ξ ⍮ s ↘ nf_univ_of L )
 | read_typ_level :
-  `( Rtyp Levelᵈ in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ )
+  `( Rtyp Levelᵈ@n in Θ ⍮ Ξ ⍮ s ↘ Levelⁿ@n )
 | read_typ_nat :
   `( Rtyp ℕᵈ in Θ ⍮ Ξ ⍮ s ↘ ℕⁿ )
 | read_typ_True :

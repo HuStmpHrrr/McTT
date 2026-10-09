@@ -32,6 +32,10 @@ Equations subtyping_nf_impl A B : { ⊢anf A ⊆ B } + {~ ⊢anf A ⊆ B } :=
     pureb _
 (** A small universe is below every large one. *)
 | univⁿ c xs, Typeωⁿ@i => left _
+(** Two types of levels, by the order on sorts. *)
+| Levelⁿ@m, Levelⁿ@n =>
+    let*b _ := Compare_dec.le_lt_dec m n while _ in
+    pureb _
 | Πⁿ A B, Πⁿ A' B' =>
     let*b _ := nf_eq_dec A A' while _ in
     let*b _ := subtyping_nf_impl B B' while _ in
@@ -66,110 +70,14 @@ Ltac st_pos :=
       first [ assumption
             | unfold lvl_le, lvl_canon; cbn; f_equal; assumption ]
   | |- ⊢anf univⁿ _ _ ⊆ Typeωⁿ@_ => apply asnf_small_large
+  | |- ⊢anf Levelⁿ@_ ⊆ Levelⁿ@_ => apply asnf_level; assumption
   | |- ⊢anf Πⁿ _ _ ⊆ Πⁿ _ _ => apply asnf_pi; [ first [ assumption | reflexivity ] | assumption ]
   (** Every other normal form is below itself only, by [asnf_refl], whose
       side condition holds by computation. *)
   | |- ⊢anf ?A ⊆ ?A => apply asnf_refl; [ exact I | reflexivity ]
   end.
 
-Obligation 1. all: first [ st_neg | st_pos ]. Qed.
-Obligation 2. all: first [ st_neg | st_pos ]. Qed.
-Obligation 3. all: first [ st_neg | st_pos ]. Qed.
-Obligation 4. all: first [ st_neg | st_pos ]. Qed.
-Obligation 5. all: first [ st_neg | st_pos ]. Qed.
-Obligation 6. all: first [ st_neg | st_pos ]. Qed.
-Obligation 7. all: first [ st_neg | st_pos ]. Qed.
-Obligation 8. all: first [ st_neg | st_pos ]. Qed.
-Obligation 9. all: first [ st_neg | st_pos ]. Qed.
-Obligation 10. all: first [ st_neg | st_pos ]. Qed.
-Obligation 11. all: first [ st_neg | st_pos ]. Qed.
-Obligation 12. all: first [ st_neg | st_pos ]. Qed.
-Obligation 13. all: first [ st_neg | st_pos ]. Qed.
-Obligation 14. all: first [ st_neg | st_pos ]. Qed.
-Obligation 15. all: first [ st_neg | st_pos ]. Qed.
-Obligation 16. all: first [ st_neg | st_pos ]. Qed.
-Obligation 17. all: first [ st_neg | st_pos ]. Qed.
-Obligation 18. all: first [ st_neg | st_pos ]. Qed.
-Obligation 19. all: first [ st_neg | st_pos ]. Qed.
-Obligation 20. all: first [ st_neg | st_pos ]. Qed.
-Obligation 21. all: first [ st_neg | st_pos ]. Qed.
-Obligation 22. all: first [ st_neg | st_pos ]. Qed.
-Obligation 23. all: first [ st_neg | st_pos ]. Qed.
-Obligation 24. all: first [ st_neg | st_pos ]. Qed.
-Obligation 25. all: first [ st_neg | st_pos ]. Qed.
-Obligation 26. all: first [ st_neg | st_pos ]. Qed.
-Obligation 27. all: first [ st_neg | st_pos ]. Qed.
-Obligation 28. all: first [ st_neg | st_pos ]. Qed.
-Obligation 29. all: first [ st_neg | st_pos ]. Qed.
-Obligation 30. all: first [ st_neg | st_pos ]. Qed.
-Obligation 31. all: first [ st_neg | st_pos ]. Qed.
-Obligation 32. all: first [ st_neg | st_pos ]. Qed.
-Obligation 33. all: first [ st_neg | st_pos ]. Qed.
-Obligation 34. all: first [ st_neg | st_pos ]. Qed.
-Obligation 35. all: first [ st_neg | st_pos ]. Qed.
-Obligation 36. all: first [ st_neg | st_pos ]. Qed.
-Obligation 37. all: first [ st_neg | st_pos ]. Qed.
-Obligation 38. all: first [ st_neg | st_pos ]. Qed.
-Obligation 39. all: first [ st_neg | st_pos ]. Qed.
-Obligation 40. all: first [ st_neg | st_pos ]. Qed.
-Obligation 41. all: first [ st_neg | st_pos ]. Qed.
-Obligation 42. all: first [ st_neg | st_pos ]. Qed.
-Obligation 43. all: first [ st_neg | st_pos ]. Qed.
-Obligation 44. all: first [ st_neg | st_pos ]. Qed.
-Obligation 45. all: first [ st_neg | st_pos ]. Qed.
-Obligation 46. all: first [ st_neg | st_pos ]. Qed.
-Obligation 47. all: first [ st_neg | st_pos ]. Qed.
-Obligation 48. all: first [ st_neg | st_pos ]. Qed.
-Obligation 49. all: first [ st_neg | st_pos ]. Qed.
-Obligation 50. all: first [ st_neg | st_pos ]. Qed.
-Obligation 51. all: first [ st_neg | st_pos ]. Qed.
-Obligation 52. all: first [ st_neg | st_pos ]. Qed.
-Obligation 53. all: first [ st_neg | st_pos ]. Qed.
-Obligation 54. all: first [ st_neg | st_pos ]. Qed.
-Obligation 55. all: first [ st_neg | st_pos ]. Qed.
-Obligation 56. all: first [ st_neg | st_pos ]. Qed.
-Obligation 57. all: first [ st_neg | st_pos ]. Qed.
-Obligation 58. all: first [ st_neg | st_pos ]. Qed.
-Obligation 59. all: first [ st_neg | st_pos ]. Qed.
-Obligation 60. all: first [ st_neg | st_pos ]. Qed.
-Obligation 61. all: first [ st_neg | st_pos ]. Qed.
-Obligation 62. all: first [ st_neg | st_pos ]. Qed.
-Obligation 63. all: first [ st_neg | st_pos ]. Qed.
-Obligation 64. all: first [ st_neg | st_pos ]. Qed.
-Obligation 65. all: first [ st_neg | st_pos ]. Qed.
-Obligation 66. all: first [ st_neg | st_pos ]. Qed.
-Obligation 67. all: first [ st_neg | st_pos ]. Qed.
-Obligation 68. all: first [ st_neg | st_pos ]. Qed.
-Obligation 69. all: first [ st_neg | st_pos ]. Qed.
-Obligation 70. all: first [ st_neg | st_pos ]. Qed.
-Obligation 71. all: first [ st_neg | st_pos ]. Qed.
-Obligation 72. all: first [ st_neg | st_pos ]. Qed.
-Obligation 73. all: first [ st_neg | st_pos ]. Qed.
-Obligation 74. all: first [ st_neg | st_pos ]. Qed.
-Obligation 75. all: first [ st_neg | st_pos ]. Qed.
-Obligation 76. all: first [ st_neg | st_pos ]. Qed.
-Obligation 77. all: first [ st_neg | st_pos ]. Qed.
-Obligation 78. all: first [ st_neg | st_pos ]. Qed.
-Obligation 79. all: first [ st_neg | st_pos ]. Qed.
-Obligation 80. all: first [ st_neg | st_pos ]. Qed.
-Obligation 81. all: first [ st_neg | st_pos ]. Qed.
-Obligation 82. all: first [ st_neg | st_pos ]. Qed.
-Obligation 83. all: first [ st_neg | st_pos ]. Qed.
-Obligation 84. all: first [ st_neg | st_pos ]. Qed.
-Obligation 85. all: first [ st_neg | st_pos ]. Qed.
-Obligation 86. all: first [ st_neg | st_pos ]. Qed.
-Obligation 87. all: first [ st_neg | st_pos ]. Qed.
-Obligation 88. all: first [ st_neg | st_pos ]. Qed.
-Obligation 89. all: first [ st_neg | st_pos ]. Qed.
-Obligation 90. all: first [ st_neg | st_pos ]. Qed.
-Obligation 91. all: first [ st_neg | st_pos ]. Qed.
-Obligation 92. all: first [ st_neg | st_pos ]. Qed.
-Obligation 93. all: first [ st_neg | st_pos ]. Qed.
-Obligation 94. all: first [ st_neg | st_pos ]. Qed.
-Obligation 95. all: first [ st_neg | st_pos ]. Qed.
-Obligation 96. all: first [ st_neg | st_pos ]. Qed.
-Obligation 97. all: first [ st_neg | st_pos ]. Qed.
-Obligation 98. all: first [ st_neg | st_pos ]. Qed.
+Solve All Obligations with (repeat intro; first [ discriminate | st_neg | st_pos ]).
 
 
 (** [subtyping_nf_impl] is sound by construction, and its completeness is

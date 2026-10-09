@@ -46,7 +46,7 @@ Section Rename.
     | d_pi a ρ B => d_pi (drn a) (List.map dern ρ) B
     | d_univ i => d_univ i
     | d_suniv l => d_suniv (drn l)
-    | d_level => d_level
+    | d_level n => d_level n
     | d_lvl c xs => d_lvl c (List.map (fun ka => match ka with (k, m) => (k, drn_ne m) end) xs)
     | d_zero => d_zero
     | d_succ m => d_succ (drn m)
@@ -234,7 +234,7 @@ Section Bound.
   Proof. intros b v Hv; constructor. Qed.
   Lemma dbd_zero : forall b, dbd b zeroᵈ.
   Proof. intros b v Hv; constructor. Qed.
-  Lemma dbd_level : forall b, dbd b Levelᵈ.
+  Lemma dbd_level : forall b n, dbd b (Levelᵈ@n).
   Proof. intros b v Hv; constructor. Qed.
 
   Lemma dbd_succ : forall b m, dbd b m -> dbd b (succᵈ m).

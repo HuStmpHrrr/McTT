@@ -35,11 +35,11 @@ Inductive domain : Set :=
 (** A small universe at a level value.  The level is a value of type [Level],
     so a small universe may be indexed by a neutral. *)
 | d_suniv : domain -> domain
-(** The type [Level] *)
-| d_level : domain
+(** The type [Level@n] *)
+| d_level : nat -> domain
 (** A flat level [max (c, k₁ + a₁, …)]: evaluation of [succl] and [maxl] only
     flattens, so the same level has many values; readback canonicalises.  A
-    neutral level is not of this shape — it is [⇑ Levelᵈ m] — so the level
+    neutral level is not of this shape — it is [⇑ (Levelᵈ@n) m] — so the level
     operations take the flat view ([dlvl_view]) of their arguments. *)
 | d_lvl : o2 -> list (nat * domain_ne) -> domain
 (** [zero] *)
@@ -157,7 +157,8 @@ Module Domain_Notations.
   Notation "ρ '↯'" := (drop_env ρ) (at level 1, left associativity) : mctt_scope.
   Notation "'𝕌ω' @ n" := (d_univ n) (at level 1, n at level 0, format "'𝕌ω' @ n") : mctt_scope.
   Notation "'𝕌' @ l" := (d_suniv l) (at level 1, l at level 0, format "'𝕌' @ l") : mctt_scope.
-  Notation "'Levelᵈ'" := d_level : mctt_scope.
+  Notation "'Levelᵈ' @ n" := (d_level n) (at level 1, n at level 0, format "'Levelᵈ' @ n") : mctt_scope.
+  Notation "'Levelᵈ'" := (d_level 0) : mctt_scope.
   Notation "'lvᵈ' c xs" := (d_lvl c xs) (at level 1, c at level 0, xs at level 0, format "'lvᵈ' c  xs") : mctt_scope.
   Notation "'#ᵈ' n" := (d_var n) (at level 1, n at level 0, format "'#ᵈ' n") : mctt_scope.
   Notation "'ℕᵈ'" := d_nat : mctt_scope.

@@ -68,8 +68,8 @@ Hint Constructors glu_nat : mctt.
     soundness theorem, and the algorithmic layer through it, needs of a small
     type's normal form; it cannot be recovered from the equation at [Typeω@0],
     since no rule moves an equation down a universe. *)
-Definition level_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Level : U.
-#[global] Arguments level_glu_typ_pred U Γ A/.
+Definition level_glu_typ_pred (n : nat) (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ Level@n : U.
+#[global] Arguments level_glu_typ_pred n U Γ A/.
 
 (** A level is glued to a value by its readback, as a neutral is: evaluation of
     the level operations only flattens, so a level's syntax is tied to its
@@ -80,12 +80,15 @@ Definition level_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A �
     they would then take such an inductive apart and lose the shape the lemmas
     about it are keyed on.  Membership in [per_lvl] is a separate conjunct of
     [level_glu_exp_pred] for the same reason. *)
-Definition glu_lvl (Γ : ctx) (M : exp) (m : domain) : Prop :=
-  forall Δ φ L, Δ ⊢k φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L -> Δ ⊢ M[φ]ʷ ≈ L : Level.
+(** The sort is a parameter: the readback of a level value is the same at
+    every sort, but the equation it satisfies is at the type the level was
+    given, [Level@n]. *)
+Definition glu_lvl (n : nat) (Γ : ctx) (M : exp) (m : domain) : Prop :=
+  forall Δ φ L, Δ ⊢k φ : Γ -> Rnf ⇓ Levelᵈ m in length Δ ↘ L -> Δ ⊢ M[φ]ʷ ≈ L : Level@n.
 
-Definition level_glu_exp_pred (U : typ) : glu_exp_pred :=
-  fun Γ A M m => Γ ⊢ A ® level_glu_typ_pred U /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl Γ M m.
-#[global] Arguments level_glu_exp_pred U Γ A M m/.
+Definition level_glu_exp_pred (n : nat) (U : typ) : glu_exp_pred :=
+  fun Γ A M m => Γ ⊢ A ® level_glu_typ_pred n U /\ Dom m ≈ m ∈ per_lvl /\ glu_lvl n Γ M m.
+#[global] Arguments level_glu_exp_pred n U Γ A M m/.
 
 Definition nat_glu_typ_pred (U : typ) : glu_typ_pred := fun Γ A => Γ ⊢ A ≈ ℕ : U.
 #[global] Arguments nat_glu_typ_pred U Γ A/.
@@ -182,7 +185,7 @@ Transparent univ_glu_typ_pred.
     terms are equal levels ([glu_lvl_escape]), so the universes they index are
     the same type. *)
 Definition suniv_glu_typ_pred (l : domain) (U : typ) : glu_typ_pred :=
-  fun Γ A => exists t, glu_lvl Γ t l /\ Γ ⊢ A ≈ Type⟨t⟩ : U.
+  fun Γ A => exists t n, glu_lvl n Γ t l /\ Γ ⊢ A ≈ Type⟨t⟩ : U.
 #[global] Arguments suniv_glu_typ_pred l U Γ A/.
 Transparent suniv_glu_typ_pred.
 
@@ -235,9 +238,9 @@ Section Gluing.
 
   | glu_univ_elem_core_level :
     `{ forall typ_rel el_rel,
-          typ_rel <∙> level_glu_typ_pred (Typeω@(ulvl i)) ->
-          el_rel <∙> level_glu_exp_pred (Typeω@(ulvl i)) ->
-          DG Levelᵈ ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
+          typ_rel <∙> level_glu_typ_pred n (Typeω@(ulvl i)) ->
+          el_rel <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
+          DG Levelᵈ@n ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }
 
   | glu_univ_elem_core_nat :
     `{ forall typ_rel el_rel,
@@ -439,10 +442,10 @@ Section GluingInduction.
           motive i P El 𝕌@l)
 
       (case_level :
-        forall i (P : glu_typ_pred) (El : glu_exp_pred),
-          P <∙> level_glu_typ_pred (Typeω@(ulvl i)) ->
-          El <∙> level_glu_exp_pred (Typeω@(ulvl i)) ->
-          motive i P El Levelᵈ)
+        forall i n (P : glu_typ_pred) (El : glu_exp_pred),
+          P <∙> level_glu_typ_pred n (Typeω@(ulvl i)) ->
+          El <∙> level_glu_exp_pred n (Typeω@(ulvl i)) ->
+          motive i P El (Levelᵈ@n))
 
       (case_nat :
         forall i (P : glu_typ_pred) (El : glu_exp_pred),
@@ -713,8 +716,10 @@ Ltac glu_univ_elem_induction_core HH ih :=
              end;
       revert HH; revert i P El a;
       refine (glu_univ_elem_ind _ _ _ _ _ _ _ _ _);
+      (** The level case has one binder more than the other closed types: the
+          sort of its type of levels. *)
       [ do 5 intro; do 3 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
-      | do 3 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
+      | do 4 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 3 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro ]; cbv beta
   end.
