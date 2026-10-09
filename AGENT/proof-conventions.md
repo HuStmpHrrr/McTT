@@ -91,7 +91,7 @@ These are the ways an edit to a tactic goes wrong silently.
   firing; `handle_functional_glu_univ_elem` folds them back for exactly this
   reason. And after `simp per_univ_elem` / `simp glu_univ_elem`, fold the
   recursive occurrences back with `rewrite <- …_equation_1`.
-- **`clear_defs` hard-codes signatures.** `Extraction/TypeCheck.v:83` clears
+- **`clear_defs` hard-codes signatures.** `Extraction/TypeCheckBase.v:492` clears
   the mutual recursive-call hypotheses and `fixproto` bindings by matching
   their spelled-out types. Change `type_check`/`type_infer`'s signature and it
   silently stops matching, and the obligations start failing confusingly.

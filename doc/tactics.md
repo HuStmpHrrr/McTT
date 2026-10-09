@@ -628,7 +628,7 @@ predicate to expose the recursive sub-orders, then `econstructor; mauto`.
 | `subtyping_tac` | `Extraction/Subtyping.v:9` | Obligations of the *decision* procedure `subtyping_nf_impl`: for a positive goal `⊢anf A ⊆ B`, `subst; mauto 4; try congruence; econstructor`; for a negative goal, introduce, `dependent destruction`, and close by `lia`/`congruence`. |
 | `subtyping_impl_tac1` / `subtyping_impl_tac` | `Extraction/Subtyping.v:69, 76` | Inverts `subtyping_order` and `nbe_ty_order`; then `econstructor; mauto`. |
 | `impl_obl_tac1` / `impl_obl_tac` | `Extraction/TypeCheck.v:14, 23` | For `lookup`: introduce negations, invert `⊢ Γ ▹ A` and impossible `⋅ ∋ #x : A` / `Γ ▹ A ∋ #(S x) : A` hypotheses, then `intuition (mauto 4)`. |
-| `clear_defs` | `Extraction/TypeCheck.v:83` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
+| `clear_defs` | `Extraction/TypeCheckBase.v:492` | Housekeeping: `Equations` leaves the mutual recursive-call hypotheses and `let H := fixproto in …` bindings in every obligation context, where they confuse `mauto`. This clears them by matching their (spelled-out) types. |
 | `impl_obl_tac` | `Extraction/TypeCheck.v:121` | The big one — obligations of `type_check` / `type_infer`. `clear_defs`, invert the order predicates, `destruct_conjs`, then dispatch on the goal: well-formedness and typing goals via `gen_presups; mautosolve 4`; universe-level maxima via `lift_exp_max_left/right`; negative goals by inverting the algorithmic derivation and using `functional_alg_type_infer_rewrite_clear`; `subtyping_order` goals by routing through `soundness_ty` and `nbe_ty_order_sound`. |
 | `impl_obl_tac` | `Extraction/TypeCheck.v:394` | Obligations of `type_check_closed`: `unfold not in *; intros; mauto 3 using user_exp_to_type_infer_order, type_check_order, type_infer_order`. |
 | `impl_obl_tac` | `Entrypoint.v:31` | `try eassumption` — the top-level `main` needs nothing more. |
@@ -700,7 +700,7 @@ Alphabetical, with definition sites. Paths are relative to `theories/`.
 | `basic_per_univ_elem_econstructor` | `Core/Semantic/PER/CoreTactics.v:54` |
 | `bulky_rewrite`, `…1`, `…_in`, `…_in1` | `LibTactics.v:471, 465, 479, 473` |
 | `clean replace … with … by …` | `LibTactics.v:158` (impl. `clean_replace_by`, 149) |
-| `clear_defs` | `Extraction/TypeCheck.v:83` |
+| `clear_defs` | `Extraction/TypeCheckBase.v:492` |
 | `clear_dups` | `LibTactics.v:106` |
 | `clear_PER` | `LibTactics.v:356` |
 | `clear_predicate_equivalence` | `Core/Soundness/LogicalRelation/CoreLemmas.v:400` |

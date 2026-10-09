@@ -125,9 +125,12 @@
 ./Extraction/Readback.v
 ./Extraction/Subtyping.v
 ./Extraction/TypeCheck.v
+./Extraction/TypeCheckBase.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v
 ./Frontend/ElabSpec.v
 ./Frontend/Elaborator.v
 ./Frontend/Parser.v
 ./LibTactics.v
+./Reference/Refinement.v
+./Reference/TypeCheck.v
