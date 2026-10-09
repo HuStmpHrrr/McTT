@@ -4,6 +4,7 @@ From Equations Require Import Equations.
 From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base.
+From Mctt.Core.Completeness.Consequences Require Import Types.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Extraction Require Import PseudoMonadic TypeCheck.
 Import Syntax_Notations GlobalCtx_Notations.
@@ -107,13 +108,24 @@ Section Bridge.
     eauto.
   Qed.
 
+  (** A type of a universe term infers a universe below the normal form of
+      the term. *)
+  Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ T A,
+      univ_term T ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ A : T ->
+      exists u v, nbe_ty Θ Ξ Γ T (univ_nf u) /\ @alg_type_infer (gc_mk Θ Ξ) Γ (univ_nf v) A /\ unf_le v u.
+  Proof.
+    intros * HT H.
+    exact (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ) (user_exp_all _) HT H).
+  Qed.
+
   (** A small type infers a small universe at a literal level below its own. *)
-  Lemma alg_type_infer_typ_complete' : forall Θ Ξ Γ n A,
+  Lemma alg_type_infer_typ_complete_lit' : forall Θ Ξ Γ n A,
       Θ ⍮ Ξ ⍮ Γ ⊢ A : Type@n ->
       exists m, @alg_type_infer (gc_mk Θ Ξ) Γ Typeⁿ@m A /\ m <= n.
   Proof.
     intros * H.
-    exact (alg_type_infer_typ_complete (GC := gc_mk Θ Ξ) (user_exp_all _) H).
+    exact (alg_type_infer_typ_complete_lit (GC := gc_mk Θ Ξ) (user_exp_all _) H).
   Qed.
 
   (** The two ways "is [A] a type?" can fail: nothing is inferred for [A], or
