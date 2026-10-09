@@ -78,14 +78,15 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     alias [:= E].  The body of a local module is the same list of commands as
     that of a global one. *)
 Inductive obj : Set :=
-(** [Typeω@i], a large universe, the universe [ω²+i].  It has no surface
-    syntax: the printer spells it [Type@{ω^2+i}]. *)
+(** [Typeω@i], a large universe, the universe [ω²+i], written
+    [Type@{ω^2}] for [i = 0] and [Type@{ω^2+i}]; [ω^2] is not a level. *)
 | typ : nat -> obj
 (** [Type@{M}], the small universe at the level [M] *)
 | suniv : obj -> obj
 (** [Level@n], the type of the levels below [ω·(n+1)]; [Level] is [Level@0] *)
 | level : nat -> obj
-(** A level literal [ω·a + b], written [<b>l] when [a] is [0] *)
+(** A level literal [ω·a + b], written [<b>l] when [a] is [0] and also
+    [<b>L] when [a] is [1] *)
 | llit : o2 -> obj
 (** [succl M] *)
 | succl : obj -> obj

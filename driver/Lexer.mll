@@ -63,6 +63,7 @@
     | LLIT (_, n) -> string_of_int n ^ "l"
     | LLITL (_, n) -> string_of_int n ^ "L"
     | OMEGA _ -> "\xcf\x89"
+    | OMEGA2 _ -> "\xcf\x89^2"
     | NAT _ -> "\xe2\x84\x95"
     | TRUE_TY _ -> "\xe2\x8a\xa4"
     | TRUE _ -> "\xe2\x8b\x86"
@@ -124,6 +125,7 @@
     | LLIT (r, _)
     | LLITL (r, _)
     | OMEGA r
+    | OMEGA2 r
     | TRUE_TY r
     | TRUE r
     | FALSE_TY r
@@ -178,7 +180,7 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
    the same token, as its UTF-8 bytes:
      →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
      ℕ  Nat     ⊤  True    ⊥  False   ⋆  true       ω  omega
-     ·  *
+     ·  *       ω^2  omega^2
    Identifiers are ASCII letters only, so [λx] is [λ] then [x], and no
    symbol needs a space around it. *)
 
@@ -219,11 +221,15 @@ rule read =
   | "maxl" { MAXL (get_range lexbuf) }
   | ['0'-'9']+ 'l' as lxm
     { LLIT (get_range lexbuf, int_of_string (String.sub lxm 0 (String.length lxm - 1))) }
-  (* A large universe size, [<n>L] for ω+n: a size only, never a level. *)
+  (* A level literal [<n>L], the ordinal ω+n: the same level as [ω + n]. *)
   | ['0'-'9']+ 'L' as lxm
     { LLITL (get_range lexbuf, int_of_string (String.sub lxm 0 (String.length lxm - 1))) }
   | "\xcf\x89" { OMEGA (wide lexbuf 2) }
   | "omega" { OMEGA (get_range lexbuf) }
+  (* [ω^2], one token, written only in a large universe [Type@{ω^2+i}]: it
+     is not a level. *)
+  | "\xcf\x89^2" { skip_continuation lexbuf 1; OMEGA2 (get_range lexbuf) }
+  | "omega^2" { OMEGA2 (get_range lexbuf) }
   | "Nat" { NAT (get_range lexbuf) }
   | "\xe2\x84\x95" { NAT (wide lexbuf 3) }
   | "True" { TRUE_TY (get_range lexbuf) }

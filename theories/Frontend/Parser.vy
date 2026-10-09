@@ -22,8 +22,9 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> END LAMBDA NAT PI REC RETURN SUCC TYPE ZERO LET IN (* keywords *)
 %token <loc> LEVEL SUCCL MAXL (* universe levels *)
 %token <loc*nat> LLIT (* a level literal, [<n>l] *)
-%token <loc*nat> LLITL (* a large universe size, [<n>L] *)
+%token <loc*nat> LLITL (* a level literal, [<n>L] for [ω+n] *)
 %token <loc> OMEGA (* the ordinal ω, written [ω] or [omega] *)
+%token <loc> OMEGA2 (* [ω^2], written [ω^2] or [omega^2]; not a level *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
@@ -226,14 +227,20 @@ let atomic_obj :=
   | TYPE; "@"; n = LLIT; { Cst.suniv (Cst.llit (0, snd n)) }
   | TYPE; "@"; "{"; m = obj; "}"; { Cst.suniv m }
   | TYPE; "@"; n = LLITL; { Cst.suniv (Cst.llit (1, snd n)) }
-  | TYPE; "@"; "{"; n = LLITL; "}"; { Cst.suniv (Cst.llit (1, snd n)) }
   | TYPE; "@"; OMEGA; { Cst.suniv (Cst.llit (1, 0)) }
+  (* The large universes, above every small one: [Type@{ω^2}] and
+     [Type@{ω^2+i}], the universe at [ω²+i].  [ω^2] is not a level (every
+     level is below it), so it is written only here, in braces. *)
+  | TYPE; "@"; "{"; OMEGA2; "}"; { Cst.typ 0 }
+  | TYPE; "@"; "{"; OMEGA2; "+"; i = INT; "}"; { Cst.typ (snd i) }
 
   (* [Level@n] is the type of the levels below [ω·(n+1)], and [Level] is
      [Level@0], the finite levels. *)
   | LEVEL; { Cst.level 0 }
   | LEVEL; "@"; n = INT; { Cst.level (snd n) }
   | n = LLIT; { Cst.llit (0, snd n) }
+  (* [<n>L] is the level [ω+n], the same literal as [ω + n]. *)
+  | n = LLITL; { Cst.llit (1, snd n) }
   (* An ordinal level literal [ω·a + b]: [ω], [ω + b], [ω * a] and
      [ω * a + b] ([·] is the Unicode spelling of [*]). *)
   | OMEGA; { Cst.llit (1, 0) }

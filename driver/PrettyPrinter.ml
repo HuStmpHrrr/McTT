@@ -125,8 +125,8 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   function
   (* A universe prints at its shortest spelling: at a finite literal level
      as [Type@<n>], at [ω] as [Type@ω], at [ω+n] as [Type@<n>L], and at any
-     other level as [Type@{t}].  The large universe [ω²+i] has no surface
-     syntax; it prints as [Type@{ω^2+i}]. *)
+     other level as [Type@{t}].  The large universe [ω²+i] prints as
+     [Type@{ω^2}] or [Type@{ω^2+i}], its surface syntax. *)
   | Cst.Coq_typ 0 -> fprintf f "Type@@{@<1>%s^2}" s_omega
   | Cst.Coq_typ i -> fprintf f "Type@@{@<1>%s^2+%d}" s_omega i
   | Cst.Coq_suniv (Cst.Coq_llit (0, n)) -> fprintf f "Type@@%d" n
@@ -136,7 +136,8 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
   | Cst.Coq_level 0 -> fprintf f "Level"
   | Cst.Coq_level n -> fprintf f "Level@@%d" n
   (* A level literal: [<n>l] when finite, else [ω·a+b] with [·a] dropped at
-     [a = 1] and [+b] dropped at [b = 0]. *)
+     [a = 1] and [+b] dropped at [b = 0].  The level [ω+n] has the shorter
+     spelling [<n>L] too, but prints as [ω+n], as it always has. *)
   | Cst.Coq_llit (0, n) -> fprintf f "%dl" n
   | Cst.Coq_llit (a, b) ->
      fprintf f "@<1>%s" s_omega;
@@ -574,6 +575,11 @@ let format_main_result (f : Format.formatter) : main_result -> unit =
      current_unit := path;
      format_run_error f e
   | ElaborationFailure (_, msg) -> fprintf f "@[<hov 2>Error: %s@]" msg
+  (* [ω^2] is accepted only in a large universe, [Type@{ω^2+i}]: anywhere
+     else, whatever the parser state, it is a level beyond every level. *)
+  | ParserFailure (_, (Parser.OMEGA2 _ as t)) ->
+     fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_u
+       "ω^2 is not a level: every level is below it. It is written only in a large universe, \"Type@{ω^2}\" or \"Type@{ω^2+i}\"."
   | ParserFailure (s, t) ->
      fprintf f "@[<hov 2>Error: on %a:@ %a@]" Lexer.format_token t pp_text_u
        (String.trim (ParserMessages.message (Parser.Aut.coq_N_of_state s)))

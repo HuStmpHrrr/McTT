@@ -146,6 +146,7 @@ one (and `∀` for `forall`):
 | `∀`, `Π`| `forall` |   | `⋆`     | `true`  |
 | `≔`     | `:=`     |   | `ω`     | `omega` |
 | `›`     | `::`     |   | `·`     | `*`     |
+|         |          |   | `ω^2`   | `omega^2` |
 
 Identifiers are ASCII letters only, so these symbols need no spaces around
 them: `λ(x:ℕ)→x` is `fun (x : Nat) -> x`.
@@ -181,13 +182,17 @@ atomic term = 'Type', '@' , nat
             | 'Type' , '@' , '{' , term , '}'
             (* universe at the level ω, above every finite one *)
             | 'Type' , '@' , ( 'ω' | 'omega' )
-            (* universe at ω+nat: a universe level only, never a level term *)
+            (* universe at ω+nat, short for Type@{<nat>L} *)
             | 'Type' , '@' , nat , 'L'
-            | 'Type' , '@' , '{' , nat , 'L' , '}'
+            (* the large universes, at ω²+nat, above every small one;
+               ω^2 is not a level and is written only here *)
+            | 'Type' , '@' , '{' , ( 'ω^2' | 'omega^2' ) , [ '+' , nat ] , '}'
             (* the type of the levels below ω·(nat+1); 'Level' is 'Level@0' *)
             | 'Level' , [ '@' , nat ]
             (* a finite universe level literal *)
             | nat , 'l'
+            (* the universe level literal ω+nat, the same level as ω + nat *)
+            | nat , 'L'
             (* the universe level literals ω, ω+b, ω·a, ω·a+b *)
             | ( 'ω' | 'omega' ) , [ ( '·' | '*' ) , nat ] , [ '+' , nat ]
             (* natural number type *)

@@ -725,12 +725,90 @@ let%expect_test "a type quantifying over levels is not at a finite level" =
   let _ = main_of_body "eval (forall (u : Level) -> Type@{u}) : Type@5" in
   [%expect {| Error: ∀ (x1 : Level) → Type@{x1} is not of type Type@5 |}]
 
-(* [<n>L] is a universe level only: it is not a term of [Level]. *)
-let%expect_test "the universe shorthand <n>L is not a level" =
-  let _ = main_of_body "eval 1L : Level" in
+(* [<n>L] is the level literal [ω+n], wherever a level is accepted: the
+   same core literal as [ω + n], so it prints as [ω+n]. *)
+let%expect_test "<n>L is the level ω+n" =
+  let _ = main_of_body "eval 1L : Level@1" in
+  [%expect {| Evaluate ω+1 --> ω+1 : Level@1 |}]
+
+let%expect_test "0L is ω" =
+  let _ = main_of_body "eval succl 0L" in
+  [%expect {| Evaluate succl ω --> ω+1 : Level@1 |}]
+
+let%expect_test "<n>L joins with a finite level" =
+  let _ = main_of_body "eval maxl 1L 3l" in
+  [%expect {| Evaluate maxl ω+1 3l --> ω+1 : Level@1 |}]
+
+let%expect_test "a braced <n>L is the universe at ω+n" =
+  let _ = main_of_body "eval Type@{1L}" in
+  [%expect {| Evaluate Type@1L --> Type@1L : Type@2L |}]
+
+(* A definition of the level [1L] is [ω + 1]: the universes at the two are
+   one type. *)
+let%expect_test "a level defined as <n>L equals ω+n" =
+  let _ = main_of_body "def foo : Level@1 := 1L end eval (fun (A : Type@{foo}) -> A) : forall (A : Type@{ω + 1}) -> Type@1L" in
   [%expect {|
-    Error: on "1L" (at line 1, column 24 - line 1, column 26): This token is
-      invalid for the beginning of a program.
+    Evaluate λ (A1 : Type@{foo}) → A1 --> λ (A1 : Type@1L) → A1
+      : ∀ (A1 : Type@1L) → Type@1L
+    |}]
+
+let%expect_test "<n>L is not a finite level" =
+  let _ = main_of_body "eval 1L : Level" in
+  [%expect {| Error: ω+1 is not of type Level |}]
+
+(* The large universes, at ω²+i: [Type@{ω^2}] and [Type@{ω^2+i}], braced.
+   Each is in the next, and holds every small universe. *)
+let%expect_test "the large universe at ω²" =
+  let _ = main_of_body "eval Type@{omega^2}" in
+  [%expect {| Evaluate Type@{ω^2} --> Type@{ω^2} : Type@{ω^2+1} |}]
+
+let%expect_test "a large universe at ω²+i" =
+  let _ = main_of_body "eval Type@{ω^2 + 3}" in
+  [%expect {| Evaluate Type@{ω^2+3} --> Type@{ω^2+3} : Type@{ω^2+4} |}]
+
+let%expect_test "a small universe is in the large one" =
+  let _ = main_of_body "eval Type@5 : Type@{ω^2}" in
+  [%expect {| Evaluate Type@5 --> Type@5 : Type@{ω^2} |}]
+
+let%expect_test "a function type over a large universe is large" =
+  let _ = main_of_body "eval forall (A : Type@{ω^2}) -> A" in
+  [%expect {| Evaluate ∀ (A1 : Type@{ω^2}) → A1 --> ∀ (A1 : Type@{ω^2}) → A1 : Type@{ω^2+1} |}]
+
+let%expect_test "a large universe is not in itself" =
+  let _ = main_of_body "eval Type@{ω^2} : Type@{ω^2}" in
+  [%expect {| Error: Type@{ω^2} is not of type Type@{ω^2} |}]
+
+(* [ω^2] is not a level, wherever it is written outside the braces of a
+   large universe. *)
+let%expect_test "ω^2 is not a level" =
+  let _ = main_of_body "eval ω^2 : Level@1" in
+  [%expect {|
+    Error: on "ω^2" (at line 1, column 24 - line 1, column 27): ω^2 is not a
+      level: every level is below it. It is written only in a large universe,
+      "Type@{ω^2}" or "Type@{ω^2+i}".
+    |}]
+
+let%expect_test "an unbraced large universe" =
+  let _ = main_of_body "eval Type@omega^2" in
+  [%expect {|
+    Error: on "ω^2" (at line 1, column 29 - line 1, column 36): ω^2 is not a
+      level: every level is below it. It is written only in a large universe,
+      "Type@{ω^2}" or "Type@{ω^2+i}".
+    |}]
+
+let%expect_test "a large universe without its offset" =
+  let _ = main_of_body "eval Type@{ω^2+}" in
+  [%expect {|
+    Error: on "}" (at line 1, column 34 - line 1, column 35): A numeral is
+      expected after "Type@{ω^2+": the large universe "Type@{ω^2+i}".
+    |}]
+
+let%expect_test "a large universe not closed" =
+  let _ = main_of_body "eval Type@{ω^2 Nat}" in
+  [%expect {|
+    Error: on "ℕ" (at line 1, column 34 - line 1, column 37): A closing "}" or
+      "+i" is expected after "Type@{ω^2": the large universe "Type@{ω^2}" or
+      "Type@{ω^2+i}".
     |}]
 
 (* An unbraced [+] is rejected. *)

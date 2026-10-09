@@ -96,6 +96,7 @@ core never see the difference:
 | `FALSE_TY`   | `⊥`      | `False`  |
 | `TRUE`       | `⋆`      | `true`   |
 | `OMEGA`      | `ω`      | `omega`  |
+| `OMEGA2`     | `ω^2`    | `omega^2` |
 | `STAR`       | `·`      | `*`      |
 
 The printer (`PrettyPrinter.ml`), the token names in syntax errors

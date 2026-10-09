@@ -614,16 +614,17 @@ let href (from : string list) (s : site) =
   (if s.s_unit = from then "" else page_name s.s_unit) ^ (if s.s_anchor = "" then "" else "#" ^ s.s_anchor)
 
 let is_keyword = function
-  | P.VAR _ | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ | P.EOF _ -> false
+  | P.VAR _ | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ | P.OMEGA2 _ | P.EOF _ -> false
   | P.ARROW _ | P.AT _ | P.BAR _ | P.COLON _ | P.COLONCOLON _ | P.COMMA _ | P.DARROW _
   | P.LPAREN _ | P.RPAREN _ | P.LBRACE _ | P.RBRACE _ | P.PLUS _ | P.STAR _
   | P.DOT _ | P.EQ _ | P.SEMI _ -> false
   | _ -> true
 
-(* The literals: numerals, level literals [3l], the universe sizes [2L]
-   (for [ω+2]), and [ω] (or [omega]), the first infinite level. *)
+(* The literals: numerals, level literals [3l] and [2L] (for [ω+2]), [ω]
+   (or [omega]), the first infinite level, and [ω^2], the size of the large
+   universes. *)
 let is_num = function
-  | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ -> true
+  | P.INT _ | P.LLIT _ | P.LLITL _ | P.OMEGA _ | P.OMEGA2 _ -> true
   | _ -> false
 
 let is_type_kw = function

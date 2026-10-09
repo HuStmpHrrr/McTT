@@ -110,18 +110,20 @@ The canonical form drops an atom whose sort is below the constant's tier
 (`la_keep`), and `lvl_canon_iff` holds over the assignments that put an atom
 of sort `s` below ω·(s+1) (`lvl_adm`).
 
-The surface syntax matches.  A level literal is `nl` (finite, `𝕃ᵒ (0, n)`)
-or `ω`, `ω + b`, `ω * a`, `ω * a + b` (`𝕃ᵒ (a, b)`; `·` is the Unicode
-spelling of `*`, `omega` the ASCII one of `ω`).  `Level@n` is `a_level n`
-and `Level` is `Level@0`.  Every universe of the surface is small:
-`Type@n` (short for `Type@{nl}`), `Type@nl` and `Type@{t}`, and `Type@ω`
-(`Type@omega`) and `Type@nL` (also braced), short for `Type@{ω}` and
-`Type@{ω+n}` (`nL` is a universe level only, never a term of `Level`).  The
-large tier `Typeω@i`, the universe ω²+i, has no surface syntax; the printer
-spells it `Type@{ω^2+i}`, which does not parse.  The printer picks the
-shortest spelling: `Type@n`, `Type@ω`, `Type@nL`, else `Type@{t}`; a literal
-prints as `nl` or as `ω·a+b` with `·a` dropped at `a = 1` and `+b` at
-`b = 0`.  (`ω` and `·` are among the Unicode spellings listed in
+The surface syntax matches.  A level literal is `nl` (finite, `𝕃ᵒ (0, n)`),
+`nL` (`𝕃ᵒ (1, n)`, the same literal as `ω + n`), or `ω`, `ω + b`, `ω * a`,
+`ω * a + b` (`𝕃ᵒ (a, b)`; `·` is the Unicode spelling of `*`, `omega` the
+ASCII one of `ω`).  `Level@n` is `a_level n` and `Level` is `Level@0`.  The
+small universes are `Type@n` (short for `Type@{nl}`), `Type@nl` and
+`Type@{t}`, and `Type@ω` (`Type@omega`) and `Type@nL`, short for `Type@{ω}`
+and `Type@{ω+n}`.  The large tier `Typeω@i` (`Cst.typ i`), the universe
+ω²+i, is written `Type@{ω^2}` and `Type@{ω^2+i}` (`omega^2` in ASCII),
+braced; `ω^2` is one token (`OMEGA2`), and not a level: anywhere else the
+driver reports "ω^2 is not a level".  The printer picks the shortest
+spelling: `Type@n`, `Type@ω`, `Type@nL`, else `Type@{t}`, and `Type@{ω^2}`,
+`Type@{ω^2+i}`; a literal prints as `nl` or as `ω·a+b` with `·a` dropped at
+`a = 1` and `+b` at `b = 0` (so `1L` prints as `ω+1`, as before `nL` was a
+literal).  (`ω` and `·` are among the Unicode spellings listed in
 `modules.md`, *Surface syntax*.)
 
 ## Traps
