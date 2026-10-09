@@ -38,19 +38,19 @@
 </div>
 
 <div class="doc">
-<a id="lab243"></a><h1 class="section">The Short Forms, for a Fixed Global Context</h1>
+<a id="lab246"></a><h1 class="section">The Short Forms, for a Fixed Global Context</h1>
 
 
 <div class="paragraph"> </div>
 
     The semantic development fixes the global context once per section, with
     <span class="inlinecode"><span class="id" title="keyword">Context</span></span> <span class="inlinecode">`{<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#GCtx"><span class="id" title="record">GCtx</span></a>}</span>.  These notations write judgments, evaluation and
-    readback without <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>, relative to that fixed context.  Where two
+    readback without <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span>, relative to that fixed context.  Where two
     global contexts meet, the long forms are used. 
 <div class="paragraph"> </div>
 
  The short and long forms do not parse together (<span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> against
-    <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>), so the short forms are a separate module.  Files that
+    <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span>), so the short forms are a separate module.  Files that
     import it refer to a judgment at another global context by its constant. 
 </div>
 <div class="code">
@@ -60,7 +60,7 @@
 </div>
 
 <div class="doc">
-<a id="lab244"></a><h2 class="section">Judgments</h2>
+<a id="lab247"></a><h2 class="section">Judgments</h2>
 
 </div>
 <div class="code">
@@ -87,7 +87,7 @@ Not <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id
 </div>
 
 <div class="doc">
-<a id="lab245"></a><h2 class="section">Evaluation and Readback</h2>
+<a id="lab248"></a><h2 class="section">Evaluation and Readback</h2>
 
 </div>
 <div class="code">

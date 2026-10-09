@@ -62,7 +62,7 @@ Transparency setting for generalized rewriting.
 </div>
 
 <div class="doc">
-<a id="lab642"></a><h3 class="section">Generalization of Variables</h3>
+<a id="lab668"></a><h3 class="section">Generalization of Variables</h3>
 
 </div>
 <div class="code">
@@ -77,7 +77,7 @@ Transparency setting for generalized rewriting.
 </div>
 
 <div class="doc">
-<a id="lab643"></a><h3 class="section">Marking-based Tactics</h3>
+<a id="lab669"></a><h3 class="section">Marking-based Tactics</h3>
 
 </div>
 <div class="code">
@@ -152,7 +152,7 @@ Unmark the variables, keeping the marks of the hypotheses.  A marked
 </div>
 
 <div class="doc">
-<a id="lab644"></a><h3 class="section">Simple helper</h3>
+<a id="lab670"></a><h3 class="section">Simple helper</h3>
 
 </div>
 <div class="code">
@@ -312,7 +312,7 @@ We use dependent destruction, as it is more general than inversion.
 </div>
 
 <div class="doc">
-<a id="lab645"></a><h3 class="section">McTT automation</h3>
+<a id="lab671"></a><h3 class="section">McTT automation</h3>
 
 </div>
 <div class="code">
@@ -358,7 +358,14 @@ We use dependent destruction, as it is more general than inversion.
 &nbsp;&nbsp;<span class="id" title="tactic">eauto</span> <span class="id" title="var">pow</span> <span class="id" title="keyword">using</span> <span class="id" title="var">use1</span>, <span class="id" title="var">use2</span>, <span class="id" title="var">use3</span>, <span class="id" title="var">use4</span> <span class="id" title="keyword">with</span> <span class="id" title="var">mctt</span> <span class="id" title="var">core</span>.<br/>
 
 <br/>
-<span class="id" title="keyword">Ltac</span> <span class="id" title="var">mautosolve_impl</span> <span class="id" title="var">pow</span> := <span class="id" title="var">unshelve</span> <span class="id" title="tactic">solve</span> [<span class="id" title="var">mauto</span> <span class="id" title="var">pow</span>]; <span class="id" title="tactic">solve</span> [<span class="id" title="tactic">constructor</span>].<br/>
+</div>
+
+<div class="doc">
+A goal the search leaves open is an unconstrained index, a natural
+    number or an ordinal (a pair of them): any value closes it. 
+</div>
+<div class="code">
+<span class="id" title="keyword">Ltac</span> <span class="id" title="var">mautosolve_impl</span> <span class="id" title="var">pow</span> := <span class="id" title="var">unshelve</span> <span class="id" title="tactic">solve</span> [<span class="id" title="var">mauto</span> <span class="id" title="var">pow</span>]; <span class="id" title="tactic">solve</span> [<span class="id" title="tactic">repeat</span> <span class="id" title="tactic">constructor</span>].<br/>
 
 <br/>
 <span class="id" title="keyword">Tactic Notation</span> "mautosolve" := <span class="id" title="var">mautosolve_impl</span> <span class="id" title="var">integer</span>:(5).<br/>
@@ -618,7 +625,7 @@ Close <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Cha
 </div>
 
 <div class="doc">
-<a id="lab646"></a><h3 class="section">Helper Instances for Generalized Rewriting</h3>
+<a id="lab672"></a><h3 class="section">Helper Instances for Generalized Rewriting</h3>
 
 </div>
 <div class="code">

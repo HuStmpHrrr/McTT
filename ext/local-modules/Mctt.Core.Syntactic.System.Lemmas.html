@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab503"></a><h1 class="section">Properties of the Judgments, continued</h1>
+<a id="lab510"></a><h1 class="section">Properties of the Judgments, continued</h1>
 
 
 <div class="paragraph"> </div>
@@ -57,7 +57,7 @@
 </div>
 
 <div class="doc">
-<a id="lab504"></a><h2 class="section">Presupposition for Typing</h2>
+<a id="lab511"></a><h2 class="section">Presupposition for Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -78,12 +78,12 @@
 </div>
 
 <div class="doc">
-<a id="lab505"></a><h2 class="section">Context Conversion of Substitutions</h2>
+<a id="lab512"></a><h2 class="section">Context Conversion of Substitutions</h2>
 
 
 <div class="paragraph"> </div>
 
-    <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> transports substitutions too: compose with the inclusion and
+    <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ'</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode"><span class="id" title="var">Id</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> transports substitutions too: compose with the inclusion and
     cancel the identity.  Which side it goes on is what distinguishes the two:
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#ctxsub_sub"><span class="id" title="lemma">ctxsub_sub</span></a></span> refines the domain, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#ctxsub_sub_cod"><span class="id" title="lemma">ctxsub_sub_cod</span></a></span> coarsens the codomain. 
 </div>
@@ -117,13 +117,13 @@
 </div>
 
 <div class="doc">
-<a id="lab506"></a><h1 class="section">Substitution Equivalence</h1>
+<a id="lab513"></a><h1 class="section">Substitution Equivalence</h1>
 
 
 <div class="paragraph"> </div>
 
     The closure properties below are the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a></span> counterparts of
-    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_id"><span class="id" title="lemma">wf_sub_id</span></a></span>–<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_q"><span class="id" title="lemma">wf_sub_q</span></a></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> equates the images at
+    <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_id"><span class="id" title="lemma">wf_sub_id</span></a></span>–<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Structural.html#wf_sub_q"><span class="id" title="lemma">wf_sub_q</span></a></span>.  <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢<span class="id" title="var">s</span></span> <span class="inlinecode">σ</span> <span class="inlinecode">≈</span> <span class="inlinecode">σ'</span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="var">Δ</span></span> equates the images at
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span>, so symmetry and transitivity need <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ]</span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[σ']</span> to be equal
     types.  That is <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Lemmas.html#sub_eq_preserves_exp"><span class="id" title="lemma">sub_eq_preserves_exp</span></a></span>, which therefore comes first, and
     the <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Classes.RelationClasses.html#PER"><span class="id" title="class">PER</span></a></span> instance last. 
@@ -425,7 +425,7 @@ Two sides reduced to equal terms, at types that are equal.
 </div>
 
 <div class="doc">
-<a id="lab507"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
+<a id="lab514"></a><h2 class="section">Equivalent Substitutions Preserve Typing</h2>
 
 
 <div class="paragraph"> </div>
@@ -471,7 +471,7 @@ A domain in a small universe, at a level it is given to be one: both are
 </div>
 <div class="code">
 &nbsp;&nbsp;| <span class="id" title="var">H</span>σ : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> ?<span class="id" title="var">Γ</span> ?<span class="id" title="var">Δ</span> ?σ ?σ',<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">HL</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> ?<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> ?<span class="id" title="var">L</span>,<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">HL</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> ?<span class="id" title="var">Δ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> ?<span class="id" title="var">n</span>) ?<span class="id" title="var">L</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">HA</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> ?<span class="id" title="var">Δ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> ?<span class="id" title="var">L</span>) ?<span class="id" title="var">A</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">IH</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>, <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq"><span class="id" title="inductive">wf_exp_eq</span></a> ?<span class="id" title="var">Θ</span> ?<span class="id" title="var">Ξ</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> <span class="id" title="var">_</span>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> ?<span class="id" title="var">A</span> <span class="id" title="var">_</span>) <span class="id" title="var">_</span> |- <span class="id" title="var">_</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">let</span> <span class="id" title="var">T</span> := <span class="id" title="keyword">constr</span>:(<a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">Θ</span> <span class="id" title="var">Ξ</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#cons"><span class="id" title="constructor">cons</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> <span class="id" title="var">A</span> σ)) <span class="id" title="var">Γ</span>) (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#cons"><span class="id" title="constructor">cons</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a> <span class="id" title="var">A</span>) <span class="id" title="var">Δ</span>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_q"><span class="id" title="definition">sb_q</span></a> σ) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_q"><span class="id" title="definition">sb_q</span></a> σ')) <span class="id" title="tactic">in</span><br/>
@@ -574,7 +574,7 @@ The small <span class="inlinecode"><span class="id" title="var">Π</span></span>
 <div class="code">
 &nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <span class="id" title="keyword">goal</span> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">HL</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> ?<span class="id" title="var">L</span>, <span class="id" title="var">HA</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> ?<span class="id" title="var">L</span>) ?<span class="id" title="var">A</span>, <span class="id" title="var">H</span>σ : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Γ</span> ?<span class="id" title="var">Δ</span> ?σ ?σ',<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="var">HL</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> ?<span class="id" title="var">n</span>) ?<span class="id" title="var">L</span>, <span class="id" title="var">HA</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp"><span class="id" title="inductive">wf_exp</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> ?<span class="id" title="var">L</span>) ?<span class="id" title="var">A</span>, <span class="id" title="var">H</span>σ : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Γ</span> ?<span class="id" title="var">Δ</span> ?σ ?σ',<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hs</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub"><span class="id" title="record">wf_sub</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Γ</span> ?<span class="id" title="var">Δ</span> ?σ, <span class="id" title="var">IHA</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>, <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> ?<span class="id" title="var">Δ</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq"><span class="id" title="inductive">wf_exp_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp_sub"><span class="id" title="definition">exp_sub</span></a> ?<span class="id" title="var">A</span> <span class="id" title="var">_</span>) <span class="id" title="var">_</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">IHB</span> : <span class="id" title="keyword">forall</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span>, <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#cons"><span class="id" title="constructor">cons</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a> ?<span class="id" title="var">A</span>) ?<span class="id" title="var">Δ</span>) <span class="id" title="var">_</span> <span class="id" title="var">_</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <span class="id" title="var">_</span>,<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="var">Hq</span> : <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_sub_eq"><span class="id" title="record">wf_sub_eq</span></a> <span class="id" title="var">_</span> <span class="id" title="var">_</span> <span class="id" title="var">_</span> (<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#cons"><span class="id" title="constructor">cons</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ce_ass"><span class="id" title="constructor">ce_ass</span></a> ?<span class="id" title="var">A</span>) ?<span class="id" title="var">Δ</span>) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_q"><span class="id" title="definition">sb_q</span></a> ?σ) (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#sb_q"><span class="id" title="definition">sb_q</span></a> ?σ') |- <span class="id" title="var">_</span> =&gt;<br/>
@@ -665,7 +665,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab508"></a><h2 class="section">Substitution Equivalence is a PER</h2>
+<a id="lab515"></a><h2 class="section">Substitution Equivalence is a PER</h2>
 
 
 <div class="paragraph"> </div>
@@ -745,7 +745,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab509"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
+<a id="lab516"></a><h2 class="section">Composition of Equivalent Substitutions</h2>
 
 
 <div class="paragraph"> </div>
@@ -800,7 +800,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab510"></a><h2 class="section">η-Expansion</h2>
+<a id="lab517"></a><h2 class="section">η-Expansion</h2>
 
 
 <div class="paragraph"> </div>
@@ -873,7 +873,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab511"></a><h2 class="section">Closed Neutrals</h2>
+<a id="lab518"></a><h2 class="section">Closed Neutrals</h2>
 
 
 <div class="paragraph"> </div>
@@ -906,7 +906,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab512"></a><h2 class="section">Conversion</h2>
+<a id="lab519"></a><h2 class="section">Conversion</h2>
 
 
 <div class="paragraph"> </div>
@@ -946,7 +946,7 @@ A member of an applied module: both sides commute the arguments out.
 </div>
 
 <div class="doc">
-<a id="lab513"></a><h2 class="section">The Global Context</h2>
+<a id="lab520"></a><h2 class="section">The Global Context</h2>
 
 
 <div class="paragraph"> </div>

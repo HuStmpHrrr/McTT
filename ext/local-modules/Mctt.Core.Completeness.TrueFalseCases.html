@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab126"></a><h1 class="section">Fundamental Theorem: the Unit and Empty Types</h1>
+<a id="lab128"></a><h1 class="section">Fundamental Theorem: the Unit and Empty Types</h1>
 
 
 <div class="paragraph"> </div>
@@ -102,7 +102,7 @@
 </div>
 
 <div class="doc">
-<a id="lab127"></a><h2 class="section"><span class="inlinecode">⊤</span> and <span class="inlinecode">⊥</span> as Types</h2>
+<a id="lab129"></a><h2 class="section"><span class="inlinecode">⊤</span> and <span class="inlinecode">⊥</span> as Types</h2>
 
 
 <div class="paragraph"> </div>
@@ -193,7 +193,7 @@
 <br/>
 <span class="id" title="keyword">Corollary</span> <a id="valid_exp_True_small" class="idref" href="#valid_exp_True_small"><span class="id" title="lemma">valid_exp_True_small</span></a> : <span class="id" title="keyword">forall</span> {<a id="de99c0e007bd311d76da1801ff347713" class="idref" href="#de99c0e007bd311d76da1801ff347713"><span class="id" title="binder">Γ</span></a> <a id="n:18" class="idref" href="#n:18"><span class="id" title="binder">n</span></a>},<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c157fef4ebd87b38ad564c1b1bbe6915"><span class="id" title="notation">⊤</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#40570607d19085dd952e0d182d80f3dc"><span class="id" title="notation">Type@n</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#de99c0e007bd311d76da1801ff347713"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c157fef4ebd87b38ad564c1b1bbe6915"><span class="id" title="notation">⊤</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">Type</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟨</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#706cbc543b1bf4f850bf30e0a1c4316b"><span class="id" title="notation">𝕃ᵒ</span></a> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#n:18"><span class="id" title="variable">n</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟩</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">H</span>%<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> <span class="id" title="var">HΓ</span>].<br/>
@@ -227,7 +227,7 @@
 <br/>
 <span class="id" title="keyword">Corollary</span> <a id="valid_exp_False_small" class="idref" href="#valid_exp_False_small"><span class="id" title="lemma">valid_exp_False_small</span></a> : <span class="id" title="keyword">forall</span> {<a id="87cf4a9792a33e96b1c656d15f1aa3be" class="idref" href="#87cf4a9792a33e96b1c656d15f1aa3be"><span class="id" title="binder">Γ</span></a> <a id="n:23" class="idref" href="#n:23"><span class="id" title="binder">n</span></a>},<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#697cbaa778db3852efdf114bc9fc26a5"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#87cf4a9792a33e96b1c656d15f1aa3be"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#87cf4a9792a33e96b1c656d15f1aa3be"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#71b25d547abdd45a3e9d1d457a3c60be"><span class="id" title="notation">⊥</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#40570607d19085dd952e0d182d80f3dc"><span class="id" title="notation">Type@n</span></a>.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#87cf4a9792a33e96b1c656d15f1aa3be"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">⊨</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#71b25d547abdd45a3e9d1d457a3c60be"><span class="id" title="notation">⊥</span></a> <a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Definitions.html#3a399242aa00b5b8125c3791f52d8ea1"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">Type</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟨</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#706cbc543b1bf4f850bf30e0a1c4316b"><span class="id" title="notation">𝕃ᵒ</span></a> <a class="idref" href="Mctt.Core.Completeness.TrueFalseCases.html#n:23"><span class="id" title="variable">n</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟩</span></a>.<br/>
 <span class="id" title="keyword">Proof</span>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">intros</span> * <span class="id" title="var">H</span>%<a class="idref" href="Mctt.Core.Completeness.LogicalRelation.Lemmas.html#sem_ctx_per_ctx_env"><span class="id" title="lemma">sem_ctx_per_ctx_env</span></a>.<br/>
 &nbsp;&nbsp;<span class="id" title="tactic">destruct</span> <span class="id" title="var">H</span> <span class="id" title="keyword">as</span> [<span class="id" title="var">env_relΓ</span> <span class="id" title="var">HΓ</span>].<br/>
@@ -241,7 +241,7 @@
 </div>
 
 <div class="doc">
-<a id="lab128"></a><h2 class="section"><span class="inlinecode">⊤</span> and <span class="inlinecode">⊥</span> as the Types of Terms</h2>
+<a id="lab130"></a><h2 class="section"><span class="inlinecode">⊤</span> and <span class="inlinecode">⊥</span> as the Types of Terms</h2>
 
 
 <div class="paragraph"> </div>
@@ -343,7 +343,7 @@
 </div>
 
 <div class="doc">
-<a id="lab129"></a><h2 class="section"><span class="inlinecode">⋆</span> and η</h2>
+<a id="lab131"></a><h2 class="section"><span class="inlinecode">⋆</span> and η</h2>
 
 
 <div class="paragraph"> </div>
@@ -397,7 +397,7 @@
 </div>
 
 <div class="doc">
-<a id="lab130"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
+<a id="lab132"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
 
 
 <div class="paragraph"> </div>
@@ -449,7 +449,7 @@
 </div>
 
 <div class="doc">
-<a id="lab131"></a><h2 class="section">The Semantic Eliminator</h2>
+<a id="lab133"></a><h2 class="section">The Semantic Eliminator</h2>
 
 
 <div class="paragraph"> </div>
@@ -510,7 +510,7 @@
 </div>
 
 <div class="doc">
-<a id="lab132"></a><h2 class="section">The Motive at an Arbitrary Argument Pair</h2>
+<a id="lab134"></a><h2 class="section">The Motive at an Arbitrary Argument Pair</h2>
 
 
 <div class="paragraph"> </div>
@@ -595,7 +595,7 @@
 </div>
 
 <div class="doc">
-<a id="lab133"></a><h2 class="section">The Diagonal, for the Gluing Model</h2>
+<a id="lab135"></a><h2 class="section">The Diagonal, for the Gluing Model</h2>
 
 
 <div class="paragraph"> </div>
@@ -622,7 +622,7 @@
 </div>
 
 <div class="doc">
-<a id="lab134"></a><h2 class="section">The Eliminator's Congruence Rule</h2>
+<a id="lab136"></a><h2 class="section">The Eliminator's Congruence Rule</h2>
 
 
 <div class="paragraph"> </div>
@@ -648,7 +648,7 @@
 </div>
 
 <div class="doc">
-<a id="lab135"></a><h3 class="section">The Type</h3>
+<a id="lab137"></a><h3 class="section">The Type</h3>
 
 </div>
 <div class="code">
@@ -673,7 +673,7 @@
 </div>
 
 <div class="doc">
-<a id="lab136"></a><h3 class="section">The Scrutinee</h3>
+<a id="lab138"></a><h3 class="section">The Scrutinee</h3>
 
 </div>
 <div class="code">
@@ -693,7 +693,7 @@
 </div>
 
 <div class="doc">
-<a id="lab137"></a><h3 class="section">The Three Eliminations</h3>
+<a id="lab139"></a><h3 class="section">The Three Eliminations</h3>
 
 </div>
 <div class="code">

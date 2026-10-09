@@ -46,7 +46,7 @@
 </div>
 
 <div class="doc">
-<a id="lab635"></a><h1 class="section">Elaboration</h1>
+<a id="lab661"></a><h1 class="section">Elaboration</h1>
 
 
 <div class="paragraph"> </div>
@@ -57,7 +57,7 @@
     relation, one clause per rule. 
 <div class="paragraph"> </div>
 
-<a id="lab636"></a><h2 class="section">Results</h2>
+<a id="lab662"></a><h2 class="section">Results</h2>
 
 </div>
 <div class="code">
@@ -100,7 +100,7 @@ The error for a unit, named by its path as the driver prints paths,
 </div>
 
 <div class="doc">
-<a id="lab637"></a><h2 class="section">Names</h2>
+<a id="lab663"></a><h2 class="section">Names</h2>
 
 </div>
 <div class="code">
@@ -190,7 +190,7 @@ A name repeated in a parameter telescope.
 </div>
 
 <div class="doc">
-<a id="lab638"></a><h2 class="section">Open Targets</h2>
+<a id="lab664"></a><h2 class="section">Open Targets</h2>
 
 
 <div class="paragraph"> </div>
@@ -238,7 +238,7 @@ A name repeated in a parameter telescope.
 </div>
 
 <div class="doc">
-<a id="lab639"></a><h2 class="section">Objects</h2>
+<a id="lab665"></a><h2 class="section">Objects</h2>
 
 </div>
 <div class="code">
@@ -261,8 +261,8 @@ A name repeated in a parameter telescope.
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.suniv"><span class="id" title="constructor">Cst.suniv</span></a> <span class="id" title="var">o</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">let</span></a><a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">*</span></a> <a id="M:84" class="idref" href="#M:84"><span class="id" title="binder">M</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">:=</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#elab:80"><span class="id" title="definition">elab</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#S:74"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#o:75"><span class="id" title="variable">o</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">in</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">Type</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟨</span></a><a class="idref" href="Mctt.Frontend.Elaborator.html#M:84"><span class="id" title="variable">M</span></a><a class="idref" href="Mctt.Core.Syntactic.Syntax.html#8f131e899c70376f7a1740218fa332d0"><span class="id" title="notation">⟩</span></a>)<br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.level"><span class="id" title="constructor">Cst.level</span></a> =&gt; <a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'Level'"><span class="id" title="notation">Level</span></a><br/>
-&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.llit"><span class="id" title="constructor">Cst.llit</span></a> <span class="id" title="var">n</span> =&gt; <a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#de500fd298032b26557352621086efb8"><span class="id" title="notation">𝕃@</span></a><span class="id" title="var">n</span>)<br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.level"><span class="id" title="constructor">Cst.level</span></a> <span class="id" title="var">n</span> =&gt; <a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#d194ddba520215d375d6523257e1eb0d"><span class="id" title="notation">Level@n</span></a>)<br/>
+&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.llit"><span class="id" title="constructor">Cst.llit</span></a> <span class="id" title="var">o</span> =&gt; <a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#706cbc543b1bf4f850bf30e0a1c4316b"><span class="id" title="notation">𝕃ᵒ</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#o:75"><span class="id" title="variable">o</span></a>)<br/>
 &nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Cst.succl"><span class="id" title="constructor">Cst.succl</span></a> <span class="id" title="var">o</span> =&gt;<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">let</span></a><a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">*</span></a> <a id="M:85" class="idref" href="#M:85"><span class="id" title="binder">M</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">:=</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#elab:80"><span class="id" title="definition">elab</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#S:74"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#o:75"><span class="id" title="variable">o</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#33443b95eb6f639b83a960da5859f0ef"><span class="id" title="notation">in</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Frontend.Elaborator.html#eok"><span class="id" title="constructor">eok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#Exp_Notations.::mctt_scope:'succl'_x"><span class="id" title="notation">succl</span></a> <a class="idref" href="Mctt.Frontend.Elaborator.html#M:85"><span class="id" title="variable">M</span></a>)<br/>
@@ -383,7 +383,7 @@ A name repeated in a parameter telescope.
 </div>
 
 <div class="doc">
-<a id="lab640"></a><h2 class="section">Commands</h2>
+<a id="lab666"></a><h2 class="section">Commands</h2>
 
 
 <div class="paragraph"> </div>
@@ -479,7 +479,7 @@ The leading imports and opens, before the unit's header: the scope of
 </div>
 
 <div class="doc">
-<a id="lab641"></a><h2 class="section">Units</h2>
+<a id="lab667"></a><h2 class="section">Units</h2>
 
 
 <div class="paragraph"> </div>

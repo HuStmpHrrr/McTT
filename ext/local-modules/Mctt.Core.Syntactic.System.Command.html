@@ -32,15 +32,15 @@
 </div>
 
 <div class="doc">
-<a id="lab440"></a><h1 class="section">The Static Semantics of Commands</h1>
+<a id="lab447"></a><h1 class="section">The Static Semantics of Commands</h1>
 
 
 <div class="paragraph"> </div>
 
-    A command moves the global state: the filed units <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> and the stack <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> of
+    A command moves the global state: the filed units <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> and the stack <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> of
     open frames.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_load"><span class="id" title="constructor">cc_load</span></a></span> loads the unit it names, if it is not filed yet,
     by running that unit's own commands from nothing, and merges the units
-    that run filed into <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>; the chain of units whose loading is in progress
+    that run filed into <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>; the chain of units whose loading is in progress
     is what rules a cycle out.  <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Command.html#cc_open"><span class="id" title="constructor">cc_open</span></a></span> declares the names its items
     generate (<span class="inlinecode"><span class="id" title="library">Imports</span></span>) as definitions and aliases of the frame.  Every
     command is expanded before it runs, which turns the local opens of the
@@ -75,7 +75,7 @@
 </div>
 
 <div class="doc">
-<a id="lab441"></a><h2 class="section">The Stack</h2>
+<a id="lab448"></a><h2 class="section">The Stack</h2>
 
 
 <div class="paragraph"> </div>
@@ -130,7 +130,7 @@ A definition and an axiom as they are filed: closed over the frames'
 </div>
 
 <div class="doc">
-<a id="lab442"></a><h2 class="section">Imports</h2>
+<a id="lab449"></a><h2 class="section">Imports</h2>
 
 
 <div class="paragraph"> </div>
@@ -158,7 +158,7 @@ A definition and an axiom as they are filed: closed over the frames'
 </div>
 
 <div class="doc">
-<a id="lab443"></a><h2 class="section">Merging Filed Units</h2>
+<a id="lab450"></a><h2 class="section">Merging Filed Units</h2>
 
 
 <div class="paragraph"> </div>
@@ -186,7 +186,7 @@ A definition and an axiom as they are filed: closed over the frames'
 </div>
 
 <div class="doc">
-<a id="lab444"></a><h2 class="section">Privacy</h2>
+<a id="lab451"></a><h2 class="section">Privacy</h2>
 
 
 <div class="paragraph"> </div>
@@ -224,13 +224,13 @@ Elaboration into core commands, which needs no filed unit.
 </div>
 
 <div class="doc">
-<a id="lab445"></a><h2 class="section">Running</h2>
+<a id="lab452"></a><h2 class="section">Running</h2>
 
 
 <div class="paragraph"> </div>
 
-      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⊢[<span class="id" title="var">ch</span>]</span> <span class="inlinecode"><span class="id" title="var">c</span></span> <span class="inlinecode">⇝</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#d17ac3ae0558b73c784f528d3f8c6f2e"><span class="id" title="variable">Θ'</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ'</span></span>: <span class="inlinecode"><span class="id" title="var">ch</span></span> is the chain of units being loaded, the
-      one running <span class="inlinecode"><span class="id" title="var">c</span></span> first.  Only <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_load"><span class="id" title="constructor">rc_load</span></a></span> changes <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>; the premises
+      <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⊢[<span class="id" title="var">ch</span>]</span> <span class="inlinecode"><span class="id" title="var">c</span></span> <span class="inlinecode">⇝</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#d17ac3ae0558b73c784f528d3f8c6f2e"><span class="id" title="variable">Θ'</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Ξ'</span></span>: <span class="inlinecode"><span class="id" title="var">ch</span></span> is the chain of units being loaded, the
+      one running <span class="inlinecode"><span class="id" title="var">c</span></span> first.  Only <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_load"><span class="id" title="constructor">rc_load</span></a></span> changes <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>; the premises
       of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_def"><span class="id" title="constructor">rc_def</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_axiom"><span class="id" title="constructor">rc_axiom</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_mod"><span class="id" title="constructor">rc_mod</span></a></span> and <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#rc_alias"><span class="id" title="constructor">rc_alias</span></a></span> are those of
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_def"><span class="id" title="constructor">wf_gentry_def</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_axiom"><span class="id" title="constructor">wf_gentry_axiom</span></a></span>, <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gmod_nil"><span class="id" title="constructor">wf_gmod_nil</span></a></span> and
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gentry_alias"><span class="id" title="constructor">wf_gentry_alias</span></a></span>, with the freshness of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_gmod_ext"><span class="id" title="constructor">wf_gmod_ext</span></a></span>.  Privacy is checked by
@@ -353,10 +353,10 @@ Each command is checked for privacy as written, then expanded
 &nbsp;&nbsp;</div>
 
 <div class="doc">
-<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_unit"><span class="id" title="abbreviation">run_unit</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ch</span>)</span> <span class="inlinecode"><span class="id" title="var">u</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>, at the head of the chain,
+<span class="inlinecode"><a class="idref" href="Mctt.Extraction.Command.html#run_unit"><span class="id" title="abbreviation">run_unit</span></a></span> <span class="inlinecode">(<a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span> <span class="inlinecode">::</span> <span class="inlinecode"><span class="id" title="var">ch</span>)</span> <span class="inlinecode"><span class="id" title="var">u</span></span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode"><span class="id" title="var">U</span></span>: the unit <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>, at the head of the chain,
       runs from nothing filed.  Its leading loads run on the empty stack,
       then its parameters are expanded and checked against what they filed,
-      then its body runs in its own frame, named <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>; <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> is what it filed,
+      then its body runs in its own frame, named <span class="inlinecode"><a class="idref" href="Mctt.Frontend.ElabCorrect.html#Commands.fp"><span class="id" title="variable">fp</span></a></span>; <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> is what it filed,
       <span class="inlinecode"><span class="id" title="var">U</span></span> the unit. 
 </div>
 <div class="code">
@@ -386,7 +386,7 @@ The unit given on the command line: run like an imported one, with
 </div>
 
 <div class="doc">
-<a id="lab446"></a><h2 class="section">A Cycle Has No Meaning</h2>
+<a id="lab453"></a><h2 class="section">A Cycle Has No Meaning</h2>
 
 </div>
 <div class="code">
@@ -404,7 +404,7 @@ The unit given on the command line: run like an imported one, with
 </div>
 
 <div class="doc">
-<a id="lab447"></a><h2 class="section">Running is Deterministic</h2>
+<a id="lab454"></a><h2 class="section">Running is Deterministic</h2>
 
 
 <div class="paragraph"> </div>
@@ -508,7 +508,7 @@ A unit runs in a frame named by the head of its chain, so two runs of it
 </div>
 
 <div class="doc">
-<a id="lab448"></a><h2 class="section">Merging Keeps Both Sides</h2>
+<a id="lab455"></a><h2 class="section">Merging Keeps Both Sides</h2>
 
 </div>
 <div class="code">
@@ -558,13 +558,13 @@ A unit runs in a frame named by the head of its chain, so two runs of it
 </div>
 
 <div class="doc">
-<a id="lab449"></a><h2 class="section">Filing More Units Keeps an Open Stack Well Formed</h2>
+<a id="lab456"></a><h2 class="section">Filing More Units Keeps an Open Stack Well Formed</h2>
 
 
 <div class="paragraph"> </div>
 
     Each entry of each frame was checked against the units filed when the frame
-    was open; resolution only grows along <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⊑</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#d17ac3ae0558b73c784f528d3f8c6f2e"><span class="id" title="variable">Θ'</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_sub_deps"><span class="id" title="lemma">gc_sub_deps</span></a></span>), so its
+    was open; resolution only grows along <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⊑</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#d17ac3ae0558b73c784f528d3f8c6f2e"><span class="id" title="variable">Θ'</span></a></span> (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Members.html#gc_sub_deps"><span class="id" title="lemma">gc_sub_deps</span></a></span>), so its
     typing moves along an embedding.  A frame names its own unit, which must
     stay unfiled: that is the only thing <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Command.html#d17ac3ae0558b73c784f528d3f8c6f2e"><span class="id" title="variable">Θ'</span></a></span> has to grant. 
 </div>
@@ -653,7 +653,7 @@ A filed unit, which sees no frame but its own, named by its path: that
 </div>
 
 <div class="doc">
-<a id="lab450"></a><h2 class="section">Merging Keeps Well-formedness</h2>
+<a id="lab457"></a><h2 class="section">Merging Keeps Well-formedness</h2>
 
 
 <div class="paragraph"> </div>
@@ -684,7 +684,7 @@ A filed unit, which sees no frame but its own, named by its path: that
 </div>
 
 <div class="doc">
-<a id="lab451"></a><h2 class="section">Running Keeps the State Well Formed</h2>
+<a id="lab458"></a><h2 class="section">Running Keeps the State Well Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -1029,7 +1029,7 @@ What a load files is well formed, whatever the import checks.
 </div>
 
 <div class="doc">
-<a id="lab452"></a><h2 class="section">Restricting to What a Unit Imported</h2>
+<a id="lab459"></a><h2 class="section">Restricting to What a Unit Imported</h2>
 
 
 <div class="paragraph"> </div>
@@ -1118,8 +1118,8 @@ What a load files is well formed, whatever the import checks.
 </div>
 
 <div class="doc">
-A judgment state below <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span>, with domain <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>, is equivalent to the
-    restriction of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> to <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>. 
+A judgment state below <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span>, with domain <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>, is equivalent to the
+    restriction of <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> to <span class="inlinecode"><a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Lemma</span> <a id="equiv_restrict" class="idref" href="#equiv_restrict"><span class="id" title="lemma">equiv_restrict</span></a> : <span class="id" title="keyword">forall</span> <a id="c5eb0ecc3bd4be0c5a15253db68846ed" class="idref" href="#c5eb0ecc3bd4be0c5a15253db68846ed"><span class="id" title="binder">ΘA</span></a> <a id="57294ee25d110b73095a6e792eef0d19" class="idref" href="#57294ee25d110b73095a6e792eef0d19"><span class="id" title="binder">Θ</span></a> <a id="S:444" class="idref" href="#S:444"><span class="id" title="binder">S</span></a>,<br/>
@@ -1187,7 +1187,7 @@ Term judgments and <span class="inlinecode">⊢<span class="id" title="var">g</s
 </div>
 
 <div class="doc">
-<a id="lab453"></a><h2 class="section">The Restriction is Well Formed</h2>
+<a id="lab460"></a><h2 class="section">The Restriction is Well Formed</h2>
 
 
 <div class="paragraph"> </div>
@@ -1230,7 +1230,7 @@ Term judgments and <span class="inlinecode">⊢<span class="id" title="var">g</s
 </div>
 
 <div class="doc">
-<a id="lab454"></a><h2 class="section">Chains and Stacks of Runs</h2>
+<a id="lab461"></a><h2 class="section">Chains and Stacks of Runs</h2>
 
 </div>
 <div class="code">

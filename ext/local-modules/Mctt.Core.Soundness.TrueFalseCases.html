@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab334"></a><h1 class="section">The Unit and Empty Types in the Gluing Model</h1>
+<a id="lab338"></a><h1 class="section">The Unit and Empty Types in the Gluing Model</h1>
 
 
 <div class="paragraph"> </div>
@@ -96,7 +96,7 @@
 <span class="id" title="keyword">Lemma</span> <a id="glu_rel_exp_True_small" class="idref" href="#glu_rel_exp_True_small"><span class="id" title="lemma">glu_rel_exp_True_small</span></a> : <span class="id" title="keyword">forall</span> {<a id="6b23b3527a5ae82de0dbe08d52926f19" class="idref" href="#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="binder">Γ</span></a>},<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#6b23b3527a5ae82de0dbe08d52926f19"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#c157fef4ebd87b38ad564c1b1bbe6915"><span class="id" title="notation">⊤</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#40570607d19085dd952e0d182d80f3dc"><span class="id" title="notation">Type@0</span></a>.<br/>
-<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#glu_rel_exp_True_univ"><span class="id" title="lemma">glu_rel_exp_True_univ</span></a> (<span class="id" title="var">u</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#us"><span class="id" title="constructor">us</span></a> 0)); <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#glu_rel_exp_True_univ"><span class="id" title="lemma">glu_rel_exp_True_univ</span></a> (<span class="id" title="var">u</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#us"><span class="id" title="constructor">us</span></a> <a class="idref" href="Mctt.Core.Syntactic.Ordinals.html#oz"><span class="id" title="definition">oz</span></a>)); <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_exp_True</span> : <span class="id" title="var">mctt</span>.<br/>
@@ -131,7 +131,7 @@
 <span class="id" title="keyword">Lemma</span> <a id="glu_rel_exp_False_small" class="idref" href="#glu_rel_exp_False_small"><span class="id" title="lemma">glu_rel_exp_False_small</span></a> : <span class="id" title="keyword">forall</span> {<a id="8a5fb5e1be55058be9aa6b31d1a8bfab" class="idref" href="#8a5fb5e1be55058be9aa6b31d1a8bfab"><span class="id" title="binder">Γ</span></a>},<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#e23b7ac855a2ed06c5566b8263fb3d2f"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#8a5fb5e1be55058be9aa6b31d1a8bfab"><span class="id" title="variable">Γ</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#8a5fb5e1be55058be9aa6b31d1a8bfab"><span class="id" title="variable">Γ</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">⊩</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#71b25d547abdd45a3e9d1d457a3c60be"><span class="id" title="notation">⊥</span></a> <a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#5cef21dc800f08badff6de9ebbf19285"><span class="id" title="notation">:</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#40570607d19085dd952e0d182d80f3dc"><span class="id" title="notation">Type@0</span></a>.<br/>
-<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#glu_rel_exp_False_univ"><span class="id" title="lemma">glu_rel_exp_False_univ</span></a> (<span class="id" title="var">u</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#us"><span class="id" title="constructor">us</span></a> 0)); <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
+<span class="id" title="keyword">Proof</span>. <span class="id" title="tactic">intros</span>; <span class="id" title="tactic">apply</span> (<a class="idref" href="Mctt.Core.Soundness.TrueFalseCases.html#glu_rel_exp_False_univ"><span class="id" title="lemma">glu_rel_exp_False_univ</span></a> (<span class="id" title="var">u</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#us"><span class="id" title="constructor">us</span></a> <a class="idref" href="Mctt.Core.Syntactic.Ordinals.html#oz"><span class="id" title="definition">oz</span></a>)); <span class="id" title="tactic">assumption</span>. <span class="id" title="keyword">Qed</span>.<br/>
 
 <br/>
 <span class="id" title="keyword">Hint Resolve</span> <span class="id" title="var">glu_rel_exp_False</span> : <span class="id" title="var">mctt</span>.<br/>
@@ -159,7 +159,7 @@
 </div>
 
 <div class="doc">
-<a id="lab335"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
+<a id="lab339"></a><h2 class="section">Extension by <span class="inlinecode">⊥</span></h2>
 
 </div>
 <div class="code">
@@ -211,7 +211,7 @@
 </div>
 
 <div class="doc">
-<a id="lab336"></a><h2 class="section">The Eliminator</h2>
+<a id="lab340"></a><h2 class="section">The Eliminator</h2>
 
 
 <div class="paragraph"> </div>

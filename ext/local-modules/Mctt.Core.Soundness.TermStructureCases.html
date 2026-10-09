@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab333"></a><h1 class="section">Variables and Presuppositions</h1>
+<a id="lab337"></a><h1 class="section">Variables and Presuppositions</h1>
 
 
 <div class="paragraph"> </div>
@@ -94,8 +94,8 @@
 </div>
 
 <div class="doc">
-The variable case. Syntactically it is direct: <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span>)[σ]</span> is
-    <span class="inlinecode">#<span class="id" title="var">n</span>[<span class="id" title="var">Wk</span>⨟σ]</span> and <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><span class="id" title="var">n</span>)</span> is <span class="inlinecode">ρ↯</span> <span class="inlinecode"><span class="id" title="var">n</span></span>, so one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift"><span class="id" title="lemma">exp_sub_shift</span></a></span> suffices. The
+The variable case. Syntactically it is direct: <span class="inlinecode">#(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)[σ]</span> is
+    <span class="inlinecode">#<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>[<span class="id" title="var">Wk</span>⨟σ]</span> and <span class="inlinecode">ρ</span> <span class="inlinecode">(<a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#S"><span class="id" title="constructor">S</span></a></span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span> is <span class="inlinecode">ρ↯</span> <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span>, so one <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Substitution.html#exp_sub_shift"><span class="id" title="lemma">exp_sub_shift</span></a></span> suffices. The
     type value needs more work: <span class="inlinecode"><a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#cons_glu_sub_pred"><span class="id" title="inductive">cons_glu_sub_pred</span></a></span> supplies <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>⟧(ρ↯)</span> while
     the goal mentions <span class="inlinecode">⟦<a class="idref" href="Mctt.Core.Semantic.PER.Chain.html#RelChain.A"><span class="id" title="variable">A</span></a>[↑]ʷ⟧(ρ)</span>, and the two are not equal.
     <span class="inlinecode"><a class="idref" href="Mctt.Core.Completeness.FundamentalTheorem.html#completeness_fundamental_typ_shift"><span class="id" title="lemma">completeness_fundamental_typ_shift</span></a></span> relates them, and

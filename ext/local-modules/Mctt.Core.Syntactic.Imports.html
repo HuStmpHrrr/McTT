@@ -32,13 +32,13 @@
 </div>
 
 <div class="doc">
-<a id="lab354"></a><h1 class="section">Opens: Generation and Expansion</h1>
+<a id="lab358"></a><h1 class="section">Opens: Generation and Expansion</h1>
 
 
 <div class="paragraph"> </div>
 
-    An open declares names for the members of a module: <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="var">use</span></span> <span class="inlinecode">(<span class="id" title="var">n</span>)</span>
-    makes <span class="inlinecode"><span class="id" title="var">n</span></span> a private definition equal to <span class="inlinecode"><span class="id" title="var">E.n</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> makes <span class="inlinecode"><span class="id" title="var">y</span></span>
+    An open declares names for the members of a module: <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="var">use</span></span> <span class="inlinecode">(<a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a>)</span>
+    makes <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.LevelEq.html#Fixed_GCtx.n"><span class="id" title="variable">n</span></a></span> a private definition equal to <span class="inlinecode"><span class="id" title="var">E.n</span></span>, <span class="inlinecode"><span class="id" title="var">open</span></span> <span class="inlinecode"><span class="id" title="var">E</span></span> <span class="inlinecode"><span class="id" title="keyword">as</span></span> <span class="inlinecode"><span class="id" title="var">y</span></span> makes <span class="inlinecode"><span class="id" title="var">y</span></span>
     a private alias of <span class="inlinecode"><span class="id" title="var">E</span></span>.  What an item declares is computed from the
     member's type (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Imports.html#import_gen"><span class="id" title="definition">import_gen</span></a></span>), so it needs the member types of the global
     context, given here as an oracle (<span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Imports.html#mt_oracle"><span class="id" title="definition">mt_oracle</span></a></span>) that <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Imports.html#mt_spec"><span class="id" title="definition">mt_spec</span></a></span> ties to
@@ -69,11 +69,11 @@
 </div>
 
 <div class="doc">
-<a id="lab355"></a><h2 class="section">Oracles</h2>
+<a id="lab359"></a><h2 class="section">Oracles</h2>
 
 <div class="paragraph"> </div>
 
- A member-type oracle, and what makes it the member types of <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span>. 
+ A member-type oracle, and what makes it the member types of <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span>. 
 </div>
 <div class="code">
 <span class="id" title="keyword">Definition</span> <a id="mt_oracle" class="idref" href="#mt_oracle"><span class="id" title="definition">mt_oracle</span></a> : <span class="id" title="keyword">Type</span> := <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#ctx"><span class="id" title="abbreviation">ctx</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#modexp"><span class="id" title="inductive">modexp</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#list"><span class="id" title="inductive">list</span></a> <span class="id" title="inductive">string</span> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Notations.html#::type_scope:x_'-&gt;'_x"><span class="id" title="notation">-&gt;</span></a> <a class="idref" href="http://rocq-prover.org/doc/V9.2/corelib//Corelib.Init.Datatypes.html#option"><span class="id" title="inductive">option</span></a> <a class="idref" href="Mctt.Core.Syntactic.Members.html#mres"><span class="id" title="inductive">mres</span></a>.<br/>
@@ -103,7 +103,7 @@ Two oracles meeting the specification agree everywhere.
 </div>
 
 <div class="doc">
-<a id="lab356"></a><h2 class="section">Results</h2>
+<a id="lab360"></a><h2 class="section">Results</h2>
 
 <div class="paragraph"> </div>
 
@@ -171,7 +171,7 @@ A name the import declares twice
 </div>
 
 <div class="doc">
-<a id="lab357"></a><h2 class="section">Generation</h2>
+<a id="lab361"></a><h2 class="section">Generation</h2>
 
 <div class="paragraph"> </div>
 
@@ -286,7 +286,7 @@ The first name a list repeats.
 </div>
 
 <div class="doc">
-<a id="lab358"></a><h2 class="section">Expansion</h2>
+<a id="lab362"></a><h2 class="section">Expansion</h2>
 
 
 <div class="paragraph"> </div>
@@ -376,7 +376,7 @@ The generated entries appended to <span class="inlinecode"><span class="id" titl
 <br/>
 &nbsp;&nbsp;<span class="id" title="keyword">Fixpoint</span> <a id="exp_xp" class="idref" href="#exp_xp"><span class="id" title="definition">exp_xp</span></a> (<a id="S:86" class="idref" href="#S:86"><span class="id" title="binder">S</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Imports.html#skel"><span class="id" title="abbreviation">skel</span></a>) (<a id="M:87" class="idref" href="#M:87"><span class="id" title="binder">M</span></a> : <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a>) {<span class="id" title="keyword">struct</span> <span class="id" title="var">M</span>} : <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xres"><span class="id" title="inductive">xres</span></a> <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#exp"><span class="id" title="inductive">exp</span></a> :=<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;<span class="id" title="keyword">match</span> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a> <span class="id" title="keyword">with</span><br/>
-&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_llit"><span class="id" title="constructor">a_llit</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_var"><span class="id" title="constructor">a_var</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xok"><span class="id" title="constructor">xok</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_typ"><span class="id" title="constructor">a_typ</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_level"><span class="id" title="constructor">a_level</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_llit"><span class="id" title="constructor">a_llit</span></a> <span class="id" title="var">_</span> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_nat"><span class="id" title="constructor">a_nat</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_zero"><span class="id" title="constructor">a_zero</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_True"><span class="id" title="constructor">a_True</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_true"><span class="id" title="constructor">a_true</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_False"><span class="id" title="constructor">a_False</span></a> | <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_var"><span class="id" title="constructor">a_var</span></a> <span class="id" title="var">_</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xok"><span class="id" title="constructor">xok</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a><br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">let</span></a><a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">+</span></a> <a id="M':111" class="idref" href="#M':111"><span class="id" title="binder">M'</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">:=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#exp_xp:102"><span class="id" title="definition">exp_xp</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#S:86"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xok"><span class="id" title="constructor">xok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_univ"><span class="id" title="constructor">a_univ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M':111"><span class="id" title="variable">M'</span></a>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">let</span></a><a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">+</span></a> <a id="M':112" class="idref" href="#M':112"><span class="id" title="binder">M'</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">:=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#exp_xp:102"><span class="id" title="definition">exp_xp</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#S:86"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xok"><span class="id" title="constructor">xok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succ"><span class="id" title="constructor">a_succ</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M':112"><span class="id" title="variable">M'</span></a>)<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;| <a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succl"><span class="id" title="constructor">a_succl</span></a> <span class="id" title="var">M</span> =&gt; <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">let</span></a><a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">+</span></a> <a id="M':113" class="idref" href="#M':113"><span class="id" title="binder">M'</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">:=</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#exp_xp:102"><span class="id" title="definition">exp_xp</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#S:86"><span class="id" title="variable">S</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M:87"><span class="id" title="variable">M</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#d5c8da7e7103a0a8967fbd656cf8e725"><span class="id" title="notation">in</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#xok"><span class="id" title="constructor">xok</span></a> (<a class="idref" href="Mctt.Core.Syntactic.Syntax.html#a_succl"><span class="id" title="constructor">a_succl</span></a> <a class="idref" href="Mctt.Core.Syntactic.Imports.html#M':113"><span class="id" title="variable">M'</span></a>)<br/>
@@ -553,7 +553,7 @@ The skeleton of a frame: its parameters are assumptions.
 </div>
 
 <div class="doc">
-<a id="lab359"></a><h2 class="section">The Declarative Wrappers</h2>
+<a id="lab363"></a><h2 class="section">The Declarative Wrappers</h2>
 
 
 <div class="paragraph"> </div>
@@ -580,7 +580,7 @@ The skeleton of a frame: its parameters are assumptions.
 </div>
 
 <div class="doc">
-<a id="lab360"></a><h2 class="section">Expansion Reads the Oracle Only</h2>
+<a id="lab364"></a><h2 class="section">Expansion Reads the Oracle Only</h2>
 
 </div>
 <div class="code">
@@ -719,7 +719,7 @@ The specification depends on member types only, so an oracle meeting it
 </div>
 
 <div class="doc">
-<a id="lab361"></a><h2 class="section">Expansion Keeps the Command</h2>
+<a id="lab365"></a><h2 class="section">Expansion Keeps the Command</h2>
 
 
 <div class="paragraph"> </div>

@@ -32,7 +32,7 @@
 </div>
 
 <div class="doc">
-<a id="lab362"></a><h1 class="section">Presupposition</h1>
+<a id="lab366"></a><h1 class="section">Presupposition</h1>
 
 
 <div class="paragraph"> </div>
@@ -60,7 +60,7 @@
 
 <ul class="doclist">
 <li> the <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_eq_subtyp"><span class="id" title="constructor">wf_exp_eq_subtyp</span></a></span> case of <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_exp_eq"><span class="id" title="lemma">presup_exp_eq</span></a></span> gets
-      <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> from a premise rather than from
+      <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> <span class="inlinecode">⊢</span> <span class="inlinecode"><span class="id" title="var">A'</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" title="keyword">Type</span>ω@<a class="idref" href="Mctt.Core.Soundness.LogicalRelation.Definitions.html#Fixed_GCtx.Gluing.i"><span class="id" title="variable">i</span></a></span> from a premise rather than from
       <span class="inlinecode"><a class="idref" href="Mctt.Core.Syntactic.Presup.html#presup_subtyp"><span class="id" title="lemma">presup_subtyp</span></a></span>;
 
 </li>
@@ -98,7 +98,7 @@
 </div>
 
 <div class="doc">
-<a id="lab363"></a><h2 class="section">The Two Sides of a Term Equation</h2>
+<a id="lab367"></a><h2 class="section">The Two Sides of a Term Equation</h2>
 
 </div>
 <div class="code">
@@ -119,17 +119,22 @@ The universe congruence is stated at <span class="inlinecode"><span class="id" t
       is the only one of that shape. 
 </div>
 <div class="code">
-&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_univ_cong_right"><span class="id" title="lemma">wf_univ_cong_right</span></a>; <span class="id" title="var">mauto</span> 2 ].<br/>
+&nbsp;&nbsp;<span class="id" title="var">all</span>: <span class="id" title="tactic">try</span> <span class="id" title="tactic">solve</span> [ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_univ_cong_right"><span class="id" title="lemma">wf_univ_cong_right</span></a>; <span class="id" title="var">mauto</span> 2 ].<br/>
 
 <br/>
 </div>
 
 <div class="doc">
-The right-hand side of the distributivity equation of levels is one
-      level operation deeper than <span class="inlinecode"><span class="id" title="var">mauto</span></span> <span class="inlinecode">3</span> reaches. 
+The left-hand side of absorption is at the sort above the one its
+      level is typed at, and the right-hand side of the distributivity
+      equation of levels is one level operation deeper than <span class="inlinecode"><span class="id" title="var">mauto</span></span> <span class="inlinecode">3</span>
+      reaches. 
 </div>
 <div class="code">
-&nbsp;&nbsp;- <span class="id" title="var">mauto</span> 4.<br/>
+&nbsp;&nbsp;1:{ <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_maxl"><span class="id" title="constructor">wf_maxl</span></a>;<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ <span class="id" title="tactic">eapply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_exp_subtyp'"><span class="id" title="lemma">wf_exp_subtyp'</span></a>; [ <span class="id" title="var">eassumption</span> | <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_subtyp_level"><span class="id" title="constructor">wf_subtyp_level</span></a>; [ <span class="id" title="var">lia</span> | <span class="id" title="tactic">assumption</span> ] ]<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| <span class="id" title="tactic">apply</span> <a class="idref" href="Mctt.Core.Syntactic.System.Definitions.html#wf_llit"><span class="id" title="constructor">wf_llit</span></a>; [ <span class="id" title="var">cbn</span>; <span class="id" title="var">lia</span> | <span class="id" title="tactic">assumption</span> ] ]. }<br/>
+&nbsp;&nbsp;1: <span class="id" title="var">mauto</span> 4.<br/>
 
 <br/>
 </div>
@@ -331,7 +336,7 @@ application, right: the type is the codomain at the argument, and the
 </div>
 
 <div class="doc">
-<a id="lab364"></a><h2 class="section">The Two Sides of a Refinement</h2>
+<a id="lab368"></a><h2 class="section">The Two Sides of a Refinement</h2>
 
 
 <div class="paragraph"> </div>
@@ -376,7 +381,7 @@ application, right: the type is the codomain at the argument, and the
 </div>
 
 <div class="doc">
-<a id="lab365"></a><h2 class="section">Substitution Equivalence</h2>
+<a id="lab369"></a><h2 class="section">Substitution Equivalence</h2>
 
 </div>
 <div class="code">
@@ -394,14 +399,14 @@ application, right: the type is the codomain at the argument, and the
 </div>
 
 <div class="doc">
-<a id="lab366"></a><h2 class="section">Saturating the Context, with Equality</h2>
+<a id="lab370"></a><h2 class="section">Saturating the Context, with Equality</h2>
 
 
 <div class="paragraph"> </div>
 
     <span class="inlinecode"><span class="id" title="var">gen_presup</span></span> extends <span class="inlinecode"><span class="id" title="var">gen_core_presup</span></span> with the two statements above.  The
     equality case calls <span class="inlinecode"><span class="id" title="var">gen_core_presup</span></span> on the left-hand typing it has just
-    produced, so that <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#4d73d8e12118808f108fd52ca53247ca"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Extraction.Readback.html#32d50ceb1cc12b2ecb97842ee328776e"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and the type of the equation are added as
+    produced, so that <span class="inlinecode">⊢</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#0651929dedc784eef95cb4ec1565b9c6"><span class="id" title="variable">Θ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><a class="idref" href="Mctt.Reference.Refinement.html#4ef6e61cb539e627eef2efca240dadfe"><span class="id" title="variable">Ξ</span></a></span> <span class="inlinecode">⍮</span> <span class="inlinecode"><span class="id" title="var">Γ</span></span> and the type of the equation are added as
     well. 
 </div>
 <div class="code">
