@@ -48,6 +48,16 @@ brief says so explicitly.
   `main_sound` / `main_complete`. Menhir generates it; leave it.
 - **Driver build:** `dune build --root .` and `dune test --root .` at the
   worktree root. Plain `dune` picks up the parent project.
+- **A build longer than 30 minutes is a bug.** A full `real-all` takes about
+  10 minutes; a single file a few minutes at most. If any build, single-file
+  compile or MCP check runs past 30 minutes, stop it and investigate at once:
+  - find the file and the sentence that hangs (wrap tactics in `timeout`,
+    step obligations one by one through the rocq MCP);
+  - fix the cause (e.g. a rule shape that makes inversion loop, a tactic
+    search that explodes), or write that proof out explicitly;
+  - kill any leftover compile processes you started;
+  - report the diagnosis.
+  Never leave a long build running in the background and carry on.
 
 ## Invariants of the development
 

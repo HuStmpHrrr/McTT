@@ -15,7 +15,7 @@ You write McTT programs: mathematics and programs in a small dependent type theo
 **How to work:**
 - **Setup:** build the driver in your worktree first. Run the full Rocq build if `driver/extracted` is stale, then `dune build --root .`. Run programs from `lib/` with `../_build/default/driver/mctt.exe <file>`.
 - **Layout:**
-  - reusable units live in `lib/Prelude/<Area>/<Name>.mctt` as `module Prelude::<Area>::<Name>`;
+  - reusable units live in `lib/Prelude/<Area>/<Name>.mctt` as `module Prelude›<Area>›<Name>`;
   - laws go in `<Name>/Properties.mctt` or in submodules;
   - clients go directly in `lib/`;
   - file and module names are CamelCase;
@@ -30,7 +30,7 @@ You write McTT programs: mathematics and programs in a small dependent type theo
   - `let` annotations only where they document something.
 - **Performance:**
   - checking a closed `Eq n n` doubles with each +1 in `n`, so keep closed proof instances at about 20 or below;
-  - a `rec` whose `zero` branch makes a recursive call is exponential: use `Prelude::Arith::Decide.pick` (thunked branches) instead;
+  - a `rec` whose `zero` branch makes a recursive call is exponential: use `Prelude›Arith›Decide.pick` (thunked branches) instead;
   - no program may take more than about 60 s. Report timings before and after.
 - **Before committing:** every `lib/*.mctt` program and Prelude unit exits 0, `examples/` behaves as before, and `dune test --root .` passes.
 - **Hiding:** check by hand that every intended helper is hidden from client units, including through aliases and imports. Report the error texts, but don't commit negative tests.

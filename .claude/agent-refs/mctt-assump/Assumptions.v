@@ -1,5 +1,6 @@
 From Mctt Require Import Entrypoint.
-From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect.
+From Mctt Require Import Core.Completeness Core.Soundness Core.Semantic.Consequences Extraction.Command Frontend.ElabCorrect Algorithmic.Typing.Lemmas Algorithmic.Strengthening Core.Semantic.Avoid Core.NbEWeakening.
+From Mctt Require Import Reference.Refinement Extraction.Simulation Extraction.GlobalCheck.
 Print Assumptions Mctt.Core.Completeness.completeness.
 Print Assumptions Mctt.Core.Completeness.completeness_gctx.
 Print Assumptions Mctt.Core.Soundness.soundness.
@@ -9,8 +10,73 @@ Print Assumptions Mctt.Core.Semantic.Consequences.consistency.
 Print Assumptions Mctt.Core.Semantic.Consequences.consistency_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_gctx.
 Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_nat_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_large.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_large_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_large_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_large_typ_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_stuck_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_large_typ_stuck_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_large_typ_no_axioms.
+Print Assumptions alg_type_infer_typ_complete.
+Print Assumptions alg_type_infer_typ_complete_tm.
+Print Assumptions alg_type_infer_large_typ_complete.
+Print Assumptions nbe_wk_fresh.
+Print Assumptions nf_strengthen_shift.
+Print Assumptions level_nf_strengthen.
+Print Assumptions nbe_wk.
+Print Assumptions nbe_ty_wk.
+Print Assumptions nbe_wk_fresh_sem.
+Print Assumptions exp_eq_strengthen_sem.
 Print Assumptions prog_impl_sound.
 Print Assumptions prog_impl_complete.
 Print Assumptions main_sound.
 Print Assumptions main_complete.
 Print Assumptions elaborate_core_iff.
+(* Sorted levels: the general statements and their corollaries. *)
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_stuck.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_lit.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_lit_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_lit_stuck.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_lit_stuck_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_typ_lit_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_lit.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_lit_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_lit_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_False.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_False_no_axioms.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_False_gctx.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_False_prog.
+Print Assumptions Mctt.Core.Semantic.Consequences.consistency_False_run.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_large_typ.
+Print Assumptions Mctt.Core.Semantic.Consequences.canonical_form_of_large_typ_stuck.
+Print Assumptions Mctt.Core.Semantic.Consequences.typ_nf_below_of_nbe.
+Print Assumptions Mctt.Core.Semantic.Consequences.subtyp_suniv_bound.
+Print Assumptions Mctt.Core.Semantic.Consequences.subtyp_suniv_lit_bound.
+Print Assumptions Mctt.Algorithmic.Typing.Lemmas.alg_type_infer_typ_complete_lit.
+Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete'.
+Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_typ_complete_lit'.
+Print Assumptions Mctt.Extraction.GlobalCheck.alg_type_infer_large_typ_complete'.
+(* Refinement: the fast extracted code agrees with the reference. *)
+Print Assumptions Mctt.Reference.Refinement.type_check_in_refines.
+Print Assumptions Mctt.Reference.Refinement.type_infer_in_refines.
+Print Assumptions Mctt.Reference.Refinement.ext_check_refines.
+Print Assumptions Mctt.Reference.Refinement.unit_check_refines.
+Print Assumptions Mctt.Reference.Refinement.modexp_check_refines.
+Print Assumptions Mctt.Reference.Refinement.eval_exp_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.read_typ_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.read_nf_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.initial_env_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_env_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_ty_impl_refines.
+Print Assumptions Mctt.Reference.Refinement.nbe_impl_refines.
+Print Assumptions Mctt.Extraction.Simulation.feval_sim.
+Print Assumptions Mctt.Extraction.Simulation.fread_sim.
+Print Assumptions Mctt.Extraction.Simulation.fread_typ_sim.
+Print Assumptions Mctt.Extraction.Simulation.fread_nf_sim.
+Print Assumptions Mctt.Extraction.Simulation.feval_exp_sim.
+Print Assumptions Mctt.Extraction.Simulation.feval_app_sim.
+Print Assumptions Mctt.Extraction.Simulation.feval_clo_sim.
+Print Assumptions Mctt.Extraction.Simulation.feval_clo2_sim.

@@ -4,27 +4,34 @@
 
 **Units.**
 - `Prelude/` holds the reusable library, organized hierarchically:
-  `Prelude::Logic`; `Prelude::Function::{Iter, Combinators}`; and
-  `Prelude::Arith::{Equality, Plus, Mult, Sub, MinMax, Order, Monotone, Lattice, Parity,
-  Decide, Induction, Ackermann, Pow, Sum, Factorial, Div, Divides}`; `Prelude::Data::Vec`
-  and its laws (being renamed to `Prelude::Data::Vec::Properties`).
+  `Prelude›Logic`; `Prelude›Function›{Iter, Combinators}`;
+  `Prelude›Arith›{Equality, Plus, Mult, Sub, MinMax, Order, Monotone, Lattice, Parity,
+  Decide, Induction, Ackermann, Pow, Sum, Factorial, Div, Divides, …}`;
+  `Prelude›Data›{Vec, Stream, Church}` and their `›Properties`; `Prelude›Algebra›…`;
+  `Prelude›Universe›{Levels, Formers}`.
   New units go in the right subfolder; create one (e.g. `Prelude/Data/`) if
   none fits.
-- The unit `Prelude::A::B` lives in `lib/Prelude/A/B.mctt` and starts with
-  `module Prelude::A::B where … end`.
-- `Nat` is a keyword, so it can't be a path segment.
+- The unit `Prelude›A›B` lives in `lib/Prelude/A/B.mctt` and starts with
+  `module Prelude›A›B where … end`.
+- `Nat` (`ℕ`) is a keyword, so it can't be a path segment.
 - Only programs, the clients, live directly in `lib/`.
-- Naming convention: definitions go in `X.mctt` (`Prelude::A::X`). When laws
+- Naming convention: definitions go in `X.mctt` (`Prelude›A›X`). When laws
   are separate from definitions, they go in `X/Properties.mctt`
-  (`Prelude::A::X::Properties`). A file `X.mctt` and a directory `X/` can sit
+  (`Prelude›A›X›Properties`). A file `X.mctt` and a directory `X/` can sit
   side by side.
-- When a type argument (e.g. `A`) is the same for every operation, make it a unit parameter, as in `Prelude::Data::Vec (A : Type@0)`; operations needing other types take only those.
+- When a type argument (e.g. `A`) is the same for every operation, make it a unit parameter, as in `Prelude›Data›Vec (u : Level) (A : Type@{u})`; operations needing other types take only those.
+- Abstract universe levels where a definition is naturally level-generic: a level
+  parameter `(u : Level)` on the unit or module, types at `Type@{u}`. A common pattern is a
+  level-generic submodule plus a level-0 export, e.g. `module Negation (u : Level) … end`
+  then `open Negation 0l export (Not; absurd)`. Levels: literals `0l`, `1l`, …,
+  `succl t`, `maxl t u`; `Type@n` = `Type@{nl}`. See `AGENT/universes.md`.
 - Known cost: checking `Eq n n` doubles in time with each +1 in n, so keep
   closed proof instances at numbers of about 20 or below. Plain computations
   are cheap.
-- Leading imports go before it: `import Prelude::Arith::Equality use (Eq; refl)`, or
-  `import Prelude::Function::Iter as Iter`.
-- Units with parameters: `module Prelude::Function::Iter (A : Type@0) (f : …) where`.
+- Leading imports go before it: `import Prelude›Arith›Equality use (Eq; refl)`, or
+  `import Prelude›Function›Iter as Iter` (inside the module body unless a parameter type
+  needs it).
+- Units with parameters: `module Prelude›Function›Iter (u : Level) (A : Type@{u}) (f : …) where`.
 - File names are CamelCase and match the module names.
 
 **Lexical rules.**
@@ -32,29 +39,31 @@
   and no digits.
 - Comments are `(* … *)`.
 
-**Syntax.**
-- `def name (x : A) (y : B) : T := body end`
-- `fun (x : A) (y : B) -> M`
-- `forall (x : A) (y : B) -> T`
-- `rec n return y . T | zero => M | succ p, ih => N end`
-- `let x : A := a; y : B := b in body end`
-- `let module M := Unit args; …`
+**Syntax.** Write the Unicode forms (the printer prints them; ASCII is still accepted):
+`→` (`->`), `⇒` (`=>`), `λ` (`fun`), `∀` or `Π` (`forall`), `≔` (`:=`), `›` (`::`),
+`ℕ` (`Nat`), `⊤` (`True`), `⊥` (`False`), `⋆` (`true`), `ω` (`omega`).
+- `def name (x : A) (y : B) : T ≔ body end`
+- `λ (x : A) (y : B) → M`
+- `∀ (x : A) (y : B) → T`
+- `rec n return y . T | zero ⇒ M | succ p, ih ⇒ N end`
+- `let x : A ≔ a; y : B ≔ b in body end`
+- `let module M ≔ Unit args; …`
 - `exfalso t return x . P`
-- `True`, `true`, `False`; `Type@0`, `Type@1`, …
+- `⊤`, `⋆`, `⊥`; `Type@0`, `Type@1`, …, `Type@{u}`, `Type@ω`; `Level`, `0l`, `succl`, `maxl`
 - `eval M` and `eval M : T`.
-- Module arguments come after the projection: `Iter.iter Nat f n a`.
+- Module arguments come after the projection: `Iter.iter 0l ℕ f n a`.
 - Look at the existing `lib/Prelude/*.mctt` and `lib/NatTheory.mctt` for
   working examples.
 
 **Propositions.**
-- A proposition is a type in `Type@0`.
-- Equality of numbers is `Prelude::Arith::Equality.Eq n m`, which computes to `True` or
-  `False`. Use `refl`, `sym` and `trans` from there.
+- A proposition is a type in `Type@0` (or `Type@{u}` for level-generic connectives).
+- Equality of numbers is `Prelude›Arith›Equality.Eq n m`, which computes to `⊤` or
+  `⊥`. Use `refl`, `sym` and `trans` from there.
 - A proof is a term, usually by induction with `rec`.
-- An impossible case is closed with `Prelude::Logic.absurd T h`. `Equality` also has `cong` and `transport`, where
-  `h : False`.
+- An impossible case is closed with `Prelude›Logic.absurd T h`. `Equality` also has `cong` and `transport`, where
+  `h : ⊥`.
 - Conversion is by normalization, so `Eq (succ a) (succ b)` is literally
-  `Eq a b`, `Eq 0 (succ n)` is `False`, and so on. Choose recursion arguments
+  `Eq a b`, `Eq 0 (succ n)` is `⊥`, and so on. Choose recursion arguments
   so the goal computes.
 
 **Showcase.**
@@ -62,7 +71,7 @@
   where natural, and no client-specific code.
 - Each track also writes a client `lib/<Topic>.mctt` (module `<Topic>`). It
   imports the library and `eval`s closed instances. A closed instance of a
-  theorem normalizes to `true : True`.
+  theorem normalizes to `⋆ : ⊤`.
 
 **Tests.** Add one expect test per client to `driver/Test.ml`, in this form:
 ```
