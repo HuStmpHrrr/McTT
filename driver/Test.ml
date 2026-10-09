@@ -2873,7 +2873,7 @@ let%expect_test "mctt-doc: links" =
     add line 206: Prelude›Arith›Plus#plus
     P line 205: declares #Adding.P
     P line 206: Tutorial#Adding.P
-    addIter line 277: Tutorial#Adder.addIter
+    addIter line 281: Tutorial#Adder.addIter
     x line 42: declares #l11
     x line 42: Tutorial#l11
     |}]

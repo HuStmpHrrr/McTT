@@ -223,10 +223,10 @@ end
 
 eval Counting.seven
 
-(* Imports and opens may also precede the unit's header, but only for what
-   the unit's parameter types need; everything else is imported inside the
-   module, as at the top of this file. Leading ones may [use] and [as] but
-   not [export]:
+(* Imports and opens may also precede the unit's header. By convention they
+   are only those the unit's parameter types need; everything else is
+   imported inside the module, as at the top of this file. Leading ones may
+   [use] and [as] but not [export]:
      import Prelude›Arith›Equality use (Eq)
      module Proofs (h : Eq 1 1) where … end *)
 
@@ -247,10 +247,14 @@ eval let module Doubler (n : ℕ) where
      import X›Y     Error: import is not allowed in a local module; use open
      eval M         Error: eval is not allowed in a local module
      axiom x : T    Error: axioms are not allowed in a local module
-   An abstract member, or an abstract keyword, makes the whole let
-   ill-typed: "Error: let module M1 where … end in 0 end has no inferable
-   type". Using [Doubler.base] in the let's body gives "Error: base is
-   private in a local module, but it is used outside it". *)
+
+   An abstract member, or a keyword that implies [abstract], makes the
+   whole let ill-typed:
+     Error: let module M1 where … end in 0 end has no inferable type
+
+   A private member is not usable in the let's body; [Doubler.base] there
+   gives:
+     Error: base is private in a local module, but it is used outside it *)
 
 (* 13. Putting it together: a parameterized module with a theorem proved by
    induction, opened in a local module and instantiated. *)
