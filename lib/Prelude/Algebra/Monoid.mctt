@@ -1,16 +1,17 @@
 (* Monoids over a setoid.  The unit is parameterized by a level [u], a
-   carrier [M] in [Type@{u}], an equivalence [R] on it with its three laws, an operation [op] that
-   respects [R], a neutral element [e], and the proofs of associativity and
-   of the two unit laws.  Everything below is proved once from these
-   parameters and holds in every instance: congruence on each side, the
-   uniqueness of the neutral element, the laws of powers [pow x n], and, in
-   the submodule [Commutative], the laws that need commutativity.
+   carrier [M] in [Type@{u}], an equivalence [R] on it with its three laws,
+   an operation [op] that respects [R], a neutral element [e], and the
+   proofs of associativity and of the two unit laws.  Everything below is
+   proved once from these parameters and holds in every instance:
+   congruence on each side, the uniqueness of the neutral element, the laws
+   of powers [pow x n], and, in the submodule [Commutative], the laws that
+   need commutativity.
 
-   Laws are stated up to [R] rather than up to [Prelude›Arith›Equality],
-   so a carrier that is not [ℕ] (functions, compared pointwise) is an
-   instance as well.  The relation is at the carrier's level; this loses
-   nothing, since a relation into a lower universe is also one into
-   [Type@{u}], by cumulativity. *)
+   Laws are stated up to [R] rather than up to [Prelude›Arith›Equality], so a
+   carrier that is not [ℕ] (functions, compared pointwise) is an instance as
+   well.  The relation is at the carrier's level; this loses nothing, since a
+   relation into a lower universe is also one into [Type@{u}], by
+   cumulativity. *)
 module Prelude›Algebra›Monoid
     (u : Level)
     (M : Type@{u})
@@ -40,17 +41,21 @@ end
 (* Rewriting one side of the operation. *)
 module Cong where
 
-theorem congLeft : ∀ (a : M) (b : M) (c : M) (h : R a b) → R (op a c) (op b c) ≔
+theorem congLeft : ∀ (a : M) (b : M) (c : M) (h : R a b) →
+    R (op a c) (op b c) ≔
   λ (a : M) (b : M) (c : M) (h : R a b) → opCong a c b c h (rRefl c)
 end
 
-theorem congRight : ∀ (a : M) (b : M) (c : M) (h : R b c) → R (op a b) (op a c) ≔
+theorem congRight : ∀ (a : M) (b : M) (c : M) (h : R b c) →
+    R (op a b) (op a c) ≔
   λ (a : M) (b : M) (c : M) (h : R b c) → opCong a b a c (rRefl a) h
 end
 
 (* Associativity read from right to left. *)
-theorem assocBack : ∀ (x : M) (y : M) (z : M) → R (op x (op y z)) (op (op x y) z) ≔
-  λ (x : M) (y : M) (z : M) → rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
+theorem assocBack : ∀ (x : M) (y : M) (z : M) →
+    R (op x (op y z)) (op (op x y) z) ≔
+  λ (x : M) (y : M) (z : M) →
+    rSym (op (op x y) z) (op x (op y z)) (assoc x y z)
 end
 
 end
@@ -82,7 +87,8 @@ theorem powOne : ∀ (x : M) → R (pow x 1) x ≔
 end
 
 (* Powers respect [R]. *)
-theorem powCong : ∀ (x : M) (y : M) (h : R x y) (n : ℕ) → R (pow x n) (pow y n) ≔
+theorem powCong : ∀ (x : M) (y : M) (h : R x y) (n : ℕ) →
+    R (pow x n) (pow y n) ≔
   λ (x : M) (y : M) (h : R x y) (n : ℕ) →
     rec n return k . R (pow x k) (pow y k)
     | zero ⇒ rRefl e
@@ -91,12 +97,14 @@ theorem powCong : ∀ (x : M) (y : M) (h : R x y) (n : ℕ) → R (pow x n) (pow
 end
 
 (* The last factor may be split off on the right as well as on the left. *)
-theorem powSuccRight : ∀ (x : M) (n : ℕ) → R (pow x (succ n)) (op (pow x n) x) ≔
+theorem powSuccRight : ∀ (x : M) (n : ℕ) →
+    R (pow x (succ n)) (op (pow x n) x) ≔
   λ (x : M) (n : ℕ) →
     rec n return k . R (pow x (succ k)) (op (pow x k) x)
     | zero ⇒ rTrans (op x e) x (op e x) (rightId x) (rSym (op e x) x (leftId x))
     | succ p, ih ⇒
-        rTrans (op x (pow x (succ p))) (op x (op (pow x p) x)) (op (op x (pow x p)) x)
+        rTrans (op x (pow x (succ p))) (op x (op (pow x p) x))
+          (op (op x (pow x p)) x)
           (congRight x (pow x (succ p)) (op (pow x p) x) ih)
           (assocBack x (pow x p) x)
     end
@@ -137,7 +145,8 @@ theorem powComm : ∀ (x : M) (m : ℕ) (n : ℕ) →
     rec m return k . R (op (pow x k) (pow x n)) (op (pow x n) (pow x k))
     | zero ⇒
         rTrans (op e (pow x n)) (pow x n) (op (pow x n) e)
-          (leftId (pow x n)) (rSym (op (pow x n) e) (pow x n) (rightId (pow x n)))
+          (leftId (pow x n))
+          (rSym (op (pow x n) e) (pow x n) (rightId (pow x n)))
     | succ p, ih ⇒
         let a ≔ op (op x (pow x p)) (pow x n);
             b ≔ op x (op (pow x p) (pow x n));
@@ -146,11 +155,15 @@ theorem powComm : ∀ (x : M) (m : ℕ) (n : ℕ) →
             f ≔ op (op (pow x n) x) (pow x p);
             g ≔ op (pow x n) (op x (pow x p));
             ab : R a b ≔ assoc x (pow x p) (pow x n);
-            bc : R b c ≔ congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
+            bc : R b c ≔
+              congRight x (op (pow x p) (pow x n)) (op (pow x n) (pow x p)) ih;
             cd : R c d ≔ assocBack x (pow x n) (pow x p);
-            df : R d f ≔ congLeft (op x (pow x n)) (op (pow x n) x) (pow x p) (powSuccRight x n);
+            df : R d f ≔
+              congLeft (op x (pow x n)) (op (pow x n) x) (pow x p)
+                (powSuccRight x n);
             fg : R f g ≔ assoc (pow x n) x (pow x p)
-        in rTrans a b g ab (rTrans b c g bc (rTrans c d g cd (rTrans d f g df fg)))
+        in rTrans a b g ab
+             (rTrans b c g bc (rTrans c d g cd (rTrans d f g df fg)))
         end
     end
 end
@@ -161,7 +174,8 @@ end
 module Commutative (comm : ∀ (x : M) (y : M) → R (op x y) (op y x)) where
 
 (* The first factor may be moved past the second. *)
-theorem leftComm : ∀ (a : M) (b : M) (c : M) → R (op a (op b c)) (op b (op a c)) ≔
+theorem leftComm : ∀ (a : M) (b : M) (c : M) →
+    R (op a (op b c)) (op b (op a c)) ≔
   λ (a : M) (b : M) (c : M) →
     rTrans (op a (op b c)) (op (op a b) c) (op b (op a c))
       (assocBack a b c)
@@ -174,9 +188,11 @@ end
 theorem swapMiddle : ∀ (a : M) (b : M) (c : M) (d : M) →
     R (op (op a b) (op c d)) (op (op a c) (op b d)) ≔
   λ (a : M) (b : M) (c : M) (d : M) →
-    rTrans (op (op a b) (op c d)) (op a (op b (op c d))) (op (op a c) (op b d))
+    rTrans (op (op a b) (op c d)) (op a (op b (op c d)))
+      (op (op a c) (op b d))
       (assoc a b (op c d))
-      (rTrans (op a (op b (op c d))) (op a (op c (op b d))) (op (op a c) (op b d))
+      (rTrans (op a (op b (op c d))) (op a (op c (op b d)))
+         (op (op a c) (op b d))
          (congRight a (op b (op c d)) (op c (op b d)) (leftComm b c d))
          (assocBack a c (op b d)))
 end
@@ -188,7 +204,8 @@ theorem powOp : ∀ (x : M) (y : M) (n : ℕ) →
     rec n return k . R (pow (op x y) k) (op (pow x k) (pow y k))
     | zero ⇒ rSym (op e e) e (leftId e)
     | succ p, ih ⇒
-        rTrans (op (op x y) (pow (op x y) p)) (op (op x y) (op (pow x p) (pow y p)))
+        rTrans (op (op x y) (pow (op x y) p))
+          (op (op x y) (op (pow x p) (pow y p)))
           (op (op x (pow x p)) (op y (pow y p)))
           (congRight (op x y) (pow (op x y) p) (op (pow x p) (pow y p)) ih)
           (swapMiddle x y (pow x p) (pow y p))

@@ -1,19 +1,20 @@
-(* The integers, as differences of numbers.  An integer is a pair [(a, b)]
-   of numbers that stands for [a - b], and two pairs are the same integer,
+(* The integers, as differences of numbers.  An integer is a pair [(a, b)] of
+   numbers that stands for [a - b], and two pairs are the same integer,
    [Same x y], when they stand for the same difference: [a + d = c + b] for
    [(a, b)] and [(c, d)].  Addition is componentwise and negation swaps the
-   pair.  With [ofNat 0] as zero they form a commutative group, [Additive],
-   an instance of [Prelude›Algebra›Group]; its powers are the multiples
-   of an integer.
+   pair.  With [ofNat 0] as zero they form a commutative group, [Additive], an
+   instance of [Prelude›Algebra›Group]; its powers are the multiples of an
+   integer.
 
-   [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude]
-   and [negative] read a pair back as a sign and a number. *)
+   [Same] computes, so a closed instance is [⊤] or [⊥].  [magnitude] and
+   [negative] read a pair back as a sign and a number. *)
 module Prelude›Algebra›Integers where
 
 import Prelude›Arith›Equality use (Eq; refl; sym; trans; cong)
 import Prelude›Arith›Plus use (plus)
 open Prelude›Arith›Plus.Basic use (plusZero)
-open Prelude›Arith›Plus.Algebra use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
+open Prelude›Arith›Plus.Algebra
+  use (plusComm; plusAssoc; plusRightComm; plusCongBoth; plusSwapMiddle)
 open Prelude›Arith›Plus.Cancel use (plusCancelRight)
 import Prelude›Arith›Sub use (pred)
 import Prelude›Arith›Decide use (pick)
@@ -28,12 +29,16 @@ def pair (a : ℕ) (b : ℕ) : Int ≔
 end
 
 (* [x] and [y] stand for the same difference. *)
-def Same (x : Int) (y : Int) : Type@0 ≔ Eq (plus (x 0) (y 1)) (plus (y 0) (x 1)) end
+def Same (x : Int) (y : Int) : Type@0 ≔
+  Eq (plus (x 0) (y 1)) (plus (y 0) (x 1))
+end
 
 (* The number [n] as the integer [n - 0]. *)
 def ofNat (n : ℕ) : Int ≔ pair n 0 end
 
-def add (x : Int) (y : Int) : Int ≔ pair (plus (x 0) (y 0)) (plus (x 1) (y 1)) end
+def add (x : Int) (y : Int) : Int ≔
+  pair (plus (x 0) (y 0)) (plus (x 1) (y 1))
+end
 
 def negate (x : Int) : Int ≔ pair (x 1) (x 0) end
 
@@ -44,10 +49,14 @@ def minus (x : Int) (y : Int) : Int ≔ add x (negate y) end
 let monus (a : ℕ) (b : ℕ) : ℕ ≔ Generic.iterate 0l ℕ pred b a end
 
 (* The absolute value of the difference. *)
-def magnitude (x : Int) : ℕ ≔ plus (monus (x 0) (x 1)) (monus (x 1) (x 0)) end
+def magnitude (x : Int) : ℕ ≔
+  plus (monus (x 0) (x 1)) (monus (x 1) (x 0))
+end
 
 (* [1] when the difference is negative, and [0] otherwise. *)
-def negative (x : Int) : ℕ ≔ pick (monus (x 1) (x 0)) (λ (u : ℕ) → 0) (λ (u : ℕ) → 1) end
+def negative (x : Int) : ℕ ≔
+  pick (monus (x 1) (x 0)) (λ (u : ℕ) → 0) (λ (u : ℕ) → 1)
+end
 
 (* [Same] is an equivalence. *)
 module Setoid where
@@ -57,12 +66,14 @@ theorem sameRefl : ∀ (x : Int) → Same x x ≔
 end
 
 theorem sameSym : ∀ (x : Int) (y : Int) (h : Same x y) → Same y x ≔
-  λ (x : Int) (y : Int) (h : Same x y) → sym (plus (x 0) (y 1)) (plus (y 0) (x 1)) h
+  λ (x : Int) (y : Int) (h : Same x y) →
+    sym (plus (x 0) (y 1)) (plus (y 0) (x 1)) h
 end
 
 (* Adding [y 1] to both sides of the goal, the two hypotheses rewrite it
    into an equation that holds by rearranging; [y 1] then cancels. *)
-theorem sameTrans : ∀ (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) →
+theorem sameTrans : ∀ (x : Int) (y : Int) (z : Int)
+    (hxy : Same x y) (hyz : Same y z) →
     Same x z ≔
   λ (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Same y z) →
     let a ≔ x 0;
@@ -71,18 +82,25 @@ theorem sameTrans : ∀ (x : Int) (y : Int) (z : Int) (hxy : Same x y) (hyz : Sa
         d ≔ y 1;
         f ≔ z 0;
         g ≔ z 1;
-        start : Eq (plus (plus a g) d) (plus (plus a d) g) ≔ plusRightComm a g d;
+        start : Eq (plus (plus a g) d) (plus (plus a d) g) ≔
+          plusRightComm a g d;
         first : Eq (plus (plus a d) g) (plus (plus c b) g) ≔
           cong (λ (w : ℕ) → plus w g) (plus a d) (plus c b) hxy;
-        middle : Eq (plus (plus c b) g) (plus (plus c g) b) ≔ plusRightComm c b g;
+        middle : Eq (plus (plus c b) g) (plus (plus c g) b) ≔
+          plusRightComm c b g;
         second : Eq (plus (plus c g) b) (plus (plus f d) b) ≔
           cong (λ (w : ℕ) → plus w b) (plus c g) (plus f d) hyz;
-        finish : Eq (plus (plus f d) b) (plus (plus f b) d) ≔ plusRightComm f d b
+        finish : Eq (plus (plus f d) b) (plus (plus f b) d) ≔
+          plusRightComm f d b
     in plusCancelRight (plus a g) (plus f b) d
-         (trans (plus (plus a g) d) (plus (plus a d) g) (plus (plus f b) d) start
-            (trans (plus (plus a d) g) (plus (plus c b) g) (plus (plus f b) d) first
-               (trans (plus (plus c b) g) (plus (plus c g) b) (plus (plus f b) d) middle
-                  (trans (plus (plus c g) b) (plus (plus f d) b) (plus (plus f b) d) second finish))))
+         (trans (plus (plus a g) d) (plus (plus a d) g) (plus (plus f b) d)
+            start
+            (trans (plus (plus a d) g) (plus (plus c b) g) (plus (plus f b) d)
+               first
+               (trans (plus (plus c b) g) (plus (plus c g) b)
+                  (plus (plus f b) d) middle
+                  (trans (plus (plus c g) b) (plus (plus f d) b)
+                     (plus (plus f b) d) second finish))))
     end
 end
 
@@ -93,25 +111,31 @@ open Setoid use (sameRefl; sameSym; sameTrans)
 (* Addition and negation respect [Same], and satisfy the group laws. *)
 module Addition where
 
-theorem addCong : ∀ (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) →
+theorem addCong : ∀ (a : Int) (b : Int) (c : Int) (d : Int)
+    (hac : Same a c) (hbd : Same b d) →
     Same (add a b) (add c d) ≔
-  λ (a : Int) (b : Int) (c : Int) (d : Int) (hac : Same a c) (hbd : Same b d) →
+  λ (a : Int) (b : Int) (c : Int) (d : Int)
+    (hac : Same a c) (hbd : Same b d) →
     let lhs ≔ plus (plus (a 0) (b 0)) (plus (c 1) (d 1));
         rhs ≔ plus (plus (c 0) (d 0)) (plus (a 1) (b 1))
     in trans lhs (plus (plus (a 0) (c 1)) (plus (b 0) (d 1))) rhs
          (plusSwapMiddle (a 0) (b 0) (c 1) (d 1))
-         (trans (plus (plus (a 0) (c 1)) (plus (b 0) (d 1))) (plus (plus (c 0) (a 1)) (plus (d 0) (b 1))) rhs
-            (plusCongBoth (plus (a 0) (c 1)) (plus (b 0) (d 1)) (plus (c 0) (a 1)) (plus (d 0) (b 1)) hac hbd)
+         (trans (plus (plus (a 0) (c 1)) (plus (b 0) (d 1)))
+            (plus (plus (c 0) (a 1)) (plus (d 0) (b 1))) rhs
+            (plusCongBoth (plus (a 0) (c 1)) (plus (b 0) (d 1))
+               (plus (c 0) (a 1)) (plus (d 0) (b 1)) hac hbd)
             (plusSwapMiddle (c 0) (a 1) (d 0) (b 1)))
     end
 end
 
-theorem addAssoc : ∀ (x : Int) (y : Int) (z : Int) → Same (add (add x y) z) (add x (add y z)) ≔
+theorem addAssoc : ∀ (x : Int) (y : Int) (z : Int) →
+    Same (add (add x y) z) (add x (add y z)) ≔
   λ (x : Int) (y : Int) (z : Int) →
     plusCongBoth (plus (plus (x 0) (y 0)) (z 0)) (plus (x 1) (plus (y 1) (z 1)))
       (plus (x 0) (plus (y 0) (z 0))) (plus (plus (x 1) (y 1)) (z 1))
       (plusAssoc (x 0) (y 0) (z 0))
-      (sym (plus (plus (x 1) (y 1)) (z 1)) (plus (x 1) (plus (y 1) (z 1))) (plusAssoc (x 1) (y 1) (z 1)))
+      (sym (plus (plus (x 1) (y 1)) (z 1)) (plus (x 1) (plus (y 1) (z 1)))
+         (plusAssoc (x 1) (y 1) (z 1)))
 end
 
 (* Zero on the left holds by conversion: [plus 0 n] is [n]. *)
@@ -127,13 +151,16 @@ end
 
 theorem addComm : ∀ (x : Int) (y : Int) → Same (add x y) (add y x) ≔
   λ (x : Int) (y : Int) →
-    plusCongBoth (plus (x 0) (y 0)) (plus (y 1) (x 1)) (plus (y 0) (x 0)) (plus (x 1) (y 1))
+    plusCongBoth (plus (x 0) (y 0)) (plus (y 1) (x 1))
+      (plus (y 0) (x 0)) (plus (x 1) (y 1))
       (plusComm (x 0) (y 0)) (plusComm (y 1) (x 1))
 end
 
-theorem negateCong : ∀ (a : Int) (b : Int) (h : Same a b) → Same (negate a) (negate b) ≔
+theorem negateCong : ∀ (a : Int) (b : Int) (h : Same a b) →
+    Same (negate a) (negate b) ≔
   λ (a : Int) (b : Int) (h : Same a b) →
-    trans (plus (a 1) (b 0)) (plus (b 0) (a 1)) (plus (b 1) (a 0)) (plusComm (a 1) (b 0))
+    trans (plus (a 1) (b 0)) (plus (b 0) (a 1)) (plus (b 1) (a 0))
+      (plusComm (a 1) (b 0))
       (trans (plus (b 0) (a 1)) (plus (a 0) (b 1)) (plus (b 1) (a 0))
          (sym (plus (a 0) (b 1)) (plus (b 0) (a 1)) h) (plusComm (a 0) (b 1)))
 end
@@ -153,24 +180,28 @@ end
 
 end
 
-open Addition use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft; negateRight)
+open Addition
+  use (addCong; addAssoc; zeroAdd; addZero; addComm; negateCong; negateLeft;
+       negateRight)
 
 (* The integers under addition: [Additive.Base.pow x n] is [n] times [x]. *)
 module Additive ≔
-  Group 0l Int Same sameRefl sameSym sameTrans add addCong (ofNat 0) addAssoc zeroAdd addZero
-    negate negateCong negateLeft negateRight
+  Group 0l Int Same sameRefl sameSym sameTrans add addCong (ofNat 0)
+    addAssoc zeroAdd addZero negate negateCong negateLeft negateRight
 
 module AdditiveComm ≔ Additive.Base.Commutative addComm
 
 (* The numbers embed into the integers. *)
 module Embedding where
 
-theorem ofNatAdd : ∀ (m : ℕ) (n : ℕ) → Same (ofNat (plus m n)) (add (ofNat m) (ofNat n)) ≔
+theorem ofNatAdd : ∀ (m : ℕ) (n : ℕ) →
+    Same (ofNat (plus m n)) (add (ofNat m) (ofNat n)) ≔
   λ (m : ℕ) (n : ℕ) → refl (plus (plus m n) 0)
 end
 
 (* Different numbers are different integers. *)
-theorem ofNatInj : ∀ (m : ℕ) (n : ℕ) (h : Same (ofNat m) (ofNat n)) → Eq m n ≔
+theorem ofNatInj : ∀ (m : ℕ) (n : ℕ) (h : Same (ofNat m) (ofNat n)) →
+    Eq m n ≔
   λ (m : ℕ) (n : ℕ) (h : Same (ofNat m) (ofNat n)) →
     trans m (plus m 0) n (sym (plus m 0) m (plusZero m))
       (trans (plus m 0) (plus n 0) n h (plusZero n))

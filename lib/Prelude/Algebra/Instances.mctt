@@ -26,7 +26,8 @@ import Prelude›Algebra›Monoid as Monoid
 (* Every binary operation on numbers respects equality on both sides: the
    congruence each instance on numbers needs, proved once. *)
 abstract private def congBoth : ∀ (f : ∀ (x : ℕ) (y : ℕ) → ℕ)
-    (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) → Eq (f a b) (f c d) ≔
+    (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ) (hac : Eq a c) (hbd : Eq b d) →
+    Eq (f a b) (f c d) ≔
   λ (f : ∀ (x : ℕ) (y : ℕ) → ℕ) (a : ℕ) (b : ℕ) (c : ℕ) (d : ℕ)
     (hac : Eq a c) (hbd : Eq b d) →
     trans (f a b) (f c b) (f c d)
@@ -72,22 +73,27 @@ abstract def pwRefl : ∀ (f : Endo) → Pointwise f f ≔
   λ (f : Endo) (n : ℕ) → refl (f n)
 end
 
-abstract def pwSym : ∀ (f : Endo) (g : Endo) (h : Pointwise f g) → Pointwise g f ≔
+abstract def pwSym : ∀ (f : Endo) (g : Endo) (h : Pointwise f g) →
+    Pointwise g f ≔
   λ (f : Endo) (g : Endo) (h : Pointwise f g) (n : ℕ) → sym (f n) (g n) (h n)
 end
 
 abstract def pwTrans : ∀ (f : Endo) (g : Endo) (k : Endo)
     (hfg : Pointwise f g) (hgk : Pointwise g k) → Pointwise f k ≔
-  λ (f : Endo) (g : Endo) (k : Endo) (hfg : Pointwise f g) (hgk : Pointwise g k) (n : ℕ) →
+  λ (f : Endo) (g : Endo) (k : Endo) (hfg : Pointwise f g) (hgk : Pointwise g k)
+    (n : ℕ) →
     trans (f n) (g n) (k n) (hfg n) (hgk n)
 end
 
-(* [compose f g] at [n] is [f (g n)]: rewrite under [f], then use [f ~ fb]. *)
+(* [compose f g] at [n] is [f (g n)]: rewrite under [f], then use
+   [f ~ fb]. *)
 abstract def composeCong : ∀ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
-    (hf : Pointwise f fb) (hg : Pointwise g gb) → Pointwise (compose f g) (compose fb gb) ≔
+    (hf : Pointwise f fb) (hg : Pointwise g gb) →
+    Pointwise (compose f g) (compose fb gb) ≔
   λ (f : Endo) (g : Endo) (fb : Endo) (gb : Endo)
     (hf : Pointwise f fb) (hg : Pointwise g gb) (n : ℕ) →
-    trans (f (g n)) (f (gb n)) (fb (gb n)) (cong f (g n) (gb n) (hg n)) (hf (gb n))
+    trans (f (g n)) (f (gb n)) (fb (gb n)) (cong f (g n) (gb n) (hg n))
+      (hf (gb n))
 end
 
 end
@@ -98,7 +104,8 @@ open PointwiseLaws use (pwRefl; pwSym; pwTrans; composeCong)
    iterated [n] times.  Associativity and the unit laws hold pointwise by
    conversion. *)
 module Composition ≔
-  Prelude›Algebra›Monoid 0l Endo Pointwise pwRefl pwSym pwTrans compose composeCong identity
+  Prelude›Algebra›Monoid 0l Endo Pointwise pwRefl pwSym pwTrans
+    compose composeCong identity
     (λ (f : Endo) (g : Endo) (k : Endo) → pwRefl (compose f (compose g k)))
     pwRefl pwRefl
 
