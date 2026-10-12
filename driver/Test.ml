@@ -3308,6 +3308,48 @@ let%expect_test "the recursor of the empty type" =
       --> λ (x1 : E) → E.elim x1 return x2 . ⊥ end : ∀ (x1 : E) → ⊥
     |}]
 
+let%expect_test "an argument is classified as its normal form" =
+  let _ = main_of_body "def Id (X : Type@0) : Type@0 := X end \
+                        inductive N : Type@0 where | z | s (n : Id N) end \
+                        eval N.s (N.s N.z)" in
+  [%expect {| Evaluate N.s (N.s N.z) --> N.s (N.s N.z) : N |}]
+
+let%expect_test "an argument whose normal form is free of the type is not recursive" =
+  let _ = main_of_body "inductive N : Type@0 where | mk (f : (fun (X : Type@0) -> Nat) (forall (a : N) -> Nat)) end \
+                        eval N.mk 3" in
+  [%expect {| Evaluate N.mk 3 --> N.mk 3 : N |}]
+
+let%expect_test "a let or a transparent member in an argument is unfolded" =
+  let _ = main_of_body "module M where def F (X : Type@0) : Type@0 := X end end \
+                        inductive N : Type@0 where | z | s (n : M.F N) | t (n : let Y : Type@0 := N in Y end) end \
+                        eval N.t (N.s N.z)" in
+  [%expect {| Evaluate N.t (N.s N.z) --> N.t (N.s N.z) : N |}]
+
+let%expect_test "a negative occurrence behind a definition is rejected" =
+  let _ = main_of_body "def Neg (X : Type@0) : Type@0 := forall (x : X) -> False end \
+                        inductive Bad : Type@0 where | mk (f : Neg Bad) end" in
+  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+
+let%expect_test "a non-strictly positive occurrence is rejected" =
+  let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (g : forall (b : Bad) -> Type@0) -> Type@0) end" in
+  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+
+let%expect_test "the type under an opaque definition is rejected" =
+  let _ = main_of_body "abstract def F (X : Type@0) : Type@0 := X end \
+                        inductive Bad : Type@0 where | mk (f : F Bad) end" in
+  [%expect {| Error: Bad occurs in the argument f of mk under a head that does not compute (an opaque definition, an axiom or a parameter) |}]
+
+let%expect_test "the type under an axiom is rejected" =
+  let _ = main_of_body "axiom G : forall (X : Type@0) -> Type@0 \
+                        inductive Bad : Type@0 where | mk (f : G Bad) end" in
+  [%expect {| Error: Bad occurs in the argument f of mk under a head that does not compute (an opaque definition, an axiom or a parameter) |}]
+
+let%expect_test "the type under a module parameter is rejected" =
+  let _ = main_of_body "module M (F : forall (X : Type@0) -> Type@0) where \
+                          inductive Bad : Type@0 where | mk (f : F Bad) end \
+                        end" in
+  [%expect {| Error: Bad occurs in the argument f of mk under a head that does not compute (an opaque definition, an axiom or a parameter) |}]
+
 let%expect_test "an inductive type is not allowed in a local module" =
   let _ = main_of_body "eval let module M where inductive E : Type@0 where end end in zero end" in
   [%expect {| Error: an inductive type is not allowed in a local module |}]

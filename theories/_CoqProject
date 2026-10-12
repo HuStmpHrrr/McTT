@@ -51,6 +51,7 @@
 ./Core/Semantic/Evaluation/Modules.v
 ./Core/Semantic/Evaluation/Tactics.v
 ./Core/Semantic/NbE.v
+./Core/Semantic/GlobalExt.v
 ./Core/Semantic/Fixed.v
 ./Core/Semantic/Levels.v
 ./Core/Semantic/PER.v
@@ -71,6 +72,7 @@
 ./Core/Semantic/Avoid.v
 ./Core/Semantic/Rename.v
 ./Core/Soundness.v
+./Core/IndCommand.v
 ./Core/NbEWeakening.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v

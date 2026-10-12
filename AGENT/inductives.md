@@ -117,11 +117,50 @@ parameters, `cons (x : A) (xs : List A)`.
   `cls_wk np gs1 = wk_pat (cargs_pat gs1 ++ repeat false np ++ [true])`.
 
 The classification is syntactic (`img_dec`: candidate by the left inverse
-`unwk_pat`, then `exp_eq_dec`); stage A″ replaces `cls_arg` by a judgment
-on normal forms.  `cls_con_ty` (syntactic) and `rc_ind_con_types` (after a
-run, also `≈` at `⋅`) state that the filed constructor type is the
-user's, with `Self := a_ind p` at the frames' parameters (`user_con_ty`,
-`self_inst`).
+`unwk_pat`, then `exp_eq_dec`).
+
+### On normal forms (stage A″, design P-cmd)
+
+An argument the syntactic classification rejects is classified as its
+normal form (`cls_arg_in`, `System/Command.v`):
+
+```
+cls_in_nf : (forall g', ~ cls_arg nu np gs1 T g') ->
+            Θ ⍮ Ξ ⍮ rarg_ctx Ξ R args1 ⊢ T : Typeω@i ->
+            nbe_ty Θ Ξ (rarg_ctx Ξ R args1) T W ->
+            cls_arg nu np gs1 (nf_to_exp W) g -> cls_arg_in Θ Ξ R args1 gs1 T g
+```
+
+`rarg_ctx Ξ R args1 = rtele args1 ++ tele_wk (rd_params R) ↑ ++ Self :: gs_tele Ξ`,
+`Self : rd_self_ty R = Π (own params). S`.  The syntactic path comes first,
+so the classification is a function (`cls_arg_in_functional`); `rc_ind` has
+the premise `cls_cons_in Θ Ξ R cs`.  The nbe premise is in the command
+judgment, outside the mutual block; NbE builds no syntax.
+
+* `Id N`, `M.F N` (a transparent member), `let Y := N in Y` are recursive;
+  `(λ X. ℕ) (N → ℕ)` is `ca_arg ℕ`.
+* `Neg Bad` (`Neg X := X → ⊥`) and `(Bad → Type@0) → Type@0`: "Bad occurs
+  in a non-positive position in the argument f of mk".
+* `F Bad` with `F` abstract, an axiom or a module parameter: "Bad occurs in
+  the argument f of mk under a head that does not compute (an opaque
+  definition, an axiom or a parameter)" (`cls_reason` 4).
+* The checker (`cls_arg_in_dec`, `Extraction/IndDecl.v`) checks the context
+  and that the argument is a type, normalizes it, and classifies the normal
+  form; a rejection gives the reason on the normal form.  The judgment's
+  global state is equivalent to the checker's, so the normal forms agree
+  (`nbe_ty_ext`, `Core/Semantic/GlobalExt.v`).
+
+`rc_ind_con_types` (`Core/IndCommand.v`) states that after a run each filed
+constructor type is `≈` at `⋅` to the user's (`user_con_ty`, `Self := a_ind p`
+at the frames' parameters): an argument classified as written is filed as
+its weakening (`cls_con_ty`); one classified as its normal form is equal to
+it by `soundness_ty'`, and the equality moves through the substitution of
+`Self` (`base_sub`, `self_typed`) and the `Π`s before it (`conv_tail`).
+
+The filed (normal-form) types are what the constructors' members carry and
+what is printed (question G5): the user's term would need the constructor
+step to be proved never to fail at the user's type, beyond
+`rc_ind_con_types`.
 
 ## Core
 

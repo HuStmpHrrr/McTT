@@ -4,7 +4,9 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import GlobalPresup Command.
-From Mctt.Extraction Require Import PseudoMonadic TypeCheckBase IndCheck GlobalCheck.
+From Mctt.Core Require Import Soundness.
+From Mctt.Core.Semantic Require Import GlobalExt.
+From Mctt.Extraction Require Import PseudoMonadic NbE TypeCheckBase IndCheck GlobalCheck.
 Import Syntax_Notations GlobalCtx_Notations.
 
 (** * Deciding a Declaration
@@ -458,14 +460,27 @@ Definition self_free_dec (np : nat) (gs1 : list carg) (T : exp) : bool :=
 (** Why an argument is rejected: [0] it depends on a recursive argument
     before it; [2] it is a function into [Self], a shape stage A does not
     have; [3] [Self] is not applied to the uniform parameters as declared;
-    [1] [Self] occurs elsewhere. *)
+    [4] [Self] is an argument of a head that does not compute (an opaque
+    definition, an axiom or a parameter), so its occurrence cannot be
+    seen to be positive; [1] [Self] occurs elsewhere. *)
 Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : nat :=
+  let k := List.length gs1 + np in
   if self_free_dec np gs1 T then 0 else
   match T with
   | a_pi A B =>
-      if self_free_dec np gs1 A && match app_head B with a_var k => Nat.eqb k (S (List.length gs1 + np)) | _ => false end
-      then 2 else 1
-  | _ => match app_head T with a_var k => if Nat.eqb k (List.length gs1 + np) then 3 else 1 | _ => 1 end
+      if self_free_dec np gs1 A then
+        match app_head B with
+        | a_var j => if Nat.eqb j (S k) then 2 else 4
+        | a_mem _ _ => 4
+        | _ => 1
+        end
+      else 1
+  | _ =>
+      match app_head T with
+      | a_var j => if Nat.eqb j k then 3 else 4
+      | a_mem _ _ => 4
+      | _ => 1
+      end
   end.
 
 Definition cls_arg_dec (nu np : nat) (gs1 : list carg) (T : exp) :
@@ -547,3 +562,97 @@ Proof.
     with (ind_nn D) by (unfold ind_nn, ind_np; cbn; rewrite List.length_app; lia).
   reflexivity.
 Qed.
+
+(** ** Classifying on Normal Forms
+
+    An argument the syntactic classification rejects is checked to be a
+    type in the context it is written in, normalized, and its normal form
+    classified ([cls_arg_in]).  A rejection gives the reason on the normal
+    form when there is one, on the argument as written otherwise. *)
+
+Lemma typ_nbe_ty_order : forall Θ Ξ Γ A i, Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i -> nbe_ty_order Θ Ξ Γ A.
+Proof.
+  intros * HA; destruct (@soundness_ty (gc_mk Θ Ξ) _ _ _ HA) as [W [HW _]]; exact (nbe_ty_order_sound _ _ _ _ _ HW).
+Qed.
+
+Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl)
+    (args1 : list (string * exp)) (gs1 : list carg) (T : exp) :
+  ({g | cls_arg_in Θ Ξ R args1 gs1 T g} + {r : nat | forall g, ~ cls_arg_in Θ Ξ R args1 gs1 T g})%type.
+Proof.
+  destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 T) as [[g Hg] | Hn];
+    [ left; exists g; apply cls_in_syn; exact Hg |].
+  destruct (check_ctx Θ Ξ HΞ (rarg_ctx Ξ R args1)) as [HΓ | HnΓ].
+  2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
+      intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
+      exact (HnΓ (presup_exp_ctx HT)). }
+  destruct (check_typ Θ Ξ _ HΓ T) as [[i HT] | HnT].
+  2:{ right; exists (cls_reason (List.length (rd_params R)) gs1 T).
+      intros g H; inversion H as [g' Hg' | i W g' _ HT _ _]; subst; [ exact (Hn _ Hg') |].
+      exact (HnT _ HT). }
+  destruct (nbe_ty_impl Θ Ξ _ T (typ_nbe_ty_order _ _ _ _ _ HT)) as [W HW].
+  destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 (nf_to_exp W)) as [[g Hg] | HnW].
+  - left; exists g; eapply cls_in_nf; eassumption.
+  - right; exists (cls_reason (List.length (rd_params R)) gs1 (nf_to_exp W)).
+    intros g H; inversion H as [g' Hg' | i' W' g' _ _ HW' Hg']; subst; [ exact (Hn _ Hg') |].
+    pose proof (functional_nbe_ty _ _ _ _ HW HW') as <-; exact (HnW _ Hg').
+Defined.
+
+Definition cls_args_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
+  forall (args : list (string * exp)) (args1 : list (string * exp)) (gs1 : list carg),
+    ({gs | cls_args_in Θ Ξ R args1 gs1 args gs} + {e : (string * nat) | forall gs, ~ cls_args_in Θ Ξ R args1 gs1 args gs})%type.
+Proof.
+  fix go 1; intros [| [y T] args] args1 gs1.
+  - left; exists nil; constructor.
+  - destruct (cls_arg_in_dec Θ Ξ HΞ R args1 gs1 T) as [[g Hg] | [r Hg]].
+    + destruct (go args (args1 ++ (y, T) :: nil) (gs1 ++ g :: nil)) as [[gs Hgs] | [e He]].
+      * left; exists (g :: gs); constructor; assumption.
+      * right; exists e; intros gs' H; inversion H; subst.
+        match goal with Hg' : cls_arg_in _ _ _ _ _ _ ?g' |- _ => pose proof (cls_arg_in_functional _ _ _ _ _ _ _ _ Hg Hg') as <- end.
+        eapply He; eassumption.
+    + right; exists (y, r); intros gs' H; inversion H; subst; eapply Hg; eassumption.
+Defined.
+
+Definition cls_cons_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
+  ({cs | cls_cons_in Θ Ξ R cs} + {e : (string * string * nat) | forall cs, ~ cls_cons_in Θ Ξ R cs})%type.
+Proof.
+  unfold cls_cons_in; generalize (rd_cons R); fix go 1; intros [| [c args] rcs].
+  - left; exists nil; constructor.
+  - destruct (cls_args_in_dec Θ Ξ HΞ R args nil nil) as [[gs Hgs] | [[y sf] He]].
+    + destruct (go rcs) as [[cs Hcs] | [e He]].
+      * left; exists ((c, gs) :: cs); constructor; [ split; [ reflexivity | exact Hgs ] | exact Hcs ].
+      * right; exists e; intros cs' H; inversion H; subst; eapply He; eassumption.
+    + right; exists (c, y, sf); intros cs' H; inversion H as [| ? [c' gs'] ? ? [_ Hc]]; subst; eapply He; exact Hc.
+Defined.
+
+(** ** The Classification Crosses [gds_equiv] *)
+
+Lemma gds_equiv_lookup : forall Θ Θ' fp, gds_equiv Θ Θ' -> gds_lookup Θ fp = gds_lookup Θ' fp.
+Proof.
+  intros * [H1 H2]; destruct (gds_lookup Θ fp) as [U |] eqn:E.
+  - symmetry; exact (H1 _ _ E).
+  - destruct (gds_lookup Θ' fp) as [U |] eqn:E'; [| reflexivity ].
+    rewrite (H2 _ _ E') in E; discriminate.
+Qed.
+
+Lemma gds_equiv_resolve : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_resolve Θ Ξ p = gc_resolve Θ' Ξ p.
+Proof. intros * He; unfold gc_resolve; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma gds_equiv_module : forall Θ Θ' Ξ p, gds_equiv Θ Θ' -> gc_module Θ Ξ p = gc_module Θ' Ξ p.
+Proof. intros * He; unfold gc_module; rewrite (gds_equiv_lookup _ _ _ He); reflexivity. Qed.
+
+Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> cls_arg_in Θ Ξ R args1 gs1 T g -> cls_arg_in Θ' Ξ R args1 gs1 T g.
+Proof.
+  intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
+  eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
+  eapply nbe_ty_ext; [ | | exact HW ]; intros; [ apply gds_equiv_resolve | apply gds_equiv_module ]; exact He.
+Qed.
+
+Lemma equiv_cls_cons_in : forall Θ Θ' Ξ R cs,
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> cls_cons_in Θ' Ξ R cs.
+Proof.
+  intros * He HΞ; unfold cls_cons_in; apply Forall2_impl; intros rc c [Hf Hc]; split; [ exact Hf |].
+  revert Hc; generalize (@nil (string * exp)) at 1 2 as args1; generalize (@nil carg) at 1 2 as gs1.
+  intros gs1 args1 Hc; induction Hc; constructor; [ eapply equiv_cls_arg_in; eassumption | assumption ].
+Qed.
+

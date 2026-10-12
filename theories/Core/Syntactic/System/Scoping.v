@@ -513,6 +513,47 @@ Lemma gunit_mvc_mk : forall n Δ D,
        end) Δ /\ moddef_mvc (List.length Δ + n) D.
 Proof. intros; reflexivity. Qed.
 
+(** Allowing more module variables keeps them allowed. *)
+Lemma syn_mvc_mono :
+  (forall M n m, n <= m -> exp_mvc n M -> exp_mvc m M) /\
+  (forall H n m, n <= m -> modexp_mvc n H -> modexp_mvc m H) /\
+  (forall b n m, n <= m -> bnd_mvc n b -> bnd_mvc m b) /\
+  (forall U n m, n <= m -> gunit_mvc n U -> gunit_mvc m U) /\
+  (forall D n m, n <= m -> moddef_mvc n D -> moddef_mvc m D) /\
+  (forall Φ n m, n <= m -> gmod_mvc n Φ -> gmod_mvc m Φ) /\
+  (forall E n m, n <= m -> gentry_mvc n E -> gentry_mvc m E) /\
+  (forall e n m, n <= m -> centry_mvc n e -> centry_mvc m e).
+Proof.
+  syn_mut_ind; intros; cbn in *;
+    repeat match goal with
+           | H : gunit_mvc _ (gu_mk _ _) |- _ => rewrite gunit_mvc_mk in H
+           | |- gunit_mvc _ (gu_mk _ _) => rewrite gunit_mvc_mk
+           end;
+    destruct_all;
+    repeat match goal with
+           | B : option exp |- _ => destruct B
+           end; cbn in *; destruct_all;
+    repeat split; try lia; eauto with arith.
+  - clear - H0 H2 H4; induction H0 as [| [[? ?] ?] ? HB ? IH]; cbn in *; destruct_all; [ exact I |].
+    split; [ eapply HB; [| eassumption ]; lia | auto ].
+  - clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
+    split; [ eapply H; [| eassumption ]; lia | auto ].
+    apply IHForall; assumption.
+Qed.
+
+Corollary exp_mvc_mono : forall M n m, n <= m -> exp_mvc n M -> exp_mvc m M.
+Proof. exact (proj1 syn_mvc_mono). Qed.
+
+(** A [Π] over assumptions without module variables. *)
+Lemma ctx_pi_mvc : forall Δ A n,
+    tele_ass Δ -> List.Forall (centry_mvc n) Δ -> exp_mvc (List.length Δ + n) A -> exp_mvc n (ctx_pi Δ A).
+Proof.
+  induction Δ as [| e Δ IH]; intros * Hass Hm HA; cbn in *; [ exact HA |].
+  inversion Hass as [| ? ? [B ->] Hass']; inversion Hm; subst; cbn in *.
+  apply IH; [ exact Hass' | assumption |]; cbn; split; [| exact HA ].
+  eapply exp_mvc_mono; [| eassumption ]; lia.
+Qed.
+
 
 (** Substitutions that send the same terms everywhere, and the same
     entries below [d], act alike on a term whose module variables are all

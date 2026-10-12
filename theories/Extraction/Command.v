@@ -823,7 +823,7 @@ Section Impl.
   Proof. intros [ΘR Hli] HE; exists ΘR; exact (proj2 (ind_step Hli HE)). Qed.
 
   Lemma ind_ok {ch Θ K D Ξ x pv R cs Ξ' mp U Ξ2} :
-    cls_cons (rd_nu R) (List.length (rd_params R)) (rd_cons R) cs ->
+    cls_cons_in (gds_restrict D Θ) Ξ R cs ->
     tele_ass (rd_uparams R) -> gs_fresh x Ξ -> ⊢ gds_restrict D Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ ->
     gds_restrict D Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind false (gs_ind Ξ (rd_filed R cs)) ->
     post_gens ch Θ K D (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
@@ -836,6 +836,7 @@ Section Impl.
     destruct (ind_step (x := x) (R := R) Hli1 HE) as [HE' Hli2].
     destruct (Hgs _ Hli2) as [Hr Hli3]; subst Ξ'.
     destruct (gens_run_tl _ _ _ _ Hr) as [Ht _]; cbn in Ht; subst Ξ2.
+    pose proof (equiv_cls_cons_in _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) Hcls) as Hcls'.
     assert (Hrun : run_cmd ch ΘR Ξ (cc_ind x pv R) ΘR (gs_add x (ge_body pv (rd_uparams R) (gu_mod U)) Ξ))
       by (econstructor; eassumption).
     exists ΘR; split; [ exact Hrun | split; [| split; [ apply ext_refl | apply grows_refl ] ] ].
@@ -848,6 +849,8 @@ Section Impl.
     | 0 => "the argument " ++ y ++ " of " ++ c ++ " depends on a recursive argument"
     | 2 => "the argument " ++ y ++ " of " ++ c ++ " is a function into " ++ x ++ ", which is not supported yet"
     | 3 => x ++ " is not applied to its uniform parameters as declared in the argument " ++ y ++ " of " ++ c
+    | 4 => x ++ " occurs in the argument " ++ y ++ " of " ++ c ++
+             " under a head that does not compute (an opaque definition, an axiom or a parameter)"
     | _ => x ++ " occurs in a non-positive position in the argument " ++ y ++ " of " ++ c
     end.
 
@@ -1103,7 +1106,7 @@ Section Impl.
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (pre_gctx H) M A HA)
     | inright _ => rerr (re_eval_infer Ξ M) }
-  | ch, L, Θ, K, D, Ξ, cc_ind x pv R, H with cls_cons_dec (rd_nu R) (List.length (rd_params R)) (rd_cons R) => {
+  | ch, L, Θ, K, D, Ξ, cc_ind x pv R, H with cls_cons_in_dec (gds_restrict D Θ) Ξ (pre_gctx H) R => {
     | inr (exist _ (c, y, sf) _) => rerr (re_msg (cls_msg x c y sf))
     | inl (exist _ cs Hcls) with inspect (rec_arity_ok (rd_filed R cs)) => {
       | exist _ false _ =>
@@ -1458,9 +1461,10 @@ Section Impl.
          definitions, then the frame closes *)
       intros ch ΘR Ξ x pv R cs mp U Hcls Htel HΔ Hfr HE Hgs Hacc Θ K D H Hli c Hx.
       refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
-      destruct (cls_cons_dec (rd_nu R) (List.length (rd_params R)) (rd_cons R)) as [[cs' Hcls'] | [[[c' y] sf] Hn]];
-        [| exfalso; exact (Hn _ Hcls) ].
-      pose proof (cls_cons_functional _ _ _ _ _ Hcls' Hcls) as ->; simp simple_step.
+      pose proof (equiv_cls_cons_in _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) Hcls) as HclsR.
+      destruct (cls_cons_in_dec (gds_restrict D Θ) Ξ (pre_gctx H) R) as [[cs' Hcls'] | [[[c' y] sf] Hn]];
+        [| exfalso; exact (Hn _ HclsR) ].
+      pose proof (cls_cons_in_functional _ _ _ _ _ Hcls' HclsR) as ->; simp simple_step.
       destruct (inspect _) as [[|] Ea];
         [| exfalso; pose proof (rec_arity_of_entry _ _ _ _ _ HE) as Ht; rewrite rec_arity_gs_ind in Ht; congruence ].
       simp simple_step.
