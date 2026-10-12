@@ -9,7 +9,7 @@ stage A).
 ```
 inductive List (A : Type@0) : Type@0 where
 | nil
-| cons (x : A) (xs : List)
+| cons (x : A) (xs : List A)
 end
 
 def length (A : Type@0) (l : List A) : ℕ :=
@@ -23,10 +23,11 @@ end
 * The parameters in parentheses are **uniform**; the type after `:` binds
   the **non-uniform** ones in front of the sort,
   `inductive Climb : ∀ (n : ℕ) → Type@0 where | stop | step (r : Climb (succ n)) end`.
-* An argument whose type is the declared name applied to the non-uniform
-  parameters only is **recursive** (`ca_rec Ps`); any other is
-  non-recursive (`ca_arg A`).  A recursive argument binds no name for the
-  arguments after it.  Recursion is first order: the name is in scope nowhere
+* An argument whose type is the declared name applied to all its
+  parameters, the uniform ones as declared, is **recursive**
+  (`ca_rec (pt_self 0 Ps)`); one in which the name does not occur is
+  non-recursive (`ca_arg A`); any other is rejected.  No argument may depend
+  on a recursive one.  Recursion is first order: the name is in scope nowhere
   else, so positivity holds by construction (no separate positivity check).
 * `elim M return ys z . A | c xs, hs ⇒ B … end`: the motive binds the
   non-uniform parameters and the scrutinee; a branch binds the non-uniform
@@ -48,6 +49,32 @@ function-shaped arguments (`pt_pi`).  Stage A accepts only `pt_self 0 Ps`
 shape by its parameters alone, `ptyp_ps`, declared a coercion to `list`, so
 the semantics of the other shapes is not built: a later stage replaces the
 uses of `ptyp_ps` by a case on the shape.
+
+## Classification in the command (A0.4)
+
+The elaborator binds the declared name and nothing more: `cc_ind x pv R`
+carries the declaration as written (`raw_decl`), whose constructors'
+argument types see every earlier argument as a binder, then the
+declaration's own parameters, then `Self : Π Δ. S`, bound outside them (but
+inside the parameters of the enclosing frames, which stay implicit).  A
+recursive occurrence is written Rocq-style with all the declaration's own
+parameters, `cons (x : A) (xs : List A)`.
+`rc_ind` classifies each argument (`cls_args nu np`,
+`Core/Syntactic/System/IndClassify.v`):
+
+* `cls_free`: `T = A[cls_wk np gs1]` — neither `Self` nor an earlier
+  recursive argument occurs; filed `ca_arg A`;
+* `cls_self`: `T = #(k + np) (uvars ++ Ps[cls_wk np gs1])`, the leading
+  `nu` arguments exactly the uniform variables; filed `ca_rec (pt_self 0 Ps)`;
+* anything else has no rule.
+  `cls_wk np gs1 = wk_pat (cargs_pat gs1 ++ repeat false np ++ [true])`.
+
+The classification is syntactic (`img_dec`: candidate by the left inverse
+`unwk_pat`, then `exp_eq_dec`); stage A″ replaces `cls_arg` by a judgment
+on normal forms.  `cls_con_ty` (syntactic) and `rc_ind_con_types` (after a
+run, also `≈` at `⋅`) state that the filed constructor type is the
+user's, with `Self := a_ind p` at the frames' parameters (`user_con_ty`,
+`self_inst`).
 
 ## Core
 
@@ -111,4 +138,7 @@ frame vars` as an import's are run (`gens_run`, premises of `rc_def`).
 7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
    checker decides it.
 8. The checker's message for an ill-formed declaration names the type only
-   (`"ill-formed inductive declaration x"`), not the failing premise.
+   (`"ill-formed inductive declaration x"`), not the failing premise; the
+   classification has its own messages (non-positive occurrence, function
+   into the type, dependency on a recursive argument, uniform parameters
+   not as declared, wrong arity).

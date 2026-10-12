@@ -122,6 +122,7 @@
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/MemberLemmas.v
 ./Core/Syntactic/System/IndSyntax.v
+./Core/Syntactic/System/IndClassify.v
 ./Core/Syntactic/System/IndTyping.v
 ./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v

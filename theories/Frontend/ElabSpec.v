@@ -300,42 +300,29 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
 (** ** Inductive Declarations
 
     The type of a declaration binds its non-uniform parameters in front of
-    its sort ([split_pis]).  A constructor's argument whose type is the
-    declared name applied to arguments ([rec_head]) is recursive: those
-    arguments must be as many as the non-uniform parameters, and it binds
-    no name for the arguments after it.  Any other argument binds its name. *)
+    its sort ([split_pis]).  The declared name is in scope in the
+    constructors' argument types as an ordinary variable, [Self], outside
+    the declaration's parameters, so a recursive occurrence is written with
+    all of them, and every argument binds its name for the ones after it.  Which arguments are recursive is the core's to decide
+    ([Core.Syntactic.System.IndClassify]). *)
 Fixpoint split_pis (o : Cst.obj) : (list (string * Cst.obj) * Cst.obj)%type :=
   match o with
   | Cst.pi y oA oB => let (ps, oS) := split_pis oB in ((y, oA) :: ps, oS)
   | _ => (nil, o)
   end.
 
-Fixpoint rec_head_acc (x : string) (o : Cst.obj) (acc : list Cst.obj) : option (list Cst.obj) :=
-  match o with
-  | Cst.app o1 o2 => rec_head_acc x o1 (o2 :: acc)
-  | Cst.var y => if String.eqb x y then Some acc else None
-  | _ => None
-  end.
+Inductive srargs : list ent -> list (string * Cst.obj) -> list (string * exp) -> Prop :=
+| sra_nil : forall S, srargs S nil nil
+| sra_cons : forall S y oA args A args',
+    sel S oA A -> srargs (en_var y :: S) args args' ->
+    srargs S ((y, oA) :: args) ((y, A) :: args').
 
-Definition rec_head (x : string) (o : Cst.obj) : option (list Cst.obj) := rec_head_acc x o nil.
-
-Inductive sargs (x : string) (nn : nat) : list ent -> list (string * Cst.obj) -> list carg -> Prop :=
-| sa_nil : forall S, sargs x nn S nil nil
-| sa_rec : forall S y oA args os Ps gs,
-    rec_head x oA = Some os -> List.length os = nn -> Forall2 (sel S) os Ps ->
-    sargs x nn S args gs ->
-    sargs x nn S ((y, oA) :: args) (ca_rec (pt_self 0 Ps) :: gs)
-| sa_arg : forall S y oA args A gs,
-    rec_head x oA = None -> sel S oA A ->
-    sargs x nn (en_var y :: S) args gs ->
-    sargs x nn S ((y, oA) :: args) (ca_arg A :: gs).
-
-Inductive scons (x : string) (nn : nat) (S : list ent) :
-    list (string * list (string * Cst.obj)) -> list (string * list carg) -> Prop :=
-| scn_nil : scons x nn S nil nil
-| scn_cons : forall c args cs gs cs',
-    sargs x nn S args gs -> scons x nn S cs cs' ->
-    scons x nn S ((c, args) :: cs) ((c, gs) :: cs').
+Inductive srcons (S : list ent) :
+    list (string * list (string * Cst.obj)) -> list (string * list (string * exp)) -> Prop :=
+| src_nil : srcons S nil nil
+| src_cons : forall c args cs args' cs',
+    srargs S args args' -> srcons S cs cs' ->
+    srcons S ((c, args) :: cs) ((c, args') :: cs').
 
 (** The members a declaration generates in the frame at member chain [ch]
     of the unit [fp]: its type, then its constructors. *)
@@ -410,9 +397,9 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     NoDup (map fst (ups ++ nps)) ->
     sparams (F ++ O) (ups ++ nps) tys ->
     sel (pents ups ++ F ++ O) oS A ->
-    scons x (List.length nps) (pents (ups ++ nps) ++ F ++ O) cs cs' ->
+    srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
     scmd fp ch O F (Cst.c_ind pv x ups oT cs) (con_mems fp ch x cs ++ F)
-      (cc_ind x pv (mk_ind (List.length ups) (ptele tys) A cs') :: nil)
+      (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil

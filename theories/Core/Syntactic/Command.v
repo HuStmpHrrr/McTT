@@ -11,6 +11,22 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Syntax.
 Import Syntax_Notations.
 
+(** An inductive declaration as written ([cc_ind]): the number of uniform
+    parameters, the parameters (innermost first, the non-uniform ones
+    inside), the sort over the uniform ones, and the constructors, each with
+    its named arguments, outermost first.  An argument's type is over the
+    arguments before it, all of them binders, then the parameters, then the
+    declared type itself, [Self], a variable of type [Π Δ. S] bound outside
+    the parameters (but inside those of the enclosing frames): a recursive
+    occurrence is [Self] at all the declaration's own parameters.  The
+    command classifies the arguments ([cls_args]) into the structural
+    declaration it files. *)
+Record raw_decl : Set := mk_raw
+  { rd_nu : nat
+  ; rd_params : ctx
+  ; rd_sort : exp
+  ; rd_cons : list (string * list (string * exp)) }.
+
 Inductive ccmd : Set :=
 (** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
     body.  An axiom has no body; an [abstract] [def] is opaque, not
@@ -29,7 +45,7 @@ Inductive ccmd : Set :=
 | cc_eval : exp -> option typ -> ccmd
 (** [inductive x (Δ) : S where | c : … end], private or not: the declaration
     as written, its parameters over those of the enclosing frames. *)
-| cc_ind : string -> bool -> ind_decl -> ccmd.
+| cc_ind : string -> bool -> raw_decl -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.

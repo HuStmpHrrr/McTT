@@ -3146,17 +3146,43 @@ let%expect_test "Inductives.mctt works" =
     Evaluate steps 0 (step 0 (step 1 (stop 2))) --> 2 : ℕ
     |}]
 
-let%expect_test "a recursive argument names the type at its non-uniform parameters only" =
-  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end" in
-  [%expect {| Error: a recursive argument is List applied to its non-uniform parameters only |}]
+let%expect_test "a recursive argument names the type at all its parameters" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List) end" in
+  [%expect {| Error: List is not applied to its uniform parameters as declared in the argument xs of cons |}]
 
 let%expect_test "a constructor's argument must live in the type's sort" =
   let _ = main_of_body "inductive Big : Type@0 where | mk (A : Type@0) end" in
   [%expect {| Error: ill-formed inductive declaration Big |}]
 
-let%expect_test "a recursive occurrence that is not an argument is unbound" =
+let%expect_test "a negative occurrence is rejected by the core" =
   let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (x : Bad) -> Nat) end" in
-  [%expect {| Error: unbound name Bad |}]
+  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+
+let%expect_test "a recursive argument at another uniform parameter is rejected" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List Nat) end" in
+  [%expect {| Error: List is not applied to its uniform parameters as declared in the argument xs of cons |}]
+
+let%expect_test "a recursive argument at too many parameters is rejected" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A A) end" in
+  [%expect {| Error: a recursive argument is List applied to all its parameters |}]
+
+let%expect_test "a negative occurrence beside a positive one is rejected" =
+  let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (x : Bad) -> Bad) end" in
+  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+
+let%expect_test "a function into the type is not supported yet" =
+  let _ = main_of_body "inductive Ord : Type@0 where | lim (f : forall (n : Nat) -> Ord) end" in
+  [%expect {| Error: the argument f of lim is a function into Ord, which is not supported yet |}]
+
+let%expect_test "an argument may not depend on a recursive one" =
+  let _ = main_of_body "inductive V : Type@0 where | leaf \
+                        | node (v : V) (w : elim v return z . Type@0 | leaf => Nat | node a b, h => Nat end) end" in
+  [%expect {| Error: the argument w of node depends on a recursive argument |}]
+
+let%expect_test "a function argument in which the type does not occur is not recursive" =
+  let _ = main_of_body "inductive F : Type@0 where | mk (f : forall (n : Nat) -> Nat) end \
+                        eval mk (fun (n : Nat) -> succ n)" in
+  [%expect {| Evaluate mk (λ (x1 : ℕ) → succ x1) --> mk (λ (x1 : ℕ) → succ x1) : F |}]
 
 let%expect_test "a branch with the wrong number of names is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \

@@ -1015,7 +1015,7 @@ Proof. elab_ok. Qed.
 module U where
   inductive List (A : Typeω@0) : Typeω@0 where
   | nil
-  | cons (x : A) (xs : List)
+  | cons (x : A) (xs : List A)
   end
   def len : forall (l : List Nat) -> Nat :=
     fun (l : List Nat) -> elim l return z . Nat | nil => zero | cons x xs, r => succ r end
@@ -1023,14 +1023,15 @@ module U where
 end
 >>
 
-    [List] has one uniform parameter and none other, so the recursive
-    argument [xs] is [List] at no further argument, and binds no name for
-    the arguments after it.  [List] is then a member of the frame, so
-    [List Nat] is [U.List $ ℕ].  The motive binds the scrutinee, the
+    In the arguments' types, [List] is a variable, [Self], outside the
+    parameters, and each argument binds its name: [A] is [#0] in the type
+    of [x], and [List A] is [#2 $ #1] in the type of [xs].  Which argument is
+    recursive is the core's to decide.  After the declaration [List] is a
+    member of the frame, so [List Nat] is [U.List $ ℕ].  The motive binds the scrutinee, the
     branch for [cons] its two arguments and its hypothesis: [r] is [#0]. *)
 Definition list_decl : Cst.cmd :=
   c_ind false "List" (("A", typ 0) :: nil) (typ 0)
-    (("nil", nil) :: ("cons", ("x", var "A") :: ("xs", var "List") :: nil) :: nil).
+    (("nil", nil) :: ("cons", ("x", var "A") :: ("xs", app (var "List") (var "A")) :: nil) :: nil).
 
 Definition list_len : Cst.prog :=
   (nil, ("U" :: nil, nil,
@@ -1046,14 +1047,14 @@ Example list_len_spec :
   elab_spec list_len
     (nil, ⋅,
      cc_ind "List" false
-       (mk_ind 1 (⋅ ▹ Typeω@0) Typeω@0
-          (("nil", nil) :: ("cons", ca_arg #0 :: ca_rec (pt_self 0 nil) :: nil) :: nil)) ::
+       (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0
+          (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
        (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
 
 (** A non-uniform parameter is bound by the type, in front of its sort,
-    and a recursive argument applies the type to it:
+    and [Self] is applied to it like to every parameter:
 
 <<
 module U where
@@ -1070,18 +1071,20 @@ Example climb_spec :
                      (("stop", nil) :: ("step", ("r", app (var "Climb") (Cst.succ (var "n"))) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind "Climb" false
-       (mk_ind 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ca_rec (pt_self 0 (succ #0 :: nil)) :: nil) :: nil)) :: nil).
+       (mk_raw 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ("r", #1 $ succ #0) :: nil) :: nil)) :: nil).
 Proof. elab_ok. Qed.
 
-(** A recursive argument at the wrong number of arguments is rejected:
-    [List] has no non-uniform parameter, so [List A] is not one. *)
-Example list_wrong_rec :
-  forall u, ~ elab_spec (nil, ("U" :: nil, nil,
-                               c_ind false "List" (("A", typ 0) :: nil) (typ 0)
-                                 (("cons", ("x", var "A") :: ("xs", app (var "List") (var "A")) :: nil) :: nil) :: nil)) u.
-Proof. elab_fails. Qed.
+(** The elaborator classifies nothing: [List] without its parameter is
+    [Self] alone, which the core rejects. *)
+Example list_self_app :
+  elab_spec (nil, ("U" :: nil, nil,
+                   c_ind false "List" (("A", typ 0) :: nil) (typ 0)
+                     (("cons", ("x", var "A") :: ("xs", var "List") :: nil) :: nil) :: nil))
+    (nil, ⋅,
+     cc_ind "List" false (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0 (("cons", ("x", #0) :: ("xs", #2) :: nil) :: nil)) :: nil).
+Proof. elab_ok. Qed.
 
-(** And so is a declaration in a local body. *)
+(** A declaration in a local body is rejected. *)
 Example local_ind :
   forall u, ~ elab_spec (unit_of
                 (c_eval (letb (d_mod "M" nil (md_where (c_ind false "E" nil (typ 0) nil :: nil))) Cst.zero) None :: nil)) u.

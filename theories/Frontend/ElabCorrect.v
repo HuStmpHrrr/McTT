@@ -460,35 +460,27 @@ Qed.
 Lemma elab_args_iff : forall S os Ns, elab_args_with elab S os = eok Ns <-> Forall2 (sel S) os Ns.
 Proof. intros; apply args_iff, Forall_forall; intros ? _ ? ?; apply elab_iff. Qed.
 
-Lemma elab_cargs_iff : forall x nn args S gs, elab_cargs x nn S args = eok gs <-> sargs x nn S args gs.
+Lemma elab_rargs_iff : forall args S args', elab_rargs S args = eok args' <-> srargs S args args'.
 Proof.
-  intros x nn; induction args as [| [y oA] args IH]; intros S gs; cbn [elab_cargs].
+  induction args as [| [y oA] args IH]; intros S args'; cbn [elab_rargs].
   - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
-  - destruct (rec_head x oA) as [os |] eqn:Er; split.
-    + intros H; apply ebind_eok in H as ([] & Hc & H); apply echeck_eok, Nat.eqb_eq in Hc.
-      apply ebind_eok in H as (Ps & HPs & H); apply ebind_eok in H as (gs' & Hgs & H); inv_eok.
-      apply sa_rec with (os := os); [ exact Er | try exact Hc; reflexivity | apply elab_args_iff; exact HPs | apply IH; exact Hgs ].
-    + intros H; inversion H as [| ? ? ? ? os' ? ? Er' Hl HPs Hgs | ? ? ? ? ? ? Er' ]; subst; [| congruence ].
-      rewrite Er in Er'; injection Er' as <-.
-      rewrite (proj2 (echeck_eok _ _ tt)) by (apply Nat.eqb_eq; reflexivity); cbn [ebind].
-      rewrite (proj2 (elab_args_iff _ _ _)) by eassumption; cbn [ebind].
-      rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
-    + intros H; apply ebind_eok in H as (A & HA & H); apply ebind_eok in H as (gs' & Hgs & H); inv_eok.
-      apply sa_arg; [ exact Er | apply elab_iff; exact HA | apply IH; exact Hgs ].
-    + intros H; inversion H as [| ? ? ? ? ? ? ? Er' | ? ? ? ? ? ? Er' HA Hgs ]; subst; [ congruence |].
+  - split.
+    + intros H; apply ebind_eok in H as (A & HA & H); apply ebind_eok in H as (r & Hr & H); inv_eok.
+      constructor; [ apply elab_iff; exact HA | apply IH; exact Hr ].
+    + intros H; inversion H; subst.
       rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
       rewrite (proj2 (IH _ _)) by eassumption. reflexivity.
 Qed.
 
-Lemma elab_cons_iff : forall x nn S cs cs', elab_cons x nn S cs = eok cs' <-> scons x nn S cs cs'.
+Lemma elab_rcons_iff : forall S cs cs', elab_rcons S cs = eok cs' <-> srcons S cs cs'.
 Proof.
-  intros x nn S; induction cs as [| [c args] cs IH]; intros cs'; cbn [elab_cons].
+  intros S; induction cs as [| [c args] cs IH]; intros cs'; cbn [elab_rcons].
   - split; [ intros H; inv_eok; constructor | intros H; inversion H; reflexivity ].
   - split.
-    + intros H; apply ebind_eok in H as (gs & Hgs & H); apply ebind_eok in H as (cs'' & Hcs & H); inv_eok.
-      constructor; [ apply elab_cargs_iff; exact Hgs | apply IH; exact Hcs ].
+    + intros H; apply ebind_eok in H as (a & Ha & H); apply ebind_eok in H as (cs'' & Hcs & H); inv_eok.
+      constructor; [ apply elab_rargs_iff; exact Ha | apply IH; exact Hcs ].
     + intros H; inversion H; subst.
-      rewrite (proj2 (elab_cargs_iff _ _ _ _ _)) by eassumption; cbn [ebind].
+      rewrite (proj2 (elab_rargs_iff _ _ _)) by eassumption; cbn [ebind].
       rewrite (proj2 (IH _)) by eassumption. reflexivity.
 Qed.
 
@@ -570,7 +562,7 @@ Section Commands.
         apply ebind_eok in Hg as (A & HA & Hg); apply ebind_eok in Hg as (cs' & Hc & Hg); inv_eok.
         econstructor; [ apply (check_fresh_ok _ _ tt); exact Hx | apply (check_fresh_all_ok _ _ tt); exact Hcs
                       | exact Es | apply (check_params_ok _ tt); exact Hp | apply elab_params_iff; exact Ht
-                      | apply elab_iff; exact HA | apply elab_cons_iff; exact Hc ].
+                      | apply elab_iff; exact HA | apply elab_rcons_iff; exact Hc ].
       + intros Hg; inversion Hg; subst.
         match goal with H : split_pis oT = _ |- _ => rewrite Es in H; injection H as <- <- end.
         rewrite (proj2 (check_fresh_ok _ _ tt)) by assumption; cbn [ebind].
@@ -578,7 +570,7 @@ Section Commands.
         rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
         rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
-        rewrite (proj2 (elab_cons_iff _ _ _ _ _)) by eassumption. reflexivity.
+        rewrite (proj2 (elab_rcons_iff _ _ _)) by eassumption. reflexivity.
   Qed.
 
   Corollary elab_cmds_iff : forall ch O F cs ccs, elab_cmds fp ch O F cs = eok ccs <-> scmds fp ch O F cs ccs.

@@ -290,34 +290,25 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
 
 Definition elab_params := elab_params_with elab.
 
-(** The arguments of a constructor of [x], with [nn] non-uniform
-    parameters. *)
-Fixpoint elab_cargs (x : string) (nn : nat) (S : list ent) (args : list (string * Cst.obj)) : eres (list carg) :=
+(** The arguments of a constructor, each binding its name for the ones
+    after it; the declared type is a variable in scope. *)
+Fixpoint elab_rargs (S : list ent) (args : list (string * Cst.obj)) : eres (list (string * exp)) :=
   match args with
   | nil => eok nil
   | (y, oA) :: args' =>
-      match rec_head x oA with
-      | Some os =>
-          let* _ := echeck (Nat.eqb (List.length os) nn)
-                      ("a recursive argument is " ++ x ++ " applied to its non-uniform parameters only") in
-          let* Ps := elab_args_with elab S os in
-          let* gs := elab_cargs x nn S args' in
-          eok (ca_rec (pt_self 0 Ps) :: gs)
-      | None =>
-          let* A := elab S oA in
-          let* gs := elab_cargs x nn (en_var y :: S) args' in
-          eok (ca_arg A :: gs)
-      end
+      let* A := elab S oA in
+      let* args'' := elab_rargs (en_var y :: S) args' in
+      eok ((y, A) :: args'')
   end.
 
-Fixpoint elab_cons (x : string) (nn : nat) (S : list ent) (cs : list (string * list (string * Cst.obj)))
-  : eres (list (string * list carg)) :=
+Fixpoint elab_rcons (S : list ent) (cs : list (string * list (string * Cst.obj)))
+  : eres (list (string * list (string * exp))) :=
   match cs with
   | nil => eok nil
   | (c, args) :: cs' =>
-      let* gs := elab_cargs x nn S args in
-      let* cs'' := elab_cons x nn S cs' in
-      eok ((c, gs) :: cs'')
+      let* args' := elab_rargs S args in
+      let* cs'' := elab_rcons S cs' in
+      eok ((c, args') :: cs'')
   end.
 
 (** ** Commands
@@ -382,8 +373,8 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* _ := check_params (ups ++ nps)%list in
       let* tys := elab_params (F ++ O)%list (ups ++ nps)%list in
       let* A := elab (pents ups ++ F ++ O)%list oS in
-      let* cs' := elab_cons x (List.length nps) (pents (ups ++ nps) ++ F ++ O)%list cs in
-      eok ((con_mems fp ch x cs ++ F)%list, cc_ind x pv (mk_ind (List.length ups) (ptele tys) A cs') :: nil)
+      let* cs' := elab_rcons (pents (ups ++ nps) ++ en_var x :: F ++ O)%list cs in
+      eok ((con_mems fp ch x cs ++ F)%list, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

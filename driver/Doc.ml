@@ -380,7 +380,8 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
    (* A declaration: its name, its uniform parameters, its type, binding
       the non-uniform ones before its sort, then each constructor and its
-      arguments, a recursive one binding no name for the next. *)
+      arguments, in which the declared name is a variable linked to the
+      declaration, and each argument binds its name for the next. *)
    | C.Coq_c_ind (_, x, ps, t, cs) ->
        ignore (decl x Def);
        let envu, _ = params st env ps in
@@ -390,11 +391,17 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
          | _ -> term st envu t; env
        in
        let enva = pis envu t in
+       (* [Self] lies outside the declaration's own parameters: the entries
+          [enva] added to [env] go on top of it. *)
+       let self = { v_link = Site { s_unit = st.unit; s_anchor = anchor_of ch x }; v_mod = MNone } in
+       let base = push x self env in
+       let k = List.length enva.sc - List.length env.sc in
+       let take n l = List.filteri (fun i _ -> i < n) l in
+       let envs = { sc = take k enva.sc @ base.sc; vs = take k enva.vs @ base.vs } in
        List.iter (fun (c, args) ->
            ignore (decl c Def);
            ignore (List.fold_left (fun env (y, a) ->
-               let v = bind st y in term st env a;
-               match E.rec_head x a with Some _ -> env | None -> push y v env) enva args)) cs);
+               let v = bind st y in term st env a; push y v env) envs args)) cs);
   next_frame st fp ch o f c
 
 and next_frame st fp ch o f c =

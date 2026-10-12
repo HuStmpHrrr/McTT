@@ -19,6 +19,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export Command Imports.
 From Mctt.Core.Syntactic.System Require Import Definitions Lemmas Structural GlobalPresup.
+From Mctt.Core.Syntactic.System Require Export IndClassify.
+From Mctt.Core.Syntactic.System Require Import IndTyping.
 From Mctt.Core.Syntactic.System Require Export Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 
@@ -194,14 +196,16 @@ Section Semantics.
       import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ'
-  (** A declaration: checked as the member it is filed as, then its
+  (** A declaration as written: its arguments classified ([cls_cons]), the
+      structural declaration checked as the member it is filed as, then its
       generated definitions. *)
-  | rc_ind : forall ch Θ Ξ x pv D Ξ',
-      Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ D) ->
+  | rc_ind : forall ch Θ Ξ x pv R cs Ξ',
+      cls_cons (rd_nu R) (List.length (rd_params R)) (rd_cons R) cs ->
+      Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) ->
       gs_fresh (ind_key x) Ξ ->
-      gens_run Θ (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ D)) Ξ)
-        (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ D) Ξ' ->
-      Θ ⍮ Ξ ⊢[ch] cc_ind x pv D ⇝ Θ ⍮ Ξ'
+      gens_run Θ (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ (rd_filed R cs))) Ξ)
+        (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ (rd_filed R cs)) Ξ' ->
+      Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ Ξ'
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -318,7 +322,11 @@ Section Determinism.
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
           rewrite (gens_run_functional _ _ _ _ H1 _ H2)
       end; split; reflexivity.
-    - (* a declaration: its generated definitions *)
+    - (* a declaration: its classification, then its generated definitions *)
+      match goal with
+      | H1 : cls_cons ?a ?b ?r ?c1, H2 : cls_cons ?a ?b ?r ?c2 |- _ =>
+          assert_fails constr_eq c1 c2; pose proof (cls_cons_functional _ _ _ _ _ H1 H2); subst c2
+      end.
       match goal with
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
           rewrite (gens_run_functional _ _ _ _ H1 _ H2)
@@ -706,7 +714,7 @@ Section WellFormed.
       intros * _ _ Hg HΞ Hc Hst; split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | split; [ exact Hc | apply gds_sub_refl ] ].
     - (* a declaration: its entry, checked against the frame so far, then
          its generated definitions *)
-      intros * HE Hfr Hg HΞ Hc Hst.
+      intros * _ HE Hfr Hg HΞ Hc Hst.
       split; [ exact (gens_run_wf _ _ _ _ Hg (add_ind_wf _ _ _ _ _ HΞ HE Hfr)) | split; [ exact Hc | apply gds_sub_refl ] ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -1020,3 +1028,64 @@ Section Runs.
   Qed.
 
 End Runs.
+
+(** ** The Filed Constructor Types
+
+    A run of a declaration files constructor types that are the ones the
+    user wrote, with [Self] the type former at the uniform parameters
+    ([cls_con_ty]): syntactically, hence judgmentally once filed. *)
+
+Lemma ind_lookup_added : forall Θ Ξ x pv D,
+    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv D) Ξ) (qname_in (gs_path Ξ) x) = Some D.
+Proof.
+  intros * Hn; destruct Ξ as [| [mp U] Ξ0]; [ contradiction |].
+  unfold ind_lookup; cbn [gs_add gs_path].
+  change (qname_in mp x) with (qname_app mp (x :: nil)).
+  rewrite gc_resolve_frame_here; destruct U as [P [Φ | E]]; cbn; rewrite String.eqb_refl; reflexivity.
+Qed.
+
+Lemma Forall2_in_left : forall {X Y} (Rl : X -> Y -> Prop) l1 l2 a,
+    Forall2 Rl l1 l2 -> In a l1 -> exists b, In b l2 /\ Rl a b.
+Proof.
+  intros * H; induction H as [| a1 b1 l1 l2 Hab H IH]; intros Hin; [ destruct Hin |].
+  destruct Hin as [<- | Hin]; [ exists b1; split; [ left; reflexivity | exact Hab ] |].
+  destruct (IH Hin) as (b & Hb & Hr); exists b; split; [ right; exact Hb | exact Hr ].
+Qed.
+
+Lemma cons_lookup_nodup : forall cs c gs, NoDup (map fst cs) -> In (c, gs) cs -> cons_lookup cs c = Some gs.
+Proof.
+  induction cs as [| [c' gs'] cs IH]; intros * Hnd Hin; [ destruct Hin |]; destruct Hin as [[= <- <-] | Hin]; cbn.
+  - rewrite String.eqb_refl; reflexivity.
+  - inversion Hnd as [| ? ? Hn Hnd']; subst.
+    destruct (String.eqb_spec c c') as [<- |]; [| apply IH; assumption ].
+    exfalso; apply Hn, (in_map fst _ (c, gs)), Hin.
+Qed.
+
+Theorem rc_ind_con_types : forall load_path read to_core ch Θ Ξ x pv R Θ' Ξ',
+    run_cmd load_path read to_core ch Θ Ξ (cc_ind x pv R) Θ' Ξ' -> ⊢g Θ ⍮ Ξ ->
+    forall c args, In (c, args) (rd_cons R) ->
+    exists cs gs, cls_cons (rd_nu R) (List.length (rd_params R)) (rd_cons R) cs /\
+      ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\
+      con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) gs
+        = user_con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args /\
+      exists i, Θ ⍮ gs_add (ind_key x) (ge_ind pv (gs_ind Ξ (rd_filed R cs))) Ξ ⍮ ⋅
+        ⊢ con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) gs
+        ≈ user_con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
+        : Typeω@i.
+Proof.
+  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs ? Hcls HE Hfr Hg | |]; subst.
+  destruct (Forall2_in_left _ _ _ _ Hcls Hin) as ([c' gs] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
+  set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := qname_in (gs_path Ξ) (ind_key x)).
+  pose proof (add_ind_wf _ _ _ _ _ HΞ HE Hfr) as HΞ1.
+  pose proof (ind_lookup_added Θ' Ξ (ind_key x) pv D ltac:(intros ->; exact Hfr)) as Hl; fold p in Hl.
+  destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞ1) Hl) as [HD Hdc].
+  pose proof HD as (_ & _ & Hle & _ & _ & _ & _ & _ & _ & _ & _ & Hnd).
+  assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).
+  assert (Hu : ind_nu D = rd_nu R + List.length (gs_tele Ξ)) by reflexivity.
+  assert (Hp : ind_np D = List.length (rd_params R) + List.length (gs_tele Ξ))
+    by (unfold D, gs_ind, ind_np; cbn; apply List.length_app).
+  pose proof (cls_con_ty p D _ _ _ args gs Hc Hu Hp ltac:(lia)) as Heq.
+  exists cs, gs; split; [ exact Hcls | split; [ exact Hcon | split; [ exact Heq |] ] ].
+  destruct (con_ty_typed0 _ _ _ _ _ _ HD Hdc Hl Hcon) as [j Hj].
+  exists j; fold D; rewrite <- Heq; apply wf_exp_eq_refl; exact Hj.
+Qed.

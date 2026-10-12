@@ -415,3 +415,122 @@ Proof.
   eapply decl_typed_emb; [| exact HD ].
   constructor; [ exact HΞ | apply gc_sub_deps; exact Hs ].
 Qed.
+
+(** ** Classifying the Arguments as Written *)
+
+Lemma apps_head_args : forall T, T = apps (app_head T) (app_args T).
+Proof.
+  induction T; cbn; try reflexivity.
+  rewrite apps_exp_app; cbn; f_equal; exact IHT1.
+Qed.
+
+Definition imgs_dec (pat : list bool) :
+  forall (Ts : list exp), {Ps | Ts = List.map (fun P => P[wk_pat pat]ʷ) Ps} + {forall Ps, Ts <> List.map (fun P => P[wk_pat pat]ʷ) Ps}.
+Proof.
+  fix go 1; intros [| T Ts].
+  - left; exists nil; reflexivity.
+  - destruct (img_dec pat T) as [[P HP] | HP]; [| right; intros [| P Ps] E; [ discriminate | injection E as E _; exact (HP P E) ] ].
+    destruct (go Ts) as [[Ps HPs] | HPs]; [ left; exists (P :: Ps); cbn; f_equal; assumption |].
+    right; intros [| P' Ps'] E; [ discriminate | injection E as _ E; exact (HPs Ps' E) ].
+Defined.
+
+(** Whether [Self] occurs, the reason a non-recursive argument is not one:
+    otherwise it is a recursive argument before it that does. *)
+Definition self_free_dec (np : nat) (gs1 : list carg) (T : exp) : bool :=
+  match img_dec (List.map (fun _ => false) gs1 ++ List.repeat false np ++ true :: nil) T with
+  | inleft _ => true
+  | inright _ => false
+  end.
+
+(** Why an argument is rejected: [0] it depends on a recursive argument
+    before it; [2] it is a function into [Self], a shape stage A does not
+    have; [3] [Self] is not applied to the uniform parameters as declared;
+    [1] [Self] occurs elsewhere. *)
+Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : nat :=
+  if self_free_dec np gs1 T then 0 else
+  match T with
+  | a_pi A B =>
+      if self_free_dec np gs1 A && match app_head B with a_var k => Nat.eqb k (S (List.length gs1 + np)) | _ => false end
+      then 2 else 1
+  | _ => match app_head T with a_var k => if Nat.eqb k (List.length gs1 + np) then 3 else 1 | _ => 1 end
+  end.
+
+Definition cls_arg_dec (nu np : nat) (gs1 : list carg) (T : exp) :
+  {g | cls_arg nu np gs1 T g} + {forall g, ~ cls_arg nu np gs1 T g}.
+Proof.
+  destruct (img_dec (cargs_pat gs1 ++ List.repeat false np ++ true :: nil) T) as [[A HA] | HA].
+  - left; exists (ca_arg A); rewrite HA; constructor.
+  - destruct (exp_eq_dec (app_head T) (a_var (List.length gs1 + np))) as [Eh | Eh].
+    + destruct (list_eq_dec exp_eq_dec (List.firstn nu (app_args T)) (vars_from (List.length gs1 + (np - nu)) nu))
+        as [Eu | Eu].
+      * destruct (imgs_dec (cargs_pat gs1 ++ List.repeat false np ++ true :: nil) (List.skipn nu (app_args T)))
+          as [[Ps HPs] | HPs].
+        -- left; exists (ca_rec (pt_self 0 Ps)).
+           rewrite (apps_head_args T), Eh, <- (List.firstn_skipn nu (app_args T)), Eu, HPs; constructor.
+        -- right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
+           ++ exact (HA A eq_refl).
+           ++ rewrite app_args_apps_var, List.skipn_app, length_vars_from, Nat.sub_diag, List.skipn_all2 in HPs
+                by (rewrite length_vars_from; lia).
+              exact (HPs Ps eq_refl).
+      * right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
+        -- exact (HA A eq_refl).
+        -- rewrite app_args_apps_var, List.firstn_app, length_vars_from, Nat.sub_diag, List.firstn_all2 in Eu
+             by (rewrite length_vars_from; lia).
+           apply Eu; rewrite List.app_nil_r; reflexivity.
+    + right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
+      * exact (HA A eq_refl).
+      * rewrite app_head_apps_var in Eh; exact (Eh eq_refl).
+Defined.
+
+(** A failure names the argument, and why it is rejected. *)
+Definition cls_args_dec (nu np : nat) :
+  forall (args : list (string * exp)) (gs1 : list carg),
+    ({gs | cls_args nu np gs1 args gs} + {e : (string * nat) | forall gs, ~ cls_args nu np gs1 args gs})%type.
+Proof.
+  fix go 1; intros [| [y T] args] gs1.
+  - left; exists nil; constructor.
+  - destruct (cls_arg_dec nu np gs1 T) as [[g Hg] | Hg].
+    + destruct (go args (gs1 ++ g :: nil)) as [[gs Hgs] | [e He]].
+      * left; exists (g :: gs); constructor; assumption.
+      * right; exists e; intros gs' H; inversion H; subst.
+        match goal with Hg' : cls_arg _ _ _ _ ?g' |- _ => pose proof (cls_arg_functional _ _ _ _ _ _ Hg Hg') as <- end.
+        eapply He; eassumption.
+    + right; exists (y, cls_reason np gs1 T); intros gs' H; inversion H; subst; eapply Hg; eassumption.
+Defined.
+
+Definition cls_cons_dec (nu np : nat) :
+  forall (rcs : list (string * list (string * exp))),
+    ({cs | cls_cons nu np rcs cs} + {e : (string * string * nat) | forall cs, ~ cls_cons nu np rcs cs})%type.
+Proof.
+  fix go 1; intros [| [c args] rcs].
+  - left; exists nil; constructor.
+  - destruct (cls_args_dec nu np args nil) as [[gs Hgs] | [[y sf] He]].
+    + destruct (go rcs) as [[cs Hcs] | [e He]].
+      * left; exists ((c, gs) :: cs); constructor; [ split; [ reflexivity | exact Hgs ] | exact Hcs ].
+      * right; exists e; intros cs' H; inversion H; subst; eapply He; eassumption.
+    + right; exists (c, y, sf); intros cs' H; inversion H as [| ? [c' gs'] ? ? [_ Hc]]; subst; eapply He; exact Hc.
+Defined.
+
+(** The arity of the recursive arguments: the non-uniform parameters. *)
+Definition rec_arity_ok (D : ind_decl) : bool :=
+  forallb (fun cg => forallb (fun g => match g with
+                                       | ca_rec t => Nat.eqb (List.length (ptyp_ps t)) (ind_nn D)
+                                       | ca_arg _ => true
+                                       end) (snd cg)) (ind_cons D).
+
+Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> rec_arity_ok D = true.
+Proof.
+  intros * H; apply wf_gentry_ind_iff in H as (_ & _ & _ & HD).
+  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & _).
+  unfold rec_arity_ok; apply forallb_forall; intros [c gs] Hin; apply forallb_forall; cbn [snd].
+  intros [A | t] Hg; [ reflexivity |].
+  apply in_split in Hg as (gs1 & gs2 & Hgs); subst gs; apply Nat.eqb_eq; exact (HPl _ _ _ _ _ Hin eq_refl).
+Qed.
+
+Lemma rec_arity_gs_ind : forall Ξ D, rec_arity_ok (gs_ind Ξ D) = rec_arity_ok D.
+Proof.
+  intros; unfold rec_arity_ok, gs_ind; cbn [ind_cons].
+  replace (ind_nn (mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D)))
+    with (ind_nn D) by (unfold ind_nn, ind_np; cbn; rewrite List.length_app; lia).
+  reflexivity.
+Qed.

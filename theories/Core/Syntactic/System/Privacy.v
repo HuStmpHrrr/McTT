@@ -389,20 +389,20 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
   | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
   end.
 
-(** The references of a declaration: its parameters, its sort over the
-    uniform ones, and its constructors' arguments over all of them, a
-    non-recursive argument binding a variable for the ones after it. *)
-Fixpoint cargs_refs (S : list ptab) (gs : list carg) : list (ptab * string)%type :=
-  match gs with
+(** The references of a declaration as written: its parameters, its sort
+    over the uniform ones, and its constructors' arguments over the declared
+    type and all the parameters, each argument binding a variable for the
+    ones after it. *)
+Fixpoint rargs_refs (S : list ptab) (args : list (string * exp)) : list (ptab * string)%type :=
+  match args with
   | nil => nil
-  | ca_arg A :: gs' => exp_refs S A ++ cargs_refs (pt_none :: S) gs'
-  | ca_rec Ps :: gs' => flat_map (exp_refs S) (ptyp_ps Ps) ++ cargs_refs S gs'
+  | (_, T) :: args' => exp_refs S T ++ rargs_refs (pt_none :: S) args'
   end.
 
-Definition decl_refs (D : ind_decl) : list (ptab * string)%type :=
-  tele_refs nil (ind_params D) ++
-  exp_refs (repeat pt_none (List.length (ind_uparams D))) (ind_sort D) ++
-  flat_map (fun cg => cargs_refs (repeat pt_none (ind_np D)) (snd cg)) (ind_cons D).
+Definition decl_refs (R : raw_decl) : list (ptab * string)%type :=
+  tele_refs nil (rd_params R) ++
+  exp_refs (repeat pt_none (List.length (List.skipn (List.length (rd_params R) - rd_nu R) (rd_params R)))) (rd_sort R) ++
+  flat_map (fun cg => rargs_refs (repeat pt_none (S (List.length (rd_params R)))) (snd cg)) (rd_cons R).
 
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested

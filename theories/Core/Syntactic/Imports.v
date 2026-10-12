@@ -341,41 +341,26 @@ Section Expansion.
         xok (e' :: Δ0')
     end.
 
-  (** The shape of a recursive argument: a function's codomain is under
-      its argument. *)
-  Fixpoint ptyp_xp (S : skel) (t : ptyp) : xres ptyp :=
-    match t with
-    | pt_self k Ps => let+ Ps' := xmap (exp_xp S) Ps in xok (pt_self k Ps')
-    | pt_aux k Ps => let+ Ps' := xmap (exp_xp S) Ps in xok (pt_aux k Ps')
-    | pt_pi A t' =>
-        let+ A' := exp_xp S A in
-        let+ t'' := ptyp_xp (None :: S) t' in
-        xok (pt_pi A' t'')
-    end.
-
-  (** The arguments of a constructor: a non-recursive argument binds a
-      variable for the ones after it, a recursive one none. *)
-  Fixpoint cargs_xp (S : skel) (gs : list carg) : xres (list carg) :=
-    match gs with
+  (** The arguments of a constructor as written: each binds a variable for
+      the ones after it. *)
+  Fixpoint rargs_xp (S : skel) (args : list (string * exp)) : xres (list (string * exp)) :=
+    match args with
     | nil => xok nil
-    | ca_arg A :: gs' =>
-        let+ A' := exp_xp S A in
-        let+ gs'' := cargs_xp (None :: S) gs' in
-        xok (ca_arg A' :: gs'')
-    | ca_rec t :: gs' =>
-        let+ t' := ptyp_xp S t in
-        let+ gs'' := cargs_xp S gs' in
-        xok (ca_rec t' :: gs'')
+    | (y, T) :: args' =>
+        let+ T' := exp_xp S T in
+        let+ args'' := rargs_xp (None :: S) args' in
+        xok ((y, T') :: args'')
     end.
 
-  (** A declaration: its parameters as a telescope, its sort over the
-      uniform ones, its constructors' arguments over all of them. *)
-  Definition decl_xp (S : skel) (D : ind_decl) : xres ind_decl :=
-    let+ Δ' := tele_xp S (ind_params D) in
+  (** A declaration as written: its parameters as a telescope, its sort over
+      the uniform ones, its constructors' arguments over the declared type
+      and all the parameters. *)
+  Definition decl_xp (S : skel) (R : raw_decl) : xres raw_decl :=
+    let+ Δ' := tele_xp S (rd_params R) in
     let S' := map centry_skel Δ' ++ S in
-    let+ A' := exp_xp (skipn (List.length (ind_params D) - ind_nu D) S') (ind_sort D) in
-    let+ cs' := xmap (fun cg => let+ gs' := cargs_xp S' (snd cg) in xok (fst cg, gs')) (ind_cons D) in
-    xok (mk_ind (ind_nu D) Δ' A' cs').
+    let+ A' := exp_xp (skipn (List.length (rd_params R) - rd_nu R) S') (rd_sort R) in
+    let+ cs' := xmap (fun cg => let+ args := rargs_xp (None :: S') (snd cg) in xok (fst cg, args)) (rd_cons R) in
+    xok (mk_raw (rd_nu R) Δ' A' cs').
 
   (** A command's own terms: the nested commands of a module are expanded
       when they run. *)
@@ -487,27 +472,18 @@ Section Ext.
       reflexivity.
   Qed.
 
-  Lemma decl_xp_ext : forall D S, decl_xp mt S D = decl_xp mt' S D.
+  Lemma decl_xp_ext : forall R S, decl_xp mt S R = decl_xp mt' S R.
   Proof.
     destruct xp_ext_all as (He & _).
-    assert (Hxm : forall Ps S, xmap (exp_xp mt S) Ps = xmap (exp_xp mt' S) Ps).
-    { induction Ps as [| P Ps IH]; intros; cbn; [ reflexivity |].
-      rewrite He; destruct (exp_xp mt' S P); cbn; [ rewrite IH |]; reflexivity. }
-    assert (Hpt : forall t S, ptyp_xp mt S t = ptyp_xp mt' S t).
-    { induction t as [k Ps | k Ps | A t IH]; intros; cbn.
-      - rewrite Hxm; reflexivity.
-      - rewrite Hxm; reflexivity.
-      - rewrite He; destruct (exp_xp mt' S A); cbn; [ rewrite IH |]; reflexivity. }
-    assert (Hc : forall gs S, cargs_xp mt S gs = cargs_xp mt' S gs).
-    { induction gs as [| [A | t] gs IH]; intros; cbn; [ reflexivity | |].
-      - rewrite He; destruct (exp_xp mt' S A); cbn; [ rewrite IH |]; reflexivity.
-      - rewrite Hpt; destruct (ptyp_xp mt' S t); cbn; [ rewrite IH |]; reflexivity. }
-    intros [nu Δ A cs] S; unfold decl_xp; cbn [ind_params ind_sort ind_cons ind_nu].
+    assert (Hr : forall args S, rargs_xp mt S args = rargs_xp mt' S args).
+    { induction args as [| [y T] args IH]; intros; cbn; [ reflexivity |].
+      rewrite He; destruct (exp_xp mt' S T); cbn; [ rewrite IH |]; reflexivity. }
+    intros [nu Δ A cs] S; unfold decl_xp; cbn [rd_params rd_sort rd_cons rd_nu].
     rewrite tele_xp_ext; destruct (tele_xp mt' S Δ) as [Δ' |]; cbn [xbind]; [| reflexivity ].
     rewrite He; destruct (exp_xp mt' _ A); cbn [xbind]; [| reflexivity ].
     match goal with |- xbind ?a _ = xbind ?b _ => assert (Ht : a = b) end.
     { induction cs as [| cg cs IH]; cbn; [ reflexivity |].
-      rewrite Hc; destruct (cargs_xp mt' _ (snd cg)); cbn; [ rewrite IH |]; reflexivity. }
+      rewrite Hr; destruct (rargs_xp mt' _ (snd cg)); cbn; [ rewrite IH |]; reflexivity. }
     rewrite Ht; reflexivity.
   Qed.
 

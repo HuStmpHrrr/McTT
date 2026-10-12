@@ -5,7 +5,7 @@ module Inductives where
 (* Lists: one uniform parameter, one recursive argument. *)
 inductive List (A : Type@0) : Type@0 where
 | nil
-| cons (x : A) (xs : List)
+| cons (x : A) (xs : List A)
 end
 
 (* The motive binds the scrutinee; a branch, the constructor's arguments
@@ -49,7 +49,7 @@ eval getOr ℕ 0 (none ℕ)
 (* Binary trees: two recursive arguments, so two hypotheses. *)
 inductive Tree (A : Type@0) : Type@0 where
 | leaf
-| node (l : Tree) (x : A) (r : Tree)
+| node (l : Tree A) (x : A) (r : Tree A)
 end
 
 def plus (m : ℕ) (n : ℕ) : ℕ :=
