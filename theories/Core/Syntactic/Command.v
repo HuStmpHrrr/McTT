@@ -27,6 +27,16 @@ Record raw_decl : Set := mk_raw
   ; rd_sort : exp
   ; rd_cons : list (string * list (string * exp)) }.
 
+(** The uniform parameters, the outermost [rd_nu R]: the parameters of the
+    module the declaration makes. *)
+Definition rd_uparams (R : raw_decl) : ctx :=
+  List.skipn (List.length (rd_params R) - rd_nu R) (rd_params R).
+
+(** A declaration is filed in the module it makes, under this name, which
+    no source can write.  The module's other members are the
+    constructors. *)
+Definition ind_name : string := "#".
+
 Inductive ccmd : Set :=
 (** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
     body.  An axiom has no body; an [abstract] [def] is opaque, not
@@ -44,7 +54,9 @@ Inductive ccmd : Set :=
 (** [eval M], or [eval M : A] *)
 | cc_eval : exp -> option typ -> ccmd
 (** [inductive x (Δ) : S where | c : … end], private or not: the declaration
-    as written, its parameters over those of the enclosing frames. *)
+    as written, its parameters over those of the enclosing frames.  It
+    makes the module [x], over the uniform parameters, of the declaration
+    and the constructors. *)
 | cc_ind : string -> bool -> raw_decl -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)

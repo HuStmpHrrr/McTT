@@ -20,15 +20,25 @@ end
 def append (A : Type@0) (l : List A) (m : List A) : List A :=
   elim l return z . List A
   | nil ⇒ m
-  | cons x xs, r ⇒ cons A x r
+  | cons x xs, r ⇒ List.cons A x r
   end
 end
 
-eval length ℕ (append ℕ (cons ℕ 1 (cons ℕ 2 (nil ℕ))) (cons ℕ 3 (nil ℕ)))
-eval append ℕ (cons ℕ 1 (nil ℕ)) (cons ℕ 2 (nil ℕ))
+eval length ℕ (append ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)))
+                (List.cons ℕ 3 (List.nil ℕ)))
+eval append ℕ (List.cons ℕ 1 (List.nil ℕ)) (List.cons ℕ 2 (List.nil ℕ))
 
 (* A stuck eliminator: its scrutinee is a variable. *)
-eval λ (l : List ℕ) → length ℕ (cons ℕ 0 l)
+eval λ (l : List ℕ) → length ℕ (List.cons ℕ 0 l)
+
+(* An inductive type is also a module, over its uniform parameters, whose
+   members are its constructors: [List.cons ℕ] is [(List ℕ).cons], and an
+   open declares them here.  As a term, [List] is the type. *)
+eval (List ℕ).cons 0 (List ℕ).nil
+
+open List use (nil; cons)
+
+eval cons ℕ 1 (nil ℕ)
 
 (* Options: no recursive argument. *)
 inductive Option (A : Type@0) : Type@0 where
@@ -43,8 +53,8 @@ def getOr (A : Type@0) (d : A) (o : Option A) : A :=
   end
 end
 
-eval getOr ℕ 0 (some ℕ 5)
-eval getOr ℕ 0 (none ℕ)
+eval getOr ℕ 0 (Option.some ℕ 5)
+eval getOr ℕ 0 (Option.none ℕ)
 
 (* Binary trees: two recursive arguments, so two hypotheses. *)
 inductive Tree (A : Type@0) : Type@0 where
@@ -66,7 +76,8 @@ def size (A : Type@0) (t : Tree A) : ℕ :=
   end
 end
 
-eval size ℕ (node ℕ (node ℕ (leaf ℕ) 1 (leaf ℕ)) 2 (leaf ℕ))
+eval size ℕ
+  (Tree.node ℕ (Tree.node ℕ (Tree.leaf ℕ) 1 (Tree.leaf ℕ)) 2 (Tree.leaf ℕ))
 
 (* Dependent pairs: the type of the second component depends on the
    first, and the motive on the pair. *)
@@ -80,7 +91,7 @@ def fst (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : A :=
   end
 end
 
-(* The branch's type is [B (fst A B (pair A B a b))], which computes to
+(* The branch's type is [B (fst A B (Sigma.pair A B a b))], which computes to
    [B a]. *)
 def snd (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : B (fst A B p) :=
   elim p return z . B (fst A B z)
@@ -88,7 +99,7 @@ def snd (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : B (fst A B p
   end
 end
 
-eval snd ℕ (λ (x : ℕ) → ℕ) (pair ℕ (λ (x : ℕ) → ℕ) 1 2)
+eval snd ℕ (λ (x : ℕ) → ℕ) (Sigma.pair ℕ (λ (x : ℕ) → ℕ) 1 2)
 
 (* A non-uniform parameter: the type binds [n] in front of its sort, a
    recursive argument gives it a new value, and the motive and every
@@ -105,6 +116,6 @@ def steps (n : ℕ) (c : Climb n) : ℕ :=
   end
 end
 
-eval steps 0 (step 0 (step 1 (stop 2)))
+eval steps 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2)))
 
 end

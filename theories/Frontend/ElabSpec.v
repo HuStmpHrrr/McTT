@@ -324,13 +324,6 @@ Inductive srcons (S : list ent) :
     srargs S args args' -> srcons S cs cs' ->
     srcons S ((c, args) :: cs) ((c, args') :: cs').
 
-(** The members a declaration generates in the frame at member chain [ch]
-    of the unit [fp]: its type, then its constructors. *)
-Definition con_mems (fp : path) (ch : list string) (x : string) (cs : list (string * list (string * Cst.obj))) :
-    list ent :=
-  rev (map (fun c => en_mem (fst c) (q_abs fp (ch ++ fst c :: nil))) cs) ++
-  en_mem x (q_abs fp (ch ++ x :: nil)) :: nil.
-
 (** ** Commands
 
     [scmd fp ch O F c F' c']: the command [c], in the open frame at member
@@ -388,17 +381,16 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A) :: nil)
 (** [inductive x (ups) : T where cs end]: the parameters, uniform then
     non-uniform, are read in [F], the sort under the uniform ones, the
-    constructors' arguments under all.  It declares [x] and its
-    constructors. *)
+    constructors' arguments under all.  It declares [x], a module whose
+    members are the constructors. *)
 | sc_ind : forall ch O F pv x ups oT cs nps oS tys A cs',
     fresh x F ->
-    Forall (fun c => fresh c F) (map fst cs) ->
     split_pis oT = (nps, oS) ->
     NoDup (map fst (ups ++ nps)) ->
     sparams (F ++ O) (ups ++ nps) tys ->
     sel (pents ups ++ F ++ O) oS A ->
     srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
-    scmd fp ch O F (Cst.c_ind pv x ups oT cs) (con_mems fp ch x cs ++ F)
+    scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=

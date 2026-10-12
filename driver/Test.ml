@@ -3130,20 +3130,25 @@ let%expect_test "lib/Universes.mctt" =
 let%expect_test "Inductives.mctt works" =
   let _ = main_of_example "Inductives.mctt" in
   [%expect {|
-    Evaluate length ℕ (append ℕ (cons ℕ 1 (cons ℕ 2 (nil ℕ))) (cons ℕ 3 (nil ℕ)))
-      --> 3 : ℕ
-    Evaluate append ℕ (cons ℕ 1 (nil ℕ)) (cons ℕ 2 (nil ℕ))
-      --> cons ℕ 1 (cons ℕ 2 (nil ℕ)) : List ℕ
-    Evaluate λ (x1 : List ℕ) → length ℕ (cons ℕ 0 x1)
+    Evaluate length ℕ
+               (append ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)))
+                 (List.cons ℕ 3 (List.nil ℕ))) --> 3 : ℕ
+    Evaluate append ℕ (List.cons ℕ 1 (List.nil ℕ)) (List.cons ℕ 2 (List.nil ℕ))
+      --> List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)) : List ℕ
+    Evaluate λ (x1 : List ℕ) → length ℕ (List.cons ℕ 0 x1)
       --> λ (x1 : List ℕ)
             → succ
                 (elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4 x5 ⇒ succ x5 end)
       : ∀ (x1 : List ℕ) → ℕ
-    Evaluate getOr ℕ 0 (some ℕ 5) --> 5 : ℕ
-    Evaluate getOr ℕ 0 (none ℕ) --> 0 : ℕ
-    Evaluate size ℕ (node ℕ (node ℕ (leaf ℕ) 1 (leaf ℕ)) 2 (leaf ℕ)) --> 2 : ℕ
-    Evaluate snd ℕ (λ (x1 : ℕ) → ℕ) (pair ℕ (λ (x2 : ℕ) → ℕ) 1 2) --> 2 : ℕ
-    Evaluate steps 0 (step 0 (step 1 (stop 2))) --> 2 : ℕ
+    Evaluate (List ℕ).cons 0 (List ℕ).nil --> List.cons ℕ 0 (List.nil ℕ) : List ℕ
+    Evaluate cons ℕ 1 (nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
+    Evaluate getOr ℕ 0 (Option.some ℕ 5) --> 5 : ℕ
+    Evaluate getOr ℕ 0 (Option.none ℕ) --> 0 : ℕ
+    Evaluate size ℕ
+               (Tree.node ℕ (Tree.node ℕ (Tree.leaf ℕ) 1 (Tree.leaf ℕ)) 2
+                 (Tree.leaf ℕ)) --> 2 : ℕ
+    Evaluate snd ℕ (λ (x1 : ℕ) → ℕ) (Sigma.pair ℕ (λ (x2 : ℕ) → ℕ) 1 2) --> 2 : ℕ
+    Evaluate steps 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --> 2 : ℕ
     |}]
 
 let%expect_test "a recursive argument names the type at all its parameters" =
@@ -3181,24 +3186,24 @@ let%expect_test "an argument may not depend on a recursive one" =
 
 let%expect_test "a function argument in which the type does not occur is not recursive" =
   let _ = main_of_body "inductive F : Type@0 where | mk (f : forall (n : Nat) -> Nat) end \
-                        eval mk (fun (n : Nat) -> succ n)" in
-  [%expect {| Evaluate mk (λ (x1 : ℕ) → succ x1) --> mk (λ (x1 : ℕ) → succ x1) : F |}]
+                        eval F.mk (fun (n : Nat) -> succ n)" in
+  [%expect {| Evaluate F.mk (λ (x1 : ℕ) → succ x1) --> F.mk (λ (x1 : ℕ) → succ x1) : F |}]
 
 let%expect_test "a branch with the wrong number of names is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => z | s m => m end end" in
+                        def f (n : N) : N := elim n return k . N | z => N.z | s m => m end end" in
   [%expect {|
     Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | z ⇒ z | s x3 ⇒ x3 end, is not of type
-      ∀ (x1 : N) → N
+      λ (x1 : N) → elim x1 return x2 . N | z ⇒ N.z | s x3 ⇒ x3 end,
+      is not of type ∀ (x1 : N) → N
     |}]
 
 let%expect_test "the branches must follow the constructors' order" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | s m, h => m | z => z end end" in
+                        def f (n : N) : N := elim n return k . N | s m, h => m | z => N.z end end" in
   [%expect {|
     Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ z end,
+      λ (x1 : N) → elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ N.z end,
       is not of type ∀ (x1 : N) → N
     |}]
 
@@ -3211,8 +3216,39 @@ let%expect_test "an inductive type is declared under the parameters of its modul
                           inductive List : Type@0 where | nil | cons (x : A) (xs : List) end \
                           def len (l : List) : Nat := elim l return z . Nat | nil => 0 | cons x xs, r => succ r end end \
                         end \
-                        eval L.len Nat (L.cons Nat 1 (L.nil Nat))" in
-  [%expect {| Evaluate L.len ℕ (L.cons ℕ 1 (L.nil ℕ)) --> 1 : ℕ |}]
+                        eval L.len Nat (L.List.cons Nat 1 (L.List.nil Nat))" in
+  [%expect {| Evaluate L.len ℕ (L.List.cons ℕ 1 (L.List.nil ℕ)) --> 1 : ℕ |}]
+
+let%expect_test "an inductive type is a module over its uniform parameters" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        eval (List Nat).cons 1 (List.nil Nat) : List Nat" in
+  [%expect {| Evaluate (List ℕ).cons 1 (List.nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ |}]
+
+let%expect_test "a constructor is not a member of the type's frame" =
+  let _ = main_of_body "inductive N : Type@0 where | z end eval z" in
+  [%expect {| Error: unbound name z |}]
+
+let%expect_test "constructors of two types may share a name" =
+  let _ = main_of_body "inductive N : Type@0 where | z end inductive M : Type@0 where | z end \
+                        eval M.z" in
+  [%expect {| Evaluate M.z --> M.z : M |}]
+
+let%expect_test "an alias of an inductive type is the type" =
+  let _ = main_of_body "inductive N : Type@0 where | z end module M := N eval M.z : M" in
+  [%expect {| Evaluate M.z --> N.z : N |}]
+
+let%expect_test "an inductive type opened from a module is the type" =
+  let _ = main_of_body "module A where inductive N : Type@0 where | z end end \
+                        open A use (N) eval N.z : N" in
+  [%expect {| Evaluate N.z --> A.N.z : A.N |}]
+
+let%expect_test "a private inductive type is a private module of public constructors" =
+  let _ = main_of_body "module M where private inductive N : Type@0 where | z end eval N.z end" in
+  [%expect {| Evaluate M.N.z --> M.N.z : M.N |}]
+
+let%expect_test "a private inductive type is out of reach outside its module" =
+  let _ = main_of_body "module M where private inductive N : Type@0 where | z end end eval M.N.z" in
+  [%expect {| Error: Test.M.N is private |}]
 
 let%expect_test "an inductive type is not allowed in a local module" =
   let _ = main_of_body "eval let module M where inductive E : Type@0 where end end in zero end" in

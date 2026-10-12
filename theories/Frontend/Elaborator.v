@@ -368,13 +368,12 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       eok (F, cc_eval M (Some A) :: nil)
   | Cst.c_ind pv x ups oT cs =>
       let* _ := check_fresh x F in
-      let* _ := check_fresh_all (map fst cs) F in
       let '(nps, oS) := split_pis oT in
       let* _ := check_params (ups ++ nps)%list in
       let* tys := elab_params (F ++ O)%list (ups ++ nps)%list in
       let* A := elab (pents ups ++ F ++ O)%list oS in
       let* cs' := elab_rcons (pents (ups ++ nps) ++ en_var x :: F ++ O)%list cs in
-      eok ((con_mems fp ch x cs ++ F)%list, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+      eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

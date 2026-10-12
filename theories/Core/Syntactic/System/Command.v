@@ -84,29 +84,36 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
 
 (** ** Inductive Declarations
 
-    A declaration is filed under a name no source can write, [ind_key x],
-    with the parameters of the frames as its outermost uniform parameters
-    ([gs_ind]), and generates the definitions of the type former [x] and of
-    the constructors, each a member of the frame like any definition: the
-    former or constructor applied to the frames' parameters.  The
-    generated definitions run as those of an import do ([gens_run]), with
-    the premises of [rc_def]. *)
-
-Definition ind_key (x : string) : string := (x ++ "#")%string.
+    A declaration [x] makes the module [x], whose parameters are its uniform
+    parameters ([ind_frame]).  In it, the declaration is filed under a name
+    no source can write, [ind_name], with the parameters of the frames,
+    the module's own included, as its outermost uniform parameters
+    ([gs_ind]); then the constructors are generated, each a member of the
+    module like any definition: the constructor applied to the module's and
+    the frames' parameters.  The generated definitions run as those of an
+    import do ([gens_run]), with the premises of [rc_def].  Read as a term,
+    the module is the type former ([Imports.ind_head]). *)
 
 Definition gs_ind (Ξ : gstack) (D : ind_decl) : ind_decl :=
   mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D).
 
-Definition ind_gens (p : qname) (x : string) (pv : bool) (Ξ : gstack) (D : ind_decl) : list igen :=
-  let n := List.length (gs_tele Ξ) in
-  ig_def x pv (ctx_pi (ind_params D) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ) (apps (a_ind p) (vars_from 0 n))
-  :: List.map (fun cg =>
-                 ig_def (fst cg) pv
-                   (ctx_pi (ind_params D)
-                      (ctx_pi (cargs_ctx p (gs_ind Ξ D) (snd cg))
-                         (apps (a_ind p) (ind_pvars (gs_ind Ξ D) (List.length (snd cg))))))
-                   (apps (a_con p (fst cg)) (vars_from 0 n)))
-       (ind_cons D).
+(** The frame of the module [x] a declaration makes, and the name of the
+    declaration in it. *)
+Definition ind_frame (Ξ : gstack) (x : string) (R : raw_decl) : gstack :=
+  gs_push (qname_in (gs_path Ξ) x) (rd_uparams R) Ξ.
+
+Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (qname_in (gs_path Ξ) x) ind_name.
+
+(** The constructors of the filed declaration [D], over the module's
+    parameters: [D]'s uniform ones.  They are public members of the module,
+    as the declaration is: the module's own privacy is the declaration's. *)
+Definition ind_gens (p : qname) (D : ind_decl) : list igen :=
+  List.map (fun cg =>
+              ig_def (fst cg) false
+                (ctx_pi (ind_nparams D)
+                   (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
+                (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D))))
+    (ind_cons D).
 
 (** ** Merging Filed Units
 
@@ -196,16 +203,20 @@ Section Semantics.
       import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ'
-  (** A declaration as written: its arguments classified ([cls_cons]), the
-      structural declaration checked as the member it is filed as, then its
-      generated definitions. *)
-  | rc_ind : forall ch Θ Ξ x pv R cs Ξ',
+  (** A declaration as written: its arguments classified ([cls_cons]); its
+      module's frame pushed, with the premises of [rc_mod]; the structural
+      declaration checked as the member it is filed as, then its
+      constructors generated; and that frame becomes the member [x], as
+      [rc_mod] makes it. *)
+  | rc_ind : forall ch Θ Ξ x pv R cs mp U,
       cls_cons (rd_nu R) (List.length (rd_params R)) (rd_cons R) cs ->
-      Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) ->
-      gs_fresh (ind_key x) Ξ ->
-      gens_run Θ (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ (rd_filed R cs))) Ξ)
-        (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ (rd_filed R cs)) Ξ' ->
-      Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ Ξ'
+      tele_ass (rd_uparams R) ->
+      ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ ->
+      gs_fresh x Ξ ->
+      Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind false (gs_ind Ξ (rd_filed R cs)) ->
+      gens_run Θ (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
+        (ind_gens (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ((mp, U) :: Ξ) ->
+      Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_body pv (rd_uparams R) (gu_mod U)) Ξ
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -329,7 +340,7 @@ Section Determinism.
       end.
       match goal with
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
-          rewrite (gens_run_functional _ _ _ _ H1 _ H2)
+          pose proof (gens_run_functional _ _ _ _ H1 _ H2) as Heq; injection Heq as -> ->
       end; split; reflexivity.
     - (* a sequence: its head, then its tail from the same state *)
       match goal with
@@ -569,6 +580,23 @@ Proof.
   cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
 Qed.
 
+(** The frame of a declaration's module, with the premises of [rc_mod], and
+    its declaration filed. *)
+Lemma ind_frame_wf : forall Θ Ξ x R,
+    ⊢g Θ ⍮ Ξ -> tele_ass (rd_uparams R) -> ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ -> gs_fresh x Ξ ->
+    ⊢g Θ ⍮ ind_frame Ξ x R.
+Proof.
+  intros * HΞ Htel HΔ Hfr.
+  destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; unfold ind_frame; cbn [gs_fresh gs_path] in Hfr |- *.
+  apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] |].
+  cbn; exists x; split; [ reflexivity | exact Hfr ].
+Qed.
+
+Lemma ind_file_wf : forall Θ Ξ x R pv D,
+    ⊢g Θ ⍮ ind_frame Ξ x R -> Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind pv D ->
+    ⊢g Θ ⍮ gs_add ind_name (ge_ind pv D) (ind_frame Ξ x R).
+Proof. intros * HΞ HE; apply add_ind_wf; [ exact HΞ | exact HE | cbn; intros [] ]. Qed.
+
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ Ξ'.
 Proof.
   induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; apply add_def_wf; assumption |].
@@ -712,10 +740,18 @@ Section WellFormed.
       + split; [ apply canon_merge; assumption | apply merge_left ].
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst; split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | split; [ exact Hc | apply gds_sub_refl ] ].
-    - (* a declaration: its entry, checked against the frame so far, then
-         its generated definitions *)
-      intros * _ HE Hfr Hg HΞ Hc Hst.
-      split; [ exact (gens_run_wf _ _ _ _ Hg (add_ind_wf _ _ _ _ _ HΞ HE Hfr)) | split; [ exact Hc | apply gds_sub_refl ] ].
+    - (* a declaration: its module's frame, its entry there, its generated
+         definitions; then the frame closes, as a module's does *)
+      intros ch Θ Ξ x pv R cs mp' U _ Htel HΔ Hfr HE Hg HΞ Hc Hst.
+      split; [| split; [ exact Hc | apply gds_sub_refl ] ].
+      pose proof (gens_run_wf _ _ _ _ Hg (ind_file_wf _ _ _ _ _ _ (ind_frame_wf _ _ _ _ HΞ Htel HΔ Hfr) HE)) as HΞ'.
+      destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; unfold ind_frame in *; cbn [gs_fresh gs_path] in Hfr, Hg |- *.
+      pose proof (gens_run_shape _ _ _ _ Hg) as Hp; cbn in Hp; injection Hp as -> HP.
+      inversion HΞ' as [| | ? ? ? ? ? Hs1 HU Hff1]; subst.
+      inversion Hs1 as [| | ? ? ? ? ? Hs0 HV Hff0]; subst.
+      cbn [gu_params] in HP; subst.
+      apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
+      cbn; econstructor; [ exact HV | constructor; exact HU | exact Hfr ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -1066,18 +1102,19 @@ Theorem rc_ind_con_types : forall load_path read to_core ch Θ Ξ x pv R Θ' Ξ'
     forall c args, In (c, args) (rd_cons R) ->
     exists cs gs, cls_cons (rd_nu R) (List.length (rd_params R)) (rd_cons R) cs /\
       ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\
-      con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) gs
-        = user_con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args /\
-      exists i, Θ ⍮ gs_add (ind_key x) (ge_ind pv (gs_ind Ξ (rd_filed R cs))) Ξ ⍮ ⋅
-        ⊢ con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) gs
-        ≈ user_con_ty (qname_in (gs_path Ξ) (ind_key x)) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
+      con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) gs
+        = user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args /\
+      exists i, Θ ⍮ gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R) ⍮ ⋅
+        ⊢ con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) gs
+        ≈ user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
         : Typeω@i.
 Proof.
-  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs ? Hcls HE Hfr Hg | |]; subst.
+  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs ? ? Hcls Htel HΔ Hfr HE Hg | |]; subst.
   destruct (Forall2_in_left _ _ _ _ Hcls Hin) as ([c' gs] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
-  set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := qname_in (gs_path Ξ) (ind_key x)).
-  pose proof (add_ind_wf _ _ _ _ _ HΞ HE Hfr) as HΞ1.
-  pose proof (ind_lookup_added Θ' Ξ (ind_key x) pv D ltac:(intros ->; exact Hfr)) as Hl; fold p in Hl.
+  set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := ind_qname Ξ x).
+  pose proof (ind_file_wf _ _ _ _ _ _ (ind_frame_wf _ _ _ _ HΞ Htel HΔ Hfr) HE) as HΞ1.
+  pose proof (ind_lookup_added Θ' (ind_frame Ξ x R) ind_name false D ltac:(discriminate)) as Hl.
+  change (qname_in (gs_path (ind_frame Ξ x R)) ind_name) with p in Hl.
   destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞ1) Hl) as [HD Hdc].
   pose proof HD as (_ & _ & Hle & _ & _ & _ & _ & _ & _ & _ & _ & Hnd).
   assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).

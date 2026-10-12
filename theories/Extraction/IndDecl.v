@@ -269,6 +269,18 @@ Lemma gs_ind_shape : forall Ξ D,
     (exists Δ, ind_params (gs_ind Ξ D) = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu (gs_ind Ξ D).
 Proof. intros; unfold gs_ind; cbn; split; [ eexists; reflexivity | lia ]. Qed.
 
+(** A declaration filed in its module's frame: the module's parameters are
+    its uniform ones. *)
+Lemma ind_frame_shape : forall Ξ x R cs,
+    (exists Δ, ind_params (gs_ind Ξ (rd_filed R cs)) = Δ ++ gs_tele (ind_frame Ξ x R)) /\
+    List.length (gs_tele (ind_frame Ξ x R)) <= ind_nu (gs_ind Ξ (rd_filed R cs)).
+Proof.
+  intros; unfold gs_ind, ind_frame, rd_filed, rd_uparams; cbn; split.
+  - exists (List.firstn (List.length (rd_params R) - rd_nu R) (rd_params R)).
+    rewrite List.app_assoc, List.firstn_skipn; reflexivity.
+  - rewrite List.length_app, List.length_skipn; lia.
+Qed.
+
 Section Decide.
   Variables (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ).
 
@@ -392,15 +404,16 @@ Section Decide.
     left; split; [ exact Hass | split; [ exact Hmv | repeat split; eauto ] ].
   Defined.
 
-  (** The entry a declaration is filed as. *)
-  Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl) :
-    {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv (gs_ind Ξ D)} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv (gs_ind Ξ D)} :=
-    match decl_shapes_dec (gs_ind Ξ D) with
+  (** The entry a declaration is filed as, its parameters over the
+      frames'. *)
+  Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
+    (Hsh : (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D) :
+    {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} :=
+    match decl_shapes_dec D with
     | right Hn => right (fun H => Hn (proj1 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
     | left Hs =>
-    match decl_typed_dec (gs_ind Ξ D) with
-    | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _)
-                        (conj (proj1 (gs_ind_shape Ξ D)) (conj (proj2 (gs_ind_shape Ξ D)) (conj Hs H))))
+    match decl_typed_dec D with
+    | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) (conj Hs H))))
     | right Hn => right (fun H => Hn (proj2 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
     end
     end.

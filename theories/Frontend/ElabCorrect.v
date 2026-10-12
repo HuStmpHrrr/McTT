@@ -557,16 +557,15 @@ Section Commands.
       all: split; intros Hg; [ dest_eok; cmd_spec; econstructor; eassumption | inversion Hg; subst; cmd_elab; reflexivity ].
     - intros pv x ups oT cs _ _ _ ch O F F' c'; cbn [elab_cmd].
       destruct (split_pis oT) as [nps oS] eqn:Es; split.
-      + intros Hg; apply ebind_eok in Hg as ([] & Hx & Hg); apply ebind_eok in Hg as ([] & Hcs & Hg).
+      + intros Hg; apply ebind_eok in Hg as ([] & Hx & Hg).
         apply ebind_eok in Hg as ([] & Hp & Hg); apply ebind_eok in Hg as (tys & Ht & Hg).
         apply ebind_eok in Hg as (A & HA & Hg); apply ebind_eok in Hg as (cs' & Hc & Hg); inv_eok.
-        econstructor; [ apply (check_fresh_ok _ _ tt); exact Hx | apply (check_fresh_all_ok _ _ tt); exact Hcs
+        econstructor; [ apply (check_fresh_ok _ _ tt); exact Hx
                       | exact Es | apply (check_params_ok _ tt); exact Hp | apply elab_params_iff; exact Ht
                       | apply elab_iff; exact HA | apply elab_rcons_iff; exact Hc ].
       + intros Hg; inversion Hg; subst.
         match goal with H : split_pis oT = _ |- _ => rewrite Es in H; injection H as <- <- end.
         rewrite (proj2 (check_fresh_ok _ _ tt)) by assumption; cbn [ebind].
-        rewrite (proj2 (check_fresh_all_ok _ _ tt)) by assumption; cbn [ebind].
         rewrite (proj2 (check_params_ok _ tt)) by assumption; cbn [ebind].
         rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].

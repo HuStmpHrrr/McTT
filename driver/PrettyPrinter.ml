@@ -424,9 +424,8 @@ let exp_to_obj =
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [x])
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
-    (* The type former of an inductive type is named by its declaration, the
-       entry [X#] beside the definition [X] it prints as; a constructor by
-       its name, in the same module. *)
+    (* An inductive type is named by its module, where its declaration is
+       filed under [#]; a constructor is a member of that module. *)
     | Coq_a_ind p -> path_to_obj p.q_unit (ind_chain p.q_chain None)
     | Coq_a_con (p, c) -> path_to_obj p.q_unit (ind_chain p.q_chain (Some c))
     (* An eliminator: fresh names for what its motive and its branches
@@ -445,17 +444,11 @@ let exp_to_obj =
        in
        Cst.Coq_elim (escr', xs, em', bs')
   (* The chain of the type former or of a constructor of an inductive type,
-     from that of its declaration. *)
+     from that of its declaration, [#] in the type's module. *)
   and ind_chain (ch : string list) (c : string option) : string list =
     match List.rev ch with
-    | [] -> []
-    | x :: pre ->
-       let x' = match c with
-         | Some c -> c
-         | None ->
-            let n = String.length x in
-            if n > 0 && x.[n - 1] = '#' then String.sub x 0 (n - 1) else x in
-       List.rev (x' :: pre)
+    | "#" :: pre -> List.rev (match c with Some c -> c :: pre | None -> pre)
+    | _ -> ch
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])

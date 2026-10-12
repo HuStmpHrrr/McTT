@@ -247,8 +247,12 @@ A module declares an inductive type with
 parameters in parentheses are uniform, the ones the type binds before its
 sort `S` are not, and an argument of type `X` applied to all of them, the
 uniform ones as declared, is recursive: `cons (x : A) (xs : List A)`.  The
-parameters of an enclosing module are not written. `examples/Inductives.mctt` has lists, options,
-trees, dependent pairs and a type with a non-uniform parameter.
+parameters of an enclosing module are not written.  The declaration makes
+`X` a module over its uniform parameters, whose members are the
+constructors: `List.cons A x xs` is `(List A).cons x xs`, and
+`open List use (nil; cons)` declares them here.  As a term, `X` is the type.
+`examples/Inductives.mctt` has lists, options, trees, dependent pairs and a
+type with a non-uniform parameter.
 
 ## Branches
 

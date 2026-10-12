@@ -378,12 +378,13 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
    | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
-   (* A declaration: its name, its uniform parameters, its type, binding
-      the non-uniform ones before its sort, then each constructor and its
-      arguments, in which the declared name is a variable linked to the
-      declaration, and each argument binds its name for the next. *)
+   (* A declaration: its name, a module, its uniform parameters, its type,
+      binding the non-uniform ones before its sort, then each constructor,
+      a member of the module, and its arguments, in which the declared name
+      is a variable linked to the declaration, and each argument binds its
+      name for the next. *)
    | C.Coq_c_ind (_, x, ps, t, cs) ->
-       ignore (decl x Def);
+       ignore (decl x Mod);
        let envu, _ = params st env ps in
        let rec pis env t =
          match t with
@@ -399,7 +400,7 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
        let take n l = List.filteri (fun i _ -> i < n) l in
        let envs = { sc = take k enva.sc @ base.sc; vs = take k enva.vs @ base.vs } in
        List.iter (fun (c, args) ->
-           ignore (decl c Def);
+           declare st (next st c) (anchor_of (ch @ [ x ]) c) Def;
            ignore (List.fold_left (fun env (y, a) ->
                let v = bind st y in term st env a; push y v env) envs args)) cs);
   next_frame st fp ch o f c

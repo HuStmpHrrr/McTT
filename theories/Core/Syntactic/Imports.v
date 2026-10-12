@@ -41,6 +41,30 @@ Proof.
     apply Hs', Hs in E'; congruence.
 Qed.
 
+(** A declaration-site oracle, and what makes it [mdecl] of [Θ ⍮ Ξ]: the
+    qualified name of the entry a chain reaches, read through aliases. *)
+Definition md_oracle : Type := modexp -> list string -> option qname.
+
+Definition md_spec (Θ : gdeps) (Ξ : gstack) (md : md_oracle) : Prop :=
+  forall H ch p, md H ch = Some p <->
+    exists qd pv, mdecl Θ Ξ H ch qd pv /\ p = qname_in qd (List.last ch EmptyString).
+
+Lemma md_spec_ext : forall Θ Ξ md md', md_spec Θ Ξ md -> md_spec Θ Ξ md' ->
+    forall H ch, md H ch = md' H ch.
+Proof.
+  intros * Hs Hs' H ch.
+  destruct (md H ch) as [p |] eqn:E.
+  - symmetry; apply Hs', Hs, E.
+  - destruct (md' H ch) as [p |] eqn:E'; [| reflexivity ].
+    apply Hs', Hs in E'; congruence.
+Qed.
+
+(** The oracles of expansion. *)
+Record xoracle : Type := mk_xo { xo_mt : mt_oracle; xo_md : md_oracle }.
+
+Definition xo_spec (Θ : gdeps) (Ξ : gstack) (xo : xoracle) : Prop :=
+  mt_spec Θ Ξ (xo_mt xo) /\ md_spec Θ Ξ (xo_md xo).
+
 (** ** Results *)
 
 (** Why an import fails. *)
@@ -202,8 +226,24 @@ Fixpoint gens_append (Φ : gmod) (k : nat) (gs : list igen) : gmod :=
       gens_append (gm_ext Φ d (gentry_wk E (wk_shiftn k))) (S k) gs'
   end.
 
+(** An inductive type read as a term: the module [x] of [H] that its
+    declaration is filed in, the module's arguments applied to its type
+    former. *)
+Definition ind_head (md : md_oracle) (H : modexp) (x : string) : option exp :=
+  match modexp_spine H with
+  | (me_unit fp, args, pre) =>
+      option_map (fun p => apps (a_ind p) args) (md (me_unit fp) (pre ++ x :: ind_name :: nil))
+  | _ => None
+  end.
+
+Definition mem_xp (md : md_oracle) (H : modexp) (x : string) : exp :=
+  match ind_head md H x with
+  | Some M => M
+  | None => a_mem H x
+  end.
+
 Section Expansion.
-  Variable mt : mt_oracle.
+  Variable xo : xoracle.
 
   Fixpoint exp_xp (S : skel) (M : exp) {struct M} : xres exp :=
     match M with
@@ -254,7 +294,7 @@ Section Expansion.
         let+ b' := bnd_xp S b in
         let+ B' := exp_xp (bnd_skel b' :: S) B in
         xok (a_let b' B')
-    | a_mem H x => let+ H' := modexp_xp S H in xok (a_mem H' x)
+    | a_mem H x => let+ H' := modexp_xp S H in xok (mem_xp (xo_md xo) H' x)
     end
   with modexp_xp (S : skel) (H : modexp) {struct H} : xres modexp :=
     match H with
@@ -306,7 +346,7 @@ Section Expansion.
     | gm_open Φ H its =>
         let+ Φ' := gmod_xp S Φ in
         let+ H' := modexp_xp (body_skel Φ' ++ S) H in
-        let+ gs := import_gen mt (skel_ctx (body_skel Φ' ++ S)) H' its in
+        let+ gs := import_gen (xo_mt xo) (skel_ctx (body_skel Φ' ++ S)) H' its in
         xok (gens_append Φ' 0 gs)
     end
   with gentry_xp (S : skel) (E : gentry) {struct E} : xres gentry :=
@@ -402,15 +442,15 @@ Definition frame_skel (Ξ : gstack) : skel := map (fun _ => None) (gs_tele Ξ).
 
 (** ** The Declarative Wrappers
 
-    Expansion and generation with any oracle meeting the specification.  Any
-    two such oracles agree ([mt_spec_ext]), so the results are unique
-    ([xp_ext]). *)
+    Expansion and generation with any oracles meeting the specifications.
+    Any two such oracles agree ([mt_spec_ext], [md_spec_ext]), so the
+    results are unique ([xp_ext]). *)
 
 Definition cmd_xp_ok (Θ : gdeps) (Ξ : gstack) (c c' : ccmd) : Prop :=
-  exists mt, mt_spec Θ Ξ mt /\ cmd_xp mt (frame_skel Ξ) c = xok c'.
+  exists xo, xo_spec Θ Ξ xo /\ cmd_xp xo (frame_skel Ξ) c = xok c'.
 
 Definition tele_xp_ok (Θ : gdeps) (Ξ : gstack) (S : skel) (Δ Δ' : ctx) : Prop :=
-  exists mt, mt_spec Θ Ξ mt /\ tele_xp mt S Δ = xok Δ'.
+  exists xo, xo_spec Θ Ξ xo /\ tele_xp xo S Δ = xok Δ'.
 
 Definition import_gen_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its : list iitem) (gs : list igen) : Prop :=
   exists mt, mt_spec Θ Ξ mt /\ import_gen mt Γ H its = xok gs.
@@ -418,8 +458,14 @@ Definition import_gen_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (its
 (** ** Expansion Reads the Oracle Only *)
 
 Section Ext.
-  Variables (mt mt' : mt_oracle).
-  Hypothesis Hext : forall Γ H ch, mt Γ H ch = mt' Γ H ch.
+  Variables (mt mt' : xoracle).
+  Hypothesis Hext : forall Γ H ch, xo_mt mt Γ H ch = xo_mt mt' Γ H ch.
+  Hypothesis Hdext : forall H ch, xo_md mt H ch = xo_md mt' H ch.
+
+  Lemma mem_xp_ext : forall H x, mem_xp (xo_md mt) H x = mem_xp (xo_md mt') H x.
+  Proof.
+    intros; unfold mem_xp, ind_head; destruct (modexp_spine H) as [[[] ?] ?]; rewrite ?Hdext; reflexivity.
+  Qed.
 
   #[local]
   Ltac xp_step :=
@@ -429,9 +475,10 @@ Section Ext.
                 | IH : forall S, ?f mt S ?x = ?f mt' S ?x |- context [?f mt ?S' ?x] => rewrite (IH S')
                 end
               | rewrite (import_gen_ext _ _ Hext)
+              | rewrite mem_xp_ext
               | match goal with
                 | |- context [xbind (?f mt' ?S ?x) _] => destruct (f mt' S x)
-                | |- context [xbind (import_gen mt' ?G ?H ?its) _] => destruct (import_gen mt' G H its)
+                | |- context [xbind (import_gen (xo_mt mt') ?G ?H ?its) _] => destruct (import_gen (xo_mt mt') G H its)
                 | |- context [match ?o with Some _ => _ | None => _ end] => is_var o; destruct o
                 end ]);
     try reflexivity.
@@ -505,14 +552,14 @@ End Ext.
 
 Lemma cmd_xp_ok_functional : forall Θ Ξ c c1 c2, cmd_xp_ok Θ Ξ c c1 -> cmd_xp_ok Θ Ξ c c2 -> c1 = c2.
 Proof.
-  intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
-  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
+  intros * (mt1 & [Hs1 Hd1] & E1) (mt2 & [Hs2 Hd2] & E2).
+  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2)) in E1; congruence.
 Qed.
 
 Lemma tele_xp_ok_functional : forall Θ Ξ S Δ Δ1 Δ2, tele_xp_ok Θ Ξ S Δ Δ1 -> tele_xp_ok Θ Ξ S Δ Δ2 -> Δ1 = Δ2.
 Proof.
-  intros * (mt1 & Hs1 & E1) (mt2 & Hs2 & E2).
-  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2)) in E1; congruence.
+  intros * (mt1 & [Hs1 Hd1] & E1) (mt2 & [Hs2 Hd2] & E2).
+  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2)) in E1; congruence.
 Qed.
 
 Lemma import_gen_ok_functional : forall Θ Ξ Γ H its gs1 gs2,
@@ -523,14 +570,16 @@ Proof.
 Qed.
 
 (** Any oracle meeting the specification computes the wrapped results. *)
-Lemma cmd_xp_ok_spec : forall Θ Ξ mt c c', mt_spec Θ Ξ mt -> cmd_xp_ok Θ Ξ c c' -> cmd_xp mt (frame_skel Ξ) c = xok c'.
+Lemma cmd_xp_ok_spec : forall Θ Ξ xo c c', xo_spec Θ Ξ xo -> cmd_xp_ok Θ Ξ c c' -> cmd_xp xo (frame_skel Ξ) c = xok c'.
 Proof.
-  intros * Hs (mt1 & Hs1 & E1); rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
+  intros * [Hs Hd] (mt1 & [Hs1 Hd1] & E1);
+    rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1)); exact E1.
 Qed.
 
-Lemma tele_xp_ok_spec : forall Θ Ξ mt S Δ Δ', mt_spec Θ Ξ mt -> tele_xp_ok Θ Ξ S Δ Δ' -> tele_xp mt S Δ = xok Δ'.
+Lemma tele_xp_ok_spec : forall Θ Ξ xo S Δ Δ', xo_spec Θ Ξ xo -> tele_xp_ok Θ Ξ S Δ Δ' -> tele_xp xo S Δ = xok Δ'.
 Proof.
-  intros * Hs (mt1 & Hs1 & E1); rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1)); exact E1.
+  intros * [Hs Hd] (mt1 & [Hs1 Hd1] & E1);
+    rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1)); exact E1.
 Qed.
 
 Lemma import_gen_ok_spec : forall Θ Ξ mt Γ H its gs, mt_spec Θ Ξ mt ->
@@ -545,6 +594,15 @@ Lemma mt_spec_transfer : forall Θ Ξ Θ' Ξ' mt,
     (forall Γ H ch R, member_type Θ Ξ Γ H ch R <-> member_type Θ' Ξ' Γ H ch R) ->
     mt_spec Θ Ξ mt -> mt_spec Θ' Ξ' mt.
 Proof. intros * Heq Hs Γ H ch R; rewrite <- Heq; apply Hs. Qed.
+
+Lemma md_spec_transfer : forall Θ Ξ Θ' Ξ' md,
+    (forall H ch qd pv, mdecl Θ Ξ H ch qd pv <-> mdecl Θ' Ξ' H ch qd pv) ->
+    md_spec Θ Ξ md -> md_spec Θ' Ξ' md.
+Proof.
+  intros * Heq Hs H ch p; split; intros Hp.
+  - apply Hs in Hp as (qd & pv & Hd & ->); exists qd, pv; split; [ apply Heq; exact Hd | reflexivity ].
+  - apply Hs; destruct Hp as (qd & pv & Hd & ->); exists qd, pv; split; [ apply Heq; exact Hd | reflexivity ].
+Qed.
 
 (** ** Expansion Keeps the Command
 

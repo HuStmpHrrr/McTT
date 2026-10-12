@@ -88,13 +88,36 @@ user's, with `Self := a_ind p` at the frames' parameters (`user_con_ty`,
 | PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `IndPER.v`, `IndCanon.v`, `IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/IndSem.v`, `IndCases.v`, `ElimCases.v`, `TeleSem.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `glu_ind`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
-| commands: `cc_ind`, `rc_ind`, `ind_key x = x#`, `gs_ind`, `ind_gens` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| commands: `cc_ind`, `rc_ind`, `ind_name = "#"`, `rd_uparams`, `ind_frame`, `ind_qname`, `gs_ind`, `ind_gens` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| the type as a term (`ind_head`, `mem_xp`), the declaration-site oracle (`md_spec`, `xoracle`) | `Core/Syntactic/Imports.v`; `md_of`, `xo_of` in `Extraction/Privacy.v` |
 
-A declaration `cc_ind x pv D` (written parameters over the frame) is filed
-as `ge_ind pv (gs_ind Ξ D)` under the unwritable name `x#`, the frames'
-parameters appended as its outermost uniform parameters, then runs the
-generated definitions `x := a_ind p $ frame vars` and `c := a_con p c $
-frame vars` as an import's are run (`gens_run`, premises of `rc_def`).
+## The type is a module
+
+A declaration `cc_ind x pv R` makes the module `x` (`ge_body pv Δu Φ`),
+over the uniform parameters `Δu = rd_uparams R`, as `rc_mod` makes one: it
+pushes the frame `ind_frame Ξ x R` with `rc_mod`'s premises (`tele_ass Δu`,
+`⊢ Δu ++ gs_tele Ξ`, `x` fresh), files the structural declaration there
+under the unwritable name `#` (`ge_ind pv (gs_ind Ξ D)`, the frames'
+parameters, the module's own included, its outermost uniform parameters;
+its name is `ind_qname Ξ x = …x.#`), runs the generated constructors
+`c := a_con p c $ (Δu ++ frame) vars` (`ind_gens`, run by `gens_run` with
+the premises of `rc_def`), and closes the frame as the member `x`.
+
+* Constructors are members of the module: `List.cons A x xs`, and
+  `(List A).cons x xs` by module application; `open List use (nil; cons)`
+  declares them (`examples/Inductives.mctt`).  Their names need only be
+  distinct within the type.
+* As a term, the module is the type former.  Expansion (`cmd_xp`, core)
+  replaces a term `a_mem H x` whose `H.x.#` is a declaration
+  (`ind_head`) by `apps (a_ind p) args`, `args` the arguments of `H`; `p`
+  is found by the declaration-site oracle (`md_spec`: `mdecl`, which follows
+  aliases), so `module M := List` and `open A use (List)` give the type
+  too.  Typing has no new rule.
+* The expansion oracles are bundled (`xoracle`: member types `xo_mt`,
+  declaration sites `xo_md`); `cmd_xp_ok`/`tele_xp_ok` quantify over a
+  bundle meeting both specifications; the checker uses `xo_of`.
+* Not covered: a local module slot (`me_var`) is never an inductive type,
+  so a local alias of one is not the type as a term.
 
 ## Algorithmic layer and checker
 

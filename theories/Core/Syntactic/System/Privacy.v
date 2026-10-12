@@ -22,36 +22,8 @@ Import Syntax_Notations.
 
 (** ** Entries
 
-    [gc_entry Θ Ξ p] is the entry a path names, a definition or a submodule,
-    read through body modules as [gc_resolve] is: it carries the privacy flag
-    of a submodule, which no other lookup reports. *)
-Fixpoint gm_entry (Φ : gmod) (ip : list string) : option gentry :=
-  match Φ with
-  | gm_nil => None
-  | gm_ext Φ y E =>
-      match ip with
-      | nil => None
-      | x :: ip' =>
-          if String.eqb x y
-          then match ip', E with
-               | nil, _ => Some E
-               | _ :: _, ge_mod _ (gu_mk _ (md_body Φ')) => gm_entry Φ' ip'
-               | _, _ => None
-               end
-          else gm_entry Φ ip
-      end
-  | gm_open Φ _ _ => gm_entry Φ ip
-  end.
-
-Definition gc_entry (Θ : gdeps) (Ξ : gstack) (p : qname) : option gentry :=
-  match gs_find Ξ p with
-  | Some (U, ip) => gm_entry (gu_mod U) ip
-  | None =>
-      match gds_lookup Θ (q_unit p) with
-      | Some U => gm_entry (gu_mod U) (q_chain p)
-      | None => None
-      end
-  end.
+    [gm_entry], [gc_entry], [ge_private] and [mdecl] are defined in
+    [Members], where expansion reads them too. *)
 
 Lemma gm_entry_resolve : forall Φ ip E, gm_resolve Φ ip = Some E -> gm_entry Φ ip = Some E.
 Proof.
@@ -94,45 +66,6 @@ Proof.
   destruct (gds_lookup Θ1 (q_unit p)) as [V |] eqn:E1; [| discriminate ].
   rewrite (Hs _ _ E1); exact H.
 Qed.
-
-(** Whether an entry is private. *)
-Definition ge_private (E : gentry) : bool :=
-  match E with
-  | ge_def _ pv _ _ => pv
-  | ge_mod pv _ => pv
-  | ge_ind pv _ => pv
-  end.
-
-(** ** The Module that Declares a Member
-
-    [mdecl Θ Ξ H ch qd pv]: the member at the chain [ch] of the module
-    expression [H], reached from a unit, a definition or a submodule, is
-    declared in the module named [qd], with privacy [pv].  A chain through a
-    global alias goes on in the alias's target, past its arguments. *)
-Inductive mdecl (Θ : gdeps) (Ξ : gstack) : modexp -> list string -> qname -> bool -> Prop :=
-(** A member reached through body modules, declared in the module the chain
-    names before it. *)
-| mdl_entry : forall fp ch E pv,
-    gc_entry Θ Ξ (q_abs fp ch) = Some E ->
-    ge_private E = pv ->
-    mdecl Θ Ξ (me_unit fp) ch (q_abs fp (removelast ch)) pv
-(** A chain past an alias goes on in the alias's target. *)
-| mdl_alias : forall fp ch T E r qd pv,
-    r <> nil ->
-    gc_module Θ Ξ (q_abs fp ch) = Some (mr_alias (gu_mk T (md_alias E)) r) ->
-    mdecl Θ Ξ E r qd pv ->
-    mdecl Θ Ξ (me_unit fp) ch qd pv
-(** A selection is read as a longer chain from its module. *)
-| mdl_mem : forall H y ch qd pv,
-    mdecl Θ Ξ H (y :: ch) qd pv ->
-    mdecl Θ Ξ (me_mem H y) ch qd pv
-(** Arguments do not change where a member is declared. *)
-| mdl_app : forall H N ch qd pv,
-    mdecl Θ Ξ H ch qd pv ->
-    mdecl Θ Ξ (me_app H N) ch qd pv.
-
-#[export]
-Hint Constructors mdecl : mctt.
 
 Lemma mdecl_functional : forall Θ Ξ H ch qd pv, mdecl Θ Ξ H ch qd pv ->
     forall qd' pv', mdecl Θ Ξ H ch qd' pv' -> qd = qd' /\ pv = pv'.

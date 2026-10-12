@@ -468,8 +468,13 @@ Section Run.
       split; eauto with mctt.
     (* an open declares what it generates *)
     - destruct_all; split; [ assumption | eapply gens_run_no_axioms; eassumption ].
-    (* a declaration files no axiom, and generates definitions *)
-    - destruct_all; split; [ assumption | eapply gens_run_no_axioms; [ eassumption | apply gs_no_axioms_add; cbn; auto ] ].
+    (* a declaration files no axiom in its module, and generates
+       definitions there; the module becomes a member *)
+    - destruct_all; split; [ assumption |].
+      match goal with Hg : gens_run _ _ _ ((?mp, ?U) :: ?Ξ) |- _ =>
+        assert (HU : gs_no_axioms ((mp, U) :: Ξ))
+          by (eapply gens_run_no_axioms; [ exact Hg | apply gs_no_axioms_add; unfold ind_frame; cbn; auto with mctt ]) end.
+      apply gs_no_axioms_add; cbn; eauto with mctt.
     - assumption.
     - assumption.
     - assumption.
