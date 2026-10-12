@@ -60,6 +60,17 @@ Proof.
       | apply wf_llit; [ cbn; lia | assumption ] ]. }
   1: mauto 4.
 
+  (** The eliminator of an inductive type, congruence and [ι]: each side
+      by the lemmas of [IndTyping].  The positional branch premise of the
+      congruence gives the branches of either side, one component of its
+      induction hypothesis each. *)
+  all: try solve [ eapply wf_iota_lhs; eassumption | eapply wf_iota_rhs; eassumption ].
+  all: try solve [ (eapply wf_elim_cong_lhs + eapply wf_elim_cong_rhs); try eassumption;
+                   intros; match goal with
+                   | H : forall _ _ _ _ _ _, _ -> _ -> _ -> _ /\ _ |- _ =>
+                       edestruct H as [HL HR]; [ eassumption | eassumption | eassumption | first [ exact HL | exact HR ] ]
+                   end ].
+
   (** [rec], right.  The motive varies, so the eliminator has to be built at
       [A'[Id ,, M']] and then transported twice: along [Id ,, M' ≈ Id ,, M] by
       [sub_eq_preserves_exp], and along [A' ≈ A] by [sub_preserves_wf]. *)

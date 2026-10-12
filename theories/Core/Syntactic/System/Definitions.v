@@ -36,7 +36,7 @@ From Stdlib Require Import Lia List Classes.RelationClasses Setoid Morphisms.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Substitution Members.
+From Mctt.Core.Syntactic Require Export Substitution Members Inductives.
 Import Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 Reserved Notation "⊢ Θ ⍮ Ξ ⍮ Γ" (at level 70, Θ at level 69, Ξ at level 69, Γ at level 69).
@@ -191,6 +191,47 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
   `( Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A : A[Id,,M] )
+(** The type former of an inductive type, of the type its declaration
+    gives: a [Π] over the parameters of the sort. *)
+| wf_ind :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     ind_lookup Θ Ξ p = Some D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p : ind_ty D )
+(** A constructor: a [Π] over the parameters and the arguments of the type
+    at the parameters.  The type is a closed type, of a well-formed context
+    of arguments: both follow from the declaration, and are premises so
+    that the semantic models read them off the derivation. *)
+| wf_con :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D gs ++ ind_params D ->
+     Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c : con_ty p D gs )
+(** The eliminator, at the parameters [Ps] the scrutinee's type has: the
+    motive is under the non-uniform parameters and the scrutinee, and each
+    branch, one per constructor in order, under the non-uniform
+    parameters, the constructor's arguments and the recursive results.
+    The parameters are typed one by one, at the instances of their
+    telescope. *)
+| wf_elim :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length Ps = ind_np D ->
+     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps ->
+     nm = S (ind_nn D) ->
+     Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+     brs_names (ind_cons D) Bs ->
+     (forall c gs, ind_con D c = Some gs ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+        Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+          : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
@@ -368,6 +409,40 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ ⊥ ⊢ A ≈ A' : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : ⊥ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ efq M return A ≈ efq M' return A' : A[Id,,M] )
+| wf_exp_eq_ind_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     ind_lookup Θ Ξ p = Some D ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p ≈ a_ind p : ind_ty D )
+| wf_exp_eq_con_cong :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D gs ++ ind_params D ->
+     Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c ≈ a_con p c : con_ty p D gs )
+(** The eliminator, its motive, its branches and its scrutinee varying.  The
+    branches are compared position by position, at the left motive. *)
+| wf_exp_eq_elim_cong :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length Ps = ind_np D ->
+     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps (a_ind p) Ps ->
+     nm = S (ind_nn D) ->
+     Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+     Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A ≈ A' : Typeω@i ->
+     brs_names (ind_cons D) Bs ->
+     (forall c gs, ind_con D c = Some gs ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+     List.map fst Bs = List.map fst Bs' ->
+     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+     (forall k c gs n B B', nth_error Bs k = Some (c, n, B) -> nth_error Bs' k = Some (c, n, B') ->
+        ind_con D c = Some gs ->
+        Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
+          : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
@@ -445,6 +520,35 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ▹ ℕ ▹ A ⊢ MS : A[Wk ⨟ Wk,,succ #1] ->
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
+(** [ι]: the eliminator on a constructor is the constructor's branch, at
+    the non-uniform parameters, the arguments and the recursive results.
+    The arguments are typed one by one, at the instances of their telescope
+    at the parameters. *)
+| wf_exp_eq_elim_iota :
+  `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
+     ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length Ps = ind_np D ->
+     (forall k P T, nth_error Ps k = Some P -> nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+     List.length As = List.length gs ->
+     (forall k N T, nth_error As k = Some N -> nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) k = Some T ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ N : T) ->
+     nm = S (ind_nn D) ->
+     Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+     brs_names (ind_cons D) Bs ->
+     (forall c gs, ind_con D c = Some gs ->
+        Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+        Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+          : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
+     brs_lookup Bs c = Some (n, B) ->
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs (apps (a_con p c) (Ps ++ As))
+       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As)]
+       : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)] )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
@@ -716,6 +820,38 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ ->
      Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
      Θ ⍮ Ξ ⍮ mp ⊢e ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E)) )
+(** An inductive type, declared with parameters [Δ] over the frames'
+    parameters, which are uniform.  The sort is checked in the uniform
+    parameters, a non-recursive argument of a constructor in the parameters
+    and the non-recursive arguments before it, at the sort, and a recursive
+    argument at the non-uniform parameters it is declared at.  The type is
+    not filed yet, so no argument mentions it but as a recursive argument:
+    positivity is by construction.  No type of the declaration has a free
+    module variable ([decl_mvc]), as no type in a context of assumptions. *)
+| wf_gentry_indty :
+  `( ind_params D = Δ ++ gs_tele Ξ ->
+     tele_ass (ind_params D) ->
+     decl_mvc D ->
+     List.length (gs_tele Ξ) <= ind_nu D ->
+     ind_nu D <= ind_np D ->
+     ⊢ Θ ⍮ Ξ ⍮ ind_params D ->
+     ind_sort_univ (ind_sort D) ->
+     Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort D : Typeω@i ->
+     Θ ⍮ Ξ ⍮ ind_uparams D ⊢ ind_sort_lvl (ind_sort D) : Level@n ->
+     List.NoDup (List.map fst (ind_cons D)) ->
+     (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
+        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
+          ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ) ->
+     (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+        List.length Ps = ind_nn D) ->
+     (forall c gs gs1 Ps gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+        nth_error Ps k = Some P ->
+        nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+          = Some T ->
+        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T) ->
+     (forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
+        Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
+     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D )
 where "Θ ⍮ Ξ ⍮ mp ⊢e E" := (wf_gentry Θ Ξ mp E) : type_scope
 
 (** The module at path [mp], with own parameters [Δ], a telescope over the

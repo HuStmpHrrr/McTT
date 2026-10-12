@@ -172,7 +172,9 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      (* natural number eliminator *)
      | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end'
      (* eliminator of the empty type *)
-     | 'exfalso' , term , 'return' , nat motive;
+     | 'exfalso' , term , 'return' , nat motive
+     (* eliminator of an inductive type *)
+     | 'elim' , term , 'return' , {id} , nat motive , {elim branch} , 'end';
 
             (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat
@@ -229,12 +231,23 @@ zero branch = '|', 'zero' , ( '⇒' | '=>' ) , term;
    and the second id is the result of the recursive call *)
 succ branch = '|', 'succ' , id , ',' , id , ( '⇒' | '=>' ) , term;
 
+(* the names of the non-uniform parameters and the constructor's
+   arguments, then those of the induction hypotheses *)
+elim branch = '|' , id , {id} , [ ',' , id , {id} ] , ( '⇒' | '=>' ) , term;
+
 id = ? sequence of upper- or lower-case ASCII alphabet characters ?;
 nat = ? natural number ?;
 ```
 
 Here, we omit spaces between tokens. A let-bound variable is
 definitionally equal to its definition.
+
+A module declares an inductive type with
+`inductive X (A : T) … : ∀ (n : N) … → S where | c (x : B) … end`: the
+parameters in parentheses are uniform, the ones the type binds before its
+sort `S` are not, and an argument of type `X` applied to the non-uniform
+parameters is recursive. `examples/Inductives.mctt` has lists, options,
+trees, dependent pairs and a type with a non-uniform parameter.
 
 ## Branches
 

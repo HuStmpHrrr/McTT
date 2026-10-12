@@ -1,1 +1,1 @@
-From Mctt.Core.Semantic.PER Require Export Chain CoreTactics Definitions Lemmas.
+From Mctt.Core.Semantic.PER Require Export Chain CoreTactics Definitions Tele Lemmas.

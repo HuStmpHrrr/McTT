@@ -3124,3 +3124,85 @@ let%expect_test "lib/Universes.mctt" =
     Evaluate ∀ (x1 : Level@1) → Type@{x1} --> ∀ (x1 : Level@1) → Type@{x1}
       : Type@{ω·2}
     |}]
+
+(* Inductive types *)
+
+let%expect_test "Inductives.mctt works" =
+  let _ = main_of_example "Inductives.mctt" in
+  [%expect {|
+    Evaluate length ℕ (append ℕ (cons ℕ 1 (cons ℕ 2 (nil ℕ))) (cons ℕ 3 (nil ℕ)))
+      --> 3 : ℕ
+    Evaluate append ℕ (cons ℕ 1 (nil ℕ)) (cons ℕ 2 (nil ℕ))
+      --> cons ℕ 1 (cons ℕ 2 (nil ℕ)) : List ℕ
+    Evaluate λ (x1 : List ℕ) → length ℕ (cons ℕ 0 x1)
+      --> λ (x1 : List ℕ)
+            → succ
+                (elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4 x5 ⇒ succ x5 end)
+      : ∀ (x1 : List ℕ) → ℕ
+    Evaluate getOr ℕ 0 (some ℕ 5) --> 5 : ℕ
+    Evaluate getOr ℕ 0 (none ℕ) --> 0 : ℕ
+    Evaluate size ℕ (node ℕ (node ℕ (leaf ℕ) 1 (leaf ℕ)) 2 (leaf ℕ)) --> 2 : ℕ
+    Evaluate snd ℕ (λ (x1 : ℕ) → ℕ) (pair ℕ (λ (x2 : ℕ) → ℕ) 1 2) --> 2 : ℕ
+    Evaluate steps 0 (step 0 (step 1 (stop 2))) --> 2 : ℕ
+    |}]
+
+let%expect_test "a recursive argument names the type at its non-uniform parameters only" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end" in
+  [%expect {| Error: a recursive argument is List applied to its non-uniform parameters only |}]
+
+let%expect_test "a constructor's argument must live in the type's sort" =
+  let _ = main_of_body "inductive Big : Type@0 where | mk (A : Type@0) end" in
+  [%expect {| Error: ill-formed inductive declaration Big |}]
+
+let%expect_test "a recursive occurrence that is not an argument is unbound" =
+  let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (x : Bad) -> Nat) end" in
+  [%expect {| Error: unbound name Bad |}]
+
+let%expect_test "a branch with the wrong number of names is rejected" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        def f (n : N) : N := elim n return k . N | z => z | s m => m end end" in
+  [%expect {|
+    Error: the body of f,
+      λ (x1 : N) → elim x1 return x2 . N | z ⇒ z | s x3 ⇒ x3 end, is not of type
+      ∀ (x1 : N) → N
+    |}]
+
+let%expect_test "the branches must follow the constructors' order" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        def f (n : N) : N := elim n return k . N | s m, h => m | z => z end end" in
+  [%expect {|
+    Error: the body of f,
+      λ (x1 : N) → elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ z end,
+      is not of type ∀ (x1 : N) → N
+    |}]
+
+let%expect_test "an inductive type's name is a member of its frame" =
+  let _ = main_of_body "def N : Nat := 0 end inductive N : Type@0 where | z end" in
+  [%expect {| Error: N is already declared |}]
+
+let%expect_test "an inductive type is declared under the parameters of its module" =
+  let _ = main_of_body "module L (A : Type@0) where \
+                          inductive List : Type@0 where | nil | cons (x : A) (xs : List) end \
+                          def len (l : List) : Nat := elim l return z . Nat | nil => 0 | cons x xs, r => succ r end end \
+                        end \
+                        eval L.len Nat (L.cons Nat 1 (L.nil Nat))" in
+  [%expect {| Evaluate L.len ℕ (L.cons ℕ 1 (L.nil ℕ)) --> 1 : ℕ |}]
+
+let%expect_test "an inductive type is not allowed in a local module" =
+  let _ = main_of_body "eval let module M where inductive E : Type@0 where end end in zero end" in
+  [%expect {| Error: an inductive type is not allowed in a local module |}]
+
+let%expect_test "an eliminator needs a motive" =
+  let _ = main_of_body "eval fun (x : Nat) -> elim x | zero => zero end" in
+  [%expect {|
+    Error: on "|" (at line 1, column 48 - line 1, column 49): An eliminator "elim
+      M" is expected to be followed by "return" and its motive.
+    |}]
+
+let%expect_test "an inductive type needs its type" =
+  let _ = main_of_body "inductive E where end" in
+  [%expect {|
+    Error: on "where" (at line 1, column 31 - line 1, column 36): The uniform
+      parameters of an inductive type are expected to be followed by ":" and its
+      type.
+    |}]

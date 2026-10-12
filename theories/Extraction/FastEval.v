@@ -17,7 +17,7 @@ From Stdlib Require Import Lia List Morphisms PeanoNat Relations String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members Fresh.
+From Mctt.Core.Syntactic Require Import Substitution Members Fresh Inductives.
 From Mctt.Core.Semantic Require Import Domain Evaluation Readback.
 Import Domain_Notations.
 Import Wk_Notations GlobalCtx_Notations.
@@ -38,6 +38,15 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   | a_natrec A MZ MS M =>
       exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
+  | a_ind _ | a_con _ _ => true
+  | a_elim nm A Bs M =>
+      exp_freshb (nm + k) A &&
+      (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=
+         match Bs with
+         | nil => true
+         | cons b Bs' => exp_freshb (snd (fst b) + k) (snd b) && brs_freshb Bs'
+         end) Bs &&
+      exp_freshb k M
   | a_pi A B | a_fn A B => exp_freshb k A && exp_freshb (S k) B
   | a_var x => negb (Nat.eqb x k)
   | a_let b B => bnd_freshb k b && exp_freshb (S k) B
@@ -81,6 +90,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_freshb k A && match B with Some M => exp_freshb k M | None => true end
   | ge_mod _ U => gunit_freshb k U
+  | ge_ind _ _ => true
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -112,6 +122,10 @@ Proof.
     try solve [ auto | split; auto | repeat split; auto
               | apply Bool.negb_true_iff, Nat.eqb_neq in H; assumption
               | apply Bool.negb_true_iff, Nat.eqb_neq in H0; assumption ].
+  - (* an eliminator: its branches, one by one *)
+    apply exp_fresh_elim; split; [ auto | split; [| auto ] ].
+    clear - H0 H4; induction H0 as [| b Bs Hb HF IH]; cbn in *; [ constructor |].
+    apply Bool.andb_true_iff in H4 as [H4 H4']; constructor; [ apply Hb; exact H4 | apply IH; exact H4' ].
   - (* a binding *) destruct oA; split; eauto.
   - (* a unit: its telescope, entry by entry *)
     split; [| auto ].
@@ -128,6 +142,8 @@ Proof. exact (proj1 freshb_sound). Qed.
 Reserved Notation "'⟦' M '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦recᶠ' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$ᶠ|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' Ms '⟧*ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, Ms at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ms at level 69).
@@ -198,6 +214,17 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ b m ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦ efq M return A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (efqᵈ m under ρ return A) )
+(** The type former and a constructor of an inductive type are values,
+    with no argument yet. *)
+| feval_exp_indty :
+  `( ⟦ a_ind p ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p nil )
+| feval_exp_con :
+  `( ⟦ a_con p c ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ d_con p c nil )
+(** The eliminator evaluates its scrutinee, then eliminates the value. *)
+| feval_exp_elim :
+  `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ a_elim nm A Bs M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | feval_exp_pi :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -256,6 +283,35 @@ with feval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> en
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦recᶠ ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
 where "'⟦recᶠ' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_natrec Θ Ξ A MZ MS m ρ r)
+(** The eliminator of an inductive type, as in [Core.Semantic.Evaluation]. *)
+with feval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> domain -> Prop :=
+| feval_elim_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs = (ind_np D + List.length gs)%nat ->
+     brs_lookup Bs c = Some (n, B) ->
+     n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     ⟦ihsᶠ skipn (ind_np D) vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs) ↘ r ->
+     ⟦elimᶠ d_con p c vs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+| feval_elim_neut :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     nm = S (ind_nn D) ->
+     ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) as' ++ ⇑ (d_ind p as') m :: nil) ↘ a ->
+     ⟦elimᶠ ⇑ (d_ind p as') m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ nm A Bs p as' m) )
+where "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_elim Θ Ξ ρ nm A Bs m r)
+with feval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> list domain -> Prop :=
+| feval_ihs_nil :
+  `( ⟦ihsᶠ nil of nil under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+| feval_ihs_arg :
+  `( ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ v :: vs of ca_arg T :: gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+| feval_ihs_rec :
+  `( ⟦elimᶠ v under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+     ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ v :: vs of ca_rec Ps :: gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+where "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_ihs Θ Ξ ρ nm A Bs gs vs r)
 with feval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | feval_app_fn :
@@ -265,6 +321,17 @@ with feval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :
 | feval_app_neut :
   `( ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ b ->
      $ᶠ| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
+(** The type former takes a parameter it still lacks. *)
+| feval_app_indty :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' < ind_np D ->
+     $ᶠ| d_ind p as' & n | Θ ⍮ Ξ ↘ d_ind p (as' ++ n :: nil) )
+(** So does a constructor, a parameter or an argument. *)
+| feval_app_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs < (ind_np D + List.length gs)%nat ->
+     $ᶠ| d_con p c vs & n | Θ ⍮ Ξ ↘ d_con p c (vs ++ n :: nil) )
 (** A member closure takes the next argument of its module, and selects again. *)
 | feval_app_member :
   `( $ᵐᶠ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -461,7 +528,9 @@ with feval_sel_mut_ind := Induction for feval_sel Sort Prop
 with feval_selm_mut_ind := Induction for feval_selm Sort Prop
 with feval_selc_mut_ind := Induction for feval_selc Sort Prop
 with feval_selmc_mut_ind := Induction for feval_selmc Sort Prop
-with feval_benv_mut_ind := Induction for feval_benv Sort Prop.
+with feval_benv_mut_ind := Induction for feval_benv Sort Prop
+with feval_elim_mut_ind := Induction for feval_elim Sort Prop
+with feval_ihs_mut_ind := Induction for feval_ihs Sort Prop.
 Combined Scheme feval_mut_ind from
   feval_exp_mut_ind,
   feval_natrec_mut_ind,
@@ -474,10 +543,12 @@ Combined Scheme feval_mut_ind from
   feval_selm_mut_ind,
   feval_selc_mut_ind,
   feval_selmc_mut_ind,
-  feval_benv_mut_ind.
+  feval_benv_mut_ind,
+  feval_elim_mut_ind,
+  feval_ihs_mut_ind.
 
 #[export]
-Hint Constructors feval_exp feval_natrec feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
+Hint Constructors feval_exp feval_natrec feval_elim feval_ihs feval_app feval_exps feval_apps feval_modexp feval_appm feval_sel feval_selm
   feval_selc feval_selmc feval_benv : mctt.
 
 (** [feval_exp_var] with the value as a premise.  The value [ρ x] is a flexible
@@ -515,7 +586,13 @@ Proof. intros * <-; apply feval_exp_var. Qed.
       (forall h y r1, h ·ₘᶠ y Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘᶠ y Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ*ᶠ ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
-      (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2).
+      (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2) /\
+      (forall ρ nm A Bs m r1,
+          ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ nm A Bs gs vs r1,
+          ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply feval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -526,6 +603,12 @@ Proof. intros * <-; apply feval_exp_var. Qed.
       repeat match goal with
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _ _),
@@ -575,6 +658,26 @@ Proof. intros * <-; apply feval_exp_var. Qed.
     intros Θ Ξ; pose proof (@functional_feval Θ Ξ); intuition.
   Qed.
 
+  Corollary functional_feval_elim : forall {Θ Ξ} ρ nm A Bs m r1 r2,
+      ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+      r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_feval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_feval_ihs : forall {Θ Ξ} ρ nm A Bs gs vs r1 r2,
+      ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+      r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_feval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_feval_exps : forall {Θ Ξ} Ms ρ ms1 ms2,
+      ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms1 -> ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ms2 -> ms1 = ms2.
+  Proof. intros Θ Ξ; pose proof (@functional_feval Θ Ξ); firstorder. Qed.
+
   Corollary functional_feval_benv : forall {Θ Ξ} ρ Φ ρ1 ρ2,
       ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 ->
       ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 ->
@@ -584,7 +687,7 @@ Proof. intros * <-; apply feval_exp_var. Qed.
   Qed.
 
 #[export]
-Hint Resolve functional_feval_exp functional_feval_natrec functional_feval_app functional_feval_modexp : mctt.
+Hint Resolve functional_feval_exp functional_feval_natrec functional_feval_elim functional_feval_ihs functional_feval_app functional_feval_modexp : mctt.
 
 
 
@@ -597,6 +700,12 @@ Ltac functional_feval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦recᶠ ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦recᶠ ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (⟦ ?Ps ⟧*ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ ?Ps ⟧*ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [eapply functional_feval_exps; eassumption] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [feval_sub] case: [functional_feval_sub] gives only pointwise
     equality, so there is nothing to [replace]. *)
@@ -608,8 +717,47 @@ Reserved Notation "'Rnfᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at
 Reserved Notation "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
+Reserved Notation "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
 
 Generalizable All Variables.
+
+(** The fresh variables of the telescopes of an inductive type, as in
+    [Core.Semantic.Readback]. *)
+Inductive ffresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
+| ffresh_tele_nil :
+  `( ffresh_tele Θ Ξ ρ nil s nil )
+| ffresh_tele_cons :
+  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     ffresh_tele Θ Ξ (ρ ↦ ⇑! a s) T (S s) vs ->
+     ffresh_tele Θ Ξ ρ (ce_ass A :: T) s (⇑! a s :: vs) ).
+
+Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
+  env -> list carg -> nat -> list domain -> list (list domain) -> Prop :=
+| ffresh_cargs_nil :
+  `( ffresh_cargs Θ Ξ p ups ρ nil s nil nil )
+| ffresh_cargs_arg :
+  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     ffresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs bss ->
+     ffresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) bss )
+| ffresh_cargs_rec :
+  `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     ffresh_cargs Θ Ξ p ups ρ gs (S s) vs bss ->
+     ffresh_cargs Θ Ξ p ups ρ (ca_rec Ps :: gs) s (⇑! (d_ind p (ups ++ bs)) s :: vs) (bs :: bss) ).
+
+Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
+  list carg -> list domain -> list (list domain) -> nat -> list domain -> Prop :=
+| ffresh_ihs_nil :
+  `( ffresh_ihs Θ Ξ ρ A nil nil nil s nil )
+| ffresh_ihs_arg :
+  `( ffresh_ihs Θ Ξ ρ A gs vs bss s ihs ->
+     ffresh_ihs Θ Ξ ρ A (ca_arg T :: gs) (v :: vs) bss s ihs )
+| ffresh_ihs_rec :
+  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (bs ++ v :: nil) ↘ t ->
+     ffresh_ihs Θ Ξ ρ A gs vs bss (S s) ihs ->
+     ffresh_ihs Θ Ξ ρ A (ca_rec Ps :: gs) (v :: vs) (bs :: bss) s (⇑! t s :: ihs) ).
+
+#[export]
+Hint Constructors ffresh_tele ffresh_cargs ffresh_ihs : mctt.
 
 (** Readback of values into normal and neutral forms in a context with [s]
     variables.  The global context is needed to evaluate closures. *)
@@ -658,6 +806,17 @@ Inductive fread_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :
 | fread_nf_neut :
   `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnfᶠ ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+| fread_nf_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length as' = ind_np D ->
+     List.length vs = (ind_np D + List.length gs)%nat ->
+     Rpsᶠ as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     fread_cargs Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) Args ->
+     Rnfᶠ ⇓ (d_ind p as') (d_con p c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_app Ps Args) )
+| fread_nf_ind_neut :
+  `( Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rnfᶠ ⇓ (d_ind p as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 where "'Rnfᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_nf Θ Ξ s m M) : type_scope
 with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
 | fread_ne_var :
@@ -695,6 +854,16 @@ with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rneᶠ efqᵈ m under ρ return B in Θ ⍮ Ξ ⍮ s ↘ efqⁿ M return B' )
 | fread_ne_glob :
   `( Rneᶠ d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
+| fread_ne_elim :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     nm = S (ind_nn D) ->
+     ffresh_tele Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil) ↘ a ->
+     Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
+     fread_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
+     Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
 where "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_ne Θ Ξ s m M) : type_scope
 with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | fread_typ_univ :
@@ -726,6 +895,11 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | fread_typ_neut :
   `( Rneᶠ b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtypᶠ ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
+| fread_typ_indty :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     Rpsᶠ as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rtypᶠ d_ind p as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p Ps )
 where "'Rtypᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
 with fread_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
@@ -736,20 +910,99 @@ with fread_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -
      Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rlaᶠ (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k n M ys )
 where "'Rlaᶠ' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (fread_la Θ Ξ s xs ys) : type_scope
+with fread_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> nfs -> Prop :=
+| fread_ps_nil :
+  `( Rpsᶠ nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+| fread_ps_cons :
+  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
+     Rpsᶠ v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+where "'Rpsᶠ' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (fread_ps Θ Ξ s ρ T vs Ms) : type_scope
+with fread_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
+| fread_cargs_nil :
+  `( fread_cargs Θ Ξ s p ups ρ nil nil nfs_nil )
+| fread_cargs_arg :
+  `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Rnfᶠ ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     fread_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
+     fread_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
+| fread_cargs_rec :
+  `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     Rnfᶠ ⇓ (d_ind p (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     fread_cargs Θ Ξ s p ups ρ gs vs Vs ->
+     fread_cargs Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) (nfs_cons V Vs) )
+with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_decl -> list domain ->
+                                    list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
+| fread_brs_nil :
+  `( fread_brs Θ Ξ s ρ A p D ups nil nil nbrs_nil )
+| fread_brs_cons :
+  `( n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs bss ->
+     List.Forall (fun bs => List.length bs = ind_nn D) bss ->
+     ffresh_ihs Θ Ξ ρ A gs vs bss (s + ind_nn D + List.length gs)%nat ihs ->
+     ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
+     ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
+     Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
+     fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+     fread_brs Θ Ξ s ρ A p D ups ((c, gs) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs') )
 .
 
 Scheme fread_nf_mut_ind := Induction for fread_nf Sort Prop
 with fread_ne_mut_ind := Induction for fread_ne Sort Prop
 with fread_typ_mut_ind := Induction for fread_typ Sort Prop
-with fread_la_mut_ind := Induction for fread_la Sort Prop.
+with fread_la_mut_ind := Induction for fread_la Sort Prop
+with fread_ps_mut_ind := Induction for fread_ps Sort Prop
+with fread_cargs_mut_ind := Induction for fread_cargs Sort Prop
+with fread_brs_mut_ind := Induction for fread_brs Sort Prop.
 Combined Scheme fread_mut_ind from
   fread_nf_mut_ind,
   fread_ne_mut_ind,
   fread_typ_mut_ind,
-  fread_la_mut_ind.
+  fread_la_mut_ind,
+  fread_ps_mut_ind,
+  fread_cargs_mut_ind,
+  fread_brs_mut_ind.
 
 #[export]
-Hint Constructors fread_nf fread_ne fread_typ fread_la : mctt.
+Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs fread_brs : mctt.
+
+  Lemma functional_ffresh_tele : forall {Θ Ξ} ρ T s vs1, ffresh_tele Θ Ξ ρ T s vs1 ->
+      forall vs2, ffresh_tele Θ Ξ ρ T s vs2 -> vs1 = vs2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
+    functional_feval_rewrite_clear; f_equal; auto.
+  Qed.
+
+  Lemma functional_ffresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1 bss1, ffresh_cargs Θ Ξ p ups ρ gs s vs1 bss1 ->
+      forall vs2 bss2, ffresh_cargs Θ Ξ p ups ρ gs s vs2 bss2 -> vs1 = vs2 /\ bss1 = bss2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; [ auto | |].
+    - functional_feval_rewrite_clear; edestruct IHffresh_cargs as [-> ->]; [ eassumption | auto ].
+    - functional_feval_rewrite_clear; edestruct IHffresh_cargs as [-> ->]; [ eassumption | auto ].
+  Qed.
+
+  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ A gs vs bss s ihs1, ffresh_ihs Θ Ξ ρ A gs vs bss s ihs1 ->
+      forall ihs2, ffresh_ihs Θ Ξ ρ A gs vs bss s ihs2 -> ihs1 = ihs2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; auto.
+    functional_feval_rewrite_clear; f_equal; auto.
+  Qed.
+
+  Ltac functional_ffresh_rewrite_clear :=
+    repeat match goal with
+      | H1 : ffresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : ffresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
+          pose proof (functional_ffresh_tele _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1 ?b1, H2 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 ?b2 |- _ =>
+          destruct (functional_ffresh_cargs _ _ _ _ _ _ _ H1 _ _ H2); subst; clear H2
+      | H1 : ffresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i1, H2 : ffresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i2 |- _ =>
+          pose proof (functional_ffresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      end.
   Lemma functional_fread : forall {Θ Ξ},
     (forall s m M1,
         Rnfᶠ m in Θ ⍮ Ξ ⍮ s ↘ M1 ->
@@ -770,9 +1023,15 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la : mctt.
           Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
           forall ys2,
             Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
-            ys1 = ys2).
+            ys1 = ys2) /\
+      (forall s ρ T vs Vs1, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
+      (forall s p ups ρ gs vs Vs1, fread_cargs Θ Ξ s p ups ρ gs vs Vs1 ->
+         forall Vs2, fread_cargs Θ Ξ s p ups ρ gs vs Vs2 -> Vs1 = Vs2) /\
+      (forall s ρ A p D ups cs Bs Bs1, fread_brs Θ Ξ s ρ A p D ups cs Bs Bs1 ->
+         forall Bs2, fread_brs Θ Ξ s ρ A p D ups cs Bs Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply fread_mut_ind; intros; progressive_inversion; functional_feval_rewrite_clear;
+      functional_ffresh_rewrite_clear; functional_feval_rewrite_clear;
       first
         [ (** A small universe takes the canonical level that its level reads
               back as, so its case is that equality under [nf_univ_of]. *)

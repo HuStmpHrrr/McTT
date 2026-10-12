@@ -1,7 +1,7 @@
 From Stdlib Require Import Lia List Morphisms String.
 
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Substitution Members.
+From Mctt.Core.Syntactic Require Import Substitution Members Inductives.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
 Import Wk_Notations GlobalCtx_Notations.
@@ -10,6 +10,8 @@ Import Wk_Notations GlobalCtx_Notations.
 Reserved Notation "'⟦' M '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, M at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
+Reserved Notation "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' σ '⟧s' Θ '⍮' Ξ '⍮' ρ '↘' ρσ" (at level 70, σ at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ρσ at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
@@ -100,6 +102,17 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ b m ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦ efq M return A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (efqᵈ m under ρ return A) )
+(** The type former and a constructor of an inductive type are values,
+    with no argument yet. *)
+| eval_exp_indty :
+  `( ⟦ a_ind p ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_ind p nil )
+| eval_exp_con :
+  `( ⟦ a_con p c ⟧ Θ ⍮ Ξ ⍮ ρ ↘ d_con p c nil )
+(** The eliminator evaluates its scrutinee, then eliminates the value. *)
+| eval_exp_elim :
+  `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
+     ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     ⟦ a_elim nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -150,6 +163,40 @@ with eval_natrec (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain -> env
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↦ ⇑ b m ↘ a ->
      ⟦rec ⇑ b m return A | zero -> MZ | succ -> MS end ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a recᵈ m under ρ return A | zero -> mz | succ -> MS end )
 where "'⟦rec' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_natrec Θ Ξ A MZ MS m ρ r)
+(** The eliminator of an inductive type, on a value.  On a constructor at
+    all its parameters and arguments, the branch of the constructor, with its
+    non-uniform parameters, its arguments and the recursive results.  On a
+    neutral of the type, a neutral at the motive's instance; the neutral
+    records the inductive type and its parameters, which readback needs. *)
+with eval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> domain -> Prop :=
+| eval_elim_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs = (ind_np D + List.length gs)%nat ->
+     brs_lookup Bs c = Some (n, B) ->
+     n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     ⟦ihs skipn (ind_np D) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs) ↘ r ->
+     ⟦elim d_con p c vs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+| eval_elim_neut :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     nm = S (ind_nn D) ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) as' ++ ⇑ (d_ind p as') m :: nil) ↘ a ->
+     ⟦elim ⇑ (d_ind p as') m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ nm A Bs p as' m) )
+where "'⟦elim' m 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_elim Θ Ξ ρ nm A Bs m r)
+(** The recursive results of the arguments [vs], one per recursive argument. *)
+with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> list domain -> Prop :=
+| eval_ihs_nil :
+  `( ⟦ihs nil of nil under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+| eval_ihs_arg :
+  `( ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_arg T :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+| eval_ihs_rec :
+  `( ⟦elim v under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+     ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihs v :: vs of ca_rec Ps :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+where "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ nm A Bs gs vs r)
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
@@ -159,6 +206,17 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 | eval_app_neut :
   `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↦ n ↘ b ->
      $| ⇑ (Πᵈ a ρ B) m & n | Θ ⍮ Ξ ↘ ⇑ b (m $ᵈ ⇓ a n) )
+(** The type former takes a parameter it still lacks. *)
+| eval_app_indty :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' < ind_np D ->
+     $| d_ind p as' & n | Θ ⍮ Ξ ↘ d_ind p (as' ++ n :: nil) )
+(** So does a constructor, a parameter or an argument. *)
+| eval_app_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs < (ind_np D + List.length gs)%nat ->
+     $| d_con p c vs & n | Θ ⍮ Ξ ↘ d_con p c (vs ++ n :: nil) )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -355,7 +413,9 @@ with eval_sel_mut_ind := Induction for eval_sel Sort Prop
 with eval_selm_mut_ind := Induction for eval_selm Sort Prop
 with eval_selc_mut_ind := Induction for eval_selc Sort Prop
 with eval_selmc_mut_ind := Induction for eval_selmc Sort Prop
-with eval_benv_mut_ind := Induction for eval_benv Sort Prop.
+with eval_benv_mut_ind := Induction for eval_benv Sort Prop
+with eval_elim_mut_ind := Induction for eval_elim Sort Prop
+with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_natrec_mut_ind,
@@ -368,10 +428,12 @@ Combined Scheme eval_mut_ind from
   eval_selm_mut_ind,
   eval_selc_mut_ind,
   eval_selmc_mut_ind,
-  eval_benv_mut_ind.
+  eval_benv_mut_ind,
+  eval_elim_mut_ind,
+  eval_ihs_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_natrec eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
+Hint Constructors eval_exp eval_natrec eval_elim eval_ihs eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

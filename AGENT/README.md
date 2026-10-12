@@ -32,6 +32,7 @@ invariants you must preserve when editing one, are in
 | [`modules.md`](modules.md) | Modules, global and local bindings (complete): why they are an elaboration-layer feature only, the definition telescope, what is proved, and the deviations from [`modules-spec.md`](modules-spec.md). **Start here before touching anything under `theories/Frontend/`, or the global context (end of `Core/Syntactic/Syntax.v`, start of `Members.v`).** |
 | [`elab-spec.md`](elab-spec.md) | The declarative specification of the elaborator (`Frontend/ElabSpec.v`) and its proof of soundness and completeness (`Frontend/ElabCorrect.v`). |
 | [`elab-simplify.md`](elab-simplify.md) | The flat-scope elaborator: what moved where, examples, and the core options with their costs. |
+| [`inductives.md`](inductives.md) | Parameterised inductive types (stage A): the surface syntax, the rules, where each layer lives, and the deviations from the design report. |
 | [`universes.md`](universes.md) | The small Π at open levels: the rule, the algorithm's normalised join, semantic strengthening of normal forms, and why NbE invents no variables. |
 | [`notations.md`](notations.md) | The single `constr` grammar: the level table, the superscripts that separate the sorts, and the parsing traps. Read before adding or moving a notation. |
 | [`refinement.md`](refinement.md) | The extracted checker and normalizer and their reference implementations: what was refined, why the specifications are unchanged, the simulation of the fast evaluation. |

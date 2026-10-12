@@ -23,7 +23,7 @@ From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import FundamentalTheorem SubstitutionCases UniverseCases PathCases.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Semantic Require Import Consequences Realizability MemberWf.
-From Mctt.Core.Syntactic Require Import CoreInversions Fresh LevelEq.
+From Mctt.Core.Syntactic Require Import CoreInversions Fresh LevelEq IndCong IndConv.
 From Mctt.Core.Syntactic.System Require Import MemberLemmas MemberWf Scoping.
 From Mctt.Algorithmic Require Import Subtyping.
 Import Domain_Notations Fixed_Notations Wk_Notations.
@@ -441,6 +441,60 @@ Proof.
   econstructor; [ exact Hρs | exact Hp2 | exact HW1 ].
 Qed.
 
+(** ** ShapeInd: a Short Type below an Inductive Type
+
+    The same for a type below an inductive type: [per_subtyp] has an
+    inductive type on the right only in [per_subtyp_indty], whose left-hand
+    side is one, so the type's value is an inductive type, and so is the
+    value it has in the short environment, which reads back as an inductive
+    type's normal form. *)
+Lemma typ_ind_shape_strengthen : forall Δ Γ A T i p Ps,
+    tele_ass Δ ->
+    ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
+    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
+    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ ⊆ apps (a_ind p) Ps ->
+    exists Rs, nbe_ty_f (Δ ++ Γ)%list T (nf_indty p Rs).
+Proof.
+  intros * Hass HΓf HT Hs.
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; mauto 3).
+  assert (HAs : ⊨ (Γ ▹ A))
+    by (apply completeness_fundamental_ctx; eapply ctx_app_wf_tail; exact HΓf).
+  pose proof HT as HTs; apply completeness_fundamental_exp in HTs.
+  destruct HTs as [R0 [HR0 [j HTg]]].
+  apply completeness_fundamental_subtyp in Hs as [R1 [HR1 [i' Hsg]]].
+  destruct (per_ctx_then_per_env_initial_env HR0) as (ρs & ? & Hρs & ? & ?).
+  destruct (long_env Δ Γ A R1 ρs Hass HΓs HΓf HR1 Hρs) as [ρ [Hρ Himg]].
+  pose proof (rel_sub_of_wk (rel_wk_under_ctx_qn Δ Γ A Hass HΓs HΓf HAs)) as Hsb.
+  pose proof (@eval_sub_of_wk gc_deps gc_stack (wk_qn (length Δ) ↑) ρ _) as Hev.
+  assert (⊨ (tele_wk Δ ↑ ++ Γ ▹ A)%list ≈ (tele_wk Δ ↑ ++ Γ ▹ A)%list) as HsA
+      by (eexists; exact HR1).
+  destruct (HTg _ _ HR1 _ _ Hsb _ _ _ _ Hρ Hev Hev) as [er [Ht He]].
+  destruct Ht as [? ? ? ? Hu1 ? ? ? Huc].
+  destruct He as [? ? ? ? Hp1 Hp2 ? ? Hpc].
+  destruct (Hsg _ _ HR1 _ _ (rel_sub_id HsA) _ _ _ _ Hρ (eval_sub_id _) (eval_sub_id _))
+    as (aσ & a & a'σ' & a' & Ha1 & Ha2 & Ha3 & Ha4 & Hau & Ha'u & Hsub).
+  rewrite !(exp_sub_of_wk_ext _ (wk_qn (length Δ) ↑) (ι (wk_qn (length Δ) ↑))) in * by reflexivity.
+  rewrite !exp_sub_id in *.
+  functional_eval_rewrite_clear.
+  destruct (eval_ind_value _ _ _ _ Ha3) as [ms ->].
+  inversion Hsub; subst.
+  simplify_evals.
+  assert (Hu : per_univ_elem j er 𝕌ω@i 𝕌ω@i) by (destruct Huc as [Hx _]; exact Hx).
+  invert_per_univ_elem Hu.
+  apply_relation_equivalence.
+  match goal with
+  | Hp : rel_chain _ (?m1 :: ?m2 :: _) |- _ =>
+      assert (Hmm : per_univ i m1 m2) by (destruct Hpc as [Hx _]; exact Hx);
+      assert (Hshort : per_univ i m2 m2) by (destruct Hpc as [_ [Hx _]]; exact Hx)
+  end.
+  destruct Hmm as [Rm HRm].
+  invert_per_univ_elem HRm.
+  destruct Hshort as [Rs HRs].
+  destruct (per_univ_then_per_top_typ HRs (length (Δ ++ Γ)%list)) as [W [HW1 ?]].
+  inversion HW1; subst.
+  eexists; econstructor; [ exact Hρs | eassumption | exact HW1 ].
+Qed.
+
 (** ** ShapeUniv: a Short Type above a Universe
 
     The same for a type above a universe: [per_subtyp] has a universe on the
@@ -535,6 +589,10 @@ Proof.
     + eapply read_typ_pi; [ exact HA | exact Hb | exact HC ].
     + eapply read_typ_pi; [ exact HA' | exact Hb' | exact HC' ].
     + apply asnf_pi; [ reflexivity | exact HCC' ].
+  - (** Related inductive types read back alike. *)
+    destruct (per_univ_then_per_top_typ H s) as [W [HW HW']].
+    exists W, W; split; [ exact HW | split; [ exact HW' |] ].
+    inversion HW; subst; apply asnf_refl; cbn; auto.
 Qed.
 
 (** ** SubStr: Strengthening a Subtyping
@@ -853,6 +911,77 @@ Proof.
   - do 3 eexists; symmetry; exact Hb.
 Qed.
 
+(** ** The Arguments of an Application of a Head of a [Π] over a Telescope
+
+    A head every type of which is above a [Π] over a telescope, applied to
+    as many arguments, has them of the instances of the telescope's types. *)
+Lemma wf_apps_ctx_pi_inv : forall n Δ Γ B i M Ms T,
+    List.length Δ = n ->
+    tele_ass Δ -> ⊢ (Δ ++ Γ)%list -> (Δ ++ Γ)%list ⊢ B : Typeω@i ->
+    (forall T', Γ ⊢ M : T' -> Γ ⊢ ctx_pi Δ B ⊆ T') ->
+    List.length Ms = List.length Δ ->
+    Γ ⊢ apps M Ms : T ->
+    forall k N T', List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T' -> Γ ⊢ N : T'.
+Proof.
+  induction n as [| n IH]; intros * Hn Hass HΔ HB HP Hl HMs.
+  - destruct Δ; [| discriminate ]; destruct Ms; [| discriminate ]; intros [|] ? ? H; discriminate.
+  - destruct (List.exists_last (l := Δ)) as (Δ0 & e & ->); [ intros ->; discriminate |].
+    rename Δ0 into Δ.
+    rewrite List.length_app in Hn; cbn in Hn.
+    unfold tele_ass in Hass; apply List.Forall_app in Hass as [Hass He]; apply List.Forall_cons_iff in He as [[A0 ->] _].
+    rewrite List.length_app in Hl; cbn in Hl.
+    destruct Ms as [| M0 Ms]; [ cbn in Hl; lia |]; cbn in Hl.
+    rewrite <- List.app_assoc in HΔ, HB; cbn [List.app] in HΔ, HB.
+    destruct (ctx_decomp (ctx_app_wf_tail _ _ _ _ HΔ)) as [HΓ [kA HA0]].
+    cbn [apps_exp] in HMs.
+    (** The first argument, of the first type. *)
+    assert (Happ : forall T', Γ ⊢ M $ M0 : T' -> Γ ⊢ M0 : A0 /\ Γ ⊢ (ctx_pi Δ B)[Id,,M0] ⊆ T').
+    { intros T' HT'.
+      destruct (wf_app_inversion HT') as (X & Y & HM & HM0 & HYT).
+      pose proof (HP _ HM) as Hs; rewrite ctx_pi_snoc in Hs.
+      destruct (subtyp_pi_inv _ _ _ _ _ Hs) as [[k HAX] HBY].
+      assert (HM0' : Γ ⊢ M0 : A0) by (eapply wf_conv'; [ exact HM0 | symmetry; exact HAX ]).
+      split; [ exact HM0' |].
+      etransitivity; [| exact HYT ].
+      eapply sub_preserves_subtyp; [ exact HBY | eapply wf_sub_single; [ exact HA0 | exact HM0' ] ]. }
+    destruct (wf_apps_head _ _ _ HMs) as (T1 & HT1).
+    destruct (Happ _ HT1) as [HM0 _].
+    pose proof (wf_sub_single _ _ _ _ _ _ HA0 HM0) as Hs.
+    assert (HΔ' : ⊢ (tele_sub Δ (Id,,M0) ++ Γ)%list) by (eapply ctx_sub_wf; eassumption).
+    pose proof (wf_sub_ext _ _ _ _ _ _ Hs HΔ' HΔ) as Hs'.
+    intros [| k'] N T' HN HT'.
+    + cbn in HN; injection HN as <-.
+      rewrite tele_insts_snoc in HT'; cbn in HT'; injection HT' as <-; rewrite exp_sub_id; exact HM0.
+    + cbn in HN.
+      eapply (IH (tele_sub Δ (Id,,M0)) Γ (B[sb_qn (List.length Δ) (Id,,M0)]) i (M $ M0) Ms T);
+        [ rewrite length_tele_sub; lia | apply tele_ass_sub; exact Hass | exact HΔ'
+        | exact (sub_preserves_exp _ _ _ _ _ _ _ HB Hs') | | rewrite length_tele_sub; lia | exact HMs | exact HN |].
+      * intros T'' HT''; destruct (Happ _ HT'') as [_ H']; rewrite ctx_pi_sub in H'; exact H'.
+      * rewrite tele_insts_snoc in HT'; cbn [List.nth_error] in HT'.
+        rewrite tele_insts_tele_sub; rewrite <- HT'; f_equal.
+        apply tele_insts_sb_eq; apply sb_compose_id_right.
+Qed.
+
+(** The parameters of the type former applied. *)
+Lemma wf_ind_apps_inv : forall Γ p D Ms T, ind_lookup gc_deps gc_stack p = Some D ->
+    Γ ⊢ apps (a_ind p) Ms : T -> List.length Ms = ind_np D ->
+    forall k P T', List.nth_error Ms k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ms) k = Some T' -> Γ ⊢ P : T'.
+Proof.
+  intros * Hl HMs HMl.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  destruct (ind_sort_shift_typed _ _ _ HD) as [i Hi].
+  pose proof Hc as (Hass & Hle & Hs & HsS & _).
+  assert (HPΓ : ⊢ (ind_params D ++ Γ)%list) by (eapply wf_params_app; eassumption).
+  assert (HB : (ind_params D ++ Γ)%list ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ : Typeω@i).
+  { eapply wf_exp_closed_app; [ exact Hass | exact Hs | | | exact Hi | exact HΓ ].
+    - eapply exp_scoped_wk; [ exact HsS |]; intros x Hx; unfold wk_shiftn, ind_nn; unfold ind_np in *; lia.
+    - exact I. }
+  eapply (wf_apps_ctx_pi_inv _ (ind_params D) Γ _ i (a_ind p) Ms T eq_refl Hass HPΓ HB); [ | exact HMl | exact HMs ].
+  intros T' HT'; destruct (wf_ind_inversion HT') as (D' & Hl' & Hsub).
+  assert (D' = D) as -> by congruence; exact Hsub.
+Qed.
+
 (** Short judgments hold, weakened, in the long context. *)
 Lemma short_wk_exp : forall Δ Γ A M T,
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
@@ -874,14 +1003,97 @@ Qed.
 
     What is proved of a neutral: it has a short type whose weakening is below
     the long one. *)
-Definition ne_str (Γ : ctx) (A : typ) (u : ne) : Prop :=
+Definition exp_str (Γ : ctx) (A : typ) (M : exp) : Prop :=
   forall Δ C,
     tele_ass Δ ->
     ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
     ⊢ (Δ ++ Γ)%list ->
-    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ (u : exp)[wk_qn (length Δ) ↑]ʷ : C ->
-    exists T i, (Δ ++ Γ)%list ⊢ u : T /\ (Δ ++ Γ)%list ⊢ T : Typeω@i /\
+    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ M[wk_qn (length Δ) ↑]ʷ : C ->
+    exists T i, (Δ ++ Γ)%list ⊢ M : T /\ (Δ ++ Γ)%list ⊢ T : Typeω@i /\
            (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ T[wk_qn (length Δ) ↑]ʷ ⊆ C.
+
+Definition ne_str (Γ : ctx) (A : typ) (u : ne) : Prop := exp_str Γ A u.
+
+(** What is proved of a normal form: typed long at a weakened short type, it
+    is typed short at that type. *)
+Definition nf_str_exp (Γ : ctx) (A : typ) (W : exp) : Prop :=
+  forall Δ T i,
+    tele_ass Δ ->
+    ⊢ (tele_wk Δ ↑ ++ Γ ▹ A)%list ->
+    (Δ ++ Γ)%list ⊢ T : Typeω@i ->
+    (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ W[wk_qn (length Δ) ↑]ʷ : T[wk_qn (length Δ) ↑]ʷ ->
+    (Δ ++ Γ)%list ⊢ W : T.
+
+(** A term strengthened with a short type is strengthened at any short type
+    of which the long one is a weakening. *)
+Lemma exp_str_at : forall Γ A M, exp_str Γ A M -> nf_str_exp Γ A M.
+Proof.
+  intros * Hu Δ T i Hass HΓf HT HW.
+  assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
+  destruct (Hu _ _ Hass HΓf HΓs HW) as (T0 & j & HuT & HT0 & Hs).
+  eapply wf_exp_subtyp; [ exact HuT | exact HT |].
+  eapply subtyp_strengthen'; eassumption.
+Qed.
+
+(** An application: the head's short type is a [Π] ([typ_pi_shape_strengthen]),
+    whose domain the argument is checked against. *)
+Lemma app_str : forall Γ A M w, exp_str Γ A M -> nf_str_exp Γ A w -> exp_str Γ A (a_app M w).
+Proof.
+  intros Γ A u w IHu IHw Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
+  destruct (wf_app_inversion HW) as (X & Y & Hu & Hw & HsC).
+  destruct (IHu _ _ Hass HΓf HΓs Hu) as (T0 & j0 & HuT & HT0 & Hs0).
+  destruct (typ_pi_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT0 Hs0) as (C' & D' & HCD).
+  assert (HTCD : (Δ ++ Γ)%list ⊢ T0 ≈ (Πⁿ C' D' : exp) : Typeω@j0) by (eapply soundness_ty'; eassumption).
+  cbn [nf_to_exp] in HTCD.
+  assert (HCDt : (Δ ++ Γ)%list ⊢ Π C' D' : Typeω@j0) by (gen_presups; assumption).
+  destruct (wf_pi_inversion' HCDt) as [HC HD].
+  pose proof (short_wk_exp_eq _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf.
+  assert (Hs' : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ Π (C' : exp)[wk_qn (length Δ) ↑]ʷ (D' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ ⊆ Π X Y)
+    by (etransitivity; [ eapply wf_subtyp_refl'; symmetry; exact HTCDf | exact Hs0 ]).
+  destruct (subtyp_pi_inv _ _ _ _ _ Hs') as [[k HCX] HDY].
+  pose proof (short_wk_exp _ _ _ _ _ HΓf HC) as HCf.
+  assert (Hwf : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ w[wk_qn (length Δ) ↑]ʷ : (C' : exp)[wk_qn (length Δ) ↑]ʷ)
+    by (eapply wf_exp_subtyp; [ exact Hw | exact HCf | eapply wf_subtyp_refl'; symmetry; exact HCX ]).
+  assert (Hws : (Δ ++ Γ)%list ⊢ w : C') by (eapply (IHw _ _ j0); [ exact Hass | exact HΓf | exact HC | exact Hwf ]).
+  assert (Hus : (Δ ++ Γ)%list ⊢ u : Π C' D')
+    by (eapply wf_exp_subtyp; [ exact HuT | exact HCDt | eapply wf_subtyp_refl'; exact HTCD ]).
+  exists ((D' : exp)[Id,,w]), j0; split; [| split ].
+  - eapply wf_app; eassumption.
+  - eapply (exp_sub_single _ _ _ _ Typeω@j0); [ exact HD | exact Hws ].
+  - rewrite exp_wk_sub_id_extend; etransitivity; [| exact HsC ].
+    eapply sub_preserves_subtyp; [ exact HDY | eapply wf_sub_single; [ exact HCf | exact Hwf ] ].
+Qed.
+
+Lemma apps_str : forall Γ A Xs M, List.Forall (nf_str_exp Γ A) Xs -> exp_str Γ A M -> exp_str Γ A (apps M Xs).
+Proof.
+  intros Γ A Xs; induction Xs as [| X Xs IH]; intros M HXs HM; cbn [apps_exp]; [ exact HM |].
+  inversion HXs as [| ? ? HX HXs']; subst.
+  apply IH; [ exact HXs' | exact (app_str _ _ _ _ HM HX) ].
+Qed.
+
+(** The type former and the constructors: typed at their closed types in
+    every context. *)
+Lemma ind_str : forall Γ A p, exp_str Γ A (a_ind p).
+Proof.
+  intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
+  destruct (wf_ind_inversion HW) as (D & Hl & Hs).
+  destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
+  destruct (ind_ty_typed _ _ _ _ HD Hc HΓs) as [j Hj].
+  exists (ind_ty D), j; split; [ eapply wf_ind; eassumption | split; [ exact Hj |] ].
+  rewrite ind_ty_wk by exact Hc; exact Hs.
+Qed.
+
+Lemma con_str : forall Γ A p c, exp_str Γ A (a_con p c).
+Proof.
+  intros * Δ C Hass HΓf HΓs HW; cbn [exp_wk] in HW.
+  destruct (wf_con_inversion HW) as (D & gs & Hl & Hcon & Hs).
+  destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
+  destruct (con_ty_typed _ _ _ _ _ _ _ HD Hc Hl Hcon HΓs) as [j Hj].
+  destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [j0 Hj0].
+  destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl (cons_lookup_in _ _ _ Hcon) gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _).
+  exists (con_ty p D gs), j; split; [ eapply wf_con; eassumption | split; [ exact Hj |] ].
+  rewrite (con_ty_wk p D c gs) by assumption; exact Hs.
+Qed.
 
 (** A neutral typed at [Level@n] in the long context is in the short one. *)
 Lemma ne_str_level : forall Γ A Δ n (u : ne),
@@ -941,7 +1153,9 @@ Theorem nf_strengthen : forall Γ A,
         (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ (W : exp)[wk_qn (length Δ) ↑]ʷ : T[wk_qn (length Δ) ↑]ʷ ->
         (Δ ++ Γ)%list ⊢ W : T) /\
     (forall u, ne_str Γ A u) /\
-    (forall xs, la_all (ne_str Γ A) xs).
+    (forall xs, la_all (ne_str Γ A) xs) /\
+    (forall Ms : nfs, List.Forall (nf_str_exp Γ A) (nfs_to_exps Ms)) /\
+    (forall Bs : nbrs, List.Forall (fun b => nf_str_exp Γ A (snd b)) (nbrs_to_brs Bs)).
 Proof.
   intros Γ A; apply nf_mut_ind.
   - intros * Hass HΓf HT HW; cbn [nf_to_exp exp_wk] in HW.
@@ -1120,6 +1334,10 @@ Proof.
     eapply wf_subtyp_refl'.
     eapply exp_eq_trans_typ_max; [| symmetry; exact HTCD ].
     eapply wf_exp_eq_pi_cong; [ exact HA'm | exact HACs | eapply wf_exp_eq_refl, lift_exp_ge; [| exact HDs ]; lia ].
+  - (** The type former applied. *)
+    intros p Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (ind_str _ _ p))).
+  - (** A constructor applied. *)
+    intros p c Ms IHMs; exact (exp_str_at _ _ _ (apps_str _ _ _ _ IHMs (con_str _ _ p c))).
   - intros u IH * Hass HΓf HT HW; cbn [nf_to_exp] in HW |- *.
     assert (HΓs : ⊢ (Δ ++ Γ)%list) by (gen_presups; assumption).
     destruct (IH _ _ Hass HΓf HΓs HW) as (T0 & j & HuT & HT0 & Hs).
@@ -1168,31 +1386,96 @@ Proof.
     + eapply wf_exfalso; eassumption.
     + eapply (exp_sub_single _ _ _ _ Typeω@j); [ exact HAs | exact Hus ].
     + rewrite exp_wk_sub_id_extend; exact HsC.
-  - (** An application: the head's short type is a [Π] ([typ_pi_shape_strengthen]),
-        whose domain the argument is checked against. *)
-    intros u IHu w IHw Δ C Hass HΓf HΓs HW; cbn [ne_to_exp nf_to_exp exp_wk] in HW.
-    destruct (wf_app_inversion HW) as (X & Y & Hu & Hw & HsC).
-    destruct (IHu _ _ Hass HΓf HΓs Hu) as (T0 & j0 & HuT & HT0 & Hs0).
-    destruct (typ_pi_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT0 Hs0) as (C' & D' & HCD).
-    assert (HTCD : (Δ ++ Γ)%list ⊢ T0 ≈ (Πⁿ C' D' : exp) : Typeω@j0) by (eapply soundness_ty'; eassumption).
-    cbn [nf_to_exp] in HTCD.
-    assert (HCDt : (Δ ++ Γ)%list ⊢ Π C' D' : Typeω@j0) by (gen_presups; assumption).
-    destruct (wf_pi_inversion' HCDt) as [HC HD].
-    pose proof (short_wk_exp_eq _ _ _ _ _ _ HΓf HTCD) as HTCDf; cbn [exp_wk] in HTCDf.
-    assert (Hs' : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ Π (C' : exp)[wk_qn (length Δ) ↑]ʷ (D' : exp)[wk_q (wk_qn (length Δ) ↑)]ʷ ⊆ Π X Y)
-      by (etransitivity; [ eapply wf_subtyp_refl'; symmetry; exact HTCDf | exact Hs0 ]).
-    destruct (subtyp_pi_inv _ _ _ _ _ Hs') as [[k HCX] HDY].
-    pose proof (short_wk_exp _ _ _ _ _ HΓf HC) as HCf.
-    assert (Hwf : (tele_wk Δ ↑ ++ Γ ▹ A)%list ⊢ (w : exp)[wk_qn (length Δ) ↑]ʷ : (C' : exp)[wk_qn (length Δ) ↑]ʷ)
-      by (eapply wf_exp_subtyp; [ exact Hw | exact HCf | eapply wf_subtyp_refl'; symmetry; exact HCX ]).
-    assert (Hws : (Δ ++ Γ)%list ⊢ w : C') by (eapply (IHw _ _ j0); [ exact Hass | exact HΓf | exact HC | exact Hwf ]).
-    assert (Hus : (Δ ++ Γ)%list ⊢ u : Π C' D')
-      by (eapply wf_exp_subtyp; [ exact HuT | exact HCDt | eapply wf_subtyp_refl'; exact HTCD ]).
-    exists ((D' : exp)[Id,,w]), j0; split; [| split ].
-    + eapply wf_app; eassumption.
-    + eapply (exp_sub_single _ _ _ _ Typeω@j0); [ exact HD | exact Hws ].
-    + rewrite exp_wk_sub_id_extend; etransitivity; [| exact HsC ].
-      eapply sub_preserves_subtyp; [ exact HDY | eapply wf_sub_single; [ exact HCf | exact Hwf ] ].
+  - (** A stuck eliminator: the scrutinee's short type is an inductive type
+        ([typ_ind_shape_strengthen]) at parameters whose weakenings are the
+        long ones' equals, at which the motive and the branches are typed
+        long ([wf_elim_params_conv]) and so short, by the induction
+        hypotheses. *)
+    intros nm A' IHA Bs IHB u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
+    set (φ := wk_qn (length Δ) ↑) in *.
+    set (Lf := (tele_wk Δ ↑ ++ Γ ▹ A)%list) in *.
+    destruct (wf_elim_inversion HW) as (p & D & PsL & i & Hl & HPl & HPt & HuL & Hnm & HAL & _ & HBn & _ & HBa & HBtL & HsC).
+    subst nm.
+    destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
+    pose proof (decl_closed_nu D Hc) as Hle.
+    destruct (IHu _ _ Hass HΓf HΓs HuL) as (T0 & j0 & HuT & HT0 & Hs0).
+    destruct (typ_ind_shape_strengthen _ _ _ _ _ _ _ Hass HΓf HT0 Hs0) as [Rs HRs].
+    destruct (typ_ind_shape _ _ _ _ _ HT0 HRs) as (D' & PsS & Hl' & HSl & HSt & HTeq & _).
+    assert (D' = D) as -> by congruence.
+    assert (HuS : (Δ ++ Γ)%list ⊢ u : apps (a_ind p) PsS) by (eapply wf_conv'; [ exact HuT | exact HTeq ]).
+    assert (Hwk : Lf ⊢w φ : (Δ ++ Γ)%list) by (apply wf_wk_qn; [ exact HΓs | exact HΓf ]).
+    (** The long parameters are the short ones, weakened. *)
+    pose proof (short_wk_exp_eq _ _ _ _ _ _ HΓf HTeq) as HTeqL; rewrite wk_apps_ind in HTeqL.
+    assert (HsubL : Lf ⊢ apps (a_ind p) (List.map (fun P => P[φ]ʷ) PsS) ⊆ apps (a_ind p) PsL)
+      by (etransitivity; [ eapply wf_subtyp_refl'; symmetry; exact HTeqL | exact Hs0 ]).
+    destruct (subtyp_ind_inv HsubL) as [k HeqL].
+    assert (HSlL : List.length (List.map (fun P => P[φ]ʷ) PsS) = ind_np D) by (rewrite List.length_map; exact HSl).
+    assert (HStL : forall k P T, List.nth_error (List.map (fun P => P[φ]ʷ) PsS) k = Some P ->
+               List.nth_error (tele_insts (ind_params D) Id (List.map (fun P => P[φ]ʷ) PsS)) k = Some T -> Lf ⊢ P : T).
+    { eapply wk_elim_params; [ exact Hc | | exact Hwk ].
+      intros * HP HT Δ0 φ0 Hφ0; eapply wk_preserves_exp; [ eapply HSt; eassumption | exact Hφ0 ]. }
+    assert (HLf : ⊢ Lf) by exact HΓf.
+    destruct (exp_eq_ind_apps_inv _ _ _ _ _ _ Hl HeqL HSlL HPl HStL HPt) as [_ HPP].
+    pose proof (params_eq_sym _ p D _ _ Hl HLf HSlL HPl HPP) as HPP'.
+    destruct (wf_elim_params_conv _ p D PsL (List.map (fun P => P[φ]ʷ) PsS) _ _ _ _ Hl HPl HPt HSlL HStL HPP' HuL HAL HBtL)
+      as (_ & HAL' & _ & _ & HBtL' & HtyL).
+    set (Us := List.firstn (ind_nu D) PsS) in *.
+    assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; lia).
+    destruct (params_typed_split _ _ D Hc _ PsS HSl HSt) as [HUt _].
+    pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓs HUl HUt) as Hσ.
+    assert (HMs : ⊢ (elim_mctx p D Us ++ Δ ++ Γ)%list) by (eapply elim_mctx_wf; eassumption).
+    assert (Hfm : List.firstn (ind_nu D) (List.map (fun P => P[φ]ʷ) PsS) = List.map (fun U => U[φ]ʷ) Us)
+      by (unfold Us; apply List.firstn_map).
+    rewrite Hfm in HAL', HBtL'.
+    (** The motive. *)
+    assert (HLm : (tele_wk (elim_mctx p D Us ++ Δ) ↑ ++ Γ ▹ A)%list = (elim_mctx p D (List.map (fun U => U[φ]ʷ) Us) ++ Lf)%list)
+      by (rewrite tele_wk_app, elim_mctx_wk by assumption; unfold Lf; rewrite <- List.app_assoc; reflexivity).
+    assert (HAS : (elim_mctx p D Us ++ Δ ++ Γ)%list ⊢ A' : Typeω@i).
+    { rewrite List.app_assoc.
+      eapply (IHA (elim_mctx p D Us ++ Δ) _ (S i)).
+      - apply List.Forall_app; split; [ apply elim_mctx_ass, Hc | exact Hass ].
+      - rewrite HLm; gen_presups; assumption.
+      - rewrite <- List.app_assoc; apply wf_typ; exact HMs.
+      - rewrite HLm, List.length_app, length_elim_mctx, wk_qn_plus; cbn [exp_wk]; exact HAL'. }
+    (** The branches. *)
+    assert (Hin_map : forall c n B, List.In (c, n, B) (nbrs_to_brs Bs) ->
+               List.In (c, n, (B : exp)[wk_qn n φ]ʷ) (List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) (nbrs_to_brs Bs)))
+      by (intros * Hin; apply (List.in_map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ))) in Hin; exact Hin).
+    assert (HBS : forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) (nbrs_to_brs Bs) ->
+              (elim_bctx p D gs A' Us ++ Δ ++ Γ)%list ⊢ B : elim_bty p D c gs A' Us).
+    { intros c gs n B Hcon Hin.
+      pose proof (cons_lookup_in _ _ _ Hcon) as Hcin.
+      pose proof (HBa _ _ _ _ Hcon (Hin_map _ _ _ Hin)) as Hn.
+      pose proof (HBtL' _ _ _ _ Hcon (Hin_map _ _ _ Hin)) as HBL.
+      pose proof (proj1 (List.Forall_forall _ _) IHB _ Hin) as IHb; cbn [snd] in IHb.
+      pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ HD Hc Hl HΓs HUl HUt HMs HAS Hcon) as Hbs.
+      pose proof (sub_preserves_exp _ _ _ _ _ _ _ HAS Hbs) as Hbt.
+      assert (HLb : (tele_wk (elim_bctx p D gs A' Us ++ Δ) ↑ ++ Γ ▹ A)%list
+                    = (elim_bctx p D gs (A' : exp)[wk_qn (S (ind_nn D)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us) ++ Lf)%list)
+        by (rewrite tele_wk_app, (elim_bctx_wk p D c gs) by eassumption; unfold Lf; rewrite <- List.app_assoc; reflexivity).
+      rewrite List.app_assoc.
+      eapply (IHb (elim_bctx p D gs A' Us ++ Δ) _ i).
+      - apply List.Forall_app; split; [ apply elim_bctx_ass, Hc | exact Hass ].
+      - rewrite HLb; gen_presups; assumption.
+      - rewrite <- List.app_assoc; exact Hbt.
+      - rewrite HLb, List.length_app, length_elim_bctx, wk_qn_plus.
+        replace (cargs_nrec gs + List.length gs + ind_nn D) with (ind_nn D + List.length gs + cargs_nrec gs) by lia.
+        rewrite elim_bty_wk, <- Hn; exact HBL. }
+    (** The eliminator, short. *)
+    assert (Hel : (Δ ++ Γ)%list ⊢ a_elim (S (ind_nn D)) A' (nbrs_to_brs Bs) u
+                    : (A' : exp)[sb_of_list Id (List.skipn (ind_nu D) PsS ++ (u : exp) :: nil)]).
+    { eapply wf_elim; [ exact Hl | exact HSl | exact HSt | exact HuS | reflexivity | exact HAS
+                      | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | | | | exact HBS ].
+      - unfold brs_names in *; rewrite List.map_map in HBn; exact HBn.
+      - intros c gs Hcon; eapply ctx_ext_refl; [ apply elim_bctx_ass, Hc | eapply elim_bctx_wf; eassumption ].
+      - intros c gs n B Hcon Hin; exact (HBa _ _ _ _ Hcon (Hin_map _ _ _ Hin)). }
+    destruct (presup_exp_typ Hel) as [i' Hi'].
+    eexists _, i'; split; [ exact Hel | split; [ exact Hi' |] ].
+    rewrite (wk_elim_type D PsS A' u (S (ind_nn D)) φ HSl eq_refl).
+    etransitivity; [| exact HsC ].
+    eapply wf_subtyp_refl'; symmetry; exact HtyL.
+  - (** An application. *)
+    intros u IHu w IHw; exact (app_str _ _ _ _ IHu IHw).
   - (** A variable: the long variable is the image of a short one. *)
     intros x Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
     destruct (wf_vlookup_inversion HW) as (A1 & Hl & HsC).
@@ -1219,6 +1502,10 @@ Proof.
       exists T, j; split; [ exact HTs | split; [ exact HTj | rewrite exp_closed_wk by exact HTc; exact HsT ] ].
   - intros; exact I.
   - intros k u IHu xs IHxs; split; assumption.
+  - cbn; constructor.
+  - intros W IHW Ms IHMs; cbn; constructor; [ exact IHW | exact IHMs ].
+  - cbn; constructor.
+  - intros c n B IHB Bs IHBs; cbn; constructor; [ exact IHB | exact IHBs ].
 Qed.
 
 

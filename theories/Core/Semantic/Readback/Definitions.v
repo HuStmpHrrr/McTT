@@ -1,15 +1,73 @@
+From Stdlib Require Import String.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Evaluation.
 From Mctt.Core.Semantic Require Export Domain.
 Import Domain_Notations.
-From Mctt.Core.Syntactic Require Import Members.
+#[local] Open Scope list_scope.
+From Mctt.Core.Syntactic Require Import Members Inductives.
 
 Reserved Notation "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" (at level 70, m at level 69, Θ at level 69, Ξ at level 69, s constr, M at level 69).
 Reserved Notation "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" (at level 70, xs at level 69, Θ at level 69, Ξ at level 69, s constr, ys at level 69).
 
+Reserved Notation "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" (at level 70, vs at level 69, T at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, s constr, Ms at level 69).
+
 Generalizable All Variables.
+
+(** ** Fresh Variables of the Telescopes of an Inductive Type
+
+    The readback of a stuck eliminator reads its motive and its branches
+    under fresh variables, of the types the declaration gives: the
+    non-uniform parameters, the arguments of a constructor, and the
+    recursive results.  Each type is evaluated in the environment of the
+    variables before it; nothing is built. *)
+
+(** A telescope, outermost first: [fresh_tele ρ T s vs] gives the variables
+    from [s] on, the type of each evaluated in [ρ] extended by those
+    before it. *)
+Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> list domain -> Prop :=
+| fresh_tele_nil :
+  `( fresh_tele Θ Ξ ρ nil s nil )
+| fresh_tele_cons :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     fresh_tele Θ Ξ (ρ ↦ ⇑! a s) T (S s) vs ->
+     fresh_tele Θ Ξ ρ (ce_ass A :: T) s (⇑! a s :: vs) ).
+
+(** The arguments of a constructor of [p] at the uniform parameters [ups]:
+    a non-recursive one of the type its declaration gives, in the
+    environment of the parameters and the non-recursive arguments before
+    it; a recursive one of the type itself, at the parameters [bs] it is
+    declared at, which are recorded. *)
+Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
+  env -> list carg -> nat -> list domain -> list (list domain) -> Prop :=
+| fresh_cargs_nil :
+  `( fresh_cargs Θ Ξ p ups ρ nil s nil nil )
+| fresh_cargs_arg :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     fresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs bss ->
+     fresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) bss )
+| fresh_cargs_rec :
+  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     fresh_cargs Θ Ξ p ups ρ gs (S s) vs bss ->
+     fresh_cargs Θ Ξ p ups ρ (ca_rec Ps :: gs) s (⇑! (d_ind p (ups ++ bs)) s :: vs) (bs :: bss) ).
+
+(** The recursive results of the arguments [vs]: one per recursive argument,
+    at the motive [A] in [ρ] instantiated with its parameters and itself. *)
+Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
+  list carg -> list domain -> list (list domain) -> nat -> list domain -> Prop :=
+| fresh_ihs_nil :
+  `( fresh_ihs Θ Ξ ρ A nil nil nil s nil )
+| fresh_ihs_arg :
+  `( fresh_ihs Θ Ξ ρ A gs vs bss s ihs ->
+     fresh_ihs Θ Ξ ρ A (ca_arg T :: gs) (v :: vs) bss s ihs )
+| fresh_ihs_rec :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (bs ++ v :: nil) ↘ t ->
+     fresh_ihs Θ Ξ ρ A gs vs bss (S s) ihs ->
+     fresh_ihs Θ Ξ ρ A (ca_rec Ps :: gs) (v :: vs) (bs :: bss) s (⇑! t s :: ihs) ).
+
+#[export]
+Hint Constructors fresh_tele fresh_cargs fresh_ihs : mctt.
 
 (** Readback of values into normal and neutral forms in a context with [s]
     variables.  The global context is needed to evaluate closures. *)
@@ -58,6 +116,20 @@ Inductive read_nf (Θ : gdeps) (Ξ : gstack) : nat -> domain_nf -> nf -> Prop :=
 | read_nf_neut :
   `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
      Rnf ⇓ (⇑ a b) (⇑ c m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
+(** A constructor at all its parameters and arguments: the parameters are
+    read off the type, at the types the declaration gives them, and the
+    arguments at theirs. *)
+| read_nf_con :
+  `( ind_lookup Θ Ξ p = Some D ->
+     ind_con D c = Some gs ->
+     List.length as' = ind_np D ->
+     List.length vs = (ind_np D + List.length gs)%nat ->
+     Rps as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     read_cargs Θ Ξ s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) Args ->
+     Rnf ⇓ (d_ind p as') (d_con p c vs) in Θ ⍮ Ξ ⍮ s ↘ nf_con p c (nfs_app Ps Args) )
+| read_nf_ind_neut :
+  `( Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rnf ⇓ (d_ind p as') (⇑ a m) in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ M )
 where "'Rnf' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_nf Θ Ξ s m M) : type_scope
 with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
 | read_ne_var :
@@ -95,6 +167,18 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rne efqᵈ m under ρ return B in Θ ⍮ Ξ ⍮ s ↘ efqⁿ M return B' )
 | read_ne_glob :
   `( Rne d_glob p in Θ ⍮ Ξ ⍮ s ↘ ne_glob p )
+(** A stuck eliminator: the motive under its non-uniform parameters and the
+    scrutinee, each branch under its own variables. *)
+| read_ne_elim :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     nm = S (ind_nn D) ->
+     fresh_tele Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil) ↘ a ->
+     Rtyp a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
+     read_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
+     Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
+     Rne d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
@@ -126,6 +210,12 @@ with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_neut :
   `( Rne b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtyp ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
+(** An inductive type at all its parameters, each read at its type. *)
+| read_typ_indty :
+  `( ind_lookup Θ Ξ p = Some D ->
+     List.length as' = ind_np D ->
+     Rps as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
+     Rtyp d_ind p as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p Ps )
 where "'Rtyp' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_typ Θ Ξ s m M) : type_scope
 (** The atoms of a level, read one by one. *)
 with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) -> lvl_atoms -> Prop :=
@@ -136,17 +226,68 @@ with read_la (Θ : gdeps) (Ξ : gstack) : nat -> list (nat * nat * domain_ne) ->
      Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
      Rla (k, n, m) :: xs in Θ ⍮ Ξ ⍮ s ↘ la_cons k n M ys )
 where "'Rla' xs 'in' Θ '⍮' Ξ '⍮' s ↘ ys" := (read_la Θ Ξ s xs ys) : type_scope
+(** Values at a telescope, outermost first, each at its type in the
+    environment of the values before it. *)
+with read_ps (Θ : gdeps) (Ξ : gstack) : nat -> env -> list centry -> list domain -> nfs -> Prop :=
+| read_ps_nil :
+  `( Rps nil at nil in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_nil )
+| read_ps_cons :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     Rps vs at T in Θ ⍮ Ξ ⍮ ρ ↦ v ⍮ s ↘ Vs ->
+     Rps v :: vs at ce_ass A :: T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ nfs_cons V Vs )
+where "'Rps' vs 'at' T 'in' Θ '⍮' Ξ '⍮' ρ '⍮' s ↘ Ms" := (read_ps Θ Ξ s ρ T vs Ms) : type_scope
+(** The arguments of a constructor of [p] at the uniform parameters [ups],
+    each at its type: a non-recursive one at the type its declaration gives,
+    a recursive one at the type itself. *)
+with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env -> list carg -> list domain -> nfs -> Prop :=
+| read_cargs_nil :
+  `( read_cargs Θ Ξ s p ups ρ nil nil nfs_nil )
+| read_cargs_arg :
+  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
+     Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     read_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
+     read_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
+| read_cargs_rec :
+  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     Rnf ⇓ (d_ind p (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
+     read_cargs Θ Ξ s p ups ρ gs vs Vs ->
+     read_cargs Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) (nfs_cons V Vs) )
+(** The branches of a stuck eliminator, one per constructor in order: each
+    under the non-uniform parameters, the arguments and the recursive
+    results, at the motive's instance at the constructor. *)
+with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_decl -> list domain ->
+                                    list (string * list carg) -> list (string * nat * exp) -> nbrs -> Prop :=
+| read_brs_nil :
+  `( read_brs Θ Ξ s ρ A p D ups nil nil nbrs_nil )
+| read_brs_cons :
+  `( n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     fresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
+     fresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs bss ->
+     List.Forall (fun bs => List.length bs = ind_nn D) bss ->
+     fresh_ihs Θ Ξ ρ A gs vs bss (s + ind_nn D + List.length gs)%nat ihs ->
+     ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
+     Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
+     read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+     read_brs Θ Ξ s ρ A p D ups ((c, gs) :: cs) ((c, n, B) :: Bs) (nbrs_cons c n B' Bs') )
 .
 
 Scheme read_nf_mut_ind := Induction for read_nf Sort Prop
 with read_ne_mut_ind := Induction for read_ne Sort Prop
 with read_typ_mut_ind := Induction for read_typ Sort Prop
-with read_la_mut_ind := Induction for read_la Sort Prop.
+with read_la_mut_ind := Induction for read_la Sort Prop
+with read_ps_mut_ind := Induction for read_ps Sort Prop
+with read_cargs_mut_ind := Induction for read_cargs Sort Prop
+with read_brs_mut_ind := Induction for read_brs Sort Prop.
 Combined Scheme read_mut_ind from
   read_nf_mut_ind,
   read_ne_mut_ind,
   read_typ_mut_ind,
-  read_la_mut_ind.
+  read_la_mut_ind,
+  read_ps_mut_ind,
+  read_cargs_mut_ind,
+  read_brs_mut_ind.
 
 #[export]
-Hint Constructors read_nf read_ne read_typ read_la : mctt.
+Hint Constructors read_nf read_ne read_typ read_la read_ps read_cargs read_brs : mctt.

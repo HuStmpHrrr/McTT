@@ -58,7 +58,7 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] ip E H; cbn in H |- *; try discriminate; [| exact (IH _ _ _ H) ].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| exact (IH _ _ _ H) ].
-  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [Φ' | E']]]; try discriminate; auto.
+  destruct ip' as [| z ip''], E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D]; try discriminate; auto.
 Qed.
 
 Lemma gm_entry_alias : forall Φ T x ip U r, gm_submodule T Φ x ip = Some (mr_alias U r) -> r <> nil ->
@@ -66,7 +66,7 @@ Lemma gm_entry_alias : forall Φ T x ip U r, gm_submodule T Φ x ip = Some (mr_a
 Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H Hr; cbn in H |- *; try discriminate; [| exact (IH _ _ _ _ _ _ H Hr) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H Hr) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']]]; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D]; try discriminate.
   - destruct ip as [| z ip']; [ discriminate |]; exact (IH _ _ _ _ _ _ H Hr).
   - injection H as _ <-; destruct ip as [| z ip']; [ contradiction | reflexivity ].
 Qed.
@@ -100,6 +100,7 @@ Definition ge_private (E : gentry) : bool :=
   match E with
   | ge_def _ pv _ _ => pv
   | ge_mod pv _ => pv
+  | ge_ind pv _ => pv
   end.
 
 (** ** The Module that Declares a Member
@@ -160,7 +161,7 @@ Lemma gm_submodule_alias_suffix : forall Φ T x ip U r,
 Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H; cbn in H; try discriminate; [| exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E0 as [b pv A B | pm [Δ [Φ' | E']]]; try discriminate.
+  destruct E0 as [b pv A B | pm [Δ [Φ' | E']] | pv D]; try discriminate.
   - destruct ip as [| z ip']; [ discriminate |].
     destruct (IH _ _ _ _ _ _ H) as (pre & ->); exists (z :: pre); reflexivity.
   - injection H as _ <-; exists nil; reflexivity.
@@ -298,7 +299,7 @@ with btab (S : list ptab) (Φ : gmod) : list (string * bool * ptab) :=
   end
 with etab (S : list ptab) (E : gentry) : ptab :=
   match E with
-  | ge_def _ _ _ _ => pt_none
+  | ge_def _ _ _ _ | ge_ind _ _ => pt_none
   | ge_mod _ U => utab S U
   end.
 
@@ -322,6 +323,14 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_natrec A MZ MS M =>
       exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
+  | a_ind _ | a_con _ _ => nil
+  | a_elim nm A Bs M =>
+      exp_refs (repeat pt_none nm ++ S) A ++
+        (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
+           match Bs with
+           | nil => nil
+           | b :: Bs' => exp_refs (repeat pt_none (snd (fst b)) ++ S) (snd b) ++ brs_refs Bs'
+           end) Bs ++ exp_refs S M
   | a_pi A M | a_fn A M => exp_refs S A ++ exp_refs (pt_none :: S) M
   | a_app M N => exp_refs S M ++ exp_refs S N
   | a_let b B => bnd_refs S b ++ exp_refs (bnd_tab S b :: S) B
@@ -365,6 +374,7 @@ with gentry_refs (S : list ptab) (E : gentry) : list (ptab * string)%type :=
   match E with
   | ge_def _ _ A B => exp_refs S A ++ match B with Some M => exp_refs S M | None => nil end
   | ge_mod _ U => gunit_refs S U
+  | ge_ind _ _ => nil
   end
 with centry_refs (S : list ptab) (e : centry) : list (ptab * string)%type :=
   match e with
@@ -379,6 +389,21 @@ Fixpoint tele_refs (S : list ptab) (Δ : ctx) : list (ptab * string)%type :=
   | e :: Δ' => centry_refs (repeat pt_none (List.length Δ') ++ S) e ++ tele_refs S Δ'
   end.
 
+(** The references of a declaration: its parameters, its sort over the
+    uniform ones, and its constructors' arguments over all of them, a
+    non-recursive argument binding a variable for the ones after it. *)
+Fixpoint cargs_refs (S : list ptab) (gs : list carg) : list (ptab * string)%type :=
+  match gs with
+  | nil => nil
+  | ca_arg A :: gs' => exp_refs S A ++ cargs_refs (pt_none :: S) gs'
+  | ca_rec Ps :: gs' => flat_map (exp_refs S) Ps ++ cargs_refs S gs'
+  end.
+
+Definition decl_refs (D : ind_decl) : list (ptab * string)%type :=
+  tele_refs nil (ind_params D) ++
+  exp_refs (repeat pt_none (List.length (ind_uparams D))) (ind_sort D) ++
+  flat_map (fun cg => cargs_refs (repeat pt_none (ind_np D)) (snd cg)) (ind_cons D).
+
 (** The references a command makes, as written: its own terms, and for an
     import, its target and each member its items name.  A module's nested
     commands are checked when they run. *)
@@ -390,6 +415,7 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_load _ => nil
   | cc_open E its => modexp_refs nil E ++ item_refs (mtab nil E) its
   | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
+  | cc_ind _ _ D => decl_refs D
   end.
 
 (** ** Accessibility *)

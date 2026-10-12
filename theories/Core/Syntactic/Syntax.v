@@ -76,7 +76,10 @@ Definition dkw_mods (k : dkw) (m : mods) : (mods + string)%type :=
     A module declaration has one shape at the top level and in a [let]: its
     parameters, and its definition [mdef], a body [where cmds end] or an
     alias [:= E].  The body of a local module is the same list of commands as
-    that of a global one. *)
+    that of a global one.  The branches of an eliminator are nested through
+    pairs, for which no [All] scheme is registered; the mutual principle
+    [cst_mut_ind] below is written by hand. *)
+#[warning="-register-all"]
 Inductive obj : Set :=
 (** [Typeω@i], a large universe, the universe [ω²+i], written
     [Type@{ω^2}] for [i = 0] and [Type@{ω^2+i}]; [ω^2] is not a level. *)
@@ -122,6 +125,11 @@ Inductive obj : Set :=
 | proj : obj -> string -> obj
 (** [let d in M end], one declaration at a time *)
 | letb : decl -> obj -> obj
+(** [elim M return xs . A | c ys => B … end]: the eliminator of an
+    inductive type, its motive binding the non-uniform parameters and the
+    scrutinee, each branch the non-uniform parameters, the constructor's
+    arguments and the induction hypotheses, in that order *)
+| elim : obj -> list string -> obj -> list (string * list string * obj) -> obj
 
 with decl : Set :=
 (** [x : A := M], or [x := M] without the type.  A local definition is
@@ -162,7 +170,13 @@ with cmd : Set :=
 | c_error : string -> cmd
 (** [eval M] normalizes [M] and prints the result; [eval M : A] additionally
     checks [M] against [A] rather than inferring its type. *)
-| c_eval : obj -> option obj -> cmd.
+| c_eval : obj -> option obj -> cmd
+(** [private inductive x (ps) : T where | c (args) … end]: the uniform
+    parameters [ps], and [T], which binds the non-uniform ones in front of
+    the sort, [forall (n : A) -> S]; each constructor with its arguments.
+    An argument whose type is [x] applied to the non-uniform parameters
+    alone is recursive. *)
+| c_ind : bool -> string -> list (string * obj) -> obj -> list (string * list (string * obj)) -> cmd.
 
 (** The family is nested through [list], so its induction principle is written
     by hand: a parameter list and a command list carry [Forall] of their
@@ -192,6 +206,7 @@ Section cst_mut_ind.
     (case_glob : forall fp, Po (glob fp))
     (case_proj : forall o x, Po o -> Po (proj o x))
     (case_letb : forall d o, Pd d -> Po o -> Po (letb d o))
+    (case_elim : forall o1 xs o2 bs, Po o1 -> Po o2 -> List.Forall (fun b => Po (snd b)) bs -> Po (elim o1 xs o2 bs))
     (case_d_def : forall x oA o2, match oA with Some A => Po A | None => True end -> Po o2 -> Pd (d_def x oA o2))
     (case_d_mod : forall x ps md, List.Forall (fun p => Po (snd p)) ps -> Pm md -> Pd (d_mod x ps md))
     (case_md_where : forall cs, List.Forall Pc cs -> Pm (md_where cs))
@@ -202,7 +217,9 @@ Section cst_mut_ind.
     (case_c_import : forall fq, Pc (c_import fq))
     (case_c_open : forall fq ip args its, List.Forall Po args -> Pc (c_open fq ip args its))
     (case_c_error : forall e, Pc (c_error e))
-    (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA)).
+    (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA))
+    (case_c_ind : forall pv x ps oT cs, List.Forall (fun p => Po (snd p)) ps -> Po oT ->
+        List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs -> Pc (c_ind pv x ps oT cs)).
 
   Fixpoint obj_mut (o : obj) : Po o :=
     match o with
@@ -227,6 +244,13 @@ Section cst_mut_ind.
     | glob fp => case_glob fp
     | proj o x => case_proj o x (obj_mut o)
     | letb d o => case_letb d o (decl_mut d) (obj_mut o)
+    | elim o1 xs o2 bs =>
+        case_elim o1 xs o2 bs (obj_mut o1) (obj_mut o2)
+          ((fix go (bs : list (string * list string * obj)) : List.Forall (fun b => Po (snd b)) bs :=
+              match bs with
+              | nil => List.Forall_nil _
+              | b :: bs' => List.Forall_cons b (obj_mut (snd b)) (go bs')
+              end) bs)
     end
   with decl_mut (d : decl) : Pd d :=
     match d with
@@ -284,6 +308,27 @@ Section cst_mut_ind.
            | Some A' => obj_mut A'
            | None => I
            end)
+    | c_ind pv x ps oT cs =>
+        case_c_ind pv x ps oT cs
+          ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+              match ps with
+              | nil => List.Forall_nil _
+              | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+              end) ps)
+          (obj_mut oT)
+          ((fix gos (cs : list (string * list (string * obj)))
+              : List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs :=
+              match cs with
+              | nil => List.Forall_nil _
+              | c :: cs' =>
+                  List.Forall_cons c
+                    ((fix go (ps : list (string * obj)) : List.Forall (fun p => Po (snd p)) ps :=
+                        match ps with
+                        | nil => List.Forall_nil _
+                        | p :: ps' => List.Forall_cons p (obj_mut (snd p)) (go ps')
+                        end) (snd c))
+                    (gos cs')
+              end) cs)
     end.
 
   Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
@@ -441,6 +486,47 @@ Proof. intros [u m]; unfold qname_app; cbn; rewrite List.app_nil_r; reflexivity.
 Definition qname_strip (mp p : qname) : option (list string) :=
   if path_beq (q_unit mp) (q_unit p) then strip_prefix (q_chain mp) (q_chain p) else None.
 
+(** * Inductive Declarations
+
+    The declaration of an inductive type, as a unit stores it.  It is generic
+    in the sorts of terms [E] and context entries [C] so that it can be
+    defined before them: [gentry] holds an [ind_decl_g exp centry]
+    ([ind_decl]), and no syntactic operation looks inside it, since a
+    declaration is always filed closed.
+
+    - [ind_nu] is the number of uniform parameters, the outermost ones;
+    - [ind_params] is the parameter telescope [Δ], innermost first;
+    - [ind_sort] is the universe the type lives in, a term over the uniform
+      parameters only;
+    - [ind_cons] lists the constructors in declaration order, each with its
+      arguments, outermost first.
+
+    The arguments are stratified: a non-recursive argument [ca_arg A] has
+    its type [A] over the non-recursive arguments before it and [Δ], and a
+    recursive argument [ca_rec Ps] is the type itself at the uniform
+    parameters and at the non-uniform parameters [Ps], again over the
+    non-recursive arguments before it and [Δ].  Nothing may mention a
+    recursive argument, so it occupies no binder of the arguments after
+    it. *)
+Inductive carg_g (E : Set) : Set :=
+(** A non-recursive argument, of a type *)
+| ca_arg : E -> carg_g E
+(** A recursive argument, at these non-uniform parameters *)
+| ca_rec : list E -> carg_g E.
+Arguments ca_arg {E}.
+Arguments ca_rec {E}.
+
+Record ind_decl_g (E C : Set) : Set := mk_ind
+  { ind_nu : nat
+  ; ind_params : list C
+  ; ind_sort : E
+  ; ind_cons : list (string * list (carg_g E)) }.
+Arguments mk_ind {E C}.
+Arguments ind_nu {E C}.
+Arguments ind_params {E C}.
+Arguments ind_sort {E C}.
+Arguments ind_cons {E C}.
+
 (** * Terms, Module Expressions and Units
 
     Unlike a calculus of explicit substitutions, there is no constructor for
@@ -466,6 +552,10 @@ Definition qname_strip (mp p : qname) : option (list string) :=
       pre-form the core expands before typing, binds one per item.
     - [centry] is a context entry: an assumption, a definition, or a module
       slot [ce_mod U], which binds one index to the unit [U]. *)
+(** The branches of an eliminator are nested through pairs, for which no
+    [All] scheme is registered: [exp_ind] carries no hypothesis about them,
+    and the mutual principle [syn_mut_ind] below is written by hand. *)
+#[warning="-register-all"]
 Inductive exp : Set :=
 (** A large universe: [a_typ n] is [Typeω²+n].  It contains every small
     universe, and the large universes below it. *)
@@ -504,6 +594,19 @@ Inductive exp : Set :=
 (** [a_exfalso A M] eliminates [M] into the motive [A], which binds the
     scrutinee. *)
 | a_exfalso : exp -> exp -> exp
+(** The type former of an inductive type, to be applied to its parameters:
+    [p] names the declaration ([ge_ind]). *)
+| a_ind : qname -> exp
+(** The constructor [c] of the inductive type [p], to be applied to the
+    parameters and the arguments. *)
+| a_con : qname -> string -> exp
+(** [a_elim nm A Bs M] eliminates [M], of an inductive type, into the
+    motive [A], which binds the non-uniform parameters and the scrutinee
+    ([nm] of them).  Each branch [(c, n, B)] is the case of the constructor
+    [c], in declaration order, and binds [n] variables: the non-uniform
+    parameters, the arguments, and one recursive result per recursive
+    argument. *)
+| a_elim : nat -> exp -> list (string * nat * exp) -> exp -> exp
 (** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
@@ -561,6 +664,11 @@ with gentry : Set :=
 | ge_def : bool -> bool -> exp -> option exp -> gentry
 (** [ge_mod pv U]: a submodule, private when [pv] *)
 | ge_mod : bool -> gunit -> gentry
+(** [ge_ind pv D]: the declaration of an inductive type, private when [pv].
+    It is filed under the name of the type followed by [#], which no
+    program can write; its type former and constructors are definitions
+    beside it. *)
+| ge_ind : bool -> ind_decl_g exp centry -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -570,6 +678,24 @@ with centry : Set :=
 | ce_mod : gunit -> centry.
 
 Abbreviation typ := exp.
+Abbreviation carg := (carg_g exp).
+Abbreviation ind_decl := (ind_decl_g exp centry).
+
+(** A property of every branch of an eliminator, under its binders.  A
+    structural recursion on the list, so that a recursive function on terms
+    may use it on the branches' bodies. *)
+Fixpoint all_brs {A : Type} (f : nat -> A -> Prop) (Bs : list (string * nat * A)) : Prop :=
+  match Bs with
+  | nil => True
+  | b :: Bs' => f (snd (fst b)) (snd b) /\ all_brs f Bs'
+  end.
+
+Lemma all_brs_Forall : forall {A : Type} (f : nat -> A -> Prop) Bs,
+    all_brs f Bs <-> List.Forall (fun b => f (snd (fst b)) (snd b)) Bs.
+Proof.
+  induction Bs as [| b Bs IH]; cbn; [ split; auto |].
+  rewrite IH; split; [ intros []; constructor; assumption | intros H; inversion H; auto ].
+Qed.
 
 (** ** Induction
 
@@ -597,6 +723,9 @@ Section syn_mut_ind.
     (case_true : Pe a_true)
     (case_False : Pe a_False)
     (case_exfalso : forall A M, Pe A -> Pe M -> Pe (a_exfalso A M))
+    (case_ind : forall p, Pe (a_ind p))
+    (case_con : forall p c, Pe (a_con p c))
+    (case_elim : forall nm A Bs M, Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim nm A Bs M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -618,6 +747,7 @@ Section syn_mut_ind.
     (case_gm_open : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_open Φ H its))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
+    (case_ge_ind : forall pv D, Pn (ge_ind pv D))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -638,6 +768,16 @@ Section syn_mut_ind.
     | a_true => case_true
     | a_False => case_False
     | a_exfalso A M => case_exfalso A M (exp_mut A) (exp_mut M)
+    | a_ind p => case_ind p
+    | a_con p c => case_con p c
+    | a_elim nm A Bs M =>
+        case_elim nm A Bs M (exp_mut A)
+          ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
+              match Bs with
+              | nil => List.Forall_nil _
+              | cons b Bs' => List.Forall_cons b (exp_mut (snd b)) (brs_mut Bs')
+              end) Bs)
+          (exp_mut M)
     | a_pi A B => case_pi A B (exp_mut A) (exp_mut B)
     | a_fn A M => case_fn A M (exp_mut A) (exp_mut M)
     | a_app M N => case_app M N (exp_mut M) (exp_mut N)
@@ -699,6 +839,7 @@ Section syn_mut_ind.
                                 | eq_refl => I end)
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
+    | ge_ind pv D => case_ge_ind pv D
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -899,6 +1040,7 @@ Fixpoint body_ctx (Φ : gmod) : ctx :=
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind _ _) => cons (ce_ass a_nat) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1122,6 +1264,10 @@ Inductive nf : Set :=
 | nf_pi : nf -> nf -> nf
 (** A function, its domain and body normal *)
 | nf_fn : nf -> nf -> nf
+(** An inductive type at its parameters *)
+| nf_indty : qname -> nfs -> nf
+(** A constructor at the parameters of its type and its arguments *)
+| nf_con : qname -> string -> nfs -> nf
 (** A neutral *)
 | nf_neut : ne -> nf
 with ne : Set :=
@@ -1129,6 +1275,8 @@ with ne : Set :=
 | ne_natrec : nf -> nf -> nf -> ne -> ne
 (** The [⊥]-eliminator, always stuck *)
 | ne_exfalso : nf -> ne -> ne
+(** The eliminator of an inductive type stuck on a neutral *)
+| ne_elim : nat -> nf -> nbrs -> ne -> ne
 (** A neutral applied *)
 | ne_app : ne -> nf -> ne
 (** A variable *)
@@ -1142,7 +1290,25 @@ with ne : Set :=
 with lvl_atoms : Set :=
 | la_nil : lvl_atoms
 | la_cons : nat -> nat -> ne -> lvl_atoms -> lvl_atoms
+(** A list of normal forms: the parameters and arguments of an inductive
+    type or a constructor, outermost first.  Its own sort, like [lvl_atoms],
+    so that [Scheme] generates the induction principle. *)
+with nfs : Set :=
+| nfs_nil : nfs
+| nfs_cons : nf -> nfs -> nfs
+(** The branches of a stuck eliminator: the constructor, the number of
+    variables bound, the body. *)
+with nbrs : Set :=
+| nbrs_nil : nbrs
+| nbrs_cons : string -> nat -> nf -> nbrs -> nbrs
 .
+
+(** [M] applied to [args], outermost first. *)
+Fixpoint apps_exp (M : exp) (args : list exp) : exp :=
+  match args with
+  | nil => M
+  | N :: args' => apps_exp (a_app M N) args'
+  end.
 
 Fixpoint nf_to_exp (M : nf) : exp :=
   match M with
@@ -1158,12 +1324,15 @@ Fixpoint nf_to_exp (M : nf) : exp :=
   | nf_False => a_False
   | nf_pi A B => a_pi (nf_to_exp A) (nf_to_exp B)
   | nf_fn A M => a_fn (nf_to_exp A) (nf_to_exp M)
+  | nf_indty p Ms => apps_exp (a_ind p) (nfs_to_exps Ms)
+  | nf_con p c Ms => apps_exp (a_con p c) (nfs_to_exps Ms)
   | nf_neut M => ne_to_exp M
   end
 with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
+  | ne_elim nm A Bs M => a_elim nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
@@ -1173,10 +1342,30 @@ with la_to_list (xs : lvl_atoms) : list (nat * exp) :=
   | la_nil => nil
   | la_cons k _ M r => (k, ne_to_exp M) :: la_to_list r
   end
+with nfs_to_exps (Ms : nfs) : list exp :=
+  match Ms with
+  | nfs_nil => nil
+  | nfs_cons M Ms => nf_to_exp M :: nfs_to_exps Ms
+  end
+with nbrs_to_brs (Bs : nbrs) : list (string * nat * exp) :=
+  match Bs with
+  | nbrs_nil => nil
+  | nbrs_cons c n B Bs => (c, n, nf_to_exp B) :: nbrs_to_brs Bs
+  end
 .
 
 Coercion nf_to_exp : nf >-> exp.
 Coercion ne_to_exp : ne >-> exp.
+
+(** Two lists of normal forms, one after the other. *)
+Fixpoint nfs_app (Ms Ns : nfs) : nfs :=
+  match Ms with
+  | nfs_nil => Ns
+  | nfs_cons M Ms' => nfs_cons M (nfs_app Ms' Ns)
+  end.
+
+Lemma nfs_to_exps_app : forall Ms Ns, nfs_to_exps (nfs_app Ms Ns) = nfs_to_exps Ms ++ nfs_to_exps Ns.
+Proof. induction Ms; intros; cbn; congruence. Qed.
 
 (** * Canonical Levels
 
@@ -1271,12 +1460,14 @@ Fixpoint nf_clean (W : nf) : Prop :=
   | nf_univ _ xs | nf_lvl _ xs => la_clean xs
   | nf_succ W => nf_clean W
   | nf_pi A B | nf_fn A B => nf_clean A /\ nf_clean B
+  | nf_indty _ Ms | nf_con _ _ Ms => nfs_clean Ms
   | nf_neut M => ne_clean M
   end
 with ne_clean (M : ne) : Prop :=
   match M with
   | ne_natrec A MZ MS M => nf_clean A /\ nf_clean MZ /\ nf_clean MS /\ ne_clean M
   | ne_exfalso A M => nf_clean A /\ ne_clean M
+  | ne_elim _ A Bs M => nf_clean A /\ nbrs_clean Bs /\ ne_clean M
   | ne_app M N => ne_clean M /\ nf_clean N
   | ne_var _ => True
   | ne_glob _ => False
@@ -1285,6 +1476,16 @@ with la_clean (xs : lvl_atoms) : Prop :=
   match xs with
   | la_nil => True
   | la_cons _ _ M r => ne_clean M /\ la_clean r
+  end
+with nfs_clean (Ms : nfs) : Prop :=
+  match Ms with
+  | nfs_nil => True
+  | nfs_cons M Ms => nf_clean M /\ nfs_clean Ms
+  end
+with nbrs_clean (Bs : nbrs) : Prop :=
+  match Bs with
+  | nbrs_nil => True
+  | nbrs_cons _ _ B Bs => nf_clean B /\ nbrs_clean Bs
   end.
 
 Fact nf_eq_dec : forall (M M' : nf),
@@ -1292,7 +1493,11 @@ Fact nf_eq_dec : forall (M M' : nf),
 with ne_eq_dec : forall (M M' : ne),
     ({M = M'} + {M <> M'})%type
 with la_eq_dec : forall (xs xs' : lvl_atoms),
-    ({xs = xs'} + {xs <> xs'})%type.
+    ({xs = xs'} + {xs <> xs'})%type
+with nfs_eq_dec : forall (Ms Ms' : nfs),
+    ({Ms = Ms'} + {Ms <> Ms'})%type
+with nbrs_eq_dec : forall (Bs Bs' : nbrs),
+    ({Bs = Bs'} + {Bs <> Bs'})%type.
 Proof.
   all: intros; decide equality;
     repeat (apply PeanoNat.Nat.eq_dec || decide equality || apply String.string_dec).
@@ -1392,6 +1597,12 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_true => a_true
   | a_False => a_False
   | a_exfalso A M => a_exfalso (exp_wk A (wk_q φ)) (exp_wk M φ)
+  | a_ind p => a_ind p
+  | a_con p c => a_con p c
+  | a_elim nm A Bs M =>
+      a_elim nm (exp_wk A (wk_qn nm φ))
+             (List.map (fun b => (fst b, exp_wk (snd b) (wk_qn (snd (fst b)) φ))) Bs)
+             (exp_wk M φ)
   | a_pi A B => a_pi (exp_wk A φ) (exp_wk B (wk_q φ))
   | a_fn A M => a_fn (exp_wk A φ) (exp_wk M (wk_q φ))
   | a_app M N => a_app (exp_wk M φ) (exp_wk N φ)
@@ -1439,6 +1650,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
+  | ge_ind pv D => ge_ind pv D
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1564,6 +1776,12 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_true => a_true
   | a_False => a_False
   | a_exfalso A M => a_exfalso (exp_sub A (sb_q σ)) (exp_sub M σ)
+  | a_ind p => a_ind p
+  | a_con p c => a_con p c
+  | a_elim nm A Bs M =>
+      a_elim nm (exp_sub A (sb_qn nm σ))
+             (List.map (fun b => (fst b, exp_sub (snd b) (sb_qn (snd (fst b)) σ))) Bs)
+             (exp_sub M σ)
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
   | a_fn A M => a_fn (exp_sub A σ) (exp_sub M (sb_q σ))
   | a_app M N => a_app (exp_sub M σ) (exp_sub N σ)
@@ -1609,6 +1827,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
+  | ge_ind pv D => ge_ind pv D
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with

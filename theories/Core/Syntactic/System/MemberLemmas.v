@@ -74,7 +74,7 @@ Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
 
 Lemma body_ctx_wk : forall Φ φ, body_ctx (gmod_wk Φ φ) = tele_wk (body_ctx Φ) φ.
 Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
+  induction Φ as [| Φ IH x [? ? ? [] | | ] | Φ IH c]; intros; cbn; auto;
     rewrite ?tele_wk_app, ?tele_wk_placeholders, IH, ?length_body_ctx; reflexivity.
 Qed.
 
@@ -84,7 +84,7 @@ Proof. induction n; intros; cbn; rewrite ?IHn; reflexivity. Qed.
 
 Lemma body_ctx_sub : forall Φ σ, body_ctx (gmod_sub Φ σ) = tele_sub (body_ctx Φ) σ.
 Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros; cbn; auto;
+  induction Φ as [| Φ IH x [? ? ? [] | | ] | Φ IH c]; intros; cbn; auto;
     rewrite ?tele_sub_app, ?tele_sub_placeholders, IH, ?length_body_ctx; reflexivity.
 Qed.
 
@@ -115,7 +115,7 @@ Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H; try discriminate.
   - destruct (String.eqb x y); [ injection H as <-; exists nil; reflexivity |].
     destruct (IH _ _ H) as [Ψ HΨ]; cbn.
-    destruct E as [? ? ? [] | ]; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
+    destruct E as [? ? ? [] | | ]; rewrite HΨ; eexists (_ :: Ψ); reflexivity.
   - destruct (IH _ _ H) as [Ψ HΨ]; cbn; rewrite HΨ, app_assoc; eexists; reflexivity.
 Qed.
 
@@ -279,7 +279,7 @@ Proof. induction k; intros; cbn; auto. Qed.
 
 Lemma gmod_scoped_body_ctx : forall Φ n, gmod_scoped n Φ -> ctx_scoped n (body_ctx Φ).
 Proof.
-  induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; intros * HΦ; cbn in *; destruct_all;
+  induction Φ as [| Φ IH x [? ? ? [] | | ] | Φ IH c]; intros * HΦ; cbn in *; destruct_all;
     try (apply ctx_scoped_app; split; [ apply ctx_scoped_placeholders | auto ]);
     repeat split; auto; rewrite length_body_ctx; assumption.
 Qed.
@@ -828,7 +828,7 @@ Proof.
   intros [Δ [Φ | E]] [| x ch'] M H; unfold member_expansion in H; try discriminate.
   - right.
     destruct (gm_prefix_upto Φ x) as [Φx |] eqn:Ex; [| discriminate ].
-    destruct Φx as [| Φ' y [b pv A B | pm Uy] | Φ' c]; try discriminate;
+    destruct Φx as [| Φ' y [b pv A B | pm Uy | pv D] | Φ' c]; try discriminate;
       destruct ch' as [| z ch'']; try discriminate; injection H as <-.
     + pose proof Ex as Ex'; unfold gm_prefix_upto in Ex'.
       assert (y = x) as ->.
@@ -919,7 +919,7 @@ Lemma member_unfold_path_closed : forall Θ Ξ fp ch M,
     gctx_closed Θ Ξ -> member_unfold_ch Θ Ξ nil (me_unit fp) ch = Some M -> exp_scoped 0 M.
 Proof.
   intros * Hc H; cbn in H.
-  destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | pm U] |];
+  destruct (gc_resolve Θ Ξ (q_abs fp ch)) as [[b pv A B | pm U | pv D] |];
     try (injection H as <-; apply member_ref_scoped; exact I);
     destruct (gc_module Θ Ξ (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate;
     pose proof (gctx_closed_module _ _ _ _ Hc Em) as HU; cbn in HU;
@@ -976,7 +976,7 @@ Lemma gm_submodule_resolve : forall Φ T x ip r,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; try discriminate; [| eapply IH; exact H ].
   destruct (String.eqb x y); [| eapply IH; exact H ].
-  destruct E as [b pv A B | ? [Δ [Φ' | E']]]; try discriminate.
+  destruct E as [b pv A B | ? [Δ [Φ' | E']] | ? ?]; try discriminate.
   - destruct ip as [| z ip']; [ reflexivity |].
     eapply IH; exact H.
   - destruct ip; reflexivity.
@@ -1004,8 +1004,10 @@ Lemma member_unfold_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2,
     forall H Γ ch M, member_unfold_ch Θ1 Ξ1 Γ H ch = Some M -> member_unfold_ch Θ2 Ξ2 Γ H ch = Some M.
 Proof.
   intros * Hs; induction H as [fp | x | H IH y | H IH N | U]; intros * HM; cbn in *; auto.
-  - destruct (gc_resolve Θ1 Ξ1 (q_abs fp ch)) as [[b pv A B | pm U] |] eqn:Er.
+  - destruct (gc_resolve Θ1 Ξ1 (q_abs fp ch)) as [[b pv A B | pm U | pv D] |] eqn:Er.
     + rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Er); exact HM.
+    + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate.
+      rewrite (gc_module_resolve _ _ _ _ Em) in Er; discriminate.
     + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U' r] |] eqn:Em; try discriminate.
       rewrite (gc_module_resolve _ _ _ _ Em) in Er; discriminate.
     + destruct (gc_module Θ1 Ξ1 (q_abs fp ch)) as [[T | U r] |] eqn:Em; try discriminate.

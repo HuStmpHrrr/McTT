@@ -5,7 +5,7 @@ From Mctt.Algorithmic.Subtyping Require Export Lemmas.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Completeness Require Import Consequences.Rules.
 From Mctt.Core.Semantic Require Import Consequences.
-From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh LevelEq.
+From Mctt.Core.Syntactic Require Import CoreInversions Corollaries Fresh LevelEq IndCong IndConv.
 From Mctt.Core.Syntactic Require Levels.
 From Mctt.Algorithmic Require Import Strengthening.
 From Mctt.Core.Syntactic.System Require Import GlobalModules MemberWf.
@@ -46,6 +46,17 @@ Proof.
   all: try solve [ repeat match goal with
     | IH : forall A'0, ?G ⊢a ?M ⟹ A'0 -> Levelⁿ@?k = A'0, H : ?G ⊢a ?M ⟹ Levelⁿ@?k' |- _ =>
         specialize (IH _ H); injection IH as ->; clear H end; reflexivity ].
+  (** The forms of inductive types: the scrutinee infers the same type, the
+      declaration is looked up once, and the types are normal forms of the
+      same types. *)
+  all: try solve [ repeat match goal with
+    | IH : forall A'0, ?G ⊢a ?M ⟹ A'0 -> nf_indty _ _ = A'0, H : ?G ⊢a ?M ⟹ nf_indty _ _ |- _ =>
+        specialize (IH _ H); injection IH as <- <- end;
+    match goal with H1 : ind_lookup _ _ ?p = Some ?D1, H2 : ind_lookup _ _ ?p = Some ?D2 |- _ =>
+      assert (D1 = D2) as <- by congruence end;
+    repeat match goal with H1 : ind_con ?D ?c = Some ?g1, H2 : ind_con ?D ?c = Some ?g2 |- _ =>
+      assert (g1 = g2) as <- by congruence; clear H2 end;
+    functional_nbe_rewrite_clear; reflexivity ].
   (** An unannotated [let]: the body's type, then the type of the rest. *)
   4:{ assert (A = A0) as <- by eauto. assert (C = C0) as <- by eauto.
       functional_nbe_rewrite_clear. reflexivity. }
@@ -271,6 +282,46 @@ Qed.
   assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
     by (apply wf_exp_unf_large; eassumption).
 
+(** The eliminator: the parameters of the scrutinee's type are typed, so
+    the motive's and the branches' contexts are well formed. *)
+Lemma alg_elim_sound : forall Γ M p Rs D nm A i Bs T,
+    ⊢ Γ -> Γ ⊢ M : apps (a_ind p) (nfs_to_exps Rs) -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length (nfs_to_exps Rs) = ind_np D -> nm = S (ind_nn D) ->
+    (⊢ (elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list ->
+       (elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list ⊢ A : Typeω@i) ->
+    brs_names (ind_cons D) Bs ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+       ⊢ (elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list ->
+       forall j, (elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list
+                   ⊢ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) : Typeω@j ->
+       (elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list
+         ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
+    nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
+    Γ ⊢ a_elim nm A Bs M : T.
+Proof.
+  intros * HΓ HM Hl HRl Hnm HAi HBn HBa HBi HT.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  pose proof (decl_closed_nu D Hc) as Hle.
+  assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k Hk] by (gen_presups; eauto).
+  pose proof (wf_ind_apps_inv _ _ _ _ _ Hl Hk HRl) as HRt.
+  set (Us := List.firstn (ind_nu D) (nfs_to_exps Rs)) in *.
+  assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; lia).
+  destruct (params_typed_split _ _ D Hc _ _ HRl HRt) as [HUt _].
+  pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUt) as Hσ.
+  assert (HMs : ⊢ (elim_mctx p D Us ++ Γ)%list) by (eapply elim_mctx_wf; eassumption).
+  pose proof (HAi HMs) as HA.
+  assert (Hel : Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)]).
+  { eapply wf_elim; [ exact Hl | exact HRl | exact HRt | exact HM | exact Hnm | exact HA
+                    | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | exact HBn | | exact HBa | ].
+    - intros c gs Hcon; eapply ctx_ext_refl; [ apply elim_bctx_ass, Hc | eapply elim_bctx_wf; eassumption ].
+    - intros c gs n B Hcon Hin.
+      pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ HD Hc Hl HΓ HUl HUt HMs HA Hcon) as Hbs.
+      eapply HBi; [ exact Hcon | exact Hin | eapply elim_bctx_wf; eassumption | exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hbs) ]. }
+  destruct (presup_exp_typ Hel) as [j Hj].
+  eapply wf_conv'; [ exact Hel | eapply soundness_ty'; eassumption ].
+Qed.
+
 Lemma alg_type_sound :
   (forall {Γ A M}, Γ ⊢a M ⟸ A -> ⊢ Γ -> forall i, Γ ⊢ A : Typeω@i -> Γ ⊢ M : A) /\
     (forall {Γ A M}, Γ ⊢a M ⟹ A -> ⊢ Γ -> Γ ⊢ M : A) /\
@@ -295,6 +346,29 @@ Proof.
       pose proof (sub_preserves_exp _ _ _ _ _ _ _ HCj (wf_sub_single_def _ _ _ _ _ _ HA HM)) as HCs;
       assert (Γ ⊢ C[Id,,M] ≈ D : Typeω@j) as <- by mauto 3 using soundness_ty';
       eapply wf_let; [ exact HA | exact HM | eassumption | solve_let_ann ]
+  (** The type former, a constructor and the eliminator. *)
+  | |- _ ⊢ a_ind _ : _ =>
+      match goal with Hl : ind_lookup _ _ _ = Some ?D, HΓ : ⊢ ?G |- _ =>
+        destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
+        destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj];
+        eapply wf_conv'; [ eapply wf_ind; eassumption | eapply soundness_ty'; eassumption ] end
+  | |- _ ⊢ a_con _ _ : _ =>
+      match goal with Hl : ind_lookup _ _ _ = Some ?D, Hcon : ind_con ?D _ = Some ?gs, HΓ : ⊢ ?G |- _ =>
+        destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
+        destruct (con_ty_typed _ _ _ _ _ _ _ HD Hc Hl Hcon HΓ) as [j Hj];
+        destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [j0 Hj0];
+        destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl (cons_lookup_in _ _ _ Hcon) gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _);
+        eapply wf_conv'; [ eapply wf_con; eassumption | eapply soundness_ty'; eassumption ] end
+  | |- _ ⊢ a_elim _ _ _ _ : _ =>
+      match goal with
+      | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, HA : ⊢ ?X -> ?X ⊢ ?A : nf_to_exp ?UA, Hu : is_univ_nf ?UA ?u
+        |- ?G ⊢ a_elim _ ?A _ ?M : _ =>
+          rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA;
+          eapply (alg_elim_sound G M _ _ _ _ A (unf_large u));
+            [ exact HΓ | exact (HM HΓ) | eassumption | eassumption | eassumption
+            | intros HX; apply wf_exp_unf_large; exact (HA HX) | eassumption | eassumption | | eassumption ];
+          intros; eauto
+      end
   (** A module [let]. *)
   | |- _ ⊢ ℓₘ _ in _ : _ =>
       assert (HU : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵘ U ≈ U) by eauto;
@@ -510,6 +584,84 @@ Qed.
   assert (wf_exp gc_deps gc_stack Δ (a_typ (unf_large u)) A)
     by (apply wf_exp_unf_large; eassumption).
 
+(** The type the eliminator infers is the normal form of a type. *)
+Lemma alg_elim_res_typed : forall Γ M p Rs D A UA u,
+    ⊢ Γ -> Γ ⊢a M ⟹ nf_indty p Rs -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length (nfs_to_exps Rs) = ind_np D ->
+    elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA -> is_univ_nf UA u ->
+    exists k, Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] : Typeω@k.
+Proof.
+  intros * HΓ HMi Hl HRl HAi Hu.
+  pose proof (alg_type_infer_sound HMi HΓ) as HM; cbn [nf_to_exp] in HM.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  pose proof (decl_closed_nu D Hc) as Hle.
+  assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k Hk] by (gen_presups; eauto).
+  pose proof (wf_ind_apps_inv _ _ _ _ _ Hl Hk HRl) as HRt.
+  assert (HUl : List.length (List.firstn (ind_nu D) (nfs_to_exps Rs)) = ind_nu D) by (rewrite List.length_firstn; lia).
+  destruct (params_typed_split _ _ D Hc _ _ HRl HRt) as [HUt _].
+  assert (HMs : ⊢ (elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list) by (eapply elim_mctx_wf; eassumption).
+  pose proof (alg_type_infer_sound HAi HMs) as HA.
+  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA; apply wf_exp_unf_large in HA.
+  pose proof (wf_elim_inst_sub_eq _ _ _ _ _ _ _ _ Hl HΓ HRl HRt HM HM (wf_exp_eq_refl HM) HMs) as Hσ.
+  assert (Hσ' : Γ ⊢s sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)
+                  : elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ) by (gen_presups; assumption).
+  eexists; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hσ').
+Qed.
+
+(** The contexts and types at which the checker checks an eliminator's
+    motive and branches are well formed, from the scrutinee's inferred type
+    and the motive's inferred universe. *)
+Lemma alg_elim_mctx_wf : forall Γ M p Rs D,
+    ⊢ Γ -> Γ ⊢a M ⟹ nf_indty p Rs -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length (nfs_to_exps Rs) = ind_np D ->
+    ⊢ elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ.
+Proof.
+  intros * HΓ HMi Hl HRl.
+  pose proof (alg_type_infer_sound HMi HΓ) as HM; cbn [nf_to_exp] in HM.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  pose proof (decl_closed_nu D Hc) as Hle.
+  assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k Hk] by (gen_presups; eauto).
+  pose proof (wf_ind_apps_inv _ _ _ _ _ Hl Hk HRl) as HRt.
+  assert (HUl : List.length (List.firstn (ind_nu D) (nfs_to_exps Rs)) = ind_nu D) by (rewrite List.length_firstn; lia).
+  destruct (params_typed_split _ _ D Hc _ _ HRl HRt) as [HUt _].
+  eapply elim_mctx_wf; eassumption.
+Qed.
+
+Lemma alg_elim_motive_typed : forall Γ M p Rs D A UA u,
+    ⊢ Γ -> Γ ⊢a M ⟹ nf_indty p Rs -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length (nfs_to_exps Rs) = ind_np D ->
+    elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA -> is_univ_nf UA u ->
+    exists i, elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢ A : Typeω@i.
+Proof.
+  intros * HΓ HMi Hl HRl HAi Hu.
+  pose proof (alg_elim_mctx_wf _ _ _ _ _ HΓ HMi Hl HRl) as HMs.
+  pose proof (alg_type_infer_sound HAi HMs) as HA.
+  rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA; apply wf_exp_unf_large in HA.
+  eexists; exact HA.
+Qed.
+
+Lemma alg_elim_bty_typed : forall Γ M p Rs D A UA u c gs,
+    ⊢ Γ -> Γ ⊢a M ⟹ nf_indty p Rs -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length (nfs_to_exps Rs) = ind_np D ->
+    elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA -> is_univ_nf UA u ->
+    ind_con D c = Some gs ->
+    exists j, elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
+           ⊢ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) : Typeω@j.
+Proof.
+  intros * HΓ HMi Hl HRl HAi Hu Hcon.
+  pose proof (alg_elim_mctx_wf _ _ _ _ _ HΓ HMi Hl HRl) as HMs.
+  destruct (alg_elim_motive_typed _ _ _ _ _ _ _ _ HΓ HMi Hl HRl HAi Hu) as [i HA].
+  pose proof (alg_type_infer_sound HMi HΓ) as HM; cbn [nf_to_exp] in HM.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
+  pose proof (decl_closed_nu D Hc) as Hle.
+  assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k Hk] by (gen_presups; eauto).
+  pose proof (wf_ind_apps_inv _ _ _ _ _ Hl Hk HRl) as HRt.
+  assert (HUl : List.length (List.firstn (ind_nu D) (nfs_to_exps Rs)) = ind_nu D) by (rewrite List.length_firstn; lia).
+  destruct (params_typed_split _ _ D Hc _ _ HRl HRt) as [HUt _].
+  pose proof (wf_bty_sub _ _ _ _ _ _ _ _ _ _ HD Hc Hl HΓ HUl HUt HMs HA Hcon) as Hbs.
+  eexists; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hbs).
+Qed.
+
 Lemma alg_type_infer_normal : forall {Γ A A' M},
     ⊢ Γ ->
     Γ ⊢a M ⟹ A ->
@@ -541,6 +693,16 @@ Proof.
     assert (⊢ Γ ▹ ⊥) by mauto 3.
     lift_univ_sound (Γ ▹ ⊥) A u.
     f_equiv; mautosolve 4.
+  (** The forms of inductive types: the normal forms of types. *)
+  - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
+    destruct (ind_ty_typed _ _ _ _ HD Hc ltac:(eassumption)) as [j Hj].
+    eapply idempotent_nbe_ty; eassumption.
+  - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
+    destruct (con_ty_typed _ _ _ _ _ _ _ HD Hc ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)) as [j Hj].
+    eapply idempotent_nbe_ty; eassumption.
+  - destruct (alg_elim_res_typed _ _ _ _ _ _ _ _ ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
+                ltac:(eassumption) ltac:(eassumption)) as [j Hj].
+    eapply idempotent_nbe_ty; eassumption.
   (** [Π]: the universe it infers is a normal form, which normalises to
       itself. *)
   - match goal with
@@ -718,6 +880,13 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_maxl M N => exp_lets M + exp_lets N
   | a_natrec A MZ MS M => exp_lets A + exp_lets MZ + exp_lets MS + exp_lets M
   | a_exfalso A M => exp_lets A + exp_lets M
+  | a_elim _ A Bs M =>
+      S (exp_lets A) +
+        (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
+           match Bs with
+           | nil => 0
+           | b :: Bs' => exp_lets (snd b) + brs_lets Bs'
+           end) Bs + exp_lets M
   | a_pi A B => exp_lets A + exp_lets B
   | a_fn A M => exp_lets A + exp_lets M
   | a_app M N => exp_lets M + exp_lets N
@@ -762,6 +931,7 @@ with gentry_lets (E : gentry) : nat :=
   match E with
   | ge_def _ _ A B => exp_lets A + match B with Some M => exp_lets M | None => 0 end
   | ge_mod _ U => gunit_lets U
+  | ge_ind _ _ => 0
   end
 with centry_lets (e : centry) : nat :=
   match e with
@@ -784,7 +954,7 @@ Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | pvi Di] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
   enough (ctx_lets (List.repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
@@ -1130,6 +1300,18 @@ Qed.
     unit's body holds terms and a term may hold a unit.  The global context is
     an index of the judgments, so it is fixed for the induction, as in
     [subtyp_spec]. *)
+Lemma brs_lets_in : forall nm A Bs M c n B, List.In (c, n, B) Bs -> exp_lets B < exp_lets (a_elim nm A Bs M).
+Proof.
+  intros * Hin; cbn [exp_lets].
+  enough (exp_lets B <= (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
+                           match Bs with
+                           | nil => 0
+                           | b :: Bs' => exp_lets (snd b) + brs_lets Bs'
+                           end) Bs) by lia.
+  induction Bs as [| b Bs IH]; cbn in Hin |- *; [ contradiction |].
+  destruct Hin as [-> | Hin]; cbn; [ lia | specialize (IH Hin); lia ].
+Qed.
+
 Lemma alg_type_complete_lets : forall n,
   (forall Θ Ξ Γ, wf_ctx Θ Ξ Γ -> True) /\
   (forall Θ Ξ Γ A M, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ = gc_deps -> Ξ = gc_stack -> user_exp M ->
@@ -1161,7 +1343,7 @@ Proof.
                clear IH; rename H' into IH
            end.
   (** Only the unannotated [let] needs the outer induction. *)
-  all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | _ => clear IHn end).
+  all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | |- _ ⊢a a_elim _ _ _ _ ⟸ _ => fail | _ => clear IHn end).
   all: match goal with |- _ ⊢a _ ⟸ _ =>
          gen_presups;
          (** A universe, [ℕ], [⊤] and [⊥] infer their own universe. *)
@@ -1202,7 +1384,7 @@ Proof.
       of the derivation, so the body's derivation is moved to [Γ ▸ A' ≔ M] by
       refinement.  That derivation is no subderivation, but its subject has
       fewer unannotated [let]s, which is what the outer induction is for. *)
-  10:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
+  13:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
       assert (Γ ⊢ M : A') by mauto 3 using alg_type_infer_sound.
       assert (exists k, Γ ⊢ A' : Typeω@k) as [k HA'] by (gen_presups; eauto 2).
       assert (Γ ⊢ A' : Typeω@(max i k)) by mauto 3 using lift_exp_max_right.
@@ -1230,7 +1412,7 @@ Proof.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
       econstructor; [ eapply ati_let_infer; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A module [let], through its body. *)
-  11:{ destruct H0 as [HUa _].
+  14:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
        assert (Γ ▹ₘ U ⊢ B : C') by mauto 3 using alg_type_infer_sound.
        assert (exists k, Γ ▹ₘ U ⊢ C' : Typeω@k) as [k HCk] by (gen_presups; eauto 2).
@@ -1243,11 +1425,11 @@ Proof.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
        econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member, at the normal form of its canonical type. *)
-  11:{ destruct H2 as [Hm _].
+  14:{ destruct H2 as [Hm _].
        destruct (soundness_ty H4) as [W [HW HWe]].
        econstructor; [ eapply ati_mem; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member of an applied module, as its root's member applied. *)
-  11:{ destruct H1 as [Hm _].
+  14:{ destruct H1 as [Hm _].
        inversion H7 as [? A' ? ? Hi Hs]; subst.
        econstructor; [ eapply ati_mem_app; eauto | exact Hs ]. }
   (** [zero] and [succ]. *)
@@ -1267,6 +1449,68 @@ Proof.
     assert (Γ ⊢ A[Id,,M] : Typeω@i) by mauto 3.
     assert (Γ ⊢ A[Id,,M] ≈ A[Id,,M] : Typeω@i) as [? [? _]]%completeness_ty by mauto 3.
     econstructor; mauto using alg_subtyping_complete, soundness_ty'.
+  (** The type former and a constructor: at the normal forms of their
+      types. *)
+  - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
+    destruct (ind_ty_typed _ _ _ _ HD Hc ltac:(eassumption)) as [j Hj].
+    destruct (soundness_ty Hj) as [W [HW HWe]].
+    econstructor; [ eapply ati_ind; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+  - assert (HΓ1 : ⊢ Γ) by assumption.
+    match goal with Hl : ind_lookup _ _ _ = Some _, Hcon : ind_con _ _ = Some _ |- _ =>
+      destruct (decl_of_lookup _ _ _ _ _ HΓ1 Hl) as [HD Hc];
+      destruct (con_ty_typed _ _ _ _ _ _ _ HD Hc Hl Hcon HΓ1) as [j Hj] end.
+    destruct (soundness_ty Hj) as [W [HW HWe]].
+    econstructor; [ eapply ati_con; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
+  (** The eliminator: the scrutinee infers an inductive type at the normal
+      forms of the parameters of the derivation, at which the motive and the
+      branches are typed ([wf_elim_params_conv]); their derivations there are
+      no subderivations, but their subjects are smaller in [exp_lets], which
+      counts eliminators, so the outer induction applies. *)
+  - match goal with
+    | Hl : ind_lookup _ _ ?p = Some ?D, HPl : List.length ?Ps = ind_np ?D, HM : Γ ⊢ ?M : apps_exp (a_ind ?p) ?Ps,
+      HMc : Γ ⊢a ?M ⟸ apps_exp (a_ind ?p) ?Ps, HA : elim_mctx ?p ?D _ ++ Γ ⊢ ?A : Typeω@?i,
+      Hbound : exp_lets (a_elim _ ?A ?Bs ?M) <= _ |- _ =>
+        rename Hl into Hle0; rename HPl into HPle0; rename HM into HMe0; rename HMc into HMce0; rename HA into HAe0;
+        rename Hbound into Hbd
+    end.
+    match goal with HP : forall k P T, List.nth_error ?Ps k = Some P -> _ -> Γ ⊢ P : T |- _ => rename HP into HPte0 end.
+    match goal with HB : forall c gs n B, ind_con _ c = Some gs -> List.In (c, n, B) _ -> _ ⊢ B : _ |- _ => rename HB into HBte0 end.
+    match goal with HB : forall c gs n B, ind_con _ c = Some gs -> List.In (c, n, B) _ -> n = _ |- _ => rename HB into HBae0 end.
+    match goal with HB : brs_names _ _ |- _ => rename HB into HBne0 end.
+    assert (HΓe0 : ⊢ Γ) by (gen_presups; assumption).
+    inversion HMce0 as [? W ? ? HMi HMs]; subst.
+    pose proof (alg_type_infer_sound HMi HΓe0) as HMW.
+    assert (exists k, Γ ⊢ (W : exp) : Typeω@k) as [kW HWt] by (gen_presups; eauto 2).
+    assert (exists k, Γ ⊢ apps_exp (a_ind p) Ps : Typeω@k) as [kP HPs] by (gen_presups; eauto 2).
+    assert (HWs : Γ ⊢ (W : exp) ⊆ apps_exp (a_ind p) Ps)
+      by (eapply alg_subtyping_sound; [ exact HMs | eapply lift_exp_max_left; exact HWt | eapply lift_exp_max_right; exact HPs ]).
+    pose proof (alg_type_infer_self HΓe0 HMi) as HWW.
+    destruct (subtyp_ind_nf HWs Hle0 HPle0 HPte0 HWW) as (Rs & -> & HRl & HPR).
+    assert (HRt : forall k R T, List.nth_error (nfs_to_exps Rs) k = Some R ->
+               List.nth_error (tele_insts (ind_params D) Id (nfs_to_exps Rs)) k = Some T -> Γ ⊢ R : T)
+      by (eapply wf_ind_apps_inv; [ exact Hle0 | exact HWt | exact HRl ]).
+    destruct (wf_elim_params_conv _ p D Ps (nfs_to_exps Rs) M A i Bs Hle0 HPle0 HPte0 HRl HRt
+                ltac:(intros; eapply HPR; eassumption) HMe0 HAe0 HBte0) as (_ & HA' & _ & _ & HBt' & Hty).
+    (** The motive and the branches, by the outer induction. *)
+    assert (HAc : elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟸ Typeω@i).
+    { destruct (IHn (exp_lets A) ltac:(cbn [exp_lets] in Hbd; lia)) as (_ & IHt & _).
+      eapply IHt; [ exact HA' | reflexivity | reflexivity | apply user_exp_all | lia ]. }
+    assert (HMs' : ⊢ elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ) by (gen_presups; assumption).
+    destruct (alg_type_check_typ_implies_alg_type_infer_typ HMs' HAc) as (UA & u & HAi & Hu & _).
+    assert (HBc : forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+              elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
+                ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))).
+    { intros c gs n' B Hcon Hin.
+      destruct (IHn (exp_lets B) ltac:(pose proof (brs_lets_in (S (ind_nn D)) A Bs M c n' B Hin); lia)) as (_ & IHt & _).
+      eapply IHt; [ exact (HBt' _ _ _ _ Hcon Hin) | reflexivity | reflexivity | apply user_exp_all | lia ]. }
+    (** The type. *)
+    assert (exists k, Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] : Typeω@k) as [kT HT]
+      by (gen_presups; eauto 2).
+    destruct (soundness_ty HT) as [T [HnT HTe]].
+    econstructor; [ eapply ati_elim; eassumption || reflexivity |].
+    apply alg_subtyping_complete.
+    eapply wf_subtyp_refl'.
+    eapply exp_eq_trans_typ_max; [ symmetry; exact HTe | symmetry; exact Hty ].
   (** [Π], at either tier: the join of the two indices is below the universe
       of the rule's conclusion. *)
   - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))

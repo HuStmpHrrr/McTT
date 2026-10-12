@@ -135,11 +135,30 @@ Ltac progressive_invert H :=
   directed dependent destruction H.
 
 #[local]
+Ltac progressive_head t :=
+  lazymatch t with
+  | ?t' _ => progressive_head t'
+  | _ => t
+  end.
+
+(** An equation is inverted only when inversion can make progress on it: a
+    side is a variable, or both are headed by constructors.  Inverting
+    [f x = Some y] gives the same equation back, and the loop would never
+    end. *)
+#[local]
+Ltac progressive_invertible_eq a b :=
+  first [ is_var a | is_var b
+        | let ha := progressive_head a in
+          let hb := progressive_head b in
+          is_constructor ha; is_constructor hb ].
+
+#[local]
 Ltac progressive_invert_once H n :=
   let T := type of H in
   lazymatch T with
   | __mark__ _ _ => fail
   | forall _, _ => fail
+  | @eq _ ?a ?b => progressive_invertible_eq a b
   | _ => idtac
   end;
   lazymatch type of T with

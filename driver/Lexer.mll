@@ -94,6 +94,8 @@
     | PRIVATE _ -> "private"
     | ABSTRACT _ -> "abstract"
     | EVAL _ -> "eval"
+    | INDUCTIVE _ -> "inductive"
+    | ELIM _ -> "elim"
     | SEMI _ -> ";"
 
   let get_range_of_token : token -> (position * position) =
@@ -154,6 +156,8 @@
     | PRIVATE r
     | ABSTRACT r
     | EVAL r
+    | INDUCTIVE r
+    | ELIM r
     | SEMI r
     | VAR (r, _) -> r
 
@@ -249,6 +253,8 @@ rule read =
   | "\xe2\x89\x94" { EQ (wide lexbuf 3) }
   | ';' { SEMI (get_range lexbuf) }
   | "module" { MODULE (get_range lexbuf) }
+  | "inductive" { INDUCTIVE (get_range lexbuf) }
+  | "elim" { ELIM (get_range lexbuf) }
   | "where" { WHERE (get_range lexbuf) }
   | "def" { DEF (get_range lexbuf) }
   | "import" { IMPORT (get_range lexbuf) }

@@ -72,7 +72,7 @@ Proof. induction Ψ as [| [A | A M | U] Ψ IH]; intros; cbn; rewrite ?IH; lia. Q
 
 Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) = gsize Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | pvi Di] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
   enough (csize (repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
@@ -81,7 +81,7 @@ Lemma gsize_prefix : forall Φ x Φx, gm_prefix_upto Φ x = Some Φx -> gsize Φ
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H; try discriminate.
   - destruct (String.eqb x y); [ injection H as <-; lia |].
-    specialize (IH _ _ H); destruct E as [? ? ? ? | U]; cbn; lia.
+    specialize (IH _ _ H); destruct E as [? ? ? ? | U | ? ?]; cbn; lia.
   - specialize (IH _ _ H); cbn; lia.
 Qed.
 
@@ -252,14 +252,14 @@ Lemma path_lookup_def : forall Θ Ξ p A, path_lookup Θ Ξ p = pl_def A ->
     exists b pv B, gc_resolve Θ Ξ p = Some (ge_def b pv A B).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U0] |]; try (injection H as ->; eauto; fail);
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U0 | pv0 D0] |]; try (injection H as ->; eauto; fail);
     destruct (gc_module Θ Ξ p) as [[T | U1 r] |]; discriminate.
 Qed.
 
 Lemma path_lookup_body : forall Θ Ξ p T, path_lookup Θ Ξ p = pl_body T -> gc_module Θ Ξ p = Some (mr_body T).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1] |]; try discriminate;
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |]; try discriminate;
     destruct (gc_module Θ Ξ p) as [[T0 | U0 r0] |]; try discriminate; injection H as ->; reflexivity.
 Qed.
 
@@ -267,7 +267,7 @@ Lemma path_lookup_alias : forall Θ Ξ p U r, path_lookup Θ Ξ p = pl_alias U r
     gc_module Θ Ξ p = Some (mr_alias U r).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1] |]; try discriminate;
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |]; try discriminate;
     destruct (gc_module Θ Ξ p) as [[T | U0 r0] |]; try discriminate; injection H as -> ->; reflexivity.
 Qed.
 
@@ -275,7 +275,7 @@ Lemma path_lookup_none : forall Θ Ξ p, path_lookup Θ Ξ p = pl_none ->
     (forall b pv A B, gc_resolve Θ Ξ p <> Some (ge_def b pv A B)) /\ gc_module Θ Ξ p = None.
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1] |] eqn:Er; try discriminate;
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |] eqn:Er; try discriminate;
     (destruct (gc_module Θ Ξ p) as [[T | U0 r0] |] eqn:Em; try discriminate);
     split; try reflexivity; intros * E; congruence.
 Qed.
@@ -284,7 +284,7 @@ Lemma body_lookup_def : forall Φ y Φ' A, body_lookup Φ y = bl_def Φ' A ->
     exists b pv B, gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def b pv A B)).
 Proof.
   intros * H; unfold body_lookup in H.
-  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U] | Φ0 c] |] eqn:E; try discriminate.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | pvi Di] | Φ0 c] |] eqn:E; try discriminate.
   injection H as -> ->; pose proof (gm_prefix_upto_name _ _ _ _ _ E) as ->; eauto.
 Qed.
 
@@ -292,7 +292,7 @@ Lemma body_lookup_mod : forall Φ y Φ' pm Uy, body_lookup Φ y = bl_mod Φ' pm 
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)).
 Proof.
   intros * H; unfold body_lookup in H.
-  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U] | Φ0 c] |] eqn:E; try discriminate.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | pvi Di] | Φ0 c] |] eqn:E; try discriminate.
   injection H as -> -> ->; pose proof (gm_prefix_upto_name _ _ _ _ _ E) as ->; reflexivity.
 Qed.
 
@@ -614,7 +614,7 @@ Proof.
   intros * Hg p U r Hm r'.
   pose proof (global_valid alias_V alias_F
                 ltac:(intros; exact I) ltac:(intros; exact I)
-                alias_V_alias ltac:(intros; exact I) _ _ Hg) as HG.
+                alias_V_alias ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg) as HG.
   destruct (good_alias _ _ _ _ _ _ _ _ _ HG (Emb_refl _ _ Hg) Hm) as (T & pvT & HV); exact (HV r').
 Qed.
 

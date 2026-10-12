@@ -151,6 +151,16 @@ Definition elab_params_with (f : list ent -> Cst.obj -> eres exp) :=
         eok ((x, A) :: tys)
     end.
 
+Definition elab_brs_with (f : list ent -> Cst.obj -> eres exp) (S : list ent) :=
+  fix go (bs : list (string * list string * Cst.obj)) : eres (list (string * nat * exp)) :=
+    match bs with
+    | nil => eok nil
+    | (c, ys, oB) :: bs' =>
+        let* B := f (vents ys ++ S)%list oB in
+        let* Bs := go bs' in
+        eok ((c, List.length ys, B) :: Bs)
+    end.
+
 Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
   match o with
   | Cst.typ n => eok (Typeω@n)
@@ -220,6 +230,11 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       let* D := elab_mdef (pents ps ++ S) md in
       let* B := elab (en_var x :: S) ob in
       eok (ℓₘ (gu_mk (ptele tys) D) in B)
+  | Cst.elim om xs oA bs =>
+      let* M := elab S om in
+      let* A := elab (vents xs ++ S)%list oA in
+      let* Bs := elab_brs_with elab S bs in
+      eok (a_elim (List.length xs) A Bs M)
   end
 
 with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=
@@ -268,11 +283,42 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_import _ :: _ => eerr "import is not allowed in a local module; use open"
            | Cst.c_error e :: _ => eerr e
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
+           | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body Φ)
   end.
 
 Definition elab_params := elab_params_with elab.
+
+(** The arguments of a constructor of [x], with [nn] non-uniform
+    parameters. *)
+Fixpoint elab_cargs (x : string) (nn : nat) (S : list ent) (args : list (string * Cst.obj)) : eres (list carg) :=
+  match args with
+  | nil => eok nil
+  | (y, oA) :: args' =>
+      match rec_head x oA with
+      | Some os =>
+          let* _ := echeck (Nat.eqb (List.length os) nn)
+                      ("a recursive argument is " ++ x ++ " applied to its non-uniform parameters only") in
+          let* Ps := elab_args_with elab S os in
+          let* gs := elab_cargs x nn S args' in
+          eok (ca_rec Ps :: gs)
+      | None =>
+          let* A := elab S oA in
+          let* gs := elab_cargs x nn (en_var y :: S) args' in
+          eok (ca_arg A :: gs)
+      end
+  end.
+
+Fixpoint elab_cons (x : string) (nn : nat) (S : list ent) (cs : list (string * list (string * Cst.obj)))
+  : eres (list (string * list carg)) :=
+  match cs with
+  | nil => eok nil
+  | (c, args) :: cs' =>
+      let* gs := elab_cargs x nn S args in
+      let* cs'' := elab_cons x nn S cs' in
+      eok ((c, gs) :: cs'')
+  end.
 
 (** ** Commands
 
@@ -329,6 +375,15 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* M := elab (F ++ O) oM in
       let* A := elab (F ++ O) oA in
       eok (F, cc_eval M (Some A) :: nil)
+  | Cst.c_ind pv x ups oT cs =>
+      let* _ := check_fresh x F in
+      let* _ := check_fresh_all (map fst cs) F in
+      let '(nps, oS) := split_pis oT in
+      let* _ := check_params (ups ++ nps)%list in
+      let* tys := elab_params (F ++ O)%list (ups ++ nps)%list in
+      let* A := elab (pents ups ++ F ++ O)%list oS in
+      let* cs' := elab_cons x (List.length nps) (pents (ups ++ nps) ++ F ++ O)%list cs in
+      eok ((con_mems fp ch x cs ++ F)%list, cc_ind x pv (mk_ind (List.length ups) (ptele tys) A cs') :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

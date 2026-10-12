@@ -345,3 +345,68 @@ Qed.
 Hint Resolve wf_vlookup_inversion : mctt.
 
 (** We omit [wf_exp_subtyp] as it does not give a useful inversion. *)
+
+(** ** Inductive Types
+
+    The type former, a constructor and the eliminator are each introduced by
+    one rule; the inversion of an application of a head is
+    [wf_apps_head]. *)
+
+Lemma wf_apps_head : forall {Θ Ξ Γ} Ns M T, Θ ⍮ Ξ ⍮ Γ ⊢ apps_exp M Ns : T -> exists T', Θ ⍮ Ξ ⍮ Γ ⊢ M : T'.
+Proof.
+  intros Θ Ξ Γ Ns; induction Ns as [| N Ns IH]; intros * H; cbn in H; [ eauto |].
+  destruct (IH _ _ H) as (T' & HT'); destruct (wf_app_inversion HT') as (X & Y & HM & _); eauto.
+Qed.
+
+Lemma wf_subtyp_of_typed : forall {Θ Ξ Γ M A}, Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> Θ ⍮ Ξ ⍮ Γ ⊢ A ⊆ A.
+Proof.
+  intros * H; destruct (presup_exp_typ H) as [i Hi].
+  eapply wf_subtyp_refl; [ exact Hi | apply wf_exp_eq_refl; exact Hi ].
+Qed.
+
+Lemma wf_ind_inversion : forall {Θ Ξ Γ p T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p : T ->
+    exists D, ind_lookup Θ Ξ p = Some D /\ Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty D ⊆ T.
+Proof.
+  intros * H; dependent induction H.
+  - exists D; split; [ assumption | eapply wf_subtyp_of_typed; econstructor; eassumption ].
+  - destruct (IHwf_exp1 _ eq_refl) as (D & HD & Hs); exists D; split; [ exact HD | eapply wf_subtyp_trans; eassumption ].
+Qed.
+
+Lemma wf_con_inversion : forall {Θ Ξ Γ p c T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c : T ->
+    exists D gs, ind_lookup Θ Ξ p = Some D /\ ind_con D c = Some gs /\ Θ ⍮ Ξ ⍮ Γ ⊢ con_ty p D gs ⊆ T.
+Proof.
+  intros * H; dependent induction H.
+  - exists D, gs; split; [ assumption | split; [ assumption | eapply wf_subtyp_of_typed; econstructor; eassumption ] ].
+  - destruct (IHwf_exp1 _ _ eq_refl) as (D & gs & HD & Hc & Hs); exists D, gs.
+    split; [ exact HD | split; [ exact Hc | eapply wf_subtyp_trans; eassumption ] ].
+Qed.
+
+Lemma wf_elim_inversion : forall {Θ Ξ Γ nm A Bs M T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : T ->
+    exists p D Ps i,
+      ind_lookup Θ Ξ p = Some D /\
+      List.length Ps = ind_np D /\
+      (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps /\
+      nm = S (ind_nn D) /\
+      Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) /\
+      brs_names (ind_cons D) Bs /\
+      (forall c gs, ind_con D c = Some gs ->
+         Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) /\
+      (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+         n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) /\
+      (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
+           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ⊆ T.
+Proof.
+  intros * H; dependent induction H.
+  - exists p, D, Ps, i; repeat (split; [ first [ assumption | reflexivity ] |]).
+    eapply wf_subtyp_of_typed; eapply wf_elim; (eassumption || reflexivity).
+  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as (p & D & Ps & i0 & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
+    exists p, D, Ps, i0; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
+Qed.

@@ -11,6 +11,7 @@ From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
 From Mctt.Extraction Require Import FastEval Simulation Evaluation Readback NbE PseudoMonadic Subtyping MemberType.
 From Mctt.Extraction Require Export TypeCheckBase.
+From Mctt.Extraction Require Import IndCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 Section Fixed_GCtx.
@@ -189,7 +190,7 @@ Section type_check.
     destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
-    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | |]; subst.
+    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 (HsN _ Hn') Hv1) as (v1' & Hv1' & _).
     eapply feval_exp_order_sound; exact Hv1'.
@@ -207,7 +208,7 @@ Section type_check.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
     pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ Hag)) _ Hn') as HsN.
-    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | |]; subst.
+    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
     rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.
@@ -379,6 +380,15 @@ Section type_check.
         let*o (exist _ v _) :=  univ_nf_idx_dec UC' while _ in
         let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P (unf_pi_tm u v) _ in
         pureo (exist _ W _)
+    (** The forms of inductive types ([Extraction.IndCheck]); the
+        eliminator's recursive calls are passed on. *)
+    | a_ind r => ind_infer G HG P r
+    | a_con r c => con_infer G HG P r c
+    | a_elim nm A' Bs M' =>
+        elim_infer G HG P nm A' Bs M'
+          (type_infer_in G HG P M' ltac:(ob_ord_elim))
+          (fun G' HG' P' => type_infer_in G' HG' P' A' ltac:(ob_ord_elim))
+          (fun b Hb G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd b) ltac:(ob_ord_elim))
     | λ A' M' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in

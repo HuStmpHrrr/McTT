@@ -62,7 +62,7 @@ Section type_check.
       visibly the only ones. *)
   Definition univ_nf_idx_dec (A : nf) : { u : unf | is_univ_nf A u } + { forall u, ~ is_univ_nf A u }.
   Proof.
-    destruct A as [ i | c xs | | ? ? | | | ? | | | | ? ? | ? ? | ? ];
+    destruct A as [ i | c xs | | ? ? | | | ? | | | | ? ? | ? ? | ? ? | ? ? ? | ? ];
       [ left; exists (unl i); constructor
       | left; exists (uns (c, xs)); constructor
       | right; intros ? H; inversion H .. ].
@@ -109,7 +109,7 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | pm U] [b' pv' A' [M' |] | pm' U']; cbn; try (right; intros []; fail); try (left; exact I).
+    intros [b pv A [M |] | pm U | pvi Di] [b' pv' A' [M' |] | pm' U' | pvi' Di']; cbn; try (right; intros []; fail); try (left; exact I).
     - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
     - exact (Bool.bool_dec pm pm').
   Defined.
@@ -339,7 +339,7 @@ Section type_check.
       exists mq b pv B, mod_qname H = Some mq /\ gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B).
   Proof.
     intros * Hs Hg; destruct R; cbn in Hg; try discriminate.
-    destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U] |] eqn:Er; try discriminate; injection Hg as ->.
+    destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U | pv D] |] eqn:Er; try discriminate; injection Hg as ->.
     exists (q_abs l pre), b, pv, B; split; [ exact (spine_unit_path _ _ _ Hs) | exact Er ].
   Qed.
 
@@ -368,6 +368,10 @@ Section type_check.
   | ti_true : type_infer_order ⋆
   | ti_False : type_infer_order ⊥
   | ti_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
+  | ti_indty : forall {p}, type_infer_order (a_ind p)
+  | ti_con : forall {p c}, type_infer_order (a_con p c)
+  | ti_elim : forall {nm A Bs M}, type_infer_order M -> type_infer_order A ->
+      (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim nm A Bs M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
@@ -465,6 +469,7 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
+           | ge_ind _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -484,8 +489,13 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
+             | ge_ind _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
+    - (* an eliminator: its branches are checked *)
+      constructor; [ assumption | assumption |].
+      match goal with HF : List.Forall _ _ |- _ => rewrite List.Forall_forall in HF end.
+      intros b Hb; apply tc_ti; auto.
     - (* a local binding *)
       destruct b as [[A |] M | U]; destruct_conjs;
         [ apply ti_let; [ eauto | constructor; assumption | assumption ]
@@ -508,7 +518,7 @@ Section type_check.
       split; [ assumption | apply Forall_app; split; [ assumption | constructor; [ constructor; assumption | constructor ] ] ].
     - split; [ constructor; assumption | intros * [= <- <- <-]; split; [ constructor; assumption | constructor ] ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall, ext_order_app.
-    - destruct E as [b pv A [M |] | pm U]; destruct_conjs; constructor; cbn; eauto with mctt.
+    - destruct E as [b pv A [M |] | pm U | pvi Di]; destruct_conjs; constructor; cbn; eauto with mctt.
     - apply Forall_app; split; [| assumption ].
       induction (List.length its); cbn; constructor; [ constructor | assumption ].
   Qed.
@@ -837,6 +847,18 @@ Ltac ob_ord :=
             [ eassumption
             | repeat match goal with H : type_check_order _ |- _ => progressive_invert H end;
               eassumption ] ] ].
+
+(** The orders of the scrutinee, the motive and a branch of an
+    eliminator. *)
+Ltac ob_ord_elim :=
+  clear_defs;
+  match goal with H : type_infer_order (a_elim _ _ _ _) |- _ => progressive_invert H end;
+  first
+    [ eassumption
+    | match goal with
+      | Hall : forall b, List.In b _ -> type_check_order (snd b), Hb : List.In ?b _ |- type_check_order (snd ?b) =>
+          exact (Hall b Hb)
+      end ].
 
 (** The order of the applied root of a member of an applied module. *)
 Ltac ob_ord_apps :=

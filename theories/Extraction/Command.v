@@ -31,7 +31,7 @@ From Mctt.Algorithmic Require Import Typing.
 From Mctt.Core Require Import Base Soundness.
 From Mctt.Core.Syntactic Require Import System.
 From Mctt.Core.Syntactic.System Require Import Structural Command.
-From Mctt.Extraction Require Import NbE TypeCheck GlobalCheck MemberType Privacy.
+From Mctt.Extraction Require Import NbE TypeCheck GlobalCheck IndDecl MemberType Privacy.
 Import Syntax_Notations GlobalCtx_Notations.
 
 Local Open Scope string_scope.
@@ -790,6 +790,41 @@ Section Impl.
     exists (mt_of _ _ Hg); split; [ exact (linv_mt_spec Hli Hg) | exact Hgen ].
   Qed.
 
+  (** A declaration files its entry, then declares what it generates. *)
+  Lemma ind_step {ch Θ K D ΘR Ξ x pv Dw} :
+    linv ch Θ K D ΘR Ξ ->
+    gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ Dw) ->
+    gs_fresh (ind_key x) Ξ ->
+    ΘR ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ Dw) /\
+    linv ch Θ K D ΘR (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ Dw)) Ξ).
+  Proof.
+    intros Hli HE Hfr.
+    pose proof (equiv_gentry_ind _ _ _ _ _ _ (gds_equiv_sym _ _ (linv_equiv Hli)) (li_wf _ _ _ _ _ _ Hli) HE) as HE'.
+    split; [ exact HE' |].
+    apply (linv_stack Hli); [ exact (add_ind_wf _ _ _ _ _ (li_wf _ _ _ _ _ _ Hli) HE' Hfr) |].
+    apply stack_in_add, (li_stack _ _ _ _ _ _ Hli).
+  Qed.
+
+  Lemma ind_pre {ch Θ K D Ξ x pv Dw} :
+    (exists ΘR, linv ch Θ K D ΘR Ξ) ->
+    gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ Dw) ->
+    gs_fresh (ind_key x) Ξ ->
+    exists ΘR, linv ch Θ K D ΘR (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ Dw)) Ξ).
+  Proof. intros [ΘR Hli] HE Hfr; exists ΘR; exact (proj2 (ind_step Hli HE Hfr)). Qed.
+
+  Lemma ind_ok {ch Θ K D Ξ x pv Dw Ξ'} :
+    gds_restrict D Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ Dw) ->
+    gs_fresh (ind_key x) Ξ ->
+    post_gens ch Θ K D (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ Dw)) Ξ)
+      (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ Dw) Ξ' ->
+    post_cmd ch Θ K D Ξ (cc_ind x pv Dw) (cst Θ K D Ξ').
+  Proof.
+    intros HE Hfr Hgs ΘR Hli; cbn [cs_deps cs_k cs_dom cs_stack].
+    destruct (ind_step Hli HE Hfr) as [HE' Hli'].
+    destruct (Hgs _ Hli') as [Hr Hli2].
+    exists ΘR; split; [ eapply rc_ind; eassumption | split; [ exact Hli2 | split; [ apply ext_refl | apply grows_refl ] ] ].
+  Qed.
+
   Lemma nil_ok {ch Θ K D Ξ} : post_cmds ch Θ K D Ξ nil (cst Θ K D Ξ).
   Proof.
     intros ΘR Hli; exists ΘR; split; [ constructor | split; [ exact Hli | split; [ apply ext_refl | apply grows_refl ] ] ].
@@ -1041,7 +1076,16 @@ Section Impl.
   | ch, L, Θ, K, D, Ξ, cc_eval M None, H
       with @type_infer_at (gc_mk (gds_restrict D Θ) Ξ) (gs_tele Ξ) (pre_ctx H) M (user_exp_all M) => {
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (pre_gctx H) M A HA)
-    | inright _ => rerr (re_eval_infer Ξ M) }.
+    | inright _ => rerr (re_eval_infer Ξ M) }
+  | ch, L, Θ, K, D, Ξ, cc_ind x pv Dw, H
+      with ind_entry_dec (gds_restrict D Θ) Ξ (pre_gctx H) (qname_in (gs_path Ξ) (ind_key x)) pv Dw => {
+    | right _ => rerr (re_msg ("ill-formed inductive declaration " ++ x))
+    | left HE with gs_fresh_dec (ind_key x) Ξ => {
+      | right _ => rerr (re_msg ("duplicate name " ++ x))
+      | left Hfr with gens_impl ch Θ K D (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ Dw)) Ξ)
+                       (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ Dw) (ind_pre H HE Hfr) => {
+        | rerr e => rerr e
+        | rok (exist _ Ξ' Hgs) => rok (exist _ _ (ind_ok HE Hfr Hgs), log_nil) } } }.
 
   (** A command expanded, then run by [simple_step]. *)
   Definition xp_simple (ch : list path) (L : loader ch) (Θ : gdeps) (K : kmap) (D : list path) (Ξ : gstack)
@@ -1079,7 +1123,8 @@ Section Impl.
   | ch, L, Θ, K, D, Ξ, cc_alias x pv Δ E, H => xp_simple ch L Θ K D Ξ (cc_alias x pv Δ E) H
   | ch, L, Θ, K, D, Ξ, cc_load fp, H => xp_simple ch L Θ K D Ξ (cc_load fp) H
   | ch, L, Θ, K, D, Ξ, cc_open E its, H => xp_simple ch L Θ K D Ξ (cc_open E its) H
-  | ch, L, Θ, K, D, Ξ, cc_eval M oA, H => xp_simple ch L Θ K D Ξ (cc_eval M oA) H.
+  | ch, L, Θ, K, D, Ξ, cc_eval M oA, H => xp_simple ch L Θ K D Ξ (cc_eval M oA) H
+  | ch, L, Θ, K, D, Ξ, cc_ind x pv Dw, H => xp_simple ch L Θ K D Ξ (cc_ind x pv Dw) H.
 
   Definition run_cmds_impl (ch : list path) (L : loader ch) := cmds_step ch (run_cmd_impl ch L).
 
@@ -1229,7 +1274,7 @@ Section Impl.
       linv ch Θ K D ΘR Ξ -> run_cmd ch ΘR Ξ (cc_alias x pv Δ E) ΘR' Ξ' ->
       exists r, defalias_step ch Θ K D Ξ (cc_alias x pv Δ E) H = rok r.
   Proof.
-    intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | |]; subst; simp defalias_step.
+    intros * Hli Hr; inversion Hr as [| | | ? ? ? ? ? ? ? Htel HΔ HE Hfr | | | | | |]; subst; simp defalias_step.
     destruct (tele_ass_dec Δ) as [Htel' | Htel']; [| contradiction ]; simp defalias_step.
     match goal with |- context [check_ext ?a ?b ?c ?d ?e] => destruct (check_ext a b c d e) as [HΔ' | HΔ'] end;
       [| exfalso; apply HΔ'; exact (equiv_ext _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HΔ) ].
@@ -1306,7 +1351,7 @@ Section Impl.
       intros ch ΘR Ξ x pv Δ cs ΘR' mp U Htel HΔ Hfr Hr IH Hacc Θ K D H Hli c Hx.
       pose proof (xp_eq (pre_gctx H) Hli Hx) as Ex.
       assert (Hc : ccmd_head c = 1) by (rewrite <- (cmd_xp_head _ _ _ _ Ex); reflexivity).
-      destruct c as [| x0 pv0 Δ0 cs0 | | | |]; try discriminate.
+      destruct c as [| x0 pv0 Δ0 cs0 | | | | |]; try discriminate.
       destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ1 & EΔ & [= <- <- <- <-]).
       simp run_cmd_impl.
       destruct (inspect _) as [[Δ2 | e] EΔ']; [ assert (Δ2 = Δ) as -> by congruence | exfalso; congruence ].
@@ -1368,6 +1413,16 @@ Section Impl.
       destruct (inspect _) as [[gs1 | e] Eg']; [ assert (gs1 = gs) as -> by congruence | exfalso; congruence ].
       simp simple_step.
       destruct (gens_complete _ _ _ _ Hgs _ _ _ _ H Hli) as [[Ξ1 Hp1] E1]; rewrite E1; simp simple_step.
+      eexists; reflexivity.
+    - (* a declaration: its entry, then its generated definitions *)
+      intros ch ΘR Ξ x pv Dw Ξ' HE Hfr Hgs Hacc Θ K D H Hli c Hx.
+      refine (nonmod_complete H _ Hli Hx _); [ cbn; discriminate |]; simp simple_step.
+      match goal with |- context [ind_entry_dec ?a ?b ?c ?d ?e ?f] => destruct (ind_entry_dec a b c d e f) as [HE' | HE'] end;
+        [| exfalso; apply HE'; exact (equiv_gentry_ind _ _ _ _ _ _ (linv_equiv Hli) (linv_restrict_gctx Hli) HE) ].
+      simp simple_step.
+      destruct (gs_fresh_dec (ind_key x) Ξ) as [Hfr' | Hfr']; [| contradiction ]; simp simple_step.
+      destruct (gens_complete _ _ _ _ Hgs _ _ _ _ (ind_pre H HE' Hfr') (proj2 (ind_step Hli HE' Hfr'))) as [[Ξ1 Hp1] E1].
+      rewrite E1; simp simple_step.
       eexists; reflexivity.
     - (* an ascribed eval *)
       intros ch ΘR Ξ M A HM Hacc Θ K D H Hli c Hx.

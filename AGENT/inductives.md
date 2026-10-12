@@ -1,0 +1,103 @@
+# Inductive types (stage A: parameterised, no indices, no OTT)
+
+Branch `wip/ott`. What exists, where, and where it departs from the design
+report (`.claude/plans/inductives-ott/report.md`, "Families" and "Plan",
+stage A).
+
+## The language
+
+```
+inductive List (A : Type@0) : Type@0 where
+| nil
+| cons (x : A) (xs : List)
+end
+
+def length (A : Type@0) (l : List A) : ℕ :=
+  elim l return z . ℕ
+  | nil ⇒ 0
+  | cons x xs, r ⇒ succ r
+  end
+end
+```
+
+* The parameters in parentheses are **uniform**; the type after `:` binds
+  the **non-uniform** ones in front of the sort,
+  `inductive Climb : ∀ (n : ℕ) → Type@0 where | stop | step (r : Climb (succ n)) end`.
+* An argument whose type is the declared name applied to the non-uniform
+  parameters only is **recursive** (`ca_rec Ps`); any other is
+  non-recursive (`ca_arg A`).  A recursive argument binds no name for the
+  arguments after it.  Recursion is first order: the name is in scope nowhere
+  else, so positivity holds by construction (no separate positivity check).
+* `elim M return ys z . A | c xs, hs ⇒ B … end`: the motive binds the
+  non-uniform parameters and the scrutinee; a branch binds the non-uniform
+  parameters, the constructor's arguments, then (after the optional comma,
+  cosmetic) one hypothesis per recursive argument.  The core checks the
+  counts, the order of the branches and the constructor names.
+* Declarations are members of units and of global modules (also under
+  module parameters, which become outermost uniform parameters); not of
+  local bodies (`"an inductive type is not allowed in a local module"`).
+* ℕ is unchanged.
+
+## Core
+
+| What | Where |
+| --- | --- |
+| `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D` | `Core/Syntactic/Syntax.v` |
+| telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives.v` |
+| `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
+| declarations are well typed (`decl_typed`), presupposition | `System/GlobalPresup.v`, `System/IndTyping.v`, `Syntactic/IndCong.v`, `Syntactic/IndConv.v` |
+| values `d_ind`, `d_con`, neutral eliminator; evaluation, readback | `Core/Semantic/Domain.v`, `Evaluation*`, `Readback*` |
+| PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `IndPER.v`, `IndCanon.v`, `IndElim.v`, `PER/Tele.v` |
+| completeness | `Core/Completeness/IndSem.v`, `IndCases.v`, `ElimCases.v`, `TeleSem.v` |
+| gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `glu_ind`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
+| commands: `cc_ind`, `rc_ind`, `ind_key x = x#`, `gs_ind`, `ind_gens` | `Core/Syntactic/Command.v`, `System/Command.v` |
+
+A declaration `cc_ind x pv D` (written parameters over the frame) is filed
+as `ge_ind pv (gs_ind Ξ D)` under the unwritable name `x#`, the frames'
+parameters appended as its outermost uniform parameters, then runs the
+generated definitions `x := a_ind p $ frame vars` and `c := a_con p c $
+frame vars` as an import's are run (`gens_run`, premises of `rc_def`).
+
+## Algorithmic layer and checker
+
+* `ati_ind`, `ati_con`, `ati_elim` (`Algorithmic/Typing/Definitions.v`); the
+  eliminator's scrutinee infers `nf_indty p Rs`, and the motive and branches
+  are checked at the parameters' normal forms `Rs`, related to the
+  derivation's by `wf_elim_params_conv` (`Core/Syntactic/IndConv.v`).
+* Completeness is by induction on the derivation with an outer induction on
+  `exp_lets`; an eliminator counts `+1` there, since its motive and branches
+  are re-derived at `Rs` and are no longer subderivations.
+* Both checkers share `Extraction/IndCheck.v`; the eliminator's recursive
+  calls are passed in as closures, so the mutual fixpoints and their
+  obligation numbering are unchanged.
+* A declaration is decided premise by premise in `Extraction/IndDecl.v`
+  (`ind_entry_dec`); `exp_mvc` by a boolean mirror (`mvcb_spec`).
+
+## Deviations from the report
+
+1. **No separate positivity check**: first-order recursive arguments only,
+   by construction of `carg`.
+2. **Non-uniform parameters are typed at the inductive's sort** (option 1
+   chosen by the coordinator), the uniform ones are free.
+3. `wf_con` has two extra premises (the context of the arguments and the
+   closed type of the constructor), read off by the models.
+4. **Admissible uniform parameters** (`ind_adm`, option K): a stuck
+   eliminator's readback makes fresh variables from the uniform parameters of
+   the scrutinee's type, so the neutral clause of `ind_rel` asks them to be
+   admissible beside the canonical ones.
+5. **Gluing redesigns.** The components of the type (non-uniform parameter
+   types and argument types) are glued inside the type predicate
+   (`ind_glu_comps`), the sort is required `⊆` the gluing's universe, the
+   recursive facts of `glu_ind_con` are closed under related parameter
+   values (PER-closed) and under weakening and equal instances of the
+   parameters (Kripke wrappers), the earlier link between the type
+   predicate and the element predicate is removed, and
+   `ind_glu_exp_pred` asks `glu_ind` at every equal instance of the
+   parameters (eq-closed).
+6. The eliminator's case along an embedding (`k_elim`, in
+   `Completeness/ModuleCases.v` and `Soundness/ModuleCases.v`) takes the
+   `⊢ˣ` premises of `wf_elim` too.
+7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
+   checker decides it.
+8. The checker's message for an ill-formed declaration names the type only
+   (`"ill-formed inductive declaration x"`), not the failing premise.

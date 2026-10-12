@@ -80,6 +80,32 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
     gens_run Θ (gs_add d (ge_mod pv (gu_mk (gs_tele Ξ) (md_alias E))) Ξ) gs Ξ' ->
     gens_run Θ Ξ (ig_alias d pv E :: gs) Ξ'.
 
+(** ** Inductive Declarations
+
+    A declaration is filed under a name no source can write, [ind_key x],
+    with the parameters of the frames as its outermost uniform parameters
+    ([gs_ind]), and generates the definitions of the type former [x] and of
+    the constructors, each a member of the frame like any definition: the
+    former or constructor applied to the frames' parameters.  The
+    generated definitions run as those of an import do ([gens_run]), with
+    the premises of [rc_def]. *)
+
+Definition ind_key (x : string) : string := (x ++ "#")%string.
+
+Definition gs_ind (Ξ : gstack) (D : ind_decl) : ind_decl :=
+  mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D).
+
+Definition ind_gens (p : qname) (x : string) (pv : bool) (Ξ : gstack) (D : ind_decl) : list igen :=
+  let n := List.length (gs_tele Ξ) in
+  ig_def x pv (ctx_pi (ind_params D) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ) (apps (a_ind p) (vars_from 0 n))
+  :: List.map (fun cg =>
+                 ig_def (fst cg) pv
+                   (ctx_pi (ind_params D)
+                      (ctx_pi (cargs_ctx p (gs_ind Ξ D) (snd cg))
+                         (apps (a_ind p) (ind_pvars (gs_ind Ξ D) (List.length (snd cg))))))
+                   (apps (a_con p (fst cg)) (vars_from 0 n)))
+       (ind_cons D).
+
 (** ** Merging Filed Units
 
     A loaded unit runs from nothing, so what its run filed is merged into the
@@ -168,6 +194,14 @@ Section Semantics.
       import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ'
+  (** A declaration: checked as the member it is filed as, then its
+      generated definitions. *)
+  | rc_ind : forall ch Θ Ξ x pv D Ξ',
+      Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) (ind_key x) ⊢e ge_ind pv (gs_ind Ξ D) ->
+      gs_fresh (ind_key x) Ξ ->
+      gens_run Θ (gs_add (ind_key x) (ge_ind pv (gs_ind Ξ D)) Ξ)
+        (ind_gens (qname_in (gs_path Ξ) (ind_key x)) x pv Ξ D) Ξ' ->
+      Θ ⍮ Ξ ⊢[ch] cc_ind x pv D ⇝ Θ ⍮ Ξ'
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -284,6 +318,11 @@ Section Determinism.
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
           rewrite (gens_run_functional _ _ _ _ H1 _ H2)
       end; split; reflexivity.
+    - (* a declaration: its generated definitions *)
+      match goal with
+      | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
+          rewrite (gens_run_functional _ _ _ _ H1 _ H2)
+      end; split; reflexivity.
     - (* a sequence: its head, then its tail from the same state *)
       match goal with
       | IH1 : forall _ _ _, run_cmd _ _ _ ?c _ _ -> _, H1 : run_cmd _ _ _ ?c _ _ |- _ =>
@@ -386,6 +425,8 @@ Section GrowDeps.
     - econstructor; apply He; eassumption.
     - econstructor; auto.
     - econstructor; [ assumption | apply Hx; assumption | apply Hm; assumption ].
+    - (* a declaration *)
+      econstructor; try eassumption; intros; first [ apply Hc | apply He ]; eauto.
     - econstructor; [ assumption | apply Hc; assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       destruct (wf_gstack_cons_inv _ _ _ _ Hg0) as (_ & _ & Hff).
@@ -509,6 +550,17 @@ Proof.
   cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
 Qed.
 
+Lemma add_ind_wf : forall Θ Ξ x pv D,
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e ge_ind pv D -> gs_fresh x Ξ ->
+    ⊢g Θ ⍮ gs_add x (ge_ind pv D) Ξ.
+Proof.
+  intros * HΞ HE Hfr.
+  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
+  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+  cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
+Qed.
+
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ Ξ'.
 Proof.
   induction 1; intros HΞ; [ exact HΞ | apply IHgens_run; apply add_def_wf; assumption |].
@@ -557,7 +609,8 @@ Section WellFormed.
     (forall ch u Θ U, run_unit ch u Θ U -> True).
   Proof.
     apply run_mut_ind; intros; rewrite ?gs_add_params;
-      solve [ congruence | exact I | eapply gens_run_shape; eassumption ].
+      solve [ congruence | exact I | eapply gens_run_shape; eassumption
+            | erewrite gens_run_shape by eassumption; apply gs_add_params ].
   Qed.
 
   (** A filed unit is what loading its file yields. *)
@@ -651,6 +704,10 @@ Section WellFormed.
       + split; [ apply canon_merge; assumption | apply merge_left ].
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst; split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | split; [ exact Hc | apply gds_sub_refl ] ].
+    - (* a declaration: its entry, checked against the frame so far, then
+         its generated definitions *)
+      intros * HE Hfr Hg HΞ Hc Hst.
+      split; [ exact (gens_run_wf _ _ _ _ Hg (add_ind_wf _ _ _ _ _ HΞ HE Hfr)) | split; [ exact Hc | apply gds_sub_refl ] ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -926,6 +983,7 @@ Section Runs.
         * specialize (Hch _ Hin); apply merge_none in Hch as [_ Hf].
           cbn in Hf; destruct (path_beq x fp); [ discriminate | exact Hf ].
     - econstructor; eauto.
+    - eapply rc_ind; eassumption.
     - apply rc_eval_check; assumption.
     - eapply rc_eval_infer; eassumption.
     - constructor.
@@ -940,7 +998,10 @@ Section Runs.
   Proof.
     assert (Hadd : forall x E Ξ, tl (gs_add x E Ξ) = tl Ξ /\ List.length (gs_add x E Ξ) = List.length Ξ)
       by (intros ? ? [| [? ?] ?]; split; reflexivity).
-    apply run_mut_ind; intros; auto; try (eapply gens_run_tl; eassumption); intuition congruence.
+    apply run_mut_ind; intros; auto;
+      try (match goal with Hg : gens_run _ (gs_add _ _ _) _ _ |- _ =>
+             destruct (gens_run_tl _ _ _ _ Hg) as [-> ->]; apply Hadd end);
+      try (eapply gens_run_tl; eassumption); intuition congruence.
   Qed.
 
   (** Commands keep the stack below the frame they run in, and an empty stack

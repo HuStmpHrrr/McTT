@@ -135,7 +135,7 @@ Proof.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hx) as (Φx & Hx0 & EΦ).
     destruct Φx as [| Φ0' y E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ey EE; subst y.
-    destruct E0 as [b0 pv0 A0 B0 | pm0 U0]; cbn in EE; try discriminate.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0]; cbn in EE; try discriminate.
     injection EE as -> <- -> ->.
     eexists; split; [ eapply umt_def; exact Hx0 | cbn; rewrite ctx_pi_body_wk; reflexivity ].
   - intros Γ Δ Φ Φ' y pm Uy ch R Hk Hy _ IH Δ' U φ Heq Hφ.
@@ -144,7 +144,7 @@ Proof.
     destruct (gm_prefix_upto_wk_inv _ _ _ _ Hy) as (Φx & Hy0 & EΦ).
     destruct Φx as [| Φ0' z E0 | Φ0' c]; cbn in EΦ; try discriminate.
     injection EΦ as -> Ez EE; subst z.
-    destruct E0 as [b0 pv0 A0 B0 | pm0 U0]; cbn in EE; try discriminate.
+    destruct E0 as [b0 pv0 A0 B0 | pm0 U0 | pvi0 Di0]; cbn in EE; try discriminate.
     injection EE as -> ->.
     assert (EC : body_ctx (gmod_wk Φ0' (wk_qn (List.length Δ0) φ)) ++ tele_wk Δ0 φ ++ Γ
                  = tele_wk (body_ctx Φ0' ++ Δ0) φ ++ Γ)
@@ -177,7 +177,7 @@ Lemma body_shape_lets : forall Φ, body_shape Φ Φ -> lets_only (body_ctx Φ).
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros H; cbn in *; [ constructor | | destruct H ].
   destruct H as (H1 & _ & H3).
-  destruct E as [b pv A [M |] | pm U]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
+  destruct E as [b pv A [M |] | pm U | pvi Di]; cbn in H3; try contradiction; constructor; try discriminate; exact (IH H1).
 Qed.
 
 Lemma body_shape_prefix : forall Φ x Φx, body_shape Φ Φ -> gm_prefix_upto Φ x = Some Φx -> body_shape Φx Φx.
@@ -196,7 +196,7 @@ Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * HC Hs HD Hρ; cbn in HC, Hs |- *.
   - exists ρ, R; split; [ constructor | split; assumption ].
   - destruct Hs as (Hs & _ & HE).
-    destruct E as [b pv A [M |] | pm U]; cbn in HE, HC; try contradiction.
+    destruct E as [b pv A [M |] | pm U | pvi Di]; cbn in HE, HC; try contradiction.
     + destruct (IH _ _ _ (sem_ctx_tail HC) Hs HD Hρ) as (ρ1 & R1 & Hb & HR1 & Hρ1).
       destruct (sem_ctx_def_inv HC) as [[i HA] HM].
       pose proof (per_ctx_env_of_def HR1 HA HM) as HR2.

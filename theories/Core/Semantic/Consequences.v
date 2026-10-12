@@ -7,6 +7,8 @@ From Mctt.Core.Syntactic Require Export Unseal.
 From Mctt.Core.Syntactic Require Import CoreInversions LevelEq.
 From Mctt.Core.Semantic Require Import Realizability Levels.
 From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
+From Mctt.Core.Soundness Require IndCases IndElimCases.
+From Mctt.Core.Syntactic Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
@@ -71,6 +73,91 @@ Proof.
   assert (Γ ▹ A ⊢s Id : Γ ▹ A') by mauto 3.
   split; [mauto 3 |].
   etransitivity; [| symmetry]; mauto 3.
+Qed.
+
+(** ** The Parameters of an Inductive Type
+
+    The normal form of an inductive type is the type former at the normal
+    forms of its parameters, each equal to its parameter; so equal
+    inductive types have equal parameters. *)
+Lemma nbe_ty_ind_params : forall Γ p D Ms W, ind_lookup gc_deps gc_stack p = Some D -> ⊢ Γ ->
+    List.length Ms = ind_np D ->
+    (forall k P T, List.nth_error Ms k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ms) k = Some T -> Γ ⊢ P : T) ->
+    nbe_ty_f Γ (apps (a_ind p) Ms) W ->
+    exists Rs, W = nf_indty p Rs /\ exps_eq_at Γ (ind_params D) Ms (nfs_to_exps Rs).
+Proof.
+  intros * Hl HΓ HMl HMt HW.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
+  pose proof (decl_closed_params D Hc) as Hass.
+  pose proof Hc as (_ & _ & Hs0 & _).
+  pose proof Hdt as (_ & _ & _ & HΔ & _).
+  inversion HW as [? ? ρ a ? Hinit Ea HRa]; subst.
+  apply Modules.eval_apps_exp in Ea as (f & ms & Ef & Ems & Eap).
+  inversion Ef; subst.
+  apply eval_apps_ind_inv in Eap; cbn in Eap; subst.
+  inversion HRa; subst.
+  match goal with H' : ind_lookup _ _ p = Some ?D0 |- _ => assert (D0 = D) as -> by congruence end.
+  eexists; split; [ reflexivity |].
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  pose proof (completeness_fundamental_ctx _ HΓ) as HΓs; destruct (sem_ctx_per_ctx_env HΓs) as [RΓ HRΓ].
+  pose proof (IndElimCases.params_glu_args _ _ _ _ _ _ _ _ _ Hass Hs0 (completeness_fundamental_ctx _ HΔ) HΓs HRΓ HSb Hσ
+                HMl
+                ltac:(intros; eapply completeness_fundamental_exp; eauto)
+                ltac:(intros; eapply soundness_fundamental_exp; eauto) Ems) as Hg.
+  rewrite (List.map_ext (fun M => M[Id]) (fun M => M) exp_sub_id), List.map_id in Hg.
+  destruct (IndCases.glu_args_params_top _ _ _ _ Hass Hs0 Hg) as (_ & _ & Htop).
+  pose proof (Htop Γ wk_id _ ltac:(mauto 3) ltac:(eassumption)) as H.
+  rewrite map_wk_id in H; exact H.
+Qed.
+
+(** A type whose normal form is an inductive type is equal to the type
+    former at typed parameters, whose normal forms the normal form has. *)
+Lemma typ_ind_shape : forall Γ T i p Rs, Γ ⊢ T : Typeω@i -> nbe_ty_f Γ T (nf_indty p Rs) ->
+    exists D Ps, ind_lookup gc_deps gc_stack p = Some D /\ List.length Ps = ind_np D /\
+      (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some A -> Γ ⊢ P : A) /\
+      Γ ⊢ T ≈ apps (a_ind p) Ps : Typeω@i /\ exps_eq_at Γ (ind_params D) Ps (nfs_to_exps Rs).
+Proof.
+  intros * HT HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  inversion HW as [? ? ρ a ? Hinit Ea HRa]; subst.
+  inversion HRa; subst.
+  destruct (soundness_fundamental_ctx _ HΓ) as [Sb HSb].
+  pose proof (initial_env_glu_rel_exp Hinit HSb) as Hσ.
+  destruct (IndCases.glu_rel_typ_at _ _ _ _ _ _ _ HSb (soundness_fundamental_exp _ _ _ HT) Hσ) as (_ & a' & Ea' & Hpa & HPa).
+  assert (a' = d_ind p as') as -> by (eapply functional_eval_exp; eassumption).
+  destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
+  pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
+  invert_glu_univ_elem Hg.
+  match goal with H : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ |- _ => apply H in HP end.
+  destruct HP as (Ps & Heq & HK).
+  assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
+  destruct (HK Γ wk_id Hid) as (Htop & _ & _).
+  rewrite map_wk_id in Htop.
+  destruct Htop as (HPl & HPt & Hrb).
+  match goal with H : ind_lookup _ _ p = Some ?D0, H' : ind_lookup _ _ p = Some ?D1 |- _ =>
+    assert (D0 = D1) as -> by congruence end.
+  eexists _, Ps; split; [ eassumption | split; [ exact HPl | split; [ exact HPt | split; [ exact Heq |] ] ] ].
+  match goal with Hr : Rps _ at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ Rs |- _ => pose proof (Hrb Γ wk_id Rs Hid Hr) as H' end.
+  rewrite map_wk_id in H'; exact H'.
+Qed.
+
+Corollary exp_eq_ind_apps_inv : forall Γ p D X Y i, ind_lookup gc_deps gc_stack p = Some D ->
+    Γ ⊢ apps (a_ind p) X ≈ apps (a_ind p) Y : Typeω@i ->
+    List.length X = ind_np D -> List.length Y = ind_np D ->
+    (forall k P T, List.nth_error X k = Some P -> List.nth_error (tele_insts (ind_params D) Id X) k = Some T -> Γ ⊢ P : T) ->
+    (forall k P T, List.nth_error Y k = Some P -> List.nth_error (tele_insts (ind_params D) Id Y) k = Some T -> Γ ⊢ P : T) ->
+    exps_eq_at Γ (ind_params D) X Y.
+Proof.
+  intros * Hl H HXl HYl HXt HYt.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  destruct (completeness_ty H) as (W & HWX & HWY).
+  destruct (nbe_ty_ind_params _ _ _ _ _ Hl HΓ HXl HXt HWX) as (Rs & -> & HX).
+  destruct (nbe_ty_ind_params _ _ _ _ _ Hl HΓ HYl HYt HWY) as (Rs' & E & HY).
+  injection E as <-.
+  destruct HX as [L1 H1]; destruct HY as [L2 H2]; split; [ congruence |].
+  eapply (params_eq_trans _ p D X (nfs_to_exps Rs) Y Hl HΓ); [ exact HXl | congruence | congruence | exact H1 |].
+  eapply (params_eq_sym _ p D Y (nfs_to_exps Rs) Hl HΓ); [ exact HYl | congruence | exact H2 ].
 Qed.
 
 Lemma nf_of_pi : forall {Γ M A B},
@@ -359,6 +446,63 @@ Proof.
   - exfalso; eapply exp_eq_level_pi_absurd; exact HA.
 Qed.
 
+(** An inductive type is neither a [Π] nor a universe nor a type of levels,
+    and is below only an equal one. *)
+Lemma exp_eq_ind_pi_absurd : forall {Γ p X A B k},
+    Γ ⊢ apps (a_ind p) X ≈ Π A B : Typeω@k ->
+    False.
+Proof.
+  intros * H%completeness_fundamental_exp_eq.
+  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  destruct (eval_ind_value _ _ _ _ Ha) as [? ->].
+  inversion Ha'; subst.
+  invert_per_univ_elem HR.
+Qed.
+
+Lemma exp_eq_ind_sort_absurd : forall {Γ p X U k},
+    sort_term U ->
+    Γ ⊢ apps (a_ind p) X ≈ U : Typeω@k ->
+    False.
+Proof.
+  intros * HU H%completeness_fundamental_exp_eq.
+  destruct (rel_typ_under_ctx_at_initial_env H) as [ρ [a [a' [Hρ [Ha [Ha' [R HR]]]]]]].
+  destruct (eval_ind_value _ _ _ _ Ha) as [? ->].
+  destruct HU as [U' HU' | n]; [ destruct HU' |]; inversion Ha'; subst; invert_per_univ_elem HR.
+Qed.
+
+Lemma subtyp_ind_inv : forall {Γ p X Y},
+    Γ ⊢ apps (a_ind p) X ⊆ apps (a_ind p) Y ->
+    exists k, Γ ⊢ apps (a_ind p) X ≈ apps (a_ind p) Y : Typeω@k.
+Proof.
+  intros * H.
+  apply subtyp_spec in H as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & _)]].
+  - exists k; exact Heq.
+  - exfalso; destruct (univ_sub_sort_term Hs) as [HUt _]; eapply exp_eq_ind_sort_absurd; [ exact HUt | exact HU ].
+  - exfalso; eapply exp_eq_ind_pi_absurd; exact HA.
+Qed.
+
+(** A type below an inductive type normalises to an inductive type, at the
+    normal forms of parameters equal to the ones below. *)
+Lemma subtyp_ind_nf : forall {Γ T p D Ps W}, Γ ⊢ T ⊆ apps (a_ind p) Ps -> ind_lookup gc_deps gc_stack p = Some D ->
+    List.length Ps = ind_np D ->
+    (forall k P A, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some A -> Γ ⊢ P : A) ->
+    nbe_ty_f Γ T W ->
+    exists Rs, W = nf_indty p Rs /\ List.length (nfs_to_exps Rs) = ind_np D /\
+      (forall k P R A, List.nth_error Ps k = Some P -> List.nth_error (nfs_to_exps Rs) k = Some R ->
+         List.nth_error (tele_insts (ind_params D) Id Ps) k = Some A -> Γ ⊢ P ≈ R : A).
+Proof.
+  intros * Hs Hl HPl HPt HW.
+  assert (HΓ : ⊢ Γ) by (gen_presups; assumption).
+  apply subtyp_spec in Hs as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hsu) | (A1 & A2 & B1 & B2 & _ & [k2 Hb] & _)]].
+  - destruct (completeness_ty Heq) as (W' & HW1 & HW2).
+    functional_nbe_rewrite_clear.
+    destruct (nbe_ty_ind_params _ _ _ _ _ Hl HΓ HPl HPt HW2) as (Rs & -> & [HL HE]).
+    exists Rs; split; [ reflexivity | split; [ congruence | exact HE ] ].
+  - exfalso; destruct (univ_sub_sort_term Hsu) as [_ HVt].
+    eapply exp_eq_ind_sort_absurd; [ exact HVt | symmetry; exact HV ].
+  - exfalso; eapply exp_eq_ind_pi_absurd; symmetry; exact Hb.
+Qed.
+
 (** A literal of type [Level@n] is of a tier at most [n], and so is the
     constant of a level of type [Level@n]. *)
 Lemma wf_llit_sort : forall {Γ o n},
@@ -417,7 +561,10 @@ Inductive small_typ_nf (n : nat) : nf -> Prop :=
 | small_typ_nf_False : small_typ_nf n ⊥ⁿ
 | small_typ_nf_level : forall m, small_typ_nf n Levelⁿ@m
 | small_typ_nf_pi : forall A B, small_typ_nf n (Πⁿ A B)
-| small_typ_nf_univ : forall m, m < n -> small_typ_nf n Typeⁿ@m.
+| small_typ_nf_univ : forall m, m < n -> small_typ_nf n Typeⁿ@m
+(** An inductive type applied to its parameters.  Its sort is not
+    recorded: the shape says only that it is an inductive type. *)
+| small_typ_nf_indty : forall p Ms, small_typ_nf n (nf_indty p Ms).
 #[export]
 Hint Constructors small_typ_nf : mctt.
 
@@ -438,7 +585,8 @@ Inductive typ_nf_below : unf -> nf -> Prop :=
 | typ_nf_below_univ : forall u c xs,
     unf_le (uns (lvl_suc (c, xs))) u ->
     typ_nf_below u (univⁿ c xs)
-| typ_nf_below_typ : forall i j, j < i -> typ_nf_below (unl i) Typeωⁿ@j.
+| typ_nf_below_typ : forall i j, j < i -> typ_nf_below (unl i) Typeωⁿ@j
+| typ_nf_below_indty : forall u p Ms, typ_nf_below u (nf_indty p Ms).
 #[export]
 Hint Constructors typ_nf_below : mctt.
 
@@ -449,7 +597,7 @@ Lemma typ_nf_below_lit : forall n W,
     typ_nf_below (uns (lvl_lit (ofin n))) W ->
     small_typ_nf n W.
 Proof.
-  intros * H; inversion H as [| | | | | ? c xs Hle |]; subst; try constructor.
+  intros * H; inversion H as [| | | | | ? c xs Hle | |]; subst; try constructor.
   cbn [unf_le] in Hle.
   pose proof (lvl_le_lit_closed _ _ Hle) as Hxs.
   destruct xs as [| k s a r]; cbn in Hxs; [| discriminate ].
@@ -934,7 +1082,7 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 (** The global at the head of a neutral, if any. *)
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
-  | ne_natrec _ _ _ W | ne_exfalso _ W | ne_app W _ => ne_head W
+  | ne_natrec _ _ _ W | ne_exfalso _ W | ne_elim _ _ _ W | ne_app W _ => ne_head W
   | ne_var _ => None
   | ne_glob p => Some p
   end.
@@ -998,10 +1146,14 @@ Lemma nf_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
 with ne_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
     forall W, ne_stuck G W -> ne_stuck G' W
 with la_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
-    forall xs, la_stuck G xs -> la_stuck G' xs.
+    forall xs, la_stuck G xs -> la_stuck G' xs
+with nfs_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    forall Ms, nfs_stuck G Ms -> nfs_stuck G' Ms
+with nbrs_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->
+    forall Bs, nbrs_stuck G Bs -> nbrs_stuck G' Bs.
 Proof.
   all: intros G G' HG [] H; cbn in *; destruct_all;
-    repeat split; eauto using nf_stuck_mono, ne_stuck_mono, la_stuck_mono.
+    repeat split; eauto using nf_stuck_mono, ne_stuck_mono, la_stuck_mono, nfs_stuck_mono, nbrs_stuck_mono.
 Qed.
 
 Lemma canonical_nat_stuck_mono : forall (G G' : qname -> Prop), (forall p, G p -> G' p) ->

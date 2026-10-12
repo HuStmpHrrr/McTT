@@ -223,6 +223,16 @@ Ltac syn_ext_tele lift liftn :=
       f_equal; eauto using lift, liftn
   end.
 
+(** The branches of an eliminator, a list mapped elementwise: each body is
+    under its own binders, [liftn] at the branch's binder count. *)
+Ltac syn_ext_brs lift liftn :=
+  match goal with
+  | HF : List.Forall _ ?Bs |- _ =>
+      lazymatch goal with |- List.map _ _ = _ => idtac | |- _ = List.map _ _ => idtac end;
+      induction HF as [| [[? ?] ?] ? ? ? ?]; cbn [List.map fst snd] in *; [ reflexivity |];
+      f_equal; [ f_equal; autorewrite with syn_ops; solve [ eauto using lift, liftn ] | assumption ]
+  end.
+
 Ltac syn_ext_case_with lift liftn vars :=
   intros; autorewrite with syn_ops; intros;
   cbn [exp_wk modexp_wk bnd_wk moddef_wk gmod_wk gentry_wk centry_wk
@@ -233,7 +243,7 @@ Ltac syn_ext_case_with lift liftn vars :=
          end;
   f_equal;
   try match goal with |- Some _ = Some _ => f_equal end;
-  first [ solve [ eauto using lift, liftn ] | syn_ext_tele lift liftn | solve [ vars ] ].
+  first [ solve [ eauto using lift, liftn ] | syn_ext_brs lift liftn | syn_ext_tele lift liftn | solve [ vars ] ].
 
 (** The variable cases of most laws are the pointwise hypothesis read at the
     variable, through the projections of an entry. *)
@@ -1538,3 +1548,19 @@ Hint Rewrite -> exp_sub_id exp_sub_sub exp_sub_shift_extend
     [gunit_sub_mk]); [simpl] leaves it folded. *)
 #[global] Arguments gunit_wk : simpl never.
 #[global] Arguments gunit_sub : simpl never.
+
+(** ** Lifting Under Several Binders, and Application Spines *)
+
+Lemma wk_qn_plus : forall n m φ, wk_qn (n + m) φ = wk_qn n (wk_qn m φ).
+Proof. induction n; intros; cbn; [ reflexivity | rewrite IHn; reflexivity ]. Qed.
+
+Lemma sb_qn_plus : forall n m σ, sb_qn (n + m) σ = sb_qn n (sb_qn m σ).
+Proof. induction n; intros; cbn; [ reflexivity | rewrite IHn; reflexivity ]. Qed.
+
+Lemma apps_exp_wk : forall Ms M φ,
+    (apps_exp M Ms)[φ]ʷ = apps_exp M[φ]ʷ (List.map (fun N => N[φ]ʷ) Ms).
+Proof. induction Ms; intros; cbn; [ reflexivity | rewrite IHMs; reflexivity ]. Qed.
+
+Lemma apps_exp_sub : forall Ms M σ,
+    (apps_exp M Ms)[σ] = apps_exp M[σ] (List.map (fun N => N[σ]) Ms).
+Proof. induction Ms; intros; cbn; [ reflexivity | rewrite IHMs; reflexivity ]. Qed.

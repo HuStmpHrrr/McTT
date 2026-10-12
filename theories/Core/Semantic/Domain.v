@@ -60,6 +60,13 @@ Inductive domain : Set :=
 | d_neut : domain -> domain_ne -> domain
 (** A term member of a module still lacking arguments (see above) *)
 | d_member : dmod -> list string -> domain
+(** [d_ind p as]: the type former of the inductive type [p] applied to
+    [as]; a type once [as] holds all the parameters, a function before. *)
+| d_ind : qname -> list domain -> domain
+(** [d_con p c vs]: the constructor [c] of [p] applied to [vs]; a value of
+    the type once [vs] holds all the parameters and arguments, a function
+    before. *)
+| d_con : qname -> string -> list domain -> domain
 with domain_ne : Set :=
 (** [x] is a de Bruijn level, not an index: it names a variable absolutely and
     does not change under binders. *)
@@ -73,6 +80,9 @@ with domain_ne : Set :=
 | d_exfalso : list dentry -> typ -> domain_ne -> domain_ne
 (** An opaque definition or an axiom. *)
 | d_glob : qname -> domain_ne
+(** [d_elim ρ nm A Bs p as m]: the eliminator of [p] on a neutral of type
+    [d_ind p as], its motive and branches as closures in [ρ]. *)
+| d_elim : list dentry -> nat -> typ -> list (string * nat * exp) -> qname -> list domain -> domain_ne -> domain_ne
 with domain_nf : Set :=
 (** [d_dom a m]: the value [m] at the type [a], to be read back *)
 | d_dom : domain -> domain -> domain_nf
@@ -92,6 +102,10 @@ with dentry : Set :=
 Abbreviation env := (list dentry).
 
 Derive NoConfusion for domain domain_ne domain_nf dmod dentry.
+
+(** The evaluators of [Reference] and [Extraction] match on module bodies
+    and their entries under a selection, which needs these. *)
+Derive NoConfusion for gmod gentry.
 
 (** The entry of the variable [#x], or the term [zeroᵈ] past the end of the
     list.  [env_entry] is [nth], but defined by recursion on the index so that

@@ -3,7 +3,7 @@ From Equations Require Import Equations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Semantic Require Import PER.Chain PER.CoreTactics PER.Definitions.
+From Mctt.Core.Semantic Require Import PER.Chain PER.CoreTactics PER.Definitions PER.Tele.
 Import Domain_Notations Fixed_Notations.
 Import ListNotations.
 
@@ -25,6 +25,10 @@ Proof.
   split; intros []; econstructor; try eassumption;
     apply HRR'; eassumption.
 Qed.
+
+Lemma rel_mod_eval_proj1 : forall (P Q : relation domain -> domain -> domain -> Prop) A ρ A' ρ' R,
+    rel_mod_eval (fun R x y => P R x y /\ Q R x y) A ρ A' ρ' R -> rel_mod_eval P A ρ A' ρ' R.
+Proof. intros * [a a' Ha Ha' [HP _]]; econstructor; eassumption. Qed.
 
 Lemma per_bot_sym : forall m n,
     Dom m ≈ n ∈ per_bot ->
@@ -398,11 +402,17 @@ Proof.
   simpl.
   intros R R' HRR'.
   split; intros Horig; [gen R' | gen R];
-    per_univ_elem_induction Horig; basic_per_univ_elem_econstructor; eauto;
+    per_univ_elem_induction Horig.
+  all: try solve [ basic_per_univ_elem_econstructor; eauto;
     try (etransitivity; [symmetry + idtac|]; eassumption);
     intros;
     destruct_rel_mod_eval;
-    econstructor; mautosolve.
+    econstructor; mautosolve ].
+  (** An inductive type: its relations are untouched. *)
+  all: intros R0 HR0; basic_per_univ_elem_econstructor; try eassumption;
+    [ intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end
+    | intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end
+    | etransitivity; [ symmetry + idtac | ]; eassumption ].
 Qed.
 
 (** The morphism in forward form.  [apply -> per_univ_elem_morphism_iff] needs
@@ -580,6 +590,42 @@ Proof.
     intros;
     apply_relation_equivalence;
     try reflexivity.
+  (** An inductive type: the telescope relations agree with those of the
+      other derivation, and so do the elements ([ind_rel_transport]). *)
+  2: {
+    assert (D0 = D) as -> by congruence.
+    destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
+    match goal with Hass : tele_ass (ind_params D) |- _ => rename Hass into Hass0 end.
+    assert (Hnr : forall k vs vs1 vs2, k < List.length (List.rev (ind_nparams D)) ->
+                    tele_pre nr k vs vs1 -> tele_pre nr0 k vs vs2 -> (nr k vs <~> nr0 k vs)).
+    { intros k vs vs1 vs2 Hk Hp1 Hp2.
+      destruct (nparams_lt_ass D k Hass0 Hk) as [A HA].
+      match goal with
+      | Hm : forall k A vs vs', _ -> tele_pre nr k vs vs' -> rel_mod_eval _ _ _ _ _ (nr k vs),
+        He : forall k A vs vs', _ -> tele_pre nr0 k vs vs' -> rel_mod_eval _ _ _ _ _ (nr0 k vs) |- _ =>
+          destruct (Hm _ _ _ _ HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
+          destruct (He _ _ _ _ HA Hp2) as [a2 a2' E2 E2' Hper2]
+      end.
+      functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
+    assert (Har : forall ms ms1 ms2 c gs k vs vs1 vs2,
+               tele_full nr (List.rev (ind_nparams D)) ms ms1 -> tele_full nr0 (List.rev (ind_nparams D)) ms ms2 ->
+               ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
+               tele_pre (ar ms c) k vs vs1 -> tele_pre (ar0 ms c) k vs vs2 ->
+               (ar ms c k vs <~> ar0 ms c k vs)).
+    { intros ms ms1 ms2 c gs k vs vs1 vs2 Hm1 Hm2 Hc Hk Hp1 Hp2.
+      destruct (nth_error_lt_some' _ _ Hk) as [A HA].
+      match goal with
+      | Hm : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_pre (ar ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar ms c k vs),
+        He : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> tele_pre (ar0 ms c) k vs vs' -> rel_mod_eval _ _ _ _ _ (ar0 ms c k vs) |- _ =>
+          destruct (Hm _ _ _ _ _ _ _ _ Hm1 Hc HA Hp1) as [a1 a1' E1 E1' [Hper Hmot]];
+          destruct (He _ _ _ _ _ _ _ _ Hm2 Hc HA Hp2) as [a2 a2' E2 E2' Hper2]
+      end.
+      functional_eval_rewrite_clear; exact (Hmot _ _ _ eq_refl Hper2). }
+    intros m m'; split; intro Hm.
+    - eapply (proj1 (ind_rel_change p D ups nr nr0 ar ar0
+                       ltac:(intros; eapply Hnr; eassumption) ltac:(intros; eapply Har; eassumption))); eassumption.
+    - eapply (proj1 (ind_rel_change p D ups nr0 nr ar0 ar
+                       ltac:(intros; symmetry; eapply Hnr; eassumption) ltac:(intros; symmetry; eapply Har; eassumption))); eassumption. }
   specialize (IHHorig _ _ _ eq_refl equiv_a_a').
   split; intros.
   - rename equiv_c_c' into equiv0_c_c'.
@@ -666,6 +712,39 @@ Proof.
       per_univ_elem_right_irrel_assert.
       intuition.
   - split; [econstructor | intros; apply_relation_equivalence]; mautosolve.
+  - (** An inductive type: the same relations serve the swapped type, by
+        the invariance of [nr] and [ar] along related prefixes and the
+        symmetry of their types; the elements are swapped by
+        [ind_rel_sym_all] and moved to the other side by [ind_rel_move]. *)
+    rename H into Hl, H0 into Hass, H1 into Hu, H2 into Hu', H3 into Hps, H4 into HnP, H5 into Hn, H6 into HnI,
+      H7 into HaP, H8 into Ha, H9 into HaI, H10 into Hcl, H11 into Hcd, H12 into Hns, H13 into HE.
+    pose proof (ind_rel_move p D ups nr ar Hass HnP HnI HaP HaI ups' Hcl) as [Hmv _].
+    pose proof (ind_rel_move p D ups' nr ar Hass HnP HnI HaP HaI ups
+                  (adm_flip p D ups nr ar Hass HnP HnI HaP HaI ups' Hcl Hcd)) as [Hmv' _].
+    split.
+    + basic_per_univ_elem_econstructor;
+        [ exact Hl | exact Hass | exact Hu' | exact Hu | exact (per_top_ps_sym _ _ _ Hps) | exact HnP | | exact HnI | exact HaP
+        | | exact HaI | exact (adm_flip p D ups nr ar Hass HnP HnI HaP HaI ups' Hcl Hcd)
+        | exact (adm_diag_r p D ups nr ar Hass HnP HnI HaP HaI ups' Hcl) | exact (tnr_sym p D ups nr ar Hass HnP HnI HaP HaI _ _ Hns) |].
+      * intros k A vs vs' Hk Hp.
+        assert (Hkl : k < List.length (List.rev (ind_nparams D))) by (apply List.nth_error_Some; congruence).
+        pose proof (tnrp_sym p D ups nr ar Hass HnP HnI HaP HaI k vs vs' ltac:(lia) Hp) as Hp'.
+        destruct (Hn _ _ _ _ Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+        econstructor; [ exact Ea' | exact Ea |].
+        eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HnI _ _ _ _ Hk Hp).
+      * intros ms ms' c gs k A vs vs' Hm Hc Hk Hp.
+        assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
+        assert (Hp' : tele_pre (ar ms' c) k vs' vs)
+          by (eapply (tarp_inst p D ups nr ar Hass HnP HnI HaP HaI); [ exact Hm | exact Hc | lia |];
+              eapply (tarp_sym p D ups nr ar Hass HnP HnI HaP HaI); [ exact (tnr_refl_l p D ups nr ar Hass HnP HnI HaP HaI _ _ Hm) | exact Hc | lia | exact Hp ]).
+        destruct (Ha _ _ _ _ _ _ _ _ (tnr_sym p D ups nr ar Hass HnP HnI HaP HaI _ _ Hm) Hc Hk Hp') as [a a' Ea Ea' (_ & Hsym & _)].
+        econstructor; [ exact Ea' | exact Ea |].
+        eapply per_univ_elem_resp_iff; [ exact Hsym |]; symmetry; exact (HaI _ _ _ _ _ _ _ _ Hm Hc Hk Hp).
+      * intros m m'; split; intro Hm0.
+        -- apply HE in Hm0; exact (Hmv _ _ _ Hm0 _ Hns).
+        -- apply HE; exact (Hmv' _ _ _ Hm0 _ (tnr_sym p D ups nr ar Hass HnP HnI HaP HaI _ _ Hns)).
+    + intros m m' Hm0; apply HE in Hm0; apply HE.
+      exact (proj1 (ind_rel_sym_all p D ups nr ar Hass HnP HnI HaP HaI Hcd) _ _ _ Hm0).
 Qed.
 
 Corollary per_univ_sym : forall i R a b,
@@ -821,6 +900,84 @@ Proof.
     intuition.
   - (** The neut case. *)
     idtac; (basic_per_univ_elem_econstructor; mautosolve 4).
+  - (** An inductive type.  The relations of the first derivation serve the
+        composite: those of the second agree with them along related
+        prefixes, as the relations of types with a common side. *)
+    assert (D0 = D) as -> by congruence.
+    destruct (app_split_eq _ _ _ _ x ltac:(congruence)) as [-> ->].
+    rename H into Hl, H0 into Hass, H1 into Hu, H2 into Hu', H3 into Hps, H4 into HnP, H5 into Hn, H6 into HnI,
+      H7 into HaP, H8 into Ha, H9 into HaI, H10 into Hcl, H11 into Hcd, H12 into Hns, H13 into HE.
+    rename H16 into Hu2, H17 into Hu2', H18 into Hps2, H19 into HnP2, H20 into Hn2, H21 into HnI2,
+      H22 into HaP2, H23 into Ha2, H24 into HaI2, H25 into Hcl2, H27 into Hns2.
+    assert (Hcr : forall k pa pb pc, k < List.length (List.rev (ind_nparams D)) ->
+              tele_pre nr k pa pb -> tele_pre nr0 k pb pc -> (nr k pa <~> nr0 k pb)).
+    { intros k pa pb pc Hk Hp1 Hp2.
+      destruct (nparams_lt_ass D k Hass Hk) as [A HA].
+      destruct (Hn _ _ _ _ HA Hp1) as [a a' Ea Ea' (Hper & _)].
+      destruct (Hn2 _ _ _ _ HA Hp2) as [b b' Eb Eb' Hper2].
+      functional_eval_rewrite_clear.
+      eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
+    assert (Hacr : forall ms ms' ms'' c gs k pa pb pc,
+              tele_full nr (List.rev (ind_nparams D)) ms ms' -> tele_full nr0 (List.rev (ind_nparams D)) ms' ms'' ->
+              ind_con D c = Some gs -> k < List.length (cargs_nonrec gs) ->
+              tele_pre (ar ms c) k pa pb -> tele_pre (ar0 ms' c) k pb pc -> (ar ms c k pa <~> ar0 ms' c k pb)).
+    { intros ms ms' ms'' c gs k pa pb pc Hm1 Hm2 Hc Hk Hp1 Hp2.
+      destruct (nth_error_lt_some' _ _ Hk) as [A HA].
+      destruct (Ha _ _ _ _ _ _ _ _ Hm1 Hc HA Hp1) as [a a' Ea Ea' (Hper & _)].
+      destruct (Ha2 _ _ _ _ _ _ _ _ Hm2 Hc HA Hp2) as [b b' Eb Eb' Hper2].
+      functional_eval_rewrite_clear.
+      eapply per_univ_elem_left_irrel; [ exact Hper | apply per_univ_sym; exact Hper2 ]. }
+    assert (HnP0 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_pre nr0 k vs vs' -> PER (nr0 k vs))
+      by (intros k ? ? Hk ?; destruct (nparams_lt_ass D k Hass Hk) as [A HA]; eapply HnP2; eassumption).
+    assert (HnP1 : forall k vs vs', k < List.length (List.rev (ind_nparams D)) -> tele_pre nr k vs vs' -> PER (nr k vs))
+      by (intros k ? ? Hk ?; destruct (nparams_lt_ass D k Hass Hk) as [A HA]; eapply HnP; eassumption).
+    assert (Hrefl0 : forall ms ms'', tele_full nr (List.rev (ind_nparams D)) ms ms'' ->
+              tele_full nr0 (List.rev (ind_nparams D)) ms'' ms'').
+    { intros * Hm; eapply (tele_full_cross_refl _ nr nr0); [ | exact HnP0 | exact Hm ].
+      intros k pa pb Hk Hp1 Hp2; exact (Hcr _ _ _ _ Hk Hp1 Hp2). }
+    assert (Hcomp : forall a b c, tele_full nr (List.rev (ind_nparams D)) a b -> tele_full nr0 (List.rev (ind_nparams D)) b c ->
+              tele_full nr (List.rev (ind_nparams D)) a c).
+    { intros * H1 H2; eapply (tele_full_compose_cross _ nr nr0); [ | exact HnP1 | exact H1 | exact H2 ].
+      intros k pa pb pc Hk Hp1 Hp2; exact (Hcr _ _ _ _ Hk Hp1 Hp2). }
+    assert (Haprefl : forall ms ms'' c gs k vs vs'', tele_full nr (List.rev (ind_nparams D)) ms ms'' ->
+              ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
+              tele_pre (ar ms c) k vs vs'' -> tele_pre (ar0 ms'' c) k vs'' vs'').
+    { intros * Hm Hc Hk Hp.
+      eapply (tele_pre_cross_refl (ar ms c) (ar0 ms'' c) (List.length (cargs_nonrec gs))); [ exact Hk | | | exact Hp ].
+      - intros j0 pa pb Hj Hp1 Hp2; exact (Hacr _ _ _ _ _ _ _ _ _ Hm (Hrefl0 _ _ Hm) Hc Hj Hp1 Hp2).
+      - intros j0 ? ? Hj ?; destruct (nth_error_lt_some' _ _ Hj) as [A HA]; eapply HaP2; [ exact (Hrefl0 _ _ Hm) | exact Hc | exact HA | eassumption ]. }
+    basic_per_univ_elem_econstructor;
+      [ exact Hl | exact Hass | exact Hu | exact Hu2' | exact (per_top_ps_trans _ _ _ _ Hps Hps2) | exact HnP | | exact HnI
+      | exact HaP | | exact HaI | | exact Hcd | exact (Hcomp _ _ _ Hns Hns2) | exact HE ].
+    + intros k A vs vs'' Hk Hp.
+      assert (Hkl : k < List.length (List.rev (ind_nparams D))) by (apply List.nth_error_Some; congruence).
+      assert (Hp2 : tele_pre nr0 k vs'' vs'').
+      { eapply (tele_pre_cross_refl nr nr0 (List.length (List.rev (ind_nparams D)))); [ lia | | exact HnP0 | exact Hp ].
+        intros j0 pa pb Hj Hp1 Hp2; exact (Hcr _ _ _ _ Hj Hp1 Hp2). }
+      destruct (Hn _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & Htr & _)].
+      destruct (Hn2 _ _ _ _ Hk Hp2) as [b b' Eb Eb' Hper2].
+      functional_eval_rewrite_clear.
+      econstructor; [ exact Ea | exact Eb' |].
+      apply (Htr j); eapply per_univ_elem_resp_iff; [ exact Hper2 |]; symmetry; exact (Hcr _ _ _ _ Hkl Hp Hp2).
+    + intros ms ms'' c gs k A vs vs'' Hm Hc Hk Hp.
+      assert (Hkl : k < List.length (cargs_nonrec gs)) by (apply List.nth_error_Some; congruence).
+      pose proof (Haprefl ms ms'' c gs k vs vs'' Hm Hc ltac:(lia) Hp) as Hp2.
+      destruct (Ha _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as [a a' Ea Ea' (_ & Htr & _)].
+      destruct (Ha2 _ _ _ _ _ _ _ _ (Hrefl0 _ _ Hm) Hc Hk Hp2) as [b b' Eb Eb' Hper2].
+      functional_eval_rewrite_clear.
+      econstructor; [ exact Ea | exact Eb' |].
+      apply (Htr j); eapply per_univ_elem_resp_iff; [ exact Hper2 |]; symmetry;
+        exact (Hacr _ _ _ _ _ _ _ _ _ Hm (Hrefl0 _ _ Hm) Hc Hkl Hp Hp2).
+    + apply (adm_compose p D ups nr ar Hass HnP HnI HaP HaI ups'); [ exact Hcl |].
+      apply (adm_change p D ups' nr0 nr ar0 ar); [ | | exact Hcl2 ].
+      * intros k vs vs1 vs2 Hk Hp1 Hp2; symmetry; eapply Hcr; [ exact Hk | | exact Hp1 ].
+        eapply (tnrp_refl_l p D ups nr ar Hass HnP HnI HaP HaI k vs vs2); [ lia | exact Hp2 ].
+      * intros ms ms1 ms2 c gs k vs vs1 vs2 Hm1 Hm2 Hc Hk Hp1 Hp2; symmetry.
+        pose proof (tnr_refl_l p D ups nr ar Hass HnP HnI HaP HaI _ _ Hm2) as Hmm.
+        eapply (Hacr ms ms ms1); [ exact Hmm | exact Hm1 | exact Hc | exact Hk | | exact Hp1 ].
+        eapply (tar_pre_refl_l p D ups nr ar Hass HnP HnI HaP HaI ms c gs Hmm Hc k vs vs2); [ lia | exact Hp2 ].
+  - (** Its elements. *)
+    exact (proj1 (ind_rel_trans_all p D ups nr ar H0 H4 H6 H7 H9 H11) _ _ _ HTR1 _ HTR2).
 Qed.
 
 Corollary per_univ_trans : forall i j R a1 a2 a3,
@@ -1074,9 +1231,16 @@ Proof.
   simpl.
   per_univ_elem_induction1; intros; subst;
     per_univ_elem_econstructor; eauto; try solve_uidx.
-  intros.
-  destruct_rel_mod_eval.
-  econstructor; solve [eauto].
+  1: intros; destruct_rel_mod_eval; econstructor; solve [eauto].
+  (** An inductive type: its telescopes, lifted one by one. *)
+  all: intros;
+    match goal with
+    | H : forall k A vs vs', _ -> _ -> rel_mod_eval _ _ _ _ _ (?r k vs) |- rel_mod_eval _ _ _ _ _ (?r _ _) =>
+        edestruct H as [a a' Ea Ea' [_ HIH]]; [ eassumption | eassumption |]
+    | H : forall ms ms' c gs k A vs vs', _ -> _ -> _ -> _ -> rel_mod_eval _ _ _ _ _ (?r ms c k vs) |- rel_mod_eval _ _ _ _ _ (?r _ _ _ _) =>
+        edestruct H as [a a' Ea Ea' [_ HIH]]; [ eassumption | eassumption | eassumption | eassumption |]
+    end;
+    econstructor; [ exact Ea | exact Ea' | apply HIH; assumption ].
 Qed.
 
 Lemma per_univ_elem_cumu : forall (i : nat) a0 a1 R,
@@ -1128,7 +1292,12 @@ Lemma per_subtyp_to_univ_elem : forall a b i,
       DF a ≈ a ∈ per_univ_elem i ↘ R /\
         DF b ≈ b ∈ per_univ_elem i ↘ R'.
 Proof.
-  destruct 1; do 2 eexists; mauto;
+  destruct 1.
+  (** An inductive type is related to its supertype, hence to itself. *)
+  10: { do 2 eexists; split;
+        [ eapply per_univ_trans; [ eassumption | apply per_univ_sym; eassumption ]
+        | eapply per_univ_trans; [ apply per_univ_sym; eassumption | eassumption ] ]. }
+  all: do 2 eexists; mauto;
     split; per_univ_elem_econstructor; mauto;
     try apply Equivalence_Reflexive.
   (** A small universe below another is a universe at the index of its own
@@ -1206,6 +1375,9 @@ Proof.
          end);
     mauto;
     destruct_all.
+  (** An inductive type: rebuilt without the induction hypotheses. *)
+  2: { eapply per_subtyp_indty; basic_per_univ_elem_econstructor; try eassumption;
+       intros; eapply rel_mod_eval_proj1; match goal with H : _ |- _ => eapply H; eassumption end. }
   assert (DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel)
     by (eapply per_univ_elem_pi'; eauto; intros; destruct_rel_mod_eval; mauto).
   saturate_refl.
@@ -1255,6 +1427,12 @@ Proof.
       destruct_rel_mod_eval.
       handle_per_univ_elem_irrel.
       intuition.
+  - (** Inductive types: their equalities compose. *)
+    inversion Hsub as [| | | | | | | | | ? ? ? ? R' HR']; subst.
+    match goal with H : per_univ_elem _ ?R (d_ind _ _) (d_ind _ _) |- _ =>
+      assert (HRR : R <~> R') by (eapply per_univ_elem_left_irrel; [ exact H | apply per_univ_sym; exact HR' ]);
+      eapply per_subtyp_indty; eapply per_univ_trans; [ exact H | eapply per_univ_elem_resp_iff; [ exact HR' | symmetry; exact HRR ] ]
+    end.
 Qed.
 
 Hint Resolve per_subtyp_trans : mctt.

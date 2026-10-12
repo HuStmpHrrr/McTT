@@ -8,7 +8,7 @@ From Mctt.Core.Semantic Require Import Consequences Realizability.
 From Mctt.Core.Syntactic.System Require Import MemberWf.
 From Mctt.Core.Syntactic Require Import Fresh.
 From Mctt.Core.Semantic Require Import MemberWf.
-From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType TypeCheckBase.
+From Mctt.Extraction Require Import Evaluation NbE PseudoMonadic Subtyping MemberType TypeCheckBase IndCheck.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
 (** * The Reference Checker
@@ -99,6 +99,15 @@ Section type_check.
         let*o (exist _ v _) :=  univ_nf_idx_dec UC' while _ in
         let (W, _) := nbe_ty_env_impl gc_deps gc_stack G P (unf_pi_tm u v) _ in
         pureo (exist _ W _)
+    (** The forms of inductive types ([Extraction.IndCheck]); the
+        eliminator's recursive calls are passed on. *)
+    | a_ind r => ind_infer G HG P r
+    | a_con r c => con_infer G HG P r c
+    | a_elim nm A' Bs M' =>
+        elim_infer G HG P nm A' Bs M'
+          (type_infer_in G HG P M' ltac:(ob_ord_elim))
+          (fun G' HG' P' => type_infer_in G' HG' P' A' ltac:(ob_ord_elim))
+          (fun b Hb G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd b) ltac:(ob_ord_elim))
     | λ A' M' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in

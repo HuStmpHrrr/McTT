@@ -27,6 +27,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> OMEGA2 (* [ω^2], written [ω^2] or [omega^2]; not a level *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
+%token <loc> INDUCTIVE ELIM (* inductive types *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" STAR "*" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
@@ -51,6 +52,9 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %type <(list (string * Cst.obj) * Cst.mdef)%type> mdecl
 %type <Cst.mdef> mdef
 %type <list Cst.cmd> cmds leads
+%type <list (string * list (string * Cst.obj))> ctors
+%type <list string> vars vars_opt ihs_opt
+%type <list (string * list string * Cst.obj)> brs
 
 %on_error_reduce obj params params_opt app_obj atomic_obj cmds leads mods path fpath
 
@@ -93,6 +97,17 @@ let cmd :=
   | ~ = open_cmd; <>
   | EVAL; ~ = obj; { [Cst.c_eval obj None] }
   | EVAL; e = obj; ":"; t = obj; { [Cst.c_eval e (Some t)] }
+  (* [inductive x (ps) : forall (n : A) -> S where | c (args) … end]: the
+     uniform parameters, then the type, which binds the non-uniform ones. *)
+  | INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
+      { [Cst.c_ind false (snd x) (List.rev ps) t (List.rev cs)] }
+  | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
+      { [Cst.c_ind true (snd x) (List.rev ps) t (List.rev cs)] }
+
+(* Reversed list of constructors, possibly empty: [| c (x : A) …] *)
+let ctors :=
+  | { @nil (string * list (string * Cst.obj)) }
+  | ~ = ctors; "|"; x = VAR; ps = params_opt; { (snd x, List.rev ps) :: ctors }
 
 (* A module declaration, at the top level or in a [let]: its parameters, and
    a body or an alias. *)
@@ -209,6 +224,13 @@ let obj :=
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
+  (* [elim M return ys z . A | c xs, hs => B … end]: the motive binds the
+     non-uniform parameters and the scrutinee; a branch, the non-uniform
+     parameters and the constructor's arguments, then after a comma its
+     induction hypotheses. *)
+  | ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
+    { Cst.elim escr (List.rev xs) em (List.rev bs) }
+
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)
   | LET; ds = let_defns; IN; body = obj; END; { List.fold_left (fun acc d => Cst.letb d acc) ds body }
@@ -268,6 +290,26 @@ let atomic_obj :=
   | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
 
   | "("; ~ = obj; ")"; <>
+
+(* Reversed nonempty list of names *)
+let vars :=
+  | x = VAR; { [snd x] }
+  | ~ = vars; x = VAR; { snd x :: vars }
+
+let vars_opt :=
+  | { @nil string }
+  | ~ = vars; <>
+
+(* The induction hypotheses of a branch, in order *)
+let ihs_opt :=
+  | { @nil string }
+  | ","; ~ = vars; { List.rev vars }
+
+(* Reversed list of the branches of an eliminator, possibly empty *)
+let brs :=
+  | { @nil (string * list string * Cst.obj) }
+  | ~ = brs; "|"; c = VAR; ys = vars_opt; zs = ihs_opt; "=>"; b = obj;
+      { (snd c, List.rev ys ++ zs, b) :: brs }
 
 (* Reversed nonempty list of parameters *)
 let params :=

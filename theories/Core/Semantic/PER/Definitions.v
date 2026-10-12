@@ -5,6 +5,8 @@ From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Export Fixed.
 Import Domain_Notations Fixed_Notations.
+From Stdlib Require String.
+#[local] Open Scope list_scope.
 
 (** The rewrite database of [simp per_univ_elem]. *)
 Create Rewrite HintDb per_univ_elem.
@@ -122,6 +124,142 @@ Inductive per_ne : relation domain :=
 .
 Hint Constructors per_ne : mctt.
 
+(** ** Telescopes of Inductive Types
+
+    The parameters and the non-recursive arguments of an inductive type are
+    telescopes: each type is evaluated in the environment extended by the
+    values before it.  A family of relations [tr k pre] relates the [k]-th
+    values, given the prefix [pre] of the left list before them (the
+    relation of a pair of related types is that of the left type);
+    [tele_full] relates two whole lists, [tele_pre] two prefixes of length
+    [k].  The relations are a family indexed by prefixes, not a nested
+    structure, so that the clause of [per_univ_elem_core] for inductive types
+    states them with [rel_mod_eval] alone, as the clause for [Π] does. *)
+
+Fixpoint tele_rel_aux (tr : nat -> list domain -> relation domain)
+    (k : nat) (pre vs vs' : list domain) : Prop :=
+  match vs, vs' with
+  | nil, nil => True
+  | v :: vs, v' :: vs' => tr k pre v v' /\ tele_rel_aux tr (S k) (pre ++ v :: nil) vs vs'
+  | _, _ => False
+  end.
+
+Definition tele_full {X : Type} (tr : nat -> list domain -> relation domain) (T : list X) (vs vs' : list domain) : Prop :=
+  List.length vs = List.length T /\ tele_rel_aux tr 0 nil vs vs'.
+
+Definition tele_pre (tr : nat -> list domain -> relation domain) (k : nat) (vs vs' : list domain) : Prop :=
+  List.length vs = k /\ tele_rel_aux tr 0 nil vs vs'.
+
+(** The types of the non-recursive arguments of a constructor, outermost
+    first, and the values at them among the arguments. *)
+Fixpoint cargs_nonrec (gs : list carg) : list typ :=
+  match gs with
+  | nil => nil
+  | ca_arg A :: gs => A :: cargs_nonrec gs
+  | ca_rec _ :: gs => cargs_nonrec gs
+  end.
+
+Fixpoint nonrec_vals (gs : list carg) (vs : list domain) : list domain :=
+  match gs, vs with
+  | ca_arg _ :: gs, v :: vs => v :: nonrec_vals gs vs
+  | ca_rec _ :: gs, _ :: vs => nonrec_vals gs vs
+  | _, _ => nil
+  end.
+
+(** Two lists of values read back equally at a telescope, at every length. *)
+Definition per_top_ps (T : list centry) (vs vs' : list domain) : Prop :=
+  forall s, exists Ms, read_ps gc_deps gc_stack s nil T vs Ms /\ read_ps gc_deps gc_stack s nil T vs' Ms.
+
+(** Uniform parameters [ua] admissible beside [ups]: what the type
+    evaluates from them is related, as elements, to what it evaluates from
+    [ups].  A fresh variable of a non-uniform parameter's or an argument's
+    type at [ua] is related to one of the type at [ups], and the parameters
+    of a recursive argument at [ua] to those at [ups].  These are the
+    variables and the parameters the readback of a stuck eliminator makes
+    from the uniform parameters of its scrutinee's type, so two of them read
+    back alike when both are admissible.  The relations are elements of the
+    type's universe, so the condition is one the elements can state: the
+    types of the uniform parameters may be larger. *)
+Definition ind_adm (D : ind_decl) (ups : list domain)
+    (nr : nat -> list domain -> relation domain)
+    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+    (ua : list domain) : Prop :=
+  (forall k A vs vs' s, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+     exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ vs)) a /\
+       eval_exp gc_deps gc_stack A (env_args nil (ua ++ vs')) a' /\ nr k vs (⇑! a s) (⇑! a' s)) /\
+  (forall ms ms' c gs k A vs vs' s,
+     tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
+     List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+     exists a a', eval_exp gc_deps gc_stack A (env_args nil (ups ++ ms ++ vs)) a /\
+       eval_exp gc_deps gc_stack A (env_args nil (ua ++ ms' ++ vs')) a' /\ ar ms c k vs (⇑! a s) (⇑! a' s)) /\
+  (forall ms ms' c gs gs1 Ps gs2 ws ws',
+     tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+     ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+     tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+     exists bs bs', eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ ms ++ ws)) bs /\
+       eval_exps gc_deps gc_stack Ps (env_args nil (ua ++ ms' ++ ws')) bs' /\
+       tele_full nr (List.rev (ind_nparams D)) bs bs').
+
+(** The elements of the inductive type [p] at the uniform parameters [ups]
+    and the non-uniform ones [ns], of the left type: the relation of two
+    related types is that of the left one, so nothing of the right type is
+    needed.  A constructor at the parameters [bs] and [bs'] it was built
+    at, and its arguments: the non-uniform ones of both related to [ns] (the
+    eliminator binds those), the non-recursive arguments related at their
+    types, and the recursive ones elements at the parameters they are
+    declared at, evaluated at the left one's arguments.  The uniform
+    parameters in [bs] and [bs'] are never read.  And neutrals that read
+    back equally, of the type at parameters that are so too: the non-uniform
+    ones related to [ns], the uniform ones admissible ([ind_adm]), since a
+    stuck eliminator reads them. *)
+Inductive ind_rel (p : qname) (D : ind_decl) (ups : list domain)
+    (nr : nat -> list domain -> relation domain)
+    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+  : list domain -> relation domain :=
+| ind_rel_con :
+  `{ tele_full nr (List.rev (ind_nparams D)) ns ns ->
+     ind_con D c = Some gs ->
+     List.length bs = ind_np D ->
+     List.length bs' = ind_np D ->
+     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs) ->
+     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) bs') ->
+     tele_full (ar ns c) (cargs_nonrec gs) (nonrec_vals gs vs) (nonrec_vals gs vs') ->
+     ind_args_rel p D ups nr ar (env_args nil (ups ++ ns)) gs vs vs' ->
+     ind_rel p D ups nr ar ns (d_con p c (bs ++ vs)) (d_con p c (bs' ++ vs')) }
+| ind_rel_neut :
+  `{ List.length as1 = ind_np D ->
+     List.length as2 = ind_np D ->
+     ind_adm D ups nr ar (List.firstn (ind_nu D) as1) ->
+     ind_adm D ups nr ar (List.firstn (ind_nu D) as2) ->
+     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as1) ->
+     tele_full nr (List.rev (ind_nparams D)) ns (List.skipn (ind_nu D) as2) ->
+     Dom m ≈ m' ∈ per_bot ->
+     ind_rel p D ups nr ar ns (⇑ (d_ind p as1) m) (⇑ (d_ind p as2) m') }
+(** The arguments, in the environment of the parameters and the
+    non-recursive arguments of the left one before them: a recursive one is
+    an element at the parameters its declaration evaluates to. *)
+with ind_args_rel (p : qname) (D : ind_decl) (ups : list domain)
+    (nr : nat -> list domain -> relation domain)
+    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+  : env -> list carg -> list domain -> list domain -> Prop :=
+| ind_args_nil :
+  `{ ind_args_rel p D ups nr ar ρ nil nil nil }
+| ind_args_arg :
+  `{ ind_args_rel p D ups nr ar (ρ ↦ v) gs vs vs' ->
+     ind_args_rel p D ups nr ar ρ (ca_arg A :: gs) (v :: vs) (v' :: vs') }
+| ind_args_rec :
+  `{ eval_exps gc_deps gc_stack Ps ρ bs ->
+     ind_rel p D ups nr ar bs v v' ->
+     ind_args_rel p D ups nr ar ρ gs vs vs' ->
+     ind_args_rel p D ups nr ar ρ (ca_rec Ps :: gs) (v :: vs) (v' :: vs') }
+.
+
+Scheme ind_rel_mut_ind := Induction for ind_rel Sort Prop
+with ind_args_rel_mut_ind := Induction for ind_args_rel Sort Prop.
+Combined Scheme ind_rel_mut_ind_all from ind_rel_mut_ind, ind_args_rel_mut_ind.
+
+Hint Constructors ind_rel ind_args_rel : mctt.
+
 (** * Universe/Element PER *)
 (** ** Universe/Element PER Definition *)
 
@@ -180,6 +318,47 @@ Section Per_univ_elem_core_def.
               rel_mod_eval per_univ_elem_core B (ρ ↦ c) B' (ρ' ↦ c') (out_rel equiv_c_c')) ->
           (elem_rel <~> fun f f' => forall c c' (equiv_c_c' : Dom c ≈ c' ∈ in_rel), rel_mod_app f c f' c' (out_rel equiv_c_c')) ->
           DF Πᵈ a ρ B ≈ Πᵈ a' ρ' B' ∈ per_univ_elem_core ↘ elem_rel }
+  (** An inductive type at its parameters.  The uniform parameters read back
+      equally; the non-uniform ones, whose types are in the sort, are
+      related at their telescope [nr], and so are the non-recursive
+      arguments of each constructor at each related instance of the
+      non-uniform parameters ([ar]).  Its elements are [ind_rel]. *)
+  | per_univ_elem_core_indty :
+    `{ forall (nr : nat -> list domain -> relation domain)
+         (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+         (elem_rel : relation domain),
+         ind_lookup gc_deps gc_stack p = Some D ->
+         tele_ass (ind_params D) ->
+         List.length ups = ind_nu D ->
+         List.length ups' = ind_nu D ->
+         per_top_ps (List.rev (ind_uparams D)) ups ups' ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+            PER (nr k vs)) ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+            rel_mod_eval per_univ_elem_core A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
+         (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+            (nr k vs <~> nr k vs')) ->
+         (forall ms ms' c gs k A vs vs',
+            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            ind_con D c = Some gs ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            PER (ar ms c k vs)) ->
+         (forall ms ms' c gs k A vs vs',
+            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            ind_con D c = Some gs ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            rel_mod_eval per_univ_elem_core A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs'))
+              (ar ms c k vs)) ->
+         (forall ms ms' c gs k A vs vs',
+            tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+            ind_con D c = Some gs ->
+            List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+            (ar ms c k vs <~> ar ms' c k vs')) ->
+         ind_adm D ups nr ar ups' ->
+         ind_adm D ups nr ar ups ->
+         tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+         (elem_rel <~> ind_rel p D ups nr ar ns) ->
+         DF d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_univ_elem_core ↘ elem_rel }
   (** A neutral type, its elements neutrals. *)
   | per_univ_elem_core_neut :
     `{ forall (elem_rel : relation domain),
@@ -224,7 +403,44 @@ Section Per_univ_elem_core_def.
       (case_ne : forall {a b a' b' elem_rel},
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
-          motive elem_rel ⇑ a b ⇑ a' b').
+          motive elem_rel ⇑ a b ⇑ a' b')
+      (case_Ind : forall {p D ups ups' ns ns'}
+          (nr : nat -> list domain -> relation domain)
+          (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+          {elem_rel},
+          ind_lookup gc_deps gc_stack p = Some D ->
+          tele_ass (ind_params D) ->
+          List.length ups = ind_nu D ->
+          List.length ups' = ind_nu D ->
+          per_top_ps (List.rev (ind_uparams D)) ups ups' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             PER (nr k vs)) ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y)
+               A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             (nr k vs <~> nr k vs')) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             PER (ar ms c k vs)) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem_core ↘ R /\ motive R x y)
+               A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar ms c k vs)) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             (ar ms c k vs <~> ar ms' c k vs')) ->
+          ind_adm D ups nr ar ups' ->
+          ind_adm D ups nr ar ups ->
+          tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+          (elem_rel <~> ind_rel p D ups nr ar ns) ->
+          motive elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   #[derive(equations=no, eliminator=no)]
   Equations per_univ_elem_core_strong_ind R a b (H : DF a ≈ b ∈ per_univ_elem_core ↘ R) : DF a ≈ b ∈ motive ↘ R :=
@@ -241,7 +457,19 @@ Section Per_univ_elem_core_def.
                                   mk_rel_mod_eval b b' evb evb' (conj _ (per_univ_elem_core_strong_ind _ _ _ Rel))
                               end)
         HE;
-  | R, a, b, (per_univ_elem_core_neut _ equiv_b_b' HE)                => case_ne equiv_b_b' HE.
+  | R, a, b, (per_univ_elem_core_neut _ equiv_b_b' HE)                => case_ne equiv_b_b' HE;
+  | R, a, b, (per_univ_elem_core_indty nr ar _ Hl Hass Hu Hu' Hps HnP Hn HnI HaP Ha HaI Hcl Hcd Hns HE) =>
+      case_Ind nr ar Hl Hass Hu Hu' Hps HnP
+        (fun k A vs vs' Hk Hpre => match Hn k A vs vs' Hk Hpre with
+                                   | mk_rel_mod_eval b b' evb evb' Rel =>
+                                       mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
+                                   end)
+        HnI HaP
+        (fun ms ms' c gs k A vs vs' Hms Hc Hk Hpre => match Ha ms ms' c gs k A vs vs' Hms Hc Hk Hpre with
+                                   | mk_rel_mod_eval b b' evb evb' Rel =>
+                                       mk_rel_mod_eval b b' evb evb' (conj Rel (per_univ_elem_core_strong_ind _ _ _ Rel))
+                                   end)
+        HaI Hcl Hcd Hns HE.
 
 End Per_univ_elem_core_def.
 
@@ -434,7 +662,44 @@ Section Per_univ_elem_ind_def.
       (case_ne : forall i {a b a' b' elem_rel},
           Dom b ≈ b' ∈ per_bot ->
           (elem_rel <~> per_ne) ->
-          motive i elem_rel ⇑ a b ⇑ a' b').
+          motive i elem_rel ⇑ a b ⇑ a' b')
+      (case_Ind : forall i {p D ups ups' ns ns'}
+          (nr : nat -> list domain -> relation domain)
+          (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+          {elem_rel},
+          ind_lookup gc_deps gc_stack p = Some D ->
+          tele_ass (ind_params D) ->
+          List.length ups = ind_nu D ->
+          List.length ups' = ind_nu D ->
+          per_top_ps (List.rev (ind_uparams D)) ups ups' ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             PER (nr k vs)) ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y)
+               A (env_args nil (ups ++ vs)) A (env_args nil (ups' ++ vs')) (nr k vs)) ->
+          (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
+             (nr k vs <~> nr k vs')) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             PER (ar ms c k vs)) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             rel_mod_eval (fun R x y => DF x ≈ y ∈ per_univ_elem i ↘ R /\ motive i R x y)
+               A (env_args nil (ups ++ ms ++ vs)) A (env_args nil (ups' ++ ms' ++ vs')) (ar ms c k vs)) ->
+          (forall ms ms' c gs k A vs vs',
+             tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+             ind_con D c = Some gs ->
+             List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
+             (ar ms c k vs <~> ar ms' c k vs')) ->
+          ind_adm D ups nr ar ups' ->
+          ind_adm D ups nr ar ups ->
+          tele_full nr (List.rev (ind_nparams D)) ns ns' ->
+          (elem_rel <~> ind_rel p D ups nr ar ns) ->
+          motive i elem_rel (d_ind p (ups ++ ns)) (d_ind p (ups' ++ ns'))).
 
   Lemma per_univ_elem_ind i a b R (H : per_univ_elem i a b R) : motive i a b R.
   Proof.
@@ -443,7 +708,7 @@ Section Per_univ_elem_ind_def.
     intros R a b H.
     refine (per_univ_elem_core_strong_ind i _ (motive i) _ _
               (fun _ _ => case_L i) (fun _ => case_N i) (fun _ => case_True i) (fun _ => case_False i)
-              _ (fun _ _ _ _ _ => case_ne i) R a b H).
+              _ (fun _ _ _ _ _ => case_ne i) _ R a b H).
     - intros j j' elem_rel lt_j_i Heq HE.
       rewrite per_univ_below_spec in HE by assumption.
       eapply case_U; eauto.
@@ -452,6 +717,8 @@ Section Per_univ_elem_ind_def.
       eapply case_SU; eauto.
     - intros * Ha IHa Hper HT HE.
       eapply case_Pi; eassumption.
+    - intros * Hl Hass Hu Hu' Hps HnP Hn HnI HaP Ha HaI Hcl Hcd Hns HE.
+      eapply case_Ind; eassumption.
   Qed.
 End Per_univ_elem_ind_def.
 
@@ -504,6 +771,11 @@ Inductive per_subtyp : uidx -> domain -> domain -> Prop :=
         DF Πᵈ a ρ B ≈ Πᵈ a ρ B ∈ per_univ_elem i ↘ elem_rel ->
         DF Πᵈ a' ρ' B' ≈ Πᵈ a' ρ' B' ∈ per_univ_elem i ↘ elem_rel' ->
         Sub Πᵈ a ρ B <: Πᵈ a' ρ' B' at i)
+(** An inductive type below itself: inductive types are invariant. *)
+| per_subtyp_indty :
+  `( forall elem_rel,
+        DF d_ind p as1 ≈ d_ind p as2 ∈ per_univ_elem i ↘ elem_rel ->
+        Sub d_ind p as1 <: d_ind p as2 at i)
 where "'Sub' a <: b 'at' i" := (per_subtyp i a b) : type_scope.
 
  Hint Constructors per_subtyp : mctt.
@@ -818,10 +1090,11 @@ Ltac per_univ_elem_induction_core HH ih :=
                  end
              end;
       revert HH; revert i R a b;
-      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _);
+      refine (per_univ_elem_ind _ _ _ _ _ _ _ _ _ _);
       (** The level case has one binder more than the other closed types: the
           sort of its type of levels. *)
-      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro ]; cbv beta
+      [ do 8 intro | do 8 intro | do 4 intro | do 3 intro | do 3 intro | do 3 intro | do 11 intro; ih; do 3 intro | do 8 intro
+      | do 25 intro ]; cbv beta
   end.
 
 (** The analogue of [induction H using per_univ_elem_ind]; the induction

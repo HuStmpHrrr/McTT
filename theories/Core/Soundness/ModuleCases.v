@@ -19,7 +19,10 @@ From Mctt.Core.Syntactic.System Require Import MemberWf GlobalModules.
 From Mctt.Core.Completeness Require Import ModexpCases.
 From Mctt.Core.Soundness Require Import LevelCases.
 From Mctt.Core.Soundness Require Import LogicalRelation ContextCases TermStructureCases MemberCases
-  SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases.
+  SubtypingCases UniverseCases FunctionCases LetCases NatCases TrueFalseCases IndCases.
+From Mctt.Core.Completeness Require IndCases.
+Require Mctt.Core.Completeness.ModuleCases.
+Require Import Mctt.Core.Soundness.IndElimCases.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
 
@@ -32,6 +35,7 @@ Record glu_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
       @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ ->
       @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_mem H x) A
+  ; gme_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @glu_core (gc_mk Θ2 Ξ2) D
   }.
 
 (** ** 2. Kripke gluing *)
@@ -41,6 +45,101 @@ Definition kglu_ctx Θ1 Ξ1 Γ : Prop :=
 
 Definition kglu_exp Θ1 Ξ1 Γ M A : Prop :=
   forall Θ2 Ξ2, glu_emb Θ1 Ξ1 Θ2 Ξ2 -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M A.
+
+(** ** 4. Closed gluing at [⋅] weakens to every glued context
+
+    Simpler than [closed_weaken_sem]: [nil_glu_sub_pred] does not constrain
+    the environment, and the terms are the same, so no closedness is needed. *)
+
+Section Weaken.
+  Context {GC : GCtx}.
+  Import Fixed_Notations.
+
+  Lemma wf_sub_nil : forall Δ σ, ⊢ Δ -> Δ ⊢s σ : ⋅.
+  Proof.
+    intros * HΔ; constructor; [ exact HΔ | apply wf_ctx_empty; eapply ctx_wf_gctx; exact HΔ | | |];
+      intros * Hx; inversion Hx.
+  Qed.
+
+  Lemma glu_rel_exp_nil_weaken : forall Γ N T, ⊩ Γ -> ⋅ ⊩ N : T -> Γ ⊩ N : T.
+  Proof.
+    intros * [SbΓ HΓ] [Sb0 [H0 [i Hi]]].
+    exists SbΓ; split; [ exact HΓ |]; exists i; intros Δ σ ρ Hσ.
+    apply Hi.
+    inversion H0 as [Sb' Heq Hg | | |]; subst.
+    apply (Heq Δ σ ρ); cbn.
+    apply wf_sub_nil, (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HΓ _ _ _ Hσ)).
+  Qed.
+End Weaken.
+
+
+(** ** The cases of the inductive types, at the target *)
+
+Lemma k_decl : forall Θ Ξ Θ2 Ξ2 Γ p D, glu_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
+    ind_lookup Θ2 Ξ2 p = Some D /\ @glu_core (gc_mk Θ2 Ξ2) D /\ decl_closed D /\ ind_sort_univ (ind_sort D) /\
+    decl_typed Θ2 Ξ2 D.
+Proof.
+  intros * He HΓ Hl.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
+  pose proof (decl_typed_emb _ _ _ _ _ (gme_emb _ _ _ _ He) Hdt) as Hdt2.
+  pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (gme_emb _ _ _ _ He)) Hl) as Hl2.
+  split; [ exact Hl2 | split; [ exact (gme_ind _ _ _ _ He _ _ Hl) | split; [ exact Hc | split; [ exact Hsu | exact Hdt2 ] ] ] ].
+Qed.
+
+Lemma k_ind : forall Θ Ξ Θ2 Ξ2 Γ p D, glu_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
+    @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_ind p) (ind_ty D).
+Proof.
+  intros * He HΓ Hl HΓ2.
+  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HG & Hc & Hsu & Hdt2).
+  apply (@glu_rel_exp_nil_weaken (gc_mk Θ2 Ξ2)); [ exact HΓ2 |].
+  eapply (@glu_rel_exp_ind0 (gc_mk Θ2 Ξ2)); eassumption.
+Qed.
+
+
+Lemma k_con : forall Θ Ξ Θ2 Ξ2 Γ p D c gs (i : nat), glu_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+    ind_lookup Θ Ξ p = Some D -> ind_con D c = Some gs ->
+    @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ -> @glu_rel_ctx (gc_mk Θ2 Ξ2) (cargs_ctx p D gs ++ ind_params D) ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i -> @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ (con_ty p D gs) (Typeω@i) ->
+    @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_con p c) (con_ty p D gs).
+Proof.
+  intros * He HΓ Hl Hcon HΓ2 HΨ2 Hty HTy.
+  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HG & Hc & Hsu & Hdt2).
+  pose proof (Mctt.Core.Completeness.ModuleCases.sme_ind _ _ _ _
+                (Mctt.Core.Completeness.ModuleCases.gctx_sem _ _ (em_wf _ _ _ _ (gme_emb _ _ _ _ He))) p D Hl2) as HDc.
+  apply (@glu_rel_exp_nil_weaken (gc_mk Θ2 Ξ2)); [ exact HΓ2 |].
+  eapply (@glu_rel_exp_con0 (gc_mk Θ2 Ξ2)); eassumption.
+Qed.
+
+Lemma k_elim : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M nm A (i : nat) Bs,
+    glu_emb Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some D -> List.length Ps = ind_np D ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+       forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 -> @glu_rel_exp (gc_mk Θ0 Ξ0) Γ P T) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps -> @glu_rel_exp (gc_mk Θ2 Ξ2) Γ M (apps (a_ind p) Ps) ->
+    nm = S (ind_nn D) ->
+    Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
+    @glu_rel_exp (gc_mk Θ2 Ξ2) (elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) A (Typeω@i) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+    brs_names (ind_cons D) Bs ->
+    (forall c gs, ind_con D c = Some gs ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
+       Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 ->
+       @glu_rel_exp (gc_mk Θ0 Ξ0) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) B (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))) ->
+    @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_elim nm A Bs M) (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]).
+Proof.
+  intros * He Hl HPl HPt HPg HMt HMg Hnm HAt HAg HMx Hn HBx Hk HBt HBg.
+  destruct (presup_exp HMt) as [HΓ _].
+  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HG & Hc & Hsu & Hdt2).
+  pose proof (Mctt.Core.Completeness.ModuleCases.sme_ind _ _ _ _
+                (Mctt.Core.Completeness.ModuleCases.gctx_sem _ _ (em_wf _ _ _ _ (gme_emb _ _ _ _ He))) p D Hl2) as HDc.
+  destruct (emb_preserves_wf _ _ _ _ (gme_emb _ _ _ _ He)) as (_ & Hwe & _ & _ & Hwx & _).
+  eapply (@glu_rel_exp_elim (gc_mk Θ2 Ξ2)); try eassumption; eauto.
+Qed.
 
 (** ** 3. The fundamental theorem, Kripke form *)
 
@@ -80,6 +179,7 @@ Proof.
     | eapply glu_rel_exp_app; eassumption ].
   all: try solve [ eapply glu_rel_exp_vlookup; eassumption ].
   all: try solve [ eapply gme_glob; eassumption ].
+  all: try solve [ eapply k_ind; eassumption | eapply k_con; eassumption | eapply k_elim; eassumption ].
   all: try solve [ eapply glu_rel_ctx_extend; [ eapply presup_ctx_glu_rel_exp |]; eassumption ].
   all: try solve [ eapply glu_rel_ctx_extend_def; [ eapply presup_ctx_glu_rel_exp | |]; eassumption ].
   all: try solve [ eapply glu_rel_exp_let; eassumption ].
@@ -112,31 +212,6 @@ Proof.
   eapply glu_rel_exp_subtyp; eassumption.
 Qed.
 
-(** ** 4. Closed gluing at [⋅] weakens to every glued context
-
-    Simpler than [closed_weaken_sem]: [nil_glu_sub_pred] does not constrain
-    the environment, and the terms are the same, so no closedness is needed. *)
-
-Section Weaken.
-  Context {GC : GCtx}.
-  Import Fixed_Notations.
-
-  Lemma wf_sub_nil : forall Δ σ, ⊢ Δ -> Δ ⊢s σ : ⋅.
-  Proof.
-    intros * HΔ; constructor; [ exact HΔ | apply wf_ctx_empty; eapply ctx_wf_gctx; exact HΔ | | |];
-      intros * Hx; inversion Hx.
-  Qed.
-
-  Lemma glu_rel_exp_nil_weaken : forall Γ N T, ⊩ Γ -> ⋅ ⊩ N : T -> Γ ⊩ N : T.
-  Proof.
-    intros * [SbΓ HΓ] [Sb0 [H0 [i Hi]]].
-    exists SbΓ; split; [ exact HΓ |]; exists i; intros Δ σ ρ Hσ.
-    apply Hi.
-    inversion H0 as [Sb' Heq Hg | | |]; subst.
-    apply (Heq Δ σ ρ); cbn.
-    apply wf_sub_nil, (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HΓ _ _ _ Hσ)).
-  Qed.
-End Weaken.
 
 (** ** Globals from the gluing of their types and bodies
 
@@ -242,6 +317,7 @@ Definition glu_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @glu_rel_exp (gc_mk Θ Ξ) ⋅ A (Typeω@i)) /\
       (forall M, B = Some M -> @glu_rel_exp (gc_mk Θ Ξ) ⋅ M A)
+  | ge_ind _ D => @glu_core (gc_mk Θ Ξ) D
   | ge_mod _ _ => True
   end.
 
@@ -294,7 +370,7 @@ Theorem glu_emb_of : forall Θ1 Ξ1 Θ2 Ξ2,
     Emb Θ1 Ξ1 Θ2 Ξ2 -> GV glu_entry Θ1 Ξ1 Θ2 Ξ2 -> glu_emb Θ1 Ξ1 Θ2 Ξ2.
 Proof.
   intros * He HG; pose proof He as [Hg Hs].
-  constructor; [ exact He |].
+  constructor; [ exact He | | intros p D Hl; destruct (ind_lookup_resolve _ _ _ _ Hl) as [pv Hr]; exact (HG _ _ Hr) ].
   intros * Hpm Hr HΓs.
   rewrite (mod_qname_inv _ _ Hpm).
   apply glu_rel_exp_nil_weaken; [ exact HΓs |].
@@ -329,10 +405,51 @@ Proof.
   split; [ exists j; exact (kglu_read _ _ _ _ _ _ Hμ HT) | discriminate ].
 Qed.
 
+(** A declaration typed at the source is valid in the gluing model at the
+    target: its judgments, glued. *)
+Lemma glu_entry_ind : forall Θ Ξ pv D Θ2 Ξ2,
+    decl_typed Θ Ξ D -> Good glu_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> glu_entry Θ2 Ξ2 (ge_ind pv D).
+Proof.
+  intros * Hdt HG He; cbn [glu_entry].
+  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & [n Hn] & HA & HPl & HP & HN & Hnd).
+  pose proof (glu_emb_of _ _ _ _ He (HG _ _ He)) as Hμ.
+  destruct kglu_fundamental as (Kc & Ke & _).
+  constructor.
+  - exact (Kc _ _ _ HΔ _ _ Hμ).
+  - exists n; exact (Ke _ _ _ _ _ Hn _ _ Hμ).
+  - exists n.
+    assert (Hn' : Θ ⍮ Ξ ⍮ ind_params D ⊢ (ind_sort_lvl (ind_sort D))[wk_shiftn (ind_nn D)]ʷ : Level@n).
+    { pose proof HΔ as HΔ'; rewrite params_split in HΔ'.
+      pose proof (wf_wk_shiftn_app' _ _ _ _ HΔ') as Hw.
+      rewrite length_nparams in Hw; rewrite params_split.
+      exact (wk_preserves_exp _ _ _ _ _ _ _ Hn Hw). }
+    exact (Ke _ _ _ _ _ Hn' _ _ Hμ).
+  - intros k A HA0.
+    destruct (Completeness.IndCases.nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
+    assert (Hk : k < ind_nn D)
+      by (rewrite <- (length_nparams D), <- List.length_rev; apply List.nth_error_Some; congruence).
+    pose proof (HN _ _ _ HΔ1) as HT; rewrite Completeness.IndCases.length_npre in HT by lia.
+    exact (Ke _ _ _ _ _ HT _ _ Hμ).
+  - intros * Hcon HA0.
+    destruct (Completeness.IndCases.nonrec_nth_split _ _ _ HA0) as (gs1 & gs2 & Heq & Hk).
+    pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
+    assert (Hls : List.length (cargs_strat gs1) = k)
+      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
+    rewrite Hls, (Completeness.IndCases.astrat_prefix gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
+    exact (Ke _ _ _ _ _ HT _ _ Hμ).
+  - intros * Hcon Heq HPk HT.
+    assert (Hls : List.length (cargs_nonrec gs1) = List.length (cargs_strat gs1))
+      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    rewrite Hls in HT.
+    pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
+    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec Ps :: gs2)), <- Heq in H.
+    exact (Ke _ _ _ _ _ H _ _ Hμ).
+Qed.
+
 (** Every well-formed global context glues: the identity is a sound
     embedding. *)
 Theorem gctx_glu : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> glu_emb Θ Ξ Θ Ξ.
 Proof.
   intros * Hg; apply glu_emb_of; [ apply Emb_refl; assumption |].
-  exact (global_induction glu_entry glu_entry_def glu_entry_ax _ _ Hg).
+  exact (global_induction glu_entry glu_entry_def glu_entry_ax glu_entry_ind _ _ Hg).
 Qed.

@@ -3,8 +3,53 @@ From Stdlib Require Import Lia PeanoNat Relations.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Evaluation.
+From Mctt.Core.Syntactic Require Import Inductives.
 From Mctt.Core.Semantic.Readback Require Import Definitions.
 Import Domain_Notations.
+
+  Lemma functional_eval_exps : forall {Θ Ξ} Ms ρ ms1 ms2,
+      ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms1 -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms2 -> ms1 = ms2.
+  Proof. intros Θ Ξ; pose proof (@functional_eval Θ Ξ); firstorder. Qed.
+
+  Lemma functional_fresh_tele : forall {Θ Ξ} ρ T s vs1, fresh_tele Θ Ξ ρ T s vs1 ->
+      forall vs2, fresh_tele Θ Ξ ρ T s vs2 -> vs1 = vs2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; [ reflexivity |].
+    functional_eval_rewrite_clear; f_equal; auto.
+  Qed.
+
+  Lemma functional_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1 bss1, fresh_cargs Θ Ξ p ups ρ gs s vs1 bss1 ->
+      forall vs2 bss2, fresh_cargs Θ Ξ p ups ρ gs s vs2 bss2 -> vs1 = vs2 /\ bss1 = bss2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; [ auto | |].
+    - functional_eval_rewrite_clear; edestruct IHfresh_cargs as [-> ->]; [ eassumption | auto ].
+    - match goal with H1 : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?b1, H2 : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?b2 |- _ =>
+        pose proof (functional_eval_exps _ _ _ _ H1 H2) as <- end.
+      edestruct IHfresh_cargs as [-> ->]; [ eassumption | auto ].
+  Qed.
+
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A gs vs bss s ihs1, fresh_ihs Θ Ξ ρ A gs vs bss s ihs1 ->
+      forall ihs2, fresh_ihs Θ Ξ ρ A gs vs bss s ihs2 -> ihs1 = ihs2.
+  Proof.
+    induction 1; intros * H2; inversion H2; subst; auto.
+    functional_eval_rewrite_clear; f_equal; auto.
+  Qed.
+
+  Ltac functional_fresh_rewrite_clear :=
+    repeat match goal with
+      | H1 : fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
+          pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1 ?b1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 ?b2 |- _ =>
+          destruct (functional_fresh_cargs _ _ _ _ _ _ _ H1 _ _ H2); subst; clear H2
+      | H1 : fresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i2 |- _ =>
+          pose proof (functional_fresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
+          pose proof (functional_eval_exps _ _ _ _ H1 H2); subst; clear H2
+      | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as ?; subst
+      end.
 
   Lemma functional_read : forall {Θ Ξ},
     (forall s m M1,
@@ -26,9 +71,15 @@ Import Domain_Notations.
           Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys1 ->
           forall ys2,
             Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys2 ->
-            ys1 = ys2).
+            ys1 = ys2) /\
+      (forall s ρ T vs Vs1, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs1 -> forall Vs2, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Vs2 -> Vs1 = Vs2) /\
+      (forall s p ups ρ gs vs Vs1, read_cargs Θ Ξ s p ups ρ gs vs Vs1 ->
+         forall Vs2, read_cargs Θ Ξ s p ups ρ gs vs Vs2 -> Vs1 = Vs2) /\
+      (forall s ρ A p D ups cs Bs Bs1, read_brs Θ Ξ s ρ A p D ups cs Bs Bs1 ->
+         forall Bs2, read_brs Θ Ξ s ρ A p D ups cs Bs Bs2 -> Bs1 = Bs2).
   Proof.
     intros Θ Ξ; apply read_mut_ind; intros; progressive_inversion; functional_eval_rewrite_clear;
+      functional_fresh_rewrite_clear; functional_eval_rewrite_clear;
       first
         [ (** A small universe takes the canonical level that its level reads
               back as, so its case is that equality under [nf_univ_of]. *)
@@ -121,3 +172,17 @@ Ltac functional_read_rewrite_clear1 :=
       clean replace M2 with M1 by first [solve [mauto 2] | tactic_error M2 M1]; clear H2
   end.
 Ltac functional_read_rewrite_clear := repeat functional_read_rewrite_clear1.
+
+(** One fresh variable per member of a telescope, per argument, and per
+    recursive argument. *)
+Lemma fresh_tele_length : forall {Θ Ξ} ρ T s vs,
+    fresh_tele Θ Ξ ρ T s vs -> List.length vs = List.length T.
+Proof. induction 1; cbn; congruence. Qed.
+
+Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs bss,
+    fresh_cargs Θ Ξ p ups ρ gs s vs bss -> List.length vs = List.length gs.
+Proof. induction 1; cbn; congruence. Qed.
+
+Lemma fresh_ihs_length : forall {Θ Ξ} ρ A gs vs bss s ihs,
+    fresh_ihs Θ Ξ ρ A gs vs bss s ihs -> List.length ihs = cargs_nrec gs.
+Proof. induction 1; cbn; congruence. Qed.

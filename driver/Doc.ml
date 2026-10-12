@@ -249,6 +249,13 @@ let rec term st env (o : C.obj) : unit =
       let env' = fst (params st env ps) in
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
+  (* An eliminator: the names of its motive, then each branch's
+     constructor, unlinked, and its names. *)
+  | C.Coq_elim (m, xs, a, bs) ->
+      term st env m;
+      let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
+      term st (binds env xs) a;
+      List.iter (fun ((c, ys), b) -> ignore (next st c); term st (binds env ys) b) bs
 
 (* Module position: [Elaborator.elab_mod]. *)
 and modv st env (o : C.obj) : mden =
@@ -370,7 +377,24 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            declare st i (anchor_of ch d) (if l = None then Mod else Def);
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
    | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
-   | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e)));
+   | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
+   (* A declaration: its name, its uniform parameters, its type, binding
+      the non-uniform ones before its sort, then each constructor and its
+      arguments, a recursive one binding no name for the next. *)
+   | C.Coq_c_ind (_, x, ps, t, cs) ->
+       ignore (decl x Def);
+       let envu, _ = params st env ps in
+       let rec pis env t =
+         match t with
+         | C.Coq_pi (y, a, b) -> let v = bind st y in term st env a; pis (push y v env) b
+         | _ -> term st envu t; env
+       in
+       let enva = pis envu t in
+       List.iter (fun (c, args) ->
+           ignore (decl c Def);
+           ignore (List.fold_left (fun env (y, a) ->
+               let v = bind st y in term st env a;
+               match E.rec_head x a with Some _ -> env | None -> push y v env) enva args)) cs);
   next_frame st fp ch o f c
 
 and next_frame st fp ch o f c =
@@ -417,7 +441,7 @@ let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int *
   let dummy = (Lexing.dummy_pos, Lexing.dummy_pos) in
   let follows = function
     | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
-    | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _
+    | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _ | P.INDUCTIVE _
     | P.END _ | P.EOF _ -> true
     | _ -> false in
   let parses i j (e, t) =

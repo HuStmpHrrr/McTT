@@ -174,6 +174,19 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          format_obj escr mx format_obj em s_darrow format_obj ez sx sr s_darrow format_obj es
      in
      pp_print_paren_if (p >= 1) impl f ()
+  | Cst.Coq_elim (escr, xs, em, bs) ->
+     let impl f () =
+       fprintf f "@[<hv 0>@[<hov 2>elim %a@ return %s .@ %a@]" format_obj escr
+         (String.concat " " xs) format_obj em;
+       List.iter
+         (fun ((c, ys), eb) ->
+           fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
+             (String.concat "" (List.map (fun y -> " " ^ y) ys))
+             s_darrow format_obj eb)
+         bs;
+       fprintf f "@ end@]"
+     in
+     pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_true_ty -> pp_sym f s_true_ty
   | Cst.Coq_true_tm -> pp_sym f s_true_tm
   | Cst.Coq_false_ty -> pp_sym f s_false_ty
@@ -286,6 +299,17 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
      List.iter (fun a -> fprintf f "@ %a" (format_obj_prec 2) a) args;
      fprintf f "%a@]" format_items its
   | Cst.Coq_c_error msg -> fprintf f "(* %s *)" msg
+  | Cst.Coq_c_ind (priv, x, ps, t, cs) ->
+     fprintf f "@[<v 2>%sinductive %s" (if priv then "private " else "") x;
+     List.iter (fun p -> fprintf f " %a" format_obj_param p) ps;
+     fprintf f " : %a where" format_obj t;
+     List.iter
+       (fun (c, args) ->
+         fprintf f "@ | %s" c;
+         List.iter (fun p -> fprintf f " %a" format_obj_param p) args)
+       cs;
+     fprintf f "@;<1 -2>end";
+     pp_close_box f ()
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -400,6 +424,38 @@ let exp_to_obj =
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [x])
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
+    (* The type former of an inductive type is named by its declaration, the
+       entry [X#] beside the definition [X] it prints as; a constructor by
+       its name, in the same module. *)
+    | Coq_a_ind p -> path_to_obj p.q_unit (ind_chain p.q_chain None)
+    | Coq_a_con (p, c) -> path_to_obj p.q_unit (ind_chain p.q_chain (Some c))
+    (* An eliminator: fresh names for what its motive and its branches
+       bind. *)
+    | Coq_a_elim (nm, em, bs, escr) ->
+       let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
+       let xs = fresh nm in
+       let escr' = impl ctx escr in
+       let em' = impl (List.rev xs @ ctx) em in
+       let bs' =
+         List.map
+           (fun ((c, n), eb) ->
+             let ys = fresh n in
+             ((c, ys), impl (List.rev ys @ ctx) eb))
+           bs
+       in
+       Cst.Coq_elim (escr', xs, em', bs')
+  (* The chain of the type former or of a constructor of an inductive type,
+     from that of its declaration. *)
+  and ind_chain (ch : string list) (c : string option) : string list =
+    match List.rev ch with
+    | [] -> []
+    | x :: pre ->
+       let x' = match c with
+         | Some c -> c
+         | None ->
+            let n = String.length x in
+            if n > 0 && x.[n - 1] = '#' then String.sub x 0 (n - 1) else x in
+       List.rev (x' :: pre)
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -472,6 +528,8 @@ let exp_to_obj =
          | Coq_ge_mod (priv, u) ->
             let params, md = impl_unit ctx' u in
             Cst.Coq_c_mod (priv, x, params, md)
+         (* A declaration is filed in a unit, never in a local body. *)
+         | Coq_ge_ind (_, _) -> Cst.Coq_c_error "inductive declaration"
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_open (phi, h, its) ->

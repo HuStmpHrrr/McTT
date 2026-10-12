@@ -32,7 +32,7 @@ From Stdlib Require Import Arith Lia List PeanoNat String.
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import NbE Avoid.
-From Mctt.Core.Syntactic Require Import Fresh Members NfRename.
+From Mctt.Core.Syntactic Require Import Fresh Members NfRename Inductives.
 Import Domain_Notations Syntax_Notations Wk_Notations.
 
 (** ** The Renaming *)
@@ -56,6 +56,8 @@ Section Rename.
     | d_fn ρ M => d_fn (List.map dern ρ) M
     | d_neut a m => d_neut (drn a) (drn_ne m)
     | d_member h ch => d_member (dmrn h) ch
+    | d_ind p args => d_ind p (List.map drn args)
+    | d_con p c args => d_con p c (List.map drn args)
     end
   with drn_ne (m : domain_ne) : domain_ne :=
     match m with
@@ -63,6 +65,7 @@ Section Rename.
     | d_app m n => d_app (drn_ne m) (drn_nf n)
     | d_natrec ρ A mz MS m => d_natrec (List.map dern ρ) A (drn mz) MS (drn_ne m)
     | d_exfalso ρ A m => d_exfalso (List.map dern ρ) A (drn_ne m)
+    | d_elim ρ nm A Bs p args m => d_elim (List.map dern ρ) nm A Bs p (List.map drn args) (drn_ne m)
     | d_glob p => d_glob p
     end
   with drn_nf (n : domain_nf) : domain_nf :=
@@ -140,7 +143,7 @@ Section Eval.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
 
   #[local] Hint Rewrite env_var_rn env_mod_rn env_args_rn dlvl_suc_rn dlvl_max_rn
-    List.map_app List.length_map : rn.
+    List.map_app List.length_map List.firstn_map List.skipn_map : rn.
 
   Lemma eval_rn :
     (forall M ρ m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m -> ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m) /\
@@ -155,7 +158,11 @@ Section Eval.
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> dmrn f h ·ₘ y Θ ⍮ Ξ ↘ dmrn f r) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> dmrn f h ·ₜ* ch Θ ⍮ Ξ ↘ drn f r) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> dmrn f h ·ₘ* ch Θ ⍮ Ξ ↘ dmrn f r) /\
-    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ern f ρ ↘ ern f ρ').
+    (forall ρ Φ ρ', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ' -> ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ern f ρ ↘ ern f ρ') /\
+    (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+       ⟦elim drn f m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r) /\
+    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+       ⟦ihs List.map (drn f) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ihs).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => ⟦ M ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f m)
@@ -169,7 +176,10 @@ Section Eval.
              (fun h y r _ => dmrn f h ·ₘ y Θ ⍮ Ξ ↘ dmrn f r)
              (fun h ch r _ => dmrn f h ·ₜ* ch Θ ⍮ Ξ ↘ drn f r)
              (fun h ch r _ => dmrn f h ·ₘ* ch Θ ⍮ Ξ ↘ dmrn f r)
-             (fun ρ Φ ρ' _ => ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ern f ρ ↘ ern f ρ'));
+             (fun ρ Φ ρ' _ => ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ern f ρ ↘ ern f ρ')
+             (fun ρ nm A Bs m r _ => ⟦elim drn f m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ drn f r)
+             (fun ρ nm A Bs gs vs ihs _ =>
+                ⟦ihs List.map (drn f) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ihs));
       intros; cbn [drn drn_ne drn_nf dmrn dern List.map] in *;
       repeat change (List.map (dern f) ?ρ) with (ern f ρ) in *;
       autorewrite with rn in *; cbn [List.map] in *;
@@ -287,6 +297,121 @@ Section Bound.
     specialize (H v ltac:(lia)); inversion_clear H.
     eapply eval_clo_av; [ eapply env_av_mono; [| eassumption ]; lia | eassumption | apply Hc; lia | exact Hd ].
   Qed.
+
+  (** ** Inductive Types
+
+      An environment of bounded values, and a closure under [n] binders. *)
+  Definition env_dbd (b : nat) (ρ : env) : Prop := forall v, b <= v -> env_av v b None ρ.
+
+  Definition dbd_clon (b : nat) (ρ : env) (B : exp) (n : nat) : Prop :=
+    forall b' cs d, b <= b' -> List.length cs = n -> (forall c, In c cs -> dbd b' c) ->
+               ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ cs ↘ d -> dbd b' d.
+
+  Lemma env_dbd_nil : forall b, env_dbd b nil.
+  Proof. intros b v _; apply env_av_nil. Qed.
+
+  Lemma env_dbd_args : forall b ρ args, env_dbd b ρ -> (forall a, In a args -> dbd b a) -> env_dbd b (env_args ρ args).
+  Proof. intros * Hρ Ha v Hv; apply env_av_args_none; [ apply Hρ, Hv | intros; apply Ha; assumption ]. Qed.
+
+  Lemma env_dbd_cons : forall b ρ d, env_dbd b ρ -> dbd b d -> env_dbd b (ρ ↦ d).
+  Proof. intros * Hρ Hd v Hv; apply env_av_cons_none; [ apply Hρ, Hv | apply Hd, Hv ]. Qed.
+
+  Lemma env_dbd_mono : forall b b' ρ, b <= b' -> env_dbd b ρ -> env_dbd b' ρ.
+  Proof. intros * Hb Hρ v Hv; eapply env_av_mono; [| apply Hρ ]; lia. Qed.
+
+  Lemma eval_dbd : forall M ρ a b, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_dbd b ρ -> dbd b a.
+  Proof. intros * H Hρ v Hv; eapply (proj1 (eval_av Θ Ξ v b)); [ exact H | apply Hρ, Hv | exact I ]. Qed.
+
+  Lemma eval_exps_dbd : forall Ms ρ ms b, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_dbd b ρ -> forall a, In a ms -> dbd b a.
+  Proof.
+    intros * H Hρ a Ha v Hv.
+    eapply (proj1 (proj2 (proj2 (proj2 (eval_av Θ Ξ v b))))); [ exact H | apply Hρ, Hv | | exact Ha ].
+    apply Forall_forall; intros; exact I.
+  Qed.
+
+  Lemma dbd_indty : forall b p args, (forall a, In a args -> dbd b a) -> dbd b (d_ind p args).
+  Proof. intros * Ha v Hv; constructor; intros; apply Ha; assumption. Qed.
+
+  Lemma dbd_con : forall b p c args, (forall a, In a args -> dbd b a) -> dbd b (d_con p c args).
+  Proof. intros * Ha v Hv; constructor; intros; apply Ha; assumption. Qed.
+
+  Lemma dbd_indty_inv : forall b p args, dbd b (d_ind p args) -> forall a, In a args -> dbd b a.
+  Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
+
+  Lemma dbd_con_inv : forall b p c args, dbd b (d_con p c args) -> forall a, In a args -> dbd b a.
+  Proof. intros * H a Ha v Hv; specialize (H v Hv); inversion H; auto. Qed.
+
+  Lemma dbd_elim_inv : forall b ρ nm A Bs p args m,
+      dbd_ne b (d_elim ρ nm A Bs p args m) ->
+      dbd_ne b m /\ (forall a, In a args -> dbd b a) /\ dbd_clon b ρ A nm /\
+      (forall c n B, In (c, n, B) Bs -> dbd_clon b ρ B n).
+  Proof.
+    intros * H; repeat split.
+    - intros v Hv; specialize (H v Hv); inversion H; assumption.
+    - intros a Ha v Hv; specialize (H v Hv); inversion H; auto.
+    - intros b' cs d Hb Hl Hc Hd v Hv; specialize (H v ltac:(lia)); inversion_clear H.
+      eapply (proj1 (eval_av Θ Ξ v b')); [ exact Hd | apply env_av_args; [ eapply env_av_mono; [| eassumption ]; lia | intros; apply Hc; [ assumption | lia ] ] |].
+      rewrite Hl; assumption.
+    - intros c n B Hin b' cs d Hb Hl Hc Hd v Hv; specialize (H v ltac:(lia)); inversion_clear H.
+      eapply (proj1 (eval_av Θ Ξ v b')); [ exact Hd | apply env_av_args; [ eapply env_av_mono; [| eassumption ]; lia | intros; apply Hc; [ assumption | lia ] ] |].
+      rewrite Hl; eauto.
+  Qed.
+
+  (** The fresh variables of the telescopes of a declaration are above the
+      readback length, and below the length past them. *)
+  Lemma fresh_tele_dbd : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns -> env_dbd s ρ ->
+      forall a, In a ns -> dbd (s + List.length T) a.
+  Proof.
+    induction 1; intros Hρ; [ intros ? [] |].
+    assert (Ha : dbd s a) by (eapply eval_dbd; eassumption).
+    cbn [List.length]; replace (s + S (List.length T)) with (S s + List.length T) by lia.
+    intros d [<- | Hd].
+    - apply dbd_fresh; [ lia | exact Ha ].
+    - apply IHfresh_tele; [| exact Hd ]. apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Ha ] ].
+  Qed.
+
+  Lemma fresh_cargs_dbd : forall p ups ρ gs s vs bss, fresh_cargs Θ Ξ p ups ρ gs s vs bss ->
+      env_dbd s ρ -> (forall a, In a ups -> dbd s a) ->
+      (forall a, In a vs -> dbd (s + List.length gs) a) /\
+      (forall bs, In bs bss -> forall a, In a bs -> dbd (s + List.length gs) a).
+  Proof.
+    induction 1; intros Hρ Hu.
+    - split; [ intros ? [] | intros ? [] ].
+    - assert (Ha : dbd s a) by (eapply eval_dbd; eassumption).
+      cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
+      destruct IHfresh_cargs as [IH1 IH2];
+        [ apply env_dbd_cons; [ eapply env_dbd_mono; [| exact Hρ ]; lia | apply dbd_fresh; [ lia | exact Ha ] ]
+        | intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia |].
+      split; [ intros d [<- | Hd]; [ apply dbd_fresh; [ lia | exact Ha ] | auto ] | assumption ].
+    - assert (Hbs : forall a, In a bs -> dbd s a) by (eapply eval_exps_dbd; eassumption).
+      cbn [List.length]; replace (s + S (List.length gs)) with (S s + List.length gs) by lia.
+      destruct IHfresh_cargs as [IH1 IH2];
+        [ eapply env_dbd_mono; [| exact Hρ ]; lia | intros; eapply dbd_mono; [| apply Hu; eassumption ]; lia |].
+      split.
+      + intros d [<- | Hd]; [| auto ].
+        apply dbd_fresh; [ lia | apply dbd_indty; intros a Ha; apply in_app_or in Ha as [Ha | Ha]; auto ].
+      + intros bs' [<- | Hb]; [ intros; eapply dbd_mono; [| apply Hbs; eassumption ]; lia | exact (IH2 bs' Hb) ].
+  Qed.
+
+  Lemma fresh_ihs_dbd : forall ρ A gs vs bss s ihs, fresh_ihs Θ Ξ ρ A gs vs bss s ihs ->
+      forall nn b, b <= s -> dbd_clon b ρ A (S nn) -> Forall (fun bs => List.length bs = nn) bss ->
+      (forall a, In a vs -> dbd s a) -> (forall bs, In bs bss -> forall a, In a bs -> dbd s a) ->
+      forall a, In a ihs -> dbd (s + cargs_nrec gs) a.
+  Proof.
+    induction 1; intros nn b0 Hb HA Hl Hvs Hbss.
+    - intros ? [].
+    - apply (IHfresh_ihs nn b0); auto; intros; apply Hvs; right; assumption.
+    - inversion Hl; subst.
+      assert (Ht : dbd s t).
+      { eapply (HA s (bs ++ v :: nil)); [ assumption | rewrite length_app; cbn; lia | | exact H ].
+        intros c Hc; apply in_app_or in Hc as [Hc | [<- | []]]; [ apply (Hbss bs); [ left; reflexivity | assumption ] | apply Hvs; left; reflexivity ]. }
+      cbn [cargs_nrec]; replace (s + S (cargs_nrec gs)) with (S s + cargs_nrec gs) by lia.
+      intros d [<- | Hd].
+      + apply dbd_fresh; [ lia | exact Ht ].
+      + eapply (IHfresh_ihs (List.length bs) b0); try eassumption; try lia.
+        * intros; eapply dbd_mono; [| apply Hvs; right; eassumption ]; lia.
+        * intros bs' Hbs' a' Ha'; eapply dbd_mono; [| exact (Hbss bs' (or_intror Hbs') a' Ha') ]; lia.
+  Qed.
 End Bound.
 
 (** The bound of a value built during readback: by its constructor, by
@@ -335,6 +460,12 @@ Proof.
   - apply wk_mono_q, Hm.
 Qed.
 
+Lemma rn_ok_qn : forall n f s s' φ, rn_ok f s s' φ -> rn_ok f (n + s) (n + s') (wk_qn n φ).
+Proof. induction n; intros * H; cbn; [ exact H | apply rn_ok_q; auto ]. Qed.
+
+Lemma nfs_wk_app : forall φ Ms Ns, nfs_wk φ (nfs_app Ms Ns) = nfs_app (nfs_wk φ Ms) (nfs_wk φ Ns).
+Proof. induction Ms; intros; cbn; congruence. Qed.
+
 Section Read.
   Variables (Θ : gdeps) (Ξ : gstack) (f : nat -> nat).
 
@@ -349,6 +480,54 @@ Section Read.
   Lemma app_rn : forall m n r, $| m & n | Θ ⍮ Ξ ↘ r -> $| drn f m & drn f n | Θ ⍮ Ξ ↘ drn f r.
   Proof. intros * H; exact (proj1 (proj2 (proj2 (eval_rn Θ Ξ f))) _ _ _ H). Qed.
 
+  Lemma eval_args_rn : forall B ρ args d,
+      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ args ↘ d -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args (ern f ρ) (List.map (drn f) args) ↘ drn f d.
+  Proof. intros * H; rewrite <- env_args_rn; exact (proj1 (eval_rn Θ Ξ f) _ _ _ H). Qed.
+
+  Lemma eval_exps_rn : forall Ms ρ ms,
+      ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms.
+  Proof. intros * H; exact (proj1 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f)))) _ _ _ H). Qed.
+
+  (** The fresh variables of the telescopes of a declaration, renamed: from
+      the readback length on, [f] is the shift to the other length. *)
+  Lemma fresh_tele_rn : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns ->
+      forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
+      fresh_tele Θ Ξ (ern f ρ) T s' (List.map (drn f) ns).
+  Proof.
+    induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor |].
+    cbn [drn drn_ne]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+    constructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ H) |].
+    pose proof (IHfresh_tele (S s') ltac:(intros; rewrite Hf by lia; lia) ltac:(lia)) as IH.
+    cbn [ern List.map dern drn drn_ne extend_env] in IH; rewrite (Hf s) in IH by lia.
+    replace (s + (s' - s)) with s' in IH by lia; exact IH.
+  Qed.
+
+  Lemma fresh_cargs_rn : forall p ups ρ gs s vs bss, fresh_cargs Θ Ξ p ups ρ gs s vs bss ->
+      forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
+      fresh_cargs Θ Ξ p (List.map (drn f) ups) (ern f ρ) gs s' (List.map (drn f) vs) (List.map (List.map (drn f)) bss).
+  Proof.
+    induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | |].
+    - cbn [drn drn_ne]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+      constructor; [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ H) |].
+      pose proof (IHfresh_cargs (S s') ltac:(intros; rewrite Hf by lia; lia) ltac:(lia)) as IH.
+      cbn [ern List.map dern drn drn_ne extend_env] in IH; rewrite (Hf s) in IH by lia.
+      replace (s + (s' - s)) with s' in IH by lia; exact IH.
+    - cbn [drn drn_ne]; rewrite (Hf s), List.map_app by lia; replace (s + (s' - s)) with s' by lia.
+      constructor; [ exact (eval_exps_rn _ _ _ H) |].
+      apply (IHfresh_cargs (S s')); [ intros; rewrite Hf by lia; lia | lia ].
+  Qed.
+
+  Lemma fresh_ihs_rn : forall ρ A gs vs bss s ihs, fresh_ihs Θ Ξ ρ A gs vs bss s ihs ->
+      forall s', (forall x, s <= x -> f x = x + (s' - s)) -> s <= s' ->
+      fresh_ihs Θ Ξ (ern f ρ) A gs (List.map (drn f) vs) (List.map (List.map (drn f)) bss) s' (List.map (drn f) ihs).
+  Proof.
+    induction 1; intros s' Hf Hs; cbn [List.map]; [ constructor | constructor; auto |].
+    cbn [drn drn_ne]; rewrite (Hf s) by lia; replace (s + (s' - s)) with s' by lia.
+    constructor.
+    - pose proof (eval_args_rn _ _ _ _ H) as H'; rewrite List.map_app in H'; exact H'.
+    - apply (IHfresh_ihs (S s')); [ intros; rewrite Hf by lia; lia | lia ].
+  Qed.
+
   Lemma read_rn :
     (forall s m W, Rnf m in Θ ⍮ Ξ ⍮ s ↘ W ->
        forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W) /\
@@ -357,14 +536,33 @@ Section Read.
     (forall s a A, Rtyp a in Θ ⍮ Ξ ⍮ s ↘ A ->
        forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp drn f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A) /\
     (forall s xs ys, Rla xs in Θ ⍮ Ξ ⍮ s ↘ ys ->
-       forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys).
+       forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys) /\
+    (forall s ρ T vs Ms, Rps vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms ->
+       forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+       Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms) /\
+    (forall s p ups ρ gs vs Ms, read_cargs Θ Ξ s p ups ρ gs vs Ms ->
+       forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) -> env_dbd s ρ ->
+       (forall a, In a vs -> dbd s a) ->
+       read_cargs Θ Ξ s' p (List.map (drn f) ups) (ern f ρ) gs (List.map (drn f) vs) (nfs_wk φ Ms)) /\
+    (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
+       forall s' φ, rn_ok f s s' φ -> dbd_clon Θ Ξ s ρ A (S (ind_nn D)) ->
+       (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
+       read_brs Θ Ξ s' (ern f ρ) A p D (List.map (drn f) ups) cs Bs (nbrs_wk φ Bs')).
   Proof.
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => forall s' φ, rn_ok f s s' φ -> dbd_nf s m -> Rnf drn_nf f m in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ W)
              (fun s m M _ => forall s' φ, rn_ok f s s' φ -> dbd_ne s m -> Rne drn_ne f m in Θ ⍮ Ξ ⍮ s' ↘ ne_wk φ M)
              (fun s a A _ => forall s' φ, rn_ok f s s' φ -> dbd s a -> Rtyp drn f a in Θ ⍮ Ξ ⍮ s' ↘ nf_wk φ A)
-             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys));
-      intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk la_wk larn List.map] in *.
+             (fun s xs ys _ => forall s' φ, rn_ok f s s' φ -> dbd_la s xs -> Rla larn f xs in Θ ⍮ Ξ ⍮ s' ↘ la_wk φ ys)
+             (fun s ρ T vs Ms _ => forall s' φ, rn_ok f s s' φ -> env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+                Rps List.map (drn f) vs at T in Θ ⍮ Ξ ⍮ ern f ρ ⍮ s' ↘ nfs_wk φ Ms)
+             (fun s p ups ρ gs vs Ms _ => forall s' φ, rn_ok f s s' φ -> (forall a, In a ups -> dbd s a) ->
+                env_dbd s ρ -> (forall a, In a vs -> dbd s a) ->
+                read_cargs Θ Ξ s' p (List.map (drn f) ups) (ern f ρ) gs (List.map (drn f) vs) (nfs_wk φ Ms))
+             (fun s ρ A p D ups cs Bs Bs' _ => forall s' φ, rn_ok f s s' φ -> dbd_clon Θ Ξ s ρ A (S (ind_nn D)) ->
+                (forall c n B, In (c, n, B) Bs -> dbd_clon Θ Ξ s ρ B n) -> (forall a, In a ups -> dbd s a) ->
+                read_brs Θ Ξ s' (ern f ρ) A p D (List.map (drn f) ups) cs Bs (nbrs_wk φ Bs')));
+      intros; cbn [drn drn_ne drn_nf dmrn dern nf_wk ne_wk la_wk larn nfs_wk nbrs_wk List.map] in *.
     (** The bounds of the parts. *)
     all: repeat match goal with
       | H : dbd_nf _ (d_dom _ _) |- _ => apply dbd_nf_inv in H as [? ?]
@@ -377,6 +575,9 @@ Section Read.
       | H : dbd_ne _ (d_app _ _) |- _ => apply dbd_app_inv in H as [? ?]
       | H : dbd_ne _ (d_natrec _ _ _ _ _) |- _ => apply (dbd_natrec_inv Θ Ξ) in H as (? & ? & ? & ?)
       | H : dbd_ne _ (d_exfalso _ _ _) |- _ => apply (dbd_exfalso_inv Θ Ξ) in H as [? ?]
+      | H : dbd _ (d_ind _ _) |- _ => pose proof (dbd_indty_inv _ _ _ H); clear H
+      | H : dbd _ (d_con _ _ _) |- _ => pose proof (dbd_con_inv _ _ _ _ H); clear H
+      | H : dbd_ne _ (d_elim _ _ _ _ _ _ _) |- _ => apply (dbd_elim_inv Θ Ξ) in H as (? & ? & ? & ?)
       end.
     (** The fresh levels correspond, under one binder and under two. *)
     all: match goal with Hok : rn_ok f ?s ?s' ?φ |- _ =>
@@ -414,6 +615,108 @@ Section Read.
     (** A neutral level: its sort is that of its type, which the renaming
         keeps. *)
     all: try match goal with |- context [dsort ?a] => rewrite <- (dsort_rn f a) end.
+    (** Inductive types.  A constructor at its type: the parameters and the
+        arguments, renamed, at their renamed types. *)
+    all: try solve [ lazymatch goal with |- read_nf _ _ _ _ (nf_con _ _ _) =>
+      rewrite nfs_wk_app;
+      econstructor; try eassumption;
+      [ rewrite List.length_map; assumption
+      | rewrite List.length_map; assumption
+      | exact (H s' φ H1 (env_dbd_nil _) H4)
+      | rewrite List.firstn_map, List.skipn_map;
+        change (env_args nil (List.map (drn f) as')) with (env_args (ern f nil) (List.map (drn f) as'));
+        rewrite <- env_args_rn;
+        apply H0; [ exact H1 | all_in_with assumption | apply env_dbd_args; [ apply env_dbd_nil | exact H4 ]
+                  | all_in_with assumption ] ] end ].
+    (** A stuck eliminator: its fresh variables, renamed, are the fresh
+        variables at the other length; the motive is read one binder
+        further than its non-uniform parameters. *)
+    all: try solve [ lazymatch goal with |- read_ne _ _ _ (d_elim _ _ _ _ _ _ _) _ =>
+      pose proof H2 as (Hss & Hfx & _);
+      pose proof (fresh_tele_length _ _ _ _ f0) as Hlen; rewrite ind_nn_tele_length in Hlen;
+      assert (Hns : forall x, In x ns -> dbd (s + ind_nn D) x)
+        by (rewrite <- (ind_nn_tele_length D); eapply (fresh_tele_dbd Θ Ξ);
+            [ exact f0 | apply env_dbd_args; [ apply env_dbd_nil | all_in_with assumption ] ]);
+      assert (Hfn : f (s + ind_nn D) = s' + ind_nn D) by (rewrite Hfx; lia);
+      pose proof (fresh_tele_rn _ _ _ _ f0 s' Hfx Hss) as Hns';
+      rewrite env_args_rn, <- List.firstn_map in Hns'; cbn [ern List.map] in Hns';
+      pose proof (eval_args_rn _ _ _ _ e2) as Ha';
+      rewrite List.map_app in Ha'; cbn [List.map drn drn_ne] in Ha'; rewrite Hfn, List.map_app, <- List.firstn_map in Ha';
+      assert (HaD : dbd (S (s + ind_nn D)) a)
+        by (eapply H5; [ lia | | | exact e2 ]; [ rewrite length_app, Hlen; cbn; lia |];
+            apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
+            apply all_in_cons; [| apply all_in_nil ];
+            apply dbd_fresh; [ lia |]; apply dbd_indty; apply all_in_app;
+              [ apply all_in_firstn; intros; eapply dbd_mono; [| apply H4; eassumption ]; lia | exact Hns ]);
+      subst nm;
+      econstructor; try eassumption; try reflexivity;
+      [ rewrite List.length_map; assumption
+      | replace (S (s' + ind_nn D)) with (S (ind_nn D) + s') by lia;
+        apply H; [ replace (S (s + ind_nn D)) with (S (ind_nn D) + s) by lia; apply rn_ok_qn, H2 | exact HaD ]
+      | rewrite List.firstn_map; apply H0; [ exact H2 | exact H5 | exact H6 | all_in_with assumption ]
+      | apply H1; assumption ] end ].
+    (** An inductive type at its parameters. *)
+    all: try solve [ lazymatch goal with |- read_typ _ _ _ (d_ind _ _) _ =>
+      econstructor; try eassumption; [ rewrite List.length_map; assumption | exact (H s' φ H0 (env_dbd_nil _) H2) ] end ].
+    (** A parameter or an argument at its type, and the rest in the
+        environment extended by it. *)
+    all: try solve [ lazymatch goal with |- read_ps _ _ _ _ (_ :: _) _ _ =>
+      econstructor;
+      [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
+      | apply H; [ exact H1 | apply dbd_nf_dom; [ eapply eval_dbd; eassumption | apply (all_in_head _ _ _ H3) ] ]
+      | apply H0; [ exact H1 | apply env_dbd_cons; [ assumption | apply (all_in_head _ _ _ H3) ] | exact (all_in_tail _ _ _ H3) ] ] end ].
+    all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_arg _ :: _) _ _ =>
+      econstructor;
+      [ exact (proj1 (eval_rn Θ Ξ f) _ _ _ e)
+      | apply H; [ exact H1 | apply dbd_nf_dom; [ eapply eval_dbd; eassumption | apply (all_in_head _ _ _ H4) ] ]
+      | apply H0; [ exact H1 | exact H2 | apply env_dbd_cons; [ assumption | apply (all_in_head _ _ _ H4) ]
+                  | exact (all_in_tail _ _ _ H4) ] ] end ].
+    all: try solve [ lazymatch goal with |- read_cargs _ _ _ _ _ _ (ca_rec _ :: _) _ _ =>
+      econstructor;
+      [ exact (eval_exps_rn _ _ _ e)
+      | rewrite <- List.map_app; apply H;
+        [ exact H1 | apply dbd_nf_dom; [ apply dbd_indty, all_in_app; [ exact H2 | eapply eval_exps_dbd; eassumption ]
+                                       | apply (all_in_head _ _ _ H4) ] ]
+      | apply H0; [ exact H1 | exact H2 | exact H3 | exact (all_in_tail _ _ _ H4) ] ] end ].
+    (** A branch: under its fresh variables, renamed, as many as it binds. *)
+    all: try solve [ lazymatch goal with |- read_brs _ _ _ _ _ _ _ _ (_ :: _) _ _ =>
+      pose proof H1 as (Hss & Hfx & _);
+      pose proof (fresh_tele_length _ _ _ _ f0) as Hl1; rewrite ind_nn_tele_length in Hl1;
+      pose proof (fresh_cargs_length _ _ _ _ _ _ _ f1) as Hl2;
+      pose proof (fresh_ihs_length _ _ _ _ _ _ _ f3) as Hl3;
+      assert (Hns : forall x, In x ns -> dbd (s + ind_nn D) x)
+        by (rewrite <- (ind_nn_tele_length D); eapply (fresh_tele_dbd Θ Ξ);
+            [ exact f0 | apply env_dbd_args; [ apply env_dbd_nil | exact H4 ] ]);
+      destruct (fresh_cargs_dbd Θ Ξ _ _ _ _ _ _ _ f1) as [Hvs Hbss];
+        [ apply env_dbd_args; [ apply env_dbd_nil | apply all_in_app; [ intros; eapply dbd_mono; [| apply H4; eassumption ]; lia | exact Hns ] ]
+        | intros; eapply dbd_mono; [| apply H4; eassumption ]; lia |];
+      pose proof (fresh_ihs_dbd Θ Ξ _ _ _ _ _ _ _ f3 (ind_nn D) s ltac:(lia) H2 f2 Hvs Hbss) as Hihs;
+      pose proof (fresh_tele_rn _ _ _ _ f0 s' Hfx Hss) as Hns';
+      rewrite env_args_rn in Hns'; cbn [ern List.map] in Hns';
+      pose proof (fresh_cargs_rn _ _ _ _ _ _ _ f1 (s' + ind_nn D) ltac:(intros; rewrite Hfx by lia; lia) ltac:(lia)) as Hvs';
+      rewrite env_args_rn, List.map_app in Hvs'; cbn [ern List.map] in Hvs';
+      pose proof (fresh_ihs_rn _ _ _ _ _ _ _ f3 (s' + ind_nn D + List.length gs)
+                    ltac:(intros; rewrite Hfx by lia; lia) ltac:(lia)) as Hihs';
+      pose proof (eval_args_rn _ _ _ _ e0) as Hb'; rewrite !List.map_app in Hb';
+      pose proof (eval_args_rn _ _ _ _ e1) as Ht'; rewrite List.map_app in Ht'; cbn [List.map drn] in Ht';
+      rewrite !List.map_app in Ht';
+      econstructor; try eassumption;
+      [ apply Forall_forall; intros bs Hbs; apply List.in_map_iff in Hbs as (bs0 & <- & Hbs0);
+        rewrite List.length_map; exact (proj1 (Forall_forall _ _) f2 _ Hbs0)
+      | replace (s' + n) with (n + s') by lia;
+        apply H; [ replace (s + n) with (n + s) by lia; apply rn_ok_qn, H1 |];
+        apply dbd_nf_dom;
+        [ eapply H2; [ lia | | | exact e1 ]; [ rewrite length_app, Hl1; cbn; lia |];
+          apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
+          apply all_in_cons; [| apply all_in_nil ];
+          apply dbd_con, all_in_app; [ intros; eapply dbd_mono; [| apply H4; eassumption ]; lia |];
+          apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia
+                            | intros; eapply dbd_mono; [| apply Hvs; eassumption ]; lia ]
+        | eapply (H3 c n B (or_introl eq_refl)); [ lia | | | exact e0 ]; [ rewrite !length_app, Hl1, Hl2, Hl3; lia |];
+          apply all_in_app; [ intros; eapply dbd_mono; [| apply Hns; eassumption ]; lia |];
+          apply all_in_app; [ intros; eapply dbd_mono; [| apply Hvs; eassumption ]; lia
+                            | intros; eapply dbd_mono; [| apply Hihs; eassumption ]; lia ] ]
+      | apply H0; [ exact H1 | exact H2 | intros c0 n0 B0 Hin; exact (H3 c0 n0 B0 (or_intror Hin)) | exact H4 ] ] end ].
     all: econstructor.
     all: try rewrite <- nf_lvl_of_wk.
     all: try eassumption.

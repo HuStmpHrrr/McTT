@@ -36,6 +36,10 @@
 ./Core/Completeness/ModexpCases.v
 ./Core/Completeness/PathCases.v
 ./Core/Completeness/GlobalSem.v
+./Core/Completeness/IndSem.v
+./Core/Completeness/TeleSem.v
+./Core/Completeness/IndCases.v
+./Core/Completeness/ElimCases.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v
@@ -53,11 +57,15 @@
 ./Core/Semantic/PER/Chain.v
 ./Core/Semantic/PER/CoreTactics.v
 ./Core/Semantic/PER/Definitions.v
+./Core/Semantic/PER/Tele.v
 ./Core/Semantic/PER/Lemmas.v
 ./Core/Semantic/Readback.v
 ./Core/Semantic/Readback/Definitions.v
 ./Core/Semantic/Readback/Lemmas.v
 ./Core/Semantic/Realizability.v
+./Core/Semantic/IndPER.v
+./Core/Semantic/IndCanon.v
+./Core/Semantic/IndElim.v
 ./Core/Semantic/Stuck.v
 ./Core/Semantic/Transparency.v
 ./Core/Semantic/Avoid.v
@@ -66,6 +74,8 @@
 ./Core/NbEWeakening.v
 ./Core/Soundness/ContextCases.v
 ./Core/Soundness/FunctionCases.v
+./Core/Soundness/IndCases.v
+./Core/Soundness/IndElimCases.v
 ./Core/Soundness/FundamentalTheorem.v
 ./Core/Soundness/LetCases.v
 ./Core/Soundness/LevelCases.v
@@ -91,6 +101,9 @@
 ./Core/Syntactic/CtxSub.v
 ./Core/Syntactic/Members.v
 ./Core/Syntactic/Imports.v
+./Core/Syntactic/Inductives.v
+./Core/Syntactic/IndCong.v
+./Core/Syntactic/IndConv.v
 ./Core/Syntactic/Presup.v
 ./Core/Syntactic/SubEq.v
 ./Core/Syntactic/Substitution.v
@@ -108,6 +121,8 @@
 ./Core/Syntactic/System/MemberWf.v
 ./Core/Syntactic/System/Lemmas.v
 ./Core/Syntactic/System/MemberLemmas.v
+./Core/Syntactic/System/IndSyntax.v
+./Core/Syntactic/System/IndTyping.v
 ./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v
 ./Core/Syntactic/System/Structural.v
@@ -120,6 +135,7 @@
 ./Extraction/FastEval.v
 ./Extraction/Simulation.v
 ./Extraction/GlobalCheck.v
+./Extraction/IndDecl.v
 ./Extraction/MemberType.v
 ./Extraction/Privacy.v
 ./Extraction/NbE.v
@@ -128,6 +144,7 @@
 ./Extraction/Subtyping.v
 ./Extraction/TypeCheck.v
 ./Extraction/TypeCheckBase.v
+./Extraction/IndCheck.v
 ./Frontend/ElabCorrect.v
 ./Frontend/ElabExamples.v
 ./Frontend/ElabSpec.v

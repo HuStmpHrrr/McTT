@@ -102,6 +102,10 @@ Definition fresh (x : string) (F : list ent) : Prop := ~ In x (names F).
 (** The entries of a parameter list, innermost first. *)
 Definition pents (ps : list (string * Cst.obj)) : list ent := rev (map (fun p => en_var (fst p)) ps).
 
+(** The entries of names bound in order, innermost first: the binders of
+    an eliminator's motive and branches. *)
+Definition vents (xs : list string) : list ent := rev (map en_var xs).
+
 (** ** What an Entry Denotes
 
     [k] binders lie inside the entry and [n] outside it.  The parameters
@@ -226,6 +230,12 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->
     sel S (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
+(** An eliminator: its motive binds its names, and so does each branch.
+    How many there must be, and which constructor a branch is for, is the
+    core's to check. *)
+| sel_elim : forall S om xs oA bs M A Bs,
+    sel S om M -> sel (vents xs ++ S) oA A -> sbrs S bs Bs ->
+    sel S (Cst.elim om xs oA bs) (a_elim (List.length xs) A Bs M)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
@@ -236,6 +246,12 @@ with selm : list ent -> Cst.obj -> modexp -> Prop :=
     selm S o H -> selm S (Cst.proj o y) (me_mem H y)
 | selm_app : forall S o1 o2 H N,
     selm S o1 H -> sel S o2 N -> selm S (Cst.app o1 o2) (me_app H N)
+
+with sbrs : list ent -> list (string * list string * Cst.obj) -> list (string * nat * exp) -> Prop :=
+| sbr_nil : forall S, sbrs S nil nil
+| sbr_cons : forall S c ys oB bs B Bs,
+    sel (vents ys ++ S) oB B -> sbrs S bs Bs ->
+    sbrs S ((c, ys, oB) :: bs) ((c, List.length ys, B) :: Bs)
 
 (** Each parameter's type sees the earlier parameters. *)
 with sparams : list ent -> list (string * Cst.obj) -> list (string * typ) -> Prop :=
@@ -280,6 +296,53 @@ with sbody : list ent -> gmod -> list Cst.cmd -> gmod -> Prop :=
     selm S o E ->
     sbody (item_ents its ++ S) (gm_open Φ E its) cs Φ' ->
     sbody S Φ (Cst.c_open fq ip args its :: cs) Φ'.
+
+(** ** Inductive Declarations
+
+    The type of a declaration binds its non-uniform parameters in front of
+    its sort ([split_pis]).  A constructor's argument whose type is the
+    declared name applied to arguments ([rec_head]) is recursive: those
+    arguments must be as many as the non-uniform parameters, and it binds
+    no name for the arguments after it.  Any other argument binds its name. *)
+Fixpoint split_pis (o : Cst.obj) : (list (string * Cst.obj) * Cst.obj)%type :=
+  match o with
+  | Cst.pi y oA oB => let (ps, oS) := split_pis oB in ((y, oA) :: ps, oS)
+  | _ => (nil, o)
+  end.
+
+Fixpoint rec_head_acc (x : string) (o : Cst.obj) (acc : list Cst.obj) : option (list Cst.obj) :=
+  match o with
+  | Cst.app o1 o2 => rec_head_acc x o1 (o2 :: acc)
+  | Cst.var y => if String.eqb x y then Some acc else None
+  | _ => None
+  end.
+
+Definition rec_head (x : string) (o : Cst.obj) : option (list Cst.obj) := rec_head_acc x o nil.
+
+Inductive sargs (x : string) (nn : nat) : list ent -> list (string * Cst.obj) -> list carg -> Prop :=
+| sa_nil : forall S, sargs x nn S nil nil
+| sa_rec : forall S y oA args os Ps gs,
+    rec_head x oA = Some os -> List.length os = nn -> Forall2 (sel S) os Ps ->
+    sargs x nn S args gs ->
+    sargs x nn S ((y, oA) :: args) (ca_rec Ps :: gs)
+| sa_arg : forall S y oA args A gs,
+    rec_head x oA = None -> sel S oA A ->
+    sargs x nn (en_var y :: S) args gs ->
+    sargs x nn S ((y, oA) :: args) (ca_arg A :: gs).
+
+Inductive scons (x : string) (nn : nat) (S : list ent) :
+    list (string * list (string * Cst.obj)) -> list (string * list carg) -> Prop :=
+| scn_nil : scons x nn S nil nil
+| scn_cons : forall c args cs gs cs',
+    sargs x nn S args gs -> scons x nn S cs cs' ->
+    scons x nn S ((c, args) :: cs) ((c, gs) :: cs').
+
+(** The members a declaration generates in the frame at member chain [ch]
+    of the unit [fp]: its type, then its constructors. *)
+Definition con_mems (fp : path) (ch : list string) (x : string) (cs : list (string * list (string * Cst.obj))) :
+    list ent :=
+  rev (map (fun c => en_mem (fst c) (q_abs fp (ch ++ fst c :: nil))) cs) ++
+  en_mem x (q_abs fp (ch ++ x :: nil)) :: nil.
 
 (** ** Commands
 
@@ -336,6 +399,20 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     sel (F ++ O) oM M ->
     sel (F ++ O) oA A ->
     scmd fp ch O F (Cst.c_eval oM (Some oA)) F (cc_eval M (Some A) :: nil)
+(** [inductive x (ups) : T where cs end]: the parameters, uniform then
+    non-uniform, are read in [F], the sort under the uniform ones, the
+    constructors' arguments under all.  It declares [x] and its
+    constructors. *)
+| sc_ind : forall ch O F pv x ups oT cs nps oS tys A cs',
+    fresh x F ->
+    Forall (fun c => fresh c F) (map fst cs) ->
+    split_pis oT = (nps, oS) ->
+    NoDup (map fst (ups ++ nps)) ->
+    sparams (F ++ O) (ups ++ nps) tys ->
+    sel (pents ups ++ F ++ O) oS A ->
+    scons x (List.length nps) (pents (ups ++ nps) ++ F ++ O) cs cs' ->
+    scmd fp ch O F (Cst.c_ind pv x ups oT cs) (con_mems fp ch x cs ++ F)
+      (cc_ind x pv (mk_ind (List.length ups) (ptele tys) A cs') :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil

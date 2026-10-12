@@ -32,6 +32,8 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_natrec A MZ MS M =>
       exp_scoped (S n) A /\ exp_scoped n MZ /\ exp_scoped (S (S n)) MS /\ exp_scoped n M
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
+  | a_ind _ | a_con _ _ => True
+  | a_elim nm A Bs M => exp_scoped (nm + n) A /\ all_brs (fun k B => exp_scoped (k + n) B) Bs /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
   | a_var x => x < n
@@ -76,6 +78,7 @@ with gentry_scoped (n : nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped n A /\ match B with Some M => exp_scoped n M | None => True end
   | ge_mod _ U => gunit_scoped n U
+  | ge_ind _ _ => True
   end
 with centry_scoped (n : nat) (e : centry) : Prop :=
   match e with
@@ -165,6 +168,15 @@ Ltac scoped_case :=
          end;
   destruct_all.
 
+(** The branches of an eliminator: an induction over the [Forall] the
+    principle carries, the hypotheses about the list reverted first. *)
+Ltac brs_case :=
+  match goal with
+  | HF : List.Forall _ ?Bs |- _ =>
+      repeat match goal with H : context [Bs] |- _ => lazymatch H with HF => fail | _ => revert H end end;
+      induction HF as [| [[? ?] ?] ? HB ? IH]; intros; cbn [all_brs List.map fst snd] in *; destruct_all
+  end.
+
 Lemma syn_scoped_mono :
   (forall M n m, n <= m -> exp_scoped n M -> exp_scoped m M) /\
   (forall H n m, n <= m -> modexp_scoped n H -> modexp_scoped m H) /\
@@ -180,6 +192,7 @@ Proof.
            | B : option exp |- _ => destruct B
            end; cbn in *; destruct_all;
     repeat split; try lia; eauto with arith.
+  1: brs_case; [ exact I | split; [ eapply HB; [| eassumption ]; lia | auto ] ].
   clear - H H1 H2; induction H; cbn in *; destruct_all; [ auto |].
   split; [ eapply H; [| eassumption ]; lia | auto ].
 Qed.
@@ -237,6 +250,7 @@ Lemma syn_scoped_wk :
 Proof.
   pose proof wk_q_bound as lift1; pose proof wk_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
+  all: brs_case; [ exact I | split; [ eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
 Qed.
 
 Lemma exp_scoped_wk : forall M n m φ,
@@ -299,6 +313,7 @@ Lemma syn_scoped_sub :
 Proof.
   pose proof sb_q_bound as lift1; pose proof sb_qn_bound as lift.
   syn_mut_ind; scoped_law_case lift1 lift.
+  all: brs_case; [ exact I | split; [ eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
 Qed.
 
 Lemma exp_scoped_sub : forall M n m σ,
@@ -353,6 +368,7 @@ Lemma syn_scoped_wk_id :
 Proof.
   pose proof wk_q_fix as lift1; pose proof wk_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_wk_id_gen.
+  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
 Qed.
 
 Lemma syn_scoped_sub_id :
@@ -367,6 +383,7 @@ Lemma syn_scoped_sub_id :
 Proof.
   pose proof sb_q_fix as lift1; pose proof sb_qn_fix as lift.
   syn_mut_ind; scoped_id_case lift1 lift tele_sub_id_gen.
+  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
 Qed.
 
 Lemma exp_scoped_wk_id : forall M n φ,
@@ -376,6 +393,272 @@ Proof. exact (proj1 syn_scoped_wk_id). Qed.
 Lemma exp_scoped_sub_id : forall M n σ,
     exp_scoped n M -> (forall x, x < n -> σ x = se_var x) -> M[σ] = M.
 Proof. exact (proj1 syn_scoped_sub_id). Qed.
+
+(** Two substitutions, or two weakenings, that agree on the free variables
+    of a term act on it alike. *)
+Lemma wk_q_agree : forall φ ψ n,
+    (forall x, x < n -> φ x = ψ x) -> forall x, x < S n -> wk_q φ x = wk_q ψ x.
+Proof. intros * H [|x] ?; cbn; [ reflexivity |]. rewrite H by lia; reflexivity. Qed.
+
+Lemma wk_qn_agree : forall k φ ψ n,
+    (forall x, x < n -> φ x = ψ x) -> forall x, x < k + n -> wk_qn k φ x = wk_qn k ψ x.
+Proof. induction k; intros * H x Hx; cbn; auto; apply wk_q_agree with (n := k + n); [ apply IHk; exact H | lia ]. Qed.
+
+Lemma sb_q_agree : forall σ τ n,
+    (forall x, x < n -> σ x = τ x) -> forall x, x < S n -> (q σ) x = (q τ) x.
+Proof.
+  intros * H [|x] ?; rewrite ?sb_q_zero, ?sb_q_succ; [ reflexivity |].
+  rewrite H by lia; reflexivity.
+Qed.
+
+Lemma sb_qn_agree : forall k σ τ n,
+    (forall x, x < n -> σ x = τ x) -> forall x, x < k + n -> (sb_qn k σ) x = (sb_qn k τ) x.
+Proof. induction k; intros * H x Hx; cbn; auto; apply sb_q_agree with (n := k + n); [ apply IHk; exact H | lia ]. Qed.
+
+Lemma tele_wk_agree_gen : forall Δ,
+    List.Forall (fun e => forall n φ ψ, ce_scoped n e -> (forall x, x < n -> φ x = ψ x) -> centry_wk e φ = centry_wk e ψ) Δ ->
+    forall n φ ψ, ctx_scoped n Δ -> (forall x, x < n -> φ x = ψ x) -> tele_wk Δ φ = tele_wk Δ ψ.
+Proof.
+  induction 1; intros * HΔ Hφ; cbn in *; destruct_all; [ auto |].
+  f_equal; eauto using wk_qn_agree.
+Qed.
+
+Lemma tele_sub_agree_gen : forall Δ,
+    List.Forall (fun e => forall n σ τ, ce_scoped n e -> (forall x, x < n -> σ x = τ x) -> centry_sub e σ = centry_sub e τ) Δ ->
+    forall n σ τ, ctx_scoped n Δ -> (forall x, x < n -> σ x = τ x) -> tele_sub Δ σ = tele_sub Δ τ.
+Proof.
+  induction 1; intros * HΔ Hσ; cbn in *; destruct_all; [ auto |].
+  f_equal; eauto using sb_qn_agree.
+Qed.
+
+Ltac scoped_agree_case lift1 lift tele :=
+  scoped_case;
+  repeat match goal with
+         | B : option exp |- _ => destruct B
+         end; cbn in *; destruct_all;
+  try (match goal with
+       | H : forall x, x < _ -> ?σ x = ?τ x |- context [?σ ?y] => rewrite H by assumption; reflexivity
+       end);
+  f_equal;
+  try match goal with |- Some _ = Some _ => f_equal end;
+  eauto using lift1, lift, tele.
+
+Lemma syn_scoped_wk_agree :
+  (forall M n φ ψ, exp_scoped n M -> (forall x, x < n -> φ x = ψ x) -> M[φ]ʷ = M[ψ]ʷ) /\
+  (forall H n φ ψ, modexp_scoped n H -> (forall x, x < n -> φ x = ψ x) -> modexp_wk H φ = modexp_wk H ψ) /\
+  (forall b n φ ψ, bnd_scoped n b -> (forall x, x < n -> φ x = ψ x) -> bnd_wk b φ = bnd_wk b ψ) /\
+  (forall U n φ ψ, gunit_scoped n U -> (forall x, x < n -> φ x = ψ x) -> gunit_wk U φ = gunit_wk U ψ) /\
+  (forall D n φ ψ, moddef_scoped n D -> (forall x, x < n -> φ x = ψ x) -> moddef_wk D φ = moddef_wk D ψ) /\
+  (forall Φ n φ ψ, gmod_scoped n Φ -> (forall x, x < n -> φ x = ψ x) -> gmod_wk Φ φ = gmod_wk Φ ψ) /\
+  (forall E n φ ψ, gentry_scoped n E -> (forall x, x < n -> φ x = ψ x) -> gentry_wk E φ = gentry_wk E ψ) /\
+  (forall e n φ ψ, centry_scoped n e -> (forall x, x < n -> φ x = ψ x) -> centry_wk e φ = centry_wk e ψ).
+Proof.
+  pose proof wk_q_agree as lift1; pose proof wk_qn_agree as lift.
+  syn_mut_ind; scoped_agree_case lift1 lift tele_wk_agree_gen.
+  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
+Qed.
+
+Lemma syn_scoped_sub_agree :
+  (forall M n σ τ, exp_scoped n M -> (forall x, x < n -> σ x = τ x) -> M[σ] = M[τ]) /\
+  (forall H n σ τ, modexp_scoped n H -> (forall x, x < n -> σ x = τ x) -> H[σ]ᵐ = H[τ]ᵐ) /\
+  (forall b n σ τ, bnd_scoped n b -> (forall x, x < n -> σ x = τ x) -> bnd_sub b σ = bnd_sub b τ) /\
+  (forall U n σ τ, gunit_scoped n U -> (forall x, x < n -> σ x = τ x) -> U[σ]ᵘ = U[τ]ᵘ) /\
+  (forall D n σ τ, moddef_scoped n D -> (forall x, x < n -> σ x = τ x) -> moddef_sub D σ = moddef_sub D τ) /\
+  (forall Φ n σ τ, gmod_scoped n Φ -> (forall x, x < n -> σ x = τ x) -> gmod_sub Φ σ = gmod_sub Φ τ) /\
+  (forall E n σ τ, gentry_scoped n E -> (forall x, x < n -> σ x = τ x) -> gentry_sub E σ = gentry_sub E τ) /\
+  (forall e n σ τ, centry_scoped n e -> (forall x, x < n -> σ x = τ x) -> centry_sub e σ = centry_sub e τ).
+Proof.
+  pose proof sb_q_agree as lift1; pose proof sb_qn_agree as lift.
+  syn_mut_ind; scoped_agree_case lift1 lift tele_sub_agree_gen.
+  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
+Qed.
+
+Lemma exp_scoped_wk_agree : forall M n φ ψ,
+    exp_scoped n M -> (forall x, x < n -> φ x = ψ x) -> M[φ]ʷ = M[ψ]ʷ.
+Proof. exact (proj1 syn_scoped_wk_agree). Qed.
+
+Lemma exp_scoped_sub_agree : forall M n σ τ,
+    exp_scoped n M -> (forall x, x < n -> σ x = τ x) -> M[σ] = M[τ].
+Proof. exact (proj1 syn_scoped_sub_agree). Qed.
+
+Lemma tele_scoped_sub_agree : forall Δ n σ τ,
+    ctx_scoped n Δ -> (forall x, x < n -> σ x = τ x) -> tele_sub Δ σ = tele_sub Δ τ.
+Proof.
+  intros; eapply tele_sub_agree_gen; [| eassumption | assumption ].
+  apply List.Forall_forall; intros e _ k ρ ρ' He Hρ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_agree)))))) _ _ _ _ He Hρ).
+Qed.
+
+Lemma tele_scoped_wk_agree : forall Δ n φ ψ,
+    ctx_scoped n Δ -> (forall x, x < n -> φ x = ψ x) -> tele_wk Δ φ = tele_wk Δ ψ.
+Proof.
+  intros; eapply tele_wk_agree_gen; [| eassumption | assumption ].
+  apply List.Forall_forall; intros e _ k ρ ρ' He Hρ.
+  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk_agree)))))) _ _ _ _ He Hρ).
+Qed.
+
+(** ** Module Variables
+
+    A term all of whose module variables are bound in it ([exp_mvc], in
+    [Inductives]) is moved alike by substitutions that send the same terms:
+    a variable sent as [se_var] and as [se_exp] of the variable. *)
+
+
+Lemma gunit_mvc_mk : forall n Δ D,
+    gunit_mvc n (gu_mk Δ D) <->
+    (fix tele_mvc (Δ : list centry) : Prop :=
+       match Δ with
+       | nil => True
+       | e :: Δ' => centry_mvc (List.length Δ' + n) e /\ tele_mvc Δ'
+       end) Δ /\ moddef_mvc (List.length Δ + n) D.
+Proof. intros; reflexivity. Qed.
+
+
+(** Substitutions that send the same terms everywhere, and the same
+    entries below [d], act alike on a term whose module variables are all
+    bound below [d]. *)
+Lemma sb_q_exp_agree : forall σ τ,
+    (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> forall x, sentry_exp ((q σ) x) = sentry_exp ((q τ) x).
+Proof.
+  intros * H [| x]; rewrite ?sb_q_zero, ?sb_q_succ; [ reflexivity |].
+  rewrite <- !sentry_exp_wk, H; reflexivity.
+Qed.
+
+Lemma sb_qn_exp_agree : forall k σ τ,
+    (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> forall x, sentry_exp ((sb_qn k σ) x) = sentry_exp ((sb_qn k τ) x).
+Proof. induction k; intros * H x; cbn; auto; apply sb_q_exp_agree; auto. Qed.
+
+Lemma tele_sub_mvc_gen : forall Δ,
+    List.Forall (fun e => forall n σ τ, centry_mvc n e -> (forall x, x < n -> σ x = τ x) ->
+                   (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> centry_sub e σ = centry_sub e τ) Δ ->
+    forall n σ τ,
+      (fix tele_mvc (Δ : list centry) : Prop :=
+         match Δ with
+         | nil => True
+         | e :: Δ' => centry_mvc (List.length Δ' + n) e /\ tele_mvc Δ'
+         end) Δ ->
+      (forall x, x < n -> σ x = τ x) -> (forall x, sentry_exp (σ x) = sentry_exp (τ x)) ->
+      tele_sub Δ σ = tele_sub Δ τ.
+Proof.
+  induction 1; intros * HΔ Hσ He; cbn in *; destruct_all; [ auto |].
+  f_equal; eauto using sb_qn_agree, sb_qn_exp_agree.
+Qed.
+
+Ltac mvc_case :=
+  intros; cbn in *;
+  repeat match goal with
+         | H : gunit_mvc _ (gu_mk _ _) |- _ => rewrite gunit_mvc_mk in H
+         end;
+  rewrite ?gunit_sub_mk, ?length_tele_sub, ?gm_binders_sub in *;
+  destruct_all;
+  repeat match goal with
+         | B : option exp |- _ => destruct B
+         end; cbn in *; destruct_all;
+  try (match goal with
+       | H : forall x, x < _ -> ?σ x = ?τ x |- context [?σ ?y] => rewrite H by assumption; reflexivity
+       end);
+  try (match goal with
+       | H : forall x, sentry_exp (?σ x) = sentry_exp (?τ x) |- sentry_exp (?σ ?y) = _ => apply H
+       end);
+  f_equal;
+  try match goal with |- Some _ = Some _ => f_equal end;
+  eauto using sb_q_agree, sb_qn_agree, sb_q_exp_agree, sb_qn_exp_agree, tele_sub_mvc_gen.
+
+Lemma syn_mvc_sub_agree :
+  (forall M n σ τ, exp_mvc n M -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> M[σ] = M[τ]) /\
+  (forall H n σ τ, modexp_mvc n H -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> H[σ]ᵐ = H[τ]ᵐ) /\
+  (forall b n σ τ, bnd_mvc n b -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> bnd_sub b σ = bnd_sub b τ) /\
+  (forall U n σ τ, gunit_mvc n U -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> U[σ]ᵘ = U[τ]ᵘ) /\
+  (forall D n σ τ, moddef_mvc n D -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> moddef_sub D σ = moddef_sub D τ) /\
+  (forall Φ n σ τ, gmod_mvc n Φ -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> gmod_sub Φ σ = gmod_sub Φ τ) /\
+  (forall E n σ τ, gentry_mvc n E -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> gentry_sub E σ = gentry_sub E τ) /\
+  (forall e n σ τ, centry_mvc n e -> (forall x, x < n -> σ x = τ x) ->
+     (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> centry_sub e σ = centry_sub e τ).
+Proof.
+  syn_mut_ind; mvc_case.
+  all: try solve [ eauto 8 using sb_q_agree, sb_q_exp_agree ].
+  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; eauto using sb_qn_agree, sb_qn_exp_agree | auto ] ].
+Qed.
+
+(** A term with no free module variable: substitutions that send the same
+    terms act alike on it, whatever they send its module variables to. *)
+Corollary exp_mvc_sub_agree : forall M σ τ,
+    exp_mvc 0 M -> (forall x, sentry_exp (σ x) = sentry_exp (τ x)) -> M[σ] = M[τ].
+Proof. intros; eapply (proj1 syn_mvc_sub_agree); [ eassumption | lia | assumption ]. Qed.
+
+(** A weakening that keeps the bound module variables bound keeps a term's
+    module variables bound. *)
+Lemma tele_wk_mvc_gen : forall Δ,
+    List.Forall (fun e => forall n φ, centry_mvc n e -> (forall x, x < n -> φ x < n) -> centry_mvc n (centry_wk e φ)) Δ ->
+    forall n φ,
+      (fix tele_mvc (Δ : list centry) : Prop :=
+         match Δ with
+         | nil => True
+         | e :: Δ' => centry_mvc (List.length Δ' + n) e /\ tele_mvc Δ'
+         end) Δ ->
+      (forall x, x < n -> φ x < n) ->
+      (fix tele_mvc (Δ : list centry) : Prop :=
+         match Δ with
+         | nil => True
+         | e :: Δ' => centry_mvc (List.length Δ' + n) e /\ tele_mvc Δ'
+         end) (tele_wk Δ φ).
+Proof.
+  induction 1 as [| e Δ He HΔ IH]; intros * Htele Hφ; cbn in *; destruct_all; [ auto |].
+  rewrite length_tele_wk; split; [ apply He; [ assumption | apply wk_qn_bound; exact Hφ ] | apply IH; assumption ].
+Qed.
+
+Ltac mvc_wk_case :=
+  intros; cbn in *;
+  repeat match goal with
+         | H : gunit_mvc _ (gu_mk _ _) |- _ => rewrite gunit_mvc_mk in H
+         end;
+  rewrite ?gunit_wk_mk, ?length_tele_wk, ?gm_binders_wk in *;
+  repeat match goal with
+         | |- gunit_mvc _ (gu_mk _ _) => rewrite gunit_mvc_mk
+         end;
+  destruct_all;
+  repeat match goal with
+         | B : option exp |- _ => destruct B
+         end; cbn in *; destruct_all;
+  repeat split;
+  rewrite ?length_tele_wk;
+  eauto using wk_q_bound, wk_qn_bound.
+
+Lemma syn_mvc_wk :
+  (forall M n φ, exp_mvc n M -> (forall x, x < n -> φ x < n) -> exp_mvc n M[φ]ʷ) /\
+  (forall H n φ, modexp_mvc n H -> (forall x, x < n -> φ x < n) -> modexp_mvc n (modexp_wk H φ)) /\
+  (forall b n φ, bnd_mvc n b -> (forall x, x < n -> φ x < n) -> bnd_mvc n (bnd_wk b φ)) /\
+  (forall U n φ, gunit_mvc n U -> (forall x, x < n -> φ x < n) -> gunit_mvc n (gunit_wk U φ)) /\
+  (forall D n φ, moddef_mvc n D -> (forall x, x < n -> φ x < n) -> moddef_mvc n (moddef_wk D φ)) /\
+  (forall Φ n φ, gmod_mvc n Φ -> (forall x, x < n -> φ x < n) -> gmod_mvc n (gmod_wk Φ φ)) /\
+  (forall E n φ, gentry_mvc n E -> (forall x, x < n -> φ x < n) -> gentry_mvc n (gentry_wk E φ)) /\
+  (forall e n φ, centry_mvc n e -> (forall x, x < n -> φ x < n) -> centry_mvc n (centry_wk e φ)).
+Proof.
+  syn_mut_ind; mvc_wk_case.
+  all: try solve [ eapply tele_wk_mvc_gen; eassumption ].
+  all: brs_case; [ exact I | split; [ eapply HB; [ eassumption | eapply wk_qn_bound; eassumption ] | auto ] ].
+Qed.
+
+Corollary exp_mvc_wk : forall M φ, exp_mvc 0 M -> exp_mvc 0 M[φ]ʷ.
+Proof. intros; eapply (proj1 syn_mvc_wk); [ eassumption | lia ]. Qed.
+
+(** The same for a term of [n] free variables: the substitutions need only
+    send the same terms to those. *)
+Corollary exp_scoped_mvc_agree : forall M n σ τ,
+    exp_scoped n M -> exp_mvc 0 M -> (forall x, x < n -> sentry_exp (σ x) = sentry_exp (τ x)) -> M[σ] = M[τ].
+Proof.
+  intros * Hs Hm Hag.
+  transitivity (M[fun x => if x <? n then τ x else σ x]).
+  - apply exp_mvc_sub_agree; [ exact Hm |]; intros x; destruct (Nat.ltb_spec x n); [ apply Hag; lia | reflexivity ].
+  - eapply exp_scoped_sub_agree; [ exact Hs |]; intros x Hx; destruct (Nat.ltb_spec x n); [ reflexivity | lia ].
+Qed.
 
 (** A term with no free variable is fixed by every weakening and every
     substitution, and so is a unit. *)
@@ -508,7 +791,7 @@ Lemma ctx_lookup_mod_length : forall Γ x U, Γ ∋ #x ⇒ₘ U -> x < length Γ
 Proof. induction 1; cbn; lia. Qed.
 
 Lemma length_body_ctx : forall Φ, length (body_ctx Φ) = gm_binders Φ.
-Proof. induction Φ as [| Φ IH x [? ? ? [] | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
+Proof. induction Φ as [| Φ IH x [? ? ? [] | | ] | Φ IH c]; cbn; rewrite ?length_app, ?repeat_length; auto. Qed.
 
 (** A typed body, with no local import, is scoped when the context it binds
     is. *)
@@ -519,9 +802,247 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] n Hs; cbn in Hs; try contradiction.
   - split; intros; exact I.
   - destruct Hs as (Hs & -> & HE); destruct (IH _ n Hs) as [IH1 IH2].
-    destruct E as [? ? ? [] | ], E' as [? ? ? [] | ]; cbn in HE; try contradiction;
+    destruct E as [? ? ? [] | | ], E' as [? ? ? [] | | ]; cbn in HE; try contradiction;
       split; intros HΦ; cbn in *; destruct_all; repeat split; auto;
       first [ rewrite <- length_body_ctx; assumption | rewrite <- (length_body_ctx Φ'); assumption ].
+Qed.
+
+(** ** Inductive Types
+
+    A declaration is closed: its parameters are a closed telescope of
+    assumptions, its sort is in the uniform ones, and the types of the
+    arguments of its constructors are in the parameters and the
+    non-recursive arguments before them. *)
+
+Definition decl_closed (D : ind_decl) : Prop :=
+  tele_ass (ind_params D) /\ ind_nu D <= ind_np D /\ ctx_scoped 0 (ind_params D) /\
+  exp_scoped (ind_nu D) (ind_sort D) /\
+  (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
+     exp_scoped (List.length (cargs_strat gs1) + ind_np D) A) /\
+  (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+     List.Forall (exp_scoped (List.length (cargs_strat gs1) + ind_np D)) Ps) /\
+  (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+     List.length Ps = ind_nn D).
+
+Lemma exp_scoped_apps : forall Ns M n,
+    exp_scoped n (apps M Ns) <-> exp_scoped n M /\ List.Forall (exp_scoped n) Ns.
+Proof.
+  induction Ns as [| N Ns IH]; intros; cbn; [ split; [ auto | tauto ] |].
+  rewrite IH, List.Forall_cons_iff; cbn; tauto.
+Qed.
+
+Lemma vars_from_scoped : forall k m n, k + m <= n -> List.Forall (exp_scoped n) (vars_from k m).
+Proof.
+  intros * H; unfold vars_from; apply List.Forall_map, List.Forall_forall.
+  intros i Hi; apply List.in_rev, List.in_seq in Hi; cbn; lia.
+Qed.
+
+Lemma sb_of_list_bound : forall Ms σ n m,
+    (forall x, x < n -> sentry_scoped m (σ x)) -> List.Forall (exp_scoped m) Ms ->
+    forall x, x < List.length Ms + n -> sentry_scoped m (sb_of_list σ Ms x).
+Proof.
+  induction Ms as [| M Ms IH]; intros * Hσ HMs x Hx; cbn in *; [ auto |].
+  inversion_clear HMs.
+  apply (IH _ (S n)); [| assumption | lia ].
+  intros [| y] Hy; cbn; [ assumption | apply Hσ; lia ].
+Qed.
+
+Lemma sb_id_bound : forall n x, x < n -> sentry_scoped n (Id x).
+Proof. intros; cbn; assumption. Qed.
+
+Lemma exp_scoped_sb_of_list : forall A Ms n,
+    exp_scoped (List.length Ms + n) A -> List.Forall (exp_scoped n) Ms -> exp_scoped n A[sb_of_list Id Ms].
+Proof. intros; eapply exp_scoped_sub; [ eassumption |]; apply sb_of_list_bound; [ exact (sb_id_bound n) | assumption ]. Qed.
+
+(** The number of non-recursive arguments a pattern tells. *)
+Fixpoint pat_nargs (pat : list bool) : nat :=
+  match pat with
+  | nil => 0
+  | false :: pat' => S (pat_nargs pat')
+  | true :: pat' => pat_nargs pat'
+  end.
+
+Lemma wk_pat_bound : forall pat n x, x < pat_nargs pat + n -> wk_pat pat x < List.length pat + n.
+Proof.
+  induction pat as [| [] pat IH]; intros * Hx; cbn in *; [ lia | |].
+  - unfold wk_compose, wk_shift; specialize (IH n x Hx); lia.
+  - destruct x as [| x]; cbn; [ lia |]; specialize (IH n x ltac:(lia)); lia.
+Qed.
+
+Lemma length_cargs_strat_app : forall gs1 gs2,
+    List.length (cargs_strat (gs1 ++ gs2)) = List.length (cargs_strat gs1) + List.length (cargs_strat gs2).
+Proof. induction gs1 as [| [] gs1 IH]; intros; cbn; rewrite ?length_app, ?IH; cbn; lia. Qed.
+
+Lemma length_ind_uparams : forall D, ind_nu D <= ind_np D -> List.length (ind_uparams D) = ind_nu D.
+Proof. intros; unfold ind_uparams, ind_nn, ind_np in *; rewrite length_skipn; lia. Qed.
+
+Lemma cargs_ctx_aux_scoped : forall p D gs pat k,
+    ind_nu D <= ind_np D ->
+    pat_nargs pat = k ->
+    (forall gs1 A gs2, gs = gs1 ++ ca_arg A :: gs2 ->
+       exp_scoped (k + List.length (cargs_strat gs1) + ind_np D) A) ->
+    (forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
+       List.Forall (exp_scoped (k + List.length (cargs_strat gs1) + ind_np D)) Ps) ->
+    ctx_scoped (List.length pat + ind_np D) (cargs_ctx_aux p D pat gs).
+Proof.
+  induction gs as [| [A | Ps] gs IH]; intros * Hle Hk HA HPs; cbn; [ exact I | |].
+  all: rewrite ctx_scoped_app; cbn; split; [| split; [| exact I ] ].
+  - apply (IH (false :: pat) (S k) Hle); cbn; [ rewrite Hk; reflexivity | |].
+    + intros gs1 A' gs2 ->; specialize (HA (ca_arg A :: gs1) A' gs2 eq_refl); cbn in HA.
+      rewrite length_app in HA; cbn in HA; match goal with |- exp_scoped ?n _ => replace n with (k + (length (cargs_strat gs1) + 1) + ind_np D) by lia end; exact HA.
+    + intros gs1 Ps gs2 ->; specialize (HPs (ca_arg A :: gs1) Ps gs2 eq_refl); cbn in HPs.
+      rewrite length_app in HPs; cbn in HPs; match goal with |- List.Forall (exp_scoped ?n) _ => replace n with (k + (length (cargs_strat gs1) + 1) + ind_np D) by lia end; exact HPs.
+  - specialize (HA nil A gs eq_refl); cbn in HA.
+    eapply exp_scoped_wk; [ exact HA |]; intros x Hx; rewrite ?Nat.add_0_r; apply wk_pat_bound; lia.
+  - apply (IH (true :: pat) k Hle); cbn; [ exact Hk | |].
+    + intros gs1 A' gs2 ->; exact (HA (ca_rec Ps :: gs1) A' gs2 eq_refl).
+    + intros gs1 Ps' gs2 ->; exact (HPs (ca_rec Ps :: gs1) Ps' gs2 eq_refl).
+  - specialize (HPs nil Ps gs eq_refl); cbn in HPs; rewrite Nat.add_0_r in HPs.
+    apply exp_scoped_apps; split; [ exact I |]; apply List.Forall_app; split.
+    + unfold ind_uvars; apply vars_from_scoped; unfold ind_nn; lia.
+    + apply List.Forall_map; eapply List.Forall_impl; [| exact HPs ].
+      intros P HP; eapply exp_scoped_wk; [ exact HP |]; intros; apply wk_pat_bound; lia.
+Qed.
+
+Lemma decl_closed_ind_ty : forall D, decl_closed D -> exp_scoped 0 (ind_ty D).
+Proof.
+  intros D (_ & Hle & HΔ & HS & _); unfold ind_ty; apply ctx_pi_scoped; [ assumption |].
+  eapply exp_scoped_wk; [ exact HS |]; intros x Hx; unfold ind_nn in *.
+  cbn; unfold ind_np in *; lia.
+Qed.
+
+Lemma decl_closed_con_ty : forall p D c gs, decl_closed D -> In (c, gs) (ind_cons D) -> exp_scoped 0 (con_ty p D gs).
+Proof.
+  intros p D c gs (_ & Hle & HΔ & _ & HA & HPs & _) Hin; unfold con_ty; apply ctx_pi_scoped; [ assumption |].
+  rewrite Nat.add_0_r; apply ctx_pi_scoped.
+  - apply (cargs_ctx_aux_scoped p D gs nil 0 Hle eq_refl); intros; cbn; eauto.
+  - apply exp_scoped_apps; split; [ exact I |].
+    unfold ind_pvars; apply vars_from_scoped; rewrite length_cargs_ctx; unfold ind_np; lia.
+Qed.
+
+(** Lists typed one by one at as many types are scoped. *)
+Lemma nth_typed_scoped : forall Ms (Ts : list typ) n,
+    List.length Ts = List.length Ms ->
+    (forall k M T, nth_error Ms k = Some M -> nth_error Ts k = Some T -> exp_scoped n M) ->
+    List.Forall (exp_scoped n) Ms.
+Proof.
+  intros * Hl H; apply List.Forall_forall; intros M HM.
+  destruct (List.In_nth_error _ _ HM) as [k Hk].
+  destruct (nth_error Ts k) as [T |] eqn:HT; [ eauto |].
+  apply List.nth_error_None in HT; assert (Hk' : nth_error Ms k <> None) by congruence; apply List.nth_error_Some in Hk'; lia.
+Qed.
+
+Lemma length_tele_insts_params : forall D σ Ps,
+    tele_ass (ind_params D) -> List.length Ps = ind_np D -> List.length (tele_insts (ind_params D) σ Ps) = List.length Ps.
+Proof. intros * HΔ Hl; rewrite length_tele_insts by exact HΔ; unfold ind_np in *; lia. Qed.
+
+Lemma length_tele_insts_cargs : forall p D gs σ As,
+    List.length As = List.length gs -> List.length (tele_insts (cargs_ctx p D gs) σ As) = List.length As.
+Proof. intros * Hl; rewrite length_tele_insts by apply cargs_ctx_aux_ass; rewrite length_cargs_ctx; lia. Qed.
+
+Lemma elim_brs_scoped : forall p D Us A Bs m,
+    brs_names (ind_cons D) Bs ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> exp_scoped (List.length (elim_bctx p D gs A Us) + m) B) ->
+    all_brs (fun k B => exp_scoped (k + m) B) Bs.
+Proof.
+  intros * Hn Hk HB; apply all_brs_Forall, List.Forall_forall; intros [[c n] B] Hin; cbn.
+  destruct (brs_names_con _ _ _ _ _ Hn Hin) as [gs Hgs].
+  rewrite (Hk _ _ _ _ Hgs Hin); specialize (HB _ _ _ _ Hgs Hin); rewrite length_elim_bctx in HB.
+  replace (ind_nn D + length gs + cargs_nrec gs) with (cargs_nrec gs + length gs + ind_nn D) by lia; exact HB.
+Qed.
+
+Lemma brs_nth_same : forall (Bs Bs' : list (String.string * nat * exp)) k c n B,
+    List.map fst Bs = List.map fst Bs' -> nth_error Bs k = Some (c, n, B) -> exists B', nth_error Bs' k = Some (c, n, B').
+Proof.
+  intros * Hm Hk; apply (f_equal (fun l => nth_error l k)) in Hm; rewrite !nth_error_map, Hk in Hm.
+  destruct (nth_error Bs' k) as [[[c' n'] B'] |]; cbn in Hm; [ injection Hm as -> ->; eauto | discriminate ].
+Qed.
+
+Lemma elim_brs_scoped' : forall p D Us A Bs (Bs' : list (String.string * nat * exp)) m,
+    brs_names (ind_cons D) Bs ->
+    List.map fst Bs = List.map fst Bs' ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall k c gs n B B', nth_error Bs k = Some (c, n, B) -> nth_error Bs' k = Some (c, n, B') ->
+       ind_con D c = Some gs -> exp_scoped (List.length (elim_bctx p D gs A Us) + m) B') ->
+    all_brs (fun k B => exp_scoped (k + m) B) Bs'.
+Proof.
+  intros * Hn Hm Hk HB; apply all_brs_Forall, List.Forall_forall; intros [[c n] B'] Hin'; cbn.
+  destruct (List.In_nth_error _ _ Hin') as [k Hk'].
+  destruct (brs_nth_same _ _ _ _ _ _ (eq_sym Hm) Hk') as [B HkB].
+  pose proof (List.nth_error_In _ _ HkB) as Hin.
+  destruct (brs_names_con _ _ _ _ _ Hn Hin) as [gs Hgs].
+  rewrite (Hk _ _ _ _ Hgs Hin); specialize (HB _ _ _ _ _ _ HkB Hk' Hgs); rewrite length_elim_bctx in HB.
+  replace (ind_nn D + length gs + cargs_nrec gs) with (cargs_nrec gs + length gs + ind_nn D) by lia; exact HB.
+Qed.
+
+Lemma elim_ihs_scoped : forall nm A Bs gs As m,
+    (forall N, exp_scoped m N -> exp_scoped m (a_elim nm A Bs N)) ->
+    List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs nm A Bs gs As).
+Proof.
+  induction gs as [| [] gs IH]; intros [| N As] m He HAs; cbn; try constructor; inversion_clear HAs; auto.
+Qed.
+
+(** The motive's instance at the non-uniform parameters and the scrutinee. *)
+Lemma elim_inst_scoped : forall D A Ps N m,
+    ind_nu D <= ind_np D -> List.length Ps = ind_np D ->
+    exp_scoped (S (ind_nn D) + m) A -> List.Forall (exp_scoped m) Ps -> exp_scoped m N ->
+    exp_scoped m A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ N :: nil)].
+Proof.
+  intros * Hle Hl HA HPs HN; apply exp_scoped_sb_of_list.
+  - rewrite length_app, length_skipn; cbn; unfold ind_nn in *; replace (length Ps - ind_nu D + 1 + m) with (S (ind_np D - ind_nu D + m)) by lia; exact HA.
+  - apply List.Forall_app; split; [| constructor; auto ].
+    rewrite <- (firstn_skipn (ind_nu D) Ps) in HPs; apply List.Forall_app in HPs as [_ HPs]; exact HPs.
+Qed.
+
+Lemma elim_brs_scoped_l : forall p D Us A Bs (Bs' : list (String.string * nat * exp)) m,
+    brs_names (ind_cons D) Bs ->
+    List.map fst Bs = List.map fst Bs' ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall k c gs n B B', nth_error Bs k = Some (c, n, B) -> nth_error Bs' k = Some (c, n, B') ->
+       ind_con D c = Some gs -> exp_scoped (List.length (elim_bctx p D gs A Us) + m) B) ->
+    all_brs (fun k B => exp_scoped (k + m) B) Bs.
+Proof.
+  intros * Hn Hm Hk HB; eapply elim_brs_scoped; [ eassumption | eassumption |].
+  intros * Hgs Hin.
+  destruct (List.In_nth_error _ _ Hin) as [k Hk'].
+  destruct (brs_nth_same _ _ _ _ _ _ Hm Hk') as [B' HkB'].
+  eauto.
+Qed.
+
+Lemma decl_closed_nu : forall D, decl_closed D -> ind_nu D <= ind_np D.
+Proof. intros D (_ & H & _); exact H. Qed.
+
+Lemma decl_closed_params : forall D, decl_closed D -> tele_ass (ind_params D).
+Proof. intros D (H & _); exact H. Qed.
+
+Lemma Forall_skipn' : forall {A} (P : A -> Prop) n l, List.Forall P l -> List.Forall P (List.skipn n l).
+Proof. intros * H; rewrite <- (firstn_skipn n l) in H; apply List.Forall_app in H as [_ H]; exact H. Qed.
+
+Lemma Forall_firstn' : forall {A} (P : A -> Prop) n l, List.Forall P l -> List.Forall P (List.firstn n l).
+Proof. intros * H; rewrite <- (firstn_skipn n l) in H; apply List.Forall_app in H as [H _]; exact H. Qed.
+
+Lemma decl_closed_intro : forall D,
+    tele_ass (ind_params D) -> ind_nu D <= ind_np D -> ctx_scoped 0 (ind_params D) ->
+    exp_scoped (List.length (ind_uparams D)) (ind_sort D) ->
+    (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
+       exp_scoped (List.length (cargs_strat gs1 ++ ind_params D)) A) ->
+    (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+       List.length Ps = ind_nn D) ->
+    (forall c gs gs1 Ps gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+       nth_error Ps k = Some P ->
+       nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+         = Some T ->
+       exp_scoped (List.length (cargs_strat gs1 ++ ind_params D)) P) ->
+    decl_closed D.
+Proof.
+  intros D Hass Hle HΔ HS HA Hl HPs; repeat split; try assumption.
+  - rewrite length_ind_uparams in HS by assumption; exact HS.
+  - intros * Hin Heq; specialize (HA _ _ _ _ _ Hin Heq); rewrite length_app in HA; exact HA.
+  - intros * Hin Heq; eapply (nth_typed_scoped _ (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps)).
+    + rewrite length_tele_insts; [ rewrite length_nparams, (Hl _ _ _ _ _ Hin Heq); lia |].
+      apply Forall_firstn'; exact Hass.
+    + intros k P T Hk HT; specialize (HPs _ _ _ _ _ _ _ _ Hin Heq Hk HT); rewrite length_app in HPs; exact HPs.
 Qed.
 
 (** ** Closed Entries
@@ -533,6 +1054,7 @@ Definition entry_closed (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_scoped 0 A /\ opt_scoped 0 B
   | ge_mod _ _ => True
+  | ge_ind _ D => decl_closed D
   end.
 
 Definition modres_closed (r : modres) : Prop :=
@@ -588,6 +1110,16 @@ Proof.
   - destruct (HΘ _ _ Hl) as (_ & HU & _); exact (HU _ _ Hm).
 Qed.
 
+Lemma gctx_closed_ind : forall Θ Ξ p D,
+    gctx_closed Θ Ξ -> ind_lookup Θ Ξ p = Some D -> decl_closed D.
+Proof.
+  intros * [HΘ HΞ] Hl; destruct (ind_lookup_resolve _ _ _ _ Hl) as [pv Hr].
+  destruct (gc_resolve_inv _ _ _ _ Hr) as [(mp & U & ip & Hin & Hm) | (fp & U & Hl' & Hm)].
+  - destruct (stack_closed_in _ _ _ HΞ Hin) as (T & _ & HU & _).
+    exact (HU _ _ Hm).
+  - destruct (HΘ _ _ Hl') as (_ & HU & _); exact (HU _ _ Hm).
+Qed.
+
 Lemma gctx_closed_module : forall Θ Ξ p r,
     gctx_closed Θ Ξ ->
     gc_module Θ Ξ p = Some r ->
@@ -607,7 +1139,7 @@ Proof. split; intros; discriminate. Qed.
 (** What an entry adds is closed if the entry is. *)
 Definition entry_ok (T : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ _ => entry_closed E
+  | ge_def _ _ _ _ | ge_ind _ _ => entry_closed E
   | ge_mod _ (gu_mk Δ (md_body Φ)) => unit_closed (Δ ++ T) Φ
   | ge_mod _ U => gunit_scoped 0 U
   end.
@@ -618,12 +1150,13 @@ Proof.
   - intros ip E0 Hr; cbn in Hr.
     destruct ip as [| y ip']; [ discriminate |].
     destruct (String.eqb y x); [| eapply HΦ; eassumption ].
-    destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
+    destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']] | pv D]; try discriminate; cbn in HE.
+    + injection Hr as <-; exact HE.
     + injection Hr as <-; exact HE.
     + destruct HE as (_ & HE & _); eapply HE; eassumption.
   - intros y ip r Hr; cbn in Hr.
     destruct (String.eqb y x); [| eapply HΦm; eassumption ].
-    destruct E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate; cbn in HE.
+    destruct E as [b pv A B | pm [Δ' [Φ' | E']] | pv D]; try discriminate; cbn in HE.
     + destruct ip as [| z ip']; [ injection Hr as <-; apply HE |].
       destruct HE as (_ & _ & HE); eapply HE; eassumption.
     + injection Hr as <-; exact HE.
@@ -647,6 +1180,66 @@ Definition ctx_ok (Θ : gdeps) (Ξ : gstack) (Γ : ctx) : Prop :=
 
 Lemma ctx_scoped_app_iff : forall Ψ Γ, ctx_scoped 0 (Ψ ++ Γ) <-> ctx_scoped (length Γ) Ψ /\ ctx_scoped 0 Γ.
 Proof. intros; rewrite ctx_scoped_app, Nat.add_0_r; reflexivity. Qed.
+
+(** The cases of inductive types: the motive is under [S (ind_nn D)]
+    binders, a branch under as many as its context has, and the lists of
+    parameters and arguments are typed one by one. *)
+Ltac ind_motive_scoped :=
+  subst; rewrite ?length_elim_mctx, ?length_tele_sub, ?length_nparams in *; assumption.
+
+Ltac ind_brs_scoped :=
+  first
+    [ eapply elim_brs_scoped; [ eassumption | eassumption |];
+      intros; rewrite <- length_app;
+      match goal with IH : forall c gs n B, _ -> _ -> _ |- _ =>
+        edestruct IH as (_ & ? & _); [ eassumption | eassumption | eassumption ] end
+    | eapply elim_brs_scoped'; [ eassumption | eassumption | eassumption |];
+      intros; rewrite <- length_app;
+      match goal with IH : forall k c gs n B B', _ -> _ -> _ -> _ |- _ =>
+        edestruct IH as (_ & _ & ? & _); [ eassumption | eassumption | eassumption | eassumption ] end
+    | eapply elim_brs_scoped_l; [ eassumption | eassumption | eassumption |];
+      intros; rewrite <- length_app;
+      match goal with IH : forall k c gs n B B', _ -> _ -> _ -> _ |- _ =>
+        edestruct IH as (_ & ? & _); [ eassumption | eassumption | eassumption | eassumption ] end ].
+
+Ltac ind_list_scoped :=
+  repeat first
+    [ apply List.Forall_nil
+    | apply List.Forall_app; split
+    | apply List.Forall_cons; [ first [ assumption | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ] ] |]
+    | apply Forall_skipn'
+    | apply Forall_firstn'
+    | match goal with H : exp_scoped _ (apps_exp _ ?L) |- List.Forall _ ?L =>
+        apply exp_scoped_apps in H as [_ H]; exact H end
+    | match goal with IH : forall k P T, nth_error ?L k = Some P -> _ -> _ /\ exp_scoped _ P /\ _
+                       |- List.Forall _ ?L =>
+        eapply nth_typed_scoped;
+          [| let Hk := fresh "Hk" in let HT := fresh "HT" in
+             intros ? ? ? Hk HT; edestruct IH as (_ & ? & _); [ exact Hk | exact HT | eassumption ] ];
+          first [ apply length_tele_insts_params; [ eapply decl_closed_params; eassumption | assumption ]
+                | apply length_tele_insts_cargs; assumption ]
+      end
+    | apply elim_ihs_scoped; [ intros ? ?; cbn; split; [ ind_motive_scoped | split; [ ind_brs_scoped | assumption ] ] |] ].
+
+Ltac ind_scoped :=
+  first
+    [ eapply exp_scoped_mono; [| eapply decl_closed_ind_ty; eassumption ]; lia
+    | eapply exp_scoped_mono; [| eapply decl_closed_con_ty; [ eassumption | apply cons_lookup_in; eassumption ] ]; lia
+    | ind_motive_scoped
+    | ind_brs_scoped
+    | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ]
+    | eapply elim_inst_scoped;
+        [ eapply decl_closed_nu; eassumption | assumption | ind_motive_scoped | ind_list_scoped
+        | first [ assumption | apply exp_scoped_apps; split; [ exact I | ind_list_scoped ] ] ]
+    | apply exp_scoped_sb_of_list; [| ind_list_scoped ];
+      match goal with
+      | IH : forall c gs n B, _ -> _ -> _, Hl : brs_lookup _ _ = Some (_, _) |- _ =>
+          let HB := fresh "HB" in
+          edestruct IH as (_ & HB & _); [ eassumption | apply brs_lookup_in; exact Hl |];
+          rewrite length_app, length_elim_bctx in HB; eapply exp_scoped_mono; [| exact HB ];
+          rewrite !length_app, length_skipn, length_elim_ihs by assumption;
+          unfold ind_nn in *; lia
+      end ].
 
 Theorem wf_scoped :
   (forall Θ Ξ Γ, ⊢ Θ ⍮ Ξ ⍮ Γ -> ctx_ok Θ Ξ Γ) /\
@@ -696,6 +1289,12 @@ Proof.
   all: try (apply ctx_pi_scoped; [ assumption | rewrite Nat.add_0_r; assumption ]).
   all: try (apply ctx_fn_scoped; [ assumption | rewrite Nat.add_0_r; assumption ]).
   all: try (rewrite gunit_scoped_mk, ?ctx_scoped_app_iff, ?length_app; repeat split; assumption).
+  all: try match goal with Hl : ind_lookup _ _ _ = Some ?D, Hc : gctx_closed _ _ |- _ =>
+         pose proof (gctx_closed_ind _ _ _ _ Hc Hl) end.
+  all: try solve [ ind_scoped ].
+  all: try solve [ eapply decl_closed_intro; try eassumption; intros;
+                   match goal with IH : forall c gs gs1 x gs2, _ -> _ -> _ |- _ =>
+                     edestruct IH as (_ & ? & _); eassumption end ].
   - (* a body unit, left *)
     rewrite gunit_scoped_mk; rewrite ctx_scoped_app in *; destruct_all; split; [ assumption |].
     apply (gmod_scoped_of_body_ctx _ _ _ H4); assumption.

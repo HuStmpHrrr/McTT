@@ -225,6 +225,19 @@ Section Expansion.
         let+ A' := exp_xp (None :: S) A in
         let+ M' := exp_xp S M in
         xok (a_exfalso A' M')
+    | a_ind _ | a_con _ _ => xok M
+    | a_elim nm A Bs M =>
+        let+ A' := exp_xp (List.repeat None nm ++ S) A in
+        let+ Bs' := (fix brs_xp (Bs : list (String.string * nat * exp)) : xres (list (String.string * nat * exp)) :=
+                       match Bs with
+                       | nil => xok nil
+                       | b :: Bs0 =>
+                           let+ B' := exp_xp (List.repeat None (snd (fst b)) ++ S) (snd b) in
+                           let+ Bs0' := brs_xp Bs0 in
+                           xok ((fst b, B') :: Bs0')
+                       end) Bs in
+        let+ M' := exp_xp S M in
+        xok (a_elim nm A' Bs' M')
     | a_pi A B =>
         let+ A' := exp_xp S A in
         let+ B' := exp_xp (None :: S) B in
@@ -306,6 +319,7 @@ Section Expansion.
                    end in
         xok (ge_def b pv A' B')
     | ge_mod pv U => let+ U' := gunit_xp S U in xok (ge_mod pv U')
+    | ge_ind _ _ => xok E
     end
   with centry_xp (S : skel) (e : centry) {struct e} : xres centry :=
     match e with
@@ -326,6 +340,30 @@ Section Expansion.
         let+ e' := centry_xp (map centry_skel Δ0' ++ S) e in
         xok (e' :: Δ0')
     end.
+
+  (** The arguments of a constructor: a non-recursive argument binds a
+      variable for the ones after it, a recursive one none. *)
+  Fixpoint cargs_xp (S : skel) (gs : list carg) : xres (list carg) :=
+    match gs with
+    | nil => xok nil
+    | ca_arg A :: gs' =>
+        let+ A' := exp_xp S A in
+        let+ gs'' := cargs_xp (None :: S) gs' in
+        xok (ca_arg A' :: gs'')
+    | ca_rec Ps :: gs' =>
+        let+ Ps' := xmap (exp_xp S) Ps in
+        let+ gs'' := cargs_xp S gs' in
+        xok (ca_rec Ps' :: gs'')
+    end.
+
+  (** A declaration: its parameters as a telescope, its sort over the
+      uniform ones, its constructors' arguments over all of them. *)
+  Definition decl_xp (S : skel) (D : ind_decl) : xres ind_decl :=
+    let+ Δ' := tele_xp S (ind_params D) in
+    let S' := map centry_skel Δ' ++ S in
+    let+ A' := exp_xp (skipn (List.length (ind_params D) - ind_nu D) S') (ind_sort D) in
+    let+ cs' := xmap (fun cg => let+ gs' := cargs_xp S' (snd cg) in xok (fst cg, gs')) (ind_cons D) in
+    xok (mk_ind (ind_nu D) Δ' A' cs').
 
   (** A command's own terms: the nested commands of a module are expanded
       when they run. *)
@@ -356,6 +394,9 @@ Section Expansion.
                     | None => xok None
                     end in
         xok (cc_eval M' oA')
+    | cc_ind x pv D =>
+        let+ D' := decl_xp S D in
+        xok (cc_ind x pv D')
     end.
 End Expansion.
 
@@ -410,6 +451,12 @@ Section Ext.
   Proof.
     apply syn_mut_ind; intros; cbn [exp_xp modexp_xp bnd_xp gunit_xp moddef_xp gmod_xp gentry_xp centry_xp].
     all: try solve [ xp_step ].
+    - (* an eliminator: its motive, its branches, its scrutinee *)
+      rewrite H; destruct (exp_xp mt' _ A); cbn [xbind]; [| reflexivity ].
+      match goal with |- xbind ?a _ = xbind ?b _ => assert (Ht : a = b) end.
+      { clear - H0; induction H0 as [| b Bs Hb HF IH]; [ reflexivity |]; cbn [xbind].
+        rewrite Hb; destruct (exp_xp mt' _ (snd b)); cbn [xbind]; [ rewrite IH |]; reflexivity. }
+      rewrite Ht; match goal with |- xbind ?t _ = _ => destruct t end; cbn [xbind]; [ rewrite H1 |]; reflexivity.
     - (* a definition binding *)
       destruct oA as [A |]; [ rewrite (H A eq_refl) |]; xp_step.
     - (* a unit: its telescope, then its definition *)
@@ -428,11 +475,30 @@ Section Ext.
       reflexivity.
   Qed.
 
+  Lemma decl_xp_ext : forall D S, decl_xp mt S D = decl_xp mt' S D.
+  Proof.
+    destruct xp_ext_all as (He & _).
+    assert (Hxm : forall Ps S, xmap (exp_xp mt S) Ps = xmap (exp_xp mt' S) Ps).
+    { induction Ps as [| P Ps IH]; intros; cbn; [ reflexivity |].
+      rewrite He; destruct (exp_xp mt' S P); cbn; [ rewrite IH |]; reflexivity. }
+    assert (Hc : forall gs S, cargs_xp mt S gs = cargs_xp mt' S gs).
+    { induction gs as [| [A | Ps] gs IH]; intros; cbn; [ reflexivity | |].
+      - rewrite He; destruct (exp_xp mt' S A); cbn; [ rewrite IH |]; reflexivity.
+      - rewrite Hxm; destruct (xmap (exp_xp mt' S) Ps); cbn; [ rewrite IH |]; reflexivity. }
+    intros [nu Δ A cs] S; unfold decl_xp; cbn [ind_params ind_sort ind_cons ind_nu].
+    rewrite tele_xp_ext; destruct (tele_xp mt' S Δ) as [Δ' |]; cbn [xbind]; [| reflexivity ].
+    rewrite He; destruct (exp_xp mt' _ A); cbn [xbind]; [| reflexivity ].
+    match goal with |- xbind ?a _ = xbind ?b _ => assert (Ht : a = b) end.
+    { induction cs as [| cg cs IH]; cbn; [ reflexivity |].
+      rewrite Hc; destruct (cargs_xp mt' _ (snd cg)); cbn; [ rewrite IH |]; reflexivity. }
+    rewrite Ht; reflexivity.
+  Qed.
+
   Lemma cmd_xp_ext : forall c S, cmd_xp mt S c = cmd_xp mt' S c.
   Proof.
     destruct xp_ext_all as (He & Hm & _).
-    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] S; cbn [cmd_xp];
-      rewrite ?He, ?Hm, ?tele_xp_ext; try reflexivity.
+    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D] S; cbn [cmd_xp];
+      rewrite ?He, ?Hm, ?tele_xp_ext, ?decl_xp_ext; try reflexivity.
     all: repeat (cbn [xbind]; first
                   [ match goal with
                     | |- context [exp_xp mt ?S ?x] => rewrite (He x S)
@@ -500,11 +566,12 @@ Definition ccmd_head (c : ccmd) : nat :=
   | cc_load _ => 3
   | cc_open _ _ => 4
   | cc_eval _ _ => 5
+  | cc_ind _ _ _ => 6
   end.
 
 Lemma cmd_xp_head : forall mt S c c', cmd_xp mt S c = xok c' -> ccmd_head c' = ccmd_head c.
 Proof.
-  intros mt S [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |]] c' Ex; cbn in Ex;
+  intros mt S [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D] c' Ex; cbn in Ex;
     repeat match goal with
            | Ex : xbind ?m _ = xok _ |- _ => destruct m; cbn in Ex; [| discriminate ]
            end;

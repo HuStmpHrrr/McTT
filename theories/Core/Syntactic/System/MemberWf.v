@@ -80,7 +80,7 @@ Proof. intros * HH; exact (proj1 (modexp_eq_parts _ _ _ _ _ HH)). Qed.
 
 Definition syn_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
-  | ge_def _ _ _ _ => True
+  | ge_def _ _ _ _ | ge_ind _ _ => True
   | ge_mod _ U => Θ2 ⍮ Ξ2 ⍮ ⋅ ⊢ᵘ U ≈ U
   end.
 
@@ -118,7 +118,7 @@ Qed.
 
 Lemma syn_good : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> GoodV syn_V syn_F Θ Ξ.
 Proof.
-  apply global_valid; [ intros; exact I | intros; exact I | exact syn_V_alias | exact syn_F_nil ].
+  apply global_valid; [ intros; exact I | intros; exact I | exact syn_V_alias | exact syn_F_nil | intros; exact I ].
 Qed.
 
 Theorem gc_body_tele_wf : forall Θ Ξ, ⊢g Θ ⍮ Ξ ->
@@ -143,7 +143,7 @@ Proof.
   induction Φ as [| Φ IH x E | Φ IH c]; intros [| Φ' x' E' | Φ' c'] H; cbn in H |- *; try contradiction.
   - auto.
   - destruct H as (HΦ & <- & HE); destruct (IH _ HΦ) as (H1 & H2 & H3).
-    destruct E as [b pv A [M |] | pm U], E' as [b' pv' A' [M' |] | pm' U']; cbn in HE |- *; try contradiction;
+    destruct E as [b pv A [M |] | pm U | pvi Di], E' as [b' pv' A' [M' |] | pm' U' | pvi' Di']; cbn in HE |- *; try contradiction;
       intuition congruence.
 Qed.
 
@@ -191,7 +191,7 @@ Lemma gm_submodule_prefix : forall Φ T x ip1 ip2 r,
 Proof.
   fix IH 1; intros [| Φ y E | Φ c] * H; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H) ].
-  destruct E as [? ? ? ? | ? [Δ [Φ' | E']]]; [ discriminate | |].
+  destruct E as [? ? ? ? | ? [Δ [Φ' | E']] | ? ?]; [ discriminate | | | discriminate ].
   - destruct ip1 as [| z ip1]; [ eauto |].
     exact (IH _ _ _ _ _ _ H).
   - injection H as <-; eauto.
@@ -204,7 +204,7 @@ Proof.
   fix IH 1; intros [| Φ y E0 | Φ c] * H Hne; cbn in H |- *; [ discriminate | | exact (IH _ _ _ _ _ _ H Hne) ].
   destruct (String.eqb x y); [| exact (IH _ _ _ _ _ _ H Hne) ].
   destruct (ip1 ++ ip2) as [| w ip] eqn:E12; [ destruct ip1, ip2; try discriminate; contradiction |].
-  destruct E0 as [? ? ? ? | ? [Δ [Φ' | E']]]; try discriminate.
+  destruct E0 as [? ? ? ? | ? [Δ [Φ' | E']] | ? ?]; try discriminate.
   destruct ip1 as [| z ip1]; [ eauto |].
   cbn in E12; injection E12 as -> E12; rewrite <- E12 in H.
   exact (IH _ _ _ _ _ _ H Hne).

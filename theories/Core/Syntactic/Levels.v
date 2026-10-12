@@ -153,6 +153,10 @@ Fixpoint nf_code (M : nf) (t : ltree) : ltree :=
   | nf_pi A B => lt_node 10 (nf_code A (nf_code B lt_nil)) t
   | nf_fn A M' => lt_node 11 (nf_code A (nf_code M' lt_nil)) t
   | nf_neut m => lt_node 12 (ne_code m lt_nil) t
+  | nf_indty p Ms => lt_node 13 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil)) (nfs_code Ms lt_nil)) t
+  | nf_con p c Ms =>
+      lt_node 14 (lt_node 0 (strs_code (q_unit p) (strs_code (q_chain p) lt_nil))
+                    (lt_node 0 (str_code c lt_nil) (nfs_code Ms lt_nil))) t
   end
 with ne_code (m : ne) (t : ltree) : ltree :=
   match m with
@@ -161,24 +165,40 @@ with ne_code (m : ne) (t : ltree) : ltree :=
   | ne_app m' N => lt_node 2 (ne_code m' (nf_code N lt_nil)) t
   | ne_natrec A MZ MS m' => lt_node 3 (nf_code A (nf_code MZ (nf_code MS (ne_code m' lt_nil)))) t
   | ne_exfalso A m' => lt_node 4 (nf_code A (ne_code m' lt_nil)) t
+  | ne_elim nm A Bs m' => lt_node 5 (lt_node nm (nf_code A (nbrs_code Bs (ne_code m' lt_nil))) lt_nil) t
   end
 with la_code (xs : lvl_atoms) (t : ltree) : ltree :=
   match xs with
   | la_nil => lt_node 0 lt_nil t
   | la_cons k n m r => lt_node 1 (lt_node k (ne_code m lt_nil) (lt_node n lt_nil lt_nil)) (la_code r t)
+  end
+with nfs_code (Ms : nfs) (t : ltree) : ltree :=
+  match Ms with
+  | nfs_nil => lt_node 0 lt_nil t
+  | nfs_cons M Ms => lt_node 1 (nf_code M lt_nil) (nfs_code Ms t)
+  end
+with nbrs_code (Bs : nbrs) (t : ltree) : ltree :=
+  match Bs with
+  | nbrs_nil => lt_node 0 lt_nil t
+  | nbrs_cons c n B Bs => lt_node 1 (lt_node n (str_code c lt_nil) (nf_code B lt_nil)) (nbrs_code Bs t)
   end.
 
 Lemma nf_code_inj : forall M N t t', nf_code M t = nf_code N t' -> M = N /\ t = t'
 with ne_code_inj : forall m m' t t', ne_code m t = ne_code m' t' -> m = m' /\ t = t'
-with la_code_inj : forall xs ys t t', la_code xs t = la_code ys t' -> xs = ys /\ t = t'.
+with la_code_inj : forall xs ys t t', la_code xs t = la_code ys t' -> xs = ys /\ t = t'
+with nfs_code_inj : forall Ms Ns t t', nfs_code Ms t = nfs_code Ns t' -> Ms = Ns /\ t = t'
+with nbrs_code_inj : forall Bs Cs t t', nbrs_code Bs t = nbrs_code Cs t' -> Bs = Cs /\ t = t'.
 Proof.
-  all: [> destruct M, N | destruct m, m' | destruct xs, ys ].
+  all: [> destruct M, N | destruct m, m' | destruct xs, ys | destruct Ms, Ns | destruct Bs, Cs ].
   all: repeat match goal with p : o2 |- _ => destruct p end.
   all: intros t t' H; cbn in H; injection H as; subst; try discriminate.
   all: repeat match goal with
          | H : nf_code _ _ = nf_code _ _ |- _ => apply nf_code_inj in H as [-> H]
          | H : ne_code _ _ = ne_code _ _ |- _ => apply ne_code_inj in H as [-> H]
          | H : la_code _ _ = la_code _ _ |- _ => apply la_code_inj in H as [-> H]
+         | H : nfs_code _ _ = nfs_code _ _ |- _ => apply nfs_code_inj in H as [-> H]
+         | H : nbrs_code _ _ = nbrs_code _ _ |- _ => apply nbrs_code_inj in H as [-> H]
+         | H : str_code _ _ = str_code _ _ |- _ => apply str_code_inj in H as [-> H]
          | H : strs_code _ _ = strs_code _ _ |- _ => apply qname_code_inj in H as ->
        end.
   all: split; first [ reflexivity | assumption ].

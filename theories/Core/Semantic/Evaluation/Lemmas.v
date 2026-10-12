@@ -2,7 +2,7 @@ From Stdlib Require Import Lia PeanoNat Relations.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Inductives.
 From Mctt.Core.Semantic.Evaluation Require Import Definitions.
 Import Domain_Notations.
 
@@ -30,7 +30,13 @@ Import Domain_Notations.
       (forall h y r1, h ·ₘ y Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ y Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₜ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₜ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
       (forall h ch r1, h ·ₘ* ch Θ ⍮ Ξ ↘ r1 -> forall r2, h ·ₘ* ch Θ ⍮ Ξ ↘ r2 -> r1 = r2) /\
-      (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2).
+      (forall ρ Φ ρ1, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ1 -> forall ρ2, ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ ρ ↘ ρ2 -> ρ1 = ρ2) /\
+      (forall ρ nm A Bs m r1,
+          ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ nm A Bs gs vs r1,
+          ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -41,6 +47,12 @@ Import Domain_Notations.
       repeat match goal with
         | H1 : Members.gc_resolve Θ Ξ ?p = Some _, H2 : Members.gc_resolve Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_lookup Θ Ξ ?p = Some _, H2 : ind_lookup Θ Ξ ?p = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
+            rewrite H1 in H2; injection H2 as ?; subst; clear H2
+        | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
+            rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some _, H2 : Members.gc_module Θ Ξ ?p = Some _ |- _ =>
             rewrite H1 in H2; injection H2; intros; subst; clear H2
         | H1 : Members.gc_module Θ Ξ ?p = Some (Members.mr_alias _ _),
@@ -82,6 +94,22 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ); intuition.
   Qed.
 
+  Corollary functional_eval_elim : forall {Θ Ξ} ρ nm A Bs m r1 r2,
+      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+      r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_eval_ihs : forall {Θ Ξ} ρ nm A Bs gs vs r1 r2,
+      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+      r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
   (** An evaluated substitution is determined pointwise. *)
   Corollary functional_eval_modexp : forall {Θ Ξ} H ρ h1 h2,
       ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 ->
@@ -112,7 +140,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_elim functional_eval_ihs functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
 
 
 
@@ -124,6 +152,10 @@ Ltac functional_eval_rewrite_clear1 :=
   | H1 : ($| ?m & ?n | ?T ⍮ ?X ↘ ?r1), H2 : ($| ?m & ?n | ?T ⍮ ?X ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦rec ?m return ?A | zero -> ?MZ | succ -> ?MS end ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise
@@ -154,3 +186,9 @@ Proof. intros ? ? [] ?; cbn; repeat econstructor. Qed.
 
 #[export]
 Hint Resolve eval_ulvl_tm : mctt.
+
+(** One recursive result per recursive argument. *)
+Lemma eval_ihs_length : forall {Θ Ξ} ρ nm A Bs gs vs ihs,
+    ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+    List.length vs = List.length gs /\ List.length ihs = cargs_nrec gs.
+Proof. induction 1; cbn; intuition congruence. Qed.

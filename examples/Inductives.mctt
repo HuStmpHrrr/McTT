@@ -1,0 +1,110 @@
+(* Inductive types: declared in a unit, built by their constructors and
+   taken apart by elim, whose branches compute on a constructor. *)
+module Inductives where
+
+(* Lists: one uniform parameter, one recursive argument. *)
+inductive List (A : Type@0) : Type@0 where
+| nil
+| cons (x : A) (xs : List)
+end
+
+(* The motive binds the scrutinee; a branch, the constructor's arguments
+   and, after the comma, the induction hypotheses. *)
+def length (A : Type@0) (l : List A) : ℕ :=
+  elim l return z . ℕ
+  | nil ⇒ 0
+  | cons x xs, r ⇒ succ r
+  end
+end
+
+def append (A : Type@0) (l : List A) (m : List A) : List A :=
+  elim l return z . List A
+  | nil ⇒ m
+  | cons x xs, r ⇒ cons A x r
+  end
+end
+
+eval length ℕ (append ℕ (cons ℕ 1 (cons ℕ 2 (nil ℕ))) (cons ℕ 3 (nil ℕ)))
+eval append ℕ (cons ℕ 1 (nil ℕ)) (cons ℕ 2 (nil ℕ))
+
+(* A stuck eliminator: its scrutinee is a variable. *)
+eval λ (l : List ℕ) → length ℕ (cons ℕ 0 l)
+
+(* Options: no recursive argument. *)
+inductive Option (A : Type@0) : Type@0 where
+| none
+| some (x : A)
+end
+
+def getOr (A : Type@0) (d : A) (o : Option A) : A :=
+  elim o return z . A
+  | none ⇒ d
+  | some x ⇒ x
+  end
+end
+
+eval getOr ℕ 0 (some ℕ 5)
+eval getOr ℕ 0 (none ℕ)
+
+(* Binary trees: two recursive arguments, so two hypotheses. *)
+inductive Tree (A : Type@0) : Type@0 where
+| leaf
+| node (l : Tree) (x : A) (r : Tree)
+end
+
+def plus (m : ℕ) (n : ℕ) : ℕ :=
+  rec m return z . ℕ
+  | zero ⇒ n
+  | succ k, r ⇒ succ r
+  end
+end
+
+def size (A : Type@0) (t : Tree A) : ℕ :=
+  elim t return z . ℕ
+  | leaf ⇒ 0
+  | node l x r, hl hr ⇒ succ (plus hl hr)
+  end
+end
+
+eval size ℕ (node ℕ (node ℕ (leaf ℕ) 1 (leaf ℕ)) 2 (leaf ℕ))
+
+(* Dependent pairs: the type of the second component depends on the
+   first, and the motive on the pair. *)
+inductive Sigma (A : Type@0) (B : ∀ (x : A) → Type@0) : Type@0 where
+| pair (a : A) (b : B a)
+end
+
+def fst (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : A :=
+  elim p return z . A
+  | pair a b ⇒ a
+  end
+end
+
+(* The branch's type is [B (fst A B (pair A B a b))], which computes to
+   [B a]. *)
+def snd (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : B (fst A B p) :=
+  elim p return z . B (fst A B z)
+  | pair a b ⇒ b
+  end
+end
+
+eval snd ℕ (λ (x : ℕ) → ℕ) (pair ℕ (λ (x : ℕ) → ℕ) 1 2)
+
+(* A non-uniform parameter: the type binds [n] in front of its sort, a
+   recursive argument gives it a new value, and the motive and every
+   branch bind it too. *)
+inductive Climb : ∀ (n : ℕ) → Type@0 where
+| stop
+| step (r : Climb (succ n))
+end
+
+def steps (n : ℕ) (c : Climb n) : ℕ :=
+  elim c return m z . ℕ
+  | stop m ⇒ 0
+  | step m r, h ⇒ succ h
+  end
+end
+
+eval steps 0 (step 0 (step 1 (stop 2)))
+
+end

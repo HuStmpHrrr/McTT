@@ -26,7 +26,10 @@ Inductive ccmd : Set :=
     as definitions and aliases of this frame. *)
 | cc_open : modexp -> list iitem -> ccmd
 (** [eval M], or [eval M : A] *)
-| cc_eval : exp -> option typ -> ccmd.
+| cc_eval : exp -> option typ -> ccmd
+(** [inductive x (Δ) : S where | c : … end], private or not: the declaration
+    as written, its parameters over those of the enclosing frames. *)
+| cc_ind : string -> bool -> ind_decl -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.

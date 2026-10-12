@@ -390,15 +390,130 @@ Ltac saturate_sub_eq_IH :=
 Ltac reduce_sub_natrec :=
   (on_all_hyp: (fun H => try setoid_rewrite exp_sub_sub_natrec in H)).
 
-Lemma sub_eq_preserves_exp : forall Θ Ξ Δ A M,
-    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
-    forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ].
+(** The eliminator: the motive and the branches move under the equivalent
+    substitutions lifted over their contexts, which the induction
+    hypotheses of the telescope premises give. *)
+Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D Ps M nm i A Bs,
+    ind_lookup Θ Ξ p = Some D -> List.length Ps = ind_np D ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ M[τ] ≈ M[τ'] : (apps (a_ind p) Ps)[τ]) ->
+    nm = S (ind_nn D) ->
+    Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ⊢ A : Typeω@i ->
+    (forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[τ] ≈ A[τ'] : Typeω@i[τ]) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+    (tele_ass (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
+     forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ ->
+       Θ ⍮ Ξ ⍮ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+         ⊢s sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ
+          ≈ sb_qn (List.length (elim_mctx p D (List.firstn (ind_nu D) Ps))) τ'
+         : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) ->
+    brs_names (ind_cons D) Bs ->
+    (forall c gs, ind_con D c = Some gs ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+    (forall c gs, ind_con D c = Some gs ->
+       tele_ass (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : Γ ->
+         Θ ⍮ Ξ ⍮ tele_sub (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) τ ++ Δ0
+           ⊢s sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ
+            ≈ sb_qn (List.length (elim_bctx p D gs A (List.firstn (ind_nu D) Ps))) τ'
+           : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+       forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
+         Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[τ]) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢s σ ≈ σ' : Γ ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] ≈ (a_elim nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
-  induction 1; intros; destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
+  intros * Hl HPl HPs HM Hnm HA HAA HΨ HΨl Hn HΨB HΨBl Hk HBB Hσ.
+  pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs.
+  assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hs) | exact Hl ]).
+  pose proof (wk_firstn_length D Ps HD HPl) as HUl.
+  rewrite (sub_elim_type D Ps A M nm σ HPl Hnm); cbn [exp_sub]; subst nm.
+  assert (HΨσ : Θ ⍮ Ξ ⍮ Δ ⊢ˣ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) σ
+                  ≈ tele_sub (elim_mctx p D (List.firstn (ind_nu D) Ps)) σ)
+    by (eapply sub_preserves_ext; eassumption).
+  pose proof (sub_elim_motive_ctx _ _ _ _ _ _ _ _ HD HUl Hs HΨ HΨσ) as Hq.
+  pose proof (HΨl (elim_mctx_ass _ _ _ HD) _ _ _ Hσ) as Hlift.
+  rewrite length_elim_mctx, elim_mctx_sub in Hlift by assumption.
+  eapply wf_exp_eq_elim_cong with (Ps := List.map (fun P => P[σ]) Ps).
+  - exact Hl.
+  - rewrite List.length_map; exact HPl.
+  - eapply sub_elim_params; [ exact HD | | exact Hs ].
+    intros * HP HT ? ? Hs0; eapply sub_preserves_exp; [ eapply HPs; eassumption | exact Hs0 ].
+  - rewrite <- sub_apps_ind; apply HM; exact Hσ.
+  - reflexivity.
+  - rewrite List.firstn_map; exact (sub_preserves_exp _ _ _ _ _ _ _ HA Hq).
+  - rewrite List.firstn_map, <- elim_mctx_sub by assumption; exact HΨσ.
+  - rewrite List.firstn_map; exact (HAA _ _ _ Hlift).
+  - apply brs_names_map; exact Hn.
+  - intros c gs Hc; rewrite List.firstn_map, <- (elim_bctx_sub p D c gs A _ σ HD (cons_lookup_in _ _ _ Hc) HUl).
+    eapply sub_preserves_ext; [ apply (HΨB c gs Hc) | exact Hs ].
+  - rewrite !brs_fst_map; reflexivity.
+  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); eapply Hk; eassumption.
+  - intros k c gs n B1 B2 Hk1 Hk2 Hc.
+    apply nth_error_map_inv in Hk1 as ([[c1 n1] B] & Hk1 & Heq1); cbn in Heq1; injection Heq1 as E1 E2 E3; subst.
+    apply nth_error_map_inv in Hk2 as ([[c2 n2] B'] & Hk2 & Heq2); cbn in Heq2; injection Heq2 as E4 E5 E6; subst.
+    rewrite Hk1 in Hk2; injection Hk2 as <-.
+    cbn [fst snd]; pose proof (List.nth_error_In _ _ Hk1) as Hin.
+    rewrite List.firstn_map, <- elim_bty_sub, (Hk _ _ _ _ Hc Hin).
+    apply (HBB _ gs _ B Hc Hin).
+    pose proof (HΨBl _ gs Hc (elim_bctx_ass _ _ _ _ _ HD) _ _ _ Hσ) as HlB.
+    rewrite length_elim_bctx, (elim_bctx_sub p D _ gs A _ σ HD (cons_lookup_in _ _ _ Hc) HUl) in HlB.
+    replace (ind_nn D + List.length gs + cargs_nrec gs) with (cargs_nrec gs + List.length gs + ind_nn D) by lia.
+    exact HlB.
+Qed.
+
+Lemma sub_eq_preserves_mut :
+  (forall Θ Ξ Δ A M, Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
+     forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ]) /\
+  (forall Θ Ξ Δ A M M', Θ ⍮ Ξ ⍮ Δ ⊢ M ≈ M' : A -> True) /\
+  (forall Θ Ξ Δ A A', Θ ⍮ Ξ ⍮ Δ ⊢ A ⊆ A' -> True) /\
+  (forall Θ Ξ Δ Ψ Ψ', Θ ⍮ Ξ ⍮ Δ ⊢ˣ Ψ ≈ Ψ' -> tele_ass Ψ ->
+     forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
+       Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢s sb_qn (length Ψ) σ ≈ sb_qn (length Ψ) σ' : Ψ ++ Δ) /\
+  (forall Θ Ξ Δ U U', Θ ⍮ Ξ ⍮ Δ ⊢ᵘ U ≈ U' -> True) /\
+  (forall Θ Ξ Δ H H', Θ ⍮ Ξ ⍮ Δ ⊢ᵐ H ≈ H' -> True).
+Proof.
+  apply syntactic_wf_mut_ind'; intros; try exact I.
+  (** Telescopes of assumptions: the substitutions are lifted entry by
+      entry, at the equation of the entry's type the induction hypothesis
+      gives. *)
+  all: try solve [ cbn; assumption ].
+  all: try solve [
+    match goal with
+    | Hass : tele_ass (_ :: _) |- _ =>
+        inversion Hass as [| ? ? [? Heq] ? ]; discriminate
+    end ].
+  all: try solve [
+    match goal with
+    | Hass : tele_ass (ce_ass ?A :: ?Ψ), IHx : tele_ass ?Ψ -> forall _ _ _, wf_sub_eq _ _ _ _ _ _ -> _,
+      HA : wf_exp _ _ (?Ψ ++ ?Δ) (a_typ ?i) ?A,
+      IHA : forall _ _ _, wf_sub_eq _ _ _ (?Ψ ++ ?Δ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?A _) _,
+      Hσ : wf_sub_eq _ _ ?Γ ?Δ ?σ ?σ' |- _ =>
+        inversion_clear Hass as [| ? ? _ Hass'];
+        pose proof (IHx Hass' _ _ _ Hσ) as Hl;
+        cbn [tele_sub List.length sb_qn List.app];
+        eapply wf_sub_eq_q; [ exact Hl | exact HA | exact (IHA _ _ _ Hl) ]
+    end ].
+  (** The eliminator. *)
+  all: try solve [ eapply sub_eq_elim_case; eassumption ].
+  all: destruct_let_ann; saturate_sub_eq; push_sub; lift_sub_eq; saturate_sub_eq;
     saturate_sub_typ; saturate_sub_eq_IH; reduce_sub_natrec.
   (** In the [a_glob] case the recorded type reaches [Γ] only through
       [saturate_sub_typ], i.e. after [push_sub] has run. *)
   all: try solve [ push_closed; mauto 3 ].
+  (** The type former and the constructors: their types are closed. *)
+  all: try solve [
+    match goal with
+    | Hl : ind_lookup _ _ _ = Some ?D, Hσ : wf_sub _ _ _ _ _ |- _ =>
+        let HD := fresh "HD" in
+        assert (HD : decl_closed D)
+          by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]);
+        try rewrite (ind_ty_sub D _ HD); try (erewrite (con_ty_sub _ D _ _ _ HD) by eassumption);
+        first [ eapply wf_exp_eq_ind_cong | eapply wf_exp_eq_con_cong ]; eauto using wf_sub_dom
+    end ].
   all: try solve [ mauto 3 ].
   (** The small [Π]: the codomain's universe, the weakened level, commutes
       with the lifted substitution. *)
@@ -416,7 +531,15 @@ Proof.
     end ].
   (** A local module: both sides are reduced by [ζ] and meet at the body
       under the two extended substitutions, at the body's type. *)
-  1: { pose proof (wf_sub_eq_extend_mod _ _ _ _ _ _ _ H2 H) as Hτ.
+  1: { match goal with
+    | h1 : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ', h2 : wf_unit_eq _ _ ?Γ ?U ?U,
+      h3 : wf_exp _ _ (ce_mod ?U :: ?Γ) (a_typ _) ?C, h4 : wf_exp _ _ (ce_mod ?U :: ?Γ) ?C ?B,
+      h5 : wf_sub _ _ ?Γ0 ?Γ ?σ, h6 : wf_sub _ _ ?Γ0 ?Γ ?σ',
+      h7 : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?C _) _,
+      h8 : forall _ _ _, wf_sub_eq _ _ _ (ce_mod ?U :: ?Γ) _ _ -> wf_exp_eq _ _ _ _ (exp_sub ?B _) _ |- _ =>
+        rename h1 into Hσ, h2 into HU, h3 into HC, h4 into HB, h5 into Hl, h6 into Hr, h7 into IHC, h8 into IHB
+    end.
+pose proof (wf_sub_eq_extend_mod _ _ _ _ _ _ _ Hσ HU) as Hτ.
     assert (HUl : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ]ᵘ ≈ U[σ]ᵘ) by (eapply sub_preserves_unit; eassumption).
     assert (HUr : Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[σ']ᵘ ≈ U[σ']ᵘ) by (eapply sub_preserves_unit; eassumption).
     assert (Hz : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢s s : Γ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ᵘ U[s]ᵘ ≈ U[s]ᵘ ->
@@ -424,16 +547,21 @@ Proof.
     { intros s Hs HUs; rewrite <- (exp_sub_q_extend_mod B), <- (exp_sub_q_extend_mod C).
       eapply wf_exp_eq_let_mod_zeta;
       [ exact HUs
-      | eapply sub_preserves_typ; [ exact H0 | apply wf_sub_q_mod; assumption ]
-      | eapply sub_preserves_exp; [ exact H1 | apply wf_sub_q_mod; assumption ] ]. }
+      | eapply sub_preserves_typ; [ exact HC | apply wf_sub_q_mod; assumption ]
+      | eapply sub_preserves_exp; [ exact HB | apply wf_sub_q_mod; assumption ] ]. }
     rewrite exp_sub_extend_mod_sub.
     eapply wf_exp_eq_meet;
-        [ exact (Hz _ H5 HUl) | exact (IHwf_exp2 _ _ _ Hτ) | exact (Hz _ H6 HUr)
-        | eapply sub_preserves_typ; [ exact H0 | eapply wf_sub_eq_left; exact Hτ ]
-        | exact (IHwf_exp1 _ _ _ Hτ) ]. }
+        [ exact (Hz _ Hl HUl) | exact (IHB _ _ _ Hτ) | exact (Hz _ Hr HUr)
+        | eapply sub_preserves_typ; [ exact HC | eapply wf_sub_eq_left; exact Hτ ]
+        | exact (IHC _ _ _ Hτ) ]. }
   (** A member: both sides are reduced by [δ] and meet at the reduct. *)
-  1: { assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eassumption).
-    pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ H1)) as Hroot.
+  1: { match goal with
+    | h1 : wf_modexp_eq _ _ ?Γ ?H ?H, h2 : me_noargs ?H, h3 : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ',
+      h4 : wf_sub _ _ ?Γ0 ?Γ ?σ, h5 : wf_sub _ _ ?Γ0 ?Γ ?σ' |- _ =>
+        rename h1 into HH, h4 into Hl, h5 into Hr
+    end.
+assert (Hc : gctx_closed Θ Ξ) by (eapply wf_gctx_closed; eassumption).
+    pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)) as Hroot.
     assert (Hd : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢s s : Γ -> Θ ⍮ Ξ ⍮ Γ0 ⊢ a_mem H[s]ᵐ x ≈ M[s] : A[s]).
     { intros s Hs; pose proof (wf_sub_mod_compat _ _ _ _ _ Hs) as Hcm.
       eapply wf_exp_eq_mem_delta;
@@ -442,20 +570,30 @@ Proof.
         | eapply sub_preserves_typ; eassumption
         | unfold member_unfold in *; eapply member_unfold_sub; eassumption
         | eapply sub_preserves_exp; eassumption ]. }
-    eapply wf_exp_eq_meet; [ exact (Hd _ H14) | exact H11 | exact (Hd _ H15) | exact H8 | exact H12 ]. }
+    eapply wf_exp_eq_meet; [ exact (Hd _ Hl) | eassumption | exact (Hd _ Hr) | eassumption | eassumption ]. }
   (** A member of an applied module: both sides commute the arguments out. *)
-  1: { pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ H0)) as Hroot.
+  1: { match goal with
+    | h1 : wf_modexp_eq _ _ ?Γ ?H ?H, h2 : modexp_spine ?H = _, h3 : _ <> nil, h4 : wf_sub_eq _ _ ?Γ0 ?Γ ?σ ?σ',
+      h5 : wf_sub _ _ ?Γ0 ?Γ ?σ, h6 : wf_sub _ _ ?Γ0 ?Γ ?σ' |- _ =>
+        rename h1 into HH, h3 into Hne, h5 into Hl, h6 into Hr
+    end.
+pose proof (proj1 (modexp_eq_slot_root _ _ _ _ _ HH)) as Hroot.
     assert (Hd : forall s, Θ ⍮ Ξ ⍮ Γ0 ⊢s s : Γ ->
                Θ ⍮ Ξ ⍮ Γ0 ⊢ a_mem H[s]ᵐ x ≈ (apps (member_ref R (pre ++ x :: nil)) args)[s] : A[s]).
     { intros s Hs; pose proof (wf_sub_mod_compat _ _ _ _ _ Hs) as Hcm.
       rewrite apps_sub, member_ref_sub.
       eapply wf_exp_eq_mem_app;
         [ eapply sub_preserves_modexp; eassumption | eapply modexp_spine_sub; eassumption
-        | destruct args; [ contradiction H2; reflexivity | discriminate ]
+        | destruct args; [ contradiction Hne; reflexivity | discriminate ]
         | eapply sub_preserves_typ; eassumption
         | rewrite <- member_ref_sub, <- apps_sub; eapply sub_preserves_exp; eassumption ]. }
-    eapply wf_exp_eq_meet; [ exact (Hd _ H13) | exact H10 | exact (Hd _ H14) | exact H7 | exact H11 ]. }
+    eapply wf_exp_eq_meet; [ exact (Hd _ Hl) | eassumption | exact (Hd _ Hr) | eassumption | eassumption ]. }
 Qed.
+
+Corollary sub_eq_preserves_exp : forall Θ Ξ Δ A M,
+    Θ ⍮ Ξ ⍮ Δ ⊢ M : A ->
+    forall Γ σ σ', Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ -> Θ ⍮ Ξ ⍮ Γ ⊢ M[σ] ≈ M[σ'] : A[σ].
+Proof. exact (proj1 sub_eq_preserves_mut). Qed.
 
 #[export]
 Hint Resolve sub_eq_preserves_exp : mctt.

@@ -3,7 +3,7 @@ From Stdlib Require Import Lia List PeanoNat String.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Import Members.
+From Mctt.Core.Syntactic Require Import Members Inductives.
 From Mctt.Core.Semantic Require Import Evaluation.
 Import Domain_Notations.
 
@@ -71,6 +71,14 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_pi :
   `( eval_exp_order Θ Ξ A p ->
      eval_exp_order Θ Ξ (Π A B) p )
+| eeo_indty :
+  `( eval_exp_order Θ Ξ (a_ind pq) p )
+| eeo_con :
+  `( eval_exp_order Θ Ξ (a_con pq c) p )
+| eeo_elim :
+  `( eval_exp_order Θ Ξ M p ->
+     (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_elim_order Θ Ξ p nm A Bs m) ->
+     eval_exp_order Θ Ξ (a_elim nm A Bs M) p )
 | eeo_fn :
   `( eval_exp_order Θ Ξ (λ A M) p )
 | eeo_app :
@@ -107,6 +115,35 @@ with eval_natrec_order (Θ : gdeps) (Ξ : gstack) : exp -> exp -> exp -> domain 
      eval_exp_order Θ Ξ A (p ↦ ⇑ a m) ->
      eval_natrec_order Θ Ξ A MZ MS ⇑ a m p )
 
+with eval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> domain -> Prop :=
+| eelo_con :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs = (ind_np D + List.length gs)%nat ->
+     brs_lookup Bs c = Some (n, B) ->
+     n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     eval_ihs_order Θ Ξ p nm A Bs gs (skipn (ind_np D) vs) ->
+     (forall ihs, ⟦ihs skipn (ind_np D) vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs ->
+        eval_exp_order Θ Ξ B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs))) ->
+     eval_elim_order Θ Ξ p nm A Bs (d_con pq c vs) )
+| eelo_neut :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     List.length as' = ind_np D ->
+     nm = S (ind_nn D) ->
+     eval_exp_order Θ Ξ A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) ->
+     eval_elim_order Θ Ξ p nm A Bs (⇑ (d_ind pq as') m) )
+
+with eval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> Prop :=
+| eiho_nil :
+  `( eval_ihs_order Θ Ξ p nm A Bs nil nil )
+| eiho_arg :
+  `( eval_ihs_order Θ Ξ p nm A Bs gs vs ->
+     eval_ihs_order Θ Ξ p nm A Bs (ca_arg T :: gs) (v :: vs) )
+| eiho_rec :
+  `( eval_elim_order Θ Ξ p nm A Bs v ->
+     eval_ihs_order Θ Ξ p nm A Bs gs vs ->
+     eval_ihs_order Θ Ξ p nm A Bs (ca_rec Ps :: gs) (v :: vs) )
+
 with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | eao_fn :
   `( eval_exp_order Θ Ξ M (p ↦ n) ->
@@ -114,6 +151,15 @@ with eval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | eao_neut :
   `( eval_exp_order Θ Ξ B (p ↦ n) ->
      eval_app_order Θ Ξ ⇑ (Πᵈ a p B) m n )
+| eao_indty :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     List.length as' < ind_np D ->
+     eval_app_order Θ Ξ (d_ind pq as') n )
+| eao_con :
+  `( ind_lookup Θ Ξ pq = Some D ->
+     ind_con D c = Some gs ->
+     List.length vs < (ind_np D + List.length gs)%nat ->
+     eval_app_order Θ Ξ (d_con pq c vs) n )
 | eao_member :
   `( eval_appm_order Θ Ξ h n ->
      (forall h', eval_appm Θ Ξ h n h' -> eval_selc_order Θ Ξ h' ch) ->
@@ -254,7 +300,7 @@ with eval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      eval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
 
 #[local]
-Hint Constructors eval_exp_order eval_natrec_order eval_app_order eval_exps_order eval_apps_order
+Hint Constructors eval_exp_order eval_natrec_order eval_elim_order eval_ihs_order eval_app_order eval_exps_order eval_apps_order
   eval_modexp_order eval_appm_order eval_sel_order eval_selm_order eval_selc_order eval_selmc_order
   eval_benv_order : mctt.
 
@@ -297,6 +343,12 @@ Ltac functional_eval_all :=
     | H1 : eval_benv ?T ?X ?m ?n ?r1, H2 : eval_benv ?T ?X ?m ?n ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_eval_benv _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r1, H2 : eval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_elim _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : eval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r1, H2 : eval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_eval_ihs _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
     | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
     end.
 
@@ -313,7 +365,9 @@ Lemma eval_order_sound : forall Θ Ξ,
     (forall h y r, h ·ₘ y Θ ⍮ Ξ ↘ r -> eval_selm_order Θ Ξ h y) /\
     (forall h ch r, h ·ₜ* ch Θ ⍮ Ξ ↘ r -> eval_selc_order Θ Ξ h ch) /\
     (forall h ch r, h ·ₘ* ch Θ ⍮ Ξ ↘ r -> eval_selmc_order Θ Ξ h ch) /\
-    (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_benv_order Θ Ξ p Φ).
+    (forall p Φ p', ⟦ Φ ⟧ᵇ Θ ⍮ Ξ ⍮ p ↘ p' -> eval_benv_order Θ Ξ p Φ) /\
+    (forall p nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r -> eval_elim_order Θ Ξ p nm A Bs m) /\
+    (forall p nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs -> eval_ihs_order Θ Ξ p nm A Bs gs vs).
 Proof.
   intros Θ Ξ; apply eval_mut_ind; intros;
     try solve [ eapply eslo_global_neut; eauto; intros; functional_eval_all; eauto
@@ -334,8 +388,11 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (eval_order_sound Θ Ξ))). Qed.
 Lemma eval_app_order_sound : forall Θ Ξ m n r, $| m & n | Θ ⍮ Ξ ↘ r -> eval_app_order Θ Ξ m n.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (eval_order_sound Θ Ξ)))). Qed.
 
+Lemma eval_exps_order_sound : forall Θ Ξ Ms p ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ p ↘ ms -> eval_exps_order Θ Ξ Ms p.
+Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (eval_order_sound Θ Ξ))))). Qed.
+
 #[export]
-Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound : mctt.
+Hint Resolve eval_exp_order_sound eval_natrec_order_sound eval_app_order_sound eval_exps_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 
@@ -347,6 +404,12 @@ Section EvalImpl.
   Proof.
     exists (env_var p x); apply eval_exp_var.
   Defined.
+
+  (** The declaration of an inductive type is not a term member. *)
+  Lemma eslo_ind_false : forall pq args x pv D,
+      eval_sel_order Θ Ξ (dm_global pq args) x ->
+      gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_ind pv D) -> False.
+  Proof. intros * H E; inversion H; subst; congruence. Qed.
 
   #[local]
   Ltac impl_obl_tac1 :=
@@ -363,6 +426,8 @@ Section EvalImpl.
     | H : eval_selc_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_selmc_order _ _ _ _ |- _ => progressive_invert H
     | H : eval_benv_order _ _ _ _ |- _ => progressive_invert H
+    | H : eval_elim_order _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
@@ -387,6 +452,18 @@ Section EvalImpl.
       | H : Nat.compare _ _ = Eq |- _ => apply Nat.compare_eq in H
       | H : Nat.compare _ _ = Lt |- _ => apply Nat.compare_lt_iff in H
       | H : Nat.compare _ _ = Gt |- _ => apply Nat.compare_gt_iff in H
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = Some _ |- _ =>
+          rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : brs_lookup ?Bs ?c = Some _, H2 : brs_lookup ?Bs ?c = None |- _ =>
+          rewrite H1 in H2; discriminate H2
       end.
 
   (** The [efq] case: the order says that the scrutinee evaluates to a
@@ -410,6 +487,8 @@ Section EvalImpl.
     | H : eval_selm_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_selc_order _ _ _ _ |- _ => dependent destruction H
     | H : eval_benv_order _ _ _ _ |- _ => dependent destruction H
+    | H : eval_elim_order _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : eval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -432,6 +511,30 @@ Section EvalImpl.
     first [ solve [ impl_obl_finish ]
           | solve [ impl_obl_split; impl_obl_finish ]
           | impl_obl_finish ].
+
+  (** An obligation whose conclusion is an order stays transparent, since
+      the guard condition sees it in the recursive calls; any other is
+      proved opaquely. *)
+  #[local]
+  Ltac ev_obl_auto :=
+    intros;
+    lazymatch goal with
+    | |- eval_exp_order _ _ _ _ => ev_obl
+    | |- eval_natrec_order _ _ _ _ _ _ _ => ev_obl
+    | |- eval_app_order _ _ _ _ => ev_obl
+    | |- eval_exps_order _ _ _ _ => ev_obl
+    | |- eval_apps_order _ _ _ _ => ev_obl
+    | |- eval_modexp_order _ _ _ _ => ev_obl
+    | |- eval_appm_order _ _ _ _ => ev_obl
+    | |- eval_sel_order _ _ _ _ => ev_obl
+    | |- eval_selm_order _ _ _ _ => ev_obl
+    | |- eval_selc_order _ _ _ _ => ev_obl
+    | |- eval_selmc_order _ _ _ _ => ev_obl
+    | |- eval_benv_order _ _ _ _ => ev_obl
+    | |- eval_elim_order _ _ _ _ _ _ _ => ev_obl
+    | |- eval_ihs_order _ _ _ _ _ _ _ _ => ev_obl
+    | |- _ => abstract ev_obl
+    end.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations eval_exp_impl m p (H : eval_exp_order Θ Ξ m p) : { d | ⟦ m ⟧ Θ ⍮ Ξ ⍮ p ↘ d } by struct H :=
@@ -470,6 +573,12 @@ Section EvalImpl.
       let (r , Hr) := eval_exp_impl A p _ in
       exist _ Πᵈ r p B _
   | λ A M , p, H => exist _ λᵈ p M _
+  | a_ind pq, p, H => exist _ (d_ind pq nil) _
+  | a_con pq c, p, H => exist _ (d_con pq c nil) _
+  | a_elim nm A Bs M, p, H =>
+      let (m, Hm) := eval_exp_impl M p _ in
+      let (r, Hr) := eval_elim_impl p nm A Bs m _ in
+      exist _ r _
   | M $ N   , p, H =>
       let (m , Hm) := eval_exp_impl M p _ in
       let (n , Hn) := eval_exp_impl N p _ in
@@ -504,6 +613,35 @@ Section EvalImpl.
       exist _ ⇑ mA recᵈ m under p return A | zero -> mz | succ -> MS end _
   | A, MZ, MS, _, p, H => False_rect _ _
 
+  with eval_elim_impl p nm A Bs m (H : eval_elim_order Θ Ξ p nm A Bs m) : { r | ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ r } by struct H :=
+  | p, nm, A, Bs, d_con pq c vs, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed with inspect (ind_con D c) := {
+      | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
+        | exist _ (Some (n, B)) Eb =>
+            let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs (skipn (ind_np D) vs) _ in
+            let (r, Hr) := eval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
+            exist _ r _
+        | exist _ None Eb => False_rect _ _ }
+      | exist _ None Ec => False_rect _ _ }
+    | exist _ None Ed => False_rect _ _ }
+  | p, nm, A, Bs, ⇑ (d_ind pq as') m, H with inspect (ind_lookup Θ Ξ pq) := {
+    | exist _ (Some D) Ed =>
+        let (a, Ha) := eval_exp_impl A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) _ in
+        exist _ (⇑ a (d_elim p nm A Bs pq as' m)) _
+    | exist _ None Ed => False_rect _ _ }
+  | p, nm, A, Bs, _, H => False_rect _ _
+
+  with eval_ihs_impl p nm A Bs gs vs (H : eval_ihs_order Θ Ξ p nm A Bs gs vs) : { ihs | ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
+  | p, nm, A, Bs, nil, nil, H => exist _ nil _
+  | p, nm, A, Bs, ca_arg T :: gs, v :: vs, H =>
+      let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs vs _ in
+      exist _ ihs _
+  | p, nm, A, Bs, ca_rec Ps :: gs, v :: vs, H =>
+      let (ih, Hih) := eval_elim_impl p nm A Bs v _ in
+      let (ihs, Hihs) := eval_ihs_impl p nm A Bs gs vs _ in
+      exist _ (ih :: ihs) _
+  | p, nm, A, Bs, _, _, H => False_rect _ _
+
   with eval_app_impl m n (H : eval_app_order Θ Ξ m n) : { d | $| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
       let (m, Hm) := eval_exp_impl M (p ↦ n) _ in
@@ -515,6 +653,8 @@ Section EvalImpl.
       let (h', Hh') := eval_appm_impl h n _ in
       let (r, Hr) := eval_selc_impl h' ch _ in
       exist _ r _
+  | d_ind pq as', n, H => exist _ (d_ind pq (as' ++ n :: nil)) _
+  | d_con pq c vs, n, H => exist _ (d_con pq c (vs ++ n :: nil)) _
   | _, n, H => False_rect _ _
 
   with eval_exps_impl Ms p (H : eval_exps_order Θ Ξ Ms p) : { ms | eval_exps Θ Ξ Ms p ms } by struct H :=
@@ -575,6 +715,7 @@ Section EvalImpl.
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
+    | exist _ (Some (ge_ind _ _)) E => False_rect _ (eslo_ind_false _ _ _ _ _ H E)
     | exist _ None E => False_rect _ _ }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
@@ -647,196 +788,258 @@ Section EvalImpl.
     definition retry: [ev_obl] is an order premise read off the order of the
     whole by inversion, the evaluation itself by its rule, or a branch the
     order rules out. *)
-Obligation 1. ev_obl. Qed.
-Obligation 2. ev_obl. Defined.
-Obligation 3. ev_obl. Qed.
-Obligation 4. ev_obl. Qed.
-Obligation 5. ev_obl. Qed.
-Obligation 6. ev_obl. Defined.
-Obligation 7. ev_obl. Qed.
-Obligation 8. ev_obl. Defined.
-Obligation 9. ev_obl. Defined.
-Obligation 10. ev_obl. Qed.
-Obligation 11. ev_obl. Qed.
-Obligation 12. ev_obl. Qed.
-Obligation 13. ev_obl. Defined.
-Obligation 14. ev_obl. Qed.
-Obligation 15. ev_obl. Defined.
-Obligation 16. ev_obl. Defined.
-Obligation 17. ev_obl. Qed.
-Obligation 18. ev_obl. Qed.
-Obligation 19. ev_obl. Qed.
-Obligation 20. ev_obl. Qed.
-Obligation 21. ev_obl. Defined.
-Obligation 22. ev_obl. Qed.
-Obligation 23. ev_obl. Qed.
-Obligation 24. ev_obl. Qed.
-Obligation 25. ev_obl. Qed.
-Obligation 26. ev_obl. Qed.
-Obligation 27. ev_obl. Qed.
-Obligation 28. ev_obl. Qed.
-Obligation 29. ev_obl. Qed.
-Obligation 30. ev_obl. Qed.
-Obligation 31. ev_obl. Qed.
-Obligation 32. ev_obl. Qed.
-Obligation 33. ev_obl. Qed.
-Obligation 34. ev_obl. Defined.
-Obligation 35. ev_obl. Qed.
-Obligation 36. ev_obl. Qed.
-Obligation 37. ev_obl. Defined.
-Obligation 38. ev_obl. Qed.
-Obligation 39. ev_obl. Qed.
-Obligation 40. ev_obl. Defined.
-Obligation 41. ev_obl. Defined.
-Obligation 42. ev_obl. Defined.
-Obligation 43. ev_obl. Qed.
-Obligation 44. ev_obl. Defined.
-Obligation 45. ev_obl. Defined.
-Obligation 46. ev_obl. Qed.
-Obligation 47. ev_obl. Defined.
-Obligation 48. ev_obl. Qed.
-Obligation 49. ev_obl. Defined.
-Obligation 50. ev_obl. Defined.
-Obligation 51. ev_obl. Defined.
-Obligation 52. ev_obl. Defined.
-Obligation 53. ev_obl. Qed.
-Obligation 54. ev_obl. Qed.
-Obligation 55. ev_obl. Qed.
-Obligation 56. ev_obl. Qed.
-Obligation 57. ev_obl. Qed.
-Obligation 58. ev_obl. Qed.
-Obligation 59. ev_obl. Qed.
-Obligation 60. ev_obl. Defined.
-Obligation 61. ev_obl. Qed.
-Obligation 62. ev_obl. Defined.
-Obligation 63. ev_obl. Defined.
-Obligation 64. ev_obl. Qed.
-Obligation 65. ev_obl. Qed.
-Obligation 66. ev_obl. Qed.
-Obligation 67. ev_obl. Qed.
-Obligation 68. ev_obl. Qed.
-Obligation 69. ev_obl. Defined.
-Obligation 70. ev_obl. Defined.
-Obligation 71. ev_obl. Qed.
-Obligation 72. ev_obl. Qed.
-Obligation 73. ev_obl. Qed.
-Obligation 74. ev_obl. Qed.
-Obligation 75. ev_obl. Qed.
-Obligation 76. ev_obl. Qed.
-Obligation 77. ev_obl. Qed.
-Obligation 78. ev_obl. Qed.
-Obligation 79. ev_obl. Qed.
-Obligation 80. ev_obl. Qed.
-Obligation 81. ev_obl. Qed.
-Obligation 82. ev_obl. Qed.
-Obligation 83. ev_obl. Qed.
-Obligation 84. ev_obl. Defined.
-Obligation 85. ev_obl. Qed.
-Obligation 86. ev_obl. Qed.
-Obligation 87. ev_obl. Defined.
-Obligation 88. ev_obl. Qed.
-Obligation 89. ev_obl. Qed.
-Obligation 90. ev_obl. Qed.
-Obligation 91. ev_obl. Qed.
-Obligation 92. ev_obl. Qed.
-Obligation 93. ev_obl. Qed.
-Obligation 94. ev_obl. Qed.
-Obligation 95. ev_obl. Qed.
-Obligation 96. ev_obl. Qed.
-Obligation 97. ev_obl. Qed.
-Obligation 98. ev_obl. Qed.
-Obligation 99. ev_obl. Qed.
-Obligation 100. ev_obl. Qed.
-Obligation 101. ev_obl. Defined.
-Obligation 102. ev_obl. Defined.
-Obligation 103. ev_obl. Qed.
-Obligation 104. ev_obl. Qed.
-Obligation 105. ev_obl. Defined.
-Obligation 106. ev_obl. Defined.
-Obligation 107. ev_obl. Qed.
-Obligation 108. ev_obl. Qed.
-Obligation 109. ev_obl. Defined.
-Obligation 110. ev_obl. Defined.
-Obligation 111. ev_obl. Qed.
-Obligation 112. ev_obl. Qed.
-Obligation 113. ev_obl. Qed.
-Obligation 114. ev_obl. Defined.
-Obligation 115. ev_obl. Defined.
-Obligation 116. ev_obl. Qed.
-Obligation 117. ev_obl. Defined.
-Obligation 118. ev_obl. Defined.
-Obligation 119. ev_obl. Defined.
-Obligation 120. ev_obl. Qed.
-Obligation 121. ev_obl. Qed.
-Obligation 122. ev_obl. Qed.
-Obligation 123. ev_obl. Qed.
-Obligation 124. ev_obl. Defined.
-Obligation 125. ev_obl. Defined.
-Obligation 126. ev_obl. Qed.
-Obligation 127. ev_obl. Qed.
-Obligation 128. ev_obl. Qed.
-Obligation 129. ev_obl. Defined.
-Obligation 130. ev_obl. Defined.
-Obligation 131. ev_obl. Qed.
-Obligation 132. ev_obl. Defined.
-Obligation 133. ev_obl. Defined.
-Obligation 134. ev_obl. Qed.
-Obligation 135. ev_obl. Defined.
-Obligation 136. ev_obl. Defined.
-Obligation 137. ev_obl. Qed.
-Obligation 138. ev_obl. Defined.
-Obligation 139. ev_obl. Defined.
-Obligation 140. ev_obl. Qed.
-Obligation 141. ev_obl. Qed.
-Obligation 142. ev_obl. Qed.
-Obligation 143. ev_obl. Qed.
-Obligation 144. ev_obl. Defined.
-Obligation 145. ev_obl. Defined.
-Obligation 146. ev_obl. Qed.
-Obligation 147. ev_obl. Qed.
-Obligation 148. ev_obl. Qed.
-Obligation 149. ev_obl. Qed.
-Obligation 150. ev_obl. Qed.
-Obligation 151. ev_obl. Defined.
-Obligation 152. ev_obl. Defined.
-Obligation 153. ev_obl. Qed.
-Obligation 154. ev_obl. Qed.
-Obligation 155. ev_obl. Qed.
-Obligation 156. ev_obl. Qed.
-Obligation 157. ev_obl. Qed.
-Obligation 158. ev_obl. Defined.
-Obligation 159. ev_obl. Qed.
-Obligation 160. ev_obl. Qed.
-Obligation 161. ev_obl. Qed.
-Obligation 162. ev_obl. Qed.
-Obligation 163. ev_obl. Defined.
-Obligation 164. ev_obl. Qed.
-Obligation 165. ev_obl. Qed.
-Obligation 166. ev_obl. Qed.
-Obligation 167. ev_obl. Defined.
-Obligation 168. ev_obl. Defined.
-Obligation 169. ev_obl. Qed.
-Obligation 170. ev_obl. Qed.
-Obligation 171. ev_obl. Qed.
-Obligation 172. ev_obl. Qed.
-Obligation 173. ev_obl. Qed.
-Obligation 174. ev_obl. Defined.
-Obligation 175. ev_obl. Qed.
-Obligation 176. ev_obl. Defined.
-Obligation 177. ev_obl. Defined.
-Obligation 178. ev_obl. Qed.
-Obligation 179. ev_obl. Qed.
-Obligation 180. ev_obl. Defined.
-Obligation 181. ev_obl. Defined.
-Obligation 182. ev_obl. Qed.
-Obligation 183. ev_obl. Qed.
-Obligation 184. ev_obl. Defined.
-Obligation 185. ev_obl. Defined.
-Obligation 186. ev_obl. Qed.
-Obligation 187. ev_obl. Qed.
-Obligation 188. ev_obl. Defined.
-Obligation 189. ev_obl. Qed.
-Obligation 190. ev_obl. Qed.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
 End EvalImpl.
 
 (** The [eval_*_impl] functions are sound by construction.  Completeness

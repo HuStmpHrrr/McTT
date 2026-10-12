@@ -75,6 +75,35 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a M ⟸ ⊥ ->
      nbe_ty_f Γ A[Id,,M] B ->
      Γ ⊢a efq M return A ⟹ B )
+(** The type former and a constructor infer the normal forms of their
+    closed types. *)
+| ati_ind :
+  `( ind_lookup gc_deps gc_stack p = Some D ->
+     nbe_ty_f Γ (ind_ty D) W ->
+     Γ ⊢a a_ind p ⟹ W )
+| ati_con :
+  `( ind_lookup gc_deps gc_stack p = Some D ->
+     ind_con D c = Some gs ->
+     nbe_ty_f Γ (con_ty p D gs) W ->
+     Γ ⊢a a_con p c ⟹ W )
+(** The eliminator: the scrutinee infers an inductive type, at whose
+    parameters' normal forms the motive and the branches are checked; the
+    type is the normal form of the motive's instance. *)
+| ati_elim :
+  `( Γ ⊢a M ⟹ nf_indty p Rs ->
+     ind_lookup gc_deps gc_stack p = Some D ->
+     List.length (nfs_to_exps Rs) = ind_np D ->
+     nm = S (ind_nn D) ->
+     elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA ->
+     is_univ_nf UA u ->
+     brs_names (ind_cons D) Bs ->
+     (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+        n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+     (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+        elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
+          ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
+     nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
+     Γ ⊢a a_elim nm A Bs M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
@@ -283,6 +312,15 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp A ->
      user_exp M ->
      user_exp (a_exfalso A M) )
+| user_exp_indty :
+  `( user_exp (a_ind p) )
+| user_exp_con :
+  `( user_exp (a_con p c) )
+| user_exp_elim :
+  `( user_exp A ->
+     (forall b, List.In b Bs -> user_exp (snd b)) ->
+     user_exp M ->
+     user_exp (a_elim nm A Bs M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->
@@ -321,6 +359,7 @@ Proof.
     (fun b => match b with b_def oA M => (forall A, oA = Some A -> user_exp A) /\ user_exp M | b_mod _ => True end)
     (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True) (fun _ => True));
     intros; try destruct_conjs; try match goal with b : bnd |- _ => destruct b as [[] |]; destruct_conjs end;
+    try (constructor; [ assumption | apply List.Forall_forall; assumption | assumption ]);
     mauto 3.
 Qed.
 

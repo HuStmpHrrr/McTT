@@ -26,7 +26,8 @@ Generalizable All Variables.
     its full telescope.
 
     The newest entry of a name decides; names are fresh in a well-formed
-    module, so there is no other.  Only a definition is handed back, and only
+    module, so there is no other.  Only a definition or the declaration of an
+    inductive type is handed back, and only
     through body modules: a path through an alias resolves to nothing here (see
     [gm_module]). *)
 Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
@@ -39,6 +40,7 @@ Fixpoint gm_resolve (Φ : gmod) (ip : list string) : option gentry :=
           if String.eqb x y
           then match ip', E with
                | nil, ge_def _ _ _ _ => Some E
+               | nil, ge_ind _ _ => Some E
                | _ :: _, ge_mod _ (gu_mk _ (md_body Φ')) => gm_resolve Φ' ip'
                | _, _ => None
                end
@@ -97,7 +99,7 @@ Fixpoint gm_submodule (T : ctx) (Φ : gmod) (x : string) (ip : list string) : op
             | z :: ip' => gm_submodule (Δ ++ T) Φ' z ip'
             end
         | ge_mod _ (gu_mk Δ (md_alias E')) => Some (mr_alias (gu_mk Δ (md_alias E')) ip)
-        | ge_def _ _ _ _ => None
+        | ge_def _ _ _ _ | ge_ind _ _ => None
         end
       else gm_submodule T Φ0 x ip
   end.
@@ -435,6 +437,7 @@ Fixpoint ge_transparent (E : gentry) : Prop :=
   | ge_def b _ _ B => b = true /\ B <> None
   | ge_mod _ (gu_mk _ (md_body Φ)) => gm_transparent Φ
   | ge_mod _ (gu_mk _ (md_alias _)) => True
+  | ge_ind _ _ => True
   end
 with gm_transparent (Φ : gmod) : Prop :=
   match Φ with
@@ -454,7 +457,8 @@ Proof.
   destruct HΦ as [HΦ HE].
   destruct ip as [| x ip']; [ discriminate |].
   destruct (String.eqb x y); [| eapply IH; eassumption ].
-  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']]]; try discriminate.
+  destruct ip' as [| z ip''], E as [b pv A B | pm [Δ' [Φ' | E']] | pv D]; try discriminate.
+  - injection H as <-; exact HE.
   - injection H as <-; exact HE.
   - eapply IH; [ exact HE | exact H ].
 Qed.
@@ -522,12 +526,8 @@ Fixpoint gm_prefix_upto (Φ : gmod) (x : string) : option gmod :=
   | gm_open Φ' _ _ => gm_prefix_upto Φ' x
   end.
 
-(** [M] applied to [args], outermost first. *)
-Fixpoint apps (M : exp) (args : list exp) : exp :=
-  match args with
-  | nil => M
-  | N :: args' => apps (a_app M N) args'
-  end.
+(** [M] applied to [args], outermost first ([apps_exp]). *)
+Abbreviation apps := apps_exp (only parsing).
 
 (** The root of a module expression, its arguments, outermost first, and the
     chain of submodules selected.  Arguments and selections commute, since
