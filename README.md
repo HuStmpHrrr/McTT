@@ -275,7 +275,17 @@ Where a parameter stands decides what it is:
 
 A recursive occurrence is the type applied to all its own parameters,
 uniform then non-uniform; an argument in which the type does not occur is
-not recursive; no argument may depend on a recursive one.  The parameters
+not recursive; no argument may depend on a recursive one.  An argument
+that is neither as written is read as its normal form, so definitions,
+`let`s and transparent members compute first: with
+`def Id (X : Type@0) : Type@0 := X end`, `(n : Id N)` is recursive, and
+`(f : (fun (X : Type@0) -> ℕ) (N → ℕ))` is the non-recursive `ℕ`.  An
+occurrence left in a non-positive position (`Neg N` with
+`Neg X := X → ⊥`, or `(N → Type@0) → Type@0`) is rejected, and so is one
+under a head that does not compute: an `abstract` definition, an axiom or
+a module parameter.  A function into the type (`∀ (n : ℕ) → Ord`) is not
+supported yet.  The constructor's type is shown with the normal form of
+such an argument.  The parameters
 of an enclosing module are not written: they are the type's outermost
 uniform parameters, as for every member.
 

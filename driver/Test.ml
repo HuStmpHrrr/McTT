@@ -3183,6 +3183,11 @@ let%expect_test "a function into the type is not supported yet" =
   let _ = main_of_body "inductive Ord : Type@0 where | lim (f : forall (n : Nat) -> Ord) end" in
   [%expect {| Error: the argument f of lim is a function into Ord, which is not supported yet |}]
 
+let%expect_test "a function into the type behind a definition is not supported yet" =
+  let _ = main_of_body "def Arr (X : Type@0) : Type@0 := forall (n : Nat) -> X end \
+                        inductive Ord : Type@0 where | lim (f : Arr Ord) end" in
+  [%expect {| Error: the argument f of lim is a function into Ord, which is not supported yet |}]
+
 let%expect_test "an argument may not depend on a recursive one" =
   let _ = main_of_body "inductive V : Type@0 where | leaf \
                         | node (v : V) (w : (fun (x : Nat) -> Nat) v) end" in
