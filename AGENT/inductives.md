@@ -18,26 +18,73 @@ def length (A : Type@0) (l : List A) : ℕ :=
   | cons x xs, r ⇒ succ r
   end
 end
+
+eval length ℕ (List.cons ℕ 1 (List.nil ℕ))
 ```
 
-* The parameters in parentheses are **uniform**; the type after `:` binds
-  the **non-uniform** ones in front of the sort,
-  `inductive Climb : ∀ (n : ℕ) → Type@0 where | stop | step (r : Climb (succ n)) end`.
+### Left and right of `:`
+
+Where a parameter is written decides how it behaves, in the declaration
+and in the eliminator.
+
+**Left of `:` — uniform parameters.**  `List (A : Type@0)` has one.  A
+uniform parameter is the same everywhere in the type:
+
+* in a constructor, a recursive argument passes it back unchanged:
+  `cons (x : A) (xs : List A)`.  `(xs : List ℕ)` or `(xs : List)` is
+  rejected: "List is not applied to its uniform parameters as declared in
+  the argument xs of cons";
+* the eliminator reads it off the scrutinee's type `List A`: the motive
+  `return z . T` does not bind it, and a branch `| cons x xs, r ⇒ …` does
+  not receive it;
+* the uniform parameters are the parameters of the module `List`:
+  `List.cons A x xs` is `(List A).cons x xs`.
+
+**Right of `:` — non-uniform parameters** (with constructor results, a
+later stage, these become indices).  `Climb : ∀ (n : ℕ) → Type@0` has one.
+The type binds it in front of its sort, and it may vary:
+
+```
+inductive Climb : ∀ (n : ℕ) → Type@0 where
+| stop
+| step (r : Climb (succ n))
+end
+
+def steps (n : ℕ) (c : Climb n) : ℕ :=
+  Climb.elim c return m z . ℕ
+  | stop m ⇒ 0
+  | step m r, h ⇒ succ h
+  end
+end
+```
+
+* a recursive argument may give it a new value: `r : Climb (succ n)`;
+* the motive binds it, then the scrutinee: `return m z . ℕ`;
+* a branch binds the constructor's value of it first (`m`), then the
+  constructor's arguments (`r`), then, after the optional comma, one
+  hypothesis per recursive argument (`h`), which is the motive at that
+  argument's own values: `h` is about `r : Climb (succ m)`, at `succ m`.
+
+A recursive occurrence is the type applied to all its own parameters,
+uniform then non-uniform.  The parameters of an enclosing module are never
+written: they are the type's outermost uniform parameters, as for every
+member.
+
+### Rules
+
 * An argument whose type is the declared name applied to all its
   parameters, the uniform ones as declared, is **recursive**
   (`ca_rec (pt_self 0 Ps)`); one in which the name does not occur is
   non-recursive (`ca_arg A`); any other is rejected.  No argument may depend
   on a recursive one.  Recursion is first order: the name is in scope nowhere
   else, so positivity holds by construction (no separate positivity check).
-* `X.elim M return ys z . A | c xs, hs ⇒ B … end`: the motive binds the
-  non-uniform parameters and the scrutinee; a branch binds the non-uniform
-  parameters, the constructor's arguments, then (after the optional comma,
-  cosmetic) one hypothesis per recursive argument.  The core checks the
-  counts, the order of the branches and the constructor names.
+* `X.elim M return ys z . A | c xs, hs ⇒ B … end`: the core checks the
+  counts, the order of the branches and the constructor names; the branch
+  labels are the declaration's constructor names, unqualified.
 * Declarations are members of units and of global modules (also under
   module parameters, which become outermost uniform parameters); not of
   local bodies (`"an inductive type is not allowed in a local module"`).
-* ℕ is unchanged.
+* ℕ is unchanged (`rec`).
 
 ## Shapes of recursive arguments
 

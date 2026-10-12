@@ -242,20 +242,57 @@ nat = ? natural number ?;
 Here, we omit spaces between tokens. A let-bound variable is
 definitionally equal to its definition.
 
-A module declares an inductive type with
-`inductive X (A : T) … : ∀ (n : N) … → S where | c (x : B) … end`: the
-parameters in parentheses are uniform, the ones the type binds before its
-sort `S` are not, and an argument of type `X` applied to all of them, the
-uniform ones as declared, is recursive: `cons (x : A) (xs : List A)`.  The
-parameters of an enclosing module are not written.  The declaration makes
-`X` a module over its uniform parameters, whose members are the
-constructors: `List.cons A x xs` is `(List A).cons x xs`, and
-`open List use (nil; cons)` declares them here.  As a term, `X` is the type.
-`X.elim M return … end` eliminates `M : X …`; the module also has the
+### Inductive types
+
+A module declares an inductive type with a command:
+
+```EBNF
+(* the parameters left of ':' are uniform; the ones the type binds
+   before its sort are not *)
+inductive = ['private'] , 'inductive' , id , {parameter} , ':' ,
+            [ ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) ] , type ,
+            'where' , {constructor} , 'end';
+constructor = '|' , id , {parameter};
+```
+
+Where a parameter stands decides what it is:
+
+* **Left of `:`, a uniform parameter.**  It is fixed for the whole type.
+  A recursive occurrence passes it back unchanged: `cons (x : A) (xs : List A)`;
+  `(xs : List ℕ)` is rejected ("List is not applied to its uniform
+  parameters as declared in the argument xs of cons").  The eliminator
+  reads it off the scrutinee's type: the motive does not bind it, and
+  neither does a branch.  The uniform parameters are the parameters of the
+  module `X` the declaration makes.
+* **Right of `:`, a non-uniform parameter** (later, with constructor
+  results, an index), bound by the type in front of its sort.  A recursive
+  occurrence may give it a new value: `step (r : Climb (succ n))`.  The
+  motive binds it, then the scrutinee (`return m z . T`); a branch binds
+  the constructor's value of it, then the constructor's arguments, then,
+  after an optional comma, one hypothesis per recursive argument, which is
+  the motive at that argument's own values (`| step m r, h ⇒ …`, `h` at
+  `succ m`).
+
+A recursive occurrence is the type applied to all its own parameters,
+uniform then non-uniform; an argument in which the type does not occur is
+not recursive; no argument may depend on a recursive one.  The parameters
+of an enclosing module are not written: they are the type's outermost
+uniform parameters, as for every member.
+
+The declaration makes `X` a module over its uniform parameters, whose
+members are the constructors: `List.cons A x xs` is `(List A).cons x xs`,
+and `open List use (nil; cons)` declares them here.  Constructor names need
+only be distinct within the type.  As a term, `X` is the type.
+`X.elim M return … end` eliminates `M : X …`, and the module also has the
 recursor `X.rec`, the eliminator as a function into a small universe:
-`List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
-(bnil : P (List.nil A)) (bcons : ∀ (x : A) (xs : List A) (r : P xs) →
-P (List.cons A x xs)) (l : List A) → P l`.
+
+```
+List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
+             (bnil : P (List.nil A))
+             (bcons : ∀ (x : A) (xs : List A) (r : P xs) → P (List.cons A x xs))
+             (l : List A) → P l
+```
+
 `examples/Inductives.mctt` has lists, options, trees, dependent pairs and a
 type with a non-uniform parameter.
 

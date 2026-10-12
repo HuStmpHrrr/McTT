@@ -1,15 +1,28 @@
 (* Inductive types: declared in a unit, built by their constructors and
-   taken apart by elim, whose branches compute on a constructor. *)
+   taken apart by their eliminator X.elim, whose branches compute on a
+   constructor.
+
+   Where a parameter is written decides what it is.  Left of ":", a
+   uniform parameter: fixed for the whole type, so a recursive argument
+   passes it back unchanged, and the eliminator reads it off the
+   scrutinee's type (the motive does not bind it, nor do the branches).
+   Right of ":", bound by the type in front of its sort, a non-uniform
+   parameter: it may vary, so a recursive argument may give it a new
+   value, the motive binds it before the scrutinee, a branch binds the
+   constructor's value of it, and each hypothesis is at its recursive
+   argument's own value.  [Climb] at the end has one. *)
 module Inductives where
 
-(* Lists: one uniform parameter, one recursive argument. *)
+(* Lists: one uniform parameter, [A], one recursive argument, at [A]
+   unchanged.  [List] is also a module over [A]: its members are the
+   constructors [List.nil] and [List.cons], and the recursor [List.rec]. *)
 inductive List (A : Type@0) : Type@0 where
 | nil
 | cons (x : A) (xs : List A)
 end
 
-(* The motive binds the scrutinee; a branch, the constructor's arguments
-   and, after the comma, the induction hypotheses. *)
+(* The motive binds the scrutinee, not [A]; a branch, the constructor's
+   arguments and, after the comma, the induction hypotheses. *)
 def length (A : Type@0) (l : List A) : ℕ :=
   List.elim l return z . ℕ
   | nil ⇒ 0
@@ -118,9 +131,11 @@ end
 
 eval snd ℕ (λ (x : ℕ) → ℕ) (Sigma.pair ℕ (λ (x : ℕ) → ℕ) 1 2)
 
-(* A non-uniform parameter: the type binds [n] in front of its sort, a
-   recursive argument gives it a new value, and the motive and every
-   branch bind it too. *)
+(* A non-uniform parameter: the type binds [n] in front of its sort, and a
+   recursive argument gives it a new value, [succ n].  The motive binds it
+   ([m]) before the scrutinee; a branch binds the constructor's value of
+   it ([m]), then the arguments ([r]), then the hypothesis ([h]), which is
+   about [r : Climb (succ m)]. *)
 inductive Climb : ∀ (n : ℕ) → Type@0 where
 | stop
 | step (r : Climb (succ n))
