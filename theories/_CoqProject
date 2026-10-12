@@ -126,6 +126,7 @@
 ./Core/Syntactic/System/IndSyntax.v
 ./Core/Syntactic/System/IndClassify.v
 ./Core/Syntactic/System/IndTyping.v
+./Core/Syntactic/System/IndRec.v
 ./Core/Syntactic/System/Privacy.v
 ./Core/Syntactic/System/Scoping.v
 ./Core/Syntactic/System/Structural.v
