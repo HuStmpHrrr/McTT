@@ -123,6 +123,9 @@ let next st x =
   (match st.toks.(st.vars.(i)).t with
    | P.VAR (_, y) when y = x -> ()
    | P.VAR (_, y) -> raise (Misaligned (Printf.sprintf "name %s, token %s at byte %d" x y st.toks.(st.vars.(i)).s))
+   (* The recursor of an inductive type, [X.rec]: a keyword, a name. *)
+   | P.REC _ when x = "rec" -> ()
+   | P.REC _ -> raise (Misaligned (Printf.sprintf "name %s, token rec at byte %d" x st.toks.(st.vars.(i)).s))
    | _ -> assert false);
   st.cur <- i + 1; i
 
@@ -481,7 +484,10 @@ let walk (file : string list) (src : string) (items : (string list * string list
     | _ -> failwith "parse error"
   in
   let vars = Array.of_list (List.filter_map Fun.id
-      (List.mapi (fun i t -> match t.t with P.VAR _ -> Some i | _ -> None) (Array.to_list toks))) in
+      (List.mapi (fun i t -> match t.t with
+           | P.VAR _ -> Some i
+           | P.REC _ when i > 0 && (match toks.(i - 1).t with P.DOT _ -> true | _ -> false) -> Some i
+           | _ -> None) (Array.to_list toks))) in
   let occ = Array.init (Array.length vars) (fun _ -> { link = None; anchor = None; kind = None }) in
   let st = { unit = fp; toks; vars; occ; cur = 0; items; decls = ref []; notes = []; evals = [] } in
   let l = List.fold_left (lead st fp) [] leads in
@@ -801,7 +807,7 @@ let render_unit lib kinds (u : unit_info) : string =
           gap t.s;
           let txt = esc (String.sub src t.s (t.e - t.s)) in
           (match t.t with
-           | P.VAR _ ->
+           | P.VAR _ | P.REC _ when Hashtbl.mem var_ix i ->
                let o = u.u_occ.(Hashtbl.find var_ix i) in
                let target = Option.bind o.link (resolve lib 0) in
                let cls = match o.kind, target with

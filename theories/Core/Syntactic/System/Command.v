@@ -104,16 +104,67 @@ Definition ind_frame (Ξ : gstack) (x : string) (R : raw_decl) : gstack :=
 
 Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (qname_in (gs_path Ξ) x) ind_name.
 
+(** The recursor of the filed declaration [D], over the module's
+    parameters [Γ0] (the uniform ones): at a finite level [u], a motive
+    [P : Π Δn. Π (z : X us ns). Type⟨u⟩], one branch per constructor, of
+    the type the eliminator gives a branch at the motive [P], then
+    [Π Δn. Π (z : X us ns). P ns z].  It is the eliminator, at that motive,
+    of branches that are the branch arguments applied to what they bind.
+    Below [k] binders past [P], the motive is [P] under [Δn] and [z], and
+    the uniform parameters are the module's. *)
+Definition rec_motive (D : ind_decl) (k : nat) : exp :=
+  apps (a_var (S (ind_nn D) + k)) (vars_from 0 (S (ind_nn D))).
+
+Definition rec_uvars (D : ind_decl) (k : nat) : list exp := vars_from (2 + k) (ind_nu D).
+
+(** The branch types, outermost first, the [k]-th under [k] before it. *)
+Fixpoint rec_btys (p : qname) (D : ind_decl) (k : nat) (cs : list (string * list carg)) : list centry :=
+  match cs with
+  | nil => nil
+  | (c, gs) :: cs' =>
+      ce_ass (ctx_pi (elim_bctx p D gs (rec_motive D k) (rec_uvars D k))
+                (elim_bty p D c gs (rec_motive D k) (rec_uvars D k)))
+      :: rec_btys p D (S k) cs'
+  end.
+
+(** The level, the motive and the branches, innermost first. *)
+Definition rec_tele (p : qname) (D : ind_decl) : ctx :=
+  List.rev (rec_btys p D 0 (ind_cons D)) ++
+  ce_ass (ctx_pi (elim_mctx p D (vars_from 1 (ind_nu D))) (a_univ (a_var (S (ind_nn D))))) ::
+  ce_ass (a_level 0) :: nil.
+
+Definition rec_ty (p : qname) (D : ind_decl) : typ :=
+  let K := List.length (ind_cons D) in
+  ctx_pi (rec_tele p D) (ctx_pi (elim_mctx p D (rec_uvars D K)) (rec_motive D K)).
+
+(** The branches of the eliminator, each the [j]-th branch argument applied
+    to the variables the branch binds. *)
+Fixpoint rec_brs (D : ind_decl) (K j : nat) (cs : list (string * list carg)) : list (string * nat * exp) :=
+  match cs with
+  | nil => nil
+  | (c, gs) :: cs' =>
+      let n := (ind_nn D + List.length gs + cargs_nrec gs)%nat in
+      (c, n, apps (a_var (n + S (ind_nn D) + (K - 1 - j))) (vars_from 0 n)) :: rec_brs D K (S j) cs'
+  end.
+
+Definition rec_fn (p : qname) (D : ind_decl) : exp :=
+  let K := List.length (ind_cons D) in
+  ctx_fn (rec_tele p D)
+    (ctx_fn (elim_mctx p D (rec_uvars D K))
+       (a_elim p (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
+
 (** The constructors of the filed declaration [D], over the module's
-    parameters: [D]'s uniform ones.  They are public members of the module,
-    as the declaration is: the module's own privacy is the declaration's. *)
+    parameters: [D]'s uniform ones, then its recursor.  They are public
+    members of the module, as the declaration is: the module's own privacy
+    is the declaration's. *)
 Definition ind_gens (p : qname) (D : ind_decl) : list igen :=
   List.map (fun cg =>
               ig_def (fst cg) false
                 (ctx_pi (ind_nparams D)
                    (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
                 (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D))))
-    (ind_cons D).
+    (ind_cons D)
+  ++ ig_def "rec" false (rec_ty p D) (rec_fn p D) :: nil.
 
 (** ** Merging Filed Units
 

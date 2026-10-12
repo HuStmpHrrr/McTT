@@ -288,6 +288,8 @@ let atomic_obj :=
   (* Dot access binds tighter than application, so [X::Y.Z.foo] is one name
      and module arguments are parenthesised, as in [(X::Y.Z a b).foo]. *)
   | ~ = atomic_obj; "."; x = VAR; { Cst.proj atomic_obj (snd x) }
+  (* The recursor of an inductive type [X], [X.rec]: [rec] is a keyword. *)
+  | ~ = atomic_obj; "."; REC; { Cst.proj atomic_obj "rec"%string }
 
   | "("; ~ = obj; ")"; <>
 

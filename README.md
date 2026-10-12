@@ -251,6 +251,11 @@ parameters of an enclosing module are not written.  The declaration makes
 `X` a module over its uniform parameters, whose members are the
 constructors: `List.cons A x xs` is `(List A).cons x xs`, and
 `open List use (nil; cons)` declares them here.  As a term, `X` is the type.
+`X.elim M return … end` eliminates `M : X …`; the module also has the
+recursor `X.rec`, the eliminator as a function into a small universe:
+`List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
+(bnil : P (List.nil A)) (bcons : ∀ (x : A) (xs : List A) (r : P xs) →
+P (List.cons A x xs)) (l : List A) → P l`.
 `examples/Inductives.mctt` has lists, options, trees, dependent pairs and a
 type with a non-uniform parameter.
 

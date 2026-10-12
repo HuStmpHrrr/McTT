@@ -140,6 +140,27 @@ carries it); readback takes it from `d_elim`.
   (`elim_infer`, `qname_eq_dec`).  Room for stage M: the member index can
   be added beside `p`.
 
+## The recursor (item 4b)
+
+The declaration also generates the member `rec` of its module
+(`ind_gens`, last), in the module's frame `Γ0`:
+
+```
+rec : Π (u : Level). Π (P : Π Δn. Π (z : X us ns). Type⟨u⟩).
+      Π (b_c : Π (elim_bctx … P …). elim_bty … P …) … .
+      Π Δn. Π (z : X us ns). P ns z
+rec := λ u P b_c … . λ Δn z. a_elim p (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
+```
+
+(`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
+`System/Command.v`): each branch argument has exactly the type the
+eliminator gives the branch at the motive `P`.  It is checked by `gens_run`
+like the constructors, when the declaration runs; no theorem states that
+it always checks (every example does).  The surface reads `X.rec`
+(`rec` is a keyword: `atomic_obj . REC` in the parser; `Doc.ml` pairs the
+token).  Not done: `open X use (rec)` (the items are names, not the
+keyword).
+
 ## Algorithmic layer and checker
 
 * `ati_ind`, `ati_con`, `ati_elim` (`Algorithmic/Typing/Definitions.v`); the

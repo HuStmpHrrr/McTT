@@ -307,7 +307,7 @@ prog: MODULE VAR WHERE EVAL FALSE_TY DOT ZERO
 ## atomic_obj DOT
 ##
 
-Expected a member name, or "elim", after ".".
+Expected a member name, "rec" or "elim", after ".".
 
 prog: MODULE VAR WHERE EVAL LET VAR COLON FALSE_TY WHERE
 ##

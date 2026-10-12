@@ -28,6 +28,23 @@ eval length ℕ (append ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)))
                 (List.cons ℕ 3 (List.nil ℕ)))
 eval append ℕ (List.cons ℕ 1 (List.nil ℕ)) (List.cons ℕ 2 (List.nil ℕ))
 
+(* The recursor, a member generated with the constructors: the eliminator
+   as a function, its motive into a small universe at a finite level.
+   Its type is the one stated here. *)
+def recType : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
+    (bnil : P (List.nil A))
+    (bcons : ∀ (x : A) (xs : List A) (r : P xs) → P (List.cons A x xs))
+    (l : List A) → P l :=
+  List.rec
+end
+
+def count (A : Type@0) (l : List A) : ℕ :=
+  List.rec A 0l (λ (l : List A) → ℕ) 0
+    (λ (x : A) (xs : List A) (r : ℕ) → succ r) l
+end
+
+eval count ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)))
+
 (* A stuck eliminator: its scrutinee is a variable. *)
 eval λ (l : List ℕ) → length ℕ (List.cons ℕ 0 l)
 
@@ -117,5 +134,14 @@ def steps (n : ℕ) (c : Climb n) : ℕ :=
 end
 
 eval steps 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2)))
+
+(* The recursor binds the non-uniform parameters too: in the motive, in the
+   branches, and before the scrutinee. *)
+def climbs (n : ℕ) (c : Climb n) : ℕ :=
+  Climb.rec 0l (λ (m : ℕ) (z : Climb m) → ℕ) (λ (m : ℕ) → 0)
+    (λ (m : ℕ) (r : Climb (succ m)) (h : ℕ) → succ h) n c
+end
+
+eval climbs 0 (Climb.step 0 (Climb.stop 1))
 
 end

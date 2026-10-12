@@ -3135,6 +3135,7 @@ let%expect_test "Inductives.mctt works" =
                  (List.cons ℕ 3 (List.nil ℕ))) --> 3 : ℕ
     Evaluate append ℕ (List.cons ℕ 1 (List.nil ℕ)) (List.cons ℕ 2 (List.nil ℕ))
       --> List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ)) : List ℕ
+    Evaluate count ℕ (List.cons ℕ 1 (List.cons ℕ 2 (List.nil ℕ))) --> 2 : ℕ
     Evaluate λ (x1 : List ℕ) → length ℕ (List.cons ℕ 0 x1)
       --> λ (x1 : List ℕ)
             → succ
@@ -3151,6 +3152,7 @@ let%expect_test "Inductives.mctt works" =
                  (Tree.leaf ℕ)) --> 2 : ℕ
     Evaluate snd ℕ (λ (x1 : ℕ) → ℕ) (Sigma.pair ℕ (λ (x2 : ℕ) → ℕ) 1 2) --> 2 : ℕ
     Evaluate steps 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --> 2 : ℕ
+    Evaluate climbs 0 (Climb.step 0 (Climb.stop 1)) --> 1 : ℕ
     |}]
 
 let%expect_test "a recursive argument names the type at all its parameters" =
@@ -3282,6 +3284,29 @@ let%expect_test "an eliminator of a private type is out of reach outside its mod
                           def f (n : N) : Nat := N.elim n return k . Nat | z => 0 end end end \
                         eval fun (n : A.N) -> A.N.elim n return k . Nat | z => 0 end" in
   [%expect {| Error: Test.A.N is private |}]
+
+let%expect_test "the recursor of a type under module parameters takes them first" =
+  let _ = main_of_body "module L (A : Type@0) where \
+                          inductive List : Type@0 where | nil | cons (x : A) (xs : List) end \
+                        end \
+                        eval L.List.rec Nat 0l (fun (l : L.List Nat) -> Nat) 0 \
+                          (fun (x : Nat) (xs : L.List Nat) (r : Nat) -> succ r) (L.List.cons Nat 1 (L.List.nil Nat))" in
+  [%expect {|
+    Evaluate L.List.rec ℕ 0l (λ (x1 : L.List ℕ) → ℕ) 0
+               (λ (x2 : ℕ)
+                  (x3 : L.List ℕ)
+                  (x4 : ℕ)
+                 → succ x4)
+               (L.List.cons ℕ 1 (L.List.nil ℕ)) --> 1 : ℕ
+    |}]
+
+let%expect_test "the recursor of the empty type" =
+  let _ = main_of_body "inductive E : Type@0 where end \
+                        eval fun (e : E) -> E.rec 0l (fun (z : E) -> False) e" in
+  [%expect {|
+    Evaluate λ (x1 : E) → E.rec 0l (λ (x2 : E) → ⊥) x1
+      --> λ (x1 : E) → E.elim x1 return x2 . ⊥ end : ∀ (x1 : E) → ⊥
+    |}]
 
 let%expect_test "an inductive type is not allowed in a local module" =
   let _ = main_of_body "eval let module M where inductive E : Type@0 where end end in zero end" in
