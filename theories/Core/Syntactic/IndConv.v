@@ -127,11 +127,11 @@ Lemma wf_ih_sub_eq : forall Γ p D Us Us' c gs gs1 Ps gs2 E,
     Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs
       ⊢s sb_of_list (ι (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
             ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)
       ≈ sb_of_list (ι (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us')]
-                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
             ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)
       : elim_mctx p D Us ++ Γ.
 Proof.

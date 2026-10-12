@@ -193,8 +193,8 @@ Section Fixed_GCtx.
         (forall ms ms' c gs gs1 Ps gs2 ws ws', tele_full nr T ms ms' ->
            ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
            tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-           exists bs bs', eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ ms ++ ws)) bs /\
-             eval_exps gc_deps gc_stack Ps (env_args nil (u2 ++ ms' ++ ws')) bs' /\ tele_full nr T bs bs') ->
+           exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups ++ ms ++ ws)) bs /\
+             eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (u2 ++ ms' ++ ws')) bs' /\ tele_full nr T bs bs') ->
         ind_adm D ups nr ar u2.
     Proof.
       intros u2 Hn2 Ha2 Hc2; split; [| split; [| exact Hc2 ] ].

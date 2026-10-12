@@ -382,8 +382,8 @@ Lemma ihs_ctx_aux_sub : forall D A Us na τ gs pat j,
     decl_closed D -> List.length Us = ind_nu D ->
     List.length pat + List.length gs = na ->
     (forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
-       List.Forall (exp_scoped (pat_nargs pat + List.length (cargs_strat gs1) + ind_np D)) Ps /\
-       List.length Ps = ind_nn D) ->
+       List.Forall (exp_scoped (pat_nargs pat + List.length (cargs_strat gs1) + ind_np D)) (ptyp_ps Ps) /\
+       List.length (ptyp_ps Ps) = ind_nn D) ->
     tele_sub (ihs_ctx_aux D A Us na pat j gs) (sb_qn (j + na + ind_nn D) τ)
     = ihs_ctx_aux D A[sb_qn (S (ind_nn D)) τ] (List.map (fun U => U[τ]) Us) na pat j gs.
 Proof.

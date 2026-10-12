@@ -341,6 +341,18 @@ Section Expansion.
         xok (e' :: Δ0')
     end.
 
+  (** The shape of a recursive argument: a function's codomain is under
+      its argument. *)
+  Fixpoint ptyp_xp (S : skel) (t : ptyp) : xres ptyp :=
+    match t with
+    | pt_self k Ps => let+ Ps' := xmap (exp_xp S) Ps in xok (pt_self k Ps')
+    | pt_aux k Ps => let+ Ps' := xmap (exp_xp S) Ps in xok (pt_aux k Ps')
+    | pt_pi A t' =>
+        let+ A' := exp_xp S A in
+        let+ t'' := ptyp_xp (None :: S) t' in
+        xok (pt_pi A' t'')
+    end.
+
   (** The arguments of a constructor: a non-recursive argument binds a
       variable for the ones after it, a recursive one none. *)
   Fixpoint cargs_xp (S : skel) (gs : list carg) : xres (list carg) :=
@@ -350,10 +362,10 @@ Section Expansion.
         let+ A' := exp_xp S A in
         let+ gs'' := cargs_xp (None :: S) gs' in
         xok (ca_arg A' :: gs'')
-    | ca_rec Ps :: gs' =>
-        let+ Ps' := xmap (exp_xp S) Ps in
+    | ca_rec t :: gs' =>
+        let+ t' := ptyp_xp S t in
         let+ gs'' := cargs_xp S gs' in
-        xok (ca_rec Ps' :: gs'')
+        xok (ca_rec t' :: gs'')
     end.
 
   (** A declaration: its parameters as a telescope, its sort over the
@@ -481,10 +493,15 @@ Section Ext.
     assert (Hxm : forall Ps S, xmap (exp_xp mt S) Ps = xmap (exp_xp mt' S) Ps).
     { induction Ps as [| P Ps IH]; intros; cbn; [ reflexivity |].
       rewrite He; destruct (exp_xp mt' S P); cbn; [ rewrite IH |]; reflexivity. }
+    assert (Hpt : forall t S, ptyp_xp mt S t = ptyp_xp mt' S t).
+    { induction t as [k Ps | k Ps | A t IH]; intros; cbn.
+      - rewrite Hxm; reflexivity.
+      - rewrite Hxm; reflexivity.
+      - rewrite He; destruct (exp_xp mt' S A); cbn; [ rewrite IH |]; reflexivity. }
     assert (Hc : forall gs S, cargs_xp mt S gs = cargs_xp mt' S gs).
-    { induction gs as [| [A | Ps] gs IH]; intros; cbn; [ reflexivity | |].
+    { induction gs as [| [A | t] gs IH]; intros; cbn; [ reflexivity | |].
       - rewrite He; destruct (exp_xp mt' S A); cbn; [ rewrite IH |]; reflexivity.
-      - rewrite Hxm; destruct (xmap (exp_xp mt' S) Ps); cbn; [ rewrite IH |]; reflexivity. }
+      - rewrite Hpt; destruct (ptyp_xp mt' S t); cbn; [ rewrite IH |]; reflexivity. }
     intros [nu Δ A cs] S; unfold decl_xp; cbn [ind_params ind_sort ind_cons ind_nu].
     rewrite tele_xp_ext; destruct (tele_xp mt' S Δ) as [Δ' |]; cbn [xbind]; [| reflexivity ].
     rewrite He; destruct (exp_xp mt' _ A); cbn [xbind]; [| reflexivity ].

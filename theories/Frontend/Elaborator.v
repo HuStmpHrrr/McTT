@@ -302,7 +302,7 @@ Fixpoint elab_cargs (x : string) (nn : nat) (S : list ent) (args : list (string 
                       ("a recursive argument is " ++ x ++ " applied to its non-uniform parameters only") in
           let* Ps := elab_args_with elab S os in
           let* gs := elab_cargs x nn S args' in
-          eok (ca_rec Ps :: gs)
+          eok (ca_rec (pt_self 0 Ps) :: gs)
       | None =>
           let* A := elab S oA in
           let* gs := elab_cargs x nn (en_var y :: S) args' in

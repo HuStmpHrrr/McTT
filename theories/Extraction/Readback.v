@@ -56,7 +56,7 @@ Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list 
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a -> ffresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 | ffcargo_rec :
-  `( feval_exps_order Θ Ξ Ps ρ ->
+  `( feval_exps_order Θ Ξ (ptyp_ps Ps) ρ ->
      ffresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_rec Ps :: gs) s ).
 
@@ -121,7 +121,7 @@ Section FreshImpl.
       let (r, Hr) := ffresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: fst r, snd r) _
   | p, ups, ρ, ca_rec Ps :: gs, s, H =>
-      let (bs, Hbs) := feval_exps_impl Θ Ξ Ps ρ _ in
+      let (bs, Hbs) := feval_exps_impl Θ Ξ (ptyp_ps Ps) ρ _ in
       let (r, Hr) := ffresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! (d_ind p (ups ++ bs)) s :: fst r, bs :: snd r) _.
   Solve All Obligations with fr_obl.
@@ -302,8 +302,8 @@ with fread_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain 
      fread_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
 | frcargs_rec :
-  `( feval_exps_order Θ Ξ Ps ρ ->
-     (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs -> fread_nf_order Θ Ξ s ⇓ (d_ind p (ups ++ bs)) v) ->
+  `( feval_exps_order Θ Ξ (ptyp_ps Ps) ρ ->
+     (forall bs, ⟦ (ptyp_ps Ps) ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs -> fread_nf_order Θ Ξ s ⇓ (d_ind p (ups ++ bs)) v) ->
      fread_cargs_order Θ Ξ s p ups ρ gs vs ->
      fread_cargs_order Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) )
 
@@ -528,7 +528,7 @@ Equations fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in �
     let (Vs, HVs) := fread_cargs_impl s p ups (ρ ↦ v) gs vs _ in
     exist _ (nfs_cons V Vs) _
 | s, p, ups, ρ, ca_rec Ps :: gs, v :: vs, H =>
-    let (bs, Hbs) := feval_exps_impl Θ Ξ Ps ρ _ in
+    let (bs, Hbs) := feval_exps_impl Θ Ξ (ptyp_ps Ps) ρ _ in
     let (V, HV) := fread_nf_impl s ⇓ (d_ind p (ups ++ bs)) v _ in
     let (Vs, HVs) := fread_cargs_impl s p ups ρ gs vs _ in
     exist _ (nfs_cons V Vs) _

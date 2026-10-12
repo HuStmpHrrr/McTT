@@ -381,7 +381,7 @@ Proof. intros; rewrite <- !exp_sub_of_wk, !exp_sub_sub; reflexivity. Qed.
 Lemma cinst_split : forall Γ p D Us gs1 Ps gs2,
     cinst Γ p D Us (gs1 ++ ca_rec Ps :: gs2)
     = (tele_sub (cargs_ctx_aux p D (true :: cargs_pat gs1) gs2) (sb_qn (S (List.length gs1)) (sb_qn (ind_nn D) (sb_of_list Id Us)))
-       ++ ce_ass (apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Ps))
+       ++ ce_ass (apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) (ptyp_ps Ps)))
             [sb_qn (List.length gs1) (sb_qn (ind_nn D) (sb_of_list Id Us))] :: nil)
       ++ cinst Γ p D Us gs1.
 Proof.
@@ -400,13 +400,14 @@ Lemma wf_ih_sub : forall Θ Ξ Γ p D Us c gs gs1 Ps gs2 E,
     Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs
       ⊢s sb_of_list (ι (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
             ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)
       : elim_mctx p D Us ++ Γ.
 Proof.
   intros * HD Hc Hl HΓ HUl Hσ HM Hin Heq HΨ.
   pose proof HD as (Hass & (Hmv & Hmvs & Hmvc) & Hle & HΔ & HS & _ & _ & HA & HPl & HP & _).
   specialize (HPl _ _ _ _ _ Hin Heq).
+  rename Ps into tP; set (Ps := ptyp_ps tP) in *.
   set (pat := cargs_pat gs1) in *.
   assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.
   set (i := List.length pat) in *.
@@ -428,8 +429,8 @@ Proof.
       by (rewrite !List.length_app, !length_tele_sub, length_cargs_ctx, length_nparams; unfold m; lia).
     apply wf_wk_shiftn_app'; exact HΨ. }
   (* the context of the arguments before the recursive one *)
-  destruct (wf_sub_cinst _ _ _ _ _ _ HD Hc Hl HΓ Hσ c gs gs1 (ca_rec Ps :: gs2) Hin Heq) as (Hi1 & Hτ2).
-  destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl Hin gs1 (ca_rec Ps :: gs2) Heq) as (HΨ1 & _ & Hφ).
+  destruct (wf_sub_cinst _ _ _ _ _ _ HD Hc Hl HΓ Hσ c gs gs1 (ca_rec tP :: gs2) Hin Heq) as (Hi1 & Hτ2).
+  destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl Hin gs1 (ca_rec tP :: gs2) Heq) as (HΨ1 & _ & Hφ).
   assert (Hw3 : Θ ⍮ Ξ ⍮ E ++ cinst Γ p D Us gs ⊢w wk_shiftn s : cinst Γ p D Us gs1).
   { rewrite Heq in HΨ |- *; rewrite cinst_split in HΨ |- *; rewrite List.app_assoc in HΨ |- *.
     replace s with (List.length (E ++ tele_sub (cargs_ctx_aux p D (true :: cargs_pat gs1) gs2)

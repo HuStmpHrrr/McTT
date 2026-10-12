@@ -557,7 +557,7 @@ Lemma fresh_cargs_nth : forall p ups E gs s vs bss, fresh_cargs gc_deps gc_stack
     forall gs1 g gs2, gs = gs1 ++ g :: gs2 ->
     (forall A, g = ca_arg A -> exists a, ⟦ A ⟧ env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ a /\
        List.nth_error vs (List.length gs1) = Some (⇑! a (s + List.length gs1))) /\
-    (forall Ps, g = ca_rec Ps -> exists bs, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
+    (forall Ps, g = ca_rec Ps -> exists bs, ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args E (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
        List.nth_error vs (List.length gs1) = Some (⇑! (d_ind p (ups ++ bs)) (s + List.length gs1)) /\
        List.nth_error bss (cargs_nrec gs1) = Some bs).
 Proof.

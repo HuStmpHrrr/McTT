@@ -527,10 +527,10 @@ Definition decl_typed (Θ : gdeps) (Ξ : gstack) (D : ind_decl) : Prop :=
      Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
        ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ) /\
   (forall c gs gs1 Ps gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-     List.length Ps = ind_nn D) /\
+     List.length (ptyp_ps Ps) = ind_nn D) /\
   (forall c gs gs1 Ps gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-     List.nth_error Ps k = Some P ->
-     List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+     List.nth_error (ptyp_ps Ps) k = Some P ->
+     List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
        = Some T ->
      Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T) /\
   (forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
@@ -698,13 +698,14 @@ Lemma rec_arg_typed : forall Θ Ξ p D c gs,
       ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D gs1 ++ ind_params D ->
       Θ ⍮ Ξ ⍮ cargs_ctx p D gs1 ++ ind_params D ⊢w wk_pat (cargs_pat gs1) : cargs_strat gs1 ++ ind_params D ->
       exists j, Θ ⍮ Ξ ⍮ cargs_ctx p D gs1 ++ ind_params D
-        ⊢ apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Ps)
+        ⊢ apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) (ptyp_ps Ps))
         : Typeω@j.
 Proof.
-  intros * HD Hc Hl Hin gs1 Ps gs2 Heq HΨ Hφ.
+  intros * HD Hc Hl Hin gs1 tP gs2 Heq HΨ Hφ.
   pose proof HD as (Hass & (Hmv & Hmvs & Hmvc) & Hle & HΔ & HS & _ & _ & HA & HPl & HP & _).
   pose proof Hc as (_ & _ & Hs & HsS & _).
   specialize (HPl _ _ _ _ _ Hin Heq).
+  set (Ps := ptyp_ps tP) in *.
   set (pat := cargs_pat gs1).
   unfold ind_uvars.
   assert (Hpat : List.length pat = List.length gs1) by apply length_cargs_pat.

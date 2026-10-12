@@ -116,7 +116,7 @@ Section Fixed_GCtx.
     | ihs_rel_nil : forall ρ, ihs_rel ρ nil nil nil nil nil
     | ihs_rel_arg : forall ρ A gs v v' vs vs' ihs ihs',
         ihs_rel (ρ ↦ v) gs vs vs' ihs ihs' -> ihs_rel ρ (ca_arg A :: gs) (v :: vs) (v' :: vs') ihs ihs'
-    | ihs_rel_rec : forall ρ Ps gs v v' vs vs' bs ih ih' ihs ihs',
+    | ihs_rel_rec : forall ρ (Ps : ptyp) gs v v' vs vs' bs ih ih' ihs ihs',
         eval_exps gc_deps gc_stack Ps ρ bs -> Rel bs v bs v' ih ih' ->
         ihs_rel ρ gs vs vs' ihs ihs' -> ihs_rel ρ (ca_rec Ps :: gs) (v :: vs) (v' :: vs') (ih :: ihs) (ih' :: ihs').
 

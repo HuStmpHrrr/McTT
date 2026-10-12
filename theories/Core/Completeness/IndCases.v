@@ -44,8 +44,8 @@ Record sem_core (D : ind_decl) : Prop := mk_sem_core
     exists j, astrat gs k ++ ind_params D ⊨ A : Typeω@j
 ; sd_nodup : List.NoDup (List.map fst (ind_cons D))
 ; sd_rec : forall c gs gs1 Ps gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-    List.nth_error Ps m = Some P ->
-    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Ps) m
+    List.nth_error (ptyp_ps Ps) m = Some P ->
+    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps Ps)) m
       = Some T ->
     astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊨ P : T
 }.
@@ -315,7 +315,7 @@ Section Sort.
   Proof. unfold npre; rewrite List.firstn_all2 by (rewrite List.length_rev, length_nparams; lia); apply List.rev_involutive. Qed.
 
   Lemma length_rec_ps : forall c gs gs1 Ps gs2, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-      List.length Ps = ind_nn D.
+      List.length (ptyp_ps Ps) = ind_nn D.
   Proof.
     intros * Hcon Heq; pose proof Hc as (_ & _ & _ & _ & _ & _ & HPl).
     exact (HPl _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq).
@@ -329,12 +329,12 @@ Section Sort.
         List.length ups' = ind_nu D -> List.length ms' = ind_nn D -> List.length ws' = List.length (cargs_nonrec gs1) ->
         per_gargs (List.rev (astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D)) nil nil
           (ups ++ ms ++ ws) (ups' ++ ms' ++ ws') ->
-        exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws) ↘ bs /\
-          ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ ms' ++ ws') ↘ bs' /\
+        exists bs bs', ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws) ↘ bs /\
+          ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups' ++ ms' ++ ws') ↘ bs' /\
           per_gargs (List.rev (ind_nparams D)) (env_args nil ups) (env_args nil ups') bs bs' /\
-          (forall m P T, List.nth_error Ps m = Some P ->
+          (forall m P T, List.nth_error (ptyp_ps Ps) m = Some P ->
              List.nth_error (tele_insts (ind_nparams D)
-                               (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Ps) m = Some T ->
+                               (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps Ps)) m = Some T ->
              (per_head T T (env_args nil (ups ++ ms ++ ws)) (env_args nil (ups' ++ ms' ++ ws'))
                 <~> ind_nr D ups m (List.firstn m bs))).
   Proof.
@@ -597,8 +597,8 @@ Section Sort.
                forall ms ms' c gs gs1 Ps gs2 ws ws', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms' ->
                ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
                tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-               exists bs bs', ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws) ↘ bs /\
-                 ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups2 ++ ms' ++ ws') ↘ bs' /\
+               exists bs bs', ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ms ++ ws) ↘ bs /\
+                 ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups2 ++ ms' ++ ws') ↘ bs' /\
                  tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bs bs'.
     Proof.
       intros ups2 Hg2 * Hm Hcon Heq Hp.
@@ -977,7 +977,7 @@ Section Sort.
         tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1))
           (nonrec_vals gs1 (List.firstn (List.length gs1) as1)) (nonrec_vals gs1 (List.firstn (List.length gs1) as1)) ->
         exists x x' bs, List.nth_error as1 (List.length gs1) = Some x /\ List.nth_error as1' (List.length gs1) = Some x' /\
-          ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1)) ↘ bs /\
+          ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) as1)) ↘ bs /\
           ind_rel p D ups (ind_nr D ups) (ind_ar D ups) bs x x'.
     Proof.
       intros * Heq INV.

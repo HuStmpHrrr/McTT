@@ -1047,7 +1047,7 @@ Example list_len_spec :
     (nil, ⋅,
      cc_ind "List" false
        (mk_ind 1 (⋅ ▹ Typeω@0) Typeω@0
-          (("nil", nil) :: ("cons", ca_arg #0 :: ca_rec nil :: nil) :: nil)) ::
+          (("nil", nil) :: ("cons", ca_arg #0 :: ca_rec (pt_self 0 nil) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
        (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
@@ -1070,7 +1070,7 @@ Example climb_spec :
                      (("stop", nil) :: ("step", ("r", app (var "Climb") (Cst.succ (var "n"))) :: nil) :: nil) :: nil))
     (nil, ⋅,
      cc_ind "Climb" false
-       (mk_ind 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ca_rec (succ #0 :: nil) :: nil) :: nil)) :: nil).
+       (mk_ind 0 (⋅ ▹ ℕ) Typeω@0 (("stop", nil) :: ("step", ca_rec (pt_self 0 (succ #0 :: nil)) :: nil) :: nil)) :: nil).
 Proof. elab_ok. Qed.
 
 (** A recursive argument at the wrong number of arguments is rejected:

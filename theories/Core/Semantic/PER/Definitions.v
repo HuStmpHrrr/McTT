@@ -196,8 +196,8 @@ Definition ind_adm (D : ind_decl) (ups : list domain)
      tele_full nr (List.rev (ind_nparams D)) ms ms' ->
      ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
      tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-     exists bs bs', eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ ms ++ ws)) bs /\
-       eval_exps gc_deps gc_stack Ps (env_args nil (ua ++ ms' ++ ws')) bs' /\
+     exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups ++ ms ++ ws)) bs /\
+       eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ua ++ ms' ++ ws')) bs' /\
        tele_full nr (List.rev (ind_nparams D)) bs bs').
 
 (** The elements of the inductive type [p] at the uniform parameters [ups]
@@ -248,7 +248,7 @@ with ind_args_rel (p : qname) (D : ind_decl) (ups : list domain)
   `{ ind_args_rel p D ups nr ar (ρ ↦ v) gs vs vs' ->
      ind_args_rel p D ups nr ar ρ (ca_arg A :: gs) (v :: vs) (v' :: vs') }
 | ind_args_rec :
-  `{ eval_exps gc_deps gc_stack Ps ρ bs ->
+  `{ eval_exps gc_deps gc_stack (ptyp_ps Ps) ρ bs ->
      ind_rel p D ups nr ar bs v v' ->
      ind_args_rel p D ups nr ar ρ gs vs vs' ->
      ind_args_rel p D ups nr ar ρ (ca_rec Ps :: gs) (v :: vs) (v' :: vs') }

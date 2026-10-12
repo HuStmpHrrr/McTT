@@ -740,7 +740,7 @@ Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain
      ffresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs bss ->
      ffresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) bss )
 | ffresh_cargs_rec :
-  `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+  `( ⟦ (ptyp_ps Ps) ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      ffresh_cargs Θ Ξ p ups ρ gs (S s) vs bss ->
      ffresh_cargs Θ Ξ p ups ρ (ca_rec Ps :: gs) s (⇑! (d_ind p (ups ++ bs)) s :: vs) (bs :: bss) ).
 
@@ -928,7 +928,7 @@ with fread_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env
      fread_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
      fread_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
 | fread_cargs_rec :
-  `( ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+  `( ⟦ (ptyp_ps Ps) ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      Rnfᶠ ⇓ (d_ind p (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
      fread_cargs Θ Ξ s p ups ρ gs vs Vs ->
      fread_cargs Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) (nfs_cons V Vs) )

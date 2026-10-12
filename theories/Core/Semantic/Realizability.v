@@ -102,8 +102,8 @@ Lemma realize_ind : forall p D ups ups' ns ns'
        tele_full nr (List.rev (ind_nparams D)) ms ms' ->
        ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
        tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-       exists bs bs', eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ ms ++ ws)) bs /\
-         eval_exps gc_deps gc_stack Ps (env_args nil (ups' ++ ms' ++ ws')) bs' /\
+       exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups ++ ms ++ ws)) bs /\
+         eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups' ++ ms' ++ ws')) bs' /\
          tele_full nr (List.rev (ind_nparams D)) bs bs') ->
     tele_full nr (List.rev (ind_nparams D)) ns ns' ->
     Dom d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_top_typ /\

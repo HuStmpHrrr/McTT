@@ -143,7 +143,7 @@ Lemma ihs_rel_at : forall Rel ρ gs vs vs' ihs ihs', ihs_rel Rel ρ gs vs vs' ih
     forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
     exists v v' ih ih' bs, List.nth_error vs (List.length gs1) = Some v /\ List.nth_error vs' (List.length gs1) = Some v' /\
       List.nth_error ihs (cargs_nrec gs1) = Some ih /\ List.nth_error ihs' (cargs_nrec gs1) = Some ih' /\
-      ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
+      ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
       Rel bs v bs v' ih ih'.
 Proof.
   induction 1 as [ρ | ρ A gs v v' vs vs' ihs ihs' H IH | ρ Ps0 gs v v' vs vs' bs ih ih' ihs ihs' HPs Hr H IH];
@@ -756,11 +756,11 @@ Section Elim.
         (forall R, EF cargs_ctx p D gs1 ++ ind_params D ≈ cargs_ctx p D gs1 ++ ind_params D ∈ per_ctx_env ↘ R ->
            R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))) ->
         forall i R t t',
-          ⟦ apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Ps) ⟧
+          ⟦ apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) (ptyp_ps Ps)) ⟧
             env_args nil (ups ++ ns ++ fa) ↘ t ->
           DF t ≈ t' ∈ per_univ_elem i ↘ R ->
-          exists bs bs1, ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nonrec_vals gs1 fa) ↘ bs /\
-            ⟦ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ fa) ↘ bs1 /\
+          exists bs bs1, ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ nonrec_vals gs1 fa) ↘ bs /\
+            ⟦ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (ups ++ ns ++ fa) ↘ bs1 /\
             tele_full (ind_nr D ups) T bs bs1 /\ t = d_ind p (ups ++ bs1) /\
             (R <~> ind_rel p D ups (ind_nr D ups) (ind_ar D ups) bs).
     Proof.
@@ -1188,7 +1188,7 @@ Section Elim.
   Lemma ind_args_rel_at : forall ρ gs vs vs', ind_args_rel p D u0 nr ar ρ gs vs vs' ->
       forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
       exists x x' bs, List.nth_error vs (List.length gs1) = Some x /\ List.nth_error vs' (List.length gs1) = Some x' /\
-        ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
+        ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args ρ (nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
         ind_rel p D u0 nr ar bs x x'.
   Proof.
     induction 1 as [ρ | ρ v gs vs vs' A v' H IH | Ps0 ρ bs v v' gs vs vs' HPs Hr H IH];
@@ -1441,11 +1441,11 @@ Section Elim.
       ⊨ E ++ cinst Γ p D Us gs ->
       forall k N T0,
         List.nth_error (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
               ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil) k = Some N ->
         List.nth_error (tele_insts (elim_mctx p D Us) (sb_of_wk (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
               ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)) k = Some T0 ->
         E ++ cinst Γ p D Us gs ⊨ N : T0.
   Proof.
@@ -1580,7 +1580,7 @@ Section Elim.
       gsub (E ++ cinst Γ p D Us gs)
         (sb_of_list (sb_of_wk (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps
+                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)
             ++ a_var (List.length E + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil))
         (elim_mctx p D Us ++ Γ).
   Proof.
@@ -1605,10 +1605,10 @@ Section Elim.
       ⊨ E ++ cinst Γ p D Us gs ->
       forall k N T0,
         List.nth_error (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps) k = Some N ->
+                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)) k = Some N ->
         List.nth_error (tele_insts (tele_sub (ind_nparams D) τU) (sb_of_wk (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps)) k = Some T0 ->
+                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps))) k = Some T0 ->
         E ++ cinst Γ p D Us gs ⊨ N : T0.
   Proof.
     intros * Hcon Heq HΨ k N T0 HN HT.
@@ -1631,7 +1631,7 @@ Section Elim.
       gsub (E ++ cinst Γ p D Us gs)
         (sb_of_list (sb_of_wk (wk_shiftn (List.length E + List.length gs + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps))
+                                 [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps)))
         (tele_sub (ind_nparams D) τU ++ Γ).
   Proof.
     intros * Hcon Heq HΨ.
@@ -1654,11 +1654,11 @@ Section Elim.
   (** The scrutinee's type in the motive's context, at the instance of a
       recursive result's parameters, is the type of the recursive argument
       weakened past the arguments after it and the results before. *)
-  Lemma ih_it_eq : forall gs1 Ps gs2 (E : ctx), List.length Ps = ind_nn D ->
+  Lemma ih_it_eq : forall gs1 Ps gs2 (E : ctx), List.length (ptyp_ps Ps) = ind_nn D ->
       IT[sb_of_list (sb_of_wk (wk_shiftn (List.length E + List.length (gs1 ++ ca_rec Ps :: gs2) + ind_nn D)))
            (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                 [wk_shiftn (List.length (gs1 ++ ca_rec Ps :: gs2) - List.length (cargs_pat gs1) + List.length E)]ʷ) Ps)]
-      = (apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Ps))
+                                 [wk_shiftn (List.length (gs1 ++ ca_rec Ps :: gs2) - List.length (cargs_pat gs1) + List.length E)]ʷ) (ptyp_ps Ps))]
+      = (apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) (ptyp_ps Ps)))
           [sb_qn (List.length gs1) (sb_qn (ind_nn D) (sb_of_list Id Us))][wk_shift]ʷ[wk_shiftn (List.length E + List.length gs2)]ʷ.
   Proof.
     intros * HPl'.
@@ -1751,14 +1751,14 @@ Section Elim.
           List.length ihp = cargs_nrec gs1 ->
           tele_pre (ar ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 fa) (nonrec_vals gs1 fab) ->
           per_gargs (List.rev (cargs_ctx p D gs1 ++ ind_nparams D)) (env_args nil u0) (env_args nil u0) (Xb ++ fab) (Xb ++ fab) ->
-          ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ ns ++ nonrec_vals gs1 fa) ↘ bs ->
+          ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ ns ++ nonrec_vals gs1 fa) ↘ bs ->
           EF ihs_ctx_aux D A Us (List.length gs) nil 0 gs1 ++ cinst Γ p D Us gs
              ≈ ihs_ctx_aux D A Us (List.length gs) nil 0 gs1 ++ cinst Γ p D Us gs ∈ per_ctx_env ↘ RS ->
           RS (env_args B (Xb ++ fab ++ vb :: aft ++ ihp)) (env_args B (Xb ++ fab ++ vb :: aft ++ ihp)) ->
           exists Xq,
             ⟦ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1)
-                                              + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) Ps ⟧*
+                                              + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) (ptyp_ps Ps) ⟧*
               gc_deps ⍮ gc_stack ⍮ env_args B (Xb ++ fab ++ vb :: aft ++ ihp) ↘ Xq /\
             tele_full nr T bs Xq.
     Proof.
@@ -1924,7 +1924,7 @@ Section Elim.
         ihs_ctx_aux D A Us (List.length gs) nil 0 (gs1 ++ ca_rec Ps :: nil)
         = ce_ass A[sb_of_list (sb_of_wk (wk_shiftn (List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1) + List.length gs + ind_nn D)))
               (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) Ps
+                                   [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) (ptyp_ps Ps)
                ++ a_var (List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1) + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)]
           :: ihs_ctx_aux D A Us (List.length gs) nil 0 gs1.
     Proof. intros; rewrite ihs_ctx_aux_app, List.app_nil_r, length_ihs_ctx_aux; cbn [ihs_ctx_aux List.app Nat.add]; reflexivity. Qed.
@@ -2254,11 +2254,11 @@ Section Elim.
         forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
         forall a, ⟦ A[sb_of_list (sb_of_wk (wk_shiftn (List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1) + List.length gs + ind_nn D)))
                      (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ[sb_qn (List.length (cargs_pat gs1) + ind_nn D) (sb_of_list Id Us)]
-                                  [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) Ps
+                                  [wk_shiftn (List.length gs - List.length (cargs_pat gs1) + List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1))]ʷ) (ptyp_ps Ps)
                       ++ a_var (List.length (ihs_ctx_aux D A Us (List.length gs) nil 0 gs1) + List.length gs - 1 - List.length (cargs_pat gs1)) :: nil)] ⟧
               env_args C1 ((ns ++ vs) ++ List.firstn (cargs_nrec gs1) ihs) ↘ a ->
         exists v bs t (j : nat), List.nth_error vs (List.length gs1) = Some v /\
-          ⟦ Ps ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
+          ⟦ (ptyp_ps Ps) ⟧* gc_deps ⍮ gc_stack ⍮ env_args nil (u0 ++ ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) ↘ bs /\
           ⟦ A ⟧ env_args C1 (bs ++ v :: nil) ↘ t /\ Dom a ≈ t ∈ per_univ j.
     Proof.
       intros ns vs ihs Hns Har Hia Hir gs1 Ps gs2 Heq0 a Ea.

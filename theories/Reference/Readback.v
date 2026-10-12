@@ -51,7 +51,7 @@ Inductive fresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list d
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> fresh_cargs_order Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s)) ->
      fresh_cargs_order Θ Ξ p ups ρ (ca_arg A :: gs) s )
 | cargo_rec :
-  `( eval_exps_order Θ Ξ Ps ρ ->
+  `( eval_exps_order Θ Ξ (ptyp_ps Ps) ρ ->
      fresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      fresh_cargs_order Θ Ξ p ups ρ (ca_rec Ps :: gs) s ).
 
@@ -116,7 +116,7 @@ Section FreshImpl.
       let (r, Hr) := fresh_cargs_impl p ups (ρ ↦ ⇑! a s) gs (S s) _ in
       exist _ (⇑! a s :: fst r, snd r) _
   | p, ups, ρ, ca_rec Ps :: gs, s, H =>
-      let (bs, Hbs) := eval_exps_impl Θ Ξ Ps ρ _ in
+      let (bs, Hbs) := eval_exps_impl Θ Ξ (ptyp_ps Ps) ρ _ in
       let (r, Hr) := fresh_cargs_impl p ups ρ gs (S s) _ in
       exist _ (⇑! (d_ind p (ups ++ bs)) s :: fst r, bs :: snd r) _.
   Solve All Obligations with fr_obl.
@@ -297,8 +297,8 @@ with read_cargs_order (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -
      read_cargs_order Θ Ξ s p ups (ρ ↦ v) gs vs ->
      read_cargs_order Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) )
 | rcargs_rec :
-  `( eval_exps_order Θ Ξ Ps ρ ->
-     (forall bs, ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs -> read_nf_order Θ Ξ s ⇓ (d_ind p (ups ++ bs)) v) ->
+  `( eval_exps_order Θ Ξ (ptyp_ps Ps) ρ ->
+     (forall bs, ⟦ (ptyp_ps Ps) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs -> read_nf_order Θ Ξ s ⇓ (d_ind p (ups ++ bs)) v) ->
      read_cargs_order Θ Ξ s p ups ρ gs vs ->
      read_cargs_order Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) )
 
@@ -523,7 +523,7 @@ Equations read_nf_impl s d (H : read_nf_order Θ Ξ s d) : { m | Rnf d in Θ ⍮
     let (Vs, HVs) := read_cargs_impl s p ups (ρ ↦ v) gs vs _ in
     exist _ (nfs_cons V Vs) _
 | s, p, ups, ρ, ca_rec Ps :: gs, v :: vs, H =>
-    let (bs, Hbs) := eval_exps_impl Θ Ξ Ps ρ _ in
+    let (bs, Hbs) := eval_exps_impl Θ Ξ (ptyp_ps Ps) ρ _ in
     let (V, HV) := read_nf_impl s ⇓ (d_ind p (ups ++ bs)) v _ in
     let (Vs, HVs) := read_cargs_impl s p ups ρ gs vs _ in
     exist _ (nfs_cons V Vs) _

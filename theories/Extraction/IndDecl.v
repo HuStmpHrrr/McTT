@@ -122,7 +122,7 @@ Qed.
 Definition carg_mvcb (g : carg) : bool :=
   match g with
   | ca_arg A => exp_mvcb 0 A
-  | ca_rec Ps => forallb (exp_mvcb 0) Ps
+  | ca_rec Ps => forallb (exp_mvcb 0) (ptyp_ps Ps)
   end.
 
 Definition decl_mvcb (D : ind_decl) : bool :=
@@ -224,15 +224,44 @@ Defined.
 
 (** ** The Entry *)
 
+(** The recursive arguments are of the one shape stage A has. *)
+Definition decl_shapes (D : ind_decl) : Prop :=
+  forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 -> exists Ps, t = pt_self 0 Ps.
+
+Definition shape_ok (g : carg) : bool :=
+  match g with
+  | ca_rec (pt_self 0 _) | ca_arg _ => true
+  | _ => false
+  end.
+
+Lemma shape_ok_spec : forall g, shape_ok g = true <-> forall t, g = ca_rec t -> exists Ps, t = pt_self 0 Ps.
+Proof.
+  intros g; destruct g as [A | t]; cbn; [ split; [ intros _ t' [=] | reflexivity ] |].
+  destruct t as [[| k] Ps | k Ps | A t]; cbn; split; intros H; try reflexivity; try discriminate;
+    try (intros t' [= <-]; eauto; fail); destruct (H _ eq_refl) as [? [=]].
+Qed.
+
+Definition decl_shapes_dec (D : ind_decl) : {decl_shapes D} + {~ decl_shapes D}.
+Proof.
+  destruct (forallb (fun cg => forallb shape_ok (snd cg)) (ind_cons D)) eqn:E; [ left | right ].
+  - intros c gs gs1 t gs2 Hin ->.
+    rewrite forallb_forall in E; specialize (E _ Hin); cbn in E; rewrite forallb_forall in E.
+    apply (shape_ok_spec (ca_rec t)); [ apply E, in_or_app; right; left; reflexivity | reflexivity ].
+  - intros H; apply not_true_iff_false in E; apply E, forallb_forall; intros [c gs] Hin; cbn.
+    apply forallb_forall; intros g Hg; apply shape_ok_spec; intros t ->.
+    apply in_split in Hg as (gs1 & gs2 & ->); exact (H _ _ _ _ _ Hin eq_refl).
+Defined.
+
 Lemma wf_gentry_ind_iff : forall Θ Ξ mp pv D,
     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D <->
-    (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_typed Θ Ξ D.
+    (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_shapes D /\
+    decl_typed Θ Ξ D.
 Proof.
   intros; split.
   - intros H; inversion H; subst.
-    split; [ eexists; eassumption |]; split; [ assumption |].
+    split; [ eexists; eassumption |]; split; [ assumption |]; split; [ assumption |].
     unfold decl_typed; split; [ assumption | split; [ assumption | repeat split; eauto ] ].
-  - intros ([Δ HΔ] & Hle & Hass & Hmvc & Hnp & HP & HS & [i Hi] & [n Hn] & HA & HPl & HPt & HN & Hnd).
+  - intros ([Δ HΔ] & Hle & Hsh & Hass & Hmvc & Hnp & HP & HS & [i Hi] & [n Hn] & HA & HPl & HPt & HN & Hnd).
     econstructor; eassumption.
 Qed.
 
@@ -278,17 +307,17 @@ Section Decide.
 
   Definition recs_dec (D : ind_decl) :
     {(forall c gs gs1 Ps gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length Ps = ind_nn D) /\
+        List.length (ptyp_ps Ps) = ind_nn D) /\
      (forall c gs gs1 Ps gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.nth_error Ps k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+        List.nth_error (ptyp_ps Ps) k = Some P ->
+        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
           = Some T ->
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T)}
     + {~ ((forall c gs gs1 Ps gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length Ps = ind_nn D) /\
+        List.length (ptyp_ps Ps) = ind_nn D) /\
      (forall c gs gs1 Ps gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.nth_error Ps k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+        List.nth_error (ptyp_ps Ps) k = Some P ->
+        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
           = Some T ->
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T))}.
   Proof.
@@ -366,10 +395,14 @@ Section Decide.
   (** The entry a declaration is filed as. *)
   Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl) :
     {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv (gs_ind Ξ D)} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv (gs_ind Ξ D)} :=
+    match decl_shapes_dec (gs_ind Ξ D) with
+    | right Hn => right (fun H => Hn (proj1 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
+    | left Hs =>
     match decl_typed_dec (gs_ind Ξ D) with
     | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _)
-                        (conj (proj1 (gs_ind_shape Ξ D)) (conj (proj2 (gs_ind_shape Ξ D)) H)))
-    | right Hn => right (fun H => Hn (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H))))
+                        (conj (proj1 (gs_ind_shape Ξ D)) (conj (proj2 (gs_ind_shape Ξ D)) (conj Hs H))))
+    | right Hn => right (fun H => Hn (proj2 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
+    end
     end.
 End Decide.
 
@@ -377,8 +410,8 @@ End Decide.
 Lemma equiv_gentry_ind : forall Θ Θ' Ξ mp pv D,
     gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind pv D.
 Proof.
-  intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & HD).
-  apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle |] ].
+  intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & Hsh & HD).
+  apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle | split; [ exact Hsh |] ] ].
   eapply decl_typed_emb; [| exact HD ].
   constructor; [ exact HΞ | apply gc_sub_deps; exact Hs ].
 Qed.

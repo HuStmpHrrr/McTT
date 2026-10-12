@@ -824,9 +824,10 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     parameters, which are uniform.  The sort is checked in the uniform
     parameters, a non-recursive argument of a constructor in the parameters
     and the non-recursive arguments before it, at the sort, and a recursive
-    argument at the non-uniform parameters it is declared at.  The type is
-    not filed yet, so no argument mentions it but as a recursive argument:
-    positivity is by construction.  No type of the declaration has a free
+    argument at the non-uniform parameters it is declared at.  A recursive
+    argument is of the shape [pt_self 0 Ps]: stage A has no other.  The
+    type is not filed yet, so no argument mentions it but as a recursive
+    argument: positivity is by construction.  No type of the declaration has a free
     module variable ([decl_mvc]), as no type in a context of assumptions. *)
 | wf_gentry_indty :
   `( ind_params D = Δ ++ gs_tele Ξ ->
@@ -842,11 +843,13 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
      (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
           ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ) ->
+     (forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        exists Ps, t = pt_self 0 Ps) ->
      (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length Ps = ind_nn D) ->
+        List.length (ptyp_ps Ps) = ind_nn D) ->
      (forall c gs gs1 Ps gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        nth_error Ps k = Some P ->
-        nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+        nth_error (ptyp_ps Ps) k = Some P ->
+        nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
           = Some T ->
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T) ->
      (forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->

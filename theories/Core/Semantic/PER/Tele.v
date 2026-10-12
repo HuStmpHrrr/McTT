@@ -781,7 +781,7 @@ Section Tele.
         subst ρ gsf.
         inversion Hz; subst.
         match goal with
-        | H1 : eval_exps _ _ Ps (env_args nil (ups ++ ns ++ nonrec_vals gs1 vp')) ?b2,
+        | H1 : eval_exps _ _ (ptyp_ps Ps) (env_args nil (ups ++ ns ++ nonrec_vals gs1 vp')) ?b2,
           H2 : ind_rel _ _ _ _ _ ?b2 v' _,
           H3 : ind_args_rel _ _ _ _ _ (env_args nil (ups ++ ns ++ nonrec_vals gs1 vp')) gs vs' _ |- _ =>
             rename H1 into Hb2; rename H2 into Hr2; rename H3 into Hz'

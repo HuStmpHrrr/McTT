@@ -220,7 +220,7 @@ Fixpoint cargs_ctx_aux (p : qname) (D : ind_decl) (pat : list bool) (gs : list c
   | ca_arg A :: gs' => cargs_ctx_aux p D (false :: pat) gs' ++ ce_ass A[wk_pat pat]ʷ :: nil
   | ca_rec Ps :: gs' =>
       cargs_ctx_aux p D (true :: pat) gs' ++
-        ce_ass (apps (a_ind p) (ind_uvars D (List.length pat) ++ List.map (fun P => P[wk_pat pat]ʷ) Ps)) :: nil
+        ce_ass (apps (a_ind p) (ind_uvars D (List.length pat) ++ List.map (fun P => P[wk_pat pat]ʷ) (ptyp_ps Ps))) :: nil
   end.
 
 Definition cargs_ctx (p : qname) (D : ind_decl) (gs : list carg) : ctx := cargs_ctx_aux p D nil gs.
@@ -265,7 +265,7 @@ Fixpoint ihs_ctx_aux (D : ind_decl) (A : exp) (Us : list exp) (na : nat)
   | ca_arg _ :: gs' => ihs_ctx_aux D A Us na (false :: pat) j gs'
   | ca_rec Ps :: gs' =>
       let i := List.length pat in
-      let Ps' := List.map (fun P => P[wk_pat pat]ʷ[sb_qn (i + ind_nn D) (sb_of_list Id Us)][wk_shiftn (na - i + j)]ʷ) Ps in
+      let Ps' := List.map (fun P => P[wk_pat pat]ʷ[sb_qn (i + ind_nn D) (sb_of_list Id Us)][wk_shiftn (na - i + j)]ʷ) (ptyp_ps Ps) in
       ihs_ctx_aux D A Us na (true :: pat) (S j) gs' ++
         ce_ass A[sb_of_list (sb_of_wk (wk_shiftn (j + na + ind_nn D))) (Ps' ++ a_var (j + na - 1 - i) :: nil)] :: nil
   end.
@@ -391,7 +391,7 @@ Definition ctx_mvc (Δ : ctx) : Prop := List.Forall (centry_mvc 0) Δ.
 Definition carg_mvc (g : carg) : Prop :=
   match g with
   | ca_arg A => exp_mvc 0 A
-  | ca_rec Ps => List.Forall (exp_mvc 0) Ps
+  | ca_rec Ps => List.Forall (exp_mvc 0) (ptyp_ps Ps)
   end.
 
 Definition decl_mvc (D : ind_decl) : Prop :=

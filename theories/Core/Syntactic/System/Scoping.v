@@ -820,9 +820,9 @@ Definition decl_closed (D : ind_decl) : Prop :=
   (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
      exp_scoped (List.length (cargs_strat gs1) + ind_np D) A) /\
   (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-     List.Forall (exp_scoped (List.length (cargs_strat gs1) + ind_np D)) Ps) /\
+     List.Forall (exp_scoped (List.length (cargs_strat gs1) + ind_np D)) (ptyp_ps Ps)) /\
   (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-     List.length Ps = ind_nn D).
+     List.length (ptyp_ps Ps) = ind_nn D).
 
 Lemma exp_scoped_apps : forall Ns M n,
     exp_scoped n (apps M Ns) <-> exp_scoped n M /\ List.Forall (exp_scoped n) Ns.
@@ -882,7 +882,7 @@ Lemma cargs_ctx_aux_scoped : forall p D gs pat k,
     (forall gs1 A gs2, gs = gs1 ++ ca_arg A :: gs2 ->
        exp_scoped (k + List.length (cargs_strat gs1) + ind_np D) A) ->
     (forall gs1 Ps gs2, gs = gs1 ++ ca_rec Ps :: gs2 ->
-       List.Forall (exp_scoped (k + List.length (cargs_strat gs1) + ind_np D)) Ps) ->
+       List.Forall (exp_scoped (k + List.length (cargs_strat gs1) + ind_np D)) (ptyp_ps Ps)) ->
     ctx_scoped (List.length pat + ind_np D) (cargs_ctx_aux p D pat gs).
 Proof.
   induction gs as [| [A | Ps] gs IH]; intros * Hle Hk HA HPs; cbn; [ exact I | |].
@@ -1028,10 +1028,10 @@ Lemma decl_closed_intro : forall D,
     (forall c gs gs1 A gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_arg A :: gs2 ->
        exp_scoped (List.length (cargs_strat gs1 ++ ind_params D)) A) ->
     (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-       List.length Ps = ind_nn D) ->
+       List.length (ptyp_ps Ps) = ind_nn D) ->
     (forall c gs gs1 Ps gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-       nth_error Ps k = Some P ->
-       nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+       nth_error (ptyp_ps Ps) k = Some P ->
+       nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
          = Some T ->
        exp_scoped (List.length (cargs_strat gs1 ++ ind_params D)) P) ->
     decl_closed D.
@@ -1039,7 +1039,7 @@ Proof.
   intros D Hass Hle HΔ HS HA Hl HPs; repeat split; try assumption.
   - rewrite length_ind_uparams in HS by assumption; exact HS.
   - intros * Hin Heq; specialize (HA _ _ _ _ _ Hin Heq); rewrite length_app in HA; exact HA.
-  - intros * Hin Heq; eapply (nth_typed_scoped _ (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps)).
+  - intros * Hin Heq; eapply (nth_typed_scoped _ (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps))).
     + rewrite length_tele_insts; [ rewrite length_nparams, (Hl _ _ _ _ _ Hin Heq); lia |].
       apply Forall_firstn'; exact Hass.
     + intros k P T Hk HT; specialize (HPs _ _ _ _ _ _ _ _ Hin Heq Hk HT); rewrite length_app in HPs; exact HPs.

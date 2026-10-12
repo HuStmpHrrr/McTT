@@ -503,16 +503,43 @@ Definition qname_strip (mp p : qname) : option (list string) :=
 
     The arguments are stratified: a non-recursive argument [ca_arg A] has
     its type [A] over the non-recursive arguments before it and [Δ], and a
-    recursive argument [ca_rec Ps] is the type itself at the uniform
-    parameters and at the non-uniform parameters [Ps], again over the
-    non-recursive arguments before it and [Δ].  Nothing may mention a
-    recursive argument, so it occupies no binder of the arguments after
-    it. *)
+    recursive argument [ca_rec t] has a shape [t] ([ptyp_g]), whose
+    parameters are over the non-recursive arguments before it and [Δ].
+    Nothing may mention a recursive argument, so it occupies no binder of
+    the arguments after it. *)
+
+(** The shape of a recursive argument: the [k]-th type of the declaration's
+    block at the non-uniform parameters [Ps] ([pt_self k Ps]), the [k]-th
+    auxiliary type of a nested occurrence at [Ps] ([pt_aux k Ps]), or a
+    function from [A] to a shape ([pt_pi A t]).  Stage A has one type per
+    block and no nesting or function-shaped arguments: a declaration is
+    well formed only with [pt_self 0 Ps] ([wf_gentry_indty]), and the
+    metatheory reads any shape by its parameters alone ([ptyp_ps]), which
+    is what [pt_self 0] means. *)
+Inductive ptyp_g (E : Set) : Set :=
+| pt_self : nat -> list E -> ptyp_g E
+| pt_aux : nat -> list E -> ptyp_g E
+| pt_pi : E -> ptyp_g E -> ptyp_g E.
+Arguments pt_self {E}.
+Arguments pt_aux {E}.
+Arguments pt_pi {E}.
+
+(** The non-uniform parameters at which a shape ends. *)
+Fixpoint ptyp_ps {E : Set} (t : ptyp_g E) : list E :=
+  match t with
+  | pt_self _ Ps | pt_aux _ Ps => Ps
+  | pt_pi _ t => ptyp_ps t
+  end.
+
+(** In stage A a shape is read by its parameters alone, so it stands for
+    them wherever a list of terms is expected. *)
+Coercion ptyp_ps : ptyp_g >-> list.
+
 Inductive carg_g (E : Set) : Set :=
 (** A non-recursive argument, of a type *)
 | ca_arg : E -> carg_g E
-(** A recursive argument, at these non-uniform parameters *)
-| ca_rec : list E -> carg_g E.
+(** A recursive argument, of a shape *)
+| ca_rec : ptyp_g E -> carg_g E.
 Arguments ca_arg {E}.
 Arguments ca_rec {E}.
 
@@ -679,6 +706,7 @@ with centry : Set :=
 
 Abbreviation typ := exp.
 Abbreviation carg := (carg_g exp).
+Abbreviation ptyp := (ptyp_g exp).
 Abbreviation ind_decl := (ind_decl_g exp centry).
 
 (** A property of every branch of an eliminator, under its binders.  A

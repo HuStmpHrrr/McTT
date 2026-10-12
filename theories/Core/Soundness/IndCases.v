@@ -280,8 +280,8 @@ Record glu_core (D : ind_decl) : Prop := mk_glu_core
 ; gd_arg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
     IndCases.astrat gs k ++ ind_params D ⊩ A : (ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ
 ; gd_rec : forall c gs gs1 Ps gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-    List.nth_error Ps m = Some P ->
-    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Ps) m
+    List.nth_error (ptyp_ps Ps) m = Some P ->
+    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps Ps)) m
       = Some T ->
     IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊩ P : T
 }.
@@ -615,8 +615,8 @@ Qed.
 Lemma rec_sub_valid : forall D0, IndCases.sem_core D0 -> decl_closed D0 -> forall c gs gs1 Ps gs2, ind_con D0 c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
     forall m, m <= ind_nn D0 ->
       IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D0 ⊨s
-        sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m Ps)
-        ≈ sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m Ps)
+        sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps Ps))
+        ≈ sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps Ps))
         : IndCases.npre D0 m ++ ind_uparams D0.
 Proof.
   intros D0 HD Hc0 c gs gs1 Ps gs2 Hcon Heq.

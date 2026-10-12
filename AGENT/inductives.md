@@ -38,6 +38,17 @@ end
   local bodies (`"an inductive type is not allowed in a local module"`).
 * ℕ is unchanged.
 
+## Shapes of recursive arguments
+
+`ca_rec : ptyp_g E -> carg_g E` with
+`ptyp_g E := pt_self k Ps | pt_aux k Ps | pt_pi A t` (`Syntax.v`): the
+data is shaped for mutual blocks (`k`), nesting (`pt_aux`) and
+function-shaped arguments (`pt_pi`).  Stage A accepts only `pt_self 0 Ps`
+(`wf_gentry_indty`, decided by `decl_shapes_dec`).  The metatheory reads any
+shape by its parameters alone, `ptyp_ps`, declared a coercion to `list`, so
+the semantics of the other shapes is not built: a later stage replaces the
+uses of `ptyp_ps` by a case on the shape.
+
 ## Core
 
 | What | Where |

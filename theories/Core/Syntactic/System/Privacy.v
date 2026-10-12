@@ -396,7 +396,7 @@ Fixpoint cargs_refs (S : list ptab) (gs : list carg) : list (ptab * string)%type
   match gs with
   | nil => nil
   | ca_arg A :: gs' => exp_refs S A ++ cargs_refs (pt_none :: S) gs'
-  | ca_rec Ps :: gs' => flat_map (exp_refs S) Ps ++ cargs_refs S gs'
+  | ca_rec Ps :: gs' => flat_map (exp_refs S) (ptyp_ps Ps) ++ cargs_refs S gs'
   end.
 
 Definition decl_refs (D : ind_decl) : list (ptab * string)%type :=

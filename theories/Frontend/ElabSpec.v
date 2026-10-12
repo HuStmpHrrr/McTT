@@ -324,7 +324,7 @@ Inductive sargs (x : string) (nn : nat) : list ent -> list (string * Cst.obj) ->
 | sa_rec : forall S y oA args os Ps gs,
     rec_head x oA = Some os -> List.length os = nn -> Forall2 (sel S) os Ps ->
     sargs x nn S args gs ->
-    sargs x nn S ((y, oA) :: args) (ca_rec Ps :: gs)
+    sargs x nn S ((y, oA) :: args) (ca_rec (pt_self 0 Ps) :: gs)
 | sa_arg : forall S y oA args A gs,
     rec_head x oA = None -> sel S oA A ->
     sargs x nn (en_var y :: S) args gs ->

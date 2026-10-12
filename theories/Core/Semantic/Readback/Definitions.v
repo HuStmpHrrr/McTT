@@ -48,7 +48,7 @@ Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain)
      fresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs bss ->
      fresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) bss )
 | fresh_cargs_rec :
-  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+  `( ⟦ (ptyp_ps Ps) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      fresh_cargs Θ Ξ p ups ρ gs (S s) vs bss ->
      fresh_cargs Θ Ξ p ups ρ (ca_rec Ps :: gs) s (⇑! (d_ind p (ups ++ bs)) s :: vs) (bs :: bss) ).
 
@@ -249,7 +249,7 @@ with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
      read_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
      read_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
 | read_cargs_rec :
-  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+  `( ⟦ (ptyp_ps Ps) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
      Rnf ⇓ (d_ind p (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
      read_cargs Θ Ξ s p ups ρ gs vs Vs ->
      read_cargs Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) (nfs_cons V Vs) )
