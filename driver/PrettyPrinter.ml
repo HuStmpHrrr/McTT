@@ -174,9 +174,9 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
          format_obj escr mx format_obj em s_darrow format_obj ez sx sr s_darrow format_obj es
      in
      pp_print_paren_if (p >= 1) impl f ()
-  | Cst.Coq_elim (escr, xs, em, bs) ->
+  | Cst.Coq_elim (h, escr, xs, em, bs) ->
      let impl f () =
-       fprintf f "@[<hv 0>@[<hov 2>elim %a@ return %s .@ %a@]" format_obj escr
+       fprintf f "@[<hv 0>@[<hov 2>%a.elim %a@ return %s .@ %a@]" (format_obj_prec 2) h format_obj escr
          (String.concat " " xs) format_obj em;
        List.iter
          (fun ((c, ys), eb) ->
@@ -430,7 +430,7 @@ let exp_to_obj =
     | Coq_a_con (p, c) -> path_to_obj p.q_unit (ind_chain p.q_chain (Some c))
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (nm, em, bs, escr) ->
+    | Coq_a_elim (p, nm, em, bs, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let xs = fresh nm in
        let escr' = impl ctx escr in
@@ -442,7 +442,8 @@ let exp_to_obj =
              ((c, ys), impl (List.rev ys @ ctx) eb))
            bs
        in
-       Cst.Coq_elim (escr', xs, em', bs')
+       let head = path_to_obj p.q_unit (ind_chain p.q_chain None) in
+       Cst.Coq_elim (head, escr', xs, em', bs')
   (* The chain of the type former or of a constructor of an inductive type,
      from that of its declaration, [#] in the type's module. *)
   and ind_chain (ch : string list) (c : string option) : string list =
@@ -622,7 +623,12 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
           | Some (fp, ch) -> fprintf f "@[<hov 2>Error: %a is not a member@]" pp_u (string_of_qpath fp (ch @ [n]))
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
-      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n)
+      | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
+      (* The name of an eliminator as written: the module the user named,
+         before the [#] of its declaration. *)
+      | Coq_xe_ind q ->
+         let ch = match List.rev q.q_chain with "#" :: pre -> List.rev pre | _ -> q.q_chain in
+         fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit ch))
 
 (* What [format_main_result] prints for each entry of a successful run's
    log, one string per eval, in order: each entry starts a line of its own,

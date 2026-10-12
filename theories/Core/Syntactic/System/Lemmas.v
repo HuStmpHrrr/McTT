@@ -424,7 +424,7 @@ Lemma sub_eq_elim_case : forall Θ Ξ Γ Δ σ σ' p D Ps M nm i A Bs,
        forall Δ0 τ τ', Θ ⍮ Ξ ⍮ Δ0 ⊢s τ ≈ τ' : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
          Θ ⍮ Ξ ⍮ Δ0 ⊢ B[τ] ≈ B[τ'] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[τ]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ ≈ σ' : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] ≈ (a_elim nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[σ] ≈ (a_elim p nm A Bs M)[σ'] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
   intros * Hl HPl HPs HM Hnm HA HAA HΨ HΨl Hn HΨB HΨBl Hk HBB Hσ.
   pose proof (wf_sub_eq_left _ _ _ _ _ _ Hσ) as Hs.

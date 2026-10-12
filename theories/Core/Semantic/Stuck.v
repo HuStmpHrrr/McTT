@@ -29,7 +29,7 @@ with ne_stuck (G : qname -> Prop) (M : ne) : Prop :=
   match M with
   | ne_natrec A MZ MS M => nf_stuck G A /\ nf_stuck G MZ /\ nf_stuck G MS /\ ne_stuck G M
   | ne_exfalso A M => nf_stuck G A /\ ne_stuck G M
-  | ne_elim _ A Bs M => nf_stuck G A /\ nbrs_stuck G Bs /\ ne_stuck G M
+  | ne_elim _ _ A Bs M => nf_stuck G A /\ nbrs_stuck G Bs /\ ne_stuck G M
   | ne_app M N => ne_stuck G M /\ nf_stuck G N
   | ne_var _ => True
   | ne_glob p => G p

@@ -28,7 +28,7 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   | a_natrec A MZ MS M => exp_mvcb (S n) A && exp_mvcb n MZ && exp_mvcb (S (S n)) MS && exp_mvcb n M
   | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
   | a_ind _ | a_con _ _ => true
-  | a_elim nm A Bs M =>
+  | a_elim p nm A Bs M =>
       exp_mvcb (nm + n) A &&
       (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
          match Bs with

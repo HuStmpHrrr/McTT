@@ -13,7 +13,7 @@ inductive List (A : Type@0) : Type@0 where
 end
 
 def length (A : Type@0) (l : List A) : ℕ :=
-  elim l return z . ℕ
+  List.elim l return z . ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ succ r
   end
@@ -29,7 +29,7 @@ end
   non-recursive (`ca_arg A`); any other is rejected.  No argument may depend
   on a recursive one.  Recursion is first order: the name is in scope nowhere
   else, so positivity holds by construction (no separate positivity check).
-* `elim M return ys z . A | c xs, hs ⇒ B … end`: the motive binds the
+* `X.elim M return ys z . A | c xs, hs ⇒ B … end`: the motive binds the
   non-uniform parameters and the scrutinee; a branch binds the non-uniform
   parameters, the constructor's arguments, then (after the optional comma,
   cosmetic) one hypothesis per recursive argument.  The core checks the
@@ -80,7 +80,7 @@ user's, with `Self := a_ind p` at the frames' parameters (`user_con_ty`,
 
 | What | Where |
 | --- | --- |
-| `a_ind p`, `a_con p c`, `a_elim nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D` | `Core/Syntactic/Syntax.v` |
+| `a_ind p`, `a_con p c`, `a_elim p nm A Bs M`; `ind_decl`, `carg`, `ge_ind pv D` | `Core/Syntactic/Syntax.v` |
 | telescopes, `ind_ty`, `con_ty`, `cargs_ctx`, `elim_mctx`, `elim_bctx`, `elim_bty`, `elim_ihs` | `Core/Syntactic/Inductives.v` |
 | `wf_ind`, `wf_con`, `wf_elim`, congruences, `wf_exp_eq_elim_iota`, `wf_gentry_indty` (in the mutual block) | `Core/Syntactic/System/Definitions.v` |
 | declarations are well typed (`decl_typed`), presupposition | `System/GlobalPresup.v`, `System/IndTyping.v`, `Syntactic/IndCong.v`, `Syntactic/IndConv.v` |
@@ -118,6 +118,27 @@ the premises of `rc_def`), and closes the frame as the member `x`.
   bundle meeting both specifications; the checker uses `xo_of`.
 * Not covered: a local module slot (`me_var`) is never an inductive type,
   so a local alias of one is not the type as a term.
+
+## The eliminator names its type (item 4a)
+
+`a_elim p nm A Bs M` records the declaration's name `p` (`…X.#`); the
+neutral `ne_elim p …` too (the domain's `d_elim` already had it).
+`wf_elim`, its congruence and `ι` use the same `p` as the scrutinee's
+type `apps (a_ind p) Ps`; evaluation ignores it (the scrutinee's value
+carries it); readback takes it from `d_elim`.
+
+* Surface `X.elim M return … end`: the elaborator elaborates `X` as a module
+  and records, lexically, `elim_head`: the chain from the unit, arguments
+  dropped, then `#`.  A head that is not a chain from a unit (a local
+  slot) is rejected there: `"only an inductive type declared in a module
+  has an eliminator"`.
+* Expansion resolves the name as written through aliases (`elim_xp`, the
+  declaration-site oracle): `module M := N` gives `M.elim = N.elim`.  A name
+  that reaches no entry fails with `xe_ind`: `"Test.M is not an inductive
+  type"`.  The name is a privacy reference (`qname_refs`), as `X.c` is.
+* The checker compares the recorded name with the scrutinee's inferred type
+  (`elim_infer`, `qname_eq_dec`).  Room for stage M: the member index can
+  be added beside `p`.
 
 ## Algorithmic layer and checker
 

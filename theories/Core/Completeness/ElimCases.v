@@ -2589,7 +2589,7 @@ Section Elim.
         forall Γ' RΓ' σ σ' ρ ρ', EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ' : Γ -> RΓ' ρ ρ' ->
         ⟦ σ ⟧s ρ ↘ C1 -> ⟦ σ' ⟧s ρ' ↘ C2 ->
         exists R, rel_exp (A[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1 (A[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
-          rel_exp (a_elim nm A Bs M) σ ρ C1 (a_elim nm A' Bs' M') σ' ρ' C2 R.
+          rel_exp (a_elim p nm A Bs M) σ ρ C1 (a_elim p nm A' Bs' M') σ' ρ' C2 R.
     Proof.
       intros * Hnm HBn HBf Hnb HBB HNl Hg HMM * HRΓ' Hσ Hρ Hev Hev'.
       subst nm.
@@ -2720,7 +2720,7 @@ Lemma rel_exp_elim_at : forall Γ p D Us Ns M M' nm A A' (i : nat) Bs Bs',
     (forall k c gs n B B', List.nth_error Bs k = Some (c, n, B) -> List.nth_error Bs' k = Some (c, n, B') ->
        ind_con D c = Some gs ->
        elim_bctx p D gs A Us ++ Γ ⊨ B ≈ B' : elim_bty p D c gs A Us) ->
-    Γ ⊨ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (Ns ++ M :: nil)].
+    Γ ⊨ a_elim p nm A Bs M ≈ a_elim p nm A' Bs' M' : A[sb_of_list Id (Ns ++ M :: nil)].
 Proof.
   intros * HD Hc Hsu Hdt Hl HΓ HUl HUs HNl Hg HMM Hnm HA HM HBn HBc HBf Hnb HBB.
   pose proof (decl_closed_nu D Hc) as Hle.
@@ -2765,7 +2765,7 @@ Lemma rel_exp_elim_cong : forall Γ p D Ps M M' nm A A' (i : nat) Bs Bs',
     (forall k c gs n B B', List.nth_error Bs k = Some (c, n, B) -> List.nth_error Bs' k = Some (c, n, B') ->
        ind_con D c = Some gs ->
        elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B ≈ B' : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-    Γ ⊨ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
+    Γ ⊨ a_elim p nm A Bs M ≈ a_elim p nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros * HD Hc Hsu Hdt Hl HΓ HPl HPs HMM Hnm HA HM HBn HBc HBf Hnb HBB.
   pose proof (decl_closed_nu D Hc) as Hle.
@@ -2811,9 +2811,9 @@ Proof.
   rewrite <- sb_of_list_app; reflexivity.
 Qed.
 
-Lemma eval_elim_ihs : forall nm A Bs gs As ρ avs ihs, ⟦ As ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ avs ->
+Lemma eval_elim_ihs : forall p nm A Bs gs As ρ avs ihs, ⟦ As ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ avs ->
     ⟦ihs avs of gs under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs -> List.length As = List.length gs ->
-    ⟦ elim_ihs nm A Bs gs As ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs.
+    ⟦ elim_ihs p nm A Bs gs As ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ihs.
 Proof.
   induction gs as [| [T | Ps] gs IH]; intros [| N As] * HAs Hih Hl; cbn in Hl; try discriminate;
     inversion HAs; subst; inversion Hih; subst; cbn [elim_ihs].
@@ -2838,7 +2838,7 @@ Proof.
   - rewrite List.nth_error_app2 in HP, HT by lia; rewrite HUl in HP; rewrite Hl2 in HT; exact (HNs _ _ _ HP HT).
 Qed.
 
-Lemma eval_elim_inv : forall nm A Bs M ρ r, ⟦ a_elim nm A Bs M ⟧ ρ ↘ r ->
+Lemma eval_elim_inv : forall p nm A Bs M ρ r, ⟦ a_elim p nm A Bs M ⟧ ρ ↘ r ->
     exists m, ⟦ M ⟧ ρ ↘ m /\ ⟦elim m under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
@@ -2874,7 +2874,7 @@ Section Iota.
              elim_bctx p D gs A Us ++ Γ ⊨ B : elim_bty p D c gs A Us).
 
   Lemma elim_valid_at : forall Q a, List.length Q = ind_nn D -> gsub Γ (sb_of_list Id (Q ++ a :: nil)) (elim_mctx p D Us ++ Γ) ->
-      Γ ⊨ a : apps (a_ind p) (Us ++ Q) -> Γ ⊨ a_elim nm A Bs a : A[sb_of_list Id (Q ++ a :: nil)].
+      Γ ⊨ a : apps (a_ind p) (Us ++ Q) -> Γ ⊨ a_elim p nm A Bs a : A[sb_of_list Id (Q ++ a :: nil)].
   Proof.
     intros * HQl Hg Ha.
     eapply (rel_exp_elim_at Γ p D Us Q a a nm A A i Bs Bs); try eassumption; [ reflexivity |].
@@ -2885,7 +2885,7 @@ Section Iota.
   Lemma gsub_iota_ihs : forall rest gs1 E L, gs = gs1 ++ rest -> List.length E = cargs_nrec gs1 -> List.length L = List.length E ->
       ⊨ E ++ cinst Γ p D Us gs ->
       gsub Γ (sb_of_list Id (Ns ++ As ++ L)) (E ++ cinst Γ p D Us gs) ->
-      gsub Γ (sb_of_list Id (Ns ++ As ++ L ++ elim_ihs nm A Bs rest (List.skipn (List.length gs1) As)))
+      gsub Γ (sb_of_list Id (Ns ++ As ++ L ++ elim_ihs p nm A Bs rest (List.skipn (List.length gs1) As)))
         (ihs_ctx_aux D A Us (List.length gs) (cargs_pat gs1) (List.length E) rest ++ E ++ cinst Γ p D Us gs).
   Proof.
     pose proof (cons_lookup_in _ _ _ Hcon) as Hin.
@@ -2906,19 +2906,19 @@ Section Iota.
       specialize (HPl0 _ _ _ _ _ Hin Heq).
       pose proof (rel_exp_under_ctx_gsub Hj HA) as HAj; cbn [exp_sub] in HAj.
       rewrite <- List.app_assoc; cbn [List.app].
-      replace (Ns ++ As ++ L ++ a_elim nm A Bs a :: elim_ihs nm A Bs rest (List.skipn (S (List.length gs1)) As))
-        with (Ns ++ As ++ (L ++ a_elim nm A Bs a :: nil) ++ elim_ihs nm A Bs rest (List.skipn (S (List.length gs1)) As))
+      replace (Ns ++ As ++ L ++ a_elim p nm A Bs a :: elim_ihs p nm A Bs rest (List.skipn (S (List.length gs1)) As))
+        with (Ns ++ As ++ (L ++ a_elim p nm A Bs a :: nil) ++ elim_ihs p nm A Bs rest (List.skipn (S (List.length gs1)) As))
         by (rewrite <- !List.app_assoc; reflexivity).
       replace (true :: cargs_pat gs1) with (cargs_pat (gs1 ++ ca_rec Ps0 :: nil)) by (rewrite cargs_pat_snoc; reflexivity).
       replace (S (List.length gs1)) with (List.length (gs1 ++ ca_rec Ps0 :: nil)) by (rewrite List.length_app; cbn; lia).
       apply (IH (gs1 ++ ca_rec Ps0 :: nil) (_ :: E));
         [ rewrite Heq, <- List.app_assoc; reflexivity | cbn; rewrite cargs_nrec_snoc, HE; lia
         | rewrite List.length_app; cbn; lia | cbn [List.app]; exact (sem_ctx_ext_typ _ _ _ HΨ HAj) |].
-      replace (Ns ++ As ++ L ++ a_elim nm A Bs a :: nil) with ((Ns ++ As ++ L) ++ a_elim nm A Bs a :: nil)
+      replace (Ns ++ As ++ L ++ a_elim p nm A Bs a :: nil) with ((Ns ++ As ++ L) ++ a_elim p nm A Bs a :: nil)
         by (rewrite <- !List.app_assoc; reflexivity).
-      rewrite (sb_of_list_app (Ns ++ As ++ L) (a_elim nm A Bs a :: nil) Id).
-      change (sb_of_list (sb_of_list Id (Ns ++ As ++ L)) (a_elim nm A Bs a :: nil))
-        with (sb_of_list Id (Ns ++ As ++ L) ,, a_elim nm A Bs a).
+      rewrite (sb_of_list_app (Ns ++ As ++ L) (a_elim p nm A Bs a :: nil) Id).
+      change (sb_of_list (sb_of_list Id (Ns ++ As ++ L)) (a_elim p nm A Bs a :: nil))
+        with (sb_of_list Id (Ns ++ As ++ L) ,, a_elim p nm A Bs a).
       cbn [List.app]; eapply gsub_ass; [ exact Hδ | exact HAj |].
       rewrite exp_sub_sub.
       match type of Hj with gsub _ (sb_of_list (sb_of_wk (wk_shiftn ?m)) (?Q ++ ?v :: nil)) _ =>
@@ -2958,7 +2958,7 @@ Section Iota.
          List.nth_error (tele_insts (ind_nparams D) (sb_of_list Id Us) Ns) k = Some T -> Γ ⊨ N : T) ->
       (forall k N T, List.nth_error As k = Some N ->
          List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) k = Some T -> Γ ⊨ N : T) ->
-      gsub Γ (sb_of_list Id (Ns ++ As ++ elim_ihs nm A Bs gs As)) (elim_bctx p D gs A Us ++ Γ).
+      gsub Γ (sb_of_list Id (Ns ++ As ++ elim_ihs p nm A Bs gs As)) (elim_bctx p D gs A Us ++ Γ).
   Proof.
     intros HNs HAs.
     pose proof (HBc c gs Hcon) as HB.
@@ -2977,7 +2977,7 @@ Section Iota.
       (forall k N T, List.nth_error As k = Some N ->
          List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) k = Some T -> Γ ⊨ N : T) ->
       forall n B, brs_lookup Bs c = Some (n, B) ->
-      Γ ⊨ a_elim nm A Bs (apps (a_con p c) (Us ++ Ns ++ As)) ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs nm A Bs gs As)]
+      Γ ⊨ a_elim p nm A Bs (apps (a_con p c) (Us ++ Ns ++ As)) ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs p nm A Bs gs As)]
         : A[sb_of_list Id (Ns ++ apps (a_con p c) (Us ++ Ns ++ As) :: nil)].
   Proof.
     intros HNs HAs n B Hlk.
@@ -2991,7 +2991,7 @@ Section Iota.
     pose proof (elim_valid_at Ns Mc HNl Hg HMc) as HL.
     pose proof (gsub_iota HNs HAs) as Hgi.
     pose proof (HBv _ _ _ _ Hcon (brs_lookup_in _ _ _ _ Hlk)) as HBv'.
-    assert (Lih : List.length (elim_ihs nm A Bs gs As) = cargs_nrec gs) by (apply length_elim_ihs; exact HAl).
+    assert (Lih : List.length (elim_ihs p nm A Bs gs As) = cargs_nrec gs) by (apply length_elim_ihs; exact HAl).
     pose proof (rel_exp_under_ctx_gsub Hgi HBv') as HR.
     rewrite elim_bty_iota in HR by assumption.
     destruct (sem_ctx_per_ctx_env HΓ) as [RΓ HRΓ].
@@ -3022,9 +3022,9 @@ Section Iota.
     rewrite E1 in EB, Eih.
     rewrite (skipn_app_exact (us' ++ ns') as' _ Hnp) in EB, Eih.
     rewrite (firstn_app_exact (us' ++ ns') as' _ Hnp), (skipn_app_exact us' ns' _ Lus) in EB.
-    pose proof (eval_elim_ihs _ _ _ _ _ _ _ _ Eas Eih HAl) as Eihs.
+    pose proof (eval_elim_ihs p _ _ _ _ _ _ _ _ Eas Eih HAl) as Eihs.
     set (Eτ := env_args ρ' (ns' ++ as' ++ ihs)).
-    assert (Hτ : ⟦ sb_of_list Id (Ns ++ As ++ elim_ihs nm A Bs gs As) ⟧s ρ' ↘ Eτ)
+    assert (Hτ : ⟦ sb_of_list Id (Ns ++ As ++ elim_ihs p nm A Bs gs As) ⟧s ρ' ↘ Eτ)
       by (apply eval_sb_of_list; [ apply eval_sub_id | apply eval_exps_app; [ exact Ens | apply eval_exps_app; [ exact Eas | exact Eihs ] ] ]).
     destruct (exp_inst_link _ _ _ _ _ _ _ _ _ HBv' HRΓ (gsub_valid Hgi) Hρ'ρ' Hτ) as (r & n0 & Er & En0 & Hrn).
     assert (n0 = l') as -> by (eapply functional_eval_exp; eassumption).

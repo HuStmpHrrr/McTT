@@ -5,6 +5,7 @@ From Mctt Require Import LibTactics.
 From Mctt.Algorithmic Require Import Typing Strengthening.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Semantic Require Import Consequences.
+From Mctt.Core.Syntactic.System Require Import IndClassify.
 From Mctt.Extraction Require Import NbE PseudoMonadic TypeCheckBase.
 Import Domain_Notations Wk_Notations Fixed_Notations.
 
@@ -120,7 +121,7 @@ Qed.
 
 (** The inversion of [ati_elim], at the scrutinee's inferred type. *)
 Lemma ati_elim_at : forall G nm A Bs M T p Rs,
-    G ⊢a a_elim nm A Bs M ⟹ T -> G ⊢a M ⟹ nf_indty p Rs ->
+    G ⊢a a_elim p nm A Bs M ⟹ T -> G ⊢a M ⟹ nf_indty p Rs ->
     exists D UA u,
       ind_lookup gc_deps gc_stack p = Some D /\
       List.length (nfs_to_exps Rs) = ind_np D /\
@@ -138,11 +139,11 @@ Proof.
   intros * H HM.
   inversion H; subst.
   match goal with H1 : G ⊢a M ⟹ nf_indty ?p0 ?Rs0 |- _ =>
-    pose proof (functional_alg_type_infer H1 HM) as Heq; injection Heq as -> -> end.
+    pose proof (functional_alg_type_infer H1 HM) as Heq; injection Heq; intros; subst end.
   do 3 eexists; repeat split; eassumption.
 Qed.
 
-Definition elim_infer G (HG : ⊢ G) (P : tenv G) nm A (Bs : list (string * nat * exp)) M
+Definition elim_infer G (HG : ⊢ G) (P : tenv G) pe nm A (Bs : list (string * nat * exp)) M
   (rM : { T : nf | G ⊢a M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
         + { forall T, ~ G ⊢a M ⟹ T })
   (infA : forall G' (HG' : ⊢ G') (P' : tenv G'),
@@ -150,8 +151,8 @@ Definition elim_infer G (HG : ⊢ G) (P : tenv G) nm A (Bs : list (string * nat 
       + { forall UA, ~ G' ⊢a A ⟹ UA })
   (chkB : forall b, In b Bs -> forall G' A' (HA' : exists i, G' ⊢ A' : Typeω@i) (P' : tenv G'),
       { G' ⊢a snd b ⟸ A' } + { ~ G' ⊢a snd b ⟸ A' }) :
-  { T : nf | G ⊢a a_elim nm A Bs M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
-  + { forall T, ~ G ⊢a a_elim nm A Bs M ⟹ T }.
+  { T : nf | G ⊢a a_elim pe nm A Bs M ⟹ T /\ (exists UA u, G ⊢a T ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T : Typeω@i) }
+  + { forall T, ~ G ⊢a a_elim pe nm A Bs M ⟹ T }.
 Proof.
   destruct rM as [[T (HMi & _ & _)] | HnM];
     [| right; intros T H; inversion H; subst; eapply HnM; eassumption ].
@@ -160,6 +161,12 @@ Proof.
        match goal with H1 : G ⊢a M ⟹ nf_indty _ _ |- _ =>
          pose proof (functional_alg_type_infer H1 HMi) as Heq end;
        symmetry in Heq; eapply HnI; exact Heq ].
+  (** The scrutinee is of the type the eliminator names. *)
+  destruct (qname_eq_dec p pe) as [<- | Hpe];
+    [| right; intros T' H; inversion H; subst;
+       match goal with H1 : G ⊢a M ⟹ nf_indty _ _ |- _ =>
+         pose proof (functional_alg_type_infer H1 HMi) as Heq end;
+       injection Heq as E _; exact (Hpe (eq_sym E)) ].
   destruct (ind_lookup gc_deps gc_stack p) as [D |] eqn:Hl;
     [| right; intros T' H; destruct (ati_elim_at _ _ _ _ _ _ _ _ H HMi) as (D' & ? & ? & HD' & _); congruence ].
   pose (Us := List.firstn (ind_nu D) (nfs_to_exps Rs)).

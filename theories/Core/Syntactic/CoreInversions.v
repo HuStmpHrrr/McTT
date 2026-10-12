@@ -383,9 +383,9 @@ Proof.
     split; [ exact HD | split; [ exact Hc | eapply wf_subtyp_trans; eassumption ] ].
 Qed.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ nm A Bs M T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : T ->
-    exists p D Ps i,
+Lemma wf_elim_inversion : forall {Θ Ξ Γ p nm A Bs M T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs M : T ->
+    exists D Ps i,
       ind_lookup Θ Ξ p = Some D /\
       List.length Ps = ind_np D /\
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
@@ -405,8 +405,8 @@ Lemma wf_elim_inversion : forall {Θ Ξ Γ nm A Bs M T},
       Θ ⍮ Ξ ⍮ Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ⊆ T.
 Proof.
   intros * H; dependent induction H.
-  - exists p, D, Ps, i; repeat (split; [ first [ assumption | reflexivity ] |]).
+  - exists D, Ps, i; repeat (split; [ first [ assumption | reflexivity ] |]).
     eapply wf_subtyp_of_typed; eapply wf_elim; (eassumption || reflexivity).
-  - destruct (IHwf_exp1 _ _ _ _ eq_refl) as (p & D & Ps & i0 & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
-    exists p, D, Ps, i0; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
+  - destruct (IHwf_exp1 _ _ _ _ _ eq_refl) as (D & Ps & i0 & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
+    exists D, Ps, i0; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
 Qed.

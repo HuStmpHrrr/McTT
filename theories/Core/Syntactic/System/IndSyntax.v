@@ -452,9 +452,9 @@ Qed.
 Definition brs_sub (Bs : list (String.string * nat * exp)) (τ : sub) : list (String.string * nat * exp) :=
   List.map (fun b => (fst b, (snd b)[sb_qn (snd (fst b)) τ])) Bs.
 
-Lemma elim_ihs_sub : forall nm A Bs gs As τ,
-    List.map (fun N => N[τ]) (elim_ihs nm A Bs gs As)
-    = elim_ihs nm A[sb_qn nm τ] (brs_sub Bs τ) gs (List.map (fun N => N[τ]) As).
+Lemma elim_ihs_sub : forall p nm A Bs gs As τ,
+    List.map (fun N => N[τ]) (elim_ihs p nm A Bs gs As)
+    = elim_ihs p nm A[sb_qn nm τ] (brs_sub Bs τ) gs (List.map (fun N => N[τ]) As).
 Proof. induction gs as [| [] gs IH]; intros [| N As] τ; cbn; f_equal; auto. Qed.
 
 (** ** Lists of Branches *)
@@ -560,9 +560,9 @@ Lemma elim_bty_wk : forall p D c gs A Us φ,
     = elim_bty p D c gs A[wk_qn (S (ind_nn D)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us).
 Proof. intros; rewrite <- exp_sub_qn_of_wk, elim_bty_sub, exp_sub_qn_of_wk, map_sub_of_wk; reflexivity. Qed.
 
-Lemma elim_ihs_wk : forall nm A Bs gs As φ,
-    List.map (fun N => N[φ]ʷ) (elim_ihs nm A Bs gs As)
-    = elim_ihs nm A[wk_qn nm φ]ʷ (List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) Bs) gs
+Lemma elim_ihs_wk : forall p nm A Bs gs As φ,
+    List.map (fun N => N[φ]ʷ) (elim_ihs p nm A Bs gs As)
+    = elim_ihs p nm A[wk_qn nm φ]ʷ (List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) Bs) gs
         (List.map (fun N => N[φ]ʷ) As).
 Proof.
   intros; rewrite <- !map_sub_of_wk, elim_ihs_sub, exp_sub_qn_of_wk, brs_sub_of_wk; reflexivity.

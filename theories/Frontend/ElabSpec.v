@@ -187,6 +187,15 @@ Definition itarget (fq ip : path) (args : list Cst.obj) : option Cst.obj :=
     first. *)
 Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (snd p)) ps).
 
+(** The name of the eliminator of the type a module expression names, as
+    written: the declaration [#] in it, from a unit, the module's arguments
+    dropped.  The core resolves it ([Imports.elim_xp]). *)
+Definition elim_head (H : modexp) : option qname :=
+  match modexp_spine H with
+  | (me_unit fp, _, pre) => Some (q_abs fp (pre ++ ind_name :: nil))
+  | _ => None
+  end.
+
 Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_typ : forall S n, sel S (Cst.typ n) (Typeω@n)
 | sel_suniv : forall S o M, sel S o M -> sel S (Cst.suniv o) (Type⟨M⟩)
@@ -230,12 +239,14 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->
     sel S (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
-(** An eliminator: its motive binds its names, and so does each branch.
-    How many there must be, and which constructor a branch is for, is the
-    core's to check. *)
-| sel_elim : forall S om xs oA bs M A Bs,
+(** An eliminator: it is named by the module of its type, as written
+    ([elim_head]); its motive binds its names, and so does each branch.
+    Which type the module is, how many names there must be, and which
+    constructor a branch is for, is the core's to check. *)
+| sel_elim : forall S oh om xs oA bs H p M A Bs,
+    selm S oh H -> elim_head H = Some p ->
     sel S om M -> sel (vents xs ++ S) oA A -> sbrs S bs Bs ->
-    sel S (Cst.elim om xs oA bs) (a_elim (List.length xs) A Bs M)
+    sel S (Cst.elim oh om xs oA bs) (a_elim p (List.length xs) A Bs M)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,

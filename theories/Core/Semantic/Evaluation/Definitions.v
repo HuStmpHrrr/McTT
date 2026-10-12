@@ -112,7 +112,7 @@ Inductive eval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | eval_exp_elim :
   `( ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim p nm A Bs M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | eval_exp_pi :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->

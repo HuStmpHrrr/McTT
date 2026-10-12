@@ -1018,7 +1018,7 @@ module U where
   | cons (x : A) (xs : List A)
   end
   def len : forall (l : List Nat) -> Nat :=
-    fun (l : List Nat) -> elim l return z . Nat | nil => zero | cons x xs, r => succ r end
+    fun (l : List Nat) -> List.elim l return z . Nat | nil => zero | cons x xs, r => succ r end
   end
 end
 >>
@@ -1027,7 +1027,9 @@ end
     parameters, and each argument binds its name: [A] is [#0] in the type
     of [x], and [List A] is [#2 $ #1] in the type of [xs].  Which argument is
     recursive is the core's to decide.  After the declaration [List] is a
-    member of the frame, so [List Nat] is [U.List $ ℕ].  The motive binds the scrutinee, the
+    member of the frame, a module, so [List Nat] is [U.List $ ℕ], which the
+    core reads as the type, and [List.elim] names the declaration [#] in it,
+    [U.List.#], which the core resolves.  The motive binds the scrutinee, the
     branch for [cons] its two arguments and its hypothesis: [r] is [#0]. *)
 Definition list_decl : Cst.cmd :=
   c_ind false "List" (("A", typ 0) :: nil) (typ 0)
@@ -1038,7 +1040,7 @@ Definition list_len : Cst.prog :=
          list_decl ::
          c_def md_pub "len" (pi "l" (app (var "List") nat) nat)
            (fn "l" (app (var "List") nat)
-              (elim (var "l") ("z" :: nil) nat
+              (elim (var "List") (var "l") ("z" :: nil) nat
                  (("nil", nil, Cst.zero) :: ("cons", "x" :: "xs" :: "r" :: nil, Cst.succ (var "r")) :: nil))) :: nil)).
 
 Definition U_List : exp := qname_term (q_abs ("U" :: nil) ("List" :: nil)).
@@ -1050,7 +1052,8 @@ Example list_len_spec :
        (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0
           (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
-       (Some (λ (U_List $ ℕ) (a_elim 1 ℕ (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
+       (Some (λ (U_List $ ℕ) (a_elim (q_abs ("U" :: nil) ("List" :: "#" :: nil)) 1 ℕ
+                                (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
 
 (** A non-uniform parameter is bound by the type, in front of its sort,

@@ -1082,7 +1082,7 @@ Proof. intros * Htr; exact (@consistency_False (gc_mk Θ Ξ) Htr M). Qed.
 (** The global at the head of a neutral, if any. *)
 Fixpoint ne_head (W : ne) : option qname :=
   match W with
-  | ne_natrec _ _ _ W | ne_exfalso _ W | ne_elim _ _ _ W | ne_app W _ => ne_head W
+  | ne_natrec _ _ _ W | ne_exfalso _ W | ne_elim _ _ _ _ W | ne_app W _ => ne_head W
   | ne_var _ => None
   | ne_glob p => Some p
   end.

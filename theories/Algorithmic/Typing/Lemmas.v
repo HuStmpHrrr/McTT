@@ -51,7 +51,7 @@ Proof.
       same types. *)
   all: try solve [ repeat match goal with
     | IH : forall A'0, ?G ⊢a ?M ⟹ A'0 -> nf_indty _ _ = A'0, H : ?G ⊢a ?M ⟹ nf_indty _ _ |- _ =>
-        specialize (IH _ H); injection IH as <- <- end;
+        specialize (IH _ H); injection IH; clear H; intros; subst end;
     match goal with H1 : ind_lookup _ _ ?p = Some ?D1, H2 : ind_lookup _ _ ?p = Some ?D2 |- _ =>
       assert (D1 = D2) as <- by congruence end;
     repeat match goal with H1 : ind_con ?D ?c = Some ?g1, H2 : ind_con ?D ?c = Some ?g2 |- _ =>
@@ -298,7 +298,7 @@ Lemma alg_elim_sound : forall Γ M p Rs D nm A i Bs T,
        (elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list
          ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
     nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
-    Γ ⊢ a_elim nm A Bs M : T.
+    Γ ⊢ a_elim p nm A Bs M : T.
 Proof.
   intros * HΓ HM Hl HRl Hnm HAi HBn HBa HBi HT.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
@@ -311,7 +311,7 @@ Proof.
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUt) as Hσ.
   assert (HMs : ⊢ (elim_mctx p D Us ++ Γ)%list) by (eapply elim_mctx_wf; eassumption).
   pose proof (HAi HMs) as HA.
-  assert (Hel : Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)]).
+  assert (Hel : Γ ⊢ a_elim p nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)]).
   { eapply wf_elim; [ exact Hl | exact HRl | exact HRt | exact HM | exact Hnm | exact HA
                     | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | exact HBn | | exact HBa | ].
     - intros c gs Hcon; eapply ctx_ext_refl; [ apply elim_bctx_ass, Hc | eapply elim_bctx_wf; eassumption ].
@@ -359,10 +359,10 @@ Proof.
         destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [j0 Hj0];
         destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl (cons_lookup_in _ _ _ Hcon) gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _);
         eapply wf_conv'; [ eapply wf_con; eassumption | eapply soundness_ty'; eassumption ] end
-  | |- _ ⊢ a_elim _ _ _ _ : _ =>
+  | |- _ ⊢ a_elim _ _ _ _ _ : _ =>
       match goal with
       | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, HA : ⊢ ?X -> ?X ⊢ ?A : nf_to_exp ?UA, Hu : is_univ_nf ?UA ?u
-        |- ?G ⊢ a_elim _ ?A _ ?M : _ =>
+        |- ?G ⊢ a_elim _ _ ?A _ ?M : _ =>
           rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA;
           eapply (alg_elim_sound G M _ _ _ _ A (unf_large u));
             [ exact HΓ | exact (HM HΓ) | eassumption | eassumption | eassumption
@@ -880,7 +880,7 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_maxl M N => exp_lets M + exp_lets N
   | a_natrec A MZ MS M => exp_lets A + exp_lets MZ + exp_lets MS + exp_lets M
   | a_exfalso A M => exp_lets A + exp_lets M
-  | a_elim _ A Bs M =>
+  | a_elim _ _ A Bs M =>
       S (exp_lets A) +
         (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
            match Bs with
@@ -1300,7 +1300,7 @@ Qed.
     unit's body holds terms and a term may hold a unit.  The global context is
     an index of the judgments, so it is fixed for the induction, as in
     [subtyp_spec]. *)
-Lemma brs_lets_in : forall nm A Bs M c n B, List.In (c, n, B) Bs -> exp_lets B < exp_lets (a_elim nm A Bs M).
+Lemma brs_lets_in : forall p nm A Bs M c n B, List.In (c, n, B) Bs -> exp_lets B < exp_lets (a_elim p nm A Bs M).
 Proof.
   intros * Hin; cbn [exp_lets].
   enough (exp_lets B <= (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
@@ -1343,7 +1343,7 @@ Proof.
                clear IH; rename H' into IH
            end.
   (** Only the unannotated [let] needs the outer induction. *)
-  all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | |- _ ⊢a a_elim _ _ _ _ ⟸ _ => fail | _ => clear IHn end).
+  all: try (lazymatch goal with |- _ ⊢a ℓ ≔ _ in _ ⟸ _ => fail | |- _ ⊢a a_elim _ _ _ _ _ ⟸ _ => fail | _ => clear IHn end).
   all: match goal with |- _ ⊢a _ ⟸ _ =>
          gen_presups;
          (** A universe, [ℕ], [⊤] and [⊥] infer their own universe. *)
@@ -1469,7 +1469,7 @@ Proof.
   - match goal with
     | Hl : ind_lookup _ _ ?p = Some ?D, HPl : List.length ?Ps = ind_np ?D, HM : Γ ⊢ ?M : apps_exp (a_ind ?p) ?Ps,
       HMc : Γ ⊢a ?M ⟸ apps_exp (a_ind ?p) ?Ps, HA : elim_mctx ?p ?D _ ++ Γ ⊢ ?A : Typeω@?i,
-      Hbound : exp_lets (a_elim _ ?A ?Bs ?M) <= _ |- _ =>
+      Hbound : exp_lets (a_elim _ _ ?A ?Bs ?M) <= _ |- _ =>
         rename Hl into Hle0; rename HPl into HPle0; rename HM into HMe0; rename HMc into HMce0; rename HA into HAe0;
         rename Hbound into Hbd
     end.
@@ -1501,7 +1501,7 @@ Proof.
               elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
                 ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))).
     { intros c gs n' B Hcon Hin.
-      destruct (IHn (exp_lets B) ltac:(pose proof (brs_lets_in (S (ind_nn D)) A Bs M c n' B Hin); lia)) as (_ & IHt & _).
+      destruct (IHn (exp_lets B) ltac:(pose proof (brs_lets_in p (S (ind_nn D)) A Bs M c n' B Hin); lia)) as (_ & IHt & _).
       eapply IHt; [ exact (HBt' _ _ _ _ Hcon Hin) | reflexivity | reflexivity | apply user_exp_all | lia ]. }
     (** The type. *)
     assert (exists k, Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] : Typeω@k) as [kT HT]

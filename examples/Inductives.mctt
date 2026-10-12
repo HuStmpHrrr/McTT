@@ -11,14 +11,14 @@ end
 (* The motive binds the scrutinee; a branch, the constructor's arguments
    and, after the comma, the induction hypotheses. *)
 def length (A : Type@0) (l : List A) : ℕ :=
-  elim l return z . ℕ
+  List.elim l return z . ℕ
   | nil ⇒ 0
   | cons x xs, r ⇒ succ r
   end
 end
 
 def append (A : Type@0) (l : List A) (m : List A) : List A :=
-  elim l return z . List A
+  List.elim l return z . List A
   | nil ⇒ m
   | cons x xs, r ⇒ List.cons A x r
   end
@@ -47,7 +47,7 @@ inductive Option (A : Type@0) : Type@0 where
 end
 
 def getOr (A : Type@0) (d : A) (o : Option A) : A :=
-  elim o return z . A
+  Option.elim o return z . A
   | none ⇒ d
   | some x ⇒ x
   end
@@ -70,7 +70,7 @@ def plus (m : ℕ) (n : ℕ) : ℕ :=
 end
 
 def size (A : Type@0) (t : Tree A) : ℕ :=
-  elim t return z . ℕ
+  Tree.elim t return z . ℕ
   | leaf ⇒ 0
   | node l x r, hl hr ⇒ succ (plus hl hr)
   end
@@ -86,7 +86,7 @@ inductive Sigma (A : Type@0) (B : ∀ (x : A) → Type@0) : Type@0 where
 end
 
 def fst (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : A :=
-  elim p return z . A
+  Sigma.elim p return z . A
   | pair a b ⇒ a
   end
 end
@@ -94,7 +94,7 @@ end
 (* The branch's type is [B (fst A B (Sigma.pair A B a b))], which computes to
    [B a]. *)
 def snd (A : Type@0) (B : ∀ (x : A) → Type@0) (p : Sigma A B) : B (fst A B p) :=
-  elim p return z . B (fst A B z)
+  Sigma.elim p return z . B (fst A B z)
   | pair a b ⇒ b
   end
 end
@@ -110,7 +110,7 @@ inductive Climb : ∀ (n : ℕ) → Type@0 where
 end
 
 def steps (n : ℕ) (c : Climb n) : ℕ :=
-  elim c return m z . ℕ
+  Climb.elim c return m z . ℕ
   | stop m ⇒ 0
   | step m r, h ⇒ succ h
   end

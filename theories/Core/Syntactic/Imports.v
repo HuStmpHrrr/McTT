@@ -76,7 +76,9 @@ Inductive xerr : Set :=
 (** A member both used and exported *)
 | xe_both : string -> xerr
 (** A name the import declares twice *)
-| xe_fresh : string -> xerr.
+| xe_fresh : string -> xerr
+(** The name of an eliminator, as written, is not of an inductive type *)
+| xe_ind : qname -> xerr.
 
 Inductive xres (A : Type) : Type :=
 | xok : A -> xres A
@@ -236,6 +238,14 @@ Definition ind_head (md : md_oracle) (H : modexp) (x : string) : option exp :=
   | _ => None
   end.
 
+(** The name of an eliminator as written, [M.#] for the module [M] the
+    user names, resolved through aliases to the declaration's. *)
+Definition elim_xp (md : md_oracle) (p : qname) : xres qname :=
+  match md (me_unit (q_unit p)) (q_chain p) with
+  | Some p' => xok p'
+  | None => xfail (xe_ind p)
+  end.
+
 Definition mem_xp (md : md_oracle) (H : modexp) (x : string) : exp :=
   match ind_head md H x with
   | Some M => M
@@ -266,7 +276,8 @@ Section Expansion.
         let+ M' := exp_xp S M in
         xok (a_exfalso A' M')
     | a_ind _ | a_con _ _ => xok M
-    | a_elim nm A Bs M =>
+    | a_elim p nm A Bs M =>
+        let+ p' := elim_xp (xo_md xo) p in
         let+ A' := exp_xp (List.repeat None nm ++ S) A in
         let+ Bs' := (fix brs_xp (Bs : list (String.string * nat * exp)) : xres (list (String.string * nat * exp)) :=
                        match Bs with
@@ -277,7 +288,7 @@ Section Expansion.
                            xok ((fst b, B') :: Bs0')
                        end) Bs in
         let+ M' := exp_xp S M in
-        xok (a_elim nm A' Bs' M')
+        xok (a_elim p' nm A' Bs' M')
     | a_pi A B =>
         let+ A' := exp_xp S A in
         let+ B' := exp_xp (None :: S) B in
@@ -495,7 +506,8 @@ Section Ext.
   Proof.
     apply syn_mut_ind; intros; cbn [exp_xp modexp_xp bnd_xp gunit_xp moddef_xp gmod_xp gentry_xp centry_xp].
     all: try solve [ xp_step ].
-    - (* an eliminator: its motive, its branches, its scrutinee *)
+    - (* an eliminator: its name, its motive, its branches, its scrutinee *)
+      unfold elim_xp; rewrite Hdext; destruct (xo_md mt' _ _); cbn [xbind]; [| reflexivity ].
       rewrite H; destruct (exp_xp mt' _ A); cbn [xbind]; [| reflexivity ].
       match goal with |- xbind ?a _ = xbind ?b _ => assert (Ht : a = b) end.
       { clear - H0; induction H0 as [| b Bs Hb HF IH]; [ reflexivity |]; cbn [xbind].

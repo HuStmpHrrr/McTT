@@ -78,7 +78,7 @@ Inductive eval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | eeo_elim :
   `( eval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ Θ ⍮ Ξ ⍮ p ↘ m -> eval_elim_order Θ Ξ p nm A Bs m) ->
-     eval_exp_order Θ Ξ (a_elim nm A Bs M) p )
+     eval_exp_order Θ Ξ (a_elim pq nm A Bs M) p )
 | eeo_fn :
   `( eval_exp_order Θ Ξ (λ A M) p )
 | eeo_app :
@@ -575,7 +575,7 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
-  | a_elim nm A Bs M, p, H =>
+  | a_elim pq nm A Bs M, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_elim_impl p nm A Bs m _ in
       exist _ r _

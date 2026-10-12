@@ -249,9 +249,10 @@ let rec term st env (o : C.obj) : unit =
       let env' = fst (params st env ps) in
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
-  (* An eliminator: the names of its motive, then each branch's
+  (* An eliminator: its type, the names of its motive, then each branch's
      constructor, unlinked, and its names. *)
-  | C.Coq_elim (m, xs, a, bs) ->
+  | C.Coq_elim (h, m, xs, a, bs) ->
+      ignore (modv st env h);
       term st env m;
       let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
       term st (binds env xs) a;

@@ -33,7 +33,7 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
       exp_scoped (S n) A /\ exp_scoped n MZ /\ exp_scoped (S (S n)) MS /\ exp_scoped n M
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
   | a_ind _ | a_con _ _ => True
-  | a_elim nm A Bs M => exp_scoped (nm + n) A /\ all_brs (fun k B => exp_scoped (k + n) B) Bs /\ exp_scoped n M
+  | a_elim p nm A Bs M => exp_scoped (nm + n) A /\ all_brs (fun k B => exp_scoped (k + n) B) Bs /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N
   | a_var x => x < n
@@ -976,9 +976,9 @@ Proof.
   replace (ind_nn D + length gs + cargs_nrec gs) with (cargs_nrec gs + length gs + ind_nn D) by lia; exact HB.
 Qed.
 
-Lemma elim_ihs_scoped : forall nm A Bs gs As m,
-    (forall N, exp_scoped m N -> exp_scoped m (a_elim nm A Bs N)) ->
-    List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs nm A Bs gs As).
+Lemma elim_ihs_scoped : forall p nm A Bs gs As m,
+    (forall N, exp_scoped m N -> exp_scoped m (a_elim p nm A Bs N)) ->
+    List.Forall (exp_scoped m) As -> List.Forall (exp_scoped m) (elim_ihs p nm A Bs gs As).
 Proof.
   induction gs as [| [] gs IH]; intros [| N As] m He HAs; cbn; try constructor; inversion_clear HAs; auto.
 Qed.

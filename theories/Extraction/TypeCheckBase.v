@@ -370,8 +370,8 @@ Section type_check.
   | ti_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
   | ti_indty : forall {p}, type_infer_order (a_ind p)
   | ti_con : forall {p c}, type_infer_order (a_con p c)
-  | ti_elim : forall {nm A Bs M}, type_infer_order M -> type_infer_order A ->
-      (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim nm A Bs M)
+  | ti_elim : forall {p nm A Bs M}, type_infer_order M -> type_infer_order A ->
+      (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim p nm A Bs M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
@@ -852,7 +852,7 @@ Ltac ob_ord :=
     eliminator. *)
 Ltac ob_ord_elim :=
   clear_defs;
-  match goal with H : type_infer_order (a_elim _ _ _ _) |- _ => progressive_invert H end;
+  match goal with H : type_infer_order (a_elim _ _ _ _ _) |- _ => progressive_invert H end;
   first
     [ eassumption
     | match goal with

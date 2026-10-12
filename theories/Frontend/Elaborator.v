@@ -230,11 +230,16 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       let* D := elab_mdef (pents ps ++ S) md in
       let* B := elab (en_var x :: S) ob in
       eok (ℓₘ (gu_mk (ptele tys) D) in B)
-  | Cst.elim om xs oA bs =>
+  | Cst.elim oh om xs oA bs =>
+      let* H := elab_mod S oh in
+      let* p := match elim_head H with
+                | Some p => eok p
+                | None => eerr "only an inductive type declared in a module has an eliminator"
+                end in
       let* M := elab S om in
       let* A := elab (vents xs ++ S)%list oA in
       let* Bs := elab_brs_with elab S bs in
-      eok (a_elim (List.length xs) A Bs M)
+      eok (a_elim p (List.length xs) A Bs M)
   end
 
 with elab_mod (S : list ent) (o : Cst.obj) {struct o} : eres modexp :=

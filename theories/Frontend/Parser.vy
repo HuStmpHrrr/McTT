@@ -224,12 +224,12 @@ let obj :=
   | EXFALSO; escr = obj; RETURN; mx = VAR; "."; em = obj;
     { Cst.exfalso escr (snd mx) em }
 
-  (* [elim M return ys z . A | c xs, hs => B … end]: the motive binds the
-     non-uniform parameters and the scrutinee; a branch, the non-uniform
-     parameters and the constructor's arguments, then after a comma its
-     induction hypotheses. *)
-  | ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
-    { Cst.elim escr (List.rev xs) em (List.rev bs) }
+  (* [X.elim M return ys z . A | c xs, hs => B … end], [X] the inductive
+     type: the motive binds the non-uniform parameters and the scrutinee; a
+     branch, the non-uniform parameters and the constructor's arguments,
+     then after a comma its induction hypotheses. *)
+  | h = atomic_obj; "."; ELIM; escr = obj; RETURN; xs = vars; "."; em = obj; bs = brs; END;
+    { Cst.elim h escr (List.rev xs) em (List.rev bs) }
 
   (* [let x : A := a; y := b in body end].  The bindings fold into nested
      [letb]s, so each one sees the earlier ones. *)

@@ -173,8 +173,8 @@ term = ( '∀' | 'Π' | 'forall' ) , {parameter} , ( '→' | '->' ) , term
      | 'rec' , term , 'return' , nat motive , zero branch , succ branch , 'end'
      (* eliminator of the empty type *)
      | 'exfalso' , term , 'return' , nat motive
-     (* eliminator of an inductive type *)
-     | 'elim' , term , 'return' , {id} , nat motive , {elim branch} , 'end';
+     (* eliminator of the inductive type the atomic term names *)
+     | atomic term , '.' , 'elim' , term , 'return' , {id} , nat motive , {elim branch} , 'end';
 
             (* universe at the level nat, short for Type@{<nat>l} *)
 atomic term = 'Type', '@' , nat

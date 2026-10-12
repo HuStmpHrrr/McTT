@@ -1391,10 +1391,10 @@ Proof.
         long ones' equals, at which the motive and the branches are typed
         long ([wf_elim_params_conv]) and so short, by the induction
         hypotheses. *)
-    intros nm A' IHA Bs IHB u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
+    intros p nm A' IHA Bs IHB u IHu Δ C Hass HΓf HΓs HW; cbn [ne_to_exp exp_wk] in HW.
     set (φ := wk_qn (length Δ) ↑) in *.
     set (Lf := (tele_wk Δ ↑ ++ Γ ▹ A)%list) in *.
-    destruct (wf_elim_inversion HW) as (p & D & PsL & i & Hl & HPl & HPt & HuL & Hnm & HAL & _ & HBn & _ & HBa & HBtL & HsC).
+    destruct (wf_elim_inversion HW) as (D & PsL & i & Hl & HPl & HPt & HuL & Hnm & HAL & _ & HBn & _ & HBa & HBtL & HsC).
     subst nm.
     destruct (decl_of_lookup _ _ _ _ _ HΓs Hl) as [HD Hc].
     pose proof (decl_closed_nu D Hc) as Hle.
@@ -1462,7 +1462,7 @@ Proof.
         replace (cargs_nrec gs + List.length gs + ind_nn D) with (ind_nn D + List.length gs + cargs_nrec gs) by lia.
         rewrite elim_bty_wk, <- Hn; exact HBL. }
     (** The eliminator, short. *)
-    assert (Hel : (Δ ++ Γ)%list ⊢ a_elim (S (ind_nn D)) A' (nbrs_to_brs Bs) u
+    assert (Hel : (Δ ++ Γ)%list ⊢ a_elim p (S (ind_nn D)) A' (nbrs_to_brs Bs) u
                     : (A' : exp)[sb_of_list Id (List.skipn (ind_nu D) PsS ++ (u : exp) :: nil)]).
     { eapply wf_elim; [ exact Hl | exact HSl | exact HSt | exact HuS | reflexivity | exact HAS
                       | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | | | | exact HBS ].

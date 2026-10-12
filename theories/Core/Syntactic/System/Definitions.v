@@ -231,7 +231,7 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_pi :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ▹ A ⊢ B : Typeω@i ->
@@ -442,7 +442,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         ind_con D c = Some gs ->
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B ≈ B'
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs M ≈ a_elim nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs M ≈ a_elim p nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] )
 | wf_exp_eq_pi_cong :
   `( Θ ⍮ Ξ ⍮ Γ ⊢ A : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ A ≈ A' : Typeω@i ->
@@ -546,8 +546,8 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
         Θ ⍮ Ξ ⍮ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊢ B
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
      brs_lookup Bs c = Some (n, B) ->
-     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim nm A Bs (apps (a_con p c) (Ps ++ As))
-       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As)]
+     Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs (apps (a_con p c) (Ps ++ As))
+       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)]
        : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)] )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :

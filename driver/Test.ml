@@ -3138,8 +3138,10 @@ let%expect_test "Inductives.mctt works" =
     Evaluate λ (x1 : List ℕ) → length ℕ (List.cons ℕ 0 x1)
       --> λ (x1 : List ℕ)
             → succ
-                (elim x1 return x2 . ℕ | nil ⇒ 0 | cons x3 x4 x5 ⇒ succ x5 end)
-      : ∀ (x1 : List ℕ) → ℕ
+                (List.elim x1 return x2 . ℕ
+                 | nil ⇒ 0
+                 | cons x3 x4 x5 ⇒ succ x5
+                 end) : ∀ (x1 : List ℕ) → ℕ
     Evaluate (List ℕ).cons 0 (List ℕ).nil --> List.cons ℕ 0 (List.nil ℕ) : List ℕ
     Evaluate cons ℕ 1 (nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
     Evaluate getOr ℕ 0 (Option.some ℕ 5) --> 5 : ℕ
@@ -3181,7 +3183,7 @@ let%expect_test "a function into the type is not supported yet" =
 
 let%expect_test "an argument may not depend on a recursive one" =
   let _ = main_of_body "inductive V : Type@0 where | leaf \
-                        | node (v : V) (w : elim v return z . Type@0 | leaf => Nat | node a b, h => Nat end) end" in
+                        | node (v : V) (w : (fun (x : Nat) -> Nat) v) end" in
   [%expect {| Error: the argument w of node depends on a recursive argument |}]
 
 let%expect_test "a function argument in which the type does not occur is not recursive" =
@@ -3191,19 +3193,19 @@ let%expect_test "a function argument in which the type does not occur is not rec
 
 let%expect_test "a branch with the wrong number of names is rejected" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | z => N.z | s m => m end end" in
+                        def f (n : N) : N := N.elim n return k . N | z => N.z | s m => m end end" in
   [%expect {|
     Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | z ⇒ N.z | s x3 ⇒ x3 end,
+      λ (x1 : N) → N.elim x1 return x2 . N | z ⇒ N.z | s x3 ⇒ x3 end,
       is not of type ∀ (x1 : N) → N
     |}]
 
 let%expect_test "the branches must follow the constructors' order" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
-                        def f (n : N) : N := elim n return k . N | s m, h => m | z => N.z end end" in
+                        def f (n : N) : N := N.elim n return k . N | s m, h => m | z => N.z end end" in
   [%expect {|
     Error: the body of f,
-      λ (x1 : N) → elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ N.z end,
+      λ (x1 : N) → N.elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ N.z end,
       is not of type ∀ (x1 : N) → N
     |}]
 
@@ -3214,7 +3216,7 @@ let%expect_test "an inductive type's name is a member of its frame" =
 let%expect_test "an inductive type is declared under the parameters of its module" =
   let _ = main_of_body "module L (A : Type@0) where \
                           inductive List : Type@0 where | nil | cons (x : A) (xs : List) end \
-                          def len (l : List) : Nat := elim l return z . Nat | nil => 0 | cons x xs, r => succ r end end \
+                          def len (l : List) : Nat := List.elim l return z . Nat | nil => 0 | cons x xs, r => succ r end end \
                         end \
                         eval L.len Nat (L.List.cons Nat 1 (L.List.nil Nat))" in
   [%expect {| Evaluate L.len ℕ (L.List.cons ℕ 1 (L.List.nil ℕ)) --> 1 : ℕ |}]
@@ -3250,15 +3252,46 @@ let%expect_test "a private inductive type is out of reach outside its module" =
   let _ = main_of_body "module M where private inductive N : Type@0 where | z end end eval M.N.z" in
   [%expect {| Error: Test.M.N is private |}]
 
+let%expect_test "an eliminator is named by its type" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
+                        eval N.elim (N.s N.z) return k . Nat | z => 0 | s m, h => succ h end" in
+  [%expect {|
+    Evaluate N.elim N.s N.z return x1 . ℕ | z ⇒ 0 | s x2 x3 ⇒ succ x3 end --> 1
+      : ℕ
+    |}]
+
+let%expect_test "an eliminator through an alias is the type's" =
+  let _ = main_of_body "inductive N : Type@0 where | z end module M := N \
+                        eval fun (n : N) -> M.elim n return k . Nat | z => 0 end" in
+  [%expect {|
+    Evaluate λ (x1 : N) → N.elim x1 return x2 . ℕ | z ⇒ 0 end
+      --> λ (x1 : N) → N.elim x1 return x2 . ℕ | z ⇒ 0 end : ∀ (x1 : N) → ℕ
+    |}]
+
+let%expect_test "an eliminator of another type is rejected" =
+  let _ = main_of_body "inductive N : Type@0 where | z end inductive M : Type@0 where | z end \
+                        eval M.elim N.z return k . Nat | z => 0 end" in
+  [%expect {| Error: M.elim N.z return x1 . ℕ | z ⇒ 0 end has no inferable type |}]
+
+let%expect_test "an eliminator of a module that is no inductive type is rejected" =
+  let _ = main_of_body "module M where end eval fun (n : Nat) -> M.elim n return k . Nat end" in
+  [%expect {| Error: Test.M is not an inductive type |}]
+
+let%expect_test "an eliminator of a private type is out of reach outside its module" =
+  let _ = main_of_body "module A where private inductive N : Type@0 where | z end \
+                          def f (n : N) : Nat := N.elim n return k . Nat | z => 0 end end end \
+                        eval fun (n : A.N) -> A.N.elim n return k . Nat | z => 0 end" in
+  [%expect {| Error: Test.A.N is private |}]
+
 let%expect_test "an inductive type is not allowed in a local module" =
   let _ = main_of_body "eval let module M where inductive E : Type@0 where end end in zero end" in
   [%expect {| Error: an inductive type is not allowed in a local module |}]
 
 let%expect_test "an eliminator needs a motive" =
-  let _ = main_of_body "eval fun (x : Nat) -> elim x | zero => zero end" in
+  let _ = main_of_body "eval fun (x : Nat) -> N.elim x | zero => zero end" in
   [%expect {|
-    Error: on "|" (at line 1, column 48 - line 1, column 49): An eliminator "elim
-      M" is expected to be followed by "return" and its motive.
+    Error: on "|" (at line 1, column 50 - line 1, column 51): An eliminator
+      "X.elim M" is expected to be followed by "return" and its motive.
     |}]
 
 let%expect_test "an inductive type needs its type" =

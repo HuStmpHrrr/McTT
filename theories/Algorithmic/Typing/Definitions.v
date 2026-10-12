@@ -103,7 +103,7 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
         elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
           ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
      nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
-     Γ ⊢a a_elim nm A Bs M ⟹ T )
+     Γ ⊢a a_elim p nm A Bs M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
@@ -320,7 +320,7 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp A ->
      (forall b, List.In b Bs -> user_exp (snd b)) ->
      user_exp M ->
-     user_exp (a_elim nm A Bs M) )
+     user_exp (a_elim p nm A Bs M) )
 | user_exp_pi :
   `( user_exp A ->
      user_exp B ->

@@ -245,9 +245,19 @@ Definition bnd_tab (S : list ptab) (b : bnd) : ptab :=
 
 (** ** Member References *)
 
+(** The references a name from a unit is written with, as a chain of
+    selections: each member, from the chain before it. *)
+Fixpoint chain_refs (H : modexp) (ch : list string) : list (ptab * string)%type :=
+  match ch with
+  | nil => nil
+  | y :: ch' => (pt_glob H, y) :: chain_refs (me_mem H y) ch'
+  end.
+
+Definition qname_refs (p : qname) : list (ptab * string)%type := chain_refs (me_unit (q_unit p)) (q_chain p).
+
 (** The member references a term is written with, each with the table of
-    the module it selects from: every [a_mem H x] and every submodule
-    [me_mem H y]. *)
+    the module it selects from: every [a_mem H x], every submodule
+    [me_mem H y], and the name of an eliminator, as written. *)
 Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   match M with
   | a_typ _ | a_level _ | a_llit _ | a_nat | a_zero | a_True | a_true | a_False | a_var _ => nil
@@ -257,8 +267,8 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
       exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
   | a_ind _ | a_con _ _ => nil
-  | a_elim nm A Bs M =>
-      exp_refs (repeat pt_none nm ++ S) A ++
+  | a_elim p nm A Bs M =>
+      qname_refs p ++ exp_refs (repeat pt_none nm ++ S) A ++
         (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
            match Bs with
            | nil => nil

@@ -163,7 +163,7 @@ Lemma k_elim_cong : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M M' nm A A' (i : nat) Bs Bs'
          @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ)
            (elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) B B') ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
-    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim nm A Bs M) (a_elim nm A' Bs' M').
+    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim p nm A Bs M) (a_elim p nm A' Bs' M').
 Proof.
   intros * He HMs Hl HPl HPs HMM Hnm HA HMx HBn HBc HBf Hnb HB HΓ2.
   destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_eq_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
@@ -198,7 +198,7 @@ Lemma k_elim : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M nm A (i : nat) Bs,
          @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ)
            (elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) B B) ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
-    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim nm A Bs M) (a_elim nm A Bs M).
+    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim p nm A Bs M) (a_elim p nm A Bs M).
 Proof.
   intros * He Hl HPl HPs HMs HMM Hnm HA HMx HBn HBc Hnb HB HΓ2.
   destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
@@ -238,8 +238,8 @@ Lemma k_iota : forall Θ Ξ Θ2 Ξ2 Γ p D c gs Ps As nm A (i : nat) Bs n B,
     brs_lookup Bs c = Some (n, B) ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])
-      (a_elim nm A Bs (apps (a_con p c) (Ps ++ As)))
-      (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As)]).
+      (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))
+      (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)]).
 Proof.
   intros * He HΓ Hl Hcon HPl HPs HAl HAs Hnm HA HMx HBn HBc Hnb HB Hlk HΓ2.
   destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).

@@ -210,12 +210,12 @@ Proof.
 Qed.
 
 (** The parts of an eliminator may read only what the eliminator may. *)
-Lemma agree_elim_A : forall nm A Bs M ρ ρ',
-    env_agree (fun x => ~ exp_fresh x (a_elim nm A Bs M)) ρ ρ' -> env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ'.
+Lemma agree_elim_A : forall p nm A Bs M ρ ρ',
+    env_agree (fun x => ~ exp_fresh x (a_elim p nm A Bs M)) ρ ρ' -> env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ'.
 Proof. intros * H x Hx; apply H; intros Hf; apply Hx; apply exp_fresh_elim in Hf; tauto. Qed.
 
-Lemma agree_elim_B : forall nm A Bs M ρ ρ',
-    env_agree (fun x => ~ exp_fresh x (a_elim nm A Bs M)) ρ ρ' ->
+Lemma agree_elim_B : forall p nm A Bs M ρ ρ',
+    env_agree (fun x => ~ exp_fresh x (a_elim p nm A Bs M)) ρ ρ' ->
     forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ'.
 Proof.
   intros * H c n B Hin x Hx; apply H; intros Hf; apply Hx.
@@ -457,9 +457,9 @@ Section Eval.
     (** Inductive types.  The eliminator: its parts agree where it does. *)
     all: try solve [ match goal with
       | IH : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?m m0 -> exists _, _ /\ _,
-        Hm : dsim ?m ?m', Hρ : env_agree (fun x => ~ exp_fresh x (a_elim ?nm ?A ?Bs ?M)) ?ρ ?ρ' |- _ =>
+        Hm : dsim ?m ?m', Hρ : env_agree (fun x => ~ exp_fresh x (a_elim ?p ?nm ?A ?Bs ?M)) ?ρ ?ρ' |- _ =>
           let r' := fresh "r'" in
-          destruct (IH ρ' m' (agree_elim_A _ _ _ _ _ _ Hρ) (agree_elim_B _ _ _ _ _ _ Hρ) Hm) as (r' & ? & ?);
+          destruct (IH ρ' m' (agree_elim_A _ _ _ _ _ _ _ Hρ) (agree_elim_B _ _ _ _ _ _ _ Hρ) Hm) as (r' & ? & ?);
           exists r'; split; [ econstructor; eassumption | assumption ]
       end ].
     (** On a constructor: the recursive results, then the branch, in the
@@ -790,7 +790,7 @@ Section Read.
         HA : forall x, ~ exp_fresh (?nm + x) ?A -> desim (env_entry ?ρ x) (env_entry ?ρ' x),
         HBs : forall c n B, In (c, n, B) ?Bs -> forall x, _ -> desim (env_entry ?ρ x) (env_entry ?ρ' x),
         Ha : dsim_list ?as' ?as'', Hm : dsim_ne ?m ?m'
-        |- Rneᶠ d_elim ?ρ' ?nm ?A ?Bs ?p ?as'' ?m' in _ ⍮ _ ⍮ ?s ↘ ne_elim ?nm ?A' ?Bs' ?M =>
+        |- Rneᶠ d_elim ?ρ' ?nm ?A ?Bs ?p ?as'' ?m' in _ ⍮ _ ⍮ ?s ↘ ne_elim ?p ?nm ?A' ?Bs' ?M =>
           let ns' := fresh "ns'" in let Hsn := fresh "Hsn" in let a' := fresh "a'" in let Hlen := fresh "Hlen" in
           pose proof (fresh_tele_length _ _ _ _ f) as Hlen; rewrite ind_nn_tele_length in Hlen;
           destruct (ffresh_tele_sim _ _ _ _ f (env_args nil (firstn (ind_nu D) as''))) as (ns' & ? & Hsn);

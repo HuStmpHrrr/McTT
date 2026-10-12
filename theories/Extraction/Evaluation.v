@@ -78,7 +78,7 @@ Inductive feval_exp_order (Θ : gdeps) (Ξ : gstack) : exp -> env -> Prop :=
 | feeo_elim :
   `( feval_exp_order Θ Ξ M p ->
      (forall m, ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ m -> feval_elim_order Θ Ξ p nm A Bs m) ->
-     feval_exp_order Θ Ξ (a_elim nm A Bs M) p )
+     feval_exp_order Θ Ξ (a_elim pq nm A Bs M) p )
 | feeo_fn :
   `( feval_exp_order Θ Ξ (λ A M) p )
 | feeo_app :
@@ -558,7 +558,7 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
-  | a_elim nm A Bs M, p, H =>
+  | a_elim pq nm A Bs M, p, H =>
       let (m, Hm) := feval_exp_impl M p _ in
       let (r, Hr) := feval_elim_impl p nm A Bs m _ in
       exist _ r _

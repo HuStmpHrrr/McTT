@@ -750,7 +750,7 @@ Lemma wk_elim_case : forall Θ Ξ Γ Δ φ p D Ps M nm i A Bs,
        forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[φ0]ʷ : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[φ0]ʷ) ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[φ]ʷ : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[φ]ʷ.
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[φ]ʷ : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[φ]ʷ.
 Proof.
   intros * Hl HPl HPs HM Hnm HA HΨ HΨφ Hn HΨB HΨBφ Hk HB Hφ.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]).
@@ -801,7 +801,7 @@ Lemma wk_elim_cong_case : forall Θ Ξ Γ Δ φ p D Ps M M' nm i A A' Bs Bs',
        forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[φ0]ʷ ≈ B'[φ0]ʷ : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[φ0]ʷ) ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[φ]ʷ ≈ (a_elim nm A' Bs' M')[φ]ʷ
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[φ]ʷ ≈ (a_elim p nm A' Bs' M')[φ]ʷ
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[φ]ʷ.
 Proof.
   intros * Hl HPl HPs HM Hnm HA HΨ HΨφ HAA Hn HΨB HΨBφ Hf Hk HB Hφ.
@@ -861,8 +861,8 @@ Lemma wk_elim_iota_case : forall Θ Ξ Γ Δ φ p D c gs Ps As nm i A Bs n B,
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[φ0]ʷ : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[φ0]ʷ) ->
     brs_lookup Bs c = Some (n, B) ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs (apps (a_con p c) (Ps ++ As)))[φ]ʷ
-      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As)])[φ]ʷ
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))[φ]ʷ
+      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)])[φ]ʷ
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])[φ]ʷ.
 Proof.
   intros * Hl Hc HPl HPs HAl HAs Hnm HA HΨ HΨφ Hn HΨB HΨBφ Hk HB HlB Hφ.
@@ -871,7 +871,7 @@ Proof.
   pose proof (brs_lookup_in _ _ _ _ HlB) as HinB.
   rewrite (wk_elim_type D Ps A _ nm φ HPl Hnm), exp_wk_sb_of_list; cbn [exp_wk].
   rewrite !List.map_app, wk_apps_con, List.map_app, elim_ihs_wk, <- List.skipn_map.
-  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As))
+  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As))
     with n by (rewrite !List.length_app, List.length_skipn, length_elim_ihs by assumption;
                rewrite (Hk _ _ _ _ Hc HinB); unfold ind_nn; lia).
   subst nm.
@@ -1676,7 +1676,7 @@ Lemma sub_elim_case : forall Θ Ξ Γ Δ σ p D Ps M nm i A Bs,
        forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢s σ0 : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[σ0]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[σ] : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
   intros * Hl HPl HPs HM Hnm HA HΨ HΨσ Hn HΨB HΨBσ Hk HB Hσ.
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_sub_dom _ _ _ _ _ Hσ) | exact Hl ]).
@@ -1727,7 +1727,7 @@ Lemma sub_elim_cong_case : forall Θ Ξ Γ Δ σ p D Ps M M' nm i A A' Bs Bs',
        forall Δ0 σ0, Θ ⍮ Ξ ⍮ Δ0 ⊢s σ0 : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] ≈ B'[σ0] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[σ0]) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs M)[σ] ≈ (a_elim nm A' Bs' M')[σ]
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[σ] ≈ (a_elim p nm A' Bs' M')[σ]
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[σ].
 Proof.
   intros * Hl HPl HPs HM Hnm HA HΨ HΨσ HAA Hn HΨB HΨBσ Hf Hk HB Hσ.
@@ -1787,8 +1787,8 @@ Lemma sub_elim_iota_case : forall Θ Ξ Γ Δ σ p D c gs Ps As nm i A Bs n B,
        Θ ⍮ Ξ ⍮ Δ0 ⊢ B[σ0] : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[σ0]) ->
     brs_lookup Bs c = Some (n, B) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
-    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim nm A Bs (apps (a_con p c) (Ps ++ As)))[σ]
-      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As)])[σ]
+    Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))[σ]
+      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)])[σ]
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])[σ].
 Proof.
   intros * Hl Hc HPl HPs HAl HAs Hnm HA HΨ HΨσ Hn HΨB HΨBσ Hk HB HlB Hσ.
@@ -1797,7 +1797,7 @@ Proof.
   pose proof (brs_lookup_in _ _ _ _ HlB) as HinB.
   rewrite (sub_elim_type D Ps A _ nm σ HPl Hnm), exp_sub_sb_of_list; cbn [exp_sub].
   rewrite !List.map_app, sub_apps_con, List.map_app, elim_ihs_sub, <- List.skipn_map.
-  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs nm A Bs gs As))
+  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As))
     with n by (rewrite !List.length_app, List.length_skipn, length_elim_ihs by assumption;
                rewrite (Hk _ _ _ _ Hc HinB); unfold ind_nn; lia).
   subst nm.

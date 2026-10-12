@@ -289,10 +289,10 @@ Definition elim_bty (p : qname) (D : ind_decl) (c : string) (gs : list carg) (A 
 
 (** The recursive results of the arguments [As] of a constructor, as
     eliminations. *)
-Fixpoint elim_ihs (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (gs : list carg) (As : list exp) : list exp :=
+Fixpoint elim_ihs (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
-  | ca_arg _ :: gs', _ :: As' => elim_ihs nm A Bs gs' As'
-  | ca_rec _ :: gs', M :: As' => a_elim nm A Bs M :: elim_ihs nm A Bs gs' As'
+  | ca_arg _ :: gs', _ :: As' => elim_ihs p nm A Bs gs' As'
+  | ca_rec _ :: gs', M :: As' => a_elim p nm A Bs M :: elim_ihs p nm A Bs gs' As'
   | _, _ => nil
   end.
 
@@ -327,7 +327,7 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
       exp_mvc (S n) A /\ exp_mvc n MZ /\ exp_mvc (S (S n)) MS /\ exp_mvc n M
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
   | a_ind _ | a_con _ _ => True
-  | a_elim nm A Bs M => exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
+  | a_elim p nm A Bs M => exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N
   | a_var _ => True
@@ -459,8 +459,8 @@ Proof.
   lia.
 Qed.
 
-Lemma length_elim_ihs : forall nm A Bs gs As,
-    List.length As = List.length gs -> List.length (elim_ihs nm A Bs gs As) = cargs_nrec gs.
+Lemma length_elim_ihs : forall p nm A Bs gs As,
+    List.length As = List.length gs -> List.length (elim_ihs p nm A Bs gs As) = cargs_nrec gs.
 Proof.
   induction gs as [| [] gs IH]; intros [| N As] Hl; cbn in *; try discriminate; try reflexivity.
   - apply IH; lia.

@@ -39,7 +39,7 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
       exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
   | a_ind _ | a_con _ _ => true
-  | a_elim nm A Bs M =>
+  | a_elim p nm A Bs M =>
       exp_freshb (nm + k) A &&
       (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=
          match Bs with
@@ -123,7 +123,7 @@ Proof.
               | apply Bool.negb_true_iff, Nat.eqb_neq in H; assumption
               | apply Bool.negb_true_iff, Nat.eqb_neq in H0; assumption ].
   - (* an eliminator: its branches, one by one *)
-    apply exp_fresh_elim; split; [ auto | split; [| auto ] ].
+    apply (proj2 (exp_fresh_elim k p nm A Bs M)); split; [ auto | split; [| auto ] ].
     clear - H0 H4; induction H0 as [| b Bs Hb HF IH]; cbn in *; [ constructor |].
     apply Bool.andb_true_iff in H4 as [H4 H4']; constructor; [ apply Hb; exact H4 | apply IH; exact H4' ].
   - (* a binding *) destruct oA; split; eauto.
@@ -224,7 +224,7 @@ Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 | feval_exp_elim :
   `( ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ m ->
      ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r ->
-     ⟦ a_elim nm A Bs M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
+     ⟦ a_elim p nm A Bs M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 (** A [Π] evaluates its domain and closes over its codomain. *)
 | feval_exp_pi :
   `( ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ a ->
@@ -863,7 +863,7 @@ with fread_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rtypᶠ a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
      fread_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
      Rneᶠ m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
+     Rneᶠ d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim p nm A' Bs' M )
 where "'Rneᶠ' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (fread_ne Θ Ξ s m M) : type_scope
 with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | fread_typ_univ :

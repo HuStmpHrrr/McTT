@@ -376,15 +376,19 @@ Proof.
     intros d o IHd [IH _]; split; [ apply IHd, IH |].
     intros S M; destruct d; cbn [elab_mod]; split; intros H; try discriminate; inversion H.
   - (* elim *)
-    intros om xs oA bs [IHm _] [IHa _] Hbs.
+    intros oh om xs oA bs [_ IHh] [IHm _] [IHa _] Hbs.
     assert (Hb : forall S Bs, elab_brs_with elab S bs = eok Bs <-> sbrs S bs Bs)
       by (apply brs_iff; eapply Forall_impl; [| exact Hbs ]; intros ? []; assumption).
     split; intros S M; cbn [elab elab_mod].
     + split; intros Hg.
-      * dest_eok. to_spec.
+      * apply ebind_eok in Hg as (H & HH & Hg); apply IHh in HH.
+        destruct (elim_head H) as [p |] eqn:Ep; cbn [ebind] in Hg; [| discriminate ].
+        dest_eok. to_spec.
         match goal with Hx : elab_brs_with _ _ _ = eok _ |- _ => apply Hb in Hx end.
         econstructor; eassumption.
-      * inversion Hg; subst. to_elab. rewrite (proj2 (Hb _ _)) by eassumption. reflexivity.
+      * inversion Hg; subst. rewrite (proj2 (IHh _ _)) by eassumption; cbn [ebind].
+        match goal with E : elim_head _ = Some _ |- _ => rewrite E end; cbn [ebind].
+        to_elab. rewrite (proj2 (Hb _ _)) by eassumption. reflexivity.
     + split; [ discriminate | intros Hg; inversion Hg ].
   - (* d_def *)
     intros x [o1 |] o2 HA [IH2 _] ob IHb S M; [ destruct HA as [IH1 _] |]; cbn [elab]; iff_case.

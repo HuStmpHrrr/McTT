@@ -178,7 +178,7 @@ with read_ne (Θ : gdeps) (Ξ : gstack) : nat -> domain_ne -> ne -> Prop :=
      Rtyp a in Θ ⍮ Ξ ⍮ S (s + ind_nn D)%nat ↘ A' ->
      read_brs Θ Ξ s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs Bs' ->
      Rne m in Θ ⍮ Ξ ⍮ s ↘ M ->
-     Rne d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim nm A' Bs' M )
+     Rne d_elim ρ nm A Bs p as' m in Θ ⍮ Ξ ⍮ s ↘ ne_elim p nm A' Bs' M )
 where "'Rne' m 'in' Θ '⍮' Ξ '⍮' s ↘ M" := (read_ne Θ Ξ s m M) : type_scope
 with read_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | read_typ_univ :
