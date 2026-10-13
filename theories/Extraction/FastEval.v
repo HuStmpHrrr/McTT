@@ -44,7 +44,7 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
   | a_natrec A MZ MS M =>
       exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
-  | a_ind _ | a_con _ _ => true
+  | a_ind _ | a_con _ _ | a_nlit _ => true
   | a_elim p nm A Bs M =>
       exp_freshb (nm + k) A &&
       (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=

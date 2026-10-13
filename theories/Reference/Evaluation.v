@@ -638,6 +638,8 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
+  (** A numeral is expanded before it is ever evaluated. *)
+  | a_nlit _, p, H => False_rect _ _
   | a_elim pq nm A Bs M, p, H =>
       let (m, Hm) := eval_exp_impl M p _ in
       let (r, Hr) := eval_elim_impl p nm A Bs m _ in
@@ -888,6 +890,7 @@ Section EvalImpl.
     definition retry: [ev_obl] is an order premise read off the order of the
     whole by inversion, the evaluation itself by its rule, or a branch the
     order rules out. *)
+Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.

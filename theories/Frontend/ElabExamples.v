@@ -1092,3 +1092,42 @@ Example local_ind :
   forall u, ~ elab_spec (unit_of
                 (c_eval (letb (d_mod "M" nil (md_where (c_ind false "E" nil (typ 0) nil :: nil))) Cst.zero) None :: nil)) u.
 Proof. elab_fails. Qed.
+
+(** A numeral is a core literal; what it stands for, the bound natural
+    numbers or [ℕ], is the core's.  [builtin natural := Nat] names the type
+    as the head of its eliminator does, and declares nothing:
+
+<<
+module U where
+inductive Nat : Type@0 where
+| zero'
+| succ' (n : Nat)
+end
+builtin natural := Nat
+eval 2
+end
+>>
+*)
+Example builtin_spec :
+  elab_spec (nil, ("U" :: nil, nil,
+                   c_ind false "Nat" nil (typ 0) (("z", nil) :: ("s", ("n", var "Nat") :: nil) :: nil) ::
+                   c_builtin "natural" (var "Nat") ::
+                   c_eval (num 2) None :: nil))
+    (nil, ⋅,
+     cc_ind "Nat" false (mk_raw 0 ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil)) ::
+     cc_builtin "natural" (q_abs ("U" :: nil) ("Nat" :: "#" :: nil)) ::
+     cc_eval (a_nlit 2) None :: nil).
+Proof. elab_ok. Qed.
+
+(** A builtin binding in a local body is rejected. *)
+Example local_builtin :
+  elaborate_core (unit_of
+    (c_eval (letb (d_mod "M" nil (md_where (c_builtin "natural" (var "N") :: nil))) Cst.zero) None :: nil))
+  = eerr "builtin is not allowed in a local module".
+Proof. elab_err. Qed.
+
+(** The type is named by a chain from a unit: a parameter is a slot. *)
+Example builtin_slot :
+  elaborate_core (nil, ("T" :: nil, ("A", typ 0) :: nil, c_builtin "natural" (var "A") :: nil))
+  = eerr "only an inductive type declared in a module can be bound as a builtin".
+Proof. elab_err. Qed.

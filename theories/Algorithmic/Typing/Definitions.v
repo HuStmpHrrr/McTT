@@ -316,6 +316,8 @@ Inductive user_exp : exp -> Prop :=
   `( user_exp (a_ind p) )
 | user_exp_con :
   `( user_exp (a_con p c) )
+| user_exp_nlit :
+  `( user_exp (a_nlit n) )
 | user_exp_elim :
   `( user_exp A ->
      (forall b, List.In b Bs -> user_exp (snd b)) ->

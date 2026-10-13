@@ -370,6 +370,8 @@ Section type_check.
   | ti_exfalso : forall {A M}, type_check_order M -> type_infer_order A -> type_infer_order (efq M return A)
   | ti_indty : forall {p}, type_infer_order (a_ind p)
   | ti_con : forall {p c}, type_infer_order (a_con p c)
+  (** A numeral is expanded before it is checked; it has no type. *)
+  | ti_nlit : forall {n}, type_infer_order (a_nlit n)
   | ti_elim : forall {p nm A Bs M}, type_infer_order M -> type_infer_order A ->
       (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim p nm A Bs M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
@@ -543,6 +545,9 @@ Section type_check.
       type_infer_order M.
   Proof. intros; apply type_infer_order_all. Qed.
 
+  (** A numeral has no type: expansion replaces it before checking. *)
+  Lemma alg_nlit_no_infer : forall G n A, ~ G ⊢a a_nlit n ⟹ A.
+  Proof. intros * H; inversion H. Qed.
 
 End type_check.
 End Fixed_GCtx.

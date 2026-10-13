@@ -624,6 +624,8 @@ Section EvalImpl.
   | λ A M , p, H => exist _ λᵈ p M _
   | a_ind pq, p, H => exist _ (d_ind pq nil) _
   | a_con pq c, p, H => exist _ (d_con pq c nil) _
+  (** A numeral is expanded before it is ever evaluated. *)
+  | a_nlit _, p, H => False_rect _ _
   | a_elim pq nm A Bs M, p, H =>
       let (m, Hm) := feval_exp_impl M p _ in
       let (r, Hr) := feval_elim_impl p nm A Bs m _ in
@@ -885,6 +887,7 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.

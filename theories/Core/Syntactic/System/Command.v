@@ -340,6 +340,20 @@ Section Semantics.
       gens_run Θ (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
         (ind_gens (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ((mp, U) :: Ξ) ->
       Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_body pv (rd_uparams R) (gu_mod U)) Ξ
+  (** [builtin natural := X], at the top of a unit without parameters:
+      [X]'s declaration has the shape of the natural numbers, and no
+      binding is visible yet.  The binding is filed as the definition
+      [#natural] of the unit, the type former, with the premises of
+      [rc_def]. *)
+  | rc_builtin : forall ch Θ Ξ mp U p D z s,
+      Ξ = (mp, U) :: nil ->
+      gu_params U = nil ->
+      nat_binds Θ Ξ = nil ->
+      ind_lookup Θ Ξ p = Some D ->
+      nat_shape D = Some (z, s) ->
+      Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_ind p : ind_ty D ->
+      gs_fresh nat_name Ξ ->
+      Θ ⍮ Ξ ⊢[ch] cc_builtin nat_kind p ⇝ Θ ⍮ gs_add nat_name (gs_def true false Ξ (ind_ty D) (a_ind p)) Ξ
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -437,6 +451,11 @@ Section Determinism.
       | H1 : import_gen_ok ?a ?b ?G ?E ?is ?g1, H2 : import_gen_ok ?a ?b ?G ?E ?is ?g2 |- _ =>
           assert_fails constr_eq g1 g2; pose proof (import_gen_ok_functional _ _ _ _ _ _ _ H1 H2); subst g2
       end.
+    (* a builtin binding: its declaration *)
+    all: try solve [ match goal with
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = Some _ |- _ =>
+          rewrite H1 in H2; injection H2 as <-; split; reflexivity
+      end ].
     - (* a module: its body *)
       match goal with
       | IH : forall _ _ _, run_cmds _ _ _ _ _ _ -> _, H : run_cmds _ _ _ _ _ _ |- _ =>
@@ -875,6 +894,9 @@ Section WellFormed.
       cbn [gu_params] in HP; subst.
       apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
       cbn; econstructor; [ exact HV | constructor; exact HU | exact Hfr ].
+    - (* a builtin binding: the definition [#natural], as [rc_def] files it *)
+      intros ch Θ Ξ mp U p D z s _ _ _ _ _ HA Hfr HΞ Hc Hst.
+      split; [ apply add_def_wf; assumption | split; [ exact Hc | apply gds_sub_refl ] ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -1151,6 +1173,7 @@ Section Runs.
           cbn in Hf; destruct (path_beq x fp); [ discriminate | exact Hf ].
     - econstructor; eauto.
     - eapply rc_ind; eassumption.
+    - eapply rc_builtin; eassumption.
     - apply rc_eval_check; assumption.
     - eapply rc_eval_infer; eassumption.
     - constructor.

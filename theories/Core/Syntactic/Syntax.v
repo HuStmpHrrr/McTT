@@ -97,8 +97,11 @@ Inductive obj : Set :=
 | maxl : obj -> obj -> obj
 (** [Nat] *)
 | nat : obj
-(** [zero], and the numerals *)
+(** [zero] *)
 | zero : obj
+(** A numeral: the natural number bound by [builtin natural] where a
+    binding is visible, [ℕ] where none is *)
+| num : nat -> obj
 (** [succ M] *)
 | succ : obj -> obj
 (** [rec M return x . A | zero => MZ | succ y, r => MS end] *)
@@ -176,7 +179,10 @@ with cmd : Set :=
     the sort, [forall (n : A) -> S]; each constructor with its arguments.
     An argument whose type is [x] applied to the non-uniform parameters
     alone is recursive. *)
-| c_ind : bool -> string -> list (string * obj) -> obj -> list (string * list (string * obj)) -> cmd.
+| c_ind : bool -> string -> list (string * obj) -> obj -> list (string * list (string * obj)) -> cmd
+(** [builtin k := X]: binds the inductive type [X] as the builtin [k];
+    [natural] is the one kind. *)
+| c_builtin : string -> obj -> cmd.
 
 (** The family is nested through [list], so its induction principle is written
     by hand: a parameter list and a command list carry [Forall] of their
@@ -193,6 +199,7 @@ Section cst_mut_ind.
     (case_maxl : forall o1 o2, Po o1 -> Po o2 -> Po (maxl o1 o2))
     (case_nat : Po nat)
     (case_zero : Po zero)
+    (case_num : forall n, Po (num n))
     (case_succ : forall o, Po o -> Po (succ o))
     (case_natrec : forall o1 x o2 o3 y z o4, Po o1 -> Po o2 -> Po o3 -> Po o4 -> Po (natrec o1 x o2 o3 y z o4))
     (case_true_ty : Po true_ty)
@@ -220,7 +227,8 @@ Section cst_mut_ind.
     (case_c_error : forall e, Pc (c_error e))
     (case_c_eval : forall o oA, Po o -> match oA with Some A => Po A | None => True end -> Pc (c_eval o oA))
     (case_c_ind : forall pv x ps oT cs, List.Forall (fun p => Po (snd p)) ps -> Po oT ->
-        List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs -> Pc (c_ind pv x ps oT cs)).
+        List.Forall (fun c => List.Forall (fun p => Po (snd p)) (snd c)) cs -> Pc (c_ind pv x ps oT cs))
+    (case_c_builtin : forall k o, Po o -> Pc (c_builtin k o)).
 
   Fixpoint obj_mut (o : obj) : Po o :=
     match o with
@@ -232,6 +240,7 @@ Section cst_mut_ind.
     | maxl o1 o2 => case_maxl o1 o2 (obj_mut o1) (obj_mut o2)
     | nat => case_nat
     | zero => case_zero
+    | num n => case_num n
     | succ o => case_succ o (obj_mut o)
     | natrec o1 x o2 o3 y z o4 => case_natrec o1 x o2 o3 y z o4 (obj_mut o1) (obj_mut o2) (obj_mut o3) (obj_mut o4)
     | true_ty => case_true_ty
@@ -330,6 +339,7 @@ Section cst_mut_ind.
                         end) (snd c))
                     (gos cs')
               end) cs)
+    | c_builtin k o => case_c_builtin k o (obj_mut o)
     end.
 
   Theorem cst_mut_ind : (forall o, Po o) /\ (forall d, Pd d) /\ (forall md, Pm md) /\ (forall c, Pc c).
@@ -627,6 +637,10 @@ Inductive exp : Set :=
 (** The constructor [c] of the inductive type [p], to be applied to the
     parameters and the arguments. *)
 | a_con : qname -> string -> exp
+(** A numeral as written.  It is not a term of the typing judgment:
+    expansion ([Imports]) replaces it by the chain of constructors of the
+    inductive type bound as the natural numbers ([builtin natural]). *)
+| a_nlit : nat -> exp
 (** [a_elim p nm A Bs M] eliminates [M], of the inductive type [p], into
     the motive [A], which binds the non-uniform parameters and the
     scrutinee ([nm] of them).  Each branch [(c, n, B)] is the case of the
@@ -753,6 +767,7 @@ Section syn_mut_ind.
     (case_exfalso : forall A M, Pe A -> Pe M -> Pe (a_exfalso A M))
     (case_ind : forall p, Pe (a_ind p))
     (case_con : forall p c, Pe (a_con p c))
+    (case_nlit : forall n, Pe (a_nlit n))
     (case_elim : forall p nm A Bs M, Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim p nm A Bs M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
@@ -798,6 +813,7 @@ Section syn_mut_ind.
     | a_exfalso A M => case_exfalso A M (exp_mut A) (exp_mut M)
     | a_ind p => case_ind p
     | a_con p c => case_con p c
+    | a_nlit n => case_nlit n
     | a_elim p nm A Bs M =>
         case_elim p nm A Bs M (exp_mut A)
           ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
@@ -1627,6 +1643,7 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_exfalso A M => a_exfalso (exp_wk A (wk_q φ)) (exp_wk M φ)
   | a_ind p => a_ind p
   | a_con p c => a_con p c
+  | a_nlit n => a_nlit n
   | a_elim p nm A Bs M =>
       a_elim p nm (exp_wk A (wk_qn nm φ))
              (List.map (fun b => (fst b, exp_wk (snd b) (wk_qn (snd (fst b)) φ))) Bs)
@@ -1806,6 +1823,7 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_exfalso A M => a_exfalso (exp_sub A (sb_q σ)) (exp_sub M σ)
   | a_ind p => a_ind p
   | a_con p c => a_con p c
+  | a_nlit n => a_nlit n
   | a_elim p nm A Bs M =>
       a_elim p nm (exp_sub A (sb_qn nm σ))
              (List.map (fun b => (fst b, exp_sub (snd b) (sb_qn (snd (fst b)) σ))) Bs)

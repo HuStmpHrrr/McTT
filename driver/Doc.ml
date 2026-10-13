@@ -227,7 +227,7 @@ let unit_path st fq =
 let rec term st env (o : C.obj) : unit =
   match o with
   | C.Coq_typ _ | C.Coq_level _ | C.Coq_llit _
-  | C.Coq_nat | C.Coq_zero | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
+  | C.Coq_nat | C.Coq_zero | C.Coq_num _ | C.Coq_true_ty | C.Coq_true_tm | C.Coq_false_ty -> ()
   | C.Coq_suniv o | C.Coq_succl o -> term st env o
   | C.Coq_maxl (o1, o2) -> term st env o1; term st env o2
   | C.Coq_succ o -> term st env o
@@ -253,13 +253,13 @@ let rec term st env (o : C.obj) : unit =
       let m = mdef st env' md in
       term st (push x { v with v_mod = m } env) b
   (* An eliminator: its type, the names of its motive, then each branch's
-     constructor, unlinked, and its names. *)
+     constructor, a member of the type, and its names. *)
   | C.Coq_elim (h, m, xs, a, bs) ->
-      ignore (modv st env h);
+      let t = modv st env h in
       term st env m;
       let binds env ys = List.fold_left (fun env y -> let v = bind st y in push y v env) env ys in
       term st (binds env xs) a;
-      List.iter (fun ((c, ys), b) -> ignore (next st c); term st (binds env ys) b) bs
+      List.iter (fun ((c, ys), b) -> ignore (select st t c); term st (binds env ys) b) bs
 
 (* Module position: [Elaborator.elab_mod]. *)
 and modv st env (o : C.obj) : mden =
@@ -382,6 +382,12 @@ let rec cmd st fp ch (o, ov) (f, fv) (c : C.cmd) : E.ent list =
            Option.iter (Hashtbl.replace st.items (fp, ch @ [ d ])) l) (items st m its)
    | C.Coq_c_eval (e, t) -> st.evals <- (e, t) :: st.evals; term st env e; Option.iter (term st env) t
    | C.Coq_c_error e -> raise (Misaligned ("rejected by the parser: " ^ e))
+   (* A builtin binding: its kind, which declares nothing and links where
+      the type it binds does, then the type. *)
+   | C.Coq_c_builtin (k, x) ->
+       let i = next st k in
+       ignore (modv st env x);
+       st.occ.(i).link <- st.occ.(st.cur - 1).link
    (* A declaration: its name, a module, its uniform parameters, its type,
       binding the non-uniform ones before its sort, then each constructor,
       a member of the module, and its arguments, in which the declared name
@@ -454,7 +460,7 @@ let eval_spans (toks : tok array) (evals : (C.obj * C.obj option) list) : (int *
   let follows = function
     | P.MODULE _ | P.PRIVATE _ | P.ABSTRACT _ | P.DEF _ | P.THEOREM _ | P.LEMMA _ | P.FACT _
     | P.REMARK _ | P.LET _ | P.GIVEN _ | P.AXIOM _ | P.IMPORT _ | P.OPEN _ | P.EVAL _ | P.INDUCTIVE _
-    | P.END _ | P.EOF _ -> true
+    | P.BUILTIN _ | P.END _ | P.EOF _ -> true
     | _ -> false in
   let parses i j (e, t) =
     let body = Array.to_list (Array.map (fun k -> k.t) (Array.sub toks i (j - i))) in

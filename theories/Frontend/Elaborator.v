@@ -178,6 +178,7 @@ Fixpoint elab (S : list ent) (o : Cst.obj) {struct o} : eres exp :=
       eok (maxl M N)
   | Cst.nat => eok ℕ
   | Cst.zero => eok zero
+  | Cst.num n => eok (a_nlit n)
   | Cst.succ o =>
       let* M := elab S o in
       eok (succ M)
@@ -289,6 +290,7 @@ with elab_mdef (S : list ent) (md : Cst.mdef) {struct md} : eres moddef :=
            | Cst.c_error e :: _ => eerr e
            | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
            | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+           | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
            end) S gm_nil cs in
       eok (md_body Φ)
   end.
@@ -379,6 +381,15 @@ Fixpoint elab_cmd (fp : path) (ch : list string) (O F : list ent) (c : Cst.cmd) 
       let* A := elab (pents ups ++ F ++ O)%list oS in
       let* cs' := elab_rcons (pents (ups ++ nps) ++ en_var x :: F ++ O)%list cs in
       eok (en_mem x (q_abs fp (ch ++ x :: nil)) :: F, cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+  (** The type is named as the head of its eliminator is; the command
+      declares nothing. *)
+  | Cst.c_builtin k oX =>
+      let* H := elab_mod (F ++ O) oX in
+      let* p := match elim_head H with
+                | Some p => eok p
+                | None => eerr "only an inductive type declared in a module can be bound as a builtin"
+                end in
+      eok (F, cc_builtin k p :: nil)
   end.
 
 Definition elab_cmds (fp : path) := elab_cmds_with (elab_cmd fp).

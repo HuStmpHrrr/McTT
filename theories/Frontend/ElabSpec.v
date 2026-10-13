@@ -205,6 +205,8 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_maxl : forall S o1 o2 M N, sel S o1 M -> sel S o2 N -> sel S (Cst.maxl o1 o2) (maxl M N)
 | sel_nat : forall S, sel S Cst.nat ℕ
 | sel_zero : forall S, sel S Cst.zero zero
+(** A numeral is a core literal: what it stands for is the core's. *)
+| sel_num : forall S n, sel S (Cst.num n) (a_nlit n)
 | sel_succ : forall S o M, sel S o M -> sel S (Cst.succ o) (succ M)
 | sel_natrec : forall S on mx om oz sx sr os N A MZ MS,
     sel S on N ->
@@ -403,6 +405,11 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
     scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
+(** [builtin k := X]: [X] is named as the head of an eliminator is; whether
+    it is an inductive type of the right shape is the core's to check. *)
+| sc_builtin : forall ch O F k oX H p,
+    selm (F ++ O) oX H -> elim_head H = Some p ->
+    scmd fp ch O F (Cst.c_builtin k oX) F (cc_builtin k p :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil

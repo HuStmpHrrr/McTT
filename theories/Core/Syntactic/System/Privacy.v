@@ -266,7 +266,7 @@ Fixpoint exp_refs (S : list ptab) (M : exp) : list (ptab * string)%type :=
   | a_natrec A MZ MS M =>
       exp_refs (pt_none :: S) A ++ exp_refs S MZ ++ exp_refs (pt_none :: pt_none :: S) MS ++ exp_refs S M
   | a_exfalso A M => exp_refs (pt_none :: S) A ++ exp_refs S M
-  | a_ind _ | a_con _ _ => nil
+  | a_ind _ | a_con _ _ | a_nlit _ => nil
   | a_elim p nm A Bs M =>
       qname_refs p ++ exp_refs (repeat pt_none nm ++ S) A ++
         (fix brs_refs (Bs : list (string * nat * exp)) : list (ptab * string)%type :=
@@ -359,6 +359,7 @@ Definition cmd_refs (c : ccmd) : list (ptab * string)%type :=
   | cc_open E its => modexp_refs nil E ++ item_refs (mtab nil E) its
   | cc_eval M oA => exp_refs nil M ++ match oA with Some A => exp_refs nil A | None => nil end
   | cc_ind _ _ D => decl_refs D
+  | cc_builtin _ p => qname_refs p
   end.
 
 (** ** Accessibility *)

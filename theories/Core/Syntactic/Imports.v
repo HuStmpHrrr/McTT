@@ -18,7 +18,7 @@ From Stdlib Require Import List String Bool.
 
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
-From Mctt.Core.Syntactic Require Export Members Command.
+From Mctt.Core.Syntactic Require Export Members Command Builtin.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
@@ -59,11 +59,12 @@ Proof.
     apply Hs', Hs in E'; congruence.
 Qed.
 
-(** The oracles of expansion. *)
-Record xoracle : Type := mk_xo { xo_mt : mt_oracle; xo_md : md_oracle }.
+(** The oracles of expansion: member types, declaration sites, and what a
+    numeral stands for ([nat_binding], a function of the state). *)
+Record xoracle : Type := mk_xo { xo_mt : mt_oracle; xo_md : md_oracle; xo_nb : nbind }.
 
 Definition xo_spec (Θ : gdeps) (Ξ : gstack) (xo : xoracle) : Prop :=
-  mt_spec Θ Ξ (xo_mt xo) /\ md_spec Θ Ξ (xo_md xo).
+  mt_spec Θ Ξ (xo_mt xo) /\ md_spec Θ Ξ (xo_md xo) /\ xo_nb xo = nat_binding Θ Ξ.
 
 (** ** Results *)
 
@@ -78,7 +79,9 @@ Inductive xerr : Set :=
 (** A name the import declares twice *)
 | xe_fresh : string -> xerr
 (** The name of an eliminator, as written, is not of an inductive type *)
-| xe_ind : qname -> xerr.
+| xe_ind : qname -> xerr
+(** A numeral where the visible bindings of the natural numbers disagree *)
+| xe_nat : nat -> xerr.
 
 Inductive xres (A : Type) : Type :=
 | xok : A -> xres A
@@ -276,6 +279,14 @@ Section Expansion.
         let+ M' := exp_xp S M in
         xok (a_exfalso A' M')
     | a_ind _ | a_con _ _ => xok M
+    (** A numeral: the chain of the constructors of the natural numbers
+        bound, or the builtin [ℕ]'s where none is bound. *)
+    | a_nlit n =>
+        match xo_nb xo with
+        | nb_none => xok (nat_to_exp n)
+        | nb_one p z s => xok (nat_chain p z s n)
+        | nb_many => xfail (xe_nat n)
+        end
     | a_elim p nm A Bs M =>
         let+ p' := elim_xp (xo_md xo) p in
         let+ A' := exp_xp (List.repeat None nm ++ S) A in
@@ -445,6 +456,9 @@ Section Expansion.
     | cc_ind x pv D =>
         let+ D' := decl_xp S D in
         xok (cc_ind x pv D')
+    | cc_builtin k p =>
+        let+ p' := elim_xp (xo_md xo) p in
+        xok (cc_builtin k p')
     end.
 End Expansion.
 
@@ -472,6 +486,7 @@ Section Ext.
   Variables (mt mt' : xoracle).
   Hypothesis Hext : forall Γ H ch, xo_mt mt Γ H ch = xo_mt mt' Γ H ch.
   Hypothesis Hdext : forall H ch, xo_md mt H ch = xo_md mt' H ch.
+  Hypothesis Hnext : xo_nb mt = xo_nb mt'.
 
   Lemma mem_xp_ext : forall H x, mem_xp (xo_md mt) H x = mem_xp (xo_md mt') H x.
   Proof.
@@ -491,7 +506,8 @@ Section Ext.
                 | |- context [xbind (?f mt' ?S ?x) _] => destruct (f mt' S x)
                 | |- context [xbind (import_gen (xo_mt mt') ?G ?H ?its) _] => destruct (import_gen (xo_mt mt') G H its)
                 | |- context [match ?o with Some _ => _ | None => _ end] => is_var o; destruct o
-                end ]);
+                end
+              | rewrite Hnext ]);
     try reflexivity.
 
   Lemma xp_ext_all :
@@ -549,8 +565,9 @@ Section Ext.
   Lemma cmd_xp_ext : forall c S, cmd_xp mt S c = cmd_xp mt' S c.
   Proof.
     destruct xp_ext_all as (He & Hm & _).
-    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D] S; cbn [cmd_xp];
+    intros [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D | k p] S; cbn [cmd_xp];
       rewrite ?He, ?Hm, ?tele_xp_ext, ?decl_xp_ext; try reflexivity.
+    all: try solve [ unfold elim_xp; rewrite Hdext; reflexivity ].
     all: repeat (cbn [xbind]; first
                   [ match goal with
                     | |- context [exp_xp mt ?S ?x] => rewrite (He x S)
@@ -564,14 +581,14 @@ End Ext.
 
 Lemma cmd_xp_ok_functional : forall Θ Ξ c c1 c2, cmd_xp_ok Θ Ξ c c1 -> cmd_xp_ok Θ Ξ c c2 -> c1 = c2.
 Proof.
-  intros * (mt1 & [Hs1 Hd1] & E1) (mt2 & [Hs2 Hd2] & E2).
-  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2)) in E1; congruence.
+  intros * (mt1 & (Hs1 & Hd1 & Hn1) & E1) (mt2 & (Hs2 & Hd2 & Hn2) & E2).
+  rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2) (eq_trans Hn1 (eq_sym Hn2))) in E1; congruence.
 Qed.
 
 Lemma tele_xp_ok_functional : forall Θ Ξ S Δ Δ1 Δ2, tele_xp_ok Θ Ξ S Δ Δ1 -> tele_xp_ok Θ Ξ S Δ Δ2 -> Δ1 = Δ2.
 Proof.
-  intros * (mt1 & [Hs1 Hd1] & E1) (mt2 & [Hs2 Hd2] & E2).
-  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2)) in E1; congruence.
+  intros * (mt1 & (Hs1 & Hd1 & Hn1) & E1) (mt2 & (Hs2 & Hd2 & Hn2) & E2).
+  rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs1 Hs2) (md_spec_ext _ _ _ _ Hd1 Hd2) (eq_trans Hn1 (eq_sym Hn2))) in E1; congruence.
 Qed.
 
 Lemma import_gen_ok_functional : forall Θ Ξ Γ H its gs1 gs2,
@@ -584,14 +601,14 @@ Qed.
 (** Any oracle meeting the specification computes the wrapped results. *)
 Lemma cmd_xp_ok_spec : forall Θ Ξ xo c c', xo_spec Θ Ξ xo -> cmd_xp_ok Θ Ξ c c' -> cmd_xp xo (frame_skel Ξ) c = xok c'.
 Proof.
-  intros * [Hs Hd] (mt1 & [Hs1 Hd1] & E1);
-    rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1)); exact E1.
+  intros * (Hs & Hd & Hn) (mt1 & (Hs1 & Hd1 & Hn1) & E1);
+    rewrite (cmd_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1) (eq_trans Hn (eq_sym Hn1))); exact E1.
 Qed.
 
 Lemma tele_xp_ok_spec : forall Θ Ξ xo S Δ Δ', xo_spec Θ Ξ xo -> tele_xp_ok Θ Ξ S Δ Δ' -> tele_xp xo S Δ = xok Δ'.
 Proof.
-  intros * [Hs Hd] (mt1 & [Hs1 Hd1] & E1);
-    rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1)); exact E1.
+  intros * (Hs & Hd & Hn) (mt1 & (Hs1 & Hd1 & Hn1) & E1);
+    rewrite (tele_xp_ext _ _ (mt_spec_ext _ _ _ _ Hs Hs1) (md_spec_ext _ _ _ _ Hd Hd1) (eq_trans Hn (eq_sym Hn1))); exact E1.
 Qed.
 
 Lemma import_gen_ok_spec : forall Θ Ξ mt Γ H its gs, mt_spec Θ Ξ mt ->
@@ -630,11 +647,12 @@ Definition ccmd_head (c : ccmd) : nat :=
   | cc_open _ _ => 4
   | cc_eval _ _ => 5
   | cc_ind _ _ _ => 6
+  | cc_builtin _ _ => 7
   end.
 
 Lemma cmd_xp_head : forall mt S c c', cmd_xp mt S c = xok c' -> ccmd_head c' = ccmd_head c.
 Proof.
-  intros mt S [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D] c' Ex; cbn in Ex;
+  intros mt S [x b pv A [M |] | x pv Δ cs | x pv Δ E | fp | E its | M [A |] | x pv D | k p] c' Ex; cbn in Ex;
     repeat match goal with
            | Ex : xbind ?m _ = xok _ |- _ => destruct m; cbn in Ex; [| discriminate ]
            end;

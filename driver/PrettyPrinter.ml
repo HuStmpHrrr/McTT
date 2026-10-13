@@ -61,6 +61,7 @@ let pp_text_u (f : Format.formatter) (s : string) : unit =
 (************************************************************)
 let rec get_nat_of_obj : Cst.obj -> int option = function
   | Cst.Coq_zero -> Some 0
+  | Cst.Coq_num n -> Some n
   | Cst.Coq_succ e -> Option.map (( + ) 1) (get_nat_of_obj e)
   | _ -> None
 
@@ -157,6 +158,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_close_box f ()
   | Cst.Coq_nat -> pp_sym f s_nat
   | Cst.Coq_zero -> fprintf f "0"
+  | Cst.Coq_num n -> fprintf f "%d" n
   | Cst.Coq_succ e -> begin
      match get_nat_of_obj e with
      | Some n -> fprintf f "%d" (1 + n)
@@ -312,6 +314,7 @@ and format_cmd (f : Format.formatter) : Cst.cmd -> unit =
        cs;
      fprintf f "@;<1 -2>end";
      pp_close_box f ()
+  | Cst.Coq_c_builtin (k, x) -> fprintf f "@[<hov 2>builtin %s @<1>%s@ %a@]" k s_eq format_obj x
   | Cst.Coq_c_eval (e, ot) -> begin
      match ot with
      | None -> fprintf f "@[<hov 2>eval %a@]" format_obj e
@@ -345,6 +348,20 @@ let format_prog (f : Format.formatter) ((is, ((path, params), cs)) : Cst.prog) :
    member chain alone, the way it was written. *)
 let current_unit : string list ref = ref []
 
+(* The natural numbers bound where the terms printed are ([builtin
+   natural]): the type and its two constructors.  A chain of those
+   constructors prints as the numeral it stands for. *)
+let nat_bind : (qname * string * string) option ref = ref None
+
+let rec nat_of_chain : exp -> int option = function
+  | Coq_a_con (p, c) ->
+     (match !nat_bind with Some (q, z, _) when p = q && c = z -> Some 0 | _ -> None)
+  | Coq_a_app (Coq_a_con (p, c), e) ->
+     (match !nat_bind with
+      | Some (q, _, s) when p = q && c = s -> Option.map (( + ) 1) (nat_of_chain e)
+      | _ -> None)
+  | _ -> None
+
 let exp_to_obj =
   let new_var, reset_var_suffix =
     let suffix = ref 0 in
@@ -368,6 +385,9 @@ let exp_to_obj =
       fun () -> suffix := 0 )
   in
   let rec impl (ctx : string list) : exp -> Cst.obj = function
+    | (Coq_a_con _ | Coq_a_app (Coq_a_con _, _)) as e when nat_of_chain e <> None ->
+       Cst.Coq_num (Option.get (nat_of_chain e))
+    | Coq_a_nlit n -> Cst.Coq_num n
     | Coq_a_zero -> Cst.Coq_zero
     | Coq_a_succ e -> Cst.Coq_succ (impl ctx e)
     | Coq_a_natrec (em, ez, es, escr) ->
@@ -570,6 +590,10 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
+  nat_bind :=
+    (match McttExtracted.Builtin.nat_binding r.ev_deps r.ev_stack with
+     | McttExtracted.Builtin.Coq_nb_one (p, z, s) -> Some (p, z, s)
+     | _ -> None);
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
@@ -636,7 +660,9 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
          before the [#] of its declaration. *)
       | Coq_xe_ind q ->
          let ch = match List.rev q.q_chain with "#" :: pre -> List.rev pre | _ -> q.q_chain in
-         fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit ch))
+         fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit ch)
+      | Coq_xe_nat n ->
+         fprintf f "@[<hov 2>Error: the numeral %d has no meaning here: the visible bindings of the natural numbers disagree@]" n)
 
 (* What [format_main_result] prints for each entry of a successful run's
    log, one string per eval, in order: each entry starts a line of its own,

@@ -1,0 +1,20 @@
+(* The natural numbers as an inductive type, bound as the builtin natural
+   numbers: a numeral in a unit that imports this one is a chain of [U.z]
+   and [U.s]. *)
+module Lib›Unary where
+
+inductive U : Type@0 where
+| z
+| s (n : U)
+end
+
+builtin natural ≔ U
+
+def plus (n : U) (m : U) : U ≔
+  U.elim n return x . U
+  | z ⇒ m
+  | s p, r ⇒ U.s r
+  end
+end
+
+end

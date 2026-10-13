@@ -95,6 +95,7 @@
     | ABSTRACT _ -> "abstract"
     | EVAL _ -> "eval"
     | INDUCTIVE _ -> "inductive"
+    | BUILTIN _ -> "builtin"
     | ELIM _ -> "elim"
     | SEMI _ -> ";"
 
@@ -157,6 +158,7 @@
     | ABSTRACT r
     | EVAL r
     | INDUCTIVE r
+    | BUILTIN r
     | ELIM r
     | SEMI r
     | VAR (r, _) -> r
@@ -254,6 +256,7 @@ rule read =
   | ';' { SEMI (get_range lexbuf) }
   | "module" { MODULE (get_range lexbuf) }
   | "inductive" { INDUCTIVE (get_range lexbuf) }
+  | "builtin" { BUILTIN (get_range lexbuf) }
   | "elim" { ELIM (get_range lexbuf) }
   | "where" { WHERE (get_range lexbuf) }
   | "def" { DEF (get_range lexbuf) }

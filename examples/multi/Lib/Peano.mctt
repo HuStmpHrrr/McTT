@@ -1,0 +1,12 @@
+(* Another binding of the natural numbers: a unit that imports this one and
+   [Lib›Unary] sees two that disagree. *)
+module Lib›Peano where
+
+inductive P : Type@0 where
+| o
+| suc (n : P)
+end
+
+builtin natural ≔ P
+
+end

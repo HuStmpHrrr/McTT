@@ -32,7 +32,7 @@ Fixpoint exp_scoped (n : nat) (M : exp) : Prop :=
   | a_natrec A MZ MS M =>
       exp_scoped (S n) A /\ exp_scoped n MZ /\ exp_scoped (S (S n)) MS /\ exp_scoped n M
   | a_exfalso A M => exp_scoped (S n) A /\ exp_scoped n M
-  | a_ind _ | a_con _ _ => True
+  | a_ind _ | a_con _ _ | a_nlit _ => True
   | a_elim p nm A Bs M => exp_scoped (nm + n) A /\ all_brs (fun k B => exp_scoped (k + n) B) Bs /\ exp_scoped n M
   | a_pi A B | a_fn A B => exp_scoped n A /\ exp_scoped (S n) B
   | a_app M N => exp_scoped n M /\ exp_scoped n N

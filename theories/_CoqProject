@@ -105,6 +105,7 @@
 ./Core/Syntactic/Members.v
 ./Core/Syntactic/Imports.v
 ./Core/Syntactic/Inductives.v
+./Core/Syntactic/Builtin.v
 ./Core/Syntactic/IndCong.v
 ./Core/Syntactic/IndConv.v
 ./Core/Syntactic/Presup.v

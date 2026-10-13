@@ -1,0 +1,38 @@
+(* The natural numbers as an inductive type: [builtin natural ≔ Num] makes
+   the numerals of this unit, and of every unit that imports it, chains of
+   [Num.Z] and [Num.S], and such chains print as numerals. *)
+module Builtin where
+
+inductive Num : Type@0 where
+| Z
+| S (n : Num)
+end
+
+builtin natural ≔ Num
+
+open Num use (Z; S)
+
+def plus (n : Num) (m : Num) : Num ≔
+  Num.elim n return x . Num
+  | Z ⇒ m
+  | S p, r ⇒ S r
+  end
+end
+
+def mult (n : Num) (m : Num) : Num ≔
+  Num.elim n return x . Num
+  | Z ⇒ 0
+  | S p, r ⇒ plus m r
+  end
+end
+
+eval plus 2 3
+
+eval mult 6 7
+
+eval S (S Z)
+
+(* A chain that does not end in [Z] is not a numeral. *)
+eval λ (n : Num) → plus 2 n
+
+end

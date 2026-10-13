@@ -387,7 +387,7 @@ Qed.
 Lemma cmd_xp_no_axioms : forall mt S c c', cmd_xp mt S c = xok c' -> cmd_no_axioms c -> cmd_no_axioms c'.
 Proof.
   intros * Ex Hc; pose proof (cmd_xp_head _ _ _ _ Ex) as Hh.
-  destruct c as [x b pv A oM | x pv Δ cs | | | | |];
+  destruct c as [x b pv A oM | x pv Δ cs | | | | | |];
     [| | destruct c'; cbn in Hh; try discriminate; exact I ..].
   - destruct (cmd_xp_def_inv _ _ _ _ _ _ _ _ Ex) as (A' & oM' & -> & Hiff); cbn in *; tauto.
   - destruct (cmd_xp_mod_inv _ _ _ _ _ _ _ Ex) as (Δ' & _ & ->); rewrite cmd_no_axioms_mod in *; exact Hc.
@@ -475,6 +475,8 @@ Section Run.
         assert (HU : gs_no_axioms ((mp, U) :: Ξ))
           by (eapply gens_run_no_axioms; [ exact Hg | apply gs_no_axioms_add; unfold ind_frame; cbn; auto with mctt ]) end.
       apply gs_no_axioms_add; cbn; eauto with mctt.
+    (* a builtin binding is a definition *)
+    - destruct_all; split; [ assumption | apply gs_no_axioms_add; cbn; auto; congruence ].
     - assumption.
     - assumption.
     - assumption.

@@ -57,7 +57,10 @@ Inductive ccmd : Set :=
     as written, its parameters over those of the enclosing frames.  It
     makes the module [x], over the uniform parameters, of the declaration
     and the constructors. *)
-| cc_ind : string -> bool -> raw_decl -> ccmd.
+| cc_ind : string -> bool -> raw_decl -> ccmd
+(** [builtin k := X]: [X], resolved to the name of its declaration
+    ([…X.#]), is bound as the builtin [k]. *)
+| cc_builtin : string -> qname -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.

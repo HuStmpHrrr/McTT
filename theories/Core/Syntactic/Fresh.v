@@ -47,7 +47,7 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
   | a_natrec A MZ MS M =>
       exp_fresh (S k) A /\ exp_fresh k MZ /\ exp_fresh (S (S k)) MS /\ exp_fresh k M
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
-  | a_ind _ | a_con _ _ => True
+  | a_ind _ | a_con _ _ | a_nlit _ => True
   | a_elim p nm A Bs M =>
       exp_fresh (nm + k) A /\
       (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=

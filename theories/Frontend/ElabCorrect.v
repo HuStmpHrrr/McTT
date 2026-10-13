@@ -237,6 +237,7 @@ Fixpoint elab_body (S : list ent) (Φ : gmod) (cs : list Cst.cmd) : eres gmod :=
   | Cst.c_error e :: _ => eerr e
   | Cst.c_eval _ _ :: _ => eerr "eval is not allowed in a local module"
   | Cst.c_ind _ _ _ _ _ :: _ => eerr "an inductive type is not allowed in a local module"
+  | Cst.c_builtin _ _ :: _ => eerr "builtin is not allowed in a local module"
   end.
 
 Lemma elab_mdef_where : forall S cs, elab_mdef S (Cst.md_where cs) = let* Φ := elab_body S gm_nil cs in eok (md_body Φ).
@@ -442,6 +443,8 @@ Proof.
     intros o oA _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
   - (* c_ind *)
     intros pv x ps oT cs' _ _ _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
+  - (* c_builtin *)
+    intros k o _ cs Hcs S Φ Φ'; cbn [elab_body]. split; [ discriminate | intros H; inversion H ].
 Qed.
 
 Lemma elab_iff : forall S o M, elab S o = eok M <-> sel S o M.
@@ -574,6 +577,13 @@ Section Commands.
         rewrite (proj2 (elab_params_iff _ _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (elab_rcons_iff _ _ _)) by eassumption. reflexivity.
+    - intros k o _ ch O F F' c'; cbn [elab_cmd]. split.
+      + intros Hg; apply ebind_eok in Hg as (H & HH & Hg).
+        destruct (elim_head H) as [p |] eqn:Ep; cbn [ebind] in Hg; [| discriminate ]; inv_eok.
+        econstructor; [ apply elab_mod_iff; exact HH | exact Ep ].
+      + intros Hg; inversion Hg; subst.
+        rewrite (proj2 (elab_mod_iff _ _ _)) by eassumption; cbn [ebind].
+        match goal with E : elim_head _ = Some _ |- _ => rewrite E end; reflexivity.
   Qed.
 
   Corollary elab_cmds_iff : forall ch O F cs ccs, elab_cmds fp ch O F cs = eok ccs <-> scmds fp ch O F cs ccs.

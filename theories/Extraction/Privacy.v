@@ -168,10 +168,11 @@ Proof.
   - intros (qd' & pv' & Hd' & _); exfalso; exact (HN _ _ Hd').
 Qed.
 
-Definition xo_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : xoracle := mk_xo (mt_of Θ Ξ Hg) (md_of Θ Ξ Hg).
+Definition xo_of (Θ : gdeps) (Ξ : gstack) (Hg : ⊢g Θ ⍮ Ξ) : xoracle :=
+  mk_xo (mt_of Θ Ξ Hg) (md_of Θ Ξ Hg) (nat_binding Θ Ξ).
 
 Lemma xo_of_spec : forall Θ Ξ (Hg : ⊢g Θ ⍮ Ξ), xo_spec Θ Ξ (xo_of Θ Ξ Hg).
-Proof. intros; split; [ apply mt_of_spec | apply md_of_spec ]. Qed.
+Proof. intros; split; [ apply mt_of_spec | split; [ apply md_of_spec | reflexivity ] ]. Qed.
 
 (** ** Where a Member is Declared
 

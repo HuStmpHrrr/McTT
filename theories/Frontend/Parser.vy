@@ -27,7 +27,7 @@ Definition path_list (p : string * list string) : list string := List.rev (fst p
 %token <loc> OMEGA2 (* [ω^2], written [ω^2] or [omega^2]; not a level *)
 %token <loc> TRUE_TY TRUE FALSE_TY EXFALSO (* unit and empty type keywords *)
 %token <loc> MODULE WHERE DEF IMPORT OPEN AS USE EXPORT PRIVATE ABSTRACT EVAL (* module keywords *)
-%token <loc> INDUCTIVE ELIM (* inductive types *)
+%token <loc> INDUCTIVE ELIM BUILTIN (* inductive types *)
 %token <loc> THEOREM LEMMA FACT REMARK GIVEN AXIOM (* definition keywords; [let] is [LET] *)
 %token <loc> ARROW "->" AT "@" BAR "|" COLON ":" COLONCOLON "::" COMMA "," DARROW "=>" LPAREN "(" RPAREN ")" LBRACE "{" RBRACE "}" PLUS "+" STAR "*" DOT "." EQ ":=" SEMI ";" EOF (* symbols *)
 
@@ -103,6 +103,8 @@ let cmd :=
       { [Cst.c_ind false (snd x) (List.rev ps) t (List.rev cs)] }
   | PRIVATE; INDUCTIVE; x = VAR; ps = params_opt; ":"; t = obj; WHERE; cs = ctors; END;
       { [Cst.c_ind true (snd x) (List.rev ps) t (List.rev cs)] }
+  (* [builtin natural := X]: the inductive type [X] is the natural numbers. *)
+  | BUILTIN; k = VAR; ":="; x = atomic_obj; { [Cst.c_builtin (snd k) x] }
 
 (* Reversed list of constructors, possibly empty: [| c (x : A) …] *)
 let ctors :=
@@ -273,7 +275,8 @@ let atomic_obj :=
 
   | NAT; { Cst.nat }
   | ZERO; { Cst.zero }
-  | n = INT; { nat_rect (fun _ => Cst.obj) Cst.zero (fun _ => Cst.succ) (snd n) }
+  (* A numeral: the natural numbers bound as [builtin natural], or [ℕ]. *)
+  | n = INT; { Cst.num (snd n) }
 
   | TRUE_TY; { Cst.true_ty }
   | TRUE; { Cst.true_tm }

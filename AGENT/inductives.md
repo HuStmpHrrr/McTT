@@ -89,7 +89,8 @@ member.
 * Declarations are members of units and of global modules (also under
   module parameters, which become outermost uniform parameters); not of
   local bodies (`"an inductive type is not allowed in a local module"`).
-* ℕ is unchanged (`rec`).
+* ℕ is unchanged (`rec`); an inductive type can be bound as the natural
+  numbers, which the numerals then denote (below).
 
 ## Shapes of recursive arguments
 
@@ -318,6 +319,48 @@ keyword).
   obligation numbering are unchanged.
 * A declaration is decided premise by premise in `Extraction/IndDecl.v`
   (`ind_entry_dec`); `exp_mvc` by a boolean mirror (`mvcb_spec`).
+
+## The natural numbers as a builtin (`builtin natural ≔ X`)
+
+```
+inductive Num : Type@0 where
+| Z
+| S (n : Num)
+end
+
+builtin natural ≔ Num
+
+eval Num.elim 2 return x . Num | Z ⇒ 1 | S p, r ⇒ Num.S r end   (* 3 : Num *)
+```
+
+* A numeral is a core literal, `a_nlit n` (`Syntax.v`), not a term of the
+  typing judgment: expansion (`exp_xp`, `Imports.v`) replaces it by the
+  chain `nat_chain p z s n` of the bound type's constructors, or by the
+  builtin `ℕ`'s while no binding is visible (until `ℕ` is removed), and
+  fails with `xe_nat` where the visible bindings disagree.  The elaborator
+  maps a numeral to the literal and does nothing else.
+* What a numeral stands for is the oracle field `xo_nb`, specified as
+  `nat_binding Θ Ξ` (`Core/Syntactic/Builtin.v`): the bindings of the filed
+  units (`gds_natbinds`) and of the unit being run, the bottom frame
+  (`gs_natbinds`), classified as none, one with its constructors, or many.
+  It depends on the filed units only up to `gds_equiv`
+  (`gds_equiv_nat_binding`, `Extraction/IndDecl.v`).
+* The command `cc_builtin k p` (`p` resolved as an eliminator's name is)
+  runs by `rc_builtin`: `k` is `natural`, the stack is the frame of a
+  unit without parameters, no binding is visible, `p`'s declaration has
+  `nat_shape` (no parameter, a constructor without arguments and one with
+  the single argument `ca_rec (pt_self 0 nil)`, in either order), and the
+  binding is filed as the transparent definition `#natural : ind_ty D ≔
+  a_ind p` of the unit, with the premises of `rc_def`.  So a binding is
+  visible exactly where its unit is imported, directly or not.
+* The printer folds a chain of the bound constructors ending in the
+  nullary one into a numeral; it reads the binding off the eval's state
+  (`nat_binding ev_deps ev_stack`).  The type prints by its name.
+* Errors: "the natural numbers are bound already", "X is not shaped as
+  the natural numbers: …", "builtin is allowed only at the top of a unit
+  without parameters", "there is no builtin k", "builtin is not allowed in
+  a local module" (elaborator), "the numeral n has no meaning here: the
+  visible bindings of the natural numbers disagree".
 
 ## Deviations from the report
 

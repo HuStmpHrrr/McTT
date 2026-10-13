@@ -103,6 +103,7 @@ Section type_check.
         eliminator's recursive calls are passed on. *)
     | a_ind r => ind_infer G HG P r
     | a_con r c => con_infer G HG P r c
+    | a_nlit n => inright (fun A HA => alg_nlit_no_infer G n A HA)
     | a_elim p nm A' Bs M' =>
         elim_infer G HG P p nm A' Bs M'
           (type_infer_in G HG P M' ltac:(ob_ord_elim))

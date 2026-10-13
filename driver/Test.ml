@@ -3482,3 +3482,70 @@ let%expect_test "an inductive type needs its type" =
       parameters of an inductive type are expected to be followed by ":" and its
       type.
     |}]
+
+(* [builtin natural ≔ X]: the numerals where the binding is visible. *)
+let%expect_test "the bound natural numbers: numerals and their printing" =
+  let _ = main_of_example "Builtin.mctt" in
+  [%expect {|
+    Evaluate plus 2 3 --> 5 : Num
+    Evaluate mult 6 7 --> 42 : Num
+    Evaluate S (S Z) --> 2 : Num
+    Evaluate λ (x1 : Num) → plus 2 x1 --> λ (x1 : Num) → Num.S (Num.S x1)
+      : ∀ (x1 : Num) → Num
+    |}]
+
+let%expect_test "a numeral is the bound type's where the binding is imported" =
+  let _ = main_of_multi_string "module Main where import Lib›Unary use (U; plus) eval plus 2 3 eval 0 : U end" in
+  [%expect {|
+    Evaluate plus 2 3 --> 5 : Lib›Unary.U
+    Evaluate 0 --> 0 : Lib›Unary.U
+    |}]
+
+let%expect_test "a numeral is a natural number where no binding is visible" =
+  let _ = main_of_body "eval 3" in
+  [%expect {| Evaluate 3 --> 3 : ℕ |}]
+
+let%expect_test "two bindings that disagree give a numeral no meaning" =
+  let _ = main_of_multi_string "module Main where import Lib›Unary import Lib›Peano eval 1 end" in
+  [%expect {| Error: the numeral 1 has no meaning here: the visible bindings of the natural numbers disagree |}]
+
+let%expect_test "the natural numbers are bound once" =
+  let _ = main_of_multi_string "module Main where import Lib›Unary \
+                                 inductive N : Type@0 where | z | s (n : N) end \
+                                 builtin natural := N end" in
+  [%expect {| Error: the natural numbers are bound already |}]
+
+let%expect_test "a binding needs the shape of the natural numbers" =
+  let _ = main_of_body "inductive L : Type@0 where | nil | cons (x : Nat) (l : L) end \
+                        builtin natural := L" in
+  [%expect {| Error: L is not shaped as the natural numbers: it must have no parameter, one constructor without arguments and one with a single recursive argument |}]
+
+let%expect_test "a binding with the constructors in the other order" =
+  let _ = main_of_body "inductive N : Type@0 where | s (n : N) | z end \
+                        builtin natural := N eval 2" in
+  [%expect {| Evaluate 2 --> 2 : N |}]
+
+let%expect_test "a binding is of an inductive type" =
+  let _ = main_of_body "def D : Type@0 := Nat end builtin natural := D" in
+  [%expect {| Error: Test.D is not an inductive type |}]
+
+let%expect_test "natural is the only builtin" =
+  let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end builtin integer := N" in
+  [%expect {| Error: there is no builtin integer |}]
+
+let%expect_test "a binding is made at the top of a unit" =
+  let _ = main_of_body "module M where inductive N : Type@0 where | z | s (n : N) end \
+                        builtin natural := N end" in
+  [%expect {| Error: builtin is allowed only at the top of a unit without parameters |}]
+
+let%expect_test "a binding is not allowed in a local module" =
+  let _ = main_of_body "eval let module M where builtin natural := N end in zero end" in
+  [%expect {| Error: builtin is not allowed in a local module |}]
+
+let%expect_test "a binding needs its type" =
+  let _ = main_of_body "builtin natural N" in
+  [%expect {|
+    Error: on "N" (at line 1, column 35 - line 1, column 36): The kind of a
+      builtin is expected to be followed by ":=" and the type bound, as in
+      "builtin natural := Nat".
+    |}]
