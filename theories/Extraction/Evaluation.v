@@ -13,9 +13,10 @@ Generalizable All Variables.
 (** * The Evaluator the Checker Runs
 
     The evaluator of the relation of [Extraction.FastEval]: the reference one
-    ([Reference.Evaluation]) but for the eliminator at a successor, which
-    does not compute the recursive result when the successor case does not
-    read it. *)
+    ([Reference.Evaluation]) but for the eliminators, which do not compute
+    a recursive result that the branch does not read: the [ℕ]-eliminator
+    at a successor, and the eliminator of an inductive type at a
+    constructor, one recursive argument at a time. *)
 
 (** The termination orders mirror the evaluation relations, one for each, in
     the same global context.  A transparent global recurses into its resolved
@@ -127,8 +128,8 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (st
      List.length vs = (ind_np D + List.length gs)%nat ->
      brs_lookup Bs c = Some (n, B) ->
      n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
-     feval_ihs_order Θ Ξ p nm A Bs gs (skipn (ind_np D) vs) ->
-     (forall ihs, ⟦ihsᶠ skipn (ind_np D) vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs ->
+     feval_ihs_order Θ Ξ p nm A Bs B gs (skipn (ind_np D) vs) ->
+     (forall ihs, ⟦ihsᶠ skipn (ind_np D) vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs ->
         feval_exp_order Θ Ξ B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs))) ->
      feval_elim_order Θ Ξ p nm A Bs (d_con pq c vs) )
 | feelo_neut :
@@ -138,16 +139,21 @@ with feval_elim_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (st
      feval_exp_order Θ Ξ A (env_args p (skipn (ind_nu D) as' ++ ⇑ (d_ind pq as') m :: nil)) ->
      feval_elim_order Θ Ξ p nm A Bs (⇑ (d_ind pq as') m) )
 
-with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> Prop :=
+with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> exp -> list carg -> list domain -> Prop :=
 | feiho_nil :
-  `( feval_ihs_order Θ Ξ p nm A Bs nil nil )
+  `( feval_ihs_order Θ Ξ p nm A Bs B nil nil )
 | feiho_arg :
-  `( feval_ihs_order Θ Ξ p nm A Bs gs vs ->
-     feval_ihs_order Θ Ξ p nm A Bs (ca_arg T :: gs) (v :: vs) )
+  `( feval_ihs_order Θ Ξ p nm A Bs B gs vs ->
+     feval_ihs_order Θ Ξ p nm A Bs B (ca_arg T :: gs) (v :: vs) )
 | feiho_rec :
-  `( feval_ih_order Θ Ξ p nm A Bs t v ->
-     feval_ihs_order Θ Ξ p nm A Bs gs vs ->
-     feval_ihs_order Θ Ξ p nm A Bs (ca_rec t :: gs) (v :: vs) )
+  `( exp_freshb (cargs_nrec gs) B = false ->
+     feval_ih_order Θ Ξ p nm A Bs t v ->
+     feval_ihs_order Θ Ξ p nm A Bs B gs vs ->
+     feval_ihs_order Θ Ξ p nm A Bs B (ca_rec t :: gs) (v :: vs) )
+| feiho_skip :
+  `( exp_freshb (cargs_nrec gs) B = true ->
+     feval_ihs_order Θ Ξ p nm A Bs B gs vs ->
+     feval_ihs_order Θ Ξ p nm A Bs B (ca_rec t :: gs) (v :: vs) )
 
 with feval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> Prop :=
 | feio_self :
@@ -386,9 +392,9 @@ Ltac functional_feval_all :=
     | H1 : feval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r1, H2 : feval_elim ?T ?X ?p ?nm ?A ?Bs ?m ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_elim _ _ _ _ _ _ _ H1 H2); subst; clear H2
-    | H1 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r1, H2 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r2 |- _ =>
+    | H1 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?B ?gs ?vs ?r1, H2 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?B ?gs ?vs ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
-        pose proof (functional_feval_ihs _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+        pose proof (functional_feval_ihs _ _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
     | H1 : feval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r1, H2 : feval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_ih _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
@@ -416,7 +422,7 @@ Lemma feval_order_sound : forall Θ Ξ,
     (forall h ch r, h ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r -> feval_selmc_order Θ Ξ h ch) /\
     (forall p Φ p', ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p' -> feval_benv_order Θ Ξ p Φ) /\
     (forall p nm A Bs m r, ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r -> feval_elim_order Θ Ξ p nm A Bs m) /\
-    (forall p nm A Bs gs vs ihs, ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs -> feval_ihs_order Θ Ξ p nm A Bs gs vs) /\
+    (forall p nm A Bs B gs vs ihs, ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs -> feval_ihs_order Θ Ξ p nm A Bs B gs vs) /\
     (forall p nm A Bs t v r, feval_ih Θ Ξ p nm A Bs t v r -> feval_ih_order Θ Ξ p nm A Bs t v) /\
     (forall pq ups p t a, feval_shty Θ Ξ pq ups p t a -> feval_shty_order Θ Ξ pq ups p t) /\
     (forall pm A p t v a, feval_ihty Θ Ξ pm A p t v a -> feval_ihty_order Θ Ξ pm A p t v).
@@ -486,7 +492,7 @@ Section EvalImpl.
     | H : feval_selmc_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_benv_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_elim_order _ _ _ _ _ _ _ |- _ => progressive_invert H
-    | H : feval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_ihs_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert H
@@ -550,7 +556,7 @@ Section EvalImpl.
     | H : feval_selc_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_benv_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_elim_order _ _ _ _ _ _ _ |- _ => dependent destruction H
-    | H : feval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_ihs_order _ _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => dependent destruction H
@@ -667,7 +673,7 @@ Section EvalImpl.
     | exist _ (Some D) Ed with inspect (ind_con D c) := {
       | exist _ (Some gs) Ec with inspect (brs_lookup Bs c) := {
         | exist _ (Some (n, B)) Eb =>
-            let (ihs, Hihs) := feval_ihs_impl p nm A Bs gs (skipn (ind_np D) vs) _ in
+            let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs (skipn (ind_np D) vs) _ in
             let (r, Hr) := feval_exp_impl B (env_args p (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs)) _ in
             exist _ r _
         | exist _ None Eb => False_rect _ _ }
@@ -680,16 +686,22 @@ Section EvalImpl.
     | exist _ None Ed => False_rect _ _ }
   | p, nm, A, Bs, _, H => False_rect _ _
 
-  with feval_ihs_impl p nm A Bs gs vs (H : feval_ihs_order Θ Ξ p nm A Bs gs vs) : { ihs | ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
-  | p, nm, A, Bs, nil, nil, H => exist _ nil _
-  | p, nm, A, Bs, ca_arg T :: gs, v :: vs, H =>
-      let (ihs, Hihs) := feval_ihs_impl p nm A Bs gs vs _ in
+  with feval_ihs_impl p nm A Bs B gs vs (H : feval_ihs_order Θ Ξ p nm A Bs B gs vs) : { ihs | ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs } by struct H :=
+  | p, nm, A, Bs, B, nil, nil, H => exist _ nil _
+  | p, nm, A, Bs, B, ca_arg T :: gs, v :: vs, H =>
+      let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs vs _ in
       exist _ ihs _
-  | p, nm, A, Bs, ca_rec t :: gs, v :: vs, H =>
-      let (ih, Hih) := feval_ih_impl p nm A Bs t v _ in
-      let (ihs, Hihs) := feval_ihs_impl p nm A Bs gs vs _ in
-      exist _ (ih :: ihs) _
-  | p, nm, A, Bs, _, _, H => False_rect _ _
+  | p, nm, A, Bs, B, ca_rec t :: gs, v :: vs, H with inspect (exp_freshb (cargs_nrec gs) B) := {
+    (** The branch does not read the recursive result: it is not
+        computed. *)
+    | exist _ true E =>
+        let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs vs _ in
+        exist _ (𝕌ω@0 :: ihs) _
+    | exist _ false E =>
+        let (ih, Hih) := feval_ih_impl p nm A Bs t v _ in
+        let (ihs, Hihs) := feval_ihs_impl p nm A Bs B gs vs _ in
+        exist _ (ih :: ihs) _ }
+  | p, nm, A, Bs, B, _, _, H => False_rect _ _
 
   with feval_ih_impl p nm A Bs t v (H : feval_ih_order Θ Ξ p nm A Bs t v) : { r | feval_ih Θ Ξ p nm A Bs t v r } by struct H :=
   | p, nm, A, Bs, pt_self k Ps, v, H =>
@@ -873,6 +885,8 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.

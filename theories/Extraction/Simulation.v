@@ -1,8 +1,10 @@
 (** * The Fast Evaluation Simulates the Reference One
 
-    [Extraction.FastEval] skips the recursive result of the eliminator when
-    the successor case does not read it.  Its values then differ from the
-    reference ones only in entries of environments that nothing reads:
+    [Extraction.FastEval] skips the recursive result of the [ℕ]-eliminator
+    when the successor case does not read it, and that of a recursive
+    argument of a constructor when the eliminator's branch does not read
+    it.  Its values then differ from the reference ones only in entries of
+    environments that nothing reads:
 
     - [dsim a a'], between a reference value [a] and a fast one [a'], is
       equality of the two up to the entries of closures' environments at
@@ -227,6 +229,42 @@ Lemma env_agree_binders : forall n B args args' ρ ρ',
     env_agree (fun x => ~ exp_fresh x B) (env_args ρ args) (env_args ρ' args').
 Proof. intros * Hρ Ha Hl; eapply env_agree_args; [ exact Hρ | exact Ha |]; intros y Hy; rewrite Hl in Hy; exact Hy. Qed.
 
+(** Two lists of values related at the entries [P] selects, once they
+    extend an environment: the entry of [a] in [env_args ρ (a :: l)] is
+    [List.length l]. *)
+Inductive dsim_list_at (P : nat -> Prop) : list domain -> list domain -> Prop :=
+| dsat_nil : dsim_list_at P nil nil
+| dsat_cons : forall a a' l l', (P (List.length l) -> dsim a a') -> dsim_list_at P l l' ->
+    dsim_list_at P (a :: l) (a' :: l').
+
+#[export]
+Hint Constructors dsim_list_at : mctt.
+
+Lemma dsim_list_at_app : forall P l1 l1' l2 l2', dsim_list l1 l1' -> dsim_list_at P l2 l2' ->
+    dsim_list_at P (l1 ++ l2) (l1' ++ l2').
+Proof. induction 1; intros; cbn; [ assumption | constructor; auto ]. Qed.
+
+Lemma env_agree_args_at : forall P Q args args' ρ ρ',
+    env_agree P ρ ρ' -> dsim_list_at Q args args' ->
+    (forall y, Q (List.length args + y) -> P y) ->
+    env_agree Q (env_args ρ args) (env_args ρ' args').
+Proof.
+  intros * Hρ Ha; revert P ρ ρ' Hρ; induction Ha as [| a a' l l' Hh Ht IH]; intros P ρ ρ' Hρ HQ; cbn.
+  - eapply env_agree_mono; [ exact Hρ | intros y Hy; apply HQ, Hy ].
+  - eapply IH with (P := fun y => Q (List.length l + y)); [| intros; assumption ].
+    intros [| y] Hy; cbn.
+    + constructor; apply Hh; rewrite Nat.add_0_r in Hy; exact Hy.
+    + apply Hρ, HQ; cbn; replace (S (List.length l + y)) with (List.length l + S y) by lia; exact Hy.
+Qed.
+
+(** The environment of a branch under its [n] binders, whose last entries,
+    the recursive results, are related only where the branch reads. *)
+Lemma env_agree_binders_at : forall n B args args' ρ ρ',
+    env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ' ->
+    dsim_list_at (fun x => ~ exp_fresh x B) args args' -> List.length args = n ->
+    env_agree (fun x => ~ exp_fresh x B) (env_args ρ args) (env_args ρ' args').
+Proof. intros * Hρ Ha Hl; eapply env_agree_args_at; [ exact Hρ | exact Ha |]; intros y Hy; rewrite Hl in Hy; exact Hy. Qed.
+
 (** The type of an argument of a function shape, and of its recursive
     result: a [Π] over a family in an environment that holds only it. *)
 Lemma dsim_fam_pi : forall b b' d d', dsim b b' -> dsim d d' ->
@@ -444,10 +482,11 @@ Section Eval.
        env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
        dsim m m' -> exists r', ⟦elimᶠ m' under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r') /\
-    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' vs',
+    (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs -> forall ρ' vs' B,
        env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-       dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\ dsim_list ihs ihs') /\
+       dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+       dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs') /\
     (forall ρ nm A Bs t m r, eval_ih Θ Ξ ρ nm A Bs t m r -> forall ρ' m',
        env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
        (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
@@ -485,10 +524,11 @@ Section Eval.
          env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
          dsim m m' -> exists r', ⟦elimᶠ m' under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r' /\ dsim r r')
-      (fun ρ nm A Bs gs vs ihs _ => forall ρ' vs',
+      (fun ρ nm A Bs gs vs ihs _ => forall ρ' vs' B,
          env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
-         dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\ dsim_list ihs ihs')
+         dsim_list vs vs' -> exists ihs', ⟦ihsᶠ vs' of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ihs' /\
+         dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs')
       (fun ρ nm A Bs t m r _ => forall ρ' m',
          env_agree (fun x => ~ exp_fresh (nm + x) A) ρ ρ' ->
          (forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ') ->
@@ -514,7 +554,7 @@ Section Eval.
     (** On a constructor: the recursive results, then the branch, in the
         environment of the parameters, the arguments and the results. *)
     all: try solve [ match goal with
-      | IHi : forall ρ0 vs0, env_agree _ ?ρ ρ0 -> _ -> dsim_list (skipn _ ?vs) vs0 -> exists _, _ /\ _,
+      | IHi : forall ρ0 vs0 B0, env_agree _ ?ρ ρ0 -> _ -> dsim_list (skipn _ ?vs) vs0 -> exists _, _ /\ _,
         IHB : forall ρ0, env_agree (fun x => ~ exp_fresh x ?B) (env_args ?ρ _) ρ0 -> exists _, _ /\ _,
         HA : env_agree (fun x => ~ exp_fresh (?nm + x) ?A) ?ρ ?ρ',
         HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ',
@@ -523,13 +563,13 @@ Section Eval.
         Hih : ⟦ihs _ of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
           let ihs' := fresh "ihs'" in let Hihs' := fresh "Hihs'" in let Hsi := fresh "Hsi" in
           let r' := fresh "r'" in
-          destruct (IHi ρ' (skipn (ind_np D) vs') HA HBs (dsim_list_skipn _ _ _ Hvs)) as (ihs' & Hihs' & Hsi);
+          destruct (IHi ρ' (skipn (ind_np D) vs') B HA HBs (dsim_list_skipn _ _ _ Hvs)) as (ihs' & Hihs' & Hsi);
           destruct (IHB (env_args ρ' (skipn (ind_nu D) (firstn (ind_np D) vs') ++ skipn (ind_np D) vs' ++ ihs')))
             as (r' & ? & ?);
-            [ eapply env_agree_binders;
+            [ eapply env_agree_binders_at;
                 [ exact (HBs _ _ _ (brs_lookup_in _ _ _ _ e))
-                | apply dsim_list_app; [ apply dsim_list_skipn, dsim_list_firstn, Hvs
-                                       | apply dsim_list_app; [ apply dsim_list_skipn, Hvs | exact Hsi ] ]
+                | apply dsim_list_at_app; [ apply dsim_list_skipn, dsim_list_firstn, Hvs
+                                          | apply dsim_list_at_app; [ apply dsim_list_skipn, Hvs | exact Hsi ] ]
                 | rewrite (ind_branch_args_length _ _ _ _ Hl), (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
                   first [ reflexivity | lia ] ]
             |];
@@ -556,20 +596,31 @@ Section Eval.
             [ eapply feval_elim_neut; try eassumption; try reflexivity; rewrite <- (dsim_list_length _ _ Has); exact Hl
             | constructor; [ assumption | constructor; [ exact HA | exact HBs | assumption | assumption ] ] ]
       end ].
-    (** The recursive results. *)
+    (** The recursive results: each is computed when the branch reads it,
+        and skipped when it does not, as the fast rule decides. *)
     all: try solve [ eexists; split; [ constructor | constructor ] ].
     all: try solve [ match goal with
-      | IH : forall ρ0 vs0, env_agree _ ?ρ ρ0 -> _ -> dsim_list ?vs vs0 -> exists _, _ /\ _,
+      | IH : forall ρ0 vs0 B0, env_agree _ ?ρ ρ0 -> _ -> dsim_list ?vs vs0 -> exists _, _ /\ _,
         HA : env_agree (fun x => ~ exp_fresh (?nm + x) ?A) ?ρ ?ρ',
-        HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ', Hvs : dsim_list ?vs ?vs' |- _ =>
+        HBs : forall c n B, In (c, n, B) ?Bs -> env_agree _ ?ρ ?ρ', Hvs : dsim_list ?vs ?vs'
+        |- exists _, ⟦ihsᶠ _ of ?gs0 under _ _ _ for ?B ⟧ᶠ _ ⍮ _ ⍮ _ ↘ _ /\ _ =>
           let ihs' := fresh "ihs'" in
-          destruct (IH ρ' vs' HA HBs Hvs) as (ihs' & ? & ?);
+          destruct (IH ρ' vs' B HA HBs Hvs) as (ihs' & ? & ?);
           first [ exists ihs'; split; [ constructor; eassumption | assumption ]
                 | match goal with
-                  | IHe : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?v m0 -> exists _, _ /\ _, Hv : dsim ?v ?v' |- _ =>
-                      let ih' := fresh "ih'" in
-                      destruct (IHe ρ' v' HA HBs Hv) as (ih' & ? & ?);
-                      exists (ih' :: ihs'); split; [ constructor; eassumption | constructor; assumption ]
+                  | IHe : forall ρ0 m0, env_agree _ ?ρ ρ0 -> _ -> dsim ?v m0 -> exists _, _ /\ _, Hv : dsim ?v ?v',
+                    Hih : ⟦ihs ?vs of ?gs under _ _ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?ihs |- _ =>
+                      let Hf := fresh "Hf" in
+                      destruct (exp_freshb (cargs_nrec gs) B) eqn:Hf;
+                      [ exists (𝕌ω@0 :: ihs'); split;
+                          [ apply feval_ihs_skip; assumption
+                          | constructor; [| assumption ];
+                            rewrite (proj2 (eval_ihs_length _ _ _ _ _ _ _ Hih));
+                            intros Hn; exfalso; exact (Hn (exp_freshb_sound _ _ Hf)) ]
+                      | let ih' := fresh "ih'" in
+                        destruct (IHe ρ' v' HA HBs Hv) as (ih' & ? & ?);
+                        exists (ih' :: ihs'); split;
+                          [ eapply feval_ihs_rec; eassumption | constructor; [ intros; assumption | assumption ] ] ]
                   end ]
       end ].
     (** Function shapes.  The recursive result of a function shape and the

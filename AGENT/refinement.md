@@ -10,7 +10,7 @@ proofs; `Reference/Refinement.v` states the input–output equalities.
 | Extracted | Reference | Refinement |
 | --- | --- | --- |
 | `Extraction/TypeCheck.v` | `Reference/TypeCheck.v` | an application spine is checked against the *value* of the head's type (`type_infer_val_in`, `type_infer_app_in`); a check normalizes only the type it checks against |
-| `Extraction/Evaluation.v`, `Readback.v` | `Reference/Evaluation.v`, `Readback.v` | the eliminator at a successor skips the recursive result when the step case does not read it (`exp_freshb 0 MS`); its entry is `zeroᵈ` |
+| `Extraction/Evaluation.v`, `Readback.v` | `Reference/Evaluation.v`, `Readback.v` | the eliminator at a successor skips the recursive result when the step case does not read it (`exp_freshb 0 MS`); its entry is `zeroᵈ`.  The eliminator of an inductive type at a constructor computes the result of a recursive argument only when the branch reads it (`exp_freshb (cargs_nrec gs) B`); an unread entry is `𝕌ω@0` |
 | `Extraction/NbE.v` | `Reference/NbE.v` | normalization by the fast evaluator, same specification (`nbe`, `nbe_ty`) |
 
 The termination orders of normalization (`nbe_ty_order`, …) stay those of
@@ -39,9 +39,17 @@ application and calls `type_infer_in` otherwise, both structurally.
 ## The skipped recursive result (`Extraction/FastEval.v`, `Simulation.v`)
 
 `FastEval.v` copies the evaluation and readback relations of
-`Core/Semantic` with one rule split in two: `feval_natrec_succ` (the step
-case reads `#0`: `exp_freshb 0 MS = false`) and `feval_natrec_skip` (it does
-not; the entry is `zeroᵈ`).  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).
+`Core/Semantic` with two rules split in two:
+
+- `feval_natrec_succ` (the step case reads `#0`: `exp_freshb 0 MS = false`)
+  and `feval_natrec_skip` (it does not; the entry is `zeroᵈ`);
+- `feval_ihs_rec` and `feval_ihs_skip`: the recursive results of a
+  constructor's arguments are computed for the branch `B`
+  (`⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ`), and the result of the
+  recursive argument heading `ca_rec t :: gs`, the variable
+  `cargs_nrec gs` of `B`, is computed only when `B` reads it; otherwise
+  the entry is `𝕌ω@0`.  A function-shaped result is a closure
+  (`d_ihfn`), skipped alike.  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).
 The orders and implementations of `Extraction/Evaluation.v` and
 `Readback.v` are those of `Reference/` over the copied relations.
 
@@ -53,6 +61,10 @@ fresh; `env_agree P ρ ρ'` is agreement at the entries `P` selects.
   (`fun x => ~ exp_fresh x M`), the fast evaluation terminates whenever the
   reference one does, at a related value.  A body's environment agrees on
   the entries it adds and, above them, where its input did (`above`).
+  The recursive results are related only at the entries the branch reads
+  (`dsim_list_at (fun x => ~ exp_fresh x B)`: the head of `a :: l` sits at
+  entry `List.length l`), and the branch's environment agrees where the
+  branch reads (`env_agree_binders_at`).
 - `fread_sim`: readback of related values gives the same normal form.
 
 So the fast normalizers meet `nbe`/`nbe_ty` (`Extraction/NbE.v`): the order

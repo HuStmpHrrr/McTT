@@ -1,12 +1,18 @@
 (** * The Evaluation the Extracted Checker Runs
 
     A copy of the evaluation relations ([Core.Semantic.Evaluation]) and of
-    readback ([Core.Semantic.Readback]) with one rule changed: the
-    [ℕ]-eliminator at a successor does not compute the recursive result
-    when the successor case does not read it, that is, when [#0] is fresh
-    in [MS] ([exp_freshb]); the unused entry of the environment is then
-    [zeroᵈ] ([feval_natrec_skip]).  The decision is syntactic and builds
-    nothing.  Readback is copied because it evaluates closures.
+    readback ([Core.Semantic.Readback]) with two rules changed:
+
+    - the [ℕ]-eliminator at a successor does not compute the recursive
+      result when the successor case does not read it, that is, when [#0]
+      is fresh in [MS] ([exp_freshb]); the unused entry of the environment
+      is then [zeroᵈ] ([feval_natrec_skip]);
+    - the eliminator of an inductive type at a constructor computes the
+      recursive result of a recursive argument only when the branch reads
+      it; an unused entry is [𝕌ω@0] ([feval_ihs_skip]).
+
+    The decisions are syntactic and build nothing.  Readback is copied
+    because it evaluates closures.
 
     The values of the two evaluations agree except in the entries of
     environments that nothing reads: [Extraction.Simulation] makes this
@@ -143,7 +149,7 @@ Reserved Notation "'⟦' M '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, 
 Reserved Notation "'⟦recᶠ' m 'return' A | 'zero' -> MZ | 'succ' -> MS 'end' '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, A at level 69, MZ at level 69, MS at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'$ᶠ|' m '&' n '|' Θ '⍮' Ξ '↘' r" (at level 70, m at level 69, n at level 69, Θ at level 69, Ξ at level 69, r at level 69).
 Reserved Notation "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, m at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
-Reserved Notation "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
+Reserved Notation "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs 'for' B '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, vs at level 69, gs at level 69, nm at level 0, A at level 0, Bs at level 0, B at level 0, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 
 Reserved Notation "'⟦' H '⟧ᵐᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" (at level 70, H at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, r at level 69).
 Reserved Notation "'⟦' Ms '⟧*ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' ms" (at level 70, Ms at level 69, Θ at level 69, Ξ at level 69, ρ at level 69, ms at level 69).
@@ -158,7 +164,8 @@ Reserved Notation "h '·ₘ*ᶠ' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at lev
 Generalizable All Variables.
 
 (** The rules of [Core.Semantic.Evaluation], one for one, but for the two
-    rules of the eliminator at a successor. *)
+    rules of the eliminator at a successor and the two rules of a recursive
+    argument's result. *)
 Inductive feval_exp (Θ : gdeps) (Ξ : gstack) : exp -> env -> domain -> Prop :=
 (** A universe is its own value. *)
 | feval_exp_typ :
@@ -291,7 +298,7 @@ with feval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string *
      List.length vs = (ind_np D + List.length gs)%nat ->
      brs_lookup Bs c = Some (n, B) ->
      n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
-     ⟦ihsᶠ skipn (ind_np D) vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ skipn (ind_np D) vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) (firstn (ind_np D) vs) ++ skipn (ind_np D) vs ++ ihs) ↘ r ->
      ⟦elimᶠ d_con p c vs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r )
 | feval_elim_neut :
@@ -301,17 +308,30 @@ with feval_elim (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string *
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (skipn (ind_nu D) as' ++ ⇑ (d_ind p as') m :: nil) ↘ a ->
      ⟦elimᶠ ⇑ (d_ind p as') m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ⇑ a (d_elim ρ nm A Bs p as' m) )
 where "'⟦elimᶠ' m 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_elim Θ Ξ ρ nm A Bs m r)
-with feval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> list carg -> list domain -> list domain -> Prop :=
+(** The recursive results of the arguments [vs] of a constructor, for the
+    branch [B]: the entry of a recursive argument is computed only when [B]
+    reads it.  The entry of the recursive argument at the head of
+    [ca_rec t :: gs] is the variable [cargs_nrec gs] of [B], since the
+    results of the recursive arguments after it come after it in [B]'s
+    environment. *)
+with feval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> exp -> list carg -> list domain -> list domain -> Prop :=
 | feval_ihs_nil :
-  `( ⟦ihsᶠ nil of nil under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
+  `( ⟦ihsᶠ nil of nil under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ nil )
 | feval_ihs_arg :
-  `( ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihsᶠ v :: vs of ca_arg T :: gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+  `( ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ v :: vs of ca_arg T :: gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
+(** The branch reads the recursive result: it is computed. *)
 | feval_ihs_rec :
-  `( feval_ih Θ Ξ ρ nm A Bs t v ih ->
-     ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihsᶠ v :: vs of ca_rec t :: gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
-where "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_ihs Θ Ξ ρ nm A Bs gs vs r)
+  `( exp_freshb (cargs_nrec gs) B = false ->
+     feval_ih Θ Ξ ρ nm A Bs t v ih ->
+     ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ v :: vs of ca_rec t :: gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+(** It does not: the entry is [𝕌ω@0], which nothing reads. *)
+| feval_ihs_skip :
+  `( exp_freshb (cargs_nrec gs) B = true ->
+     ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
+     ⟦ihsᶠ v :: vs of ca_rec t :: gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ 𝕌ω@0 :: ihs )
+where "'⟦ihsᶠ' vs 'of' gs 'under' nm A Bs 'for' B '⟧ᶠ' Θ '⍮' Ξ '⍮' ρ '↘' r" := (feval_ihs Θ Ξ ρ nm A Bs B gs vs r)
 (** The recursive result of an argument of a shape, the type of an argument
     of a shape and the type of its recursive result, as in
     [Core.Semantic.Evaluation]. *)
@@ -633,9 +653,9 @@ Proof. intros * <-; apply feval_exp_var. Qed.
       (forall ρ nm A Bs m r1,
           ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
           forall r2, ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
-      (forall ρ nm A Bs gs vs r1,
-          ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ nm A Bs B gs vs r1,
+          ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+          forall r2, ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall ρ nm A Bs t v r1, feval_ih Θ Ξ ρ nm A Bs t v r1 -> forall r2, feval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2) /\
       (forall p ups ρ t a1, feval_shty Θ Ξ p ups ρ t a1 -> forall a2, feval_shty Θ Ξ p ups ρ t a2 -> a1 = a2) /\
       (forall ρm A ρ t v a1, feval_ihty Θ Ξ ρm A ρ t v a1 -> forall a2, feval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2).
@@ -712,9 +732,9 @@ Proof. intros * <-; apply feval_exp_var. Qed.
     intros Θ Ξ; pose proof (@functional_feval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
-  Corollary functional_feval_ihs : forall {Θ Ξ} ρ nm A Bs gs vs r1 r2,
-      ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-      ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
+  Corollary functional_feval_ihs : forall {Θ Ξ} ρ nm A Bs B gs vs r1 r2,
+      ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
+      ⟦ihsᶠ vs of gs under nm A Bs for B ⟧ᶠ Θ ⍮ Ξ ⍮ ρ ↘ r2 ->
       r1 = r2.
   Proof.
     intros Θ Ξ; pose proof (@functional_feval Θ Ξ) as H; destruct_all; eauto.
@@ -761,7 +781,7 @@ Ltac functional_feval_rewrite_clear1 :=
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elimᶠ ?m under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
-  | H1 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+  | H1 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs for ?B ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihsᶠ ?vs of ?gs under ?nm ?A ?Bs for ?B ⟧ᶠ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : feval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r1, H2 : feval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [eapply functional_feval_ih; eassumption] | tactic_error r2 r1]; clear H2
