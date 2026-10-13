@@ -55,6 +55,12 @@ Readback has one rule more: a type former without arguments reads back as
 `nf_indty p nfs_nil` without looking its declaration up
 (`fread_typ_indty_nil`; the general rule asks `as' <> nil`).
 
+The implementations keep a declaration they looked up (`lk_cache`,
+`cache_lookup`, `Extraction/Evaluation.v`): the eliminator passes the one of
+the constructor it takes apart to the recursive results, and readback of a
+constructor or of a stuck eliminator to what it reads below, so a lookup of
+the same name is a comparison of names.  The relations are unchanged.
+
 Normal forms are compared by `nf_eq_dec` (`Syntax.v`), whose names are
 compared by `string_dec` (native string equality once extracted), not
 taken apart character by character by `decide equality`.  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).

@@ -403,151 +403,151 @@ Section ReadbackImpl.
 Variables (Θ : gdeps) (Ξ : gstack).
 
 #[tactic="idtac",derive(equations=no,eliminator=no)]
-Equations fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
-| s, ⇓ 𝕌ω@i a      , H =>
-    let (A, HA) := fread_typ_impl s a _ in
+Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
+| s, ⇓ 𝕌ω@i a      , ck, H =>
+    let (A, HA) := fread_typ_impl_c s a ck _ in
     exist _ A _
-| s, ⇓ 𝕌@n a     , H =>
-    let (A, HA) := fread_typ_impl s a _ in
+| s, ⇓ 𝕌@n a     , ck, H =>
+    let (A, HA) := fread_typ_impl_c s a ck _ in
     exist _ A _
-| s, ⇓ (Levelᵈ@n) (lvᵈ c xs), H =>
-    let (ys, Hys) := fread_la_impl s xs _ in
+| s, ⇓ (Levelᵈ@n) (lvᵈ c xs), ck, H =>
+    let (ys, Hys) := fread_la_impl_c s xs ck _ in
     exist _ (nf_lvl_of (lvl_canon (c, ys))) _
-| s, ⇓ (Levelᵈ@n) (⇑ a m), H =>
-    let (M, HM) := fread_ne_impl s m _ in
+| s, ⇓ (Levelᵈ@n) (⇑ a m), ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ (lvⁿ oz (la_cons 0 (dsort a) M la_nil)) _
-| s, ⇓ ℕᵈ zeroᵈ, H => exist _ zeroⁿ _
-| s, ⇓ ℕᵈ (succᵈ m) , H =>
-    let (M, HM) := fread_nf_impl s ⇓ ℕᵈ m _ in
+| s, ⇓ ℕᵈ zeroᵈ, ck, H => exist _ zeroⁿ _
+| s, ⇓ ℕᵈ (succᵈ m) , ck, H =>
+    let (M, HM) := fread_nf_impl_c s ⇓ ℕᵈ m ck _ in
     exist _ succⁿ M _
-| s, ⇓ ℕᵈ (⇑ _ m)  , H =>
-    let (M, HM) := fread_ne_impl s m _ in
+| s, ⇓ ℕᵈ (⇑ _ m)  , ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
-| s, ⇓ ⊤ᵈ m, H => exist _ ⋆ⁿ _
-| s, ⇓ ⊥ᵈ (⇑ _ m), H =>
-    let (M, HM) := fread_ne_impl s m _ in
+| s, ⇓ ⊤ᵈ m, ck, H => exist _ ⋆ⁿ _
+| s, ⇓ ⊥ᵈ (⇑ _ m), ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
-| s, ⇓ (Πᵈ a p B) m, H =>
-    let (A, HA) := fread_typ_impl s a _ in
+| s, ⇓ (Πᵈ a p B) m, ck, H =>
+    let (A, HA) := fread_typ_impl_c s a ck _ in
     let (m', Hm') := feval_app_impl Θ Ξ m ⇑! a s _ in
     let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! a s) _ in
-    let (M, HM) := fread_nf_impl (S s) ⇓ b m' _ in
+    let (M, HM) := fread_nf_impl_c (S s) ⇓ b m' ck _ in
     exist _ (λⁿ A M) _
-| s, ⇓ (⇑ a b) (⇑ c m), H =>
-    let (M, HM) := fread_ne_impl s m _ in
+| s, ⇓ (⇑ a b) (⇑ c m), ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
-| s, ⇓ (d_ind p as') (d_con p' c vs), H with inspect (ind_lookup Θ Ξ p) := {
+| s, ⇓ (d_ind p as') (d_con p' c vs), ck, H with cache_lookup Θ Ξ ck p := {
   | exist _ (Some D) Ed with inspect (ind_con D c) := {
     | exist _ (Some gs) Ec =>
-        let (Ps, HPs) := fread_ps_impl s nil (List.rev (ind_params D)) as' _ in
-        let (Args, HArgs) := fread_cargs_impl s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) _ in
+        let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
+        let (Args, HArgs) := fread_cargs_impl_c s p (List.firstn (ind_nu D) as') (env_args nil as') gs (List.skipn (ind_np D) vs) (Some (exist _ (p, D) Ed)) _ in
         exist _ (nf_con p c (nfs_app Ps Args)) _
     | exist _ None Ec => False_rect _ _ }
   | exist _ None Ed => False_rect _ _ }
-| s, ⇓ (d_ind p as') (⇑ a m), H =>
-    let (M, HM) := fread_ne_impl s m _ in
+| s, ⇓ (d_ind p as') (⇑ a m), ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ ⇑ⁿ M _
 
-  with fread_ne_impl s d (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
-| s, #ᵈ x, H => exist _ #ⁿ (s - x - 1) _
-| s, d_glob p, H => exist _ (ne_glob p) _
-| s, m $ᵈ n, H =>
-    let (M, HM) := fread_ne_impl s m _ in
-    let (N, HN) := fread_nf_impl s n _ in
+  with fread_ne_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
+| s, #ᵈ x, ck, H => exist _ #ⁿ (s - x - 1) _
+| s, d_glob p, ck, H => exist _ (ne_glob p) _
+| s, m $ᵈ n, ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
+    let (N, HN) := fread_nf_impl_c s n ck _ in
     exist _ (M $ⁿ N) _
-| s, recᵈ m under p return B | zero -> mz | succ -> MS end, H =>
+| s, recᵈ m under p return B | zero -> mz | succ -> MS end, ck, H =>
     let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! ℕᵈ s) _ in
-    let (B', HB') := fread_typ_impl (S s) b _ in
+    let (B', HB') := fread_typ_impl_c (S s) b ck _ in
     let (bz, Hbz) := feval_exp_impl Θ Ξ B (p ↦ zeroᵈ) _ in
-    let (MZ, HMZ) := fread_nf_impl s ⇓ bz mz _ in
+    let (MZ, HMZ) := fread_nf_impl_c s ⇓ bz mz ck _ in
     let (bs, Hbs) := feval_exp_impl Θ Ξ B (p ↦ succᵈ (⇑! ℕᵈ s)) _ in
     let (ms, Hms) := feval_exp_impl Θ Ξ MS (p ↦ ⇑! ℕᵈ s ↦ ⇑! b (S s)) _ in
-    let (MS', HMS') := fread_nf_impl (S (S s)) ⇓ bs ms _ in
-    let (M, HM) := fread_ne_impl s m _ in
+    let (MS', HMS') := fread_nf_impl_c (S (S s)) ⇓ bs ms ck _ in
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ recⁿ M return B' | zero -> MZ | succ -> MS' end _
-| s, efqᵈ m under p return B, H =>
+| s, efqᵈ m under p return B, ck, H =>
     let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! ⊥ᵈ s) _ in
-    let (B', HB') := fread_typ_impl (S s) b _ in
-    let (M, HM) := fread_ne_impl s m _ in
+    let (B', HB') := fread_typ_impl_c (S s) b ck _ in
+    let (M, HM) := fread_ne_impl_c s m ck _ in
     exist _ (efqⁿ M return B') _
-| s, d_elim ρ nm A Bs p as' m, H with inspect (ind_lookup Θ Ξ p) := {
+| s, d_elim ρ nm A Bs p as' m, ck, H with cache_lookup Θ Ξ ck p := {
   | exist _ (Some D) Ed =>
       let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil (List.firstn (ind_nu D) as')) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
       let (a, Ha) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ ⇑! (d_ind p (List.firstn (ind_nu D) as' ++ ns)) ((s + ind_nn D)%nat) :: nil)) _ in
-      let (A', HA') := fread_typ_impl (S (s + ind_nn D)) a _ in
-      let (Bs', HBs') := fread_brs_impl s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs _ in
-      let (M, HM) := fread_ne_impl s m _ in
+      let (A', HA') := fread_typ_impl_c (S (s + ind_nn D)) a ck _ in
+      let (Bs', HBs') := fread_brs_impl_c s ρ A p D (List.firstn (ind_nu D) as') (ind_cons D) Bs (Some (exist _ (p, D) Ed)) _ in
+      let (M, HM) := fread_ne_impl_c s m ck _ in
       exist _ (ne_elim p nm A' Bs' M) _
   | exist _ None Ed => False_rect _ _ }
 
-      with fread_typ_impl s d (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
-| s, 𝕌ω@i, H => exist _ Typeωⁿ@i _
-| s, 𝕌@l, H =>
-    let (W, HW) := fread_nf_impl s ⇓ Levelᵈ l _ in
+      with fread_typ_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } by struct H :=
+| s, 𝕌ω@i, ck, H => exist _ Typeωⁿ@i _
+| s, 𝕌@l, ck, H =>
+    let (W, HW) := fread_nf_impl_c s ⇓ Levelᵈ l ck _ in
     exist _ (nf_univ_of (lvl_of_nf W)) _
-| s, Levelᵈ@n, H => exist _ (Levelⁿ@n) _
-| s, ℕᵈ, H => exist _ ℕⁿ _
-| s, ⊤ᵈ, H => exist _ ⊤ⁿ _
-| s, ⊥ᵈ, H => exist _ ⊥ⁿ _
-| s, Πᵈ a p B, H =>
-    let (A, HA) := fread_typ_impl s a _ in
+| s, Levelᵈ@n, ck, H => exist _ (Levelⁿ@n) _
+| s, ℕᵈ, ck, H => exist _ ℕⁿ _
+| s, ⊤ᵈ, ck, H => exist _ ⊤ⁿ _
+| s, ⊥ᵈ, ck, H => exist _ ⊥ⁿ _
+| s, Πᵈ a p B, ck, H =>
+    let (A, HA) := fread_typ_impl_c s a ck _ in
     let (b, Hb) := feval_exp_impl Θ Ξ B (p ↦ ⇑! a s) _ in
-    let (B', HB') := fread_typ_impl (S s) b _ in
+    let (B', HB') := fread_typ_impl_c (S s) b ck _ in
     exist _ (Πⁿ A B') _
-| s, ⇑ a b, H =>
-    let (B, HB) := fread_ne_impl s b _ in
+| s, ⇑ a b, ck, H =>
+    let (B, HB) := fread_ne_impl_c s b ck _ in
     exist _ ⇑ⁿ B _
-| s, d_ind p nil, H => exist _ (nf_indty p nfs_nil) _
-| s, d_ind p as', H with inspect (ind_lookup Θ Ξ p) := {
+| s, d_ind p nil, ck, H => exist _ (nf_indty p nfs_nil) _
+| s, d_ind p as', ck, H with inspect (ind_lookup Θ Ξ p) := {
   | exist _ (Some D) Ed =>
-      let (Ps, HPs) := fread_ps_impl s nil (List.rev (ind_params D)) as' _ in
+      let (Ps, HPs) := fread_ps_impl_c s nil (List.rev (ind_params D)) as' ck _ in
       exist _ (nf_indty p Ps) _
   | exist _ None Ed => False_rect _ _ }
 
-  with fread_la_impl s xs (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
-| s, nil, H => exist _ la_nil _
-| s, cons (k, n, m) xs, H =>
-    let (M, HM) := fread_ne_impl s m _ in
-    let (ys, Hys) := fread_la_impl s xs _ in
+  with fread_la_impl_c s xs (ck : lk_cache Θ Ξ) (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } by struct H :=
+| s, nil, ck, H => exist _ la_nil _
+| s, cons (k, n, m) xs, ck, H =>
+    let (M, HM) := fread_ne_impl_c s m ck _ in
+    let (ys, Hys) := fread_la_impl_c s xs ck _ in
     exist _ (la_cons k n M ys) _
 
-  with fread_ps_impl s ρ T vs (H : fread_ps_order Θ Ξ s ρ T vs) : { Ms | Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
-| s, ρ, nil, nil, H => exist _ nfs_nil _
-| s, ρ, ce_ass A :: T, v :: vs, H =>
+  with fread_ps_impl_c s ρ T vs (ck : lk_cache Θ Ξ) (H : fread_ps_order Θ Ξ s ρ T vs) : { Ms | Rpsᶠ vs at T in Θ ⍮ Ξ ⍮ ρ ⍮ s ↘ Ms } by struct H :=
+| s, ρ, nil, nil, ck, H => exist _ nfs_nil _
+| s, ρ, ce_ass A :: T, v :: vs, ck, H =>
     let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
-    let (V, HV) := fread_nf_impl s ⇓ a v _ in
-    let (Vs, HVs) := fread_ps_impl s (ρ ↦ v) T vs _ in
+    let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
+    let (Vs, HVs) := fread_ps_impl_c s (ρ ↦ v) T vs ck _ in
     exist _ (nfs_cons V Vs) _
-| s, ρ, _, _, H => False_rect _ _
+| s, ρ, _, _, ck, H => False_rect _ _
 
-  with fread_cargs_impl s p ups ρ gs vs (H : fread_cargs_order Θ Ξ s p ups ρ gs vs) :
+  with fread_cargs_impl_c s p ups ρ gs vs (ck : lk_cache Θ Ξ) (H : fread_cargs_order Θ Ξ s p ups ρ gs vs) :
     { Ms | fread_cargs Θ Ξ s p ups ρ gs vs Ms } by struct H :=
-| s, p, ups, ρ, nil, nil, H => exist _ nfs_nil _
-| s, p, ups, ρ, ca_arg A :: gs, v :: vs, H =>
+| s, p, ups, ρ, nil, nil, ck, H => exist _ nfs_nil _
+| s, p, ups, ρ, ca_arg A :: gs, v :: vs, ck, H =>
     let (a, Ha) := feval_exp_impl Θ Ξ A ρ _ in
-    let (V, HV) := fread_nf_impl s ⇓ a v _ in
-    let (Vs, HVs) := fread_cargs_impl s p ups (ρ ↦ v) gs vs _ in
+    let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
+    let (Vs, HVs) := fread_cargs_impl_c s p ups (ρ ↦ v) gs vs ck _ in
     exist _ (nfs_cons V Vs) _
-| s, p, ups, ρ, ca_rec t :: gs, v :: vs, H =>
+| s, p, ups, ρ, ca_rec t :: gs, v :: vs, ck, H =>
     let (a, Ha) := feval_shty_impl Θ Ξ p ups ρ t _ in
-    let (V, HV) := fread_nf_impl s ⇓ a v _ in
-    let (Vs, HVs) := fread_cargs_impl s p ups ρ gs vs _ in
+    let (V, HV) := fread_nf_impl_c s ⇓ a v ck _ in
+    let (Vs, HVs) := fread_cargs_impl_c s p ups ρ gs vs ck _ in
     exist _ (nfs_cons V Vs) _
-| s, p, ups, ρ, _, _, H => False_rect _ _
+| s, p, ups, ρ, _, _, ck, H => False_rect _ _
 
-  with fread_brs_impl s ρ A p D ups cs Bs (H : fread_brs_order Θ Ξ s ρ A p D ups cs Bs) :
+  with fread_brs_impl_c s ρ A p D ups cs Bs (ck : lk_cache Θ Ξ) (H : fread_brs_order Θ Ξ s ρ A p D ups cs Bs) :
     { Bs' | fread_brs Θ Ξ s ρ A p D ups cs Bs Bs' } by struct H :=
-| s, ρ, A, p, D, ups, nil, nil, H => exist _ nbrs_nil _
-| s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, H =>
+| s, ρ, A, p, D, ups, nil, nil, ck, H => exist _ nbrs_nil _
+| s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, ck, H =>
     let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
     let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) _ in
     let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) _ in
     let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (ns ++ vs ++ ihs)) _ in
     let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil)) _ in
-    let (B', HB') := fread_nf_impl (s + n) ⇓ t b _ in
-    let (Bs', HBs') := fread_brs_impl s ρ A p D ups cs Bs _ in
+    let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
+    let (Bs', HBs') := fread_brs_impl_c s ρ A p D ups cs Bs ck _ in
     exist _ (nbrs_cons c n B' Bs') _
-| s, ρ, A, p, D, ups, _, _, H => False_rect _ _.
+| s, ρ, A, p, D, ups, _, _, ck, H => False_rect _ _.
 
 (** Each hole is either a readback order of a subterm, read off the order of
     the whole by inversion, or the readback itself, by its rule. *)
@@ -734,6 +734,16 @@ Next Obligation. rb_obl_auto. Defined.
     follows from the soundness of the readback orders and the functionality
     of readback. *)
 
+(** The entries of readback, with no declaration looked up yet. *)
+Definition fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
+  fread_nf_impl_c s d None H.
+Definition fread_ne_impl s d (H : fread_ne_order Θ Ξ s d) : { m | Rneᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
+  fread_ne_impl_c s d None H.
+Definition fread_typ_impl s d (H : fread_typ_order Θ Ξ s d) : { m | Rtypᶠ d in Θ ⍮ Ξ ⍮ s ↘ m } :=
+  fread_typ_impl_c s d None H.
+Definition fread_la_impl s xs (H : fread_la_order Θ Ξ s xs) : { ys | Rlaᶠ xs in Θ ⍮ Ξ ⍮ s ↘ ys } :=
+  fread_la_impl_c s xs None H.
+
 #[local]
 Ltac functional_fread_complete :=
   lazymatch goal with
@@ -779,10 +789,10 @@ Qed.
 
 End ReadbackImpl.
 
-Extraction Inline fread_nf_impl_functional
-  fread_ne_impl_functional
-  fread_typ_impl_functional
-  fread_la_impl_functional
-  fread_ps_impl_functional
-  fread_cargs_impl_functional
-  fread_brs_impl_functional.
+Extraction Inline fread_nf_impl_c_functional
+  fread_ne_impl_c_functional
+  fread_typ_impl_c_functional
+  fread_la_impl_c_functional
+  fread_ps_impl_c_functional
+  fread_cargs_impl_c_functional
+  fread_brs_impl_c_functional.
