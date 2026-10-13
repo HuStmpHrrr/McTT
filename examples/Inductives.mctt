@@ -159,4 +159,146 @@ end
 
 eval climbs 0 (Climb.step 0 (Climb.stop 1))
 
+
+(* Function-shaped recursive arguments.  An argument may be a function
+   into the type: [Self] then occurs only to the right of the arrows.  Its
+   hypothesis is a function too: the motive at each of the function's
+   values.
+
+   Brouwer ordinals: [lim f] is the limit of [f 0], [f 1], ..., and its
+   hypothesis [h] gives the result at [f n] for each [n]. *)
+inductive Ord : Type@0 where
+| base
+| next (o : Ord)
+| lim (f : ∀ (n : ℕ) → Ord)
+end
+
+(* The finite ordinals, and their limit, the first infinite one. *)
+def fin (n : ℕ) : Ord :=
+  rec n return z . Ord
+  | zero ⇒ Ord.base
+  | succ k, r ⇒ Ord.next r
+  end
+end
+
+def omg : Ord := Ord.lim (λ (n : ℕ) → fin n) end
+
+(* The [k]-th approximation of an ordinal: a limit is approximated by the
+   [k]-th ordinal it is the limit of.  On [omg] it is [k]. *)
+def approx (o : Ord) (k : ℕ) : ℕ :=
+  Ord.elim o return z . ℕ
+  | base ⇒ 0
+  | next p, r ⇒ succ r
+  | lim f, h ⇒ h k
+  end
+end
+
+eval approx omg 3
+eval approx (Ord.next omg) 2
+
+(* The eliminator on a limit computes the hypothesis at each value on
+   demand: here only at [f 1]. *)
+eval λ (f : ∀ (n : ℕ) → Ord) → approx (Ord.lim f) 1
+
+(* The recursor's argument for [lim] takes the hypothesis as a function. *)
+def approxRec (o : Ord) : ℕ :=
+  Ord.rec 0l (λ (o : Ord) → ℕ) 0 (λ (p : Ord) (r : ℕ) → succ r)
+    (λ (f : ∀ (n : ℕ) → Ord) (h : ∀ (n : ℕ) → ℕ) → h 2) o
+end
+
+eval approxRec (Ord.lim (λ (n : ℕ) → Ord.next (fin n)))
+
+(* The same type with the function type behind a definition: an argument
+   that is not a recursive argument as written is classified on its normal
+   form, [∀ (n : ℕ) → OrdA]. *)
+def Arr (X : Type@0) : Type@0 := ∀ (n : ℕ) → X end
+
+inductive OrdA : Type@0 where
+| base
+| next (o : OrdA)
+| lim (f : Arr OrdA)
+end
+
+def approxA (o : OrdA) (k : ℕ) : ℕ :=
+  OrdA.elim o return z . ℕ
+  | base ⇒ 0
+  | next p, r ⇒ succ r
+  | lim f, h ⇒ h k
+  end
+end
+
+eval approxA (OrdA.lim (λ (n : ℕ) → OrdA.next (OrdA.next OrdA.base))) 0
+
+(* W-types: well-founded trees, a node labelled [a : A] with a child for
+   each [b : B a].  The natural numbers are the W-type of two labels, [zr]
+   with no child and [sc] with one. *)
+inductive W (A : Type@0) (B : ∀ (a : A) → Type@0) : Type@0 where
+| sup (a : A) (f : ∀ (b : B a) → W A B)
+end
+
+inductive Label : Type@0 where
+| zr
+| sc
+end
+
+def Arity (l : Label) : Type@0 :=
+  Label.elim l return z . Type@0
+  | zr ⇒ ⊥
+  | sc ⇒ ⊤
+  end
+end
+
+def WNat : Type@0 := W Label Arity end
+
+def wzero : WNat :=
+  W.sup Label Arity Label.zr (λ (x : ⊥) → exfalso x return z . WNat)
+end
+
+def wsucc (n : WNat) : WNat := W.sup Label Arity Label.sc (λ (x : ⊤) → n) end
+
+(* The number a tree stands for: at [sc], one more than at its child. *)
+def toNat (w : WNat) : ℕ :=
+  W.elim w return z . ℕ
+  | sup a f, h ⇒
+      (Label.elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
+       | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
+       | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → succ (h ⋆)
+       end) h
+  end
+end
+
+eval toNat (wsucc (wsucc (wsucc wzero)))
+
+(* Its number of nodes, by the recursor. *)
+def wsize (w : WNat) : ℕ :=
+  W.rec Label Arity 0l (λ (w : WNat) → ℕ)
+    (λ (a : Label) (f : ∀ (b : Arity a) → WNat) (h : ∀ (b : Arity a) → ℕ) →
+       succ
+         ((Label.elim a return y . ∀ (h : ∀ (b : Arity y) → ℕ) → ℕ
+           | zr ⇒ λ (h : ∀ (b : ⊥) → ℕ) → 0
+           | sc ⇒ λ (h : ∀ (b : ⊤) → ℕ) → h ⋆
+           end) h)) w
+end
+
+eval wsize (wsucc (wsucc wzero))
+
+(* A nested function shape: a node has a subtree at every pair of
+   numbers, and its hypothesis is a function of two arguments. *)
+inductive Grid : Type@0 where
+| cell (k : ℕ)
+| node (f : ∀ (n : ℕ) (m : ℕ) → Grid)
+end
+
+def sample (g : Grid) : ℕ :=
+  Grid.elim g return z . ℕ
+  | cell k ⇒ k
+  | node f, h ⇒ plus (h 0 1) (h 2 3)
+  end
+end
+
+def sums : Grid := Grid.node (λ (n : ℕ) (m : ℕ) → Grid.cell (plus n m)) end
+
+eval sample sums
+eval sample (Grid.node (λ (n : ℕ) (m : ℕ) → sums))
+
 end

@@ -279,11 +279,21 @@ Record glu_core (D : ind_decl) : Prop := mk_glu_core
     IndCases.npre D k ++ ind_uparams D ⊩ A : (ind_sort D)[wk_shiftn k]ʷ
 ; gd_arg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
     IndCases.astrat gs k ++ ind_params D ⊩ A : (ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ
-; gd_rec : forall c gs gs1 Ps gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-    List.nth_error (ptyp_ps Ps) m = Some P ->
-    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps Ps)) m
+; gd_rec : forall c gs gs1 t gs2 m P T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (ptyp_ps t) m = Some P ->
+    List.nth_error (tele_insts (ind_nparams D)
+                      (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D))) (ptyp_ps t)) m
       = Some T ->
-    IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊩ P : T
+    ptyp_tele t ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ⊩ P : T
+(** The domains of a recursive argument's shape, each over those before
+    it, are types of the sort. *)
+; gd_dom : forall c gs gs1 t gs2 k B, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    List.nth_error (ptyp_doms t) k = Some B ->
+    doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+      ⊩ B : (ind_sort D)[wk_shiftn (k + List.length (cargs_nonrec gs1) + ind_nn D)]ʷ
+; gd_dctx : forall c gs gs1 t gs2 k, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+    k <= List.length (ptyp_doms t) ->
+    ⊩ doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
 }.
 
 (** ** Closed Constants *)
@@ -612,31 +622,35 @@ Qed.
     recursive argument before a position, over the context the recursive
     argument's parameters are typed in, as [Completeness.IndCases.rec_closure]
     builds it. *)
-Lemma rec_sub_valid : forall D0, IndCases.sem_core D0 -> decl_closed D0 -> forall c gs gs1 Ps gs2, ind_con D0 c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+Lemma rec_sub_valid : forall D0, IndCases.sem_core D0 -> decl_closed D0 -> forall c gs gs1 t gs2, ind_con D0 c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
     forall m, m <= ind_nn D0 ->
-      IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D0 ⊨s
-        sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps Ps))
-        ≈ sb_of_list (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps Ps))
+      ptyp_tele t ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D0 ⊨s
+        sb_of_list (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps t))
+        ≈ sb_of_list (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D0))) (List.firstn m (ptyp_ps t))
         : IndCases.npre D0 m ++ ind_uparams D0.
 Proof.
-  intros D0 HD Hc0 c gs gs1 Ps gs2 Hcon Heq.
+  intros D0 HD Hc0 c gs gs1 t gs2 Hcon Heq.
   pose proof (decl_closed_nu D0 Hc0) as Hle.
   set (K := List.length (cargs_nonrec gs1)).
-  set (L := K + ind_nn D0).
+  set (L := ptyp_depth t + K + ind_nn D0).
+  set (Ξ0 := ptyp_tele t ++ IndCases.astrat gs K ++ ind_params D0).
   assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
-  assert (HΞ0 : ⊨ IndCases.astrat gs K ++ ind_params D0) by exact (IndCases.sd_strat _ HD _ _ _ Hcon HK).
+  assert (HΞ0 : ⊨ Ξ0).
+  { pose proof (IndCases.sd_dctx _ HD _ _ _ _ _ (List.length (ptyp_doms t)) Hcon Heq (le_n _)) as H.
+    rewrite List.firstn_all in H; exact H. }
   pose proof (IndCases.length_rec_ps _ Hc0 _ _ _ _ _ Hcon Heq) as HPl.
   induction m as [| m IH]; intros Hmn.
   - cbn [List.firstn sb_of_list]; unfold IndCases.npre; cbn [List.firstn List.rev List.app].
     apply rel_sub_of_wk.
-    assert (HL : L = List.length (IndCases.astrat gs K ++ ind_nparams D0))
-      by (unfold L; rewrite List.length_app, IndCases.length_astrat, length_nparams by exact HK; reflexivity).
-    assert (HΞe : IndCases.astrat gs K ++ ind_params D0 = (IndCases.astrat gs K ++ ind_nparams D0) ++ ind_uparams D0)
-      by (rewrite params_split, List.app_assoc; reflexivity).
+    assert (HL : L = List.length (ptyp_tele t ++ IndCases.astrat gs K ++ ind_nparams D0))
+      by (unfold L, ptyp_tele, ptyp_depth; rewrite !List.length_app, IndCases.length_astrat, length_nparams, doms_ctx_length
+            by exact HK; lia).
+    assert (HΞe : Ξ0 = (ptyp_tele t ++ IndCases.astrat gs K ++ ind_nparams D0) ++ ind_uparams D0)
+      by (unfold Ξ0; rewrite params_split, <- !List.app_assoc; reflexivity).
     fold L; rewrite HΞe, HL; apply IndSem.rel_wk_under_ctx_shiftn; rewrite <- HΞe; exact HΞ0.
   - pose proof (IH ltac:(lia)) as Hτ.
-    destruct (nth_error_lt_some Ps m ltac:(lia)) as [P HP].
-    assert (HT : exists T, List.nth_error (tele_insts (ind_nparams D0) (sb_of_wk (wk_shiftn L)) Ps) m = Some T).
+    destruct (nth_error_lt_some (ptyp_ps t) m ltac:(lia)) as [P HP].
+    assert (HT : exists T, List.nth_error (tele_insts (ind_nparams D0) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) m = Some T).
     { apply nth_error_lt_some.
       rewrite length_tele_insts by exact (decl_closed_nparams_ass D0 Hc0).
       rewrite length_nparams; lia. }
@@ -663,56 +677,40 @@ Proof.
   - eapply glu_univ_elem_exp_cumu_ge; [ apply Nat.le_max_l | exact Hg | exact Hg1 | exact HM ].
 Qed.
 
-Lemma cargs_rec_type_eq : forall p D gs gs1 Pr gs2 Ps As T, gs = gs1 ++ ca_rec Pr :: gs2 ->
+(** The type of a recursive argument: the shape's type at the uniform
+    parameters of the parameters, under the parameters and the
+    non-recursive arguments before it. *)
+Lemma cargs_rec_type_sh : forall p D gs gs1 t gs2 Ps As T, gs = gs1 ++ ca_rec t :: gs2 ->
     ind_nu D <= ind_np D -> List.length Ps = ind_np D ->
     List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some T ->
-    T = apps (a_ind p) (List.firstn (ind_nu D) Ps ++
-          List.map (fun P => P[sb_of_list Id (Ps ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))]) Pr).
+    T = ptyp_ty_at p (List.firstn (ind_nu D) Ps) (sb_of_list Id (Ps ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))) t.
 Proof.
-  intros * -> Hnu HPl HT.
+  intros * Heq Hnu HPl HT.
   assert (HAl : List.length gs1 < List.length As).
   { destruct (Nat.lt_ge_cases (List.length gs1) (List.length As)) as [| Hge]; [ assumption |].
     rewrite (proj2 (List.nth_error_None _ _)) in HT; [ discriminate |].
-    rewrite length_tele_insts by apply cargs_ctx_aux_ass; lia. }
-  destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
-  unfold cargs_ctx in HA; rewrite cargs_ctx_aux_app in HA; cbn [cargs_ctx_aux] in HA.
-  rewrite !List.rev_app_distr in HA; cbn [List.rev List.app] in HA.
-  rewrite List.nth_error_app2 in HA by (rewrite List.length_rev, length_cargs_ctx_aux; lia).
-  rewrite List.length_rev, length_cargs_ctx_aux, Nat.sub_diag in HA; cbn in HA.
-  injection HA as <-; rewrite apps_exp_sub; cbn [exp_sub]; f_equal.
-  rewrite !List.app_nil_r, List.map_app, List.map_map, length_cargs_pat; f_equal.
-  - assert (HA1 : List.length (List.firstn (List.length gs1) As) = List.length gs1) by (rewrite List.length_firstn; lia).
-    rewrite <- sb_of_list_app.
-    replace (Ps ++ List.firstn (List.length gs1) As)
-      with (List.firstn (ind_nu D) Ps ++ (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As))
-      by (rewrite List.app_assoc, List.firstn_skipn; reflexivity).
-    pose proof (vars_from_sb_of_list_app (List.firstn (ind_nu D) Ps)
-                  (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As) Id) as E.
-    replace (List.length (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As)) with (List.length gs1 + ind_nn D) in E
-      by (rewrite List.length_app, List.length_skipn, HA1; unfold ind_nn; lia).
-    replace (List.length (List.firstn (ind_nu D) Ps)) with (ind_nu D) in E by (rewrite List.length_firstn; lia).
-    unfold ind_uvars; exact E.
-  - apply List.map_ext; intros P.
-    rewrite exp_wk_pat_sb_of_list by (rewrite List.length_firstn; lia).
-    rewrite sb_of_list_app; reflexivity.
+    rewrite length_tele_insts by apply cargs_ctx_aux_ass; subst gs; lia. }
+  rewrite (cargs_rec_type_at _ _ _ _ _ _ _ _ _ Heq Hnu HPl HT).
+  apply ptyp_ty_at_sb_eq.
+  rewrite !sb_of_list_app; apply wk_pat_sb_of_list; rewrite List.length_firstn; lia.
 Qed.
 
 (** The types of the non-uniform parameters of a recursive argument, at an
-    instance of the context it is declared in. *)
-Lemma rec_tele_inst : forall D Pr K Us Ns Ns' m T, decl_closed D ->
-    List.length Us = ind_nu D -> List.length Ns = ind_nn D -> List.length Ns' = K ->
-    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (K + ind_nn D))) Pr) m = Some T ->
-    List.nth_error (tele_insts (ind_nparams D) (sb_of_list Id Us) (List.map (fun P => P[sb_of_list Id (Us ++ Ns ++ Ns')]) Pr)) m
-      = Some T[sb_of_list Id (Us ++ Ns ++ Ns')].
+    instance [Us ++ Ys] of the context it is declared in. *)
+Lemma rec_tele_inst : forall D Pr L τ Us Ys m T, decl_closed D ->
+    List.length Us = ind_nu D -> List.length Ys = L ->
+    List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn L)) Pr) m = Some T ->
+    List.nth_error (tele_insts (ind_nparams D) (sb_of_list Id Us) (List.map (fun P => P[sb_of_list τ (Us ++ Ys)]) Pr)) m
+      = Some T[sb_of_list τ (Us ++ Ys)].
 Proof.
-  intros * Hc HUl HNl HN'l HT.
-  rewrite <- (tele_insts_sub _ (ind_nu D) (sb_of_wk (wk_shiftn (K + ind_nn D))));
+  intros * Hc HUl HYl HT.
+  rewrite <- (tele_insts_sub _ (ind_nu D) (sb_of_wk (wk_shiftn L)));
     [ rewrite List.nth_error_map, HT; reflexivity
     | apply decl_closed_nparams_ass, Hc | apply decl_closed_nparams_scoped, Hc |].
   intros x Hx; cbn [sb_of_wk sentry_sub wk_shiftn].
-  rewrite (sb_of_list_app Us (Ns ++ Ns')).
-  replace (x + (K + ind_nn D)) with (List.length (Ns ++ Ns') + x) by (rewrite List.length_app; lia).
-  rewrite sb_of_list_ge; reflexivity.
+  rewrite (sb_of_list_app Us Ys).
+  replace (x + L) with (List.length Ys + x) by lia.
+  rewrite sb_of_list_ge, (sb_of_list_nth Us τ x (a_var 0)), (sb_of_list_nth Us Id x (a_var 0)) by lia; reflexivity.
 Qed.
 
 Lemma eval_exps_firstn : forall Ms ρ ms k, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ ρ ↘ ms ->
@@ -722,13 +720,112 @@ Proof.
     solve [ constructor | econstructor; [ eassumption | apply IH; assumption ] ].
 Qed.
 
+(** A weakened list instance is the list of the weakened terms, over the
+    weakened base. *)
+Lemma sb_wk_sb_of_list : forall Xs τ φ,
+    sb_eq (sb_wk (sb_of_list τ Xs) φ) (sb_of_list (sb_wk τ φ) (List.map (fun X => X[φ]ʷ) Xs)).
+Proof.
+  induction Xs as [| X Xs IH]; intros τ φ; cbn [sb_of_list List.map]; [ reflexivity |].
+  intros x; rewrite (IH (τ,,X) φ x); apply sb_of_list_cong, sb_wk_extend.
+Qed.
+
+(** The substitution of the codomain of a shape's [Π], instantiated at an
+    argument [b] after a weakening: the list instance extended by [b]. *)
+Lemma sb_q_shape_step : forall τ Xs φ b,
+    sb_eq ((q (sb_of_list τ Xs)) ⨟ ((ι φ),,b)) (sb_of_list (sb_wk τ φ) (List.map (fun X => X[φ]ʷ) Xs ++ b :: nil)).
+Proof.
+  intros; rewrite sb_of_list_app; cbn [sb_of_list].
+  intros [| x]; [ reflexivity |].
+  unfold sb_q, sb_extend, sb_wk; cbn.
+  rewrite sentry_sub_wk, (sentry_sub_sb_eq _ _ (ι φ)) by (intros y; reflexivity).
+  rewrite sentry_sub_of_wk; exact (sb_wk_sb_of_list Xs τ φ x).
+Qed.
+
+(** The type of a shape's rest after a [Π], instantiated at an argument
+    [b] after a weakening. *)
+Lemma ptyp_ty_at_shape_step : forall p t τ Us Ys φ b,
+    (ptyp_ty_at p (List.map (fun U => U[↑]ʷ) Us) (q (sb_of_list τ (Us ++ Ys))) t)[(ι φ),,b]
+    = ptyp_ty_at p (List.map (fun U => U[φ]ʷ) Us)
+        (sb_of_list (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))) t.
+Proof.
+  intros; rewrite ptyp_ty_at_sub, List.map_map.
+  rewrite (List.map_ext _ (fun U => U[φ]ʷ) (fun U => exp_shift_extend_wk U φ b)).
+  apply ptyp_ty_at_sb_eq.
+  rewrite List.app_assoc, <- List.map_app; apply sb_q_shape_step.
+Qed.
+
+(** A glued instance of a context extended by a term glued at the new
+    entry's type. *)
+Lemma glu_sub_snoc : forall Γ B Sb Sb' Δ σ ρ b c',
+    EG Γ ∈ glu_ctx_env ↘ Sb -> EG ce_ass B :: Γ ∈ glu_ctx_env ↘ Sb' -> Δ ⊢s σ ® ρ ∈ Sb ->
+    (exists (i : uidx) a P El, ⟦ B ⟧ ρ ↘ a /\ DG a ∈ glu_univ_elem i ↘ P ↘ El /\ Δ ⊢ B[σ] ® P /\ Δ ⊢ b : B[σ] ® c' ∈ El) ->
+    Δ ⊢s σ,,b ® ρ ↦ c' ∈ Sb'.
+Proof.
+  intros * HSb HSb' Hσ Hb.
+  apply (glu_sub_of_list (⋅ ▹ B) Γ Sb' Sb Δ σ ρ (b :: nil) (c' :: nil)); [ repeat constructor; eauto | exact HSb' | exact HSb | exact Hσ |].
+  apply (glu_args_snoc Δ nil B σ ρ b nil c' nil); split; [ exact Hb | apply glu_args_nil ].
+Qed.
+
+(** An element glued at a type of a value is glued at another type of it,
+    at another gluing of it. *)
+Lemma glu_elem_retype : forall (i j : uidx) a P El P' El' Γ A A' M m,
+    DG a ∈ glu_univ_elem i ↘ P ↘ El -> DG a ∈ glu_univ_elem j ↘ P' ↘ El' ->
+    Γ ⊢ A ® P -> Γ ⊢ M : A ® m ∈ El -> Γ ⊢ A' ® P' -> Γ ⊢ M : A' ® m ∈ El'.
+Proof.
+  intros * Hi Hj HA HM HA'.
+  set (n := Nat.max (ulvl i) (ulvl j)).
+  assert (Hin : uidx_le i (ul n)) by (apply uidx_le_ul_max; unfold n; lia).
+  assert (Hjn : uidx_le j (ul n)) by (apply uidx_le_ul_max; unfold n; lia).
+  destruct (glu_univ_elem_cumu_ge_uidx Hin Hi) as (Pn & Eln & Hn).
+  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hin Hi Hn HA) as HAn.
+  pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hi Hn HM) as HMn.
+  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hjn Hj Hn HA') as HA'n.
+  pose proof (glu_univ_elem_typ_unique_upto_exp_eq' Hn HAn HA'n) as HE.
+  pose proof (glu_univ_elem_trm_resp_typ_exp_eq _ _ _ _ Hn _ _ _ _ _ HMn HE) as HMn'.
+  exact (glu_univ_elem_exp_lower_uidx Hjn Hj Hn HA' HMn').
+Qed.
+
+(** A type glued at a value of a lower index is glued at a related value
+    of a higher one. *)
+Lemma glu_typ_transfer : forall (i j k : uidx) a a' P El P' El' Γ A,
+    uidx_le i j -> uidx_le k j -> Dom a ≈ a' ∈ per_univ k ->
+    DG a ∈ glu_univ_elem i ↘ P ↘ El -> DG a' ∈ glu_univ_elem j ↘ P' ↘ El' ->
+    Γ ⊢ A ® P -> Γ ⊢ A ® P'.
+Proof.
+  intros * Hij Hkj [R HR] Hi Hj HA.
+  destruct (glu_univ_elem_cumu_ge_uidx Hij Hi) as (Pj & Elj & Hgj).
+  pose proof (glu_univ_elem_typ_cumu_ge_uidx Hij Hi Hgj HA) as HAj.
+  pose proof (glu_univ_elem_resp_per_univ _ _ _ _ _ (ex_intro _ R (per_univ_elem_cumu_uidx _ _ _ _ HR _ Hkj)) Hgj) as Hgj'.
+  destruct (functional_glu_univ_elem _ _ _ _ _ _ Hgj' Hj) as [EP _].
+  apply EP; exact HAj.
+Qed.
+
+(** An element of the relation of a domain's type, read at a related value. *)
+Lemma dr_to_rel : forall B ρ b a1 c (i : uidx) R (jd : uidx), ⟦ B ⟧ ρ ↘ b -> Dom a1 ≈ b ∈ per_univ jd ->
+    DF a1 ≈ a1 ∈ per_univ_elem i ↘ R -> per_head B B ρ ρ c c -> R c c.
+Proof.
+  intros * Eb [Rab HRab] HR Hc.
+  pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRab) HRab) as Hbb.
+  pose proof (Hc _ _ _ _ Eb Eb Hbb) as H.
+  apply (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR HRab); exact H.
+Qed.
+
+Lemma sb_q_extend_wk : forall σ φ b, sb_eq ((q σ) ⨟ ((ι φ),,b)) ((sb_wk σ φ),,b).
+Proof.
+  intros σ φ b [| x]; [ reflexivity |].
+  unfold sb_q, sb_extend, sb_wk; cbn.
+  rewrite sentry_sub_wk, (sentry_sub_sb_eq _ _ (ι φ)) by (intros y; reflexivity).
+  apply sentry_sub_of_wk.
+Qed.
+
 Section Comps.
   Variable (p : qname) (D : ind_decl).
   Hypothesis (Hl : ind_lookup gc_deps gc_stack p = Some D) (HG : glu_core D) (Hc : decl_closed D)
     (Hdt : decl_typed gc_deps gc_stack D) (Hsu : ind_sort_univ (ind_sort D)).
   Variable (ups : list domain) (bu : domain) (u : uidx) (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
-    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred).
+    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
     (Hule : uidx_le (IndSem.univ_idx bu) u)
     (HeN : forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -742,7 +839,18 @@ Section Comps.
     (HAP : forall ms c gs k A vs b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
        tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
-       DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs).
+       DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs)
+    (HeD : forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b)
+    (HDP : forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+       DG b ∈ glu_univ_elem u ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B).
 
   Lemma comps_params_wf : ⊢ ind_params D.
   Proof. pose proof Hdt as (_ & _ & _ & HΔ & _); exact HΔ. Qed.
@@ -981,24 +1089,15 @@ Section Comps.
     eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hule | exact Hgb | exact Hga | exact (HP _ _ Hgb) ].
   Qed.
 
-  (** The components, at uniform parameters glued to [ups]. *)
-  Lemma comps_of_uparams : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
-      ind_glu_comps p D ups NP NEl AP AEl Δ Us.
-  Proof.
-    intros * HΔ HUs; split.
-    - intros k Ns ns T Hl' Hk HT Hpre Hp; eapply comps_npar; eassumption.
-    - intros c gs gs1 A0 gs2 Ns ns As vs T Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply comps_arg; eassumption.
-  Qed.
-
   (** Glued arguments of the non-uniform parameters' telescope are glued
       at the gluings of the clause, given the components. *)
-  Lemma nparams_of_glu_args : forall Δ Us Ns ns, ind_glu_comps p D ups NP NEl AP AEl Δ Us ->
+  Lemma nparams_of_glu_args : forall Δ Us Ns ns, ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us ->
       glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups) Ns ns ->
       tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
       glu_nparams D NEl Δ Us Ns ns.
   Proof.
     intros * Hc0 Hg Hns.
-    pose proof Hc0 as [HCN _].
+    pose proof Hc0 as (HCN & _).
     pose proof (decl_closed_params D Hc) as Hass.
     assert (HassN : tele_ass (ind_nparams D)) by (apply Forall_firstn'; exact Hass).
     pose proof Hg as (L1 & L2 & H).
@@ -1111,63 +1210,59 @@ Section Comps.
              | split; [ exact Hgb | split; [ eapply glu_univ_elem_trm_typ; eassumption | exact HNg ] ] ].
   Qed.
 
-  (** The parameters of the type of a recursive argument, at glued
-      parameters and non-recursive arguments before it, are glued at the
-      non-uniform parameters' telescope to their values. *)
-  Lemma rec_params_args : IndCases.sem_core D -> forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
-      forall c gs gs1 Pr gs2 Ns ns As vs bsr, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Pr :: gs2 ->
-        glu_nparams D NEl Δ Us Ns ns -> tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
-        List.length vs = List.length gs1 -> List.length gs1 <= List.length As ->
-        (forall hs1 B hs2 N T' v, gs1 = hs1 ++ ca_arg B :: hs2 -> List.nth_error As (List.length hs1) = Some N ->
-           List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length hs1) = Some T' ->
-           List.nth_error vs (List.length hs1) = Some v ->
-           Δ ⊢ N : T' ® v ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs))) ->
-        tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs) (nonrec_vals gs1 vs) ->
-        eval_exps gc_deps gc_stack Pr (env_args nil (ups ++ ns ++ nonrec_vals gs1 vs)) bsr ->
-        glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups)
-          (List.map (fun P => P[sb_of_list Id (Us ++ Ns ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))]) Pr) bsr.
+  (** The parameters of the type of a recursive argument, at an instance
+      [Us ++ Ys] of the context of its shape glued to [ups ++ ns ++ nv ++ ys],
+      are glued at the non-uniform parameters' telescope to their values. *)
+  Lemma rec_params_args : IndCases.sem_core D -> forall Δ c gs gs1 t gs2 τ Us Ys ns nv ys SbC bsr,
+      ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+      List.length Us = ind_nu D -> List.length Ys = ptyp_depth t + List.length (cargs_nonrec gs1) + ind_nn D ->
+      List.length ns = ind_nn D -> List.length nv = List.length (cargs_nonrec gs1) -> List.length ys = ptyp_depth t ->
+      EG ptyp_tele t ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D ∈ glu_ctx_env ↘ SbC ->
+      Δ ⊢s sb_of_list τ (Us ++ Ys) ® env_args nil (ups ++ ns ++ nv ++ ys) ∈ SbC ->
+      eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ns ++ nv ++ ys)) bsr ->
+      glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups)
+        (List.map (fun P => P[sb_of_list τ (Us ++ Ys)]) (ptyp_ps t)) bsr.
   Proof.
-    intros HDc Δ Us HΔ HUs c gs gs1 Pr gs2 Ns ns As vs bsr Hcon Heq Hnp Hns Hvl HlAs Hpre Hp Hbsr.
+    intros HDc Δ c gs gs1 t gs2 τ Us Ys ns nv ys SbC bsr Hcon Heq HUl HYl Hnsl Hnvl Hysl HSbC Hσ Hbsr.
     set (K := List.length (cargs_nonrec gs1)) in *.
-    set (L := K + ind_nn D).
-    set (Ns' := nonrec_exps gs1 (List.firstn (List.length gs1) As)) in *.
-    set (ρ := env_args nil (ups ++ ns ++ nonrec_vals gs1 vs)) in *.
-    pose proof (IndCases.length_rec_ps D Hc c gs gs1 Pr gs2 Hcon Heq) as HPl.
+    set (L := ptyp_depth t + K + ind_nn D) in *.
+    set (σ := sb_of_list τ (Us ++ Ys)) in *.
+    set (ρ := env_args nil (ups ++ ns ++ nv ++ ys)) in *.
+    pose proof (IndCases.length_rec_ps D Hc c gs gs1 t gs2 Hcon Heq) as HPl.
     pose proof (IndCases.eval_exps_length _ _ _ Hbsr) as Hbl.
-    destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _]; rewrite length_uparams' in LU.
-    pose proof Hnp as (LN & LNn & _).
-    assert (HN'l : List.length Ns' = K) by (unfold Ns'; apply length_nonrec_exps; rewrite List.length_firstn; lia).
     assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
     split; [ rewrite List.length_map, length_nparams; exact HPl | split; [ rewrite length_nparams; lia |] ].
     intros k M T v A HM HT Hv HA.
     rewrite List.nth_error_map in HM.
-    destruct (List.nth_error Pr k) as [P |] eqn:HP; [ injection HM as <- | discriminate ].
+    destruct (List.nth_error (ptyp_ps t) k) as [P |] eqn:HP; [ injection HM as <- | discriminate ].
     assert (Hk : k < ind_nn D) by (rewrite <- HPl; apply List.nth_error_Some; congruence).
-    destruct (nth_error_lt_some (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn L)) Pr) k) as [Tk HTk].
+    destruct (nth_error_lt_some (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn L)) (ptyp_ps t)) k) as [Tk HTk].
     { rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc); rewrite length_nparams; lia. }
-    pose proof (rec_tele_inst D Pr K Us Ns Ns' k Tk Hc LU LN HN'l HTk) as HT'.
-    rewrite HT in HT'; injection HT' as ->.
+    pose proof (rec_tele_inst D (ptyp_ps t) L τ Us Ys k Tk Hc HUl HYl HTk) as HT'.
+    fold σ in HT'; rewrite HT in HT'; injection HT' as ->.
     destruct (tele_insts_nth _ _ _ _ _ HTk) as (A0 & HA0 & ETk).
     rewrite HA in HA0; injection HA0 as <-.
-    destruct (gd_rec _ HG c gs gs1 Pr gs2 k P Tk Hcon Heq HP HTk) as (SbC & HSbC & j & HV).
-    pose proof (astrat_glu_sub Δ Us HΔ HUs c gs gs1 (ca_rec Pr) gs2 Ns ns As vs SbC Hcon Heq Hnp Hns Hvl HlAs Hpre Hp HSbC) as Hσ.
-    rewrite <- !List.app_assoc in Hσ; fold Ns' ρ in Hσ.
-    destruct (HV _ _ _ Hσ) as [a1 m1 P1 El1 Ha1 Hm1 Hg1 HM1].
+    destruct (gd_rec _ HG c gs gs1 t gs2 k P Tk Hcon Heq HP HTk) as (SbC' & HSbC' & j & HV).
+    pose proof (functional_glu_ctx_env HSbC HSbC') as ESb.
+    assert (Hσ' : Δ ⊢s σ ® ρ ∈ SbC') by (apply ESb; exact Hσ).
+    destruct (HV _ _ _ Hσ') as [a1 m1 P1 El1 Ha1 Hm1 Hg1 HM1].
     destruct (IndCases.eval_exps_nth _ _ _ _ _ Hbsr HP) as (v' & Hv' & Ev').
     rewrite Hv in Hv'; injection Hv' as <-.
     assert (m1 = v) as -> by (eapply functional_eval_exp; eassumption).
     (** The value of the type of the parameter, at the arguments' values, is
         related to the one at the parameters' before it. *)
     destruct (IndCases.sd_npar _ HDc _ _ HA) as (_ & j0 & HAv).
-    assert (HΞ0 : ⊨ IndCases.astrat gs K ++ ind_params D) by exact (IndCases.sd_strat _ HDc _ _ _ Hcon HK).
+    assert (HΞ0 : ⊨ ptyp_tele t ++ IndCases.astrat gs K ++ ind_params D).
+    { pose proof (IndCases.sd_dctx _ HDc _ _ _ _ _ (List.length (ptyp_doms t)) Hcon Heq (le_n _)) as H.
+      rewrite List.firstn_all in H; exact H. }
     destruct (sem_ctx_per_ctx_env HΞ0) as [R0 HR0].
-    pose proof (glu_ctx_env_per_env HSbC HR0 Hσ) as HE.
-    pose proof (rec_sub_valid D HDc Hc c gs gs1 Pr gs2 Hcon Heq k (Nat.lt_le_incl _ _ Hk)) as Hτ.
-    assert (Hτev : ⟦ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn k Pr) ⟧s ρ ↘ env_args (env_args nil ups) (List.firstn k bsr)).
+    pose proof (glu_ctx_env_per_env HSbC' HR0 Hσ') as HE.
+    pose proof (rec_sub_valid D HDc Hc c gs gs1 t gs2 Hcon Heq k (Nat.lt_le_incl _ _ Hk)) as Hτ.
+    assert (Hτev : ⟦ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn k (ptyp_ps t)) ⟧s ρ ↘ env_args (env_args nil ups) (List.firstn k bsr)).
     { apply IndSem.eval_sb_of_list; [| apply eval_exps_firstn; exact Hbsr ].
       replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply IndSem.wk_mono_shiftn |].
       unfold ρ, L; rewrite env_args_app.
-      replace (K + ind_nn D) with (List.length (ns ++ nonrec_vals gs1 vs)) by (rewrite List.length_app, length_nonrec_vals by exact Hvl; lia).
+      replace (ptyp_depth t + K + ind_nn D) with (List.length (ns ++ nv ++ ys)) by (rewrite !List.length_app; lia).
       apply IndSem.eval_wk_shiftn_args. }
     destruct (TeleSem.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HR0 Hτ HE Hτev) as (a & b & Ea & Eb & Hab).
     fold K L in Ea; rewrite <- ETk in Ea.
@@ -1177,55 +1272,163 @@ Section Comps.
     exists k', b, P', El'; split; [ exact Eb | split; [ exact Hg' | split; assumption ] ].
   Qed.
 
-  (** The value of the type of a parameter of a recursive argument's type,
-      at the arguments' values before it, is related to the value of the
-      type of the non-uniform parameter at the values of the parameters
-      before it. *)
-  Lemma rec_type_link : IndCases.sem_core D -> forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
-      forall c gs gs1 Pr gs2 Ns ns As vs bsr, ind_con D c = Some gs -> gs = gs1 ++ ca_rec Pr :: gs2 ->
+  (** A glued instance of a shape's context after [k] domains, weakened and
+      extended by an argument glued at the next domain's gluing. *)
+  Lemma shape_sub_step : forall c gs gs1 t gs2 k B ns nv ys Δ τ Us Ys SbC SbC' Δ' φ b b0 c',
+      ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 -> List.nth_error (ptyp_doms t) k = Some B ->
+      EG doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+        ∈ glu_ctx_env ↘ SbC ->
+      EG doms_ctx (List.firstn (S k) (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+        ∈ glu_ctx_env ↘ SbC' ->
+      Δ ⊢s sb_of_list τ (Us ++ Ys) ® env_args nil (ups ++ ns ++ nv ++ ys) ∈ SbC -> Δ' ⊢k φ : Δ ->
+      ⟦ B ⟧ env_args nil (ups ++ ns ++ nv ++ ys) ↘ b0 ->
+      DG b0 ∈ glu_univ_elem u ↘ DP (ns ++ nv ++ ys) B ↘ DEl (ns ++ nv ++ ys) B ->
+      Δ' ⊢ B[sb_of_list τ (Us ++ Ys)][φ]ʷ ® DP (ns ++ nv ++ ys) B ->
+      Δ' ⊢ b : B[sb_of_list τ (Us ++ Ys)][φ]ʷ ® c' ∈ DEl (ns ++ nv ++ ys) B ->
+      Δ' ⊢s sb_of_list (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))
+        ® env_args nil (ups ++ ns ++ nv ++ ys ++ c' :: nil) ∈ SbC'.
+  Proof.
+    intros * Hcon Heq HB HSbC HSbC' Hσ Hφ Hb0 Hgb0 HTy Hb.
+    set (σ := sb_of_list τ (Us ++ Ys)) in *.
+    pose proof HSbC' as HSbC''.
+    rewrite (firstn_S_snoc _ _ _ HB), IndCases.doms_ctx_snoc in HSbC''; cbn [List.app] in HSbC''.
+    assert (Hσ' : Δ' ⊢s (sb_wk σ φ),,b ® env_args nil (ups ++ ns ++ nv ++ ys) ↦ c' ∈ SbC').
+    { eapply glu_sub_snoc; [ exact HSbC | exact HSbC'' | eapply glu_ctx_env_sub_monotone; eassumption |].
+      exists u, b0, (DP (ns ++ nv ++ ys) B), (DEl (ns ++ nv ++ ys) B).
+      rewrite <- exp_wk_sub.
+      split; [ exact Hb0 | split; [ exact Hgb0 | split; [ exact HTy | exact Hb ] ] ]. }
+    assert (Esb : sb_eq ((sb_wk σ φ),,b) (sb_of_list (sb_wk τ φ) (List.map (fun Y => Y[φ]ʷ) (Us ++ Ys) ++ b :: nil))).
+    { rewrite (sb_of_list_app (List.map (fun Y => Y[φ]ʷ) (Us ++ Ys)) (b :: nil)); cbn [sb_of_list].
+      apply sb_extend_cong; unfold σ; apply sb_wk_sb_of_list. }
+    rewrite List.map_app, <- List.app_assoc in Esb.
+    replace (ups ++ ns ++ nv ++ ys ++ c' :: nil) with ((ups ++ ns ++ nv ++ ys) ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+    rewrite env_args_snoc.
+    eapply glu_ctx_env_sub_resp_sub_eq; [ exact HSbC' | exact Hσ' |].
+    eapply wf_sub_eq_of_sb_eq; [ eapply glu_ctx_env_sub_escape; eassumption | exact Esb ].
+  Qed.
+
+  (** The type of a recursive argument after [k] of its shape's domains, at
+      an instance [Us ++ Ys] of the shape's context glued to its values, is
+      glued at the gluings of the domains. *)
+  Lemma shape_typ_glu : forall c gs gs1 t gs2 ns nv, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+      tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
+      tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) nv nv ->
+      List.length ns = ind_nn D -> List.length nv = List.length (cargs_nonrec gs1) ->
+      forall t' k ys Δ τ Us Ys SbC, ptyp_skip k t = t' -> k <= List.length (ptyp_doms t) ->
+        tele_pre (shape_tr (ind_dr ups) ns nv (ptyp_doms t)) k ys ys -> ⊢ Δ ->
+        List.length Us = ind_nu D -> List.length Ys = k + List.length (cargs_nonrec gs1) + ind_nn D ->
+        EG doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+          ∈ glu_ctx_env ↘ SbC ->
+        Δ ⊢s sb_of_list τ (Us ++ Ys) ® env_args nil (ups ++ ns ++ nv ++ ys) ∈ SbC ->
+        glu_shape_typ ups DP DEl Δ (ns ++ nv ++ ys) t' (ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) t').
+  Proof.
+    intros c gs gs1 t gs2 ns nv Hcon Heq Hns Hnv Hnsl Hnvl t'.
+    set (K := List.length (cargs_nonrec gs1)) in *.
+    assert (HKl : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
+    induction t' as [? ? | ? ? | B t'' IH]; intros k ys Δ τ Us Ys SbC Hsk Hk Hy HΔ HUl HYl HSbC Hσ;
+      cbn [glu_shape_typ]; [ exact I | exact I |].
+    intros IT OT HT; cbn [ptyp_ty_at] in HT; injection HT as <- <-.
+    destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
+    assert (Hkl : k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
+    pose proof (gd_dom _ HG _ _ _ _ _ _ _ Hcon Heq HB) as HBv.
+    destruct (HeD _ _ _ _ _ _ _ _ _ _ Hns Hcon Heq Hnv HB Hy) as [b0 Hb0].
+    pose proof (HDP _ _ _ _ _ _ _ _ _ _ _ Hns Hcon Heq Hnv HB Hy Hb0) as Hgb0.
+    set (σ := sb_of_list τ (Us ++ Ys)) in *.
+    set (Pre := doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs K ++ ind_nparams D).
+    assert (EPre : doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs K ++ ind_params D = Pre ++ ind_uparams D)
+      by (unfold Pre; rewrite params_split, <- !List.app_assoc; reflexivity).
+    assert (HlPre : List.length Pre = k + K + ind_nn D)
+      by (unfold Pre; rewrite !List.length_app, doms_ctx_length, List.length_firstn, IndCases.length_astrat, length_nparams
+            by exact HKl; lia).
+    assert (HPre : ⊢ Pre ++ ind_uparams D)
+      by (rewrite <- EPre; eapply presup_exp_ctx; eapply glu_rel_exp_to_wf_exp; exact HBv).
+    assert (HSbCp : EG Pre ++ ind_uparams D ∈ glu_ctx_env ↘ SbC) by (rewrite <- EPre; exact HSbC).
+    assert (HBvp : Pre ++ ind_uparams D ⊩ B : (ind_sort D)[wk_shiftn (List.length Pre)]ʷ) by (rewrite <- EPre, HlPre; exact HBv).
+    (** The domain, glued at its gluing at every weakening. *)
+    assert (HTy : forall Δ' φ, Δ' ⊢k φ : Δ -> Δ' ⊢ B[σ][φ]ʷ ® DP (ns ++ nv ++ ys) B).
+    { intros Δ' φ Hφ.
+      pose proof (glu_ctx_env_sub_monotone _ _ HSbC _ _ _ _ _ Hσ Hφ) as Hσφ.
+      destruct (sort_typ_glued Pre B SbC Δ' (sb_wk σ φ) (ns ++ nv ++ ys) HPre
+                  ltac:(rewrite HlPre, !List.length_app; destruct Hy as [Hyl _]; lia) HSbCp HBvp Hσφ) as (a & Ha & Hpa & HP).
+      assert (a = b0) as -> by (eapply functional_eval_exp; eassumption).
+      destruct (per_univ_glu_univ_elem _ _ Hpa) as (Pb & Elb & Hgb).
+      rewrite exp_wk_sub.
+      eapply glu_univ_elem_typ_cumu_ge_uidx; [ exact Hule | exact Hgb | exact Hgb0 | exact (HP _ _ Hgb) ]. }
+    split; [ exact HTy |].
+    intros Δ' φ b c' Hφ Hc' Hb.
+    assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+    destruct (gd_dctx _ HG _ _ _ _ _ (S k) Hcon Heq ltac:(lia)) as [SbC' HSbC'].
+    pose proof HSbC' as HSbC''.
+    rewrite (firstn_S_snoc _ _ _ HB), IndCases.doms_ctx_snoc in HSbC''; cbn [List.app] in HSbC''.
+    assert (Hσ' : Δ' ⊢s (sb_wk σ φ),,b ® env_args nil (ups ++ ns ++ nv ++ ys) ↦ c' ∈ SbC').
+    { eapply glu_sub_snoc; [ exact HSbC | exact HSbC'' | eapply glu_ctx_env_sub_monotone; eassumption |].
+      exists u, b0, (DP (ns ++ nv ++ ys) B), (DEl (ns ++ nv ++ ys) B).
+      rewrite <- exp_wk_sub.
+      split; [ exact Hb0 | split; [ exact Hgb0 | split; [ exact (HTy _ _ Hφ) | exact Hb ] ] ]. }
+    assert (Esb : sb_eq ((sb_wk σ φ),,b) (sb_of_list (sb_wk τ φ) (List.map (fun Y => Y[φ]ʷ) (Us ++ Ys) ++ b :: nil))).
+    { rewrite (sb_of_list_app (List.map (fun Y => Y[φ]ʷ) (Us ++ Ys)) (b :: nil)); cbn [sb_of_list].
+      apply sb_extend_cong; unfold σ; apply sb_wk_sb_of_list. }
+    rewrite List.map_app, <- List.app_assoc in Esb.
+    assert (Hσ'' : Δ' ⊢s sb_of_list (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))
+                     ® env_args nil (ups ++ ns ++ nv ++ ys ++ c' :: nil) ∈ SbC').
+    { replace (ups ++ ns ++ nv ++ ys ++ c' :: nil) with ((ups ++ ns ++ nv ++ ys) ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+      rewrite env_args_snoc.
+      eapply glu_ctx_env_sub_resp_sub_eq; [ exact HSbC' | exact Hσ' |].
+      eapply wf_sub_eq_of_sb_eq; [ eapply glu_ctx_env_sub_escape; eassumption | exact Esb ]. }
+    unfold σ; rewrite ptyp_ty_at_shape_step.
+    replace ((ns ++ nv ++ ys) ++ c' :: nil) with (ns ++ nv ++ ys ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+    apply (IH (S k) (ys ++ c' :: nil) Δ' (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us) (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil) SbC');
+      [ exact Hs' | lia | | exact HΔ' | rewrite List.length_map; exact HUl
+      | rewrite List.length_app, List.length_map; cbn; lia | exact HSbC' | exact Hσ'' ].
+    apply tele_pre_snoc; [ exact Hy |].
+    unfold shape_tr; rewrite (List.nth_error_nth _ _ _ HB); exact Hc'.
+  Qed.
+
+  (** The types of the recursive arguments, at uniform parameters glued to
+      [ups], are glued at the gluings of the domains of their shapes. *)
+  Lemma comps_rec : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+      forall c gs gs1 t gs2 Ns ns As vs T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
         glu_nparams D NEl Δ Us Ns ns -> tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
-        List.length vs = List.length gs1 -> List.length gs1 <= List.length As ->
+        List.length vs = List.length gs1 ->
+        List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some T ->
         (forall hs1 B hs2 N T' v, gs1 = hs1 ++ ca_arg B :: hs2 -> List.nth_error As (List.length hs1) = Some N ->
            List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length hs1) = Some T' ->
            List.nth_error vs (List.length hs1) = Some v ->
            Δ ⊢ N : T' ® v ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs))) ->
         tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs) (nonrec_vals gs1 vs) ->
-        eval_exps gc_deps gc_stack Pr (env_args nil (ups ++ ns ++ nonrec_vals gs1 vs)) bsr ->
-        forall m T A, List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Pr) m = Some T ->
-          List.nth_error (List.rev (ind_nparams D)) m = Some (ce_ass A) ->
-          exists t b (j : nat) R, ⟦ T ⟧ env_args nil (ups ++ ns ++ nonrec_vals gs1 vs) ↘ t /\
-            ⟦ A ⟧ env_args (env_args nil ups) (List.firstn m bsr) ↘ b /\ DF t ≈ b ∈ per_univ_elem j ↘ R.
+        glu_shape_typ ups DP DEl Δ (ns ++ nonrec_vals gs1 vs) t T.
   Proof.
-    intros HDc Δ Us HΔ HUs c gs gs1 Pr gs2 Ns ns As vs bsr Hcon Heq Hnp Hns Hvl HlAs Hpre Hp Hbsr m T A HT HA.
-    set (K := List.length (cargs_nonrec gs1)) in *.
-    set (L := K + ind_nn D).
-    set (ρ := env_args nil (ups ++ ns ++ nonrec_vals gs1 vs)) in *.
-    pose proof (IndCases.length_rec_ps D Hc c gs gs1 Pr gs2 Hcon Heq) as HPl.
-    assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
-    assert (Hm : m < ind_nn D).
-    { assert (Hs : List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn L)) Pr) m <> None) by (fold K L in HT; congruence).
-      apply List.nth_error_Some in Hs; rewrite length_tele_insts in Hs by exact (decl_closed_nparams_ass D Hc).
-      rewrite length_nparams in Hs; lia. }
-    destruct (nth_error_lt_some Pr m ltac:(lia)) as [P HP].
-    destruct (tele_insts_nth _ _ _ _ _ HT) as (A0 & HA0 & ETk).
-    rewrite HA in HA0; injection HA0 as <-.
-    destruct (gd_rec _ HG c gs gs1 Pr gs2 m P T Hcon Heq HP HT) as (SbC & HSbC & _).
-    pose proof (astrat_glu_sub Δ Us HΔ HUs c gs gs1 (ca_rec Pr) gs2 Ns ns As vs SbC Hcon Heq Hnp Hns Hvl HlAs Hpre Hp HSbC) as Hσ.
-    rewrite <- !List.app_assoc in Hσ; fold ρ in Hσ.
-    destruct (IndCases.sd_npar _ HDc _ _ HA) as (_ & j0 & HAv).
-    assert (HΞ0 : ⊨ IndCases.astrat gs K ++ ind_params D) by exact (IndCases.sd_strat _ HDc _ _ _ Hcon HK).
-    destruct (sem_ctx_per_ctx_env HΞ0) as [R0 HR0].
-    pose proof (glu_ctx_env_per_env HSbC HR0 Hσ) as HE.
-    pose proof (rec_sub_valid D HDc Hc c gs gs1 Pr gs2 Hcon Heq m (Nat.lt_le_incl _ _ Hm)) as Hτ.
-    assert (Hτev : ⟦ sb_of_list (sb_of_wk (wk_shiftn L)) (List.firstn m Pr) ⟧s ρ ↘ env_args (env_args nil ups) (List.firstn m bsr)).
-    { apply IndSem.eval_sb_of_list; [| apply eval_exps_firstn; exact Hbsr ].
-      replace (env_args nil ups) with (⟪wk_shiftn L⟫ ρ); [ apply eval_sub_of_wk; apply IndSem.wk_mono_shiftn |].
-      unfold ρ, L; rewrite env_args_app.
-      replace (K + ind_nn D) with (List.length (ns ++ nonrec_vals gs1 vs)) by (rewrite List.length_app, length_nonrec_vals by exact Hvl; pose proof Hnp as (_ & LNn & _); lia).
-      apply IndSem.eval_wk_shiftn_args. }
-    destruct (TeleSem.typ_inst_link _ _ _ _ _ _ _ _ _ HAv HR0 Hτ HE Hτev) as (t & b & Et & Eb & [R HR]).
-    fold K in Et; rewrite <- ETk in Et.
-    exists t, b, j0, R; split; [ exact Et | split; [ exact Eb | exact HR ] ].
+    intros Δ Us HΔ HUs c gs gs1 t gs2 Ns ns As vs T Hcon Heq Hnp Hns Hvl HT Hpre Hp.
+    pose proof Hc as (_ & Hle & _).
+    destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _]; rewrite length_uparams' in LU.
+    pose proof Hnp as (LN & LNn & _).
+    assert (HlAs : List.length gs1 < List.length As).
+    { destruct (Nat.lt_ge_cases (List.length gs1) (List.length As)) as [| Hge]; [ assumption |].
+      rewrite (proj2 (List.nth_error_None _ _)) in HT; [ discriminate |].
+      rewrite length_tele_insts by apply cargs_ctx_aux_ass; subst gs; lia. }
+    destruct (gd_dctx _ HG _ _ _ _ _ 0 Hcon Heq ltac:(lia)) as [SbC0 HSbC0].
+    cbn [List.firstn doms_ctx List.map List.rev List.app] in HSbC0.
+    pose proof (astrat_glu_sub Δ Us HΔ HUs c gs gs1 (ca_rec t) gs2 Ns ns As vs SbC0 Hcon Heq Hnp Hns Hvl ltac:(lia) Hpre Hp HSbC0) as Hσ.
+    pose proof (cargs_rec_type_sh p D gs gs1 t gs2 (Us ++ Ns) As T Heq Hle ltac:(rewrite List.length_app, LU, LN; unfold ind_nn; lia) HT) as ET.
+    rewrite firstn_app_exact in ET by exact LU.
+    assert (Hlnv : List.length (nonrec_vals gs1 vs) = List.length (cargs_nonrec gs1)) by (apply length_nonrec_vals; exact Hvl).
+    pose proof (shape_typ_glu c gs gs1 t gs2 ns (nonrec_vals gs1 vs) Hcon Heq Hns Hp LNn Hlnv t 0 nil Δ Id Us
+                  (Ns ++ nonrec_exps gs1 (List.firstn (List.length gs1) As)) SbC0 eq_refl ltac:(lia) (tele_pre_nil _) HΔ LU) as H.
+    rewrite !List.app_nil_r, List.app_assoc in H.
+    rewrite ET, <- List.app_assoc; apply H.
+    - rewrite List.length_app, length_nonrec_exps by (rewrite List.length_firstn; lia); lia.
+    - cbn [List.firstn doms_ctx List.map List.rev List.app]; exact HSbC0.
+    - rewrite <- !List.app_assoc in Hσ; exact Hσ.
+  Qed.
+
+  (** The components, at uniform parameters glued to [ups]. *)
+  Lemma comps_of_uparams : forall Δ Us, ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+      ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us.
+  Proof.
+    intros * HΔ HUs; split; [| split ].
+    - intros k Ns ns T Hl' Hk HT Hpre Hp; eapply comps_npar; eassumption.
+    - intros c gs gs1 A0 gs2 Ns ns As vs T Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply comps_arg; eassumption.
+    - intros c gs gs1 t gs2 Ns ns As vs T Hcon Heq Hnp Hns Hvl HT Hpre Hp; eapply comps_rec; eassumption.
   Qed.
 
 End Comps.
@@ -1286,7 +1489,7 @@ Section Former.
       rewrite List.length_firstn, length_ind_uparams by exact Hle; unfold ind_np in *; lia.
   Qed.
 
-  Lemma ind_typ_at_of_args : forall Δ Ms ups ns bu (u : uidx) NP NEl AP AEl, ⊢ Δ ->
+  Lemma ind_typ_at_of_args : forall Δ Ms ups ns bu (u : uidx) NP NEl AP AEl DP DEl, ⊢ Δ ->
       glu_args Δ (ind_params D) Id nil Ms (ups ++ ns) -> List.length ups = ind_nu D ->
       ⟦ ind_sort D ⟧ env_args nil ups ↘ bu -> uidx_le (IndSem.univ_idx bu) u ->
       (forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -1301,9 +1504,20 @@ Section Former.
          ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
          tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
          DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs) ->
-      ind_typ_at p D ups ns NP NEl AP AEl Typeω@(ulvl u) Δ (apps (a_ind p) Ms) Ms.
+      (forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+         ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+         tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+         List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+         exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b) ->
+      (forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+         ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+         tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+         List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+         ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+         DG b ∈ glu_univ_elem u ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B) ->
+      ind_typ_at p D ups ns NP NEl AP AEl DP DEl Typeω@(ulvl u) Δ (apps (a_ind p) Ms) Ms.
   Proof.
-    intros * HΔ Hg Hu Hbu Hule HeN HNP HeA HAP.
+    intros * HΔ Hg Hu Hbu Hule HeN HNP HeA HAP HeD HDP.
     assert (Hsub : forall Δ' Ms', ⊢ Δ' -> List.length Ms' = ind_np D ->
               (forall k M T, List.nth_error Ms' k = Some M -> List.nth_error (tele_insts (ind_params D) Id Ms') k = Some T -> Δ' ⊢ M : T) ->
               Δ' ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id Ms'] ⊆ Typeω@(ulvl u)).
@@ -1336,10 +1550,10 @@ Section Former.
   (** The gluing of an inductive type in the PER model. *)
   Lemma glu_ind_of_per : forall (u : uidx) R ups ns,
       DF d_ind p (ups ++ ns) ≈ d_ind p (ups ++ ns) ∈ per_univ_elem u ↘ R -> List.length ups = ind_nu D ->
-      exists NP NEl AP AEl P El R',
+      exists NP NEl AP AEl DP DEl P El R',
         DG d_ind p (ups ++ ns) ∈ glu_univ_elem u ↘ P ↘ El /\
-        (P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl Typeω@(ulvl u)) /\
-        (El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl R' Typeω@(ulvl u)) /\ (R <~> R') /\
+        (P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl Typeω@(ulvl u)) /\
+        (El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl R' Typeω@(ulvl u)) /\ (R <~> R') /\
         (forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
            tele_pre (ind_nr D ups) k vs vs -> exists b, ⟦ A ⟧ env_args nil (ups ++ vs) ↘ b) /\
         (forall k A vs b, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -1351,7 +1565,18 @@ Section Former.
         (forall ms c gs k A vs b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
            ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
            tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
-           DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs).
+           DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs) /\
+        (forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+           ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+           tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+           List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+           exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b) /\
+        (forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+           ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+           tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+           List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+           ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+           DG b ∈ glu_univ_elem u ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B).
   Proof.
     intros * HR Hu.
     destruct (per_univ_glu_univ_elem u _ (ex_intro _ R HR)) as (P & El & Hglu).
@@ -1361,9 +1586,9 @@ Section Former.
     match goal with H : ?w ++ ?x = ups ++ ns, H' : List.length ?w = ind_nu D |- _ =>
       destruct (app_split_eq _ _ _ _ H ltac:(congruence)) as [-> ->] end.
     handle_per_univ_elem_irrel.
-    do 7 eexists; split; [ exact Hglu |].
+    do 9 eexists; split; [ exact Hglu |].
     split; [ eassumption | split; [ eassumption | split; [ reflexivity | split; [ eassumption | split; [ eassumption |
-      split; [ eassumption | eassumption ] ] ] ] ] ].
+      split; [ eassumption | split; [ eassumption | split; [ eassumption | eassumption ] ] ] ] ] ] ] ].
   Qed.
 
 
@@ -1468,8 +1693,9 @@ Section Former.
     destruct (IndSem.per_univ_elem_univ _ _ _ _ HRb Hub) as [_ HRb'].
     apply HRb' in Hdind; destruct Hdind as [R' HR'].
     rewrite <- Hidx in HR'; rewrite Hvs in HR', Hg.
-    destruct (glu_ind_of_per _ R' ups ns HR' Hu) as (NP & NEl & AP & AEl & Pd & Eld & R'' & Hglud & HPd & HEd & HRR & HeN & HNP & HeA & HAP).
-    pose proof (ind_typ_at_of_args _ _ _ _ _ _ _ _ _ _ HΔ Hg Hu Hbu (uidx_le_refl _) HeN HNP HeA HAP) as Hit.
+    destruct (glu_ind_of_per _ R' ups ns HR' Hu)
+      as (NP & NEl & AP & AEl & DP & DEl & Pd & Eld & R'' & Hglud & HPd & HEd & HRR & HeN & HNP & HeA & HAP & HeD & HDP).
+    pose proof (ind_typ_at_of_args _ _ _ _ _ _ _ _ _ _ _ _ HΔ Hg Hu Hbu (uidx_le_refl _) HeN HNP HeA HAP HeD HDP) as Hit.
     assert (Hgd : exists P El, DG d_ind p vs ∈ glu_univ_elem (IndSem.univ_idx bu) ↘ P ↘ El /\ Δ ⊢ apps (a_ind p) Ms ® P)
       by (rewrite Hvs; exists Pd, Eld; split; [ exact Hglud | apply HPd; exists Ms; exact Hit ]).
     clear HPER.
@@ -1632,25 +1858,36 @@ Section ConArgs.
     exact (glu_ctx_env_per_env HSb HR Hσ).
   Qed.
 
-  (** The values of a parameter of a recursive argument's type, weakened to
-      the context of all the arguments before it, are related to its values
-      in the context of the non-recursive ones. *)
-  Lemma cargs_rec_val_rel : forall gs1 Pr gs2, gs = gs1 ++ ca_rec Pr :: gs2 ->
-      forall R E, EF cargs_ctx p D gs1 ++ ind_params D ≈ cargs_ctx p D gs1 ++ ind_params D ∈ per_ctx_env ↘ R -> R E E ->
-      forall m P T, List.nth_error Pr m = Some P ->
-        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Pr) m = Some T ->
-        exists b1 b t1 t (j : nat) Rt, ⟦ P[wk_pat (cargs_pat gs1)]ʷ ⟧ E ↘ b1 /\ ⟦ P ⟧ ⟪wk_pat (cargs_pat gs1)⟫ E ↘ b /\
-          ⟦ T[wk_pat (cargs_pat gs1)]ʷ ⟧ E ↘ t1 /\ ⟦ T ⟧ ⟪wk_pat (cargs_pat gs1)⟫ E ↘ t /\
-          DF t1 ≈ t ∈ per_univ_elem j ↘ Rt /\ Rt b1 b.
+  (** The uniform parameters of arguments related at the arguments'
+      telescope are related at theirs. *)
+  Lemma cargs_uparams_gargs : forall gs1 gs2 ups ns fa, gs = gs1 ++ gs2 ->
+      List.length ups = ind_nu D -> List.length ns = ind_nn D -> List.length fa = List.length gs1 ->
+      (forall R, EF cargs_ctx p D gs1 ++ ind_params D ≈ cargs_ctx p D gs1 ++ ind_params D ∈ per_ctx_env ↘ R ->
+         R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))) ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups.
   Proof.
-    intros * Heq * HR HE * HP HT.
-    destruct (ElimCases.cargs_sem_all D HDc Hc Hsu Hdt p Hl c gs Hcon gs1 (ca_rec Pr :: gs2) Heq) as [_ Hwk].
-    pose proof (IndCases.sd_rec _ HDc _ _ _ _ _ _ _ _ Hcon Heq HP HT) as HPv.
-    rewrite Heq, <- IndCases.astrat_prefix in HPv.
-    destruct (rel_exp_under_ctx_wk_simple Hwk HPv) as (R' & HR' & i0 & Hsimp).
-    assert (ER : R <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
-    destruct (Hsimp E E ltac:(apply ER; exact HE)) as (t1 & t & Rt & Ht1 & Ht & HRt & b1 & b & Hb1 & Hb & Hbb).
-    exists b1, b, t1, t, i0, Rt; repeat split; assumption.
+    intros * Heq Hlu Hlns Hlfa INV.
+    pose proof (decl_closed_nu D Hc) as Hle.
+    destruct (ElimCases.cargs_sem_all D HDc Hc Hsu Hdt p Hl c gs Hcon gs1 gs2 Heq) as [HC _].
+    destruct (sem_ctx_per_ctx_env HC) as [R0 HR0].
+    assert (HC' : ⊨ List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅)
+      by (rewrite List.rev_involutive, List.app_nil_r; exact HC).
+    assert (HR0' : EF List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅
+                     ≈ List.rev (List.rev (cargs_ctx p D gs1 ++ ind_params D)) ++ ⋅ ∈ per_ctx_env ↘ R0)
+      by (rewrite List.rev_involutive, List.app_nil_r; exact HR0).
+    assert (Hl0 : List.length (ups ++ ns ++ fa) = List.length (List.rev (cargs_ctx p D gs1 ++ ind_params D)))
+      by (rewrite !List.length_app, List.length_rev, List.length_app, length_cargs_ctx, Hlu, Hlns, Hlfa; unfold ind_nn; unfold ind_np in Hle |- *; lia).
+    assert (Hta : tele_ass (List.rev (cargs_ctx p D gs1 ++ ind_params D)))
+      by (apply List.Forall_rev, List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact (decl_closed_params D Hc) ]).
+    pose proof (proj2 (IndSem.rel_gargs _ _ _ _ GlobalSem.per_ctx_env_nil_true HC' Hta HR0' nil nil _ _ Hl0 Hl0 (INV _ HR0))) as Hgpf.
+    rewrite List.rev_app_distr in Hgpf.
+    replace (ups ++ ns ++ fa) with ((ups ++ ns) ++ fa) in Hgpf by (rewrite <- List.app_assoc; reflexivity).
+    assert (Hlp : List.length (ups ++ ns) = List.length (List.rev (ind_params D)))
+      by (rewrite List.length_app, List.length_rev, Hlu, Hlns; unfold ind_nn; unfold ind_np in Hle |- *; lia).
+    destruct (IndSem.per_gargs_app _ _ _ _ _ _ _ _ Hlp Hgpf Hlp) as [Hp _].
+    destruct (IndCases.params_split_rel D HDc Hc _ _ _ _ Hp ltac:(rewrite List.length_app, Hlu, Hlns; unfold ind_nn; lia))
+      as (Hu0 & _).
+    rewrite firstn_app_exact in Hu0 by exact Hlu; exact Hu0.
   Qed.
 
 End ConArgs.
@@ -1667,7 +1904,7 @@ Qed.
 
 Lemma cargs_rev_nth_rec : forall p D gs gs1 Pr gs2, gs = gs1 ++ ca_rec Pr :: gs2 ->
     List.nth_error (List.rev (cargs_ctx p D gs)) (List.length gs1)
-      = Some (ce_ass (apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Pr))).
+      = Some (ce_ass (ptyp_ty p D (cargs_pat gs1) Pr)).
 Proof.
   intros * ->.
   unfold cargs_ctx; rewrite cargs_ctx_aux_app; cbn [cargs_ctx_aux].
@@ -1688,7 +1925,8 @@ Section ConGlu.
   Hypothesis (Hcon : ind_con D c = Some gs) (HΨ : ⊩ cargs_ctx p D gs ++ ind_params D).
   Variable (ups : list domain) (bu : domain) (u : uidx) (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
-    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred).
+    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred).
   Hypothesis (Hu : List.length ups = ind_nu D) (Hbu : ⟦ ind_sort D ⟧ env_args nil ups ↘ bu)
     (Hule : uidx_le (IndSem.univ_idx bu) u)
     (HeN : forall k A vs, List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) ->
@@ -1702,12 +1940,29 @@ Section ConGlu.
     (HAP : forall ms c gs k A vs b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
        ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
        tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
-       DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs).
+       DG b ∈ glu_univ_elem u ↘ AP ms c k vs ↘ AEl ms c k vs)
+    (HeD : forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b)
+    (HDP : forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+       ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+       DG b ∈ glu_univ_elem u ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B).
+  (** The types of the rests of a recursive argument's shape are types, in
+      the context of the arguments before it and the shape's domains before
+      the rest. *)
+  Hypothesis (HshV : forall gs1 t gs2 k, gs = gs1 ++ ca_rec t :: gs2 -> k <= List.length (ptyp_doms t) ->
+       exists j : nat, sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D
+         ⊩ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t) : Typeω@j).
 
   (** Glued arguments of a constructor's non-recursive arguments are glued
       at the gluings of the clause. *)
   Lemma args_of_glu_args : forall Δ Us Ns ns As ws, ⊢ Δ ->
-      ind_glu_comps p D ups NP NEl AP AEl Δ Us -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+      ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us -> glu_args Δ (ind_uparams D) Id nil Us ups ->
       glu_nparams D NEl Δ Us Ns ns -> tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
       glu_args Δ (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns)) As ws ->
       tele_full (ind_ar D ups ns c) (cargs_nonrec gs) (nonrec_vals gs ws) (nonrec_vals gs ws) ->
@@ -1717,7 +1972,7 @@ Section ConGlu.
         Δ ⊢ N : T ® v ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) ws)).
   Proof.
     intros Δ Us Ns ns As ws HΔ Hc0 HUs Hnp Hns HgA Hv.
-    pose proof Hc0 as [_ HCA].
+    pose proof Hc0 as (_ & HCA & _).
     pose proof (decl_closed_params D Hc) as Hass.
     pose proof (decl_uparams_ass D Hc) as HassU.
     destruct (glu_args_length _ _ _ _ _ _ HgA) as [LA LW]; rewrite length_cargs_ctx in LA, LW.
@@ -1783,12 +2038,12 @@ Section ConGlu.
     intros * HR0 k vs vs' Hk Hp Γ0 A0 N n n' HN Hnn.
     pose proof (decl_closed_params D Hc) as Hass.
     destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as (_ & _ & Hcp & _).
-    destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as [HevN _].
-    pose proof Hcp as (HnP & HnI & HaP & HaI).
+    destruct (per_univ_elem_ind_evals _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as (HevN & _ & _).
+    pose proof Hcp as (HnP & HnI & HaP & HaI & HdP & HdI).
     assert (Hk' : k < List.length (List.rev (ind_nparams D))) by (rewrite List.length_rev, length_nparams; exact Hk).
     destruct (nparams_lt_ass D k Hass Hk') as [S HS].
-    pose proof (tnrp_refl_l p D ups _ (ind_ar D ups) Hass HnP HnI HaP HaI k vs vs' ltac:(lia) Hp) as Hd.
-    pose proof (tnrp_refl_r p D ups _ (ind_ar D ups) Hass HnP HnI HaP HaI k vs vs' ltac:(lia) Hp) as Hd'.
+    pose proof (tnrp_refl_l p D ups _ (ind_ar D ups) (ind_dr ups) Hass HnP HnI HaP HaI HdP HdI k vs vs' ltac:(lia) Hp) as Hd.
+    pose proof (tnrp_refl_r p D ups _ (ind_ar D ups) (ind_dr ups) Hass HnP HnI HaP HaI HdP HdI k vs vs' ltac:(lia) Hp) as Hd'.
     destruct (HeN _ _ _ HS Hd) as [b Eb].
     pose proof (HNP _ _ _ _ HS Hd Eb) as Hgb.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hgb) as [Rb HRb].
@@ -1802,14 +2057,266 @@ Section ConGlu.
     apply HEq; exact Hn2.
   Qed.
 
+  (** A recursive argument of a constructor, after [k] of its shape's
+      domains: an element of the type of the rest of the shape, at a glued
+      instance of the shape's context (on the side of the non-recursive
+      arguments, [σ], and on the one of all the arguments, [σc]), is a
+      recursive argument of the rest of the shape. *)
+  Lemma con_rec_glu : forall R0 ns0, DF d_ind p (ups ++ ns0) ≈ d_ind p (ups ++ ns0) ∈ per_univ_elem u ↘ R0 ->
+      forall gs1 t gs2 ns fa, gs = gs1 ++ ca_rec t :: gs2 ->
+      List.length ns = ind_nn D -> List.length fa = List.length gs1 ->
+      tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
+      tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 fa) (nonrec_vals gs1 fa) ->
+      per_gargs (List.rev (ind_uparams D)) nil nil ups ups ->
+      (forall R, EF cargs_ctx p D gs1 ++ ind_params D ≈ cargs_ctx p D gs1 ++ ind_params D ∈ per_ctx_env ↘ R ->
+         R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))) ->
+      forall t' k ys Δ τ Us Ys SbC σc Sbc N v a (i : uidx) P El,
+        ptyp_skip k t = t' -> k <= List.length (ptyp_doms t) ->
+        tele_pre (shape_tr (ind_dr ups) ns (nonrec_vals gs1 fa) (ptyp_doms t)) k ys ys ->
+        per_gargs (List.rev (sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t))))
+          (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa)) ys ys ->
+        ⊢ Δ -> glu_args Δ (ind_uparams D) Id nil Us ups ->
+        List.length Ys = k + List.length (cargs_nonrec gs1) + ind_nn D ->
+        EG doms_ctx (List.firstn k (ptyp_doms t)) ++ IndCases.astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D
+          ∈ glu_ctx_env ↘ SbC ->
+        Δ ⊢s sb_of_list τ (Us ++ Ys) ® env_args nil (ups ++ ns ++ nonrec_vals gs1 fa ++ ys) ∈ SbC ->
+        EG sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D ∈ glu_ctx_env ↘ Sbc ->
+        Δ ⊢s σc ® env_args nil (ups ++ ns ++ fa ++ ys) ∈ Sbc ->
+        ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) t' = (ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) t')[σc] ->
+        ⟦ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) t' ⟧ env_args nil (ups ++ ns ++ fa ++ ys) ↘ a ->
+        DG a ∈ glu_univ_elem i ↘ P ↘ El ->
+        Δ ⊢ ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) t' ® P ->
+        Δ ⊢ N : ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) t' ® v ∈ El ->
+        glu_rec p D ups NEl AEl DP DEl Δ (ns ++ nonrec_vals gs1 fa ++ ys) t' (ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) t') N v.
+  Proof.
+    intros R0 ns0 HR0 gs1 t gs2 ns fa Heq Hlns Hlfa Hnsd Hp Hgu0 INV.
+    pose proof (decl_closed_params D Hc) as Hass.
+    pose proof Hc as (_ & Hle & Hs & _).
+    destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HR0 Hl Hu Hu) as (_ & _ & Hcp & _ & _ & Hadm & _ & _).
+    pose proof (nel_resp_per R0 ns0 HR0) as HNe.
+    destruct (ElimCases.cargs_sem_all D HDc Hc Hsu Hdt p Hl c gs Hcon gs nil (eq_sym (List.app_nil_r gs))) as [HΨc _].
+    pose proof (IndCases.shape_links D HDc Hc Hsu p c gs Hcon HΨc gs1 t gs2 Heq ups ns fa bu Hu Hlns Hlfa Hgu0 Hbu Hnsd Hp INV)
+      as Hlinks.
+    set (nv := nonrec_vals gs1 fa) in *.
+    set (K := List.length (cargs_nonrec gs1)) in *.
+    set (pat := cargs_pat gs1) in *.
+    assert (Hlnv : List.length nv = K) by (apply length_nonrec_vals; exact Hlfa).
+    assert (HK : K <= List.length (cargs_nonrec gs)) by (unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia).
+    assert (Hsimp : ptyp_simple t = true) by exact (IndCases.sd_simple _ HDc _ _ _ _ _ Hcon Heq).
+    induction t' as [j0 Ps0 | j0 Ps0 | B t'' IH];
+      intros k ys Δ τ Us Ys SbC σc Sbc N v a i P El Hsk Hk Hy Hgy HΔ HUs HYl HSbC Hσ HSbc Hσc HTeq Ea Hg HTP HN.
+    3:{ (** A domain: an element of the domain's gluing, moved to the gluing
+            of the [Π]'s domain, applied to the argument gives a recursive
+            argument of the rest of the shape. *)
+        destruct (ptyp_skip_pi _ _ _ _ Hsk) as [HB Hs'].
+        assert (Hkl : k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence).
+        pose proof Hy as Hy0; rewrite tele_pre_iff in Hy0; destruct Hy0 as (Hly & _ & _).
+        assert (HUl : List.length Us = ind_nu D)
+          by (destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _]; rewrite (length_ind_uparams D Hle) in LU; exact LU).
+        (** The rest of the shape's type is glued at the domains' gluings. *)
+        assert (Hsh : glu_shape_typ ups DP DEl Δ (ns ++ nv ++ ys) (pt_pi B t'') (ptyp_ty_at p Us (sb_of_list τ (Us ++ Ys)) (pt_pi B t''))).
+        { eapply shape_typ_glu; eassumption. }
+        cbn [ptyp_ty ptyp_ty_at exp_sub glu_shape_typ] in Ea, HTeq, HTP, HN, Hsh |- *.
+        destruct (Hsh _ _ eq_refl) as [HshD _].
+        injection HTeq as HITeq HOTeq.
+        destruct (proj1 (Hlinks k ys Hk Hy Hgy) B HB) as (jd & a1 & b0 & Ea1 & Eb0 & Hab).
+        inversion Ea; subst a.
+        match goal with H : ⟦ B[wk_pat _]ʷ ⟧ _ ↘ ?x |- _ => assert (x = a1) as -> by (eapply functional_eval_exp; eassumption) end.
+        set (σ := sb_of_list τ (Us ++ Ys)) in *.
+        set (OTc := ptyp_ty p D (false :: List.repeat false k ++ pat) t'') in *.
+        set (E := env_args nil (ups ++ ns ++ fa ++ ys)) in *.
+        (** A level above the ones at hand. *)
+        set (n := ul (Nat.max (ulvl i) (Nat.max (ulvl u) jd))).
+        assert (Hin : uidx_le i n) by (apply uidx_le_ul_max; unfold n; lia).
+        assert (Hun : uidx_le u n) by (apply uidx_le_ul_max; unfold n; lia).
+        assert (Hjn : uidx_le (ul jd) n) by (apply uidx_le_ul_max; unfold n; cbn; lia).
+        destruct (glu_univ_elem_cumu_ge_uidx Hin Hg) as (Pn & Eln & Hgn).
+        pose proof (glu_univ_elem_typ_cumu_ge_uidx Hin Hg Hgn HTP) as HTPn.
+        pose proof (glu_univ_elem_exp_cumu_ge_uidx Hin Hg Hgn HN) as HNn.
+        destruct Hab as [Rab HRab].
+        pose proof (per_univ_trans _ _ _ _ _ _ HRab (per_univ_sym _ _ _ _ HRab)) as HRaa.
+        pose proof (per_univ_elem_cumu_uidx _ _ _ _ HRaa _ Hjn) as HRaan.
+        destruct (glu_univ_elem_pi_clean_inversion1 HRaan Hgn) as (IP & IEl & OP & OEl & elem_rel & HgI & HgO & Hper & EP & EEl).
+        apply EEl in HNn.
+        inversion_clear HNn as [? ? ? ? IT2 OT2 HMt Hm HAeq HITt HOTt HIP HApp].
+        pose proof (HDP _ _ _ _ _ _ _ _ _ _ _ Hnsd Hcon Heq Hp HB Hy Eb0) as Hgb0.
+        (** An argument glued at the domain's gluing, at the [Π]'s domain. *)
+        assert (Hdom : forall Δ' φ b c', Δ' ⊢k φ : Δ -> ind_dr ups (ns ++ nv ++ ys) B c' c' ->
+                  Δ' ⊢ b : B[σ][φ]ʷ ® c' ∈ DEl (ns ++ nv ++ ys) B ->
+                  Rab c' c' /\ Δ' ⊢ B[σ][φ]ʷ ® IP /\ Δ' ⊢ b : B[σ][φ]ʷ ® c' ∈ IEl /\ Δ' ⊢ b : IT2[φ]ʷ ® c' ∈ IEl).
+        { intros Δ' φ b c' Hφ Hc' Hb.
+          pose proof (dr_to_rel B _ b0 a1 c' (ul jd) Rab (ul jd) Eb0 (ex_intro _ Rab HRab) HRaa Hc') as Hcc.
+          pose proof (glu_typ_transfer u n (ul jd) b0 a1 _ _ IP IEl Δ' _ Hun Hjn (per_univ_sym' _ _ _ (ex_intro _ Rab HRab))
+                        Hgb0 HgI (HshD _ _ Hφ)) as HTyI.
+          pose proof (glu_univ_elem_exp_conv_uidx (per_univ_sym' _ _ _ (ex_intro _ Rab HRab)) Hgb0 HgI Hb HTyI) as HbI.
+          split; [ exact Hcc | split; [ exact HTyI | split; [ exact HbI |] ] ].
+          exact (glu_elem_retype n n a1 IP IEl IP IEl Δ' _ _ b c' HgI HgI HTyI HbI (HIP _ _ Hφ)). }
+        apply glu_rec_pi.
+        + intros IT OT HA0 Δ' φ Hφ; injection HA0 as <- <-; exact (HshD Δ' φ Hφ).
+        + intros IT OT HA0 Δ' φ b c' Hφ Hc' Hb; injection HA0 as <- <-.
+          destruct (Hdom _ _ _ _ Hφ Hc' Hb) as (Hcc & _ & _ & HbI).
+          destruct (HApp Δ' φ b c' Hφ HbI Hcc) as (mn & Hmn & _); exists mn; exact Hmn.
+        + intros IT OT HA0 Δ' φ b c' fc Hφ Hc' Hb Hfc; injection HA0 as <- <-.
+          destruct (Hdom _ _ _ _ Hφ Hc' Hb) as (Hcc & HTyI & HbI0 & HbI).
+          destruct (HApp Δ' φ b c' Hφ HbI Hcc) as (mn & Hmn & Happ).
+          assert (mn = fc) as <- by (eapply functional_eval_app; eassumption).
+          assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+          (** The substitutions after the argument. *)
+          destruct (gd_dctx _ HG _ _ _ _ _ (S k) Hcon Heq ltac:(lia)) as [SbC' HSbC'].
+          pose proof (HshD _ _ Hφ) as HTy0.
+          assert (Hσ' : Δ' ⊢s sb_of_list (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))
+                          ® env_args nil (ups ++ ns ++ nv ++ ys ++ c' :: nil) ∈ SbC')
+            by (eapply shape_sub_step; eassumption).
+          destruct (HshV gs1 t gs2 (S k) Heq ltac:(lia)) as [jv HVv].
+          pose proof HVv as (Sbc' & HSbc' & _).
+          pose proof HSbc' as HSbc''.
+          rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l in HSbc'' by lia.
+          cbn [List.app] in HSbc''.
+          assert (Hσc' : Δ' ⊢s (sb_wk σc φ),,b ® E ↦ c' ∈ Sbc').
+          { eapply glu_sub_snoc; [ exact HSbc | exact HSbc'' | eapply glu_ctx_env_sub_monotone; eassumption |].
+            exists n, a1, IP, IEl.
+            fold pat; rewrite <- exp_wk_sub, <- HITeq.
+            split; [ exact Ea1 | split; [ exact HgI | split; [ exact HTyI | exact HbI0 ] ] ]. }
+          (** The type of the rest, and its value. *)
+          assert (HTeq' : ptyp_ty_at p (List.map (fun U => U[φ]ʷ) Us)
+                            (sb_of_list (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us ++ (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil))) t''
+                          = (ptyp_ty p D (List.repeat false (S k) ++ pat) t'')[(sb_wk σc φ),,b]).
+          { rewrite <- ptyp_ty_at_shape_step; fold σ; rewrite HOTeq, exp_sub_sub.
+            apply exp_sub_sb_eq, sb_q_extend_wk. }
+          destruct (glu_rel_typ_at _ _ _ _ _ _ _ HSbc' HVv Hσc') as (_ & a2 & Ea2 & Hpa2 & HXP).
+          rewrite Hs' in Ea2, HXP; fold pat in Ea2, HXP.
+          destruct (per_univ_glu_univ_elem _ _ Hpa2) as (P2 & El2 & Hga2).
+          pose proof (HXP _ _ Hga2) as HXP2.
+          pose proof (HgO c' Hcc a2 Ea2) as HgOc.
+          pose proof (glu_univ_elem_trm_typ _ _ _ _ HgOc _ _ _ _ Happ) as HOT2P.
+          pose proof (glu_elem_retype n jv a2 _ _ P2 El2 Δ' _ _ _ _ HgOc Hga2 HOT2P Happ HXP2) as Happ'.
+          rewrite <- HTeq' in HXP2, Happ'.
+          unfold σ; rewrite ptyp_ty_at_shape_step.
+          replace ((ns ++ nv ++ ys) ++ c' :: nil) with (ns ++ nv ++ ys ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+          apply (IH (S k) (ys ++ c' :: nil) Δ' (sb_wk τ φ) (List.map (fun U => U[φ]ʷ) Us) (List.map (fun Y => Y[φ]ʷ) Ys ++ b :: nil)
+                   SbC' ((sb_wk σc φ),,b) Sbc' (a_app N[φ]ʷ b) mn a2 jv P2 El2);
+            [ exact Hs' | lia | | | exact HΔ' | | rewrite List.length_app, List.length_map; cbn; lia | exact HSbC' | exact Hσ'
+            | exact HSbc' | | exact HTeq' | | exact Hga2 | exact HXP2 | exact Happ' ].
+          * apply tele_pre_snoc; [ exact Hy |].
+            unfold shape_tr; rewrite (List.nth_error_nth _ _ _ HB); exact Hc'.
+          * rewrite (firstn_S_snoc _ _ _ HB), sh_ctx_snoc, List.length_firstn, Nat.min_l by lia.
+            cbn [List.rev].
+            apply (IndSem.per_gargs_snoc _ _ _ _ _ _ _ _ jd Rab);
+              [ rewrite List.length_rev, length_sh_ctx, List.length_firstn; lia | exact Hgy | | exact Hcc ].
+            rewrite <- !env_args_app, <- !List.app_assoc.
+            exact (mk_rel_mod_eval a1 a1 Ea1 Ea1 HRaa).
+          * exact (glu_args_wk _ _ _ _ _ _ _ (decl_uparams_ass D Hc) (decl_uparams_closed D Hc) Hφ HUs).
+          * replace (ups ++ ns ++ fa ++ ys ++ c' :: nil) with ((ups ++ ns ++ fa ++ ys) ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+            rewrite env_args_snoc; exact Hσc'.
+          * replace (ups ++ ns ++ fa ++ ys ++ c' :: nil) with ((ups ++ ns ++ fa ++ ys) ++ c' :: nil) by (rewrite <- !List.app_assoc; reflexivity).
+            rewrite env_args_snoc; exact Ea2. }
+    2:{ exfalso.
+        destruct (Nat.lt_ge_cases k (List.length (ptyp_doms t))) as [Hlt | Hge].
+        - destruct (ptyp_skip_lt k t Hlt) as (B & _ & Hs'); rewrite Hs' in Hsk; discriminate.
+        - assert (k = List.length (ptyp_doms t)) as -> by lia.
+          rewrite (ptyp_skip_end t Hsimp) in Hsk; discriminate. }
+    (** The end of the shape. *)
+    destruct (ptyp_skip_self _ _ _ _ Hsk) as [HkL HPs].
+    assert (Hkd : k = List.length (ptyp_doms t)) by lia.
+    subst Ps0.
+    pose proof Hy as Hy0; rewrite tele_pre_iff in Hy0; destruct Hy0 as (Hly & _ & _).
+    cbn [ptyp_ty ptyp_ty_at ptyp_ps] in Ea, HTP, HN |- *.
+    destruct (proj2 (Hlinks k ys Hk Hy Hgy) Hkd) as (bs & bs1 & Ebs & Ebs1 & Htf).
+    assert (HPl : List.length (ptyp_ps t) = ind_nn D) by exact (IndCases.length_rec_ps D Hc _ _ _ _ _ Hcon Heq).
+    assert (Et0 : ⟦ apps (a_ind p) (ind_uvars D (List.length (List.repeat false k ++ pat))
+                                     ++ List.map (fun P => P[wk_pat (List.repeat false k ++ pat)]ʷ) (ptyp_ps t)) ⟧
+                    env_args nil (ups ++ ns ++ fa ++ ys) ↘ d_ind p (ups ++ bs1)).
+    { apply Modules.eval_apps_exp; exists (d_ind p nil), (ups ++ bs1); split; [ constructor | split ].
+      - apply Modules.eval_exps_app; [| exact Ebs1 ].
+        unfold ind_uvars.
+        replace (List.length (List.repeat false k ++ pat) + ind_nn D) with (List.length (ns ++ fa ++ ys))
+          by (unfold pat; rewrite !List.length_app, List.repeat_length, length_cargs_pat; lia).
+        replace (ind_nu D) with (List.length ups) by exact Hu.
+        apply IndSem.eval_vars_from_args.
+      - change (d_ind p (ups ++ bs1)) with (d_ind p (nil ++ (ups ++ bs1))).
+        apply (IndCases.eval_apps_ind D p Hl).
+        rewrite List.length_app, (IndCases.eval_exps_length _ _ _ Ebs1), List.length_map, HPl; cbn; unfold ind_nn; lia. }
+    assert (a = d_ind p (ups ++ bs1)) as -> by (eapply functional_eval_exp; eassumption).
+    set (σ := sb_of_list τ (Us ++ Ys)) in *.
+    set (Qn := List.map (fun P => P[σ]) (ptyp_ps t)) in *.
+    assert (HUl : List.length Us = ind_nu D)
+      by (destruct (glu_args_length _ _ _ _ _ _ HUs) as [LU _]; rewrite (length_ind_uparams D Hle) in LU; exact LU).
+    assert (HSbCt : EG ptyp_tele t ++ IndCases.astrat gs K ++ ind_params D ∈ glu_ctx_env ↘ SbC)
+      by (rewrite Hkd, List.firstn_all in HSbC; exact HSbC).
+    assert (HQn : glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups) Qn bs).
+    { unfold Qn, σ.
+      eapply rec_params_args; try eassumption; unfold ptyp_depth; lia. }
+    assert (HQp : glu_args Δ (ind_params D) Id nil (Us ++ Qn) (ups ++ bs)).
+    { rewrite params_split; apply glu_args_app;
+        [ exact (decl_uparams_ass D Hc) | rewrite (length_ind_uparams D Hle); exact HUl | rewrite (length_ind_uparams D Hle); exact Hu |].
+      split; [ exact HUs | exact HQn ]. }
+    assert (Hcomps : ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us) by (eapply comps_of_uparams; eassumption).
+    assert (H01 : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bs bs)
+      by exact (canon_tnr_trans p D ups Hass Hcp _ _ _ Htf (canon_tnr_sym p D ups Hass Hcp _ _ Htf)).
+    assert (HnQ : glu_nparams D NEl Δ Us Qn bs) by (eapply nparams_of_glu_args; eassumption).
+    assert (HQl : List.length Qn = ind_nn D) by (unfold Qn; rewrite List.length_map; exact HPl).
+    assert (EQ : forall Q, apps (a_ind p) (Us ++ Qn) = apps (a_ind p) Q -> Q = Us ++ Qn)
+      by (intros Q HQ; apply apps_ind_inj in HQ; congruence).
+    apply glu_rec_self.
+    - intros bsr Q Hbsr HQ.
+      pose proof (functional_eval_exps' _ _ _ _ Hbsr Ebs) as ->.
+      rewrite (EQ _ HQ).
+      split; [ rewrite List.length_app, HUl, HQl; unfold ind_nn; lia | split; [ exact H01 |] ].
+      intros bsr' Hb'.
+      rewrite firstn_app_exact, skipn_app_exact by exact HUl.
+      split; [ eapply glu_nparams_resp_per; [ exact HNe | exact Hb' | exact HnQ ] |].
+      intros Δ0 φ Hφ.
+      pose proof (glu_args_params_top _ _ _ _ Hass Hs (glu_args_wk _ _ _ _ _ _ _ Hass Hs Hφ HQp)) as Ht.
+      destruct (per_univ_elem_ind_reinst _ _ _ _ _ _ _ _ HR0 Hl Hu Hu _ _ Hb') as [Rr HRr].
+      eapply glu_params_top_resp_per_top; [ exact Hl | exact (per_univ_then_per_top_typ HRr) | exact Ht ].
+    - intros bsr Q Hbsr HQ Δ' φ Q' Hφ HQ'.
+      pose proof (functional_eval_exps' _ _ _ _ Hbsr Ebs) as ->.
+      pose proof (EQ _ HQ) as ->.
+      destruct (per_univ_elem_ind_reinst _ _ _ _ _ _ _ _ HR0 Hl Hu Hu _ _ (canon_tnr_sym p D ups Hass Hcp _ _ Htf)) as [Rq HRq].
+      pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRq) HRq) as Hself.
+      destruct (glu_ind_of_per p D Hl u Rq ups bs Hself Hu)
+        as (NP2 & NEl2 & AP2 & AEl2 & DP2 & DEl2 & P2 & El2 & R2 & Hg2 & HP2 & HEl2 & HR2 & HeN2 & HNP2 & HeA2 & HAP2 & HeD2 & HDP2).
+      assert (HT2 : Δ ⊢ apps (a_ind p) (Us ++ Qn) ® P2).
+      { apply HP2; exists (Us ++ Qn).
+        exact (ind_typ_at_of_args p D Hl HG Hc Hdt Hsu Δ (Us ++ Qn) ups bs bu u NP2 NEl2 AP2 AEl2 DP2 DEl2 HΔ HQp Hu Hbu Hule
+                 HeN2 HNP2 HeA2 HAP2 HeD2 HDP2). }
+      pose proof (glu_univ_elem_exp_conv_uidx (ex_intro _ Rq HRq) Hg Hg2 HN HT2) as HM2.
+      apply HEl2 in HM2; destruct HM2 as (_ & _ & Ps2 & HPs2 & Hk2).
+      assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
+      pose proof (glu_args_params_top _ _ _ _ Hass Hs (glu_args_wk _ _ _ _ _ _ _ Hass Hs Hφ HQp)) as Ht.
+      destruct (proj2 HPs2 _ _ Hφ) as (HPt2 & _ & _).
+      pose proof (glu_params_top_eq p D Δ' _ _ _ Hl HΔ' (ind_rps_of_per _ _ _ _ _ _ Hself Hl _) HPt2 Ht) as Heqq.
+      assert (Heqq' : exps_eq_at Δ' (ind_params D) (List.map (fun P => P[φ]ʷ) Ps2) Q').
+      { destruct Heqq as [HlE1 HE1]; destruct HQ' as [HlE2 HE2]; split; [ rewrite ?List.length_map in *; lia |].
+        destruct HPt2 as (HPl2 & _); destruct Ht as (HQl2 & _).
+        eapply (params_eq_trans _ p D _ _ _ Hl HΔ' HPl2 HQl2); [ rewrite ?List.length_map in *; lia | exact HE1 | exact HE2 ]. }
+      pose proof (Hk2 Δ' φ Q' Hφ Heqq') as Hgi.
+      eapply (glu_ind_mono p D ups NEl2 AEl2 DP2 DEl2 Hass Hcp); [ | | | exact Hgi ].
+      + intros k0 vs Hk' Hp0 Γ0 A0 M0 m0 HN0.
+        destruct (nparams_lt_ass D k0 Hass ltac:(rewrite List.length_rev, length_nparams; exact Hk')) as [S HS].
+        destruct (HeN _ _ _ HS Hp0) as [b Eb].
+        destruct (functional_glu_univ_elem _ _ _ _ _ _ (HNP2 _ _ _ _ HS Hp0 Eb) (HNP _ _ _ _ HS Hp0 Eb)) as [_ EE].
+        apply EE; exact HN0.
+      + intros ms c0 gs0 k0 vs Hm Hc0 Hk' Hp0 Γ0 A0 M0 m0 HN0.
+        destruct (nth_error_lt_some' _ _ Hk') as [S HS].
+        destruct (HeA _ _ _ _ _ _ Hm Hc0 HS Hp0) as [b Eb].
+        destruct (functional_glu_univ_elem _ _ _ _ _ _ (HAP2 _ _ _ _ _ _ _ Hm Hc0 HS Hp0 Eb) (HAP _ _ _ _ _ _ _ Hm Hc0 HS Hp0 Eb)) as [_ EE].
+        apply EE; exact HN0.
+      + intros ms c0 gs0 gs3 t0 gs4 ws k0 B ys0 Hm Hc0 Heq0 Hw HB Hy1.
+        destruct (HeD _ _ _ _ _ _ _ _ _ _ Hm Hc0 Heq0 Hw HB Hy1) as [b Eb].
+        destruct (functional_glu_univ_elem _ _ _ _ _ _ (HDP2 _ _ _ _ _ _ _ _ _ _ _ Hm Hc0 Heq0 Hw HB Hy1 Eb)
+                    (HDP _ _ _ _ _ _ _ _ _ _ _ Hm Hc0 Heq0 Hw HB Hy1 Eb)) as [EP EE].
+        split; intros; [ apply EP | apply EE ]; assumption.
+  Qed.
+
   (** A constructor applied to glued parameters and arguments, related to
       itself in the PER of the inductive type, is an element of it. *)
   Lemma con_glu_ind : forall R0 ns0, DF d_ind p (ups ++ ns0) ≈ d_ind p (ups ++ ns0) ∈ per_univ_elem u ↘ R0 ->
       forall Δ Ps As ns ws, ⊢ Δ ->
         glu_args Δ (ind_params D) Id nil Ps (ups ++ ns) ->
         glu_args Δ (cargs_ctx p D gs) (sb_of_list Id Ps) (env_args nil (ups ++ ns)) As ws ->
-        ind_rel p D ups (ind_nr D ups) (ind_ar D ups) ns (d_con p c ((ups ++ ns) ++ ws)) (d_con p c ((ups ++ ns) ++ ws)) ->
-        glu_ind p D ups NEl AEl Δ Ps (apps (a_con p c) (Ps ++ As)) (d_con p c ((ups ++ ns) ++ ws)).
+        ind_rel p D ups (ind_nr D ups) (ind_ar D ups) (ind_dr ups) ns (d_con p c ((ups ++ ns) ++ ws)) (d_con p c ((ups ++ ns) ++ ws)) ->
+        glu_ind p D ups NEl AEl DP DEl Δ Ps (apps (a_con p c) (Ps ++ As)) (d_con p c ((ups ++ ns) ++ ws)).
   Proof.
     intros R0 ns0 HR0 Δ Ps As ns ws HΔ HgP HgA Hrel.
     pose proof (decl_closed_params D Hc) as Hass.
@@ -1838,8 +2345,8 @@ Section ConGlu.
     rewrite params_split in HgP'.
     apply glu_args_app in HgP'; [| exact HassU | rewrite (length_ind_uparams D Hle); exact LU | rewrite (length_ind_uparams D Hle); exact Hu ].
     destruct HgP' as [_ HNs].
-    pose proof (comps_of_uparams p D HG Hc Hdt Hsu ups bu u NP NEl AP AEl Hu Hbu Hule HeN HNP HeA HAP Δ Us HΔ HUs) as Hcomps.
-    pose proof (nparams_of_glu_args p D Hc ups u NP NEl AP AEl Hu HNP Δ Us Ns ns Hcomps HNs Hnsr) as Hnp.
+    assert (Hcomps : ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ Us) by (eapply comps_of_uparams; eassumption).
+    assert (Hnp : glu_nparams D NEl Δ Us Ns ns) by (eapply nparams_of_glu_args; eassumption).
     assert (HgA' : glu_args Δ (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns)) As ws) by (rewrite <- EPs; exact HgA).
     pose proof (args_of_glu_args Δ Us Ns ns As ws HΔ Hcomps HUs Hnp Hnsr HgA' Hav) as Harg.
     pose proof (glu_args_params_top _ _ _ _ Hass Hs HgP) as HPt.
@@ -1850,201 +2357,85 @@ Section ConGlu.
     { eapply wf_exp_eq_con_apps; [ exact Hl | exact Hcon | exact HΔ | exact LPn | exact LPn | | exact LA | exact LA | ].
       - intros k P0 P0' T0 H0 H0' HT0; rewrite H0 in H0'; injection H0' as <-; apply wf_exp_eq_refl; eapply HPty; eassumption.
       - intros k N0 N0' T0 H0 H0' HT0; rewrite H0 in H0'; injection H0' as <-; apply wf_exp_eq_refl; eapply HAty; eassumption. }
-    (** The parameters of the type of a recursive argument, glued to their
-        values. *)
-    assert (Hrecp : forall gs1 Pr gs2 bsr, gs = gs1 ++ ca_rec Pr :: gs2 ->
-              eval_exps gc_deps gc_stack Pr (env_args nil (ups ++ ns ++ nonrec_vals gs1 (List.firstn (List.length gs1) ws))) bsr ->
-              tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
-              glu_args Δ (ind_nparams D) (sb_of_list Id Us) (env_args nil ups)
-                (List.map (fun P => P[sb_of_list Id (Ps ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))]) Pr) bsr).
-    { intros gs1 Pr gs2 bsr Heq Hbsr.
-      set (vs1 := List.firstn (List.length gs1) ws) in *.
-      assert (Hl1 : List.length gs1 < List.length gs) by (rewrite Heq, List.length_app; cbn; lia).
-      assert (Hvl1 : List.length vs1 = List.length gs1) by (unfold vs1; rewrite List.length_firstn; lia).
-      assert (HlAs : List.length gs1 <= List.length As) by lia.
-      assert (Hpre1 : forall hs1 B hs2 N0 T' v0, gs1 = hs1 ++ ca_arg B :: hs2 -> List.nth_error As (List.length hs1) = Some N0 ->
-                List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length hs1) = Some T' ->
-                List.nth_error vs1 (List.length hs1) = Some v0 ->
-                Δ ⊢ N0 : T' ® v0 ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs1))).
-      { intros * Heq1 HN0 HT0 Hv0.
-        assert (Hlt : List.length hs1 < List.length gs1) by (rewrite Heq1, List.length_app; cbn; lia).
-        unfold vs1 in Hv0 |- *; rewrite List.firstn_firstn, Nat.min_l by lia.
-        rewrite List.nth_error_firstn in Hv0; destruct (Nat.ltb_spec (List.length hs1) (List.length gs1)); [| lia ].
-        eapply (Harg hs1 B (hs2 ++ ca_rec Pr :: gs2)); [ rewrite Heq, Heq1, <- List.app_assoc; reflexivity | exact HN0 | exact HT0 | exact Hv0 ]. }
-      pose proof (nonrec_prefix_pre _ gs ws gs1 (ca_rec Pr) gs2 Hav LW Heq) as Hp1; fold vs1 in Hp1.
-      pose proof Hadm as (_ & _ & Hcl).
-      destruct (Hcl ns ns c gs gs1 Pr gs2 _ _ Hnsr Hcon Heq Hp1) as (b0 & b1 & E0 & E1 & H01).
-      assert (b0 = bsr) as -> by (eapply functional_eval_exps'; eassumption).
-      assert (b1 = bsr) as -> by (eapply functional_eval_exps'; eassumption).
-      split; [ exact H01 |].
-      pose proof (rec_params_args p D HG Hc ups u NP NEl AP AEl Hu HeN HNP HeA HAP HDc Δ Us HΔ HUs c gs gs1 Pr gs2 Ns ns As vs1 bsr
-                    Hcon Heq Hnp Hnsr Hvl1 HlAs Hpre1 Hp1 Hbsr) as HQn.
-      rewrite EPs, <- List.app_assoc; exact HQn. }
-    eapply glu_ind_con; [ exact Hcon | exact LPn | exact Hbl | exact LW | exact LA | exact HMt | | | | exact HAty | | | ].
+    eapply glu_ind_con; [ exact Hcon | exact LPn | exact Hbl | exact LW | exact LA | exact HMt | | | | exact HAty | | ].
     all: rewrite ?skipn_app_exact by exact Hu.
     - exact Hnsr.
     - exact Hav.
     - fold Us Ns; exact Hnp.
     - rewrite EPs; exact Harg.
-    - intros gs1 Pr gs2 N A v bsr Q Heq HN HA Hv Hbsr HQ; subst A.
-      pose proof (cargs_rec_type_eq p D gs gs1 Pr gs2 Ps As _ Heq Hle LPn HA) as EQ.
-      apply apps_ind_inj in EQ; subst Q.
-      destruct (Hrecp _ _ _ _ Heq Hbsr) as [H01 HQn].
-      set (Qn := List.map (fun P => P[sb_of_list Id (Ps ++ nonrec_exps gs1 (List.firstn (List.length gs1) As))]) Pr) in *.
-      fold Us.
-      rewrite firstn_app_exact, skipn_app_exact by exact LU.
-      destruct (glu_args_length _ _ _ _ _ _ HQn) as [LQ _]; rewrite length_nparams in LQ.
-      assert (HQp : glu_args Δ (ind_params D) Id nil (Us ++ Qn) (ups ++ bsr)).
-      { rewrite params_split; apply glu_args_app; [ exact HassU | rewrite (length_ind_uparams D Hle); exact LU | rewrite (length_ind_uparams D Hle); exact Hu |].
-        split; assumption. }
-      split; [ rewrite List.length_app, LU, LQ; unfold ind_nn; lia | split; [ exact H01 |] ].
-      intros bsr' Hb'.
-      pose proof (nparams_of_glu_args p D Hc ups u NP NEl AP AEl Hu HNP Δ Us Qn bsr Hcomps HQn H01) as HnQ.
-      split; [ eapply glu_nparams_resp_per; [ exact HNe | exact Hb' | exact HnQ ] |].
-      intros Δ0 φ Hφ.
-      pose proof (glu_args_params_top _ _ _ _ Hass Hs (glu_args_wk _ _ _ _ _ _ _ Hass Hs Hφ HQp)) as Ht.
-      destruct (per_univ_elem_ind_reinst _ _ _ _ _ _ _ _ HR0 Hl Hu Hu _ _ Hb') as [Rr HRr].
-      eapply glu_params_top_resp_per_top; [ exact Hl | exact (per_univ_then_per_top_typ HRr) | exact Ht ].
-    - intros gs1 Pr gs2 N A v bsr Q Heq HN HA Hv Hbsr HQ Δ' φ Q' Hφ HQ'; subst A.
-      pose proof (cargs_rec_type_eq p D gs gs1 Pr gs2 Ps As _ Heq Hle LPn HA) as EQ.
-      apply apps_ind_inj in EQ; subst Q.
-      destruct (Hrecp _ _ _ _ Heq Hbsr) as [H01 HQn].
-      set (vs1 := List.firstn (List.length gs1) ws) in *.
+    - (** A recursive argument: by its shape, from its gluing at its type. *)
+      intros gs1 t gs2 N A v Heq HN HA Hv.
+      set (fa := List.firstn (List.length gs1) ws).
+      set (As1 := List.firstn (List.length gs1) As).
       assert (Hl1 : List.length gs1 < List.length gs) by (rewrite Heq, List.length_app; cbn; lia).
-      assert (Hvl1 : List.length vs1 = List.length gs1) by (unfold vs1; rewrite List.length_firstn; lia).
+      assert (Hlfa : List.length fa = List.length gs1) by (unfold fa; rewrite List.length_firstn; lia).
+      assert (HlAs1 : List.length As1 = List.length gs1) by (unfold As1; rewrite List.length_firstn; lia).
       assert (HlAs : List.length gs1 <= List.length As) by lia.
-      set (Ns' := nonrec_exps gs1 (List.firstn (List.length gs1) As)) in *.
-      set (Qn := List.map (fun P => P[sb_of_list Id (Ps ++ Ns')]) Pr) in *.
-      fold Us in HA |- *.
       assert (Hpre1 : forall hs1 B hs2 N0 T' v0, gs1 = hs1 ++ ca_arg B :: hs2 -> List.nth_error As (List.length hs1) = Some N0 ->
                 List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length hs1) = Some T' ->
-                List.nth_error vs1 (List.length hs1) = Some v0 ->
-                Δ ⊢ N0 : T' ® v0 ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs1))).
+                List.nth_error fa (List.length hs1) = Some v0 ->
+                Δ ⊢ N0 : T' ® v0 ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) fa))).
       { intros * Heq1 HN0 HT0 Hv0.
         assert (Hlt : List.length hs1 < List.length gs1) by (rewrite Heq1, List.length_app; cbn; lia).
-        unfold vs1 in Hv0 |- *; rewrite List.firstn_firstn, Nat.min_l by lia.
+        unfold fa in Hv0 |- *; rewrite List.firstn_firstn, Nat.min_l by lia.
         rewrite List.nth_error_firstn in Hv0; destruct (Nat.ltb_spec (List.length hs1) (List.length gs1)); [| lia ].
-        eapply (Harg hs1 B (hs2 ++ ca_rec Pr :: gs2)); [ rewrite Heq, Heq1, <- List.app_assoc; reflexivity | exact HN0 | exact HT0 | exact Hv0 ]. }
-      pose proof (nonrec_prefix_pre _ gs ws gs1 (ca_rec Pr) gs2 Hav LW Heq) as Hp1; fold vs1 in Hp1.
-      assert (HQp : glu_args Δ (ind_params D) Id nil (Us ++ Qn) (ups ++ bsr)).
-      { rewrite params_split; apply glu_args_app; [ exact HassU | rewrite (length_ind_uparams D Hle); exact LU | rewrite (length_ind_uparams D Hle); exact Hu |].
-        split; assumption. }
-      (** The argument is glued at the value of its type, the inductive type at
-          the values of the parameters of the recursive argument weakened to
-          all the arguments before it, related to the ones at the
-          non-recursive arguments. *)
-      pose proof HgA as (_ & _ & HgAe).
-      destruct (HgAe _ _ _ _ _ HN HA Hv (cargs_rev_nth_rec p D gs gs1 Pr gs2 Heq)) as (i' & a1 & P1 & El1 & Ha1 & Hg1 & HP1 & HM1).
-      fold vs1 in Ha1.
-      destruct (ElimCases.cargs_sem_all D HDc Hc Hsu Hdt p Hl c gs Hcon gs1 (ca_rec Pr :: gs2) Heq) as [HC1 _].
-      destruct (sem_ctx_per_ctx_env HC1) as [R HR].
-      destruct (cargs_suffix_glu p D gs gs1 (ca_rec Pr :: gs2) Heq HΨ) as [Sb1 HSb1].
-      assert (HgA1 : glu_args Δ (cargs_ctx p D gs1) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns))
-                       (List.firstn (List.length gs1) As) vs1).
+        eapply (Harg hs1 B (hs2 ++ ca_rec t :: gs2)); [ rewrite Heq, Heq1, <- List.app_assoc; reflexivity | exact HN0 | exact HT0 | exact Hv0 ]. }
+      pose proof (nonrec_prefix_pre _ gs ws gs1 (ca_rec t) gs2 Hav LW Heq) as Hp1; fold fa in Hp1.
+      (** The arguments before, glued on the side of all the arguments. *)
+      destruct (cargs_suffix_glu p D gs gs1 (ca_rec t :: gs2) Heq HΨ) as [Sb1 HSb1].
+      assert (HgA1 : glu_args Δ (cargs_ctx p D gs1) (sb_of_list Id (Us ++ Ns)) (env_args nil (ups ++ ns)) As1 fa).
       { pose proof HgA' as HgA''.
-        rewrite (cargs_split_aux p D gs gs1 (ca_rec Pr) gs2 Heq), <- (List.firstn_skipn (List.length gs1) As),
+        rewrite (cargs_split_aux p D gs gs1 (ca_rec t) gs2 Heq), <- (List.firstn_skipn (List.length gs1) As),
           <- (List.firstn_skipn (List.length gs1) ws) in HgA''.
         apply glu_args_app in HgA''; [ exact (proj1 HgA'') | apply cargs_ctx_aux_ass | |];
           rewrite List.length_firstn, length_cargs_ctx; lia. }
       assert (HgPU : glu_args Δ (ind_params D) Id nil (Us ++ Ns) (ups ++ ns)) by (rewrite <- EPs; exact HgP).
-      pose proof (cargs_env_rel p D Hc gs gs1 (ca_rec Pr :: gs2) R Sb1 Δ (Us ++ Ns) (ups ++ ns) _ _ Heq HΔ HR HSb1 HgPU HgA1) as HE.
-      set (E := env_args nil ((ups ++ ns) ++ vs1)) in HE.
-      assert (HwkE : ⟪wk_pat (cargs_pat gs1)⟫ E = env_args nil (ups ++ ns ++ nonrec_vals gs1 vs1)).
-      { unfold E; rewrite env_args_app, IndSem.eval_wk_pat_args by exact Hvl1.
-        rewrite <- env_args_app, List.app_assoc; reflexivity. }
-      pose proof (IndCases.length_rec_ps D Hc c gs gs1 Pr gs2 Hcon Heq) as HPl.
-      assert (Hlink : forall m P T, List.nth_error Pr m = Some P ->
-                 List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Pr) m = Some T ->
-                 exists b1, ⟦ P[wk_pat (cargs_pat gs1)]ʷ ⟧ E ↘ b1 /\
-                   forall b, List.nth_error bsr m = Some b -> ind_nr D ups m (List.firstn m bsr) b b1).
-      { intros m P T HP HT.
-        destruct (cargs_rec_val_rel p D Hl Hc Hdt Hsu HDc c gs Hcon gs1 Pr gs2 Heq R E HR HE m P T HP HT)
-          as (b1 & b & t1 & t & j & Rt & Eb1 & Eb & Et1 & Et & HRt & Hbb).
-        rewrite HwkE in Eb, Et.
-        destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA0 & _).
-        destruct (rec_type_link p D HG Hc ups u NP NEl AP AEl Hu HeN HNP HeA HAP HDc Δ Us HΔ HUs
-                    c gs gs1 Pr gs2 Ns ns As vs1 bsr Hcon Heq Hnp Hnsr Hvl1 HlAs Hpre1 Hp1 Hbsr m T A HT HA0)
-          as (t' & b' & j0 & R' & Et' & Eb' & HR').
-        assert (t' = t) as -> by (eapply functional_eval_exp; eassumption).
-        exists b1; split; [ exact Eb1 |].
-        intros b0 Hb0.
-        destruct (IndCases.eval_exps_nth _ _ _ _ _ Hbsr HP) as (b2 & Hb2 & Eb2).
-        rewrite Hb0 in Hb2; injection Hb2 as <-.
-        assert (b0 = b) as -> by (eapply functional_eval_exp; eassumption).
-        pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRt) HRt) as HRtt.
-        assert (ER1 : Rt <~> R') by (eapply per_univ_elem_right_irrel; [ exact HRtt | exact HR' ]).
-        pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HR') HR') as HRbb.
-        pose proof (per_head_iff Eb' Eb' HRbb) as ER2.
-        assert (HPR : PER Rt) by (eapply per_elem_PER; exact HRt).
-        unfold ind_nr; rewrite (nth_ctyp_eq _ _ _ HA0), env_args_app.
-        apply ER2, ER1; symmetry; exact Hbb. }
-      destruct (IndCases.eval_exps_each (List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Pr) E) as [bsr1 Ebs1].
-      { intros m M HM; rewrite List.nth_error_map in HM.
-        destruct (List.nth_error Pr m) as [P |] eqn:HP; cbn in HM; [ injection HM as <- | discriminate ].
-        destruct (nth_error_lt_some (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Pr) m) as [T HT].
-        { assert (Hm : m < List.length Pr) by (apply List.nth_error_Some; congruence).
-          rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc); rewrite length_nparams; lia. }
-        destruct (Hlink _ _ _ HP HT) as (b1 & Eb1 & _); eauto. }
-      assert (Htf : tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr1).
-      { rewrite tele_full_iff, List.length_rev, length_nparams.
-        rewrite (IndCases.eval_exps_length _ _ _ Hbsr), (IndCases.eval_exps_length _ _ _ Ebs1), List.length_map.
-        split; [ exact HPl | split; [ exact HPl |] ].
-        intros j x x' Hx Hx'.
-        assert (Hj : j < List.length Pr) by (rewrite <- (IndCases.eval_exps_length _ _ _ Hbsr); apply List.nth_error_Some; congruence).
-        destruct (nth_error_lt_some Pr j Hj) as [P HP].
-        destruct (nth_error_lt_some (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_nonrec gs1) + ind_nn D))) Pr) j) as [T HT].
-        { rewrite length_tele_insts by exact (decl_closed_nparams_ass D Hc); rewrite length_nparams; lia. }
-        destruct (Hlink _ _ _ HP HT) as (b1 & Eb1 & Hr).
-        destruct (IndCases.eval_exps_nth _ _ _ _ _ Ebs1 ltac:(rewrite List.nth_error_map, HP; reflexivity)) as (b2 & Hb2 & Eb2).
-        assert (b2 = b1) as -> by (eapply functional_eval_exp; eassumption).
-        rewrite Hx' in Hb2; injection Hb2 as ->; exact (Hr _ Hx). }
-      clear Hlink.
-      assert (Et0 : ⟦ apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1)) ++ List.map (fun P => P[wk_pat (cargs_pat gs1)]ʷ) Pr) ⟧ E
-                      ↘ d_ind p (ups ++ bsr1)).
-      { apply Modules.eval_apps_exp; exists (d_ind p nil), (ups ++ bsr1); split; [ constructor | split ].
-        - apply Modules.eval_exps_app; [| exact Ebs1 ].
-          unfold ind_uvars; rewrite length_cargs_pat.
-          unfold E; rewrite <- List.app_assoc.
-          replace (List.length gs1 + ind_nn D) with (List.length (ns ++ vs1)) by (rewrite List.length_app; lia).
-          replace (ind_nu D) with (List.length ups) by exact Hu.
-          apply IndSem.eval_vars_from_args.
-        - change (d_ind p (ups ++ bsr1)) with (d_ind p (nil ++ (ups ++ bsr1))).
-          apply (IndCases.eval_apps_ind D p Hl).
-          rewrite List.length_app, (IndCases.eval_exps_length _ _ _ Ebs1), List.length_map; cbn; unfold ind_nn in *; lia. }
-      assert (a1 = d_ind p (ups ++ bsr1)) as -> by (unfold E in Et0; rewrite <- env_args_app in Ha1; eapply functional_eval_exp; eassumption).
-      destruct (per_univ_elem_ind_reinst _ _ _ _ _ _ _ _ HR0 Hl Hu Hu _ _ (canon_tnr_sym p D ups Hass Hcp _ _ Htf)) as [Rq HRq].
-      pose proof (per_univ_trans _ _ _ _ _ _ (per_univ_sym _ _ _ _ HRq) HRq) as Hself.
-      destruct (glu_ind_of_per p D Hl u Rq ups bsr Hself Hu)
-        as (NP2 & NEl2 & AP2 & AEl2 & P2 & El2 & R2 & Hg2 & HP2 & HEl2 & HR2 & HeN2 & HNP2 & HeA2 & HAP2).
-      clear Et0 Ebs1 Htf HgAe.
-      (** At the gluing of the inductive type at those values, the argument
-          is an element at every instance of the parameters equal to the
-          ones of its type. *)
-      assert (HT2 : Δ ⊢ apps (a_ind p) (Us ++ Qn) ® P2).
-      { apply HP2; exists (Us ++ Qn).
-        exact (ind_typ_at_of_args p D Hl HG Hc Hdt Hsu Δ (Us ++ Qn) ups bsr bu u NP2 NEl2 AP2 AEl2 HΔ HQp Hu Hbu Hule HeN2 HNP2 HeA2 HAP2). }
-      pose proof (glu_univ_elem_exp_conv_uidx (ex_intro _ Rq HRq) Hg1 Hg2 HM1 HT2) as HM2.
-      apply HEl2 in HM2; destruct HM2 as (_ & _ & Ps2 & HPs2 & Hk2).
-      assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
-      pose proof (glu_args_params_top _ _ _ _ Hass Hs (glu_args_wk _ _ _ _ _ _ _ Hass Hs Hφ HQp)) as Ht.
-      destruct (proj2 HPs2 _ _ Hφ) as (HPt2 & _ & _).
-      pose proof (glu_params_top_eq p D Δ' _ _ _ Hl HΔ' (ind_rps_of_per _ _ _ _ _ _ Hself Hl _) HPt2 Ht) as Heqq.
-      assert (Heqq' : exps_eq_at Δ' (ind_params D) (List.map (fun P => P[φ]ʷ) Ps2) Q').
-      { fold Us in HQ'; destruct Heqq as [HlE1 HE1]; destruct HQ' as [HlE2 HE2]; split; [ rewrite ?List.length_map in *; lia |].
-        destruct HPt2 as (HPl2 & _); destruct Ht as (HQl2 & _).
-        eapply (params_eq_trans _ p D _ _ _ Hl HΔ' HPl2 HQl2); [ rewrite ?List.length_map in *; lia | exact HE1 | exact HE2 ]. }
-      pose proof (Hk2 Δ' φ Q' Hφ Heqq') as Hgi.
-      eapply (glu_ind_mono p D ups NEl2 AEl2 Hass Hcp); [ | | exact Hgi ].
-      + intros k vs Hk' Hp Γ0 A0 M0 m0 HN0.
-        destruct (nparams_lt_ass D k Hass ltac:(rewrite List.length_rev, length_nparams; exact Hk')) as [S HS].
-        destruct (HeN _ _ _ HS Hp) as [b Eb].
-        destruct (functional_glu_univ_elem _ _ _ _ _ _ (HNP2 _ _ _ _ HS Hp Eb) (HNP _ _ _ _ HS Hp Eb)) as [_ EE].
-        apply EE; exact HN0.
-      + intros ms c0 gs0 k vs Hm Hc0 Hk' Hp Γ0 A0 M0 m0 HN0.
-        destruct (nth_error_lt_some' _ _ Hk') as [S HS].
-        destruct (HeA _ _ _ _ _ _ Hm Hc0 HS Hp) as [b Eb].
-        destruct (functional_glu_univ_elem _ _ _ _ _ _ (HAP2 _ _ _ _ _ _ _ Hm Hc0 HS Hp Eb) (HAP _ _ _ _ _ _ _ Hm Hc0 HS Hp Eb)) as [_ EE].
-        apply EE; exact HN0.
+      assert (Hσc0 : Δ ⊢s sb_of_list Id ((Us ++ Ns) ++ As1) ® env_args nil ((ups ++ ns) ++ fa) ∈ Sb1).
+      { eapply glu_sub_of_list with (C := cargs_ctx p D gs1 ++ ind_params D) (Γ0 := ⋅) (Sb0 := nil_glu_sub_pred);
+          [ unfold tele_ass; apply List.Forall_app; split; [ apply cargs_ctx_aux_ass | exact Hass ]
+          | rewrite List.app_nil_r; exact HSb1 | eapply glu_ctx_env_nil; [ reflexivity | eapply ctx_wf_gctx; exact HΔ ]
+          | cbn; apply wf_sub_nil'; exact HΔ |].
+        destruct (glu_args_length _ _ _ _ _ _ HgPU) as [LP' LB'].
+        apply glu_args_app; [ exact Hass | exact LP' | exact LB' |]; split; [ exact HgPU | exact HgA1 ]. }
+      assert (INV : forall R, EF cargs_ctx p D gs1 ++ ind_params D ≈ cargs_ctx p D gs1 ++ ind_params D ∈ per_ctx_env ↘ R ->
+                R (env_args nil (ups ++ ns ++ fa)) (env_args nil (ups ++ ns ++ fa))).
+      { intros R HR.
+        pose proof (cargs_env_rel p D Hc gs gs1 (ca_rec t :: gs2) R Sb1 Δ (Us ++ Ns) (ups ++ ns) _ _ Heq HΔ HR HSb1 HgPU HgA1) as H.
+        rewrite <- List.app_assoc in H; exact H. }
+      pose proof (cargs_uparams_gargs p D Hl Hc Hdt Hsu HDc c gs Hcon gs1 (ca_rec t :: gs2) ups ns fa Heq Hu Lns Hlfa INV) as Hgu0.
+      (** The arguments before, glued on the side of the non-recursive ones. *)
+      destruct (gd_dctx _ HG _ _ _ _ _ 0 Hcon Heq ltac:(lia)) as [SbC0 HSbC0].
+      cbn [List.firstn doms_ctx List.map List.rev List.app] in HSbC0.
+      assert (Hσ0 : Δ ⊢s sb_of_list Id ((Us ++ Ns) ++ nonrec_exps gs1 As1) ® env_args nil ((ups ++ ns) ++ nonrec_vals gs1 fa) ∈ SbC0)
+        by (eapply astrat_glu_sub; eassumption).
+      (** The argument, glued at its type. *)
+      pose proof HgA as (_ & _ & HgAe).
+      destruct (HgAe _ _ _ _ _ HN HA Hv (cargs_rev_nth_rec p D gs gs1 t gs2 Heq)) as (i' & a1 & P1 & El1 & Ha1 & Hg1 & HP1 & HM1).
+      fold fa in Ha1.
+      pose proof (cargs_rec_type_sh p D gs gs1 t gs2 Ps As A Heq Hle LPn HA) as ETs.
+      pose proof (cargs_rec_type p D gs gs1 t gs2 (sb_of_list Id Ps) As A Heq HA) as ETc.
+      fold As1 in ETs, ETc.
+      rewrite <- sb_of_list_app in ETc.
+      fold Us in ETs.
+      rewrite EPs in ETs, ETc.
+      rewrite <- List.app_assoc in ETs.
+      assert (HlNs' : List.length (Ns ++ nonrec_exps gs1 As1) = 0 + List.length (cargs_nonrec gs1) + ind_nn D)
+        by (rewrite List.length_app, length_nonrec_exps by exact HlAs1; lia).
+      assert (Hfinal : glu_rec p D ups NEl AEl DP DEl Δ (ns ++ nonrec_vals gs1 fa ++ nil) t
+                         (ptyp_ty_at p Us (sb_of_list Id (Us ++ (Ns ++ nonrec_exps gs1 As1))) t) N v).
+      { eapply (con_rec_glu R0 ns0 HR0 gs1 t gs2 ns fa Heq Lns Hlfa Hnsr Hp1 Hgu0 INV t 0 nil Δ Id Us (Ns ++ nonrec_exps gs1 As1)
+                  SbC0 (sb_of_list Id ((Us ++ Ns) ++ As1)) Sb1 N v a1 i' P1 El1);
+          [ reflexivity | lia | apply tele_pre_nil | apply per_gargs_nil | exact HΔ | exact HUs | exact HlNs'
+          | cbn [List.firstn doms_ctx List.map List.rev List.app]; exact HSbC0
+          | rewrite !List.app_nil_r; rewrite <- !List.app_assoc in Hσ0; exact Hσ0
+          | cbn [List.firstn sh_ctx List.app]; exact HSb1
+          | rewrite !List.app_nil_r; replace (ups ++ ns ++ fa) with ((ups ++ ns) ++ fa) by (rewrite <- List.app_assoc; reflexivity); exact Hσc0
+          | cbn [List.repeat List.app]; rewrite <- ETs, <- ETc; reflexivity
+          | cbn [List.repeat List.app]; rewrite List.app_nil_r; rewrite <- env_args_app, <- List.app_assoc in Ha1; exact Ha1
+          | exact Hg1
+          | rewrite <- ETs; exact HP1
+          | rewrite <- ETs; exact HM1 ]. }
+      rewrite List.app_nil_r in Hfinal; rewrite ETs; exact Hfinal.
   Qed.
 
 End ConGlu.
@@ -2057,6 +2448,9 @@ Section ConFT.
     (Hdt : decl_typed gc_deps gc_stack D) (Hsu : ind_sort_univ (ind_sort D)) (HDc : IndCases.sem_core D).
   Variable (c : String.string) (gs : list carg).
   Hypothesis (Hcon : ind_con D c = Some gs) (HΨ : ⊩ cargs_ctx p D gs ++ ind_params D).
+  Hypothesis (HshV : forall gs1 t gs2 k, gs = gs1 ++ ca_rec t :: gs2 -> k <= List.length (ptyp_doms t) ->
+       exists j : nat, sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D
+         ⊩ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t) : Typeω@j).
 
   (** The universes of the sort, below a large one. *)
   Lemma sort_bound : exists n, forall ρ bu, ⟦ ind_sort D ⟧ ρ ↘ bu -> forall i, n <= i -> uidx_le (IndSem.univ_idx bu) (ul i).
@@ -2149,7 +2543,8 @@ Section ConFT.
     rewrite Eps in Hglu, HPER, HgP, HgA, EV.
     clear Hb Eb Eps.
     destruct (glu_univ_elem_per_univ _ _ _ _ Hglu) as [Rb HRb].
-    destruct (glu_ind_of_per p D Hl i Rb ups ns HRb Hu) as (NP & NEl & AP & AEl & P2 & El2 & R2 & Hg2 & HP2 & HEl2 & HR2 & HeN & HNP & HeA & HAP).
+    destruct (glu_ind_of_per p D Hl i Rb ups ns HRb Hu)
+      as (NP & NEl & AP & AEl & DP & DEl & P2 & El2 & R2 & Hg2 & HP2 & HEl2 & HR2 & HeN & HNP & HeA & HAP & HeD & HDP).
     destruct (functional_glu_univ_elem _ _ _ _ _ _ Hglu Hg2) as [_ EEl].
     apply EEl, HEl2.
     destruct (per_univ_elem_ind_canon _ _ _ _ _ _ _ _ HRb Hl Hu Hu) as (_ & _ & _ & _ & _ & _ & _ & Hrel).
@@ -2162,7 +2557,7 @@ Section ConFT.
     split; [| split; [ apply HR2; exact Hrb |] ].
     { rewrite EM; pose proof (con_apps_eq Δ Ps Ps As _ _ ws HΔ HgP HgA (glu_params_top_refl _ _ _ _ HPt)) as H; gen_presups; assumption. }
     exists Ps; split.
-    { exact (ind_typ_at_of_args p D Hl HG Hc Hdt Hsu Δ Ps ups ns bu (ul i) NP NEl AP AEl HΔ HgP Hu Hbu Hule HeN HNP HeA HAP). }
+    { exact (ind_typ_at_of_args p D Hl HG Hc Hdt Hsu Δ Ps ups ns bu (ul i) NP NEl AP AEl DP DEl HΔ HgP Hu Hbu Hule HeN HNP HeA HAP HeD HDP). }
     intros Δ' φ Ps' Hφ HPs'.
     assert (HΔ' : ⊢ Δ') by (eapply kripke_dom; eassumption).
     pose proof (glu_args_resp_eq Δ' _ nil _ Ps' _ Hass (comps_params_wf' D Hdt) HΔ' HPs' (glu_args_wk _ _ _ _ _ _ _ Hass Hs Hφ HgP)) as HgP'.
@@ -2179,8 +2574,9 @@ Section ConFT.
     destruct HPs' as [HlPP HPP].
     apply glu_args_app in Hg'; [| exact Hass | rewrite <- HlPP; exact LPw | exact Lupn ].
     destruct Hg' as [_ HgA'].
-    pose proof (con_glu_ind p D Hl HG Hc Hdt Hsu HDc c gs Hcon HΨ ups bu (ul i) NP NEl AP AEl Hu Hbu Hule HeN HNP HeA HAP
-                  Rb ns HRb Δ' Ps' (List.map (fun M => M[φ]ʷ) As) ns ws HΔ' HgP' HgA' ltac:(apply Hrel; rewrite <- EV; exact Hrb)) as Hgi.
+    pose proof (con_glu_ind p D Hl HG Hc Hdt Hsu HDc c gs Hcon HΨ ups bu (ul i) NP NEl AP AEl DP DEl Hu Hbu Hule HeN HNP HeA HAP
+                  HeD HDP HshV Rb ns HRb Δ' Ps' (List.map (fun M => M[φ]ʷ) As) ns ws HΔ' HgP' HgA'
+                  ltac:(apply Hrel; rewrite <- EV; exact Hrb)) as Hgi.
     rewrite EV.
     eapply glu_ind_resp_exp_eq; [ exact Hgi |].
     rewrite EM, apps_wk, List.map_app; cbn [exp_wk].
@@ -2197,6 +2593,7 @@ Section ConFT.
     assert (HΔ0 : ⊢ ⋅) by (constructor; eapply ctx_wf_gctx; exact (comps_params_wf' D Hdt)).
     destruct (con_ty_typed0 _ _ _ _ _ _ Hdt Hc Hl Hcon) as [j Hj].
     destruct (cargs_ctx_wf _ _ p D c gs Hdt Hc Hl (cons_lookup_in _ _ _ Hcon) gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _).
+    pose proof (shape_rest_wf' _ _ _ _ _ _ Hdt Hc Hl Hcon) as Hsh0.
     assert (Hty : ⋅ ⊢ a_con p c : con_ty p D gs) by (eapply wf_con; eassumption).
     unfold con_ty in Hty; rewrite <- ctx_pi_app in Hty.
     destruct (rel_exp_under_ctx_simple (completeness_fundamental_exp _ _ _ Hty)) as (env_rel & Henv & j' & Hsimp).
@@ -2238,6 +2635,7 @@ Section ConFT.
       | exact Hσ | rewrite List.length_app, length_cargs_ctx; reflexivity | | | | exact Ha | exact Hglu ].
     - intros xs x Hx; eapply eval_app_con; [ exact Hl | exact Hcon | lia ].
     - cbn [apps_exp]; rewrite ctx_pi_app; change (ctx_pi (ind_params D) (ctx_pi (cargs_ctx p D gs) (apps (a_ind p) (ind_pvars D (List.length gs))))) with (con_ty p D gs).
+      pose proof (shape_rest_wf' _ _ _ _ _ _ Hdt Hc Hl Hcon) as Hsh0.
       rewrite (con_ty_sub p D c gs) by assumption; eapply wf_con; eassumption.
     - intros R a' Ha' HR; exact (con_former_per _ _ _ Ha' HR).
     - intros Δ' φ Ms vs Hφ Hg b P' El' Hb Hglub HPb; cbn [List.map List.app] in *.

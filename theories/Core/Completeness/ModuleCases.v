@@ -17,7 +17,7 @@ From Mctt.Core.Syntactic.System Require Import MemberLemmas GlobalModules.
 From Mctt.Core.Completeness Require Import
   ContextCases FunctionCases LetCases LevelCases NatCases SubstitutionCases SubtypingCases
   TrueFalseCases UniverseCases VariableCases LogicalRelation UnitCases InstanceCases
-  MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases GlobalSem IndCases TeleSem ElimCases.
+  MemberCases MemberTyping MemberReps MemberSem ModexpCases PathCases GlobalSem IndCases TeleSem ElimCases ElimIota.
 From Mctt.Core.Semantic Require Import Realizability Evaluation.Modules.
 Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 #[local] Open Scope list_scope.
@@ -239,7 +239,7 @@ Lemma k_iota : forall Θ Ξ Θ2 Ξ2 Γ p D c gs Ps As nm A (i : nat) Bs n B,
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])
       (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))
-      (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)]).
+      (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)]).
 Proof.
   intros * He HΓ Hl Hcon HPl HPs HAl HAs Hnm HA HMx HBn HBc Hnb HB Hlk HΓ2.
   destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
@@ -707,7 +707,7 @@ Lemma sem_V_ind : forall Θ Ξ pv D Θ2 Ξ2,
     decl_typed Θ Ξ D -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_ind pv D).
 Proof.
   intros * Hdt HG He; cbn [sem_V].
-  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & _ & HA & HPl & HP & HN & Hnd).
+  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & _ & HA & HPl & HP & HN & Hnd & Hsh).
   pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
   destruct kripke_fundamental as (Kc & _).
   assert (Harg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
@@ -718,6 +718,35 @@ Proof.
     pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = k) by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
     rewrite Hls, (astrat_prefix gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
+    pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
+    split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
+  assert (Hstrat : forall c gs k, ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
+             @sem_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D)).
+  { intros c gs k Hcon; induction k as [| k IH]; intros Hk.
+    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
+    + destruct (nth_error_lt_some' (cargs_nonrec gs) k ltac:(lia)) as [A HA0].
+      assert (Hst : astrat gs (S k) = ce_ass A :: astrat gs k).
+      { unfold astrat; rewrite (firstn_S_snoc _ _ (ce_ass A)) by (rewrite List.nth_error_map, HA0; reflexivity).
+        rewrite List.rev_app_distr; reflexivity. }
+      rewrite Hst; cbn [List.app].
+      destruct (Harg _ _ _ _ Hcon HA0) as (_ & j & Hj).
+      exact (@sem_ctx_ext_typ (gc_mk Θ2 Ξ2) _ _ _ (IH ltac:(lia)) Hj). }
+  assert (Hdom : forall c gs gs1 t gs2 k B, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             List.nth_error (ptyp_doms t) k = Some B ->
+             @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D)
+               ((ind_sort D)[wk_shiftn (k + List.length (cargs_nonrec gs1) + ind_nn D)]ʷ) B B /\
+             exists j : nat, @rel_exp_under_ctx (gc_mk Θ2 Ξ2)
+               (doms_ctx (List.firstn k (ptyp_doms t)) ++ astrat gs (List.length (cargs_nonrec gs1)) ++ ind_params D) (Typeω@j) B B).
+  { intros * Hcon Heq HB.
+    destruct (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as [_ Hs2].
+    assert (Hsplit : ptyp_doms t = List.firstn k (ptyp_doms t) ++ B :: List.skipn (S k) (ptyp_doms t))
+      by (rewrite <- (skipn_nth_cons' _ _ _ HB), List.firstn_skipn; reflexivity).
+    pose proof (Hs2 _ _ _ Hsplit) as HT.
+    assert (Hk : List.length (List.firstn k (ptyp_doms t)) = k)
+      by (rewrite List.length_firstn; assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
+    assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
+      by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    rewrite Hk, Hls, (astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
     pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
@@ -731,15 +760,7 @@ Proof.
     pose proof (HN _ _ _ HΔ1) as HT; rewrite length_npre in HT by lia.
     pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ].
-  - intros c gs k Hcon; induction k as [| k IH]; intros Hk.
-    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
-    + destruct (nth_error_lt_some' (cargs_nonrec gs) k ltac:(lia)) as [A HA0].
-      assert (Hst : astrat gs (S k) = ce_ass A :: astrat gs k).
-      { unfold astrat; rewrite (firstn_S_snoc _ _ (ce_ass A)) by (rewrite List.nth_error_map, HA0; reflexivity).
-        rewrite List.rev_app_distr; reflexivity. }
-      rewrite Hst; cbn [List.app].
-      destruct (Harg _ _ _ _ Hcon HA0) as (_ & j & Hj).
-      exact (@sem_ctx_ext_typ (gc_mk Θ2 Ξ2) _ _ _ (IH ltac:(lia)) Hj).
+  - exact Hstrat.
   - exact Harg.
   - exact Hnd.
   - intros * Hcon Heq HPk HT.
@@ -747,8 +768,18 @@ Proof.
       by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
     pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
-    rewrite (astrat_prefix gs1 (ca_rec Ps :: gs2)), <- Heq in H.
+    rewrite (astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (kread _ _ _ _ _ _ _ Hμ H).
+  - exact Hdom.
+  - intros * Hcon Heq; exact (proj1 (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq)).
+  - intros * Hcon Heq; exact (HPl _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq).
+  - intros c gs gs1 t gs2 k Hcon Heq; induction k as [| k IH]; intros Hk.
+    + cbn [List.firstn doms_ctx List.map List.rev List.app].
+      apply Hstrat with (c := c); [ exact Hcon | rewrite Heq, cargs_nonrec_app, List.length_app; lia ].
+    + destruct (nth_error_lt_some' (ptyp_doms t) k ltac:(lia)) as [B HB].
+      rewrite (firstn_S_snoc _ _ _ HB), doms_ctx_snoc; cbn [List.app].
+      destruct (Hdom _ _ _ _ _ _ _ Hcon Heq HB) as (_ & j & Hj).
+      exact (@sem_ctx_ext_typ (gc_mk Θ2 Ξ2) _ _ _ (IH ltac:(lia)) Hj).
 Qed.
 
 (** Every well-formed global context is semantically sound: the identity is a

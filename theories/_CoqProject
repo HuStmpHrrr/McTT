@@ -40,6 +40,7 @@
 ./Core/Completeness/TeleSem.v
 ./Core/Completeness/IndCases.v
 ./Core/Completeness/ElimCases.v
+./Core/Completeness/ElimIota.v
 ./Core/Completeness/UniverseCases.v
 ./Core/Completeness/VariableCases.v
 ./Core/Semantic/Consequences.v

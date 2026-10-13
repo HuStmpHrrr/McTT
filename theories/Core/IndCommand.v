@@ -178,7 +178,7 @@ Section ConTypes.
     induction 1 as [args1 gs1 | args1 gs1 y T args g gs Hg Hgs IH]; intros Hlen c Hin Hsub.
     - (* no argument left: the result type *)
       rewrite List.app_nil_r in Hin.
-      destruct (con_cod_typed _ _ _ _ _ _ HD Hdc Hl (cons_lookup_nodup _ _ _ ltac:(pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd); exact Hnd) Hin))
+      destruct (con_cod_typed _ _ _ _ _ _ HD Hdc Hl (cons_lookup_nodup _ _ _ ltac:(pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _); exact Hnd) Hin))
         as [j Hj].
       exists j; cbn [rtele tele_sub ctx_pi List.length cargs_ctx_aux List.rev List.map]; rewrite Nat.add_0_r.
       apply wf_exp_eq_refl.
@@ -187,7 +187,7 @@ Section ConTypes.
     - (* an argument: equal at its type as written and as filed, then the
          rest *)
       assert (Hin' : In (c, (gs1 ++ g :: nil) ++ gs) (ind_cons D)) by (rewrite <- List.app_assoc; exact Hin).
-      pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd).
+      pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
       set (τ := sb_qn (List.length gs1 + np) σ0).
       (* the argument as classified, and its filed entry *)
       assert (HT' : exists T', cls_arg (rd_nu R) np gs1 T' g /\
@@ -273,7 +273,7 @@ Proof.
   pose proof (ind_lookup_added Θ' (ind_frame Ξ x R) ind_name false D ltac:(discriminate)) as Hl.
   change (qname_in (gs_path (ind_frame Ξ x R)) ind_name) with p in Hl.
   destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞf) Hl) as [HD Hdc].
-  pose proof HD as (_ & _ & _ & HP & _ & _ & _ & _ & _ & _ & _ & Hnd).
+  pose proof HD as (_ & _ & _ & HP & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
   assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).
   assert (Hemb : Emb Θ' Ξ Θ' (gs_add ind_name (ge_ind false D) (ind_frame Ξ x R))).
   { constructor; [ exact HΞf |].

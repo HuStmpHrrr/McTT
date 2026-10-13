@@ -327,13 +327,13 @@ Section RecTyped.
   Lemma cons_con : forall c gs, In (c, gs) (ind_cons D) -> ind_con D c = Some gs.
   Proof.
     intros; apply cons_lookup_nodup; [| assumption ].
-    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd); exact Hnd.
+    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _); exact Hnd.
   Qed.
 
   Lemma con_in : forall c gs gs', ind_con D c = Some gs -> In (c, gs') (ind_cons D) -> gs = gs'.
   Proof.
     intros * Hcon Hin; apply cons_lookup_in in Hcon.
-    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd).
+    pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
     eapply nodup_in_fst; eassumption.
   Qed.
 
@@ -470,6 +470,7 @@ Section RecTyped.
     destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl Hin gs nil (eq_sym (List.app_nil_r gs))) as (HΨ & _ & _).
     destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [k Hk].
     assert (H0 : ⊢ Θ ⍮ Ξ ⍮ ⋅) by exact (ctx_app_wf_tail _ _ _ _ (eq_ind _ (fun Γ => ⊢ Θ ⍮ Ξ ⍮ Γ) HU _ (eq_sym (List.app_nil_r _)))).
+    pose proof (shape_rest_wf' _ _ _ _ _ _ HD Hc Hl Hcon) as Hsh0.
     assert (HM : Θ ⍮ Ξ ⍮ ⋅ ⊢ a_con p c : con_ty p D gs) by (eapply wf_con; eassumption).
     unfold con_ty in HM; rewrite params_split, ctx_pi_app in HM.
     rewrite params_split, List.app_assoc in Hj, HΨ.
@@ -575,7 +576,7 @@ Proof.
     - replace (List.length (rd_params R) + List.length (gs_tele Ξ) - (rd_nu R + List.length (gs_tele Ξ)) - List.length (rd_params R))
         with 0 by lia.
       reflexivity. }
-  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd).
+  pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
   unfold ind_frame, gs_push, gs_add in *; cbn [gu_params gu_mod] in *.
   destruct (gens_run_cons Θ _ (rd_uparams R) Ξ (ind_qname Ξ x) D Hup (ind_cons D) _
               (fun c gs Hin => cons_lookup_nodup _ _ _ Hnd Hin) Hnd Hrec

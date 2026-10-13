@@ -26,6 +26,13 @@ Reserved Notation "h '·ₘ*' ch Θ '⍮' Ξ '↘' r" (at level 70, ch at level 
 
 Generalizable All Variables.
 
+(** The codomain of a [Π] whose codomain is a family value [f]: in the
+    environment of [f], [#1 $ #0] is [f] at the argument.  The types of the
+    arguments of a function shape and of their recursive results are such
+    [Π]s ([d_shfam], [d_ihfam]): their codomains are computed by the
+    families, so no term is built. *)
+Definition fam_cod : exp := a_app (a_var 1) (a_var 0).
+
 (** * Evaluation of Expressions
 
     The relations are mutually defined: evaluation of terms, its
@@ -193,10 +200,39 @@ with eval_ihs (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * n
   `( ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
      ⟦ihs v :: vs of ca_arg T :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs )
 | eval_ihs_rec :
-  `( ⟦elim v under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih ->
+  `( eval_ih Θ Ξ ρ nm A Bs t v ih ->
      ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-     ⟦ihs v :: vs of ca_rec Ps :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
+     ⟦ihs v :: vs of ca_rec t :: gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ih :: ihs )
 where "'⟦ihs' vs 'of' gs 'under' nm A Bs '⟧' Θ '⍮' Ξ '⍮' ρ '↘' r" := (eval_ihs Θ Ξ ρ nm A Bs gs vs r)
+(** The recursive result of an argument [v] of shape [t]: the eliminator
+    at [v], or, at a function shape, the family of the eliminator at [v]'s
+    values. *)
+with eval_ih (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain -> Prop :=
+| eval_ih_self :
+  `( ⟦elim v under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r ->
+     eval_ih Θ Ξ ρ nm A Bs (pt_self k Ps) v r )
+| eval_ih_pi :
+  `( eval_ih Θ Ξ ρ nm A Bs (pt_pi B t) v (d_ihfn ρ nm A Bs t v) )
+(** The type of an argument of shape [t] in [ρ], at the uniform parameters
+    [ups] of [p]. *)
+with eval_shty (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> domain -> Prop :=
+| eval_shty_self :
+  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     eval_shty Θ Ξ p ups ρ (pt_self k Ps) (d_ind p (ups ++ bs)) )
+| eval_shty_pi :
+  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
+     eval_shty Θ Ξ p ups ρ (pt_pi B t) (Πᵈ b (nil ↦ d_shfam p ups ρ t) fam_cod) )
+(** The type of the recursive result of an argument [v] of shape [t], its
+    components in [ρ]: the motive [A] in [ρm] at the shape's non-uniform
+    parameters and [v]. *)
+with eval_ihty (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain -> domain -> Prop :=
+| eval_ihty_self :
+  `( ⟦ Ps ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
+     ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρm (bs ++ v :: nil) ↘ a ->
+     eval_ihty Θ Ξ ρm A ρ (pt_self k Ps) v a )
+| eval_ihty_pi :
+  `( ⟦ B ⟧ Θ ⍮ Ξ ⍮ ρ ↘ b ->
+     eval_ihty Θ Ξ ρm A ρ (pt_pi B t) v (Πᵈ b (nil ↦ d_ihfam ρm A ρ t v) fam_cod) )
 with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
 (** A function's body, at the argument. *)
 | eval_app_fn :
@@ -217,6 +253,20 @@ with eval_app (Θ : gdeps) (Ξ : gstack) : domain -> domain -> domain -> Prop :=
      ind_con D c = Some gs ->
      List.length vs < (ind_np D + List.length gs)%nat ->
      $| d_con p c vs & n | Θ ⍮ Ξ ↘ d_con p c (vs ++ n :: nil) )
+(** The recursive result of a function shape, at the argument's value. *)
+| eval_app_ihfn :
+  `( $| f & n | Θ ⍮ Ξ ↘ fn ->
+     eval_ih Θ Ξ ρ nm A Bs t fn r ->
+     $| d_ihfn ρ nm A Bs t f & n | Θ ⍮ Ξ ↘ r )
+(** The families of the types of an argument of a function shape and of its
+    recursive result. *)
+| eval_app_shfam :
+  `( eval_shty Θ Ξ p ups (ρ ↦ n) t a ->
+     $| d_shfam p ups ρ t & n | Θ ⍮ Ξ ↘ a )
+| eval_app_ihfam :
+  `( $| f & n | Θ ⍮ Ξ ↘ fn ->
+     eval_ihty Θ Ξ ρm A (ρ ↦ n) t fn a ->
+     $| d_ihfam ρm A ρ t f & n | Θ ⍮ Ξ ↘ a )
 (** A member closure takes the next argument of its module, and selects again. *)
 | eval_app_member :
   `( $ᵐ| h & n | Θ ⍮ Ξ ↘ h' ->
@@ -415,7 +465,10 @@ with eval_selc_mut_ind := Induction for eval_selc Sort Prop
 with eval_selmc_mut_ind := Induction for eval_selmc Sort Prop
 with eval_benv_mut_ind := Induction for eval_benv Sort Prop
 with eval_elim_mut_ind := Induction for eval_elim Sort Prop
-with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop.
+with eval_ihs_mut_ind := Induction for eval_ihs Sort Prop
+with eval_ih_mut_ind := Induction for eval_ih Sort Prop
+with eval_shty_mut_ind := Induction for eval_shty Sort Prop
+with eval_ihty_mut_ind := Induction for eval_ihty Sort Prop.
 Combined Scheme eval_mut_ind from
   eval_exp_mut_ind,
   eval_natrec_mut_ind,
@@ -430,10 +483,13 @@ Combined Scheme eval_mut_ind from
   eval_selmc_mut_ind,
   eval_benv_mut_ind,
   eval_elim_mut_ind,
-  eval_ihs_mut_ind.
+  eval_ihs_mut_ind,
+  eval_ih_mut_ind,
+  eval_shty_mut_ind,
+  eval_ihty_mut_ind.
 
 #[export]
-Hint Constructors eval_exp eval_natrec eval_elim eval_ihs eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
+Hint Constructors eval_exp eval_natrec eval_elim eval_ihs eval_ih eval_shty eval_ihty eval_app eval_exps eval_apps eval_modexp eval_appm eval_sel eval_selm
   eval_selc eval_selmc eval_benv : mctt.
 
 (** [eval_exp_var] with the value as a premise.  The value [ρ x] is a flexible

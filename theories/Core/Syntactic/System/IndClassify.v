@@ -5,8 +5,9 @@
     argument a binder.  The command classifies each argument type
     ([cls_arg]): one in which [Self] does not occur, nor any recursive
     argument before it, is non-recursive, strengthened past them; [Self]
-    applied to such terms is recursive, of the shape [pt_self 0]; anything
-    else is rejected.  The classification is syntactic: it decides
+    applied to such terms is recursive, of the shape [pt_self 0], and so is
+    a function into it over domains in which it does not occur, of the
+    shape [pt_pi B (… (pt_self 0))] ([cls_sh]); anything else is rejected.  The classification is syntactic: it decides
     membership in the image of the weakening [cls_wk] by computing the
     candidate and comparing ([img_dec]).  A later stage classifies normal
     forms instead.
@@ -124,20 +125,6 @@ Definition img_dec (pat : list bool) (T : exp) :
     parameters of the declaration, then [Self], outside them. *)
 Definition cls_wk (np : nat) (gs1 : list carg) : wk := wk_pat (cargs_pat gs1 ++ List.repeat false np ++ true :: nil).
 
-Lemma wk_pat_app_true : forall pat x, wk_pat (pat ++ true :: nil) x = wk_qn (List.length pat) wk_shift (wk_pat pat x).
-Proof.
-  induction pat as [| [] pat IH]; intros x; cbn [List.app wk_pat List.length]; [ reflexivity | |].
-  - cbn; rewrite IH; reflexivity.
-  - destruct x; cbn; [ reflexivity | rewrite IH; reflexivity ].
-Qed.
-
-Lemma wk_pat_app_false : forall pat n x, wk_pat (pat ++ List.repeat false n) x = wk_pat pat x.
-Proof.
-  induction pat as [| [] pat IH]; intros n x; cbn [List.app wk_pat].
-  - revert x; induction n as [| n IHn]; intros [| x]; cbn; auto.
-  - cbn; rewrite IH; reflexivity.
-  - destruct x; cbn; [ reflexivity | rewrite IH; reflexivity ].
-Qed.
 
 Lemma cls_wk_eq : forall np gs1 x,
     cls_wk np gs1 x = wk_qn (List.length gs1 + np) wk_shift (wk_pat (cargs_pat gs1) x).
@@ -156,21 +143,45 @@ Qed.
 Lemma cls_wk_avoids : forall np gs1 x, cls_wk np gs1 x <> List.length gs1 + np.
 Proof. intros; rewrite cls_wk_eq; apply wk_qn_shift_ne. Qed.
 
+(** Under [d] domains of a function shape: the domains are no recursive
+    arguments.  [cls_wkd 0] is [cls_wk]. *)
+Definition cls_wkd (d np : nat) (gs1 : list carg) : wk :=
+  wk_pat (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ true :: nil).
+
+Lemma cls_wkd_eq : forall d np gs1 x,
+    cls_wkd d np gs1 x = wk_qn (d + List.length gs1 + np) wk_shift (wk_pat (List.repeat false d ++ cargs_pat gs1) x).
+Proof.
+  intros; unfold cls_wkd; rewrite !List.app_assoc, wk_pat_app_true, wk_pat_app_false, !List.length_app,
+    !List.repeat_length, length_cargs_pat; reflexivity.
+Qed.
+
+Lemma cls_wkd_avoids : forall d np gs1 x, cls_wkd d np gs1 x <> d + List.length gs1 + np.
+Proof. intros; rewrite cls_wkd_eq; apply wk_qn_shift_ne. Qed.
+
 (** ** The Classification
 
     [nu] and [np] are the declaration's own uniform parameters and all its
     own parameters: those of the enclosing frames are not written. *)
 
+(** A shape under [d] of its domains: [Self] at the uniform parameters, then
+    at terms in which it does not occur; or a [Π] over a domain in which it
+    does not occur, into a shape.  [Self] thus occurs only strictly
+    positively. *)
+Inductive cls_sh (nu np : nat) (gs1 : list carg) : nat -> exp -> ptyp -> Prop :=
+| cls_sh_self : forall d Ps,
+    cls_sh nu np gs1 d
+      (apps (a_var (d + List.length gs1 + np))
+         (vars_from (d + List.length gs1 + (np - nu)) nu ++ List.map (fun P => P[cls_wkd d np gs1]ʷ) Ps))
+      (pt_self 0 Ps)
+| cls_sh_pi : forall d B T t,
+    cls_sh nu np gs1 (S d) T t ->
+    cls_sh nu np gs1 d (a_pi B[cls_wkd d np gs1]ʷ T) (pt_pi B t).
+
 Inductive cls_arg (nu np : nat) (gs1 : list carg) : exp -> carg -> Prop :=
 (** [Self] does not occur, nor any recursive argument before. *)
 | cls_free : forall A, cls_arg nu np gs1 A[cls_wk np gs1]ʷ (ca_arg A)
-(** [Self] at the uniform parameters, then at terms in which it does not
-    occur. *)
-| cls_self : forall Ps,
-    cls_arg nu np gs1
-      (apps (a_var (List.length gs1 + np))
-         (vars_from (List.length gs1 + (np - nu)) nu ++ List.map (fun P => P[cls_wk np gs1]ʷ) Ps))
-      (ca_rec (pt_self 0 Ps)).
+(** A recursive argument, of a shape. *)
+| cls_rec : forall T t, cls_sh nu np gs1 0 T t -> cls_arg nu np gs1 T (ca_rec t).
 
 Inductive cls_args (nu np : nat) : list carg -> list (string * exp) -> list carg -> Prop :=
 | cls_args_nil : forall gs1, cls_args nu np gs1 nil nil
@@ -244,14 +255,37 @@ Proof.
   injection E as E1 E2; rewrite (exp_wk_inj _ _ _ E1), (IH _ E2); reflexivity.
 Qed.
 
+Lemma cls_sh_not_free : forall nu np gs1 d T t, cls_sh nu np gs1 d T t -> forall A, T <> A[cls_wkd d np gs1]ʷ.
+Proof.
+  induction 1 as [d Ps | d B T t H IH]; intros A E.
+  - apply (f_equal app_head) in E; rewrite app_head_wk, app_head_apps_var in E.
+    destruct (app_head A); cbn in E; try discriminate.
+    injection E as E; exact (cls_wkd_avoids _ _ _ _ (eq_sym E)).
+  - destruct A; cbn in E; try discriminate.
+    injection E as _ E; exact (IH _ E).
+Qed.
+
+Lemma cls_sh_functional : forall nu np gs1 d T t t', cls_sh nu np gs1 d T t -> cls_sh nu np gs1 d T t' -> t = t'.
+Proof.
+  intros * H; revert t'; induction H as [d Ps | d B T t H IH]; intros t' H'; inversion H'; subst.
+  - match goal with E : apps (a_var _) _ = apps (a_var _) _ |- _ =>
+      apply apps_var_inj in E as [_ E]; apply List.app_inv_head in E;
+      unfold cls_wkd in E; rewrite (map_wk_inj _ _ _ E); reflexivity end.
+  - exfalso; match goal with E : _ = _ |- _ =>
+      apply (f_equal app_head) in E; rewrite !app_head_apps_var in E; cbn in E; discriminate end.
+  - exfalso; match goal with E : _ = _ |- _ =>
+      apply (f_equal app_head) in E; rewrite !app_head_apps_var in E; cbn in E; discriminate end.
+  - match goal with E : B0[_]ʷ = B[_]ʷ, Hs : cls_sh _ _ _ _ T ?t0 |- _ =>
+      unfold cls_wkd in E; rewrite (exp_wk_inj _ _ _ E), (IH _ Hs); reflexivity end.
+Qed.
+
 Lemma cls_arg_functional : forall nu np gs1 T g g', cls_arg nu np gs1 T g -> cls_arg nu np gs1 T g' -> g = g'.
 Proof.
-  intros * H H'; destruct H as [A | Ps]; inversion H' as [A' E | Ps' E]; subst.
+  intros * H H'; destruct H as [A | T t Hs]; inversion H' as [A' E | T' t' Hs' E]; subst.
   - unfold cls_wk in E; rewrite (exp_wk_inj _ _ _ E); reflexivity.
-  - exfalso; exact (cls_free_not_self _ _ _ _ (eq_sym E)).
-  - exfalso; exact (cls_free_not_self _ _ _ _ E).
-  - apply apps_var_inj in E as [_ E]; apply List.app_inv_head in E.
-    unfold cls_wk in E; rewrite (map_wk_inj _ _ _ E); reflexivity.
+  - exfalso; exact (cls_sh_not_free _ _ _ _ _ _ Hs' A eq_refl).
+  - exfalso; exact (cls_sh_not_free _ _ _ _ _ _ Hs A' eq_refl).
+  - rewrite (cls_sh_functional _ _ _ _ _ _ _ Hs Hs'); reflexivity.
 Qed.
 
 Lemma cls_args_functional : forall nu np gs1 args gs gs',
@@ -301,6 +335,20 @@ Proof.
     f_equal; lia.
 Qed.
 
+Lemma cls_wkd_sub : forall d np gs1 A X,
+    A[cls_wkd d np gs1]ʷ[sb_qn (d + List.length gs1 + np) (Id,,X)] = A[wk_pat (List.repeat false d ++ cargs_pat gs1)]ʷ.
+Proof.
+  intros; rewrite <- exp_sub_of_wk, exp_sub_sub, <- (exp_sub_of_wk A (wk_pat _)).
+  apply exp_sub_sb_eq; intros x; rewrite sb_compose_var, !sb_of_wk_var; cbn [sentry_sub].
+  rewrite cls_wkd_eq.
+  set (y := wk_pat (List.repeat false d ++ cargs_pat gs1) x); set (n := d + List.length gs1 + np).
+  destruct (Nat.lt_ge_cases y n) as [Hy | Hy].
+  - rewrite wk_qn_lt, sb_qn_lt by assumption; reflexivity.
+  - rewrite wk_qn_ge by assumption; cbn [wk_shift].
+    rewrite sb_qn_ge by lia; replace (S (y - n) + n - n) with (S (y - n)) by lia; cbn.
+    f_equal; lia.
+Qed.
+
 Lemma var_self_sub : forall n X, (a_var n)[sb_qn n (Id,,X)] = X[wk_shiftn n]ʷ.
 Proof.
   intros; cbn [exp_sub]; rewrite sb_qn_ge by lia; replace (n - n) with 0 by lia; cbn; reflexivity.
@@ -328,6 +376,24 @@ Proof. intros; unfold self_inst; rewrite apps_exp_wk, vars_from_wk_shiftn; refle
 Lemma cls_args_length : forall nu np gs1 args gs, cls_args nu np gs1 args gs -> List.length gs = List.length args.
 Proof. induction 1; cbn; auto. Qed.
 
+(** The type of a recursive argument as written, [Self] instantiated, is the
+    type of its shape. *)
+Lemma cls_sh_ty : forall p D t nu np gs1 d T s, cls_sh nu np gs1 d T s ->
+    ind_nu D = nu + t -> ind_np D = np + t -> nu <= np ->
+    T[sb_qn (d + List.length gs1 + np) (Id,,self_inst p t)] = ptyp_ty p D (List.repeat false d ++ cargs_pat gs1) s.
+Proof.
+  intros * H Hu Hp Hle; induction H as [d Ps | d B T s H IH].
+  - rewrite apps_exp_sub, var_self_sub, self_inst_wk, List.map_app, vars_from_sub_below by lia.
+    cbn [ptyp_ty ptyp_ps]; rewrite List.map_map, <- apps_exp_app, List.app_assoc.
+    rewrite List.length_app, List.repeat_length, length_cargs_pat.
+    unfold ind_uvars; replace (ind_nn D) with (np - nu) by (unfold ind_nn; lia).
+    rewrite Hu; replace (d + List.length gs1 + np) with (d + List.length gs1 + (np - nu) + nu) by lia.
+    rewrite vars_from_app; replace (t + nu) with (nu + t) by lia.
+    do 2 f_equal; apply List.map_ext; intros P.
+    replace (d + List.length gs1 + (np - nu) + nu) with (d + List.length gs1 + np) by lia; apply cls_wkd_sub.
+  - cbn [exp_sub ptyp_ty]; f_equal; [ apply cls_wkd_sub | exact IH ].
+Qed.
+
 (** The arguments' context of the filed constructor is the one as written,
     [Self] instantiated. *)
 Theorem cls_args_cargs_ctx : forall p D t nu np gs1 args gs, cls_args nu np gs1 args gs ->
@@ -338,15 +404,9 @@ Proof.
   unfold rtele; cbn [List.map List.rev]; fold (rtele args); rewrite tele_sub_app; cbn [tele_sub List.length].
   rewrite cargs_pat_snoc, List.length_app in IH; cbn [List.length] in IH.
   replace (List.length gs1 + 1 + np) with (S (List.length gs1 + np)) in IH by lia.
-  destruct Hg as [A | Ps]; cbn [cargs_ctx_aux]; rewrite IH; cbn [sb_qn]; f_equal; cbn [centry_sub sb_qn snd].
+  destruct Hg as [A | T s Hs]; cbn [cargs_ctx_aux]; rewrite IH; cbn [sb_qn]; f_equal; cbn [centry_sub sb_qn snd].
   - rewrite cls_wk_sub; reflexivity.
-  - rewrite apps_exp_sub, var_self_sub, self_inst_wk, List.map_app, vars_from_sub_below by lia.
-    rewrite List.map_map, <- apps_exp_app, List.app_assoc, length_cargs_pat; cbn [ptyp_ps].
-    unfold ind_uvars; replace (ind_nn D) with (np - nu) by (unfold ind_nn; lia).
-    rewrite Hu; replace (List.length gs1 + np) with (List.length gs1 + (np - nu) + nu) by lia.
-    rewrite vars_from_app; replace (t + nu) with (nu + t) by lia.
-    do 3 f_equal; f_equal; apply List.map_ext; intros P; symmetry.
-    replace (List.length gs1 + (np - nu) + nu) with (List.length gs1 + np) by lia; apply cls_wk_sub.
+  - do 2 f_equal; exact (eq_sym (cls_sh_ty p D t nu np gs1 0 T s Hs Hu Hp Hle)).
 Qed.
 
 (** A filed constructor's type is the user's. *)

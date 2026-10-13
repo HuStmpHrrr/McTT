@@ -37,34 +37,35 @@ Inductive fresh_tele (Θ : gdeps) (Ξ : gstack) : env -> list centry -> nat -> l
 (** The arguments of a constructor of [p] at the uniform parameters [ups]:
     a non-recursive one of the type its declaration gives, in the
     environment of the parameters and the non-recursive arguments before
-    it; a recursive one of the type itself, at the parameters [bs] it is
-    declared at, which are recorded. *)
+    it; a recursive one of the type of its shape there. *)
 Inductive fresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain) :
-  env -> list carg -> nat -> list domain -> list (list domain) -> Prop :=
+  env -> list carg -> nat -> list domain -> Prop :=
 | fresh_cargs_nil :
-  `( fresh_cargs Θ Ξ p ups ρ nil s nil nil )
+  `( fresh_cargs Θ Ξ p ups ρ nil s nil )
 | fresh_cargs_arg :
   `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a ->
-     fresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs bss ->
-     fresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) bss )
+     fresh_cargs Θ Ξ p ups (ρ ↦ ⇑! a s) gs (S s) vs ->
+     fresh_cargs Θ Ξ p ups ρ (ca_arg A :: gs) s (⇑! a s :: vs) )
 | fresh_cargs_rec :
-  `( ⟦ (ptyp_ps Ps) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     fresh_cargs Θ Ξ p ups ρ gs (S s) vs bss ->
-     fresh_cargs Θ Ξ p ups ρ (ca_rec Ps :: gs) s (⇑! (d_ind p (ups ++ bs)) s :: vs) (bs :: bss) ).
+  `( eval_shty Θ Ξ p ups ρ t a ->
+     fresh_cargs Θ Ξ p ups ρ gs (S s) vs ->
+     fresh_cargs Θ Ξ p ups ρ (ca_rec t :: gs) s (⇑! a s :: vs) ).
 
 (** The recursive results of the arguments [vs]: one per recursive argument,
-    at the motive [A] in [ρ] instantiated with its parameters and itself. *)
+    of the type of its recursive result, the motive [A] in [ρ], the shape's
+    components in the environment [ρa] of the parameters and the
+    non-recursive arguments before it. *)
 Inductive fresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
-  list carg -> list domain -> list (list domain) -> nat -> list domain -> Prop :=
+  env -> list carg -> list domain -> nat -> list domain -> Prop :=
 | fresh_ihs_nil :
-  `( fresh_ihs Θ Ξ ρ A nil nil nil s nil )
+  `( fresh_ihs Θ Ξ ρ A ρa nil nil s nil )
 | fresh_ihs_arg :
-  `( fresh_ihs Θ Ξ ρ A gs vs bss s ihs ->
-     fresh_ihs Θ Ξ ρ A (ca_arg T :: gs) (v :: vs) bss s ihs )
+  `( fresh_ihs Θ Ξ ρ A (ρa ↦ v) gs vs s ihs ->
+     fresh_ihs Θ Ξ ρ A ρa (ca_arg T :: gs) (v :: vs) s ihs )
 | fresh_ihs_rec :
-  `( ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (bs ++ v :: nil) ↘ t ->
-     fresh_ihs Θ Ξ ρ A gs vs bss (S s) ihs ->
-     fresh_ihs Θ Ξ ρ A (ca_rec Ps :: gs) (v :: vs) (bs :: bss) s (⇑! t s :: ihs) ).
+  `( eval_ihty Θ Ξ ρ A ρa t v a ->
+     fresh_ihs Θ Ξ ρ A ρa gs vs (S s) ihs ->
+     fresh_ihs Θ Ξ ρ A ρa (ca_rec t :: gs) (v :: vs) s (⇑! a s :: ihs) ).
 
 #[export]
 Hint Constructors fresh_tele fresh_cargs fresh_ihs : mctt.
@@ -249,10 +250,10 @@ with read_cargs (Θ : gdeps) (Ξ : gstack) : nat -> qname -> list domain -> env 
      read_cargs Θ Ξ s p ups (ρ ↦ v) gs vs Vs ->
      read_cargs Θ Ξ s p ups ρ (ca_arg A :: gs) (v :: vs) (nfs_cons V Vs) )
 | read_cargs_rec :
-  `( ⟦ (ptyp_ps Ps) ⟧* Θ ⍮ Ξ ⍮ ρ ↘ bs ->
-     Rnf ⇓ (d_ind p (ups ++ bs)) v in Θ ⍮ Ξ ⍮ s ↘ V ->
+  `( eval_shty Θ Ξ p ups ρ t a ->
+     Rnf ⇓ a v in Θ ⍮ Ξ ⍮ s ↘ V ->
      read_cargs Θ Ξ s p ups ρ gs vs Vs ->
-     read_cargs Θ Ξ s p ups ρ (ca_rec Ps :: gs) (v :: vs) (nfs_cons V Vs) )
+     read_cargs Θ Ξ s p ups ρ (ca_rec t :: gs) (v :: vs) (nfs_cons V Vs) )
 (** The branches of a stuck eliminator, one per constructor in order: each
     under the non-uniform parameters, the arguments and the recursive
     results, at the motive's instance at the constructor. *)
@@ -262,10 +263,10 @@ with read_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_dec
   `( read_brs Θ Ξ s ρ A p D ups nil nil nbrs_nil )
 | read_brs_cons :
   `( n = (ind_nn D + List.length gs + cargs_nrec gs)%nat ->
+     cargs_plen (ind_nn D) gs ->
      fresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
-     fresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs bss ->
-     List.Forall (fun bs => List.length bs = ind_nn D) bss ->
-     fresh_ihs Θ Ξ ρ A gs vs bss (s + ind_nn D + List.length gs)%nat ihs ->
+     fresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs ->
+     fresh_ihs Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)%nat ihs ->
      ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
      Rnf ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->

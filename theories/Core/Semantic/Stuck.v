@@ -93,6 +93,11 @@ Inductive dstuck : domain -> Prop :=
 | dstuck_member : forall h ch, dmstuck h -> dstuck (d_member h ch)
 | dstuck_indty : forall p args, (forall a, In a args -> dstuck a) -> dstuck (d_ind p args)
 | dstuck_con : forall p c args, (forall a, In a args -> dstuck a) -> dstuck (d_con p c args)
+| dstuck_ihfn : forall (ρ : env) nm A Bs t f, (forall x, destuck (env_entry ρ x)) -> dstuck f -> dstuck (d_ihfn ρ nm A Bs t f)
+| dstuck_shfam : forall p ups (ρ : env) t, (forall a, In a ups -> dstuck a) -> (forall x, destuck (env_entry ρ x)) ->
+    dstuck (d_shfam p ups ρ t)
+| dstuck_ihfam : forall (ρm : env) A (ρ : env) t f, (forall x, destuck (env_entry ρm x)) -> (forall x, destuck (env_entry ρ x)) ->
+    dstuck f -> dstuck (d_ihfam ρm A ρ t f)
 with dstuck_ne : domain_ne -> Prop :=
 | dstuck_var : forall x, dstuck_ne (#ᵈ x)
 | dstuck_glob : forall p, gstuck Θ Ξ p -> dstuck_ne (d_glob p)
@@ -131,7 +136,7 @@ Definition env_stuck (ρ : env) : Prop := forall x, destuck (env_entry ρ x).
 
 (** Nor are the rules of inductive types, whose premises are about all the
     members of a list: [all_in_with] reaches them instead. *)
-#[local] Remove Hints dstuck_indty dstuck_con dstuck_elim : mctt.
+#[local] Remove Hints dstuck_indty dstuck_con dstuck_elim dstuck_shfam dstuck_ihfn dstuck_ihfam : mctt.
 #[local] Hint Unfold env_stuck : mctt.
 
 Lemma env_stuck_nil : env_stuck nil.
@@ -215,7 +220,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (forall ρ Φ ρ', eval_benv Θ Ξ ρ Φ ρ' -> env_stuck ρ -> env_stuck ρ') /\
     (forall ρ nm A Bs m r, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r -> env_stuck ρ -> dstuck m -> dstuck r) /\
     (forall ρ nm A Bs gs vs ihs, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ ihs ->
-       env_stuck ρ -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a).
+       env_stuck ρ -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a) /\
+    (forall ρ nm A Bs t v r, eval_ih Θ Ξ ρ nm A Bs t v r -> env_stuck ρ -> dstuck v -> dstuck r) /\
+    (forall p ups ρ t a, eval_shty Θ Ξ p ups ρ t a -> (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a) /\
+    (forall ρm A ρ t v a, eval_ihty Θ Ξ ρm A ρ t v a -> env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a).
   Proof.
     apply (eval_mut_ind Θ Ξ
              (fun M ρ m _ => env_stuck ρ -> dstuck m)
@@ -231,7 +239,10 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
              (fun h ch r _ => dmstuck h -> dmstuck r)
              (fun ρ Φ ρ' _ => env_stuck ρ -> env_stuck ρ')
              (fun ρ nm A Bs m r _ => env_stuck ρ -> dstuck m -> dstuck r)
-             (fun ρ nm A Bs gs vs ihs _ => env_stuck ρ -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a));
+             (fun ρ nm A Bs gs vs ihs _ => env_stuck ρ -> (forall a, In a vs -> dstuck a) -> forall a, In a ihs -> dstuck a)
+             (fun ρ nm A Bs t v r _ => env_stuck ρ -> dstuck v -> dstuck r)
+             (fun p ups ρ t a _ => (forall u, In u ups -> dstuck u) -> env_stuck ρ -> dstuck a)
+             (fun ρm A ρ t v a _ => env_stuck ρm -> env_stuck ρ -> dstuck v -> dstuck a));
       intros.
     all: repeat match goal with
            | H : dstuck (d_ind _ _) |- _ => inversion_clear H
@@ -240,6 +251,34 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
            | H : dmstuck (_ _ _) |- _ => inversion_clear H
            | H : dmstuck (_ _ _ _) |- _ => inversion_clear H
            end.
+    (* the recursive results of function shapes and the families of their
+       types: closures over stuck environments *)
+    all: try solve [ lazymatch goal with |- dstuck (d_ihfn _ _ _ _ _ _) => constructor; assumption end ].
+    all: try solve [ lazymatch goal with |- dstuck (d_ind _ (_ ++ ?bs)) =>
+           match goal with IH : env_stuck ?ρ -> forall a, In a bs -> dstuck a, Hρ : env_stuck ?ρ |- _ =>
+             pose proof (IH Hρ); constructor; all_in_with assumption end end ].
+    all: try solve [ lazymatch goal with |- dstuck (Πᵈ _ (_ ↦ d_shfam _ _ _ _) _) =>
+           match goal with IH : env_stuck ?ρ -> dstuck ?b, Hρ : env_stuck ?ρ |- dstuck (Πᵈ ?b _ _) =>
+             constructor; [ exact (IH Hρ) | apply env_stuck_extend; [ apply env_stuck_nil | constructor; assumption ] ] end end ].
+    all: try solve [ lazymatch goal with |- dstuck (Πᵈ _ (_ ↦ d_ihfam _ _ _ _ _) _) =>
+           match goal with IH : env_stuck ?ρ -> dstuck ?b, Hρ : env_stuck ?ρ |- dstuck (Πᵈ ?b _ _) =>
+             constructor; [ exact (IH Hρ) | apply env_stuck_extend; [ apply env_stuck_nil | constructor; assumption ] ] end end ].
+    all: try solve [ match goal with
+           | IH : env_stuck (env_args ?ρm (?bs ++ ?v :: nil)) -> dstuck ?a,
+             IHb : env_stuck ?ρ -> forall x, In x ?bs -> dstuck x, Hρ : env_stuck ?ρ, Hρm : env_stuck ?ρm,
+             Hv : dstuck ?v |- dstuck ?a =>
+               apply IH, env_stuck_args; [ exact Hρm | apply stuck_app_snoc; [ exact (IHb Hρ) | exact Hv ] ]
+           end ].
+    all: try solve [ match goal with
+           | IH : (forall u, In u ?ups -> dstuck u) -> env_stuck (?ρ ↦ ?n) -> dstuck ?a |- dstuck ?a =>
+               apply IH; [ assumption | apply env_stuck_extend; assumption ]
+           | IH2 : env_stuck ?ρm -> env_stuck (?ρ ↦ ?n) -> dstuck ?fn -> dstuck ?a,
+             IH1 : dstuck ?f -> dstuck ?n -> dstuck ?fn |- dstuck ?a =>
+               apply IH2; [ assumption | apply env_stuck_extend; assumption | apply IH1; assumption ]
+           | IH2 : env_stuck ?ρ -> dstuck ?fn -> dstuck ?r,
+             IH1 : dstuck ?f -> dstuck ?n -> dstuck ?fn |- dstuck ?r =>
+               apply IH2; [ assumption | apply IH1; assumption ]
+           end ].
     (* inductive types: the values are lists, of which evaluation takes
        segments *)
     all: try solve [ lazymatch goal with |- dstuck (d_ind _ _) => idtac | |- dstuck (d_con _ _ _) => idtac end;
@@ -272,7 +311,6 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
             [ exact (IHv Hρ (all_in_head _ _ _ Hv)) | exact (IH Hρ (all_in_tail _ _ _ Hv) _ Ha) ]
       end ].
     all: try solve [ eauto 4 with mctt ].
-    all: try solve [ eauto 6 with mctt ].
     (* the [⊥]-eliminator, whose scrutinee is stuck *)
     all: try solve [ match goal with H : env_stuck ?ρ -> dstuck (⇑ _ _), Hρ : env_stuck ?ρ |- _ =>
         specialize (H Hρ); inversion_clear H end; eauto 7 with mctt ].
@@ -293,6 +331,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (* a list of terms *)
     all: try solve [ match goal with
       | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
+    all: try solve [ eauto 6 with mctt ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 
@@ -321,50 +360,45 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     apply all_in_cons; [ stuck_val | apply IHfresh_tele; stuck_env ].
   Qed.
 
-  Lemma fresh_cargs_stuck : forall p ups ρ gs s vs bss,
-      fresh_cargs Θ Ξ p ups ρ gs s vs bss -> env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
-      (forall a, In a vs -> dstuck a) /\ (forall bs, In bs bss -> forall a, In a bs -> dstuck a).
+  Lemma fresh_cargs_stuck : forall p ups ρ gs s vs,
+      fresh_cargs Θ Ξ p ups ρ gs s vs -> env_stuck ρ -> (forall a, In a ups -> dstuck a) ->
+      forall a, In a vs -> dstuck a.
   Proof.
-    destruct eval_stuck as (He & _ & _ & Hes & _).
-    induction 1; intros Hρ Hu.
-    - split; [ apply all_in_nil | intros ? [] ].
+    destruct eval_stuck as (He & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
+    induction 1; intros Hρ Hu; [ apply all_in_nil | |].
     - assert (dstuck a) by (eapply He; eassumption).
-      destruct IHfresh_cargs as [IH1 IH2]; [ stuck_env | assumption |].
-      split; [ apply all_in_cons; [ stuck_val | assumption ] | assumption ].
-    - assert (forall a, In a bs -> dstuck a) by (eapply Hes; eassumption).
-      destruct IHfresh_cargs as [IH1 IH2]; [ assumption | assumption |].
-      split; [ apply all_in_cons; [ stuck_val | assumption ] | intros bs' [<- | Hin]; [ assumption | apply IH2; assumption ] ].
+      apply all_in_cons; [ stuck_val | apply IHfresh_cargs; [ stuck_env | assumption ] ].
+    - assert (dstuck a) by (eapply Hsh; eassumption).
+      apply all_in_cons; [ stuck_val | apply IHfresh_cargs; assumption ].
   Qed.
 
-  Lemma fresh_ihs_stuck : forall ρ A gs vs bss s ihs,
-      fresh_ihs Θ Ξ ρ A gs vs bss s ihs -> env_stuck ρ -> (forall a, In a vs -> dstuck a) ->
-      (forall bs, In bs bss -> forall a, In a bs -> dstuck a) -> forall a, In a ihs -> dstuck a.
+  Lemma fresh_ihs_stuck : forall ρ A ρa gs vs s ihs,
+      fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> env_stuck ρ -> env_stuck ρa -> (forall a, In a vs -> dstuck a) ->
+      forall a, In a ihs -> dstuck a.
   Proof.
-    destruct eval_stuck as (He & _).
-    induction 1; intros Hρ Hv Hb; [ apply all_in_nil | apply IHfresh_ihs; first [ assumption | solve [ all_in_with assumption ] ] |].
-    match goal with Hb : forall bs, In bs (?bs0 :: _) -> _ |- _ =>
-      assert (forall a, In a bs0 -> dstuck a) by (apply Hb; left; reflexivity) end.
-    assert (dstuck t) by (eapply He; [ eassumption | stuck_env ]).
-    apply all_in_cons; [ stuck_val | apply IHfresh_ihs; [ assumption | all_in_with assumption |] ].
-    intros bs' Hbs' a' Ha'; exact (Hb bs' (or_intror Hbs') a' Ha').
+    destruct eval_stuck as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hit).
+    induction 1; intros Hρ Hρa Hv; [ apply all_in_nil | apply IHfresh_ihs; [ assumption | stuck_env | all_in_with assumption ] |].
+    assert (dstuck a) by (eapply Hit; [ eassumption | assumption | assumption | apply Hv; left; reflexivity ]).
+    apply all_in_cons; [ stuck_val | apply IHfresh_ihs; [ assumption | assumption | all_in_with assumption ] ].
   Qed.
 
   (** Forward reasoning on the premises of the readback of an inductive
       type: what each evaluation or telescope of fresh variables gives. *)
-  Ltac stuck_fwd He Hes :=
+  Ltac stuck_fwd He Hes Hsh :=
     repeat match goal with
       | H : fresh_tele _ _ ?ρ _ _ ?ns |- _ =>
           let h := fresh "Hs" in
           assert (h : forall x, In x ns -> dstuck x) by (eapply fresh_tele_stuck; [ exact H | stuck_env ]);
           clear H
-      | H : fresh_cargs _ _ _ _ _ _ _ _ _ |- _ =>
-          let h1 := fresh "Hs" in let h2 := fresh "Hs" in
-          destruct (fresh_cargs_stuck _ _ _ _ _ _ _ H) as [h1 h2];
-            [ stuck_env | solve [ all_in_with stuck_val ] | clear H ]
+      | H : fresh_cargs _ _ _ _ _ _ _ ?vs |- _ =>
+          let h := fresh "Hs" in
+          assert (h : forall x, In x vs -> dstuck x)
+            by (eapply fresh_cargs_stuck; [ exact H | stuck_env | solve [ all_in_with stuck_val ] ]);
+          clear H
       | H : fresh_ihs _ _ _ _ _ _ _ _ ?ihs |- _ =>
           let h := fresh "Hs" in
           assert (h : forall x, In x ihs -> dstuck x)
-            by (eapply fresh_ihs_stuck; [ exact H | stuck_env | solve [ all_in_with stuck_val ] | assumption ]);
+            by (eapply fresh_ihs_stuck; [ exact H | stuck_env | stuck_env | solve [ all_in_with stuck_val ] ]);
           clear H
       | H : ⟦ _ ⟧ _ ⍮ _ ⍮ _ ↘ ?a |- _ =>
           let h := fresh "Hs" in
@@ -372,6 +406,9 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
       | H : eval_exps _ _ _ _ ?bs |- _ =>
           let h := fresh "Hs" in
           assert (h : forall x, In x bs -> dstuck x) by (eapply Hes; [ exact H | stuck_env ]); clear H
+      | H : eval_shty _ _ _ _ _ _ ?a |- _ =>
+          let h := fresh "Hs" in
+          assert (h : dstuck a) by (eapply Hsh; [ exact H | solve [ all_in_with stuck_val ] | stuck_env ]); clear H
       end.
 
   Lemma read_stuck :
@@ -388,7 +425,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (forall s ρ A p D ups cs Bs Bs', read_brs Θ Ξ s ρ A p D ups cs Bs Bs' ->
        env_stuck ρ -> (forall a, In a ups -> dstuck a) -> nbrs_stuck (gstuck Θ Ξ) Bs').
   Proof.
-    destruct eval_stuck as (He & _ & Ha & Hes & _).
+    destruct eval_stuck as (He & _ & Ha & Hes & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hsh & _).
     apply (read_mut_ind Θ Ξ
              (fun s m W _ => dstuck_nf m -> nf_stuck (gstuck Θ Ξ) W)
              (fun s m M _ => dstuck_ne m -> ne_stuck (gstuck Θ Ξ) M)
@@ -414,7 +451,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     (** Inductive types: each component is read back at a type, in an
         environment, of stuck values. *)
     all: try solve [
-      stuck_fwd He Hes;
+      stuck_fwd He Hes Hsh;
       try apply nfs_stuck_app;
       match goal with
       | IH : context [ nf_stuck _ ?W ] |- nf_stuck _ ?W => apply IH
@@ -442,7 +479,7 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
          | IH : _ -> la_stuck (gstuck Θ Ξ) ?W |- la_stuck (gstuck Θ Ξ) ?W => apply IH
          end.
     all: repeat first [ eassumption | constructor | apply env_stuck_extend
-                      | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] ].
+                      | eapply He; [ eassumption |] | eapply Ha; [ eassumption | |] | eapply Hsh; [ eassumption | |] ].
   Qed.
 
   Lemma initial_env_stuck : forall Γ ρ, initial_env Θ Ξ Γ ρ -> env_stuck ρ.

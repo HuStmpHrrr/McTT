@@ -199,13 +199,18 @@ with wf_exp : gdeps -> gstack -> ctx -> typ -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ a_ind p : ind_ty D )
 (** A constructor: a [Π] over the parameters and the arguments of the type
     at the parameters.  The type is a closed type, of a well-formed context
-    of arguments: both follow from the declaration, and are premises so
-    that the semantic models read them off the derivation. *)
+    of arguments, and the rest of the type of a recursive argument after
+    any number of its shape's domains is a type, under those domains: all
+    follow from the declaration, and are premises so that the semantic
+    models read them off the derivation. *)
 | wf_con :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
      ind_con D c = Some gs ->
      ⊢ Θ ⍮ Ξ ⍮ cargs_ctx p D gs ++ ind_params D ->
+     (forall gs1 t gs2 k, gs = gs1 ++ ca_rec t :: gs2 -> k <= List.length (ptyp_doms t) ->
+        ⊢ Θ ⍮ Ξ ⍮ (sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D)
+                  ▹ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t)) ->
      Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c : con_ty p D gs )
 (** The eliminator, at the parameters [Ps] the scrutinee's type has: the
@@ -521,9 +526,10 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
      Θ ⍮ Ξ ⍮ Γ ⊢ M : ℕ ->
      Θ ⍮ Ξ ⍮ Γ ⊢ rec succ M return A | zero -> MZ | succ -> MS end ≈ MS[Id,,M,,rec M return A | zero -> MZ | succ -> MS end] : A[Id,,succ M] )
 (** [ι]: the eliminator on a constructor is the constructor's branch, at
-    the non-uniform parameters, the arguments and the recursive results.
-    The arguments are typed one by one, at the instances of their telescope
-    at the parameters. *)
+    the non-uniform parameters, the arguments and the recursive results
+    ([elim_ihs]): the eliminator at a recursive argument, and at one of a
+    function shape [λ x. X.elim (f x)].  The arguments are typed one by one,
+    at the instances of their telescope at the parameters. *)
 | wf_exp_eq_elim_iota :
   `( ⊢ Θ ⍮ Ξ ⍮ Γ ->
      ind_lookup Θ Ξ p = Some D ->
@@ -547,7 +553,7 @@ with wf_exp_eq : gdeps -> gstack -> ctx -> typ -> exp -> exp -> Prop :=
           : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
      brs_lookup Bs c = Some (n, B) ->
      Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs (apps (a_con p c) (Ps ++ As))
-       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)]
+       ≈ B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)]
        : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)] )
 (** [ζ]: a local definition is substituted into its body. *)
 | wf_exp_eq_let_zeta :
@@ -824,10 +830,12 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
     parameters, which are uniform.  The sort is checked in the uniform
     parameters, a non-recursive argument of a constructor in the parameters
     and the non-recursive arguments before it, at the sort, and a recursive
-    argument at the non-uniform parameters it is declared at.  A recursive
-    argument is of the shape [pt_self 0 Ps]: stage A has no other.  The
-    type is not filed yet, so no argument mentions it but as a recursive
-    argument: positivity is by construction.  No type of the declaration has a free
+    argument by its shape: each domain of a function shape there and under
+    the domains before it, at the sort, and the non-uniform parameters it
+    ends in under all its domains.  A shape ends in [pt_self 0]: stage A′
+    has no mutual blocks and no nesting.  The type is not filed yet, so no
+    argument mentions it but as a recursive argument: positivity is by
+    construction.  No type of the declaration has a free
     module variable ([decl_mvc]), as no type in a context of assumptions. *)
 | wf_gentry_indty :
   `( ind_params D = Δ ++ gs_tele Ξ ->
@@ -844,14 +852,19 @@ with wf_gentry : gdeps -> gstack -> qname -> gentry -> Prop :=
         Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D
           ⊢ A : (ind_sort D)[wk_shiftn (List.length (cargs_strat gs1) + ind_nn D)]ʷ) ->
      (forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
-        exists Ps, t = pt_self 0 Ps) ->
-     (forall c gs gs1 Ps gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length (ptyp_ps Ps) = ind_nn D) ->
-     (forall c gs gs1 Ps gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        nth_error (ptyp_ps Ps) k = Some P ->
-        nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
+        ptyp_simple t = true) ->
+     (forall c gs gs1 t gs2 Bs1 B Bs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        ptyp_doms t = Bs1 ++ B :: Bs2 ->
+        Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+          ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ) ->
+     (forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        List.length (ptyp_ps t) = ind_nn D) ->
+     (forall c gs gs1 t gs2 k P T, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        nth_error (ptyp_ps t) k = Some P ->
+        nth_error (tele_insts (ind_nparams D)
+                     (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
           = Some T ->
-        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T) ->
+        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T) ->
      (forall Δ1 T Δ2, ind_nparams D = Δ1 ++ ce_ass T :: Δ2 ->
         Θ ⍮ Ξ ⍮ Δ2 ++ ind_uparams D ⊢ T : (ind_sort D)[wk_shiftn (List.length Δ2)]ʷ) ->
      Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D )

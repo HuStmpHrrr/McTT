@@ -124,7 +124,7 @@ Qed.
 Definition carg_mvcb (g : carg) : bool :=
   match g with
   | ca_arg A => exp_mvcb 0 A
-  | ca_rec Ps => forallb (exp_mvcb 0) (ptyp_ps Ps)
+  | ca_rec t => forallb (exp_mvcb 0) (ptyp_doms t) && forallb (exp_mvcb 0) (ptyp_ps t)
   end.
 
 Definition decl_mvcb (D : ind_decl) : bool :=
@@ -140,7 +140,8 @@ Qed.
 Lemma carg_mvcb_spec : forall g, carg_mvcb g = true <-> carg_mvc g.
 Proof.
   destruct mvcb_spec as (He & _).
-  intros [A | Ps]; cbn; [ apply He | apply forallb_Forall; intros; apply He ].
+  intros [A | t]; cbn; [ apply He |].
+  rewrite andb_true_iff, !(forallb_Forall _ _ _ (fun M => He M 0)); reflexivity.
 Qed.
 
 Lemma decl_mvcb_spec : forall D, decl_mvcb D = true <-> decl_mvc D.
@@ -226,45 +227,18 @@ Defined.
 
 (** ** The Entry *)
 
-(** The recursive arguments are of the one shape stage A has. *)
-Definition decl_shapes (D : ind_decl) : Prop :=
-  forall c gs gs1 t gs2, In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 -> exists Ps, t = pt_self 0 Ps.
-
-Definition shape_ok (g : carg) : bool :=
-  match g with
-  | ca_rec (pt_self 0 _) | ca_arg _ => true
-  | _ => false
-  end.
-
-Lemma shape_ok_spec : forall g, shape_ok g = true <-> forall t, g = ca_rec t -> exists Ps, t = pt_self 0 Ps.
-Proof.
-  intros g; destruct g as [A | t]; cbn; [ split; [ intros _ t' [=] | reflexivity ] |].
-  destruct t as [[| k] Ps | k Ps | A t]; cbn; split; intros H; try reflexivity; try discriminate;
-    try (intros t' [= <-]; eauto; fail); destruct (H _ eq_refl) as [? [=]].
-Qed.
-
-Definition decl_shapes_dec (D : ind_decl) : {decl_shapes D} + {~ decl_shapes D}.
-Proof.
-  destruct (forallb (fun cg => forallb shape_ok (snd cg)) (ind_cons D)) eqn:E; [ left | right ].
-  - intros c gs gs1 t gs2 Hin ->.
-    rewrite forallb_forall in E; specialize (E _ Hin); cbn in E; rewrite forallb_forall in E.
-    apply (shape_ok_spec (ca_rec t)); [ apply E, in_or_app; right; left; reflexivity | reflexivity ].
-  - intros H; apply not_true_iff_false in E; apply E, forallb_forall; intros [c gs] Hin; cbn.
-    apply forallb_forall; intros g Hg; apply shape_ok_spec; intros t ->.
-    apply in_split in Hg as (gs1 & gs2 & ->); exact (H _ _ _ _ _ Hin eq_refl).
-Defined.
-
 Lemma wf_gentry_ind_iff : forall Θ Ξ mp pv D,
     Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D <->
-    (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_shapes D /\
-    decl_typed Θ Ξ D.
+    (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_typed Θ Ξ D.
 Proof.
   intros; split.
   - intros H; inversion H; subst.
-    split; [ eexists; eassumption |]; split; [ assumption |]; split; [ assumption |].
+    split; [ eexists; eassumption |]; split; [ assumption |].
     unfold decl_typed; split; [ assumption | split; [ assumption | repeat split; eauto ] ].
-  - intros ([Δ HΔ] & Hle & Hsh & Hass & Hmvc & Hnp & HP & HS & [i Hi] & [n Hn] & HA & HPl & HPt & HN & Hnd).
-    econstructor; eassumption.
+  - intros ([Δ HΔ] & Hle & Hass & Hmvc & Hnp & HP & HS & [i Hi] & [n Hn] & HA & HPl & HPt & HN & Hnd & Hsh).
+    econstructor; try eassumption.
+    + intros * Hin E; exact (proj1 (Hsh _ _ _ _ _ Hin E)).
+    + intros * Hin E Ed; exact (proj2 (Hsh _ _ _ _ _ Hin E) _ _ _ Ed).
 Qed.
 
 Lemma gs_ind_shape : forall Ξ D,
@@ -320,48 +294,94 @@ Section Decide.
   Defined.
 
   Definition recs_dec (D : ind_decl) :
-    {(forall c gs gs1 Ps gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length (ptyp_ps Ps) = ind_nn D) /\
-     (forall c gs gs1 Ps gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.nth_error (ptyp_ps Ps) k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
+    {(forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        List.length (ptyp_ps t) = ind_nn D) /\
+     (forall c gs gs1 t gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        List.nth_error (ptyp_ps t) k = Some P ->
+        List.nth_error (tele_insts (ind_nparams D)
+                          (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
           = Some T ->
-        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T)}
-    + {~ ((forall c gs gs1 Ps gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.length (ptyp_ps Ps) = ind_nn D) /\
-     (forall c gs gs1 Ps gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec Ps :: gs2 ->
-        List.nth_error (ptyp_ps Ps) k = Some P ->
-        List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps Ps)) k
+        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T)}
+    + {~ ((forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        List.length (ptyp_ps t) = ind_nn D) /\
+     (forall c gs gs1 t gs2 k P T, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+        List.nth_error (ptyp_ps t) k = Some P ->
+        List.nth_error (tele_insts (ind_nparams D)
+                          (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
           = Some T ->
-        Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T))}.
+        Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T))}.
   Proof.
     assert (f : forall cg, List.In cg (ind_cons D) ->
-      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall Ps, g = ca_rec Ps ->
-         List.length Ps = ind_nn D /\
-         forall k P T, List.nth_error Ps k = Some P ->
-           List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
+         List.length (ptyp_ps t) = ind_nn D /\
+         forall k P T, List.nth_error (ptyp_ps t) k = Some P ->
+           List.nth_error (tele_insts (ind_nparams D)
+                             (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
              = Some T ->
-           Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T}
-      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall Ps, g = ca_rec Ps ->
-         List.length Ps = ind_nn D /\
-         forall k P T, List.nth_error Ps k = Some P ->
-           List.nth_error (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps) k
+           Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T}
+      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
+         List.length (ptyp_ps t) = ind_nn D /\
+         forall k P T, List.nth_error (ptyp_ps t) k = Some P ->
+           List.nth_error (tele_insts (ind_nparams D)
+                             (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)) k
              = Some T ->
-           Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T}).
-    { intros cg _; apply forall_split_dec; intros gs1 [A | Ps] gs2 _; [ left; intros ? [=] |].
-      destruct (Nat.eq_dec (List.length Ps) (ind_nn D)) as [Hl | Hl];
-        [| right; intros H; exact (Hl (proj1 (H Ps eq_refl))) ].
-      destruct (forall_nth2_dec (fun P T => Θ ⍮ Ξ ⍮ cargs_strat gs1 ++ ind_params D ⊢ P : T)
-                  (fun P T => check_exp_at (cargs_strat gs1 ++ ind_params D) T P) Ps
-                  (tele_insts (ind_nparams D) (sb_of_wk (wk_shiftn (List.length (cargs_strat gs1) + ind_nn D))) Ps))
+           Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T}).
+    { intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
+      destruct (Nat.eq_dec (List.length (ptyp_ps t)) (ind_nn D)) as [Hl | Hl];
+        [| right; intros H; exact (Hl (proj1 (H t eq_refl))) ].
+      destruct (forall_nth2_dec (fun P T => Θ ⍮ Ξ ⍮ ptyp_tele t ++ cargs_strat gs1 ++ ind_params D ⊢ P : T)
+                  (fun P T => check_exp_at (ptyp_tele t ++ cargs_strat gs1 ++ ind_params D) T P) (ptyp_ps t)
+                  (tele_insts (ind_nparams D)
+                     (sb_of_wk (wk_shiftn (ptyp_depth t + List.length (cargs_strat gs1) + ind_nn D))) (ptyp_ps t)))
         as [HP | HP].
       - left; intros ? [= <-]; split; [ exact Hl | exact HP ].
-      - right; intros H; exact (HP (proj2 (H Ps eq_refl))). }
+      - right; intros H; exact (HP (proj2 (H t eq_refl))). }
     destruct (forall_in_dec _ _ f) as [H | H]; [ left; split | right ].
-    - intros c gs gs1 Ps gs2 Hin E; exact (proj1 (H (c, gs) Hin gs1 _ gs2 E Ps eq_refl)).
-    - intros c gs gs1 Ps gs2 k P T Hin E; exact (proj2 (H (c, gs) Hin gs1 _ gs2 E Ps eq_refl) k P T).
-    - intros [H1 H2]; apply H; intros [c gs] Hin gs1 g gs2 E Ps ->.
-      split; [ exact (H1 c gs gs1 Ps gs2 Hin E) | exact (fun k P T => H2 c gs gs1 Ps gs2 k P T Hin E) ].
+    - intros c gs gs1 t gs2 Hin E; exact (proj1 (H (c, gs) Hin gs1 _ gs2 E t eq_refl)).
+    - intros c gs gs1 t gs2 k P T Hin E; exact (proj2 (H (c, gs) Hin gs1 _ gs2 E t eq_refl) k P T).
+    - intros [H1 H2]; apply H; intros [c gs] Hin gs1 g gs2 E t ->.
+      split; [ exact (H1 c gs gs1 t gs2 Hin E) | exact (fun k P T => H2 c gs gs1 t gs2 k P T Hin E) ].
+  Defined.
+
+  (** The shapes of the recursive arguments: [Π]s ending at the type, each
+      domain a type of the sort over the domains before it. *)
+  Definition shapes_dec (D : ind_decl) :
+    {forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+       ptyp_simple t = true /\
+       forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
+         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+           ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}
+    + {~ forall c gs gs1 t gs2, List.In (c, gs) (ind_cons D) -> gs = gs1 ++ ca_rec t :: gs2 ->
+       ptyp_simple t = true /\
+       forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
+         Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+           ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}.
+  Proof.
+    assert (f : forall cg, List.In cg (ind_cons D) ->
+      {forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
+         ptyp_simple t = true /\
+         forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
+           Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+             ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}
+      + {~ forall gs1 g gs2, snd cg = gs1 ++ g :: gs2 -> forall t, g = ca_rec t ->
+         ptyp_simple t = true /\
+         forall Bs1 B Bs2, ptyp_doms t = Bs1 ++ B :: Bs2 ->
+           Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+             ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ}).
+    { intros cg _; apply forall_split_dec; intros gs1 [A | t] gs2 _; [ left; intros ? [=] |].
+      destruct (bool_dec (ptyp_simple t) true) as [Hs | Hs]; [| right; intros H; exact (Hs (proj1 (H t eq_refl))) ].
+      destruct (forall_split_dec (ptyp_doms t)
+                  (fun Bs1 B Bs2 => Θ ⍮ Ξ ⍮ doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D
+                     ⊢ B : (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ))
+        as [HB | HB].
+      - intros Bs1 B Bs2 _.
+        exact (check_exp_at (doms_ctx Bs1 ++ cargs_strat gs1 ++ ind_params D)
+                 (ind_sort D)[wk_shiftn (List.length Bs1 + List.length (cargs_strat gs1) + ind_nn D)]ʷ B).
+      - left; intros ? [= <-]; split; [ exact Hs | exact HB ].
+      - right; intros H; exact (HB (proj2 (H t eq_refl))). }
+    destruct (forall_in_dec _ _ f) as [H | H]; [ left | right ].
+    - intros c gs gs1 t gs2 Hin E; exact (H (c, gs) Hin gs1 _ gs2 E t eq_refl).
+    - intros H'; apply H; intros [c gs] Hin gs1 g gs2 E t ->; exact (H' c gs gs1 t gs2 Hin E).
   Defined.
 
   Definition nparams_dec (D : ind_decl) :
@@ -402,8 +422,11 @@ Section Decide.
     destruct (nparams_dec D) as [HN | Hn];
       [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
     destruct (nodup_dec (List.map fst (ind_cons D))) as [Hnd | Hn];
-      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H); exact (Hn H) ].
-    left; split; [ exact Hass | split; [ exact Hmv | repeat split; eauto ] ].
+      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H & _); exact (Hn H) ].
+    destruct (shapes_dec D) as [Hsh | Hn];
+      [| right; intros (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H); exact (Hn H) ].
+    left; exact (conj Hass (conj Hmv (conj Hle (conj HP (conj HS (conj (ex_intro _ i Hi) (conj (ex_intro _ n Hl)
+                  (conj HA (conj HPl (conj HPt (conj HN (conj Hnd Hsh)))))))))))).
   Defined.
 
   (** The entry a declaration is filed as, its parameters over the
@@ -411,13 +434,9 @@ Section Decide.
   Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
     (Hsh : (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D) :
     {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} :=
-    match decl_shapes_dec D with
-    | right Hn => right (fun H => Hn (proj1 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
-    | left Hs =>
     match decl_typed_dec D with
-    | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) (conj Hs H))))
-    | right Hn => right (fun H => Hn (proj2 (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H)))))
-    end
+    | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) H)))
+    | right Hn => right (fun H => Hn (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H))))
     end.
 End Decide.
 
@@ -425,8 +444,8 @@ End Decide.
 Lemma equiv_gentry_ind : forall Θ Θ' Ξ mp pv D,
     gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind pv D.
 Proof.
-  intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & Hsh & HD).
-  apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle | split; [ exact Hsh |] ] ].
+  intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & HD).
+  apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle |] ].
   eapply decl_typed_emb; [| exact HD ].
   constructor; [ exact HΞ | apply gc_sub_deps; exact Hs ].
 Qed.
@@ -449,65 +468,89 @@ Proof.
     right; intros [| P' Ps'] E; [ discriminate | injection E as _ E; exact (HPs Ps' E) ].
 Defined.
 
-(** Whether [Self] occurs, the reason a non-recursive argument is not one:
-    otherwise it is a recursive argument before it that does. *)
-Definition self_free_dec (np : nat) (gs1 : list carg) (T : exp) : bool :=
-  match img_dec (List.map (fun _ => false) gs1 ++ List.repeat false np ++ true :: nil) T with
+(** Whether [Self] occurs under [d] domains, the reason a non-recursive
+    argument is not one: otherwise it is a recursive argument before it
+    that does. *)
+Definition self_free_dec (np : nat) (gs1 : list carg) (d : nat) (T : exp) : bool :=
+  match img_dec (List.repeat false d ++ List.map (fun _ => false) gs1 ++ List.repeat false np ++ true :: nil) T with
   | inleft _ => true
   | inright _ => false
   end.
 
-(** Why an argument is rejected: [0] it depends on a recursive argument
-    before it; [2] it is a function into [Self], a shape stage A does not
-    have; [3] [Self] is not applied to the uniform parameters as declared;
-    [4] [Self] is an argument of a head that does not compute (an opaque
-    definition, an axiom or a parameter), so its occurrence cannot be
-    seen to be positive; [1] [Self] occurs elsewhere. *)
-Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : nat :=
-  let k := List.length gs1 + np in
-  if self_free_dec np gs1 T then 0 else
+(** Why an argument is rejected, along the [Π]s of its type while their
+    domains do not mention [Self]: [0] it depends on a recursive argument
+    before it; [2] [Self] occurs in a domain, so not strictly positively;
+    [3] [Self] is not applied to the uniform parameters as declared; [4]
+    [Self] is an argument of a head that does not compute (an opaque
+    definition, an axiom or a parameter), so its occurrence cannot be seen
+    to be positive; [1] [Self] occurs elsewhere. *)
+Fixpoint sh_reason (np : nat) (gs1 : list carg) (d : nat) (T : exp) : nat :=
   match T with
-  | a_pi A B =>
-      if self_free_dec np gs1 A then
-        match app_head B with
-        | a_var j => if Nat.eqb j (S k) then 2 else 4
-        | a_mem _ _ => 4
-        | _ => 1
-        end
-      else 1
+  | a_pi A B => if self_free_dec np gs1 d A then sh_reason np gs1 (S d) B else 2
   | _ =>
       match app_head T with
-      | a_var j => if Nat.eqb j k then 3 else 4
+      | a_var j => if Nat.eqb j (d + List.length gs1 + np) then 3 else 4
       | a_mem _ _ => 4
       | _ => 1
       end
   end.
+
+Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : nat :=
+  if self_free_dec np gs1 0 T then 0 else sh_reason np gs1 0 T.
+
+(** The leaf of a shape: [Self] at the uniform parameters, then at terms
+    in which it does not occur. *)
+Definition cls_leaf_dec (nu np : nat) (gs1 : list carg) (d : nat) (T : exp)
+    (HnP : forall B T', T <> a_pi B T') :
+  {t | cls_sh nu np gs1 d T t} + {forall t, ~ cls_sh nu np gs1 d T t}.
+Proof.
+  destruct (exp_eq_dec (app_head T) (a_var (d + List.length gs1 + np))) as [Eh | Eh].
+  - destruct (list_eq_dec exp_eq_dec (List.firstn nu (app_args T)) (vars_from (d + List.length gs1 + (np - nu)) nu))
+      as [Eu | Eu].
+    + destruct (imgs_dec (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ true :: nil)
+                  (List.skipn nu (app_args T))) as [[Ps HPs] | HPs].
+      * left; exists (pt_self 0 Ps).
+        rewrite (apps_head_args T), Eh, <- (List.firstn_skipn nu (app_args T)), Eu, HPs.
+        exact (cls_sh_self nu np gs1 d Ps).
+      * right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
+        rewrite app_args_apps_var, List.skipn_app, length_vars_from, Nat.sub_diag, List.skipn_all2 in HPs
+          by (rewrite length_vars_from; lia).
+        exact (HPs Ps eq_refl).
+    + right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
+      rewrite app_args_apps_var, List.firstn_app, length_vars_from, Nat.sub_diag, List.firstn_all2 in Eu
+        by (rewrite length_vars_from; lia).
+      apply Eu; rewrite List.app_nil_r; reflexivity.
+  - right; intros t Ht; inversion Ht as [d' Ps E | d' B T' t' _ E]; subst; [| exact (HnP _ _ eq_refl) ].
+    rewrite app_head_apps_var in Eh; exact (Eh eq_refl).
+Defined.
+
+(** A shape: [Π]s over domains in which [Self] does not occur, into a
+    leaf. *)
+Definition cls_sh_dec (nu np : nat) (gs1 : list carg) :
+  forall (T : exp) (d : nat), {t | cls_sh nu np gs1 d T t} + {forall t, ~ cls_sh nu np gs1 d T t}.
+Proof.
+  fix go 1; intros T d; destruct T; try (apply cls_leaf_dec; intros ? ? [=]; fail).
+  destruct (img_dec (List.repeat false d ++ cargs_pat gs1 ++ List.repeat false np ++ true :: nil) T1) as [[B HB] | HB].
+  - destruct (go T2 (S d)) as [[t Ht] | Ht].
+    + left; exists (pt_pi B t); rewrite HB; exact (cls_sh_pi nu np gs1 d B T2 t Ht).
+    + right; intros t' Ht'; inversion Ht'; subst;
+        [ match goal with E : apps _ _ = _ |- _ => apply (f_equal app_head) in E; rewrite app_head_apps_var in E;
+            discriminate end
+        | match goal with Hs : cls_sh _ _ _ (S d) T2 _ |- _ => exact (Ht _ Hs) end ].
+  - right; intros t' Ht'; inversion Ht'; subst;
+      [ match goal with E : apps _ _ = _ |- _ => apply (f_equal app_head) in E; rewrite app_head_apps_var in E;
+          discriminate end
+      | exact (HB _ eq_refl) ].
+Defined.
 
 Definition cls_arg_dec (nu np : nat) (gs1 : list carg) (T : exp) :
   {g | cls_arg nu np gs1 T g} + {forall g, ~ cls_arg nu np gs1 T g}.
 Proof.
   destruct (img_dec (cargs_pat gs1 ++ List.repeat false np ++ true :: nil) T) as [[A HA] | HA].
   - left; exists (ca_arg A); rewrite HA; constructor.
-  - destruct (exp_eq_dec (app_head T) (a_var (List.length gs1 + np))) as [Eh | Eh].
-    + destruct (list_eq_dec exp_eq_dec (List.firstn nu (app_args T)) (vars_from (List.length gs1 + (np - nu)) nu))
-        as [Eu | Eu].
-      * destruct (imgs_dec (cargs_pat gs1 ++ List.repeat false np ++ true :: nil) (List.skipn nu (app_args T)))
-          as [[Ps HPs] | HPs].
-        -- left; exists (ca_rec (pt_self 0 Ps)).
-           rewrite (apps_head_args T), Eh, <- (List.firstn_skipn nu (app_args T)), Eu, HPs; constructor.
-        -- right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
-           ++ exact (HA A eq_refl).
-           ++ rewrite app_args_apps_var, List.skipn_app, length_vars_from, Nat.sub_diag, List.skipn_all2 in HPs
-                by (rewrite length_vars_from; lia).
-              exact (HPs Ps eq_refl).
-      * right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
-        -- exact (HA A eq_refl).
-        -- rewrite app_args_apps_var, List.firstn_app, length_vars_from, Nat.sub_diag, List.firstn_all2 in Eu
-             by (rewrite length_vars_from; lia).
-           apply Eu; rewrite List.app_nil_r; reflexivity.
-    + right; intros g Hg; inversion Hg as [A E | Ps E]; subst.
-      * exact (HA A eq_refl).
-      * rewrite app_head_apps_var in Eh; exact (Eh eq_refl).
+  - destruct (cls_sh_dec nu np gs1 T 0) as [[t Ht] | Ht].
+    + left; exists (ca_rec t); constructor; exact Ht.
+    + right; intros g Hg; inversion Hg as [A E | T' t Hs E]; subst; [ exact (HA A eq_refl) | exact (Ht _ Hs) ].
 Defined.
 
 (** A failure names the argument, and why it is rejected. *)
@@ -548,7 +591,7 @@ Definition rec_arity_ok (D : ind_decl) : bool :=
 
 Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> rec_arity_ok D = true.
 Proof.
-  intros * H; apply wf_gentry_ind_iff in H as (_ & _ & _ & HD).
+  intros * H; apply wf_gentry_ind_iff in H as (_ & _ & HD).
   pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & _).
   unfold rec_arity_ok; apply forallb_forall; intros [c gs] Hin; apply forallb_forall; cbn [snd].
   intros [A | t] Hg; [ reflexivity |].

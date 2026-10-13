@@ -190,7 +190,7 @@ Section type_check.
     destruct (feval_of_ref _ _ _ _ _ _ Hn (agree_all _ _ _ Hag)) as [HoN HsN].
     split; [ exact HoN |].
     intros n' Hn'.
-    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HT Ha1 Hv0 HN' Hn) as (v1 & c & Hv1 & _).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 (HsN _ Hn') Hv1) as (v1' & Hv1' & _).
     eapply feval_exp_order_sound; exact Hv1'.
@@ -208,7 +208,7 @@ Section type_check.
     assert (HN' : G ⊢ N : A) by (eapply alg_type_check_sound; eassumption).
     destruct (eval_of_typing _ _ _ _ Hp HN') as [n0 Hn0].
     pose proof (proj2 (feval_of_ref _ _ _ _ _ _ Hn0 (agree_all _ _ _ Hag)) _ Hn') as HsN.
-    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | |]; subst.
+    inversion Hs as [| ? ? ? ? ? ? Hρ0 | | | | | | | | | | | | | | | | |]; subst.
     destruct (typ_val_pi _ _ _ _ _ _ _ _ _ _ _ Hp HΠ Ha1 Hv0 HN' Hn0) as (v1 & c & Hv1 & Hc & Hv1c).
     destruct (feval_clo_sim _ _ _ _ _ _ _ _ Hρ0 HsN Hv1) as (v1' & Hv1' & Hs1).
     rewrite (functional_feval_exp _ _ _ _ Hv' Hv1') in *.

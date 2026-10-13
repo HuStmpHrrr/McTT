@@ -1,4 +1,4 @@
-# Inductive types (stage A: parameterised, no indices, no OTT)
+# Inductive types (stage A/A′: parameterised, function-shaped arguments, no indices, no OTT)
 
 Branch `wip/ott`. What exists, where, and where it departs from the design
 report (`.claude/plans/inductives-ott/report.md`, "Families" and "Plan",
@@ -74,10 +74,12 @@ member.
 
 * An argument whose type is the declared name applied to all its
   parameters, the uniform ones as declared, is **recursive**
-  (`ca_rec (pt_self 0 Ps)`); one in which the name does not occur is
-  non-recursive (`ca_arg A`); any other is rejected.  No argument may depend
-  on a recursive one.  Recursion is first order: the name is in scope nowhere
-  else, so positivity holds by construction (no separate positivity check).
+  (`ca_rec (pt_self 0 Ps)`); so is a function into it, `∀ (b : B) … → X Ps`,
+  each domain free of the name (`ca_rec (pt_pi B … (pt_self 0 Ps))`, stage
+  A′); one in which the name does not occur is non-recursive (`ca_arg A`);
+  any other is rejected.  No argument may depend on a recursive one.  The
+  name occurs only strictly positively by construction of the shapes (no
+  separate positivity check).
 * `X.elim M return ys z . A | c xs, hs ⇒ B … end`: the core checks the
   counts, the order of the branches and the constructor names; the branch
   labels are the declaration's constructor names, unqualified.
@@ -91,11 +93,60 @@ member.
 `ca_rec : ptyp_g E -> carg_g E` with
 `ptyp_g E := pt_self k Ps | pt_aux k Ps | pt_pi A t` (`Syntax.v`): the
 data is shaped for mutual blocks (`k`), nesting (`pt_aux`) and
-function-shaped arguments (`pt_pi`).  Stage A accepts only `pt_self 0 Ps`
-(`wf_gentry_indty`, decided by `decl_shapes_dec`).  The metatheory reads any
-shape by its parameters alone, `ptyp_ps`, declared a coercion to `list`, so
-the semantics of the other shapes is not built: a later stage replaces the
-uses of `ptyp_ps` by a case on the shape.
+function-shaped arguments (`pt_pi`).  Stage A′ accepts the shapes
+`ptyp_simple t = true`: `pt_pi B1 (… (pt_pi Bk (pt_self 0 Ps)))`, `k ≥ 0`
+(`wf_gentry_indty`; the domains `ptyp_doms t` are typed, each over those
+before it, at the sort).  `pt_aux` and `pt_self (S k)` are reserved.
+
+### Function shapes (stage A′)
+
+```
+inductive Ord : Type@0 where
+| base
+| next (o : Ord)
+| lim (f : ∀ (n : ℕ) → Ord)
+end
+
+def approx (o : Ord) (k : ℕ) : ℕ :=
+  Ord.elim o return z . ℕ
+  | base ⇒ 0
+  | next p, r ⇒ succ r
+  | lim f, h ⇒ h k
+  end
+end
+```
+
+* The type of a recursive argument of shape `t` is `ptyp_ty p D pat t`: a
+  `Π` over the domains, into the type at the parameters.  Its hypothesis
+  has type `ptyp_ihty A β σ x t`: `Π (b : B). (ihty of the rest at x b)`,
+  ending in the motive at the leaf's parameters and `x b…`
+  (`Inductives.v`).  The hypothesis term is `ptyp_ih`: `λ b. X.elim (x b)`.
+* ι: `X.elim (c … f …) ≈ B[…, f, …, λ b. X.elim (f b), …]` (`wf_iota`).
+* Semantics: `eval_ih` (the eliminator at `v`, or the value
+  `d_ihfn ρ nm A Bs t v` at a `Π` shape), applied by `eval_app_ihfn`
+  (apply `v`, then `eval_ih` of the rest); `eval_shty` / `eval_ihty` give
+  the type of an argument / of its hypothesis, a `Πᵈ b (nil ↦ fam) fam_cod`
+  whose codomain closure applies the family `d_shfam` / `d_ihfam`
+  (`eval_app_shfam`, `eval_app_ihfam`).  Readback needs nothing new: a
+  hypothesis is read back by η at its `Π` type.
+* `read_brs_cons` has the premise `cargs_plen (ind_nn D) gs` (every shape
+  ends at `ind_nn D` parameters): the freshness invariant of
+  `Core/Semantic/Avoid.v` places the motive's bad position by it.
+* `wf_con` has a third derivable premise: the context of the arguments
+  before a recursive argument, then `k` of its domains, extended by the
+  rest of its type, is well formed (`shape_rest_wf'` derives it;
+  `wf_con_of_lookup` is the rule without it, a `mctt` hint).  The Kripke
+  fundamental theorem needs the rest's types valid at the target
+  (`k_con`), and no inversion on a `Π` gives them.
+* The classification: `cls_sh nu np gs1 d T t` (a shape under `d`
+  domains), `cls_rec` files it.  `cls_wkd d np gs1 = wk_pat (repeat false d
+  ++ cargs_pat gs1 ++ repeat false np ++ [true])`.  The normal-form path
+  makes `(f : Arr Ord)`, `Arr X := ∀ (n : ℕ) → X`, recursive.
+* Rejections (`cls_reason`, `Extraction/IndDecl.v`, messages in
+  `Extraction/Command.v`): the name in a domain ("… occurs in the domain of
+  a function in the argument f of mk, which is not strictly positive"),
+  under a head that does not compute, not at the uniform parameters as
+  declared, elsewhere.
 
 ## Classification in the command (A0.4)
 
@@ -111,8 +162,9 @@ parameters, `cons (x : A) (xs : List A)`.
 
 * `cls_free`: `T = A[cls_wk np gs1]` — neither `Self` nor an earlier
   recursive argument occurs; filed `ca_arg A`;
-* `cls_self`: `T = #(k + np) (uvars ++ Ps[cls_wk np gs1])`, the leading
-  `nu` arguments exactly the uniform variables; filed `ca_rec (pt_self 0 Ps)`;
+* `cls_rec` with `cls_sh … 0 T t`: `T = Π B1[cls_wkd 0]. … #(d + k + np)
+  (uvars ++ Ps[cls_wkd d])`, the leading `nu` arguments exactly the uniform
+  variables; filed `ca_rec t`;
 * anything else has no rule.
   `cls_wk np gs1 = wk_pat (cargs_pat gs1 ++ repeat false np ++ [true])`.
 
@@ -290,6 +342,6 @@ keyword).
    checker decides it.
 8. The checker's message for an ill-formed declaration names the type only
    (`"ill-formed inductive declaration x"`), not the failing premise; the
-   classification has its own messages (non-positive occurrence, function
-   into the type, dependency on a recursive argument, uniform parameters
+   classification has its own messages (non-positive occurrence, the type
+   in a domain, dependency on a recursive argument, uniform parameters
    not as declared, wrong arity).

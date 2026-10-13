@@ -45,7 +45,10 @@ Section GlobalExt.
     (forall h ch r, eval_selmc Θ1 Ξ1 h ch r -> eval_selmc Θ2 Ξ2 h ch r) /\
     (forall ρ Φ ρ', eval_benv Θ1 Ξ1 ρ Φ ρ' -> eval_benv Θ2 Ξ2 ρ Φ ρ') /\
     (forall ρ nm A Bs m r, eval_elim Θ1 Ξ1 ρ nm A Bs m r -> eval_elim Θ2 Ξ2 ρ nm A Bs m r) /\
-    (forall ρ nm A Bs gs vs ihs, eval_ihs Θ1 Ξ1 ρ nm A Bs gs vs ihs -> eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs).
+    (forall ρ nm A Bs gs vs ihs, eval_ihs Θ1 Ξ1 ρ nm A Bs gs vs ihs -> eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs) /\
+    (forall ρ nm A Bs t v r, eval_ih Θ1 Ξ1 ρ nm A Bs t v r -> eval_ih Θ2 Ξ2 ρ nm A Bs t v r) /\
+    (forall p ups ρ t a, eval_shty Θ1 Ξ1 p ups ρ t a -> eval_shty Θ2 Ξ2 p ups ρ t a) /\
+    (forall ρm A ρ t v a, eval_ihty Θ1 Ξ1 ρm A ρ t v a -> eval_ihty Θ2 Ξ2 ρm A ρ t v a).
   Proof.
     apply (eval_mut_ind Θ1 Ξ1
              (fun M ρ m _ => ⟦ M ⟧ Θ2 ⍮ Ξ2 ⍮ ρ ↘ m)
@@ -61,7 +64,10 @@ Section GlobalExt.
              (fun h ch r _ => eval_selmc Θ2 Ξ2 h ch r)
              (fun ρ Φ ρ' _ => eval_benv Θ2 Ξ2 ρ Φ ρ')
              (fun ρ nm A Bs m r _ => eval_elim Θ2 Ξ2 ρ nm A Bs m r)
-             (fun ρ nm A Bs gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs)).
+             (fun ρ nm A Bs gs vs ihs _ => eval_ihs Θ2 Ξ2 ρ nm A Bs gs vs ihs)
+             (fun ρ nm A Bs t v r _ => eval_ih Θ2 Ξ2 ρ nm A Bs t v r)
+             (fun p ups ρ t a _ => eval_shty Θ2 Ξ2 p ups ρ t a)
+             (fun ρm A ρ t v a _ => eval_ihty Θ2 Ξ2 ρm A ρ t v a)).
     all: try solve [ ext_case | intros; econstructor; eauto
                    | intros * H; econstructor; intros ? ?; rewrite <- Hmod; apply H ].
   Qed.
@@ -69,12 +75,12 @@ Section GlobalExt.
   Lemma fresh_tele_ext : forall ρ T s vs, fresh_tele Θ1 Ξ1 ρ T s vs -> fresh_tele Θ2 Ξ2 ρ T s vs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
-  Lemma fresh_cargs_ext : forall p ups ρ gs s vs bss,
-      fresh_cargs Θ1 Ξ1 p ups ρ gs s vs bss -> fresh_cargs Θ2 Ξ2 p ups ρ gs s vs bss.
+  Lemma fresh_cargs_ext : forall p ups ρ gs s vs,
+      fresh_cargs Θ1 Ξ1 p ups ρ gs s vs -> fresh_cargs Θ2 Ξ2 p ups ρ gs s vs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
-  Lemma fresh_ihs_ext : forall ρ A gs vs bss s ihs,
-      fresh_ihs Θ1 Ξ1 ρ A gs vs bss s ihs -> fresh_ihs Θ2 Ξ2 ρ A gs vs bss s ihs.
+  Lemma fresh_ihs_ext : forall ρ A ρa gs vs s ihs,
+      fresh_ihs Θ1 Ξ1 ρ A ρa gs vs s ihs -> fresh_ihs Θ2 Ξ2 ρ A ρa gs vs s ihs.
   Proof. pose proof eval_ext; destruct_all; induction 1; econstructor; eauto. Qed.
 
   Lemma read_ext :

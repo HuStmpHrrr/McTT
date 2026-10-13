@@ -230,6 +230,21 @@ Definition glu_nparams (D : ind_decl) (NEl : nat -> list domain -> glu_exp_pred)
   forall k N A n, List.nth_error Ns k = Some N -> List.nth_error (tele_insts (ind_nparams D) (sb_of_list Id Us) Ns) k = Some A ->
     List.nth_error ns k = Some n -> Γ ⊢ N : A ® n ∈ NEl k (List.firstn k ns).
 
+(** The type [T] of a recursive argument of shape [t], after the values
+    [pre] of the shape's components, glued at the gluings [DP] of the
+    shape's domains: at every weakening, its domain is glued at [DP], and
+    at an element of the domain glued at [DEl], the rest of the type is the
+    one of the rest of the shape. *)
+Fixpoint glu_shape_typ (ups : list domain) (DP : list domain -> exp -> glu_typ_pred)
+    (DEl : list domain -> exp -> glu_exp_pred) (Γ : ctx) (pre : list domain) (t : ptyp) (T : typ) {struct t} : Prop :=
+  match t with
+  | pt_pi B t' => forall IT OT, T = a_pi IT OT ->
+      (forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) /\
+      (forall Δ φ b c, Δ ⊢k φ : Γ -> ind_dr ups pre B c c -> Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B ->
+         glu_shape_typ ups DP DEl Δ (pre ++ c :: nil) t' OT[(ι φ),,b])
+  | _ => True
+  end.
+
 (** The types of the telescopes of an inductive type at its uniform
     parameters [Us], glued at the gluings of the clause: a non-uniform
     parameter's at the non-uniform parameters before it, glued, and a
@@ -241,6 +256,7 @@ Definition ind_glu_comps (p : qname) (D : ind_decl) (ups : list domain)
     (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (Γ : ctx) (Us : list exp) : Prop :=
   (forall k Ns ns T, List.length ns = k -> k < ind_nn D ->
      List.nth_error (tele_insts (ind_nparams D) (sb_of_list Id Us) Ns) k = Some T ->
@@ -257,7 +273,17 @@ Definition ind_glu_comps (p : qname) (D : ind_decl) (ups : list domain)
         List.nth_error vs (List.length hs1) = Some v ->
         Γ ⊢ N : T' ® v ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs))) ->
      tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs) (nonrec_vals gs1 vs) ->
-     Γ ⊢ T ® AP ns c (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs)).
+     Γ ⊢ T ® AP ns c (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs)) /\
+  (forall c gs gs1 t gs2 Ns ns As vs T, ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+     glu_nparams D NEl Γ Us Ns ns -> tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ns ns ->
+     List.length vs = List.length gs1 ->
+     List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length gs1) = Some T ->
+     (forall hs1 B hs2 N T' v, gs1 = hs1 ++ ca_arg B :: hs2 -> List.nth_error As (List.length hs1) = Some N ->
+        List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) (List.length hs1) = Some T' ->
+        List.nth_error vs (List.length hs1) = Some v ->
+        Γ ⊢ N : T' ® v ∈ AEl ns c (List.length (cargs_nonrec hs1)) (nonrec_vals hs1 (List.firstn (List.length hs1) vs))) ->
+     tele_pre (ind_ar D ups ns c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vs) (nonrec_vals gs1 vs) ->
+     glu_shape_typ ups DP DEl Γ (ns ++ nonrec_vals gs1 vs) t T).
 
 (** A type of the inductive type at its parameters, at syntactic parameters
     [Ps]: glued to the values by their readback, its sort in the universe of
@@ -270,26 +296,29 @@ Definition ind_typ_at (p : qname) (D : ind_decl) (ups ns : list domain)
     (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (U : typ) (Γ : ctx) (A : typ) (Ps : list exp) : Prop :=
   Γ ⊢ A ≈ apps (a_ind p) Ps : U /\
   forall Δ φ, Δ ⊢k φ : Γ ->
     glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Ps) (ups ++ ns) /\
     Δ ⊢ (ind_sort D)[wk_shiftn (ind_nn D)]ʷ[sb_of_list Id (List.map (fun P => P[φ]ʷ) Ps)] ⊆ U /\
     forall Ps', exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
-      ind_glu_comps p D ups NP NEl AP AEl Δ (List.firstn (ind_nu D) Ps').
+      ind_glu_comps p D ups NP NEl AP AEl DP DEl Δ (List.firstn (ind_nu D) Ps').
 
 Definition ind_glu_typ_pred (p : qname) (D : ind_decl) (ups ns : list domain)
     (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (U : typ) : glu_typ_pred :=
-  fun Γ A => exists Ps, ind_typ_at p D ups ns NP NEl AP AEl U Γ A Ps.
-#[global] Arguments ind_glu_typ_pred p D ups ns NP NEl AP AEl U Γ A/.
+  fun Γ A => exists Ps, ind_typ_at p D ups ns NP NEl AP AEl DP DEl U Γ A Ps.
+#[global] Arguments ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl U Γ A/.
 
 Section GluInd.
   Variable (p : qname) (D : ind_decl) (ups : list domain)
     (NEl : nat -> list domain -> glu_exp_pred)
-    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred).
+    (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred).
 
   (** The elements of the inductive type at the syntactic parameters [Ps]
       of its type: a constructor at those parameters, its non-uniform ones
@@ -304,7 +333,11 @@ Section GluInd.
       those of its type, like the element itself in [ind_glu_exp_pred]:
       weakening commutes with the instances of the telescopes only for a
       closed declaration, which the model does not assume, so it is built
-      into the gluing instead. *)
+      into the gluing instead.  A recursive argument of a function shape
+      ([glu_rec]) is a function: at every weakening, applied to an element
+      glued at a domain of the shape ([DEl], indexed by the values before
+      the domain and the domain), it is a recursive argument of the rest of
+      the shape; its domain type is glued at [DP]. *)
   Inductive glu_ind : ctx -> list exp -> exp -> domain -> Prop :=
   | glu_ind_con :
     `{ ind_con D c = Some gs ->
@@ -324,33 +357,45 @@ Section GluInd.
           List.nth_error vs (List.length gs1) = Some v ->
           Γ ⊢ N : A ® v ∈ AEl (List.skipn (ind_nu D) bs) c (List.length (cargs_nonrec gs1))
                              (nonrec_vals gs1 (List.firstn (List.length gs1) vs))) ->
-       (forall gs1 Pr gs2 N A v bsr Q, gs = gs1 ++ ca_rec Pr :: gs2 ->
+       (forall gs1 t gs2 N A v, gs = gs1 ++ ca_rec t :: gs2 ->
           List.nth_error As (List.length gs1) = Some N ->
           List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some A ->
           List.nth_error vs (List.length gs1) = Some v ->
-          eval_exps gc_deps gc_stack Pr
-            (env_args nil (ups ++ List.skipn (ind_nu D) bs ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs))) bsr ->
-          A = apps (a_ind p) Q ->
-          List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
-          (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
-             glu_nparams D NEl Γ (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
-             forall Δ φ, Δ ⊢k φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
-       (forall gs1 Pr gs2 N A v bsr Q, gs = gs1 ++ ca_rec Pr :: gs2 ->
-          List.nth_error As (List.length gs1) = Some N ->
-          List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some A ->
-          List.nth_error vs (List.length gs1) = Some v ->
-          eval_exps gc_deps gc_stack Pr
-            (env_args nil (ups ++ List.skipn (ind_nu D) bs ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs))) bsr ->
-          A = apps (a_ind p) Q ->
-          forall Δ φ Q', Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
-            glu_ind Δ Q' N[φ]ʷ v) ->
+          glu_rec Γ (List.skipn (ind_nu D) bs ++ nonrec_vals gs1 (List.firstn (List.length gs1) vs)) t A N v) ->
        glu_ind Γ Ps M (d_con p c (bs ++ vs)) }
   | glu_ind_neut :
     `{ per_bot m m ->
        (forall Δ φ M', Δ ⊢k φ : Γ -> Rne m in gc_deps ⍮ gc_stack ⍮ length Δ ↘ M' ->
           Δ ⊢ M[φ]ʷ ≈ M' : (apps (a_ind p) Ps)[φ]ʷ) ->
-       glu_ind Γ Ps M (⇑ (d_ind p as') m) }.
+       glu_ind Γ Ps M (⇑ (d_ind p as') m) }
+  (** A recursive argument [N] of type [A] and shape [t], after the values
+      [pre] of the shape's components (the uniform parameters left out). *)
+  with glu_rec : ctx -> list domain -> ptyp -> typ -> exp -> domain -> Prop :=
+  | glu_rec_self :
+    `{ (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
+          A = apps (a_ind p) Q ->
+          List.length Q = ind_np D /\ tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr /\
+          (forall bsr', tele_full (ind_nr D ups) (List.rev (ind_nparams D)) bsr bsr' ->
+             glu_nparams D NEl Γ (List.firstn (ind_nu D) Q) (List.skipn (ind_nu D) Q) bsr' /\
+             forall Δ φ, Δ ⊢k φ : Γ -> glu_params_top D Δ (List.map (fun P => P[φ]ʷ) Q) (ups ++ bsr'))) ->
+       (forall bsr Q, eval_exps gc_deps gc_stack Ps (env_args nil (ups ++ pre)) bsr ->
+          A = apps (a_ind p) Q ->
+          forall Δ φ Q', Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Q) Q' ->
+            glu_ind Δ Q' N[φ]ʷ v) ->
+       glu_rec Γ pre (pt_self k Ps) A N v }
+  | glu_rec_pi :
+    `{ (forall IT OT, A = a_pi IT OT -> forall Δ φ, Δ ⊢k φ : Γ -> Δ ⊢ IT[φ]ʷ ® DP pre B) ->
+       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c, Δ ⊢k φ : Γ -> ind_dr ups pre B c c ->
+          Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> exists fc, $| v & c | gc_deps ⍮ gc_stack ↘ fc) ->
+       (forall IT OT, A = a_pi IT OT -> forall Δ φ b c fc, Δ ⊢k φ : Γ -> ind_dr ups pre B c c ->
+          Δ ⊢ b : IT[φ]ʷ ® c ∈ DEl pre B -> $| v & c | gc_deps ⍮ gc_stack ↘ fc ->
+          glu_rec Δ (pre ++ c :: nil) t OT[(ι φ),,b] (a_app N[φ]ʷ b) fc) ->
+       glu_rec Γ pre (pt_pi B t) A N v }.
 End GluInd.
+
+Scheme glu_ind_mut_ind := Induction for glu_ind Sort Prop
+with glu_rec_mut_ind := Induction for glu_rec Sort Prop.
+Combined Scheme glu_ind_mut_ind_all from glu_ind_mut_ind, glu_rec_mut_ind.
 
 (** An element of the inductive type: typed, related to itself, and an
     element at every weakening and at every instance of the parameters
@@ -361,12 +406,13 @@ Definition ind_glu_exp_pred (p : qname) (D : ind_decl) (ups ns : list domain)
     (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
     (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
     (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+    (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
     (elem_rel : relation domain) (U : typ) : glu_exp_pred :=
   fun Γ A M m => Γ ⊢ M : A /\ Dom m ≈ m ∈ elem_rel /\
-    exists Ps, ind_typ_at p D ups ns NP NEl AP AEl U Γ A Ps /\
+    exists Ps, ind_typ_at p D ups ns NP NEl AP AEl DP DEl U Γ A Ps /\
       forall Δ φ Ps', Δ ⊢k φ : Γ -> exps_eq_at Δ (ind_params D) (List.map (fun P => P[φ]ʷ) Ps) Ps' ->
-        glu_ind p D ups NEl AEl Δ Ps' M[φ]ʷ m.
-#[global] Arguments ind_glu_exp_pred p D ups ns NP NEl AP AEl elem_rel U Γ A M m/.
+        glu_ind p D ups NEl AEl DP DEl Δ Ps' M[φ]ʷ m.
+#[global] Arguments ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl elem_rel U Γ A M m/.
 
 (** The gluing of a type of a small universe quotes the large universe
     [Typeω@0] (any small type is in it), so it does not say that the type is
@@ -472,6 +518,7 @@ Section Gluing.
     `{ forall (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
          (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
          (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+         (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
          typ_rel el_rel (elem_rel : relation domain),
           ind_lookup gc_deps gc_stack p = Some D ->
           List.length ups = ind_nu D ->
@@ -489,8 +536,19 @@ Section Gluing.
              ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
              tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
              DG b ∈ glu_univ_elem_core ↘ AP ms c k vs ↘ AEl ms c k vs) ->
-          typ_rel <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl (Typeω@(ulvl i)) ->
-          el_rel <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl elem_rel (Typeω@(ulvl i)) ->
+          (forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+             List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+             exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b) ->
+          (forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+             List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+             ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+             DG b ∈ glu_univ_elem_core ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B) ->
+          typ_rel <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl (Typeω@(ulvl i)) ->
+          el_rel <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl elem_rel (Typeω@(ulvl i)) ->
           DG d_ind p (ups ++ ns) ∈ glu_univ_elem_core ↘ typ_rel ↘ el_rel }.
 End Gluing.
 
@@ -706,6 +764,7 @@ Section GluingInduction.
         forall i p D ups ns (NP : nat -> list domain -> glu_typ_pred) (NEl : nat -> list domain -> glu_exp_pred)
           (AP : list domain -> String.string -> nat -> list domain -> glu_typ_pred)
           (AEl : list domain -> String.string -> nat -> list domain -> glu_exp_pred)
+          (DP : list domain -> exp -> glu_typ_pred) (DEl : list domain -> exp -> glu_exp_pred)
           (P : glu_typ_pred) (El : glu_exp_pred) (elem_rel : relation domain),
           ind_lookup gc_deps gc_stack p = Some D ->
           List.length ups = ind_nu D ->
@@ -730,8 +789,25 @@ Section GluingInduction.
              ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
              tele_pre (ind_ar D ups ms c) k vs vs -> ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ b ->
              motive i (AP ms c k vs) (AEl ms c k vs) b) ->
-          P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl (Typeω@(ulvl i)) ->
-          El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl elem_rel (Typeω@(ulvl i)) ->
+          (forall ms c gs gs1 t gs2 ws k B ys, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+             List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+             exists b, ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b) ->
+          (forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+             List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+             ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+             DG b ∈ glu_univ_elem i ↘ DP (ms ++ ws ++ ys) B ↘ DEl (ms ++ ws ++ ys) B) ->
+          (forall ms c gs gs1 t gs2 ws k B ys b, tele_full (ind_nr D ups) (List.rev (ind_nparams D)) ms ms ->
+             ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+             tele_pre (ind_ar D ups ms c) (List.length (cargs_nonrec gs1)) ws ws ->
+             List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr (ind_dr ups) ms ws (ptyp_doms t)) k ys ys ->
+             ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ b ->
+             motive i (DP (ms ++ ws ++ ys) B) (DEl (ms ++ ws ++ ys) B) b) ->
+          P <∙> ind_glu_typ_pred p D ups ns NP NEl AP AEl DP DEl (Typeω@(ulvl i)) ->
+          El <∙> ind_glu_exp_pred p D ups ns NP NEl AP AEl DP DEl elem_rel (Typeω@(ulvl i)) ->
           motive i P El (d_ind p (ups ++ ns)))
   .
 
@@ -964,7 +1040,7 @@ Ltac glu_univ_elem_induction_core HH ih :=
       | do 4 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 3 intro; do 2 glu_induction_hintro | do 3 intro; do 2 glu_induction_hintro
       | do 12 intro; glu_induction_hintro; ih; do 6 glu_induction_hintro | do 5 intro; do 3 glu_induction_hintro
-      | do 12 intro; do 12 glu_induction_hintro ]; cbv beta
+      | do 14 intro; do 15 glu_induction_hintro ]; cbv beta
   end.
 
 (** As [induction H using glu_univ_elem_ind]: the hypothesis on the motive at

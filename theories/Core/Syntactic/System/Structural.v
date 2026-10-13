@@ -726,6 +726,57 @@ Proof.
   rewrite List.length_app, List.length_skipn; cbn; subst; unfold ind_nn; do 3 f_equal; lia.
 Qed.
 
+Lemma wk_elim_scrut_case : forall Θ Ξ Γ Δ φ p D Ps Ps' N nm i A Bs,
+    ind_lookup Θ Ξ p = Some D ->
+    List.length Ps = ind_np D ->
+    (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
+       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : Γ -> Θ ⍮ Ξ ⍮ Δ0 ⊢ P[φ0]ʷ : T[φ0]ʷ) ->
+    nm = S (ind_nn D) ->
+    (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ A[φ0]ʷ : Typeω@i[φ0]ʷ) ->
+    Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_mctx p D (List.firstn (ind_nu D) Ps) ≈ elim_mctx p D (List.firstn (ind_nu D) Ps) ->
+    (forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_wk (elim_mctx p D (List.firstn (ind_nu D) Ps)) φ0
+         ≈ tele_wk (elim_mctx p D (List.firstn (ind_nu D) Ps)) φ0) ->
+    brs_names (ind_cons D) Bs ->
+    (forall c gs, ind_con D c = Some gs ->
+       Θ ⍮ Ξ ⍮ Γ ⊢ˣ elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ≈ elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) ->
+    (forall c gs, ind_con D c = Some gs -> forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ˣ tele_wk (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) φ0
+         ≈ tele_wk (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) φ0) ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
+    (forall c gs n B, ind_con D c = Some gs -> List.In (c, n, B) Bs ->
+       forall Δ0 φ0, Θ ⍮ Ξ ⍮ Δ0 ⊢w φ0 : elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ->
+       Θ ⍮ Ξ ⍮ Δ0 ⊢ B[φ0]ʷ : (elim_bty p D c gs A (List.firstn (ind_nu D) Ps))[φ0]ʷ) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
+    List.length Ps' = ind_np D -> List.firstn (ind_nu D) Ps' = List.map (fun P => P[φ]ʷ) (List.firstn (ind_nu D) Ps) ->
+    (forall k P T, List.nth_error Ps' k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps') k = Some T ->
+       Θ ⍮ Ξ ⍮ Δ ⊢ P : T) ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ N : apps (a_ind p) Ps' ->
+    Θ ⍮ Ξ ⍮ Δ ⊢ a_elim p nm A[wk_qn nm φ]ʷ (brs_wk Bs φ) N
+      : A[wk_qn nm φ]ʷ[sb_of_list Id (List.skipn (ind_nu D) Ps' ++ N :: nil)].
+Proof.
+  intros * Hl HPl HPs Hnm HA HΨ HΨφ Hn HΨB HΨBφ Hk HB Hφ HPl' HPu HPs' HN.
+  assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]).
+  pose proof (wk_firstn_length D Ps HD HPl) as HUl.
+  subst nm.
+  eapply wf_elim with (Ps := Ps').
+  - exact Hl.
+  - exact HPl'.
+  - exact HPs'.
+  - exact HN.
+  - reflexivity.
+  - rewrite HPu; exact (HA _ _ (wk_elim_motive_ctx _ _ _ _ _ _ _ _ HD HUl Hφ HΨ (HΨφ _ _ Hφ))).
+  - rewrite HPu, <- elim_mctx_wk by assumption; apply HΨφ; exact Hφ.
+  - apply brs_names_map; exact Hn.
+  - intros c gs Hc; rewrite HPu, <- (elim_bctx_wk p D c gs A _ φ HD (cons_lookup_in _ _ _ Hc) HUl); apply (HΨBφ c gs Hc); assumption.
+  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); eapply Hk; eassumption.
+  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); cbn [fst snd].
+    rewrite HPu, <- elim_bty_wk, (Hk _ _ _ _ Hc Hin).
+    apply (HB c gs n B Hc Hin).
+    apply (wk_elim_branch_ctx _ _ _ _ _ _ _ c); eauto using cons_lookup_in.
+Qed.
+
 Lemma wk_elim_case : forall Θ Ξ Γ Δ φ p D Ps M nm i A Bs,
     ind_lookup Θ Ξ p = Some D ->
     List.length Ps = ind_np D ->
@@ -753,24 +804,13 @@ Lemma wk_elim_case : forall Θ Ξ Γ Δ φ p D Ps M nm i A Bs,
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs M)[φ]ʷ : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)])[φ]ʷ.
 Proof.
   intros * Hl HPl HPs HM Hnm HA HΨ HΨφ Hn HΨB HΨBφ Hk HB Hφ.
+  rewrite (wk_elim_type D Ps A M nm φ HPl Hnm); cbn [exp_wk].
   assert (HD : decl_closed D) by (eapply gctx_closed_ind; [ eapply wf_gctx_closed, (wf_wk_dom _ _ _ _ _ Hφ) | exact Hl ]).
-  pose proof (wk_firstn_length D Ps HD HPl) as HUl.
-  rewrite (wk_elim_type D Ps A M nm φ HPl Hnm); cbn [exp_wk]; subst nm.
-  eapply wf_elim with (Ps := List.map (fun P => P[φ]ʷ) Ps).
-  - exact Hl.
+  eapply wk_elim_scrut_case; try eassumption.
   - rewrite List.length_map; exact HPl.
+  - apply List.firstn_map.
   - eapply wk_elim_params; eassumption.
   - rewrite <- wk_apps_ind; apply HM; exact Hφ.
-  - reflexivity.
-  - rewrite List.firstn_map; exact (HA _ _ (wk_elim_motive_ctx _ _ _ _ _ _ _ _ HD HUl Hφ HΨ (HΨφ _ _ Hφ))).
-  - rewrite List.firstn_map, <- elim_mctx_wk by assumption; apply HΨφ; exact Hφ.
-  - apply brs_names_map; exact Hn.
-  - intros c gs Hc; rewrite List.firstn_map, <- (elim_bctx_wk p D c gs A _ φ HD (cons_lookup_in _ _ _ Hc) HUl); apply (HΨBφ c gs Hc); assumption.
-  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); eapply Hk; eassumption.
-  - intros c gs n B' Hc Hin; apply brs_in_map in Hin as (B & Hin & ->); cbn [fst snd].
-    rewrite List.firstn_map, <- elim_bty_wk, (Hk _ _ _ _ Hc Hin).
-    apply (HB c gs n B Hc Hin).
-    apply (wk_elim_branch_ctx _ _ _ _ _ _ _ c); eauto using cons_lookup_in.
 Qed.
 
 Lemma wk_elim_cong_case : forall Θ Ξ Γ Δ φ p D Ps M M' nm i A A' Bs Bs',
@@ -862,7 +902,7 @@ Lemma wk_elim_iota_case : forall Θ Ξ Γ Δ φ p D c gs Ps As nm i A Bs n B,
     brs_lookup Bs c = Some (n, B) ->
     Θ ⍮ Ξ ⍮ Δ ⊢w φ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))[φ]ʷ
-      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)])[φ]ʷ
+      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)])[φ]ʷ
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])[φ]ʷ.
 Proof.
   intros * Hl Hc HPl HPs HAl HAs Hnm HA HΨ HΨφ Hn HΨB HΨBφ Hk HB HlB Hφ.
@@ -870,8 +910,9 @@ Proof.
   pose proof (wk_firstn_length D Ps HD HPl) as HUl.
   pose proof (brs_lookup_in _ _ _ _ HlB) as HinB.
   rewrite (wk_elim_type D Ps A _ nm φ HPl Hnm), exp_wk_sb_of_list; cbn [exp_wk].
-  rewrite !List.map_app, wk_apps_con, List.map_app, elim_ihs_wk, <- List.skipn_map.
-  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As))
+  rewrite !List.map_app, wk_apps_con, List.map_app, (elim_ihs_wk_inst D c gs) by eauto using cons_lookup_in.
+  rewrite <- List.skipn_map.
+  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As))
     with n by (rewrite !List.length_app, List.length_skipn, length_elim_ihs by assumption;
                rewrite (Hk _ _ _ _ Hc HinB); unfold ind_nn; lia).
   subst nm.
@@ -1788,7 +1829,7 @@ Lemma sub_elim_iota_case : forall Θ Ξ Γ Δ σ p D c gs Ps As nm i A Bs n B,
     brs_lookup Bs c = Some (n, B) ->
     Θ ⍮ Ξ ⍮ Δ ⊢s σ : Γ ->
     Θ ⍮ Ξ ⍮ Δ ⊢ (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))[σ]
-      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As)])[σ]
+      ≈ (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)])[σ]
       : (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])[σ].
 Proof.
   intros * Hl Hc HPl HPs HAl HAs Hnm HA HΨ HΨσ Hn HΨB HΨBσ Hk HB HlB Hσ.
@@ -1796,8 +1837,9 @@ Proof.
   pose proof (wk_firstn_length D Ps HD HPl) as HUl.
   pose proof (brs_lookup_in _ _ _ _ HlB) as HinB.
   rewrite (sub_elim_type D Ps A _ nm σ HPl Hnm), exp_sub_sb_of_list; cbn [exp_sub].
-  rewrite !List.map_app, sub_apps_con, List.map_app, elim_ihs_sub, <- List.skipn_map.
-  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs gs As))
+  rewrite !List.map_app, sub_apps_con, List.map_app, (elim_ihs_sub_inst D c gs) by eauto using cons_lookup_in.
+  rewrite <- List.skipn_map.
+  replace (List.length (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As))
     with n by (rewrite !List.length_app, List.length_skipn, length_elim_ihs by assumption;
                rewrite (Hk _ _ _ _ Hc HinB); unfold ind_nn; lia).
   subst nm.

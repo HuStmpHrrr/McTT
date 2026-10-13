@@ -1091,6 +1091,7 @@ Proof.
   destruct (con_ty_typed _ _ _ _ _ _ _ HD Hc Hl Hcon HΓs) as [j Hj].
   destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [j0 Hj0].
   destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl (cons_lookup_in _ _ _ Hcon) gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _).
+  pose proof (shape_rest_wf' _ _ _ _ _ _ HD Hc Hl Hcon) as Hsh0.
   exists (con_ty p D gs), j; split; [ eapply wf_con; eassumption | split; [ exact Hj |] ].
   rewrite (con_ty_wk p D c gs) by assumption; exact Hs.
 Qed.

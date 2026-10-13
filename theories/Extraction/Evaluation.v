@@ -145,9 +145,33 @@ with feval_ihs_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (str
   `( feval_ihs_order Θ Ξ p nm A Bs gs vs ->
      feval_ihs_order Θ Ξ p nm A Bs (ca_arg T :: gs) (v :: vs) )
 | feiho_rec :
-  `( feval_elim_order Θ Ξ p nm A Bs v ->
+  `( feval_ih_order Θ Ξ p nm A Bs t v ->
      feval_ihs_order Θ Ξ p nm A Bs gs vs ->
-     feval_ihs_order Θ Ξ p nm A Bs (ca_rec Ps :: gs) (v :: vs) )
+     feval_ihs_order Θ Ξ p nm A Bs (ca_rec t :: gs) (v :: vs) )
+
+with feval_ih_order (Θ : gdeps) (Ξ : gstack) : env -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> Prop :=
+| feio_self :
+  `( feval_elim_order Θ Ξ p nm A Bs v ->
+     feval_ih_order Θ Ξ p nm A Bs (pt_self k Ps) v )
+| feio_pi :
+  `( feval_ih_order Θ Ξ p nm A Bs (pt_pi B t) v )
+
+with feval_shty_order (Θ : gdeps) (Ξ : gstack) : qname -> list domain -> env -> ptyp -> Prop :=
+| festo_self :
+  `( feval_exps_order Θ Ξ Ps p ->
+     feval_shty_order Θ Ξ pq ups p (pt_self k Ps) )
+| festo_pi :
+  `( feval_exp_order Θ Ξ B p ->
+     feval_shty_order Θ Ξ pq ups p (pt_pi B t) )
+
+with feval_ihty_order (Θ : gdeps) (Ξ : gstack) : env -> exp -> env -> ptyp -> domain -> Prop :=
+| feityo_self :
+  `( feval_exps_order Θ Ξ Ps p ->
+     (forall bs, ⟦ Ps ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ bs -> feval_exp_order Θ Ξ A (env_args pm (bs ++ v :: nil))) ->
+     feval_ihty_order Θ Ξ pm A p (pt_self k Ps) v )
+| feityo_pi :
+  `( feval_exp_order Θ Ξ B p ->
+     feval_ihty_order Θ Ξ pm A p (pt_pi B t) v )
 
 with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
 | feao_fn :
@@ -165,6 +189,17 @@ with feval_app_order (Θ : gdeps) (Ξ : gstack) : domain -> domain -> Prop :=
      ind_con D c = Some gs ->
      List.length vs < (ind_np D + List.length gs)%nat ->
      feval_app_order Θ Ξ (d_con pq c vs) n )
+| feao_ihfn :
+  `( feval_app_order Θ Ξ f n ->
+     (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ih_order Θ Ξ p nm A Bs t fn) ->
+     feval_app_order Θ Ξ (d_ihfn p nm A Bs t f) n )
+| feao_shfam :
+  `( feval_shty_order Θ Ξ pq ups (p ↦ n) t ->
+     feval_app_order Θ Ξ (d_shfam pq ups p t) n )
+| feao_ihfam :
+  `( feval_app_order Θ Ξ f n ->
+     (forall fn, $ᶠ| f & n | Θ ⍮ Ξ ↘ fn -> feval_ihty_order Θ Ξ pm A (p ↦ n) t fn) ->
+     feval_app_order Θ Ξ (d_ihfam pm A p t f) n )
 | feao_member :
   `( feval_appm_order Θ Ξ h n ->
      (forall h', feval_appm Θ Ξ h n h' -> feval_selc_order Θ Ξ h' ch) ->
@@ -305,7 +340,7 @@ with feval_benv_order (Θ : gdeps) (Ξ : gstack) : env -> gmod -> Prop :=
      feval_benv_order Θ Ξ p (gm_ext Φ y (ge_mod pm Uy)) ).
 
 #[local]
-Hint Constructors feval_exp_order feval_natrec_order feval_elim_order feval_ihs_order feval_app_order feval_exps_order feval_apps_order
+Hint Constructors feval_exp_order feval_natrec_order feval_elim_order feval_ihs_order feval_ih_order feval_shty_order feval_ihty_order feval_app_order feval_exps_order feval_apps_order
   feval_modexp_order feval_appm_order feval_sel_order feval_selm_order feval_selc_order feval_selmc_order
   feval_benv_order : mctt.
 
@@ -354,6 +389,15 @@ Ltac functional_feval_all :=
     | H1 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r1, H2 : feval_ihs ?T ?X ?p ?nm ?A ?Bs ?gs ?vs ?r2 |- _ =>
         assert_fails (constr_eq r1 r2);
         pose proof (functional_feval_ihs _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r1, H2 : feval_ih ?T ?X ?p ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_feval_ih _ _ _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : feval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_feval_shty _ _ _ _ _ _ H1 H2); subst; clear H2
+    | H1 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : feval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
+        assert_fails (constr_eq r1 r2);
+        pose proof (functional_feval_ihty _ _ _ _ _ _ _ H1 H2); subst; clear H2
     | H : d_neut _ _ = d_neut _ _ |- _ => injection H; clear H; intros; subst
     end.
 
@@ -372,7 +416,10 @@ Lemma feval_order_sound : forall Θ Ξ,
     (forall h ch r, h ·ₘ*ᶠ ch Θ ⍮ Ξ ↘ r -> feval_selmc_order Θ Ξ h ch) /\
     (forall p Φ p', ⟦ Φ ⟧ᵇᶠ Θ ⍮ Ξ ⍮ p ↘ p' -> feval_benv_order Θ Ξ p Φ) /\
     (forall p nm A Bs m r, ⟦elimᶠ m under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ r -> feval_elim_order Θ Ξ p nm A Bs m) /\
-    (forall p nm A Bs gs vs ihs, ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs -> feval_ihs_order Θ Ξ p nm A Bs gs vs).
+    (forall p nm A Bs gs vs ihs, ⟦ihsᶠ vs of gs under nm A Bs ⟧ᶠ Θ ⍮ Ξ ⍮ p ↘ ihs -> feval_ihs_order Θ Ξ p nm A Bs gs vs) /\
+    (forall p nm A Bs t v r, feval_ih Θ Ξ p nm A Bs t v r -> feval_ih_order Θ Ξ p nm A Bs t v) /\
+    (forall pq ups p t a, feval_shty Θ Ξ pq ups p t a -> feval_shty_order Θ Ξ pq ups p t) /\
+    (forall pm A p t v a, feval_ihty Θ Ξ pm A p t v a -> feval_ihty_order Θ Ξ pm A p t v).
 Proof.
   intros Θ Ξ; apply feval_mut_ind; intros;
     try solve [ eapply feslo_global_neut; eauto; intros; functional_feval_all; eauto
@@ -396,8 +443,15 @@ Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (feval_order_sound Θ Ξ)))). Qe
 Lemma feval_exps_order_sound : forall Θ Ξ Ms p ms, ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ p ↘ ms -> feval_exps_order Θ Ξ Ms p.
 Proof. intros Θ Ξ; exact (proj1 (proj2 (proj2 (proj2 (feval_order_sound Θ Ξ))))). Qed.
 
+Lemma feval_shty_order_sound : forall Θ Ξ pq ups p t a, feval_shty Θ Ξ pq ups p t a -> feval_shty_order Θ Ξ pq ups p t.
+Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
+Lemma feval_ihty_order_sound : forall Θ Ξ pm A p t v a, feval_ihty Θ Ξ pm A p t v a -> feval_ihty_order Θ Ξ pm A p t v.
+Proof. intros Θ Ξ; pose proof (feval_order_sound Θ Ξ); destruct_all; eauto. Qed.
+
 #[export]
-Hint Resolve feval_exp_order_sound feval_natrec_order_sound feval_app_order_sound feval_exps_order_sound : mctt.
+Hint Resolve feval_exp_order_sound feval_natrec_order_sound feval_app_order_sound feval_exps_order_sound
+  feval_shty_order_sound feval_ihty_order_sound : mctt.
 
 Definition inspect {A} (a : A) : { b | a = b } := exist _ a eq_refl.
 
@@ -433,6 +487,9 @@ Section EvalImpl.
     | H : feval_benv_order _ _ _ _ |- _ => progressive_invert H
     | H : feval_elim_order _ _ _ _ _ _ _ |- _ => progressive_invert H
     | H : feval_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_shty_order _ _ _ _ _ _ |- _ => progressive_invert H
+    | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => progressive_invert H
     end.
 
   (** The lookups recorded in the order are the ones computed, which either
@@ -494,6 +551,9 @@ Section EvalImpl.
     | H : feval_benv_order _ _ _ _ |- _ => dependent destruction H
     | H : feval_elim_order _ _ _ _ _ _ _ |- _ => dependent destruction H
     | H : feval_ihs_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_ih_order _ _ _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_shty_order _ _ _ _ _ _ |- _ => dependent destruction H
+    | H : feval_ihty_order _ _ _ _ _ _ _ |- _ => dependent destruction H
     end.
 
   #[local]
@@ -625,11 +685,37 @@ Section EvalImpl.
   | p, nm, A, Bs, ca_arg T :: gs, v :: vs, H =>
       let (ihs, Hihs) := feval_ihs_impl p nm A Bs gs vs _ in
       exist _ ihs _
-  | p, nm, A, Bs, ca_rec Ps :: gs, v :: vs, H =>
-      let (ih, Hih) := feval_elim_impl p nm A Bs v _ in
+  | p, nm, A, Bs, ca_rec t :: gs, v :: vs, H =>
+      let (ih, Hih) := feval_ih_impl p nm A Bs t v _ in
       let (ihs, Hihs) := feval_ihs_impl p nm A Bs gs vs _ in
       exist _ (ih :: ihs) _
   | p, nm, A, Bs, _, _, H => False_rect _ _
+
+  with feval_ih_impl p nm A Bs t v (H : feval_ih_order Θ Ξ p nm A Bs t v) : { r | feval_ih Θ Ξ p nm A Bs t v r } by struct H :=
+  | p, nm, A, Bs, pt_self k Ps, v, H =>
+      let (r, Hr) := feval_elim_impl p nm A Bs v _ in
+      exist _ r _
+  | p, nm, A, Bs, pt_pi B t, v, H => exist _ (d_ihfn p nm A Bs t v) _
+  | p, nm, A, Bs, pt_aux k Ps, v, H => False_rect _ _
+
+  with feval_shty_impl pq ups p t (H : feval_shty_order Θ Ξ pq ups p t) : { a | feval_shty Θ Ξ pq ups p t a } by struct H :=
+  | pq, ups, p, pt_self k Ps, H =>
+      let (bs, Hbs) := feval_exps_impl Ps p _ in
+      exist _ (d_ind pq (ups ++ bs)) _
+  | pq, ups, p, pt_pi B t, H =>
+      let (b, Hb) := feval_exp_impl B p _ in
+      exist _ (Πᵈ b (nil ↦ d_shfam pq ups p t) fam_cod) _
+  | pq, ups, p, pt_aux k Ps, H => False_rect _ _
+
+  with feval_ihty_impl pm A p t v (H : feval_ihty_order Θ Ξ pm A p t v) : { a | feval_ihty Θ Ξ pm A p t v a } by struct H :=
+  | pm, A, p, pt_self k Ps, v, H =>
+      let (bs, Hbs) := feval_exps_impl Ps p _ in
+      let (a, Ha) := feval_exp_impl A (env_args pm (bs ++ v :: nil)) _ in
+      exist _ a _
+  | pm, A, p, pt_pi B t, v, H =>
+      let (b, Hb) := feval_exp_impl B p _ in
+      exist _ (Πᵈ b (nil ↦ d_ihfam pm A p t v) fam_cod) _
+  | pm, A, p, pt_aux k Ps, v, H => False_rect _ _
 
   with feval_app_impl m n (H : feval_app_order Θ Ξ m n) : { d | $ᶠ| m & n | Θ ⍮ Ξ ↘ d } by struct H :=
   | λᵈ p M        , n, H =>
@@ -644,6 +730,17 @@ Section EvalImpl.
       exist _ r _
   | d_ind pq as', n, H => exist _ (d_ind pq (as' ++ n :: nil)) _
   | d_con pq c vs, n, H => exist _ (d_con pq c (vs ++ n :: nil)) _
+  | d_ihfn p nm A Bs t f, n, H =>
+      let (fn, Hfn) := feval_app_impl f n _ in
+      let (r, Hr) := feval_ih_impl p nm A Bs t fn _ in
+      exist _ r _
+  | d_shfam pq ups p t, n, H =>
+      let (a, Ha) := feval_shty_impl pq ups (p ↦ n) t _ in
+      exist _ a _
+  | d_ihfam pm A p t f, n, H =>
+      let (fn, Hfn) := feval_app_impl f n _ in
+      let (a, Ha) := feval_ihty_impl pm A (p ↦ n) t fn _ in
+      exist _ a _
   | _, n, H => False_rect _ _
 
   with feval_exps_impl Ms p (H : feval_exps_order Θ Ξ Ms p) : { ms | feval_exps Θ Ξ Ms p ms } by struct H :=
@@ -1030,12 +1127,53 @@ Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
 End EvalImpl.
 
 Extraction Inline feval_exp_impl_functional
   feval_natrec_impl_functional
   feval_elim_impl_functional
   feval_ihs_impl_functional
+  feval_ih_impl_functional
+  feval_shty_impl_functional
+  feval_ihty_impl_functional
   feval_app_impl_functional
   feval_exps_impl_functional
   feval_apps_impl_functional

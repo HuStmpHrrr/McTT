@@ -847,7 +847,8 @@ Section Impl.
   Definition cls_msg (x c y : string) (r : nat) : string :=
     match r with
     | 0 => "the argument " ++ y ++ " of " ++ c ++ " depends on a recursive argument"
-    | 2 => "the argument " ++ y ++ " of " ++ c ++ " is a function into " ++ x ++ ", which is not supported yet"
+    | 2 => x ++ " occurs in the domain of a function in the argument " ++ y ++ " of " ++ c ++
+             ", which is not strictly positive"
     | 3 => x ++ " is not applied to its uniform parameters as declared in the argument " ++ y ++ " of " ++ c
     | 4 => x ++ " occurs in the argument " ++ y ++ " of " ++ c ++
              " under a head that does not compute (an opaque definition, an axiom or a parameter)"

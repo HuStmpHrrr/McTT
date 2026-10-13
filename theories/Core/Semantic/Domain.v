@@ -67,6 +67,23 @@ Inductive domain : Set :=
     the type once [vs] holds all the parameters and arguments, a function
     before. *)
 | d_con : qname -> string -> list domain -> domain
+(** [d_ihfn ρ nm A Bs t f]: the recursive result of an argument [f] of a
+    function shape, whose shape after the first domain is [t]: applied to
+    [c], the recursive result of shape [t] at [f c], by the eliminator with
+    the motive [A] and the branches [Bs] in [ρ]. *)
+| d_ihfn : list dentry -> nat -> exp -> list (string * nat * exp) -> ptyp -> domain -> domain
+(** [d_shfam p ups ρ t]: the codomain of the type of an argument of a
+    function shape, whose shape after the first domain is [t]: applied to
+    [c], the type of shape [t] in [ρ] extended by [c], at the uniform
+    parameters [ups] of [p].  A [Π] whose codomain is [#1 $ #0] in the
+    environment of this family is the type of such an argument. *)
+| d_shfam : qname -> list domain -> list dentry -> ptyp -> domain
+(** [d_ihfam ρm A ρ t f]: the codomain of the type of the recursive result
+    of an argument [f] of a function shape, whose shape after the first
+    domain is [t]: applied to [c], the type of the recursive result of shape
+    [t] at [f c], the motive [A] in [ρm], the shape's components in [ρ]
+    extended by [c]. *)
+| d_ihfam : list dentry -> exp -> list dentry -> ptyp -> domain -> domain
 with domain_ne : Set :=
 (** [x] is a de Bruijn level, not an index: it names a variable absolutely and
     does not change under binders. *)

@@ -129,7 +129,7 @@ Proof.
   destruct (per_univ_glu_univ_elem _ _ Hpa) as (P & El & Hg).
   pose proof (HPa P El Hg) as HP; rewrite exp_sub_id in HP.
   invert_glu_univ_elem Hg.
-  match goal with H : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ |- _ => apply H in HP end.
+  match goal with H : _ <∙> ind_glu_typ_pred _ _ _ _ _ _ _ _ _ _ _ |- _ => apply H in HP end.
   destruct HP as (Ps & Heq & HK).
   assert (Hid : Γ ⊢k wk_id : Γ) by mauto 3.
   destruct (HK Γ wk_id Hid) as (Htop & _ & _).

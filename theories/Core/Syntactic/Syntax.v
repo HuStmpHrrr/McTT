@@ -512,11 +512,10 @@ Definition qname_strip (mp p : qname) : option (list string) :=
 (** The shape of a recursive argument: the [k]-th type of the declaration's
     block at the non-uniform parameters [Ps] ([pt_self k Ps]), the [k]-th
     auxiliary type of a nested occurrence at [Ps] ([pt_aux k Ps]), or a
-    function from [A] to a shape ([pt_pi A t]).  Stage A has one type per
-    block and no nesting or function-shaped arguments: a declaration is
-    well formed only with [pt_self 0 Ps] ([wf_gentry_indty]), and the
-    metatheory reads any shape by its parameters alone ([ptyp_ps]), which
-    is what [pt_self 0] means. *)
+    function from [A] to a shape ([pt_pi A t]).  Stage A′ has one type per
+    block and no nesting: a declaration is well formed with the shapes
+    [pt_pi A1 (… (pt_pi Ak (pt_self 0 Ps)))] ([ptyp_simple],
+    [wf_gentry_indty]). *)
 Inductive ptyp_g (E : Set) : Set :=
 | pt_self : nat -> list E -> ptyp_g E
 | pt_aux : nat -> list E -> ptyp_g E

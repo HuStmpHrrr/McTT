@@ -70,6 +70,17 @@ Section Weaken.
     apply (Heq Δ σ ρ); cbn.
     apply wf_sub_nil, (wf_sub_dom _ _ _ _ _ (glu_ctx_env_sub_escape HΓ _ _ _ Hσ)).
   Qed.
+
+  (** A type a glued context ends with is glued. *)
+  Lemma glu_rel_typ_of_ctx_ext : forall Γ A, ⊩ Γ ▹ A -> exists i : nat, Γ ⊩ A : Typeω@i.
+  Proof.
+    intros * [Sb HS].
+    assert (HΓ : exists TSb, EG Γ ∈ glu_ctx_env ↘ TSb) by (inversion HS; subst; eexists; eassumption).
+    destruct HΓ as [TSb HΓ].
+    destruct (glu_ctx_env_cons_clean_inversion HΓ HS) as (i & _ & HAs & _).
+    exists i, TSb; split; [ exact HΓ |]; exists (S i); intros Δ σ ρ Hσ.
+    exact (glu_rel_typ_with_sub_implies_glu_rel_exp_with_sub (glu_ctx_env_sub_escape HΓ _ _ _ Hσ) (HAs _ _ _ Hσ)).
+  Qed.
 End Weaken.
 
 
@@ -100,10 +111,19 @@ Qed.
 Lemma k_con : forall Θ Ξ Θ2 Ξ2 Γ p D c gs (i : nat), glu_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
     ind_lookup Θ Ξ p = Some D -> ind_con D c = Some gs ->
     @glu_rel_ctx (gc_mk Θ2 Ξ2) Γ -> @glu_rel_ctx (gc_mk Θ2 Ξ2) (cargs_ctx p D gs ++ ind_params D) ->
+    (forall gs1 t gs2 k, gs = gs1 ++ ca_rec t :: gs2 -> k <= List.length (ptyp_doms t) ->
+       forall Θ0 Ξ0, glu_emb Θ Ξ Θ0 Ξ0 ->
+       @glu_rel_ctx (gc_mk Θ0 Ξ0) ((sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D)
+                                    ▹ ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t))) ->
     Θ ⍮ Ξ ⍮ ⋅ ⊢ con_ty p D gs : Typeω@i -> @glu_rel_exp (gc_mk Θ2 Ξ2) ⋅ (con_ty p D gs) (Typeω@i) ->
     @glu_rel_exp (gc_mk Θ2 Ξ2) Γ (a_con p c) (con_ty p D gs).
 Proof.
-  intros * He HΓ Hl Hcon HΓ2 HΨ2 Hty HTy.
+  intros * He HΓ Hl Hcon HΓ2 HΨ2 Hsh Hty HTy.
+  assert (HshV : forall gs1 t gs2 k, gs = gs1 ++ ca_rec t :: gs2 -> k <= List.length (ptyp_doms t) ->
+       exists j : nat, @glu_rel_exp (gc_mk Θ2 Ξ2)
+         (sh_ctx (cargs_pat gs1) (List.firstn k (ptyp_doms t)) ++ cargs_ctx p D gs1 ++ ind_params D)
+         (ptyp_ty p D (List.repeat false k ++ cargs_pat gs1) (ptyp_skip k t)) (Typeω@j))
+    by (intros * Heq Hk; apply (@glu_rel_typ_of_ctx_ext (gc_mk Θ2 Ξ2)); exact (Hsh _ _ _ _ Heq Hk _ _ He)).
   destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HG & Hc & Hsu & Hdt2).
   pose proof (Mctt.Core.Completeness.ModuleCases.sme_ind _ _ _ _
                 (Mctt.Core.Completeness.ModuleCases.gctx_sem _ _ (em_wf _ _ _ _ (gme_emb _ _ _ _ He))) p D Hl2) as HDc.
@@ -411,7 +431,7 @@ Lemma glu_entry_ind : forall Θ Ξ pv D Θ2 Ξ2,
     decl_typed Θ Ξ D -> Good glu_entry Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> glu_entry Θ2 Ξ2 (ge_ind pv D).
 Proof.
   intros * Hdt HG He; cbn [glu_entry].
-  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & [n Hn] & HA & HPl & HP & HN & Hnd).
+  pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & [n Hn] & HA & HPl & HP & HN & Hnd & Hsh).
   pose proof (glu_emb_of _ _ _ _ He (HG _ _ He)) as Hμ.
   destruct kglu_fundamental as (Kc & Ke & _).
   constructor.
@@ -442,8 +462,22 @@ Proof.
       by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hls in HT.
     pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
-    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec Ps :: gs2)), <- Heq in H.
+    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
     exact (Ke _ _ _ _ _ H _ _ Hμ).
+  - intros * Hcon Heq HB.
+    destruct (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as [_ Hs2].
+    destruct (doms_split_nth _ _ _ HB) as [Hsplit _].
+    pose proof (Hs2 _ _ _ Hsplit) as HT.
+    assert (Hk : List.length (List.firstn k (ptyp_doms t)) = k)
+      by (rewrite List.length_firstn; assert (k < List.length (ptyp_doms t)) by (apply List.nth_error_Some; congruence); lia).
+    assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
+      by (rewrite Completeness.IndCases.cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
+    rewrite Hk, Hls, (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
+    exact (Ke _ _ _ _ _ HT _ _ Hμ).
+  - intros * Hcon Heq Hk.
+    pose proof (doms_prefix_wf _ _ _ _ _ Hdt (cons_lookup_in _ _ _ Hcon) _ _ _ Heq _ Hk) as H.
+    rewrite (Completeness.IndCases.astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
+    exact (Kc _ _ _ H _ _ Hμ).
 Qed.
 
 (** Every well-formed global context glues: the identity is a sound

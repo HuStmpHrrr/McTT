@@ -81,11 +81,29 @@ Qed.
 Lemma read_ps_length : forall s ρ T vs Ms, read_ps gc_deps gc_stack s ρ T vs Ms -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
+(** The codomain of the type of an argument of a function shape, at an
+    argument. *)
+Lemma eval_fam_cod_shfam : forall p ups ρ t x a,
+    eval_shty gc_deps gc_stack p ups (ρ ↦ x) t a ->
+    ⟦ fam_cod ⟧ nil ↦ d_shfam p ups ρ t ↦ x ↘ a.
+Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
+
+Lemma eval_fam_cod_ihfam : forall ρm A ρ t f x fx a,
+    $| f & x | gc_deps ⍮ gc_stack ↘ fx ->
+    eval_ihty gc_deps gc_stack ρm A (ρ ↦ x) t fx a ->
+    ⟦ fam_cod ⟧ nil ↦ d_ihfam ρm A ρ t f ↦ x ↘ a.
+Proof. intros; unfold fam_cod; econstructor; [ apply eval_exp_var | apply eval_exp_var | econstructor; eassumption ]. Qed.
+
+Lemma env_args_snoc3 : forall (u a b c : list domain) x,
+    env_args nil (u ++ a ++ b ++ c ++ x :: nil) = env_args nil (u ++ a ++ b ++ c) ↦ x.
+Proof. intros; rewrite !List.app_assoc, env_args_snoc; reflexivity. Qed.
+
 (** The realisability of an inductive type, from that of the types of its
     telescopes. *)
 Lemma realize_ind : forall p D ups ups' ns ns'
     (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain),
+    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+    (dr : list domain -> exp -> relation domain),
     ind_lookup gc_deps gc_stack p = Some D ->
     tele_ass (ind_params D) ->
     List.length ups = ind_nu D ->
@@ -98,18 +116,28 @@ Lemma realize_ind : forall p D ups ups' ns ns'
        List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' ->
        exists a a', ⟦ A ⟧ env_args nil (ups ++ ms ++ vs) ↘ a /\ ⟦ A ⟧ env_args nil (ups' ++ ms' ++ vs') ↘ a' /\
          (forall b b', ar ms c k vs b b' -> Dom ⇓ a b ≈ ⇓ a' b' ∈ per_top)) ->
-    (forall ms ms' c gs gs1 Ps gs2 ws ws',
+    (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys',
        tele_full nr (List.rev (ind_nparams D)) ms ms' ->
-       ind_con D c = Some gs -> gs = gs1 ++ ca_rec Ps :: gs2 ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
        tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
-       exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups ++ ms ++ ws)) bs /\
-         eval_exps gc_deps gc_stack (ptyp_ps Ps) (env_args nil (ups' ++ ms' ++ ws')) bs' /\
+       List.nth_error (ptyp_doms t) k = Some B ->
+       tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+       exists a a', ⟦ B ⟧ env_args nil (ups ++ ms ++ ws ++ ys) ↘ a /\ ⟦ B ⟧ env_args nil (ups' ++ ms' ++ ws' ++ ys') ↘ a' /\
+         Dom a ≈ a' ∈ per_top_typ /\
+         (forall c c', Dom c ≈ c' ∈ per_bot -> dr (ms ++ ws ++ ys) B (⇑ a c) (⇑ a' c'))) ->
+    (forall ms ms' c gs gs1 t gs2 ws ws' ys ys',
+       tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+       tele_full (shape_tr dr ms ws (ptyp_doms t)) (ptyp_doms t) ys ys' ->
+       exists bs bs', eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups ++ ms ++ ws ++ ys)) bs /\
+         eval_exps gc_deps gc_stack (ptyp_ps t) (env_args nil (ups' ++ ms' ++ ws' ++ ys')) bs' /\
          tele_full nr (List.rev (ind_nparams D)) bs bs') ->
     tele_full nr (List.rev (ind_nparams D)) ns ns' ->
     Dom d_ind p (ups ++ ns) ≈ d_ind p (ups' ++ ns') ∈ per_top_typ /\
-    (forall b b', ind_rel p D ups nr ar ns b b' -> Dom ⇓ (d_ind p (ups ++ ns)) b ≈ ⇓ (d_ind p (ups' ++ ns')) b' ∈ per_top).
+    (forall b b', ind_rel p D ups nr ar dr ns b b' -> Dom ⇓ (d_ind p (ups ++ ns)) b ≈ ⇓ (d_ind p (ups' ++ ns')) b' ∈ per_top).
 Proof.
-  intros * Hl Hass Hu Hps Hn Ha Hcl Hns.
+  intros * Hl Hass Hu Hps Hn Ha Hdr Hcl Hns.
   assert (Hle : ind_nu D <= ind_np D).
   { destruct (Hps 0) as (Ms & HM & _); apply read_ps_length in HM.
     rewrite List.length_rev in HM; unfold ind_uparams in HM; rewrite List.length_skipn in HM.
@@ -137,15 +165,34 @@ Proof.
     destruct (Hlen _ _ Hns) as [Hl1 Hl2].
     exists (nf_indty p Ms); split; econstructor; eassumption. }
   assert (Hmain :
-    (forall xs x y, ind_rel p D ups nr ar xs x y -> forall xs', tele_full nr (List.rev (ind_nparams D)) xs xs' ->
+    (forall xs x y, ind_rel p D ups nr ar dr xs x y -> forall xs', tele_full nr (List.rev (ind_nparams D)) xs xs' ->
        Dom ⇓ (d_ind p (ups ++ xs)) x ≈ ⇓ (d_ind p (ups' ++ xs')) y ∈ per_top) /\
-    (forall ρ gs vs vs', ind_args_rel p D ups nr ar ρ gs vs vs' ->
-       forall xs xs' c gsf gs1 vp vp', ρ = env_args nil (ups ++ xs ++ nonrec_vals gs1 vp) ->
+    (forall pre gs vs vs', ind_args_rel p D ups nr ar dr pre gs vs vs' ->
+       forall xs xs' c gsf gs1 vp vp', pre = xs ++ nonrec_vals gs1 vp ->
          List.length vp = List.length gs1 -> List.length vp' = List.length gs1 ->
          tele_full nr (List.rev (ind_nparams D)) xs xs' -> ind_con D c = Some gsf -> gsf = gs1 ++ gs ->
          tele_full (ar xs c) (cargs_nonrec gsf) (nonrec_vals gsf (vp ++ vs)) (nonrec_vals gsf (vp' ++ vs')) ->
-         forall s, exists Vs, read_cargs gc_deps gc_stack s p ups ρ gs vs Vs /\
-           read_cargs gc_deps gc_stack s p ups' (env_args nil (ups' ++ xs' ++ nonrec_vals gs1 vp')) gs vs' Vs)).
+         forall s, exists Vs, read_cargs gc_deps gc_stack s p ups (env_args nil (ups ++ pre)) gs vs Vs /\
+           read_cargs gc_deps gc_stack s p ups' (env_args nil (ups' ++ xs' ++ nonrec_vals gs1 vp')) gs vs' Vs) /\
+    (forall pre t v v', ind_shape_rel p D ups nr ar dr pre t v v' ->
+       forall xs xs' c gs1 t0 gs2 ws ws' k ys ys', pre = xs ++ ws ++ ys ->
+         tele_full nr (List.rev (ind_nparams D)) xs xs' -> ind_con D c = Some (gs1 ++ ca_rec t0 :: gs2) ->
+         tele_pre (ar xs c) (List.length (cargs_nonrec gs1)) ws ws' ->
+         ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
+         tele_pre (shape_tr dr xs ws (ptyp_doms t0)) k ys ys' ->
+         forall s, exists a a' V, eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ pre)) t a /\
+           eval_shty gc_deps gc_stack p ups' (env_args nil (ups' ++ xs' ++ ws' ++ ys')) t a' /\
+           Rnf ⇓ a v in gc_deps ⍮ gc_stack ⍮ s ↘ V /\ Rnf ⇓ a' v' in gc_deps ⍮ gc_stack ⍮ s ↘ V) /\
+    (forall pre t f x f' x', ind_app_rel p D ups nr ar dr pre t f x f' x' ->
+       forall xs xs' c gs1 t0 gs2 ws ws' k ys ys', pre = xs ++ ws ++ ys ->
+         tele_full nr (List.rev (ind_nparams D)) xs xs' -> ind_con D c = Some (gs1 ++ ca_rec t0 :: gs2) ->
+         tele_pre (ar xs c) (List.length (cargs_nonrec gs1)) ws ws' ->
+         ptyp_skip k t0 = t -> k <= List.length (ptyp_doms t0) ->
+         tele_pre (shape_tr dr xs ws (ptyp_doms t0)) k ys ys' ->
+         forall s, exists r r' a a' V, $| f & x | gc_deps ⍮ gc_stack ↘ r /\ $| f' & x' | gc_deps ⍮ gc_stack ↘ r' /\
+           eval_shty gc_deps gc_stack p ups (env_args nil (ups ++ pre)) t a /\
+           eval_shty gc_deps gc_stack p ups' (env_args nil (ups' ++ xs' ++ ws' ++ ys')) t a' /\
+           Rnf ⇓ a r in gc_deps ⍮ gc_stack ⍮ s ↘ V /\ Rnf ⇓ a' r' in gc_deps ⍮ gc_stack ⍮ s ↘ V)).
   { apply ind_rel_mut_ind_all.
     - intros * _ Hc Hb Hb' _ _ Ha0 Hia IH xs' Hx s.
       destruct (Hpar _ _ Hx s) as (Ms & HM & HM').
@@ -164,19 +211,15 @@ Proof.
       exists (⇑ⁿ L); split; constructor; assumption.
     - intros * _ _ _ _ _ _ _ s; exists nfs_nil; split; constructor.
     - intros * Hia IH xs xs' c gsf gs1 vp vp' Hρ Hl1 Hl2 Hx Hc Heq Ha0 s.
-      subst ρ gsf.
+      subst pre gsf.
       set (k := List.length (cargs_nonrec gs1)).
       assert (Hk : List.nth_error (cargs_nonrec (gs1 ++ ca_arg A :: gs)) k = Some A)
         by (unfold k; rewrite cargs_nonrec_app, List.nth_error_app2, Nat.sub_diag by lia; reflexivity).
       assert (HL : forall w ws wp, List.length wp = List.length gs1 ->
                  nonrec_vals (gs1 ++ ca_arg A :: gs) (wp ++ w :: ws) = nonrec_vals gs1 wp ++ w :: nonrec_vals gs ws)
         by (intros; rewrite nonrec_vals_app by assumption; reflexivity).
-      assert (Hpre : tele_pre (ar xs c) k (nonrec_vals gs1 vp) (nonrec_vals gs1 vp')).
-      { pose proof (tele_pre_of_full _ _ _ _ k Ha0) as Hp.
-        rewrite cargs_nonrec_app, List.length_app in Hp; specialize (Hp ltac:(unfold k; lia)).
-        rewrite !HL in Hp by assumption.
-        rewrite !(firstn_app_exact (nonrec_vals gs1 _)) in Hp by (unfold k; apply length_nonrec_vals; assumption).
-        exact Hp. }
+      assert (Hpre : tele_pre (ar xs c) k (nonrec_vals gs1 vp) (nonrec_vals gs1 vp'))
+        by (exact (nonrec_prefix_gen _ _ _ _ _ _ _ _ eq_refl Hl1 Hl2 Ha0)).
       assert (Hrel : ar xs c k (nonrec_vals gs1 vp) v v').
       { rewrite tele_full_iff in Ha0; destruct Ha0 as (_ & _ & Hr).
         rewrite !HL in Hr by assumption.
@@ -192,39 +235,63 @@ Proof.
                  = env_args nil (us ++ ys ++ nonrec_vals (gs1 ++ ca_arg A :: nil) (wp ++ w :: nil))).
       { intros; rewrite nonrec_vals_app by assumption; cbn; rewrite !List.app_assoc, env_args_snoc; reflexivity. }
       destruct (IH xs xs' c (gs1 ++ ca_arg A :: gs) (gs1 ++ ca_arg A :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil)
-                  (Henv _ _ _ _ Hl1) ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
+                  ltac:(rewrite nonrec_vals_app by assumption; cbn; rewrite List.app_assoc; reflexivity)
+                  ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
                   Hx Hc ltac:(rewrite <- List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; exact Ha0) s)
         as (Vs & HVs & HVs').
       exists (nfs_cons V Vs); split; econstructor; try eassumption.
-      rewrite Henv by assumption; exact HVs'.
-    - intros * Hb Hrr IHr Hia IH xs xs' c gsf gs1 vp vp' Hρ Hl1 Hl2 Hx Hc Heq Ha0 s.
-      subst ρ gsf.
-      assert (Hpre : tele_pre (ar xs c) (List.length (cargs_nonrec gs1)) (nonrec_vals gs1 vp) (nonrec_vals gs1 vp')).
-      { pose proof (tele_pre_of_full _ _ _ _ (List.length (cargs_nonrec gs1)) Ha0) as Hp.
-        rewrite cargs_nonrec_app, List.length_app in Hp; specialize (Hp ltac:(lia)).
-        rewrite !nonrec_vals_app in Hp by assumption.
-        rewrite !(firstn_app_exact (nonrec_vals gs1 _)) in Hp by (apply length_nonrec_vals; assumption).
-        exact Hp. }
-      destruct (Hcl _ _ _ _ _ _ _ _ _ Hx Hc eq_refl Hpre) as (bs0 & bs1 & E0 & E1 & Hbs).
+      + rewrite !List.app_assoc, env_args_snoc in HVs; rewrite !List.app_assoc; exact HVs.
+      + rewrite Henv by assumption; exact HVs'.
+    - intros * Hsh IHs Hia IH xs xs' c gsf gs1 vp vp' Hρ Hl1 Hl2 Hx Hc Heq Ha0 s.
+      subst pre gsf.
+      pose proof (nonrec_prefix_gen _ _ _ _ _ _ _ _ eq_refl Hl1 Hl2 Ha0) as Hpre.
+      destruct (IHs xs xs' c gs1 t gs (nonrec_vals gs1 vp) (nonrec_vals gs1 vp') 0 nil nil
+                  ltac:(rewrite List.app_nil_r; reflexivity) Hx Hc Hpre eq_refl ltac:(lia) (tele_pre_nil _) s)
+        as (a & a' & V & Ea & Ea' & HV & HV').
+      rewrite List.app_nil_r in Ea'.
+      destruct (IH xs xs' c (gs1 ++ ca_rec t :: gs) (gs1 ++ ca_rec t :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil)
+                  ltac:(rewrite nonrec_vals_app by assumption; cbn; rewrite List.app_nil_r; reflexivity)
+                  ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
+                  Hx Hc ltac:(rewrite <- List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; exact Ha0) s)
+        as (Vs & HVs & HVs').
+      rewrite nonrec_vals_app in HVs' by assumption; cbn in HVs'; rewrite List.app_nil_r in HVs'.
+      exists (nfs_cons V Vs); split; econstructor; eassumption.
+    - intros * Hb Hr IHr xs xs' c gs1 t0 gs2 ws ws' k0 ys ys' Hρ Hx Hc Hw Hs Hk Hy s.
+      destruct (ptyp_skip_self _ _ _ _ Hs) as [Hkd HPs].
+      assert (Hyf : tele_full (shape_tr dr xs ws (ptyp_doms t0)) (ptyp_doms t0) ys ys')
+        by (destruct Hy as [Hyl Hya]; split; [ lia | exact Hya ]).
+      destruct (Hcl xs xs' c _ gs1 t0 gs2 ws ws' ys ys' Hx Hc eq_refl Hw Hyf) as (bs0 & bs1 & E0 & E1 & Hbs).
+      rewrite HPs in E0, E1; subst pre.
       pose proof (functional_eval_exps' _ _ _ _ Hb E0) as <-.
       destruct (IHr _ Hbs s) as (V & HV & HV').
-      assert (Henv : forall us ys wp w, List.length wp = List.length gs1 ->
-                 env_args nil (us ++ ys ++ nonrec_vals gs1 wp)
-                 = env_args nil (us ++ ys ++ nonrec_vals (gs1 ++ ca_rec Ps :: nil) (wp ++ w :: nil))).
-      { intros; rewrite nonrec_vals_app by assumption; cbn; rewrite List.app_nil_r; reflexivity. }
-      destruct (IH xs xs' c (gs1 ++ ca_rec Ps :: gs) (gs1 ++ ca_rec Ps :: nil) (vp ++ v :: nil) (vp' ++ v' :: nil)
-                  (Henv _ _ _ _ Hl1) ltac:(rewrite !List.length_app; cbn; lia) ltac:(rewrite !List.length_app; cbn; lia)
-                  Hx Hc ltac:(rewrite <- List.app_assoc; reflexivity) ltac:(rewrite <- !List.app_assoc; exact Ha0) s)
-        as (Vs & HVs & HVs').
-      exists (nfs_cons V Vs); split; econstructor; try eassumption.
-      rewrite (Henv _ _ _ v') by assumption; exact HVs'. }
+      exists (d_ind p (ups ++ bs)), (d_ind p (ups' ++ bs1)), V.
+      split; [ constructor; exact Hb | split; [ constructor; exact E1 | split; assumption ] ].
+    - intros * Hf IH xs xs' c gs1 t0 gs2 ws ws' k0 ys ys' Hρ Hx Hc Hw Hs Hk Hy s.
+      destruct (ptyp_skip_pi _ _ _ _ Hs) as [HB Hs'].
+      assert (Hkl : k0 < List.length (ptyp_doms t0)) by (apply List.nth_error_Some; congruence).
+      destruct (Hdr xs xs' c _ gs1 t0 gs2 ws ws' k0 B ys ys' Hx Hc eq_refl Hw HB Hy) as (b & b' & Eb & Eb' & Htt & Hbot).
+      pose proof (Hbot _ _ (var_per_bot (n := s))) as Hxx.
+      subst pre.
+      destruct (IH _ _ Hxx xs xs' c gs1 t0 gs2 ws ws' (S k0) (ys ++ ⇑! b s :: nil) (ys' ++ ⇑! b' s :: nil)
+                  ltac:(rewrite <- !List.app_assoc; reflexivity) Hx Hc Hw Hs' ltac:(lia)
+                  ltac:(apply tele_pre_snoc; [ exact Hy | unfold shape_tr; rewrite (List.nth_error_nth _ _ _ HB); exact Hxx ])
+                  (S s))
+        as (r & r' & a & a' & V & Er & Er' & Ea & Ea' & HV & HV').
+      destruct (Htt s) as (A & HA & HA').
+      rewrite !List.app_assoc, env_args_snoc in Ea, Ea'; rewrite <- !List.app_assoc in Ea, Ea'.
+      eexists _, _, (λⁿ A V); split; [ econstructor; exact Eb | split; [ econstructor; exact Eb' |] ].
+      split; (eapply read_nf_fn; [ eassumption | eassumption | apply eval_fam_cod_shfam; eassumption | eassumption ]).
+    - intros * Ef Ef' Hsh IH xs xs' c gs1 t0 gs2 ws ws' k0 ys ys' Hρ Hx Hc Hw Hs Hk Hy s.
+      destruct (IH xs xs' c gs1 t0 gs2 ws ws' k0 ys ys' Hρ Hx Hc Hw Hs Hk Hy s) as (a & a' & V & Ea & Ea' & HV & HV').
+      exists r, r', a, a', V; repeat split; assumption. }
   intros b b' Hb; exact (proj1 Hmain _ _ _ Hb _ Hns).
 Qed.
 
 (** The neutrals of an inductive type at its own parameters are elements. *)
 Lemma ind_rel_neut_canon : forall p D ups ups' ns ns'
     (nr : nat -> list domain -> relation domain)
-    (ar : list domain -> String.string -> nat -> list domain -> relation domain) c c',
+    (ar : list domain -> String.string -> nat -> list domain -> relation domain)
+    (dr : list domain -> exp -> relation domain) c c',
     tele_ass (ind_params D) ->
     (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' -> PER (nr k vs)) ->
     (forall k A vs vs', List.nth_error (List.rev (ind_nparams D)) k = Some (ce_ass A) -> tele_pre nr k vs vs' ->
@@ -233,14 +300,24 @@ Lemma ind_rel_neut_canon : forall p D ups ups' ns ns'
        List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' -> PER (ar ms c k vs)) ->
     (forall ms ms' c gs k A vs vs', tele_full nr (List.rev (ind_nparams D)) ms ms' -> ind_con D c = Some gs ->
        List.nth_error (cargs_nonrec gs) k = Some A -> tele_pre (ar ms c) k vs vs' -> (ar ms c k vs <~> ar ms' c k vs')) ->
+    (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+       PER (dr (ms ++ ws ++ ys) B)) ->
+    (forall ms ms' c gs gs1 t gs2 ws ws' k B ys ys', tele_full nr (List.rev (ind_nparams D)) ms ms' ->
+       ind_con D c = Some gs -> gs = gs1 ++ ca_rec t :: gs2 ->
+       tele_pre (ar ms c) (List.length (cargs_nonrec gs1)) ws ws' ->
+       List.nth_error (ptyp_doms t) k = Some B -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k ys ys' ->
+       (dr (ms ++ ws ++ ys) B <~> dr (ms' ++ ws' ++ ys') B)) ->
     List.length ups = ind_nu D -> List.length ups' = ind_nu D ->
     per_top_ps (List.rev (ind_uparams D)) ups ups' ->
-    ind_adm D ups nr ar ups' -> ind_adm D ups nr ar ups ->
+    ind_adm D ups nr ar dr ups' -> ind_adm D ups nr ar dr ups ->
     tele_full nr (List.rev (ind_nparams D)) ns ns' ->
     Dom c ≈ c' ∈ per_bot ->
-    ind_rel p D ups nr ar ns (⇑ (d_ind p (ups ++ ns)) c) (⇑ (d_ind p (ups' ++ ns')) c').
+    ind_rel p D ups nr ar dr ns (⇑ (d_ind p (ups ++ ns)) c) (⇑ (d_ind p (ups' ++ ns')) c').
 Proof.
-  intros * Hass HnP HnI HaP HaI Hu Hu' Hps Had' Had Hns Hc.
+  intros * Hass HnP HnI HaP HaI HdP HdI Hu Hu' Hps Had' Had Hns Hc.
   assert (Hle : ind_nu D <= ind_np D).
   { destruct (Hps 0) as (Ms & HM & _); apply read_ps_length in HM.
     rewrite List.length_rev in HM; unfold ind_uparams in HM; rewrite List.length_skipn in HM.
@@ -252,7 +329,7 @@ Proof.
   - rewrite List.length_app; unfold ind_nn in *; lia.
   - rewrite firstn_app_exact by exact Hu; exact Had.
   - rewrite firstn_app_exact by exact Hu'; exact Had'.
-  - rewrite skipn_app_exact by exact Hu; exact (tnr_refl_l p D ups nr ar Hass HnP HnI HaP HaI _ _ Hns).
+  - rewrite skipn_app_exact by exact Hu; exact (tnr_refl_l p D ups nr ar dr Hass HnP HnI HaP HaI HdP HdI _ _ Hns).
   - rewrite skipn_app_exact by exact Hu'; exact Hns.
   - exact Hc.
 Qed.
@@ -338,14 +415,20 @@ Proof.
     (on_all_hyp: fun H => specialize (H s) as [? []]); (solve [try (try (eexists; split); econstructor); mauto]).
   (** An inductive type: [realize_ind], from the realisability of the
       types of its telescopes. *)
-  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar H H0 H1 H3 _ _ (proj2 (proj2 H10)) H12) as [Hrt _];
+  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (proj1 (proj2 (proj2 H13))) H15) as [Hrt _];
     [ intros k A vs vs' Hk Hp; destruct (H5 _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs k A vs vs' Hm Hc Hk Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+    | intros ms ms' c0 gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hw HB Hy;
+      destruct (H11 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htt & Hbot & _)];
+      exists a, a'; repeat split; eauto
     | exact Hrt ].
   - eapply ind_rel_neut_canon; eassumption.
-  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar H H0 H1 H3 _ _ (proj2 (proj2 H10)) H12) as [_ Hre];
+  - unshelve epose proof (realize_ind p D ups ups' ns ns' nr ar dr H H0 H1 H3 _ _ _ (proj1 (proj2 (proj2 H13))) H15) as [_ Hre];
     [ intros k A vs vs' Hk Hp; destruct (H5 _ _ _ _ Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
     | intros ms ms' c0 gs k A vs vs' Hm Hc Hk Hp; destruct (H8 _ _ _ _ _ _ _ _ Hm Hc Hk Hp) as [a a' Ea Ea' (_ & _ & _ & Hrb)]; eauto
+    | intros ms ms' c0 gs gs1 t gs2 ws ws' k B ys ys' Hm Hc Heq Hw HB Hy;
+      destruct (H11 _ _ _ _ _ _ _ _ _ _ _ _ _ Hm Hc Heq Hw HB Hy) as [a a' Ea Ea' (_ & Htt & Hbot & _)];
+      exists a, a'; repeat split; eauto
     | eapply Hre; eassumption ].
 Qed.
 

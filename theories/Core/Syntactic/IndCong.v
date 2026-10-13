@@ -141,6 +141,7 @@ Section Fixed_GCtx.
     destruct (con_ty_typed0 _ _ _ _ _ _ HD Hc Hl Hcon) as [j0 Hj0].
     assert (HC : Θ ⍮ Ξ ⍮ Γ ⊢ a_con p c : con_ty p D gs).
     { destruct (cargs_ctx_wf _ _ _ _ _ _ HD Hc Hl Hin gs nil (eq_sym (List.app_nil_r gs))) as (HΨ0 & _ & _).
+      pose proof (shape_rest_wf' _ _ _ _ _ _ HD Hc Hl Hcon) as Hsh0.
       eapply wf_con; eassumption. }
     unfold con_ty in HC; rewrite <- ctx_pi_app in HC.
     destruct (proj1 (proj2 wf_scoped) _ _ _ _ _ Hj) as (_ & Hscod & _).
@@ -301,10 +302,13 @@ Section Fixed_GCtx.
     rewrite params_split, <- List.app_assoc in H; eapply ctx_app_wf_tail; exact H.
   Qed.
 
-  (** The type of a recursive argument is the inductive type. *)
+  Lemma apps_exp_snoc' : forall Ms M N, apps M (Ms ++ N :: nil) = a_app (apps M Ms) N.
+  Proof. induction Ms as [| M0 Ms IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
+
+  (** The type of a recursive argument is the type of its shape. *)
   Lemma cargs_rec_type : forall p D gs gs1 Pr gs2 σ As T, gs = gs1 ++ ca_rec Pr :: gs2 ->
       List.nth_error (tele_insts (cargs_ctx p D gs) σ As) (List.length gs1) = Some T ->
-      exists Q, T = apps (a_ind p) Q.
+      T = (ptyp_ty p D (cargs_pat gs1) Pr)[sb_of_list σ (List.firstn (List.length gs1) As)].
   Proof.
     intros * -> HT.
     destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & ->).
@@ -312,7 +316,20 @@ Section Fixed_GCtx.
     rewrite !List.rev_app_distr in HA; cbn [List.rev List.app] in HA.
     rewrite List.nth_error_app2 in HA by (rewrite List.length_rev, length_cargs_ctx_aux; lia).
     rewrite List.length_rev, length_cargs_ctx_aux, Nat.sub_diag in HA; cbn in HA.
-    injection HA as <-; rewrite apps_exp_sub; cbn [exp_sub]; eauto.
+    injection HA as <-; rewrite List.app_nil_r; reflexivity.
+  Qed.
+
+  (** A recursive argument whose type is the inductive type is of a shape
+      with no domain. *)
+  Lemma cargs_rec_type_ind : forall p D gs gs1 Pr gs2 σ As Q, gs = gs1 ++ ca_rec Pr :: gs2 ->
+      List.nth_error (tele_insts (cargs_ctx p D gs) σ As) (List.length gs1) = Some (apps (a_ind p) Q) ->
+      ptyp_doms Pr = nil.
+  Proof.
+    intros * Heq HT; pose proof (cargs_rec_type _ _ _ _ _ _ _ _ _ Heq HT) as E.
+    destruct Pr as [k0 Ps | k0 Ps | B t]; [ reflexivity | reflexivity |].
+    cbn [ptyp_ty exp_sub] in E; exfalso.
+    destruct Q as [| N Q _] using List.rev_ind; [ discriminate |].
+    rewrite apps_exp_snoc' in E; discriminate.
   Qed.
 
   (** The sort of an inductive type at equal parameters. *)
@@ -400,7 +417,15 @@ Section Fixed_GCtx.
     rewrite !List.rev_app_distr in HA; cbn [List.rev List.app] in HA.
     rewrite List.nth_error_app2 in HA by (rewrite List.length_rev, length_cargs_ctx_aux; lia).
     rewrite List.length_rev, length_cargs_ctx_aux, Nat.sub_diag in HA; cbn in HA.
-    injection HA as <-; rewrite apps_exp_sub in HQ; cbn [exp_sub] in HQ; apply apps_ind_inj in HQ; subst Q.
+    injection HA as <-.
+    assert (Hs : exists Ps0, ptyp_ty p D (cargs_pat gs1 ++ nil) Pr
+                   = apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1 ++ nil))
+                                       ++ List.map (fun P => P[wk_pat (cargs_pat gs1 ++ nil)]ʷ) Ps0)).
+    { destruct Pr as [k0 Ps0 | k0 Ps0 | B0 t0]; [ exists Ps0; reflexivity | exists Ps0; reflexivity |].
+      cbn [ptyp_ty exp_sub] in HQ; exfalso; destruct Q as [| N Q _] using List.rev_ind;
+        [ discriminate | rewrite apps_exp_snoc' in HQ; discriminate ]. }
+    destruct Hs as [Ps0 Hs]; rewrite Hs in HQ.
+    rewrite apps_exp_sub in HQ; cbn [exp_sub] in HQ; apply apps_ind_inj in HQ; subst Q.
     rewrite List.map_app, List.firstn_app, List.app_nil_r, length_cargs_pat.
     assert (HA1 : List.length (List.firstn (List.length gs1) As) = List.length gs1) by (rewrite List.length_firstn; lia).
     rewrite <- sb_of_list_app.
@@ -416,4 +441,36 @@ Section Fixed_GCtx.
     replace (ind_nu D - List.length (List.firstn (ind_nu D) Ps)) with 0 by (rewrite List.length_firstn; lia).
     cbn [List.firstn]; rewrite List.app_nil_r, List.firstn_firstn, Nat.min_id; reflexivity.
   Qed.
+
+  (** The type of a recursive argument is the shape's type at the uniform
+      parameters of the constructor's parameters. *)
+  Lemma cargs_rec_type_at : forall p D gs gs1 Pr gs2 Ps As T, gs = gs1 ++ ca_rec Pr :: gs2 ->
+      ind_nu D <= ind_np D -> List.length Ps = ind_np D ->
+      List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some T ->
+      T = ptyp_ty_at p (List.firstn (ind_nu D) Ps)
+            ((ι (wk_pat (cargs_pat gs1))) ⨟ sb_of_list Id (Ps ++ List.firstn (List.length gs1) As)) Pr.
+  Proof.
+    intros * Heq Hnu HPl HT.
+    assert (HAl : List.length gs1 < List.length As).
+    { destruct (Nat.lt_ge_cases (List.length gs1) (List.length As)) as [| Hge]; [ assumption |].
+      rewrite (proj2 (List.nth_error_None _ _)) in HT; [ discriminate |].
+      rewrite length_tele_insts by apply cargs_ctx_aux_ass; subst gs; lia. }
+    rewrite (cargs_rec_type _ _ _ _ _ _ _ _ _ Heq HT), ptyp_ty_eq_at, ptyp_ty_at_sub, <- sb_of_list_app.
+    f_equal.
+    rewrite length_cargs_pat.
+    assert (HA1 : List.length (List.firstn (List.length gs1) As) = List.length gs1) by (rewrite List.length_firstn; lia).
+    replace (Ps ++ List.firstn (List.length gs1) As)
+      with (List.firstn (ind_nu D) Ps ++ (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As))
+      by (rewrite List.app_assoc, List.firstn_skipn; reflexivity).
+    pose proof (vars_from_sb_of_list_app (List.firstn (ind_nu D) Ps)
+                  (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As) Id) as E.
+    replace (List.length (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As)) with (List.length gs1 + ind_nn D) in E
+      by (rewrite List.length_app, List.length_skipn, HA1; unfold ind_nn; lia).
+    replace (List.length (List.firstn (ind_nu D) Ps)) with (ind_nu D) in E by (rewrite List.length_firstn; lia).
+    unfold ind_uvars; exact E.
+  Qed.
+
+  (** A weakened term under an extension of a weakening. *)
+  Lemma exp_shift_extend_wk : forall U φ b, U[↑]ʷ[(ι φ),,b] = U[φ]ʷ.
+  Proof. intros; rewrite exp_sub_shift; apply exp_sub_of_wk_ext; intros [|?]; reflexivity. Qed.
 End Fixed_GCtx.

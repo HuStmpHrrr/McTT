@@ -18,18 +18,15 @@ Import Domain_Notations.
     functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1 bss1, fresh_cargs Θ Ξ p ups ρ gs s vs1 bss1 ->
-      forall vs2 bss2, fresh_cargs Θ Ξ p ups ρ gs s vs2 bss2 -> vs1 = vs2 /\ bss1 = bss2.
+  Lemma functional_fresh_cargs : forall {Θ Ξ} p ups ρ gs s vs1, fresh_cargs Θ Ξ p ups ρ gs s vs1 ->
+      forall vs2, fresh_cargs Θ Ξ p ups ρ gs s vs2 -> vs1 = vs2.
   Proof.
-    induction 1; intros * H2; inversion H2; subst; [ auto | |].
-    - functional_eval_rewrite_clear; edestruct IHfresh_cargs as [-> ->]; [ eassumption | auto ].
-    - match goal with H1 : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?b1, H2 : ⟦ ?Ps ⟧* _ ⍮ _ ⍮ _ ↘ ?b2 |- _ =>
-        pose proof (functional_eval_exps _ _ _ _ H1 H2) as <- end.
-      edestruct IHfresh_cargs as [-> ->]; [ eassumption | auto ].
+    induction 1; intros * H2; inversion H2; subst; [ auto | |];
+      functional_eval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A gs vs bss s ihs1, fresh_ihs Θ Ξ ρ A gs vs bss s ihs1 ->
-      forall ihs2, fresh_ihs Θ Ξ ρ A gs vs bss s ihs2 -> ihs1 = ihs2.
+  Lemma functional_fresh_ihs : forall {Θ Ξ} ρ A ρa gs vs s ihs1, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs1 ->
+      forall ihs2, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs2 -> ihs1 = ihs2.
   Proof.
     induction 1; intros * H2; inversion H2; subst; auto.
     functional_eval_rewrite_clear; f_equal; auto.
@@ -39,9 +36,9 @@ Import Domain_Notations.
     repeat match goal with
       | H1 : fresh_tele ?T ?X ?ρ ?L ?s ?v1, H2 : fresh_tele ?T ?X ?ρ ?L ?s ?v2 |- _ =>
           pose proof (functional_fresh_tele _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1 ?b1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 ?b2 |- _ =>
-          destruct (functional_fresh_cargs _ _ _ _ _ _ _ H1 _ _ H2); subst; clear H2
-      | H1 : fresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?gs ?vs ?bss ?s ?i2 |- _ =>
+      | H1 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : fresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
+          pose proof (functional_fresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i1, H2 : fresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i2 |- _ =>
           pose proof (functional_fresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b1, H2 : ⟦ ?Ps ⟧* ?T ⍮ ?X ⍮ ?ρ ↘ ?b2 |- _ =>
           pose proof (functional_eval_exps _ _ _ _ H1 H2); subst; clear H2
@@ -179,10 +176,10 @@ Lemma fresh_tele_length : forall {Θ Ξ} ρ T s vs,
     fresh_tele Θ Ξ ρ T s vs -> List.length vs = List.length T.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs bss,
-    fresh_cargs Θ Ξ p ups ρ gs s vs bss -> List.length vs = List.length gs.
+Lemma fresh_cargs_length : forall {Θ Ξ} p ups ρ gs s vs,
+    fresh_cargs Θ Ξ p ups ρ gs s vs -> List.length vs = List.length gs.
 Proof. induction 1; cbn; congruence. Qed.
 
-Lemma fresh_ihs_length : forall {Θ Ξ} ρ A gs vs bss s ihs,
-    fresh_ihs Θ Ξ ρ A gs vs bss s ihs -> List.length ihs = cargs_nrec gs.
+Lemma fresh_ihs_length : forall {Θ Ξ} ρ A ρa gs vs s ihs,
+    fresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> List.length ihs = cargs_nrec gs.
 Proof. induction 1; cbn; congruence. Qed.

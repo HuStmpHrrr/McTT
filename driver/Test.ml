@@ -3153,6 +3153,24 @@ let%expect_test "Inductives.mctt works" =
     Evaluate snd ℕ (λ (x1 : ℕ) → ℕ) (Sigma.pair ℕ (λ (x2 : ℕ) → ℕ) 1 2) --> 2 : ℕ
     Evaluate steps 0 (Climb.step 0 (Climb.step 1 (Climb.stop 2))) --> 2 : ℕ
     Evaluate climbs 0 (Climb.step 0 (Climb.stop 1)) --> 1 : ℕ
+    Evaluate approx omg 3 --> 3 : ℕ
+    Evaluate approx (Ord.next omg) 2 --> 3 : ℕ
+    Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord) → approx (Ord.lim x1) 1
+      --> λ (x1 : ∀ (x2 : ℕ) → Ord)
+            → Ord.elim x1 1 return x3 . ℕ
+              | base ⇒ 0
+              | next x4 x5 ⇒ succ x5
+              | lim x6 x7 ⇒ x7 1
+              end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
+    Evaluate approxRec (Ord.lim (λ (x1 : ℕ) → Ord.next (fin x1))) --> 3 : ℕ
+    Evaluate approxA (OrdA.lim (λ (x1 : ℕ) → OrdA.next (OrdA.next OrdA.base))) 0
+      --> 2 : ℕ
+    Evaluate toNat (wsucc (wsucc (wsucc wzero))) --> 3 : ℕ
+    Evaluate wsize (wsucc (wsucc wzero)) --> 3 : ℕ
+    Evaluate sample sums --> 6 : ℕ
+    Evaluate sample (Grid.node (λ (x1 : ℕ)
+                                  (x2 : ℕ)
+                                 → sums)) --> 12 : ℕ
     |}]
 
 let%expect_test "a recursive argument names the type at all its parameters" =
@@ -3165,7 +3183,7 @@ let%expect_test "a constructor's argument must live in the type's sort" =
 
 let%expect_test "a negative occurrence is rejected by the core" =
   let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (x : Bad) -> Nat) end" in
-  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
 
 let%expect_test "a recursive argument at another uniform parameter is rejected" =
   let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List Nat) end" in
@@ -3177,16 +3195,45 @@ let%expect_test "a recursive argument at too many parameters is rejected" =
 
 let%expect_test "a negative occurrence beside a positive one is rejected" =
   let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (x : Bad) -> Bad) end" in
-  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
 
-let%expect_test "a function into the type is not supported yet" =
+let%expect_test "a function into the type is a recursive argument" =
   let _ = main_of_body "inductive Ord : Type@0 where | lim (f : forall (n : Nat) -> Ord) end" in
-  [%expect {| Error: the argument f of lim is a function into Ord, which is not supported yet |}]
+  [%expect {| |}]
 
-let%expect_test "a function into the type behind a definition is not supported yet" =
+let%expect_test "a function into the type behind a definition is a recursive argument" =
   let _ = main_of_body "def Arr (X : Type@0) : Type@0 := forall (n : Nat) -> X end \
                         inductive Ord : Type@0 where | lim (f : Arr Ord) end" in
-  [%expect {| Error: the argument f of lim is a function into Ord, which is not supported yet |}]
+  [%expect {| |}]
+
+let%expect_test "a function into the type of two arguments is a recursive argument" =
+  let _ = main_of_body "inductive Grid : Type@0 where | cell | node (f : forall (n : Nat) (m : Nat) -> Grid) end" in
+  [%expect {| |}]
+
+let%expect_test "a function into the type at a non-uniform parameter is a recursive argument" =
+  let _ = main_of_body "inductive D : forall (k : Nat) -> Type@0 where | leaf | node (f : forall (n : Nat) -> D (succ k)) end" in
+  [%expect {| |}]
+
+let%expect_test "the type in the domain of a domain of a function is rejected" =
+  let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (n : Nat) (x : Bad) -> Bad) end" in
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
+
+let%expect_test "the type in a domain under a function into the type is rejected" =
+  let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (n : Nat) (g : forall (b : Bad) -> Nat) -> Bad) end" in
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
+
+let%expect_test "a function into the type at another uniform parameter is rejected" =
+  let _ = main_of_body "inductive L (A : Type@0) : Type@0 where | mk (f : forall (n : Nat) -> L Nat) end" in
+  [%expect {| Error: L is not applied to its uniform parameters as declared in the argument f of mk |}]
+
+let%expect_test "a function into an opaque definition of the type is rejected" =
+  let _ = main_of_body "abstract def F (X : Type@0) : Type@0 := X end \
+                        inductive Bad : Type@0 where | mk (f : forall (n : Nat) -> F Bad) end" in
+  [%expect {| Error: Bad occurs in the argument f of mk under a head that does not compute (an opaque definition, an axiom or a parameter) |}]
+
+let%expect_test "the type in the domain of a function beside a recursive argument is rejected" =
+  let _ = main_of_body "inductive V : Type@0 where | leaf | node (l : V) (f : forall (x : V) -> V) end" in
+  [%expect {| Error: V occurs in the domain of a function in the argument f of node, which is not strictly positive |}]
 
 let%expect_test "an argument may not depend on a recursive one" =
   let _ = main_of_body "inductive V : Type@0 where | leaf \
@@ -3333,11 +3380,11 @@ let%expect_test "a let or a transparent member in an argument is unfolded" =
 let%expect_test "a negative occurrence behind a definition is rejected" =
   let _ = main_of_body "def Neg (X : Type@0) : Type@0 := forall (x : X) -> False end \
                         inductive Bad : Type@0 where | mk (f : Neg Bad) end" in
-  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
 
 let%expect_test "a non-strictly positive occurrence is rejected" =
   let _ = main_of_body "inductive Bad : Type@0 where | mk (f : forall (g : forall (b : Bad) -> Type@0) -> Type@0) end" in
-  [%expect {| Error: Bad occurs in a non-positive position in the argument f of mk |}]
+  [%expect {| Error: Bad occurs in the domain of a function in the argument f of mk, which is not strictly positive |}]
 
 let%expect_test "the type under an opaque definition is rejected" =
   let _ = main_of_body "abstract def F (X : Type@0) : Type@0 := X end \

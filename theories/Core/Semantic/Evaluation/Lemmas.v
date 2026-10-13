@@ -36,7 +36,11 @@ Import Domain_Notations.
           forall r2, ⟦elim m under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
       (forall ρ nm A Bs gs vs r1,
           ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r1 ->
-          forall r2, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2).
+          forall r2, ⟦ihs vs of gs under nm A Bs ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r2 -> r1 = r2) /\
+      (forall ρ nm A Bs t v r1,
+          eval_ih Θ Ξ ρ nm A Bs t v r1 -> forall r2, eval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2) /\
+      (forall p ups ρ t a1, eval_shty Θ Ξ p ups ρ t a1 -> forall a2, eval_shty Θ Ξ p ups ρ t a2 -> a1 = a2) /\
+      (forall ρm A ρ t v a1, eval_ihty Θ Ξ ρm A ρ t v a1 -> forall a2, eval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2).
   Proof.
     intros Θ Ξ; apply eval_mut_ind; intros;
       (* invert the other evaluation, then use the hypotheses on its parts; the
@@ -110,6 +114,24 @@ Import Domain_Notations.
     intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
   Qed.
 
+  Corollary functional_eval_ih : forall {Θ Ξ} ρ nm A Bs t v r1 r2,
+      eval_ih Θ Ξ ρ nm A Bs t v r1 -> eval_ih Θ Ξ ρ nm A Bs t v r2 -> r1 = r2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_eval_shty : forall {Θ Ξ} p ups ρ t a1 a2,
+      eval_shty Θ Ξ p ups ρ t a1 -> eval_shty Θ Ξ p ups ρ t a2 -> a1 = a2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
+  Corollary functional_eval_ihty : forall {Θ Ξ} ρm A ρ t v a1 a2,
+      eval_ihty Θ Ξ ρm A ρ t v a1 -> eval_ihty Θ Ξ ρm A ρ t v a2 -> a1 = a2.
+  Proof.
+    intros Θ Ξ; pose proof (@functional_eval Θ Ξ) as H; destruct_all; eauto.
+  Qed.
+
   (** An evaluated substitution is determined pointwise. *)
   Corollary functional_eval_modexp : forall {Θ Ξ} H ρ h1 h2,
       ⟦ H ⟧ᵐ Θ ⍮ Ξ ⍮ ρ ↘ h1 ->
@@ -140,7 +162,7 @@ Import Domain_Notations.
   Qed.
 
 #[export]
-Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_elim functional_eval_ihs functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
+Hint Resolve functional_eval_exp functional_eval_natrec functional_eval_elim functional_eval_ihs functional_eval_ih functional_eval_shty functional_eval_ihty functional_eval_app functional_eval_modexp functional_eval_sub : mctt.
 
 
 
@@ -156,6 +178,12 @@ Ltac functional_eval_rewrite_clear1 :=
   | H1 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦elim ?m under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   | H1 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r1), H2 : (⟦ihs ?vs of ?gs under ?nm ?A ?Bs ⟧ ?T ⍮ ?X ⍮ ?ρ ↘ ?r2) |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r1, H2 : eval_ih ?T ?X ?ρ ?nm ?A ?Bs ?t ?v ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r1, H2 : eval_shty ?T ?X ?p ?ups ?ρ ?t ?r2 |- _ =>
+      clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
+  | H1 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r1, H2 : eval_ihty ?T ?X ?ρm ?A ?ρ ?t ?v ?r2 |- _ =>
       clean replace r2 with r1 by first [solve [mauto 2] | tactic_error r2 r1]; clear H2
   end.
 (** There is no [eval_sub] case: [functional_eval_sub] gives only pointwise

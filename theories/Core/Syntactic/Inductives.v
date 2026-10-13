@@ -211,16 +211,77 @@ Fixpoint cargs_strat (gs : list carg) : ctx :=
   | ca_rec _ :: gs' => cargs_strat gs'
   end.
 
+(** ** Shapes
+
+    A shape [pt_pi B1 (pt_pi B2 … (pt_self 0 Ps))] is a function from its
+    domains [B1], [B2], …, each over the ones before it, into the type at
+    the non-uniform parameters [Ps], over all its domains.  Its domains,
+    outermost first, and as a telescope, innermost first. *)
+Fixpoint ptyp_doms {E : Set} (t : ptyp_g E) : list E :=
+  match t with
+  | pt_pi A t => A :: ptyp_doms t
+  | _ => nil
+  end.
+
+Definition doms_ctx (Bs : list exp) : ctx := List.rev (List.map ce_ass Bs).
+Definition ptyp_tele (t : ptyp) : ctx := doms_ctx (ptyp_doms t).
+Definition ptyp_depth (t : ptyp) : nat := List.length (ptyp_doms t).
+
+(** The shape of each recursive argument among [gs] ends at [nn]
+    parameters. *)
+Definition cargs_plen (nn : nat) (gs : list carg) : Prop :=
+  forall gs1 t gs2, gs = gs1 ++ ca_rec t :: gs2 -> List.length (ptyp_ps t) = nn.
+
+(** The pattern of the arguments [gs] of a constructor, innermost first:
+    [true] at a recursive one. *)
+Definition cargs_pat (gs : list carg) : list bool :=
+  List.rev (List.map (fun g => match g with ca_rec _ => true | ca_arg _ => false end) gs).
+
+(** The rest of a shape after [n] of its domains. *)
+Fixpoint ptyp_skip (n : nat) (t : ptyp) : ptyp :=
+  match n, t with
+  | S n, pt_pi _ t => ptyp_skip n t
+  | _, _ => t
+  end.
+
+(** The context of the domains of a shape, each weakened past the arguments
+    before it by the pattern [pat] extended by the domains before it:
+    the context in which the type of a recursive argument binds them. *)
+Fixpoint sh_ctx (pat : list bool) (Bs : list exp) : ctx :=
+  match Bs with
+  | nil => nil
+  | B :: Bs => sh_ctx (false :: pat) Bs ++ ce_ass B[wk_pat pat]ʷ :: nil
+  end.
+
+(** Stage A′ has one type per block and no nesting: a shape ends in
+    [pt_self 0]. *)
+Fixpoint ptyp_simple {E : Set} (t : ptyp_g E) : bool :=
+  match t with
+  | pt_self 0 _ => true
+  | pt_pi _ t => ptyp_simple t
+  | _ => false
+  end.
+
+(** The type of a recursive argument of shape [t], in the context of all
+    the arguments before it and the parameters, its components over the
+    non-recursive arguments before it ([pat], innermost first, tells which
+    of those before it are recursive): the [Π] over the domains of the type
+    at the uniform parameters and the shape's non-uniform ones.  Under a
+    domain the components are over one more variable, which is no recursive
+    argument. *)
+Fixpoint ptyp_ty (p : qname) (D : ind_decl) (pat : list bool) (t : ptyp) : typ :=
+  match t with
+  | pt_pi A t => a_pi A[wk_pat pat]ʷ (ptyp_ty p D (false :: pat) t)
+  | _ => apps (a_ind p) (ind_uvars D (List.length pat) ++ List.map (fun P => P[wk_pat pat]ʷ) (ptyp_ps t))
+  end.
+
 (** The arguments of a constructor as a context over the parameters,
-    innermost first: a recursive one is of the type at the uniform
-    parameters and the non-uniform ones it is declared at. *)
+    innermost first: a recursive one is of the type of its shape. *)
 Fixpoint cargs_ctx_aux (p : qname) (D : ind_decl) (pat : list bool) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
   | ca_arg A :: gs' => cargs_ctx_aux p D (false :: pat) gs' ++ ce_ass A[wk_pat pat]ʷ :: nil
-  | ca_rec Ps :: gs' =>
-      cargs_ctx_aux p D (true :: pat) gs' ++
-        ce_ass (apps (a_ind p) (ind_uvars D (List.length pat) ++ List.map (fun P => P[wk_pat pat]ʷ) (ptyp_ps Ps))) :: nil
+  | ca_rec t :: gs' => cargs_ctx_aux p D (true :: pat) gs' ++ ce_ass (ptyp_ty p D pat t) :: nil
   end.
 
 Definition cargs_ctx (p : qname) (D : ind_decl) (gs : list carg) : ctx := cargs_ctx_aux p D nil gs.
@@ -254,20 +315,46 @@ Definition elim_mctx (p : qname) (D : ind_decl) (Us : list exp) : ctx :=
   ce_ass (apps (a_ind p) (List.map (fun U => U[wk_shiftn (ind_nn D)]ʷ) Us ++ vars_from 0 (ind_nn D)))
   :: tele_sub (ind_nparams D) (sb_of_list Id Us).
 
+(** The type of an argument of shape [t], its components moved by [σ], at
+    the uniform parameters [Us]: [ptyp_ty] at an instance of the parameters
+    and the arguments before. *)
+Fixpoint ptyp_ty_at (p : qname) (Us : list exp) (σ : sub) (t : ptyp) : typ :=
+  match t with
+  | pt_pi B t => a_pi B[σ] (ptyp_ty_at p (List.map (fun U => U[wk_shift]ʷ) Us) (sb_q σ) t)
+  | _ => apps (a_ind p) (Us ++ List.map (fun P => P[σ]) (ptyp_ps t))
+  end.
+
+(** The type of the recursive result of an argument [x] of shape [t]: the
+    motive [A] at the shape's non-uniform parameters and [x], under the
+    shape's domains, at which [x] is applied.  The motive's context, the
+    eliminator's, is moved by [β], the shape's components by [σ]. *)
+Fixpoint ptyp_ihty (A : exp) (β σ : sub) (x : exp) (t : ptyp) : typ :=
+  match t with
+  | pt_pi B t => a_pi B[σ] (ptyp_ihty A (β ⨟ sb_of_wk wk_shift) (sb_q σ) (a_app x[wk_shift]ʷ (a_var 0)) t)
+  | _ => A[sb_of_list β (List.map (fun P => P[σ]) (ptyp_ps t) ++ x :: nil)]
+  end.
+
 (** The recursive results of a constructor's arguments: the motive [A] at
     each recursive argument and the non-uniform parameters it is declared
     at.  [i] arguments of [gs] and [j] results come before; [na] is the
-    number of all the arguments. *)
+    number of all the arguments.  [ihs_sub] moves a shape's components from
+    the context of the non-recursive arguments before it and the
+    parameters to the branch's: past the recursive arguments before it, the
+    uniform parameters instantiated by [Us], past the arguments after it
+    and the results before it. *)
+Definition ihs_sub (D : ind_decl) (Us : list exp) (na : nat) (pat : list bool) (j : nat) : sub :=
+  (sb_of_wk (wk_pat pat) ⨟ sb_qn (List.length pat + ind_nn D) (sb_of_list Id Us))
+    ⨟ sb_of_wk (wk_shiftn (na - List.length pat + j)).
+
 Fixpoint ihs_ctx_aux (D : ind_decl) (A : exp) (Us : list exp) (na : nat)
     (pat : list bool) (j : nat) (gs : list carg) : ctx :=
   match gs with
   | nil => nil
   | ca_arg _ :: gs' => ihs_ctx_aux D A Us na (false :: pat) j gs'
-  | ca_rec Ps :: gs' =>
-      let i := List.length pat in
-      let Ps' := List.map (fun P => P[wk_pat pat]ʷ[sb_qn (i + ind_nn D) (sb_of_list Id Us)][wk_shiftn (na - i + j)]ʷ) (ptyp_ps Ps) in
+  | ca_rec t :: gs' =>
       ihs_ctx_aux D A Us na (true :: pat) (S j) gs' ++
-        ce_ass A[sb_of_list (sb_of_wk (wk_shiftn (j + na + ind_nn D))) (Ps' ++ a_var (j + na - 1 - i) :: nil)] :: nil
+        ce_ass (ptyp_ihty A (sb_of_wk (wk_shiftn (j + na + ind_nn D))) (ihs_sub D Us na pat j)
+                  (a_var (j + na - 1 - List.length pat)) t) :: nil
   end.
 
 (** The context of the branch of a constructor with arguments [gs]: the
@@ -287,12 +374,27 @@ Definition elim_bty (p : qname) (D : ind_decl) (c : string) (gs : list carg) (A 
        apps (a_con p c) (List.map (fun U => U[wk_shiftn n]ʷ) Us ++
                          vars_from (cargs_nrec gs + na) (ind_nn D) ++ vars_from (cargs_nrec gs) na) :: nil)].
 
+(** The branches under [φ], each under the binders it has: what
+    weakening does to the branches of an eliminator. *)
+Definition brs_wk (Bs : list (string * nat * exp)) (φ : wk) : list (string * nat * exp) :=
+  List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) Bs.
+
+(** The recursive result of an argument [M] of shape [t], as an
+    elimination: under the shape's domains, moved by [σ], the eliminator at
+    [M] applied to them. *)
+Fixpoint ptyp_ih (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (M : exp) (t : ptyp) : exp :=
+  match t with
+  | pt_pi B t => a_fn B[σ] (ptyp_ih p nm A[wk_qn nm wk_shift]ʷ (brs_wk Bs wk_shift) (sb_q σ) (a_app M[wk_shift]ʷ (a_var 0)) t)
+  | _ => a_elim p nm A Bs M
+  end.
+
 (** The recursive results of the arguments [As] of a constructor, as
-    eliminations. *)
-Fixpoint elim_ihs (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (gs : list carg) (As : list exp) : list exp :=
+    eliminations; [σ] instantiates the parameters and the non-recursive
+    arguments before, which the shapes' domains are over. *)
+Fixpoint elim_ihs (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (gs : list carg) (As : list exp) : list exp :=
   match gs, As with
-  | ca_arg _ :: gs', _ :: As' => elim_ihs p nm A Bs gs' As'
-  | ca_rec _ :: gs', M :: As' => a_elim p nm A Bs M :: elim_ihs p nm A Bs gs' As'
+  | ca_arg _ :: gs', N :: As' => elim_ihs p nm A Bs (σ ,, N) gs' As'
+  | ca_rec t :: gs', M :: As' => ptyp_ih p nm A Bs σ M t :: elim_ihs p nm A Bs σ gs' As'
   | _, _ => nil
   end.
 
@@ -391,7 +493,7 @@ Definition ctx_mvc (Δ : ctx) : Prop := List.Forall (centry_mvc 0) Δ.
 Definition carg_mvc (g : carg) : Prop :=
   match g with
   | ca_arg A => exp_mvc 0 A
-  | ca_rec Ps => List.Forall (exp_mvc 0) (ptyp_ps Ps)
+  | ca_rec t => List.Forall (exp_mvc 0) (ptyp_doms t) /\ List.Forall (exp_mvc 0) (ptyp_ps t)
   end.
 
 Definition decl_mvc (D : ind_decl) : Prop :=
@@ -408,6 +510,7 @@ Definition decl_mvc (D : ind_decl) : Prop :=
 #[global] Arguments elim_mctx : simpl never.
 #[global] Arguments elim_bctx : simpl never.
 #[global] Arguments elim_bty : simpl never.
+#[global] Arguments ihs_sub : simpl never.
 
 (** ** Facts About the Types of a Declaration *)
 
@@ -459,10 +562,11 @@ Proof.
   lia.
 Qed.
 
-Lemma length_elim_ihs : forall p nm A Bs gs As,
-    List.length As = List.length gs -> List.length (elim_ihs p nm A Bs gs As) = cargs_nrec gs.
+Lemma length_elim_ihs : forall p nm A Bs σ gs As,
+    List.length As = List.length gs -> List.length (elim_ihs p nm A Bs σ gs As) = cargs_nrec gs.
 Proof.
-  induction gs as [| [] gs IH]; intros [| N As] Hl; cbn in *; try discriminate; try reflexivity.
+  intros p nm A Bs σ gs; revert σ.
+  induction gs as [| [] gs IH]; intros σ [| N As] Hl; cbn in *; try discriminate; try reflexivity.
   - apply IH; lia.
   - f_equal; apply IH; lia.
 Qed.
