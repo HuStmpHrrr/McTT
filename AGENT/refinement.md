@@ -49,7 +49,15 @@ application and calls `type_infer_in` otherwise, both structurally.
   recursive argument heading `ca_rec t :: gs`, the variable
   `cargs_nrec gs` of `B`, is computed only when `B` reads it; otherwise
   the entry is `𝕌ω@0`.  A function-shaped result is a closure
-  (`d_ihfn`), skipped alike.  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).
+  (`d_ihfn`), skipped alike.
+
+Readback has one rule more: a type former without arguments reads back as
+`nf_indty p nfs_nil` without looking its declaration up
+(`fread_typ_indty_nil`; the general rule asks `as' <> nil`).
+
+Normal forms are compared by `nf_eq_dec` (`Syntax.v`), whose names are
+compared by `string_dec` (native string equality once extracted), not
+taken apart character by character by `decide equality`.  Notations carry `ᶠ` (`⟦ M ⟧ᶠ`, `Rtypᶠ`, …).
 The orders and implementations of `Extraction/Evaluation.v` and
 `Readback.v` are those of `Reference/` over the copied relations.
 

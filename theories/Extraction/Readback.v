@@ -270,8 +270,11 @@ with fread_typ_order (Θ : gdeps) (Ξ : gstack) : nat -> domain -> Prop :=
 | frtyp_neut :
   `( fread_ne_order Θ Ξ s b ->
     fread_typ_order Θ Ξ s ⇑ a b )
+| frtyp_indty_nil :
+  `( fread_typ_order Θ Ξ s (d_ind p nil) )
 | frtyp_indty :
-  `( ind_lookup Θ Ξ p = Some D ->
+  `( as' <> nil ->
+     ind_lookup Θ Ξ p = Some D ->
      List.length as' = ind_np D ->
      fread_ps_order Θ Ξ s nil (List.rev (ind_params D)) as' ->
      fread_typ_order Θ Ξ s (d_ind p as') )
@@ -494,6 +497,7 @@ Equations fread_nf_impl s d (H : fread_nf_order Θ Ξ s d) : { m | Rnfᶠ d in �
 | s, ⇑ a b, H =>
     let (B, HB) := fread_ne_impl s b _ in
     exist _ ⇑ⁿ B _
+| s, d_ind p nil, H => exist _ (nf_indty p nfs_nil) _
 | s, d_ind p as', H with inspect (ind_lookup Θ Ξ p) := {
   | exist _ (Some D) Ed =>
       let (Ps, HPs) := fread_ps_impl s nil (List.rev (ind_params D)) as' _ in
@@ -597,7 +601,12 @@ Ltac rb_obl_auto :=
   | |- fread_ne_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_typ_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_la_order _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- fread_ps_order _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  (** The parameters of a type former with arguments: read off its order
+      before inversion takes the arguments apart. *)
+  | |- fread_ps_order _ _ _ _ _ _ =>
+      first [ solve [ match goal with H : fread_typ_order _ _ _ (d_ind _ (_ :: _)) |- _ =>
+                        inversion H; subst; rb_glob; assumption end ]
+            | rb_ord | rb_run ]
   | |- fread_cargs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- fread_brs_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- ffresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
@@ -611,6 +620,7 @@ Ltac rb_obl_auto :=
   | |- _ => abstract (first [ rb_ord | rb_run | eapply fread_typ_suniv_of_nf; eassumption | rb_ind ])
   end.
 
+Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.
 Next Obligation. rb_obl_auto. Defined.

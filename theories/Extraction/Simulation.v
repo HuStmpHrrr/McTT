@@ -921,9 +921,13 @@ Section Read.
       end ].
     all: try solve [ match goal with
       | IH : forall ρ0 vs0, env_agree _ nil ρ0 -> dsim_list ?as' vs0 -> Rpsᶠ vs0 at _ in _ ⍮ _ ⍮ ρ0 ⍮ _ ↘ ?Ps,
+        Hps : Rps ?as' at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?Ps,
         Ha : dsim_list ?as' ?as'' |- Rtypᶠ d_ind _ ?as'' in _ ⍮ _ ⍮ _ ↘ nf_indty _ ?Ps =>
-          econstructor; try eassumption;
-            [ rewrite <- (dsim_list_length _ _ Ha); assumption | apply IH; [ apply env_agree_nil | exact Ha ] ]
+          destruct as'' as [| a0 as0];
+          [ (** without arguments, by the rule that reads no declaration *)
+            inversion Ha; subst; inversion Hps; subst; apply fread_typ_indty_nil
+          | eapply fread_typ_indty; [ discriminate | eassumption | |];
+            [ rewrite <- (dsim_list_length _ _ Ha); assumption | apply IH; [ apply env_agree_nil | exact Ha ] ] ]
       end ].
     all: try solve [ match goal with
       | e : ⟦ ?A ⟧ Θ ⍮ Ξ ⍮ ?ρ ↘ ?a, Hρ : env_agree (fun _ => True) ?ρ ?ρ',

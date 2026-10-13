@@ -1543,8 +1543,11 @@ with nfs_eq_dec : forall (Ms Ms' : nfs),
 with nbrs_eq_dec : forall (Bs Bs' : nbrs),
     ({Bs = Bs'} + {Bs <> Bs'})%type.
 Proof.
+  (** Names are compared by [string_dec], before [decide equality] could
+      take a string apart character by character. *)
   all: intros; decide equality;
-    repeat (apply PeanoNat.Nat.eq_dec || decide equality || apply String.string_dec).
+    repeat (apply PeanoNat.Nat.eq_dec || apply String.string_dec ||
+            apply (List.list_eq_dec String.string_dec) || decide equality).
 Defined.
 
 (** ** Notations *)

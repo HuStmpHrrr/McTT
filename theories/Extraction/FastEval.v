@@ -980,8 +980,13 @@ with fread_typ (Θ : gdeps) (Ξ : gstack) : nat -> domain -> nf -> Prop :=
 | fread_typ_neut :
   `( Rneᶠ b in Θ ⍮ Ξ ⍮ s ↘ B ->
      Rtypᶠ ⇑ a b in Θ ⍮ Ξ ⍮ s ↘ ⇑ⁿ B)
+(** A type former without arguments reads back without its declaration:
+    it has no parameter to read. *)
+| fread_typ_indty_nil :
+  `( Rtypᶠ d_ind p nil in Θ ⍮ Ξ ⍮ s ↘ nf_indty p nfs_nil )
 | fread_typ_indty :
-  `( ind_lookup Θ Ξ p = Some D ->
+  `( as' <> nil ->
+     ind_lookup Θ Ξ p = Some D ->
      List.length as' = ind_np D ->
      Rpsᶠ as' at List.rev (ind_params D) in Θ ⍮ Ξ ⍮ nil ⍮ s ↘ Ps ->
      Rtypᶠ d_ind p as' in Θ ⍮ Ξ ⍮ s ↘ nf_indty p Ps )
@@ -1116,14 +1121,19 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs frea
   Proof.
     intros Θ Ξ; apply fread_mut_ind; intros; progressive_inversion; functional_feval_rewrite_clear;
       functional_ffresh_rewrite_clear; functional_feval_rewrite_clear;
-      first
+      (** The two rules of a type former exclude each other. *)
+      try contradiction.
+    all: try (first
         [ (** A small universe takes the canonical level that its level reads
               back as, so its case is that equality under [nf_univ_of]. *)
           solve [ apply nf_univ_of_cong; eauto ]
           (** The other level cases read back a canonical form, so the equality
               is under [nf_lvl_of (lvl_canon …)]: [repeat f_equal] reaches the
               atoms. *)
-        | repeat f_equal; solve [eauto] ].
+        | repeat f_equal; solve [eauto] ]).
+    (** A type former: its other derivation, by either rule. *)
+    all: match goal with H : Rtypᶠ d_ind _ _ in _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion H; subst; clear H end;
+      functional_ffresh_rewrite_clear; try contradiction; try reflexivity; f_equal; eauto.
   Qed.
 
   Corollary functional_fread_nf : forall {Θ Ξ} s m M1 M2,
