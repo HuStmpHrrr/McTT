@@ -102,7 +102,8 @@ core never see the difference:
 The printer (`PrettyPrinter.ml`), the token names in syntax errors
 (`Lexer.token_to_string`), `parserMessages.messages` and the elaborator's
 unit-path message use the Unicode forms (`∀` for `PI`); `lib/` and
-`examples/` are written in them.  Identifiers are ASCII letters only, so
+`examples/` are written in them.  Identifiers are ASCII letters, digits
+and underscores, not starting with a digit (a bare `_` is reserved), so
 `λx` is `λ` then `x` and no symbol needs spaces.  Error columns count
 characters: the lexer moves `pos_bol` right by one for every UTF-8
 continuation byte, so `pos_cnum` stays a byte offset (which `Doc.ml` relies

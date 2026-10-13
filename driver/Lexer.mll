@@ -176,7 +176,10 @@
       format_range (get_range_of_token t)
 }
 
-let string = ['a'-'z''A'-'Z']+
+(* An identifier: ASCII letters, digits and underscores, not starting with
+   a digit, so that a numeral and a level literal [<n>l] stay one token.  A
+   bare [_] is reserved. *)
+let string = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 (* A UTF-8 character outside ASCII: a lead byte and its continuation bytes,
    reported whole when it is not a token. *)
@@ -187,8 +190,8 @@ let utf8 = ['\xc0'-'\xf7'] ['\x80'-'\xbf']*
      →  ->      ⇒  =>      λ  fun     ∀ Π  forall   ≔  :=    ›  ::
      ℕ  Nat     ⊤  True    ⊥  False   ⋆  true       ω  omega
      ·  *       ω^2  omega^2
-   Identifiers are ASCII letters only, so [λx] is [λ] then [x], and no
-   symbol needs a space around it. *)
+   Identifiers are ASCII, so [λx] is [λ] then [x], and no symbol needs a
+   space around it. *)
 
 rule read =
   parse
@@ -274,6 +277,7 @@ rule read =
   | "private" { PRIVATE (get_range lexbuf) }
   | "abstract" { ABSTRACT (get_range lexbuf) }
   | "eval" { EVAL (get_range lexbuf) }
+  | '_' { raise (Error (Format.asprintf "\"_\" is reserved, and not a name, at %a" format_position lexbuf.lex_start_p)) }
   | string { VAR (get_range lexbuf, Lexing.lexeme lexbuf) }
   | utf8 as s { raise (Error (Format.asprintf "unexpected character \"%s\" at %a" s format_position lexbuf.lex_start_p)) }
   | _ as c { raise (Error (Format.asprintf "unexpected character %C at %a" c format_position lexbuf.lex_start_p)) }

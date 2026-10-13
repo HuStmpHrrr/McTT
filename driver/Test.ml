@@ -83,7 +83,7 @@ let%expect_test "each Unicode spelling parses" =
     Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
     |}]
 
-(* Identifiers are ASCII letters, so no Unicode symbol needs a space. *)
+(* Identifiers are ASCII, so no Unicode symbol needs a space. *)
 let%expect_test "Unicode symbols need no spaces" =
   let _ = main_of_body "def g:∀(x:ℕ)→ℕ≔λ(x:ℕ)→x end eval g" in
   [%expect {| Evaluate g --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ |}]
@@ -3549,3 +3549,32 @@ let%expect_test "a binding needs its type" =
       builtin is expected to be followed by ":=" and the type bound, as in
       "builtin natural := Nat".
     |}]
+
+(* An identifier may contain digits and underscores after its first
+   character, and start with an underscore. *)
+let%expect_test "names with digits and underscores" =
+  let _ = main_of_body "def x_1 : Nat := 1 end def Num2 : Nat := succ x_1 end \
+                        def _y : Nat := Num2 end def zero1 : Nat := zero end \
+                        module M_2 where def List_2 : Nat := _y end end \
+                        eval M_2.List_2 eval zero1 eval fun (x1 : Nat) -> x1" in
+  [%expect {|
+    Evaluate M_2.List_2 --> 2 : ℕ
+    Evaluate zero1 --> 0 : ℕ
+    Evaluate λ (x1 : ℕ) → x1 --> λ (x1 : ℕ) → x1 : ∀ (x1 : ℕ) → ℕ
+    |}]
+
+let%expect_test "a unit name may contain digits" =
+  let _ = main_of_program_string "module T_2 where def a1 : Nat := 3 end eval a1 end" in
+  [%expect {| Evaluate a1 --> 3 : ℕ |}]
+
+let%expect_test "a numeral and a level literal stay one token" =
+  let _ = main_of_body "def l2 : Level := 2l end eval Type@{l2} eval Type@{3L} eval 12" in
+  [%expect {|
+    Evaluate Type@{l2} --> Type@2 : Type@3
+    Evaluate Type@3L --> Type@3L : Type@4L
+    Evaluate 12 --> 12 : ℕ
+    |}]
+
+let%expect_test "a bare underscore is reserved" =
+  let _ = main_of_body "def _ : Nat := 0 end" in
+  [%expect {| Error: "_" is reserved, and not a name, at line 1, column 23 |}]

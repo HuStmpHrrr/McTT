@@ -148,8 +148,13 @@ one (and `∀` for `forall`):
 | `›`     | `::`     |   | `·`     | `*`     |
 |         |          |   | `ω^2`   | `omega^2` |
 
-Identifiers are ASCII letters only, so these symbols need no spaces around
-them: `λ(x:ℕ)→x` is `fun (x : Nat) -> x`.
+An identifier is ASCII letters, digits and underscores, and does not start
+with a digit: `x`, `x_1`, `Num2`, `_x`.  A bare `_` is reserved.  A word
+that is a keyword (`zero`, `rec`, `Nat`, …) is the keyword, and a longer
+word is an identifier: `zero1` and `Nat2` are names.  A numeral and a level
+literal start with a digit, so `2l` is the level literal and `x2l` a name.
+These symbols need no spaces around them: `λ(x:ℕ)→x` is
+`fun (x : Nat) -> x`.
 
 ```EBNF
 prog = term , ':' , type;
