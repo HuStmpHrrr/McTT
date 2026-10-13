@@ -21,19 +21,6 @@ Section Fixed_GCtx.
 
   (** ** Telescopes of Assumptions *)
 
-  Lemma wf_ext_eq_sym_ass : forall Γ Ψ Ψ', Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ ≈ Ψ' -> tele_ass Ψ -> Θ ⍮ Ξ ⍮ Γ ⊢ˣ Ψ' ≈ Ψ.
-  Proof.
-    induction 1 as [| | |]; intros Hass.
-    - constructor; assumption.
-    - inversion_clear Hass as [| ? ? _ Hass'].
-      pose proof (ctxsub_ext _ _ _ _ _ H Hass') as HId.
-      eapply wf_ext_eq_ass; [ exact (IHwf_ext_eq Hass') | eassumption | | eassumption ].
-      pose proof (sub_preserves_exp_eq _ _ _ _ _ _ _ _ H1 HId) as H'.
-      rewrite !exp_sub_id in H'; cbn in H'; symmetry; exact H'.
-    - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
-    - inversion_clear Hass as [| ? ? [? Heq] _]; discriminate.
-  Qed.
-
   Lemma sb_qn_eq_ext : forall Ψ Δ Γ σ σ', tele_ass Ψ -> ⊢ Θ ⍮ Ξ ⍮ Ψ ++ Δ -> Θ ⍮ Ξ ⍮ Γ ⊢s σ ≈ σ' : Δ ->
       Θ ⍮ Ξ ⍮ tele_sub Ψ σ ++ Γ ⊢s sb_qn (List.length Ψ) σ ≈ sb_qn (List.length Ψ) σ' : Ψ ++ Δ.
   Proof.

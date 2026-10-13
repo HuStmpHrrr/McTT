@@ -25,7 +25,10 @@ eval length ℕ (List.cons ℕ 1 (List.nil ℕ))
 ### Left and right of `:`
 
 Where a parameter is written decides how it behaves, in the declaration
-and in the eliminator.
+and in the eliminator.  **The rule:** a parameter written left of `:` is
+uniform, the same in every recursive argument and fixed for the
+eliminator; one bound right of `:`, by the type in front of its sort, is
+non-uniform and may take a new value in each recursive argument.
 
 **Left of `:` — uniform parameters.**  `List (A : Type@0)` has one.  A
 uniform parameter is the same everywhere in the type:
@@ -293,8 +296,10 @@ rec := λ u P b_c … . λ Δn z. a_elim p (S nn) P' [(c, n_c, b_c $ its n_c var
 (`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
 `System/Command.v`): each branch argument has exactly the type the
 eliminator gives the branch at the motive `P`.  It is checked by `gens_run`
-like the constructors, when the declaration runs; no theorem states that
-it always checks (every example does).  The surface reads `X.rec`
+like the constructors, when the declaration runs, and it always checks:
+`ind_gens_run` (`System/IndRec.v`) shows that the generated commands run
+for every well-formed filed declaration, and `rc_ind_runs` that such a
+declaration command runs.  The surface reads `X.rec`
 (`rec` is a keyword: `atomic_obj . REC` in the parser; `Doc.ml` pairs the
 token).  Not done: `open X use (rec)` (the items are names, not the
 keyword).
@@ -316,12 +321,16 @@ keyword).
 
 ## Deviations from the report
 
-1. **No separate positivity check**: first-order recursive arguments only,
-   by construction of `carg`.
+1. **No separate positivity check**: the shapes of `carg` (the type at its
+   parameters, or a function into such a shape over domains free of the
+   type) admit only strictly positive occurrences, by construction.
 2. **Non-uniform parameters are typed at the inductive's sort** (option 1
    chosen by the coordinator), the uniform ones are free.
-3. `wf_con` has two extra premises (the context of the arguments and the
-   closed type of the constructor), read off by the models.
+3. `wf_con` has three extra premises, all derivable from the declaration
+   and read off by the models: the context of the arguments, the closed
+   type of the constructor, and, for each recursive argument and each
+   prefix of its shape's domains, the rest of its type over them
+   (`shape_rest_wf'`; `wf_con_of_lookup` states the rule without them).
 4. **Admissible uniform parameters** (`ind_adm`, option K): a stuck
    eliminator's readback makes fresh variables from the uniform parameters of
    the scrutinee's type, so the neutral clause of `ind_rel` asks them to be
@@ -341,7 +350,10 @@ keyword).
 7. `ati_elim` has the premise `length (nfs_to_exps Rs) = ind_np D`; the
    checker decides it.
 8. The checker's message for an ill-formed declaration names the type only
-   (`"ill-formed inductive declaration x"`), not the failing premise; the
+   (`"ill-formed inductive declaration x"`), not the failing premise, except
+   for a non-uniform parameter outside the sort ("the type of the
+   non-uniform parameter 1 of L, Type@1, is not in the sort of L,
+   Type@0"); the
    classification has its own messages (non-positive occurrence, the type
-   in a domain, dependency on a recursive argument, uniform parameters
+   in a domain, the type nested inside another inductive type, dependency on a recursive argument, uniform parameters
    not as declared, wrong arity).

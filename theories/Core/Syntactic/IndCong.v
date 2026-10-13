@@ -280,30 +280,11 @@ Section Fixed_GCtx.
     eapply wf_exp_eq_conv'; [ exact (HYZ _ _ _ _ HY HZ HT') | symmetry; exact HTT ].
   Qed.
 
-  Lemma tele_eq_sym : forall Γ C Xs Ys, tele_ass C -> ⊢ Θ ⍮ Ξ ⍮ C ++ Γ ->
-      List.length Xs = List.length C -> List.length Ys = List.length C ->
-      (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
-         List.nth_error (tele_insts C Id Xs) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ X ≈ Y : T) ->
-      (forall k Y X T, List.nth_error Ys k = Some Y -> List.nth_error Xs k = Some X ->
-         List.nth_error (tele_insts C Id Ys) k = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ Y ≈ X : T).
-  Proof.
-    intros * Hass HC HXl HYl HXY k Y X T HY HX HT.
-    assert (HΓ : ⊢ Θ ⍮ Ξ ⍮ Γ) by (eapply ctx_app_wf_tail; exact HC).
-    destruct (nth_error_lt_some (tele_insts C Id Xs) k) as [T0 HT0].
-    { rewrite length_tele_insts by exact Hass.
-      assert (k < List.length Xs) by (apply List.nth_error_Some; congruence); lia. }
-    destruct (tele_insts_cong C Γ Γ Id Id Xs Ys Hass HC ltac:(apply wf_sub_eq_refl; mauto 3) HXl HYl HXY _ _ _ HT0 HT) as [i HTT].
-    symmetry; eapply wf_exp_eq_conv'; [ exact (HXY _ _ _ _ HX HY HT0) | exact HTT ].
-  Qed.
-
   Lemma uparams_ctx_wf : forall Γ p D, ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ⊢ Θ ⍮ Ξ ⍮ ind_uparams D ++ Γ.
   Proof.
     intros * Hl HΓ; pose proof (params_ctx_wf _ _ _ Hl HΓ) as H.
     rewrite params_split, <- List.app_assoc in H; eapply ctx_app_wf_tail; exact H.
   Qed.
-
-  Lemma apps_exp_snoc' : forall Ms M N, apps M (Ms ++ N :: nil) = a_app (apps M Ms) N.
-  Proof. induction Ms as [| M0 Ms IH]; intros; cbn; [ reflexivity | apply IH ]. Qed.
 
   (** The type of a recursive argument is the type of its shape. *)
   Lemma cargs_rec_type : forall p D gs gs1 Pr gs2 σ As T, gs = gs1 ++ ca_rec Pr :: gs2 ->
@@ -317,19 +298,6 @@ Section Fixed_GCtx.
     rewrite List.nth_error_app2 in HA by (rewrite List.length_rev, length_cargs_ctx_aux; lia).
     rewrite List.length_rev, length_cargs_ctx_aux, Nat.sub_diag in HA; cbn in HA.
     injection HA as <-; rewrite List.app_nil_r; reflexivity.
-  Qed.
-
-  (** A recursive argument whose type is the inductive type is of a shape
-      with no domain. *)
-  Lemma cargs_rec_type_ind : forall p D gs gs1 Pr gs2 σ As Q, gs = gs1 ++ ca_rec Pr :: gs2 ->
-      List.nth_error (tele_insts (cargs_ctx p D gs) σ As) (List.length gs1) = Some (apps (a_ind p) Q) ->
-      ptyp_doms Pr = nil.
-  Proof.
-    intros * Heq HT; pose proof (cargs_rec_type _ _ _ _ _ _ _ _ _ Heq HT) as E.
-    destruct Pr as [k0 Ps | k0 Ps | B t]; [ reflexivity | reflexivity |].
-    cbn [ptyp_ty exp_sub] in E; exfalso.
-    destruct Q as [| N Q _] using List.rev_ind; [ discriminate |].
-    rewrite apps_exp_snoc' in E; discriminate.
   Qed.
 
   (** The sort of an inductive type at equal parameters. *)
@@ -398,48 +366,6 @@ Section Fixed_GCtx.
       destruct Q' as [| N' Q' _] using List.rev_ind; try reflexivity;
       rewrite ?apps_exp_snoc in H; cbn in H; try discriminate.
     injection H as H ->; rewrite (IH _ H); reflexivity.
-  Qed.
-
-  (** The uniform parameters of the type of a recursive argument are the
-      ones of the constructor. *)
-  Lemma cargs_rec_uniform : forall p D gs gs1 Pr gs2 Ps As Q, gs = gs1 ++ ca_rec Pr :: gs2 ->
-      ind_nu D <= ind_np D -> List.length Ps = ind_np D ->
-      List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) (List.length gs1) = Some (apps (a_ind p) Q) ->
-      List.firstn (ind_nu D) Q = List.firstn (ind_nu D) Ps.
-  Proof.
-    intros * -> Hnu HPl HT.
-    assert (HAl : List.length gs1 < List.length As).
-    { destruct (Nat.lt_ge_cases (List.length gs1) (List.length As)) as [| Hge]; [ assumption |].
-      rewrite (proj2 (List.nth_error_None _ _)) in HT; [ discriminate |].
-      rewrite length_tele_insts by apply cargs_ctx_aux_ass; lia. }
-    destruct (tele_insts_nth _ _ _ _ _ HT) as (A & HA & HQ).
-    unfold cargs_ctx in HA; rewrite cargs_ctx_aux_app in HA; cbn [cargs_ctx_aux] in HA.
-    rewrite !List.rev_app_distr in HA; cbn [List.rev List.app] in HA.
-    rewrite List.nth_error_app2 in HA by (rewrite List.length_rev, length_cargs_ctx_aux; lia).
-    rewrite List.length_rev, length_cargs_ctx_aux, Nat.sub_diag in HA; cbn in HA.
-    injection HA as <-.
-    assert (Hs : exists Ps0, ptyp_ty p D (cargs_pat gs1 ++ nil) Pr
-                   = apps (a_ind p) (ind_uvars D (List.length (cargs_pat gs1 ++ nil))
-                                       ++ List.map (fun P => P[wk_pat (cargs_pat gs1 ++ nil)]ʷ) Ps0)).
-    { destruct Pr as [k0 Ps0 | k0 Ps0 | B0 t0]; [ exists Ps0; reflexivity | exists Ps0; reflexivity |].
-      cbn [ptyp_ty exp_sub] in HQ; exfalso; destruct Q as [| N Q _] using List.rev_ind;
-        [ discriminate | rewrite apps_exp_snoc' in HQ; discriminate ]. }
-    destruct Hs as [Ps0 Hs]; rewrite Hs in HQ.
-    rewrite apps_exp_sub in HQ; cbn [exp_sub] in HQ; apply apps_ind_inj in HQ; subst Q.
-    rewrite List.map_app, List.firstn_app, List.app_nil_r, length_cargs_pat.
-    assert (HA1 : List.length (List.firstn (List.length gs1) As) = List.length gs1) by (rewrite List.length_firstn; lia).
-    rewrite <- sb_of_list_app.
-    replace (Ps ++ List.firstn (List.length gs1) As)
-      with (List.firstn (ind_nu D) Ps ++ (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As))
-      by (rewrite List.app_assoc, List.firstn_skipn; reflexivity).
-    pose proof (vars_from_sb_of_list_app (List.firstn (ind_nu D) Ps)
-                  (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As) Id) as E.
-    replace (List.length (List.skipn (ind_nu D) Ps ++ List.firstn (List.length gs1) As)) with (List.length gs1 + ind_nn D) in E
-      by (rewrite List.length_app, List.length_skipn, HA1; unfold ind_nn; lia).
-    replace (List.length (List.firstn (ind_nu D) Ps)) with (ind_nu D) in E by (rewrite List.length_firstn; lia).
-    unfold ind_uvars; rewrite E.
-    replace (ind_nu D - List.length (List.firstn (ind_nu D) Ps)) with 0 by (rewrite List.length_firstn; lia).
-    cbn [List.firstn]; rewrite List.app_nil_r, List.firstn_firstn, Nat.min_id; reflexivity.
   Qed.
 
   (** The type of a recursive argument is the shape's type at the uniform

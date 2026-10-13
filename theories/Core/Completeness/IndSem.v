@@ -237,9 +237,6 @@ Proof.
   rewrite IH, <- List.app_assoc; reflexivity.
 Qed.
 
-Lemma length_env_args : forall ρ xs, List.length (env_args ρ xs) = List.length xs + List.length ρ.
-Proof. intros; rewrite env_args_rev, List.length_app, List.length_rev, List.length_map; reflexivity. Qed.
-
 Lemma skipn_env_args : forall ρ xs, List.skipn (List.length xs) (env_args ρ xs) = ρ.
 Proof.
   intros; rewrite env_args_rev.

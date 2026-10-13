@@ -312,9 +312,6 @@ Section Iota.
     Lemma r_simp : ptyp_simple t = true.
     Proof. exact (sd_simple _ HDc c gs gs1 t gs2 Hcon Heq). Qed.
 
-    Lemma r_HK : K <= List.length (cargs_nonrec gs).
-    Proof. unfold K; rewrite Heq, cargs_nonrec_app, List.length_app; lia. Qed.
-
     Lemma r_strat : cargs_strat gs1 = astrat gs (List.length (cargs_nonrec gs1)).
     Proof. rewrite Heq; apply astrat_prefix. Qed.
 

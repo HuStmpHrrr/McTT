@@ -334,13 +334,6 @@ Fixpoint cargs_sub (σ : sub) (gs : list carg) (As : list exp) : sub :=
   | _, _ => σ
   end.
 
-Lemma cargs_sub_cong : forall gs As σ σ', sb_eq σ σ' -> sb_eq (cargs_sub σ gs As) (cargs_sub σ' gs As).
-Proof.
-  induction gs as [| [] gs IH]; intros [| N As] * H; cbn; try exact H.
-  - apply IH, sb_extend_cong, H.
-  - apply IH, H.
-Qed.
-
 (** The arguments [As] before, filled over [σ], read through the pattern's
     weakening. *)
 Lemma cargs_sub_pat : forall gs σ As, List.length As = List.length gs ->
@@ -375,18 +368,6 @@ Proof. induction gs as [| [] gs IH]; intros B σ [| M As] N Hl; cbn in *; try di
 Lemma cargs_sub_snoc_rec : forall gs t σ As N, List.length As = List.length gs ->
     cargs_sub σ (gs ++ ca_rec t :: nil) (As ++ N :: nil) = cargs_sub σ gs As.
 Proof. induction gs as [| [] gs IH]; intros t σ [| M As] N Hl; cbn in *; try discriminate; auto. Qed.
-
-(** The recursive results of [gs1 ++ gs2] are those of [gs1], then those of
-    [gs2] over the substitution [gs1] makes. *)
-Lemma elim_ihs_app : forall p nm A Bs gs1 gs2 σ As,
-    List.length gs1 <= List.length As ->
-    elim_ihs p nm A Bs σ (gs1 ++ gs2) As
-    = elim_ihs p nm A Bs σ gs1 As ++ elim_ihs p nm A Bs (cargs_sub σ gs1 As) gs2 (List.skipn (List.length gs1) As).
-Proof.
-  induction gs1 as [| [] gs1 IH]; intros gs2 σ [| N As] Hl; cbn in *; try lia; auto.
-  - rewrite IH by lia; reflexivity.
-  - rewrite IH by lia; reflexivity.
-Qed.
 
 (** The same for a telescope whose types have no free module variable: the
     substitutions need only send the same terms. *)
@@ -528,16 +509,6 @@ Proof.
   intros p t; induction t as [k0 Ps | k0 Ps | B t IH]; intros * Hσ; cbn in *.
   1, 2: f_equal; f_equal; apply map_ext; intros; apply exp_sub_sb_eq, Hσ.
   f_equal; [ apply exp_sub_sb_eq, Hσ | apply IH, sb_q_cong, Hσ ].
-Qed.
-
-Lemma ptyp_ty_at_agree : forall p t Us σ σ' k,
-    ptyp_scoped k t -> (forall y, y < k -> σ y = σ' y) -> ptyp_ty_at p Us σ t = ptyp_ty_at p Us σ' t.
-Proof.
-  intros p t; induction t as [k0 Ps | k0 Ps | B t IH]; intros * Ht Hσ; cbn in *.
-  1, 2: f_equal; f_equal; apply map_ext_in; intros P HP;
-    eapply exp_scoped_sub_agree; [ exact (proj1 (List.Forall_forall _ _) Ht P HP) | exact Hσ ].
-  destruct Ht as [HB Ht]; f_equal; [ eapply exp_scoped_sub_agree; eassumption |].
-  eapply IH; [ exact Ht |]; apply sb_q_agree; exact Hσ.
 Qed.
 
 Lemma ptyp_ty_at_sub : forall p t Us σ τ,
@@ -743,10 +714,6 @@ Section Branches.
     injection Heq as Hc Hn HB; subst; eauto.
   Qed.
 
-  Lemma brs_in_map_intro : forall Bs c n B,
-      In (c, n, B) Bs -> In (c, n, g (c, n, B)) (List.map (fun b => (fst b, g b)) Bs).
-  Proof. intros * Hin; apply (List.in_map (fun b => (fst b, g b))) in Hin; exact Hin. Qed.
-
   Lemma brs_lookup_map : forall Bs c n B,
       brs_lookup Bs c = Some (n, B) -> brs_lookup (List.map (fun b => (fst b, g b)) Bs) c = Some (n, g (c, n, B)).
   Proof.
@@ -826,14 +793,6 @@ Lemma elim_bty_wk : forall p D c gs A Us φ,
     (elim_bty p D c gs A Us)[wk_qn (ind_nn D + List.length gs + cargs_nrec gs) φ]ʷ
     = elim_bty p D c gs A[wk_qn (S (ind_nn D)) φ]ʷ (List.map (fun U => U[φ]ʷ) Us).
 Proof. intros; rewrite <- exp_sub_qn_of_wk, elim_bty_sub, exp_sub_qn_of_wk, map_sub_of_wk; reflexivity. Qed.
-
-Lemma elim_ihs_wk : forall p nm A Bs gs σ As φ,
-    List.map (fun N => N[φ]ʷ) (elim_ihs p nm A Bs σ gs As)
-    = elim_ihs p nm A[wk_qn nm φ]ʷ (List.map (fun b => (fst b, (snd b)[wk_qn (snd (fst b)) φ]ʷ)) Bs) (σ ⨟ ι φ) gs
-        (List.map (fun N => N[φ]ʷ) As).
-Proof.
-  intros; rewrite <- !map_sub_of_wk, elim_ihs_sub, exp_sub_qn_of_wk, brs_sub_of_wk; reflexivity.
-Qed.
 
 Lemma elim_ihs_wk_inst : forall D c gs p nm A Bs Ps As φ,
     decl_closed D -> In (c, gs) (ind_cons D) -> List.length Ps = ind_np D ->

@@ -387,7 +387,5 @@ Section Fixed_GCtx.
     Lemma canon_tnr_refl_r' : forall a b, tele_full nr T a b -> tele_full nr T b b.
     Proof. intros * H; exact (canon_tnr_trans _ _ _ (canon_tnr_sym _ _ H) H). Qed.
 
-    Lemma canon_tnrp_refl_l : forall k a b, k <= List.length T -> tele_pre nr k a b -> tele_pre nr k a a.
-    Proof. destruct Hcp as (? & ? & ? & ? & ? & ?); eapply (tnrp_refl_l p D ups nr ar dr Hass); eassumption. Qed.
   End CanonPER.
 End Fixed_GCtx.

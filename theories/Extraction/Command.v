@@ -119,7 +119,13 @@ Inductive run_error : Set :=
     local module, reached from outside it. *)
 | re_private_local : list string -> string -> run_error
 (** An import that generates nothing ([Imports]). *)
-| re_import : xerr -> run_error.
+| re_import : xerr -> run_error
+(** The argument [y] of the constructor [c] of the type [x] has [x] in an
+    argument of another inductive type, its head. *)
+| re_nested : string -> string -> string -> exp -> run_error
+(** The non-uniform parameter at a position (outermost [0]) of the type
+    [x]: its type is not in the sort; both live in the context. *)
+| re_ind_npar : string -> nat -> ctx -> typ -> typ -> run_error.
 
 Definition priv_error (e : priv_err) : run_error :=
   match e with
@@ -1108,7 +1114,8 @@ Section Impl.
     | inleft (exist _ A HA) => rok (exist _ _ (eval_infer_ok A HA), eval_log _ _ (pre_gctx H) M A HA)
     | inright _ => rerr (re_eval_infer Ξ M) }
   | ch, L, Θ, K, D, Ξ, cc_ind x pv R, H with cls_cons_in_dec (gds_restrict D Θ) Ξ (pre_gctx H) R => {
-    | inr (exist _ (c, y, sf) _) => rerr (re_msg (cls_msg x c y sf))
+    | inr (exist _ (c, y, cw_code sf) _) => rerr (re_msg (cls_msg x c y sf))
+    | inr (exist _ (c, y, cw_nested h) _) => rerr (re_nested x c y h)
     | inl (exist _ cs Hcls) with inspect (rec_arity_ok (rd_filed R cs)) => {
       | exist _ false _ =>
           rerr (re_msg ("a recursive argument is " ++ x ++ " applied to all its parameters"))
@@ -1121,7 +1128,13 @@ Section Impl.
             | left Hfr
                 with ind_entry_dec (gds_restrict D Θ) (ind_frame Ξ x R) (pre_gctx (mod_pre H Htel Hfr HΔ))
                        (ind_qname Ξ x) false (gs_ind Ξ (rd_filed R cs)) (ind_frame_shape Ξ x R cs) => {
-              | right _ => rerr (re_msg ("ill-formed inductive declaration " ++ x))
+              | right _ =>
+                  match npar_blame (gds_restrict D Θ) (ind_frame Ξ x R) (pre_gctx (mod_pre H Htel Hfr HΔ))
+                          (ind_uparams (gs_ind Ξ (rd_filed R cs))) (ind_sort (gs_ind Ξ (rd_filed R cs)))
+                          (ind_nparams (gs_ind Ξ (rd_filed R cs))) with
+                  | Some (k, Δ, T, St) => rerr (re_ind_npar x k Δ T St)
+                  | None => rerr (re_msg ("ill-formed inductive declaration " ++ x))
+                  end
               | left HE
                   with gens_impl ch Θ K D (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
                          (ind_gens (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) (ind_pre (mod_pre H Htel Hfr HΔ) HE) => {

@@ -96,15 +96,6 @@ Proof.
   - mauto 4.
 Qed.
 
-(** The parameters of an inductive type, glued by their readback. *)
-Lemma glu_params_top_resp_ctxsub : forall D Γ Ps as' Δ,
-    glu_params_top D Γ Ps as' -> Δ ⊆ Γ -> glu_params_top D Δ Ps as'.
-Proof.
-  intros * (Hl & Ht & Hr) Hsub; split; [ exact Hl | split ].
-  - intros * HP HA; eapply ctxsub_exp; [ exact (ctx_sub_escape _ _ _ _ Hsub) | eapply Ht; eassumption ].
-  - intros * Hφ Hrb; eapply Hr; [ eapply kripke_ctxsub; eassumption | exact Hrb ].
-Qed.
-
 (** The same lemmas for [glu_lvl], which is the readback clause of a neutral at
     [Level]. *)
 Lemma glu_lvl_escape : forall Γ M a n,
@@ -400,21 +391,6 @@ Proof.
   pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_read gc_deps gc_stack)))))) as Fps.
   match goal with H : Rps as2 at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?P0 |- _ => assert_fails (unify P0 Ms); rewrite (Fps _ _ _ _ _ HR _ H) end.
   apply Hr; assumption.
-Qed.
-
-Lemma rps_ind_resp_per_top : forall p D as1 as2 s Ms, ind_lookup gc_deps gc_stack p = Some D ->
-    Dom d_ind p as1 ≈ d_ind p as2 ∈ per_top_typ ->
-    Rps as2 at List.rev (ind_params D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ Ms ->
-    Rps as1 at List.rev (ind_params D) in gc_deps ⍮ gc_stack ⍮ nil ⍮ s ↘ Ms.
-Proof.
-  intros * Hl Ht HR.
-  destruct (Ht s) as (C & HC1 & HC2).
-  inversion HC2; subst; inversion HC1; subst.
-  repeat match goal with H : ind_lookup _ _ p = Some ?D1 |- _ =>
-    assert_fails (unify D1 D); rewrite Hl in H; injection H as <- end.
-  pose proof (proj1 (proj2 (proj2 (proj2 (proj2 (@functional_read gc_deps gc_stack)))))) as Fps.
-  match goal with H : Rps as2 at _ in _ ⍮ _ ⍮ _ ⍮ _ ↘ ?P0 |- _ => assert_fails (unify P0 Ms); rewrite (Fps _ _ _ _ _ HR _ H) end.
-  assumption.
 Qed.
 
 (** The relations of the domains of a shape at two representatives of

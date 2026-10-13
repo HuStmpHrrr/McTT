@@ -392,9 +392,6 @@ End Cargs.
 
 (** ** The Motive's Instances at the Recursive Arguments *)
 
-Lemma exp_wk_sub_wk : forall M φ ρ ψ, M[φ]ʷ[ρ][ψ]ʷ = M[(ι φ ⨟ ρ) ⨟ ι ψ].
-Proof. intros; rewrite <- !exp_sub_of_wk, !exp_sub_sub; reflexivity. Qed.
-
 Lemma cinst_split : forall Γ p D Us gs1 Ps gs2,
     cinst Γ p D Us (gs1 ++ ca_rec Ps :: gs2)
     = (tele_sub (cargs_ctx_aux p D (true :: cargs_pat gs1) gs2) (sb_qn (S (List.length gs1)) (sb_qn (ind_nn D) (sb_of_list Id Us)))

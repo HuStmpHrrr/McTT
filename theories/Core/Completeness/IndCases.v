@@ -95,12 +95,6 @@ Qed.
 Lemma rev_npre : forall D k, List.rev (npre D k ++ ind_uparams D) = List.rev (ind_uparams D) ++ List.firstn k (List.rev (ind_nparams D)).
 Proof. intros; unfold npre; rewrite List.rev_app_distr, List.rev_involutive; reflexivity. Qed.
 
-Lemma rev_astrat : forall D gs k, List.rev (astrat gs k ++ ind_params D) =
-    List.rev (ind_uparams D) ++ List.rev (ind_nparams D) ++ List.firstn k (List.map ce_ass (cargs_nonrec gs)).
-Proof.
-  intros; unfold astrat; rewrite List.rev_app_distr, List.rev_involutive, rev_params_split, List.app_assoc; reflexivity.
-Qed.
-
 Lemma doms_ctx_snoc : forall Bs B, doms_ctx (Bs ++ B :: nil) = ce_ass B :: doms_ctx Bs.
 Proof. intros; unfold doms_ctx; rewrite List.map_app, List.rev_app_distr; reflexivity. Qed.
 
@@ -134,9 +128,6 @@ Qed.
 
 Lemma tele_ass_map_ass : forall As, tele_ass (List.map ce_ass As).
 Proof. induction As; constructor; eauto. Qed.
-
-Lemma cargs_nonrec_length : forall gs1 gs, cargs_nonrec gs1 = List.firstn (List.length (cargs_nonrec gs1)) (cargs_nonrec (gs1 ++ gs)).
-Proof. intros; rewrite cargs_nonrec_app, firstn_app_exact by reflexivity; reflexivity. Qed.
 
 
 (** ** The Declaration's Judgments, Positionwise

@@ -38,21 +38,6 @@ Section Fixed_GCtx.
 
 (** ** Values Related through a Substitution *)
 
-(** The value of an instance [X[τ]] is related to the value of [X] at an
-    environment related to the substitution's value. *)
-Lemma val_link : forall Δ0 Γ' X (i : nat) τ RΓ' E' Eτ RΔ0 E1,
-    Δ0 ⊨ X : Typeω@i -> EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s τ ≈ τ : Δ0 -> RΓ' E' E' -> ⟦ τ ⟧s E' ↘ Eτ ->
-    EF Δ0 ≈ Δ0 ∈ per_ctx_env ↘ RΔ0 -> RΔ0 Eτ E1 ->
-    exists a b, ⟦ X[τ] ⟧ E' ↘ a /\ ⟦ X ⟧ E1 ↘ b /\ Dom a ≈ b ∈ per_univ i.
-Proof.
-  intros * HX HΓ' Hτ HE Hev HΔ0 HE1.
-  destruct (TeleSem.typ_inst_link _ _ _ _ _ _ _ _ _ HX HΓ' Hτ HE Hev) as (a & b0 & Ea & Eb0 & [R1 HR1]).
-  destruct (rel_exp_of_typ_inversion_simple_at HΔ0 HX _ _ HE1) as (b1 & b & Eb1 & Eb & [R2 HR2]).
-  assert (b1 = b0) as -> by (eapply functional_eval_exp; eassumption).
-  destruct (InstanceCases.per_univ_elem_trans_any _ _ _ _ _ _ _ HR1 HR2) as (R3 & HR3 & _).
-  exists a, b; split; [ exact Ea | split; [ exact Eb | exists R3; exact HR3 ] ].
-Qed.
-
 (** A term glued at a type of one of two related values is glued at that
     type of the other, at some universe. *)
 Lemma glu_transfer_per' : forall (j : uidx) (i : nat) a b P El Γ T M m, DG a ∈ glu_univ_elem j ↘ P ↘ El ->

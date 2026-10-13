@@ -241,10 +241,6 @@ Proof.
     + intros * Hin E Ed; exact (proj2 (Hsh _ _ _ _ _ Hin E) _ _ _ Ed).
 Qed.
 
-Lemma gs_ind_shape : forall Ξ D,
-    (exists Δ, ind_params (gs_ind Ξ D) = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu (gs_ind Ξ D).
-Proof. intros; unfold gs_ind; cbn; split; [ eexists; reflexivity | lia ]. Qed.
-
 (** A declaration filed in its module's frame: the module's parameters are
     its uniform ones. *)
 Lemma ind_frame_shape : forall Ξ x R cs,
@@ -429,6 +425,22 @@ Section Decide.
                   (conj HA (conj HPl (conj HPt (conj HN (conj Hnd Hsh)))))))))))).
   Defined.
 
+  (** Which non-uniform parameter, if any, has a type not in the sort, for
+      the checker's message: its position, outermost [0], the context its
+      type is in, its type and the sort there. *)
+  Fixpoint npar_blame (U : ctx) (S : typ) (l : ctx) : option (nat * ctx * typ * typ) :=
+    match l with
+    | nil => None
+    | ce_ass T :: Δ2 =>
+        match npar_blame U S Δ2 with
+        | Some r => Some r
+        | None =>
+            if check_exp_at (Δ2 ++ U) S[wk_shiftn (List.length Δ2)]ʷ T then None
+            else Some (List.length Δ2, Δ2 ++ U, T, S[wk_shiftn (List.length Δ2)]ʷ)
+        end
+    | _ :: Δ2 => npar_blame U S Δ2
+    end.
+
   (** The entry a declaration is filed as, its parameters over the
       frames'. *)
   Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
@@ -483,20 +495,28 @@ Definition self_free_dec (np : nat) (gs1 : list carg) (d : nat) (T : exp) : bool
     [3] [Self] is not applied to the uniform parameters as declared; [4]
     [Self] is an argument of a head that does not compute (an opaque
     definition, an axiom or a parameter), so its occurrence cannot be seen
-    to be positive; [1] [Self] occurs elsewhere. *)
-Fixpoint sh_reason (np : nat) (gs1 : list carg) (d : nat) (T : exp) : nat :=
+    to be positive; [1] [Self] occurs elsewhere; or [Self] occurs in an
+    argument of another inductive type ([cw_nested]). *)
+Inductive cls_why : Set :=
+| cw_code : nat -> cls_why
+(** [Self] occurs in an argument of another inductive type, the head:
+    strictly positive, but nested types are a later stage. *)
+| cw_nested : exp -> cls_why.
+
+Fixpoint sh_reason (np : nat) (gs1 : list carg) (d : nat) (T : exp) : cls_why :=
   match T with
-  | a_pi A B => if self_free_dec np gs1 d A then sh_reason np gs1 (S d) B else 2
+  | a_pi A B => if self_free_dec np gs1 d A then sh_reason np gs1 (S d) B else cw_code 2
   | _ =>
       match app_head T with
-      | a_var j => if Nat.eqb j (d + List.length gs1 + np) then 3 else 4
-      | a_mem _ _ => 4
-      | _ => 1
+      | a_var j => if Nat.eqb j (d + List.length gs1 + np) then cw_code 3 else cw_code 4
+      | a_mem _ _ => cw_code 4
+      | a_ind pq => cw_nested (a_ind pq)
+      | _ => cw_code 1
       end
   end.
 
-Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : nat :=
-  if self_free_dec np gs1 0 T then 0 else sh_reason np gs1 0 T.
+Definition cls_reason (np : nat) (gs1 : list carg) (T : exp) : cls_why :=
+  if self_free_dec np gs1 0 T then cw_code 0 else sh_reason np gs1 0 T.
 
 (** The leaf of a shape: [Self] at the uniform parameters, then at terms
     in which it does not occur. *)
@@ -553,35 +573,6 @@ Proof.
     + right; intros g Hg; inversion Hg as [A E | T' t Hs E]; subst; [ exact (HA A eq_refl) | exact (Ht _ Hs) ].
 Defined.
 
-(** A failure names the argument, and why it is rejected. *)
-Definition cls_args_dec (nu np : nat) :
-  forall (args : list (string * exp)) (gs1 : list carg),
-    ({gs | cls_args nu np gs1 args gs} + {e : (string * nat) | forall gs, ~ cls_args nu np gs1 args gs})%type.
-Proof.
-  fix go 1; intros [| [y T] args] gs1.
-  - left; exists nil; constructor.
-  - destruct (cls_arg_dec nu np gs1 T) as [[g Hg] | Hg].
-    + destruct (go args (gs1 ++ g :: nil)) as [[gs Hgs] | [e He]].
-      * left; exists (g :: gs); constructor; assumption.
-      * right; exists e; intros gs' H; inversion H; subst.
-        match goal with Hg' : cls_arg _ _ _ _ ?g' |- _ => pose proof (cls_arg_functional _ _ _ _ _ _ Hg Hg') as <- end.
-        eapply He; eassumption.
-    + right; exists (y, cls_reason np gs1 T); intros gs' H; inversion H; subst; eapply Hg; eassumption.
-Defined.
-
-Definition cls_cons_dec (nu np : nat) :
-  forall (rcs : list (string * list (string * exp))),
-    ({cs | cls_cons nu np rcs cs} + {e : (string * string * nat) | forall cs, ~ cls_cons nu np rcs cs})%type.
-Proof.
-  fix go 1; intros [| [c args] rcs].
-  - left; exists nil; constructor.
-  - destruct (cls_args_dec nu np args nil) as [[gs Hgs] | [[y sf] He]].
-    + destruct (go rcs) as [[cs Hcs] | [e He]].
-      * left; exists ((c, gs) :: cs); constructor; [ split; [ reflexivity | exact Hgs ] | exact Hcs ].
-      * right; exists e; intros cs' H; inversion H; subst; eapply He; eassumption.
-    + right; exists (c, y, sf); intros cs' H; inversion H as [| ? [c' gs'] ? ? [_ Hc]]; subst; eapply He; exact Hc.
-Defined.
-
 (** The arity of the recursive arguments: the non-uniform parameters. *)
 Definition rec_arity_ok (D : ind_decl) : bool :=
   forallb (fun cg => forallb (fun g => match g with
@@ -620,7 +611,7 @@ Qed.
 
 Definition cls_arg_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl)
     (args1 : list (string * exp)) (gs1 : list carg) (T : exp) :
-  ({g | cls_arg_in Θ Ξ R args1 gs1 T g} + {r : nat | forall g, ~ cls_arg_in Θ Ξ R args1 gs1 T g})%type.
+  ({g | cls_arg_in Θ Ξ R args1 gs1 T g} + {r : cls_why | forall g, ~ cls_arg_in Θ Ξ R args1 gs1 T g})%type.
 Proof.
   destruct (cls_arg_dec (rd_nu R) (List.length (rd_params R)) gs1 T) as [[g Hg] | Hn];
     [ left; exists g; apply cls_in_syn; exact Hg |].
@@ -642,7 +633,7 @@ Defined.
 
 Definition cls_args_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
   forall (args : list (string * exp)) (args1 : list (string * exp)) (gs1 : list carg),
-    ({gs | cls_args_in Θ Ξ R args1 gs1 args gs} + {e : (string * nat) | forall gs, ~ cls_args_in Θ Ξ R args1 gs1 args gs})%type.
+    ({gs | cls_args_in Θ Ξ R args1 gs1 args gs} + {e : (string * cls_why) | forall gs, ~ cls_args_in Θ Ξ R args1 gs1 args gs})%type.
 Proof.
   fix go 1; intros [| [y T] args] args1 gs1.
   - left; exists nil; constructor.
@@ -656,7 +647,7 @@ Proof.
 Defined.
 
 Definition cls_cons_in_dec (Θ : gdeps) (Ξ : gstack) (HΞ : ⊢g Θ ⍮ Ξ) (R : raw_decl) :
-  ({cs | cls_cons_in Θ Ξ R cs} + {e : (string * string * nat) | forall cs, ~ cls_cons_in Θ Ξ R cs})%type.
+  ({cs | cls_cons_in Θ Ξ R cs} + {e : (string * string * cls_why) | forall cs, ~ cls_cons_in Θ Ξ R cs})%type.
 Proof.
   unfold cls_cons_in; generalize (rd_cons R); fix go 1; intros [| [c args] rcs].
   - left; exists nil; constructor.

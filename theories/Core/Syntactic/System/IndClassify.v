@@ -140,9 +140,6 @@ Proof.
   - rewrite wk_qn_ge by assumption; cbn; lia.
 Qed.
 
-Lemma cls_wk_avoids : forall np gs1 x, cls_wk np gs1 x <> List.length gs1 + np.
-Proof. intros; rewrite cls_wk_eq; apply wk_qn_shift_ne. Qed.
-
 (** Under [d] domains of a function shape: the domains are no recursive
     arguments.  [cls_wkd 0] is [cls_wk]. *)
 Definition cls_wkd (d np : nat) (gs1 : list carg) : wk :=
@@ -187,10 +184,6 @@ Inductive cls_args (nu np : nat) : list carg -> list (string * exp) -> list carg
 | cls_args_nil : forall gs1, cls_args nu np gs1 nil nil
 | cls_args_cons : forall gs1 y T args g gs,
     cls_arg nu np gs1 T g -> cls_args nu np (gs1 ++ g :: nil) args gs -> cls_args nu np gs1 ((y, T) :: args) (g :: gs).
-
-(** The constructors as written, and as filed. *)
-Definition cls_cons (nu np : nat) (rcs : list (string * list (string * exp))) (cs : list (string * list carg)) : Prop :=
-  Forall2 (fun rc c => fst rc = fst c /\ cls_args nu np nil (snd rc) (snd c)) rcs cs.
 
 (** The structural declaration of a declaration as written. *)
 Definition rd_filed (R : raw_decl) (cs : list (string * list carg)) : ind_decl :=
@@ -240,14 +233,6 @@ Proof.
   intros * E; rewrite <- (exp_wk_pat_inv pat A), <- (exp_wk_pat_inv pat B), E; reflexivity.
 Qed.
 
-Lemma cls_free_not_self : forall np gs1 A Ms,
-    A[cls_wk np gs1]ʷ <> apps (a_var (List.length gs1 + np)) Ms.
-Proof.
-  intros * E; apply (f_equal app_head) in E; rewrite app_head_wk, app_head_apps_var in E.
-  destruct (app_head A); cbn in E; try discriminate.
-  injection E; apply cls_wk_avoids.
-Qed.
-
 Lemma map_wk_inj : forall pat Ps Qs,
     List.map (fun P => P[wk_pat pat]ʷ) Ps = List.map (fun P => P[wk_pat pat]ʷ) Qs -> Ps = Qs.
 Proof.
@@ -286,22 +271,6 @@ Proof.
   - exfalso; exact (cls_sh_not_free _ _ _ _ _ _ Hs' A eq_refl).
   - exfalso; exact (cls_sh_not_free _ _ _ _ _ _ Hs A' eq_refl).
   - rewrite (cls_sh_functional _ _ _ _ _ _ _ Hs Hs'); reflexivity.
-Qed.
-
-Lemma cls_args_functional : forall nu np gs1 args gs gs',
-    cls_args nu np gs1 args gs -> cls_args nu np gs1 args gs' -> gs = gs'.
-Proof.
-  intros * H; revert gs'; induction H as [| gs1 y T args g gs Hg Hgs IH]; intros gs' H'; inversion H'; subst;
-    [ reflexivity |].
-  match goal with Hg' : cls_arg _ _ _ _ ?g' |- _ => pose proof (cls_arg_functional _ _ _ _ _ _ Hg Hg') as <- end.
-  f_equal; apply IH; assumption.
-Qed.
-
-Lemma cls_cons_functional : forall nu np rcs cs cs', cls_cons nu np rcs cs -> cls_cons nu np rcs cs' -> cs = cs'.
-Proof.
-  intros nu np rcs; induction rcs as [| rc rcs IH]; intros * H H'; inversion H; inversion H'; subst; [ reflexivity |].
-  destruct y as [c gs], y0 as [c' gs']; cbn in *; destruct_conjs; subst.
-  f_equal; [ f_equal; eapply cls_args_functional; eassumption | apply IH; assumption ].
 Qed.
 
 (** ** The Filed Constructor Types Are the User's

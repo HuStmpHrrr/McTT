@@ -99,9 +99,6 @@ Section AllIn.
   Lemma all_in_head : forall x l, (forall a, In a (x :: l) -> P a) -> P x.
   Proof. intros * H; apply H; left; reflexivity. Qed.
 
-  Lemma all_in_app_inv : forall l l', (forall a, In a (l ++ l') -> P a) ->
-                                      (forall a, In a l -> P a) /\ (forall a, In a l' -> P a).
-  Proof. intros * H; split; intros; apply H, in_or_app; auto. Qed.
 End AllIn.
 
 (** Splits a goal [forall a, In a l -> P a] along the segments [l] is
@@ -301,11 +298,6 @@ Fixpoint tele_insts_aux (Δr : list centry) (σ : sub) (Ms : list exp) : list ty
   end.
 
 Definition tele_insts (Δ : ctx) (σ : sub) (Ms : list exp) : list typ := tele_insts_aux (List.rev Δ) σ Ms.
-
-(** [Ms] at the instances of the types of [Δ]. *)
-Definition tele_typed (P : typ -> exp -> Prop) (Δ : ctx) (σ : sub) (Ms : list exp) : Prop :=
-  List.length Ms = List.length Δ /\
-  forall k M T, nth_error Ms k = Some M -> nth_error (tele_insts Δ σ Ms) k = Some T -> P T M.
 
 (** ** The Eliminator
 
@@ -535,9 +527,6 @@ Proof.
   apply List.in_map_iff in Hc as ([c' gs] & Hc & Hin'); cbn in Hc; subst c'.
   exact (cons_lookup_of_in _ _ _ Hin').
 Qed.
-
-Lemma cargs_nrec_le : forall gs, cargs_nrec gs <= List.length gs.
-Proof. induction gs as [| [] gs IH]; cbn; lia. Qed.
 
 Lemma length_cargs_ctx_aux : forall p D gs pat, List.length (cargs_ctx_aux p D pat gs) = List.length gs.
 Proof. induction gs as [| [] gs IH]; intros; cbn; rewrite ?length_app, ?IH; cbn; lia. Qed.

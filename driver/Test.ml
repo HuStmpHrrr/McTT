@@ -3157,7 +3157,7 @@ let%expect_test "Inductives.mctt works" =
     Evaluate approx (Ord.next omg) 2 --> 3 : ℕ
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord) → approx (Ord.lim x1) 1
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
-            → Ord.elim x1 1 return x3 . ℕ
+            → Ord.elim (x1 1) return x3 . ℕ
               | base ⇒ 0
               | next x4 x5 ⇒ succ x5
               | lim x6 x7 ⇒ x7 1
@@ -3235,6 +3235,68 @@ let%expect_test "the type in the domain of a function beside a recursive argumen
   let _ = main_of_body "inductive V : Type@0 where | leaf | node (l : V) (f : forall (x : V) -> V) end" in
   [%expect {| Error: V occurs in the domain of a function in the argument f of node, which is not strictly positive |}]
 
+let%expect_test "a non-uniform parameter outside the sort is named" =
+  let _ = main_of_body "inductive L (A : Type@0) : forall (B : Type@1) -> Type@0 where | mk end" in
+  [%expect {|
+    Error: the type of the non-uniform parameter 1 of L, Type@1,
+      is not in the sort of L, Type@0
+    |}]
+
+let%expect_test "a nested occurrence is not supported yet" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        inductive R : Type@0 where | mk (xs : List R) end" in
+  [%expect {|
+    Error: R occurs nested inside List in the argument xs of mk;
+      nested inductive types are not supported yet
+    |}]
+
+let%expect_test "a nested occurrence under a function is not supported yet" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        inductive R : Type@0 where | mk (f : forall (n : Nat) -> List R) end" in
+  [%expect {|
+    Error: R occurs nested inside List in the argument f of mk;
+      nested inductive types are not supported yet
+    |}]
+
+(* An eliminator at an application prints its scrutinee in parentheses, and
+   an eliminator applied is parenthesised: both print back as they were
+   read. *)
+let%expect_test "an eliminator at an application, and applied, round-trip" =
+  let _ = main_of_body "inductive Ord : Type@0 where | base | next (o : Ord) | lim (f : forall (n : Nat) -> Ord) end \
+                        eval fun (g : forall (n : Nat) -> Ord) -> \
+                          Ord.elim (g 1) return z . Nat | base => 0 | next p, r => succ r | lim f, h => h 1 end \
+                        eval fun (o : Ord) -> \
+                          (Ord.elim o return z . forall (n : Nat) -> Nat \
+                           | base => fun (n : Nat) -> n | next p, r => r | lim f, h => fun (n : Nat) -> h n n end) 1" in
+  [%expect {|
+    Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord)
+               → Ord.elim (x1 1) return x3 . ℕ
+                 | base ⇒ 0
+                 | next x4 x5 ⇒ succ x5
+                 | lim x6 x7 ⇒ x7 1
+                 end
+      --> λ (x1 : ∀ (x2 : ℕ) → Ord)
+            → Ord.elim (x1 1) return x3 . ℕ
+              | base ⇒ 0
+              | next x4 x5 ⇒ succ x5
+              | lim x6 x7 ⇒ x7 1
+              end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
+    Evaluate λ (x1 : Ord)
+               → (Ord.elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
+                  | base ⇒ λ (x4 : ℕ) → x4
+                  | next x5 x6 ⇒ x6
+                  | lim x7 x8 ⇒ λ (x9 : ℕ) → x8 x9 x9
+                  end)
+                   1
+      --> λ (x1 : Ord)
+            → (Ord.elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
+               | base ⇒ λ (x4 : ℕ) → x4
+               | next x5 x6 ⇒ λ (x7 : ℕ) → x6 x7
+               | lim x8 x9 ⇒ λ (x10 : ℕ) → x9 x10 x10
+               end)
+                1 : ∀ (x1 : Ord) → ℕ
+    |}]
+
 let%expect_test "an argument may not depend on a recursive one" =
   let _ = main_of_body "inductive V : Type@0 where | leaf \
                         | node (v : V) (w : (fun (x : Nat) -> Nat) v) end" in
@@ -3310,7 +3372,7 @@ let%expect_test "an eliminator is named by its type" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
                         eval N.elim (N.s N.z) return k . Nat | z => 0 | s m, h => succ h end" in
   [%expect {|
-    Evaluate N.elim N.s N.z return x1 . ℕ | z ⇒ 0 | s x2 x3 ⇒ succ x3 end --> 1
+    Evaluate N.elim (N.s N.z) return x1 . ℕ | z ⇒ 0 | s x2 x3 ⇒ succ x3 end --> 1
       : ℕ
     |}]
 

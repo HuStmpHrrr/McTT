@@ -368,12 +368,6 @@ Proof.
       rewrite Hti, List.nth_error_app2, HlT, Nat.sub_diag by lia; reflexivity.
 Qed.
 
-Corollary gsub_tele_inst : forall Δ Γ Ms, tele_ass Δ -> ⊨ Δ ++ Γ ->
-    List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ Id Ms) k = Some T -> Γ ⊨ N : T) ->
-    gsub Γ (sb_of_list Id Ms) (Δ ++ Γ).
-Proof. intros; apply gsub_of_list; try assumption; constructor; exact (sem_ctx_app_r _ _ H0). Qed.
-
 Lemma sem_ctx_ext_typ : forall Γ A (i : nat), ⊨ Γ -> Γ ⊨ A : Typeω@i -> ⊨ Γ ▹ A.
 Proof.
   intros * HΓ HA; destruct (sem_ctx_per_ctx_env HΓ) as [R HR].

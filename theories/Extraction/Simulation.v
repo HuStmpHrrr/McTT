@@ -737,11 +737,6 @@ Section Read.
     intros [| [| x]] Hx; cbn; [ constructor; exact Hc2 | constructor; exact Hc1 | apply Hρ, Hx ].
   Qed.
 
-  Lemma feval_exps_sim : forall Ms ρ ms, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms ->
-      forall ρ', env_agree (fun x => ~ Forall (exp_fresh x) Ms) ρ ρ' ->
-      exists ms', ⟦ Ms ⟧*ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ ms' /\ dsim_list ms ms'.
-  Proof. exact (proj1 (proj2 (proj2 (proj2 (feval_sim Θ Ξ))))). Qed.
-
   (** The fresh variables of the telescopes of a declaration, from
       environments related everywhere. *)
   Lemma ffresh_tele_sim : forall ρ T s ns, fresh_tele Θ Ξ ρ T s ns ->

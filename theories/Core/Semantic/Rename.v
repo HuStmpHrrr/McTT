@@ -344,13 +344,6 @@ Section Bound.
   Lemma eval_dbd : forall M ρ a b, ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ ↘ a -> env_dbd b ρ -> dbd b a.
   Proof. intros * H Hρ v Hv; eapply (proj1 (eval_av Θ Ξ v b)); [ exact H | apply Hρ, Hv | exact I ]. Qed.
 
-  Lemma eval_exps_dbd : forall Ms ρ ms b, ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> env_dbd b ρ -> forall a, In a ms -> dbd b a.
-  Proof.
-    intros * H Hρ a Ha v Hv.
-    eapply (proj1 (proj2 (proj2 (proj2 (eval_av Θ Ξ v b))))); [ exact H | apply Hρ, Hv | | exact Ha ].
-    apply Forall_forall; intros; exact I.
-  Qed.
-
   Lemma dbd_indty : forall b p args, (forall a, In a args -> dbd b a) -> dbd b (d_ind p args).
   Proof. intros * Ha v Hv; constructor; intros; apply Ha; assumption. Qed.
 
@@ -510,10 +503,6 @@ Section Read.
   Lemma eval_args_rn : forall B ρ args d,
       ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args ρ args ↘ d -> ⟦ B ⟧ Θ ⍮ Ξ ⍮ env_args (ern f ρ) (List.map (drn f) args) ↘ drn f d.
   Proof. intros * H; rewrite <- env_args_rn; exact (proj1 (eval_rn Θ Ξ f) _ _ _ H). Qed.
-
-  Lemma eval_exps_rn : forall Ms ρ ms,
-      ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ρ ↘ ms -> ⟦ Ms ⟧* Θ ⍮ Ξ ⍮ ern f ρ ↘ List.map (drn f) ms.
-  Proof. intros * H; exact (proj1 (proj2 (proj2 (proj2 (eval_rn Θ Ξ f)))) _ _ _ H). Qed.
 
   (** The fresh variables of the telescopes of a declaration, renamed: from
       the readback length on, [f] is the shift to the other length. *)

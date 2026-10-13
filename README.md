@@ -255,7 +255,10 @@ inductive = ['private'] , 'inductive' , id , {parameter} , ':' ,
 constructor = '|' , id , {parameter};
 ```
 
-Where a parameter stands decides what it is:
+Where a parameter stands decides what it is: written left of `:` it is
+**uniform**, the same throughout the type; bound right of `:`, by the type
+in front of its sort, it is **non-uniform** and may change from a value to
+its recursive arguments.
 
 * **Left of `:`, a uniform parameter.**  It is fixed for the whole type.
   A recursive occurrence passes it back unchanged: `cons (x : A) (xs : List A)`;
@@ -273,18 +276,23 @@ Where a parameter stands decides what it is:
   the motive at that argument's own values (`| step m r, h ⇒ …`, `h` at
   `succ m`).
 
-A recursive occurrence is the type applied to all its own parameters,
-uniform then non-uniform; an argument in which the type does not occur is
-not recursive; no argument may depend on a recursive one.  An argument
+A recursive argument is the type applied to all its own parameters,
+uniform then non-uniform, or a function into it,
+`(f : ∀ (n : ℕ) (m : ℕ) → T)`, whose domains do not mention the type; its
+hypothesis is then a function too, `h : ∀ (n : ℕ) (m : ℕ) → P (f n m)`, and
+the branch receives `λ n m. T.elim (f n m)`.  An argument in which the
+type does not occur is not recursive; no argument may depend on a
+recursive one.  An argument
 that is neither as written is read as its normal form, so definitions,
 `let`s and transparent members compute first: with
 `def Id (X : Type@0) : Type@0 := X end`, `(n : Id N)` is recursive, and
 `(f : (fun (X : Type@0) -> ℕ) (N → ℕ))` is the non-recursive `ℕ`.  An
-occurrence left in a non-positive position (`Neg N` with
-`Neg X := X → ⊥`, or `(N → Type@0) → Type@0`) is rejected, and so is one
-under a head that does not compute: an `abstract` definition, an axiom or
-a module parameter.  A function into the type (`∀ (n : ℕ) → Ord`) is not
-supported yet.  The constructor's type is shown with the normal form of
+occurrence in the domain of a function (`Neg N` with `Neg X := X → ⊥`,
+or `(N → Type@0) → Type@0`) is not strictly positive and is rejected, and
+so is one under a head that does not compute: an `abstract` definition, an
+axiom or a module parameter.  An occurrence inside another inductive type
+(`(xs : List R)`) is strictly positive but not supported yet.  The type of
+a non-uniform parameter must be in the type's sort.  The constructor's type is shown with the normal form of
 such an argument.  The parameters
 of an enclosing module are not written: they are the type's outermost
 uniform parameters, as for every member.
@@ -303,8 +311,11 @@ List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})
              (l : List A) → P l
 ```
 
-`examples/Inductives.mctt` has lists, options, trees, dependent pairs and a
-type with a non-uniform parameter.
+`examples/Inductives.mctt` has lists, options, trees, dependent pairs, a
+type with a non-uniform parameter, Brouwer ordinals `Ord` (with
+`lim (f : ∀ (n : ℕ) → Ord)`, also written through a definition `Arr`),
+W-types `W A B` (the natural numbers as a W-type, with `W.elim` and
+`W.rec`), and `Grid`, a function shape of two arguments.
 
 ## Branches
 

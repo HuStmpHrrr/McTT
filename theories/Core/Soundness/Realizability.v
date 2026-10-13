@@ -83,24 +83,6 @@ Proof.
 Qed.
 
 
-(** The type former at equal parameters is equal in a large universe: its
-    sort is one, or a small universe, of which every large one is a
-    supertype. *)
-Lemma ind_apps_eq_large : forall Γ p D Xs Ys, ind_lookup gc_deps gc_stack p = Some D -> ⊢ Γ ->
-    List.length Xs = ind_np D -> List.length Ys = ind_np D ->
-    (forall k X Y T, List.nth_error Xs k = Some X -> List.nth_error Ys k = Some Y ->
-       List.nth_error (tele_insts (ind_params D) Id Xs) k = Some T -> Γ ⊢ X ≈ Y : T) ->
-    exists k, Γ ⊢ apps (a_ind p) Xs ≈ apps (a_ind p) Ys : Typeω@k.
-Proof.
-  intros * Hl HΓ HXl HYl HXY.
-  pose proof (wf_exp_eq_ind_apps _ _ _ _ _ Hl HΓ HXl HYl HXY) as Heq.
-  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [(_ & _ & _ & _ & Hsu & _) _].
-  destruct Hsu as [[i0 Hs] | [t Hs]]; rewrite Hs in Heq; cbn in Heq.
-  - exists i0; exact Heq.
-  - exists 0; gen_presups.
-    eapply suniv_elem_eq_large; [ exact Heq | apply wf_exp_eq_refl; eassumption ].
-Qed.
-
 (** ** Inductive Types *)
 
 (** The codomain of the type of an argument of a function shape, at an

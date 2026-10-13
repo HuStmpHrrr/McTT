@@ -45,11 +45,6 @@ Lemma cargs_ctx_aux_cons : forall p D pat g gs,
       cargs_ctx_aux p D (match g with ca_rec _ => true | ca_arg _ => false end :: pat) gs ++ cargs_ctx_aux p D pat (g :: nil).
 Proof. intros; destruct g; reflexivity. Qed.
 
-Lemma tele_ass_rtele : forall args, tele_ass (rtele args).
-Proof.
-  intros; unfold rtele, tele_ass; apply Forall_rev, Forall_map, Forall_forall; intros; eexists; reflexivity.
-Qed.
-
 (** ** Typing *)
 
 (** A [Π] over assumptions of equal bodies. *)

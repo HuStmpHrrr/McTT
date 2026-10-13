@@ -289,21 +289,6 @@ Section Tele.
     exact (Hs _ _ _ _ _ _ _ Hk Hp1 Hp2 Hp3 Hr1 Hr2).
   Qed.
 
-  (** Two lists related to a third on the left are related on the right. *)
-  Lemma tele_full_compose_l : forall {X} (T : list X) tr1 tr2 tr3 a b c,
-      (forall k pa pb pc x y z, k < List.length T -> tele_pre tr1 k pa pb -> tele_pre tr2 k pa pc ->
-         tele_pre tr3 k pb pc -> tr1 k pa x y -> tr2 k pa x z -> tr3 k pb y z) ->
-      tele_full tr1 T a b -> tele_full tr2 T a c -> tele_full tr3 T b c.
-  Proof.
-    intros * Hs H1 H2.
-    apply (tele_full_combine T tr1 tr2 tr3 (fun n => match n with 0 => a | 1 => b | _ => c end) 0 1 0 2 1 2);
-      [ right; left; reflexivity | right; right; right; reflexivity | | exact H1 | exact H2 ].
-    intros k * Hk Hp1 Hp2 Hp3 E1 E1' E2 E2' E3 E3' Hr1 Hr2.
-    rewrite E1' in E3; injection E3 as <-; rewrite E2' in E3'; injection E3' as <-.
-    rewrite E1 in E2; injection E2 as <-.
-    exact (Hs _ _ _ _ _ _ _ Hk Hp1 Hp2 Hp3 Hr1 Hr2).
-  Qed.
-
   Lemma tele_pre_full_iff : forall tr k a b, tele_pre tr k a b <-> tele_full tr (List.repeat tt k) a b.
   Proof. intros; rewrite tele_pre_iff, tele_full_iff, List.repeat_length; reflexivity. Qed.
 
@@ -345,15 +330,6 @@ Section Tele.
     eapply tele_full_cross_refl; [| | exact H ]; rewrite List.repeat_length; intros; [ eapply Heq | eapply HP ]; eauto; lia.
   Qed.
 
-  Lemma tele_pre_compose_cross : forall tr1 tr2 n k a b c, k <= n ->
-      (forall j pa pb pc, j < n -> tele_pre tr1 j pa pb -> tele_pre tr2 j pb pc -> (tr1 j pa <~> tr2 j pb)) ->
-      (forall j vs vs', j < n -> tele_pre tr1 j vs vs' -> PER (tr1 j vs)) ->
-      tele_pre tr1 k a b -> tele_pre tr2 k b c -> tele_pre tr1 k a c.
-  Proof.
-    intros * Hk Heq HP H1 H2; rewrite tele_pre_full_iff in *.
-    eapply tele_full_compose_cross; [| | exact H1 | exact H2 ]; rewrite List.repeat_length; intros; [ eapply Heq | eapply HP ]; eauto; lia.
-  Qed.
-
   (** ** A Telescope of PERs
 
       A family [tr] of PERs, each invariant along related prefixes, makes
@@ -379,9 +355,6 @@ Section Tele.
       pose proof (HP k pa pb ltac:(lia) Hp1) as HPer.
       apply (HI k pa pb ltac:(lia) Hp1) in Hr2; etransitivity; eassumption.
     Qed.
-
-    Lemma tele_full_refl_l : forall {X} (T : list X) a b, List.length T <= n -> tele_full tr T a b -> tele_full tr T a a.
-    Proof. intros * Hn H; eapply tele_full_trans; [ exact Hn | exact H | apply tele_full_sym; [ exact Hn | exact H ] ]. Qed.
 
     Lemma tele_full_refl_r : forall {X} (T : list X) a b, List.length T <= n -> tele_full tr T a b -> tele_full tr T b b.
     Proof. intros * Hn H; eapply tele_full_trans; [ exact Hn | apply tele_full_sym; [ exact Hn | exact H ] | exact H ]. Qed.
@@ -556,9 +529,6 @@ Section Tele.
     Lemma tnrp_sym : forall k a b, k <= List.length T -> tele_pre nr k a b -> tele_pre nr k b a.
     Proof. intros; eapply (tele_pre_sym (List.length T) nr nr_P nr_I); eassumption. Qed.
 
-    Lemma tnrp_trans : forall k a b d, k <= List.length T -> tele_pre nr k a b -> tele_pre nr k b d -> tele_pre nr k a d.
-    Proof. intros; eapply (tele_pre_trans (List.length T) nr nr_P nr_I); eassumption. Qed.
-
     Lemma tarp_inst : forall ms ms' c gs k a b, tele_full nr T ms ms' -> ind_con D c = Some gs ->
         k <= List.length (cargs_nonrec gs) -> tele_pre (ar ms c) k a b -> tele_pre (ar ms' c) k a b.
     Proof.
@@ -575,13 +545,6 @@ Section Tele.
     Lemma tarp_sym : forall ms c gs k a b, tele_full nr T ms ms -> ind_con D c = Some gs ->
         k <= List.length (cargs_nonrec gs) -> tele_pre (ar ms c) k a b -> tele_pre (ar ms c) k b a.
     Proof. intros; eapply (tar_pre_sym ms c gs); eassumption. Qed.
-
-    Lemma tar_inst_sym : forall ms ms' c gs a b, tele_full nr T ms ms' -> ind_con D c = Some gs ->
-        tele_full (ar ms c) (cargs_nonrec gs) a b -> tele_full (ar ms' c) (cargs_nonrec gs) b a.
-    Proof.
-      intros * Hm Hc H; eapply tar_inst; [ exact Hm | exact Hc |].
-      eapply (tar_sym ms c gs (tnr_refl_l _ _ Hm) Hc); exact H.
-    Qed.
 
     Lemma tnrp_refl_l : forall k a b, k <= List.length T -> tele_pre nr k a b -> tele_pre nr k a a.
     Proof. intros; eapply (tele_pre_refl_l (List.length T) nr nr_P nr_I); eassumption. Qed.
@@ -626,11 +589,6 @@ Section Tele.
       Lemma tsh_sym : forall k a b, k <= List.length (ptyp_doms t) ->
           tele_pre (shape_tr dr ms ws (ptyp_doms t)) k a b -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k b a.
       Proof. intros; eapply (tele_pre_sym (List.length (ptyp_doms t)) _ sh_P sh_I); eassumption. Qed.
-
-      Lemma tsh_trans : forall k a b d, k <= List.length (ptyp_doms t) ->
-          tele_pre (shape_tr dr ms ws (ptyp_doms t)) k a b -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k b d ->
-          tele_pre (shape_tr dr ms ws (ptyp_doms t)) k a d.
-      Proof. intros; eapply (tele_pre_trans (List.length (ptyp_doms t)) _ sh_P sh_I); eassumption. Qed.
 
       Lemma tsh_refl_l : forall k a b, k <= List.length (ptyp_doms t) ->
           tele_pre (shape_tr dr ms ws (ptyp_doms t)) k a b -> tele_pre (shape_tr dr ms ws (ptyp_doms t)) k a a.

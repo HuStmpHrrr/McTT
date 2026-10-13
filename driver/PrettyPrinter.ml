@@ -176,7 +176,9 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
      pp_print_paren_if (p >= 1) impl f ()
   | Cst.Coq_elim (h, escr, xs, em, bs) ->
      let impl f () =
-       fprintf f "@[<hv 0>@[<hov 2>%a.elim %a@ return %s .@ %a@]" (format_obj_prec 2) h format_obj escr
+       (* The scrutinee as an argument: an application is parenthesised,
+          so that [X.elim (f n)] does not read as [X.elim f] applied. *)
+       fprintf f "@[<hv 0>@[<hov 2>%a.elim %a@ return %s .@ %a@]" (format_obj_prec 2) h (format_obj_prec 2) escr
          (String.concat " " xs) format_obj em;
        List.iter
          (fun ((c, ys), eb) ->
@@ -609,6 +611,12 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   (* A private entry of a local body, from the local module. *)
   | Coq_re_private_local (ch, x) ->
      fprintf f "@[<hov 2>Error: %s is private in a local module, but it is used outside it@]" (String.concat "." (ch @ [x]))
+  | Coq_re_nested (x, c, y, h) ->
+     fprintf f "@[<hov 2>Error: %s occurs nested inside@ %a@ in the argument %s of %s;@ nested inductive types are not supported yet@]"
+       x format_exp h y c
+  | Coq_re_ind_npar (x, k, delta, t, s) ->
+     fprintf f "@[<hov 2>Error: the type of the non-uniform parameter %d of %s,@ %a,@ is not in the sort of %s,@ %a@]"
+       (k + 1) x (format_exp_in delta) t x (format_exp_in delta) s
   | Coq_re_import e ->
      let open McttExtracted.Imports in
      (match e with

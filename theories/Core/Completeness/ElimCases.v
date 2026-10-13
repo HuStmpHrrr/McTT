@@ -142,45 +142,6 @@ Qed.
 Lemma vars_from_S0 : forall n, vars_from 0 (S n) = a_var n :: vars_from 0 n.
 Proof. intros; unfold vars_from; rewrite List.seq_S, List.rev_app_distr; reflexivity. Qed.
 
-Lemma wk_pat_falses : forall k pat, wk_eq (wk_pat (List.repeat false k ++ pat)) (wk_qn k (wk_pat pat)).
-Proof. induction k as [| k IH]; intros; cbn; [ reflexivity | apply wk_q_cong, IH ]. Qed.
-
-Lemma sh_ctx_wk : forall Bs pat, sh_ctx pat Bs = tele_wk (doms_ctx Bs) (wk_pat pat).
-Proof.
-  induction Bs as [| B Bs IH]; intros pat; [ reflexivity |].
-  change (doms_ctx (B :: Bs)) with (doms_ctx Bs ++ ce_ass B :: nil).
-  cbn [sh_ctx]; rewrite tele_wk_app, IH; reflexivity.
-Qed.
-
-Lemma ptyp_ihty_ctx_pi : forall t A β σ x, ptyp_simple t = true ->
-    ptyp_ihty A β σ x t
-    = ctx_pi (tele_sub (ptyp_tele t) σ)
-        (A[sb_of_list (β ⨟ sb_of_wk (wk_shiftn (ptyp_depth t)))
-             (List.map (fun P => P[sb_qn (ptyp_depth t) σ]) (ptyp_ps t)
-              ++ apps x[wk_shiftn (ptyp_depth t)]ʷ (vars_from 0 (ptyp_depth t)) :: nil)]).
-Proof.
-  induction t as [[| k] Ps | k Ps | B t IH]; intros * Hs; cbn in Hs; try discriminate.
-  - cbn [ptyp_ihty ptyp_tele ptyp_doms doms_ctx List.map List.rev tele_sub ctx_pi ptyp_depth List.length ptyp_ps sb_qn apps_exp vars_from List.seq].
-    rewrite (exp_wk_id_ext x _ wk_shiftn_zero).
-    apply exp_sub_sb_eq, sb_of_list_cong.
-    intros y; cbn.
-    rewrite (sentry_sub_sb_eq _ _ Id), sentry_sub_id; [ reflexivity |].
-    rewrite (sb_of_wk_cong _ _ wk_shiftn_zero); exact sb_of_wk_id.
-  - cbn [ptyp_ihty ptyp_tele ptyp_doms ptyp_depth ptyp_ps].
-    unfold ptyp_tele, ptyp_depth in IH.
-    rewrite (IH _ _ _ _ Hs).
-    unfold ptyp_tele, ptyp_depth; cbn [ptyp_doms List.length].
-    change (doms_ctx (B :: ptyp_doms t)) with (doms_ctx (ptyp_doms t) ++ ce_ass B :: nil).
-    rewrite tele_sub_app, ctx_pi_app; cbn [tele_sub ctx_pi List.length sb_qn centry_sub].
-    f_equal; f_equal; apply exp_sub_sb_eq.
-    set (L := List.length (ptyp_doms t)).
-    replace (sb_qn L (q σ)) with (q (sb_qn L σ)) by (rewrite <- (sb_qn_plus L 1), Nat.add_1_r; reflexivity).
-    replace (apps_exp (x[wk_shift]ʷ $ #0)[wk_shiftn L]ʷ (vars_from 0 L)) with (apps_exp x[wk_shiftn (S L)]ʷ (vars_from 0 (S L))).
-    2:{ rewrite vars_from_S0; cbn [apps_exp exp_wk]. f_equal. f_equal. rewrite exp_wk_wk; apply exp_wk_wk_eq; intros z; cbn; lia. }
-    apply sb_of_list_cong; rewrite sb_compose_assoc; apply sb_compose_Proper; [ reflexivity |].
-    rewrite <- sb_of_wk_compose; apply sb_of_wk_cong; intros z; cbn; lia.
-Qed.
-
 Lemma ihs_rel_len : forall ups dr Rel pre gs vs vs' ihs ihs', ihs_rel ups dr Rel pre gs vs vs' ihs ihs' ->
     List.length ihs = cargs_nrec gs /\ List.length ihs' = cargs_nrec gs.
 Proof. induction 1; cbn; lia. Qed.
@@ -234,48 +195,6 @@ Proof.
   assert (Hbc : DF b ≈ c ∈ per_univ_elem i ↘ R1) by pairwise.
   etransitivity; [ symmetry; eapply per_head_iff; [ exact Ha | exact Hd | exact HR1 ] |].
   eapply per_head_iff; [ exact Hb | exact Hc | exact Hbc ].
-Qed.
-
-(** A type weakened past a telescope, against the type at the base. *)
-Lemma wk_typ_link : forall Ψ Γ1 T (j : nat) RS F zs, ⊨ Ψ ++ Γ1 -> Γ1 ⊨ T : Typeω@j ->
-    EF Ψ ++ Γ1 ≈ Ψ ++ Γ1 ∈ per_ctx_env ↘ RS -> RS (env_args F zs) (env_args F zs) -> List.length zs = List.length Ψ ->
-    exists a b, ⟦ T[wk_shiftn (List.length Ψ)]ʷ ⟧ env_args F zs ↘ a /\ ⟦ T ⟧ F ↘ b /\ Dom a ≈ b ∈ per_univ j.
-Proof.
-  intros * HS HT HRS HE Hl.
-  destruct (rel_exp_under_ctx_wk_simple (rel_wk_under_ctx_shiftn _ _ HS) HT) as (R' & HR' & i0 & Hwk).
-  assert (ER : RS <~> R') by (eapply per_ctx_env_right_irrel; eassumption).
-  destruct (Hwk _ _ (proj1 (ER _ _) HE)) as (y & y' & Ry & Ey & Ey' & HRy & m & m' & Em & Em' & Hmm).
-  rewrite <- Hl, eval_wk_shiftn_args in Em'.
-  assert (Hy : y = d_univ j) by (cbn in Ey; inversion Ey; reflexivity).
-  rewrite Hy in HRy.
-  destruct (per_univ_elem_univ _ _ _ _ HRy (or_introl (ex_intro _ _ eq_refl))) as [_ ERy].
-  apply ERy in Hmm.
-  exists m, m'; split; [ exact Em | split; [ exact Em' | exact Hmm ] ].
-Qed.
-
-Lemma wk_env_rel : forall Ψ Γ1 RS R1 F F' zs zs', EF Ψ ++ Γ1 ≈ Ψ ++ Γ1 ∈ per_ctx_env ↘ RS ->
-    EF Γ1 ≈ Γ1 ∈ per_ctx_env ↘ R1 ->
-    RS (env_args F zs) (env_args F' zs') -> List.length zs = List.length Ψ -> List.length zs' = List.length Ψ -> R1 F F'.
-Proof.
-  intros * HRS HR1 HE Hl Hl'.
-  pose proof (rel_wk_app _ _ _ (rel_wk_shiftn _ _ _ _ HRS HR1) _ _ HE) as H.
-  rewrite !eval_wk_shiftn in H.
-  replace (List.skipn (List.length Ψ) (env_args F zs)) with F in H by (rewrite <- Hl; symmetry; apply skipn_env_args).
-  replace (List.skipn (List.length Ψ) (env_args F' zs')) with F' in H by (rewrite <- Hl'; symmetry; apply skipn_env_args).
-  exact H.
-Qed.
-
-Lemma per_gargs_refl_r : forall ts Tb RTb, EF Tb ≈ Tb ∈ per_ctx_env ↘ RTb -> ⊨ List.rev ts ++ Tb -> tele_ass ts ->
-    forall ρ ρ' xs xs', RTb ρ ρ' -> List.length xs = List.length ts -> per_gargs ts ρ ρ' xs xs' -> per_gargs ts ρ' ρ' xs' xs'.
-Proof.
-  intros * HTb HC Hts * Hρ Hl Hg.
-  destruct (sem_ctx_per_ctx_env HC) as [R HR].
-  pose proof (per_gargs_length _ _ _ _ _ Hg) as [L1 _].
-  pose proof (gargs_env_rel_gen (List.rev ts) Tb RTb R ρ ρ' xs xs' HTb HR HC Hρ
-                ltac:(rewrite List.length_rev; lia) ltac:(rewrite List.rev_involutive; exact Hg)) as HE.
-  assert (HP : PER R) by (eapply per_env_PER; exact HR).
-  assert (HE' : R (env_args ρ' xs') (env_args ρ' xs')) by (etransitivity; [ symmetry; exact HE | exact HE ]).
-  exact (proj2 (rel_gargs _ _ _ _ HTb HC Hts HR ρ' ρ' xs' xs' ltac:(lia) ltac:(lia) HE')).
 Qed.
 
 Lemma cargs_nrec_app : forall gs1 gs2, cargs_nrec (gs1 ++ gs2) = cargs_nrec gs1 + cargs_nrec gs2.
@@ -378,19 +297,6 @@ Proof.
     + rewrite <- (List.firstn_skipn (ind_nu D) Ps) at 1; rewrite List.nth_error_app2 by lia.
       rewrite HUl; replace (ind_nu D + k - ind_nu D) with k by lia; exact HN.
     + rewrite Hti, List.nth_error_app2 by lia; rewrite Hl2; replace (ind_nu D + k - ind_nu D) with k by lia; exact HT.
-Qed.
-
-(** The values of valid terms at a related environment. *)
-Lemma eval_valid_list : forall Ctx RS Δ σ0 Ms E, EF Ctx ≈ Ctx ∈ per_ctx_env ↘ RS -> RS E E ->
-    tele_ass Δ -> List.length Ms = List.length Δ ->
-    (forall k N T, List.nth_error Ms k = Some N -> List.nth_error (tele_insts Δ σ0 Ms) k = Some T -> Ctx ⊨ N : T) ->
-    exists ms, ⟦ Ms ⟧* gc_deps ⍮ gc_stack ⍮ E ↘ ms.
-Proof.
-  intros * HRS HE HΔ Hl HMs.
-  apply eval_exps_each; intros k N HN.
-  assert (Hk : k < List.length Ms) by (apply List.nth_error_Some; congruence).
-  destruct (nth_error_lt_some' (tele_insts Δ σ0 Ms) k) as [T HT]; [ rewrite length_tele_insts by exact HΔ; lia |].
-  destruct (rel_exp_under_ctx_simple_at HRS (HMs _ _ _ HN HT) _ _ HE) as (m & _ & Em & _); eauto.
 Qed.
 
 (** ** The Constructors' Judgments, from the Declaration's
@@ -1050,28 +956,6 @@ Section Elim.
   Proof.
     intros; eapply (tnrp_refl_l p D u0 nr ar dr (decl_closed_params D Hc) HnP HnI HaP HaI HdP HdI); [| eassumption ].
     unfold T; rewrite List.length_rev, length_nparams; assumption.
-  Qed.
-
-  (** The canonical relations at uniform parameters related to the
-      canonical ones are the canonical ones. *)
-  Lemma nr_change_u0 : forall w, per_gargs (List.rev (ind_uparams D)) nil nil u0 w ->
-      forall X Y, tele_full (ind_nr D w) T X Y -> tele_full nr T X Y.
-  Proof.
-    intros w Hg X Y H.
-    eapply tele_full_map; [| exact H ].
-    intros k pa pb x y Hk _ Hp2 Hr.
-    destruct (nparams_lt_ass D k (decl_closed_params D Hc) Hk) as [A HA].
-    pose proof (nr_pre_refl k pa pb ltac:(unfold T in Hk; rewrite List.length_rev, length_nparams in Hk; lia) Hp2) as Hpp.
-    destruct (canon_hn D HD Hc Hsu u0 a0 Hu0l Ha0 w Hg k A pa pa HA Hpp) as (t & t' & Et & Et' & [R0 HR0]).
-    unfold nr, ind_nr in *; rewrite (nth_ctyp_eq _ _ _ HA) in *.
-    destruct (per_univ_elem_sym _ _ _ _ HR0) as [HRs _].
-    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HRs HR0) as (R1 & HR1 & _).
-    destruct (per_univ_elem_trans_any _ _ _ _ _ _ _ HR0 HRs) as (R2 & HR2 & E2).
-    apply (per_head_iff Et Et HR2).
-    apply (per_head_iff Et' Et' HR1) in Hr.
-    apply E2.
-    assert (E : R0 <~> R1) by (eapply per_univ_elem_chain_iff; [ exact HR0 | exact HR1 ]).
-    apply E; exact Hr.
   Qed.
 
   (** A closed telescope's environment over the values of the uniform

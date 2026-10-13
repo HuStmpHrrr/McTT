@@ -415,14 +415,6 @@ Lemma sb_qn_agree : forall k σ τ n,
     (forall x, x < n -> σ x = τ x) -> forall x, x < k + n -> (sb_qn k σ) x = (sb_qn k τ) x.
 Proof. induction k; intros * H x Hx; cbn; auto; apply sb_q_agree with (n := k + n); [ apply IHk; exact H | lia ]. Qed.
 
-Lemma tele_wk_agree_gen : forall Δ,
-    List.Forall (fun e => forall n φ ψ, ce_scoped n e -> (forall x, x < n -> φ x = ψ x) -> centry_wk e φ = centry_wk e ψ) Δ ->
-    forall n φ ψ, ctx_scoped n Δ -> (forall x, x < n -> φ x = ψ x) -> tele_wk Δ φ = tele_wk Δ ψ.
-Proof.
-  induction 1; intros * HΔ Hφ; cbn in *; destruct_all; [ auto |].
-  f_equal; eauto using wk_qn_agree.
-Qed.
-
 Lemma tele_sub_agree_gen : forall Δ,
     List.Forall (fun e => forall n σ τ, ce_scoped n e -> (forall x, x < n -> σ x = τ x) -> centry_sub e σ = centry_sub e τ) Δ ->
     forall n σ τ, ctx_scoped n Δ -> (forall x, x < n -> σ x = τ x) -> tele_sub Δ σ = tele_sub Δ τ.
@@ -443,21 +435,6 @@ Ltac scoped_agree_case lift1 lift tele :=
   try match goal with |- Some _ = Some _ => f_equal end;
   eauto using lift1, lift, tele.
 
-Lemma syn_scoped_wk_agree :
-  (forall M n φ ψ, exp_scoped n M -> (forall x, x < n -> φ x = ψ x) -> M[φ]ʷ = M[ψ]ʷ) /\
-  (forall H n φ ψ, modexp_scoped n H -> (forall x, x < n -> φ x = ψ x) -> modexp_wk H φ = modexp_wk H ψ) /\
-  (forall b n φ ψ, bnd_scoped n b -> (forall x, x < n -> φ x = ψ x) -> bnd_wk b φ = bnd_wk b ψ) /\
-  (forall U n φ ψ, gunit_scoped n U -> (forall x, x < n -> φ x = ψ x) -> gunit_wk U φ = gunit_wk U ψ) /\
-  (forall D n φ ψ, moddef_scoped n D -> (forall x, x < n -> φ x = ψ x) -> moddef_wk D φ = moddef_wk D ψ) /\
-  (forall Φ n φ ψ, gmod_scoped n Φ -> (forall x, x < n -> φ x = ψ x) -> gmod_wk Φ φ = gmod_wk Φ ψ) /\
-  (forall E n φ ψ, gentry_scoped n E -> (forall x, x < n -> φ x = ψ x) -> gentry_wk E φ = gentry_wk E ψ) /\
-  (forall e n φ ψ, centry_scoped n e -> (forall x, x < n -> φ x = ψ x) -> centry_wk e φ = centry_wk e ψ).
-Proof.
-  pose proof wk_q_agree as lift1; pose proof wk_qn_agree as lift.
-  syn_mut_ind; scoped_agree_case lift1 lift tele_wk_agree_gen.
-  all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
-Qed.
-
 Lemma syn_scoped_sub_agree :
   (forall M n σ τ, exp_scoped n M -> (forall x, x < n -> σ x = τ x) -> M[σ] = M[τ]) /\
   (forall H n σ τ, modexp_scoped n H -> (forall x, x < n -> σ x = τ x) -> H[σ]ᵐ = H[τ]ᵐ) /\
@@ -473,10 +450,6 @@ Proof.
   all: brs_case; [ reflexivity | f_equal; [ f_equal; eapply HB; [ eassumption | eapply lift; eassumption ] | auto ] ].
 Qed.
 
-Lemma exp_scoped_wk_agree : forall M n φ ψ,
-    exp_scoped n M -> (forall x, x < n -> φ x = ψ x) -> M[φ]ʷ = M[ψ]ʷ.
-Proof. exact (proj1 syn_scoped_wk_agree). Qed.
-
 Lemma exp_scoped_sub_agree : forall M n σ τ,
     exp_scoped n M -> (forall x, x < n -> σ x = τ x) -> M[σ] = M[τ].
 Proof. exact (proj1 syn_scoped_sub_agree). Qed.
@@ -487,14 +460,6 @@ Proof.
   intros; eapply tele_sub_agree_gen; [| eassumption | assumption ].
   apply List.Forall_forall; intros e _ k ρ ρ' He Hρ.
   exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_sub_agree)))))) _ _ _ _ He Hρ).
-Qed.
-
-Lemma tele_scoped_wk_agree : forall Δ n φ ψ,
-    ctx_scoped n Δ -> (forall x, x < n -> φ x = ψ x) -> tele_wk Δ φ = tele_wk Δ ψ.
-Proof.
-  intros; eapply tele_wk_agree_gen; [| eassumption | assumption ].
-  apply List.Forall_forall; intros e _ k ρ ρ' He Hρ.
-  exact (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 (proj2 syn_scoped_wk_agree)))))) _ _ _ _ He Hρ).
 Qed.
 
 (** ** Module Variables
@@ -880,14 +845,6 @@ Proof.
     | destruct H; split; [ eapply exp_scoped_mono; eassumption | eapply IH; [| eassumption ]; lia ] ].
 Qed.
 
-(** A shape's leaf parameters are under all its domains. *)
-Lemma ptyp_scoped_ps : forall t n, ptyp_scoped n t -> List.Forall (exp_scoped (ptyp_depth t + n)) (ptyp_ps t).
-Proof.
-  induction t as [k Ps | k Ps | B t IH]; intros n H; cbn in *; [ exact H | exact H |].
-  destruct H as [_ H]; specialize (IH _ H); unfold ptyp_depth in *; cbn.
-  replace (S (List.length (ptyp_doms t) + n)) with (List.length (ptyp_doms t) + S n) by lia; exact IH.
-Qed.
-
 (** A shape is scoped when its domains and its leaf are, each under the
     domains before. *)
 Lemma ptyp_scoped_intro : forall t n,
@@ -948,10 +905,6 @@ Proof.
   - unfold wk_compose, wk_shift; specialize (IH n x Hx); lia.
   - destruct x as [| x]; cbn; [ lia |]; specialize (IH n x ltac:(lia)); lia.
 Qed.
-
-Lemma length_cargs_strat_app : forall gs1 gs2,
-    List.length (cargs_strat (gs1 ++ gs2)) = List.length (cargs_strat gs1) + List.length (cargs_strat gs2).
-Proof. induction gs1 as [| [] gs1 IH]; intros; cbn; rewrite ?length_app, ?IH; cbn; lia. Qed.
 
 Lemma length_ind_uparams : forall D, ind_nu D <= ind_np D -> List.length (ind_uparams D) = ind_nu D.
 Proof. intros; unfold ind_uparams, ind_nn, ind_np in *; rewrite length_skipn; lia. Qed.
