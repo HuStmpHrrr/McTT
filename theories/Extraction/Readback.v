@@ -60,17 +60,17 @@ Inductive ffresh_cargs_order (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list 
      ffresh_cargs_order Θ Ξ p ups ρ gs (S s) ->
      ffresh_cargs_order Θ Ξ p ups ρ (ca_rec t :: gs) s ).
 
-Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
+Inductive ffresh_ihs_order (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) (B : exp) :
   env -> list carg -> list domain -> nat -> Prop :=
 | ffihso_nil :
-  `( ffresh_ihs_order Θ Ξ ρ A ρa nil nil s )
+  `( ffresh_ihs_order Θ Ξ ρ A B ρa nil nil s )
 | ffihso_arg :
-  `( ffresh_ihs_order Θ Ξ ρ A (ρa ↦ v) gs vs s ->
-     ffresh_ihs_order Θ Ξ ρ A ρa (ca_arg T :: gs) (v :: vs) s )
+  `( ffresh_ihs_order Θ Ξ ρ A B (ρa ↦ v) gs vs s ->
+     ffresh_ihs_order Θ Ξ ρ A B ρa (ca_arg T :: gs) (v :: vs) s )
 | ffihso_rec :
-  `( feval_ihty_order Θ Ξ ρ A ρa t v ->
-     ffresh_ihs_order Θ Ξ ρ A ρa gs vs (S s) ->
-     ffresh_ihs_order Θ Ξ ρ A ρa (ca_rec t :: gs) (v :: vs) s ).
+  `( (exp_freshb (cargs_nrec gs) B = false -> feval_ihty_order Θ Ξ ρ A ρa t v) ->
+     ffresh_ihs_order Θ Ξ ρ A B ρa gs vs (S s) ->
+     ffresh_ihs_order Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s ).
 
 #[local]
 Hint Constructors ffresh_tele_order ffresh_cargs_order ffresh_ihs_order : mctt.
@@ -82,9 +82,9 @@ Lemma ffresh_cargs_order_sound : forall Θ Ξ p ups ρ gs s vs,
     ffresh_cargs Θ Ξ p ups ρ gs s vs -> ffresh_cargs_order Θ Ξ p ups ρ gs s.
 Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
 
-Lemma ffresh_ihs_order_sound : forall Θ Ξ ρ A ρa gs vs s ihs,
-    ffresh_ihs Θ Ξ ρ A ρa gs vs s ihs -> ffresh_ihs_order Θ Ξ ρ A ρa gs vs s.
-Proof. induction 1; econstructor; intros; functional_feval_rewrite_clear; mauto. Qed.
+Lemma ffresh_ihs_order_sound : forall Θ Ξ ρ A B ρa gs vs s ihs,
+    ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs -> ffresh_ihs_order Θ Ξ ρ A B ρa gs vs s.
+Proof. induction 1; econstructor; intros; try congruence; functional_feval_rewrite_clear; mauto. Qed.
 
 #[export]
 Hint Resolve ffresh_tele_order_sound ffresh_cargs_order_sound ffresh_ihs_order_sound : mctt.
@@ -98,9 +98,10 @@ Section FreshImpl.
     repeat match goal with
       | H : ffresh_tele_order _ _ _ _ _ |- _ => progressive_invert H
       | H : ffresh_cargs_order _ _ _ _ _ _ _ |- _ => progressive_invert H
-      | H : ffresh_ihs_order _ _ _ _ _ _ _ _ |- _ => progressive_invert H
+      | H : ffresh_ihs_order _ _ _ _ _ _ _ _ _ |- _ => progressive_invert H
       end;
-    first [ eassumption | solve [ eauto 2 ] | econstructor; eassumption ].
+    first [ eassumption | solve [ eauto 2 ] | econstructor; eassumption
+          | match goal with H : _ = false -> _ |- _ => apply H; assumption end ].
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
   Equations ffresh_tele_impl ρ T s (H : ffresh_tele_order Θ Ξ ρ T s) : { vs | ffresh_tele Θ Ξ ρ T s vs } by struct H :=
@@ -127,17 +128,21 @@ Section FreshImpl.
   Solve All Obligations with fr_obl.
 
   #[tactic="idtac",derive(equations=no,eliminator=no)]
-  Equations ffresh_ihs_impl ρ A ρa gs vs s (H : ffresh_ihs_order Θ Ξ ρ A ρa gs vs s) :
-    { ihs | ffresh_ihs Θ Ξ ρ A ρa gs vs s ihs } by struct H :=
-  | ρ, A, ρa, nil, nil, s, H => exist _ nil _
-  | ρ, A, ρa, ca_arg T :: gs, v :: vs, s, H =>
-      let (ihs, Hihs) := ffresh_ihs_impl ρ A (ρa ↦ v) gs vs s _ in
+  Equations ffresh_ihs_impl ρ A B ρa gs vs s (H : ffresh_ihs_order Θ Ξ ρ A B ρa gs vs s) :
+    { ihs | ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs } by struct H :=
+  | ρ, A, B, ρa, nil, nil, s, H => exist _ nil _
+  | ρ, A, B, ρa, ca_arg T :: gs, v :: vs, s, H =>
+      let (ihs, Hihs) := ffresh_ihs_impl ρ A B (ρa ↦ v) gs vs s _ in
       exist _ ihs _
-  | ρ, A, ρa, ca_rec t :: gs, v :: vs, s, H =>
-      let (a, Ha) := feval_ihty_impl Θ Ξ ρ A ρa t v _ in
-      let (ihs, Hihs) := ffresh_ihs_impl ρ A ρa gs vs (S s) _ in
-      exist _ (⇑! a s :: ihs) _
-  | ρ, A, ρa, _, _, s, H => False_rect _ _.
+  | ρ, A, B, ρa, ca_rec t :: gs, v :: vs, s, H with inspect (exp_freshb (cargs_nrec gs) B) := {
+    | exist _ true E =>
+        let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
+        exist _ (⇑! 𝕌ω@0 s :: ihs) _
+    | exist _ false E =>
+        let (a, Ha) := feval_ihty_impl Θ Ξ ρ A ρa t v _ in
+        let (ihs, Hihs) := ffresh_ihs_impl ρ A B ρa gs vs (S s) _ in
+        exist _ (⇑! a s :: ihs) _ }
+  | ρ, A, B, ρa, _, _, s, H => False_rect _ _.
   Solve All Obligations with fr_obl.
 End FreshImpl.
 
@@ -324,7 +329,7 @@ with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> 
      (forall ns vs,
          ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
          ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) vs ->
-         ffresh_ihs_order Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)) ->
+         ffresh_ihs_order Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)) ->
      (forall ns vs,
          ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
          ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) vs ->
@@ -332,12 +337,12 @@ with fread_brs_order (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> 
      (forall ns vs ihs,
          ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
          ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) vs ->
-         ffresh_ihs Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) ihs ->
+         ffresh_ihs Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) ihs ->
          feval_exp_order Θ Ξ B (env_args ρ (ns ++ vs ++ ihs))) ->
      (forall ns vs ihs b t,
          ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
          ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) vs ->
-         ffresh_ihs Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) ihs ->
+         ffresh_ihs Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) ihs ->
          ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
          ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
          fread_nf_order Θ Ξ (s + n) ⇓ t b) ->
@@ -541,7 +546,7 @@ Equations fread_nf_impl_c s d (ck : lk_cache Θ Ξ) (H : fread_nf_order Θ Ξ s 
 | s, ρ, A, p, D, ups, (c, gs) :: cs, (c', n, B) :: Bs, ck, H =>
     let (ns, Hns) := ffresh_tele_impl Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s _ in
     let (vs, Hvs) := ffresh_cargs_impl Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D) _ in
-    let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) _ in
+    let (ihs, Hihs) := ffresh_ihs_impl Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs) _ in
     let (b, Hb) := feval_exp_impl Θ Ξ B (env_args ρ (ns ++ vs ++ ihs)) _ in
     let (t, Ht) := feval_exp_impl Θ Ξ A (env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil)) _ in
     let (B', HB') := fread_nf_impl_c (s + n) ⇓ t b ck _ in
@@ -611,7 +616,7 @@ Ltac rb_obl_auto :=
   | |- fread_brs_order _ _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- ffresh_tele_order _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- ffresh_cargs_order _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
-  | |- ffresh_ihs_order _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
+  | |- ffresh_ihs_order _ _ _ _ _ _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exp_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_exps_order _ _ _ _ => first [ rb_ord | rb_run ]
   | |- feval_app_order _ _ _ _ => first [ rb_ord | rb_run ]

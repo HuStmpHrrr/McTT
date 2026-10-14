@@ -837,17 +837,26 @@ Inductive ffresh_cargs (Θ : gdeps) (Ξ : gstack) (p : qname) (ups : list domain
      ffresh_cargs Θ Ξ p ups ρ gs (S s) vs ->
      ffresh_cargs Θ Ξ p ups ρ (ca_rec t :: gs) s (⇑! a s :: vs) ).
 
-Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) :
+(** The recursive results of a branch [B] of a stuck eliminator, as fresh
+    variables: the type of one the branch does not read, the variable
+    [cargs_nrec gs] of [B] for the argument heading [ca_rec t :: gs], is not
+    computed; the variable gets [𝕌ω@0]. *)
+Inductive ffresh_ihs (Θ : gdeps) (Ξ : gstack) (ρ : env) (A : exp) (B : exp) :
   env -> list carg -> list domain -> nat -> list domain -> Prop :=
 | ffresh_ihs_nil :
-  `( ffresh_ihs Θ Ξ ρ A ρa nil nil s nil )
+  `( ffresh_ihs Θ Ξ ρ A B ρa nil nil s nil )
 | ffresh_ihs_arg :
-  `( ffresh_ihs Θ Ξ ρ A (ρa ↦ v) gs vs s ihs ->
-     ffresh_ihs Θ Ξ ρ A ρa (ca_arg T :: gs) (v :: vs) s ihs )
+  `( ffresh_ihs Θ Ξ ρ A B (ρa ↦ v) gs vs s ihs ->
+     ffresh_ihs Θ Ξ ρ A B ρa (ca_arg T :: gs) (v :: vs) s ihs )
 | ffresh_ihs_rec :
-  `( feval_ihty Θ Ξ ρ A ρa t v a ->
-     ffresh_ihs Θ Ξ ρ A ρa gs vs (S s) ihs ->
-     ffresh_ihs Θ Ξ ρ A ρa (ca_rec t :: gs) (v :: vs) s (⇑! a s :: ihs) ).
+  `( exp_freshb (cargs_nrec gs) B = false ->
+     feval_ihty Θ Ξ ρ A ρa t v a ->
+     ffresh_ihs Θ Ξ ρ A B ρa gs vs (S s) ihs ->
+     ffresh_ihs Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s (⇑! a s :: ihs) )
+| ffresh_ihs_skip :
+  `( exp_freshb (cargs_nrec gs) B = true ->
+     ffresh_ihs Θ Ξ ρ A B ρa gs vs (S s) ihs ->
+     ffresh_ihs Θ Ξ ρ A B ρa (ca_rec t :: gs) (v :: vs) s (⇑! 𝕌ω@0 s :: ihs) ).
 
 #[export]
 Hint Constructors ffresh_tele ffresh_cargs ffresh_ihs : mctt.
@@ -1039,7 +1048,7 @@ with fread_brs (Θ : gdeps) (Ξ : gstack) : nat -> env -> exp -> qname -> ind_de
      cargs_plen (ind_nn D) gs ->
      ffresh_tele Θ Ξ (env_args nil ups) (List.rev (List.firstn (ind_nn D) (ind_params D))) s ns ->
      ffresh_cargs Θ Ξ p ups (env_args nil (ups ++ ns)) gs (s + ind_nn D)%nat vs ->
-     ffresh_ihs Θ Ξ ρ A (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)%nat ihs ->
+     ffresh_ihs Θ Ξ ρ A B (env_args nil (ups ++ ns)) gs vs (s + ind_nn D + List.length gs)%nat ihs ->
      ⟦ B ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ vs ++ ihs) ↘ b ->
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ env_args ρ (ns ++ d_con p c (ups ++ ns ++ vs) :: nil) ↘ t ->
      Rnfᶠ ⇓ t b in Θ ⍮ Ξ ⍮ (s + n)%nat ↘ B' ->
@@ -1080,11 +1089,11 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs frea
       functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
-  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ A ρa gs vs s ihs1, ffresh_ihs Θ Ξ ρ A ρa gs vs s ihs1 ->
-      forall ihs2, ffresh_ihs Θ Ξ ρ A ρa gs vs s ihs2 -> ihs1 = ihs2.
+  Lemma functional_ffresh_ihs : forall {Θ Ξ} ρ A B ρa gs vs s ihs1, ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs1 ->
+      forall ihs2, ffresh_ihs Θ Ξ ρ A B ρa gs vs s ihs2 -> ihs1 = ihs2.
   Proof.
-    induction 1; intros * H2; inversion H2; subst; auto.
-    functional_feval_rewrite_clear; f_equal; auto.
+    induction 1; intros * H2; inversion H2; subst; auto; try congruence.
+    all: functional_feval_rewrite_clear; f_equal; auto.
   Qed.
 
   Ltac functional_ffresh_rewrite_clear :=
@@ -1093,8 +1102,8 @@ Hint Constructors fread_nf fread_ne fread_typ fread_la fread_ps fread_cargs frea
           pose proof (functional_ffresh_tele _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v1, H2 : ffresh_cargs ?T ?X ?p ?us ?ρ ?gs ?s ?v2 |- _ =>
           pose proof (functional_ffresh_cargs _ _ _ _ _ _ H1 _ H2); subst; clear H2
-      | H1 : ffresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i1, H2 : ffresh_ihs ?T ?X ?ρ ?A ?ρa ?gs ?vs ?s ?i2 |- _ =>
-          pose proof (functional_ffresh_ihs _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
+      | H1 : ffresh_ihs ?T ?X ?ρ ?A ?B ?ρa ?gs ?vs ?s ?i1, H2 : ffresh_ihs ?T ?X ?ρ ?A ?B ?ρa ?gs ?vs ?s ?i2 |- _ =>
+          pose proof (functional_ffresh_ihs _ _ _ _ _ _ _ _ H1 _ H2); subst; clear H2
       | H1 : ind_lookup ?T ?X ?p = Some _, H2 : ind_lookup ?T ?X ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as ?; subst
       | H1 : ind_con ?D ?c = Some _, H2 : ind_con ?D ?c = Some _ |- _ =>

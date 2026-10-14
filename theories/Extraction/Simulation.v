@@ -834,28 +834,35 @@ Section Read.
       exists (⇑! a' s :: vs'); split; [ constructor; assumption | repeat constructor; assumption ].
   Qed.
 
+  (** The recursive results of a branch [B]: related where [B] reads them,
+      the head of [ihs] being the entry [List.length] of its tail. *)
   Lemma ffresh_ihs_sim : forall ρ A ρa gs vs s ihs, fresh_ihs Θ Ξ ρ A ρa gs vs s ihs ->
-      forall nn ρ' ρa' vs', env_agree (fun x => ~ exp_fresh (S nn + x) A) ρ ρ' ->
+      forall B nn ρ' ρa' vs', env_agree (fun x => ~ exp_fresh (S nn + x) A) ρ ρ' ->
       env_agree (fun _ => True) ρa ρa' ->
       Forall (fun g => match g with ca_rec t => List.length (ptyp_ps t) = nn | ca_arg _ => True end) gs ->
       dsim_list vs vs' ->
-      exists ihs', ffresh_ihs Θ Ξ ρ' A ρa' gs vs' s ihs' /\ dsim_list ihs ihs'.
+      exists ihs', ffresh_ihs Θ Ξ ρ' A B ρa' gs vs' s ihs' /\ dsim_list_at (fun x => ~ exp_fresh x B) ihs ihs'.
   Proof.
-    induction 1; intros nn ρ' ρa' vs' HA Hρa Hl Hv.
+    induction 1; intros B nn ρ' ρa' vs' HA Hρa Hl Hv.
     - inversion Hv; subst; exists nil; split; constructor.
     - inversion Hv; inversion Hl; subst.
       match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1, Hl2 : Forall _ gs |- _ =>
-        destruct (IHfresh_ihs nn ρ' (ρa' ↦ v1) vs1 HA ltac:(apply env_agree_all_cons; assumption) Hl2 Hv2)
+        destruct (IHfresh_ihs B nn ρ' (ρa' ↦ v1) vs1 HA ltac:(apply env_agree_all_cons; assumption) Hl2 Hv2)
           as (ihs' & ? & ?) end.
       exists ihs'; split; [ constructor; assumption | assumption ].
     - inversion_clear Hl as [| ? ? Hl1 Hl2]; cbn beta iota in Hl1; subst nn.
       inversion Hv; subst.
+      pose proof (fresh_ihs_length _ _ _ _ _ _ _ H0) as Hlen.
       match goal with Hv1 : dsim v ?v1, Hv2 : dsim_list vs ?vs1 |- _ =>
         let a' := fresh "a'" in let ihs' := fresh "ihs'" in
-        destruct (feval_ihty_sim _ _ _ _ _ _ H ρ' ρa' v1) as (a' & ? & ?);
-          [ exact HA | eapply env_agree_mono; [ exact Hρa | intros; exact I ] | exact Hv1 |];
-        destruct (IHfresh_ihs _ ρ' ρa' vs1 HA Hρa Hl2 Hv2) as (ihs' & ? & ?);
-        exists (⇑! a' s :: ihs'); split; [ constructor; assumption | repeat constructor; assumption ]
+        destruct (IHfresh_ihs B _ ρ' ρa' vs1 HA Hρa Hl2 Hv2) as (ihs' & ? & ?);
+        destruct (exp_freshb (cargs_nrec gs) B) eqn:Ef;
+        [ exists (⇑! 𝕌ω@0 s :: ihs'); split;
+            [ apply ffresh_ihs_skip; assumption
+            | constructor; [ intros Hr; exfalso; apply Hr; rewrite Hlen; apply exp_freshb_sound; exact Ef | assumption ] ]
+        | destruct (feval_ihty_sim _ _ _ _ _ _ H ρ' ρa' v1) as (a' & ? & ?);
+            [ exact HA | eapply env_agree_mono; [ exact Hρa | intros; exact I ] | exact Hv1 |];
+          exists (⇑! a' s :: ihs'); split; [ apply ffresh_ihs_rec; assumption | constructor; [ intros _; repeat constructor; assumption | assumption ] ] ]
       end.
   Qed.
 
@@ -1002,13 +1009,13 @@ Section Read.
             [ apply env_agree_all_args; [ apply env_agree_nil | exact Hu ] |];
           destruct (ffresh_cargs_sim _ _ _ _ _ _ f0 ups' (env_args nil (ups' ++ ns'))) as (vs' & ? & Hsv);
             [ exact Hu | apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ] |];
-          destruct (ffresh_ihs_sim _ _ _ _ _ _ _ f2 (ind_nn D) ρ' (env_args nil (ups' ++ ns')) vs' HA
+          destruct (ffresh_ihs_sim _ _ _ _ _ _ _ f2 B (ind_nn D) ρ' (env_args nil (ups' ++ ns')) vs' HA
                       ltac:(apply env_agree_all_args; [ apply env_agree_nil | apply dsim_list_app; assumption ])
                       (plen_forall _ _ Hpl) Hsv) as (ihs' & ? & Hsi);
           destruct (feval_exp_sim _ _ _ e0 (env_args ρ' (ns' ++ vs' ++ ihs'))) as (b' & ? & ?);
-            [ eapply env_agree_binders;
+            [ eapply env_agree_binders_at;
                 [ exact (HBs _ _ _ (or_introl eq_refl))
-                | apply dsim_list_app; [ exact Hsn | apply dsim_list_app; assumption ]
+                | apply dsim_list_at_app; [ exact Hsn | apply dsim_list_at_app; assumption ]
                 | rewrite !length_app, Hl1, Hl2, Hl3; lia ]
             |];
           destruct (feval_exp_sim _ _ _ e1 (env_args ρ' (ns' ++ d_con p c (ups' ++ ns' ++ vs') :: nil))) as (t' & ? & ?);

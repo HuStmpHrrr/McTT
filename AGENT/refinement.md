@@ -51,6 +51,22 @@ application and calls `type_infer_in` otherwise, both structurally.
   the entry is `𝕌ω@0`.  A function-shaped result is a closure
   (`d_ihfn`), skipped alike.
 
+The readback of a stuck eliminator's branch (`fread_brs`) gives a
+recursive result the branch does not read (`exp_freshb (cargs_nrec gs) B`)
+the type `𝕌ω@0` instead of evaluating the motive at it (`ffresh_ihs_skip`);
+`fread_sim` relates the recursive results only where the branch reads them
+(`dsim_list_at`, `env_agree_binders_at`), as for evaluation.
+
+Evaluation selects a member of a global module by one lookup of its entry
+(`gc_entry`, `Extraction/Evaluation.v`): a definition (`gc_entry_def`) or the
+module of an inductive type, the type former (`gc_entry_ind`,
+`ind_lookup_entry`); the relation keeps `gc_resolve` and `ind_lookup`.
+
+The checker of an eliminator (`Extraction/IndCheck.v`) checks and
+normalises nothing for an unapplied head: the type former at no parameter
+is its own normal form, which the algorithmic rule's premises get by
+completeness.
+
 Readback has one rule more: a type former without arguments reads back as
 `nf_indty p nfs_nil` without looking its declaration up
 (`fread_typ_indty_nil`; the general rule asks `as' <> nil`).

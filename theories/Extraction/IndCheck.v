@@ -331,20 +331,33 @@ Proof.
                   : ind_ty_at D (List.firstn (List.length Ns) (nfs_to_exps Rs)))
     by (destruct HTt as [kT HTt]; exact (elim_head_typed _ _ _ _ _ HG Hl HTt HRl (List.length Ns) Hnh)).
   destruct HTA as [HTs HAR].
-  destruct (chkN H0 Ns p _ EH HTs) as [HNc | HNc];
-    [| right; intros T' H'; destruct (Hhd _ H') as (? & _ & ? & _); contradiction ].
   pose (Ts := ind_ty_at D (List.firstn (List.length Ns) (nfs_to_exps Rs))).
   pose (Rh := List.firstn (List.length Ns) (nfs_to_exps Rs)).
-  assert (Ho1 : nbe_order gc_deps gc_stack G (apps (a_ind p) Ns) Ts).
-  { destruct HTs as [iT HTs']; pose proof (alg_type_check_sound HNc HG HTs') as HN.
-    destruct (soundness HN) as (W & HW & _); eapply nbe_order_sound; exact HW. }
-  assert (Ho2 : nbe_order gc_deps gc_stack G (apps (a_ind p) Rh) Ts).
-  { destruct (soundness HAR) as (W & HW & _); eapply nbe_order_sound; exact HW. }
-  destruct (nbe_env_impl gc_deps gc_stack G P _ _ Ho1) as [W1 HW1].
-  destruct (nbe_env_impl gc_deps gc_stack G P _ _ Ho2) as [W2 HW2].
-  destruct (nf_eq_dec W1 W2) as [<- | HW];
-    [| right; intros T' H'; destruct (Hhd _ H') as (W & _ & _ & HW1' & HW2' & _);
-       apply HW; rewrite (functional_nbe _ _ _ _ _ HW1 HW1'), (functional_nbe _ _ _ _ _ HW2 HW2'); reflexivity ].
+  (** The type former at the head's arguments: without arguments, it is the
+      type former at none of the parameters, and nothing is computed. *)
+  assert (Hdec : { G ⊢a apps (a_ind p) Ns ⟸ Ts /\
+                   exists W, nbe_f G (apps (a_ind p) Ns) Ts W /\ nbe_f G (apps (a_ind p) Rh) Ts W } +
+                 { ~ (G ⊢a apps (a_ind p) Ns ⟸ Ts /\
+                      exists W, nbe_f G (apps (a_ind p) Ns) Ts W /\ nbe_f G (apps (a_ind p) Rh) Ts W) }).
+  { destruct Ns as [| N0 Ns0] eqn:ENs.
+    - left; unfold Rh, Ts in *; cbn [List.length List.firstn] in *.
+      split; [ exact (alg_type_check_complete (user_exp_all _) HAR) |].
+      destruct (soundness HAR) as (W & HW & _); exists W; split; exact HW.
+    - destruct (chkN H0 (N0 :: Ns0) p _ EH HTs) as [HNc | HNc]; [| right; intros [Hc _]; contradiction ].
+      assert (Ho1 : nbe_order gc_deps gc_stack G (apps (a_ind p) (N0 :: Ns0)) Ts).
+      { destruct HTs as [iT HTs']; pose proof (alg_type_check_sound HNc HG HTs') as HN.
+        destruct (soundness HN) as (W & HW & _); eapply nbe_order_sound; exact HW. }
+      assert (Ho2 : nbe_order gc_deps gc_stack G (apps (a_ind p) Rh) Ts).
+      { destruct (soundness HAR) as (W & HW & _); eapply nbe_order_sound; exact HW. }
+      destruct (nbe_env_impl gc_deps gc_stack G P _ _ Ho1) as [W1 HW1].
+      destruct (nbe_env_impl gc_deps gc_stack G P _ _ Ho2) as [W2 HW2].
+      destruct (nf_eq_dec W1 W2) as [<- | HW].
+      + left; split; [ exact HNc | exists W1; split; assumption ].
+      + right; intros (_ & W & HW1' & HW2'); apply HW.
+        rewrite (functional_nbe _ _ _ _ _ HW1 HW1'), (functional_nbe _ _ _ _ _ HW2 HW2'); reflexivity. }
+  destruct Hdec as [(HNc & HWs) | HnN];
+    [| right; intros T' H'; destruct (Hhd _ H') as (W & _ & HNc' & HW1' & HW2' & _);
+       apply HnN; split; [ exact HNc' | exists W; split; assumption ] ].
   (** The result, from the canonical head. *)
   assert (Hcan : { T' : nf | G ⊢a a_elim (me_apps (qname_mod p) Ns) nm A Bs M ⟹ T' /\
                    (exists UA u, G ⊢a T' ⟹ UA /\ is_univ_nf UA u) /\ (exists i : nat, G ⊢ T' : Typeω@i) }).
@@ -354,6 +367,7 @@ Proof.
             exist _ T' _).
     destruct (alg_elim_res_typed _ _ _ _ _ _ _ _ HG HMi Hl HRl HAi Hu) as [k Hk].
     split; [| eapply level_of_nbe; eassumption ].
+    destruct HWs as (W & HW1 & HW2).
     eapply ati_elim; try reflexivity; try eassumption.
     - intros c gs n B Hcon Hin; exact (HBa _ Hin gs Hcon).
     - intros c gs n B Hcon Hin; exact (HBc _ Hin gs Hcon). }
