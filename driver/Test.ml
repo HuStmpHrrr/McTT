@@ -2177,7 +2177,7 @@ let%expect_test "a module alias of a term is rejected" =
 
 let%expect_test "an alias of a module is not a term" =
   let _ = main_of_body "module M where end open M as N eval N" in
-  [%expect {| Error: N has no inferable type |}]
+  [%expect {| Error: Test.N is a module, not a term |}]
 
 let%expect_test "a module argument of the wrong type is rejected" =
   let _ = main_of_body "module M (n : Nat) where def f : Nat := n end end eval (M Type@0).f" in
@@ -3351,14 +3351,78 @@ let%expect_test "constructors of two types may share a name" =
                         eval M.z" in
   [%expect {| Evaluate M.z --> M.z : M |}]
 
-let%expect_test "an alias of an inductive type is the type" =
+(* Only the direct path of an inductive type is its type former; an alias
+   of it, or a name an open declares for it, is a module (option B). *)
+let%expect_test "an alias of an inductive type is a module, not the type" =
   let _ = main_of_body "inductive N : Type@0 where | z end module M := N eval M.z : M" in
+  [%expect {| Error: Test.M is a module, not a term |}]
+
+let%expect_test "an alias of an inductive type has its constructors" =
+  let _ = main_of_body "inductive N : Type@0 where | z end module M := N eval M.z : N" in
   [%expect {| Evaluate M.z --> N.z : N |}]
 
-let%expect_test "an inductive type opened from a module is the type" =
+let%expect_test "an alias of a parameterised inductive type is not applied as the type" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        module L := List eval L Nat" in
+  [%expect {| Error: Test.L is a module, not a term |}]
+
+let%expect_test "an inductive type opened from a module is a module" =
   let _ = main_of_body "module A where inductive N : Type@0 where | z end end \
                         open A use (N) eval N.z : N" in
-  [%expect {| Evaluate N.z --> A.N.z : A.N |}]
+  [%expect {| Error: Test.N is a module, not a term |}]
+
+let%expect_test "an inductive type opened under another name has its constructors and eliminator" =
+  let _ = main_of_body "module A where inductive N : Type@0 where | z | s (n : N) end end \
+                        open A use (N as K) eval K.s K.z : A.N \
+                        eval K.elim (K.s K.z) return k . Nat | z => 0 | s m, h => succ h end" in
+  [%expect {|
+    Evaluate K.s K.z --> A.N.s A.N.z : A.N
+    Evaluate K.elim (K.s K.z) return x1 . ℕ | z ⇒ 0 | s x2 x3 ⇒ succ x3 end --> 1
+      : ℕ
+    |}]
+
+let%expect_test "an eliminator may be headed by the applied module of its type" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        eval (List Nat).elim (List.cons Nat 1 (List.nil Nat)) return z . Nat \
+                          | nil => 0 | cons x xs, r => succ r end" in
+  [%expect {|
+    Evaluate (List ℕ).elim (List.cons ℕ 1 (List.nil ℕ)) return x1 . ℕ
+             | nil ⇒ 0
+             | cons x2 x3 x4 ⇒ succ x4
+             end --> 1 : ℕ
+    |}]
+
+let%expect_test "the applied module heading an eliminator agrees with the scrutinee's type" =
+  let _ = main_of_body "inductive List (A : Type@0) : Type@0 where | nil | cons (x : A) (xs : List A) end \
+                        eval (List (forall (n : Nat) -> Nat)).elim (List.cons Nat 1 (List.nil Nat)) return z . Nat \
+                          | nil => 0 | cons x xs, r => succ r end" in
+  [%expect {|
+    Error:
+      (List (∀ (x5 : ℕ) → ℕ)).elim (List.cons ℕ 1 (List.nil ℕ)) return x1 . ℕ
+      | nil ⇒ 0
+      | cons x2 x3 x4 ⇒ succ x4
+      end has no inferable type
+    |}]
+
+let%expect_test "an inductive type imported into a unit with parameters" =
+  let _ = main_of_multi_string "import Lib›Unary module Test (A : Type@0) where \
+                                def two : Lib›Unary.U := Lib›Unary.U.s (Lib›Unary.U.s Lib›Unary.U.z) end \
+                                eval Lib›Unary.plus two two \
+                                eval fun (n : Lib›Unary.U) -> Lib›Unary.U.elim n return x . Lib›Unary.U \
+                                  | z => two | s p, r => r end end" in
+  [%expect {|
+    Evaluate Lib›Unary.plus (two $0) (two $0) --> 4 : Lib›Unary.U
+    Evaluate λ (x1 : Lib›Unary.U)
+               → Lib›Unary.U.elim x1 return x2 . Lib›Unary.U
+                 | z ⇒ two $0
+                 | s x3 x4 ⇒ x4
+                 end
+      --> λ (x1 : Lib›Unary.U)
+            → Lib›Unary.U.elim x1 return x2 . Lib›Unary.U
+              | z ⇒ 2
+              | s x3 x4 ⇒ x4
+              end : ∀ (x1 : Lib›Unary.U) → Lib›Unary.U
+    |}]
 
 let%expect_test "a private inductive type is a private module of public constructors" =
   let _ = main_of_body "module M where private inductive N : Type@0 where | z end eval N.z end" in
@@ -3380,7 +3444,7 @@ let%expect_test "an eliminator through an alias is the type's" =
   let _ = main_of_body "inductive N : Type@0 where | z end module M := N \
                         eval fun (n : N) -> M.elim n return k . Nat | z => 0 end" in
   [%expect {|
-    Evaluate λ (x1 : N) → N.elim x1 return x2 . ℕ | z ⇒ 0 end
+    Evaluate λ (x1 : N) → M.elim x1 return x2 . ℕ | z ⇒ 0 end
       --> λ (x1 : N) → N.elim x1 return x2 . ℕ | z ⇒ 0 end : ∀ (x1 : N) → ℕ
     |}]
 
@@ -3495,7 +3559,7 @@ let%expect_test "the bound natural numbers: numerals and their printing" =
     |}]
 
 let%expect_test "a numeral is the bound type's where the binding is imported" =
-  let _ = main_of_multi_string "module Main where import Lib›Unary use (U; plus) eval plus 2 3 eval 0 : U end" in
+  let _ = main_of_multi_string "module Main where import Lib›Unary use (U; plus) eval plus 2 3 eval 0 : Lib›Unary.U end" in
   [%expect {|
     Evaluate plus 2 3 --> 5 : Lib›Unary.U
     Evaluate 0 --> 0 : Lib›Unary.U

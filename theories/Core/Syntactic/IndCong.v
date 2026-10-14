@@ -396,6 +396,131 @@ Section Fixed_GCtx.
     unfold ind_uvars; exact E.
   Qed.
 
+  (** The type former applied to its outermost [k] parameters has a type:
+      the [Π] over the others, at them. *)
+  Lemma ind_ty_at_typed : forall Γ D Ps k,
+      decl_typed Θ Ξ D -> decl_closed D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      List.length Ps = ind_np D ->
+      (forall j P T, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) j = Some T ->
+         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+      k <= ind_np D ->
+      exists i, Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty_at D (List.firstn k Ps) : Typeω@i.
+  Proof.
+    intros * HD Hc HΓ HPl HPs Hk.
+    pose proof HD as (Hass & _).
+    destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj].
+    set (F := List.firstn (ind_np D - k) (ind_params D)).
+    set (S := List.skipn (ind_np D - k) (ind_params D)).
+    assert (HFS : ind_params D = F ++ S) by (symmetry; apply List.firstn_skipn).
+    assert (HSl : List.length S = k) by (unfold S, ind_np in *; rewrite List.length_skipn; lia).
+    assert (HSass : tele_ass S) by (unfold tele_ass in *; rewrite HFS in Hass; apply List.Forall_app in Hass as [_ H]; exact H).
+    unfold ind_ty in Hj; rewrite HFS in Hj.
+    pose proof (proj1 (ctx_pi_split_typed (F ++ S) _ _ _ ltac:(rewrite <- HFS; exact Hass) Hj) F S eq_refl) as HB.
+    assert (HUl : List.length (List.firstn k Ps) = k) by (rewrite List.length_firstn; lia).
+    assert (Hσ : Θ ⍮ Ξ ⍮ Γ ⊢s sb_of_list Id (List.firstn k Ps) : S ++ Γ).
+    { apply wf_sub_of_list_id; [ exact HSass | gen_presups; assumption | lia |].
+      intros j0 N T HN HT.
+      assert (Eti : tele_insts (ind_params D) Id Ps
+                    = tele_insts S Id (List.firstn k Ps) ++ tele_insts F (sb_of_list Id (List.firstn k Ps)) (List.skipn k Ps)).
+      { rewrite HFS; replace Ps with (List.firstn k Ps ++ List.skipn k Ps) at 1 by apply List.firstn_skipn.
+        apply tele_insts_app; [ exact HSass | lia ]. }
+      apply (HPs j0).
+      - replace Ps with (List.firstn k Ps ++ List.skipn k Ps) by apply List.firstn_skipn.
+        rewrite List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HN.
+      - rewrite Eti, List.nth_error_app1; [ exact HT |].
+        assert (HNs : j0 < List.length (List.firstn k Ps)) by (apply List.nth_error_Some; congruence).
+        rewrite length_tele_insts by exact HSass; lia. }
+    exists j; unfold ind_ty_at; rewrite HUl; fold F.
+    exact (sub_preserves_exp _ _ _ _ _ _ _ HB Hσ).
+  Qed.
+
+  (** The type former applied to its outermost [k] parameters is of that
+      type. *)
+  Lemma ind_apps_at_typed : forall Γ p D Ps k,
+      decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      List.length Ps = ind_np D ->
+      (forall j P T, List.nth_error Ps j = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) j = Some T ->
+         Θ ⍮ Ξ ⍮ Γ ⊢ P : T) ->
+      k <= ind_np D ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) (List.firstn k Ps) : ind_ty_at D (List.firstn k Ps).
+  Proof.
+    intros * HD Hc Hl HΓ HPl HPs Hk.
+    pose proof HD as (Hass & _).
+    destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj].
+    set (F := List.firstn (ind_np D - k) (ind_params D)).
+    set (S := List.skipn (ind_np D - k) (ind_params D)).
+    assert (HFS : ind_params D = F ++ S) by (symmetry; apply List.firstn_skipn).
+    assert (HSl : List.length S = k) by (unfold S, ind_np in *; rewrite List.length_skipn; lia).
+    assert (HSass : tele_ass S) by (unfold tele_ass in *; rewrite HFS in Hass; apply List.Forall_app in Hass as [_ H]; exact H).
+    pose proof (wf_ind _ _ _ _ _ HΓ Hl) as Hind.
+    unfold ind_ty in Hj, Hind; rewrite HFS in Hj, Hind; rewrite ctx_pi_app in Hind.
+    pose proof (proj1 (ctx_pi_split_typed (F ++ S) _ _ _ ltac:(rewrite <- HFS; exact Hass) Hj) F S eq_refl) as HB.
+    assert (HUl : List.length (List.firstn k Ps) = k) by (rewrite List.length_firstn; lia).
+    unfold ind_ty_at; rewrite HUl; fold F.
+    eapply wf_apps_ctx_pi; [ exact HSass | gen_presups; assumption | exact HB | exact Hind | lia |].
+    intros j0 N T HN HT.
+    assert (Eti : tele_insts (ind_params D) Id Ps
+                  = tele_insts S Id (List.firstn k Ps) ++ tele_insts F (sb_of_list Id (List.firstn k Ps)) (List.skipn k Ps)).
+    { rewrite HFS; replace Ps with (List.firstn k Ps ++ List.skipn k Ps) at 1 by apply List.firstn_skipn.
+      apply tele_insts_app; [ exact HSass | lia ]. }
+    apply (HPs j0).
+    - replace Ps with (List.firstn k Ps ++ List.skipn k Ps) by apply List.firstn_skipn.
+      rewrite List.nth_error_app1 by (apply List.nth_error_Some; congruence); exact HN.
+    - rewrite Eti, List.nth_error_app1; [ exact HT |].
+      assert (HNs : j0 < List.length (List.firstn k Ps)) by (apply List.nth_error_Some; congruence).
+      rewrite length_tele_insts by exact HSass; lia.
+  Qed.
+
+  (** The type former at the outermost [k] of equal parameters: equal, at
+      equal types. *)
+  Lemma wf_exp_eq_ind_apps_at : forall Γ p D Ps Ps' k,
+      decl_typed Θ Ξ D -> decl_closed D -> ind_lookup Θ Ξ p = Some D -> ⊢ Θ ⍮ Ξ ⍮ Γ ->
+      List.length Ps = ind_np D -> List.length Ps' = ind_np D ->
+      (forall j P P' T, List.nth_error Ps j = Some P -> List.nth_error Ps' j = Some P' ->
+         List.nth_error (tele_insts (ind_params D) Id Ps) j = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ P ≈ P' : T) ->
+      k <= ind_np D ->
+      Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) (List.firstn k Ps) ≈ apps (a_ind p) (List.firstn k Ps') : ind_ty_at D (List.firstn k Ps) /\
+      exists i, Θ ⍮ Ξ ⍮ Γ ⊢ ind_ty_at D (List.firstn k Ps) ≈ ind_ty_at D (List.firstn k Ps') : Typeω@i.
+  Proof.
+    intros * HD Hc Hl HΓ HPl HPl' HPs Hk.
+    pose proof HD as (Hass & _).
+    destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj].
+    set (F := List.firstn (ind_np D - k) (ind_params D)).
+    set (S := List.skipn (ind_np D - k) (ind_params D)).
+    assert (HFS : ind_params D = F ++ S) by (symmetry; apply List.firstn_skipn).
+    assert (HSl : List.length S = k) by (unfold S, ind_np in *; rewrite List.length_skipn; lia).
+    assert (HSass : tele_ass S) by (unfold tele_ass in *; rewrite HFS in Hass; apply List.Forall_app in Hass as [_ H]; exact H).
+    pose proof (wf_ind _ _ _ _ _ HΓ Hl) as Hind.
+    unfold ind_ty in Hj, Hind; rewrite HFS in Hj, Hind; rewrite ctx_pi_app in Hind.
+    pose proof (proj1 (ctx_pi_split_typed (F ++ S) _ _ _ ltac:(rewrite <- HFS; exact Hass) Hj) F S eq_refl) as HB.
+    assert (HUl : List.length (List.firstn k Ps) = k) by (rewrite List.length_firstn; lia).
+    assert (HUl' : List.length (List.firstn k Ps') = k) by (rewrite List.length_firstn; lia).
+    assert (HSΓ : ⊢ Θ ⍮ Ξ ⍮ S ++ Γ) by (gen_presups; assumption).
+    assert (Eti : tele_insts (ind_params D) Id Ps
+                  = tele_insts S Id (List.firstn k Ps) ++ tele_insts F (sb_of_list Id (List.firstn k Ps)) (List.skipn k Ps)).
+    { rewrite HFS; replace Ps with (List.firstn k Ps ++ List.skipn k Ps) at 1 by apply List.firstn_skipn.
+      apply tele_insts_app; [ exact HSass | lia ]. }
+    assert (HUs : forall j0 N N' T, List.nth_error (List.firstn k Ps) j0 = Some N ->
+               List.nth_error (List.firstn k Ps') j0 = Some N' ->
+               List.nth_error (tele_insts S Id (List.firstn k Ps)) j0 = Some T -> Θ ⍮ Ξ ⍮ Γ ⊢ N ≈ N' : T).
+    { intros j0 N N' T HN HN' HT.
+      assert (HNs : j0 < List.length (List.firstn k Ps)) by (apply List.nth_error_Some; congruence).
+      apply (HPs j0).
+      - replace Ps with (List.firstn k Ps ++ List.skipn k Ps) by apply List.firstn_skipn.
+        rewrite List.nth_error_app1 by exact HNs; exact HN.
+      - replace Ps' with (List.firstn k Ps' ++ List.skipn k Ps') by apply List.firstn_skipn.
+        rewrite List.nth_error_app1 by lia; exact HN'.
+      - rewrite Eti, List.nth_error_app1; [ exact HT |].
+        rewrite length_tele_insts by exact HSass; lia. }
+    unfold ind_ty_at; rewrite HUl, HUl'; fold F.
+    split.
+    - eapply (wf_exp_eq_apps_ctx_pi_n (List.length S));
+        [ reflexivity | exact HSass | exact HSΓ | exact HB | apply wf_exp_eq_refl; exact Hind | lia | lia | exact HUs ].
+    - exists j; eapply sub_eq_preserves_typ; [ exact HB |].
+      eapply wf_sub_eq_of_list; [ exact HSass | exact HSΓ | apply wf_sub_eq_refl; mauto 3 | lia | lia |].
+      intros j0 N N' T HN HN' HT; exact (HUs _ _ _ _ HN HN' HT).
+  Qed.
+
   (** A weakened term under an extension of a weakening. *)
   Lemma exp_shift_extend_wk : forall U φ b, U[↑]ʷ[(ι φ),,b] = U[φ]ʷ.
   Proof. intros; rewrite exp_sub_shift; apply exp_sub_of_wk_ext; intros [|?]; reflexivity. Qed.

@@ -347,7 +347,7 @@ Section RecTyped.
       context at the module's uniform parameters. *)
   Lemma rec_elim_typed :
       Θ ⍮ Ξ ⍮ elim_mctx p D (rec_uvars D K) ++ EK ++ Lm
-        ⊢ a_elim p (S nn) (rec_motive D (K + S nn)) (rec_brs D K 0 (ind_cons D)) (a_var 0) : rec_motive D K.
+        ⊢ a_elim (qname_mod p) (S nn) (rec_motive D (K + S nn)) (rec_brs D K 0 (ind_cons D)) (a_var 0) : rec_motive D K.
   Proof.
     destruct (motive_at _ EK_wf) as [HM2 HA2]; rewrite length_EK in HM2, HA2.
     set (E2 := elim_mctx p D (rec_uvars D K) ++ EK).
@@ -371,7 +371,10 @@ Section RecTyped.
     assert (HA3' : forall i, Θ ⍮ Ξ ⍮ elim_mctx p D (List.firstn nu Ps) ++ elim_mctx p D Us ++ EK ++ Lm
                                ⊢ rec_motive D (S nn + K) : Typeω@i)
       by (unfold Ps; rewrite (firstn_app_len Us' (vars_from 1 nn) nu HUl'); exact HA3).
-    eapply wf_elim with (i := 0); [ exact Hl | | | | reflexivity | apply HA3' | | | | | ].
+    assert (HE2' : ⊢ Θ ⍮ Ξ ⍮ elim_mctx p D Us ++ EK ++ Lm) by (unfold E2 in HE2; rewrite <- List.app_assoc in HE2; exact HE2).
+    destruct (elim_head_canon _ _ _ _ _ HE2' Hl) as (HT0t & HT0e).
+    eapply wf_elim with (i := 0) (nh := 0) (Ns := nil);
+      [ exact Hl | | reflexivity | reflexivity | exact HT0t | exact HT0e | lia | | | reflexivity | apply HA3' | | | | | ].
     - (* the number of parameters *)
       unfold Ps; rewrite List.length_app, HUl', HNl; unfold ind_nn, ind_np in *; lia.
     - (* the parameters, at their types: the uniform ones the module's,
@@ -485,117 +488,94 @@ Section RecTyped.
   Qed.
 End RecTyped.
 
-(** ** The Generated Definitions Run *)
+(** ** The Generated Definitions Type-Check
+
+    The members are checked one after the other, each with the entry so far
+    declared ([wf_gentry_ind_ext]); in the frame with that entry, the
+    declaration is the type's, so the recursor and the constructors are of
+    their types ([RecTyped]). *)
 
 Section GensRun.
-  Variables (Θ : gdeps) (mp : qname) (Δ : ctx) (Ξ0 : gstack) (p : qname) (D : ind_decl).
-  Hypothesis HΔ : Δ ++ gs_tele Ξ0 = ind_uparams D.
+  Variables (Θ : gdeps) (mq : qname) (Δ : ctx) (Φ0 : gmod) (Ξ0 : gstack) (y : string) (pv : bool) (D : ind_decl).
+  Hypothesis Hg : ⊢g Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0.
+  Hypothesis Hy : gm_fresh y Φ0.
 
-  #[local] Abbreviation fr Φ := ((mp, gu_body Δ Φ) :: Ξ0).
+  #[local] Abbreviation p := (qname_in mq y).
+  #[local] Abbreviation fr Φ := ((mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ0).
 
-  Definition gens_inv (Φ : gmod) : Prop := ⊢g Θ ⍮ fr Φ /\ ind_lookup Θ (fr Φ) p = Some D.
+  Definition gens_inv (Φ : gmod) : Prop := Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ p ⊢e ge_ind pv D Φ.
 
   Lemma inv_typed : forall Φ, gens_inv Φ ->
-      decl_typed Θ (fr Φ) D /\ decl_closed D /\ ⊢ Θ ⍮ fr Φ ⍮ ind_uparams D.
+      ind_lookup Θ (fr Φ) p = Some D /\ decl_typed Θ (fr Φ) D /\ decl_closed D /\ ⊢ Θ ⍮ fr Φ ⍮ ind_uparams D.
   Proof.
-    intros Φ [HΞ Hl].
-    pose proof (wf_gs_tele _ _ HΞ) as HT; cbn [gs_tele gu_params] in HT; rewrite HΔ in HT.
-    destruct (decl_of_lookup _ _ _ _ _ HT Hl) as [HD Hc]; auto.
+    intros Φ HE.
+    pose proof (add_ind_wf _ ((mq, gu_body Δ Φ0) :: Ξ0) y pv D Φ Hg HE Hy) as Hg'.
+    pose proof (ind_lookup_added Θ ((mq, gu_body Δ Φ0) :: Ξ0) y pv D Φ ltac:(discriminate)) as Hl.
+    cbn [gs_path gs_add gu_params gu_mod] in Hl, Hg'.
+    destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact Hg') Hl) as [HD Hc].
+    split; [ exact Hl | split; [ exact HD | split; [ exact Hc | exact (proj1 (decl_typed_uparams _ _ _ HD)) ] ] ].
   Qed.
 
-  Lemma inv_add : forall Φ d pv A M, gens_inv Φ ->
-      Θ ⍮ fr Φ ⍮ gs_tele (fr Φ) ⊢ M : A -> gm_fresh d Φ ->
-      gens_inv (Φ ⊳ d ↦ gs_def true pv (fr Φ) A M).
-  Proof.
-    intros * [HΞ Hl] HM Hfr; split.
-    - exact (add_def_wf _ (fr Φ) d true pv A M HΞ HM Hfr).
-    - eapply ind_lookup_gc_sub; [ apply gc_sub_grow; exact Hfr | exact Hl ].
-  Qed.
-
-  Lemma gens_run_cons : forall cs Φ,
+  Lemma gens_inv_cons : forall cs Φ,
       (forall c gs, In (c, gs) cs -> ind_con D c = Some gs) ->
       NoDup (List.map fst cs) -> ~ In "rec"%string (List.map fst cs) ->
       gens_inv Φ -> (forall c, In c (List.map fst cs) -> gm_fresh c Φ) -> gm_fresh "rec" Φ ->
-      exists Φ',
-        gens_run Θ (fr Φ)
+      gens_inv
+        (gens_body Φ (ind_uparams D)
           (List.map (fun cg =>
                        ig_def (fst cg) false
                          (ctx_pi (ind_nparams D)
                             (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
                          (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D))))
-             cs ++ ig_def "rec" false (rec_ty p D) (rec_fn p D) :: nil)
-          (fr Φ').
+             cs ++ ig_def "rec" false (rec_ty p D) (rec_fn p D) :: nil)).
   Proof.
-    induction cs as [| [c gs] cs IH]; intros Φ Hcs Hnd Hrec Hinv Hfr Hfrr; cbn [List.map List.app].
-    - destruct (inv_typed _ Hinv) as (HD & Hc & HT).
-      pose proof (rec_typed _ _ _ _ HD Hc (proj2 Hinv) HT) as Hr.
-      eexists; eapply gr_def; [ cbn [gs_tele gu_params]; rewrite HΔ; exact Hr | exact Hfrr | apply gr_nil ].
-    - destruct (inv_typed _ Hinv) as (HD & Hc & HT).
-      pose proof (con_gen_typed _ _ _ _ HD Hc (proj2 Hinv) HT c gs (Hcs _ _ (or_introl eq_refl))) as Hg.
-      assert (Hg' : Θ ⍮ fr Φ ⍮ gs_tele (fr Φ)
-                      ⊢ apps (a_con p c) (vars_from 0 (ind_nu D))
-                      : ctx_pi (ind_nparams D) (ctx_pi (cargs_ctx p D gs) (apps (a_ind p) (ind_pvars D (List.length gs)))))
-        by (cbn [gs_tele gu_params]; rewrite HΔ; exact Hg).
+    induction cs as [| [c gs] cs IH]; intros Φ Hcs Hnd Hrec Hinv Hfr Hfrr; cbn [List.map List.app gens_body].
+    - destruct (inv_typed _ Hinv) as (Hl & HD & Hc & HT).
+      pose proof (rec_typed _ _ _ _ HD Hc Hl HT) as Hr.
+      econstructor; [ exact Hinv | exact Hr | exact Hfrr ].
+    - destruct (inv_typed _ Hinv) as (Hl & HD & Hc & HT).
+      pose proof (con_gen_typed _ _ _ _ HD Hc Hl HT c gs (Hcs _ _ (or_introl eq_refl))) as Hcg.
       cbn [List.map fst] in Hnd, Hrec, Hfr; inversion Hnd as [| ? ? Hn Hnd']; subst.
       assert (Hfc : gm_fresh c Φ) by (apply Hfr; left; reflexivity).
-      destruct (IH (Φ ⊳ c ↦ gs_def true false (fr Φ)
-                             (ctx_pi (ind_nparams D) (ctx_pi (cargs_ctx p D gs) (apps (a_ind p) (ind_pvars D (List.length gs)))))
-                             (apps (a_con p c) (vars_from 0 (ind_nu D))))) as [Φ' HΦ'];
+      apply IH;
         [ intros; apply Hcs; right; assumption | exact Hnd' | intros H; apply Hrec; right; exact H
-        | exact (inv_add _ _ _ _ _ Hinv Hg' Hfc)
-        | intros c' Hc'; unfold gm_fresh; cbn [gm_names]; intros [-> | H]; [ exact (Hn Hc') | exact (Hfr c' (or_intror Hc') H) ]
-        | unfold gm_fresh; cbn [gm_names]; intros [H | H]; [ apply Hrec; left; exact H | exact (Hfrr H) ] |].
-      exists Φ'; eapply gr_def; [ exact Hg' | exact Hfc | exact HΦ' ].
+        | econstructor; [ exact Hinv | exact Hcg | exact Hfc ]
+        | intros c' Hc'; unfold gm_fresh; cbn [gm_names fst]; intros [Heq | H]; [ subst c'; exact (Hn Hc') | exact (Hfr c' (or_intror Hc') H) ]
+        | unfold gm_fresh; cbn [gm_names fst]; intros [H | H]; [ apply Hrec; left; exact H | exact (Hfrr H) ] ].
   Qed.
 End GensRun.
 
-(** What an accepted declaration generates runs: its constructors and its
-    recursor type-check, in its module's frame.  So no declaration the
-    other premises of [rc_ind] accept is rejected by them; the generated
-    names are the constructors' and [rec], which the declaration's own
-    names must leave free ([rec] is a keyword, so no source names a
-    constructor so). *)
-Theorem ind_gens_run : forall Θ Ξ x R cs,
-    ⊢g Θ ⍮ Ξ -> tele_ass (rd_uparams R) -> ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ -> gs_fresh x Ξ ->
-    Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind false (gs_ind Ξ (rd_filed R cs)) ->
-    ~ In "rec"%string (List.map fst cs) -> ~ In ind_name (List.map fst cs) ->
-    exists mp U, gens_run Θ (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
-                   (ind_gens (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ((mp, U) :: Ξ).
+(** What an accepted declaration generates type-checks: its constructors
+    and its recursor, each with the members before it declared.  So no
+    declaration the other premises of [rc_ind] accept is rejected by its
+    generated members; the generated names are the constructors' and
+    [rec], which the declaration's own names must leave free ([rec] is a
+    keyword, so no source names a constructor so). *)
+Theorem ind_gens_typed : forall Θ mq Δ Φ0 Ξ0 y pv D,
+    ⊢g Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 -> gm_fresh y Φ0 ->
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢e ge_ind pv D ⋄ ->
+    ~ In "rec"%string (List.map fst (ind_cons D)) ->
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ0 ⍮ qname_in mq y ⊢e ge_ind pv D (gen_body (qname_in mq y) D).
 Proof.
-  intros * HΞ Htel HΔ Hfr HE Hrec Hnm.
-  set (D := gs_ind Ξ (rd_filed R cs)) in *.
-  pose proof (ind_file_wf _ _ _ _ _ _ (ind_frame_wf _ _ _ _ HΞ Htel HΔ Hfr) HE) as HΞf.
-  pose proof (ind_lookup_added Θ (ind_frame Ξ x R) ind_name false D ltac:(discriminate)) as Hl.
-  change (qname_in (gs_path (ind_frame Ξ x R)) ind_name) with (ind_qname Ξ x) in Hl.
-  destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞf) Hl) as [HD Hc].
-  assert (Hup : rd_uparams R ++ gs_tele Ξ = ind_uparams D).
-  { unfold ind_uparams, D, rd_uparams, gs_ind, rd_filed, ind_nn, ind_np; cbn [ind_params ind_nu].
-    pose proof HD as (_ & _ & Hle & _); unfold D, gs_ind, rd_filed, ind_np in Hle; cbn [ind_params ind_nu] in Hle.
-    rewrite List.length_app in Hle |- *; rewrite List.skipn_app; f_equal.
-    - f_equal; lia.
-    - replace (List.length (rd_params R) + List.length (gs_tele Ξ) - (rd_nu R + List.length (gs_tele Ξ)) - List.length (rd_params R))
-        with 0 by lia.
-      reflexivity. }
+  intros * Hg Hy HE Hrec.
+  destruct (inv_typed _ _ _ _ _ _ _ _ Hg Hy _ HE) as (_ & HD & _).
   pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
-  unfold ind_frame, gs_push, gs_add in *; cbn [gu_params gu_mod] in *.
-  destruct (gens_run_cons Θ _ (rd_uparams R) Ξ (ind_qname Ξ x) D Hup (ind_cons D) _
-              (fun c gs Hin => cons_lookup_nodup _ _ _ Hnd Hin) Hnd Hrec
-              (conj HΞf Hl)) as [Φ' HΦ'];
-    [ intros c Hc' H; cbn in H; destruct H as [<- | []]; exact (Hnm Hc')
-    | cbn; intros [H | []]; discriminate |].
-  exists (qname_in (gs_path Ξ) x), (gu_body (rd_uparams R) Φ'); exact HΦ'.
+  exact (gens_inv_cons _ _ _ _ _ _ _ _ Hg Hy (ind_cons D) ⋄
+           (fun c gs Hin => cons_lookup_nodup _ _ _ Hnd Hin) Hnd Hrec HE
+           (fun c _ H => H) (fun H => H)).
 Qed.
 
-(** So a declaration whose arguments classify, whose module's frame and
-    filed declaration are well formed, is run. *)
+(** So a declaration whose arguments classify, and whose declaration is
+    well formed where it is declared, is run. *)
 Corollary rc_ind_runs : forall load_path read to_core ch Θ Ξ x pv R cs,
-    ⊢g Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs ->
-    tele_ass (rd_uparams R) -> ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ -> gs_fresh x Ξ ->
-    Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind false (gs_ind Ξ (rd_filed R cs)) ->
-    ~ In "rec"%string (List.map fst cs) -> ~ In ind_name (List.map fst cs) ->
+    ⊢g Θ ⍮ Ξ -> cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
+    Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) ⋄ ->
+    ~ In "rec"%string (List.map fst cs) ->
     exists Θ' Ξ', run_cmd load_path read to_core ch Θ Ξ (cc_ind x pv R) Θ' Ξ'.
 Proof.
-  intros * HΞ Hcls Htel HΔ Hfr HE Hrec Hnm.
-  destruct (ind_gens_run _ _ _ _ _ HΞ Htel HΔ Hfr HE Hrec Hnm) as (mp & U & Hg).
-  do 2 eexists; eapply rc_ind; eassumption.
+  intros * HΞ Hcls Hfr HE Hrec.
+  destruct Ξ as [| [mq [Δ [Φ0 | E0]]] Ξ0]; [ contradiction | |].
+  - do 2 eexists; eapply rc_ind; [ exact Hcls | exact Hfr |].
+    apply ind_gens_typed; [ exact HΞ | exact Hfr | exact HE | exact Hrec ].
+  - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _).
 Qed.

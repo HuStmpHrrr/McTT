@@ -325,7 +325,7 @@ with eval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A body unit lacking arguments records it. *)
 | eval_appm_body :
   `( List.length args < List.length Δ ->
-     $ᵐ| dm_local ρ (gu_body Δ Φ) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_body Δ Φ) (args ++ n :: nil) )
+     $ᵐ| dm_local ρ (gu_mk Δ (md_body Φ)) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_mk Δ (md_body Φ)) (args ++ n :: nil) )
 (** So does an alias unit lacking arguments. *)
 | eval_appm_alias_unsat :
   `( List.length args < List.length Δ ->
@@ -361,6 +361,13 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
+(** The module of an inductive type, as a term: the type former, applied to
+    the module's arguments. *)
+| eval_sel_global_ind :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+     ind_lookup Θ Ξ (qname_app p (x :: nil)) = Some D ->
+     $*| d_ind (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of an unsaturated module is a member closure. *)
 | eval_sel_unsat :
   `( List.length args < List.length (gu_params U) ->
@@ -371,7 +378,7 @@ with eval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      ⟦ M ⟧ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
-     dm_local ρ (gu_body Δ Φ) args ·ₜ x Θ ⍮ Ξ ↘ r )
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜ x Θ ⍮ Ξ ↘ r )
 (** A member of a saturated alias is selected from its target. *)
 | eval_sel_alias :
   `( List.length args = List.length Δ ->
@@ -402,7 +409,7 @@ with eval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      ⟦ Φ' ⟧ᵇ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
-     dm_local ρ (gu_body Δ Φ) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
 (** A submodule of a saturated alias is selected from its target. *)
 | eval_selm_alias :
   `( List.length args = List.length Δ ->

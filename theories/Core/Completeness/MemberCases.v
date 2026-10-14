@@ -34,15 +34,15 @@ Section Fixed_GCtx.
     module. *)
 
 Definition gparam_at (p : qname) : Prop :=
-  forall T args args' A,
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+  forall T oT args args' A,
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
     per_gargs (rev T) nil nil args args' ->
     nth_error (rev T) (List.length args) = Some (ce_ass A) ->
     exists i R, PER.Definitions.rel_typ i A (env_args nil args) A (env_args nil args') R.
 
 Definition galias_at (p : qname) (y : String.string) : Prop :=
-  forall T U ch args args',
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+  forall T oT U ch args args',
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
     gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
     per_gargs (rev T) nil nil args args' ->
     per_dmod (dm_local nil U args) (dm_local nil U args').
@@ -59,9 +59,9 @@ Inductive nextparam : dmod -> domain -> Prop :=
     eval_modexp gc_deps gc_stack E (env_args ρ args) h ->
     nextparam h a ->
     nextparam (dm_local ρ (gu_mk Δ (md_alias E)) args) a
-| np_global : forall p T args A a,
+| np_global : forall p T oT args A a,
     gparam_at p ->
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
     nth_error (rev T) (List.length args) = Some (ce_ass A) ->
     ⟦ A ⟧ env_args nil args ↘ a ->
     nextparam (dm_global p args) a.
@@ -156,8 +156,8 @@ Inductive msat : dmod -> Prop :=
     List.length args = List.length Δ ->
     eval_modexp gc_deps gc_stack E (env_args ρ args) h -> msat h ->
     msat (dm_local ρ (gu_mk Δ (md_alias E)) args)
-| ms_global : forall p T args,
-    gc_module gc_deps gc_stack p = Some (mr_body T) -> List.length args = List.length T ->
+| ms_global : forall p T oT args,
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) -> List.length args = List.length T ->
     msat (dm_global p args).
 
 (** ** Typed Members
@@ -192,8 +192,8 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     List.length args = List.length Δ ->
     eval_modexp gc_deps gc_stack E (env_args ρ args) h -> mtyped h ch k a ->
     mtyped (dm_local ρ (gu_mk Δ (md_alias E)) args) ch k a
-| mty_gdef : forall p T args x b pv A0 B f aA j E a a0 i R,
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+| mty_gdef : forall p T oT args x b pv A0 B f aA j E a a0 i R,
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
     List.length args <= List.length T ->
     gc_resolve gc_deps gc_stack (qname_app p (x :: nil)) = Some (ge_def b pv (ctx_pi T A0) B) ->
     eval_sel gc_deps gc_stack (dm_global p nil) x f ->
@@ -201,9 +201,9 @@ Inductive mtyped : dmod -> list String.string -> mkind -> domain -> Prop :=
     ⟦ ctx_pi (firstn (List.length T - List.length args) T) A0 ⟧ env_args nil args ↘ a0 ->
     per_univ_elem i R a a0 ->
     mtyped (dm_global p args) (x :: nil) mk_term a
-| mty_gsub : forall p args y T ch k a,
+| mty_gsub : forall p args y T oT ch k a,
     gparam_at (qname_app p (y :: nil)) ->
-    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T oT) ->
     mtyped (dm_global (qname_app p (y :: nil)) args) ch k a ->
     mtyped (dm_global p args) (y :: ch) k a
 | mty_galias : forall p args y U ch ch' k a,
@@ -241,7 +241,7 @@ Lemma appm_rel : forall w w' a, per_dmod w w' -> nextparam w a ->
     exists r', $ᵐ| w' & c' | gc_deps ⍮ gc_stack ↘ r' /\ per_dmod r r'.
 Proof.
   intros * Hw Hnp; revert w' Hw;
-    induction Hnp as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha];
+    induction Hnp as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T oT args A a Hgp Hm Hn Ha];
     intros w' Hw * HR Hcc Hr.
   - inversion Hw; subst.
     match goal with Hlt : per_ltele _ _ _ _ _ _ _ _ |- _ => rename Hlt into Hl end.
@@ -276,10 +276,10 @@ Proof.
         exists r'; split; [ eapply eval_appm_alias; [ lia | exact H3 | exact Hr' ] | exact Hrr' ]
     end.
   - inversion Hw; subst. inversion Hr; subst.
-    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T') |- _ =>
-      rewrite Hm in Hm'; injection Hm' as <- end.
+    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T' _) |- _ =>
+      rewrite Hm in Hm'; injection Hm' as <- <- end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
-    destruct (Hgp _ _ _ _ Hm Hg Hn) as (i0 & R0 & [a1 a2 Ha1 Ha2 HR0]).
+    destruct (Hgp _ _ _ _ _ Hm Hg Hn) as (i0 & R0 & [a1 a2 Ha1 Ha2 HR0]).
     pose proof (functional_eval_exp _ _ _ _ Ha Ha1) as <-.
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ HR HR0) as EE.
     eexists; split; [ constructor |].
@@ -457,15 +457,15 @@ Qed.
 (** The submodules of global modules extend their telescopes, and global
     aliases are related at related arguments: the global context is valid. *)
 Definition gchild_ok : Prop :=
-  forall p T y T',
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
-    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T') ->
+  forall p T oT y T' oT',
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
+    gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_body T' oT') ->
     exists Δ, T' = Δ ++ T.
 
 
 Lemma appm_ex : forall w a, nextparam w a -> forall c, exists w1, $ᵐ| w & c | gc_deps ⍮ gc_stack ↘ w1.
 Proof.
-  induction 1 as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T args A a Hgp Hm Hn Ha]; intros c.
+  induction 1 as [ρ U args A a Hn Ha | ρ Δ E args h a Hl HE Hnp IH | p T oT args A a Hgp Hm Hn Ha]; intros c.
   - assert (Hlt : List.length args < List.length (gu_params U))
       by (assert (Hn' : nth_error (rev (gu_params U)) (List.length args) <> None) by congruence;
           apply nth_error_Some in Hn'; rewrite length_rev in Hn'; exact Hn').
@@ -499,8 +499,8 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T ch k a Hgp Hm Hty IH
+                 | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p args y T oT ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros w' i' E' Hw HE';
@@ -614,8 +614,8 @@ Proof.
         split; [ apply (selmc_alias _ _ _ _ _ _ _ Hl' Hne HE''); exact Hv' | exact Hvv ].
   - (* a global definition *)
     inversion Hw; subst.
-    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T') |- _ =>
-      rewrite Hm in Hm'; injection Hm' as <- end.
+    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T' _) |- _ =>
+      rewrite Hm in Hm'; injection Hm' as <- <- end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
     rewrite <- (rev_involutive T) in HaA.
     destruct (apps_rel_gargs _ _ _ _ _ _ _ _ _ _ _ _ Hg HaA HaA HE Hff)
@@ -629,9 +629,9 @@ Proof.
     apply E1, E2, Hvv.
   - (* a global submodule *)
     inversion Hw; subst.
-    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp _) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
-    destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
+    destruct (HGc _ _ _ _ _ _ Hmp Hm) as [Δ ->].
     assert (Hw2 : per_dmod (dm_global (qname_app p (y :: nil)) args) (dm_global (qname_app p (y :: nil)) args'))
       by (econstructor; [ exact Hm | rewrite rev_app_distr; apply per_gargs_app; exact Hg ]).
     pose proof (IH _ _ _ Hw2 HE') as Hr.
@@ -644,9 +644,9 @@ Proof.
                     | econstructor; [ apply eval_selm_global; exact Hna | exact Hv' ] | exact Hvv ].
   - (* a global alias *)
     inversion Hw; subst.
-    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp _) |- _ => rename Hm0 into Hmp end.
     match goal with Hg0 : per_gargs _ _ _ args _ |- _ => rename Hg0 into Hg end.
-    pose proof (Hga _ _ _ _ _ Hmp Hm Hg) as Hw2.
+    pose proof (Hga _ _ _ _ _ _ Hmp Hm Hg) as Hw2.
     pose proof (IH _ _ _ Hw2 HE') as Hr.
     destruct k; cbn in Hr |- *; destruct Hr as (v & v' & Hv & Hv' & Hvv); exists v, v'.
     + specialize (Hk eq_refl).
@@ -686,8 +686,8 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 chain k a Hl Hy Hb Hm IH
                  | ρ Δ E args h chain k a Hl HE Hm IH
-                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T chain k a Hgp Hm Hty IH
+                 | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p args y T oT chain k a Hgp Hm Hty IH
                  | p args y U ch0 ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 chain k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros pre ch Heq Hch w1 Hw1.
@@ -753,8 +753,8 @@ Qed.
 (** The parameters of a global alias start with those of the module it is
     filed in. *)
 Definition galias_params_ok : Prop :=
-  forall p T y U ch,
-    gc_module gc_deps gc_stack p = Some (mr_body T) ->
+  forall p T oT y U ch,
+    gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
     gc_module gc_deps gc_stack (qname_app p (y :: nil)) = Some (mr_alias U ch) ->
     exists Δ, gu_params U = Δ ++ T.
 
@@ -773,8 +773,8 @@ Proof.
                  | ρ Δ Φ args x Φ' b pv A M ρ1 a a0 i R Hl Hx Hb HA Ha
                  | ρ Δ Φ args y Φ' pm Uy ρ1 ch k a Hl Hy Hb Hm IH
                  | ρ Δ E args h ch k a Hl HE Hm IH
-                 | p T args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
-                 | p args y T ch k a Hgp Hm Hty IH
+                 | p T oT args x b pv A0 B f aA j E a a0 i R Hm Hl Hr Hf HaA HE Hff Ha0 Ha
+                 | p args y T oT ch k a Hgp Hm Hty IH
                  | p args y U ch ch' k a Hga Hm Hk Hty IH
                  | ρ U args ch0 ch k a a1 Hl Hnp1 Hch0 Hk Hty IH ];
     intros a1' ρB' B' Heq Hun i' Ein c w1 b' Hin Hc Hw1 Hb'.
@@ -804,7 +804,7 @@ Proof.
   - subst a.
     destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
     inversion Hn; subst.
-    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T') |- _ => rewrite Hm in Hm'; injection Hm' as <- end.
+    match goal with Hm' : gc_module _ _ p = Some (mr_body ?T' _) |- _ => rewrite Hm in Hm'; injection Hm' as <- <- end.
     match goal with Hn' : nth_error (rev T) _ = Some (ce_ass ?A1) |- _ => rename Hn' into HnT end.
     inversion Hw1; subst.
     assert (HlT : List.length args < List.length T)
@@ -825,8 +825,8 @@ Proof.
     unfold env_args; rewrite fold_left_app; exact Hb2.
   - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
     inversion Hn; subst.
-    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
-    destruct (HGc _ _ _ _ Hmp Hm) as [Δ ->].
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp _) |- _ => rename Hm0 into Hmp end.
+    destruct (HGc _ _ _ _ _ _ Hmp Hm) as [Δ ->].
     inversion Hw1; subst.
     eapply mty_gsub; [ exact Hgp | exact Hm |].
     eapply IH; [ reflexivity | | exact Hin | exact Hc | constructor | exact Hb' ].
@@ -834,8 +834,8 @@ Proof.
     apply nth_error_Some; match goal with Hn' : nth_error (rev _) _ = Some _ |- _ => rewrite Hn' end; discriminate.
   - destruct Hun as [(a2 & Hn) | (h0 & ch0 & Hh)]; [| discriminate ].
     inversion Hn; subst.
-    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp) |- _ => rename Hm0 into Hmp end.
-    destruct (HGap _ _ _ _ _ Hmp Hm) as [Δ HU].
+    match goal with Hm0 : gc_module _ _ p = Some (mr_body ?Tp _) |- _ => rename Hm0 into Hmp end.
+    destruct (HGap _ _ _ _ _ _ Hmp Hm) as [Δ HU].
     inversion Hw1; subst.
     match goal with Hn' : nth_error (rev _) _ = Some _ |- _ => rename Hn' into HnT end.
     assert (HlT : List.length args < List.length (rev _))

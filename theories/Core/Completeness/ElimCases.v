@@ -2947,7 +2947,7 @@ Section Elim.
     Qed.
 
     (** The elimination's four values, related at its type. *)
-    Lemma elim_stage : forall Bs Bs' nm Ns M M',
+    Lemma elim_stage : forall Hh Hh' Bs Bs' nm Ns M M',
         nm = S (ind_nn D) ->
         brs_names (ind_cons D) Bs -> List.map fst Bs = List.map fst Bs' ->
         (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
@@ -2959,7 +2959,7 @@ Section Elim.
         forall Γ' RΓ' σ σ' ρ ρ', EF Γ' ≈ Γ' ∈ per_ctx_env ↘ RΓ' -> Γ' ⊨s σ ≈ σ' : Γ -> RΓ' ρ ρ' ->
         ⟦ σ ⟧s ρ ↘ C1 -> ⟦ σ' ⟧s ρ' ↘ C2 ->
         exists R, rel_exp (A[sb_of_list Id (Ns ++ M :: nil)]) σ ρ C1 (A[sb_of_list Id (Ns ++ M :: nil)]) σ' ρ' C2 (per_univ_elem iA R) /\
-          rel_exp (a_elim p nm A Bs M) σ ρ C1 (a_elim p nm A' Bs' M') σ' ρ' C2 R.
+          rel_exp (a_elim Hh nm A Bs M) σ ρ C1 (a_elim Hh' nm A' Bs' M') σ' ρ' C2 R.
     Proof.
       intros * Hnm HBn HBf Hnb HBB HNl Hg HMM * HRΓ' Hσ Hρ Hev Hev'.
       subst nm.
@@ -3072,7 +3072,7 @@ End Elim.
 
     At uniform parameters [Us] and non-uniform ones [Ns], with the
     instance of the motive's context a semantic substitution. *)
-Lemma rel_exp_elim_at : forall Γ p D Us Ns M M' nm A A' (i : nat) Bs Bs',
+Lemma rel_exp_elim_at : forall Γ p D Hh Hh' Us Ns M M' nm A A' (i : nat) Bs Bs',
     sem_decl D -> decl_closed D -> ind_sort_univ (ind_sort D) -> decl_typed gc_deps gc_stack D ->
     ind_lookup gc_deps gc_stack p = Some D -> ⊨ Γ ->
     List.length Us = ind_nu D ->
@@ -3090,7 +3090,7 @@ Lemma rel_exp_elim_at : forall Γ p D Us Ns M M' nm A A' (i : nat) Bs Bs',
     (forall k c gs n B B', List.nth_error Bs k = Some (c, n, B) -> List.nth_error Bs' k = Some (c, n, B') ->
        ind_con D c = Some gs ->
        elim_bctx p D gs A Us ++ Γ ⊨ B ≈ B' : elim_bty p D c gs A Us) ->
-    Γ ⊨ a_elim p nm A Bs M ≈ a_elim p nm A' Bs' M' : A[sb_of_list Id (Ns ++ M :: nil)].
+    Γ ⊨ a_elim Hh nm A Bs M ≈ a_elim Hh' nm A' Bs' M' : A[sb_of_list Id (Ns ++ M :: nil)].
 Proof.
   intros * HD Hc Hsu Hdt Hl HΓ HUl HUs HNl Hg HMM Hnm HA HM HBn HBc HBf Hnb HBB.
   pose proof (decl_closed_nu D Hc) as Hle.
@@ -3115,11 +3115,11 @@ Proof.
   destruct (sd_sort D HD) as [j HS].
   destruct (rel_exp_of_typ_inversion_simple_at HRU HS _ _ HU00) as (a0 & _ & Ha0 & _ & _).
   exact (elim_stage D HD Hc Hsu Hdt p Hl Γ RΓ HRΓ HΓ RU HRU Us HUl HUs u0 a0 Hu0g Hu0l Ha0 HNt HM
-           A A' i HA ρσ ρ'σ' HC12 Hu0 HBc Bs Bs' nm Ns M M' Hnm HBn HBf Hnb HBB' HNl Hg HMM
+           A A' i HA ρσ ρ'σ' HC12 Hu0 HBc Hh Hh' Bs Bs' nm Ns M M' Hnm HBn HBf Hnb HBB' HNl Hg HMM
            Γ' RΓ' σ σ' ρ ρ' HRΓ' Hσ Hρ Hev Hev').
 Qed.
 
-Lemma rel_exp_elim_cong : forall Γ p D Ps M M' nm A A' (i : nat) Bs Bs',
+Lemma rel_exp_elim_cong : forall Γ p D Hh Hh' Ps M M' nm A A' (i : nat) Bs Bs',
     sem_decl D -> decl_closed D -> ind_sort_univ (ind_sort D) -> decl_typed gc_deps gc_stack D ->
     ind_lookup gc_deps gc_stack p = Some D -> ⊨ Γ ->
     List.length Ps = ind_np D ->
@@ -3135,7 +3135,7 @@ Lemma rel_exp_elim_cong : forall Γ p D Ps M M' nm A A' (i : nat) Bs Bs',
     (forall k c gs n B B', List.nth_error Bs k = Some (c, n, B) -> List.nth_error Bs' k = Some (c, n, B') ->
        ind_con D c = Some gs ->
        elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ ⊨ B ≈ B' : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) ->
-    Γ ⊨ a_elim p nm A Bs M ≈ a_elim p nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
+    Γ ⊨ a_elim Hh nm A Bs M ≈ a_elim Hh' nm A' Bs' M' : A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)].
 Proof.
   intros * HD Hc Hsu Hdt Hl HΓ HPl HPs HMM Hnm HA HM HBn HBc HBf Hnb HBB.
   pose proof (decl_closed_nu D Hc) as Hle.

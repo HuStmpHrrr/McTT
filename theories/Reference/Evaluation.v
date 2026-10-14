@@ -238,7 +238,7 @@ with eval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
   `( eval_appm_order Θ Ξ (dm_global pq args) n )
 | eapo_body :
   `( List.length args < List.length Δ ->
-     eval_appm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) n )
+     eval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) n )
 | eapo_alias_unsat :
   `( List.length args < List.length Δ ->
      eval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
@@ -264,6 +264,11 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      eval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ Θ ⍮ Ξ ⍮ nil ↘ a -> eval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      eval_sel_order Θ Ξ (dm_global pq args) x )
+| eslo_global_ind :
+  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+     ind_lookup Θ Ξ (qname_app pq (x :: nil)) = Some D ->
+     eval_apps_order Θ Ξ (d_ind (qname_app pq (x :: nil)) nil) args ->
+     eval_sel_order Θ Ξ (dm_global pq args) x )
 | eslo_unsat :
   `( List.length args < List.length (gu_params U) ->
      eval_sel_order Θ Ξ (dm_local p U args) x )
@@ -272,7 +277,7 @@ with eval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
      eval_benv_order Θ Ξ (env_args p args) Φ' ->
      (forall p', eval_benv Θ Ξ (env_args p args) Φ' p' -> eval_exp_order Θ Ξ M p') ->
-     eval_sel_order Θ Ξ (dm_local p (gu_body Δ Φ) args) x )
+     eval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
 | eslo_alias :
   `( List.length args = List.length Δ ->
      eval_modexp_order Θ Ξ E (env_args p args) ->
@@ -296,7 +301,7 @@ with eval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      eval_benv_order Θ Ξ (env_args p args) Φ' ->
-     eval_selm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) y )
+     eval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
 | esmo_alias :
   `( List.length args = List.length Δ ->
      eval_modexp_order Θ Ξ E (env_args p args) ->
@@ -459,11 +464,7 @@ Section EvalImpl.
     exists (env_var p x); apply eval_exp_var.
   Defined.
 
-  (** The declaration of an inductive type is not a term member. *)
-  Lemma eslo_ind_false : forall pq args x pv D,
-      eval_sel_order Θ Ξ (dm_global pq args) x ->
-      gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_ind pv D) -> False.
-  Proof. intros * H E; inversion H; subst; congruence. Qed.
+
 
   #[local]
   Ltac impl_obl_tac1 :=
@@ -498,6 +499,10 @@ Section EvalImpl.
           rewrite H1 in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _ _) |- _ =>
+          exfalso; exact (ind_lookup_not_alias _ _ _ _ _ _ H1 H2)
       | H1 : gc_module _ _ ?p = Some (mr_alias _ _), H2 : forall U r, gc_module _ _ ?p <> Some (mr_alias U r) |- _ =>
           exfalso; exact (H2 _ _ H1)
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
@@ -789,7 +794,7 @@ Section EvalImpl.
 
   with eval_appm_impl h n (H : eval_appm_order Θ Ξ h n) : { r | eval_appm Θ Ξ h n r } by struct H :=
   | dm_global pq args, n, H => exist _ (dm_global pq (args ++ n :: nil)) _
-  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_body Δ Φ) (args ++ n :: nil)) _
+  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_mk Δ (md_body Φ)) (args ++ n :: nil)) _
   | dm_local p (gu_mk Δ (md_alias E)) args, n, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (dm_local p (gu_mk Δ (md_alias E)) (args ++ n :: nil)) _
     | exist _ Eq C =>
@@ -817,8 +822,12 @@ Section EvalImpl.
         let (r, Hr) := eval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind _ _)) E => False_rect _ (eslo_ind_false _ _ _ _ _ H E)
-    | exist _ None E => False_rect _ _ }
+    | exist _ (Some (ge_ind _ _ _)) E => False_rect _ _
+    | exist _ None E with inspect (ind_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ (Some D) Ed =>
+          let (r, Hr) := eval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
+          exist _ r _
+      | exist _ None Ed => False_rect _ _ } }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
     | exist _ Eq C with D := {
@@ -1180,6 +1189,10 @@ Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
 Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Next Obligation. ev_obl_auto. Defined.
+Obligations.
 Next Obligation. ev_obl_auto. Defined.
 End EvalImpl.
 

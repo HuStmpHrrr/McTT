@@ -24,8 +24,10 @@ Import Domain_Notations Syntax_Notations Wk_Notations GlobalCtx_Notations.
 
 (** ** 1. Sound embeddings *)
 
-Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
+Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θm : gdeps) (Ξm : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop :=
   { sme_emb : Emb Θ1 Ξ1 Θ2 Ξ2
+  ; sme_rd : gc_sub Θ1 Ξ1 Θm Ξm
+  ; sme_rdwf : ⊢g Θm ⍮ Ξm
   ; sme_glob : forall H mp x b pv A B Γ,
       mod_qname H = Some mp ->
       gc_resolve Θ1 Ξ1 (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
@@ -36,41 +38,41 @@ Record sem_emb (Θ1 : gdeps) (Ξ1 : gstack) (Θ2 : gdeps) (Ξ2 : gstack) : Prop 
       gc_resolve Θ1 Ξ1 (qname_app mp (x :: nil)) = Some (ge_def true pv A (Some M)) ->
       @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
       @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A (a_mem H x) M
-  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θ2 Ξ2 p
+  ; sme_path : forall p r, gc_module Θ1 Ξ1 p = Some r -> @gpath_at (gc_mk Θ2 Ξ2) Θm Ξm p
   ; sme_ind : forall p D, ind_lookup Θ1 Ξ1 p = Some D -> @sem_core (gc_mk Θ2 Ξ2) D
   }.
 
 (** ** 2. The fundamental theorem along an embedding *)
 
 Definition kctx Θ1 Ξ1 Γ : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 -> @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ.
 
 Definition kexp_eq Θ1 Ξ1 Γ A M M' : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 ->
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M'.
 
 Definition ksubtyp Θ1 Ξ1 Γ A A' : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 ->
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @subtyp_under_ctx (gc_mk Θ2 Ξ2) Γ A A'.
 
 Definition kext Θ1 Ξ1 Γ Ψ Ψ' : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ Ψ Ψ' /\
-    @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (Ψ' ++ Γ) /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
+    @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (Ψ ++ Γ) /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (Ψ' ++ Γ) /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ.
 
 Definition kunit Θ1 Ξ1 Γ U U' : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 ->
     @rel_unit_under_ctx (gc_mk Θ2 Ξ2) Γ U U' /\
-    @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ U' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
+    @unit_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ U' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ.
 
 Definition kmod Θ1 Ξ1 Γ H H' : Prop :=
-  forall Θ2 Ξ2, sem_emb Θ1 Ξ1 Θ2 Ξ2 ->
+  forall Θm Ξm Θ2 Ξ2, sem_emb Θ1 Ξ1 Θm Ξm Θ2 Ξ2 ->
     @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) Γ H H' /\
-    @sem_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H' /\
-    @sem_unf (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ H' /\
-    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ.
+    @sem_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ H /\ @sem_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ H' /\
+    @sem_unf (gc_mk Θ2 Ξ2) Θm Ξm Γ H /\ @sem_unf (gc_mk Θ2 Ξ2) Θm Ξm Γ H' /\
+    @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ.
 
 (** The member types and δ-reducts of the source, at the target. *)
 Ltac to_target Hsub :=
@@ -100,167 +102,197 @@ Ltac to_target Hsub :=
   end.
 
 Ltac kcase :=
-  repeat match goal with IH : forall _ _, sem_emb _ _ _ _ -> _, He : sem_emb _ _ _ _ |- _ =>
-    specialize (IH _ _ He) end;
+  repeat match goal with IH : forall _ _ _ _, sem_emb _ _ _ _ _ _ -> _, He : sem_emb _ _ _ _ _ _ |- _ =>
+    specialize (IH _ _ _ _ He) end;
   destruct_conjs.
 
 (** ** The cases of the inductive types, at the target *)
 
-Lemma k_decl : forall Θ Ξ Θ2 Ξ2 Γ p D, sem_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
+Lemma k_decl : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
     ind_lookup Θ2 Ξ2 p = Some D /\ @sem_decl (gc_mk Θ2 Ξ2) D /\ decl_closed D /\ ind_sort_univ (ind_sort D) /\
     decl_typed Θ2 Ξ2 D.
 Proof.
   intros * He HΓ Hl.
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [Hdt Hc].
-  pose proof (decl_typed_emb _ _ _ _ _ (sme_emb _ _ _ _ He) Hdt) as Hdt2.
+  pose proof (decl_typed_emb _ _ _ _ _ (sme_emb _ _ _ _ _ _ He) Hdt) as Hdt2.
   pose proof Hdt as (_ & _ & _ & _ & Hsu & _).
-  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (sme_emb _ _ _ _ He)) Hl) as Hl2.
+  pose proof (ind_lookup_gc_sub _ _ _ _ _ _ (em_res _ _ _ _ (sme_emb _ _ _ _ _ _ He)) Hl) as Hl2.
   split; [ exact Hl2 | split; [| split; [ exact Hc | split; [ exact Hsu | exact Hdt2 ] ] ] ].
-  exact (@sem_decl_of_core (gc_mk Θ2 Ξ2) D (sme_ind _ _ _ _ He _ _ Hl) Hc Hsu Hdt2).
+  exact (@sem_decl_of_core (gc_mk Θ2 Ξ2) D (sme_ind _ _ _ _ _ _ He _ _ Hl) Hc Hsu Hdt2).
 Qed.
 
-Lemma k_ind : forall Θ Ξ Θ2 Ξ2 Γ p D, sem_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
+Lemma k_ind : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (ind_ty D) (a_ind p) (a_ind p).
 Proof.
   intros * He HΓ Hl HΓ2.
-  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & _).
+  destruct (k_decl _ _ _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & _).
   exact (@closed_weaken_valid (gc_mk Θ2 Ξ2) Γ _ _ _ HΓ2 (@valid_exp_ind0 (gc_mk Θ2 Ξ2) D HD Hc Hsu p Hl2)).
 Qed.
 
-Lemma k_con : forall Θ Ξ Θ2 Ξ2 Γ p D c gs, sem_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
+Lemma k_con : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D c gs, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D ->
     ind_con D c = Some gs ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (con_ty p D gs) (a_con p c) (a_con p c).
 Proof.
   intros * He HΓ Hl Hcon HΓ2.
-  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & _).
+  destruct (k_decl _ _ _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & _).
   destruct (@sd_conty (gc_mk Θ2 Ξ2) D HD p c gs Hl2 Hcon) as [j HT].
   pose proof (@sd_cargs (gc_mk Θ2 Ξ2) D HD p c gs Hl2 Hcon) as HΨ.
   exact (@closed_weaken_valid (gc_mk Θ2 Ξ2) Γ _ _ _ HΓ2 (@valid_exp_con0 (gc_mk Θ2 Ξ2) D HD Hc Hsu p Hl2 c gs Hcon HΨ j HT)).
 Qed.
 
-Lemma k_elim_cong : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M M' nm A A' (i : nat) Bs Bs',
-    sem_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps (a_ind p) Ps -> ind_lookup Θ Ξ p = Some D ->
+Lemma k_elim_cong : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D Hh Hh' Ps M M' nm A A' (i : nat) Bs Bs',
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M ≈ M' : apps (a_ind p) Ps -> ind_lookup Θ Ξ p = Some D ->
     List.length Ps = ind_np D ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
-         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
+       forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
+         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (apps (a_ind p) Ps) M M' ->
     nm = S (ind_nn D) ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) (Typeω@i) A A' ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_mctx p D (List.firstn (ind_nu D) Ps)) (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
     brs_names (ind_cons D) Bs ->
-    (forall c gs, ind_con D c = Some gs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+    (forall c gs, ind_con D c = Some gs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
        @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ) ->
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ) ->
     List.map fst Bs = List.map fst Bs' ->
     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
     (forall k c gs n B B', List.nth_error Bs k = Some (c, n, B) -> List.nth_error Bs' k = Some (c, n, B') ->
-       ind_con D c = Some gs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+       ind_con D c = Some gs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
          @sem_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-         @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+         @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
          @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ)
            (elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) B B') ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
-    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim p nm A Bs M) (a_elim p nm A' Bs' M').
+    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim Hh nm A Bs M) (a_elim Hh' nm A' Bs' M').
 Proof.
   intros * He HMs Hl HPl HPs HMM Hnm HA HMx HBn HBc HBf Hnb HB HΓ2.
-  destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_eq_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
+  destruct (k_decl _ _ _ _ _ _ _ _ _ He (presup_exp_eq_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
   eapply (@rel_exp_elim_cong (gc_mk Θ2 Ξ2)); try eassumption.
-  - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ He))).
+  - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ _ _ He))).
   - exact (proj1 HMx).
-  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ He))).
-  - intros * Hk Hk' Hcon; exact (proj2 (proj2 (HB _ _ _ _ _ _ Hk Hk' Hcon _ _ He))).
+  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ _ _ He))).
+  - intros * Hk Hk' Hcon; exact (proj2 (proj2 (HB _ _ _ _ _ _ Hk Hk' Hcon _ _ _ _ He))).
 Qed.
 
-Lemma k_elim : forall Θ Ξ Θ2 Ξ2 Γ p D Ps M nm A (i : nat) Bs,
-    sem_emb Θ Ξ Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some D ->
+Lemma k_elim : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D Hh Ps M nm A (i : nat) Bs,
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> ind_lookup Θ Ξ p = Some D ->
     List.length Ps = ind_np D ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
-         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
+       forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
+         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
     Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (apps (a_ind p) Ps) M M ->
     nm = S (ind_nn D) ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) (Typeω@i) A A ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_mctx p D (List.firstn (ind_nu D) Ps)) (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
     brs_names (ind_cons D) Bs ->
-    (forall c gs, ind_con D c = Some gs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+    (forall c gs, ind_con D c = Some gs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
        @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ) ->
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ) ->
     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
          @sem_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-         @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+         @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
          @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ)
            (elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) B B) ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
-    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim p nm A Bs M) (a_elim p nm A Bs M).
+    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)]) (a_elim Hh nm A Bs M) (a_elim Hh nm A Bs M).
 Proof.
   intros * He Hl HPl HPs HMs HMM Hnm HA HMx HBn HBc Hnb HB HΓ2.
-  destruct (k_decl _ _ _ _ _ _ _ He (presup_exp_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
+  destruct (k_decl _ _ _ _ _ _ _ _ _ He (presup_exp_ctx HMs) Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
   eapply (@rel_exp_elim_cong (gc_mk Θ2 Ξ2)); try eassumption; [ | | | reflexivity |].
-  - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ He))).
+  - intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ _ _ He))).
   - exact (proj1 HMx).
-  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ He))).
+  - intros c gs Hcon; exact (proj1 (proj1 (HBc _ _ Hcon _ _ _ _ He))).
   - intros * Hk Hk' Hcon; rewrite Hk in Hk'; injection Hk' as <-.
-    exact (proj2 (proj2 (HB _ _ _ _ Hcon (List.nth_error_In _ _ Hk) _ _ He))).
+    exact (proj2 (proj2 (HB _ _ _ _ Hcon (List.nth_error_In _ _ Hk) _ _ _ _ He))).
 Qed.
 
-Lemma k_iota : forall Θ Ξ Θ2 Ξ2 Γ p D c gs Ps As nm A (i : nat) Bs n B,
-    sem_emb Θ Ξ Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> ind_con D c = Some gs ->
+Lemma k_iota : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ p D Hh c gs Ps As nm A (i : nat) Bs n B,
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> ⊢ Θ ⍮ Ξ ⍮ Γ -> ind_lookup Θ Ξ p = Some D -> ind_con D c = Some gs ->
     List.length Ps = ind_np D ->
     (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
-       forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
-         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
+       forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
+         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P) ->
     List.length As = List.length gs ->
     (forall k N T, List.nth_error As k = Some N -> List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id Ps) As) k = Some T ->
-       forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
-         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T N N) ->
+       forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
+         @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ /\ @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T N N) ->
     nm = S (ind_nn D) ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_mctx p D (List.firstn (ind_nu D) Ps) ++ Γ) (Typeω@i) A A ->
     @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_mctx p D (List.firstn (ind_nu D) Ps)) (elim_mctx p D (List.firstn (ind_nu D) Ps)) ->
     brs_names (ind_cons D) Bs ->
-    (forall c gs, ind_con D c = Some gs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+    (forall c gs, ind_con D c = Some gs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
        @rel_ext_under_ctx (gc_mk Θ2 Ξ2) Γ (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps)) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 Γ) ->
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+       @sem_ctx (gc_mk Θ2 Ξ2) Γ /\ @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm Γ) ->
     (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> n = (ind_nn D + List.length gs + cargs_nrec gs)%nat) ->
-    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θ2 Ξ2, sem_emb Θ Ξ Θ2 Ξ2 ->
+    (forall c gs n B, ind_con D c = Some gs -> In (c, n, B) Bs -> forall Θm Ξm Θ2 Ξ2, sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 ->
          @sem_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
-         @ctx_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
+         @ctx_mt (gc_mk Θ2 Ξ2) Θm Ξm (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ) /\
          @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (elim_bctx p D gs A (List.firstn (ind_nu D) Ps) ++ Γ)
            (elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) B B) ->
     brs_lookup Bs c = Some (n, B) ->
     @sem_ctx (gc_mk Θ2 Ξ2) Γ ->
     @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ (A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ apps (a_con p c) (Ps ++ As) :: nil)])
-      (a_elim p nm A Bs (apps (a_con p c) (Ps ++ As)))
+      (a_elim Hh nm A Bs (apps (a_con p c) (Ps ++ As)))
       (B[sb_of_list Id (List.skipn (ind_nu D) Ps ++ As ++ elim_ihs p nm A Bs (sb_of_list Id Ps) gs As)]).
 Proof.
   intros * He HΓ Hl Hcon HPl HPs HAl HAs Hnm HA HMx HBn HBc Hnb HB Hlk HΓ2.
-  destruct (k_decl _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
+  destruct (k_decl _ _ _ _ _ _ _ _ _ He HΓ Hl) as (Hl2 & HD & Hc & Hsu & Hdt2).
   pose proof (decl_closed_nu D Hc) as Hle.
   set (Us := List.firstn (ind_nu D) Ps) in *.
   set (Ns := List.skipn (ind_nu D) Ps) in *.
   assert (HPeq : Ps = Us ++ Ns) by (symmetry; apply List.firstn_skipn).
   assert (HPs' : forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
                    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T P P)
-    by (intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ He)))).
+    by (intros * HP HT; exact (proj2 (proj2 (HPs _ _ _ HP HT _ _ _ _ He)))).
   destruct (@params_valid_split (gc_mk Θ2 Ξ2) D Γ Ps Hc HPl HPs') as [HUs HNs]; fold Us Ns in HUs, HNs.
   assert (HUl : List.length Us = ind_nu D) by (unfold Us; rewrite List.length_firstn; lia).
   assert (HNl : List.length Ns = ind_nn D) by (unfold Ns; rewrite List.length_skipn; unfold ind_nn; lia).
   assert (HAs' : forall k N T, List.nth_error As k = Some N ->
                    List.nth_error (tele_insts (cargs_ctx p D gs) (sb_of_list Id (Us ++ Ns)) As) k = Some T ->
                    @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ T N N)
-    by (intros * HN HT; rewrite <- HPeq in HT; exact (proj2 (proj2 (HAs _ _ _ HN HT _ _ He)))).
+    by (intros * HN HT; rewrite <- HPeq in HT; exact (proj2 (proj2 (HAs _ _ _ HN HT _ _ _ _ He)))).
   pose proof (@rel_exp_elim_iota_at (gc_mk Θ2 Ξ2) Γ p D Us Ns As c gs nm A i Bs HD Hc Hsu Hdt2 Hl2 HΓ2 Hcon HUl HUs HNl HAl Hnm HA
-                (proj1 HMx) HBn (fun c gs Hcon => proj1 (proj1 (HBc c gs Hcon _ _ He))) Hnb
-                (fun c gs n B Hcon Hin => proj2 (proj2 (HB c gs n B Hcon Hin _ _ He))) HNs HAs' n B Hlk) as H.
-  rewrite HPeq, <- List.app_assoc; exact H.
+                (proj1 HMx) HBn (fun c gs Hcon => proj1 (proj1 (HBc c gs Hcon _ _ _ _ He))) Hnb
+                (fun c gs n B Hcon Hin => proj2 (proj2 (HB c gs n B Hcon Hin _ _ _ _ He))) HNs HAs' Hh n B Hlk) as Hi.
+  rewrite HPeq, <- List.app_assoc; exact Hi.
+Qed.
+
+(** The head of an eliminator is not evaluated. *)
+Lemma eval_elim_head_iff : forall {GC : GCtx} H H' nm A Bs M ρ r,
+    ⟦ a_elim H nm A Bs M ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r <-> ⟦ a_elim H' nm A Bs M ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r.
+Proof. intros; split; intros He; apply eval_elim_inv in He as (m & Hm & Hel); econstructor; eassumption. Qed.
+
+Lemma rel_exp_elim_head : forall {GC : GCtx} Γ C H H' nm A Bs M N,
+    @rel_exp_under_ctx GC Γ C (a_elim H' nm A Bs M) N -> @rel_exp_under_ctx GC Γ C (a_elim H nm A Bs M) N.
+Proof.
+  intros * HN; eapply rel_exp_under_ctx_eval_iff_l; [ | | exact HN ]; intros; cbn [exp_sub]; apply eval_elim_head_iff.
+Qed.
+
+(** The module of an inductive type at a path, as a term, evaluates to its
+    type former. *)
+Lemma eval_mem_ind_iff : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> forall mp x D, ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D ->
+    forall ρ r, ⟦ a_mem (qname_mod mp) x ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r <-> ⟦ a_ind (qname_app mp (x :: nil)) ⟧ Θ ⍮ Ξ ⍮ ρ ↘ r.
+Proof.
+  intros * Hg * Hl ρ r.
+  destruct (ind_lookup_not_def _ _ _ _ Hl) as [Hr _].
+  assert (Hp : eval_modexp Θ Ξ (qname_mod mp) ρ (dm_global mp nil))
+    by (apply eval_path_mod, (gc_chain_no_alias _ _ Hg); right; right; right; eauto).
+  rewrite (eval_mem_noargs Θ Ξ) by exact (mod_qname_noargs _ _ (qname_mod_qname mp)).
+  split.
+  - intros (h & Hh & Hs).
+    pose proof (functional_eval_modexp _ _ _ _ Hh Hp) as ->.
+    inversion Hs; subst; try congruence.
+    match goal with Ha : eval_apps _ _ _ nil _ |- _ => inversion Ha; subst end; constructor.
+  - intros He; inversion He; subst; exists (dm_global mp nil); split; [ exact Hp |].
+    eapply eval_sel_global_ind; [ exact Hr | exact Hl | constructor ].
 Qed.
 
 Theorem kripke_fundamental :
@@ -273,9 +305,10 @@ Theorem kripke_fundamental :
   (forall Θ Ξ Γ H H', Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H' -> kmod Θ Ξ Γ H H').
 Proof.
   apply syntactic_wf_mut_ind; unfold kctx, kexp_eq, ksubtyp, kext, kunit, kmod; intros;
-    pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hsub;
-    pose proof (em_wf _ _ _ _ (sme_emb _ _ _ _ ltac:(eassumption))) as Hwf2;
-    pose proof (gmod_ok_self _ _ Hwf2) as Hgm;
+    pose proof (sme_rd _ _ _ _ _ _ ltac:(eassumption)) as Hsub;
+    pose proof (em_res _ _ _ _ (sme_emb _ _ _ _ _ _ ltac:(eassumption))) as Hsub2;
+    pose proof (em_wf _ _ _ _ (sme_emb _ _ _ _ _ _ ltac:(eassumption))) as Hwf2;
+    pose proof (gmod_ok_of_wf _ _ _ _ Hwf2 (wf_gctx_closed _ _ ⋅ (wf_ctx_empty _ _ (sme_rdwf _ _ _ _ _ _ ltac:(eassumption))))) as Hgm;
     kcase;
     to_target Hsub.
   (** Contexts. *)
@@ -362,13 +395,13 @@ Proof.
   all: try solve [ split; [ eapply rel_unit_trans; eassumption | repeat split; assumption ] ].
   (** Module expressions. *)
   all: try solve [
-    match goal with He : sem_emb ?S1 ?S2 ?T1 ?T2, Hpm : mod_qname ?H = Some ?p,
-                    Hm : member_type ?S1 ?S2 _ ?H nil (mr_mod _),
-                    Hm2 : member_type ?T1 ?T2 _ ?H nil (mr_mod _), HΓ : sem_ctx _ |- _ =>
+    match goal with He : sem_emb ?S1 ?S2 ?M1 ?M2 ?T1 ?T2, Hpm : mod_qname ?H = Some ?p,
+                    Hm : member_type ?S1 ?S2 _ ?H nil ?R, HT : mres_tl ?R = Some _,
+                    Hm2 : member_type ?M1 ?M2 _ ?H nil ?R, HΓ : sem_ctx _ |- _ =>
       rewrite (mod_qname_inv _ _ Hpm) in Hm, Hm2 |- *;
-      destruct (member_type_path_module _ _ _ _ _ Hm) as [r Hr];
-      pose proof (sme_path _ _ _ _ He _ _ Hr) as Hp;
-      split; [ exact (rel_me_path _ _ _ Hp HΓ Hm2) |];
+      destruct (member_type_path_module _ _ _ _ _ _ Hm HT) as [r Hr];
+      pose proof (sme_path _ _ _ _ _ _ He _ _ Hr) as Hp;
+      split; [ exact (rel_me_path _ _ _ _ Hp HΓ Hm2 HT) |];
       split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |]; split; [ exact (sem_mt_path Hgm _ _ Hp HΓ) |];
       split; [ exact (sem_unf_path _ _ Hp) |]; split; [ exact (sem_unf_path _ _ Hp) | split; assumption ] end ].
   all: try solve [
@@ -387,31 +420,48 @@ Proof.
       split; [ exact (sem_unf_lit _ _ Ht) |]; split; [ exact (sem_unf_lit _ _ Ht') | split; assumption ] end ].
   all: try solve [
     match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ _ _ ?H, HS' : sem_mt _ _ _ ?H',
-                    HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) (mr_mod _)
+                    HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H', Hm : member_type _ _ _ ?H (_ :: nil) ?R,
+                    HT : mres_tl ?R = Some _
                     |- rel_modexp_under_ctx _ (me_mem _ _) _ /\ _ =>
-      split; [ exact (rel_me_mem Hgm _ _ _ _ _ HH HS Hm) |];
+      split; [ exact (rel_me_mem Hgm _ _ _ _ _ _ HH HS Hm HT) |];
       split; [ exact (sem_mt_mem _ _ _ HS) |]; split; [ exact (sem_mt_mem _ _ _ HS') |];
       split; [ exact (sem_unf_mem _ _ _ HU) |]; split; [ exact (sem_unf_mem _ _ _ HU') | split; assumption ] end ].
   all: try solve [
     match goal with HH : rel_modexp_under_ctx _ ?H ?H', HS : sem_mt _ _ _ ?H, HS' : sem_mt _ _ _ ?H',
                     HU : sem_unf _ _ _ ?H, HU' : sem_unf _ _ _ ?H',
-                    Hm : member_type _ _ _ ?H nil (mr_mod ?T), Hv : tele_view ?T = Some (?B, _),
-                    Hm' : member_type _ _ _ ?H' nil (mr_mod ?T'), Hv' : tele_view ?T' = Some (?B', _),
+                    Hm : member_type _ _ _ ?H nil ?R, HT : mres_tl ?R = Some ?T, Hv : tele_view ?T = Some (?B, _),
+                    Hm' : member_type _ _ _ ?H' nil ?R', HT' : mres_tl ?R' = Some ?T', Hv' : tele_view ?T' = Some (?B', _),
                     HN : rel_exp_under_ctx _ ?B ?N ?N', HN' : rel_exp_under_ctx _ ?B' ?N' ?N'
                     |- rel_modexp_under_ctx _ (me_app _ _) _ /\ _ =>
       pose proof Hm as Hm2;
       pose proof Hm' as Hm2';
-      destruct (arity_pi _ _ _ _ _ HS Hm2 Hv) as (l & HB & _ & HA);
-      destruct (arity_pi _ _ _ _ _ HS' Hm2' Hv') as (l' & HB' & _ & HA');
+      destruct (arity_pi _ _ _ _ _ _ HS Hm2 HT Hv) as (l & HB & _ & HA);
+      destruct (arity_pi _ _ _ _ _ _ HS' Hm2' HT' Hv') as (l' & HB' & _ & HA');
       pose proof (rel_modexp_refl_left HH) as HHl; pose proof (rel_modexp_refl_right HH) as HHr;
       pose proof (rel_exp_under_ctx_refl_left HN) as HNl;
-      split; [ exact (rel_me_app Hgm _ _ _ _ _ _ _ _ _ HH HS Hm2 HA HN) |];
-      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ HS HHl Hm2 HA HB HNl) |];
-      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ HS' HHr Hm2' HA' HB' HN') |];
-      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ HS HU HHl Hm2 HA HB HNl) |];
-      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ HS' HU' HHr Hm2' HA' HB' HN') | split; assumption ] end ].
+      split; [ exact (rel_me_app Hgm _ _ _ _ _ _ _ _ _ _ HH HS Hm2 HT HA HN) |];
+      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ _ HS HHl Hm2 HT HA HB HNl) |];
+      split; [ exact (sem_mt_app Hgm _ _ _ _ _ _ _ _ HS' HHr Hm2' HT' HA' HB' HN') |];
+      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ _ HS HU HHl Hm2 HT HA HB HNl) |];
+      split; [ exact (sem_unf_app Hgm _ _ _ _ _ _ _ _ HS' HU' HHr Hm2' HT' HA' HB' HN') | split; assumption ] end ].
   all: try solve [ split; [ apply rel_modexp_sym; assumption | repeat (split; [ assumption |]); assumption ] ].
   all: try solve [ split; [ eapply rel_modexp_trans; eassumption | repeat (split; [ assumption |]); assumption ] ].
+  (** An eliminator at a resolved head evaluates as at the canonical one. *)
+  all: try solve [
+    match goal with HM : rel_exp_under_ctx _ _ (a_elim (me_apps (qname_mod _) _) _ _ _ _) _ |- rel_exp_under_ctx _ _ (a_elim ?H _ _ _ _) _ =>
+      pose proof (rel_exp_elim_head _ _ H _ _ _ _ _ _ HM) as Hx;
+      first [ exact Hx | eapply rel_exp_under_ctx_trans; [ exact Hx | apply rel_exp_under_ctx_sym; exact Hx ] ] end ].
+  (** The module of an inductive type at a path, as a term: its type former. *)
+  all: try solve [
+    match goal with He : sem_emb ?S1 ?S2 _ _ ?T1 ?T2, Hpm : mod_qname ?H = Some ?mp,
+                    Hl : ind_lookup ?S1 ?S2 (qname_app ?mp (?x :: nil)) = Some ?D,
+                    HΓ0 : wf_ctx ?S1 ?S2 ?Γ, HΓ : sem_ctx ?Γ |- _ =>
+      pose proof (k_ind _ _ _ _ _ _ _ _ _ He HΓ0 Hl HΓ) as Hk;
+      assert (Hx : @rel_exp_under_ctx (gc_mk T1 T2) Γ (ind_ty D) (a_mem H x) (a_ind (qname_app mp (x :: nil))))
+        by (rewrite (mod_qname_inv _ _ Hpm); eapply rel_exp_under_ctx_eval_iff_l; [ | | exact Hk ];
+            [ intros σ ρ r; cbn [exp_sub]; rewrite (mod_qname_sub _ _ _ (qname_mod_qname mp)) | intros ρ r ];
+            exact (eval_mem_ind_iff _ _ Hwf2 _ _ _ (ind_lookup_gc_sub _ _ _ _ _ _ Hsub2 Hl) ρ r));
+      first [ exact Hx | eapply rel_exp_under_ctx_trans; [ exact Hx | apply rel_exp_under_ctx_sym; exact Hx ] ] end ].
   (** The inductive types. *)
   all: try solve [ eapply k_ind; eassumption | eapply k_con; eassumption
                  | eapply k_elim; eassumption | eapply k_elim_cong; eassumption | eapply k_iota; eassumption ].
@@ -523,7 +573,7 @@ Definition sem_entry (Θ : gdeps) (Ξ : gstack) (E : gentry) : Prop :=
   | ge_def _ _ A B =>
       (exists i, @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ (Typeω@i) A A) /\
       (forall M, B = Some M -> @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ A M M)
-  | ge_mod _ _ | ge_ind _ _ => True
+  | ge_mod _ _ | ge_ind _ _ _ => True
   end.
 
 Section Raw.
@@ -544,7 +594,7 @@ Section Raw.
     assert (Hc : forall σ, (a_mem (qname_mod mp) x)[σ] = a_mem (qname_mod mp) x)
       by (intros; cbn; rewrite (mod_qname_sub _ _ _ (qname_mod_qname mp)); reflexivity).
     assert (Hp : forall ρ, eval_modexp Θ Ξ (qname_mod mp) ρ (dm_global mp nil))
-      by (intros; apply eval_path_mod, (gc_chain_no_alias _ _ Hg); right; right; eauto).
+      by (intros; apply eval_path_mod, (gc_chain_no_alias _ _ Hg); right; right; left; eauto).
     assert (Hdelta : forall M, b = true -> B = Some M ->
                @rel_exp_under_ctx (gc_mk Θ Ξ) ⋅ A (a_mem (qname_mod mp) x) M).
     { intros M -> ->; cbn in HsB.
@@ -569,9 +619,33 @@ End Raw.
 
 (** ** 5. Valid global contexts *)
 
+(** Member types read at a smaller global context: a judgment about all
+    member types at the larger one holds of those at the smaller. *)
+Section MtDown.
+  Context {GC : GCtx}.
+  Variables (Θa : gdeps) (Ξa : gstack) (Θb : gdeps) (Ξb : gstack).
+  Hypothesis Hs : gc_sub Θa Ξa Θb Ξb.
+
+  Lemma sem_mt_down : forall Γ H, sem_mt Θb Ξb Γ H -> sem_mt Θa Ξa Γ H.
+  Proof.
+    intros * [S1 S2]; split.
+    - intros * Hm Hk; exact (S1 _ _ (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _ Hm) Hk).
+    - intros * Hm0 Hk0 Hm Hk.
+      exact (S2 _ _ _ _ (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _ Hm0) Hk0
+               (proj1 (member_type_gc_sub _ _ _ _ Hs) _ _ _ _ Hm) Hk).
+  Qed.
+
+  Fixpoint ctx_mt_down (Γ : ctx) (H : ctx_mt Θb Ξb Γ) {struct H} : ctx_mt Θa Ξa Γ
+  with unit_mt_down (Γ : ctx) (U : gunit) (H : unit_mt Θb Ξb Γ U) {struct H} : unit_mt Θa Ξa Γ U.
+  Proof.
+    - destruct H; constructor; auto.
+    - destruct H; constructor; [ apply ctx_mt_down; assumption | apply sem_mt_down; assumption ].
+  Qed.
+End MtDown.
+
 (** What an entry other than a body module is worth at [Θ2 ⍮ Ξ2]: a
     definition, checked over [T], is valid at [⋅] and its type over [T]; an
-    alias is a valid closed unit. *)
+    alias is a valid closed unit, its members read at [Θ2 ⍮ Ξ2]. *)
 Definition sem_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B =>
@@ -581,32 +655,37 @@ Definition sem_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
   | ge_mod _ U =>
       @sem_unit (gc_mk Θ2 Ξ2) ⋅ U /\ @unit_mt (gc_mk Θ2 Ξ2) Θ2 Ξ2 ⋅ U /\
       @rel_modexp_under_ctx (gc_mk Θ2 Ξ2) ⋅ (me_lit U) (me_lit U)
-  | ge_ind _ D => @sem_core (gc_mk Θ2 Ξ2) D
+  | ge_ind _ _ _ => True
   end.
 
 (** The telescope of a module. *)
 Definition sem_F (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop :=
   @sem_ctx (gc_mk Θ2 Ξ2) T /\ tele_ass T.
 
-Lemma sgood_tele : forall Θ Ξ Θ2 Ξ2, GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> tele_ass (gs_tele Ξ).
-Proof.
-  intros * HG He; destruct (HG _ _ He) as [_ HΞ].
-  destruct Ξ as [| [mp U] Ξ]; [ constructor | exact (proj2 (proj1 HΞ)) ].
-Qed.
+(** A declaration. *)
+Definition sem_VD (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := @sem_core (gc_mk Θ2 Ξ2) D.
 
-(** A sound embedding, from the validity of what the source files and has
-    open. *)
-Theorem sem_emb_of : forall Θ Ξ Θ2 Ξ2,
-    ⊢g Θ ⍮ Ξ -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> sem_emb Θ Ξ Θ2 Ξ2.
+Lemma svalid_tele : forall Θ2 Ξ2 Ξ, gs_valid sem_V sem_F sem_VD Θ2 Ξ2 Ξ -> tele_ass (gs_tele Ξ).
+Proof. intros * HΞ; destruct Ξ as [| [mp U] Ξ]; [ constructor | exact (proj2 (proj1 HΞ)) ]. Qed.
+
+(** A sound embedding, its members read at [Θm ⍮ Ξm], from the validity at
+    the target of what the source files and has open.  The source's bodies
+    are the ones read at [Θm ⍮ Ξm], which may only grow on to the target. *)
+Theorem sem_emb_of : forall Θ Ξ Θm Ξm Θ2 Ξ2,
+    ⊢g Θ ⍮ Ξ -> ⊢g Θm ⍮ Ξm -> Emb Θ Ξ Θ2 Ξ2 ->
+    gc_sub Θ Ξ Θm Ξm -> gc_sub Θm Ξm Θ2 Ξ2 ->
+    (forall p r, gc_body Θ Ξ p = Some r -> gc_body Θm Ξm p = Some r) ->
+    gds_valid sem_V sem_F sem_VD Θ2 Ξ2 Θ -> gs_valid sem_V sem_F sem_VD Θ2 Ξ2 Ξ ->
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2.
 Proof.
-  intros * Hg HG He; pose proof He as [Hg2 Hs].
+  intros * Hg Hgm He Hsm Hmt Hbx HΘ HΞ; pose proof He as [Hg2 Hs].
   assert (Hglob : forall mp x b pv A B, gc_resolve Θ Ξ (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A (a_mem (qname_mod mp) x) (a_mem (qname_mod mp) x) /\
              (forall M, b = true -> B = Some M -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) ⋅ A (a_mem (qname_mod mp) x) M)).
   { intros * Hr.
-    destruct (good_resolve _ _ _ _ _ _ _ _ HG He Hr) as (T & HA & HM & _).
+    destruct (good_resolve _ _ _ _ _ _ _ _ _ HΘ HΞ Hr) as (T & HA & HM & _).
     exact (glob_sem_of_raw _ _ Hg2 _ _ _ _ _ _ (gc_sub_resolve _ _ _ _ _ _ Hs Hr) (conj HA HM)). }
-  constructor; [ exact He | | | |].
+  constructor; [ exact He | exact Hsm | exact Hgm | | | |].
   - intros * Hpm Hr HΓ.
     rewrite (mod_qname_inv _ _ Hpm).
     eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
@@ -616,67 +695,89 @@ Proof.
     eapply closed_weaken_sem; [ eassumption | | apply exp_wk_id | apply exp_wk_id | apply exp_wk_id ].
     exact (proj2 (Hglob _ _ _ _ _ _ Hr) _ eq_refl eq_refl).
   - intros p r Hr.
-    apply (@gpath_ok (gc_mk Θ2 Ξ2) Θ Ξ Θ2 Ξ2 Hg Hs Hg2 (gc_sub_refl _ _) (gmod_ok_self _ _ Hg2) Hg2) with (r := r);
+    apply (@gpath_ok (gc_mk Θ2 Ξ2) Θ Ξ Θm Ξm Hg Hsm Hbx Hgm Hmt
+             (gmod_ok_of_wf _ _ _ _ Hg2 (wf_gctx_closed _ _ ⋅ (wf_ctx_empty _ _ Hgm))) Hg2) with (r := r);
       [| | exact Hr ].
     + intros qp T Φ Hb.
-      destruct (good_body _ _ _ _ _ _ _ _ _ HG He Hb) as [[HT HU] Hv].
+      destruct (good_body _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hb) as [[HT HU] Hv].
       split; [ exact HT |]; split; [ exact HU |].
       intros * Hz.
-      destruct (gm_valid_def _ _ _ _ _ _ _ _ _ _ _ Hv Hz) as (_ & _ & HA0).
+      destruct (gm_valid_def _ _ _ _ _ _ _ _ _ _ _ _ Hv Hz) as (_ & _ & HA0).
       split; [ exact HA0 |].
       assert (Hne : z :: nil <> nil) by discriminate.
       refine (proj1 (Hglob _ _ b pv _ B _)).
-      rewrite (proj2 (proj2 (closed_read _ _ Hg _ _ _ Hb (z :: nil))) Hne); exact Hz.
+      rewrite (proj2 (proj2 (closed_read_body _ _ Hg _ _ _ Hb (z :: nil))) Hne); exact Hz.
     + intros qp y U Hy.
-      destruct (good_alias _ _ _ _ _ _ _ _ _ HG He Hy) as (T & pvT & HV); exact HV.
-  - intros p D Hl.
-    destruct (ind_lookup_resolve _ _ _ _ Hl) as [pv Hr].
-    destruct (good_resolve _ _ _ _ _ _ _ _ HG He Hr) as [T HV]; exact HV.
+      destruct (good_alias _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hy) as (T & pvT & HU & HUm & HUv).
+      split; [ exact HU | split; [ exact (unit_mt_down _ _ _ _ Hmt _ _ HUm) | exact HUv ] ].
+  - intros p D Hl; exact (good_ind _ _ _ _ _ _ _ _ _ HΘ HΞ Hl).
+Qed.
+
+(** The two readings: at the target, along an embedding keeping bodies, and
+    at the source, along any. *)
+Corollary sem_emb_target : forall Θ Ξ Θ2 Ξ2,
+    ⊢g Θ ⍮ Ξ -> GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> sem_emb Θ Ξ Θ2 Ξ2 Θ2 Ξ2.
+Proof.
+  intros * Hg HG He; destruct (HG _ _ He) as [HΘ HΞ].
+  exact (sem_emb_of _ _ _ _ _ _ Hg (emx_wf _ _ _ _ He) (Embx_emb _ _ _ _ He) (gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He))
+           (gc_sub_refl _ _) (fun p r => gc_subx_body _ _ _ _ p r (emx_res _ _ _ _ He)) HΘ HΞ).
+Qed.
+
+Corollary sem_emb_source : forall Θ Ξ Θ2 Ξ2,
+    ⊢g Θ ⍮ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    gds_valid sem_V sem_F sem_VD Θ2 Ξ2 Θ -> gs_valid sem_V sem_F sem_VD Θ2 Ξ2 Ξ -> sem_emb Θ Ξ Θ Ξ Θ2 Ξ2.
+Proof.
+  intros * Hg He HΘ HΞ.
+  exact (sem_emb_of _ _ _ _ _ _ Hg Hg He (gc_sub_refl _ _) (em_res _ _ _ _ He) (fun p r H => H) HΘ HΞ).
 Qed.
 
 (** A judgment read at a target its source embeds soundly into. *)
-Lemma kread : forall Θ Ξ Θ2 Ξ2 Γ A M,
-    sem_emb Θ Ξ Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
+Lemma kread : forall Θ Ξ Θm Ξm Θ2 Ξ2 Γ A M,
+    sem_emb Θ Ξ Θm Ξm Θ2 Ξ2 -> Θ ⍮ Ξ ⍮ Γ ⊢ M : A -> @rel_exp_under_ctx (gc_mk Θ2 Ξ2) Γ A M M.
 Proof.
   intros * Hμ HM; destruct kripke_fundamental as (_ & Ke & _).
-  destruct (Ke _ _ _ _ _ HM _ _ Hμ) as (_ & _ & H); exact H.
+  destruct (Ke _ _ _ _ _ HM _ _ _ _ Hμ) as (_ & _ & H); exact H.
 Qed.
 
-Lemma sem_V_def : forall Θ Ξ A M b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
-    sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) (Some (ctx_fn (gs_tele Ξ) M))).
+(** A member of a module, checked in the closed telescope [T], is valid
+    wherever its context is: its members read there. *)
+Lemma sem_V_def : forall Θ Ξ T A M b pv Θ2 Ξ2,
+    Θ ⍮ Ξ ⍮ T ⊢ M : A -> Emb Θ Ξ Θ2 Ξ2 ->
+    gds_valid sem_V sem_F sem_VD Θ2 Ξ2 Θ -> gs_valid sem_V sem_F sem_VD Θ2 Ξ2 Ξ ->
+    sem_V Θ2 Ξ2 T (ge_def b pv (ctx_pi T A) (Some (ctx_fn T M))).
 Proof.
-  intros * HM HG He.
-  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) HG He) as Hμ.
+  intros * HM He HΘ HΞ.
+  pose proof (sem_emb_source _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) He HΘ HΞ) as Hμ.
   destruct (presup_exp_typ HM) as [i HA].
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  split; [ exists j; exact (kread _ _ _ _ _ _ _ Hμ HT) |].
-  split; [ intros ? [= <-]; exact (kread _ _ _ _ _ _ _ Hμ (ctx_fn_wf0 _ _ _ _ _ _ HA HM)) |].
-  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ Hμ HA) ].
+  split; [ exists j; exact (kread _ _ _ _ _ _ _ _ _ Hμ HT) |].
+  split; [ intros ? [= <-]; exact (kread _ _ _ _ _ _ _ _ _ Hμ (ctx_fn_wf0 _ _ _ _ _ _ HA HM)) |].
+  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ _ _ Hμ HA) ].
 Qed.
 
 Lemma sem_V_ax : forall Θ Ξ A i b pv Θ2 Ξ2,
-    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ A : Typeω@i -> GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_def b pv (ctx_pi (gs_tele Ξ) A) None).
 Proof.
   intros * HA HG He.
-  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
+  pose proof (sem_emb_target _ _ _ _ (ctx_wf_gctx _ _ _ (presup_exp_ctx HA)) HG He) as Hμ.
   destruct (ctx_pi_wf0 _ _ _ _ _ HA) as [j HT].
-  split; [ exists j; exact (kread _ _ _ _ _ _ _ Hμ HT) |].
+  split; [ exists j; exact (kread _ _ _ _ _ _ _ _ _ Hμ HT) |].
   split; [ discriminate |].
-  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ Hμ HA) ].
+  exists A, i; split; [ reflexivity | exact (kread _ _ _ _ _ _ _ _ _ Hμ HA) ].
 Qed.
 
 Lemma sem_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * HΔ _ HE HG He.
-  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HG He) as Hμ.
+  pose proof (sem_emb_target _ _ _ _ (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) HG He) as Hμ.
   destruct kripke_fundamental as (_ & _ & _ & _ & _ & _ & Km).
-  destruct (Km _ _ _ _ _ HE _ _ Hμ) as (HEv & HS & _ & _ & _ & HC & _).
-  assert (Ht : tele_ass (Δ ++ gs_tele Ξ)) by (apply Forall_app; split; [ exact HΔ | exact (sgood_tele _ _ _ _ HG He) ]).
+  destruct (Km _ _ _ _ _ HE _ _ _ _ Hμ) as (HEv & HS & _ & _ & _ & HC & _).
+  assert (Ht : tele_ass (Δ ++ gs_tele Ξ))
+    by (apply Forall_app; split; [ exact HΔ | exact (svalid_tele _ _ _ (proj2 (HG _ _ He))) ]).
   rewrite <- (app_nil_r (Δ ++ gs_tele Ξ)) in HEv, HS, HC.
   assert (Hx : @rel_ext_under_ctx (gc_mk Θ2 Ξ2) ⋅ (Δ ++ gs_tele Ξ) (Δ ++ gs_tele Ξ))
     by (split; [| split ]; [ exact HC | exact HC | exact (sem_ctx_per_ctx HC) ]).
@@ -685,14 +786,14 @@ Proof.
 Qed.
 
 Lemma sem_F_nil : forall Θ Ξ Δ Θ2 Ξ2,
-    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    tele_ass Δ -> ⊢ Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ -> GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     sem_F Θ2 Ξ2 (Δ ++ gs_tele Ξ).
 Proof.
   intros * HΔ HC HG He.
-  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
+  pose proof (sem_emb_target _ _ _ _ (ctx_wf_gctx _ _ _ HC) HG He) as Hμ.
   destruct kripke_fundamental as (Kc & _).
-  split; [ exact (proj1 (Kc _ _ _ HC _ _ Hμ)) |].
-  apply Forall_app; split; [ exact HΔ | exact (sgood_tele _ _ _ _ HG He) ].
+  split; [ exact (proj1 (Kc _ _ _ HC _ _ _ _ Hμ)) |].
+  apply Forall_app; split; [ exact HΔ | exact (svalid_tele _ _ _ (proj2 (HG _ _ He))) ].
 Qed.
 
 (** A type at a sort is a type. *)
@@ -703,12 +804,16 @@ Qed.
 
 (** A declaration typed at the source is semantically valid at the
     target: its judgments, read in the PER model. *)
-Lemma sem_V_ind : forall Θ Ξ pv D Θ2 Ξ2,
-    decl_typed Θ Ξ D -> GoodV sem_V sem_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 -> sem_V Θ2 Ξ2 (gs_tele Ξ) (ge_ind pv D).
+Lemma sem_V_ind : forall Θ Ξ D Θ2 Ξ2,
+    decl_typed Θ Ξ D -> GoodV sem_V sem_F sem_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 -> sem_VD Θ2 Ξ2 D /\ sem_F Θ2 Ξ2 (ind_uparams D).
 Proof.
-  intros * Hdt HG He; cbn [sem_V].
+  intros * Hdt HG He.
+  split; [| destruct (decl_typed_uparams _ _ _ Hdt) as [HUw HUa]; split; [| exact HUa ] ].
+  2: { pose proof (sem_emb_target _ _ _ _ (ctx_wf_gctx _ _ _ HUw) HG He) as Hμ.
+       destruct kripke_fundamental as (Kc & _); exact (proj1 (Kc _ _ _ HUw _ _ _ _ Hμ)). }
+  unfold sem_VD.
   pose proof Hdt as (Hass & _ & Hle & HΔ & Hsu & [i HS] & _ & HA & HPl & HP & HN & Hnd & Hsh).
-  pose proof (sem_emb_of _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
+  pose proof (sem_emb_target _ _ _ _ (ctx_wf_gctx _ _ _ HΔ) HG He) as Hμ.
   destruct kripke_fundamental as (Kc & _).
   assert (Harg : forall c gs k A, ind_con D c = Some gs -> List.nth_error (cargs_nonrec gs) k = Some A ->
              @rel_exp_under_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D) ((ind_sort D)[wk_shiftn (k + ind_nn D)]ʷ) A A /\
@@ -718,12 +823,12 @@ Proof.
     pose proof (HA _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq) as HT.
     assert (Hls : List.length (cargs_strat gs1) = k) by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; exact Hk).
     rewrite Hls, (astrat_prefix gs1 (ca_arg A :: gs2)), Hk, <- Heq in HT.
-    pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (kread _ _ _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   assert (Hstrat : forall c gs k, ind_con D c = Some gs -> k <= List.length (cargs_nonrec gs) ->
              @sem_ctx (gc_mk Θ2 Ξ2) (astrat gs k ++ ind_params D)).
   { intros c gs k Hcon; induction k as [| k IH]; intros Hk.
-    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
+    + unfold astrat; cbn [List.firstn List.rev List.app]; exact (proj1 (Kc _ _ _ HΔ _ _ _ _ Hμ)).
     + destruct (nth_error_lt_some' (cargs_nonrec gs) k ltac:(lia)) as [A HA0].
       assert (Hst : astrat gs (S k) = ce_ass A :: astrat gs k).
       { unfold astrat; rewrite (firstn_S_snoc _ _ (ce_ass A)) by (rewrite List.nth_error_map, HA0; reflexivity).
@@ -747,18 +852,18 @@ Proof.
     assert (Hls : List.length (cargs_strat gs1) = List.length (cargs_nonrec gs1))
       by (rewrite cargs_strat_nonrec, List.length_rev, List.length_map; reflexivity).
     rewrite Hk, Hls, (astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in HT.
-    pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (kread _ _ _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ]. }
   constructor.
-  - exact (proj1 (Kc _ _ _ HΔ _ _ Hμ)).
-  - exists i; exact (kread _ _ _ _ _ _ _ Hμ HS).
-  - destruct (ind_ty_typed0 _ _ _ Hdt) as [j Hj]; exists j; exact (kread _ _ _ _ _ _ _ Hμ Hj).
+  - exact (proj1 (Kc _ _ _ HΔ _ _ _ _ Hμ)).
+  - exists i; exact (kread _ _ _ _ _ _ _ _ _ Hμ HS).
+  - destruct (ind_ty_typed0 _ _ _ Hdt) as [j Hj]; exists j; exact (kread _ _ _ _ _ _ _ _ _ Hμ Hj).
   - intros k A HA0.
     destruct (nparams_nth_split _ _ _ HA0) as [Δ1 HΔ1].
     assert (Hk : k < ind_nn D)
       by (rewrite <- (length_nparams D), <- List.length_rev; apply List.nth_error_Some; congruence).
     pose proof (HN _ _ _ HΔ1) as HT; rewrite length_npre in HT by lia.
-    pose proof (kread _ _ _ _ _ _ _ Hμ HT) as H.
+    pose proof (kread _ _ _ _ _ _ _ _ _ Hμ HT) as H.
     split; [ exact H | exact (sort_large_sem _ _ _ _ Hsu H) ].
   - exact Hstrat.
   - exact Harg.
@@ -769,7 +874,7 @@ Proof.
     rewrite Hls in HT.
     pose proof (HP _ _ _ _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq HPk HT) as H.
     rewrite (astrat_prefix gs1 (ca_rec t :: gs2)), <- Heq in H.
-    exact (kread _ _ _ _ _ _ _ Hμ H).
+    exact (kread _ _ _ _ _ _ _ _ _ Hμ H).
   - exact Hdom.
   - intros * Hcon Heq; exact (proj1 (Hsh _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq)).
   - intros * Hcon Heq; exact (HPl _ _ _ _ _ (cons_lookup_in _ _ _ Hcon) Heq).
@@ -784,8 +889,8 @@ Qed.
 
 (** Every well-formed global context is semantically sound: the identity is a
     sound embedding. *)
-Theorem gctx_sem : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> sem_emb Θ Ξ Θ Ξ.
+Theorem gctx_sem : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> sem_emb Θ Ξ Θ Ξ Θ Ξ.
 Proof.
-  intros * Hg; apply sem_emb_of; [ exact Hg | | apply Emb_refl; exact Hg ].
-  exact (global_valid sem_V sem_F sem_V_def sem_V_ax sem_V_alias sem_F_nil sem_V_ind _ _ Hg).
+  intros * Hg; apply sem_emb_target; [ exact Hg | | apply Embx_refl; exact Hg ].
+  exact (global_valid sem_V sem_F sem_VD sem_V_def sem_V_ax sem_V_alias sem_F_nil sem_V_ind _ _ Hg).
 Qed.

@@ -57,7 +57,7 @@ Section Members.
   Proof.
     intros * Hf Ha; inversion Hf; subst;
       match goal with Hn : eval_apps _ _ _ nil _ |- _ => inversion Hn; subst end;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut ]; eassumption.
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind ]; eassumption.
   Qed.
 
   Lemma eval_sel_global_inv : forall p x args r,
@@ -65,7 +65,7 @@ Section Members.
       exists f, dm_global p nil ·ₜ x Θ ⍮ Ξ ↘ f /\ $*| f & args | Θ ⍮ Ξ ↘ r.
   Proof.
     intros * H; inversion H; subst; eexists; split; try eassumption;
-      [ eapply eval_sel_global | eapply eval_sel_global_neut ]; eauto; constructor.
+      [ eapply eval_sel_global | eapply eval_sel_global_neut | eapply eval_sel_global_ind ]; eauto; constructor.
   Qed.
 
   (** A chain of submodules of a global module, none of them an alias, is the

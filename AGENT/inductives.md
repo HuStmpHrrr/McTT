@@ -230,77 +230,120 @@ step to be proved never to fail at the user's type, beyond
 | PER: `ind_rel`, `ind_adm`; canonical relations `ind_nr`, `ind_ar` | `Core/Semantic/PER/Definitions.v`, `IndPER.v`, `IndCanon.v`, `IndElim.v`, `PER/Tele.v` |
 | completeness | `Core/Completeness/IndSem.v`, `IndCases.v`, `ElimCases.v`, `TeleSem.v` |
 | gluing (`glu_univ_elem_core_indty`, `ind_typ_at`, `glu_ind`, `ind_glu_exp_pred`) and soundness | `Core/Soundness/LogicalRelation/*`, `Soundness/IndCases.v`, `IndElimCases.v` |
-| commands: `cc_ind`, `rc_ind`, `ind_name = "#"`, `rd_uparams`, `ind_frame`, `ind_qname`, `gs_ind`, `ind_gens` | `Core/Syntactic/Command.v`, `System/Command.v` |
-| the type as a term (`ind_head`, `mem_xp`), the declaration-site oracle (`md_spec`, `xoracle`) | `Core/Syntactic/Imports.v`; `md_of`, `xo_of` in `Extraction/Privacy.v` |
+| commands: `cc_ind`, `rc_ind`, `rd_uparams`, `ind_qname`, `gs_ind`, `ind_gens`, `gen_body` | `Core/Syntactic/Command.v`, `System/Command.v` |
+| the members' derivation (`ind_gens_typed`) | `System/IndRec.v` |
 
-## The type is a module
+## The entry: `ge_ind pv D Φ`
 
-A declaration `cc_ind x pv R` makes the module `x` (`ge_body pv Δu Φ`),
-over the uniform parameters `Δu = rd_uparams R`, as `rc_mod` makes one: it
-pushes the frame `ind_frame Ξ x R` with `rc_mod`'s premises (`tele_ass Δu`,
-`⊢ Δu ++ gs_tele Ξ`, `x` fresh), files the structural declaration there
-under the unwritable name `#` (`ge_ind pv (gs_ind Ξ D)`, the frames'
-parameters, the module's own included, its outermost uniform parameters;
-its name is `ind_qname Ξ x = …x.#`), runs the generated constructors
-`c := a_con p c $ (Δu ++ frame) vars` (`ind_gens`, run by `gens_run` with
-the premises of `rc_def`), and closes the frame as the member `x`.
+An inductive type is ONE entry of its frame, `ge_ind pv D Φ`
+(`Syntax.v`): the declaration `D` and the body `Φ` of its module, whose
+members are exactly the constructors and `rec`.  There is no separate
+declaration entry, no `#` name, no frame of its own.  Its module is
+derived, `ind_unit D Φ = gu_mk (ind_uparams D) (md_body Φ)`: its parameters
+are the uniform ones (the frames' parameters outermost), and its members are
+stored closed over them, as every definition is.
 
-* Constructors are members of the module: `List.cons A x xs`, and
-  `(List A).cons x xs` by module application; `open List use (nil; cons)`
-  declares them (`examples/Inductives.mctt`).  Their names need only be
-  distinct within the type.
-* As a term, the module is the type former.  Expansion (`cmd_xp`, core)
-  replaces a term `a_mem H x` whose `H.x.#` is a declaration
-  (`ind_head`) by `apps (a_ind p) args`, `args` the arguments of `H`; `p`
-  is found by the declaration-site oracle (`md_spec`: `mdecl`, which follows
-  aliases), so `module M := List` and `open A use (List)` give the type
-  too.  Typing has no new rule.
-* The expansion oracles are bundled (`xoracle`: member types `xo_mt`,
-  declaration sites `xo_md`); `cmd_xp_ok`/`tele_xp_ok` quantify over a
-  bundle meeting both specifications; the checker uses `xo_of`.
-* Not covered: a local module slot (`me_var`) is never an inductive type,
-  so a local alias of one is not the type as a term.
+* `gm_submodule` reads `ge_ind` as a body module, `mr_body (ind_uparams D)
+  (Some D)`; `ind_lookup Θ Ξ p` is the `Some D` of the module at `p`.
+  `gm_resolve`/`gm_entry`/`gm_subbody` go into `Φ` like into a body.
+* **The judgment is incremental**, as `wf_gmod_ext` is
+  (`System/Definitions.v`):
 
-## The eliminator names its type (item 4a)
+  ```
+  wf_gentry_ind_nil : … D ok … -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄
+  wf_gentry_ind_ext :
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y ⊢e ge_ind pv D Φ ->
+    Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ ⍮ ind_uparams D ⊢ M : A ->
+    gm_fresh x Φ ->
+    Θ ⍮ (mq, gu_body Δ Φ0) :: Ξ ⍮ qname_in mq y
+      ⊢e ge_ind pv D (Φ ⊳ x ↦ ge_def b pv' (ctx_pi (ind_uparams D) A) (Some (ctx_fn (ind_uparams D) M)))
+  ```
 
-`a_elim p nm A Bs M` records the declaration's name `p` (`…X.#`); the
-neutral `ne_elim p …` too (the domain's `d_elim` already had it).
-`wf_elim`, its congruence and `ι` use the same `p` as the scrutinee's
-type `apps (a_ind p) Ps`; evaluation ignores it (the scrutinee's value
-carries it); readback takes it from `d_elim`.
+  Each member is checked with the entry so far visible in its frame.  That
+  `Φ = gen_body p D` is no premise of the judgment; `rc_ind` files
+  `gen_body` with this judgment as premise.  `gc_sub` (`Members.v`) lets a
+  body module grow "same `D`, longer body" (`gm_grows`); `gc_subx` is the
+  growth that keeps every body.
+* `rc_ind` (`System/Command.v`):
+  `cls_cons_in Θ Ξ R cs -> gs_fresh x Ξ ->
+   Θ ⍮ Ξ ⍮ ind_qname Ξ x ⊢e ge_ind pv D' (gen_body (ind_qname Ξ x) D') ->
+   Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_ind pv D' (gen_body …)) Ξ`,
+  `D' = gs_ind Ξ (rd_filed R cs)`.  `ind_gens_typed` (`IndRec.v`) derives
+  that premise from `ge_ind pv D' ⋄` and `rec` not naming a constructor; the
+  checker (`Extraction/Command.v`, `ind_ok`) decides only those two.
 
-* Surface `X.elim M return … end`: the elaborator elaborates `X` as a module
-  and records, lexically, `elim_head`: the chain from the unit, arguments
-  dropped, then `#`.  A head that is not a chain from a unit (a local
-  slot) is rejected there: `"only an inductive type declared in a module
-  has an eliminator"`.
-* Expansion resolves the name as written through aliases (`elim_xp`, the
-  declaration-site oracle): `module M := N` gives `M.elim = N.elim`.  A name
-  that reaches no entry fails with `xe_ind`: `"Test.M is not an inductive
-  type"`.  The name is a privacy reference (`qname_refs`), as `X.c` is.
-* The checker compares the recorded name with the scrutinee's inferred type
-  (`elim_infer`, `qname_eq_dec`).  Room for stage M: the member index can
-  be added beside `p`.
+## Names (option B)
+
+Only a direct path to a `ge_ind` is the type former:
+
+```
+wf_mem_glob_ind : ⊢ Θ ⍮ Ξ ⍮ Γ -> mod_qname H = Some mp ->
+  ind_lookup Θ Ξ (qname_app mp (x :: nil)) = Some D -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x : ind_ty D
+wf_exp_eq_mem_glob_ind_unfold : … -> Θ ⍮ Ξ ⍮ Γ ⊢ a_mem H x ≈ a_ind (qname_app mp (x :: nil)) : ind_ty D
+```
+
+As a module, the type resolves (`member_type`) to `mr_ind p T`: `p` its
+canonical path (the entry's), `T` the parameters it still takes; `mr_ind`
+has no term reading, and an applied one is a plain module (`mres_app`).  An
+alias, or a name an open declares (`open A use (N)` makes `N` an alias), is
+a module only:
+
+```
+inductive N : Type@0 where | z end
+module M := N
+eval M.z : N      (* N.z : N *)
+eval M.z : M      (* Error: Test.M is a module, not a term *)
+```
+
+The checker names that case (`mod_blame`, `re_mod_term`), and an
+eliminator headed by a module that is no inductive type (`re_not_ind`).
+
+## The eliminator's head
+
+`a_elim H nm A Bs M`: the head is a module expression, as written.
+
+* `wf_elim` takes the canonical head at arguments:
+  `H = me_apps (qname_mod p) Ns`, `List.length Ns = nh <= ind_nu D`, the
+  type former at `Ns` typed at `ind_ty_at D (firstn nh Ps)` and equal to it
+  at the first `nh` parameters of the scrutinee's type.  So `List.elim` takes
+  all uniform parameters from the scrutinee, `(List ℕ).elim` checks `ℕ`
+  against the scrutinee's `List ℕ`, and `(List (∀ (n : ℕ) → ℕ)).elim` on a
+  `List ℕ` is rejected.
+* `wf_elim_head` (and `wf_exp_eq_elim_head`): a head `me_apps H0 Ns` with
+  `member_type … H0 nil (mr_ind p T)` is the eliminator at
+  `me_apps (qname_mod p) Ns`; so `M.elim` for `module M := N` is `N.elim`.
+* Evaluation ignores the head; a stuck eliminator `ne_elim p …` keeps the
+  canonical name and reads back as `a_elim (qname_mod p) …`.
+* Algorithmic: `ati_elim` (canonical head; the type former at `Ns` checked,
+  and its normal form equal to the type former's at the scrutinee's
+  parameters) and `ati_elim_head` (`H0 ⊢aᵐ`, `mr_ind p`, `H0 <> qname_mod p`).
+  The checker (`Extraction/IndCheck.v`, `elim_infer`) splits the head
+  (`me_unapps`) and takes the head's check and the type former's check as
+  closures; the termination order `ti_elim` gives their orders.
+
+No pre-typing rewrite is left for inductive types: `ind_head`, the `mem_xp`
+redirect, `elim_xp`, `xe_ind` and the declaration-site oracle in `xoracle`
+are gone.
 
 ## The recursor (item 4b)
 
 The declaration also generates the member `rec` of its module
-(`ind_gens`, last), in the module's frame `Γ0`:
+(`ind_gens`, last), over the uniform parameters `Γ0`:
 
 ```
 rec : Π (u : Level). Π (P : Π Δn. Π (z : X us ns). Type⟨u⟩).
       Π (b_c : Π (elim_bctx … P …). elim_bty … P …) … .
       Π Δn. Π (z : X us ns). P ns z
-rec := λ u P b_c … . λ Δn z. a_elim p (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
+rec := λ u P b_c … . λ Δn z. a_elim (qname_mod p) (S nn) P' [(c, n_c, b_c $ its n_c vars)] z
 ```
 
 (`rec_ty`, `rec_fn`, `rec_tele`, `rec_btys`, `rec_motive`, `rec_brs`,
 `System/Command.v`): each branch argument has exactly the type the
-eliminator gives the branch at the motive `P`.  It is checked by `gens_run`
-like the constructors, when the declaration runs, and it always checks:
-`ind_gens_run` (`System/IndRec.v`) shows that the generated commands run
-for every well-formed filed declaration, and `rc_ind_runs` that such a
-declaration command runs.  The surface reads `X.rec`
+eliminator gives the branch at the motive `P`.  It is a member of the
+entry like the constructors (`wf_gentry_ind_ext`), and it always checks:
+`ind_gens_typed` (`System/IndRec.v`) derives the whole entry from the
+declaration's, and `rc_ind_runs` shows that such a declaration command
+runs.  The surface reads `X.rec`
 (`rec` is a keyword: `atomic_obj . REC` in the parser; `Doc.ml` pairs the
 token).  Not done: `open X use (rec)` (the items are names, not the
 keyword).
@@ -313,12 +356,15 @@ keyword).
   derivation's by `wf_elim_params_conv` (`Core/Syntactic/IndConv.v`).
 * Completeness is by induction on the derivation with an outer induction on
   `exp_lets`; an eliminator counts `+1` there, since its motive and branches
-  are re-derived at `Rs` and are no longer subderivations.
+  are re-derived at `Rs` and are no longer subderivations; its head counts
+  too (`modexp_lets`), whose arguments are re-checked as the type former's
+  (`exp_lets_head_apps`).
 * Both checkers share `Extraction/IndCheck.v`; the eliminator's recursive
   calls are passed in as closures, so the mutual fixpoints and their
   obligation numbering are unchanged.
 * A declaration is decided premise by premise in `Extraction/IndDecl.v`
-  (`ind_entry_dec`); `exp_mvc` by a boolean mirror (`mvcb_spec`).
+  (`ind_entry_dec`, the entry `ge_ind pv D ⋄`); `exp_mvc` by a boolean
+  mirror (`mvcb_spec`).
 
 ## The natural numbers as a builtin (`builtin natural ≔ X`)
 
@@ -345,7 +391,7 @@ eval Num.elim 2 return x . Num | Z ⇒ 1 | S p, r ⇒ Num.S r end   (* 3 : Num *
   (`gs_natbinds`), classified as none, one with its constructors, or many.
   It depends on the filed units only up to `gds_equiv`
   (`gds_equiv_nat_binding`, `Extraction/IndDecl.v`).
-* The command `cc_builtin k p` (`p` resolved as an eliminator's name is)
+* The command `cc_builtin k H` (`H` the module as written, `mod_qname H = Some p`)
   runs by `rc_builtin`: `k` is `natural`, the stack is the frame of a
   unit without parameters, no binding is visible, `p`'s declaration has
   `nat_shape` (no parameter, a constructor without arguments and one with

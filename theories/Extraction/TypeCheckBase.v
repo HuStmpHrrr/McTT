@@ -109,7 +109,7 @@ Section type_check.
 
   Definition entry_shape_dec : forall E E', { entry_shape E E' } + { ~ entry_shape E E' }.
   Proof.
-    intros [b pv A [M |] | pm U | pvi Di] [b' pv' A' [M' |] | pm' U' | pvi' Di']; cbn; try (right; intros []; fail); try (left; exact I).
+    intros [b pv A [M |] | pm U | pvi Di Φi] [b' pv' A' [M' |] | pm' U' | pvi' Di' Φi']; cbn; try (right; intros []; fail); try (left; exact I).
     - destruct b, b', (Bool.bool_dec pv pv'); try (right; intuition congruence; fail); left; auto.
     - exact (Bool.bool_dec pm pm').
   Defined.
@@ -137,17 +137,25 @@ Section type_check.
       { A | member_type gc_deps gc_stack Γ H ch (mr_term A) } +
       { forall A, ~ member_type gc_deps gc_stack Γ H ch (mr_term A) }.
   Proof.
-    destruct d as [[[A | T] HR] | HN]; [ left; exists A; exact HR | right | right; intros A HA; exact (HN _ HA) ].
-    intros A HA; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HA); discriminate.
+    destruct d as [[[A | T | p T] HR] | HN]; [ left; exists A; exact HR | right | right | right; intros A HA; exact (HN _ HA) ];
+      intros A HA; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HA); discriminate.
   Defined.
 
+  Lemma mres_ty_tl : forall R T, mres_tl R = Some T -> mres_ty R = ctx_pi T a_True.
+  Proof. intros [A | T0 | p T0] T H; cbn in H; try discriminate; injection H as <-; reflexivity. Qed.
+
+  (** A module's arity: the parameters a module, the module of an
+      inductive type included, still takes. *)
   Definition mres_mod_dec {Γ H ch}
       (d : { R | member_type gc_deps gc_stack Γ H ch R } + { forall R, ~ member_type gc_deps gc_stack Γ H ch R }) :
-      { T | member_type gc_deps gc_stack Γ H ch (mr_mod T) } +
-      { forall T, ~ member_type gc_deps gc_stack Γ H ch (mr_mod T) }.
+      { T | exists R, member_type gc_deps gc_stack Γ H ch R /\ mres_tl R = Some T } +
+      { forall R, member_type gc_deps gc_stack Γ H ch R -> mres_tl R = None }.
   Proof.
-    destruct d as [[[A | T] HR] | HN]; [ right | left; exists T; exact HR | right; intros T HT; exact (HN _ HT) ].
-    intros T HT; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HT); discriminate.
+    destruct d as [[[A | T | p T] HR] | HN].
+    - right; intros R HR'; pose proof (proj1 (member_type_functional _ _) _ _ _ _ HR _ HR') as <-; reflexivity.
+    - left; exists T, (mr_mod T); split; [ exact HR | reflexivity ].
+    - left; exists T, (mr_ind p T); split; [ exact HR | reflexivity ].
+    - right; intros R HR'; destruct (HN _ HR').
   Defined.
 
   Definition member_term_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H ch (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) :=
@@ -158,8 +166,8 @@ Section type_check.
 
   (** A chain from a unit has an order whether or not it is a module. *)
   Definition member_chain_mod_dec (Hg : ⊢g gc_deps ⍮ gc_stack) Γ H mq (Hp : mod_qname H = Some mq) :
-      { T | member_type gc_deps gc_stack Γ H nil (mr_mod T) } +
-      { forall T, ~ member_type gc_deps gc_stack Γ H nil (mr_mod T) } :=
+      { T | exists R, member_type gc_deps gc_stack Γ H nil R /\ mres_tl R = Some T } +
+      { forall R, member_type gc_deps gc_stack Γ H nil R -> mres_tl R = None } :=
     mres_mod_dec (member_type_impl gc_deps gc_stack (gctx_closed_of_wf _ _ Hg) Γ H nil
                     (mt_order_chain_self _ _ _ _ _ Hg Hp nil)).
 
@@ -316,12 +324,19 @@ Section type_check.
 
   (** A member of a chain from a unit, read off the global context: the type
       of the global, if it is one. *)
+  (** The type of a global, or of the type former that the module of an
+      inductive type is as a term. *)
   Definition glob_lookup (R : modexp) (pre : list string) (x : string) : option typ :=
     match R with
     | me_unit fp =>
         match gc_resolve gc_deps gc_stack (q_abs fp (pre ++ x :: nil)) with
         | Some (ge_def _ _ A _) => Some A
-        | _ => None
+        | Some _ => None
+        | None =>
+            match ind_lookup gc_deps gc_stack (q_abs fp (pre ++ x :: nil)) with
+            | Some D => Some (ind_ty D)
+            | None => None
+            end
         end
     | _ => None
     end.
@@ -336,11 +351,15 @@ Section type_check.
   Qed.
 
   Lemma glob_lookup_some : forall H R pre x A, modexp_spine H = (R, nil, pre) -> glob_lookup R pre x = Some A ->
-      exists mq b pv B, mod_qname H = Some mq /\ gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B).
+      exists mq, mod_qname H = Some mq /\
+        ((exists b pv B, gc_resolve gc_deps gc_stack (qname_app mq (x :: nil)) = Some (ge_def b pv A B)) \/
+         (exists D, ind_lookup gc_deps gc_stack (qname_app mq (x :: nil)) = Some D /\ A = ind_ty D)).
   Proof.
     intros * Hs Hg; destruct R; cbn in Hg; try discriminate.
-    destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U | pv D] |] eqn:Er; try discriminate; injection Hg as ->.
-    exists (q_abs l pre), b, pv, B; split; [ exact (spine_unit_path _ _ _ Hs) | exact Er ].
+    exists (q_abs l pre); split; [ exact (spine_unit_path _ _ _ Hs) |].
+    destruct (gc_resolve _ _ _) as [[b pv A0 B | pm U | pv D Φ] |] eqn:Er; try discriminate.
+    - injection Hg as ->; left; eauto.
+    - destruct (ind_lookup _ _ _) as [D |] eqn:El; [| discriminate ]; injection Hg as <-; right; eauto.
   Qed.
 
   Lemma glob_lookup_none : forall H R args pre x mq b pv A B, modexp_spine H = (R, args, pre) -> glob_lookup R pre x = None ->
@@ -349,6 +368,14 @@ Section type_check.
     intros * Hs Hg Hp Hr; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
     cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Hr.
     rewrite Hr in Hg; discriminate.
+  Qed.
+
+  Lemma glob_lookup_none_ind : forall H R args pre x mq D, modexp_spine H = (R, args, pre) -> glob_lookup R pre x = None ->
+      mod_qname H = Some mq -> ind_lookup gc_deps gc_stack (qname_app mq (x :: nil)) = Some D -> False.
+  Proof.
+    intros * Hs Hg Hp Hl; rewrite (mod_qname_spine _ _ Hp) in Hs; injection Hs as <- <- <-.
+    cbn in Hg; change (qname_app mq (x :: nil)) with (q_abs (q_unit mq) (q_chain mq ++ x :: nil)) in Hl.
+    rewrite (proj1 (ind_lookup_not_def _ _ _ _ Hl)), Hl in Hg; discriminate.
   Qed.
 
   Inductive type_check_order : exp -> Prop :=
@@ -372,8 +399,14 @@ Section type_check.
   | ti_con : forall {p c}, type_infer_order (a_con p c)
   (** A numeral is expanded before it is checked; it has no type. *)
   | ti_nlit : forall {n}, type_infer_order (a_nlit n)
-  | ti_elim : forall {p nm A Bs M}, type_infer_order M -> type_infer_order A ->
-      (forall b, List.In b Bs -> type_check_order (snd b)) -> type_infer_order (a_elim p nm A Bs M)
+  (** The head, split into the module it names and the arguments it
+      carries: the module is checked, and the type former at the arguments,
+      which is not a subterm. *)
+  | ti_elim : forall {H nm A Bs M}, type_infer_order M -> type_infer_order A ->
+      (forall b, List.In b Bs -> type_check_order (snd b)) ->
+      (forall H0 Ns, H = me_apps H0 Ns -> modexp_order H0) ->
+      (forall H0 Ns p, H = me_apps H0 Ns -> type_check_order (apps (a_ind p) Ns)) ->
+      type_infer_order (a_elim H nm A Bs M)
   | ti_pi : forall {A B}, type_infer_order A -> type_infer_order B -> type_infer_order Π A B
   | ti_fn : forall {A M}, type_infer_order A -> type_infer_order M -> type_infer_order λ A M
   | ti_app : forall {M N}, app_order M N -> type_infer_order (M $ N)
@@ -454,6 +487,20 @@ Section type_check.
     rewrite (me_mems_spine _ _ _ _ _ Hs) in Hs'; injection Hs' as _ <- _; contradiction.
   Qed.
 
+  Lemma me_apps_order_head : forall Ns H0, modexp_order (me_apps H0 Ns) -> modexp_order H0.
+  Proof.
+    induction Ns as [| N Ns IH]; intros H0 Ho; cbn in Ho; [ exact Ho |].
+    apply IH in Ho; inversion Ho; assumption.
+  Qed.
+
+  Lemma me_apps_spine : forall Ns H0,
+      modexp_spine (me_apps H0 Ns) = let '(R, args, pre) := modexp_spine H0 in (R, args ++ Ns, pre).
+  Proof.
+    induction Ns as [| N Ns IH]; intros H0; cbn [me_apps].
+    - destruct (modexp_spine H0) as [[R args] pre]; rewrite app_nil_r; reflexivity.
+    - rewrite IH; cbn; destruct (modexp_spine H0) as [[R args] pre]; rewrite <- app_assoc; reflexivity.
+  Qed.
+
   Lemma syn_orders_all :
     (forall M, type_infer_order M) /\
     (forall H, modexp_order H /\
@@ -471,7 +518,7 @@ Section type_check.
     (forall E, match E with
            | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
            | ge_mod _ U => unit_order U
-           | ge_ind _ _ => True
+           | ge_ind _ _ _ => True
            end) /\
     (forall e, centry_order e).
   Proof.
@@ -491,13 +538,19 @@ Section type_check.
       (fun E => match E with
              | ge_def _ _ A B => type_infer_order A /\ (forall M, B = Some M -> type_infer_order M)
              | ge_mod _ U => unit_order U
-             | ge_ind _ _ => True
+             | ge_ind _ _ _ => True
              end)
       centry_order); intros; cbn in *; destruct_conjs; eauto 6 with mctt.
-    - (* an eliminator: its branches are checked *)
-      constructor; [ assumption | assumption |].
-      match goal with HF : List.Forall _ _ |- _ => rewrite List.Forall_forall in HF end.
-      intros b Hb; apply tc_ti; auto.
+    - (* an eliminator: its branches are checked, and its head *)
+      constructor; [ assumption | assumption | | |].
+      + match goal with HF : List.Forall _ _ |- _ => rewrite List.Forall_forall in HF end.
+        intros b Hb; apply tc_ti; auto.
+      + intros Hh Ns ->; eapply me_apps_order_head; eassumption.
+      + intros Hh Ns p ->; apply tc_ti, apps_order; [ constructor |].
+        destruct (modexp_spine Hh) as [[R0 a0] p0] eqn:Es.
+        match goal with Hs : forall R args pre, modexp_spine (me_apps Hh Ns) = _ -> _ |- _ =>
+          destruct (Hs R0 (a0 ++ Ns) p0 ltac:(rewrite me_apps_spine, Es; reflexivity)) as [_ HF] end.
+        apply List.Forall_app in HF as [_ HF]; exact HF.
     - (* a local binding *)
       destruct b as [[A |] M | U]; destruct_conjs;
         [ apply ti_let; [ eauto | constructor; assumption | assumption ]
@@ -520,7 +573,7 @@ Section type_check.
       split; [ assumption | apply Forall_app; split; [ assumption | constructor; [ constructor; assumption | constructor ] ] ].
     - split; [ constructor; assumption | intros * [= <- <- <-]; split; [ constructor; assumption | constructor ] ].
     - destruct D; destruct_conjs; constructor; auto using ext_order_of_forall, ext_order_app.
-    - destruct E as [b pv A [M |] | pm U | pvi Di]; destruct_conjs; constructor; cbn; eauto with mctt.
+    - destruct E as [b pv A [M |] | pm U | pvi Di Φi]; destruct_conjs; constructor; cbn; eauto with mctt.
     - apply Forall_app; split; [| assumption ].
       induction (List.length its); cbn; constructor; [ constructor | assumption ].
   Qed.
@@ -666,7 +719,12 @@ Ltac negc :=
   | Hx : _ ⊢aᵐ (_ _ _) |- False => inversion Hx; subst; try (cbn in *; congruence)
   end;
   functional_alg_type_infer_rewrite_clear;
-  first [ match goal with H : forall u : unf, ?X <> univ_nf u |- _ => exact (H _ eq_refl) end | firstorder ].
+  first [ match goal with H : forall u : unf, ?X <> univ_nf u |- _ => exact (H _ eq_refl) end
+        | match goal with
+          | HN : forall R, member_type _ _ _ ?M ?c R -> mres_tl R = None, Hm : member_type _ _ _ ?M ?c ?R0,
+            Ht : mres_tl ?R0 = Some _ |- _ => rewrite (HN _ Hm) in Ht; discriminate Ht
+          end
+        | firstorder ].
 
 Ltac typ_sound :=
   match goal with
@@ -694,10 +752,15 @@ Ltac glob_mem_obl :=
   | Hs : modexp_spine ?M = (?R, nil, ?pre), Eg : glob_lookup ?R ?pre ?x = Some ?A, HG : ⊢ ?G |- _ =>
       let mq := fresh "mq" in let Hp := fresh "Hp" in let Hr := fresh "Hr" in
       let i := fresh "i" in let HA := fresh "HA" in
-      destruct (glob_lookup_some _ _ _ _ _ Hs Eg) as (mq & ? & ? & ? & Hp & Hr);
-      assert (exists i, G ⊢ A : Typeω@i) as [i HA] by (eapply wf_glob_typ; [ exact HG | exact Hr ]);
-      first [ solve [ eapply nbe_order_of_typ; exact HA ]
-            | split; [ eapply ati_mem_glob; eassumption | eapply level_of_nbe; eassumption ] ]
+      destruct (glob_lookup_some _ _ _ _ _ Hs Eg) as (mq & Hp & [(? & ? & ? & Hr) | (? & Hr & ->)]);
+      [ assert (exists i, G ⊢ A : Typeω@i) as [i HA] by (eapply wf_glob_typ; [ exact HG | exact Hr ]);
+        first [ solve [ eapply nbe_order_of_typ; exact HA ]
+              | split; [ eapply ati_mem_glob; eassumption | eapply level_of_nbe; eassumption ] ]
+      | let D := fresh "D" in let Hc := fresh "Hc" in
+        destruct (decl_of_lookup _ _ _ _ _ HG Hr) as [D Hc];
+        destruct (ind_ty_typed _ _ _ _ D Hc HG) as [i HA];
+        first [ solve [ eapply nbe_order_of_typ; exact HA ]
+              | split; [ eapply ati_mem_glob_ind; eassumption | eapply level_of_nbe; eassumption ] ] ]
   end.
 
 (** ** The Obligations of the Module Cases
@@ -710,13 +773,22 @@ Ltac mo_1 :=
 
 Ltac mo_2 :=
   clear_defs; destruct_conjs;
-  solve [ eapply amod_glob; [ first [ reflexivity | eassumption ] | eassumption ] ].
+  solve [ eapply amod_glob; [ first [ reflexivity | eassumption ] | eassumption | eassumption ] ].
 
 Ltac mo_3 :=
   clear_defs; destruct_conjs;
   solve [ match goal with Hx : _ ⊢aᵐ me_mem _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
-              match goal with HN : forall T, ~ member_type _ _ _ (me_mem _ _) nil (mr_mod T) |- _ =>
-                first [ eapply HN; eassumption | eapply HN; eapply mt_mem; [ discriminate | eassumption ] ] end ].
+              match goal with
+              | HN : forall R, member_type _ _ _ (me_mem _ _) nil R -> mres_tl R = None,
+                Hm : member_type _ _ _ (me_mem _ _) nil ?R0, Ht : mres_tl ?R0 = Some _ |- _ =>
+                  rewrite (HN _ Hm) in Ht; discriminate Ht
+              | HN : forall R, member_type _ _ _ (me_mem _ _) nil R -> mres_tl R = None,
+                Hm : member_type _ _ _ _ (_ :: nil) ?R0, Ht : mres_tl ?R0 = Some _ |- _ =>
+                  let Hk := fresh "Hk" in
+                  assert (Hk : mres_kind R0 = mk_term -> nil <> (nil : list string))
+                    by (let Hk' := fresh in intros Hk'; destruct R0; cbn in Hk', Ht; discriminate);
+                  rewrite (HN _ (mt_mem _ _ _ _ _ _ _ Hk Hm)) in Ht; discriminate Ht
+              end ].
 
 Ltac mo_4 :=
   clear_defs; destruct_conjs;
@@ -803,6 +875,8 @@ Ltac mo_21 :=
   solve [ match goal with Hx : _ ⊢aᵐ me_app _ _ |- False => inversion Hx; subst; try (cbn in *; congruence) end;
               mt_unify;
               repeat match goal with
+                | H1 : mres_tl ?R = Some ?T1, H2 : mres_tl ?R = Some ?T2 |- _ =>
+                    assert_fails constr_eq T1 T2; rewrite H1 in H2; injection H2; intros; subst; clear H2
                 | H1 : tele_view ?T = Some _, H2 : tele_view ?T = Some _ |- _ =>
                     rewrite H1 in H2; injection H2; intros; subst; clear H2
                 | H1 : tele_view ?T = Some _, H2 : tele_view ?T = None |- _ => rewrite H1 in H2; discriminate H2
@@ -812,12 +886,15 @@ Ltac mo_21 :=
 Ltac mo_22 :=
   clear_defs; destruct_conjs;
   solve [ match goal with
-              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M nil (mr_mod ?T),
+              | HG : ⊢ ?G, HM : ?G ⊢aᵐ ?M, Hm : member_type _ _ ?G ?M nil ?R, Ht : mres_tl ?R = Some ?T,
                 Hv : tele_view ?T = Some (?B, _) |- exists i, ?G ⊢ ?B : Typeω@i =>
                   let i := fresh "i" in
                   let HA := fresh "HA" in
-                  destruct (member_typ_of_alg _ _ _ _ HG HM Hm ltac:(intros; discriminate)) as [i HA];
-                  cbn [mres_ty] in HA;
+                  let Hk := fresh "Hk" in
+                  assert (Hk : mres_kind R = mk_term -> nil <> (nil : list string))
+                    by (let Hk' := fresh in intros Hk'; destruct R; cbn in Hk', Ht; discriminate);
+                  destruct (member_typ_of_alg _ _ _ _ HG HM Hm Hk) as [i HA];
+                  rewrite (mres_ty_tl _ _ Ht) in HA;
                   exists i; exact (proj1 (proj2 (tele_view_wf _ _ _ _ _ HA Hv)))
               end ].
 
@@ -863,6 +940,11 @@ Ltac ob_ord_elim :=
     | match goal with
       | Hall : forall b, List.In b _ -> type_check_order (snd b), Hb : List.In ?b _ |- type_check_order (snd ?b) =>
           exact (Hall b Hb)
+      | Hh : forall H0 Ns, _ = me_apps H0 Ns -> modexp_order H0, E : _ = me_apps ?H0 ?Ns |- modexp_order ?H0 =>
+          exact (Hh _ _ E)
+      | Hn : forall H0 Ns p, _ = me_apps H0 Ns -> type_check_order (apps (a_ind p) Ns), E : _ = me_apps _ ?Ns
+        |- type_check_order (apps (a_ind ?p) ?Ns) =>
+          exact (Hn _ _ p E)
       end ].
 
 (** The order of the applied root of a member of an applied module. *)
@@ -914,6 +996,10 @@ Ltac ob_mem_neg :=
                   | Hp : mod_qname ?M = Some _, Hr : gc_resolve _ _ _ = Some (ge_def _ _ _ _),
                     Hs : modexp_spine ?M = _, Eg : glob_lookup _ _ _ = None |- _ =>
                       eapply glob_lookup_none; [ exact Hs | exact Eg | exact Hp | exact Hr ] end ]
+        | solve [ match goal with
+                  | Hp : mod_qname ?M = Some _, Hl : ind_lookup _ _ _ = Some _,
+                    Hs : modexp_spine ?M = _, Eg : glob_lookup _ _ _ = None |- _ =>
+                      eapply glob_lookup_none_ind; [ exact Hs | exact Eg | exact Hp | exact Hl ] end ]
         | solve [ match goal with
                   | Hp : mod_qname ?M = Some _, Hs : modexp_spine ?M = (_, _ :: _, _) |- _ =>
                       rewrite (mod_qname_spine _ _ Hp) in Hs; discriminate end ]

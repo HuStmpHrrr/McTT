@@ -278,6 +278,9 @@ Section Transparent.
     all: try solve [ match goal with
       | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
     all: try solve [ eauto 6 with mctt ].
+    (* the module of an inductive type: the type former, applied *)
+    all: try solve [ match goal with IH : dclean (d_ind _ nil) -> _ -> dclean ?r |- dclean ?r =>
+                       apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 

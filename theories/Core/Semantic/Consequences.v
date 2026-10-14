@@ -885,7 +885,11 @@ Proof.
     try solve [ eauto ].
   all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
     try contradiction; eauto.
-  match_by_head ctx_lookup ltac:(fun H => inversion H).
+  all: try solve [ match_by_head ctx_lookup ltac:(fun H => inversion H) ].
+  (** An eliminator at a resolved head: the neutral at the canonical head. *)
+  match goal with Hq : me_apps _ _ = qname_mod _ |- _ => destruct (me_apps_qname _ _ _ Hq) as [-> _] end.
+  match goal with IH : forall W0 : ne, ne_clean W0 -> _ -> a_elim (me_apps (qname_mod ?p) nil) ?n (nf_to_exp ?A) (nbrs_to_brs ?Bs) (ne_to_exp ?M) = _ -> False |- _ =>
+    apply (IH (ne_elim p n A Bs M)); [ cbn; repeat split; assumption | reflexivity | reflexivity ] end.
 Qed.
 
 (** ** Canonical Forms and Consistency
@@ -1103,7 +1107,11 @@ Proof.
     try solve [ eauto ].
   all: destruct W; simpl in *; try congruence; autoinjections; destruct_all;
     try contradiction; eauto.
-  match_by_head ctx_lookup ltac:(fun H => inversion H).
+  all: try solve [ match_by_head ctx_lookup ltac:(fun H => inversion H) ].
+  (** An eliminator at a resolved head: the neutral at the canonical head. *)
+  match goal with Hq : me_apps _ _ = qname_mod _ |- _ => destruct (me_apps_qname _ _ _ Hq) as [-> _] end.
+  match goal with IH : forall W0 : ne, ne_head W0 = None -> _ -> a_elim (me_apps (qname_mod ?p) nil) ?n (nf_to_exp ?A) (nbrs_to_brs ?Bs) (ne_to_exp ?M) = _ -> False |- _ =>
+    apply (IH (ne_elim p n A Bs M)); [ cbn; assumption | reflexivity | reflexivity ] end.
 Qed.
 
 Lemma closed_neutral_head : forall {Θ Ξ A} {W : ne},

@@ -85,25 +85,20 @@ Inductive gens_run (Θ : gdeps) : gstack -> list igen -> gstack -> Prop :=
 
 (** ** Inductive Declarations
 
-    A declaration [x] makes the module [x], whose parameters are its uniform
-    parameters ([ind_frame]).  In it, the declaration is filed under a name
-    no source can write, [ind_name], with the parameters of the frames,
-    the module's own included, as its outermost uniform parameters
-    ([gs_ind]); then the constructors are generated, each a member of the
-    module like any definition: the constructor applied to the module's and
-    the frames' parameters.  The generated definitions run as those of an
-    import do ([gens_run]), with the premises of [rc_def].  Read as a term,
-    the module is the type former ([Imports.ind_head]). *)
+    A declaration [x] is filed as the entry [x] of the frame
+    ([ge_ind]): the declaration, with the parameters of the frames as its
+    outermost uniform parameters ([gs_ind]), and the body of its module,
+    whose members are generated ([gen_body]): the constructors, each the
+    constructor applied to the uniform parameters, and the recursor, all
+    closed over the uniform parameters, which are the module's.  The entry
+    is checked member by member ([wf_gentry_ind_ext]).  As a term, the
+    path of the entry is the type former ([wf_mem_glob_ind]). *)
 
 Definition gs_ind (Ξ : gstack) (D : ind_decl) : ind_decl :=
   mk_ind (ind_nu D + List.length (gs_tele Ξ)) (ind_params D ++ gs_tele Ξ) (ind_sort D) (ind_cons D).
 
-(** The frame of the module [x] a declaration makes, and the name of the
-    declaration in it. *)
-Definition ind_frame (Ξ : gstack) (x : string) (R : raw_decl) : gstack :=
-  gs_push (qname_in (gs_path Ξ) x) (rd_uparams R) Ξ.
-
-Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (qname_in (gs_path Ξ) x) ind_name.
+(** The path of the inductive type [x] a declaration makes. *)
+Definition ind_qname (Ξ : gstack) (x : string) : qname := qname_in (gs_path Ξ) x.
 
 (** The recursor of the filed declaration [D], over the module's
     parameters [Γ0] (the uniform ones): at a finite level [u], a motive
@@ -152,7 +147,7 @@ Definition rec_fn (p : qname) (D : ind_decl) : exp :=
   let K := List.length (ind_cons D) in
   ctx_fn (rec_tele p D)
     (ctx_fn (elim_mctx p D (rec_uvars D K))
-       (a_elim p (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
+       (a_elim (qname_mod p) (S (ind_nn D)) (rec_motive D (K + S (ind_nn D))) (rec_brs D K 0 (ind_cons D)) (a_var 0))).
 
 (** The constructors of the filed declaration [D], over the module's
     parameters: [D]'s uniform ones, then its recursor.  They are public
@@ -166,6 +161,19 @@ Definition ind_gens (p : qname) (D : ind_decl) : list igen :=
                 (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D))))
     (ind_cons D)
   ++ ig_def "rec" false (rec_ty p D) (rec_fn p D) :: nil.
+
+(** The body the generated definitions make after [Φ], each closed over the
+    telescope [T]; an alias generates nothing here. *)
+Fixpoint gens_body (Φ : gmod) (T : ctx) (gs : list igen) : gmod :=
+  match gs with
+  | nil => Φ
+  | ig_def d pv A M :: gs' => gens_body (Φ ⊳ d ↦ ge_def true pv (ctx_pi T A) (Some (ctx_fn T M))) T gs'
+  | ig_alias _ _ _ :: gs' => gens_body Φ T gs'
+  end.
+
+(** The body of the module of the inductive type [D] at [p]: its
+    constructors and its recursor, over the uniform parameters. *)
+Definition gen_body (p : qname) (D : ind_decl) : gmod := gens_body ⋄ (ind_uparams D) (ind_gens p D).
 
 (** ** Classifying the Arguments on Normal Forms
 
@@ -326,34 +334,31 @@ Section Semantics.
       import_gen_ok Θ Ξ (gs_tele Ξ) E its gs ->
       gens_run Θ Ξ gs Ξ' ->
       Θ ⍮ Ξ ⊢[ch] cc_open E its ⇝ Θ ⍮ Ξ'
-  (** A declaration as written: its arguments classified ([cls_cons_in]); its
-      module's frame pushed, with the premises of [rc_mod]; the structural
-      declaration checked as the member it is filed as, then its
-      constructors generated; and that frame becomes the member [x], as
-      [rc_mod] makes it. *)
-  | rc_ind : forall ch Θ Ξ x pv R cs mp U,
+  (** A declaration as written: its arguments classified ([cls_cons_in]);
+      the entry it is filed as, the declaration with its module's generated
+      body, checked where it is declared. *)
+  | rc_ind : forall ch Θ Ξ x pv R cs,
       cls_cons_in Θ Ξ R cs ->
-      tele_ass (rd_uparams R) ->
-      ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ ->
       gs_fresh x Ξ ->
-      Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind false (gs_ind Ξ (rd_filed R cs)) ->
-      gens_run Θ (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R))
-        (ind_gens (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ((mp, U) :: Ξ) ->
-      Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝ Θ ⍮ gs_add x (ge_body pv (rd_uparams R) (gu_mod U)) Ξ
-  (** [builtin natural := X], at the top of a unit without parameters:
-      [X]'s declaration has the shape of the natural numbers, and no
-      binding is visible yet.  The binding is filed as the definition
-      [#natural] of the unit, the type former, with the premises of
-      [rc_def]. *)
-  | rc_builtin : forall ch Θ Ξ mp U p D z s,
+      Θ ⍮ Ξ ⍮ ind_qname Ξ x
+        ⊢e ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs))) ->
+      Θ ⍮ Ξ ⊢[ch] cc_ind x pv R ⇝
+        Θ ⍮ gs_add x (ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ
+  (** [builtin natural := X], at the top of a unit without parameters: [X]
+      is the path of an inductive type with the shape of the natural
+      numbers, and no binding is visible yet.  The binding is filed as the
+      definition [#natural] of the unit, the type former, with the premises
+      of [rc_def]. *)
+  | rc_builtin : forall ch Θ Ξ mp U H p D z s,
       Ξ = (mp, U) :: nil ->
       gu_params U = nil ->
       nat_binds Θ Ξ = nil ->
+      mod_qname H = Some p ->
       ind_lookup Θ Ξ p = Some D ->
       nat_shape D = Some (z, s) ->
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ a_ind p : ind_ty D ->
       gs_fresh nat_name Ξ ->
-      Θ ⍮ Ξ ⊢[ch] cc_builtin nat_kind p ⇝ Θ ⍮ gs_add nat_name (gs_def true false Ξ (ind_ty D) (a_ind p)) Ξ
+      Θ ⍮ Ξ ⊢[ch] cc_builtin nat_kind H ⇝ Θ ⍮ gs_add nat_name (gs_def true false Ξ (ind_ty D) (a_ind p)) Ξ
   (** An [eval] changes nothing, but must type-check where it stands. *)
   | rc_eval_check : forall ch Θ Ξ M A,
       Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ M : A ->
@@ -452,7 +457,12 @@ Section Determinism.
           assert_fails constr_eq g1 g2; pose proof (import_gen_ok_functional _ _ _ _ _ _ _ H1 H2); subst g2
       end.
     (* a builtin binding: its declaration *)
-    all: try solve [ match goal with
+    all: try solve [
+      match goal with
+      | H1 : mod_qname ?H = Some ?p1, H2 : mod_qname ?H = Some ?p2 |- _ =>
+          rewrite H1 in H2; injection H2 as <-
+      end;
+      match goal with
       | H1 : ind_lookup _ _ ?p = Some _, H2 : ind_lookup _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2 as <-; split; reflexivity
       end ].
@@ -475,14 +485,10 @@ Section Determinism.
       | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
           rewrite (gens_run_functional _ _ _ _ H1 _ H2)
       end; split; reflexivity.
-    - (* a declaration: its classification, then its generated definitions *)
+    - (* a declaration: its classification *)
       match goal with
       | H1 : cls_cons_in ?a ?b ?r ?c1, H2 : cls_cons_in ?a ?b ?r ?c2 |- _ =>
           assert_fails constr_eq c1 c2; pose proof (cls_cons_in_functional _ _ _ _ _ H1 H2); subst c2
-      end.
-      match goal with
-      | H1 : gens_run _ _ ?gs _, H2 : gens_run _ _ ?gs _ |- _ =>
-          pose proof (gens_run_functional _ _ _ _ H1 _ H2) as Heq; injection Heq as -> ->
       end; split; reflexivity.
     - (* a sequence: its head, then its tail from the same state *)
       match goal with
@@ -569,6 +575,25 @@ Lemma frame_fresh_grow : forall Θ Θ' Ξ mp,
     frame_fresh Θ Ξ mp -> gds_lookup Θ' (q_unit mp) = None -> frame_fresh Θ' Ξ mp.
 Proof. intros * H Hn; destruct Ξ as [| [mq V] Ξ]; cbn in *; [ split; [ exact Hn | exact (proj2 H) ] | exact H ]. Qed.
 
+Lemma add_ind_wf : forall Θ Ξ x pv D Φ,
+    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e ge_ind pv D Φ -> gs_fresh x Ξ ->
+    ⊢g Θ ⍮ gs_add x (ge_ind pv D Φ) Ξ.
+Proof.
+  intros * HΞ HE Hfr.
+  destruct Ξ as [| [mp [P Φ1]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
+  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
+  apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
+  cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
+Qed.
+
+(** The name of an entry of a frame is fresh in the body before it. *)
+Lemma wf_gstack_ext_fresh : forall Θ mq Δ Φ0 y E Ξ0,
+    ⊢g Θ ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ E)) :: Ξ0 -> gm_fresh y Φ0.
+Proof.
+  intros * Hg; destruct (wf_gstack_cons_inv _ _ _ _ Hg) as (_ & HU & _).
+  pose proof (wf_gunit_mod _ _ _ _ HU) as HΦ; cbn in HΦ; inversion HΦ; subst; assumption.
+Qed.
+
 Section GrowDeps.
   Variables (Θ Θ' : gdeps).
   Hypothesis Hsub : Θ ⊑ Θ'.
@@ -586,8 +611,17 @@ Section GrowDeps.
     - econstructor; apply He; eassumption.
     - econstructor; auto.
     - econstructor; [ assumption | apply Hx; assumption | apply Hm; assumption ].
-    - (* a declaration *)
+    - (* an inductive type, before its members *)
       econstructor; try eassumption; intros; first [ apply Hc | apply He ]; eauto.
+    - (* one more member, checked with the entry so far declared *)
+      rename H0 into IH, H1 into HM.
+      pose proof (IH eq_refl ltac:(assumption) ltac:(assumption)) as HE'.
+      pose proof (ctx_wf_gctx _ _ _ (presup_exp_ctx HM)) as Hg0.
+      assert (Hg' : ⊢g Θ' ⍮ (mq, gu_body Δ (Φ0 ⊳ y ↦ ge_ind pv D Φ)) :: Ξ).
+      { refine (add_ind_wf _ ((mq, gu_body Δ Φ0) :: Ξ) y pv D Φ _ HE' _); [ assumption |].
+        cbn; exact (wf_gstack_ext_fresh _ _ _ _ _ _ _ Hg0). }
+      pose proof (deps_grow _ _ _ Hsub (wf_ctx_empty _ _ Hg')) as (_ & He' & _).
+      econstructor; [ exact HE' | apply He'; exact HM | assumption ].
     - econstructor; [ assumption | apply Hc; assumption ].
     - match goal with HE : Θ ⍮ _ ⍮ qname_in _ _ ⊢e _ |- _ => pose proof (wf_gentry_gctx _ _ _ _ HE) as Hg0 end.
       destruct (wf_gstack_cons_inv _ _ _ _ Hg0) as (_ & _ & Hff).
@@ -711,33 +745,7 @@ Proof.
   cbn; econstructor; [ eassumption | constructor; assumption | exact Hfr ].
 Qed.
 
-Lemma add_ind_wf : forall Θ Ξ x pv D,
-    ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ qname_in (gs_path Ξ) x ⊢e ge_ind pv D -> gs_fresh x Ξ ->
-    ⊢g Θ ⍮ gs_add x (ge_ind pv D) Ξ.
-Proof.
-  intros * HΞ HE Hfr.
-  destruct Ξ as [| [mp [P Φ]] Ξ]; [ contradiction |]; cbn in Hfr, HE |- *.
-  inversion HΞ as [| | ? ? ? ? ? Hs0 HΦ Hff]; subst.
-  apply wf_gstack_cons; [ exact Hs0 | | exact Hff ].
-  cbn; econstructor; [ eassumption | exact HE | exact Hfr ].
-Qed.
 
-(** The frame of a declaration's module, with the premises of [rc_mod], and
-    its declaration filed. *)
-Lemma ind_frame_wf : forall Θ Ξ x R,
-    ⊢g Θ ⍮ Ξ -> tele_ass (rd_uparams R) -> ⊢ Θ ⍮ Ξ ⍮ rd_uparams R ++ gs_tele Ξ -> gs_fresh x Ξ ->
-    ⊢g Θ ⍮ ind_frame Ξ x R.
-Proof.
-  intros * HΞ Htel HΔ Hfr.
-  destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; unfold ind_frame; cbn [gs_fresh gs_path] in Hfr |- *.
-  apply wf_gstack_cons; [ exact HΞ | constructor; [ exact Htel | exact HΔ ] |].
-  cbn; exists x; split; [ reflexivity | exact Hfr ].
-Qed.
-
-Lemma ind_file_wf : forall Θ Ξ x R pv D,
-    ⊢g Θ ⍮ ind_frame Ξ x R -> Θ ⍮ ind_frame Ξ x R ⍮ ind_qname Ξ x ⊢e ge_ind pv D ->
-    ⊢g Θ ⍮ gs_add ind_name (ge_ind pv D) (ind_frame Ξ x R).
-Proof. intros * HΞ HE; apply add_ind_wf; [ exact HΞ | exact HE | cbn; intros [] ]. Qed.
 
 Lemma gens_run_wf : forall Θ Ξ gs Ξ', gens_run Θ Ξ gs Ξ' -> ⊢g Θ ⍮ Ξ -> ⊢g Θ ⍮ Ξ'.
 Proof.
@@ -882,20 +890,11 @@ Section WellFormed.
       + split; [ apply canon_merge; assumption | apply merge_left ].
     - (* an import: what its generated commands make *)
       intros * _ _ Hg HΞ Hc Hst; split; [ exact (gens_run_wf _ _ _ _ Hg HΞ) | split; [ exact Hc | apply gds_sub_refl ] ].
-    - (* a declaration: its module's frame, its entry there, its generated
-         definitions; then the frame closes, as a module's does *)
-      intros ch Θ Ξ x pv R cs mp' U _ Htel HΔ Hfr HE Hg HΞ Hc Hst.
-      split; [| split; [ exact Hc | apply gds_sub_refl ] ].
-      pose proof (gens_run_wf _ _ _ _ Hg (ind_file_wf _ _ _ _ _ _ (ind_frame_wf _ _ _ _ HΞ Htel HΔ Hfr) HE)) as HΞ'.
-      destruct Ξ as [| [mp [P Φ]] Ξ0]; [ contradiction |]; unfold ind_frame in *; cbn [gs_fresh gs_path] in Hfr, Hg |- *.
-      pose proof (gens_run_shape _ _ _ _ Hg) as Hp; cbn in Hp; injection Hp as -> HP.
-      inversion HΞ' as [| | ? ? ? ? ? Hs1 HU Hff1]; subst.
-      inversion Hs1 as [| | ? ? ? ? ? Hs0 HV Hff0]; subst.
-      cbn [gu_params] in HP; subst.
-      apply wf_gstack_cons; [ exact Hs0 | | exact Hff0 ].
-      cbn; econstructor; [ exact HV | constructor; exact HU | exact Hfr ].
+    - (* a declaration: its entry, checked where it is declared *)
+      intros ch Θ Ξ x pv R cs _ Hfr HE HΞ Hc Hst.
+      split; [ apply add_ind_wf; assumption | split; [ exact Hc | apply gds_sub_refl ] ].
     - (* a builtin binding: the definition [#natural], as [rc_def] files it *)
-      intros ch Θ Ξ mp U p D z s _ _ _ _ _ HA Hfr HΞ Hc Hst.
+      intros ch Θ Ξ mp U H p D z s _ _ _ _ _ _ HA Hfr HΞ Hc Hst.
       split; [ apply add_def_wf; assumption | split; [ exact Hc | apply gds_sub_refl ] ].
     - intros; split; [| split ]; auto using gds_sub_refl.
     - intros; split; [| split ]; auto using gds_sub_refl.
@@ -1216,13 +1215,13 @@ End Runs.
     What [IndCommand.rc_ind_con_types] reads off a run: the filed
     declaration and its constructors. *)
 
-Lemma ind_lookup_added : forall Θ Ξ x pv D,
-    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv D) Ξ) (qname_in (gs_path Ξ) x) = Some D.
+Lemma ind_lookup_added : forall Θ Ξ x pv D Φ,
+    Ξ <> nil -> ind_lookup Θ (gs_add x (ge_ind pv D Φ) Ξ) (qname_in (gs_path Ξ) x) = Some D.
 Proof.
   intros * Hn; destruct Ξ as [| [mp U] Ξ0]; [ contradiction |].
   unfold ind_lookup; cbn [gs_add gs_path].
   change (qname_in mp x) with (qname_app mp (x :: nil)).
-  rewrite gc_resolve_frame_here; destruct U as [P [Φ | E]]; cbn; rewrite String.eqb_refl; reflexivity.
+  rewrite gc_module_frame_here; cbn; rewrite String.eqb_refl; reflexivity.
 Qed.
 
 Lemma Forall2_in_left : forall {X Y} (Rl : X -> Y -> Prop) l1 l2 a,

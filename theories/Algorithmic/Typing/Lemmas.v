@@ -57,6 +57,31 @@ Proof.
     repeat match goal with H1 : ind_con ?D ?c = Some ?g1, H2 : ind_con ?D ?c = Some ?g2 |- _ =>
       assert (g1 = g2) as <- by congruence; clear H2 end;
     functional_nbe_rewrite_clear; reflexivity ].
+  (** An eliminator: at a head other than the canonical one, it infers as at
+      the canonical one, which resolves to itself. *)
+  1-3: repeat match goal with
+         | Heq : ?H = me_apps ?H1 ?N1, Heq' : ?H = me_apps ?H2 ?N2 |- _ =>
+             rewrite Heq in Heq'; clear Heq end.
+  1: exfalso; match goal with
+       | Heq : me_apps (qname_mod ?p) ?N1 = me_apps ?H2 ?N2, Hm : member_type _ _ _ ?H2 nil (mr_ind ?p0 _),
+         Hn : ?H2 = qname_mod ?p0 -> False, Hl : ind_lookup _ _ ?p = Some _ |- _ =>
+           destruct (me_apps_inj _ _ _ _ (qname_mod_noapp _) (member_type_ind_noapp' _ _ _ _ _ _ Hm) Heq) as [<- _];
+           destruct (ind_lookup_module _ _ _ _ Hl) as [? Hp];
+           apply Hn; rewrite (path_ind_self _ _ _ _ _ _ _ _ Hp Hm); reflexivity
+     end.
+  1: exfalso; match goal with
+       | Heq : me_apps ?H2 ?N2 = me_apps (qname_mod ?p) ?N1, Hm : member_type _ _ _ ?H2 nil (mr_ind ?p0 _),
+         Hn : ?H2 = qname_mod ?p0 -> False, Hl : ind_lookup _ _ ?p = Some _ |- _ =>
+           destruct (me_apps_inj _ _ _ _ (member_type_ind_noapp' _ _ _ _ _ _ Hm) (qname_mod_noapp _) Heq) as [-> _];
+           destruct (ind_lookup_module _ _ _ _ Hl) as [? Hp];
+           apply Hn; rewrite (path_ind_self _ _ _ _ _ _ _ _ Hp Hm); reflexivity
+     end.
+  1: match goal with
+       | Heq : me_apps ?H1 ?N1 = me_apps ?H2 ?N2, Hm1 : member_type _ _ _ ?H1 nil (mr_ind ?p1 _),
+         Hm2 : member_type _ _ _ ?H2 nil (mr_ind ?p2 _) |- _ =>
+           destruct (me_apps_inj _ _ _ _ (member_type_ind_noapp' _ _ _ _ _ _ Hm1) (member_type_ind_noapp' _ _ _ _ _ _ Hm2) Heq) as [<- <-];
+           pose proof (proj1 (member_type_functional _ _) _ _ _ _ Hm1 _ Hm2) as E; injection E as <- <-
+     end; eauto.
   (** An unannotated [let]: the body's type, then the type of the rest. *)
   4:{ assert (A = A0) as <- by eauto. assert (C = C0) as <- by eauto.
       functional_nbe_rewrite_clear. reflexivity. }
@@ -68,6 +93,26 @@ Proof.
           else pose proof (proj1 (member_type_functional _ _) _ _ _ _ H1 _ H2) as E; injection E as E; subst A2
       end.
       functional_nbe_rewrite_clear. reflexivity. }
+  (** The module of an inductive type is neither a term member nor a
+      global. *)
+  all: try solve [ exfalso;
+    repeat match goal with Hp : mod_qname ?H = Some ?a, Hp' : mod_qname ?H = Some ?b |- _ =>
+      assert_fails constr_eq a b; rewrite Hp in Hp'; injection Hp' as <- end;
+    match goal with
+    | Hp : mod_qname ?H = Some ?mp, Hl : ind_lookup _ _ (qname_app ?mp (?x :: nil)) = Some _,
+      Hr : gc_resolve _ _ (qname_app ?mp (?x :: nil)) = Some _ |- _ =>
+        rewrite (proj1 (ind_lookup_not_def _ _ _ _ Hl)) in Hr; discriminate
+    | Hp : mod_qname ?H = Some ?mp, Hl : ind_lookup _ _ (qname_app ?mp (?x :: nil)) = Some _,
+      Hm : member_type _ _ _ ?H (?x :: nil) (mr_term _) |- _ =>
+        exact (mt_term_not_ind _ _ _ _ _ _ _ _ Hp Hm Hl)
+    end ].
+  all: try solve [ match goal with
+    | Hp : mod_qname ?H = Some ?mp, Hp' : mod_qname ?H = Some ?mq |- _ =>
+        rewrite Hp in Hp'; injection Hp' as <-;
+        match goal with H1 : ind_lookup _ _ ?pq = Some ?D1, H2 : ind_lookup _ _ ?pq = Some ?D2 |- _ =>
+          assert (D1 = D2) as <- by congruence end;
+        functional_nbe_rewrite_clear; reflexivity
+    end ].
   4,5: exfalso; match goal with Hn : me_noargs ?H, Hs : modexp_spine ?H = _, Ha : _ = nil -> False |- _ =>
          apply Ha, (me_noargs_spine _ _ _ _ Hn Hs) end.
   4:{ match goal with Hs1 : modexp_spine ?H = _, Hs2 : modexp_spine ?H = _ |- _ =>
@@ -284,9 +329,15 @@ Qed.
 
 (** The eliminator: the parameters of the scrutinee's type are typed, so
     the motive's and the branches' contexts are well formed. *)
-Lemma alg_elim_sound : forall Γ M p Rs D nm A i Bs T,
+Lemma alg_elim_sound : forall Γ M p Rs D H Ns nh W nm A i Bs T,
     ⊢ Γ -> Γ ⊢ M : apps (a_ind p) (nfs_to_exps Rs) -> ind_lookup gc_deps gc_stack p = Some D ->
-    List.length (nfs_to_exps Rs) = ind_np D -> nm = S (ind_nn D) ->
+    List.length (nfs_to_exps Rs) = ind_np D ->
+    H = me_apps (qname_mod p) Ns -> List.length Ns = nh -> nh <= ind_nu D ->
+    (forall i, Γ ⊢ ind_ty_at D (List.firstn nh (nfs_to_exps Rs)) : Typeω@i ->
+       Γ ⊢ apps (a_ind p) Ns : ind_ty_at D (List.firstn nh (nfs_to_exps Rs))) ->
+    nbe_f Γ (apps (a_ind p) Ns) (ind_ty_at D (List.firstn nh (nfs_to_exps Rs))) W ->
+    nbe_f Γ (apps (a_ind p) (List.firstn nh (nfs_to_exps Rs))) (ind_ty_at D (List.firstn nh (nfs_to_exps Rs))) W ->
+    nm = S (ind_nn D) ->
     (⊢ (elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list ->
        (elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list ⊢ A : Typeω@i) ->
     brs_names (ind_cons D) Bs ->
@@ -298,9 +349,18 @@ Lemma alg_elim_sound : forall Γ M p Rs D nm A i Bs T,
        (elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ)%list
          ⊢ B : elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
     nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
-    Γ ⊢ a_elim p nm A Bs M : T.
+    Γ ⊢ a_elim H nm A Bs M : T.
 Proof.
-  intros * HΓ HM Hl HRl Hnm HAi HBn HBa HBi HT.
+  intros * HΓ HM Hl HRl HH HNl Hnh HT0f HW0 HW1 Hnm HAi HBn HBa HBi HT.
+  destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD0 Hc0].
+  assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k0 Hk0] by (gen_presups; eauto).
+  pose proof (wf_ind_apps_inv _ _ _ _ _ Hl Hk0 HRl) as HRt0.
+  destruct (ind_ty_at_typed _ _ _ nh HD0 Hc0 HΓ HRl HRt0 ltac:(pose proof (decl_closed_nu D Hc0); lia)) as [it Hit].
+  pose proof (HT0f _ Hit) as HT0.
+  pose proof (ind_apps_at_typed _ _ _ _ nh HD0 Hc0 Hl HΓ HRl HRt0 ltac:(pose proof (decl_closed_nu D Hc0); lia)) as HT1.
+  assert (HT0e : Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh (nfs_to_exps Rs))
+                   : ind_ty_at D (List.firstn nh (nfs_to_exps Rs)))
+    by (etransitivity; [ exact (soundness' HT0 HW0) | symmetry; exact (soundness' HT1 HW1) ]).
   destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc].
   pose proof (decl_closed_nu D Hc) as Hle.
   assert (exists k, Γ ⊢ apps (a_ind p) (nfs_to_exps Rs) : Typeω@k) as [k Hk] by (gen_presups; eauto).
@@ -311,8 +371,9 @@ Proof.
   pose proof (wf_sub_uparams _ _ _ HD Hc _ _ HΓ HUl HUt) as Hσ.
   assert (HMs : ⊢ (elim_mctx p D Us ++ Γ)%list) by (eapply elim_mctx_wf; eassumption).
   pose proof (HAi HMs) as HA.
-  assert (Hel : Γ ⊢ a_elim p nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)]).
-  { eapply wf_elim; [ exact Hl | exact HRl | exact HRt | exact HM | exact Hnm | exact HA
+  assert (Hel : Γ ⊢ a_elim H nm A Bs M : A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)]).
+  { eapply wf_elim; [ exact Hl | exact HRl | exact HH | exact HNl | exact HT0 | exact HT0e | exact Hnh
+                    | exact HRt | exact HM | exact Hnm | exact HA
                     | exact (ctx_ext_refl _ _ _ _ (elim_mctx_ass _ _ _ Hc) HMs) | exact HBn | | exact HBa | ].
     - intros c gs Hcon; eapply ctx_ext_refl; [ apply elim_bctx_ass, Hc | eapply elim_bctx_wf; eassumption ].
     - intros c gs n B Hcon Hin.
@@ -333,6 +394,24 @@ Proof.
       is a typing at [unf_tm u]. *)
   apply alg_type_mut_ind; intros; simpl_univ_nf;
     cbn [unf_tm] in *; try mautosolve 4.
+  (** An eliminator at a resolved head, as at the canonical one; the module
+      of an inductive type at a path, as its type former. *)
+  all: try solve [ match goal with
+     | IHH : ⊢ ?G -> gc_deps ⍮ gc_stack ⍮ ?G ⊢ᵐ ?H0 ≈ ?H0, Hm : member_type _ _ ?G ?H0 nil (mr_ind ?p _),
+       Heq : ?H = me_apps ?H0 ?Ns, IHe : ⊢ ?G -> ?G ⊢ a_elim (me_apps (qname_mod ?p) ?Ns) _ _ _ _ : ?T,
+       HΓ : ⊢ ?G |- ?G ⊢ a_elim ?H _ _ _ _ : ?T =>
+         let He := fresh "He" in let i := fresh "i" in let Hi := fresh "Hi" in
+         pose proof (IHe HΓ) as He; destruct (presup_exp_typ He) as [i Hi];
+         eapply wf_elim_head; [ exact (IHH HΓ) | exact Hm | exact Heq | exact Hi | exact He ]
+     end ].
+  all: try solve [ match goal with
+     | Hp : mod_qname ?H = Some ?mp, Hl : ind_lookup _ _ (qname_app ?mp (?x :: nil)) = Some ?D,
+       HΓ : ⊢ ?G |- ?G ⊢ a_mem ?H ?x : _ =>
+         let HD := fresh "HD" in let Hc := fresh "Hc" in let j := fresh "j" in let Hj := fresh "Hj" in
+         destruct (decl_of_lookup _ _ _ _ _ HΓ Hl) as [HD Hc];
+         destruct (ind_ty_typed _ _ _ _ HD Hc HΓ) as [j Hj];
+         eapply wf_conv'; [ eapply wf_mem_glob_ind; eassumption | eapply soundness_ty'; eassumption ]
+     end ].
   (** The cases below are dispatched on the shape of the goal rather than by
       position: a new rule would silently renumber positional selectors. *)
   all: lazymatch goal with
@@ -365,9 +444,13 @@ Proof.
       | HM : ⊢ ?G -> ?G ⊢ ?M : _, HΓ : ⊢ ?G, HA : ⊢ ?X -> ?X ⊢ ?A : nf_to_exp ?UA, Hu : is_univ_nf ?UA ?u
         |- ?G ⊢ a_elim _ _ ?A _ ?M : _ =>
           rewrite (is_univ_nf_eq _ _ Hu), nf_to_exp_univ_nf in HA;
-          eapply (alg_elim_sound G M _ _ _ _ A (unf_large u));
-            [ exact HΓ | exact (HM HΓ) | eassumption | eassumption | eassumption
+          eapply (alg_elim_sound G M _ _ _ _ _ _ _ _ A (unf_large u));
+            [ exact HΓ | exact (HM HΓ) | eassumption | eassumption | eassumption | eassumption | eassumption
+            | | eassumption | eassumption | eassumption
             | intros HX; apply wf_exp_unf_large; exact (HA HX) | eassumption | eassumption | | eassumption ];
+          [ match goal with H0 : ⊢ G -> forall i, G ⊢ ?X : Typeω@i -> G ⊢ apps (a_ind _) ?L : _
+                            |- forall i, G ⊢ ?X : Typeω@i -> G ⊢ apps (a_ind _) ?L : _ =>
+              exact (H0 HΓ) end .. | ];
           intros; eauto
       end
   (** A module [let]. *)
@@ -416,10 +499,12 @@ Proof.
         pose proof (ext_eq_ctx_left _ _ _ _ _ (Hx HΓ)) as HΨ; pose proof (Hx HΓ) as HXe end;
       eapply wf_unit_eq_alias; eauto
   (** A module expression applied. *)
-  | Hmt : member_type _ _ _ _ nil (mr_mod _) |- wf_modexp_eq _ _ _ _ _ =>
+  | Hmt : member_type _ _ _ _ nil ?R0, Htl : mres_tl ?R0 = Some _ |- wf_modexp_eq _ _ _ _ _ =>
       assert (HH : gc_deps ⍮ gc_stack ⍮ Γ ⊢ᵐ H ≈ H) by eauto;
-      destruct (proj1 member_wf _ _ _ _ Hmt HH ltac:(intros; discriminate)) as ([i HA] & _);
-      cbn [mres_ty] in HA;
+      let HRty := fresh "HRty" in let HRk := fresh "HRk" in
+      destruct (mres_tl_ty _ _ Htl) as [HRty HRk];
+      destruct (proj1 member_wf _ _ _ _ Hmt HH ltac:(rewrite HRk; discriminate)) as ([i HA] & _);
+      rewrite HRty in HA;
       match goal with Hv : tele_view _ = Some _ |- _ =>
         destruct (tele_view_wf _ _ _ _ _ HA Hv) as (_ & HB & _) end;
       assert (Γ ⊢ N : B) by eauto;
@@ -704,6 +789,8 @@ Proof.
   - destruct (alg_elim_res_typed _ _ _ _ _ _ _ _ ltac:(eassumption) ltac:(eassumption) ltac:(eassumption) ltac:(eassumption)
                 ltac:(eassumption) ltac:(eassumption)) as [j Hj].
     eapply idempotent_nbe_ty; eassumption.
+  (** At a resolved head, as at the canonical one. *)
+  - eapply IHHinfer; [ assumption | mauto 3 using alg_type_infer_sound | assumption ].
   (** [Π]: the universe it infers is a normal form, which normalises to
       itself. *)
   - match goal with
@@ -759,6 +846,11 @@ Proof.
   (** A global infers the normal form of a type of the ambient context, so
       [idempotent_nbe_ty] closes it; that it is a type is [wf_glob_typ]. *)
   - assert (exists i, Γ ⊢ A : Typeω@i) as [i] by mauto 3 using wf_glob_typ.
+    (f_equiv; mautosolve 4).
+  (** The module of an inductive type infers the normal form of the type of
+      its declaration, a type. *)
+  - destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) ltac:(eassumption)) as [HD Hc].
+    destruct (ind_ty_typed _ _ _ _ HD Hc ltac:(eassumption)) as [j Hj].
     (f_equiv; mautosolve 4).
 Qed.
 
@@ -881,8 +973,8 @@ Fixpoint exp_lets (M : exp) : nat :=
   | a_maxl M N => exp_lets M + exp_lets N
   | a_natrec A MZ MS M => exp_lets A + exp_lets MZ + exp_lets MS + exp_lets M
   | a_exfalso A M => exp_lets A + exp_lets M
-  | a_elim _ _ A Bs M =>
-      S (exp_lets A) +
+  | a_elim H _ A Bs M =>
+      S (modexp_lets H + exp_lets A) +
         (fix brs_lets (Bs : list (String.string * nat * exp)) : nat :=
            match Bs with
            | nil => 0
@@ -932,7 +1024,7 @@ with gentry_lets (E : gentry) : nat :=
   match E with
   | ge_def _ _ A B => exp_lets A + match B with Some M => exp_lets M | None => 0 end
   | ge_mod _ U => gunit_lets U
-  | ge_ind _ _ => 0
+  | ge_ind _ _ Φ => gmod_lets Φ
   end
 with centry_lets (e : centry) : nat :=
   match e with
@@ -955,7 +1047,7 @@ Proof. induction Ψ; intros; cbn; [| rewrite IHΨ ]; lia. Qed.
 
 Lemma body_ctx_lets : forall Φ, ctx_lets (body_ctx Φ) <= gmod_lets Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U | pvi Di] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ?] | Φ IH c its ]; cbn; rewrite ?ctx_lets_app; [ lia .. |].
   enough (ctx_lets (List.repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
@@ -963,6 +1055,21 @@ Qed.
 Lemma exp_lets_apps : forall M args,
     exp_lets (apps M args) = exp_lets M + List.fold_right (fun N n => exp_lets N + n) 0 args.
 Proof. intros M args; revert M; induction args; intros; cbn; [ lia | rewrite IHargs; cbn; lia ]. Qed.
+
+Lemma modexp_lets_apps : forall H Ns,
+    modexp_lets (me_apps H Ns) = modexp_lets H + List.fold_right (fun N n => exp_lets N + n) 0 Ns.
+Proof. intros H Ns; revert H; induction Ns; intros; cbn; [ lia | rewrite IHNs; cbn; lia ]. Qed.
+
+Lemma modexp_lets_mems : forall ch H, modexp_lets (me_mems H ch) = modexp_lets H.
+Proof. induction ch; intros; cbn; [ reflexivity | rewrite IHch; reflexivity ]. Qed.
+
+(** The type former at the arguments of an eliminator's head has as many
+    unannotated [let]s as the head. *)
+Lemma exp_lets_head_apps : forall p Ns,
+    exp_lets (apps (a_ind p) Ns) = modexp_lets (me_apps (qname_mod p) Ns).
+Proof.
+  intros; rewrite exp_lets_apps, modexp_lets_apps; unfold qname_mod; rewrite modexp_lets_mems; reflexivity.
+Qed.
 
 Lemma exp_lets_member_ref : forall ch H, ch <> nil -> exp_lets (member_ref H ch) = modexp_lets H.
 Proof.
@@ -1385,7 +1492,7 @@ Proof.
       of the derivation, so the body's derivation is moved to [Γ ▸ A' ≔ M] by
       refinement.  That derivation is no subderivation, but its subject has
       fewer unannotated [let]s, which is what the outer induction is for. *)
-  13:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
+  14:{ match goal with Hc : Γ ⊢a M ⟸ A |- _ => inversion Hc as [? A' ? ? HMi HMs]; subst end.
       assert (Γ ⊢ M : A') by mauto 3 using alg_type_infer_sound.
       assert (exists k, Γ ⊢ A' : Typeω@k) as [k HA'] by (gen_presups; eauto 2).
       assert (Γ ⊢ A' : Typeω@(max i k)) by mauto 3 using lift_exp_max_right.
@@ -1413,7 +1520,7 @@ Proof.
       assert (Γ ⊢ W ⊆ C[Id,,M]) by (transitivity C'[Id,,M]; mauto 3).
       econstructor; [ eapply ati_let_infer; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A module [let], through its body. *)
-  14:{ destruct H0 as [HUa _].
+  15:{ destruct H0 as [HUa _].
        inversion H4 as [? C' ? ? HBi HBs]; subst.
        assert (Γ ▹ₘ U ⊢ B : C') by mauto 3 using alg_type_infer_sound.
        assert (exists k, Γ ▹ₘ U ⊢ C' : Typeω@k) as [k HCk] by (gen_presups; eauto 2).
@@ -1426,11 +1533,11 @@ Proof.
        assert (Γ ⊢ W ⊆ C[Id ,,ₘ me_lit U]) by (transitivity C'[Id ,,ₘ me_lit U]; mauto 3).
        econstructor; [ eapply ati_let_mod; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member, at the normal form of its canonical type. *)
-  14:{ destruct H2 as [Hm _].
+  15:{ destruct H2 as [Hm _].
        destruct (soundness_ty H4) as [W [HW HWe]].
        econstructor; [ eapply ati_mem; eauto | mauto 4 using alg_subtyping_complete ]. }
   (** A member of an applied module, as its root's member applied. *)
-  14:{ destruct H1 as [Hm _].
+  15:{ destruct H1 as [Hm _].
        inversion H7 as [? A' ? ? Hi Hs]; subst.
        econstructor; [ eapply ati_mem_app; eauto | exact Hs ]. }
   (** [zero] and [succ]. *)
@@ -1502,16 +1609,42 @@ Proof.
               elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
                 ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))).
     { intros c gs n' B Hcon Hin.
-      destruct (IHn (exp_lets B) ltac:(pose proof (brs_lets_in p (S (ind_nn D)) A Bs M c n' B Hin); lia)) as (_ & IHt & _).
+      destruct (IHn (exp_lets B) ltac:(pose proof (brs_lets_in (me_apps (qname_mod p) Ns) (S (ind_nn D)) A Bs M c n' B Hin); lia)) as (_ & IHt & _).
       eapply IHt; [ exact (HBt' _ _ _ _ Hcon Hin) | reflexivity | reflexivity | apply user_exp_all | lia ]. }
+    (** The type former at the head, moved to the normal forms. *)
+    match goal with HNe : Γ ⊢ apps (a_ind p) ?Ns ≈ apps (a_ind p) (List.firstn _ Ps) : _ |- _ => rename HNe into HNe0 end.
+    match goal with HNc : exp_lets (apps (a_ind p) ?Ns) <= _ -> Γ ⊢a apps (a_ind p) ?Ns ⟸ ind_ty_at _ _ |- _ =>
+      pose proof (HNc ltac:(rewrite exp_lets_head_apps; cbn [exp_lets] in Hbd; lia)) as HNc0 end.
+    match goal with Hk : _ <= ind_nu D |- _ => rename Hk into Hke0 end.
+    destruct (decl_of_lookup _ _ _ _ _ HΓe0 Hle0) as [HD0 Hc0].
+    pose proof (decl_closed_nu D Hc0) as Hnu0.
+    destruct (wf_exp_eq_ind_apps_at _ _ _ _ _ (List.length Ns) HD0 Hc0 Hle0 HΓe0 HPle0 HRl HPR ltac:(lia)) as [HAPR [iT HTPR]].
+    assert (HNc' := alg_type_check_subtyp HNc0 (wf_subtyp_refl' _ _ _ _ _ _ HTPR)).
+    assert (HNR := wf_exp_eq_conv' _ _ _ _ _ _ _ _ (wf_exp_eq_trans _ _ _ _ _ _ _ HNe0 HAPR) HTPR).
+    destruct (completeness HNR) as (WN & HWN0 & HWN1).
     (** The type. *)
     assert (exists k, Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] : Typeω@k) as [kT HT]
       by (gen_presups; eauto 2).
     destruct (soundness_ty HT) as [T [HnT HTe]].
-    econstructor; [ eapply ati_elim; eassumption || reflexivity |].
+    econstructor; [ eapply ati_elim; try reflexivity; eassumption |].
     apply alg_subtyping_complete.
     eapply wf_subtyp_refl'.
     eapply exp_eq_trans_typ_max; [ symmetry; exact HTe | symmetry; exact Hty ].
+  (** The eliminator at a head other than the canonical one: as at the
+      canonical head, which has no more unannotated [let]s. *)
+  - match goal with
+    | Hb : exp_lets (a_elim (me_apps ?H0 ?Ns) _ _ _ _) <= _,
+      Hc : exp_lets (a_elim (me_apps (qname_mod ?p) ?Ns) _ _ _ _) <= _ -> _ ⊢a _ ⟸ _,
+      HH : (modexp_lets ?H0 <= _ -> _ ⊢aᵐ ?H0) /\ _ |- _ =>
+        rename Hb into Hb0; rename Hc into Hc0; rename HH into HH1
+    end.
+    assert (Hlc : exp_lets (a_elim (me_apps (qname_mod p) Ns) nm A Bs M) <= n).
+    { cbn [exp_lets] in Hb0 |- *; rewrite modexp_lets_apps in Hb0 |- *; unfold qname_mod; rewrite modexp_lets_mems; cbn; lia. }
+    specialize (Hc0 Hlc).
+    assert (HH0 : Γ ⊢aᵐ H0) by (apply (proj1 HH1); cbn [exp_lets] in Hb0; rewrite modexp_lets_apps in Hb0; lia).
+    destruct (IndClassify.modexp_eq_dec H0 (qname_mod p)) as [-> | Hne]; [ exact Hc0 |].
+    inversion Hc0 as [? W ? ? Hi Hs]; subst.
+    econstructor; [ eapply ati_elim_head; [ exact HH0 | eassumption | exact Hne | reflexivity | exact Hi ] | exact Hs ].
   (** [Π], at either tier: the join of the two indices is below the universe
       of the rule's conclusion. *)
   - assert (exists UA u, Γ ⊢a A ⟹ UA /\ is_univ_nf UA u /\ unf_le u (unl i))
@@ -1586,6 +1719,12 @@ Proof.
     assert (exists W, nbe_ty_f Γ A W /\ Γ ⊢ A ≈ W : Typeω@i) as [W []]
         by (eapply soundness_ty; mauto 3).
     econstructor; mauto 4 using alg_subtyping_complete.
+  (** The module of an inductive type as its type former. *)
+  - match goal with Hl : ind_lookup _ _ _ = Some _ |- _ =>
+      destruct (decl_of_lookup _ _ _ _ _ ltac:(eassumption) Hl) as [HD Hc] end.
+    destruct (ind_ty_typed _ _ _ _ HD Hc ltac:(eassumption)) as [j Hj].
+    destruct (soundness_ty Hj) as [W [HW HWe]].
+    econstructor; [ eapply ati_mem_glob_ind; eassumption | apply alg_subtyping_complete; eapply wf_subtyp_refl'; symmetry; exact HWe ].
 
   (** Extensions. *)
   - constructor.

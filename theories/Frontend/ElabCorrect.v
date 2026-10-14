@@ -383,12 +383,10 @@ Proof.
     split; intros S M; cbn [elab elab_mod].
     + split; intros Hg.
       * apply ebind_eok in Hg as (H & HH & Hg); apply IHh in HH.
-        destruct (elim_head H) as [p |] eqn:Ep; cbn [ebind] in Hg; [| discriminate ].
         dest_eok. to_spec.
         match goal with Hx : elab_brs_with _ _ _ = eok _ |- _ => apply Hb in Hx end.
         econstructor; eassumption.
       * inversion Hg; subst. rewrite (proj2 (IHh _ _)) by eassumption; cbn [ebind].
-        match goal with E : elim_head _ = Some _ |- _ => rewrite E end; cbn [ebind].
         to_elab. rewrite (proj2 (Hb _ _)) by eassumption. reflexivity.
     + split; [ discriminate | intros Hg; inversion Hg ].
   - (* d_def *)
@@ -578,12 +576,10 @@ Section Commands.
         rewrite (proj2 (elab_iff _ _ _)) by eassumption; cbn [ebind].
         rewrite (proj2 (elab_rcons_iff _ _ _)) by eassumption. reflexivity.
     - intros k o _ ch O F F' c'; cbn [elab_cmd]. split.
-      + intros Hg; apply ebind_eok in Hg as (H & HH & Hg).
-        destruct (elim_head H) as [p |] eqn:Ep; cbn [ebind] in Hg; [| discriminate ]; inv_eok.
-        econstructor; [ apply elab_mod_iff; exact HH | exact Ep ].
+      + intros Hg; apply ebind_eok in Hg as (H & HH & Hg); inv_eok.
+        econstructor; apply elab_mod_iff; exact HH.
       + intros Hg; inversion Hg; subst.
-        rewrite (proj2 (elab_mod_iff _ _ _)) by eassumption; cbn [ebind].
-        match goal with E : elim_head _ = Some _ |- _ => rewrite E end; reflexivity.
+        rewrite (proj2 (elab_mod_iff _ _ _)) by eassumption; reflexivity.
   Qed.
 
   Corollary elab_cmds_iff : forall ch O F cs ccs, elab_cmds fp ch O F cs = eok ccs <-> scmds fp ch O F cs ccs.

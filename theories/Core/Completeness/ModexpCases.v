@@ -192,13 +192,14 @@ Proof.
   split; [ exact Hd | exact (per_dmod_trans _ _ _ (per_dmod_sym _ _ Hd) Hd) ].
 Qed.
 
-Lemma rel_me_mem : gmod_ok Θm Ξm -> forall Γ H H' y T,
-    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H (y :: nil) (mr_mod T) ->
+Lemma rel_me_mem : gmod_ok Θm Ξm -> forall Γ H H' y R0 T,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H (y :: nil) R0 -> mres_tl R0 = Some T ->
     Γ ⊨ᵐ me_mem H y ≈ me_mem H' y.
 Proof.
-  intros Hok * [R [HR HH]] [S1 _] Hm.
+  intros Hok * [R [HR HH]] [S1 _] Hm HT.
   pose proof Hok as (HGc & HGap & Hc).
-  destruct (S1 _ _ Hm ltac:(discriminate)) as [(n & b & Hr) Hv]; cbn [mres_ty mres_kind] in Hr, Hv.
+  destruct (mres_tl_ty _ _ HT) as [HRty HRk].
+  destruct (S1 _ _ Hm ltac:(rewrite HRk; discriminate)) as [(n & b & Hr) Hv]; rewrite HRty in Hr; rewrite HRty, HRk in Hv.
   destruct (rep_valid _ _ _ _ Hr) as [i HA].
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
@@ -225,13 +226,14 @@ Proof.
   apply (mk_rel_mod v1 v v3 v4); [ econstructor; eassumption .. | exact (hub_chain _ _ _ _ V1 V3 V4) ].
 Qed.
 
-Lemma rel_me_app : gmod_ok Θm Ξm -> forall Γ H H' N N' T0 B C i,
-    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H nil (mr_mod T0) ->
+Lemma rel_me_app : gmod_ok Θm Ξm -> forall Γ H H' N N' R0 T0 B C i,
+    Γ ⊨ᵐ H ≈ H' -> sem_mt Θm Ξm Γ H -> member_type Θm Ξm Γ H nil R0 -> mres_tl R0 = Some T0 ->
     Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ N ≈ N' : B ->
     Γ ⊨ᵐ me_app H N ≈ me_app H' N'.
 Proof.
-  intros Hok * [R [HR HH]] [S1 _] Hm0 HA0 HN.
+  intros Hok * [R [HR HH]] [S1 _] Hm0 HT0 HA0 HN.
   pose proof Hok as (HGc & HGap & Hc).
+  destruct (mres_tl_ty _ _ HT0) as [HRty HRk].
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   pose proof (rel_sub_under_ctx_at' Hσ HΓ' HR _ _ _ _ Hρ Hev Hev') as Hρσ.
   assert (HP : PER R) by (eapply per_env_PER; exact HR).
@@ -242,7 +244,7 @@ Proof.
   destruct (HNgen _ _ HΓ' _ _ Hσ _ _ _ _ Hρ Hev Hev')
     as [Rel [[b1 b2 b3 b4 Hb1 Hb2 Hb3 Hb4 (T12 & T23 & T34)] [n1 n2 n3 n4 Hn1 Hn2 Hn3 Hn4 (N12 & N23 & N34)]]].
   assert (HPR : PER Rel) by (eapply per_elem_PER; exact T23).
-  destruct (proj2 (S1 _ _ Hm0 ltac:(discriminate)) _ _ HR Hρσ' _ E2) as (a0 & Ha0 & Hma); cbn [mres_ty mres_kind] in Ha0, Hma.
+  destruct (proj2 (S1 _ _ Hm0 ltac:(rewrite HRk; discriminate)) _ _ HR Hρσ' _ E2) as (a0 & Ha0 & Hma); rewrite HRty in Ha0; rewrite HRk in Hma.
   destruct (rel_exp_of_typ_inversion_simple_at HR HA0 _ _ Hρσ') as (x0 & p0 & Hx0 & Hp0 & [Rp HRp]).
   functional_eval_rewrite_clear.
   inversion Hp0; subst.
@@ -533,31 +535,32 @@ Qed.
 Lemma sem_unf_mem : forall Γ H y, sem_unf Γ H -> sem_unf Γ (me_mem H y).
 Proof.
   intros * HS ch A M Hm HM R ρ HR Hρ h' Hh' * Ha HE Hd Hdd.
-  inversion Hm as [| | | | | ? ? ? ? ? Hk Hm' | ]; subst; inversion Hh'; subst; cbn in HM.
+  inversion Hm as [| | | | | | ? ? ? ? ? Hk Hm' | ]; subst; inversion Hh'; subst; cbn in HM.
   match goal with He : eval_modexp _ _ H ρ ?h, Hs : eval_selm _ _ ?h y h' |- _ =>
     exact (HS _ _ _ Hm' HM _ _ HR Hρ _ He _ _ _ _ Ha HE ltac:(econstructor; eassumption) Hdd) end.
 Qed.
 
-Lemma sem_unf_app : gmod_ok Θm Ξm -> forall Γ H T0 B C N i,
+Lemma sem_unf_app : gmod_ok Θm Ξm -> forall Γ H R0 T0 B C N i,
     sem_mt Θm Ξm Γ H -> sem_unf Γ H -> Γ ⊨ᵐ H ≈ H ->
-    member_type Θm Ξm Γ H nil (mr_mod T0) -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
+    member_type Θm Ξm Γ H nil R0 -> mres_tl R0 = Some T0 -> Γ ⊨ ctx_pi T0 ⊤ ≈ Π B C : Typeω@i -> Γ ⊨ B : Typeω@i ->
     Γ ⊨ N : B -> sem_unf Γ (me_app H N).
 Proof.
-  intros Hok * HS HU HH Hm0 HA0 HB HN ch A' M' Hm HM R ρ HR Hρ h' Hh' a i' E d Ha HE Hd Hdd.
+  intros Hok * HS HU HH Hm0 Htl0 HA0 HB HN ch A' M' Hm HM R ρ HR Hρ h' Hh' a i' E d Ha HE Hd Hdd.
+  destruct (mres_tl_ty _ _ Htl0) as [HRty HRk].
   pose proof Hok as (HGc & HGap & Hc).
   pose proof HS as [S1 S2].
-  inversion Hm as [| | | | | | ? ? ? ? R1 ? Hm1 Ha1 ]; subst.
+  inversion Hm as [| | | | | | | ? ? ? ? R1 ? Hm1 Ha1 ]; subst.
   destruct (mres_app_ty _ _ _ Ha1) as (B1 & C1 & Hp & HR' & Hk').
-  destruct R1 as [A1 | T1]; [| discriminate ]; cbn [mres_ty] in Hp, HR'; subst A'.
+  destruct R1 as [A1 | T1 | A1 T1]; [| discriminate | discriminate ]; cbn [mres_ty] in Hp, HR'; subst A'.
   cbn in HM; destruct (member_unfold_ch Θm Ξm Γ H ch) as [M0 |] eqn:HM0; cbn in HM; [| discriminate ].
   injection HM as <-.
   assert (Hch : ch <> nil) by (intros ->; inversion Hd).
   assert (Hch' : mres_kind (mr_term A1) = mk_term -> ch <> nil) by (intros; exact Hch).
-  destruct (S2 nil _ ch _ Hm0 eq_refl Hm1 Hch') as (m & n & Hr0 & Hr1 & Hmn); cbn [mres_ty] in Hr0, Hr1.
+  destruct (S2 nil _ ch _ Hm0 HRk Hm1 Hch') as (m & n & Hr0 & Hr1 & Hmn); rewrite HRty in Hr0; cbn [mres_ty] in Hr1.
   destruct m as [| m'].
   { exfalso; destruct (rep_top_zero _ _ Hr0) as [l Hl]; exact (typ_top_pi_absurd Hl HA0). }
   destruct n as [| n']; [ lia |].
-  destruct (app_shift Hok _ _ _ _ _ _ _ HS HH Hm0 HA0 HB HN _ _ _ _ _ _ Hm1 Hch' Hp Hr1)
+  destruct (app_shift Hok _ _ _ _ _ _ _ _ HS HH Hm0 Htl0 HA0 HB HN _ _ _ _ _ _ Hm1 Hch' Hp Hr1)
     as (HN1 & (l & HB1 & HC1 & HA1) & _); cbn [mres_ty] in HA1.
   inversion Hh'; subst.
   match goal with He : eval_modexp _ _ _ _ ?h, Hap : eval_appm _ _ ?h ?c h' |- _ => rename He into Hh, Hap into Happ end.

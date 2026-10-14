@@ -940,7 +940,7 @@ Hint Unfold rel_elem : mctt.
 Inductive per_dmod : dmod -> dmod -> Prop :=
 (** The same global module, its arguments related at its telescope. *)
 | per_dmod_global :
-  `{ gc_module gc_deps gc_stack p = Some (mr_body T) ->
+  `{ gc_module gc_deps gc_stack p = Some (mr_body T oD) ->
      per_gargs (List.rev T) nil nil args args' ->
      per_dmod (dm_global p args) (dm_global p args') }
 (** Two unit closures, related through their parameters and contents. *)

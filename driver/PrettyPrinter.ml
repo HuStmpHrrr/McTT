@@ -446,13 +446,13 @@ let exp_to_obj =
        (match chain_of h with
         | Some (fp, ms) -> path_to_obj fp (ms @ [x])
         | None -> Cst.Coq_proj (impl_mod ctx h, x))
-    (* An inductive type is named by its module, where its declaration is
-       filed under [#]; a constructor is a member of that module. *)
-    | Coq_a_ind p -> path_to_obj p.q_unit (ind_chain p.q_chain None)
-    | Coq_a_con (p, c) -> path_to_obj p.q_unit (ind_chain p.q_chain (Some c))
+    (* An inductive type is named by its path, which is its module's; a
+       constructor is a member of that module. *)
+    | Coq_a_ind p -> path_to_obj p.q_unit p.q_chain
+    | Coq_a_con (p, c) -> path_to_obj p.q_unit (p.q_chain @ [c])
     (* An eliminator: fresh names for what its motive and its branches
        bind. *)
-    | Coq_a_elim (p, nm, em, bs, escr) ->
+    | Coq_a_elim (h, nm, em, bs, escr) ->
        let rec fresh k = if k = 0 then [] else let x = new_var () in x :: fresh (k - 1) in
        let xs = fresh nm in
        let escr' = impl ctx escr in
@@ -464,14 +464,8 @@ let exp_to_obj =
              ((c, ys), impl (List.rev ys @ ctx) eb))
            bs
        in
-       let head = path_to_obj p.q_unit (ind_chain p.q_chain None) in
+       let head = impl_mod ctx h in
        Cst.Coq_elim (head, escr', xs, em', bs')
-  (* The chain of the type former or of a constructor of an inductive type,
-     from that of its declaration, [#] in the type's module. *)
-  and ind_chain (ch : string list) (c : string option) : string list =
-    match List.rev ch with
-    | "#" :: pre -> List.rev (match c with Some c -> c :: pre | None -> pre)
-    | _ -> ch
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -545,7 +539,7 @@ let exp_to_obj =
             let params, md = impl_unit ctx' u in
             Cst.Coq_c_mod (priv, x, params, md)
          (* A declaration is filed in a unit, never in a local body. *)
-         | Coq_ge_ind (_, _) -> Cst.Coq_c_error "inductive declaration"
+         | Coq_ge_ind (_, _, _) -> Cst.Coq_c_error "inductive declaration"
        in
        (cs @ [c], x :: ctx')
     | Coq_gm_open (phi, h, its) ->
@@ -630,6 +624,12 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
   | Coq_re_unit (fp, msg) ->
      fprintf f "@[<hov 2>Error: %a:@ %s@]" pp_upath fp msg
   (* A private member is named by the module declaring it, from its unit. *)
+  (* Option B: an alias, or any module but by the direct path of an
+     inductive type, is no term. *)
+  | Coq_re_mod_term q ->
+     fprintf f "@[<hov 2>Error: %a is a module, not a term@]" pp_u (string_of_qpath q.q_unit q.q_chain)
+  | Coq_re_not_ind q ->
+     fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit q.q_chain)
   | Coq_re_private (q, x) ->
      fprintf f "@[<hov 2>Error: %a is private@]" pp_u (string_of_qpath q.q_unit (q.q_chain @ [x]))
   (* A private entry of a local body, from the local module. *)
@@ -656,11 +656,6 @@ let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
           | None -> fprintf f "@[<hov 2>Error:@ %a@ is not a member@]" format_exp (Coq_a_mem (h, n)))
       | Coq_xe_both n -> fprintf f "@[<hov 2>Error: %s is used and exported@]" n
       | Coq_xe_fresh n -> fprintf f "@[<hov 2>Error: %s is already declared@]" n
-      (* The name of an eliminator as written: the module the user named,
-         before the [#] of its declaration. *)
-      | Coq_xe_ind q ->
-         let ch = match List.rev q.q_chain with "#" :: pre -> List.rev pre | _ -> q.q_chain in
-         fprintf f "@[<hov 2>Error: %a is not an inductive type@]" pp_u (string_of_qpath q.q_unit ch)
       | Coq_xe_nat n ->
          fprintf f "@[<hov 2>Error: the numeral %d has no meaning here: the visible bindings of the natural numbers disagree@]" n)
 

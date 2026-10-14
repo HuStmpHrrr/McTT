@@ -1028,8 +1028,8 @@ end
     of [x], and [List A] is [#2 $ #1] in the type of [xs].  Which argument is
     recursive is the core's to decide.  After the declaration [List] is a
     member of the frame, a module, so [List Nat] is [U.List $ ℕ], which the
-    core reads as the type, and [List.elim] names the declaration [#] in it,
-    [U.List.#], which the core resolves.  The motive binds the scrutinee, the
+    core reads as the type, and [List.elim] names the module [U.List], which
+    typing resolves to the type.  The motive binds the scrutinee, the
     branch for [cons] its two arguments and its hypothesis: [r] is [#0]. *)
 Definition list_decl : Cst.cmd :=
   c_ind false "List" (("A", typ 0) :: nil) (typ 0)
@@ -1052,7 +1052,7 @@ Example list_len_spec :
        (mk_raw 1 (⋅ ▹ Typeω@0) Typeω@0
           (("nil", nil) :: ("cons", ("x", #0) :: ("xs", #2 $ #1) :: nil) :: nil)) ::
      cc_def "len" true false (Π (U_List $ ℕ) ℕ)
-       (Some (λ (U_List $ ℕ) (a_elim (q_abs ("U" :: nil) ("List" :: "#" :: nil)) 1 ℕ
+       (Some (λ (U_List $ ℕ) (a_elim (qname_mod (q_abs ("U" :: nil) ("List" :: nil))) 1 ℕ
                                 (("nil", 0, zero) :: ("cons", 3, succ #0) :: nil) #0))) :: nil).
 Proof. elab_ok. Qed.
 
@@ -1115,7 +1115,7 @@ Example builtin_spec :
                    c_eval (num 2) None :: nil))
     (nil, ⋅,
      cc_ind "Nat" false (mk_raw 0 ⋅ Typeω@0 (("z", nil) :: ("s", ("n", #0) :: nil) :: nil)) ::
-     cc_builtin "natural" (q_abs ("U" :: nil) ("Nat" :: "#" :: nil)) ::
+     cc_builtin "natural" (qname_mod (q_abs ("U" :: nil) ("Nat" :: nil))) ::
      cc_eval (a_nlit 2) None :: nil).
 Proof. elab_ok. Qed.
 
@@ -1126,8 +1126,4 @@ Example local_builtin :
   = eerr "builtin is not allowed in a local module".
 Proof. elab_err. Qed.
 
-(** The type is named by a chain from a unit: a parameter is a slot. *)
-Example builtin_slot :
-  elaborate_core (nil, ("T" :: nil, ("A", typ 0) :: nil, c_builtin "natural" (var "A") :: nil))
-  = eerr "only an inductive type declared in a module can be bound as a builtin".
-Proof. elab_err. Qed.
+

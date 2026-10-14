@@ -1,10 +1,10 @@
 (** * Inductive Types: Reading a Declaration
 
-    A declaration ([ind_decl], in [Syntax]) is filed under the name of its
-    type followed by [#], beside the definitions of its type former and its
-    constructors.  The type former [a_ind p] and the constructors [a_con p c]
-    name it by its qualified name [p]; these are the lookups and counts that
-    typing, evaluation and readback read off it. *)
+    A declaration ([ind_decl], in [Syntax]) is filed in the entry of its
+    type ([ge_ind]), with the body of the type's module: its constructors
+    and its recursor.  The type former [a_ind p] and the constructors
+    [a_con p c] name it by the path [p] of the entry ([ind_lookup]); these
+    are the counts that typing, evaluation and readback read off it. *)
 
 From Stdlib Require Import Lia List String PeanoNat.
 
@@ -13,9 +13,6 @@ From Mctt.Core.Syntactic Require Export Members.
 Import Syntax_Notations.
 #[local] Open Scope list_scope.
 
-(** The number of parameters, and of non-uniform ones. *)
-Definition ind_np (D : ind_decl) : nat := List.length (ind_params D).
-Definition ind_nn (D : ind_decl) : nat := ind_np D - ind_nu D.
 
 (** The arguments of the constructor [c]. *)
 Fixpoint cons_lookup (cs : list (string * list carg)) (c : string) : option (list carg) :=
@@ -25,13 +22,6 @@ Fixpoint cons_lookup (cs : list (string * list carg)) (c : string) : option (lis
   end.
 
 Definition ind_con (D : ind_decl) (c : string) : option (list carg) := cons_lookup (ind_cons D) c.
-
-(** The declaration the type former or a constructor names. *)
-Definition ind_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : option ind_decl :=
-  match gc_resolve Θ Ξ p with
-  | Some (ge_ind _ D) => Some D
-  | _ => None
-  end.
 
 (** The branch of the constructor [c]: the number of variables it binds,
     and its body. *)
@@ -48,21 +38,6 @@ Fixpoint cargs_nrec (gs : list carg) : nat :=
   | ca_arg _ :: gs' => cargs_nrec gs'
   | ca_rec _ :: gs' => S (cargs_nrec gs')
   end.
-
-Lemma ind_lookup_resolve : forall Θ Ξ p D,
-    ind_lookup Θ Ξ p = Some D -> exists pv, gc_resolve Θ Ξ p = Some (ge_ind pv D).
-Proof.
-  unfold ind_lookup; intros * H.
-  destruct (gc_resolve Θ Ξ p) as [[| | pv D'] |]; try discriminate.
-  injection H as <-; eauto.
-Qed.
-
-Lemma ind_lookup_gc_sub : forall Θ1 Ξ1 Θ2 Ξ2 p D,
-    gc_sub Θ1 Ξ1 Θ2 Ξ2 -> ind_lookup Θ1 Ξ1 p = Some D -> ind_lookup Θ2 Ξ2 p = Some D.
-Proof.
-  intros * Hs H; destruct (ind_lookup_resolve _ _ _ _ H) as [pv Hr].
-  unfold ind_lookup; rewrite (gc_sub_resolve _ _ _ _ _ _ Hs Hr); reflexivity.
-Qed.
 
 (** ** A Property of All the Members of a List
 
@@ -174,6 +149,11 @@ Fixpoint sb_of_list (σ : sub) (Ms : list exp) : sub :=
   | M :: Ms' => sb_of_list (σ ,, M) Ms'
   end.
 
+(** The type of the type former applied to [Us], its outermost
+    parameters: the [Π] over the others, at [Us]. *)
+Definition ind_ty_at (D : ind_decl) (Us : list exp) : typ :=
+  (ctx_pi (List.firstn (ind_np D - List.length Us) (ind_params D)) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ)[sb_of_list Id Us].
+
 (** The variables [#(k + n - 1)], …, [#k], outermost first. *)
 Definition vars_from (k n : nat) : list exp := List.map (fun i => a_var (k + i)) (List.rev (List.seq 0 n)).
 
@@ -182,9 +162,6 @@ Definition vars_from (k n : nat) : list exp := List.map (fun i => a_var (k + i))
 Definition ind_pvars (D : ind_decl) (k : nat) : list exp := vars_from k (ind_np D).
 Definition ind_uvars (D : ind_decl) (k : nat) : list exp := vars_from (k + ind_nn D) (ind_nu D).
 
-(** The uniform parameters, and the non-uniform ones. *)
-Definition ind_uparams (D : ind_decl) : ctx := List.skipn (ind_nn D) (ind_params D).
-Definition ind_nparams (D : ind_decl) : ctx := List.firstn (ind_nn D) (ind_params D).
 
 (** The type of the type former: a [Π] over all the parameters of the sort. *)
 Definition ind_ty (D : ind_decl) : typ := ctx_pi (ind_params D) (ind_sort D)[wk_shiftn (ind_nn D)]ʷ.
@@ -373,11 +350,12 @@ Definition brs_wk (Bs : list (string * nat * exp)) (φ : wk) : list (string * na
 
 (** The recursive result of an argument [M] of shape [t], as an
     elimination: under the shape's domains, moved by [σ], the eliminator at
-    [M] applied to them. *)
+    [M] applied to them.  Its head names the type by its own module,
+    [qname_mod p], which is closed. *)
 Fixpoint ptyp_ih (p : qname) (nm : nat) (A : exp) (Bs : list (string * nat * exp)) (σ : sub) (M : exp) (t : ptyp) : exp :=
   match t with
   | pt_pi B t => a_fn B[σ] (ptyp_ih p nm A[wk_qn nm wk_shift]ʷ (brs_wk Bs wk_shift) (sb_q σ) (a_app M[wk_shift]ʷ (a_var 0)) t)
-  | _ => a_elim p nm A Bs M
+  | _ => a_elim (qname_mod p) nm A Bs M
   end.
 
 (** The recursive results of the arguments [As] of a constructor, as
@@ -421,7 +399,7 @@ Fixpoint exp_mvc (n : nat) (M : exp) : Prop :=
       exp_mvc (S n) A /\ exp_mvc n MZ /\ exp_mvc (S (S n)) MS /\ exp_mvc n M
   | a_exfalso A M => exp_mvc (S n) A /\ exp_mvc n M
   | a_ind _ | a_con _ _ | a_nlit _ => True
-  | a_elim p nm A Bs M => exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
+  | a_elim H nm A Bs M => modexp_mvc n H /\ exp_mvc (nm + n) A /\ all_brs (fun k B => exp_mvc (k + n) B) Bs /\ exp_mvc n M
   | a_pi A B | a_fn A B => exp_mvc n A /\ exp_mvc (S n) B
   | a_app M N => exp_mvc n M /\ exp_mvc n N
   | a_var _ => True
@@ -466,7 +444,7 @@ with gentry_mvc (n : nat) (E : gentry) : Prop :=
   match E with
   | ge_def _ _ A B => exp_mvc n A /\ match B with Some M => exp_mvc n M | None => True end
   | ge_mod _ U => gunit_mvc n U
-  | ge_ind _ _ => True
+  | ge_ind _ D Φ => gmod_mvc (ind_nu D + n) Φ
   end
 with centry_mvc (n : nat) (e : centry) : Prop :=
   match e with

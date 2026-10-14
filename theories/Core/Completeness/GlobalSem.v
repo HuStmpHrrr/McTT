@@ -45,10 +45,10 @@ Lemma per_ctx_env_nil_true : EF ⋅ ≈ ⋅ ∈ per_ctx_env ↘ (fun _ _ => True
 Proof. apply per_ctx_env_nil; reflexivity. Qed.
 
 (** The parameters of a global module whose telescope is valid. *)
-Lemma gparam_of_tele : forall qp T, ⊨ T -> gc_module gc_deps gc_stack qp = Some (mr_body T) -> gparam_at qp.
+Lemma gparam_of_tele : forall qp T oT, ⊨ T -> gc_module gc_deps gc_stack qp = Some (mr_body T oT) -> gparam_at qp.
 Proof.
-  intros * HT Hq T' args args' A Hm Hg Hn.
-  rewrite Hq in Hm; injection Hm as <-.
+  intros * HT Hq T' oT' args args' A Hm Hg Hn.
+  rewrite Hq in Hm; injection Hm as <- <-.
   destruct (nth_error_split _ _ Hn) as (l1 & l2 & Hl & Hlen).
   assert (HT' : ⊨ rev (rev T) ++ ⋅) by (rewrite rev_involutive, app_nil_r; exact HT).
   destruct (gargs_rel _ _ _ _ _ Hg _ _ per_ctx_env_nil_true I HT') as (R & HR & Hρ).
@@ -79,13 +79,13 @@ Proof.
     pose proof (per_univ_elem_right_irrel _ _ _ _ _ _ _ Hxx Hyy) as E; apply E, Ha end.
 Qed.
 
-Lemma galias_of : forall qp y U T Δ,
-    gc_module gc_deps gc_stack qp = Some (mr_body T) ->
+Lemma galias_of : forall qp y U T oT Δ,
+    gc_module gc_deps gc_stack qp = Some (mr_body T oT) ->
     gc_module gc_deps gc_stack (qname_app qp (y :: nil)) = Some (mr_alias U nil) ->
     gu_params U = Δ ++ T -> ⋅ ⊨ᵐ me_lit U ≈ me_lit U -> galias_at qp y.
 Proof.
-  intros * Hq Hy HU HUv T' U' ch args args' Hm Hm' Hg.
-  rewrite Hq in Hm; injection Hm as <-.
+  intros * Hq Hy HU HUv T' oT' U' ch args args' Hm Hm' Hg.
+  rewrite Hq in Hm; injection Hm as <- <-.
   rewrite Hy in Hm'; injection Hm' as <- <-.
   pose proof (unit_chain_at HUv per_ctx_env_nil_true nil nil I) as Hd.
   inversion Hd; subst.
@@ -97,7 +97,7 @@ Qed.
 
 (** ** The Arity of a Global Module *)
 
-Lemma gwalk : forall qp T, gparam_at qp -> gc_module gc_deps gc_stack qp = Some (mr_body T) -> tele_ass T -> ⊨ T ->
+Lemma gwalk : forall qp T oT, gparam_at qp -> gc_module gc_deps gc_stack qp = Some (mr_body T oT) -> tele_ass T -> ⊨ T ->
     forall Tin Tout args ρ R, T = Tin ++ Tout -> List.length args = List.length Tout ->
       EF Tout ≈ Tout ∈ per_ctx_env ↘ R -> R (env_args ρ args) (env_args nil args) ->
       exists a, ⟦ ctx_pi Tin a_True ⟧ env_args ρ args ↘ a /\ mtyped (dm_global qp args) nil mk_mod a.
@@ -137,14 +137,14 @@ Qed.
 
 Definition chain_bodies (p : qname) (pre : list String.string) : Prop :=
   forall pre1 y pre2, pre = pre1 ++ y :: pre2 ->
-    exists T, gc_module gc_deps gc_stack (qname_app p (pre1 ++ y :: nil)) = Some (mr_body T) /\
+    exists T oT, gc_module gc_deps gc_stack (qname_app p (pre1 ++ y :: nil)) = Some (mr_body T oT) /\
       gparam_at (qname_app p (pre1 ++ y :: nil)).
 
 Lemma chain_bodies_cons : forall p y pre, chain_bodies p (y :: pre) -> chain_bodies (qname_app p (y :: nil)) pre.
 Proof.
   intros * H pre1 z pre2 ->.
-  destruct (H (y :: pre1) z pre2 eq_refl) as (T & HT & Hg).
-  rewrite qname_app_app; exists T; split; assumption.
+  destruct (H (y :: pre1) z pre2 eq_refl) as (T & oT & HT & Hg).
+  rewrite qname_app_app; exists T, oT; split; assumption.
 Qed.
 
 Lemma gsub_chain : forall pre p args ch k a, chain_bodies p pre ->
@@ -152,7 +152,7 @@ Lemma gsub_chain : forall pre p args ch k a, chain_bodies p pre ->
 Proof.
   induction pre as [| y pre IH]; intros * Hc Hm; cbn [app].
   - rewrite qname_app_nil in Hm; exact Hm.
-  - destruct (Hc nil y pre eq_refl) as (T & HT & Hg); cbn [app] in HT, Hg.
+  - destruct (Hc nil y pre eq_refl) as (T & oT & HT & Hg); cbn [app] in HT, Hg.
     eapply mty_gsub; [ exact Hg | exact HT |].
     apply IH; [ exact (chain_bodies_cons _ _ _ Hc) | rewrite qname_app_app; exact Hm ].
 Qed.
@@ -163,7 +163,7 @@ Lemma selc_global_chain : forall pre p args z d, chain_bodies p pre ->
 Proof.
   induction pre as [| y pre IH]; intros * Hc Hs; cbn [app] in Hs.
   - rewrite qname_app_nil; exact Hs.
-  - destruct (Hc nil y pre eq_refl) as (T & HT & _); cbn [app] in HT.
+  - destruct (Hc nil y pre eq_refl) as (T & oT & HT & _); cbn [app] in HT.
     inversion Hs; subst; [ destruct pre; discriminate |].
     match goal with Hs1 : eval_selm _ _ _ y _ |- _ => inversion Hs1; subst end;
       [| match goal with Ha : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite HT in Ha; discriminate end ].
@@ -183,7 +183,7 @@ Proof.
       [ match goal with Hn : forall U r, _ <> _ |- _ => contradiction (Hn _ _ Hy) end |].
     match goal with Ha : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hy in Ha; injection Ha; intros; subst end.
     match goal with Hm : eval_selmc _ _ _ nil _ |- _ => inversion Hm; subst end; assumption.
-  - destruct (Hc nil w pre eq_refl) as (T & HT & _); cbn [app] in HT.
+  - destruct (Hc nil w pre eq_refl) as (T & oT & HT & _); cbn [app] in HT.
     inversion Hs; subst; [ destruct pre; discriminate |].
     match goal with Hs1 : eval_selm _ _ _ w _ |- _ => inversion Hs1; subst end;
       [| match goal with Ha : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite HT in Ha; discriminate end ].
@@ -204,10 +204,13 @@ Qed.
 (** ** Paths to Valid Global Modules *)
 
 Section Paths.
-  (** The modules of a source [Θs ⍮ Ξs], their members read at [Θm ⍮ Ξm]. *)
+  (** The modules of a source [Θs ⍮ Ξs], their members read at [Θm ⍮ Ξm],
+      which keeps the source's bodies: a body may only grow from there on, as
+      the module of an inductive type does while its members are checked. *)
   Variables (Θs : gdeps) (Ξs : gstack) (Θm : gdeps) (Ξm : gstack).
   Hypothesis Hgss : ⊢g Θs ⍮ Ξs.
   Hypothesis Hss : gc_sub Θs Ξs Θm Ξm.
+  Hypothesis Hsx : forall p r, gc_body Θs Ξs p = Some r -> gc_body Θm Ξm p = Some r.
   Hypothesis Hgs : ⊢g Θm ⍮ Ξm.
   Hypothesis Hsub : gc_sub Θm Ξm gc_deps gc_stack.
   Hypothesis Hgm : gmod_ok Θm Ξm.
@@ -227,16 +230,23 @@ Section Paths.
         (ch <> nil -> gc_resolve Θm Ξm (qname_app p ch) = gc_resolve Θs Ξs (qname_app p ch)).
   Proof.
     intros * Hp ch.
-    destruct (closed_read _ _ Hgs _ _ _ (gc_sub_body _ _ _ _ _ _ Hss Hp) ch) as (A1 & _ & A3).
-    destruct (closed_read _ _ Hgss _ _ _ Hp ch) as (B1 & _ & B3).
+    destruct (gc_body_module _ _ _ _ _ Hp) as [oD Hm].
+    destruct (closed_read _ _ Hgs _ _ _ _ (Hsx _ _ Hp) (gc_sub_module _ _ _ _ _ _ Hss Hm) ch) as (A1 & _ & A3).
+    destruct (closed_read _ _ Hgss _ _ _ _ Hp Hm ch) as (B1 & _ & B3).
     split; [ congruence | intros Hn; rewrite A3, B3 by exact Hn; reflexivity ].
   Qed.
 
-  Lemma body_target : forall qp T Φ, gc_body Θs Ξs qp = Some (T, Φ) -> gc_module gc_deps gc_stack qp = Some (mr_body T).
-  Proof. intros * H; exact (gc_sub_module _ _ _ _ _ _ HsubS (gc_body_module _ _ _ _ _ H)). Qed.
+  (** The declaration a body is filed with is the one [ind_lookup] reads. *)
+  Lemma body_target : forall qp T Φ, gc_body Θs Ξs qp = Some (T, Φ) ->
+      gc_module gc_deps gc_stack qp = Some (mr_body T (ind_lookup gc_deps gc_stack qp)).
+  Proof.
+    intros * H; destruct (gc_body_module _ _ _ _ _ H) as [oD Hm].
+    pose proof (gc_sub_module _ _ _ _ _ _ HsubS Hm) as Hm'.
+    rewrite (ind_lookup_body _ _ _ _ _ Hm'); exact Hm'.
+  Qed.
 
   Lemma body_gparam : forall qp T Φ, gc_body Θs Ξs qp = Some (T, Φ) -> gparam_at qp.
-  Proof. intros * H; exact (gparam_of_tele _ _ (proj1 (HB _ _ _ H)) (body_target _ _ _ H)). Qed.
+  Proof. intros * H; exact (gparam_of_tele _ _ _ (proj1 (HB _ _ _ H)) (body_target _ _ _ H)). Qed.
 
   Lemma body_chain : forall p T Φ pre T' Φ', gc_body Θs Ξs p = Some (T, Φ) ->
       gm_body T Φ pre = Some (T', Φ') -> chain_bodies p pre.
@@ -244,22 +254,22 @@ Section Paths.
     intros * Hp Hpre pre1 y pre2 ->.
     replace (pre1 ++ y :: pre2) with ((pre1 ++ y :: nil) ++ pre2) in Hpre by (rewrite <- app_assoc; reflexivity).
     destruct (gm_body_prefix _ _ _ _ _ _ Hpre) as (T1 & Φ1 & H1).
-    destruct (closed_read _ _ Hgss _ _ _ Hp (pre1 ++ y :: nil)) as (_ & Hb & _).
+    destruct (closed_read_body _ _ Hgss _ _ _ Hp (pre1 ++ y :: nil)) as (_ & Hb & _).
     rewrite H1 in Hb.
-    exists T1; split; [ exact (body_target _ _ _ Hb) | exact (body_gparam _ _ _ Hb) ].
+    eexists T1, _; split; [ exact (body_target _ _ _ Hb) | exact (body_gparam _ _ _ Hb) ].
   Qed.
 
   Lemma galias_at_of : forall qp T Φ y U, gc_body Θs Ξs qp = Some (T, Φ) ->
       gc_module Θs Ξs (qname_app qp (y :: nil)) = Some (mr_alias U nil) -> galias_at qp y.
   Proof.
     intros * Hq Hy.
-    pose proof (gc_body_module _ _ _ _ _ Hq) as Hq'.
-    destruct (wf_gc_alias_params _ _ Hgss _ _ _ _ _ Hq' Hy) as (_ & Δ & HU & _).
+    destruct (gc_body_module _ _ _ _ _ Hq) as [oD Hq'].
+    destruct (wf_gc_alias_params _ _ Hgss _ _ _ _ _ _ Hq' Hy) as (_ & Δ & HU & _).
     destruct (HA _ _ _ Hy) as (_ & _ & HUv).
-    exact (galias_of _ _ _ _ _ (gc_sub_module _ _ _ _ _ _ HsubS Hq') (gc_sub_module _ _ _ _ _ _ HsubS Hy) HU HUv).
+    exact (galias_of _ _ _ _ _ _ (gc_sub_module _ _ _ _ _ _ HsubS Hq') (gc_sub_module _ _ _ _ _ _ HsubS Hy) HU HUv).
   Qed.
 
-  Lemma path_value_ex : forall p T, gc_module gc_deps gc_stack p = Some (mr_body T) ->
+  Lemma path_value_ex : forall p T oT, gc_module gc_deps gc_stack p = Some (mr_body T oT) ->
       forall ρ, ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ dm_global p nil.
   Proof. intros * Hp ρ; apply eval_path_mod, (gc_chain_no_alias _ _ Hgt); left; eauto. Qed.
 
@@ -294,19 +304,19 @@ Section Paths.
       match goal with Hm : eval_selmc _ _ _ nil _ |- _ => inversion Hm; subst end; exact Hc.
   Qed.
 
-  Lemma glob_val_sel : forall mq T x ρ f, gc_module gc_deps gc_stack mq = Some (mr_body T) ->
+  Lemma glob_val_sel : forall mq T oT x ρ f, gc_module gc_deps gc_stack mq = Some (mr_body T oT) ->
       ⟦ a_mem (qname_mod mq) x ⟧ ρ ↘ f -> dm_global mq nil ·ₜ x gc_deps ⍮ gc_stack ↘ f.
   Proof.
     intros * Hq Hf.
     apply (eval_mem_noargs gc_deps gc_stack) in Hf as (h & Hh & Hs); [| exact (mod_qname_noargs _ _ (qname_mod_qname mq)) ].
-    rewrite (functional_eval_modexp _ _ _ _ Hh (path_value_ex _ _ Hq ρ)) in Hs; exact Hs.
+    rewrite (functional_eval_modexp _ _ _ _ Hh (path_value_ex _ _ _ Hq ρ)) in Hs; exact Hs.
   Qed.
 
   Lemma path_value_body : forall p T Φ ρ h, gc_body Θs Ξs p = Some (T, Φ) ->
       ⟦ qname_mod p ⟧ᵐ gc_deps ⍮ gc_stack ⍮ ρ ↘ h -> h = dm_global p nil.
   Proof.
     intros * Hp Hh.
-    exact (functional_eval_modexp _ _ _ _ Hh (path_value_ex _ _ (body_target _ _ _ Hp) ρ)).
+    exact (functional_eval_modexp _ _ _ _ Hh (path_value_ex _ _ _ (body_target _ _ _ Hp) ρ)).
   Qed.
 
   (** Inverting a member type of a path: the cases of its unit's chain, the
@@ -324,7 +334,7 @@ Section Paths.
   Ltac name_path_mt p ch :=
     first
     [ match goal with Hr : gc_resolve _ _ (qname_app p ch) = Some (ge_def _ _ _ _) |- _ => rename Hr into Hres end
-    | match goal with Hr : gc_module _ _ (qname_app p ch) = Some (mr_body _) |- _ => rename Hr into Hmod end
+    | match goal with Hr : gc_module _ _ (qname_app p ch) = Some (mr_body _ _) |- _ => rename Hr into Hmod end
     | match goal with
       | Hr : gc_module _ _ (qname_app p ch) = Some (mr_alias _ ?r), Hu : unit_member_type _ _ _ _ ?r _,
         Hk : _ = mk_term -> ?r <> nil |- _ => rename Hr into Hmod, Hu into Hunit, Hk into Hkr
@@ -335,12 +345,23 @@ Section Paths.
       (exists n b, rep ⋅ (mres_ty R) n b) /\ mt_val ⋅ (qname_mod p) ch (mres_kind R) (mres_ty R).
   Proof.
     intros * Hp * Hm Hch.
-    pose proof (closed_read _ _ Hgss _ _ _ Hp) as Hcr.
+    pose proof (closed_read_body _ _ Hgss _ _ _ Hp) as Hcr.
     pose proof (bridge _ _ _ Hp) as Hbr.
     inv_path_mt Hm; try pose proof (Hch eq_refl) as Hne; name_path_mt p ch; repeat match goal with
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
+    2-3: solve [
+        destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0);
+        destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _);
+        split; [ exists (List.length T0), true; apply (rep_closed_tele _ _ 0 _ HT0 HU0 (valid_exp_True HT0)); reflexivity |];
+        intros P ρ HR Hρ h Hh; pose proof (path_value_body _ _ _ _ _ Hp Hh) as ->;
+        assert (Hbc : gm_body T Φ ch = Some (T0, Φ0)) by (rewrite <- (proj1 (proj2 (Hcr _))); exact Hb0);
+        destruct (gwalk _ _ _ (body_gparam _ _ _ Hb0) (body_target _ _ _ Hb0) HU0 HT0 T0 nil nil ρ _
+                    ltac:(rewrite app_nil_r; reflexivity) eq_refl per_ctx_env_nil_true I) as (a & Ha & Hma);
+        exists a; split; [ exact Ha |];
+        rewrite <- (app_nil_r ch); exact (gsub_chain _ _ _ _ _ _ (body_chain _ _ _ _ _ _ Hp Hbc) Hma)
+      ].
     - destruct (exists_last Hne) as (pre & z & ->).
       rewrite (proj2 (proj2 (Hcr _)) Hne) in Hres.
       destruct (gm_resolve_decomp _ _ T _ _ Hres) as (T' & Φ' & Hb & Hz).
@@ -358,24 +379,15 @@ Section Paths.
       eapply mty_gdef with (f := f) (aA := a1) (E := E) (a0 := a1) (R := R1);
         [ exact (body_target _ _ _ Hbq) | cbn; lia
         | apply (gc_sub_resolve _ _ _ _ _ _ HsubS); rewrite qname_app_app, (proj2 (proj2 (Hcr _)) Hne); exact Hres
-        | exact (glob_val_sel _ _ _ _ _ (body_target _ _ _ Hbq) Hf) | exact Ha1 | exact HE | exact Hff | | exact HR1 ].
+        | exact (glob_val_sel _ _ _ _ _ _ (body_target _ _ _ Hbq) Hf) | exact Ha1 | exact HE | exact Hff | | exact HR1 ].
       rewrite Nat.sub_0_r, firstn_all; exact Ha1.
-    - destruct (gc_module_body _ _ _ _ Hmod) as (Φ0 & Hb0).
-      destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _).
-      split; [ exists (List.length T0), true; apply (rep_closed_tele _ _ 0 _ HT0 HU0 (valid_exp_True HT0)); reflexivity |].
-      intros P ρ HR Hρ h Hh; pose proof (path_value_body _ _ _ _ _ Hp Hh) as ->.
-      assert (Hbc : gm_body T Φ ch = Some (T0, Φ0)) by (rewrite <- (proj1 (proj2 (Hcr _))); exact Hb0).
-      destruct (gwalk _ _ (body_gparam _ _ _ Hb0) (body_target _ _ _ Hb0) HU0 HT0 T0 nil nil ρ _
-                  ltac:(rewrite app_nil_r; reflexivity) eq_refl per_ctx_env_nil_true I) as (a & Ha & Hma).
-      exists a; split; [ exact Ha |].
-      rewrite <- (app_nil_r ch); exact (gsub_chain _ _ _ _ _ _ (body_chain _ _ _ _ _ _ Hp Hbc) Hma).
     - rewrite (proj1 (Hcr _)) in Hmod.
       destruct ch as [| x ip]; [ discriminate |]; cbn in Hmod.
       destruct (gm_submodule_alias_decomp _ _ _ _ _ _ Hmod) as (pre & y & T' & Φ' & Hch' & Hb & Hy).
       rewrite Hch' in *; clear Hch'.
       assert (Hbq : gc_body Θs Ξs (qname_app p pre) = Some (T', Φ')) by (rewrite (proj1 (proj2 (Hcr _))); exact Hb).
       assert (Hys : gc_module Θs Ξs (qname_app (qname_app p pre) (y :: nil)) = Some (mr_alias U nil))
-        by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y)); exact Hy).
+        by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & HUv).
       destruct (closure_typed _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as ((n & b & Hrep & _) & Hval).
       split; [ exists n, b; exact Hrep |].
@@ -393,12 +405,17 @@ Section Paths.
       exists m n, rep ⋅ (mres_ty R0) m true /\ rep ⋅ (mres_ty R) n false /\ m <= n.
   Proof.
     intros * Hp * Hm0 Hk0 Hm Hch.
-    pose proof (closed_read _ _ Hgss _ _ _ Hp) as Hcr.
+    pose proof (closed_read_body _ _ Hgss _ _ _ Hp) as Hcr.
     pose proof (bridge _ _ _ Hp) as Hbr.
-    inv_path_mt Hm0; try discriminate; name_path_mt p ch0; repeat match goal with
+    assert (HR0 : (exists T0 oD, gc_module Θs Ξs (qname_app p ch0) = Some (mr_body T0 oD) /\
+                     mres_ty R0 = ctx_pi T0 ⊤) \/
+                  (exists U r, gc_module Θs Ξs (qname_app p ch0) = Some (mr_alias U r) /\
+                     unit_member_type Θm Ξm ⋅ U r R0 /\ (mres_kind R0 = mk_term -> r <> nil))).
+    { clear Hm; inv_path_mt Hm0; try discriminate; name_path_mt p ch0; repeat match goal with
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
-      end.
+      end; [ left; eauto .. | right; eauto ]. }
+    clear Hm0; destruct HR0 as [(T0 & oD & Hmod & ->) | (U & r & Hmod & Hunit & Hkr)].
     2: {
       destruct (gc_module_alias_decomp _ _ Hgss _ _ _ Hmod) as (qp & y & _ & Hy).
       destruct (HA _ _ _ Hy) as (HUs & HUm & _).
@@ -411,11 +428,12 @@ Section Paths.
       - destruct ch as [| c ch]; [ rewrite List.app_nil_r, (gc_module_alias_resolve _ _ Hgss _ _ _ Hmod) in *; discriminate |].
         rewrite Hres in *; [ discriminate | discriminate ].
       - rewrite Hal in *; discriminate.
+      - rewrite Hal in *; discriminate.
       - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
         eapply closure_pairs; [ exact Hunit | assumption | exact sem_ctx_nil | exact HUs | exact HUm | eassumption | assumption ]. }
-    destruct (gc_module_body _ _ _ _ Hmod) as (Φ0 & Hb0).
+    destruct (gc_module_body _ _ _ _ _ Hmod) as (Φ0 & Hb0).
     destruct (HB _ _ _ Hb0) as (HT0 & HU0 & _).
-    pose proof (closed_read _ _ Hgss _ _ _ Hb0) as Hcr0.
+    pose proof (closed_read_body _ _ Hgss _ _ _ Hb0) as Hcr0.
     pose proof (gc_body_coh _ _ Hgss _ _ _ Hb0) as Hc0.
     assert (Htop : rep ⋅ (ctx_pi T0 ⊤) (List.length T0) true)
       by (apply (rep_closed_tele _ _ 0 _ HT0 HU0 (valid_exp_True HT0)); reflexivity).
@@ -424,13 +442,25 @@ Section Paths.
       | Hx : gc_module Θm Ξm (qname_app p ?c) = _ |- _ => rewrite (proj1 (Hbr c)) in Hx
       | Hx : gc_resolve Θm Ξm (qname_app p ?c) = _, Hn : ?c <> nil |- _ => rewrite (proj2 (Hbr c) Hn) in Hx
       end.
+    2-3: solve [
+        match goal with Hr : gc_module _ _ (qname_app _ (_ ++ _)) = Some (mr_body _ _) |- _ => rename Hr into Hr2 end;
+        rewrite <- qname_app_app, (proj1 (Hcr0 _)) in Hr2;
+        destruct (gm_module_body_some _ _ _ _ _ _ Hr2) as (Φ' & Hb);
+        destruct (gm_coh_body_tele _ _ _ _ _ Hc0 Hb) as (_ & Δ & -> & _);
+        assert (Hbq : gc_body Θs Ξs (qname_app (qname_app p ch0) ch) = Some (Δ ++ T0, Φ'))
+          by (rewrite (proj1 (proj2 (Hcr0 _))); exact Hb);
+        destruct (HB _ _ _ Hbq) as (HT' & HU' & _);
+        exists (List.length T0), (List.length (Δ ++ T0)); split; [ exact Htop |]; split;
+          [ apply (rep_forget _ _ _ true), (rep_closed_tele _ _ 0 _ HT' HU' (valid_exp_True HT')); reflexivity
+          | rewrite length_app; lia ]
+      ].
     - match goal with Hr : gc_resolve _ _ _ = Some _ |- _ => rename Hr into Hr2 end.
       destruct ch as [| c ch].
       + exfalso; pose proof (Hch eq_refl) as Hne0; rewrite app_nil_r in Hne0, Hr2.
         destruct (exists_last Hne0) as (pre & z & ->).
         rewrite (proj2 (proj2 (Hcr _)) Hne0) in Hr2.
         destruct (gm_resolve_decomp _ _ T _ _ Hr2) as (T' & Φ' & Hb & Hz).
-        rewrite (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb z)), (gm_resolve_def_not_module _ _ _ _ _ _ _ _ Hz) in Hmod.
+        rewrite (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb z _)), (gm_resolve_def_not_module _ _ _ _ _ _ _ _ Hz) in Hmod.
         discriminate.
       + rewrite <- qname_app_app in Hr2.
         assert (Hne : c :: ch <> nil) by discriminate.
@@ -446,22 +476,12 @@ Section Paths.
           [ apply (rep_closed_tele _ _ _ _ HT' HU' HA1); discriminate | rewrite length_app; lia ].
     - match goal with Hr : gc_module _ _ (qname_app p (ch0 ++ ch)) = _ |- _ => rename Hr into Hr2 end.
       rewrite <- qname_app_app, (proj1 (Hcr0 _)) in Hr2.
-      destruct (gm_module_body_some _ _ _ _ Hr2) as (Φ' & Hb).
-      destruct (gm_coh_body_tele _ _ _ _ _ Hc0 Hb) as (_ & Δ & -> & _).
-      assert (Hbq : gc_body Θs Ξs (qname_app (qname_app p ch0) ch) = Some (Δ ++ T0, Φ'))
-        by (rewrite (proj1 (proj2 (Hcr0 _))); exact Hb).
-      destruct (HB _ _ _ Hbq) as (HT' & HU' & _).
-      exists (List.length T0), (List.length (Δ ++ T0)); split; [ exact Htop |]; split;
-        [ apply (rep_forget _ _ _ true), (rep_closed_tele _ _ 0 _ HT' HU' (valid_exp_True HT')); reflexivity
-        | rewrite length_app; lia ].
-    - match goal with Hr : gc_module _ _ (qname_app p (ch0 ++ ch)) = _ |- _ => rename Hr into Hr2 end.
-      rewrite <- qname_app_app, (proj1 (Hcr0 _)) in Hr2.
       destruct ch as [| x ip]; [ discriminate |]; cbn in Hr2.
       destruct (gm_submodule_alias_decomp _ _ _ _ _ _ Hr2) as (pre & y & T' & Φ' & Hch' & Hb & Hy).
       destruct (gm_coh_body_tele _ _ _ _ _ Hc0 Hb) as (Hc' & Δ & -> & _).
-      destruct (gm_coh_child _ _ _ _ Hc' Hy) as [(Δ1 & [=] & _) | (U' & Δ1 & [= <-] & HUp & _)].
+      destruct (gm_coh_child _ _ _ _ Hc' Hy) as [(Δ1 & ? & [=] & _) | (U' & Δ1 & [= <-] & HUp & _)].
       assert (Hys : gc_module Θs Ξs (qname_app (qname_app (qname_app p ch0) pre) (y :: nil)) = Some (mr_alias U nil))
-        by (rewrite qname_app_app, (proj1 (Hcr0 _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y)); exact Hy).
+        by (rewrite qname_app_app, (proj1 (Hcr0 _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & _).
       match goal with Hu : unit_member_type _ _ _ U _ _ |- _ => rename Hu into Hu2 end.
       destruct (closure_typed _ _ _ _ Hu2 sem_ctx_nil HUs HUm ltac:(assumption)) as ((n & b & Hrep & Hle) & _).
@@ -473,7 +493,7 @@ Section Paths.
   Proof.
     intros * Hp ch A M Hm HM R ρ HR Hρ h Hh * Ha HE Hd Hdd.
     pose proof (path_value_body _ _ _ _ _ Hp Hh) as ->.
-    pose proof (closed_read _ _ Hgss _ _ _ Hp) as Hcr.
+    pose proof (closed_read_body _ _ Hgss _ _ _ Hp) as Hcr.
     pose proof (bridge _ _ _ Hp) as Hbr.
     unfold qname_mod in HM; rewrite me_mems_unfold in HM; cbn [member_unfold_ch] in HM.
     fold (qname_mod p) in Hh.
@@ -489,7 +509,7 @@ Section Paths.
       exists d; split; [| exact Hdd ].
       replace (member_ref (me_unit (q_unit p)) (q_chain p ++ pre ++ z :: nil)) with (a_mem (qname_mod (qname_app p pre)) z)
         by (unfold qname_mod; cbn [q_unit q_chain qname_app]; rewrite app_assoc, member_ref_mems; reflexivity).
-      eapply eval_mem_of_sel; [ exact (path_value_ex _ _ (body_target _ _ _ Hbq) ρ) | exact Hs ].
+      eapply eval_mem_of_sel; [ exact (path_value_ex _ _ _ (body_target _ _ _ Hbq) ρ) | exact Hs ].
     - rewrite (gc_module_alias_resolve _ _ Hgs _ _ _ Hmod), Hmod in HM.
       rewrite (proj1 (Hbr _)) in Hmod.
       pose proof (Hkr eq_refl) as Hr.
@@ -500,10 +520,10 @@ Section Paths.
       assert (Hbq : gc_body Θs Ξs (qname_app p pre) = Some (T', Φ')) by (rewrite (proj1 (proj2 (Hcr _))); exact Hb).
       destruct (HB _ _ _ Hbq) as (_ & HU' & _).
       destruct (gm_coh_body_tele _ _ _ _ _ (gc_body_coh _ _ Hgss _ _ _ Hp) Hb) as (Hc' & _).
-      destruct (gm_coh_child _ _ _ _ Hc' Hy) as [(Δ1 & [=] & _) | (U' & Δ1 & [= <-] & HUp & HΔ1)].
+      destruct (gm_coh_child _ _ _ _ Hc' Hy) as [(Δ1 & ? & [=] & _) | (U' & Δ1 & [= <-] & HUp & HΔ1)].
       assert (HUa : tele_ass (gu_params U)) by (rewrite HUp; apply Forall_app; split; assumption).
       assert (Hys : gc_module Θs Ξs (qname_app (qname_app p pre) (y :: nil)) = Some (mr_alias U nil))
-        by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y)); exact Hy).
+        by (rewrite qname_app_app, (proj1 (Hcr _)), (proj1 (gm_body_snoc _ _ _ _ _ Hb y _)); exact Hy).
       destruct (HA _ _ _ Hys) as (HUs & HUm & HUv).
       destruct (closure_typed _ _ _ _ Hunit sem_ctx_nil HUs HUm Hkr) as (_ & Hval).
       destruct (Hval R ρ HR Hρ) as (a' & Ha' & Hma).
@@ -524,7 +544,7 @@ Section Paths.
   Proof.
     intros * Hp; pose proof (body_target _ _ _ Hp) as Ht.
     exists (dm_global p nil); split.
-    - exact (path_value_ex _ _ Ht nil).
+    - exact (path_value_ex _ _ _ Ht nil).
     - econstructor; [ exact Ht | constructor ].
   Qed.
 
@@ -543,6 +563,7 @@ Section Paths.
     inv_path_mt Hm.
     - destruct ch as [| c ch]; [ rewrite qname_app_nil, (gc_module_alias_resolve _ _ Hgs _ _ _ Hp) in *; discriminate |].
       rewrite Hres in *; [ discriminate | discriminate ].
+    - rewrite Hal in *; discriminate.
     - rewrite Hal in *; discriminate.
     - match goal with Hx : gc_module _ _ _ = Some (mr_alias _ _) |- _ => rewrite Hal in Hx; injection Hx; intros; subst end.
       split; assumption.
@@ -596,12 +617,12 @@ Section Paths.
         assert (Hv : E v v) by (etransitivity; [ exact Hvv | symmetry; exact Hvv ]).
         destruct (unit_delta _ _ _ _ _ _ _ Hu eq_refl HM HUa _ _ _ _ _ Ha HE Hv1 Hv) as (m & Hm' & Hmv).
         exists m; split; [ exact Hm' | etransitivity; [ exact Hmv | exact Hvv ] ].
-      + intros T Hm.
+      + intros R T Hm HT; assert (Hk : mres_kind R = mk_mod) by (destruct R; cbn in HT |- *; congruence).
         destruct (alias_mt_inv _ _ _ Hp _ _ _ Hm) as (Hu & Hk').
         destruct (closure_typed _ _ _ _ Hu sem_ctx_nil HUs HUm Hk') as (_ & Hval).
         destruct (Hval _ nil per_ctx_env_nil_true I) as (a & _ & Hma).
-        destruct (mtyped_selmc_ex _ _ _ _ Hma r0 nil eq_refl ltac:(discriminate)) as (h & Hs).
-        destruct (mtyped_selmc_rel (proj1 Hgm) _ _ _ _ Hma r0 nil eq_refl ltac:(discriminate) _ (Htie nil) _ Hs)
+        destruct (mtyped_selmc_ex _ _ _ _ Hma r0 nil eq_refl ltac:(rewrite Hk; discriminate)) as (h & Hs).
+        destruct (mtyped_selmc_rel (proj1 Hgm) _ _ _ _ Hma r0 nil eq_refl ltac:(rewrite Hk; discriminate) _ (Htie nil) _ Hs)
           as (h' & Hs' & Hhh).
         pose proof (functional_eval_selmc _ _ _ _ Hs Hs') as <-.
         exists h; split; [ eapply path_value_alias_intro; eassumption | exact Hhh ].
@@ -610,8 +631,8 @@ Section Paths.
   (** Every module of a valid global context is valid as a path. *)
   Theorem gpath_ok : forall p r, gc_module Θs Ξs p = Some r -> gpath_at Θm Ξm p.
   Proof.
-    intros p [T | U r0] Hp.
-    - destruct (gc_module_body _ _ _ _ Hp) as (Φ & Hb); exact (gpath_body _ _ _ Hb).
+    intros p [T oD | U r0] Hp.
+    - destruct (gc_module_body _ _ _ _ _ Hp) as (Φ & Hb); exact (gpath_body _ _ _ Hb).
     - exact (gpath_alias _ _ _ Hp).
   Qed.
 
@@ -624,8 +645,8 @@ End Fixed_GCtx.
 Lemma gmod_ok_of_wf : forall Θ Ξ Θ1 Ξ1, ⊢g Θ ⍮ Ξ -> gctx_closed Θ1 Ξ1 -> @gmod_ok (gc_mk Θ Ξ) Θ1 Ξ1.
 Proof.
   intros * H Hc; split; [| split; [| exact Hc ] ].
-  - intros p T y T' H1 H2; destruct (wf_gc_child _ _ H _ _ _ _ H1 H2) as (Δ & -> & _); eauto.
-  - intros p T y U ch H1 H2; destruct (wf_gc_alias_params _ _ H _ _ _ _ _ H1 H2) as (_ & Δ & HU & _); eauto.
+  - intros p T oT y T' oT' H1 H2; destruct (wf_gc_child _ _ H _ _ _ _ _ _ H1 H2) as (Δ & -> & _); eauto.
+  - intros p T oT y U ch H1 H2; destruct (wf_gc_alias_params _ _ H _ _ _ _ _ _ H1 H2) as (_ & Δ & HU & _); eauto.
 Qed.
 
 Lemma gmod_ok_self : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> @gmod_ok (gc_mk Θ Ξ) Θ Ξ.

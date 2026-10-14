@@ -332,6 +332,9 @@ Proof. intros; unfold dlvl_max; constructor; apply dstuck_la_app; apply dstuck_l
     all: try solve [ match goal with
       | Hin : In ?a (cons _ _) |- _ => destruct Hin as [<- | Hin]; eauto with mctt end ].
     all: try solve [ eauto 6 with mctt ].
+    (* the module of an inductive type: the type former, applied *)
+    all: try solve [ match goal with IH : dstuck (d_ind _ nil) -> _ -> dstuck ?r |- dstuck ?r =>
+                       apply IH; [ first [ constructor; intros ? [] | repeat constructor ] | assumption ] end ].
     all: match goal with Hin : In _ nil |- _ => destruct Hin end.
   Qed.
 

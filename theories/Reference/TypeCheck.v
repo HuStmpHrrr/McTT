@@ -109,6 +109,8 @@ Section type_check.
           (type_infer_in G HG P M' ltac:(ob_ord_elim))
           (fun G' HG' P' => type_infer_in G' HG' P' A' ltac:(ob_ord_elim))
           (fun b Hb G' A'' HA'' P' => type_check_in G' A'' HA'' P' (snd b) ltac:(ob_ord_elim))
+          (fun H0 Ns E => modexp_check G HG H0 ltac:(ob_ord_elim))
+          (fun H0 Ns r A'' E HA'' => type_check_in G A'' HA'' P (apps (a_ind r) Ns) ltac:(ob_ord_elim))
     | λ A' M' =>
         let*o (exist _ UA' _) := type_infer_in G _ P A' _ while _ in
         let*o (exist _ u _) :=  univ_nf_idx_dec UA' while _ in

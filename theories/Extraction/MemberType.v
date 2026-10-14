@@ -72,7 +72,7 @@ Proof. induction Ψ as [| [A | A M | U] Ψ IH]; intros; cbn; rewrite ?IH; lia. Q
 
 Lemma csize_body_ctx : forall Φ, csize (body_ctx Φ) = gsize Φ.
 Proof.
-  induction Φ as [| Φ IH x [b pv A [M |] | pm U | pvi Di] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
+  induction Φ as [| Φ IH x [b pv A [M |] | pm U | ? ? ?] | Φ IH c its]; cbn; rewrite ?csize_app, ?IH; [ lia .. |].
   enough (csize (repeat (ce_ass a_nat) (List.length its)) = 0) by lia.
   induction (List.length its); cbn; auto.
 Qed.
@@ -81,7 +81,7 @@ Lemma gsize_prefix : forall Φ x Φx, gm_prefix_upto Φ x = Some Φx -> gsize Φ
 Proof.
   induction Φ as [| Φ IH y E | Φ IH c]; intros * H; cbn in H; try discriminate.
   - destruct (String.eqb x y); [ injection H as <-; lia |].
-    specialize (IH _ _ H); destruct E as [? ? ? ? | U | ? ?]; cbn; lia.
+    specialize (IH _ _ H); destruct E as [? ? ? ? | U | ? ? ?]; cbn; lia.
   - specialize (IH _ _ H); cbn; lia.
 Qed.
 
@@ -189,11 +189,11 @@ Inductive mt_order (Θ : gdeps) (Ξ : gstack) : ctx -> modexp -> list string -> 
     mt_order Θ Ξ Γ (me_app H N) ch
 with umt_order (Θ : gdeps) (Ξ : gstack) : ctx -> gunit -> list string -> Prop :=
 | umto_body_nil : forall Γ Δ Φ,
-    umt_order Θ Ξ Γ (gu_body Δ Φ) nil
+    umt_order Θ Ξ Γ (gu_mk Δ (md_body Φ)) nil
 | umto_body_cons : forall Γ Δ Φ y ch,
     (forall Φ' pm Uy, gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
        umt_order Θ Ξ (body_ctx Φ' ++ Δ ++ Γ) Uy ch) ->
-    umt_order Θ Ξ Γ (gu_body Δ Φ) (y :: ch)
+    umt_order Θ Ξ Γ (gu_mk Δ (md_body Φ)) (y :: ch)
 | umto_alias : forall Γ Δ E ch,
     mt_order Θ Ξ (Δ ++ Γ) E ch ->
     umt_order Θ Ξ Γ (gu_mk Δ (md_alias E)) ch.
@@ -212,14 +212,14 @@ Definition mt_side (R : mres) (ch : list string) : bool :=
   end.
 
 Lemma mt_side_true : forall R ch, mt_side R ch = true -> mres_kind R = mk_term -> ch <> nil.
-Proof. intros [A | T] [| y ch] H Hk; cbn in *; congruence. Qed.
+Proof. intros [A | T | p T] [| y ch] H Hk; cbn in *; congruence. Qed.
 
 Lemma mt_side_false : forall R ch, mt_side R ch = false -> mres_kind R = mk_term /\ ch = nil.
-Proof. intros [A | T] [| y ch] H; cbn in *; auto; discriminate. Qed.
+Proof. intros [A | T | p T] [| y ch] H; cbn in *; auto; discriminate. Qed.
 
 Inductive plookup : Set :=
 | pl_def : typ -> plookup
-| pl_body : ctx -> plookup
+| pl_body : ctx -> option ind_decl -> plookup
 | pl_alias : gunit -> list string -> plookup
 | pl_none : plookup.
 
@@ -230,7 +230,7 @@ Definition path_lookup (Θ : gdeps) (Ξ : gstack) (p : qname) : plookup :=
   | Some (ge_def _ _ A _) => pl_def A
   | _ =>
       match gc_module Θ Ξ p with
-      | Some (mr_body T) => pl_body T
+      | Some (mr_body T oD) => pl_body T oD
       | Some (mr_alias U r) => pl_alias U r
       | None => pl_none
       end
@@ -252,31 +252,31 @@ Lemma path_lookup_def : forall Θ Ξ p A, path_lookup Θ Ξ p = pl_def A ->
     exists b pv B, gc_resolve Θ Ξ p = Some (ge_def b pv A B).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U0 | pv0 D0] |]; try (injection H as ->; eauto; fail);
-    destruct (gc_module Θ Ξ p) as [[T | U1 r] |]; discriminate.
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U0 | ? ? ?] |]; try (injection H as ->; eauto; fail);
+    destruct (gc_module Θ Ξ p) as [[T oD | U1 r] |]; discriminate.
 Qed.
 
-Lemma path_lookup_body : forall Θ Ξ p T, path_lookup Θ Ξ p = pl_body T -> gc_module Θ Ξ p = Some (mr_body T).
+Lemma path_lookup_body : forall Θ Ξ p T oD, path_lookup Θ Ξ p = pl_body T oD -> gc_module Θ Ξ p = Some (mr_body T oD).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |]; try discriminate;
-    destruct (gc_module Θ Ξ p) as [[T0 | U0 r0] |]; try discriminate; injection H as ->; reflexivity.
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | ? ? ?] |]; try discriminate;
+    destruct (gc_module Θ Ξ p) as [[T0 oD0 | U0 r0] |]; try discriminate; injection H as -> ->; reflexivity.
 Qed.
 
 Lemma path_lookup_alias : forall Θ Ξ p U r, path_lookup Θ Ξ p = pl_alias U r ->
     gc_module Θ Ξ p = Some (mr_alias U r).
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |]; try discriminate;
-    destruct (gc_module Θ Ξ p) as [[T | U0 r0] |]; try discriminate; injection H as -> ->; reflexivity.
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | ? ? ?] |]; try discriminate;
+    destruct (gc_module Θ Ξ p) as [[T oD | U0 r0] |]; try discriminate; injection H as -> ->; reflexivity.
 Qed.
 
 Lemma path_lookup_none : forall Θ Ξ p, path_lookup Θ Ξ p = pl_none ->
     (forall b pv A B, gc_resolve Θ Ξ p <> Some (ge_def b pv A B)) /\ gc_module Θ Ξ p = None.
 Proof.
   intros * H; unfold path_lookup in H.
-  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | pv0 D0] |] eqn:Er; try discriminate;
-    (destruct (gc_module Θ Ξ p) as [[T | U0 r0] |] eqn:Em; try discriminate);
+  destruct (gc_resolve Θ Ξ p) as [[b pv A0 B0 | pm U1 | ? ? ?] |] eqn:Er; try discriminate;
+    (destruct (gc_module Θ Ξ p) as [[T oD | U0 r0] |] eqn:Em; try discriminate);
     split; try reflexivity; intros * E; congruence.
 Qed.
 
@@ -284,7 +284,7 @@ Lemma body_lookup_def : forall Φ y Φ' A, body_lookup Φ y = bl_def Φ' A ->
     exists b pv B, gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_def b pv A B)).
 Proof.
   intros * H; unfold body_lookup in H.
-  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | pvi Di] | Φ0 c] |] eqn:E; try discriminate.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | ? ? ?] | Φ0 c] |] eqn:E; try discriminate.
   injection H as -> ->; pose proof (gm_prefix_upto_name _ _ _ _ _ E) as ->; eauto.
 Qed.
 
@@ -292,7 +292,7 @@ Lemma body_lookup_mod : forall Φ y Φ' pm Uy, body_lookup Φ y = bl_mod Φ' pm 
     gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)).
 Proof.
   intros * H; unfold body_lookup in H.
-  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | pvi Di] | Φ0 c] |] eqn:E; try discriminate.
+  destruct (gm_prefix_upto Φ y) as [[| Φ0 z [b pv A0 B0 | pm0 U | ? ? ?] | Φ0 c] |] eqn:E; try discriminate.
   injection H as -> -> ->; pose proof (gm_prefix_upto_name _ _ _ _ _ E) as ->; reflexivity.
 Qed.
 
@@ -317,8 +317,8 @@ Section MemberTypeImpl.
     repeat match goal with
       | H : path_lookup _ _ _ = pl_def _ |- _ =>
           destruct (path_lookup_def _ _ _ _ H) as (? & ? & ? & ?); clear H
-      | H : path_lookup _ _ _ = pl_body _ |- _ =>
-          pose proof (path_lookup_body _ _ _ _ H); clear H
+      | H : path_lookup _ _ _ = pl_body _ _ |- _ =>
+          pose proof (path_lookup_body _ _ _ _ _ H); clear H
       | H : path_lookup _ _ _ = pl_alias _ _ |- _ =>
           pose proof (path_lookup_alias _ _ _ _ _ H); clear H
       | H : path_lookup _ _ _ = pl_none |- _ =>
@@ -336,6 +336,7 @@ Section MemberTypeImpl.
   Ltac pos_tac :=
     first [ eapply mt_unit_def; solve [ eauto ]
           | eapply mt_unit_mod; solve [ eauto ]
+          | eapply mt_unit_ind; solve [ eauto ]
           | eapply mt_unit_alias; cycle 1; [ solve [ eauto ] | solve [ eauto ] | solve [ eauto ] ]
           | eapply mt_lit; solve [ eauto ]
           | match goal with Hf : ctx_find_slot ?G ?x = Some (?U0, ?G') |- member_type _ _ ?G (me_var ?x) _ _ =>
@@ -420,7 +421,8 @@ Section MemberTypeImpl.
     | exist _ (pl_def A) Er with inspect (mt_side (mr_term A) ch) := {
       | exist _ true Es => inleft (exist _ (mr_term A) _)
       | exist _ false Es => inright _ }
-    | exist _ (pl_body T) Er => inleft (exist _ (mr_mod T) _)
+    | exist _ (pl_body T None) Er => inleft (exist _ (mr_mod T) _)
+    | exist _ (pl_body T (Some D)) Er => inleft (exist _ (mr_ind (q_abs fp ch) T) _)
     | exist _ (pl_alias U r) Er with unit_member_type_impl nil U r _ := {
       | inleft (exist _ R HR) with inspect (mt_side R r) := {
         | exist _ true Es => inleft (exist _ R _)
@@ -491,19 +493,21 @@ Lemma gc_module_below : forall Θ1 Ξ1 Θ2 Ξ2, ⊢g Θ1 ⍮ Ξ1 -> ⊢g Θ2 ⍮
     forall ch, gc_module Θ2 Ξ2 (qname_app pq ch) = gc_module Θ1 Ξ1 (qname_app pq ch).
 Proof.
   intros * Hg1 Hg2 Hs * Hq ch.
-  destruct r0 as [T | U r0].
-  - destruct (gc_module_body _ _ _ _ Hq) as [Φ HΦ].
-    rewrite (proj1 (closed_read _ _ Hg1 _ _ _ HΦ ch)).
-    exact (proj1 (closed_read _ _ Hg2 _ _ _ (gc_sub_body _ _ _ _ _ _ Hs HΦ) ch)).
+  destruct r0 as [T oD | U r0].
+  - destruct (gc_module_body _ _ _ _ _ Hq) as [Φ HΦ].
+    rewrite (proj1 (closed_read _ _ Hg1 _ _ _ _ HΦ Hq ch)).
+    destruct (gc_sub_body _ _ _ _ _ _ _ Hs HΦ) as (Φ2 & HΦ2 & Hgr).
+    rewrite (proj1 (closed_read _ _ Hg2 _ _ _ _ HΦ2 (gc_sub_module _ _ _ _ _ _ Hs Hq) ch)).
+    apply gm_grows_module; exact Hgr.
   - rewrite (proj1 (gc_module_alias_app _ _ Hg1 _ _ _ Hq ch)).
     exact (proj1 (gc_module_alias_app _ _ Hg2 _ _ _ (gc_sub_module _ _ _ _ _ _ Hs Hq) ch)).
 Qed.
 
-Lemma mt_chain_module : forall Θ Ξ Γ H mq T, mod_qname H = Some mq ->
-    member_type Θ Ξ Γ H nil (mr_mod T) -> exists r0, gc_module Θ Ξ mq = Some r0.
+Lemma mt_chain_module : forall Θ Ξ Γ H mq R T, mod_qname H = Some mq ->
+    member_type Θ Ξ Γ H nil R -> mres_tl R = Some T -> exists r0, gc_module Θ Ξ mq = Some r0.
 Proof.
-  intros * Hp Hm; rewrite (mod_qname_inv _ _ Hp) in Hm; apply mt_path_inv in Hm; rewrite app_nil_r in Hm.
-  inversion Hm; subst; destruct mq; eauto.
+  intros * Hp Hm HT; rewrite (mod_qname_inv _ _ Hp) in Hm; apply mt_path_inv in Hm; rewrite app_nil_r in Hm.
+  inversion Hm; subst; cbn in HT; try discriminate; destruct mq; eauto.
 Qed.
 
 (** Every alias of [Θ1 ⍮ Ξ1] has an order at [Θ2 ⍮ Ξ2], at every chain. *)
@@ -555,8 +559,8 @@ Proof.
   split.
   - intros Γ H Hn HH ch.
     destruct H as [fp | x | H y | H N | U]; cbn [msize] in Hn.
-    + destruct (modexp_parts_of_wf _ _ _ _ HH) as [A0 Hm0].
-      destruct (mt_chain_module _ _ _ (me_unit fp) (q_abs fp nil) _ eq_refl Hm0) as [r0 Hq].
+    + destruct (modexp_parts_of_wf _ _ _ _ HH) as (R0 & A0 & Hm0 & HT).
+      destruct (mt_chain_module _ _ _ (me_unit fp) (q_abs fp nil) _ _ eq_refl Hm0 HT) as [r0 Hq].
       exact (mt_order_chain _ _ _ _ Hg1 Hg2 Hs Ha (me_unit fp) Γ (q_abs fp nil) nil r0 eq_refl Hq ch).
     + constructor; intros U0 Γ' Hf.
       pose proof (ctx_find_slot_size _ _ _ _ Hf).
@@ -564,10 +568,10 @@ Proof.
       pose proof (presup_modexp_eq_ctx HH) as HΓ; rewrite EΓ in HΓ.
       apply ctx_app_wf_right in HΓ.
       apply IHu; [ lia | exact (proj2 (ctx_decomp_mod HΓ)) ].
-    + destruct (modexp_parts_of_wf _ _ _ _ HH) as [(HH' & _) | (Hne & A0 & Hm0)].
+    + destruct (modexp_parts_of_wf _ _ _ _ HH) as [(HH' & _) | (Hne & R0 & A0 & Hm0 & HT)].
       * constructor; apply IHm; [ lia | exact HH' ].
       * destruct (mod_qname (me_mem H y)) as [mq |] eqn:Hp; [| contradiction ].
-        destruct (mt_chain_module _ _ _ _ _ _ Hp Hm0) as [r0 Hq].
+        destruct (mt_chain_module _ _ _ _ _ _ _ Hp Hm0 HT) as [r0 Hq].
         exact (mt_order_chain _ _ _ _ Hg1 Hg2 Hs Ha (me_mem H y) Γ mq nil r0 Hp ltac:(rewrite qname_app_nil; exact Hq) ch).
     + destruct (modexp_parts_of_wf _ _ _ _ HH) as [HH' _].
       constructor; apply IHm; [ lia | exact HH' ].
@@ -595,27 +599,31 @@ Definition alias_V (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) (E : gentry) : Prop :=
 
 Definition alias_F (Θ2 : gdeps) (Ξ2 : gstack) (T : ctx) : Prop := True.
 
+Definition alias_VD (Θ2 : gdeps) (Ξ2 : gstack) (D : ind_decl) : Prop := True.
+
 Lemma alias_V_alias : forall Θ Ξ pv Δ E Θ2 Ξ2,
     tele_ass Δ -> Θ ⍮ Ξ ⍮ gs_tele Ξ ⊢ˣ Δ ≈ Δ -> Θ ⍮ Ξ ⍮ Δ ++ gs_tele Ξ ⊢ᵐ E ≈ E ->
-    GoodV alias_V alias_F Θ Ξ -> Emb Θ Ξ Θ2 Ξ2 ->
+    GoodV alias_V alias_F alias_VD Θ Ξ -> Embx Θ Ξ Θ2 Ξ2 ->
     alias_V Θ2 Ξ2 (gs_tele Ξ) (ge_mod pv (gu_mk (Δ ++ gs_tele Ξ) (md_alias E))).
 Proof.
   intros * _ _ HE HG He r; cbn.
   pose proof (ctx_wf_gctx _ _ _ (presup_modexp_eq_ctx HE)) as Hg.
+  destruct (HG _ _ He) as [HΘ HΞ].
   assert (Ha : aliases_ordered Θ Ξ Θ2 Ξ2).
   { intros p U r0 Hm r'.
-    destruct (good_alias _ _ _ _ _ _ _ _ _ HG He Hm) as (T & pvT & HV); exact (HV r'). }
+    destruct (good_alias _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pvT & HV); exact (HV r'). }
   constructor; rewrite app_nil_r.
-  eapply (proj1 (mt_order_exists _ _ _ _ Hg (em_wf _ _ _ _ He) (em_res _ _ _ _ He) Ha _)); [ reflexivity | exact HE ].
+  eapply (proj1 (mt_order_exists _ _ _ _ Hg (emx_wf _ _ _ _ He) (gc_subx_sub _ _ _ _ (emx_res _ _ _ _ He)) Ha _)); [ reflexivity | exact HE ].
 Qed.
 
 Theorem gctx_aliases_ordered : forall Θ Ξ, ⊢g Θ ⍮ Ξ -> aliases_ordered Θ Ξ Θ Ξ.
 Proof.
   intros * Hg p U r Hm r'.
-  pose proof (global_valid alias_V alias_F
+  pose proof (global_valid alias_V alias_F alias_VD
                 ltac:(intros; exact I) ltac:(intros; exact I)
-                alias_V_alias ltac:(intros; exact I) ltac:(intros; exact I) _ _ Hg) as HG.
-  destruct (good_alias _ _ _ _ _ _ _ _ _ HG (Emb_refl _ _ Hg) Hm) as (T & pvT & HV); exact (HV r').
+                alias_V_alias ltac:(intros; exact I) ltac:(intros; split; exact I) _ _ Hg) as HG.
+  destruct (HG _ _ (Embx_refl _ _ Hg)) as [HΘ HΞ].
+  destruct (good_alias _ _ _ _ _ _ _ _ _ _ HΘ HΞ Hm) as (T & pvT & HV); exact (HV r').
 Qed.
 
 Corollary mt_order_of_wf : forall Θ Ξ Γ H, ⊢g Θ ⍮ Ξ -> Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H ≈ H ->

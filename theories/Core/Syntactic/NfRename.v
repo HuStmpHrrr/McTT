@@ -93,7 +93,7 @@ Proof.
               | match goal with
                 | Hu : forall φ, _ = _, Hr : forall φ, _ = _ |- _ => rewrite Hu, Hr; reflexivity
                 end ].
-  all: repeat match goal with H : forall φ, _ = _ |- _ => rewrite H end; reflexivity.
+  all: repeat match goal with H : forall φ, _ = _ |- _ => rewrite H end; rewrite ?qname_mod_wk; reflexivity.
 Qed.
 
 (** ** Order-Preserving Renamings Preserve the Order on Atoms

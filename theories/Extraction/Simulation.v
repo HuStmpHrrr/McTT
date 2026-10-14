@@ -284,7 +284,7 @@ Lemma agree_elim_B : forall p nm A Bs M ρ ρ',
     forall c n B, In (c, n, B) Bs -> env_agree (fun x => ~ exp_fresh (n + x) B) ρ ρ'.
 Proof.
   intros * H c n B Hin x Hx; apply H; intros Hf; apply Hx.
-  apply exp_fresh_elim in Hf as (_ & HF & _); exact (proj1 (Forall_forall _ _) HF _ Hin).
+  apply exp_fresh_elim in Hf as (_ & _ & HF & _); exact (proj1 (Forall_forall _ _) HF _ Hin).
 Qed.
 
 #[export]
@@ -692,7 +692,7 @@ Section Eval.
     all: try match goal with
       | Hl : List.length ?args = List.length ?Δ, Hp : gm_prefix_upto ?Φ _ = Some (gm_ext ?Φ' _ _),
         IHb : forall ρ0 (P : nat -> Prop), (forall x, ~ gmod_fresh x ?Φ' -> P x) -> env_agree P (env_args ?ρ ?args) ρ0 -> _,
-        Hρ : env_agree (fun x => ~ gunit_fresh x (gu_body ?Δ ?Φ)) ?ρ ?ρ', Ha : dsim_list ?args ?args' |- _ =>
+        Hρ : env_agree (fun x => ~ gunit_fresh x (gu_mk ?Δ (md_body ?Φ))) ?ρ ?ρ', Ha : dsim_list ?args ?args' |- _ =>
           let HA := fresh "HA" in let HP := fresh "HP" in
           assert (HA : env_agree (fun y => ~ gmod_fresh y Φ) (env_args ρ args) (env_args ρ' args'))
             by (eapply env_agree_args; [ exact Hρ | exact Ha |];

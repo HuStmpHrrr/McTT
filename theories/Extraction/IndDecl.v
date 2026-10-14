@@ -30,8 +30,8 @@ Fixpoint exp_mvcb (n : nat) (M : exp) {struct M} : bool :=
   | a_natrec A MZ MS M => exp_mvcb (S n) A && exp_mvcb n MZ && exp_mvcb (S (S n)) MS && exp_mvcb n M
   | a_exfalso A M => exp_mvcb (S n) A && exp_mvcb n M
   | a_ind _ | a_con _ _ | a_nlit _ => true
-  | a_elim p nm A Bs M =>
-      exp_mvcb (nm + n) A &&
+  | a_elim H nm A Bs M =>
+      modexp_mvcb n H && exp_mvcb (nm + n) A &&
       (fix brs_mvcb (Bs : list (string * nat * exp)) : bool :=
          match Bs with
          | nil => true
@@ -82,7 +82,7 @@ with gentry_mvcb (n : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_mvcb n A && match B with Some M => exp_mvcb n M | None => true end
   | ge_mod _ U => gunit_mvcb n U
-  | ge_ind _ _ => true
+  | ge_ind _ D Φ => gmod_mvcb (ind_nu D + n) Φ
   end
 with centry_mvcb (n : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -109,8 +109,8 @@ Proof.
   all: try (split; auto; fail).
   - tauto.
   - (* an eliminator: its branches *)
-    match goal with |- (_ /\ ?l = true) /\ _ <-> _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
-    clear - H0; induction H0 as [| b Bs Hb _ IH]; cbn; [ split; auto |].
+    match goal with |- ((_ /\ _) /\ ?l = true) /\ _ <-> _ /\ _ /\ ?r /\ _ => enough (Hb : l = true <-> r) by (rewrite Hb; tauto) end.
+    match goal with HF : List.Forall _ Bs |- _ => clear - HF; induction HF as [| b Bs Hb _ IH] end; cbn; [ split; auto |].
     rewrite andb_true_iff, Hb, IH; reflexivity.
   - apply Nat.ltb_lt.
   - destruct oA as [A |]; [ rewrite (H A eq_refl) | split; intros [_ ?]; split; auto ]; reflexivity.
@@ -228,7 +228,7 @@ Defined.
 (** ** The Entry *)
 
 Lemma wf_gentry_ind_iff : forall Θ Ξ mp pv D,
-    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D <->
+    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ <->
     (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D /\ decl_typed Θ Ξ D.
 Proof.
   intros; split.
@@ -241,16 +241,48 @@ Proof.
     + intros * Hin E Ed; exact (proj2 (Hsh _ _ _ _ _ Hin E) _ _ _ Ed).
 Qed.
 
-(** A declaration filed in its module's frame: the module's parameters are
-    its uniform ones. *)
-Lemma ind_frame_shape : forall Ξ x R cs,
-    (exists Δ, ind_params (gs_ind Ξ (rd_filed R cs)) = Δ ++ gs_tele (ind_frame Ξ x R)) /\
-    List.length (gs_tele (ind_frame Ξ x R)) <= ind_nu (gs_ind Ξ (rd_filed R cs)).
+(** The entry of an inductive type with its members, checked member by
+    member ([wf_gentry_ind_ext]), holds of its declaration alone; and the
+    recursor, generated last, has a name fresh among the constructors. *)
+Lemma wf_gentry_ind_base : forall Θ Ξ mp pv D Φ,
+    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D Φ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄.
 Proof.
-  intros; unfold gs_ind, ind_frame, rd_filed, rd_uparams; cbn; split.
-  - exists (List.firstn (List.length (rd_params R) - rd_nu R) (rd_params R)).
-    rewrite List.app_assoc, List.firstn_skipn; reflexivity.
-  - rewrite List.length_app, List.length_skipn; lia.
+  intros Θ Ξ mp pv D Φ; revert Ξ mp; induction Φ as [| Φ IH x E | Φ IH H its]; intros * HE;
+    [ exact HE | inversion HE; subst; eauto | inversion HE ].
+Qed.
+
+Lemma gens_body_app : forall gs1 gs2 Φ T, gens_body Φ T (gs1 ++ gs2) = gens_body (gens_body Φ T gs1) T gs2.
+Proof. induction gs1 as [| [d pv A M | d pv E] gs1 IH]; intros; cbn; auto. Qed.
+
+Lemma gens_body_cons_names : forall p D T (l : list (string * list carg)) Φ x,
+    In x (gm_names Φ) \/ In x (List.map fst l) ->
+    In x (gm_names (gens_body Φ T
+      (List.map (fun cg =>
+                   ig_def (fst cg) false
+                     (ctx_pi (ind_nparams D)
+                        (ctx_pi (cargs_ctx p D (snd cg)) (apps (a_ind p) (ind_pvars D (List.length (snd cg))))))
+                     (apps (a_con p (fst cg)) (vars_from 0 (ind_nu D)))) l))).
+Proof.
+  intros p D T l; induction l as [| cg l IH]; intros Φ x Hx; cbn in Hx |- *; [ destruct Hx as [Hx | []]; exact Hx |].
+  apply IH; cbn; tauto.
+Qed.
+
+Lemma wf_gentry_ind_rec_fresh : forall Θ Ξ mp pv p D,
+    Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D (gen_body p D) -> ~ In "rec"%string (List.map fst (ind_cons D)).
+Proof.
+  intros * HE Hin; unfold gen_body, ind_gens in HE; rewrite gens_body_app in HE; cbn [gens_body] in HE.
+  inversion HE; subst.
+  match goal with Hf : gm_fresh "rec"%string _ |- _ => apply Hf end.
+  apply gens_body_cons_names; right; exact Hin.
+Qed.
+
+(** A declaration filed where it is declared: its parameters are over the
+    frames', which are its outermost uniform ones. *)
+Lemma ind_decl_shape : forall Ξ R cs,
+    (exists Δ, ind_params (gs_ind Ξ (rd_filed R cs)) = Δ ++ gs_tele Ξ) /\
+    List.length (gs_tele Ξ) <= ind_nu (gs_ind Ξ (rd_filed R cs)).
+Proof.
+  intros; unfold gs_ind; cbn; split; [ eexists; reflexivity | lia ].
 Qed.
 
 Section Decide.
@@ -445,7 +477,7 @@ Section Decide.
       frames'. *)
   Definition ind_entry_dec (mp : qname) (pv : bool) (D : ind_decl)
     (Hsh : (exists Δ, ind_params D = Δ ++ gs_tele Ξ) /\ List.length (gs_tele Ξ) <= ind_nu D) :
-    {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D} :=
+    {Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄} + {~ Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄} :=
     match decl_typed_dec D with
     | left H => left (proj2 (wf_gentry_ind_iff _ _ _ _ _) (conj (proj1 Hsh) (conj (proj2 Hsh) H)))
     | right Hn => right (fun H => Hn (proj2 (proj2 (proj1 (wf_gentry_ind_iff _ _ _ _ _) H))))
@@ -454,7 +486,7 @@ End Decide.
 
 (** The entry crosses [gds_equiv] as the term judgments do. *)
 Lemma equiv_gentry_ind : forall Θ Θ' Ξ mp pv D,
-    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind pv D.
+    gds_equiv Θ Θ' -> ⊢g Θ' ⍮ Ξ -> Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ -> Θ' ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄.
 Proof.
   intros * [Hs _] HΞ H; apply wf_gentry_ind_iff in H as (HΔ & Hle & HD).
   apply wf_gentry_ind_iff; split; [ exact HΔ | split; [ exact Hle |] ].
@@ -580,7 +612,7 @@ Definition rec_arity_ok (D : ind_decl) : bool :=
                                        | ca_arg _ => true
                                        end) (snd cg)) (ind_cons D).
 
-Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D -> rec_arity_ok D = true.
+Lemma rec_arity_of_entry : forall Θ Ξ mp pv D, Θ ⍮ Ξ ⍮ mp ⊢e ge_ind pv D ⋄ -> rec_arity_ok D = true.
 Proof.
   intros * H; apply wf_gentry_ind_iff in H as (_ & _ & HD).
   pose proof HD as (_ & _ & _ & _ & _ & _ & _ & _ & HPl & _).
@@ -689,7 +721,7 @@ Qed.
 Lemma gds_equiv_nat_binding : forall Θ Θ' Ξ, gds_equiv Θ Θ' -> nat_binding Θ Ξ = nat_binding Θ' Ξ.
 Proof.
   intros * He; unfold nat_binding.
-  rewrite (nb_classify_ext Θ Θ') by (intros; unfold ind_lookup; rewrite (gds_equiv_resolve _ _ _ _ He); reflexivity).
+  rewrite (nb_classify_ext Θ Θ') by (intros; unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity).
   apply nb_classify_in, gds_equiv_nat_binds, He.
 Qed.
 
@@ -698,7 +730,7 @@ Lemma equiv_cls_arg_in : forall Θ Θ' Ξ R args1 gs1 T g,
 Proof.
   intros * He HΞ H; destruct H as [g Hg | i W g Hn HT HW Hg]; [ apply cls_in_syn; exact Hg |].
   eapply cls_in_nf; [ exact Hn | exact (equiv_exp _ _ _ _ _ _ He HΞ HT) | | exact Hg ].
-  eapply nbe_ty_ext; [ | | exact HW ]; intros; [ apply gds_equiv_resolve | apply gds_equiv_module ]; exact He.
+  eapply nbe_ty_ext; [ | | | exact HW ]; intros; [ apply gds_equiv_resolve | apply gds_equiv_module | unfold ind_lookup; rewrite (gds_equiv_module _ _ _ _ He); reflexivity ]; exact He.
 Qed.
 
 Lemma equiv_cls_cons_in : forall Θ Θ' Ξ R cs,

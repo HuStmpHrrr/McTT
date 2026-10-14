@@ -70,7 +70,7 @@ Qed.
 Lemma mt_unit_ctx : forall Γ Γ' fp ch R,
     member_type Θm Ξm Γ (me_unit fp) ch R -> member_type Θm Ξm Γ' (me_unit fp) ch R.
 Proof.
-  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_alias ]; eassumption.
+  intros * H; inversion H; subst; [ eapply mt_unit_def | eapply mt_unit_mod | eapply mt_unit_ind | eapply mt_unit_alias ]; eassumption.
 Qed.
 
 Lemma mt_chain_ctx : forall H Γ Γ' p ch R, mod_qname H = Some p ->
@@ -107,7 +107,7 @@ Proof. intros *; apply eval_chain_any with (p := p), qname_mod_qname. Qed.
     and, if it names a module, its value is. *)
 Definition gpath_at (p : qname) : Prop :=
   sem_mt Θm Ξm ⋅ (qname_mod p) /\ sem_unf Θm Ξm ⋅ (qname_mod p) /\
-  (forall T, member_type Θm Ξm ⋅ (qname_mod p) nil (mr_mod T) ->
+  (forall R T, member_type Θm Ξm ⋅ (qname_mod p) nil R -> mres_tl R = Some T ->
      exists h, eval_modexp gc_deps gc_stack (qname_mod p) nil h /\ per_dmod h h).
 
 Lemma sem_mt_path : gmod_ok Θm Ξm -> forall Γ p, gpath_at p -> ⊨ Γ -> sem_mt Θm Ξm Γ (qname_mod p).
@@ -138,22 +138,22 @@ Proof.
   exact (HU _ _ _ (mt_path_ctx _ ⋅ _ _ _ Hm) HM _ _ H0 I _ Hh).
 Qed.
 
-Lemma rel_me_path : forall Γ p T, gpath_at p -> ⊨ Γ ->
-    member_type Θm Ξm Γ (qname_mod p) nil (mr_mod T) -> Γ ⊨ᵐ qname_mod p ≈ qname_mod p.
+Lemma rel_me_path : forall Γ p R0 T, gpath_at p -> ⊨ Γ ->
+    member_type Θm Ξm Γ (qname_mod p) nil R0 -> mres_tl R0 = Some T -> Γ ⊨ᵐ qname_mod p ≈ qname_mod p.
 Proof.
-  intros * (_ & _ & HV) HΓ Hm.
-  destruct (HV _ (mt_path_ctx _ ⋅ _ _ _ Hm)) as (h & Hh & Hhh).
+  intros * (_ & _ & HV) HΓ Hm HT.
+  destruct (HV _ _ (mt_path_ctx _ ⋅ _ _ _ Hm) HT) as (h & Hh & Hhh).
   destruct (sem_ctx_per_ctx_env HΓ) as [R HR].
   exists R, HR; intros Γ' R' HΓ' σ σ' Hσ ρ ρ' ρσ ρ'σ' Hρ Hev Hev'.
   apply (mk_rel_mod h h h h); try rewrite (mod_qname_sub _ _ _ (qname_mod_qname p)); try (eapply eval_path_any; exact Hh).
   split; [ exact Hhh | split; exact Hhh ].
 Qed.
 
-Lemma member_type_path_module : forall Θ Ξ Γ p T,
-    member_type Θ Ξ Γ (qname_mod p) nil (mr_mod T) -> exists r, gc_module Θ Ξ p = Some r.
+Lemma member_type_path_module : forall Θ Ξ Γ p R T,
+    member_type Θ Ξ Γ (qname_mod p) nil R -> mres_tl R = Some T -> exists r, gc_module Θ Ξ p = Some r.
 Proof.
-  intros * H; apply me_mems_member_type_inv in H; rewrite app_nil_r in H.
-  inversion H; subst; destruct p; eauto.
+  intros * H HT; apply me_mems_member_type_inv in H; rewrite app_nil_r in H.
+  inversion H; subst; cbn in HT; try discriminate; destruct p; eauto.
 Qed.
 
 End Fixed_GCtx.

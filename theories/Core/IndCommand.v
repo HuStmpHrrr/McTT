@@ -62,11 +62,11 @@ Proof.
 Qed.
 
 Section ConTypes.
-  Variables (Θ : gdeps) (Ξ : gstack) (x : string) (R : raw_decl) (cs : list (string * list carg)).
+  Variables (Θ : gdeps) (Ξ : gstack) (x : string) (pv : bool) (R : raw_decl) (cs : list (string * list carg)).
 
   #[local] Abbreviation D := (gs_ind Ξ (rd_filed R cs)).
   #[local] Abbreviation p := (ind_qname Ξ x).
-  #[local] Abbreviation Ξf := (gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R)).
+  #[local] Abbreviation Ξf := (gs_add x (ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ).
   #[local] Abbreviation np := (List.length (rd_params R)).
   #[local] Abbreviation t := (List.length (gs_tele Ξ)).
   #[local] Abbreviation σ0 := (Id ,, self_inst (ind_qname Ξ x) (List.length (gs_tele Ξ))).
@@ -256,28 +256,28 @@ Theorem rc_ind_con_types : forall load_path read to_core ch Θ Ξ x pv R Θ' Ξ'
     forall c args, In (c, args) (rd_cons R) ->
     exists cs gs, cls_cons_in Θ Ξ R cs /\
       ind_con (gs_ind Ξ (rd_filed R cs)) c = Some gs /\
-      exists i, Θ ⍮ gs_add ind_name (ge_ind false (gs_ind Ξ (rd_filed R cs))) (ind_frame Ξ x R) ⍮ ⋅
+      Ξ' = gs_add x (ge_ind pv (gs_ind Ξ (rd_filed R cs)) (gen_body (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)))) Ξ /\
+      exists i, Θ ⍮ Ξ' ⍮ ⋅
         ⊢ con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) gs
         ≈ user_con_ty (ind_qname Ξ x) (gs_ind Ξ (rd_filed R cs)) (List.length (rd_params R)) args
         : Typeω@i.
 Proof.
-  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs ? ? Hcls Htel HΔ Hfr HE Hg | | |]; subst.
+  intros * Hr HΞ c args Hin; inversion Hr as [| | | | | | | ? ? ? ? ? ? cs Hcls Hfr HE | | |]; subst.
   destruct (Forall2_in_left _ _ _ _ Hcls Hin) as ([c' gs] & Hin' & Heq & Hc); cbn [fst snd] in Heq, Hc; subst c'.
   set (D := gs_ind Ξ (rd_filed R cs)) in *; set (p := ind_qname Ξ x) in *.
-  pose proof (ind_file_wf _ _ _ _ _ _ (ind_frame_wf _ _ _ _ HΞ Htel HΔ Hfr) HE) as HΞf.
-  pose proof (ind_lookup_added Θ' (ind_frame Ξ x R) ind_name false D ltac:(discriminate)) as Hl.
-  change (qname_in (gs_path (ind_frame Ξ x R)) ind_name) with p in Hl.
+  pose proof (add_ind_wf _ _ _ _ _ _ HΞ HE Hfr) as HΞf.
+  assert (HΞn : Ξ <> nil) by (intros ->; exact Hfr).
+  pose proof (ind_lookup_added Θ' Ξ x pv D (gen_body p D) HΞn) as Hl.
+  change (qname_in (gs_path Ξ) x) with p in Hl.
   destruct (decl_of_lookup _ _ ⋅ _ _ ltac:(constructor; exact HΞf) Hl) as [HD Hdc].
   pose proof HD as (_ & _ & _ & HP & _ & _ & _ & _ & _ & _ & _ & Hnd & _).
   assert (Hcon : ind_con D c = Some gs) by (apply cons_lookup_nodup; [ exact Hnd | exact Hin' ]).
-  assert (Hemb : Emb Θ' Ξ Θ' (gs_add ind_name (ge_ind false D) (ind_frame Ξ x R))).
+  assert (Hemb : Emb Θ' Ξ Θ' (gs_add x (ge_ind pv D (gen_body p D)) Ξ)).
   { constructor; [ exact HΞf |].
-    destruct Ξ as [| [mq V] Ξ0]; [ contradiction |].
-    destruct V as [P Φ]; cbn [gs_fresh gs_path gu_mod] in Hfr.
-    unfold ind_frame, gs_push, gs_add; cbn [gs_path].
-    eapply gc_sub_trans; [ apply (gc_sub_push _ _ (qname_in mq x) (gu_body (rd_uparams R) gm_nil)); cbn; exists x; split; [ reflexivity | exact Hfr ] |].
-    apply gc_sub_grow; cbn; intros []. }
-  exists cs, gs; split; [ exact Hcls | split; [ exact Hcon |] ].
+    destruct Ξ as [| [mq [P [Φ | E0]]] Ξ0]; [ contradiction | |].
+    - cbn [gs_fresh gu_mod] in Hfr; cbn [gs_add gu_params gu_mod]; apply gc_sub_grow; exact Hfr.
+    - exfalso; destruct (wf_gstack_cons_inv _ _ _ _ HΞ) as (_ & (Δ' & Φ' & [=] & _) & _). }
+  exists cs, gs; split; [ exact Hcls | split; [ exact Hcon | split; [ reflexivity |] ] ].
   unfold con_ty, cargs_ctx, user_con_ty; rewrite ctx_pi_sub.
   assert (Ht : ind_np D - List.length (rd_params R) = List.length (gs_tele Ξ))
     by (unfold D, ind_np; cbn; rewrite List.length_app; lia).
@@ -291,11 +291,11 @@ Proof.
     rewrite <- apps_exp_app; unfold ind_pvars; rewrite Hlen.
     rewrite vars_from_app; unfold ind_np, D; cbn; rewrite List.length_app; do 2 f_equal; lia. }
   rewrite Eres.
-  destruct (conv_tail Θ' Ξ x R cs Hemb Hl HD Hdc nil nil args gs Hc eq_refl c Hin'
+  destruct (conv_tail Θ' Ξ x pv R cs Hemb Hl HD Hdc nil nil args gs Hc eq_refl c Hin'
               ltac:(cbn; apply ctx_sub_refl; exact HP)) as [j Hj].
   cbn [rtele tele_sub List.rev List.map List.app List.length cargs_pat] in Hj.
   rewrite Nat.add_0_l in Hj.
-  assert (HP0 : ⊢ Θ' ⍮ gs_add ind_name (ge_ind false D) (ind_frame Ξ x R) ⍮ ind_params D ++ ⋅)
+  assert (HP0 : ⊢ Θ' ⍮ gs_add x (ge_ind pv D (gen_body p D)) Ξ ⍮ ind_params D ++ ⋅)
     by (rewrite List.app_nil_r; exact HP).
   pose proof HD as (Hass & _).
   destruct (ctx_pi_ass_eq _ _ _ ⋅ _ _ _ Hass HP0 ltac:(rewrite List.app_nil_r; exact Hj)) as [i Hi].

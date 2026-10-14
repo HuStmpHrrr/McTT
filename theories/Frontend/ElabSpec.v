@@ -187,15 +187,6 @@ Definition itarget (fq ip : path) (args : list Cst.obj) : option Cst.obj :=
     first. *)
 Definition ptele (ps : list (string * typ)) : ctx := rev (map (fun p => ce_ass (snd p)) ps).
 
-(** The name of the eliminator of the type a module expression names, as
-    written: the declaration [#] in it, from a unit, the module's arguments
-    dropped.  The core resolves it ([Imports.elim_xp]). *)
-Definition elim_head (H : modexp) : option qname :=
-  match modexp_spine H with
-  | (me_unit fp, _, pre) => Some (q_abs fp (pre ++ ind_name :: nil))
-  | _ => None
-  end.
-
 Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_typ : forall S n, sel S (Cst.typ n) (Typeω@n)
 | sel_suniv : forall S o M, sel S o M -> sel S (Cst.suniv o) (Type⟨M⟩)
@@ -241,14 +232,14 @@ Inductive sel : list ent -> Cst.obj -> exp -> Prop :=
 | sel_let_mod : forall S x ps md ob U B,
     sunit S ps md U -> sel (en_var x :: S) ob B ->
     sel S (Cst.letb (Cst.d_mod x ps md) ob) (ℓₘ U in B)
-(** An eliminator: it is named by the module of its type, as written
-    ([elim_head]); its motive binds its names, and so does each branch.
-    Which type the module is, how many names there must be, and which
-    constructor a branch is for, is the core's to check. *)
-| sel_elim : forall S oh om xs oA bs H p M A Bs,
-    selm S oh H -> elim_head H = Some p ->
+(** An eliminator: it is named by the module of its type, as written; its
+    motive binds its names, and so does each branch.  Which type the module
+    is, how many names there must be, and which constructor a branch is for,
+    is the core's to check. *)
+| sel_elim : forall S oh om xs oA bs H M A Bs,
+    selm S oh H ->
     sel S om M -> sel (vents xs ++ S) oA A -> sbrs S bs Bs ->
-    sel S (Cst.elim oh om xs oA bs) (a_elim p (List.length xs) A Bs M)
+    sel S (Cst.elim oh om xs oA bs) (a_elim H (List.length xs) A Bs M)
 
 with selm : list ent -> Cst.obj -> modexp -> Prop :=
 | selm_var : forall S x k e n H,
@@ -405,11 +396,11 @@ Inductive scmd (fp : path) : list string -> list ent -> list ent -> Cst.cmd -> l
     srcons (pents (ups ++ nps) ++ en_var x :: F ++ O) cs cs' ->
     scmd fp ch O F (Cst.c_ind pv x ups oT cs) (en_mem x (q_abs fp (ch ++ x :: nil)) :: F)
       (cc_ind x pv (mk_raw (List.length ups) (ptele tys) A cs') :: nil)
-(** [builtin k := X]: [X] is named as the head of an eliminator is; whether
-    it is an inductive type of the right shape is the core's to check. *)
-| sc_builtin : forall ch O F k oX H p,
-    selm (F ++ O) oX H -> elim_head H = Some p ->
-    scmd fp ch O F (Cst.c_builtin k oX) F (cc_builtin k p :: nil)
+(** [builtin k := X]: [X] is a module, as written; whether it is an
+    inductive type of the right shape is the core's to check. *)
+| sc_builtin : forall ch O F k oX H,
+    selm (F ++ O) oX H ->
+    scmd fp ch O F (Cst.c_builtin k oX) F (cc_builtin k H :: nil)
 
 with scmds (fp : path) : list string -> list ent -> list ent -> list Cst.cmd -> list ccmd -> Prop :=
 | scs_nil : forall ch O F, scmds fp ch O F nil nil

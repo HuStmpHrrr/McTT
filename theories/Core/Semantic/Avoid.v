@@ -356,7 +356,7 @@ Section OFresh.
                                           forall c n B, In (c, n, B) Bs -> ofresh (oshift n K) B.
   Proof.
     destruct K; cbn; [| auto ].
-    intros p nm A Bs M H; apply (proj1 (exp_fresh_elim _ p nm A Bs M)) in H as (_ & H & _).
+    intros p nm A Bs M H; apply (proj1 (exp_fresh_elim _ p nm A Bs M)) in H as (_ & _ & H & _).
     intros * Hin; exact (proj1 (Forall_forall _ _) H _ Hin).
   Qed.
   Lemma ofresh_elim_M : forall p nm A Bs M, ofresh K (a_elim p nm A Bs M) -> ofresh K M.
@@ -605,6 +605,9 @@ Section Eval.
     - (* [efq] on a neutral *)
       apply dav_neut; [ assumption |]. inversion H; subst.
       eapply dav_exfalso with (K := K); eassumption.
+    - (* the module of an inductive type, a member of a global module: the
+         type former, applied to the module's arguments *)
+      apply H; [ constructor; all_in_with assumption | exact H1 ].
     - (* a definition of a saturated body *)
       assert (HΦ : ogfresh (oshift (List.length Δ) K) (gm_ext Φ' x (ge_def b0 pv A (Some M))))
         by (eapply ofresh_prefix_upto; [ exact e0 | apply oufresh_body; exact H3 ]).

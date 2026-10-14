@@ -18,6 +18,7 @@
 From Mctt Require Import LibTactics.
 From Mctt.Core Require Import Base.
 From Mctt.Core.Syntactic Require Export SubEq.
+From Mctt.Core.Syntactic.System Require Import MemberWf.
 Import Syntax_Notations Wk_Notations.
 
 Lemma wf_typ_inversion : forall {Θ Ξ Γ i A},
@@ -383,11 +384,45 @@ Proof.
     split; [ exact HD | split; [ exact Hc | eapply wf_subtyp_trans; eassumption ] ].
 Qed.
 
-Lemma wf_elim_inversion : forall {Θ Ξ Γ p nm A Bs M T},
-    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim p nm A Bs M : T ->
-    exists D Ps i,
+(** The head of an eliminator is the canonical one at arguments [Ns], or a
+    module resolving to it at them. *)
+Definition elim_head_rel (Θ : gdeps) (Ξ : gstack) (Γ : ctx) (H : modexp) (p : qname) (Ns : list exp) : Prop :=
+  H = me_apps (qname_mod p) Ns \/
+  exists H0 T, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ H0 ≈ H0 /\ member_type Θ Ξ Γ H0 nil (mr_ind p T) /\ H = me_apps H0 Ns.
+
+Lemma elim_head_rel_canon : forall Θ Ξ Γ p T D pL Ns Ns',
+    gc_module Θ Ξ p = Some (mr_body T (Some D)) ->
+    elim_head_rel Θ Ξ Γ (me_apps (qname_mod p) Ns) pL Ns' -> pL = p /\ Ns' = Ns.
+Proof.
+  intros * Hp [Heq | (H0 & T0 & _ & Hm & Heq)].
+  - destruct (me_apps_inj _ _ _ _ (qname_mod_noapp _) (qname_mod_noapp _) Heq) as [Hq ->].
+    apply (f_equal mod_qname) in Hq; rewrite !qname_mod_qname in Hq; injection Hq as ->; split; reflexivity.
+  - destruct (me_apps_inj _ _ _ _ (qname_mod_noapp _) (member_type_ind_noapp' _ _ _ _ _ _ Hm) Heq) as [<- ->].
+    split; [ exact (path_ind_self _ _ _ _ _ _ _ _ Hp Hm) | reflexivity ].
+Qed.
+
+(** A head naming a path: the path itself, or a path resolving to the
+    module of the inductive type. *)
+Lemma elim_head_rel_path : forall Θ Ξ Γ pq pL Ns,
+    elim_head_rel Θ Ξ Γ (qname_mod pq) pL Ns ->
+    Ns = nil /\ (pL = pq \/ exists T, Θ ⍮ Ξ ⍮ Γ ⊢ᵐ qname_mod pq ≈ qname_mod pq /\
+                                    member_type Θ Ξ Γ (qname_mod pq) nil (mr_ind pL T)).
+Proof.
+  intros * [Heq | (H0 & T0 & HH0 & Hm & Heq)].
+  - symmetry in Heq; destruct (me_apps_qname _ _ _ Heq) as [-> Hq].
+    apply (f_equal mod_qname) in Hq; rewrite !qname_mod_qname in Hq; injection Hq as ->; auto.
+  - symmetry in Heq; destruct (me_apps_qname _ _ _ Heq) as [-> ->].
+    split; [ reflexivity | right; eauto ].
+Qed.
+
+Lemma wf_elim_inversion : forall {Θ Ξ Γ H nm A Bs M T},
+    Θ ⍮ Ξ ⍮ Γ ⊢ a_elim H nm A Bs M : T ->
+    exists p D Ps i Ns nh,
       ind_lookup Θ Ξ p = Some D /\
       List.length Ps = ind_np D /\
+      elim_head_rel Θ Ξ Γ H p Ns /\ List.length Ns = nh /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns : ind_ty_at D (List.firstn nh Ps) /\
+      Θ ⍮ Ξ ⍮ Γ ⊢ apps (a_ind p) Ns ≈ apps (a_ind p) (List.firstn nh Ps) : ind_ty_at D (List.firstn nh Ps) /\ nh <= ind_nu D /\
       (forall k P T, List.nth_error Ps k = Some P -> List.nth_error (tele_insts (ind_params D) Id Ps) k = Some T ->
          Θ ⍮ Ξ ⍮ Γ ⊢ P : T) /\
       Θ ⍮ Ξ ⍮ Γ ⊢ M : apps (a_ind p) Ps /\
@@ -404,9 +439,17 @@ Lemma wf_elim_inversion : forall {Θ Ξ Γ p nm A Bs M T},
            : elim_bty p D c gs A (List.firstn (ind_nu D) Ps)) /\
       Θ ⍮ Ξ ⍮ Γ ⊢ A[sb_of_list Id (List.skipn (ind_nu D) Ps ++ M :: nil)] ⊆ T.
 Proof.
-  intros * H; dependent induction H.
-  - exists D, Ps, i; repeat (split; [ first [ assumption | reflexivity ] |]).
-    eapply wf_subtyp_of_typed; eapply wf_elim; (eassumption || reflexivity).
-  - destruct (IHwf_exp1 _ _ _ _ _ eq_refl) as (D & Ps & i0 & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
-    exists D, Ps, i0; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
+  intros * HE; dependent induction HE.
+  - exists p, D, Ps, i, Ns, (List.length Ns); unfold elim_head_rel; repeat (split; [ first [ assumption | exact eq_refl | left; exact eq_refl ] |]).
+    eapply wf_subtyp_of_typed; eapply wf_elim; first [ exact eq_refl | eassumption ].
+  - destruct (IHHE2 _ _ _ _ _ eq_refl)
+      as (pL & D & Ps & i0 & NsL & nh & Hl & ? & Hh & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
+    match goal with Hm : member_type _ _ _ _ nil (mr_ind _ _) |- _ =>
+      destruct (proj1 (member_type_ind_canon _ _) _ _ _ _ Hm _ _ eq_refl) as (T' & D' & Hp) end.
+    destruct (elim_head_rel_canon _ _ _ _ _ _ _ _ _ Hp Hh) as [-> ->].
+    exists p, D, Ps, i0, Ns, nh; unfold elim_head_rel; repeat (split; [ first [ assumption | right; do 2 eexists; split; [ eassumption | split; [ eassumption | reflexivity ] ] ] |]).
+    eapply wf_subtyp_trans; [ eassumption | eapply wf_subtyp_of_typed; eassumption ].
+  - destruct (IHHE1 _ _ _ _ _ eq_refl)
+      as (p & D & Ps & i0 & Ns & nh & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ? & ?).
+    exists p, D, Ps, i0, Ns, nh; repeat (split; [ first [ assumption | reflexivity ] |]); eapply wf_subtyp_trans; eassumption.
 Qed.

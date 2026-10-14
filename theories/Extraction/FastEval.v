@@ -45,8 +45,8 @@ Fixpoint exp_freshb (k : nat) (M : exp) {struct M} : bool :=
       exp_freshb (S k) A && exp_freshb k MZ && exp_freshb (S (S k)) MS && exp_freshb k M
   | a_exfalso A M => exp_freshb (S k) A && exp_freshb k M
   | a_ind _ | a_con _ _ | a_nlit _ => true
-  | a_elim p nm A Bs M =>
-      exp_freshb (nm + k) A &&
+  | a_elim H nm A Bs M =>
+      modexp_freshb k H && exp_freshb (nm + k) A &&
       (fix brs_freshb (Bs : list (string * nat * exp)) : bool :=
          match Bs with
          | nil => true
@@ -96,7 +96,7 @@ with gentry_freshb (k : nat) (E : gentry) {struct E} : bool :=
   match E with
   | ge_def _ _ A B => exp_freshb k A && match B with Some M => exp_freshb k M | None => true end
   | ge_mod _ U => gunit_freshb k U
-  | ge_ind _ _ => true
+  | ge_ind _ D Φ => gmod_freshb (ind_nu D + k) Φ
   end
 with centry_freshb (k : nat) (e : centry) {struct e} : bool :=
   match e with
@@ -129,9 +129,10 @@ Proof.
               | apply Bool.negb_true_iff, Nat.eqb_neq in H; assumption
               | apply Bool.negb_true_iff, Nat.eqb_neq in H0; assumption ].
   - (* an eliminator: its branches, one by one *)
-    apply (proj2 (exp_fresh_elim k p nm A Bs M)); split; [ auto | split; [| auto ] ].
-    clear - H0 H4; induction H0 as [| b Bs Hb HF IH]; cbn in *; [ constructor |].
-    apply Bool.andb_true_iff in H4 as [H4 H4']; constructor; [ apply Hb; exact H4 | apply IH; exact H4' ].
+    apply (proj2 (exp_fresh_elim k H nm A Bs M)); split; [ auto | split; [ auto | split; [| auto ] ] ].
+    match goal with HF : List.Forall _ Bs, Hb : _ Bs = true |- _ =>
+      clear - HF Hb; induction HF as [| b Bs Hb' HF IH]; cbn in *; [ constructor |];
+      apply Bool.andb_true_iff in Hb as [Hb1 Hb2]; constructor; [ apply Hb'; exact Hb1 | apply IH; exact Hb2 ] end.
   - (* a binding *) destruct oA; split; eauto.
   - (* a unit: its telescope, entry by entry *)
     split; [| auto ].
@@ -447,7 +448,7 @@ with feval_appm (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> dmod -> Prop :=
 (** A body unit lacking arguments records it. *)
 | feval_appm_body :
   `( List.length args < List.length Δ ->
-     $ᵐᶠ| dm_local ρ (gu_body Δ Φ) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_body Δ Φ) (args ++ n :: nil) )
+     $ᵐᶠ| dm_local ρ (gu_mk Δ (md_body Φ)) args & n | Θ ⍮ Ξ ↘ dm_local ρ (gu_mk Δ (md_body Φ)) (args ++ n :: nil) )
 (** So does an alias unit lacking arguments. *)
 | feval_appm_alias_unsat :
   `( List.length args < List.length Δ ->
@@ -483,6 +484,13 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ a ->
      $*ᶠ| ⇑ a (d_glob (qname_app p (x :: nil))) & args | Θ ⍮ Ξ ↘ r ->
      dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
+(** The module of an inductive type, as a term: the type former, applied to
+    the module's arguments. *)
+| feval_sel_global_ind :
+  `( gc_resolve Θ Ξ (qname_app p (x :: nil)) = None ->
+     ind_lookup Θ Ξ (qname_app p (x :: nil)) = Some D ->
+     $*ᶠ| d_ind (qname_app p (x :: nil)) nil & args | Θ ⍮ Ξ ↘ r ->
+     dm_global p args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of an unsaturated module is a member closure. *)
 | feval_sel_unsat :
   `( List.length args < List.length (gu_params U) ->
@@ -493,7 +501,7 @@ with feval_sel (Θ : gdeps) (Ξ : gstack) : dmod -> string -> domain -> Prop :=
      gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
      ⟦ M ⟧ᶠ Θ ⍮ Ξ ⍮ ρ' ↘ r ->
-     dm_local ρ (gu_body Δ Φ) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₜᶠ x Θ ⍮ Ξ ↘ r )
 (** A member of a saturated alias is selected from its target. *)
 | feval_sel_alias :
   `( List.length args = List.length Δ ->
@@ -524,7 +532,7 @@ with feval_selm (Θ : gdeps) (Ξ : gstack) : dmod -> string -> dmod -> Prop :=
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      ⟦ Φ' ⟧ᵇᶠ Θ ⍮ Ξ ⍮ env_args ρ args ↘ ρ' ->
-     dm_local ρ (gu_body Δ Φ) args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
+     dm_local ρ (gu_mk Δ (md_body Φ)) args ·ₘᶠ y Θ ⍮ Ξ ↘ dm_local ρ' Uy nil )
 (** A submodule of a saturated alias is selected from its target. *)
 | feval_selm_alias :
   `( List.length args = List.length Δ ->

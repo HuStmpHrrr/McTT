@@ -305,9 +305,14 @@ uniform parameters, as for every member.
 The declaration makes `X` a module over its uniform parameters, whose
 members are the constructors: `List.cons A x xs` is `(List A).cons x xs`,
 and `open List use (nil; cons)` declares them here.  Constructor names need
-only be distinct within the type.  As a term, `X` is the type.
-`X.elim M return … end` eliminates `M : X …`, and the module also has the
-recursor `X.rec`, the eliminator as a function into a small universe:
+only be distinct within the type.  As a term, `X`, by its own path, is the
+type; an alias of the module (`module L := List`, or a name `open … use`
+declares) is a module only: `L.cons` is `List.cons`, but `L ℕ` is rejected
+("L is a module, not a term").  `X.elim M return … end` eliminates
+`M : X …`; its head is any module naming the type (`L.elim`), applied or not
+(`(List ℕ).elim`, whose arguments must be the scrutinee's uniform
+parameters).  The module also has the recursor `X.rec`, the eliminator as a
+function into a small universe:
 
 ```
 List.rec : ∀ (A : Type@0) (u : Level) (P : ∀ (l : List A) → Type@{u})

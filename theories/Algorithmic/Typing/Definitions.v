@@ -88,11 +88,20 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      Γ ⊢a a_con p c ⟹ W )
 (** The eliminator: the scrutinee infers an inductive type, at whose
     parameters' normal forms the motive and the branches are checked; the
-    type is the normal form of the motive's instance. *)
+    type is the normal form of the motive's instance.  The head is the
+    canonical one at arguments [Ns]: the type former at them checks against
+    its type at the first parameters, and normalises as the type former at
+    those does. *)
 | ati_elim :
   `( Γ ⊢a M ⟹ nf_indty p Rs ->
      ind_lookup gc_deps gc_stack p = Some D ->
      List.length (nfs_to_exps Rs) = ind_np D ->
+     H = me_apps (qname_mod p) Ns ->
+     List.length Ns = nh ->
+     nh <= ind_nu D ->
+     Γ ⊢a apps (a_ind p) Ns ⟸ ind_ty_at D (List.firstn nh (nfs_to_exps Rs)) ->
+     nbe_f Γ (apps (a_ind p) Ns) (ind_ty_at D (List.firstn nh (nfs_to_exps Rs))) W ->
+     nbe_f Γ (apps (a_ind p) (List.firstn nh (nfs_to_exps Rs))) (ind_ty_at D (List.firstn nh (nfs_to_exps Rs))) W ->
      nm = S (ind_nn D) ->
      elim_mctx p D (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ ⊢a A ⟹ UA ->
      is_univ_nf UA u ->
@@ -103,7 +112,16 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
         elim_bctx p D gs A (List.firstn (ind_nu D) (nfs_to_exps Rs)) ++ Γ
           ⊢a B ⟸ elim_bty p D c gs A (List.firstn (ind_nu D) (nfs_to_exps Rs))) ->
      nbe_ty_f Γ A[sb_of_list Id (List.skipn (ind_nu D) (nfs_to_exps Rs) ++ M :: nil)] T ->
-     Γ ⊢a a_elim p nm A Bs M ⟹ T )
+     Γ ⊢a a_elim H nm A Bs M ⟹ T )
+(** An eliminator at a head other than the canonical one, resolving to the
+    module of an inductive type, infers as at the canonical head. *)
+| ati_elim_head :
+  `( Γ ⊢aᵐ H0 ->
+     member_type gc_deps gc_stack Γ H0 nil (mr_ind p T0) ->
+     H0 <> qname_mod p ->
+     H = me_apps H0 Ns ->
+     Γ ⊢a a_elim (me_apps (qname_mod p) Ns) nm A Bs M ⟹ T ->
+     Γ ⊢a a_elim H nm A Bs M ⟹ T )
 (** A [Π] is at the join of the universes of its parts ([unf_pi_tm]): a
     large universe absorbs a small one, and two small ones join on levels,
     the codomain's bounded under the binder ([lvl_bound]): an atom that
@@ -181,6 +199,13 @@ with alg_type_infer : ctx -> nf -> exp -> Prop :=
      gc_resolve gc_deps gc_stack (qname_app mp (x :: nil)) = Some (ge_def b pv A B) ->
      nbe_ty_f Γ A C ->
      Γ ⊢a a_mem H x ⟹ C )
+(** The module of an inductive type, reached by a chain from a unit, infers
+    the normal form of the type of its declaration. *)
+| ati_mem_glob_ind :
+  `( mod_qname H = Some mp ->
+     ind_lookup gc_deps gc_stack (qname_app mp (x :: nil)) = Some D ->
+     nbe_ty_f Γ (ind_ty D) C ->
+     Γ ⊢a a_mem H x ⟹ C )
 where "Γ '⊢a' M ⟹ A" := (alg_type_infer Γ A M) : type_scope
 (** The well-formedness of extensions, units and module expressions, entry by
     entry, part by part. *)
@@ -219,7 +244,8 @@ where "Γ '⊢aᵘ' U" := (alg_unit Γ U) : type_scope
 with alg_modexp : ctx -> modexp -> Prop :=
 | amod_glob :
   `( mod_qname H = Some mp ->
-     member_type gc_deps gc_stack Γ H nil (mr_mod T) ->
+     member_type gc_deps gc_stack Γ H nil R ->
+     mres_tl R = Some T ->
      Γ ⊢aᵐ H )
 | amod_var :
   `( Γ ∋ #x ⇒ₘ U ->
@@ -229,12 +255,14 @@ with alg_modexp : ctx -> modexp -> Prop :=
      Γ ⊢aᵐ me_lit U )
 | amod_mem :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H (y :: nil) (mr_mod T) ->
+     member_type gc_deps gc_stack Γ H (y :: nil) R ->
+     mres_tl R = Some T ->
      Γ ⊢aᵐ me_mem H y )
 (** An argument is checked against the outermost parameter of the arity. *)
 | amod_app :
   `( Γ ⊢aᵐ H ->
-     member_type gc_deps gc_stack Γ H nil (mr_mod T) ->
+     member_type gc_deps gc_stack Γ H nil R ->
+     mres_tl R = Some T ->
      tele_view T = Some (B, T1) ->
      Γ ⊢a N ⟸ B ->
      Γ ⊢aᵐ me_app H N )

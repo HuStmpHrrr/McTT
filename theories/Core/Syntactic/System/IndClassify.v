@@ -53,6 +53,7 @@ Proof.
   - (* the items of an open *)
     apply list_eq_dec; intros; repeat (decide equality || apply string_dec || apply bool_dec).
   - (* a declaration *)
+    try clear g g0.
     destruct i as [nu ps S cs], i0 as [nu' ps' S' cs'].
     destruct (Nat.eq_dec nu nu') as [<- |]; [| right; congruence ].
     destruct (exp_eq_dec S S') as [<- |]; [| right; congruence ].

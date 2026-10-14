@@ -32,10 +32,7 @@ Record raw_decl : Set := mk_raw
 Definition rd_uparams (R : raw_decl) : ctx :=
   List.skipn (List.length (rd_params R) - rd_nu R) (rd_params R).
 
-(** A declaration is filed in the module it makes, under this name, which
-    no source can write.  The module's other members are the
-    constructors. *)
-Definition ind_name : string := "#".
+
 
 Inductive ccmd : Set :=
 (** [def x : A := M] and [axiom x : A]: transparency, privacy, type and
@@ -58,9 +55,9 @@ Inductive ccmd : Set :=
     makes the module [x], over the uniform parameters, of the declaration
     and the constructors. *)
 | cc_ind : string -> bool -> raw_decl -> ccmd
-(** [builtin k := X]: [X], resolved to the name of its declaration
-    ([…X.#]), is bound as the builtin [k]. *)
-| cc_builtin : string -> qname -> ccmd.
+(** [builtin k := X]: the module [X], as written, is bound as the builtin
+    [k]; the command resolves it to the inductive type it names. *)
+| cc_builtin : string -> modexp -> ccmd.
 
 (** A unit: its leading imports, its parameters, its body. *)
 Definition cunit : Set := (list ccmd * ctx * list ccmd)%type.

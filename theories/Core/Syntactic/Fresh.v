@@ -48,8 +48,8 @@ Fixpoint exp_fresh (k : nat) (M : exp) {struct M} : Prop :=
       exp_fresh (S k) A /\ exp_fresh k MZ /\ exp_fresh (S (S k)) MS /\ exp_fresh k M
   | a_exfalso A M => exp_fresh (S k) A /\ exp_fresh k M
   | a_ind _ | a_con _ _ | a_nlit _ => True
-  | a_elim p nm A Bs M =>
-      exp_fresh (nm + k) A /\
+  | a_elim H nm A Bs M =>
+      modexp_fresh k H /\ exp_fresh (nm + k) A /\
       (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
          match Bs with
          | nil => True
@@ -99,7 +99,7 @@ with gentry_fresh (k : nat) (E : gentry) {struct E} : Prop :=
   match E with
   | ge_def _ _ A B => exp_fresh k A /\ match B with Some M => exp_fresh k M | None => True end
   | ge_mod _ U => gunit_fresh k U
-  | ge_ind _ _ => True
+  | ge_ind _ D Φ => gmod_fresh (ind_nu D + k) Φ
   end
 with centry_fresh (k : nat) (e : centry) {struct e} : Prop :=
   match e with
@@ -267,9 +267,9 @@ Scheme nf_mind := Induction for nf Sort Prop
 Combined Scheme nf_mut_ind from nf_mind, ne_mind, la_mind, nfs_mind, nbrs_mind.
 
 (** Freshness of an eliminator, its branches as a list. *)
-Lemma exp_fresh_elim : forall k p nm A Bs M,
-    exp_fresh k (a_elim p nm A Bs M) <->
-    exp_fresh (nm + k) A /\ List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs /\ exp_fresh k M.
+Lemma exp_fresh_elim : forall k H nm A Bs M,
+    exp_fresh k (a_elim H nm A Bs M) <->
+    modexp_fresh k H /\ exp_fresh (nm + k) A /\ List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs /\ exp_fresh k M.
 Proof.
   intros; cbn; enough (forall Bs : list (String.string * nat * exp),
     (fix brs_fresh (Bs : list (String.string * nat * exp)) : Prop :=
@@ -278,7 +278,7 @@ Proof.
        | cons b Bs' => exp_fresh (snd (fst b) + k) (snd b) /\ brs_fresh Bs'
        end) Bs <-> List.Forall (fun b => exp_fresh (snd (fst b) + k) (snd b)) Bs) as -> by reflexivity.
   induction Bs0 as [| b Bs0 IH]; [ split; auto |].
-  rewrite IH; split; [ intros []; constructor; assumption | intros H; inversion H; auto ].
+  rewrite IH; split; [ intros []; constructor; assumption | intros Hx; inversion Hx; auto ].
 Qed.
 
 Lemma apps_exp_fresh : forall Ms M k,
@@ -442,6 +442,12 @@ Qed.
 Lemma qname_term_wk : forall p φ, (qname_term p)[φ]ʷ = qname_term p.
 Proof. intros [fp ch] φ; apply member_ref_wk; reflexivity. Qed.
 
+Lemma qname_mod_wk : forall p φ, modexp_wk (qname_mod p) φ = qname_mod p.
+Proof. intros [fp ch] φ; apply me_mems_wk; reflexivity. Qed.
+
+Lemma qname_mod_fresh : forall p k, modexp_fresh k (qname_mod p).
+Proof. intros [fp ch] k; apply me_mems_fresh; exact I. Qed.
+
 (** Freshness of a normal form is freshness of the term it denotes, and
     un-weakening agrees with the renaming on terms. *)
 Lemma nf_fresh_to_exp :
@@ -459,7 +465,7 @@ Proof.
               | apply lvl_exp_of_fresh; eauto
               | constructor; eauto
               | apply apps_exp_fresh; [ exact I | eauto ]
-              | apply exp_fresh_elim; repeat split; eauto ].
+              | apply exp_fresh_elim; repeat split; eauto using qname_mod_fresh ].
   (** A global never mentions a local variable. *)
   apply qname_term_fresh.
 Qed.
@@ -487,7 +493,7 @@ Proof.
                 end ].
   (** An application spine, and an eliminator under its binders. *)
   all: unfold unwk in *; repeat match goal with H : forall k, _ = _ |- _ => rewrite H end;
-    rewrite ?wk_qn_plus; reflexivity.
+    rewrite ?wk_qn_plus, ?qname_mod_wk; reflexivity.
 Qed.
 
 (** The three facts of un-weakening, on normal forms. *)

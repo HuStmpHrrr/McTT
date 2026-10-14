@@ -632,7 +632,7 @@ Inductive exp : Set :=
     scrutinee. *)
 | a_exfalso : exp -> exp -> exp
 (** The type former of an inductive type, to be applied to its parameters:
-    [p] names the declaration ([ge_ind]). *)
+    [p] names the inductive ([ge_ind]). *)
 | a_ind : qname -> exp
 (** The constructor [c] of the inductive type [p], to be applied to the
     parameters and the arguments. *)
@@ -641,13 +641,14 @@ Inductive exp : Set :=
     expansion ([Imports]) replaces it by the chain of constructors of the
     inductive type bound as the natural numbers ([builtin natural]). *)
 | a_nlit : nat -> exp
-(** [a_elim p nm A Bs M] eliminates [M], of the inductive type [p], into
-    the motive [A], which binds the non-uniform parameters and the
-    scrutinee ([nm] of them).  Each branch [(c, n, B)] is the case of the
+(** [a_elim H nm A Bs M] eliminates [M] into the motive [A], which binds
+    the non-uniform parameters and the scrutinee ([nm] of them).  [H] is the
+    module of the inductive type, as written: typing resolves it, as a
+    module, to the type of the scrutinee.  Each branch [(c, n, B)] is the case of the
     constructor [c], in declaration order, and binds [n] variables: the
     non-uniform parameters, the arguments, and one recursive result per
     recursive argument. *)
-| a_elim : qname -> nat -> exp -> list (string * nat * exp) -> exp -> exp
+| a_elim : modexp -> nat -> exp -> list (string * nat * exp) -> exp -> exp
 (** Functions: [a_pi A B], [B] binding the argument *)
 | a_pi : exp -> exp -> exp
 (** [a_fn A M], [M] binding the argument *)
@@ -705,11 +706,11 @@ with gentry : Set :=
 | ge_def : bool -> bool -> exp -> option exp -> gentry
 (** [ge_mod pv U]: a submodule, private when [pv] *)
 | ge_mod : bool -> gunit -> gentry
-(** [ge_ind pv D]: the declaration of an inductive type, private when [pv].
-    It is filed under the name of the type followed by [#], which no
-    program can write; its type former and constructors are definitions
-    beside it. *)
-| ge_ind : bool -> ind_decl_g exp centry -> gentry
+(** [ge_ind pv D Φ]: an inductive type, private when [pv]: its declaration
+    [D] and the body [Φ] of its module, whose members are the constructors
+    and the recursor, under the uniform parameters of [D] ([ind_unit]).
+    Its path names the module, and the type former ([a_ind]). *)
+| ge_ind : bool -> ind_decl_g exp centry -> gmod -> gentry
 with centry : Set :=
 (** An assumption of a type *)
 | ce_ass : exp -> centry
@@ -768,7 +769,7 @@ Section syn_mut_ind.
     (case_ind : forall p, Pe (a_ind p))
     (case_con : forall p c, Pe (a_con p c))
     (case_nlit : forall n, Pe (a_nlit n))
-    (case_elim : forall p nm A Bs M, Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim p nm A Bs M))
+    (case_elim : forall H nm A Bs M, Pm H -> Pe A -> List.Forall (fun b => Pe (snd b)) Bs -> Pe M -> Pe (a_elim H nm A Bs M))
     (case_pi : forall A B, Pe A -> Pe B -> Pe (a_pi A B))
     (case_fn : forall A M, Pe A -> Pe M -> Pe (a_fn A M))
     (case_app : forall M N, Pe M -> Pe N -> Pe (a_app M N))
@@ -790,7 +791,7 @@ Section syn_mut_ind.
     (case_gm_open : forall Φ H its, Pg Φ -> Pm H -> Pg (gm_open Φ H its))
     (case_ge_def : forall b pv A B, Pe A -> (forall M, B = Some M -> Pe M) -> Pn (ge_def b pv A B))
     (case_ge_mod : forall pv U, Pu U -> Pn (ge_mod pv U))
-    (case_ge_ind : forall pv D, Pn (ge_ind pv D))
+    (case_ge_ind : forall pv D Φ, Pg Φ -> Pn (ge_ind pv D Φ))
     (case_ce_ass : forall A, Pe A -> Pc (ce_ass A))
     (case_ce_def : forall A M, Pe A -> Pe M -> Pc (ce_def A M))
     (case_ce_mod : forall U, Pu U -> Pc (ce_mod U)).
@@ -814,8 +815,8 @@ Section syn_mut_ind.
     | a_ind p => case_ind p
     | a_con p c => case_con p c
     | a_nlit n => case_nlit n
-    | a_elim p nm A Bs M =>
-        case_elim p nm A Bs M (exp_mut A)
+    | a_elim H nm A Bs M =>
+        case_elim H nm A Bs M (modexp_mut H) (exp_mut A)
           ((fix brs_mut (Bs : list (string * nat * exp)) : List.Forall (fun b => Pe (snd b)) Bs :=
               match Bs with
               | nil => List.Forall_nil _
@@ -883,7 +884,7 @@ Section syn_mut_ind.
                                 | eq_refl => I end)
            end)
     | ge_mod pv U => case_ge_mod pv U (gunit_mut U)
-    | ge_ind pv D => case_ge_ind pv D
+    | ge_ind pv D Φ => case_ge_ind pv D Φ (gmod_mut Φ)
     end
   with centry_mut (e : centry) : Pc e :=
     match e with
@@ -946,6 +947,19 @@ Abbreviation gu_body Δ Φ := (gu_mk Δ (md_body Φ)).
 Abbreviation ge_body pv Δ Φ := (ge_mod pv (gu_body Δ Φ)).
 
 Definition gu_params (U : gunit) : list centry := match U with gu_mk Δ _ => Δ end.
+
+(** The number of parameters of a declaration, and of non-uniform ones. *)
+Definition ind_np (D : ind_decl) : nat := List.length (ind_params D).
+Definition ind_nn (D : ind_decl) : nat := ind_np D - ind_nu D.
+
+(** The uniform parameters, and the non-uniform ones. *)
+Definition ind_uparams (D : ind_decl) : list centry := List.skipn (ind_nn D) (ind_params D).
+Definition ind_nparams (D : ind_decl) : list centry := List.firstn (ind_nn D) (ind_params D).
+
+(** The module of the inductive type [D] of body [Φ], as a unit: it takes
+    the uniform parameters, with the frames' parameters outside them, so
+    that it is closed, as an alias is. *)
+Definition ind_unit (D : ind_decl) (Φ : gmod) : gunit := gu_mk (ind_uparams D) (md_body Φ).
 
 Definition gu_def (U : gunit) : moddef := match U with gu_mk _ D => D end.
 
@@ -1077,14 +1091,15 @@ Definition ce_typ (e : centry) : typ :=
   end.
 
 (** A body as the context entries it binds, innermost first.  A local open
-    binds one placeholder per item: a pre-form is never typed. *)
+    binds one placeholder per item: a pre-form is never typed.  So does an
+    inductive type, which only a filed module declares. *)
 Fixpoint body_ctx (Φ : gmod) : ctx :=
   match Φ with
   | gm_nil => nil
   | gm_ext Φ' _ (ge_def _ _ A (Some M)) => cons (ce_def A M) (body_ctx Φ')
   | gm_ext Φ' _ (ge_def _ _ A None) => cons (ce_ass A) (body_ctx Φ')
   | gm_ext Φ' _ (ge_mod _ U) => cons (ce_mod U) (body_ctx Φ')
-  | gm_ext Φ' _ (ge_ind _ _) => cons (ce_ass a_nat) (body_ctx Φ')
+  | gm_ext Φ' _ (ge_ind _ _ _) => cons (ce_ass a_nat) (body_ctx Φ')
   | gm_open Φ' _ its => List.repeat (ce_ass a_nat) (List.length its) ++ body_ctx Φ'
   end.
 
@@ -1376,7 +1391,7 @@ with ne_to_exp (M : ne) : exp :=
   match M with
   | ne_natrec A MZ MS M => a_natrec (nf_to_exp A) (nf_to_exp MZ) (nf_to_exp MS) (ne_to_exp M)
   | ne_exfalso A M => a_exfalso (nf_to_exp A) (ne_to_exp M)
-  | ne_elim p nm A Bs M => a_elim p nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
+  | ne_elim p nm A Bs M => a_elim (qname_mod p) nm (nf_to_exp A) (nbrs_to_brs Bs) (ne_to_exp M)
   | ne_app M N => a_app (ne_to_exp M) (nf_to_exp N)
   | ne_var x => a_var x
   | ne_glob p => qname_term p
@@ -1647,8 +1662,8 @@ Fixpoint exp_wk (M : exp) (φ : wk) : exp :=
   | a_ind p => a_ind p
   | a_con p c => a_con p c
   | a_nlit n => a_nlit n
-  | a_elim p nm A Bs M =>
-      a_elim p nm (exp_wk A (wk_qn nm φ))
+  | a_elim H nm A Bs M =>
+      a_elim (modexp_wk H φ) nm (exp_wk A (wk_qn nm φ))
              (List.map (fun b => (fst b, exp_wk (snd b) (wk_qn (snd (fst b)) φ))) Bs)
              (exp_wk M φ)
   | a_pi A B => a_pi (exp_wk A φ) (exp_wk B (wk_q φ))
@@ -1698,7 +1713,7 @@ with gentry_wk (E : gentry) (φ : wk) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_wk A φ) (match B with Some M => Some (exp_wk M φ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_wk U φ)
-  | ge_ind pv D => ge_ind pv D
+  | ge_ind pv D Φ => ge_ind pv D (gmod_wk Φ (wk_qn (ind_nu D) φ))
   end
 with centry_wk (e : centry) (φ : wk) : centry :=
   match e with
@@ -1827,8 +1842,8 @@ Fixpoint exp_sub (M : exp) (σ : sub) : exp :=
   | a_ind p => a_ind p
   | a_con p c => a_con p c
   | a_nlit n => a_nlit n
-  | a_elim p nm A Bs M =>
-      a_elim p nm (exp_sub A (sb_qn nm σ))
+  | a_elim H nm A Bs M =>
+      a_elim (modexp_sub H σ) nm (exp_sub A (sb_qn nm σ))
              (List.map (fun b => (fst b, exp_sub (snd b) (sb_qn (snd (fst b)) σ))) Bs)
              (exp_sub M σ)
   | a_pi A B => a_pi (exp_sub A σ) (exp_sub B (sb_q σ))
@@ -1876,7 +1891,7 @@ with gentry_sub (E : gentry) (σ : sub) : gentry :=
   match E with
   | ge_def b pv A B => ge_def b pv (exp_sub A σ) (match B with Some M => Some (exp_sub M σ) | None => None end)
   | ge_mod pv U => ge_mod pv (gunit_sub U σ)
-  | ge_ind pv D => ge_ind pv D
+  | ge_ind pv D Φ => ge_ind pv D (gmod_sub Φ (sb_qn (ind_nu D) σ))
   end
 with centry_sub (e : centry) (σ : sub) : centry :=
   match e with

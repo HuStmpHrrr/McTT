@@ -249,7 +249,7 @@ with feval_appm_order (Θ : gdeps) (Ξ : gstack) : dmod -> domain -> Prop :=
   `( feval_appm_order Θ Ξ (dm_global pq args) n )
 | feapo_body :
   `( List.length args < List.length Δ ->
-     feval_appm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) n )
+     feval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) n )
 | feapo_alias_unsat :
   `( List.length args < List.length Δ ->
      feval_appm_order Θ Ξ (dm_local p (gu_mk Δ (md_alias E)) args) n )
@@ -275,6 +275,11 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      feval_exp_order Θ Ξ A nil ->
      (forall a, ⟦ A ⟧ᶠ Θ ⍮ Ξ ⍮ nil ↘ a -> feval_apps_order Θ Ξ (⇑ a (d_glob (qname_app pq (x :: nil)))) args) ->
      feval_sel_order Θ Ξ (dm_global pq args) x )
+| feslo_global_ind :
+  `( gc_resolve Θ Ξ (qname_app pq (x :: nil)) = None ->
+     ind_lookup Θ Ξ (qname_app pq (x :: nil)) = Some D ->
+     feval_apps_order Θ Ξ (d_ind (qname_app pq (x :: nil)) nil) args ->
+     feval_sel_order Θ Ξ (dm_global pq args) x )
 | feslo_unsat :
   `( List.length args < List.length (gu_params U) ->
      feval_sel_order Θ Ξ (dm_local p U args) x )
@@ -283,7 +288,7 @@ with feval_sel_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
      gm_prefix_upto Φ x = Some (gm_ext Φ' x (ge_def b pv A (Some M))) ->
      feval_benv_order Θ Ξ (env_args p args) Φ' ->
      (forall p', feval_benv Θ Ξ (env_args p args) Φ' p' -> feval_exp_order Θ Ξ M p') ->
-     feval_sel_order Θ Ξ (dm_local p (gu_body Δ Φ) args) x )
+     feval_sel_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) x )
 | feslo_alias :
   `( List.length args = List.length Δ ->
      feval_modexp_order Θ Ξ E (env_args p args) ->
@@ -307,7 +312,7 @@ with feval_selm_order (Θ : gdeps) (Ξ : gstack) : dmod -> string -> Prop :=
   `( List.length args = List.length Δ ->
      gm_prefix_upto Φ y = Some (gm_ext Φ' y (ge_mod pm Uy)) ->
      feval_benv_order Θ Ξ (env_args p args) Φ' ->
-     feval_selm_order Θ Ξ (dm_local p (gu_body Δ Φ) args) y )
+     feval_selm_order Θ Ξ (dm_local p (gu_mk Δ (md_body Φ)) args) y )
 | fesmo_alias :
   `( List.length args = List.length Δ ->
      feval_modexp_order Θ Ξ E (env_args p args) ->
@@ -489,11 +494,7 @@ Section EvalImpl.
     exists (env_var p x); apply feval_exp_var.
   Defined.
 
-  (** The declaration of an inductive type is not a term member. *)
-  Lemma feslo_ind_false : forall pq args x pv D,
-      feval_sel_order Θ Ξ (dm_global pq args) x ->
-      gc_resolve Θ Ξ (qname_app pq (x :: nil)) = Some (ge_ind pv D) -> False.
-  Proof. intros * H E; inversion H; subst; congruence. Qed.
+
 
   #[local]
   Ltac impl_obl_tac1 :=
@@ -528,6 +529,10 @@ Section EvalImpl.
           rewrite H1 in H2; discriminate H2
       | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some _ |- _ =>
           rewrite H1 in H2; injection H2; clear H2; intros; subst
+      | H1 : gc_module _ _ ?p = Some _, H2 : gc_module _ _ ?p = None |- _ =>
+          rewrite H1 in H2; discriminate H2
+      | H1 : ind_lookup _ _ ?p = Some _, H2 : gc_module _ _ ?p = Some (mr_alias _ _) |- _ =>
+          exfalso; exact (ind_lookup_not_alias _ _ _ _ _ _ H1 H2)
       | H1 : gc_module _ _ ?p = Some (mr_alias _ _), H2 : forall U r, gc_module _ _ ?p <> Some (mr_alias U r) |- _ =>
           exfalso; exact (H2 _ _ H1)
       | H1 : gm_prefix_upto ?Φ ?x = Some _, H2 : gm_prefix_upto ?Φ ?x = Some _ |- _ =>
@@ -806,7 +811,7 @@ Section EvalImpl.
 
   with feval_appm_impl h n (H : feval_appm_order Θ Ξ h n) : { r | feval_appm Θ Ξ h n r } by struct H :=
   | dm_global pq args, n, H => exist _ (dm_global pq (args ++ n :: nil)) _
-  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_body Δ Φ) (args ++ n :: nil)) _
+  | dm_local p (gu_mk Δ (md_body Φ)) args, n, H => exist _ (dm_local p (gu_mk Δ (md_body Φ)) (args ++ n :: nil)) _
   | dm_local p (gu_mk Δ (md_alias E)) args, n, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (dm_local p (gu_mk Δ (md_alias E)) (args ++ n :: nil)) _
     | exist _ Eq C =>
@@ -834,8 +839,12 @@ Section EvalImpl.
         let (r, Hr) := feval_apps_impl (⇑ a (d_glob (qname_app pq (x :: nil)))) args _ in
         exist _ r _
     | exist _ (Some (ge_mod _ _)) E => False_rect _ _
-    | exist _ (Some (ge_ind _ _)) E => False_rect _ (feslo_ind_false _ _ _ _ _ H E)
-    | exist _ None E => False_rect _ _ }
+    | exist _ (Some (ge_ind _ _ _)) E => False_rect _ _
+    | exist _ None E with inspect (ind_lookup Θ Ξ (qname_app pq (x :: nil))) := {
+      | exist _ (Some D) Ed =>
+          let (r, Hr) := feval_apps_impl (d_ind (qname_app pq (x :: nil)) nil) args _ in
+          exist _ r _
+      | exist _ None Ed => False_rect _ _ } }
   | dm_local p (gu_mk Δ D) args, x, H with inspect (Nat.compare (List.length args) (List.length Δ)) := {
     | exist _ Lt C => exist _ (d_member (dm_local p (gu_mk Δ D) args) (x :: nil)) _
     | exist _ Eq C with D := {
@@ -906,6 +915,9 @@ Section EvalImpl.
     inversion, the evaluation itself by its rule, or a branch the order rules
     out ([ev_obl]).  They are transparent: the order premises are the
     arguments of the structural recursion. *)
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
+Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.
 Next Obligation. ev_obl. Defined.

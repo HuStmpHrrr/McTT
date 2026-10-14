@@ -636,7 +636,8 @@ Qed.
 Lemma ptyp_ih_sub : forall p nm t A Bs σ M τ,
     (ptyp_ih p nm A Bs σ M t)[τ] = ptyp_ih p nm A[sb_qn nm τ] (brs_sub Bs τ) (σ ⨟ τ) M[τ] t.
 Proof.
-  intros p nm t; induction t as [k0 Ps | k0 Ps | B t IH]; intros *; cbn [ptyp_ih]; [ reflexivity | reflexivity |].
+  intros p nm t; induction t as [k0 Ps | k0 Ps | B t IH]; intros *; cbn [ptyp_ih];
+    [ cbn [exp_sub]; rewrite ?qname_mod_sub; reflexivity .. |].
   cbn [exp_sub]; f_equal; [ apply exp_sub_sub |].
   rewrite IH, (ptyp_ih_sb_eq _ _ _ _ _ _ _ _ (sb_q_compose σ τ)); f_equal.
   - apply exp_wk_sub_comm_ext, sb_qn_comm_ext; intros; reflexivity.
@@ -806,6 +807,25 @@ Qed.
 
 Lemma ind_ty_wk : forall D φ, decl_closed D -> (ind_ty D)[φ]ʷ = ind_ty D.
 Proof. intros; apply exp_closed_wk, decl_closed_ind_ty; assumption. Qed.
+
+Lemma ind_ty_at_wk : forall D Us φ, decl_closed D -> List.length Us <= ind_np D ->
+    (ind_ty_at D Us)[φ]ʷ = ind_ty_at D (List.map (fun U => U[φ]ʷ) Us).
+Proof.
+  intros * Hc Hl; unfold ind_ty_at; rewrite exp_wk_sb_of_list, List.length_map; f_equal.
+  apply exp_scoped_wk_id with (n := List.length Us); [ apply decl_closed_ind_ty_at; assumption |].
+  intros; apply wk_qn_lt; assumption.
+Qed.
+
+Lemma ind_ty_at_sub : forall D Us τ, decl_closed D -> List.length Us <= ind_np D ->
+    (ind_ty_at D Us)[τ] = ind_ty_at D (List.map (fun U => U[τ]) Us).
+Proof.
+  intros * Hc Hl; unfold ind_ty_at; rewrite exp_sub_sb_of_list, List.length_map; f_equal.
+  apply exp_scoped_sub_id with (n := List.length Us); [ apply decl_closed_ind_ty_at; assumption |].
+  intros; apply sb_qn_lt; assumption.
+Qed.
+
+Lemma ind_ty_at_nil : forall D, ind_ty_at D nil = ind_ty D.
+Proof. intros; unfold ind_ty_at, ind_ty, ind_np; cbn [List.length sb_of_list]; rewrite Nat.sub_0_r, List.firstn_all; apply exp_sub_id. Qed.
 
 Lemma con_ty_wk : forall p D c gs φ, decl_closed D -> ind_con D c = Some gs -> (con_ty p D gs)[φ]ʷ = con_ty p D gs.
 Proof. intros; apply exp_closed_wk; eapply decl_closed_con_ty; [ eassumption | apply cons_lookup_in; eassumption ]. Qed.

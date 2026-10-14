@@ -68,7 +68,7 @@ Proof.
   - rewrite List.nth_error_app2 in HP, HT by lia; rewrite HUl in HP; rewrite Hl2 in HT; exact (HNs _ _ _ HP HT).
 Qed.
 
-Lemma eval_elim_inv : forall p nm A Bs M ρ r, ⟦ a_elim p nm A Bs M ⟧ ρ ↘ r ->
+Lemma eval_elim_inv : forall Hh nm A Bs M ρ r, ⟦ a_elim Hh nm A Bs M ⟧ ρ ↘ r ->
     exists m, ⟦ M ⟧ ρ ↘ m /\ ⟦elim m under nm A Bs ⟧ gc_deps ⍮ gc_stack ⍮ ρ ↘ r.
 Proof. intros * H; inversion H; subst; eauto. Qed.
 
@@ -209,11 +209,11 @@ Section Iota.
   Let Hle : ind_nu D <= ind_np D := decl_closed_nu D Hc.
   Let σP := sb_of_list Id (Us ++ Ns).
 
-  Lemma elim_valid_at : forall Q a, List.length Q = ind_nn D -> gsub Γ (sb_of_list Id (Q ++ a :: nil)) (elim_mctx p D Us ++ Γ) ->
-      Γ ⊨ a : apps (a_ind p) (Us ++ Q) -> Γ ⊨ a_elim p nm A Bs a : A[sb_of_list Id (Q ++ a :: nil)].
+  Lemma elim_valid_at : forall Hh Q a, List.length Q = ind_nn D -> gsub Γ (sb_of_list Id (Q ++ a :: nil)) (elim_mctx p D Us ++ Γ) ->
+      Γ ⊨ a : apps (a_ind p) (Us ++ Q) -> Γ ⊨ a_elim Hh nm A Bs a : A[sb_of_list Id (Q ++ a :: nil)].
   Proof.
     intros * HQl Hg Ha.
-    eapply (rel_exp_elim_at Γ p D Us Q a a nm A A i Bs Bs); try eassumption; [ reflexivity |].
+    eapply (rel_exp_elim_at Γ p D Hh Hh Us Q a a nm A A i Bs Bs); try eassumption; [ reflexivity |].
     intros * Hk Hk' Hcon'; rewrite Hk in Hk'; injection Hk' as <-.
     exact (HBv _ _ _ _ Hcon' (List.nth_error_In _ _ Hk)).
   Qed.
@@ -493,7 +493,7 @@ Section Iota.
 
     (** The end: the eliminator, moved past the domains, at the argument
         applied to them. *)
-    Lemma r_leaf : Ψ L ⊨ a_elim p nm (ihA nm L A) (ihBs L Bs) xL : A[sb_of_list (ihb L Id) (Ps' ++ xL :: nil)].
+    Lemma r_leaf : Ψ L ⊨ a_elim (qname_mod p) nm (ihA nm L A) (ihBs L Bs) xL : A[sb_of_list (ihb L Id) (Ps' ++ xL :: nil)].
     Proof.
       pose proof (length_rec_ps D Hc c gs gs1 t gs2 Hcon Heq) as HPl.
       pose proof (r_HΨ L (le_n _)) as HΨL.
@@ -517,7 +517,7 @@ Section Iota.
         rewrite ihb_eq, sb_compose_id_left; reflexivity. }
       pose proof (gsub_tau D Hc p (Ψ L) HΨL UsL LUsL HM' Ps' xL LPs' HPsL r_x_typed) as Hg.
       rewrite ihA_eq, ihBs_eq, Hnm.
-      pose proof (rel_exp_elim_at (Ψ L) p D UsL Ps' xL xL (S (ind_nn D)) A[wk_qn (S (ind_nn D)) (wk_shiftn L)]ʷ
+      pose proof (rel_exp_elim_at (Ψ L) p D (qname_mod p) (qname_mod p) UsL Ps' xL xL (S (ind_nn D)) A[wk_qn (S (ind_nn D)) (wk_shiftn L)]ʷ
                     A[wk_qn (S (ind_nn D)) (wk_shiftn L)]ʷ i (brs_wk Bs (wk_shiftn L)) (brs_wk Bs (wk_shiftn L))
                     HD Hc Hsu Hdt Hl HΨL LUsL HUsL LPs' Hg r_x_typed eq_refl HA' HM'
                     ltac:(unfold brs_wk; apply brs_names_map; exact HBn) HBc' eq_refl Hnb') as H.
@@ -973,15 +973,15 @@ Section Iota.
   End IotaSem.
 
   (** *** The Rule *)
-  Lemma rel_exp_elim_iota_at : forall n B, brs_lookup Bs c = Some (n, B) ->
-      Γ ⊨ a_elim p nm A Bs (apps (a_con p c) (Us ++ Ns ++ As)) ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs p nm A Bs σP gs As)]
+  Lemma rel_exp_elim_iota_at : forall Hh n B, brs_lookup Bs c = Some (n, B) ->
+      Γ ⊨ a_elim Hh nm A Bs (apps (a_con p c) (Us ++ Ns ++ As)) ≈ B[sb_of_list Id (Ns ++ As ++ elim_ihs p nm A Bs σP gs As)]
         : A[sb_of_list Id (Ns ++ apps (a_con p c) (Us ++ Ns ++ As) :: nil)].
   Proof.
-    intros n B Hlk.
+    intros Hh n B Hlk.
     set (Mc := apps (a_con p c) (Us ++ Ns ++ As)).
     pose proof iota_Mc_valid as HMc; fold Mc in HMc.
     pose proof (gsub_tau D Hc p Γ HΓ Us HUl HM Ns Mc HNl HNs HMc) as Hg.
-    pose proof (elim_valid_at Ns Mc HNl Hg HMc) as HL.
+    pose proof (elim_valid_at Hh Ns Mc HNl Hg HMc) as HL.
     pose proof gsub_iota as Hgi.
     pose proof (HBv _ _ _ _ Hcon (brs_lookup_in _ _ _ _ Hlk)) as HBv'.
     assert (Lih : List.length (elim_ihs p nm A Bs σP gs As) = cargs_nrec gs) by (apply length_elim_ihs; exact HAl).
