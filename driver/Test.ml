@@ -3141,7 +3141,7 @@ let%expect_test "Inductives.mctt works" =
             → succ
                 (List.elim x1 return x2 . ℕ
                  | nil ⇒ 0
-                 | cons x3 x4 x5 ⇒ succ x5
+                 | cons x3 x4, x5 ⇒ succ x5
                  end) : ∀ (x1 : List ℕ) → ℕ
     Evaluate (List ℕ).cons 0 (List ℕ).nil --> List.cons ℕ 0 (List.nil ℕ) : List ℕ
     Evaluate cons ℕ 1 (nil ℕ) --> List.cons ℕ 1 (List.nil ℕ) : List ℕ
@@ -3159,8 +3159,8 @@ let%expect_test "Inductives.mctt works" =
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
             → Ord.elim (x1 1) return x3 . ℕ
               | base ⇒ 0
-              | next x4 x5 ⇒ succ x5
-              | lim x6 x7 ⇒ x7 1
+              | next x4, x5 ⇒ succ x5
+              | lim x6, x7 ⇒ x7 1
               end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
     Evaluate approxRec (Ord.lim (λ (x1 : ℕ) → Ord.next (fin x1))) --> 3 : ℕ
     Evaluate approxA (OrdA.lim (λ (x1 : ℕ) → OrdA.next (OrdA.next OrdA.base))) 0
@@ -3272,27 +3272,27 @@ let%expect_test "an eliminator at an application, and applied, round-trip" =
     Evaluate λ (x1 : ∀ (x2 : ℕ) → Ord)
                → Ord.elim (x1 1) return x3 . ℕ
                  | base ⇒ 0
-                 | next x4 x5 ⇒ succ x5
-                 | lim x6 x7 ⇒ x7 1
+                 | next x4, x5 ⇒ succ x5
+                 | lim x6, x7 ⇒ x7 1
                  end
       --> λ (x1 : ∀ (x2 : ℕ) → Ord)
             → Ord.elim (x1 1) return x3 . ℕ
               | base ⇒ 0
-              | next x4 x5 ⇒ succ x5
-              | lim x6 x7 ⇒ x7 1
+              | next x4, x5 ⇒ succ x5
+              | lim x6, x7 ⇒ x7 1
               end : ∀ (x1 : ∀ (x2 : ℕ) → Ord) → ℕ
     Evaluate λ (x1 : Ord)
                → (Ord.elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
                   | base ⇒ λ (x4 : ℕ) → x4
-                  | next x5 x6 ⇒ x6
-                  | lim x7 x8 ⇒ λ (x9 : ℕ) → x8 x9 x9
+                  | next x5, x6 ⇒ x6
+                  | lim x7, x8 ⇒ λ (x9 : ℕ) → x8 x9 x9
                   end)
                    1
       --> λ (x1 : Ord)
             → (Ord.elim x1 return x2 . ∀ (x3 : ℕ) → ℕ
                | base ⇒ λ (x4 : ℕ) → x4
-               | next x5 x6 ⇒ λ (x7 : ℕ) → x6 x7
-               | lim x8 x9 ⇒ λ (x10 : ℕ) → x9 x10 x10
+               | next x5, x6 ⇒ λ (x7 : ℕ) → x6 x7
+               | lim x8, x9 ⇒ λ (x10 : ℕ) → x9 x10 x10
                end)
                 1 : ∀ (x1 : Ord) → ℕ
     |}]
@@ -3321,7 +3321,7 @@ let%expect_test "the branches must follow the constructors' order" =
                         def f (n : N) : N := N.elim n return k . N | s m, h => m | z => N.z end end" in
   [%expect {|
     Error: the body of f,
-      λ (x1 : N) → N.elim x1 return x2 . N | s x3 x4 ⇒ x3 | z ⇒ N.z end,
+      λ (x1 : N) → N.elim x1 return x2 . N | s x3, x4 ⇒ x3 | z ⇒ N.z end,
       is not of type ∀ (x1 : N) → N
     |}]
 
@@ -3388,7 +3388,7 @@ let%expect_test "an eliminator may be headed by the applied module of its type" 
   [%expect {|
     Evaluate (List ℕ).elim (List.cons ℕ 1 (List.nil ℕ)) return x1 . ℕ
              | nil ⇒ 0
-             | cons x2 x3 x4 ⇒ succ x4
+             | cons x2 x3, x4 ⇒ succ x4
              end --> 1 : ℕ
     |}]
 
@@ -3400,7 +3400,7 @@ let%expect_test "the applied module heading an eliminator agrees with the scruti
     Error:
       (List (∀ (x5 : ℕ) → ℕ)).elim (List.cons ℕ 1 (List.nil ℕ)) return x1 . ℕ
       | nil ⇒ 0
-      | cons x2 x3 x4 ⇒ succ x4
+      | cons x2 x3, x4 ⇒ succ x4
       end has no inferable type
     |}]
 
@@ -3415,12 +3415,12 @@ let%expect_test "an inductive type imported into a unit with parameters" =
     Evaluate λ (x1 : Lib›Unary.U)
                → Lib›Unary.U.elim x1 return x2 . Lib›Unary.U
                  | z ⇒ two $0
-                 | s x3 x4 ⇒ x4
+                 | s x3, x4 ⇒ x4
                  end
       --> λ (x1 : Lib›Unary.U)
             → Lib›Unary.U.elim x1 return x2 . Lib›Unary.U
               | z ⇒ 2
-              | s x3 x4 ⇒ x4
+              | s x3, x4 ⇒ x4
               end : ∀ (x1 : Lib›Unary.U) → Lib›Unary.U
     |}]
 
@@ -3436,8 +3436,8 @@ let%expect_test "an eliminator is named by its type" =
   let _ = main_of_body "inductive N : Type@0 where | z | s (n : N) end \
                         eval N.elim (N.s N.z) return k . Nat | z => 0 | s m, h => succ h end" in
   [%expect {|
-    Evaluate N.elim (N.s N.z) return x1 . ℕ | z ⇒ 0 | s x2 x3 ⇒ succ x3 end --> 1
-      : ℕ
+    Evaluate N.elim (N.s N.z) return x1 . ℕ | z ⇒ 0 | s x2, x3 ⇒ succ x3 end
+      --> 1 : ℕ
     |}]
 
 let%expect_test "an eliminator through an alias is the type's" =
@@ -3642,3 +3642,25 @@ let%expect_test "a numeral and a level literal stay one token" =
 let%expect_test "a bare underscore is reserved" =
   let _ = main_of_body "def _ : Nat := 0 end" in
   [%expect {| Error: "_" is reserved, and not a name, at line 1, column 23 |}]
+
+(* A branch of a printed eliminator writes its induction hypotheses after a
+   comma, so that the printed term reads back as itself. *)
+let%expect_test "a printed eliminator separates the induction hypotheses by a comma" =
+  let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
+                        eval fun (n : N) -> N.elim n return k . N | Z => N.Z | S m, h => N.S h end" in
+  [%expect {|
+    Evaluate λ (x1 : N)
+               → N.elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → N.elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      : ∀ (x1 : N) → N
+    |}]
+
+let%expect_test "a printed eliminator reads back as itself" =
+  let _ = main_of_body "inductive N : Type@0 where | Z | S (n : N) end \
+                        eval λ (x1 : N) → N.elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end" in
+  [%expect {|
+    Evaluate λ (x1 : N)
+               → N.elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      --> λ (x1 : N) → N.elim x1 return x2 . N | Z ⇒ N.Z | S x3, x4 ⇒ N.S x4 end
+      : ∀ (x1 : N) → N
+    |}]

@@ -185,7 +185,7 @@ let rec format_obj_prec (p : int) (f : Format.formatter) : Cst.obj -> unit =
        List.iter
          (fun ((c, ys), eb) ->
            fprintf f "@ @[<hov 2>| %s%s @<1>%s@ %a@]" c
-             (String.concat "" (List.map (fun y -> " " ^ y) ys))
+             (String.concat "" (List.map (fun y -> if y = "," then "," else " " ^ y) ys))
              s_darrow format_obj eb)
          bs;
        fprintf f "@ end@]"
@@ -362,6 +362,35 @@ let rec nat_of_chain : exp -> int option = function
       | _ -> None)
   | _ -> None
 
+(* The declarations of the inductive types the printed terms see, where
+   they are known: those of the state of the eval or the error printed. *)
+let ind_decls : (qname -> (exp, centry) ind_decl_g option) ref = ref (fun _ -> None)
+
+(* The module a head of an eliminator names, its arguments dropped. *)
+let rec elim_head_qname : modexp -> qname option = function
+  | Coq_me_app (h, _) -> elim_head_qname h
+  | Coq_me_unit fp -> Some { q_unit = fp; q_chain = [] }
+  | Coq_me_mem (h, y) ->
+     (match h with
+      | Coq_me_app _ -> None
+      | _ -> Option.map (fun q -> { q with q_chain = q.q_chain @ [y] }) (elim_head_qname h))
+  | _ -> None
+
+(* The names a branch of an eliminator binds, its induction hypotheses
+   after a comma, the marker [","], where the declaration is known and the
+   branch binds as many names as it should. *)
+let mark_ihs (h : modexp) (c : string) (ys : string list) : string list =
+  match Option.bind (elim_head_qname h) !ind_decls with
+  | None -> ys
+  | Some d ->
+     (match McttExtracted.Inductives.ind_con d c with
+      | None -> ys
+      | Some gs ->
+         let k = McttExtracted.Inductives.cargs_nrec gs in
+         let n = List.length ys in
+         if k = 0 || n <> McttExtracted.Syntax.ind_nn d + List.length gs + k then ys
+         else List.filteri (fun i _ -> i < n - k) ys @ ("," :: List.filteri (fun i _ -> i >= n - k) ys))
+
 let exp_to_obj =
   let new_var, reset_var_suffix =
     let suffix = ref 0 in
@@ -465,7 +494,7 @@ let exp_to_obj =
            bs
        in
        let head = impl_mod ctx h in
-       Cst.Coq_elim (head, escr', xs, em', bs')
+       Cst.Coq_elim (head, escr', xs, em', List.map (fun ((c, ys), eb) -> ((c, mark_ihs h c ys), eb)) bs')
   (* A chain of selections from a unit, as the unit and the chain. *)
   and chain_of : modexp -> (string list * string list) option = function
     | Coq_me_unit fp -> Some (fp, [])
@@ -584,6 +613,7 @@ let format_nf f nf = format_exp f (nf_to_exp nf)
 (************************************************************)
 
 let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
+  ind_decls := McttExtracted.Members.ind_lookup r.ev_deps r.ev_stack;
   nat_bind :=
     (match McttExtracted.Builtin.nat_binding r.ev_deps r.ev_stack with
      | McttExtracted.Builtin.Coq_nb_one (p, z, s) -> Some (p, z, s)
@@ -591,7 +621,17 @@ let format_eval (f : Format.formatter) (r : Command1.eval_entry) : unit =
   Format.fprintf f "@[<hov 2>Evaluate %a@ --> %a@ : %a@]" format_exp r.ev_exp
     format_nf r.ev_nf format_exp r.ev_typ
 
-let format_run_error (f : Format.formatter) : Command1.run_error -> unit =
+let rec format_run_error (f : Format.formatter) (e : Command1.run_error) : unit =
+  (* The stack of the failing command, where the error has it; the units
+     it imports are not at hand. *)
+  (match e with
+   | Coq_re_def (_, xi, _, _) | Coq_re_def_typ (_, xi, _) | Coq_re_eval_typ (xi, _, _)
+   | Coq_re_eval_check (xi, _, _) | Coq_re_eval_infer (xi, _) | Coq_re_level (xi, _, _) ->
+      ind_decls := McttExtracted.Members.ind_lookup [] xi
+   | _ -> ());
+  format_run_error_in f e
+
+and format_run_error_in (f : Format.formatter) : Command1.run_error -> unit =
   let open Format in
   function
   | Coq_re_msg msg -> fprintf f "@[<hov 2>Error: %s@]" msg
