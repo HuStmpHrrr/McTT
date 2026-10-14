@@ -10,6 +10,7 @@ From Mctt.Core.Completeness.LogicalRelation Require Import Lemmas.
 From Mctt.Core.Soundness Require IndCases IndElimCases.
 From Mctt.Core.Syntactic Require Import IndCong.
 Require Import Mctt.Core.Syntactic.Command.
+From Mctt.Core.Syntactic Require Import Builtin.
 Import Domain_Notations Fixed_Notations.
 Import Wk_Notations.
 
@@ -1010,12 +1011,148 @@ Corollary consistency_lit : forall {n} M,
     ~ ⋅ ⊢ M : Π Type@n #0.
 Proof. intros; apply consistency, univ_term_suniv. Qed.
 
+(** ** Canonical Forms of Inductive Types
+
+    A closed term of an inductive type normalises to one of its
+    constructors, applied to normal forms of its parameters and arguments:
+    a neutral would be closed. *)
+Theorem canonical_form_of_ind : forall {M p Ps},
+    ⋅ ⊢ M : apps (a_ind p) Ps ->
+    exists W, nbe_f ⋅ M (apps (a_ind p) Ps) W /\
+      exists D c gs Vs, ind_lookup gc_deps gc_stack p = Some D /\ ind_con D c = Some gs /\ W = nf_con p c Vs.
+Proof.
+  intros * HM.
+  destruct (soundness HM) as (W & Hn & HMW).
+  exists W; split; [ exact Hn |].
+  pose proof (nbe_clean _ _ Htr _ _ _ _ Hn) as Hc.
+  assert (HW : ⋅ ⊢ W : apps (a_ind p) Ps) by (gen_presups; assumption).
+  inversion Hn as [? ? ? ? ? a m Hi Ha Hm Hr]; subst.
+  inversion Hi; subst.
+  destruct (eval_ind_value _ _ _ _ Ha) as [ms ->].
+  inversion Hr; subst.
+  - do 4 eexists; split; [ eassumption | split; [ eassumption | reflexivity ] ].
+  - exfalso; cbn in Hc, HW; eapply no_closed_neutral; eassumption.
+Qed.
+
+Lemma nat_shape_inv : forall D z s, nat_shape D = Some (z, s) ->
+    ind_nu D = 0 /\ ind_params D = nil /\
+    (forall c gs, ind_con D c = Some gs -> (c = z /\ gs = nil) \/ (c = s /\ gs = ca_rec (pt_self 0 nil) :: nil)).
+Proof.
+  intros [nu Δ S cs] z s H; unfold nat_shape in H; cbn in H.
+  destruct nu; [| discriminate ]. destruct Δ; [| discriminate ].
+  repeat (match type of H with context [match ?x with _ => _ end] => destruct x; try discriminate end).
+  all: injection H as <- <-; split; [ reflexivity | split; [ reflexivity |] ]; intros c gs Hc; unfold ind_con in Hc; cbn in Hc.
+  all: repeat (match type of Hc with context [String.eqb ?a ?b] => destruct (String.eqb_spec a b) as [-> | ?]; [ injection Hc as <-; auto | ] end); discriminate.
+Qed.
+
+(** A term of the domain of a [Π] is one of the domain of a [Π] below. *)
+Lemma subtyp_pi_dom_conv : forall {Γ A' B' A B N},
+    Γ ⊢ Π A' B' ⊆ Π A B -> Γ ⊢ N : A -> Γ ⊢ N : A'.
+Proof.
+  intros * H HN.
+  apply subtyp_spec in H as [[k Heq] | [(U & V & [k1 HU] & [k2 HV] & Hs) | (A1 & A2 & B1 & B2 & [k1 HA] & [k2 HB] & [k3 H13] & _)]].
+  - apply exp_eq_pi_inversion in Heq as [? _]; mauto 3.
+  - exfalso; destruct (univ_sub_sort_term Hs) as [HUt _]; eapply pi_sort_term_absurd; [ exact HUt | exact HU ].
+  - apply exp_eq_pi_inversion in HA as [HA _]; apply exp_eq_pi_inversion in HB as [HB _].
+    assert (Γ ⊢ N : B1) by mauto 3.
+    assert (Γ ⊢ N : A1) by mauto 3.
+    mauto 3.
+Qed.
+
+(** The normal forms of a type shaped as the natural numbers
+    ([nat_shape]), its constructors [z] and [s]: chains of [s] ending in
+    [z]. *)
+Inductive nat_chain_nf (p : qname) (z s : String.string) : nf -> Prop :=
+| ncn_zero : nat_chain_nf p z s (nf_con p z nfs_nil)
+| ncn_succ : forall W, nat_chain_nf p z s W -> nat_chain_nf p z s (nf_con p s (nfs_cons W nfs_nil)).
+
+Definition nf_succ_depth (W : nf) : nat :=
+  (fix go (W : nf) : nat :=
+     match W with
+     | nf_con _ _ (nfs_cons V nfs_nil) => S (go V)
+     | _ => 0
+     end) W.
+
+Lemma nat_chain_of_read : forall p D z s, ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
+    forall W v, Rnf ⇓ (d_ind p nil) v in gc_deps ⍮ gc_stack ⍮ 0 ↘ W -> nf_clean W -> ⋅ ⊢ W : a_ind p -> nat_chain_nf p z s W.
+Proof.
+  intros p D z s Hl Hs; destruct (nat_shape_inv _ _ _ Hs) as (Hnu & HΔ & Hcs).
+  intros W; remember (nf_succ_depth W) as k eqn:Ek; revert W Ek.
+  induction k as [| k IH]; intros W Ek v Hr Hc HT; inversion Hr; subst.
+  all: try (exfalso; cbn in Hc, HT; eapply no_closed_neutral; eassumption).
+  all: rewrite Hl in H2; injection H2 as <-.
+  all: destruct (Hcs _ _ H3) as [[-> ->] | [-> ->]].
+  all: rewrite HΔ in H8; inversion H8; subst.
+  all: try (inversion H9; subst; constructor).
+  all: inversion H9; subst.
+  all: match goal with Ha : read_cargs _ _ _ _ _ _ nil _ _ |- _ => inversion Ha; subst end.
+  all: match goal with Ha : eval_shty _ _ _ _ _ _ _ |- _ => inversion Ha; subst end.
+  all: match goal with He : ⟦ nil ⟧* _ ⍮ _ ⍮ _ ↘ _ |- _ => inversion He; subst end.
+  all: cbn [nfs_app ListDef.firstn List.app] in *.
+  1: cbn in Ek; discriminate.
+  constructor.
+  cbn in Hc; destruct_conjs.
+  cbn [nf_to_exp nfs_to_exps apps_exp] in HT.
+  apply wf_app_inversion in HT as (A & B & Hf & HV & _).
+  apply wf_con_inversion in Hf as (D' & gs' & Hl' & Hc' & Hsub).
+  rewrite Hl in Hl'; injection Hl' as <-.
+  rewrite H3 in Hc'; injection Hc' as <-.
+  unfold con_ty in Hsub; rewrite HΔ in Hsub; cbn in Hsub.
+  unfold cargs_ctx, ind_pvars in Hsub; simpl in Hsub.
+  cbn in H4; rewrite <- H4 in Hsub.
+  unfold ind_uvars in Hsub; rewrite ?Hnu in Hsub; cbn in Hsub.
+  pose proof (subtyp_pi_dom_conv Hsub HV) as HV'.
+  rewrite Hnu in H12; cbn in H12.
+  unfold vars_from in HV'; cbn in HV'.
+  unfold nf_succ_depth in Ek; cbn in Ek; injection Ek as Ek.
+  exact (IH V Ek v H12 ltac:(assumption) HV').
+Qed.
+
+Lemma nat_chain_nf_numeral : forall p z s W, nat_chain_nf p z s W -> exists n, nf_to_exp W = nat_chain p z s n.
+Proof. induction 1 as [| W _ [n IH]]; [ exists 0; reflexivity | exists (S n); cbn; rewrite IH; reflexivity ]. Qed.
+
+(** A closed term of a type shaped as the natural numbers is a numeral:
+    its normal form is the chain of constructors [nat_chain p z s n] a
+    numeral stands for where the type is bound as the natural numbers. *)
+Corollary canonical_form_of_ind_nat : forall {M p D z s},
+    ind_lookup gc_deps gc_stack p = Some D -> nat_shape D = Some (z, s) ->
+    ⋅ ⊢ M : a_ind p ->
+    exists W n, nbe_f ⋅ M (a_ind p) W /\ nat_chain_nf p z s W /\ nf_to_exp W = nat_chain p z s n.
+Proof.
+  intros * Hl Hs HM.
+  destruct (soundness HM) as (W & Hn & HMW).
+  pose proof (nbe_clean _ _ Htr _ _ _ _ Hn) as Hc.
+  assert (HW : ⋅ ⊢ W : a_ind p) by (gen_presups; assumption).
+  assert (Hch : nat_chain_nf p z s W).
+  { inversion Hn as [? ? ? ? ? a m Hi Ha Hm Hr]; subst.
+    inversion Hi; subst; inversion Ha; subst.
+    eapply nat_chain_of_read; eassumption. }
+  destruct (nat_chain_nf_numeral _ _ _ _ Hch) as [n Hnum].
+  exists W, n; auto.
+Qed.
+
 End Transparent_GCtx.
 
 #[export]
 Hint Resolve canonical_form_of_nat : mctt.
 #[export]
 Hint Resolve canonical_form_of_large_typ : mctt.
+
+(** The canonical forms of inductive types, with the global context
+    explicit. *)
+Corollary canonical_form_of_ind_gctx : forall Θ Ξ M p Ps,
+    gc_transparent Θ Ξ ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : apps (a_ind p) Ps ->
+    exists W, nbe Θ Ξ ⋅ M (apps (a_ind p) Ps) W /\
+      exists D c gs Vs, ind_lookup Θ Ξ p = Some D /\ ind_con D c = Some gs /\ W = nf_con p c Vs.
+Proof. intros * Htr HM; exact (@canonical_form_of_ind (gc_mk Θ Ξ) Htr M p Ps HM). Qed.
+
+Corollary canonical_form_of_ind_nat_gctx : forall Θ Ξ M p D z s,
+    gc_transparent Θ Ξ ->
+    ind_lookup Θ Ξ p = Some D -> nat_shape D = Some (z, s) ->
+    Θ ⍮ Ξ ⍮ ⋅ ⊢ M : a_ind p ->
+    exists W n, nbe Θ Ξ ⋅ M (a_ind p) W /\ nat_chain_nf p z s W /\ nf_to_exp W = nat_chain p z s n.
+Proof. intros * Htr Hl Hs HM; exact (@canonical_form_of_ind_nat (gc_mk Θ Ξ) Htr M p D z s Hl Hs HM). Qed.
 
 (** The theorems above, with the global context explicit. *)
 Corollary canonical_form_of_nat_gctx : forall Θ Ξ M,
